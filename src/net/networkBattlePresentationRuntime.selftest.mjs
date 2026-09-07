@@ -146,6 +146,7 @@ function createHarness(failAt = '', pauseAt = '') {
         if (failAt === 'atmosphere') throw new Error('atmosphere failed');
         events.push('atmosphereReady');
       },
+      nightLighting: async () => events.push('nightLighting'),
       getFx: () => ({ id: 'fx' }),
       terrain: async () => events.push('terrain'),
       wrecks: async () => events.push('wrecks'),
@@ -205,6 +206,8 @@ function createHarness(failAt = '', pauseAt = '') {
     ['initialReady', 'atmosphere'], ['apply', 'atmosphere'],
     ['garageLights:false', 'atmosphere'], ['atmosphere', 'atmosphereReady'],
     ['atmosphereReady', 'terrain'], ['atmosphereReady', 'compile'],
+    ['atmosphereReady', 'nightLighting'], ['nightLighting', 'terrain'],
+    ['nightLighting', 'compile'],
     ['compile', 'activate'],
   ]) assert.ok(harness.events.indexOf(before) >= 0
     && harness.events.indexOf(before) < harness.events.indexOf(after), `${before} precedes ${after}`);

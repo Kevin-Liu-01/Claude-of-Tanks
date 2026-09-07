@@ -109,6 +109,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       if (failAtmosphere) throw new Error('atmosphere failed');
       calls.push(['atmosphereReady']);
     },
+    prepareNightLighting: async () => calls.push(['nightLighting']),
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
@@ -140,6 +141,9 @@ for (const [before, after] of [
   ['atmosphereReady', 'allies'],
   ['atmosphereReady', 'compile'],
   ['allies', 'terrain'],
+  ['allies', 'nightLighting'],
+  ['nightLighting', 'terrain'],
+  ['nightLighting', 'compile'],
   ['terrain', 'camera'],
   ['camera', 'shadowWarm'],
   ['shadowWarm', 'postWarm'],

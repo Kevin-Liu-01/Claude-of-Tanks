@@ -32,6 +32,7 @@ export interface DebugSurfaceDependencies {
   quality: Readonly<Record<string, UnknownAction>>;
   getFx(): RuntimeValue;
   getBattleAtmosphere?(): RuntimeValue;
+  getNightLighting?(): RuntimeValue;
   getPedestalVisual(): RuntimeValue;
   isPedestalOnStage(): boolean;
   getSelectedSpecId(): string;
@@ -97,6 +98,7 @@ export function installDebugSurface(
     bus: deps.bus,
     get fx() { return deps.getFx(); },
     get battleAtmosphere() { return deps.getBattleAtmosphere?.() ?? null; },
+    get nightLighting() { return deps.getNightLighting?.() ?? null; },
     input: deps.input,
     settings: deps.settings,
     pauseInfo: deps.pauseInfo,

@@ -126,6 +126,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   getEntryLifecycle(): BattleEntryLifecycle;
   prepareRevealCamera(): void;
   prepareAtmosphere?(): Promise<void>;
+  prepareNightLighting?(): Promise<void>;
   getGeneration(): number;
   advanceGeneration(): number;
   setPending(pending: boolean): void;
@@ -281,6 +282,9 @@ export function createSoloBattleDeploymentRuntime(
         );
         requireCurrent(generation);
         mark('allyVisuals');
+        await options.prepareNightLighting?.();
+        requireCurrent(generation);
+        mark('nightLighting');
 
         // Hidden opponents cannot participate in the first revealed frame.
         // The deferred warm owner streams the same exact builders during the

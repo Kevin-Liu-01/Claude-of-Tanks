@@ -89,6 +89,7 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
   ): Promise<RuntimeValue>;
   armorAimOverlay: ArmorAimWarmOwner<TGame['tanks'][number]>;
   forwardProgramWarm: ForwardCompileOwner;
+  onVisualReady?: (entity: TGame['tanks'][number]) => void;
   recordTiming?: (timing: VisualLoadTiming) => void;
   now?: () => number;
 }
@@ -128,6 +129,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   prebakeSharedTextures,
   armorAimOverlay,
   forwardProgramWarm,
+  onVisualReady,
   recordTiming = () => {},
   now = () => performance.now(),
 }: BattleVisualStreamerOptions<TGame>): BattleVisualStreamer<TGame['tanks'][number]> {
@@ -183,6 +185,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     (parent || scene).add(root);
     if (entity.state && visual.syncFromState) visual.syncFromState(entity.state);
     visual.setVisible?.(true);
+    onVisualReady?.(entity);
     const compileAt = now();
     visual.prewarmBurn?.();
     armorAimOverlay.prime(entity);

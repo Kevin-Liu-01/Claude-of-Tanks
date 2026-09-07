@@ -134,6 +134,7 @@ export interface NetworkBattlePresentationOptions {
   };
   warm: {
     atmosphere?(initial: SampledSnapshotFrame): MaybePromise<void>;
+    nightLighting?(): MaybePromise<void>;
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
@@ -404,6 +405,9 @@ export function createNetworkBattlePresentationRuntime(
       await warm.atmosphere?.(initial);
       throwIfNetworkBattleEntryAborted(signal);
       mark('atmosphere');
+      await warm.nightLighting?.();
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('nightLighting');
 
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain(preparedBridge);

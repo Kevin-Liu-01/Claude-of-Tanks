@@ -54,6 +54,7 @@ export interface MainFrameRuntimeOptions {
   getShotMode(): boolean;
   getShotHudFrame(): boolean;
   sniperFill: SniperFillRuntime;
+  updateNightLighting?(): void;
   resolveFxSubject(id: string): RuntimeValue;
   battleHudFrame: BattleHudFrameRuntime;
   lighting: MainLightingRuntime;
@@ -104,6 +105,7 @@ export function createMainFrameRuntime({
   getShotMode,
   getShotHudFrame,
   sniperFill,
+  updateNightLighting,
   resolveFxSubject,
   battleHudFrame,
   lighting,
@@ -179,6 +181,7 @@ export function createMainFrameRuntime({
     world?.update(0, camera.position, forward, null);
     sniperFill.update();
     fx?.update(dtSeconds, game.shells, camera, resolveFxSubject);
+    updateNightLighting?.();
     if (getShotHudFrame()) battleHudFrame.redrawFrozen();
     lighting.update(true);
     post.render(dtSeconds);
@@ -286,6 +289,7 @@ export function createMainFrameRuntime({
     updateCinematicVeil(frame.killcamActive);
     sniperFill.update();
     updateWorldPresentation(frame, appliedDtSeconds, fx);
+    updateNightLighting?.();
     renderPresentation(frame, appliedDtSeconds);
   };
 

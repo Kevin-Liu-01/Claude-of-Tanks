@@ -61,6 +61,7 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
 import {
@@ -698,7 +699,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
 });
 const setGarageSpots = (active: boolean): void => {
-  if (active) battleAtmosphere.reset();
+  if (active) { battleAtmosphere.reset(); nightLighting.reset(); }
   garagePhasePresentation.setActive(active);
 };
 const setGarageSunTrim = (active: boolean): void => {
@@ -714,6 +715,7 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   setWorldDormant,
   applySkyPreset: () => {
     battleAtmosphere.reset();
+    nightLighting.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
     sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
     worldRuntime.invalidateSkyPresentation();
@@ -1284,6 +1286,18 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
   },
 }));
+const nightLighting = createNightLightingAccess({
+  scene,
+  getWorldRoot: () => currentWorld()?.group ?? null,
+  // The bridge publishes its complete typed registry here, including hidden
+  // actors; game.tanks alone is only the currently visible network roster.
+  getEntities: () => networkSession.bridge ? game.tankById.values() : game.tanks,
+  getCameraPosition: () => camera.position,
+  isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
+  isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
+  isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
+    : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
+});
 const post = createPost(renderer, scene, camera);
 const viewport = createViewportRuntime({
   container,
@@ -1452,6 +1466,7 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
+  onVisualReady: (entity) => nightLighting.appendEntity(entity),
 });
 let battleVisuals: BattleVisualStreamer<MainEntity> | null = null;
 async function ensureBattleVisualStreamer() {
@@ -1601,6 +1616,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
     prepareAtmosphere: () => battleAtmosphere.prepare(game.battleCount, game.mapId),
+    prepareNightLighting: () => nightLighting.prepare(),
     getGeneration: () => battleWarmGeneration,
     advanceGeneration: () => ++battleWarmGeneration,
     setPending: (pending: boolean) => { battleWarmPending = pending; },
@@ -1962,6 +1978,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             spectator,
             worldCollision: currentWorld(),
             clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
+            onVisualReady: (entity) => nightLighting.appendEntity(entity),
           }),
           publish: (bridge) => networkSession.publishBridge(bridge),
           groundSampler,
@@ -1969,6 +1986,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           waitForPeerReadiness: () => networkSession.waitForPeerReadiness(),
         },
         warm: {
+          nightLighting: () => nightLighting.prepare(),
           atmosphere: (initial) => battleAtmosphere.prepare(
             typeof initial.meta?.weatherSeed === 'number' ? initial.meta.weatherSeed : undefined,
             currentWorld()?.mapId ?? game.mapId,
@@ -2399,6 +2417,7 @@ const mainFrame = createMainFrameRuntime({
   getShotMode: () => shotMode,
   getShotHudFrame: () => shotHudFrame,
   sniperFill,
+  updateNightLighting: () => nightLighting.update(),
   resolveFxSubject,
   battleHudFrame,
   lighting,
@@ -2719,6 +2738,7 @@ if (diagnosticsRequested) {
     debugSurface: {
       scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
       getBattleAtmosphere: () => battleAtmosphere,
+      getNightLighting: () => nightLighting,
       pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
       killcam, showroom, garageDressing, devTrace,
       quality: {

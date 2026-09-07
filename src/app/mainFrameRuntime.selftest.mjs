@@ -55,6 +55,7 @@ function createFixture({
     getShotMode: () => shotMode,
     getShotHudFrame: () => true,
     sniperFill: { update: () => calls.push('sniper') },
+    updateNightLighting: () => calls.push('night-lights'),
     resolveFxSubject: () => null,
     battleHudFrame: {
       redrawFrozen: () => calls.push('hud:frozen'),
@@ -140,7 +141,7 @@ assert.deepEqual(garage.calls, [
 const shot = createFixture({ shotMode: true });
 shot.runtime.tick(1000);
 assert.deepEqual(shot.calls, [
-  'schedule', 'viewport:sync', 'world', 'sniper', 'fx', 'hud:frozen',
+  'schedule', 'viewport:sync', 'world', 'sniper', 'fx', 'night-lights', 'hud:frozen',
   'lighting:update:true', 'post',
 ]);
 
@@ -159,6 +160,10 @@ assert.equal(battle.calls.filter((entry) => entry === 'lighting:fov').length, 1)
 assert.ok(battle.calls.indexOf('battle:advance') < battle.calls.indexOf('rig'));
 assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('world:presentation'));
 assert.ok(battle.calls.indexOf('world:presentation') < battle.calls.indexOf('post'));
+assert.ok(battle.calls.indexOf('world:presentation') < battle.calls.indexOf('night-lights'));
+assert.ok(battle.calls.indexOf('night-lights') < battle.calls.indexOf('post'));
+assert.equal(battle.calls.filter((entry) => entry === 'night-lights').length, 2,
+  'retained lamps follow final visual/camera transforms once before each live draw');
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
 
 const replaying = createFixture({ phase: 'battle' });
