@@ -28,6 +28,7 @@ import { addT90SMLeftLauncherShelf, t90SMLeftCarrierRoof, t90SMLeftCarrierBreakp
 import { addT90SMRightLauncherBracket } from './t90SMXRightLauncherBracket.ts';
 import { addT90SMLeftSmokeMounts } from './t90SMXLeftSmokeMounts.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 const cylY=(radius:number,height:number,segments=24): THREE.BufferGeometry => KIT.cylY(radius,radius,height,segments);
@@ -662,7 +663,7 @@ function classicSensors(P: TankBuilderPort,d: Datum,mirror: number): void {
     const x=side*.82,z=1.65;
     onTurret(P,d,'turretDetail',box(.40,.27,.23),x,d.gun[1]-.02,z);
     onTurret(P,d,'turretDark',cylZ(.133,.025,20),x,d.gun[1]-.02,z+.127);
-    onTurret(P,d,'turretGlass',cylZ(.108,.012,24),x,d.gun[1]-.02,z+.145);
+    onTurret(P,d,'turretGlass',markVehicleNightLens(cylZ(.108,.012,24),'shtora'),x,d.gun[1]-.02,z+.145);
     onTurret(P,d,'turretDetail',box(.44,.028,.28),x,d.gun[1]+.132,z-.005);
     onTurret(P,d,'turretDetail',box(.16,.14,.18),x,d.gun[1]-.15,z-.19);
   }
