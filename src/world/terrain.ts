@@ -17,8 +17,9 @@ import { buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts'
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
+import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
+import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import { roadCoreMask } from './roadMaskProfile.ts';
@@ -635,6 +636,11 @@ export function createHeightField(
   const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
   let liquidSurfaces: Float64Array | null = null;
   let liquidLakeBanks: Float64Array | null = null;
+  // Authored drainage contours may have wide grading aprons that overlap a
+  // different basin. Keep their composition continuous and order-independent;
+  // every legacy lake retains the original sequential arithmetic below.
+  const continuousLakeAprons = _LAKES.some(lake => lake.radii !== undefined);
+  const lakeHeightResult: LakeHeightResult = { height: 0, wetness: 0 };
   let liquidIndex: Uint32Array | null = null;
   let quarryFloorY: number | null = null;
   const liquidIndexWords = Math.ceil(_MARSHES.length / 32);
@@ -718,26 +724,10 @@ export function createHeightField(
   ): number {
     let lakeWetness = 0;
     if (lakesOn) {
-      for (let li = 0; li < _LAKES.length; li++) {
-        const lk = _LAKES[li];
-        const bankBand = liquidLakeBanks ? liquidLakeBanks[li] : 1.32;
-        const ld = shorelineDistance(lk, x, z, bankBand);
-        if (liquidLakeBanks && lakeWetness < 1 && ld < 0.96) {
-          lakeWetness = Math.max(lakeWetness, shorelineWetnessFromDistance(ld, true));
-        }
-        if (ld < bankBand) {
-          let w = smoothstep(bankBand, 0.94, ld);
-          if (liquidLakeBanks && settlementWeight > 0) {
-            // The extra grading apron yields to authored settlement relief;
-            // the original lake core/bank keeps exactly its former priority.
-            // Otherwise one deep coastal cell can tilt dry harbor frontages
-            // a hundred metres beyond its previous shoreline constraint.
-            const original = smoothstep(1.32, 0.94, ld);
-            w += (original - w) * settlementWeight;
-          }
-          h += (lakeLevels[li] - h) * w;
-        }
-      }
+      composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
+        x, z, h, settlementWeight, lakeHeightResult);
+      h = lakeHeightResult.height;
+      lakeWetness = lakeHeightResult.wetness;
     }
     let padWetness = 1;
     if (padsOn) {

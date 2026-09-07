@@ -455,6 +455,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/nightWindowInspection.selftest.mjs',
     'src/world/villageWindowPlacement.selftest.mjs',
     'src/world/poldersShoreline.selftest.mjs',
+    'src/world/authoredLakeComposition.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
     'src/engine/battleAtmosphereAccess.selftest.mjs',

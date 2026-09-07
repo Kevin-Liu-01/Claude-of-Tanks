@@ -22,7 +22,9 @@ const original = { ...polders, terrain: { ...polders.terrain, lakes: originalLak
 
 function inspectContour(lake) {
   assert.equal(lake.radii.length, 16);
-  assert.ok(lake.radii.every(radius => Number.isFinite(radius) && radius >= 0.4 && radius <= 1));
+  // Authored narrow drains deliberately use a smaller fractional radius;
+  // real bank slope/support gates below still apply without relaxation.
+  assert.ok(lake.radii.every(radius => Number.isFinite(radius) && radius >= 0.2 && radius <= 1));
   assert.equal(minimumShorelineRadius(lake), Math.min(...lake.radii) * lake.r);
   const points = Array.from({ length: SHORELINE_SEGMENTS }, (_, i) => {
     const a = i * Math.PI * 2 / SHORELINE_SEGMENTS, r = shorelineRadiusAt(lake, a);
@@ -41,7 +43,9 @@ function inspectContour(lake) {
   assert.ok(Math.max(...lake.radii.map((r, i) => Math.abs(r - lake.radii[(i + 8) & 15]))) > 0.15,
     'opposing shores are asymmetric, not centered oval profiles');
   assert.ok(Math.abs(shorelineRadiusAt(lake, -1e-8) - shorelineRadiusAt(lake, Math.PI * 2 - 1e-8)) < 1e-6);
-  return { x: lake.x, z: lake.z, areaM2: Math.abs(area) * 0.5, inward };
+  const widthM = Math.max(...points.map(point => point[0])) - Math.min(...points.map(point => point[0]));
+  const lengthM = Math.max(...points.map(point => point[1])) - Math.min(...points.map(point => point[1]));
+  return { x: lake.x, z: lake.z, areaM2: Math.abs(area) * 0.5, widthM, lengthM, inward };
 }
 
 function inspectRoadsAndPads(field, before, beforeWater) {
@@ -93,7 +97,8 @@ function inspectBankRay(field, lake, a, pads, receipt) {
       if (field.getWaterMaskAt(x, z) > 0.98) {
         assert.ok(grade <= 0.01001, 'open water remains level');
         assert.equal(field._noVeg(x, z), true);
-        if (band < 0.8) assert.ok(Math.abs(h - lake.level) < 1e-10);
+        if (band < 0.8) assert.ok(Math.abs(h - lake.level) < 1e-10,
+          `level core at ${x},${z}: actual=${h}, expected=${lake.level}, owner=${lake.x},${lake.z}`);
         receipt.coreSamples++;
       } else if (band >= 0.94) {
         receipt.bankSamples++;
@@ -164,6 +169,16 @@ for (let i = 0; i < polders.spawns.enemies.length; i++) {
   }
 }
 const contours = polders.terrain.lakes.map(inspectContour);
+assert.ok(contours[0].lengthM > 175 && contours[0].lengthM / contours[0].widthM > 3.5,
+  'southwest water is a long drainage reach, not another compact cloud');
+assert.ok(contours[1].widthM > 110 && contours[1].lengthM > 95 && contours[1].areaM2 > 9000,
+  'southeast water keeps the broad retention-bay role');
+assert.ok(contours[3].widthM > 100 && contours[3].widthM / contours[3].lengthM > 2.2,
+  'northwest oxbow follows a different east/west drainage direction');
+const totalAreaM2 = contours.reduce((area, contour) => area + contour.areaM2, 0);
+assert.ok(totalAreaM2 > 29000 && totalAreaM2 < 35000, 'retain substantial water coverage within the existing dry compartments');
+assert.equal(polders.vegetation.authoredTrees.reduce((count, feature) => count + feature.count, 0), 52,
+  'farm/drain composition redistributes the same authored tree budget');
 assert.ok(polders.terrain.lakes.reduce((count, lake) => count + 4 + lake.radii.length, 0) < originalLakes.length * 4);
 assert.equal(buildLiquidLakeBanks(polders.terrain.lakes, () => 9).byteLength, 40);
 assert.equal(buildLiquidLakeBanks(originalLakes, () => 9).byteLength, 216);

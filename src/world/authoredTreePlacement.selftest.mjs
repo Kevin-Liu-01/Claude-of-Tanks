@@ -148,7 +148,7 @@ function nearestBankMetres(lakes, point) {
   return distance;
 }
 
-for (const config of [polders, mangrove, orchard]) for (const seed of [1337, 2025]) {
+for (const config of [polders, mangrove, orchard]) for (const seed of config.id === 'polders' ? [1337, 2049, 7719] : [1337, 2025]) {
   const hf = createHeightField(seed, config);
   const before = build(hf, { ...config, vegetation: { ...config.vegetation, authoredTrees: undefined } });
   const after = build(hf, config), replay = build(hf, config);
