@@ -87,10 +87,35 @@ for (const avatar of ['threejs.jpg', 'vaibhav-sisinty.jpg', 'hakimi-eiqbal.jpg',
 assert.doesNotMatch(home, /pbs\.twimg\.com|i\.redd\.it/,
   'the landing page must not hotlink social account avatars');
 
+const battleBackgrounds = [
+  ['urban-crossfire', 'media/presentation-r1/12_urban_crossfire_x.webp'],
+  ['desert-duel', 'media/showcase-r1/61_action_desert_duel_leclerc_kill.webp'],
+  ['winter-breaker', 'media/presentation-r1/05_winter_ice_breaker.webp'],
+  ['verdant-column', 'media/presentation-r1/15_verdant_column_massacre.webp'],
+  ['coastal-harbor', 'media/showcase-r1/86_action_coastal_harbor_kill.webp'],
+];
+for (const [modifier, relative] of battleBackgrounds) {
+  assert.ok(home.includes(`v5-social-card--${modifier}`),
+    `social proof must assign the ${modifier} battle background to a card`);
+  assert.ok(existsSync(join(ROOT, 'public', relative)), `missing battle background ${relative}`);
+  assert.ok(styles.includes(`--social-card-image:url('/${relative}')`),
+    `battle background ${relative} must be wired into the social-card layer`);
+}
+assert.equal(new Set(battleBackgrounds.map(([, relative]) => relative)).size, 5,
+  'every X proof card must use a distinct battle photo');
+assert.match(styles, /\.v5-social-card::after\{[^}]*background:var\(--social-card-image\)[^}]*\/cover no-repeat;[^}]*opacity:\.26;[^}]*pointer-events:none/,
+  'battle photos must be low-opacity, cover-cropped, and non-interactive');
+assert.match(styles, /\.v5-social-card>a\{[^}]*position:relative;z-index:2;[^}]*background:linear-gradient/,
+  'social-card content must sit above a readability scrim');
+
 assert.match(styles, /@media\(hover:hover\) and \(pointer:fine\)\{[^}]*\.v5-social-card:hover/,
   'social-card hover polish must be fine-pointer-only');
+assert.match(styles, /@media\(hover:hover\) and \(pointer:fine\)\{[^\n]*\.v5-social-card:hover::after\{[^}]*opacity:/,
+  'battle-photo hover polish must stay fine-pointer-only');
 assert.match(styles, /@media\(prefers-reduced-motion:reduce\)\{[^}]*\.v5-social-card/,
   'social-card motion must honor reduced motion');
+assert.match(styles, /@media\(prefers-reduced-motion:reduce\)\{[^}]*\.v5-social-card::after[^}]*transition:none/,
+  'battle-photo motion must honor reduced motion');
 assert.match(styles, /\.v5-social-proof__x-grid\{[^}]*grid-template-columns:repeat\(12/,
   'desktop social proof must use the authored card grid');
 assert.match(styles, /\.v5-social-proof h2 span\{[^}]*display:block;white-space:nowrap/,
