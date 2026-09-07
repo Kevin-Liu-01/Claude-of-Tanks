@@ -37,6 +37,9 @@ export interface FrameLoopSchedulerOptions {
   isBootComplete(): boolean;
   /** True only while a visible phase has no frame-rate work to perform. */
   shouldUseIdleCadence?(): boolean;
+  /** Retained network authority/transport work, never a presentation render. */
+  hasBackgroundWork?(): boolean;
+  backgroundTick?: ((timestampMs: number) => void) | null;
   /** Watchdog cadence for an otherwise event-driven visible phase. */
   idleIntervalMs?: number;
   /** Upper bound for presented animation ticks. Simulation remains fixed-step. */
@@ -55,6 +58,8 @@ export interface FrameLoopSchedulerOptions {
 export interface FrameLoopScheduler {
   schedule(): void;
   restart(): void;
+  /** Accepted network activity can service hidden authority without waiting for a throttled timer. */
+  wakeBackground(): boolean;
   dispose(): void;
   readonly stats: {
     animationTicks: number;
@@ -62,6 +67,8 @@ export interface FrameLoopScheduler {
     inputWakeups: number;
     frameRateLimitedCallbacks: number;
     backgroundSuspensions: number;
+    backgroundTicks: number;
+    backgroundActivityTicks: number;
     queued: 'animation' | 'idle' | 'none';
   };
 }
@@ -88,6 +95,8 @@ export function createFrameLoopScheduler({
   tick,
   isBootComplete,
   shouldUseIdleCadence = () => false,
+  hasBackgroundWork = () => false,
+  backgroundTick = null,
   idleIntervalMs = 1000,
   maximumFrameRate = PRESENTATION_MAX_FRAME_RATE,
   requestFrame = (callback) => requestAnimationFrame(callback),
@@ -107,6 +116,8 @@ export function createFrameLoopScheduler({
   let disposed = false;
   let backgroundSuspended = false;
   let nextAnimationTickMs = -Infinity;
+  let lastBackgroundTickMs = -Infinity;
+  let backgroundTickRunning = false;
   const idleDelayMs = Math.max(100, Math.min(5000, idleIntervalMs));
   const animationIntervalMs = Number.isFinite(maximumFrameRate) && maximumFrameRate > 0
     ? 1000 / Math.min(240, maximumFrameRate)
@@ -124,6 +135,8 @@ export function createFrameLoopScheduler({
     inputWakeups: 0,
     frameRateLimitedCallbacks: 0,
     backgroundSuspensions: 0,
+    backgroundTicks: 0,
+    backgroundActivityTicks: 0,
     queued: 'none' as 'animation' | 'idle' | 'none',
   };
 
@@ -136,6 +149,23 @@ export function createFrameLoopScheduler({
   const runTick = (timestampMs: number) => {
     lastTickWallMs = now();
     tick(timestampMs);
+  };
+
+  const runBackgroundTick = (force = false): boolean => {
+    if (disposed || !isBootComplete() || !isBackgrounded() ||
+        !backgroundTick || !hasBackgroundWork()) return false;
+    const timestampMs = now();
+    if (backgroundTickRunning || !Number.isFinite(timestampMs) ||
+        (!force && timestampMs - lastBackgroundTickMs < 1000 / 60 - 1e-6)) return false;
+    lastBackgroundTickMs = timestampMs;
+    backgroundTickRunning = true;
+    // This port must not render or update visuals. Browsers can still throttle
+    // or freeze timers; the network owner bounds elapsed time on resumption.
+    try {
+      backgroundTick(timestampMs);
+      stats.backgroundTicks += 1;
+    } finally { backgroundTickRunning = false; }
+    return true;
   };
 
   const scheduleAnimation = () => {
@@ -218,6 +248,8 @@ export function createFrameLoopScheduler({
 
   const rescueFromTimer = () => {
     if (!isBootComplete()) return;
+    syncRescueInterval();
+    if (runBackgroundTick()) return;
     const timestampMs = now();
     if (timestampMs - lastTickWallMs > 200 &&
         documentState.hasFocus() && documentState.hidden) {
@@ -246,9 +278,12 @@ export function createFrameLoopScheduler({
       backgroundSuspended = true;
       nextAnimationTickMs = -Infinity;
       cancelQueued();
+      runBackgroundTick(true);
+      syncRescueInterval();
       return;
     }
     backgroundSuspended = false;
+    syncRescueInterval();
     restart();
   };
 
@@ -258,15 +293,26 @@ export function createFrameLoopScheduler({
     backgroundSuspended = true;
     nextAnimationTickMs = -Infinity;
     cancelQueued();
+    runBackgroundTick(true);
+    syncRescueInterval();
   };
 
   const onWindowFocus = () => {
     if (disposed) return;
     backgroundSuspended = false;
+    syncRescueInterval();
     restart();
   };
 
-  const timerHandle = setRecurring(rescueFromTimer, 100);
+  let timerIntervalMs = 100;
+  let timerHandle = setRecurring(rescueFromTimer, timerIntervalMs);
+  function syncRescueInterval(): void {
+    const intervalMs = backgroundTick && isBackgrounded() && hasBackgroundWork() ? 50 : 100;
+    if (intervalMs === timerIntervalMs) return;
+    clearRecurring(timerHandle);
+    timerIntervalMs = intervalMs;
+    timerHandle = setRecurring(rescueFromTimer, timerIntervalMs);
+  }
   const passiveOptions = { passive: true } as const;
   for (const eventName of INPUT_EVENTS) {
     inputTarget.addEventListener(eventName, rescueFromInput, passiveOptions);
@@ -278,6 +324,11 @@ export function createFrameLoopScheduler({
   return {
     schedule,
     restart,
+    wakeBackground() {
+      const serviced = runBackgroundTick();
+      if (serviced) stats.backgroundActivityTicks++;
+      return serviced;
+    },
     stats,
     dispose() {
       if (disposed) return;

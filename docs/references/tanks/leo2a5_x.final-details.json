@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "id": "leo2a5_x",
+  "measuredAt": "2026-09-06",
+  "units": "metres in unchanged canonical source +Y-up/+Z-forward frame",
+  "localOracleSha256": "41b3cc644e2e9610b0b47a8e6e193a90929c711e13b10716057942807493ce99",
+  "sourceUse": "Confirmed commercial-game extraction, explicitly owner-authorized LOCAL measurement/comparison only. No source mesh, topology, vertex/index/texture/rig buffer is included in the first-party additions.",
+  "reopenedGate": {
+    "rawSideHull": 91.37151641805673,
+    "rawSideTurret": 91.85515475801913,
+    "rawWholeMinimum": 92.57554897632001,
+    "rawStations": 95.99595832485116,
+    "dimensions": 100,
+    "fixedSourceWorldRegistration": [0,0],
+    "cause": "Actual missing rounded rear-deck service covers and two raised roof fittings, plus a 10.4 mm excessive basket axial radius amplified by a sampled-column boundary. No comparison threshold, normalization, camera or component mask was changed.",
+    "priorEvidenceLimit": "The 02:41 passing scores survive in the per-ID note, but its complete raw geometry curves were not durably archived; the earlier parity archive predates final source-world correction. Exact numerical attribution of the old-to-current score difference is not claimed."
+  },
+  "serviceCovers": {
+    "sourceMesh": "vehicle#x_root_107",
+    "rightIsland": {"studyKey": 130313, "boundsMin": [0.47502160,1.67463696,-1.67551684], "boundsMax": [1.07709420,1.82276392,-1.08058107]},
+    "leftIsland": {"studyKey": 131360, "boundsMin": [-1.06696486,1.67455626,-1.66342723], "boundsMax": [-0.46490231,1.82269335,-1.06849146]},
+    "surface": "Shallow central circular face, two radial shoulder slopes and a steep outer rim, with source deck rake about 0.05245 in Y/Z. The mildly narrower longitudinal footprint is measured independently. Closed first-party lathed caps penetrate the retained native deck slightly at their actual base; no pedestal or whole-deck height change.",
+    "heldOutTopRays": [
+      [0.70,-1.48,1.81869638], [0.84,-1.24,1.80607933],
+      [0.97,-1.33,1.80930620], [0.61,-1.58,1.79983345], [1.043,-1.42,1.79005166],
+      [-0.70,-1.46,1.81823575], [-0.84,-1.22,1.80561720],
+      [-0.965,-1.32,1.80830276], [-0.605,-1.56,1.80492200], [-1.035,-1.40,1.78940116]
+    ],
+    "approximation": "First-party 64-sector surfaces approximate the source's minor facet irregularity within 4 mm at held-out radial witnesses. Small fasteners are not reproduced."
+  },
+  "roofFixtures": {
+    "sourceMesh": "vehicle#bone_turret_40",
+    "aftBridge": {
+      "studyKey": 64755,
+      "boundsMin": [0.0109617,2.5348001,-1.0186766],
+      "boundsMax": [0.0844300,2.6503396,-0.7501312],
+      "construction": "Closed narrow arched lug with two low feet on the genuine separate baseplate. Its transverse eye is real empty space, not a dark-painted box.",
+      "crownAndInnerRays": [[-0.96,2.638407,2.590422],[-0.92,2.649742,2.617697],[-0.90,2.647320,2.612759],[-0.88,2.639166,2.590289]],
+      "rayFormat": "Z, upper Y, underside Y at X0.0477",
+      "transverseAirYZ": [[2.575,-0.96],[2.575,-0.92],[2.61,-0.92],[2.575,-0.88]],
+      "heldOutMaterialYZ": [[2.600,-0.96],[2.600,-0.88]],
+      "reviewCorrection": "Independent held-out source rays rejected two draft inner-eye rows that were 12–14 mm too high. Both rows were lowered to the measured source undersides; the central genuine eye remains open.",
+      "minorSimplification": "Original segmented crown approximates held-out source curvature within 2.8 mm; small foot relief remains simplified by roughly 5–6 mm."
+    },
+    "bridgeBaseplate": {
+      "studyKey": 64594,
+      "boundsMin": [-0.0104270,2.5149045,-1.0302676],
+      "boundsMax": [0.1035386,2.5408735,-0.7408844],
+      "plateauX": [-0.002477,0.095588],
+      "plateauZ": [-1.013370,-0.757662],
+      "topPlaneNormal": [0,0.999996,0.002920],
+      "topPlaneD": 2.537833,
+      "construction": "Separate source low baseplate, with a narrow upper plateau and flared lower perimeter. Its actual bottom overlaps the retained permanent turret roof by 4.095 mm; both arch feet overlap its top. No invented pedestal."
+    },
+    "forwardHood": {
+      "studyKey": 25475,
+      "boundsMin": [0.6416469,2.4713502,0.6813934],
+      "boundsMax": [0.9016814,2.5948601,0.9278544],
+      "topPlaneNormal": [-0.00391,0.99707,0.07646],
+      "topPlaneD": 2.63698,
+      "planLengthWidth": [0.2450,0.0989],
+      "firstPartySheetThickness": 0.0059,
+      "heldOutTopAndUnderside": [[0.74,0.80,2.586292,2.580691],[0.78,0.80,2.586446,2.580559],[0.70,0.88,2.580001,2.574044]],
+      "rayFormat": "X, Z, upper Y, underside Y",
+      "foldedLegSourceXSpansAtY2_53": [[0.74,0.877113,0.884707],[0.86,0.650702,0.657538],[0.90,0.685171,0.692694]],
+      "throughAir": "Full assembly +X/-X rays at Z0.78 and0.82, Y2.50/2.53/2.55/2.57 remain empty.",
+      "construction": "Thin canted sheet with separate narrow folded end legs, not a filled block. Its held-out top rays agree within 0.03 mm, underside within 0.4 mm and leg-side rays within 1.6 mm.",
+      "explicitConstructionInference": "The retained native roof is below the source's occluded support surface, leaving a nominal 13–18 mm gap below the measured leg roots. Only the narrow roots continue downward into the actual permanent roof with 3 mm positive overlap. The measured hood top, visible leg widths and under-hood air are retained; no global roof lift, broad baseplate or pedestal is added."
+    },
+    "ownership": "All five named roof pieces are permanent turret-owned equipment, not ERA or ejectable parts. Positive triangle-ray joints and source air are checked at neutral, ±90 and180 degree turret yaw in both detail levels. Every added geometry is disposed exactly once."
+  },
+  "basket": {
+    "sourceFloorBoundsMin": [-0.98588443,0.820291,-0.31457499],
+    "sourceFloorBoundsMax": [0.98596519,0.820291,1.63689363],
+    "sourceCenterZ": 0.66115932,
+    "sourceHalfDepthZ": 0.97573431,
+    "retainedNativeHalfWidthX": 0.986,
+    "scope": "Only the floor, two bands and four curved wall sectors receive the source-backed axial ellipse. Their Y coordinates and transverse radii are unchanged; seats, divider, core, gun and rig datums remain untouched. No basket is removed from a mask.",
+    "independentReview": "Source/native cardinal floor rays agree within 0.067 mm; held-out off-axis floor rays within 3.9 mm and band/wall rays within 6.3 mm. Cardinal windows at Y1.25 stay open.",
+    "retainedMinorSimplification": "The unchanged lower band ends at Y1.025; the source cardinal opening begins slightly below Y1.02. This small interior vertical seam approximation predates the authorized axial correction."
+  },
+  "verification": {
+    "focusedTest": "src/vehicles/profiles/leopardA5XDetails.selftest.mjs",
+    "state": "CPU GEOMETRY FROZEN: paired service-cover, basket and roof high/low fixed-source checks pass, including actual support, closed opposing edges, genuine openings, yaw and disposal. The independent held-out review correction is incorporated. Fresh GPU/composed qualification remains pending, not implied by this CPU pass.",
+    "preservation": "Pre-edit hashes pin every non-target original visible assembly except the merged turretDetail bucket containing the deliberately reshaped basket, which has independent floor/band/wall source tests. Separate independent exact snapshots pin all other 12 X variants in both LODs and ordinary/geometry-receipt construction.",
+    "release": "Fresh source-fidelity, shaded, geometry and strict proof, followed by final parent-owned anatomy/assets/composed release regeneration, remain required."
+  }
+}

@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import type { RuntimeValue } from '../runtimeTypes.ts';
 import { SIM_DT, createTankState, updateTank } from '../sim/movement.ts';
 import type {
   MovementCombatState,
@@ -11,6 +12,7 @@ import type {
 import { isSequenceNewer } from './protocol.ts';
 import { decodeAimIntent } from './aimIntent.ts';
 import { SNAPSHOT_FLAGS } from './snapshot.ts';
+import { applyMovementPredictionState } from './movementPredictionState.ts';
 import {
   PREDICTION_CORRECTION_KEYS,
   decayPredictionCorrection,
@@ -30,7 +32,15 @@ const REST_SPEED_MPS = 0.08;
 const REST_HORIZONTAL_DEADZONE_M = 0.03;
 const REST_VERTICAL_DEADZONE_M = 0.025;
 const REST_HULL_ANGLE_DEADZONE_RAD = 0.0035;
+const REST_HULL_YAW_RATE_RAD_S = 0.0035;
 const MAX_INPUT_HISTORY = 240;
+// Match the snapshot extrapolation horizon. A live state stream with lost
+// control uploads cannot replay seconds of unacknowledged driving ahead.
+const MAX_INPUT_REPLAY_S = 0.25;
+// Shared movement.ts/tankFactoryCore.ts rendered-suspension contract.
+const SUSPENSION_PITCH_SCALE = 2.2;
+const SUSPENSION_ROLL_SCALE = 1.9;
+const TURN_SWAY_SCALE = 2.4;
 
 export interface PredictionInput {
   throttle?: number;
@@ -64,11 +74,13 @@ export interface PredictionSnapshot {
 export type PredictionTankState = TankState;
 
 export interface PredictionEntity {
+  id?: string;
   spec: MovementSpec;
   state: PredictionTankState;
   combat?: MovementCombatState | null;
   contactGeom?: MovementContactGeometry | null;
   rigidGear?: boolean;
+  modeSpeedMultiplier?: number;
 }
 
 export interface PredictionSimEntity extends PredictionEntity {
@@ -108,6 +120,7 @@ interface AuthoritySample {
   ackInputSeq?: number | null;
   entity?: PredictionSnapshot;
   sampledEntity?: PredictionSnapshot | null;
+  predictionState?: RuntimeValue;
 }
 
 interface InputHistoryFrame {
@@ -117,6 +130,9 @@ interface InputHistoryFrame {
 }
 
 export interface LocalPredictionStats {
+  movementCheckpoints: number;
+  missingMovementCheckpoints: number;
+  rejectedMovementCheckpoints: number;
   reconciliations: number;
   hardSnaps: number;
   terminalSyncs: number;
@@ -151,11 +167,20 @@ function captureDisplayedPose(state: PredictionTankState, out: DisplayedPose): D
   out.y = state.pos.y;
   out.z = state.pos.z;
   out.yaw = state.yaw;
-  out.pitch = state.visualPitch;
-  out.roll = state.visualRoll;
+  out.pitch = hullPitch(state);
+  out.roll = hullRoll(state);
   out.turretYaw = state.turretYaw;
   out.gunPitch = state.gunPitch;
   return out;
+}
+
+function hullPitch(state: PredictionTankState, layers = state): number {
+  return state.visualPitch + layers._susp.p * SUSPENSION_PITCH_SCALE;
+}
+
+function hullRoll(state: PredictionTankState, layers = state): number {
+  return state.visualRoll + layers._susp.r * SUSPENSION_ROLL_SCALE +
+    layers._swayEst * TURN_SWAY_SCALE;
 }
 
 function clearCorrection(correction: PredictionCorrection): void {
@@ -183,15 +208,25 @@ function writePresentationCorrection(
   correction: PredictionCorrection,
   old: DisplayedPose,
   predicted: PredictionTankState,
+  suspensionLayers = predicted,
+): void {
+  writeHullPresentationCorrection(correction, old, predicted, suspensionLayers);
+  correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
+  correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
+}
+
+function writeHullPresentationCorrection(
+  correction: PredictionCorrection,
+  old: DisplayedPose,
+  predicted: PredictionTankState,
+  suspensionLayers = predicted,
 ): void {
   correction.x = old.x - predicted.pos.x;
   correction.y = old.y - predicted.pos.y;
   correction.z = old.z - predicted.pos.z;
   correction.yaw = wrapAngle(old.yaw - predicted.yaw);
-  correction.pitch = wrapAngle(old.pitch - predicted.visualPitch);
-  correction.roll = wrapAngle(old.roll - predicted.visualRoll);
-  correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
-  correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
+  correction.pitch = wrapAngle(old.pitch - hullPitch(predicted, suspensionLayers));
+  correction.roll = wrapAngle(old.roll - hullRoll(predicted, suspensionLayers));
 }
 
 function wrapAngle(value: number) {
@@ -213,21 +248,37 @@ function hasDriveIntent(input: PredictionInput) {
   return Math.abs(input.throttle ?? 0) > 0.01 || Math.abs(input.steer ?? 0) > 0.01;
 }
 
+function hasActiveHullMotion(state: PredictionTankState): boolean {
+  return !state.grounded || state.overturned ||
+    state._body.tumbling || state._body.autoRighting ||
+    state.suspensionAim || Math.abs(state.suspensionAimPitch) > 1e-6 ||
+    Math.abs(state.speed) > REST_SPEED_MPS ||
+    Math.abs(state.yawRate) > REST_HULL_YAW_RATE_RAD_S;
+}
+
 function canHoldRestingHull(
   old: DisplayedPose,
   predicted: PredictionTankState,
-  snapshot: PredictionSnapshot,
+  snapshot: PredictionSnapshot | null,
   motionIntent: boolean,
 ) {
-  if (motionIntent || Math.abs(predicted.speed) > REST_SPEED_MPS ||
-      Math.hypot(snapshot.vx ?? 0, snapshot.vz ?? 0) > REST_SPEED_MPS) return false;
+  const activeBodyFlags = SNAPSHOT_FLAGS.AIRBORNE | SNAPSHOT_FLAGS.OVERTURNED |
+    SNAPSHOT_FLAGS.AUTO_RIGHTING;
+  if (motionIntent || hasActiveHullMotion(predicted)) return false;
+  // Grounded contact replay may produce a transient support velocity from
+  // quantized height. Its displacement remains bounded below; authoritative
+  // vertical motion, unlike that replay-only noise, always releases the hold.
+  if (snapshot && (Math.abs(predicted.verticalSpeed) > REST_SPEED_MPS ||
+      !!((snapshot.flags ?? 0) & activeBodyFlags) ||
+      Math.abs(snapshot.vy ?? 0) > REST_SPEED_MPS ||
+      Math.hypot(snapshot.vx ?? 0, snapshot.vz ?? 0) > REST_SPEED_MPS)) return false;
   return Math.hypot(old.x - predicted.pos.x, old.z - predicted.pos.z) <=
       REST_HORIZONTAL_DEADZONE_M &&
     Math.abs(old.y - predicted.pos.y) <= REST_VERTICAL_DEADZONE_M &&
     Math.abs(wrapAngle(old.yaw - predicted.yaw)) <= REST_HULL_ANGLE_DEADZONE_RAD &&
-    Math.abs(wrapAngle(old.pitch - predicted.visualPitch)) <=
+    Math.abs(wrapAngle(old.pitch - hullPitch(predicted))) <=
       REST_HULL_ANGLE_DEADZONE_RAD &&
-    Math.abs(wrapAngle(old.roll - predicted.visualRoll)) <=
+    Math.abs(wrapAngle(old.roll - hullRoll(predicted))) <=
       REST_HULL_ANGLE_DEADZONE_RAD;
 }
 
@@ -283,6 +334,10 @@ function advance(
   }
 }
 
+function inputElapsedS(elapsedS: number): number {
+  return Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
+}
+
 function createCollisionResolver(
   entity: PredictionSimEntity,
   collide: PredictionCollision | null,
@@ -295,6 +350,7 @@ function copyPresentation(
   target: PredictionTankState,
   source: PredictionTankState,
   correction: PredictionCorrection,
+  copySuspension = true,
 ) {
   target.pos.set(
     source.pos.x + correction.x,
@@ -313,12 +369,17 @@ function copyPresentation(
   target.yawRate = source.yawRate;
   target.visualPitch = source.visualPitch + correction.pitch;
   target.visualRoll = source.visualRoll + correction.roll;
+  if (copySuspension) {
+    Object.assign(target._susp, source._susp);
+    target._swayEst = source._swayEst;
+  }
   target.turretYaw = wrapAngle(source.turretYaw + correction.turretYaw);
   target.gunPitch = source.gunPitch + correction.gunPitch;
   target.turretYawRate = source.turretYawRate;
   target.bloomF = source.bloomF;
   target.atGunLimit = source.atGunLimit;
   target.gunLimitSpec = source.gunLimitSpec;
+  target.suspensionAimPitch = source.suspensionAimPitch;
   target.trackScroll.l = source.trackScroll.l;
   target.trackScroll.r = source.trackScroll.r;
   target.aimPoint.copy(source.aimPoint);
@@ -357,6 +418,8 @@ export class LocalTankPredictor {
   contactSmoothingS = 0;
   lastStaticContactCount = 0;
   lastDynamicContactCount = 0;
+  private pendingPresentationInput: PredictionInput | null = null;
+  private pendingPresentationElapsedS = 0;
 
   constructor({
     entity,
@@ -398,6 +461,7 @@ export class LocalTankPredictor {
       combat: entity.combat || null,
       contactGeom: entity.contactGeom || null,
       rigidGear: !!entity.rigidGear,
+      modeSpeedMultiplier: entity.modeSpeedMultiplier,
       input: {
         throttle: 0,
         steer: 0,
@@ -416,6 +480,9 @@ export class LocalTankPredictor {
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     };
     this.stats = {
+      movementCheckpoints: 0,
+      missingMovementCheckpoints: 0,
+      rejectedMovementCheckpoints: 0,
       reconciliations: 0,
       hardSnaps: 0,
       terminalSyncs: 0,
@@ -436,10 +503,38 @@ export class LocalTankPredictor {
   }
 
   advancePrediction(input: PredictionInput | null, elapsedS: number): boolean {
-    if (!input) return false;
+    if (this.terminalDestroyed) {
+      // Death disables simulation/input authority, not display-clock settling.
+      // Keep the terminal pose fixed while its bounded correction decays even
+      // between snapshots or when the input pump supplies no controls.
+      this.present(elapsedS);
+      return false;
+    }
+    if (!input) {
+      this.present(elapsedS);
+      return false;
+    }
+    this.pendingPresentationInput = input;
+    this.pendingPresentationElapsedS = Math.min(0.1,
+      this.pendingPresentationElapsedS + inputElapsedS(elapsedS));
+    this.syncMovementPolicy();
     this.motionIntent = hasDriveIntent(input);
     if (this.motionIntent) this.holdRestingHull = false;
+    const heldPose = this.holdRestingHull
+      ? captureDisplayedPose(this.entity.state, this.displayedPose) : null;
     advance(this.simEntity, input, elapsedS, this.heightField, this.collisionResolver);
+    if (heldPose) {
+      // Idle contact integration still runs on every display frame. Holding a
+      // fixed correction alone follows its tiny support/spring changes and
+      // reintroduces the snapshot chatter. Hold the displayed hull instead,
+      // only while the actual prediction remains inside the rest budget.
+      this.holdRestingHull = canHoldRestingHull(
+        heldPose, this.simEntity.state, null, this.motionIntent,
+      );
+      if (this.holdRestingHull) {
+        writeHullPresentationCorrection(this.correction, heldPose, this.simEntity.state);
+      }
+    }
     this.present(elapsedS);
     this.stats.presentationAdvances++;
     this.stats.maxPresentationAdvanceS = Math.max(
@@ -455,7 +550,9 @@ export class LocalTankPredictor {
     inputSeq: number,
     presentationElapsedS = elapsedS,
   ) {
-    if (!input || !Number.isSafeInteger(inputSeq) || inputSeq < 0) return false;
+    if (!input || this.terminalDestroyed || !Number.isSafeInteger(inputSeq) || inputSeq < 0) {
+      return false;
+    }
     // Stryker disable next-line ConditionalExpression: on the first input the guarded body can only clear an already-empty history, making a forced-true guard equivalent.
     if (this.lastRecordedSeq != null) {
       if (inputSeq === this.lastRecordedSeq) return false;
@@ -477,36 +574,102 @@ export class LocalTankPredictor {
       this.stats.droppedHistory++;
     }
     this.advancePrediction(input, presentationElapsedS);
+    // The accepted upload interval includes every display frame through this
+    // one. Only subsequent unsent frames need a separate replay tail.
+    this.pendingPresentationInput = null;
+    this.pendingPresentationElapsedS = 0;
     return true;
   }
 
-  initializeAuthority(snapshot: PredictionSnapshot): void {
+  initializeAuthority(snapshot: PredictionSnapshot, predictionState?: RuntimeValue): void {
     this.initialized = true;
     this.holdRestingHull = false;
+    this.pendingPresentationInput = null;
+    this.pendingPresentationElapsedS = 0;
     applyAuthority(this.simEntity.state, snapshot);
+    this.restoreMovementCheckpoint(predictionState);
     clearCorrection(this.correction);
     copyPresentation(this.entity.state, this.simEntity.state, this.correction);
+  }
+
+  resetForPresentationResume(): void {
+    // No visible pose continuity exists while the window was asleep. A life
+    // may have ended and respawned without presentation observing either edge.
+    this.simEntity.state = createTankState(
+      this.entity.spec, this.entity.state.pos, this.entity.state.yaw,
+    );
+    this.history.length = 0;
+    this.lastRecordedSeq = null;
+    this.lastAuthorityTick = -1;
+    this.initialized = false;
+    this.terminalDestroyed = false;
+    this.motionIntent = false;
+    this.holdRestingHull = false;
+    this.contactSmoothingS = 0;
+    this.pendingPresentationInput = null;
+    this.pendingPresentationElapsedS = 0;
+    clearCorrection(this.correction);
   }
 
   replayAuthority(
     snapshot: PredictionSnapshot,
     sampledEntity: PredictionSnapshot | null,
+    terminalDestroyed = false,
+    predictionState?: RuntimeValue,
   ): void {
+    this.syncMovementPolicy();
     applyAuthority(this.simEntity.state, sampledEntity || snapshot);
-    // Browser inputs are replaceable held states. A clock-corrected sampled
-    // entity already includes their network transit time; deterministic
-    // callers without that sample replay the unacknowledged fixed-step input.
-    if (sampledEntity) return;
+    // A remote presentation sample has a different time coordinate and must
+    // never borrow a raw-authority integrator checkpoint.
+    if (!sampledEntity) this.restoreMovementCheckpoint(predictionState);
+    // A supplied presentation sample has already advanced its own timeline.
+    // Browser prediction uses raw authority instead: replaying on top of an
+    // extrapolated/smoothed sample would account for network transit twice.
+    if (sampledEntity || terminalDestroyed) return;
+    let durationS = this.pendingPresentationElapsedS;
+    for (const frame of this.history) durationS += inputElapsedS(frame.elapsedS);
+    let skipS = Math.max(0, durationS - MAX_INPUT_REPLAY_S);
     for (const frame of this.history) {
+      const frameS = inputElapsedS(frame.elapsedS);
+      const replayS = Math.max(0, frameS - skipS);
+      skipS = Math.max(0, skipS - frameS);
+      if (replayS <= 1e-8) continue;
       advance(
         this.simEntity,
         frame.input,
-        frame.elapsedS,
+        replayS,
         this.heightField,
         this.collisionResolver,
       );
       this.stats.replayedInputs++;
     }
+    if (this.pendingPresentationInput && this.pendingPresentationElapsedS > 0) {
+      advance(this.simEntity, this.pendingPresentationInput, this.pendingPresentationElapsedS,
+        this.heightField, this.collisionResolver);
+    }
+  }
+
+  syncMovementPolicy(): void {
+    // These values have already been admitted by the authoritative snapshot
+    // bridge. Do not infer special-action activation from local action bits.
+    this.simEntity.modeSpeedMultiplier = this.entity.modeSpeedMultiplier;
+    this.simEntity.state.suspensionAim = this.entity.state.suspensionAim;
+  }
+
+  restoreMovementCheckpoint(value: RuntimeValue): void {
+    const record = value && typeof value === 'object' && !Array.isArray(value)
+      ? value as Record<string, RuntimeValue> : null;
+    if (!record || record.movement == null) {
+      this.stats.missingMovementCheckpoints++;
+      return;
+    }
+    if (typeof this.entity.id !== 'string' || record.id !== this.entity.id ||
+        !applyMovementPredictionState(this.simEntity.state, record.movement,
+          this.simEntity.contactGeom)) {
+      this.stats.rejectedMovementCheckpoints++;
+      return;
+    }
+    this.stats.movementCheckpoints++;
   }
 
   recordPredictionError(positionError: number): void {
@@ -544,12 +707,17 @@ export class LocalTankPredictor {
       clearCorrection(this.correction);
       this.holdRestingHull = false;
       this.contactSmoothingS = 0;
+      this.pendingPresentationInput = null;
+      this.pendingPresentationElapsedS = 0;
       this.stats.hardSnaps++;
       return;
     }
 
     const predicted = this.simEntity.state;
-    writePresentationCorrection(this.correction, old, predicted);
+    // Wreck rendering freezes its last live suspension/sway. Only the base
+    // attitude settles to terminal authority; a fresh life resets the layers.
+    writePresentationCorrection(this.correction, old, predicted,
+      terminalDestroyed ? this.entity.state : predicted);
     this.holdRestingHull = !terminalDestroyed && canHoldRestingHull(
       old,
       predicted,
@@ -557,22 +725,25 @@ export class LocalTankPredictor {
       this.motionIntent || historyHasDriveIntent(this.history),
     );
     if (this.holdRestingHull) this.stats.restingHullHolds++;
-    if (terminalDestroyed && !this.terminalDestroyed) this.stats.terminalSyncs++;
   }
 
   finishTerminalAuthority(terminalDestroyed: boolean): void {
     if (terminalDestroyed) {
+      if (!this.terminalDestroyed) this.stats.terminalSyncs++;
       // Death ends local input authority without teleporting presentation to
       // the terminal server pose. The bounded correction settles the wreck.
       this.history.length = 0;
       this.motionIntent = false;
       this.contactSmoothingS = 0;
+      this.pendingPresentationInput = null;
+      this.pendingPresentationElapsedS = 0;
     }
     this.terminalDestroyed = terminalDestroyed;
   }
 
   reconcile(
-    { tick, ackInputSeq = null, entity: snapshot, sampledEntity = null }: AuthoritySample = {},
+    { tick, ackInputSeq = null, entity: snapshot, sampledEntity = null,
+      predictionState }: AuthoritySample = {},
     elapsedS = 0,
     destroyed = false,
   ) {
@@ -580,17 +751,31 @@ export class LocalTankPredictor {
     const authorityTick = tick as number;
     if (authorityTick <= this.lastAuthorityTick) return false;
     this.lastAuthorityTick = authorityTick;
+    const terminalDestroyed = !!(destroyed || snapshot.destroyed ||
+      ((snapshot.flags ?? 0) & SNAPSHOT_FLAGS.DESTROYED));
+    acknowledgeInputs(this.history, ackInputSeq);
     // Roster visuals are created at a harmless staging origin while the load
     // screen is up. The first authority pose is initialization, not a network
     // correction: seed both simulation and presentation directly so latency
     // cannot turn the origin-to-spawn distance into a hard snap/correction.
-    if (!this.initialized) {
-      this.initializeAuthority(snapshot);
+    const respawning = this.terminalDestroyed && !terminalDestroyed;
+    if (!this.initialized || respawning) {
+      if (respawning) {
+        // A new life owns a new drivetrain/contact history, even when its
+        // spawn is inside the normal reconciliation distance budget.
+        this.simEntity.state = createTankState(
+          this.entity.spec, this.entity.state.pos, snapshot.yaw,
+        );
+        this.history.length = 0;
+        this.motionIntent = false;
+        this.contactSmoothingS = 0;
+      }
+      this.initializeAuthority(snapshot, predictionState);
+      this.finishTerminalAuthority(terminalDestroyed);
       return true;
     }
     const old = captureDisplayedPose(this.entity.state, this.displayedPose);
-    acknowledgeInputs(this.history, ackInputSeq);
-    this.replayAuthority(snapshot, sampledEntity);
+    this.replayAuthority(snapshot, sampledEntity, terminalDestroyed, predictionState);
     const predicted = this.simEntity.state;
     const positionError = Math.hypot(
       old.x - predicted.pos.x,
@@ -598,7 +783,6 @@ export class LocalTankPredictor {
       old.z - predicted.pos.z,
     );
     this.recordPredictionError(positionError);
-    const terminalDestroyed = !!(destroyed || snapshot.destroyed);
     this.stagePresentationError(old, snapshot, positionError, terminalDestroyed);
     this.finishTerminalAuthority(terminalDestroyed);
     this.present(elapsedS);
@@ -635,7 +819,8 @@ export class LocalTankPredictor {
       this.stats.maxVerticalCorrectionStepM,
       Math.abs(beforeY - this.correction.y),
     );
-    copyPresentation(this.entity.state, this.simEntity.state, this.correction);
+    copyPresentation(this.entity.state, this.simEntity.state, this.correction,
+      !this.terminalDestroyed);
   }
 
   getStats() {

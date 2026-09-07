@@ -11,9 +11,13 @@ import { VEHICLE_MARKING_SEATS as SEATS_FRANCECORE } from './vehicleMarkingSeatG
 import { VEHICLE_MARKING_SEATS as SEATS_GERMANY } from './vehicleMarkingSeatGroups/germany.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ITALY } from './vehicleMarkingSeatGroups/italy.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_JAPAN } from './vehicleMarkingSeatGroups/japan.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_K2X } from './vehicleMarkingSeatGroups/k2X.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_KF51X } from './vehicleMarkingSeatGroups/kf51X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_KOREA } from './vehicleMarkingSeatGroups/korea.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_LEOPARD } from './vehicleMarkingSeatGroups/leopard.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_LEOPARDX } from './vehicleMarkingSeatGroups/leopardX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MERKAVA } from './vehicleMarkingSeatGroups/merkava.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_MERKAVAX } from './vehicleMarkingSeatGroups/merkavaX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MISC } from './vehicleMarkingSeatGroups/misc.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MODERN2 } from './vehicleMarkingSeatGroups/modern2.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_MODERN3CORE } from './vehicleMarkingSeatGroups/modern3Core.generated.ts';
@@ -23,9 +27,11 @@ import { VEHICLE_MARKING_SEATS as SEATS_RUSSIA } from './vehicleMarkingSeatGroup
 import { VEHICLE_MARKING_SEATS as SEATS_SHERIDAN } from './vehicleMarkingSeatGroups/sheridan.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SOVIETHEAVY } from './vehicleMarkingSeatGroups/sovietHeavy.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_SWEDEN } from './vehicleMarkingSeatGroups/sweden.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_T14X } from './vehicleMarkingSeatGroups/t14X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T72 } from './vehicleMarkingSeatGroups/t72.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T80 } from './vehicleMarkingSeatGroups/t80.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T90 } from './vehicleMarkingSeatGroups/t90.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_T90X } from './vehicleMarkingSeatGroups/t90X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_UK } from './vehicleMarkingSeatGroups/uk.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_UKRAINE } from './vehicleMarkingSeatGroups/ukraine.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_WW2 } from './vehicleMarkingSeatGroups/ww2.generated.ts';
@@ -42,9 +48,13 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_GERMANY,
   SEATS_ITALY,
   SEATS_JAPAN,
+  SEATS_K2X,
+  SEATS_KF51X,
   SEATS_KOREA,
   SEATS_LEOPARD,
+  SEATS_LEOPARDX,
   SEATS_MERKAVA,
+  SEATS_MERKAVAX,
   SEATS_MISC,
   SEATS_MODERN2,
   SEATS_MODERN3CORE,
@@ -54,9 +64,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_SHERIDAN,
   SEATS_SOVIETHEAVY,
   SEATS_SWEDEN,
+  SEATS_T14X,
   SEATS_T72,
   SEATS_T80,
   SEATS_T90,
+  SEATS_T90X,
   SEATS_UK,
   SEATS_UKRAINE,
   SEATS_WW2,

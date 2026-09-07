@@ -1,0 +1,55 @@
+name: cot-multiplayer
+
+# Private-room rendezvous only: one in-memory signaling owner, no match server
+# or database. Browser hosts own gameplay. Do not scale signaling replicas.
+services:
+  gateway:
+    image: caddy:2.10-alpine
+    environment:
+      COT_MULTIPLAYER_ADDRESS: ${COT_MULTIPLAYER_ADDRESS:?set the multiplayer hostname}
+    ports:
+      - "${COT_MULTIPLAYER_BIND:-0.0.0.0}:${COT_MULTIPLAYER_HTTP_PORT:-80}:80"
+      - "${COT_MULTIPLAYER_BIND:-0.0.0.0}:${COT_MULTIPLAYER_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile.multiplayer:/etc/caddy/Caddyfile:ro
+      - tls-data:/data
+      - tls-config:/config
+    depends_on:
+      signal:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  signal:
+    build:
+      context: .
+      dockerfile: Dockerfile.multiplayer
+    command: ["node", "server/signalingServer.ts"]
+    init: true
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      COT_SIGNAL_HOST: 0.0.0.0
+      COT_SIGNAL_PORT: 7777
+      COT_ALLOWED_ORIGINS: ${COT_MULTIPLAYER_ALLOWED_ORIGINS:?set exact frontend origins}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7777/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    stop_grace_period: 15s
+    restart: unless-stopped
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  tls-data:
+  tls-config:

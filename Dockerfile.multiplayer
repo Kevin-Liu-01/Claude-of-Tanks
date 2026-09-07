@@ -1,0 +1,14 @@
+FROM node:24-bookworm-slim
+
+WORKDIR /app
+ENV NODE_ENV=production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+# No browser assets, local environment files, Vercel project configuration,
+# or development browsers belong in the signaling runtime image.
+# Shared source imports remain available; Compose starts only signaling.
+COPY src ./src
+COPY server ./server
+COPY api ./api
+COPY LICENSE* ./
+USER node

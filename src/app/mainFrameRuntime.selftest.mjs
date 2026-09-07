@@ -11,6 +11,7 @@ function createFixture({
 } = {}) {
   const calls = [];
   const frameRequests = [];
+  const replay = { active: false };
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.1, 1000);
   const game = { phase, shells: [], matchModeState: null, timeS: 4 };
@@ -44,6 +45,9 @@ function createFixture({
     getFx: () => fx,
     getWorld: () => world,
     getBaseFogDensity: () => 0,
+    get updateAtmosphere() {
+      throw new Error('removed atmosphere frame port must never be acquired');
+    },
     getStudio: () => ({
       active: studioActive,
       tick: () => calls.push('studio'),
@@ -80,10 +84,10 @@ function createFixture({
         calls.push('battle:advance');
         return {
           dtSeconds: 1 / 60,
-          inBattle: phase === 'battle',
+          inBattle: game.phase === 'battle',
           paused: false,
           livePaused: false,
-          killcamActive: false,
+          killcamActive: replay.active,
         };
       },
     },
@@ -97,7 +101,7 @@ function createFixture({
     },
     killcam: {
       fxTimeScale: 1,
-      isActive: () => false,
+      isActive: () => replay.active,
       update: () => calls.push('killcam'),
     },
     veilHud: () => calls.push('veil'),
@@ -113,6 +117,7 @@ function createFixture({
     runtime,
     calls,
     frameRequests,
+    replay,
     camera,
     game,
     battleEntryLifecycle,
@@ -155,6 +160,19 @@ assert.ok(battle.calls.indexOf('battle:advance') < battle.calls.indexOf('rig'));
 assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('world:presentation'));
 assert.ok(battle.calls.indexOf('world:presentation') < battle.calls.indexOf('post'));
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
+
+const replaying = createFixture({ phase: 'battle' });
+replaying.runtime.tick(1000);
+replaying.replay.active = true;
+replaying.runtime.tick(1016);
+replaying.runtime.tick(1032);
+replaying.replay.active = false;
+replaying.runtime.tick(1048);
+assert.equal(replaying.calls.filter((entry) => entry === 'killcam').length, 2,
+  'actual replay frames still advance without an atmosphere frame owner');
+replaying.game.phase = 'garage';
+replaying.runtime.tick(1064);
+replaying.runtime.tick(1080);
 
 const returnMarks = [];
 const returning = createFixture({
@@ -231,6 +249,11 @@ assert.equal(quietGarage.calls.filter(call => call === 'post').length, 1,
 assert.throws(() => createMainFrameRuntime({}), /requires every live frame port/);
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const frameSource = await readFile(new URL('./mainFrameRuntime.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(frameSource, /updateAtmosphere/,
+  'fixed day/night must not leave an atmosphere port or scheduler in the frame loop');
+assert.doesNotMatch(mainSource, /battleWeatherParticleBudget|battleParticleBudget|battleAtmosphere\.update\(/,
+  'composition must not retain particle budgets, quality listeners or atmosphere frame work');
 const inertStudioAt = mainSource.indexOf("let studio: ReturnType<typeof createStudioAccess>['presentation']");
 const mainFrameAt = mainSource.indexOf('const mainFrame = createMainFrameRuntime({');
 const liveStudioAt = mainSource.indexOf('studio = studioAccess.presentation;');

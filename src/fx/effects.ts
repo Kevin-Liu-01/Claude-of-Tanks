@@ -17,6 +17,7 @@ import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts'
 import { createImpactDecals } from './impactDecals.ts';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
+import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
@@ -106,6 +107,7 @@ interface JetScratch {
 interface FxVisual {
   root: THREE.Object3D;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
 }
 
 export interface FxDecalVisual {
@@ -227,12 +229,17 @@ interface ExplosionMoment {
   ageS: number;
 }
 
-interface ShellFiredEvent {
+interface PredictedWeaponEvent {
   muzzlePos: WireVec3;
   dir: WireVec3;
   caliberMm: number;
+  isPlayer?: boolean;
+}
+
+interface ShellFiredEvent extends PredictedWeaponEvent {
   shellType: string;
   shellId: ShellId;
+  feedbackPredicted?: boolean;
 }
 
 interface ShellHitEvent {
@@ -289,6 +296,7 @@ interface TankFireEvent {
 
 interface FxEventMap {
   'shell:fired': ShellFiredEvent;
+  'weapon:predicted': PredictedWeaponEvent;
   'shell:hit': ShellHitEvent;
   'shell:expired': ShellExpiredEvent;
   'tank:destroyed': TankDestroyedEvent;
@@ -311,6 +319,7 @@ export interface FxRuntime {
     normal: THREE.Vector3,
     caliberMm?: number,
   ): void;
+  warmProjectilePresentation(pos: THREE.Vector3, dir: THREE.Vector3): void;
   update(
     dt: number,
     shells: LiveShell[],
@@ -3326,22 +3335,25 @@ export function createFx(
 
   let liveAtgmCount = 0;
 
-  function writeGuidedShell(shell: LiveShell, tracerIndex: number): number {
-    const shellPos = shell.pos;
+  function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3): void {
     if (liveAtgmCount < MAX_ATGM_BODIES) {
-      _atgmObject.position.copy(shellPos).addScaledVector(_v1, -0.65);
-      _atgmObject.quaternion.setFromUnitVectors(_Z, _v1);
+      _atgmObject.position.copy(shellPos).addScaledVector(direction, -0.65);
+      _atgmObject.quaternion.setFromUnitVectors(_Z, direction);
       _atgmObject.scale.set(1, 1, 1);
       _atgmObject.updateMatrix();
       atgmBodies.setMatrixAt(liveAtgmCount, _atgmObject.matrix);
-      _atgmFlareObject.position.copy(shellPos).addScaledVector(_v1, -1.35);
+      _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -1.35);
       _atgmFlareObject.quaternion.identity();
       _atgmFlareObject.scale.setScalar(1.15);
       _atgmFlareObject.updateMatrix();
       atgmFlares.setMatrixAt(liveAtgmCount, _atgmFlareObject.matrix);
       liveAtgmCount++;
     }
+  }
 
+  function writeGuidedShell(shell: LiveShell, tracerIndex: number): number {
+    const shellPos = shell.pos;
+    writeGuidedBody(shellPos, _v1);
     let trail = guidedTrails.get(shell.id);
     if (!trail) {
       trail = {
@@ -4254,6 +4266,18 @@ export function createFx(
     },
 
     /**
+     * Covered loading only: submit one instance of each missile-only material
+     * through the same body writer as real flight. There is no shell identity,
+     * event, world sweep or persistent trail; resetAll removes both instances.
+     * Call after update(), which normally rebuilds these counts from live shells.
+     */
+    warmProjectilePresentation(pos: THREE.Vector3, dir: THREE.Vector3): void {
+      liveAtgmCount = 0;
+      writeGuidedBody(pos, dir);
+      commitAtgmInstances();
+    },
+
+    /**
      * Per-render-frame advance: particle clock, timers, lights, smoke columns,
      * and tracer ribbons rebuilt from live shell entities.
      * @param {number} dt render delta seconds
@@ -4293,7 +4317,7 @@ export function createFx(
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
-        fx.muzzleFlash(_v3, _v4, e.caliberMm);
+        if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
         // can size the destructible-prop blast (HE clears a radius), and
@@ -4303,6 +4327,13 @@ export function createFx(
         if (shellKinds.size > 96) { shellKinds.clear(); sweepTails.clear(); } // leak guard
         shellKinds.set(e.shellId, e.shellType);
         sweepTails.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
+      });
+      onFxEvent(bus, 'weapon:predicted', (e) => {
+        if (!e.isPlayer) return;
+        _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
+        _v4.set(e.dir[0], e.dir[1], e.dir[2]);
+        // Presentation only; sabot petals and sweep/prop ownership await authority.
+        fx.muzzleFlash(_v3, _v4, e.caliberMm);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
@@ -4325,7 +4356,10 @@ export function createFx(
         // reliable. All shell:hit marks are authored here from the exact
         // authoritative articulation-local contact data.
         const ent = decalEntityFor(e.targetId);
-        if (ent) impactDecals.stampFromEvent(e, ent);
+        if (ent) {
+          impactDecals.stampFromEvent(e, ent);
+          ent.visual.applyEquipmentDamage?.(e);
+        }
         // ERA is an outer-layer activation, not necessarily the final hit
         // result. A rod/jet may pop the cassette and continue into a pen or
         // non-pen on the base armor; preserve both visual events.
@@ -5061,6 +5095,7 @@ export function createFx(
       trails.clear();
       guidedTrails.clear();
       tracerGeo.instanceCount = 0;
+      liveAtgmCount = 0;
       atgmBodies.count = 0;
       atgmFlares.count = 0;
       renderedAtgmBodies = 0;
@@ -5083,6 +5118,7 @@ export function createFx(
       for (const r of muzzleRings) { r.bornAt = -1e9; r.mesh.visible = false; r.mat.opacity = 0; }
       muzzleRingCursor = 0;
       impactDecals.clearAll();
+      resetEquipmentDamage();
       for (const st of lightStates) { st.bornAt = -1e9; st.light.intensity = 0; }
     },
 

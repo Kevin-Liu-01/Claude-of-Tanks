@@ -24,6 +24,9 @@ interface ReferenceGlbConfig {
   readonly gunFollowers?: string;
   readonly autoPivot?: boolean;
   readonly pivot?: readonly [number, number, number];
+  /** Source-world trunnion before width normalization. For fused exports
+   * with zero node origins, this preserves geometry while fixing articulation. */
+  readonly gunPivot?: readonly [number, number, number];
   readonly yawOffset?: number;
   readonly turretYaw?: number;
   readonly turretComponentSubset?: ComponentSubsetRule;
@@ -365,7 +368,12 @@ function seatGunPivot(
   cfg: ReferenceGlbConfig,
 ): void {
   if (!cfg.autoPivot || !gunNodes.length) return;
-  const pivotWorld = gunNodes[0].getWorldPosition(new THREE.Vector3());
+  if (cfg.gunPivot && (cfg.gunPivot.length !== 3 || !cfg.gunPivot.every(Number.isFinite))) {
+    throw new Error('Reference gunPivot must contain three finite source-world coordinates');
+  }
+  const pivotWorld = cfg.gunPivot
+    ? new THREE.Vector3().fromArray(cfg.gunPivot)
+    : gunNodes[0].getWorldPosition(new THREE.Vector3());
   gun.position.copy(turret.worldToLocal(pivotWorld.clone()));
   root.updateMatrixWorld(true);
 }

@@ -1,0 +1,34 @@
+{
+  "vehicleId": "t90sm_x",
+  "source": {
+    "file": "public/models/community-candidates/t90sm_x_source.glb",
+    "sha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+    "node": "misc_b",
+    "method": "Independent connected-part bounds and held-out ray/normal measurements in the fixed canonical world frame; no source vertices, indices, textures or buffers shipped.",
+    "measuredAt": "2026-09-06",
+    "units": "meters"
+  },
+  "decision": "Six visible source parts are partial upper saddles, not annular collars or material seams. Author original closed folded-sheet primitives, attached to the gun recoil bucket; leave the passed barrel, bore and other vehicles unchanged.",
+  "sharedXBounds": [-0.0483836, 0.0500950],
+  "construction": {
+    "inferredClosedSheetVerticalThicknessM": 0.006,
+    "note": "The source planes define the exposed roof. Six millimeters of inward closed thickness provides actual native-jacket engagement; it is an authored physical closure, not a source-thickness claim. No geometry is placed around the lower barrel or bore."
+  },
+  "saddles": [
+    {"island": 909, "rearZ": 2.645794749, "frontZ": 2.675789833, "maxY": 2.024646699, "heldZ": 2.6608, "heldCenterY": 2.024034438, "heldX02Y": 2.011857361, "preAdditionJacketCenterY": 2.01965},
+    {"island": 439, "rearZ": 3.526714325, "frontZ": 3.557234406, "maxY": 2.020036086, "heldZ": 3.542, "heldCenterY": 2.019426136, "heldX02Y": 2.007319170, "preAdditionJacketCenterY": 2.01547},
+    {"island": 891, "rearZ": 4.404472828, "frontZ": 4.433941603, "maxY": 2.015800387, "heldZ": 4.4192, "heldCenterY": 2.015210141, "heldX02Y": 2.003494290, "preAdditionJacketCenterY": 2.01439},
+    {"island": 885, "rearZ": 5.536929607, "frontZ": 5.566399097, "maxY": 2.005955249, "heldZ": 5.55166, "heldCenterY": 2.005360398, "heldX02Y": 1.993553135, "preAdditionJacketCenterY": 2.00594},
+    {"island": 879, "rearZ": 6.178937435, "frontZ": 6.208410740, "maxY": 2.006890200, "heldZ": 6.19367, "heldCenterY": 2.006304602, "heldX02Y": 1.994680998, "preAdditionJacketCenterY": 2.00290},
+    {"island": 872, "rearZ": 6.736748219, "frontZ": 6.766216278, "maxY": 2.007636972, "heldZ": 6.75148, "heldCenterY": 2.007030526, "heldX02Y": 1.994993112, "preAdditionJacketCenterY": 2.00234}
+  ],
+  "exposureQualification": "The overall source saddle width is 98.48 mm and length 29.5–30.5 mm. The unchanged smoother native jacket buries the outer legs by about 8–15 mm at X±.045. At X=0 the six added roofs project approximately +4.4/+4.0/+0.8/−0.6/+3.4/+4.7 mm relative to the high-detail jacket measured before addition. The fourth is largely buried: actual high/low first surfaces differ due to existing jacket tessellation (Y2.00594/2.00578617), both less than1mm above the exact source saddle roof Y2.005360398. This is not claimed as six fully exposed source saddles; measured planes are preserved without artificial inflation. Different face slopes intersect rather than overlap as coplanar skins.",
+  "documentedFineDetailSimplification": {
+    "sourceAxialSeamIslands": [598, 588, 582, 576],
+    "widthM": 0.005263292,
+    "lengthsM": [0.813559175, 0.812510490, 0.574646473, 0.496768475],
+    "proudRoofM": "approximately 0.010–0.011",
+    "decision": "Do not add the roughly five-millimeter-wide axial seam strips in this bounded refinement. They are genuine fine geometry, not falsely described as texture."
+  },
+  "regression": "src/vehicles/profiles/t90SMXGunSaddles.selftest.mjs PASS: actual high/low recoil-owned buffer presence within2µm, six helper source crowns/outboard planes within20µm, six integrated source crowns within30µm, five exact visible crowns plus explicitly qualified fourth-jacket occlusion, genuine native-jacket engagement and articulated/recoiling buffer ownership. CPU committed strict front/rear/full sweep band0 and shoe0; creation-time helper quality2functions/0violations. Fresh rendered proof belongs to the following fleet pass, not the pre-addition thirteenth board."
+}

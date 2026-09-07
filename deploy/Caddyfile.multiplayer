@@ -1,0 +1,17 @@
+{$COT_MULTIPLAYER_ADDRESS} {
+	@signal path /api/signal
+	handle @signal {
+		rewrite * /signal
+		reverse_proxy signal:7777
+	}
+
+	handle /healthz/signaling {
+		rewrite * /healthz
+		reverse_proxy signal:7777
+	}
+
+	# This host serves only room signaling; everything else is absent by design.
+	handle {
+		respond "Not found" 404
+	}
+}

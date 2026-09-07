@@ -1,0 +1,30 @@
+{
+  "purpose": "independent source-only physical scalars for original closed lower-tub and separate fender construction",
+  "sourceOracleSha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+  "sourceObject": "chasis",
+  "units": "metres in canonical source world",
+  "undersideRays": [
+    {"x": 0.66, "z": -2.7459, "y": 0.493488},
+    {"x": 0.90, "z": -2.7459, "y": 0.493012},
+    {"x": 0.50, "z": 0, "y": 0.600345},
+    {"x": 0.90, "z": 0, "y": 0.645060},
+    {"x": 1.00, "z": 0, "y": 0.806934},
+    {"x": 0.66, "z": 2.40, "y": 0.597080}
+  ],
+  "separateRightFenderRays": [
+    {"x": 1.50, "z": -3.35, "y": 1.328437},
+    {"x": 1.50, "z": -3.26, "y": 1.328200},
+    {"x": 1.68, "z": -2.50, "y": 1.321370},
+    {"x": 1.72, "z": -2.50, "y": 1.303630},
+    {"x": 1.78, "z": -2.50, "y": 1.274880},
+    {"x": 1.50, "y": 1.42, "rearZ": -3.245030}
+  ],
+  "authorship": [
+    "No source vertices, indices, contours, textures or scene graph are embedded. Original closed transverse sections interpolate independent physical ray measurements.",
+    "The source lower tub has a depressed rear side bay and upward-turned middle sides. Its old flat floor was 40-250mm wrong at these held-out points.",
+    "The source raised side casing terminates near X1.679; a distinct lower sheet continues farther outboard. A single broad diagonal prism falsely filled the visible shoulder air.",
+    "The lower right rear shelf is about17mm thick. The raised casing begins nearZ-3.245 above it, leaving the real tow-eye approach open.",
+    "Hidden wall transitions remain original structural simplifications; the measured roof/underfloor and negative-space checks remain independent physical targets."
+  ],
+  "regressions": ["t90SMXHullTub.selftest.mjs", "t90SMXFenderShoulders.selftest.mjs", "t90SMXEngineDeck.selftest.mjs"]
+}

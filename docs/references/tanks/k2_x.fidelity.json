@@ -1,0 +1,2945 @@
+{
+  "generatedAt": "2026-09-06T10:06:54.116Z",
+  "sourceTool": "tools/procedural-fidelity.mjs",
+  "sourceReportSha256": "ee86f42a4a08b0fea48fb259e5e15ff6db91785e4a640b7f1305c2d261bac7df",
+  "row": {
+    "id": "k2_x",
+    "name": "K2 Black Panther X",
+    "sourcePath": "/models/community-candidates/k2_x_source.glb",
+    "comparisonPurpose": "source-fidelity",
+    "fallback": "k2_x",
+    "score": 95.25,
+    "scores": {
+      "overall": 95.52,
+      "hull": null,
+      "turret": null,
+      "gun": null,
+      "tracks": 94.07
+    },
+    "wholeViewMasksAvailable": true,
+    "componentMasksAvailable": false,
+    "turretComponentMasksAvailable": false,
+    "gunComponentMasksAvailable": false,
+    "minView": 92.97,
+    "requiredMinimum": 92,
+    "qualityBar": "exemplar",
+    "gatePassed": true,
+    "gateFailures": [],
+    "rawScore": 95.25005966274296,
+    "rawScores": {
+      "overall": 95.51963986027516,
+      "hull": null,
+      "turret": null,
+      "gun": null,
+      "tracks": 94.07064629853956
+    },
+    "rawMinView": 92.97291811746518,
+    "registration": {
+      "mode": "legacy-width-normalization"
+    },
+    "normalizationAnchors": {
+      "applied": true,
+      "target": 3.71906,
+      "referenceRaw": 3.7190600000000003,
+      "proceduralRaw": 3.7255001206906124
+    },
+    "angles": {
+      "front": {
+        "score": 96.77,
+        "iou": 95.62
+      },
+      "frontLeft": {
+        "score": 95.1,
+        "iou": 93.1
+      },
+      "left": {
+        "score": 93.11,
+        "iou": 90.3
+      },
+      "rearLeft": {
+        "score": 95.99,
+        "iou": 94.35
+      },
+      "rear": {
+        "score": 95.91,
+        "iou": 94.63
+      },
+      "rearRight": {
+        "score": 95.89,
+        "iou": 94.19
+      },
+      "right": {
+        "score": 92.97,
+        "iou": 90.06
+      },
+      "frontRight": {
+        "score": 94.8,
+        "iou": 92.8
+      },
+      "top": {
+        "score": 99.13,
+        "iou": 98.81
+      }
+    },
+    "rawWholeAngles": {
+      "front": {
+        "score": 96.77,
+        "iou": 95.62
+      },
+      "frontLeft": {
+        "score": 95.1,
+        "iou": 93.1
+      },
+      "left": {
+        "score": 93.11,
+        "iou": 90.3
+      },
+      "rearLeft": {
+        "score": 95.99,
+        "iou": 94.35
+      },
+      "rear": {
+        "score": 95.91,
+        "iou": 94.63
+      },
+      "rearRight": {
+        "score": 95.89,
+        "iou": 94.19
+      },
+      "right": {
+        "score": 92.97,
+        "iou": 90.06
+      },
+      "frontRight": {
+        "score": 94.8,
+        "iou": 92.8
+      },
+      "top": {
+        "score": 99.13,
+        "iou": 98.81
+      }
+    },
+    "angleDiagnostics": {
+      "front": {
+        "score": 96.77097240001095,
+        "iou": 0.9561801858231548,
+        "areaSimilarity": 0.9916299091247276,
+        "bboxSimilarity": 0.9969135802469136,
+        "centroidSimilarity": 0.9989549906100118,
+        "referenceArea": 37634,
+        "proceduralArea": 37319,
+        "referenceBounds": {
+          "width": 236,
+          "height": 322,
+          "cx": 190.46463304458734,
+          "cy": 139.00831694744113
+        },
+        "proceduralBounds": {
+          "width": 236,
+          "height": 324,
+          "cx": 190.27511455290872,
+          "cy": 138.92116616200863
+        }
+      },
+      "frontLeft": {
+        "score": 95.09857115286468,
+        "iou": 0.9309595982445822,
+        "areaSimilarity": 0.997379258704605,
+        "bboxSimilarity": 0.9983606557377049,
+        "centroidSimilarity": 0.9974207675595618,
+        "referenceArea": 21312,
+        "proceduralArea": 21368,
+        "referenceBounds": {
+          "width": 305,
+          "height": 174,
+          "cx": 153.38480668168168,
+          "cy": 156.02088025525526
+        },
+        "proceduralBounds": {
+          "width": 304,
+          "height": 174,
+          "cx": 153.78940471733432,
+          "cy": 156.2242605765631
+        }
+      },
+      "left": {
+        "score": 93.11035638840647,
+        "iou": 0.9029901960784313,
+        "areaSimilarity": 0.9966568945121638,
+        "bboxSimilarity": 0.996875,
+        "centroidSimilarity": 0.9964878490467627,
+        "referenceArea": 19443,
+        "proceduralArea": 19378,
+        "referenceBounds": {
+          "width": 356,
+          "height": 160,
+          "cx": 148.8343362649797,
+          "cy": 157.65010543640383
+        },
+        "proceduralBounds": {
+          "width": 356,
+          "height": 159,
+          "cx": 148.34332748477655,
+          "cy": 157.17189596449583
+        }
+      },
+      "rearLeft": {
+        "score": 95.98850338375019,
+        "iou": 0.943450963411994,
+        "areaSimilarity": 0.9980413105413105,
+        "bboxSimilarity": 0.9983606557377049,
+        "centroidSimilarity": 0.9985419458827803,
+        "referenceArea": 22420,
+        "proceduralArea": 22464,
+        "referenceBounds": {
+          "width": 305,
+          "height": 173,
+          "cx": 158.5128010704728,
+          "cy": 146.55954504906333
+        },
+        "proceduralBounds": {
+          "width": 304,
+          "height": 173,
+          "cx": 158.70352564102564,
+          "cy": 146.38933404558404
+        }
+      },
+      "rear": {
+        "score": 95.91303709751273,
+        "iou": 0.9463340891912321,
+        "areaSimilarity": 0.9794640896112453,
+        "bboxSimilarity": 0.9983388704318937,
+        "centroidSimilarity": 0.9988601611277721,
+        "referenceArea": 36424,
+        "proceduralArea": 35676,
+        "referenceBounds": {
+          "width": 236,
+          "height": 300,
+          "cx": 191.84466285965297,
+          "cy": 120.29617834394904
+        },
+        "proceduralBounds": {
+          "width": 236,
+          "height": 301,
+          "cx": 192.04061553985872,
+          "cy": 120.39065478192623
+        }
+      },
+      "rearRight": {
+        "score": 95.88785644805449,
+        "iou": 0.9418801968437128,
+        "areaSimilarity": 0.998602803126228,
+        "bboxSimilarity": 0.9983606557377049,
+        "centroidSimilarity": 0.9987188129448261,
+        "referenceArea": 22871,
+        "proceduralArea": 22903,
+        "referenceBounds": {
+          "width": 305,
+          "height": 173,
+          "cx": 225.74159415854137,
+          "cy": 147.3481264483407
+        },
+        "proceduralBounds": {
+          "width": 304,
+          "height": 173,
+          "cx": 225.61716805658648,
+          "cy": 147.16111426450684
+        }
+      },
+      "right": {
+        "score": 92.97291811746518,
+        "iou": 0.900637748892459,
+        "areaSimilarity": 0.9983108972718432,
+        "bboxSimilarity": 0.996875,
+        "centroidSimilarity": 0.9969724471830818,
+        "referenceArea": 19537,
+        "proceduralArea": 19504,
+        "referenceBounds": {
+          "width": 356,
+          "height": 159,
+          "cx": 234.68296053641808,
+          "cy": 157.89686236372012
+        },
+        "proceduralBounds": {
+          "width": 356,
+          "height": 160,
+          "cx": 235.08485438884333,
+          "cy": 157.46462264150944
+        }
+      },
+      "frontRight": {
+        "score": 94.80157302384656,
+        "iou": 0.927950875596998,
+        "areaSimilarity": 0.9936970837253057,
+        "bboxSimilarity": 0.9954870925193141,
+        "centroidSimilarity": 0.9969369101967958,
+        "referenceArea": 21126,
+        "proceduralArea": 21260,
+        "referenceBounds": {
+          "width": 305,
+          "height": 173,
+          "cx": 227.93401495787182,
+          "cy": 155.83953422323205
+        },
+        "proceduralBounds": {
+          "width": 304,
+          "height": 174,
+          "cx": 227.51618062088428,
+          "cy": 156.176904985889
+        }
+      },
+      "top": {
+        "score": 99.13297073056539,
+        "iou": 0.9881313464328102,
+        "areaSimilarity": 0.9983431089902907,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.9977259690828688,
+        "referenceArea": 30177,
+        "proceduralArea": 30127,
+        "referenceBounds": {
+          "width": 122,
+          "height": 353,
+          "cx": 191.55611889849885,
+          "cy": 234.39980780064286
+        },
+        "proceduralBounds": {
+          "width": 122,
+          "height": 353,
+          "cx": 191.51183323928703,
+          "cy": 233.9774620772065
+        }
+      }
+    },
+    "wholeContours": {
+      "left": [
+        {
+          "topDelta": -4.67,
+          "bottomDelta": 0.11,
+          "columns": 27
+        },
+        {
+          "topDelta": -0.6,
+          "bottomDelta": -2.3,
+          "columns": 30
+        },
+        {
+          "topDelta": -1.2,
+          "bottomDelta": -0.9,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.17,
+          "bottomDelta": -2.13,
+          "columns": 30
+        },
+        {
+          "topDelta": -2,
+          "bottomDelta": -1.73,
+          "columns": 30
+        },
+        {
+          "topDelta": -1.37,
+          "bottomDelta": -2.13,
+          "columns": 30
+        },
+        {
+          "topDelta": -1,
+          "bottomDelta": -5.21,
+          "columns": 29
+        },
+        {
+          "topDelta": 0.63,
+          "bottomDelta": 1.07,
+          "columns": 30
+        },
+        {
+          "topDelta": 3.57,
+          "bottomDelta": 5.07,
+          "columns": 30
+        },
+        {
+          "topDelta": 1,
+          "bottomDelta": 1,
+          "columns": 30
+        },
+        {
+          "topDelta": 1.03,
+          "bottomDelta": 0.97,
+          "columns": 30
+        },
+        {
+          "topDelta": 1.64,
+          "bottomDelta": -0.14,
+          "columns": 28
+        }
+      ],
+      "right": [
+        {
+          "topDelta": 1.63,
+          "bottomDelta": -0.19,
+          "columns": 27
+        },
+        {
+          "topDelta": 1.07,
+          "bottomDelta": 0.93,
+          "columns": 30
+        },
+        {
+          "topDelta": 1,
+          "bottomDelta": 1,
+          "columns": 30
+        },
+        {
+          "topDelta": 3.67,
+          "bottomDelta": 5.17,
+          "columns": 30
+        },
+        {
+          "topDelta": 0.53,
+          "bottomDelta": 1.17,
+          "columns": 30
+        },
+        {
+          "topDelta": -1.03,
+          "bottomDelta": 0.2,
+          "columns": 30
+        },
+        {
+          "topDelta": -1.86,
+          "bottomDelta": -1.38,
+          "columns": 29
+        },
+        {
+          "topDelta": -2.03,
+          "bottomDelta": -4.47,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.17,
+          "bottomDelta": -1.57,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.97,
+          "bottomDelta": 0.4,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.43,
+          "bottomDelta": 3.93,
+          "columns": 30
+        },
+        {
+          "topDelta": -4.89,
+          "bottomDelta": 1.54,
+          "columns": 28
+        }
+      ]
+    },
+    "wholeDifferences": {
+      "left": {
+        "vertical": [
+          {
+            "start": 112,
+            "end": 124,
+            "referenceOnly": 162,
+            "proceduralOnly": 188,
+            "overlap": 1928
+          },
+          {
+            "start": 125,
+            "end": 137,
+            "referenceOnly": 57,
+            "proceduralOnly": 143,
+            "overlap": 2689
+          },
+          {
+            "start": 138,
+            "end": 151,
+            "referenceOnly": 58,
+            "proceduralOnly": 55,
+            "overlap": 3348
+          },
+          {
+            "start": 152,
+            "end": 164,
+            "referenceOnly": 27,
+            "proceduralOnly": 112,
+            "overlap": 3173
+          },
+          {
+            "start": 165,
+            "end": 177,
+            "referenceOnly": 210,
+            "proceduralOnly": 62,
+            "overlap": 2675
+          },
+          {
+            "start": 178,
+            "end": 191,
+            "referenceOnly": 91,
+            "proceduralOnly": 115,
+            "overlap": 3445
+          },
+          {
+            "start": 192,
+            "end": 204,
+            "referenceOnly": 259,
+            "proceduralOnly": 119,
+            "overlap": 940
+          },
+          {
+            "start": 205,
+            "end": 217,
+            "referenceOnly": 104,
+            "proceduralOnly": 109,
+            "overlap": 223
+          },
+          {
+            "start": 218,
+            "end": 231,
+            "referenceOnly": 14,
+            "proceduralOnly": 14,
+            "overlap": 0
+          },
+          {
+            "start": 232,
+            "end": 244,
+            "referenceOnly": 13,
+            "proceduralOnly": 13,
+            "overlap": 0
+          },
+          {
+            "start": 245,
+            "end": 257,
+            "referenceOnly": 13,
+            "proceduralOnly": 13,
+            "overlap": 0
+          },
+          {
+            "start": 258,
+            "end": 271,
+            "referenceOnly": 14,
+            "proceduralOnly": 14,
+            "overlap": 0
+          }
+        ],
+        "longitudinal": [
+          {
+            "start": 14,
+            "end": 42,
+            "referenceOnly": 56,
+            "proceduralOnly": 135,
+            "overlap": 869
+          },
+          {
+            "start": 43,
+            "end": 72,
+            "referenceOnly": 108,
+            "proceduralOnly": 29,
+            "overlap": 2235
+          },
+          {
+            "start": 73,
+            "end": 102,
+            "referenceOnly": 140,
+            "proceduralOnly": 137,
+            "overlap": 2564
+          },
+          {
+            "start": 103,
+            "end": 132,
+            "referenceOnly": 91,
+            "proceduralOnly": 100,
+            "overlap": 2518
+          },
+          {
+            "start": 133,
+            "end": 162,
+            "referenceOnly": 100,
+            "proceduralOnly": 74,
+            "overlap": 2576
+          },
+          {
+            "start": 163,
+            "end": 192,
+            "referenceOnly": 113,
+            "proceduralOnly": 91,
+            "overlap": 2520
+          },
+          {
+            "start": 193,
+            "end": 221,
+            "referenceOnly": 97,
+            "proceduralOnly": 82,
+            "overlap": 2288
+          },
+          {
+            "start": 222,
+            "end": 251,
+            "referenceOnly": 96,
+            "proceduralOnly": 74,
+            "overlap": 1594
+          },
+          {
+            "start": 252,
+            "end": 281,
+            "referenceOnly": 105,
+            "proceduralOnly": 159,
+            "overlap": 669
+          },
+          {
+            "start": 282,
+            "end": 311,
+            "referenceOnly": 30,
+            "proceduralOnly": 30,
+            "overlap": 210
+          },
+          {
+            "start": 312,
+            "end": 341,
+            "referenceOnly": 31,
+            "proceduralOnly": 29,
+            "overlap": 209
+          },
+          {
+            "start": 342,
+            "end": 371,
+            "referenceOnly": 55,
+            "proceduralOnly": 17,
+            "overlap": 169
+          }
+        ]
+      },
+      "right": {
+        "vertical": [
+          {
+            "start": 112,
+            "end": 124,
+            "referenceOnly": 160,
+            "proceduralOnly": 181,
+            "overlap": 1936
+          },
+          {
+            "start": 125,
+            "end": 137,
+            "referenceOnly": 53,
+            "proceduralOnly": 143,
+            "overlap": 2693
+          },
+          {
+            "start": 138,
+            "end": 151,
+            "referenceOnly": 58,
+            "proceduralOnly": 56,
+            "overlap": 3348
+          },
+          {
+            "start": 152,
+            "end": 164,
+            "referenceOnly": 28,
+            "proceduralOnly": 114,
+            "overlap": 3170
+          },
+          {
+            "start": 165,
+            "end": 177,
+            "referenceOnly": 200,
+            "proceduralOnly": 81,
+            "overlap": 2649
+          },
+          {
+            "start": 178,
+            "end": 191,
+            "referenceOnly": 81,
+            "proceduralOnly": 117,
+            "overlap": 3454
+          },
+          {
+            "start": 192,
+            "end": 204,
+            "referenceOnly": 300,
+            "proceduralOnly": 123,
+            "overlap": 999
+          },
+          {
+            "start": 205,
+            "end": 217,
+            "referenceOnly": 104,
+            "proceduralOnly": 135,
+            "overlap": 251
+          },
+          {
+            "start": 218,
+            "end": 231,
+            "referenceOnly": 14,
+            "proceduralOnly": 14,
+            "overlap": 0
+          },
+          {
+            "start": 232,
+            "end": 244,
+            "referenceOnly": 13,
+            "proceduralOnly": 13,
+            "overlap": 0
+          },
+          {
+            "start": 245,
+            "end": 257,
+            "referenceOnly": 13,
+            "proceduralOnly": 13,
+            "overlap": 0
+          },
+          {
+            "start": 258,
+            "end": 271,
+            "referenceOnly": 13,
+            "proceduralOnly": 14,
+            "overlap": 0
+          }
+        ],
+        "longitudinal": [
+          {
+            "start": 12,
+            "end": 40,
+            "referenceOnly": 54,
+            "proceduralOnly": 17,
+            "overlap": 163
+          },
+          {
+            "start": 41,
+            "end": 70,
+            "referenceOnly": 32,
+            "proceduralOnly": 28,
+            "overlap": 208
+          },
+          {
+            "start": 71,
+            "end": 100,
+            "referenceOnly": 30,
+            "proceduralOnly": 30,
+            "overlap": 210
+          },
+          {
+            "start": 101,
+            "end": 130,
+            "referenceOnly": 103,
+            "proceduralOnly": 159,
+            "overlap": 627
+          },
+          {
+            "start": 131,
+            "end": 160,
+            "referenceOnly": 94,
+            "proceduralOnly": 75,
+            "overlap": 1580
+          },
+          {
+            "start": 161,
+            "end": 190,
+            "referenceOnly": 76,
+            "proceduralOnly": 93,
+            "overlap": 2347
+          },
+          {
+            "start": 191,
+            "end": 219,
+            "referenceOnly": 86,
+            "proceduralOnly": 99,
+            "overlap": 2443
+          },
+          {
+            "start": 220,
+            "end": 249,
+            "referenceOnly": 154,
+            "proceduralOnly": 73,
+            "overlap": 2566
+          },
+          {
+            "start": 250,
+            "end": 279,
+            "referenceOnly": 85,
+            "proceduralOnly": 110,
+            "overlap": 2526
+          },
+          {
+            "start": 280,
+            "end": 309,
+            "referenceOnly": 142,
+            "proceduralOnly": 139,
+            "overlap": 2557
+          },
+          {
+            "start": 310,
+            "end": 339,
+            "referenceOnly": 112,
+            "proceduralOnly": 38,
+            "overlap": 2348
+          },
+          {
+            "start": 340,
+            "end": 369,
+            "referenceOnly": 69,
+            "proceduralOnly": 143,
+            "overlap": 925
+          }
+        ]
+      }
+    },
+    "wholeDifferenceGrid": {
+      "left": [
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 20,
+            "overlap": 7
+          },
+          {
+            "referenceOnly": 22,
+            "proceduralOnly": 12,
+            "overlap": 381
+          },
+          {
+            "referenceOnly": 32,
+            "proceduralOnly": 41,
+            "overlap": 507
+          },
+          {
+            "referenceOnly": 42,
+            "proceduralOnly": 43,
+            "overlap": 497
+          },
+          {
+            "referenceOnly": 32,
+            "proceduralOnly": 45,
+            "overlap": 504
+          },
+          {
+            "referenceOnly": 38,
+            "proceduralOnly": 37,
+            "overlap": 503
+          },
+          {
+            "referenceOnly": 34,
+            "proceduralOnly": 33,
+            "overlap": 492
+          },
+          {
+            "referenceOnly": 11,
+            "proceduralOnly": 32,
+            "overlap": 363
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 14,
+            "overlap": 23
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 79,
+            "overlap": 293
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 580
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 598
+          },
+          {
+            "referenceOnly": 58,
+            "proceduralOnly": 30,
+            "overlap": 217
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 22,
+            "proceduralOnly": 13,
+            "overlap": 509
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 21,
+            "proceduralOnly": 13,
+            "overlap": 521
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 39,
+            "overlap": 378
+          },
+          {
+            "referenceOnly": 25,
+            "proceduralOnly": 80,
+            "overlap": 155
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 26,
+            "proceduralOnly": 23,
+            "overlap": 60
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 0,
+            "overlap": 592
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 7,
+            "overlap": 561
+          },
+          {
+            "referenceOnly": 76,
+            "proceduralOnly": 3,
+            "overlap": 255
+          },
+          {
+            "referenceOnly": 22,
+            "proceduralOnly": 35,
+            "overlap": 274
+          },
+          {
+            "referenceOnly": 30,
+            "proceduralOnly": 30,
+            "overlap": 210
+          },
+          {
+            "referenceOnly": 31,
+            "proceduralOnly": 29,
+            "overlap": 209
+          },
+          {
+            "referenceOnly": 55,
+            "proceduralOnly": 17,
+            "overlap": 169
+          }
+        ],
+        [
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 18,
+            "proceduralOnly": 17,
+            "overlap": 62
+          },
+          {
+            "referenceOnly": 108,
+            "proceduralOnly": 30,
+            "overlap": 254
+          },
+          {
+            "referenceOnly": 49,
+            "proceduralOnly": 57,
+            "overlap": 221
+          },
+          {
+            "referenceOnly": 66,
+            "proceduralOnly": 16,
+            "overlap": 272
+          },
+          {
+            "referenceOnly": 75,
+            "proceduralOnly": 47,
+            "overlap": 216
+          },
+          {
+            "referenceOnly": 37,
+            "proceduralOnly": 29,
+            "overlap": 134
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 26,
+            "overlap": 3
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 13,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 7,
+            "overlap": 1
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 20,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 20,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ],
+      "right": [
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 12,
+            "overlap": 18
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 33,
+            "overlap": 354
+          },
+          {
+            "referenceOnly": 32,
+            "proceduralOnly": 33,
+            "overlap": 513
+          },
+          {
+            "referenceOnly": 35,
+            "proceduralOnly": 36,
+            "overlap": 488
+          },
+          {
+            "referenceOnly": 32,
+            "proceduralOnly": 43,
+            "overlap": 505
+          },
+          {
+            "referenceOnly": 42,
+            "proceduralOnly": 42,
+            "overlap": 498
+          },
+          {
+            "referenceOnly": 34,
+            "proceduralOnly": 39,
+            "overlap": 508
+          },
+          {
+            "referenceOnly": 23,
+            "proceduralOnly": 9,
+            "overlap": 396
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 22,
+            "overlap": 9
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 58,
+            "proceduralOnly": 29,
+            "overlap": 198
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 0,
+            "overlap": 599
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 580
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 82,
+            "overlap": 311
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 26,
+            "proceduralOnly": 81,
+            "overlap": 140
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 41,
+            "overlap": 375
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 19,
+            "overlap": 524
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 580
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 22,
+            "proceduralOnly": 13,
+            "overlap": 529
+          }
+        ],
+        [
+          {
+            "referenceOnly": 54,
+            "proceduralOnly": 17,
+            "overlap": 163
+          },
+          {
+            "referenceOnly": 32,
+            "proceduralOnly": 28,
+            "overlap": 208
+          },
+          {
+            "referenceOnly": 30,
+            "proceduralOnly": 30,
+            "overlap": 210
+          },
+          {
+            "referenceOnly": 19,
+            "proceduralOnly": 37,
+            "overlap": 271
+          },
+          {
+            "referenceOnly": 79,
+            "proceduralOnly": 1,
+            "overlap": 252
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 10,
+            "overlap": 574
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 580
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 600
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 599
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 8,
+            "overlap": 592
+          },
+          {
+            "referenceOnly": 30,
+            "proceduralOnly": 26,
+            "overlap": 76
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 33,
+            "proceduralOnly": 22,
+            "overlap": 131
+          },
+          {
+            "referenceOnly": 51,
+            "proceduralOnly": 26,
+            "overlap": 183
+          },
+          {
+            "referenceOnly": 109,
+            "proceduralOnly": 5,
+            "overlap": 228
+          },
+          {
+            "referenceOnly": 43,
+            "proceduralOnly": 68,
+            "overlap": 228
+          },
+          {
+            "referenceOnly": 107,
+            "proceduralOnly": 35,
+            "overlap": 247
+          },
+          {
+            "referenceOnly": 28,
+            "proceduralOnly": 21,
+            "overlap": 160
+          },
+          {
+            "referenceOnly": 11,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 9,
+            "overlap": 5
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 37,
+            "overlap": 32
+          },
+          {
+            "referenceOnly": 13,
+            "proceduralOnly": 25,
+            "overlap": 33
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 24,
+            "overlap": 3
+          },
+          {
+            "referenceOnly": 22,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 20,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 20,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 19,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ],
+      "front": [
+        [
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 12,
+            "overlap": 381
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 16,
+            "overlap": 772
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 41,
+            "overlap": 520
+          },
+          {
+            "referenceOnly": 24,
+            "proceduralOnly": 37,
+            "overlap": 223
+          },
+          {
+            "referenceOnly": 60,
+            "proceduralOnly": 0,
+            "overlap": 200
+          },
+          {
+            "referenceOnly": 60,
+            "proceduralOnly": 0,
+            "overlap": 200
+          },
+          {
+            "referenceOnly": 57,
+            "proceduralOnly": 0,
+            "overlap": 190
+          },
+          {
+            "referenceOnly": 60,
+            "proceduralOnly": 0,
+            "overlap": 200
+          },
+          {
+            "referenceOnly": 27,
+            "proceduralOnly": 38,
+            "overlap": 233
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 40,
+            "overlap": 481
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 17,
+            "overlap": 771
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 12,
+            "overlap": 421
+          }
+        ],
+        [
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 6,
+            "overlap": 742
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 6,
+            "overlap": 784
+          }
+        ],
+        [
+          {
+            "referenceOnly": 10,
+            "proceduralOnly": 2,
+            "overlap": 648
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 800
+          },
+          {
+            "referenceOnly": 16,
+            "proceduralOnly": 0,
+            "overlap": 690
+          }
+        ],
+        [
+          {
+            "referenceOnly": 69,
+            "proceduralOnly": 4,
+            "overlap": 257
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 1,
+            "overlap": 818
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 820
+          },
+          {
+            "referenceOnly": 119,
+            "proceduralOnly": 0,
+            "overlap": 255
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 8,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 17,
+            "proceduralOnly": 41,
+            "overlap": 346
+          },
+          {
+            "referenceOnly": 72,
+            "proceduralOnly": 38,
+            "overlap": 414
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 77,
+            "overlap": 643
+          },
+          {
+            "referenceOnly": 125,
+            "proceduralOnly": 12,
+            "overlap": 421
+          },
+          {
+            "referenceOnly": 25,
+            "proceduralOnly": 31,
+            "overlap": 509
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 39,
+            "overlap": 500
+          },
+          {
+            "referenceOnly": 17,
+            "proceduralOnly": 26,
+            "overlap": 273
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 58,
+            "overlap": 518
+          },
+          {
+            "referenceOnly": 128,
+            "proceduralOnly": 26,
+            "overlap": 211
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 43,
+            "overlap": 199
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 30,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 2,
+            "overlap": 88
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 23,
+            "overlap": 54
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 25,
+            "overlap": 59
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 82
+          },
+          {
+            "referenceOnly": 18,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 80
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 80
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 80
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 80
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ],
+      "rear": [
+        [
+          {
+            "referenceOnly": 21,
+            "proceduralOnly": 11,
+            "overlap": 348
+          },
+          {
+            "referenceOnly": 48,
+            "proceduralOnly": 0,
+            "overlap": 688
+          },
+          {
+            "referenceOnly": 29,
+            "proceduralOnly": 0,
+            "overlap": 469
+          },
+          {
+            "referenceOnly": 12,
+            "proceduralOnly": 0,
+            "overlap": 235
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 240
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 240
+          },
+          {
+            "referenceOnly": 19,
+            "proceduralOnly": 0,
+            "overlap": 228
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 0,
+            "overlap": 240
+          },
+          {
+            "referenceOnly": 13,
+            "proceduralOnly": 0,
+            "overlap": 247
+          },
+          {
+            "referenceOnly": 28,
+            "proceduralOnly": 0,
+            "overlap": 435
+          },
+          {
+            "referenceOnly": 48,
+            "proceduralOnly": 0,
+            "overlap": 688
+          },
+          {
+            "referenceOnly": 23,
+            "proceduralOnly": 11,
+            "overlap": 382
+          }
+        ],
+        [
+          {
+            "referenceOnly": 19,
+            "proceduralOnly": 3,
+            "overlap": 605
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 3,
+            "overlap": 642
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 8,
+            "overlap": 714
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 8,
+            "overlap": 752
+          }
+        ],
+        [
+          {
+            "referenceOnly": 154,
+            "proceduralOnly": 30,
+            "overlap": 194
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 722
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 760
+          },
+          {
+            "referenceOnly": 136,
+            "proceduralOnly": 37,
+            "overlap": 240
+          }
+        ],
+        [
+          {
+            "referenceOnly": 18,
+            "proceduralOnly": 1,
+            "overlap": 3
+          },
+          {
+            "referenceOnly": 22,
+            "proceduralOnly": 50,
+            "overlap": 155
+          },
+          {
+            "referenceOnly": 229,
+            "proceduralOnly": 0,
+            "overlap": 234
+          },
+          {
+            "referenceOnly": 50,
+            "proceduralOnly": 50,
+            "overlap": 500
+          },
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 65,
+            "overlap": 508
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 16,
+            "overlap": 704
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 22,
+            "overlap": 660
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 25,
+            "overlap": 579
+          },
+          {
+            "referenceOnly": 60,
+            "proceduralOnly": 8,
+            "overlap": 612
+          },
+          {
+            "referenceOnly": 151,
+            "proceduralOnly": 6,
+            "overlap": 214
+          },
+          {
+            "referenceOnly": 24,
+            "proceduralOnly": 51,
+            "overlap": 164
+          },
+          {
+            "referenceOnly": 18,
+            "proceduralOnly": 4,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 76
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 32,
+            "overlap": 31
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 29,
+            "overlap": 29
+          },
+          {
+            "referenceOnly": 137,
+            "proceduralOnly": 0,
+            "overlap": 23
+          },
+          {
+            "referenceOnly": 17,
+            "proceduralOnly": 126,
+            "overlap": 227
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 13,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 76
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 76
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 6,
+            "overlap": 70
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 5,
+            "overlap": 70
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ]
+    },
+    "componentAngles": null,
+    "diagnostics": {
+      "hull": null,
+      "turret": null,
+      "gun": null,
+      "gunBounds": null,
+      "tracks": {
+        "score": 94.07064629853956,
+        "iou": 0.923043974871502,
+        "areaSimilarity": 0.9704483944115281,
+        "bboxSimilarity": 0.9920634920634921,
+        "centroidSimilarity": 0.9960414441453163,
+        "referenceArea": 13267,
+        "proceduralArea": 13671,
+        "referenceBounds": {
+          "width": 258,
+          "height": 62,
+          "cx": 241.99525137559357,
+          "cy": 144.23079822115022
+        },
+        "proceduralBounds": {
+          "width": 258,
+          "height": 63,
+          "cx": 242.16728842074465,
+          "cy": 144.72701338599956
+        }
+      },
+      "trackContours": [
+        {
+          "topDelta": 2.05,
+          "bottomDelta": 3.05,
+          "columns": 19
+        },
+        {
+          "topDelta": 2.05,
+          "bottomDelta": 1.14,
+          "columns": 22
+        },
+        {
+          "topDelta": -1.05,
+          "bottomDelta": 1.23,
+          "columns": 22
+        },
+        {
+          "topDelta": -1.52,
+          "bottomDelta": 1.24,
+          "columns": 21
+        },
+        {
+          "topDelta": -2.73,
+          "bottomDelta": 1,
+          "columns": 22
+        },
+        {
+          "topDelta": -0.68,
+          "bottomDelta": 1,
+          "columns": 22
+        },
+        {
+          "topDelta": -1.9,
+          "bottomDelta": 1,
+          "columns": 21
+        },
+        {
+          "topDelta": -0.32,
+          "bottomDelta": 1,
+          "columns": 22
+        },
+        {
+          "topDelta": -1.41,
+          "bottomDelta": 1,
+          "columns": 22
+        },
+        {
+          "topDelta": -0.19,
+          "bottomDelta": 1,
+          "columns": 21
+        },
+        {
+          "topDelta": -1.86,
+          "bottomDelta": 1,
+          "columns": 22
+        },
+        {
+          "topDelta": -5.3,
+          "bottomDelta": 1.05,
+          "columns": 20
+        }
+      ],
+      "turretContours": null,
+      "turretBands": null
+    },
+    "boxes": {
+      "normalization": {
+        "applied": true,
+        "anchor": "width",
+        "target": 3.72,
+        "referenceRaw": 3.72,
+        "proceduralRaw": 3.73
+      },
+      "reference": [
+        3.72,
+        4.74,
+        10.84
+      ],
+      "procedural": [
+        3.72,
+        4.75,
+        10.83
+      ],
+      "referenceMin": [
+        -1.86,
+        0,
+        -3.93
+      ],
+      "referenceMax": [
+        1.86,
+        4.74,
+        6.92
+      ],
+      "proceduralMin": [
+        -1.86,
+        -0.03,
+        -3.92
+      ],
+      "proceduralMax": [
+        1.86,
+        4.73,
+        6.91
+      ],
+      "referenceTurret": [
+        0,
+        0,
+        0
+      ],
+      "proceduralTurret": [
+        3.17,
+        3.15,
+        10.03
+      ],
+      "referenceTurretMin": [
+        null,
+        null,
+        null
+      ],
+      "referenceTurretMax": [
+        null,
+        null,
+        null
+      ],
+      "proceduralTurretMin": [
+        -1.59,
+        1.58,
+        -3.12
+      ],
+      "proceduralTurretMax": [
+        1.58,
+        4.73,
+        6.91
+      ]
+    }
+  }
+}

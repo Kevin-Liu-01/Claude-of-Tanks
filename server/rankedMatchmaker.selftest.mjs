@@ -36,10 +36,11 @@ const registry = {
 const queue = new RankedMatchmaker({
   registry,
   ratings,
-  now: () => 50_000,
+  now: () => now,
   ticketIdFactory: () => `queue_test_${++queueId}`,
   ticketTokenFactory: () => `queue-token-${String(++queueToken).padStart(32, '0')}`,
 });
+let now = 50_000;
 const alpha = queue.createIdentity({ name: 'Alpha' });
 const bravo = queue.createIdentity({ name: 'Bravo' });
 const first = queue.join({
@@ -104,5 +105,49 @@ assert.equal(twoByTwoMatch.roster.filter((player) => player.team === 'bravo').le
 assert.equal(new Set(twoByTwoMatch.roster.map((player) =>
   player.name.toLocaleLowerCase('en-US'))).size, 4,
   'ranked roster names are unique even when every saved profile collides');
+
+// The registry can abort a match whose roster never finishes loading. That
+// operation releases exact reservations and produces no rating/result record.
+registry.matches.delete(twoByTwoMatch.matchId);
+queue.reconcile();
+assert.equal(queue.ratedMatches.has(twoByTwoMatch.matchId), false);
+for (const [index, ticket] of twoByTwoTickets.entries()) {
+  assert.equal(queue.poll(ticket.ticketId, ticket.ticketToken).status, 'expired');
+  assert.equal(queue.poll(ticket.ticketId, ticket.ticketToken).match, undefined);
+  assert.equal(queue.activeByPlayer.has(twoByTwoIdentities[index].playerId), false);
+  assert.equal(queue.profile(twoByTwoIdentities[index].playerId).matches, 0);
+  assert.equal(queue.profile(twoByTwoIdentities[index].playerId).rating, 1000);
+}
+const replacementIdentity = twoByTwoIdentities[0];
+const replacement = queue.join({ playerId: replacementIdentity.playerId,
+  identityToken: replacementIdentity.token, specId: 'm1a2', teamSize: 2 });
+assert.equal(replacement.status, 'queued', 'aborted players may explicitly queue again');
+queue.reconcile();
+assert.equal(queue.activeByPlayer.get(replacementIdentity.playerId), replacement.ticketId);
+
+// Model reconciliation arriving after a reservation has already been replaced:
+// releasing the old exact ticket must not delete the new active mapping.
+const staleTicket = twoByTwoTickets[0];
+const staleEntry = queue.entries.get(staleTicket.ticketId);
+staleEntry.status = 'matched';
+staleEntry.match = { matchId: twoByTwoMatch.matchId };
+queue.ratedMatches.set(twoByTwoMatch.matchId, { entries: [staleEntry], players: [], settled: false });
+queue.reconcile();
+assert.equal(queue.activeByPlayer.get(replacementIdentity.playerId), replacement.ticketId);
+assert.equal(queue.poll(replacement.ticketId, replacement.ticketToken).status, 'queued');
+
+// Already-settled results survive normal registry cleanup and stay idempotent.
+registry.matches.delete(firstMatched.match.matchId);
+queue.reconcile();
+assert.equal(queue.poll(first.ticketId, first.ticketToken).status, 'finished');
+assert.equal(queue.profile(alpha.playerId).matches, 1);
+now += 120_001;
+queue.reconcile();
+for (const ticket of [first, second, ...twoByTwoTickets]) {
+  assert.equal(queue.poll(ticket.ticketId, ticket.ticketToken), null,
+    'terminal ticket tombstones are reclaimed after their bounded replay window');
+}
+assert.equal(queue.ratedMatches.size, 0, 'neither abandoned nor settled match tracking leaks');
+assert.equal(queue.entries.size, 1, 'only the explicit replacement queue remains');
 
 console.log('rankedMatchmaker.selftest: auth, queue, balance, tickets, and settlement passed');

@@ -57,6 +57,8 @@ interface ShellHitEvent {
 
 interface ShellFiredEvent {
   isPlayer?: boolean;
+  shooterId?: string;
+  feedbackPredicted?: boolean;
   shellName?: string;
   shellType?: string;
   caliberMm?: number;
@@ -140,8 +142,7 @@ export function createCombatFeedbackRuntime({
     }
   });
 
-  listen('shell:fired', (payload) => {
-    const event = payload as ShellFiredEvent;
+  const playShotRecoil = (event: ShellFiredEvent): void => {
     const player = game.player;
     if (!event.isPlayer || !hasNetworkMatch() || !player) return;
     const shells = player.spec.gun.shells || [];
@@ -160,6 +161,15 @@ export function createCombatFeedbackRuntime({
     const caliberK = Math.max(0, Math.min(1, (caliberMm - 30) / 122));
     rig.addTrauma((0.10 + caliberK * 0.20) * recoilScale);
     rig.recoilKick?.((0.006 + caliberK * 0.011) * recoilScale, recoilScale);
+  };
+
+  listen('shell:fired', (payload) => {
+    const event = payload as ShellFiredEvent;
+    if (!event.feedbackPredicted) playShotRecoil(event);
+  });
+  listen('weapon:predicted', (payload) => {
+    const event = payload as ShellFiredEvent;
+    if (event.shooterId === game.player?.id) playShotRecoil(event);
   });
 
   listen('prop:crushed', (payload) => {

@@ -78,7 +78,7 @@ function bufferAttribute(source: NonNullable<AttributeWire>): THREE.BufferAttrib
 
 function instancedBufferAttribute(source: NonNullable<AttributeWire>): THREE.InstancedBufferAttribute {
   // The runtime type owns Three's vertexAttribDivisor; a type assertion on an
-  // ordinary BufferAttribute would consume one matrix/color per vertex.
+  // ordinary BufferAttribute consumes one matrix/color per vertex and overruns buffers.
   return new THREE.InstancedBufferAttribute(source.array, source.itemSize, source.normalized);
 }
 

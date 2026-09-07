@@ -1,6 +1,7 @@
 import type { RosterPresentation } from '../game/rosterPresentation.ts';
 import type { BattleLoadScreen } from '../ui/battleLoad.ts';
 import type { PrivateBattleLaunchRequest } from './networkBattleLaunchRuntime.ts';
+import { resetNetworkRoundState, type NetworkRoundState } from './networkRoundState.ts';
 
 interface MapPresentation {
   name: string;
@@ -9,6 +10,7 @@ interface MapPresentation {
 }
 
 interface NetworkBattleIntentCoverOptions {
+  game: NetworkRoundState;
   battleLoad: BattleLoadScreen;
   rosterRows: RosterPresentation['lobbyRows'];
   getMapPresentation(mapId: string | null, fallback: string): MapPresentation;
@@ -28,6 +30,7 @@ export interface NetworkBattleIntentCover {
  * owner keeps first-time hosts from exposing Garage or an incomplete world.
  */
 export function createNetworkBattleIntentCover({
+  game,
   battleLoad,
   rosterRows,
   getMapPresentation,
@@ -36,7 +39,7 @@ export function createNetworkBattleIntentCover({
 }: NetworkBattleIntentCoverOptions): NetworkBattleIntentCover {
   const required = [battleLoad?.show, battleLoad?.progress, battleLoad?.hide,
     rosterRows, getMapPresentation, coverRendering, uncoverRendering];
-  if (required.some((entry) => typeof entry !== 'function')) {
+  if (!game || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('network battle intent cover requires loader, roster, and lifecycle ports');
   }
 
@@ -54,6 +57,7 @@ export function createNetworkBattleIntentCover({
       const lobby = state || { players: [] };
 
       coverRendering();
+      resetNetworkRoundState(game);
       battleLoad.show({
         mapName: map.name,
         thumb: map.thumb,

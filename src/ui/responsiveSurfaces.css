@@ -222,6 +222,10 @@ body[data-cot-width='phone'] .cot-play .mode{min-height:104px;padding:13px 11px}
 body[data-cot-width='phone'] .cot-play .mode p{font-size:8px}
 body[data-cot-width='compact'] .cot-play .room-actions,
 body[data-cot-width='phone'] .cot-play .room-actions{grid-template-columns:1fr}
+body[data-cot-width='compact'] .cot-play .room-failure,
+body[data-cot-width='phone'] .cot-play .room-failure{padding:14px}
+body[data-cot-width='compact'] .cot-play .room-failure-actions,
+body[data-cot-width='phone'] .cot-play .room-failure-actions{display:grid;grid-template-columns:1fr}
 body[data-cot-width='compact'] .cot-play .player,
 body[data-cot-width='phone'] .cot-play .player{
   grid-template-columns:36px minmax(0,1fr) auto;grid-template-rows:auto auto;min-height:76px;gap:4px 8px;

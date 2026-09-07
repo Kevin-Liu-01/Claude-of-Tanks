@@ -109,4 +109,35 @@ assert.equal(incompleteRuntime.latestSnapshot, null,
   'partial snapshots are never exposed through the typed presentation view');
 incompleteRuntime.close('test_complete');
 
+let backgroundWakes = 0, removedWakes = 0, activeBattle = true;
+const backgroundListeners = [];
+const backgroundSession = createNetworkBrowserSessionRuntime({
+  getPlayer: () => null, isBattleActive: () => activeBattle,
+  shouldPresentDisconnect: () => false, nextFrame: async () => {},
+  onBackgroundActivity: () => { backgroundWakes++; },
+});
+function backgroundHost(id) {
+  return { ...match(id), role: 'host', onRemoteInput(listener) {
+    backgroundListeners.push(listener); return () => { removedWakes++; };
+  } };
+}
+const firstHost = backgroundHost('first');
+backgroundSession.publishMatch(firstHost);
+backgroundSession.publishMatch(firstHost);
+assert.equal(backgroundListeners.length, 1, 'republication cannot duplicate input observers');
+backgroundListeners[0]();
+assert.equal(backgroundWakes, 1);
+activeBattle = false; backgroundListeners[0]();
+assert.equal(backgroundWakes, 1, 'retained waiting room does not wake battle authority');
+activeBattle = true;
+backgroundSession.close();
+assert.equal(removedWakes, 1);
+backgroundSession.publishMatch(backgroundHost('successor'));
+backgroundListeners[0]();
+assert.equal(backgroundWakes, 1, 'late predecessor callbacks cannot service the successor');
+backgroundListeners[1]();
+assert.equal(backgroundWakes, 2);
+backgroundSession.close();
+assert.equal(removedWakes, 2);
+
 console.log('networkBrowserSessionRuntime.selftest: single ownership and teardown order passed');

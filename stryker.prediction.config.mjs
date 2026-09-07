@@ -3,7 +3,7 @@ const config = {
   mutate: ['src/net/localTankPrediction.ts'],
   testRunner: 'command',
   commandRunner: {
-    command: 'node src/net/localTankPrediction.selftest.mjs',
+    command: 'node -e "import(\'./src/net/localTankPrediction.selftest.mjs\').then(() => import(\'./src/net/movementPredictionState.selftest.mjs\'))"',
   },
   coverageAnalysis: 'off',
   concurrency: 4,

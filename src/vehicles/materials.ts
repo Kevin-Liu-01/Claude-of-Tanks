@@ -25,6 +25,7 @@ import {
 } from './camoPolicy.ts';
 import type { CamoPatternId, CustomCamo, CustomCamoStroke } from './camoPolicy.ts';
 import { paintCustomCamoStrokes } from './customCamoCanvas.ts';
+import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
 
 export {
   CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID,
@@ -5181,6 +5182,8 @@ const VEHICLE_VIEW_WRAP = 0.40; // fraction kept at grazing angles (wrap term)
  * @param {object} shader onBeforeCompile shader arg
  */
 export function vehicleAmbientFloorHook(shader: MaterialShader): void {
+  bindVehicleReadabilityUniform(shader.uniforms);
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\n${shader.fragmentShader}`;
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
@@ -5207,6 +5210,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		// untouched.
 		float vehIrrad = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) ) / vehLuma;
 		vehFill *= mix( 1.0, 0.12, smoothstep( 0.10, 0.55, vehIrrad ) );
+		vehFill *= uVehicleReadabilityScale;
 		reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );
 		// >>> gameplay_feel r4: shadow-band luminance floor. The albedo-scaled
 		// fill above still crushes to near-black when a dark-olive skin
@@ -5265,6 +5269,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		// luma so gear never lifts to chalk while dark-olive PAINT (the
 		// calibrated gameplay_feel case, ~0.05-0.09) keeps most of its lift.
 		vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );
+		vehFloorL *= uVehicleReadabilityScale;
 		// <<< gameplay_feel r5
 		if ( vehOutL < vehFloorL ) {
 			vec3 vehTint = material.diffuseColor / vehLuma;

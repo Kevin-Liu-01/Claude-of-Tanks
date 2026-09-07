@@ -1,5 +1,10 @@
 import { createSignalingServer } from '../server/signalingServer.ts';
 import { DistributedSignalingRoomStore } from '../server/distributedRoomStore.ts';
+import { createRetiredSignalingServer } from '../server/signalingCutover.ts';
+
+// Cached clients must refresh after cutover; they must not keep spending Redis
+// commands by reconnecting to the retired endpoint. Keep the old resource intact.
+const retired = process.env.COT_SIGNAL_BACKEND === 'cloudflare';
 
 const OFFICIAL_ORIGINS = [
   'https://cot.kevinliu.studio',
@@ -20,20 +25,20 @@ const restUrl = process.env.COT_SIGNAL_REDIS_KV_REST_API_URL ||
 const restToken = process.env.COT_SIGNAL_REDIS_KV_REST_API_TOKEN ||
   process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
 const redisConfigured = Boolean(redisUrl || restUrl || restToken);
-if (process.env.VERCEL && !redisConfigured) {
+if (!retired && process.env.VERCEL && !redisConfigured) {
   throw new Error('Production signaling requires the distributed Redis room store');
 }
-if (redisConfigured && (!redisUrl || !restUrl || !restToken)) {
+if (!retired && redisConfigured && (!redisUrl || !restUrl || !restToken)) {
   throw new Error('Production signaling requires Redis TCP and REST credentials');
 }
-const store = redisUrl
+const store = !retired && redisUrl
   ? new DistributedSignalingRoomStore({ redisUrl, restUrl, restToken })
   : undefined;
 
 // WebSocket connections remain pinned to one Fluid-compute instance. Redis
 // owns room membership and durable signaling mailboxes; pub/sub is an
 // optional low-latency wake-up while client polling is the recovery path.
-const signaling = createSignalingServer({
+const signaling = retired ? { server: createRetiredSignalingServer() } : createSignalingServer({
   allowedOrigins: [...new Set([...OFFICIAL_ORIGINS, ...configuredOrigins])],
   webSocketPaths: ['/api/signal'],
   healthPaths: ['/api/signal'],

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "t90sm_x",
+  "measuredAt": "2026-09-06T04:19:03Z",
+  "purpose": "Independent local-only measurement of the connected right smoke-bank casting; only scalar component bounds, planes and held-out contact/ray witnesses retained",
+  "canonicalSource": {
+    "path": "public/models/community-candidates/t90sm_x_source.glb",
+    "sha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+    "frame": "+Y up, +Z forward, metres; unchanged source-world registration and yaw datum [0.008,1.532,0.359]",
+    "node": "misc_a",
+    "connectedIsland": 9018,
+    "sourceVertexCensus": 258,
+    "provenance": "Owner-supplied local comparison input under t90sm_x.md restrictions; no redistribution or source-runtime import permission inferred"
+  },
+  "sourceBoundsM": {
+    "min": [1.054676517, 1.980996817, -0.419412643],
+    "max": [1.410153254, 2.260875702, -0.101829231]
+  },
+  "construction": "One source casting interpreted as three stepped stock-support walls with separate thin connecting shelves and the actual short middle-to-lower back-return; 19 independently constructed closed faceted cells, 240 triangles, not six tiny pedestal boxes",
+  "shelves": [
+    { "name": "upper", "normal": [-0.046320825, 0.996945625, -0.062879267], "planeD": 2.130803131, "normalThicknessApproxM": 0.0094 },
+    { "name": "lower", "normal": [-0.000366883, 0.999992336, 0.003897904], "planeD": 2.073957276, "normalThicknessApproxM": 0.0093 }
+  ],
+  "upperOutboardBevel": {
+    "normal": [0.707469631, 0.384664291, -0.592891309],
+    "planeD": 1.933010035,
+    "reason": "Actual narrowing at the upper/outboard corner; a rectangular extrusion projects into source air at X1.18/Y2.25"
+  },
+  "stockContacts": [
+    { "rearCenter": [1.122002, 2.206300, -0.380737], "nearestSourceSurfaceDistanceM": 0.003306908 },
+    { "rearCenter": [1.157010, 2.131652, -0.229965], "nearestSourceSurfaceDistanceM": 0.002892450 },
+    { "rearCenter": [1.258857, 2.132529, -0.262177], "nearestSourceSurfaceDistanceM": 0.006467380 },
+    { "rearCenter": [1.359721, 2.133898, -0.301531], "nearestSourceSurfaceDistanceM": 0.004334109 },
+    { "rearCenter": [1.238656, 2.027415, -0.172246], "nearestSourceSurfaceDistanceM": 0.013257283 },
+    { "rearCenter": [1.331444, 2.024894, -0.215698], "nearestSourceSurfaceDistanceM": 0.008501525 }
+  ],
+  "heldOutFrontRays": [
+    { "xyz": [1.12, 2.21, -0.377327106], "normal": [0.373737651, 0.281486001, 0.883790586] },
+    { "xyz": [1.16, 2.21, -0.395112137], "normal": [0.388041658, 0.305828207, 0.869420945] },
+    { "xyz": [1.14, 2.255, -0.400204829], "normal": [0.378386254, 0.231728596, 0.896172807] },
+    { "xyz": [1.16, 2.13, -0.226918961], "normal": [0.214309059, 0.331271944, 0.918874597] },
+    { "xyz": [1.26, 2.13, -0.254412922], "normal": [0.284635494, 0.331181605, 0.899611794] },
+    { "xyz": [1.36, 2.13, -0.295013578], "normal": [0.431520712, 0.325624974, 0.841283693] },
+    { "xyz": [1.24, 2.03, -0.158418033], "normal": [0.247133864, 0.471397956, 0.846586570] },
+    { "xyz": [1.34, 2.03, -0.197219998], "normal": [0.393471443, 0.467396716, 0.791656828] },
+    { "xyz": [1.24, 2.076, -0.256224800], "normal": [0.280143451, 0.343728056, 0.896309472] }
+  ],
+  "heldOutTopRaysXZY": [[1.24, -0.35, 2.172869970], [1.36, -0.35, 2.178445499], [1.24, -0.21, 2.075246675]],
+  "airWitnesses": [
+    "Point X1.24/Y2.14/Z-0.35 is outside the casting beneath its upper folded shelf",
+    "Carrier-only front ray X1.26/Y2.22 has no hit; only the inboard single stock station rises this high",
+    "Carrier-only front ray X1.18/Y2.25 has no hit beyond the actual upper outboard bevel"
+  ],
+  "inferencesAndLimits": [
+    "Minor casting-edge irregularity and small bevel transitions are simplified; exact primary stock faces, measured upper bevel and shelf surfaces are retained",
+    "The low perimeter is simplified within approximately four millimetres of the source casting; it is not a claim of copied source tessellation",
+    "All authored pieces use turretDetail equipment ownership and original planar UVs, so no armor envelope expands",
+    "No tube geometry, bore depth/radius, left launcher mount, target dimensions, camera, registration or gate threshold is changed"
+  ],
+  "test": "src/vehicles/profiles/t90SMXRightLauncherBracket.selftest.mjs",
+  "status": "Factory high/low source face/shelf, connecting return and ownership tests pass; all six actual stock rear centers engage closed casting volume; full 12-tube, 192 held-out rim/cone checks, complexity gate and full typecheck pass. Fresh shaded and strict whole-model proof remains required"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "merkava3d_x",
+  "measured": "2026-09-05",
+  "purpose": "Owner-authorized LOCAL comparison only; no source geometry payload",
+  "sourceSha256": "2e19b525ccd108cb9b3cdc73cc152188992532cb0ac95b43fbd3b06062dcdbd3",
+  "provenance": "Confirmed War Thunder extraction; explicit owner exception dated 2026-09-05 for local-only supplied-batch measurement",
+  "normalization": { "translationM": [0, 0.02034, 0.2258175], "uniformScale": 1, "axes": "+Y up, +Z forward" },
+  "dimensionsM": { "width": 3.976352, "hullLength": 7.9645, "overallLength": 8.83824, "approxStructuralRoof": 2.59, "sourceP95BodyHeight": 3.016, "highestFitting": 5.15869 },
+  "turretPivotM": [0, 1.68034, -0.72418],
+  "gunAxisM": [0, 2.0898, 1.4258],
+  "muzzleZM": 4.855985,
+  "muzzleRadiusM": 0.08485,
+  "roadWheels": { "stationsZM": [-2.3236825, -1.4406825, -0.3106825, 0.5473175, 1.4058175, 2.2588175], "radiusM": 0.371, "axleYM": 0.446 },
+  "sprocket": { "zM": 3.2658175, "yM": 0.874, "radiusM": 0.350 },
+  "idler": { "zM": -3.1391825, "yM": 0.844, "radiusM": 0.342 },
+  "sourceHullRoofRaysM": [[0, -2.1, 1.7145], [0, -0.5, 1.7073], [0, 3, 1.4569], [0, 3.73, 1.1646]],
+  "sourceTurretRoofRaysM": [[-0.9, 0.6, 2.121], [0.9, 0.6, 2.433]],
+  "notes": ["Roof rays are x,z,upperY", "Forward cheek asymmetry is source geometry, not a cosmetic material effect", "Native bottom-course center .0976 m corrects pad contact without moving wheels"]
+}

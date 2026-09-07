@@ -71,6 +71,7 @@ export interface NormalizedPlayerInput {
   steer: number;
   brake: boolean;
   fire: boolean;
+  fireIntentSeq?: number | null;
   aimLocked: boolean;
   aimYaw: number;
   aimPitch: number;
@@ -268,6 +269,9 @@ export function normalizePlayerInput(value: RuntimeValue): NormalizedPlayerInput
     steer,
     brake: !!value.brake,
     fire: !!value.fire,
+    ...(value.fireIntentSeq == null ? {} : {
+      fireIntentSeq: assertSequence(value.fireIntentSeq, 'fireIntentSeq'),
+    }),
     aimLocked: !!value.aimLocked,
     aimYaw,
     aimPitch,

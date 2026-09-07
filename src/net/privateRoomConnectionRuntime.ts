@@ -104,6 +104,8 @@ interface PrivateRoomConnectionOptions {
   isMapAllowed(mapId: string): boolean;
   onHostStart?(state: LobbyState, connection: PrivateRoomConnection): void;
   onClientClose?(reason: string): void;
+  onClose?(reason: string): void;
+  onStatus?(status: { state: 'connecting' | 'reconnecting' | 'connected' }): void;
   onError?(error: RuntimeValue): void;
 }
 
@@ -173,6 +175,8 @@ export function createPrivateRoomConnectionRuntime({
   isMapAllowed,
   onHostStart = () => {},
   onClientClose = () => {},
+  onClose,
+  onStatus = () => {},
   onError = (error) => console.error('[private-room]', error),
 }: PrivateRoomConnectionOptions, adapters: ConnectionAdapters = DEFAULT_ADAPTERS):
 PrivateRoomConnectionRuntime {
@@ -182,10 +186,13 @@ PrivateRoomConnectionRuntime {
   if (required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('private room connection requires every lifecycle port');
   }
+  if ((onClose !== undefined && typeof onClose !== 'function') ||
+      typeof onStatus !== 'function') throw new TypeError('room lifecycle callbacks must be functions');
 
   let generation = 0;
   let pending: ConnectionAttempt | null = null;
   let current: PrivateRoomConnection | null = null;
+  let releasedGeneration: number | null = null;
   let unsubscribeState: Unsubscribe | null = null;
 
   const clearObservation = () => {
@@ -213,6 +220,7 @@ PrivateRoomConnectionRuntime {
     { transportAlreadyClosed = false }: { transportAlreadyClosed?: boolean } = {},
   ) => {
     generation++;
+    releasedGeneration = null;
     clearObservation();
     if (transportAlreadyClosed) {
       if (pending) pending.disposed = true;
@@ -224,6 +232,9 @@ PrivateRoomConnectionRuntime {
   };
 
   const forget = () => {
+    // Reopening a retained lobby repeats this handoff after current is already
+    // null. Keep the exact terminal lease until close or a new acquisition.
+    if (current) releasedGeneration = current.generation;
     generation++;
     clearObservation();
     disposePending('room_connection_forgotten');
@@ -236,6 +247,26 @@ PrivateRoomConnectionRuntime {
   const clearCurrentGeneration = (value: number): void => {
     const connected = current;
     if (connected && connected.generation === value) current = null;
+  };
+
+  const sessionClosed = (attempt: ConnectionAttempt, reason: string, client: boolean) => {
+    const released = releasedGeneration === attempt.generation;
+    if (attempt.disposed || (!released && (!generationIsLive(attempt.generation) ||
+        (pending !== attempt && current?.generation !== attempt.generation)))) return;
+    // The session has already closed its resources. Retire ownership before
+    // callbacks can synchronously retry or an old ready promise can publish.
+    attempt.disposed = true;
+    releasedGeneration = null;
+    generation++;
+    clearObservation();
+    if (pending === attempt) pending = null;
+    clearCurrentGeneration(attempt.generation);
+    if (onClose) onClose(reason);
+    else if (client) onClientClose(reason);
+  };
+
+  const reportError = (attempt: ConnectionAttempt, error: RuntimeValue) => {
+    if (generationIsLive(attempt.generation) && !attempt.disposed) onError(error);
   };
 
   const acquireRoom = async (
@@ -307,7 +338,8 @@ PrivateRoomConnectionRuntime {
       isCamoAllowed,
       isMapAllowed,
       onStart: start,
-      onError,
+      onError: (error) => reportError(attempt, error),
+      onClose: (reason) => sessionClosed(attempt, reason, false),
     });
     attempt.session = hostSession;
     connection = {
@@ -322,6 +354,7 @@ PrivateRoomConnectionRuntime {
     };
     current = connection;
     pending = null;
+    onStatus({ state: 'connected' });
     if (deferredStart) onHostStart(deferredStart, connection);
     return connection;
   };
@@ -348,12 +381,6 @@ PrivateRoomConnectionRuntime {
     actualMode: string,
   ): Promise<PrivateRoomClientConnection | null> => {
     let clientSession: ClientSessionLike | null = null;
-    const sessionClosed = (reason: string) => {
-      if (!generationIsLive(attempt.generation)) return;
-      if (clientSession && (current?.session === clientSession || pending === attempt)) {
-        onClientClose(reason);
-      }
-    };
     clientSession = adapters.createClientSession({
       signaling: attempt.signaling,
       roomInfo: acquired.roomInfo,
@@ -361,8 +388,15 @@ PrivateRoomConnectionRuntime {
       relayOnly: acquired.ice.relayOnly,
       iceExpiresInSeconds: acquired.ice.expiresInSeconds,
       refreshIceConfiguration: () => loadIce(actualMode),
-      onError,
-      onClose: sessionClosed,
+      onError: (error) => reportError(attempt, error),
+      onClose: (reason) => sessionClosed(attempt, reason, true),
+      onConnectionState: (state) => {
+        if (!generationIsLive(attempt.generation) || attempt.disposed) return;
+        if (state === 'connected') onStatus({ state: 'connected' });
+        else if (state === 'failed' || state === 'disconnected') {
+          onStatus({ state: 'reconnecting' });
+        }
+      },
     });
     attempt.session = clientSession;
     const runtime = observeClientRoom(await clientSession.ready);
@@ -383,6 +417,11 @@ PrivateRoomConnectionRuntime {
     current = connection;
     pending = null;
     await replayClientSelection(clientSession, request.selection);
+    if (current !== connection || !generationIsLive(attempt.generation)) {
+      disposeAttempt(attempt, 'room_connection_superseded');
+      return null;
+    }
+    onStatus({ state: 'connected' });
     return connection;
   };
 
@@ -393,6 +432,7 @@ PrivateRoomConnectionRuntime {
     if (pending || current) throw new Error('a private room connection already owns this menu');
 
     const attemptGeneration = ++generation;
+    releasedGeneration = null;
     const signaling = adapters.createSignaling(request.signalUrl);
     const attempt: ConnectionAttempt = {
       generation: attemptGeneration,
@@ -401,6 +441,7 @@ PrivateRoomConnectionRuntime {
       disposed: false,
     };
     pending = attempt;
+    onStatus({ state: 'connecting' });
     try {
       // A cold invite must have its ICE/TURN generation ready before joining
       // announces the peer to the host. Previously both operations started at
@@ -417,7 +458,7 @@ PrivateRoomConnectionRuntime {
       if (ownsHostSeat) return connectHost(request, attempt, acquired, actualMode);
       return await connectClient(request, attempt, acquired, actualMode);
     } catch (error) {
-      const canceled = !generationIsLive(attemptGeneration) || pending !== attempt;
+      const canceled = !generationIsLive(attemptGeneration) || attempt.disposed;
       if (pending === attempt) pending = null;
       clearCurrentGeneration(attemptGeneration);
       disposeAttempt(

@@ -283,8 +283,15 @@ export function applyDiagRescue(
  * poisoned texture mid-session.
  */
 let _envCompLight: THREE.AmbientLight | null = null;
-export function enforceEnvValidity(renderer: THREE.WebGLRenderer, scene: THREE.Scene): boolean {
+export function enforceEnvValidity(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  radianceScale = 1,
+): boolean {
   if (!scene.environment) return true;
+  // Validate the bake at unit authored radiance. A deliberately dim night
+  // environment must not be mistaken for the poisoned/black mobile texture.
+  const scale = Number.isFinite(radianceScale) ? Math.max(.001, Math.min(1, radianceScale)) : 1;
   let lum = -1;
   let probe = null;
   const prevTarget = renderer.getRenderTarget();
@@ -292,6 +299,7 @@ export function enforceEnvValidity(renderer: THREE.WebGLRenderer, scene: THREE.S
   try {
     probe = new THREE.Scene();
     probe.environment = scene.environment;
+    probe.environmentIntensity = 1 / scale;
     const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
     cam.position.set(0, 0, 2.4);
     const ball = new THREE.Mesh(
@@ -323,11 +331,14 @@ export function enforceEnvValidity(renderer: THREE.WebGLRenderer, scene: THREE.S
     // tuned against the desktop verdant battle band (mobile r4 probe):
     // env-on 23.85 vs env-off+ambient sweep 1.0->17.3 / 2.0->20.3 /
     // 3.0->23.4 / 4.5->28.0 — 3.1 interpolates to the env-on level
-    _envCompLight = new THREE.AmbientLight(0xc3d2e4, ENV_COMP_INTENSITY);
+    _envCompLight = new THREE.AmbientLight(0xc3d2e4, ENV_COMP_INTENSITY * scale);
     scene.add(_envCompLight);
     if (bag && bag.errors.length < 8) bag.errors.push(`env bake invalid (probe ${lum}) — compensated ambient engaged`);
     appendRescue('environment-fallback (bake validation)');
   }
+  // Re-bakes reuse the existing rescue owner; night/day changes must not
+  // retain whichever compensation strength happened to be installed first.
+  _envCompLight.intensity = ENV_COMP_INTENSITY * scale;
   return false;
 }
 const ENV_COMP_INTENSITY = 3.1;

@@ -1,12 +1,5 @@
-import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { NetworkBrowserSessionRuntime } from './networkBrowserSessionRuntime.ts';
-
-interface NetworkRoundState {
-  result: RuntimeValue;
-  resultReason: RuntimeValue;
-  timeS: number;
-  preBattleS: number;
-}
+import { resetNetworkRoundState, type NetworkRoundState } from './networkRoundState.ts';
 
 interface NetworkEntryOwner {
   cancel(reason?: string): void;
@@ -61,10 +54,7 @@ export function createNetworkRoundLifecycle({
     disposePresentation: () => session.disposePresentation(),
     clearRound: () => session.clearRound(),
     resetBattleState() {
-      game.result = null;
-      game.resultReason = null;
-      game.timeS = 0;
-      game.preBattleS = Infinity;
+      resetNetworkRoundState(game);
     },
     close(reason = 'network_match_closed') {
       getEntryOwner()?.cancel(reason);

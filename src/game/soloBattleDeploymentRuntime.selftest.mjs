@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
 
-function createHarness({ failAllies = false } = {}) {
+function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false } = {}) {
   const calls = [];
+  let releaseAtmosphere;
+  const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
   let generation = 0;
   let pending = false;
   let destructionWarmed = false;
@@ -101,6 +103,12 @@ function createHarness({ failAllies = false } = {}) {
       renderingCovered: false,
     }),
     prepareRevealCamera: () => calls.push(['camera']),
+    prepareAtmosphere: async () => {
+      calls.push(['atmosphere']);
+      if (pauseAtmosphere) await atmosphereGate;
+      if (failAtmosphere) throw new Error('atmosphere failed');
+      calls.push(['atmosphereReady']);
+    },
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
@@ -113,6 +121,7 @@ function createHarness({ failAllies = false } = {}) {
   return {
     runtime,
     calls,
+    releaseAtmosphere,
     get generation() { return generation; },
     set generation(value) { generation = value; },
     get pending() { return pending; },
@@ -127,6 +136,9 @@ assert.equal(happy.pending, true, 'deferred warm owns the pending latch after en
 assert.equal(happy.destructionWarmed, true);
 const order = happy.calls.map(([name]) => name);
 for (const [before, after] of [
+  ['atmosphere', 'atmosphereReady'],
+  ['atmosphereReady', 'allies'],
+  ['atmosphereReady', 'compile'],
   ['allies', 'terrain'],
   ['terrain', 'camera'],
   ['camera', 'shadowWarm'],
@@ -155,6 +167,28 @@ releaseCamo();
 assert.deepEqual(await cancelledWarm, { generation: 1, revealPrimed: false });
 assert.equal(cancelled.calls.some(([name]) => name === 'allies'), false,
   'a stale generation performs no visual work');
+assert.equal(cancelled.calls.some(([name]) => name === 'atmosphere'), false,
+  'a stale pre-authority/camouflage generation cannot acquire atmosphere');
+
+const cancelledAtmosphere = createHarness({ pauseAtmosphere: true });
+const pendingAtmosphere = cancelledAtmosphere.runtime.warm(Promise.resolve());
+for (let i = 0; i < 20 && !cancelledAtmosphere.calls.some(([name]) => name === 'atmosphere'); i++) {
+  await new Promise((resolve) => setImmediate(resolve));
+}
+assert.ok(cancelledAtmosphere.calls.some(([name]) => name === 'atmosphere'));
+assert.equal(cancelledAtmosphere.calls.some(([name]) => name === 'compile'), false,
+  'first compile waits for atmosphere acquisition');
+cancelledAtmosphere.generation = 2;
+cancelledAtmosphere.releaseAtmosphere();
+assert.deepEqual(await pendingAtmosphere, { generation: 1, revealPrimed: false });
+assert.equal(cancelledAtmosphere.calls.some(([name]) => ['allies', 'compile', 'reveal'].includes(name)), false,
+  'cancellation during atmosphere cannot compile or reveal an obsolete battle');
+
+const failedAtmosphere = createHarness({ failAtmosphere: true });
+assert.deepEqual(await failedAtmosphere.runtime.warm(Promise.resolve()), { generation: 1, revealPrimed: false });
+assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /atmosphere failed/);
+assert.equal(failedAtmosphere.calls.some(([name]) => ['compile', 'reveal'].includes(name)), false,
+  'failed atmosphere preparation cannot be reported as a primed deployment');
 
 const failed = createHarness({ failAllies: true });
 assert.deepEqual(await failed.runtime.warm(Promise.resolve()), {

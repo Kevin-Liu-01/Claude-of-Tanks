@@ -133,6 +133,7 @@ export interface NetworkBattlePresentationOptions {
     waitForPeerReadiness(): Promise<RuntimeValue>;
   };
   warm: {
+    atmosphere?(initial: SampledSnapshotFrame): MaybePromise<void>;
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
@@ -400,6 +401,10 @@ export function createNetworkBattlePresentationRuntime(
       preparedBridge.apply(initial, 1 / 60);
       presentation.setGarageLighting(false);
 
+      await warm.atmosphere?.(initial);
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('atmosphere');
+
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain(preparedBridge);
       throwIfNetworkBattleEntryAborted(signal);
@@ -441,7 +446,9 @@ export function createNetworkBattlePresentationRuntime(
       // final camera/world pose. This is the same reveal barrier as solo entry
       // and prevents both black flashes and a first-frame shader hitch.
       await load.primeReveal();
+      throwIfNetworkBattleEntryAborted(signal);
       await load.battleLoad.hide();
+      throwIfNetworkBattleEntryAborted(signal);
       load.setAdaptiveSuspended(false);
       mark('reveal');
       trace.totalMs = Math.round(now() - loadStartedAt);

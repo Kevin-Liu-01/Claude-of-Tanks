@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { Vector3, type Object3D } from 'three';
-import { createCombatState, type CombatState } from '../sim/damage.ts';
+import { createCombatState, mainWeaponModuleState, type CombatState } from '../sim/damage.ts';
 import { createTankState, shotRecoilScale } from '../sim/movement.ts';
 import type {
   MovementContactGeometry,
@@ -14,6 +14,10 @@ import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
 import { LocalTankPredictor } from './localTankPrediction.ts';
+import { LocalAmmoSelectionIntent } from './localAmmoSelectionIntent.ts';
+import { LocalShotPrediction, type ShotPredictionContext, type ShotPresentationInput,
+  type LocalShotPresentationFrame } from './localShotPrediction.ts';
+import { applyPredictionAuthorityState } from './predictionAuthorityState.ts';
 import {
   PresentationEventQueue,
   type PresentationEvent,
@@ -50,6 +54,7 @@ interface TankVisual {
   dispose(): void;
   recoilKick?(dt: number, scale: number): number | null;
   gunMuzzleWorld?(target: Vector3, muzzleIndex: number): Vector3;
+  gunDirWorld?(target: Vector3): Vector3;
   stripEra?(plateName: string): void;
   resetEra?(): void;
   setDestroyed?(options: { pop: boolean }): void;
@@ -88,6 +93,7 @@ interface BridgeEntity extends PredictionSimEntity {
   _networkDestroyPop?: boolean;
   _networkEraSpent?: Set<string>;
   _networkShellSlot?: number;
+  _networkAmmoSelectionPending?: boolean;
   _lastX: number;
   _lastZ: number;
 }
@@ -283,7 +289,10 @@ export interface BrowserBattleBridge {
     onProgress?: ((fraction: number, specId: string) => void) | null,
   ): Promise<void>;
   mount(): void;
-  apply(snapshot: SampledSnapshotFrame, dt?: number, reliableEvents?: PresentationEvent[]): boolean;
+  apply(snapshot: SampledSnapshotFrame, dt?: number, reliableEvents?: PresentationEvent[], localShots?: LocalShotPresentationFrame): boolean;
+  playLocalConfirmedShots(events: PresentationEvent[]): void;
+  predictLocalShot(input: ShotPresentationInput, context: ShotPredictionContext): boolean;
+  cancelLocalShotPrediction(): void;
   endDisconnected(): boolean;
   advancePrediction(input: PredictionInput | null, dt: number): boolean;
   recordInput(
@@ -294,6 +303,8 @@ export interface BrowserBattleBridge {
   ): boolean;
   getPredictionStats(): LocalPredictionStats | null;
   getPresentationEventStats(): Record<string, RuntimeValue>;
+  beginBackground(): void;
+  retainBackgroundState(snapshot: SampledSnapshotFrame, events: PresentationEvent[]): void;
   setPerspective(entityId: RuntimeValue): boolean;
   unmount(): void;
   dispose(): void;
@@ -310,6 +321,7 @@ const recoilScale = shotRecoilScale;
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
 const _muzzleTip = new Vector3(); // §5.362 twin-plant flash-origin scratch
+const _predictedShotDirection = new Vector3();
 const _predictionContactCenter = new Vector3();
 
 function hashString(value: RuntimeValue): number {
@@ -370,6 +382,14 @@ export function createBrowserBattleBridge<
     TLegacySpotting
   > | null = null;
   const destructionCause = new Map<string, string>();
+  const shotPrediction = new LocalShotPrediction();
+  const ammoSelection = new LocalAmmoSelectionIntent();
+  function resetAmmoSelection(): void {
+    ammoSelection.reset();
+    const own = entities.get(id);
+    if (own) own._networkAmmoSelectionPending = false;
+  }
+  let shotLifeAlive: boolean | null = null;
   const nearbyPredictionObstacles: CollisionObstacle[] = [];
   let appliedDestructibleRevision = -1;
   let visualDestroyCount = 0;
@@ -556,7 +576,11 @@ export function createBrowserBattleBridge<
         aimPoint: state.aimPoint.clone(),
       },
       visual,
-      contactGeom: visual.contactGeom || null,
+      // Headless authority uses movement's spec-derived contact footprint.
+      // The visual's measured track ends/floor are a different support solve;
+      // feeding them into only the predictor changes ride height AND grip on
+      // terrain every tick. Keep authored contact data on the visual alone.
+      contactGeom: null,
       rigidGear: false,
       networkVisible: false,
       _networkPoseReady: false,
@@ -616,19 +640,30 @@ export function createBrowserBattleBridge<
   function updateEntity(
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
-    dt: number,
     immediateAuthority: ImmediateAuthoritySnapshot | null = null,
+    sampleTick = 0,
+    sampleAckInputSeq: number | null = null,
   ): void {
+    const wasDestroyed = entity.combat.destroyed;
     entity.networkTeam = snapshot.team;
     if (!spectator && entity.id === id) viewerTeam = snapshot.team;
     const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
     entity.team = snapshot.team === referenceTeam ? 'player' : 'enemy';
     entity.isPlayer = !spectator && entity.id === id;
     entity.networkVisible = true;
-    const destroyed = updateEntityCombat(entity, snapshot);
+    const destroyed = updateEntityCombat(entity,
+      entity.isPlayer && immediateAuthority ? immediateAuthority.entity : snapshot,
+      immediateAuthority?.tick ?? sampleTick,
+      immediateAuthority ? immediateAuthority.ackInputSeq : sampleAckInputSeq);
+    if (entity.isPlayer && immediateAuthority) {
+      // Use the same newest authority tick as the local pose, not the remote
+      // interpolation buffer's delayed metadata. Repaired tracks and game-mode
+      // boosts must affect the very next predicted frame.
+      applyPredictionAuthorityState(entity, immediateAuthority.predictionState);
+    }
     updateEntityEra(entity, snapshot);
     updateEntityDestruction(entity, destroyed);
-    updateEntityPose(entity, snapshot, dt, immediateAuthority);
+    updateEntityPose(entity, snapshot, immediateAuthority, wasDestroyed !== destroyed);
     entity._lastX = entity.state.pos.x;
     entity._lastZ = entity.state.pos.z;
     revealEntity(entity);
@@ -637,6 +672,8 @@ export function createBrowserBattleBridge<
   function updateEntityCombat(
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
+    authorityTick: number,
+    ackInputSeq: number | null,
   ): boolean {
     const { combat } = entity;
     combat.hp = snapshot.hp;
@@ -656,11 +693,6 @@ export function createBrowserBattleBridge<
     gunReload.t = gunReloadS;
     gunReload.totalS = Math.max(gunReloadTotalS || 0, gunReloadS);
     gunReload.kind = snapshot.gunReloadKind || snapshot.reloadKind || 'ready';
-    const priorAuthorityShellSlot = entity._networkShellSlot;
-    const requestedShellSlot = entity.input.shellSlot;
-    const hasPendingLocalShellSelection = entity.isPlayer &&
-      priorAuthorityShellSlot != null &&
-      requestedShellSlot !== priorAuthorityShellSlot;
     combat.shellSlot = snapshot.shellSlot;
     if (combat.reloadChannels?.[snapshot.shellSlot]) {
       combat.reload = combat.reloadChannels[snapshot.shellSlot];
@@ -675,13 +707,13 @@ export function createBrowserBattleBridge<
     const destroyed = !!(snapshot.flags & SNAPSHOT_FLAGS.DESTROYED);
     combat.destroyed = destroyed;
     entity.input.fire = !!(snapshot.flags & SNAPSHOT_FLAGS.FIRING);
-    // The local input slot is player intent, not presentation state. Preserve
-    // a selection that diverged from the last authoritative snapshot until a
-    // newer input frame reaches the host. Otherwise one delayed snapshot can
-    // erase the edge before upload and strand firing on a depleted channel.
-    // Initial snapshots and server-side resets still seed the input whenever
-    // there is no outstanding local request.
-    if (!hasPendingLocalShellSelection) entity.input.shellSlot = snapshot.shellSlot;
+    // Own selection settles only against the input receipt paired with this
+    // authority state, never an interpolated ACK or equality of slot values.
+    entity.input.shellSlot = entity.isPlayer
+      ? ammoSelection.reconcile(entity.input.shellSlot, snapshot.shellSlot,
+        ackInputSeq, authorityTick, destroyed)
+      : snapshot.shellSlot;
+    entity._networkAmmoSelectionPending = entity.isPlayer && ammoSelection.pending;
     entity._networkShellSlot = snapshot.shellSlot;
     entity.specialAction.active = !!(snapshot.flags & SNAPSHOT_FLAGS.SPECIAL_ACTIVE);
     entity.state.suspensionAim = entity.specialAction.kind === 'hydropneumatic_aim' &&
@@ -720,29 +752,38 @@ export function createBrowserBattleBridge<
   function updateEntityPose(
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
-    dt: number,
     immediateAuthority: ImmediateAuthoritySnapshot | null,
+    resetTrackMotion: boolean,
   ): void {
     if (entity.predictor && immediateAuthority) {
-      entity.predictor.reconcile({
-        ...immediateAuthority,
-        sampledEntity: snapshot,
-      }, dt, entity.combat.destroyed);
+      // Replay pending local controls from the exact acknowledged authority
+      // pose. The owned sampler is for clients without prediction; using its
+      // delayed linear presentation here repeatedly cancels local steering.
+      // The frame pump already owns correction decay once per display frame.
+      entity.predictor.reconcile(immediateAuthority, 0, entity.combat.destroyed);
       return;
     }
-    applySnapshotPose(entity, snapshot);
+    applySnapshotPose(entity, snapshot, resetTrackMotion);
   }
 
   function applySnapshotPose(
     entity: BridgeEntity,
     snapshot: DecodedEntitySnapshot,
+    resetTrackMotion: boolean,
   ): void {
     const { state } = entity;
     const dx = snapshot.x - entity._lastX;
     const dz = snapshot.z - entity._lastZ;
     const forwardDistance = dx * Math.sin(snapshot.yaw) + dz * Math.cos(snapshot.yaw);
-    state.trackScroll.l += forwardDistance;
-    state.trackScroll.r += forwardDistance;
+    if (entity._networkPoseReady && !resetTrackMotion && !entity.combat.destroyed) {
+      // The shared movement model uses a 1.5 m outer-track arm. Integrating
+      // the observed shortest hull turn preserves its opposing track motion
+      // even during a stationary pivot, without a second simulation clock.
+      const yawDelta = Math.atan2(Math.sin(snapshot.yaw - state.yaw), Math.cos(snapshot.yaw - state.yaw));
+      const turnDistance = yawDelta * 1.5;
+      state.trackScroll.l += forwardDistance + turnDistance;
+      state.trackScroll.r += forwardDistance - turnDistance;
+    }
     state.pos.set(snapshot.x, snapshot.y, snapshot.z);
     state.verticalSpeed = snapshot.vy || 0;
     state.grounded = !(snapshot.flags & SNAPSHOT_FLAGS.AIRBORNE);
@@ -842,6 +883,8 @@ export function createBrowserBattleBridge<
 
   function emitShellFired(event: BridgeEvent): void {
     const shooter = entities.get(String(event.shooterId || ''));
+    const predicted = event.shooterId === id
+      ? shotPrediction.confirm(event.fireIntentSeq, event.shellSlot) : null;
     let muzzlePos = [event.x, event.y, event.z];
     let shellSpec = null;
     let muzzleIndex: number | null = -1;
@@ -849,7 +892,8 @@ export function createBrowserBattleBridge<
       const shells = shooter.spec?.gun?.shells || [];
       shellSpec = shells.find((shell) => shell.name === event.shellName)
         || shells.find((shell) => shell.type === event.shellType) || null;
-      muzzleIndex = shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec));
+      muzzleIndex = predicted ? predicted.muzzleIndex
+        : shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec));
       if (muzzleIndex != null && shooter.visual.gunMuzzleWorld) {
         shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex);
         muzzlePos = [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z];
@@ -870,7 +914,66 @@ export function createBrowserBattleBridge<
       muzzlePos,
       dir: [event.dx, event.dy, event.dz],
       shooterSpecId: shooter?.specId,
+      feedbackPredicted: !!predicted,
+      fireIntentSeq: event.fireIntentSeq,
     });
+  }
+
+  function observeShotAuthority(snapshot: SampledSnapshotFrame): void {
+    const own = entities.get(id);
+    const immediate = snapshot.immediateAuthority;
+    const raw = immediate?.entity;
+    if (spectator || !own || !raw) return;
+    if (immediate.tick <= shotPrediction.authorityTick) return;
+    const alive = raw.hp > 0 && !(raw.flags & SNAPSHOT_FLAGS.DESTROYED);
+    if (shotLifeAlive !== null && alive !== shotLifeAlive) shotPrediction.reset();
+    shotLifeAlive = alive;
+    const shell = own.spec.gun.shells[raw.shellSlot];
+    shotPrediction.observe({ tick: immediate.tick, alive,
+      shellSlot: raw.shellSlot, reloadS: raw.reloadS,
+      ammo: raw.shellSlot === 0 ? raw.ammo0 : raw.shellSlot === 1 ? raw.ammo1 : raw.ammo2,
+      magazineRounds: raw.magazineRounds, magazineCapacity: raw.magazineCapacity,
+      guided: shell?.guided === true,
+      weaponBlocked: !immediate.predictionState || mainWeaponModuleState(own.combat) === 'red',
+    });
+  }
+
+  function predictLocalShot(input: ShotPresentationInput, context: ShotPredictionContext): boolean {
+    const own = entities.get(id);
+    if (!context.supported || spectator || !mounted || snapshotPhase !== 'playing' ||
+        game.result || !own?.networkVisible || own.combat.destroyed || !input.fire ||
+        input.actionBits || !own.visual.gunMuzzleWorld || !own.visual.gunDirWorld) return false;
+    const slot = input.shellSlot ?? -1;
+    const shell = own.spec.gun.shells[slot];
+    if (!shell) return false;
+    const prediction = shotPrediction.predict(context.fireIntentSeq, slot,
+      context.nowMs, context.authorityReceivedAtMs);
+    if (!prediction) return false;
+    prediction.muzzleIndex = own.visual.recoilKick?.(0, recoilScale(own.spec, shell)) ?? -1;
+    own.visual.gunMuzzleWorld(_muzzleTip, prediction.muzzleIndex);
+    own.visual.gunDirWorld(_predictedShotDirection);
+    bus.emit('weapon:predicted', {
+      fireIntentSeq: prediction.intentSeq, shooterId: id, isPlayer: true,
+      shooterSpecId: own.specId, shellType: shell.type, shellName: shell.name,
+      weaponSound: shell.soundProfile || own.spec.gun.soundProfile || null,
+      caliberMm: shell.caliberMm, velocityMps: shell.velocityMps, timeS: game.timeS,
+      muzzleIndex: prediction.muzzleIndex,
+      muzzlePos: [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z],
+      dir: [_predictedShotDirection.x, _predictedShotDirection.y, _predictedShotDirection.z],
+    });
+    return true;
+  }
+
+  function playLocalConfirmedShots(events: PresentationEvent[]): void {
+    const own = entities.get(id);
+    if (spectator || !mounted || snapshotPhase !== 'playing' || game.result ||
+        !own?.networkVisible || own.combat.destroyed || shotLifeAlive === false) return;
+    // These events have already passed authority. Only their local feedback
+    // bypasses the remote interpolation/volley queue; never create a shell,
+    // consume ammunition, or infer a hit from browser trigger state.
+    for (const event of events) {
+      if (event.type === 'shell_fired' && event.shooterId === id) emitShellFired(event as BridgeEvent);
+    }
   }
 
   function emitShellImpact(event: BridgeEvent): void {
@@ -1031,6 +1134,60 @@ export function createBrowserBattleBridge<
   const presentationEvents = new PresentationEventQueue({
     emit: (event) => emitEvent(event as BridgeEvent),
   });
+  const backgroundAliveThroughTime = new Map<string, number>();
+  let presentationRound = 0;
+  let backgroundSnapshotTick = -1;
+
+  function rememberPresentedLife(snapshot: SampledSnapshotFrame): void {
+    const timeS = Number(snapshot.meta?.battleTimeMs) / 1000;
+    for (const sampled of snapshot.entities) {
+      const current = sampled.id === id ? snapshot.immediateAuthority?.entity || sampled : sampled;
+      if (current.flags & SNAPSHOT_FLAGS.DESTROYED) continue;
+      destructionCause.delete(current.id);
+      if (Number.isFinite(timeS)) backgroundAliveThroughTime.set(current.id, timeS);
+    }
+  }
+
+  function beginBackground(): void {
+    presentationEvents.clear();
+    shotPrediction.cancel();
+    entities.get(id)?.predictor?.resetForPresentationResume();
+    backgroundSnapshotTick = -1;
+  }
+
+  function retainBackgroundState(
+    snapshot: SampledSnapshotFrame,
+    events: PresentationEvent[],
+  ): void {
+    const round = Number(snapshot.meta?.roomRound) || 0;
+    if (round < presentationRound ||
+        (round === presentationRound && snapshot.tick < backgroundSnapshotTick)) return;
+    if (round > presentationRound) {
+      destructionCause.clear();
+      shotPrediction.reset();
+      resetAmmoSelection();
+      shotLifeAlive = null;
+      backgroundAliveThroughTime.clear();
+      presentationRound = round;
+    }
+    backgroundSnapshotTick = snapshot.tick;
+    // Preserve only lifecycle metadata, never emit an effect or touch a visual.
+    // A live sample ends the preceding life, so late destruction events cannot
+    // attach an old ammo-rack pop to a repaired/respawned tank.
+    rememberPresentedLife(snapshot);
+    for (const event of events) {
+      if (event.type !== 'tank_destroyed' || typeof event.id !== 'string' ||
+          typeof event.cause !== 'string' || typeof event.timeS !== 'number' ||
+          !Number.isFinite(event.timeS)) continue;
+      const current = event.id === id ? snapshot.immediateAuthority?.entity ||
+        snapshot.entities.find((entity) => entity.id === event.id)
+        : snapshot.entities.find((entity) => entity.id === event.id);
+      const aliveThrough = backgroundAliveThroughTime.get(event.id);
+      if (!current || !(current.flags & SNAPSHOT_FLAGS.DESTROYED) ||
+          (aliveThrough != null && event.timeS < aliveThrough)) continue;
+      destructionCause.set(event.id, event.cause);
+    }
+  }
 
   function resultRoster(): Array<Record<string, RuntimeValue>> {
     return [...entities.values()].map((entity) => ({
@@ -1098,15 +1255,36 @@ export function createBrowserBattleBridge<
 
   function apply(
     snapshot: SampledSnapshotFrame,
-    dt = 1 / 60,
+    // Positional compatibility for callers supplying reliableEvents third.
+    // Display time is consumed only by advancePrediction/recordInput.
+    _elapsedS = 1 / 60,
     reliableEvents: PresentationEvent[] = [],
+    localShots?: LocalShotPresentationFrame,
   ): boolean {
     if (!snapshot) return false;
+    const round = Number(snapshot.meta?.roomRound) || 0;
+    if (round < presentationRound) return false;
+    if (round > presentationRound) {
+      destructionCause.clear();
+      shotPrediction.reset();
+      resetAmmoSelection();
+      shotLifeAlive = null;
+      backgroundAliveThroughTime.clear();
+      presentationRound = round;
+    }
     if (typeof snapshot.meta?.phase === 'string') snapshotPhase = snapshot.meta.phase;
+    rememberPresentedLife(snapshot);
     indexDestructionCauses(reliableEvents);
-    reconcileSnapshotEntities(snapshot, dt);
+    reconcileSnapshotEntities(snapshot);
+    observeShotAuthority(snapshot);
     publishSnapshotState(snapshot);
     updateShells(snapshot.shells);
+    // True shell registration must precede any zero-flight/late impact in the
+    // normal queue. Fresh life/weapon state is already reconciled above.
+    if (localShots) {
+      if (localShots.input) predictLocalShot(localShots.input, localShots.context);
+      playLocalConfirmedShots(localShots.events);
+    }
     presentationEvents.enqueue(reliableEvents);
     presentationEvents.flush();
     reconcileDestructibles(snapshot.meta);
@@ -1123,7 +1301,7 @@ export function createBrowserBattleBridge<
     }
   }
 
-  function reconcileSnapshotEntities(snapshot: SampledSnapshotFrame, dt: number): void {
+  function reconcileSnapshotEntities(snapshot: SampledSnapshotFrame): void {
     for (const entity of entities.values()) entity.networkVisible = false;
     // Establish the viewer's team before classifying any other entity.
     const own = spectator ? null : snapshot.entities.find((entry) => entry.id === id);
@@ -1131,8 +1309,9 @@ export function createBrowserBattleBridge<
     for (const entry of snapshot.entities) updateEntity(
       ensureEntity(entry),
       entry,
-      dt,
       entry.id === id ? snapshot.immediateAuthority : null,
+      snapshot.tick,
+      snapshot.ackInputSeq ?? null,
     );
     classifyAndHideEntities();
     if (!mounted) mount();
@@ -1225,8 +1404,13 @@ export function createBrowserBattleBridge<
     inputSeq: number,
     presentationElapsedS = elapsedS,
   ): boolean {
-    if (spectator || snapshotPhase !== 'playing') return false;
+    if (spectator) return false;
     const own = entities.get(id);
+    if (own && input && !own.combat.destroyed) {
+      ammoSelection.recordSubmitted(input.shellSlot, inputSeq, snapshotPhase === 'playing');
+      own._networkAmmoSelectionPending = ammoSelection.pending;
+    }
+    if (snapshotPhase !== 'playing') return false;
     return own?.predictor?.recordInput(
       input,
       elapsedS,
@@ -1255,13 +1439,19 @@ export function createBrowserBattleBridge<
 
   function dispose(): void {
     unmount();
-    for (const entity of entities.values()) entity.visual.dispose();
+    for (const entity of entities.values()) {
+      entity._networkAmmoSelectionPending = false;
+      entity.visual.dispose();
+    }
     entities.clear();
     roster.length = 0;
     visibleRoster.length = 0;
     liveShells.length = 0;
     shellById.clear();
+    shotPrediction.reset();
+    resetAmmoSelection();
     destructionCause.clear();
+    backgroundAliveThroughTime.clear();
     presentationEvents.clear();
   }
 
@@ -1271,10 +1461,15 @@ export function createBrowserBattleBridge<
     prepareRoster,
     mount,
     apply,
+    playLocalConfirmedShots,
+    predictLocalShot,
+    cancelLocalShotPrediction: () => shotPrediction.cancel(),
     endDisconnected,
     advancePrediction,
     recordInput,
     getPredictionStats,
+    beginBackground,
+    retainBackgroundState,
     getPresentationEventStats: () => ({
       ...presentationEvents.getStats(),
       visualDestroyCount,

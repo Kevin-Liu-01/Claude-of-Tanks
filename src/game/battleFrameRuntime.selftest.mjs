@@ -22,6 +22,7 @@ const countdownFrames = [];
 const pauseEdges = [];
 const presentationFrames = [];
 let rollouts = 0;
+let onNetworkPump = () => {};
 
 const runtime = createBattleFrameRuntime({
   game,
@@ -34,7 +35,10 @@ const runtime = createBattleFrameRuntime({
   },
   network: {
     isActive: () => networkActive,
-    pump: (dtSeconds, nowMs) => networkPumps.push([dtSeconds, nowMs]),
+    pump: (dtSeconds, nowMs) => {
+      networkPumps.push([dtSeconds, nowMs]);
+      onNetworkPump();
+    },
   },
   countdown: {
     isWarmPending: () => warmPending,
@@ -96,6 +100,19 @@ assert.equal(runtime.receipt.presentationAlpha, 1);
 assert.equal(countdownFrames.at(-1), game.preBattleS);
 
 networkActive = false;
+const beforeNetworkRetirement = {
+  simulationSteps, capturedPoses, resultUpdates, frames: presentationFrames.length,
+};
+for (let frame = 0; frame < 6; frame++) runtime.advance(0.1, 0.1, 710 + frame, false);
+assert.deepEqual({ simulationSteps, capturedPoses, resultUpdates, frames: presentationFrames.length },
+  beforeNetworkRetirement,
+  'a closed network session cannot advance solo truth, results or disposed presentation during Garage return');
+game.phase = 'garage';
+runtime.advance(0.01, 0.01, 720, false);
+game.phase = 'battle';
+runtime.advance(0.05, 0.05, 730, false);
+assert.equal(simulationSteps, beforeNetworkRetirement.simulationSteps + 3,
+  'the next genuine solo battle resumes its normal simulation after Garage');
 settingsOpen = true;
 runtime.advance(0.1, 0.1, 800, false);
 assert.equal(runtime.receipt.livePaused, true);
@@ -118,6 +135,18 @@ killcamActive = false;
 runtime.resetSimulationAccumulator();
 runtime.advance(1 / 120, 1 / 120, 1100, false);
 assert.equal(runtime.receipt.presentationAlpha, 0.5, 'explicit reset clears old fixed-step debt');
+
+networkActive = true;
+onNetworkPump = () => { networkActive = false; };
+const beforeSameFrameClose = { simulationSteps, resultUpdates, frames: presentationFrames.length };
+runtime.advance(1 / 60, 1 / 60, 1200, false);
+assert.deepEqual({ simulationSteps, resultUpdates, frames: presentationFrames.length },
+  beforeSameFrameClose, 'a terminal callback inside the first network pump cannot fall into solo');
+onNetworkPump = () => {};
+runtime.resetSimulationAccumulator(); // Solo entry resets even if Garage never rendered a frame.
+runtime.advance(1 / 60, 1 / 60, 1300, false);
+assert.equal(simulationSteps, beforeSameFrameClose.simulationSteps + 1,
+  'explicit solo setup releases the network retirement lease without a rendered Garage frame');
 
 assert.throws(() => createBattleFrameRuntime({}), /requires every frame port/);
 assert.throws(() => createBattleFrameRuntime({

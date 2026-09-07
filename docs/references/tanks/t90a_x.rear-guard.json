@@ -1,0 +1,38 @@
+{
+  "vehicleId": "t90a_x",
+  "reference": "local-only canonical t90a_x_source.glb / guard, rearguard and rearguard2",
+  "measurementFrame": "+Y up, +Z forward, ground zero, unchanged canonical source world",
+  "method": "Independent CPU source surface rays and scalar section measurements; no source buffers or topology copied",
+  "sourceRightGuardBounds": {
+    "min": [1.077643, 0.998520, -3.640324],
+    "max": [1.824731, 1.260711, -3.287159]
+  },
+  "sourceNeckRoofY": 1.282231,
+  "sourceHingeTopY": 1.313820,
+  "sourceFlatRoofY": 1.260711,
+  "sourceFlatUndersideY": 1.258173,
+  "heldOutTopRaysXYZ": [
+    [1.4, 1.25175, -3.50],
+    [-1.4, 1.25194, -3.50],
+    [1.4, 1.22284, -3.58],
+    [-1.4, 1.22327, -3.58],
+    [1.4, 1.18233, -3.635],
+    [-1.4, 1.18400, -3.635]
+  ],
+  "sourceSideDifference": "The left guard is about 22.8 mm inward relative to the mirrored right and terminates about 1.08 mm farther aft; it is not a copied symmetric box.",
+  "authoredPrimitives": [
+    "Thin neck skin overlapping the unchanged main fender by 5.5 mm",
+    "Separate measured transverse hinge seating both surfaces",
+    "Closed 2.5 mm skin with flat roof, descending rear bend and folded outer return",
+    "Independently inset left fold and rear termination"
+  ],
+  "validation": {
+    "focusedTest": "src/vehicles/profiles/t90AXRearGuard.selftest.mjs",
+    "qualities": ["high", "low"],
+    "maxRayToleranceM": 0.004,
+    "underGuardAirMinimumM": 0.15,
+    "directAttachmentGapMaximumM": 0.001,
+    "cpuExactCommittedTrackSampler": "front/rear/full sweep: band 0, shoe 0",
+    "freshGpuProof": "Fresh scoped official standard completed 2026-09-06: geometry, exact tracks, zero enclosed continuity cells and real MG census all passed. Full source row and timestamp are preserved in t90a_x.fidelity.json. Scoped standard stdout is retained locally at .qa-dev/reports/t90-avm-final-standard.log."
+  }
+}

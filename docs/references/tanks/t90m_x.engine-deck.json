@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "tankId": "t90m_x",
+  "purpose": "Independent physical measurements for original native aft-deck primitives; no source mesh payload",
+  "sourceArchiveSha256": "2f8ab99994f55611cc53926233146f10411d005fd0651496c0bb00374f108303",
+  "frame": "Canonical source X right, Y up, Z forward, metres; fixed source-world registration",
+  "sourceNodes": ["Engine", "Engine001", "Engine002", "Box048", "Box049", "Circle022", "Circle023", "Hull_side_part"],
+  "rearCoverTopRays": [
+    {"x": -0.9, "z": -3.3, "y": 1.23018346},
+    {"x": -0.9, "z": -3.2, "y": 1.29332008},
+    {"x": -0.9, "z": -3.1, "y": 1.33937076},
+    {"x": 1.07, "z": -3.1, "y": 1.31388156}
+  ],
+  "grille": {
+    "recessX": [-0.87461, 0.87856],
+    "recessZ": [-2.99770, -2.26001],
+    "floorRearY": 1.30891168,
+    "floorFrontY": 1.27802312,
+    "floorLongitudinalSlope": -0.041871,
+    "inclinedVaneCount": 17,
+    "vanePitch": 0.042154,
+    "firstVaneCrestZ": -2.970432,
+    "firstVaneCrestY": 1.345876,
+    "vaneFrontRun": 0.014886,
+    "topRays": [
+      {"x": 0.6, "z": -2.970, "y": 1.34435092},
+      {"x": 0.6, "z": -2.96, "y": 1.31833352},
+      {"x": 0.6, "z": -2.9, "y": 1.30445562},
+      {"x": 0.6, "z": -2.7, "y": 1.29619393}
+    ],
+    "centerSpineRays": [
+      {"x": 0, "z": -2.9, "y": 1.37989127},
+      {"x": 0, "z": -2.7, "y": 1.37260195}
+    ]
+  },
+  "accessCovers": {
+    "trayOuterX": [-0.52202147, 0.98194897],
+    "trayPocketFloorY": 1.26529224,
+    "trayBridgeTopY": 1.32550061,
+    "separateLidCentersX": [-0.13917406, 0.59202300],
+    "lidWidth": 0.66886488,
+    "lidSheetThickness": 0.0064,
+    "leftTopNormal": [-0.00000146, 0.96970791, 0.24426742],
+    "rightTopNormal": [-0.00000113, 0.97288206, 0.23130175],
+    "topRays": [
+      {"x": -0.139174, "z": -3.4, "y": 1.38434497},
+      {"x": 0.592023, "z": -3.4, "y": 1.38191405},
+      {"x": -0.139174, "z": -3.3, "y": 1.35915589},
+      {"x": 0.592023, "z": -3.3, "y": 1.35813899}
+    ]
+  },
+  "fenderPanels": {
+    "sourcePanelWidth": 0.444721,
+    "longitudinalRanges": [[-1.317800, -0.127291], [0.607407, 1.798077], [1.905433, 2.775152]],
+    "crossTieWidth": 0.475609,
+    "firstRearTieCenterZ": -1.158183,
+    "rearTiePitch": 0.296990,
+    "firstForwardTieCenterZ": 0.793027,
+    "forwardTiePitch": 0.296965
+  },
+  "construction": "Closed authored ramp and pan, inclined repeated native vanes, narrow open-field frames, separate chamfered inclined sheets and seated service panels. Ordinary factory equipment ownership and disposal are retained.",
+  "simplifications": [
+    "Small pressed edge radii are original chamfers; vanes use independent triangular sections rather than extracted topology.",
+    "The source grate floor remains solid while the visible spaces between vanes stay recessed; no contiguity exemptions were added.",
+    "Mid-fender cross ties retain measured placement and height but simplify small latch contours."
+  ],
+  "regression": "src/vehicles/profiles/t90MXEngineDeck.selftest.mjs tests actual high/low factory geometry, source normals, surface witnesses and negative space. Fresh GPU fidelity/geometry/strict standard proof remains required."
+}

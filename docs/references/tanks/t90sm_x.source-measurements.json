@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "t90sm_x",
+  "measuredAt": "2026-09-05",
+  "units": "metres; +Y up, +Z forward; structural hull centre; ground zero",
+  "sourceModelSha256": "0a416d2e1f32624c3fd381f1806747c769b79befa5f6d8496aec13ef950b88e0",
+  "localOracleSha256": "48f04021a53a883b5603c33c73d9652718eb14e451f039256b8e148d920452b1",
+  "sourceUse": "Owner-supplied local comparison only. Uploader attribution claim is not independently established title. No confirmed extraction found, and no source buffers ship.",
+  "normalization": { "xyScale": 0.758946229261995, "longitudinalScale": 0.801259998913049, "structuralHullLength": 6.86, "exteriorWidth": 3.78 },
+  "sourceFitDimensions": { "exteriorHullLength": 8.0598, "overallGunForwardLength": 11.1371, "totalHeight": 3.1501, "rearZ": -4.0973, "hullHardwareFrontZ": 3.9625, "muzzleZ": 7.0399 },
+  "sourceOnlyFilteredSilhouette": { "bodyExtentHeight": 3.113, "bodyExtentLength": 7.770, "method": "Unchanged canonical reference in the shared 1024-pixel geometry pipeline; 12% band filter, P95 column tops. Thin rear mounting brackets extend outside this filtered body length; their complete envelope remains8.0598m." },
+  "structuralTurret": { "width": 2.8712, "length": 3.2111, "roofY": 2.2893, "chinY": 1.5316, "rearZ": -1.4766, "frontZ": 1.7345, "equipmentRearZ": -2.9219 },
+  "articulation": { "yawSeat": [0.008,1.532,0.359], "gunPivot": [0.001,1.90309,1.56], "confidence": "Physical seat and trunnion inferred; flat misc_a/misc_b split supports turret/gun ownership but no native animation or pivots." },
+  "nativeWheelStationsZ": [-1.940,-0.980,0.028,0.877,1.776,2.701],
+  "sourceRoofHardpoints": { "sightCentre": [-0.693,2.375,0.311], "remoteMountBase": [0.554,2.314,-0.905], "remoteHoodCentre": [0.555,2.796,-1.403], "remoteHoodMaximumY": 3.1152, "meteorologicalMastXZ": [-0.284,-0.928] },
+  "requiredCertification": { "minimumEveryValidViewAndComponent": 92, "maximumDimensionErrorPercent": 3, "independentNeutralShadedReview": true },
+  "certificationStatus": "Eighth proof remains failed: turret right89.68 and primary geometry84.6, despite96.3 aggregate and strict track intersections all zero. Independent cage-foot, rounded mudguard, RWS housing, hatch seat, optic-frame and outer folded-body corrections pass fixed-source actual-mesh rays and await ninth capture. Not release certified.",
+  "dimensionCaveat": "Exterior dimensions describe the intact source after structural registration, not claimed published real-world overall dimensions. Twelve overlapping source track phases are retained in the local oracle only; runtime uses one native animated shoe course."
+}

@@ -1,0 +1,58 @@
+{
+  "vehicleId": "t90sm_x",
+  "reference": "local-only canonical t90sm_x_source.glb / tross and separate chasis recovery-eye, hanger and retainer islands",
+  "measurementFrame": "+Y up, +Z forward, ground zero, unchanged canonical source world",
+  "method": "Independent CPU scalar section, ray and component bounds study; no source buffers or topology copied",
+  "sourceCableBounds": {
+    "min": [-1.0155081, 0.729430318, -3.64891839],
+    "max": [1.31222558, 1.50999510, -3.37527442]
+  },
+  "sourceCableHeldOutSections": [
+    {"z": -3.625, "minXY": [-1.01509, 0.91249], "maxXY": [-0.98115, 1.06924]},
+    {"z": -3.575, "minXY": [-1.00784, 0.83586], "maxXY": [-0.94992, 1.16467]},
+    {"z": -3.525, "minXY": [-0.99058, 0.78732], "maxXY": [-0.91385, 1.24591]}
+  ],
+  "sourceLeftEyeBounds": {
+    "min": [-0.8358116, 0.7179664, -3.4594717],
+    "max": [-0.5459465, 0.9761607, -3.3542240]
+  },
+  "sourceRightEyeBounds": {
+    "min": [1.2877443, 1.3325497, -3.4531577],
+    "max": [1.6089456, 1.4990299, -3.3247552]
+  },
+  "sourceCompleteFirstSurfaceRaysXYZ": [
+    [-0.73, 0.88, -3.4089778],
+    [-0.69, 0.93, -3.3970557],
+    [-0.58, 0.86, -3.3973175],
+    [-0.63, 0.96, -3.3993757],
+    [-0.64, 1.03, -3.3834939],
+    [-0.64, 0.95, -3.3984954],
+    [1.41, 1.43, -3.4298064],
+    [1.59, 1.42, -3.4303404]
+  ],
+  "sourceIsolatedLeftEyeRayXYZ": [-0.63, 0.96, -3.3864241],
+  "occlusionNote": "The hanger is correctly 13 mm ahead of the left eye at X -0.63, Y 0.96. The test checks both the whole-model first surface and the separate eye surface, rather than confusing an isolated component ray with an all-visible ray.",
+  "sourceAirBackingRaysXYZ": [
+    [-0.69, 0.847, -3.1740478],
+    [1.50, 1.42, -3.3018772]
+  ],
+  "authoredPrimitives": [
+    "One continuous 25 mm circular native cable, with source-section-fitted lower return bend and across-transom run",
+    "Separate closed teardrop-shaped recovery eyes with genuine openings",
+    "Separate deeper right swaged neck, avoiding an invalid single cap warped between incompatible planes",
+    "Narrow closed left hanger retaining its own internal opening",
+    "Separate thin right backing panel, raised retainer and narrow folded outboard cover"
+  ],
+  "constructionAllowance": "The separate source hanger and native tub are joined by an 8 mm hidden forward seating allowance. This creates positive attachment without changing exterior source rays or filling the eye.",
+  "relatedCorrection": "The previous right fender ramp physically occupied the source eye air. t90SMXFenderShoulders independently restores the actual low thin shelf and later raised casing; the eye is not exempted from any audit.",
+  "validation": {
+    "focusedTest": "src/vehicles/profiles/t90SMXTowCable.selftest.mjs",
+    "qualities": ["high", "low"],
+    "sectionXToleranceM": 0.009,
+    "sectionYToleranceM": 0.012,
+    "surfaceRayToleranceM": 0.006,
+    "actualRuntimeContacts": ["cable into left eye", "cable into right neck", "left eye into hanger", "hanger seat into native tub"],
+    "cpuExactCommittedTrackSampler": "front/rear/full sweep: band 0, shoe 0",
+    "freshGpuProof": "required after replacement; delegated capture pending and no visual acceptance inferred from CPU tests"
+  }
+}

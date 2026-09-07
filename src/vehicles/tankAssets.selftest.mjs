@@ -80,6 +80,9 @@ assert.match(portraitGenerator,
   'portrait-only generation preserves independent anatomy and presentation receipts');
 assert.match(assetChecker, /__AUDIT_PORTRAITS[\s\S]*portrait framing outside fleet envelope/,
   'the tank asset release checker rejects missing or misframed thumbnails');
+assert.match(technicalGenerator,
+  /const portraitSideRatio = id === 'kf51_x' \? -0\.76 : -0\.56;[\s\S]*new THREE\.Vector3\(portraitSideRatio, 0\.34, 1\.0\)/,
+  'only the new tall-whip Panther portrait exposes more chassis side; all existing portrait directions are preserved');
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9,
   'release contract includes five views plus separate armor, module, crew, and markings diagrams');

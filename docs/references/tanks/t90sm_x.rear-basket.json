@@ -1,0 +1,30 @@
+{
+  "vehicleId": "t90sm_x",
+  "reference": "local-only canonical t90sm_x_source.glb / misc_a rear rail and support islands",
+  "measurementFrame": "+Y up, +Z forward, ground zero, unchanged canonical source world",
+  "method": "Independent CPU source rays and scalar island bounds; no source mesh buffers or topology copied",
+  "rearRailCenterHeightsM": [1.93831,1.99279,2.05251,2.10936,2.16596,2.223315],
+  "sideRailCenterHeightsM": [1.95065,2.007875,2.064975,2.122075,2.17843,2.23578],
+  "railVerticalThicknessM": 0.006,
+  "rearRailDepthM": 0.04002,
+  "rearSurfaceZ": -2.922269,
+  "sideForwardEndsZ": {"left":-1.6018,"right":-2.301},
+  "rearUprightHeightRangeM": [1.93906,2.22082],
+  "sideUprightHeightRangeM": [1.95152,2.23329],
+  "heldOutSideRaysXYZ": [
+    [-0.926675,2.007875,-2.7],
+    [-1.063514,2.23578,-1.8],
+    [0.972828,2.17843,-2.5],
+    [1.001594,2.23578,-2.32]
+  ],
+  "retainedGeometry": "Existing fixed rear stowage boxes and permanent marking surface unchanged",
+  "constructionAllowance": "Upper attachment arm extends forward 4.64 mm beyond the source scalar island bound to overlap its retainer by 1 mm; preserves a physically connected native assembly",
+  "validation": {
+    "focusedTest": "src/vehicles/profiles/t90SMXRearBasket.selftest.mjs",
+    "qualities": ["high","low"],
+    "rearRayToleranceM": 0.001,
+    "sideRayToleranceM": 0.003,
+    "airWitnesses": "Rear-facing rays through five lower/inter-rail locations must remain empty before the separate fixed case",
+    "freshGpuProof": "Required; CPU success does not imply silhouette or shaded acceptance"
+  }
+}

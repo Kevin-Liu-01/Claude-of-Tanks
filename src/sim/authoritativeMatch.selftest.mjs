@@ -4,7 +4,9 @@ import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { createAuthoritativeMatch, authoritativeTerrainCacheStats } from './authoritativeMatch.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
 import { getMapConfig } from '../world/maps/index.ts';
-import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { createEnvelope, MESSAGE_TYPES, PLAYER_ACTION_BITS } from '../net/protocol.ts';
+import { createSnapshotDelta, SnapshotAssembler } from '../net/snapshot.ts';
+import { snapshotWireCodec } from '../net/snapshotWireCodec.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
 import { tankContactRect } from './tankContactShape.ts';
@@ -48,6 +50,69 @@ match.onMatchReady();
 assert.equal(match.entities.length, 2);
 assert.equal(match.entities[0].specId, match.entities[1].specId, 'duplicate vehicles are valid');
 assert.notEqual(match.entities[0].id, match.entities[1].id, 'identity is not a vehicle spec');
+
+function weatherFixture(seed) {
+  return createAuthoritativeMatch({
+    mapId: 'verdant', seed, countdownS: 0,
+    players: [
+      { id: 'weather-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+      { id: 'weather-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    ],
+  });
+}
+
+function snapshotFor(match, viewerId, tick = 0) {
+  return match.snapshot({ tick, serverTimeMs: tick * 1000 / 60, viewerId, ackInputSeq: tick });
+}
+
+function compactSnapshot(snapshot, base = null) {
+  const packet = createSnapshotDelta(snapshot, base);
+  const envelope = createEnvelope(MESSAGE_TYPES.SNAPSHOT, packet, { seq: snapshot.tick, tick: snapshot.tick });
+  const encoded = snapshotWireCodec.encode(envelope);
+  const decoded = snapshotWireCodec.decode(encoded);
+  // The compact JSON row codec canonically serializes -0 as 0.
+  assert.deepEqual(decoded, JSON.parse(JSON.stringify(envelope)),
+    'weather snapshot retains the full JSON-representable compact-wire payload');
+  return decoded.payload;
+}
+
+for (const seed of [0, -1, 0x1_0000_0009]) {
+  const withReads = weatherFixture(seed), control = weatherFixture(seed);
+  const expected = seed >>> 0;
+  const first = snapshotFor(withReads, 'weather-a');
+  const assembler = new SnapshotAssembler();
+  assert.equal(assembler.accept(compactSnapshot(first)).meta.weatherSeed, expected,
+    'initial compact keyframe supplies unsigned weather seed before battle warmup');
+  for (const viewerId of ['weather-a', 'weather-b']) {
+    for (let repeat = 0; repeat < 3; repeat++) {
+      assert.equal(snapshotFor(withReads, viewerId).meta.weatherSeed, expected,
+        'all viewers/repeated snapshots receive the same match-derived weather seed');
+    }
+  }
+  withReads.onMatchReady(); control.onMatchReady();
+  const fire = new Map([['weather-a', {
+    throttle: 0, steer: 0, brake: true, fire: true,
+    aimYaw: 0, aimPitch: 0, shellSlot: 0,
+  }]]);
+  withReads.step({ dt: 1 / 60, inputs: fire });
+  control.step({ dt: 1 / 60, inputs: fire });
+  const after = snapshotFor(withReads, 'weather-a', 1);
+  assert.ok(after.events.some((event) => event.type === 'shell_fired'),
+    'RNG comparison contains an actual dispersed authoritative shot');
+  assert.deepEqual(after, snapshotFor(control, 'weather-a', 1),
+    'extra metadata/viewer reads consume no combat RNG or simulation state');
+  assert.equal(assembler.accept(compactSnapshot(after, first)).meta.weatherSeed, expected,
+    'acknowledged compact deltas preserve the weather seed');
+  withReads.afterSnapshotBroadcast();
+  withReads.onPeerLeave({ peerId: 'weather-b' });
+  withReads.onPeerJoin({ peerId: 'weather-b' });
+  const reconnect = snapshotFor(withReads, 'weather-b', 2);
+  assert.equal(reconnect.events.length, 0, 'reconnect evidence does not depend on transient events');
+  assert.equal(new SnapshotAssembler().accept(compactSnapshot(reconnect)).meta.weatherSeed, expected,
+    'fresh reconnect keyframe reconstructs the same weather without an old assembler');
+}
+assert.equal(snapshotFor(weatherFixture(undefined), 'weather-a').meta.weatherSeed, 6000,
+  'default match seed also supplies deterministic weather');
 
 let tick = 0;
 const drive = new Map([['alpha-1', {
@@ -303,6 +368,25 @@ hiddenMatch.onMatchReady();
 const privateSnap = hiddenMatch.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'near-a', ackInputSeq: 0 });
 assert.deepEqual(privateSnap.entities.map((entity) => entity.id), ['near-a'],
   'unspotted enemy coordinates never serialize');
+assert.equal(privateSnap.meta.localPrediction.id, 'near-a');
+assert.equal(JSON.stringify(privateSnap.meta.localPrediction).includes('far-b'), false,
+  'movement metadata contains only the viewer, never hidden enemy state');
+const localDriver = hiddenMatch.entityById.get('near-a');
+localDriver.combat.modules.trackL.state = 'red';
+localDriver.combat.crew.driver = false;
+localDriver.combat.equipMults = { traverse: 1.1, turret: 1.15 };
+localDriver.modeSpeedMultiplier = 1.85;
+const damagedMobility = hiddenMatch.snapshot({ tick: 1, serverTimeMs: 17,
+  viewerId: 'near-a', ackInputSeq: 1 }).meta.localPrediction;
+assert.equal(damagedMobility.modules.trackL, 'red');
+assert.equal(damagedMobility.crew.driver, false);
+assert.equal(damagedMobility.equipment.turret, 1.15);
+assert.equal(damagedMobility.modeSpeedMultiplier, 1.85);
+assert.equal(privateSnap.meta.localPrediction.modules.trackL, 'ok',
+  'stored baseline metadata is immutable after authority damage');
+assert.equal(hiddenMatch.snapshot({ tick: 1, serverTimeMs: 17,
+  viewerId: 'spectator', ackInputSeq: null }).meta.localPrediction, undefined,
+  'spectators never receive private local-prediction details');
 
 const timedMatch = createAuthoritativeMatch({
   countdownS: 0,

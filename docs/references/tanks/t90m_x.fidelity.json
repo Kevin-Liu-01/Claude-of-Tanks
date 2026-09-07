@@ -1,0 +1,5998 @@
+{
+  "generatedAt": "2026-09-06T10:06:54.116Z",
+  "sourceTool": "tools/procedural-fidelity.mjs",
+  "sourceReportSha256": "ee86f42a4a08b0fea48fb259e5e15ff6db91785e4a640b7f1305c2d261bac7df",
+  "row": {
+    "id": "t90m_x",
+    "name": "T-90M X",
+    "sourcePath": "/models/community-candidates/t90m_x_source.glb",
+    "comparisonPurpose": "source-fidelity",
+    "fallback": "t90m_x",
+    "score": 97.56,
+    "scores": {
+      "overall": 98.12,
+      "hull": 98.63,
+      "turret": 96.99,
+      "gun": 94.98,
+      "tracks": 97.09
+    },
+    "wholeViewMasksAvailable": true,
+    "componentMasksAvailable": true,
+    "turretComponentMasksAvailable": true,
+    "gunComponentMasksAvailable": true,
+    "minView": 97.52,
+    "requiredMinimum": 92,
+    "qualityBar": "exemplar",
+    "gatePassed": true,
+    "gateFailures": [],
+    "rawScore": 97.56429956277442,
+    "rawScores": {
+      "overall": 98.1240296229905,
+      "hull": 98.63255374127398,
+      "turret": 96.99104115930689,
+      "gun": 94.97887292853397,
+      "tracks": 97.08847220154743
+    },
+    "rawMinView": 97.51675310915113,
+    "registration": {
+      "passed": true,
+      "failures": [],
+      "mode": "canonical-source-world",
+      "fixedReg": {
+        "dAlong": 0,
+        "dy": 0
+      }
+    },
+    "normalizationAnchors": {
+      "applied": false,
+      "target": 3.78,
+      "referenceRaw": 3.78,
+      "proceduralRaw": 3.7798399925231934
+    },
+    "angles": {
+      "front": {
+        "score": 98.37,
+        "iou": 97.79
+      },
+      "frontLeft": {
+        "score": 98.29,
+        "iou": 97.75
+      },
+      "left": {
+        "score": 97.97,
+        "iou": 97.44
+      },
+      "rearLeft": {
+        "score": 97.52,
+        "iou": 96.78
+      },
+      "rear": {
+        "score": 97.77,
+        "iou": 97.17
+      },
+      "rearRight": {
+        "score": 97.89,
+        "iou": 97.3
+      },
+      "right": {
+        "score": 97.82,
+        "iou": 97.25
+      },
+      "frontRight": {
+        "score": 98.38,
+        "iou": 97.94
+      },
+      "top": {
+        "score": 99.1,
+        "iou": 98.87
+      }
+    },
+    "rawWholeAngles": {
+      "front": {
+        "score": 98.37,
+        "iou": 97.79
+      },
+      "frontLeft": {
+        "score": 98.29,
+        "iou": 97.75
+      },
+      "left": {
+        "score": 97.97,
+        "iou": 97.44
+      },
+      "rearLeft": {
+        "score": 97.52,
+        "iou": 96.78
+      },
+      "rear": {
+        "score": 97.77,
+        "iou": 97.17
+      },
+      "rearRight": {
+        "score": 97.89,
+        "iou": 97.3
+      },
+      "right": {
+        "score": 97.82,
+        "iou": 97.25
+      },
+      "frontRight": {
+        "score": 98.38,
+        "iou": 97.94
+      },
+      "top": {
+        "score": 99.1,
+        "iou": 98.87
+      }
+    },
+    "angleDiagnostics": {
+      "front": {
+        "score": 98.37246352100296,
+        "iou": 0.9779048716260698,
+        "areaSimilarity": 0.9958619353410098,
+        "bboxSimilarity": 0.9983660130718954,
+        "centroidSimilarity": 0.9995066692687962,
+        "referenceArea": 71957,
+        "proceduralArea": 72256,
+        "referenceBounds": {
+          "width": 356,
+          "height": 305,
+          "cx": 190.40643717775893,
+          "cy": 168.36949845046348
+        },
+        "proceduralBounds": {
+          "width": 356,
+          "height": 306,
+          "cx": 190.29106233392383,
+          "cy": 168.36176926483614
+        }
+      },
+      "frontLeft": {
+        "score": 98.29210882684849,
+        "iou": 0.9774810575955069,
+        "areaSimilarity": 0.9919406490179334,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.9978650119788021,
+        "referenceArea": 18585,
+        "proceduralArea": 18736,
+        "referenceBounds": {
+          "width": 292,
+          "height": 114,
+          "cx": 162.8528921172989,
+          "cy": 177.66096314231908
+        },
+        "proceduralBounds": {
+          "width": 292,
+          "height": 114,
+          "cx": 163.17762596071734,
+          "cy": 177.58021989752348
+        }
+      },
+      "left": {
+        "score": 97.97290122223565,
+        "iou": 0.97436195570025,
+        "areaSimilarity": 0.9847466541990533,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.9992729020464679,
+        "referenceArea": 16850,
+        "proceduralArea": 17111,
+        "referenceBounds": {
+          "width": 356,
+          "height": 106,
+          "cx": 157.39151335311573,
+          "cy": 177.48771513353117
+        },
+        "proceduralBounds": {
+          "width": 356,
+          "height": 106,
+          "cx": 157.49576295949973,
+          "cy": 177.57354917889077
+        }
+      },
+      "rearLeft": {
+        "score": 97.51675310915113,
+        "iou": 0.9677623595209202,
+        "areaSimilarity": 0.9868414042938576,
+        "bboxSimilarity": 0.9982817869415808,
+        "centroidSimilarity": 0.9975898017726086,
+        "referenceArea": 18524,
+        "proceduralArea": 18771,
+        "referenceBounds": {
+          "width": 291,
+          "height": 119,
+          "cx": 169.16459727920537,
+          "cy": 168.4982185273159
+        },
+        "proceduralBounds": {
+          "width": 290,
+          "height": 119,
+          "cx": 168.785999680358,
+          "cy": 168.48377816845132
+        }
+      },
+      "rear": {
+        "score": 97.76954191320097,
+        "iou": 0.9717490001850192,
+        "areaSimilarity": 0.9849418304773913,
+        "bboxSimilarity": 0.9982578397212544,
+        "centroidSimilarity": 0.9980812091752407,
+        "referenceArea": 68745,
+        "proceduralArea": 69796,
+        "referenceBounds": {
+          "width": 356,
+          "height": 286,
+          "cx": 192.54214851989235,
+          "cy": 150.24763982835114
+        },
+        "proceduralBounds": {
+          "width": 356,
+          "height": 287,
+          "cx": 192.3782594991117,
+          "cy": 149.84133761247062
+        }
+      },
+      "rearRight": {
+        "score": 97.88973653638212,
+        "iou": 0.9729559748427673,
+        "areaSimilarity": 0.9859667633869691,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.998663369316775,
+        "referenceArea": 18689,
+        "proceduralArea": 18955,
+        "referenceBounds": {
+          "width": 292,
+          "height": 117,
+          "cx": 213.9485793782439,
+          "cy": 168.8547273797421
+        },
+        "proceduralBounds": {
+          "width": 292,
+          "height": 117,
+          "cx": 213.7388024268003,
+          "cy": 168.86853073067792
+        }
+      },
+      "right": {
+        "score": 97.82084734606148,
+        "iou": 0.9725392503331209,
+        "areaSimilarity": 0.983109091968082,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.9992926886443602,
+        "referenceArea": 16879,
+        "proceduralArea": 17169,
+        "referenceBounds": {
+          "width": 356,
+          "height": 105,
+          "cx": 225.63297588719712,
+          "cy": 177.67527697138456
+        },
+        "proceduralBounds": {
+          "width": 356,
+          "height": 105,
+          "cx": 225.5117945133671,
+          "cy": 177.72572660026793
+        }
+      },
+      "frontRight": {
+        "score": 98.38246552482232,
+        "iou": 0.9794210161539691,
+        "areaSimilarity": 0.9901372212692967,
+        "bboxSimilarity": 0.9982817869415808,
+        "centroidSimilarity": 0.9976236411178439,
+        "referenceArea": 18472,
+        "proceduralArea": 18656,
+        "referenceBounds": {
+          "width": 291,
+          "height": 114,
+          "cx": 219.58677999133823,
+          "cy": 177.39860329146816
+        },
+        "proceduralBounds": {
+          "width": 290,
+          "height": 114,
+          "cx": 219.22480703259006,
+          "cy": 177.48150728987994
+        }
+      },
+      "top": {
+        "score": 99.09944860720957,
+        "iou": 0.9887248810353712,
+        "areaSimilarity": 0.9927716698050173,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.9994263775316701,
+        "referenceArea": 32688,
+        "proceduralArea": 32926,
+        "referenceBounds": {
+          "width": 130,
+          "height": 354,
+          "cx": 191.49247430249633,
+          "cy": 227.48534630445423
+        },
+        "proceduralBounds": {
+          "width": 130,
+          "height": 354,
+          "cx": 191.56958027091054,
+          "cy": 227.56119783757518
+        }
+      }
+    },
+    "wholeContours": {
+      "left": [
+        {
+          "topDelta": 0.1,
+          "bottomDelta": 0.45,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.03,
+          "bottomDelta": 0.07,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.6,
+          "bottomDelta": 1.4,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.14,
+          "bottomDelta": -0.03,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.07,
+          "bottomDelta": 1.07,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.5,
+          "bottomDelta": 0.6,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.59,
+          "bottomDelta": 0.97,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.2,
+          "bottomDelta": -0.17,
+          "columns": 30
+        },
+        {
+          "topDelta": -1.53,
+          "bottomDelta": 0.3,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.34,
+          "bottomDelta": 0.03,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.37,
+          "bottomDelta": 0,
+          "columns": 30
+        },
+        {
+          "topDelta": 0.07,
+          "bottomDelta": -0.1,
+          "columns": 30
+        }
+      ],
+      "right": [
+        {
+          "topDelta": 0.07,
+          "bottomDelta": -0.1,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.43,
+          "bottomDelta": 0,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.3,
+          "bottomDelta": 0.03,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.52,
+          "bottomDelta": 0.38,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.57,
+          "bottomDelta": -0.1,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.13,
+          "bottomDelta": -0.03,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.59,
+          "bottomDelta": 0.97,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.27,
+          "bottomDelta": 1.03,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.37,
+          "bottomDelta": 0.27,
+          "columns": 30
+        },
+        {
+          "topDelta": -0.66,
+          "bottomDelta": 1.62,
+          "columns": 29
+        },
+        {
+          "topDelta": -0.43,
+          "bottomDelta": 0.03,
+          "columns": 30
+        },
+        {
+          "topDelta": 0.3,
+          "bottomDelta": 0.6,
+          "columns": 30
+        }
+      ]
+    },
+    "wholeDifferences": {
+      "left": {
+        "vertical": [
+          {
+            "start": 138,
+            "end": 145,
+            "referenceOnly": 18,
+            "proceduralOnly": 86,
+            "overlap": 1210
+          },
+          {
+            "start": 146,
+            "end": 154,
+            "referenceOnly": 13,
+            "proceduralOnly": 38,
+            "overlap": 1704
+          },
+          {
+            "start": 155,
+            "end": 163,
+            "referenceOnly": 1,
+            "proceduralOnly": 15,
+            "overlap": 2060
+          },
+          {
+            "start": 164,
+            "end": 172,
+            "referenceOnly": 7,
+            "proceduralOnly": 4,
+            "overlap": 2207
+          },
+          {
+            "start": 173,
+            "end": 181,
+            "referenceOnly": 2,
+            "proceduralOnly": 6,
+            "overlap": 2269
+          },
+          {
+            "start": 182,
+            "end": 190,
+            "referenceOnly": 19,
+            "proceduralOnly": 23,
+            "overlap": 2046
+          },
+          {
+            "start": 191,
+            "end": 198,
+            "referenceOnly": 6,
+            "proceduralOnly": 57,
+            "overlap": 2398
+          },
+          {
+            "start": 199,
+            "end": 207,
+            "referenceOnly": 14,
+            "proceduralOnly": 28,
+            "overlap": 1587
+          },
+          {
+            "start": 208,
+            "end": 216,
+            "referenceOnly": 4,
+            "proceduralOnly": 30,
+            "overlap": 741
+          },
+          {
+            "start": 217,
+            "end": 225,
+            "referenceOnly": 1,
+            "proceduralOnly": 34,
+            "overlap": 240
+          },
+          {
+            "start": 226,
+            "end": 234,
+            "referenceOnly": 5,
+            "proceduralOnly": 8,
+            "overlap": 180
+          },
+          {
+            "start": 235,
+            "end": 243,
+            "referenceOnly": 0,
+            "proceduralOnly": 22,
+            "overlap": 118
+          }
+        ],
+        "longitudinal": [
+          {
+            "start": 14,
+            "end": 42,
+            "referenceOnly": 12,
+            "proceduralOnly": 16,
+            "overlap": 677
+          },
+          {
+            "start": 43,
+            "end": 72,
+            "referenceOnly": 12,
+            "proceduralOnly": 48,
+            "overlap": 1365
+          },
+          {
+            "start": 73,
+            "end": 102,
+            "referenceOnly": 3,
+            "proceduralOnly": 26,
+            "overlap": 2102
+          },
+          {
+            "start": 103,
+            "end": 131,
+            "referenceOnly": 9,
+            "proceduralOnly": 31,
+            "overlap": 2644
+          },
+          {
+            "start": 132,
+            "end": 161,
+            "referenceOnly": 9,
+            "proceduralOnly": 69,
+            "overlap": 2379
+          },
+          {
+            "start": 162,
+            "end": 191,
+            "referenceOnly": 6,
+            "proceduralOnly": 34,
+            "overlap": 2210
+          },
+          {
+            "start": 192,
+            "end": 220,
+            "referenceOnly": 15,
+            "proceduralOnly": 28,
+            "overlap": 1874
+          },
+          {
+            "start": 221,
+            "end": 250,
+            "referenceOnly": 10,
+            "proceduralOnly": 17,
+            "overlap": 1686
+          },
+          {
+            "start": 251,
+            "end": 280,
+            "referenceOnly": 7,
+            "proceduralOnly": 52,
+            "overlap": 1141
+          },
+          {
+            "start": 281,
+            "end": 309,
+            "referenceOnly": 0,
+            "proceduralOnly": 17,
+            "overlap": 248
+          },
+          {
+            "start": 310,
+            "end": 339,
+            "referenceOnly": 0,
+            "proceduralOnly": 11,
+            "overlap": 222
+          },
+          {
+            "start": 340,
+            "end": 369,
+            "referenceOnly": 7,
+            "proceduralOnly": 2,
+            "overlap": 212
+          }
+        ]
+      },
+      "right": {
+        "vertical": [
+          {
+            "start": 138,
+            "end": 145,
+            "referenceOnly": 14,
+            "proceduralOnly": 105,
+            "overlap": 1192
+          },
+          {
+            "start": 146,
+            "end": 154,
+            "referenceOnly": 12,
+            "proceduralOnly": 39,
+            "overlap": 1700
+          },
+          {
+            "start": 155,
+            "end": 163,
+            "referenceOnly": 1,
+            "proceduralOnly": 14,
+            "overlap": 2063
+          },
+          {
+            "start": 164,
+            "end": 172,
+            "referenceOnly": 9,
+            "proceduralOnly": 3,
+            "overlap": 2208
+          },
+          {
+            "start": 173,
+            "end": 180,
+            "referenceOnly": 3,
+            "proceduralOnly": 3,
+            "overlap": 2010
+          },
+          {
+            "start": 181,
+            "end": 189,
+            "referenceOnly": 17,
+            "proceduralOnly": 20,
+            "overlap": 2143
+          },
+          {
+            "start": 190,
+            "end": 198,
+            "referenceOnly": 9,
+            "proceduralOnly": 63,
+            "overlap": 2555
+          },
+          {
+            "start": 199,
+            "end": 207,
+            "referenceOnly": 11,
+            "proceduralOnly": 31,
+            "overlap": 1581
+          },
+          {
+            "start": 208,
+            "end": 215,
+            "referenceOnly": 9,
+            "proceduralOnly": 39,
+            "overlap": 686
+          },
+          {
+            "start": 216,
+            "end": 224,
+            "referenceOnly": 4,
+            "proceduralOnly": 38,
+            "overlap": 328
+          },
+          {
+            "start": 225,
+            "end": 233,
+            "referenceOnly": 3,
+            "proceduralOnly": 3,
+            "overlap": 159
+          },
+          {
+            "start": 234,
+            "end": 242,
+            "referenceOnly": 0,
+            "proceduralOnly": 24,
+            "overlap": 162
+          }
+        ],
+        "longitudinal": [
+          {
+            "start": 14,
+            "end": 42,
+            "referenceOnly": 8,
+            "proceduralOnly": 3,
+            "overlap": 205
+          },
+          {
+            "start": 43,
+            "end": 72,
+            "referenceOnly": 0,
+            "proceduralOnly": 13,
+            "overlap": 221
+          },
+          {
+            "start": 73,
+            "end": 102,
+            "referenceOnly": 0,
+            "proceduralOnly": 15,
+            "overlap": 258
+          },
+          {
+            "start": 103,
+            "end": 131,
+            "referenceOnly": 4,
+            "proceduralOnly": 44,
+            "overlap": 1092
+          },
+          {
+            "start": 132,
+            "end": 161,
+            "referenceOnly": 9,
+            "proceduralOnly": 24,
+            "overlap": 1676
+          },
+          {
+            "start": 162,
+            "end": 191,
+            "referenceOnly": 14,
+            "proceduralOnly": 33,
+            "overlap": 1926
+          },
+          {
+            "start": 192,
+            "end": 220,
+            "referenceOnly": 5,
+            "proceduralOnly": 47,
+            "overlap": 2113
+          },
+          {
+            "start": 221,
+            "end": 250,
+            "referenceOnly": 14,
+            "proceduralOnly": 71,
+            "overlap": 2423
+          },
+          {
+            "start": 251,
+            "end": 280,
+            "referenceOnly": 6,
+            "proceduralOnly": 32,
+            "overlap": 2745
+          },
+          {
+            "start": 281,
+            "end": 309,
+            "referenceOnly": 1,
+            "proceduralOnly": 33,
+            "overlap": 2038
+          },
+          {
+            "start": 310,
+            "end": 339,
+            "referenceOnly": 15,
+            "proceduralOnly": 46,
+            "overlap": 1399
+          },
+          {
+            "start": 340,
+            "end": 369,
+            "referenceOnly": 16,
+            "proceduralOnly": 21,
+            "overlap": 691
+          }
+        ]
+      }
+    },
+    "wholeDifferenceGrid": {
+      "left": [
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 3,
+            "overlap": 30
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 24,
+            "overlap": 307
+          },
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 15,
+            "overlap": 326
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 17,
+            "overlap": 330
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 19,
+            "overlap": 333
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 14,
+            "overlap": 328
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 14,
+            "overlap": 338
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 10,
+            "overlap": 63
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 3,
+            "overlap": 347
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 18,
+            "overlap": 255
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 2,
+            "overlap": 3
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 1,
+            "overlap": 81
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 0,
+            "overlap": 388
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 5,
+            "overlap": 23
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 3,
+            "overlap": 356
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 2,
+            "overlap": 394
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 2,
+            "overlap": 415
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 406
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 420
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 420
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 2,
+            "overlap": 385
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 3,
+            "overlap": 328
+          },
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 15,
+            "overlap": 202
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 12,
+            "overlap": 236
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 28,
+            "overlap": 141
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 3,
+            "overlap": 350
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 240
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 9,
+            "overlap": 231
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 10,
+            "overlap": 222
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 11,
+            "overlap": 222
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 2,
+            "overlap": 212
+          }
+        ],
+        [
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 0,
+            "overlap": 4
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 12,
+            "overlap": 65
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 210
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 5,
+            "overlap": 358
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 382
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 14,
+            "overlap": 249
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 9,
+            "overlap": 57
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 230
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 33,
+            "overlap": 40
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 38
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 11,
+            "overlap": 193
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 19,
+            "overlap": 37
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ],
+      "right": [
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 10,
+            "overlap": 53
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 20,
+            "overlap": 332
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 19,
+            "overlap": 334
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 22,
+            "overlap": 316
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 21,
+            "overlap": 326
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 18,
+            "overlap": 335
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 24,
+            "overlap": 302
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 6,
+            "overlap": 31
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 4
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 11,
+            "overlap": 247
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 6,
+            "overlap": 361
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 4,
+            "overlap": 24
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 1,
+            "overlap": 92
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 15,
+            "overlap": 191
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 4,
+            "overlap": 324
+          },
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 0,
+            "overlap": 381
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 2,
+            "overlap": 344
+          }
+        ],
+        [
+          {
+            "referenceOnly": 8,
+            "proceduralOnly": 3,
+            "overlap": 205
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 13,
+            "overlap": 221
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 10,
+            "overlap": 230
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 8,
+            "overlap": 224
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 240
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 4,
+            "overlap": 349
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 377
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 390
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 2,
+            "overlap": 373
+          },
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 26,
+            "overlap": 146
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 14,
+            "overlap": 247
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 10,
+            "overlap": 82
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 24,
+            "overlap": 262
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 0,
+            "overlap": 385
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 380
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 7,
+            "overlap": 232
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 8,
+            "overlap": 81
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 4,
+            "overlap": 8
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 27
+          },
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 36,
+            "overlap": 115
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 254
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 14,
+            "overlap": 37
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 13,
+            "overlap": 216
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ],
+      "front": [
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 21,
+            "overlap": 422
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 39,
+            "overlap": 1071
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 50,
+            "overlap": 596
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 6,
+            "overlap": 138
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 150
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 150
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 145
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 150
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 6,
+            "overlap": 144
+          },
+          {
+            "referenceOnly": 29,
+            "proceduralOnly": 28,
+            "overlap": 580
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 30,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 13,
+            "overlap": 467
+          }
+        ],
+        [
+          {
+            "referenceOnly": 16,
+            "proceduralOnly": 32,
+            "overlap": 632
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 46,
+            "overlap": 1094
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 11,
+            "overlap": 1091
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 16,
+            "proceduralOnly": 34,
+            "overlap": 697
+          }
+        ],
+        [
+          {
+            "referenceOnly": 48,
+            "proceduralOnly": 3,
+            "overlap": 1052
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1131
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1131
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1131
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 18,
+            "proceduralOnly": 2,
+            "overlap": 1132
+          }
+        ],
+        [
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 1100
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          }
+        ],
+        [
+          {
+            "referenceOnly": 31,
+            "proceduralOnly": 9,
+            "overlap": 562
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1102
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 51,
+            "overlap": 648
+          }
+        ],
+        [
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 13,
+            "overlap": 27
+          },
+          {
+            "referenceOnly": 50,
+            "proceduralOnly": 16,
+            "overlap": 428
+          },
+          {
+            "referenceOnly": 35,
+            "proceduralOnly": 18,
+            "overlap": 828
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1131
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1170
+          },
+          {
+            "referenceOnly": 33,
+            "proceduralOnly": 0,
+            "overlap": 1126
+          },
+          {
+            "referenceOnly": 50,
+            "proceduralOnly": 3,
+            "overlap": 1058
+          },
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 1168
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 37,
+            "overlap": 1118
+          },
+          {
+            "referenceOnly": 23,
+            "proceduralOnly": 8,
+            "overlap": 910
+          },
+          {
+            "referenceOnly": 65,
+            "proceduralOnly": 4,
+            "overlap": 394
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 26,
+            "overlap": 48
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 1,
+            "proceduralOnly": 6,
+            "overlap": 7
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 64,
+            "overlap": 517
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1140
+          },
+          {
+            "referenceOnly": 3,
+            "proceduralOnly": 142,
+            "overlap": 657
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 75,
+            "overlap": 305
+          },
+          {
+            "referenceOnly": 38,
+            "proceduralOnly": 33,
+            "overlap": 276
+          },
+          {
+            "referenceOnly": 41,
+            "proceduralOnly": 0,
+            "overlap": 54
+          },
+          {
+            "referenceOnly": 26,
+            "proceduralOnly": 0,
+            "overlap": 9
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 0,
+            "overlap": 136
+          },
+          {
+            "referenceOnly": 34,
+            "proceduralOnly": 0,
+            "overlap": 442
+          },
+          {
+            "referenceOnly": 12,
+            "proceduralOnly": 120,
+            "overlap": 635
+          },
+          {
+            "referenceOnly": 12,
+            "proceduralOnly": 9,
+            "overlap": 277
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ],
+      "rear": [
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 31,
+            "overlap": 408
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 60,
+            "overlap": 1020
+          },
+          {
+            "referenceOnly": 35,
+            "proceduralOnly": 43,
+            "overlap": 691
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 41,
+            "overlap": 317
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 30,
+            "overlap": 270
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 30,
+            "overlap": 270
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 29,
+            "overlap": 261
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 30,
+            "overlap": 270
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 39,
+            "overlap": 329
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 48,
+            "overlap": 649
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 61,
+            "overlap": 1019
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 35,
+            "overlap": 441
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 115,
+            "overlap": 521
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 1,
+            "overlap": 1043
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 9,
+            "proceduralOnly": 95,
+            "overlap": 553
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 33,
+            "overlap": 827
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 26,
+            "proceduralOnly": 24,
+            "overlap": 846
+          }
+        ],
+        [
+          {
+            "referenceOnly": 2,
+            "proceduralOnly": 0,
+            "overlap": 1016
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 1,
+            "overlap": 1048
+          }
+        ],
+        [
+          {
+            "referenceOnly": 26,
+            "proceduralOnly": 67,
+            "overlap": 491
+          },
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 2,
+            "overlap": 1072
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1044
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 4,
+            "overlap": 1067
+          },
+          {
+            "referenceOnly": 29,
+            "proceduralOnly": 41,
+            "overlap": 463
+          }
+        ],
+        [
+          {
+            "referenceOnly": 4,
+            "proceduralOnly": 41,
+            "overlap": 132
+          },
+          {
+            "referenceOnly": 6,
+            "proceduralOnly": 47,
+            "overlap": 559
+          },
+          {
+            "referenceOnly": 35,
+            "proceduralOnly": 51,
+            "overlap": 866
+          },
+          {
+            "referenceOnly": 34,
+            "proceduralOnly": 8,
+            "overlap": 925
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 12,
+            "proceduralOnly": 40,
+            "overlap": 1003
+          },
+          {
+            "referenceOnly": 7,
+            "proceduralOnly": 3,
+            "overlap": 1029
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 20,
+            "proceduralOnly": 27,
+            "overlap": 779
+          },
+          {
+            "referenceOnly": 12,
+            "proceduralOnly": 46,
+            "overlap": 589
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 20,
+            "overlap": 115
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 26,
+            "proceduralOnly": 0,
+            "overlap": 142
+          },
+          {
+            "referenceOnly": 27,
+            "proceduralOnly": 6,
+            "overlap": 576
+          },
+          {
+            "referenceOnly": 28,
+            "proceduralOnly": 64,
+            "overlap": 354
+          },
+          {
+            "referenceOnly": 17,
+            "proceduralOnly": 178,
+            "overlap": 665
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 1080
+          },
+          {
+            "referenceOnly": 5,
+            "proceduralOnly": 37,
+            "overlap": 655
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 15,
+            "overlap": 19
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ],
+        [
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 11,
+            "proceduralOnly": 7,
+            "overlap": 247
+          },
+          {
+            "referenceOnly": 21,
+            "proceduralOnly": 68,
+            "overlap": 473
+          },
+          {
+            "referenceOnly": 30,
+            "proceduralOnly": 0,
+            "overlap": 297
+          },
+          {
+            "referenceOnly": 18,
+            "proceduralOnly": 0,
+            "overlap": 77
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          },
+          {
+            "referenceOnly": 0,
+            "proceduralOnly": 0,
+            "overlap": 0
+          }
+        ]
+      ]
+    },
+    "componentAngles": {
+      "hull": {
+        "front": 98.78,
+        "right": 98.23,
+        "left": 98.37,
+        "rear": 98.63,
+        "top": 99.16
+      },
+      "turret": {
+        "front": 96.59,
+        "right": 97.1,
+        "left": 97.21,
+        "rear": 96.28,
+        "top": 97.79
+      },
+      "exposedUpper": {
+        "front": 91.56,
+        "right": 96.82,
+        "left": 96.96,
+        "rear": 95.08,
+        "top": 89.25
+      }
+    },
+    "diagnostics": {
+      "hull": {
+        "front": {
+          "score": 98.77562610239173,
+          "iou": 0.9827827523987791,
+          "areaSimilarity": 0.9995068446560667,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.9976461529272401,
+          "referenceArea": 58776,
+          "proceduralArea": 58805,
+          "referenceBounds": {
+            "width": 356,
+            "height": 221,
+            "cx": 191.7178270042194,
+            "cy": 147.78736218864842
+          },
+          "proceduralBounds": {
+            "width": 356,
+            "height": 221,
+            "cx": 191.62095059943883,
+            "cy": 147.3038177025763
+          }
+        },
+        "right": {
+          "score": 98.225786732205,
+          "iou": 0.9774531329167371,
+          "areaSimilarity": 0.9875233406891869,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.9982434635391219,
+          "referenceArea": 11635,
+          "proceduralArea": 11782,
+          "referenceBounds": {
+            "width": 270,
+            "height": 67,
+            "cx": 231.25217017619252,
+            "cy": 166.2995272883541
+          },
+          "proceduralBounds": {
+            "width": 270,
+            "height": 67,
+            "cx": 231.09777626888473,
+            "cy": 166.11016805296214
+          }
+        },
+        "left": {
+          "score": 98.37296957611574,
+          "iou": 0.9790805567271194,
+          "areaSimilarity": 0.9898227461623272,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.997997882556499,
+          "referenceArea": 11671,
+          "proceduralArea": 11791,
+          "referenceBounds": {
+            "width": 270,
+            "height": 67,
+            "cx": 151.67286436466455,
+            "cy": 166.2830948504841
+          },
+          "proceduralBounds": {
+            "width": 270,
+            "height": 67,
+            "cx": 151.9007717750827,
+            "cy": 166.1230599609872
+          }
+        },
+        "rear": {
+          "score": 98.62537829572965,
+          "iou": 0.982614335327838,
+          "areaSimilarity": 0.9920750036787118,
+          "bboxSimilarity": 0.9968553459119497,
+          "centroidSimilarity": 0.9985392616961632,
+          "referenceArea": 47194,
+          "proceduralArea": 47571,
+          "referenceBounds": {
+            "width": 356,
+            "height": 158,
+            "cx": 191.44403949654617,
+            "cy": 116.3191931177692
+          },
+          "proceduralBounds": {
+            "width": 356,
+            "height": 159,
+            "cx": 191.2939395850413,
+            "cy": 116.07754724517038
+          }
+        },
+        "top": {
+          "score": 99.16300799992781,
+          "iou": 0.9895762238630018,
+          "areaSimilarity": 0.9932245532245533,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.9988608062298764,
+          "referenceArea": 31957,
+          "proceduralArea": 32175,
+          "referenceBounds": {
+            "width": 130,
+            "height": 269,
+            "cx": 191.48712332196388,
+            "cy": 231.26491848421315
+          },
+          "proceduralBounds": {
+            "width": 130,
+            "height": 269,
+            "cx": 191.57044289044288,
+            "cy": 231.41330225330225
+          }
+        }
+      },
+      "turret": {
+        "front": {
+          "score": 96.58863434188606,
+          "iou": 0.9583300880130852,
+          "areaSimilarity": 0.9698370416797242,
+          "bboxSimilarity": 0.9961084736009207,
+          "centroidSimilarity": 0.9993775639530086,
+          "referenceArea": 37137,
+          "proceduralArea": 38292,
+          "referenceBounds": {
+            "width": 330,
+            "height": 209,
+            "cx": 189.10959420524006,
+            "cy": 217.73425424778523
+          },
+          "proceduralBounds": {
+            "width": 331,
+            "height": 210,
+            "cx": 189.1103885929176,
+            "cy": 217.85581844771755
+          }
+        },
+        "right": {
+          "score": 97.09552669510704,
+          "iou": 0.9643315736909688,
+          "areaSimilarity": 0.9733409774974917,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.9984403748553723,
+          "referenceArea": 6791,
+          "proceduralArea": 6977,
+          "referenceBounds": {
+            "width": 312,
+            "height": 74,
+            "cx": 217.68414077455455,
+            "cy": 197.67501104402885
+          },
+          "proceduralBounds": {
+            "width": 312,
+            "height": 74,
+            "cx": 217.85982513974488,
+            "cy": 197.85294539200228
+          }
+        },
+        "left": {
+          "score": 97.21039492069553,
+          "iou": 0.9659746251441753,
+          "areaSimilarity": 0.9736575481256332,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.9974615877437553,
+          "referenceArea": 6727,
+          "proceduralArea": 6909,
+          "referenceBounds": {
+            "width": 312,
+            "height": 75,
+            "cx": 165.58852385907537,
+            "cy": 197.4859521331946
+          },
+          "proceduralBounds": {
+            "width": 312,
+            "height": 75,
+            "cx": 165.22289766970619,
+            "cy": 197.6653640179476
+          }
+        },
+        "rear": {
+          "score": 96.27532909871054,
+          "iou": 0.953466855339066,
+          "areaSimilarity": 0.9707351891506067,
+          "bboxSimilarity": 0.9984894259818731,
+          "centroidSimilarity": 0.9973454255796194,
+          "referenceArea": 35360,
+          "proceduralArea": 36426,
+          "referenceBounds": {
+            "width": 330,
+            "height": 199,
+            "cx": 193.54448529411764,
+            "cy": 197.18557692307692
+          },
+          "proceduralBounds": {
+            "width": 331,
+            "height": 199,
+            "cx": 193.39782023829133,
+            "cy": 196.69557458957888
+          }
+        },
+        "top": {
+          "score": 97.78532074013523,
+          "iou": 0.9710914861321926,
+          "areaSimilarity": 0.9876852431642663,
+          "bboxSimilarity": 1,
+          "centroidSimilarity": 0.9987276126835513,
+          "referenceArea": 14196,
+          "proceduralArea": 14373,
+          "referenceBounds": {
+            "width": 121,
+            "height": 311,
+            "cx": 191.39158918005072,
+            "cy": 222.5379684418146
+          },
+          "proceduralBounds": {
+            "width": 121,
+            "height": 311,
+            "cx": 191.41988450567035,
+            "cy": 222.32755861685104
+          }
+        }
+      },
+      "gun": {
+        "score": 94.97887292853397,
+        "iou": 0.9404580152671755,
+        "areaSimilarity": 0.9797507788161994,
+        "bboxSimilarity": 0.95,
+        "centroidSimilarity": 0.9901100355177384,
+        "referenceArea": 629,
+        "proceduralArea": 642,
+        "referenceBounds": {
+          "width": 84,
+          "height": 10,
+          "cx": 55.971383147853736,
+          "cy": 195.83306836248013
+        },
+        "proceduralBounds": {
+          "width": 84,
+          "height": 9,
+          "cx": 55.570093457943926,
+          "cy": 195.71495327102804
+        }
+      },
+      "gunBounds": {
+        "reference": {
+          "minX": 14,
+          "minY": 192,
+          "maxX": 97,
+          "maxY": 201,
+          "area": 629,
+          "cx": 55.971383147853736,
+          "cy": 195.83306836248013,
+          "width": 84,
+          "height": 10
+        },
+        "procedural": {
+          "minX": 14,
+          "minY": 192,
+          "maxX": 97,
+          "maxY": 200,
+          "area": 642,
+          "cx": 56.570093457943926,
+          "cy": 195.71495327102804,
+          "width": 84,
+          "height": 9
+        }
+      },
+      "tracks": {
+        "score": 97.08847220154743,
+        "iou": 0.9640077821011673,
+        "areaSimilarity": 0.9743790338353218,
+        "bboxSimilarity": 1,
+        "centroidSimilarity": 0.9984483893871802,
+        "referenceArea": 4982,
+        "proceduralArea": 5113,
+        "referenceBounds": {
+          "width": 240,
+          "height": 26,
+          "cx": 221.7083500602168,
+          "cy": 151.82336411079888
+        },
+        "proceduralBounds": {
+          "width": 240,
+          "height": 26,
+          "cx": 221.6669274398592,
+          "cy": 151.64071973401136
+        }
+      },
+      "trackContours": [
+        {
+          "topDelta": -0.55,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.35,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.75,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.25,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.3,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.5,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.2,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.45,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.3,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.25,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.9,
+          "bottomDelta": 0,
+          "columns": 20
+        },
+        {
+          "topDelta": -0.5,
+          "bottomDelta": 0.25,
+          "columns": 20
+        }
+      ],
+      "turretContours": {
+        "right": [
+          {
+            "topDelta": 0.08,
+            "bottomDelta": -0.12,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.5,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.69,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 0.04,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.38,
+            "bottomDelta": 0.46,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.42,
+            "bottomDelta": 0.92,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 1.31,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.23,
+            "bottomDelta": 0.23,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.54,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": -1.19,
+            "bottomDelta": 0.92,
+            "columns": 26
+          }
+        ],
+        "left": [
+          {
+            "topDelta": -1.69,
+            "bottomDelta": 0.54,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.54,
+            "bottomDelta": 0.12,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.15,
+            "bottomDelta": -0.15,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 1.23,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.46,
+            "bottomDelta": 0.69,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.38,
+            "bottomDelta": 0.27,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.73,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": 0,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": -0.42,
+            "bottomDelta": 0,
+            "columns": 26
+          },
+          {
+            "topDelta": 0.08,
+            "bottomDelta": -0.12,
+            "columns": 26
+          }
+        ]
+      },
+      "turretBands": {
+        "front": [
+          [
+            28,
+            [
+              206,
+              207
+            ],
+            [
+              206,
+              207
+            ]
+          ],
+          [
+            35,
+            [
+              201,
+              221
+            ],
+            [
+              196,
+              221
+            ]
+          ],
+          [
+            42,
+            [
+              198,
+              238
+            ],
+            [
+              194,
+              237
+            ]
+          ],
+          [
+            49,
+            [
+              194,
+              238
+            ],
+            [
+              192,
+              238
+            ]
+          ],
+          [
+            56,
+            [
+              191,
+              242
+            ],
+            [
+              190,
+              237
+            ]
+          ],
+          [
+            63,
+            [
+              188,
+              249
+            ],
+            [
+              184,
+              250
+            ]
+          ],
+          [
+            70,
+            [
+              187,
+              257
+            ],
+            [
+              184,
+              258
+            ]
+          ],
+          [
+            77,
+            [
+              187,
+              258
+            ],
+            [
+              183,
+              258
+            ]
+          ],
+          [
+            84,
+            [
+              186,
+              258
+            ],
+            [
+              182,
+              258
+            ]
+          ],
+          [
+            91,
+            [
+              185,
+              252
+            ],
+            [
+              182,
+              253
+            ]
+          ],
+          [
+            98,
+            [
+              143,
+              259
+            ],
+            [
+              141,
+              254
+            ]
+          ],
+          [
+            105,
+            [
+              142,
+              272
+            ],
+            [
+              140,
+              277
+            ]
+          ],
+          [
+            112,
+            [
+              141,
+              274
+            ],
+            [
+              139,
+              278
+            ]
+          ],
+          [
+            119,
+            [
+              141,
+              275
+            ],
+            [
+              139,
+              279
+            ]
+          ],
+          [
+            126,
+            [
+              140,
+              319
+            ],
+            [
+              138,
+              319
+            ]
+          ],
+          [
+            133,
+            [
+              139,
+              321
+            ],
+            [
+              138,
+              321
+            ]
+          ],
+          [
+            140,
+            [
+              138,
+              321
+            ],
+            [
+              137,
+              322
+            ]
+          ],
+          [
+            147,
+            [
+              138,
+              322
+            ],
+            [
+              137,
+              322
+            ]
+          ],
+          [
+            154,
+            [
+              137,
+              322
+            ],
+            [
+              137,
+              322
+            ]
+          ],
+          [
+            161,
+            [
+              137,
+              322
+            ],
+            [
+              137,
+              322
+            ]
+          ],
+          [
+            168,
+            [
+              137,
+              322
+            ],
+            [
+              136,
+              336
+            ]
+          ],
+          [
+            175,
+            [
+              137,
+              275
+            ],
+            [
+              136,
+              276
+            ]
+          ],
+          [
+            182,
+            [
+              137,
+              267
+            ],
+            [
+              136,
+              265
+            ]
+          ],
+          [
+            189,
+            [
+              137,
+              267
+            ],
+            [
+              136,
+              265
+            ]
+          ],
+          [
+            197,
+            [
+              137,
+              267
+            ],
+            [
+              136,
+              265
+            ]
+          ],
+          [
+            204,
+            [
+              137,
+              267
+            ],
+            [
+              136,
+              265
+            ]
+          ],
+          [
+            211,
+            [
+              137,
+              345
+            ],
+            [
+              136,
+              345
+            ]
+          ],
+          [
+            218,
+            [
+              137,
+              267
+            ],
+            [
+              137,
+              267
+            ]
+          ],
+          [
+            225,
+            [
+              137,
+              275
+            ],
+            [
+              137,
+              275
+            ]
+          ],
+          [
+            232,
+            [
+              137,
+              275
+            ],
+            [
+              137,
+              275
+            ]
+          ],
+          [
+            239,
+            [
+              138,
+              275
+            ],
+            [
+              137,
+              275
+            ]
+          ],
+          [
+            246,
+            [
+              139,
+              275
+            ],
+            [
+              137,
+              275
+            ]
+          ],
+          [
+            253,
+            [
+              139,
+              275
+            ],
+            [
+              138,
+              275
+            ]
+          ],
+          [
+            260,
+            [
+              140,
+              275
+            ],
+            [
+              138,
+              260
+            ]
+          ],
+          [
+            267,
+            [
+              141,
+              268
+            ],
+            [
+              139,
+              269
+            ]
+          ],
+          [
+            274,
+            [
+              142,
+              259
+            ],
+            [
+              140,
+              269
+            ]
+          ],
+          [
+            281,
+            [
+              142,
+              271
+            ],
+            [
+              141,
+              269
+            ]
+          ],
+          [
+            288,
+            [
+              143,
+              271
+            ],
+            [
+              142,
+              270
+            ]
+          ],
+          [
+            295,
+            [
+              185,
+              261
+            ],
+            [
+              182,
+              261
+            ]
+          ],
+          [
+            302,
+            [
+              186,
+              251
+            ],
+            [
+              183,
+              259
+            ]
+          ],
+          [
+            309,
+            [
+              187,
+              250
+            ],
+            [
+              183,
+              250
+            ]
+          ],
+          [
+            316,
+            [
+              187,
+              248
+            ],
+            [
+              184,
+              249
+            ]
+          ],
+          [
+            323,
+            [
+              188,
+              247
+            ],
+            [
+              185,
+              237
+            ]
+          ],
+          [
+            330,
+            [
+              191,
+              241
+            ],
+            [
+              190,
+              237
+            ]
+          ],
+          [
+            337,
+            [
+              195,
+              238
+            ],
+            [
+              192,
+              238
+            ]
+          ],
+          [
+            344,
+            [
+              198,
+              238
+            ],
+            [
+              194,
+              237
+            ]
+          ],
+          [
+            351,
+            [
+              202,
+              217
+            ],
+            [
+              196,
+              222
+            ]
+          ],
+          [
+            358,
+            null,
+            [
+              205,
+              207
+            ]
+          ]
+        ],
+        "right": [
+          [
+            14,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              198
+            ]
+          ],
+          [
+            21,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              200
+            ]
+          ],
+          [
+            27,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            34,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            40,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            47,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            54,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            60,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            67,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            74,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            80,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            87,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            93,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            100,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            107,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            113,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            120,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            126,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            133,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            140,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            146,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            153,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            160,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            166,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              200
+            ]
+          ],
+          [
+            173,
+            [
+              192,
+              204
+            ],
+            [
+              191,
+              204
+            ]
+          ],
+          [
+            179,
+            [
+              189,
+              205
+            ],
+            [
+              189,
+              205
+            ]
+          ],
+          [
+            186,
+            [
+              187,
+              207
+            ],
+            [
+              187,
+              208
+            ]
+          ],
+          [
+            193,
+            [
+              187,
+              209
+            ],
+            [
+              187,
+              209
+            ]
+          ],
+          [
+            199,
+            [
+              170,
+              209
+            ],
+            [
+              170,
+              211
+            ]
+          ],
+          [
+            206,
+            [
+              170,
+              211
+            ],
+            [
+              170,
+              211
+            ]
+          ],
+          [
+            213,
+            [
+              170,
+              211
+            ],
+            [
+              169,
+              213
+            ]
+          ],
+          [
+            219,
+            [
+              169,
+              219
+            ],
+            [
+              169,
+              219
+            ]
+          ],
+          [
+            226,
+            [
+              169,
+              220
+            ],
+            [
+              169,
+              221
+            ]
+          ],
+          [
+            232,
+            [
+              169,
+              219
+            ],
+            [
+              169,
+              221
+            ]
+          ],
+          [
+            239,
+            [
+              169,
+              219
+            ],
+            [
+              169,
+              221
+            ]
+          ],
+          [
+            246,
+            [
+              169,
+              219
+            ],
+            [
+              169,
+              220
+            ]
+          ],
+          [
+            252,
+            [
+              169,
+              217
+            ],
+            [
+              169,
+              217
+            ]
+          ],
+          [
+            259,
+            [
+              170,
+              242
+            ],
+            [
+              170,
+              242
+            ]
+          ],
+          [
+            265,
+            [
+              170,
+              237
+            ],
+            [
+              170,
+              238
+            ]
+          ],
+          [
+            272,
+            [
+              187,
+              237
+            ],
+            [
+              187,
+              237
+            ]
+          ],
+          [
+            279,
+            [
+              187,
+              210
+            ],
+            [
+              187,
+              210
+            ]
+          ],
+          [
+            285,
+            [
+              188,
+              210
+            ],
+            [
+              187,
+              210
+            ]
+          ],
+          [
+            292,
+            [
+              189,
+              210
+            ],
+            [
+              188,
+              210
+            ]
+          ],
+          [
+            299,
+            [
+              190,
+              210
+            ],
+            [
+              189,
+              210
+            ]
+          ],
+          [
+            305,
+            [
+              190,
+              210
+            ],
+            [
+              190,
+              211
+            ]
+          ],
+          [
+            312,
+            [
+              191,
+              210
+            ],
+            [
+              191,
+              209
+            ]
+          ],
+          [
+            318,
+            [
+              199,
+              201
+            ],
+            [
+              193,
+              206
+            ]
+          ],
+          [
+            325,
+            [
+              193,
+              207
+            ],
+            [
+              193,
+              207
+            ]
+          ]
+        ],
+        "left": [
+          [
+            58,
+            [
+              194,
+              207
+            ],
+            [
+              194,
+              207
+            ]
+          ],
+          [
+            65,
+            [
+              205,
+              207
+            ],
+            [
+              193,
+              208
+            ]
+          ],
+          [
+            71,
+            [
+              191,
+              210
+            ],
+            [
+              191,
+              210
+            ]
+          ],
+          [
+            78,
+            [
+              190,
+              210
+            ],
+            [
+              190,
+              210
+            ]
+          ],
+          [
+            84,
+            [
+              190,
+              210
+            ],
+            [
+              189,
+              210
+            ]
+          ],
+          [
+            91,
+            [
+              189,
+              210
+            ],
+            [
+              188,
+              210
+            ]
+          ],
+          [
+            98,
+            [
+              188,
+              210
+            ],
+            [
+              187,
+              210
+            ]
+          ],
+          [
+            104,
+            [
+              187,
+              210
+            ],
+            [
+              187,
+              210
+            ]
+          ],
+          [
+            111,
+            [
+              187,
+              237
+            ],
+            [
+              187,
+              231
+            ]
+          ],
+          [
+            118,
+            [
+              170,
+              237
+            ],
+            [
+              170,
+              238
+            ]
+          ],
+          [
+            124,
+            [
+              170,
+              243
+            ],
+            [
+              170,
+              243
+            ]
+          ],
+          [
+            131,
+            [
+              169,
+              215
+            ],
+            [
+              169,
+              216
+            ]
+          ],
+          [
+            137,
+            [
+              169,
+              216
+            ],
+            [
+              169,
+              218
+            ]
+          ],
+          [
+            144,
+            [
+              169,
+              217
+            ],
+            [
+              169,
+              219
+            ]
+          ],
+          [
+            151,
+            [
+              169,
+              217
+            ],
+            [
+              169,
+              219
+            ]
+          ],
+          [
+            157,
+            [
+              169,
+              219
+            ],
+            [
+              169,
+              219
+            ]
+          ],
+          [
+            164,
+            [
+              169,
+              221
+            ],
+            [
+              169,
+              221
+            ]
+          ],
+          [
+            170,
+            [
+              170,
+              211
+            ],
+            [
+              169,
+              212
+            ]
+          ],
+          [
+            177,
+            [
+              170,
+              210
+            ],
+            [
+              170,
+              211
+            ]
+          ],
+          [
+            184,
+            [
+              170,
+              209
+            ],
+            [
+              170,
+              209
+            ]
+          ],
+          [
+            190,
+            [
+              187,
+              208
+            ],
+            [
+              186,
+              208
+            ]
+          ],
+          [
+            197,
+            [
+              187,
+              207
+            ],
+            [
+              187,
+              208
+            ]
+          ],
+          [
+            204,
+            [
+              189,
+              205
+            ],
+            [
+              189,
+              205
+            ]
+          ],
+          [
+            210,
+            [
+              192,
+              204
+            ],
+            [
+              191,
+              204
+            ]
+          ],
+          [
+            217,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              200
+            ]
+          ],
+          [
+            223,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            230,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            237,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            243,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            250,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            257,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            263,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            270,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            276,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            283,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            290,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            296,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            303,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            309,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            316,
+            [
+              192,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            323,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            329,
+            [
+              193,
+              199
+            ],
+            [
+              192,
+              199
+            ]
+          ],
+          [
+            336,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            343,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            349,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            356,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              199
+            ]
+          ],
+          [
+            362,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              200
+            ]
+          ],
+          [
+            369,
+            [
+              193,
+              199
+            ],
+            [
+              193,
+              198
+            ]
+          ]
+        ],
+        "rear": [
+          [
+            25,
+            null,
+            [
+              200,
+              202
+            ]
+          ],
+          [
+            32,
+            [
+              192,
+              213
+            ],
+            [
+              189,
+              214
+            ]
+          ],
+          [
+            39,
+            [
+              186,
+              224
+            ],
+            [
+              185,
+              223
+            ]
+          ],
+          [
+            46,
+            [
+              183,
+              225
+            ],
+            [
+              183,
+              224
+            ]
+          ],
+          [
+            53,
+            [
+              180,
+              226
+            ],
+            [
+              180,
+              228
+            ]
+          ],
+          [
+            60,
+            [
+              177,
+              229
+            ],
+            [
+              175,
+              230
+            ]
+          ],
+          [
+            67,
+            [
+              177,
+              229
+            ],
+            [
+              173,
+              229
+            ]
+          ],
+          [
+            74,
+            [
+              177,
+              228
+            ],
+            [
+              171,
+              230
+            ]
+          ],
+          [
+            81,
+            [
+              174,
+              229
+            ],
+            [
+              169,
+              231
+            ]
+          ],
+          [
+            88,
+            [
+              171,
+              231
+            ],
+            [
+              167,
+              243
+            ]
+          ],
+          [
+            95,
+            [
+              126,
+              243
+            ],
+            [
+              123,
+              240
+            ]
+          ],
+          [
+            102,
+            [
+              124,
+              243
+            ],
+            [
+              122,
+              240
+            ]
+          ],
+          [
+            109,
+            [
+              123,
+              240
+            ],
+            [
+              121,
+              239
+            ]
+          ],
+          [
+            116,
+            [
+              122,
+              239
+            ],
+            [
+              120,
+              239
+            ]
+          ],
+          [
+            123,
+            [
+              121,
+              262
+            ],
+            [
+              119,
+              237
+            ]
+          ],
+          [
+            130,
+            [
+              121,
+              263
+            ],
+            [
+              119,
+              262
+            ]
+          ],
+          [
+            137,
+            [
+              120,
+              264
+            ],
+            [
+              119,
+              262
+            ]
+          ],
+          [
+            144,
+            [
+              120,
+              264
+            ],
+            [
+              118,
+              263
+            ]
+          ],
+          [
+            151,
+            [
+              119,
+              263
+            ],
+            [
+              118,
+              262
+            ]
+          ],
+          [
+            158,
+            [
+              119,
+              266
+            ],
+            [
+              118,
+              266
+            ]
+          ],
+          [
+            165,
+            [
+              119,
+              239
+            ],
+            [
+              118,
+              241
+            ]
+          ],
+          [
+            172,
+            [
+              119,
+              316
+            ],
+            [
+              117,
+              315
+            ]
+          ],
+          [
+            179,
+            [
+              119,
+              239
+            ],
+            [
+              117,
+              242
+            ]
+          ],
+          [
+            186,
+            [
+              118,
+              249
+            ],
+            [
+              117,
+              247
+            ]
+          ],
+          [
+            194,
+            [
+              118,
+              250
+            ],
+            [
+              117,
+              252
+            ]
+          ],
+          [
+            201,
+            [
+              119,
+              243
+            ],
+            [
+              117,
+              242
+            ]
+          ],
+          [
+            208,
+            [
+              119,
+              244
+            ],
+            [
+              117,
+              243
+            ]
+          ],
+          [
+            215,
+            [
+              119,
+              290
+            ],
+            [
+              118,
+              301
+            ]
+          ],
+          [
+            222,
+            [
+              119,
+              291
+            ],
+            [
+              118,
+              290
+            ]
+          ],
+          [
+            229,
+            [
+              119,
+              291
+            ],
+            [
+              118,
+              290
+            ]
+          ],
+          [
+            236,
+            [
+              119,
+              291
+            ],
+            [
+              118,
+              290
+            ]
+          ],
+          [
+            243,
+            [
+              120,
+              291
+            ],
+            [
+              118,
+              290
+            ]
+          ],
+          [
+            250,
+            [
+              120,
+              290
+            ],
+            [
+              119,
+              289
+            ]
+          ],
+          [
+            257,
+            [
+              121,
+              288
+            ],
+            [
+              119,
+              286
+            ]
+          ],
+          [
+            264,
+            [
+              121,
+              260
+            ],
+            [
+              120,
+              259
+            ]
+          ],
+          [
+            271,
+            [
+              122,
+              259
+            ],
+            [
+              120,
+              259
+            ]
+          ],
+          [
+            278,
+            [
+              124,
+              253
+            ],
+            [
+              121,
+              258
+            ]
+          ],
+          [
+            285,
+            [
+              125,
+              240
+            ],
+            [
+              123,
+              238
+            ]
+          ],
+          [
+            292,
+            [
+              171,
+              232
+            ],
+            [
+              167,
+              231
+            ]
+          ],
+          [
+            299,
+            [
+              172,
+              235
+            ],
+            [
+              169,
+              234
+            ]
+          ],
+          [
+            306,
+            [
+              177,
+              235
+            ],
+            [
+              170,
+              234
+            ]
+          ],
+          [
+            313,
+            [
+              177,
+              234
+            ],
+            [
+              172,
+              234
+            ]
+          ],
+          [
+            320,
+            [
+              177,
+              229
+            ],
+            [
+              174,
+              231
+            ]
+          ],
+          [
+            327,
+            [
+              180,
+              226
+            ],
+            [
+              180,
+              228
+            ]
+          ],
+          [
+            334,
+            [
+              183,
+              225
+            ],
+            [
+              183,
+              224
+            ]
+          ],
+          [
+            341,
+            [
+              186,
+              224
+            ],
+            [
+              185,
+              223
+            ]
+          ],
+          [
+            348,
+            [
+              191,
+              214
+            ],
+            [
+              189,
+              214
+            ]
+          ],
+          [
+            355,
+            [
+              202,
+              203
+            ],
+            [
+              201,
+              202
+            ]
+          ]
+        ],
+        "top": [
+          [
+            132,
+            [
+              200,
+              203
+            ],
+            [
+              200,
+              202
+            ]
+          ],
+          [
+            135,
+            [
+              197,
+              220
+            ],
+            [
+              197,
+              220
+            ]
+          ],
+          [
+            137,
+            [
+              195,
+              225
+            ],
+            [
+              195,
+              225
+            ]
+          ],
+          [
+            140,
+            [
+              191,
+              231
+            ],
+            [
+              191,
+              232
+            ]
+          ],
+          [
+            142,
+            [
+              189,
+              237
+            ],
+            [
+              189,
+              234
+            ]
+          ],
+          [
+            145,
+            [
+              186,
+              245
+            ],
+            [
+              186,
+              246
+            ]
+          ],
+          [
+            147,
+            [
+              183,
+              251
+            ],
+            [
+              183,
+              252
+            ]
+          ],
+          [
+            150,
+            [
+              180,
+              260
+            ],
+            [
+              180,
+              229
+            ]
+          ],
+          [
+            152,
+            [
+              178,
+              266
+            ],
+            [
+              178,
+              268
+            ]
+          ],
+          [
+            155,
+            [
+              174,
+              275
+            ],
+            [
+              175,
+              278
+            ]
+          ],
+          [
+            158,
+            [
+              171,
+              249
+            ],
+            [
+              165,
+              283
+            ]
+          ],
+          [
+            160,
+            [
+              170,
+              283
+            ],
+            [
+              165,
+              312
+            ]
+          ],
+          [
+            163,
+            [
+              169,
+              312
+            ],
+            [
+              165,
+              312
+            ]
+          ],
+          [
+            165,
+            [
+              168,
+              281
+            ],
+            [
+              165,
+              319
+            ]
+          ],
+          [
+            168,
+            [
+              167,
+              312
+            ],
+            [
+              165,
+              312
+            ]
+          ],
+          [
+            170,
+            [
+              167,
+              312
+            ],
+            [
+              165,
+              312
+            ]
+          ],
+          [
+            173,
+            [
+              165,
+              313
+            ],
+            [
+              165,
+              310
+            ]
+          ],
+          [
+            175,
+            [
+              170,
+              314
+            ],
+            [
+              170,
+              311
+            ]
+          ],
+          [
+            178,
+            [
+              165,
+              315
+            ],
+            [
+              166,
+              313
+            ]
+          ],
+          [
+            181,
+            [
+              163,
+              315
+            ],
+            [
+              164,
+              314
+            ]
+          ],
+          [
+            183,
+            [
+              162,
+              316
+            ],
+            [
+              162,
+              315
+            ]
+          ],
+          [
+            186,
+            [
+              160,
+              317
+            ],
+            [
+              161,
+              317
+            ]
+          ],
+          [
+            188,
+            [
+              102,
+              317
+            ],
+            [
+              23,
+              317
+            ]
+          ],
+          [
+            191,
+            [
+              15,
+              317
+            ],
+            [
+              15,
+              317
+            ]
+          ],
+          [
+            193,
+            [
+              15,
+              317
+            ],
+            [
+              15,
+              317
+            ]
+          ],
+          [
+            196,
+            [
+              161,
+              317
+            ],
+            [
+              161,
+              317
+            ]
+          ],
+          [
+            198,
+            [
+              162,
+              317
+            ],
+            [
+              162,
+              316
+            ]
+          ],
+          [
+            201,
+            [
+              164,
+              316
+            ],
+            [
+              165,
+              315
+            ]
+          ],
+          [
+            203,
+            [
+              170,
+              316
+            ],
+            [
+              171,
+              315
+            ]
+          ],
+          [
+            206,
+            [
+              170,
+              315
+            ],
+            [
+              170,
+              315
+            ]
+          ],
+          [
+            209,
+            [
+              170,
+              314
+            ],
+            [
+              170,
+              315
+            ]
+          ],
+          [
+            211,
+            [
+              166,
+              314
+            ],
+            [
+              165,
+              325
+            ]
+          ],
+          [
+            214,
+            [
+              167,
+              300
+            ],
+            [
+              165,
+              295
+            ]
+          ],
+          [
+            216,
+            [
+              167,
+              280
+            ],
+            [
+              165,
+              280
+            ]
+          ],
+          [
+            219,
+            [
+              168,
+              281
+            ],
+            [
+              165,
+              268
+            ]
+          ],
+          [
+            221,
+            [
+              169,
+              282
+            ],
+            [
+              165,
+              283
+            ]
+          ],
+          [
+            224,
+            [
+              170,
+              252
+            ],
+            [
+              165,
+              299
+            ]
+          ],
+          [
+            226,
+            [
+              171,
+              247
+            ],
+            [
+              165,
+              247
+            ]
+          ],
+          [
+            229,
+            [
+              174,
+              273
+            ],
+            [
+              174,
+              276
+            ]
+          ],
+          [
+            232,
+            [
+              177,
+              265
+            ],
+            [
+              177,
+              265
+            ]
+          ],
+          [
+            234,
+            [
+              180,
+              259
+            ],
+            [
+              180,
+              227
+            ]
+          ],
+          [
+            237,
+            [
+              183,
+              250
+            ],
+            [
+              183,
+              250
+            ]
+          ],
+          [
+            239,
+            [
+              185,
+              244
+            ],
+            [
+              185,
+              241
+            ]
+          ],
+          [
+            242,
+            [
+              189,
+              236
+            ],
+            [
+              189,
+              234
+            ]
+          ],
+          [
+            244,
+            [
+              191,
+              231
+            ],
+            [
+              191,
+              232
+            ]
+          ],
+          [
+            247,
+            [
+              194,
+              224
+            ],
+            [
+              195,
+              225
+            ]
+          ],
+          [
+            249,
+            [
+              197,
+              218
+            ],
+            [
+              197,
+              221
+            ]
+          ],
+          [
+            252,
+            [
+              200,
+              201
+            ],
+            [
+              200,
+              203
+            ]
+          ]
+        ]
+      }
+    },
+    "boxes": {
+      "normalization": {
+        "applied": false,
+        "anchor": "none (certified source metres)",
+        "target": null,
+        "referenceRaw": 3.78,
+        "proceduralRaw": 3.78
+      },
+      "reference": [
+        3.78,
+        2.97,
+        10.35
+      ],
+      "procedural": [
+        3.78,
+        2.97,
+        10.36
+      ],
+      "referenceMin": [
+        -1.89,
+        0,
+        -4.1
+      ],
+      "referenceMax": [
+        1.89,
+        2.97,
+        6.25
+      ],
+      "proceduralMin": [
+        -1.89,
+        0,
+        -4.1
+      ],
+      "proceduralMax": [
+        1.89,
+        2.97,
+        6.26
+      ],
+      "referenceTurret": [
+        3.51,
+        2.09,
+        9.07
+      ],
+      "proceduralTurret": [
+        3.53,
+        2.09,
+        9.07
+      ],
+      "referenceTurretMin": [
+        -1.75,
+        0.88,
+        -2.82
+      ],
+      "referenceTurretMax": [
+        1.77,
+        2.97,
+        6.25
+      ],
+      "proceduralTurretMin": [
+        -1.75,
+        0.88,
+        -2.82
+      ],
+      "proceduralTurretMax": [
+        1.78,
+        2.97,
+        6.26
+      ]
+    }
+  }
+}

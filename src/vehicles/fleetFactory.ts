@@ -43,6 +43,7 @@ import './japan.ts';
 import './germany.ts';
 import './afvFamily.ts';
 import './sheridan.ts';
+import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -77,6 +78,7 @@ export interface CreateTankOptions {
 }
 
 applyFleetBalancePass(TANK_SPECS);
+synchronizeSourceXCombatMetadata();
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 
@@ -109,6 +111,12 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  leopardX: () => import('./profiles/leopardX.ts').then((mod) => registerProfiles(mod.LEOPARD_X_PROFILES)),
+  t90X: () => import('./profiles/t90X.ts').then((mod) => registerProfiles(mod.T90_X_PROFILES)),
+  merkavaX: () => import('./profiles/merkavaX.ts').then((mod) => registerProfiles(mod.MERKAVA_X_PROFILES)),
+  k2X: () => import('./profiles/k2X.ts').then((mod) => registerProfiles(mod.K2_X_PROFILES)),
+  kf51X: () => import('./profiles/kf51X.ts').then((mod) => registerProfiles(mod.KF51_X_PROFILES)),
+  t14X: () => import('./profiles/t14X.ts').then((mod) => registerProfiles(mod.T14_X_PROFILES)),
   modern2: () => Promise.all([
     import('./modern2.ts'),
     import('./profiles/china.ts'),

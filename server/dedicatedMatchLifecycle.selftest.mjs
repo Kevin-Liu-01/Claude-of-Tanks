@@ -25,6 +25,22 @@ registry.createMatch({ matchId: 'lease_match_d', mapId: 'desert', players });
 registry.close();
 assert.equal(leases(), 0, 'registry close releases every map');
 
+// Production's loading timeout must also release the environment terrain lease.
+// Advance the injected clock, not wall time, so the exact boundary is repeatable.
+let loadingNow = 1_000;
+const abandoned = new DedicatedMatchRegistry({ now: () => loadingNow });
+abandoned.createMatch({ matchId: 'lease_loading_timeout', players });
+assert.equal(leases(), 1);
+loadingNow += 179_999;
+abandoned.advance(0);
+assert.equal(abandoned.matches.size, 1, 'loading grace remains intact until its boundary');
+assert.equal(leases(), 1);
+loadingNow++;
+abandoned.advance(0);
+assert.equal(abandoned.matches.size, 0, 'unstarted room expires at 180 seconds');
+assert.equal(leases(), 0, 'loading expiry cannot retain its world terrain lease');
+abandoned.close();
+
 const invalid = new DedicatedMatchRegistry();
 assert.throws(() => invalid.createMatch({
   matchId: 'lease_bad_spec', players: [{ ...players[0], specId: 'not-a-tank' }, players[1]],

@@ -51,6 +51,7 @@ import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import type { PlayMode } from '../net/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import type { FleetGunSpec, FleetTankSpec } from '../vehicles/specContracts.ts';
@@ -60,7 +61,7 @@ import type { CamoTagId, CustomCamo } from '../vehicles/camoPolicy.ts';
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 
-type BattleMode = 'solo' | 'private' | 'lan' | 'ranked';
+type BattleMode = PlayMode;
 type StatRangeKey = 'hp' | 'speed' | 'hpt' | 'dmg' | 'reload' | 'aim' | 'view' | 'camo';
 type StatRange = Record<StatRangeKey, [number, number]>;
 
@@ -562,9 +563,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="lan" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
     `<span class="choice-name">LAN</span><small>Wi-Fi</small></button>` +
-    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="ranked" aria-checked="false">` +
-    `<span class="choice-icon">${uiIconSVG('battleRanked', 17)}</span>` +
-    `<span class="choice-name">Ranked</span><small>ELO</small></button>` +
     `<div class="cot-battle-menu-label">Solo rules</div>` +
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="capture_the_flag" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
@@ -2561,7 +2559,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     solo: { short: 'BOTS', label: 'Bots', icon: 'battleBots' },
     private: { short: 'CODE', label: 'Private', icon: 'battlePrivate' },
     lan: { short: 'LAN', label: 'LAN', icon: 'battleLan' },
-    ranked: { short: 'RANK', label: 'Ranked', icon: 'battleRanked' },
   };
   const battleRuleMeta: Partial<Record<GameModeId, BattleChoiceMeta>> = {
     capture_the_flag: { short: 'CTF', label: 'Capture the Flag', icon: 'modeFlag' },

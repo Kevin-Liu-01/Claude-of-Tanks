@@ -7,7 +7,12 @@ import {
   type TerrainMapConfig,
 } from '../src/world/terrain.ts';
 
-const config = getMapConfig('verdant');
+const requestedMaps = new URLSearchParams(window.location.search).getAll('map');
+const mapId = requestedMaps[0] ?? 'verdant';
+if (requestedMaps.length > 1 || (mapId !== 'verdant' && mapId !== 'winter')) {
+  throw new Error('terrain benchmark: map must be verdant or winter');
+}
+const config = getMapConfig(mapId);
 type TerrainEngineContext = Parameters<typeof buildTerrainMeshesAsync>[1];
 
 interface TerrainStreamingStats {
@@ -29,6 +34,7 @@ interface TerrainSample {
   readonly ms: number;
   readonly stats: TerrainStreamingStats;
   readonly streamJobMs: readonly number[];
+  readonly streamUpdateMs: readonly number[];
   readonly buildSlices: {
     readonly count: number;
     readonly maxMs: number;
@@ -43,6 +49,16 @@ interface TerrainRun extends TerrainSample {
 }
 
 interface TerrainStreamBenchmark {
+  readonly scenario: {
+    readonly mapId: 'verdant' | 'winter';
+    readonly seed: 1337;
+    readonly cameraPath: {
+      readonly start: { readonly x: 2; readonly z: -95 };
+      readonly end: { readonly x: 37; readonly z: 335 };
+      readonly positions: 181;
+      readonly updatesPerPosition: 4;
+    };
+  };
   readonly cold: {
     readonly ms: number;
     readonly maxBuildSliceMs: number;
@@ -56,6 +72,14 @@ interface TerrainStreamBenchmark {
   readonly savingsPct: number;
   readonly streamedStats: TerrainStreamingStats;
   readonly streamJobs: { readonly count: number; readonly maxMs: number };
+  readonly streamUpdates: {
+    readonly count: number;
+    readonly maxMs: number;
+    readonly p95Ms: number;
+    readonly p99Ms: number;
+    readonly completedGeometryPerRun: readonly number[];
+    readonly includesPartialWork: true;
+  };
   readonly runs: readonly {
     readonly streamed: boolean;
     readonly ms: number;
@@ -112,7 +136,7 @@ function isTerrainMapConfig(value: RuntimeValue): value is TerrainMapConfig {
 
 const terrainConfigCandidate: RuntimeValue = config;
 if (!isTerrainMapConfig(terrainConfigCandidate)) {
-  throw new Error('Verdant map config is incompatible with the terrain benchmark');
+  throw new Error(`${mapId} map config is incompatible with the terrain benchmark`);
 }
 const terrainConfig = terrainConfigCandidate;
 const heightField = createHeightField(1337, terrainConfig);
@@ -161,11 +185,12 @@ async function sample(streamFarLods: boolean): Promise<TerrainSample> {
   const runtimeGroup = group as TerrainRuntimeGroup;
   const stats = runtimeGroup.userData.streamingStats;
   const streamJobMs: number[] = [];
+  const streamUpdateMs: number[] = [];
   if (streamFarLods) {
     const updateLOD = runtimeGroup.userData.updateLOD;
     let priorJobs = stats.streamedGeometryCount;
-    // Drive a camera from deployment toward the enemy base. Four render
-    // updates per position honor the production one-job-per-four-frames rate.
+    // Retain the same fixed camera path on every map for comparison. Four
+    // updates per position preserve the original fixed-cadence comparison.
     for (let i = 0; i <= 180; i++) {
       const t = i / 180;
       const camera = { x: 2 + 35 * t, z: -95 + 430 * t };
@@ -173,6 +198,9 @@ async function sample(streamFarLods: boolean): Promise<TerrainSample> {
         const jobStartedAt = performance.now();
         updateLOD(camera);
         const jobMs = performance.now() - jobStartedAt;
+        // An incremental builder also works on calls that complete no mesh.
+        // Measure every update, not just the final (often cheap) publication.
+        streamUpdateMs.push(jobMs);
         if (stats.streamedGeometryCount !== priorJobs) {
           streamJobMs.push(jobMs);
           priorJobs = stats.streamedGeometryCount;
@@ -185,6 +213,7 @@ async function sample(streamFarLods: boolean): Promise<TerrainSample> {
     ms,
     stats: { ...stats },
     streamJobMs,
+    streamUpdateMs,
     buildSlices: {
       count: buildSliceMs.length,
       maxMs: Math.max(...buildSliceMs),
@@ -212,7 +241,16 @@ const streamedMs = median(runs.filter((r) => r.streamed).map((r) => r.ms));
 const streamedRun = runs.find((run) => run.streamed);
 if (!streamedRun) throw new Error('terrain benchmark requires a streamed sample');
 const streamJobSamples = runs.filter((run) => run.streamed).flatMap((run) => run.streamJobMs);
+const streamUpdateSamples = runs.filter((run) => run.streamed)
+  .flatMap((run) => run.streamUpdateMs).sort((a, b) => a - b);
+const updatePercentile = (percent: number): number => streamUpdateSamples.length
+  ? streamUpdateSamples[Math.ceil(percent * streamUpdateSamples.length) - 1]! : 0;
 window.__TERRAIN_STREAM_BENCH = {
+  scenario: {
+    mapId,
+    seed: 1337,
+    cameraPath: { start: { x: 2, z: -95 }, end: { x: 37, z: 335 }, positions: 181, updatesPerPosition: 4 },
+  },
   cold: {
     ms: cold.ms,
     maxBuildSliceMs: cold.buildSlices.maxMs,
@@ -227,7 +265,16 @@ window.__TERRAIN_STREAM_BENCH = {
   streamedStats: streamedRun.stats,
   streamJobs: {
     count: streamJobSamples.length,
-    maxMs: Math.max(...streamJobSamples),
+    maxMs: Math.max(0, ...streamJobSamples),
+  },
+  streamUpdates: {
+    count: streamUpdateSamples.length,
+    maxMs: Math.max(0, ...streamUpdateSamples),
+    p95Ms: updatePercentile(0.95),
+    p99Ms: updatePercentile(0.99),
+    completedGeometryPerRun: runs.filter((run) => run.streamed)
+      .map((run) => run.stats.streamedGeometryCount),
+    includesPartialWork: true,
   },
   runs: runs.map((r) => ({
     streamed: r.streamed,

@@ -105,6 +105,21 @@ const anchor = (
 });
 
 export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnchor>> = Object.freeze({
+  // X rebuilds choose their own actual skirt stations; these normalized
+  // hints are ray-seated on the new geometry, never inherited turret decals.
+  t90a_x: anchor('hull', 'right', .3985, .5722, .24, -1),
+  t90a_vladimir_x: anchor('hull', 'left', .3918, .5509, .24, 1),
+  t90m_x: anchor('turret', 'left', .1509, .5880, .24, 1),
+  t90sm_x: anchor('turret', 'left', .14, .65, .24, 1),
+  t14_x: anchor('turret', 'left', .22, .60, .24, 1),
+  leo2a7v_x: anchor('hull', 'left', .192, .493, .24, 1),
+  leo2a6m_x: anchor('hull', 'left', .192, .493, .22, 1),
+  leo2a4m_x: anchor('hull', 'right', .655, .54, .22, -1),
+  leo2a5_x: anchor('hull', 'left', .758, .484, .22, -1),
+  merkava4_x: anchor('hull', 'left', .55132, .48234, .24, 1),
+  merkava3d_x: anchor('hull', 'left', .56041, .49104, .24, 1),
+  k2_x: anchor('hull', 'left', .67977, .51807, .24, 1),
+  kf51_x: anchor('turret', 'left', .30, .50, .24, 1),
   tiger1: anchor('turret', 'right', 0.46, 0.48, 0.30, 1),
   panther_g: anchor('turret', 'left', 0.42, 0.50, 0.29, -1),
   m1a2: anchor('turret', 'left', 0.43, 0.43, 0.27, 1),

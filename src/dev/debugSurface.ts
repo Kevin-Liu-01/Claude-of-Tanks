@@ -31,6 +31,7 @@ export interface DebugSurfaceDependencies {
   garage: RuntimeValue;
   quality: Readonly<Record<string, UnknownAction>>;
   getFx(): RuntimeValue;
+  getBattleAtmosphere?(): RuntimeValue;
   getPedestalVisual(): RuntimeValue;
   isPedestalOnStage(): boolean;
   getSelectedSpecId(): string;
@@ -95,6 +96,7 @@ export function installDebugSurface(
     rig: deps.rig,
     bus: deps.bus,
     get fx() { return deps.getFx(); },
+    get battleAtmosphere() { return deps.getBattleAtmosphere?.() ?? null; },
     input: deps.input,
     settings: deps.settings,
     pauseInfo: deps.pauseInfo,

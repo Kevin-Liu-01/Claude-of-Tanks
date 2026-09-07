@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "t90a_vladimir_x",
+  "measuredAt": "2026-09-06",
+  "units": "metres; unchanged canonical +Y-up/+Z-forward source frame",
+  "localOracleSha256": "c3c41ccc322f5746727022964dc03760fab196183532d0e416884d97ffa8858c",
+  "sourceMesh": "desirefxme_009",
+  "sourceUse": "Owner-authorized local measurement/comparison only; unresolved redistribution provenance. No source mesh, index, texture, or rig buffers are included in the playable helper.",
+  "visualFinding": "The 2026-09-06 07:23 UTC neutral board exposed flat native forward ramps in place of the source's shallow upper cover and rounded nose. Independent rays confirmed up to 161.75 mm of missing crown height, despite passing outer-silhouette scores.",
+  "originalFailureAtAbsX1_4": [
+    {"z": 3.50, "sourceY": 1.279445, "oldNativeY": 1.207975},
+    {"z": 3.65, "sourceY": 1.255053, "oldNativeY": 1.110475},
+    {"z": 3.80, "sourceY": 1.174723, "oldNativeY": 1.012975},
+    {"z": 3.90, "sourceY": 1.063180, "oldNativeY": 0.947975}
+  ],
+  "sourceConstruction": {
+    "upperCover": {"connectedStudyIsland": 7744, "sourceVertexCount": 144, "boundsMin": [1.077856,0.928218,3.152637], "boundsMax": [1.804965,1.298141,3.618784]},
+    "rolledNoseAndSideReturns": {"connectedStudyIsland": 63843, "sourceVertexCount": 292, "boundsMin": [1.043643,0.775015,3.147708], "boundsMax": [1.805254,1.266796,3.921547]},
+    "crownNormalProgression": [[0,0.9986,0.0533],[0,0.9408,0.3389],[0,0.6677,0.7444]],
+    "measurementMethod": "Connected-component provenance identifies the two physical source pieces. Deliberately selected longitudinal planes and transverse scalar samples describe their upper envelope. The new first-party section solids do not reuse source vertex connectivity or topology. Separate held-out rays validate crown shape, folded edges and empty plan corners."
+  },
+  "heldOutCrownAtAbsX1_43": [
+    [3.35,1.28749536], [3.55,1.27674887], [3.675,1.24604552],
+    [3.725,1.22803119], [3.79,1.18587089], [3.84,1.13013203]
+  ],
+  "constructionInference": "Closed thin skins use independently measured centerline thicknesses; detailed underside thickness variation and small seam hardware are simplified. A short bridge follows the source forward-deck centerline while joining the retained native longitudinal fender. A concealed 3 mm longitudinal lap connects the upper cover to the nose. Both are tested for actual positive overlap, not accepted solely on bounding-box support. The paired native guards are mirrored; the supplied source has minor left/right asymmetry.",
+  "scope": "Replaces only the two former Vladimir front orientedSlabs. Existing longitudinal roof, rails, equipment, rear guards, wheel/end axes, track course, hull/turret cores and ERA bodies remain unchanged. Immutable full-model vertex multisets subtract only the exact old/new guard primitives, never a whole bucket or coordinate region.",
+  "verification": {
+    "focusedSourceTest": "src/vehicles/profiles/t90VXFrontGuards.selftest.mjs",
+    "cpuState": "PASS high/low crown positions and normals, selected transverse folds within 10 mm, rounded plan air, closed positive-volume skins and real lap contact; existing rear-guard regression and exact replacement-only preservation also pass.",
+    "scopedProof": {
+      "dateUtc": "2026-09-06",
+      "state": "PASS; parent-owned fresh scoped fidelity, geometry and strict checks after the physical correction.",
+      "rawFidelity": 96.74454320698266,
+      "rawGeometryMinimum": 94.40786589683208,
+      "minimumWholeView": 94.40786589683208,
+      "geometryReceipt": "docs/geometry-gate/t90a_vladimir_x.json",
+      "neutralBoard": "shots/procedural-fidelity/boards/t90a_vladimir_x-neutral.png",
+      "neutralBoardUpdatedAtUtc": "2026-09-06T07:55:22.878Z",
+      "independentShadedReview": "Parent inspected the fresh neutral source-versus-procedural board and confirmed the guard crown is restored."
+    },
+    "releaseState": "The corrected guard passes fresh scoped proof and independent shaded review. Full final anatomy/assets/release regeneration remains pending and parent-owned; this scoped result does not certify completion of that full pipeline."
+  }
+}

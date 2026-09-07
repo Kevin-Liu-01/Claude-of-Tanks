@@ -233,6 +233,7 @@ export function createNetworkRoomCoordinator({
   let menuAttached = false;
   let presentedRound = 0;
   let rematchPending = false;
+  let roomGeneration = 0;
   const pendingChat: RuntimeValue[] = [];
   let roomChat: RoomChatRuntime | null = null;
   let roomChatPromise: Promise<RoomChatRuntime> | null = null;
@@ -300,12 +301,18 @@ export function createNetworkRoomCoordinator({
     state: NetworkRoomState,
   ): boolean => {
     if (!isSerializedLobbyState(state)) return false;
+    const match = getMatch();
+    if (!match || match.client?.closed) return false;
+    const ownsRoom = () => !!activeRoom && getMatch() === match && !match.client?.closed;
     const adapter: ActiveRoomAdapter = {
       state,
-      playerId: getMatch()?.playerId || '',
-      role: getMatch()?.role === 'host' ? 'host' : 'client',
-      command: (command: Record<string, RuntimeValue>) => getMatch()?.roomCommand?.(command),
-      leave: (reason?: string) => onClose(reason || 'left_room'),
+      playerId: match.playerId || '',
+      role: match.role === 'host' ? 'host' : 'client',
+      command: (command: Record<string, RuntimeValue>) =>
+        ownsRoom() ? match.roomCommand?.(command) : false,
+      leave: (reason?: string) => {
+        if (ownsRoom()) onClose(reason || 'left_room');
+      },
     };
     if (!menuAttached) {
       menu.attachActiveRoom(adapter);
@@ -332,8 +339,9 @@ export function createNetworkRoomCoordinator({
     if (getPhase() === 'battle' && !hasResult()) return;
     const menuPromise = getPlayMenu();
     if (!menuPromise) return;
+    const generation = roomGeneration;
     menuPromise.then((menu) => {
-      if (!activeRoom) return;
+      if (!activeRoom || generation !== roomGeneration) return;
       syncMenuPresentation(menu, activeRoom);
     }).catch(() => { /* optional room presentation retries on the next state */ });
   };
@@ -345,12 +353,17 @@ export function createNetworkRoomCoordinator({
     const round = Number(state.round) || 0;
     if (state.phase === 'starting' && round > presentedRound && !rematchPending) {
       rematchPending = true;
-      schedule(() => { void onRematch(state); });
+      const generation = roomGeneration;
+      schedule(() => {
+        if (generation === roomGeneration && activeRoom?.phase === 'starting' &&
+            activeRoom.round === state.round) void onRematch(state);
+      });
     }
   };
 
   const coordinator: NetworkRoomCoordinator = {
     handleLobbyChange(context) {
+      if (context && !activeRoom) roomGeneration++;
       pendingLobby = context?.state ? context : null;
       if (pendingLobby) preloadLobbyIntent(pendingLobby.state);
       if (activeRoom) return;
@@ -384,6 +397,7 @@ export function createNetworkRoomCoordinator({
     attach(initialState) {
       const match = getMatch();
       if (!match?.onRoomState) return;
+      roomGeneration++;
       unsubscribeRoom?.();
       unsubscribeChat?.();
       activeRoom = initialState;
@@ -396,11 +410,13 @@ export function createNetworkRoomCoordinator({
     },
 
     clear() {
+      const generation = ++roomGeneration;
       unsubscribeRoom?.();
       unsubscribeChat?.();
       unsubscribeRoom = null;
       unsubscribeChat = null;
       activeRoom = null;
+      pendingLobby = null;
       presentedRound = 0;
       rematchPending = false;
       pendingChat.length = 0;
@@ -409,7 +425,10 @@ export function createNetworkRoomCoordinator({
         roomChat.clear();
       }
       setGarageStatus(null);
-      getPlayMenu()?.then((menu) => menu.detachActiveRoom()).catch(() => null);
+      getPlayMenu()?.then((menu) => {
+        // A delayed menu import must not detach a newer room or lobby.
+        if (generation === roomGeneration) menu.detachActiveRoom();
+      }).catch(() => null);
       menuAttached = false;
       emitRoomState(null);
     },
@@ -420,7 +439,10 @@ export function createNetworkRoomCoordinator({
       const match = getMatch();
       const menuPromise = getPlayMenu();
       if (!activeRoom || !match || match.client?.closed || !menuPromise) return false;
+      const generation = roomGeneration;
       const menu = await menuPromise;
+      if (!activeRoom || generation !== roomGeneration || getMatch() !== match ||
+          match.client?.closed) return false;
       if (!syncMenuPresentation(menu, activeRoom)) return false;
       return !!menu.showActiveRoom();
     },

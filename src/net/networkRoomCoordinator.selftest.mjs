@@ -42,7 +42,7 @@ const room = (round = 1, phase = 'waiting') => ({
   ],
 });
 
-const coordinator = createNetworkRoomCoordinator({
+const options = {
   getMatch: () => match,
   getPlayMenu: () => Promise.resolve(menu),
   loadRoomChat: async () => ({ createRoomChat: () => chat }),
@@ -61,7 +61,8 @@ const coordinator = createNetworkRoomCoordinator({
   onClose: (reason) => calls.push(['close', reason]),
   schedule: (callback) => scheduled.push(callback),
   randomUint32: () => 99,
-});
+};
+const coordinator = createNetworkRoomCoordinator(options);
 
 coordinator.handleLobbyChange({ state: room(), playerId: 'p1', role: 'host' });
 coordinator.syncPendingLobbySelection();
@@ -120,8 +121,68 @@ assert.equal(coordinator.shouldPreserveOnBattleExit(), true,
 coordinator.clear();
 await Promise.resolve();
 assert.equal(coordinator.activeRoom, null);
+assert.equal(coordinator.pendingLobby, null, 'closed room leaves no stale lobby reminder');
 assert.equal(stateListener, null);
 assert.equal(chatListener, null);
 assert.ok(calls.some(([name]) => name === 'detach-menu'));
+
+// Resolve an imported menu after another acquisition has started, including
+// a rejoin of the very same room code. Room-code equality is not ownership.
+for (const successor of ['lobby', 'match']) {
+  let resolveMenu;
+  const delayedMenu = new Promise((resolve) => { resolveMenu = resolve; });
+  const delayed = createNetworkRoomCoordinator({ ...options, getPlayMenu: () => delayedMenu });
+  delayed.attach(room());
+  delayed.clear();
+  if (successor === 'lobby') delayed.handleLobbyChange({ state: room(), playerId: 'p1' });
+  else delayed.attach(room());
+  const before = calls.filter(([name]) => name === 'detach-menu').length;
+  resolveMenu(menu);
+  await Promise.resolve();
+  assert.equal(calls.filter(([name]) => name === 'detach-menu').length, before,
+    `an old deferred clear cannot detach its successor ${successor}`);
+  delayed.clear();
+  await Promise.resolve();
+}
+
+{
+  let resolveMenu;
+  const delayedMenu = new Promise((resolve) => { resolveMenu = resolve; });
+  const delayed = createNetworkRoomCoordinator({ ...options, getPlayMenu: () => delayedMenu });
+  delayed.attach(room());
+  const showing = delayed.showActiveRoom();
+  delayed.clear();
+  const before = calls.filter(([name]) => name === 'attach-menu' || name === 'show-menu').length;
+  resolveMenu(menu);
+  assert.equal(await showing, false, 'closing during menu import cancels room presentation');
+  assert.equal(calls.filter(([name]) => name === 'attach-menu' || name === 'show-menu').length, before);
+}
+
+{
+  let currentMatch = match;
+  let adapter;
+  const pendingRematches = [];
+  const guarded = createNetworkRoomCoordinator({
+    ...options,
+    getMatch: () => currentMatch,
+    getPlayMenu: () => Promise.resolve({ ...menu, attachActiveRoom(value) { adapter = value; } }),
+    schedule: (callback) => pendingRematches.push(callback),
+  });
+  guarded.attach(room());
+  assert.equal(await guarded.showActiveRoom(), true);
+  const oldAdapter = adapter;
+  stateListener(room(2, 'starting'));
+  guarded.clear();
+  currentMatch = { ...match };
+  guarded.attach(room());
+  const before = calls.filter(([name]) => ['command', 'close', 'rematch'].includes(name)).length;
+  oldAdapter.command({ type: 'set_ready', ready: true });
+  oldAdapter.leave('left_room');
+  pendingRematches.shift()();
+  assert.equal(calls.filter(([name]) => ['command', 'close', 'rematch'].includes(name)).length, before,
+    'retired controls and scheduled rematches cannot act on a replacement owner');
+  guarded.clear();
+  await Promise.resolve();
+}
 
 console.log('networkRoomCoordinator.selftest: lobby, chat, commands, and rematch lifecycle passed');

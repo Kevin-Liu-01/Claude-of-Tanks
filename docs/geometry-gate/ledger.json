@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-05T10:09:33.607Z",
+ "generatedAt": "2026-09-06T10:07:12.013Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 35,
- "total": 125,
+ "passed": 48,
+ "total": 138,
  "rows": [
   {
    "id": "recon_tank",
@@ -1507,6 +1507,19 @@
    }
   },
   {
+   "id": "leo2a7v_x",
+   "geoMin": 92.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.1,
+    "dims": 92.2,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "leo2_revolution",
    "geoMin": 92.2,
    "requiredMinimum": 92,
@@ -1515,6 +1528,38 @@
    "components": {
     "wholeCurves": 92.2,
     "dims": 97.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t90a_x",
+   "geoMin": 92.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 92.3,
+    "stations": 96,
+    "turretCurves": 92.6,
+    "wholeCurves": 92.6,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t90sm_x",
+   "geoMin": 92.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 92.4,
+    "stations": 94.8,
+    "turretCurves": 94.5,
+    "wholeCurves": 93.2,
+    "dims": 99.2,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1531,6 +1576,145 @@
     "dims": 99.1,
     "floaters": 100
    }
+  },
+  {
+   "id": "merkava4_x",
+   "geoMin": 92.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.7,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "leo2a5_x",
+   "geoMin": 93,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 93,
+    "stations": 96,
+    "turretCurves": 93.5,
+    "wholeCurves": 93.1,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "k2_x",
+   "geoMin": 93,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93,
+    "dims": 95.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "leo2a4m_x",
+   "geoMin": 93,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93,
+    "dims": 95.1,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t90m_x",
+   "geoMin": 93.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 94.2,
+    "stations": 98.4,
+    "turretCurves": 95.2,
+    "wholeCurves": 93.1,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "merkava3d_x",
+   "geoMin": 93.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.4,
+    "dims": 99.4,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "leo2a6m_x",
+   "geoMin": 93.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.4,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "kf51_x",
+   "geoMin": 93.6,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 93.6,
+    "stations": 100,
+    "turretCurves": 94.4,
+    "wholeCurves": 95.6,
+    "dims": 99.6,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t90a_vladimir_x",
+   "geoMin": 94.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.4,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "t14_x",
+   "geoMin": 94.6,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.6,
+    "dims": 95.8,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "leo2_revolution_proto",

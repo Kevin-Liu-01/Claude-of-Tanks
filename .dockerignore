@@ -7,6 +7,11 @@ shots
 .quality-reports
 .stryker-tmp
 coverage
+.env
+.env.*
+!.env.example
+!.env.*.example
+.vercel
 public/models/community-candidates
 public/models/tanks/candidates-gen2
 public/models/**/*.glb.bak

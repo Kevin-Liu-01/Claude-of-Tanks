@@ -502,16 +502,25 @@ interface BattlePostPort {
 }
 
 export interface OpeningEffectsWarmOptions {
-  fx: BattleFxPort;
+  fx: BattleFxPort & {
+    warmProjectilePresentation(position: Vector3, direction: Vector3): void;
+    composeFiringMoment(options: {
+      muzzlePos: Vector3;
+      dir: Vector3;
+      caliberMm: number;
+      tracerType: 'APFSDS';
+      ageS: number;
+    }): void;
+  };
   post: BattlePostPort;
   camera: Camera;
   shells: RuntimeValue[];
   decalVisual?: { root: Object3D } | null;
   compilePrograms(root: Object3D): void;
+  /** Covered real compositor submission, including the active late-FX pass. */
   warmRender(): void;
 }
 
-let openingEffectsWarmed = false;
 let studioEffectsWarmed = false;
 let studioEffectsWarmPromise: Promise<void> | null = null;
 let warmGeneration = 0;
@@ -726,75 +735,86 @@ export function stageCombatFxProgramSubmission({
   };
 }
 
-/** Prime common network muzzle, impact, destruction and soft-particle paths once. */
+function stageNetworkArmorScar(
+  fx: BattleFxPort,
+  visual: { root: Object3D },
+  compilePrograms: (root: Object3D) => void,
+): void {
+  const position = visual.root.getWorldPosition(new Vector3());
+  position.y += 0.5;
+  fx.armorScar?.(visual, position, new Vector3(0, 1, 0), 120);
+  compilePrograms(visual.root);
+}
+
+/** Restore first-shot FX on every covered entry, including after GPU suspension. */
 export async function warmNetworkOpeningEffects({
   fx,
   post,
   camera,
-  shells,
   decalVisual = null,
   compilePrograms,
   warmRender,
 }: OpeningEffectsWarmOptions): Promise<void> {
-  if (openingEffectsWarmed) return;
-  const position = new Vector3(-460, 0, -460);
-  const normal = new Vector3(0, 1, 0);
-  const direction = new Vector3(0, 0, 1);
+  const layerMask = camera.layers.mask;
+  const rootWasVisible = fx.group.visible;
+  let stagedScarVisual: { root: Object3D } | null = null;
+  let scarWasVisible = true;
   try {
     fx.warmTextures?.();
+    await nextFrame();
+    // Keep this one pooled, vehicle-owned mesh scene-attached until the real
+    // draw. Compiling then detaching it left its buffers and shared atlas cold.
+    // Capture ownership before stamping so even a partially failed stamp rolls
+    // back. No yield follows staging; the live bridge cannot hide it mid-warm.
+    if (decalVisual && fx.armorScar) {
+      stagedScarVisual = decalVisual;
+      scarWasVisible = decalVisual.root.visible;
+      decalVisual.root.visible = true;
+      stageNetworkArmorScar(fx, decalVisual, compilePrograms);
+    }
+    const direction = camera.getWorldDirection(new Vector3());
+    const position = camera.getWorldPosition(new Vector3()).addScaledVector(direction, 10);
+    const normal = new Vector3(0, 1, 0);
     fx.warmOpeningEffects(position, direction, normal, 120);
     for (const kind of [
       'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
     ]) fx.impact(kind, position, normal, 120);
     fx.dust(position, direction, 1);
     fx.exhaust(position, 1, true);
-    await nextFrame();
-    try { fx.update(0.016, shells, camera); } catch (_) { /* warm only */ }
     fx.destruction(position, null, 'shot');
-    await nextFrame();
-    try { fx.update(0.016, shells, camera); } catch (_) { /* warm only */ }
     fx.destruction(position, null, 'ammorack');
-    await nextFrame();
-    try { fx.update(0.016, shells, camera); } catch (_) { /* warm only */ }
-    // Impact particles live under the FX root, but persistent armor scars are
-    // created lazily under the struck vehicle. Prime one shared pooled decal
-    // mesh while the network loader is opaque so first contact cannot allocate
-    // geometry, upload its buffers, and link its material inside a live frame.
-    if (decalVisual?.root && fx.armorScar) {
-      const rootWasVisible = decalVisual.root.visible;
-      try {
-        decalVisual.root.visible = true;
-        decalVisual.root.getWorldPosition(position);
-        position.y += 0.5;
-        normal.set(0, 1, 0);
-        fx.armorScar(decalVisual, position, normal, 120);
-        compilePrograms(decalVisual.root);
-      } finally {
-        fx.clearVehicleDecals?.(decalVisual);
-        decalVisual.root.visible = rootWasVisible;
-      }
-      await nextFrame();
-    }
+    // This existing presentation composer activates the real APFSDS tracer
+    // and sabot pool without inventing a live shell or sweeping world props.
+    // No yield/update time may expire its muzzle before the actual GPU draw.
+    fx.composeFiringMoment({
+      muzzlePos: position, dir: direction, caliberMm: 120,
+      tracerType: 'APFSDS', ageS: 0.016,
+    });
+    fx.update(0, [], camera);
+    fx.warmProjectilePresentation(position, direction);
     post.prepareSoftParticles();
-    const layerMask = camera.layers.mask;
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
-    try {
-      compilePrograms(fx.group);
-      warmRender();
-    } finally {
-      camera.layers.mask = layerMask;
-    }
-    openingEffectsWarmed = true;
+    fx.group.visible = true;
+    compilePrograms(fx.group);
+    // A combined-layer renderer.render is NOT equivalent: the live late pass
+    // uses layer 30 alone, separate light/program variants and a depth copy.
+    warmRender();
   } catch (error) {
     console.warn('[warm] opening effects failed (continuing):', error);
   } finally {
-    fx.resetAll();
+    camera.layers.mask = layerMask;
+    fx.group.visible = rootWasVisible;
+    try {
+      if (stagedScarVisual) fx.clearVehicleDecals?.(stagedScarVisual);
+    } finally {
+      if (stagedScarVisual) stagedScarVisual.root.visible = scarWasVisible;
+      fx.resetAll();
+    }
   }
 }
 
 /** WebGL context restoration invalidates every renderer-lifetime receipt. */
 export function invalidateBattleWarmRuntime(): void {
-  openingEffectsWarmed = false;
   studioEffectsWarmed = false;
   studioEffectsWarmPromise = null;
   warmGeneration += 1;

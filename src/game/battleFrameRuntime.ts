@@ -106,6 +106,7 @@ export function createBattleFrameRuntime({
   }
 
   let simulationAccumulator = 0;
+  let networkBattleOwned = false;
   const pauseInfo: BattlePauseInfo = {
     paused: false,
     resumes: 0,
@@ -132,6 +133,7 @@ export function createBattleFrameRuntime({
 
   const resetSimulationAccumulator = (): void => {
     simulationAccumulator = 0;
+    networkBattleOwned = false;
   };
 
   const applyPauseEdge = (livePaused: boolean, dtSeconds: number): number => {
@@ -240,6 +242,10 @@ export function createBattleFrameRuntime({
     cameraLocked: boolean,
   ): BattleFrameReceipt => {
     const inBattle = game.phase === 'battle';
+    if (!inBattle) networkBattleOwned = false;
+    // Transport teardown is synchronous; restoring the Garage is not. A
+    // retired network battlefield never becomes a solo simulation in between.
+    if (inBattle && network.isActive()) networkBattleOwned = true;
     const paused = settings.isOpen();
     const killcamActive = killcam.isActive();
     const livePaused = paused && inBattle && !killcamActive && !game.result;
@@ -251,11 +257,13 @@ export function createBattleFrameRuntime({
     // in main. Every other phase reaches this owner and pumps exactly once.
     if (game.phase !== 'garage') network.pump(appliedDtSeconds, nowMs);
     const networkActive = network.isActive();
+    if (inBattle && networkActive) networkBattleOwned = true;
+    const retiringNetworkBattle = networkBattleOwned && !networkActive;
 
-    if (inBattle && !paused && !killcamActive) {
+    if (inBattle && !paused && !killcamActive && !retiringNetworkBattle) {
       advanceLiveBattle(appliedDtSeconds, wallDtSeconds, networkActive);
     }
-    const presentationAlpha = updatePresentation(
+    const presentationAlpha = retiringNetworkBattle ? 1 : updatePresentation(
       appliedDtSeconds, networkActive, killcamActive, livePaused,
     );
     return writeReceipt(

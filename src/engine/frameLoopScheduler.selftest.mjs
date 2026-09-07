@@ -5,7 +5,7 @@ import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE,
   MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs } from './frameLoopScheduler.ts';
 import { AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
 
-function createHarness() {
+function createHarness(background = {}) {
   let nowMs = 0;
   let bootComplete = false;
   let hidden = false;
@@ -49,7 +49,7 @@ function createHarness() {
       delayedCallback = null;
     },
     setRecurring(callback, intervalMs) {
-      assert.equal(intervalMs, 100);
+      assert.ok(intervalMs === 100 || (background.backgroundTick && intervalMs === 50));
       timerCallback = callback;
       return 41;
     },
@@ -67,6 +67,7 @@ function createHarness() {
       },
       removeEventListener(name) { removed.push(name); },
     },
+    ...background,
   });
 
   return {
@@ -98,6 +99,72 @@ function createHarness() {
     },
     get clearedTimer() { return clearedTimer; },
   };
+}
+
+// An unfocused network host retains only transport/authority work. The same
+// policy covers visible side-by-side windows and genuinely hidden tabs; no
+// GPU callback is allowed, and ordinary room-free suspension is unchanged.
+{
+  const backgroundTicks = [];
+  let active = true;
+  const harness = createHarness({
+    hasBackgroundWork: () => active,
+    backgroundTick: (at) => backgroundTicks.push(at),
+  });
+  harness.setBoot(true);
+  harness.scheduler.schedule();
+  harness.setFocused(false);
+  harness.listeners.get('blur')();
+  assert.deepEqual(backgroundTicks, [0], 'blur relinquishes controls immediately');
+  for (let at = 50; at <= 1000; at += 50) {
+    harness.setNow(at);
+    harness.fireTimer();
+  }
+  assert.equal(backgroundTicks.length, 21, 'visible unfocused authority continues at 20 Hz');
+  assert.equal(harness.frames.size, 0);
+  assert.equal(harness.ticks.length, 0, 'background work never invokes the render callback');
+  harness.setHidden(true);
+  harness.documentListeners.get('visibilitychange')();
+  harness.setNow(1050);
+  harness.fireTimer();
+  assert.equal(backgroundTicks.at(-1), 1050, 'hidden authority uses the same bounded timer owner');
+  harness.setFocused(true);
+  harness.setHidden(false);
+  harness.listeners.get('focus')();
+  harness.documentListeners.get('visibilitychange')();
+  assert.equal(harness.frames.size, 1, 'focus and visibility races leave one render callback');
+  const stoppedAt = backgroundTicks.length;
+  harness.fireTimer();
+  assert.equal(backgroundTicks.length, stoppedAt, 'foreground ownership stops background pumping');
+  harness.setFocused(false);
+  active = false;
+  harness.listeners.get('blur')();
+  harness.fireTimer();
+  assert.equal(backgroundTicks.length, stoppedAt, 'solo and room-free Garage remain suspended');
+  harness.scheduler.dispose();
+}
+
+{
+  let serviced = 0, harness;
+  harness = createHarness({ hasBackgroundWork: () => true,
+    backgroundTick() {
+      serviced++;
+      assert.equal(harness.scheduler.wakeBackground(), false, 'synchronous packet reentry cannot step recursively');
+    } });
+  harness.setBoot(true);
+  assert.equal(harness.scheduler.wakeBackground(), false, 'foreground activity cannot service a second clock');
+  harness.setFocused(false);
+  harness.listeners.get('blur')();
+  for (let at = 1; at <= 1000; at++) {
+    harness.setNow(at);
+    harness.scheduler.wakeBackground();
+    if (at % 50 === 0) harness.fireTimer();
+  }
+  assert.ok(serviced >= 50 && serviced <= 61, 'network and timer activity share a 60 Hz admission ceiling');
+  assert.equal(harness.frames.size, 0);
+  assert.equal(harness.ticks.length, 0);
+  harness.scheduler.dispose();
+  assert.equal(harness.scheduler.wakeBackground(), false, 'retired scheduler ignores late network activity');
 }
 
 {

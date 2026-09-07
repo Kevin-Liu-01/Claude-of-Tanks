@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "tankId": "t90a_vladimir_x",
+  "sourceModelSha256": "68eaf6f2e315363e2aff067c2daef304b6ef7bc97f74eaf5635544f2a5dbbf67",
+  "units": "metres; registered source world frame",
+  "comparisonOnly": true,
+  "sourceMesh": "desirefxme_003",
+  "independentSourceMeasurements": {
+    "mountingFlangeBounds": { "min": [1.123321, 1.233332, -3.406153], "max": [1.680298, 1.374531, -3.203163] },
+    "foldedRearGuardBounds": { "min": [1.124368, 0.958192, -3.602932], "max": [1.780908, 1.233332, -3.223510] },
+    "crownRaysAtX1_43": [[-3.3, 1.248671], [-3.45, 1.228926], [-3.5, 1.224080], [-3.55, 1.219234], [-3.6, 1.214477]],
+    "crownNormal": [0, 0.995335, -0.096475],
+    "skinThicknessAtZMinus3_5": 0.008152
+  },
+  "construction": "Original closed thin roof and tapered outer return solids, with a short folded flange into the retained native fender and two shallow lap joints per side. Paired sides are authored symmetrically. No source vertex, face, texture or rig buffers are copied.",
+  "removedDefect": "The former rotated vertical flap at Z -3.58 and Y 0.964 was unsupported by 104 mm and extended into air beside the recovery log. Its replacement is the raised folded source guard, not a block filling the wheel well.",
+  "simplification": "Minor source hinge and flange edge variations are simplified; the primary crown, skin thickness, attachment and tapered return remain explicit.",
+  "validationStatus": "Focused source-height, real-air and attachment tests registered. Fresh final geometric, fidelity and strict swept-track checks still required after this correction."
+}

@@ -117,8 +117,19 @@ function groupFleetBalanceRows(
   return groups;
 }
 
-function groupBalanceMedians(rows: readonly BalanceRow[]): BalanceValues {
-  const values = rows.map(({ spec }) => balanceValues(spec));
+function independentBalanceValues(rows: readonly BalanceRow[]): BalanceValues[] {
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return rows.filter(({ id, spec }) => {
+    const peer = spec.balancePeerOf ? byId.get(spec.balancePeerOf) : null;
+    // Only a present, non-aliased peer in this same era/tier/role can replace
+    // a vote. Missing peers, cycles and any metric drift stay independent.
+    if (!peer || peer.id === id || peer.spec.balancePeerOf) return true;
+    const values = balanceValues(spec), peerValues = balanceValues(peer.spec);
+    return BALANCE_METRICS.some(metric => values[metric] !== peerValues[metric]);
+  }).map(({ spec }) => balanceValues(spec));
+}
+
+function groupBalanceMedians(values: readonly BalanceValues[]): BalanceValues {
   return Object.fromEntries(BALANCE_METRICS.map((metric) => [
     metric, median(values.map((entry) => entry[metric])),
   ])) as BalanceValues;
@@ -135,8 +146,9 @@ function appendGroupOutliers(
   group: string,
   rows: readonly BalanceRow[],
 ): void {
-  if (rows.length < 4) return;
-  const medians = groupBalanceMedians(rows);
+  const peers = independentBalanceValues(rows);
+  if (peers.length < 4) return;
+  const medians = groupBalanceMedians(peers);
   for (const { id, spec } of rows) {
     const values = balanceValues(spec);
     for (const metric of BALANCE_METRICS) {

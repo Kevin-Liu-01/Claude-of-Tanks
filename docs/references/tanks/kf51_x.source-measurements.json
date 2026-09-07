@@ -1,0 +1,37 @@
+{
+  "id": "kf51_x",
+  "measured": "2026-09-05",
+  "purpose": "Local source comparison only; no mesh payload",
+  "sourceSha256": "4ea24378f03f67b03ae68a86dd51dfece356e551fe71b96842bdb8adfb69bcec",
+  "provenance": "GRIP420 / David Falke original Maya model, claimed CC-BY 4.0",
+  "normalization": { "neutralizeMeshTransforms": ["KF51_Turret_Msh", "Gun_Msh"], "rotationYDegrees": -90, "subtractBeforeScale": [0, 0.1375615597, 4.5264759064], "uniformScale": 0.0988361476173, "axes": "+Y up, +Z forward" },
+  "dimensionsM": { "width": 3.5603123, "hullLength": 7.7, "overallLength": 10.74975, "structuralRoof": 2.5603, "sourceP95BodyHeight": 3.093, "highestFitting": 5.7214742 },
+  "turretPivotM": [0, 1.4596, 0.5185],
+  "gunAxisM": [0, 1.85491175, 1.3478],
+  "muzzleZM": 6.89975,
+  "muzzleRadiusM": 0.0892,
+  "terminalTubeBoundsYM": [1.765712, 1.944111],
+  "foreJacketCollar": {
+    "sourceNode": "Gun_Msh",
+    "axialBoundsZM": [5.452418073, 5.655017121],
+    "outerRadiusRangeM": [0.107723912, 0.107725538],
+    "topRayYM": 1.962635992,
+    "heldOutRayStationsZM": [5.46, 5.50, 5.55, 5.60, 5.65],
+    "adjacentJacketTopYM": 1.956899256,
+    "nativeMuzzleAllowance": "The painted neck ends at Z6.87969993; the real native rim completes the endpoint at Z6.89735369, 2.40 mm behind the source. Do not extend the painted neck by 20 mm and thereby move the assembled lip beyond the source."
+  },
+  "roadWheels": { "stationsZM": [-2.2118, -1.4265, -0.6365, 0.1300, 0.8573, 1.5808, 2.352], "radiusM": 0.328, "axleYM": 0.4323 },
+  "sprocket": { "zM": -2.9275, "yM": 0.7982, "radiusM": 0.318 },
+  "idler": { "zM": 3.1721, "yM": 0.7422, "radiusM": 0.293 },
+  "sourceHullRoofRaysM": [[0, -2.6, 1.8272], [0, 0, 1.6025], [0, 2.5, 1.4145], [0, 3.79, 1.2302]],
+  "forwardSight": {
+    "hoodTopYM": 2.56150,
+    "hoodUndersideYM": 2.53310,
+    "recessFloorYM": 2.17568,
+    "backWallZM": 1.552,
+    "clearApertureRay": { "originM": [-0.75, 2.40, 2.50], "direction": [0, 0, -1], "firstWallZM": 1.552 },
+    "rearBevelRoofRayM": [-0.45, 1.30, 2.52095]
+  },
+  "rightHatch": { "lidTopYM": 2.51254, "lShapedVisionCapYM": 2.649 },
+  "notes": ["Roof rays are x,z,upperY", "The former 2.0251 m gun height measured the MRS optical device, not the tube axis", "Native bottom-course center .097 m corrects pad contact without moving wheels"]
+}

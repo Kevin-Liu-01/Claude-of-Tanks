@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "t90m_x",
+  "measuredAt": "2026-09-05",
+  "units": "metres; +Y up, +Z forward; structural hull centre; ground zero",
+  "sourceModelSha256": "bcb94f3e4e815aa5c18025e34ce12a3e5f42fd1047a60fd8539691c729c2351f",
+  "localOracleSha256": "926571090982af867c43277c0f77a73501f6559dac363d33dc42bf157ebd0e60",
+  "sourceUse": "Owner-supplied local comparison only. Primary uploader claims own Blender/PBR authorship and CC Attribution; no confirmed extraction found. No source buffers ship.",
+  "normalization": { "xyScale": 0.6113032889087265, "longitudinalScale": 0.638600188816399, "structuralHullLength": 6.86, "exteriorWidth": 3.78 },
+  "sourceFitDimensions": { "exteriorHullLength": 7.8329, "overallGunForwardLength": 10.3513, "totalHeight": 2.9739, "rearZ": -4.0972, "hullHardwareFrontZ": 3.7358, "muzzleZ": 6.2542 },
+  "sourceOnlyFilteredSilhouette": { "bodyExtentHeight": 2.828, "bodyExtentLength": 7.686, "method": "Unchanged canonical reference in the shared 1024-pixel geometry pipeline; 12% band filter, P95 column tops. Separate from the 2.0309m shell roof and complete equipment envelope." },
+  "structuralTurret": { "width": 2.9532, "length": 4.0230, "roofY": 2.0309, "externalChinY": 1.37, "internalNeckBottomY": 0.879, "rearZ": -2.5966, "frontZ": 1.4264 },
+  "articulation": { "yawSeat": [0.018092,1.336748,-0.104459], "gunPivot": [0.001973,1.608251,1.140604], "confidence": "Yaw uses physical ring rather than high arbitrary source root; gun uses meaningful native trunnion. No animation actions in input." },
+  "actualSourceRays": { "boreHeight": 1.608251, "shellCentreForwardZ": 0.982, "shellShoulderX": 0.30, "shellShoulderForwardZ": 1.426 },
+  "nativeWheelStationsZ": [-1.814,-0.9455,-0.0512,0.8188,1.6715,2.5242],
+  "groundCourseMeasurements": { "sampleVertexCount": 12004, "sampleZRange": [-0.9,1.9], "sampleYMaximum": 0.5, "outerShoeRadialExtent": 0.03338, "completeGuideRadialExtent": 0.08707, "guideRegionX": [1.384,1.434] },
+  "requiredCertification": { "minimumEveryValidViewAndComponent": 92, "maximumDimensionErrorPercent": 3, "independentNeutralShadedReview": true },
+  "certificationStatus": "Eighth proof remains failed: turret left90.82 and primary geometry84.4, despite96.2 aggregate and strict track intersections all zero. New independently measured hull-end helper, station-dependent turret roof, canvas boot and asymmetric basket pass fixed-source CPU geometry tests and require recapture; not release certified.",
+  "dimensionCaveat": "Exterior dimensions describe the source after structural registration, not claimed published real-world overall dimensions. Internal neck is a separate rotating solid inside the hull, not an exposed low chin."
+}

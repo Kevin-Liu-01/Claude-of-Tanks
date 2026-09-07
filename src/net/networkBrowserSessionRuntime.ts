@@ -34,6 +34,8 @@ interface NetworkBrowserSessionOptions {
   shouldPresentDisconnect(): boolean;
   nextFrame(): Promise<RuntimeValue>;
   onHostError?: (error: RuntimeValue) => void;
+  onDisconnect?: (reason: string) => void;
+  onBackgroundActivity?: () => void;
 }
 
 export interface NetworkBrowserSessionRuntime {
@@ -45,6 +47,7 @@ export interface NetworkBrowserSessionRuntime {
   queueAction(action: string): void;
   queueConsumable(slot: number): void;
   pump(dt: number, nowMs: number): void;
+  pumpBackground(nowMs: number): void;
   waitForInitialSnapshot(
     request: { viewerId: string; spectator?: boolean },
   ): Promise<SampledSnapshotFrame>;
@@ -96,6 +99,8 @@ export function createNetworkBrowserSessionRuntime({
   shouldPresentDisconnect,
   nextFrame,
   onHostError,
+  onDisconnect,
+  onBackgroundActivity,
 }: NetworkBrowserSessionOptions): NetworkBrowserSessionRuntime {
   if ([getPlayer, isBattleActive, shouldPresentDisconnect, nextFrame]
     .some((entry) => typeof entry !== 'function')) {
@@ -106,6 +111,7 @@ export function createNetworkBrowserSessionRuntime({
   let bridge: NetworkBrowserBridge | null = null;
   let status: NetworkBrowserStatus | null = null;
   let spectator = false;
+  let unsubscribeRemoteInput: (() => void) | null = null;
 
   const recovery = createNetworkRecoveryOwner();
   const framePump = createNetworkFramePump({
@@ -118,6 +124,7 @@ export function createNetworkBrowserSessionRuntime({
     recovery,
     nextFrame,
     onHostError,
+    onDisconnect,
   });
   const barrier = createNetworkBattleBarrier({
     getMatch: () => match,
@@ -146,6 +153,11 @@ export function createNetworkBrowserSessionRuntime({
         throw new Error('A different network match already owns this browser session.');
       }
       match = nextMatch;
+      if (!unsubscribeRemoteInput && nextMatch.role === 'host' && onBackgroundActivity) {
+        unsubscribeRemoteInput = nextMatch.onRemoteInput?.(() => {
+          if (match === nextMatch && isBattleActive()) onBackgroundActivity();
+        }) ?? null;
+      }
     },
 
     publishBridge(nextBridge) {
@@ -175,6 +187,7 @@ export function createNetworkBrowserSessionRuntime({
     queueAction: (action) => framePump.queueAction(action),
     queueConsumable: (slot) => framePump.queueConsumable(slot),
     pump: (dt, nowMs) => framePump.pump(dt, nowMs),
+    pumpBackground: (nowMs) => framePump.pumpBackground(nowMs),
     waitForInitialSnapshot: async (request) =>
       requireSampledSnapshot(await barrier.waitForInitialSnapshot(request)),
     waitForPeerReadiness: async () =>
@@ -185,6 +198,8 @@ export function createNetworkBrowserSessionRuntime({
     close(reason = 'network_match_closed') {
       const closing = match;
       match = null;
+      unsubscribeRemoteInput?.();
+      unsubscribeRemoteInput = null;
       closing?.close(reason);
       disposePresentation();
     },

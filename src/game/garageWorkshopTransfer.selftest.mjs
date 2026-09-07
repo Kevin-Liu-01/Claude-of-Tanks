@@ -43,17 +43,24 @@ function fixture() {
     parentIndex: 0, geometry: 1, materials: [0], count: 2,
     instanceMatrix: instanceMatrices(2),
   });
+  const packed = wireNode('instanced', 'gearRoadWheelDiscs', {
+    parentIndex: 0, geometry: 1, materials: [2], count: 2,
+    instanceMatrix: instanceMatrices(2),
+    instanceColor: attribute(new Uint8Array([255, 0, 0, 0, 255, 0]), 3, true),
+  });
   return {
     geometries: [wireGeometry(888), wireGeometry(4, true)],
     nodes: [wireNode('group', 'worker-exhibit'), first, second,
-      wireNode('mesh', 'unclassified-part', { parentIndex: 0, geometry: 0, materials: [1] })],
+      wireNode('mesh', 'unclassified-part', { parentIndex: 0, geometry: 0, materials: [1] }), packed],
     materials: [
       { name: 'factory-paint', role: 'armorPaint', color: 0x445544, roughness: 0.8,
         metalness: 0.1, opacity: 1, transparent: false, side: THREE.FrontSide, depthWrite: true },
       { name: 'unknown-finish', role: '', color: 0x778899, roughness: 0.7,
         metalness: 0.2, opacity: 1, transparent: false, side: THREE.DoubleSide, depthWrite: true },
+      { name: 'wheel', role: 'wheelPaint', color: 0xffffff,
+        opacity: 1, transparent: false, side: THREE.FrontSide, depthWrite: true },
     ],
-    payload: { attributeBytes: 22_612, omittedAttributeBytes: 0, omittedAttributeCount: 0 },
+    payload: { attributeBytes: 22_746, omittedAttributeBytes: 0, omittedAttributeCount: 0 },
   };
 }
 
@@ -93,7 +100,7 @@ function inspectNativeBindings(mesh) {
   let arrayBuffer;
   const gl = {
     MAX_VERTEX_ATTRIBS: 0x8869, ARRAY_BUFFER: 0x8892, ELEMENT_ARRAY_BUFFER: 0x8893,
-    FLOAT: 0x1406, INT: 0x1404, UNSIGNED_INT: 0x1405,
+    FLOAT: 0x1406, INT: 0x1404, UNSIGNED_INT: 0x1405, UNSIGNED_BYTE: 0x1401,
     getParameter: () => 16,
     createVertexArray: () => ({}), bindVertexArray() {}, deleteVertexArray() {},
     enableVertexAttribArray() {}, disableVertexAttribArray() {},
@@ -104,7 +111,9 @@ function inspectNativeBindings(mesh) {
     },
   };
   const attributes = {
-    get: attr => ({ buffer: attr.array, type: gl.FLOAT, bytesPerElement: attr.array.BYTES_PER_ELEMENT }),
+    get: attr => ({ buffer: attr.array,
+      type: attr.array instanceof Uint8Array ? gl.UNSIGNED_BYTE : gl.FLOAT,
+      bytesPerElement: attr.array.BYTES_PER_ELEMENT }),
     update() {},
   };
   const programAttributes = {
@@ -121,10 +130,10 @@ function inspectNativeBindings(mesh) {
 }
 
 function verifyTransferredAttributes(visual, wire) {
-  const [first, second, ordinary] = visual.root.children;
+  const [first, second, ordinary, packed] = visual.root.children;
   assert.equal(first.geometry, ordinary.geometry, 'shared wire geometry stays shared within its visual');
   assert.equal(first.material, second.material, 'native palette identity remains shared');
-  for (const [mesh, node] of [[first, wire.nodes[1]], [second, wire.nodes[2]]]) {
+  for (const [mesh, node] of [[first, wire.nodes[1]], [second, wire.nodes[2]], [packed, wire.nodes[4]]]) {
     assert.ok(mesh instanceof THREE.InstancedMesh);
     assert.equal(mesh.count, node.count);
     assert.ok(mesh.instanceMatrix instanceof THREE.InstancedBufferAttribute);
@@ -136,6 +145,9 @@ function verifyTransferredAttributes(visual, wire) {
     assert.equal(mesh.instanceMatrix.array, node.instanceMatrix.array, 'transfer adds no matrix copy');
     assert.deepEqual(mesh.instanceMatrix.array, instanceMatrices(node.count).array,
       'every authored instance transform survives reconstruction');
+    const restoredMatrix = new THREE.Matrix4();
+    mesh.getMatrixAt(1, restoredMatrix);
+    assert.deepEqual(restoredMatrix.elements, new THREE.Matrix4().makeTranslation(1, 0.5, -1).elements);
     assert.deepEqual(mesh.position.toArray(), node.position);
     for (const [name, source] of Object.entries(wire.geometries[node.geometry].attributes)) {
       const attr = mesh.geometry.getAttribute(name);
@@ -165,6 +177,23 @@ function verifyTransferredAttributes(visual, wire) {
   assert.deepEqual(first.instanceColor.array, Float32Array.from({ length: 42 }, (_, i) => i / 42));
   assert.equal(first.instanceColor.meshPerAttribute, 1);
   assert.equal(inspectNativeBindings(first).divisor(6), 1, 'installed Three advances color per instance');
+  assert.ok(packed.instanceColor instanceof THREE.InstancedBufferAttribute);
+  assert.equal(packed.instanceColor.isInstancedBufferAttribute, true);
+  assert.equal(packed.instanceColor.array, wire.nodes[4].instanceColor.array, 'packed colors retain their exact buffer');
+  assert.deepEqual(packed.instanceColor.array, new Uint8Array([255, 0, 0, 0, 255, 0]));
+  assert.equal(packed.instanceColor.normalized, true, 'integer wire normalization survives reconstruction');
+  assert.equal(packed.instanceColor.itemSize, 3);
+  assert.equal(packed.instanceColor.count, packed.count);
+  assert.equal(packed.instanceColor.meshPerAttribute, 1);
+  const packedBindings = inspectNativeBindings(packed);
+  assert.equal(packedBindings.divisor(6), 1);
+  assert.equal(packedBindings.bindings.get(6).type, 0x1401, 'packed colors bind as unsigned bytes');
+  assert.equal(packedBindings.bindings.get(6).normalized, true);
+  const clone = packed.clone();
+  assert.equal(clone.instanceMatrix.isInstancedBufferAttribute, true, 'cloned gear keeps instanced matrices');
+  assert.equal(clone.instanceColor.isInstancedBufferAttribute, true, 'cloned gear keeps instanced colors');
+  assert.equal(clone.instanceColor.normalized, true);
+  clone.dispose();
   assert.equal(second.instanceColor, null, 'an absent color must not allocate an attribute');
   assert.equal(second.geometry.index.array, wire.geometries[1].index.array);
   assert.equal(first.geometry.getAttribute('position').count, 888);
@@ -251,4 +280,4 @@ try {
   else delete globalThis.window;
 }
 
-console.log('garageWorkshopTransfer.selftest: public worker roundtrip, exact arrays/counts, native Three divisors and shared disposal pass');
+console.log('garageWorkshopTransfer.selftest: public worker roundtrip, exact arrays/counts, packed colors, clones, native Three divisors and shared disposal pass');

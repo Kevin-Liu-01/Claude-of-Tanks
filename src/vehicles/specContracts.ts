@@ -68,6 +68,9 @@ export interface FleetTankSpec extends Record<string, RuntimeValue> {
   nation: string;
   era: string;
   role: string;
+  /** A separately modeled but combat-equivalent row must not give its donor
+   * a second vote in peer medians. The audit verifies equality, not this hint. */
+  balancePeerOf?: string;
   hp: number;
   enginePowerHp: number;
   weightTons: number;

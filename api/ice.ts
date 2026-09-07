@@ -98,6 +98,13 @@ export function createIceConfigHandler({
       send(response, 403, { error: 'origin_forbidden' });
       return;
     }
+    if (origin) {
+      // Explicit external ICE configuration uses credentialed GET. Reflect
+      // only an admitted origin; a wildcard would be both incorrect for
+      // credentials and broader than this endpoint's deployment allowlist.
+      response.setHeader('access-control-allow-origin', origin);
+      response.setHeader('access-control-allow-credentials', 'true');
+    }
 
     const staticJson = String(env.COT_TURN_ICE_SERVERS_JSON || '').trim();
     if (staticJson) {

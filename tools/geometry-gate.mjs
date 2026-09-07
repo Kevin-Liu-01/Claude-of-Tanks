@@ -86,7 +86,9 @@ try {
   for (const id of ids) {
     try {
       await page.goto(urlFor(id), { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction('window.__FIDELITY_READY === true', { polling: 60 });
+      await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"', { polling: 60 });
+      const runtimeError = await page.evaluate('window.__FIDELITY_ERROR');
+      if (runtimeError) throw new Error(runtimeError);
       const report = await page.evaluate('window.__GEO_REPORT');
       if (!report) throw new Error('no __GEO_REPORT');
       fs.writeFileSync(path.join(OUT, `${id}.json`), `${JSON.stringify(report, null, 1)}\n`);

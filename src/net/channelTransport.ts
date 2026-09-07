@@ -22,7 +22,7 @@ interface ChannelLike {
   maxRetransmits?: number | null;
   maxPacketLifeTime?: number | null;
   send(value: RuntimeValue): void;
-  close(): void;
+  close(code?: number, reason?: string): void;
   addEventListener?(type: string, listener: (event: ChannelEvent) => void): void;
   removeEventListener?(type: string, listener: (event: ChannelEvent) => void): void;
 }
@@ -196,6 +196,7 @@ function createChannelTransport(
   let closedReason: string | null = null;
   let pendingState: EncodedMessage | null = null;
   let pendingInput: EncodedMessage | null = null;
+  let preferPendingInput = true;
   const stats = {
     sent: 0,
     received: 0,
@@ -260,17 +261,40 @@ function createChannelTransport(
       stats.rejected++;
       return false;
     }
-    channel.send(encoded);
+    if (!sendNative(encoded)) return false;
     stats.sent++;
     return true;
   }
 
+  function sendNative(encoded: RuntimeValue): boolean {
+    try {
+      channel.send(encoded);
+      return true;
+    } catch (error) {
+      // Native RTC queue capacity and ready state can change independently
+      // from our byte budget. Preserve the shared transport failure contract
+      // instead of throwing a browser DOMException through the frame pump.
+      if (normalizedReadyState(channel) !== 'open' ||
+          (isRecord(error) && error.name === 'InvalidStateError')) {
+        throw new TransportClosedError();
+      }
+      if (isRecord(error) && error.name === 'OperationError') {
+        stats.rejected++;
+        return false;
+      }
+      throw error;
+    }
+  }
+
   function flushPendingState(): boolean {
     if (!pendingState || normalizedReadyState(channel) !== 'open') return false;
-    if (channelBufferedAmount(channel) >= maxStateBufferedBytes) return false;
+    // Native queues cannot replace already-enqueued bytes. Admit only one
+    // live packet at a time; the application slot keeps the newest state
+    // while it drains, rather than accumulating seconds of obsolete poses.
+    if (channelBufferedAmount(channel) > 0) return false;
     const { encoded, bytes } = pendingState;
     if (channelBufferedAmount(channel) + bytes > maxStateBufferedBytes) return false;
-    channel.send(encoded);
+    if (!sendNative(encoded)) return false;
     pendingState = null;
     stats.sent++;
     stats.stateSent++;
@@ -279,28 +303,41 @@ function createChannelTransport(
 
   function flushPendingInput(): boolean {
     if (!pendingInput || normalizedReadyState(channel) !== 'open') return false;
-    if (channelBufferedAmount(channel) >= maxInputBufferedBytes) return false;
+    if (channelBufferedAmount(channel) > 0) return false;
     const { encoded, bytes } = pendingInput;
     if (channelBufferedAmount(channel) + bytes > maxInputBufferedBytes) return false;
-    channel.send(encoded);
+    if (!sendNative(encoded)) return false;
     pendingInput = null;
     stats.sent++;
     stats.inputSent++;
     return true;
   }
 
+  function flushPendingReplaceables(): void {
+    // A shared adapter can carry both lanes. Alternate successful admission
+    // so continuous fresh input cannot starve a waiting snapshot (or vice
+    // versa). Ordinary game endpoints still send only one replaceable type.
+    if (preferPendingInput) {
+      if (flushPendingInput()) preferPendingInput = false;
+      if (flushPendingState()) preferPendingInput = true;
+    } else {
+      if (flushPendingState()) preferPendingInput = true;
+      if (flushPendingInput()) preferPendingInput = false;
+    }
+  }
+
   let removeBufferedLow: Unsubscribe = () => {};
   if (coalesceState || coalesceInput) {
     if ('bufferedAmountLowThreshold' in channel) {
-      const lowThreshold = Math.min(
-        coalesceState ? maxStateBufferedBytes : Infinity,
-        coalesceInput ? maxInputBufferedBytes : Infinity,
-      );
-      channel.bufferedAmountLowThreshold = Math.floor(lowThreshold / 2);
+      channel.bufferedAmountLowThreshold = 0;
     }
     removeBufferedLow = addListener(channel, 'bufferedamountlow', () => {
-      flushPendingState();
-      flushPendingInput();
+      try {
+        flushPendingReplaceables();
+      } catch (error) {
+        if (!(error instanceof TransportClosedError)) throw error;
+        transport.close('transport_closed');
+      }
     });
   }
 
@@ -315,7 +352,7 @@ function createChannelTransport(
       if (!coalesceState) return transport.send(message);
       if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
       const encodedState = encode(message, stateCodec);
-      if (encodedState.bytes > maxMessageBytes) {
+      if (encodedState.bytes > Math.min(maxMessageBytes, maxStateBufferedBytes)) {
         stats.rejected++;
         return false;
       }
@@ -325,16 +362,15 @@ function createChannelTransport(
         stats.stateCoalesced++;
         return true;
       }
-      const accepted = flushPendingState();
-      if (!accepted && pendingState == null) return false;
-      if (!accepted) stats.stateCoalesced++;
+      flushPendingReplaceables();
+      if (pendingState) stats.stateCoalesced++;
       return true;
     },
     sendInput(message: RuntimeValue): boolean {
       if (!coalesceInput) return transport.send(message);
       if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
       const encodedInput = encode(message, stateCodec);
-      if (encodedInput.bytes > maxMessageBytes) {
+      if (encodedInput.bytes > Math.min(maxMessageBytes, maxInputBufferedBytes)) {
         stats.rejected++;
         return false;
       }
@@ -344,9 +380,8 @@ function createChannelTransport(
         stats.inputCoalesced++;
         return true;
       }
-      const accepted = flushPendingInput();
-      if (!accepted && pendingInput == null) return false;
-      if (!accepted) stats.inputCoalesced++;
+      flushPendingReplaceables();
+      if (pendingInput) stats.inputCoalesced++;
       return true;
     },
     onMessage(listener: (message: RuntimeValue) => void): Unsubscribe {
@@ -368,7 +403,11 @@ function createChannelTransport(
     close(reason = 'closed'): void {
       if (normalizedReadyState(channel) === 'closed') return;
       closedReason = String(reason);
-      channel.close();
+      // This terminal dedicated-server outcome must cross the native socket
+      // boundary so clients do not retry an intentionally expired ticket.
+      if (kind === 'websocket' && closedReason === 'loading_expired') {
+        channel.close(4008, 'loading_expired');
+      } else channel.close();
     },
     dispose(): void {
       removeMessage();

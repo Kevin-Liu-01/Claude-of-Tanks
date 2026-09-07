@@ -2,6 +2,9 @@
 // battle loading, HUD target panels, killcam and generated asset manifests.
 
 export const TANK_TIER = Object.freeze({
+  leo2a7v_x: 10, leo2a6m_x: 10, leo2a4m_x: 9, leo2a5_x: 9,
+  merkava4_x: 9, merkava3d_x: 10, k2_x: 9, kf51_x: 10,
+  t90a_x: 9, t90a_vladimir_x: 9, t90m_x: 9, t90sm_x: 9, t14_x: 10,
   m4a3e8: 6, tiger1: 7, t34_85: 6, is2: 7, panther_g: 7,
   m1a2: 10, t90m: 9, t90m_proryv: 10, leo2a7: 10,
   strv103: 10, is3: 8, t34_85_cad: 6, newc_tiger: 7,

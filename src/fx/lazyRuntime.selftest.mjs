@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const debugBattleEntry = await readFile(
@@ -163,6 +164,34 @@ if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*s
 }
 if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
   throw new Error('the typed battle warm owner must retain every covered FX family and tracer');
+}
+// Execute the exact production callback, not a parallel fake warmer. A plain
+// renderer.render never submits LateFxPass.Copy or its layer-only variants.
+const networkWarmPort = main.slice(main.indexOf('return battleWarm.warmNetworkOpeningEffects({'));
+const networkWarmBody = networkWarmPort.match(/warmRender: \(\) => \{([\s\S]*?)\n\s{14}\},/)?.[1];
+assert.ok(networkWarmBody, 'network entry supplies the covered post-composer warm callback');
+const renderNetworkWarm = new Function('post', 'renderer', networkWarmBody);
+for (const initial of [true, false]) {
+  let draws = 0;
+  const target = { name: 'prior private target' };
+  let restoredTarget = null;
+  const renderer = { getRenderTarget: () => target, getActiveCubeFace: () => 3,
+    getActiveMipmapLevel: () => 2,
+    setRenderTarget: (...state) => { restoredTarget = state; } };
+  const composer = { renderToScreen: initial, render(dt) {
+    assert.equal(this.renderToScreen, false, 'warm effects never reach the default framebuffer');
+    assert.equal(dt, 0, 'covered submission does not advance presentation time');
+    draws++;
+  } };
+  renderNetworkWarm({ composer }, renderer);
+  assert.equal(draws, 1, 'the actual post pipeline submits one covered frame');
+  assert.equal(composer.renderToScreen, initial);
+  assert.deepEqual(restoredTarget, [target, 3, 2]);
+  composer.render = () => { throw new Error('warm draw failed'); };
+  restoredTarget = null;
+  assert.throws(() => renderNetworkWarm({ composer }, renderer), /warm draw failed/);
+  assert.equal(composer.renderToScreen, initial, 'failed submission restores the output target policy');
+  assert.deepEqual(restoredTarget, [target, 3, 2], 'a failing pass cannot leave its render target bound');
 }
 const enemyAt = deferredWarm.indexOf('getBattleVisuals().stream(');
 const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');

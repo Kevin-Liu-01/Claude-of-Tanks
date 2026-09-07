@@ -3,6 +3,10 @@ import process from 'node:process';
 import puppeteer from 'puppeteer';
 import { createServer as createViteServer } from 'vite';
 import { createSignalingServer } from '../server/signalingServer.ts';
+import { parseNetworkSimulationSeed } from '../src/net/adverseNetworkTransport.ts';
+
+const signalOverride = process.argv.find((entry) => entry.startsWith('--signal-url='))?.slice(13);
+if (signalOverride && !/^wss?:\/\//.test(signalOverride)) throw new TypeError('signal-url must be WebSocket');
 
 function numericArg(name, fallback) {
   const prefix = `--${name}=`;
@@ -31,6 +35,9 @@ const latencyMs = numericArg('latency', 45);
 const jitterMs = numericArg('jitter', 15);
 const lossPercent = numericArg('loss', 5);
 const inputLossPercent = numericArg('input-loss', 3);
+const seedArguments = process.argv.filter((entry) => entry.startsWith('--seed='));
+if (seedArguments.length > 1) throw new TypeError('seed must specify one uint32');
+const seed = seedArguments.length ? parseNetworkSimulationSeed(seedArguments[0].slice(7)) : null;
 const rosterTimeoutMs = 20_000 + playerCount * 2_000;
 const root = new URL('..', import.meta.url).pathname;
 const browserErrors = [];
@@ -38,15 +45,32 @@ const browserErrors = [];
 const vite = await createViteServer({
   root,
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+  server: { host: '127.0.0.1', port: numericArg('port', 0), strictPort: true, hmr: false },
 });
 const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
 let browser = null;
 let pages = [];
 let contexts = [];
+let cleaningUp = false;
+let runFailed = false;
+let convergenceDiagnostic = null;
+const diagnosticStartedAt = performance.now();
+
+function diagnostic(event, details = {}) {
+  console.error('[multiplayer-soak:diagnostic]', JSON.stringify({
+    event,
+    elapsedMs: Math.round(performance.now() - diagnosticStartedAt),
+    cleaningUp,
+    ...details,
+  }));
+}
 
 function observePage(page, label) {
   page.on('pageerror', (error) => browserErrors.push(`${label}: ${error.stack || error.message}`));
+  page.on('error', (error) => diagnostic('page_crash', { player: label, message: error.message }));
+  page.on('close', () => {
+    if (!cleaningUp) diagnostic('page_closed_before_cleanup', { player: label });
+  });
   page.on('console', (message) => {
     if (message.type() === 'error') browserErrors.push(`${label}: ${message.text()}`);
   });
@@ -98,10 +122,10 @@ async function pumpHost(hostPage, elapsedMs, input) {
 
 try {
   await vite.listen();
-  const signalAddress = await signaling.listen();
+  const signalAddress = signalOverride ? null : await signaling.listen();
   const viteAddress = vite.httpServer.address();
   const origin = `http://127.0.0.1:${viteAddress.port}`;
-  const signalUrl = `ws://127.0.0.1:${signalAddress.port}/signal`;
+  const signalUrl = signalOverride || `ws://127.0.0.1:${signalAddress.port}/signal`;
   browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -112,6 +136,12 @@ try {
       '--disable-backgrounding-occluded-windows',
     ],
   });
+  browser.on('disconnected', () => {
+    if (!cleaningUp) diagnostic('browser_disconnected_before_cleanup');
+  });
+  browser.process()?.once('exit', (code, signal) => {
+    if (!cleaningUp || runFailed) diagnostic('browser_process_exit', { code, signal });
+  });
   pages = await Promise.all(Array.from({ length: playerCount }, async (_, index) => {
     // Every participant receives an isolated browser profile. This prevents
     // one player's warmed cache or persisted identity from making later joins
@@ -120,8 +150,12 @@ try {
     contexts[index] = context;
     const page = await context.newPage();
     observePage(page, `player-${index + 1}`);
+    // Independent streams per guest; the same explicit master seed and player
+    // index reproduce draws, not native browser timer/network scheduling.
+    const netSeed = seed === null ? null : (seed + Math.imul(index, 0x9e3779b9)) >>> 0;
     const query = index === 0 ? '' : `?netSim=1&netLatency=${latencyMs}` +
-      `&netJitter=${jitterMs}&netLoss=${lossPercent}&netInputLoss=${inputLossPercent}`;
+      `&netJitter=${jitterMs}&netLoss=${lossPercent}&netInputLoss=${inputLossPercent}` +
+      (netSeed === null ? '' : `&netSeed=${netSeed}`);
     await page.goto(`${origin}/tools/multiplayer-browser-soak.html${query}`, {
       waitUntil: 'domcontentloaded',
       timeout: 180_000,
@@ -217,6 +251,14 @@ try {
         timeoutMs: rosterTimeoutMs,
       });
     } catch (error) {
+      // Record the original rejection before another browser call can delay
+      // its report or a sibling failure can start shared-browser cleanup.
+      diagnostic('guest_evaluate_rejected', {
+        player: `player-${guestIndex + 2}`,
+        message: error.stack || error.message,
+        pageClosed: page.isClosed(),
+        browserConnected: browser.connected,
+      });
       const details = await page.evaluate(() => ({
         stage: globalThis.__COT_ROSTER_SOAK?.stage || 'unknown',
         errors: globalThis.__COT_ROSTER_SOAK?.errors || [],
@@ -397,6 +439,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 16));
   }
 
+  const settleStartTick = await hostPage.evaluate(() => globalThis.__COT_ROSTER_SOAK.match.host.tick);
   const settleDeadline = performance.now() + settleMs;
   while (performance.now() < settleDeadline) {
     await Promise.all([
@@ -414,11 +457,17 @@ try {
     const state = globalThis.__COT_ROSTER_SOAK;
     return {
       tick: state.match.host.tick,
+      serverTimeMs: state.match.host.timeMs,
       peerCount: state.match.host.peers.size,
       invalidMessages: state.match.host.stats.invalidMessages,
       droppedCatchUpMs: state.match.host.stats.droppedCatchUpMs,
       positions: Object.fromEntries([...state.match.simulation.entityById].map(([id, entity]) =>
-        [id, { x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z }])),
+        [id, { x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z,
+          speed: entity.state.speed, verticalSpeed: entity.state.verticalSpeed,
+          yawRate: entity.state.yawRate, grounded: entity.state.grounded,
+          throttle: entity.input?.throttle ?? null, brake: entity.input?.brake ?? null,
+          lastInputSeq: state.match.host.peers.get(id)?.lastInputSeq ?? null,
+          lastInputAtMs: state.match.host.peers.get(id)?.lastInputAtMs ?? null }])),
       averageAdvanceMs: state.advanceDurations.reduce((sum, value) => sum + value, 0) /
         Math.max(1, state.advanceDurations.length),
       maxAdvanceMs: Math.max(...state.advanceDurations),
@@ -427,12 +476,23 @@ try {
   const reports = await Promise.all(pages.map((page) => page.evaluate(() => {
     const state = globalThis.__COT_ROSTER_SOAK;
     const stats = state.match.client.getStats();
+    const latest = state.match.client.buffer.snapshots.at(-1);
     return {
       playerId: state.match.playerId,
       connected: state.match.client.connected,
       sampleTick: state.sample?.tick ?? null,
+      sampleTimeMs: state.sample?.serverTimeMs ?? null,
+      latestTick: latest?.tick ?? null,
+      latestTimeMs: latest?.serverTimeMs ?? null,
       entities: (state.sample?.entities || []).map((entity) => ({
         id: entity.id, x: entity.x, y: entity.y, z: entity.z,
+        vx: entity.vx, vy: entity.vy, vz: entity.vz, flags: entity.flags,
+      })),
+      // Retain the actual quantized row, distinctly labeled from sampled
+      // meters. This read does not advance any client's interpolation clock.
+      latestEntities: (latest?.entities || []).slice(0, 14).map((entity) => ({
+        id: entity.id, xCm: entity.x, yCm: entity.y, zCm: entity.z,
+        vxCmS: entity.vx, vyCmS: entity.vy, vzCmS: entity.vz, flags: entity.flags,
       })),
       stats,
       errors: state.match.client.errors,
@@ -443,6 +503,31 @@ try {
         : 0,
     };
   })));
+
+  // Preserve bounded convergence evidence before any gate can throw. The
+  // existing wall-clock drain may advance less simulation time because the
+  // external driver awaits browser work between fixed 16.667 ms advances.
+  // Own immediate and teammate delayed samples also have different clocks.
+  convergenceDiagnostic = {
+    configuredSettleMs: settleMs,
+    settleSimulationMs: (authority.tick - settleStartTick) * 1000 / 60,
+    authorityTick: authority.tick,
+    authorityTimeMs: authority.serverTimeMs,
+    players: playerIds.slice(0, 14).map((playerId) => ({
+      playerId,
+      authority: authority.positions[playerId],
+      views: reports.slice(0, 14).flatMap((report) => {
+        const sampled = report.entities.find((entity) => entity.id === playerId);
+        if (!sampled) return [];
+        return [{ viewerId: report.playerId, own: report.playerId === playerId,
+          sampleTick: report.sampleTick, sampleTimeMs: report.sampleTimeMs,
+          latestTick: report.latestTick, latestTimeMs: report.latestTimeMs,
+          interpolationDelayMs: report.stats.buffer.interpolationDelayMs,
+          inputAckLag: report.stats.inputAckLag,
+          sampled, latest: report.latestEntities.find((entity) => entity.id === playerId) ?? null }];
+      }),
+    })),
+  };
 
   assert.equal(authority.peerCount, playerCount);
   assert.equal(authority.invalidMessages, 0);
@@ -533,6 +618,9 @@ try {
       jitterMs,
       lossPercent,
       inputLossPercent,
+      seed,
+      seedDerivation: seed === null ? null : 'uint32(seed + playerIndex * 0x9e3779b9)',
+      reorderMeasurement: 'stale sequence completion; outgoing base admission, incoming decoded delivery',
       freshBrowserContexts: true,
     },
     authority: {
@@ -549,13 +637,27 @@ try {
       interpolationDelayMs: Number(report.stats.buffer.interpolationDelayMs.toFixed(1)),
       estimatedLossPercent: Number((report.stats.estimatedSnapshotLoss * 100).toFixed(1)),
       droppedInputs: report.stats.transport?.droppedInput || 0,
+      netSeed: report.stats.transport?.netSeed ?? null,
+      reorderedOutgoingInput: report.stats.transport?.reorderedOutgoingInput || 0,
+      reorderedOutgoingState: report.stats.transport?.reorderedOutgoingState || 0,
+      reorderedIncomingInput: report.stats.transport?.reorderedIncomingInput || 0,
+      reorderedIncomingState: report.stats.transport?.reorderedIncomingState || 0,
       replaceableInputsSent: report.stats.transport?.base?.state?.inputSent || 0,
       averageSampleMs: Number(report.averageSampleMs.toFixed(3)),
     })),
     synchronized: true,
     cleanDeparture: true,
   }, null, 2));
+} catch (error) {
+  runFailed = true;
+  diagnostic('run_failed_before_cleanup', {
+    message: error.stack || error.message,
+    browserErrors: browserErrors.slice(0, 20),
+    convergence: convergenceDiagnostic,
+  });
+  throw error;
 } finally {
+  cleaningUp = true;
   await Promise.all(pages.map(closePageState));
   if (browser) await browser.close().catch(() => {});
   await Promise.all(contexts.map((context) => context?.close().catch(() => {})));

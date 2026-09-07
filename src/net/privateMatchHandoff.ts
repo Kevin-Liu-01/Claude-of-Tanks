@@ -273,6 +273,7 @@ export interface PrivateHostMatch {
   readonly host: MatchAuthorityPort;
   readonly client: MatchClientPort;
   ready(): boolean;
+  onRemoteInput(listener: () => void): Unsubscribe;
   onRoomState(listener: (state: MatchRoomState) => void): Unsubscribe;
   roomCommand(command: Record<string, RuntimeValue>): RuntimeValue;
   onRoomChat(listener: (message: RoomChatMessage) => void): Unsubscribe;
@@ -403,6 +404,9 @@ export function beginPrivateHostMatch({
     host,
     client,
     ready() { return client.readyForMatch(); },
+    onRemoteInput(listener: () => void) {
+      return host.onInputAccepted((peerId) => { if (peerId !== hostId) listener(); });
+    },
     onRoomState(listener: (state: MatchRoomState) => void) {
       return client.onRoomState(listener);
     },

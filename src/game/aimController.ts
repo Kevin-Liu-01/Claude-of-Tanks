@@ -9,6 +9,7 @@ import type {
 } from '../sim/damage.ts';
 import type { ShellCard } from './playerBattleActions.ts';
 import type { HydropneumaticAim } from '../vehicles/specContracts.ts';
+import { pendingAmmoSelectionSlot } from './ammoSelectionPresentation.ts';
 
 interface AimWorldHit {
   point: THREE.Vector3;
@@ -62,6 +63,9 @@ interface AimTank {
   id: string;
   team?: string;
   isPlayer?: boolean;
+  _networkShellSlot?: number;
+  _networkAmmoSelectionPending?: boolean;
+  input?: { shellSlot?: number; fire?: boolean };
   state: AimState | null;
   combat: AimCombat | null;
   spec: AimSpec;
@@ -90,6 +94,7 @@ export interface AimFrame {
   reload: { t: number; totalS: number; kind?: string };
   magazine: { rounds: number; capacity: number };
   shellSlot: number;
+  ammoSelectionPending?: boolean;
   shells: ShellCard[];
   zoom: number;
   gunDistM: number;
@@ -271,7 +276,9 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   }
 
   function writeAmmoFrame(frame: AimFrame, player: AimTank): void {
-    frame.shellSlot = player.combat!.shellSlot;
+    const pendingSlot = pendingAmmoSelectionSlot(player);
+    frame.ammoSelectionPending = pendingSlot !== null;
+    frame.shellSlot = pendingSlot ?? player.combat!.shellSlot;
     frame.shells = deps.getShellCards();
     if (!Array.isArray(player.combat!.ammo)) return;
     for (let slot = 0; slot < frame.shells.length; slot++) {
@@ -370,6 +377,7 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     const game = deps.getGame();
     const player = game.player;
     const rig = deps.getRig();
+    frame.ammoSelectionPending = false;
     if (!player?.state || !player.combat || !player.visual) return;
     writeBaseAimFrame(frame, player, rig);
     frame.gunDistM = gunCenterRay(player, frame.point, muzzle, bore, gunTarget);

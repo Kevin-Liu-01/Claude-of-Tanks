@@ -7,6 +7,7 @@ import { createWebSocketTransport } from '../src/net/channelTransport.ts';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.ts';
 import { RankedMatchmaker } from './rankedMatchmaker.ts';
 import { RatingStore } from './ratingStore.ts';
+import { installProcessShutdown } from './processShutdown.ts';
 
 const AUTH_TIMEOUT_MS = 5000;
 const MAX_MESSAGES_PER_SECOND = 180;
@@ -382,7 +383,8 @@ if (isCli) {
     host,
     port,
     allowedOrigins: process.env.COT_ALLOWED_ORIGINS || null,
-  }).then(() => {
+  }).then((service) => {
+    installProcessShutdown(() => service.close('server_shutdown'));
     console.log(`[match] ws://${host}:${port}/match`);
   }).catch((error) => {
     console.error(error);

@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { isSequenceNewer } from './protocol.ts';
 type Unsubscribe = () => void;
 type Lane = 'control' | 'input' | 'state';
 type Direction = 'send' | 'receive';
@@ -9,6 +10,8 @@ export interface NetworkSimulationOptions {
   jitterMs: number;
   stateLossRate: number;
   inputLossRate: number;
+  /** QA only; each transport owns its own repeatable random stream. */
+  netSeed?: number;
 }
 
 export interface AdverseNetworkOptions extends Partial<NetworkSimulationOptions> {
@@ -37,6 +40,13 @@ export interface AdverseNetworkStats {
   delayedIncoming: number;
   droppedState: number;
   droppedInput: number;
+  /** Stale sequence completions accepted by the base, not physical wire acknowledgements. */
+  reorderedOutgoingInput: number;
+  reorderedOutgoingState: number;
+  /** Stale decoded sequences actually delivered to this wrapper's message listeners. */
+  reorderedIncomingInput: number;
+  reorderedIncomingState: number;
+  netSeed: number | null;
   pending: number;
   base: RuntimeValue;
 }
@@ -76,7 +86,31 @@ function numberParam(query: URLSearchParams, name: string, fallback = 0): number
   return Number.isFinite(value) ? value : fallback;
 }
 
-/** Parse the browser QA query surface (`netLatency`, `netJitter`, `netLoss`). */
+function assertSimulationSeed(seed: number): number {
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+    throw new RangeError('netSeed must be a uint32 seed');
+  }
+  return seed;
+}
+
+/** Shared strict decimal parser for the browser query and explicit QA CLI. */
+export function parseNetworkSimulationSeed(value: string): number {
+  if (!/^\d+$/.test(value)) throw new TypeError('netSeed must be a decimal uint32 seed');
+  return assertSimulationSeed(Number(value));
+}
+
+function seededRandom(seed: number): () => number {
+  let state = assertSimulationSeed(seed);
+  // Mulberry32 is a QA PRNG, never a source of IDs, capabilities or security entropy.
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = Math.imul(state ^ (state >>> 15), state | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 0x100000000;
+  };
+}
+
+/** Parse the browser QA query surface; netSeed alone never enables impairment. */
 export function networkSimulationOptions(
   search = globalThis.location?.search || '',
 ): NetworkSimulationOptions | null {
@@ -84,11 +118,14 @@ export function networkSimulationOptions(
   const enabled = query.get('netSim') === '1' ||
     ['netLatency', 'netJitter', 'netLoss', 'netInputLoss'].some((key) => query.has(key));
   if (!enabled) return null;
+  const seeds = query.getAll('netSeed');
+  if (seeds.length > 1) throw new TypeError('netSeed must specify one seed');
   return {
     latencyMs: clamp(numberParam(query, 'netLatency', 90), 0, 2000),
     jitterMs: clamp(numberParam(query, 'netJitter', 25), 0, 1000),
     stateLossRate: clamp(numberParam(query, 'netLoss', 5) / 100, 0, 1),
     inputLossRate: clamp(numberParam(query, 'netInputLoss', 0) / 100, 0, 1),
+    ...(seeds.length ? { netSeed: parseNetworkSimulationSeed(seeds[0]) } : {}),
   };
 }
 
@@ -104,7 +141,8 @@ export function createAdverseNetworkTransport(
     jitterMs = 0,
     stateLossRate = 0,
     inputLossRate = 0,
-    rng = Math.random,
+    netSeed,
+    rng,
     clock = () => performance.now(),
     schedule = (callback, delayMs) => setTimeout(callback, delayMs),
     cancel = (handle) => clearTimeout(handle),
@@ -119,6 +157,10 @@ export function createAdverseNetworkTransport(
       throw new TypeError(`${label} must be in [0, 1]`);
     }
   }
+  if (netSeed !== undefined && rng !== undefined) {
+    throw new TypeError('choose netSeed or an injected rng, not both');
+  }
+  const random = rng ?? (netSeed === undefined ? Math.random : seededRandom(netSeed));
   const messages = new Set<(message: RuntimeValue) => void>();
   const closes = new Set<(reason: string) => void>();
   const errors = new Set<(error: RuntimeValue) => void>();
@@ -131,10 +173,42 @@ export function createAdverseNetworkTransport(
     delayedIncoming: 0,
     droppedState: 0,
     droppedInput: 0,
+    reorderedOutgoingInput: 0,
+    reorderedOutgoingState: 0,
+    reorderedIncomingInput: 0,
+    reorderedIncomingState: 0,
   };
+  const lastCompleted: Record<Direction, Record<'input' | 'state', number | null>> = {
+    send: { input: null, state: null }, receive: { input: null, state: null },
+  };
+  const reorderCounters = {
+    send: { input: 'reorderedOutgoingInput', state: 'reorderedOutgoingState' },
+    receive: { input: 'reorderedIncomingInput', state: 'reorderedIncomingState' },
+  } as const;
+
+  function recordCompletion(direction: Direction, lane: Lane, message: RuntimeValue): void {
+    if (lane === 'control' || !isRecord(message)) return;
+    const sequence = message.seq;
+    if (typeof sequence !== 'number' || !Number.isSafeInteger(sequence) ||
+        sequence < 0 || sequence > 0x7fffffff) return;
+    const previous = lastCompleted[direction][lane];
+    if (previous === null || isSequenceNewer(sequence, previous)) {
+      lastCompleted[direction][lane] = sequence;
+    } else if (sequence !== previous) {
+      stats[reorderCounters[direction][lane]]++;
+    }
+  }
+
+  function shouldDrop(lane: Lane): boolean {
+    const loss = lane === 'state' ? stateLossRate : lane === 'input' ? inputLossRate : 0;
+    if (!(loss > 0 && random() < loss)) return false;
+    if (lane === 'state') stats.droppedState++;
+    else stats.droppedInput++;
+    return true;
+  }
 
   function delayFor(): number {
-    const unit = Number(rng());
+    const unit = Number(random());
     const centered = (Number.isFinite(unit) ? clamp(unit, 0, 1) : 0.5) * 2 - 1;
     return Math.max(0, latencyMs + centered * jitterMs);
   }
@@ -170,19 +244,16 @@ export function createAdverseNetworkTransport(
     if (closed || transport.readyState === 'closed') return false;
     const state = lane === 'state';
     const input = lane === 'input';
-    const loss = state ? stateLossRate : input ? inputLossRate : 0;
-    if (loss > 0 && rng() < loss) {
-      if (state) stats.droppedState++;
-      else if (input) stats.droppedInput++;
-      return true;
-    }
+    if (shouldDrop(lane)) return true;
     const delay = state || input ? delayFor() : orderedDelay('send');
     stats.delayedOutgoing++;
     later(() => {
       try {
-        if (state && typeof transport.sendState === 'function') transport.sendState(message);
-        else if (input && typeof transport.sendInput === 'function') transport.sendInput(message);
-        else transport.send(message);
+        const accepted = state && typeof transport.sendState === 'function'
+          ? transport.sendState(message)
+          : input && typeof transport.sendInput === 'function'
+            ? transport.sendInput(message) : transport.send(message);
+        if (accepted) recordCompletion('send', lane, message);
       } catch (error) {
         reportError(error);
       }
@@ -191,14 +262,16 @@ export function createAdverseNetworkTransport(
   }
 
   const removeMessage = transport.onMessage((message) => {
-    const state = isRecord(message) && message.type === 'snapshot';
-    if (state && stateLossRate > 0 && rng() < stateLossRate) {
-      stats.droppedState++;
-      return;
-    }
-    const delay = state ? delayFor() : orderedDelay('receive');
+    const lane: Lane = isRecord(message) && message.type === 'snapshot' ? 'state'
+      : isRecord(message) && message.type === 'input' ? 'input' : 'control';
+    if (shouldDrop(lane)) return;
+    const delay = lane === 'control' ? orderedDelay('receive') : delayFor();
     stats.delayedIncoming++;
     later(() => {
+      // Handoff may remove every consumer while this packet is delayed.
+      // Only observed delivery may advance the receive-order watermark.
+      if (messages.size === 0) return;
+      recordCompletion('receive', lane, message);
       for (const listener of [...messages]) listener(message);
     }, delay);
   });
@@ -251,7 +324,7 @@ export function createAdverseNetworkTransport(
     get readyState() { return closed ? 'closed' : transport.readyState || 'open'; },
     get bufferedAmount() { return Number(transport.bufferedAmount) || 0; },
     get stats(): AdverseNetworkStats {
-      return { ...stats, pending: timers.size, base: transport.stats || null };
+      return { ...stats, netSeed: netSeed ?? null, pending: timers.size, base: transport.stats || null };
     },
     rawTransport: transport,
   };
