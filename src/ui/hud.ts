@@ -4400,13 +4400,14 @@ export function initHud(bus: EventBus): HudRuntime {
     patches: MapDisc[] | undefined,
     palette: HudMinimapPalette,
   ): void {
-    if (!patches) return;
+    if (!patches?.length) return;
     context.fillStyle = palette.water;
-    context.strokeStyle = palette.waterStroke;
-    context.lineWidth = 0.8;
+    // One nonzero fill unions consistently wound lake lobes: overlapping
+    // construction patches must not add dark seams or double their opacity.
+    // The terrain shoreline supplies the bank detail without a diagram border.
+    context.beginPath();
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
-      context.beginPath();
       // Project every WORLD-space shoreline vertex through the same -X/right,
       // +Z/up basis as the terrain raster and tank markers. Offsetting a map
       // circle by +cos(angle) would mirror the asymmetric capes and coves.
@@ -4419,9 +4420,8 @@ export function initHud(bus: EventBus): HudRuntime {
         else context.lineTo(point[0], point[1]);
       }
       context.closePath();
-      context.fill();
-      context.stroke();
     }
+    context.fill();
   }
 
   function mixedForestFill(color: string): string {

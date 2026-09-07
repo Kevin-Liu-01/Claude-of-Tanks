@@ -78,16 +78,19 @@ for (const mapId of MAP_IDS) {
   const layout = createLayout(getMapConfig(mapId));
   const patches = [...layout.marshes, ...layout.lakes];
   const paths = [];
-  let closed = 0;
+  let closed = 0, fills = 0, begins = 0;
   const context = {
-    beginPath() { paths.push([]); },
-    moveTo(x, y) { paths.at(-1).push([x, y]); },
+    beginPath() { begins++; },
+    moveTo(x, y) { paths.push([[x, y]]); },
     lineTo(x, y) { paths.at(-1).push([x, y]); },
     closePath() { closed++; },
-    fill() {}, stroke() {},
+    fill(rule) { assert.ok(rule === undefined || rule === 'nonzero'); fills++; },
+    stroke() { assert.fail('construction lobes must not create internal bank seams'); },
     arc() { assert.fail('fallback water cannot return to circular minimap discs'); },
   };
   paintWater(context, patches, { water: '#345', waterStroke: '#123' });
+  assert.equal(begins, patches.length ? 1 : 0, `${mapId}: water is a single compound path`);
+  assert.equal(fills, patches.length ? 1 : 0, `${mapId}: overlapping water is painted once at uniform opacity`);
   assert.equal(paths.length, patches.length, `${mapId}: every fallback water patch is painted`);
   assert.equal(closed, patches.length, `${mapId}: every irregular bank is a closed polygon`);
   for (let patchIndex = 0; patchIndex < patches.length; patchIndex++) {
