@@ -471,3 +471,108 @@ render/readback, then consider awaitable covered preparation, yielding only
 between completed passes after restoring renderer state and consuming shared
 pixels. Preserve per-spec pending/cache ownership and shared-resource lifetime;
 moving the timer later would merely move the hitch into countdown or gameplay.
+
+### Covered damage-panel masks (E)
+
+An instrumented, behavior-unchanged baseline (`mask-baseline-timings`, local
+loopback, two fresh HIGH/clear/day Frosthollow clients) confirms a specific fade
+stall. The host mask timer occupies a 335 ms task; the guest occupies a 480 ms
+task. Absolute intervals locate both wholly inside loader fade. Hull render
+took 307.7/401.8 ms, hull readback 7.8/20.2 ms, turret render 12.0/24.7 ms and
+turret readback 3.7/27.4 ms. These are main-thread operation durations, not GPU
+timings. Most of this particular pause is first-render preparation rather than
+the pixel copy. Whole-entry maxima were still 767/491 ms (RAF 768.2/548.7 ms),
+so removing masks from fade does not explain every loading stall.
+
+The player panel now exposes nonmutating, awaitable cache preparation. Private,
+LAN and dedicated-adapter entry await the exact viewer entity's masks under
+the opaque loader, before final scene/effects warm and atomic activation.
+Spectators skip that player-only step. Abort checks bracket it; synchronous
+`setTank` adopts completed masks without scheduling GPU work during reveal.
+The shared lazy API still serves solo callers. No authority or countdown policy
+changes, eager Garage warming, geometry edits or image-quality reductions occur.
+
+Mask programs compile with the actual unlit scene, camera and target, then
+restore target/cube face/mip before bounded readiness polling. Unlike the pinned
+Three.js `compileAsync`, the poll owns exact program references rather than
+re-reading mutable material properties. It detects context loss and destroyed
+programs, preserves failures and stops after five seconds. This avoids the
+native timer's uncaught exception/hung promise when Garage cancellation disposes
+the source materials; another world render cannot substitute a ready program.
+The [renderer API's asynchronous compilation guidance](https://threejs.org/docs/pages/WebGLRenderer.html#compileAsync)
+motivated preparing programs before their first mask draw, but its native timer
+is not reused. Borrowed programs are never disposed by the mask owner.
+Both 384×384 RGBA passes retain their exact camera, alpha threshold, row flip,
+plan bounds and 192×192 downscale. A small WebGL2 pixel-pack-buffer/fence owner
+submits each readback, restores bindings before yielding, polls at 4 ms with a
+five-second deadline, then copies and releases the buffer/fence on every exit.
+The pinned Three.js async readback was inspected but not reused: it leaves its
+PBO bound across polling and lacks rejection cleanup. Dependencies are unchanged.
+
+Different tank preparations serialize through both passes and canvas copies;
+same-ID callers join one promise. Pending ownership is separate from the bounded
+completed cache so eviction cannot launch overlapping work into shared pixels.
+Borrowed hierarchy clones never dispose the live vehicle's geometry/materials;
+source-disposal listeners cover queued time and every asynchronous pass boundary,
+and detach on settlement. Owned factory fallback builds dispose even when
+rendering or callbacks fail.
+Clone-only instanced buffers and batched geometry/control textures are explicitly
+released after pending work drains. Batched control data is detached in the
+synchronous native-clone transaction, with original data identities/upload
+versions restored even on cloning failure; colored batch controls are preserved.
+Source invalidation does not negatively cache the spec, so the next match can
+prepare the same tank from its fresh visual. Ordinary GPU failures retain the
+bounded negative-cache policy.
+Failure retains the existing vector fallback. Diagnostics export only the latest
+transaction's allowlisted finite stage clocks, capped at 16 intervals—no tank
+identity, room data, URLs or raw error contents.
+
+Candidate E's first local entry run (`mask-async-timings-visual`) confirmed that
+both masks finished before activation, with no mask work in fade. Hull draws
+were 2.0/2.0 ms and turret draws 1.2/1.3 ms, versus the baseline's hundreds of
+milliseconds. Entry took 5,948/5,778 ms; largest tasks were 474/438 ms and RAF
+gaps 477.9/440.5 ms. Both peers showed the full foreground 5→1 countdown and
+nonblack reveal without application exceptions. However, the subsequent LOW
+combat/feedback probe failed without a classified diagnostic or completed
+performance receipt. Browser cleanup succeeded but room cleanup was not
+verified. That entire run is a failure, not a performance certificate.
+
+The entry-only repeat (`mask-async-repeat-timings`) passed native Garage exit,
+room/browser cleanup, countdown, nonblack reveal and zero application errors.
+Mask draws remained 2.4/2.5 ms and 1.5/1.8 ms. It nevertheless reached a separate
+2,236/2,234 ms black-watchdog interval, 2,967/2,974 ms largest tasks and
+2,970.6/2,976.5 ms RAF gaps (entry 8,675/8,452 ms). Thus removing the mask hitch
+is not evidence that all loading is smooth. The watchdog's final-camera draw
+and synchronous readback remain candidates requiring finer operation-level
+instrumentation; these intervals do not establish a unique cause. Neither run
+used separate devices, distant networks or relay-only transport, and neither
+explains the historical combat stalls. Both preceded the final bounded-program
+poll and source-lifetime hardening.
+
+Regression coverage includes exact pixels/cameras and borrowed-source pose,
+per-ID coalescing, more than ten pending jobs, completed/failed cache eviction,
+callback exceptions, program replacement/destruction, context loss, timeout,
+null/OOM PBO allocation, binding restoration and cleanup. A failed renderer
+restore still drains a submitted readback before releasing shared pixels to
+the next job. The existing observer and browser-failure tests now have explicit
+suite entries instead of hidden imports, satisfying the repository's exactly-one
+lifecycle-owner rule. Temporary profiles, screenshots and room artifacts are
+not release contents.
+
+The full `npm test` attempt did not pass: its pre suite stopped in the unchanged
+`src/vehicles/fleetLazy.selftest.mjs` child-process fleet sweep at the existing
+240-second timeout (`ETIMEDOUT`, no failed assertion). This slice changes no
+vehicle builders or that test, and no timeout was weakened. Machine contention
+was present during verification, but its contribution was not isolated. The
+focused multiplayer/UI checks and full application typecheck are separate
+passing evidence, not substitutes for a claimed full-suite pass.
+
+Final typed metrics over the four changed mask/presentation owners report 113
+functions, zero complexity violations, zero explicit `any` and zero `unknown`.
+The staged-file React Doctor scan is 87/100 over 14 files: all 25 warnings are
+in tests, with no runtime finding. Sequential fake-clock/failure scenarios must
+settle before the next shared fixture; short event-array projections improve
+assertion readability; JSON roundtrips verify the observer's transport/cross-VM
+boundary. These reviewed test-only warnings were not suppressed. The earlier
+89/100 scan covered only nine already-tracked files, so it excluded the new
+regression fixtures and is not a like-for-like regression score.

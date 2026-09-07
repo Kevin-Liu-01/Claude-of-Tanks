@@ -2001,6 +2001,13 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
             warmRender,
           }),
+          playerPanel: async (bridge, viewerId) => {
+            const entity = bridge.entities.get(viewerId);
+            if (!entity) return;
+            const panel = currentDamagePanel();
+            if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
+            await panel.prepareTankMasks(entity.spec, entity.visual);
+          },
           openingEffects: (fx, bridge) => {
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {

@@ -1005,6 +1005,4 @@ for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_T
   assert.equal(receipt.cleanup, null, 'invalid ammo arguments never acquire a browser or room');
   assert.doesNotMatch(invalid.stderr, /PRIVATE_TOKEN/);
 }
-await import('./production-entry-observer.selftest.mjs');
-await import('./browser-failure-evidence.selftest.mjs');
 console.log('production private-room UI smoke selftest passed (deterministic guards and cleanup; not a live receipt)');

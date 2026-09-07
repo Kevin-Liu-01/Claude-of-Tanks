@@ -35,7 +35,7 @@ export interface NetworkBattlePresentationRequest {
 }
 
 const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
-  'atmosphere', 'terrainGrid', 'wreckWarm', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
+  'atmosphere', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
 type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
 type NetworkRevealSlice = 'activation' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
 
@@ -184,6 +184,7 @@ export interface NetworkBattlePresentationOptions {
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
+    playerPanel(bridge: NetworkBridgePort, viewerId: string): MaybePromise<RuntimeValue>;
     openingEffects(
       fx: NetworkBattleFxPort,
       bridge: NetworkBridgePort,
@@ -246,7 +247,7 @@ function validateNetworkPresentationPorts(options: NetworkBattlePresentationOpti
     checkedIntegrationPort(
       options.warm ?? {},
       'network battle warmup',
-      ['getFx', 'terrain', 'wrecks', 'openingEffects', 'shotCards', 'compile'],
+      ['getFx', 'terrain', 'wrecks', 'playerPanel', 'openingEffects', 'shotCards', 'compile'],
     );
     checkedIntegrationPort(
       options.presentation ?? {},
@@ -464,6 +465,14 @@ export function createNetworkBattlePresentationRuntime(
       await warm.wrecks(preparedBridge);
       throwIfNetworkBattleEntryAborted(signal);
       mark('wreckWarm');
+
+      load.battleLoad.progress(0.86, 'Preparing player panel');
+      throwIfNetworkBattleEntryAborted(signal);
+      if (!spectator && preparedBridge.entities.get(viewerId)) {
+        await warm.playerPanel(preparedBridge, viewerId);
+      }
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('panelMasks');
 
       // Wreck preparation installs the final material hooks. Submit the whole
       // scene now, before opening effects perform the first compositor draw.
