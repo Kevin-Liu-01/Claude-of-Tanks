@@ -443,3 +443,31 @@ test lookup warning was resolved with an explicit membership assertion. Scanner
 scores across differently scoped slices are not comparable. No full-fleet suite,
 separate-device or distant-network claim is made. QA captures remain excluded
 from the commit; the historical combat-stall cause remains unproven.
+
+Production D (`84246dce3`, exact served version checked before the run) also
+passed native production signaling/invite/launch, foreground 5→1 for both peers,
+nonblack/no-rescue reveal, live input/snapshot progress, native Garage exit and
+verified room/browser cleanup, with zero application errors. This was two
+fresh contexts on one machine, HIGH, clear/day, Frosthollow:
+
+| Peer | Entry | Largest task | Maximum RAF gap | Effects / watchdog / fade |
+| --- | --- | --- | --- | --- |
+| Host | 7,638 ms | 1,286 ms | 1,289.4 ms | 921 / 375.1 / 597.4 ms |
+| Guest | 7,625 ms | 1,323 ms | 1,326.8 ms | 933 / 401 / 527 ms |
+
+This remains a functional pass, not a smooth-loading certificate. Production
+captures are retained as `production-d-timings` in the excluded QA directory.
+No separate-device/distant-network or historical-combat-stall conclusion follows.
+
+The local D CPU profile additionally points to deferred damage-panel masks:
+`networkBattleActivationRuntime` calls `damagePanel.setTank`, which calls
+`tankThumbs.getTopDownMasks`. Its timer performs separate hull/turret renders and
+synchronous 384×384 readbacks using a shared renderer/target/pixel buffer. The
+mask chain has about 442 ms inclusive sampled weight (436 ms below
+`renderMaskPixels`), making it a strong candidate for the host's 441 ms fade
+task, not proof of exact GPU duration. Existing effects warm and shot-card warm
+do not explicitly prepare these masks. Next measure the transaction and each
+render/readback, then consider awaitable covered preparation, yielding only
+between completed passes after restoring renderer state and consuming shared
+pixels. Preserve per-spec pending/cache ownership and shared-resource lifetime;
+moving the timer later would merely move the hitch into countdown or gameplay.
