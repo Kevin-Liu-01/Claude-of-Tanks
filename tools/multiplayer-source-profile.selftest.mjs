@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { summarizeMultiplayerSourceProfile, startMultiplayerSourceProfile } from './multiplayer-source-profile.mjs';
+import { summarizeMultiplayerSourceProfile, startMultiplayerSourceProfile,
+  sourceProfileFailureDetails } from './multiplayer-source-profile.mjs';
 
 const origin = 'https://game.example.test';
 const node = (id, name, path = '', children = []) => ({ id, children,
@@ -172,6 +173,32 @@ for (const stuck of ['Profiler.stop', 'Profiler.disable', 'detach']) {
   const result = assert.rejects(sampler.stop(), /^Error: source_profile_(stop|cleanup)_failed$/);
   await f.clock.advance(50); await result; released(f);
 }
+
+for (const phase of ['stop-command', 'stop-clock']) {
+  let clocks = 0;
+  const privateFailure = Object.assign(new Error('PRIVATE target closed'), { name: 'TargetCloseError' });
+  const f = fixture({
+    send: (method) => { if (phase === 'stop-command' && method === 'Profiler.stop') throw privateFailure; },
+    evaluate: () => { if (++clocks === 3 && phase === 'stop-clock') throw privateFailure; return 5000; },
+  });
+  const sampler = await startMultiplayerSourceProfile(f.page, { origin }, f.clock);
+  await assert.rejects(sampler.stop(), (error) => {
+    assert.deepEqual(sourceProfileFailureDetails(error), { stage: phase, failure: 'target-closed' });
+    assert.doesNotMatch(JSON.stringify(error), /PRIVATE|TargetCloseError/);
+    return true;
+  });
+  released(f);
+}
+const timeoutFixture = fixture({ send: (method) => method === 'Profiler.stop' ? new Promise(() => {}) : undefined });
+const timedProfile = await startMultiplayerSourceProfile(timeoutFixture.page,
+  { origin, commandTimeoutMs: 10 }, timeoutFixture.clock);
+const timedFailure = assert.rejects(timedProfile.stop(), (error) => {
+  assert.deepEqual(sourceProfileFailureDetails(error), { stage: 'stop-command', failure: 'command-timeout' });
+  return true;
+});
+await timeoutFixture.clock.advance(50); await timedFailure; released(timeoutFixture);
+assert.deepEqual(sourceProfileFailureDetails({ profileStage: 'PRIVATE', operationFailure: 'PRIVATE' }),
+  { stage: null, failure: 'unknown' });
 
 for (const sameTurn of [false, true]) {
   let resolveCreation;

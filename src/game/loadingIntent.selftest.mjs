@@ -150,6 +150,10 @@ assert.match(networkPresentation,
 assert.match(networkPresentation,
   /loadWorld:[\s\S]{0,180}entry\.loadWorld\(mapId[\s\S]{0,300}connect: async \(\) =>/,
   'network entry should delegate modules, battlefield construction, and connection setup');
+const networkWorldAdapter = main.slice(main.indexOf('loadWorld: (mapId: string'),
+  main.indexOf('publishMatch: (match) => networkSession.publishMatch(match)'));
+assert.match(networkWorldAdapter, /ensureWorld\(mapId, onProgress, \{ precompile: false \}\)/,
+  'network acquisition must not warm Garage-light world variants before final battle atmosphere');
 assert.match(networkPresentation,
   /connect: async \(\) => \{[\s\S]{0,160}await connectMatch\(\)[\s\S]{0,240}match\.close\?\.\('network_entry_cancelled'\)/,
   'a transport resolving after room closure must be retired before publication');

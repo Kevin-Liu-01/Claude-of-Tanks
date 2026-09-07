@@ -122,3 +122,138 @@ into the measured module stage changes what that stage includes. Compare the
 same click-to-visible interval, viewport, cache state, renderer count, and
 network conditions before making a speedup claim. This lifecycle fix is not a
 claim of zero lag, a universal load-time budget, or perfect multiplayer.
+
+## World-warm follow-up
+
+`__WORLD_LOAD` now publishes copied stage snapshots at start, each boundary,
+and completion/failure. `startedAt`, `endedAt`, and `stageIntervals` use the
+page's `performance.now()` clock, so a long task must be attributed using its
+`startTime`/duration overlap, not the UI label present when its observer callback
+finally runs. Pending intervals omit `endTime`; failure closes the active stage
+and retains available build timings. Telemetry exceptions cannot replace an
+activation error or reject an otherwise successful load.
+
+Inspection confirmed a redundant multiplayer-only warm: `entry.loadWorld`
+previously compiled the world while Garage SpotLights were still attached,
+before the initial authoritative weather was applied. Three's program key
+contains the visible spot-light count. Later combat warm therefore prepares a
+different light variant after Garage shutdown. The early shadow render is not
+even a readiness guarantee for cached worlds: dormant world roots can still be
+detached from the rendered scene until activation.
+
+The candidate removes only that acquisition-time warm with
+`ensureWorld(..., { precompile:false })`. Construction, collision/services,
+cloud readiness, final battle-light/effect warm, real-frame validation, loader
+fade, and the subsequent READY barrier remain unchanged. Global world defaults,
+Solo, Studio, geometry, graphics quality, and transport policy are unchanged.
+This must be accepted or rejected using the same two-app entry scenario and
+total time/long-task/pixel evidence; moving cost to the final reveal is not a win.
+
+### Retained two-renderer attribution baseline
+
+The follow-up baseline uses the production build, two fresh cache-disabled
+browser contexts, 1280×800/DPR 1/high graphics, native 1v1 room controls on
+Frosthollow, and local in-memory signaling plus WebRTC. No endpoint or game-state
+override is injected. Both clients' animation/render counters advance; neither
+records background-service ticks. One peer per run has the opt-in statistical
+CPU profiler. This is not a distant-network or production-latency certificate.
+
+| Capture | Authority weather | Host entry / largest task | Guest entry / largest task |
+| --- | --- | --- | --- |
+| Baseline, host profiled | Clear/day | 7,815 / 1,602 ms | 7,857 / 1,720 ms |
+| Baseline, guest profiled | Clear/night | 8,908 / 1,981 ms | 8,906 / 1,764 ms |
+
+All four clients displayed the full foreground 5→1 countdown, had nonblack
+reveal checks without rescue, and completed room/browser cleanup. Timings differ
+with authority weather and profiler overhead; they are observations, not fixed
+budgets. Transient raw reports are retained under `.qa-world-warm-r4/` in the
+isolated worktree and deliberately excluded from source control.
+
+In the first run, the host's 1,602 ms task lies wholly inside `shadowWarm`
+(task 11,283.4–12,885.4; stage 11,280.0–12,956.3 on its page clock). The guest's
+1,720 ms task likewise lies wholly inside that stage (task 6,172.2–7,892.2;
+stage 6,164.1–7,966.2). Assembly took only 7/4 ms. Renderer/program counters and
+the retained generated call chain localize these pauses to the first full-scene
+offscreen render, not merely to the stale loading label or final assembly.
+
+`warmShadowFrame → warmSceneOffscreen → renderer.render(scene, camera)` is a
+complete render, not exclusively shadow work. Statistical samples cannot
+separate shader linking, uniform discovery, buffer upload, driver synchronization,
+and GPU execution. The profile also samples a separate early `new AudioContext`
+cost; that must not be mislabeled as rendering. These findings do not prove the
+cause of the lost 9,578 ms capture or historical 214–319 ms battle-frame stalls.
+
+The first two candidate captures became unreadable on the CPU-profiled peer
+(host, then guest), while the opposite peer remained responsive. Their profile
+stop and room-cleanup receipts are incomplete. They are failed validation runs,
+not speedup evidence or proof of an application crash. Timing-only observations
+and explicit crash/command-failure classification are required before accepting
+this candidate.
+
+### Timing-only comparison and accepted warm order
+
+`tools/production-private-room-ui.mjs --entry-profile=timings` records the same
+bounded DOM/RAF/long-task observations without attaching the CPU profiler. Use
+the shared capture-command FIFO. `--local-signaling` is opt-in and accepts only
+a loopback frontend whose **built default** endpoint is loopback `/signal`;
+production endpoint validation remains unchanged. It never overrides the app's
+endpoint. Failures retain sanitized command categories and renderer-crash versus
+app-exception event counts; intentional browser teardown is excluded.
+
+The following native two-renderer runs all used clear/day authority weather and
+high graphics during entry. `totalMs` includes the peer readiness barrier, not
+the five-second countdown. The controls restored only the two candidate runtime
+changes to the shipped revision; instrumentation stayed identical. Browser
+contexts are fresh, but OS/driver shader-cache coldness is not guaranteed.
+
+| Runtime | Host entry / largest task | Guest entry / largest task |
+| --- | --- | --- |
+| Shipped warm order (unprofiled control) | 6,855 / 1,162 ms | 6,626 / 955 ms |
+| Skip early acquisition warm only | 5,599 / 1,034 ms | 5,491 / 761 ms |
+| Also compile before effects | 4,901 / 319 ms | 4,899 / 584 ms |
+
+The combined change keeps the final battle-light compile but moves it after
+wreck-material hook installation and **before** the opening-effects compositor
+draw. Previously that full-scene compile happened after the first complete
+effects draw, too late to spread its program preparation. The late FX/scar
+compile and actual compositor submission remain intact. `wreckWarm` now has its
+own timing stage, so the new `combatWarm` is not directly comparable to the old
+combined wreck/effects stage. All progress remains monotonic. Cancellation during
+the compile boundary cannot reach effects, activation, reveal, or READY; a
+driver compile failure retains the existing real-render fallback.
+
+Every timing-only run above showed foreground 5→1 on both peers, unchanged
+nonblack reveal measurements (109.968/137.073) without rescue, zero renderer
+crashes/app exceptions, and verified room/browser cleanup. Visual runs also
+exercised native movement and four confirmed shots per peer, including four
+locally predicted guest shots without duplicate confirmation. That later combat
+probe deliberately selects the existing low-preset benchmark and must **not** be
+represented as high-preset gameplay certification. Its 20-second samples still
+had frame-gap maxima of 45.6/70.3 ms (skip-only) and 72.3/44.3 ms (combined), with
+zero hard snaps. First-person/view-dependent visual quality and historical
+network/frame tails are not solved by this entry-only change.
+
+Residual loading pauses remain: the combined run's maximum RAF gaps were
+548.3/587.2 ms despite shorter largest tasks. These numbers are evidence of an
+improvement, not a promise of hitch-free loading. Future work should separate
+remaining first-use shader/reflection/upload and task-coalescing costs using
+absolute stage intervals; do not remove the final warm/reveal checks or reduce
+graphics quality to satisfy a timing threshold.
+
+An independent combined-order repeat received clear/night authority weather.
+Host/guest entry was 5,249/5,045 ms, with largest tasks of 649/652 ms and maximum
+RAF gaps of 833.0/655.3 ms. Both retained foreground 5→1, nonblack night reveal
+measurements of 15.5814/18.8902 without rescue, zero background-service ticks or
+browser exceptions/crashes, and verified room/browser cleanup. This night run
+is not a like-for-like comparison against the unprofiled day control; it also
+demonstrates that the shorter day-run pauses are not a universal upper bound.
+
+Follow-up verification passed 21 focused selftest entrypoints, including the
+new observer and failure-evidence tests imported by the registered production-UI
+suite. Typecheck/core-unused checks, production builds, and diff checks passed.
+Six changed runtime/tool owners passed code-quality metrics (310 functions,
+zero complexity or explicit any/unknown violations). The changed-file React
+Doctor scan reported 91/100 with one test-only array-lookup warning and no runtime
+findings. Independent read-only review found no blocking lifecycle, endpoint,
+diagnostic-bound, or cleanup issues. This does not claim a fresh full-fleet test
+run, production deployment verification, or physical-device/network coverage.

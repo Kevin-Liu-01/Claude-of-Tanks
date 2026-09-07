@@ -35,6 +35,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   const initialGate = deferred();
   const visualsGate = deferred();
   const readinessGate = deferred();
+  const compileGate = deferred();
   const initial = {
     entities: [],
     meta: { weatherSeed: 0, phase: timing.phase ?? 'loading', countdownMs: timing.countdownMs ?? 5000 },
@@ -98,7 +99,13 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
         if (failAt === 'visuals') throw new Error('visuals failed');
         events.push('visualsReady');
       },
-      nextFrame: async () => events.push('frame'),
+      nextFrame: async () => {
+        events.push('frame');
+        if (pauseAt === 'compileFrame' && progress.at(-1)?.[1] === 'Compiling combat shaders') {
+          events.push('compileFrame');
+          await compileGate.promise;
+        }
+      },
       primeReveal: async () => {
         events.push('primeReveal');
         if (pauseAt === 'primeReveal') await revealGate.promise;
@@ -187,7 +194,12 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       wrecks: async () => events.push('wrecks'),
       openingEffects: async () => events.push('effects'),
       shotCards: () => events.push('cards'),
-      compile: async () => events.push('compile'),
+      compile: async () => {
+        events.push('compile');
+        if (pauseAt === 'compile') await compileGate.promise;
+        if (failAt === 'compile') throw new Error('compile failed');
+        events.push('compiled');
+      },
     },
     presentation: {
       resetRoundState: () => events.push('reset'),
@@ -240,6 +252,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     releaseInitial: () => initialGate.resolve(),
     releaseVisuals: () => visualsGate.resolve(),
     releaseReadiness: () => readinessGate.resolve(),
+    releaseCompile: () => compileGate.resolve(),
   };
 }
 
@@ -254,8 +267,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   for (const [before, after] of [
     ['initialReady', 'atmosphere'], ['apply', 'atmosphere'],
     ['garageLights:false', 'atmosphere'], ['atmosphere', 'atmosphereReady'],
-    ['atmosphereReady', 'terrain'], ['atmosphereReady', 'compile'],
-    ['compile', 'activate'],
+    ['atmosphereReady', 'terrain'], ['terrain', 'wrecks'],
+    ['wrecks', 'compile'], ['compiled', 'effects'], ['effects', 'activate'],
   ]) assert.ok(harness.events.indexOf(before) >= 0
     && harness.events.indexOf(before) < harness.events.indexOf(after), `${before} precedes ${after}`);
   for (const [before, after] of [
@@ -272,8 +285,46 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   'one complete battle frame is presented before the opaque loader exits');
   assert.deepEqual(harness.trace.blackCheck, { ok: true });
   assert.ok(harness.trace.totalMs > 0, 'the complete network entry is timed');
+  const stages = Object.keys(harness.trace.stages);
+  assert.deepEqual(stages.slice(stages.indexOf('terrainGrid'), stages.indexOf('combatWarm') + 1),
+    ['terrainGrid', 'wreckWarm', 'compile', 'combatWarm'],
+    'wreck, scene compile, and opening effects have separate ordered timing stages');
+  assert.ok(harness.progress.every(([fraction], index) =>
+    index === 0 || fraction >= harness.progress[index - 1][0]),
+  'moving scene compilation earlier keeps displayed progress monotonic');
   assert.ok(harness.progress.some(([fraction, label]) =>
     fraction === 1 && label === 'Ready'), 'the loader reaches its terminal state');
+}
+
+for (const pauseAt of ['compileFrame', 'compile']) {
+  const harness = createHarness('', pauseAt);
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, pauseAt);
+  assert.ok(harness.events.includes('wrecks'), 'wreck hooks are installed before the final scene compile');
+  assert.ok(!harness.events.includes('effects'), 'the compositor cannot draw while scene compile is deferred');
+  assert.equal(harness.loaderVisible, true, 'deferred scene compilation remains covered');
+  controller.abort('return to Garage during scene compile');
+  harness.releaseCompile();
+  await assert.rejects(pending, (error) => isNetworkBattleEntryAbortError(error));
+  if (pauseAt === 'compileFrame') assert.ok(!harness.events.includes('compile'),
+    'cancellation at the compile frame boundary skips expensive shader work');
+  for (const stage of ['effects', 'activate', 'primeReveal', 'hide', 'ready', 'adaptive:false']) {
+    assert.ok(!harness.events.includes(stage), `${pauseAt}: cancelled compile cannot reach ${stage}`);
+  }
+}
+
+{
+  const harness = createHarness('compile');
+  await harness.runtime.present(harness.request);
+  assert.ok(!harness.events.includes('compiled'), 'the injected scene compile failed');
+  assert.ok(harness.events.indexOf('compile') < harness.events.indexOf('effects'),
+    'the covered compositor draw remains the best-effort shader fallback');
+  assert.ok(harness.events.includes('primeReveal') && harness.events.includes('ready'),
+    'a shader warm failure does not bypass or prevent the real-frame and readiness barriers');
+  assert.equal(harness.waitingForPeers, false);
+  assert.ok(harness.events.includes('adaptive:false'));
 }
 
 {

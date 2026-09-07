@@ -414,19 +414,24 @@ export function createNetworkBattlePresentationRuntime(
       load.battleLoad.progress(0.85, 'Priming wreck variants');
       await warm.wrecks(preparedBridge);
       throwIfNetworkBattleEntryAborted(signal);
-      load.battleLoad.progress(0.87, 'Priming combat effects');
-      await warm.openingEffects(fx, preparedBridge);
-      throwIfNetworkBattleEntryAborted(signal);
-      mark('combatWarm');
-      warm.shotCards([...preparedBridge.entities.values()].map((entity) => entity.specId));
+      mark('wreckWarm');
 
-      load.battleLoad.progress(0.88, 'Compiling combat shaders');
+      // Wreck preparation installs the final material hooks. Submit the whole
+      // scene now, before opening effects perform the first compositor draw.
+      load.battleLoad.progress(0.87, 'Compiling combat shaders');
       await load.nextFrame();
+      throwIfNetworkBattleEntryAborted(signal);
       try {
         await warm.compile();
       } catch (_) { /* warm only */ }
       throwIfNetworkBattleEntryAborted(signal);
       mark('compile');
+
+      load.battleLoad.progress(0.88, 'Priming combat effects');
+      await warm.openingEffects(fx, preparedBridge);
+      throwIfNetworkBattleEntryAborted(signal);
+      warm.shotCards([...preparedBridge.entities.values()].map((entity) => entity.specId));
+      mark('combatWarm');
 
       presentation.setWaitingForPeers(initial.meta?.phase === 'loading');
       presentation.activate({ viewerId, own, spectator, mapId, bridge: preparedBridge, fx });

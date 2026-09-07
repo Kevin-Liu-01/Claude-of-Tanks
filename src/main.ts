@@ -1934,8 +1934,11 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             battleWarm.preload(),
             audio.warmBattleEvents(),
           ]).then(([modules]) => modules),
+          // Final combat warming follows Garage-light removal and authority
+          // weather. Early world warming compiles a different light variant;
+          // retain world/services here and the covered real-frame gates below.
           loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
-            ensureWorld(mapId, onProgress)
+            ensureWorld(mapId, onProgress, { precompile: false })
           ),
           publishMatch: (match) => networkSession.publishMatch(match),
           getMatch: () => networkSession.match,
