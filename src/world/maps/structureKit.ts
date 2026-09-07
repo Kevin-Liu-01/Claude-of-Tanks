@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
-import { markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
+import { ensureWorldNightEmissionMask, markWorldAperture, markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 import {
   certifyGroundedStructureParts,
   certifyStructureAttachments,
@@ -250,7 +250,7 @@ function mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THR
   for (const part of parts) {
     if (part.userData.roofPlanePitch) roofPlanePitches.push(auditRoofPlanePitch(part));
   }
-  const geometry = merge(parts);
+  const geometry = merge(parts.map(ensureWorldNightEmissionMask));
   geometry.userData.structureConnectivity = connectivity;
   geometry.userData.roofPlanePitches = roofPlanePitches;
   geometry.userData.skillionRoofPitches = roofPlanePitches
@@ -1257,7 +1257,8 @@ function addGableWindows(
     const width = w * 0.17;
     const height = wallH * 0.34;
     const y = y0 + wallH * 0.58;
-    colored(out, box(width, height, 0.06).translate(x, y, d / 2 + 0.05), 0x52656a, rng, 0.04);
+    colored(out, markWorldAperture(box(width, height, 0.06), [0, 0, 1])
+      .translate(x, y, d / 2 + 0.05), 0x52656a, rng, 0.04);
     for (const side of [-1, 1]) colored(out,
       box(0.065, height + 0.16, 0.09).translate(x + side * (width / 2 + 0.045), y, d / 2 + 0.09), trim, _detailRng);
     for (const side of [-1, 1]) colored(out,
@@ -1379,7 +1380,7 @@ function debris(
   const service = box(0.12, 0.62, 0.86);
   service.rotateZ(Math.PI / 2 - 0.16);
   colored(out, service.translate(-meta.hw * 0.42, 0.22, meta.hl * 0.28), dark, rng, 0.08);
-  return merge(out);
+  return merge(out.map(ensureWorldNightEmissionMask));
 }
 
 function makeFieldHut(rng: Rng): THREE.BufferGeometry {
@@ -1500,8 +1501,10 @@ function makeGuardPost(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, y0 = 1.2;
   colored(out, box(3.2, 2.6, 3.2).translate(0, y0 + 1.3, 0), p[0], rng);
   for (const side of [-1, 1]) {
-    colored(out, box(2.2, 0.65, 0.08).translate(0, y0 + 1.65, side * 1.64), 0x73909a, rng);
-    colored(out, box(0.08, 0.65, 2.2).translate(side * 1.64, y0 + 1.65, 0), 0x73909a, rng);
+    colored(out, markWorldAperture(box(2.2, 0.65, 0.08), [0, 0, side])
+      .translate(0, y0 + 1.65, side * 1.64), 0x73909a, rng);
+    colored(out, markWorldAperture(box(0.08, 0.65, 2.2), [side, 0, 0])
+      .translate(side * 1.64, y0 + 1.65, 0), 0x73909a, rng);
   }
   colored(out, slab(3.9, 0.16, 3.9).translate(0, y0 + 2.72, 0), p[2], rng);
   for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) colored(out, box(0.18, y0, 0.18).translate(x, y0 / 2, z), p[2], rng);
@@ -1535,7 +1538,8 @@ function makeQuonsetHut(rng: Rng): THREE.BufferGeometry {
     const rib = archShell(w + 0.12, h + 0.08, 0.08); rib.translate(0, 0, z); colored(out, rib, p[1], rng, 0.04);
   }
   colored(out, box(3.5, 3.0, 0.10).translate(0, 1.5, d / 2 + 0.06), p[2], rng);
-  for (const x of [-2.2, 2.2]) colored(out, box(0.65, 0.9, 0.08).translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
+  for (const x of [-2.2, 2.2]) colored(out, markWorldAperture(box(0.65, 0.9, 0.08), [0, 0, 1])
+    .translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
   return mergeConnectedStructure('quonsethut', out);
 }
 
@@ -1558,7 +1562,8 @@ function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, pitchRoofPlane(slab(w + 0.7, 0.16, d + 1.1), 'x', -1, 0.08, 'skillion')
     .translate(0, h + 0.08, 0), p[2], rng);
-  for (const side of [-1, 1]) colored(out, box(0.08, 1.0, 2.7).translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
+  for (const side of [-1, 1]) colored(out, markWorldAperture(box(0.08, 1.0, 2.7), [side, 0, 0])
+    .translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
   colored(out, box(2.5, 0.12, 1.8).translate(0, 0.12, d / 2 + 0.85), p[1], rng);
   for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, 1.15, d / 2 + 1.55), p[2], rng);
   colored(out, pitchSkillionRoof(slab(2.8, 0.10, 2.0), 'z', 1, 0.12)
@@ -1571,7 +1576,7 @@ function makeSecurityOffice(rng: Rng): THREE.BufferGeometry {
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.55, 0.24, d + 0.55).translate(0, h + 0.08, 0), p[2], rng);
   for (const side of [-1, 1]) for (const x of [-2.25, 0, 2.25]) {
-    colored(out, box(1.28, 1.25, 0.09).translate(x, 3.05, side * (d / 2 + 0.04)),
+    colored(out, markWorldAperture(box(1.28, 1.25, 0.09), [0, 0, side]).translate(x, 3.05, side * (d / 2 + 0.04)),
       side > 0 && x === 0 ? 0x9ca488 : 0x58737b, rng, 0.035);
   }
   for (const x of [-2.25, 0, 2.25]) {
@@ -1601,7 +1606,7 @@ function makeServiceGarage(rng: Rng): THREE.BufferGeometry {
     colored(out, box(3.95, 0.24, 0.22).translate(x, 3.68, d / 2 + 0.04), p[1], _detailRng);
   }
   for (const side of [-1, 1]) {
-    colored(out, box(0.10, 1.3, 2.2).translate(side * (w / 2 + 0.04), 3.05, -2.2),
+    colored(out, markWorldAperture(box(0.10, 1.3, 2.2), [side, 0, 0]).translate(side * (w / 2 + 0.04), 3.05, -2.2),
       0x58737b, rng, 0.035);
   }
   colored(out, box(2.6, 1.0, 1.45).translate(-3.25, 0.5, -d / 2 - 0.66), p[1], rng);
@@ -1631,7 +1636,7 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
       .translate(0, mastY + i * 1.45, 0), p[1], _detailRng);
   }
   colored(out, cylinder(0.10, 0.13, 2.7, 8).translate(0, mastY + 6.55, 0), p[2], rng);
-  colored(out, cylinder(0.28, 0.28, 0.20, 10).translate(0, mastY + 7.84, 0), 0xa66d31, rng);
+  colored(out, markWorldBeacon(cylinder(0.28, 0.28, 0.20, 10)).translate(0, mastY + 7.84, 0), 0xa66d31, rng);
   return mergeConnectedStructure('relaystation', out);
 }
 
@@ -1642,8 +1647,8 @@ function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
   for (const y of [2.25, 4.75]) {
     for (const x of [-2.65, -0.9, 0.9, 2.65]) {
       const paneColor = (Math.round(x * 10 + y * 7) % 3 === 0) ? 0xa49b7c : 0x58737b;
-      colored(out, box(1.12, 1.18, 0.09).translate(x, y, d / 2 + 0.04), paneColor, rng, 0.035);
-      colored(out, box(0.09, 1.18, 1.12).translate(w / 2 + 0.04, y, x), paneColor, rng, 0.035);
+      colored(out, markWorldAperture(box(1.12, 1.18, 0.09), [0, 0, 1]).translate(x, y, d / 2 + 0.04), paneColor, rng, 0.035);
+      colored(out, markWorldAperture(box(0.09, 1.18, 1.12), [1, 0, 0]).translate(w / 2 + 0.04, y, x), paneColor, rng, 0.035);
     }
     colored(out, box(w + 0.10, 0.18, 0.18).translate(0, y - 0.76, d / 2 + 0.04), p[1], _detailRng);
     colored(out, box(0.18, 0.18, d + 0.10).translate(w / 2 + 0.04, y - 0.76, 0), p[1], _detailRng);

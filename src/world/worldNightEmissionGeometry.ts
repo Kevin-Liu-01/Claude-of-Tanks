@@ -11,6 +11,13 @@ export function markWorldWindowPane<T extends BufferGeometry>(
   geometry: T, bucket: string, outward: readonly [number, number, number],
 ): T {
   if (bucket !== 'curtain') return geometry;
+  return markWorldAperture(geometry, outward);
+}
+
+/** Explicit authored pane in an existing vertex-painted or glass family. */
+export function markWorldAperture<T extends BufferGeometry>(
+  geometry: T, outward: readonly [number, number, number],
+): T {
   const length = Math.hypot(...outward), normals = geometry.getAttribute('normal');
   if (!normals || Math.abs(length - 1) > 1e-5) throw new TypeError('Window aperture requires an authored unit normal');
   const vertices: number[] = [];
@@ -19,6 +26,16 @@ export function markWorldWindowPane<T extends BufferGeometry>(
     if (dot > .999) vertices.push(i);
   }
   if (vertices.length < 3) throw new Error('Window aperture has no outward face');
+  setNightEmissionMask(geometry, 1, vertices);
+  return geometry;
+}
+
+/** The existing lighthouse lantern's curved glass sides, not its roof/caps. */
+export function markWorldLantern<T extends BufferGeometry>(geometry: T): T {
+  const normal = geometry.getAttribute('normal'), vertices: number[] = [];
+  if (!normal) throw new TypeError('Lantern requires authored side normals');
+  for (let index = 0; index < normal.count; index++) if (Math.abs(normal.getY(index)) < .25) vertices.push(index);
+  if (vertices.length < 3) throw new Error('Lantern has no curved glass side');
   setNightEmissionMask(geometry, 1, vertices);
   return geometry;
 }

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
 import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
+import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
@@ -5791,6 +5792,7 @@ ${snowCap ? `
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
+      if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
       const merged = mergeGeometries(buckets[key].map((geometry) =>
         (geometry.index ? geometry.toNonIndexed() : geometry)), false);
@@ -5925,6 +5927,7 @@ ${snowCap ? `
     if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
+    if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
     if (meta.broken) {
@@ -5937,6 +5940,7 @@ ${snowCap ? `
       imB.matrixAutoUpdate = false;
       imB.frustumCulled = false; // slots appended over the battle
       imB.name = 'destructible-' + kind + '-broken';
+      if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
       group.add(imB);
       pool.imB = imB;
     }
@@ -6175,6 +6179,7 @@ ${snowCap ? `
     // and a later tank can push the exact same object again after it settles.
     if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
+    setWorldNightFixtureActive(pool.imI, rec.slot, false);
     if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
     if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
@@ -6529,6 +6534,7 @@ ${snowCap ? `
     rec.state = 0;
     const pool = dPools.get(rec.kind);
     if (pool && pool.imI) {
+      setWorldNightFixtureActive(pool.imI, rec.slot, true);
       pool.imI.setMatrixAt(rec.slot, pool.mats4[rec.slot]);
       pool.imI.instanceMatrix.needsUpdate = true;
     }
@@ -6575,7 +6581,12 @@ ${snowCap ? `
     }
   }
 
-  registerWorldNightLighting(group, mats.curtain, destructibles, mapId);
+  registerWorldNightLighting(group, mats.curtain, destructibles, mapId, [
+    { material: mats.glass, intensity: 2 },
+    { material: mats.structureWood, intensity: 1.2 },
+    { material: mats.structureMetal, intensity: 1.2 },
+    { material: mats.structureCanvas, intensity: 1.2 },
+  ]);
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,

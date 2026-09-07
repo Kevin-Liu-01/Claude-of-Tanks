@@ -16,6 +16,11 @@ interface StreetLampRecord {
   readonly state: number;
 }
 
+interface WorldFixtureMaterial {
+  readonly material: MeshStandardMaterial;
+  readonly intensity: number;
+}
+
 /** Register existing dedicated panes and fixtures once after instance assembly.
  * The lighting owner restores original materials on day/Garage transitions.
  */
@@ -24,6 +29,7 @@ export function registerWorldNightLighting(
   curtain: MeshStandardMaterial,
   records: readonly StreetLampRecord[],
   mapId: string,
+  fixtures: readonly WorldFixtureMaterial[] = [],
 ): void {
   // Ruined-city panes remain abandoned, not an occupied illuminated skyline.
   if (mapId !== 'ruinspires' && mapId !== 'blackglass') {
@@ -31,10 +37,15 @@ export function registerWorldNightLighting(
     // only authored aperture vertices participate in night emission.
     installNightEmissionMask(curtain);
     curtain.userData.nightLightKind = 'window';
-    registerNightLightEmitters(root, [{
+    const markers: NightLightEmitter[] = [{
       kind: 'marker', position: [0, 0, 0],
       emission: { material: curtain, color: 0xffffff, intensity: 0.9 },
-    }]);
+    }];
+    for (const { material, intensity } of fixtures) {
+      if (material.userData.nightEmissionMask !== true || material.userData.nightLightKind !== 'fixture') continue;
+      markers.push({ kind: 'marker', position: [0, 0, 0], emission: { material, color: 0xffffff, intensity } });
+    }
+    registerNightLightEmitters(root, markers);
   }
   const object = root.getObjectByName('destructible-lamp');
   if (!object || !(object as InstancedMesh).isInstancedMesh) return;
