@@ -69,6 +69,7 @@ import {
   type ReconstructionMode,
 } from './renderScalePolicy.ts';
 import {
+  adaptiveFrameSeconds,
   AdaptiveQualityPolicy,
   type AdaptiveQualityAction,
 } from './adaptiveQualityPolicy.ts';
@@ -139,7 +140,7 @@ export interface PostRuntime {
   readonly dynScale: number;
   readonly perfTrim: number;
   warmFirstFrame(yieldBeforePass?: ((label: string) => Promise<void>) | null): Promise<PostWarmTiming[]>;
-  render(dt: number): void;
+  render(dt: number, frameWallDtSeconds?: number): void;
   setSize(width: number, height: number): void;
   prepareSoftParticles(): void;
   attachLateFxState(state: LateFxSoftStateInput | null | undefined): void;
@@ -2267,7 +2268,7 @@ export function createPost(
   /** Collect one frame of evidence and ask the pure policy for a bounded step. */
   function dynGovern(dt: number): void {
     if (adaptiveSuspended) return;
-    if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
+    if (!(dt > 0)) return; // adaptiveFrameSeconds excludes warm/hitch samples
     // rAF-starvation fallback frames (main.ts ticks hidden documents at
     // ~10 Hz) carry loop cadence, not GPU cost — they must never govern.
     if (document.hidden) return;
@@ -2409,9 +2410,10 @@ export function createPost(
   }
 
   /** Complete allocation-free post transaction for one rendered frame. */
-  function renderFrame(dt: number): void {
+  function renderFrame(dt: number, frameWallDtSeconds = dt): void {
     // A governor resize must land before any pass reads resolution uniforms.
-    dynGovern(dt);
+    // Animation stays bounded; cadence and hitch filtering need actual time.
+    dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
     aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
@@ -2496,6 +2498,7 @@ export function createPost(
      * alongside this — the composer is the single render entry point
      * (ARCHITECTURE.md §4 step 10).
      * @param {number} dt - render delta time in seconds (forwarded to passes)
+     * @param {number} frameWallDtSeconds - raw main-loop gap for quality sampling
      * @returns {void}
      */
     render: renderFrame,

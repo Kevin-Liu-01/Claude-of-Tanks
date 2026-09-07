@@ -11,6 +11,7 @@ function createFixture({
 } = {}) {
   const calls = [];
   const frameRequests = [];
+  const postFrames = [], simulationFrames = [], fxFrames = [], studioFrames = [];
   const replay = { active: false };
   const scene = new Scene();
   const camera = new PerspectiveCamera(70, 1, 0.1, 1000);
@@ -22,7 +23,7 @@ function createFixture({
   const presentationRestore = { covering: false };
   const density = { pending: densityChanged };
   const realGaragePacer = createGarageFramePacer();
-  const fx = { update: () => calls.push('fx') };
+  const fx = { update: dt => { calls.push('fx'); fxFrames.push(dt); } };
   const world = { update: () => calls.push('world') };
   const lighting = {
     updateFov: () => calls.push('lighting:fov'),
@@ -50,7 +51,7 @@ function createFixture({
     },
     getStudio: () => ({
       active: studioActive,
-      tick: () => calls.push('studio'),
+      tick: (dt, wallDt) => { calls.push('studio'); studioFrames.push({ dt, wallDt }); },
     }),
     getShotMode: () => shotMode,
     getShotHudFrame: () => true,
@@ -62,7 +63,7 @@ function createFixture({
       update: () => calls.push('hud:update'),
     },
     lighting,
-    post: { render: () => calls.push('post') },
+    post: { render: (dt, wallDt) => { calls.push('post'); postFrames.push({ dt, wallDt }); } },
     showroom: {
       moving: false,
       update: () => calls.push('showroom'),
@@ -81,10 +82,11 @@ function createFixture({
       },
     },
     battleFrame: {
-      advance: () => {
+      advance: (dtSeconds, wallDtSeconds) => {
         calls.push('battle:advance');
+        simulationFrames.push({ dt: dtSeconds, wallDt: wallDtSeconds });
         return {
-          dtSeconds: 1 / 60,
+          dtSeconds,
           inBattle: game.phase === 'battle',
           paused: false,
           livePaused: false,
@@ -118,6 +120,10 @@ function createFixture({
     runtime,
     calls,
     frameRequests,
+    postFrames,
+    simulationFrames,
+    fxFrames,
+    studioFrames,
     replay,
     camera,
     game,
@@ -138,6 +144,22 @@ assert.deepEqual(garage.calls, [
   'schedule', 'viewport:sync', 'network', 'garage:pacer',
 ]);
 
+for (const shotMode of [false, true]) {
+  const frame = createFixture({ phase: 'battle', shotMode });
+  frame.runtime.tick(1000);
+  assert.deepEqual(frame.postFrames.at(-1), { dt: 0, wallDt: 0 }, 'first paint invents no wall-clock interval');
+  frame.runtime.tick(1500);
+  assert.deepEqual(frame.postFrames.at(-1), { dt: .1, wallDt: .5 },
+    'live and shot post paths receive bounded animation plus the actual hitch interval');
+  assert.equal(frame.fxFrames.at(-1), .1, 'effects never integrate the whole hitch');
+  if (!shotMode) assert.deepEqual(frame.simulationFrames.at(-1), { dt: .1, wallDt: .5 });
+  frame.runtime.tick(1620);
+  assert.deepEqual(frame.postFrames.at(-1), { dt: .1, wallDt: .12 },
+    'sustained low FPS keeps raw overload evidence instead of flattening it to 100ms');
+  frame.runtime.tick(1640);
+  assert.deepEqual(frame.postFrames.at(-1), { dt: .02, wallDt: .02 }, 'ordinary cadence is unchanged');
+}
+
 const shot = createFixture({ shotMode: true });
 shot.runtime.tick(1000);
 assert.deepEqual(shot.calls, [
@@ -148,6 +170,9 @@ assert.deepEqual(shot.calls, [
 const studio = createFixture({ studioActive: true });
 studio.runtime.tick(1000);
 assert.deepEqual(studio.calls, ['schedule', 'viewport:sync', 'studio']);
+studio.runtime.tick(1500);
+assert.deepEqual(studio.studioFrames.at(-1), { dt: .1, wallDt: .5 },
+  'the Studio early branch also receives the bounded animation and separate real cadence');
 
 const battle = createFixture({ phase: 'battle' });
 battle.runtime.noteFovPrimed(70);

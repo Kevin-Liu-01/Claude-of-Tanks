@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 interface StudioRuntime {
   active: boolean;
-  tick(deltaSeconds: number): void;
+  tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: RuntimeValue): Promise<RuntimeValue> | RuntimeValue;
 }
 
@@ -11,7 +11,7 @@ interface StudioModule {
 
 interface StudioPresentation {
   readonly active: boolean;
-  tick(deltaSeconds: number): void;
+  tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
 }
 
 interface KeyboardEventTarget {
@@ -114,7 +114,7 @@ export function createStudioAccess({
 
   const presentation: StudioPresentation = {
     get active() { return runtime.active; },
-    tick(deltaSeconds) { runtime.tick(deltaSeconds); },
+    tick(deltaSeconds, frameWallDtSeconds = deltaSeconds) { runtime.tick(deltaSeconds, frameWallDtSeconds); },
   };
 
   return {

@@ -12,11 +12,11 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 // equivalence. The production closure's narrow wiring is checked separately.
 const source = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(source, /lateFx\.directColorSource = aerial/);
-const frameStart = source.indexOf('function renderFrame(dt: number): void');
+const frameStart = source.indexOf('function renderFrame(dt: number, frameWallDtSeconds = dt): void');
 const frameEnd = source.indexOf('// Live preset switching', frameStart);
 assert.ok(frameStart >= 0 && frameEnd > frameStart);
 const frameSource = source.slice(frameStart, frameEnd);
-assert.match(frameSource, /dynGovern\(dt\)[\s\S]*passes\[0\] === sceneAA && passes\[1\] === aerial[\s\S]*passes\[2\] === gtao && passes\[3\] === lateFx/);
+assert.match(frameSource, /dynGovern\(adaptiveFrameSeconds\(dt, frameWallDtSeconds\)\)[\s\S]*passes\[0\] === sceneAA && passes\[1\] === aerial[\s\S]*passes\[2\] === gtao && passes\[3\] === lateFx/);
 assert.match(frameSource, /sceneAA\.enabled && aerial\.enabled && !gtao\.enabled && lateFx\.enabled[\s\S]*lateFx\.softState\?\.isActive\(\)/);
 assert.match(frameSource, /aerial\.beginDirectColorFrame\(directColor \? lateTarget : null\);\s*try \{\s*composer\.render\(dt\);\s*\} finally \{\s*aerial\.endDirectColorFrame\(\);/);
 assert.equal(source.match(/beginDirectColorFrame\(/g)?.length, 1, 'warm and standalone paths cannot arm the handoff');

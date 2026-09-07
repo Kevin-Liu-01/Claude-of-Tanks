@@ -31,7 +31,7 @@ import type {
 
 interface FrameStudio {
   readonly active: boolean;
-  tick(dtSeconds: number): void;
+  tick(dtSeconds: number, frameWallDtSeconds?: number): void;
 }
 
 interface FrameTrace {
@@ -174,6 +174,7 @@ export function createMainFrameRuntime({
 
   const renderShotFrame = (
     dtSeconds: number,
+    frameWallDtSeconds: number,
     fx: MainFxRuntime | null,
     world: MainWorld | null,
   ): void => {
@@ -184,7 +185,7 @@ export function createMainFrameRuntime({
     updateNightLighting?.();
     if (getShotHudFrame()) battleHudFrame.redrawFrozen();
     lighting.update(true);
-    post.render(dtSeconds);
+    post.render(dtSeconds, frameWallDtSeconds);
   };
 
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
@@ -238,6 +239,7 @@ export function createMainFrameRuntime({
   const renderPresentation = (
     frame: BattleFrameReceipt,
     dtSeconds: number,
+    frameWallDtSeconds: number,
   ): void => {
     const profileGarageReturn = game.phase === 'garage'
       && lastRenderedPhase !== 'garage'
@@ -255,7 +257,7 @@ export function createMainFrameRuntime({
     const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
     lighting.update(false, dtSeconds);
     const postStartedAt = profileGarageReturn ? performance.now() : 0;
-    post.render(dtSeconds);
+    post.render(dtSeconds, frameWallDtSeconds);
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;
     if (game.phase === 'garage') clearGaragePresentationDirty();
     if (frame.inBattle) battleEntryLifecycle.noteBattleFrame();
@@ -290,7 +292,7 @@ export function createMainFrameRuntime({
     sniperFill.update();
     updateWorldPresentation(frame, appliedDtSeconds, fx);
     updateNightLighting?.();
-    renderPresentation(frame, appliedDtSeconds);
+    renderPresentation(frame, appliedDtSeconds, frameWallDtSeconds);
   };
 
   const tick = (nowMs: number): void => {
@@ -328,12 +330,12 @@ export function createMainFrameRuntime({
 
     const studio = getStudio();
     if (studio.active) {
-      studio.tick(dtR);
+      studio.tick(dtR, frameWallDtS);
       return;
     }
 
     if (getShotMode()) {
-      renderShotFrame(dtR, fx, world);
+      renderShotFrame(dtR, frameWallDtS, fx, world);
       return;
     }
     renderLiveFrame(dtR, frameWallDtS, nowMs, fx);

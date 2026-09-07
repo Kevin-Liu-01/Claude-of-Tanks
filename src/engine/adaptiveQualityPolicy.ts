@@ -1,5 +1,12 @@
 import { overloadReliefLever } from './renderScalePolicy.ts';
 
+/** Sample real cadence, not simulation's bounded delta; warm renders stay inert. */
+export function adaptiveFrameSeconds(presentationSeconds: number, wallSeconds = presentationSeconds): number {
+  if (!Number.isFinite(presentationSeconds) || presentationSeconds <= 0
+    || !Number.isFinite(wallSeconds) || wallSeconds <= 0 || wallSeconds > .25) return 0;
+  return wallSeconds;
+}
+
 export type AdaptiveQualityAction =
   | 'none'
   | 'trim-down'

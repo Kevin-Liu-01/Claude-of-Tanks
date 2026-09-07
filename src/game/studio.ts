@@ -17,7 +17,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * Integration contract (kept deliberately tiny — see main.ts):
  *   - main.ts creates it once post-boot: createStudio(ctx)
  *   - main.ts tick() delegates the WHOLE frame while active:
- *       if (studio.active) { studio.tick(dtR); return; }
+ *       if (studio.active) { studio.tick(dtR, frameWallDtS); return; }
  *   - everything else (entry key, URL param, panel, capture, __STUDIO API)
  *     lives here. Exit hands control back through ctx.enterGarage().
  *
@@ -376,7 +376,7 @@ interface RemoveActorOptions {
 
 interface StudioRuntime {
   readonly active: boolean;
-  tick(deltaSeconds: number): void;
+  tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: EnterOptions): Promise<void>;
   exit(): void;
   api: StudioPanelApi & Readonly<Record<string, RuntimeValue>>;
@@ -2875,7 +2875,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
-  function tick(dt: number): void {
+  function tick(dt: number, frameWallDtSeconds = dt): void {
     const cameraMoved = updateCamera(dt);
     poolSweepAcc += dt;
     if (poolSweepAcc >= 0.5) {
@@ -2900,7 +2900,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lastFov = camera.fov;
     }
     lighting.update();
-    post.render(dt);
+    post.render(dt, frameWallDtSeconds);
     perf.renderedFrames++;
     frameDirty = false;
     if (recording && !recording.stopping && clockMs >= storyboard.durationMs) {

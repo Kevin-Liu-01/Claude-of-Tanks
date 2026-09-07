@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict';
-import { AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
+import { adaptiveFrameSeconds, AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
+
+assert.equal(adaptiveFrameSeconds(.1, .5), 0, 'a true long hitch is excluded despite bounded presentation dt');
+assert.equal(adaptiveFrameSeconds(.1, .12), .12, 'sustained 120ms frames remain real overload evidence');
+assert.equal(adaptiveFrameSeconds(.1, .25), .25, 'the existing 250ms boundary remains inclusive');
+assert.equal(adaptiveFrameSeconds(.1, .250001), 0);
+assert.equal(adaptiveFrameSeconds(0, .12), 0, 'zero-delta warm renders cannot invent a timing sample');
+assert.equal(adaptiveFrameSeconds(0), 0);
+assert.equal(adaptiveFrameSeconds(1 / 60), 1 / 60, 'standalone rendered frames retain the explicit caller interval');
+for (const invalid of [NaN, Infinity, -Infinity, -1, 0]) {
+  assert.equal(adaptiveFrameSeconds(.1, invalid), 0);
+  assert.equal(adaptiveFrameSeconds(invalid, .12), 0);
+}
 
 const healthy = (overrides = {}) => ({
   clockSeconds: 10,
@@ -19,6 +31,15 @@ const overloaded = (overrides = {}) => healthy({
   achievedFps: 40,
   ...overrides,
 });
+
+{
+  const policy = new AdaptiveQualityPolicy(1);
+  const sampled = adaptiveFrameSeconds(.1, .12);
+  assert.equal(policy.evaluate(overloaded({ frameEmaMs: sampled * 1000,
+    achievedFps: 1 / sampled, maximumTrim: 0 })), 'resolution-down',
+  'real sustained low-FPS evidence still activates ordinary quality relief');
+  assert.equal(policy.dynamicScale, .91);
+}
 
 function assertNoTrimAfterTwoWindows(windowFactory, message) {
   const policy = new AdaptiveQualityPolicy(1);
