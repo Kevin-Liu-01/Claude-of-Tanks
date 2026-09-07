@@ -77,6 +77,12 @@ const lakeBanks = buildLiquidLakeBanks(smallLakes, () => 9);
 assert.equal(lakeBanks.byteLength, smallLakes.length * 8, 'liquid lakes retain one bank-width scalar only');
 assert.ok(lakeBanks.every(band => band > 1.32), 'small deep cells widen their grade instead of making quarry walls');
 assert.deepEqual(lakeBanks, buildLiquidLakeBanks(smallLakes, () => 9), 'liquid lake bank construction is deterministic');
+const narrowProfile = { x: 0, z: 0, r: 40, level: 0,
+  radii: [1, 0.8, 0.6, 0.5, 0.4, 0.5, 0.6, 0.8, 1, 0.8, 0.6, 0.5, 0.4, 0.5, 0.6, 0.8] };
+assert.equal(buildLiquidLakeBanks([narrowProfile], () => 9)[0],
+  0.94 + (9 * 2 / 0.45) / (40 * 0.4), 'authored narrow coves get sufficient bank grading');
+assert.equal(buildLiquidLakeBanks([{ x: 0, z: 0, r: 40, level: 0 }], () => 9)[0],
+  0.94 + (9 * 2 / 0.45) / (40 * 0.8), 'legacy bank arithmetic keeps its original 80% radius floor');
 const pinned = buildLiquidMarshSurfaces(river, raw, [{ x: -104, z: 90, r: 32, level: -3 }]);
 for (let index = 0; index < river.length; index++) {
   assert.deepEqual(Array.from(pinned.slice(index * 4, index * 4 + 3)), [-3, 0, 0],

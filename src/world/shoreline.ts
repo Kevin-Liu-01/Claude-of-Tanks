@@ -3,10 +3,33 @@
 export const SHORELINE_SEGMENTS = 64;
 const TAU = Math.PI * 2;
 
+/** Sixteen authored radial stations, starting east and winding toward +Z.
+ * Shared by all consumers; never expanded into a second retained contour. */
+export type ShorelineRadii = readonly [number, number, number, number,
+  number, number, number, number, number, number, number, number,
+  number, number, number, number];
+
 export interface ShorelineDisc {
   x: number;
   z: number;
   r: number;
+  radii?: ShorelineRadii;
+}
+
+function authoredRadiusAt(radii: ShorelineRadii, angle: number): number {
+  const turns = angle / TAU;
+  const sample = (turns - Math.floor(turns)) * 16;
+  const station = Math.floor(sample), fraction = sample - station;
+  const a = radii[station & 15], b = radii[(station + 1) & 15];
+  return a + (b - a) * fraction;
+}
+
+/** Construction-only bank grading must use the narrowest authored cove. */
+export function minimumShorelineRadius(disc: ShorelineDisc): number {
+  if (!disc.radii) return disc.r * 0.8;
+  let minimum = 1;
+  for (const radius of disc.radii) minimum = Math.min(minimum, radius);
+  return disc.r * minimum;
 }
 
 function hash(value: number): number {
@@ -17,6 +40,7 @@ function hash(value: number): number {
 
 /** Center-seeded capes, coves and smaller bank cuts, inside the authored disc. */
 export function shorelineRadiusAt(disc: ShorelineDisc, angle: number): number {
+  if (disc.radii) return disc.r * authoredRadiusAt(disc.radii, angle);
   const seed = hash(Math.imul(Math.round(disc.x * 16), 73856093)
     ^ Math.imul(Math.round(disc.z * 16), 19349663));
   const phaseA = (seed & 0xffff) / 65536 * TAU;

@@ -13,6 +13,7 @@ import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, overlapsStructureClearance } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
+import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
@@ -58,7 +59,12 @@ assert.ok(poolStart > end && poolEnd > poolStart);
 const allocate = new Function('THREE', `return ${stripTypeScriptTypes(`function capacities(trees) {
   const group = new THREE.Group(), _whiteScratch = new THREE.Color(1,1,1), foliageDepthMats = {};
   ${source.slice(poolStart, poolEnd)}
-  const mesh = makeTreeMesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial(), 'oak', false);
+  const capacity = Math.max(1, trees.filter(tree => tree.species === 'oak').length);
+  const mesh = makeTreeMesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial(), 'oak', false, capacity);
+  if (mesh.instanceMatrix.count !== capacity || mesh.instanceColor.count !== capacity
+    || mesh.geometry.getAttribute('aFadeI').count !== capacity || mesh.geometry.getAttribute('aLodF').count !== capacity) {
+    throw new Error('Production pool must allocate its explicit nonzero capacity');
+  }
   const result = { matrix: mesh.instanceMatrix.array.byteLength, color: mesh.instanceColor.array.byteLength,
     fade: mesh.geometry.getAttribute('aFadeI').array.byteLength, lod: mesh.geometry.getAttribute('aLodF').array.byteLength };
   mesh.geometry.dispose(); mesh.material.dispose();
@@ -127,6 +133,21 @@ function assertMovedSupport(tree, hf, config) {
   }
 }
 
+function nearestBankMetres(lakes, point) {
+  if (lakes.some(lake => shorelineDistance(lake, point.x, point.z, 1) < 1)) return -1;
+  let distance = Infinity;
+  for (const lake of lakes) for (let i = 0; i < SHORELINE_SEGMENTS; i++) {
+    const a = i * Math.PI * 2 / SHORELINE_SEGMENTS;
+    const b = (i + 1) * Math.PI * 2 / SHORELINE_SEGMENTS;
+    const ra = shorelineRadiusAt(lake, a), rb = shorelineRadiusAt(lake, b);
+    const ax = lake.x + Math.cos(a) * ra, az = lake.z + Math.sin(a) * ra;
+    const dx = lake.x + Math.cos(b) * rb - ax, dz = lake.z + Math.sin(b) * rb - az;
+    const t = Math.max(0, Math.min(1, ((point.x - ax) * dx + (point.z - az) * dz) / (dx * dx + dz * dz)));
+    distance = Math.min(distance, Math.hypot(point.x - ax - dx * t, point.z - az - dz * t));
+  }
+  return distance;
+}
+
 for (const config of [polders, mangrove, orchard]) for (const seed of [1337, 2025]) {
   const hf = createHeightField(seed, config);
   const before = build(hf, { ...config, vegetation: { ...config.vegetation, authoredTrees: undefined } });
@@ -184,7 +205,7 @@ for (const config of [polders, mangrove, orchard]) for (const seed of [1337, 202
   }
   for (const feature of config.vegetation.authoredTrees.filter(row => row.species === 'willow')) {
     for (const point of authoredTreeStations(feature)) {
-      const shore = Math.min(...config.terrain.lakes.map(lake => Math.hypot(point.x - lake.x, point.z - lake.z) - lake.r));
+      const shore = nearestBankMetres(config.terrain.lakes, point);
       assert.ok(shore > 0 && shore < 15, `${feature.id}: follows a real lake-bank envelope, not arbitrary open land`);
     }
   }

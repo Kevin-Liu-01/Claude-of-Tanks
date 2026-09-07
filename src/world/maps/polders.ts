@@ -1,6 +1,5 @@
 // A working reclaimed wetland: offset drainage cells leave a dry diagonal
 // causeway, a western farm loop and an eastern pumping-station approach.
-import { createLakeChannel } from './marshChannel.ts';
 export default {
   id: 'polders', name: 'Tidegate Polders',
   blurb: 'Pump-controlled retention basins, windbreak farms and raised causeways across reclaimed coastal fields',
@@ -16,19 +15,26 @@ export default {
       [[370, -452], [298, -274], [266, -102], [288, 72], [338, 260], [376, 456]],
       [[-304, 104], [-220, 170], [-82, 170], [72, 202], [216, 212], [338, 260]],
     ] },
-    // Reclaimed compartments drain at separate pump-controlled waterlines.
-    // Engineered elbow-shaped retention basins follow field edges; the
-    // northern T is a collector. Each is level, with dry headlands between.
-    // Keep the existing 6 + 7 + 6 + 4 + 4 cell construction budget.
+    // Five old drainage compartments now have one continuous shore each:
+    // eroded ditches widen into irregular retention basins, with unequal
+    // coves and dry spits. No chains of matching round cells or T-junction
+    // lobes. Sixteen authored stations share the existing 64-sample contour.
     lakes: [
-      ...createLakeChannel([{ x: -218, z: -312, r: 22 }, { x: -168, z: -312, r: 22 }, { x: -168, z: -240, r: 22 }], 1.4),
-      ...createLakeChannel([{ x: 80, z: -220, r: 26 }, { x: 80, z: -286, r: 26 }, { x: 164, z: -286, r: 26 }], -2.6),
-      ...createLakeChannel([{ x: 136, z: -36, r: 24 }, { x: 136, z: 16, r: 24 }, { x: 204, z: 16, r: 24 }], -3.3),
-      ...createLakeChannel([{ x: -196, z: 252, r: 23 }, { x: -154, z: 252, r: 23 }, { x: -154, z: 278, r: 23 }], 0),
-      { x: 100, z: 282, r: 23, level: -5.4 },
-      { x: 74, z: 282, r: 23, level: -5.4 },
-      { x: 126, z: 282, r: 23, level: -5.4 },
-      { x: 100, z: 308, r: 23, level: -5.4 },
+      { x: -188, z: -277, r: 58, level: 1.4,
+        radii: [0.50, 0.54, 0.72, 0.91, 1.00, 0.83, 0.78, 0.68,
+          0.76, 0.96, 0.85, 0.87, 0.94, 0.72, 0.77, 0.61] },
+      { x: 117, z: -257, r: 68, level: -2.6,
+        radii: [0.91, 0.78, 0.56, 0.63, 0.82, 0.91, 0.68, 0.79,
+          0.78, 0.64, 0.93, 0.82, 0.72, 0.85, 1.00, 0.79] },
+      { x: 166, z: -9, r: 60, level: -3.3,
+        radii: [0.97, 0.87, 0.58, 0.65, 0.68, 0.56, 0.79, 0.84,
+          0.86, 0.61, 0.91, 0.82, 0.64, 0.48, 0.59, 0.77] },
+      { x: -171, z: 264, r: 43, level: 0,
+        radii: [0.77, 0.58, 0.81, 0.88, 0.93, 0.64, 0.58, 0.79,
+          1.00, 0.92, 0.77, 0.59, 0.74, 0.87, 0.65, 0.72] },
+      { x: 100, z: 291, r: 45, level: -5.4,
+        radii: [1.00, 0.82, 0.53, 0.72, 0.82, 0.64, 0.49, 0.76,
+          0.99, 0.80, 0.72, 0.62, 0.65, 0.94, 0.82, 0.88] },
     ],
     marshes: [],
     landforms: [
@@ -40,8 +46,9 @@ export default {
       { kind: 'ridge', x: -18, z: 300, length: 180, width: 40, height: 4.0, yawDeg: 88 },
     ],
   },
-  spawns: { player: { x: -112, z: -390 }, enemies: [
-    { x: -246, z: 390 }, { x: -170, z: 426 }, { x: -92, z: 378 }, { x: -10, z: 420 },
+  spawns: { player: { x: -94, z: -390 }, enemies: [
+    // The second pad sits clear of the west causeway's graded shoulder.
+    { x: -246, z: 390 }, { x: -152, z: 426 }, { x: -92, z: 378 }, { x: -10, z: 420 },
     { x: 76, z: 386 }, { x: 162, z: 422 }, { x: 248, z: 388 },
   ] },
   splat: { sourcedPalette: 'verdant',
@@ -61,7 +68,7 @@ export default {
       // Existing poplars move onto the field headland, outside the protected
       // farm court; crossings retain their ordinary empty road shoulders.
       { id: 'west-field-headland', species: 'poplar', path: [[-226, -174], [-232, -50], [-238, 102], [-214, 192]], count: 34, width: 0.4 },
-      { id: 'east-drain-willow-edge', species: 'willow', path: [[144, -320], [176, -318], [199, -298], [198, -268]], count: 18, width: 0.5 },
+      { id: 'east-drain-willow-edge', species: 'willow', path: [[137, -318], [151, -317], [170, -311], [174, -296], [174, -281], [181, -270], [187, -257]], count: 18, width: 0.5 },
     ],
   },
   props: {

@@ -1,4 +1,4 @@
-import { shorelineRadiusAt, type ShorelineDisc } from './shoreline.ts';
+import { minimumShorelineRadius, shorelineRadiusAt, type ShorelineDisc } from './shoreline.ts';
 
 interface LiquidMarsh extends ShorelineDisc { dip?: number; level?: number }
 interface LiquidLake extends ShorelineDisc { level: number }
@@ -135,7 +135,7 @@ function outerBankBand(disc: ShorelineDisc, level: number, gx: number, gz: numbe
   // Smoothstep's peak derivative is 1.5. Extra margin allows native bank
   // relief, and the radius floor covers even the 80% contracted coves.
   const gradeWidth = bankGap * 2 / BANK_DESIGN_SLOPE;
-  return Math.max(1.32, LIQUID_MARSH_CORE + gradeWidth / Math.max(1, disc.r * 0.8));
+  return Math.max(1.32, LIQUID_MARSH_CORE + gradeWidth / Math.max(1, minimumShorelineRadius(disc)));
 }
 
 /** One scalar per liquid lake; frozen/non-liquid sheets never use this policy. */

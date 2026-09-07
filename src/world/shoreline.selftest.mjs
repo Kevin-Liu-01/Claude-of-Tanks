@@ -2,9 +2,52 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   SHORELINE_SEGMENTS,
-  shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask,
+  minimumShorelineRadius, shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask,
 } from './shoreline.ts';
 import { createHeightField } from './terrain.ts';
+import { MAP_IDS, getMapConfig } from './maps/index.ts';
+
+// Frozen pre-authored-contour formula: every other map remains bit-identical,
+// including negative positions, varying radii and angular wrap boundaries.
+function legacyRadiusAt(disc, angle) {
+  const hash = value => {
+    value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+    value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
+    return (value ^ (value >>> 16)) >>> 0;
+  };
+  const tau = Math.PI * 2;
+  const seed = hash(Math.imul(Math.round(disc.x * 16), 73856093)
+    ^ Math.imul(Math.round(disc.z * 16), 19349663));
+  const phaseA = (seed & 0xffff) / 65536 * tau, phaseB = (seed >>> 16) / 65536 * tau;
+  const broad = Math.sin(angle * 3 + phaseA) * 0.025;
+  const cove = Math.max(0, Math.sin(angle * 5 - phaseB));
+  const bank = Math.abs(Math.sin(angle * 11 + phaseA + phaseB)) * 0.04;
+  return disc.r * Math.min(1, Math.max(0.80, 0.99 + broad - cove * cove * 0.12 - bank));
+}
+let legacyChecks = 0;
+for (const id of MAP_IDS.filter(id => id !== 'polders')) {
+  const terrain = getMapConfig(id).terrain;
+  for (const disc of [...(terrain.lakes ?? []), ...(terrain.marshes ?? [])]) {
+    assert.equal(disc.radii, undefined, `${id}: no implicit profile migration`);
+    assert.equal(minimumShorelineRadius(disc), disc.r * 0.8);
+    for (let i = -64; i <= 64; i++) {
+      const angle = i * Math.PI / 32;
+      assert.equal(shorelineRadiusAt(disc, angle), legacyRadiusAt(disc, angle), `${id}: unchanged legacy contour`);
+      legacyChecks++;
+    }
+  }
+}
+assert.ok(legacyChecks > 10000);
+for (const disc of getMapConfig('polders').terrain.lakes) {
+  assert.equal(disc.radii.length, 16);
+  for (let i = 0; i < 16; i++) {
+    const a = i * Math.PI / 8;
+    assert.ok(Math.abs(shorelineRadiusAt(disc, a) - disc.r * disc.radii[i]) < 1e-12);
+    assert.ok(Math.abs(shorelineRadiusAt(disc, a + Math.PI / 16)
+      - disc.r * (disc.radii[i] + disc.radii[(i + 1) & 15]) * 0.5) < 1e-12);
+  }
+}
+console.log(`shoreline: ${legacyChecks} exact legacy contour comparisons; authored knots and interpolation PASS`);
 
 const lake = { x: 195, z: -120, r: 88 };
 const beach = { x: 195, z: -120, r: 110 };

@@ -100,6 +100,7 @@ interface LakeConfig {
   r: number;
   depth?: number;
   level?: number;
+  radii?: import('./shoreline.ts').ShorelineRadii;
 }
 
 interface LandformConfig {
@@ -1158,6 +1159,10 @@ export function createHeightField(
   // vegetation/prop exclusion: open water/ice + marsh cores
   function noVeg(x: number, z: number): boolean {
     for (const lk of _LAKES) {
+      if (lk.radii) {
+        if (shorelineDistance(lk, x, z, 1.04) < 1.04) return true;
+        continue;
+      }
       const dx = x - lk.x, dz = z - lk.z;
       if (dx * dx + dz * dz < (lk.r * 1.04) ** 2) return true;
     }

@@ -68,7 +68,7 @@ export default {
     authoredTrees: [
       // Dry rooted ribbons follow the actual tidal spine, not new random
       // forest discs. Lake/causeway/village clearances remain unchanged.
-      { id: 'southern-tidal-bank', species: 'willow', path: [[122, -306], [122, -208], [154, -130]], count: 22, width: 0.6 },
+      { id: 'southern-tidal-bank', species: 'willow', path: [[122, -306], [122, -208], [126, -194], [139, -154], [154, -130]], count: 22, width: 0.6 },
       { id: 'relief-island-bank', species: 'willow', path: [[168, -72], [160, 64], [132, 128]], count: 24, width: 0.6 },
       { id: 'fishing-creek-bank', species: 'willow', path: [[-116, 204], [-42, 210], [20, 216]], count: 18, width: 0.5 },
     ],
