@@ -8,9 +8,10 @@
  *   (EASU + RCAS)
  *
  * The scene renders into a quality-aware multisampled HalfFloat HDR target
- * with a DepthTexture, then resolves once into the composer's single-sampled
- * ping-pong buffers. This preserves real geometry/foliage edge coverage while
- * avoiding MSAA on every fullscreen post pass. OutputGradePass applies the
+ * with a DepthTexture, then the aerial pass reads its resolved color directly
+ * into the composer's single-sampled ping-pong buffers. This preserves real
+ * geometry/foliage edge coverage while avoiding MSAA on every fullscreen post
+ * pass. OutputGradePass applies the
  * renderer's exact tone mapping + output transfer and the display-space grade
  * in one draw; scope neighbor samples run through that same output transform.
  * SMAA and reconstruction still run last on the values the eye sees, so the
@@ -36,7 +37,6 @@
  */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import {
@@ -77,6 +77,7 @@ import {
   presentationFrameBudgetMs,
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
+import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -1501,78 +1502,6 @@ function requireDepthTexture(
 }
 
 /**
- * Render the world into a dedicated multisampled HDR target, resolve it, then
- * copy the resolved color into the composer's current read buffer. Keeping the
- * composer buffers single-sampled is important: otherwise every aerial/AO/
- * bloom/grade/SMAA fullscreen draw would pay MSAA bandwidth for no visual gain.
- */
-class SceneAAPass extends RenderPass {
-  readonly sceneTarget: THREE.WebGLRenderTarget;
-  readonly copyMaterial: THREE.ShaderMaterial;
-  readonly copyQuad: FullScreenQuad;
-
-  constructor(
-    scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
-    target: THREE.WebGLRenderTarget,
-  ) {
-    super(scene, camera);
-    this.sceneTarget = target;
-    this.copyMaterial = new THREE.ShaderMaterial({
-      name: 'SceneAAPass.Copy',
-      uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
-      vertexShader: CopyShader.vertexShader,
-      fragmentShader: CopyShader.fragmentShader,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.NoBlending,
-      toneMapped: false,
-    });
-    this.copyMaterial.uniforms.tDiffuse.value = target.texture;
-    this.copyQuad = new FullScreenQuad(this.copyMaterial);
-  }
-
-  setSize(width: number, height: number): void {
-    this.sceneTarget.setSize(width, height);
-  }
-
-  setSamples(samples: number): void {
-    if (this.sceneTarget.samples === samples) return;
-    this.sceneTarget.samples = samples;
-    // Sample count is part of the framebuffer allocation. Dispose only the
-    // GPU objects; Three recreates them lazily with the same target/textures.
-    this.sceneTarget.dispose();
-  }
-
-  render(
-    renderer: THREE.WebGLRenderer,
-    _writeBuffer: THREE.WebGLRenderTarget,
-    readBuffer: THREE.WebGLRenderTarget,
-  ): void {
-    const oldAutoClear = renderer.autoClear;
-    const oldLayerMask = this.camera.layers.mask;
-    renderer.autoClear = false;
-    try {
-      // Layer 30 is transparent combat media and must wait until the opaque
-      // scene depth is resolved. It is deliberately absent from this pass.
-      this.camera.layers.disable(LATE_FX_LAYER);
-      renderer.setRenderTarget(this.sceneTarget);
-      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-      renderer.render(this.scene, this.camera);
-
-      // One cheap full-screen draw hands the resolved scene to the composer's
-      // single-sampled ping-pong chain.
-      this.copyMaterial.uniforms.tDiffuse.value = this.sceneTarget.texture;
-      renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
-      this.copyQuad.render(renderer);
-    } finally {
-      this.camera.layers.mask = oldLayerMask;
-      renderer.autoClear = oldAutoClear;
-    }
-  }
-}
-
-/**
  * Composite transparent combat media after distance haze and GTAO. Puffs
  * already fog themselves at their own camera-space depth; running them before
  * the depth-driven post passes made the mountain/terrain depth behind a puff
@@ -1580,7 +1509,7 @@ class SceneAAPass extends RenderPass {
  * smoke column. This pass avoids that category error and gives the shaders a
  * resolved scene-depth source for soft intersections.
  */
-class LateFxPass extends Pass {
+export class LateFxPass extends Pass {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly sceneTarget: THREE.WebGLRenderTarget;
@@ -1592,6 +1521,7 @@ class LateFxPass extends Pass {
   prepared: boolean;
   readonly copyMaterial: THREE.ShaderMaterial;
   readonly copyQuad: FullScreenQuad;
+  directColorSource: SceneAerialPass | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -1633,6 +1563,7 @@ class LateFxPass extends Pass {
     if (this.softState === softState) return;
     this.softState = softState || null;
     this.prepared = false;
+    this.directColorSource?.endDirectColorFrame();
     if (this.softState) {
       this.softState.uSoftViewport.value.set(this.target.width, this.target.height);
       this.softState.uCameraNear.value = this.camera.near;
@@ -1640,6 +1571,7 @@ class LateFxPass extends Pass {
     }
   }
   setSize(width: number, height: number): void {
+    this.directColorSource?.endDirectColorFrame();
     this.target.setSize(width, height);
     if (this.softState) this.softState.uSoftViewport.value.set(width, height);
     this.prepared = false;
@@ -1661,9 +1593,23 @@ class LateFxPass extends Pass {
     writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget,
   ): void {
+    const directColor = this.directColorSource?.consumeDirectColor(this.target, readBuffer) === true;
     const softState = this.softState;
     if (!softState || !softState.isActive()) {
       this.needsSwap = false;
+      // Activity can disappear after Aerial prepared color. Restore the normal
+      // unswapped composer input instead of exposing its previous-frame color.
+      if (directColor) {
+        const oldAutoClear = renderer.autoClear;
+        renderer.autoClear = false;
+        try {
+          this.copyMaterial.uniforms.tDiffuse.value = this.target.texture;
+          renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+          this.copyQuad.render(renderer);
+        } finally {
+          renderer.autoClear = oldAutoClear;
+        }
+      }
       return;
     }
     this.needsSwap = true;
@@ -1677,9 +1623,11 @@ class LateFxPass extends Pass {
       // hardware depth testing uses target.depthTexture: source and attached
       // destination are distinct, so there is no framebuffer feedback loop.
       renderer.setRenderTarget(this.target);
-      renderer.clear(true, true, true);
-      this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
-      this.copyQuad.render(renderer);
+      renderer.clear(!directColor, true, true);
+      if (!directColor) {
+        this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
+        this.copyQuad.render(renderer);
+      }
       renderer.copyTextureToTexture(this.sceneDepth, this.targetDepth);
       this.softDepthCopies++;
       softState.uSceneDepth.value = this.sceneDepth;
@@ -1774,13 +1722,15 @@ export function createPost(
     renderer.domElement.dataset.postAa = 'smaa-high+fsr1';
   };
   publishAAState();
-  composer.addPass(sceneAA); // 1. multisampled scene + single resolve/copy
+  composer.addPass(sceneAA); // 1. multisampled scene + single resolve
 
   // 2. depth-driven aerial perspective — one distance curve for every
   // material (see AerialShader above). Runs in linear HDR space, pre-bloom.
   // The sampled depth belongs to SceneAAPass' independent target, so neither
   // composer ping-pong buffer can form a framebuffer feedback loop.
-  const aerial = new ShaderPass(AerialShader);
+  const aerial = new SceneAerialPass(AerialShader, sceneTarget);
+  sceneAA.directColorConsumer = aerial;
+  lateFx.directColorSource = aerial;
   aerial.uniforms.tDepth.value = sceneDepth;
   composer.addPass(aerial);
 
@@ -2468,7 +2418,19 @@ export function createPost(
     updateScopeGrade();
     updateAerialFogColors();
     updateAerialCameraBasis();
-    composer.render(dt);
+    // Only this complete frame transaction can bypass LateFX's input copy.
+    // Individual warm/debug renders deliberately keep the original path.
+    const passes = composer.passes;
+    const directColor = passes[0] === sceneAA && passes[1] === aerial
+      && passes[2] === gtao && passes[3] === lateFx
+      && sceneAA.enabled && aerial.enabled && !gtao.enabled && lateFx.enabled
+      && lateFx.softState?.isActive();
+    aerial.beginDirectColorFrame(directColor ? lateTarget : null);
+    try {
+      composer.render(dt);
+    } finally {
+      aerial.endDirectColorFrame();
+    }
   }
 
   // Live preset switching (settings UI writes quality.setPresetName): retarget

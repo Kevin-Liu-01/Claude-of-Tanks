@@ -161,6 +161,10 @@ interface MuzzleRingState {
   origin: THREE.Vector3;
 }
 
+function isRingVisible(ring: ShockRingState | MuzzleRingState): boolean {
+  return ring.mesh.visible;
+}
+
 interface GuidedTrail {
   points: Float32Array;
   count: number;
@@ -1150,8 +1154,8 @@ export function createFx(
     isActive: () => particles.softParticles.isActive()
       || tracerGeo.instanceCount > 0
       || atgmBodies.count > 0
-      || shockRings.some((r) => r.mesh.visible)
-      || muzzleRings.some((r) => r.mesh.visible),
+      || shockRings.some(isRingVisible)
+      || muzzleRings.some(isRingVisible),
   };
   const _Z = new THREE.Vector3(0, 0, 1); // read-only
 
