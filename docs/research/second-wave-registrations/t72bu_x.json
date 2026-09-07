@@ -1,0 +1,8 @@
+{
+  "id": "t72bu_x",
+  "sourceSha256": "3bb7bb20841ada6d5fa84a446e1229c78dde46dc0aea9216adc6bc2d9c170898",
+  "scale": 0.00045399046222865263,
+  "axes": ["-z", "y", "x"],
+  "translation": [-0.006793353134526931, 0.00046626321866131076, 0.05136669629346181],
+  "registrationReason": "Fixed pre-candidate3.59m T72-family configuration-width instrument anchor approved by owner workflow; source units are arbitrary and this is not a claim of an independently published prototype-specific dimension. Divide3.59 by original occupiedwidth7907.65511323. True central closed tub mesh_324 island4012 longitudinalmidpoint-113.144879831 and lateral midpoint-14.963647256; actual occupiedground-1.027033071. Original source matrix determinant is negative: bake and reverse winding once, then proper[-z,y,x] frame. Allbody/track material meshes retained; whole-only because hull/turret/gun ownership is fused. Resulting actual source structuralhull6.343415725m, castroof2.162599188m and external length10.347723148m are outcomes, not donor targets."
+}

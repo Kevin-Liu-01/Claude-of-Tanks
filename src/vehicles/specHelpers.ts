@@ -19,7 +19,7 @@ export interface PlateOptions {
 
 export interface ArmorPlate {
   name: string;
-  verts: [Vec3Tuple, Vec3Tuple, MutableVec3Tuple, Vec3Tuple];
+  verts: Vec3Tuple[];
   physicalMm: number;
   keMm: number;
   ceMm: number;
@@ -27,6 +27,13 @@ export interface ArmorPlate {
   era: EraProtection | null;
   moduleLink: ModuleId | null;
   gunFollow: boolean;
+  /** Opt-in convex planar outline; the standard constructors still emit quads. */
+  convexPolygon?: boolean;
+  surfaceGroup?: string;
+  /** Exact cut-edge ownership for adjacent outer and backing sheets. */
+  openEdges?: readonly number[];
+  /** Precomputed conservative envelope; the exact polygon remains authoritative. */
+  traceBounds?: { min: Vec3Tuple; max: Vec3Tuple };
 }
 
 export interface ModuleBox {

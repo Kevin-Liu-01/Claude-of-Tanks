@@ -23,6 +23,7 @@ import {
 enableCombatAnatomyMeasurementMode();
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
+const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
@@ -508,7 +509,9 @@ function eraPlateReceipts(root) {
 }
 
 function receiptFor(id) {
-  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+  const create = () => createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+  const stockCapture = id === 'chieftain_mk10_x' ? captureChieftain10Collision(create) : null;
+  const tank = stockCapture?.tank ?? create();
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
@@ -539,9 +542,9 @@ function receiptFor(id) {
       hullCollision: collisionCells(
         tank.root, hullRig, 'hull', hull, HULL_SLICE_TARGET_M, MAX_HULL_SLICES,
       ),
-      turretCollision: turret ? collisionCells(
+      turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
         tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES,
-      ) : [],
+      ) : []),
       hullStructures,
       turretStructures,
       hullStructureCollision: structureCollisionCells(
@@ -557,7 +560,8 @@ function receiptFor(id) {
       tracks: { left: trackL, right: trackR },
     };
   } finally {
-    tank.dispose();
+    if (stockCapture) stockCapture.dispose();
+    else tank.dispose();
   }
 }
 

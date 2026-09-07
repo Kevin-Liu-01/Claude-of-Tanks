@@ -1,0 +1,16 @@
+{
+  "id": "k1a1_x",
+  "sourceSha256": "7c55e7f54f0f7d59247e1559b92fc1db82952191566ef5504fd78dcde9df6d93",
+  "scale": 1,
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "translation": [
+    0,
+    0.0159,
+    0.0205
+  ],
+  "registrationReason": "Original metre-scale OBJ, actual track contact ground and hull-group Z midpoint-.0205; preserves offset gun axis and all semantic equipment groups."
+}

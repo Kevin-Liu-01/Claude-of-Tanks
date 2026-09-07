@@ -1,0 +1,53 @@
+{
+  "id": "t80u_x",
+  "recordedAt": "2026-09-06T20:31:00Z",
+  "status": "Focused CPU verification passed; geometry frozen for fresh scoped comparison, not final release qualification.",
+  "source": {
+    "originalSha256": "64c5fec7d47a591f4a1fccc4f7273a8b2ddb9b8aa8748f8a8a45ba3c108aa888",
+    "canonicalSha256": "dcb16e5bc83c37e380a252c08462948a6ff9098738464ea4bee9e45ccb02df81",
+    "registration": "../../research/second-wave-registrations/t80u_x.json",
+    "ownership": "Complete fused source scene; wheel surfaces belong to mesh_324. No separated component-score claim.",
+    "method": "CPU inward axial rays against all original source meshes in the independently registered meter frame. Scalar ring sections and fixed held-out first surfaces were inspected separately from native geometry. No source vertex, index, topology, UV, texture or loader is used by the runtime helper."
+  },
+  "finding": {
+    "oldRightRaisedRimAtY0_12629ZM1_96246": {"sourceXM": 1.605186319573, "oldNativeXM": 1.530555, "missingDepthM": 0.074631319573},
+    "oldRightObliqueRim": {"sourceXM": 1.589747976306, "oldNativeXM": 1.525350, "missingDepthM": 0.064397976306},
+    "form": "Closed recessed steel bowls, a twelve-sided stepped outer rim and a distinct six-sided conical hub. The source has no through hole here; the old opaque rubber center also concealed part of the left bowl."
+  },
+  "fixedDatums": {
+    "axleAbsXM": 1.35185, "axleYM": 0.42629,
+    "axleZM": [-1.96246, -1.107005, -0.274385, 0.47443, 1.317665, 2.088745],
+    "nativeRadiusM": 0.35247, "nativeWheelWidthM": 0.347,
+    "rubberShoulderRadiusM": 0.3313218, "rubberShoulderHalfWidthM": 0.178705,
+    "preservation": "Every original faceted outer rubber boundary point is unchanged to one micrometer in high and low quality. All existing non-wheel buffers, transforms, end drums, track bands, shoes and complete moving return course remain exact. Native suspension auto-seating follows the actual changed wheel backs without changing axle datums or the strict clearance policy."
+  },
+  "measuredSection": {
+    "radiiM": {"outer": 0.35247, "raisedLip": 0.29333, "floorOuter": 0.266997, "hubBase": 0.1210},
+    "leftAbsXM": {"back": 1.17167240, "floor": 1.51006156, "outerCrown": 1.57202631, "hubApex": 1.58356249, "raisedLip": 1.58960503},
+    "rightXM": {"back": 1.18925124, "floor": 1.52775055, "outerCrown": 1.58960539, "hubApex": 1.60114133, "raisedLip": 1.60718399},
+    "apexOnlyOffsetM": {"leftY": 0.0005197, "rightY": 0.0005941, "z": -0.00189285},
+    "constructionLimits": "The measured first-wheel section is repeated on the existing six native stations per side. Sub-millimeter irregularity of the supplied radial rings is represented by regular mathematical rings, not copied topology. A concealed central spindle is an inferred attachment; the measured closed backs and exterior bowls are retained."
+  },
+  "heldOutCompleteSourceRays": {
+    "format": "[worldY, worldZ, absoluteLeftFirstX, rightFirstX], inward from world X -3/+3",
+    "values": [
+      [0.37629, -1.96246, 1.549316465203, 1.566919807783],
+      [0.32629, -1.96246, 1.515760535906, 1.533436716668],
+      [0.27629, -1.96246, 1.510061532611, 1.527750581151],
+      [0.22629, -1.96246, 1.510061519720, 1.527750594042],
+      [0.12629, -1.96246, 1.587607382091, 1.605186319573],
+      [0.214157965644, -1.750327965644, 1.584506092055, 1.602082196427],
+      [0.185873694397, -1.722043694397, 1.572168891631, 1.589747976306]
+    ],
+    "maximumAllowedErrorM": 0.0001,
+    "air": "At world Y0.22629/Z-1.96246, the ray between absolute X1.60 and the measured bowl floor minus 2 mm contains no solid. Inward-from-center rays reach the actual closed source back, rather than an invented through hole."
+  },
+  "verification": {
+    "focusedTest": "../../../src/vehicles/profiles/t80uXWheels.selftest.mjs",
+    "focusedResult": "PASS at high and low: independent source hub/floor/lip rays, whole-scene bowl air, closed backs, exact non-wheel and rubber boundary preservation, twelve native wheel stations, opposing scroll, reset, actual wheel clearance and resource disposal.",
+    "existingSourceGeometryTest": "sovietSecondWaveGeometry.selftest.mjs PASS: original source frames, axles, roof, firing axis, true bore, removable fields and apron/cradle air retained.",
+    "strictCpuTracks": {"frontBand": 0, "rearBand": 0, "sweepBand": 0, "frontShoes": 0, "rearShoes": 0, "sweepShoes": 0, "anomaly": null},
+    "scopedCodeQuality": "Two runtime files, 25 functions, zero complexity violations, zero any/unknown.",
+    "freshGpuComparison": "Pending; earlier whole-model receipts are not used to qualify this changed render."
+  }
+}

@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Claude of Tanks — procedural fidelity lab</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
 <style>
   :root { color-scheme:dark; font:13px/1.45 Inter,system-ui,sans-serif; background:#0b0f12; color:#e7edf0 }
   body { margin:0; padding:20px; min-height:100vh; box-sizing:border-box }
@@ -29,6 +30,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
+import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
@@ -37,6 +39,7 @@ import { requiredMinimumForQualityBar, evaluateFidelityGate, evaluateGeometryGat
 import { T90_X_REFERENCE_OVERRIDES } from '/tools/t90-x-reference-overrides.ts';
 import { LEOPARD_X_REFERENCE_OVERRIDES } from '/tools/leopard-x-reference-overrides.ts';
 import { WEST_X_REFERENCE_OVERRIDES } from '/tools/west-x-reference-overrides.ts';
+import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 
@@ -56,6 +59,7 @@ if (!spec) failFidelity(`Unknown tank id: ${id}`);
 // registered by the public build; the generated procedural code stays an
 // original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
+  ...SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ...T90_X_REFERENCE_OVERRIDES,
   ...LEOPARD_X_REFERENCE_OVERRIDES,
   ...WEST_X_REFERENCE_OVERRIDES,
@@ -1247,14 +1251,18 @@ const procGun=cannonOverhang(rawMasks.right.procWhole,procHullSideBounds);
 // mis-bucketed roof fitting as part of the cannon merely because it extends
 // beyond the hull bounds in side projection.
 let gunMetric = gunComponentMasksAvailable ? compare(refGun,procGun) : null;
+let scoredGunMasks = { ref: refGun, proc: procGun };
 if (source?.glb?.directGunComponentMasks === true) {
   const gunCamera = cameraFor(ANGLES.right);
-  gunMetric = compare(
-    renderMask(reference, procedural, gunCamera, 'gun'),
-    renderMask(procedural, reference, gunCamera, 'gun'),
-  );
+  scoredGunMasks = {
+    ref: renderMask(reference, procedural, gunCamera, 'gun'),
+    proc: renderMask(procedural, reference, gunCamera, 'gun'),
+  };
+  gunMetric = compare(scoredGunMasks.ref, scoredGunMasks.proc);
 }
-if (params.get('components') && gunMetric) overlayCanvas('gun profile', refGun, procGun, gunMetric);
+// Show the exact masks that produced the displayed score, including complete
+// pitching mantlets for semantic sources; do not show legacy overhang instead.
+if (params.get('components') && gunMetric) overlayCanvas('gun profile', scoredGunMasks.ref, scoredGunMasks.proc, gunMetric);
 
 const mean=(values) => values.reduce((sum,v)=>sum+v,0)/Math.max(values.length,1);
 const wholeViewMasksAvailable=source?.glb?.wholeViewMasks !== false;
@@ -1947,8 +1955,7 @@ if (params.get('geo')) {
     const pct = Math.abs(actual - published) / published * 100;
     dimRows.push({ name, actual, published, pct });
   };
-  const pixelSpanZ = (part, visual = procedural, other = reference) => {
-    const cam = camsG.side;
+  const pixelSpanZ = (part, visual = procedural, other = reference, cam = camsG.side) => {
     const m = gMask(visual, other, cam, part);
     const px = 2 * cam.right / GSIZE;
     let minX = null, maxX = null;
@@ -1965,8 +1972,7 @@ if (params.get('geo')) {
   // pixel-resolution width: trace columns quantize to ~11cm when a long
   // gun pins the plan frame; lit-pixel extent resolves to ~2-3cm. The
   // 0.35m band rule applies per pixel column so whip antennas don't count.
-  const measurePixelWidth = (visual, other) => {
-    const cam = camsG.plan;
+  const measurePixelWidth = (visual, other, cam = camsG.plan) => {
     const m = gMask(visual, other, cam, 'whole');
     const half = cam.right;
     const px = 2 * half / GSIZE;
@@ -1980,18 +1986,41 @@ if (params.get('geo')) {
     }
     return minX === null ? 0 : (maxX - minX + 1) * px;
   };
-  // Ordinary source comparisons retain published dimensions. Only the pinned
-  // historical Proto compares physical measurements of the frozen original,
-  // using the identical cameras/masks and no independent width normalization.
-  const pub = preservationDimensionTargets(source, id, preservation ? {
+  // Legacy sources retain published dimensions; historical preservation
+  // retains its frozen-original policy. Explicitly certified source-study
+  // IDs below use an independent fixed ruler and full physical envelopes.
+  let referenceDimensions = {
     heightM:refExt?.h, hullLengthM:refExt?.len,
     overallLengthM:pixelSpanZ('whole', reference, procedural),
     widthM:measurePixelWidth(reference, procedural),
-  } : {}, specDimensions);
-  if (procExt) dimCheck('heightM', procExt.h, pub.silhouetteHeightM ?? pub.heightM);
-  if (procExt) dimCheck('hullLengthM', procExt.len, pub.silhouetteHullLengthM ?? pub.hullLengthM);
-  dimCheck('overallLengthM', pixelSpanZ('whole'), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
-  dimCheck('widthM', measurePixelWidth(procedural, reference), pub.silhouetteWidthM ?? pub.widthM);
+  };
+  let dimensionFrame = null;
+  if (usesSourceDimensionFrame(id,sourceWorldRegistration)) {
+    // A candidate-dependent union frame moves96-column percentile bins.
+    // Freeze this separate ruler to the hash-verified source alone, and
+    // compare like measurements, not filtered width versus full-body width.
+    // The additional full3D envelopes catch any out-of-frame excess.
+    const side=sourceDimensionCamera(referenceBox,TRUE_AXES.side);
+    const plan=sourceDimensionCamera(referenceBox,TRUE_AXES.plan);
+    const measure=(visual,other)=>{
+      const body=bodyExtent(gTrace(gMask(visual,other,side,'whole'),side));
+      return {heightM:body?.h,hullLengthM:body?.len,
+        overallLengthM:pixelSpanZ('whole',visual,other,side),
+        widthM:measurePixelWidth(visual,other,plan)};
+    };
+    referenceDimensions=measure(reference,procedural);
+    const actual=measure(procedural,reference);
+    dimRows.push(...sourceDimensionRows(referenceDimensions,actual,referenceBox,proceduralBox));
+    dimensionFrame={mode:'source-only-fixed-v1',sourceBounds:{min:referenceBox.min.toArray(),max:referenceBox.max.toArray()},
+      side:{projection:side.projectionMatrix.toArray(),world:side.matrixWorld.toArray()},
+      plan:{projection:plan.projectionMatrix.toArray(),world:plan.matrixWorld.toArray()},actual};
+  } else {
+    const pub = preservationDimensionTargets(source, id, preservation ? referenceDimensions : {}, specDimensions);
+    if (procExt) dimCheck('heightM', procExt.h, pub.silhouetteHeightM ?? pub.heightM);
+    if (procExt) dimCheck('hullLengthM', procExt.len, pub.silhouetteHullLengthM ?? pub.hullLengthM);
+    dimCheck('overallLengthM', pixelSpanZ('whole'), pub.silhouetteOverallLengthM ?? pub.overallLengthM);
+    dimCheck('widthM', measurePixelWidth(procedural, reference), pub.silhouetteWidthM ?? pub.widthM);
+  }
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
   const islands = (raw) => {
@@ -2079,7 +2108,9 @@ if (params.get('geo')) {
     id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
     registration:sourceWorldRegistration || {mode:'legacy-hull-translation'},
     comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
-    dimensionTarget:preservation ? 'hash-pinned historical first-party baseline' : 'published specification',
+    dimensionTarget:dimensionFrame ? 'hash-pinned source: fixed ruler plus full physical envelope'
+      : preservation ? 'hash-pinned historical first-party baseline' : 'published specification',
+    ...(dimensionFrame ? {dimensionFrame} : {}),
     ...(preservation ? { preservationBaseline:preservation } : {}),
     qualityBar: source?.qualityBar || 'fleet', gatePassed: geometryGate.gatePassed,
     rawGeoMin:geoMin,rawComponents:components,
@@ -2087,7 +2118,7 @@ if (params.get('geo')) {
     wholeShapeMetric: geometryComponentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',
     stationMethod: sourceWorldRegistration ? 'exact-triangle-slab-intersections' : 'legacy-uncapped-raster-slices',
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
-    turretRows, stationErr, dimRows,
+    turretRows, stationErr, dimRows, referenceDimensions,
     referenceBodyExtent: refExt && { h: +refExt.h.toFixed(3), len: +refExt.len.toFixed(3) },
     proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3) },
     floaterFails, floaterRows,

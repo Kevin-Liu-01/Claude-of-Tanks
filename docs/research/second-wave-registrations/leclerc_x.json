@@ -1,0 +1,16 @@
+{
+  "id": "leclerc_x",
+  "sourceSha256": "84385d79783b4e2977567f2e136e3f7170a8b806bf67be705107205b04a1c689",
+  "scale": 1.2051681351586139,
+  "axes": [
+    "-z",
+    "y",
+    "x"
+  ],
+  "translation": [
+    -0.045302567526875434,
+    -0.13214238165211875,
+    -0.3644000229598085
+  ],
+  "registrationReason": "Uniform width anchor3.60m, actual source body midpoint/lateral center and track contact. Original Char Leclerc revision; no old-model coordinate mixing."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "t80u_x",
+  "sourceSha256": "64c5fec7d47a591f4a1fccc4f7273a8b2ddb9b8aa8748f8a8a45ba3c108aa888",
+  "scale": 0.0008251661840199967,
+  "axes": [
+    "-z",
+    "y",
+    "x"
+  ],
+  "translation": [
+    1.987514981482974e-7,
+    -0.00013942837792803436,
+    0.21553981691746582
+  ],
+  "registrationReason": "Uniform 3.6m configuration-width anchor. True closed central-hull longitudinal midpoint and measured source track contact ground; original node matrices baked with mirrored winding corrected exactly once. Fused source remains fused; do not invent component scores."
+}

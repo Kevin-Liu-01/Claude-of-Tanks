@@ -1,0 +1,8 @@
+{
+  "id": "chieftain5_x",
+  "sourceSha256": "a7cb7c9ab877635d204f96f359e84f2da8b59298bf09f2eeaeeecd4205725169",
+  "scale": 0.022766597878026665,
+  "axes": ["x", "y", "z"],
+  "translation": [0.10442165384306669, -0.0026889683281052347, 1.5766318033032203],
+  "registrationReason": "Owner-directed likeness to the complete supplied file, not historical metrology. One uniform 3.51 m presentation-width ruler; actual source scene already has +Y up and +Z forward after its proper X half-turn. X is the hull/track center, ground is the physical lowest track course, Z is the midpoint between the measured centerline stern and bow armor planes. Preserve all eleven source meshes and all asymmetric equipment; no component scaling, silhouette fit, cropping, source repair or invented component masks. Warped bearing and gun sections require separately documented native functional-axis inferences."
+}

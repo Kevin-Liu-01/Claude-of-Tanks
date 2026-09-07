@@ -1,0 +1,16 @@
+{
+  "id": "chieftain_mk10_x",
+  "sourceSha256": "f8c1888e345742a5f9f65e877e51b55028d708e5cb42ab4392b5fbc21d1db2de",
+  "scale": 0.025,
+  "axes": [
+    "x",
+    "y",
+    "z"
+  ],
+  "translation": [
+    0,
+    0.0492805375,
+    0.0960252625
+  ],
+  "registrationReason": "Inferred uniform metric scale cross-checked against US Army WEG Chieftain chassis width3.51m and length7.48m. Not claimed as embedded unit metadata. Main chassis source width3.49821m/length7.38869m; preserve full asymmetric turret width3.67810m. Actual track ground and main-body longitudinal center."
+}

@@ -21,8 +21,9 @@ import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.t
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';
 import { suspensionPatternFor } from './suspensionPatterns.ts';
-import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, type SuspensionDimensions } from './suspensionDimensions.ts';
+import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAxleOutset, sourceToothTip, type SuspensionDimensions } from './suspensionDimensions.ts';
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
+import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
@@ -143,6 +144,12 @@ interface GearEndpoint {
   /** Independent axial casting envelopes; rolling radius and track lanes stay fixed. */
   axialScaleLeft?: number;
   axialScaleRight?: number;
+  /** Signed outward axle offset; does not translate the track lane. */
+  axleOutsetM?: number;
+  axleOutsetLeftM?: number;
+  axleOutsetRightM?: number;
+  /** Actual measured drive-tooth crown radius, independent of body/track radii. */
+  toothTipRadiusM?: number;
 }
 
 type TrackPoint = [number, number];
@@ -182,6 +189,7 @@ interface WheelGeometrySet {
 interface WheelFaceLayer {
   geometry: THREE.BufferGeometry;
   material: THREE.Material;
+  side?: Side;
   outset?: number;
   yOffset?: number;
   zOffset?: number;
@@ -190,6 +198,7 @@ interface WheelFaceLayer {
 }
 
 interface WheelLayerOptions {
+  side?: Side;
   outset?: number;
   yOffset?: number;
   zOffset?: number;
@@ -261,6 +270,36 @@ export interface TrackShoeDimensions {
   readonly pinCentreY?: number;
 }
 
+/** A pad narrower than its connected pin envelope. All dimensions are shoe-local. */
+export interface TrackLinkCrossSection {
+  readonly padWidthM: number;
+  readonly pinCapLengthM: number;
+  readonly pinHalfSpacingM: number;
+  readonly connectorInnerM: number;
+  readonly connectorOuterM: number;
+  readonly connectorHeightM: number;
+  readonly connectorDepthM: number;
+  readonly connectorCentreYDeltaM: number;
+}
+
+function trackPadRecipeWidth(trackW: number, section?: TrackLinkCrossSection): number {
+  if (!section) return trackW;
+  const keys = ['padWidthM', 'pinCapLengthM', 'pinHalfSpacingM', 'connectorInnerM',
+    'connectorOuterM', 'connectorHeightM', 'connectorDepthM', 'connectorCentreYDeltaM'] as const;
+  for (const name of keys) {
+    const value = section[name];
+    if (!Number.isFinite(value) || (name !== 'connectorCentreYDeltaM' && value <= 0))
+      throw new RangeError(`Invalid native track-link cross-section: ${name}`);
+  }
+  if (section.padWidthM > trackW || section.connectorInnerM >= section.padWidthM / 2
+    || section.connectorOuterM <= section.connectorInnerM || section.connectorOuterM > trackW / 2
+    || section.pinCapLengthM > trackW / 2 || section.connectorDepthM <= section.pinHalfSpacingM * 2
+    || section.connectorHeightM > .5 || section.connectorDepthM > .5
+    || Math.abs(section.connectorCentreYDeltaM) > .1)
+    throw new RangeError('Invalid native track-link cross-section proportions');
+  return section.padWidthM / .97;
+}
+
 type DimensionedTrackPattern = Omit<TrackPattern, keyof TrackShoeDimensions>
   & Required<Omit<TrackShoeDimensions, 'pinCentreY'>>
   & Pick<TrackShoeDimensions, 'pinCentreY'>;
@@ -287,6 +326,9 @@ interface RunningGearConfig {
   wheelR: number;
   wheelW: number;
   wheelZs: number[];
+  /** Measured per-side road stations only; never translates the belt/end drums. */
+  wheelZsLeftM?: readonly number[];
+  wheelZsRightM?: readonly number[];
   xc: number;
   xcLeft?: number;
   xcRight?: number;
@@ -295,9 +337,18 @@ interface RunningGearConfig {
   wheelYs?: readonly number[];
   /** Road-wheel axle offset only, outward from each native track lane. */
   roadWheelOutsetM?: number;
+  /** Independently measured side overrides; the belt lanes are not moved. */
+  roadWheelOutsetLeftM?: number;
+  roadWheelOutsetRightM?: number;
   wheelZScale?: number;
   /** Source-measured axial dish/hub depth only; tires and axle stations stay fixed. */
   wheelFaceDepthScale?: number;
+  /** Measured rubber-ring opening for a recessed steel dish. Undefined keeps
+   * historical capped tire geometry; the articulated tire radius stays fixed. */
+  wheelTireInnerRadiusM?: number;
+  wheelTireBands?: readonly MeasuredTireBand[];
+  /** First-party physical hub/core replacing generic injected dish geometry. */
+  wheelCoreGeometry?: { disc: THREE.BufferGeometry; dark?: THREE.BufferGeometry | null };
   layers?: number[][] | null;
   sprocket: GearEndpoint;
   idler: GearEndpoint;
@@ -307,8 +358,14 @@ interface RunningGearConfig {
   returnRollerWidthM?: number;
   /** Inward offset from the native shoe lane, applied to the animated roller. */
   returnRollerInsetM?: number;
+  /** Independently measured outward roller-axis offset; defaults to zero.
+   * Does not move road wheels, end wheels, bands or the shoe course. */
+  returnRollerOutsetM?: number;
   trackW: number;
   trackTh?: number;
+  /** Physical continuous shoe web, when narrower than its pin/grouser span.
+   * Does not resize shoes, wheels, axles or course; defaults to full trackW. */
+  trackCarrierWidthM?: number;
   topY: number;
   botY?: number;
   paintedEnds?: boolean;
@@ -317,6 +374,9 @@ interface RunningGearConfig {
   containRearRoadWheel?: boolean;
   deadSag?: number;
   loopPoints?: TrackPoint[];
+  /** Seat rigid links between two live course samples, not on one tangent.
+   * Opt-in for measured rounded contact courses; established rigs unchanged. */
+  rigidLinkChords?: boolean;
   frontArcSteps?: number;
   rearArcSteps?: number;
   tautFrontSpan?: boolean;
@@ -327,6 +387,7 @@ interface RunningGearConfig {
   wheelPattern?: WheelPatternId;
   trackPattern?: TrackPatternId;
   trackShoeDimensions?: TrackShoeDimensions;
+  trackLinkCrossSection?: TrackLinkCrossSection;
   suspensionPattern?: SuspensionPatternId;
   /** Source-measured native arm and independent fixed/moving boss dimensions. */
   suspensionDimensions?: SuspensionDimensions;
@@ -611,8 +672,12 @@ interface RunningGearUnit {
     wheelY: number;
     wheelR: number;
     wheelZs: number[];
+    wheelZsLeftM?: number[];
+    wheelZsRightM?: number[];
     wheelYs?: number[];
     roadWheelOutsetM?: number;
+    roadWheelOutsetLeftM?: number;
+    roadWheelOutsetRightM?: number;
   };
   update(left: number, right: number, dt?: number): void;
   updateSurface?(left: number, right: number): void;
@@ -2625,21 +2690,29 @@ function simplifiedTrackShoeGeometry(
   pattern: DimensionedTrackPattern,
   radialScale = 1,
   widthScale = 1,
+  section?: TrackLinkCrossSection,
+  pinCapOuter: number | null = null,
 ): THREE.BufferGeometry {
   // At this distance one shoe spans only a handful of pixels. Retain its
   // authored pitch, width, pad depth and grouser peak so the track silhouette
   // and deterministic per-link color cadence remain intact. Guide horns,
   // split-pad gaps, pins and family-specific rib layouts stay on the exact
   // close level, where they are actually resolvable.
-  const pad = shoeBox(trackW * 0.97, pattern.padHeight, pitch * pattern.padCoverage);
+  const padW = trackPadRecipeWidth(trackW, section);
+  const pad = shoeBox(padW * 0.97, pattern.padHeight, pitch * pattern.padCoverage);
   const grouserPeakScale = pattern.surface === 'heavy-chevron'
     ? 1.08 : pattern.surface === 'open-chevron' ? 1.04 : 1;
   const grouserHeight = pattern.grouserHeight * grouserPeakScale;
   const grouser = xform(
-    shoeBox(trackW * 0.86, grouserHeight, pitch * 0.14, [SHOE_BOX_BOTTOM]),
+    shoeBox(padW * 0.86, grouserHeight, pitch * 0.14, [SHOE_BOX_BOTTOM]),
     0, pattern.padHeight / 2 + grouserHeight / 2, 0,
   );
-  const geometry = mergeAll([pad, grouser]);
+  const parts = [pad, grouser];
+  // A measured, narrower pad needs its physical connectors at both levels:
+  // the empty lateral intervals must not become a continuous wide LOD slab.
+  if (section) appendTrackShoePins({parts, trackW, pitch, padH: pattern.padHeight,
+    grouserH: pattern.grouserHeight}, pattern, pinCapOuter, section);
+  const geometry = mergeAll(parts);
   if (radialScale !== 1) geometry.scale(1, radialScale, 1);
   if (widthScale !== 1) geometry.scale(widthScale, 1, 1);
   return geometry;
@@ -2808,17 +2881,28 @@ function appendTrackShoePins(
   assembly: TrackShoeAssembly,
   pattern: DimensionedTrackPattern,
   pinCapOuter: number | null,
+  section?: TrackLinkCrossSection,
 ): void {
   if (pattern.pinStyle !== 'end-caps') return;
   const { trackW, pitch, padH, parts } = assembly;
   const outer = pinCapOuter ?? trackW * 0.48;
-  const capLength = Math.min(0.058, trackW * 0.15);
+  const capLength = section?.pinCapLengthM ?? Math.min(0.058, trackW * 0.15);
   const capX = Math.max(0, outer - capLength / 2);
   const pinY = pattern.pinCentreY ?? -(padH / 2 + pattern.webHeight * 0.38);
+  const halfSpacing = section?.pinHalfSpacingM ?? pitch * .30;
+  if (section && (section.connectorDepthM > pitch || halfSpacing >= pitch / 2))
+    throw new RangeError('Native track-link connector exceeds its physical pitch');
   for (const side of [-1, 1] as const) {
-    for (const z of [-pitch * 0.30, pitch * 0.30]) {
+    if (section) appendTrackShoeBox(assembly,
+      section.connectorOuterM - section.connectorInnerM,
+      section.connectorHeightM, section.connectorDepthM,
+      side * (section.connectorOuterM + section.connectorInnerM) / 2,
+      pinY + section.connectorCentreYDeltaM);
+    for (const z of [-halfSpacing, halfSpacing]) {
       parts.push(xform(
-        oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
+        section ? xform(new THREE.CylinderGeometry(pattern.pinRadius, pattern.pinRadius,
+          capLength, 12), 0, 0, 0, 0, 0, Math.PI / 2)
+          : oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
         side * capX, pinY, z,
       ));
     }
@@ -2832,6 +2916,7 @@ function trackShoeGeometry(
   pinCapOuter: number | null = null,
   radialScale = 1,
   widthScale = 1,
+  section?: TrackLinkCrossSection,
 ): THREE.BufferGeometry {
   // Every family is authored into ONE geometry and instantiated on ONE
   // closed course. Surface casting, connector web, transverse pins and guide
@@ -2840,7 +2925,7 @@ function trackShoeGeometry(
   const parts: THREE.BufferGeometry[] = [];
   const assembly: TrackShoeAssembly = {
     parts,
-    trackW,
+    trackW: trackPadRecipeWidth(trackW, section),
     pitch,
     padH: pattern.padHeight,
     grouserH: pattern.grouserHeight,
@@ -2854,7 +2939,7 @@ function trackShoeGeometry(
   // deliberately centered: side connector rails were the visual source of
   // the historical parallel-course bug.
   appendTrackShoeStructure(assembly, pattern);
-  appendTrackShoePins(assembly, pattern, pinCapOuter);
+  appendTrackShoePins(section ? {...assembly, trackW} : assembly, pattern, pinCapOuter, section);
 
   const geometry = mergeAll(parts);
   if (radialScale !== 1) geometry.scale(1, radialScale, 1);
@@ -2867,7 +2952,8 @@ function runningGearArmGeometry(
   width: number, height: number, pattern: SuspensionPattern,
 ): THREE.BufferGeometry {
   if(dimensions?.armHeightM!==undefined) {
-    return dimensionedSuspensionArm(width,dimensions.armHeightM,dimensions.armAxleHeightM??dimensions.armHeightM);
+    return dimensionedSuspensionArm(width,dimensions.armHeightM,
+      dimensions.armAxleHeightM??dimensions.armHeightM,dimensions.armAxialShearM);
   }
   return xform(cylZ(.5*pattern.wheelEndTaper,1,pattern.armSegments,.5),
     0,0,0,0,0,0,[width,height,1]);
@@ -3081,17 +3167,23 @@ function validateReturnRollerDimensions(cfg: RunningGearConfig): void {
     || cfg.returnRollerInsetM < 0 || cfg.returnRollerInsetM > .5)) {
     throw new RangeError('Native return-roller inset must be finite and inside [0, .5] metres');
   }
+  if (cfg.returnRollerOutsetM !== undefined && (!Number.isFinite(cfg.returnRollerOutsetM)
+    || cfg.returnRollerOutsetM < 0 || cfg.returnRollerOutsetM > .5)) {
+    throw new RangeError('Native return-roller outset must be finite and inside [0, .5] metres');
+  }
 }
 
 function validateRoadWheelStations(cfg: RunningGearConfig): void {
+  for(const zs of[cfg.wheelZsLeftM,cfg.wheelZsRightM])if(zs!==undefined
+    &&(!Array.isArray(zs)||zs.length!==cfg.wheelZs.length||!Array.from(zs).every(Number.isFinite)))
+    throw new RangeError('Native road-wheel side stations must be finite and match wheelZs');
   if (cfg.wheelYs !== undefined && (!Array.isArray(cfg.wheelYs)
     || cfg.wheelYs.length !== cfg.wheelZs.length
     || !Array.from(cfg.wheelYs).every(Number.isFinite))) {
     throw new RangeError('Native road-wheel heights must be finite and match wheelZs');
   }
-  if (cfg.roadWheelOutsetM !== undefined && !Number.isFinite(cfg.roadWheelOutsetM)) {
-    throw new RangeError('Native road-wheel outset must be finite');
-  }
+  for(const value of[cfg.roadWheelOutsetM,cfg.roadWheelOutsetLeftM,cfg.roadWheelOutsetRightM])
+    if(value!==undefined&&!Number.isFinite(value))throw new RangeError('Native road-wheel outset must be finite');
 }
 
 function weightedRoadWheelRestY(
@@ -3113,6 +3205,35 @@ function resolveRoadWheelStations(cfg: RunningGearConfig): {
   };
 }
 
+function sourceRoadPlacement(cfg:RunningGearConfig,roadWheelOutsetM:number) {
+  const sideStations={[-1]:cfg.wheelZsLeftM?[...cfg.wheelZsLeftM]:null,
+    [1]:cfg.wheelZsRightM?[...cfg.wheelZsRightM]:null};
+  const sideStationReceipt={
+    ...(cfg.wheelZsLeftM?{wheelZsLeftM:[...cfg.wheelZsLeftM]}:{}),
+    ...(cfg.wheelZsRightM?{wheelZsRightM:[...cfg.wheelZsRightM]}:{}),
+  };
+  const wheelOutsetForSide=(side:Side):number=>
+    (side<0?cfg.roadWheelOutsetLeftM:cfg.roadWheelOutsetRightM)??roadWheelOutsetM;
+  const sideOutsetReceipt={
+    ...(cfg.roadWheelOutsetLeftM!==undefined?{roadWheelOutsetLeftM:cfg.roadWheelOutsetLeftM}:{}),
+    ...(cfg.roadWheelOutsetRightM!==undefined?{roadWheelOutsetRightM:cfg.roadWheelOutsetRightM}:{}),
+  };
+  return {sideStations,sideStationReceipt,wheelOutsetForSide,sideOutsetReceipt};
+}
+
+function sourceTrackCarrierWidth(cfg:RunningGearConfig):number {
+  const width=cfg.trackCarrierWidthM??cfg.trackW;
+  if(!Number.isFinite(width)||width<=0||width>cfg.trackW)
+    throw new Error('Track carrier must have a positive width within the complete shoe envelope');
+  return width;
+}
+
+function sourceWheelSolids(cfg:RunningGearConfig,segments:number,pattern:WheelPattern) {
+  const originals=wheelGeo(cfg.style??'rubber',cfg.wheelR,cfg.wheelW,segments,
+    cfg.dishR??.90,pattern,(cfg.wheelFaceLayers||[]).length>0);
+  return replaceMeasuredWheelSolids(originals,cfg,cfg.wheelR,cfg.wheelW,segments);
+}
+
 function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): RunningGearUnit {
   if (!P.spec || !P.disposables) {
     throw new TypeError('Running gear requires a vehicle spec and disposal registry');
@@ -3122,12 +3243,14 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const { mats, hullG, q } = P;
   validateReturnRollerDimensions(cfg);
   const { wheelYs, roadWheelOutsetM } = resolveRoadWheelStations(cfg);
+  const {sideStations,sideStationReceipt,wheelOutsetForSide,sideOutsetReceipt}=
+    sourceRoadPlacement(cfg,roadWheelOutsetM);
   const {
     style = 'rubber', wheelR, wheelW, wheelZs, xc,
     wheelZScale = 1,                    // elliptical road-wheel profile in side elevation
     layers = null,                       // interleaved x offsets pattern, else null
     sprocket, idler, rollers = [], rollerR = 0.09,
-    trackW, trackTh = 0.09, topY, botY = 0.055,
+    trackW, trackTh = 0.09, topY, botY = 0.055, pinCapOuter = null,
     paintedEnds = false,                 // r5: sprocket/idler bodies in scheme
                                          // paint (modern MBTs paint the whole
                                          // wheel train; the bare-steel drums
@@ -3215,8 +3338,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         wheelZs: [...wheelZs],
         wheelR,
         wheelY,
+        ...(cfg.wheelTireInnerRadiusM!==undefined?{wheelTireInnerRadiusM:cfg.wheelTireInnerRadiusM}:{}),
+        ...(cfg.wheelTireBands?{wheelTireBands:cfg.wheelTireBands.map(b=>({...b}))}:{}),
+        ...sideStationReceipt,
         ...(wheelYs ? { wheelYs: [...wheelYs] } : {}),
         ...(cfg.roadWheelOutsetM !== undefined ? { roadWheelOutsetM } : {}),
+        ...sideOutsetReceipt,
+        ...(cfg.returnRollerOutsetM !== undefined ? { returnRollerOutsetM: cfg.returnRollerOutsetM } : {}),
         sprocket: { z: sprocket.z, y: sprocket.y, r: sprocket.r },
         sprocketTeeth: cfg.sprocketTeeth !== false,
         idler: { z: idler.z, y: idler.y, r: idler.r },
@@ -3225,6 +3353,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         xcRight,
         trackW,
         trackTh,
+        ...(cfg.trackCarrierWidthM!==undefined?{trackCarrierWidthM:cfg.trackCarrierWidthM}:{}),
         botY,
         topY,
         loopPoints: pts.map((point) => [...point]),
@@ -3238,6 +3367,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         trackPatternId: trackPattern.id,
         trackPatternLabel: trackPattern.label,
         ...(cfg.trackShoeDimensions ? { trackShoeDimensions: { ...cfg.trackShoeDimensions } } : {}),
+        ...(cfg.trackLinkCrossSection ? { trackLinkCrossSection: { ...cfg.trackLinkCrossSection } } : {}),
         suspensionPatternId: suspensionPattern.id,
         suspensionPatternLabel: suspensionPattern.label,
         suspensionLinkCount: wheelZs.length * 2,
@@ -3317,8 +3447,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         // on both sides now: x = side * (xc + o).
         for (const o of offs) {
           entries.push({
-            x: side * (sideXc + o + roadWheelOutsetM),
-            y: wheelYs?.[i] ?? wheelY, z, r: wheelR, road: true, i, off: 0,
+            x: side * (sideXc + o + wheelOutsetForSide(side)),
+            y: wheelYs?.[i] ?? wheelY, z:sideStations[side]?.[i]??z, r: wheelR, road: true, i, off: 0,
             // only rows well behind the proud face bake shadow (middle rows of a
             // triple interleave keep paint). tank_models r4: cfg.recessDepth —
             // TWO-row interleaves (Panther, HVSS pairs) keep BOTH rows painted;
@@ -3354,7 +3484,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for (const rl of rollers) {
       for (const side of [-1, 1] as const) {
         rollerEntries.push({
-          x: side * (xcForSide(side) - (cfg.returnRollerInsetM ?? 0)), y: rl.y, z: rl.z,
+          x: side * (xcForSide(side) - (cfg.returnRollerInsetM ?? 0) + (cfg.returnRollerOutsetM ?? 0)), y: rl.y, z: rl.z,
           r: rl.r ?? rollerR, road: false, i: 0, off: 0,
         });
       }
@@ -3365,10 +3495,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage8();
 
-  const { tire, disc, dark } = wheelGeo(
-    style, wheelR, wheelW, seg, cfg.dishR ?? 0.90, wheelPattern,
-    (cfg.wheelFaceLayers || []).length > 0,
-  );
+  let { tire, disc, dark } = sourceWheelSolids(cfg,seg,wheelPattern);
   // Some modern pressed-steel wheel assemblies are measurably oval in the
   // normalized side reference (vertical tire diameter exceeds the fore/aft
   // diameter).  Scaling the authored wheel geometry, rather than faking the
@@ -3427,9 +3554,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     layer: WheelLayerOptions = {},
   ): THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null => {
     if (!(geometry instanceof THREE.BufferGeometry) || !material) return null;
+    if(layer.side!==undefined&&layer.side!==-1&&layer.side!==1)
+      throw new RangeError('Native wheel face side must be -1 or 1');
     const roadEntries: WheelEntry[] = [];
     for (const entry of entries) {
-      if (!entry.road) continue;
+      if (!entry.road || (layer.side!==undefined&&Math.sign(entry.x)!==layer.side)) continue;
       roadEntries.push({
         ...entry,
         x: entry.x + Math.sign(entry.x || 1) * (layer.outset ?? 0),
@@ -3516,7 +3645,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const { dimensions: suspensionDimensions, lift: suspensionLift, armWidth,
     assemblyHalfDepth: suspensionAssemblyHalfDepth, bossRadius, bossWidth,
   } = resolveSuspensionShape(cfg.suspensionDimensions, wheelR, wheelW, suspensionPattern);
-  const suspensionTrail = wheelR * suspensionPattern.trailRatio;
+  const suspensionTrail = suspensionDimensions?.anchorTrailM ?? wheelR * suspensionPattern.trailRatio;
   const armHeight = Math.max(0.045, wheelR * suspensionPattern.armHeightRatio);
   let visibleWheelHalfDepth = wheelW * 0.5;
   const buildRunningGearAssemblyStage6 = (): void => {
@@ -3536,10 +3665,15 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage6();
   };
   buildRunningGearRunningGearStage13();
+  // Source-owned paired wheels may have distinct inboard/outboard dishes.
+  // Include their real face solids in the envelope; nominal wheelW alone
+  // cannot certify suspension clearance. Legacy assemblies keep their path.
+  const sourceWheelBack=measuredWheelBackDepth(!!cfg.wheelCoreGeometry,visibleWheelHalfDepth,
+    {tire,disc,dark},cfg.wheelFaceLayers??[]);
   const suspensionWheelClearance = Math.max(0.012, wheelW * 0.055);
   const suspensionAbsX = (side: Side): number => sourceArmCenter(suspensionDimensions,side) ?? Math.max(
     0.04,
-    xcForSide(side) + roadWheelOutsetM - visibleWheelHalfDepth
+    xcForSide(side) + wheelOutsetForSide(side) - sourceWheelBack[side]
       - suspensionWheelClearance - suspensionAssemblyHalfDepth,
   );
   const roadWheelAt = (index: number, side: Side): WheelEntry => {
@@ -3552,14 +3686,18 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     return wheel;
   };
   const addSuspensionStation = (index: number): void => {
-    const z = wheelZs[index];
-    let anchorZ = z + suspensionTrail;
-    if (suspensionPattern.kind === 'paired') {
-      const pairStart = index - (index % 2);
-      const mate = Math.min(pairStart + 1, wheelZs.length - 1);
-      anchorZ = (wheelZs[pairStart] + wheelZs[mate]) * 0.5;
-    }
     for (const side of [-1, 1] as const) {
+      const zs=sideStations[side]??wheelZs;
+      let anchorZ=zs[index]+suspensionTrail;
+      if(suspensionPattern.kind==='paired') {
+        const first=index-index%2,mate=Math.min(first+1,zs.length-1);
+        // A measured paired suspension may have two distinct bearing axes,
+        // not a shared pair midpoint. Unmeasured original fleets retain the
+        // historical midpoint byte-for-byte.
+        anchorZ=suspensionDimensions?.anchorTrailM===undefined
+          ?(zs[first]+zs[mate])*.5
+          :zs[index]+(index%2?-1:1)*suspensionTrail;
+      }
       suspensionEntries.push({
         side,
         wheel: roadWheelAt(index, side),
@@ -3606,8 +3744,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     suspensionIM.userData.visibleWheelHalfDepth = visibleWheelHalfDepth;
     suspensionIM.userData.wheelClearanceM = suspensionWheelClearance;
     suspensionIM.userData.wheelInnerAbsX = {
-      left: xcLeft + roadWheelOutsetM - visibleWheelHalfDepth,
-      right: xcRight + roadWheelOutsetM - visibleWheelHalfDepth,
+      left: xcLeft + wheelOutsetForSide(-1) - sourceWheelBack[-1],
+      right: xcRight + wheelOutsetForSide(1) - sourceWheelBack[1],
     };
     suspensionIM.userData.assemblyOutboardAbsX = {
       left: suspensionAbsX(-1) + suspensionAssemblyHalfDepth,
@@ -3674,6 +3812,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     suspensionJointIM.setMatrixAt(index, _m);
   }
 
+  const sourceArmMirror=new THREE.Quaternion(0,0,1,0);
   function updateSuspensionLinks() {
     for (let i = 0; i < suspensionEntries.length; i++) {
       const link = suspensionEntries[i];
@@ -3684,6 +3823,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       const length = Math.max(Math.hypot(dy, dz), wheelR * 0.25);
       _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + axleZ) * 0.5);
       _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
+      if(suspensionDimensions?.armAxialShearM!==undefined&&link.side<0)_q.multiply(sourceArmMirror);
       _s.set(1, 1, length);
       _m.compose(_v, _q, _s);
       suspensionIM.setMatrixAt(i, _m);
@@ -3757,7 +3897,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // Radial tooth reach is untouched; the rings pull inboard only.
   const resolveEndWheelGeometry = () => {
     const sprocketEngagementR = (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M;
-    const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
+    const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sourceToothTip(sprocket,sprocket.r + bandOuterR),
       lp, cfg.endRingSpan ?? trackW, wheelPattern, cfg.sprocketTeeth !== false,
       sprocketEngagementR);
     const ig = idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
@@ -3867,7 +4007,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
               entries.push({
                 instanceId: batch.addInstance(geometryId),
                 side, r: spinR,
-                x: side * xcForSide(side), y: end.y, z: end.z,
+                x: side * (xcForSide(side) + endpointAxleOutset(end,side)), y: end.y, z: end.z,
                 scaleX: endpointAxialScale(end,side),
               });
             }
@@ -3910,7 +4050,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
             mesh.userData.wheelPatternLabel = wheelPattern.label;
             mesh.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
             mesh.name = name;
-            mesh.position.set(side * sideXc, end.y, end.z);
+            mesh.position.set(side * (sideXc + endpointAxleOutset(end,side)), end.y, end.z);
             mesh.scale.x=endpointAxialScale(end,side);
             mesh.castShadow = false;
             mesh.receiveShadow = true;
@@ -3948,7 +4088,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
 
   // The course above is the sole geometry/animation source. Its texture
   // repeat is exactly four measured shoes, including profile-specific pitch.
-  const tg = trackBandGeo(pts, trackW, trackTh, trackTextureRepeatM);
+  const carrierWidth=sourceTrackCarrierWidth(cfg);
+  const tg = trackBandGeo(pts, carrierWidth, trackTh, trackTextureRepeatM);
   const buildRunningGearAssemblyStage12 = (): void => {
     disposables.push(tg);
   };
@@ -4047,11 +4188,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const nP = pts.length;
   const rOut = trackTh / 2 + TRACK_SHOE_BAND_GAP_M;
   const integratedShoe = trackShoeGeometry(
-    trackW, lp, trackPattern, cfg.pinCapOuter ?? null,
-    shoeRadialScale, shoeWidthScale,
+    trackW, lp, trackPattern, pinCapOuter,
+    shoeRadialScale, shoeWidthScale, cfg.trackLinkCrossSection,
   );
   const simplifiedShoe = simplifiedTrackShoeGeometry(
     trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
+    cfg.trackLinkCrossSection, pinCapOuter,
   );
   const buildRunningGearAssemblyStage15 = (): void => {
     disposables.push(integratedShoe, simplifiedShoe);
@@ -4121,6 +4263,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     padIM.userData.trackShoeOutboardOffset = shoeOutboardOffset;
     padIM.userData.trackShoeBandGapM = TRACK_SHOE_BAND_GAP_M;
     padIM.userData.trackShoeCenterOffsetM = rOut;
+    if(cfg.rigidLinkChords)padIM.userData.trackRigidLinkChords = true;
     padIM.userData.trackShoeShadePalette = [...shadePalette];
   };
   const buildRunningGearRunningGearStage30 = (): void => {
@@ -4176,6 +4319,19 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
     return index;
   };
+  const chordA=new THREE.Vector2(),chordB=new THREE.Vector2();
+  const sampleLiveShoeCourse=(attribute:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,
+    distance:number,out:THREE.Vector2):void=>{
+    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegment(d),segment=segsT[index];
+    const base=index*24,t=(d-segment.c0)/segment.l;
+    const y0=(attribute.getY(base+2)+attribute.getY(base+6))/2;
+    const z0=(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
+    const y1=(attribute.getY(base)+attribute.getY(base+8))/2;
+    const z1=(attribute.getZ(base)+attribute.getZ(base+8))/2;
+    const length=Math.max(Math.hypot(z1-z0,y1-y0),1e-6);
+    out.set(z0+(z1-z0)*t-(y1-y0)/length*rOut,
+      y0+(y1-y0)*t+(z1-z0)/length*rOut);
+  };
   const writeTrackLinkMatrix = (
     side: -1 | 1,
     instanceIndex: number,
@@ -4203,6 +4359,17 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
     _v.set(side * (xcForSide(side) + shoeOutboardOffset),
       y + tangentZ * rOut, z - tangentY * rOut);
+    if(cfg.rigidLinkChords) {
+      // A real rigid shoe spans two pins. On a rounded loaded-run transition
+      // a tangent at its centre puts its corners below the ground; the chord
+      // of those live pin stations does not. Both samples come from this
+      // same deformed carrier, without a world-floor clamp or detached layer.
+      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
+      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA);
+      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB);
+      _v.y=(chordA.y+chordB.y)/2;_v.z=(chordA.x+chordB.x)/2;
+      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
+    }
       // The shoe stays on this exact deformed belt normal. A historical
       // hull-local floor clamp moved only the gray shoe layer upward on
       // slopes / turn roll, creating the visibly detached second course.
@@ -4676,8 +4843,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     addRoadWheelLayer,
     roadWheelLayout: {
       xc, wheelY, wheelR, wheelZs: [...wheelZs],
+      ...sideStationReceipt,
       ...(wheelYs ? { wheelYs: [...wheelYs] } : {}),
       ...(cfg.roadWheelOutsetM !== undefined ? { roadWheelOutsetM } : {}),
+      ...sideOutsetReceipt,
     },
     updateSurface: updateGearSurface,
     /** Restore the authored flat-ground running-gear pose for showroom use. */

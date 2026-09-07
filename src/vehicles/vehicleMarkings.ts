@@ -105,6 +105,37 @@ const anchor = (
 });
 
 export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnchor>> = Object.freeze({
+  // Independent second-wave bodies: these are per-ID surface-search hints,
+  // not borrowed donor coordinates or permission to paint removable ERA.
+  // The focused high/low audit checks the actual complete paint footprints
+  // against permanent armor before damage, after depletion and after reset.
+  leo2a6_x: anchor('hull', 'left', .22, .80, .24, 1),
+  k1a1_x: anchor('turret', 'left', .35, .45, .24, 1),
+  amx30_x: anchor('turret', 'left', .40, .36, .24, 1),
+  t62mv1_x: anchor('turret', 'left', .45, .25, .24, -1),
+  t72b_1987_x: anchor('turret', 'right', .34, .34, .24, -1),
+  t80u_x: anchor('turret', 'left', .33, .32, .24, -1),
+  leclerc_x: anchor('turret', 'right', .26, .44, .24, 1),
+  leclerc_classic_x: anchor('turret', 'left', .30, .44, .24, 1),
+  chieftain_mk10_x: anchor('turret', 'right', .30, .39, .24, 1),
+  t72b3_x: anchor('turret', 'left', .31, .33, .24, -1),
+  jpz_e100_x: anchor('hull', 'right', .38, .69, .28, 1),
+  type10_x: anchor('turret', 'right', .30, .44, .24, 1),
+  type90_x: anchor('hull', 'left', .24, .82, .24, 1),
+  amx40_x: anchor('turret', 'right', .34, .40, .24, -1),
+  ariete_c1_x: anchor('turret', 'left', .31, .43, .24, 1),
+  strv122_x: anchor('hull', 'right', .26, .82, .24, 1),
+  // The genuine middle missing-skirt interval exposes the fixed tub above
+  // the road wheels. Its right-insignia / left-designation pair is deliberate
+  // and sourceXSecondWaveMarkings pins both centers; two same-side full-size
+  // quads do not fit. The wraparound turret cases are not paintable armor.
+  t72b3m_x: anchor('hull', 'right', .148, .47, .24, 1),
+  challenger1_x: anchor('turret', 'left', .29, .40, .24, 1),
+  t72bu_x: anchor('turret', 'right', .31, .32, .24, -1),
+  chieftain5_x: anchor('turret', 'left', .33, .40, .24, -1),
+  t90_x: anchor('turret', 'right', .40, .26, .24, 1),
+  t90a_burlak_x: anchor('turret', 'left', .19, .56, .24, 1),
+  t90ms_x: anchor('turret', 'right', .23, .47, .24, 1),
   // X rebuilds choose their own actual skirt stations; these normalized
   // hints are ray-seated on the new geometry, never inherited turret decals.
   t90a_x: anchor('hull', 'right', .3985, .5722, .24, -1),

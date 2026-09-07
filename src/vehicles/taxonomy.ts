@@ -44,11 +44,15 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   [VEHICLE_ERAS.WORLD_WAR_II]: Object.freeze([
     'm4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'is3', 'is3_bergman', 't34_85_cad',
     'newc_tiger', 'newc_pziii', 'pziii_konserwa', 'q_heavy', 'kv2', 'tiger2',
-    'sherman_jumbo', 'jagdtiger', 'jpz_e100', 'sturmtiger', 't95', 't30',
+    'sherman_jumbo', 'jagdtiger', 'jpz_e100', 'jpz_e100_x', 'sturmtiger', 't95', 't30',
     'is6b', 'is1', 't44', 'comet', 'challenger_cruiser', 'isu152', 'isu122s',
     'm26_pershing', 'm45_patton',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
+    'amx30_x', 'amx40_x', 't62mv1_x',
+    'challenger1_x',
+    't72bu_x',
+    'chieftain5_x',
     't62mv1', 't64bv1', 't72b_1987', 't72bu', 't80', 't80b', 't80bv',
     't80u', 'strv81', 'udes03', 'strv103a', 'strv103', 'is7', 'object279',
     'chieftain5', 'chieftain_mk10', 'challenger1', 'fv4034', 'stb1', 'type74', 'type90',
@@ -60,6 +64,10 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'type59', 'ztz85_iii', 'bwp1', 'marder1a3', 'm551_sheridan',
   ]),
   [VEHICLE_ERAS.MODERN]: Object.freeze([
+    'leo2a6_x', 'ariete_c1_x', 'strv122_x', 't72b3m_x',
+    't90_x', 't90a_burlak_x', 't90ms_x',
+    'k1a1_x',
+    'leclerc_x', 'leclerc_classic_x', 't72b_1987_x', 't80u_x', 'chieftain_mk10_x', 't72b3_x', 'type10_x', 'type90_x',
     'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x', 'leo2a5_x', 'merkava4_x', 'merkava3d_x',
     'k2_x', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x',
     'm1a2_legacy', 'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',

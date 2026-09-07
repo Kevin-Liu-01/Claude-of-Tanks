@@ -1,0 +1,106 @@
+{
+  "id": "chieftain_mk10_x",
+  "checkpoint": "source-service-frame",
+  "authoredAt": "2026-09-07T00:40:45Z",
+  "status": "Frozen: fresh fidelity and geometry PASS; official standard still rejects the unchanged source-real continuity channel, not release-qualified",
+  "canonicalSourceSha256": "252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85",
+  "method": "Complete-source world-space triangle intersections and scalar plane/island bounds. Original closed parametric plates and folded rails; no source vertex, index, UV, texture or sampled contour arrays enter runtime.",
+  "cause": {
+    "previousHullScore": 90.99507741629532,
+    "worstAffectedWorldX": [-1.44391657, -1.34391657, -1.24391657, -1.14391657, -1.05391657],
+    "sourceRaisedRailCrownY": 1.791260004043579,
+    "previousNativeTopYApprox": 1.697,
+    "interpretation": "The front-hull projection omitted the elevated rear service frame. This is not a reason to raise the entire engine roof."
+  },
+  "sourceAssemblies": {
+    "transverseRails": {
+      "owner": "root_7014_chieftain_mk_10_body_c_0",
+      "connectedIslandIds": [6034, 6285, 6401],
+      "xSpans": [[-1.35005, -0.93839], [-0.87725, 0.87724], [0.93838, 1.35005]],
+      "ySpan": [1.72997, 1.79126],
+      "zSpan": [-2.313025, -2.245275],
+      "realGapsM": [0.06114, 0.06114],
+      "shape": "Three independent crowned closed rail segments, six upper facet planes and a separate sloping underside."
+    },
+    "longitudinalRails": {
+      "owner": "root_7012_chieftain_mk_10_body_c_0",
+      "connectedIslandIds": [5952, 6003],
+      "absoluteXSpan": [1.40924, 1.47696],
+      "ySpan": [1.6968, 1.78630],
+      "zSpan": [-2.312745, -0.732645],
+      "shape": "Crowned side rails fall forward; independent thin receiving flanges and actual aft support walls retain the open space beneath their spans."
+    },
+    "serviceCover": {
+      "owner": "root_7014_chieftain_mk_10_body_c_0",
+      "connectedIslandId": 3058,
+      "mainPlane": [0, 0.999931021930, -0.011745270630, 1.759342034453],
+      "mainPlateXSpan": [-0.84790, 0.84700],
+      "mainPlateZSpan": [-2.397685, -2.072465],
+      "permanentReceivingOwner": "root_7003_chieftain_mk_10_body_c_0",
+      "receivingPadY": 1.691300034523,
+      "centralShaftReliefPreserved": true
+    },
+    "receivingSupports": {
+      "owner": "root_7014_chieftain_mk_10_body_c_0",
+      "crossFlangeIslandIds": [4916, 6492],
+      "aftWallIslandIds": [1667, 2076],
+      "foldedBracketIslandIds": [5827, 5814],
+      "crossWebUndersidePlane": [-0.218026618886, -0.975777571763, 0.017958950482, -1.923730932006],
+      "outboardFoldPlane": [0.914744806959, -0.404011580676, 0.004071955337, 0.532962870273],
+      "sourceFootCrownPlane": [0.206371351976, 0.978344911943, -0.015877605605, 1.905227876498]
+    }
+  },
+  "independentWitnesses": {
+    "railTopXYZ": [[1.2, 1.791223953417, -2.28], [1.2, 1.762718099745, -2.31], [1.2, 1.765252102617, -2.25], [1.32, 1.789520785037, -2.284], [1.44, 1.775724703858, -1.8], [1.44, 1.764794509672, -1.2], [1.44, 1.756596864032, -0.75]],
+    "webUndersideXYZ": [1.2, 1.661321999351, -2.284],
+    "serviceCoverXYZ": [0.8, 1.733622020968, -2.2],
+    "fullSourceConfirmedLocalAir": [
+      {"origin": [0.908, 1.82, -2.28], "direction": [0, -1, 0], "lengthM": 0.10},
+      {"origin": [1.2, 1.715, -2.26], "direction": [0, -1, 0], "lengthM": 0.04},
+      {"origin": [1.44, 1.7, -1.8], "direction": [0, -1, 0], "lengthM": 0.08},
+      {"origin": [1.2, 1.655, -2.284], "direction": [0, 1, 0], "lengthM": 0.005}
+    ],
+    "mirroredAirCheckedAgainstCompleteSource": true
+  },
+  "constructionLimits": [
+    "The central transverse source rail has approximately 0.14 mm longitudinal asymmetry; the independently authored segments share the measured outer crown section.",
+    "Thin closed cover walls use original 6 mm stock and a concealed 1.5 mm receiving lap. Secondary perimeter chamfers, seals and small fasteners remain simplified.",
+    "Only the narrow folded outboard foot roots continue approximately 15 mm down into the permanent sloping shoulder. Their source crown is retained with a 1.5 mm lap; there is no such continuation beneath the open middle of the web.",
+    "Permanent engine pads and a localized sloping receiving shoulder use closed concealed bottoms into existing hull stock. The central shaft relief and the side-housing continuity channel at X1.86/Z-0.20 remain open.",
+    "Longitudinal rails use six measured plane envelopes and proper mirrored winding; tiny end-cap relief and secondary attachments are simplified."
+  ],
+  "verification": {
+    "focusedTest": "src/vehicles/profiles/chieftain10XServiceFrame.selftest.mjs",
+    "focusedHighLow": "PASS",
+    "eightExistingMk10Tests": "PASS",
+    "typecheck": "PASS",
+    "runtimeQuality": {"files": 2, "functions": 68, "complexityViolations": 0, "explicitAny": 0, "explicitUnknown": 0},
+    "strictCpuHighLow": "front/rear/full-sweep band and shoe intersections all zero",
+    "exactOldDrawVertexPreservation": {
+      "method": "Subtract only all actual new helper draw-index vertices with multiplicity; hash every remaining world vertex at 10 micrometres. No coordinate, material, gear or hull exemption.",
+      "high": {"count": 317904, "sha256": "f8ca53fd1bdb78ead30c90b2d50ffde9464888ebaeb0f8da690dacfe3adb1c31"},
+      "low": {"count": 291504, "sha256": "2f8909bdea9e969f2dc65834150533937167523b47073aee5c858de0e07120d3"}
+    },
+    "comparison": {
+      "captureAt": "2026-09-07T00:44:21.538Z",
+      "fidelityAllValidViewsPassed": true,
+      "rawFidelity": 97.1306900033582,
+      "rawMinimumWholeFidelityView": 97.31779195588027,
+      "rawFidelityComponents": {"overall": 98.04294610504265, "hull": 97.46188436896016, "turret": 96.58715616071005, "gun": 95.15938535594435, "tracks": 96.42037874372377},
+      "geometryPassed": true,
+      "rawGeometryMinimum": 93.15375956566169,
+      "rawTargetedFrontHullCurve": 96.3929684661197,
+      "rawGeometryComponents": {"hullCurves": 93.72086675208449, "wholeCurves": 93.15375956566169, "turretCurves": 94.29414045834466, "stations": 97.88243177248052, "dims": 94.90476190476193, "floaters": 100},
+      "officialStandardPassed": false,
+      "officialBandAndShoeIntersections": {"front": 0, "rear": 0, "fullSweep": 0},
+      "machineGunCount": 1,
+      "continuity": {"cells": 1, "x": 1.86, "z": -0.20, "disposition": "Actual source opening remains open; no voxel fill or threshold/label waiver."},
+      "wrapperExitCode": 1,
+      "standardExitCode": 2,
+      "exactFidelityArchive": ".qa-dev/reports/chieftain_mk10_x-source-service-frame-fidelity.json",
+      "exactGeometryArchive": ".qa-dev/reports/chieftain_mk10_x-source-service-frame-geometry.json",
+      "fullProofLog": ".qa-dev/reports/mk10-source-service-frame-proof.log",
+      "authorVisualReview": "Fresh complete neutral board directly inspected. Added raised rear frame reads as separate supported rails in articulated rear views; source gaps are retained. Broad bow guard, casting transitions, seals and smaller fixture relief remain simplified; this is not full-model visual acceptance."
+    }
+  }
+}

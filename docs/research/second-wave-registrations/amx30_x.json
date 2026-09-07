@@ -1,0 +1,53 @@
+{
+  "id": "amx30_x",
+  "sourceSha256": "487ad57122e2f8e3425df7b706e752dac7d3cd1983b44b876deefc755d97bf9c",
+  "scale": 1,
+  "axes": [
+    "-z",
+    "y",
+    "x"
+  ],
+  "translation": [
+    3.5,
+    0.0002857999934349209,
+    0.05781114066645746
+  ],
+  "includeRoots": [
+    "Object_4",
+    "Object_6",
+    "Object_8",
+    "Object_10",
+    "Object_12",
+    "Object_14",
+    "Object_16",
+    "Object_18",
+    "Object_20",
+    "Object_22",
+    "Object_24",
+    "Object_26",
+    "Object_28",
+    "Object_30",
+    "Object_32",
+    "Object_34",
+    "Object_36",
+    "Object_38",
+    "Object_40",
+    "Object_42",
+    "Object_44",
+    "Object_46",
+    "Object_48",
+    "Object_50",
+    "Object_52",
+    "Object_54",
+    "Object_56",
+    "Object_58",
+    "Object_60",
+    "Object_62",
+    "Object_64",
+    "Object_66",
+    "Object_68",
+    "Object_70"
+  ],
+  "selectionReason": "The source contains two complete vehicles separated7m laterally. Include every original first vehicle mesh Object4..70, omit entire second vehicle Object72..144 and its extra Skin_F72 cosmetic option. Do not omit any first vehicle equipment.",
+  "registrationReason": "Original metre-scale first vehicle, actual track ground and structural hull longitudinal midpoint; proper quarter-turn puts gun +Z."
+}

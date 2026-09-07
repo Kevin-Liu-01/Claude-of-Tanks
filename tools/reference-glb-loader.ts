@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { validatedPreservationOracle, verifyPreservationBytes } from './preservation-oracle.ts';
 import type { PreservationSource } from './preservation-oracle.ts';
+import {SOURCE_WORLD_FRAMES,verifySourceWorldBytes} from './source-world-registration.mjs';
 
 type SemanticOwner = 'turret' | 'gun' | 'unclassified';
 
@@ -444,12 +445,16 @@ export async function loadReferenceGlb(
   if (!cfg?.path) throw new Error(`${specId} has no source GLB path`);
 
   const preservation = validatedPreservationOracle(source, specId);
+  const sourceWorld=SOURCE_WORLD_FRAMES[specId as keyof typeof SOURCE_WORLD_FRAMES];
   const loader = new GLTFLoader();
-  const gltf = preservation ? await (async () => {
+  const gltf = preservation || sourceWorld ? await (async () => {
+    if(sourceWorld && !cfg.path.startsWith('/models/community-candidates/'))
+      throw new Error('Canonical oracle must remain a private local reference');
     const response = await fetch(cfg.path);
     if (!response.ok) throw new Error(`${specId}: preservation baseline unavailable`);
     const bytes = await response.arrayBuffer();
-    await verifyPreservationBytes(bytes, preservation);
+    if(preservation)await verifyPreservationBytes(bytes, preservation);
+    if(sourceWorld)await verifySourceWorldBytes(bytes,sourceWorld);
     return loader.parseAsync(bytes, '');
   })() : await loader.loadAsync(cfg.path);
   const rig = createReferenceRig(specId, Number(cfg.yawOffset || 0));
@@ -460,7 +465,7 @@ export async function loadReferenceGlb(
   // center the RAW footprint INSIDE the authored frame — before any yaw —
   // when its offset is pathological (> 0.35 of the model diagonal; every
   // near-centered print keeps its exact historical transform).
-  if (!preservation) centerPathologicalScene(gltf.scene);
+  if (!preservation && !sourceWorld) centerPathologicalScene(gltf.scene);
   rig.authoredFrame.add(gltf.scene);
   rig.root.updateMatrixWorld(true);
   routeArticulatedComponents(gltf.scene, rig, cfg);
@@ -470,7 +475,7 @@ export async function loadReferenceGlb(
   // width is stable and is not inflated by the cannon or roof antennas.
   // A historical first-party baseline already has its exact authored metres,
   // origin and ground plane. Rescaling it would hide candidate scale drift.
-  if (!preservation) normalizeReferenceWidth(rig.root, spec);
+  if (!preservation && !sourceWorld) normalizeReferenceWidth(rig.root, spec);
 
   // §5.317 (t95 WoT print): some textured rips carry near-black albedo
   // regions (gun / track bottoms / glacis) that fall under the gate's mask

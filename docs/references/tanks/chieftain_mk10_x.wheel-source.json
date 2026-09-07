@@ -1,0 +1,51 @@
+{
+  "status": "CPU authoring checkpoint; fresh comparison and composed release required",
+  "date": "2026-09-06",
+  "sourceSha256": "f8c1888e345742a5f9f65e877e51b55028d708e5cb42ab4392b5fbc21d1db2de",
+  "canonicalOracleSha256": "252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85",
+  "sourceUse": "Local scalar study only; original first-party turned solids, no source arrays, topology, UVs, textures or materials in runtime.",
+  "wheel": {
+    "sourceOwner": "wheel_l_06_29_chieftain_mk_10_body_c_0",
+    "axialBounds": [1.15636003, 1.54937994],
+    "axialCenter": 1.352869985,
+    "unchangedLaneCenter": 1.36021,
+    "unchangedAxleY": 0.474396,
+    "innerHalfRadius": 0.411105,
+    "outerHalfRadius": 0.409455,
+    "radialRay035": {"innerX": 1.174247, "outerX": 1.546644},
+    "radialRay015": {"innerX": 1.30304211, "outerX": 1.38073338},
+    "radialRay030": {"innerX": 1.27490263, "outerX": 1.44324732},
+    "gapAtRadius030": [1.352187, 1.367834],
+    "outerFlangeHeads": 10,
+    "headRingRadius": 0.18,
+    "headOuterXApproximately": 1.4253,
+    "limit": "Original finite turned profiles approximate faceted source sections. Very small radial crown and hub fillet differences remain; actual test tolerance is 2 mm. Left/right source asymmetry below 0.03 mm is not reproduced."
+  },
+  "suspension": {
+    "sourceOwner": "suspension_l_06_30_chieftain_mk_10_body_c_0",
+    "anchorInnerFaceX": 0.877870917,
+    "anchorOuterFaceNearAxisX": 1.103082310,
+    "anchorAxisY": 0.474276066,
+    "anchorAxisZ": -1.807767808,
+    "anchorRadialHalfDepth": 0.088215,
+    "axleInnerFaceX": 0.929311261,
+    "axleOuterFaceX": 1.164101005,
+    "axleAxisY": 0.474695995,
+    "axleAxisZ": -2.175102592,
+    "nominalAnchorLift": 0,
+    "nominalAlternatingAnchorTrail": 0.367175,
+    "constructionInference": "Source cap centers differ vertically by less than 0.5 mm; nominal horizontal axes preserve the established road-wheel Y/Z. A closed native web joins the measured cap faces. Source upper lever relief and hidden forging fillets are simplified, not claimed exact."
+  },
+  "verification": {
+    "focusedTest": "src/vehicles/profiles/chieftain10XWheels.selftest.mjs",
+    "sourceRaysAirMotionResetHighLow": "PASS",
+    "existingMk10SourceGroundArticulation": "PASS",
+    "unchangedTrackEndRollerHighHash": "3ab26b4855beab1b9b80e8445be24aa4dcc772dc5b4d44c3aff47eb3831ae87c",
+    "unchangedTrackEndRollerLowHash": "c3c67cecb2a2afda82645caff39bd6f5800f35bf367ff000e0aee0523cd312cf",
+    "originalEightGearHashes": "PASS",
+    "strictCpuBandAndShoeFrontRearSweep": "all zero",
+    "actualHighLowWheelQuality": "PASS",
+    "typecheckAndChangedComplexity": "PASS",
+    "remaining": "Fresh rendered qualification, missing engine panels, hull floor and main-gun/Stillbrew residuals remain required."
+  }
+}

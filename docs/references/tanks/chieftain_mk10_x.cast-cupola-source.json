@@ -1,0 +1,70 @@
+{
+  "status": "Historical cast/cupola checkpoint captured 2026-09-06T19:06:24.140Z; whole vehicle remains rejected",
+  "date": "2026-09-06",
+  "sourceSha256": "f8c1888e345742a5f9f65e877e51b55028d708e5cb42ab4392b5fbc21d1db2de",
+  "canonicalOracleSha256": "252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85",
+  "units": "meters in the previously fixed canonical source frame",
+  "sourceUse": "Local measurement and comparison only. Original first-party runtime primitives; no source vertices, indices, UVs, textures or materials are redistributed.",
+  "ring": {
+    "sourceOwner": "bone_mg_aa_h_01_58_chieftain_mk_10_turret_c_0",
+    "centerXZ": [-0.4880325, -0.2796505],
+    "outsideRadius": 0.517715,
+    "broadCrownY": 2.620518,
+    "undersideYAtRadius042": 2.565348,
+    "undersideYAtRadius046": 2.597543,
+    "undersideYAtRadius050": 2.610839,
+    "rejectedBlanketCrownY": 2.823
+  },
+  "hatch": {
+    "sourceOwner": "hatch_04_59_chieftain_mk_10_turret_c_0",
+    "centerXZ": [-0.4872885, -0.4119],
+    "radius": 0.26999,
+    "centerCrownY": 2.738320,
+    "crownYAtXMinus06872885": 2.709759,
+    "limit": "Rounded lid, hinge and handle are restrained first-party approximations; the local maximum is not assigned to the complete lid."
+  },
+  "machineGun": {
+    "sourceOwner": "bone_mg_aa_v_01_60_mg_l37a1_c_0",
+    "barrelAxisXY": [-0.35805, 2.7961],
+    "barrelOutsideRadiusAtZ070": 0.0121,
+    "frontZ": 0.87443,
+    "mountOwner": "mg_mount_v_4_chieftain_mk_10_turret_c_0",
+    "limit": "The separately supported inclined mount and receiver retain source-sized medium forms. Small control shapes and optical-belt hardware remain inferred simplified geometry."
+  },
+  "rearCasting": {
+    "sourceOwners": ["bone_turret_39009_chieftain_mk_10_turret_c_0", "bone_turret_39004_chieftain_mk_10_turret_c_0"],
+    "centerFloorYAtZMinus090": 1.799665,
+    "centerFloorYAtZMinus110": 1.817450,
+    "centerFloorYAtZMinus150": 1.853028,
+    "outerBearingStepY": 1.578237,
+    "outerBearingStepRadius": 1.37645,
+    "lowerBearingStepY": 1.512957,
+    "lowerBearingRadius": 1.14163,
+    "bearingCenterZ": 0.614026,
+    "mechanicalYawUnchanged": [0, 1.512956, 0.595241],
+    "rearSideHalfWidthAtZMinus130": 0.977573,
+    "roofYAtZMinus150": 2.359626,
+    "roofYAtZMinus130": 2.394261,
+    "hatchYAtX050ZMinus150": 2.388812,
+    "hatchYAtX050ZMinus130": 2.424079,
+    "hatchThickness": 0.031325,
+    "constructionNote": "Closed first-party rear shell joins the existing front and aft solids. Its separate inclined hatches overlap the permanent roof by about 2 mm. Circular-step transitions are finite joined facets, not source topology."
+  },
+  "validation": {
+    "freshFidelityRawScore": 94.10803603161733,
+    "freshTurretFidelityRawScore": 87.83226261650815,
+    "freshGunFidelityRawScore": 89.98882151445177,
+    "freshWholeMinimumView": 95.8484431609803,
+    "freshGeometryHullMinimum": 87.63597051763807,
+    "freshGeometryWholeMinimum": 90.1037852788412,
+    "freshGeometryTurretMinimum": 94.08698712026937,
+    "focusedTest": "src/vehicles/profiles/chieftain10XCastCupola.selftest.mjs",
+    "existingGeometryTest": "src/vehicles/profiles/chieftain10X.selftest.mjs",
+    "highLowSourceRaysAndYaw": "PASS",
+    "sourceAirAndHatchSupport": "PASS",
+    "typecheck": "PASS",
+    "complexity": "4 runtime files, 44 functions, zero violations",
+    "reactDoctorBeforeAndAfter": "84/100, no findings in changed scope",
+    "unresolved": "Raised engine-deck panels, forward casting/Stillbrew detail and remaining main-gun differences are not qualified by this checkpoint. Full anatomy and composed release remain required."
+  }
+}

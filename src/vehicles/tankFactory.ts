@@ -36,6 +36,7 @@ import './germany.ts';
 import './afvFamily.ts';
 import './sheridan.ts';
 import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
+import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -47,6 +48,7 @@ import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 applyFleetBalancePass(TANK_SPECS);
 synchronizeSourceXCombatMetadata();
+synchronizeSecondWaveXCombatMetadata();
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);

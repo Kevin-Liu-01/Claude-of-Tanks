@@ -1,0 +1,61 @@
+{
+  "id": "challenger1_x",
+  "status": "independent supplied-file draft; fixed-source proof rejected",
+  "sourceSha256": "27b81eab3162ec03a0b96311462586dab02332d6ed45121aa59b9ed1223b9ab7",
+  "canonicalSha256": "90a18f59e64509211fa15e4298fba40443766b8dbd9e6cfb1e7858ecad8f4e64",
+  "frameRecipe": "../../research/second-wave-registrations/challenger1_x.json",
+  "construction": "Original closed solids and regular polygon/turned sections from scalar measurements. No source topology, vertex/index arrays, textures or runtime source loader. All twelve original owners remain in the offline canonical reference, including four misplaced below-ground panels.",
+  "componentAvailability": "whole-only; material chunks are not complete articulation owners",
+  "sideCoursesRawSourceUnits": {
+    "installedFaceAbsX": [68.818901, 70],
+    "aftSheetLowerCornerYZ": [45.118111, -173.346451],
+    "aftLowerKneeYZ": [21.338583, -121.653542],
+    "forwardLowerKneeYZ": [21.377953, 58.503937],
+    "forwardSheetLowerCornerYZ": [41.220470, 95.590553],
+    "sevenNarrowAppliqueFields": {
+      "innerAbsX": 70.905510,
+      "recessFaceAbsX": 76.653542,
+      "raisedBorderAbsX": 77.086617,
+      "lowerY": 24.724409,
+      "upperY": 59.094486,
+      "typicalWidthZ": 16.26
+    },
+    "provenDefectCorrected": "The first draft's fields extended about223mm too low. Its installed sheet also falsely covered the idler by140mm in axial depth. Source field, edge and sheet rays now agree within0.5mm; actual exposed roadwheel witness agrees within3mm. Both installed end upsweeps leave real air."
+  },
+  "mechanicalDeparture": {
+    "sourceConflict": "At rawX45/Z86.8 the flared tub spansY42.0522–43.9366 inside source track materialY41.8833–45.5062.",
+    "approvedCorrection": "Only the concealed outboard return ends at rawZ84.8 instead of87.2047, a54.75mm shortening. Central tub, visible guard and all measured road/end/return axes remain unchanged."
+  },
+  "bore": {
+    "entranceSides": 16,
+    "deepThroatSides": 8,
+    "rawInnerCircumradius": 2.383416,
+    "rawMouthZ": 216.220474,
+    "rawFloorZ": 211.141739,
+    "depthM": 0.115626,
+    "correctionToPreliminaryNote": "100.4mm was the deep octagon's cardinal across-flat aperture, not its circular diameter. The actual polygon section is retained independently; donor120mm combat caliber remains separate."
+  },
+  "verification": {
+    "actualHighLow": "challenger1XSupplied.selftest.mjs passes source rig/muzzle, polygon entrance/floor, finite outward solids,14 source side/air witnesses,12 road+6 return+4 end axle transforms and empty-MG honesty.",
+    "strictCommittedSampler": "front/rear/full-sweep physical band0 and shoe0; no sampler changes",
+    "codeQuality": "7 supplied helper/test files,78 functions,zero complexity violations,zero any/unknown",
+    "reactDoctor": "Explicit current seven runtime files,zero issues; no suppressions",
+    "fixedSourceFidelity": {
+      "registration": "canonical-source-world; no scale normalization",
+      "rawAggregate": 88.9828510061926,
+      "rawWhole": 91.93351774009855,
+      "rawTracks": 76.0736840453541,
+      "rawMinimumView": 82.63924995477484,
+      "passed": false
+    },
+    "fixedSourceGeometry": "whole82.6, dimensions0, floaters100; rejected. Paired width0%,bodyLength1.514%,overallLength0.105%; source below-ground panels add633.4mm to pairedP95height and639.66mm to physical height.",
+    "officialStandard": "strict0,continuity0,MG0; rejected, no weapon exception"
+  },
+  "knownLimitations": [
+    "Owner decision on native handling of four loose centerline panels extending642.7mm below true track ground remains pending; all stay in oracle.",
+    "Source cupola is an empty mount; no receiver+barrel is invented or counted as pintleMG. Owner disposition remains pending.",
+    "The source-exposed idler face at raw[90,30,90] isX1.454084778; unchanged native faceX1.422219318 is31.87mm inboard. End-axis correctness is not face-form acceptance.",
+    "Neutral native shoe envelope extends3mm below source track-ground; not hidden by moving the comparison frame.",
+    "Fresh neutral board retains less small roof/equipment shaping than supplied source. No final visual or release qualification is claimed."
+  ]
+}

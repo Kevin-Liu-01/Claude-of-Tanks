@@ -1,5 +1,6 @@
 import type { BufferGeometry, Material, Object3D } from 'three';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { measureSpatialArmClearance } from './suspensionClearance.ts';
 import {
   WHEEL_PATTERN_DEFINITIONS,
   type WheelPatternId,
@@ -236,6 +237,7 @@ function auditSuspensionPattern(
 }
 
 function auditSuspensionClearance(
+  object: Object3D,
   name: string,
   objectData: RunningGearObjectData,
   issues: WheelQualityIssue[],
@@ -246,10 +248,16 @@ function auditSuspensionClearance(
   for (const side of ['left', 'right'] as const) {
     const innerSide = inner?.[side];
     const outboardSide = outboard?.[side];
-    if (typeof innerSide === 'number' && Number.isFinite(innerSide)
+    const valid = typeof innerSide === 'number' && Number.isFinite(innerSide)
       && typeof outboardSide === 'number' && Number.isFinite(outboardSide)
-      && typeof clearance === 'number' && Number.isFinite(clearance)
-      && outboardSide <= innerSide - clearance + 1e-6) continue;
+      && typeof clearance === 'number' && Number.isFinite(clearance) && clearance > 0;
+    if (valid && outboardSide! <= innerSide! - clearance! + 1e-6) continue;
+    // An overlapping AABB is inconclusive for a dished wheel and sheared
+    // forging. The narrow phase still enforces the very same minimum gap
+    // against every native arm, including its corners and face interiors.
+    const spatial = valid
+      ? measureSpatialArmClearance(object, side) : null;
+    if (spatial && spatial.minimumM >= clearance! - 1e-6) continue;
     issues.push({
       code: 'suspension-outboard-of-wheel-back',
       object: name,
@@ -257,6 +265,7 @@ function auditSuspensionClearance(
       inner: innerSide ?? null,
       outboard: outboardSide ?? null,
       clearance: clearance ?? null,
+      spatialMinimumM: spatial?.minimumM ?? null,
     });
   }
 }
@@ -279,7 +288,7 @@ function auditSuspensionLinks(
       || objectData.suspensionGeometryProfile !== 'tapered-forged-arm-v1') {
     issues.push({ code: 'prismatic-suspension-arm', object: name });
   }
-  auditSuspensionClearance(name, objectData, issues);
+  auditSuspensionClearance(renderObject, name, objectData, issues);
 }
 
 function auditSuspensionJoints(

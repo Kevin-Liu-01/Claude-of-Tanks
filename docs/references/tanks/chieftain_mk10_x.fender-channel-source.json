@@ -1,0 +1,96 @@
+{
+  "status": "Geometry frozen; fresh scoped fidelity passed but hull geometry and one continuity column still fail; not qualified",
+  "dateUtc": "2026-09-07T00:17:00Z",
+  "sourceSha256": "f8c1888e345742a5f9f65e877e51b55028d708e5cb42ab4392b5fbc21d1db2de",
+  "canonicalOracleSha256": "252e45ee57928c6256252fa7dcdba8c42bfc2c2c86a6d4548ea68291b45c6f85",
+  "provenance": "Authorized local-only comparison and scalar measurement. Complete source oracle unchanged. Original runtime solids use measured scalar planes/dimensions plus authored rounded construction; no source topology, sampled contours, meshes, textures, indices or UVs are reused.",
+  "historicalPreCorrection": {
+    "captureUtc": "2026-09-06T22:32:15.933Z",
+    "rawFidelity": 96.91310705401158,
+    "allRegisteredFidelityViews": "PASS",
+    "rawHullGeometry": 90.7271867702118,
+    "rawWholeGeometry": 93.15375956566169,
+    "rawTurretGeometry": 94.29414045834466,
+    "rawStations": 97.88243177248052,
+    "dimensions": 94.90476190476193,
+    "officialTrackIntersections": "All band/shoe/front/rear/full-sweep zero",
+    "continuity": "One reported column at X1.86/Z-0.20; source-real side-housing air is preserved, not filled or waived",
+    "machineGuns": 1,
+    "qualification": "FAIL: hull below unchanged raw 92 floor; not current qualification"
+  },
+  "sixCases": {
+    "owners": ["ex_armor_body_l_01_69", "ex_armor_body_l_02_70", "ex_armor_body_l_03_74", "ex_armor_body_r_01_76", "ex_armor_body_r_02_94", "ex_armor_body_r_03_71"],
+    "replacementScope": "Only the six former short rectangular boxes are replaced by the three independently measured case assemblies on each side.",
+    "rear": {
+      "z": [-3.23524, -0.83], "absX": [1.4802, 1.693],
+      "roofPlane": [0.002073261474, 0.999953081622, -0.009462353955, 1.704070655914],
+      "lowerPlanes": [[-0.853517291148, -0.521041417501, 0.004906624117, -2.095475681285], [-0.869011637833, -0.494729484252, 0.007842877206, -2.086704659749], [0.006811814886, -0.999932463767, 0.009416320041, -1.371244514999]],
+      "outerChamferPlane": [0.775536945805, 0.631271070392, -0.006267485715, 2.349044062424],
+      "lidIntervalsZ": [[-3.23943, -2.0358], [-2.03021, -0.82687]],
+      "receivingShoulderPlane": [0.866182610719, 0.499698345213, -0.005408204888, 2.084564625133],
+      "sourceContactAtX153ZMinus290": {"caseBottomY": 1.4881063, "shoulderY": 1.4885331},
+      "limits": "Analytic plane intersections form the folds. Lid thickness and concealed lower seat use 5 mm and 1 mm construction allowances respectively. Small forged latch curvature remains simplified."
+    },
+    "middle": {
+      "z": [0.648, 1.9586], "outerAbsX": 1.674,
+      "inboardPlanStations": [[0.648, 1.514], [1.081, 1.3796], [1.9586, 1.0146]],
+      "rightRoofPlane": [0.05520507825, 0.998314681312, 0.017894032882, 1.694527842051],
+      "leftRoofPlaneUsingAbsX": [0.054823412972, 0.998369974843, 0.015867788818, 1.689939258308],
+      "floorY": "1.300961 + 0.01289 * Z",
+      "support": "Two narrow receiving strips meet the real fender and the closed case floor; no whole-width platform fills the diagonal inner channel.",
+      "limits": "Secondary small roof facets, especially port X-1.6/Z0.75, differ by roughly 2 mm from the broad measured roof-plane construction."
+    },
+    "front": {
+      "z": [2.08582, 2.76753], "absX": [1.0158, 1.687254],
+      "roofPlanes": [[0.067558110719, 0.990586250735, 0.119057891512, 1.891061858758], [0.049053960642, 0.993646020512, 0.101298049667, 1.827580992101]],
+      "floorY": "1.299082 + 0.0131875 * Z",
+      "support": "Separate narrow receiving strips use concealed 2 mm laps against the independently faceted fender."
+    }
+  },
+  "permanentHullChannel": {
+    "owners": ["root_7005", "root_7008"],
+    "rejectedNative": {"x": 1.4, "z": 1, "roofY": 1.54744818468},
+    "completeSourceAtSameRay": {"firstY": 1.30952043015, "owner": "root_7008_chieftain_mk_10_body_c_0"},
+    "sourceAirDepthFormerlyFilledM": 0.23792775453,
+    "scopeZ": [0.65, 2.08582],
+    "actualJoiningPlane": [0.902855948724, 0.088993916151, 0.420631927869, 1.810808542528],
+    "heldOutStockRaysYZX": [[1.46, 1.2, 1.3026652958], [1.485, 1.23, 1.28622435], [1.49, 1.28, 1.2624369828]],
+    "heldOutChannelFloorsXZY": [[1.425, 0.9, 1.3082100204], [1.4, 1, 1.3095204301], [1.32, 1.2, 1.3121295421], [1.23, 1.4, 1.3147224765], [1.14, 1.6, 1.3173083186], [1.05, 1.8, 1.3199117613]],
+    "air": "All six channel rays, on both sides, have genuine complete-source air from Y1.60 down through Y1.35. Their native first fender-floor hits agree within 0.08 mm.",
+    "constructionLimits": "The broader rounded shoulder is an independently authored quadratic plan crown with a rounded vertical return, not a reproduction of every source cast triangle. The broad joining facet is exact; hidden carrier blends and small fillets remain approximate. Closed pieces meet at the receiving stations; no broad hull scaling or classification change is used."
+  },
+  "verification": {
+    "newTest": "src/vehicles/profiles/chieftain10XFenderCases.selftest.mjs",
+    "focusedHighLow": "PASS: six cases, fixed source planes, channel air and stock, receiving contact and permanent hull ownership",
+    "sevenExistingMk10Tests": "PASS, including original source datums, wheel/belt buffers, cast/cupola, basket, engine, gun carriage and closure fittings",
+    "strictCpuHighLow": "PASS: unchanged committed sampler; all front/rear/full-sweep band and shoe intersections zero",
+    "typecheck": "PASS",
+    "runtimeQuality": "Two new runtime helpers, 32 functions, zero complexity violations, zero any/unknown",
+    "unchanged": "Source frame/owners/oracle, all nominal axles, tire and wheel envelopes, complete track course, gun and turret pivots, comparison cameras and all thresholds",
+    "exactNonTargetPreservation": {
+      "result": "PASS high/low: historical pre-edit reconstruction authenticated against both immutable recorded position hashes, then only the exact old/new six-case assemblies and exact old/new main carrier primitive were subtracted using actual draw-index vertex multiplicities. Every remaining physical world vertex is unchanged at 10 micrometre canonical precision; no coordinate-region or material-bucket exemption.",
+      "script": ".qa-dev/mk10-case-target-invariant.mjs",
+      "highResidualSha256": "b234c63f72ad365f13d59c196b6efb2878dbabde1ed69c9333a6811a12b5bd64",
+      "lowResidualSha256": "34c63f50037cd228f7f7a941a7326ba4ea18b63547e17f61cd6b4072b40b2096",
+      "limits": "Marking paint and generated shadow proxies are outside this physical vertex fingerprint; existing wheel regression separately pins complete course buffers and transforms byte-for-byte."
+    },
+    "freshScopedProof": {
+      "captureUtc": "2026-09-07T00:17:06.031Z",
+      "rawFidelity": 97.01624197415876,
+      "rawFidelityScores": {"overall": 97.9807844496137, "hull": 97.09111856976293, "turret": 96.58715616071005, "gun": 95.15938535594435, "tracks": 96.42037874372377},
+      "rawMinimumWholeFidelityView": 97.21386233045918,
+      "allRegisteredFidelityViews": "PASS",
+      "rawGeometryMinimum": 90.99507741629532,
+      "rawGeometryComponents": {"hull": 90.99507741629532, "whole": 93.15375956566169, "turret": 94.29414045834466, "stations": 97.88243177248052, "dimensions": 94.90476190476193, "floaters": 100},
+      "officialStrict": "All front/rear/full-sweep band and shoe intersections zero",
+      "continuity": "One unchanged source-real column at X1.86/Z-0.20 remains reported; no fill, mask or waiver",
+      "machineGuns": 1,
+      "result": "FAIL: hull below raw 92 and the retained continuity report; the successful fidelity average does not qualify the model",
+      "archiveFidelity": ".qa-dev/reports/chieftain_mk10_x-source-fender-channel-fidelity.json",
+      "archiveGeometry": ".qa-dev/reports/chieftain_mk10_x-source-fender-channel-geometry.json",
+      "log": ".qa-dev/reports/mk10-source-fender-channel-proof.log",
+      "visualReview": "Author directly inspected the fresh neutral source/native board. Folded cases and the exposed bearing-side channel are seated; no new broad floater was seen in these additions. Broader bow-guard folds, rear fixture relief and casting details remain visibly simplified. This is not full-model visual acceptance."
+    },
+    "release": "Still rejected; parent-owned anatomy/assets/composed release cannot qualify this checkpoint"
+  }
+}

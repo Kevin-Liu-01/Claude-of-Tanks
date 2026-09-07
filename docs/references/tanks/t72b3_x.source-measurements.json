@@ -1,0 +1,107 @@
+{
+  "id": "t72b3_x",
+  "status": "Latest post-drum proof remains REJECTED: right-direct turret91.80337820376397. Shape geometry now passes: hull95.66171864295352,whole95.67929676838726,turret97.59171369059005,stations99.26021783824228. The dimension row compares native3.977872019253147 against an older source P95value4.107454637245056, although this run measures reference3.967672347408908; parent is investigating the shared-frame instrumentation separately. A subsequent source AA stock/receiver correction is CPU verified and awaits fresh raw proof. No overall qualification claim.",
+  "sourceInventory": "../../research/second-wave-soviet-inventory.md",
+  "source": {
+    "archive": "t-72b3.zip!source/t72b3.zip!t72b3.fbx",
+    "archiveSha256": "19b196bdc9825dc721dd20191e5e98146ab5c32202c50c213b079a6c523d2d8e",
+    "memberSha256": "9da4a363d5a2a86d763b66ebc23cfabda06fdd2d2e3d4527688389c82f2488ed",
+    "canonicalSha256": "53d22b5ca53a742446dd957840233863735deda09b967ea1f1a79c9b2b03d797",
+    "provenance": "Unknown original creator/license. Game/mod-style option and attachment naming is a warning, not proof of commercial extraction. Owner-authorized local-only measurement; no source topology, rig, image or archive may ship."
+  },
+  "frame": {
+    "uniformUnitScale": 0.01,
+    "rawOrigin": [-17.215001583099365, -0.000028097299713244273, 0],
+    "mapping": "canonical X=-raw Z*0.01; Y=(raw Y-raw ground)*0.01; Z=(raw X-raw origin X)*0.01",
+    "turretPivot": [0.0000002374, 1.457100315, 0.065591405],
+    "gunTrunnion": [0.006050285, 1.758750301, 1.096549988],
+    "muzzleZ": 5.798749804,
+    "jointEvidence": "Yaw fitted to actual decagonal hull aperture: radius1.102038937m, residual3.5266micrometres. Pitch XY comes from actual metal rings; its longitudinal station is inferred at the widest mantlet shoulder, not claimed as a source node pivot."
+  },
+  "dimensions": {
+    "structuralHullLengthM": 6.356300116,
+    "mainTubOnlyLengthM": 6.343199968,
+    "fullExternalLengthM": 9.670799732,
+    "externalWidthM": 3.765600068,
+    "physicalFenderWidthM": 3.6018,
+    "structuralCastRoofM": 2.274000205,
+    "highestFittingM": 5.456999902,
+    "distinction": "Structural length includes the separate inclined rear transom, not the projecting small recovery block or drums. Height metadata is the cast roof, not the genuinely tall antenna. Pixel-P95 instrument fields remain independently measured by the parent."
+  },
+  "sourceOwnership": {
+    "originalMeshes": 156,
+    "retainedMeshes": 152,
+    "tree": "hull -> turret -> mount -> weapon -> barrel; source weapon3 and internal geometry remain in complete ownership masks",
+    "selection": "Retain gear1-optiona and distinct option e; exclude only b,c,d,f. a,b,f contain identical152 world triangles and c76+d76 equal a. The converter separately proves every omitted world triangle exists in retained geometry. No internal part or reference surface is removed merely to improve a score.",
+    "pivotLimitation": "Hierarchy is real ownership but most source local positions are zero, so it is not evidence of calibrated articulation pivots."
+  },
+  "bore": {
+    "metalMuzzleZM": 5.798749804,
+    "rejectedSourceMarkerZM": 5.814350009,
+    "measuredSourceConeApexZM": 4.505949855,
+    "sourceApertureRadiusXM": 0.06825,
+    "sourceApertureRadiusYM": 0.06820,
+    "physicalBoreDiameterM": 0.125,
+    "physicalExteriorRadiusM": 0.08535,
+    "correction": "Parent-approved cylindrical physical125mm bore retains actual exterior and deep source closure. The source oversized conical cavity is documented, not reproduced as a ballistic bore. Generic solid core stops behind that floor; marker is restored after the generic helper to the true exterior muzzle.",
+    "completeScene": "Five actual high/low opaque rays reach the existing shared1.2mm-proud black floor lining; separate metal-only rays pin the true floor within20micrometres. The complete-scene test does not hide or exclude that lining."
+  },
+  "roadAxles": {
+    "restYM": 0.395,
+    "radiusM": 0.3568,
+    "zM": [-1.70205, -0.91970, -0.12865, 0.67990, 1.47690, 2.28460],
+    "trackLaneLeftXM": 1.4518,
+    "trackLaneRightXM": 1.4464,
+    "trackWidthM": 0.5564,
+    "ownership": "One native suspension-driven loop; all moving tires, faces, idler, sprocket and three measured return rollers belong to it. No source track mesh is loaded or duplicated."
+  },
+  "era": {
+    "zones": ["glacis_era_L", "glacis_era_R", "skirt_era_L", "skirt_era_R", "turret_era_L", "turret_era_R"],
+    "physicalRecipe": "Eight glacis panels, three forward side panels per side, nine upper and nine separate oppositely inclined lower cheek cassettes, nine small roof cassettes. The outer courses are not one filled wedge. Actual measured exposed planes orient original analytic solids.",
+    "backing": "Closed main glacis and casting survive depletion. Narrow fixed cheek carriers are inferred hidden attachment members, not claimed copied source subassemblies. Side-frame inner source plane n[.996058877,.087203698,.016193452],D1.680439651 is retained: atY1.08/Z1.26, sourceX-1.802125793/native-1.802150733. An initial overly thick/inboard backing was corrected to the actual plane. The uncapped source cover is independently closed as12mm skin over8mm carrier with0.3mm lap; no track-lane or sampler change. Attached lids and small removable hardware have no independent protective face.",
+    "combat": "Existing T72B3 donor protection values are retained only as gameplay convention, not measured historical protection. Fitted hit faces are actual authored triangles, not PCA quads crossing gaps. High/low tests cover strip/reset and unchanged permanent structure. Full trace/second-hit gameplay qualification remains part of release."
+  },
+  "firstRejectedProof": {
+    "wholeCompositeRounded": 94.8,
+    "turretMeanRounded": 89.3,
+    "turretRightRaw": 83.69,
+    "geometryRaw": {"hull": 91.91971909345894, "turret": 88.81128320550283, "whole": 92.19219857305629, "stations": 92.749519795138},
+    "sourceInstrumentDimensions": {"heightM": 4.107454637245056, "hullLengthM": 7.193154389603283},
+    "heightCaveat": "The initial dimension receipt incorrectly compared independently measured source P95 body extent to the physical cast roof. These independent instrument fields are separate from physical dimensions and do not authorize fitting the candidate. Turret and hull contour failures remain actual physical work orders."
+  },
+  "secondRejectedProof": {
+    "generatedAt": "2026-09-06T14:24:56.093Z",
+    "rawComposite": 95.52093551896228,
+    "rawWhole": 96.6205321270882,
+    "rawHull": 96.9063053885732,
+    "rawTurret": 91.64762205358579,
+    "rawTurretRight": 86.26900787129576,
+    "rawTurretLeft": 86.82079135894398,
+    "rawGun": 95.7036788803437,
+    "rawTracks": 95.79008813724631,
+    "remaining": "Case/roof forms are visibly improved, but direct side turret overlap remains about81percent. No aggregate or favorable component waives that failure. Further exact component contours and interior/fixture ownership inspection are queued after the remaining independent Soviet drafts."
+  },
+  "equipmentCorrection": {
+    "sourceParts": "Original turret connected stowage islands; mgbracket, mount3, mgbox, mount2, lens003 and sosna-u. Scalar metrology only.",
+    "caseAxes": {"cos": 0.835934, "sin": 0.54883, "topY": 2.0467, "bottomY": 1.6165, "outerShoulderY": 1.9417, "sourceTopAreaM2": 0.3992263177},
+    "cases": "Replaced broad unrotated bounding boxes with original plane-derived yawed tapered cases, inward-sloping lower outer walls, separate rear/front lids and a separate central case with inclined rear wall. Their large real outboard/aft air is preserved. Source asymmetry is retained as a 0.7 mm right-case shift; submillimetre source facet irregularity is simplified.",
+    "drums": "The earlier torus-orientation correction was real, but fresh source metrology also found the bodies50–59mm too far inboard,38mm high and22mm aft. New t72b3XRearDrums authors independent twelve-sided cylinders at X−.59719975/+.61315023,Y1.44280026,Z−3.534, widths.944600073/.944500086 and radius.311325. Actual source shell crown is1.75410; source1.7972 belongs to small plumbing, not the full body. Four source63.6mm-wide retaining strips and four separate19.45mm narrow raised shell rings replace round wire hoops. The low V-shaped inter-drum pipe preserves source central Y≈1.49 and actual broad drum gap. Source lateral faces/caps and fine filler facets are analytically simplified, not transferred topology. Native running gear is unchanged.",
+    "drumAttachment": "Source narrow folded-channel scalar sections and34.5mm bearing flanges replace the original generic beams. The open source root needs a tiny independently closed3.6mm-wide concealed tongue to meet the simplified native transom; this hidden weld is explicitly inferred, not source-measured. Four actual full-scene points lie inside both tongue and hull. Source drum crowns/bands,21 central-air witnesses and five low-pipe top rays pass unchanged high/low source tolerances. Pipe fill-neck facets remain a few-millimetre approximation.",
+    "antennaCorrection": "Source whips are three-segment bent/tapered low-poly rods with independent intermediate axis/radius stations, not uniform straight3.3mm needles. Their stepped hexagonal bases are retained. A separate short antenna has a tapered hexagonal stem and three distinct yawed rectangular housings, replacing a long narrow box.38 held-out source front/back depths constrain full-model high/low surfaces within20micrometres for whips and0.2mm for compact housings. No source points, indices, scale fit or camera changes are used.",
+    "mg": "Removed the false 570 mm high crossbar and filled fork. Original measured short beveled boss, inclined link, paired16.8mm fork cheeks, narrow crossmember, supporting arms and canted ammunition box preserve source air. A later independently measured weapon2 stock/receiver correction is recorded separately below; the authentic aft firing direction stays unchanged.",
+    "optics": "Rebuilt actual octagonal upright commander optic and its inclined saddle, plus separated tall rear-right Sosna head and low forward courses with genuine supporting legs. Their source height/footprint relationships replace an overall-envelope cuboid.",
+    "cast": "Independent smooth superellipse interpolation uses fuller measured transverse cast shoulders (left/right exponent0.72/0.60 and shoulder heights1.575/1.650), not one elliptical cross-section. Held-out actual source shoulder heights agree within20 mm. Fine source cast irregularities and exact hatch rim contour remain approximated; this is not a claim of copied or exact source topology.",
+    "test": "src/vehicles/profiles/t72b3XEquipment.selftest.mjs: full assembled high/low first surfaces, case taper air, source rear plane, short boss/open fork, stepped optics and drum air. Existing source bore/ERA/world-axis test and unchanged committed strict band/shoe CPU sampler also pass."
+  },
+  "aaBodyCorrection": {
+    "sourceOwner":"weapon2, with existing physical mount3/mgbracket/mgbox retained",
+    "mainStock":"The old24mm-radius1.035m cylinder conflated the thinner source stock and its expanded muzzle. Source main-stock cross-sectional half extents are15.2mm X/13.95mm Y; native circular radius is their geometric mean14.5616mm. Source expanded end half extents28.5/26.1mm give circular radius27.2736mm. This physical circular correction does not reproduce the source six-facet anisotropy or tiny axial tilt; tested stock top residual is at most1.9mm away from the oblique extreme end lip.",
+    "receiver":"Main source receiver X−.65259957…−.57849956, Y2.5207…2.6310,Z−1.33435…−.83255; separate side plates and clipped raised cover reach2.65210. New closed original scalar sections replace the prior uniform top2.6434.",
+    "gasTube":"Separate source diamond-section lower tube X−.63060…−.60050,Y2.5266…2.5544,Z−1.82755…−1.31815. Two measured thin side links attach it to the main stock; the long intervening axial air slot stays genuinely open. It was absent in the previous draft.",
+    "mouth":"Source frontmost physical metalZ−2.2026498318 replaces the earlier rounded draft datum−2.204. The source internal cone reachesZ−1.9668499231. Native physical12.7mm cylindrical bore retains that deep axial end;16 complete-scene rays verify it. The source's tiny oblique end-lip variation is simplified as a flat annulus, not claimed exact.",
+    "owner":"All changed visible solids remain in the existing exact sourceMachineGun fitting, under turret yaw. Main-gun recoil does not move the AA group; its local+Z axis counter-rotates to the actual source aft direction.",
+    "regression":"src/vehicles/profiles/t72b3XMachineGunBody.selftest.mjs: high/low11 source stock/receiver top rays within2mm,10 lower-tube rays within0.5mm,16 actual deep-bore rays,3 true axial-air samples, visible connecting-link faces and actual yaw/recoil ownership. Existing equipment/geometry source tests retain all tolerances; the old AA-end expected value is replaced by the more precise independently measured physical source end, not a threshold relaxation."
+  },
+  "visualInspection": "Parent-captured source clay and latest post-drum neutral board were inspected directly. Corrected source cases, rear drums and principal relationships are visibly improved. The right-direct turret floor still fails and is not waived; the measured AA correction awaits fresh capture. Cast irregularity, exact hatch rim contour and tiny surface furniture remain analytic approximations, not claims of perfection.",
+  "runtimeSourceBoundary": "Every runtime primitive is independently authored from scalar metrology. No supplied vertex/index arrays, texture, source loader, animation or rig enters the builder or boot-light metadata."
+}

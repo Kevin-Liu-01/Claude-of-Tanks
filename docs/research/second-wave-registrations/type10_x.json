@@ -1,0 +1,8 @@
+{
+  "id": "type10_x",
+  "sourceSha256": "2cc5748e4357722fc1c21bf7759ec21c29f84b2cfaf1203b5bee995f4cfeca67",
+  "scale": 1.1366241623942464,
+  "axes": ["x", "y", "z"],
+  "translation": [-0.00034883486105, 1.24758034095187, 0.25532557439914],
+  "registrationReason": "Uniform official 9.42m overall-length anchor only. Preserve original roughly0.01004rad whole-source nose-up pose. Canonical width3.38929726 conflicts with official3.24m; document this source residual, never anisotropically warp it or redefine the physical native width."
+}

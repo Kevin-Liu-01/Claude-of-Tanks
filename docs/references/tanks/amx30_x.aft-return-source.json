@@ -1,0 +1,93 @@
+{
+  "id": "amx30_x",
+  "studyDate": "2026-09-07",
+  "status": "Geometry frozen; focused CPU checks and the fresh source-aft-return fidelity, geometry and official standard all pass. Mandatory final full-fleet integration remains parent-owned and pending.",
+  "provenance": {
+    "originalFile": "amx_30_b.glb",
+    "originalSha256": "487ad57122e2f8e3425df7b706e752dac7d3cd1983b44b876deefc755d97bf9c",
+    "canonicalSha256": "55f4ec8837caa90c4ad976fdfd974bd9761497b27d963e3af84f040b9126bae5",
+    "owner": "Object_66",
+    "referenceOnly": true,
+    "method": "Complete canonical source rays plus connected-island scalar plane measurements. Runtime is an original closed piecewise-planar height envelope; no source vertex, index, UV or texture data is used."
+  },
+  "sourceIslands": {
+    "right": {
+      "key": 13,
+      "triangles": 44,
+      "boundsMinM": [0.9231698513031006, 0.9610692262649536, -3.3674280643463135],
+      "boundsMaxM": [1.5488417148590088, 1.2601286172866821, -1.7914835214614868]
+    },
+    "left": {
+      "key": 2568,
+      "triangles": 32,
+      "boundsMinM": [-1.5577335357666016, 0.9348642826080322, -3.3317148685455322],
+      "boundsMaxM": [-0.9266114234924316, 1.2539979219436646, -1.7914828062057495]
+    }
+  },
+  "defect": {
+    "description": "The previous broad flat fender plus separate flat rubber flap missed the rolled inner edge and filled source air above the sloping return.",
+    "actualContinuityPointXZ": [0.9272321138211659, -3.226646555662154],
+    "sourceCrownY": 1.1208732466549582,
+    "sourceCrownNormal": [0.014214026376470807, 0.8791574114702865, -0.47631943830903495],
+    "previousNativeAtContinuityPoint": "air",
+    "falseFillWitnessXZ": [1.2, -3.27],
+    "sourceYAtFalseFillWitness": 1.079066,
+    "previousNativeYAtFalseFillWitness": 1.238062
+  },
+  "authoredCorrection": {
+    "scope": "Only the two aft returns and the rear endpoint of each existing long side fender. Main hull, running gear, turret, gun and all unrelated equipment remain unchanged.",
+    "receivingJoinZ": -2.857,
+    "newReturnForeZ": -2.849,
+    "longitudinalLapM": 0.008,
+    "joinCrownY": 1.25398,
+    "retainedForwardFenderPlane": "Y = 1.238 + (Z + 3.30) / 5.78 * 0.012; underside is 0.040 m below.",
+    "construction": "Independent top and underside plane fields with a real transverse fold and rolled terminal closure. Left and right terminal fields are different, not a mirrored flat slab.",
+    "ownership": "Permanent hull-owned mudguard equipment; no expendable ERA registration.",
+    "inferencesAndLimits": [
+      "An 8 mm concealed longitudinal receiving lap and the scalar-flat 1.25398 m join crown ensure positive attachment to the retained original forward fender; no global fender or hull roof lift.",
+      "The very narrow outer side-edge wander is represented by a constant lateral construction boundary. This remains a millimetre-scale edge simplification, not an exact copy of the source perimeter.",
+      "The source's different left and right rolled terminal closure and all independently tested under-return air remain physical."
+    ]
+  },
+  "verification": {
+    "focusedTest": "src/vehicles/profiles/amx30XAftReturn.selftest.mjs",
+    "existingMechanicalTest": "src/vehicles/profiles/amx30X.selftest.mjs",
+    "highAndLow": "PASS: ten independent crown rays, seventeen underside rays, source normals, actual continuity-point stock, upper/under-return and asymmetric terminal air, positive receiving lap, retained forward planes and yaw-independent attachment.",
+    "nonTargetPrimitiveSha256": {
+      "high": "92884447477fe05db22c8f592303976ed6e47e29ead4315fc62a6d67e90c3850",
+      "low": "5a0c52e7405efca965f4f377091b9a89da25a015a7ebb8cdb5bca180e97905cc"
+    },
+    "nonTargetMethod": "Pre-edit exact buffers and transform/ownership arguments for every original primitive except the specifically named two side-fender and two aft-flap primitives; retained forward side-fender planes are separately pinned.",
+    "typecheck": "PASS",
+    "quality": "21 functions, zero complexity violations, zero any, zero unknown",
+    "strictHighAndLow": "Front, rear and full-sweep band and shoe intersections all zero; 336 native shoes and original course unchanged.",
+    "cpuContinuity": "Zero native holes and zero complete-source holes on the same fixed frame.",
+    "scopedCheckpoint": "source-aft-return",
+    "scopedProof": "PASS; wrapper exited 0, 2026-09-07",
+    "fidelityGeneratedAt": "2026-09-07T01:20:55.029Z",
+    "rawFidelity": 96.19075139825917,
+    "rawMinimumWholeView": 96.39792834046574,
+    "rawFidelityComponents": {
+      "overall": 97.72399487457831,
+      "hull": 97.9827476074559,
+      "turret": 94.61907950836638,
+      "gun": 92.03735943883255,
+      "tracks": 94.04209069949503
+    },
+    "rawGeometryMinimum": 92.94028201219513,
+    "rawGeometryComponents": {
+      "hullCurves": 92.94028201219513,
+      "wholeCurves": 94.17889672256098,
+      "turretCurves": 96.21668526785714,
+      "stations": 97.43466479846977,
+      "dims": 100,
+      "floaters": 100
+    },
+    "officialStandard": "PASS: front/rear and complete band/shoe sweep all zero, continuity zero, MG census one.",
+    "fidelityArchive": ".qa-dev/reports/amx30_x-source-aft-return-fidelity.json",
+    "geometryArchive": ".qa-dev/reports/amx30_x-source-aft-return-geometry.json",
+    "proofLog": ".qa-dev/reports/amx30-source-aft-return-proof.log",
+    "neutralBoard": ".qa-dev/reports/amx30_x-source-aft-return-neutral.png",
+    "independentVisualReview": "PASS, bounded aft returns: downward-sloping and rolled ends are seated into the long fenders, with rear-gear clearance and no detached flap, broad added shelf or newly filled major opening. The 8 mm concealed lap and detailed underside planes are established by CPU witnesses, not board resolution."
+  }
+}

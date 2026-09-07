@@ -81,8 +81,10 @@ assert.match(portraitGenerator,
 assert.match(assetChecker, /__AUDIT_PORTRAITS[\s\S]*portrait framing outside fleet envelope/,
   'the tank asset release checker rejects missing or misframed thumbnails');
 assert.match(technicalGenerator,
-  /const portraitSideRatio = id === 'kf51_x' \? -0\.76 : -0\.56;[\s\S]*new THREE\.Vector3\(portraitSideRatio, 0\.34, 1\.0\)/,
-  'only the new tall-whip Panther portrait exposes more chassis side; all existing portrait directions are preserved');
+  /new THREE\.Vector3\(portraitSideRatio\(id\), 0\.34, 1\.0\)/,
+  'portrait-only azimuth policy preserves fixed elevation and forward direction');
+assert.match(technicalGenerator, /from '\/tools\/portrait-camera\.ts'/,
+  'portrait azimuth uses the separately regression-tested bounded policy');
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9,
   'release contract includes five views plus separate armor, module, crew, and markings diagrams');
@@ -135,6 +137,9 @@ assert.equal(expectedMuzzleBoreCount(getSpec('bmpt_terminator2')), 2,
 
 const displayNames = new Set();
 const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);
+// This independently authored fixed casemate has a separate moving cannon.
+// Unlike the old donor's hull-only assembly, it needs hull + gun, no turret.
+const FIXED_CASEMATE_GUN_SHADOW_IDS = new Set(['jpz_e100_x']);
 
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
@@ -219,7 +224,9 @@ function verifyAuthoredShadowCasters(id, tank) {
   });
   const expectedNames = HULL_ONLY_SHADOW_IDS.has(id)
     ? ['procShadow_hull']
-    : ['procShadow_gun', 'procShadow_hull', 'procShadow_turret'];
+    : FIXED_CASEMATE_GUN_SHADOW_IDS.has(id)
+      ? ['procShadow_gun', 'procShadow_hull']
+      : ['procShadow_gun', 'procShadow_hull', 'procShadow_turret'];
   assert.deepEqual(casters.map((object) => object.name).sort(), expectedNames,
     `${id}: complete bounded articulation-aware shadow caster set`);
   assert.deepEqual(submittedCasters.map((object) => object.name).sort(), expectedNames,
@@ -252,6 +259,31 @@ function verifyAuthoredShadowCasters(id, tank) {
     `${id}: authored sources remain materially richer than the bounded shadow set`);
   assert(proxyTriangles <= 320,
     `${id}: authored shadow budget (${proxyTriangles} triangles)`);
+  if (FIXED_CASEMATE_GUN_SHADOW_IDS.has(id)) {
+    const hull = tank.root.getObjectByName('hull');
+    const hullProxy = tank.root.getObjectByName('procShadow_hull');
+    const gunProxy = tank.root.getObjectByName('procShadow_gun');
+    const hullRig = tank.root.getObjectByName('rig_hull');
+    const yaw = tank.root.getObjectByName('rig_turret');
+    const gun = tank.root.getObjectByName('rig_gun');
+    assert.equal(tank.root.getObjectByName('turret'), undefined, 'fixed casemate never masquerades as rotating turret stock');
+    assert.ok(hull.parent === hullRig, 'physical casemate remains hull-owned');
+    assert.ok(hullProxy.parent === hullRig, 'fixed casemate shadow stays hull-owned');
+    assert.ok(gunProxy.parent === gun, 'separate cannon and mantlet shadow follows the pitched gun');
+    hull.geometry.computeBoundingBox(); hullProxy.geometry.computeBoundingBox();
+    assert.ok(hull.geometry.boundingBox.max.y > 3.15, 'actual source-height fighting compartment remains in hull stock');
+    assert.ok(hullProxy.geometry.boundingBox.max.y > 3.10
+      && hullProxy.geometry.boundingBox.max.y < hull.geometry.boundingBox.max.y,
+    'bounded inset hull proxy includes the tall casemate, not merely the lower tub');
+    tank.root.updateMatrixWorld(true);
+    const fixed = hullProxy.matrixWorld.toArray(), moving = gunProxy.matrixWorld.toArray();
+    const oldYaw = yaw.rotation.y, oldPitch = gun.rotation.x;
+    try {
+      yaw.rotation.y = .31; gun.rotation.x = -.12; tank.root.updateMatrixWorld(true);
+      assert.deepEqual(hullProxy.matrixWorld.toArray(), fixed, 'casemate shadow cannot rotate with internal cradle');
+      assert.notDeepEqual(gunProxy.matrixWorld.toArray(), moving, 'gun shadow must follow actual limited traverse and pitch');
+    } finally { yaw.rotation.y = oldYaw; gun.rotation.x = oldPitch; tank.root.updateMatrixWorld(true); }
+  }
   if (id === 'm1a2') {
     assert(proxyTriangles > 92,
       'authored silhouette carries more shape information than the retired box/cylinder proxy');

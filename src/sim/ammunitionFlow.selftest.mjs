@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
+import { SECOND_WAVE_X_IDS } from '../vehicles/sourceXSecondWaveSpecs.ts';
 import {
   firstAvailableAmmunitionSlot,
   hasAmmunition,
@@ -143,8 +144,15 @@ for (const spec of Object.values(TANK_SPECS)) {
   }
 }
 assert.equal(guidedRounds.length, 22, 'the complete guided-ammunition fleet is covered');
-// Complete authored fleet, including the restored MBT-70 mixed gun/launcher channels.
-assert.equal(authoredShellChannels, 535,
+// Preserve the existing 535 channels, including the restored MBT-70 mixed
+// gun/launcher channels, and exercise all 69 added channels in
+// the 23 independently selectable second-wave X models, not only their donors.
+assert.equal(SECOND_WAVE_X_IDS.length, 23);
+assert.equal(SECOND_WAVE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 69);
+assert.equal(Object.values(TANK_SPECS).filter(spec => !SECOND_WAVE_X_IDS.includes(spec.id))
+  .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
+  'the pre-existing ammunition-channel census remains intact');
+assert.equal(authoredShellChannels, 604,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

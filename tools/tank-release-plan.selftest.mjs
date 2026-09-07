@@ -15,9 +15,14 @@ assert.ok(byTool('procedural-fidelity').args.includes('--neutral-board'),
 assert.equal(byTool('procedural-fidelity').capture,true);
 assert.ok(byTool('tank-standard-check').args.includes('--gate'));
 assert.equal(byTool('tank-standard-check').capture,false,'standard children acquire their own phase locks');
-assert.equal(byTool('module-hit-probe').capture,false);
+assert.equal(byTool('gen-combat-anatomy').capture,true,'fleet construction uses the shared resource queue');
+assert.equal(byTool('module-hit-probe').capture,true,'fleet CPU probing uses the shared resource queue');
 assert.ok(steps.some(step=>step.command==='npm'&&step.args[0]==='test'));
 assert.ok(steps.some(step=>step.command==='npm'&&step.args[1]==='build:private'));
+assert.equal(steps.find(step=>step.command==='npm'&&step.args[0]==='test').capture,false,
+  'npm selftests own their phase leases; no outer lock');
+assert.equal(steps.find(step=>step.command==='npm'&&step.args[1]==='build:private').capture,true,
+  'standalone private build uses the shared resource queue');
 assert.equal(tankReleaseSteps('m1a2',false).some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,
   'non-source release does not require an unavailable reference');
 for(const ids of ['',',','t14_x,'])assert.throws(()=>tankReleaseSteps(ids,true),/nonempty/);

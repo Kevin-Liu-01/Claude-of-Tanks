@@ -60,6 +60,14 @@ export interface ArmorPlate {
   era?: EraProtection | null;
   moduleLink?: ModuleId | null;
   gunFollow?: boolean;
+  /** One convex, planar CCW outline; opt-in so legacy quad traces stay identical. */
+  convexPolygon?: boolean;
+  /** Adjacent facets of one physical sheet; merge only coincident contacts. */
+  surfaceGroup?: string;
+  /** Half-open cut edges owned by a covering sheet; indices refer to i→i+1. */
+  openEdges?: readonly number[];
+  /** Conservative local-frame envelope of the tolerance-expanded outline. */
+  traceBounds?: { min: Vec3Tuple; max: Vec3Tuple };
 }
 
 export interface ArmorCollisionFace {
@@ -546,6 +554,53 @@ function intersectQuad(frame: FrameIndex, verts: readonly Vec3Tuple[]): number {
   return t;
 }
 
+function endpointsOutsideAxis(from: number, to: number, min: number, max: number): boolean {
+  return (from < min && to < min) || (from > max && to > max);
+}
+
+function segmentOutsidePlateBounds(frame: FrameIndex, bounds: NonNullable<ArmorPlate['traceBounds']>): boolean {
+  const from = _fromL[frame], to = _toL[frame];
+  // Conservative rejection only; the exact plane/outline test still owns
+  // every hit. No per-face slab divisions or shared entry/exit scratch writes.
+  return endpointsOutsideAxis(from.y, to.y, bounds.min[1], bounds.max[1])
+    || endpointsOutsideAxis(from.z, to.z, bounds.min[2], bounds.max[2])
+    || endpointsOutsideAxis(from.x, to.x, bounds.min[0], bounds.max[0]);
+}
+
+/** Trace a single physical outline without charging its rendering fan seams. */
+function intersectConvexPlate(
+  frame: FrameIndex, verts: readonly Vec3Tuple[], openEdges?: readonly number[],
+  bounds?: ArmorPlate['traceBounds'],
+): number {
+  if (bounds && segmentOutsidePlateBounds(frame, bounds)) return -1;
+  if (verts.length < 3) return -1;
+  _v0.fromArray(verts[0]);
+  _v1.fromArray(verts[1]);
+  _v2.fromArray(verts[2]);
+  _e1.subVectors(_v1, _v0);
+  _e2.subVectors(_v2, _v0);
+  _n.crossVectors(_e1, _e2).normalize();
+  const dir = _dirL[frame];
+  const denom = dir.dot(_n);
+  if (!Number.isFinite(denom) || denom >= -1e-9) return -1;
+  const t = _tmp.subVectors(_v0, _fromL[frame]).dot(_n) / denom;
+  if (!Number.isFinite(t) || t < 0 || t > 1) return -1;
+  _pt.copy(_fromL[frame]).addScaledVector(dir, t);
+  for (let index = 0; index < verts.length; index++) {
+    _v1.fromArray(verts[index]);
+    _v2.fromArray(verts[(index + 1) % verts.length]);
+    _e1.subVectors(_v2, _v1);
+    _e2.subVectors(_pt, _v1);
+    _tmp.crossVectors(_e1, _e2);
+    // A distance tolerance in metres, not a fixed cross-product area:
+    // tiny clipped edges must not turn neighbouring air into armor.
+    const tolerance = 1e-7 * _e1.length();
+    const signedArea = _tmp.dot(_n);
+    if (openEdges?.includes(index) ? signedArea <= tolerance : signedArea < -tolerance) return -1;
+  }
+  return t;
+}
+
 /**
  * Half-plane test for the quad inside check (uses _pt and _n).
  * @param {Vector3} a edge start
@@ -922,6 +977,21 @@ function hasTrackShape(
   return false;
 }
 
+function hasCoincidentSurface(
+  hits: readonly ArmorIntersection[], plate: ArmorPlate, frame: FrameIndex, t: number,
+): boolean {
+  if (!plate.surfaceGroup) return false;
+  for (const hit of hits) {
+    if (hit.kind !== 'plate' || hit.plate.surfaceGroup !== plate.surfaceGroup
+        || hit.impactFrame !== FRAME_NAME[frame]) continue;
+    const deltaT = hit.t - t;
+    // Segment parameters are unitless: measure the one-micrometre contact
+    // tolerance in physical metres, including long-range shell segments.
+    if (deltaT * deltaT * _dirL[frame].lengthSq() <= 1e-12) return true;
+  }
+  return false;
+}
+
 function tracePlates(
   plates: readonly ArmorPlate[] | undefined,
   frame: FrameIndex,
@@ -936,8 +1006,11 @@ function tracePlates(
     if (plate.kind === 'era' && eraSpent.has(plate.name)) continue;
     if (plate.kind === 'external' && hasTrackShape(trackShapes, plate.moduleLink)) continue;
     const frameForPlate = plate.gunFollow ? FR_GUN : frame;
-    const t = intersectQuad(frameForPlate, plate.verts);
+    const t = plate.convexPolygon
+      ? intersectConvexPlate(frameForPlate, plate.verts, plate.openEdges, plate.traceBounds)
+      : intersectQuad(frameForPlate, plate.verts);
     if (t < 0) continue;
+    if (hasCoincidentSurface(out, plate, frameForPlate, t)) continue;
     const cosI = Math.min(1, Math.max(0, -_dirN[frameForPlate].dot(_n)));
     out.push(finishFrameHit({
       t,

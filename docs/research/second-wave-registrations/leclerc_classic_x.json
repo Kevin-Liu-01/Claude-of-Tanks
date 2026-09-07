@@ -1,0 +1,8 @@
+{
+  "id": "leclerc_classic_x",
+  "sourceSha256": "5af3259ad6273c967e3a81b7f785a177478f87e8690376e696f827f133549707",
+  "scale": 1.1540932860777133,
+  "axes": ["-z", "y", "x"],
+  "translation": [-0.0613031917366245, -0.13786858366183144, -0.3801902062961502],
+  "registrationReason": "Independent older-file source frame: measured paired forward guards full width3.60m, actual track ground and aft fuel-carry/front guard hull midpoint. All original geometry retained; no Char Leclerc coordinate mixing, candidate fitting or source animation."
+}

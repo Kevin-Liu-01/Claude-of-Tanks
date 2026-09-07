@@ -1,0 +1,8 @@
+{
+  "id": "t90_x",
+  "sourceSha256": "fd7d8552bcb9d4b416ca2e101f6061e1a3b50a9e96e768db85a8a2e1e7daa4a9",
+  "scale": 1,
+  "axes": ["x", "y", "z"],
+  "translation": [-0.0009499788284301758, 0, 0.3769500255584717],
+  "registrationReason": "Source already metric,+Y up,+Z forward. Original primary tub vehicle#t-90--t-90_7_0 connected island61705 has bounds X[-1.2393000126,1.2411999702],Z[-3.5585999489,2.8046998978]; use its midpoint and actual track ground0. Preserve every original owner and all geometry; no candidate fitting. Owner-supplied AW-labelled source remains local-only comparison."
+}
