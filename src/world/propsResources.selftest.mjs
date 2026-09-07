@@ -28,7 +28,7 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle',
     const { ${families.join(', ')} } = atlases;
     const noi = null, aniso = 4;
     ${source.slice(start, end)}
-    return { mats, grimeTex };
+    return { mats, grimeTex, retainedSurfaceMaterials };
   }`)};`)(THREE, resolveStructureWindowStyle, registerRetainedObject3DResources,
   makeTexture, (text, anchor, replacement) => {
     assert.ok(text.includes(anchor), `production shader anchor ${anchor} remains present`);
@@ -65,7 +65,7 @@ function makeFixture(mapId = 'verdant') {
   const steps = buildSurfaces(group, engineCtx, mapId, {}, atlases);
   let result;
   do { result = steps.next(); } while (!result.done);
-  const { mats, grimeTex } = result.value;
+  const { mats, grimeTex, retainedSurfaceMaterials } = result.value;
   const materials = Object.values(mats);
   const textures = [...Object.values(atlases).flatMap(Object.values), grimeTex];
   const disposals = new Map();
@@ -77,7 +77,7 @@ function makeFixture(mapId = 'verdant') {
   assert.equal(textures.length, 34, 'ownership adds no new atlas or grime textures');
   assert.equal(csm.shaders.size, 16, 'every bucket has a real CSM registration, including unused ones');
   assert.equal(group.children.length, 0, 'empty buckets cannot rely on attached mesh discovery');
-  return { group, parent, csm, mats, materials, textures, grimeTex, disposals };
+  return { group, parent, csm, mats, materials, textures, grimeTex, disposals, retainedSurfaceMaterials };
 }
 
 function compileSurfaces(fixture) {
@@ -130,6 +130,20 @@ const empty = makeFixture();
 assert.deepEqual(evict(empty), { objects: 1, geometries: 0, materials: 16, textures: 34 },
   'an entirely unused props surface library is still fully released');
 assert.equal(empty.csm.shaders.size, 0);
+
+// Streetlamp material is created only when that pool exists, after the initial
+// library registration. Append to the live collection: replacing the world's
+// declaration here would leak unused CSM surfaces and shader-only grime.
+assert.match(source, /retainedSurfaceMaterials\.push\(material\)/);
+const withLamp = makeFixture();
+const lamp = withLamp.mats.baked.clone();
+CSM.prototype.setupMaterial.call(withLamp.csm, lamp);
+withLamp.retainedSurfaceMaterials.push(lamp);
+let lampDisposals = 0;
+lamp.addEventListener('dispose', () => lampDisposals++);
+assert.deepEqual(evict(withLamp), { objects: 1, geometries: 0, materials: 17, textures: 34 });
+assert.equal(withLamp.csm.shaders.size, 0, 'late lamp keeps all earlier CSM owners and grime cleanup');
+assert.equal(lampDisposals, 1);
 
 const shared = makeFixture();
 const survivor = new THREE.Group();

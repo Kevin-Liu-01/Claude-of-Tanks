@@ -3,6 +3,7 @@
 // all textures canvas-generated, everything merged into few draw calls.
 
 import * as THREE from 'three';
+import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
@@ -2508,8 +2509,9 @@ function* propsBuildSteps(
   // uGrime is also invisible to a mesh/material-property traversal. Declare
   // both on their world owner so eviction releases every shadow registration
   // and texture, while GPU suspension retains the same reusable CPU objects.
+  const retainedSurfaceMaterials = Object.values(mats);
   registerRetainedObject3DResources(group, {
-    materials: Object.values(mats), textures: [grimeTex],
+    materials: retainedSurfaceMaterials, textures: [grimeTex],
   });
   yield { fine: true };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
@@ -5890,7 +5892,16 @@ ${snowCap ? `
     const meta = pool.meta;
     // Wall modules use the map-toned masonry materials; other objects keep
     // the wood, straw, vehicle, or baked family selected by their metadata.
-    const material = mats[meta.mat] || mats.baked;
+    let material = mats[meta.mat] || mats.baked;
+    if (kind === 'lamp') {
+      // One material for the whole instanced lamp family, not per fixture.
+      // Other baked props keep their existing non-emissive shader.
+      material = material.clone();
+      engineCtx.setupShadowMaterial(material, grimeHook);
+      material.customProgramCacheKey = () => 'world-streetlamp-v1' + (snowCap ? 's' : '');
+      configureWorldLampMaterial(material);
+      retainedSurfaceMaterials.push(material);
+    }
     const geoI = meta.build(drng);
     const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
     for (const record of pool.records) {
@@ -6558,6 +6569,7 @@ ${snowCap ? `
     }
   }
 
+  registerWorldNightLighting(group, mats.curtain, destructibles, mapId);
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
