@@ -3966,21 +3966,25 @@ function* vegetationBuildSteps(
     mat: THREE.Material,
     sp: Species,
     isFoliage: boolean,
+    capacity: number,
   ): TreeMesh {
+    if (!Number.isSafeInteger(capacity) || capacity < 0 || (capacity === 0 && trees.length > 0)) {
+      throw new RangeError('Tree instance pools require a valid capacity for their population');
+    }
     // per-instance occlusion fade — EVERY geometry drawn with the tree hooks
     // must carry the attribute (near meshes are updated live; far meshes stay
     // zero — a tree within camera range is always in the near partition)
     if (!geo.getAttribute('aFadeI')) {
-      const fadeAttr = new THREE.InstancedBufferAttribute(new Float32Array(trees.length), 1);
+      const fadeAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
       fadeAttr.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('aFadeI', fadeAttr);
     }
     if (!geo.getAttribute('aLodF')) { // aa-r1: LOD cross-fade dissolve share
-      const lodAttr = new THREE.InstancedBufferAttribute(new Float32Array(trees.length), 1);
+      const lodAttr = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
       lodAttr.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('aLodF', lodAttr);
     }
-    const m = new THREE.InstancedMesh(geo, mat, trees.length);
+    const m = new THREE.InstancedMesh(geo, mat, capacity);
     // PERF (performance_budget r5): near/far partitions are rewritten while
     // the camera drives (repartitionTrees) — StaticDrawUsage instance buffers
     // sync-stall ANGLE-Metal on re-upload (see carpet note). Dynamic usage on
@@ -4017,9 +4021,21 @@ function* vegetationBuildSteps(
   // shadow-triangle mass is props/buildings (-0.66 M measured with props
   // castShadow off) — see docs/PERFORMANCE.md.
   function createTreeMeshPools(): void {
+    // Species never changes during promotion, cross-fade, toppling or reset.
+    // Each LOD can therefore hold at most this species' final population,
+    // even while both near/far representations coexist. Count only after all
+    // construction-time exclusions and authored relocations have completed.
+    const speciesCounts = new Map<Species, number>();
+    for (const tree of trees) {
+      speciesCounts.set(tree.species, (speciesCounts.get(tree.species) ?? 0) + 1);
+    }
     for (const sp of speciesList) {
+      // An unused species still owns its existing meshes/materials. Retain
+      // one inert color slot for the same vertex-color shader setup; count=0.
+      // A completely empty population retains the original zero-byte pools.
+      const capacity = Math.min(trees.length, Math.max(1, speciesCounts.get(sp) ?? 0));
       nearMeshes[sp] = treeGeo[sp].map((g) => {
-        const trunk = makeTreeMesh(g.trunk, barkMat, sp, false);
+        const trunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
         // shadow-stability r2: The opaque canopy proxy is deliberately coarse
         // and stable on broad ground receivers, but projecting that same mask
         // onto a narrow bark cylinder makes its lit face jump between dark and
@@ -4030,7 +4046,7 @@ function* vegetationBuildSteps(
         trunk.receiveShadow = false;
         applyLodShadowFadeDepth(trunk);
         trunk.userData.treeTrunk = true;
-        const foliage = makeTreeMesh(g.cards, foliageMats[sp], sp, true);
+        const foliage = makeTreeMesh(g.cards, foliageMats[sp], sp, true, capacity);
         // Alpha-cut foliage and coarse opaque canopy stand-ins both produce
         // unstable results in moving cascades: cards sparkle while rounded
         // stand-ins project conspicuous black blotches across dirt roads.
@@ -4041,9 +4057,9 @@ function* vegetationBuildSteps(
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
       farMeshes[sp] = treeGeoFar[sp].map((g) => {
-        const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false);
+        const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false, capacity);
         farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
-        const farTrunk = makeTreeMesh(g.trunk, barkMat, sp, false);
+        const farTrunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
         farTrunk.receiveShadow = false;
         farTrunk.userData.treeTrunk = true;
         const pair = [farTrunk, farCanopy];
