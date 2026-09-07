@@ -523,14 +523,21 @@ const MODERN2_SPECS: TankSpecRegistry = {
     gun: {
       caliberMm: 152, reloadS: 9.8, baseAccuracy: 0.30, aimTimeS: 1.9,
       bloom: { move: 0.07, hullRot: 0.08, turret: 0.06, afterShot: 2.0 },
-      // Owner directive: missiles are the normal primary weapon, not a
-      // special-action ammunition swap.  Keeping exactly one shell also
-      // prevents the selector from surfacing a fictional conventional round.
+      // The XM150 is one physical gun/launcher. Slot 1 keeps the Shillelagh
+      // as the default, while 2/3 expose the real conventional cartridge
+      // paths; only the round carrying `guided: true` gets missile flight.
       primaryGuided: true,
       shells: [
         shell('XMGM-51C Shillelagh ATGM', 'HEAT', 152, 800, 800, 750, 208, {
           guided: true, guidanceTurnRateRadS: 0.72, reloadS: 9.8,
+          count: 13,
           soundProfile: 'shillelagh-launch',
+        }),
+        shell('XM578 APFSDS-T', 'APFSDS', 152, 690, 630, 640, 1478, {
+          pen2000Mm: 570, reloadS: 9.8, count: 20,
+        }),
+        shell('M409A1 HEAT-MP', 'HEAT', 152, 680, 680, 680, 689, {
+          reloadS: 9.8, count: 15,
         }),
       ],
     },

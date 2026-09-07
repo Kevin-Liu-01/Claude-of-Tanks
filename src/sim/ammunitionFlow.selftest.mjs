@@ -86,12 +86,12 @@ for (const spec of Object.values(TANK_SPECS)) {
       `${spec.id} slot ${slot + 1}: combat inventory uses the resolved capacity`);
     const reloadChannel = fresh.reloadChannels[slot];
     assert.ok(reloadChannel, `${spec.id} slot ${slot + 1}: reload channel exists`);
-    if (round.guided === true) {
+    if (round.guided === true && spec.gun.primaryGuided !== true) {
       assert.notEqual(reloadChannel, fresh.gunReload,
         `${spec.id} slot ${slot + 1}: external guided launcher has an isolated cycle`);
     } else {
       assert.equal(reloadChannel, fresh.gunReload,
-        `${spec.id} slot ${slot + 1}: conventional rounds share the gun cycle`);
+        `${spec.id} slot ${slot + 1}: rounds loaded through the main gun share its cycle`);
     }
   }
 
@@ -143,8 +143,8 @@ for (const spec of Object.values(TANK_SPECS)) {
   }
 }
 assert.equal(guidedRounds.length, 22, 'the complete guided-ammunition fleet is covered');
-// The preserved 494-channel fleet plus thirteen three-channel source X builds.
-assert.equal(authoredShellChannels, 533,
+// Complete authored fleet, including the restored MBT-70 mixed gun/launcher channels.
+assert.equal(authoredShellChannels, 535,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

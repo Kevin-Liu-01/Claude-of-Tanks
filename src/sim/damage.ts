@@ -82,6 +82,8 @@ export type DamageArmorModel = ArmorModel;
 
 export interface DamageGunSpec {
   reloadS: number;
+  /** Guided ammunition is chambered and fired through this main gun/launcher. */
+  primaryGuided?: boolean;
   shells?: DamageShellSpec[];
   autoloader?: {
     magazineSize: number;
@@ -451,9 +453,10 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
     : 0;
   const ammunition = createAmmunitionState(spec.gun.shells || []);
   const gunReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
-  const reloadChannels = (spec.gun.shells || []).map((round) => round.guided === true
-    ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
-    : gunReload);
+  const reloadChannels = (spec.gun.shells || []).map((round) =>
+    round.guided === true && spec.gun.primaryGuided !== true
+      ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
+      : gunReload);
   return {
     hp: spec.hp,
     maxHp: spec.hp,

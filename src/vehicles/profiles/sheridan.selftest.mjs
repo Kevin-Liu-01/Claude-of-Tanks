@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createShell, guideShellToward } from '../../sim/ballistics.ts';
+import { createShell, guideShellToward, stepShell } from '../../sim/ballistics.ts';
 import { createCombatState, selectShell } from '../../sim/damage.ts';
 import { specialActionGuidesShell } from '../../sim/specialActions.ts';
 import { createTank } from '../tankFactory.ts';
@@ -121,6 +121,8 @@ assert.deepEqual(ttsSpec.gun.shells.map((round) => ({
 ], 'TTS exposes guided, conventional, and high-explosive 152 mm ammunition');
 
 const ttsCombat = createCombatState(ttsSpec);
+assert.equal(ttsCombat.reloadChannels[0], ttsCombat.gunReload,
+  'TTS gun-launched missile and conventional rounds share the M81 breech cycle');
 ttsCombat.shellSlot = 0;
 ttsCombat.ammo[0] = 0;
 assert.equal(selectShell(ttsCombat, 1, ttsSpec), true,
@@ -129,6 +131,17 @@ assert.equal(ttsCombat.shellSlot, 1);
 assert.equal(selectShell(ttsCombat, 2, ttsSpec), true,
   'slot 3 exposes the TTS high-explosive channel');
 assert.equal(ttsCombat.shellSlot, 2);
+for (const slot of [1, 2]) {
+  const round = ttsSpec.gun.shells[slot];
+  const projectile = createShell(
+    round, ttsSpec.id, true,
+    new THREE.Vector3(0, 10, 0), new THREE.Vector3(0, 0, 1), 5510 + slot,
+  );
+  assert.equal(specialActionGuidesShell({ spec: ttsSpec, combat: ttsCombat }, projectile), false,
+    `${round.name} does not inherit ATGM steering from the tank`);
+  stepShell(projectile, 1 / 60);
+  assert.ok(projectile.vel.y < 0, `${round.name} follows normal ballistic gravity`);
+}
 assert.equal(garageStatGroup(ttsSpec), '10/next-generation');
 for (const sector of [
   'm551a1_tts_glacis_era', 'm551a1_tts_hull_era_R', 'm551a1_tts_hull_era_L',

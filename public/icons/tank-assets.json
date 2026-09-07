@@ -189528,6 +189528,20 @@
             "pen100Mm": 800,
             "pen1000Mm": 800,
             "pen2000Mm": null
+          },
+          {
+            "name": "XM578 APFSDS-T",
+            "type": "APFSDS",
+            "pen100Mm": 690,
+            "pen1000Mm": 630,
+            "pen2000Mm": 570
+          },
+          {
+            "name": "M409A1 HEAT-MP",
+            "type": "HEAT",
+            "pen100Mm": 680,
+            "pen1000Mm": 680,
+            "pen2000Mm": null
           }
         ]
       },
@@ -190720,7 +190734,7 @@
         ]
       },
       "geometryHash": "f226145b",
-      "metadataHash": "5a35b463",
+      "metadataHash": "7d8a9912",
       "presentationAnchor": {
         "xM": -0.0005,
         "zM": -0.123

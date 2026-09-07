@@ -111,11 +111,11 @@ assert.equal(m1a3.combat.reload.t, m1a3.spec.gun.shells[m1a3MissileSlot].reloadS
   'reselecting the guided launcher always starts its complete reload');
 
 const mbt70 = entityFor('mbt70');
-assert.equal(mbt70.spec.gun.shells.length, 1,
-  'MBT-70 exposes only its primary ATGM ammunition');
+assert.equal(mbt70.spec.gun.shells.length, 3,
+  'MBT-70 exposes ATGM, kinetic, and conventional chemical ammunition');
 assert.equal(mbt70.spec.gun.shells[0].guided, true);
 assert.equal(specialActionKind(mbt70.spec), SPECIAL_ACTION_KINDS.HYDROPNEUMATIC_AIM,
-  'a default-missile tank does not waste E reselecting its only ammunition');
+  'MBT-70 keeps E for suspension while numbered keys own ammunition selection');
 assert.equal(activateSpecialAction(mbt70).active, true,
   'MBT-70 keeps E for its real suspension mode while missiles remain ordinary primary fire');
 const mbt70Shell = createShell(
@@ -123,6 +123,12 @@ const mbt70Shell = createShell(
 );
 assert.equal(specialActionGuidesShell(mbt70, mbt70Shell), true,
   'MBT-70 primary fire guides immediately without the IFV selector action');
+selectShell(mbt70.combat, 1, mbt70.spec);
+const mbt70Kinetic = createShell(
+  mbt70.spec.gun.shells[1], 'mbt70', true, new Vector3(), new Vector3(0, 0, 1), 71,
+);
+assert.equal(specialActionGuidesShell(mbt70, mbt70Kinetic), false,
+  'switching the MBT-70 to XM578 produces a normal unguided shell');
 assert.equal(specialActionKind(entityFor('m551_sheridan').spec), SPECIAL_ACTION_KINDS.NONE,
   'missile-only tanks without a true vehicle mode do not show a redundant E button');
 
