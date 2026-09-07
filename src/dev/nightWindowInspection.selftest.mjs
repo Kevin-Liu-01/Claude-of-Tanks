@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { inspectNightWindow } from './nightWindowInspection.ts';
+import { inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
 import { markWorldWindowPane, markWorldBeacon, ensureWorldNightEmissionMask } from '../world/worldNightEmissionGeometry.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -36,4 +36,14 @@ obstruction.removeFromParent(); mesh.visible = false;
 assert.equal(inspectNightWindow(root, reference), null, 'hidden facade never supplies a capture');
 for (const geo of [cloth, beacon, pane, geometry, obstructionGeometry]) geo.dispose();
 material.dispose(); obstruction.material.dispose();
+const vehicle = new THREE.Group(), lens = markWorldBeacon(new THREE.BoxGeometry(.25, .25, .04));
+const redMaterial = new THREE.MeshStandardMaterial(); redMaterial.userData.nightEmissionMask = true;
+const emitter = new THREE.Mesh(lens, redMaterial); vehicle.add(emitter);
+const shtora = inspectNightShtora(vehicle, new THREE.Vector3(0, 1, 5));
+assert.equal(shtora.kind, 'shtora'); assert.equal(shtora.materialUuid, redMaterial.uuid);
+assert(shtora.direction[2] > .99, 'front aperture selected from the actual player rig');
+assert.equal(inspectNightWindow(vehicle, reference), null, 'Shtora glass does not become a world window');
+emitter.visible = false;
+assert.equal(inspectNightShtora(vehicle, reference), null, 'hidden Shtora cannot satisfy an exposed-source receipt');
+lens.dispose(); redMaterial.dispose();
 console.log('nightWindowInspection: exact outward masked pane, authored transforms, obstruction/hidden rejection and no scene edits PASS');

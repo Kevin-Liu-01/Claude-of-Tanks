@@ -122,6 +122,47 @@ const state = (timeOfDay, seed) => ({
 const good = { mapId: 'winter', day: state('day', 1), night: state('night', 3), restored: state('day', 1),
   legacy: [state('day', 13), state('night', 3)],
   expected: [weather('day', 1), weather('night', 3), weather('day', 1), weather('day', 13), weather('night', 3)] };
+const focusedChecks = load('checkFocusedFixtureCase', { checkNightLightingCycle });
+function focusedRow(kind) {
+  const row = { ...structuredClone(good), kind,
+    specId: kind === 'shtora' ? 't90a_vladimir' : 'm1a1',
+    fixture: { kind, ownerUuid: 'authored-mesh', materialUuid: 'lens', slot: 7,
+      point: [1, 2, 3], lineOfSight: 'authored-emissive-face' } };
+  for (const state of [row.day, row.night, row.restored]) {
+    state.preset = 'high'; state.playerSpecId = row.specId;
+    state.nightLighting.playerCoverage.shtora = 2;
+    for (const light of state.nightLighting.lights) light.position = [1, 2, 3];
+  }
+  return row;
+}
+for (const kind of ['shtora', 'streetlamp']) {
+  const row = focusedRow(kind);
+  assert(Object.values(focusedChecks(row)).every(Boolean));
+  for (const mutate of [
+    row => { row.fixture.materialUuid = 'unrelated-glowing-glass'; },
+    row => { row.night.playerSpecId = 'wrong-tank'; },
+    row => { row.night.mapId = 'wrong-map'; },
+    row => { row.night.camera[0][0]++; },
+    row => { row.night.nightLighting.materials[0].intensity = 0; },
+    row => { row.restored.nightLighting.materials[0].intensity = 3; },
+    row => { row.night.render.completedEpoch = -1; },
+  ]) {
+    const failed = structuredClone(row); mutate(failed);
+    assert(Object.values(focusedChecks(failed)).some(value => !value));
+  }
+}
+{
+  const row = focusedRow('shtora'); row.fixture.lineOfSight = null;
+  assert.equal(focusedChecks(row).authoredShtora, false, 'property-only Shtora coverage is not exposed-aperture evidence');
+  row.fixture.lineOfSight = 'authored-emissive-face'; row.night.nightLighting.playerCoverage.shtora = 0;
+  assert.equal(focusedChecks(row).authoredShtora, false);
+}
+{
+  const row = focusedRow('streetlamp'); row.fixture.slot = null;
+  assert.equal(focusedChecks(row).actualStreetPool, false, 'window fallback cannot substitute for an actual lamp slot');
+  row.fixture.slot = 7; row.night.nightLighting.lights[2].position = [100, 2, 3];
+  assert.equal(focusedChecks(row).actualStreetPool, false, 'a point light on another fixture is not a pool beneath this lamp');
+}
 assert(Object.values(checks(good, 'mobile')).every(Boolean));
 for (const mutate of [
   row => { row.legacy[0].weather.condition = 'rain'; },

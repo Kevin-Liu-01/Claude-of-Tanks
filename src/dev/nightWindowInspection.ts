@@ -12,8 +12,9 @@ interface WindowCandidate {
 }
 
 export interface NightWindowInspection {
-  kind: 'window';
+  kind: 'window' | 'shtora';
   ownerUuid: string;
+  materialUuid: string;
   faceIndex: number;
   point: number[];
   direction: number[];
@@ -29,19 +30,22 @@ function visibleInRoot(object: Object3D, root: Object3D): boolean {
   return false;
 }
 
-function windowCandidates(root: Object3D, reference: Vector3): WindowCandidate[] {
+function windowCandidates(root: Object3D, reference: Vector3, kind: 'window' | 'shtora'): WindowCandidate[] {
   const candidates: WindowCandidate[] = [];
   root.updateWorldMatrix(true, true);
   root.traverseVisible(object => {
     const mesh = object as Mesh;
-    if (!mesh.isMesh || Array.isArray(mesh.material) || mesh.material.userData.nightLightKind !== 'window') return;
+    if (!mesh.isMesh || Array.isArray(mesh.material)) return;
+    const authored = kind === 'window' ? mesh.material.userData.nightLightKind === 'window'
+      : mesh.material.userData.nightEmissionMask === true;
+    if (!authored) return;
     const { geometry } = mesh, mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
     const position = geometry.getAttribute('position'), normal = geometry.getAttribute('normal');
     if (!mask || !position || !normal) return;
     const count = geometry.index?.count ?? position.count;
     for (let offset = 0; offset < count; offset += 3) {
       const ids = [0, 1, 2].map(i => geometry.index?.getX(offset + i) ?? offset + i);
-      if (ids.some(i => mask.getX(i) !== 1)) continue;
+      if (ids.some(i => mask.getX(i) !== (kind === 'window' ? 1 : 2))) continue;
       const direction = new Vector3().fromBufferAttribute(normal, ids[0]).transformDirection(mesh.matrixWorld);
       if (Math.abs(direction.y) > .25) continue;
       const point = new Vector3();
@@ -65,15 +69,26 @@ function unobstructedPane(root: Object3D, candidate: WindowCandidate, camera: Ve
   return !ray.intersectObject(root, true).some(hit => visibleInRoot(hit.object, root));
 }
 
-export function inspectNightWindow(root: Object3D, reference: Vector3): NightWindowInspection | null {
-  for (const candidate of windowCandidates(root, reference)) {
+function inspectAperture(root: Object3D, reference: Vector3, kind: 'window' | 'shtora'): NightWindowInspection | null {
+  for (const candidate of windowCandidates(root, reference, kind)) {
     const side = new Vector3(-candidate.direction.z, 0, candidate.direction.x);
     const camera = candidate.point.clone().addScaledVector(candidate.direction, 4)
       .addScaledVector(side, .65).add(new Vector3(0, .25, 0));
     if (!unobstructedPane(root, candidate, camera)) continue;
-    return { kind: 'window', ownerUuid: candidate.mesh.uuid, faceIndex: candidate.faceIndex,
+    const material = candidate.mesh.material;
+    if (Array.isArray(material)) continue;
+    return { kind, ownerUuid: candidate.mesh.uuid, materialUuid: material.uuid, faceIndex: candidate.faceIndex,
       point: candidate.point.toArray(), direction: candidate.direction.toArray(), camera: camera.toArray(),
       lineOfSight: 'authored-emissive-face' };
   }
   return null;
+}
+
+export function inspectNightWindow(root: Object3D, reference: Vector3): NightWindowInspection | null {
+  return inspectAperture(root, reference, 'window');
+}
+
+/** Only called with the selected player's vehicle root, never world beacons. */
+export function inspectNightShtora(root: Object3D, reference: Vector3): NightWindowInspection | null {
+  return inspectAperture(root, reference, 'shtora');
 }

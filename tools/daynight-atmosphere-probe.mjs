@@ -16,11 +16,11 @@ const outputArgument = process.argv.find(x => x.startsWith('--out='))?.slice(6);
 assert(outputArgument, 'An explicit unique --out= directory is required');
 const out = resolve(outputArgument);
 mkdirSync(out); // Refuse existing evidence; never overwrite or mix probe runs.
-const report = { schemaVersion: 5, startedAt: new Date().toISOString(),
+const report = { schemaVersion: 6, startedAt: new Date().toISOString(),
   method: 'Native production day/night/day plus former rain/snow/fog seeds; desktop High and emulated tablet real mobile quality; actual bounded headlights, authored fixture/window emission, retained equipment damage and Garage cleanup. Staged screenshots suspend post adaptivity after entry, not quality-adaptation acceptance. No performance measurement or physical-device certification.',
   acquisitionSha256: createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex'),
   visualAcceptance: 'requires-human-screenshot-review',
-  cases: [], lightCloseups: [], screenshots: [], observerCleanup: [],
+  cases: [], focusedFixtures: [], lightCloseups: [], screenshots: [], observerCleanup: [],
   errors: [], consoleErrors: [], cleanupErrors: [], passed: false };
 const save = () => writeFileSync(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 const deadlines = { progressMs: 5_000, settleMs: 30_000 };
@@ -167,22 +167,24 @@ function installNightLightProbe() {
       if (active && active.getX(slot) < .5) continue;
       const matrix = d.camera.matrixWorld.clone(); mesh.getMatrixAt(slot, matrix);
       mesh.updateWorldMatrix(true, false);
-      return { kind: 'streetlamp', ownerUuid: mesh.uuid, slot,
+      return { kind: 'streetlamp', ownerUuid: mesh.uuid, materialUuid: mesh.material.uuid, slot,
         point: center.applyMatrix4(matrix).applyMatrix4(mesh.matrixWorld),
         direction: vertex.set(1, 0, 0).transformDirection(mesh.matrixWorld) };
     }
     return null;
   }
-  function windowSeat(d) {
-    const seat = d.inspectNightWindow?.();
-    if (!seat || seat.lineOfSight !== 'authored-emissive-face') throw new Error('No authored unobstructed occupied window for closeup');
+  function inspectedSeat(d, kind) {
+    const seat = kind === 'shtora' ? d.inspectNightShtora?.() : d.inspectNightWindow?.();
+    if (!seat || seat.lineOfSight !== 'authored-emissive-face') throw new Error(`No authored unobstructed ${kind} aperture for closeup`);
     return { ...seat, point: d.camera.position.clone().fromArray(seat.point),
       direction: d.camera.position.clone().fromArray(seat.direction) };
   }
   probe.stageNightLightCloseup = kind => {
     const d = window.__DEBUG;
     if (!savedCamera) savedCamera = { position: d.camera.position.clone(), quaternion: d.camera.quaternion.clone(), fov: d.camera.fov };
-    const seat = kind === 'headlight' ? headlightSeat(d) : lampSeat(d) ?? windowSeat(d);
+    const seat = kind === 'headlight' ? headlightSeat(d)
+      : kind === 'shtora' ? inspectedSeat(d, kind) : lampSeat(d) ?? inspectedSeat(d, 'window');
+    if (kind === 'streetlamp' && seat.kind !== kind) throw new Error('An actual intact streetlamp is required, not a window fallback');
     const side = seat.direction.clone().set(-seat.direction.z, 0, seat.direction.x).normalize();
     d.camera.position.copy(seat.point).addScaledVector(seat.direction, kind === 'headlight' ? 11 : 9)
       .addScaledVector(side, kind === 'headlight' ? 6 : 3);
@@ -190,9 +192,13 @@ function installNightLightProbe() {
     if (seat.camera) d.camera.position.fromArray(seat.camera);
     const target = seat.point.clone();
     if (kind === 'headlight') target.addScaledVector(seat.direction, 3);
-    d.camera.lookAt(target); d.camera.fov = seat.kind === 'window' ? 40 : 48; d.camera.updateProjectionMatrix();
+    if (kind === 'streetlamp') {
+      d.camera.position.copy(seat.point).addScaledVector(seat.direction, 4).addScaledVector(side, 6);
+      d.camera.position.y += 2; target.y -= 1.2;
+    }
+    d.camera.lookAt(target); d.camera.fov = seat.camera ? 40 : 48; d.camera.updateProjectionMatrix();
     probe.beginStateEpoch();
-    return { kind: seat.kind, ownerUuid: seat.ownerUuid, slot: seat.slot ?? null,
+    return { kind: seat.kind, ownerUuid: seat.ownerUuid, materialUuid: seat.materialUuid ?? null, slot: seat.slot ?? null,
       faceIndex: seat.faceIndex ?? null, lineOfSight: seat.lineOfSight ?? null,
       point: seat.point.toArray(), direction: seat.direction.toArray() };
   };
@@ -345,6 +351,7 @@ function readVisualState() {
       hemi: d.lighting.hemi.intensity, hemiColor: d.lighting.hemi.color.toArray(),
       worldUuid: d.world?.group.uuid ?? null,
       camera: [d.camera.position.toArray(), d.camera.quaternion.toArray(), d.camera.fov],
+      playerSpecId: d.game.player?.spec?.id ?? null,
       playerPose: d.game.player?.visual?.root.matrixWorld.toArray() ?? null,
       nightLighting: window.__equipmentDamageProbe.readNightLighting(),
       raster: [d.renderer.domElement.width, d.renderer.domElement.height],
@@ -478,6 +485,58 @@ async function dayNightPictures(tier) {
     await nativeGraphics(`${label}-graphics`);
     row.checks = checkAtmosphereCase(row, tier.preset); save();
     assert(Object.values(row.checks).every(Boolean), `Day/night checks failed: ${label}`);
+  }
+}
+
+function checkFocusedFixtureCase(row) {
+  const { day, night, restored, fixture } = row, states = [day, night, restored];
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const material = state => state.nightLighting.materials.find(material => material.uuid === fixture.materialUuid);
+  const original = material(day), glowing = material(night), reset = material(restored);
+  const point = night.nightLighting.lights.find(light => light.kind === 'point' && light.intensity > 0);
+  const distance = point?.position ? Math.hypot(...point.position.map((value, i) => value - fixture.point[i])) : Infinity;
+  return {
+    exactSource: fixture.kind === row.kind && !!fixture.ownerUuid && !!fixture.materialUuid,
+    requestedBattle: states.every(state => state.phase === 'battle' && state.mapId === row.mapId
+      && state.playerSpecId === row.specId && state.preset === 'high'),
+    stableFraming: states.every(state => state.worldUuid === day.worldUuid && same(state.camera, day.camera)
+      && same(state.playerPose, day.playerPose) && same(state.raster, day.raster)),
+    dayNightDay: day.weather.timeOfDay === 'day' && night.weather.timeOfDay === 'night' && restored.weather.timeOfDay === 'day',
+    scopedLampCycle: checkNightLightingCycle(row, states),
+    exactEmitterRadiance: !!original && !!glowing && !!reset && glowing.masked
+      && glowing.intensity >= 3 && glowing.intensity > original.intensity && same(original, reset),
+    authoredShtora: row.kind !== 'shtora' || (fixture.lineOfSight === 'authored-emissive-face'
+      && night.nightLighting.playerCoverage.shtora === 2),
+    actualStreetPool: row.kind !== 'streetlamp' || (Number.isInteger(fixture.slot) && distance < .01),
+    completedFrames: states.every(state => state.render.renderCount > 0 && state.render.stateEpoch === state.render.completedEpoch),
+  };
+}
+
+async function focusedNightFixturePictures() {
+  for (const [mapId, specId, kind, label] of [
+    ['urban', 'm1a1', 'streetlamp', 'high-urban-streetlamp'],
+    ['verdant', 't90a_vladimir', 'shtora', 'high-t90a-vladimir-shtora'],
+  ]) {
+    const row = { label, mapId, specId, kind, visualAcceptance: 'requires-human-screenshot-review', checks: { completed: false } };
+    report.focusedFixtures.push(row); save();
+    await stage(mapId, specId);
+    await atmosphereReceipt(seedFor('temperate', 'day'), mapId);
+    try {
+      row.fixture = await evaluateWithin(kind => window.__equipmentDamageProbe.stageNightLightCloseup(kind), kind);
+      await settle(30);
+      row.day = await evaluateWithin(readVisualState); save();
+      await screenshot(`${label}-day`, row.day);
+      row.night = await atmosphereReceipt(seedFor('temperate', 'night'), mapId); save();
+      await screenshot(`${label}-night`, row.night);
+      row.restored = await atmosphereReceipt(seedFor('temperate', 'day'), mapId); save();
+      await screenshot(`${label}-day-restored`, row.restored);
+      row.checks = checkFocusedFixtureCase(row); save();
+      assert(Object.values(row.checks).every(Boolean), `Focused fixture checks failed: ${label}`);
+      await nativeGraphics(`${label}-graphics`);
+    } finally {
+      await evaluateWithin(() => window.__equipmentDamageProbe.restoreNightLightCamera());
+      await settle(30);
+    }
   }
 }
 
@@ -671,6 +730,7 @@ try {
     await nativeGraphics(`${tier.label}-graphics`);
     await dayNightPictures(tier);
     if (tier.label === 'high') {
+      await focusedNightFixturePictures();
       report.equipment = await equipmentPictures();
       await nativeGraphics('graphicsAfterEquipment');
     }
@@ -685,8 +745,9 @@ try {
   }
   report.passed = report.equipment.applied === true && report.equipment.duplicate === false
     && report.cases.length === 6 && report.cases.every(row => Object.values(row.checks).every(Boolean))
+    && report.focusedFixtures.length === 2 && report.focusedFixtures.every(row => Object.values(row.checks).every(Boolean))
     && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.structuralPassed)
-    && report.screenshots.length === 25 && report.screenshots.every(row => row.completed)
+    && report.screenshots.length === 31 && report.screenshots.every(row => row.completed)
     && report.errors.length === 0 && report.consoleErrors.length === 0;
 } catch (error) { report.errors.push(error.stack ?? String(error)); save(); }
 finally {

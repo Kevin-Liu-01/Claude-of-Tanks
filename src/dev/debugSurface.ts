@@ -10,7 +10,7 @@ import type { Object3D, PerspectiveCamera } from 'three';
 
 import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRuntime.ts';
 import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
-import { inspectNightWindow } from './nightWindowInspection.ts';
+import { inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -126,6 +126,11 @@ export function installDebugSurface(
       const world = deps.getWorld() as { group?: Object3D } | null;
       const camera = deps.camera as PerspectiveCamera;
       return world?.group ? inspectNightWindow(world.group, camera.position) : null;
+    },
+    inspectNightShtora: () => {
+      const game = deps.game as { player?: { visual?: { root?: Object3D } } };
+      const root = game.player?.visual?.root, camera = deps.camera as PerspectiveCamera;
+      return root ? inspectNightShtora(root, camera.position) : null;
     },
     visitOwnedGeometries: visitOwnedObject3DGeometries,
     switchMap: deps.switchMap,
