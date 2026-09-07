@@ -35,7 +35,6 @@ export interface CollisionRecord {
   propIdx?: number;
   crushed?: boolean;
   dead?: boolean;
-  __gridStamp?: number;
 }
 
 function isDenseCrushableCover(kind: string | undefined): boolean {
@@ -972,20 +971,25 @@ const _compoundBestNormal: MutableVector3Like = {
 
 /** Static uniform-grid broad phase. Query writes into the caller-owned array. */
 export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): ObstacleQuery {
-  const cells = new Map<number, CollisionRecord[]>();
+  // The same tree record can belong to movement and shell grids. Keep query
+  // visitation local to this grid instead of writing stamps onto shared records.
+  // Canonicalize duplicate references once while retaining first-seen order.
+  const indexedRecords = [...new Set(records)];
+  const visited = new Uint32Array(indexedRecords.length);
+  const cells = new Map<number, number[]>();
   const inv = 1 / cellSize;
   // Numeric signed-16 packing avoids allocating "x,z" strings in every
   // per-tank query. Battlefield cell coordinates are comfortably inside it.
   const key = (x: number, z: number) => (x + 32768) * 65536 + (z + 32768);
-  for (let i = 0; i < records.length; i++) {
-    const r = records[i];
+  for (let i = 0; i < indexedRecords.length; i++) {
+    const r = indexedRecords[i];
     const x0 = Math.floor(r.min[0] * inv), x1 = Math.floor(r.max[0] * inv);
     const z0 = Math.floor(r.min[2] * inv), z1 = Math.floor(r.max[2] * inv);
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
       const k = key(x, z);
       let a = cells.get(k);
       if (!a) { a = []; cells.set(k, a); }
-      a.push(r);
+      a.push(i);
     }
   }
   let stamp = 0;
@@ -994,16 +998,17 @@ export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): O
   ) {
     out.length = 0;
     stamp++;
-    if (stamp >= 0x7fffffff) { stamp = 1; for (const r of records) r.__gridStamp = 0; }
+    if (stamp >= 0x7fffffff) { stamp = 1; visited.fill(0); }
     const x0 = Math.floor(minX * inv), x1 = Math.floor(maxX * inv);
     const z0 = Math.floor(minZ * inv), z1 = Math.floor(maxZ * inv);
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
       const a = cells.get(key(x, z));
       if (!a) continue;
       for (let i = 0; i < a.length; i++) {
-        const r = a[i];
-        if (r.__gridStamp === stamp) continue;
-        r.__gridStamp = stamp;
+        const index = a[i];
+        if (visited[index] === stamp) continue;
+        visited[index] = stamp;
+        const r = indexedRecords[index];
         if (r.max[0] < minX || r.min[0] > maxX || r.max[2] < minZ || r.min[2] > maxZ) continue;
         out.push(r);
       }
