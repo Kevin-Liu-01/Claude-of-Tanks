@@ -14,13 +14,12 @@ export function createBattleAtmosphereAccess(
   let generation = 0;
   return {
     get current(): BattleAtmosphereRuntime | null { return owner.current; },
-    async prepare(seed: number | undefined, mapId: string, budget: number): Promise<void> {
+    async prepare(seed: number | undefined, mapId: string): Promise<void> {
       const requested = ++generation;
       const runtime = await owner.preload();
       if (requested !== generation) return;
-      runtime.prepare(seed, mapId, budget);
+      runtime.prepare(seed, mapId);
     },
-    update(seconds: number, budget: number): void { owner.current?.update(seconds, budget); },
     reset(): void { generation++; owner.current?.reset(); },
   };
 }

@@ -8,7 +8,6 @@ function createFixture({
   phase = 'garage', shotMode = false, studioActive = false, trace = null,
 } = {}) {
   const calls = [];
-  const atmospherePermissions = [];
   const frameRequests = [];
   const replay = { active: false };
   const scene = new Scene();
@@ -36,9 +35,8 @@ function createFixture({
     getFx: () => fx,
     getWorld: () => world,
     getBaseFogDensity: () => 0,
-    updateAtmosphere: (allowParticles) => {
-      atmospherePermissions.push(allowParticles);
-      calls.push('atmosphere');
+    get updateAtmosphere() {
+      throw new Error('removed atmosphere frame port must never be acquired');
     },
     getStudio: () => ({
       active: studioActive,
@@ -104,7 +102,6 @@ function createFixture({
   return {
     runtime,
     calls,
-    atmospherePermissions,
     frameRequests,
     replay,
     camera,
@@ -147,15 +144,7 @@ assert.equal(battle.calls.filter((entry) => entry === 'lighting:fov').length, 1)
 assert.ok(battle.calls.indexOf('battle:advance') < battle.calls.indexOf('rig'));
 assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('world:presentation'));
 assert.ok(battle.calls.indexOf('world:presentation') < battle.calls.indexOf('post'));
-assert.ok(battle.calls.indexOf('rig') < battle.calls.indexOf('atmosphere'),
-  'precipitation samples the current camera after live rig motion');
-assert.ok(battle.calls.indexOf('atmosphere') < battle.calls.indexOf('post'),
-  'precipitation is updated before the native scene render');
-assert.equal(battle.calls.filter((entry) => entry === 'atmosphere').length, 2,
-  'one atmosphere update per live frame, without an additional render');
 assert.equal(battle.calls.filter((entry) => entry === 'entry:frame').length, 2);
-assert.deepEqual(battle.atmospherePermissions, [true, true],
-  'ordinary live battle frames permit the current particle budget');
 
 const replaying = createFixture({ phase: 'battle' });
 replaying.runtime.tick(1000);
@@ -164,17 +153,11 @@ replaying.runtime.tick(1016);
 replaying.runtime.tick(1032);
 replaying.replay.active = false;
 replaying.runtime.tick(1048);
-assert.deepEqual(replaying.atmospherePermissions, [true, false, false, true],
-  'killcam/replay frames suppress precipitation and live resumption restores permission');
 assert.equal(replaying.calls.filter((entry) => entry === 'killcam').length, 2,
-  'suppression is exercised through actual replay frame updates');
+  'actual replay frames still advance without an atmosphere frame owner');
 replaying.game.phase = 'garage';
 replaying.runtime.tick(1064);
 replaying.runtime.tick(1080);
-assert.deepEqual(replaying.atmospherePermissions, [true, false, false, true],
-  'Garage frames make no atmosphere calls after replay/live battle return');
-assert.deepEqual(garage.atmospherePermissions, [],
-  'cold Garage frames never enable or update precipitation');
 
 const returnMarks = [];
 const returning = createFixture({
@@ -196,8 +179,6 @@ assert.deepEqual(Object.keys(returnMarks[0].data), [
 ]);
 assert.ok(Object.values(returnMarks[0].data).every(Number.isFinite),
   'Garage return frame receipt contains finite stage timings');
-assert.equal(returning.calls.filter((entry) => entry === 'atmosphere').length, 1,
-  'returning to Garage stops weather updates on the next frame');
 
 const covered = createFixture({ phase: 'battle' });
 covered.battleEntryLifecycle.renderingCovered = true;
@@ -214,6 +195,11 @@ assert.deepEqual(restoring.calls, ['schedule', 'network'],
 assert.throws(() => createMainFrameRuntime({}), /requires every live frame port/);
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+const frameSource = await readFile(new URL('./mainFrameRuntime.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(frameSource, /updateAtmosphere/,
+  'fixed day/night must not leave an atmosphere port or scheduler in the frame loop');
+assert.doesNotMatch(mainSource, /battleWeatherParticleBudget|battleParticleBudget|battleAtmosphere\.update\(/,
+  'composition must not retain particle budgets, quality listeners or atmosphere frame work');
 const inertStudioAt = mainSource.indexOf("let studio: ReturnType<typeof createStudioAccess>['presentation']");
 const mainFrameAt = mainSource.indexOf('const mainFrame = createMainFrameRuntime({');
 const liveStudioAt = mainSource.indexOf('studio = studioAccess.presentation;');
