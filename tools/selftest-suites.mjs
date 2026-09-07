@@ -342,6 +342,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/nightLightingAccess.selftest.mjs',
     'src/engine/nightEmissionMaterial.selftest.mjs',
     'src/world/worldNightLighting.selftest.mjs',
+    'src/world/worldNightEmissionGeometry.selftest.mjs',
+    'src/dev/nightWindowInspection.selftest.mjs',
     'src/world/poldersShoreline.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',

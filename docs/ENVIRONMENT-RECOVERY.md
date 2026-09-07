@@ -115,6 +115,39 @@ remain open despite the machine-readable probe's `passed: true`. The probe
 suspends adaptivity for staged comparisons, so it is not performance evidence.
 Owned Chrome/preview cleanup succeeded and the shared capture FIFO was released.
 
+`9877e9331` corrects the M1A1/Tejas-family registration: the old helper lenses
+were behind three newer hull surfaces. The existing exposed bow-pod faces now
+own illumination instead. Six variants at high/low geometry pass the actual
+forward-occlusion test, and eighteen current/baseline builds preserve all shape,
+normal, UV, color, index, instance-matrix and scene-transform bytes. Mask storage
+for the larger existing dark bucket is 25.9–33.3 KB per Tejas vehicle; there are
+no new meshes, materials or draws. Native verification remains required.
+
+`3b38d65cd` replaces blanket curtain emission with authored outward pane faces
+and red beacon bulbs. Three-seed coverage identifies 190 pane faces, twelve
+bulbs and six unlit cloth panels; original geometry/RNG receipts remain intact.
+The diagnostic camera now ray-checks a real pane instead of guessing from a
+merged material bucket. Structural checks explicitly do not certify visual
+quality. `d3fcc3710` separately lifts night ambient/fill/vehicle readability
+without new lights, geometry, passes or daytime changes. The next fresh native
+run must review these corrections together.
+
+### Fresh phase-resource baseline
+
+The unchanged `c57968388` public build completed the maintained native
+Garage → fixed-roster Verdant battle → Garage probe:
+
+`/Users/kevinliu/.codex/visualizations/2026/environment-recovery-20260907/baseline-phase-r1.json`
+
+No browser, console or resource errors occurred. Active battle main-thread
+task cost was 7.353 ms per presented frame; returned Garage used 0.007 core
+equivalent while its animation/shadow work slept. The baseline nevertheless
+**fails eleven existing resource ceilings**, including Garage triangles,
+battle scene/geometric/material/texture counts and returned geometry counts.
+Those raw failures are retained; the thresholds were not relaxed. This is a
+failed baseline, not a new-lighting performance pass. A same-procedure candidate
+run is still required. The owned browser/preview and FIFO wrapper exited.
+
 ### Shoreline candidate and fresh visual review
 
 `37271a90b` replaces Polders' 27 overlapping cells with five shared 16-station
