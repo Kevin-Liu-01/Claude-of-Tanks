@@ -1,3 +1,5 @@
+import { browserOperationFailure } from './browser-failure-evidence.mjs';
+
 /** Opt-in statistical V8 sampling, never precise coverage (which deoptimizes code).
  * https://chromedevtools.github.io/devtools-protocol/tot/Profiler/
  * Times below are sample weights, not exact CPU durations or GPU execution time.
@@ -187,16 +189,31 @@ export function summarizeMultiplayerSourceProfile(profile, options) {
     locationCoordinates: 'generated-one-based', attribution: 'statistical-sample-weights-not-exact-cpu-time' };
 }
 
+const PROFILE_STAGES = ['create-session', 'enable', 'sampling-interval', 'before-start-clock',
+  'start-command', 'after-start-clock', 'stop-command', 'stop-clock', 'summarize', 'cleanup'];
+
+export function sourceProfileFailureDetails(error) {
+  return { stage: PROFILE_STAGES.includes(error?.profileStage) ? error.profileStage : null,
+    failure: browserOperationFailure(error) };
+}
+
+function profileError(code, error, stage) {
+  const detail = sourceProfileFailureDetails(error);
+  return Object.assign(new Error(code), { profileStage: detail.stage ?? stage,
+    operationFailure: detail.failure });
+}
+
 function commandRunner(clock, timeoutMs) {
-  return (operation) => new Promise((resolve, reject) => {
+  return (operation, stage = 'cleanup') => new Promise((resolve, reject) => {
     let settled = false;
     const finish = (accept, value) => {
       if (settled) return;
       settled = true; clock.clearTimeout(timer); accept(value);
     };
-    const timer = clock.setTimeout(() => finish(reject, new Error('source_profile_command_timeout')), timeoutMs);
+    const timer = clock.setTimeout(() => finish(reject, profileError('source_profile_command_timeout',
+      { operationFailure: 'command-timeout' }, stage)), timeoutMs);
     Promise.resolve().then(operation).then((value) => finish(resolve, value),
-      () => finish(reject, new Error('source_profile_command_failed')));
+      (error) => finish(reject, profileError('source_profile_command_failed', error, stage)));
   });
 }
 
@@ -222,9 +239,9 @@ export async function startMultiplayerSourceProfile(page, options = {}, clock = 
   let beforeStart;
   let afterStart;
   let startRequestedAt;
-  const pageTime = async () => {
-    const value = await run(() => page.evaluate(() => performance.now()));
-    if (!finite(value) || value < 0) throw new Error('source_profile_invalid_clock');
+  const pageTime = async (stage) => {
+    const value = await run(() => page.evaluate(() => performance.now()), stage);
+    if (!finite(value) || value < 0) throw profileError('source_profile_invalid_clock', null, stage);
     return value;
   };
   function release() {
@@ -238,19 +255,19 @@ export async function startMultiplayerSourceProfile(page, options = {}, clock = 
     if (abandoned) return release();
   }, () => {}).catch(() => {});
   try {
-    session = await run(() => creation);
-    await run(() => session.send('Profiler.enable'));
-    await run(() => session.send('Profiler.setSamplingInterval', { interval: config.samplingIntervalUs }));
-    beforeStart = await pageTime();
+    session = await run(() => creation, 'create-session');
+    await run(() => session.send('Profiler.enable'), 'enable');
+    await run(() => session.send('Profiler.setSamplingInterval', { interval: config.samplingIntervalUs }), 'sampling-interval');
+    beforeStart = await pageTime('before-start-clock');
     stopNeeded = true;
     startRequestedAt = clock.now();
-    await run(() => session.send('Profiler.start'));
-    afterStart = await pageTime();
-    if (afterStart < beforeStart) throw new Error('source_profile_invalid_clock');
-  } catch {
+    await run(() => session.send('Profiler.start'), 'start-command');
+    afterStart = await pageTime('after-start-clock');
+    if (afterStart < beforeStart) throw profileError('source_profile_invalid_clock', null, 'after-start-clock');
+  } catch (error) {
     abandoned = true;
     await release();
-    throw new Error('source_profile_start_failed');
+    throw profileError('source_profile_start_failed', error, null);
   }
 
   let completion;
@@ -263,12 +280,13 @@ export async function startMultiplayerSourceProfile(page, options = {}, clock = 
       let failure = null;
       try {
         stopNeeded = false;
-        const result = await run(() => session.send('Profiler.stop'));
-        const stopReceiptPageTimeMs = await pageTime();
+        const result = await run(() => session.send('Profiler.stop'), 'stop-command');
+        const stopReceiptPageTimeMs = await pageTime('stop-clock');
         output = { ...summarizeMultiplayerSourceProfile(result?.profile, config), stopReceiptPageTimeMs };
-      } catch { failure = 'source_profile_stop_failed'; }
+      } catch (error) { failure = profileError('source_profile_stop_failed', error, 'summarize'); }
       const cleanupFailed = await release();
-      if (failure || cleanupFailed) throw Object.assign(new Error(failure ?? 'source_profile_cleanup_failed'), { cleanupFailed });
+      if (failure || cleanupFailed) throw Object.assign(failure ??
+        profileError('source_profile_cleanup_failed', null, 'cleanup'), { cleanupFailed });
       return { ...output, samplingIntervalUs: config.samplingIntervalUs, durationLimitMs: config.durationMs,
         baselinePageTimeMs: (beforeStart + afterStart) / 2,
         startClockUncertaintyMs: (afterStart - beforeStart) / 2,

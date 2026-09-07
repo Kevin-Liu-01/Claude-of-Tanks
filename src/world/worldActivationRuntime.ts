@@ -31,9 +31,24 @@ export interface ActiveWorld<SkyConfig extends object = object> {
   ): WorldRaycastHit | null;
 }
 
+export type WorldActivationStage = 'build' | 'present' | 'compile' | 'shadowWarm' | 'clouds' | 'activate';
+
+export interface WorldActivationStageInterval {
+  stage: WorldActivationStage;
+  /** Absolute performance.now() timebase, matching PerformanceEntry.startTime. */
+  startTime: number;
+  /** Absent while this stage is still pending. */
+  endTime?: number;
+}
+
 export interface WorldActivationTrace {
   id: string;
   cached: boolean;
+  status: 'pending' | 'complete' | 'failed';
+  startedAt: number;
+  endedAt?: number;
+  stageIntervals: WorldActivationStageInterval[];
+  error?: { name: string; message: string };
   build?: number;
   buildDetail?: Record<string, number | object>;
   present?: number;
@@ -233,7 +248,9 @@ export function createWorldActivationRuntime<
     return world;
   };
 
-  type TimingStage = 'build' | 'present' | 'compile' | 'shadowWarm' | 'clouds' | 'activate';
+  const timingStages: readonly WorldActivationStage[] = [
+    'build', 'present', 'compile', 'shadowWarm', 'clouds', 'activate',
+  ];
   type BuildDiagnostics = {
     vegetation?: object | null;
     terrain?: object | null;
@@ -241,14 +258,49 @@ export function createWorldActivationRuntime<
   };
 
   const createStageMarker = (trace: WorldActivationTrace): {
-    mark(stage: TimingStage): void;
+    mark(stage: WorldActivationStage): void;
+    complete(): void;
+    fail(error: NonNullable<WorldActivationTrace['error']>): void;
   } => {
-    let stageAt = now();
+    const publish = (): void => {
+      try {
+        options.publishActivationTrace?.({
+          ...trace,
+          stageIntervals: trace.stageIntervals.map((interval) => ({ ...interval })),
+          ...(trace.buildDetail ? { buildDetail: { ...trace.buildDetail } } : {}),
+          ...(trace.error ? { error: { ...trace.error } } : {}),
+        });
+      } catch { /* telemetry must not change activation success or its original failure */ }
+    };
+    const closeStage = (sample: number): void => {
+      const interval = trace.stageIntervals.at(-1);
+      if (!interval || interval.endTime !== undefined) return;
+      interval.endTime = sample;
+      trace[interval.stage] = Math.round(sample - interval.startTime);
+    };
+    const finish = (status: 'complete' | 'failed'): void => {
+      const sample = now();
+      closeStage(sample);
+      trace.status = status;
+      trace.endedAt = sample;
+      trace.totalMs = Math.round(sample - trace.startedAt);
+      publish();
+    };
+    publish();
     return {
       mark(stage): void {
         const sample = now();
-        trace[stage] = Math.round(sample - stageAt);
-        stageAt = sample;
+        closeStage(sample);
+        const nextStage = timingStages[timingStages.indexOf(stage) + 1];
+        if (nextStage) trace.stageIntervals.push({ stage: nextStage, startTime: sample });
+        publish();
+      },
+      complete(): void {
+        finish('complete');
+      },
+      fail(error): void {
+        trace.error = error;
+        finish('failed');
       },
     };
   };
@@ -280,6 +332,9 @@ export function createWorldActivationRuntime<
       trace.buildDetail = { ...request.stageTimings };
       copyBuildDiagnostics(trace, built);
       return built;
+    } catch (error) {
+      trace.buildDetail = { ...request.stageTimings };
+      throw error;
     } finally {
       if (onProgress && request.listeners) request.listeners.delete(onProgress);
     }
@@ -326,7 +381,7 @@ export function createWorldActivationRuntime<
   const warmWorldForActivation = async (
     world: World,
     activationOptions: WorldActivationOptions | null,
-    mark: (stage: TimingStage) => void,
+    mark: (stage: WorldActivationStage) => void,
   ): Promise<void> => {
     const precompile = activationOptions?.precompile !== false;
     world.group.visible = false;
@@ -351,28 +406,44 @@ export function createWorldActivationRuntime<
     const id = mapId || pendingMapId;
     coordinator.cancelBackgroundExcept(id);
     const cached = cache.get(id) ?? null;
-    const trace: WorldActivationTrace = { id, cached: !!cached };
     const startedAt = now();
+    const trace: WorldActivationTrace = {
+      id,
+      cached: !!cached,
+      status: 'pending',
+      startedAt,
+      stageIntervals: [{ stage: 'build', startTime: startedAt }],
+    };
     const timer = createStageMarker(trace);
-    const next = await resolveWorld(id, cached, trace, onProgress);
-    timer.mark('build');
-    await warmWorldForActivation(next, activationOptions, timer.mark);
+    try {
+      const next = await resolveWorld(id, cached, trace, onProgress);
+      timer.mark('build');
+      await warmWorldForActivation(next, activationOptions, timer.mark);
 
-    await options.awaitInitialCloudWarm();
-    await options.ensureCloudTexturesChunked?.(options.nextFrame);
-    timer.mark('clouds');
+      await options.awaitInitialCloudWarm();
+      await options.ensureCloudTexturesChunked?.(options.nextFrame);
+      timer.mark('clouds');
 
-    const needsServices = activationOptions?.services !== false
-      && servicesMapId !== next.mapId;
-    if (current !== next || dormant) {
-      activate(next, { services: activationOptions?.services !== false });
-    } else if (needsServices) {
-      prepareServices(next);
+      const needsServices = activationOptions?.services !== false
+        && servicesMapId !== next.mapId;
+      if (current !== next || dormant) {
+        activate(next, { services: activationOptions?.services !== false });
+      } else if (needsServices) {
+        prepareServices(next);
+      }
+      timer.mark('activate');
+      timer.complete();
+      return next;
+    } catch (error) {
+      let detail = { name: 'Error', message: 'Unprintable activation error' };
+      try {
+        detail = error instanceof Error
+          ? { name: error.name, message: error.message }
+          : { name: 'Error', message: String(error) };
+      } catch { /* arbitrary thrown values need not be printable */ }
+      timer.fail(detail);
+      throw error;
     }
-    timer.mark('activate');
-    trace.totalMs = Math.round(now() - startedAt);
-    options.publishActivationTrace?.(trace);
-    return next;
   };
 
   return {

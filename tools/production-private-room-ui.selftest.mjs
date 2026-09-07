@@ -64,6 +64,36 @@ for (const spawnargs of [undefined, ['PRIVATE_EXECUTABLE', backgroundOverrides[1
 
 assert.deepEqual(productionUiOptions({ url: 'https://game.example.test' }),
   { origin: 'https://game.example.test', timeoutMs: 300_000 });
+for (const entryProfile of ['host', 'guest', 'timings']) {
+  assert.equal(productionUiOptions({ url: 'https://game.example.test', entryProfile }).entryProfile,
+    entryProfile, 'entry profiling does not require a combat performance measurement');
+}
+for (const entryProfile of [null, '', true, 1, 'both', 'PRIVATE_ROLE']) {
+  assert.throws(() => productionUiOptions({ url: 'https://game.example.test', entryProfile }),
+    /entry profile/);
+}
+assert.equal(productionUiOptions({ url: 'http://127.0.0.1:5180', localSignaling: true }).localSignaling, true);
+assert.throws(() => productionUiOptions({ url: 'https://game.example.test', localSignaling: true }),
+  /loopback/, 'local build mode cannot weaken a deployed-origin check');
+for (const localSignaling of [null, 1, 'true']) assert.throws(() => productionUiOptions({
+  url: 'http://127.0.0.1:5180', localSignaling,
+}), /loopback/);
+for (const hostname of ['127.0.0.1', 'localhost', '[::1]']) {
+  const options = productionUiOptions({ url: `http://${hostname}:5180`, localSignaling: true });
+  assert.equal(relayProbe.validateProductionRoomEndpoint('ws://localhost:7777/signal', options), 'local-loopback');
+}
+for (const endpoint of ['ws://game.example.test/signal', 'wss://localhost/signal',
+  'ws://localhost/rooms', 'ws://PRIVATE@localhost/signal', 'ws://localhost/signal?token=PRIVATE',
+  'ws://localhost/signal#PRIVATE', 'ws://localhost.example.test/signal']) {
+  assert.throws(() => relayProbe.validateProductionRoomEndpoint(endpoint,
+    { origin: 'http://127.0.0.1:5180', localSignaling: true }), /UI smoke failed/);
+}
+assert.throws(() => relayProbe.validateProductionRoomEndpoint('ws://localhost:7777/signal',
+  { origin: 'https://game.example.test', localSignaling: true }), /UI smoke failed/);
+assert.throws(() => relayProbe.validateProductionRoomEndpoint('ws://localhost:7777/signal',
+  { origin: 'http://127.0.0.1:5180' }), /UI smoke failed/, 'strict mode never silently admits local signaling');
+assert.equal(relayProbe.validateProductionRoomEndpoint('wss://rooms.example.test/rooms',
+  { origin: 'https://game.example.test' }), 'production');
 assert.equal(productionUiOptions({ url: 'https://game.example.test',
   measurePerformance: true, forceRelay: true }).forceRelay, true);
 assert.throws(() => productionUiOptions({ url: 'https://game.example.test', forceRelay: true }),
@@ -887,7 +917,7 @@ assert.deepEqual(relayProbe.productionDiagnosticDetails({ diagnosticCode: 'frame
   cleanupFailed: 'PRIVATE_TOKEN',
   measurementDiagnosticCode: 'feedback_ammo_selection_timeout PRIVATE_TOKEN',
   relayReason: 'pair PRIVATE_TOKEN', relayRole: 'PRIVATE_TOKEN', relaySampleCount: 91 }), {
-  diagnosticCode: 'frame_trace_stop_failed', traceStage: null, traceFailure: null,
+  diagnosticCode: 'frame_trace_stop_failed', operationFailure: 'unknown', traceStage: null, traceFailure: null,
   completeBeforeStop: null, cleanupFailed: null, measurementDiagnosticCode: null,
   relayReason: null, relayRole: null, relaySampleCount: null, relayPair: null,
 }, 'structured diagnostic fields also use exact allowlists');
@@ -960,6 +990,7 @@ for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_T
   .map((slot) => ['--performance', `--ammo-slot=${slot}`]), ['--performance', '--ammo-slot'],
   ['--force-relay'], ['--frame-trace'], ['--performance', '--frame-trace', '--cpu-timeline'],
   ['--source-profile=host'], ['--performance', '--source-profile'], ['--performance', '--source-profile='],
+  ['--entry-profile'], ['--entry-profile='], ['--entry-profile=both'], ['--entry-profile=PRIVATE_TOKEN'],
   ['--performance', '--source-profile=PRIVATE_TOKEN'],
   ['--performance', '--source-profile=host', '--cpu-timeline'],
   ['--performance', '--source-profile=guest', '--frame-trace'],
@@ -974,4 +1005,6 @@ for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_T
   assert.equal(receipt.cleanup, null, 'invalid ammo arguments never acquire a browser or room');
   assert.doesNotMatch(invalid.stderr, /PRIVATE_TOKEN/);
 }
+await import('./production-entry-observer.selftest.mjs');
+await import('./browser-failure-evidence.selftest.mjs');
 console.log('production private-room UI smoke selftest passed (deterministic guards and cleanup; not a live receipt)');

@@ -7,6 +7,8 @@ import { startMultiplayerFrameTrace } from './multiplayer-frame-trace.mjs';
 import { startMultiplayerSourceProfile } from './multiplayer-source-profile.mjs';
 import { createMultiplayerRenderWorkload, renderWorkloadFailureEvidence } from './multiplayer-render-workload.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { observeProductionEntry, productionBattleLoaderHidden } from './production-entry-observer.mjs';
+import { browserOperationFailure, observeBrowserHealth } from './browser-failure-evidence.mjs';
 
 function validateAmmoSelection(ammoSlot, measurePerformance) {
   if (ammoSlot !== undefined && (!measurePerformance || !Number.isSafeInteger(ammoSlot) ||
@@ -36,6 +38,35 @@ function validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, f
   if (cpuTimeline || frameTrace) throw new TypeError('source profile and other CPU diagnostics are mutually exclusive');
 }
 
+function validateEntryProfile(entryProfile) {
+  if (entryProfile !== undefined && !['host', 'guest', 'timings'].includes(entryProfile)) {
+    throw new TypeError('entry profile must select host, guest, or timings');
+  }
+}
+
+function loopbackHostname(hostname) {
+  return ['127.0.0.1', 'localhost', '[::1]'].includes(hostname);
+}
+
+function validateLocalSignaling(localSignaling, origin) {
+  if (typeof localSignaling !== 'boolean' || (localSignaling && !loopbackHostname(origin.hostname))) {
+    throw new TypeError('local signaling requires an explicit loopback frontend');
+  }
+}
+
+/** Read the application's built default; never replace its endpoint or Origin. */
+export function validateProductionRoomEndpoint(endpoint, options) {
+  const signaling = new URL(endpoint);
+  if (options.localSignaling) {
+    if (!loopbackHostname(new URL(options.origin).hostname) || !loopbackHostname(signaling.hostname) ||
+        signaling.protocol !== 'ws:' || signaling.pathname !== '/signal' ||
+        signaling.username || signaling.password || signaling.search || signaling.hash) throw failure('default_endpoint');
+    return 'local-loopback';
+  }
+  if (signaling.protocol !== 'wss:' || signaling.pathname !== '/rooms') throw failure('default_endpoint');
+  return 'production';
+}
+
 function validateRenderWorkload(renderWorkload, measurePerformance) {
   if (renderWorkload !== undefined &&
       (!['dual-render-stress', 'single-foreground'].includes(renderWorkload) || !measurePerformance)) {
@@ -43,18 +74,21 @@ function validateRenderWorkload(renderWorkload, measurePerformance) {
   }
 }
 
-function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, renderWorkload, ammoSlot, screenshots }) {
+function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, entryProfile, localSignaling, renderWorkload, ammoSlot, screenshots }) {
   return { ...(forceRelay ? { forceRelay: true } : {}),
     ...(frameTrace ? { frameTrace: true } : {}),
     ...(cpuTimeline ? { cpuTimeline: true } : {}),
     ...(sourceProfile === undefined ? {} : { sourceProfile }),
+    ...(entryProfile === undefined ? {} : { entryProfile }),
+    ...(localSignaling ? { localSignaling: true } : {}),
     ...(renderWorkload === undefined ? {} : { renderWorkload }),
     ...(ammoSlot === undefined ? {} : { ammoSlot }),
     ...(screenshots === undefined ? {} : { screenshots: normalize(screenshots) }) };
 }
 
 export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false,
-  ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, renderWorkload } = {}) {
+  ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, entryProfile,
+  localSignaling = false, renderWorkload } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -68,6 +102,8 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
   validateCpuTimeline(cpuTimeline, measurePerformance);
   validateFrameTrace(frameTrace, cpuTimeline, measurePerformance);
   validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, frameTrace);
+  validateEntryProfile(entryProfile);
+  validateLocalSignaling(localSignaling, origin);
   validateRenderWorkload(renderWorkload, measurePerformance);
   if (typeof forceRelay !== 'boolean' || (forceRelay && !measurePerformance)) {
     throw new TypeError('force relay requires --performance');
@@ -78,7 +114,7 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
     throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
   }
   return { origin: origin.origin, timeoutMs,
-    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, renderWorkload, ammoSlot, screenshots }) };
+    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, entryProfile, localSignaling, renderWorkload, ammoSlot, screenshots }) };
 }
 
 /** Optional diagnosis has measurable overhead and is not a timing certification. */
@@ -198,6 +234,7 @@ const DIAGNOSTIC_CODES = new Set([
   'render_workload_start_failed', 'render_workload_admission_failed',
   'render_workload_observation_failed', 'render_workload_cleanup_failed',
   'native_browser_launch_unverifiable', 'native_browser_background_override',
+  'entry_observer_command_failed',
 ]);
 const RELAY_REASONS = ['pair', 'observer', 'channels', 'disconnected', 'counter', 'policy', 'missing', 'stats'];
 const FAILURE_EVIDENCE = new WeakMap();
@@ -255,6 +292,7 @@ function measurementCode(value) {
 /** No arbitrary strings or raw nested errors cross the public receipt boundary. */
 export function productionDiagnosticDetails(error) {
   return { diagnosticCode: productionDiagnosticCode(error),
+    operationFailure: browserOperationFailure(error),
     measurementDiagnosticCode: measurementCode(error?.measurementDiagnosticCode),
     traceStage: ['end-mark', 'end-command', 'flush'].includes(error?.traceStage) ? error.traceStage : null,
     traceFailure: ['timeout', 'not-started', 'protocol-or-target-error'].includes(error?.traceFailure)
@@ -271,7 +309,7 @@ export function productionDiagnosticDetails(error) {
 function bounded(promise, milliseconds, stage) {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => {
-    timer = setTimeout(() => reject(failure(stage)), Math.max(1, milliseconds));
+    timer = setTimeout(() => reject(Object.assign(failure(stage), { operationFailure: 'deadline' })), Math.max(1, milliseconds));
   })]).finally(() => clearTimeout(timer));
 }
 
@@ -704,10 +742,11 @@ export async function cleanupProductionUi({ browser, pages, roomCreated }, timeo
     ...(roomCreated ? { roomCleanup } : {}) };
 }
 
-async function freshPage(browser, origin, timeoutMs, owners, onPageError, measurePerformance, forceRelay) {
+async function freshPage(browser, origin, timeoutMs, owners, onPageError, measurePerformance, forceRelay, entryProfile) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   owners.pages.push(page);
+  owners.health.watchPage(page, owners.pages.length === 1 ? 'host' : 'guest');
   page.on('pageerror', onPageError);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
@@ -715,7 +754,7 @@ async function freshPage(browser, origin, timeoutMs, owners, onPageError, measur
   page.setDefaultNavigationTimeout(Math.min(60_000, timeoutMs));
   if (forceRelay) await page.evaluateOnNewDocument(installProductionRelayPolicy);
   if (measurePerformance) await page.evaluateOnNewDocument(installFeedbackPeerObserver);
-  await page.goto(`${origin}/${measurePerformance ? '?debug=1' : ''}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${origin}/${measurePerformance || entryProfile ? '?debug=1' : ''}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.cot-battle-mode', { visible: true, timeout: Math.min(90_000, timeoutMs) });
   if (new URL(page.url()).origin !== origin) throw failure('frontend_origin');
   return page;
@@ -728,21 +767,46 @@ function cleanupReserveMs(measurePerformance, renderWorkload) {
   return 27_000 + (renderWorkload === 'single-foreground' ? 12_000 : 2_000);
 }
 
+async function completeProductionBattleEntry(pages, options, { run, left, onEvidence }) {
+  const launchAndReveal = async () => {
+    await run('start_battle', () => nativeClick(pages[0], '.cot-play [data-action="start"]', left()));
+    await run('both_live_battles', () => Promise.all(pages.map((page) =>
+      page.waitForFunction(productionBattleLoaderHidden, { timeout: left() }))));
+  };
+  if (!options.entryProfile) return launchAndReveal();
+  return observeProductionEntry(pages, options, launchAndReveal, {
+    onEvidence, readContext: readProductionRenderingContext,
+    // Background rAF may be suspended: retain DOM countdowns, never assert
+    // that an unfocused/hidden page actually presented each numeral.
+    afterReveal: () => run('entry_countdown', () => Promise.all(pages.map((page) =>
+      page.waitForFunction(() => window.__DEBUG?.game?.phase === 'battle' &&
+        window.__DEBUG.game.preBattleS <= 0, { timeout: Math.min(15_000, left()), polling: 50 })))),
+  });
+}
+
+function entryReceiptFields(entry) {
+  return entry ? { entry } : {};
+}
+
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot,
-  cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, renderWorkload } = {}) {
+  cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, entryProfile,
+  localSignaling = false, renderWorkload } = {}) {
   const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot,
-    cpuTimeline, forceRelay, frameTrace, sourceProfile, renderWorkload });
+    cpuTimeline, forceRelay, frameTrace, sourceProfile, entryProfile, localSignaling, renderWorkload });
   const started = performance.now();
-  const owners = { browser: null, pages: [], roomCreated: false, renderWorkload: null, cancelled: false };
+  const owners = { browser: null, pages: [], roomCreated: false, renderWorkload: null, cancelled: false,
+    health: observeBrowserHealth(() => performance.now() - started) };
   let stage = 'browser_launch';
   let problem;
   let result;
   let completedPerformance = null;
+  let completedEntry = null;
   let browserLaunch = null;
+  let signalingTransport = null;
   let pageErrors = 0;
-  const reserveMs = cleanupReserveMs(measurePerformance, options.renderWorkload);
+  const reserveMs = cleanupReserveMs(measurePerformance, options.renderWorkload) + (entryProfile ? 12_000 : 0);
   const left = () => Math.max(1, timeoutMs - reserveMs - (performance.now() - started));
   const run = (next, action) => {
     stage = next;
@@ -758,18 +822,19 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       timeout: Math.min(30_000, timeoutMs), protocolTimeout: 60_000,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-gl=angle', '--enable-webgl'] }));
     browserLaunch = verifyNativeBrowserLaunch(owners.browser);
+    owners.health.watchBrowser(owners.browser);
     for (const role of ['host', 'guest']) {
       await run(`${role}_garage`, () => freshPage(owners.browser, options.origin, left(), owners,
-        () => { pageErrors++; }, measurePerformance, forceRelay));
+        () => { pageErrors++; }, measurePerformance, forceRelay, entryProfile));
     }
     const [host, guest] = owners.pages;
     await run('private_controls', () => openPrivateMenu(host, left()));
     const modes = await host.$$eval('.cot-play [data-mode]', (elements) => elements.map((el) => el.dataset.mode));
     if (modes.join(',') !== 'solo,private,lan') throw failure('private_controls');
-    // Read the built-in endpoint only. There is deliberately no endpoint override option.
+    // The explicit local-build mode validates the built loopback default; it
+    // never substitutes endpoints or changes the browser's Origin policy.
     const endpoint = await host.$eval('.cot-play [data-field="signal"]', (el) => el.value);
-    const signaling = new URL(endpoint);
-    if (signaling.protocol !== 'wss:' || signaling.pathname !== '/rooms') throw failure('default_endpoint');
+    signalingTransport = validateProductionRoomEndpoint(endpoint, options);
     await run('create_1v1_room', async () => {
       await selectMenuOption(host, '.cot-play [data-field="create-size"]', '1', left());
       owners.roomCreated = true;
@@ -780,7 +845,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     if (!/^[A-Z0-9]{6}$/.test(code)) throw failure('room_code');
     const invite = new URL('/', options.origin);
     invite.searchParams.set('room', code);
-    if (measurePerformance) invite.searchParams.set('debug', '1');
+    if (measurePerformance || entryProfile) invite.searchParams.set('debug', '1');
     await run('guest_native_invite', async () => {
       await guest.goto(invite.href, { waitUntil: 'domcontentloaded' });
       await guest.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2,
@@ -794,11 +859,10 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       await nativeClick(host, '.cot-play [data-action="ready"]', left());
       await host.waitForFunction(() => document.querySelector('.cot-play [data-action="start"]')?.disabled === false,
         { timeout: left() });
-      await nativeClick(host, '.cot-play [data-action="start"]', left());
     });
-    await run('both_live_battles', () => Promise.all(owners.pages.map((page) => page.waitForFunction(() =>
-      window.__DEBUG?.game?.phase === 'battle' && window.__DEBUG?.network?.connected === true &&
-      !document.querySelector('.cot-bl.on'), { timeout: left() }))));
+    await completeProductionBattleEntry(owners.pages, options, {
+      run, left, onEvidence: (receipt) => { completedEntry = receipt; },
+    });
     const before = await Promise.all(owners.pages.map((page) => page.evaluate(readUiState)));
     await run('battle_progress', () => Promise.all(owners.pages.map((page, index) => page.waitForFunction((prior) =>
       window.__DEBUG.network.snapshotPacketsReceived > prior.snapshotPacketsReceived + 5 &&
@@ -854,13 +918,17 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     });
     if (pageErrors) throw failure('page_errors');
     result = { ok: true, browserLaunch, freshBrowserContexts: 2, nativePrivate1v1: true, defaultRoomEndpoint: true,
-      nativeInviteJoined: true, nativeReadyAndLaunch: true, peers, nativeExitAndRoomClose: true, pageErrors };
+      signalingTransport, nativeInviteJoined: true, nativeReadyAndLaunch: true, peers,
+      nativeExitAndRoomClose: true, pageErrors };
     if (performanceReceipt) result.performance = performanceReceipt;
+    Object.assign(result, entryReceiptFields(completedEntry));
   } catch (error) {
     owners.cancelled = true;
     problem = failure(error?.stage === 'relay_gameplay' ? 'relay_gameplay' : stage);
     Object.assign(problem, productionDiagnosticDetails(error));
     retainFailureEvidence(problem, { performance: completedPerformance,
+      signalingTransport,
+      ...entryReceiptFields(completedEntry),
       partialRelay: productionFailureEvidence(error).partialRelay,
       ...nativePreparationEvidence(error),
       ...(workloadFailureEvidence(error) ? { renderWorkload: workloadFailureEvidence(error) } : {}) });
@@ -870,11 +938,16 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     problem.lastStates = await Promise.all(owners.pages.map((page) =>
       bounded(page.evaluate(readUiState), 1_000, 'last_state').catch(() => null)));
   }
+  // Stop before owned teardown: these events describe the test, not browser.close().
+  const browserHealth = owners.health.stop();
+  if (problem) retainFailureEvidence(problem, { ...productionFailureEvidence(problem), browserHealth });
   const cleanup = await cleanupProductionUi(owners);
   if (problem) throw Object.assign(problem, { cleanup });
   if (!cleanup.browserClosed || !cleanup.roomCleanupVerified) throw retainFailureEvidence(
-    Object.assign(failure('cleanup'), { cleanup }), { performance: completedPerformance, partialRelay: null });
-  return { ...result, cleanup };
+    Object.assign(failure('cleanup'), { cleanup }), { performance: completedPerformance, partialRelay: null,
+      signalingTransport, browserHealth,
+      ...entryReceiptFields(completedEntry) });
+  return { ...result, browserHealth, cleanup };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -885,6 +958,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       throw new TypeError('ammo slot must be 1, 2, or 3');
     }
     if (process.argv.includes('--source-profile')) throw new TypeError('source profile must select host or guest');
+    if (process.argv.includes('--entry-profile')) throw new TypeError('entry profile must select host, guest, or timings');
     if (process.argv.includes('--render-workload')) throw new TypeError('render workload requires an explicit mode');
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
       measurePerformance: process.argv.includes('--performance'),
@@ -892,6 +966,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       forceRelay: process.argv.includes('--force-relay'),
       frameTrace: process.argv.includes('--frame-trace'),
       sourceProfile: option('source-profile'),
+      entryProfile: option('entry-profile'),
+      localSignaling: process.argv.includes('--local-signaling'),
       renderWorkload: option('render-workload'),
       ammoSlot: ammoSlot === undefined ? undefined : Number(ammoSlot),
       screenshots: option('screenshots'),

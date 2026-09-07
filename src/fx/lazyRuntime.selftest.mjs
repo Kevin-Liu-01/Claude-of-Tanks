@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { createBattleEntryAcquisition } from '../game/battleEntryAcquisition.ts';
 
 const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const debugBattleEntry = await readFile(
@@ -130,9 +131,64 @@ const networkBattleAdapters = main.slice(
   main.indexOf("bus.on('phase:change'", networkCompositionAt),
 );
 if (!/loadModules:[\s\S]{0,700}ensureFxRuntime\(\)/.test(networkBattleAdapters)
-    || !/entry\.acquire\(\{[\s\S]{0,220}loadModules: entry\.loadModules/.test(networkBattlePresentation)) {
+    || !/entry\.acquire\(\{[\s\S]{0,220}Promise\.all\(\[entry\.loadModules\(\), load\.ensureBattleVisuals\(\)\]\)/.test(networkBattlePresentation)) {
   throw new Error('network battle can enter without the live effects runtime');
 }
+// Execute the network-only acquisition callback from the composition root.
+// Optional image work overlaps world construction but never owns entry success.
+const loadModulesBody = networkBattleAdapters.match(
+  /loadModules: \(\) => (Promise\.all\(\[[\s\S]*?\]\)\.then\(\(\[modules\]\) => modules\)),/,
+)?.[1];
+assert.ok(loadModulesBody, 'network entry retains its explicit module acquisition barrier');
+const acquireNetworkModules = new Function(
+  'preloadNetworkBattleModules', 'preloadBattleClientRuntime', 'ensureBattleHud',
+  'ensureTouchControls', 'armorAimOverlay', 'ensureFxRuntime', 'ensureKillcamRuntime',
+  'battleWarm', 'audio', `return ${loadModulesBody};`,
+);
+const acquireWithFx = (ensureFx) => acquireNetworkModules(
+  () => Promise.resolve('network-modules'), () => Promise.resolve(),
+  () => Promise.resolve(), () => Promise.resolve(),
+  { preload: () => Promise.resolve() }, ensureFx, () => Promise.resolve(),
+  { preload: () => Promise.resolve() }, { warmBattleEvents: () => Promise.resolve() },
+);
+for (const preloadResult of ['pending', 'throw', 'reject', 'ready']) {
+  const events = [];
+  const preloadFailure = new Error('optional atlas unavailable');
+  let releaseDownload;
+  const pendingDownload = new Promise((resolve) => { releaseDownload = resolve; });
+  const live = { preloadTextures() {
+    events.push('texture-download-start');
+    if (preloadResult === 'throw') throw preloadFailure;
+    if (preloadResult === 'reject') return Promise.reject(preloadFailure);
+    return preloadResult === 'pending' ? pendingDownload : Promise.resolve();
+  } };
+  let releaseWorld;
+  const pendingWorld = new Promise((resolve) => { releaseWorld = resolve; });
+  const acquisition = createBattleEntryAcquisition({ now: () => 0 });
+  let modulesReady = false;
+  const entry = acquisition.acquireNetwork({
+    loadModules: () => acquireWithFx(() => Promise.resolve(live)).then((modules) => {
+      modulesReady = true;
+      return modules;
+    }),
+    loadWorld: () => pendingWorld,
+    connect: () => ({ id: 'private-match' }),
+    publishMatch() {},
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['texture-download-start'],
+    'the real network callback starts the optional download before world completion');
+  assert.equal(modulesReady, true, `${preloadResult} optional atlas must not delay modules`);
+  releaseWorld('world');
+  assert.equal((await entry).modules, 'network-modules');
+  releaseDownload();
+}
+await assert.rejects(acquireWithFx(() => Promise.reject(new Error('FX construction failed'))),
+  /FX construction failed/, 'essential FX construction still fails the entry barrier');
+assert.equal(main.includes('ensureFxRuntime().then((live) =>'), true);
+assert.equal(main.indexOf('ensureFxRuntime().then((live) =>'),
+  networkCompositionAt + networkBattleAdapters.indexOf('ensureFxRuntime().then((live) =>'),
+  'optional network preload stays inside demand-loaded network composition, not passive Garage boot');
 const plannedRosterAt = battleIntentRuntime.indexOf('const planned = planRoster(specId)');
 const rosterBuildersAt = battleIntentRuntime.indexOf('ensureTankBuilders(planned)');
 const fxRuntimeAt = battleIntentRuntime.indexOf('const live = await ensureFxRuntime()');
