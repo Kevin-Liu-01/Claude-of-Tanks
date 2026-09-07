@@ -22,6 +22,11 @@ type Vec3Tuple = readonly [number, number, number];
 type ParticlePoolName = 'smoke' | 'fire' | 'billow' | 'psmoke' | 'dust'
   | 'flash' | 'jet' | 'sparks' | 'debris';
 
+export interface ParticleTextureWarmOptions {
+  /** Default preloads assets; ready-only never waits on or starts asset requests. */
+  assets?: 'preload' | 'ready-only';
+}
+
 interface ParticleEngineContext {
   readonly scene?: {
     readonly userData?: {
@@ -1489,6 +1494,9 @@ export function createParticleSystem(
 
   function installTextureAssets(): boolean {
     if (texturesBaked || !textureAssetImages) return texturesBaked;
+    // An existing generator owns this bake. Late image decode or another warm
+    // caller must join it, not replace part of its deterministic output.
+    if (textureBakeGen) return false;
     installTextureImage(smokeTex, textureAssetImages.smoke);
     installTextureImage(fireTex, textureAssetImages.fire);
     installTextureImage(propTex, textureAssetImages.prop);
@@ -1544,23 +1552,26 @@ export function createParticleSystem(
     }
   }
 
-  async function warmTexturesChunked(yieldFrame: () => Promise<void>): Promise<void> {
+  async function warmTexturesChunked(
+    yieldFrame: () => Promise<void>,
+    { assets = 'preload' }: ParticleTextureWarmOptions = {},
+  ): Promise<void> {
     if (texturesBaked) return;
-    if (await preloadTextures()) {
-      installTextureAssets();
-      return;
-    }
+    if (assets === 'preload') await preloadTextures();
+    if (installTextureAssets()) return;
     const g = textureBakeGen || (textureBakeGen = warmTextureSteps());
-    try {
-      for (;;) {
-        if (textureBakeGen !== g) return;
+    for (;;) {
+      if (textureBakeGen !== g) return;
+      try {
         const result = g.next();
         if (result.done) { finishTextureBake(g); return; }
-        await yieldFrame();
+      } catch (err) {
+        if (textureBakeGen === g) textureBakeGen = null;
+        throw err;
       }
-    } catch (err) {
-      if (textureBakeGen === g) textureBakeGen = null;
-      throw err;
+      // A scheduling failure rejects only this caller. Keep the generator and
+      // its seeded stream available to another paused caller or a later retry.
+      await yieldFrame();
     }
   }
 

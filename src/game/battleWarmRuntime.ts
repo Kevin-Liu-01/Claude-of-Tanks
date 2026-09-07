@@ -19,7 +19,7 @@ import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
-  nextFrame,
+  nextPaintFrame,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 
@@ -461,6 +461,10 @@ export async function warmNetworkWrecks({
 interface BattleFxPort {
   group: Object3D & { userData: { softParticles?: { layer?: number } } };
   warmTextures?(): void;
+  warmTexturesChunked?(
+    yieldForBudget: WorkYielder,
+    options?: { assets?: 'preload' | 'ready-only' },
+  ): Promise<void>;
   warmOpeningEffects(
     position: Vector3,
     direction: Vector3,
@@ -483,7 +487,6 @@ interface BattleFxPort {
 }
 
 interface StudioFxPort extends BattleFxPort {
-  warmTexturesChunked?(yieldForBudget: WorkYielder): Promise<void>;
   preloadTextures?(): Promise<RuntimeValue>;
   impact(kind: string, position: Vector3, normal: Vector3, caliberMm: number): void;
   dust(position: Vector3, direction: Vector3, scale: number): void;
@@ -760,8 +763,15 @@ export async function warmNetworkOpeningEffects({
   let stagedScarVisual: { root: Object3D } | null = null;
   let scarWasVisible = true;
   try {
-    fx.warmTextures?.();
-    await nextFrame();
+    // Let the progress label paint before atlas work. Optional asset downloads
+    // must not hold entry indefinitely; use decoded images or the same seeded
+    // procedural bake in cooperative slices.
+    await nextPaintFrame();
+    if (fx.warmTexturesChunked) {
+      await fx.warmTexturesChunked(createFrameBudgetYielder(8, { yieldFrame: nextPaintFrame }),
+        { assets: 'ready-only' });
+    } else fx.warmTextures?.();
+    await nextPaintFrame();
     // Keep this one pooled, vehicle-owned mesh scene-attached until the real
     // draw. Compiling then detaching it left its buffers and shared atlas cold.
     // Capture ownership before stamping so even a partially failed stamp rolls

@@ -177,6 +177,13 @@ assert.equal(combatFx.calls.at(-1), 'reset');
 
 invalidateBattleWarmRuntime();
 const networkFx = createFxProbe();
+let networkTexturePolicy;
+networkFx.warmTexturesChunked = async (yieldForBudget, options) => {
+  networkTexturePolicy = options;
+  networkFx.calls.push('textures');
+  await yieldForBudget(true);
+};
+networkFx.warmTextures = () => { throw new Error('network must not synchronously bake atlases'); };
 const decalRoot = new Group();
 decalRoot.visible = false;
 let networkCompiles = 0;
@@ -195,6 +202,28 @@ assert.ok(networkFx.calls.includes('clear-scars'),
   'the warm scar is removed before battle reveal');
 assert.equal(decalRoot.visible, false, 'decal warm restores vehicle visibility');
 assert.equal(networkCompiles, 2, 'FX and vehicle-owned decal programs compile under cover');
+assert.deepEqual(networkTexturePolicy, { assets: 'ready-only' },
+  'network entry cannot wait indefinitely for optional atlas image requests');
+assert.equal(networkFx.calls[0], 'textures', 'textures finish before atomic scar/FX staging');
+
+let releaseNetworkTextures;
+const deferredNetworkFx = createFxProbe();
+deferredNetworkFx.warmTexturesChunked = () => new Promise((resolve) => { releaseNetworkTextures = resolve; });
+const deferredNetworkWarm = warmNetworkOpeningEffects({
+  fx: deferredNetworkFx, post: { prepareSoftParticles() {} },
+  camera: new PerspectiveCamera(), shells: [], decalVisual: { root: decalRoot },
+  compilePrograms: () => deferredNetworkFx.calls.push('compile'),
+  warmRender: () => deferredNetworkFx.calls.push('render'),
+});
+for (let attempt = 0; attempt < 200 && !releaseNetworkTextures; attempt++) {
+  await new Promise((resolve) => setTimeout(resolve, 1));
+}
+assert.equal(typeof releaseNetworkTextures, 'function', 'texture preparation starts within the bounded frame fallback');
+assert.deepEqual(deferredNetworkFx.calls, [], 'pending atlases do not stage scars, pools, or draws');
+assert.equal(decalRoot.visible, false, 'pending texture preparation does not expose a hidden tank');
+releaseNetworkTextures();
+await deferredNetworkWarm;
+assert.ok(deferredNetworkFx.calls.includes('render'), 'completed textures allow the same real FX draw');
 
 // Exercise the real FX graph and its actual muzzle angle gate, frustum and
 // tracer instance count. Canvas painting is immaterial to this Node contract;
@@ -236,6 +265,7 @@ try {
   const scarTransform = [scarRoot.position.toArray(), scarRoot.quaternion.toArray(), scarRoot.scale.toArray()];
   const fx = createFx({ camera, scene: fxScene }, { getHeightAt: () => 0 });
   fx.warmTextures = () => {};
+  fx.warmTexturesChunked = async () => {};
   fx.group.visible = false;
   fxScene.add(fx.group);
   let gameplaySweeps = 0;

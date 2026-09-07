@@ -1,9 +1,9 @@
 /**
  * Cooperative scheduling primitives for boot, loading, and visible idle work.
  *
- * Visible work yields on a real animation frame so the browser can present
- * progress. Work hidden by an opaque loader usually yields only the current
- * task, but still guarantees a painted frame at a bounded cadence.
+ * Visible work yields to animation callbacks; paint-sensitive callers also
+ * leave the pre-paint microtask checkpoint. Opaque-loading work mixes task and
+ * animation yields. Neither mechanism acknowledges an actually displayed frame.
  */
 
 export type WorkYielder = (force?: boolean) => Promise<void>;
@@ -27,8 +27,8 @@ function defaultTaskYield(): Promise<void> {
 }
 
 /**
- * Resolve after a presentable frame, with a bounded fallback for hidden or
- * embedded documents where requestAnimationFrame may never fire.
+ * Resolve at an animation callback (before paint), with a bounded fallback for
+ * hidden or embedded documents where requestAnimationFrame may never fire.
  */
 export function nextFrame(): Promise<void> {
   return new Promise((resolve) => {
@@ -41,6 +41,17 @@ export function nextFrame(): Promise<void> {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
     setTimeout(finish, 34);
   });
+}
+
+/**
+ * Leave the animation-frame microtask checkpoint before continuing heavy work.
+ * The following task gives the browser a rendering opportunity; it is not a
+ * GPU-completion or displayed-frame acknowledgement. Hidden documents retain
+ * nextFrame's bounded fallback when animation callbacks do not arrive.
+ */
+export async function nextPaintFrame(): Promise<void> {
+  await nextFrame();
+  await defaultTaskYield();
 }
 
 /** Yield visible work whenever it exhausts its current frame budget. */
@@ -60,7 +71,7 @@ export function createFrameBudgetYielder(
 
 /**
  * Yield work hidden by an opaque loader without paying for a full animation
- * frame at every checkpoint. A real paint is still guaranteed periodically.
+ * frame at every checkpoint. Periodically request an animation callback too.
  */
 export function createOpaqueLoadingYielder(
   budgetMs = 12,

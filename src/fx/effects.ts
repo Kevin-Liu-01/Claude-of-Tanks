@@ -308,7 +308,9 @@ export interface FxRuntime {
   getAttachmentDebug(): object;
   warmTextures(): void;
   preloadTextures(): Promise<boolean>;
-  warmTexturesChunked(yieldFrame: () => Promise<void>): Promise<void>;
+  warmTexturesChunked(
+    yieldFrame: () => Promise<void>, options?: { assets?: 'preload' | 'ready-only' },
+  ): Promise<void>;
   warmOpeningEffects(
     pos: THREE.Vector3,
     dir: THREE.Vector3,
@@ -4234,9 +4236,9 @@ export function createFx(
     /** Decode deterministic prebuilt atlases during quiet garage time. */
     preloadTextures() { return particles.preloadTextures(); },
 
-    /** Paint the deferred sprite sheets one deterministic tile per frame. */
-    warmTexturesChunked(yieldFrame: () => Promise<void>) {
-      return particles.warmTexturesChunked(yieldFrame);
+    /** Bake deterministic sprite sheets cooperatively with the caller's yielder. */
+    warmTexturesChunked(yieldFrame: () => Promise<void>, options?: { assets?: 'preload' | 'ready-only' }) {
+      return particles.warmTexturesChunked(yieldFrame, options);
     },
 
     /**

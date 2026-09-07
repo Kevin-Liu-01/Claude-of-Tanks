@@ -257,3 +257,108 @@ Doctor scan reported 91/100 with one test-only array-lookup warning and no runti
 findings. Independent read-only review found no blocking lifecycle, endpoint,
 diagnostic-bound, or cleanup issues. This does not claim a fresh full-fleet test
 run, production deployment verification, or physical-device/network coverage.
+
+### Production confirmation of the combined warm order
+
+On September 7 the public site exposed revision `43f3e4651`. A fresh native
+two-client test against `https://cot.kevinliu.studio/`, its built-default
+Cloudflare signaling, and WebRTC passed without endpoint/state overrides.
+Both cache-disabled 1280×800/DPR 1 clients used high graphics, clear/day
+Frosthollow, displayed foreground 5→1, passed the nonblack check without rescue,
+and returned through native room exit. Room deletion and browser cleanup were
+verified; no page exceptions or renderer crashes were recorded.
+
+| Production peer | Entry total | Largest long task | Maximum RAF gap |
+| --- | ---: | ---: | ---: |
+| Host | 5,429 ms | 322 ms | 593.5 ms |
+| Guest | 5,261 ms | 369 ms | 592.4 ms |
+
+This confirms the deployment and entry behavior, **not** hitch-free animation.
+The capture is entry-only, not a new movement/shooting or distant-network
+certificate. Its retained local report is `production-timings-r4/report.json`
+under the excluded QA directory.
+
+### Cooperative particle-atlas preparation
+
+The next source-level defect is pre-paint work coalescing: resolving a promise
+inside `requestAnimationFrame` resumes its continuation before repaint. The
+network opening-effects warm previously synchronously drained the six-atlas
+procedural bake before its first yield. The existing chunked method could not
+be substituted directly because its default waits for optional image loads and
+decode, which may remain unresolved. These are confirmed execution contracts,
+not proof that either alone explains the historical frame-stall measurements.
+See MDN's [animation callback timing](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame)
+and [scheduler task continuation](https://developer.mozilla.org/en-US/docs/Web/API/Scheduler/yield).
+
+Network entry now crosses an animation callback **and a following task** before
+texture preparation and before the atomic effects draw. Its atlas generation
+uses the existing seeded generator with an 8 ms cooperative budget, preserving
+image dimensions, texture identities, material quality, and bake order. This
+budget is checked between existing tiles; it is not an 8 ms maximum-task
+guarantee. `nextPaintFrame` offers a rendering opportunity, not a displayed-frame
+or GPU-completion acknowledgement. The legacy `nextFrame` implementation and
+unrelated callers are unchanged; its hidden-document fallback remains bounded.
+
+The opt-in `{ assets: 'ready-only' }` policy uses already-decoded atlases or
+generates them without starting/waiting on image requests. Default Studio asset
+preloading is preserved. Once a generator starts, late decoded assets or a
+concurrent warmer cannot replace part of its output. After preparation, scar
+attachment, effect staging, late-layer compilation, the real compositor draw,
+and cleanup remain atomic. The verified reveal/fade still precedes READY.
+
+A rejected scheduling yield now rejects only that caller. It does not discard
+the shared generator: another suspended caller or a retry completes the same
+seeded bake. The regression first reproduced a concurrent caller reporting
+success with incomplete textures, then verifies complete output and exact
+generator-level pixel/Canvas-command parity with a synchronous reference.
+Actual generator-execution exceptions retain their existing handling; this is
+not a general recovery guarantee for a failing Canvas implementation.
+
+The accepted local candidate and an immediately following synchronous-warm
+control both passed native high-preset, clear/day, two-client entry, foreground
+5→1, nonblack/no-rescue reveal, native exit, and verified room/browser cleanup.
+The control changed only the network warm call back to synchronous preparation
+plus `nextFrame`; the candidate call was restored afterward.
+
+| Run | Host entry / largest task / maximum RAF gap | Guest entry / largest task / maximum RAF gap |
+| --- | --- | --- |
+| Chunked preparation | 6,477 / 535 / 537.1 ms | 6,489 / 645 / 696.7 ms |
+| Synchronous control | 6,231 / 671 / 985.8 ms | 6,114 / 836 / 940.1 ms |
+
+These observations support reduced task coalescing in this comparison, **not a
+total-load-time speedup or a stable frame-budget certificate**. World acquisition
+alone varied by about 300 ms; other tasks had active browsers on this machine,
+and OS/driver cache state was uncontrolled. Residual half-second pauses remain.
+Reports are `candidate-c-timings-final` and `candidate-c-control-timings` in the
+excluded QA directory. An earlier candidate visual/combat run disconnected from
+the browser after entry and could not verify room cleanup; its multi-second
+pauses are retained as failed evidence, not attributed to this change. Another
+rerun failed in guest invitation before effects preparation, then cleaned up
+successfully. Neither failed run is counted as a pass. The owned in-memory
+signaling server was restarted before the accepted candidate/control pair.
+
+Focused scheduler, texture, warm/reveal, cancellation, Garage return, countdown,
+barrier, launch, version, and import-integrity checks passed (21 selftest
+entrypoints), as did typecheck/core-unused, public builds, and diff checks.
+Four changed runtime owners passed quality metrics (287 functions, no complexity
+or explicit any/unknown violations). Independent review checked atlas ownership,
+late decode, scheduling rejection, deterministic retry, and atomic draw cleanup.
+The Node texture parity probe is not native Canvas rasterization/GPU upload
+certification. This follow-up does not claim a full-fleet suite, clean combat
+performance run, distant-network test, or explanation of historical 214–319 ms
+battle-frame stalls.
+
+The changed-file React Doctor scan remained 84/100 across this follow-up's
+initial and final scans, with six test-only warnings and no runtime findings.
+The flagged timer lookups follow exact timer-list assertions; sequential tests
+own global timer fixtures, and the microtask loop deliberately advances promise
+continuations. The remaining membership lookup checks six fake images, not a
+render loop. No scanner rules were suppressed. This score is not comparable to
+the earlier 91/100 scan of a different changed-file slice.
+
+Next throughput experiment: start optional atlas preloading when the existing
+network-only FX acquisition resolves, while world acquisition is still pending.
+Keep that promise outside readiness barriers, catch synchronous/asynchronous
+preload failure, and preserve the ready-only fallback. This is not implemented
+by the cooperative-warming slice and must separately prove no passive Garage
+work and no delay from hung downloads.
