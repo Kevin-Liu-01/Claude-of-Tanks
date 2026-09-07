@@ -17,6 +17,16 @@ export default {
       [[-306, 280], [-172, 236], [-28, 256], [104, 224], [228, 254], [354, 278]],
     ] },
     marshes: [{ x: -342, z: -124, r: 38, dip: 0.9 }, { x: -334, z: -32, r: 35, dip: 0.9 }, { x: -350, z: 158, r: 36, dip: 0.8 }],
+    // One worked southern harvest, following the existing stump/log stations.
+    // Irregular edges leave fingers of regrowth beside the retained pine belt;
+    // the rest of the diagonal opening remains older, grassed-over ground.
+    workedGround: [{ feather: 14, strength: 1, boundary: [
+      [-198, -298], [-166, -320], [-134, -298], [-128, -274],
+      [-86, -256], [-73, -211], [-43, -197], [-35, -158],
+      [1, -134], [8, -112], [43, -84], [22, -59],
+      [-23, -68], [-47, -101], [-67, -135], [-73, -165],
+      [-126, -193], [-136, -235], [-176, -259],
+    ] }],
     landforms: [
       { kind: 'ridge', x: -210, z: -62, length: 330, width: 70, height: 7.2, yawDeg: -24 },
       { kind: 'ridge', x: 226, z: 90, length: 330, width: 74, height: 7.8, yawDeg: -28 },
@@ -30,7 +40,7 @@ export default {
     { x: -252, z: 386 }, { x: -168, z: 424 }, { x: -84, z: 380 }, { x: 0, z: 426 },
     { x: 84, z: 382 }, { x: 168, z: 424 }, { x: 252, z: 386 },
   ] },
-  splat: { sourcedPalette: 'verdant', fieldPatch: 0.6, midRelief: 0.80, tintA: [0.82, 0.97, 0.65], tintB: [0.54, 0.70, 0.48], tintC: [1.0, 1.02, 0.73], roadTint: [0.69, 0.61, 0.48] },
+  splat: { sourcedPalette: 'verdant', townWear: 1.6, fieldPatch: 0.6, midRelief: 0.80, tintA: [0.82, 0.97, 0.65], tintB: [0.54, 0.70, 0.48], tintC: [1.0, 1.02, 0.73], roadTint: [0.69, 0.61, 0.48] },
   vegetation: {
     species: ['pine', 'cedar', 'oak'], clusterMix: [['pine', 0.70], ['cedar', 0.2], ['oak', 0.1]],
     loneMix: [['pine', 0.64], ['cedar', 0.20], ['oak', 0.16]], rimMix: [['pine', 0.72], ['cedar', 0.22], ['oak', 0.06]],

@@ -24,6 +24,7 @@ import {
 } from './props.ts';
 import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
+import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
@@ -188,7 +189,7 @@ export function createMap(
   const heightField = createHeightField(seed, config);
   const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
-  const props = createProps(heightField, engineCtx, 2002, config);
+  const props = createProps(heightField, engineCtx, 2002, config, vegetation);
   return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
 }
 
@@ -248,7 +249,7 @@ export async function createMapAsync(
   await step('Placing structures', 0.82);
   await propModelsReady;
   const props = await createPropsAsync(heightField, engineCtx, 2002, config,
-    sub('Placing structures', 0.82, 0.96), fineSlices);
+    sub('Placing structures', 0.82, 0.96), fineSlices, vegetation);
   await step('Sealing the battlefield', 0.96);
   const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
   world._buildDetail = {
@@ -305,6 +306,11 @@ function assembleWorld(
   // The narrow phase still uses the authored OBB/circle/convex footprint.
   const queryObstacles = createObstacleGrid(obstacles);
   const queryColliders = createObstacleGrid(colliders);
+  // Keep the synchronous seal visible in load diagnostics: it runs after the
+  // sliced vegetation builder, so its work is not in that builder's timings.
+  const groundCoverSealStarted = performance.now();
+  vegetation.setGroundCoverClearance(createGroundCoverClearance(queryObstacles));
+  group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;

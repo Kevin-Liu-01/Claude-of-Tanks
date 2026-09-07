@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertDeploymentRoadCoverage } from '../mapRoadCoverage.mjs';
 import { createHeightField } from '../terrain.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../battlefieldBounds.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './structureKit.ts';
@@ -102,8 +103,14 @@ for (const config of maps) {
   assert.ok(roads.length >= 5 && roads.length <= 6, `${label}: bounded multi-route layout`);
   const points = roads.flat();
   const xs = points.map(([x]) => x), zs = points.map(([, z]) => z);
-  assert.ok(Math.max(...xs) - Math.min(...xs) >= 580, `${label}: both flanks have road access`);
-  assert.ok(Math.max(...zs) - Math.min(...zs) >= 880, `${label}: roads reach both deployment zones`);
+  if (label === 'reservoir') {
+    // Reservoir deploys west/east; keep the same coverage floors in its
+    // deployment frame. Other maps retain their existing exact assertions.
+    assertDeploymentRoadCoverage(roads, hf._layout.spawns, 880, 580, label);
+  } else {
+    assert.ok(Math.max(...xs) - Math.min(...xs) >= 580, `${label}: both flanks have road access`);
+    assert.ok(Math.max(...zs) - Math.min(...zs) >= 880, `${label}: roads reach both deployment zones`);
+  }
   for (const [x, z] of points) {
     assert.ok(hf.getNormalAt(x, z).y >= 0.90, `${label}: road centerline is tank-traversable at ${x},${z}`);
     assert.equal(hf.getHeightAt(x, z), replay.getHeightAt(x, z), `${label}: authoring is deterministic`);

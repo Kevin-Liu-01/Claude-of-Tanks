@@ -48,8 +48,19 @@ export default {
     { x: -254, z: 382 }, { x: -170, z: 424 }, { x: -86, z: 380 }, { x: -2, z: 426 },
     { x: 84, z: 382 }, { x: 168, z: 424 }, { x: 252, z: 388 },
   ] },
-  splat: { sourcedPalette: 'delta', ...delta.splat, seaFoam: 0.12, seaRamp: [0.12, 0.50], marshGloss: 0.9, iceSky: [0.22, 0.42, 0.40], tintA: [0.78, 1.0, 0.68], tintB: [0.50, 0.70, 0.48], tintC: [0.98, 1.06, 0.78] },
+  splat: {
+    ...delta.splat, sourcedPalette: 'monsoon', fieldPatch: 0,
+    // Organic suspended-silt pigment, independent of the unchanged wave and
+    // roughness fields. Existing grazing sheen stays muted olive-grey.
+    mudTone: (_h: number, s: number, l: number) => [0.115, Math.min(1, s * 0.75), Math.min(1, l * 1.8)],
+    seaFoam: 0.12, seaRamp: [0.12, 0.50], shoreDirt: true, marshGloss: 0.9,
+    iceSky: [0.18, 0.19, 0.145],
+    tintA: [0.78, 1.0, 0.68], tintB: [0.50, 0.70, 0.48], tintC: [0.98, 1.06, 0.78],
+  },
   vegetation: {
+    willowForm: 'tidalMangrove',
+    grassTexTone: (h: number, s: number, l: number) => [h + 0.015, s * 0.7, l * 0.85],
+    tuftTone: (h: number, s: number, l: number) => [h + 0.015, s * 0.7, l * 0.85],
     species: ['willow', 'palm', 'eucalyptus'], clusterMix: [['willow', 0.6], ['palm', 0.24], ['eucalyptus', 0.16]],
     loneMix: [['palm', 0.44], ['willow', 0.42], ['eucalyptus', 0.14]], rimMix: [['willow', 0.62], ['eucalyptus', 0.24], ['palm', 0.14]],
     clusterCount: 58, loneCount: 78, rimCount: 84, grassDensity: 1.06, bushCount: 1.14, bushSpecies: 'willow', clusterScrub: 2.0,
@@ -60,6 +71,16 @@ export default {
       { id: 'southern-tidal-bank', species: 'willow', path: [[122, -306], [122, -208], [154, -130]], count: 22, width: 0.6 },
       { id: 'relief-island-bank', species: 'willow', path: [[168, -72], [160, 64], [132, 128]], count: 24, width: 0.6 },
       { id: 'fishing-creek-bank', species: 'willow', path: [[-116, 204], [-42, 210], [20, 216]], count: 18, width: 0.5 },
+    ],
+    // Existing willow allocations become uneven 3–5-tree tidal thickets.
+    // Open gaps preserve raised road crossings and the working boat landings.
+    tidalTrees: [
+      { id: 'southern-prop-root-thickets', species: 'willow', path: [[94, -315], [94, -200]], count: 32,
+        clumps: [3, 5, 4, 3, 5, 4, 4, 4] },
+      { id: 'central-prop-root-thickets', species: 'willow', path: [[122, -124], [115, 105]], count: 64,
+        clumps: [5, 3, 4, 5, 3, 4, 3, 5, 4, 3, 5, 4, 4, 3, 5, 4] },
+      { id: 'creek-prop-root-thickets', species: 'willow', path: [[-100, 256], [32, 263]], count: 32,
+        clumps: [4, 3, 5, 4, 5, 3, 4, 4] },
     ],
   },
   props: {

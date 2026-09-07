@@ -18,7 +18,9 @@ import {
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation } from './vegetationClearance.ts';
+import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
+import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
@@ -138,6 +140,9 @@ interface VegetationConfig {
   clusterScrub?: number;
   authoredTrees?: AuthoredTreeFeature[];
   stubblePatches?: readonly GrassStubblePatch[];
+  /** Reuses the willow species/library slots; no fourth material or atlas. */
+  willowForm?: 'tidalMangrove';
+  tidalTrees?: readonly TidalMangroveFeature[];
 }
 
 export interface VegetationMapConfig extends Pick<PropsMapConfig, 'props'> {
@@ -202,6 +207,7 @@ interface ConcealmentDisc extends VegetationDisc {
 
 export interface VegetationRuntime {
   group: THREE.Group;
+  setGroundCoverClearance(blocked: GroundCoverBlocked): void;
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
@@ -1078,16 +1084,21 @@ function addRootButtresses(
   color: THREE.Color,
   radius: number,
   count: number,
+  tidalMangrove = false,
 ): void {
   const phase = rng() * Math.PI * 2;
   for (let index = 0; index < count; index++) {
     const angle = phase + index / count * Math.PI * 2 + (rng() - 0.5) * 0.22;
     const length = radius * (1.65 + rng() * 0.55);
     const root = new THREE.ConeGeometry(radius * (0.34 + rng() * 0.10), length, 6, 2, false);
-    root.rotateZ(Math.PI / 2 - 0.10 - rng() * 0.06);
-    root.rotateY(-angle);
-    root.scale(1, 0.48, 1);
-    root.translate(Math.cos(angle) * length * 0.42, radius * 0.24, Math.sin(angle) * length * 0.42);
+    const tiltRoll = rng() * 0.06;
+    if (tidalMangrove) bendMangroveRoot(root, angle, length, 0.10 + tiltRoll);
+    else {
+      root.rotateZ(Math.PI / 2 - 0.10 - tiltRoll);
+      root.rotateY(-angle);
+      root.scale(1, 0.48, 1);
+      root.translate(Math.cos(angle) * length * 0.42, radius * 0.24, Math.sin(angle) * length * 0.42);
+    }
     parts.push(paintFlat(root, color.clone().multiplyScalar(0.90 + rng() * 0.10), 0));
   }
 }
@@ -1100,6 +1111,7 @@ function addRootButtresses(
 function buildBroadleafTrunk(
   rng: RandomSource,
   shape: BroadleafShape = {},
+  tidalMangrove = false,
 ): THREE.BufferGeometry {
   const cy = shape.cy ?? 4.35, crx = shape.rx ?? 2.35, cry = shape.ry ?? 1.75;
   // clamp a branch tip (radial dist r, height y) inside 0.78 of the hull;
@@ -1130,7 +1142,7 @@ function buildBroadleafTrunk(
   // r2: root flare — the trunk widens into the ground instead of poking out
   // of it like a dowel; the root decal disc carries the contact shadow
   {
-    const flare = new THREE.CylinderGeometry(0.30, 0.55, 0.55, 12, 2);
+    const flare = new THREE.CylinderGeometry(0.30, tidalMangrove ? 0.34 : 0.55, 0.55, 12, 2);
     const fp = attribute(flare, 'position');
     for (let i = 0; i < fp.count; i++) { // ribbed, slightly irregular flare
       const x = fp.getX(i), z = fp.getZ(i);
@@ -1143,7 +1155,7 @@ function buildBroadleafTrunk(
     _c.setHSL(0.07, 0.25, 0.20 + rng() * 0.05, THREE.SRGBColorSpace);
     parts.push(paintFlat(flare, _c.clone(), 0));
   }
-  addRootButtresses(parts, rng, trunkColor, 0.38, 5);
+  addRootButtresses(parts, rng, trunkColor, 0.38, 5, tidalMangrove);
   // r8: more + BIGGER primary branches reaching well into the canopy volume
   // (critique: "bare cylinder trunks that never connect to the canopy via
   // branches") — 4-6 limbs, thicker and longer (up to ~3.4 m, canopy center
@@ -2426,6 +2438,7 @@ function* vegetationBuildSteps(
   const L = heightField._layout;
   const v = L.village;
   const noVeg = heightField._noVeg || (() => false);
+  let groundCoverBlocked: GroundCoverBlocked | null = null;
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -2525,6 +2538,8 @@ function* vegetationBuildSteps(
     geoFar: THREE.BufferGeometry;
     matMid: THREE.MeshLambertMaterial;
     matNear: THREE.MeshLambertMaterial;
+    height: number;
+    radius: number;
   }> = [];
   function* buildGrassVariants(): Generator<BuildYield, void, void> {
     for (let gv = 0; gv < 2; gv++) {
@@ -2533,6 +2548,8 @@ function* vegetationBuildSteps(
       // 2 cm moss carpet
       const w = gv === 0 ? 0.92 : 1.14, h = gv === 0 ? 0.74 : 0.58;
       grassVariants.push({
+        // The far card is wider; reserve its full width and 0.188 m wind sway.
+        height: h - 0.03, radius: w * 0.75 + 0.2,
         geo: buildGrassTuftGeometry(w, h),
         geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
         matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v6'),
@@ -2669,6 +2686,11 @@ function* vegetationBuildSteps(
     if (heightField.getNormalAt(x, z).y < 0.78) return null;
     const vv = varJ < (0.75 - dry * 0.5) ? 0 : 1;
     const y = heightField.getHeightAt(x, z);
+    const tuftHeight = sy * syMul * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1);
+    const card = grassVariants[vv];
+    if (groundCoverBlocked?.(x, y - 0.03, z,
+      card.height * tuftHeight * (carpet ? 1.04 : 1),
+      card.radius * sxz * sxzMul * (carpet ? 0.96 : 1.28))) return null;
     // toned to sit on the terrain grass albedo so the far scale-out is
     // invisible (tufts must NOT read brighter than the ground they stand on)
     // r2: per-tuft variance REDUCED (hue 0.075 -> 0.05, lum 0.19 -> 0.12)
@@ -2694,8 +2716,7 @@ function* vegetationBuildSteps(
     // r2: midfield (non-carpet) tufts run ~15% wider — see the cull note
     // above (r3: 1.15 -> 1.28, coverage where the carpet hands over)
     t[0] = x; t[1] = y - 0.03; t[2] = z; t[3] = yaw;
-    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = sy * syMul;
-    if (veg.stubblePatches) t[5] *= stubbleHeightScale(x, z);
+    t[4] = sxz * sxzMul * (carpet ? 1 : 1.28); t[5] = tuftHeight;
     t[6] = _c.r; t[7] = _c.g; t[8] = _c.b; t[9] = vv;
     return t;
   }
@@ -2966,6 +2987,32 @@ function* vegetationBuildSteps(
   }
 
   yield { stage: 'grassCarpet' };
+
+  // Props are placed after vegetation. Seal actual accepted solid footprints
+  // before the world renders, then reuse the same admission rule for streaming.
+  function setGroundCoverClearance(blocked: GroundCoverBlocked): void {
+    if (groundCoverBlocked) throw new Error('Ground-cover clearance is already sealed');
+    if (carpetCache.size || grassBuildJob) throw new Error('Seal ground-cover clearance before streaming starts');
+    groundCoverBlocked = blocked;
+    let rejected = 0;
+    for (const chunk of grassChunks) for (const entry of chunk.meshes ?? []) {
+      const mesh = entry.mesh;
+      entry.geoFar.computeBoundingBox();
+      const box = entry.geoFar.boundingBox!;
+      const radius = Math.max(Math.abs(box.min.x), Math.abs(box.max.x),
+        Math.abs(box.min.z), Math.abs(box.max.z)) + 0.2;
+      const kept = compactGroundCoverInstances(mesh.instanceMatrix.array,
+        mesh.instanceColor?.array ?? null, entry.total, box.max.y, radius, blocked);
+      rejected += entry.total - kept;
+      entry.total = mesh.count = kept;
+      // Previous bounds remain conservative. No new GPU buffer/mesh/material.
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    carpetCache.clear();
+    _carpetCellX = _carpetCellZ = 0x7fffffff;
+    group.userData.groundCoverClearance = { rejectedInitialInstances: rejected };
+  }
   // ---- trees ----
   // Every tree material carries the per-instance occlusion fade (aFadeI,
   // 0 = solid → 1 = dithered to ~12%) plus a near-camera dissolve: WoT fades
@@ -3362,6 +3409,7 @@ function* vegetationBuildSteps(
     farSeed: number,
     shapes: Array<BroadleafShape & { n: number }>,
     farScale: readonly [number, number, number],
+    tidalMangrove = false,
   ): SpeciesDefinition {
     return {
       texSeed, nearSeed, farSeed,
@@ -3369,15 +3417,17 @@ function* vegetationBuildSteps(
       near: (k, pal) => {
         const shape = shapes[k % shapes.length];
         return {
-          trunk: buildBroadleafTrunk(mulberry32(seed + nearSeed + k * 7), shape),
+          trunk: buildBroadleafTrunk(mulberry32(seed + nearSeed + k * 7), shape, tidalMangrove),
           cards: buildBroadleafCards(
             mulberry32(seed + nearSeed + 2 + k * 7), shape.n, 1.0, pal, shape,
           ),
         };
       },
-      far: (r, pal, k) => scaleFar(
-        buildOakFarGeometry(r, pal, k), farScale[0], farScale[1], farScale[2],
-      ),
+      far: (r, pal, k) => {
+        const pair = scaleFar(buildOakFarGeometry(r, pal, k), farScale[0], farScale[1], farScale[2]);
+        if (tidalMangrove) shapeMangroveFarStem(pair.trunk, k);
+        return pair;
+      },
     };
   }
   const SPECIES: Record<Species, SpeciesDefinition> = {
@@ -3388,7 +3438,7 @@ function* vegetationBuildSteps(
     cypress: coniferDefinition(58, 181, 201, TREE_GEOMETRY_SCALE.cypress),
     oak: broadleafDefinition(51, 65, 73, OAK_SHAPES, [1, 1, 1]),
     poplar: broadleafDefinition(59, 211, 231, POPLAR_SHAPES, [0.58, 1.25, 0.58]),
-    willow: broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45]),
+    willow: broadleafDefinition(60, 241, 261, WILLOW_SHAPES, [1.45, 0.82, 1.45], veg.willowForm === 'tidalMangrove'),
     acacia: broadleafDefinition(62, 271, 291, ACACIA_SHAPES, [1.48, 0.78, 1.42]),
     eucalyptus: broadleafDefinition(63, 301, 321, EUCALYPTUS_SHAPES, [0.68, 1.35, 0.72]),
     palm: {
@@ -3442,7 +3492,10 @@ function* vegetationBuildSteps(
       });
       fm.envMapIntensity = 0.85; // keep ambient on shaded leaves — no black cards
       engineCtx.setupShadowMaterial(fm, foliageWindHook);
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v14-' + sp;
+      // Species vary textures/uniforms, not this shared shader hook. Three
+      // already keys material/geometry defines; a species suffix needlessly
+      // recompiles identical programs when the last world using it is evicted.
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v14';
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
@@ -3517,7 +3570,7 @@ function* vegetationBuildSteps(
   const sapRng = mulberry32((seed ^ 0x5a9) >>> 0);
   const clusters: VegetationDisc[] = [];
   const trees: TreeRecord[] = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
-  const authoredTreeDonors = veg.authoredTrees ? new Set<TreeRecord>() : null;
+  const authoredTreeDonors = veg.authoredTrees || veg.tidalTrees ? new Set<TreeRecord>() : null;
   const treeObstacles: TreeObstacle[] = [];
   const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
@@ -3888,10 +3941,18 @@ function* vegetationBuildSteps(
   if (authoredTreeDonors && veg.authoredTrees) {
     group.userData.authoredTrees = redistributeAuthoredTrees(trees, treeObstacles, concealers,
       authoredTreeDonors, veg.authoredTrees, heightField, siteOk, structureClearances, cfg?.props?.wallRuns ?? []);
-    authoredTreeDonors.clear();
   }
 
   // near/far instanced meshes (partition rewritten on camera movement, hysteresis).
+  function placeTidalTrees(): void {
+    if (veg.willowForm === 'tidalMangrove' && veg.tidalTrees && authoredTreeDonors) {
+      group.userData.tidalMangroves = relocateTidalMangroves(trees, treeObstacles, concealers,
+        authoredTreeDonors, veg.tidalTrees, veg.authoredTrees ?? [], heightField, structureClearances,
+        cfg?.props?.riverLandings ?? [], veg.avoid ?? []);
+    }
+    authoredTreeDonors?.clear();
+  }
+  placeTidalTrees();
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
@@ -4034,7 +4095,12 @@ function* vegetationBuildSteps(
     let maxRadiusM = 0;
     for (const t of trees) {
       const r = treeRootDecalRadius(t.dr);
-      if (r <= 0) continue;
+      if (r <= 0) {
+        // Preserve every later dry decal's angle/radius stream when an
+        // existing tree is transferred to the map-owned tidal band.
+        for (let k = 0; k <= segs; k++) drng();
+        continue;
+      }
       const cx0 = t.x, cz0 = t.z;
       projectedAreaM2 += treeRootDecalAreaM2(r);
       maxRadiusM = Math.max(maxRadiusM, r);
@@ -4070,7 +4136,7 @@ function* vegetationBuildSteps(
     dmesh.renderOrder = 1;
     dmesh.userData.aoExclude = true;
     dmesh.userData.treeRootDecal = true;
-    dmesh.userData.decalCount = trees.length;
+    dmesh.userData.decalCount = vb / (1 + segs);
     dmesh.userData.projectedAreaM2 = projectedAreaM2;
     dmesh.userData.maxRadiusM = maxRadiusM;
     group.add(dmesh);
@@ -4839,6 +4905,6 @@ function* vegetationBuildSteps(
     if (Math.abs(scopeZoomR - wasR) > 1) scopeRepartitionPending = true;
   }
 
-  return { group, update, setWindTime, setSniperFade, treeObstacles, concealers,
+  return { group, update, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters };
 }

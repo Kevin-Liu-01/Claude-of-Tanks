@@ -32,6 +32,7 @@ import {
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
+import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
@@ -48,8 +49,12 @@ import {
 } from './collision.ts';
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
-  deriveRuntimeStructureCollisionProfile,
+  deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
 } from './structureCollision.ts';
+import {
+  attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES,
+  type GroundCoverSolidProfile,
+} from './groundCoverClearance.ts';
 import {
   cropRowSegmentIsSupported, hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
@@ -60,6 +65,8 @@ import {
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { mergeWreckGeometries } from './exactWreckGeometry.ts';
+import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import { preloadPropModels, requirePropModels, type BakedPropModel } from './propsModelStore.ts';
@@ -2270,8 +2277,9 @@ export function createProps(
   engineCtx: EngineContext,
   seed = 2002,
   cfg: PropsMapConfig | null = null,
+  vegetation: FisheryVegetation | null = null,
 ): PropsRuntime {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -2293,8 +2301,9 @@ export async function createPropsAsync(
   cfg: PropsMapConfig | null = null,
   tick: ((done: number, total: number) => Promise<void> | void) | null = null,
   fineSlices = false,
+  vegetation: FisheryVegetation | null = null,
 ): Promise<PropsRuntime> {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
   const slices: Array<{ stage: string; ms: number }> = [];
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
@@ -2330,6 +2339,7 @@ function* propsBuildSteps(
   engineCtx: EngineContext,
   seed: number,
   cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
 ): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
   const P: PropsSettings = {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
@@ -2604,6 +2614,7 @@ ${snowCap ? `
   const looseRecords: LooseDestructibleRecord[] = []; // physics-class records; sleeping records cost no update work
   const activeLoose: LooseDestructibleRecord[] = []; // only awake records, bounded by the local interaction area
   const dPools = new Map<string, DestructiblePool>(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
+  const wallSpans = new Map<DestructibleRecord, WallSpan>();
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
   const _structureTint = new THREE.Color();
@@ -2732,6 +2743,7 @@ ${snowCap ? `
   }
 
   const buildingFeatures: PlacedBuilding[] = [];
+  let wharfFishery: FisheryPacket | null = null;
   const tacticalBeatFeatures: TacticalBeatFeature[] = [];
   // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
   const bakedInstances = new Map<string, BakedInstanceGroup>();
@@ -2919,11 +2931,17 @@ ${snowCap ? `
     const fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);
+    const obstacleStart = obstacles.length, colliderStart = colliders.length;
     addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
+    if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
+      wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
+        records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
+        feature: buildingFeatures[buildingFeatures.length - 1] };
+    }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
     bi++;
     return true;
@@ -3515,17 +3533,28 @@ ${snowCap ? `
       return moduleIndex === 0 || gapAt < 0
         || (center - WALL_SEG) < gapAt * (along / nSeg6);
     }
+    // Classify the original indexed slots before fitting the retained islands.
+    // Exclusion boundaries and their posts stay fixed, not merely the number
+    // of skipped slots: distributing the entire run would narrow road gaps.
+    const exclusions = new Uint8Array(nMod);
     for (let k = 0; k < nMod; k++) {
-      const t0 = k * WALL_SEG, t1 = Math.min((k + 1) * WALL_SEG, along);
+      const decisionT = (k * WALL_SEG + Math.min((k + 1) * WALL_SEG, along)) / 2;
+      const decisionX = x0 + tx * decisionT, decisionZ = z0 + tz * decisionT;
+      const inGap = isGapModule(decisionT);
+      const skip = heightField._roadDist(decisionX, decisionZ) < 5.5 || noVeg(decisionX, decisionZ)
+        || Math.max(Math.abs(decisionX), Math.abs(decisionZ)) > 478;
+      exclusions[k] = (inGap ? 1 : 0) | (skip ? 2 : 0);
+    }
+    const spanEdges = wallIslandEdges(along, exclusions, WALL_SEG);
+    for (let k = 0; k < nMod; k++) {
+      const inGap = (exclusions[k] & 1) !== 0, skip = (exclusions[k] & 2) !== 0;
+      const decisionT = (k * WALL_SEG + Math.min((k + 1) * WALL_SEG, along)) / 2;
+      const t0 = exclusions[k] ? k * WALL_SEG : spanEdges[k];
+      const t1 = exclusions[k] ? Math.min((k + 1) * WALL_SEG, along) : spanEdges[k + 1];
       const tc = (t0 + t1) / 2;
       const cx = x0 + tx * tc, cz = z0 + tz * tc;
-      // legacy gapAt (authored in the old ~6 m segmentation): modules whose
-      // center falls in that span render the static breach instead
-      const inGap = isGapModule(tc);
-      const skip = heightField._roadDist(cx, cz) < 5.5 || noVeg(cx, cz)
-        || Math.max(Math.abs(cx), Math.abs(cz)) > 478;
       if (inGap || skip) {
-        if (!skip && inGap && beginsGap(k, tc)) addBrokenBreach(t0, t1);
+        if (!skip && inGap && beginsGap(k, decisionT)) addBrokenBreach(t0, t1);
         if (prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // post at the lip
         prevBuilt = false;
         continue;
@@ -3535,8 +3564,12 @@ ${snowCap ? `
       const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, t1 - t0) * 0.85;
-      addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
+      const record = addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
         runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
+      // Preserve seeded placement/breaches. Once the shared kit is built,
+      // fit this same slot to a continuous, grounded masonry span.
+      wallSpans.set(record, { x0: x0 + tx * t0, z0: z0 + tz * t0,
+        x1: x0 + tx * t1, z1: z0 + tz * t1 });
       prevBuilt = true;
     }
     if (prevBuilt) endPost(x1, z1); // closing post
@@ -4995,7 +5028,7 @@ ${snowCap ? `
       }
       function finalizeWreckMeshes(): void {
         if (wreckGeos.length === 0) return;
-        const wm = new THREE.Mesh(mergeGeometries(wreckGeos, false), mats.baked);
+        const wm = new THREE.Mesh(mergeWreckGeometries(wreckGeos), mats.baked);
         wm.name = 'tank-wrecks';
         // PERF: the full hulks never enter the shadow passes — the factory's
         // own low-poly proxies (baked below in the same pose) cast instead,
@@ -5702,6 +5735,7 @@ ${snowCap ? `
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing only: pushes into the existing material buckets, no colliders.
+  const wharfDressingStart = buckets.wood.length;
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
@@ -5726,6 +5760,16 @@ ${snowCap ? `
     waterworksRubble.length = 0;
   }
   composeAuthoredReservoirWaterworks();
+
+  function composeAuthoredFisheryWharf(): void {
+    if (mapId !== 'mangrove') return;
+    group.userData.fisheryWharf = composeMangroveFisheryWharf(mapId, heightField, wharfFishery,
+      P.riverLandings?.find(site => site.lakeIndex === 20), [...obstacles, ...colliders],
+      vegetation, buckets.wood.slice(wharfDressingStart));
+    wharfFishery = null;
+  }
+  composeAuthoredFisheryWharf();
+  vegetation = null;
 
   // Delta uses two resident procedural plaster families. Fold the incidental
   // third paint tone after authoring so river-supported placement cannot add
@@ -5762,16 +5806,27 @@ ${snowCap ? `
   // broken slot: two matrix writes, no per-frame cost once settled.
   // -------------------------------------------------------------------------
   const _zeroScale = new THREE.Vector3(1e-4, 1e-4, 1e-4);
+  const groundCoverDetails = {
+    families: 0, solidCount: 0, profileBytes: 0,
+    placements: 0, placementBytes: 0, unsupportedTransforms: 0, buildMs: 0,
+  };
+  group.userData.groundCoverDetails = groundCoverDetails;
   function refitDestructibleColliders(
     geometry: THREE.BufferGeometry,
     pool: DestructiblePool,
-  ): void {
+    kind: string,
+  ): GroundCoverSolidProfile | null {
     const positions = geometry.getAttribute('position');
-    if (!positions || !pool.records.length) return;
+    if (!positions || !pool.records.length) return null;
     // Refit every destructible obstacle to the actual ground-bearing solids.
     // Roof overhangs, open bays and support gaps remain visually and
     // physically open instead of inheriting the metadata placement box.
-    const contactBand = deriveRuntimeStructureCollisionProfile({ baked: [geometry] }).contact;
+    // Reuse this extraction only for building families. Crates, moving props,
+    // walls (including their later terrain fit) and trees retain the cheap path.
+    const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
+      ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
+    const contactBand = source?.profile.contact
+      ?? deriveRuntimeStructureCollisionProfile({ baked: [geometry] }).contact;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledBand = record.sc === 1 ? contactBand : {
@@ -5795,6 +5850,25 @@ ${snowCap ? `
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw);
       }
     }
+    if (!source) return null;
+    const start = performance.now();
+    const detail = createGroundCoverSolidProfile(source.solids, source.contactTop);
+    groundCoverDetails.buildMs += performance.now() - start;
+    return detail;
+  }
+  function sealGroundCoverPlacements(pool: DestructiblePool, detail: GroundCoverSolidProfile): void {
+    const start = performance.now();
+    groundCoverDetails.families++;
+    groundCoverDetails.solidCount += detail.solidCount;
+    groundCoverDetails.profileBytes += detail.byteLength;
+    for (const record of pool.records) {
+      if (!record.ob) continue;
+      if (attachGroundCoverSolidProfile(record.ob, detail, pool.mats4[record.slot].elements)) {
+        groundCoverDetails.placements++;
+        groundCoverDetails.placementBytes += GROUND_COVER_PLACEMENT_BYTES;
+      } else groundCoverDetails.unsupportedTransforms++;
+    }
+    groundCoverDetails.buildMs += performance.now() - start;
   }
   function tintDestructibleInstances(
     kind: string,
@@ -5818,7 +5892,12 @@ ${snowCap ? `
     // the wood, straw, vehicle, or baked family selected by their metadata.
     const material = mats[meta.mat] || mats.baked;
     const geoI = meta.build(drng);
-    refitDestructibleColliders(geoI, pool);
+    const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
+    for (const record of pool.records) {
+      const span = wallSpans.get(record);
+      if (span) fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG);
+    }
+    if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
@@ -5852,6 +5931,9 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+  // Construction-only spans are now sealed into matrices/support/colliders;
+  // runtime destruction closures must not retain the placement graph.
+  wallSpans.clear();
   // spatial hash over destructible records for the shell paths (8 m cells)
   const D_CELL = 8;
   const dHash = new Map<string, number[]>();

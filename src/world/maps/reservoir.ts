@@ -1,20 +1,44 @@
-// Upland waterworks: an offset reservoir interrupts the eastern short lane,
-// while the long western forest road and a dry dam-side saddle stay connected.
+// Upland waterworks: a western deployment forks around the offset reservoir,
+// with a screened northern bank and a dry southern dam-side saddle.
 import frontier from './frontier.ts';
 export default {
   id: 'reservoir', name: 'Highland Reservoir',
+  // Route preference only: other maps retain their authored shallow fords.
+  navigationWaterPolicy: 'avoid-liquid',
   blurb: 'An irregular upland basin, pine-covered waterworks and a service settlement beneath high ridges',
   terrain: {
     hillScale: 1.08, microScale: 0.78, rimH: 38, clearMarshVeg: true, softLakes: true,
     village: { x0: -212, x1: 26, z0: -108, z1: 130, cx: -92, cz: 12, feather: 44, flatten: 0.82, relief: 0.18 },
+    // Full platoon assembly/access, including the real outward solo search.
+    // Existing hardstand stamps grade the current road grids/mask; no mesh,
+    // additional terrain buffer, path or material is constructed here.
+    hardstands: [
+      { x: -393, z: -73, width: 76, length: 260, yawDeg: -7, grade: 0 },
+    ],
     roads: { paths: [
-      // The works road wraps the repair compound, then feeds the dam-side
-      // saddle. The reservoir shore lane bypasses the compound's open end.
-      [[-102, -464], [-138, -116], [-138, -42], [-82, -42], [-82, 100], [-124, 222], [-62, 464]],
-      [[-362, -462], [-334, -280], [-320, -94], [-344, 94], [-302, 282], [-242, 464]],
-      [[302, -458], [42, -244], [-22, -102], [-82, -42], [-22, 42], [-4, 78], [40, 242], [308, 464]],
-      [[374, -448], [342, -276], [348, -96], [346, 92], [340, 280], [370, 464]],
-      [[-302, 282], [-124, 222], [40, 242], [180, 266], [340, 280]],
+      // Western deployment enters one fork, not one of several full-height
+      // parallel lanes. The southern road uses the existing substation saddle.
+      [[-424, -72], [-364, -72], [-340, -88], [-238, -174], [-78, -212],
+        [42, -244], [172, -224], [294, -190], [392, -100]],
+      // A longer, screened bank route passes above all three lake lobes and
+      // ends at the northern assembly junction. Only the eastern spine owns
+      // the continuation to the east gate; no second path re-crosses it.
+      [[-340, -88], [-292, 88], [-224, 190], [-124, 222], [40, 242],
+        [180, 266], [314, 238], [388, 160]],
+      // Retain the settlement's two-dimensional hooked works street. This
+      // is a brawl shortcut between the fork's arms, not a map-edge lane.
+      [[-238, -174], [-138, -116], [-138, -42], [-82, -42], [-82, 100], [-124, 222]],
+      // Retain the original local shore spine beside the kiosk/penstock.
+      // Its dry north/south ends feed the two routes around the lake.
+      [[42, -244], [-22, -102], [-82, -42], [-22, 42], [-4, 78], [40, 242]],
+      // Two genuinely separate east-side assembly pockets: three vehicles
+      // south of the basin, four on the north plateau. The rear service road
+      // alone owns the connection between the southern and northern joins,
+      // so each route pair has one real junction rather than overlapping grades.
+      // The first northern tank stages on the open apron east of this bend;
+      // it must not straddle the road's final-priority graded shoulder.
+      [[370, -328], [436, -288], [420, -208], [392, -100], [416, 0],
+        [388, 160], [448, 226], [372, 282], [440, 354]],
     ] },
     // Three unequal lobes form an irregular upland retention basin. Their
     // shared shoulder stays open water around a dry northern promontory;
@@ -34,10 +58,14 @@ export default {
       { kind: 'knoll', x: -126, z: 250, rx: 94, rz: 68, height: 5.8 },
     ],
   },
-  spawns: { player: { x: -108, z: -392 }, enemies: [
-    { x: -252, z: 386 }, { x: -168, z: 424 }, { x: -84, z: 380 }, { x: 0, z: 426 },
-    { x: 84, z: 382 }, { x: 168, z: 424 }, { x: 252, z: 386 },
-  ] },
+  spawns: {
+    player: { x: -384, z: -72,
+      formation: { columnSpacingM: 8, rowSpacingM: 13 } },
+    enemies: [
+      { x: 370, z: -328 }, { x: 436, z: -288 }, { x: 420, z: -208 },
+      { x: 436, z: 156 }, { x: 448, z: 226 }, { x: 372, z: 282 }, { x: 440, z: 354 },
+    ],
+  },
   splat: { sourcedPalette: 'frontier', ...frontier.splat, seaLake: true, seaFoam: 0.06, seaRamp: [0.16, 0.5], iceDrift: 0.02, marshGloss: 0.90, iceSky: [0.22, 0.37, 0.46], tintA: [0.82, 0.99, 0.74], tintB: [0.56, 0.74, 0.57], tintC: [1.0, 1.06, 0.84], roadTint: [0.72, 0.70, 0.60] },
   vegetation: {
     species: ['pine', 'fir', 'birch'], clusterMix: [['pine', 0.5], ['fir', 0.32], ['birch', 0.18]],
