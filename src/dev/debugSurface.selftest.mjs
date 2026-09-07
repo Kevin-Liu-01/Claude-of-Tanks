@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { installDebugSurface } from './debugSurface.ts';
+import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 
 let selected = 'm1a2';
 let shotMode = false;
@@ -49,6 +50,8 @@ const surface = installDebugSurface({
 }, target);
 
 assert.equal(target.__DEBUG, surface);
+assert.equal(surface.visitOwnedGeometries, visitOwnedObject3DGeometries,
+  'explicit diagnostics expose the maintained read-only owner without a boot/frame scan');
 assert.equal(surface.selectedSpecId, 'm1a2');
 surface.selectGarageTank('t90m');
 assert.equal(surface.selectedSpecId, 't90m', 'selection getter remains live');

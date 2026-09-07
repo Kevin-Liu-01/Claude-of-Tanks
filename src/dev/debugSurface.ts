@@ -8,6 +8,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRuntime.ts';
+import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -115,6 +116,7 @@ export function installDebugSurface(
     selectGarageTank: deps.selectGarageTank,
     stagePedestalTank: deps.stagePedestalTank,
     get world() { return deps.getWorld(); },
+    visitOwnedGeometries: visitOwnedObject3DGeometries,
     switchMap: deps.switchMap,
     flags: deps.flags,
     frameInfo: deps.frameInfo,
