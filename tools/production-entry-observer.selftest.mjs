@@ -22,6 +22,11 @@ function browserFixture() {
   const context = {
     window: { __DEBUG: debug,
       __NETWORK_LOAD: { map: 'winter', mode: 'PRIVATE_ROOM', worldMs: 20, stages: { compile: 4 },
+        status: 'pending', startedAt: 110, endedAt: Infinity,
+        stageIntervals: [{ stage: 'compile', startTime: 120, endTime: 124 },
+          { stage: 'reveal', startTime: 124 }, { stage: 'PRIVATE_STAGE', startTime: 125 }],
+        revealSlices: [{ stage: 'activation', startTime: 124, endTime: 126 },
+          { stage: 'primeReveal', startTime: NaN, endTime: 'PRIVATE_END' }],
         blackCheck: { before: 40, after: null, error: 'PRIVATE_ERROR' } },
       __WORLD_LOAD: { id: 'winter', cached: false, status: 'pending', startedAt: 110,
         stageIntervals: [{ stage: 'build', startTime: 110 }],
@@ -81,6 +86,17 @@ assert.equal(receipt.readiness.postAvailable, true);
 assert.equal(receipt.readiness.connected, true);
 assert.deepEqual(receipt.longTasks, [{ at: 130, durationMs: 60 }, { at: 120, durationMs: 55 }]);
 assert.equal(receipt.networkLoad.worldMs, 20);
+assert.equal(receipt.networkLoad.status, 'pending');
+assert.equal(receipt.networkLoad.startedAt, 110);
+assert.equal(receipt.networkLoad.endedAt, null, 'non-finite network clock values remain unknown');
+assert.deepEqual(receipt.networkLoad.stageIntervals, [
+  { stage: 'compile', startTime: 120, endTime: 124 },
+  { stage: 'reveal', startTime: 124, endTime: null },
+]);
+assert.deepEqual(receipt.networkLoad.revealSlices, [
+  { stage: 'activation', startTime: 124, endTime: 126 },
+  { stage: 'primeReveal', startTime: null, endTime: null },
+]);
 assert.equal(receipt.worldLoad.status, 'pending', 'failure evidence retains unfinished world intervals');
 assert.equal(receipt.worldLoad.stageIntervals[0].endTime, null);
 assert.equal(receipt.clock, 'page-performance-now-ms');
@@ -101,6 +117,12 @@ assert.deepEqual(Array.from(backgroundReceipt.foregroundCountdown), [],
   'DOM numerals in a background page are not evidence of user-visible countdown');
 
 const bounded = browserFixture();
+bounded.context.window.__NETWORK_LOAD.stageIntervals = Array.from({ length: 40 }, (_, index) => ({
+  stage: 'compile', startTime: index, endTime: index + 1, private: 'PRIVATE_DETAIL',
+}));
+bounded.context.window.__NETWORK_LOAD.revealSlices = Array.from({ length: 40 }, (_, index) => ({
+  stage: 'loaderFade', startTime: index, endTime: index + 1,
+}));
 for (let index = 0; index < 6020; index++) bounded.step({ waiting: index % 2 === 0 });
 bounded.tasks(Array.from({ length: 300 }, () => ({ startTime: 150, duration: 70 })));
 const boundedReceipt = bounded.run(readProductionEntryObserver, 'stop');
@@ -109,6 +131,9 @@ assert.equal(boundedReceipt.framesDropped, 20);
 assert.equal(boundedReceipt.transitions.length, 256);
 assert.ok(boundedReceipt.transitionsDropped > 0);
 assert.equal(boundedReceipt.longTasks.length, 256);
+assert.equal(boundedReceipt.networkLoad.stageIntervals.length, 32);
+assert.equal(boundedReceipt.networkLoad.revealSlices.length, 32);
+assert.doesNotMatch(JSON.stringify(boundedReceipt), /PRIVATE/);
 assert.ok(boundedReceipt.longTasksDropped > 0);
 
 for (const failure of [null, 'start', 'entry', 'stop']) {

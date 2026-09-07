@@ -362,3 +362,84 @@ Keep that promise outside readiness barriers, catch synchronous/asynchronous
 preload failure, and preserve the ready-only fallback. This is not implemented
 by the cooperative-warming slice and must separately prove no passive Garage
 work and no delay from hung downloads.
+
+### Production C follow-up and overlapping optional atlases (D)
+
+Production revision `c7089f069` passed the native two-client entry/exit check
+(`production-c-timings-r5`): both peers saw foreground 5→1, the battlefield
+was nonblack without rescue, no application errors or browser failures were
+recorded, and the private room/browser were cleaned up. This was functional
+entry evidence, not a performance pass:
+
+| Peer | Entry | Largest task | Maximum RAF gap | Effects warm |
+| --- | --- | --- | --- | --- |
+| Host | 7,998 ms | 1,445 ms | 1,447.9 ms | 1,018 ms |
+| Guest | 7,952 ms | 945 ms | 946.8 ms | 1,030 ms |
+
+The largest tasks followed the effects progress label and ended around the
+first Ready/battle callback. They did not overlap world construction or the
+earlier scene-compile interval. The host task exceeded the entire recorded
+effects duration: it spans more than texture preparation, so blaming the
+whole stall on texture generation is unsupported. The old network receipt
+retained rounded durations only; progress labels and callback counters cannot
+attribute individual render calls precisely. The historical 214–319 ms combat
+stalls remain a separate, unproven cause.
+
+The next narrow change starts optional atlas downloads/decode when the existing
+network-only FX runtime resolves. Required FX construction stays in the module
+barrier; the optional promise does not. A hung request, synchronous preload
+throw, or rejected preload cannot hold up world acquisition, reveal, or READY.
+Covered warming uses the existing ready-only policy: reuse a complete decoded
+batch or cooperatively generate the seeded fallback. No extra Garage work,
+frame-loop work, image quality changes, or network protocol changes are added.
+
+The regression executes the actual composition-root callback and first failed
+because no download started while the world was pending. It now covers ready,
+hung, synchronously throwing and rejected image work, as well as fatal FX
+construction failure and the network-only lazy boundary. An older source guard
+was refreshed to match the already-existing concurrent battle-visual loader.
+
+The network receipt now also retains absolute page-performance intervals for
+its ten fixed stages, plus activation, black watchdog, first reveal and loader
+fade. Pending operations remain open; success/failure closes their intervals.
+The observer exports only allowlisted names and finite numeric timestamps, with
+each interval array capped at 32. This adds no renders, GPU queries or yields.
+Tests cover pending/failing reveal, original application error identity under
+the normal clock, caught watchdog failure, and bounded/malformed exports.
+
+Two native local-loopback, fresh-context, high-preset 1v1 runs passed entry,
+foreground 5→1, nonblack/no-rescue reveal, live input/snapshot progress, native
+Garage exit and verified room/browser cleanup, with no application exceptions:
+
+| Run / conditions | Host entry / largest task / max RAF gap | Guest entry / largest task / max RAF gap |
+| --- | --- | --- |
+| D visual, clear/day | 5,195 / 671 / 674.3 ms | 5,195 / 549 / 617.4 ms |
+| D host CPU profile, clear/night | 5,681 / 702 / 705.3 ms | 5,705 / 721 / 723.9 ms |
+
+The visual run's effects preparation was 373/209 ms. The profile run, rebuilt
+with the new interval receipt, measured 462/507 ms. Different lighting, active
+foreign renderers, cache state and profiler overhead prevent an attributable
+speedup claim versus production C. The later visual-run combat probe explicitly
+switched to LOW: 20 seconds per foreground role reached 49.6/84.8 ms maximum
+frame gaps. It is not a HIGH-preset or stable-frame-budget certificate.
+
+The exact profile receipt locates the host's 702 ms task across 443.5 ms of
+effects preparation, 6.2 ms of activation and 252.1 ms of black watchdog. The
+guest's 721 ms task similarly spans 488.6/6.4/225.8 ms. Separate 441/339 ms
+tasks fall wholly inside loader fade, after first reveal resolved. Consequently,
+faster atlas preparation alone cannot remove these stalls. The sampled CPU
+profile is not GPU timing; its 276.7 ms largest sample gap and clock-alignment
+uncertainty also prohibit precise per-function attribution. Follow-up should
+isolate final-camera draw/program initialization and the watchdog's synchronous
+readback while preserving safety checks and the covered reveal barrier.
+
+Fifteen focused test entrypoints, typecheck/core-unused, the public build and
+diff checks pass. Independent review found no warm-order, ownership or privacy
+regression. The changed-file React Doctor scan is 49/100 with one test-only
+`no-eval` finding: the Node regression executes a callback extracted from this
+repository's trusted source, not user/network input or browser runtime. This is
+a high-confidence false positive; no rule was suppressed. Its earlier optional
+test lookup warning was resolved with an explicit membership assertion. Scanner
+scores across differently scoped slices are not comparable. No full-fleet suite,
+separate-device or distant-network claim is made. QA captures remain excluded
+from the commit; the historical combat-stall cause remains unproven.

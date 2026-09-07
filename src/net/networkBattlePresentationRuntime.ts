@@ -34,15 +34,62 @@ export interface NetworkBattlePresentationRequest {
   transitionShown?: boolean;
 }
 
+const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
+  'atmosphere', 'terrainGrid', 'wreckWarm', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
+type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
+type NetworkRevealSlice = 'activation' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
+
+interface NetworkLoadInterval<Stage extends string> {
+  stage: Stage;
+  /** Page performance.now() timebase, matching long-task startTime. */
+  startTime: number;
+  /** Absent while this operation is pending. */
+  endTime?: number;
+}
+
 export interface NetworkBattleLoadTrace {
   mode: string;
   map: string;
   stages: Record<string, number>;
+  startedAt: number;
+  endedAt?: number;
+  status: 'pending' | 'complete' | 'failed';
+  stageIntervals: NetworkLoadInterval<NetworkLoadStage>[];
+  revealSlices: NetworkLoadInterval<NetworkRevealSlice>[];
   modulesMs?: number;
   worldMs?: number;
   connectMs?: number;
   blackCheck?: RuntimeValue;
   totalMs?: number;
+}
+
+function createNetworkLoadTimer(trace: NetworkBattleLoadTrace, now: () => number) {
+  const close = (rows: NetworkLoadInterval<string>[], at: number): void => {
+    const interval = rows.at(-1);
+    if (interval && interval.endTime === undefined) interval.endTime = at;
+  };
+  return {
+    mark(stage: NetworkLoadStage): void {
+      const at = now();
+      const interval = trace.stageIntervals.at(-1)!;
+      trace.stages[stage] = Math.round(at - interval.startTime);
+      close(trace.stageIntervals, at);
+      const next = NETWORK_LOAD_STAGES[NETWORK_LOAD_STAGES.indexOf(stage) + 1];
+      if (next) trace.stageIntervals.push({ stage: next, startTime: at });
+    },
+    beginSlice(stage: NetworkRevealSlice): void {
+      trace.revealSlices.push({ stage, startTime: now() });
+    },
+    endSlice(): void { close(trace.revealSlices, now()); },
+    finish(status: 'complete' | 'failed'): void {
+      const at = now();
+      close(trace.stageIntervals, at);
+      close(trace.revealSlices, at);
+      trace.status = status;
+      trace.endedAt = at;
+      trace.totalMs = Math.round(at - trace.startedAt);
+    },
+  };
 }
 
 type NetworkMatchPort = NetworkBrowserMatch;
@@ -277,15 +324,17 @@ export function createNetworkBattlePresentationRuntime(
       load.lighting.setFarCascadeDormant(false);
 
       const loadStartedAt = now();
-      const trace: NetworkBattleLoadTrace = { mode: modeLabel, map: mapId, stages: {} };
-      let markAt = loadStartedAt;
-      const mark = (name: string) => {
-        const markedAt = now();
-        trace.stages[name] = Math.round(markedAt - markAt);
-        markAt = markedAt;
+      const trace: NetworkBattleLoadTrace = {
+        mode: modeLabel, map: mapId, stages: {}, startedAt: loadStartedAt,
+        status: 'pending',
+        stageIntervals: [{ stage: 'modulesWorldAndConnect', startTime: loadStartedAt }],
+        revealSlices: [],
       };
+      const timer = createNetworkLoadTimer(trace, now);
+      const mark = timer.mark;
       recordTrace(trace);
 
+      try {
       presentation.resetRoundState();
       roster.setCamoBiome(mapId);
       const { spectator, displayTeam, opposingTeam } = presentationTeams(own.team);
@@ -434,13 +483,18 @@ export function createNetworkBattlePresentationRuntime(
       mark('combatWarm');
 
       presentation.setWaitingForPeers(initial.meta?.phase === 'loading');
+      timer.beginSlice('activation');
       presentation.activate({ viewerId, own, spectator, mapId, bridge: preparedBridge, fx });
+      timer.endSlice();
+      timer.beginSlice('blackWatchdog');
       try {
         trace.blackCheck = presentation.runBlackWatchdog();
       } catch (error) {
         trace.blackCheck = {
           error: error instanceof Error ? error.message : String(error),
         };
+      } finally {
+        timer.endSlice();
       }
 
       load.audio.loadingOn(false);
@@ -449,9 +503,13 @@ export function createNetworkBattlePresentationRuntime(
       // Uncover only after one complete battle frame has presented from the
       // final camera/world pose. This is the same reveal barrier as solo entry
       // and prevents both black flashes and a first-frame shader hitch.
+      timer.beginSlice('primeReveal');
       await load.primeReveal();
+      timer.endSlice();
       throwIfNetworkBattleEntryAborted(signal);
+      timer.beginSlice('loaderFade');
       await load.battleLoad.hide();
+      timer.endSlice();
       throwIfNetworkBattleEntryAborted(signal);
       mark('reveal');
       // READY starts the shared authority countdown. Declare it only after the
@@ -461,7 +519,11 @@ export function createNetworkBattlePresentationRuntime(
       mark('readyBarrier');
       presentation.setWaitingForPeers(false);
       load.setAdaptiveSuspended(false);
-      trace.totalMs = Math.round(now() - loadStartedAt);
+      timer.finish('complete');
+      } catch (error) {
+        timer.finish('failed');
+        throw error;
+      }
     },
   };
 }

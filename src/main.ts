@@ -1929,7 +1929,13 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               console.warn('[loading] Optional armor overlay unavailable:', error);
               return null;
             }),
-            ensureFxRuntime(),
+            ensureFxRuntime().then((live) => {
+              // Overlap optional atlas download/decode with map construction.
+              // Never join it to entry: covered warming reuses ready assets or
+              // cooperatively generates the same textures if unavailable.
+              void Promise.resolve().then(() => live.preloadTextures()).catch(() => {});
+              return live;
+            }),
             ensureKillcamRuntime(),
             battleWarm.preload(),
             audio.warmBattleEvents(),

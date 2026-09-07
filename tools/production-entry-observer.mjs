@@ -100,6 +100,11 @@ export function installProductionEntryObserver() {
     }
     return output;
   };
+  const networkStageNames = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
+    'atmosphere', 'terrainGrid', 'wreckWarm', 'compile', 'combatWarm', 'reveal', 'readyBarrier'];
+  const intervals = (value, allowedStages) => Array.isArray(value) ? value.slice(0, 32)
+    .filter((row) => allowedStages.includes(row?.stage))
+    .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [];
   const receipt = () => {
     const network = window.__NETWORK_LOAD;
     const world = window.__WORLD_LOAD;
@@ -118,6 +123,11 @@ export function installProductionEntryObserver() {
           waitMs: finite(reveal.waitMs) } : null },
       networkLoad: network ? {
         map: network.map === 'winter' ? 'winter' : null,
+        status: ['pending', 'complete', 'failed'].includes(network.status) ? network.status : null,
+        startedAt: finite(network.startedAt), endedAt: finite(network.endedAt),
+        stageIntervals: intervals(network.stageIntervals, networkStageNames),
+        revealSlices: intervals(network.revealSlices,
+          ['activation', 'blackWatchdog', 'primeReveal', 'loaderFade']),
         modulesMs: finite(network.modulesMs), worldMs: finite(network.worldMs),
         connectMs: finite(network.connectMs), totalMs: finite(network.totalMs),
         stages: numericTree(network.stages),
