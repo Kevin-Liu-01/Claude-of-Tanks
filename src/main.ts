@@ -907,6 +907,7 @@ function minimapSnapCtx() {
 battleHudRuntime = createMainBattleHudRuntime({
   bus,
   engineContext: engineCtx,
+  perfMeterEnabled: () => !!input.getSettings().showPerfMeter,
   directionalHitValuesEnabled: () => !!input.getSettings().showDirectionalHitValues,
   queueMinimap: () => { worldRuntime.queueMinimap(); },
 });
