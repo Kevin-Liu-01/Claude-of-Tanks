@@ -75,6 +75,7 @@
     "shots:r2:grade": "node tools/marketing-shots/grade-showcase-r2.mjs",
     "shots:r2:publish": "node tools/marketing-shots/publish-showcase-r2.mjs",
     "shots:r2:check": "node tools/marketing-shots/showcase-r2.selftest.mjs",
+    "og:images": "node tools/marketing-shots/generate-og-images.mjs",
     "shots:battle:generate": "node tools/marketing-shots/gen-battle-campaign.mjs",
     "shots:battle:grade": "node tools/marketing-shots/grade-battle-campaign.mjs",
     "studio:examples": "node tools/studio-example-videos.mjs",

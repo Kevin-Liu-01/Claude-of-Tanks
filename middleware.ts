@@ -1,7 +1,9 @@
 import { next } from '@vercel/functions';
+import { injectSiteMetadata, privateRoomMetadata, STUDIO_METADATA } from './src/presentation/siteMetadata.ts';
 
 const DEPLOYMENT_COOKIE = '__vdpl';
 const DEPLOYMENT_RESET_PARAM = '_dplreset';
+const METADATA_SHELL_PARAM = '_cot_meta_shell';
 
 /** Expire the host-only deployment pin before a clean-document retry. */
 export function deploymentResetCookie() {
@@ -55,7 +57,7 @@ export const config = {
 };
 
 /** @param {Request} request */
-export default function middleware(request: Request): Response {
+export default async function middleware(request: Request): Promise<Response> {
   const resetLocation = deploymentResetLocation(request.url);
   if (resetLocation) {
     // A stale __vdpl routes this request to the old deployment first. Expire
@@ -74,5 +76,42 @@ export default function middleware(request: Request): Response {
     request.headers.get('cookie'),
     process.env.VERCEL_DEPLOYMENT_ID,
   );
+
+  const requestUrl = new URL(request.url);
+  if (!requestUrl.searchParams.has(METADATA_SHELL_PARAM)) {
+    const isPlayableDocument = requestUrl.pathname === '/' || requestUrl.pathname === '/index.html';
+    const roomMetadata = isPlayableDocument ? privateRoomMetadata(requestUrl) : null;
+    const metadata = roomMetadata || (requestUrl.pathname === '/studio' || requestUrl.pathname === '/studio/'
+      ? STUDIO_METADATA
+      : null);
+    if (metadata) {
+      const shellUrl = new URL('/index.html', requestUrl.origin);
+      shellUrl.searchParams.set(METADATA_SHELL_PARAM, '1');
+      const shellResponse = await fetch(shellUrl, {
+        headers: {
+          accept: 'text/html',
+          cookie: request.headers.get('cookie') || '',
+          'user-agent': request.headers.get('user-agent') || 'Claude-of-Tanks metadata shell',
+        },
+      });
+      if (shellResponse.ok) {
+        const headers = new Headers(shellResponse.headers);
+        headers.delete('content-encoding');
+        headers.delete('content-length');
+        headers.delete('etag');
+        headers.delete('last-modified');
+        headers.set('content-type', 'text/html; charset=utf-8');
+        headers.set('cache-control', roomMetadata ? 'private, no-store' : 'public, max-age=0, must-revalidate');
+        if (roomMetadata) headers.set('x-robots-tag', 'noindex, nofollow, noarchive');
+        if (cookie && !headers.get('set-cookie')?.includes(`${DEPLOYMENT_COOKIE}=`)) {
+          headers.append('set-cookie', cookie);
+        }
+        return new Response(injectSiteMetadata(await shellResponse.text(), metadata), {
+          status: shellResponse.status,
+          headers,
+        });
+      }
+    }
+  }
   return next(cookie ? { headers: { 'set-cookie': cookie } } : {});
 }

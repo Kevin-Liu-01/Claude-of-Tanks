@@ -9,7 +9,7 @@
        viewport-fit=cover exposes env(safe-area-inset-*) on notched phones —
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Claude of Tanks — Free Browser Tank Game | 113 Tanks, 20 Battlefields</title>
+  <title>Claude of Tanks — Free Browser Tank Game | {{COT_PRODUCTION_VEHICLES}} Tanks, {{COT_BATTLEFIELDS}} Battlefields</title>
   <meta name="author" content="Kevin B. Liu" />
   <meta name="copyright" content="Copyright © 2026 Kevin B. Liu" />
   <!-- SEO/AEO: factual public-build metadata. Keep counts aligned with the
@@ -846,14 +846,19 @@
     (() => {
       document.documentElement.dataset.baseTitle = document.title;
       const params = new URLSearchParams(location.search);
-      const roomCode = String(params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const roomCode = String(params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+        .replace(/[01IO]/g, (char) => ({ 0: 'Q', 1: 'L', I: 'L', O: 'Q' })[char] || char)
+        .slice(0, 6);
       const hostName = String(params.get('host') || '').trim().replace(/\s+/g, ' ').slice(0, 24);
       const invite = document.getElementById('cot-boot-invite');
       const boot = document.getElementById('cot-boot');
       if (roomCode.length === 6 && invite && boot) {
+        const battleLabel = String(params.get('mode') || '').toLowerCase() === 'lan'
+          ? 'LAN Battle'
+          : 'Private Battle';
         const invitationTitle = hostName
-          ? 'Join ' + hostName + '’s Game'
-          : 'Join Private Game · ' + roomCode;
+          ? 'Join ' + hostName + '’s ' + battleLabel
+          : 'Join Private Battle ' + roomCode;
         invite.textContent = invitationTitle;
         invite.classList.add('on');
         boot.classList.add('has-invite');

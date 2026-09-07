@@ -26,6 +26,11 @@ import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
+import {
+  applySiteMetadataToDocument,
+  GAME_METADATA,
+  privateRoomMetadata,
+} from '../presentation/siteMetadata.ts';
 import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
 import {
   GAME_MODE_DEFINITIONS,
@@ -790,7 +795,6 @@ export function createPlayMenu({
   const joinBtn = requiredElement<HTMLButtonElement>(root, '[data-action="join"]');
   const copyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="copy"]');
   const note = requiredElement<HTMLElement>(root, '.note');
-  const defaultDocumentTitle = document.documentElement.dataset.baseTitle || document.title;
   const defaultEyebrow = eyebrow.textContent;
   const defaultMenuTitle = menuTitle.textContent;
   const defaultMenuLead = menuLead.textContent;
@@ -897,7 +901,13 @@ export function createPlayMenu({
     menuLead.textContent = connected
       ? 'You are in room ' + code + '. Choose your vehicle, team, and ready state.'
       : 'Room ' + code + ' is ready. Connecting you directly to the host.';
-    document.title = menuTitle.textContent + ' — Claude of Tanks';
+    const metadataUrl = new URL(window.location.href);
+    metadataUrl.searchParams.set('room', code);
+    metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
+    if (invitedHostName) metadataUrl.searchParams.set('host', invitedHostName);
+    else metadataUrl.searchParams.delete('host');
+    const metadata = privateRoomMetadata(metadataUrl);
+    if (metadata) applySiteMetadataToDocument(document, metadata);
   }
 
   function resetInvitation(): void {
@@ -906,7 +916,7 @@ export function createPlayMenu({
     eyebrow.textContent = defaultEyebrow;
     menuTitle.textContent = defaultMenuTitle;
     menuLead.textContent = defaultMenuLead;
-    if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
+    if (document.title.startsWith('Join ')) applySiteMetadataToDocument(document, GAME_METADATA);
   }
 
   function setStatus(message: RuntimeValue, error = false): void {
