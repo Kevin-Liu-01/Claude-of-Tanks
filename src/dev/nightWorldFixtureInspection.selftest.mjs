@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { inspectNightWorldFixture } from './nightWorldFixtureInspection.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from '../world/maps/structureKit.ts';
+import { DESTRUCTIBLE_TYPES } from '../world/maps/inhabitKit.ts';
 import { makeLighthouse } from '../world/maps/railKit.ts';
 import { markWorldAperture } from '../world/worldNightEmissionGeometry.ts';
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from '../world/worldNightFixtureInstances.ts';
+import { configureWorldLampMaterial, WORLD_LAMP_ACTIVE_ATTRIBUTE } from '../world/worldNightLighting.ts';
 
 const root = new THREE.Group(); root.position.set(30, 2, -20); root.rotation.y = .6;
 const materials = [], geometries = [], instances = [];
@@ -25,8 +27,16 @@ const glass = new THREE.MeshPhysicalMaterial(); materials.push(glass);
 const ordinary = new THREE.BoxGeometry(1, 1, .1); geometries.push(ordinary);
 prepareWorldStaticNightFixture([...buckets.glass, ordinary], glass);
 const lighthouse = new THREE.Mesh(buckets.glass[0], glass); lighthouse.position.x = 130; root.add(lighthouse);
+const lampGeometry = DESTRUCTIBLE_TYPES.lamp.build(() => .5), lampMaterial = new THREE.MeshStandardMaterial();
+geometries.push(lampGeometry); materials.push(lampMaterial); configureWorldLampMaterial(lampMaterial);
+lampGeometry.setAttribute(WORLD_LAMP_ACTIVE_ATTRIBUTE, new THREE.InstancedBufferAttribute(new Uint8Array([0, 1]), 1));
+const lamp = new THREE.InstancedMesh(lampGeometry, lampMaterial, 2); lamp.name = 'destructible-lamp';
+lamp.setMatrixAt(0, new THREE.Matrix4());
+lamp.setMatrixAt(1, new THREE.Matrix4().compose(new THREE.Vector3(200, 0, 0),
+  new THREE.Quaternion().setFromEuler(new THREE.Euler(.08, 1.2, -.03)), new THREE.Vector3(.85, .95, .9)));
+instances.push(lamp); root.add(lamp);
 const children = [...root.children], reference = new THREE.Vector3(40, 8, 0);
-for (const [kind, mesh, distance] of [['structure-window', office, 4], ['relay-beacon', relay, 5], ['lighthouse', lighthouse, 8]]) {
+for (const [kind, mesh, distance] of [['structure-window', office, 4], ['relay-beacon', relay, 5], ['lighthouse', lighthouse, 8], ['streetlamp', lamp, 7]]) {
   const seat = inspectNightWorldFixture(root, reference, kind);
   assert(seat, `${kind}: actual authored outward aperture has a clear camera`);
   assert.equal(seat.ownerUuid, mesh.uuid); assert.equal(seat.kind, kind);
@@ -44,6 +54,11 @@ for (const [kind, mesh, distance] of [['structure-window', office, 4], ['relay-b
   point.multiplyScalar(1 / 3).applyMatrix4(matrix); direction.normalize().applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(matrix));
   assert(point.distanceTo(new THREE.Vector3().fromArray(seat.point)) < 1e-8, 'actual scaled/tilted instance face point');
   assert(direction.distanceTo(new THREE.Vector3().fromArray(seat.direction)) < 1e-8, 'inverse-transpose normal survives nonuniform fixture scaling');
+  if (kind === 'streetlamp') {
+    const source = new THREE.Vector3(.98, 3.895, 0).applyMatrix4(matrix);
+    assert(source.distanceTo(new THREE.Vector3().fromArray(seat.sourcePoint)) < 1e-6,
+      'point-light position is the actual whole bulb center, separate from ray-tested face centroid');
+  }
   mesh.visible = false; assert.equal(inspectNightWorldFixture(root, reference, kind), null); mesh.visible = true;
 }
 assert.deepEqual(root.children, children, 'inspection changes no scene owners');
@@ -51,7 +66,9 @@ setWorldNightFixtureActive(office, 1, false);
 assert.equal(inspectNightWorldFixture(root, reference, 'structure-window'), null);
 setWorldNightFixtureActive(relay, 1, false);
 assert.equal(inspectNightWorldFixture(root, reference, 'relay-beacon'), null);
-assert.throws(() => inspectNightWorldFixture(root, reference, 'any-glowing-material'), /Unknown authored fixture/);
+for (const kind of ['any-glowing-material', '__proto__', 'toString']) {
+  assert.throws(() => inspectNightWorldFixture(root, reference, kind), /Unknown authored fixture/);
+}
 
 const blockedRoot = new THREE.Group(), paneGeometry = markWorldAperture(new THREE.BoxGeometry(1, 1, .03), [0, 0, 1]);
 const paneMaterial = new THREE.MeshStandardMaterial(); materials.push(paneMaterial); geometries.push(paneGeometry);
@@ -65,6 +82,21 @@ assert.equal(inspectNightWorldFixture(blockedRoot, reference, 'structure-window'
 wall.visible = false; assert(inspectNightWorldFixture(blockedRoot, reference, 'structure-window'));
 wall.visible = true; wall.position.z = 3.8;
 assert.equal(inspectNightWorldFixture(blockedRoot, reference, 'structure-window'), null, 'nearby wall or camera-inside facade is rejected');
+const streetRoot = new THREE.Group(), street = new THREE.InstancedMesh(lampGeometry, lampMaterial, 2);
+street.name = 'destructible-lamp'; street.setMatrixAt(0, new THREE.Matrix4());
+street.setMatrixAt(1, new THREE.Matrix4().makeTranslation(20, 0, 0));
+lampGeometry.getAttribute(WORLD_LAMP_ACTIVE_ATTRIBUTE).setX(0, 1);
+streetRoot.add(street); instances.push(street);
+const roofGeometry = new THREE.BoxGeometry(1, 1, 1), roof = new THREE.Mesh(roofGeometry, wallMaterial);
+geometries.push(roofGeometry); roof.position.set(.98, 3.895, 0); streetRoot.add(roof);
+const streetSeat = inspectNightWorldFixture(streetRoot, new THREE.Vector3(), 'streetlamp');
+assert.equal(streetSeat?.slot, 1, 'a roof-buried nearest bulb cannot hide the next actual clear lamp');
+street.count = 1;
+assert.equal(inspectNightWorldFixture(streetRoot, reference, 'streetlamp'), null, 'all obstructed lamps fail closed rather than guessing a camera');
+roof.visible = false;
+assert(inspectNightWorldFixture(streetRoot, reference, 'streetlamp'));
+lampGeometry.getAttribute(WORLD_LAMP_ACTIVE_ATTRIBUTE).setX(0, 0);
+assert.equal(inspectNightWorldFixture(streetRoot, reference, 'streetlamp'), null, 'destroyed streetlamps never supply closeup evidence');
 for (const mesh of instances) mesh.dispose();
 for (const geometry of [...geometries, ...Object.values(buckets).flat()]) geometry.dispose();
 for (const material of materials) material.dispose();

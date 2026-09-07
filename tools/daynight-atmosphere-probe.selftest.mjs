@@ -6,6 +6,7 @@ import { BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, MeshSt
   Group, Scene, PerspectiveCamera, SpotLight, PointLight, InstancedMesh, Matrix4, BoxGeometry } from 'three';
 import ts from 'typescript-compiler-api';
 import { inspectNightWindow } from '../src/dev/nightWindowInspection.ts';
+import { inspectNightWorldFixture } from '../src/dev/nightWorldFixtureInspection.ts';
 import { markWorldWindowPane } from '../src/world/worldNightEmissionGeometry.ts';
 
 // Execute actual maintained functions without importing the browser-owning CLI.
@@ -122,7 +123,8 @@ const state = (timeOfDay, seed) => ({
 const good = { mapId: 'winter', day: state('day', 1), night: state('night', 3), restored: state('day', 1),
   legacy: [state('day', 13), state('night', 3)],
   expected: [weather('day', 1), weather('night', 3), weather('day', 1), weather('day', 13), weather('night', 3)] };
-const focusedChecks = load('checkFocusedFixtureCase', { checkNightLightingCycle });
+const validStreetLampFixture = load('validStreetLampFixture');
+const focusedChecks = load('checkFocusedFixtureCase', { checkNightLightingCycle, validStreetLampFixture });
 const requestedVehicleFixtures = load('requestedVehicleFixtures', { assert });
 assert.deepEqual(requestedVehicleFixtures([]), []);
 assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv']),
@@ -134,7 +136,8 @@ function focusedRow(kind) {
   const row = { ...structuredClone(good), kind,
     specId: kind === 'shtora' ? 't90a_vladimir' : 'm1a1',
     fixture: { kind, ownerUuid: 'authored-mesh', materialUuid: 'lens', slot: 7,
-      point: [1, 2, 3], lineOfSight: 'authored-emissive-face' } };
+      ownerName: kind === 'streetlamp' ? 'destructible-lamp' : '', mask: 1, faceIndex: 12,
+      point: [1.2, 2, 3], sourcePoint: [1, 2, 3], lineOfSight: 'authored-emissive-face' } };
   for (const state of [row.day, row.night, row.restored]) {
     state.preset = 'high'; state.playerSpecId = row.specId;
     state.nightLighting.playerCoverage.shtora = 2;
@@ -170,6 +173,30 @@ for (const kind of ['shtora', 'streetlamp']) {
   row.fixture.slot = 7; row.night.nightLighting.lights[2].position = [100, 2, 3];
   assert.equal(focusedChecks(row).actualStreetPool, false, 'a point light on another fixture is not a pool beneath this lamp');
 }
+{
+  const row = focusedRow('streetlamp');
+  row.night.nightLighting.lights.filter(light => light.kind === 'spot').forEach(light => { light.intensity = 0; });
+  assert(Object.values(focusedChecks(row)).every(Boolean), 'a distant lamp view does not require out-of-range player spotlights');
+  assert.equal(checkNightLightingCycle(row, [row.day, row.night, row.restored]), false,
+    'default battle/vehicle cycle retains its active player-headlight requirement');
+  for (const mutate of [
+    row => { row.fixture.lineOfSight = null; },
+    row => { row.fixture.ownerName = 'generic-glass'; },
+    row => { row.fixture.mask = 0; },
+    row => { row.fixture.faceIndex = null; },
+    row => { row.fixture.faceIndex = -1; },
+    row => { row.fixture.sourcePoint = null; },
+    row => { row.fixture.sourcePoint[0] += 1; },
+    row => { row.night.nightLighting.lights[2].intensity = 0; },
+    row => { row.night.nightLighting.lights[2].castShadow = true; },
+    row => { row.night.nightLighting.lights[0].intensity = NaN; },
+    row => { row.night.nightLighting.lights.pop(); },
+    row => { row.restored.nightLighting.attached = true; },
+  ]) {
+    const bad = structuredClone(row); mutate(bad);
+    assert(Object.values(focusedChecks(bad)).some(value => !value), 'remote fixture still requires exact visible source, bounded pool and reset');
+  }
+}
 const worldFixtureChecks = load('checkWorldFixtureCase', { checkFocusedFixtureCase: focusedChecks,
   clearWeatherState: load('clearWeatherState') });
 for (const [kind, ownerName, mask, slot, intensity] of [
@@ -186,6 +213,12 @@ for (const [kind, ownerName, mask, slot, intensity] of [
   }
   row.fixture.materialUuid = 'actual-fixture';
   assert(Object.values(worldFixtureChecks(row)).every(Boolean), `${kind}: actual fixture intensity and reset`);
+  const distant = structuredClone(row);
+  distant.night.nightLighting.lights.forEach(light => { light.intensity = 0; });
+  distant.night.nightLighting.materials = distant.night.nightLighting.materials.filter(material => material.uuid === 'actual-fixture');
+  distant.day.nightLighting.materials = distant.day.nightLighting.materials.filter(material => material.uuid === 'actual-fixture');
+  distant.restored.nightLighting.materials = distant.restored.nightLighting.materials.filter(material => material.uuid === 'actual-fixture');
+  assert(Object.values(worldFixtureChecks(distant)).every(Boolean), `${kind}: emission-only remote fixture has no unrelated spotlight/radiance requirement`);
   for (const mutate of [
     row => { row.fixture.mask = 0; },
     row => { row.fixture.faceIndex = null; },
@@ -220,6 +253,7 @@ for (const [kind, ownerName, mask, slot, intensity] of [
     row => { row.fixture.faceIndex = null; },
     row => { row.night.playerSpecId = 'fallback-vehicle'; },
     row => { row.night.nightLighting.playerCoverage.headlights = 0; },
+    row => { row.night.nightLighting.lights.filter(light => light.kind === 'spot').forEach(light => { light.intensity = 0; }); },
     row => { row.night.nightLighting.materials[0].intensity = 0; },
     row => { row.restored.nightLighting.materials[0].intensity = 3; },
     row => { row.night.weather.condition = 'snow'; },
@@ -329,6 +363,7 @@ for (const overrides of [{ unmaskedGpu: false }, { contextLost: true }, { glErro
   const probe = { epochs: 0, beginStateEpoch() { this.epochs++; } };
   const window = { __equipmentDamageProbe: probe, __DEBUG: { scene, camera, world: { group: world },
     inspectNightWindow: () => inspectNightWindow(world, camera.position),
+    inspectNightWorldFixture: kind => inspectNightWorldFixture(world, camera.position, kind),
     game: { player: { visual: { root: actor } } }, nightLighting: { current: runtime } } };
   load('installNightLightProbe', { window })();
   try {
@@ -347,8 +382,12 @@ for (const overrides of [{ unmaskedGpu: false }, { contextLost: true }, { glErro
       'a destroyed instance must never be chosen for the fixture screenshot');
     lamp.updateWorldMatrix(true, false);
     const expected = camera.position.clone().set(.98, 3.895, 0).applyMatrix4(instance).applyMatrix4(lamp.matrixWorld);
-    assert(expected.distanceTo(camera.position.clone().fromArray(fixture.point)) < 1e-6,
-      'fixture seat follows the real aperture vertices plus authored instance/world transforms');
+    assert(expected.distanceTo(camera.position.clone().fromArray(fixture.sourcePoint)) < 1e-6,
+      'projected source follows whole lens center and actual instance/world transforms');
+    assert.equal(fixture.lineOfSight, 'authored-emissive-face');
+    assert(Number.isSafeInteger(fixture.faceIndex));
+    assert(camera.position.distanceTo(camera.position.clone().fromArray(fixture.point)) >= 6.75,
+      'staging preserves the externally ray-checked camera, not a guessed direction behind a building');
     probe.restoreNightLightCamera();
     assert.deepEqual([camera.position.toArray(), camera.quaternion.toArray(), camera.fov], originalCamera);
     assert.equal(scene.children.length, nodes, 'readbacks and closeups add no fake lighting or geometry');

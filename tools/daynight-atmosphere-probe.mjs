@@ -185,27 +185,10 @@ function installNightLightProbe() {
       direction: light.target.position.clone().sub(light.position).normalize() };
   }
   function lampSeat(d) {
-    const mesh = d.world?.group.getObjectByName('destructible-lamp');
-    const mask = mesh?.geometry?.getAttribute('nightEmissionMask');
-    if (!mesh?.isInstancedMesh || !mask) return null;
-    const active = mesh.geometry.getAttribute('nightFixtureActive');
-    const position = mesh.geometry.getAttribute('position');
-    const center = d.camera.position.clone().set(0, 0, 0), vertex = center.clone();
-    let count = 0;
-    for (let i = 0; i < mask.count; i++) if (mask.getX(i) > .5) {
-      center.add(vertex.fromBufferAttribute(position, i)); count++;
-    }
-    if (!count) return null;
-    center.divideScalar(count);
-    for (let slot = 0; slot < mesh.count; slot++) {
-      if (active && active.getX(slot) < .5) continue;
-      const matrix = d.camera.matrixWorld.clone(); mesh.getMatrixAt(slot, matrix);
-      mesh.updateWorldMatrix(true, false);
-      return { kind: 'streetlamp', ownerUuid: mesh.uuid, materialUuid: mesh.material.uuid, slot,
-        point: center.applyMatrix4(matrix).applyMatrix4(mesh.matrixWorld),
-        direction: vertex.set(1, 0, 0).transformDirection(mesh.matrixWorld) };
-    }
-    return null;
+    const seat = d.inspectNightWorldFixture?.('streetlamp');
+    return seat?.lineOfSight === 'authored-emissive-face' ? { ...seat,
+      point: d.camera.position.clone().fromArray(seat.point),
+      direction: d.camera.position.clone().fromArray(seat.direction) } : null;
   }
   function inspectedSeat(d, kind) {
     const inspect = { shtora: () => d.inspectNightShtora?.(), window: () => d.inspectNightWindow?.(),
@@ -229,16 +212,13 @@ function installNightLightProbe() {
     if (seat.camera) d.camera.position.fromArray(seat.camera);
     const target = seat.point.clone();
     if (kind === 'headlight') target.addScaledVector(seat.direction, 3);
-    if (kind === 'streetlamp') {
-      d.camera.position.copy(seat.point).addScaledVector(seat.direction, 4).addScaledVector(side, 6);
-      d.camera.position.y += 2; target.y -= 1.2;
-    }
+    if (seat.kind === 'streetlamp') target.y -= 1.2;
     d.camera.lookAt(target); d.camera.fov = seat.fov ?? (seat.camera ? 40 : 48); d.camera.updateProjectionMatrix();
     probe.beginStateEpoch();
     return { kind: seat.kind, ownerUuid: seat.ownerUuid, materialUuid: seat.materialUuid ?? null, slot: seat.slot ?? null,
       ownerName: seat.ownerName ?? null, mask: seat.mask ?? null,
       faceIndex: seat.faceIndex ?? null, lineOfSight: seat.lineOfSight ?? null,
-      point: seat.point.toArray(), direction: seat.direction.toArray() };
+      point: seat.point.toArray(), sourcePoint: seat.sourcePoint ?? null, direction: seat.direction.toArray() };
   };
   probe.restoreNightLightCamera = () => {
     if (!savedCamera) return;
@@ -441,21 +421,22 @@ function requestedScenarios(row, states) {
     && JSON.stringify(state.weather) === JSON.stringify(row.expected[i]));
 }
 
-function validNightLightState(state) {
+function validNightLightState(state, requirePlayerHeadlights = true) {
   const pool = state.nightLighting;
   if (!pool?.ownerAvailable || pool.lights.length > 3 || pool.lights.some(light => light.castShadow || light.shadowMap
     || !Number.isFinite(light.intensity) || light.intensity < 0)) return false;
   if (state.weather?.timeOfDay !== 'night') {
     return !pool.attached && pool.emitterCount === 0 && pool.lights.every(light => light.intensity === 0);
   }
-  return pool.attached && pool.emitterCount > 0 && pool.playerCoverage?.headlights > 0
+  return pool.attached && pool.emitterCount > 0
     && pool.lights.filter(light => light.kind === 'spot').length === 2
     && pool.lights.filter(light => light.kind === 'point').length === 1
-    && pool.lights.some(light => light.kind === 'spot' && light.intensity > 0)
-    && pool.materials.some(material => material.masked && material.intensity >= 3);
+    && (!requirePlayerHeadlights || pool.playerCoverage?.headlights > 0
+      && pool.lights.some(light => light.kind === 'spot' && light.intensity > 0)
+      && pool.materials.some(material => material.masked && material.intensity >= 3));
 }
 
-function checkNightLightingCycle(row, states) {
+function checkNightLightingCycle(row, states, requirePlayerHeadlights = true) {
   const { day, night, restored } = row;
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const identity = pool => pool.lights.map(light => light.uuid);
@@ -464,7 +445,7 @@ function checkNightLightingCycle(row, states) {
     const baseline = firstMaterials.get(material.uuid);
     return baseline && material.intensity > baseline.intensity;
   });
-  return states.every(validNightLightState) && emissionIncreased
+  return states.every(state => validNightLightState(state, requirePlayerHeadlights)) && emissionIncreased
     && same(day.nightLighting.materials, restored.nightLighting.materials)
     && states.every(state => !state.nightLighting.uuid || state.nightLighting.uuid === night.nightLighting.uuid)
     && states.every(state => !state.nightLighting.lights.length || same(identity(state.nightLighting), identity(night.nightLighting)))
@@ -505,7 +486,7 @@ async function nightLightCloseups(label) {
       report.lightCloseups.push(row); save();
       assert.equal(state.weather?.timeOfDay, 'night');
       assert(state.nightLighting.attached && state.nightLighting.emitterCount > 0);
-      if (fixture.kind === 'streetlamp') assert(state.nightLighting.lights.some(light => light.kind === 'point' && light.intensity > 0));
+      if (fixture.kind === 'streetlamp') assert(validStreetLampFixture(fixture, state.nightLighting));
       if (fixture.kind === 'window') {
         assert.equal(fixture.lineOfSight, 'authored-emissive-face');
         assert(state.nightLighting.materials.some(material => material.kind === 'window' && material.masked && material.intensity >= .55));
@@ -547,13 +528,22 @@ async function dayNightPictures(tier) {
   }
 }
 
+function validStreetLampFixture(fixture, pool) {
+  const light = pool.lights.find(light => light.kind === 'point' && light.intensity > 0);
+  const position = fixture.sourcePoint;
+  const distance = light?.position && position?.length === 3
+    ? Math.hypot(...light.position.map((value, i) => value - position[i])) : Infinity;
+  return fixture.kind === 'streetlamp' && fixture.ownerName === 'destructible-lamp'
+    && fixture.lineOfSight === 'authored-emissive-face' && fixture.mask === 1
+    && Number.isSafeInteger(fixture.slot) && fixture.slot >= 0
+    && Number.isSafeInteger(fixture.faceIndex) && fixture.faceIndex >= 0 && distance < .01;
+}
+
 function checkFocusedFixtureCase(row, minimumRadiance = 3) {
   const { day, night, restored, fixture } = row, states = [day, night, restored];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const material = state => state.nightLighting.materials.find(material => material.uuid === fixture.materialUuid);
   const original = material(day), glowing = material(night), reset = material(restored);
-  const point = night.nightLighting.lights.find(light => light.kind === 'point' && light.intensity > 0);
-  const distance = point?.position ? Math.hypot(...point.position.map((value, i) => value - fixture.point[i])) : Infinity;
   return {
     exactSource: fixture.kind === row.kind && !!fixture.ownerUuid && !!fixture.materialUuid,
     requestedBattle: states.every(state => state.phase === 'battle' && state.mapId === row.mapId
@@ -561,12 +551,14 @@ function checkFocusedFixtureCase(row, minimumRadiance = 3) {
     stableFraming: states.every(state => state.worldUuid === day.worldUuid && same(state.camera, day.camera)
       && same(state.playerPose, day.playerPose) && same(state.raster, day.raster)),
     dayNightDay: day.weather.timeOfDay === 'day' && night.weather.timeOfDay === 'night' && restored.weather.timeOfDay === 'day',
-    scopedLampCycle: checkNightLightingCycle(row, states),
+    // Distant fixture views legitimately have no player headlight in range.
+    // Default battle and vehicle captures still require the real spotlights.
+    scopedLampCycle: checkNightLightingCycle(row, states, ['headlight', 'shtora'].includes(row.kind)),
     exactEmitterRadiance: !!original && !!glowing && !!reset && glowing.masked
       && glowing.intensity >= minimumRadiance && glowing.intensity > original.intensity && same(original, reset),
     authoredShtora: row.kind !== 'shtora' || (fixture.lineOfSight === 'authored-emissive-face'
       && night.nightLighting.playerCoverage.shtora === 2),
-    actualStreetPool: row.kind !== 'streetlamp' || (Number.isInteger(fixture.slot) && distance < .01),
+    actualStreetPool: row.kind !== 'streetlamp' || validStreetLampFixture(fixture, night.nightLighting),
     completedFrames: states.every(state => state.render.renderCount > 0 && state.render.stateEpoch === state.render.completedEpoch),
   };
 }

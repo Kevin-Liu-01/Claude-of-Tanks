@@ -1,11 +1,17 @@
 // Explicit native-QA framing only. Never scan or raycast world fixtures in a
 // game frame; use authored masks and actual intact instance transforms.
-import { InstancedMesh, Matrix3, Matrix4, Raycaster, Vector3,
+import { Box3, InstancedMesh, Matrix3, Matrix4, Raycaster, Vector3,
   type Mesh, type MeshStandardMaterial, type Object3D } from 'three';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { WORLD_FIXTURE_ACTIVE_ATTRIBUTE } from '../world/worldNightFixtureInstances.ts';
 
-export type NightWorldFixtureKind = 'structure-window' | 'relay-beacon' | 'lighthouse';
+export type NightWorldFixtureKind = 'structure-window' | 'relay-beacon' | 'lighthouse' | 'streetlamp';
+const FIXTURE_VIEW = {
+  'structure-window': { distance: 4, fov: 40, mask: 1 },
+  'relay-beacon': { distance: 5, fov: 40, mask: 2 },
+  lighthouse: { distance: 8, fov: 44, mask: 1 },
+  streetlamp: { distance: 7, fov: 48, mask: 1 },
+} as const;
 interface FixtureFace {
   readonly mesh: Mesh;
   readonly faceIndex: number;
@@ -23,6 +29,8 @@ export interface NightWorldFixtureInspection {
   readonly slot: number | null;
   readonly mask: 1 | 2;
   readonly point: number[];
+  /** Lamp pool position is the whole lens center, not a visible face centroid. */
+  readonly sourcePoint?: number[];
   readonly direction: number[];
   readonly camera: number[];
   readonly fov: number;
@@ -31,7 +39,9 @@ export interface NightWorldFixtureInspection {
 
 function eligible(mesh: Mesh, kind: NightWorldFixtureKind): boolean {
   if (!mesh.isMesh || Array.isArray(mesh.material)) return false;
-  if (mesh.material.userData.nightEmissionMask !== true || mesh.material.userData.nightLightKind !== 'fixture') return false;
+  if (mesh.material.userData.nightEmissionMask !== true) return false;
+  if (kind === 'streetlamp') return mesh instanceof InstancedMesh && mesh.name === 'destructible-lamp';
+  if (mesh.material.userData.nightLightKind !== 'fixture') return false;
   if (kind === 'relay-beacon') return mesh instanceof InstancedMesh && mesh.name === 'destructible-relaystation';
   if (kind === 'structure-window') return mesh instanceof InstancedMesh
     && ['destructible-securityoffice', 'destructible-servicegarage', 'destructible-corneroffice'].includes(mesh.name);
@@ -101,21 +111,33 @@ function unobstructed(root: Object3D, face: FixtureFace, camera: Vector3): boole
   return !ray.intersectObject(root, true).some(hit => visibleInRoot(hit.object, root));
 }
 
+function lampSourcePoint(face: FixtureFace): number[] {
+  const mesh = face.mesh as InstancedMesh, geometry = mesh.geometry;
+  const mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE), position = geometry.getAttribute('position');
+  const bounds = new Box3(), vertex = new Vector3(), instance = new Matrix4();
+  for (let index = 0; index < mask.count; index++) {
+    if (mask.getX(index) === 1) bounds.expandByPoint(vertex.fromBufferAttribute(position, index));
+  }
+  mesh.getMatrixAt(face.slot!, instance);
+  return bounds.getCenter(vertex).applyMatrix4(instance).applyMatrix4(mesh.matrixWorld).toArray();
+}
+
 export function inspectNightWorldFixture(
   root: Object3D, reference: Vector3, kind: NightWorldFixtureKind,
 ): NightWorldFixtureInspection | null {
-  if (!['structure-window', 'relay-beacon', 'lighthouse'].includes(kind)) throw new TypeError('Unknown authored fixture kind');
+  if (!Object.hasOwn(FIXTURE_VIEW, kind)) throw new TypeError('Unknown authored fixture kind');
+  const view = FIXTURE_VIEW[kind];
   for (const face of candidates(root, reference, kind)) {
     const side = new Vector3(-face.direction.z, 0, face.direction.x).normalize();
-    const distance = kind === 'lighthouse' ? 8 : kind === 'relay-beacon' ? 5 : 4;
-    const camera = face.point.clone().addScaledVector(face.direction, distance).addScaledVector(side, .65);
+    const camera = face.point.clone().addScaledVector(face.direction, view.distance).addScaledVector(side, .65);
     camera.y += .25;
     if (!unobstructed(root, face, camera)) continue;
     const material = face.mesh.material as MeshStandardMaterial;
     return { kind, ownerUuid: face.mesh.uuid, ownerName: face.mesh.name, materialUuid: material.uuid,
-      faceIndex: face.faceIndex, slot: face.slot, mask: kind === 'relay-beacon' ? 2 : 1,
-      point: face.point.toArray(), direction: face.direction.toArray(), camera: camera.toArray(),
-      fov: kind === 'lighthouse' ? 44 : 40, lineOfSight: 'authored-emissive-face' };
+      faceIndex: face.faceIndex, slot: face.slot, mask: view.mask,
+      point: face.point.toArray(), sourcePoint: kind === 'streetlamp' ? lampSourcePoint(face) : undefined,
+      direction: face.direction.toArray(), camera: camera.toArray(),
+      fov: view.fov, lineOfSight: 'authored-emissive-face' };
   }
   return null;
 }
