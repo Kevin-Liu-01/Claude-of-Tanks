@@ -310,12 +310,80 @@ allowance) and Delta (+1,565,372 versus 1,479,400). Browser errors are empty.
 The overall result remains **failed**, pending retained-heap diagnosis;
 no tolerance was changed and no allocation category was subtracted.
 
-## Remaining acceptance gates
+## Recovery round 5 — refreshed art, collision audit and bounded diagnostics
 
-1. Polders contour/terrain/route tests and matched native before/after views.
-2. Night source and lifecycle integration, spotting/death/Garage tests.
-3. Night native rendering and brightness/glow/contact review on several maps.
-4. Matched normal-control frame timing, retained-memory and cache-eviction runs.
-5. Full 30-map identity/visual/terrain/collision review; refresh affected map
-   imagery/minimaps and collision manifests only from the accepted build.
-6. Current-main integration and final release verification. No push yet.
+`d5ecd07a9` checkpoints all thirty reviewed native 3840×2160 map heroes and
+their 512×288 picker derivatives. The source captures are in
+`map-art-final-r1`; all sixty published WebPs passed dimension checks.
+`5e0f10441` removes internal construction-lobe seams and overlapping opacity
+from the minimap water painter without allocating another canvas or changing
+the world-to-map projection. All thirty maps / 193 shoreline contours pass
+the projection test. `818d11b90` checkpoints thirty newly rendered 440×440
+minimaps and updates both loading paths to the `north-up-v7` cache key.
+Visual review of Reservoir confirms one connected body instead of three
+outlined construction cells. The 4K images themselves use the actual game
+renderer, not generated concept artwork or upscaled lower-resolution captures.
+
+The native collision refresh is audited in
+`collision-manifest-audit-final-r1.json`. All thirty checksums, byte lengths
+and decoded counts match the index, with unchanged construction seeds.
+Twenty-seven maps retain their counts, **not** identical geometry: all thirty
+include the shared seated wall refits; alpine structures, Orchard's bathhouse
+and Mangrove's grounded fishery/tree placements also have intentional changes.
+The changed exact Polders/Airfield/Reservoir counts come from authored drainage,
+hardstand exclusion, and forked roads/assembly areas respectively. An Airfield
+counterfactual changing only the shared vegetation exclusion restores the old
+2,782 trees from the new 2,691. No collision tolerance is increased. The first
+focused check exposed a stale Reservoir intake-height assertion, which must
+track the taller closed, full-footprint service hood rather than the old cap.
+
+All three unprofiled candidate phase runs are preserved in
+`candidate-phase-final-r1.json` through `r3.json`, with their comparison in
+`candidate-phase-final-comparison.json`. Active battle CPU/render is
+11.885 / 6.967 / 7.168 ms, versus the baseline's 13.137 / 15.561 / 11.958 ms.
+Median rendered FPS is 56.37 versus 57.99; candidate repetitions span
+52.99–59.75. Existing budget failures are 11 / 10 / 10 versus 13 / 13 / 13.
+Actual visibility/workload differences prevent attributing those timings to
+one optimization or declaring an unconditional performance pass.
+
+The retained-allocation diagnostic reproduces the strict Coastal heap failure.
+Its two snapshots show 2,029,052 bytes of growth in V8 code objects, dominated
+by instruction streams, trusted byte arrays and feedback vectors. Closure
+count decreases by one; only the expected two actual world groups remain,
+with fresh identities after eviction. This is evidence of VM code warm-up,
+not permission to subtract that category from the original failed heap gate.
+One additional, predeclared five-sweep ordinary acquisition is pending to
+distinguish a warm-up plateau from continuing growth; no retry-until-pass or
+tolerance change is authorized.
+
+`cc3eb8a3c` repairs the rejected streetlamp camera/admission diagnostics.
+`bd23fd678` forwards raw main-loop cadence to the existing quality governor
+through battle, shot mode and Studio, while animation and simulation keep their
+bounded deltas. This restores the existing hitch filter without changing any
+resize policy, quality floor or acceptance gate. Focused tests and typecheck
+pass; the DPR2 motion result still requires a fresh native acquisition.
+
+`536499739` makes ordinary self-tests hold a renewable contiguous FIFO lease,
+releasing it before the one browser test that owns its own lease. This fixes
+real unqueued full-fleet CPU contention without nesting the release runner's
+resource locks. Suite inventory and failure/signal/refresh tests pass.
+
+The final client review is frozen at `818d11b90` in
+`/Users/kevinliu/.codex/worktrees/cot-environment-final-r4-review-20260907`.
+Its public build and final lighting/motion captures are pending. The complete
+anatomy/marking check passes, but targeted lamp-model release verification
+stopped at the fidelity harness's initial registry readiness, before scores or
+images existed. Earlier eight release phases passed; this startup failure is
+not a fidelity pass and must be diagnosed before continuation. No push yet.
+
+## Acceptance checklist
+
+1. Polders contour/terrain/route tests and matched native views: completed.
+2. Night source/lifecycle integration and spotting/death/Garage tests: completed.
+3. Final native night brightness/glow/contact and DPR motion review: pending.
+4. Frame timing and cache-eviction acquisitions: recorded; strict memory and
+   quality acceptance remain open as detailed above.
+5. Thirty-map visual/art/minimap refresh: completed. Fresh collision shards
+   require the corrected exact waterworks assertions and focused recheck.
+6. Current-main integration is checkpointed; final release verification and
+   non-forced publication remain pending.
