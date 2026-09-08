@@ -664,6 +664,13 @@ three seeds) remain byte-identical. The combined focused receipt is
 None of these focused passes substitutes for the open full-suite, strict
 memory, high-DPI motion or final visual gates above.
 
+The independent cache-instrumentation and Garage-lamp-reset test repairs were
+also applied to the publication worktree as `a56cbb8c7` and `20d4c65cc`, on top
+of current main `db400d61b`. Both focused tests pass again on unchanged clean
+`0be4cd540` in `incremental-tests-r2.{json,log}`. This test/documentation-only
+checkpoint does not publish the still-local horizon placement or change any
+runtime rendering code.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
