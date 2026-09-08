@@ -913,6 +913,52 @@ receipt is retained. The full acquisition selftest and fresh native baseline/
 candidate R2 captures pass with the same corrected tool hash. This is a
 test-runner fix, not a gameplay rendering change.
 
+## Oasis shoreline checkpoint — 2026-09-08
+
+The accepted R3 source `3d5ece805` replaces three circular spring cells with
+one asymmetric sixteen-station basin. It uses the unchanged shared shoreline
+contract for visible banks, terrain, wetness, fallback minimap and server
+ground queries. Water coverage is 15,560 m² versus the original 15,904 m²;
+three seeded support checks retain road and deployment-pad elevations to
+floating-point precision. The first smooth bean-shaped candidate was rejected.
+R3's unequal capes and coves pass the narrow native art review, with some
+overhead polygonality and broader map-surface realism still unfinished.
+
+`oasis-native-integrity-r3.json` records all nine native views with unchanged
+source/build/tool hash, no page errors or context loss, and owned cleanup.
+Eight cameras and seven complete poses match the old shoreline baseline:
+`water-current` deliberately reframes the new bank, while `water` retains the
+camera but reports the changed terrain clearance. Pinned capture timings are
+not an ordinary-motion or whole-pass performance certification. The checked
+scene retains 43 textures and 31 materials; terrain topology remains exact.
+
+The refreshed hero is 3840×2160, its thumbnail 512×288 and minimap 440×440.
+Intent prefetch and world activation share a dependency-free URL owner; only
+Oasis changes its browser cache key. The other 29 map images and generated art
+registry remain byte-identical. New actual-bank chunk tests cover wet/dry
+crossings, all emitted LOD paths and shared east seams. The historical mask
+oracle remains intact; only 2,663 water-channel texels differ in the current
+512-square mask, with road/rut/village-soil channels exact.
+
+The canonical native collision capture on integrated `19e03d36b` records
+2,489 obstacles, 2,278 colliders and 1,889 concealers. Its generated shard is
+668,068 bytes versus the prior 669,820, within the unchanged 685,786-byte
+ceiling. Only Oasis and its checksum-index entry change; the other 29 shards
+remain byte-identical. Updated tree/prop acceptance is regenerated from the
+actual world, not inferred from unchanged authored placement arrays.
+
+The coherent artifact checkpoint is `a847b0a18`. Focused Oasis mask, geometry
+and loader checks, full typecheck, all-30-map dedicated collision and codec
+checks, signaling and map-art guards pass. The final clean public build also
+passes: `oasis-final-public-build-r1.json` verifies all three packaged images
+against both public and reviewed native artifacts, with the collision shard
+unchanged. Its index hash is
+`641ec811e6da951f3fcf082353d4f65e1caeb6211778af10bb4e45dcf100fe24`.
+The default full mask/streaming tests still stop on unchanged Polders
+references; their failures are preserved and not relabeled green by the
+explicit Oasis-only checks. Existing whole-pass managed-heap, motion and
+all-map art gates remain open without a waiver.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
