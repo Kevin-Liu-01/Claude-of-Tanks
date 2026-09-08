@@ -2160,7 +2160,10 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
             await panel.prepareTankMasks(entity.spec, entity.visual);
           },
-          openingEffects: (fx, bridge) => {
+          openingEffects: async (fx, bridge, signal) => {
+            const timing: ForwardProgramCompileTiming = {
+              uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
+            };
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
               const root = entity.visual?.root;
@@ -2169,13 +2172,17 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
                 break;
               }
             }
-            return battleWarm.warmNetworkOpeningEffects({
+            await battleWarm.warmNetworkOpeningEffects({
               fx,
               post,
               camera,
+              renderer,
+              signal,
+              timing,
               shells: game.shells,
               decalVisual,
-              compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
+              compilePrograms: (root: THREE.Object3D, compileTiming?: ForwardProgramCompileTiming) =>
+                forwardProgramWarm.compile(root, compileTiming),
               warmRender: () => {
                 // The loader is opaque. Submit the actual late-FX/depth-copy
                 // passes, not only a combined-layer offscreen scene variant.
@@ -2191,6 +2198,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
                 }
               },
             });
+            return { ...timing };
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           finalShadows: async (signal?: AbortSignal) => {

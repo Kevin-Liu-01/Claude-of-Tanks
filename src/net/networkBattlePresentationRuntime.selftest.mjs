@@ -204,7 +204,11 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
         events.push('panelReady');
         return true;
       },
-      openingEffects: async () => events.push('effects'),
+      openingEffects: async (_fx, _bridge, signal) => {
+        assert.strictEqual(signal, request.signal, 'opening effects receive the exact entry signal');
+        events.push('effects');
+        return { uniformCount: 1, uniformMs: 3, uniformPending: 0 };
+      },
       shotCards: () => events.push('cards'),
       compile: async (signal) => {
         events.push('compile');
@@ -317,6 +321,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     'the trace retains the resolved final shadow receipt, not its promise');
   assert.deepEqual(harness.trace.programCompile, { submissionMs: 15, pollMs: 2, yields: 1 },
     'the trace retains the resolved compile receipt, not its promise');
+  assert.deepEqual(harness.trace.scarCompile, { uniformCount: 1, uniformMs: 3, uniformPending: 0 },
+    'the post-scene scar cohort receipt is separate from the full-scene compile receipt');
   assert.ok(harness.trace.totalMs > 0, 'the complete network entry is timed');
   assert.equal(harness.trace.status, 'complete');
   assert.equal(harness.trace.totalMs, Math.round(harness.trace.endedAt - harness.trace.startedAt));
@@ -568,6 +574,47 @@ for (const outcome of ['resolve', 'reject', 'cancel']) {
     assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
     for (const stage of ['compile', 'effects', 'activate', 'hide', 'ready']) {
       assert.ok(!harness.events.includes(stage), `${outcome}: wreck failure cannot reach ${stage}`);
+    }
+  }
+}
+
+for (const outcome of ['resolve', 'reject', 'cancel']) {
+  const harness = createHarness();
+  const controller = new AbortController();
+  const gate = deferred();
+  const scarCompile = { uniformCount: 1, uniformPending: 0 };
+  const laterStages = ['cards', 'activate', 'finalShadows', 'blackWatchdog', 'hide', 'ready'];
+  harness.request.signal = controller.signal;
+  harness.options.warm.openingEffects = async (_fx, _bridge, signal) => {
+    assert.strictEqual(signal, controller.signal, 'scar work receives the entry cancellation signal');
+    harness.events.push('effectsDeferred');
+    await gate.promise;
+    signal.throwIfAborted();
+    return scarCompile;
+  };
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'effectsDeferred');
+  assert.equal(harness.loaderVisible, true, 'deferred scar warming remains covered');
+  assert.equal(harness.trace.stageIntervals.at(-1).stage, 'combatWarm');
+  assert.equal(harness.trace.scarCompile, undefined, 'pending work cannot claim a completed receipt');
+  assert.equal(harness.countdownMs, 5000, 'pending scar warm cannot spend the countdown');
+  for (const stage of laterStages) assert.ok(!harness.events.includes(stage), `pending scar warm cannot reach ${stage}`);
+  if (outcome === 'cancel') controller.abort('return during scar preparation');
+  if (outcome === 'reject') gate.reject(new Error('scar preparation failed'));
+  else gate.resolve();
+  if (outcome === 'resolve') {
+    await pending;
+    assert.deepEqual(harness.trace.scarCompile, scarCompile);
+    assert.equal(harness.trace.status, 'complete');
+    assert.ok(harness.events.indexOf('ready') > harness.events.indexOf('hidden'));
+    assert.equal(harness.countdownMs, 5000, 'completed scar warm preserves the full countdown');
+  } else {
+    await assert.rejects(pending, outcome === 'cancel'
+      ? (error) => error === controller.signal.reason : /scar preparation failed/);
+    assert.equal(harness.trace.status, 'failed');
+    assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
+    for (const stage of laterStages) {
+      assert.ok(!harness.events.includes(stage), `${outcome}: scar failure cannot reach ${stage}`);
     }
   }
 }

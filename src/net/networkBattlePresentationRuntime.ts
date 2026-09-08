@@ -61,6 +61,7 @@ export interface NetworkBattleLoadTrace {
   connectMs?: number;
   blackCheck?: RuntimeValue;
   programCompile?: RuntimeValue;
+  scarCompile?: RuntimeValue;
   shadowPrime?: RuntimeValue;
   totalMs?: number;
 }
@@ -191,6 +192,7 @@ export interface NetworkBattlePresentationOptions {
     openingEffects(
       fx: NetworkBattleFxPort,
       bridge: NetworkBridgePort,
+      signal?: AbortSignal,
     ): MaybePromise<RuntimeValue>;
     shotCards(specIds: string[]): void;
     compile(signal?: AbortSignal): MaybePromise<RuntimeValue>;
@@ -493,7 +495,7 @@ export function createNetworkBattlePresentationRuntime(
       mark('compile');
 
       load.battleLoad.progress(0.88, 'Priming combat effects');
-      await warm.openingEffects(fx, preparedBridge);
+      trace.scarCompile = await warm.openingEffects(fx, preparedBridge, signal);
       throwIfNetworkBattleEntryAborted(signal);
       warm.shotCards([...preparedBridge.entities.values()].map((entity) => entity.specId));
       mark('combatWarm');

@@ -18,6 +18,7 @@ import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.t
 import {
   captureNewProgramUniformSteps,
   snapshotRendererPrograms,
+  type ForwardProgramCompileTiming,
   type ForwardProgramWarmOwner,
 } from '../engine/programWarm.ts';
 import {
@@ -544,6 +545,9 @@ interface BattlePostPort {
 }
 
 export interface OpeningEffectsWarmOptions {
+  signal?: AbortSignal;
+  renderer?: Pick<WebGLRenderer, 'info' | 'getContext'>;
+  timing?: ForwardProgramCompileTiming;
   fx: BattleFxPort & {
     warmProjectilePresentation(position: Vector3, direction: Vector3): void;
     composeFiringMoment(options: {
@@ -558,7 +562,7 @@ export interface OpeningEffectsWarmOptions {
   camera: Camera;
   shells: RuntimeValue[];
   decalVisual?: { root: Object3D } | null;
-  compilePrograms(root: Object3D): void;
+  compilePrograms(root: Object3D, timing?: ForwardProgramCompileTiming): void;
   /** Covered real compositor submission, including the active late-FX pass. */
   warmRender(): void;
 }
@@ -777,91 +781,208 @@ export function stageCombatFxProgramSubmission({
   };
 }
 
+interface NetworkScarStage {
+  visual: { root: Object3D };
+  visible: boolean;
+  detached: boolean;
+  objects: Array<{ object: Object3D; parent: Object3D | null; visible: boolean; removed(): void }>;
+}
+
+function createOpeningEffectsLease({ renderer, signal }: OpeningEffectsWarmOptions) {
+  const generation = warmGeneration;
+  const info = renderer?.info;
+  const gl = renderer?.getContext();
+  const current = (): boolean => generation === warmGeneration && (!renderer ||
+    (renderer.info === info && renderer.getContext() === gl && !!gl && !gl.isContextLost()));
+  return {
+    current,
+    valid(): boolean { signal?.throwIfAborted(); return current(); },
+  };
+}
+
+function scarStillAttached(scar: NetworkScarStage): boolean {
+  return !scar.detached && scar.objects.every(({ object, parent }) => object.parent === parent);
+}
+
+function hideNetworkScar(scar: NetworkScarStage): void {
+  for (const { object, parent } of scar.objects) if (object.parent === parent) object.visible = false;
+}
+
+function restoreNetworkScarObjects(scar: NetworkScarStage): void {
+  if (scar.detached) return;
+  for (const { object, parent, visible } of scar.objects) {
+    // A returned pooled mesh needs its own visibility back; a mesh reused by
+    // another root no longer belongs to this warm and must not be mutated.
+    if (object.parent === parent || object.parent === null) object.visible = visible;
+  }
+}
+
+function captureNetworkScarObject(scar: NetworkScarStage, object: Object3D): void {
+  const visible = object.visible;
+  const removed = (): void => {
+    // Three dispatches removal synchronously, before this mesh can be borrowed
+    // from the decal pool again. Never let a later owner inherit our hidden flag.
+    object.removeEventListener('removed', removed);
+    object.visible = visible;
+    scar.detached = true;
+  };
+  object.addEventListener('removed', removed);
+  scar.objects.push({ object, parent: object.parent, visible, removed });
+}
+
 function stageNetworkArmorScar(
-  fx: BattleFxPort,
-  visual: { root: Object3D },
-  compilePrograms: (root: Object3D) => void,
+  options: OpeningEffectsWarmOptions,
+  scar: NetworkScarStage,
+  valid: () => boolean,
+): Generator<void, void, void> | null {
+  const { fx, camera, compilePrograms, renderer, timing } = options;
+  const root = scar.visual.root;
+  const priorMask = camera.layers.mask;
+  const beforeObjects = new Set<Object3D>();
+  root.traverse((object) => beforeObjects.add(object));
+  try {
+    root.visible = true;
+    const position = root.getWorldPosition(new Vector3());
+    position.y += 0.5;
+    fx.armorScar?.(scar.visual, position, new Vector3(0, 1, 0), 120);
+    if (!valid()) return null;
+    const before = renderer ? snapshotRendererPrograms(renderer) : null;
+    compilePrograms(root, timing);
+    if (!valid() || !renderer || !before) return null;
+    return captureNewProgramUniformSteps(renderer, before, { isCurrent: valid, timing });
+  } finally {
+    root.traverse((object) => {
+      if (!beforeObjects.has(object)) {
+        captureNetworkScarObject(scar, object);
+      }
+    });
+    hideNetworkScar(scar);
+    root.visible = scar.visible;
+    camera.layers.mask = priorMask;
+  }
+}
+
+async function warmNetworkScarPrograms(
+  uniforms: Generator<void, void, void> | null,
+  scar: NetworkScarStage,
+  valid: () => boolean,
+): Promise<boolean> {
+  if (!uniforms) return valid() && scarStillAttached(scar);
+  try {
+    for (const _step of uniforms) {
+      hideNetworkScar(scar);
+      await nextPaintFrame();
+      if (!valid() || !scarStillAttached(scar)) return false;
+    }
+  } finally { uniforms.return(); }
+  return valid() && scarStillAttached(scar);
+}
+
+async function warmNetworkEffectTextures(options: OpeningEffectsWarmOptions, valid: () => boolean): Promise<boolean> {
+  const yieldFrame = async (): Promise<void> => {
+    await nextPaintFrame();
+    if (!valid()) throw new Error('Opening effects renderer changed');
+  };
+  await yieldFrame();
+  if (!valid()) return false;
+  const { fx } = options;
+  if (fx.warmTexturesChunked) {
+    await fx.warmTexturesChunked(createFrameBudgetYielder(8, { yieldFrame }), { assets: 'ready-only' });
+  } else fx.warmTextures?.();
+  if (!valid()) return false;
+  await yieldFrame();
+  return valid();
+}
+
+function stageAndRenderNetworkEffects({ fx, post, camera, warmRender }: OpeningEffectsWarmOptions): void {
+  const direction = camera.getWorldDirection(new Vector3());
+  const position = camera.getWorldPosition(new Vector3()).addScaledVector(direction, 10);
+  const normal = new Vector3(0, 1, 0);
+  fx.warmOpeningEffects(position, direction, normal, 120);
+  for (const kind of [
+    'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
+  ]) fx.impact(kind, position, normal, 120);
+  fx.dust(position, direction, 1);
+  fx.exhaust(position, 1, true);
+  fx.destruction(position, null, 'shot');
+  fx.destruction(position, null, 'ammorack');
+  // No yield/update time may expire these exact pooled instances before the
+  // actual compositor draw, including its separate late-FX/depth-copy pass.
+  fx.composeFiringMoment({
+    muzzlePos: position, dir: direction, caliberMm: 120, tracerType: 'APFSDS', ageS: 0.016,
+  });
+  fx.update(0, [], camera);
+  fx.warmProjectilePresentation(position, direction);
+  post.prepareSoftParticles();
+  camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+  fx.group.visible = true;
+  // Do not subtree-compile this attached FX root: Three would count its lights twice.
+  warmRender();
+}
+
+function renderNetworkOpeningEffects(
+  options: OpeningEffectsWarmOptions,
+  scar: NetworkScarStage | null,
+  valid: () => boolean,
 ): void {
-  const position = visual.root.getWorldPosition(new Vector3());
-  position.y += 0.5;
-  fx.armorScar?.(visual, position, new Vector3(0, 1, 0), 120);
-  compilePrograms(visual.root);
+  const { fx, camera } = options;
+  const mask = camera.layers.mask;
+  const visible = fx.group.visible;
+  const rootVisible = scar?.visual.root.visible;
+  try {
+    if (scar) { restoreNetworkScarObjects(scar); scar.visual.root.visible = true; }
+    stageAndRenderNetworkEffects(options);
+    valid();
+  } finally {
+    camera.layers.mask = mask;
+    fx.group.visible = visible;
+    if (scar && !scar.detached) scar.visual.root.visible = rootVisible!;
+  }
+}
+
+function cleanupNetworkOpeningEffects(
+  options: OpeningEffectsWarmOptions,
+  scar: NetworkScarStage | null,
+  fxStaged: boolean,
+  current: () => boolean,
+): void {
+  const ownsScar = !scar || scarStillAttached(scar);
+  try {
+    if (scar) {
+      for (const { object, removed } of scar.objects) object.removeEventListener('removed', removed);
+      restoreNetworkScarObjects(scar);
+      if (ownsScar) options.fx.clearVehicleDecals?.(scar.visual);
+    }
+  } finally {
+    // A cancelled atlas/scar wait has not emitted live FX and must not reset
+    // a newer entry's shared pools. Synchronous staging always owns cleanup.
+    if (fxStaged || (ownsScar && !options.signal?.aborted && current())) options.fx.resetAll();
+  }
 }
 
 /** Restore first-shot FX on every covered entry, including after GPU suspension. */
-export async function warmNetworkOpeningEffects({
-  fx,
-  post,
-  camera,
-  decalVisual = null,
-  compilePrograms,
-  warmRender,
-}: OpeningEffectsWarmOptions): Promise<void> {
-  const layerMask = camera.layers.mask;
-  const rootWasVisible = fx.group.visible;
-  let stagedScarVisual: { root: Object3D } | null = null;
-  let scarWasVisible = true;
+export async function warmNetworkOpeningEffects(options: OpeningEffectsWarmOptions): Promise<void> {
+  const { fx, decalVisual = null, signal } = options;
+  signal?.throwIfAborted();
+  const lease = createOpeningEffectsLease(options);
+  if (!lease.valid()) return;
+  let scar: NetworkScarStage | null = null;
+  let fxStaged = false;
   try {
-    // Let the progress label paint before atlas work. Optional asset downloads
-    // must not hold entry indefinitely; use decoded images or the same seeded
-    // procedural bake in cooperative slices.
-    await nextPaintFrame();
-    if (fx.warmTexturesChunked) {
-      await fx.warmTexturesChunked(createFrameBudgetYielder(8, { yieldFrame: nextPaintFrame }),
-        { assets: 'ready-only' });
-    } else fx.warmTextures?.();
-    await nextPaintFrame();
-    // Keep this one pooled, vehicle-owned mesh scene-attached until the real
-    // draw. Compiling then detaching it left its buffers and shared atlas cold.
-    // Capture ownership before stamping so even a partially failed stamp rolls
-    // back. No yield follows staging; the live bridge cannot hide it mid-warm.
+    if (!await warmNetworkEffectTextures(options, lease.valid)) return;
     if (decalVisual && fx.armorScar) {
-      stagedScarVisual = decalVisual;
-      scarWasVisible = decalVisual.root.visible;
-      decalVisual.root.visible = true;
-      stageNetworkArmorScar(fx, decalVisual, compilePrograms);
+      scar = { visual: decalVisual, visible: decalVisual.root.visible, detached: false, objects: [] };
+      const uniforms = stageNetworkArmorScar(options, scar, lease.valid);
+      if (!await warmNetworkScarPrograms(uniforms, scar, lease.valid)) return;
+      if (!lease.valid() || !scarStillAttached(scar)) return;
     }
-    const direction = camera.getWorldDirection(new Vector3());
-    const position = camera.getWorldPosition(new Vector3()).addScaledVector(direction, 10);
-    const normal = new Vector3(0, 1, 0);
-    fx.warmOpeningEffects(position, direction, normal, 120);
-    for (const kind of [
-      'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb',
-    ]) fx.impact(kind, position, normal, 120);
-    fx.dust(position, direction, 1);
-    fx.exhaust(position, 1, true);
-    fx.destruction(position, null, 'shot');
-    fx.destruction(position, null, 'ammorack');
-    // This existing presentation composer activates the real APFSDS tracer
-    // and sabot pool without inventing a live shell or sweeping world props.
-    // No yield/update time may expire its muzzle before the actual GPU draw.
-    fx.composeFiringMoment({
-      muzzlePos: position, dir: direction, caliberMm: 120,
-      tracerType: 'APFSDS', ageS: 0.016,
-    });
-    fx.update(0, [], camera);
-    fx.warmProjectilePresentation(position, direction);
-    post.prepareSoftParticles();
-    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
-    fx.group.visible = true;
-    // Do not subtree-compile this scene-attached root: Three counts its lights
-    // twice. Existing pools were submitted by the covered scene warm; the real
-    // draw below warms the production pass variants and their buffers.
-    // A combined-layer renderer.render is NOT equivalent: the live late pass
-    // uses layer 30 alone, separate light/program variants and a depth copy.
-    warmRender();
+    if (!lease.valid()) return;
+    fxStaged = true;
+    renderNetworkOpeningEffects(options, scar, lease.valid);
   } catch (error) {
+    signal?.throwIfAborted();
     console.warn('[warm] opening effects failed (continuing):', error);
-  } finally {
-    camera.layers.mask = layerMask;
-    fx.group.visible = rootWasVisible;
-    try {
-      if (stagedScarVisual) fx.clearVehicleDecals?.(stagedScarVisual);
-    } finally {
-      if (stagedScarVisual) stagedScarVisual.root.visible = scarWasVisible;
-      fx.resetAll();
-    }
-  }
+  } finally { cleanupNetworkOpeningEffects(options, scar, fxStaged, lease.current); }
 }
 
 /** WebGL context restoration invalidates every renderer-lifetime receipt. */
