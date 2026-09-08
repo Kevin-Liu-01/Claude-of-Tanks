@@ -190,3 +190,64 @@ These local artifacts are deliberately not part of the public repository.
 Post-withdrawal runtime and tool bytes match main; focused checks and the
 789-entry registry discovery pass. The unrelated full-suite vehicle failure
 described above remains unresolved and is not reported as passing.
+
+## Native-operation attribution checkpoint
+
+The next diagnostic checkpoint times existing renderer calls and a closed set
+of existing GL queries within the same single covered compositor submission.
+It adds no GL query, render, yield, quality change or readiness shortcut.
+Wrappers are temporary, preserve native arguments/results/errors, and restore
+own/inherited descriptors on success and failure. Receipts retain at most
+sixteen pass rows, fixed numeric counters and seven program-type counts—not
+shader logs, uniform names or material identifiers. Durations are inclusive
+synchronous wall time with instrumentation overhead; nested counters must not
+be summed or interpreted as GPU-completion time.
+
+The native local two-client check used cached Winter clear/day, high-quality
+scale-1 entry on one Apple M5 Max/Metal machine, with in-memory signaling.
+Build `v1.0.0+g8f2805d05.dirty` had document SHA-256
+`120c1e290f4d07b2cc227ce55cc8a435bbf9e6c6d8652e20da2ff9c6e865c6f8`
+and runtime-diff SHA-256
+`351cbc62d48d29ceedcd1468b8af3d2018627e869c93eda6a3e15a4a1746e572`.
+The wrapper verified unchanged runtime/build identity across acquisition and
+no untracked runtime source. This is not a production or distant-network test.
+
+| Synchronous measurement | Host | Guest |
+| --- | ---: | ---: |
+| Opening compositor total | 75.1 ms | 88.2 ms |
+| SceneAA pass | 18.5 ms | 27.9 ms |
+| SceneAA ACTIVE_UNIFORMS queries, two calls | 5.1 ms | 14.4 ms |
+| Newly created SceneAA programs | 2 depth | 2 depth |
+| LateFX pass | 55.6 ms | 59.2 ms |
+| LateFX texture-copy call | 42.7 ms | 45.3 ms |
+| LateFX getParameter queries, five calls | 42.4 ms | 44.9 ms |
+| Slowest LateFX getParameter call | 41.1 ms | 41.5 ms |
+
+This identifies the measured LateFX pause at the state-query boundary and
+confirms that the two new SceneAA programs are depth variants. Source inspection
+of pinned Three 0.185.1 identifies five UNPACK-state reads before its depth-copy
+branch; those values are irrelevant to the depth blit itself. It does not prove
+which earlier queued GPU work the synchronous reads wait for, nor that moving
+the queries will reduce total loading time. Exact native shadow-variant warmup
+and avoiding unnecessary depth-copy state queries are now concrete follow-ups,
+not changes included in this checkpoint. Raw custom-depth-material compilation
+would not necessarily match Three's final native shadow variants.
+
+Both peers showed `5,4,3,2,1`, entered battle, moved/fired, returned to Garage
+and closed their rooms. Page errors were zero; black-scene rescue was unused.
+The inspected screenshots contain the tank, world and HUD; no exhaustive
+pixel/visual-parity claim is made. Launch-to-hidden-loader time was
+1,849.7/1,915.5 ms. Follow-on adaptive-low scale-1 movement gaps were
+40.5/38.4 ms p99 and 46.7/47.1 ms maximum. These are not a speedup result or a
+solution to the historical 214–319 ms stalls. Owned browsers/servers exited.
+
+The complete local receipt remains untracked at
+`.qa-entry/opening-native-operations-r1/report.json`, SHA-256
+`5643a5734b4172dbdb00476b82eb7aeaae40fc6a80203dbb174dccaacf8392ae`.
+Focused compositor/observer/warmup/entry/network tests, typecheck/core-unused,
+production build and strict changed-module complexity gates pass. Registry
+discovery reports 789 checks, not 789 executed passes. Changed React Doctor is
+91/100; its one chained-iteration warning is a small test-only assertion,
+not runtime work. Independent review found no blocker. A direct rerun of
+`sourceXFleet.selftest.mjs` reconfirmed the unrelated T-90M fingerprint failure
+above; the full suite is not declared green here.

@@ -144,6 +144,20 @@ export function installProductionEntryObserver() {
   const intervals = (value, allowedStages, limit = 32) => Array.isArray(value) ? value.slice(0, limit)
     .filter((row) => allowedStages.includes(row?.stage))
     .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [];
+  const nativeOperations = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const keys = ['render', 'copyTextureToTexture', 'setRenderTarget', 'clear',
+      'getUniformLocation', 'getProgramParameter', 'getParameter', 'getLinkStatus', 'getActiveUniform', 'shaderDiagnostics'];
+    return { operations: Object.fromEntries(keys.filter((key) => value[key]
+      && typeof value[key] === 'object' && !Array.isArray(value[key]))
+      .map((key) => [key, Object.fromEntries(['count', 'totalMs', 'maxMs']
+        .map((field) => [field, nonnegative(value[key][field])]))])) };
+  };
+  const newProgramTypes = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return { newProgramTypes: Object.fromEntries(['depth', 'distance', 'standard', 'basic', 'shader', 'raw', 'other']
+      .map((key) => [key, nonnegative(value[key])])) };
+  };
   const programCompileReceipt = (value) => {
     if (!value || typeof value !== 'object') return null;
     const receipt = Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
@@ -158,7 +172,8 @@ export function installProductionEntryObserver() {
     if (Array.isArray(value.openingPasses)) receipt.openingPasses = value.openingPasses.slice(0, 16)
       .filter((row) => Number.isSafeInteger(row?.index) && row.index >= 0 && row.index < 16)
       .map((row) => ({ index: row.index, renderMs: nonnegative(row.renderMs),
-        programsBefore: nonnegative(row.programsBefore), programsAfter: nonnegative(row.programsAfter) }));
+        programsBefore: nonnegative(row.programsBefore), programsAfter: nonnegative(row.programsAfter),
+        ...nativeOperations(row.operations), ...newProgramTypes(row.newProgramTypes) }));
     return receipt;
   };
   const topMaskReadbacks = (value) => {

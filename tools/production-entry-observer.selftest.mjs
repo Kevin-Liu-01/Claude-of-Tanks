@@ -354,7 +354,16 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
     openingRenderMs: 90,
     openingPasses: [null, { index: -1 }, { index: 16 }, { index: 1.5 },
       { index: 0, renderMs: 80.5, programsBefore: 190, programsAfter: 193,
-        label: 'PRIVATE_LABEL', material: 'PRIVATE_MATERIAL' },
+        label: 'PRIVATE_LABEL', material: 'PRIVATE_MATERIAL',
+        newProgramTypes: { depth: 2, shader: 0, basic: Infinity, other: -1, PRIVATE_TYPE: 100 }, operations: {
+          render: { count: 2, totalMs: 70, maxMs: 60, label: 'PRIVATE_LABEL' },
+          getParameter: { count: 5, totalMs: 35, maxMs: 34 },
+          shaderDiagnostics: { count: 6, totalMs: 12, maxMs: 9, log: 'PRIVATE_SHADER_LOG' },
+          getLinkStatus: { count: 2, totalMs: 1, maxMs: 0.75 },
+          getActiveUniform: { count: 10, totalMs: 2, maxMs: 0.5 },
+          getUniformLocation: { count: -1, totalMs: Infinity, maxMs: NaN },
+          clear: null, copyTextureToTexture: [], PRIVATE_OPERATION: { count: 1 },
+        } },
       { index: 3, renderMs: -1, programsBefore: Infinity, programsAfter: NaN },
       ...Array.from({ length: 20 }, () => ({ index: 6, renderMs: 0.25,
         programsBefore: 193, programsAfter: 193 }))],
@@ -363,7 +372,15 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
   assert.equal(receipt.networkLoad.scarCompile.openingPasses.length, 12,
     'only the first sixteen input rows are inspected, and malformed ordinals are rejected');
   assert.deepEqual(receipt.networkLoad.scarCompile.openingPasses.slice(0, 2), [
-    { index: 0, renderMs: 80.5, programsBefore: 190, programsAfter: 193 },
+    { index: 0, renderMs: 80.5, programsBefore: 190, programsAfter: 193,
+      newProgramTypes: { depth: 2, distance: null, standard: null, basic: null, shader: 0, raw: null, other: null }, operations: {
+      render: { count: 2, totalMs: 70, maxMs: 60 },
+      getUniformLocation: { count: null, totalMs: null, maxMs: null },
+      getParameter: { count: 5, totalMs: 35, maxMs: 34 },
+      getLinkStatus: { count: 2, totalMs: 1, maxMs: 0.75 },
+      getActiveUniform: { count: 10, totalMs: 2, maxMs: 0.5 },
+      shaderDiagnostics: { count: 6, totalMs: 12, maxMs: 9 },
+    } },
     { index: 3, renderMs: null, programsBefore: null, programsAfter: null },
   ]);
   assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
