@@ -1204,9 +1204,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     conflictMsg.innerHTML =
       t('settings.conflict.message', {
         codeLabel,
-        otherLabel: defB ? defB.label : c.otherId,
+        otherLabel: defB ? t(defB.label) : c.otherId,
         slotTag,
-        thisLabel: defA ? defA.label : c.actionId,
+        thisLabel: defA ? t(defA.label) : c.actionId,
       });
     conflictBar.classList.add('show');
     for (const id of [c.actionId, c.otherId]) {
