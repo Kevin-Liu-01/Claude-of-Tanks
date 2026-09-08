@@ -334,3 +334,95 @@ checks pass. The staged six-file React Doctor scan scored 92/100; its two
 warnings concern property reads in the small CPU test's expected-call table,
 not the frame loop. No rule is suppressed. Registry discovery has 791 checks;
 the pre-existing full-suite T-90M geometry failure remains outside this release.
+
+### Production verification of 9221988ff
+
+The real production private-room flow passed at `https://cot.kevinliu.studio`
+with two pristine contexts on the same Apple M5 Max and Chrome 151.0.7922.47.
+Both acquisition boundaries reported `v1.0.0+g9221988ff`, script
+`/assets/main-vWsZatNV.js`, and index SHA-256
+`df978d413f4791cf3aa2a2698b76c2dce14e99612377714416c3cb0adc6e5835`.
+This used deployed signaling/WebRTC, not the local in-memory server.
+
+Both peers displayed `5,4,3,2,1`, moved/fired, returned to Garage and closed
+their memberships. Page errors were zero; neither black-scene check needed a
+rescue. The owned browser closed. Entry was clear/day Winter, high quality,
+scale 1. Launch-to-hidden-loader was 1,891.7 ms host / 1,834.2 ms guest;
+opening compositor time was 82.6 / 46.0 ms. Its SceneAA pass still created two
+depth programs per peer. Final shadow priming took 98 / 139 ms in total
+(79 / 97 ms maximum cascade); black-scene draw took 35.9 / 43.3 ms and
+readback including waits took 113.5 / 81.3 ms. These results support targeting
+redundant covered shadow work next, not declaring all loading stalls fixed.
+
+Follow-on movement p99 gaps were 38.6 / 36.9 ms and maxima 56.0 / 48.5 ms.
+The host had adapted to medium and the guest to low, both scale 1; this is not
+a matched-quality performance comparison or separate-device certification.
+The complete untracked receipt is
+`.qa-entry/production-depth-copy-r1/report.json`, SHA-256
+`c161e5c9f794b3689a9c4a69857312ceaa2254fac84b381d03bef95cf50db027`.
+
+## Rejected cold-shadow deferral pilot
+
+A narrowly scoped candidate suppressed only the two global native shadow-update
+flags during the existing synchronous, fully covered opening compositor draw.
+It kept shadow enablement, shader variants, light membership and the complete
+final-camera shadow/black-check/reveal/READY sequence unchanged, restoring the
+captured update flags in `finally`. Focused CPU tests covered every initial
+flag pair, nested calls, exact thrown values and replacement renderer owners.
+Independent source review found no lifecycle blocker; that was not native
+rendering acceptance.
+
+The native two-light fixture rejected the candidate on Apple M5 Max/Metal,
+Chrome 151.0.7922.47 and pinned Three r185. The ordinary cold-renderer baseline
+performed two covered and two final shadow draws, allocated both maps, and
+passed its no-caster pixel control (534 changed pixels). The deferred case
+performed zero covered shadow draws and two final draws, but retained a WebGL
+error. Final map allocation and restored flags alone are therefore insufficient
+correctness gates. The run stopped at that failure: no complete six-case matrix,
+whole-game timing improvement or final-image parity is claimed.
+
+The localized repeat measured `NO_ERROR` before the covered draw,
+`INVALID_OPERATION` (1282) immediately after it, and `NO_ERROR` after final
+render and readback. The baseline stayed error-free at every measured stage.
+All owned browser/server/lock cleanup completed. The fixture/source hash was
+`92ffdb8601c7cda2d4afb60bd8e2fad745d38b56963716d8940d762abfa3b2c4`.
+The rejected helper/tests and copied native receipt remain recoverable locally
+under `.qa-entry/rejected-covered-shadow-r1/`, outside the release; the receipt
+SHA-256 is `d5629dcec281f52e398c0f0876dec0440b7cda23a1371e404b8f760001406738`.
+
+Pinned-source inspection identifies an unsafe cold-map path: the
+`sampler2DShadow[]` setter in `WebGLUniforms.js` uses `emptyShadowTexture`
+without setting its comparison function, whereas the single-sampler setter
+does set it. `DepthTexture` starts with `compareFunction = null`, and
+`WebGLTextures.js` enables comparison mode only when a comparison function is
+present. Skipping the initial map allocation can expose this fallback. This
+explains why source-level flag restoration tests cannot certify the proposed
+optimization; it is not an explanation of the historical 214–319 ms stalls.
+
+**Decision: withdraw the runtime change.** Do not mask GL errors, disable
+shadows, weaken the reveal barrier, or mutate the shared Three dependency to
+force this pilot through. The shipping rendering path remains the validated
+`9221988ff` implementation. A separate stale `lazyRuntime` selftest fixture is
+corrected to invoke the real covered-compositor helper, checking offscreen
+target restoration, exact errors, actual pass receipts and unavailable-clock
+semantics. That regression-test repair does not alter the live runtime.
+
+The final changed-source React Doctor scan covers one selftest and scores
+49/100 with one `no-eval` error at its pre-existing `new Function` constructor.
+Review confirmed a fixed local `src/main.ts` source slice, not network, user or
+environment-supplied code; this is trusted repository test execution, not a
+new production injection path. The scanner correctly detects dynamic code
+execution, so this is not reported as a clean scan. No rule is suppressed.
+Independent review found no blocker in the test's helper injection, synchronous
+clock restoration or assertions. The initial 93/100 scan covered a different
+candidate/file set and is not a comparable score baseline.
+
+Post-withdrawal focused checks passed for `lazyRuntime`, `coveredComposerWarm`,
+`networkBattlePresentationRuntime`, `shadowPrime`, `battleWarmRuntime`,
+`battleEntryLifecycle` and `battleEntryAcquisition`. Registry discovery passes
+with 791 ordered checks after archived experiments are excluded from executable
+selftest filenames. The final release changes only this document and the
+`lazyRuntime` regression fixture; candidate typecheck/build jobs were canceled
+before execution after native rejection. No new runtime build or full-suite
+pass is claimed. The existing full-suite T-90M fingerprint failure remains
+outside this change.
