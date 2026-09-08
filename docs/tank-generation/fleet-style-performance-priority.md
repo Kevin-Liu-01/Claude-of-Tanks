@@ -71,9 +71,14 @@ roller, paint or triangle receipt therefore cannot close their review.
   return-roller/shoe detail and ineffective HIGH-to-LOW reduction on CR3/CR3X.
   A cheaper primitive is rejected if its guide horns, wheel faces, continuous
   carrier or moving shoes intersect actual stock.
-- The T-90A X fitted-gear pilot reaches approximately 71k HIGH / 50k LOW total
-  triangles while preserving road-wheel stations and outer faces, but live
-  nonflat terrain contact still fails. It is **not admitted for fleet rollout**.
+- An earlier unqualified T-90A X coupled-gear experiment measured roughly
+  71k HIGH / 50k LOW triangles; its live nonflat contact failed. The later
+  isolated structural-wheel checkpoint (local `be04a03b6`) instead measures
+  83,452 HIGH / 72,390 LOW scene triangles and 61,768 / 50,952 gear triangles.
+  It preserves all twelve road-wheel stations while replacing the distorted
+  source tires with circular supported primitives. Its old 174-triangle
+  links, LOW gear budget and HIGH-to-LOW ratio still fail. Neither candidate
+  is admitted for fleet rollout; do not combine their best metrics.
 - Published construction-cost/resource-ownership checkpoints do not solve the
   whole switch issue. Prior native logs contain roughly 600 ms frame intervals,
   but idle/throttled Gallery ticks are not automatically rendering stalls.

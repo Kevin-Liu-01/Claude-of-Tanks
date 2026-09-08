@@ -16,6 +16,9 @@ unchanged. Armor camouflage uses the actual hull texture and spatial UVs;
 rubber, separate optics, hoists, canvas and other kit retain their own finish.
 The new painted-detail bucket is explicit, not a material-name wildcard.
 Merged provenance is retained only when every input has the same declaration.
+Leclerc X, Leopard 2A6 X and AMX-40 X each gain one explicit painted-detail
+mesh/LOD for that material split. Their triangle count is unchanged; this
+finish correction is not presented as a draw-call or performance reduction.
 
 Focused tests reconstruct the entire pre-change source from immutable hashes
 at `2933d5645`, reversing only declared material/UV edits. They compare raw
