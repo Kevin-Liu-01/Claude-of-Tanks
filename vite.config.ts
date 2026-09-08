@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
+import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 
@@ -68,7 +69,7 @@ function reachableSrcModules(root: string): string[] {
  * same two rewrites for the deployed host). Queries pass through
  * (/studio?map=desert works).
  */
-const rewriteRoutes: Connect.NextHandleFunction = (req, res, next) => {
+const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req, res, next) => {
   const url = req.url || '';
   const qi = url.indexOf('?');
   const path = qi === -1 ? url : url.slice(0, qi);
@@ -89,12 +90,12 @@ const rewriteRoutes: Connect.NextHandleFunction = (req, res, next) => {
     const topic = path.split('/').filter(Boolean).at(-1);
     req.url = `/docs-${topic}.html${query}`;
   }
-  else if (path === '/404' || path === '/404/') {
+  else if (path === '/404' || path === '/404/' || path === '/404.html') {
     forceNotFoundStatus(res);
     req.url = '/404.html' + query;
   }
   else if (path !== '/' && !path.startsWith('/api/') &&
-    req.headers.accept?.includes('text/html')) {
+    req.headers.accept?.includes('text/html') && !isExistingProjectDocument(path,documentRoot)) {
     forceNotFoundStatus(res);
     req.url = '/404.html' + query;
   }
@@ -129,10 +130,10 @@ export default defineConfig({
     {
       name: 'cot-routes',
       configureServer(server) {
-        server.middlewares.use(rewriteRoutes);
+        server.middlewares.use(rewriteRoutes(server.config.root));
       },
       configurePreviewServer(server) {
-        server.middlewares.use(rewriteRoutes);
+        server.middlewares.use(rewriteRoutes(resolve(server.config.root,server.config.build.outDir)));
       },
     },
     {
