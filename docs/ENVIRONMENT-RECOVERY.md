@@ -796,6 +796,30 @@ These bounded construction receipts do not waive the open strict managed-heap,
 ordinary-motion, high-DPI or whole-pass quality gates. Day/night remains;
 weather particles remain excluded.
 
+## Diagnostics retention checkpoint — 2026-09-08
+
+`396d27141` fixes a small, independently identified retention owner: the loaded
+performance HUD observed long tasks during Shot/Studio frames, but those paths
+skip `hud.update`, which previously owned the only five-second eviction. The
+observer now expires old records before collecting another batch. Ordinary
+quiet-window cleanup and all render/frame wiring remain unchanged; there is
+no new timer or recurring owner.
+
+The existing late-Coastal snapshots show 356 to 474 retained task records,
+matching 3,144 bytes of shallow record/backing growth. The real-HUD regression
+test fails on the exact historical source and passes on the corrected owner,
+including no-update, boundary, quiet-window and capture-hidden cases. Six
+focused tests, strict runtime metrics and full typecheck/core-unused pass in
+`perf-hud-retention-r1-checks.json` under the persistent evidence root. This
+checkpoint has no new browser, build or memory acquisition.
+
+The separate residual heap census finds stable counts in the checked world,
+CSM and listener owners. Compiler metadata accounts for much of the larger
+late growth, but neither that attribution nor this small fix establishes a
+plateau. All 13 strict failures and the original measured growth remain
+unwaived. See `late-heap-coastal-r1/residual-summary-r1.json` for the bounded
+retainer checks; no category subtraction or tolerance change is permitted.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
