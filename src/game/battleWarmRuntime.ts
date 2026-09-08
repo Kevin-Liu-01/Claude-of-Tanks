@@ -954,6 +954,14 @@ function* prebakeDestroyedVariantSteps(
   } catch (_) { /* warm only */ }
 }
 
+/** Preserve the synchronous solo/capture drain; only network wreck warming is cooperative. */
+function initializeNewProgramUniforms(renderer: WebGLRenderer, before: number): void {
+  const programs = renderer.info.programs || [];
+  for (let index = before; index < programs.length; index += 1) {
+    try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
+  }
+}
+
 function warmDestroyedVisual(
   context: CombatWarmRuntimeContext,
   visual: BattleWarmVisual & Required<Pick<BattleWarmVisual, 'root' | 'setDestroyed' | 'resetDestroyed'>>,

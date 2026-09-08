@@ -274,10 +274,24 @@ the probe's successful functional outcome.
 Fifteen focused selftests pass across program/scene/wreck warming, explicit
 preload intent and module retries, presentation/launch/activation/barrier,
 Garage return, countdown, version identity and the production observer/probe.
-Changed runtime-owner metrics pass: 158 functions, zero complexity violations
+Changed runtime-owner metrics pass: 159 functions, zero complexity violations
 and zero explicit `any`/`unknown`. React Doctor's read-only changed scan reports
 89/100 with three warnings: two test-only iteration patterns and the intentional
 serial await that releases a paint checkpoint. Parallelizing that await would
 defeat the bounded-work and cancellation contract; no warning is suppressed.
 This scan covers different files from the previous 49/100 scan, so the scores
 are not a controlled improvement measurement.
+
+The first local candidate (`invite-wreck-r1`, `main-qYjQNADc.js`) passed the
+native multiplayer flow, but typecheck caught a second, synchronous solo/capture
+caller of the removed helper. Its warm-only catch had hidden the missing call
+from the existing tests. The original helper is restored for that caller only;
+a red-first public `createCombatRareWarmSteps` regression now asserts actual
+new-program uniform calls, continuation after a driver error, exclusion of old
+programs, and exact destruction/visibility restoration. The initial candidate
+was not pushed as a passing release.
+
+That first local observation was clear/day (not the production night case):
+loading totals were 1,936/2,049 ms, wreck phases 118/145 ms, and later native
+readiness queries still reached 197.6/199.9 ms. It is useful functional evidence,
+not proof that the night-loading problem or remaining shader stalls are fixed.

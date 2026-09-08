@@ -14,6 +14,7 @@ import {
   Vector3,
 } from 'three';
 import {
+  createCombatRareWarmSteps,
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
   warmBattleTerrainTiles,
@@ -712,5 +713,47 @@ assert.deepEqual(await wreckLifetimeProbe('abort', 3), { renders: 1, queries: 1,
   'the final post-render wait must not swallow cancellation');
 assert.deepEqual(await wreckLifetimeProbe('query-failure'), { renders: 1, queries: 1, uniforms: 0 },
   'failed readiness never permits speculative reflection, and the real fallback draw remains');
+
+{
+  const events = [];
+  const root = new Group();
+  root.visible = false;
+  let destroyed = false;
+  const renderer = { info: { programs: [{ getUniforms() { events.push('unexpected-old-uniform'); } }] } };
+  const visual = {
+    root,
+    setDestroyed() { destroyed = true; events.push('destroyed'); },
+    resetDestroyed() { destroyed = false; events.push('reset'); },
+  };
+  const steps = createCombatRareWarmSteps({
+    isRareReady: () => false,
+    isOpeningReady: () => true,
+    game: { tanks: [{ specId: 'solo-capture-regression', visual }] },
+    renderer,
+    anisotropy: 1,
+    prebakeBurntSteps: function* () {},
+    forwardProgramWarm: { compile(candidate) {
+      assert.equal(candidate, root);
+      assert.equal(destroyed, true);
+      assert.equal(root.visible, true);
+      events.push('compile');
+      renderer.info.programs.push(
+        { getUniforms() { events.push('failed-uniform'); throw new Error('driver'); } },
+        { getUniforms() {
+          assert.equal(destroyed, true, 'legacy solo/capture reflection remains synchronous with staging');
+          assert.equal(root.visible, true);
+          events.push('ready-uniform');
+        } },
+      );
+    } },
+  });
+  try {
+    assert.equal(steps.next().done, false, 'the public rare-warm owner yields after the destroyed roster variant');
+    assert.deepEqual(events, ['destroyed', 'compile', 'failed-uniform', 'ready-uniform', 'reset'],
+      'solo/capture consumes every new uniform table synchronously, including after a failed call');
+    assert.equal(destroyed, false);
+    assert.equal(root.visible, false, 'the original visibility is restored before the roster yield');
+  } finally { steps.return(); }
+}
 
 console.log('battleWarmRuntime.selftest: Studio invalidation and covered FX staging passed');
