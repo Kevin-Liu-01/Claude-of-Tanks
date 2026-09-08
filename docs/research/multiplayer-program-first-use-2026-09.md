@@ -295,3 +295,49 @@ That first local observation was clear/day (not the production night case):
 loading totals were 1,936/2,049 ms, wreck phases 118/145 ms, and later native
 readiness queries still reached 197.6/199.9 ms. It is useful functional evidence,
 not proof that the night-loading problem or remaining shader stalls are fixed.
+
+### Final integrated acceptance
+
+The corrected solo helper passed typecheck, the public build and the native
+`invite-wreck-r2` flow at `35d33b7e4`. That clear/day run observed loading totals
+of 2,034/2,123 ms and wreck phases of 116/172 ms (host/guest), with both full
+countdowns and verified cleanup. Its later LOW maximum frame gaps were
+47.9/51.6 ms. It was not the final integrated tree.
+
+Rebasing onto `4a563382c` changed only the independent diagnostics-retention
+slice outside these multiplayer files. At integrated runtime `8b6aa6b08`, all
+15 focused checks, the additional perfHud regression, typecheck, changed-owner
+metrics and the public build passed. Independent scope/caller review found no
+blocker. The full-suite limitation above remains; no vehicle receipt was edited.
+
+`invite-wreck-r3` then exercised the frozen local public build
+`v1.0.0+g8b6aa6b08.dirty` / `main-BqbyioQ8.js` with two fresh native contexts,
+local signaling and guest CPU profiling. The dirty suffix reflects untracked
+QA artifacts; tracked source was unchanged. The served build index SHA-256 was
+`2bd5313a16047c80aacd17226ca2fd1d3d8cef01756d9439ea197701baeb76af`.
+Both clients reused the prepared Winter map, showed `5,4,3,2,1` in foreground,
+moved/fired, returned to Garage and closed the room. Page/observer errors and
+black-frame rescues were zero; browser and room cleanup were verified. The
+inspected image shows native Apple M5 Max ANGLE, the tank, terrain and HUD.
+
+This final run selected clear/**night**, HIGH/scale 1 during entry. It passed
+functional acceptance, but **not smooth-loading performance acceptance**:
+
+| Integrated night loading | Host | Guest |
+| --- | ---: | ---: |
+| Loading total, including ready barrier | 10,992 ms | 11,063 ms |
+| Wreck preparation | 1,049 ms | 1,095 ms |
+| Scene compile / first-use | 3,928 ms | 968 ms |
+| Combat warm | 1,617 ms | 1,573 ms |
+| Largest recorded entry task | 1,604 ms | 1,561 ms |
+| Watchdog render / asynchronous readback | 711 / 2,122 ms | 639 / 2,768 ms |
+
+Neither peer recorded a 50-ms-or-longer task starting inside the wreck interval.
+The largest tasks instead overlap combat warm; that timing overlap is not a
+complete driver/root-cause attribution. The later, separate LOW dual-render
+moving/firing sample reached 43.2/45.0 ms maximum callback gaps with zero hard
+snaps. Room seeds, driver caches, external contention and profiling overhead
+are not controlled. These observations do not establish a matched production
+speedup, eliminate the remaining night stalls, or certify HIGH gameplay and
+separate-device/network performance. Final publication changes only this ledger
+after the frozen runtime checks; temporary runners and capture files stay out.
