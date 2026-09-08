@@ -1,0 +1,26 @@
+{
+  "metadata.gallery.description": {
+    "context": "SEO copy for a tank-game inspection page. Translate armor, module, crew, markings, and exact-surface as technical vehicle-inspection terms. Keep Claude of Tanks and Tank Gallery as product names."
+  },
+  "metadata.docsBuild.description": {
+    "context": "SEO copy about software construction. Translate deterministic simulation as deterministic software simulation, not a generic demonstration."
+  },
+  "metadata.docsSimulation.description": {
+    "context": "SEO copy for an armored combat simulation manual. Translate armor, ballistics, modules, crew, spotting, missiles, and reload systems into natural game-development terminology."
+  },
+  "metadata.docsVehicles.description": {
+    "context": "SEO copy for procedural armored vehicles. Translate tracks as tank tracks, rig as an articulated 3D rig, and armor anatomy as the modeled armor layout."
+  },
+  "metadata.docsMultiplayer.description": {
+    "context": "SEO copy about networking architecture. Translate room, authority, prediction, reconciliation, snapshots, spotting, bots, and reconnects into natural multiplayer engineering terminology."
+  },
+  "metadata.docsInterface.description": {
+    "context": "SEO copy for game UI. Keep Garage, HUD, killcam, and Scene Studio as established feature names where a natural Chinese equivalent would be ambiguous."
+  },
+  "metadata.room.title.hostLan": {
+    "context": "Private invitation metadata. Preserve the {host} placeholder and Claude of Tanks product name. LAN means local-area-network multiplayer."
+  },
+  "metadata.room.description.hostLan": {
+    "context": "Private invitation metadata. Preserve {host} and {room} exactly; they are user-authored host and room-code values and must never be translated."
+  }
+}

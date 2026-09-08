@@ -94,6 +94,7 @@
        for exactly the same reason — first paint must not wait on /src/main.ts). -->
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <script type="module" src="/src/ui/localeBootstrap.ts"></script>
   <link rel="stylesheet" href="/src/presentation/mediaArchive.css" />
   <style>
     :root {
@@ -850,15 +851,16 @@
         .replace(/[01IO]/g, (char) => ({ 0: 'Q', 1: 'L', I: 'L', O: 'Q' })[char] || char)
         .slice(0, 6);
       const hostName = String(params.get('host') || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+      const chineseRoute = /^\/cn(?:\/|$)/.test(location.pathname);
       const invite = document.getElementById('cot-boot-invite');
       const boot = document.getElementById('cot-boot');
       if (roomCode.length === 6 && invite && boot) {
         const battleLabel = String(params.get('mode') || '').toLowerCase() === 'lan'
-          ? 'LAN Battle'
-          : 'Private Battle';
+          ? (chineseRoute ? 'LAN 对战' : 'LAN Battle')
+          : (chineseRoute ? '私人对战' : 'Private Battle');
         const invitationTitle = hostName
-          ? 'Join ' + hostName + '’s ' + battleLabel
-          : 'Join Private Battle ' + roomCode;
+          ? (chineseRoute ? '加入 ' + hostName + ' 的 ' + battleLabel : 'Join ' + hostName + '’s ' + battleLabel)
+          : (chineseRoute ? '加入私人对战 ' + roomCode : 'Join Private Battle ' + roomCode);
         invite.textContent = invitationTitle;
         invite.classList.add('on');
         boot.classList.add('has-invite');

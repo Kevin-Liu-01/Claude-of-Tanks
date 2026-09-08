@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 import { privateRoomMetadata, STUDIO_METADATA } from './siteMetadata.ts';
+import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SITE = 'https://cot.kevinliu.studio';
@@ -129,13 +130,15 @@ assert.equal(attribute(topicFallback, 'link', 'rel', 'canonical', 'href'), `${SI
 
 const sitemap = readFileSync(join(ROOT, 'public/sitemap.xml'), 'utf8');
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-assert.deepEqual(sitemapUrls, [
-  ...[...indexedPages.values()].slice(0, 3),
-  STUDIO_METADATA.canonical,
-  ...[...indexedPages.values()].slice(3),
-], 'sitemap must exactly match indexed canonicals');
+const expectedLocaleUrls = PUBLIC_ROUTE_RECORDS.filter(({ indexable }) => indexable)
+  .flatMap(({ pathname }) => [`${SITE}${pathname}`, `${SITE}${hrefForLocale(pathname, 'zh-CN')}`]);
+assert.deepEqual(sitemapUrls, expectedLocaleUrls, 'sitemap must exactly match both locale route sets');
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, 'sitemap URLs must be unique');
 assert.doesNotMatch(sitemap, /<priority>|<changefreq>/, 'sitemap must not invent update priorities');
+assert.match(sitemap, /xmlns:xhtml="http:\/\/www\.w3\.org\/1999\/xhtml"/);
+assert.equal((sitemap.match(/hreflang="en-US"/g) || []).length, sitemapUrls.length);
+assert.equal((sitemap.match(/hreflang="zh-CN"/g) || []).length, sitemapUrls.length);
+assert.equal((sitemap.match(/hreflang="x-default"/g) || []).length, sitemapUrls.length);
 
 const robots = readFileSync(join(ROOT, 'public/robots.txt'), 'utf8');
 assert.match(robots, new RegExp(`Sitemap: ${SITE.replace(/[.]/g, '\\.')}\/sitemap\\.xml`));
@@ -190,6 +193,17 @@ assert.match(privateMetadata.description, /room HKP5XW/);
 assert.match(privateMetadata.robots, /noindex, nofollow, noarchive/);
 assert.equal(privateMetadata.image, `${SITE}/brand/og/private-room.jpg`);
 assert.equal(privateMetadata.canonical, `${SITE}/`, 'temporary room codes must never become indexed canonicals');
+const chinesePrivateMetadata = privateRoomMetadata(
+  new URL(`${SITE}/cn/?room=HKP5XW&mode=lan&host=Commander+09HY`),
+  'zh-CN',
+);
+assert.match(chinesePrivateMetadata?.title || '', /加入 Commander 09HY 的 LAN 对战/);
+assert.match(chinesePrivateMetadata?.description || '', /HKP5XW/,
+  'localized metadata must preserve the dynamic room-code placeholder');
+assert.equal(chinesePrivateMetadata?.canonical, `${SITE}/cn/`);
+assert.match(readFileSync(join(ROOT, 'index.html'), 'utf8'),
+  /chineseRoute \? '加入 ' \+ hostName/,
+  'the pre-boot private-room banner must not flash English on a Chinese route');
 assert.match(privateRoomMetadata(new URL(`${SITE}/?room=I0O123`))?.description || '', /room LQQL23/,
   'crawler metadata must normalize ambiguous room characters exactly like the lobby');
 

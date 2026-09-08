@@ -23,6 +23,14 @@ const studio = createStartupIntent({
 assert.equal(studio.studioRequested, true);
 assert.equal(studio.studioMapId, 'steppe');
 
+const chineseStudio = createStartupIntent({
+  href: 'https://cot.example/cn/studio?map=glacier',
+  pathname: '/cn/studio',
+  search: '?map=glacier',
+}, loadInvite);
+assert.equal(chineseStudio.studioRequested, true);
+assert.equal(chineseStudio.studioMapId, 'glacier');
+
 const invited = createStartupIntent({
   href: 'https://cot.example/?room=ABC123',
   pathname: '/',

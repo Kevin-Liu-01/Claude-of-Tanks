@@ -2,9 +2,20 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
+import {
+  currentLocationHrefForLocale,
+  hrefForLocale,
+  localizeDocumentLinks,
+  resolveLocalePath,
+  synchronizeLocaleRoute,
+} from '../ui/localeRouting.ts';
 
 installResponsiveLayout();
-bindStaticI18nAuto();
+const localeRouteChanged = synchronizeLocaleRoute(getLocale());
+if (!localeRouteChanged) {
+  bindStaticI18nAuto();
+  localizeDocumentLinks(document, getLocale());
+}
 
 const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
@@ -31,7 +42,7 @@ function mountLocaleSwitcher(): void {
     `<span data-locale-option="zh-CN"${current === 'zh-CN' ? ' class="is-current"' : ''}>中文</span>`;
   button.addEventListener('click', () => {
     setLocale(next);
-    window.location.reload();
+    window.location.assign(currentLocationHrefForLocale(window.location, next));
   });
 
   links.insertBefore(button, links.querySelector('.public-nav__github, .public-nav__cta'));
@@ -44,7 +55,8 @@ function mountMobileNavigation(): void {
   const directLinks = [...links.children].filter((node) => node.matches?.('a'));
   const pageLinks = directLinks.filter((node) =>
     !node.classList.contains('public-nav__github') && !node.classList.contains('public-nav__cta'));
-  const home = pageLinks.find((node) => node.getAttribute('href') === '/home');
+  const home = pageLinks.find((node) =>
+    resolveLocalePath(node.getAttribute('href') || '').pathname === '/home');
 
   const trigger = document.createElement('button');
   trigger.className = 'public-nav__menu-trigger';
@@ -71,7 +83,7 @@ function mountMobileNavigation(): void {
 
   const garage = document.createElement('a');
   garage.className = 'public-nav__menu-item';
-  garage.href = '/';
+  garage.href = hrefForLocale('/', getLocale());
   garage.innerHTML = `<img class="public-nav__icon public-nav__icon--home" src="/brand/nav/garage.svg" alt="">${t('publicNav.garage')}`;
   menu.append(garage);
 
@@ -118,6 +130,19 @@ function mountMobileNavigation(): void {
 
 mountLocaleSwitcher();
 mountMobileNavigation();
+
+// Docs topics and other public modules render some anchors after this module.
+// Update the clicked anchor during capture so late content cannot leak back to
+// an unprefixed English route.
+document.addEventListener('click', (event) => {
+  if (!(event.target instanceof Element)) return;
+  const anchor = event.target.closest<HTMLAnchorElement>('a[href]');
+  if (!anchor) return;
+  const href = anchor.getAttribute('href');
+  if (!href) return;
+  const localized = hrefForLocale(href, getLocale());
+  if (localized !== href) anchor.setAttribute('href', localized);
+}, { capture: true });
 
 window.setTimeout(() => {
   if ('requestIdleCallback' in window) requestIdleCallback(mountStars, { timeout: 2500 });

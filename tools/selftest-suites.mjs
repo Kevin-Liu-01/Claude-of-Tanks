@@ -354,6 +354,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/publicNav.selftest.mjs',
     'src/presentation/notFound.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
+    'src/ui/localeRouting.selftest.mjs',
+    'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/topics.selftest.mjs',
     'src/productStats.selftest.mjs',

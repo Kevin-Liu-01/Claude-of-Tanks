@@ -16,11 +16,15 @@
  */
 
 import { CATALOG } from './i18nCatalog.ts';
+import {
+  DEFAULT_LOCALE as FALLBACK_LOCALE,
+  resolveLocalePath,
+  SUPPORTED_LOCALES,
+  type SupportedLocale,
+} from './localeRouting.ts';
 
 const STORAGE_KEY = 'cot.locale';
-const FALLBACK_LOCALE = 'en-US';
-const SUPPORTED_LOCALES = ['en-US', 'zh-CN'] as const;
-export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+export type { SupportedLocale } from './localeRouting.ts';
 
 export interface LocaleChangeDetail {
   readonly locale: SupportedLocale;
@@ -57,6 +61,10 @@ function readNavigatorLocale(): SupportedLocale | null {
 }
 
 function detectLocale(): SupportedLocale {
+  if (typeof window !== 'undefined') {
+    const routeLocale = resolveLocalePath(window.location?.pathname || '/').locale;
+    if (routeLocale) return routeLocale;
+  }
   return readStoredLocale() ?? readNavigatorLocale() ?? FALLBACK_LOCALE;
 }
 
@@ -64,6 +72,11 @@ function ensureInitialised(): void {
   if (initialised) return;
   initialised = true;
   currentLocale = detectLocale();
+  // An explicit locale route is also an explicit user preference. Persist it
+  // so later navigation from a copied `/cn/...` URL stays Chinese.
+  if (typeof window !== 'undefined' && resolveLocalePath(window.location?.pathname || '/').locale) {
+    persist(currentLocale);
+  }
   // CSS variables must mirror the resolved locale on first boot; subsequent
   // setLocale() calls will re-run this through syncLocaleCssVariables().
   syncLocaleCssVariables();

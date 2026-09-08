@@ -19,7 +19,8 @@ import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton, type InfoImage } from './contextInfo.ts';
-import { t } from './i18n.ts';
+import { getLocale, t } from './i18n.ts';
+import { hrefForLocale } from './localeRouting.ts';
 
 const STUDIO_GROUP_INFO_KEYS = Object.freeze({
   battlefield: 'studioPanel.info.group.battlefield',
@@ -548,7 +549,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   galleryBtn.innerHTML = `<img src="/brand/nav/tank-gallery.svg" alt="">${t('studioPanel.tankGallery')}`;
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
-    window.location.href = id ? `/gallery?id=${encodeURIComponent(id)}` : '/gallery';
+    window.location.href = hrefForLocale(id ? `/gallery?id=${encodeURIComponent(id)}` : '/gallery', getLocale());
   });
   const exitBtn = el('button', null, t('studio.exitF8'));
   exitBtn.addEventListener('click', () => S.exit());

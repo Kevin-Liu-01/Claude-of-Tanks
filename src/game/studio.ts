@@ -70,9 +70,11 @@ import type {
 import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 import {
   applySiteMetadataToDocument,
-  GAME_METADATA,
-  STUDIO_METADATA,
+  localizedGameMetadata,
+  localizedStudioMetadata,
 } from '../presentation/siteMetadata.ts';
+import { getLocale } from '../ui/i18n.ts';
+import { pathForLocale, resolveLocalePath } from '../ui/localeRouting.ts';
 import type {
   MovementContactGeometry,
   MovementEntity,
@@ -2914,7 +2916,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   /** Is the page on the /studio pretty route (vite.config.ts rewrite)? */
   function onStudioRoute() {
-    try { return /^\/studio\/?$/.test(window.location.pathname); } catch (_) { return false; }
+    try { return resolveLocalePath(window.location.pathname).pathname === '/studio'; } catch (_) { return false; }
   }
 
   /**
@@ -2926,7 +2928,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function syncRoute(inStudio: boolean): void {
     try {
       if (!window.history || !window.history.replaceState) return;
-      const want = inStudio ? '/studio' : '/';
+      const want = pathForLocale(inStudio ? '/studio' : '/', getLocale());
       if (window.location.pathname === want) return;
       const sp = new URLSearchParams(window.location.search);
       sp.delete('studio');
@@ -2964,7 +2966,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             l.setAttribute('href', '/brand/nav/studio.svg');
             l.setAttribute('type', 'image/svg+xml');
           }
-          applySiteMetadataToDocument(document, STUDIO_METADATA);
+          applySiteMetadataToDocument(document, localizedStudioMetadata(getLocale()));
         } else if (saved) {
           for (const { l, href, type } of saved.links) {
             if (href != null) l.setAttribute('href', href);
@@ -2972,7 +2974,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             if (type) l.setAttribute('type', type);
             else l.removeAttribute('type');
           }
-          applySiteMetadataToDocument(document, GAME_METADATA);
+          applySiteMetadataToDocument(document, localizedGameMetadata(getLocale()));
           saved = null;
         }
       } catch (_) { /* headless DOM without icon links */ }

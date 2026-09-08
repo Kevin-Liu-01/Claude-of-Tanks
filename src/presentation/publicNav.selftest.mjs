@@ -103,8 +103,10 @@ assert.match(navCss, /\.public-nav__links>a:not\(\.public-nav__github\):not\(\.p
   'mobile public navigation must collapse page links while retaining GitHub and Play Now');
 assert.match(navSource, /className = 'public-nav__menu-trigger'/,
   'public pages must mount a shared mobile menu trigger');
-assert.match(navSource, /garage\.href = '\/'/,
-  'the public mobile menu must expose the garage alongside every public page');
+assert.match(navSource, /garage\.href = hrefForLocale\('\/', getLocale\(\)\)/,
+  'the public mobile menu must expose the locale-matched Garage alongside every public page');
+assert.match(navSource, /resolveLocalePath\(node\.getAttribute\('href'\)/,
+  'the mobile Home control must survive localized link rewriting');
 assert.match(navSource, /event\.code !== 'Escape'/,
   'the public mobile navigation must close with Escape');
 assert.match(navSource, /className = 'public-nav__locale'/,
