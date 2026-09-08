@@ -462,3 +462,24 @@ dual-render movement/firing sample reached 54.4/45.2-ms maximum callback gaps.
 This is functional acceptance with an observed coverage correction, **not**
 smooth-loading acceptance or a controlled before/after speedup. Night loading,
 driver-query stalls and deferred texture uploads remain open.
+
+### Main integration acceptance
+
+Runtime commit `8867f6bc8` rebased cleanly onto `c0dcf8255`, preserving the
+concurrent i18n and dormant snow-atlas work. The same fourteen focused selftest
+commands, typecheck, public build and three-owner complexity gate passed on
+that integrated tree. `scar-integrated-r2` then passed the native two-client
+private-room flow, foreground `5,4,3,2,1`, firing, nonblack reveal, Garage return
+and room/browser cleanup, with no page errors or hard snaps. Each client
+prepared one scar program with zero failures/pending work; the guest yielded
+three times while it became ready. Its inspected capture shows the live
+battlefield and HUD. The build was `v1.0.0+g8867f6bc8.dirty` solely because local
+QA artifacts were untracked; the recorded tracked runtime diff was empty.
+
+This second local clear/day HIGH run took 2,101/2,158 ms after a 6.50-second
+waiting-room map dwell. Maximum entry tasks remained 307/226 ms; later LOW
+dual-render callback gaps reached 43.0/46.8 ms. Thus integration is functionally
+verified, but the smooth-loading limitation remains. The initial integrated
+runner refused an incorrect expected version before opening any browser; the
+fresh `r2` run used the actual frozen build stamp. This publication adds only
+the scoped multiplayer change and this evidence ledger, not the QA artifacts.
