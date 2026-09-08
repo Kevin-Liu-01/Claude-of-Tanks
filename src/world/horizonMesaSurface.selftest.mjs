@@ -16,7 +16,7 @@ function requireIntegration(source) {
     'Only mesa compiles the recipe; every other style retains the exact generic GLSL');
   assert.equal((source.match(/diffuseColor\.rgb \*= horizonSurfaceGain;/g) ?? []).length, 1,
     'The caller applies the recipe exactly once');
-  assert.match(source, /mat\.customProgramCacheKey = \(\) => style === 'mesa' \? 'horizon-ring-mesa-surface-r1'\s*:\s*\(style === 'alpine' \? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-'\) \+ style;/,
+  assert.match(source, /mat\.customProgramCacheKey = \(\) => style === 'mesa' \? 'horizon-ring-mesa-surface-r2'\s*:\s*\(style === 'alpine' \? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-'\) \+ style;/,
     'Mesa receives a distinct shader cache key without changing other style keys');
 }
 const integration = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
@@ -67,7 +67,7 @@ for (let a = -10; a <= 10; a++) for (let b = -10; b <= 10; b++) {
     const expected = legacyGain(dA, dB, fixW);
     assert.equal(gain({ dA, dB, fixW, cap: 0 }), expected, 'Non-mesa response is bit-identical');
     assert.equal(gain({ dA, dB, fixW, marine: 1 }), expected, 'Sea response is bit-identical');
-    for (const normalY of [0.82, 0.90, 1]) {
+    for (const normalY of [0.95, 0.97, 1]) {
       assert.equal(gain({ dA, dB, fixW, normalY }), expected, 'Caps and shallow surfaces stay exact');
     }
   }
@@ -90,9 +90,17 @@ const open = Array.from({ length: 256 }, (_, i) => gain({ dA: 0.2, dB: 0.1, heig
 assert.ok(Math.max(...open) - Math.min(...open) > 0.10, 'Open patches retain height-dependent sediment beds');
 assert.notDeepEqual(open, Array.from({ length: 256 }, (_, i) => gain({ dA: 0.2, dB: 0.2, height: i })),
   'The sampled surface fields warp and interrupt beds instead of drawing universal contour bars');
-const midpoint = gain({ dA: 0.2, dB: 0.1, normalY: 0.65 });
+const midpoint = gain({ dA: 0.2, dB: 0.1, normalY: 0.88 });
 const base = legacyGain(0.2, 0.1, 0), wall = gain({ dA: 0.2, dB: 0.1 });
 assert.ok(midpoint > Math.min(base, wall) && midpoint < Math.max(base, wall), 'Slope transition blends continuously');
+
+// Median interpolated normalY values measured from the immutable R3 Titan
+// EN/WN scope camera ray grids. Those real supported walls were almost wholly
+// excluded by the former .18..52 mask despite passing steep synthetic tests.
+for (const normalY of [0.8075352293304353, 0.7833]) {
+  assert.equal(gain({ dA: 0.2, dB: 0.1, normalY }), wall,
+    'Recorded mesa sidewall slopes receive the full recipe, not a near-zero mask');
+}
 
 assert.throws(() => requireSourceContract(HORIZON_MESA_SURFACE_FRAGMENT + '\nfloat hidden = texture2D(map, uv).r;'),
   { code: 'ERR_ASSERTION' }, 'Resource budget oracle rejects another texture sample');
@@ -102,7 +110,7 @@ assert.throws(() => requireSourceContract(HORIZON_MESA_SURFACE_FRAGMENT.replace(
   { code: 'ERR_ASSERTION' }, 'Contrast bounds cannot be weakened unnoticed');
 assert.throws(() => requireIntegration(integration.replace("${style === 'mesa' ? HORIZON_MESA_SURFACE_FRAGMENT",
   '${true ? HORIZON_MESA_SURFACE_FRAGMENT')), { code: 'ERR_ASSERTION' }, 'Unrelated styles cannot inherit the added ALU');
-assert.throws(() => requireIntegration(integration.replace('horizon-ring-mesa-surface-r1', 'horizon-ring-relief-r2-mesa')),
+assert.throws(() => requireIntegration(integration.replace('horizon-ring-mesa-surface-r2', 'horizon-ring-relief-r2-mesa')),
   { code: 'ERR_ASSERTION' }, 'Stale shader cache identity is rejected');
 console.log('horizonMesaSurface: existing-input-only recipe, exact non-mesa/cap/sea paths, bounded broken beds, derivative fade, mesa-only integration/cache and negative controls PASS',
   JSON.stringify({ minimum, maximum, altered, nativeVisualAcceptance: 'not measured by this CPU test' }));

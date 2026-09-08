@@ -6,7 +6,10 @@
 export const HORIZON_MESA_SURFACE_FRAGMENT: string = /* glsl */`
 float horizonSurfaceGain = 1.0 + (dA * 0.28 + dB * 0.30) * (1.0 - fixW * 0.8);
 {
-  float mesaWallWeight = smoothstep(0.18, 0.52, 1.0 - clamp(hnW0.y, 0.0, 1.0))
+  // Supported mesa shoulders use smooth normals around y=0.78..0.81 in
+  // the captured Titan walls. A steep-cliff-only mask silently excluded them.
+  // Keep near-horizontal tops untouched; the existing cap repair also fades us.
+  float mesaWallWeight = smoothstep(0.06, 0.18, 1.0 - clamp(hnW0.y, 0.0, 1.0))
     * clamp(uCapFix, 0.0, 1.0) * (1.0 - clamp(horizonMarine, 0.0, 1.0))
     * (1.0 - clamp(fixW, 0.0, 1.0));
 

@@ -1744,7 +1744,7 @@ function* buildHorizonMaterialSteps({
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => style === 'mesa' ? 'horizon-ring-mesa-surface-r1'
+    mat.customProgramCacheKey = () => style === 'mesa' ? 'horizon-ring-mesa-surface-r2'
       : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-') + style;
   }
   return mat;
