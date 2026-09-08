@@ -6,6 +6,7 @@ import { PROCEDURAL_PROFILES } from './profiledProcedurals.ts';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
+import {withHistoricalT90MLamps,assertCurrentT90MLampSeats} from './historicalT90MLamps.test-support.mjs';
 
 // Independent geometry-only fingerprints measured from the completed
 // pre-X commit 2c22d203d8726cfceefbe427f3930a000524da32 at seed4242.
@@ -18,7 +19,15 @@ const original = {
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {
   const tank = createTank(id, null, options);
-  try { assert.equal(geometryFingerprint(tank.root), hash, `${id}: existing geometry must be preserved`); }
+  try {
+    if(id==='t90m'){
+      assertCurrentT90MLampSeats(tank);
+      const historical=withHistoricalT90MLamps(()=>createTank(id,null,options));
+      try{assert.equal(geometryFingerprint(historical.root),hash,
+        't90m: original geometry after the four authenticated published lamp-pose inverses');}
+      finally{historical.dispose();}
+    }else assert.equal(geometryFingerprint(tank.root), hash, `${id}: existing geometry must be preserved`);
+  }
   finally { tank.dispose(); }
 }
 assert.equal(SOURCE_X_IDS.length, 13);
@@ -42,4 +51,4 @@ for (const id of SOURCE_X_IDS) {
     assert.notEqual(geometryFingerprint(tank.root), original[donor], `${id}: genuinely new authored geometry`);
   } finally { tank.dispose(); }
 }
-console.log('sourceXFleet: all 13 original models preserved; 13 independent procedural X builds, identities and combat metadata pass');
+console.log('sourceXFleet: 13 original geometry histories preserved (four published T-90M lamp moves explicitly isolated); 13 independent procedural X builds, identities and combat metadata pass');
