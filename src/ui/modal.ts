@@ -6,6 +6,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { t } from './i18n.ts';
 
 export const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])',
@@ -144,8 +145,8 @@ function unlockBody() {
 
 /** Create a reusable modal controller. Callers populate `body` and `footer`. */
 export function createModal({
-  title = 'Details', eyebrow = 'Field manual', subtitle = '', size = 'medium',
-  closeLabel = 'Close dialog', className = '', onOpen = null, onClose = null,
+  title = '', eyebrow = '', subtitle = '', size = 'medium',
+  closeLabel = '', className = '', onOpen = null, onClose = null,
 }: ModalOptions = {}): ModalController {
   ensureCss();
   const id = `cot-modal-${++serial}`;
@@ -167,11 +168,11 @@ export function createModal({
   const headingWrap = document.createElement('div');
   const eyebrowEl = document.createElement('div');
   eyebrowEl.className = 'cot-modal__eyebrow';
-  eyebrowEl.textContent = eyebrow;
+  eyebrowEl.textContent = eyebrow || t('modal.eyebrowDefault');
   const titleEl = document.createElement('h2');
   titleEl.id = `${id}-title`;
   titleEl.className = 'cot-modal__title';
-  titleEl.textContent = title;
+  titleEl.textContent = title || t('modal.titleDefault');
   const subtitleEl = document.createElement('p');
   subtitleEl.id = `${id}-subtitle`;
   subtitleEl.className = 'cot-modal__subtitle';
@@ -182,7 +183,7 @@ export function createModal({
   closeButton.type = 'button';
   closeButton.className = 'cot-modal__close';
   closeButton.innerHTML = uiIconSVG('close', 22);
-  closeButton.setAttribute('aria-label', closeLabel);
+  closeButton.setAttribute('aria-label', closeLabel || t('modal.closeLabel'));
   const body = document.createElement('div');
   body.className = 'cot-modal__body';
   const footer = document.createElement('footer');
@@ -198,8 +199,8 @@ export function createModal({
   const controller: ModalController = {
     root, panel, header, body, footer, closeButton,
     isOpen: () => activeModal === controller,
-    setTitle(value: RuntimeValue) { titleEl.textContent = String(value || 'Details'); },
-    setEyebrow(value: RuntimeValue) { eyebrowEl.textContent = String(value || 'Field manual'); },
+    setTitle(value: RuntimeValue) { titleEl.textContent = String(value || t('modal.titleDefault')); },
+    setEyebrow(value: RuntimeValue) { eyebrowEl.textContent = String(value || t('modal.eyebrowDefault')); },
     setSubtitle(value: RuntimeValue) {
       subtitleEl.textContent = String(value || '');
       subtitleEl.hidden = !value;

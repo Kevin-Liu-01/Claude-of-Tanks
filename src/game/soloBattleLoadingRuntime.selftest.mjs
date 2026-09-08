@@ -1,6 +1,24 @@
 import assert from 'node:assert/strict';
 import { Object3D } from 'three';
-import { createSoloBattleLoadingRuntime } from './soloBattleLoadingRuntime.ts';
+import { getLocale, setLocale } from '../ui/i18n.ts';
+import {
+  createSoloBattleLoadingRuntime,
+  soloBattleLoadingModeLabel,
+} from './soloBattleLoadingRuntime.ts';
+
+const originalLocale = getLocale();
+setLocale('en-US');
+assert.equal(
+  soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
+  'Capture the Flag · Selected Battlefield',
+);
+setLocale('zh-CN');
+assert.equal(
+  soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
+  '夺旗战 · 指定战场',
+  'non-standard battle loading labels stay in the active locale',
+);
+setLocale('en-US');
 
 const events = [];
 const world = { mapId: 'verdant', group: new Object3D() };
@@ -188,6 +206,7 @@ try {
   delete globalThis.__BATTLE_LOAD;
   delete globalThis.__VISUAL_LOAD_TIMINGS;
   delete globalThis.__WORLD_LOAD;
+  setLocale(originalLocale);
 }
 
 console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm and reveal order pass');

@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MAX_ROOM_CHAT_LENGTH } from '../net/protocol.ts';
 import { FONT_COND, FONT_STACK } from './fonts.ts';
+import { t } from './i18n.ts';
 
 const STYLE_ID = 'cot-room-chat-style';
 
@@ -122,7 +123,7 @@ export function createRoomChat({
   root.className = 'cot-room-chat quiet';
   root.hidden = true;
   root.dataset.testid = 'room-chat';
-  root.setAttribute('aria-label', 'Room chat');
+  root.setAttribute('aria-label', t('chat.aria'));
 
   const log = document.createElement('div');
   log.className = 'cot-room-chat-log';
@@ -137,8 +138,8 @@ export function createRoomChat({
   toggle.className = 'cot-room-chat-toggle';
   toggle.type = 'button';
   toggle.dataset.testid = 'room-chat-toggle';
-  toggle.innerHTML = '<b>↵</b>&nbsp; Room chat';
-  toggle.setAttribute('aria-label', 'Open room chat');
+  toggle.innerHTML = `<b>↵</b>&nbsp; ${t('chat.toggle')}`;
+  toggle.setAttribute('aria-label', t('chat.open'));
   toggle.setAttribute('aria-keyshortcuts', 'Enter');
 
   const form = document.createElement('form');
@@ -150,13 +151,13 @@ export function createRoomChat({
   field.autocomplete = 'off';
   field.spellcheck = true;
   field.enterKeyHint = 'send';
-  field.placeholder = 'Message everyone in this room';
-  field.setAttribute('aria-label', 'Room chat message');
+  field.placeholder = t('chat.placeholder');
+  field.setAttribute('aria-label', t('chat.messageAria'));
   const send = document.createElement('button');
   send.className = 'cot-room-chat-send';
   send.dataset.testid = 'room-chat-send';
   send.type = 'submit';
-  send.textContent = 'Send';
+  send.textContent = t('chat.send');
   const count = document.createElement('span');
   count.className = 'cot-room-chat-count';
   count.setAttribute('aria-hidden', 'true');
@@ -244,7 +245,7 @@ export function createRoomChat({
     row.dataset.senderId = String(message.senderId || '');
     const name = document.createElement('span');
     name.className = 'cot-room-chat-name';
-    name.textContent = message.senderName || 'Player';
+    name.textContent = message.senderName || t('chat.player');
     const text = document.createElement('span');
     text.className = 'cot-room-chat-text';
     text.textContent = message.text || '';

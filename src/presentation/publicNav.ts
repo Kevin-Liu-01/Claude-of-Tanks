@@ -1,7 +1,10 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { bindStaticI18nAuto } from './staticI18n.ts';
+import { t } from '../ui/i18n.ts';
 
 installResponsiveLayout();
+bindStaticI18nAuto();
 
 const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
@@ -18,7 +21,7 @@ function mountMobileNavigation(): void {
   const trigger = document.createElement('button');
   trigger.className = 'public-nav__menu-trigger';
   trigger.type = 'button';
-  trigger.setAttribute('aria-label', 'Open navigation menu');
+  trigger.setAttribute('aria-label', t('publicNav.openMenu'));
   trigger.setAttribute('aria-expanded', 'false');
   trigger.setAttribute('aria-controls', 'public-nav-menu');
   trigger.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -27,7 +30,7 @@ function mountMobileNavigation(): void {
   menu.className = 'public-nav__menu';
   menu.id = 'public-nav-menu';
   menu.setAttribute('role', 'group');
-  menu.setAttribute('aria-label', 'Site pages');
+  menu.setAttribute('aria-label', t('publicNav.menuAria'));
   menu.hidden = true;
 
   const addPageLink = (source: Element | undefined): void => {
@@ -41,7 +44,7 @@ function mountMobileNavigation(): void {
   const garage = document.createElement('a');
   garage.className = 'public-nav__menu-item';
   garage.href = '/';
-  garage.innerHTML = '<img class="public-nav__icon public-nav__icon--home" src="/brand/nav/garage.svg" alt="">Garage';
+  garage.innerHTML = `<img class="public-nav__icon public-nav__icon--home" src="/brand/nav/garage.svg" alt="">${t('publicNav.garage')}`;
   menu.append(garage);
 
   for (const page of pageLinks) {
@@ -52,13 +55,13 @@ function mountMobileNavigation(): void {
     if (menu.hidden) return;
     menu.hidden = true;
     trigger.setAttribute('aria-expanded', 'false');
-    trigger.setAttribute('aria-label', 'Open navigation menu');
+    trigger.setAttribute('aria-label', t('publicNav.openMenu'));
     if (restoreFocus) trigger.focus();
   };
   const open = (): void => {
     menu.hidden = false;
     trigger.setAttribute('aria-expanded', 'true');
-    trigger.setAttribute('aria-label', 'Close navigation menu');
+    trigger.setAttribute('aria-label', t('publicNav.closeMenu'));
   };
 
   trigger.addEventListener('click', () => {

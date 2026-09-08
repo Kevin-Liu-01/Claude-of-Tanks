@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { t } from './i18n.ts';
 const REPOSITORY_STATS_ENDPOINT = '/api/github-stars';
 const STAR_CACHE_KEY = 'cot:github-stars';
 const STAR_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -20,7 +21,7 @@ function githubControlFor(node: Element): HTMLAnchorElement | null {
   const control = node.closest<HTMLAnchorElement>('a[href*="github.com/Kevin-Liu-01/"]');
   if (control && !control.dataset.githubLabel) {
     control.dataset.githubLabel = control.getAttribute('aria-label') ||
-      'Claude of Tanks on GitHub';
+      t('githubStars.controlLabel');
   }
   return control;
 }
@@ -33,28 +34,28 @@ function setGitHubStarState(
   const status = node as HTMLElement;
   status.dataset.githubStarsState = state;
   const control = githubControlFor(node);
-  const baseLabel = control?.dataset.githubLabel || 'Claude of Tanks on GitHub';
+  const baseLabel = control?.dataset.githubLabel || t('githubStars.controlLabel');
 
   if (state === 'ready' && count !== undefined) {
     const fullCount = FULL_NUMBER.format(count);
     node.textContent = formatGitHubStarCount(count);
     node.removeAttribute('aria-busy');
-    node.setAttribute('aria-label', `${fullCount} GitHub stars`);
-    control?.setAttribute('aria-label', `${baseLabel}, ${fullCount} stars`);
+    node.setAttribute('aria-label', t('githubStars.countLabel', { count: fullCount }));
+    control?.setAttribute('aria-label', t('githubStars.controlWithCount', { base: baseLabel, count: fullCount }));
     return;
   }
 
   node.textContent = '';
   if (state === 'loading') {
     node.setAttribute('aria-busy', 'true');
-    node.setAttribute('aria-label', 'Loading GitHub star count');
-    control?.setAttribute('aria-label', `${baseLabel}, loading star count`);
+    node.setAttribute('aria-label', t('githubStars.loadingLabel'));
+    control?.setAttribute('aria-label', t('githubStars.controlLoading', { base: baseLabel }));
     return;
   }
 
   node.removeAttribute('aria-busy');
-  node.setAttribute('aria-label', 'GitHub star count unavailable');
-  control?.setAttribute('aria-label', `${baseLabel}, star count unavailable`);
+  node.setAttribute('aria-label', t('githubStars.unavailableLabel'));
+  control?.setAttribute('aria-label', t('githubStars.controlUnavailable', { base: baseLabel }));
 }
 
 export function repositoryStatsEndpointAvailable(

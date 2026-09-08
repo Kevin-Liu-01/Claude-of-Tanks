@@ -65,7 +65,12 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
 | Play | Five battle rules, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
+| Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; local reviewed catalogs managed with General Translation |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
+
+Language selection lives under **Settings → Graphics → Language**. See the
+[localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
+the General Translation workflow, and release gates.
 
 The provenance gate currently reports **174 first-party procedural battle playables, 0 GLB-sourced playables, and 7
 tracked external comparison models with exact source records**. Comparison inputs are never a playable loading path and are stripped from public builds.

@@ -1,4 +1,5 @@
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
+import { t } from '../ui/i18n.ts';
 import type { GaragePresentationRestoreReceipt } from './garagePhasePresentationRuntime.ts';
 
 export interface GarageReturnTrace {
@@ -346,8 +347,8 @@ export function createGarageReturnRuntime<Visual = object>(
     // Input state releases immediately; the scene swap remains under the veil.
     presentation.clearBattle();
     await transition.run(() => enter(), {
-      kicker: 'Leaving battle',
-      title: 'Garage',
+      kicker: t('transition.kicker.leavingBattle'),
+      title: t('transition.title.garage'),
       mapId: world.currentMapId() || game.mapId,
       progress: false,
       minShowMs: 150,
@@ -370,8 +371,8 @@ export function createGarageReturnRuntime<Visual = object>(
           await sleep(16);
         }
       }, {
-        kicker: 'Regrouping',
-        title: 'Next battle',
+        kicker: t('transition.kicker.regrouping'),
+        title: t('transition.title.nextBattle'),
         mapId: world.currentMapId() || game.mapId,
         progress: false,
         minShowMs: 420,
