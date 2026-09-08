@@ -518,11 +518,64 @@ The public registry retains 174 first-party procedural playables and zero
 runtime GLB sources. Fresh R5 night/fixture and motion acceptance is pending;
 the passing R4 one-case result is not reused as this build's admission gate.
 
+## R5 acquisition results
+
+All three fresh native lighting reports pass their structural/lifecycle gates:
+`night-lights-r5` (31 images), `world-lights-r3` (9), and `vehicle-lights-r3`
+(12). All 52 PNGs were individually reviewed; page, console and cleanup error
+lists are empty. The frozen source and build hash are unchanged. Reviewed
+views show both M1A3 front lamps, the selected MBT-70 front lamp, near-side
+T-90M/Proryv cassette lenses, red/red-orange Shtora, the red Airfield relay cap,
+warm Coastal lighthouse glass, building panes, and light on roads/walls.
+Daylight restores, and Garage detaches the light pool with zero emitters and
+all three light intensities zero. This is native Chromium visual evidence,
+not physical Safari/iPad or an ordinary performance certification.
+
+The MBT-70 framing crops the far lamp off-screen. Its selected near lamp has
+actual aperture/line-of-sight/radiance/day-reset evidence; the four-model CPU
+regression covers both lamp seats separately. Do not claim both MBT-70 lamps
+were visually certified by that one closeup. Exact review and owner/face
+details are in `lighting-r5-review.md`.
+
+`motion-final-r5-one-r1` remains **failed**. Its 473 actual live submissions
+advance 8.1168 positive-delta seconds at unchanged quality, and x8 scope passes.
+The DPR2 checkpoint has dynamic scale 0.91/internal ratio 1.365; returning to
+DPR1 restores scale 1. A partial-evidence request and context/video finalization
+also time out, leaving no qualified recording. The browser finally closes
+gracefully, the preview stops and the queue is released. The acquisition hash
+matches the earlier passing R4 run exactly; neither that earlier pass nor the
+successful lighting captures unlocks this build's nine-case motion matrix.
+
+Offline comparison finds no postprocessing/adaptive/viewport/resolution/world
+or main-frame runtime difference between the two frozen builds. It does not
+establish a cause for the DPR2 reduction. The 16.3761-second gap between resize
+receipts includes 16.1167 seconds of game advance and 17,620 renderer submissions,
+so it is not evidence that the game was frozen throughout. Synchronous `toBlob`
+snapshot cost, encode callback timing and host delivery time were not measured.
+The DPR2 scale is sampled before its own PNG request, which therefore cannot
+cause that already-recorded scale on the same frame.
+
+`31b5cb91a` fixes a proven capture-cleanup defect without changing the runtime
+or motion gate: completed acquisitions no longer retransfer an already-saved
+PNG during partial recovery. Interrupted acquisitions still recover evidence;
+layout inspection and context/video cleanup proceed independently if recovery
+fails. Focused CPU controls pass. The three existing whole-tool complexity
+violations are unchanged, with baseline metric equality recorded separately;
+the new cleanup owner is within limits. The updated acquisition fingerprint is
+`75b8a7cb4c5f03fb246670cf1fbf91256b6ae0e89a49acac007868bc0306474b`.
+No further native run was made, and the old failed receipt was not relabeled.
+
+The private build also passes (`final-private-build-r1.log`). Its status
+receipt records only concurrent authorized documentation/test changes, no
+generated runtime or asset mutations, and no staged comparison GLBs. The R5
+public build was not rebuilt or replaced.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
 2. Night source/lifecycle integration and spotting/death/Garage tests: completed.
-3. Final native night brightness/glow/contact and DPR motion review: pending.
+3. Final native night brightness/glow/contact review: completed for the stated
+   captured views; DPR motion acceptance remains failed.
 4. Frame timing and cache-eviction acquisitions: recorded; strict memory and
    quality acceptance remain open as detailed above.
 5. Thirty-map visual/art/minimap refresh and native collision refresh: completed;
