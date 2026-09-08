@@ -137,18 +137,19 @@ function mainCallback(name, bindings, containingCall = null, exposeFogBaseline =
 const calls = [], weather = { current: { weather: { timeOfDay: 'night' } },
   reset() { calls.push('reset'); this.current.weather = null; },
   prepare: (...args) => { calls.push(args); } };
+const nightLighting = { reset() { calls.push('night-reset'); } };
 const garagePhasePresentation = {
   setActive: (active) => calls.push(['active', active]),
   setSunTrim: (active) => calls.push(['trim', active]),
 };
-const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, garagePhasePresentation });
+const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, garagePhasePresentation });
 const setGarageSunTrim = mainCallback('setGarageSunTrim', { battleAtmosphere: weather, garagePhasePresentation });
 setGarageSpots(false); setGarageSunTrim(false);
 assert.deepEqual(calls, [['active', false]], 'network activation does not overwrite the prepared night preset');
 calls.length = 0;
 setGarageSpots(true); setGarageSunTrim(true);
-assert.deepEqual(calls, ['reset', ['active', true], ['trim', true]],
-  'Garage clears weather before reinstalling its own active lighting');
+assert.deepEqual(calls, ['reset', 'night-reset', ['active', true], ['trim', true]],
+  'Garage clears battle atmosphere and lamp owners before reinstalling its own active lighting');
 calls.length = 0;
 setGarageSunTrim(false);
 assert.deepEqual(calls, [['trim', false]], 'authored no-weather entry still untrims Garage lighting');
@@ -174,12 +175,14 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
     await h.access.prepare(3, 'winter');
     const garagePreset = { fogDensity: .0001, sunIntensity: 5, sunElevationDeg: 60 };
     const phase = { setActive() {}, setSunTrim() {} };
-    const bindings = { battleAtmosphere: h.access, garagePhasePresentation: phase };
+    let nightResets = 0;
+    const lamps = { reset() { nightResets++; } };
+    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, garagePhasePresentation: phase };
     const spots = mainCallback('setGarageSpots', bindings);
     const trim = mainCallback('setGarageSunTrim', bindings);
     let skyInvalidations = 0;
     const skyOwner = mainCallback('applySkyPreset', {
-      battleAtmosphere: h.access, selectedGarageVariantId: 'verdant',
+      battleAtmosphere: h.access, nightLighting: lamps, selectedGarageVariantId: 'verdant',
       getGarageVariant: () => ({ mapId: 'verdant' }), getGarageSkyPreset: () => garagePreset,
       worldRuntime: { invalidateSkyPresentation() { skyInvalidations++; } },
       sky: { applyPresentationPreset(preset) {
@@ -199,6 +202,8 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
       'next rendered Garage frame must use the selected Garage fog, not the restored battlefield baseline');
     assert.equal(skyInvalidations, 1,
       'Garage presentation invalidates the retained world sky for a same-map rematch');
+    assert.equal(nightResets, 2,
+      'actual Garage sky activation and late phase-light return both reset the battle lamp owner');
     assert.equal(h.access.current.weather, null); assert.equal(h.scene.children.length, 0);
   } finally { h.dispose(); }
 }

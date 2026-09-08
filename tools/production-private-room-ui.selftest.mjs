@@ -72,6 +72,173 @@ for (const entryProfile of [null, '', true, 1, 'both', 'PRIVATE_ROLE']) {
   assert.throws(() => productionUiOptions({ url: 'https://game.example.test', entryProfile }),
     /entry profile/);
 }
+assert.equal(productionUiOptions({ url: 'https://game.example.test', entryProfile: 'timings',
+  waitForRoomMap: true }).waitForRoomMap, true);
+for (const waitForRoomMap of [null, 0, 1, '', 'true']) {
+  assert.throws(() => productionUiOptions({ url: 'https://game.example.test', entryProfile: 'timings',
+    waitForRoomMap }), /waiting-room map/);
+}
+assert.throws(() => productionUiOptions({ url: 'https://game.example.test', waitForRoomMap: true }),
+  /entry profile/, 'completed waiting-room attribution requires explicit post-launch observation');
+assert.deepEqual(productionUiOptions({ url: 'https://game.example.test', waitForRoomMap: false }),
+  { origin: 'https://game.example.test', timeoutMs: 300_000 }, 'the default immediate-start options remain unchanged');
+
+function roomMapPage({ completed = 0, lastMap = null, active = 'winter',
+  selectedMap = 'winter', phase = 'garage', visible = true, readError = null } = {}) {
+  const stats = { requested: 1, completed, joined: 0, promoted: 0, cancelled: 0,
+    skippedCapacity: 0, lastMs: 5, lastMap, active, privateRoom: 'PRIVATE_ROOM' };
+  let reads = 0;
+  return { stats, get reads() { return reads; }, page: { async evaluate(reader) {
+    reads++;
+    if (readError) throw readError;
+    assert.equal(reader, relayProbe.readProductionRoomMapState);
+    return JSON.parse(JSON.stringify(runInNewContext(`(${reader.toString()})()`, {
+      window: { __WORLD_PREFETCH: stats, __DEBUG: { game: { phase } } },
+      document: { querySelector: (selector) => selector.includes('data-control') ? { value: selectedMap }
+        : { getClientRects: () => visible ? [1] : [] } },
+    })));
+  } } };
+}
+const finishedRoomMap = () => roomMapPage({ completed: 1, lastMap: 'winter', active: null });
+for (const options of [{ completed: 1, lastMap: 'PRIVATE_MAP', active: null },
+  { completed: 1, lastMap: 'winter', active: 'PRIVATE_MAP' },
+  { completed: 1, lastMap: 'winter', active: null, selectedMap: 'PRIVATE_MAP' },
+  { completed: 1, lastMap: 'winter', active: null, phase: 'battle' },
+  { completed: 1, lastMap: 'winter', active: null, visible: false },
+  { completed: Infinity, lastMap: 'winter', active: null }]) {
+  const projected = await roomMapPage(options).page.evaluate(relayProbe.readProductionRoomMapState);
+  assert.equal(projected.ready, false, 'only a completed idle Winter build in the actual waiting room qualifies');
+  assert.doesNotMatch(JSON.stringify(projected), /PRIVATE|Infinity/);
+}
+const completedPeers = [finishedRoomMap(), roomMapPage()];
+let dwellClock = 0;
+const dwellDelays = [];
+let retainedDwell;
+const dwell = await relayProbe.waitForCompletedRoomMap(completedPeers.map((peer) => peer.page), {
+  now: () => dwellClock,
+  delay: async (ms) => {
+    dwellDelays.push(ms); dwellClock += ms;
+    if (dwellClock === 200) Object.assign(completedPeers[1].stats, { completed: 1, lastMap: 'winter', active: null });
+  },
+  onEvidence: (receipt) => { retainedDwell = receipt; },
+});
+assert.equal(dwell, retainedDwell);
+assert.equal(dwell.timeoutMs, 15_000);
+assert.equal(dwell.dwellMs, 200, 'dwell measures observed completion, not a fixed sleep');
+assert.deepEqual(dwellDelays, [100, 100]);
+assert.equal(dwell.completedBeforeLaunch, true);
+assert.equal(dwell.launchVerified, false, 'pre-Start completion alone is not cached-launch proof');
+assert.equal(dwell.peers[1].start.counters.completed, 0);
+assert.equal(dwell.peers[1].beforeLaunch.counters.completed, 1);
+completedPeers[1].stats.completed = 999;
+assert.equal(dwell.peers[1].beforeLaunch.counters.completed, 1, 'counter receipts are copies, not live references');
+const cachedEntry = { peers: ['host', 'guest'].map((role) => ({ role, observation: {
+  worldLoad: { id: 'winter', status: 'complete', cached: true, private: 'PRIVATE_WORLD' },
+  worldPrefetch: { launch: { promoted: 0 }, end: { promoted: 0 } },
+} })) };
+const cachedDwell = relayProbe.recordCompletedRoomMapLaunch(dwell, cachedEntry);
+assert.equal(cachedDwell.launchVerified, true);
+assert.ok(cachedDwell.peers.every((peer) => peer.afterLaunch.cached && peer.afterLaunch.promotedDelta === 0));
+assert.doesNotMatch(JSON.stringify(cachedDwell), /PRIVATE/);
+for (const mutate of [
+  (row) => { row.worldLoad.cached = false; }, (row) => { row.worldLoad.id = 'PRIVATE_MAP'; },
+  (row) => { row.worldLoad.status = 'pending'; }, (row) => { row.worldPrefetch.launch.promoted = 1; },
+  (row) => { row.worldPrefetch.end.promoted = 1; }, (row) => { row.worldPrefetch.end.promoted = null; },
+]) {
+  const entry = structuredClone(cachedEntry);
+  mutate(entry.peers[1].observation);
+  assert.equal(relayProbe.recordCompletedRoomMapLaunch(dwell, entry).launchVerified, false,
+    'both peers need completed cached Winter activation without any promoted delta across launch');
+}
+assert.equal(relayProbe.recordCompletedRoomMapLaunch(dwell, null).launchVerified, false,
+  'failed/unreadable entry observation cannot acquire a cached attribution');
+for (const timeoutMs of [0, 15_001, Infinity, '15000']) {
+  await assert.rejects(relayProbe.waitForCompletedRoomMap([{}, {}], { timeoutMs }), TypeError);
+}
+let timeoutClock = 0;
+const timeoutPeers = [finishedRoomMap(), roomMapPage()];
+await assert.rejects(relayProbe.waitForCompletedRoomMap(timeoutPeers.map((peer) => peer.page), {
+  timeoutMs: 250, now: () => timeoutClock, delay: async (ms) => { timeoutClock += ms; },
+}), (error) => {
+  const receipt = relayProbe.productionFailureEvidence(error).waitingRoomMap;
+  assert.equal(error.stage, 'waiting_room_map');
+  assert.equal(error.operationFailure, 'deadline');
+  assert.equal(receipt.dwellMs, 250);
+  assert.equal(receipt.completedBeforeLaunch, false);
+  assert.equal(receipt.peers[0].beforeLaunch.ready, true);
+  assert.equal(receipt.peers[1].beforeLaunch.counters.completed, 0);
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+  return true;
+});
+assert.deepEqual(timeoutPeers.map((peer) => peer.reads), [3, 3], 'deadline stops future polls');
+const unreadablePeer = roomMapPage({ readError: Object.assign(new Error('PRIVATE_TARGET'), { name: 'TargetCloseError' }) });
+await assert.rejects(relayProbe.waitForCompletedRoomMap([finishedRoomMap().page, unreadablePeer.page]), (error) => {
+  const receipt = relayProbe.productionFailureEvidence(error).waitingRoomMap;
+  assert.equal(receipt.peers[1].readFailure, 'target-closed');
+  assert.equal(receipt.peers[0].beforeLaunch.ready, true, 'failure retains the readable peer receipt');
+  assert.doesNotMatch(JSON.stringify(error), /PRIVATE/);
+  return true;
+});
+let cancelledDwell = false;
+const cancelledPeers = [roomMapPage(), roomMapPage()];
+await assert.rejects(relayProbe.waitForCompletedRoomMap(cancelledPeers.map((peer) => peer.page), {
+  now: () => 0, isCancelled: () => cancelledDwell, delay: async () => { cancelledDwell = true; },
+}));
+assert.deepEqual(cancelledPeers.map((peer) => peer.reads), [1, 1], 'outer cancellation forbids another page read');
+{
+  let clock = 0;
+  let cancelled = false;
+  let guestReads = 0;
+  let releaseRead;
+  let signalRead;
+  const readStarted = new Promise((resolve) => { signalRead = resolve; });
+  const host = roomMapPage();
+  const guest = roomMapPage();
+  const publications = [];
+  let retained;
+  const pending = relayProbe.waitForCompletedRoomMap([host.page, { evaluate(reader) {
+    guestReads++;
+    if (guestReads === 1) { clock = 7; return guest.page.evaluate(reader); }
+    return new Promise((resolve) => {
+      releaseRead = () => { releaseRead = null; resolve(guest.page.evaluate(reader)); };
+      signalRead();
+    });
+  } }], {
+    now: () => clock, isCancelled: () => cancelled,
+    delay: async (ms) => {
+      assert.equal(retained.dwellMs, 7, 'the retained receipt measures dwell after each completed sample');
+      clock += ms;
+    },
+    onEvidence: (receipt) => { retained = receipt; publications.push(receipt); },
+  });
+  try {
+    assert.ok(retained, 'an outer deadline can retain the owned receipt before the first page await');
+    assert.equal(host.reads, 0, 'early receipt publication precedes browser commands');
+    assert.equal(retained.dwellMs, 0);
+    await Promise.race([readStarted, pending]);
+    const outerFailureEvidence = Object.freeze({ waitingRoomMap: retained });
+    const firstCounters = Object.freeze(retained.peers[1].start.counters);
+    guest.stats.completed = 99;
+    clock = 137;
+    cancelled = true;
+    releaseRead();
+    await assert.rejects(pending, (error) => {
+      assert.equal(relayProbe.productionFailureEvidence(error).waitingRoomMap,
+        outerFailureEvidence.waitingRoomMap, 'final failure completes the same receipt already retained by the outer owner');
+      return true;
+    });
+    assert.equal(outerFailureEvidence.waitingRoomMap.dwellMs, 137);
+    assert.equal(outerFailureEvidence.waitingRoomMap.completedBeforeLaunch, false);
+    assert.equal(firstCounters.completed, 0, 'updating evidence never mutates an earlier copied counter snapshot');
+    assert.ok(publications.every((receipt) => receipt === retained));
+    assert.equal(guestReads, 2, 'cancellation while a read is deferred does not schedule another poll');
+    assert.doesNotMatch(JSON.stringify(outerFailureEvidence), /PRIVATE/);
+  } finally {
+    cancelled = true;
+    releaseRead?.();
+    await pending.catch(() => {});
+  }
+}
 assert.equal(productionUiOptions({ url: 'http://127.0.0.1:5180', localSignaling: true }).localSignaling, true);
 assert.throws(() => productionUiOptions({ url: 'https://game.example.test', localSignaling: true }),
   /loopback/, 'local build mode cannot weaken a deployed-origin check');
@@ -991,6 +1158,8 @@ for (const args of [['--ammo-slot=2'], ...['0', '4', '2.0', '02', '', 'PRIVATE_T
   ['--force-relay'], ['--frame-trace'], ['--performance', '--frame-trace', '--cpu-timeline'],
   ['--source-profile=host'], ['--performance', '--source-profile'], ['--performance', '--source-profile='],
   ['--entry-profile'], ['--entry-profile='], ['--entry-profile=both'], ['--entry-profile=PRIVATE_TOKEN'],
+  ['--wait-for-room-map'], ['--entry-profile=timings', '--wait-for-room-map=true'],
+  ['--entry-profile=timings', '--wait-for-room-map=PRIVATE_TOKEN'],
   ['--performance', '--source-profile=PRIVATE_TOKEN'],
   ['--performance', '--source-profile=host', '--cpu-timeline'],
   ['--performance', '--source-profile=guest', '--frame-trace'],

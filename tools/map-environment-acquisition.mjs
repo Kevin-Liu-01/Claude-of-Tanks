@@ -1,7 +1,7 @@
 import { isPinnedSceneReceipt } from './pinned-scene-acquisition.mjs';
 import { RESIDENCY_TERRAIN_PROTOCOL } from './world-residency-acquisition.mjs';
 
-export const ACQUISITION_PROTOCOL = 'settled-pinned-map-timing-v5';
+export const ACQUISITION_PROTOCOL = 'settled-pinned-map-timing-v6';
 
 /** Browser-side actual owners; phase labels do not prove scene membership. */
 export function captureTimingPhaseOwnership() {
@@ -48,7 +48,7 @@ export function selectTimingArchiveTarget(featuredShots) {
 }
 
 /** Browser predicate: wait for the actual producer, never for stable counts. */
-export function captureTimingGarageArchive(target) {
+export function captureTimingGarageArchive(target, waitForDeparture = false) {
   const root = window.__DEBUG.garageDressing.group;
   const data = root.userData;
   const names = ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary'];
@@ -73,8 +73,40 @@ export function captureTimingGarageArchive(target) {
   });
   if (data.battleScreenDisplayCount !== 2 || data.battleScreenResidentImageCount !== 2
       || screens.some(screen => !screen) || sources[0] !== target.primary
-      || sources[1] !== target.secondary) return null;
+      || sources[1] !== target.secondary) return waitForDeparture ? true : null;
+  if (waitForDeparture) return null;
   return { protocol: 'decoded-canonical-archive-v1', displayCount: 2, residentImageCount: 2, screens };
+}
+
+/** Observe a natural noncanonical→canonical edge, not an unknown-age hold. */
+export async function waitForTimingGarageArchiveEntry(page, target, { now = () => performance.now() } = {}) {
+  const timeoutMs = 120000;
+  const startedAt = now();
+  const waitPhase = async waitForDeparture => {
+    const phase = waitForDeparture ? 'departure' : 'entry';
+    const remainingMs = timeoutMs - (now() - startedAt);
+    if (!(remainingMs > 0)) throw new Error(`Garage archive ${phase} exceeded total 120000 ms deadline`);
+    let handle;
+    try {
+      handle = await page.waitForFunction(captureTimingGarageArchive,
+        { timeout: remainingMs, polling: 100 }, target, waitForDeparture);
+      return await handle.jsonValue();
+    } catch (error) {
+      throw new Error(`Garage archive ${phase} acquisition failed: ${String(error)}`, { cause: error });
+    } finally {
+      if (handle) await handle.dispose();
+    }
+  };
+  if (await waitPhase(true) !== true) throw new Error('Garage archive departure was not observed');
+  const departureElapsedMs = now() - startedAt;
+  const archiveBefore = await waitPhase(false);
+  const elapsedMs = now() - startedAt;
+  if (elapsedMs > timeoutMs) throw new Error('Garage archive entry exceeded total 120000 ms deadline');
+  requireTimingGarageArchive(archiveBefore, target);
+  return { archiveBefore, archiveWait: {
+    protocol: 'natural-canonical-entry-v1', target, timeoutMs, elapsedMs,
+    departureObserved: true, departureElapsedMs,
+  } };
 }
 
 /** Browser-side: let the production scheduler finish; never race its pump. */
@@ -100,6 +132,7 @@ export async function waitForTimingGarage({ timeoutMs = 180000, pollMs = 100 } =
 
 /** Browser-side: fixed eight submitted frames, not rAFs or warm-until-pass. */
 export function warmTimingGarage({ archive, timeoutMs = 30000 } = {}) {
+  const startedAt = performance.now();
   const { post, renderer } = window.__DEBUG;
   const root = window.__DEBUG.garageDressing.group;
   const monitors = archive.screens.map(screen => {
@@ -120,7 +153,16 @@ export function warmTimingGarage({ archive, timeoutMs = 30000 } = {}) {
     post.render = function (...args) {
       try {
         original.apply(this, args);
-        if (!archiveUnchanged()) throw new Error('Garage archive changed during fixed warmup');
+        if (!archiveUnchanged()) {
+          const state = monitors.map(({ uniforms, texture }) => ({
+            imageAUnchanged: uniforms.uImageA.value === texture,
+            imageBUnchanged: uniforms.uImageB.value === texture,
+            transition: uniforms.uTransition.value,
+          }));
+          throw new Error(`Garage archive changed during fixed warmup at submitted frame ${frames + 1}/8`
+            + ` after ${Math.round(performance.now() - startedAt)} ms; residentImages=`
+            + `${root.userData.battleScreenResidentImageCount}; screens=${JSON.stringify(state)}`);
+        }
         const counts = { geometries: renderer.info.memory.geometries,
           textures: renderer.info.memory.textures, programs: renderer.info.programs.length };
         if (++frames === 8) {
@@ -258,7 +300,7 @@ const identical = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 export function requireComparableRun(baseline, acquisition) {
   if (baseline?.schemaVersion !== 6 || !baseline.acquisition
       || baseline.acquisition.protocol !== ACQUISITION_PROTOCOL) {
-    throw new Error('Baseline needs schema 6 exclusive-phase/decoded-archive/build-mode timing acquisition; recapture it');
+    throw new Error('Baseline needs schema 6 and v6 natural-entry/exclusive-phase/build-mode timing acquisition; recapture it');
   }
   requireTimingBuildProvenance(baseline);
   if (baseline.acquisition.captureShots || acquisition.captureShots) {
@@ -411,6 +453,13 @@ export function requireTimingGarageSetup(setup) {
   if (setup.archiveWait.timeoutMs !== 120000 || !Number.isFinite(setup.archiveWait.elapsedMs)
       || setup.archiveWait.elapsedMs < 0 || setup.archiveWait.elapsedMs > 120000) {
     throw new Error('Invalid bounded Garage archive wait');
+  }
+  if (setup.archiveWait.protocol !== 'natural-canonical-entry-v1'
+      || setup.archiveWait.departureObserved !== true
+      || !Number.isFinite(setup.archiveWait.departureElapsedMs)
+      || setup.archiveWait.departureElapsedMs < 0
+      || setup.archiveWait.departureElapsedMs > setup.archiveWait.elapsedMs) {
+    throw new Error('Garage archive requires a fresh natural canonical entry');
   }
   if (setup.warm?.frames !== 8 || setup.warm.stable !== true || setup.warm.archiveUnchanged !== true) {
     throw new Error('Garage must stabilize within the fixed eight rendered frames');

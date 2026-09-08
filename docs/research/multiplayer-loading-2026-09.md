@@ -1094,3 +1094,112 @@ test regression. The queued additional production CPU capture was cancelled
 before acquisition and produced no new browser evidence. An unfinished optional
 waiting-room-dwell probe is excluded from this commit, as are all transient QA
 reports, screenshots and unrelated vehicle/environment changes.
+
+### Completed waiting-room cache attribution
+
+The native private-room probe now supports the explicit
+`--entry-profile=timings --wait-for-room-map` scenario. Its default remains the
+immediate native Start flow. The optional scenario observes both actual Winter
+waiting rooms for at most 15 seconds before Start; it does not force map state,
+readiness, camera, quality or resource completion. Pre-Start completion alone is
+insufficient: both post-Start observations must report a completed cached Winter
+activation with unchanged promotion counters. A joined build that finishes after
+Start fails this attribution check instead of being described as a cache hit.
+
+The bounded, allowlisted receipt is published before the first page read, then
+updated after samples, so an outer deadline retains partial dwell evidence even
+while a read is pending. Copied counter snapshots exclude room codes, arbitrary
+map names, resource URLs and error messages. Deterministic cases cover completed
+and pending peers, wrong map/phase, hidden rooms, invalid counters, read failures,
+deadlines, cancellation during a deferred read and false cached-launch claims.
+The probe, entry-observer and source-profile selftests pass. This is diagnostic
+tooling, not a runtime loading change or a new live cache-performance certificate.
+
+A separate immediate-start production CPU capture on `v1.0.0+g004ce1e04`
+reached live battle on both peers and verified room/browser cleanup with zero
+application exceptions. It failed during profile summarization with the newly
+retained `sample-delta` validation code. No raw profile was retained. It therefore
+does not establish the offending delta value, CPU attribution or a completed
+countdown/lifecycle gate. The guest's counters show a partial prefetch promoted
+after Start, and substantial world/FX/reveal tasks remain. The historical stall
+cause and the pass-aware shader-warm experiment remain open; neither is claimed
+fixed or included in this tooling commit.
+
+### Pass-aware prewarm, intent pacing and profile normalization
+
+The renderer change submits scene and late-FX shader variants using
+their actual pass layer masks and intermediate render targets. Camera layers
+and target state are restored before every cooperative boundary. Other callers
+retain the default native descendant selection; no authored geometry, lighting,
+shader quality, postprocessing or final nonblack/reveal gate is removed.
+
+The retained native `pass-base-timings-visual` and
+`pass-candidate-timings-visual` runs both passed the room lifecycle, foreground
+5→1 countdowns, nonblack/no-rescue reveal and room/browser cleanup, with zero
+application errors. Both used local-loopback signaling. However, the baseline
+served `v1.0.0+gdb400d61b` at HIGH clear/night, while the candidate served
+`v1.0.0+gdb400d61b.dirty` at HIGH clear/day. Network-owner totals, including
+peer readiness, were 10,673/10,583 ms and 3,920/4,100 ms respectively; largest
+tasks were 6,726/6,727 ms and 245/322 ms. Different atmosphere makes these
+unmatched observations, not a causal speedup estimate
+or proof that the night stall is fixed. The candidate guest still recorded a
+311.8 ms single readiness query. Both immediate-start runs joined/promoted
+unfinished prefetches; neither demonstrated completed waiting-room cache reuse.
+
+The separate production `completed-dwell-timings` run on `gdb400d61b` failed
+its 15-second waiting-room preparation deadline. Both peers still reported
+zero completed maps before launch, so no cached launch was attempted or
+certified; room/browser cleanup succeeded. Source accounting identified 838
+fine terrain checkpoints: previously each explicit-intent checkpoint forced a
+display-frame wait, independently of work consumed. The scheduler
+change uses the existing 4 ms background budget for explicit intent while
+retaining forced frames for passive prefetch, lease fairness, all construction
+checkpoints, cancellation/disposal and foreground promotion. This removes
+mandatory scheduling debt, not the underlying geometry work; 4 ms is not a
+bound on an indivisible construction operation.
+
+The profiler now accepts safe signed integer deltas, reconstructs bounded
+relative timestamps and stably orders owned sample/timestamp pairs. This follows
+[Chromium's cumulative timestamp and paired-sort handling](https://chromium.googlesource.com/devtools/devtools-frontend/+/9a696c4e723caa3c7e1f78886da353f1f06a79b0/front_end/core/sdk/CPUProfileDataModel.ts)
+and the [CDP integer-delta schema](https://chromedevtools.github.io/devtools-protocol/tot/Profiler/#type-Profile).
+The tool retains its documented prior-interval attribution, zero-weight ties
+and input immutability; it rejects invalid cumulative bounds without clamping,
+dropping samples or inventing a tail. Only bounded numeric normalization counts
+are added. The prior production `sample-delta` value was not retained, so this
+compatibility correction does not prove that failure's cause.
+
+The final combined local-loopback `combined-dwell-cpu-visual` run passed. Both
+peers completed Winter prefetch before Start after a 6,856 ms observed waiting-room
+dwell, then activated cached worlds in 48/83 ms without promoting another build.
+Both showed every foreground numeral 5→1, completed panel masks before world
+activation, primed the reveal, fired, and closed their rooms; no application or
+shader errors, black rescue, hard snaps or observer failures were recorded.
+The screenshot review shows rendered tanks, terrain and HUD. This is native
+Chromium on one machine, not a deployed-release or distant-network receipt.
+
+The combined guest CPU profile now summarized successfully and fully covered
+entry (6,696 ms profile; 238 ms maximum sampling interval). Its normalization
+counts were all zero, so native negative-delta handling remains unexercised;
+the deterministic signed/out-of-order cases provide that coverage. Profiling
+adds overhead: the observed network-owner totals of 6,154/6,127 ms are not an
+unprofiled speed benchmark. Largest loading tasks were 260/319 ms, including a
+298 ms guest readiness query. Gameplay frame-gap maxima were 56.2/44.4 ms.
+Neither the historical stall cause nor consistent frame budgets is resolved.
+
+Validation: focused shader/scene identity and cancellation, frame scheduling,
+world cache/activation/intent/lease disposal, entry/barrier/abort/launch, warm and
+countdown, mask, handoff, profiler, browser-observer and failure-evidence suites
+pass. Import integrity and suite registration pass. Typecheck and the production
+build pass (904 modules; the existing chunk-size warning remains). The four
+changed runtime/tool modules pass the quality gate: 652 functions, zero
+complexity violations, zero explicit `any`/`unknown`. Full `npm test` was not
+rerun for this landing; the earlier interrupted run is not a pass.
+
+The expanded seven-file React Doctor scan reports 49/100, versus the earlier
+four-file 90/100 scan. Its error is `new Function` in the Node-only adapter test:
+the input is the fixed, checked-in `src/main.ts` body, not user/network content.
+The test executes the real adapter with injected fixtures; it is not shipped
+to the browser. This is not evidence of an untrusted-code runtime path. Remaining
+warnings concern intentional cooperative/sequential awaits and test-only array
+iteration/fixture lookup. No scanner suppression or runtime-quality reduction
+was made; these differing scan scopes are not a whole-repository quality score.

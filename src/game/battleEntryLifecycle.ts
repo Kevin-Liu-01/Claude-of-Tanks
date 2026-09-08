@@ -8,6 +8,7 @@ interface RevealReceipt {
 
 interface BattleEntryLifecycleOptions {
   nextFrame: () => Promise<RuntimeValue>;
+  wakeFrameLoop?: () => void;
   now?: () => number;
   revealTimeoutMs?: number;
   getRevealContext?: () => Record<string, RuntimeValue>;
@@ -31,12 +32,13 @@ export interface BattleEntryLifecycle {
  */
 export function createBattleEntryLifecycle({
   nextFrame,
+  wakeFrameLoop = () => {},
   now = () => performance.now(),
   revealTimeoutMs = 1500,
   getRevealContext = () => ({}),
   onReveal = () => {},
 }: BattleEntryLifecycleOptions): BattleEntryLifecycle {
-  if (typeof nextFrame !== 'function' || typeof now !== 'function'
+  if (typeof nextFrame !== 'function' || typeof wakeFrameLoop !== 'function' || typeof now !== 'function'
     || typeof getRevealContext !== 'function' || typeof onReveal !== 'function') {
     throw new TypeError('battle entry lifecycle requires frame, clock, and receipt ports');
   }
@@ -61,7 +63,13 @@ export function createBattleEntryLifecycle({
       }
     },
 
-    coverRendering() { renderingCovered = true; },
+    coverRendering() {
+      if (renderingCovered) return;
+      renderingCovered = true;
+      // Remote entry has no input event to cancel a settled Garage's idle
+      // timer. Wake its existing frame owner only after the cover is owned.
+      wakeFrameLoop();
+    },
     uncoverRendering() { renderingCovered = false; },
 
     noteBattleFrame() { presentedBattleFrameSerial += 1; },

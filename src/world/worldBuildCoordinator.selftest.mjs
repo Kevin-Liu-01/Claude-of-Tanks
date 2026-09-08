@@ -4,6 +4,7 @@ import { createWorldBuildCoordinator } from './worldBuildCoordinator.ts';
 import { registerWorldDestructibles, notifyShellSweep } from './destructibles.ts';
 import { readFileSync } from 'node:fs';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import { createFrameBudgetYielder } from '../engine/frameScheduler.ts';
 
 let clock = 2000;
 let moduleLoads = 0;
@@ -403,6 +404,142 @@ await cancelledLeaseReturnsLateGrant();
 await sameIdDemandWaitsForDiscard();
 await genuineErrorsStayGenuine();
 
+for (const { intent, costs, expectedFrames } of [
+  { intent: true, costs: Array(14).fill(0), expectedFrames: [] },
+  { intent: true, costs: Array(8).fill(1), expectedFrames: [5004, 5008] },
+  { intent: false, costs: Array(4).fill(0), expectedFrames: Array(4).fill(5000) },
+]) {
+  let clock = 5000;
+  let activeLeases = 0;
+  let released = 0;
+  const kinds = [];
+  const frames = [];
+  const f = cancellationFixture({
+    now: () => clock,
+    acquireBackgroundWork: async (kind, stillValid) => {
+      assert.equal(stillValid(), true);
+      assert.equal(activeLeases, 0, 'each construction checkpoint returns its previous lease before reacquiring');
+      activeLeases++;
+      kinds.push(kind);
+      return { release() { activeLeases--; released++; } };
+    },
+    backgroundYielder: () => createFrameBudgetYielder(4, {
+      now: () => clock,
+      yieldFrame: async () => {
+        assert.equal(activeLeases, 1, 'a scheduled construction slice retains its exact work lease');
+        frames.push(clock);
+      },
+    }),
+    foregroundYielder: () => async () => assert.fail('unpromoted prefetch remains background work'),
+    loadModule: async () => ({ async createMapAsync(_engine, _options, progress, slicing) {
+      assert.equal(slicing.fineSlices, true, 'budgeting never drops the exact geometry checkpoints');
+      for (let index = 0; index < costs.length; index++) {
+        clock += costs[index];
+        await progress('Building terrain meshes', index / costs.length);
+      }
+      return { group: new THREE.Group() };
+    } }),
+  });
+  const world = await f.coordinator.prefetch('winter', { intent });
+  assert.deepEqual(frames, expectedFrames, intent
+    ? 'explicit-intent checkpoints honor the 4ms budget instead of forcing a frame each time'
+    : 'passive prefetch retains its forced-frame pacing policy');
+  assert.deepEqual(kinds, costs.map(() => intent ? 'world-intent' : 'world'));
+  assert.equal(released, costs.length, 'cheap checkpoints still release and reacquire fairly');
+  assert.equal(activeLeases, 0);
+  assert.equal(world.group.visible, false);
+  assert.equal(f.coordinator.cache.get('winter'), world);
+  assert.equal(f.coordinator.stats.completed, 1);
+  assert.equal(f.coordinator.prefetch('winter', { intent }), null, 'completed cache hits do not restart scheduling');
+}
+
+for (const action of ['promote', 'cancel-mid', 'cancel-final']) {
+  let clock = 5000;
+  const frame = deferred();
+  const events = [];
+  let frames = 0;
+  let leases = 0;
+  let releases = 0;
+  let foregroundYields = 0;
+  let disposedWorlds = 0;
+  let assembledWorld;
+  const f = cancellationFixture({
+    now: () => clock,
+    acquireBackgroundWork: async (kind, stillValid) => {
+      assert.equal(kind, 'world-intent');
+      assert.equal(stillValid(), true);
+      leases++;
+      return { release() { releases++; } };
+    },
+    backgroundYielder: () => createFrameBudgetYielder(4, {
+      now: () => clock,
+      yieldFrame: () => { frames++; return frame.promise; },
+    }),
+    foregroundYielder: () => async () => { foregroundYields++; },
+    loadModule: async () => ({ async createMapAsync(_engine, _options, progress) {
+      clock += 4;
+      if (action !== 'cancel-final') {
+        await progress('Building terrain meshes', 0.4);
+        events.push('admitted-slice');
+      }
+      await progress('Sealing the battlefield', 0.96);
+      events.push('assemble');
+      const group = new THREE.Group();
+      f.scene.add(group);
+      assembledWorld = { group, dispose() { disposedWorlds++; } };
+      return assembledWorld;
+    } }),
+  });
+  const prefetch = f.coordinator.prefetch('winter', { intent: true });
+  await nextTurn();
+  assert.equal(frames, 1, 'budget exhaustion can own a genuine deferred frame');
+  assert.equal(leases, 1);
+  assert.equal(releases, 0, 'pending background work retains its lease until its checkpoint settles');
+  assert.deepEqual(events, []);
+  const foreground = action === 'promote' ? f.coordinator.beginBuild('winter') : null;
+  if (!foreground) f.coordinator.cancelBackgroundExcept();
+  await nextTurn();
+  assert.deepEqual(events, [], 'promotion/cancellation does not run ahead of the pending scheduler');
+  assert.equal(releases, 0);
+  assert.equal(f.coordinator.cache.size, 0);
+  frame.resolve();
+  const result = await boundedResult(prefetch);
+  assert.equal(frames, 1, 'the settled frame cannot start another background yield');
+  assert.equal(leases, 1, 'promotion/cancellation never reacquires a stale background lease');
+  assert.equal(releases, 1);
+  if (foreground) {
+    assert.equal(await foreground.promise, result.value, 'promotion joins the same exact assembled world');
+    assert.deepEqual(events, ['admitted-slice', 'assemble']);
+    assert.equal(foregroundYields, 1, 'subsequent checkpoints immediately use the foreground scheduler');
+    assert.equal(f.coordinator.stats.promoted, 1);
+    assert.equal(disposedWorlds, 0);
+    assert.equal(f.coordinator.cache.get('winter'), result.value);
+    result.value.group.removeFromParent();
+    result.value.dispose();
+  } else {
+    assert.equal(result.value, null);
+    assert.equal(f.coordinator.stats.cancelled, 1);
+    assert.equal(f.coordinator.stats.completed, 0);
+    assert.equal(f.coordinator.cache.size, 0);
+    assert.equal(foregroundYields, 0);
+    assert.equal(f.coordinator.stats.active, null);
+    if (action === 'cancel-final') {
+      assert.deepEqual(events, ['assemble'], 'already admitted final assembly creates the complete disposal owner');
+      assert.equal(assembledWorld.group.parent, null);
+      assert.equal(disposedWorlds, 1);
+    } else {
+      assert.deepEqual(events, ['admitted-slice'], 'cancellation stops at the next construction boundary before final assembly');
+      assert.equal(assembledWorld, undefined);
+      assert.equal(disposedWorlds, 0);
+    }
+  }
+  const settledEvents = events.slice();
+  frame.resolve();
+  await nextTurn();
+  assert.deepEqual(events, settledEvents, 'a late scheduler resolution cannot restart disposed or promoted work');
+  assert.equal(releases, 1);
+}
+
 const intentLeases = [];
 const intentYields = [];
 let intentReleases = 0;
@@ -442,7 +579,7 @@ const intentCoordinator = createWorldBuildCoordinator({
 const intentWorld = await intentCoordinator.prefetch('fjord', { intent: true });
 assert.ok(intentWorld, 'explicit map intent proceeds despite recent Garage activity');
 assert.deepEqual(intentLeases, ['world-intent', 'world-intent']);
-assert.deepEqual(intentYields, [true, true], 'each intent slice still forces a background yield');
+assert.deepEqual(intentYields, [false, false], 'explicit intent checkpoints leave the background budget in control');
 assert.equal(intentReleases, 2, 'every background slice returns its work lease');
 assert.equal(intentWorld.group.visible, false, 'intent construction does not activate its world');
 cancelIntent = true;

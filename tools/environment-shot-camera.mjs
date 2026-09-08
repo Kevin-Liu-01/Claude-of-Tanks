@@ -27,6 +27,28 @@ export function selectStandView({ clusters, concealers, buildings, halfExtent = 
   throw new Error('No unobstructed foliage inspection position inside the battlefield');
 }
 
+/** Keep the low Polders horizon at wide pixel (640,420), not the Fjord sky ray. */
+export function selectHorizonScopeTarget(mapId) {
+  return mapId === 'polders' ? { mapId, ndcY: 1 / 15 } : { mapId };
+}
+
+/** Parse image modes without launching a browser; reject contradictory framing. */
+export function resolveEnvironmentShotModes(args) {
+  const captureShots = args.includes('--shots');
+  const establishingOnly = args.includes('--establishing-only');
+  const horizonOnly = args.includes('--horizon-only');
+  const horizonScopes = args.includes('--horizon-scopes');
+  const horizonQuadrants = args.includes('--horizon-quadrants') || horizonOnly || horizonScopes;
+  if (establishingOnly && horizonQuadrants) {
+    throw new Error('--establishing-only cannot be combined with horizon capture modes');
+  }
+  if (establishingOnly && !captureShots) throw new Error('--establishing-only requires --shots');
+  if ((horizonOnly || horizonScopes) && !captureShots) {
+    throw new Error('Horizon capture options require --shots');
+  }
+  return { captureShots, establishingOnly, horizonOnly, horizonScopes, horizonQuadrants };
+}
+
 /**
  * Serializable scope probe on the CURRENT map. The canonical sniper_view
  * recipe intentionally selects Verdant and an enemy, so it cannot compare a

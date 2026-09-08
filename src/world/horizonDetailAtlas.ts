@@ -31,6 +31,10 @@ function ellipse(ctx: Context, x: number, y: number, rx: number, ry: number): vo
 // the repeat seam. All forms join the buried root; there are no floating cards.
 function paintWoodland(ctx: Context, rng: Random, x: number, width: number,
   height: number, scrub: boolean): void {
+  if (!scrub) {
+    paintWoodlandTree(ctx, rng, x, width, height);
+    return;
+  }
   const top = ROOT - height;
   const crownY = top + height * 0.33;
   ctx.beginPath();
@@ -65,6 +69,73 @@ function paintWoodland(ctx: Context, rng: Random, x: number, width: number,
     ellipse(ctx, x + (rng() - 0.5) * width, top + rng() * height,
       width * (0.06 + rng() * 0.12), height * (0.035 + rng() * 0.05));
     ctx.fill();
+  }
+  ctx.restore();
+}
+
+function paintWoodlandBranches(ctx: Context, x: number, width: number,
+  height: number, lean: number): void {
+  const forkY = ROOT - height * 0.38;
+  const halfTrunk = Math.max(1.35, width * 0.045);
+  ctx.beginPath();
+  ctx.moveTo(x - halfTrunk * 1.15, ROOT);
+  ctx.lineTo(x + lean * 0.4 - halfTrunk, forkY);
+  ctx.lineTo(x + lean * 0.4 + halfTrunk, forkY);
+  ctx.lineTo(x + halfTrunk * 1.15, ROOT);
+  ctx.closePath();
+  ctx.fillStyle = gray(202);
+  ctx.fill();
+  // Broad enough to remain four-neighbour connected after the constrained
+  // atlas downsample, but separate from the crown's much wider silhouette.
+  ctx.lineWidth = halfTrunk * 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = gray(208);
+  for (const side of [-1, 0, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(x + lean * 0.4, forkY + 1);
+    ctx.quadraticCurveTo(x + lean * 0.7 + side * width * 0.08, forkY - height * 0.10,
+      x + lean + side * width * 0.27, ROOT - height * (side === 0 ? 0.71 : 0.61));
+    ctx.stroke();
+  }
+}
+
+function paintWoodlandTree(ctx: Context, rng: Random, x: number, width: number,
+  height: number): void {
+  const top = ROOT - height;
+  const lean = (rng() - 0.5) * width * 0.22;
+  const crownX = x + lean;
+  const crownY = top + height * 0.29;
+  paintWoodlandBranches(ctx, x, width, height, lean);
+  ctx.beginPath();
+  ellipse(ctx, crownX, crownY, width * 0.34, height * 0.23);
+  // Independent branch masses break both the upper contour and the sides.
+  // They overlap the central crown, rather than forming a detached cloud.
+  for (let i = 0; i < 7; i++) {
+    const angle = i / 7 * Math.PI * 2;
+    ellipse(ctx, crownX + Math.cos(angle) * width * (0.22 + rng() * 0.08),
+      crownY + Math.sin(angle) * height * (0.12 + rng() * 0.04),
+      width * (0.15 + rng() * 0.075), height * (0.12 + rng() * 0.05));
+  }
+  const shade = ctx.createLinearGradient(crownX - width / 2, top, crownX + width / 2, crownY + height * 0.32);
+  shade.addColorStop(0, gray(239));
+  shade.addColorStop(0.48, gray(224));
+  shade.addColorStop(1, gray(201));
+  ctx.fillStyle = shade;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  // Leaf masses follow diagonal branch shoulders, not bright circular
+  // polka dots spread down a filled rock-like trunk apron.
+  for (let i = 0; i < 8; i++) {
+    const px = crownX + (rng() - 0.5) * width * 0.76;
+    const py = top + height * (0.13 + rng() * 0.37);
+    ctx.beginPath();
+    ctx.moveTo(px - width * 0.15, py + height * 0.035);
+    ctx.quadraticCurveTo(px - width * 0.04, py - height * 0.05,
+      px + width * 0.17, py - height * 0.015);
+    ctx.strokeStyle = gray(210 + Math.round(rng() * 24));
+    ctx.lineWidth = 1.1 + rng() * 1.4;
+    ctx.stroke();
   }
   ctx.restore();
 }
