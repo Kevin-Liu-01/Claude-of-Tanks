@@ -73,6 +73,24 @@ function inspectWoodlandUnderCanopy(data, width, height, label) {
   return { underCanopyCoverage: count / width, narrowSupports };
 }
 
+function inspectWoodlandLayering(data, width, height, label) {
+  const scale = height / 64;
+  const start = Math.round(height - 22 * scale), end = Math.round(height - 16 * scale);
+  const masses = new Float64Array(12);
+  for (let y = start; y < end; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] >= 97) masses[Math.floor(x * masses.length / width)]++;
+    }
+  }
+  const total = masses.reduce((sum, value) => sum + value, 0);
+  const coverage = total / (width * (end - start));
+  const range = (Math.max(...masses) - Math.min(...masses)) / (width / masses.length * (end - start));
+  assert.ok(coverage > 0.45 && coverage < 0.90,
+    `${label}: overlapping lower-canopy mass, not a sparse picket row or filled hedge`);
+  assert.ok(range > 0.25, `${label}: irregular clustered canopy density, not a uniform strip`);
+  return { lowerCanopyCoverage: coverage, canopyDensityRange: range };
+}
+
 function inspectBand(data, width, height, label) {
   const scale = height / 64;
   const gutter = Math.round(4 * scale);
@@ -154,7 +172,8 @@ function inspectAtlas(kind, seed, tier, secondaryKind) {
       const result = inspectBand(band, image.width, image.height / 4, label);
       const family = variant >= 2 && secondaryKind ? secondaryKind : kind;
       return family === 'woodland' ? { ...result,
-        ...inspectWoodlandUnderCanopy(band, image.width, image.height / 4, label) } : result;
+        ...inspectWoodlandUnderCanopy(band, image.width, image.height / 4, label),
+        ...inspectWoodlandLayering(band, image.width, image.height / 4, label) } : result;
     });
     assert.equal(new Set(bands.map(band => band.hash)).size, 4, 'four independently painted variants');
     if (values['out-dir']) writeFileSync(join(values['out-dir'],
@@ -222,6 +241,18 @@ try {
   for (let x = 0; x < sample.width; x++) missingTrunks[(supportY * sample.width + x) * 4 + 3] = 8;
   assert.throws(() => inspectWoodlandUnderCanopy(missingTrunks, sample.width, sample.height / 4,
     'unsupported crown mutation'), /open under-canopy gaps/);
+  const picket = source.slice();
+  for (let y = 42; y < 48; y++) {
+    for (let x = 0; x < sample.width; x++) picket[(y * sample.width + x) * 4 + 3] = x % 16 < 3 ? 255 : 8;
+  }
+  assert.throws(() => inspectWoodlandLayering(picket, sample.width, sample.height / 4,
+    'regular thin-stem picket mutation'), /overlapping lower-canopy mass/);
+  const hedge = source.slice();
+  for (let y = 42; y < 48; y++) {
+    for (let x = 0; x < sample.width; x++) hedge[(y * sample.width + x) * 4 + 3] = x % 4 < 3 ? 255 : 8;
+  }
+  assert.throws(() => inspectWoodlandLayering(hedge, sample.width, sample.height / 4,
+    'uniform hedge mutation'), /irregular clustered canopy density/);
   const receipt = { proof: 'Real native Canvas2D raster only; no GPU, scope or final-world visual acceptance',
     rasterizer: { name: packageInfo.name, version: packageInfo.version, module: modulePath },
     rows: rows.map(({ data, ...row }) => row) };

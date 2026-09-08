@@ -18,6 +18,7 @@
 //   snowline,                        — 0..1 fraction of peak height where snow starts (alpine)
 //   treeline,                        — 0..1 fraction below which forest tint is applied
 //   treelineLayers,                  — 1..3 skyline impostor depth ranks (default 1)
+//   finiteTableCaps,                — false for historical tableland authoring comparisons
 //   banding,                         — sandstone strata amplitude on steep faces (mesa)
 //   rockHex, snowHex, forestHex,     — detail palette overrides
 //   haze,                            — aerial-perspective multiplier (default 1)
@@ -47,6 +48,7 @@ export interface HorizonConfig {
   snowline?: number;
   treeline?: number;
   treelineLayers?: number;
+  finiteTableCaps?: boolean;
   banding?: number;
   rockHex?: number;
   snowHex?: number;
@@ -1093,7 +1095,9 @@ function subdivideHorizonGeometry(
   };
 }
 
-function reshapeFiniteTableCaps(ring: HorizonRingGeometry, amp: number): void {
+function reshapeFiniteTableCaps(
+  ring: HorizonRingGeometry, amp: number, summitFraction = 0.64, capSlopeLimit = Infinity,
+): void {
   // Authored tablelands need a surface at the summit, not just one crest
   // row. Reuse the final approach row as the front cap edge in each range.
   // Only separated high sectors reach a shared rock stratum; low passes and
@@ -1105,7 +1109,7 @@ function reshapeFiniteTableCaps(ring: HorizonRingGeometry, amp: number): void {
     const crestRow = range === 0 ? 5 : 9;
     const frontRow = crestRow - 1;
     const crest = ring.rows[crestRow];
-    const capLevel = (crest.base + crest.amp * 0.64) * amp;
+    const capLevel = (crest.base + crest.amp * summitFraction) * amp;
     const transition = crest.amp * amp * 0.14;
     const minimumDepth = range === 0 ? 80 : 90;
     for (let column = 0; column < n; column++) {
@@ -1120,13 +1124,17 @@ function reshapeFiniteTableCaps(ring: HorizonRingGeometry, amp: number): void {
       // meander the cap tapers into its shoulder instead of forcing a sharp
       // notch into the otherwise coherent angular crest or adding radius.
       const lastFrontRadius = topRadius - minimumDepth;
-      const topHeight = Math.min(oldTopHeight, capLevel);
+      const topHeight = Math.min(oldTopHeight, capLevel,
+        h[low] + (topRadius - lowRadius) * capSlopeLimit);
       const frontRadius = Math.min(lastFrontRadius,
         Math.max(oldFrontRadius, lowRadius + (topHeight - h[low]) / 1.20));
       const fraction = (frontRadius - lowRadius) / (topRadius - lowRadius);
       const linearFront = h[low] + (topHeight - h[low]) * fraction;
-      const frontHeight = Math.min(linearFront + (topHeight - linearFront) * weight,
-        h[low] + (frontRadius - lowRadius) * 1.20);
+      // Titan's tightest meander needs a shared rise through the approach
+      // and final cap edge, not a compressed steeper ramp at that last edge.
+      const frontHeight = Math.max(Math.min(linearFront + (topHeight - linearFront) * weight,
+        h[low] + (frontRadius - lowRadius) * 1.20),
+        topHeight - (topRadius - frontRadius) * capSlopeLimit);
 
       if (range === 0) {
         // Preserve small existing weathering on the approach/back slope,
@@ -1161,6 +1169,11 @@ function reshapeFiniteTableCaps(ring: HorizonRingGeometry, amp: number): void {
   }
 }
 
+function usesFiniteTableCaps(horizon: HorizonConfig, mapId: string, style: HorizonStyle): boolean {
+  return style === 'mesa' && horizon.finiteTableCaps !== false
+    && (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge');
+}
+
 /** Actual geometry without texture baking, for full-angle headless audits. */
 export function sampleHorizonGeometry(
   cfg: HorizonMapConfig | null | undefined, seed: number,
@@ -1174,8 +1187,11 @@ export function sampleHorizonGeometry(
     style, PROFILES[style], noise, horizon.amp ?? 1,
   );
   const ring = subdivideHorizonGeometry(source, style, noise);
-  if ((mapId === 'skybridge' || mapId === 'copper_mesa') && style === 'mesa') {
-    reshapeFiniteTableCaps(ring, horizon.amp ?? 1);
+  if (usesFiniteTableCaps(horizon, mapId, style)) {
+    // Titan's tall ranges need a slightly lower erosion stratum to expose
+    // broad summit surfaces without steepening their supported approaches.
+    reshapeFiniteTableCaps(ring, horizon.amp ?? 1, mapId === 'titan_gorge' ? 0.60 : 0.64,
+      mapId === 'titan_gorge' ? 1.25 : Infinity);
   }
   openHorizonToSea(ring, horizon.seaOpening);
   return ring;
@@ -1992,8 +2008,9 @@ export function* buildHorizonRingSteps(
   // room for this relief within the previous vertex AND triangle ceilings.
   // Coastal apertures then lower the same annulus into a sea-level apron.
   const ring = subdivideHorizonGeometry(initialRing, style, noi);
-  if ((mapId === 'skybridge' || mapId === 'copper_mesa') && style === 'mesa') {
-    reshapeFiniteTableCaps(ring, amp);
+  if (usesFiniteTableCaps(H, mapId, style)) {
+    reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64,
+      mapId === 'titan_gorge' ? 1.25 : Infinity);
   }
   openHorizonToSea(ring, H.seaOpening);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
