@@ -260,11 +260,26 @@ assert.ok(boundedReceipt.longTasksDropped > 0);
 const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback', 'hullCanvas',
   'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'];
 {
+  const shadows = browserFixture();
+  shadows.context.window.__NETWORK_LOAD.shadowPrime = {
+    cascadeCount: 4, totalMs: 21, maxMs: Infinity, name: 'PRIVATE_NAME',
+  };
+  shadows.context.window.__NETWORK_LOAD.revealSlices = [
+    { stage: 'finalShadows', startTime: 2, endTime: 30 },
+    { stage: 'PRIVATE_STAGE', startTime: 3, endTime: 4 },
+  ];
+  const receipt = JSON.parse(JSON.stringify(shadows.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(receipt.networkLoad.shadowPrime, { cascadeCount: 4, totalMs: 21, maxMs: null });
+  assert.deepEqual(receipt.networkLoad.revealSlices, [{ stage: 'finalShadows', startTime: 2, endTime: 30 }]);
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+}
+{
   const compile = browserFixture();
   const fields = ['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
     'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
     'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
-    'pollMs', 'maxPollMs', 'pollCount', 'yields'];
+    'pollMs', 'maxPollMs', 'pollCount', 'yields',
+    'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending'];
   const row = Object.fromEntries(fields.map((key) => [key, 2]));
   compile.context.window.__NETWORK_LOAD.programCompile = {
     ...row, submissionMs: Infinity, url: 'PRIVATE_URL', name: 'PRIVATE_NAME', detail: { secret: 'PRIVATE' },

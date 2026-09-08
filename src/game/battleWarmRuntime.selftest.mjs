@@ -14,6 +14,7 @@ import {
   Vector3,
 } from 'three';
 import {
+  createCombatRareWarmSteps,
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
   warmBattleTerrainTiles,
@@ -532,6 +533,7 @@ shadowLight.castShadow = true;
 shadowLight.shadow.autoUpdate = false;
 shadowLight.shadow.needsUpdate = false;
 scene.add(unrelatedSceneRoot, shadowLight);
+const wreckGl = { isContextLost: () => false };
 await warmNetworkWrecks({
   entities: [{
     specId: 'test-tank',
@@ -549,6 +551,7 @@ await warmNetworkWrecks({
   anisotropy: 4,
   renderer: {
     info: { programs: [] },
+    getContext: () => wreckGl,
     compile() { compiledRoots += 1; },
     initTexture() { wreckTexturesInitialized += 1; },
   },
@@ -582,5 +585,175 @@ assert.equal(shadowLight.shadow.needsUpdate, false,
 assert.equal(restoredDetails, 1, 'compile staging restores detail state once');
 assert.equal(compiledRoots, 2, 'fielded burn hooks and the isolated fallback both compile');
 assert.equal(wreckTexturesInitialized, 1, 'destroyed-only maps upload before first blood');
+
+{
+  const root = new Group();
+  root.visible = false;
+  let staged = false;
+  let frames = 0;
+  let reflected = 0;
+  let queried = 0;
+  const priorRaf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => {
+    assert.equal(staged, false, 'wreck detail staging is restored before every scheduler checkpoint');
+    assert.equal(root.visible, false);
+    frames += 1;
+    queueMicrotask(() => callback(performance.now()));
+    return frames;
+  };
+  const gl = {
+    isContextLost: () => false,
+    getExtension: () => ({ COMPLETION_STATUS_KHR: 0x91B1 }),
+    getProgramParameter() { queried += 1; return true; },
+  };
+  const renderer = { info: { programs: [] }, getContext: () => gl };
+  try {
+    await warmNetworkWrecks({
+      entities: [{ visual: {
+        root,
+        stageBattleDetailsForWarm() {
+          staged = true;
+          return () => { staged = false; };
+        },
+      } }],
+      prebakeBurntSteps: function* () {},
+      anisotropy: 1, renderer, scene: new Scene(), camera: new PerspectiveCamera(),
+      compilePrograms() {
+        assert.equal(staged, true);
+        renderer.info.programs.push({ program: {}, getUniforms() {
+          assert.equal(staged, false, 'native reflection runs only after exact visual restoration');
+          assert.equal(root.visible, false);
+          assert.ok(frames > 0, 'submission releases a checkpoint before its first native query');
+          reflected += 1;
+        } });
+      },
+      warmRender() { assert.fail('no fallback probes were requested'); },
+    });
+    assert.equal(reflected, 1, 'detached wreck programs still receive explicit first use');
+    assert.equal(queried, 1, 'reflection requires observed readiness when KHR is available');
+  } finally {
+    if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRaf;
+  }
+}
+
+async function wreckLifetimeProbe(change, checkpoint = 1) {
+  const controller = new AbortController();
+  const root = new Group();
+  const material = new MeshBasicMaterial();
+  const mesh = new Mesh(new BoxGeometry(), material);
+  root.add(mesh);
+  root.visible = false;
+  let staged = false;
+  let frames = 0;
+  let renders = 0;
+  let queries = 0;
+  let uniforms = 0;
+  let lost = false;
+  const gl = {
+    isContextLost: () => lost,
+    getExtension: () => ({ COMPLETION_STATUS_KHR: 0x91B1 }),
+    getProgramParameter() {
+      queries += 1;
+      if (change === 'query-failure') throw new Error('driver');
+      return true;
+    },
+  };
+  const renderer = { info: { programs: [] }, getContext: () => gl, initTexture() {} };
+  const priorRaf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => {
+    assert.equal(staged, false);
+    assert.equal(root.visible, false);
+    frames += 1;
+    if (frames === checkpoint) {
+      if (change === 'abort') controller.abort();
+      if (change === 'epoch') invalidateBattleWarmRuntime();
+      if (change === 'info') renderer.info = { programs: [...renderer.info.programs] };
+      if (change === 'context') renderer.getContext = () => ({ ...gl });
+      if (change === 'loss') lost = true;
+    }
+    queueMicrotask(() => callback(performance.now()));
+    return frames;
+  };
+  try {
+    const promise = warmNetworkWrecks({
+      signal: controller.signal,
+      entities: [{ visual: {
+        root, prewarmBurn: () => [mesh], getWreckFallbackMaterial: () => material,
+        stageBattleDetailsForWarm() { staged = true; return () => { staged = false; }; },
+      } }],
+      prebakeBurntSteps: function* () {}, anisotropy: 1,
+      renderer, scene: new Scene(), camera: new PerspectiveCamera(),
+      compilePrograms(candidate) {
+        if (candidate !== root) return;
+        renderer.info.programs.push({ program: {}, getUniforms() { uniforms += 1; } });
+      },
+      warmRender() { renders += 1; },
+    });
+    if (change === 'abort') await assert.rejects(promise, { name: 'AbortError' });
+    else await promise;
+    assert.equal(root.visible, false);
+    assert.equal(staged, false);
+    return { renders, queries, uniforms };
+  } finally {
+    if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRaf;
+    mesh.geometry.dispose();
+    material.dispose();
+  }
+}
+
+for (const change of ['abort', 'epoch', 'info', 'context', 'loss']) {
+  assert.deepEqual(await wreckLifetimeProbe(change), { renders: 0, queries: 0, uniforms: 0 },
+    `${change}: abandoned wreck warm cannot query or draw after its restored submission checkpoint`);
+}
+assert.deepEqual(await wreckLifetimeProbe('abort', 2), { renders: 0, queries: 1, uniforms: 1 },
+  'abort after the final reflection checkpoint still prevents the fallback draw');
+assert.deepEqual(await wreckLifetimeProbe('abort', 3), { renders: 1, queries: 1, uniforms: 1 },
+  'the final post-render wait must not swallow cancellation');
+assert.deepEqual(await wreckLifetimeProbe('query-failure'), { renders: 1, queries: 1, uniforms: 0 },
+  'failed readiness never permits speculative reflection, and the real fallback draw remains');
+
+{
+  const events = [];
+  const root = new Group();
+  root.visible = false;
+  let destroyed = false;
+  const renderer = { info: { programs: [{ getUniforms() { events.push('unexpected-old-uniform'); } }] } };
+  const visual = {
+    root,
+    setDestroyed() { destroyed = true; events.push('destroyed'); },
+    resetDestroyed() { destroyed = false; events.push('reset'); },
+  };
+  const steps = createCombatRareWarmSteps({
+    isRareReady: () => false,
+    isOpeningReady: () => true,
+    game: { tanks: [{ specId: 'solo-capture-regression', visual }] },
+    renderer,
+    anisotropy: 1,
+    prebakeBurntSteps: function* () {},
+    forwardProgramWarm: { compile(candidate) {
+      assert.equal(candidate, root);
+      assert.equal(destroyed, true);
+      assert.equal(root.visible, true);
+      events.push('compile');
+      renderer.info.programs.push(
+        { getUniforms() { events.push('failed-uniform'); throw new Error('driver'); } },
+        { getUniforms() {
+          assert.equal(destroyed, true, 'legacy solo/capture reflection remains synchronous with staging');
+          assert.equal(root.visible, true);
+          events.push('ready-uniform');
+        } },
+      );
+    } },
+  });
+  try {
+    assert.equal(steps.next().done, false, 'the public rare-warm owner yields after the destroyed roster variant');
+    assert.deepEqual(events, ['destroyed', 'compile', 'failed-uniform', 'ready-uniform', 'reset'],
+      'solo/capture consumes every new uniform table synchronously, including after a failed call');
+    assert.equal(destroyed, false);
+    assert.equal(root.visible, false, 'the original visibility is restored before the roster yield');
+  } finally { steps.return(); }
+}
 
 console.log('battleWarmRuntime.selftest: Studio invalidation and covered FX staging passed');

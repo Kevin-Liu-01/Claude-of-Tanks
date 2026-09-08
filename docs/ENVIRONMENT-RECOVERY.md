@@ -754,6 +754,72 @@ test-helper complexity violation remains documented in
 or a blanket all-file quality pass. This foundation revision does not enable
 the live placement system or certify the updated trees in-world.
 
+## Mesa surface checkpoint — 2026-09-08
+
+`f9694510d` and `1830ce5b5` isolate the next runtime refinement: broken
+rock beds and weathered patches on the six mesa-style horizons (Titan Gorge,
+Copper Mesa, Skybridge, Desert, Badlands and Caldera). The existing base-texture
+sampler now admits rock grain above a low scrub line; previously a nonzero
+treeline setting suppressed that detail across the whole face. The material
+reuses its two existing detail samples, with no additional textures, geometry,
+draws or per-frame owners. The fragment does add bounded shader arithmetic;
+zero GPU-time cost is not claimed. Near-flat caps, repaired cap surfaces and
+marine regions retain their existing shader gain; non-mesa materials are exact.
+The intentional base-texture grain change does not imply identical cap pixels.
+
+The first R3 native review failed: the proposed steep-wall mask barely admitted
+Titan's actual smooth shoulder normals. An actual-mesh ray census identified
+that cause. The corrected mask preserves the cap exclusion while admitting
+those supported faces; derivative fading and contrast limits are unchanged.
+Frozen R4 `0ee8af9aa` completed all 45 native images and 20 scope contracts with
+exact R3 camera/pose matches, no page errors or context loss, and full cleanup.
+Review accepts the narrow improvement: fragmented low-contrast rock accents
+are visible without continuous bands or noisy wide-view blotches. The broad
+pink, smooth landforms still need stronger art direction; this is not final
+canyon realism or a gameplay performance certification.
+
+The isolated publication passes both mesa controls, Titan geometry, horizon
+resource lifecycle, Copper geometry, typecheck/core-unused and public build in
+`mesa-publication-check-r2.{json,log}`. All 30 land meshes across three seeds and
+the complete material generator match the reviewed R4 source exactly. R4's
+separate live horizon-detail child is deliberately excluded from this batch.
+The earlier R1 preflight parser failure remains recorded; its comparison
+included an unrelated legacy helper and ran no runtime checks. R2 extracts the
+same named function through TypeScript's syntax tree and retains byte equality.
+
+R4 also positively reviews angular snow shelves, still local. The separate
+all-30-map/two-tier resource census records the real cost of the pending live
+detail integration: six replacements shrink geometry, sixteen increase only
+geometry, and eight previously bare maps add one detail mesh/material/atlas.
+New atlas backing is 384 KiB desktop or 96 KiB mobile per admitted map, not zero.
+These bounded construction receipts do not waive the open strict managed-heap,
+ordinary-motion, high-DPI or whole-pass quality gates. Day/night remains;
+weather particles remain excluded.
+
+## Diagnostics retention checkpoint — 2026-09-08
+
+`396d27141` fixes a small, independently identified retention owner: the loaded
+performance HUD observed long tasks during Shot/Studio frames, but those paths
+skip `hud.update`, which previously owned the only five-second eviction. The
+observer now expires old records before collecting another batch. Ordinary
+quiet-window cleanup and all render/frame wiring remain unchanged; there is
+no new timer or recurring owner.
+
+The existing late-Coastal snapshots show 356 to 474 retained task records,
+matching 3,144 bytes of shallow record/backing growth. The real-HUD regression
+test fails on the exact historical source and passes on the corrected owner,
+including no-update, boundary, quiet-window and capture-hidden cases. Six
+focused tests, strict runtime metrics and full typecheck/core-unused pass in
+`perf-hud-retention-r1-checks.json` under the persistent evidence root. This
+checkpoint has no new browser, build or memory acquisition.
+
+The separate residual heap census finds stable counts in the checked world,
+CSM and listener owners. Compiler metadata accounts for much of the larger
+late growth, but neither that attribution nor this small fix establishes a
+plateau. All 13 strict failures and the original measured growth remain
+unwaived. See `late-heap-coastal-r1/residual-summary-r1.json` for the bounded
+retainer checks; no category subtraction or tolerance change is permitted.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
