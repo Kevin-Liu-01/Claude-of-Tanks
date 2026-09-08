@@ -30,6 +30,7 @@ import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
+import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
 import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
@@ -9860,6 +9861,7 @@ export function createTank(
   };
   createTankAssemblyStage26();
 
+  const wholeEraFitReuse = createInvocationEraWholeReuse();
   const fittedEraSurfaces = (plate: (typeof armor.hullPlates)[number]): number[][][] => {
     const parts = eraBoundPartsByPlate.get(plate.name) || [];
     if (!parts.length || plate.verts.length < 3) return [];
@@ -9872,6 +9874,7 @@ export function createTank(
     // Collapsing cheek, side and roof-edge parts into a single best-fit plane
     // creates false armor across empty space. All faces still share the same
     // plate name, so one activation atomically spends the correct visual bank.
+    return wholeEraFitReuse.fit(parts, sideSuffix, frame, () => {
     const { surfaces, exactSurfaces, allPoints } = collectEraSurfaces(parts, sideSuffix, frame);
     if (!surfaces.length) {
       const fallback = fitEraPointCloud(allPoints, frame);
@@ -9882,6 +9885,7 @@ export function createTank(
     // not become two nearly identical collision surfaces.
     // Adjacent authored triangles must not be merged by centroid proximity.
     return [...exactSurfaces, ...deduplicateEraSurfaces(surfaces)];
+    });
   };
 
   // Preserve the builder's unmerged semantic parts only for offline geometry
@@ -10220,7 +10224,7 @@ export function createTank(
   const createTankAssemblyStage30 = (): void => {
     createTankHullStage4();
   };
-  createTankAssemblyStage30();
+  try { createTankAssemblyStage30(); } finally { wholeEraFitReuse.close(); }
   const createTankHullStage5 = (): void => {
     if (destructibleClusters.size || visualEraPartsByCluster.size) {
       const owners = new Set<VehicleOwner>();
