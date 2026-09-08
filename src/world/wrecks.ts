@@ -29,16 +29,16 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { compactWreckGeometry } from './exactWreckGeometry.ts';
+import { compactWreckGeometrySteps, type WreckGeometryBuildSlice } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 
-interface WreckOptions {
+export interface WreckOptions {
   seed?: number;
   pop?: boolean;
 }
 
-interface WreckBake {
+export interface WreckBake {
   geo: THREE.BufferGeometry;
   shadowGeo: THREE.BufferGeometry | null;
   hx: number;
@@ -48,6 +48,15 @@ interface WreckBake {
 }
 
 type TankWreckVisual = ReturnType<typeof createTank>;
+
+export interface WreckBuildSlice extends WreckGeometryBuildSlice {
+  progress: false;
+}
+
+interface WreckBakeOwner {
+  visual: TankWreckVisual | null;
+  geometries: Set<THREE.BufferGeometry>;
+}
 
 type DebrisFamily = 'char' | 'rust' | 'rubber';
 
@@ -72,7 +81,6 @@ function hash3(x: number, y: number, z: number): number {
   return s - Math.floor(s);
 }
 
-const _m = new THREE.Matrix4();
 // Static battlefield wrecks are never inspection heroes. Match the proven
 // low-geometry battle handoff used by live tanks beyond 66 m: retain the
 // load-bearing road-wheel/tire silhouettes, but omit sub-wheel recesses,
@@ -95,11 +103,35 @@ function chainVisible(o: THREE.Object3D, root: THREE.Object3D): boolean {
   return true; // detached-under-root should not happen; keep permissive
 }
 
-function appendInstancedGeometry(
+function cloneWreckGeometry(
+  geometry: THREE.BufferGeometry,
+  transform: THREE.Matrix4,
+  owner: WreckBakeOwner,
+): THREE.BufferGeometry {
+  const clone = geometry.clone();
+  owner.geometries.add(clone);
+  return clone.applyMatrix4(transform);
+}
+
+function disposeWreckBakeOwner(owner: WreckBakeOwner): void {
+  // Drain every independent allocation even if one disposer throws. The
+  // caller's cancellation/build error must remain the primary outcome.
+  for (const geometry of owner.geometries) {
+    try { geometry.dispose(); } catch (_) { /* continue draining */ }
+  }
+  owner.geometries.clear();
+  if (owner.visual) {
+    try { owner.visual.dispose(); } catch (_) { /* never break a world build */ }
+    owner.visual = null;
+  }
+}
+
+function* appendInstancedGeometrySteps(
   mesh: THREE.InstancedMesh,
   rootInv: THREE.Matrix4,
   geos: THREE.BufferGeometry[],
-): void {
+  owner: WreckBakeOwner,
+): Generator<WreckGeometryBuildSlice, void, void> {
   const relative = new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld);
   const instance = new THREE.Matrix4();
   const transform = new THREE.Matrix4();
@@ -107,7 +139,10 @@ function appendInstancedGeometry(
   for (let i = 0; i < count; i++) {
     mesh.getMatrixAt(i, instance);
     transform.multiplyMatrices(relative, instance);
-    geos.push(mesh.geometry.clone().applyMatrix4(transform));
+    geos.push(cloneWreckGeometry(mesh.geometry, transform, owner));
+    if ((i + 1) % 16 === 0 || i + 1 === count) {
+      yield { fine: true, stage: `collect-instances-${i + 1}` };
+    }
   }
 }
 
@@ -123,50 +158,68 @@ function isDiscardedWreckPart(mesh: THREE.Mesh, root: THREE.Object3D): boolean {
   return WRECK_FINE_GEAR.test(mesh.name || '');
 }
 
-function appendWreckMeshGeometry(
+function* appendWreckMeshGeometrySteps(
   mesh: THREE.Mesh,
   root: THREE.Object3D,
   rootInv: THREE.Matrix4,
   target: WreckGeometrySet,
   size: THREE.Vector3,
-): void {
+  owner: WreckBakeOwner,
+): Generator<WreckGeometryBuildSlice, void, void> {
   if (!mesh.geometry?.attributes?.position || isDiscardedWreckPart(mesh, root)) return;
   const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
   if (material?.colorWrite === false) {
-    target.proxyGeos.push(mesh.geometry.clone().applyMatrix4(
+    target.proxyGeos.push(cloneWreckGeometry(mesh.geometry,
       new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
-    ));
+      owner));
     return;
   }
   if (material?.transparent && 'map' in material && material.map) return;
   if (mesh instanceof THREE.InstancedMesh) {
-    appendInstancedGeometry(mesh, rootInv, target.geos);
+    yield* appendInstancedGeometrySteps(mesh, rootInv, target.geos, owner);
     return;
   }
   if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
   mesh.geometry.boundingBox?.getSize(size);
   if (Math.hypot(size.x, size.y, size.z) < WRECK_MIN_PART_DIAGONAL_M) return;
-  target.geos.push(mesh.geometry.clone().applyMatrix4(
+  target.geos.push(cloneWreckGeometry(mesh.geometry,
     new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld),
-  ));
+    owner));
 }
 
-function collectWreckGeometry(root: THREE.Object3D, rootInv: THREE.Matrix4): WreckGeometrySet {
+function* collectWreckGeometrySteps(
+  root: THREE.Object3D,
+  rootInv: THREE.Matrix4,
+  owner: WreckBakeOwner,
+): Generator<WreckGeometryBuildSlice, WreckGeometrySet, void> {
   const target: WreckGeometrySet = { geos: [], proxyGeos: [] };
   const size = new THREE.Vector3();
-  root.traverse((object: THREE.Object3D) => {
+  // Match Object3D.traverse's pre-order without retaining a callback stack
+  // across checkpoints. This private settled hierarchy cannot change owners.
+  const stack: THREE.Object3D[] = [root];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop()!;
     if (object instanceof THREE.Mesh) {
-      appendWreckMeshGeometry(object, root, rootInv, target, size);
+      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner);
     }
-  });
+    for (let index = object.children.length - 1; index >= 0; index--) stack.push(object.children[index]);
+    if (++visited % 16 === 0 || !stack.length) {
+      yield { fine: true, stage: `collect-nodes-${visited}` };
+    }
+  }
   return target;
 }
 
 function normalizeGeometry(
   geometry: THREE.BufferGeometry,
   keepNormal: boolean,
+  owner?: WreckBakeOwner,
 ): THREE.BufferGeometry {
   const normalized = geometry.index ? geometry.toNonIndexed() : geometry;
+  // The synchronous debris consumer retains its existing ownership path;
+  // staged tank bakes always register before any later operation can throw.
+  owner?.geometries.add(normalized);
   if (keepNormal && !normalized.attributes.normal) normalized.computeVertexNormals();
   for (const key of Object.keys(normalized.attributes)) {
     if (key !== 'position' && (!keepNormal || key !== 'normal')) normalized.deleteAttribute(key);
@@ -176,11 +229,19 @@ function normalizeGeometry(
   return normalized;
 }
 
-function normalizeGeometrySet(
+function* normalizeGeometrySetSteps(
   geometries: THREE.BufferGeometry[],
   keepNormal: boolean,
-): THREE.BufferGeometry[] {
-  return geometries.map((geometry) => normalizeGeometry(geometry, keepNormal));
+  owner: WreckBakeOwner,
+): Generator<WreckGeometryBuildSlice, THREE.BufferGeometry[], void> {
+  const result: THREE.BufferGeometry[] = [];
+  for (let index = 0; index < geometries.length; index++) {
+    result.push(normalizeGeometry(geometries[index], keepNormal, owner));
+    if ((index + 1) % 16 === 0 || index + 1 === geometries.length) {
+      yield { fine: true, stage: `normalize-${keepNormal ? 'visible' : 'shadow'}-${index + 1}` };
+    }
+  }
+  return result;
 }
 
 function mergeRequired(
@@ -221,7 +282,10 @@ function wreckVertexColor(
   return color;
 }
 
-function paintWreckGeometry(merged: THREE.BufferGeometry, rustPhase: number): void {
+function* paintWreckGeometrySteps(
+  merged: THREE.BufferGeometry,
+  rustPhase: number,
+): Generator<WreckGeometryBuildSlice, void, void> {
   const position = merged.attributes.position;
   const normal = merged.attributes.normal;
   const colors = new Float32Array(position.count * 3);
@@ -240,15 +304,21 @@ function paintWreckGeometry(merged: THREE.BufferGeometry, rustPhase: number): vo
     colors[i * 3] = color[0];
     colors[i * 3 + 1] = color[1];
     colors[i * 3 + 2] = color[2];
+    if ((i + 1) % 2048 === 0 || i + 1 === position.count) {
+      yield { fine: true, stage: `paint-vertices-${i + 1}` };
+    }
   }
   merged.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 }
 
-function mergeShadowGeometry(proxyGeos: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
+function* mergeShadowGeometrySteps(
+  proxyGeos: THREE.BufferGeometry[],
+  owner: WreckBakeOwner,
+): Generator<WreckGeometryBuildSlice, THREE.BufferGeometry | null, void> {
   if (!proxyGeos.length) return null;
-  const normalized = normalizeGeometrySet(proxyGeos, false);
+  const normalized = yield* normalizeGeometrySetSteps(proxyGeos, false, owner);
   const merged = mergeGeometries(normalized, false);
-  for (const geometry of normalized) geometry.dispose();
+  if (merged) owner.geometries.add(merged);
   return merged;
 }
 
@@ -288,11 +358,44 @@ export function bakeTankWreck(
   specId: string,
   opts: WreckOptions = {},
 ): WreckBake | null {
+  const steps = bakeTankWreckSteps(engineCtx, specId, opts);
+  let result = steps.next();
+  while (!result.done) result = steps.next();
+  return result.value;
+}
+
+/** Cooperative twin with identical geometry and RNG. Consumers must close
+ * the iterator on cancellation; no temporary visual or partial bake escapes.
+ * The factory construction itself remains synchronous and is named honestly.
+ */
+export function* bakeTankWreckSteps(
+  engineCtx: object,
+  specId: string,
+  opts: WreckOptions = {},
+): Generator<WreckBuildSlice, WreckBake | null, void> {
+  const steps = buildTankWreckSteps(engineCtx, specId, opts);
+  try {
+    let result = steps.next();
+    while (!result.done) {
+      yield { fine: true, progress: false, stage: `wreck-${specId}:${result.value.stage}` };
+      result = steps.next();
+    }
+    return result.value;
+  } finally {
+    steps.return(null);
+  }
+}
+
+function* buildTankWreckSteps(
+  engineCtx: object,
+  specId: string,
+  opts: WreckOptions,
+): Generator<WreckGeometryBuildSlice, WreckBake | null, void> {
   const seed = (opts.seed ?? 1) | 0;
   const rng = mulberry32(seed ^ 0x5eed);
-  let visual: TankWreckVisual | null = null;
+  const owner: WreckBakeOwner = { visual: null, geometries: new Set() };
   try {
-    visual = createTank(specId, engineCtx, {
+    const visual = createTank(specId, engineCtx, {
       camoSeed: 4000 + (seed % 997),
       quality: 'low',
       // Battlefield hulks are read by their hull/turret/track silhouette, not
@@ -311,17 +414,21 @@ export function bakeTankWreck(
       eraVisualBindingReceipt: false,
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
     });
+    owner.visual = visual;
     // settled wreck pose through the factory's own machinery: ageS far past
     // every timeline => turret settled (popped beside the ring or unseated
     // askew), gun drooped, burn timeline fully aged.
     visual.setDestroyed({ pop: !!opts.pop, ageS: 1000 });
     const root = visual.root;
     root.updateMatrixWorld(true);
-    const rootInv = _m.copy(root.matrixWorld).invert().clone();
-    const { geos, proxyGeos } = collectWreckGeometry(root, rootInv);
+    const rootInv = root.matrixWorld.clone().invert();
+    yield { fine: true, stage: 'construct' };
+    const { geos, proxyGeos } = yield* collectWreckGeometrySteps(root, rootInv, owner);
     if (!geos.length) throw new Error('no bakeable geometry');
-    const normalized = normalizeGeometrySet(geos, true);
+    const normalized = yield* normalizeGeometrySetSteps(geos, true, owner);
     const merged = mergeRequired(normalized, 'merge failed');
+    owner.geometries.add(merged);
+    yield { fine: true, stage: 'merge-visible' };
 
     // ---- charred/rusted wreck paint (vertex colors, matte 'baked' mat) ----
     // Language matches the props charPaint hulks: scorched brown-black body,
@@ -331,20 +438,20 @@ export function bakeTankWreck(
     // ~0.16 albedo which tonemapped to TAN under a 3.5+ sun (steppe/verdant
     // frame review); charred steel must stay near-black even sunlit.
     const rustPhase = rng() * 40;
-    paintWreckGeometry(merged, rustPhase);
-    compactWreckGeometry(merged);
-    const shadowGeo = mergeShadowGeometry(proxyGeos);
+    yield* paintWreckGeometrySteps(merged, rustPhase);
+    yield* compactWreckGeometrySteps(merged);
+    const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
     const result = wreckBakeResult(merged, shadowGeo);
-    for (const geometry of normalized) geometry.dispose();
+    yield { fine: true, stage: 'finalize' };
+    owner.geometries.delete(merged);
+    if (shadowGeo) owner.geometries.delete(shadowGeo);
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`[wrecks] bake failed for ${specId}:`, message);
     return null;
   } finally {
-    if (visual) {
-      try { visual.dispose(); } catch (_) { /* never break a world build */ }
-    }
+    disposeWreckBakeOwner(owner);
   }
 }
 

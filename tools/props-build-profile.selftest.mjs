@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { runInNewContext } from 'node:vm';
-import { createPropsProfiler, instrumentSource, registerProfileCancellation } from './props-build-profile.mjs';
+import { createPropsProfiler, expectedPropsSlices, instrumentSource, registerProfileCancellation } from './props-build-profile.mjs';
+
+assert.equal(expectedPropsSlices([]), 121, 'historical baseline remains reproducible');
+assert.equal(expectedPropsSlices(['--expected-slices=170']), 170);
+for (const count of ['0', '-1', '1.5', 'NaN', 'Infinity', '1e2', '100000', '']) {
+  assert.throws(() => expectedPropsSlices(['--expected-slices=' + count]));
+}
+assert.throws(() => expectedPropsSlices(['--expected-slices=170', '--expected-slices=170']));
 
 // Exercise the actual cancellation owner without OS signals or child processes.
 // Queued cancellation retains both handlers until ticket/worker drain is done.

@@ -246,6 +246,8 @@ export interface AuthoritativeEvent extends Record<string, RuntimeValue> {
 
 export interface AuthoritativeStepOptions {
   dt: number;
+  /** Injected by authority for pregame only; direct fixed-step callers omit it. */
+  countdownElapsedS?: number;
   inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>;
 }
 
@@ -1874,12 +1876,15 @@ export function createAuthoritativeMatch({
       }
     },
 
-    step({ dt, inputs }: AuthoritativeStepOptions): void {
+    step({ dt, countdownElapsedS = dt, inputs }: AuthoritativeStepOptions): void {
       if (result) return;
       if (Math.abs(dt - SIM_DT) > 1e-9) {
         throw new Error(`authoritative match requires ${SIM_DT}s fixed steps`);
       }
-      if (stepCountdown(dt)) return;
+      if (!Number.isFinite(countdownElapsedS) || countdownElapsedS < 0) {
+        throw new TypeError('countdown elapsed seconds must be finite and non-negative');
+      }
+      if (stepCountdown(countdownElapsedS)) return;
       if (phase !== 'playing') return;
       stepPlaying(dt, inputs);
     },

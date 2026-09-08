@@ -84,7 +84,7 @@ interface MatchAuthorityPort {
   }): Unsubscribe;
   acceptPeerMessage(peerId: string, message: RuntimeValue): boolean;
   replaceSimulation(simulation: MatchSimulation, options: { round: number }): MatchSimulation;
-  advance(elapsedMs: number): number;
+  advance(elapsedMs: number, countdownElapsedMs?: number): number;
   close(reason?: string): void;
 }
 
@@ -286,6 +286,7 @@ export interface PrivateHostMatch {
   advance(
     elapsedMs: number,
     input?: NetworkInputFrame | null,
+    countdownElapsedMs?: number,
   ): SampledSnapshotFrame | null;
   close(reason?: string): void;
 }
@@ -435,9 +436,10 @@ export function beginPrivateHostMatch({
       host.replaceSimulation(simulation, { round: Number(next.round) || 1 });
       return { mapId: nextMapId, simulation };
     },
-    advance(elapsedMs: number, input: Record<string, RuntimeValue> | null = null) {
+    advance(elapsedMs: number, input: Record<string, RuntimeValue> | null = null,
+      countdownElapsedMs = elapsedMs) {
       if (input) client.submitInput(input, host.tick);
-      host.advance(elapsedMs);
+      host.advance(elapsedMs, countdownElapsedMs);
       wallTimeMs += elapsedMs;
       return client.update(wallTimeMs);
     },

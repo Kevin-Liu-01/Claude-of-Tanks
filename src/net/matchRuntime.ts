@@ -78,12 +78,15 @@ export interface RoomController {
 
 export interface SimulationStepContext {
   dt: number;
+  /** Authority-owned pregame elapsed; never a combat integration delta. */
+  countdownElapsedS?: number;
   tick: number;
   timeMs: number;
   inputs: Map<string, NormalizedPlayerInput | null>;
 }
 
 export interface MatchSimulation {
+  readonly phase?: 'loading' | 'countdown' | 'playing';
   requiredPeerIds?: RuntimeValue[];
   result?: RuntimeValue;
   resultReason?: RuntimeValue;
@@ -364,6 +367,7 @@ export class AuthoritativeMatchRuntime {
   tick = 0;
   timeMs = 0;
   accumulatorMs = 0;
+  private pendingCountdownMs = 0;
   readonly peers = new Map<string, MatchPeer>();
   private readonly inputAcceptedListeners = new Set<(peerId: string) => void>();
   closed = false;
@@ -711,6 +715,7 @@ export class AuthoritativeMatchRuntime {
       this.roundFinished = false;
       this.matchStarted = false;
       this.accumulatorMs = 0;
+      this.pendingCountdownMs = 0;
       for (const entry of this.peers.values()) {
         entry.pendingRoundReady = false;
         this.#resetPeerForRound(entry);
@@ -834,6 +839,7 @@ export class AuthoritativeMatchRuntime {
     this.roundFinished = false;
     this.matchStarted = false;
     this.accumulatorMs = 0;
+    this.pendingCountdownMs = 0;
     for (const peer of this.peers.values()) {
       const readyEarly = peer.pendingRoundReady;
       this.#resetPeerForRound(peer);
@@ -894,17 +900,31 @@ export class AuthoritativeMatchRuntime {
    * and drained gradually so one blocked render neither deletes match time nor
    * fast-forwards the complete simulation in one rubber-banding burst.
    */
-  advance(elapsedMs: number): number {
+  advance(elapsedMs: number, countdownElapsedMs = elapsedMs): number {
     if (this.closed) return 0;
-    if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
-      throw new TypeError('elapsedMs must be non-negative');
+    if (!Number.isFinite(elapsedMs) || elapsedMs < 0 ||
+        !Number.isFinite(countdownElapsedMs) || countdownElapsedMs < 0) {
+      throw new TypeError('elapsed and countdown milliseconds must be finite and non-negative');
     }
+    // Loading time predates the all-peer barrier. In particular, the callback
+    // that first admits READY cannot spend its preceding gap on the countdown.
+    if (this.matchStarted && this.simulation.phase === 'countdown') {
+      this.pendingCountdownMs = Math.min(Number.MAX_VALUE,
+        this.pendingCountdownMs + countdownElapsedMs);
+    } else this.pendingCountdownMs = 0;
     this.#accumulateElapsed(elapsedMs);
     const stepLimit = this.#catchUpStepLimit();
     let steps = 0;
     while (this.accumulatorMs + 1e-9 >= this.tickMs && steps < stepLimit) {
-      this.#advanceTick();
+      const countdownReleased = this.#advanceTick(this.pendingCountdownMs / 1000);
+      this.pendingCountdownMs = 0;
       steps++;
+      if (countdownReleased) {
+        // Pregame debt is not missed combat. Release at a tick boundary, then
+        // let the next callback admit only its own bounded gameplay elapsed.
+        this.accumulatorMs = 0;
+        break;
+      }
     }
     return steps;
   }
@@ -930,20 +950,23 @@ export class AuthoritativeMatchRuntime {
     return longStall ? this.longStallCatchUpTicks : this.maxCatchUpTicks;
   }
 
-  #advanceTick(): void {
+  #advanceTick(countdownElapsedS: number): boolean {
     this.tick++;
     this.timeMs = this.tick * this.tickMs;
     const roundPending = this.roundPending;
+    const phaseBefore = this.simulation.phase;
     if (!roundPending) {
       this.#tryStartMatch();
-      if (this.matchStarted) this.#stepMatch();
+      if (this.matchStarted) this.#stepMatch(countdownElapsedS);
     }
     this.accumulatorMs -= this.tickMs;
     this.stats.steps++;
     if (!roundPending) this.#broadcastTickEvents();
-    if (!roundPending && this.tick % this.snapshotEveryTicks === 0) {
+    const phaseChanged = phaseBefore !== this.simulation.phase;
+    if (!roundPending && (phaseChanged || this.tick % this.snapshotEveryTicks === 0)) {
       this.#broadcastSnapshots();
     }
+    return phaseBefore === 'countdown' && this.simulation.phase === 'playing';
   }
 
   #broadcastTickEvents(): void {
@@ -977,9 +1000,10 @@ export class AuthoritativeMatchRuntime {
     }
   }
 
-  #stepMatch(): void {
+  #stepMatch(countdownElapsedS: number): void {
     this.simulation.step({
       dt: 1 / this.tickHz,
+      countdownElapsedS,
       tick: this.tick,
       timeMs: this.timeMs,
       inputs: this.#collectInputs(),

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // CPU-only, source-pinned Winter attribution. No browser, GPU or runtime edits.
-// node tools/props-build-profile.mjs --root=/absolute/pinned-source --out=/absolute/new-output
+// node tools/props-build-profile.mjs --root=/absolute/pinned-source --out=/absolute/new-output --expected-slices=170
 // node tools/props-build-profile.mjs --selftest
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -19,8 +19,17 @@ const SOURCE_ROOT = resolve(requestedRoot);
 const PROPS = join(SOURCE_ROOT, 'src/world/props.ts');
 const COLLISION = join(SOURCE_ROOT, 'src/world/structureCollision.ts');
 const FIXTURE = join(SOURCE_ROOT, 'src/world/deltaPlasterPalette.selftest.mjs');
+export function expectedPropsSlices(args) {
+  const flags = args.filter(arg => arg.startsWith('--expected-slices='));
+  assert.ok(flags.length <= 1, 'Declare one expected slice count from the pinned native receipt');
+  if (!flags.length) return 121; // Preserve the original prechange acquisition.
+  const value = flags[0].slice('--expected-slices='.length);
+  assert.match(value, /^[1-9][0-9]{0,4}$/, 'Expected slice count must be a positive bounded integer');
+  return Number(value);
+}
 const INPUTS = Object.freeze({ mapId: 'winter', heightSeed: 1337, propsSeed: 2002,
-  fineSlices: true, deviceTier: 'desktop', anisotropy: 4, expectedSlices: 121, vegetation: null });
+  fineSlices: true, deviceTier: 'desktop', anisotropy: 4,
+  expectedSlices: expectedPropsSlices(process.argv.slice(2)), vegetation: null });
 const hash = value => createHash('sha256').update(value).digest('hex');
 const bytes = array => Buffer.from(array.buffer, array.byteOffset, array.byteLength);
 
@@ -287,7 +296,7 @@ async function run(output) {
     assert.deepEqual(sourceIdentity(), report.identity, 'Pinned source changed while queued');
     report.control = await runWorker('control', output, owner => { child = owner; }); write();
     assert.equal(report.control.buildDetail.sliceCount, INPUTS.expectedSlices,
-      'Baseline must reproduce the native Winter 121-slice path before attribution');
+      'Pinned source must reproduce the declared native Winter slice count before attribution');
     assert.equal(cancellation.isInterrupted(), false);
     report.profile = await runWorker('profile', output, owner => { child = owner; });
     assert.equal(report.profile.buildDetail.sliceCount, INPUTS.expectedSlices);
@@ -327,7 +336,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   else if (args.length === 1 && args[0].startsWith('--worker=')) {
     assert.equal(process.env.COT_PROPS_PROFILE_OWNER_PID, String(process.ppid), 'CPU workers require their capture-owning parent');
     await worker(args[0].slice(9));
-  } else if (args.length >= 1 && args.length <= 2 && args.every(arg => /^--(?:root|out)=/.test(arg)) && args.some(arg => arg.startsWith('--out='))) {
+  } else if (args.length >= 1 && args.length <= 3 && args.every(arg => /^--(?:root|out|expected-slices)=/.test(arg)) && args.some(arg => arg.startsWith('--out='))) {
     await run(args.find(arg => arg.startsWith('--out=')).slice(6));
-  } else { console.error('Use [--root=/absolute/pinned-source] --out=/absolute/new-output or --selftest. The parent owns the shared capture FIFO.'); process.exitCode = 2; }
+  } else { console.error('Use [--root=/absolute/pinned-source] --out=/absolute/new-output [--expected-slices=<native-receipt-count>] or --selftest. The parent owns the shared capture FIFO.'); process.exitCode = 2; }
 }

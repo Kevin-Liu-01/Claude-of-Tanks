@@ -50,7 +50,7 @@ interface NetworkMatchBase {
 export interface NetworkHostMatchLike extends NetworkMatchBase {
   role: 'host';
   onRemoteInput?(listener: () => void): (() => void);
-  advance(dtMs: number, input: NetworkInputFrame | null): NetworkSnapshot | null;
+  advance(dtMs: number, input: NetworkInputFrame | null, countdownElapsedMs?: number): NetworkSnapshot | null;
 }
 
 export interface NetworkClientMatchLike extends NetworkMatchBase {
@@ -176,6 +176,7 @@ export function createNetworkFramePump({
     context: { fireIntentSeq: null, supported: false, nowMs: 0, authorityReceivedAtMs: null } };
   let pumpClockMatch: NetworkMatchLike | null = null;
   let lastPumpNowMs: number | null = null;
+  let countdownElapsedMs = 0;
   let backgroundActive = false;
   let backgroundInput: NetworkInputFrame | null = null;
   let authorityWatchStartedAtMs: number | null = null;
@@ -275,6 +276,9 @@ export function createNetworkFramePump({
       authorityBrakeInput = null;
       terminal = false;
     }
+    // Only the host's pregame clock receives the actual monotonic gap. Combat,
+    // prediction, background controls and presentation retain their old caps.
+    countdownElapsedMs = lastPumpNowMs == null ? 0 : Math.max(0, nowMs - lastPumpNowMs);
     const elapsed = Math.min(0.1, dt, lastPumpNowMs == null ? dt
       : nowMs <= lastPumpNowMs ? 0
       : background || backgroundActive ? (nowMs - lastPumpNowMs) / 1000 : dt);
@@ -372,7 +376,7 @@ export function createNetworkFramePump({
     const submittedActionBits = playerInput?.actionBits || 0;
     if (submittedActionBits) inputRuntime?.acknowledge(submittedActionBits);
     try {
-      const snapshot = match.advance(dt * 1000, playerInput);
+      const snapshot = match.advance(dt * 1000, playerInput, countdownElapsedMs);
       if (playerInput && match.client?.lastSubmittedInputSeq != null) {
         bridge?.recordInput(playerInput, dt, match.client.lastSubmittedInputSeq);
       } else if (!playerInput) {
@@ -481,7 +485,7 @@ export function createNetworkFramePump({
       if (connectionUnavailable(match, nowMs)) return;
       let snapshot: NetworkSnapshot | null;
       if (match.role === 'host') {
-        try { snapshot = match.advance(elapsed * 1000, backgroundInput); }
+        try { snapshot = match.advance(elapsed * 1000, backgroundInput, countdownElapsedMs); }
         catch (error) {
           onHostError(error);
           endConnection('host_runtime_failed');

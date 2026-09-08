@@ -67,7 +67,7 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
@@ -465,6 +465,8 @@ interface ShellImpactSettings {
 
 interface PropsBuildSlice {
   fine?: boolean;
+  /** Internal batches pace work without consuming another placement stage. */
+  progress?: boolean;
   tankBuilder?: string;
   stage?: string;
 }
@@ -2322,35 +2324,49 @@ export async function createPropsAsync(
   fineSlices = false,
   vegetation: FisheryVegetation | null = null,
 ): Promise<PropsRuntime> {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
+  // IteratorClose must reach delegated builders when an awaited import/tick
+  // rejects. Use the standard iterator return() contract: no final runtime is
+  // published on cancellation, and nested builders release partial owners.
+  const g: Iterator<PropsBuildSlice | undefined, PropsRuntime, void> =
+    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
   const slices: Array<{ stage: string; ms: number }> = [];
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
   let r = g.next();
   let i = 0;
   const total = fineSlices ? 180 : 9;
-  while (!r.done) {
-    const sliceMs = performance.now() - nextStartedAt;
-    synchronousMs += sliceMs;
-    const step = r.value;
-    slices.push({ stage: step?.stage || `slice-${i}`, ms: sliceMs });
-    if (step?.tankBuilder) await ensureTankBuilder(step.tankBuilder);
-    if (tick && (fineSlices || !step || !step.fine)) await tick(++i, total);
-    nextStartedAt = performance.now();
-    r = g.next();
+  try {
+    while (!r.done) {
+      const sliceMs = performance.now() - nextStartedAt;
+      synchronousMs += sliceMs;
+      const step = r.value;
+      slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
+      if (step?.tankBuilder) await ensureTankBuilder(step.tankBuilder);
+      if (tick && (fineSlices || !step || !step.fine)) {
+        if (step?.progress !== false) i++;
+        await tick(i, total);
+      }
+      nextStartedAt = performance.now();
+      r = g.next();
+    }
+    const finalMs = performance.now() - nextStartedAt;
+    synchronousMs += finalMs;
+    slices.push({ stage: 'finalize', ms: finalMs });
+    const runtime = r.value;
+    const slowest = slices.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
+    runtime._buildDetail = {
+      sliceCount: slices.length,
+      synchronousMs,
+      maxSliceMs: slowest[0]?.ms || 0,
+      slowest,
+    };
+    return runtime;
+  } finally {
+    if (!r.done) {
+      // Cleanup must not replace the failed import/tick/build outcome.
+      try { g.return?.(); } catch (_) { /* retain the original failure */ }
+    }
   }
-  const finalMs = performance.now() - nextStartedAt;
-  synchronousMs += finalMs;
-  slices.push({ stage: 'finalize', ms: finalMs });
-  const runtime = r.value;
-  const slowest = slices.slice().sort((a, b) => b.ms - a.ms).slice(0, 8);
-  runtime._buildDetail = {
-    sliceCount: slices.length,
-    synchronousMs,
-    maxSliceMs: slowest[0]?.ms || 0,
-    slowest,
-  };
-  return runtime;
 }
 
 function* propsBuildSteps(
@@ -4887,10 +4903,10 @@ ${snowCap ? `
       let bakedTris = 0;
       let wreckSerial = 0;
       let wreckPickSerial = 0;
-      function bakeFor(specId: string, pop: boolean): WreckBake | null {
+      function* bakeFor(specId: string, pop: boolean): Generator<PropsBuildSlice, WreckBake | null, void> {
         const key = specId + (pop ? '|p' : '');
         if (bakeCache.has(key)) return bakeCache.get(key) ?? null;
-        const baked = bakeTankWreck(engineCtx, specId, {
+        const baked = yield* bakeTankWreckSteps(engineCtx, specId, {
           seed: seed + bakeCache.size * 131, pop,
         });
         bakeCache.set(key, baked);
@@ -4909,10 +4925,10 @@ ${snowCap ? `
           : pool[(wrng() * pool.length) | 0];
         const pop = wrng() < 0.45; // mix ammo-rack tosses with unseated kills
         // The async world builder resolves only the selected wreck's authored
-        // family before this synchronous bake resumes. No full-fleet barrier,
+        // family before this cooperative bake resumes. No full-fleet barrier,
         // speculative preload, or legacy fallback is involved.
         yield { fine: true, tankBuilder: specId };
-        const baked = bakeFor(specId, pop);
+        const baked = yield* bakeFor(specId, pop);
         if (!baked) return false;
         const support = planGroundedObbPose(
           heightField, x, z, baked.hx, baked.hz, yaw, 0.14,
@@ -5058,7 +5074,7 @@ ${snowCap ? `
         wm.receiveShadow = true;
         wm.matrixAutoUpdate = false;
         group.add(wm);
-        for (const g of wreckGeos) g.dispose();
+        disposePlacedWreckGeometries(wreckGeos);
         if (wreckShadowGeos.length > 0) {
           const shadowMat = new THREE.MeshBasicMaterial({
             name: 'TankWreckShadowProxy', colorWrite: false, depthWrite: false,
@@ -5070,23 +5086,39 @@ ${snowCap ? `
           sm.matrixAutoUpdate = false;
           markShadowOnly(sm);
           group.add(sm);
-          for (const g of wreckShadowGeos) g.dispose();
+          disposePlacedWreckGeometries(wreckShadowGeos);
         }
       }
       function disposeWreckBakeCache(): void {
-        for (const baked of bakeCache.values()) {
+        for (const [key, baked] of bakeCache) {
+          bakeCache.delete(key);
           if (!baked) continue;
-          baked.geo.dispose();
-          if (baked.shadowGeo) baked.shadowGeo.dispose();
+          disposeWreckGeometry(baked.geo);
+          if (baked.shadowGeo) disposeWreckGeometry(baked.shadowGeo);
         }
       }
-      yield* placeAuthoredWrecks();
-      yield* placeRoadWrecks();
-      finalizeWreckMeshes();
-      disposeWreckBakeCache();
+      function disposeWreckGeometry(geometry: THREE.BufferGeometry): void {
+        try { geometry.dispose(); } catch (_) { /* drain remaining owners */ }
+      }
+      function disposePlacedWreckGeometries(geometries: THREE.BufferGeometry[]): void {
+        while (geometries.length) disposeWreckGeometry(geometries.pop()!);
+      }
+      try {
+        yield* placeAuthoredWrecks();
+        yield* placeRoadWrecks();
+        finalizeWreckMeshes();
+      } finally {
+        // A rejected loading tick closes all delegated work. Cached bakes and
+        // placed clones still waiting for the final merge remain ours, not the
+        // world root's. Completed merged meshes own separate geometry buffers.
+        disposeWreckBakeCache();
+        disposePlacedWreckGeometries(wreckGeos);
+        disposePlacedWreckGeometries(wreckShadowGeos);
+      }
     }
   }
   yield* placeTankWrecks();
+  yield { fine: true, stage: 'wrecks-finalized' };
 
   // --- street rubble piles (urban): heaped masonry chunks + broken beams ---
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
@@ -5204,6 +5236,7 @@ ${snowCap ? `
     colliders.push({ min: [ox - 1.3, oy, oz - 1.3], max: [ox + 1.3, oy + 5.1, oz + 1.3] });
   }
   placeCentralMonument();
+  yield { fine: true, stage: 'street-details' };
 
   // --- ground-blend decals: dirt/AO ring under buildings + shell craters ---
   function placeGroundBlendDecals(): void {
@@ -5585,6 +5618,7 @@ ${snowCap ? `
     placeTrackTears(corridors);
   }
   placeGroundBlendDecals();
+  yield { fine: true, stage: 'ground-decals' };
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
   let poleIM: PoleMatrixWriter | null = null; // effects_combat r1: virtual writer for hinge-topple matrices
@@ -5761,6 +5795,7 @@ ${snowCap ? `
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
   });
+  yield { fine: true, stage: 'map-extras' };
 
   // All seeded decoration has finished. Relocate accepted records before
   // merging, pool collider refits and spatial indexing; never resample RNG.
