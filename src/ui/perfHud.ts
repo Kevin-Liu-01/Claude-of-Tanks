@@ -5,6 +5,7 @@
 import { ensureStyle } from './dom.ts';
 import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { t as tr } from './i18n.ts';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
 
@@ -278,12 +279,12 @@ export function createPerfHud({
   ensureStyle('cot-perfhud-style', PERF_HUD_CSS);
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
-  el.setAttribute('aria-label', 'COT debug telemetry');
+  el.setAttribute('aria-label', tr('perfHud.ariaLabel'));
   el.innerHTML = `
     <header class="ph-head"><span class="ph-icon" aria-hidden="true">${uiIconSVG('graphics', 18)}</span>
-      <div><div class="ph-title">Battle Diagnostics</div><div class="ph-sub">F8 · Settings → Interface</div></div>
-      <span class="ph-state" data-status>LIVE</span>
-      <button class="ph-mobile-toggle" type="button" aria-label="Expand diagnostics" aria-expanded="false" aria-controls="cot-perfhud-grid"></button></header>
+      <div><div class="ph-title">${tr('perfHud.title')}</div><div class="ph-sub">${tr('perfHud.sub')}</div></div>
+      <span class="ph-state" data-status>${tr('perfHud.state.live')}</span>
+      <button class="ph-mobile-toggle" type="button" aria-label="${tr('perfHud.expand')}" aria-expanded="false" aria-controls="cot-perfhud-grid"></button></header>
     <div id="cot-perfhud-grid" data-grid></div>`;
   const gridNode = el.querySelector<HTMLElement>('[data-grid]');
   const statusNode = el.querySelector<HTMLElement>('[data-status]');
@@ -294,7 +295,7 @@ export function createPerfHud({
   mobileToggle.addEventListener('click', () => {
     const expanded = el.classList.toggle('mobile-expanded');
     mobileToggle.setAttribute('aria-expanded', String(expanded));
-    mobileToggle.setAttribute('aria-label', expanded ? 'Collapse diagnostics' : 'Expand diagnostics');
+    mobileToggle.setAttribute('aria-label', expanded ? tr('perfHud.collapse') : tr('perfHud.expand'));
   });
   const sectionEls = new Map<string, HTMLElement>();
   const sectionValue = (id: string): HTMLElement => {
@@ -312,14 +313,14 @@ export function createPerfHud({
     sectionEls.set(id, value);
     return value;
   };
-  makeSection('frame', 'FRAME');
-  makeSection('render', 'RENDER');
-  makeSection('quality', 'RESOLUTION + QUALITY', true);
-  makeSection('simulation', 'SIMULATION');
-  makeSection('world', 'WORLD');
-  makeSection('shadows', 'SHADOWS', true);
-  makeSection('network', 'NETWORK');
-  makeSection('memory', 'MEMORY');
+  makeSection('frame', tr('perfHud.section.frame'));
+  makeSection('render', tr('perfHud.section.render'));
+  makeSection('quality', tr('perfHud.section.quality'), true);
+  makeSection('simulation', tr('perfHud.section.simulation'));
+  makeSection('world', tr('perfHud.section.world'));
+  makeSection('shadows', tr('perfHud.section.shadows'), true);
+  makeSection('network', tr('perfHud.section.network'));
+  makeSection('memory', tr('perfHud.section.memory'));
   if (trace?.enabled) {
     const actions = document.createElement('div');
     actions.className = 'ph-actions';
@@ -332,9 +333,9 @@ export function createPerfHud({
       actions.appendChild(button);
       return button;
     };
-    const markButton = action('MARK ISSUE', 'Mark this moment in the QA trace');
-    const copyButton = action('COPY SUMMARY', 'Copy a compact performance report');
-    const exportButton = action('EXPORT JSON', 'Download the complete bounded QA trace');
+    const markButton = action(tr('perfHud.markIssue'), tr('perfHud.markIssueTitle'));
+    const copyButton = action(tr('perfHud.copySummary'), tr('perfHud.copySummaryTitle'));
+    const exportButton = action(tr('perfHud.exportJson'), tr('perfHud.exportJsonTitle'));
     const actionStatus = document.createElement('div');
     actionStatus.setAttribute('role', 'status');
     actionStatus.className = 'ph-action-status';
@@ -348,7 +349,7 @@ export function createPerfHud({
     };
     markButton.addEventListener('click', () => {
       trace.mark('tester:issue', { hud: stats(), telemetry: latestTelemetry });
-      setStatus('Issue moment marked');
+      setStatus(tr('perfHud.issueMarked'));
     });
     copyButton.addEventListener('click', async () => {
       const report = buildQaSummary({
@@ -357,7 +358,7 @@ export function createPerfHud({
       const text = JSON.stringify(report, null, 2);
       try {
         await navigator.clipboard.writeText(text);
-        setStatus('Summary copied');
+        setStatus(tr('perfHud.copy.success'));
       } catch (_) {
         const field = document.createElement('textarea');
         field.value = text;
@@ -366,12 +367,12 @@ export function createPerfHud({
         field.select();
         const copied = document.execCommand('copy');
         field.remove();
-        setStatus(copied ? 'Summary copied' : 'Copy unavailable', !copied);
+        setStatus(copied ? tr('perfHud.copy.success') : tr('perfHud.copy.unavailable'), !copied);
       }
     });
     exportButton.addEventListener('click', () => {
       const filename = trace.download();
-      setStatus(filename ? `Saved ${filename}` : 'Export unavailable', !filename);
+      setStatus(filename ? tr('perfHud.export.saved', { filename }) : tr('perfHud.export.unavailable'), !filename);
     });
   }
   document.body.appendChild(el);
@@ -448,7 +449,7 @@ export function createPerfHud({
     const shadow = t?.shadows || {};
     const network = t?.network || {};
     const memory = t?.memory || {};
-    statusEl.textContent = t?.error ? 'PROVIDER ERROR' : 'LIVE';
+    statusEl.textContent = t?.error ? tr('perfHud.state.error') : tr('perfHud.state.live');
     el.classList.toggle('has-error', !!t?.error);
     sectionValue('frame').textContent = frameStatsText(s);
     sectionValue('render').textContent = renderStatsText(s);

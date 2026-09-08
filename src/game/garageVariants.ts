@@ -46,6 +46,25 @@ export function getGarageVariant(id: string | null | undefined): GarageVariant {
   return BY_ID.get(String(id || '')) || GARAGE_VARIANTS[0];
 }
 
+import { t } from '../ui/i18n.ts';
+
+export interface LocalizedGarageVariant {
+  readonly id: string;
+  readonly name: string;
+  readonly location: string;
+  readonly description: string;
+}
+
+export function getLocalizedGarageVariant(id: string | null | undefined): LocalizedGarageVariant {
+  const variant = getGarageVariant(id);
+  return {
+    id: variant.id,
+    name: t(`garageVariant.${variant.id}.name`),
+    location: t(`garageVariant.${variant.id}.location`),
+    description: t(`garageVariant.${variant.id}.description`),
+  };
+}
+
 export function loadGarageVariantId(storage: Pick<Storage, 'getItem'> | null =
   typeof localStorage === 'undefined' ? null : localStorage): string {
   try { return getGarageVariant(storage?.getItem(GARAGE_VARIANT_STORAGE_KEY)).id; }

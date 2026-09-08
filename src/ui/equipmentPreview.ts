@@ -14,6 +14,7 @@ import {
   equipViewMult,
   viewRangeOf,
 } from '../sim/spotting.ts';
+import { t } from './i18n.ts';
 
 export interface EquipmentPreviewSpec {
   id: string;
@@ -38,6 +39,8 @@ export type EquipmentPreviewOutcome = 'improved' | 'degraded' | 'unchanged';
 export interface EquipmentPreviewMetric {
   id: string;
   label: string;
+  /** i18n key for `label`; use t(metric.labelKey) at render time. */
+  labelKey: string;
   stock: string;
   current: string;
   projected: string;
@@ -76,6 +79,8 @@ interface EquipmentStatSnapshot {
 interface MetricDefinition {
   id: string;
   label: string;
+  /** Canonical i18n key for the label; callers resolve via t() at render time. */
+  labelKey: string;
   higherIsBetter: boolean;
   values: (snapshot: EquipmentStatSnapshot) => readonly number[];
   format: (snapshot: EquipmentStatSnapshot) => string;
@@ -101,32 +106,38 @@ function pairedValue(
 
 const METRICS: readonly MetricDefinition[] = [
   {
-    id: 'reload', label: 'Reload time', higherIsBetter: false,
+    id: 'reload', label: 'Reload time', labelKey: 'garage.equipment.metric.reload',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.reloadS],
     format: (snapshot) => seconds(snapshot.reloadS),
   },
   {
-    id: 'aim', label: 'Aim time', higherIsBetter: false,
+    id: 'aim', label: 'Aim time', labelKey: 'garage.equipment.metric.aim',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.aimTimeS],
     format: (snapshot) => seconds(snapshot.aimTimeS),
   },
   {
-    id: 'bloom', label: 'Moving dispersion modifier', higherIsBetter: false,
+    id: 'bloom', label: 'Moving dispersion modifier', labelKey: 'garage.equipment.metric.bloom',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.movingDispersionPct],
     format: (snapshot) => pct(snapshot.movingDispersionPct),
   },
   {
-    id: 'hullTraverse', label: 'Hull traverse', higherIsBetter: true,
+    id: 'hullTraverse', label: 'Hull traverse', labelKey: 'garage.equipment.metric.hullTraverse',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.hullTraverseDegS],
     format: (snapshot) => degreesPerSecond(snapshot.hullTraverseDegS),
   },
   {
-    id: 'turretTraverse', label: 'Turret traverse', higherIsBetter: true,
+    id: 'turretTraverse', label: 'Turret traverse', labelKey: 'garage.equipment.metric.turretTraverse',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.turretTraverseDegS],
     format: (snapshot) => degreesPerSecond(snapshot.turretTraverseDegS),
   },
   {
-    id: 'view', label: 'View range · moving / still', higherIsBetter: true,
+    id: 'view', label: 'View range · moving / still', labelKey: 'garage.equipment.metric.view',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.viewMovingM, snapshot.viewStillM],
     format: (snapshot) => pairedValue(
       snapshot.viewMovingM,
@@ -135,52 +146,62 @@ const METRICS: readonly MetricDefinition[] = [
     ),
   },
   {
-    id: 'camo', label: 'Concealment · moving / still', higherIsBetter: true,
+    id: 'camo', label: 'Concealment · moving / still', labelKey: 'garage.equipment.metric.camo',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.camoMovingPct, snapshot.camoStillPct],
     format: (snapshot) => pairedValue(snapshot.camoMovingPct, snapshot.camoStillPct, pct),
   },
   {
-    id: 'repair', label: 'Module repair-speed modifier', higherIsBetter: true,
+    id: 'repair', label: 'Module repair-speed modifier', labelKey: 'garage.equipment.metric.repair',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.repairPct],
     format: (snapshot) => pct(snapshot.repairPct),
   },
   {
-    id: 'trackDurability', label: 'Track durability', higherIsBetter: true,
+    id: 'trackDurability', label: 'Track durability', labelKey: 'garage.equipment.metric.trackDurability',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.trackDurabilityPct],
     format: (snapshot) => pct(snapshot.trackDurabilityPct),
   },
   {
-    id: 'heSplash', label: 'HE splash-damage modifier', higherIsBetter: false,
+    id: 'heSplash', label: 'HE splash-damage modifier', labelKey: 'garage.equipment.metric.heSplash',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.heSplashDamagePct],
     format: (snapshot) => pct(snapshot.heSplashDamagePct),
   },
   {
-    id: 'crewHe', label: 'Splash crew-hit modifier', higherIsBetter: false,
+    id: 'crewHe', label: 'Splash crew-hit modifier', labelKey: 'garage.equipment.metric.crewHe',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.splashCrewHitPct],
     format: (snapshot) => pct(snapshot.splashCrewHitPct),
   },
   {
-    id: 'ammoRackDurability', label: 'Ammo-rack durability', higherIsBetter: true,
+    id: 'ammoRackDurability', label: 'Ammo-rack durability', labelKey: 'garage.equipment.metric.ammoRackDurability',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.ammoRackDurabilityPct],
     format: (snapshot) => pct(snapshot.ammoRackDurabilityPct),
   },
   {
-    id: 'fuelTankDurability', label: 'Fuel-tank durability', higherIsBetter: true,
+    id: 'fuelTankDurability', label: 'Fuel-tank durability', labelKey: 'garage.equipment.metric.fuelTankDurability',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.fuelTankDurabilityPct],
     format: (snapshot) => pct(snapshot.fuelTankDurabilityPct),
   },
   {
-    id: 'engineFire', label: 'Engine-fire chance modifier', higherIsBetter: false,
+    id: 'engineFire', label: 'Engine-fire chance modifier', labelKey: 'garage.equipment.metric.engineFire',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.engineFireChancePct],
     format: (snapshot) => pct(snapshot.engineFireChancePct),
   },
   {
-    id: 'fireDuration', label: 'Fire-duration modifier', higherIsBetter: false,
+    id: 'fireDuration', label: 'Fire-duration modifier', labelKey: 'garage.equipment.metric.fireDuration',
+    higherIsBetter: false,
     values: (snapshot) => [snapshot.fireDurationPct],
     format: (snapshot) => pct(snapshot.fireDurationPct),
   },
   {
-    id: 'extinguish', label: 'Self-extinguish rate modifier', higherIsBetter: true,
+    id: 'extinguish', label: 'Self-extinguish rate modifier', labelKey: 'garage.equipment.metric.extinguish',
+    higherIsBetter: true,
     values: (snapshot) => [snapshot.selfExtinguishRatePct],
     format: (snapshot) => pct(snapshot.selfExtinguishRatePct),
   },
@@ -280,21 +301,28 @@ function equipmentChangeSummary(
   const fittedName = fittedId ? EQUIPMENT_BY_ID.get(fittedId)?.name || fittedId : '';
   const itemName = itemId ? EQUIPMENT_BY_ID.get(itemId)?.name || itemId : '';
   const previousIndex = itemId ? currentLoadout.indexOf(itemId) : -1;
-  if (!canApply) return 'Unavailable for this vehicle; current combat values remain unchanged.';
+  const slotNo = openSlot + 1;
+  if (!canApply) return t('garage.equipment.summary.unavailable');
   if (!itemId) {
     return fittedId
-      ? `Removes ${fittedName} from Slot ${openSlot + 1}.`
-      : `Slot ${openSlot + 1} is already empty.`;
+      ? t('garage.equipment.summary.removes', { name: fittedName, slot: slotNo })
+      : t('garage.equipment.summary.emptyAlready', { slot: slotNo });
   }
-  if (previousIndex === openSlot) return `Removes ${itemName} from Slot ${openSlot + 1}.`;
+  if (previousIndex === openSlot) {
+    return t('garage.equipment.summary.removes', { name: itemName, slot: slotNo });
+  }
   if (previousIndex >= 0) {
     return fittedId
-      ? `Moves ${itemName} from Slot ${previousIndex + 1} and replaces ${fittedName}.`
-      : `Moves ${itemName} from Slot ${previousIndex + 1} to Slot ${openSlot + 1}.`;
+      ? t('garage.equipment.summary.movesAndReplaces', {
+          name: itemName, from: previousIndex + 1, old: fittedName,
+        })
+      : t('garage.equipment.summary.moves', {
+          name: itemName, from: previousIndex + 1, to: slotNo,
+        });
   }
   return fittedId
-    ? `Replaces ${fittedName} in Slot ${openSlot + 1}.`
-    : `Adds ${itemName} to Slot ${openSlot + 1}.`;
+    ? t('garage.equipment.summary.replaces', { old: fittedName, new: itemName, slot: slotNo })
+    : t('garage.equipment.summary.adds', { name: itemName, slot: slotNo });
 }
 
 /** Build exact stock/current/projected values for one equipment hover. */
@@ -324,17 +352,21 @@ export function equipmentHoverPreview(
   }
   const metrics = METRICS
     .filter((definition) => changedMetricIds.has(definition.id))
-    .map((definition): EquipmentPreviewMetric => ({
-      id: definition.id,
-      label: definition.id === 'reload' && spec.gun.autoloader
-        ? 'Magazine reload time'
-        : definition.label,
-      stock: definition.format(stock),
-      current: definition.format(current),
-      projected: definition.format(projected),
-      changed: valuesChanged(definition.values(current), definition.values(projected)),
-      outcome: metricOutcome(definition, current, projected),
-    }));
+    .map((definition): EquipmentPreviewMetric => {
+      const isMagazine = definition.id === 'reload' && spec.gun.autoloader;
+      return {
+        id: definition.id,
+        label: isMagazine ? 'Magazine reload time' : definition.label,
+        labelKey: isMagazine
+          ? 'garage.equipment.metric.magazineReload'
+          : definition.labelKey,
+        stock: definition.format(stock),
+        current: definition.format(current),
+        projected: definition.format(projected),
+        changed: valuesChanged(definition.values(current), definition.values(projected)),
+        outcome: metricOutcome(definition, current, projected),
+      };
+    });
   return {
     currentLoadout,
     projectedLoadout,

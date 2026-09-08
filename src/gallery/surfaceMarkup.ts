@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
+import { t } from '../ui/i18n.ts';
 
 export const MARKUP_OPERATIONS = Object.freeze(['inspect', 'remove', 'reshape', 'add'] as const);
 export type MarkupOperation = (typeof MARKUP_OPERATIONS)[number];
@@ -623,7 +624,7 @@ export function createSurfaceMarkup({
     if (!annotations.length) {
       const empty = document.createElement('p');
       empty.className = 'markup-hint';
-      empty.textContent = 'No marked surfaces yet.';
+      empty.textContent = t('gallery.markup.empty');
       list.append(empty);
       return;
     }
@@ -636,14 +637,14 @@ export function createSurfaceMarkup({
       marker.style.background = OPERATION_CSS[annotation.operation];
       const copy = document.createElement('span');
       const title = document.createElement('strong');
-      title.textContent = `${annotation.operation.toUpperCase()} · ${annotation.id}`;
+      title.textContent = t('gallery.markup.rowTitle', { op: annotation.operation.toUpperCase(), id: annotation.id });
       const summary = document.createElement('small');
       summary.textContent = selectionSummary(annotation);
       copy.append(title, summary);
       const remove = document.createElement('span');
       remove.className = 'markup-remove';
       remove.textContent = '×';
-      remove.title = 'Delete selection';
+      remove.title = t('gallery.markup.deleteTitle');
       row.append(marker, copy, remove);
       row.addEventListener('click', (event) => {
         if (event.target instanceof Element && event.target.closest('.markup-remove')) {
@@ -687,14 +688,18 @@ export function createSurfaceMarkup({
     $('#markupReshapeFields').hidden = operation !== 'reshape';
     $('#markupAddFields').hidden = operation !== 'add';
     clearHover();
-    if (announce) showToast(`Markup operation: ${operation}`);
+    if (announce) showToast(t('gallery.markup.toast.opChanged', { op: operation }));
   }
 
   function selectScreen(clientX: number, clientY: number, additive = false) {
     const hit = rayHit(clientX, clientY);
     if (!hit) return null;
     if (operation === 'inspect') {
-      showToast(`${ownershipOf(hit.object)} · ${hit.object.name || hit.object.type} · face ${hit.faceIndex}`);
+      showToast(t('gallery.markup.toast.ownershipFace', {
+        owner: ownershipOf(hit.object),
+        name: hit.object.name || hit.object.type,
+        face: hit.faceIndex,
+      }));
       return hit;
     }
     if (!additive) clearAnnotations();
@@ -707,7 +712,7 @@ export function createSurfaceMarkup({
     selectedAnnotationId = annotation.id;
     renderAnnotationList();
     updateExport();
-    showToast(`${operation.toUpperCase()} marked ${faces.length} triangle${faces.length === 1 ? '' : 's'}`);
+    showToast(t('gallery.markup.toast.marked', { op: operation.toUpperCase(), count: faces.length }));
     return annotation;
   }
 
@@ -733,7 +738,7 @@ export function createSurfaceMarkup({
   function focusSelected(): void {
     const annotation = annotations.find((item) => item.id === selectedAnnotationId);
     if (!annotation) {
-      showToast('Select a marked surface first');
+      showToast(t('gallery.markup.toast.noSurface'));
       return;
     }
     const box = new THREE.Box3().setFromObject(annotation._runtime.overlay);
@@ -813,7 +818,7 @@ export function createSurfaceMarkup({
       $('#markupJson').select();
       document.execCommand('copy');
     }
-    showToast('Surface markup JSON copied');
+    showToast(t('gallery.markup.toast.jsonCopied'));
   });
   $('#markupDownload').addEventListener('click', () => {
     updateExport();

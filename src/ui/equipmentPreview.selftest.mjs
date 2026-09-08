@@ -1,8 +1,14 @@
 import assert from 'node:assert/strict';
+import './i18nCatalog.ts';
+import { setLocale } from './i18n.ts';
 import {
   equipmentHoverPreview,
   projectEquipmentLoadout,
 } from './equipmentPreview.ts';
+
+// Selftests assert against the canonical English copy. Force the locale so
+// the assertions stay stable regardless of the host's navigator language.
+setLocale('en-US');
 
 const spec = {
   id: 'fixture_mbt',
@@ -46,6 +52,7 @@ assert.equal(addRammer.summary, 'Adds Gun Rammer to Slot 3.');
 assert.deepEqual(metric(addRammer, 'reload'), {
   id: 'reload',
   label: 'Reload time',
+  labelKey: 'garage.equipment.metric.reload',
   stock: '6.00 s',
   current: '5.85 s',
   projected: '5.26 s',
@@ -54,7 +61,7 @@ assert.deepEqual(metric(addRammer, 'reload'), {
 });
 
 const replaceOptics = equipmentHoverPreview(spec, ['optics'], 'rammer', 0);
-assert.equal(replaceOptics.summary, 'Replaces Coated Optics in Slot 1.');
+assert.equal(replaceOptics.summary, 'Replaces Coated Optics in Slot 1 with Gun Rammer.');
 assert.equal(metric(replaceOptics, 'reload').outcome, 'improved');
 assert.equal(metric(replaceOptics, 'view').outcome, 'degraded');
 assert.equal(metric(replaceOptics, 'view').current, '484 m');

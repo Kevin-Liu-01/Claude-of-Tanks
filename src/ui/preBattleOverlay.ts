@@ -1,4 +1,6 @@
 /** Presentation only: authority owns the countdown and permission to drive/fire. */
+import { t } from './i18n.ts';
+
 export function createPreBattleOverlay(root: HTMLElement, kicker: HTMLElement, numeral: HTMLElement) {
   let waiting = false;
   let shownSecond = -1;
@@ -13,7 +15,7 @@ export function createPreBattleOverlay(root: HTMLElement, kicker: HTMLElement, n
     shownSecond = -1;
     root.classList.remove('on', 'rollout', 'waiting');
     numeral.classList.remove('tick', 'go');
-    kicker.textContent = 'BATTLE BEGINS IN';
+    kicker.textContent = t('hud.battleBeginsIn');
     numeral.textContent = '';
   };
   return {
@@ -26,8 +28,8 @@ export function createPreBattleOverlay(root: HTMLElement, kicker: HTMLElement, n
       root.classList.remove('rollout');
       root.classList.toggle('waiting', value);
       numeral.classList.remove('go', 'tick');
-      kicker.textContent = value ? 'WAITING FOR COMMANDERS' : 'BATTLE BEGINS IN';
-      numeral.textContent = value ? 'READY' : '';
+      kicker.textContent = value ? t('hud.waitingForCommanders') : t('hud.battleBeginsIn');
+      numeral.textContent = value ? t('playMenu.ready.iAmReady') : '';
       root.classList.toggle('on', value);
     },
     countdown(secondsLeft: number) {
@@ -48,7 +50,7 @@ export function createPreBattleOverlay(root: HTMLElement, kicker: HTMLElement, n
         shownSecond = 0;
         root.classList.add('rollout');
         numeral.classList.remove('tick');
-        numeral.textContent = 'ROLL OUT!';
+        numeral.textContent = t('hud.rollout');
         void numeral.offsetWidth;
         numeral.classList.add('tick', 'go');
         cancelHide();

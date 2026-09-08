@@ -7,6 +7,7 @@ import {
   ownershipOf,
   SURFACE_MARKUP_OVERLAY_STYLE,
 } from './surfaceMarkup.ts';
+import '../ui/i18nCatalog.ts';
 
 const geometry = new THREE.BufferGeometry();
 geometry.setAttribute('position', new THREE.Float32BufferAttribute([

@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createElement, ensureStyle } from './dom.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { t } from './i18n.ts';
 import type {
   SettingsOptions as SettingsPanelOptions,
   SettingsRuntime,
@@ -41,9 +42,9 @@ function createDefaultGear(): HTMLButtonElement {
   ensureStyle('cot-settings-trigger-style', TRIGGER_CSS);
   const gear = createElement('button', 'cot-gear') as HTMLButtonElement;
   gear.type = 'button';
-  gear.setAttribute('aria-label', 'Settings');
+  gear.setAttribute('aria-label', t('settings.gearAria'));
   gear.innerHTML = uiIconSVG('settings', 22, '#9fb0bf');
-  gear.title = 'Settings';
+  gear.title = t('settings.gearAria');
   document.body.appendChild(gear);
   return gear;
 }
