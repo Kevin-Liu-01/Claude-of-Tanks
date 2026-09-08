@@ -22,6 +22,7 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
+import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 
 interface ShadowDebugOptions {
   noCull?: boolean;
@@ -59,9 +60,6 @@ const CASCADES = 4;
 // near maps with 20 Hz far maps made tree/building shadows step and flash in
 // cascade fades. `update(true)` still forces transition settling explicitly.
 const FAR_CASCADE_START = 2;
-// Reserved only during covered shadow priming. Presentation objects use layer
-// 0, shadow-only proxies use 29, and late FX may use 30.
-const SHADOW_PRIME_LAYER = 31;
 const _stableCameraToLight = new THREE.Matrix4();
 const _stableLightOrientation = new THREE.Matrix4();
 const _stableLightOrientationInverse = new THREE.Matrix4();
@@ -1259,11 +1257,11 @@ export function createLighting(
       {
         yieldBeforeCascade = null,
         cascadeLimit = csm.lights.length,
-      }: {
-        yieldBeforeCascade?: ((index: number) => void | Promise<void>) | null;
-        cascadeLimit?: number;
-      } = {},
+        signal,
+        isCurrent,
+      }: ShadowPrimeOptions = {},
     ): Promise<number[]> {
+      signal?.throwIfAborted();
       if (!renderer2?.shadowMap || !scene2 || !camera2) return [];
       // Partial priming is safe only after every omitted native depth target
       // exists and the far bands are explicitly dormant. Otherwise fail open
@@ -1273,87 +1271,25 @@ export function createLighting(
         cascadeLimit,
         farCascadeDormant,
       );
-      const prior = csm.lights.map((light) => ({
-        shadow: light.shadow,
-        autoUpdate: light.shadow.autoUpdate,
-        needsUpdate: light.shadow.needsUpdate,
-        layerMask: light.layers.mask,
-      }));
+      // A failed new transaction cannot reuse an earlier priming receipt.
+      preservePrimedFrame = false;
+      const info = renderer2.info;
       const shadowMap = renderer2.shadowMap;
-      const renderShadowMaps = shadowMap.render.bind(shadowMap);
-      const cameraLayerMask = camera2.layers.mask;
-      const priorTarget = renderer2.getRenderTarget();
-      const priorFace = renderer2.getActiveCubeFace?.() ?? 0;
-      const priorMip = renderer2.getActiveMipmapLevel?.() ?? 0;
-      const warmTarget = new THREE.WebGLRenderTarget(8, 8, {
-        depthBuffer: false,
-        stencilBuffer: false,
+      const gl = renderer2.getContext();
+      const timings = await primeShadowCascades({
+        renderer: renderer2, scene: scene2, camera: camera2,
+        lights: csm.lights, count: primeCount, yieldBeforeCascade, signal, isCurrent,
       });
-      const timings: number[] = [];
-      let complete = false;
-      try {
-        scene2.updateMatrixWorld(true);
-        camera2.updateMatrixWorld(true);
-        for (const light of csm.lights) {
-          light.shadow.autoUpdate = false;
-          light.shadow.needsUpdate = false;
-        }
-        for (let index = 0; index < primeCount; index++) {
-          const light = csm.lights[index];
-          if (yieldBeforeCascade) await yieldBeforeCascade(index);
-          const startedAt = performance.now();
-          camera2.layers.set(SHADOW_PRIME_LAYER);
-          light.layers.enable(SHADOW_PRIME_LAYER);
-          // WebGLShadowMap.render is an internal renderer phase and cannot be
-          // invoked after an async yield: Three clears its current render
-          // state at the end of every normal frame. Route one selected cascade
-          // through WebGLRenderer.render instead. The reserved camera layer
-          // keeps the color pass empty, while the wrapper restores production
-          // layers for the shadow traversal so all real casters participate.
-          shadowMap.render = (_lights, activeScene, activeCamera) => {
-            const primeMask = activeCamera.layers.mask;
-            activeCamera.layers.mask = cameraLayerMask;
-            try {
-              renderShadowMaps([light], activeScene, activeCamera);
-            } finally {
-              activeCamera.layers.mask = primeMask;
-            }
-          };
-          renderer2.setRenderTarget(warmTarget);
-          light.shadow.needsUpdate = true;
-          renderer2.render(scene2, camera2);
-          light.shadow.needsUpdate = false;
-          renderer2.setRenderTarget(priorTarget, priorFace, priorMip);
-          shadowMap.render = renderShadowMaps;
-          camera2.layers.mask = cameraLayerMask;
-          light.layers.mask = prior[index]!.layerMask;
-          timings.push(Math.round(performance.now() - startedAt));
-        }
-        complete = true;
-      } finally {
-        renderer2.setRenderTarget(priorTarget, priorFace, priorMip);
-        shadowMap.render = renderShadowMaps;
-        camera2.layers.mask = cameraLayerMask;
-        for (let index = 0; index < csm.lights.length; index++) {
-          csm.lights[index]!.layers.mask = prior[index]!.layerMask;
-        }
-        warmTarget.dispose();
-        if (complete) {
-          preservePrimedFrame = true;
-          forceFrames = 0;
-          shadowScheduler.reset();
-          lastScheduledMask = 0;
-          for (const light of csm.lights) {
-            light.shadow.autoUpdate = false;
-            light.shadow.needsUpdate = false;
-          }
-        } else {
-          for (const state of prior) {
-            state.shadow.autoUpdate = state.autoUpdate;
-            state.shadow.needsUpdate = state.needsUpdate;
-          }
-        }
+      signal?.throwIfAborted();
+      // Revalidate the await handoff even for Garage callers without a lease.
+      if (renderer2.info !== info || renderer2.shadowMap !== shadowMap || gl.isContextLost()) {
+        throw new Error('shadow_prime_context_changed');
       }
+      if (isCurrent?.() === false) throw new Error('shadow_prime_stale');
+      preservePrimedFrame = true;
+      forceFrames = 0;
+      shadowScheduler.reset();
+      lastScheduledMask = 0;
       return timings;
     },
 

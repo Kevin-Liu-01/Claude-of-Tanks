@@ -2142,8 +2142,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               game, world, yieldForBudget: createFrameBudgetYielder(16),
             });
           },
-          wrecks: (bridge) => battleWarm.warmNetworkWrecks({
+          wrecks: (bridge, signal) => battleWarm.warmNetworkWrecks({
             entities: bridge.entities.values(),
+            signal,
             prebakeBurntSteps,
             anisotropy: engineCtx.anisotropy ?? 4,
             renderer,
@@ -2192,6 +2193,26 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             });
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
+          finalShadows: async (signal?: AbortSignal) => {
+            signal?.throwIfAborted();
+            const entryInfo = renderer.info;
+            // Activation owns the final battlefield camera. Leave Garage's
+            // dormant shadow state before fitting it, while entry still covers
+            // all ordinary scene paints. The first revealed frame reuses these
+            // exact maps rather than invalidating their fit again.
+            lighting.setStaticPresentationDormant(false);
+            lighting.updateFov();
+            mainFrame.noteFovPrimed(camera.fov);
+            lighting.update(true, SIM_DT);
+            const cascadeMs = await lighting.primeShadowMaps(renderer, scene, camera, {
+              signal,
+              isCurrent: () => !graphicsContextLost && renderer.info === entryInfo,
+              yieldBeforeCascade: nextPaintFrame,
+            });
+            return { cascadeCount: cascadeMs.length,
+              totalMs: cascadeMs.reduce((total, ms) => total + ms, 0),
+              maxMs: Math.max(0, ...cascadeMs) };
+          },
           compile: async (signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming = {};
             const lateMask = 1 << LATE_FX_LAYER;
@@ -2203,8 +2224,10 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             ] : undefined;
             // Permit rendering between batches and before driver queries;
             // this is not a GPU-completion guarantee. One owner lifetime spans
-            // submission, the post-paint checkpoint, and readiness polling.
-            for (const _ of forwardProgramWarm.prepareSceneSteps({ signal, timing, passes })) await nextPaintFrame();
+            // submission and bounded first-use reflection of selected materials.
+            // The real effects/reveal draws remain the readiness barrier.
+            for (const _ of forwardProgramWarm.prepareSceneSteps({ signal, timing, passes,
+              initializeUniforms: true })) await nextPaintFrame();
             return { ...timing };
           },
         },

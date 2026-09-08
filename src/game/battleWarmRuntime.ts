@@ -15,7 +15,11 @@ import type {
   IsolatedForwardWarmOptions,
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
-import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
+import {
+  captureNewProgramUniformSteps,
+  snapshotRendererPrograms,
+  type ForwardProgramWarmOwner,
+} from '../engine/programWarm.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -196,6 +200,7 @@ type BurnStepFactory = (
 ) => Iterable<void>;
 
 export interface WreckWarmOptions {
+  signal?: AbortSignal;
   entities: Iterable<BattleWarmEntity>;
   prebakeBurntSteps: BurnStepFactory;
   anisotropy: number;
@@ -356,24 +361,20 @@ async function warmBurntVariant(
   anisotropy: number,
   warmedSpecs: Set<string>,
   yieldForFrameBudget: WorkYielder,
+  valid: () => boolean,
 ): Promise<void> {
-  if (!entity.specId) return;
+  if (!valid() || !entity.specId) return;
   const selection = entity.camo || 'factory';
   const wreckKey = `${entity.specId}:${selection}`;
   if (warmedSpecs.has(wreckKey)) return;
   warmedSpecs.add(wreckKey);
   try {
     for (const _step of prebakeBurntSteps(entity.specId, anisotropy, selection)) {
+      if (!valid()) return;
       await yieldForFrameBudget();
+      if (!valid()) return;
     }
-  } catch (_) { /* warm only */ }
-}
-
-function initializeNewProgramUniforms(renderer: WebGLRenderer, before: number): void {
-  const programs = renderer.info.programs || [];
-  for (let index = before; index < programs.length; index += 1) {
-    try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
-  }
+  } catch (_) { valid(); /* warm only, unless the entry was aborted */ }
 }
 
 function collectWreckFallbackProbes(
@@ -397,9 +398,10 @@ function warmWreckVisual(
   renderer: WebGLRenderer,
   compilePrograms: (root: Object3D) => void,
   fallbackProbes: Map<string, WreckFallbackProbe>,
-): void {
+  valid: () => boolean,
+): Generator<void, void, void> | null {
   const root = visual.root;
-  if (!root) return;
+  if (!valid() || !root) return null;
   const rootWasVisible = root.visible;
   const restoreBattleDetails = visual.stageBattleDetailsForWarm?.();
   try {
@@ -408,21 +410,40 @@ function warmWreckVisual(
       ...(visual.prewarmBurn?.() ?? []),
       ...potentialFallbackWarmMeshes(root),
     ];
-    const before = renderer.info.programs?.length || 0;
+    const before = snapshotRendererPrograms(renderer);
     compilePrograms(root);
-    initializeNewProgramUniforms(renderer, before);
+    if (!valid()) return null;
+    const uniforms = captureNewProgramUniformSteps(renderer, before, { isCurrent: valid });
     const material = visual.getWreckFallbackMaterial?.() ?? null;
     if (material) initializeMaterialTextures(renderer, material);
     collectWreckFallbackProbes(fallbackSources, material, fallbackProbes);
-  } catch (_) { /* warm only */ }
+    return uniforms;
+  } catch (_) { valid(); /* warm only, unless the entry was aborted */ }
   finally {
     try { restoreBattleDetails?.(); } catch (_) { /* warm only */ }
     root.visible = rootWasVisible;
   }
+  return null;
+}
+
+async function consumeWreckUniformSteps(
+  uniforms: Generator<void, void, void> | null,
+  yieldForFrameBudget: WorkYielder,
+  valid: () => boolean,
+): Promise<boolean> {
+  if (!uniforms) return valid();
+  try {
+    for (const _step of uniforms) {
+      await yieldForFrameBudget(true);
+      if (!valid()) return false;
+    }
+  } finally { uniforms.return(); }
+  return valid();
 }
 
 /** Prebuild only the fielded roster's destroyed variants before first blood. */
 export async function warmNetworkWrecks({
+  signal,
   entities,
   prebakeBurntSteps,
   anisotropy,
@@ -432,20 +453,36 @@ export async function warmNetworkWrecks({
   compilePrograms,
   warmRender,
 }: WreckWarmOptions): Promise<void> {
+  signal?.throwIfAborted();
+  const generation = warmGeneration;
+  const info = renderer.info;
+  const gl = renderer.getContext();
+  const valid = (): boolean => {
+    signal?.throwIfAborted();
+    return generation === warmGeneration && renderer.info === info
+      && renderer.getContext() === gl && !gl.isContextLost();
+  };
+  if (!valid()) return;
   const yieldForFrameBudget = createFrameBudgetYielder(8);
   const warmedSpecs = new Set<string>();
   const roster = [...entities];
   const fallbackProbes = new Map<string, WreckFallbackProbe>();
   for (const entity of roster) {
+    if (!valid()) return;
     const visual = entity.visual;
     if (!visual) continue;
     await warmBurntVariant(
-      entity, prebakeBurntSteps, anisotropy, warmedSpecs, yieldForFrameBudget,
+      entity, prebakeBurntSteps, anisotropy, warmedSpecs, yieldForFrameBudget, valid,
     );
-    warmWreckVisual(visual, renderer, compilePrograms, fallbackProbes);
+    if (!valid()) return;
+    const uniforms = warmWreckVisual(visual, renderer, compilePrograms, fallbackProbes, valid);
+    if (!await consumeWreckUniformSteps(uniforms, yieldForFrameBudget, valid)) return;
+    if (!valid()) return;
     await yieldForFrameBudget(true);
+    if (!valid()) return;
   }
 
+  if (!valid()) return;
   if (fallbackProbes.size) {
     warmWreckFallbackProbe({
       candidates: [...fallbackProbes.values()],
@@ -455,7 +492,9 @@ export async function warmNetworkWrecks({
       warmRender,
     });
   }
+  if (!valid()) return;
   await yieldForFrameBudget(true);
+  valid();
 }
 
 interface BattleFxPort {
@@ -913,6 +952,14 @@ function* prebakeDestroyedVariantSteps(
   try {
     yield* context.prebakeBurntSteps(specId, context.anisotropy);
   } catch (_) { /* warm only */ }
+}
+
+/** Preserve the synchronous solo/capture drain; only network wreck warming is cooperative. */
+function initializeNewProgramUniforms(renderer: WebGLRenderer, before: number): void {
+  const programs = renderer.info.programs || [];
+  for (let index = before; index < programs.length; index += 1) {
+    try { programs[index]?.getUniforms?.(); } catch (_) { /* warm only */ }
+  }
 }
 
 function warmDestroyedVisual(
