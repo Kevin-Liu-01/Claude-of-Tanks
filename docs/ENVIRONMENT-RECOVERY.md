@@ -742,6 +742,18 @@ The live forest/rock/snow placement remains local for further art and resource
 verification. No whole-pass memory, motion or all-map art gate is waived by
 these useful incremental publications. Weather particles remain excluded.
 
+`30c3b1315` further improves the atlas foundation with irregular spacing,
+overlapping lower crowns and attached low foliage, preserving the same texture
+dimensions, shape count and drawing budget. The native R3 rasters pass all56
+band checks and both device tiers; all five other families stay byte-identical.
+Root reviewed both woodland rasters. The isolated current-main check passes
+native atlas tests, runtime complexity, typecheck/core-unused and public build
+in `horizon-atlas-publication-r3.{json,log}`. The unchanged legacy `inspectBand`
+test-helper complexity violation remains documented in
+`horizon-atlas-woodland-r3/metrics-comparison.json`; it is not a runtime failure
+or a blanket all-file quality pass. This foundation revision does not enable
+the live placement system or certify the updated trees in-world.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
