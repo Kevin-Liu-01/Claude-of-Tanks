@@ -46,6 +46,7 @@ import {
   setLocale,
   t,
 } from './i18n.ts';
+import { currentLocationHrefForLocale } from './localeRouting.ts';
 import type {
   ActionId,
   AiDifficulty,
@@ -1091,7 +1092,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         emit('ui:click', {});
         // Most screens are constructed once and own translated DOM. Reloading
         // is the only atomic way to avoid a mixed-language Garage or battle.
-        window.location.reload();
+        window.location.assign(currentLocationHrefForLocale(window.location, locale));
       });
       langBtns.push(b);
     }

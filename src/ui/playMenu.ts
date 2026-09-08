@@ -22,11 +22,11 @@ import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ensureStyle } from './dom.ts';
-import { t } from './i18n.ts';
+import { getLocale, t } from './i18n.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   applySiteMetadataToDocument,
-  GAME_METADATA,
+  localizedGameMetadata,
   privateRoomMetadata,
 } from '../presentation/siteMetadata.ts';
 import { loadIceConfiguration, type IceConfiguration } from '../net/iceConfig.ts';
@@ -915,7 +915,7 @@ export function createPlayMenu({
     metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
     if (invitedHostName) metadataUrl.searchParams.set('host', invitedHostName);
     else metadataUrl.searchParams.delete('host');
-    const metadata = privateRoomMetadata(metadataUrl);
+    const metadata = privateRoomMetadata(metadataUrl, getLocale());
     if (metadata) applySiteMetadataToDocument(document, metadata);
   }
 
@@ -925,7 +925,9 @@ export function createPlayMenu({
     eyebrow.textContent = defaultEyebrow;
     menuTitle.textContent = defaultMenuTitle;
     menuLead.textContent = defaultMenuLead;
-    if (document.title.startsWith('Join ')) applySiteMetadataToDocument(document, GAME_METADATA);
+    if (document.title.startsWith('Join ') || document.title.startsWith('加入')) {
+      applySiteMetadataToDocument(document, localizedGameMetadata(getLocale()));
+    }
   }
 
   function setStatus(message: RuntimeValue, error = false): void {

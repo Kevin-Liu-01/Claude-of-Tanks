@@ -1,0 +1,19 @@
+name: Localization
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gt-catalog-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate General Translation catalogs and locale routes
+        run: npm run i18n:check

@@ -50,7 +50,8 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
-import { t, formatNumber, formatDate } from './i18n.ts';
+import { t, formatNumber, formatDate, getLocale } from './i18n.ts';
+import { hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import type { PlayMode } from '../net/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
@@ -947,7 +948,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   garageVariantTrigger.addEventListener('pointerdown', signalVariantMenuIntent, { passive: true });
   const openSelectedInGallery = (layer = 'appearance') => {
     emit('ui:click', {});
-    window.location.href = garageGalleryHref(selectedId, layer);
+    window.location.href = hrefForLocale(garageGalleryHref(selectedId, layer), getLocale());
   };
   let recordRestoreFocus: HTMLElement | null = null;
   const isRecordOpen = () => recordModal.classList.contains('open');
@@ -2833,11 +2834,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const openDocs = () => {
     emit('ui:click', {});
-    window.location.href = '/docs'; // pretty route (vite.config.ts rewrite)
+    window.location.href = hrefForLocale('/docs', getLocale());
   };
   const openHome = () => {
     emit('ui:click', {});
-    window.location.href = '/home'; // pretty route (vite.config.ts rewrite)
+    window.location.href = hrefForLocale('/home', getLocale());
   };
   requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
   requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());

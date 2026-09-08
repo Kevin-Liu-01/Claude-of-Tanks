@@ -6,7 +6,8 @@
     "api/github-stars.ts": { "maxDuration": 10 }
   },
   "redirects": [
-    { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true }
+    { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true },
+    { "source": "/cn/surface-studio", "destination": "/cn/gallery?layer=markup", "permanent": true }
   ],
   "headers": [
     {
@@ -16,9 +17,35 @@
     {
       "source": "/gallery.html",
       "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }]
+    },
+    {
+      "source": "/cn/gallery",
+      "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }]
+    },
+    {
+      "source": "/cn/gallery.html",
+      "headers": [{ "key": "Cache-Control", "value": "private, no-store, max-age=0" }]
     }
   ],
   "rewrites": [
+    { "source": "/cn", "destination": "/cn/index.html" },
+    { "source": "/cn/home", "destination": "/cn/home.html" },
+    { "source": "/cn/docs", "destination": "/cn/docs.html" },
+    { "source": "/cn/docs/build", "destination": "/cn/docs-build.html" },
+    { "source": "/cn/docs/models", "destination": "/cn/docs-models.html" },
+    { "source": "/cn/docs/simulation", "destination": "/cn/docs-simulation.html" },
+    { "source": "/cn/docs/vehicles", "destination": "/cn/docs-vehicles.html" },
+    { "source": "/cn/docs/rendering", "destination": "/cn/docs-rendering.html" },
+    { "source": "/cn/docs/performance", "destination": "/cn/docs-performance.html" },
+    { "source": "/cn/docs/worlds", "destination": "/cn/docs-worlds.html" },
+    { "source": "/cn/docs/ai", "destination": "/cn/docs-ai.html" },
+    { "source": "/cn/docs/multiplayer", "destination": "/cn/docs-multiplayer.html" },
+    { "source": "/cn/docs/audio", "destination": "/cn/docs-audio.html" },
+    { "source": "/cn/docs/interface", "destination": "/cn/docs-interface.html" },
+    { "source": "/cn/docs/studio", "destination": "/cn/docs-studio.html" },
+    { "source": "/cn/gallery", "destination": "/cn/gallery.html" },
+    { "source": "/cn/studio", "destination": "/cn/studio.html" },
+    { "source": "/cn/404", "destination": "/cn/404.html" },
     { "source": "/home", "destination": "/home.html" },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/docs/build", "destination": "/docs-build.html" },

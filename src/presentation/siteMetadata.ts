@@ -1,4 +1,10 @@
 import { PRODUCT_STATS } from '../productStats.ts';
+import { catalogText } from '../ui/i18nCatalog.ts';
+import {
+  hrefForLocale,
+  resolveLocalePath,
+  type SupportedLocale,
+} from '../ui/localeRouting.ts';
 
 export const SITE_ORIGIN = 'https://cot.kevinliu.studio';
 
@@ -44,6 +50,40 @@ export const STUDIO_METADATA: SiteMetadata = {
   ogDescription: 'Compose cinematic tank scenes with current vehicles, maps, cameras, weather, effects, timelines, stills, GIFs, and video.',
 };
 
+export function localizedGameMetadata(locale: SupportedLocale): SiteMetadata {
+  if (locale === 'en-US') return GAME_METADATA;
+  const canonical = `${SITE_ORIGIN}${hrefForLocale('/', locale)}`;
+  const title = catalogText(locale, 'metadata.game.title');
+  const description = catalogText(locale, 'metadata.game.description');
+  return {
+    ...GAME_METADATA,
+    title,
+    description,
+    canonical,
+    url: canonical,
+    imageAlt: catalogText(locale, 'metadata.imageAlt'),
+    ogTitle: title,
+    ogDescription: description,
+  };
+}
+
+export function localizedStudioMetadata(locale: SupportedLocale): SiteMetadata {
+  if (locale === 'en-US') return STUDIO_METADATA;
+  const canonical = `${SITE_ORIGIN}${hrefForLocale('/studio', locale)}`;
+  const title = catalogText(locale, 'metadata.studio.title');
+  const description = catalogText(locale, 'metadata.studio.description');
+  return {
+    ...STUDIO_METADATA,
+    title,
+    description,
+    canonical,
+    url: canonical,
+    imageAlt: catalogText(locale, 'metadata.imageAlt'),
+    ogTitle: title,
+    ogDescription: description,
+  };
+}
+
 export function normalizeRoomCode(value: string | null): string {
   const ambiguousCharacters: Readonly<Record<string, string>> = {
     0: 'Q', 1: 'L', I: 'L', O: 'Q',
@@ -59,26 +99,31 @@ export function normalizeHostName(value: string | null): string {
   return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 24);
 }
 
-export function privateRoomMetadata(url: URL): SiteMetadata | null {
+export function privateRoomMetadata(url: URL, locale: SupportedLocale = 'en-US'): SiteMetadata | null {
   const roomCode = normalizeRoomCode(url.searchParams.get('room'));
   if (roomCode.length !== 6) return null;
 
   const hostName = normalizeHostName(url.searchParams.get('host'));
   const isLan = url.searchParams.get('mode')?.toLowerCase() === 'lan';
-  const battleKind = isLan ? 'LAN battle' : 'private battle';
-  const invitation = hostName ? `${hostName} invited you` : 'You have been invited';
   const title = hostName
-    ? `Join ${hostName}’s ${isLan ? 'LAN Battle' : 'Private Battle'} — Claude of Tanks`
-    : `Join Private Battle ${roomCode} — Claude of Tanks`;
-  const description = `${invitation} to join ${battleKind} room ${roomCode} in Claude of Tanks. Open the link to choose your vehicle, team, and ready state.`;
+    ? catalogText(locale, isLan ? 'metadata.room.title.hostLan' : 'metadata.room.title.hostPrivate', {
+      host: hostName,
+    })
+    : catalogText(locale, 'metadata.room.title.room', { room: roomCode });
+  const description = catalogText(locale,
+    hostName
+      ? (isLan ? 'metadata.room.description.hostLan' : 'metadata.room.description.hostPrivate')
+      : 'metadata.room.description.room',
+    { host: hostName, room: roomCode });
+  const canonical = `${SITE_ORIGIN}${hrefForLocale('/', locale)}`;
 
   return {
     title,
     description,
-    canonical: `${SITE_ORIGIN}/`,
+    canonical,
     url: url.href,
     image: `${SITE_ORIGIN}/brand/og/private-room.jpg`,
-    imageAlt: 'Two-player Claude of Tanks multiplayer battle with the crest wordmark',
+    imageAlt: catalogText(locale, 'metadata.room.imageAlt'),
     type: 'website',
     robots: PRIVATE_ROBOTS,
     ogTitle: title.replace(' — Claude of Tanks', ''),
@@ -134,12 +179,33 @@ export function applySiteMetadataToDocument(document: Document, metadata: SiteMe
   };
   document.title = metadata.title;
   document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href', metadata.canonical);
+  const canonicalUrl = new URL(metadata.canonical, SITE_ORIGIN);
+  const route = resolveLocalePath(canonicalUrl.pathname);
+  const locale = route.locale ?? 'en-US';
+  document.documentElement.lang = locale;
+  for (const [hreflang, href] of [
+    ['en-US', `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'en-US')}`],
+    ['zh-CN', `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'zh-CN')}`],
+    ['x-default', `${SITE_ORIGIN}${hrefForLocale(route.pathname, 'en-US')}`],
+  ] as const) {
+    let alternate = document.head.querySelector<HTMLLinkElement>(
+      `link[rel="alternate"][hreflang="${hreflang}"]`,
+    );
+    if (!alternate) {
+      alternate = document.createElement('link');
+      alternate.rel = 'alternate';
+      alternate.hreflang = hreflang;
+      document.head.append(alternate);
+    }
+    alternate.href = href;
+  }
   setMeta('meta[name="description"]', metadata.description);
   setMeta('meta[name="robots"]', metadata.robots);
   setMeta('meta[property="og:title"]', metadata.ogTitle || metadata.title);
   setMeta('meta[property="og:description"]', metadata.ogDescription || metadata.description);
   setMeta('meta[property="og:type"]', metadata.type);
   setMeta('meta[property="og:url"]', metadata.url);
+  setMeta('meta[property="og:locale"]', locale.replace('-', '_'));
   setMeta('meta[property="og:image"]', metadata.image);
   setMeta('meta[property="og:image:type"]', metadata.image.endsWith('.png') ? 'image/png' : 'image/jpeg');
   setMeta('meta[property="og:image:alt"]', metadata.imageAlt);

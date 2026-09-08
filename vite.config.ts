@@ -25,6 +25,8 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
+import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
+import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 
@@ -74,25 +76,22 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
   const qi = url.indexOf('?');
   const path = qi === -1 ? url : url.slice(0, qi);
   const query = qi === -1 ? '' : url.slice(qi);
-  if (path === '/studio' || path === '/studio/') req.url = '/index.html' + query;
-  else if (path === '/gallery' || path === '/gallery/') req.url = '/gallery.html' + query;
-  else if (path === '/surface-studio' || path === '/surface-studio/') {
+  const localePath = resolveLocalePath(path);
+  const localizedQuery = localePath.locale ? `${query}${query ? '&' : '?'}_cot_locale=${localePath.locale}` : query;
+  if (localePath.pathname === '/surface-studio') {
     const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
     if (!params.has('layer')) params.set('layer', 'markup');
     res.statusCode = 308;
-    res.setHeader('Location', `/gallery?${params.toString()}`);
+    res.setHeader('Location', `${localePath.locale ? '/cn' : ''}/gallery?${params.toString()}`);
     res.end();
     return;
   }
-  else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
-  else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
-  else if (/^\/docs\/(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio)\/?$/.test(path)) {
-    const topic = path.split('/').filter(Boolean).at(-1);
-    req.url = `/docs-${topic}.html${query}`;
-  }
-  else if (path === '/404' || path === '/404/' || path === '/404.html') {
+  if (path === '/404.html') {
     forceNotFoundStatus(res);
     req.url = '/404.html' + query;
+  } else if (localePath.route) {
+    if (localePath.route.id === 'notFound') forceNotFoundStatus(res);
+    req.url = `/${localePath.route.sourceHtml}${localizedQuery}`;
   }
   else if (path !== '/' && !path.startsWith('/api/') &&
     req.headers.accept?.includes('text/html') && !isExistingProjectDocument(path,documentRoot)) {
@@ -125,6 +124,21 @@ export default defineConfig({
       name: 'cot-product-stats',
       transformIndexHtml(html) {
         return renderProductStats(html);
+      },
+    },
+    {
+      name: 'cot-locale-documents',
+      enforce: 'post',
+      transformIndexHtml(html, ctx) {
+        const original = ctx?.originalUrl || '';
+        const requestUrl = new URL(original || '/', 'http://vite.local');
+        const requestedLocale = requestUrl.searchParams.get('_cot_locale');
+        const localePath = resolveLocalePath(requestUrl.pathname);
+        const sourceHtml = resolve(ctx?.filename || '').split('/').at(-1) || '';
+        const route = localePath.route ?? publicRouteForEntry(sourceHtml);
+        if (!route) return html;
+        const locale = requestedLocale === 'zh-CN' || localePath.locale === 'zh-CN' ? 'zh-CN' : 'en-US';
+        return localizeHtmlDocument(html, route, locale);
       },
     },
     {

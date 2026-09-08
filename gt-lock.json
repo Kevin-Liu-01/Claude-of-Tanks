@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "branchId": "brc_v8asnhebwyopj60kmr0jovon",
+  "entries": [
+    {
+      "fileId": "fe7a623731ad4979e962fa2d68b142697666d9f36114bacb51b1c12e0f2a4f9b",
+      "versionId": "05fc564e91bd817fa167340322a24ed428acff86da89e09a107b2b786d21f507",
+      "translations": {
+        "zh-CN": {
+          "updatedAt": "2026-09-08T19:45:10.269Z",
+          "fileName": "src/ui/i18nCatalog.zh-CN.json",
+          "postProcessHash": "4a7c493541e41be6f03739dfc8aa57858048c5823a46ed0097eda688d9ea8351"
+        }
+      },
+      "fileName": "src/ui/i18nCatalog.en-US.json"
+    }
+  ]
+}
