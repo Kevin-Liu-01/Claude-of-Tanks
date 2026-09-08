@@ -388,6 +388,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/frameScheduler.selftest.mjs',
     'src/engine/deferredDeadline.selftest.mjs',
     'src/engine/programWarm.selftest.mjs',
+    'src/engine/sceneProgramWarm.selftest.mjs',
     'src/engine/deploymentWarm.selftest.mjs',
     'src/engine/deploymentShadowWarm.selftest.mjs',
     'src/engine/bootLifecycle.selftest.mjs',

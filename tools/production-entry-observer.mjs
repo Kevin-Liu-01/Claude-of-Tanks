@@ -105,6 +105,12 @@ export function installProductionEntryObserver() {
   const intervals = (value, allowedStages, limit = 32) => Array.isArray(value) ? value.slice(0, limit)
     .filter((row) => allowedStages.includes(row?.stage))
     .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [];
+  const programCompileReceipt = (value) => {
+    if (!value || typeof value !== 'object') return null;
+    return Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
+      'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
+      'pollMs', 'maxPollMs', 'pollCount', 'yields'].map((key) => [key, finite(value[key])]));
+  };
   const receipt = () => {
     const network = window.__NETWORK_LOAD;
     const world = window.__WORLD_LOAD;
@@ -132,6 +138,7 @@ export function installProductionEntryObserver() {
         modulesMs: finite(network.modulesMs), worldMs: finite(network.worldMs),
         connectMs: finite(network.connectMs), totalMs: finite(network.totalMs),
         stages: numericTree(network.stages),
+        programCompile: programCompileReceipt(network.programCompile),
         blackCheck: network.blackCheck ? { before: finite(network.blackCheck.before),
           after: finite(network.blackCheck.after), rescued: network.blackCheck.rescued === true,
           error: !!network.blackCheck.error || network.blackCheck.failed === true,

@@ -153,6 +153,19 @@ assert.ok(boundedReceipt.longTasksDropped > 0);
 const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback', 'hullCanvas',
   'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'];
 {
+  const compile = browserFixture();
+  const fields = ['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
+    'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
+    'pollMs', 'maxPollMs', 'pollCount', 'yields'];
+  const row = Object.fromEntries(fields.map((key) => [key, 2]));
+  compile.context.window.__NETWORK_LOAD.programCompile = {
+    ...row, submissionMs: Infinity, url: 'PRIVATE_URL', name: 'PRIVATE_NAME', detail: { secret: 'PRIVATE' },
+  };
+  const receipt = JSON.parse(JSON.stringify(compile.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(receipt.networkLoad.programCompile, { ...row, submissionMs: null });
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+}
+{
   const watchdog = browserFixture();
   const row = { startTime: 1, endTime: 90, setupMs: 2, renderMs: 30, readbackMs: 55, enqueueMs: 3, waitMs: 52,
     reduceMs: 0.2, restoreMs: 1.8, programsBeforeRender: 12, programsAfterRender: 15 };
