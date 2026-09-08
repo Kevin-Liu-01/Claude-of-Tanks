@@ -390,7 +390,7 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
     renderer, scene, camera, getTarget: () => 'hdr',
     now() { if (clockFailure) throw new Error('clock unavailable'); return clockFrozen ? 0 : clock; },
   });
-  return { owner, renderer, gl, events, programs, unrelated, materialProperties, state, assertRestored,
+  return { owner, renderer, gl, scene, mesh, events, programs, unrelated, materialProperties, state, assertRestored,
     advance(ms) { clock += ms; },
     prepare(options = {}) { return owner.prepareSceneSteps({ initializeUniforms: true, ...options }); },
     drain(steps) {
@@ -1335,4 +1335,169 @@ for (const terminal of ['return', 'throw', 'info', 'context', 'loss']) {
   assert.equal(f.events.filter(([kind]) => kind === 'query').length, 120);
 }
 
-console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');
+function preparationResult(steps, onYield = () => {}) {
+  for (let index = 0; index < 10000; index++) {
+    const step = steps.next();
+    if (step.done) return step.value;
+    onYield(index);
+  }
+  assert.fail('strict preparation must remain finite with a frozen clock');
+}
+
+for (const extension of [true, false]) {
+  for (const timing of [undefined, Object.freeze({ uniformPending: 999, uniformFailures: 999 })]) {
+    const f = firstUseFixture({ extension });
+    assert.deepEqual(preparationResult(f.prepare({ strict: true, timing })), { status: 'complete', pending: 0 },
+      'strict success comes from actual tables, never mutable or absent diagnostics');
+    assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 3);
+    assert.equal(f.events.some(([kind]) => kind === 'query'), extension,
+      'unsupported KHR retains deliberate actual-reflection fallback, not invented KHR evidence');
+    f.assertRestored();
+  }
+}
+
+for (const failure of ['query', 'uniform', 'attributes', 'missing-attributes', 'malformed-uniforms']) {
+  const f = firstUseFixture({ names: ['one'] });
+  if (failure === 'query') f.state.query = () => { throw new Error('query rejected'); };
+  if (failure === 'uniform') f.state.reflect = () => { throw new Error('reflection rejected'); };
+  if (failure === 'attributes') f.programs[0].getAttributes = () => { throw new Error('partial reflection'); };
+  if (failure === 'missing-attributes') delete f.programs[0].getAttributes;
+  if (failure === 'malformed-uniforms') f.programs[0].getUniforms = () => undefined;
+  assert.deepEqual(preparationResult(f.prepare({ strict: true })), {
+    status: 'incomplete', pending: 1, reason: failure === 'query' ? 'query' : 'reflection',
+  }, `${failure}: strict first use must not bless a failed or partial reflection`);
+  f.assertRestored();
+}
+
+for (const missing of ['empty-cache', 'null-handle', 'undefined-handle']) {
+  for (const strict of [false, true]) {
+    const f = firstUseFixture({ names: ['one'] });
+    if (missing === 'empty-cache') f.materialProperties.programs.clear();
+    else f.programs[0].program = missing === 'null-handle' ? null : undefined;
+    const steps = f.prepare({ strict });
+    if (strict) assert.throws(() => preparationResult(steps),
+      /Compiled material (program cache empty|native program unavailable)/,
+      `${missing}: selected material evidence cannot silently become a complete empty cohort`);
+    else assert.deepEqual(preparationResult(steps), { status: 'complete', pending: 0 },
+      `${missing}: legacy optional preparation retains its skip policy`);
+    assert.equal(f.events.some(([kind]) => kind === 'uniform' || kind === 'query'), false);
+    assert.equal(steps.next().done, true, 'failed capture closes the owned generator');
+    f.assertRestored();
+  }
+}
+
+{
+  const f = firstUseFixture();
+  f.scene.clear();
+  assert.deepEqual(preparationResult(f.prepare({ strict: true })), { status: 'complete', pending: 0 },
+    'a truly empty selected scene needs no material evidence');
+  assert.deepEqual(f.events, []);
+}
+
+for (const count of [1, 31, 32, 64]) {
+  const names = Array.from({ length: count }, (_, index) => `deadline-${index}`);
+  const f = firstUseFixture({ names });
+  f.state.queryMs = f.state.uniformMs = 0;
+  f.state.reflect = (name) => { if (name === names.at(-1)) f.advance(8); };
+  let crossed = false;
+  const result = preparationResult(f.prepare({ strict: true }), () => {
+    if (f.events.filter(([kind]) => kind === 'uniform').length === count) {
+      crossed = true;
+      f.advance(5001);
+    }
+  });
+  assert.equal(crossed, true, 'the final successful reflection really yields across the deadline');
+  assert.deepEqual(result, { status: 'complete', pending: 0 },
+    `${count}: fully submitted/reflected final work remains complete on either side of the admission watermark`);
+  f.assertRestored();
+}
+
+for (const remaining of ['batch', 'pass', 'empty-pass']) {
+  const names = Array.from({ length: 32 }, (_, index) => `admission-${index}`);
+  const f = firstUseFixture({ names });
+  f.state.queryMs = f.state.uniformMs = 0;
+  let submissions = 0;
+  f.state.compile = () => { submissions++; };
+  if (remaining === 'batch') {
+    for (let index = 0; index < 16; index++) f.scene.add(new THREE.Mesh(f.mesh.geometry, f.mesh.material));
+  }
+  const passes = remaining === 'batch' ? undefined : [
+    { layerMask: 1, target: 'hdr' }, { layerMask: remaining === 'pass' ? 1 : 2, target: 'hdr' },
+  ];
+  let crossed = false;
+  const result = preparationResult(f.prepare({ strict: true, passes }), () => {
+    if (!crossed && f.events.filter(([kind]) => kind === 'uniform').length === names.length) {
+      crossed = true;
+      f.advance(5001);
+    }
+  });
+  assert.equal(crossed, true);
+  assert.equal(submissions, 1, `${remaining}: an expired deadline never admits another native batch`);
+  assert.deepEqual(result, remaining === 'empty-pass' ? { status: 'complete', pending: 0 }
+    : { status: 'incomplete', pending: null, reason: 'budget' },
+  `${remaining}: completion requires every selected pass, not merely the last captured cohort`);
+  f.assertRestored();
+}
+
+{
+  const f = firstUseFixture({ names: ['extension-error'] });
+  f.gl.getExtension = () => { throw new Error('extension lookup rejected'); };
+  assert.deepEqual(preparationResult(f.prepare({ strict: true })),
+    { status: 'incomplete', pending: 1, reason: 'query' });
+  assert.equal(f.events.some(([kind]) => kind === 'uniform'), false);
+}
+
+{
+  const f = firstUseFixture({ names: ['old', 'newest'], clockFrozen: true });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.state.queryMs = f.state.uniformMs = 0;
+  f.state.query = () => false;
+  const result = preparationResult(f.prepare({ strict: true }));
+  assert.deepEqual(result, { status: 'incomplete', pending: 2, reason: 'budget' });
+  assert.equal(f.events.filter(([kind]) => kind === 'query').length, 1024,
+    'one finite strict guard permits the real five-second deadline at high refresh rates');
+  assert.equal(f.events.some(([kind]) => kind === 'uniform'), false,
+    'negative control: generator exhaustion cannot mean the pending programs were reflected');
+}
+
+{
+  const f = firstUseFixture({ names: ['pending'] });
+  f.state.queryMs = 0;
+  f.state.query = () => false;
+  const result = preparationResult(f.prepare({ strict: true }), () => f.advance(9));
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.reason, 'budget');
+  const queries = f.events.filter(([kind]) => kind === 'query').length;
+  assert.ok(queries > 120 && queries < 1024, 'the elapsed deadline, not a one-second round cap, governs normal cadence');
+}
+
+{
+  const f = firstUseFixture({ names: Array.from({ length: 158 }, (_, index) => `retained-${index}`),
+    clockFrozen: true });
+  f.state.queryMs = f.state.uniformMs = 0;
+  f.programs.forEach((program, id) => { program.id = id; });
+  const timing = {};
+  assert.deepEqual(preparationResult(f.prepare({ strict: true, timing })), { status: 'complete', pending: 0 });
+  assert.equal(timing.uniformCount, 158,
+    'one material can exceed the soft admission watermark; retain every historical variant');
+  assert.equal(timing.uniformPending, 0);
+}
+
+for (const change of ['epoch', 'info', 'context', 'loss', 'handle', 'disposed', 'removed']) {
+  const f = firstUseFixture({ names: ['one'] });
+  const steps = f.prepare({ strict: true });
+  assert.equal(steps.next().done, false);
+  if (change === 'epoch') f.owner.invalidate();
+  if (change === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+  if (change === 'context') f.renderer.getContext = () => ({ ...f.gl });
+  if (change === 'loss') f.gl.lost = true;
+  if (change === 'handle') f.programs[0].program = { name: 'replacement' };
+  if (change === 'disposed') f.programs[0].program = undefined;
+  if (change === 'removed') f.renderer.info.programs = [f.unrelated];
+  assert.deepEqual(preparationResult(steps), { status: 'incomplete', pending: null, reason: 'invalidated' },
+    `${change}: stale work never returns strict success`);
+  assert.equal(f.events.some(([kind]) => kind === 'uniform'), false);
+  f.assertRestored();
+}
+
+console.log('programWarm.selftest: target compile, forward owner, and strict uniform draining passed');

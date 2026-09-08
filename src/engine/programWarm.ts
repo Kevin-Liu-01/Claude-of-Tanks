@@ -122,7 +122,7 @@ export interface ForwardProgramCompileTiming {
 export interface ForwardProgramWarmOwner {
   compile(root: Object3D, timing?: ForwardProgramCompileTiming): void;
   compileSceneSteps(options?: SceneProgramCompileOptions): Generator<void, void, void>;
-  prepareSceneSteps(options?: SceneProgramCompileOptions): Generator<void, void, void>;
+  prepareSceneSteps(options?: SceneProgramCompileOptions): Generator<void, ProgramPreparationResult, void>;
   initializeSteps(
     root?: Object3D,
     stats?: ForwardProgramWarmStats | null,
@@ -131,6 +131,11 @@ export interface ForwardProgramWarmOwner {
     signal?: AbortSignal, existingPrograms?: ReadonlySet<LinkedProgram>): Generator<void, void, void>;
   invalidate(): void;
 }
+
+export type ProgramPreparationResult =
+  | { status: 'complete'; pending: 0 }
+  | { status: 'incomplete'; pending: number | null;
+    reason: 'budget' | 'query' | 'reflection' | 'invalidated' | 'not-requested' };
 
 export interface SceneProgramCompileOptions {
   signal?: AbortSignal;
@@ -141,6 +146,8 @@ export interface SceneProgramCompileOptions {
   passes?: readonly SceneProgramCompilePass[];
   /** Opt-in first use of the selected materials' cached variants, including retained variants. */
   initializeUniforms?: boolean;
+  /** Interleave bounded admission and actual first use; implies initializeUniforms. */
+  strict?: boolean;
 }
 
 interface CapturedProgram {
@@ -149,7 +156,10 @@ interface CapturedProgram {
   readonly creationId?: number;
   initialized: boolean;
   failed: boolean;
+  failureReason?: 'query' | 'reflection';
 }
+
+type ProgramBatchCheckpoint = () => Generator<void, boolean, void>;
 
 interface ProgramWarmLifetime {
   readonly info: RendererWithPrograms['info'];
@@ -288,16 +298,22 @@ function compileScenePassBatch(
   pass: SceneProgramCompilePass | undefined,
   cohort?: MaterialProgramCohort,
   valid: () => boolean = () => true,
+  strict = false,
 ): void {
   const priorMask = camera.layers.mask;
   try {
     if (pass) camera.layers.mask = pass.layerMask;
     const materials = compileForRenderTarget({ renderer, root, camera, targetScene: scene,
       target: pass ? pass.target : getTarget(), timing, now });
-    if (cohort && valid()) captureMaterialPrograms(renderer, materials, cohort, valid);
+    if (cohort && valid()) captureMaterialPrograms(renderer, materials, cohort, valid, strict);
   } finally {
     if (pass) camera.layers.mask = priorMask;
   }
+}
+
+function recordSubmissionSlice(timing: ForwardProgramCompileTiming | undefined, elapsed: number): void {
+  recordCompileTiming(timing, 'maxSubmissionMs', elapsed, 'max');
+  recordCompileTiming(timing, 'submissionSlices', 1);
 }
 
 /**
@@ -309,10 +325,12 @@ function compileScenePassBatch(
 function* compileScenePassSteps(
   options: ForwardProgramWarmOptions,
   valid: () => boolean,
-  { timing, sliceMs = 8 }: SceneProgramCompileOptions,
+  { timing, sliceMs = 8, strict }: SceneProgramCompileOptions,
   pass: SceneProgramCompilePass | undefined,
   cohort?: MaterialProgramCohort,
-): Generator<void, void, void> {
+  afterBatch?: ProgramBatchCheckpoint,
+  canSubmit: () => boolean = () => true,
+): Generator<void, boolean, void> {
   const { scene, now = () => performance.now() } = options;
   const objects: Object3D[] = [];
   const facade = new Object3D();
@@ -331,21 +349,34 @@ function* compileScenePassSteps(
     });
     let sliceAt = diagnosticNow(now);
     let submitted = 0;
-    while (start < objects.length && valid()) {
+    while (start < objects.length && valid() && canSubmit()) {
       end = Math.min(start + 16, objects.length);
-      compileScenePassBatch(options, facade, timing, pass, cohort, valid);
+      compileScenePassBatch(options, facade, timing, pass, cohort, valid, strict);
       submitted += end - start;
       start = end;
       // Abort only after native compile restores both camera and render target.
-      if (!valid()) return;
+      if (!valid()) return false;
+      // Native compilation has restored the target and camera. A strict
+      // checkpoint gates the NEXT batch even when the submission clock is frozen.
+      if (afterBatch) {
+        const checkpointAt = diagnosticNow(now);
+        let admitted = false;
+        try { admitted = yield* afterBatch(); }
+        finally {
+          sliceAt += diagnosticNow(now) - checkpointAt;
+          if (!admitted) recordSubmissionSlice(timing, diagnosticNow(now) - sliceAt);
+        }
+        if (!admitted) return false;
+      }
+      if (!valid()) return false;
       if (start === objects.length || diagnosticNow(now) - sliceAt >= budget || submitted >= 256) {
-        recordCompileTiming(timing, 'maxSubmissionMs', diagnosticNow(now) - sliceAt, 'max');
-        recordCompileTiming(timing, 'submissionSlices', 1);
+        recordSubmissionSlice(timing, diagnosticNow(now) - sliceAt);
         if (start < objects.length) yield;
         sliceAt = diagnosticNow(now);
         submitted = 0;
       }
     }
+    return start === objects.length; // The caller rechecks lifetime after every pass.
   } finally {
     objects.length = 0;
     start = end = 0;
@@ -357,7 +388,9 @@ function* compileSceneProgramSteps(
   isCurrent: () => boolean,
   compileOptions: SceneProgramCompileOptions,
   cohort?: MaterialProgramCohort,
-): Generator<void, void, void> {
+  afterBatch?: ProgramBatchCheckpoint,
+  canSubmit?: () => boolean,
+): Generator<void, boolean, void> {
   const { signal, timing, passes } = compileOptions;
   signal?.throwIfAborted();
   const { renderer } = options;
@@ -366,17 +399,20 @@ function* compileSceneProgramSteps(
     signal?.throwIfAborted();
     return isCurrent() && programWarmLifetimeIsCurrent(renderer, lifetime);
   };
-  if (!valid()) return;
+  if (!valid()) return false;
   const before = renderer.info?.programs?.length ?? 0;
   recordCompileTiming(timing, 'programsAfter', before, 'set');
   try {
     const workPasses = passes ?? [undefined];
     for (let index = 0; index < workPasses.length; index += 1) {
       if (index > 0) yield; // Each pass releases its facade and restores state first.
-      if (!valid()) return;
-      yield* compileScenePassSteps(options, valid, compileOptions, workPasses[index], cohort);
-      if (!valid()) return;
+      if (!valid()) return false;
+      if (!(yield* compileScenePassSteps(options, valid, compileOptions, workPasses[index], cohort, afterBatch, canSubmit))) {
+        return false;
+      }
+      if (!valid()) return false;
     }
+    return true;
   } finally {
     recordCompileTiming(timing, 'programsBefore', before, 'set');
   }
@@ -419,31 +455,44 @@ function isLinkedProgram(value: RuntimeValue): value is LinkedProgram {
     && 'getUniforms' in value && typeof value.getUniforms === 'function';
 }
 
+function selectedMaterialPrograms(
+  renderer: ForwardWarmRenderer,
+  material: Material,
+  strict: boolean,
+): ReadonlyMap<RuntimeValue, RuntimeValue> {
+  const properties = renderer.properties?.get(material);
+  if (typeof properties !== 'object' || properties === null || !('programs' in properties)
+    || !(properties.programs instanceof Map)) {
+    throw new Error('Compiled material program cache unavailable');
+  }
+  if (strict && !properties.programs.size) throw new Error('Compiled material program cache empty');
+  return properties.programs;
+}
+
 /**
  * Three 0.185.1 compile returns materials, not a used-program receipt. Snapshot
  * each material's entire cache immediately: currentProgram alone loses reused
  * double-sided/shared-object variants. This is a finite selected-material
  * cache cohort, including its historical variants, never a renderer-wide sweep.
- * Unsupported internals fail this optional warm job rather than claim coverage.
+ * Unsupported internals fail preparation rather than claim coverage. Strict
+ * required preparation also rejects empty caches and missing native handles;
+ * legacy optional warming retains its empty/stale-entry skip policy.
  */
 function captureMaterialPrograms(
   renderer: ForwardWarmRenderer,
   materials: Set<Material>,
   cohort: MaterialProgramCohort,
   valid: () => boolean,
+  strict = false,
 ): void {
   for (const material of materials) {
     if (!valid()) return;
-    const properties = renderer.properties?.get(material);
-    if (typeof properties !== 'object' || properties === null || !('programs' in properties)
-      || !(properties.programs instanceof Map)) {
-      throw new Error('Compiled material program cache unavailable');
-    }
-    const programs: ReadonlyMap<RuntimeValue, RuntimeValue> = properties.programs;
+    const programs = selectedMaterialPrograms(renderer, material, strict);
     for (const wrapper of programs.values()) {
       if (!isLinkedProgram(wrapper)) throw new Error('Compiled material program reference unavailable');
       const handle = wrapper.program;
-      if (isWebGLProgram(handle) && !cohort.has(wrapper)) {
+      if (strict && !isWebGLProgram(handle)) throw new Error('Compiled material native program unavailable');
+      if (isWebGLProgram(handle) && cohort.get(wrapper)?.handle !== handle) {
         cohort.set(wrapper, { wrapper, handle, creationId: programCreationId(wrapper), initialized: false, failed: false });
       }
     }
@@ -458,6 +507,7 @@ interface FirstUseWarmContext {
   timing?: ForwardProgramCompileTiming;
   existingPrograms?: ReadonlySet<LinkedProgram>;
   lifetime: ProgramWarmLifetime;
+  strict?: boolean;
 }
 
 function capturedProgramIsLive(renderer: RendererWithPrograms, entry: CapturedProgram): boolean {
@@ -496,13 +546,16 @@ function reflectCapturedProgram(context: FirstUseWarmContext, entry: CapturedPro
     // can return cached uniforms after partial failure, so validate both tables.
     const attributes = entry.wrapper.getAttributes?.();
     if (!context.valid() || !capturedProgramIsLive(context.renderer, entry)) return;
+    const reflected = typeof uniforms === 'object' && uniforms !== null
+      && typeof attributes === 'object' && attributes !== null;
+    if (context.strict && !reflected) throw new Error('Program reflection tables unavailable');
     entry.initialized = true;
-    if (typeof uniforms === 'object' && uniforms !== null
-      && typeof attributes === 'object' && attributes !== null) {
+    if (reflected) {
       context.lifetime.reflected.set(entry.wrapper, entry.handle);
     }
   } catch {
     entry.failed = true;
+    entry.failureReason = 'reflection';
     recordCompileTiming(context.timing, 'uniformFailures', 1);
   } finally {
     const elapsed = diagnosticNow(context.now) - startedAt;
@@ -526,7 +579,7 @@ function firstUseProgramReady(
   if (!extension) return true; // Three's no-KHR fallback; NOT an observed link-completion receipt.
   const startedAt = diagnosticNow(context.now);
   try { return queryCapturedProgram(context, entry, extension); }
-  catch { entry.failed = true; return false; } // Never reflect after an unsuccessful native query.
+  catch { entry.failed = true; entry.failureReason = 'query'; return false; }
   finally {
     const elapsed = diagnosticNow(context.now) - startedAt;
     recordCompileTiming(context.timing, 'pollMs', elapsed);
@@ -626,27 +679,158 @@ function orderRecentProgramLinks(entries: CapturedProgram[]): boolean {
   return true;
 }
 
+interface ProgramPreparationBudget {
+  expired(): boolean;
+  takeRound(): boolean;
+}
+
+function createProgramPreparationBudget(now: () => number, rounds: number): ProgramPreparationBudget {
+  const startedAt = diagnosticNow(now);
+  return {
+    expired: () => diagnosticNow(now) - startedAt >= 5_000,
+    takeRound: () => rounds-- > 0,
+  };
+}
+
+function incompletePreparation(
+  reason: Extract<ProgramPreparationResult, { status: 'incomplete' }>['reason'],
+  pending: number | null = null,
+): ProgramPreparationResult {
+  return { status: 'incomplete', pending, reason };
+}
+
+function materialPreparationResult(
+  context: FirstUseWarmContext,
+  entries: readonly CapturedProgram[],
+): ProgramPreparationResult {
+  if (!context.valid()) return incompletePreparation('invalidated');
+  if (context.strict && entries.some((entry) => !capturedProgramIsLive(context.renderer, entry))) {
+    return incompletePreparation('invalidated');
+  }
+  const pending = entries.filter((entry) => !entry.initialized && capturedProgramIsLive(context.renderer, entry));
+  if (!pending.length) return { status: 'complete', pending: 0 };
+  return incompletePreparation(pending.find((entry) => entry.failureReason)?.failureReason ?? 'budget', pending.length);
+}
+
 /** Budget native queries and reflection together; indivisible native calls can exceed one slice. */
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
   cohort: MaterialProgramCohort,
   extension: ParallelShaderCompileExtension | null,
   sliceMs = 4,
-): Generator<void, void, void> {
+  operationBudget?: ProgramPreparationBudget,
+): Generator<void, ProgramPreparationResult, void> {
   const entries = [...cohort.values()];
   const newestFirst = !!extension && orderRecentProgramLinks(entries);
-  const startedAt = diagnosticNow(context.now);
-  const expired = (): boolean => diagnosticNow(context.now) - startedAt >= 5_000;
+  const budget = operationBudget ?? createProgramPreparationBudget(context.now, 120);
   const slice = createFirstUseSliceBudget(context.now, sliceMs);
   for (const field of ['uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformReused'] as const) {
     recordCompileTiming(context.timing, field, 0);
   }
   try {
-    for (let round = 0; round < 120; round += 1) {
-      const pending = yield* initializeMaterialProgramRound(context, entries, extension, expired, slice, newestFirst);
-      if (!pending) return;
+    while (budget.takeRound()) {
+      const pending = yield* initializeMaterialProgramRound(context, entries, extension, budget.expired, slice, newestFirst);
+      if (!pending) break;
     }
+    return materialPreparationResult(context, entries);
   } finally { entries.length = 0; }
+}
+
+function acquirePreparationExtension(context: FirstUseWarmContext): void {
+  if (context.lifetime.parallelCompile !== undefined) return;
+  const extension = measureCompileOperation(context.timing, 'extensionMs', context.now,
+    () => context.gl.getExtension('KHR_parallel_shader_compile') as ParallelShaderCompileExtension | null);
+  if (context.valid()) context.lifetime.parallelCompile = extension;
+}
+
+function recordUnfinishedPreparation(context: FirstUseWarmContext, cohort: MaterialProgramCohort): void {
+  const pending = context.valid() ? [...cohort.values()]
+    .filter((entry) => !entry.initialized && capturedProgramIsLive(context.renderer, entry)).length : 0;
+  if (pending) recordCompileTiming(context.timing, 'uniformPending', pending, 'set');
+  else {
+    // Unsubmitted or invalidated work has no complete-scene pending count.
+    // Do not leave a prior drained batch's zero as a misleading final receipt.
+    try { if (context.timing) delete context.timing.uniformPending; }
+    catch { /* Frozen optional diagnostics never control strict completion. */ }
+  }
+}
+
+function* drainStrictPrograms(
+  context: FirstUseWarmContext,
+  cohort: MaterialProgramCohort,
+  budget: ProgramPreparationBudget,
+  sliceMs?: number,
+): Generator<void, ProgramPreparationResult, void> {
+  if (!context.valid()) return incompletePreparation('invalidated');
+  const current = materialPreparationResult(context, [...cohort.values()]);
+  if (current.status === 'complete') {
+    recordFirstUsePending(context, [...cohort.values()]);
+    return current;
+  }
+  if (current.reason === 'invalidated') return current;
+  if (budget.expired()) return incompletePreparation('budget');
+  // Release submission only after its complete native target/camera restoration.
+  yield;
+  if (!context.valid()) return incompletePreparation('invalidated');
+  if (budget.expired()) return incompletePreparation('budget');
+  try { if (cohort.size) acquirePreparationExtension(context); }
+  catch {
+    if (!context.valid()) return incompletePreparation('invalidated');
+    recordFirstUsePending(context, [...cohort.values()]);
+    return incompletePreparation('query', [...cohort.values()]
+      .filter((entry) => !entry.initialized && capturedProgramIsLive(context.renderer, entry)).length);
+  }
+  if (!context.valid()) return incompletePreparation('invalidated');
+  // Keep the complete union for identity validation, but do not repeatedly
+  // charge already-reflected entries against every later 32-visit work slice.
+  const pending = new Map([...cohort].filter(([, entry]) => !entry.initialized));
+  try {
+    const result = yield* initializeMaterialProgramSteps(
+      context, pending, context.lifetime.parallelCompile ?? null, sliceMs, budget);
+    if (context.valid()) recordFirstUsePending(context, [...cohort.values()]);
+    return result.status === 'complete' ? materialPreparationResult(context, [...cohort.values()]) : result;
+  } finally { pending.clear(); }
+}
+
+function* prepareStrictScenePrograms(
+  options: ForwardProgramWarmOptions,
+  compileOptions: SceneProgramCompileOptions,
+  context: FirstUseWarmContext,
+): Generator<void, ProgramPreparationResult, void> {
+  const cohort: MaterialProgramCohort = new Map();
+  // One deadline spans submission, all passes, and every drain. The finite
+  // round guard handles broken/frozen clocks without making 120 Hz exhaust
+  // an otherwise five-second operation after only about one second.
+  const budget = createProgramPreparationBudget(context.now, 1024);
+  const state: { result: ProgramPreparationResult } = { result: { status: 'complete', pending: 0 } };
+  const afterBatch = function* (): Generator<void, boolean, void> {
+    // This watermark bounds OUR admission, not concurrent mask/driver work.
+    // One indivisible batch/material may contribute more than 32 variants;
+    // preserve all of them and drain before submitting another batch.
+    const pending = [...cohort.values()].filter((entry) => !entry.initialized);
+    if (pending.length < 32) return true;
+    state.result = yield* drainStrictPrograms(context, cohort, budget, compileOptions.sliceMs);
+    return state.result.status === 'complete';
+  };
+  try {
+    // The deadline gates admission, not an already-complete cohort. A final
+    // reflection checkpoint may resume after it; any later nonempty pass or
+    // batch must still pass canSubmit before beginning native compilation.
+    const submitted = yield* compileSceneProgramSteps(options,
+      context.valid, compileOptions, cohort, afterBatch, () => !budget.expired());
+    if (!context.valid()) return incompletePreparation('invalidated');
+    if (state.result.status === 'incomplete') {
+      recordUnfinishedPreparation(context, cohort);
+      return state.result;
+    }
+    if (!submitted) {
+      recordUnfinishedPreparation(context, cohort);
+      return incompletePreparation('budget');
+    }
+    const result = yield* drainStrictPrograms(context, cohort, budget, compileOptions.sliceMs);
+    if (result.status === 'incomplete') recordUnfinishedPreparation(context, cohort);
+    return result;
+  } finally { cohort.clear(); }
 }
 
 /** Capture the programs that were already resident before a scoped compile. */
@@ -818,7 +1002,7 @@ export function createForwardProgramWarmOwner({
 
   const prepareSceneSteps = function* (
     options: SceneProgramCompileOptions = {},
-  ): Generator<void, void, void> {
+  ): Generator<void, ProgramPreparationResult, void> {
     options.signal?.throwIfAborted();
     const ownedEpoch = epoch;
     const lifetime = captureProgramWarmLifetime(renderer);
@@ -827,37 +1011,34 @@ export function createForwardProgramWarmOwner({
       options.signal?.throwIfAborted();
       return epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
     };
-    if (!valid()) return;
+    if (!valid()) return incompletePreparation('invalidated');
     const existingPrograms = options.timing ? snapshotRendererPrograms(renderer) : undefined;
+    const context = { renderer, gl, valid, now, timing: options.timing, existingPrograms, lifetime, strict: options.strict };
+    if (options.strict) return yield* prepareStrictScenePrograms(
+      { renderer, scene, camera, getTarget, now }, options, context);
     const cohort = options.initializeUniforms ? new Map<LinkedProgram, CapturedProgram>() : undefined;
     try {
       if (cohort) {
         yield* compileSceneProgramSteps({ renderer, scene, camera, getTarget, now },
           () => epoch === ownedEpoch, options, cohort);
       } else yield* compileSceneSteps(options);
-      if (!valid()) return;
+      if (!valid()) return incompletePreparation('invalidated');
       // Caller crosses a rendering/task boundary before the first native query.
       // Keep the same renderer lifetime across submission AND this checkpoint.
       yield;
-      if (!valid()) return;
+      if (!valid()) return incompletePreparation('invalidated');
       if (!cohort) {
         yield* linkerBreathingSlices(24, options.timing, options.signal, existingPrograms);
-        return;
+        return incompletePreparation(valid() ? 'not-requested' : 'invalidated');
       }
-      const context = { renderer, gl, valid, now, timing: options.timing, existingPrograms, lifetime };
       try {
-        if (cohort.size && lifetime.parallelCompile === undefined) {
-          const extension = measureCompileOperation(options.timing, 'extensionMs', now,
-            () => gl.getExtension('KHR_parallel_shader_compile') as ParallelShaderCompileExtension | null);
-          if (!valid()) return;
-          lifetime.parallelCompile = extension;
-        }
+        if (cohort.size) acquirePreparationExtension(context);
       } catch {
         if (valid()) recordFirstUsePending(context, [...cohort.values()]);
-        return; // Extension acquisition failure is not the unsupported-extension fallback.
+        return incompletePreparation(valid() ? 'query' : 'invalidated');
       }
-      if (!valid()) return;
-      yield* initializeMaterialProgramSteps(context, cohort, lifetime.parallelCompile ?? null, options.sliceMs);
+      if (!valid()) return incompletePreparation('invalidated');
+      return yield* initializeMaterialProgramSteps(context, cohort, lifetime.parallelCompile ?? null, options.sliceMs);
     } finally { cohort?.clear(); }
   };
 

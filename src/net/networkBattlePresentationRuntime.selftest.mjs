@@ -316,7 +316,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
         signal?.throwIfAborted();
         if (failAt === 'compile') throw new Error('compile failed');
         events.push('compiled');
-        return { submissionMs: 15, pollMs: 2, yields: 1 };
+        return { submissionMs: 15, pollMs: 2, yields: 1, preparation: { status: 'complete', pending: 0 } };
       },
       finalShadows: async (signal) => {
         assert.strictEqual(signal, request.signal, 'final shadows receive the exact entry signal');
@@ -428,7 +428,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   assert.deepEqual(harness.trace.blackCheck, { ok: true });
   assert.deepEqual(harness.trace.shadowPrime, { draws: 1, durationMs: 12 },
     'the trace retains the resolved final shadow receipt, not its promise');
-  assert.deepEqual(harness.trace.programCompile, { submissionMs: 15, pollMs: 2, yields: 1 },
+  assert.deepEqual(harness.trace.programCompile,
+    { submissionMs: 15, pollMs: 2, yields: 1, preparation: { status: 'complete', pending: 0 } },
     'the trace retains the resolved compile receipt, not its promise');
   assert.deepEqual(harness.trace.scarCompile, { uniformCount: 1, uniformMs: 3, uniformPending: 0 },
     'the post-scene scar cohort receipt is separate from the full-scene compile receipt');
@@ -938,12 +939,13 @@ for (const outcome of ['synchronous-throw', 'early-rejection']) {
   }
 }
 
-for (const failure of ['compile-frame', 'abort-frame', 'abort-compile', 'optional-compile']) {
+for (const failure of ['compile-frame', 'abort-frame', 'abort-compile', 'required-compile']) {
   for (const panelOutcome of ['resolve', 'reject']) {
     const harness = createHarness('', failure === 'abort-compile' ? 'compile' : '');
     const controller = new AbortController();
     const panelGate = deferred();
     const frameFailure = new Error('compile frame failed');
+    const compileFailure = new Error('required shader preparation failed');
     const panelFailure = new Error('panel failed while cleanup waited');
     harness.request.signal = controller.signal;
     harness.options.warm.playerPanel = async () => {
@@ -960,10 +962,10 @@ for (const failure of ['compile-frame', 'abort-frame', 'abort-compile', 'optiona
         if (failure === 'compile-frame') throw frameFailure;
         controller.abort('cancelled at compile paint boundary');
       };
-    } else if (failure === 'optional-compile') {
+    } else if (failure === 'required-compile') {
       harness.options.warm.compile = async () => {
         harness.events.push('compile');
-        throw new Error('optional shader warm failed');
+        throw compileFailure;
       };
     }
     let settled = false;
@@ -987,22 +989,16 @@ for (const failure of ['compile-frame', 'abort-frame', 'abort-compile', 'optiona
       else panelGate.resolve();
       const completed = await result;
       assertClosedPreparation(harness);
-      if (failure === 'optional-compile' && panelOutcome === 'resolve') {
-        assert.equal(completed.ok, true, 'ordinary compile failure remains a soft warm fallback');
-        assert.ok(harness.events.indexOf('panelReady') < harness.events.indexOf('effects'));
-        assert.ok(harness.events.includes('primeReveal') && harness.events.includes('ready'));
-      } else {
-        assert.equal(completed.ok, false);
-        if (failure === 'compile-frame') assert.strictEqual(completed.error, frameFailure,
-          'draining a later panel rejection preserves the primary compile-frame error');
-        else if (failure === 'optional-compile') assert.strictEqual(completed.error, panelFailure,
-          'a fatal panel failure wins over an optional compile failure');
-        else assert.ok(isNetworkBattleEntryAbortError(completed.error),
-          'entry cancellation remains authoritative after draining panel rejection');
-        assert.ok(harness.events.indexOf('launcherCleanup') > harness.events.indexOf('panelSettling'));
-        assert.equal(harness.trace.status, 'failed');
-        assertPreparationCovered(harness, failure);
-      }
+      assert.equal(completed.ok, false);
+      if (failure === 'compile-frame') assert.strictEqual(completed.error, frameFailure,
+        'draining a later panel rejection preserves the primary compile-frame error');
+      else if (failure === 'required-compile') assert.strictEqual(completed.error, compileFailure,
+        'draining a later panel rejection preserves the primary shader preparation error');
+      else assert.ok(isNetworkBattleEntryAbortError(completed.error),
+        'entry cancellation remains authoritative after draining panel rejection');
+      assert.ok(harness.events.indexOf('launcherCleanup') > harness.events.indexOf('panelSettling'));
+      assert.equal(harness.trace.status, 'failed');
+      assertPreparationCovered(harness, failure);
     } finally {
       panelGate.resolve();
       harness.releaseCompile();
@@ -1354,14 +1350,88 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
 
 {
   const harness = createHarness('compile');
-  await harness.runtime.present(harness.request);
+  await assert.rejects(harness.runtime.present(harness.request), /compile failed/);
   assert.ok(!harness.events.includes('compiled'), 'the injected scene compile failed');
-  assert.ok(harness.events.indexOf('compile') < harness.events.indexOf('effects'),
-    'the covered compositor draw remains the best-effort shader fallback');
-  assert.ok(harness.events.includes('primeReveal') && harness.events.includes('ready'),
-    'a shader warm failure does not bypass or prevent the real-frame and readiness barriers');
-  assert.equal(harness.waitingForPeers, false);
-  assert.ok(harness.events.includes('adaptive:false'));
+  assertPreparationCovered(harness, 'shader preparation rejected');
+  assertClosedPreparation(harness);
+  assert.equal(harness.trace.status, 'failed');
+}
+
+for (const [shaderOutcome, panelOutcome] of [
+  ['incomplete', 'resolve'], ['incomplete', 'reject'],
+  ['reject', 'resolve'], ['reject', 'reject'],
+]) {
+  const harness = createHarness();
+  const controller = new AbortController();
+  const panelGate = deferred();
+  harness.request.signal = controller.signal;
+  harness.options.warm.playerPanel = () => panelGate.promise;
+  harness.options.warm.compile = async () => {
+    harness.events.push('compile');
+    if (shaderOutcome === 'reject') throw new Error('shader failed before cleanup cancellation');
+    return { preparation: { status: 'incomplete', pending: 32, reason: 'budget' } };
+  };
+  const pending = harness.runtime.present(harness.request).catch((error) => error);
+  try {
+    await waitForEvent(harness.events, 'compile');
+    await new Promise((resolve) => setImmediate(resolve));
+    controller.abort('cancelled while failed shader preparation drains its panel');
+    if (panelOutcome === 'reject') panelGate.reject(new Error('late panel rejection'));
+    else panelGate.resolve();
+    assert.ok(isNetworkBattleEntryAbortError(await pending),
+      `${shaderOutcome}/${panelOutcome}: cancellation during cleanup wins after both jobs drain`);
+    assertPreparationCovered(harness, 'cancelled shader cleanup');
+    assertClosedPreparation(harness);
+    assert.equal(harness.trace.status, 'failed');
+  } finally {
+    panelGate.resolve();
+    await pending;
+  }
+}
+
+for (const preparation of [
+  ...['budget', 'query', 'reflection', 'invalidated', 'not-requested'].map((reason) =>
+    ({ status: 'incomplete', pending: reason === 'invalidated' ? null : 158, reason })),
+  { status: 'complete', pending: 1 },
+  undefined,
+]) {
+  for (const panelOutcome of ['resolve', 'reject']) {
+    const harness = createHarness();
+    const panelGate = deferred();
+    harness.options.warm.playerPanel = () => {
+      harness.events.push('playerPanel');
+      return panelGate.promise;
+    };
+    harness.options.warm.compile = async () => {
+      harness.events.push('compile');
+      // No optional timing data: admission must depend on the terminal result.
+      return { preparation };
+    };
+    let settled = false;
+    const pending = harness.runtime.present(harness.request).then(
+      () => { settled = true; return { ok: true }; },
+      (error) => { settled = true; return { ok: false, error }; },
+    );
+    try {
+      await waitForEvent(harness.events, 'compile');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(settled, false, 'incomplete shaders cannot abandon the panel readback');
+      assertPreparationCovered(harness, 'incomplete shader admission');
+      assert.equal(harness.trace.status, 'pending');
+      if (panelOutcome === 'reject') panelGate.reject(new Error('later panel failure'));
+      else panelGate.resolve();
+      const result = await pending;
+      assert.equal(result.ok, false);
+      assert.match(result.error.message, /Battle shaders could not finish preparing/);
+      assert.equal(harness.trace.programCompile.preparation, preparation);
+      assert.equal(harness.trace.status, 'failed');
+      assertPreparationCovered(harness, 'incomplete shader cleanup');
+      assertClosedPreparation(harness);
+    } finally {
+      panelGate.resolve();
+      await pending;
+    }
+  }
 }
 
 {

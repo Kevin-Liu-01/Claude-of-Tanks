@@ -640,16 +640,79 @@ function readContext(debug) {
   return JSON.parse(JSON.stringify(runInNewContext(`(${relayProbe.readProductionRenderingContext.toString()})()`,
     { window: { __DEBUG: debug } })));
 }
+const unknownGpu = { gpu: null, gpuVendor: null, gpuUnmasked: false, glVersion: null, gpuBackend: 'unknown' };
 assert.deepEqual(readContext(weatherDebug), { condition: 'snow', timeOfDay: 'night',
-  precipitationIntensity: 0.5, particleCount: 192, preset: 'high', renderScale: 0.75 });
+  precipitationIntensity: 0.5, particleCount: 192, preset: 'high', renderScale: 0.75, ...unknownGpu });
 assert.doesNotMatch(JSON.stringify(readContext(weatherDebug)), /PRIVATE_SEED/);
 assert.deepEqual(readContext({}), { condition: null, timeOfDay: null, precipitationIntensity: null,
-  particleCount: null, preset: null, renderScale: null });
+  particleCount: null, preset: null, renderScale: null, ...unknownGpu });
 const unknownWeather = { ...weatherDebug, battleAtmosphere: { current: { weather: {
   condition: 'PRIVATE_CONDITION', timeOfDay: 'PRIVATE_TIME', precipitationIntensity: NaN } } },
   quality: { resolvePresetName: () => 'PRIVATE_PRESET' }, post: { dynScale: Infinity }, scene: { children: [] } };
 assert.deepEqual(readContext(unknownWeather), { condition: null, timeOfDay: null, precipitationIntensity: null,
-  particleCount: 0, preset: null, renderScale: null });
+  particleCount: 0, preset: null, renderScale: null, ...unknownGpu });
+const gpuWeather = readContext(weatherDebug);
+const gpuVersion = 'WebGL 2.0 (OpenGL ES 3.0 Chromium)';
+function gpuFixture(rendererName, overrides = {}) {
+  const queries = [];
+  const gl = {
+    VERSION: 1, RENDERER: 2, VENDOR: 3,
+    isContextLost: () => false,
+    getExtension(name) {
+      queries.push(name);
+      assert.equal(name, 'WEBGL_debug_renderer_info');
+      return { UNMASKED_RENDERER_WEBGL: 4, UNMASKED_VENDOR_WEBGL: 5 };
+    },
+    getParameter(key) {
+      queries.push(key);
+      assert.ok([1, 4, 5].includes(key), 'never query a masked identity as hardware evidence');
+      return new Map([[1, gpuVersion], [4, rendererName], [5, ' GPU vendor ']]).get(key);
+    },
+    ...overrides,
+  };
+  return { queries, debug: { ...weatherDebug, renderer: { getContext: () => gl } } };
+}
+for (const name of ['ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max)',
+  'ANGLE (NVIDIA, NVIDIA GeForce RTX 4090)', 'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics)',
+  'ANGLE (ARM, Mali-G78)']) {
+  const fixture = gpuFixture(` ${name} `);
+  assert.deepEqual(readContext(fixture.debug), { ...gpuWeather, gpu: name, gpuVendor: 'GPU vendor',
+    gpuUnmasked: true, glVersion: gpuVersion, gpuBackend: 'hardware-like' });
+  assert.deepEqual(fixture.queries, [1, 'WEBGL_debug_renderer_info', 4, 5]);
+}
+for (const name of ['ANGLE (Google, SwiftShader Device)', 'llvmpipe (LLVM 15.0.7)', 'softpipe',
+  'lavapipe', 'Software Rasterizer', 'Microsoft Basic Render Driver', 'D3D11 WARP',
+  'Mesa swrast', 'OSMesa', 'GDI Generic', 'Apple software renderer']) {
+  assert.equal(readContext(gpuFixture(name).debug).gpuBackend, 'software', name);
+}
+for (const name of ['WebKit WebGL', 'ANGLE', 'Generic GPU']) {
+  assert.equal(readContext(gpuFixture(name).debug).gpuBackend, 'unknown',
+    'generic or privacy-limited strings are not hardware proof');
+}
+for (const name of [null, undefined, '', '   ', 42, { toString() { assert.fail('no identity coercion'); } },
+  `Apple ${'x'.repeat(256)} SwiftShader`, 'Apple\u0000GPU']) {
+  const receipt = readContext(gpuFixture(name).debug);
+  assert.equal(receipt.gpu, null);
+  assert.equal(receipt.gpuUnmasked, false);
+  assert.equal(receipt.gpuBackend, 'unknown');
+}
+for (const getContext of [() => null, () => undefined, () => { throw new Error('PRIVATE_CONTEXT'); }]) {
+  assert.deepEqual(readContext({ ...weatherDebug, renderer: { getContext } }), gpuWeather);
+}
+const privateGpu = gpuFixture('Apple M5', { getExtension: () => null });
+assert.deepEqual(readContext(privateGpu.debug), { ...gpuWeather, glVersion: gpuVersion });
+assert.deepEqual(privateGpu.queries, [1], 'privacy extension absence cannot fall back to masked labels');
+for (const overrides of [{ getExtension() { throw new Error('PRIVATE_EXTENSION'); } },
+  { getExtension: () => ({}) }]) {
+  assert.deepEqual(readContext(gpuFixture('Apple M5', overrides).debug), { ...gpuWeather, glVersion: gpuVersion });
+}
+for (const overrides of [{ isContextLost: () => true },
+  { isContextLost() { throw new Error('PRIVATE_LOST'); } },
+  { getParameter() { throw new Error('PRIVATE_PARAMETER'); } },
+  { getParameter: () => 'x'.repeat(257) }]) {
+  assert.deepEqual(readContext(gpuFixture('Apple M5', overrides).debug), gpuWeather,
+    'unavailable identity and version preserve the other context diagnostics');
+}
 for (const url of [undefined, '', 'file:///game', 'https://secret:token@game.example.test',
   'https://game.example.test/path', 'https://game.example.test?signal=override',
   'https://game.example.test#secret']) assert.throws(() => productionUiOptions({ url }), TypeError);
