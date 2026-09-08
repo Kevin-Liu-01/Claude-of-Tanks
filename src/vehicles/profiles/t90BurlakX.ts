@@ -38,7 +38,10 @@ function fenders(P:TankBuilderPort,side:number):void{
     [2.8,1.340,1.2678],[3.1,1.3033,1.237],[3.3,1.268,1.208],[3.5,1.1688,1.123],[3.65,1.016,.969],[3.755,.91,.87]];
   P.addMudguard('burlak-x-source-crown','hull',sectionSolid(rows.map(([z,t,b])=>({z,ring:[[l,b],[r,b],[r,t-.007],[l,t]]}))));
   for(const[z,d]of [[-2.06345,1.959],[-.45925,1.2476],[.8833,1.4287],[2.29245,1.3838]]){
-    P.addMudguard('burlak-x-fixed-skirt','hullRubber',box(.011,.5801,d-.01),side*1.732,1.016,z);
+    // Full-height fixed sheets carry vehicle paint. Mudguard registration
+    // describes their seating, not a rubber finish; keep the original stock,
+    // pose, non-armor role and always-visible silhouette LOD unchanged.
+    P.addMudguard('burlak-x-fixed-skirt',side<0?'hullTrackGuardL':'hullTrackGuardR',box(.011,.5801,d-.01),side*1.732,1.016,z);
     P.addEquipment('hullDetail',box(.038,.028,d-.005),side*1.735,1.320,z);
   }
 }
