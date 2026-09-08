@@ -7,7 +7,7 @@ supported browser language and fall back to English.
 
 ## Current support
 
-The checked-in catalogs contain the same 2,584 keys. Coverage includes the boot
+The checked-in catalogs contain the same 2,609 keys. Coverage includes the boot
 flow, Garage, Settings, equipment, loading screens, battle HUD, killcam and
 results, private/LAN room controls, Tank Gallery, Scene Studio, and the public
 documentation surfaces. Number and date formatting use the active locale, and

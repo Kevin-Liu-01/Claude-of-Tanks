@@ -177,6 +177,20 @@ const garageCss = fs.readFileSync(path.join(REPO, 'src/ui/garage.css'), 'utf8');
 assert.doesNotMatch(garageCss, /content\s*:\s*['"]Combat stats['"]/i,
   'garage.css: compact dossier heading must use the locale-backed CSS variable');
 
+const gallerySource = fs.readFileSync(path.join(REPO, 'src/gallery/gallery.ts'), 'utf8');
+assert.match(gallerySource, /labelElement\?\.dataset\.i18n/,
+  'gallery contextual help must use stable translation keys instead of rendered headings');
+assert.doesNotMatch(gallerySource, /GALLERY_SECTION_INFO\[['"]?label/,
+  'gallery contextual help must not index help content by translated display text');
+
+const studioSource = fs.readFileSync(path.join(REPO, 'src/ui/studioPanel.ts'), 'utf8');
+assert.match(studioSource, /STUDIO_GROUP_INFO_KEYS\[infoId\]/,
+  'Studio group help must use stable ids instead of translated headings');
+assert.match(studioSource, /STUDIO_SECTION_INFO_KEYS\[infoId\]/,
+  'Studio section help must use stable ids instead of translated headings');
+assert.doesNotMatch(studioSource, /STUDIO_(?:GROUP|SECTION)_INFO\[title\]/,
+  'Studio contextual help must not index help content by translated display text');
+
 // The map roster changes independently of the Garage. Keep every registered
 // battlefield name localized so newly merged maps cannot display raw map.*
 // identifiers in the selector.

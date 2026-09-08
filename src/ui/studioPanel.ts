@@ -17,28 +17,32 @@ import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
-import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
+import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton, type InfoImage } from './contextInfo.ts';
 import { t } from './i18n.ts';
 
-const STUDIO_GROUP_INFO: Readonly<Record<string, string>> = Object.freeze({
-  Battlefield: 'Choose the live battlefield, seed, and environmental foundation used by the current composition.',
-  Tanks: 'Add first-party playable vehicles, then stage their position, facing, turret, gun, camouflage, and damage state.',
-  Effects: 'Schedule the same pooled firing, impact, destruction, weather, and battlefield effects used by the game.',
-  Cinematics: 'Build a bounded camera storyboard and actor tracks on the deterministic Scene Studio timeline.',
-  Output: 'Capture stills or video, copy the complete scene JSON, and restore a composition with the same Studio load contract.',
-});
+const STUDIO_GROUP_INFO_KEYS = Object.freeze({
+  battlefield: 'studioPanel.info.group.battlefield',
+  tanks: 'studioPanel.info.group.tanks',
+  effects: 'studioPanel.info.group.effects',
+  cinematics: 'studioPanel.info.group.cinematics',
+  output: 'studioPanel.info.group.output',
+} as const);
 
-const STUDIO_SECTION_INFO: Readonly<Record<string, string>> = Object.freeze({
-  Map: 'Select any live battlefield and preserve its deterministic environment in the scene JSON.',
-  'Add tanks': 'Add a vehicle from the shipped roster to the current composition.',
-  'Selected tank': 'Edit the selected actor’s pose, paint, state, and scene identity.',
-  'Layers & events': 'Place and time gameplay-authentic effects against actors or a terrain marker.',
-  Storyboard: 'Camera shots, actor keys, effects, and the playhead share one bounded deterministic timeline.',
-  Camera: 'Move the live camera or capture its current transform into the storyboard.',
-  'Video · Stills · Scene': 'The complete JSON in this info panel can be copied and passed directly to window.__STUDIO.load(recipe).',
-  'Production archive': 'Each field frame with an info icon exposes the complete Scene Studio JSON used to reproduce it.',
-});
+const STUDIO_SECTION_INFO_KEYS = Object.freeze({
+  map: 'studioPanel.info.section.map',
+  addTanks: 'studioPanel.info.section.addTanks',
+  selectedTank: 'studioPanel.info.section.selectedTank',
+  layersEvents: 'studioPanel.info.section.layersEvents',
+  storyboard: 'studioPanel.info.section.storyboard',
+  camera: 'studioPanel.info.section.camera',
+  output: 'studioPanel.info.section.output',
+  productionArchive: 'studioPanel.info.section.productionArchive',
+} as const);
+
+type StudioGroupInfoId = keyof typeof STUDIO_GROUP_INFO_KEYS;
+type StudioSectionInfoId = keyof typeof STUDIO_SECTION_INFO_KEYS;
+type StudioInfoId = StudioGroupInfoId | StudioSectionInfoId;
 
 type StudioActorState = string;
 
@@ -563,9 +567,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
 
   // === BATTLEFIELD group ===
-  const battlefieldGroup = panelGroup('01', t('studioPanel.panel.battlefield.title'), t('studioPanel.panel.battlefield.sub'));
+  const battlefieldGroup = panelGroup('01', 'battlefield', t('studioPanel.panel.battlefield.title'), t('studioPanel.panel.battlefield.sub'));
   dock.appendChild(battlefieldGroup.root);
-  const secScene = section(t('studioPanel.section.map'), t('studioPanel.section.mapSub', { count: PRODUCT_STATS.battlefields }));
+  const secScene = section('map', t('studioPanel.section.map'), t('studioPanel.section.mapSub', { count: PRODUCT_STATS.battlefields }));
   const mapPick = el('div', 'mapPick');
   const mapBtn = el('button', 'mapBtn');
   mapBtn.type = 'button';
@@ -669,9 +673,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   });
 
   // === TANKS group ===
-  const tanksGroup = panelGroup('02', t('studioPanel.panel.tanks.title'), t('studioPanel.panel.tanks.sub'));
+  const tanksGroup = panelGroup('02', 'tanks', t('studioPanel.panel.tanks.title'), t('studioPanel.panel.tanks.sub'));
   dock.appendChild(tanksGroup.root);
-  const secActors = section(t('studioPanel.section.addTanks'), t('studioPanel.section.addTanksSub'));
+  const secActors = section('addTanks', t('studioPanel.section.addTanks'), t('studioPanel.section.addTanksSub'));
   // -- tank picker (icon rows, filterable) --
   let pickedId = 'm1a2';
   const pick = el('div', 'pick');
@@ -722,7 +726,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         row.appendChild(tankIcon(id));
         row.appendChild(el('span', 'nm', info.name));
         if (info.developmentOnly) row.appendChild(el('span', 'dev', info.rosterTag || t('studioPanel.picker.devFallback')));
-        if (info.era) row.appendChild(el('span', 'era', vehicleEraLabel(info.era, { short: true })));
+        if (info.era) row.appendChild(el('span', 'era', vehicleEraLabelI18n(info.era, t, { short: true })));
         row.addEventListener('click', () => {
           setPicked(id);
           togglePick(false);
@@ -781,7 +785,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   tanksGroup.body.appendChild(secActors);
 
   // === SELECTED ACTOR section ===
-  const secSel = section(t('studioPanel.section.selectedTank'), t('studioPanel.section.selectedTankSub'));
+  const secSel = section('selectedTank', t('studioPanel.section.selectedTank'), t('studioPanel.section.selectedTankSub'));
   const selHead = el('div', 'selhead');
   const selIcon = tankIcon('m1a2');
   const selNames = el('div', 'nm');
@@ -837,9 +841,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   tanksGroup.body.appendChild(secSel);
 
   // === EFFECTS group ===
-  const effectsGroup = panelGroup('03', t('studioPanel.panel.effects.title'), t('studioPanel.panel.effects.sub'));
+  const effectsGroup = panelGroup('03', 'effects', t('studioPanel.panel.effects.title'), t('studioPanel.panel.effects.sub'));
   dock.appendChild(effectsGroup.root);
-  const secFx = section(t('studioPanel.section.layersEvents'), t('studioPanel.section.layersEventsSub'));
+  const secFx = section('layersEvents', t('studioPanel.section.layersEvents'), t('studioPanel.section.layersEventsSub'));
   const fxStackBar = el('div', 'fxstackbar');
   fxStackBar.appendChild(el('div', 'hint', t('studioPanel.effects.hint')));
   const clearStackBtn = el('button', 'warn', t('studio.clearAll'));
@@ -944,10 +948,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   effectsGroup.body.appendChild(secFx);
 
   // === GLOBAL group ===
-  const globalGroup = panelGroup('04', t('studioPanel.panel.cinematics.title'), t('studioPanel.panel.cinematics.sub'));
+  const globalGroup = panelGroup('04', 'cinematics', t('studioPanel.panel.cinematics.title'), t('studioPanel.panel.cinematics.sub'));
   globalGroup.root.dataset.group = 'global'; // stable automation selector
   dock.appendChild(globalGroup.root);
-  const secTime = section(t('studioPanel.section.storyboard'), t('studioPanel.section.storyboardSub'));
+  const secTime = section('storyboard', t('studioPanel.section.storyboard'), t('studioPanel.section.storyboardSub'));
   const duration = sliderRow(t('studioPanel.storyboard.lengthLabel'), 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
   secTime.appendChild(duration.row);
   const ts = sliderRow(t('studioPanel.storyboard.speedLabel'), 0.25, 2, 0.05, (v) => S.setTimeScale(v));
@@ -1044,7 +1048,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   globalGroup.body.appendChild(secTime);
 
   // === CAMERA section ===
-  const secCam = section(t('studioPanel.section.camera'));
+  const secCam = section('camera', t('studioPanel.section.camera'));
   const camModeRow = el('div', 'grid');
   const flyBtn = el('button', null, t('studio.freeFly'));
   const orbBtn = el('button', null, t('studio.orbit'));
@@ -1065,9 +1069,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   globalGroup.body.appendChild(secCam);
 
   // === OUTPUT group ===
-  const outputGroup = panelGroup('05', t('studioPanel.panel.output.title'), t('studioPanel.panel.output.sub'));
+  const outputGroup = panelGroup('05', 'output', t('studioPanel.panel.output.title'), t('studioPanel.panel.output.sub'));
   dock.appendChild(outputGroup.root);
-  const secCap = section('Video · Stills · Scene', 'record, render, save & restore');
+  const secCap = section('output', t('studioPanel.section.output'), t('studioPanel.section.outputSub'));
   const videoRow = el('div', 'row');
   videoRow.appendChild(el('label', 'k', 'Video'));
   const fpsSel = document.createElement('select');
@@ -1176,7 +1180,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   secCap.appendChild(slotRow);
   outputGroup.body.appendChild(secCap);
 
-  const secArchive = section(t('studioPanel.section.productionArchive'), t('studioPanel.section.productionArchiveSub'));
+  const secArchive = section('productionArchive', t('studioPanel.section.productionArchive'), t('studioPanel.section.productionArchiveSub'));
   const archiveCopy = el('div', 'fxempty', t('studioPanel.archive.copy'));
   const archiveBtn = el('button', null, t('studioPanel.archive.button'));
   archiveBtn.style.width = '100%';
@@ -1208,9 +1212,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // --- footer hints ------------------------------------------------------------
   const foot = el('div', 'foot');
   const footCam = el('div', 'cam', '');
-  const footHint = el('div', null,
-    'LMB-drag look · WASD fly · Q/E height · Shift fast · wheel dolly · ' +
-    'click terrain = marker · click tank = select · drag tank = move · Space freeze · F8 exit');
+  const footHint = el('div', null, t('studioPanel.footer.controls'));
   foot.append(footCam, footHint);
   root.appendChild(foot);
 
@@ -1225,21 +1227,22 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (text != null) d.textContent = String(text);
     return d;
   }
-  function studioInfoImages(title: string): InfoImage[] {
-    if (title === 'Tanks' || title === 'Add tanks' || title === 'Selected tank') {
+  function studioInfoImages(infoId: StudioInfoId): InfoImage[] {
+    if (infoId === 'tanks' || infoId === 'addTanks' || infoId === 'selectedTank') {
       const id = S._internal.selected?.spec?.id || pickedId;
       if (!id) return [];
       const info = specInfo(id);
+      const name = info.name || id;
       return [{
         src: iconUrl(id, 'angle'),
-        alt: `${info.name || id} Studio vehicle render`,
+        alt: t('studioPanel.info.image.vehicleAlt', { name }),
         fit: 'contain',
-        caption: `${info.name || id} // Studio actor`,
+        caption: t('studioPanel.info.image.actorCaption', { name }),
       }, {
         src: iconUrl(id, 'modules_side'),
-        alt: `${info.name || id} internal module layout`,
+        alt: t('studioPanel.info.image.modulesAlt', { name }),
         fit: 'contain',
-        caption: `${info.name || id} // module layout`,
+        caption: t('studioPanel.info.image.modulesCaption', { name }),
       }];
     }
     const currentMapId = S.mapId;
@@ -1247,47 +1250,48 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const src = imageFor(MAP_HEROES, currentMapId) || imageFor(MAP_THUMBS, currentMapId);
     if (!src) return [];
     const info = S.getMapInfo(currentMapId);
+    const name = info.name || currentMapId;
     const shot = FEATURED_SHOTS.find((entry) => entry.maps?.includes(currentMapId)) || FEATURED_SHOTS[0];
     return [{
       src,
-      alt: `${info.name || currentMapId} Studio battlefield`,
-      caption: `${info.name || currentMapId} // current production canvas`,
+      alt: t('studioPanel.info.image.battlefieldAlt', { name }),
+      caption: t('studioPanel.info.image.canvasCaption', { name }),
     }, shot ? {
       src: shot.img,
       alt: t(shot.capKey),
       caption: `${t(shot.capKey)} // ${t('garage.featuredShots.studioOutput')}`,
     } : null].filter(Boolean);
   }
-  function section(title: string, sub = ''): HTMLDivElement {
+  function section(infoId: StudioSectionInfoId, title: string, sub = ''): HTMLDivElement {
     const s = el('div', 'sec');
     const h = el('div', 'h', title);
     if (sub) h.appendChild(el('span', 'sub', sub));
-    const help = STUDIO_SECTION_INFO[title];
-    if (help) h.appendChild(createInfoButton({
-      label: `About ${title}`,
+    const helpKey = STUDIO_SECTION_INFO_KEYS[infoId];
+    if (helpKey) h.appendChild(createInfoButton({
+      label: t('studioPanel.info.about', { title }),
       title,
-      text: help,
-      json: title === 'Video · Stills · Scene' ? () => S.state() : null,
-      images: () => studioInfoImages(title),
+      text: t(helpKey),
+      json: infoId === 'output' ? () => S.state() : null,
+      images: () => studioInfoImages(infoId),
     }));
     s.appendChild(h);
     return s;
   }
-  function panelGroup(index: string, title: string, sub: string): PanelGroup {
+  function panelGroup(index: string, infoId: StudioGroupInfoId, title: string, sub: string): PanelGroup {
     const groupRoot = el('section', 'pgroup');
-    groupRoot.dataset.group = title.toLowerCase();
+    groupRoot.dataset.group = infoId;
     const head = el('div', 'ghead');
     head.append(
       el('span', 'gnum', index),
       el('div', 'gtitle', title),
       el('div', 'gsub', sub),
     );
-    const help = STUDIO_GROUP_INFO[title];
-    if (help) head.appendChild(createInfoButton({
-      label: `About ${title}`,
+    const helpKey = STUDIO_GROUP_INFO_KEYS[infoId];
+    if (helpKey) head.appendChild(createInfoButton({
+      label: t('studioPanel.info.about', { title }),
       title,
-      text: help,
-      images: () => studioInfoImages(title),
+      text: t(helpKey),
+      images: () => studioInfoImages(infoId),
     }));
     const body = el('div', 'gbody');
     groupRoot.append(head, body);
@@ -1484,7 +1488,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         label: t('studioPanel.shot.showJsonLabel', { label: shot.label }),
         title: t('studioPanel.shot.replicateTitle', { label: shot.label }),
         json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
-        images: () => studioInfoImages('Storyboard'),
+        images: () => studioInfoImages('storyboard'),
       }));
       const del = el('button', 'del warn', '✕');
       del.title = t('studioPanel.shot.removeTitle', { label: shot.label });
