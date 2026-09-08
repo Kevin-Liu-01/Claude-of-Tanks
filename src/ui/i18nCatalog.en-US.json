@@ -989,7 +989,7 @@
   "garage.featuredShot.siroccoWadiOverwatchLine": "Sirocco Wadi — overwatch line",
   "garage.featuredShot.sceneStudioBurningAdvance": "Scene Studio — burning advance",
   "garage.featuredShot.sceneStudioDirectedUrbanBattle": "Scene Studio — directed urban battle",
-  "garage.featuredShot.battlefieldOverview": "Battlefield overview",
+  "garage.featuredShot.battlefieldOverview": "{name} — battlefield overview",
   "garage.camo.aboutTitle": "Camouflage concealment",
   "garage.camo.aboutText": "+3.5% concealment on matching maps. Auto always selects a matching seasonal pattern; manually selected camouflage only receives the bonus on compatible battlefields.",
   "garage.camo.matchingBiome": "Matching biome",

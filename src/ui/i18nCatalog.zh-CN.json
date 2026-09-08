@@ -989,7 +989,7 @@
   "garage.featuredShot.siroccoWadiOverwatchLine": "Sirocco Wadi — 监视线",
   "garage.featuredShot.sceneStudioBurningAdvance": "场景工作室 — 燃烧推进",
   "garage.featuredShot.sceneStudioDirectedUrbanBattle": "场景工作室 — 导演式城市战",
-  "garage.featuredShot.battlefieldOverview": "战场总览",
+  "garage.featuredShot.battlefieldOverview": "{name} — 战场总览",
   "garage.camo.aboutTitle": "迷彩隐蔽",
   "garage.camo.aboutText": "匹配地图可获得 +3.5% 隐蔽。自动模式会始终选择匹配的季节涂装；手动选择的迷彩仅在兼容战场获得加成。",
   "garage.camo.matchingBiome": "匹配环境",
