@@ -102,6 +102,8 @@ assert.deepEqual(receipt.networkLoad.stageIntervals, [
   { stage: 'compile', startTime: 120, endTime: 124 },
   { stage: 'reveal', startTime: 124, endTime: null },
 ]);
+assert.equal(Object.hasOwn(receipt.networkLoad, 'preparationSlices'), false,
+  'legacy traces do not acquire an invented preparation interval field');
 assert.deepEqual(receipt.networkLoad.revealSlices, [
   { stage: 'activation', startTime: 124, endTime: 126 },
   { stage: 'primeReveal', startTime: null, endTime: null },
@@ -119,6 +121,55 @@ assert.equal(f.surface.disconnected, true);
 f.debug.renderer.info.render.frame += 100;
 assert.deepEqual(JSON.parse(JSON.stringify(f.run(readProductionEntryObserver, 'stop'))), receipt,
   'stop is idempotent and never duplicates pending observer records');
+
+{
+  const overlap = browserFixture();
+  overlap.context.window.__NETWORK_LOAD.stageIntervals = [
+    { stage: 'compile', startTime: 120, endTime: 180 },
+    { stage: 'panelJoin', startTime: 180, endTime: 190, detail: 'PRIVATE_DETAIL' },
+  ];
+  overlap.context.window.__NETWORK_LOAD.preparationSlices = [
+    { stage: 'panelMasks', startTime: 118, endTime: 190, room: 'PRIVATE_ROOM' },
+    { stage: 'compile', startTime: 120, endTime: 180, url: 'PRIVATE_URL', extraNumeric: 123 },
+    { stage: 'panelMasks', startTime: 999, endTime: 1000 },
+  ];
+  const measured = JSON.parse(JSON.stringify(overlap.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(measured.networkLoad.preparationSlices, [
+    { stage: 'panelMasks', startTime: 118, endTime: 190 },
+    { stage: 'compile', startTime: 120, endTime: 180 },
+  ], 'two full asynchronous preparation intervals survive independently of the residual panel wait');
+  assert.deepEqual(measured.networkLoad.stageIntervals, [
+    { stage: 'compile', startTime: 120, endTime: 180 },
+    { stage: 'panelJoin', startTime: 180, endTime: 190 },
+  ], 'panelJoin is retained as a distinct serial wait, not relabelled as full panel preparation');
+  assert.doesNotMatch(JSON.stringify(measured), /PRIVATE|extraNumeric/);
+}
+for (const value of [undefined, null, 'PRIVATE_SLICES', 42, {}, true]) {
+  const malformed = browserFixture();
+  malformed.context.window.__NETWORK_LOAD.preparationSlices = value;
+  const measured = malformed.run(readProductionEntryObserver, 'stop');
+  assert.equal(Object.hasOwn(measured.networkLoad, 'preparationSlices'), false,
+    'missing and malformed optional preparation collections preserve legacy receipt shape');
+}
+for (const [rows, expected] of [
+  [[], []],
+  [[{ stage: 'panelMasks', startTime: NaN, endTime: 'PRIVATE_END' },
+    { stage: 'compile', startTime: Infinity }],
+  [{ stage: 'panelMasks', startTime: null, endTime: null },
+    { stage: 'compile', startTime: null, endTime: null }]],
+  [[{ stage: 'PRIVATE_STAGE', startTime: 1 }, { stage: 'panelJoin', startTime: 2 },
+    { stage: 'compile', startTime: 3, endTime: 4 }], []],
+  [[null, { stage: 'compile', startTime: 0, endTime: 0, private: 'PRIVATE_ROW' }],
+  [{ stage: 'compile', startTime: 0, endTime: 0 }]],
+  [['PRIVATE_ROW', 7], []],
+]) {
+  const malformed = browserFixture();
+  malformed.context.window.__NETWORK_LOAD.preparationSlices = rows;
+  const measured = JSON.parse(JSON.stringify(malformed.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(measured.networkLoad.preparationSlices, expected,
+    'preparation extraction visits at most two rows and retains only the two allowed timing stages');
+  assert.doesNotMatch(JSON.stringify(measured), /PRIVATE/);
+}
 
 {
   const prefetch = browserFixture();

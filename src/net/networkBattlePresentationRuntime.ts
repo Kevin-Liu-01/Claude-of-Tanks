@@ -35,9 +35,10 @@ export interface NetworkBattlePresentationRequest {
 }
 
 const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
-  'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
+  'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'compile', 'panelJoin', 'combatWarm', 'reveal', 'readyBarrier'] as const;
 type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
 type NetworkRevealSlice = 'activation' | 'finalShadows' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
+type NetworkPreparationSlice = 'panelMasks' | 'compile';
 
 interface NetworkLoadInterval<Stage extends string> {
   stage: Stage;
@@ -56,6 +57,8 @@ export interface NetworkBattleLoadTrace {
   status: 'pending' | 'complete' | 'failed';
   stageIntervals: NetworkLoadInterval<NetworkLoadStage>[];
   revealSlices: NetworkLoadInterval<NetworkRevealSlice>[];
+  /** Independent job lifetimes; overlapping durations must not be added. */
+  preparationSlices: NetworkLoadInterval<NetworkPreparationSlice>[];
   modulesMs?: number;
   worldMs?: number;
   connectMs?: number;
@@ -93,6 +96,25 @@ function createNetworkLoadTimer(trace: NetworkBattleLoadTrace, now: () => number
       trace.totalMs = Math.round(at - trace.startedAt);
     },
   };
+}
+
+async function measurePreparation<T>(
+  trace: NetworkBattleLoadTrace,
+  now: () => number,
+  stage: NetworkPreparationSlice,
+  prepare: () => MaybePromise<T>,
+): Promise<T> {
+  const interval: NetworkLoadInterval<NetworkPreparationSlice> = { stage, startTime: now() };
+  trace.preparationSlices.push(interval);
+  try { return await prepare(); }
+  finally { interval.endTime = now(); }
+}
+
+function observePreparation<T>(promise: Promise<T>): Promise<PromiseSettledResult<T>> {
+  return promise.then(
+    (value) => ({ status: 'fulfilled', value }),
+    (reason: RuntimeValue) => ({ status: 'rejected', reason }),
+  );
 }
 
 type NetworkMatchPort = NetworkBrowserMatch;
@@ -336,6 +358,7 @@ export function createNetworkBattlePresentationRuntime(
         status: 'pending',
         stageIntervals: [{ stage: 'modulesWorldAndConnect', startTime: loadStartedAt }],
         revealSlices: [],
+        preparationSlices: [],
       };
       const timer = createNetworkLoadTimer(trace, now);
       const mark = timer.mark;
@@ -477,22 +500,36 @@ export function createNetworkBattlePresentationRuntime(
 
       load.battleLoad.progress(0.86, 'Preparing player panel');
       throwIfNetworkBattleEntryAborted(signal);
-      if (!spectator && preparedBridge.entities.get(viewerId)) {
-        await warm.playerPanel(preparedBridge, viewerId);
+      // Wreck preparation has installed the final shared shader hooks, and the
+      // viewer snapshot has made the exact source visible. Mask preparation
+      // can now overlap scene compilation, using its private clone/camera and
+      // independently owned readbacks. Observe failure before yielding.
+      const panel = !spectator && preparedBridge.entities.get(viewerId)
+        ? observePreparation(measurePreparation(trace, now, 'panelMasks',
+          () => warm.playerPanel(preparedBridge, viewerId)))
+        : null;
+      try {
+        load.battleLoad.progress(0.87, 'Compiling combat shaders');
+        await load.nextFrame();
+        throwIfNetworkBattleEntryAborted(signal);
+        try {
+          trace.programCompile = await measurePreparation(trace, now, 'compile', () => warm.compile(signal));
+        } catch (_) { /* warm only */ }
+        throwIfNetworkBattleEntryAborted(signal);
+        mark('compile');
+        load.battleLoad.progress(0.875, 'Completing player panel');
+        const result = await panel;
+        throwIfNetworkBattleEntryAborted(signal);
+        if (result?.status === 'rejected') throw result.reason;
+        mark('panelJoin');
+      } finally {
+        // Never race/abandon the mask job on compile/frame/cancellation errors.
+        // The launcher may dispose its borrowed visual when present rejects.
+        // This non-rejecting join preserves the primary error and drains every
+        // writer before Garage restoration or opening-effect material changes.
+        await panel;
       }
       throwIfNetworkBattleEntryAborted(signal);
-      mark('panelMasks');
-
-      // Wreck preparation installs the final material hooks. Submit the whole
-      // scene now, before opening effects perform the first compositor draw.
-      load.battleLoad.progress(0.87, 'Compiling combat shaders');
-      await load.nextFrame();
-      throwIfNetworkBattleEntryAborted(signal);
-      try {
-        trace.programCompile = await warm.compile(signal);
-      } catch (_) { /* warm only */ }
-      throwIfNetworkBattleEntryAborted(signal);
-      mark('compile');
 
       load.battleLoad.progress(0.88, 'Priming combat effects');
       trace.scarCompile = await warm.openingEffects(fx, preparedBridge, signal);

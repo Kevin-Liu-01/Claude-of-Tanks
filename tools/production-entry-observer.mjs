@@ -140,7 +140,7 @@ export function installProductionEntryObserver() {
     return detail;
   };
   const networkStageNames = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
-    'atmosphere', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'];
+    'atmosphere', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'panelJoin', 'combatWarm', 'reveal', 'readyBarrier'];
   const intervals = (value, allowedStages, limit = 32) => Array.isArray(value) ? value.slice(0, limit)
     .filter((row) => allowedStages.includes(row?.stage))
     .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [];
@@ -198,6 +198,9 @@ export function installProductionEntryObserver() {
         status: ['pending', 'complete', 'failed'].includes(network.status) ? network.status : null,
         startedAt: finite(network.startedAt), endedAt: finite(network.endedAt),
         stageIntervals: intervals(network.stageIntervals, networkStageNames),
+        ...(Array.isArray(network.preparationSlices) ? {
+          preparationSlices: intervals(network.preparationSlices, ['panelMasks', 'compile'], 2),
+        } : {}),
         revealSlices: intervals(network.revealSlices,
           ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']),
         modulesMs: finite(network.modulesMs), worldMs: finite(network.worldMs),

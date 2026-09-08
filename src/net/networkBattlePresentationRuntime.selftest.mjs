@@ -16,6 +16,25 @@ async function waitForEvent(events, name) {
   assert.ok(events.includes(name), `expected ${name} before continuing`);
 }
 
+function assertPreparationCovered(harness, label) {
+  assert.equal(harness.loaderVisible, true, `${label}: the opaque loader remains owned`);
+  assert.equal(harness.countdownMs, 5000, `${label}: preparation cannot spend the authority countdown`);
+  for (const event of ['effects', 'activate', 'finalShadows', 'blackWatchdog', 'primeReveal',
+    'hide', 'ready', 'loading:false', 'ambient:true', 'adaptive:false']) {
+    assert.ok(!harness.events.includes(event), `${label}: preparation cannot reach ${event}`);
+  }
+  assert.ok(!harness.progress.some(([fraction, text]) => fraction === 1 || text === 'Ready'),
+    `${label}: pending or failed preparation cannot claim Ready`);
+}
+
+function assertClosedPreparation(harness) {
+  for (const row of harness.trace.preparationSlices) {
+    assert.ok(Number.isFinite(row.startTime) && Number.isFinite(row.endTime));
+    assert.ok(row.endTime >= row.startTime && row.endTime <= harness.trace.endedAt,
+      `${row.stage}: actual preparation lifetime closes before entry settlement`);
+  }
+}
+
 function createHarness(failAt = '', pauseAt = '', timing = {}) {
   const events = [];
   const progress = [];
@@ -299,8 +318,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     ['atmosphereReady', 'nightLighting'], ['nightLighting', 'terrain'],
     ['nightLighting', 'compile'],
     ['terrain', 'wrecks'],
-    ['wrecks', 'playerPanel'], ['panelReady', 'compile'],
-    ['compiled', 'effects'], ['effects', 'activate'],
+    ['wrecks', 'playerPanel'], ['playerPanel', 'compile'],
+    ['panelReady', 'effects'], ['compiled', 'effects'], ['effects', 'activate'],
   ]) assert.ok(harness.events.indexOf(before) >= 0
     && harness.events.indexOf(before) < harness.events.indexOf(after), `${before} precedes ${after}`);
   for (const [before, after] of [
@@ -334,6 +353,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   });
   assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
     ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']);
+  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage), ['panelMasks', 'compile']);
+  assertClosedPreparation(harness);
   const revealStage = harness.trace.stageIntervals.find((row) => row.stage === 'reveal');
   harness.trace.revealSlices.forEach((row, index, rows) => {
     assert.ok(row.startTime >= (index ? rows[index - 1].endTime : revealStage.startTime));
@@ -341,8 +362,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   });
   const stages = Object.keys(harness.trace.stages);
   assert.deepEqual(stages.slice(stages.indexOf('terrainGrid'), stages.indexOf('combatWarm') + 1),
-    ['terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm'],
-    'wreck, panel masks, scene compile, and effects have separate ordered timing stages');
+    ['terrainGrid', 'wreckWarm', 'compile', 'panelJoin', 'combatWarm'],
+    'scene compile overlaps panel work; the ordered stage retains only residual panel wait');
   assert.ok(harness.progress.every(([fraction], index) =>
     index === 0 || fraction >= harness.progress[index - 1][0]),
   'moving scene compilation earlier keeps displayed progress monotonic');
@@ -469,30 +490,205 @@ for (const outcome of ['success', 'cancel', 'failure']) {
   const controller = new AbortController();
   harness.request.signal = controller.signal;
   const pending = harness.runtime.present(harness.request);
-  await waitForEvent(harness.events, 'playerPanel');
-  assert.equal(harness.loaderVisible, true, 'panel preparation remains under the opaque loader');
+  const observed = pending.then(() => ({ ok: true }), (error) => ({ ok: false, error }));
+  await waitForEvent(harness.events, 'compiled');
+  assertPreparationCovered(harness, outcome);
   assert.equal(harness.trace.status, 'pending');
-  assert.equal(harness.trace.stageIntervals.at(-1).stage, 'panelMasks');
+  assert.equal(harness.trace.stageIntervals.at(-1).stage, 'panelJoin');
   assert.equal(harness.trace.stageIntervals.at(-1).endTime, undefined);
-  assert.deepEqual(harness.progress.at(-1), [0.86, 'Preparing player panel']);
-  for (const stage of ['compile', 'effects', 'activate', 'primeReveal', 'hide', 'ready']) {
-    assert.ok(!harness.events.includes(stage), `pending panel preparation cannot reach ${stage}`);
-  }
+  assert.ok(harness.events.indexOf('wrecks') < harness.events.indexOf('playerPanel'));
+  assert.ok(harness.events.indexOf('playerPanel') < harness.events.indexOf('compile'));
+  const panel = harness.trace.preparationSlices.find((row) => row.stage === 'panelMasks');
+  const compile = harness.trace.preparationSlices.find((row) => row.stage === 'compile');
+  assert.ok(panel.startTime <= compile.startTime, 'panel work begins before scene compile');
+  assert.equal(panel.endTime, undefined, 'pending panel lifetime is not closed by compile completion');
+  assert.ok(compile.endTime >= compile.startTime, 'scene compilation progresses while masks remain pending');
+  assert.ok(harness.trace.stageIntervals.at(-1).startTime >= compile.endTime,
+    'panelJoin measures only the remaining wait after compilation');
   if (outcome === 'cancel') controller.abort('leave while preparing panel masks');
   harness.releasePanel();
+  const result = await observed;
+  assertClosedPreparation(harness);
+  assert.ok(panel.endTime > compile.endTime, 'the full mask slice retains the overlapping job lifetime');
   if (outcome === 'success') {
-    await pending;
-    assert.ok(harness.events.indexOf('panelReady') < harness.events.indexOf('compile'));
+    assert.equal(result.ok, true);
+    assert.ok(harness.events.indexOf('compiled') < harness.events.indexOf('panelReady'));
+    assert.ok(harness.events.indexOf('panelReady') < harness.events.indexOf('effects'));
+    assert.ok(harness.trace.stages.panelJoin < panel.endTime - panel.startTime,
+      'residual stage duration does not double-count the full overlapping mask lifetime');
   } else {
-    await assert.rejects(pending, outcome === 'cancel'
-      ? (error) => isNetworkBattleEntryAbortError(error) : /playerPanel failed/);
+    assert.equal(result.ok, false);
+    if (outcome === 'cancel') assert.ok(isNetworkBattleEntryAbortError(result.error));
+    else assert.match(result.error.message, /playerPanel failed/);
     assert.equal(harness.trace.status, 'failed');
-    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'panelMasks');
+    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'panelJoin');
     assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
-    for (const stage of ['compile', 'effects', 'activate', 'primeReveal', 'hide', 'ready']) {
-      assert.ok(!harness.events.includes(stage), `${outcome}: failed panel preparation cannot reach ${stage}`);
+    assertPreparationCovered(harness, outcome);
+  }
+}
+
+{
+  const harness = createHarness('', 'compile');
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'compile');
+  assert.ok(harness.events.includes('panelReady'), 'the panel can finish before scene compilation');
+  assertPreparationCovered(harness, 'compile still pending');
+  const panel = harness.trace.preparationSlices.find((row) => row.stage === 'panelMasks');
+  const compile = harness.trace.preparationSlices.find((row) => row.stage === 'compile');
+  assert.ok(Number.isFinite(panel.endTime));
+  assert.equal(compile.endTime, undefined);
+  harness.releaseCompile();
+  await pending;
+  assertClosedPreparation(harness);
+  assert.ok(compile.endTime > panel.endTime);
+  assert.ok(harness.events.indexOf('compiled') < harness.events.indexOf('effects'),
+    'completed masks cannot bypass the pending scene job');
+}
+
+for (const outcome of ['synchronous-throw', 'early-rejection']) {
+  const harness = createHarness('', 'compile');
+  const panelGate = deferred();
+  const original = new Error(`panel ${outcome}`);
+  const unhandled = [];
+  const onUnhandled = (error) => unhandled.push(error);
+  process.on('unhandledRejection', onUnhandled);
+  let settled = false;
+  harness.options.warm.playerPanel = () => {
+    harness.events.push('playerPanel');
+    if (outcome === 'synchronous-throw') throw original;
+    return panelGate.promise;
+  };
+  const result = harness.runtime.present(harness.request).then(
+    () => { settled = true; return { ok: true }; },
+    (error) => { settled = true; return { ok: false, error }; },
+  );
+  try {
+    await waitForEvent(harness.events, 'compile');
+    if (outcome === 'early-rejection') panelGate.reject(original);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(unhandled, [], `${outcome}: panel rejection is observed while compile is held`);
+    assert.equal(settled, false, 'a failed panel cannot abandon the still-owned compile job');
+    assertPreparationCovered(harness, outcome);
+    const panel = harness.trace.preparationSlices.find((row) => row.stage === 'panelMasks');
+    assert.ok(Number.isFinite(panel.endTime), 'failed panel timing closes at its own settlement');
+    harness.releaseCompile();
+    const completed = await result;
+    assert.equal(completed.ok, false);
+    assert.strictEqual(completed.error, original, 'the panel failure is preserved after compile joins');
+    assert.equal(harness.trace.status, 'failed');
+    assertClosedPreparation(harness);
+    assertPreparationCovered(harness, outcome);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(unhandled, []);
+  } finally {
+    panelGate.resolve();
+    harness.releaseCompile();
+    await result;
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
+}
+
+for (const failure of ['compile-frame', 'abort-frame', 'abort-compile', 'optional-compile']) {
+  for (const panelOutcome of ['resolve', 'reject']) {
+    const harness = createHarness('', failure === 'abort-compile' ? 'compile' : '');
+    const controller = new AbortController();
+    const panelGate = deferred();
+    const frameFailure = new Error('compile frame failed');
+    const panelFailure = new Error('panel failed while cleanup waited');
+    harness.request.signal = controller.signal;
+    harness.options.warm.playerPanel = async () => {
+      harness.events.push('playerPanel');
+      await panelGate.promise;
+      harness.events.push('panelReady');
+    };
+    if (failure === 'compile-frame' || failure === 'abort-frame') {
+      const nextFrame = harness.options.load.nextFrame;
+      harness.options.load.nextFrame = async () => {
+        await nextFrame();
+        if (harness.progress.at(-1)?.[1] !== 'Compiling combat shaders') return;
+        harness.events.push('compileBoundary');
+        if (failure === 'compile-frame') throw frameFailure;
+        controller.abort('cancelled at compile paint boundary');
+      };
+    } else if (failure === 'optional-compile') {
+      harness.options.warm.compile = async () => {
+        harness.events.push('compile');
+        throw new Error('optional shader warm failed');
+      };
+    }
+    let settled = false;
+    const result = harness.runtime.present(harness.request).then(
+      () => { settled = true; return { ok: true }; },
+      (error) => { settled = true; harness.events.push('launcherCleanup'); return { ok: false, error }; },
+    );
+    try {
+      await waitForEvent(harness.events, failure.endsWith('frame') ? 'compileBoundary' : 'compile');
+      if (failure === 'abort-compile') {
+        controller.abort('cancelled during native shader warm');
+        harness.releaseCompile();
+      }
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(settled, false, `${failure}/${panelOutcome}: entry drains outstanding panel work`);
+      assert.equal(harness.trace.status, 'pending');
+      assert.ok(!harness.events.includes('launcherCleanup'));
+      assertPreparationCovered(harness, failure);
+      harness.events.push('panelSettling');
+      if (panelOutcome === 'reject') panelGate.reject(panelFailure);
+      else panelGate.resolve();
+      const completed = await result;
+      assertClosedPreparation(harness);
+      if (failure === 'optional-compile' && panelOutcome === 'resolve') {
+        assert.equal(completed.ok, true, 'ordinary compile failure remains a soft warm fallback');
+        assert.ok(harness.events.indexOf('panelReady') < harness.events.indexOf('effects'));
+        assert.ok(harness.events.includes('primeReveal') && harness.events.includes('ready'));
+      } else {
+        assert.equal(completed.ok, false);
+        if (failure === 'compile-frame') assert.strictEqual(completed.error, frameFailure,
+          'draining a later panel rejection preserves the primary compile-frame error');
+        else if (failure === 'optional-compile') assert.strictEqual(completed.error, panelFailure,
+          'a fatal panel failure wins over an optional compile failure');
+        else assert.ok(isNetworkBattleEntryAbortError(completed.error),
+          'entry cancellation remains authoritative after draining panel rejection');
+        assert.ok(harness.events.indexOf('launcherCleanup') > harness.events.indexOf('panelSettling'));
+        assert.equal(harness.trace.status, 'failed');
+        assertPreparationCovered(harness, failure);
+      }
+    } finally {
+      panelGate.resolve();
+      harness.releaseCompile();
+      await result;
     }
   }
+}
+
+{
+  const harness = createHarness();
+  const controller = new AbortController();
+  const reason = 'cancelled while the final observed panel result drains';
+  harness.request.signal = controller.signal;
+  const now = harness.options.load.now;
+  let queued = false;
+  const runtime = createNetworkBattlePresentationRuntime({
+    ...harness.options,
+    load: { ...harness.options.load, now: () => {
+      if (!queued && harness.trace?.stageIntervals.at(-1)?.stage === 'panelJoin') {
+        const panel = harness.trace.preparationSlices.find((row) => row.stage === 'panelMasks');
+        assert.ok(Number.isFinite(panel.endTime), 'panel completion precedes the final drain checkpoint');
+        queued = true;
+        queueMicrotask(() => controller.abort(reason));
+      }
+      return now();
+    } },
+  });
+  await assert.rejects(runtime.present(harness.request), (error) =>
+    isNetworkBattleEntryAbortError(error) && error.name === 'AbortError' && error.message === reason,
+  'cancellation during the final drain normalizes before any opening-effects submission');
+  assert.equal(queued, true, 'the injected clock schedules cancellation when panelJoin closes');
+  assert.ok(harness.events.includes('panelReady') && harness.events.includes('compiled'));
+  assert.equal(harness.trace.status, 'failed');
+  assertClosedPreparation(harness);
+  assertPreparationCovered(harness, 'final reflected-panel drain cancellation');
+  assert.equal(harness.trace.revealSlices.length, 0);
 }
 
 {
@@ -513,7 +709,9 @@ for (const kind of ['spectator', 'missing-viewer']) {
   else harness.preparedBridge.entities.delete(harness.request.viewerId);
   await harness.runtime.present(harness.request);
   assert.equal(harness.panelRequests.length, 0, `${kind}: do not prepare another player panel`);
-  assert.ok(harness.trace.stageIntervals.some((row) => row.stage === 'panelMasks'));
+  assert.ok(harness.trace.stageIntervals.some((row) => row.stage === 'panelJoin'));
+  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage), ['compile'],
+    `${kind}: skipped panel work cannot claim an actual preparation interval`);
   assert.ok(harness.events.includes('compile'), `${kind}: the normal scene warm still runs`);
   assert.equal(harness.events.includes('finalShadows'), kind !== 'spectator',
     'only a player has the snapped final-camera pose required for covered shadow reuse');
@@ -561,6 +759,8 @@ for (const outcome of ['resolve', 'reject', 'cancel']) {
   assert.equal(harness.loaderVisible, true);
   assert.equal(harness.trace.stageIntervals.at(-1).stage, 'wreckWarm');
   assert.ok(!harness.events.includes('compile'));
+  assert.ok(!harness.events.includes('playerPanel'), 'panel work cannot race unfinished wreck material preparation');
+  assert.deepEqual(harness.trace.preparationSlices, [], 'no overlapping job starts before wreck warm joins');
   assert.ok(!harness.events.includes('ready'));
   assert.equal(harness.countdownMs, 5000, 'pending wreck warm cannot spend the countdown');
   if (outcome === 'cancel') controller.abort('return during wreck preparation');
