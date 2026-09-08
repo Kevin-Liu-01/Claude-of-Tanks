@@ -12,7 +12,7 @@ import type {
 type WarmYield = () => Promise<void>;
 
 type LinkedProgram = Pick<ThreeWebGLProgram, 'getUniforms' | 'program'>
-  & Partial<Pick<ThreeWebGLProgram, 'getAttributes'>>;
+  & Partial<Pick<ThreeWebGLProgram, 'getAttributes' | 'id'>>;
 
 interface RendererProgramInfo {
   programs?: readonly LinkedProgram[] | null;
@@ -146,6 +146,7 @@ export interface SceneProgramCompileOptions {
 interface CapturedProgram {
   readonly wrapper: LinkedProgram;
   readonly handle: WebGLProgram;
+  readonly creationId?: number;
   initialized: boolean;
   failed: boolean;
 }
@@ -443,7 +444,7 @@ function captureMaterialPrograms(
       if (!isLinkedProgram(wrapper)) throw new Error('Compiled material program reference unavailable');
       const handle = wrapper.program;
       if (isWebGLProgram(handle) && !cohort.has(wrapper)) {
-        cohort.set(wrapper, { wrapper, handle, initialized: false, failed: false });
+        cohort.set(wrapper, { wrapper, handle, creationId: programCreationId(wrapper), initialized: false, failed: false });
       }
     }
   }
@@ -570,6 +571,7 @@ function* initializeMaterialProgramRound(
   extension: ParallelShaderCompileExtension | null,
   expired: () => boolean,
   slice: ReturnType<typeof createFirstUseSliceBudget>,
+  newestFirst: boolean,
 ): Generator<void, boolean, void> {
   let pending = false;
   for (const entry of entries) {
@@ -580,7 +582,11 @@ function* initializeMaterialProgramRound(
     }
     pending ||= outcome === 'pending';
     if (!context.valid()) return false;
-    if (!slice.exhausted()) continue;
+    const exhausted = slice.exhausted();
+    // A failed native query has no usable readiness result, but may not gate
+    // older independent work. Every genuine pending result releases this task.
+    if (newestFirst && outcome === 'pending' && !entry.failed) break;
+    if (!exhausted) continue;
     recordFirstUsePending(context, entries);
     recordCompileTiming(context.timing, 'uniformYields', 1);
     yield;
@@ -599,6 +605,27 @@ function* initializeMaterialProgramRound(
   return true;
 }
 
+function programCreationId(wrapper: LinkedProgram): number | undefined {
+  try {
+    const id = wrapper.id;
+    return typeof id === 'number' && Number.isSafeInteger(id) && id >= 0 ? id : undefined;
+  } catch { return undefined; } // Foreign wrappers retain the original scheduling order.
+}
+
+function orderRecentProgramLinks(entries: CapturedProgram[]): boolean {
+  const ids = new Set<number>();
+  for (const entry of entries) {
+    if (entry.creationId === undefined || ids.has(entry.creationId)) return false;
+    ids.add(entry.creationId);
+  }
+  // Three assigns monotonic IDs once after synchronous link submission. Chrome
+  // retains only 128 async completion queries; newer pending links can precede
+  // an evicted older handle's synchronous fallback. This changes scheduling,
+  // never coverage: every unwitnessed older handle still needs its own query.
+  entries.sort((a, b) => (b.creationId ?? 0) - (a.creationId ?? 0));
+  return true;
+}
+
 /** Budget native queries and reflection together; indivisible native calls can exceed one slice. */
 function* initializeMaterialProgramSteps(
   context: FirstUseWarmContext,
@@ -607,6 +634,7 @@ function* initializeMaterialProgramSteps(
   sliceMs = 4,
 ): Generator<void, void, void> {
   const entries = [...cohort.values()];
+  const newestFirst = !!extension && orderRecentProgramLinks(entries);
   const startedAt = diagnosticNow(context.now);
   const expired = (): boolean => diagnosticNow(context.now) - startedAt >= 5_000;
   const slice = createFirstUseSliceBudget(context.now, sliceMs);
@@ -615,7 +643,7 @@ function* initializeMaterialProgramSteps(
   }
   try {
     for (let round = 0; round < 120; round += 1) {
-      const pending = yield* initializeMaterialProgramRound(context, entries, extension, expired, slice);
+      const pending = yield* initializeMaterialProgramRound(context, entries, extension, expired, slice, newestFirst);
       if (!pending) return;
     }
   } finally { entries.length = 0; }
@@ -631,12 +659,14 @@ export function snapshotRendererPrograms(
 function captureNewProgramCohort(
   renderer: RendererWithPrograms,
   baseline: ReadonlySet<LinkedProgram>,
+  captureCreationIds = false,
 ): MaterialProgramCohort {
   const cohort: MaterialProgramCohort = new Map();
   for (const wrapper of renderer.info?.programs ?? []) {
     const handle = wrapper.program;
     if (!baseline.has(wrapper) && isWebGLProgram(handle)) {
-      cohort.set(wrapper, { wrapper, handle, initialized: false, failed: false });
+      cohort.set(wrapper, { wrapper, handle, initialized: false, failed: false,
+        creationId: captureCreationIds ? programCreationId(wrapper) : undefined });
     }
   }
   return cohort;
@@ -668,7 +698,7 @@ export function captureNewProgramUniformSteps(
     signal?.throwIfAborted();
     return isCurrent() && programWarmLifetimeIsCurrent(renderer, lifetime);
   };
-  const cohort = valid() ? captureNewProgramCohort(renderer, baseline) : new Map<LinkedProgram, CapturedProgram>();
+  const cohort = valid() ? captureNewProgramCohort(renderer, baseline, true) : new Map<LinkedProgram, CapturedProgram>();
   return (function* () {
     const context = { renderer, gl, valid, now, timing, lifetime };
     try {

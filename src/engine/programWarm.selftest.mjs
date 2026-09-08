@@ -1139,4 +1139,200 @@ for (const initializeUniforms of [false, true]) {
   assert.equal(timing.maxUniformMs, 5);
 }
 
+{
+  const names = Array.from({ length: 158 }, (_, index) => `link-${index}`);
+  const f = firstUseFixture({ names, clockFrozen: true });
+  f.state.queryMs = f.state.uniformMs = 0;
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.renderer.info.programs = [f.unrelated, ...f.programs.slice(0, 80)];
+  f.state.compile = () => f.renderer.info.programs.push(...f.programs.slice(80));
+  let recentReady = false;
+  let blockedQueries = 0;
+  f.state.query = (name) => {
+    const id = Number(name.slice(5));
+    // Chrome 151 retains only the newest 128 asynchronous completion queries.
+    if (id < 30 && !recentReady) blockedQueries++;
+    return id < 30 || recentReady;
+  };
+  const timing = {};
+  const steps = f.prepare({ timing });
+  assert.equal(steps.next().done, false);
+  assert.equal(steps.next().done, false, 'newest pending link gives the browser a task opportunity');
+  assert.equal(blockedQueries, 0, 'do not ask an evicted older query while a newer link is still pending');
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query'), [['query', 'link-157']]);
+  assert.equal(timing.uniformCount, 0);
+  assert.equal(timing.uniformPending, 158, 'unvisited older programs remain honestly pending');
+  recentReady = true;
+  f.drain(steps);
+  assert.equal(timing.uniformCount, 158);
+  assert.equal(timing.uniformPending, 0);
+  assert.equal(timing.existingQueryCount, 80, 'every older unwitnessed program is explicitly queried afterward');
+  assert.equal(timing.newQueryCount, 79, 'the pending newest query is retried, not treated as older readiness proof');
+  assert.equal(timing.uniformYields, 5, 'one pending wait plus four 32-visit checkpoints bounds the frozen-clock cohort');
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, name]) => name), names.toReversed());
+}
+
+for (const metadata of ['missing', 'duplicate', 'negative', 'fraction', 'infinite', 'nan', 'unsafe', 'throws']) {
+  const f = firstUseFixture({ names: ['first', 'second', 'third'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  if (metadata === 'missing') delete f.programs[1].id;
+  if (metadata === 'duplicate') f.programs[1].id = 0;
+  if (metadata === 'negative') f.programs[1].id = -1;
+  if (metadata === 'fraction') f.programs[1].id = 0.5;
+  if (metadata === 'infinite') f.programs[1].id = Infinity;
+  if (metadata === 'nan') f.programs[1].id = NaN;
+  if (metadata === 'unsafe') f.programs[1].id = Number.MAX_SAFE_INTEGER + 1;
+  if (metadata === 'throws') Object.defineProperty(f.programs[1], 'id', { get() { throw new Error('foreign ID'); } });
+  f.drain(f.prepare());
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, name]) => name),
+    ['first', 'second', 'third'], `${metadata}: unsupported ordering retains the original cohort order`);
+}
+
+{
+  const f = firstUseFixture({ names: ['old', 'middle', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.materialProperties.programs = new Map([
+    ['middle', f.programs[1]], ['old', f.programs[0]], ['newest', f.programs[2]],
+  ]);
+  const steps = f.prepare();
+  steps.next();
+  f.programs[0].id = 100;
+  f.renderer.info.programs = [f.programs[2], f.programs[0], f.programs[1]];
+  f.drain(steps);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, name]) => name),
+    ['newest', 'middle', 'old'], 'creation IDs are frozen with program identities, not read after yields');
+}
+
+for (const terminal of ['abort', 'epoch', 'handle', 'round-limit', 'deadline']) {
+  const f = firstUseFixture({ names: ['old', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.state.queryMs = f.state.uniformMs = 0;
+  f.state.query = (name) => name === 'old';
+  const controller = new AbortController();
+  const timing = {};
+  const steps = f.prepare({ timing, signal: controller.signal });
+  steps.next();
+  steps.next();
+  if (terminal === 'abort') controller.abort('left during newest link');
+  if (terminal === 'epoch') f.owner.invalidate();
+  if (terminal === 'handle') f.programs[1].program = { name: 'replacement' };
+  if (terminal === 'deadline') f.advance(5001);
+  if (terminal === 'abort') assert.throws(() => steps.next(), (error) => error === controller.signal.reason);
+  else f.drain(steps);
+  const queries = f.events.filter(([kind]) => kind === 'query');
+  if (terminal === 'handle') {
+    assert.deepEqual(queries, [['query', 'newest'], ['query', 'old']], 'a replaced pending handle no longer gates live work');
+    assert.equal(timing.uniformPending, 0);
+  } else {
+    assert.equal(queries.filter(([, name]) => name === 'old').length, 0);
+    assert.equal(timing.uniformCount, 0);
+    assert.equal(timing.uniformPending, 2);
+    assert.equal(queries.length, terminal === 'round-limit' ? 120 : 1);
+  }
+}
+
+{
+  const f = firstUseFixture({ names: ['old', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.state.query = (name) => { if (name === 'newest') throw new Error('query failure'); return true; };
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform'), [['uniform', 'old']],
+    'a failed query cannot prove readiness but does not strand independently preparable older work');
+  assert.equal(timing.uniformPending, 1);
+}
+
+{
+  const f = firstUseFixture({ extension: false, names: ['old', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, name]) => name), ['old', 'newest']);
+  assert.equal(timing.queryCount, undefined, 'without KHR, keep the original guarded reflection fallback');
+}
+
+{
+  const f = capturedNewFixture(3);
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.renderer.info.programs = [f.old, f.programs[1], f.programs[0], f.programs[2]];
+  const steps = f.capture();
+  f.programs[0].id = 100;
+  let ready = false;
+  f.state.query = (handle) => handle.index !== 2 || ready;
+  steps.next();
+  steps.next();
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, handle]) => handle.index), [2]);
+  ready = true;
+  [...steps];
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, index]) => index), [2, 1, 0],
+    'scoped new-program jobs freeze creation order before their first restoration checkpoint');
+}
+
+{
+  const f = firstUseFixture({ names: ['old', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  [...f.owner.linkerBreathingSlices(1)];
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, name]) => name), ['garage', 'old', 'newest'],
+    'the linker-only path does not participate in this first-use scheduling experiment');
+}
+
+{
+  const f = firstUseFixture({ names: ['oldest', 'middle', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.state.queryMs = f.state.uniformMs = 0;
+  const ready = new Set(['newest']);
+  f.state.query = (name) => ready.has(name);
+  const timing = {};
+  const steps = f.prepare({ timing });
+  steps.next();
+  steps.next();
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query'), [['query', 'newest'], ['query', 'middle']]);
+  assert.equal(timing.uniformCount, 1, 'newest completion proves nothing about the next older link');
+  ready.add('middle');
+  steps.next();
+  assert.equal(timing.uniformCount, 2);
+  assert.equal(timing.uniformPending, 1);
+  ready.add('oldest');
+  f.drain(steps);
+  assert.equal(timing.uniformCount, 3);
+  assert.equal(timing.uniformPending, 0);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, name]) => name),
+    ['newest', 'middle', 'middle', 'oldest', 'oldest']);
+}
+
+for (const terminal of ['return', 'throw', 'info', 'context', 'loss']) {
+  const f = firstUseFixture({ names: ['old', 'newest'] });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.state.query = () => false;
+  const steps = f.prepare();
+  steps.next();
+  steps.next();
+  const events = f.events.length;
+  if (terminal === 'return') steps.return();
+  else if (terminal === 'throw') {
+    const reason = new Error('abandoned newest pending checkpoint');
+    assert.throws(() => steps.throw(reason), (error) => error === reason);
+  } else {
+    if (terminal === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+    if (terminal === 'context') f.renderer.getContext = () => ({ ...f.gl });
+    if (terminal === 'loss') f.gl.lost = true;
+    assert.equal(steps.next().done, true);
+  }
+  assert.equal(f.events.length, events, `${terminal}: the new pending checkpoint cannot resume stale native work`);
+  f.assertRestored();
+}
+
+{
+  const f = firstUseFixture({ names: ['old', 'newest'], clockFrozen: true });
+  f.programs.forEach((program, id) => { program.id = id; });
+  f.state.query = () => false;
+  const controller = new AbortController();
+  const steps = f.prepare({ signal: controller.signal });
+  steps.next();
+  for (let round = 0; round < 120; round++) assert.equal(steps.next().done, false);
+  controller.abort('aborted at the final pending wait');
+  assert.throws(() => steps.next(), (error) => error === controller.signal.reason);
+  assert.equal(f.events.filter(([kind]) => kind === 'query').length, 120);
+}
+
 console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');

@@ -195,7 +195,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
                 : renderer.info.programs.length;
               let program = properties.programs.get(key);
               if (!program) {
-                program = { program: {}, getUniforms() {
+                program = { id: renderer.info.programs.length, program: {}, getUniforms() {
                   assertActive('uniform reflection');
                   assert.equal(target, priorTarget, 'reflection does not borrow a pass target');
                   assert.equal(camera.layers.mask, cameraMask, 'reflection sees the restored camera');
@@ -800,6 +800,36 @@ test('pass-aware scene reuse keeps every submission but skips only witnessed ref
   assert.equal(timing.uniformCount, 0);
   assert.equal(timing.queryCount, undefined);
   assert.ok(timing.submissionMs > 0, 'reuse never bypasses the exact scene compilation');
+});
+
+test('newest pending scene link gates older queries without losing hidden or pass-specific variants', () => {
+  const f = fixture({ linker: true, layered: true, firstUse: true });
+  const timing = {};
+  const steps = pauseBeforeLinker(f, { initializeUniforms: true, timing, passes: compositorPasses(f) });
+  const cohort = [...f.renderer.info.programs];
+  const newest = cohort.at(-1);
+  const queried = [];
+  let ready = false;
+  const nativeQuery = f.gl.getProgramParameter;
+  f.gl.getProgramParameter = (handle, token) => {
+    f.assertUntouched();
+    queried.push(handle);
+    nativeQuery(handle, token);
+    return handle !== newest.program || ready;
+  };
+  assert.equal(steps.next().done, false);
+  assert.deepEqual(queried, [newest.program]);
+  assert.equal(timing.uniformCount, 0);
+  assert.equal(timing.uniformPending, cohort.length);
+  ready = true;
+  f.renderer.info.programs.reverse();
+  drain(f, steps);
+  assert.equal(timing.uniformCount, cohort.length);
+  assert.equal(timing.uniformPending, 0);
+  assert.deepEqual(queried.slice(1), cohort.toReversed().map((program) => program.program));
+  assert.ok(f.passVisits.some(({ object }) => object === f.hiddenMesh), 'hidden variant submission remains intact');
+  f.assertFacadeReleased();
+  f.assertUntouched();
 });
 
 console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and cancellation cases passed`);
