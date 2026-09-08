@@ -25,9 +25,15 @@ function legacyRadiusAt(disc, angle) {
   return disc.r * Math.min(1, Math.max(0.80, 0.99 + broad - cove * cove * 0.12 - bank));
 }
 let legacyChecks = 0;
+const originalOasisLakes = [
+  { x: -138, z: -16, r: 52 }, { x: -182, z: 32, r: 57 }, { x: -134, z: 84, r: 48 },
+];
 for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   const terrain = getMapConfig(id).terrain;
-  for (const disc of [...(terrain.lakes ?? []), ...(terrain.marshes ?? [])]) {
+  // Oasis explicitly migrated to one authored basin; preserve all of its
+  // historical formula comparisons, not an exemption that deletes coverage.
+  const lakes = id === 'oasis' ? originalOasisLakes : terrain.lakes ?? [];
+  for (const disc of [...lakes, ...(terrain.marshes ?? [])]) {
     assert.equal(disc.radii, undefined, `${id}: no implicit profile migration`);
     assert.equal(minimumShorelineRadius(disc), disc.r * 0.8);
     for (let i = -64; i <= 64; i++) {
@@ -38,7 +44,7 @@ for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   }
 }
 assert.ok(legacyChecks > 10000);
-for (const disc of getMapConfig('polders').terrain.lakes) {
+for (const disc of ['polders', 'oasis'].flatMap(id => getMapConfig(id).terrain.lakes)) {
   assert.equal(disc.radii.length, 16);
   for (let i = 0; i < 16; i++) {
     const a = i * Math.PI / 8;
