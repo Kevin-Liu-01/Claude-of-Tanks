@@ -177,9 +177,11 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
     const bindings = { battleAtmosphere: h.access, garagePhasePresentation: phase };
     const spots = mainCallback('setGarageSpots', bindings);
     const trim = mainCallback('setGarageSunTrim', bindings);
+    let skyInvalidations = 0;
     const skyOwner = mainCallback('applySkyPreset', {
       battleAtmosphere: h.access, selectedGarageVariantId: 'verdant',
       getGarageVariant: () => ({ mapId: 'verdant' }), getGarageSkyPreset: () => garagePreset,
+      worldRuntime: { invalidateSkyPresentation() { skyInvalidations++; } },
       sky: { applyPresentationPreset(preset) {
         h.applied.push(preset); h.scene.fog = new THREE.FogExp2(0xaaaaaa, preset.fogDensity);
       } }, scene: h.scene, THREE, baseFogDensity: h.authored.fogDensity,
@@ -195,6 +197,8 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
       'Garage return retains its selected sky after late idempotent phase-light reset');
     assert.equal(skyOwner.getBaseFogDensity(), h.scene.fog.density,
       'next rendered Garage frame must use the selected Garage fog, not the restored battlefield baseline');
+    assert.equal(skyInvalidations, 1,
+      'Garage presentation invalidates the retained world sky for a same-map rematch');
     assert.equal(h.access.current.weather, null); assert.equal(h.scene.children.length, 0);
   } finally { h.dispose(); }
 }

@@ -24,6 +24,14 @@ interface LocalSolid {
   projectedTriangles: number[][];
 }
 
+/** Construction-only view; consumers must not retain geometry/component scratch. */
+export interface StructureSourceSolid {
+  readonly bucket: string;
+  readonly minY: number;
+  readonly maxY: number;
+  readonly points: readonly number[];
+}
+
 interface SolidComponent {
   minY: number;
   maxY: number;
@@ -543,6 +551,14 @@ export function deriveRuntimeStructureCollisionProfile(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeProfile {
   return deriveCollisionBands(collectSolids(buckets), makeRuntimeBand);
+}
+
+/** Same collision result, exposing the already-extracted solids to cosmetic admission. */
+export function deriveRuntimeStructureCollisionWithSolids(
+  buckets: StructureGeometryBuckets,
+): { profile: StructureCollisionRuntimeProfile; solids: readonly StructureSourceSolid[]; contactTop: number } {
+  const solids = collectSolids(buckets);
+  return { profile: deriveCollisionBands(solids, makeRuntimeBand), solids, contactTop: CONTACT_TOP };
 }
 
 /**

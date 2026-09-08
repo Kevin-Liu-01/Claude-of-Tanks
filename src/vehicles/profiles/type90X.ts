@@ -2,6 +2,7 @@
 // Visual X follows the supplied uniformly registered source. Published
 // 9.80×3.40×2.30m dimensions remain separately documented, never oracle warps.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -123,7 +124,7 @@ function frontEquipment(P:TankBuilderPort):void {
   for(const side of [-1,1]) {
     for(const [x,y,r,depth]of[[1.355893,1.439983,.042086,.096604],[1.269718,1.431538,.033641,.073575]]) {
       P.addEquipment('hullDetail',cylZ(r,depth,24),side*x,y,3.510617-depth/2);
-      P.addEquipment('hullGlass',cylZ(r*.82,.004,24),side*x,y,3.510617);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r*.82,.004,24),'headlight'),side*x,y,3.510617);
       P.addEquipment('hullDetail',box(.0252,.042017,.020936),side*x,1.397967,3.468446);
     }
     for(const z of [3.400256,3.526319]) {

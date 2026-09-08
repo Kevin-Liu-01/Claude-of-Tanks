@@ -9,18 +9,55 @@ import { measuredTireBands,validateMeasuredWheelCore } from './measuredWheelGeom
 function hashArray(hash, values) {
   hash.update(Buffer.from(values.buffer, values.byteOffset, values.byteLength));
 }
+function originalGearAttributeNames(geometry) {
+  // M1A2 gear can share a masked lamp material, requiring an all-zero vertex
+  // channel even though these parts contain no lamp. Preserve all eight
+  // original shape snapshots; validate that new metadata independently.
+  const mask = geometry.getAttribute('nightEmissionMask');
+  if (mask) {
+    assert.ok(mask.array instanceof Uint8Array, 'night mask is byte-sized');
+    assert.equal(mask.itemSize, 1); assert.equal(mask.normalized, false);
+    assert.equal(mask.count, geometry.getAttribute('position').count, 'one mask value per original vertex');
+    assert.ok(mask.array.every(v => v === 0), 'inherited gear masks must never emit light');
+  }
+  return Object.keys(geometry.attributes).filter(k => k !== 'nightEmissionMask');
+}
 function gearFingerprint(root) {
   const hash = createHash('sha256');
   root.traverse(object => {
     if (!object.name.startsWith('gear') || !object.geometry) return;
     hash.update(object.name);
-    for (const key of Object.keys(object.geometry.attributes).sort()) {
+    for (const key of originalGearAttributeNames(object.geometry).sort()) {
       hash.update(key); hashArray(hash, object.geometry.attributes[key].array);
     }
     if (object.geometry.index) hashArray(hash, object.geometry.index.array);
     if (object.instanceMatrix) hashArray(hash, object.instanceMatrix.array);
   });
   return hash.digest('hex');
+}
+
+{
+  const geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0], 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0,0,1,0,0,1,0,0,1], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0,0,1,0,0,1], 2)); geometry.setIndex([0,1,2]);
+  const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial(), 1); mesh.name = 'gearFixture';
+  const measure = () => gearFingerprint(mesh), original = measure();
+  geometry.setAttribute('nightEmissionMask', new THREE.Uint8BufferAttribute([0,0,0], 1));
+  assert.equal(measure(), original, 'an inherited unlit channel preserves all original gear bytes');
+  for (const invalid of [new THREE.Float32BufferAttribute([0,0,0], 1), new THREE.Uint8BufferAttribute([0,0,0], 3),
+    new THREE.Uint8BufferAttribute([0,0], 1), new THREE.Uint8BufferAttribute([0,0,0], 1, true),
+    new THREE.Uint8BufferAttribute([0,1,0], 1), new THREE.Uint8BufferAttribute([0,2,0], 1), new THREE.Uint8BufferAttribute([0,3,0], 1)]) {
+    geometry.setAttribute('nightEmissionMask', invalid); assert.throws(measure);
+  }
+  geometry.setAttribute('nightEmissionMask', new THREE.Uint8BufferAttribute([0,0,0], 1));
+  geometry.setAttribute('unrecognizedSemanticChannel', new THREE.Uint8BufferAttribute([0,0,0], 1));
+  assert.notEqual(measure(), original, 'unknown attributes remain hashed'); geometry.deleteAttribute('unrecognizedSemanticChannel');
+  for (const a of [geometry.attributes.position, geometry.attributes.normal, geometry.attributes.uv, geometry.index, mesh.instanceMatrix]) {
+    const old = a.array[0]; a.array[0] = old + 1;
+    assert.notEqual(measure(), original, 'original position/normal/UV/index/instance bytes remain guarded'); a.array[0] = old;
+  }
+  mesh.name = 'gearChanged'; assert.notEqual(measure(), original, 'gear identity remains guarded'); mesh.name = 'gearFixture';
+  assert.equal(measure(), original); geometry.dispose(); mesh.material.dispose();
 }
 
 // Captured before introducing either optional road-station API. These cover

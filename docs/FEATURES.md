@@ -16,7 +16,7 @@ stack, authoring tools, test rigs, and public presentation.
 | --- | --- |
 | Playable fleet | 164 production-visible and 201 keyed local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
-| Battlefields | 20 authored and destructible maps |
+| Battlefields | 30 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
 | Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde; solo, private, LAN, and ranked deployment |
@@ -175,7 +175,7 @@ Relevant implementation:
 - src/game/ai.ts
 - server/authoritativeBots.selftest.mjs
 
-## Twenty generated battlefields
+## Thirty generated battlefields
 
 The game includes:
 
@@ -199,13 +199,23 @@ The game includes:
 18. Blackglass District
 19. Titan Gorge
 20. Skybridge Chasm
+21. Tidegate Polders
+22. Copper Mesa Mine
+23. Kestrel Airfield
+24. Sunscar Oasis
+25. Whiteout Station
+26. Orchard Valley
+27. Longleaf Crossing
+28. Mangrove Reach
+29. Saltwind Narrows
+30. Highland Reservoir
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,
 destructibles, sky, lighting, fog, and minimap. Browser-hosted and dedicated
 matches use matching collision descriptions.
 
-All twenty maps use the same modern world-quality vocabulary: 28 procedural
+All thirty maps use the same modern world-quality vocabulary: 28 procedural
 structure families, independently destructible huts and camps, persistent
 debris, vehicle wreck families and detached remnants, topple interactions,
 connected utility networks, loose physical props, terrain attachment, and

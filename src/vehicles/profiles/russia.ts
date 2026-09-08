@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
+import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicleNightLighting.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -3184,12 +3185,15 @@ export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void
     if (p.eyeRound) {
       P.add('turretDark', KIT.cylZ(0.100 * es, 0.055 * es, 16), s * x, y, zc + 0.0975 * es);
       P.add('turretDetail', KIT.cylZ(0.106 * es, 0.016 * es, 16), s * x, y, zc + 0.092 * es);
-      const lens = new THREE.Mesh(KIT.cylZ(0.072 * es, 0.014 * es, 16), P._shtoraRed);
+      const geometry = markVehicleNightLens(KIT.cylZ(0.072 * es, 0.014 * es, 16), 'shtora');
+      prepareVehicleNightLensParts([geometry]);
+      const lens = new THREE.Mesh(geometry, P._shtoraRed);
       lens.position.set(s * x, y, zc + 0.123 * es);
       lens.castShadow = lens.receiveShadow = true;
       P.turretG.add(lens);
+      registerVehicleNightLensMesh(lens, [geometry]);
     } else {
-      P.add('turretGlass', box(0.17, 0.18, 0.03), s * x, y, zc + 0.115);
+      P.add('turretGlass', markVehicleNightLens(box(0.17, 0.18, 0.03), 'shtora'), s * x, y, zc + 0.115);
     }
     P.add('turretDetail', box(0.27 * es, 0.04 * es, 0.24 * es), s * x, y + 0.155 * es, zc + 0.01 * es);
     // eyeKit (§B3.1 prism sweep 2026-08-06, opt-in): the OTShU-1-7 emitter

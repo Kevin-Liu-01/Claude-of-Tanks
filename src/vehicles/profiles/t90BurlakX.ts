@@ -1,6 +1,7 @@
 // Independent Burlak first-party scalar construction. Its welded bustle,
 // asymmetric front curtain and separate supports are not a donor T-90 mesh.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
@@ -76,7 +77,7 @@ function deck(P:TankBuilderPort):void{
   }
   P.addEquipment('hullDetail',cylY(.294,.038,32).scale(1,1,.83),-.0561,1.494,1.6091);
   for(const x of [-.774,.771]){
-    P.addEquipment('hullDetail',cylZ(.066,.11,24),x,1.108,2.858);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.066,.11,24),'headlight'),x,1.108,2.858);
     for(const dx of [-.095,.095])P.addEquipment('hullDetail',beamBetween([x+dx,1.015,2.874],[x+dx,1.245,2.73],.009));
   }
   for(const x of [-.18135,.5563])P.addEquipment('hullDetail',box(.6958,.09,.1816).rotateX(.37),x,1.57665,-3.04785);

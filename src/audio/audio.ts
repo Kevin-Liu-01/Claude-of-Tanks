@@ -48,7 +48,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  *   - slowed kill-cam destruction replay                       → cinematicBus
  *   - engine loops (diesel/turbine character), turret-traverse whir,
  *     suspension landing thumps                                   → engineBus
- *   - wind/birds battle bed, garage workshop room tone            → ambientBus
+ *   - biome wind/environment calls, garage workshop room tone    → ambientBus
  *   - UI ticks, battle horn, kill sting, result fanfares, sting   → musicBus
  *   - crew radio lines + tank alarms (fire klaxon, ammo-rack beep,
  *     critical-HP heartbeat)                                      → voiceBus
@@ -58,6 +58,10 @@ import { createVoiceRadio } from './voices.ts';
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
+import {
+  AMBIENT_BUDGET, canScheduleAmbientCue, resolveAmbientProfile,
+  type AmbientProfile,
+} from './ambientPolicy.ts';
 
 import {
   AUDIO_DISTANCE_MODEL,
@@ -97,6 +101,8 @@ type ModuleCondition = 'ok' | 'yellow' | 'red';
 
 interface AudioMixerOptions {
   context?: AudioContext | null;
+  getMapId?(): string | null;
+  initialPhase?: string;
 }
 
 export interface AudioMixer {
@@ -180,6 +186,7 @@ interface TraverseRig {
 }
 
 interface KillableRig { kill(): void }
+interface AmbientRig extends KillableRig { retune(profile: AmbientProfile): void }
 interface FireLoop extends KillableRig { out: GainNode; pan: StereoPannerNode }
 interface HeartbeatRig { o: OscillatorNode; g: GainNode }
 interface LandingTracker { prevY: number; vy: number; lastThumpT: number }
@@ -333,6 +340,7 @@ interface AudioDebugSurface {
   readonly killcamSfxLog: readonly KillcamSfxLogEntry[];
   readonly soundLog: readonly SoundLogEntry[];
   readonly loadingActive: boolean;
+  ambientState(): Record<string, RuntimeValue>;
   listenerState(): Record<string, RuntimeValue>;
   spatialAt(x: number, y: number, z: number): { dist: number; gain: number; pan: number };
   engineState(): Array<Record<string, RuntimeValue>>;
@@ -388,7 +396,11 @@ export {
  * }} Audio interface per ARCHITECTURE.md §3.9.
  */
 /** @param {{ context?: AudioContext | null }} [options] */
-export function createAudio({ context: initialContext = null }: AudioMixerOptions = {}): AudioMixer {
+export function createAudio({
+  context: initialContext = null,
+  getMapId,
+  initialPhase = 'garage',
+}: AudioMixerOptions = {}): AudioMixer {
   let ctx: AudioContext | null = initialContext;
   let graphReady = false;
   let battleEventsWarmed = false;
@@ -490,7 +502,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
   // Game context tracked listener-side (NO new emitter-side hooks needed):
   // player identity comes from update(tanks); phase from 'phase:change'.
   let playerId: string | null = null;
-  let phase = 'garage';
+  let phase = initialPhase;
   /** id -> {team, isPlayer} minimal roster mirror for spotted-voice checks */
   const tankInfo = new Map<string, TankInfo>();
   /** `${id}:${module}` -> last known module state, for damage/repair edges */
@@ -511,8 +523,12 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
   /** tankId -> {prevY, vy, lastThumpT} suspension landing tracker */
   const landing = new Map<string, LandingTracker>();
   /** Ambient wind nodes (null when off). */
-  let windRig: KillableRig | null = null;
-  let birdTimerId: ReturnType<typeof setInterval> | null = null;
+  let windRig: AmbientRig | null = null;
+  let ambientTimerId: ReturnType<typeof setInterval> | null = null;
+  let ambientMapId: string | null = null;
+  let ambientProfile = resolveAmbientProfile(null);
+  let ambientCueVoice: OneShotVoice | null = null;
+  let nextAmbientCueS = 0;
   /** Garage workshop room tone (null when off). */
   let garageRig: KillableRig | null = null;
   /** Battle-transition mechanical bed (null when off). */
@@ -2357,24 +2373,66 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
 
   // -------------------------------------------------------------- ambient ---
 
-  function maybeBird(): void {
-    if (!ctx || rng() > 0.32) return;
-    const when = ctx!.currentTime + rng() * 0.4;
+  function stopAmbientCue(): void {
+    if (!ambientCueVoice) return;
+    disposeVoice(ambientCueVoice);
+    const index = voices.indexOf(ambientCueVoice);
+    if (index !== -1) voices.splice(index, 1);
+    ambientCueVoice = null;
+  }
+
+  function syncAmbientProfile(): void {
+    const mapId = getMapId?.() || 'verdant';
+    if (mapId === ambientMapId) return;
+    ambientMapId = mapId;
+    ambientProfile = resolveAmbientProfile(mapId);
+    stopAmbientCue();
+    nextAmbientCueS = (ctx?.currentTime ?? 0) + ambientProfile.cue.minGapS * 0.5;
+    windRig?.retune(ambientProfile);
+    logSound('ambient:profile', { mapId, biome: ambientProfile.biome });
+  }
+
+  function maybeAmbientCue(): void {
+    if (!ctx || !windRig) return;
+    // The existing sparse timer is also the map-change seam. Retune the
+    // same ten nodes in place; never allocate a second rig for a new biome.
+    syncAmbientProfile();
+    if (phase !== 'battle' || loadingRig || pauseK < 1 || muted
+        || chanVol.ambience <= 0 || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    if (ambientCueVoice && !ambientCueVoice.dead && ambientCueVoice.end > now) return;
+    stopAmbientCue();
+    pruneFinishedVoices(now);
+    if (!canScheduleAmbientCue(ambientProfile, now, nextAmbientCueS, rng(), voices.length, MAX_VOICES)) return;
+    const cue = ambientProfile.cue;
+    const when = now + 0.04 + rng() * 0.16;
     const panV = (rng() * 2 - 1) * 0.9;
-    const notes = 2 + ((rng() * 4) | 0);
-    const v = spawnVoice(when, notes * 0.15 + 0.3, 0.045 + rng() * 0.05, panV, ambientBus);
-    let at = when;
-    for (let i = 0; i < notes; i++) {
-      const f = 2400 + rng() * 1900;
-      const dur = 0.05 + rng() * 0.06;
-      const o = osrc(v, 'sine', f, at, dur + 0.05);
-      o.frequency.linearRampToValueAtTime(f + (rng() < 0.5 ? -1 : 1) * (250 + rng() * 650), at + dur);
-      wire(v, o, env(at, 0.012, 1.0, dur));
-      at += dur + 0.04 + rng() * 0.07;
+    const life = (cue.notes - 1) * cue.spacingS + cue.durationS * 1.2 + 0.2;
+    const voice = spawnVoice(when, life, cue.gain, panV, ambientBus);
+    ambientCueVoice = voice;
+    const fundamental = cue.frequencyHz + rng() * cue.frequencySpreadHz;
+    for (let index = 0; index < cue.notes; index++) {
+      const at = when + index * cue.spacingS;
+      const metallic = cue.kind === 'metal';
+      const frequency = metallic ? fundamental * (index === 0 ? 1 : index === 1 ? 1.47 : 2.09)
+        : cue.frequencyHz + rng() * cue.frequencySpreadHz;
+      const duration = cue.durationS * (0.88 + rng() * 0.24);
+      const oscillator = osrc(voice, cue.waveform, frequency, at, duration + 0.05);
+      const sweep = cue.kind === 'bird' && index % 2 ? -cue.sweepHz : cue.sweepHz;
+      if (cue.kind === 'gull') {
+        oscillator.frequency.linearRampToValueAtTime(frequency * 1.18, at + duration * 0.2);
+      }
+      oscillator.frequency.linearRampToValueAtTime(Math.max(80, frequency + sweep), at + duration);
+      wire(voice, oscillator, env(at, metallic ? 0.004 : 0.012,
+        metallic ? 1 / (index + 1) : 0.84, duration));
     }
+    nextAmbientCueS = when + cue.minGapS * (0.9 + rng() * 0.35);
+    logSound('ambient:cue', { mapId: ambientMapId, kind: cue.kind, sources: cue.notes });
   }
 
   function ambientStart(): void {
+    if (!ctx || !graphReady || phase !== 'battle' || loadingRig) return;
+    syncAmbientProfile();
     if (windRig) return;
     const now = ctx!.currentTime;
     // Wind bed: pink noise, slow amplitude swell.
@@ -2399,28 +2457,47 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     const gustG = ctx!.createGain(); gustG.gain.value = 0.05;
     gust.connect(gustG); gustG.connect(gG.gain);
 
-    wG.gain.setTargetAtTime(0.45, now, 1.2);
-    gG.gain.setTargetAtTime(0.09, now, 1.6);
-
+    const nodes = [wsrc, wLp, wG, swell, swellG, gsrc, gBp, gG, gust, gustG];
     windRig = {
+      retune(profile) {
+        const t = ctx!.currentTime;
+        const wind = profile.wind;
+        wLp.frequency.setTargetAtTime(wind.lowpassHz, t, 0.8);
+        wG.gain.setTargetAtTime(wind.gain, t, 0.8);
+        swell.frequency.setTargetAtTime(wind.swellHz, t, 0.8);
+        swellG.gain.setTargetAtTime(wind.swellGain, t, 0.8);
+        gBp.frequency.setTargetAtTime(wind.gustHz, t, 0.8);
+        gBp.Q.setTargetAtTime(wind.gustQ, t, 0.8);
+        gG.gain.setTargetAtTime(wind.gustGain, t, 0.8);
+        gust.frequency.setTargetAtTime(wind.gustCycleHz, t, 0.8);
+        gustG.gain.setTargetAtTime(wind.gustSwellGain, t, 0.8);
+        gsrc.playbackRate.setTargetAtTime(wind.gustPlaybackRate, t, 0.8);
+      },
       kill() {
         const t = ctx!.currentTime;
-        wG.gain.setTargetAtTime(0, t, 0.4);
-        gG.gain.setTargetAtTime(0, t, 0.4);
-        for (const n of [wsrc, gsrc, swell, gust]) { try { n.stop(t + 1.5); } catch (_) { /* stopped */ } }
+        for (const gain of [wG, gG, swellG, gustG]) {
+          gain.gain.cancelScheduledValues(t);
+          gain.gain.setTargetAtTime(0, t, 0.025);
+        }
         wsrc.onended = () => {
-          try { wG.disconnect(); gG.disconnect(); } catch (_) { /* detached */ }
+          for (const node of nodes) { try { node.disconnect(); } catch (_) { /* detached */ } }
         };
+        for (const source of [wsrc, gsrc, swell, gust]) {
+          try { source.stop(t + 0.16); } catch (_) { /* stopped */ }
+        }
       },
     };
-    birdTimerId = setInterval(maybeBird, 700);
+    windRig.retune(ambientProfile);
+    nextAmbientCueS = now + ambientProfile.cue.minGapS * 0.5;
+    ambientTimerId = setInterval(maybeAmbientCue, AMBIENT_BUDGET.timerMs);
   }
 
   function ambientStop(): void {
-    if (!windRig) return;
-    windRig.kill();
+    if (ambientTimerId != null) { clearInterval(ambientTimerId); ambientTimerId = null; }
+    stopAmbientCue();
+    windRig?.kill();
     windRig = null;
-    if (birdTimerId != null) { clearInterval(birdTimerId); birdTimerId = null; }
+    nextAmbientCueS = 0;
   }
 
   // -------------------------------------------------------- garage ambient ---
@@ -3024,6 +3101,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       const next = event?.phase || 'garage';
       const prev = phase;
       phase = next;
+      if (next !== 'battle') ambientStop();
       battleOver = false;
       pendingResult = null;
       reloadCalled = false;
@@ -3110,6 +3188,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
     // the correct level (buildGraph -> applyChannelVolumes reads it).
     on<PauseEvent>('ui:pause', (event) => {
       pauseK = event?.on ? 0.04 : 1;
+      if (event?.on) stopAmbientCue();
       if (ctx) applyChannelVolumes(true);
     });
     // SOUND SETTINGS: live channel-mix updates from the settings panel sliders.
@@ -3378,7 +3457,7 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
   }
 
   /**
-   * Toggle the ambient bed: wind + sparse seeded bird chirps.
+   * Toggle the biome wind bed and one sparse, shared-pool environmental cue.
    * @param {boolean} on
    */
   function ambientOn(on: boolean): void {
@@ -3405,6 +3484,12 @@ export function createAudio({ context: initialContext = null }: AudioMixerOption
       get killcamSfxLog() { return killcamSfxLog; },
       get soundLog() { return soundLog; },
       get loadingActive() { return !!loadingRig; },
+      ambientState() {
+        return { active: !!windRig, timerActive: ambientTimerId != null,
+          mapId: ambientMapId, biome: ambientProfile.biome,
+          cueActive: !!ambientCueVoice && !ambientCueVoice.dead,
+          loopNodes: windRig ? AMBIENT_BUDGET.loopNodes : 0 };
+      },
       listenerState() {
         return {
           x: lx, y: ly, z: lz, fx: lfx, fz: lfz,

@@ -8,6 +8,31 @@ interface HeightField {
   getHeightAt(x: number, z: number): number;
 }
 
+interface CropHeightField extends HeightField {
+  getGroundType(x: number, z: number): string;
+  _noVeg(x: number, z: number): boolean;
+}
+
+/** Reject short crop-card spans over water, protected banks or a terrain dip.
+ * End heights are the already sampled row roots; no geometry or live work is
+ * added. Quarter-span checks also catch a cove between two dry endpoints. */
+export function cropRowSegmentIsSupported(
+  field: CropHeightField,
+  x0: number, z0: number, y0: number,
+  x1: number, z1: number, y1: number,
+): boolean {
+  for (let at = 0; at <= 4; at++) {
+    const t = at * 0.25;
+    const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+    if (field._noVeg(x, z) || field.getGroundType(x, z) === 'soft') return false;
+    if (at > 0 && at < 4) {
+      const root = y0 + (y1 - y0) * t;
+      if (root - field.getHeightAt(x, z) > 0.12) return false;
+    }
+  }
+  return true;
+}
+
 export interface GroundSupport {
   y: number;
   min: number;

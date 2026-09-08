@@ -87,7 +87,7 @@ function addHull(P: LightTigerBuilderPort): void {
   for (const x of [0.52, 0.71, 0.90]) KIT.periscope(P, 'hullDetail', x, 2.016, 1.61);
 
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.048, shield: true,
       rake: -0.30, seed: side < 0 ? 891 : 892,
     }), side * 1.00, 1.45, 2.68, [-0.30, 0, 0]);

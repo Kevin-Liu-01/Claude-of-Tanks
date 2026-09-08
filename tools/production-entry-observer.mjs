@@ -19,6 +19,18 @@ export function installProductionEntryObserver() {
   let previousSignature = '';
   let stoppedReceipt = null;
   const finite = (value) => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const nonnegative = (value) => {
+    const number = finite(value);
+    return number !== null && number >= 0 ? number : null;
+  };
+  const prefetchCounters = () => {
+    const value = window.__WORLD_PREFETCH;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    return Object.fromEntries(['requested', 'completed', 'joined', 'promoted',
+      'cancelled', 'skippedCapacity', 'lastMs'].map((key) => [key, nonnegative(value[key])]));
+  };
+  const prefetchAtStart = prefetchCounters();
+  let prefetchAtLaunch = null;
   const counters = () => ({
     animationTicks: finite(window.__DEBUG?.frameLoopScheduler?.animationTicks),
     backgroundTicks: finite(window.__DEBUG?.frameLoopScheduler?.backgroundTicks),
@@ -88,8 +100,8 @@ export function installProductionEntryObserver() {
     observer.observe({ type: 'longtask', buffered: false });
     state.longTaskObserver = true;
   } catch { observer = null; }
-  // Numeric-only bounded build details retain timing attribution without error
-  // messages, resource URLs, identities, or arbitrary string-valued telemetry.
+  // Bounded numeric build details and fixed slow-slice tags retain attribution
+  // without error messages, URLs, identities, or arbitrary string-valued telemetry.
   const numericTree = (value, depth = 0) => {
     if (!value || typeof value !== 'object' || depth > 3) return null;
     const output = {};
@@ -100,6 +112,33 @@ export function installProductionEntryObserver() {
     }
     return output;
   };
+  const worldSliceStages = {
+    propsDetail: ['yard-clutter', 'boundary-walls', 'village-well', 'settlement-dressing',
+      'military-clutter', 'hay-and-crates', 'roadside-utilities', 'rock-variants', 'tactical-outcrops',
+      'surface-rocks', 'embedded-rocks', 'boulder-outcrops', 'rock-instances', 'field-haystacks',
+      'field-logs-and-stumps', 'finalize'],
+    vegetationDetail: ['grassPrep', 'grassScatter', 'grassCarpet', 'treePrep', 'treeClusters',
+      'treeLoneAndBelts', 'treeRimAndMeshes', 'treeRootDecals', 'bushes', 'finalize', 'other'],
+  };
+  const slowestSlices = (value, family) => Array.isArray(value) ? value.slice(0, 8).flatMap((row) => {
+    const ms = nonnegative(row?.ms);
+    if (ms === null) return [];
+    if (worldSliceStages[family].includes(row?.stage)) return [{ stage: row.stage, ms }];
+    // Props' unnamed generator checkpoints encode only their bounded ordinal.
+    const match = family === 'propsDetail' && typeof row?.stage === 'string'
+      ? /^slice-(0|[1-9]\d{0,3})$/.exec(row.stage) : null;
+    return match && Number(match[1]) < 4096 ? [{ stage: 'slice', index: Number(match[1]), ms }] : [];
+  }) : [];
+  const worldBuildDetail = (value) => {
+    const detail = numericTree(value);
+    if (!detail) return detail;
+    for (const family of Object.keys(worldSliceStages)) {
+      const source = value[family];
+      if (!source || typeof source !== 'object' || Array.isArray(source)) continue;
+      detail[family] = { ...numericTree(source, 1), slowest: slowestSlices(source.slowest, family) };
+    }
+    return detail;
+  };
   const networkStageNames = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
     'atmosphere', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'];
   const intervals = (value, allowedStages, limit = 32) => Array.isArray(value) ? value.slice(0, limit)
@@ -109,8 +148,20 @@ export function installProductionEntryObserver() {
     if (!value || typeof value !== 'object') return null;
     return Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
       'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
+      'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
       'pollMs', 'maxPollMs', 'pollCount', 'yields'].map((key) => [key, finite(value[key])]));
   };
+  const worldLoadReceipt = (world) => world ? {
+    id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,
+    status: ['pending', 'complete', 'failed'].includes(world.status) ? world.status : null,
+    startedAt: finite(world.startedAt), endedAt: finite(world.endedAt), totalMs: finite(world.totalMs),
+    timings: Object.fromEntries(['build', 'present', 'compile', 'shadowWarm', 'clouds', 'activate']
+      .map((key) => [key, finite(world[key])])),
+    stageIntervals: Array.isArray(world.stageIntervals) ? world.stageIntervals.slice(0, 32)
+      .filter((row) => ['build', 'present', 'compile', 'shadowWarm', 'clouds', 'activate'].includes(row?.stage))
+      .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [],
+    buildDetail: worldBuildDetail(world.buildDetail), error: !!world.error,
+  } : null;
   const receipt = () => {
     const network = window.__NETWORK_LOAD;
     const world = window.__WORLD_LOAD;
@@ -123,6 +174,7 @@ export function installProductionEntryObserver() {
     const finalFrame = sample();
     const reveal = window.__BATTLE_REVEAL;
     return { ...state, limits, clock: 'page-performance-now-ms', endCounters: end, counterDeltas: delta,
+      worldPrefetch: { start: prefetchAtStart, launch: prefetchAtLaunch, end: prefetchCounters() },
       readiness: { phase: finalFrame.phase, loaderHidden: finalFrame.loaderHidden,
         connected: window.__DEBUG?.network?.connected === true,
         postAvailable: !!window.__DEBUG?.post?.composer,
@@ -155,17 +207,7 @@ export function installProductionEntryObserver() {
             })) : [],
         } : null,
       } : null,
-      worldLoad: world ? {
-        id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,
-        status: ['pending', 'complete', 'failed'].includes(world.status) ? world.status : null,
-        startedAt: finite(world.startedAt), endedAt: finite(world.endedAt), totalMs: finite(world.totalMs),
-        timings: Object.fromEntries(['build', 'present', 'compile', 'shadowWarm', 'clouds', 'activate']
-          .map((key) => [key, finite(world[key])])),
-        stageIntervals: Array.isArray(world.stageIntervals) ? world.stageIntervals.slice(0, 32)
-          .filter((row) => ['build', 'present', 'compile', 'shadowWarm', 'clouds', 'activate'].includes(row?.stage))
-          .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [],
-        buildDetail: numericTree(world.buildDetail), error: !!world.error,
-      } : null,
+      worldLoad: worldLoadReceipt(world),
       topMaskLoad: topMask && typeof topMask === 'object' && !Array.isArray(topMask) ? {
         status: ['pending', 'complete', 'failed'].includes(topMask.status) ? topMask.status : null,
         startedAt: finite(topMask.startedAt), endedAt: finite(topMask.endedAt),
@@ -176,7 +218,10 @@ export function installProductionEntryObserver() {
   state.startCounters = counters();
   globalThis.__COT_PRODUCTION_ENTRY = {
     mark(action) {
-      if (action === 'launch') { state.launchAt = performance.now(); state.startCounters = counters(); }
+      if (action === 'launch') {
+        state.launchAt = performance.now(); state.startCounters = counters();
+        prefetchAtLaunch = prefetchCounters();
+      }
       if (action === 'both-hidden') state.bothHiddenAt = performance.now();
       remember(sample());
     },

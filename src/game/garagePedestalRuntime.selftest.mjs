@@ -8,12 +8,14 @@ function deferred() {
   return { promise, resolve };
 }
 
-function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) {
+function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [] } = {}) {
   const scene = new THREE.Scene();
+  const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
   const visuals = [];
   const visualOptions = [];
   const disposed = [];
+  const releasedResources = [];
   const prebakes = [];
   const ensured = [];
   const delayed = [];
@@ -32,6 +34,14 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   const makeVisual = (specId, options) => {
     visualOptions.push(options);
     const root = new THREE.Object3D();
+    const geometry = new THREE.BoxGeometry();
+    const texture = new THREE.Texture();
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const mesh = new THREE.Mesh(geometry, material);
+    root.add(mesh);
+    for (const [kind, resource] of [['geometry', geometry], ['material', material], ['texture', texture]]) {
+      resource.addEventListener('dispose', () => releasedResources.push(`${specId}/${kind}`));
+    }
     const visual = {
       specId,
       root,
@@ -50,7 +60,11 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
       },
       prepareForSimulation() { this.prepared = true; },
       setGroundSampler(sampler) { this.groundSampler = sampler; },
-      dispose() { disposed.push(specId); },
+      dispose() {
+        disposed.push(specId);
+        geometry.dispose(); material.dispose(); texture.dispose();
+        root.removeFromParent();
+      },
     };
     visuals.push(visual);
     return visual;
@@ -62,7 +76,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
       assert.ok(root);
       compileCalls += 1;
     },
-    garagePosition: new THREE.Vector3(10, 5, -12),
+    garagePosition,
     podiumTopY: 0.36,
     trackAxisYawRad: Math.PI / 3,
     residentLimit,
@@ -79,7 +93,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
     },
     discardSharedTextures: () => undefined,
     createBudgetYield: () => async () => undefined,
-    nextFrame: async () => { frameCalls += 1; },
+    nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
     getDeviceTier: () => 'desktop',
     getPhase: () => phase,
     isBootComplete: () => bootComplete,
@@ -105,10 +119,13 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   return {
     runtime,
     scene,
+    garagePosition,
     debugTarget,
     visuals,
     visualOptions,
     disposed,
+    releasedResources,
+    makeVisual,
     prebakes,
     ensured,
     delayed,
@@ -158,6 +175,13 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   assert.equal(h.compileCalls, 1, 'cold interactive hero must submit its exact programs');
   assert.equal(h.frameCalls, 2, 'shader submission must settle behind two painted frames');
   assert.equal(h.visuals[0].root.visible, false, 'outgoing hero must be parked after reveal');
+  assert.equal(h.visuals[0].root.parent, null, 'parked hero leaves the active scene graph');
+  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  let attachedObjects = 0;
+  h.scene.traverse(() => { attachedObjects += 1; });
+  assert.equal(attachedObjects, 3, 'scene + current root + mesh, down from 5 with an attached parked root');
+  assert.equal(h.runtime.cacheIds.length, 2, 'detachment does not shrink the warm cache');
+  assert.deepEqual(h.releasedResources, [], 'parking preserves every GPU resource');
   assert.equal(h.presentationInvalidations, 2,
     'cold hero reveal requests one immediate presentation frame');
 
@@ -166,6 +190,11 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   await h.runtime.set('alpha');
   assert.equal(h.visuals.length, built, 'warm LRU selection must not rebuild the hero');
   assert.equal(h.runtime.current?.specId, 'alpha');
+  assert.equal(h.runtime.current, h.visuals[0], 'cached reveal restores the exact original visual');
+  assert.deepEqual(h.scene.children, [h.visuals[0].root]);
+  assert.equal(h.visuals[1].root.parent, null);
+  assert.equal(h.compileCalls, 1, 'cached reattachment requires no shader rewarm');
+  assert.deepEqual(h.releasedResources, []);
   assert.equal(h.presentationInvalidations, 3,
     'cached hero reveal follows the same invalidation contract');
 
@@ -173,19 +202,18 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   await h.runtime.set('charlie');
   assert.deepEqual(h.runtime.cacheIds, ['alpha', 'charlie']);
   assert.deepEqual(h.disposed, ['bravo'], 'speculative/LRU victim must release its visual');
+  assert.deepEqual(h.releasedResources, ['bravo/geometry', 'bravo/material', 'bravo/texture'],
+    'only the true LRU eviction releases its owned resources');
   assert.ok(h.debugTarget.__SWITCH_TIMINGS.some((row) => row.path === 'cached'));
   assert.ok(h.debugTarget.__PED_TRACE.some((row) => row.ev === 'reveal'));
   assert.equal(h.watchdog.delayMs, 500);
 
-  const fielded = {
-    ...h.visuals[0],
-    specId: 'delta',
-    root: new THREE.Object3D(),
-  };
+  const fielded = h.makeVisual('delta');
   fielded.root.rotation.set(0.38, -1.74, -0.21, 'ZXY');
   h.setPlayer({ visual: fielded });
   assert.equal(h.runtime.adoptBattlePlayer('delta'), true);
   assert.equal(h.runtime.current, fielded);
+  assert.deepEqual(h.scene.children, [fielded.root], 'return mounts the fielded hero, not cached alternatives');
   assert.deepEqual(fielded.root.rotation.toArray(), [
     0,
     Math.PI / 3,
@@ -231,4 +259,233 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map() } = {}) 
   h.runtime.dispose();
 }
 
-console.log('garagePedestalRuntime.selftest: typed lifecycle, LRU, shader warm, handoff, and convergence passed');
+// No parent alone is not permission to revive an unknown or disposed root.
+{
+  const h = createHarness();
+  await h.runtime.set('alpha');
+  const original = h.runtime.current;
+  await h.runtime.set('bravo');
+  h.garagePosition.y = 18;
+  await h.runtime.set('alpha');
+  assert.equal(h.runtime.current, original, 'changing the Garage floor does not invalidate a parked visual');
+  assert.equal(original.root.position.y, 18.36, 'reused root is seated on the new Garage floor');
+  assert.equal(h.visuals.length, 2);
+  assert.deepEqual(h.releasedResources, []);
+  h.runtime.dispose();
+}
+{
+  const h = createHarness();
+  h.setPhase('studio');
+  h.setBootComplete(true);
+  await h.runtime.set('alpha');
+  const warmed = h.runtime.current;
+  assert.ok(warmed, 'direct Studio idle work still warms the future Garage hero');
+  h.setPhase('garage');
+  await h.runtime.set('alpha');
+  assert.equal(h.runtime.current, warmed);
+  assert.equal(h.visuals.length, 1);
+  assert.equal(h.compileCalls, 1, 'Studio-to-Garage reuse does not rebuild or rewarm');
+  h.runtime.dispose();
+}
+{
+  const h = createHarness();
+  await h.runtime.set('alpha');
+  const original = h.runtime.current;
+  delete original.setVisible;
+  await h.runtime.set('bravo');
+  assert.equal(original.root.visible, false);
+  await h.runtime.set('alpha');
+  assert.equal(h.runtime.current, original);
+  assert.equal(original.root.visible, true, 'reattachment reveals roots without an optional visibility hook');
+  assert.equal(h.runtime.isOnStage(), true);
+  assert.deepEqual(h.releasedResources, []);
+  h.runtime.dispose();
+}
+{
+  const h = createHarness();
+  await h.runtime.set('alpha');
+  const original = h.runtime.current;
+  const resources = original.root.children[0];
+  await h.runtime.set('bravo');
+  assert.equal(h.scene.children.length, 1);
+  original.dispose();
+  assert.equal(h.runtime.hasCached('alpha'), false, 'external disposal invalidates an intentionally parked entry');
+  await h.runtime.set('alpha');
+  assert.notEqual(h.runtime.current, original);
+  assert.notEqual(h.runtime.current.root.children[0].geometry, resources.geometry);
+  assert.deepEqual(h.disposed, ['alpha']);
+  original.dispose();
+  assert.equal(h.runtime.hasCached('alpha'), true, 'old identity disposal cannot invalidate its replacement');
+  assert.deepEqual(h.disposed, ['alpha'], 'an evicted/disposed resource is never disposed twice');
+  h.runtime.dispose();
+}
+{
+  const h = createHarness();
+  await h.runtime.set('alpha');
+  const original = h.runtime.current;
+  original.root.removeFromParent();
+  await h.runtime.set('alpha', true);
+  assert.notEqual(h.runtime.current, original, 'unexpected detached current root still purges');
+  assert.ok(h.debugTarget.__PED_TRACE.some(row => row.ev === 'purge-detached'));
+  assert.deepEqual(h.disposed, [], 'purging an externally owned root adds no disposal');
+  h.runtime.dispose();
+}
+{
+  const h = createHarness();
+  await h.runtime.set('alpha');
+  const original = h.runtime.current;
+  await h.runtime.set('bravo');
+  const foreignOwner = new THREE.Group();
+  foreignOwner.add(original.root);
+  await h.runtime.set('alpha');
+  assert.notEqual(h.runtime.current, original);
+  assert.equal(original.root.parent, foreignOwner, 'an externally reparented visual is not stolen');
+  original.dispose();
+  assert.equal(h.runtime.hasCached('alpha'), true);
+  h.runtime.dispose();
+}
+
+async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.resolve(); }
+
+// Late warm producers may finish after another selection, but never remount.
+{
+  const frame = deferred(), delayedFrames = [];
+  const h = createHarness({ delayedFrames });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  delayedFrames.push(frame);
+  const pending = h.runtime.set('bravo');
+  await flushMicrotasks();
+  const incoming = h.visuals.find(visual => visual.specId === 'bravo');
+  assert.equal(incoming.__pedestalCompiling, true);
+  await h.runtime.set('charlie');
+  frame.resolve();
+  await pending;
+  assert.equal(h.runtime.current.specId, 'charlie');
+  assert.equal(incoming.root.parent, null, 'superseded completed warm root detaches');
+  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  h.runtime.dispose();
+}
+{
+  const frame = deferred(), delayedFrames = [];
+  const h = createHarness({ delayedFrames });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  delayedFrames.push(frame);
+  const first = h.runtime.set('bravo');
+  await flushMicrotasks();
+  const incoming = h.visuals[1];
+  const repeated = h.runtime.set('bravo');
+  frame.resolve();
+  await Promise.all([first, repeated]);
+  assert.equal(h.runtime.current, incoming, 'newest cached warm continuation reuses the same object');
+  assert.equal(h.visuals.length, 2);
+  assert.deepEqual(h.scene.children, [incoming.root]);
+  assert.deepEqual(h.releasedResources, []);
+  h.runtime.dispose();
+}
+
+// Handoff ownership and generation fences protect simulation from stale UI.
+{
+  const slow = deferred();
+  const h = createHarness({ delayedBuilders: new Map([['bravo', slow]]) });
+  await h.runtime.set('alpha');
+  const player = h.runtime.current;
+  h.entities.set('alpha', {});
+  const pending = h.runtime.set('bravo');
+  assert.equal(h.runtime.lendToBattle('alpha'), true);
+  h.setPlayer({ visual: player });
+  h.setPhase('battle');
+  player.root.position.set(84, 19, 121);
+  player.root.rotation.set(.2, .5, -.3);
+  player.root.updateMatrix();
+  const pose = player.root.matrix.clone();
+  await h.runtime.set('charlie');
+  slow.resolve(); await pending;
+  assert.equal(h.visuals.length, 1);
+  assert.deepEqual(player.root.position.toArray(), [84, 19, 121]);
+  assert.deepEqual(player.root.rotation.toArray().slice(0, 3), [.2, .5, -.3]);
+  assert.ok(player.root.matrix.equals(pose));
+  assert.equal(player.root.parent, h.scene);
+  h.runtime.trim(1);
+  assert.deepEqual(h.disposed, []);
+  h.setPhase('garage');
+  assert.equal(h.runtime.adoptBattlePlayer('alpha'), true);
+  assert.equal(h.runtime.current, player);
+  assert.deepEqual(h.scene.children, [player.root]);
+  h.runtime.dispose();
+}
+{
+  const h = createHarness();
+  await h.runtime.set('alpha');
+  const parkedAlpha = h.runtime.current;
+  await h.runtime.set('bravo');
+  h.setPlayer({ visual: h.makeVisual('alpha') });
+  assert.equal(h.runtime.adoptBattlePlayer('alpha'), false,
+    'intentionally parked cache retains the old duplicate-adoption safety');
+  await h.runtime.set('alpha');
+  assert.equal(h.runtime.current, parkedAlpha);
+  h.runtime.dispose();
+}
+
+// Disposal cancels producers, not retained visual/GPU residency.
+{
+  const frame = deferred(), delayedFrames = [];
+  const h = createHarness({ delayedFrames });
+  await h.runtime.set('alpha');
+  const current = h.runtime.current;
+  h.setBootComplete(true);
+  delayedFrames.push(frame);
+  const pending = h.runtime.set('bravo');
+  await flushMicrotasks();
+  const incoming = h.visuals[1];
+  h.runtime.dispose();
+  frame.resolve(); await pending;
+  assert.equal(h.runtime.current, current);
+  assert.equal(incoming.root.parent, null);
+  assert.deepEqual(h.scene.children, [current.root]);
+  assert.deepEqual(h.releasedResources, []);
+  await h.runtime.set('charlie');
+  h.watchdog.callback();
+  assert.equal(h.visuals.length, 2);
+  assert.equal(h.cancelledWatchdog, 'watchdog');
+}
+{
+  const frame = deferred(), delayedFrames = [];
+  const h = createHarness({ delayedFrames });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  delayedFrames.push(frame);
+  const pending = h.runtime.set('bravo');
+  await flushMicrotasks();
+  h.visuals[1].dispose();
+  frame.resolve(); await pending;
+  assert.equal(h.runtime.current.specId, 'alpha');
+  assert.equal(h.runtime.hasCached('bravo'), false);
+  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  h.runtime.dispose();
+}
+
+{
+  const frame = deferred(), delayedFrames = [];
+  const h = createHarness({ delayedFrames });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  delayedFrames.push(frame);
+  const pending = h.runtime.set('bravo');
+  await flushMicrotasks();
+  const discarded = h.visuals[1];
+  discarded.dispose();
+  await h.runtime.set('bravo');
+  const replacement = h.runtime.current;
+  assert.notEqual(replacement, discarded);
+  frame.resolve(); await pending;
+  assert.equal(h.runtime.current, replacement, 'old same-spec producer cannot replace or retire its new identity');
+  assert.equal(h.runtime.hasCached('bravo'), true);
+  assert.equal(discarded.root.parent, null);
+  assert.deepEqual(h.scene.children, [replacement.root]);
+  assert.deepEqual(h.disposed, ['bravo']);
+  h.runtime.dispose();
+}
+
+console.log('garagePedestalRuntime.selftest: detached warm LRU, exact resource preservation, invalidation/disposal, battle handoff and async convergence passed');

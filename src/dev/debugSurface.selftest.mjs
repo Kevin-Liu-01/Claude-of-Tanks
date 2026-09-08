@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { installDebugSurface } from './debugSurface.ts';
+import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
 
 let selected = 'm1a2';
 let shotMode = false;
 let networkState = 'connected';
+let nightLighting = null;
 const target = {};
 const calls = [];
 const action = (...args) => { calls.push(args); return args[0] ?? null; };
@@ -12,6 +14,7 @@ const surface = installDebugSurface({
   game: { spotting: { active: true } }, rig: {}, bus: {}, input: {}, settings: {},
   pauseInfo: {}, garage: {}, quality: { resolvePresetName: action },
   getFx: () => ({ ready: true }),
+  getNightLighting: () => nightLighting,
   getPedestalVisual: () => ({ specId: selected }),
   isPedestalOnStage: () => true,
   getSelectedSpecId: () => selected,
@@ -49,6 +52,12 @@ const surface = installDebugSurface({
 }, target);
 
 assert.equal(target.__DEBUG, surface);
+assert.equal(surface.nightLighting, null, 'diagnostics do not acquire lighting merely by installation');
+nightLighting = { prepare: action, reset: action };
+assert.equal(surface.nightLighting, nightLighting,
+  'native probes get the actual lifecycle owner through the live diagnostic getter');
+assert.equal(surface.visitOwnedGeometries, visitOwnedObject3DGeometries,
+  'explicit diagnostics expose the maintained read-only owner without a boot/frame scan');
 assert.equal(surface.selectedSpecId, 'm1a2');
 surface.selectGarageTank('t90m');
 assert.equal(surface.selectedSpecId, 't90m', 'selection getter remains live');

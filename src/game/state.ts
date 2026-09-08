@@ -966,7 +966,11 @@ function planOpeningRoute(
     });
     if (!leg.length) break;
     terrainWaypoints.push(...leg);
-    routeStart = { x, z };
+    // A dry-route leg may end on the reachable bank, not the requested wet
+    // doctrine point. Subsequent legs must continue at the actual endpoint.
+    const end = leg[leg.length - 1];
+    routeStart = context.botNavigation.navigationWaterPolicy === 'avoid-liquid'
+      ? { x: end[0], z: end[1] } : { x, z };
   }
   controller.setWaypoints(terrainWaypoints, { loop: false });
   entity._openingRoute = terrainWaypoints;

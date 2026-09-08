@@ -84,6 +84,7 @@ export interface WorldActivationRuntimeOptions<
   ensureCloudTexturesChunked?(yieldFrame: () => Promise<void>): Promise<void>;
   awaitInitialCloudWarm(): Promise<void>;
   applySkyPreset(skyConfig: SkyConfig): void;
+  applySkyPresentation(skyConfig: SkyConfig): void;
   setSun(skyConfig: SkyConfig): void;
   getFogDensity(): number;
   onFogDensityChanged(density: number): void;
@@ -140,6 +141,7 @@ export interface WorldActivationRuntime<
     options?: WorldActivationOptions | null,
   ): Promise<World>;
   setDormant(dormant: boolean): void;
+  invalidateSkyPresentation(): void;
 }
 
 /**
@@ -163,6 +165,7 @@ export function createWorldActivationRuntime<
   let dormant = false;
   let servicesMapId: string | null = null;
   let skyMapId = options.initialMapId;
+  let skyPresentationDirty = false;
 
   const coordinatorDependencies = options.coordinatorDependencies;
   let coordinator = options.coordinator;
@@ -177,7 +180,7 @@ export function createWorldActivationRuntime<
   }
   const cache = coordinator.cache;
   const baseUrl = options.baseUrl || '/';
-  const assetVersion = options.minimapAssetVersion || 'north-up-v5';
+  const assetVersion = options.minimapAssetVersion || 'north-up-v7';
   const assetUrl = (mapId: string): string => (
     `${baseUrl}minimaps/${encodeURIComponent(mapId)}.webp?v=${assetVersion}`
   );
@@ -212,19 +215,30 @@ export function createWorldActivationRuntime<
     queueMinimap(world);
   };
 
+  const restoreAtmosphere = (world: World): void => {
+    const skyConfig = world.config.sky ?? {} as SkyConfig;
+    if (skyMapId !== world.mapId) {
+      skyMapId = world.mapId;
+      options.applySkyPreset(skyConfig);
+      options.onFogDensityChanged(options.getFogDensity());
+    } else if (skyPresentationDirty) {
+      // Garage variants only retarget the visible sky; the last battlefield's
+      // PMREM remains resident. Restore that sky/fog without rebaking its IBL
+      // when the same cached battlefield is entered again.
+      options.applySkyPresentation(skyConfig);
+      options.onFogDensityChanged(options.getFogDensity());
+    }
+    skyPresentationDirty = false;
+    options.setSun(skyConfig);
+  };
+
   const activate = (world: World, { services = true }: { services?: boolean } = {}): World => {
     options.swapSceneWorld(current?.group ?? null, world.group);
     current = world;
     dormant = false;
     options.ensureCloudTextures();
     pendingMapId = world.mapId;
-    const skyConfig = world.config.sky ?? {} as SkyConfig;
-    if (skyMapId !== world.mapId) {
-      skyMapId = world.mapId;
-      options.applySkyPreset(skyConfig);
-      options.onFogDensityChanged(options.getFogDensity());
-    }
-    options.setSun(skyConfig);
+    restoreAtmosphere(world);
     if (services) prepareServices(world);
     else {
       collider = null;
@@ -463,8 +477,11 @@ export function createWorldActivationRuntime<
       return cached ? activate(cached) : ensure(mapId);
     },
     ensure,
+    invalidateSkyPresentation() { skyPresentationDirty = true; },
     setDormant(nextDormant) {
-      if (!current || dormant === nextDormant) return;
+      if (!current) return;
+      if (!nextDormant && skyPresentationDirty) restoreAtmosphere(current);
+      if (dormant === nextDormant) return;
       dormant = nextDormant;
       options.setSceneWorldActive(current.group, !nextDormant);
     },

@@ -48,6 +48,6 @@ for (const mapId of MAP_IDS) {
 assert.deepEqual([...usedSpecies].sort(), [...TREE_SPECIES].sort(),
   'the battlefield roster uses every procedural tree archetype');
 assert.ok(signatures.size >= 16,
-  'the twenty battlefields retain strongly differentiated vegetation signatures');
+  'the battlefield roster retains strongly differentiated vegetation signatures');
 
-console.log('treeSpecies.selftest: thirteen archetypes and twenty biome mixes passed');
+console.log(`treeSpecies.selftest: thirteen archetypes and ${MAP_IDS.length} biome mixes passed`);

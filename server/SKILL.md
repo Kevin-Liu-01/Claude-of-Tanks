@@ -21,8 +21,9 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 - `dedicatedMatchServer.ts` owns the authoritative WebSocket service boundary.
 - `rankedMatchmaker.ts` owns bounded queues, team balance, and match-ticket handoff;
   `ratingStore.ts` owns bearer identities, persistent Elo, and idempotent results.
-- `dedicatedWorldCollision.ts` inflates match-local state from the generated
-  twenty-map collision manifest; do not hand-edit that manifest.
+- `dedicatedWorldCollision.ts` inflates match-local state from generated
+  per-map collision shards; do not hand-edit their records or checksum index.
+  Keep idle map retention bounded and release active terrain leases on teardown.
 - A v1 browser-hosted room closes if its host leaves; never silently migrate a
   ranked authority to a player.
 - Production signaling must run behind TLS with an explicit origin allowlist.

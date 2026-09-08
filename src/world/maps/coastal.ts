@@ -193,6 +193,7 @@ export default {
     // toward the bright maritime sky instead of boxing the sea in
     baseHex: 0x5b6a50, amp: 0.75, style: 'rolling', treeline: 0.90, treelineLayers: 2,
     forestHex: 0x3d5539, rockHex: 0x757a6c, haze: 1.25, grain: 0.8,
+    seaOpening: { azimuthDeg: 90, widthDeg: 118, level: -4.0, colorHex: 0x8b9795 },
   },
 
   sky: {

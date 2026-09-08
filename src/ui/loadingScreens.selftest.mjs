@@ -11,6 +11,7 @@ import {
 } from './featuredShots.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
+import { getMapName } from '../world/maps/catalog.ts';
 
 function webpDimensions(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF', 'map image must be RIFF WebP');
@@ -147,7 +148,15 @@ assert.ok(TRANSITION_SHOTS.every((shot) => shot.maps?.length),
 
 for (const mapId of Object.keys(MAP_THUMBS)) {
   const shot = featuredShotForMap(mapId);
-  assert.ok(shot.maps.includes(mapId), `no curated loading capture for ${mapId}`);
+  assert.ok(shot.maps.includes(mapId), `no map-specific loading capture for ${mapId}`);
+  assert.deepEqual(featuredShotForMap(` ${mapId.toUpperCase()} `), shot,
+    `${mapId}: repeated room restaging must keep the same loading art`);
+  if (!TRANSITION_SHOTS.some((entry) => entry.maps?.includes(mapId))) {
+    assert.equal(shot.img, MAP_HEROES[mapId],
+      `${mapId}: without a curated action still use its exact native 4K overview`);
+    assert.equal(shot.cap, `${getMapName(mapId)} — battlefield overview`);
+    assert.deepEqual(shot.maps, [mapId], 'an overview only depicts its own battlefield');
+  }
 }
 
 assert.equal(
@@ -170,6 +179,8 @@ assert.equal(new Set(rotation.slice(0, cycleSize)).size, cycleSize,
   'each rotation cycle visits every capture');
 assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
   'refilled rotation visits every capture');
+assert.ok(TRANSITION_SHOTS.includes(featuredShotForMap('unknown-map')),
+  'unknown map IDs retain the existing curated transition rotation');
 
 await import('./imagePreload.selftest.mjs');
 

@@ -115,7 +115,7 @@ function fillCumulusFields(
   samplers: CumulusSamplers,
 ): CumulusFields {
   const { warp, macroAniso, threshold, cluster, edge, edgeWisp, coreWidth } = config;
-  const { fbmD, fbmWX, fbmWY, fbmM, fbmHF } = samplers;
+  const { fbmD, fbmWX, fbmWY, fbmM } = samplers;
   const mask = new Float32Array(width * height);
   const core = new Float32Array(width * height);
   const sigma = new Float32Array(width * height);
@@ -132,8 +132,12 @@ function fillCumulusFields(
       const thresholdAtPoint = threshold + (mac - 0.5) * 2 * cluster;
       const index = y * width + x;
       const edgeWidth = edge + edgeWisp * (1 - smoothstepNum(0.35, 0.62, mac));
+      // Let the same periodic billow field model body depth. Sampling a
+      // quarter-domain HF field broke periodicity at the texture edge and
+      // added an independent noise veil over coherent cloud bodies. Fine rim
+      // erosion remains in shadeCumulusPixels, with one fewer FBM sample here.
       const density = smoothstepNum(thresholdAtPoint, thresholdAtPoint + edgeWidth, d)
-        * (0.72 + 0.28 * smoothstepNum(0.25, 0.75, fbmHF(u * 0.25, v * 0.25)));
+        * (0.72 + 0.28 * smoothstepNum(0.30, 0.80, d));
       const coreDensity = smoothstepNum(
         thresholdAtPoint + edgeWidth,
         thresholdAtPoint + edgeWidth + coreWidth,
