@@ -592,11 +592,39 @@ attributes. Exact decomposition recovers all four original digests, including
 both unchanged Leopard 2A5 tiers. `b88d7cd48` preserves those digests and passes
 the focused roller/attachment tests with equivalent negative controls.
 
-The nine-test world batch passes eight unchanged. Reservoir's historical
-partition hash is the remaining failure under investigation. No failing
-physical digest is silently replaced and no broad geometry attribute is
-dropped from the existing oracle. These focused results do not turn the
-failed complete-suite invocation into a pass.
+The nine-test world batch passes eight unchanged. Reservoir's remaining
+failure is not a lighting mask: all 31 waterworks parts have no such attribute.
+Exact historical map inputs recover all six V25/V27 hashes. The intentional
+`c8476fa77` road/spawn/hardstand redesign changes only 12 terrain-following
+parts; the other 19, every index and every X/Z vertex remain exact. The
+repaired focused test retains the six historical hashes against their frozen
+inputs, adds separate current-layout receipts, and checks grounded Y, metric
+V and the penstock's resulting normals. Current-layout physics, RNG, support,
+material and storage assertions remain in force. The focused test passes for
+all three seeds, including malformed-geometry negative controls. These
+focused results do not turn the failed complete-suite invocation into a pass.
+
+## Incremental publication checkpoint
+
+The owner explicitly requested progressive commits and pushes of completed
+nighttime, map and horizon work while development continues. This checkpoint
+therefore ships independently of final whole-pass certification. The strict
+memory, high-DPI motion and historical model-reference limitations above are
+still open; no failed receipt or gate is relabeled as passing.
+
+`b3bdad64b` integrates `origin/main` through `ed7054141` without conflicts.
+The four focused shader-warmup/network-presentation/observer tests and the
+complete TypeScript/core-unused check pass in
+`incremental-entry-merge-check-r1.{json,log}`. Source HEAD and runtime files
+remain fixed throughout. The receipt explicitly records the concurrent,
+unchanged Reservoir test-only MJS/JSON patch. The full-suite inventory is now
+252 pre, 497 core and 29 post files (778 total); no complete-suite pass is
+claimed. This integration does not replace the earlier immutable R5 captures
+with evidence for the newly merged shader-preparation code.
+
+The newly requested biome-specific horizon-cluster work is isolated in
+`/Users/kevinliu/.codex/worktrees/cot-horizon-detail-20260907`, separate from
+this completed map/nighttime checkpoint and all frozen capture builds.
 
 ## Acceptance checklist
 
@@ -608,5 +636,5 @@ failed complete-suite invocation into a pass.
    quality acceptance remain open as detailed above.
 5. Thirty-map visual/art/minimap refresh and native collision refresh: completed;
    exact waterworks, census, codec and loader checks pass.
-6. Current-main integration is checkpointed; final release verification and
-   non-forced publication remain pending.
+6. Current-main integration is checkpointed for owner-requested incremental
+   publication; final whole-pass verification remains pending.
