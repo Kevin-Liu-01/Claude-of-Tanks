@@ -202,3 +202,10 @@ zero explicit any/unknown). React Doctor's changed score remains 49/100; new
 warnings are cold test operations, not new live-frame work. The full suite is
 still subject to the independently reproduced upstream T-90M receipt mismatch
 documented above. No test expectation or graphics quality was weakened.
+
+The final landing was rebased onto `427dc10a3`; focused checks, typecheck and
+the public production build passed on that integrated tree. The ordered
+`npm test` attempt was deliberately stopped during the unchanged wheel-quality
+sweep after independently reproducing the existing T-90M receipt failure.
+Its interrupted wheel test is not an assertion failure, and the ordered suite
+did not complete. Full-suite green is not claimed.
