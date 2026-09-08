@@ -17,12 +17,12 @@ export default {
       [[-314, 182], [-198, 222], [-72, 206], [66, 226], [194, 200], [334, 228]],
     ] },
     // One asymmetric spring basin wraps a dry town-facing tongue. The broad
-    // western bank and tapering ends replace three pinched circular joins;
+    // western coves and unequal tapering arms replace three circular joins;
     // the existing analytic contour also owns terrain, minimap and wetness.
     lakes: [
       { x: -161, z: 30, r: 112, depth: 0.75, level: -1.2,
-        radii: [0.44, 0.55, 0.80, 0.91, 0.935, 0.86, 0.68, 0.63,
-          0.62, 0.65, 0.71, 0.79, 0.77, 0.78, 0.76, 0.55] },
+        radii: [0.43, 0.58, 0.84, 0.76, 0.93, 0.86, 0.60, 0.70,
+          0.61, 0.72, 0.68, 0.79, 0.75, 0.77, 0.74, 0.51] },
     ],
     marshes: [],
     landforms: [
