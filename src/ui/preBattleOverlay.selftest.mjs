@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
+import { t } from './i18n.ts';
 function element() {
   const classes = new Set();
   return { textContent: '', reads: 0, get offsetWidth() { this.reads++; return 200; },
@@ -12,8 +13,8 @@ const root = element(), kicker = element(), numeral = element();
 const overlay = createPreBattleOverlay(root, kicker, numeral);
 overlay.setWaiting(true);
 for (const seconds of [5, 5, 0, 4]) overlay.countdown(seconds);
-assert.equal(kicker.textContent, 'WAITING FOR COMMANDERS');
-assert.equal(numeral.textContent, 'READY', 'loading snapshots cannot pretend the clock is running');
+assert.equal(kicker.textContent, t('hud.waitingForCommanders'));
+assert.equal(numeral.textContent, t('playMenu.ready.iAmReady'), 'loading snapshots cannot pretend the clock is running');
 assert.equal(root.classList.contains('on'), true);
 assert.equal(root.classList.contains('rollout'), false);
 overlay.setWaiting(false);
@@ -23,7 +24,7 @@ assert.equal(numeral.reads, 1, 'same-second frames do not restart animation or f
 overlay.countdown(4);
 assert.equal(numeral.textContent, '4');
 overlay.countdown(0);
-assert.equal(numeral.textContent, 'ROLL OUT!');
+assert.equal(numeral.textContent, t('hud.rollout'));
 overlay.setWaiting(true);
 assert.equal(root.classList.contains('rollout'), false);
 overlay.reset();
@@ -35,7 +36,7 @@ overlay.countdown(NaN);
 assert.equal(numeral.textContent, '2');
 overlay.reset();
 overlay.countdown(5);
-assert.equal(kicker.textContent, 'BATTLE BEGINS IN', 'solo/rematch does not inherit waiting');
+assert.equal(kicker.textContent, t('hud.battleBeginsIn'), 'solo/rematch does not inherit waiting');
 assert.equal(numeral.textContent, '5');
 overlay.reset();
 console.log('preBattleOverlay.selftest: waiting, countdown, rematch and teardown passed');

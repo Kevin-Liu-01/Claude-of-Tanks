@@ -200,9 +200,9 @@ if (!(plannedRosterAt >= 0
   && fxTexturesAt > fxRuntimeAt)) {
   throw new Error('explicit Battle intent must transfer the exact next roster and FX atlases');
 }
-if (!/onBattleIntent: battleIntent\.preload/.test(main)) {
-  throw new Error('the garage Battle intent must remain wired to the typed lifecycle owner');
-}
+assert.match(main,
+  /onBattleIntent:\s*\(options\)\s*=>\s*\{\s*(?:\/\/[^\n]*\n\s*)*if \(!currentNetworkRoom\(\)\?\.prepareLobby\(\)\) battleIntent\.preload\(options\);\s*\},\s*onTankIntent:/,
+  'Garage intent keeps its existing room-aware adapter: prepare the authoritative lobby or forward exact Solo options');
 if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
   throw new Error('particle preload must finish PNG decode before texture upload');
 }

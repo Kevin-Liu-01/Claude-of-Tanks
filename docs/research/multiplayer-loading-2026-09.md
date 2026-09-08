@@ -8,6 +8,10 @@ Further investigation: [remaining native pauses and post-processing sizing
 reuse](multiplayer-post-sizing-2026-09.md), including unchanged-build variation
 and the separate countdown/reveal correctness gates.
 
+Roster follow-up: [overlapping exact roster assets with world/connection
+acquisition](multiplayer-roster-assets-2026-09.md), including temporary texture
+ownership and cancellation draining.
+
 ## Scope
 
 This change covers private/LAN and dedicated-adapter battle entry, the visible

@@ -2110,6 +2110,14 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           getMatch: () => networkSession.match,
         },
         bridge: {
+          prepareRosterAssets: (factory, request, spectator) => factory({
+            players: request.matchPlayers,
+            viewerId: request.viewerId,
+            spectator,
+            mapId: request.mapId,
+            anisotropy: engineCtx.anisotropy ?? 4,
+            signal: request.signal,
+          }),
           installInputRuntime: (factory) => { networkSession.ensureInputRuntime(factory); },
           createStatus: (factory) => factory({
             onExit: () => {

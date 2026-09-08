@@ -104,6 +104,8 @@ assert.deepEqual(receipt.networkLoad.stageIntervals, [
 ]);
 assert.equal(Object.hasOwn(receipt.networkLoad, 'preparationSlices'), false,
   'legacy traces do not acquire an invented preparation interval field');
+assert.equal(Object.hasOwn(receipt.networkLoad, 'rosterAssetsFailed'), false,
+  'legacy traces do not acquire an invented roster assets outcome');
 assert.deepEqual(receipt.networkLoad.revealSlices, [
   { stage: 'activation', startTime: 124, endTime: 126 },
   { stage: 'primeReveal', startTime: null, endTime: null },
@@ -129,15 +131,17 @@ assert.deepEqual(JSON.parse(JSON.stringify(f.run(readProductionEntryObserver, 's
     { stage: 'panelJoin', startTime: 180, endTime: 190, detail: 'PRIVATE_DETAIL' },
   ];
   overlap.context.window.__NETWORK_LOAD.preparationSlices = [
+    { stage: 'rosterAssets', startTime: 110, endTime: 150, player: 'PRIVATE_PLAYER' },
     { stage: 'panelMasks', startTime: 118, endTime: 190, room: 'PRIVATE_ROOM' },
     { stage: 'compile', startTime: 120, endTime: 180, url: 'PRIVATE_URL', extraNumeric: 123 },
     { stage: 'panelMasks', startTime: 999, endTime: 1000 },
   ];
   const measured = JSON.parse(JSON.stringify(overlap.run(readProductionEntryObserver, 'stop')));
   assert.deepEqual(measured.networkLoad.preparationSlices, [
+    { stage: 'rosterAssets', startTime: 110, endTime: 150 },
     { stage: 'panelMasks', startTime: 118, endTime: 190 },
     { stage: 'compile', startTime: 120, endTime: 180 },
-  ], 'two full asynchronous preparation intervals survive independently of the residual panel wait');
+  ], 'all three asynchronous preparation intervals survive independently of the residual panel wait');
   assert.deepEqual(measured.networkLoad.stageIntervals, [
     { stage: 'compile', startTime: 120, endTime: 180 },
     { stage: 'panelJoin', startTime: 180, endTime: 190 },
@@ -153,11 +157,17 @@ for (const value of [undefined, null, 'PRIVATE_SLICES', 42, {}, true]) {
 }
 for (const [rows, expected] of [
   [[], []],
+  [[{ stage: 'panelMasks', startTime: 118, endTime: 190 },
+    { stage: 'compile', startTime: 120, endTime: 180 }],
+  [{ stage: 'panelMasks', startTime: 118, endTime: 190 },
+    { stage: 'compile', startTime: 120, endTime: 180 }]],
   [[{ stage: 'panelMasks', startTime: NaN, endTime: 'PRIVATE_END' },
-    { stage: 'compile', startTime: Infinity }],
+    { stage: 'compile', startTime: Infinity }, { stage: 'rosterAssets', startTime: 110 }],
   [{ stage: 'panelMasks', startTime: null, endTime: null },
-    { stage: 'compile', startTime: null, endTime: null }]],
+    { stage: 'compile', startTime: null, endTime: null },
+    { stage: 'rosterAssets', startTime: 110, endTime: null }]],
   [[{ stage: 'PRIVATE_STAGE', startTime: 1 }, { stage: 'panelJoin', startTime: 2 },
+    { stage: 'modulesWorldAndConnect', startTime: 3 },
     { stage: 'compile', startTime: 3, endTime: 4 }], []],
   [[null, { stage: 'compile', startTime: 0, endTime: 0, private: 'PRIVATE_ROW' }],
   [{ stage: 'compile', startTime: 0, endTime: 0 }]],
@@ -167,7 +177,15 @@ for (const [rows, expected] of [
   malformed.context.window.__NETWORK_LOAD.preparationSlices = rows;
   const measured = JSON.parse(JSON.stringify(malformed.run(readProductionEntryObserver, 'stop')));
   assert.deepEqual(measured.networkLoad.preparationSlices, expected,
-    'preparation extraction visits at most two rows and retains only the two allowed timing stages');
+    'preparation extraction visits at most three rows and retains only the three allowed timing stages');
+  assert.doesNotMatch(JSON.stringify(measured), /PRIVATE/);
+}
+for (const value of [true, false, undefined, null, 'PRIVATE_FAILURE', 0, 1, {}, [], new Boolean(false)]) {
+  const outcome = browserFixture();
+  outcome.context.window.__NETWORK_LOAD.rosterAssetsFailed = value;
+  const measured = JSON.parse(JSON.stringify(outcome.run(readProductionEntryObserver, 'stop')));
+  assert.equal(measured.networkLoad.rosterAssetsFailed, typeof value === 'boolean' ? value : null,
+    'only primitive boolean roster assets outcomes are retained; malformed values remain unknown');
   assert.doesNotMatch(JSON.stringify(measured), /PRIVATE/);
 }
 
@@ -284,6 +302,9 @@ const bounded = browserFixture();
 bounded.context.window.__NETWORK_LOAD.stageIntervals = Array.from({ length: 40 }, (_, index) => ({
   stage: 'compile', startTime: index, endTime: index + 1, private: 'PRIVATE_DETAIL',
 }));
+bounded.context.window.__NETWORK_LOAD.preparationSlices = Array.from({ length: 40 }, (_, index) => ({
+  stage: 'rosterAssets', startTime: index, endTime: index + 1, private: 'PRIVATE_DETAIL',
+}));
 bounded.context.window.__NETWORK_LOAD.revealSlices = Array.from({ length: 40 }, (_, index) => ({
   stage: 'loaderFade', startTime: index, endTime: index + 1,
 }));
@@ -302,6 +323,7 @@ assert.equal(boundedReceipt.transitions.length, 256);
 assert.ok(boundedReceipt.transitionsDropped > 0);
 assert.equal(boundedReceipt.longTasks.length, 256);
 assert.equal(boundedReceipt.networkLoad.stageIntervals.length, 32);
+assert.equal(boundedReceipt.networkLoad.preparationSlices.length, 3);
 assert.equal(boundedReceipt.networkLoad.revealSlices.length, 32);
 assert.equal(boundedReceipt.topMaskLoad.intervals.length, 16);
 assert.equal(boundedReceipt.worldLoad.buildDetail.propsDetail.slowest.length, 8);

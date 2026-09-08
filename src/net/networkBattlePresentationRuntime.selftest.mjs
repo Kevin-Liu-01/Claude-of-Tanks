@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createNetworkBattlePresentationRuntime } from './networkBattlePresentationRuntime.ts';
 import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
+import { createBattleEntryAcquisition } from '../game/battleEntryAcquisition.ts';
 
 function deferred() {
   let resolve;
@@ -35,6 +36,20 @@ function assertClosedPreparation(harness) {
   }
 }
 
+function useRealAcquisition(harness) {
+  const acquisition = createBattleEntryAcquisition();
+  harness.options.entry.acquire = (options) => acquisition.acquireNetwork(options);
+}
+
+function assertAssetsReleased(harness) {
+  assert.equal(harness.assetReleased, true, 'the temporary paint lease is released');
+  assert.equal(harness.events.filter((event) => event === 'assetsReleased').length, 1,
+    'lease release is idempotent across normal and failure cleanup');
+  assert.ok(harness.events.indexOf('assetsReleased') > harness.events.indexOf('assetsSettled'),
+    'the current asset job settles before releasing its material owner');
+  assertClosedPreparation(harness);
+}
+
 function createHarness(failAt = '', pauseAt = '', timing = {}) {
   const events = [];
   const progress = [];
@@ -57,7 +72,15 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   const readinessGate = deferred();
   const compileGate = deferred();
   const panelGate = deferred();
+  const modulesGate = deferred();
+  const worldGate = deferred();
+  const assetsGate = deferred();
+  const assetsDisposeGate = deferred();
   const panelRequests = [];
+  const assetRequests = [];
+  const rosterRequests = [];
+  let assetHandle = null;
+  let assetReleased = false;
   const initial = {
     entities: [],
     meta: { weatherSeed: 0, phase: timing.phase ?? 'loading', countdownMs: timing.countdownMs ?? 5000 },
@@ -74,10 +97,17 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       ['viewer', entity('m1a1')],
       ['peer', entity('t90m')],
     ]),
-    async prepareRoster() {
+    async prepareRoster(players) {
+      rosterRequests.push(players);
       events.push('prepareRoster');
+      assert.ok(events.includes('worldReady') && events.includes('connected'),
+        'roster geometry requires the selected world and transport');
+      assert.strictEqual(players, assetHandle.players, 'geometry consumes the exact concrete asset roster');
+      assert.equal(assetReleased, false, 'paint leases remain borrowed throughout roster construction');
       if (pauseAt === 'roster') await rosterGate.promise;
       if (failAt === 'roster') throw new Error('roster failed');
+      assert.equal(assetReleased, false, 'a paused roster keeps its paint lease until visuals acquire');
+      events.push('rosterAcquired');
     },
     apply() { events.push('apply'); },
     dispose() { disposed = true; events.push('disposeBridge'); },
@@ -87,10 +117,11 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     close: (reason) => events.push(`closeMatch:${reason}`),
   };
   const createBrowserBattleBridge = Symbol('bridge');
+  const prepareBrowserBattleRosterAssets = Symbol('roster-assets');
   const createNetworkStatus = Symbol('status');
   const createBrowserInputRuntime = Symbol('input');
   const modules = [
-    { createBrowserBattleBridge },
+    { createBrowserBattleBridge, prepareBrowserBattleRosterAssets },
     { createNetworkStatus },
     { createBrowserInputRuntime },
   ];
@@ -160,12 +191,59 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
         publishMatch(connected);
         return { modules: loadedModules, world, match: connected };
       },
-      loadModules: async () => { events.push('modules'); return modules; },
-      loadWorld: async () => { events.push('world'); return {}; },
+      loadModules: async () => {
+        events.push('modules');
+        if (pauseAt === 'modules') await modulesGate.promise;
+        events.push('modulesReady');
+        return modules;
+      },
+      loadWorld: async () => {
+        events.push('world');
+        if (pauseAt === 'world') await worldGate.promise;
+        if (failAt === 'world') throw new Error('world failed');
+        events.push('worldReady');
+        return {};
+      },
       publishMatch: (value) => { publishedMatch = value; events.push('publishMatch'); },
       getMatch: () => publishedMatch,
     },
     bridge: {
+      prepareRosterAssets: (factory, assetRequest, spectator) => {
+        assert.strictEqual(factory, prepareBrowserBattleRosterAssets);
+        assert.strictEqual(assetRequest.signal, request.signal, 'asset preparation receives the exact entry signal');
+        assert.equal(spectator, request.own.team === 'spectator');
+        assert.ok(events.includes('modulesReady') && events.includes('visualsReady'),
+          'asset admission requires both lazy modules and the visual facade');
+        assert.equal(assetHandle, null, 'one entry owns one roster preparation handle');
+        assetRequests.push(assetRequest);
+        events.push('rosterAssets');
+        const players = assetRequest.matchPlayers.map((player) => ({
+          ...player, specId: player.specId === 'random' ? 'm1a1' : player.specId,
+        }));
+        const ready = (async () => {
+          try {
+            if (pauseAt === 'assets') await assetsGate.promise;
+            if (failAt === 'assets') throw new Error('optional paint failed');
+            events.push('assetsReady');
+          } finally { events.push('assetsSettled'); }
+        })();
+        let disposal;
+        assetHandle = {
+          players,
+          ready,
+          dispose() {
+            disposal ??= (async () => {
+              events.push('disposeAssets');
+              await ready.catch(() => {});
+              if (pauseAt === 'assetsDispose') await assetsDisposeGate.promise;
+              assetReleased = true;
+              events.push('assetsReleased');
+            })();
+            return disposal;
+          },
+        };
+        return assetHandle;
+      },
       installInputRuntime: (factory) => {
         assert.strictEqual(factory, createBrowserInputRuntime);
         events.push('input');
@@ -176,8 +254,11 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       },
       publishStatus: () => events.push('status'),
       attachRecovery: () => events.push('recovery'),
-      create: (factory) => {
+      create: (factory, bridgeRequest) => {
         assert.strictEqual(factory, createBrowserBattleBridge);
+        assert.strictEqual(bridgeRequest.signal, request.signal, 'the geometry adapter receives the entry signal');
+        assert.strictEqual(bridgeRequest.matchPlayers, assetHandle.players,
+          'the bridge and its roster share the same concrete selection');
         assert.ok(events.includes('visualsReady'), 'bridge requires the loaded visual facade');
         events.push('createBridge');
         return preparedBridge;
@@ -271,6 +352,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     connectMatch: async () => {
       events.push('connect');
       if (pauseAt === 'connect') await connectGate.promise;
+      events.push('connected');
       return match;
     },
   };
@@ -282,6 +364,10 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     progress,
     preparedBridge,
     panelRequests,
+    assetRequests,
+    rosterRequests,
+    get assetHandle() { return assetHandle; },
+    get assetReleased() { return assetReleased; },
     revealGate,
     get disposed() { return disposed; },
     get publishedBridge() { return publishedBridge; },
@@ -300,6 +386,10 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     releaseReadiness: () => readinessGate.resolve(),
     releaseCompile: () => compileGate.resolve(),
     releasePanel: () => panelGate.resolve(),
+    releaseModules: () => modulesGate.resolve(),
+    releaseWorld: () => worldGate.resolve(),
+    releaseAssets: () => assetsGate.resolve(),
+    releaseAssetDisposal: () => assetsDisposeGate.resolve(),
   };
 }
 
@@ -353,7 +443,11 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   });
   assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
     ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']);
-  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage), ['panelMasks', 'compile']);
+  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage),
+    ['rosterAssets', 'panelMasks', 'compile']);
+  assertAssetsReleased(harness);
+  assert.equal(harness.trace.rosterAssetsFailed, false);
+  assert.ok(harness.events.indexOf('assetsReleased') > harness.events.indexOf('rosterAcquired'));
   assertClosedPreparation(harness);
   const revealStage = harness.trace.stageIntervals.find((row) => row.stage === 'reveal');
   harness.trace.revealSlices.forEach((row, index, rows) => {
@@ -369,6 +463,262 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   'moving scene compilation earlier keeps displayed progress monotonic');
   assert.ok(harness.progress.some(([fraction, label]) =>
     fraction === 1 && label === 'Ready'), 'the loader reaches its terminal state');
+}
+
+for (const prerequisite of ['modules', 'visuals']) {
+  const harness = createHarness('', prerequisite);
+  useRealAcquisition(harness);
+  const result = harness.runtime.present(harness.request);
+  try {
+    await waitForEvent(harness.events, prerequisite);
+    await waitForEvent(harness.events, 'connected');
+    assert.ok(harness.events.includes('worldReady'));
+    assert.equal(harness.assetHandle, null, `${prerequisite}: both prerequisites gate asset admission`);
+    assert.ok(!harness.events.includes('createBridge'));
+    if (prerequisite === 'modules') harness.releaseModules();
+    else harness.releaseVisuals();
+    await result;
+    assert.equal(harness.assetRequests.length, 1);
+    assertAssetsReleased(harness);
+  } finally {
+    harness.releaseModules(); harness.releaseVisuals();
+    await result;
+  }
+}
+
+for (const waitingOn of ['world', 'connect']) {
+  const harness = createHarness('', waitingOn);
+  useRealAcquisition(harness);
+  const result = harness.runtime.present(harness.request);
+  try {
+    await waitForEvent(harness.events, 'assetsReady');
+    assert.equal(harness.assetReleased, false, `${waitingOn}: completed paints retain their lease`);
+    assert.ok(Number.isFinite(harness.trace.modulesMs), 'module acquisition does not join asset readiness');
+    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'modulesWorldAndConnect');
+    assert.ok(!harness.events.includes('createBridge'), `${waitingOn}: no early scene geometry`);
+    assertPreparationCovered(harness, waitingOn);
+    harness.releaseWorld(); harness.releaseConnect();
+    await result;
+    const assets = harness.trace.preparationSlices.find((row) => row.stage === 'rosterAssets');
+    const acquisition = harness.trace.stageIntervals.find((row) => row.stage === 'modulesWorldAndConnect');
+    assert.ok(assets.startTime >= acquisition.startTime && assets.endTime <= acquisition.endTime,
+      'asset lifetime overlaps and completes inside the still-pending acquisition interval');
+    assertAssetsReleased(harness);
+  } finally {
+    harness.releaseWorld(); harness.releaseConnect();
+    await result;
+  }
+}
+
+{
+  const harness = createHarness('', 'assets');
+  useRealAcquisition(harness);
+  const result = harness.runtime.present(harness.request);
+  try {
+    await waitForEvent(harness.events, 'input');
+    assert.ok(Number.isFinite(harness.trace.modulesMs), 'lazy module callback returns while assets are pending');
+    assert.ok(harness.events.includes('worldReady') && harness.events.includes('connected'));
+    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'roster');
+    const assets = harness.trace.preparationSlices.find((row) => row.stage === 'rosterAssets');
+    assert.equal(assets.endTime, undefined, 'the asset slice remains open through the residual join');
+    assert.ok(!harness.events.includes('createBridge'), 'geometry cannot race a pending painter');
+    assertPreparationCovered(harness, 'residual asset wait');
+    harness.releaseAssets();
+    await result;
+    const acquisition = harness.trace.stageIntervals.find((row) => row.stage === 'modulesWorldAndConnect');
+    assert.ok(assets.startTime < acquisition.endTime && assets.endTime > acquisition.endTime,
+      'the full asset lifetime spans acquisition and residual roster wait without a fabricated early end');
+    assertAssetsReleased(harness);
+  } finally { harness.releaseAssets(); await result; }
+}
+
+{
+  const harness = createHarness('', 'roster');
+  const worldGate = deferred();
+  useRealAcquisition(harness);
+  harness.request.matchPlayers[0].specId = 'random';
+  harness.options.entry.loadWorld = async () => {
+    harness.events.push('world');
+    await worldGate.promise;
+    harness.events.push('worldReady');
+    return {};
+  };
+  const result = harness.runtime.present(harness.request);
+  try {
+    await waitForEvent(harness.events, 'assetsReady');
+    const concrete = harness.assetHandle.players;
+    assert.notStrictEqual(concrete, harness.request.matchPlayers);
+    assert.notStrictEqual(concrete[0], harness.request.matchPlayers[0]);
+    assert.equal(concrete[0].specId, 'm1a1', 'random selection becomes concrete exactly once');
+    harness.request.matchPlayers[0].specId = 't90m';
+    harness.request.matchPlayers[1].name = 'later lobby edit';
+    worldGate.resolve();
+    await waitForEvent(harness.events, 'prepareRoster');
+    assert.strictEqual(harness.rosterRequests[0], concrete);
+    assert.equal(concrete[0].specId, 'm1a1');
+    assert.equal(concrete[1].name, undefined, 'later input mutation cannot alter the copied roster');
+    assert.equal(harness.assetReleased, false, 'a paused visual borrower retains the prepared paint');
+    assert.ok(!harness.events.includes('disposeAssets'));
+    assertPreparationCovered(harness, 'paused roster borrowing paints');
+    harness.releaseRoster();
+    await result;
+    assertAssetsReleased(harness);
+    assert.ok(harness.events.indexOf('assetsReleased') > harness.events.indexOf('rosterAcquired'));
+    assert.ok(harness.events.indexOf('assetsReleased') < harness.events.indexOf('initial'));
+  } finally { worldGate.resolve(); harness.releaseRoster(); await result; }
+}
+
+{
+  const harness = createHarness('assets', 'world');
+  useRealAcquisition(harness);
+  const unhandled = [];
+  const onUnhandled = (error) => unhandled.push(error);
+  process.on('unhandledRejection', onUnhandled);
+  const result = harness.runtime.present(harness.request);
+  try {
+    await waitForEvent(harness.events, 'assetsSettled');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(unhandled, [], 'optional painting rejection is observed while world acquisition waits');
+    assert.ok(!harness.events.includes('prepareRoster'));
+    harness.releaseWorld();
+    await result;
+    assert.equal(harness.trace.rosterAssetsFailed, true);
+    assert.ok(harness.events.includes('rosterAcquired') && harness.events.includes('ready'),
+      'an ordinary paint warm failure retains normal roster preparation and verified reveal');
+    assert.equal(harness.trace.status, 'complete');
+    assertAssetsReleased(harness);
+    assert.deepEqual(unhandled, []);
+  } finally {
+    harness.releaseWorld(); await result;
+    process.removeListener('unhandledRejection', onUnhandled);
+  }
+}
+
+for (const pendingPrerequisite of ['modules', 'visuals']) {
+  const harness = createHarness('world', pendingPrerequisite);
+  useRealAcquisition(harness);
+  const result = harness.runtime.present(harness.request).then(
+    () => ({ ok: true }), (error) => ({ ok: false, error }),
+  );
+  try {
+    const completed = await result;
+    assert.equal(completed.ok, false);
+    assert.match(completed.error.message, /world failed/);
+    assert.equal(harness.trace.status, 'failed');
+    assert.equal(harness.assetHandle, null, 'failed acquisition settles without waiting on an unrelated import');
+    const endedAt = harness.trace.endedAt;
+    harness.releaseModules(); harness.releaseVisuals();
+    await waitForEvent(harness.events, 'modulesReady');
+    await waitForEvent(harness.events, 'visualsReady');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(harness.assetHandle, null, 'late prerequisites cannot admit an abandoned asset owner');
+    assert.deepEqual(harness.trace.preparationSlices, []);
+    assert.equal(harness.trace.endedAt, endedAt);
+    assert.ok(!harness.events.includes('createBridge'));
+    assertPreparationCovered(harness, `world failed before ${pendingPrerequisite}`);
+  } finally { harness.releaseModules(); harness.releaseVisuals(); await result; }
+}
+
+for (const [failure, assetOutcome] of [
+  ['world', 'resolve'], ['world', 'reject'], ['cancel', 'resolve'], ['cancel', 'reject'],
+]) {
+  const harness = createHarness(assetOutcome === 'reject' ? 'assets' : '', 'assets');
+  const worldGate = deferred();
+  const controller = new AbortController();
+  const primary = new Error('selected world failed during painting');
+  harness.request.signal = controller.signal;
+  useRealAcquisition(harness);
+  if (failure === 'world') harness.options.entry.loadWorld = () => worldGate.promise;
+  let settled = false;
+  const result = harness.runtime.present(harness.request).then(
+    () => { settled = true; return { ok: true }; },
+    (error) => { settled = true; harness.events.push('launcherCleanup'); return { ok: false, error }; },
+  );
+  try {
+    await waitForEvent(harness.events, 'rosterAssets');
+    if (failure === 'world') worldGate.reject(primary);
+    else controller.abort('leave while current asset paint is pending');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(settled, false, `${failure}/${assetOutcome}: active painting drains before rejection`);
+    assert.equal(harness.assetReleased, false, 'cancellation/failure cannot release paint beneath its current writer');
+    assert.equal(harness.trace.status, 'pending');
+    assert.equal(harness.trace.preparationSlices[0].endTime, undefined);
+    assert.ok(!harness.events.includes('createBridge'));
+    assertPreparationCovered(harness, failure);
+    harness.releaseAssets();
+    const completed = await result;
+    assert.equal(completed.ok, false);
+    if (failure === 'world') assert.strictEqual(completed.error, primary);
+    else assert.ok(isNetworkBattleEntryAbortError(completed.error));
+    assertAssetsReleased(harness);
+    assert.ok(harness.events.indexOf('launcherCleanup') > harness.events.indexOf('assetsReleased'));
+    assert.equal(harness.trace.status, 'failed');
+    assertPreparationCovered(harness, failure);
+  } finally { worldGate.resolve(); harness.releaseAssets(); await result; }
+}
+
+{
+  const harness = createHarness('roster', 'assetsDispose');
+  let settled = false;
+  const result = harness.runtime.present(harness.request).then(
+    () => { settled = true; return { ok: true }; },
+    (error) => { settled = true; return { ok: false, error }; },
+  );
+  try {
+    await waitForEvent(harness.events, 'disposeAssets');
+    assert.equal(settled, false, 'roster failure awaits temporary material cleanup');
+    assert.equal(harness.trace.status, 'pending', 'failure timing includes the actual resource drain');
+    assert.equal(harness.disposed, true, 'failed unpublished visuals are disposed');
+    assert.equal(harness.publishedBridge, null);
+    assertPreparationCovered(harness, 'roster failure draining paint leases');
+    harness.releaseAssetDisposal();
+    const completed = await result;
+    assert.equal(completed.ok, false);
+    assert.match(completed.error.message, /roster failed/);
+    assertAssetsReleased(harness);
+    assert.equal(harness.trace.status, 'failed');
+  } finally { harness.releaseAssetDisposal(); await result; }
+}
+
+{
+  const harness = createHarness('', 'assetsDispose');
+  const controller = new AbortController();
+  const reason = 'leave while successful roster paint leases are releasing';
+  harness.request.signal = controller.signal;
+  let settled = false;
+  const result = harness.runtime.present(harness.request).then(
+    () => { settled = true; return { ok: true }; },
+    (error) => { settled = true; harness.events.push('launcherCleanup'); return { ok: false, error }; },
+  );
+  try {
+    await waitForEvent(harness.events, 'disposeAssets');
+    assert.ok(harness.events.includes('rosterAcquired'), 'visuals successfully acquire before the paused disposal');
+    assert.equal(harness.disposed, false, 'the fully built bridge remains privately owned during disposal');
+    assert.equal(harness.publishedBridge, null);
+    controller.abort(reason);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(settled, false, 'cancellation must finish the current disposal before returning');
+    assert.equal(harness.trace.status, 'pending');
+    assert.equal(harness.assetReleased, false);
+    assertPreparationCovered(harness, 'cancelled successful roster disposal');
+    harness.releaseAssetDisposal();
+    const completed = await result;
+    assert.equal(completed.ok, false);
+    assert.ok(isNetworkBattleEntryAbortError(completed.error));
+    assert.equal(completed.error.message, reason);
+    assert.equal(harness.disposed, true, 'cancellation disposes the still-unpublished completed bridge');
+    assert.equal(harness.publishedBridge, null);
+    assertAssetsReleased(harness);
+    assert.ok(harness.events.indexOf('launcherCleanup') > harness.events.indexOf('assetsReleased'));
+    for (const event of ['initial', 'initialReady', 'publishBridge', 'activate', 'ready']) {
+      assert.ok(!harness.events.includes(event), `post-disposal cancellation cannot reach ${event}`);
+    }
+    assertPreparationCovered(harness, 'post-disposal cancellation checkpoint');
+    assert.equal(harness.trace.status, 'failed');
+    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'roster');
+    assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
+    assert.equal(harness.trace.revealSlices.length, 0);
+  } finally { harness.releaseAssetDisposal(); await result; }
 }
 
 for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) {
@@ -710,7 +1060,7 @@ for (const kind of ['spectator', 'missing-viewer']) {
   await harness.runtime.present(harness.request);
   assert.equal(harness.panelRequests.length, 0, `${kind}: do not prepare another player panel`);
   assert.ok(harness.trace.stageIntervals.some((row) => row.stage === 'panelJoin'));
-  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage), ['compile'],
+  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage), ['rosterAssets', 'compile'],
     `${kind}: skipped panel work cannot claim an actual preparation interval`);
   assert.ok(harness.events.includes('compile'), `${kind}: the normal scene warm still runs`);
   assert.equal(harness.events.includes('finalShadows'), kind !== 'spectator',
@@ -760,7 +1110,8 @@ for (const outcome of ['resolve', 'reject', 'cancel']) {
   assert.equal(harness.trace.stageIntervals.at(-1).stage, 'wreckWarm');
   assert.ok(!harness.events.includes('compile'));
   assert.ok(!harness.events.includes('playerPanel'), 'panel work cannot race unfinished wreck material preparation');
-  assert.deepEqual(harness.trace.preparationSlices, [], 'no overlapping job starts before wreck warm joins');
+  assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage), ['rosterAssets'],
+    'panel/compile work cannot start before wreck warm joins; roster assets already completed');
   assert.ok(!harness.events.includes('ready'));
   assert.equal(harness.countdownMs, 5000, 'pending wreck warm cannot spend the countdown');
   if (outcome === 'cancel') controller.abort('return during wreck preparation');
@@ -1135,6 +1486,7 @@ for (const pauseAt of ['initial', 'atmosphere']) {
   await assert.rejects(pending, (error) => isNetworkBattleEntryAbortError(error));
   assert.equal(harness.disposed, true,
     'a bridge prepared by an obsolete page session is disposed');
+  assertAssetsReleased(harness);
   assert.equal(harness.publishedBridge, null,
     'an obsolete bridge never becomes render-visible');
   assert.ok(!harness.events.includes('activate'),
@@ -1175,6 +1527,13 @@ for (const pauseAt of ['primeReveal', 'hide', 'ready']) {
 
 for (const invalid of [undefined, null, true]) {
   const harness = createHarness();
+  harness.options.bridge.prepareRosterAssets = invalid;
+  assert.throws(() => createNetworkBattlePresentationRuntime(harness.options),
+    /requires every lifecycle port/, 'the optional-work roster asset owner is a required integration port');
+}
+
+for (const invalid of [undefined, null, true]) {
+  const harness = createHarness();
   harness.options.warm.finalShadows = invalid;
   assert.throws(() => createNetworkBattlePresentationRuntime(harness.options),
     /requires every lifecycle port/, 'the final-camera shadow preparation port must be a function');
@@ -1186,4 +1545,4 @@ assert.throws(
   'the deep module fails closed when a required adapter is missing',
 );
 
-console.log('networkBattlePresentationRuntime.selftest: cold preparation, readiness, activation, and failure cleanup pass');
+console.log('networkBattlePresentationRuntime.selftest: overlapping roster assets, cold preparation, readiness, activation, and failure cleanup pass');
