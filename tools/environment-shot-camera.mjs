@@ -28,8 +28,51 @@ export function selectStandView({ clusters, concealers, buildings, halfExtent = 
 }
 
 /** Keep the low Polders horizon at wide pixel (640,420), not the Fjord sky ray. */
-export function selectHorizonScopeTarget(mapId) {
+export function selectHorizonScopeTarget(mapId, ndc) {
+  if (ndc !== undefined) {
+    requireHorizonNdc(ndc);
+    return { mapId, ndcX: ndc[0], ndcY: ndc[1] };
+  }
   return mapId === 'polders' ? { mapId, ndcY: 1 / 15 } : { mapId };
+}
+
+function requireHorizonNdc(ndc) {
+  if (!Array.isArray(ndc) || ndc.length !== 2
+    || !ndc.every(value => Number.isFinite(value) && value >= -1 && value <= 1)) {
+    throw new Error('--horizon-scope-ndc requires two finite coordinates in [-1,1]');
+  }
+}
+
+function optionalHorizonArg(args, name) {
+  const flag = `--${name}`, values = args.filter(arg => arg === flag || arg.startsWith(`${flag}=`));
+  if (values.length > 1) throw new Error(`Duplicate ${flag}`);
+  if (!values.length) return undefined;
+  if (values[0] === flag) throw new Error(`${flag} requires an explicit =value`);
+  return values[0].slice(flag.length + 1);
+}
+
+/** Keep exact historical positions/order unless one named quadrant is requested. */
+export function selectHorizonViews(view) {
+  if (view !== undefined && !['en', 'es', 'wn', 'ws'].includes(view)) {
+    throw new Error('--horizon-view must be en, es, wn or ws');
+  }
+  const views = [[300, 300], [-300, 300], [-300, -300], [300, -300]];
+  return view === undefined ? views
+    : views.filter(([x, z]) => `${x > 0 ? 'e' : 'w'}${z > 0 ? 'n' : 's'}` === view);
+}
+
+function horizonFocusOptions(args, horizonScopes) {
+  const horizonView = optionalHorizonArg(args, 'horizon-view');
+  selectHorizonViews(horizonView); // Validate before any browser acquisition.
+  const text = optionalHorizonArg(args, 'horizon-scope-ndc');
+  const focus = horizonView === undefined ? {} : { horizonView };
+  if (text === undefined) return focus;
+  if (!horizonScopes) throw new Error('--horizon-scope-ndc requires --horizon-scopes');
+  const coordinates = text.split(',');
+  if (coordinates.some(value => !value.trim())) throw new Error('--horizon-scope-ndc requires x,y');
+  const horizonScopeNdc = coordinates.map(Number);
+  requireHorizonNdc(horizonScopeNdc);
+  return { ...focus, horizonScopeNdc };
 }
 
 /** Parse image modes without launching a browser; reject contradictory framing. */
@@ -38,15 +81,16 @@ export function resolveEnvironmentShotModes(args) {
   const establishingOnly = args.includes('--establishing-only');
   const horizonOnly = args.includes('--horizon-only');
   const horizonScopes = args.includes('--horizon-scopes');
-  const horizonQuadrants = args.includes('--horizon-quadrants') || horizonOnly || horizonScopes;
+  const focus = horizonFocusOptions(args, horizonScopes);
+  const horizonQuadrants = args.includes('--horizon-quadrants') || horizonOnly || horizonScopes || focus.horizonView !== undefined;
   if (establishingOnly && horizonQuadrants) {
     throw new Error('--establishing-only cannot be combined with horizon capture modes');
   }
   if (establishingOnly && !captureShots) throw new Error('--establishing-only requires --shots');
-  if ((horizonOnly || horizonScopes) && !captureShots) {
+  if ((horizonOnly || horizonScopes || focus.horizonView !== undefined) && !captureShots) {
     throw new Error('Horizon capture options require --shots');
   }
-  return { captureShots, establishingOnly, horizonOnly, horizonScopes, horizonQuadrants };
+  return { captureShots, establishingOnly, horizonOnly, horizonScopes, horizonQuadrants, ...focus };
 }
 
 /**
@@ -60,6 +104,9 @@ export function stageHorizonScopeCapture(
   { mapId, ndcX = -1 / 9, ndcY = 19 / 90 },
   D = globalThis.window?.__DEBUG,
 ) {
+  if (![ndcX, ndcY].every(value => Number.isFinite(value) && value >= -1 && value <= 1)) {
+    throw new Error('Horizon scope requires finite NDC coordinates in [-1,1]');
+  }
   if (!D?.shotMode || D.world.mapId !== mapId) {
     throw new Error('Horizon scope requires the requested map in frozen shot mode');
   }
