@@ -17,120 +17,23 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-// The catalog is split: `i18nCatalog.ts` re-exports per-locale tables
-// declared in `i18nCatalog.<locale>.ts`. The selftest inspects those
-// per-locale files directly so the per-locale declaration remains the
-// single source of truth (the aggregator imports them but does not
-// redefine them).
+const REPO = path.resolve(HERE, '..', '..');
+
+// JSON is the source format consumed by both the runtime and General
+// Translation. The integrity gate deliberately parses the shipping files.
 const LOCALE_FILES = {
-  enUS: path.join(HERE, 'i18nCatalog.en-US.ts'),
-  zhCN: path.join(HERE, 'i18nCatalog.zh-CN.ts'),
+  enUS: path.join(HERE, 'i18nCatalog.en-US.json'),
+  zhCN: path.join(HERE, 'i18nCatalog.zh-CN.json'),
 };
 
-// Crude extraction: locate each `const NAME = { ... }` table, walk braces to
-// find its body, then scrape `'key': 'value'` pairs.
-function extractLocale(name) {
-  const source = fs.readFileSync(LOCALE_FILES[name], 'utf8');
-  // Look for either `const NAME = {`, `const NAME: Type = {`, or
-  // `export const NAME = {` / `export const NAME: Type = {`. The per-locale
-  // catalogs now use the `export` form so they can be re-imported by the
-  // aggregator.
-  const declStart = source.search(new RegExp('(?:export\\s+)?const\\s+' + name + '\\b'));
-  if (declStart < 0) throw new Error('locale table "' + name + '" not found in i18nCatalog.ts');
-  // The declaration may carry a type annotation (e.g. `: Record<string,string>`)
-  // that itself contains `{` and `}`. Find the opening `{` of the literal by
-  // scanning forward while tracking generic `<...>` and `{...}` type blocks
-  // so we don't latch onto a type body's brace.
-  let cursor = declStart;
-  // Skip past the identifier, optional type annotation, optional `=`.
-  while (cursor < source.length && source[cursor] !== '{') {
-    const ch = source[cursor];
-    if (ch === '<') {
-      // Skip generic params: balanced `<...>`.
-      let depth = 1;
-      cursor++;
-      while (cursor < source.length && depth > 0) {
-        if (source[cursor] === '<') depth++;
-        else if (source[cursor] === '>') depth--;
-        cursor++;
-      }
-    } else {
-      cursor++;
-    }
-  }
-  const braceStart = cursor;
-  if (braceStart >= source.length) throw new Error('opening brace not found for locale "' + name + '"');
-  // String-aware brace counter: catalog values are JS single/double-quoted
-  // strings, and ICU placeholders may contain unbalanced braces inside
-  // strings. Track quotes so we never count braces that live inside a string
-  // literal. (Template literals are not used by the catalog.)
-  let depth = 0;
-  let end = braceStart;
-  let quote = null;
-  for (; end < source.length; end++) {
-    const ch = source[end];
-    if (quote !== null) {
-      if (ch === '\\') { end++; continue; }
-      if (ch === quote) quote = null;
-      continue;
-    }
-    if (ch === "'" || ch === '"') { quote = ch; continue; }
-    if (ch === '{') depth++;
-    else if (ch === '}') {
-      depth--;
-      if (depth === 0) break;
-    }
-  }
-  if (depth !== 0) throw new Error('unterminated locale table "' + name + '"');
-  const body = source.slice(braceStart, end + 1);
-  // First pass: collect every `'key':` declaration (catalog mixes single-line
-  // and multi-line values, so we cannot assume the value lives on the same line).
-  const keyRegex = /'([^']+)'\s*:/g;
-  const declarations = [];
-  let m;
-  while ((m = keyRegex.exec(body))) {
-    declarations.push({ key: m[1], index: m.index });
-  }
-  // Second pass: for each declaration, walk forward to the next quoted string.
-  // Catalog values use either single or double quotes; both must work.
-  const out = new Map();
-  for (let i = 0; i < declarations.length; i++) {
-    const decl = declarations[i];
-    // Skip past the closing quote of the key, optional space, and colon.
-    const matchLen = decl.key.length + 2 + (body[decl.index + decl.key.length + 2] === ' ' ? 1 : 0);
-    let cursor = decl.index + matchLen + 1;
-    while (cursor < body.length && /\s/.test(body[cursor])) cursor++;
-    const quote = body[cursor];
-    if (quote !== "'" && quote !== '"') {
-      out.set(decl.key, '');
-      continue;
-    }
-    cursor++;
-    let value = '';
-    while (cursor < body.length) {
-      const ch = body[cursor];
-      if (ch === '\\' && cursor + 1 < body.length) {
-        value += ch + body[cursor + 1];
-        cursor += 2;
-        continue;
-      }
-      if (ch === quote) {
-        cursor++;
-        break;
-      }
-      value += ch;
-      cursor++;
-    }
-    out.set(decl.key, value
-      .replace(/\\'/g, "'")
-      .replace(/\\"/g, '"')
-      .replace(/\\n/g, '\n'));
-  }
-  return out;
+function readLocale(file) {
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(Object.getPrototypeOf(parsed), Object.prototype, `${file}: catalog must be an object`);
+  return new Map(Object.entries(parsed));
 }
 
-const en = extractLocale('enUS');
-const zh = extractLocale('zhCN');
+const en = readLocale(LOCALE_FILES.enUS);
+const zh = readLocale(LOCALE_FILES.zhCN);
 
 if (en.size !== zh.size) {
   const diff = [];
@@ -236,6 +139,55 @@ for (const [key, enVal] of en) {
     'HTML tag mismatch at ' + key +
     ' | missing in zh: [' + missing.join(', ') + ']' +
     ' | extra in zh: [' + extra.join(', ') + ']');
+}
+
+// Plain text translation hosts must not own nested markup. textContent would
+// erase links, emphasis, output values, or other controls on first apply.
+const rootHtmlFiles = fs.readdirSync(REPO).filter((name) => name.endsWith('.html'));
+for (const name of rootHtmlFiles) {
+  const source = fs.readFileSync(path.join(REPO, name), 'utf8');
+  const hostRegex = /<([a-z][\w-]*)\b([^>]*\bdata-i18n="([^"]+)"[^>]*)>([\s\S]*?)<\/\1>/gi;
+  for (const match of source.matchAll(hostRegex)) {
+    const [, , , key, body] = match;
+    assert.ok(en.has(key), `${name}: unknown data-i18n key ${key}`);
+    assert.ok(!/<[a-z][\s\S]*?>/i.test(body),
+      `${name}: data-i18n=${key} owns nested markup; split children or use vetted data-i18n-html`);
+  }
+  const keyRegex = /\bdata-i18n(?:-html|-placeholder|-title|-alt|-aria-label|-aria)?="([^"]+)"/g;
+  for (const match of source.matchAll(keyRegex)) {
+    assert.ok(en.has(match[1]), `${name}: unknown static translation key ${match[1]}`);
+  }
+}
+
+// The landing-page catalog used to exist without any home.html bindings,
+// which made the page claim zh-CN while rendering English. Every home.* key
+// must therefore be connected to a supported static-i18n attribute.
+const homeSource = fs.readFileSync(path.join(REPO, 'home.html'), 'utf8');
+const homeBindings = new Set(
+  [...homeSource.matchAll(/\bdata-i18n(?:-html|-placeholder|-title|-alt|-aria-label|-aria)?="([^"]+)"/g)]
+    .map((match) => match[1]),
+);
+for (const key of enKeys) {
+  if (key.startsWith('home.')) {
+    assert.ok(homeBindings.has(key), `home.html: unbound landing-page translation ${key}`);
+  }
+}
+
+const garageCss = fs.readFileSync(path.join(REPO, 'src/ui/garage.css'), 'utf8');
+assert.doesNotMatch(garageCss, /content\s*:\s*['"]Combat stats['"]/i,
+  'garage.css: compact dossier heading must use the locale-backed CSS variable');
+
+// The map roster changes independently of the Garage. Keep every registered
+// battlefield name localized so newly merged maps cannot display raw map.*
+// identifiers in the selector.
+const mapCatalogSource = fs.readFileSync(path.join(REPO, 'src/world/maps/catalog.ts'), 'utf8');
+const mapIdsBlock = mapCatalogSource.match(/export const MAP_IDS = Object\.freeze\(\[([\s\S]*?)\]\s+as const\);/);
+assert.ok(mapIdsBlock, 'src/world/maps/catalog.ts: unable to read MAP_IDS');
+const mapIds = [...mapIdsBlock[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+assert.ok(mapIds.length > 0, 'src/world/maps/catalog.ts: MAP_IDS is empty');
+for (const id of mapIds) {
+  assert.ok(en.has(`map.${id}`), `en-US missing registered battlefield map.${id}`);
+  assert.ok(zh.has(`map.${id}`), `zh-CN missing registered battlefield map.${id}`);
 }
 
 console.log('i18n.selftest.mjs: ' + en.size + ' keys verified across en-US and zh-CN');

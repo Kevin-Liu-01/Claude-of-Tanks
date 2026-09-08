@@ -34,6 +34,9 @@ paint;
 controls, capture/export surface, and production archive;
 `settings.ts` and `touchControls.ts` own input-facing UI; `transition.ts`,
 `battleLoad.ts`, and `endScreen.ts` own flow beats.
+`i18n.ts` owns locale detection and runtime formatting; the paired
+`i18nCatalog.<locale>.json` files are the reviewed local source of truth and the
+General Translation CLI boundary documented in `docs/LOCALIZATION.md`.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -110,6 +113,10 @@ bounded history, and DOM lifetime live in `roomChat.ts`.
 Keep browser-independent presentation policy in the typed keyboard, glyph,
 flag, minimap, telemetry, spectator, preview, and ordering modules so the large
 screen renderers do not redeclare those rules.
+Every supported locale must keep exact key, placeholder, and vetted rich-markup
+parity. Plain `data-i18n` hosts cannot contain child markup because text
+replacement would destroy controls. Locale changes reload the current surface
+atomically; do not add screen-local partial refreshes.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

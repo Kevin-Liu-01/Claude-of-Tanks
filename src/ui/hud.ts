@@ -2157,7 +2157,7 @@ export function initHud(bus: EventBus): HudRuntime {
       specialLabel.textContent = descriptor.label;
       specialLabel.dataset.short = descriptor.shortLabel;
       specialButton.title = descriptor.label;
-      specialButton.setAttribute('aria-label', descriptor.label || 'Special action unavailable');
+      specialButton.setAttribute('aria-label', descriptor.label || t('hud.special.unavailable'));
       specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
     }
     const action = player?.specialAction;
@@ -2182,7 +2182,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const ammoSwitchingStatus = el('span', 'cot-ammo-switching', shellBox);
   ammoSwitchingStatus.setAttribute('role', 'status');
   ammoSwitchingStatus.setAttribute('aria-live', 'polite');
-  ammoSwitchingStatus.setAttribute('aria-label', 'Switching ammunition; waiting for host confirmation');
+  ammoSwitchingStatus.setAttribute('aria-label', t('hud.ammo.waitingForHostAria'));
   ammoSwitchingStatus.hidden = true;
   shellBox.setAttribute('role', 'group');
   shellBox.setAttribute('aria-label', t('hud.ammunition.aria'));

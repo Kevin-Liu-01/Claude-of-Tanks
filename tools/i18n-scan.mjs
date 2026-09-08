@@ -26,10 +26,11 @@
 // Run:
 //   node tools/i18n-scan.mjs            -> prints summary to stdout
 //   node tools/i18n-scan.mjs --json     -> prints the full worklist as JSON
+//   node tools/i18n-scan.mjs --check    -> fail when candidates remain
 //
 // The script is read-only; it does not modify catalog files.
 
-import { readFileSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,6 +40,7 @@ const SRC = join(REPO, 'src');
 
 const args = new Set(process.argv.slice(2));
 const WANT_JSON = args.has('--json') || args.has('--worklist');
+const CHECK = args.has('--check');
 
 // ---------------------------------------------------------------------------
 // Catalog scrape
@@ -48,54 +50,12 @@ const WANT_JSON = args.has('--json') || args.has('--worklist');
 
 const CATALOG_DIR = join(REPO, 'src', 'ui');
 const CATALOG_FILES = {
-  enUS: join(CATALOG_DIR, 'i18nCatalog.en-US.ts'),
-  zhCN: join(CATALOG_DIR, 'i18nCatalog.zh-CN.ts'),
+  enUS: join(CATALOG_DIR, 'i18nCatalog.en-US.json'),
+  zhCN: join(CATALOG_DIR, 'i18nCatalog.zh-CN.json'),
 };
 
 function extractCatalogKeys(file) {
-  const source = readFileSync(file, 'utf8');
-  // Find `export const NAME = ... {` opening brace (skip generic types).
-  const declMatch = source.match(/export\s+const\s+\w+\b/);
-  if (!declMatch) throw new Error(`catalog decl not found in ${file}`);
-  let cursor = declMatch.index + declMatch[0].length;
-  while (cursor < source.length && source[cursor] !== '{') {
-    const ch = source[cursor];
-    if (ch === '<') {
-      let depth = 1;
-      cursor++;
-      while (cursor < source.length && depth > 0) {
-        if (source[cursor] === '<') depth++;
-        else if (source[cursor] === '>') depth--;
-        cursor++;
-      }
-    } else {
-      cursor++;
-    }
-  }
-  // Walk to the matching close brace while tracking string literals.
-  let depth = 0;
-  let end = cursor;
-  let quote = null;
-  for (; end < source.length; end++) {
-    const ch = source[end];
-    if (quote !== null) {
-      if (ch === '\\') { end++; continue; }
-      if (ch === quote) quote = null;
-      continue;
-    }
-    if (ch === '"' || ch === "'") { quote = ch; continue; }
-    if (ch === '{') depth++;
-    else if (ch === '}') {
-      depth--;
-      if (depth === 0) break;
-    }
-  }
-  const body = source.slice(cursor, end + 1);
-  const keyRegex = /'([^']+)'\s*:/g;
-  const out = new Set();
-  let m;
-  while ((m = keyRegex.exec(body))) out.add(m[1]);
-  return out;
+  return new Set(Object.keys(JSON.parse(readFileSync(file, 'utf8'))));
 }
 
 const KNOWN_KEYS = new Set([
@@ -178,8 +138,8 @@ const PATTERNS = [
 ];
 
 const SKIP_FILE_NAMES = new Set([
-  'i18nCatalog.en-US.ts',
-  'i18nCatalog.zh-CN.ts',
+  'i18nCatalog.en-US.json',
+  'i18nCatalog.zh-CN.json',
   'i18nCatalog.ts',
   'i18n.ts',
   'i18n.selftest.mjs',
@@ -249,6 +209,7 @@ const candidates = [];
 for (const file of ALL_FILES) {
   const rel = relative(REPO, file);
   if (SKIP_FILE_NAMES.has(rel.split('/').pop())) continue;
+  if (/\.selftest\.(?:mjs|js|ts)$/.test(rel)) continue;
   let source;
   try {
     source = readFileSync(file, 'utf8');
@@ -264,6 +225,8 @@ for (const file of ALL_FILES) {
       const valueIdx = pat.attrGroup != null ? pat.valGroup : pat.group;
       const value = m[valueIdx];
       if (!value) continue;
+      if (pat.kind === 'setAttribute' &&
+          !['aria-label', 'title', 'alt', 'placeholder'].includes(m[pat.attrGroup])) continue;
       if (SHORT_ALLOWED.has(value.trim())) continue;
       if (looksLikeProperNoun(value)) continue;
       if (!looksLikeEnglish(value)) continue;
@@ -290,6 +253,8 @@ for (const file of ALL_FILES) {
     }
   }
 }
+
+if (CHECK && candidates.length > 0) process.exitCode = 1;
 
 // ---------------------------------------------------------------------------
 // Output

@@ -27,7 +27,7 @@ for (const reel of BATTLE_REELS) {
   }
 }
 
-const library = /<div class="battle-reels"[\s\S]*?<\/div>\s*<h3>Contact-sheet review<\/h3>/.exec(docs)?.[0];
+const library = /<div class="battle-reels"[\s\S]*?<\/div>\s*<h3[^>]*data-i18n="docs\.studio\.contactTitle"[^>]*>Contact-sheet review<\/h3>/.exec(docs)?.[0];
 assert.ok(library, 'Docs Studio chapter must contain the reel library before the review process');
 assert.equal((library.match(/<video\b/g) || []).length, 1, 'Docs must load reels through one shared player');
 assert.match(home, /href="\/docs#battle-reels"[^>]*>[\s\S]*?Watch 20 modern tank duels/);
