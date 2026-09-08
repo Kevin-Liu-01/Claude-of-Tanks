@@ -31,7 +31,19 @@ const vec=p=>new THREE.Vector3(...p);
 function shapeHash(root){
   const h=crypto.createHash('sha256');root.traverse(m=>{if(!m.isMesh)return;
     h.update(m.name).update(m.parent?.name??'').update(JSON.stringify(m.matrixWorld.elements));
-    for(const key of Object.keys(m.geometry.attributes).sort()){const a=m.geometry.attributes[key];h.update(key).update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
+    for(const key of Object.keys(m.geometry.attributes).sort()){
+      const a=m.geometry.attributes[key];
+      // Lighting adds a semantic channel, not shape. Keep every original
+      // fingerprint unchanged while validating this one new channel separately.
+      if(key==='nightEmissionMask'){
+        assert.ok(a.array instanceof Uint8Array,'night mask keeps its byte-sized semantic representation');
+        assert.equal(a.itemSize,1);assert.equal(a.normalized,false);
+        assert.equal(a.count,m.geometry.getAttribute('position').count,'one mask value per original vertex');
+        assert.ok(a.array.every(value=>value===0||value===1||value===2),'only unlit/warm/red aperture values');
+        continue;
+      }
+      h.update(key).update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
+    }
     if(m.geometry.index){const a=m.geometry.index.array;h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}
     if(m.isInstancedMesh){const a=m.instanceMatrix.array;h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}
     h.update(JSON.stringify((Array.isArray(m.material)?m.material:[m.material]).map(a=>[a.name,a.color?.getHex(),a.side])));
