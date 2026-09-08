@@ -5,6 +5,10 @@ import * as THREE from 'three';
 export const NIGHT_EMISSION_ATTRIBUTE = 'nightEmissionMask';
 export const NIGHT_HEADLIGHT_COLOR = 0xffe2ad;
 export const NIGHT_SHTORA_COLOR = 0xff3020;
+// Saturated red driven at the shared white-lamp radiance (3) turns amber
+// through ACES' channel mixing. Keep only the added red-aperture radiance
+// below that shoulder; authored day emission and warm lamps stay unchanged.
+const RED_EMISSION_GAIN = .2;
 const BASE_EMISSION = new WeakMap<THREE.MeshStandardMaterial, THREE.Color>();
 
 /** Authoring may adjust a shared material after attaching a lens. Finalize
@@ -41,7 +45,8 @@ export function installNightEmissionMask(
   material.userData.nightEmissionActivity = activity;
   const base = material.emissive.clone().multiplyScalar(material.emissiveIntensity);
   BASE_EMISSION.set(material, base);
-  const headlight = new THREE.Color(NIGHT_HEADLIGHT_COLOR), shtora = new THREE.Color(NIGHT_SHTORA_COLOR);
+  const headlight = new THREE.Color(NIGHT_HEADLIGHT_COLOR);
+  const shtora = new THREE.Color(NIGHT_SHTORA_COLOR).multiplyScalar(RED_EMISSION_GAIN);
   const previous = material.onBeforeCompile, previousKey = material.customProgramCacheKey;
   material.onBeforeCompile = function (shader, renderer) {
     previous.call(this, shader, renderer);
