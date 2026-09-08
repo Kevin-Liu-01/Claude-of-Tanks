@@ -709,6 +709,39 @@ cadence; raw sampling also ends before PNG completion. The old failure remains
 failed, and no sustained high-DPI, new-horizon or full-matrix acceptance follows
 from this diagnostic. Its `diagnostic-summary.md` records the causal limits.
 
+## Incremental atlas and Titan checkpoints — 2026-09-08
+
+`66163345ac0da8fc01b636e7d5e283afb07fb3cd` published rooted woodland
+silhouettes in the bounded atlas factory. Fourteen native Canvas2D atlases
+passed the existing support, seam, determinism and desktop/mobile budgets;
+all five non-woodland families retained their exact raster hashes. The atlas
+factory is still separate from the unpublished live ridge-detail integration.
+
+The frozen R2 candidate `3c3b6aaecf6fa0ed7e21f208b00fac4156227d04`
+completed 45 native desktop images with all full poses and all 20 scope
+contracts exactly matching R1. Its public index is
+`1b4d819b72a3d43b1cab88b4b1565a7a945eb8d32aa1b29fdbef5b4bc856e0cc`.
+Verdant/Coastal trees are now readable, and Titan has visible broad mesa caps.
+Remaining art defects are explicit: crest-only forest rows, plain canyon faces,
+and weakly legible Winter/Polders accents. These static captures pin dynamic
+scale and are not performance acceptance. Reports and all original failed
+captures remain under the persistent environment-recovery evidence root.
+
+`193c10ae6` isolates the verified Titan cap geometry on current main without
+shipping the separate live-detail child. It reuses the existing land buffers,
+rows and topology; there are no new textures, draws or per-frame callbacks.
+`c062eddd1` first repairs the historical/current Polders test attribution.
+The isolated publication passes Titan, horizon-resource and Copper tests,
+full typecheck/core-unused and the public build in
+`titan-publication-check-r1.{json,log}`. All thirty land meshes across three
+seeds are byte-identical to R2, and the strict Titan test preserves all other
+29 current map geometries. R2's complete image/resource totals are not claimed
+equivalent: R2 also contains an unshipped horizon-detail child.
+
+The live forest/rock/snow placement remains local for further art and resource
+verification. No whole-pass memory, motion or all-map art gate is waived by
+these useful incremental publications. Weather particles remain excluded.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
