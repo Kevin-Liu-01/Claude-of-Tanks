@@ -95,7 +95,9 @@ function describeGeometry(geometry) {
 export function describeTexture(texture) {
   const image = texture.image;
   assert.ok(image?.width > 0 && image?.height > 0, 'Every owned texture needs actual pixels');
-  const pixels = image.data ?? image.getContext('2d').getImageData(0, 0, image.width, image.height).data;
+  // Native Canvas exposes data() as an API, unlike a DataTexture's typed data.
+  const pixels = ArrayBuffer.isView(image.data) ? image.data
+    : image.getContext('2d').getImageData(0, 0, image.width, image.height).data;
   assert.ok(ArrayBuffer.isView(pixels), 'No pixel-upload stub or skipped texture inventory');
   return { name: texture.name || '', width: image.width, height: image.height,
     pixelType: pixels.constructor.name, baseLevelPixelBytes: pixels.byteLength,
