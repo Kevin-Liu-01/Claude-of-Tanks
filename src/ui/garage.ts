@@ -50,7 +50,6 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
-import './i18nCatalog.ts';
 import { t, formatNumber, formatDate } from './i18n.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import type { PlayMode } from '../net/playMode.ts';

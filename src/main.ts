@@ -27,7 +27,6 @@ import * as THREE from 'three';
 // Side-effect import: registers the i18n catalog as the source of truth so
 // any `t('module.key')` call resolved later in the boot sequence finds a
 // populated dictionary. Keep this line above the rest of the imports.
-import './ui/i18nCatalog.ts';
 // Bind the static-HTML i18n applier so the boot splash copy (credits button,
 // gate prompt, retry) respects the active locale from first paint.
 import { bindStaticI18nAuto } from './presentation/staticI18n.ts';

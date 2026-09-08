@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { Object3D } from 'three';
-import '../ui/i18nCatalog.ts';
 import { getLocale, setLocale } from '../ui/i18n.ts';
 import { createSoloBattleLoadingRuntime } from './soloBattleLoadingRuntime.ts';
 

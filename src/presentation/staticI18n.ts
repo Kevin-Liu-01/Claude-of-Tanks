@@ -20,7 +20,6 @@
  * `vars` map by the same key on the host element via `data-i18n-vars` (JSON).
  */
 
-import '../ui/i18nCatalog.ts';
 import { onLocaleChange, t } from '../ui/i18n.ts';
 
 type Attr = 'placeholder' | 'title' | 'aria-label' | 'alt';

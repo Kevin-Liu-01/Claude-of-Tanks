@@ -1,5 +1,4 @@
 import { uiIconSVG } from './uiIcons.ts';
-import './i18nCatalog.ts';
 import { t } from './i18n.ts';
 
 const SAFE_SPEC_ID = /^[a-z0-9_]+$/;

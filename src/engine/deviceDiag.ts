@@ -25,7 +25,6 @@
 // Overlay visibility: explicit only (`?diag` / `?diag=1`). Rescue logic stays
 // active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
-import '../ui/i18nCatalog.ts';
 import { t } from '../ui/i18n.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
 

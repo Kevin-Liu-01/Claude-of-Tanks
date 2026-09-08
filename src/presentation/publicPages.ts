@@ -1,6 +1,5 @@
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { t } from '../ui/i18n.ts';
-import '../ui/i18nCatalog.ts';
 
 const responsiveLayout = installResponsiveLayout();
 const isCompactSurface = (): boolean => {

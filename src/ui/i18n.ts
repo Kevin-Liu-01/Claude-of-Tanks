@@ -15,6 +15,8 @@
  * touches `localStorage` and `navigator` when first called, not at module load.
  */
 
+import { CATALOG } from './i18nCatalog.ts';
+
 const STORAGE_KEY = 'cot.locale';
 const FALLBACK_LOCALE = 'en-US';
 const SUPPORTED_LOCALES = ['en-US', 'zh-CN'] as const;
@@ -196,55 +198,24 @@ export function formatDate(
   }
 }
 
-// Dictionary cache; populated lazily so test harnesses can stub loadDictionary.
 type Dictionary = Readonly<Record<string, string>>;
-let cached: Readonly<Record<SupportedLocale, Dictionary>> | null = null;
+type Catalog = Readonly<Record<SupportedLocale, Dictionary>>;
+let catalogOverride: { readonly CATALOG: Catalog } | null = null;
 
-function loadDictionary(): Readonly<Record<SupportedLocale, Dictionary>> {
-  if (cached) return cached;
-  // Dynamic require keeps the catalog out of the synchronous import graph of
-  // every UI module that only needs `t()` for a handful of strings.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = loadCatalog();
-  cached = mod.CATALOG;
-  return cached!;
+function loadDictionary(): Catalog {
+  return catalogOverride?.CATALOG ?? CATALOG;
 }
-
-/**
- * Indirection so the catalog module can be swapped in tests. Default behaviour
- * imports `./i18nCatalog.ts`. The catalog owns the full English/Chinese tables.
- */
-export function loadCatalog(): { readonly CATALOG: Readonly<Record<SupportedLocale, Dictionary>> } {
-  // Synchronous dynamic import is unavailable in TS without `await`; instead
-  // we lean on a cached module reference the catalog registers on first load.
-  if (catalogRef) return catalogRef;
-  throw new Error('i18nCatalog has not been loaded; import it once at module graph top.');
-}
-
-let catalogRef: { readonly CATALOG: Readonly<Record<SupportedLocale, Dictionary>> } | null = null;
 
 export function __setCatalogForTests(
-  ref: { readonly CATALOG: Readonly<Record<SupportedLocale, Dictionary>> } | null,
+  ref: { readonly CATALOG: Catalog } | null,
 ): void {
-  catalogRef = ref;
-  cached = ref ? ref.CATALOG : null;
-  if (cached && !cached[currentLocale]) currentLocale = FALLBACK_LOCALE;
-}
-
-/** Register the production catalog. Called once by `./i18nCatalog.ts` at module
- *  load time. The function name is reused by the test hook for symmetry. */
-export function registerCatalog(
-  ref: { readonly CATALOG: Readonly<Record<SupportedLocale, Dictionary>> },
-): void {
-  catalogRef = ref;
-  cached = ref.CATALOG;
-  if (!cached[currentLocale]) currentLocale = FALLBACK_LOCALE;
+  catalogOverride = ref;
+  if (ref && !ref.CATALOG[currentLocale]) currentLocale = FALLBACK_LOCALE;
 }
 
 /** Reset module state for test isolation. */
 export function __resetForTests(): void {
   currentLocale = FALLBACK_LOCALE;
   initialised = false;
-  cached = null;
-  catalogRef = null;
+  catalogOverride = null;
 }

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import './i18nCatalog.ts';
 import { setLocale } from './i18n.ts';
 import {
   equipmentHoverPreview,

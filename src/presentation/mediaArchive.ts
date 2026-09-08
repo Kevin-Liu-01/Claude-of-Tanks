@@ -1,5 +1,4 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import '../ui/i18nCatalog.ts';
 import { t } from '../ui/i18n.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
