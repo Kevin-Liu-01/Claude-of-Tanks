@@ -866,3 +866,31 @@ new numeric projection is separate. React Doctor is 89/100 with two reviewed,
 unsuppressed warnings: deliberate sequential yielding between shader batches,
 and a test's intentional JSON serialization-boundary check. This is unchanged
 from the earlier 89/100 scan, not a claimed baseline score improvement.
+
+### Production verification of bounded scene submission
+
+Vercel reported successful deployment of `e6d808eec`, and the live site served
+exactly `v1.0.0+ge6d808eec` before `production-scene-release-d-timings-visual`.
+The native two-client test passed room creation/invite, ready/launch, visible
+5→1 countdowns for both peers, masks completed before activation, nonblack/no-rescue
+reveal, advancing input/snapshots, movement/shooting feedback, Garage return and
+verified room/browser/window cleanup. Application errors were zero. Both inspected
+screenshots show the battlefield, player vehicle, and populated damage-panel mask.
+
+On HIGH clear/day Frosthollow entry, host/guest network-owner totals were
+4,976/4,831 ms, including peer readiness. Native submission totaled 57.4/55.8 ms,
+distributed across 7/6 scheduler slices with 10.3/12.1 ms maxima. Programs added
+remained exactly 81 per peer. Compilation wall time was 319.6/284.5 ms. KHR queries
+still took 160.0/155.6 ms total, with single calls of 112.6/113.8 ms; watchdog draw
+was 148.9/68.3 ms. Largest loading tasks were 312/233 ms. Loader fades took
+231.1/230.3 ms, and luminance matched the earlier clear/day baseline exactly.
+This confirms bounded submission, not a stall-free or overall faster entry.
+
+The separate LOW interaction sample used two rendered contexts on one machine,
+20 seconds per foreground role measured sequentially. Frame p50/p95/p99/max was
+23.2/30.4/38.9/45.9 ms for host and 21.2/31.3/39.6/50.7 ms for guest. Both had zero
+hard snaps, dropped history, estimated missing snapshots and observer failures.
+The runner makes no frame-budget assertion. These results do not certify stable
+60 Hz, larger rooms, long sessions, separate devices, distant networks or relays;
+historical combat stalls remain unresolved. Only the approved multiplayer source,
+tests and this report were pushed; local QA artifacts and vehicle work were excluded.
