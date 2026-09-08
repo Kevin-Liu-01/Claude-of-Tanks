@@ -68,3 +68,23 @@ The fix does not remove rendering stalls: loading long tasks still reach
 377/332 ms. Later normal adaptive gameplay uses LOW and reaches maximum frame
 gaps of 52.4/43.6 ms, with zero hard snaps or observer failures. These residuals
 remain open; they are not a reason to ship the rejected shader experiment.
+
+## Final suite result and shipping boundary
+
+The ordinary full `npm test` run on `a65e95402` exited 1 in the pre-test
+sequence at `src/vehicles/sourceXFleet.selftest.mjs:21`: T-90M geometry produced
+`27bb658d`, while the preservation receipt expects `ffbd40d4`. The remaining
+core/post suites did not run, so this is not a full-suite pass.
+
+An independent run of that exact selftest on the clean `db400d61b` baseline
+reproduced the same assertion and both hashes. There is no `src/vehicles`,
+`package.json` or `package-lock.json` delta between that baseline and
+`a65e95402`. The mismatch therefore predates this multiplayer fix. Neither
+vehicle geometry nor its expected receipt was changed to make this landing
+green.
+
+The wake fix is committed as `a65e95402` and remains an ancestor of the later
+`66163345a` main tip. A subsequent shader polling/flush candidate is still
+isolated and uncommitted: its native two-client run passed functional entry
+checks but failed performance acceptance. It is not part of the shipped
+multiplayer update. This documentation follow-up adds no runtime changes.
