@@ -113,3 +113,27 @@ source datums, variant negative space and ownership. Its source SHA remains
 The FIFO-captured two-test driver exited successfully. The original099 test
 failure and both independent capture receipts remain preserved. Full-suite
 qualification belongs to the separate final integration run.
+
+## Published-main integration check — 2026-09-08
+
+The two history repairs were rebased onto published
+`5a13dadb0a2239a9cb65a092b62f58296f727fb8` and tested together at
+`c7a220797711deafe4b650693b1753d7375100a1`. The maintained FIFO selftest
+runner passed `historicalT90MLamps`, the complete `sourceXFleet`,
+`chieftain10XServiceFrame` and the unchanged `chieftain10XMk5Foundation`
+tests from 23:20:21 to 23:22:57 UTC. Source, tools, server, dependency/build
+configuration and the new historical receipt were hash-stable throughout.
+
+The integration delta contains only nine test, test-support, suite-registration
+and documentary files. Production runtime, package files, public assets and
+build configuration are byte-identical to that published base. The sole suite
+registration change adds the historical-lamp test; no test is removed or
+skipped. A production build was not rerun for this test-only delta. This is
+not a full-suite pass or a release certificate for the separate unfinished
+bodywork and running-gear candidates.
+
+Private receipt: `published-history-verified-2mhST8/receipt.json`, SHA-256
+`4b067bb369550636ae3b2f9de17e78973341885a65c7b47649563ebcb2922c09`.
+Driver SHA-256:
+`5977c71f91043ba613a9430871e56c7c351711a15dcbbdc0a49d9108760e884d`.
+Neither temporary QA files nor dependency trees are included in the checkpoint.
