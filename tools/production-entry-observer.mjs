@@ -146,13 +146,20 @@ export function installProductionEntryObserver() {
     .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [];
   const programCompileReceipt = (value) => {
     if (!value || typeof value !== 'object') return null;
-    return Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
+    const receipt = Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
       'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
       'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
       'pollMs', 'maxPollMs', 'pollCount', 'yields',
       'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending', 'uniformReused',
       'openingRenderMs']
       .map((key) => [key, finite(value[key])]));
+    // Pass ordinals identify the fixed production chain without serializing
+    // class/material names, arbitrary labels, or scene/user metadata.
+    if (Array.isArray(value.openingPasses)) receipt.openingPasses = value.openingPasses.slice(0, 16)
+      .filter((row) => Number.isSafeInteger(row?.index) && row.index >= 0 && row.index < 16)
+      .map((row) => ({ index: row.index, renderMs: nonnegative(row.renderMs),
+        programsBefore: nonnegative(row.programsBefore), programsAfter: nonnegative(row.programsAfter) }));
+    return receipt;
   };
   const topMaskReadbacks = (value) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};

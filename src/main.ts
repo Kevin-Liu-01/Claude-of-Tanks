@@ -81,6 +81,7 @@ import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
+import { renderCoveredComposerWarm, type CoveredComposerWarmTiming } from './engine/coveredComposerWarm.ts';
 import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
   restoreGarageGpuPipeline,
@@ -2163,7 +2164,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             await panel.prepareTankMasks(entity.spec, entity.visual);
           },
           openingEffects: async (fx, bridge, signal) => {
-            const timing: ForwardProgramCompileTiming & { openingRenderMs?: number } = {
+            const timing: ForwardProgramCompileTiming & {
+              openingRenderMs?: number; openingPasses?: CoveredComposerWarmTiming['passes'];
+            } = {
               uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
             };
             let decalVisual: { root: THREE.Object3D } | null = null;
@@ -2186,24 +2189,12 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               compilePrograms: (root: THREE.Object3D, compileTiming?: ForwardProgramCompileTiming) =>
                 forwardProgramWarm.compile(root, compileTiming),
               warmRender: () => {
-                // The loader is opaque. Submit the actual late-FX/depth-copy
-                // passes, not only a combined-layer offscreen scene variant.
-                const renderToScreen = post.composer.renderToScreen;
-                const target = renderer.getRenderTarget();
-                const face = renderer.getActiveCubeFace();
-                const mip = renderer.getActiveMipmapLevel();
-                let renderAt = NaN;
-                try { renderAt = performance.now(); } catch { /* optional timing */ }
-                post.composer.renderToScreen = false;
-                try { post.composer.render(0); }
-                finally {
-                  post.composer.renderToScreen = renderToScreen;
-                  renderer.setRenderTarget(target, face, mip);
-                  try {
-                    const elapsed = performance.now() - renderAt;
-                    if (Number.isFinite(elapsed) && elapsed >= 0) timing.openingRenderMs = elapsed;
-                  } catch { /* Optional diagnostics cannot change draw/restoration behavior. */ }
-                }
+                // Keep the actual compositor path and its pooled FX atomic.
+                // Pass measurements locate indivisible first-use work before
+                // deciding where a cooperative preparation boundary is safe.
+                const rendered = renderCoveredComposerWarm(post.composer);
+                timing.openingRenderMs = rendered.totalMs;
+                timing.openingPasses = rendered.passes;
               },
             });
             return { ...timing };

@@ -349,6 +349,26 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
   assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
 }
 {
+  const passes = browserFixture();
+  passes.context.window.__NETWORK_LOAD.scarCompile = {
+    openingRenderMs: 90,
+    openingPasses: [null, { index: -1 }, { index: 16 }, { index: 1.5 },
+      { index: 0, renderMs: 80.5, programsBefore: 190, programsAfter: 193,
+        label: 'PRIVATE_LABEL', material: 'PRIVATE_MATERIAL' },
+      { index: 3, renderMs: -1, programsBefore: Infinity, programsAfter: NaN },
+      ...Array.from({ length: 20 }, () => ({ index: 6, renderMs: 0.25,
+        programsBefore: 193, programsAfter: 193 }))],
+  };
+  const receipt = JSON.parse(JSON.stringify(passes.run(readProductionEntryObserver, 'stop')));
+  assert.equal(receipt.networkLoad.scarCompile.openingPasses.length, 12,
+    'only the first sixteen input rows are inspected, and malformed ordinals are rejected');
+  assert.deepEqual(receipt.networkLoad.scarCompile.openingPasses.slice(0, 2), [
+    { index: 0, renderMs: 80.5, programsBefore: 190, programsAfter: 193 },
+    { index: 3, renderMs: null, programsBefore: null, programsAfter: null },
+  ]);
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+}
+{
   const watchdog = browserFixture();
   const row = { startTime: 1, endTime: 90, setupMs: 2, renderMs: 30, readbackMs: 55, enqueueMs: 3, waitMs: 52,
     reduceMs: 0.2, restoreMs: 1.8, programsBeforeRender: 12, programsAfterRender: 15 };
