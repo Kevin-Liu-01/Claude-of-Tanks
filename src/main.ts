@@ -101,6 +101,7 @@ import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts'
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
 import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import { MAP_HEROES, MAP_THUMBS } from './ui/mapThumbs.ts';
+import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
 import {
   createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
@@ -245,7 +246,7 @@ const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
 const mapHeroes: Readonly<Record<string, string>> = MAP_HEROES;
 const mapThumbs: Readonly<Record<string, string>> = MAP_THUMBS;
 const minimapAssetUrl = (mapId: string): string => (
-  `${import.meta.env.BASE_URL || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=north-up-v7`
+  getMinimapAssetUrl(mapId, import.meta.env.BASE_URL || '/')
 );
 const isShotViewName = (value: string): value is ShotViewName => (
   SHOT_VIEWS.some((name) => name === value)

@@ -16,12 +16,13 @@ export default {
       [[-282, -76], [30, -100], [72, -70], [156, -74], [218, -30], [302, -88]],
       [[-314, 182], [-198, 222], [-72, 206], [66, 226], [194, 200], [334, 228]],
     ] },
-    // Three overlapping spring cells bend around a dry, town-facing tongue.
-    // The former satellite marsh is part of the same waterline, not a pond.
+    // One asymmetric spring basin wraps a dry town-facing tongue. The broad
+    // western coves and unequal tapering arms replace three circular joins;
+    // the existing analytic contour also owns terrain, minimap and wetness.
     lakes: [
-      { x: -138, z: -16, r: 52, depth: 0.75, level: -1.2 },
-      { x: -182, z: 32, r: 57, depth: 0.75, level: -1.2 },
-      { x: -134, z: 84, r: 48, depth: 0.65, level: -1.2 },
+      { x: -161, z: 30, r: 112, depth: 0.75, level: -1.2,
+        radii: [0.43, 0.58, 0.84, 0.76, 0.93, 0.86, 0.60, 0.70,
+          0.61, 0.72, 0.68, 0.79, 0.75, 0.77, 0.74, 0.51] },
     ],
     marshes: [],
     landforms: [

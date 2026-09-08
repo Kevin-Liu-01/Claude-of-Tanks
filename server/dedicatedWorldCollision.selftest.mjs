@@ -44,7 +44,9 @@ const expected = {
   // The shared terrain exclusion now follows the actual hardstand rectangle
   // plus its shoulder; the airfield configuration itself is unchanged.
   airfield: [3160, 3135, 2739],
-  oasis: [2470, 2257, 1852],
+  // Native19e03d36b: the authored spring contour changes terrain-aware
+  // vegetation/prop acceptance; this is the exact captured census.
+  oasis: [2489, 2278, 1889],
   whiteout: [1449, 1267, 805],
   orchard: [4403, 4163, 4454],
   longleaf: [5631, 5421, 6154],
