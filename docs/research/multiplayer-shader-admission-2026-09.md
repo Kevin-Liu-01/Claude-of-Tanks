@@ -185,3 +185,29 @@ remain outside strict main-cohort preparation. Preserve this slower sample;
 do not attribute its 303 ms maximum RAF gap to a solved shader query or claim
 historical 214–319 ms stalls are eliminated. The variance in the unchanged
 baseline also requires repeated controlled work before an end-to-end claim.
+
+## Main integration verification
+
+The runtime commit rebased cleanly onto `9d1451945` as `92d55cdbd`; the shader,
+network and diagnostic sources were unchanged by rebase. The eight focused
+suites, metrics and typecheck passed again. The new upstream localization
+prebuild initially stopped because the shared dependency tree lacks `gt`.
+Reusing the already-installed, lock-matching GT 2.20.1 executable from
+`/private/tmp/cot-locale-routing.sVnkgD/worktree/node_modules/.bin` through the
+child command's PATH passed the offline dry run, localization checks and full
+public build. No shared dependency installation, translation upload, validation
+bypass or package edit was made.
+
+`/private/tmp/cot-shader-admission-integrated-native-20260908-r1/report.json`
+then passed the complete native entry/cleanup gates. Its index SHA is
+`b0570c5c51d56633c83dab2f7272cbb50c9cb00ee641c63833c1648f2acf1f65`,
+full-build SHA `dac5d40b32d2b547d306f97618312118b7635958946353c9a504caf9156c2656`
+and acquisition SHA `de883652b8f729f2ca0bcffb0bdc6f1d0e9308d8bc3ff4c8b8ee29af23b0d091`.
+Upstream package-script changes account for the new acquisition identity;
+this is an integration smoke, not the earlier matched-build comparison.
+Both clients again reported clear/day, high/scale 1, the Apple Metal backend,
+zero pending/failed main reflections, complete masks and the full countdown.
+Loader times were 2886.3/3128.0 ms and maximum RAF gaps 192.5/190.4 ms.
+All owned resources and rooms closed. These remaining gaps still prevent a
+smooth-frame or production-performance completion claim. The following
+documentation-only commit records this receipt without altering tested code.
