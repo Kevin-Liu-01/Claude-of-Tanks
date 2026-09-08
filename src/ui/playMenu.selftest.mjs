@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 
 const source = await readFile(new URL('./playMenu.ts', import.meta.url), 'utf8');
 const responsive = await readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8');
@@ -40,8 +41,54 @@ assert.match(responsive, /body\[data-cot-width='compact'\] \.cot-play \.room-fai
   'room recovery actions use the shared compact and phone viewport policy');
 assert.match(source, /readyBtn\.disabled = spectator \|\| !player\.connected \|\| !player\.specId \|\| next\.phase !== 'waiting'/,
   'ready players retain the enabled unready action while waiting');
-assert.match(source, /if \(me\) setReady\(!me\.ready\)/,
-  'the drawer routes its toggle through the same guarded command as Garage');
+assert.match(source, /const ready = !me\?\.ready;\s*if \(me && setReady\(ready\) && ready\) onReadyIntent\?\.\(\);/,
+  'only a locally eligible Ready click prepares audio; Unready and guard rejection do not');
+assert.equal([...source.matchAll(/onReadyIntent\?\.\(/g)].length, 1,
+  'automatic join, replicated state and programmatic setReady never unlock audio');
+const main = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(main, /onReadyIntent: \(\) => audio\.prepare\(\)/);
+assert.match(main, /const accepted = currentNetworkRoom\(\)\?\.setReady\(ready\);[\s\S]{0,230}if \(accepted && ready\) audio\.prepare\(\);/,
+  'Garage prepares in the same gesture only after the coordinator accepts Ready');
+// Execute the actual small event bindings, without constructing the menu or
+// importing the render graph. The command owners retain their own guard tests.
+const readyBinding = source.slice(source.indexOf("  readyBtn.addEventListener('click'"),
+  source.indexOf("  leaveBtn.addEventListener('click'"));
+for (const [ready, accepted, present] of [[false, true, true], [true, true, true],
+  [false, false, true], [false, true, false]]) {
+  const calls = [];
+  let click;
+  runInNewContext(readyBinding, {
+    readyBtn: { addEventListener(type, callback) { assert.equal(type, 'click'); click = callback; } },
+    state: { players: present ? [{ id: 'viewer', ready }] : [] },
+    ownId: () => 'viewer',
+    setReady(value) { calls.push(['command', value]); return accepted; },
+    onReadyIntent() { calls.push(['prepare']); },
+  });
+  click();
+  assert.deepEqual(calls, present
+    ? [['command', !ready], ...(!ready && accepted ? [['prepare']] : [])] : [],
+  'the native drawer binding preserves command/gesture order and excludes Unready or stale identity');
+}
+const garageReadyBinding = main.slice(main.indexOf("bus.on('ui:roomReady'"),
+  main.indexOf("bus.on('ui:roomStart'"));
+for (const [ready, accepted] of [[true, true], [false, true], [true, false]]) {
+  const calls = [];
+  let receive;
+  runInNewContext(garageReadyBinding, {
+    bus: { on(type, callback) { assert.equal(type, 'ui:roomReady'); receive = callback; } },
+    currentNetworkRoom: () => ({ setReady(value) {
+      calls.push(['command', value]);
+      if (accepted) Promise.resolve().then(() => calls.push(['deferred-menu']));
+      return accepted;
+    } }),
+    audio: { prepare() { calls.push(['prepare']); } },
+  });
+  receive({ ready });
+  assert.deepEqual(calls, [['command', ready], ...(ready && accepted ? [['prepare']] : [])],
+    'Garage device preparation stays synchronous, before deferred room resolution');
+  await Promise.resolve();
+  if (accepted) assert.deepEqual(calls.at(-1), ['deferred-menu']);
+}
 assert.match(source, /setReady\(ready: boolean\): boolean/);
 assert.match(source, /\(!activeRoom && !session\) \|\| handedOff \|\| state\?\.phase !== 'waiting'/,
   'the quick control cannot change a handed-off or retired lobby');

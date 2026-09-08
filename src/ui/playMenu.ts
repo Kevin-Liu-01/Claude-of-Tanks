@@ -86,6 +86,8 @@ export interface PlayMenuOptions {
   getSelection(): PlayMenuSelection;
   getVehicleLoadout?(specId: string): Pick<PlayMenuSelection, 'equipment' | 'camo'>;
   onSolo?(request?: { gameMode?: GameModeId }): RuntimeValue;
+  /** Accepted native Ready gesture, never auto-join or replicated room state. */
+  onReadyIntent?(): void;
   onNetworkStart?(request: {
     role: RoomRole;
     session: RoomSession;
@@ -559,6 +561,7 @@ export function createPlayMenu({
       : { equipment: [], camo: 'factory' };
   },
   onSolo,
+  onReadyIntent,
   onNetworkStart,
   onNetworkClose = () => {},
   onLobbyChange,
@@ -1458,7 +1461,8 @@ export function createPlayMenu({
   mapSelect.addEventListener('change', () => command({ type: 'set_map', mapId: mapSelect.value }));
   readyBtn.addEventListener('click', () => {
     const me = state && state.players.find((player) => player.id === ownId());
-    if (me) setReady(!me.ready);
+    const ready = !me?.ready;
+    if (me && setReady(ready) && ready) onReadyIntent?.();
   });
   leaveBtn.addEventListener('click', () => {
     closeCurrentSession('left_room');
