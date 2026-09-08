@@ -1258,8 +1258,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       caption: t('studioPanel.info.image.canvasCaption', { name }),
     }, shot ? {
       src: shot.img,
-      alt: t(shot.capKey),
-      caption: `${t(shot.capKey)} // ${t('garage.featuredShots.studioOutput')}`,
+      alt: t(shot.capKey, shot.capVars),
+      caption: `${t(shot.capKey, shot.capVars)} // ${t('garage.featuredShots.studioOutput')}`,
     } : null].filter(Boolean);
   }
   function section(infoId: StudioSectionInfoId, title: string, sub = ''): HTMLDivElement {

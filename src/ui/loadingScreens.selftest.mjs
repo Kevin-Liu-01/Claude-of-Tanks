@@ -11,6 +11,7 @@ import {
 } from './featuredShots.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
+import { getLocalizedMapName } from '../world/maps/catalog.ts';
 
 function webpDimensions(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF', 'map image must be RIFF WebP');
@@ -154,6 +155,7 @@ for (const mapId of Object.keys(MAP_THUMBS)) {
     assert.equal(shot.img, MAP_HEROES[mapId],
       `${mapId}: without a curated action still use its exact native 4K overview`);
     assert.equal(shot.capKey, 'garage.featuredShot.battlefieldOverview');
+    assert.deepEqual(shot.capVars, { name: getLocalizedMapName(mapId) });
     assert.deepEqual(shot.maps, [mapId], 'an overview only depicts its own battlefield');
   }
 }
