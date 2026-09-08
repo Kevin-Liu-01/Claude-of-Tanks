@@ -15,6 +15,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/sourceXWesternAuxArmor.selftest.mjs',
     'src/vehicles/sourceXSovietAuxArmor.selftest.mjs',
     'tools/appVersion.selftest.mjs',
+    'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
