@@ -678,6 +678,7 @@ function paintStoneRow(
   y: number,
   rowEdges: readonly number[],
   columnEdges: readonly (readonly number[])[],
+  color: THREE.Color,
 ): void {
   const row = intervalAt(rowEdges, y);
   const columns = columnEdges[row];
@@ -695,35 +696,40 @@ function paintStoneRow(
     const grime = smoothstep(0.5, 0.95,
       noi.noise(x * 0.016 + 130, y * 0.028 + 71) * 0.5 + 0.5);
     const bevel = clamp((edgeD - 3.6) / 15, 0, 1);
-    _col.setHSL(
+    color.setHSL(
       0.081 + tone * 0.014,
       0.06 + tone * 0.055 - grime * 0.02,
       (mortar ? 0.25 + grain * 0.04
         : (0.305 + tone * 0.14 + grain * 0.05) * (0.82 + bevel * 0.18)) - grime * 0.07,
     );
-    pixels[j] = _col.r * 255;
-    pixels[j + 1] = _col.g * 255;
-    pixels[j + 2] = _col.b * 255;
+    pixels[j] = color.r * 255;
+    pixels[j + 1] = color.g * 255;
+    pixels[j + 2] = color.b * 255;
     pixels[j + 3] = 255;
     heights[i] = mortar ? 0.12
       : (0.48 + tone * 0.26 + grain * 0.16) * (0.55 + 0.45 * bevel);
   }
 }
 
-function makeStone(
+function* makeStone(
   noi: SimplexNoise,
   anisotropy: number,
   tone: ToneFunction | null = null,
-): GeneratedSurfaceTextures {
+): Generator<PropsBuildSlice, GeneratedSurfaceTextures, void> {
   // Irregular fieldstone coursing (512 px, ~0.35-0.9 m blocks at uvScale 0.5).
   const s = 512, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   const srng = mulberry32(0x51a7);
   const rowEdges = buildStoneCourseEdges(s, srng);
   const columnEdges = buildStoneColumnEdges(s, rowEdges.length - 1, srng);
+  const color = new THREE.Color();
   for (let y = 0; y < s; y++) {
-    paintStoneRow(noi, px, hgt, s, y, rowEdges, columnEdges);
+    paintStoneRow(noi, px, hgt, s, y, rowEdges, columnEdges, color);
+    if ((y + 1) % 16 === 0) yield { fine: true, stage: `stone-rows-${y + 1}` };
   }
   applyTone(px, tone);
+  yield { fine: true, stage: 'stone-tone' };
+  // Only invocation-local CPU buffers cross checkpoints. Create and transfer
+  // the unchanged texture set atomically, without suspending a partial owner.
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
     normal: normalFromHeight(hgt, s, 3.0, anisotropy),
@@ -852,18 +858,24 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
   return out;
 }
 
-function makeGrimeTexture(noi: SimplexNoise, anisotropy: number): THREE.CanvasTexture {
+function* makeGrimeTexture(
+  noi: SimplexNoise,
+  anisotropy: number,
+): Generator<PropsBuildSlice, THREE.CanvasTexture, void> {
   const s = 256, px = new Uint8ClampedArray(s * s * 4);
-  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
-    const u = x / s, v = y / s, j = (y * s + x) * 4;
-    const a = torusN(noi, u, v, 3, 3, 5) * 0.6 + torusN(noi, u, v, 7, 7, 19) * 0.4;
-    const b = torusN(noi, u, v, 5, 5, 47) * 0.55 + torusN(noi, u, v, 13, 13, 91) * 0.45;
-    // r3: blue carries a smooth 1-2 cycle field — sampled at very low world
-    // frequency it drives the per-neighbourhood facade tint drift below
-    const c2 = torusN(noi, u, v, 2, 2, 133) * 0.7 + torusN(noi, u, v, 5, 5, 171) * 0.3;
-    px[j] = (a * 0.5 + 0.5) * 255;
-    px[j + 1] = (b * 0.5 + 0.5) * 255;
-    px[j + 2] = (c2 * 0.5 + 0.5) * 255; px[j + 3] = 255;
+  for (let y = 0; y < s; y++) {
+    for (let x = 0; x < s; x++) {
+      const u = x / s, v = y / s, j = (y * s + x) * 4;
+      const a = torusN(noi, u, v, 3, 3, 5) * 0.6 + torusN(noi, u, v, 7, 7, 19) * 0.4;
+      const b = torusN(noi, u, v, 5, 5, 47) * 0.55 + torusN(noi, u, v, 13, 13, 91) * 0.45;
+      // r3: blue carries a smooth 1-2 cycle field — sampled at very low world
+      // frequency it drives the per-neighbourhood facade tint drift below
+      const c2 = torusN(noi, u, v, 2, 2, 133) * 0.7 + torusN(noi, u, v, 5, 5, 171) * 0.3;
+      px[j] = (a * 0.5 + 0.5) * 255;
+      px[j + 1] = (b * 0.5 + 0.5) * 255;
+      px[j + 2] = (c2 * 0.5 + 0.5) * 255; px[j + 3] = 255;
+    }
+    if ((y + 1) % 16 === 0) yield { fine: true, stage: `grime-rows-${y + 1}` };
   }
   return toTexture(px, s, { anisotropy });
 }
@@ -2408,8 +2420,8 @@ function* propsBuildSteps(
   yield { fine: true };
   const roofT = makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
-  const stone = makeStone(noi, aniso, T.stone || null);
-  yield { fine: true };
+  const stone = yield* makeStone(noi, aniso, T.stone || null);
+  yield { fine: true, stage: 'stone-maps' };
   const wood = makeWood(noi, aniso, T.wood || null);
   yield { fine: true };
   const straw = makeStraw(noi, aniso, T.straw || null);
@@ -2422,6 +2434,11 @@ function* propsBuildSteps(
   yield { fine: true };
   const vehiclePaint = makeVehiclePaint(noi, Math.min(aniso, 4));
   yield { fine: true };
+
+  // Paint before allocating materials or starting sourced replacements: new
+  // row checkpoints must not suspend those not-yet-registered owners.
+  // World-space grime breaks up every tiled hard-surface texture below.
+  const grimeTex = yield* makeGrimeTexture(noi, aniso);
 
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
@@ -2507,10 +2524,6 @@ function* propsBuildSteps(
   // above this crossed the 1.78 bloom threshold; the post-side firefly clamp
   // is a safety net, not a design allowance)
 
-  // world-space grime/variation overlay: a second noise-masked albedo layer
-  // (macro tone breakup + streaky weathering) that de-grids every tiled
-  // hard-surface texture — walls stop reading as a repeated stamp at zoom
-  const grimeTex = makeGrimeTexture(noi, aniso);
   // Empty geometry buckets still have CSM-registered materials; shader-only
   // uGrime is also invisible to a mesh/material-property traversal. Declare
   // both on their world owner so eviction releases every shadow registration
@@ -2519,7 +2532,7 @@ function* propsBuildSteps(
   registerRetainedObject3DResources(group, {
     materials: retainedSurfaceMaterials, textures: [grimeTex],
   });
-  yield { fine: true };
+  yield { fine: true, stage: 'grime-texture' };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
   // material whitens its UP-FACING fragments toward drifted snow (clumpy,
   // noise-broken). This is what fixes the physically-contradictory "fully
