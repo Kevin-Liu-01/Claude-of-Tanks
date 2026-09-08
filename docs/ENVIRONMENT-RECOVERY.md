@@ -856,12 +856,43 @@ refinement should address forest surface/stand mass within existing budgets.
 All strict managed-heap and ordinary/high-DPI motion gates remain open; no
 tolerance change, category subtraction or broader completion is implied.
 
+## Published-source motion checkpoint and forest review — 2026-09-08
+
+The maintained desktop/Winter reproducer passed on clean published source
+`c0dcf8255`, index `cc375a7d5e50633f33ecb3d17aa1f90d5a0862ce23deef97c3887cb7b0488450`.
+All 483 submitted frames of the eight-second live pan retained scale 1 and
+trim 0. The original one-second DPR 2 and restored-DPR 1 observations each
+recorded 61 frames at scale 1. Native M5 Max Metal/Chromium 151.0.7922.34
+rendered all six inspected PNGs without blanking, stretching or context loss;
+saved receipt/image/video hashes and owned-process cleanup revalidated.
+Evidence: `motion-published-c0-one-r1/{receipts.json,review.md}` under the
+persistent evidence root. This is daytime Chromium emulation, not nighttime,
+sustained DPR 2 motion, physical iPad/Safari or horizon-candidate acceptance.
+The original R5 failure remains preserved; its historical cause is unresolved.
+
+The next local forest-surface candidate uses spare channels of the existing
+256-square detail texture. Frozen R7 `617f09176` passed focused checks/build
+and produced 45 exact matched poses and 20 scope contracts, with unchanged
+source/build/acquisition, native Metal, no page errors and clean disposal.
+Actual Verdant/Coastal scope review nevertheless finds a regular fish-scale
+pattern. R7 is rejected for publication, not certified by its passing tests.
+See `horizon-density-after-r7-{integrity,cleanup}.json` and the adjacent
+`horizon-density-after-r7-art-review.md` for the bounded views reviewed.
+
+Irregular crown placement and a projection-angle guard are being tested
+locally. Same texture/draw counts do not establish performance or memory
+parity: added construction/shader work and distinct program variants must
+still be evaluated. No live horizon child ships in this evidence checkpoint.
+The broader motion matrix, strict managed-heap failures and all-map art
+acceptance remain open without tolerance changes or category subtraction.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
 2. Night source/lifecycle integration and spotting/death/Garage tests: completed.
 3. Final native night brightness/glow/contact review: completed for the stated
-   captured views; DPR motion acceptance remains failed.
+   captured views; the published-source desktop/Winter DPR prerequisite now
+   passes as recorded above, while broader motion acceptance remains open.
 4. Frame timing and cache-eviction acquisitions: recorded; strict memory and
    quality acceptance remain open as detailed above.
 5. Thirty-map visual/art/minimap refresh and native collision refresh: completed;
