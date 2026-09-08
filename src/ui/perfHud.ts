@@ -386,6 +386,8 @@ export function createPerfHud({
   try {
     new PerformanceObserver((list) => {
       const now = performance.now();
+      // Shot/Studio frames can skip HUD updates; collection must own expiry too.
+      while (stalls.length && now - stalls[0].t > 5000) stalls.shift();
       for (const entry of list.getEntries()) stalls.push({ t: now, d: entry.duration });
     }).observe({ entryTypes: ['longtask'] });
   } catch (_) { /* older engines: stall line reads n/a */ }
