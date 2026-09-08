@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { minimapAssetUrl } from '../ui/minimapAssetUrl.ts';
 import {
   createWorldBuildCoordinator,
   type WorldBuildCoordinator,
@@ -180,9 +181,8 @@ export function createWorldActivationRuntime<
   }
   const cache = coordinator.cache;
   const baseUrl = options.baseUrl || '/';
-  const assetVersion = options.minimapAssetVersion || 'north-up-v7';
   const assetUrl = (mapId: string): string => (
-    `${baseUrl}minimaps/${encodeURIComponent(mapId)}.webp?v=${assetVersion}`
+    minimapAssetUrl(mapId, baseUrl, options.minimapAssetVersion)
   );
   const minimapAssets = createMinimapAssetRuntime<World>({
     isReady: options.isMinimapReady,
