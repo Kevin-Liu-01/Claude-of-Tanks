@@ -70,22 +70,21 @@ const pendingProgram = {
   program: {},
   getUniforms() { initialized.push('uniforms'); },
 };
+const forwardGl = {
+  getExtension(name) {
+    assert.equal(name, 'KHR_parallel_shader_compile');
+    return { COMPLETION_STATUS_KHR: 0x91B1 };
+  },
+  getProgramParameter(program, token) {
+    assert.equal(program, pendingProgram.program);
+    assert.equal(token, 0x91B1);
+    return false;
+  },
+};
 const forwardRenderer = {
   ...targetRenderer,
   info: { programs: warmPrograms },
-  getContext() {
-    return {
-      getExtension(name) {
-        assert.equal(name, 'KHR_parallel_shader_compile');
-        return { COMPLETION_STATUS_KHR: 0x91B1 };
-      },
-      getProgramParameter(program, token) {
-        assert.equal(program, pendingProgram.program);
-        assert.equal(token, 0x91B1);
-        return false;
-      },
-    };
-  },
+  getContext() { return forwardGl; },
   compile(root, camera, targetScene) {
     targetRenderer.compile.call(this, root, camera, targetScene);
     if (!warmPrograms.length) warmPrograms.push(pendingProgram);
@@ -132,8 +131,9 @@ function timedForwardFixture({ compileFailure = null, clockFailure = false } = {
       if (compileFailure) throw compileFailure;
     },
     getContext() {
+      if (this.gl) return this.gl;
       clock += 2;
-      return {
+      this.gl = {
         getExtension() {
           events.push(['extension']);
           clock += 3;
@@ -147,6 +147,7 @@ function timedForwardFixture({ compileFailure = null, clockFailure = false } = {
           return !renderer.pending;
         },
       };
+      return this.gl;
     },
   };
   const owner = createForwardProgramWarmOwner({
@@ -250,7 +251,7 @@ for (const diagnostic of ['frozen', 'clock-failure']) {
   const cached = {};
   assert.equal([...fixture.owner.linkerBreathingSlices(3, cached)].length, 0);
   assert.deepEqual(cached, { queryMs: 14, maxQueryMs: 7, queryCount: 2,
-    pollMs: 16, maxPollMs: 16, pollCount: 1 }, 'cached extension lookup adds no native call or timing');
+    pollMs: 14, maxPollMs: 14, pollCount: 1 }, 'cached context/extension lookup adds no native call or timing');
   assert.equal(fixture.events.filter(([name]) => name === 'extension').length, 1);
   assert.equal(fixture.events.filter(([name]) => name === 'query').length, 4,
     'timing does not introduce readiness probes');
@@ -338,7 +339,9 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
       events.push(['uniform', name]);
       clock += state.uniformMs;
       state.reflect(name);
+      return {};
     },
+    getAttributes() { assertActive(); assertRestored(); return {}; },
   }));
   const unrelated = { name: 'garage', program: { name: 'garage' },
     getUniforms() { assert.fail('unsubmitted Garage material is outside the first-use cohort'); } };
@@ -751,7 +754,8 @@ function capturedNewFixture(count = 1) {
   const before = snapshotRendererPrograms(renderer);
   const programs = Array.from({ length: count }, (_, index) => ({
     program: { index },
-    getUniforms() { events.push(['uniform', index]); state.clock += state.uniformMs; },
+    getUniforms() { events.push(['uniform', index]); state.clock += state.uniformMs; return {}; },
+    getAttributes() { return {}; },
   }));
   renderer.info.programs.push(...programs);
   const capture = (options = {}) => captureNewProgramUniformSteps(renderer, before, {
@@ -905,6 +909,234 @@ for (const operation of ['query', 'uniform']) {
   const controller = new AbortController();
   controller.abort();
   assert.throws(() => f.capture({ signal: controller.signal }), { name: 'AbortError' });
+}
+
+{
+  const f = firstUseFixture();
+  f.drain(f.prepare());
+  const queries = f.events.filter(([kind]) => kind === 'query').length;
+  const uniforms = f.events.filter(([kind]) => kind === 'uniform').length;
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(f.events.filter(([kind]) => kind === 'query').length, queries,
+    'exact successful reflection witnesses avoid repeated native readiness queries');
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, uniforms);
+  assert.equal(timing.uniformReused, 3);
+  assert.equal(timing.uniformCount, 0, 'reuse is not a new reflection attempt');
+  assert.equal(timing.uniformPending, 0);
+  const linker = {};
+  [...f.owner.linkerBreathingSlices(1, linker)];
+  assert.equal(linker.uniformReused, 3);
+  assert.equal(linker.queryCount, 1, 'unwitnessed retained Garage programs are still queried');
+}
+
+for (const boundary of ['epoch', 'info', 'context', 'loss', 'handle', 'wrapper']) {
+  const f = firstUseFixture({ names: ['only'] });
+  f.drain(f.prepare());
+  if (boundary === 'epoch') f.owner.invalidate();
+  if (boundary === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+  if (boundary === 'context') {
+    const replacement = { ...f.gl };
+    f.renderer.getContext = () => replacement;
+  }
+  if (boundary === 'loss') {
+    f.gl.lost = true;
+    f.drain(f.prepare());
+    f.gl.lost = false;
+  }
+  if (boundary === 'handle') f.programs[0].program = { name: 'replacement' };
+  if (boundary === 'wrapper') {
+    const replacement = { ...f.programs[0] };
+    f.renderer.info.programs[1] = replacement;
+    f.materialProperties.programs.set('only', replacement);
+  }
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.queryCount, 1, `${boundary}: stale witnesses do not suppress native queries`);
+  assert.equal(timing.uniformCount, 1);
+  assert.equal(timing.uniformReused, 0);
+}
+
+{
+  const f = firstUseFixture({ names: ['partial'] });
+  let attempts = 0;
+  f.programs[0].getAttributes = () => {
+    attempts++;
+    throw new Error('attribute reflection failed after uniform cache populated');
+  };
+  for (let run = 0; run < 2; run++) {
+    const timing = {};
+    f.drain(f.prepare({ timing }));
+    assert.equal(timing.queryCount, 1, 'a cached getUniforms return cannot hide incomplete attributes');
+    assert.equal(timing.uniformFailures, 1);
+    assert.equal(timing.uniformPending, 1);
+    assert.equal(timing.uniformReused, 0);
+  }
+  assert.equal(attempts, 2);
+  f.programs[0].getAttributes = () => ({});
+  f.drain(f.prepare());
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.uniformReused, 1, 'both tables must succeed before a durable witness exists');
+}
+
+for (const malformed of ['missing-attributes', 'undefined-uniforms', 'undefined-attributes']) {
+  const f = firstUseFixture({ names: ['foreign'] });
+  if (malformed === 'missing-attributes') delete f.programs[0].getAttributes;
+  if (malformed === 'undefined-uniforms') f.programs[0].getUniforms = () => undefined;
+  if (malformed === 'undefined-attributes') f.programs[0].getAttributes = () => undefined;
+  f.drain(f.prepare());
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.queryCount, 1, `${malformed}: unsupported table results are never witnessed`);
+  assert.equal(timing.uniformReused, 0);
+}
+
+{
+  const f = firstUseFixture({ names: ['new'] });
+  [...captureNewProgramUniformSteps(f.renderer, new Set([f.unrelated]))];
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.uniformReused, 1, 'wreck/scar scoped jobs share strict proof with the scene owner');
+  assert.equal(timing.queryCount, undefined);
+  f.owner.invalidate();
+  const afterInvalidation = {};
+  [...captureNewProgramUniformSteps(f.renderer, new Set([f.unrelated]), { timing: afterInvalidation })];
+  assert.equal(afterInvalidation.queryCount, 1, 'owner invalidation also invalidates scoped-job proof');
+}
+
+{
+  const f = firstUseFixture({ names: ['first', 'second'] });
+  const steps = captureNewProgramUniformSteps(f.renderer, new Set([f.unrelated]));
+  steps.next();
+  f.owner.invalidate();
+  assert.equal(steps.next().done, true, 'invalidation cannot let a suspended scoped job republish stale proof');
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 0);
+}
+
+for (const operation of ['uniform', 'attribute']) {
+  const f = firstUseFixture({ names: ['only'] });
+  const method = operation === 'uniform' ? 'getUniforms' : 'getAttributes';
+  const original = f.programs[0][method];
+  f.programs[0][method] = () => { f.owner.invalidate(); return {}; };
+  f.drain(f.prepare());
+  f.programs[0][method] = original;
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.queryCount, 1, `${operation}: native-call invalidation prevents publishing proof`);
+}
+
+{
+  const f = firstUseFixture({ names: ['garage-forward'] });
+  f.renderer.info.programs = [f.unrelated];
+  f.state.compile = () => {
+    if (!f.renderer.info.programs.includes(f.programs[0])) f.renderer.info.programs.push(f.programs[0]);
+  };
+  [...f.owner.initializeSteps()];
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.uniformReused, 1, 'successful Garage first-use can prove later selected-material reuse');
+  assert.equal(timing.uniformCount, 0);
+  assert.equal(timing.queryCount, undefined);
+}
+
+for (const boundary of ['epoch', 'context']) {
+  const f = firstUseFixture({ names: ['first', 'second'] });
+  f.renderer.info.programs = [f.unrelated];
+  f.state.compile = () => f.renderer.info.programs.push(...f.programs);
+  const steps = f.owner.initializeSteps();
+  assert.equal(steps.next().done, false);
+  if (boundary === 'epoch') f.owner.invalidate();
+  else f.renderer.getContext = () => ({ ...f.gl });
+  assert.equal(steps.next().done, true, `${boundary}: legacy initialization also owns its renderer lifetime`);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 1);
+}
+
+for (const operation of ['getUniforms', 'getAttributes']) {
+  const f = firstUseFixture({ names: ['aborted'] });
+  const controller = new AbortController();
+  const reason = new Error(`aborted during ${operation}`);
+  const original = f.programs[0][operation];
+  f.programs[0][operation] = () => { controller.abort(reason); return {}; };
+  assert.throws(() => f.drain(f.prepare({ signal: controller.signal })), (error) => error === reason);
+  f.programs[0][operation] = original;
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.queryCount, 1, `${operation}: aborted native work cannot publish a shared witness`);
+  assert.equal(timing.uniformReused, 0);
+}
+
+{
+  const f = firstUseFixture({ names: ['mutated'] });
+  const original = f.programs[0].getUniforms;
+  f.programs[0].getUniforms = () => { f.programs[0].program = { name: 'replacement' }; return {}; };
+  f.programs[0].getAttributes = () => assert.fail('handle replacement must stop before attribute work');
+  f.drain(f.prepare());
+  f.programs[0].getUniforms = original;
+  f.programs[0].getAttributes = () => ({});
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.queryCount, 1);
+  assert.equal(timing.uniformReused, 0);
+}
+
+for (const initializeUniforms of [false, true]) {
+  const f = firstUseFixture();
+  const steps = f.prepare({ initializeUniforms });
+  assert.equal(steps.next().done, false, 'submission completes before context replacement');
+  const replacement = { ...f.gl };
+  f.renderer.getContext = () => replacement;
+  assert.equal(steps.next().done, true);
+  assert.deepEqual(f.events, [], 'context identity changes prevent extension/query/reflection work');
+}
+
+{
+  const f = firstUseFixture({ names: ['pending', 'live'] });
+  f.renderer.info.programs = [...f.programs];
+  f.state.query = (name) => name !== 'pending';
+  const steps = f.owner.linkerBreathingSlices(2);
+  assert.equal(steps.next().done, false);
+  const replaced = f.programs[0].program;
+  f.programs[0].program = { name: 'different-handle' };
+  f.renderer.info.programs.reverse();
+  assert.equal(steps.next().done, true);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query'), [['query', 'pending'], ['query', 'live']],
+    'default linker freezes handles across compaction and never queries a replacement');
+  assert.notEqual(f.programs[0].program, replaced);
+}
+
+{
+  const f = firstUseFixture({ names: ['old'] });
+  f.drain(f.prepare());
+  const oldInfo = f.renderer.info;
+  const suspended = f.prepare();
+  suspended.next();
+  f.renderer.info = { programs: [] };
+  assert.equal(suspended.next().done, true);
+  f.renderer.info = oldInfo;
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.queryCount, 1, 'observed lifetime invalidation cannot resurrect an old identity witness');
+}
+
+{
+  const f = firstUseFixture({ extension: false, names: ['fallback'] });
+  const first = {};
+  f.drain(f.prepare({ timing: first }));
+  assert.equal(first.queryCount, undefined, 'fallback metadata is not a KHR completion observation');
+  const next = {};
+  f.drain(f.prepare({ timing: next }));
+  assert.equal(next.uniformReused, 1, 'both successfully initialized tables are reusable even without KHR');
+  assert.equal(next.uniformCount, 0);
+}
+
+{
+  const f = capturedNewFixture(2);
+  for (const program of f.programs) program.getAttributes = () => { f.state.clock += 5; return {}; };
+  const timing = {};
+  assert.equal([...f.capture({ timing })].length, 3, 'attribute reflection time participates in the same work budget');
+  assert.equal(timing.uniformMs, 10);
+  assert.equal(timing.maxUniformMs, 5);
 }
 
 console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');

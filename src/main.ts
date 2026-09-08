@@ -2161,7 +2161,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             await panel.prepareTankMasks(entity.spec, entity.visual);
           },
           openingEffects: async (fx, bridge, signal) => {
-            const timing: ForwardProgramCompileTiming = {
+            const timing: ForwardProgramCompileTiming & { openingRenderMs?: number } = {
               uniformCount: 0, uniformFailures: 0, uniformYields: 0, uniformPending: 0,
             };
             let decalVisual: { root: THREE.Object3D } | null = null;
@@ -2190,11 +2190,17 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
                 const target = renderer.getRenderTarget();
                 const face = renderer.getActiveCubeFace();
                 const mip = renderer.getActiveMipmapLevel();
+                let renderAt = NaN;
+                try { renderAt = performance.now(); } catch { /* optional timing */ }
                 post.composer.renderToScreen = false;
                 try { post.composer.render(0); }
                 finally {
                   post.composer.renderToScreen = renderToScreen;
                   renderer.setRenderTarget(target, face, mip);
+                  try {
+                    const elapsed = performance.now() - renderAt;
+                    if (Number.isFinite(elapsed) && elapsed >= 0) timing.openingRenderMs = elapsed;
+                  } catch { /* Optional diagnostics cannot change draw/restoration behavior. */ }
                 }
               },
             });

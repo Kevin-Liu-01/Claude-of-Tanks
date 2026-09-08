@@ -150,7 +150,8 @@ export function installProductionEntryObserver() {
       'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
       'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
       'pollMs', 'maxPollMs', 'pollCount', 'yields',
-      'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending']
+      'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending', 'uniformReused',
+      'openingRenderMs']
       .map((key) => [key, finite(value[key])]));
   };
   const worldLoadReceipt = (world) => world ? {

@@ -279,7 +279,8 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
     'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
     'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
     'pollMs', 'maxPollMs', 'pollCount', 'yields',
-    'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending'];
+    'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending', 'uniformReused',
+    'openingRenderMs'];
   const row = Object.fromEntries(fields.map((key) => [key, 2]));
   compile.context.window.__NETWORK_LOAD.programCompile = {
     ...row, submissionMs: Infinity, url: 'PRIVATE_URL', name: 'PRIVATE_NAME', detail: { secret: 'PRIVATE' },

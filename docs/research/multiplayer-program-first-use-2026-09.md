@@ -483,3 +483,76 @@ verified, but the smooth-loading limitation remains. The initial integrated
 runner refused an incorrect expected version before opening any browser; the
 fresh `r2` run used the actual frozen build stamp. This publication adds only
 the scoped multiplayer change and this evidence ledger, not the QA artifacts.
+
+### Next measured cost: repeated native readiness work
+
+The integrated guest's 226-ms task is wholly inside scene preparation and
+matches `maxExistingQueryMs=226.2`. Its retained CPU profile maps to
+`queryCapturedProgram → gl.getProgramParameter`; main uniform reflection
+itself totaled only 4.7 ms. The host's 307-ms task instead overlaps combat
+warm and activation, but the host was not profiled, so its underlying driver
+operation is not established. These are distinct remaining costs.
+
+[KHR parallel compilation](https://developer.mozilla.org/en-US/docs/Web/API/KHR_parallel_shader_compile)
+provides a readiness-polling mechanism; it does not make total linking work
+disappear. The pinned Three 0.185.1 `WebGLProgram` implementation additionally
+caches uniform and attribute reflection per wrapper/native handle. A successful
+uniform call alone is insufficient proof: attribute initialization can throw
+after the uniform cache has already been assigned.
+
+The next candidate retains renderer-lifetime, weak-identity evidence only after
+both tables have been successfully obtained from a still-live exact program.
+Only those proven pairs may skip repeat native readiness/reflection calls.
+Renderer-list membership, an earlier KHR result, or an ordinary unobserved draw
+does not qualify. The numeric `uniformReused` counter distinguishes avoided
+calls from actual `uniformCount` attempts. An additional `openingRenderMs`
+receipt measures the existing synchronous compositor draw and target restoration
+separately from surrounding effects staging. Its regression executes the exact
+production callback and preserves restoration/error propagation on draw failure.
+Both new observer fields retain only finite numeric data in the existing
+bounded allowlist. Native benefit and full smooth-loading acceptance remain
+unproven until the candidate is measured.
+
+### Successful-program reuse checkpoint
+
+The implementation now shares strict successful-reflection witnesses between
+scene preparation, scoped wreck/scar jobs, and the guarded Garage initializer.
+Cancellation, renderer/info/context replacement, disposal, native-handle
+replacement, and explicit invalidation all prevent stale reuse. Partial
+uniform/attribute failures never publish proof; unsupported reflection results
+remain on the ordinary path. Actual scene submissions and covered draws are
+unchanged.
+
+The frozen candidate passed `program-proof-r1` through the committed two-client
+native UI regression, using local signaling and two pristine browser contexts
+on one machine. Source base was `2828ee43e`, build stamp
+`v1.0.0+g2828ee43e.dirty`, index SHA-256
+`b36a7ac83978bffed567e15769348c180fbee34df503dee5ac0ab25279ed77db`,
+and tracked runtime-diff SHA-256
+`87a1d3815c3121c8f54a4975cf4497c73548486cb7f4a1099f55923f717f3f08`.
+The source remained frozen throughout acquisition. Raw reports/screenshots stay
+in the excluded `.qa-entry/program-proof-r1/` directory.
+
+Observed conditions were clear/day Winter, HIGH/scale 1 during entry and LOW
+during the later gameplay sample. After 6,360 ms waiting-room map dwell, entry
+took 1,877/1,975 ms host/guest. Both clients reused 18 exact witnessed programs;
+uniform failures and pending counts were zero. Remaining maximum existing
+native queries were 222.1/229.4 ms: selective reuse works, but it has **not**
+removed the loading stall. The newly isolated opening draw measured
+93.4/92.7 ms; watchdog draws were 71.0/45.1 ms. These are observations, not a
+matched-seed speedup claim. Nighttime and broader-network acceptance remain open.
+
+Both clients observed the full foreground 5,4,3,2,1 countdown, with zero page
+errors, no black-frame rescue, zero hard snaps, and successful native Garage
+return, room closure, and browser cleanup. Later 20-second gameplay samples
+had maximum frame gaps of 42.3/44.9 ms. Both saved battlefield frames were
+visually checked; the tank, world, and HUD rendered on native Apple Metal.
+
+Sixteen focused entry/engine/FX/tool selftest commands, typecheck, public build,
+and changed-module complexity gates passed (593 functions, zero violations,
+zero explicit `any`/`unknown`). React Doctor's changed-file scan returned 49
+with one `no-eval` finding on the existing source-execution selftest: the test
+evaluates a fixed callback read from this repository, not external input or a
+runtime client payload. Reviewed as a test-only false positive, with no rule
+suppression. No new full-suite pass is claimed; the separately documented
+T-90M preservation-receipt failure remains outside this multiplayer checkpoint.

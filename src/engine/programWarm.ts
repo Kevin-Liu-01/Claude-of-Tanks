@@ -11,7 +11,8 @@ import type {
 
 type WarmYield = () => Promise<void>;
 
-type LinkedProgram = Pick<ThreeWebGLProgram, 'getUniforms' | 'program'>;
+type LinkedProgram = Pick<ThreeWebGLProgram, 'getUniforms' | 'program'>
+  & Partial<Pick<ThreeWebGLProgram, 'getAttributes'>>;
 
 interface RendererProgramInfo {
   programs?: readonly LinkedProgram[] | null;
@@ -39,30 +40,30 @@ function isWebGLProgram(value: ThreeWebGLProgram['program']): value is WebGLProg
 }
 
 function firstPendingProgram(
-  gl: WebGLRenderingContext | WebGL2RenderingContext,
+  context: FirstUseWarmContext,
   completionToken: number,
-  programs: readonly LinkedProgram[],
+  programs: readonly CapturedProgram[],
   cursor: number,
-  timing: ForwardProgramCompileTiming | undefined,
-  now: () => number,
-  existingPrograms?: ReadonlySet<LinkedProgram>,
 ): number {
+  const { gl, timing, now, existingPrograms } = context;
   for (; cursor < programs.length; cursor += 1) {
-    const program = programs[cursor]?.program;
-    if (!isWebGLProgram(program)) continue;
+    if (!context.valid()) return programs.length;
+    const entry = programs[cursor];
+    if (!capturedProgramIsLive(context.renderer, entry) || reuseReflectedProgram(context, entry)) continue;
     const queryAt = timing ? diagnosticNow(now) : NaN;
     let pending = false;
-    try { pending = gl.getProgramParameter(program, completionToken) === false; }
+    try { pending = gl.getProgramParameter(entry.handle, completionToken) === false; }
     finally {
       if (timing) {
         const elapsed = diagnosticNow(now) - queryAt;
         recordCompileTiming(timing, 'queryMs', elapsed);
         recordCompileTiming(timing, 'maxQueryMs', elapsed, 'max');
         recordCompileTiming(timing, 'queryCount', 1);
-        recordQueryCohort(timing, elapsed, existingPrograms?.has(programs[cursor]));
+        recordQueryCohort(timing, elapsed, existingPrograms?.has(entry.wrapper));
       }
     }
-    if (pending) break;
+    if (!context.valid()) return programs.length;
+    if (pending && capturedProgramIsLive(context.renderer, entry)) break;
   }
   return cursor;
 }
@@ -110,6 +111,8 @@ export interface ForwardProgramCompileTiming {
   maxUniformMs?: number;
   /** Attempted getUniforms calls, including failures and the unproven-readiness no-KHR fallback. */
   uniformCount?: number;
+  /** Exact prior successful uniform AND attribute reflection witnesses reused, not new calls. */
+  uniformReused?: number;
   uniformFailures?: number;
   uniformYields?: number;
   /** Still-live captured programs not successfully reflected, including failed calls. */
@@ -145,6 +148,38 @@ interface CapturedProgram {
   readonly handle: WebGLProgram;
   initialized: boolean;
   failed: boolean;
+}
+
+interface ProgramWarmLifetime {
+  readonly info: RendererWithPrograms['info'];
+  readonly gl: WebGLRenderingContext | WebGL2RenderingContext;
+  readonly reflected: WeakMap<LinkedProgram, WebGLProgram>;
+  parallelCompile?: ParallelShaderCompileExtension | null;
+}
+
+type ContextProgramRenderer = Pick<ForwardWarmRenderer, 'info' | 'getContext'>;
+
+// A retained wrapper keeps its native handle anyway. Neither renderer nor
+// wrapper is strongly retained by this shared, renderer-lifetime-only proof.
+const programWarmLifetimes = new WeakMap<ContextProgramRenderer, ProgramWarmLifetime>();
+
+function captureProgramWarmLifetime(renderer: ContextProgramRenderer): ProgramWarmLifetime {
+  const gl = renderer.getContext();
+  let lifetime = programWarmLifetimes.get(renderer);
+  if (!lifetime || lifetime.info !== renderer.info || lifetime.gl !== gl) {
+    lifetime = { info: renderer.info, gl, reflected: new WeakMap() };
+    programWarmLifetimes.set(renderer, lifetime);
+  }
+  return lifetime;
+}
+
+function programWarmLifetimeIsCurrent(renderer: ContextProgramRenderer, lifetime: ProgramWarmLifetime): boolean {
+  if (programWarmLifetimes.get(renderer) !== lifetime) return false;
+  if (renderer.info !== lifetime.info || renderer.getContext() !== lifetime.gl || lifetime.gl.isContextLost?.()) {
+    programWarmLifetimes.delete(renderer);
+    return false;
+  }
+  return true;
 }
 
 type MaterialProgramCohort = Map<LinkedProgram, CapturedProgram>;
@@ -325,11 +360,10 @@ function* compileSceneProgramSteps(
   const { signal, timing, passes } = compileOptions;
   signal?.throwIfAborted();
   const { renderer } = options;
-  const info = renderer.info;
-  const gl = renderer.getContext();
+  const lifetime = captureProgramWarmLifetime(renderer);
   const valid = (): boolean => {
     signal?.throwIfAborted();
-    return isCurrent() && renderer.info === info && !gl.isContextLost();
+    return isCurrent() && programWarmLifetimeIsCurrent(renderer, lifetime);
   };
   if (!valid()) return;
   const before = renderer.info?.programs?.length ?? 0;
@@ -422,10 +456,18 @@ interface FirstUseWarmContext {
   now(): number;
   timing?: ForwardProgramCompileTiming;
   existingPrograms?: ReadonlySet<LinkedProgram>;
+  lifetime: ProgramWarmLifetime;
 }
 
 function capturedProgramIsLive(renderer: RendererWithPrograms, entry: CapturedProgram): boolean {
   return entry.wrapper.program === entry.handle && !!renderer.info?.programs?.includes(entry.wrapper);
+}
+
+function reuseReflectedProgram(context: FirstUseWarmContext, entry: CapturedProgram): boolean {
+  if (context.lifetime.reflected.get(entry.wrapper) !== entry.handle) return false;
+  entry.initialized = true;
+  recordCompileTiming(context.timing, 'uniformReused', 1);
+  return true;
 }
 
 function queryCapturedProgram(
@@ -447,8 +489,17 @@ function queryCapturedProgram(
 function reflectCapturedProgram(context: FirstUseWarmContext, entry: CapturedProgram): void {
   const startedAt = diagnosticNow(context.now);
   try {
-    entry.wrapper.getUniforms(); // Pinned Three initializes both uniform AND attribute tables here.
+    const uniforms = entry.wrapper.getUniforms();
+    if (!context.valid() || !capturedProgramIsLive(context.renderer, entry)) return;
+    // Pinned Three assigns cachedUniforms BEFORE fetching attributes. A retry
+    // can return cached uniforms after partial failure, so validate both tables.
+    const attributes = entry.wrapper.getAttributes?.();
+    if (!context.valid() || !capturedProgramIsLive(context.renderer, entry)) return;
     entry.initialized = true;
+    if (typeof uniforms === 'object' && uniforms !== null
+      && typeof attributes === 'object' && attributes !== null) {
+      context.lifetime.reflected.set(entry.wrapper, entry.handle);
+    }
   } catch {
     entry.failed = true;
     recordCompileTiming(context.timing, 'uniformFailures', 1);
@@ -491,6 +542,7 @@ function advanceFirstUseProgram(
 ): 'stop' | 'skip' | 'pending' | 'reflected' {
   if (!context.valid() || expired()) return 'stop';
   if (entry.initialized || entry.failed || !capturedProgramIsLive(context.renderer, entry)) return 'skip';
+  if (reuseReflectedProgram(context, entry)) return 'skip';
   if (!firstUseProgramReady(context, entry, extension)) return 'pending';
   if (!context.valid() || expired()) return 'stop';
   if (!capturedProgramIsLive(context.renderer, entry)) return 'skip';
@@ -558,7 +610,7 @@ function* initializeMaterialProgramSteps(
   const startedAt = diagnosticNow(context.now);
   const expired = (): boolean => diagnosticNow(context.now) - startedAt >= 5_000;
   const slice = createFirstUseSliceBudget(context.now, sliceMs);
-  for (const field of ['uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields'] as const) {
+  for (const field of ['uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformReused'] as const) {
     recordCompileTiming(context.timing, field, 0);
   }
   try {
@@ -574,6 +626,20 @@ export function snapshotRendererPrograms(
   renderer: RendererWithPrograms,
 ): ReadonlySet<LinkedProgram> {
   return new Set(renderer.info?.programs ?? []);
+}
+
+function captureNewProgramCohort(
+  renderer: RendererWithPrograms,
+  baseline: ReadonlySet<LinkedProgram>,
+): MaterialProgramCohort {
+  const cohort: MaterialProgramCohort = new Map();
+  for (const wrapper of renderer.info?.programs ?? []) {
+    const handle = wrapper.program;
+    if (!baseline.has(wrapper) && isWebGLProgram(handle)) {
+      cohort.set(wrapper, { wrapper, handle, initialized: false, failed: false });
+    }
+  }
+  return cohort;
 }
 
 interface NewProgramUniformWarmOptions {
@@ -596,23 +662,15 @@ export function captureNewProgramUniformSteps(
   { signal, isCurrent = () => true, now = () => performance.now(), sliceMs, timing }: NewProgramUniformWarmOptions = {},
 ): Generator<void, void, void> {
   signal?.throwIfAborted();
-  const info = renderer.info;
-  const gl = renderer.getContext();
+  const lifetime = captureProgramWarmLifetime(renderer);
+  const { gl } = lifetime;
   const valid = (): boolean => {
     signal?.throwIfAborted();
-    return isCurrent() && renderer.info === info && renderer.getContext() === gl && !gl.isContextLost();
+    return isCurrent() && programWarmLifetimeIsCurrent(renderer, lifetime);
   };
-  const cohort: MaterialProgramCohort = new Map();
-  if (valid()) {
-    for (const wrapper of info?.programs ?? []) {
-      const handle = wrapper.program;
-      if (!baseline.has(wrapper) && isWebGLProgram(handle)) {
-        cohort.set(wrapper, { wrapper, handle, initialized: false, failed: false });
-      }
-    }
-  }
+  const cohort = valid() ? captureNewProgramCohort(renderer, baseline) : new Map<LinkedProgram, CapturedProgram>();
   return (function* () {
-    const context = { renderer, gl, valid, now, timing };
+    const context = { renderer, gl, valid, now, timing, lifetime };
     try {
       if (!valid() || !cohort.size) return;
       yield; // Release submission before the first native query, with visual state already restored.
@@ -672,6 +730,38 @@ export async function warmNewRendererProgramUniforms(
   return receipt;
 }
 
+function recordForwardCompileStats(
+  stats: ForwardProgramWarmStats | null,
+  object: Object3D,
+  compileMs: number,
+): void {
+  if (!stats) return;
+  stats.totalCompileMs = (stats.totalCompileMs ?? 0) + compileMs;
+  if (compileMs > (stats.maxCompileMs ?? 0)) {
+    stats.maxCompileMs = compileMs;
+    stats.maxCompileObject = object.name || object.type || '(unnamed)';
+  }
+}
+
+function* initializeSubmittedProgramSteps(
+  context: FirstUseWarmContext,
+  programs: MaterialProgramCohort,
+): Generator<void, boolean, void> {
+  let yielded = false;
+  try {
+    for (const entry of programs.values()) {
+      if (!context.valid()) return yielded;
+      if (!capturedProgramIsLive(context.renderer, entry)) continue;
+      if (!reuseReflectedProgram(context, entry)) reflectCapturedProgram(context, entry);
+      if (!context.valid()) return yielded;
+      yielded = true;
+      yield;
+      if (!context.valid()) return yielded;
+    }
+    return yielded;
+  } finally { programs.clear(); }
+}
+
 /**
  * Own gameplay-target program submission and bounded ANGLE linker draining.
  *
@@ -686,7 +776,6 @@ export function createForwardProgramWarmOwner({
   getTarget,
   now = () => performance.now(),
 }: ForwardProgramWarmOptions): ForwardProgramWarmOwner {
-  let parallelCompile: ParallelShaderCompileExtension | null | undefined;
   let epoch = 0;
 
   const compileSceneSteps = function* (
@@ -702,11 +791,11 @@ export function createForwardProgramWarmOwner({
   ): Generator<void, void, void> {
     options.signal?.throwIfAborted();
     const ownedEpoch = epoch;
-    const info = renderer.info;
-    const gl = renderer.getContext();
+    const lifetime = captureProgramWarmLifetime(renderer);
+    const { gl } = lifetime;
     const valid = (): boolean => {
       options.signal?.throwIfAborted();
-      return epoch === ownedEpoch && renderer.info === info && !gl.isContextLost();
+      return epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
     };
     if (!valid()) return;
     const existingPrograms = options.timing ? snapshotRendererPrograms(renderer) : undefined;
@@ -725,20 +814,20 @@ export function createForwardProgramWarmOwner({
         yield* linkerBreathingSlices(24, options.timing, options.signal, existingPrograms);
         return;
       }
-      const context = { renderer, gl, valid, now, timing: options.timing, existingPrograms };
+      const context = { renderer, gl, valid, now, timing: options.timing, existingPrograms, lifetime };
       try {
-        if (cohort.size && parallelCompile === undefined) {
+        if (cohort.size && lifetime.parallelCompile === undefined) {
           const extension = measureCompileOperation(options.timing, 'extensionMs', now,
             () => gl.getExtension('KHR_parallel_shader_compile') as ParallelShaderCompileExtension | null);
           if (!valid()) return;
-          parallelCompile = extension;
+          lifetime.parallelCompile = extension;
         }
       } catch {
         if (valid()) recordFirstUsePending(context, [...cohort.values()]);
         return; // Extension acquisition failure is not the unsupported-extension fallback.
       }
       if (!valid()) return;
-      yield* initializeMaterialProgramSteps(context, cohort, parallelCompile ?? null, options.sliceMs);
+      yield* initializeMaterialProgramSteps(context, cohort, lifetime.parallelCompile ?? null, options.sliceMs);
     } finally { cohort?.clear(); }
   };
 
@@ -758,6 +847,11 @@ export function createForwardProgramWarmOwner({
     root: Object3D = scene,
     stats: ForwardProgramWarmStats | null = null,
   ): Generator<void, void, void> {
+    const ownedEpoch = epoch;
+    const lifetime = captureProgramWarmLifetime(renderer);
+    const valid = (): boolean => epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
+    const context = { renderer, gl: lifetime.gl, valid, now, lifetime };
+    if (!valid()) return;
     let sliceAt = now();
     const objects: Object3D[] = [];
     root.traverseVisible((object) => {
@@ -766,29 +860,25 @@ export function createForwardProgramWarmOwner({
         objects.push(object);
       }
     });
-    for (const object of objects) {
-      const before = renderer.info?.programs?.length ?? 0;
-      const compileAt = now();
-      try { compile(object); } catch { /* the real render remains the fallback */ }
-      if (stats) {
-        const compileMs = now() - compileAt;
-        stats.totalCompileMs = (stats.totalCompileMs ?? 0) + compileMs;
-        if (compileMs > (stats.maxCompileMs ?? 0)) {
-          stats.maxCompileMs = compileMs;
-          stats.maxCompileObject = object.name || object.type || '(unnamed)';
+    try {
+      for (const object of objects) {
+        if (!valid()) return;
+        const before = snapshotRendererPrograms(renderer);
+        const compileAt = now();
+        try { compile(object); } catch { /* the real render remains the fallback */ }
+        if (!valid()) return;
+        if (stats) recordForwardCompileStats(stats, object, now() - compileAt);
+        // Freeze identities; disposal can swap-pop the live array at a yield.
+        const programs = captureNewProgramCohort(renderer, before);
+        if (yield* initializeSubmittedProgramSteps(context, programs)) sliceAt = now();
+        if (!valid()) return;
+        if (now() - sliceAt >= 8) {
+          yield;
+          if (!valid()) return;
+          sliceAt = now();
         }
       }
-      const programs = renderer.info?.programs ?? [];
-      for (let index = before; index < programs.length; index += 1) {
-        try { programs[index]?.getUniforms?.(); } catch { /* warm only */ }
-        yield;
-        sliceAt = now();
-      }
-      if (now() - sliceAt >= 8) {
-        yield;
-        sliceAt = now();
-      }
-    }
+    } finally { objects.length = 0; }
   };
 
   const linkerBreathingSlices = function* (
@@ -799,7 +889,6 @@ export function createForwardProgramWarmOwner({
   ): Generator<void, void, void> {
     signal?.throwIfAborted();
     const ownedEpoch = epoch;
-    const info = renderer.info;
     let polling = !!timing;
     let pollAt = timing ? diagnosticNow(now) : NaN;
     const finishPoll = (): void => {
@@ -811,25 +900,33 @@ export function createForwardProgramWarmOwner({
       recordCompileTiming(timing, 'pollCount', 1);
     };
     try {
-      const gl = renderer.getContext();
-      if (parallelCompile === undefined) {
-        parallelCompile = measureCompileOperation(timing, 'extensionMs', now,
+      const lifetime = captureProgramWarmLifetime(renderer);
+      const { gl } = lifetime;
+      const valid = (): boolean => {
+        signal?.throwIfAborted();
+        return epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
+      };
+      if (!valid()) return;
+      if (lifetime.parallelCompile === undefined) {
+        const extension = measureCompileOperation(timing, 'extensionMs', now,
           () => gl.getExtension('KHR_parallel_shader_compile') as ParallelShaderCompileExtension | null);
+        if (!valid()) return;
+        lifetime.parallelCompile = extension;
       }
-      if (!parallelCompile) return;
+      if (!lifetime.parallelCompile) return;
       let cursor = 0;
       // Program arrays can compact on material disposal between checkpoints.
       // Retain identities for this bounded warm job, not mutable array indices.
-      const programs = [...(renderer.info?.programs ?? [])];
+      const programs = [...captureNewProgramCohort(renderer, new Set()).values()];
+      const context = { renderer, gl, valid, now, timing, existingPrograms, lifetime };
       for (let slice = 0; slice < maxSlices; slice += 1) {
-        signal?.throwIfAborted();
-        if (epoch !== ownedEpoch || renderer.info !== info || gl.isContextLost?.()) return;
-        cursor = firstPendingProgram(gl, parallelCompile.COMPLETION_STATUS_KHR, programs, cursor, timing, now,
-          existingPrograms);
+        if (!valid()) return;
+        cursor = firstPendingProgram(context, lifetime.parallelCompile.COMPLETION_STATUS_KHR, programs, cursor);
         if (cursor === programs.length) return;
         finishPoll();
         recordCompileTiming(timing, 'yields', 1);
         yield;
+        if (!valid()) return;
         if (slice + 1 < maxSlices) {
           polling = !!timing;
           pollAt = timing ? diagnosticNow(now) : NaN;
@@ -847,6 +944,6 @@ export function createForwardProgramWarmOwner({
     prepareSceneSteps,
     initializeSteps,
     linkerBreathingSlices,
-    invalidate() { epoch += 1; parallelCompile = undefined; },
+    invalidate() { epoch += 1; programWarmLifetimes.delete(renderer); },
   };
 }
