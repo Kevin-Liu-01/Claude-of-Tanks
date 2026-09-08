@@ -2012,8 +2012,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               game, world, yieldForBudget: createFrameBudgetYielder(16),
             });
           },
-          wrecks: (bridge) => battleWarm.warmNetworkWrecks({
+          wrecks: (bridge, signal) => battleWarm.warmNetworkWrecks({
             entities: bridge.entities.values(),
+            signal,
             prebakeBurntSteps,
             anisotropy: engineCtx.anisotropy ?? 4,
             renderer,

@@ -209,3 +209,75 @@ the public production build passed on that integrated tree. The ordered
 sweep after independently reproducing the existing T-90M receipt failure.
 Its interrupted wheel test is not an assertion failure, and the ordered suite
 did not complete. Full-suite green is not claimed.
+
+## Invite entry and cooperative wreck preparation
+
+Explicit private/LAN menu opens now start the same optional preloads as
+hover/focus. Fresh invite links and touch users previously missed that path:
+joined-room roster/map preparation did not acquire the common HUD/FX and
+private-match handoff modules. The preload remains nonblocking and retryable;
+solo and retained active-room guards do not acquire extra modules. Launcher
+time before the presentation trace is not included in `networkLoad.totalMs`,
+so that metric alone cannot quantify the invite transfer improvement.
+
+The earlier guest 305 ms task overlapped `wreckWarm`, not the later scene
+compile. The source profile attributes about 277 ms inclusive sampling to its
+unguarded new-program `getUniforms()` loop (profile alignment has uncertainty;
+this is not an exact driver CPU/GPU split). Wreck preparation now snapshots
+new wrapper/native program identities immediately after each compile, restores
+temporarily attached details and visibility, and consumes that finite cohort
+through the existing four-millisecond/32-entry readiness/reflection scheduler.
+This retains detached-cosmetic coverage; later scene compilation cannot safely
+replace it. Renderer/context/entry lifetime guards fence every resumed job.
+Entry cancellation reaches the wreck owner, and the real fallback probe draw,
+watchdog, reveal, all-peer readiness and countdown remain required.
+
+The five-second/120-round limit applies per visual, not to the entire roster.
+An initial checkpoint per nonempty cohort adds a scheduling cost. A native
+driver call is still indivisible; these changes do not promise a hard frame
+ceiling or zero loading stalls. Regression tests cover exact cohort capture,
+compaction and handle replacement, failed/pending queries, restoration before
+yield, cancellation/context loss, bounded cheap/expensive batches, and fallback
+draw cleanup. Independent review found no correctness blocker.
+
+### Production baseline at 73c5f198e
+
+`production-73c5f198e-r1` verified the actual deployed
+`v1.0.0+g73c5f198e` / `main-CU0NSTJx.js` with two fresh native contexts and the
+committed private-room UI probe. Both clients completed `5,4,3,2,1`, moved/fired,
+returned to Garage and closed their room; page errors and black rescues were
+zero, and browser closure was verified. The inspected guest image contains the
+tank, terrain and HUD on native Apple M5 Max ANGLE.
+
+This run observed Winter clear/**night**, HIGH/scale 1 at entry, unlike the
+earlier clear/day local run. Room seeds, driver caches and foreign workload are
+not controlled; it is not a matched timing comparison. It passed functional
+acceptance but **not smooth-loading performance acceptance**:
+
+| Production baseline measurement | Host | Guest |
+| --- | ---: | ---: |
+| Loading total, including ready barrier | 15,542 ms | 15,428 ms |
+| Wreck preparation | 1,873 ms | 1,883 ms |
+| Largest task in wreck preparation | 1,861 ms | 1,864 ms |
+| Scene compile / first-use | 3,503 ms | 3,529 ms |
+| Combat warm | 1,923 ms | 1,954 ms |
+| Watchdog phase | 4,058 ms | 6,820 ms |
+
+The guest watchdog asynchronous readback reached its five-second timeout and
+then succeeded through the existing synchronous fallback. The later LOW
+moving/firing sample is separate from this HIGH entry measurement. These
+results are retained as failures of the desired loading budget, not hidden by
+the probe's successful functional outcome.
+
+### Follow-up source verification
+
+Fifteen focused selftests pass across program/scene/wreck warming, explicit
+preload intent and module retries, presentation/launch/activation/barrier,
+Garage return, countdown, version identity and the production observer/probe.
+Changed runtime-owner metrics pass: 158 functions, zero complexity violations
+and zero explicit `any`/`unknown`. React Doctor's read-only changed scan reports
+89/100 with three warnings: two test-only iteration patterns and the intentional
+serial await that releases a paint checkpoint. Parallelizing that await would
+defeat the bounded-work and cancellation contract; no warning is suppressed.
+This scan covers different files from the previous 49/100 scan, so the scores
+are not a controlled improvement measurement.

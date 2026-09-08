@@ -539,6 +539,39 @@ for (const pauseAt of ['primeReveal', 'hide']) {
   assert.equal(harness.countdownMs, 5000, 'spectators retain the full five-second authority countdown');
 }
 
+for (const outcome of ['resolve', 'reject', 'cancel']) {
+  const harness = createHarness();
+  const controller = new AbortController();
+  const gate = deferred();
+  harness.request.signal = controller.signal;
+  harness.options.warm.wrecks = async (_bridge, signal) => {
+    assert.strictEqual(signal, controller.signal, 'wreck work receives the entry cancellation signal');
+    harness.events.push('wrecksDeferred');
+    await gate.promise;
+    signal.throwIfAborted();
+  };
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'wrecksDeferred');
+  assert.equal(harness.loaderVisible, true);
+  assert.equal(harness.trace.stageIntervals.at(-1).stage, 'wreckWarm');
+  assert.ok(!harness.events.includes('compile'));
+  assert.ok(!harness.events.includes('ready'));
+  assert.equal(harness.countdownMs, 5000, 'pending wreck warm cannot spend the countdown');
+  if (outcome === 'cancel') controller.abort('return during wreck preparation');
+  if (outcome === 'reject') gate.reject(new Error('wreck preparation failed'));
+  else gate.resolve();
+  if (outcome === 'resolve') await pending;
+  else {
+    await assert.rejects(pending, outcome === 'cancel'
+      ? (error) => error === controller.signal.reason : /wreck preparation failed/);
+    assert.equal(harness.trace.status, 'failed');
+    assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
+    for (const stage of ['compile', 'effects', 'activate', 'hide', 'ready']) {
+      assert.ok(!harness.events.includes(stage), `${outcome}: wreck failure cannot reach ${stage}`);
+    }
+  }
+}
+
 for (const pauseAt of ['compileFrame', 'compile']) {
   const harness = createHarness('', pauseAt);
   const controller = new AbortController();

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
+  captureNewProgramUniformSteps,
   compileForRenderTarget,
   createForwardProgramWarmOwner,
   snapshotRendererPrograms,
@@ -730,6 +731,180 @@ for (const work of ['ready', 'pending', 'failed', 'stale']) {
   assert.equal(timing.uniformYields, 120);
   assert.equal(timing.queryCount, 32 * 120);
   assert.equal(timing.uniformPending, 32);
+}
+
+function capturedNewFixture(count = 1) {
+  const events = [];
+  const state = { clock: 0, current: true, lost: false, query: () => true, queryMs: 0, uniformMs: 0 };
+  const old = { program: {}, getUniforms() { assert.fail('retained programs are outside this new cohort'); } };
+  const gl = {
+    isContextLost: () => state.lost,
+    getExtension() { events.push(['extension']); return { COMPLETION_STATUS_KHR: 0x91B1 }; },
+    getProgramParameter(handle, token) {
+      assert.equal(token, 0x91B1);
+      events.push(['query', handle]);
+      state.clock += state.queryMs;
+      return state.query(handle);
+    },
+  };
+  const renderer = { info: { programs: [old] }, getContext: () => gl };
+  const before = snapshotRendererPrograms(renderer);
+  const programs = Array.from({ length: count }, (_, index) => ({
+    program: { index },
+    getUniforms() { events.push(['uniform', index]); state.clock += state.uniformMs; },
+  }));
+  renderer.info.programs.push(...programs);
+  const capture = (options = {}) => captureNewProgramUniformSteps(renderer, before, {
+    now: () => state.clock, isCurrent: () => state.current, ...options,
+  });
+  return { renderer, gl, state, events, old, programs, capture };
+}
+
+{
+  const f = capturedNewFixture(65);
+  const timing = {};
+  const steps = f.capture({ timing });
+  f.renderer.info.programs.push({ program: {}, getUniforms() { assert.fail('later additions are excluded'); } });
+  assert.deepEqual(f.events, [], 'capture is synchronous metadata only, without native queries/reflection');
+  assert.equal(steps.next().done, false, 'a restored submission gets a scheduling checkpoint');
+  assert.deepEqual(f.events, []);
+  assert.equal([...steps].length, 2, '65 cheap programs require only two bounded work checkpoints');
+  assert.equal(timing.uniformCount, 65);
+  assert.equal(timing.uniformPending, 0);
+}
+
+{
+  const f = capturedNewFixture(4);
+  const steps = f.capture();
+  const handles = f.programs.map((program) => program.program);
+  f.renderer.info.programs = [f.programs[3], f.programs[2], f.programs[1]];
+  f.programs[1].program = {};
+  assert.equal([...steps].length, 1);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, handle]) => handle),
+    [handles[2], handles[3]], 'compaction cannot lose surviving identities or query removed/replaced handles');
+}
+
+for (const change of ['abort', 'epoch', 'info', 'context', 'lost']) {
+  const f = capturedNewFixture(33);
+  const controller = new AbortController();
+  const steps = f.capture({ signal: controller.signal });
+  steps.next();
+  steps.next(); // 32 entries, then a real work-budget checkpoint.
+  if (change === 'abort') controller.abort();
+  if (change === 'epoch') f.state.current = false;
+  if (change === 'info') f.renderer.info = { programs: f.programs };
+  if (change === 'context') f.renderer.getContext = () => ({ ...f.gl });
+  if (change === 'lost') f.state.lost = true;
+  if (change === 'abort') assert.throws(() => steps.next(), { name: 'AbortError' });
+  else assert.equal(steps.next().done, true);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 32, `${change}: stale jobs stop`);
+}
+
+for (const change of ['dispose', 'replace', 'context', 'lost', 'abort']) {
+  const f = capturedNewFixture();
+  const controller = new AbortController();
+  f.state.query = () => {
+    if (change === 'dispose') f.renderer.info.programs = [f.old];
+    if (change === 'replace') f.programs[0].program = {};
+    if (change === 'context') f.renderer.getContext = () => ({ ...f.gl });
+    if (change === 'lost') f.state.lost = true;
+    if (change === 'abort') controller.abort();
+    return true;
+  };
+  const run = () => [...f.capture({ signal: controller.signal })];
+  if (change === 'abort') assert.throws(run, { name: 'AbortError' });
+  else run();
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 0,
+    `${change}: lifetime is rechecked between readiness and reflection`);
+}
+
+{
+  const f = capturedNewFixture();
+  f.state.query = () => false;
+  const timing = {};
+  assert.equal([...f.capture({ timing })].length, 121, 'pending links retain the finite 120-round bound');
+  assert.equal(timing.uniformPending, 1);
+  assert.equal(timing.uniformCount, 0);
+  assert.equal(timing.queryCount, 120);
+}
+
+{
+  const f = capturedNewFixture();
+  f.state.query = () => { throw new Error('native query failed'); };
+  const timing = {};
+  [...f.capture({ timing })];
+  assert.equal(timing.queryCount, 1);
+  assert.equal(timing.uniformCount, 0, 'an unsuccessful readiness query never permits reflection');
+  assert.equal(timing.uniformPending, 1);
+}
+
+for (const operation of ['query', 'uniform']) {
+  const f = capturedNewFixture(3);
+  f.state[`${operation}Ms`] = 5;
+  const timing = {};
+  assert.equal([...f.capture({ timing })].length, 4, `${operation}: expensive calls release a checkpoint`);
+  assert.equal(timing.uniformCount, 3);
+}
+
+{
+  const f = capturedNewFixture(65);
+  f.gl.getExtension = () => null;
+  const timing = {};
+  assert.equal([...f.capture({ timing, now() { throw new Error('clock'); } })].length, 3,
+    'no-KHR fallback and a broken clock retain the 32-entry ceiling');
+  assert.equal(timing.uniformCount, 65);
+  assert.equal(timing.queryCount, undefined, 'fallback reflection is not a link-completion receipt');
+}
+
+{
+  const f = capturedNewFixture(33);
+  const steps = f.capture();
+  steps.next();
+  steps.next();
+  steps.return();
+  assert.equal(steps.next().done, true);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 32, 'returned jobs do no later work');
+}
+
+{
+  const f = capturedNewFixture(3);
+  const timing = {};
+  f.programs[0].getUniforms = () => { f.state.clock += 5; throw new Error('reflection'); };
+  assert.equal([...f.capture({ timing })].length, 2, 'failed reflection time also exhausts the work budget');
+  assert.equal(timing.uniformFailures, 1);
+  assert.equal(timing.uniformCount, 3);
+  assert.equal(timing.uniformPending, 1);
+}
+
+{
+  const f = capturedNewFixture();
+  f.gl.getExtension = () => { throw new Error('extension'); };
+  const timing = {};
+  assert.equal([...f.capture({ timing })].length, 1);
+  assert.equal(f.events.length, 0, 'an extension-query failure is not the missing-KHR reflection fallback');
+  assert.equal(timing.uniformPending, 1);
+}
+
+{
+  const f = capturedNewFixture();
+  f.state.query = () => false;
+  const timing = {};
+  const steps = f.capture({ timing });
+  steps.next();
+  steps.next();
+  f.state.clock += 5001;
+  assert.equal(steps.next().done, true, 'pending readiness respects the elapsed-time limit');
+  assert.equal(timing.uniformPending, 1);
+  assert.equal(timing.uniformCount, 0);
+}
+
+{
+  const f = capturedNewFixture(0);
+  assert.equal([...f.capture()].length, 0, 'an empty new cohort does not query or yield');
+  assert.equal(f.events.length, 0);
+  const controller = new AbortController();
+  controller.abort();
+  assert.throws(() => f.capture({ signal: controller.signal }), { name: 'AbortError' });
 }
 
 console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');

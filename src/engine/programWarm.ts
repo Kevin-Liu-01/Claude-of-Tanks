@@ -416,7 +416,7 @@ function captureMaterialPrograms(
 }
 
 interface FirstUseWarmContext {
-  renderer: ForwardWarmRenderer;
+  renderer: RendererWithPrograms;
   gl: WebGLRenderingContext | WebGL2RenderingContext;
   valid(): boolean;
   now(): number;
@@ -424,7 +424,7 @@ interface FirstUseWarmContext {
   existingPrograms?: ReadonlySet<LinkedProgram>;
 }
 
-function capturedProgramIsLive(renderer: ForwardWarmRenderer, entry: CapturedProgram): boolean {
+function capturedProgramIsLive(renderer: RendererWithPrograms, entry: CapturedProgram): boolean {
   return entry.wrapper.program === entry.handle && !!renderer.info?.programs?.includes(entry.wrapper);
 }
 
@@ -574,6 +574,61 @@ export function snapshotRendererPrograms(
   renderer: RendererWithPrograms,
 ): ReadonlySet<LinkedProgram> {
   return new Set(renderer.info?.programs ?? []);
+}
+
+interface NewProgramUniformWarmOptions {
+  signal?: AbortSignal;
+  isCurrent?(): boolean;
+  now?: () => number;
+  sliceMs?: number;
+  timing?: ForwardProgramCompileTiming;
+}
+
+/**
+ * Capture immediately after a synchronous compile, before restoring staged
+ * visuals. Consuming the returned job happens only AFTER that restoration.
+ * Exact new wrapper/native pairs include detached cosmetics; later renderer
+ * additions and retained programs are never added to this finite cohort.
+ */
+export function captureNewProgramUniformSteps(
+  renderer: Pick<ForwardWarmRenderer, 'info' | 'getContext'>,
+  baseline: ReadonlySet<LinkedProgram>,
+  { signal, isCurrent = () => true, now = () => performance.now(), sliceMs, timing }: NewProgramUniformWarmOptions = {},
+): Generator<void, void, void> {
+  signal?.throwIfAborted();
+  const info = renderer.info;
+  const gl = renderer.getContext();
+  const valid = (): boolean => {
+    signal?.throwIfAborted();
+    return isCurrent() && renderer.info === info && renderer.getContext() === gl && !gl.isContextLost();
+  };
+  const cohort: MaterialProgramCohort = new Map();
+  if (valid()) {
+    for (const wrapper of info?.programs ?? []) {
+      const handle = wrapper.program;
+      if (!baseline.has(wrapper) && isWebGLProgram(handle)) {
+        cohort.set(wrapper, { wrapper, handle, initialized: false, failed: false });
+      }
+    }
+  }
+  return (function* () {
+    const context = { renderer, gl, valid, now, timing };
+    try {
+      if (!valid() || !cohort.size) return;
+      yield; // Release submission before the first native query, with visual state already restored.
+      if (!valid()) return;
+      let extension: ParallelShaderCompileExtension | null;
+      try {
+        extension = measureCompileOperation(timing, 'extensionMs', now,
+          () => gl.getExtension('KHR_parallel_shader_compile') as ParallelShaderCompileExtension | null);
+      } catch {
+        if (valid()) recordFirstUsePending(context, [...cohort.values()]);
+        return; // A failed extension query is not proof of the unsupported-extension fallback.
+      }
+      if (!valid()) return;
+      yield* initializeMaterialProgramSteps(context, cohort, extension, sliceMs);
+    } finally { cohort.clear(); }
+  })();
 }
 
 /**

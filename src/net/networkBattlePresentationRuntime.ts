@@ -186,7 +186,7 @@ export interface NetworkBattlePresentationOptions {
     nightLighting?(): MaybePromise<void>;
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
-    wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
+    wrecks(bridge: NetworkBridgePort, signal?: AbortSignal): MaybePromise<RuntimeValue>;
     playerPanel(bridge: NetworkBridgePort, viewerId: string): MaybePromise<RuntimeValue>;
     openingEffects(
       fx: NetworkBattleFxPort,
@@ -469,7 +469,7 @@ export function createNetworkBattlePresentationRuntime(
       throwIfNetworkBattleEntryAborted(signal);
       mark('terrainGrid');
       load.battleLoad.progress(0.85, 'Priming wreck variants');
-      await warm.wrecks(preparedBridge);
+      await warm.wrecks(preparedBridge, signal);
       throwIfNetworkBattleEntryAborted(signal);
       mark('wreckWarm');
 
