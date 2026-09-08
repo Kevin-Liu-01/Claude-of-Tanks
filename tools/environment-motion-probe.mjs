@@ -208,8 +208,9 @@ export function validateScopeReceipt(receipt, testCase) {
   return errors;
 }
 
-/** Browser-side: three bounded canvas readbacks, after production post.render.
- * Do not await a remote screenshot at t=4s. Capture those pixels in that frame.
+/** Browser-side: three bounded canvas snapshots, after production post.render.
+ * toBlob snapshots those exact pixels now; encoding and data-URL delivery finish
+ * asynchronously, without synchronous PNG compression in the render callback.
  * The wrapper never renders or changes dt, policy, dimensions, or quality.
  */
 export function captureRenderedFrames({ pan = false, label = 'frame', timeoutMs = 20000 } = {}) {
@@ -217,22 +218,61 @@ export function captureRenderedFrames({ pan = false, label = 'frame', timeoutMs 
   if (window.__ENV_CAPTURE_CLEANUP) throw new Error('A frame capture is already active');
   const result = window.__ENV_CAPTURE_RESULT = { frames: [], quality: [], submittedFrames: 0, positiveDtS: 0 };
   return new Promise((resolve, reject) => {
-    let timer;
-    const cleanup = () => {
+    let timer, settled = false, acquisitionDone = false, pending = 0;
+    const readers = new Set();
+    const releaseRender = () => {
       if (D.post.render === wrapped) D.post.render = original;
-      clearTimeout(timer);
       if (pan && window.__ENV_MOTION?.raf) cancelAnimationFrame(window.__ENV_MOTION.raf);
-      delete window.__ENV_CAPTURE_CLEANUP;
     };
-    const fail = error => { result.error = String(error); cleanup(); reject(error); };
+    const cleanup = () => {
+      releaseRender(); clearTimeout(timer);
+      if (window.__ENV_CAPTURE_CLEANUP === cancel) delete window.__ENV_CAPTURE_CLEANUP;
+      for (const reader of readers) {
+        reader.onload = reader.onerror = reader.onabort = null;
+        reader.abort();
+      }
+      readers.clear();
+    };
+    const fail = error => {
+      if (settled) return;
+      settled = true; result.error = String(error); cleanup(); reject(error);
+    };
+    const cancel = () => fail(new Error('Frame capture cancelled'));
+    const finish = () => {
+      if (settled || !acquisitionDone || pending) return;
+      settled = true; cleanup(); resolve(result);
+    };
+    const encode = (blob, frame) => {
+      if (settled) return; // A queued toBlob callback cannot be cancelled.
+      try {
+        if (!blob) throw new Error('Rendered-frame PNG encoding returned no Blob');
+        const reader = new FileReader(); readers.add(reader);
+        reader.onerror = () => fail(reader.error || new Error('Rendered-frame PNG read failed'));
+        reader.onabort = () => fail(new Error('Rendered-frame PNG read aborted'));
+        reader.onload = () => {
+          if (settled) return;
+          if (typeof reader.result !== 'string' || !reader.result.startsWith('data:image/png;base64,')) {
+            fail(new Error('Rendered-frame PNG read returned invalid data')); return;
+          }
+          frame.png = reader.result;
+          readers.delete(reader); reader.onload = reader.onerror = reader.onabort = null;
+          pending--; finish();
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) { fail(error); }
+    };
     const take = name => {
       const receipt = motionReceipt();
-      const png = D.renderer.domElement.toDataURL('image/png');
-      result.frames.push({ label: name, receipt, png, capturedAfterRealRender: true });
+      const frame = { label: name, receipt, capturedAfterRealRender: true };
+      result.frames.push(frame); pending++;
+      D.renderer.domElement.toBlob(blob => encode(blob, frame), 'image/png');
+    };
+    const completeAcquisition = () => {
+      acquisitionDone = true; releaseRender(); finish();
     };
     function wrapped(...args) {
       try {
-        original.apply(this, args);
+        const rendered = original.apply(this, args);
         const dt = args[0];
         result.submittedFrames++;
         if (dt > 0) result.positiveDtS += dt;
@@ -247,15 +287,16 @@ export function captureRenderedFrames({ pan = false, label = 'frame', timeoutMs 
         if (!result.frames.length) {
           take(pan ? 'start' : label);
           if (pan) startLivePan();
-          else { cleanup(); resolve(result); }
+          else completeAcquisition();
         } else if (result.frames.length === 1 && window.__ENV_MOTION.progress >= 0.5) {
           take('mid');
         } else if (result.frames.length === 2 && window.__ENV_MOTION.done) {
-          take('end'); cleanup(); resolve(result);
+          take('end'); completeAcquisition();
         }
+        return rendered;
       } catch (error) { fail(error); }
     }
-    window.__ENV_CAPTURE_CLEANUP = () => fail(new Error('Frame capture cancelled'));
+    window.__ENV_CAPTURE_CLEANUP = cancel;
     timer = setTimeout(() => fail(new Error('Actual rendered-frame acquisition timeout')), timeoutMs);
     D.post.render = wrapped;
   });
@@ -478,6 +519,9 @@ async function runCase(browser, testCase, base, output, report, write) {
       row.quality = capture.quality; row.submittedFrames = capture.submittedFrames; row.positiveDtS = capture.positiveDtS;
     }
     for (const frame of capture.frames) {
+      // Failed/cancelled asynchronous acquisitions may retain receipt-only
+      // slots; never publish them as completed PNG evidence.
+      if (typeof frame.png !== 'string') continue;
       if (row.receipts.some(receipt => receipt.label === frame.label)) continue;
       const buffer = decodeFramePng(frame), file = `${id}-${frame.label}.png`;
       fs.writeFileSync(path.join(output, file), buffer);

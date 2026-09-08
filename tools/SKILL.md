@@ -125,7 +125,10 @@ case. Only a passing same-build, same-acquisition receipt unlocks
 Raw WebMs include boot/staging at explicit CSS-resolution video dimensions.
 Start/mid/end PNGs read the actual output canvas immediately after a production
 render, preserving native backing dimensions and the actual eight-second pan
-midpoint without remote screenshot latency. Three bounded readbacks are visual
+midpoint without remote screenshot latency. Use same-callback `toBlob` snapshots
+with asynchronous encoding; retain receipt/order and timeout/cancel ownership
+until every PNG completes, without synchronous PNG encoding in the render loop.
+Three bounded readbacks are visual
 evidence, never a timing or memory benchmark. The real battle clock and positive
 render dt must advance; scope x8 uses the separate authored helper and is not
 live cadence evidence. Desktop DPR 1→2→1 and mobile orientation round trips use

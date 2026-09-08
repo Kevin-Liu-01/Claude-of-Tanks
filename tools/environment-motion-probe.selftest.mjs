@@ -82,21 +82,36 @@ assert.equal(forced.forced, true); assert.deepEqual(ownership, ['close', 'owned-
 // Execute the actual browser callback with an owned fake render loop. No GPU or
 // timing certification: prove dt is forwarded, camera RAF stays live, images are
 // captured in the render callback, and every success/failure restores ownership.
-function fakeBrowser() {
+function fakeBrowser({ manualEncoding = false } = {}) {
   let now = 0, nextRaf = 0;
-  const rafs = new Map(), submitted = [];
+  const rafs = new Map(), submitted = [], blobs = [], readers = [];
   const state = { base: [0, 10, 0], yaw: 0, pitch: 0, durationMs: 8000,
     yawSpan: 40 * Math.PI / 180, lateralM: 6, progress: 0, frames: 0, done: false };
   const D = { game: { timeS: 1 }, camera: { position: new Vector3(0, 10, 0) },
     rig: { setExternalPose(position) { D.camera.position.copy(position); } },
     quality: { resolvePresetName: () => 'high' }, renderer: { info: { render: { frame: 0 } }, getPixelRatio: () => 1,
       domElement: { dataset: { renderScale: '1.000', postAa: 'smaa-high+fsr1' },
-        toDataURL() { assert.equal(submitted.at(-1), now); return 'data:image/png;base64,frame'; } } },
+        toBlob(callback, type) {
+          assert.equal(submitted.at(-1), now); assert.equal(type, 'image/png');
+          const blob = { pixelTimestamp: now }, request = { blob, deliver: () => callback(blob), callback };
+          blobs.push(request);
+          if (!manualEncoding) queueMicrotask(request.deliver);
+        },
+        toDataURL() { throw new Error('Synchronous PNG compression must never run'); } } },
     post: { dynScale: 1, perfTrim: 0, render(dt, extra) { assert.equal(this, D.post); assert.equal(extra, 'forwarded'); submitted.push(now);
-      D.game.timeS += dt; D.renderer.info.render.frame++; } } };
+      D.game.timeS += dt; D.renderer.info.render.frame++; return 'render-return-value'; } } };
+  class Reader {
+    constructor() { this.aborted = false; readers.push(this); }
+    readAsDataURL(blob) {
+      this.blob = blob;
+      if (!manualEncoding) queueMicrotask(() => this.complete());
+    }
+    complete() { this.result = `data:image/png;base64,frame-${this.blob.pixelTimestamp}`; this.onload?.(); }
+    abort() { this.aborted = true; this.onabort?.(); }
+  }
   const original = D.post.render;
   const sandbox = { window: { __DEBUG: D, __ENV_MOTION: state }, performance: { now: () => now },
-    setTimeout, clearTimeout, requestAnimationFrame(fn) { rafs.set(++nextRaf, fn); return nextRaf; },
+    setTimeout, clearTimeout, FileReader: Reader, requestAnimationFrame(fn) { rafs.set(++nextRaf, fn); return nextRaf; },
     cancelAnimationFrame(id) { rafs.delete(id); }, motionReceipt: () => ({ ...receipt,
       pan: { ...state }, timestamp: now, renderFrame: D.renderer.info.render.frame, gameTimeS: D.game.timeS }) };
   vm.createContext(sandbox);
@@ -106,9 +121,9 @@ function fakeBrowser() {
     now = time;
     const callbacks = [...rafs.values()]; rafs.clear();
     for (const callback of callbacks) callback(time);
-    D.post.render(dt, 'forwarded');
+    return D.post.render(dt, 'forwarded');
   };
-  return { sandbox, D, original, advance, rafs };
+  return { sandbox, D, original, advance, rafs, blobs, readers };
 }
 const fake = fakeBrowser();
 const pending = fake.sandbox.capture({ pan: true });
@@ -122,6 +137,34 @@ assert.equal(fake.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
 assert.equal(fake.rafs.size, 0);
 assert.equal(validateLiveSequence(captured, testCase).length, 0);
 assert.throws(() => fake.sandbox.startLivePan(), /already started/);
+assert.deepEqual(captured.frames.map(frame => frame.png),
+  vm.runInContext('["data:image/png;base64,frame-0", "data:image/png;base64,frame-4000", "data:image/png;base64,frame-8000"]', fake.sandbox));
+
+// Pixel snapshots and receipts are synchronous; PNG delivery can be delayed
+// and arbitrarily reordered without stalling the loop or changing frame order.
+const asynchronous = fakeBrowser({ manualEncoding: true });
+const asynchronousCapture = asynchronous.sandbox.capture({ pan: true });
+assert.equal(asynchronous.advance(0, 0.016), 'render-return-value');
+asynchronous.advance(2000, 2); asynchronous.advance(4000, 2); asynchronous.advance(8000, 4);
+assert.equal(asynchronous.blobs.length, 3, 'Only the three authored pan snapshots');
+assert.equal(asynchronous.readers.length, 0, 'Blob callbacks have not run in the render wrapper');
+assert.equal(asynchronous.D.post.render, asynchronous.original, 'Release renderer before PNG encoding completes');
+assert.equal(asynchronous.rafs.size, 0);
+assert.equal(typeof asynchronous.sandbox.window.__ENV_CAPTURE_CLEANUP, 'function', 'Keep asynchronous cancel ownership');
+assert.throws(() => asynchronous.sandbox.capture(), /already active/);
+asynchronous.advance(9000, 1); // Ordinary game rendering continues while PNG work remains.
+asynchronous.blobs[2].deliver(); asynchronous.blobs[0].deliver(); asynchronous.blobs[1].deliver();
+asynchronous.readers[2].complete(); asynchronous.readers[0].complete(); asynchronous.readers[1].complete();
+const asynchronousResult = await asynchronousCapture;
+assert.deepEqual(Array.from(asynchronousResult.frames, frame => [frame.label, frame.receipt.timestamp, frame.png]), [
+  ['start', 0, 'data:image/png;base64,frame-0'],
+  ['mid', 4000, 'data:image/png;base64,frame-4000'],
+  ['end', 8000, 'data:image/png;base64,frame-8000'],
+]);
+assert.equal(asynchronousResult.submittedFrames, 4);
+assert.equal(asynchronousResult.positiveDtS, 8.016);
+assert.equal(asynchronous.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
+assert.equal(validateLiveSequence(asynchronousResult, testCase).length, 0);
 for (const mutate of [value => { value.frames[1].receipt.pan.progress = 1; },
   value => { value.frames[2].receipt.gameTimeS = value.frames[0].receipt.gameTimeS; },
   value => { value.positiveDtS = 0; }, value => { value.quality[1].perfTrim = 1; },
@@ -151,6 +194,47 @@ assert.equal(throwing.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
 const owned = fakeBrowser();
 const cancelled = owned.sandbox.capture(); owned.sandbox.window.__ENV_CAPTURE_CLEANUP();
 await assert.rejects(cancelled, /cancelled/); assert.equal(owned.D.post.render, owned.original);
+
+const blobTimeout = fakeBrowser({ manualEncoding: true });
+const blobTimed = blobTimeout.sandbox.capture({ timeoutMs: 2 }); blobTimeout.advance(0, 0.016);
+await assert.rejects(blobTimed, /rendered-frame acquisition timeout/);
+blobTimeout.blobs[0].deliver();
+assert.equal(blobTimeout.readers.length, 0, 'Late Blob delivery cannot create a reader after timeout');
+assert.equal(blobTimeout.sandbox.window.__ENV_CAPTURE_RESULT.frames[0].png, undefined);
+
+const readTimeout = fakeBrowser({ manualEncoding: true });
+const readTimed = readTimeout.sandbox.capture({ timeoutMs: 2 }); readTimeout.advance(0, 0.016); readTimeout.blobs[0].deliver();
+await assert.rejects(readTimed, /rendered-frame acquisition timeout/);
+assert.equal(readTimeout.readers[0].aborted, true);
+assert.equal(readTimeout.readers[0].onload, null);
+readTimeout.readers[0].complete();
+assert.equal(readTimeout.sandbox.window.__ENV_CAPTURE_RESULT.frames[0].png, undefined);
+
+const cancelRead = fakeBrowser({ manualEncoding: true });
+const cancelledRead = cancelRead.sandbox.capture(); cancelRead.advance(0, 0.016); cancelRead.blobs[0].deliver();
+cancelRead.sandbox.window.__ENV_CAPTURE_CLEANUP();
+await assert.rejects(cancelledRead, /cancelled/);
+assert.equal(cancelRead.readers[0].aborted, true);
+assert.equal(cancelRead.D.post.render, cancelRead.original);
+assert.equal(cancelRead.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
+
+for (const failure of ['null-blob', 'read-error', 'read-abort', 'invalid-data', 'to-blob-throw']) {
+  const broken = fakeBrowser({ manualEncoding: true });
+  if (failure === 'to-blob-throw') broken.D.renderer.domElement.toBlob = () => { throw new Error('Snapshot failure'); };
+  const brokenCapture = broken.sandbox.capture(); broken.advance(0, 0.016);
+  if (failure === 'null-blob') broken.blobs[0].callback(null);
+  else if (failure !== 'to-blob-throw') {
+    broken.blobs[0].deliver();
+    const reader = broken.readers[0];
+    if (failure === 'read-error') { reader.error = new Error('Blob read failure'); reader.onerror(); }
+    if (failure === 'read-abort') reader.onabort();
+    if (failure === 'invalid-data') { reader.result = ''; reader.onload(); }
+  }
+  await assert.rejects(brokenCapture, /no Blob|read failure|read aborted|invalid data|Snapshot failure/);
+  assert.equal(broken.D.post.render, broken.original);
+  assert.equal(broken.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
+  assert.equal(broken.sandbox.window.__ENV_CAPTURE_RESULT.frames[0].png, undefined);
+}
 
 const png = Buffer.alloc(33);
 Buffer.from('89504e470d0a1a0a', 'hex').copy(png); png.writeUInt32BE(1440, 16); png.writeUInt32BE(900, 20);
@@ -217,4 +301,6 @@ assert.match(source, /message.type\(\) === 'error'/);
 assert.ok(!source.includes('pinDynScale('));
 assert.ok(!source.includes('renderer.setSize('));
 assert.ok(!source.includes('setPresetName('));
-console.log('environment-motion-probe: nine-case policy, real rendered midpoint, live dt, timeout/ownership, PNG and one-case gate PASS (CPU only)');
+assert.ok(!source.includes('.toDataURL('));
+assert.match(source, /domElement\.toBlob/);
+console.log('environment-motion-probe: nine-case policy, asynchronous exact-frame PNG/order, live dt, timeout/cancel/ownership and one-case gate PASS (CPU only)');
