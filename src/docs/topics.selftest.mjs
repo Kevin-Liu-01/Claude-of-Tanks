@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
-import { TOPIC_ORDER, topics } from './topics.ts';
+import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
@@ -13,6 +13,11 @@ const expected = [
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
 assert.deepEqual(Object.keys(topics).sort(), [...expected].sort(), 'every topic is present in navigation');
+assert.deepEqual(
+  [0, 1, 2, 3, 4, 5].map(topicSectionId),
+  ['topic-section-1', 'topic-section-2', 'topic-section-3', 'topic-section-4', 'topic-section-5', 'topic-section-6'],
+  'topic anchors stay unique and locale-independent when headings are translated',
+);
 
 const landing = readFileSync(join(ROOT, 'docs.html'), 'utf8');
 const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
@@ -34,6 +39,7 @@ for (const id of TOPIC_ORDER) {
 assert.match(docsCss, /\.topic-nav \.shell\{display:grid;grid-template-columns:minmax\(120px,\.72fr\) repeat\(6,minmax\(0,1fr\)\)/, 'wide manuals expose every topic in a balanced two-row grid');
 assert.match(docsCss, /\.topic-nav \.shell\{display:flex;gap:1px;overflow-x:auto;[^}]*scrollbar-width:thin\}/, 'narrow manuals keep an explicit scrollable topic strip');
 assert.match(topicsSource, /navStrip\.scrollLeft = Math\.max\(0, activeTopic\.offsetLeft/, 'narrow manuals reveal their active topic without moving the page');
+assert.doesNotMatch(topicsSource, /replace\(\/\[\^a-z0-9\]/, 'translated headings must not determine section anchors');
 
 const buildText = [topics.build.lede, ...topics.build.sections.flat()].join(' ');
 assert.match(buildText, /Claude Code and Codex/);

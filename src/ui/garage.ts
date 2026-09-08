@@ -3043,13 +3043,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const ready = !!status.ready;
       const count = Math.max(0, Number(status.readyCount) || 0);
       const total = Math.max(0, Number(status.total) || 0);
-      requiredElement<HTMLElement>(roomReminder, '.rr-copy').innerHTML =
-        `<b>${status.mode === 'lan' ? 'LAN' : 'PRIVATE'} ROOM ${status.roomCode || ''}</b> · ` +
-        `${ready ? 'READY' : 'NOT READY'} · ${count}/${total} READY`;
+      const roomCode = status.roomCode || '';
+      const mode = t(status.mode === 'lan' ? 'playMenu.mode.lan.name' : 'playMenu.mode.private.name');
+      const readiness = t(ready
+        ? 'garage.roomReminder.statusReady'
+        : 'garage.roomReminder.statusNotReady');
+      const identity = document.createElement('b');
+      identity.textContent = `${mode}${roomCode ? ` ${roomCode}` : ''}`;
+      requiredElement<HTMLElement>(roomReminder, '.rr-copy').replaceChildren(
+        identity,
+        document.createTextNode(` · ${readiness} · ${t('garage.roomReminder.readyCount', { count, total })}`),
+      );
       roomReminder.classList.add('show');
       roomReminder.classList.toggle('ready', ready);
-      roomReminder.setAttribute('aria-label',
-        `Open room ${status.roomCode || ''}. You are ${ready ? 'ready' : 'not ready'}. ${count} of ${total} ready.`);
+      roomReminder.setAttribute('aria-label', t('garage.roomReminder.aria', {
+        code: roomCode,
+        status: readiness,
+        count,
+        total,
+      }));
       vehicleLocked = ready;
       root.classList.toggle('vehicle-locked', vehicleLocked);
       closeEqPicker();

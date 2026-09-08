@@ -2301,6 +2301,7 @@
   "garage.roomReminder.aria": "开放房间 {code}。你 {status}。{total} 人中已就绪 {count} 人。",
   "garage.roomReminder.statusReady": "已就绪",
   "garage.roomReminder.statusNotReady": "未就绪",
+  "garage.roomReminder.readyCount": "{count}/{total} 已就绪",
   "studioPanel.archive.copy": "在不离开当前场景的情况下，打开实时射击、毁坏、地形与战车参考。",
   "studioPanel.archive.button": "打开现场截图 · 61",
   "mediaArchive.lightbox.closeAria": "关闭全屏图像",

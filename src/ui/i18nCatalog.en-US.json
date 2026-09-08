@@ -2301,6 +2301,7 @@
   "garage.roomReminder.aria": "Open room {code}. You are {status}. {count} of {total} ready.",
   "garage.roomReminder.statusReady": "ready",
   "garage.roomReminder.statusNotReady": "not ready",
+  "garage.roomReminder.readyCount": "{count}/{total} ready",
   "studioPanel.archive.copy": "Open live gunnery, destruction, terrain, and vehicle references without leaving your scene.",
   "studioPanel.archive.button": "OPEN FIELD FRAMES · 61",
   "mediaArchive.lightbox.closeAria": "Close full-screen image",

@@ -60,6 +60,12 @@ assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
 assert.match(garage,
   /pointerenter[\s\S]{0,120}signalTankIntent\(spec\.id\)[\s\S]{0,500}pointerdown[\s\S]{0,120}signalTankIntent\(spec\.id, true\)/,
   'vehicle cards must expose deliberate hover and immediate press intent');
+assert.match(garage, /garage\.roomReminder\.readyCount/,
+  'active-room visible readiness copy must use the locale catalog');
+assert.match(garage, /garage\.roomReminder\.aria/,
+  'active-room assistive copy must use the locale catalog');
+assert.doesNotMatch(garage, /'PRIVATE'\} ROOM|NOT READY'\} ·/,
+  'active-room status must not rebuild English-only fragments');
 assert.match(pedestalPreloader,
   /const preloadIntent = \(specId: string\)[\s\S]{0,800}Promise\.all\(\[[\s\S]{0,220}ensureTankBuilder\(specId\)[\s\S]{0,300}prebakeSharedTextures/,
   'tank intent must overlap the exact builder transfer and chunked texture bake');

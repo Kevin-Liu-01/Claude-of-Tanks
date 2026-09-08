@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict';
 import { Object3D } from 'three';
 import { getLocale, setLocale } from '../ui/i18n.ts';
-import { createSoloBattleLoadingRuntime } from './soloBattleLoadingRuntime.ts';
+import {
+  createSoloBattleLoadingRuntime,
+  soloBattleLoadingModeLabel,
+} from './soloBattleLoadingRuntime.ts';
 
 const originalLocale = getLocale();
+setLocale('en-US');
+assert.equal(
+  soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
+  'Capture the Flag · Selected Battlefield',
+);
+setLocale('zh-CN');
+assert.equal(
+  soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
+  '夺旗战 · 指定战场',
+  'non-standard battle loading labels stay in the active locale',
+);
 setLocale('en-US');
 
 const events = [];
