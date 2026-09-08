@@ -61,7 +61,8 @@ function dimHorizon(root: THREE.Object3D | null, saved: Map<THREE.MeshBasicMater
   root.traverse(object => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh) return;
-    const selected = mesh.name === 'horizon-ring' || mesh.name === 'horizon-treeline';
+    const selected = mesh.name === 'horizon-ring' || mesh.name === 'horizon-treeline'
+      || mesh.name === 'horizon-detail';
     if (Array.isArray(mesh.material)) {
       for (const material of mesh.material) trackHorizonMaterial(material, selected, eligible, blocked);
     } else trackHorizonMaterial(mesh.material, selected, eligible, blocked);

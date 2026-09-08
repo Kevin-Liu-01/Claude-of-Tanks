@@ -108,17 +108,20 @@ assert.throws(() => runtime.prepare(1337, 'monsoon'), /disposed/);
 function horizonFixture() {
   const root = new THREE.Group(), geometry = new THREE.BoxGeometry();
   const shared = new THREE.MeshBasicMaterial({ color: 0x779966 });
+  const detail = new THREE.MeshBasicMaterial({ color: 0xefe9dd });
   const untouched = new THREE.MeshBasicMaterial({ color: 0xccaa77 });
   const mixed = new THREE.MeshBasicMaterial({ color: 0x55aabb });
   const standard = new THREE.MeshStandardMaterial({ color: 0x9f6633 });
   for (const [name, material] of [['horizon-ring', shared], ['horizon-treeline', [shared]],
+    ['horizon-detail', [shared]], ['horizon-detail', detail],
     ['ordinary-prop', untouched], ['horizon-ring', standard],
-    ['horizon-treeline', mixed], ['unrelated-shared-prop', mixed]]) {
+    ['horizon-detail', standard], ['horizon-treeline', mixed],
+    ['horizon-detail', [mixed]], ['unrelated-shared-prop', mixed]]) {
     const mesh = new THREE.Mesh(geometry, material); mesh.name = name; root.add(mesh);
   }
-  const materials = [shared, untouched, mixed, standard];
+  const materials = [shared, detail, untouched, mixed, standard];
   const snapshots = materials.map(material => [material, material.color, material.color.clone(), material.version]);
-  return { root, shared, geometry, materials, snapshots };
+  return { root, shared, detail, geometry, materials, snapshots, children: [...root.children] };
 }
 const first = horizonFixture(), second = horizonFixture();
 let worldRoot = first.root;
@@ -127,33 +130,51 @@ const horizonRuntime = createBattleAtmosphereRuntime({
   getWorldRoot: () => worldRoot, applyPreset() {},
 });
 function colorsRestored(fixture) {
+  assert.deepEqual(fixture.root.children, fixture.children, 'tinting cannot add or replace scene owners');
   for (const [material, identity, color, version] of fixture.snapshots) {
     assert.strictEqual(material.color, identity); assert.deepEqual(material.color, color);
     assert.equal(material.version, version, 'no new shader/needsUpdate');
   }
 }
 try {
+  horizonRuntime.prepare(13, 'winter');
+  colorsRestored(first);
   horizonRuntime.prepare(3, 'winter');
-  const initial = first.snapshots[0][2];
-  assert.deepEqual(first.shared.color.toArray(), [initial.r * .12, initial.g * .12, initial.b * .12],
-    'two named meshes sharing one material get exactly one night multiplier');
-  for (const [material, identity, color, version] of first.snapshots.slice(1)) {
+  for (const [material, identity, initial, version] of first.snapshots.slice(0, 2)) {
+    assert.strictEqual(material.color, identity);
+    assert.deepEqual(material.color.toArray(), [initial.r * .12, initial.g * .12, initial.b * .12],
+      'old named meshes and new horizon-detail dim together; shared material gets exactly one multiplier');
+    assert.equal(material.version, version, 'night detail tint does not recompile its material');
+  }
+  for (const [material, identity, color, version] of first.snapshots.slice(2)) {
     assert.strictEqual(material.color, identity); assert.deepEqual(material.color, color);
     assert.equal(material.version, version, 'unnamed/standard/mixed-use materials untouched');
   }
   const dimmed = first.shared.color.clone();
+  const detailDimmed = first.detail.color.clone();
   horizonRuntime.prepare(3, 'winter');
   assert.deepEqual(first.shared.color, dimmed, 'same match never compounds tint');
+  assert.deepEqual(first.detail.color, detailDimmed, 'same match never compounds new detail tint');
   horizonRuntime.prepare(7, 'winter');
   assert.deepEqual(first.shared.color, dimmed, 'new night restores before collecting again');
+  assert.deepEqual(first.detail.color, detailDimmed, 'night rematch restores new detail before collecting again');
   worldRoot = second.root;
   horizonRuntime.prepare(7, 'winter');
   colorsRestored(first);
   assert.deepEqual(second.shared.color, dimmed, 'same map/seed but rebuilt root is re-keyed');
+  assert.deepEqual(second.detail.color, detailDimmed, 'rebuilt biome-detail material is re-keyed');
   horizonRuntime.prepare(13, 'winter');
   colorsRestored(second);
   horizonRuntime.prepare(3, 'winter'); horizonRuntime.reset();
   colorsRestored(second);
+  horizonRuntime.reset();
+  colorsRestored(second);
+  horizonRuntime.prepare(3, 'winter');
+  worldRoot = null;
+  horizonRuntime.reset();
+  colorsRestored(second);
+  assert.equal(horizonRuntime.weather, null, 'Garage return restores the saved detached battlefield');
+  worldRoot = second.root;
   horizonRuntime.prepare(3, 'winter'); horizonRuntime.dispose();
   colorsRestored(second);
 } finally {
