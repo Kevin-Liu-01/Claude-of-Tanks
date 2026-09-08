@@ -28,6 +28,21 @@ assert.equal(typeof compatibilityCompiler.createLanguageService, 'function',
 assert.equal(typeof compatibilityCompiler.transpileModule, 'function',
   'the Vercel function builder requires transpileModule');
 
+const configPath = join(ROOT, 'tsconfig.json');
+const config = compatibilityCompiler.readConfigFile(configPath, compatibilityCompiler.sys.readFile);
+const parsedConfig = compatibilityCompiler.parseJsonConfigFileContent(
+  config.config, compatibilityCompiler.sys, ROOT);
+assert.deepEqual(parsedConfig.errors, [], 'the deployment compiler must accept the project config');
+for (const file of ['middleware.ts', 'src/presentation/localizedHtml.ts', 'src/presentation/siteMetadata.ts']) {
+  const emitted = compatibilityCompiler.transpileModule(readFileSync(join(ROOT, file), 'utf8'), {
+    fileName: file,
+    compilerOptions: { ...parsedConfig.options, noEmit: false },
+  });
+  const imports = compatibilityCompiler.preProcessFile(emitted.outputText).importedFiles;
+  assert.deepEqual(imports.filter(({ fileName }) => /\.[cm]?tsx?$/.test(fileName)), [],
+    `${file}: emitted deployment imports must reference JavaScript, not unshipped TypeScript sources`);
+}
+
 const nativeManifest = JSON.parse(readFileSync(
   join(ROOT, 'node_modules/@typescript/native/package.json'), 'utf8'));
 assert.equal(nativeManifest.version, '7.0.2');
