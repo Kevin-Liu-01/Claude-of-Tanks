@@ -137,3 +137,15 @@ Private receipt: `published-history-verified-2mhST8/receipt.json`, SHA-256
 Driver SHA-256:
 `5977c71f91043ba613a9430871e56c7c351711a15dcbbdc0a49d9108760e884d`.
 Neither temporary QA files nor dependency trees are included in the checkpoint.
+
+Publication refresh: after the independent TypeScript toolchain change on
+`6dda694423492dec8996d57203bc56f92504eee5`, a fresh lockfile-exact `npm ci`
+and the same four tests passed again. Private receipt
+`published-history-verified-t3AGCV/receipt.json` retains the complete tested
+input hashes. The final rebase also retains the later public-navigation and
+middleware commits through `6893247653827e8aaa20d0143842e3c3fa7d5997`.
+Those later commits change no vehicle, engine, simulation, game, network,
+audio, effects, world, server, dependency/build configuration or selftest
+runner/capture inputs from the tested `6dda69442` base. Their unrelated test
+registrations remain present. No additional full-suite or production-build
+pass is inferred from that unchanged test-input comparison.
