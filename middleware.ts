@@ -36,7 +36,7 @@ export function deploymentResetLocation(requestUrl: string): string | null {
  *
  * Keep this deployment adapter dependency-light: Vercel discovers the root
  * TypeScript middleware directly, while application code remains outside the
- * edge request path.
+ * middleware request path.
  *
  * @param {string | null} cookieHeader
  * @param {string | undefined} deploymentId
@@ -54,6 +54,9 @@ export function deploymentPinCookie(
 }
 
 export const config = {
+  // GT catalogs use standard JSON import attributes. The legacy Edge bundler
+  // cannot parse them; Node.js supports the same routing API and catalog graph.
+  runtime: 'nodejs',
   // Long-lived playable documents and Gallery share the site-wide deployment
   // cookie. Gallery must participate too: otherwise a stale game pin can make
   // its HTML request chunk hashes from a different deployment.

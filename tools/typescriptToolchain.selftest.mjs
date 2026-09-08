@@ -3,10 +3,14 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config as middlewareConfig } from '../middleware.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 const unusedCheckSource = readFileSync(join(ROOT, 'tools/core-unused-check.mjs'), 'utf8');
+
+assert.equal(middlewareConfig.runtime, 'nodejs',
+  'localized middleware must use Node.js: the legacy Edge bundler cannot parse JSON import attributes');
 
 assert.equal(manifest.devDependencies['@typescript/native'], 'npm:typescript@7.0.2',
   'the project typecheck must pin the native TypeScript 7 compiler');
