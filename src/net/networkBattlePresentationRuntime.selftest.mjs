@@ -205,11 +205,13 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       },
       openingEffects: async () => events.push('effects'),
       shotCards: () => events.push('cards'),
-      compile: async () => {
+      compile: async (signal) => {
         events.push('compile');
         if (pauseAt === 'compile') await compileGate.promise;
+        signal?.throwIfAborted();
         if (failAt === 'compile') throw new Error('compile failed');
         events.push('compiled');
+        return { submissionMs: 15, pollMs: 2, yields: 1 };
       },
     },
     presentation: {
@@ -298,6 +300,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     harness.events.indexOf('primeReveal') < harness.events.indexOf('hide'),
   'one complete battle frame is presented before the opaque loader exits');
   assert.deepEqual(harness.trace.blackCheck, { ok: true });
+  assert.deepEqual(harness.trace.programCompile, { submissionMs: 15, pollMs: 2, yields: 1 },
+    'the trace retains the resolved compile receipt, not its promise');
   assert.ok(harness.trace.totalMs > 0, 'the complete network entry is timed');
   assert.equal(harness.trace.status, 'complete');
   assert.equal(harness.trace.totalMs, Math.round(harness.trace.endedAt - harness.trace.startedAt));
@@ -398,6 +402,8 @@ for (const pauseAt of ['compileFrame', 'compile']) {
   assert.equal(harness.trace.revealSlices.length, 0);
   if (pauseAt === 'compileFrame') assert.ok(!harness.events.includes('compile'),
     'cancellation at the compile frame boundary skips expensive shader work');
+  else assert.ok(!harness.events.includes('compiled'),
+    'the scene warm port receives the entry cancellation signal');
   for (const stage of ['effects', 'activate', 'primeReveal', 'hide', 'ready', 'adaptive:false']) {
     assert.ok(!harness.events.includes(stage), `${pauseAt}: cancelled compile cannot reach ${stage}`);
   }
