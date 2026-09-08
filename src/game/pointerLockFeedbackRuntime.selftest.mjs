@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import '../ui/i18nCatalog.ts';
 import { createBus } from './stateCore.ts';
 import { createPointerLockFeedbackRuntime } from './pointerLockFeedbackRuntime.ts';
 

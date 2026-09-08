@@ -110,7 +110,6 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
 body.cot-touch-layout{overscroll-behavior:none;}
 body.cot-touch-layout #app canvas{touch-action:none;}
 body.cot-touch-layout .cot-hints,body.cot-touch-layout .cot-ear{display:none!important;}
-body.cot-touch-layout button[aria-label="Leave battle and return to garage"]{display:none!important;}
 body.cot-touch-layout .cot-top{top:0;padding:5px 29px 7px;gap:10px;z-index:30;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
 body.cot-touch-layout .cot-top .tm{font-size:12px;}

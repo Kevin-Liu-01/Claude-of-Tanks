@@ -42,12 +42,10 @@ import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import {
   getLocale,
+  getSupportedLocales,
   setLocale,
   t,
-  type SupportedLocale,
 } from './i18n.ts';
-
-const SUPPORTED_LOCALES: readonly SupportedLocale[] = ['en-US', 'zh-CN'] as const;
 import type {
   ActionId,
   AiDifficulty,
@@ -1078,18 +1076,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const langSeg = el('div', 'cot-set-seg', langRow);
     const langBtns: HTMLButtonElement[] = [];
     const currentLocale = getLocale();
-    for (const locale of SUPPORTED_LOCALES) {
+    for (const locale of getSupportedLocales()) {
       const b = el('button', '', langSeg);
       b.type = 'button';
       b.dataset.locale = locale;
       b.textContent = t('settings.language.' + (locale === 'zh-CN' ? 'zh' : 'en'));
       b.addEventListener('click', () => {
-        setLocale(locale as SupportedLocale);
-        for (const x of langBtns) x.classList.toggle('sel', x.dataset.locale === locale);
+        if (locale === getLocale()) return;
+        setLocale(locale);
         emit('ui:click', {});
-        // Re-render this tab so labels and notes translate in place without
-        // requiring the player to switch tabs and back.
-        renderTab();
+        // Most screens are constructed once and own translated DOM. Reloading
+        // is the only atomic way to avoid a mixed-language Garage or battle.
+        window.location.reload();
       });
       langBtns.push(b);
     }

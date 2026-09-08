@@ -11,6 +11,7 @@
  *   - `data-i18n="some.key"` → `textContent`
  *   - `data-i18n-placeholder="some.key"` → `placeholder`
  *   - `data-i18n-title="some.key"` → `title`
+ *   - `data-i18n-alt="some.key"` → `alt`
  *   - `data-i18n-aria-label="some.key"` → `aria-label`
  *   - `data-i18n-aria="some.key"` → `aria-label`
  *   - `data-i18n-html="some.key"` → `innerHTML` (use only for vetted copy)
@@ -22,7 +23,7 @@
 import '../ui/i18nCatalog.ts';
 import { onLocaleChange, t } from '../ui/i18n.ts';
 
-type Attr = 'placeholder' | 'title' | 'aria-label';
+type Attr = 'placeholder' | 'title' | 'aria-label' | 'alt';
 
 type Applier = {
   attr: string;
@@ -36,6 +37,7 @@ const APPLIERS: Applier[] = [
   { attr: 'data-i18n-html', mode: 'html', key: (el) => el.dataset.i18nHtml ?? null },
   { attr: 'data-i18n-placeholder', mode: 'attr', attrName: 'placeholder', key: (el) => el.dataset.i18nPlaceholder ?? null },
   { attr: 'data-i18n-title', mode: 'attr', attrName: 'title', key: (el) => el.dataset.i18nTitle ?? null },
+  { attr: 'data-i18n-alt', mode: 'attr', attrName: 'alt', key: (el) => el.dataset.i18nAlt ?? null },
   { attr: 'data-i18n-aria-label', mode: 'attr', attrName: 'aria-label', key: (el) => el.dataset.i18nAriaLabel ?? null },
   { attr: 'data-i18n-aria', mode: 'attr', attrName: 'aria-label', key: (el) => el.dataset.i18nAria ?? null },
 ];
@@ -63,7 +65,7 @@ function applyToElement(el: HTMLElement): void {
 
 export function applyStaticI18n(root: ParentNode = document): void {
   const elements = root.querySelectorAll<HTMLElement>(
-    '[data-i18n],[data-i18n-html],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria-label],[data-i18n-aria]',
+    '[data-i18n],[data-i18n-html],[data-i18n-placeholder],[data-i18n-title],[data-i18n-alt],[data-i18n-aria-label],[data-i18n-aria]',
   );
   for (const el of elements) applyToElement(el);
 }

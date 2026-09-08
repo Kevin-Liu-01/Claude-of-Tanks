@@ -1213,9 +1213,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-performance-section{
 }
 body[data-cot-panels='overlay'] .cot-garage .cot-performance-section .cot-stat-title{margin-bottom:7px}
 body[data-cot-panels='overlay'] .cot-garage .cot-performance-section .cot-stat-title>small{display:none}
-body[data-cot-panels='overlay'] .cot-garage .cot-performance-section .cot-stat-title>span{font-size:0}
-body[data-cot-panels='overlay'] .cot-garage .cot-performance-section .cot-stat-title>span::after{
-  content:'Combat stats';font-size:7.8px;letter-spacing:.16em;
+body[data-cot-panels='overlay'] .cot-garage .cot-performance-section .cot-stat-title>span{
+  font-size:7.8px;letter-spacing:.16em;
 }
 body[data-cot-panels='overlay'] .cot-garage .cot-performance-grid{gap:5px}
 body[data-cot-panels='overlay'] .cot-garage .cot-performance-grid>.srow:nth-child(n+5){display:none}
@@ -1340,8 +1339,8 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-p
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>svg,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>.cot-info-trigger{display:none}
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span::after{
-  content:'Stats';font-size:5.8px;letter-spacing:.16em;
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span{
+  font-size:5.8px;letter-spacing:.16em;
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-grid{grid-template-columns:1fr;gap:3px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow{

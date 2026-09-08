@@ -1,0 +1,11 @@
+{
+  "$schema": "https://assets.gtx.dev/config-schema.json",
+  "defaultLocale": "en-US",
+  "locales": ["zh-CN"],
+  "requiresReview": true,
+  "files": {
+    "json": {
+      "include": ["src/ui/i18nCatalog.[locale].json"]
+    }
+  }
+}

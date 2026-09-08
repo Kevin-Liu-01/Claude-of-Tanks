@@ -43,11 +43,14 @@ function readStoredLocale(): SupportedLocale | null {
 
 function readNavigatorLocale(): SupportedLocale | null {
   if (typeof navigator === 'undefined') return null;
-  const raw = navigator.language || (navigator as { userLanguage?: string }).userLanguage || '';
-  if (!raw) return null;
-  const lower = raw.toLowerCase();
-  if (lower.startsWith('zh')) return 'zh-CN';
-  if (lower.startsWith('en')) return 'en-US';
+  const candidates = navigator.languages?.length
+    ? navigator.languages
+    : [navigator.language || (navigator as { userLanguage?: string }).userLanguage || ''];
+  for (const raw of candidates) {
+    const lower = raw.toLowerCase();
+    if (lower.startsWith('zh')) return 'zh-CN';
+    if (lower.startsWith('en')) return 'en-US';
+  }
   return null;
 }
 
@@ -109,7 +112,9 @@ function syncLocaleCssVariables(): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   try {
-    root.style.setProperty('--cot-garage-variant-label', t('garage.tools.stagingAreas'));
+    root.lang = currentLocale;
+    root.dir = 'ltr';
+    root.style.setProperty('--cot-garage-variant-label', JSON.stringify(t('garage.tools.stagingAreas')));
   } catch (_) {
     /* DOM may be temporarily unavailable; the next setLocale() will retry. */
   }
