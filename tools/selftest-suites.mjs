@@ -668,6 +668,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/render-frame-sampler.selftest.mjs',
     'tools/environment-shot-camera.selftest.mjs',
     'tools/environment-motion-probe.selftest.mjs',
+    'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',
     'tools/map-environment-quality.selftest.mjs',
     'tools/world-residency-policy.selftest.mjs',
