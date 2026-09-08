@@ -49,6 +49,24 @@ function shapeHash(root){
     h.update(JSON.stringify((Array.isArray(m.material)?m.material:[m.material]).map(a=>[a.name,a.color?.getHex(),a.side])));
   });return h.digest('hex');
 }
+// Only a valid new lighting channel is decomposed out of the legacy hash.
+{
+  const geometry=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
+  const mesh=new THREE.Mesh(geometry),legacy=shapeHash(mesh);
+  geometry.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
+  assert.equal(shapeHash(mesh),legacy);
+  for(const invalid of [new THREE.Float32BufferAttribute([0,1,2],1),
+    new THREE.Uint8BufferAttribute([0,1,2],3),new THREE.Uint8BufferAttribute([0,1],1),
+    new THREE.Uint8BufferAttribute([0,1,2],1,true),new THREE.Uint8BufferAttribute([0,1,3],1)]){
+    geometry.setAttribute('nightEmissionMask',invalid);assert.throws(()=>shapeHash(mesh));
+  }
+  geometry.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
+  geometry.setAttribute('unrecognizedSemanticChannel',new THREE.Uint8BufferAttribute([0,1,2],1));
+  assert.notEqual(shapeHash(mesh),legacy,'unknown attributes are never silently ignored');
+  geometry.deleteAttribute('unrecognizedSemanticChannel');geometry.getAttribute('position').setX(0,.001);
+  assert.notEqual(shapeHash(mesh),legacy,'physical vertex bytes remain guarded');
+  geometry.dispose();mesh.material.dispose();
+}
 function plateHits(armor,point,side,reach=.05){
   const from=point.clone().add(new THREE.Vector3(side*reach,0,0));
   const to=point.clone().add(new THREE.Vector3(-side*.01,0,0));
