@@ -29,6 +29,11 @@ interface MergeInput {
   cornerCount: number;
 }
 
+export interface WreckGeometryBuildSlice {
+  fine: true;
+  stage: string;
+}
+
 function compactableAttribute(attribute: CandidateAttribute, count: number): boolean {
   return attribute.isBufferAttribute && !attribute.isInterleavedBufferAttribute
     && !attribute.isInstancedBufferAttribute && !attribute.isFloat16BufferAttribute
@@ -77,32 +82,58 @@ function hashCorner(streams: Stream[], corner: number): number {
   return (hash ^ (hash >>> 16)) >>> 0;
 }
 
-function buildIndex(input: Input): IndexTable {
+function* buildIndexSteps(input: Input): Generator<WreckGeometryBuildSlice, IndexTable, void> {
   const { count, streams } = input;
   let tableSize = 1;
   while (tableSize < count * 2) tableSize *= 2;
   const table = new Uint32Array(tableSize), representatives = new Uint32Array(count);
   const remap = new Uint32Array(count), mask = tableSize - 1;
   let unique = 0;
+  let probes = 0;
   for (let corner = 0; corner < count; corner++) {
     let slot = hashCorner(streams, corner) & mask;
-    while (table[slot] && !sameCorner(streams, corner, representatives[table[slot] - 1])) slot = (slot + 1) & mask;
+    while (table[slot] && !sameCorner(streams, corner, representatives[table[slot] - 1])) {
+      slot = (slot + 1) & mask;
+      if (++probes % 2048 === 0) yield { fine: true, stage: 'compact-index-probes' };
+    }
     if (!table[slot]) { representatives[unique] = corner; table[slot] = ++unique; }
     remap[corner] = table[slot] - 1;
+    if ((corner + 1) % 2048 === 0 || corner + 1 === count) {
+      yield { fine: true, stage: `compact-index-${corner + 1}` };
+    }
   }
   return { remap, representatives, unique };
 }
 
-function compactAttribute(stream: Stream, index: IndexTable): THREE.BufferAttribute {
+function* compactAttributeSteps(
+  stream: Stream,
+  index: IndexTable,
+): Generator<WreckGeometryBuildSlice, THREE.BufferAttribute, void> {
   const { attribute, words, size } = stream, { unique, representatives } = index;
   const compact = new Float32Array(unique * size), compactWords = new Uint32Array(compact.buffer);
   for (let row = 0; row < unique; row++) {
     const sourceOffset = representatives[row] * size, targetOffset = row * size;
     for (let j = 0; j < size; j++) compactWords[targetOffset + j] = words[sourceOffset + j];
+    if ((row + 1) % 2048 === 0 || row + 1 === unique) {
+      yield { fine: true, stage: `compact-${stream.name}-${row + 1}` };
+    }
   }
   const result = new THREE.BufferAttribute(compact, size, attribute.normalized);
   result.name = attribute.name; result.usage = attribute.usage; result.gpuType = attribute.gpuType;
   return result;
+}
+
+function* compactIndexAttributeSteps(
+  index: IndexTable,
+): Generator<WreckGeometryBuildSlice, THREE.BufferAttribute, void> {
+  if (index.unique > 65535) return new THREE.BufferAttribute(index.remap, 1);
+  const values = new Uint16Array(index.remap.length);
+  for (let offset = 0; offset < values.length; offset += 2048) {
+    const end = Math.min(offset + 2048, values.length);
+    values.set(index.remap.subarray(offset, end), offset);
+    yield { fine: true, stage: `compact-remap-${end}` };
+  }
+  return new THREE.BufferAttribute(values, 1);
 }
 
 /** Construction-only: use immediately after painting and before translation.
@@ -110,17 +141,33 @@ function compactAttribute(stream: Stream, index: IndexTable): THREE.BufferAttrib
  * call after GPU upload; unsupported or non-beneficial inputs remain unchanged.
  */
 export function compactWreckGeometry(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const steps = compactWreckGeometrySteps(geometry);
+  let result = steps.next();
+  while (!result.done) result = steps.next();
+  return result.value;
+}
+
+/** The caller exclusively owns the unuploaded input until completion. All
+ * checkpoints retain private CPU buffers only; return/throw leaves the input
+ * untouched. Install every replacement together after the final checkpoint.
+ */
+export function* compactWreckGeometrySteps(
+  geometry: THREE.BufferGeometry,
+): Generator<WreckGeometryBuildSlice, THREE.BufferGeometry, void> {
   const input = staticInput(geometry);
   if (!input) return geometry;
-  const index = buildIndex(input);
+  const index = yield* buildIndexSteps(input);
   // WebGL2 reserves index 65535 for primitive restart, so 65536 vertices
   // require Uint32 even though their maximum index fits an unsigned short.
   const retainedBytes = index.unique * input.wordsPerCorner * 4 + input.count * (index.unique <= 65535 ? 2 : 4);
   if (retainedBytes >= input.bytes) return geometry;
   // Build every output before installation, so allocation failure cannot leave
   // a partially replaced geometry. No geometry/material identity is changed.
-  const attributes = input.streams.map(stream => [stream.name, compactAttribute(stream, index)] as const);
-  const indices = new THREE.BufferAttribute(index.unique <= 65535 ? Uint16Array.from(index.remap) : index.remap, 1);
+  const attributes: Array<readonly [string, THREE.BufferAttribute]> = [];
+  for (const stream of input.streams) {
+    attributes.push([stream.name, yield* compactAttributeSteps(stream, index)]);
+  }
+  const indices = yield* compactIndexAttributeSteps(index);
   for (const [name, attribute] of attributes) geometry.setAttribute(name, attribute);
   geometry.setIndex(indices);
   return geometry;

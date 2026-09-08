@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { bakeTankWreck, bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
 
 assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
 assert.ok(wreckPool('ww2').length >= 6, 'WWII wreck pool remains populated');
@@ -107,11 +107,24 @@ const originalBakeFixtures = [
     ],
   },
 ];
+function storageFingerprint(baked) {
+  const shape = geometry => geometry && ({
+    attributes: Object.entries(geometry.attributes).map(([name, attribute]) =>
+      [name, attribute.itemSize, attribute.normalized, attribute.usage, attribute.gpuType,
+        attribute.array.constructor.name, attributeHash(attribute, null)]),
+    index: geometry.index && [geometry.index.array.constructor.name, attributeHash(geometry.index, null)],
+    groups: geometry.groups, drawRange: geometry.drawRange,
+    bounds: geometry.boundingBox && [geometry.boundingBox.min.toArray(), geometry.boundingBox.max.toArray()],
+  });
+  return { visible: shape(baked.geo), shadow: shape(baked.shadowGeo) };
+}
+const storageControls = new Map();
 for (const fixture of originalBakeFixtures) {
   await ensureTankBuilder(fixture.specId);
   const baked = bakeTankWreck(null, fixture.specId, { seed: fixture.seed, pop: true });
   try {
     assertBakeFingerprint(baked, fixture);
+    storageControls.set(fixture.specId, storageFingerprint(baked));
     const color = baked.geo.attributes.color.array;
     const original = color[0];
     color[0] = original + 0.05;
@@ -122,6 +135,40 @@ for (const fixture of originalBakeFixtures) {
   } finally {
     baked?.geo.dispose();
     baked?.shadowGeo?.dispose();
+  }
+}
+
+// Suspend two real production hierarchies simultaneously. Existing independent
+// pre-change fingerprints certify the streams; sync/steps also retain the exact
+// compact storage/index selection, not merely equivalent expanded triangles.
+const pending = originalBakeFixtures.map(fixture => ({ fixture,
+  steps: bakeTankWreckSteps(null, fixture.specId, { seed: fixture.seed, pop: true }),
+  result: null, checkpoints: 0,
+}));
+try {
+  while (pending.some(job => job.result === null)) {
+    for (const job of pending) {
+      if (job.result !== null) continue;
+      await new Promise(resolve => setImmediate(resolve));
+      const next = job.steps.next();
+      if (!next.done) {
+        assert.equal(next.value.fine, true);
+        assert.equal(next.value.progress, false, 'micro-checkpoints cannot exhaust logical loading progress');
+        assert.ok(next.value.stage.startsWith(`wreck-${job.fixture.specId}:`));
+        job.checkpoints++;
+        continue;
+      }
+      assert.ok(next.value);
+      job.result = next.value;
+      assertBakeFingerprint(job.result, job.fixture);
+      assert.deepEqual(storageFingerprint(job.result), storageControls.get(job.fixture.specId));
+      assert.ok(job.checkpoints > 20, 'large real bakes expose intermediate work');
+    }
+  }
+} finally {
+  for (const job of pending) {
+    job.steps.return(null);
+    job.result?.geo.dispose(); job.result?.shadowGeo?.dispose();
   }
 }
 

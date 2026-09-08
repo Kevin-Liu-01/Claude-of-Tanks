@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { compactWreckGeometry, mergeWreckGeometries } from './exactWreckGeometry.ts';
+import { compactWreckGeometry, compactWreckGeometrySteps, mergeWreckGeometries } from './exactWreckGeometry.ts';
 
 const owned = new Set();
 const own = geometry => { owned.add(geometry); return geometry; };
@@ -120,7 +122,93 @@ function assertCompactsExactly(geometry, expectedUnique) {
   return streams;
 }
 
+function stagedFixture() {
+  const geometry = triangleFixture(2048);
+  // 3,072 distinct corners repeated twice exercises multiple index, attribute
+  // and Uint16 remap chunks while retaining a meaningful exact storage saving.
+  for (let i = 0; i < 6144; i++) geometry.attributes.position.array[i * 3] = i % 3072;
+  return geometry;
+}
+
+function checkCompactionCancellation(stages) {
+  for (let checkpoint = 0; checkpoint < stages.length; checkpoint++) {
+    for (const method of ['return', 'throw']) {
+      const geometry = stagedFixture(), original = snapshot(geometry);
+      const cancelled = compactWreckGeometrySteps(geometry);
+      for (let i = 0; i <= checkpoint; i++) assert.equal(cancelled.next().value.stage, stages[i]);
+      if (method === 'return') assert.equal(cancelled.return(geometry).done, true);
+      else {
+        const failure = new Error('cancel compaction');
+        assert.throws(() => cancelled.throw(failure), error => error === failure);
+      }
+      assertUntouched(geometry, original);
+      assert.equal(cancelled.next().done, true);
+    }
+  }
+}
+
+function checkCompactionInterleaving(control) {
+  const jobs = [stagedFixture(), stagedFixture()].map(geometry => ({ geometry,
+    before: snapshot(geometry), steps: compactWreckGeometrySteps(geometry), done: false }));
+  while (jobs.some(job => !job.done)) for (const job of jobs) {
+    if (job.done) continue;
+    const result = job.steps.next(); job.done = result.done;
+    if (!result.done) assertUntouched(job.geometry, job.before);
+    else assert.deepEqual(job.geometry.index.array, control.index.array);
+  }
+}
+
+function measuredCompactor() {
+  const counts = { hashed: 0, copied: {}, remapped: 0 };
+  const source = readFileSync(new URL('./exactWreckGeometry.ts', import.meta.url), 'utf8');
+  const hooks = [
+    ['  let hash = 0x811c9dc5;', '  counts.hashed++;\n  let hash = 0x811c9dc5;'],
+    ['    const sourceOffset = representatives[row] * size, targetOffset = row * size;',
+      '    counts.copied[stream.name] = (counts.copied[stream.name] || 0) + 1;\n'
+      + '    const sourceOffset = representatives[row] * size, targetOffset = row * size;'],
+    ['    values.set(index.remap.subarray(offset, end), offset);',
+      '    values.set(index.remap.subarray(offset, end), offset); counts.remapped += end - offset;'],
+  ];
+  let instrumented = source;
+  for (const [anchor, replacement] of hooks) {
+    assert.ok(instrumented.includes(anchor), 'exact actual loop observation anchor');
+    instrumented = instrumented.replace(anchor, replacement);
+  }
+  const steps = new Function('THREE', 'mergeGeometries', 'counts',
+    stripTypeScriptTypes(instrumented.replace(/^import[^\n]*\n/gm, '')).replace(/^export /gm, '')
+      + '\nreturn compactWreckGeometrySteps;')(THREE, mergeGeometries, counts);
+  return { steps, counts };
+}
+
+function checkStagedCompaction() {
+  const control = stagedFixture(); compactWreckGeometry(control);
+  const input = stagedFixture(), before = snapshot(input), stages = [];
+  const measured = measuredCompactor(), steps = measured.steps(input);
+  let next = steps.next();
+  while (!next.done) {
+    assert.equal(next.value.fine, true);
+    assertUntouched(input, before);
+    const stage = next.value.stage;
+    stages.push(stage);
+    if (stage === 'compact-index-2048') assert.equal(measured.counts.hashed, 2048);
+    if (stage === 'compact-position-2048') assert.equal(measured.counts.copied.position, 2048);
+    if (stage === 'compact-remap-2048') assert.equal(measured.counts.remapped, 2048);
+    next = steps.next();
+  }
+  assert.equal(next.value, input);
+  assert.deepEqual(input.index.array, control.index.array);
+  assert.deepEqual(orderedWords(input), orderedWords(control));
+  for (const name of Object.keys(input.attributes)) {
+    assert.deepEqual(input.attributes[name].array, control.attributes[name].array);
+  }
+  assert.ok(stages.includes('compact-index-2048') && stages.includes('compact-position-2048')
+    && stages.includes('compact-remap-2048'), 'substantial loops yield before processing their remaining inputs');
+  checkCompactionCancellation(stages);
+  checkCompactionInterleaving(control);
+}
+
 try {
+  checkStagedCompaction();
   const geometry = triangleFixture();
   geometry.name = 'test-wreck'; geometry.userData.owner = { name: 'static-wreck-owner' };
   geometry.addGroup(0, 9, 2); geometry.addGroup(9, 15, 4); geometry.setDrawRange(3, 12);

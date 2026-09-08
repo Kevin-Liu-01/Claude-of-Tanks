@@ -17,6 +17,10 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const CAPTURE_QUEUE_TIMEOUT_MS = 45 * 60 * 1000;
 export const SCENARIO_TIMEOUT_MS = 300000;
 const CLEANUP_RESERVE_MS = 10000;
+// Native DOM samples can straddle frame/snapshot delivery. Keep that allowance
+// explicit and bounded; a complete numeral sequence alone can still run too slowly.
+const COUNTDOWN_MIN_MS = 4500;
+const COUNTDOWN_MAX_MS = 6500;
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const check = (condition, code) => { if (!condition) throw Object.assign(new Error(code), { probeCode: code }); };
 
@@ -76,9 +80,11 @@ export function entryEvidence(result) {
       maxRafGapMs: row?.maxRafGapMs ?? null,
       dropped: (row?.framesDropped ?? 0) + (row?.transitionsDropped ?? 0) + (row?.longTasksDropped ?? 0) };
   });
-  return { peers, complete: peers.length === 2 && new Set(peers.map(row => row.role)).size === 2 &&
+  return { peers, countdownBoundsMs: { min: COUNTDOWN_MIN_MS, max: COUNTDOWN_MAX_MS },
+    complete: peers.length === 2 && new Set(peers.map(row => row.role)).size === 2 &&
     peers.every(row => ['host', 'guest'].includes(row.role) && row.completeCountdown &&
-      Number.isFinite(row.countdownToRolloutMs) && row.countdownToRolloutMs >= 4500 && row.nonblack &&
+      Number.isFinite(row.countdownToRolloutMs) && row.countdownToRolloutMs >= COUNTDOWN_MIN_MS &&
+      row.countdownToRolloutMs <= COUNTDOWN_MAX_MS && row.nonblack &&
       row.revealPrimed && row.loaderHidden && row.networkComplete && row.dropped === 0),
   scope: 'Native DOM countdown and source watchdog/reveal receipts; background DOM is not foreground presentation, RAF is not photons, and no screenshot or hardware-GPU claim is made.' };
 }

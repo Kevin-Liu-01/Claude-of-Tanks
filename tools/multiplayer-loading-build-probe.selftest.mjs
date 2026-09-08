@@ -161,6 +161,33 @@ await test('countdown, nonblack, reveal, and complete observer gates reject miss
   assert.equal(entryEvidence(nativeReceipt()).complete, true);
 });
 
+await test('both peers must roll out inside the explicit 4500–6500 ms native countdown window', () => {
+  assert.deepEqual(entryEvidence(nativeReceipt()).countdownBoundsMs, { min: 4500, max: 6500 });
+  for (const peerIndex of [0, 1]) {
+    for (const [durationMs, expected] of [[4499.99, false], [4500, true], [5000, true],
+      [6500, true], [6500.01, false], [10255.9, false], [10346.4, false]]) {
+      const receipt = nativeReceipt();
+      const transitions = receipt.entry.peers[peerIndex].observation.transitions;
+      transitions[1].at = transitions[0].at + durationMs;
+      assert.equal(entryEvidence(receipt).complete, expected, `peer ${peerIndex}: ${durationMs} ms`);
+    }
+  }
+});
+
+await test('an eventually complete but slow countdown fails acquisition after owned cleanup', async () => {
+  const f = fixture(), verify = f.deps.verify;
+  f.deps.verify = async options => {
+    const result = await verify(options);
+    result.entry.peers[0].observation.transitions[1].at = 10446.4;
+    return result;
+  };
+  const report = await f.run();
+  assert.equal(report.ok, false); assert.equal(report.entry.complete, false);
+  assert.equal(report.errors[0].code, 'entry_evidence_incomplete');
+  assert.equal(report.cleanup.native.browserClosed, true);
+  assert.deepEqual(f.events.slice(-4), ['native-cleanup', 'preview-close', 'signal-close', 'release']);
+});
+
 const temporary = mkdtempSync(join(tmpdir(), 'cot-loading-probe-selftest-'));
 try {
   await test('complete build identity includes nested binary assets and rejects links', () => {
