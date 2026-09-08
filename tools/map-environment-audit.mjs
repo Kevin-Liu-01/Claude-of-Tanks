@@ -36,7 +36,7 @@ import {
   waitForTimingGarage, warmTimingGarage, captureTimingGarageOwner, captureTimingBackend,
   requireTimingGarageSetup, requireSameTimingGarageSetup, requireSameTimingGarageOwner,
   requireTimingBuildProvenance,
-  selectTimingArchiveTarget, captureTimingGarageArchive,
+  selectTimingArchiveTarget, captureTimingGarageArchive, waitForTimingGarageArchiveEntry,
   requireSameTimingGarageArchive,
   captureTimingPhaseOwnership, requireTimingPhaseOwnership,
 } from './map-environment-acquisition.mjs';
@@ -816,15 +816,9 @@ try {
   await page.evaluate(waitForTimingGarage);
   await page.evaluate(() => window.__SHOTS.set('garage'));
   await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
-  const archiveWaitStarted = performance.now();
-  // Observe the recurring production pair. Never force the slideshow forward,
-  // hide it, or replace this readiness barrier with additional warm frames.
-  const archiveHandle = await page.waitForFunction(captureTimingGarageArchive,
-    { timeout: 120000, polling: 100 }, garageArchiveTarget);
-  const archiveBefore = await archiveHandle.jsonValue();
-  await archiveHandle.dispose();
-  const archiveWait = { target: garageArchiveTarget, timeoutMs: 120000,
-    elapsedMs: performance.now() - archiveWaitStarted };
+  // Observe a fresh natural entry into the recurring production pair, within
+  // one 120 s deadline. Never advance/freeze it or warm repeatedly until stable.
+  const { archiveBefore, archiveWait } = await waitForTimingGarageArchiveEntry(page, garageArchiveTarget);
   const garageOwner = await page.evaluate(captureTimingGarageOwner);
   const phaseBefore = await page.evaluate(captureTimingPhaseOwnership);
   report.garageSetup = { ownerBefore: garageOwner, archiveBefore, archiveWait, phaseBefore };
