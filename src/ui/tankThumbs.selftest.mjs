@@ -247,6 +247,13 @@ function fakeRenderer(sources) {
   const destinations = [];
   const compileGates = new Map();
   const compileFailures = new Set();
+  const reflectionFailures = new Set();
+  const variantCounts = new Map();
+  const reusePrograms = new Set();
+  const compileHooks = new Map();
+  const programHooks = new Map();
+  const compiledPrograms = [];
+  const bindings = [];
   const readbackFailures = new Set();
   const properties = new WeakMap();
   let targetRestoreFailure = null;
@@ -316,6 +323,7 @@ function fakeRenderer(sources) {
     deleteBuffer(buffer) { buffer.deleted++; },
   };
   Object.assign(renderer, {
+    info: { programs: [] },
     getRenderTarget: () => target,
     getActiveCubeFace: () => face,
     getActiveMipmapLevel: () => mip,
@@ -327,6 +335,7 @@ function fakeRenderer(sources) {
         throw failure;
       }
       target = next; face = nextFace; mip = nextMip;
+      bindings.push({ target, face, mip });
     },
     getClearColor(output) { return output.copy(color); },
     getClearAlpha: () => alpha,
@@ -340,19 +349,50 @@ function fakeRenderer(sources) {
       assert.equal(target.width, 384); assert.equal(target.height, 384);
       events.push({ kind: 'compile', ...frame, target });
       const material = scene.children[0].getObjectByName('test-hull').material;
-      const program = { program: {}, checks: 0, isReady() {
-        program.checks++;
-        if (compileFailures.has(frame.id) || compileFailures.has(`${frame.id}:${frame.layer}`)) {
-          throw new Error('injected compile failure');
-        }
-        return compileGates.get(`${frame.id}:${frame.layer}`)?.ready ?? true;
-      } };
-      properties.set(material, { currentProgram: program });
+      const key = `${frame.id}:${frame.layer}`;
+      const retained = properties.get(material);
+      if (reusePrograms.has(frame.id) && retained) {
+        compileHooks.get(key)?.(retained);
+        return new Set([material]);
+      }
+      const variants = Array.from({ length: variantCounts.get(key) ?? 1 }, (_, index) => {
+        const program = { program: {}, checks: 0, uniforms: 0, attributes: 0, ready: false,
+          isReady() {
+            program.checks++;
+            if (compileFailures.has(frame.id) || compileFailures.has(key)) throw new Error('injected compile failure');
+            program.ready = (compileGates.get(`${key}:${index}`) ?? compileGates.get(key))?.ready ?? true;
+            programHooks.get(`${key}:isReady`)?.(program);
+            return program.ready;
+          },
+          getUniforms() {
+            assert.equal(program.ready, true, 'no mask reflection before exact readiness');
+            program.uniforms++;
+            if (reflectionFailures.has(key)) throw new Error('injected reflection failure');
+            programHooks.get(`${key}:getUniforms`)?.(program);
+            return {};
+          },
+          getAttributes() {
+            assert.equal(program.uniforms, 1, 'both reflection tables are prepared exactly once');
+            program.attributes++;
+            programHooks.get(`${key}:getAttributes`)?.(program);
+            return {};
+          } };
+        compiledPrograms.push({ ...frame, index, program });
+        renderer.info.programs.push(program);
+        return program;
+      });
+      const cache = { currentProgram: variants.at(-1), programs: new Map(variants.map((program, index) => [index, program])) };
+      properties.set(material, cache);
+      compileHooks.get(key)?.(cache);
       return new Set([material]);
     },
     compileAsync() { assert.fail('mask readiness must use the bounded exact-program owner'); },
     render(scene, camera) {
       currentFrame = describe(scene);
+      const material = scene.children[0].getObjectByName('test-hull').material;
+      assert([...properties.get(material).programs.values()]
+        .every((program) => program.uniforms === 1 && program.attributes === 1),
+      'rendering requires both tables for every captured variant, not currentProgram alone');
       assert(camera instanceof THREE.OrthographicCamera);
       assert.deepEqual([color.getHex(), alpha], [0, 0]);
       events.push({ kind: 'render', ...currentFrame, target });
@@ -365,6 +405,7 @@ function fakeRenderer(sources) {
     readRenderTargetPixels() { assert.fail('the mask pipeline must not perform a blocking readback'); },
   });
   return { renderer, gl, events, buffers, syncs, destinations, compileGates, compileFailures, readbackFailures,
+    reflectionFailures, variantCounts, reusePrograms, compileHooks, programHooks, compiledPrograms, bindings,
     state: () => ({ target, face, mip, color: color.getHex(), alpha, pack }),
     initialPack,
     failNextTargetRestore(error, layer = null) { targetRestoreFailure = error; targetRestoreLayer = layer; },
@@ -608,13 +649,14 @@ try {
 
   // Both orders of failure must drain the other layer before releasing the
   // cloned source or admitting another tank to the shared framebuffer.
-  for (const failure of ['turret-compile', 'turret-restore', 'hull-copy', 'turret-copy', 'disposed-both']) {
+  for (const failure of ['turret-compile', 'turret-reflection', 'turret-restore', 'hull-copy', 'turret-copy', 'disposed-both']) {
     const name = `mask-overlap-${failure}`;
     const borrowed = addSource(name);
     const following = addSource(`${name}-next`);
     fake.holdFences();
     const turretGate = deferred();
     if (failure === 'turret-compile') fake.compileFailures.add(`${name}:turret`);
+    if (failure === 'turret-reflection') fake.reflectionFailures.add(`${name}:turret`);
     if (failure === 'turret-restore') fake.failNextTargetRestore(new Error('turret restore failed'), 'turret');
     if (failure === 'hull-copy') fake.compileGates.set(`${name}:turret`, turretGate);
     const request = prepareTopDownMasks(spec(name), borrowed.visual);
@@ -796,6 +838,106 @@ try {
     batched.assertUntouched();
     if (throwsAfterClone) assert(!fake.events.some((event) => event.id === batched.root.name),
       'a throwing clone leaves restored source controls without scheduling GPU work');
+  }
+
+  {
+    const source = addSource('mask-retained-variants');
+    const key = `${source.root.name}:hull`;
+    const gate = deferred();
+    fake.variantCounts.set(key, 4); // Shared ordinary/instanced and back/front variants.
+    fake.compileGates.set(`${key}:0`, gate);
+    fake.compileHooks.set(key, (cache) => cache.programs.set('duplicate', cache.programs.get(0)));
+    const request = prepareTopDownMasks(spec(source.root.name), source.visual);
+    await advanceUntil(() => fake.compiledPrograms.some((entry) => entry.id === source.root.name && entry.program.checks > 0));
+    const variants = fake.compiledPrograms.filter((entry) => entry.id === source.root.name);
+    assert.equal(variants.length, 4);
+    assert.equal(variants[0].program.uniforms, 0, 'non-current pending variants cannot be reflected');
+    assert.equal(variants.at(-1).program.uniforms, 1, 'the current variant alone is already prepared');
+    assert(!fake.events.some((event) => event.id === source.root.name && event.kind === 'render'),
+      'a ready currentProgram cannot bypass a pending retained variant');
+    gate.resolve();
+    assert((await settle(request))?.ready);
+    assert(variants.every(({ program }) => program.uniforms === 1 && program.attributes === 1),
+      'full-cache capture deduplicates wrappers and initializes each table once');
+  }
+
+  {
+    const source = addSource('mask-same-programs-both-layers');
+    const id = source.root.name;
+    fake.reusePrograms.add(id);
+    fake.variantCounts.set(`${id}:hull`, 3);
+    let originalCache;
+    const accessors = [];
+    fake.compileHooks.set(`${id}:hull`, (cache) => {
+      originalCache = cache;
+      for (const program of cache.programs.values()) {
+        const calls = { uniforms: 0, attributes: 0 };
+        for (const [method, field] of [['getUniforms', 'uniforms'], ['getAttributes', 'attributes']]) {
+          const initialize = program[method].bind(program);
+          let table;
+          program[method] = () => { calls[field]++; return table ??= initialize(); };
+        }
+        accessors.push(calls);
+      }
+    });
+    fake.compileHooks.set(`${id}:turret`, (cache) => assert.strictEqual(cache, originalCache,
+      'native-style repeated compilation retains the exact material cache and program wrappers'));
+    assert((await settle(prepareTopDownMasks(spec(id), source.visual)))?.ready);
+    const created = fake.compiledPrograms.filter((entry) => entry.id === id);
+    assert.equal(created.length, 3, 'the turret compile adds no replacement programs');
+    assert(accessors.every(({ uniforms, attributes }) => uniforms === 2 && attributes === 2),
+      'both passes validate both tables on the same borrowed wrappers');
+    assert(created.every(({ program }) => program.uniforms === 1 && program.attributes === 1),
+      'cached table access never repeats first-use reflection');
+    assert.deepEqual(fake.events.filter((event) => event.id === id && event.kind === 'render')
+      .map(({ layer }) => layer), ['hull', 'turret']);
+    source.assertUntouched();
+  }
+
+  for (const invalid of ['empty-cache', 'missing-cache', 'null-handle', 'undefined-handle']) {
+    const source = addSource(`mask-evidence-${invalid}`);
+    fake.compileHooks.set(`${source.root.name}:hull`, (cache) => {
+      if (invalid === 'empty-cache') cache.programs.clear();
+      else if (invalid === 'missing-cache') delete cache.programs;
+      else cache.currentProgram.program = invalid === 'null-handle' ? null : undefined;
+    });
+    assert.equal(await settle(prepareTopDownMasks(spec(source.root.name), source.visual)), null);
+    assert(!fake.events.some((event) => event.id === source.root.name && event.kind === 'render'),
+      `${invalid}: missing selected-material evidence never reaches the mask draw`);
+    assert.deepEqual(fake.state(), afterReadbackState);
+  }
+
+  for (const boundary of ['compile', 'wait', 'outer-await']) {
+    for (const changed of ['info', 'context']) {
+      const source = addSource(`mask-${boundary}-${changed}`);
+      const isolated = fakeRenderer(sources);
+      initTopMaskRig({ renderer: isolated.renderer });
+      const key = `${source.root.name}:hull`;
+      let changedAtBindings = -1;
+      const change = () => {
+        changedAtBindings = isolated.bindings.length;
+        if (changed === 'info') isolated.renderer.info = { programs: [...isolated.renderer.info.programs] };
+        else {
+          const replacement = { ...isolated.gl };
+          isolated.renderer.getContext = () => replacement;
+        }
+      };
+      if (boundary === 'compile') isolated.compileHooks.set(key, change);
+      if (boundary === 'outer-await') isolated.programHooks.set(`${key}:getAttributes`, () => queueMicrotask(change));
+      const request = prepareTopDownMasks(spec(source.root.name), source.visual);
+      if (boundary === 'wait') {
+        await advanceUntil(() => isolated.events.some((event) => event.kind === 'compile'));
+        change();
+      }
+      assert.equal(await settle(request), null, `${boundary}/${changed}: renderer lifetime changes reject preparation`);
+      assert(!isolated.events.some((event) => event.kind === 'render'),
+        'even a completed receipt is revalidated after the outer await before real rendering');
+      assert.equal(isolated.bindings.length, changedAtBindings,
+        'a changed lifetime receives no stale target restore or subsequent mask binding');
+      isolated.assertReleased();
+      source.assertUntouched();
+      initTopMaskRig({ renderer: fake.renderer });
+    }
   }
 
   const cacheSources = Array.from({ length: 12 }, (_, index) => addSource(`mask-cache-${index}`));
