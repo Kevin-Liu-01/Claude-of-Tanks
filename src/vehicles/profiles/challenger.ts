@@ -11,6 +11,7 @@
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore } from './kit.ts';
@@ -399,8 +400,8 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     P.add('hullDetail', box(1.9, 0.05, 0.1), 0, 1.565, 2.95, -0.3, 0, 0);
     for (const s of [-1, 1]) {
       P.add('hullDetail', box(0.3, 0.16, 0.12), s * 1.26, 1.395, 3.593);
-      P.add('hullGlass', cylZ(0.055, 0.02, 10), s * 1.32, 1.42, 3.655);
-      P.add('hullGlass', cylZ(0.045, 0.02, 10), s * 1.18, 1.42, 3.655);
+      P.add('hullGlass', markVehicleNightLens(cylZ(0.055, 0.02, 10), 'headlight'), s * 1.32, 1.42, 3.655);
+      P.add('hullGlass', markVehicleNightLens(cylZ(0.045, 0.02, 10), 'headlight'), s * 1.18, 1.42, 3.655);
     }
     P.add('hullDetail', box(0.16, 0.12, 0.16), 0, 0.72, 3.62);
     P.add('hullDetail', torus(0.07, 0.018, 10), 0, 0.72, 3.72, Math.PI / 2, 0, 0);

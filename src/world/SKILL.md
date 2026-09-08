@@ -72,6 +72,11 @@ Terrain position/normal buffers remain chunk-local, but identical LOD topology
 must share one Uint16 index attribute per resolution within each world.
 Register off-tree streamed LOD geometries with the world root's retained
 resource lifetime so cache eviction can dispose them.
+The same ownership declaration must cover shader-only textures, custom depth
+materials, empty CSM-registered buckets and inactive grass LOD variants. GPU
+suspension preserves reusable CPU data; final eviction also releases external
+destruction callbacks via the world's disposer. Register those callbacks only
+after complete assembly, and make disposal identity-safe across same-ID rebuilds.
 Use the warmed one-metre height cache for live non-authoring presentation. Keep
 the analytic sampler for deterministic captures and construction receipts.
 Deferred grass may prepare only a half-chunk beyond its unchanged fade band;
@@ -83,7 +88,7 @@ interface rather than recreating activation order or retaining parallel map IDs.
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Identify the canonical height/collision source, add a focused world selftest,
-then inspect all twenty maps and constrained-device frame metrics. Regenerate
+then inspect every registered map and constrained-device frame metrics. Regenerate
 the server collision manifest after changing authored obstacles or cover.
 
 ## Gotchas

@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { addConnectedExterior } from './exteriorDetailKit.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+import { ensureWorldNightEmissionMask, markWorldAperture, markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 import {
   certifyGroundedStructureParts,
   certifyStructureAttachments,
@@ -154,11 +155,12 @@ function slab(w: number, h: number, d: number, uv = 0.45): THREE.BoxGeometry {
   return geo;
 }
 
-function facadePanel(w: number, h: number, face: FacadeFace = 'front'): THREE.PlaneGeometry {
+function facadePanel(w: number, h: number, face: FacadeFace = 'front', bucket = 'glass'): THREE.PlaneGeometry {
   // Window bays only need a camera-facing skin: the surrounding mullions and
   // transfer ledges provide the physical reveal. Two-triangle panels preserve
   // the richer facade at one sixth the raster/merge cost of tiny boxes.
   const geo = scaleUV(new THREE.PlaneGeometry(w, h), w * 0.88, h * 0.88);
+  markWorldWindowPane(geo, bucket, [0, 0, 1]);
   if (face === 'back') geo.rotateY(Math.PI);
   else if (face === 'right') geo.rotateY(Math.PI / 2);
   else if (face === 'left') geo.rotateY(-Math.PI / 2);
@@ -248,7 +250,7 @@ function mergeConnectedStructure(id: string, parts: THREE.BufferGeometry[]): THR
   for (const part of parts) {
     if (part.userData.roofPlanePitch) roofPlanePitches.push(auditRoofPlanePitch(part));
   }
-  const geometry = merge(parts);
+  const geometry = merge(parts.map(ensureWorldNightEmissionMask));
   geometry.userData.structureConnectivity = connectivity;
   geometry.userData.roofPlanePitches = roofPlanePitches;
   geometry.userData.skillionRoofPitches = roofPlanePitches
@@ -439,29 +441,32 @@ function addWindow(
   face: 'x' | 'z' = 'z',
   wide = 0.9,
   tall = 1.15,
+  frameBucket: 'stone' | 'wood' = 'stone',
 ): void {
   const pane = face === 'z' ? box(wide, tall, 0.06) : box(0.06, tall, wide);
   const sill = face === 'z' ? box(wide + 0.18, 0.10, 0.16) : box(0.16, 0.10, wide + 0.18);
   const lit = Math.abs(Math.round(x * 17 + y * 11 + z * 7)) % 5 === 0;
-  out[lit ? 'curtain' : 'glass'].push(pane.translate(x, y, z));
-  out.stone.push(sill.translate(x, y - tall / 2 - 0.08, z));
+  const bucket = lit ? 'curtain' : 'glass';
+  markWorldWindowPane(pane, bucket, face === 'z' ? [0, 0, Math.sign(z)] : [Math.sign(x), 0, 0]);
+  out[bucket].push(pane.translate(x, y, z));
+  out[frameBucket].push(sill.translate(x, y - tall / 2 - 0.08, z));
   // Full recessed surround: the former pane+sill treatment read as a flat
   // dark sticker at street distance. Jambs, lintel and divided glazing reuse
   // the already-required stone bucket, so every facade gains real silhouette
   // depth without activating another material or texture family.
   const jambH = tall + 0.22;
   if (face === 'z') {
-    out.stone.push(detailUv(box(0.11, jambH, 0.13).translate(x - wide / 2 - 0.07, y, z + 0.01)));
-    out.stone.push(detailUv(box(0.11, jambH, 0.13).translate(x + wide / 2 + 0.07, y, z + 0.01)));
-    out.stone.push(detailUv(box(wide + 0.32, 0.12, 0.15).translate(x, y + tall / 2 + 0.08, z + 0.01)));
-    out.stone.push(detailUv(box(0.055, tall - 0.08, 0.09).translate(x, y, z + 0.055)));
-    out.stone.push(detailUv(box(wide - 0.06, 0.055, 0.09).translate(x, y, z + 0.055)));
+    out[frameBucket].push(detailUv(box(0.11, jambH, 0.13).translate(x - wide / 2 - 0.07, y, z + 0.01)));
+    out[frameBucket].push(detailUv(box(0.11, jambH, 0.13).translate(x + wide / 2 + 0.07, y, z + 0.01)));
+    out[frameBucket].push(detailUv(box(wide + 0.32, 0.12, 0.15).translate(x, y + tall / 2 + 0.08, z + 0.01)));
+    out[frameBucket].push(detailUv(box(0.055, tall - 0.08, 0.09).translate(x, y, z + 0.055)));
+    out[frameBucket].push(detailUv(box(wide - 0.06, 0.055, 0.09).translate(x, y, z + 0.055)));
   } else {
-    out.stone.push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z - wide / 2 - 0.07)));
-    out.stone.push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z + wide / 2 + 0.07)));
-    out.stone.push(detailUv(box(0.15, 0.12, wide + 0.32).translate(x + 0.01, y + tall / 2 + 0.08, z)));
-    out.stone.push(detailUv(box(0.09, tall - 0.08, 0.055).translate(x + 0.055, y, z)));
-    out.stone.push(detailUv(box(0.09, 0.055, wide - 0.06).translate(x + 0.055, y, z)));
+    out[frameBucket].push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z - wide / 2 - 0.07)));
+    out[frameBucket].push(detailUv(box(0.13, jambH, 0.11).translate(x + 0.01, y, z + wide / 2 + 0.07)));
+    out[frameBucket].push(detailUv(box(0.15, 0.12, wide + 0.32).translate(x + 0.01, y + tall / 2 + 0.08, z)));
+    out[frameBucket].push(detailUv(box(0.09, tall - 0.08, 0.055).translate(x + 0.055, y, z)));
+    out[frameBucket].push(detailUv(box(0.09, 0.055, wide - 0.06).translate(x + 0.055, y, z)));
   }
 }
 
@@ -555,23 +560,100 @@ export function makeFishery(rng: Rng, buckets: GeometryBuckets): StructureDimens
   return { w: w + 8.0, d: d + 4.5, h: wallH + roofH + 1.0 };
 }
 
-export function makeBathhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
-  const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
-  out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
-  out[wallBucket].push(box(w, wallH, d).translate(0, wallH / 2, 0));
-  out.roof.push(slab(w + 0.2, 0.15, d + 0.2).translate(0, wallH + 0.08, 0));
-  // Three low domes, lantern vents and an arched entry vestibule.
-  for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
-    const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
-    dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
-    out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+function bathhouseRoofPanel(
+  width: number, depth: number, heightAt: (x: number) => number,
+): THREE.BufferGeometry {
+  const geometry = new THREE.BoxGeometry(width, 0.14, depth, 2, 1, 1);
+  const position = geometry.attributes.position, normal = geometry.attributes.normal, uv = geometry.attributes.uv;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i), z = position.getZ(i), y = position.getY(i) + heightAt(x);
+    position.setY(i, y);
+    // Project actual deformed faces at the existing tiled-roof density.
+    if (Math.abs(normal.getY(i)) > 0.5) uv.setXY(i, x * 0.45, z * 0.45);
+    else if (Math.abs(normal.getX(i)) > 0.5) uv.setXY(i, z * 0.45, y * 0.45);
+    else uv.setXY(i, x * 0.45, y * 0.45);
   }
-  out[wallBucket].push(box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function bathhouseTimberGable(w: number, span: number, wallH: number, z: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(-w / 2, 0);
+  shape.lineTo(-span / 2, 0.855);
+  shape.lineTo(0, 1.625);
+  shape.lineTo(span / 2, 0.855);
+  shape.lineTo(w / 2, 0);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false });
+  geometry.translate(0, wallH, z - 0.07);
+  geometry.name = 'orchard-bathhouse-timber-gable';
+  return scaleUV(geometry, 0.5, 0.5);
+}
+
+function addTimberBathhouseRoof(out: StructureParts, w: number, d: number, wallH: number): void {
+  const span = w / 2 + 0.1;
+  const ridge = slab(0.28, 0.16, d + 0.2).translate(0, wallH + 1.705, 0);
+  ridge.name = 'orchard-bathhouse-ridge';
+  out.roof.push(ridge);
+  for (const side of [1, -1]) {
+    const roof = bathhouseRoofPanel(span, d + 0.2, x => {
+      const t = (x + span / 2) / span;
+      return wallH + 0.025 + 1.6 * (1 - t) + 0.12 * t * (1 - t);
+    });
+    roof.translate(span / 2, 0, 0);
+    if (side < 0) roof.rotateY(Math.PI);
+    roof.name = 'orchard-bathhouse-swept-roof';
+    out.roof.push(roof);
+  }
+  const canopy = bathhouseRoofPanel(4.2, 2.12, x => 3.78 + 0.58 * (1 - Math.abs(x) / 2.1));
+  canopy.translate(0, 0, d / 2 + 0.86);
+  canopy.name = 'orchard-bathhouse-entry-roof';
+  out.roof.push(canopy);
+  out.wood.push(bathhouseTimberGable(w, span, wallH, d / 2),
+    bathhouseTimberGable(w, span, wallH, -d / 2));
+  // The existing grounded vestibule carries two short exposed canopy braces.
+  // Keep them above the tank-contact band; its original footprint is intact.
+  const braces = [-1, 1].map(side => box(0.22, 1.14, 0.18).translate(side * 1.82, 3.27, d / 2 + 1.87));
+  const entry = mergeGeometries(braces, false);
+  if (!entry) throw new Error('Orchard bathhouse entry could not be merged');
+  for (const brace of braces) brace.dispose();
+  entry.name = 'orchard-bathhouse-entry-braces';
+  out.wood.push(entry);
+}
+
+export function makeBathhouse(
+  rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3', style: 'domed' | 'timber' = 'domed',
+): StructureDimensions {
+  const out = parts(), w = 12.4, d = 11.0, wallH = 4.5;
+  const walls = style === 'timber' ? 'plaster' : wallBucket;
+  out.stone.push(box(w + 0.5, 1.0, d + 0.5).translate(0, 0.05, 0));
+  out[walls].push(box(w, wallH, d).translate(0, wallH / 2, 0));
+  if (style === 'timber') addTimberBathhouseRoof(out, w, d, wallH);
+  else {
+    out.roof.push(slab(w + 0.2, 0.15, d + 0.2).translate(0, wallH + 0.08, 0));
+    // Three low domes, lantern vents and an arched entry vestibule.
+    for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
+      const dome = new THREE.SphereGeometry(r, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2);
+      dome.scale(1, 0.58, 1); dome.translate(x, wallH, z); out.roof.push(dome);
+      out.dark.push(cylinder(0.22, 0.28, 0.65, 8).translate(x, wallH + r * 0.58 + 0.25, z));
+    }
+  }
+  const vestibule = box(4.0, 3.8, 2.0).translate(0, 1.9, d / 2 + 0.9);
+  out[walls].push(vestibule);
   out.dark.push(box(1.6, 2.7, 0.10).translate(0, 1.35, d / 2 + 1.92));
-  for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25);
-  addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3 });
+  for (const x of [-4.0, 4.0]) addWindow(out, x, 2.25, d / 2 + 0.04, 'z', 0.7, 1.25,
+    style === 'timber' ? 'wood' : 'stone');
+  addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3,
+    bathhouseStyle: style === 'timber' ? 'timber' : undefined,
+    timberBathhouseEntry: style === 'timber' ? vestibule : undefined });
   finish(buckets, out);
   return { w: w + 0.5, d: d + 2.2, h: wallH + 3.2 };
+}
+
+/** Explicit map variant, not an extra catalog family or a material-name signal. */
+export function makeTimberBathhouse(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
+  return makeBathhouse(rng, buckets, wallBucket, 'timber');
 }
 
 export function makeCaravanserai(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster'): StructureDimensions {
@@ -678,7 +760,7 @@ function addTowerFacadeGrid(out: StructureParts, {
     for (let bay = 0; bay < bays; bay++) {
       const bx = x - w / 2 + bayW * (bay + 0.5);
       const bucket = alternateLit && (floor * 3 + bay * 5) % 13 === 0 ? 'curtain' : 'glass';
-      out[bucket].push(facadePanel(bayW * 0.72, 1.18, 'front')
+      out[bucket].push(facadePanel(bayW * 0.72, 1.18, 'front', bucket)
         .translate(bx, y, z + d / 2 + 0.055));
       out.glass.push(facadePanel(bayW * 0.72, 1.18, 'back')
         .translate(bx, y, z - d / 2 - 0.055));
@@ -686,7 +768,7 @@ function addTowerFacadeGrid(out: StructureParts, {
     for (let bay = 0; bay < sideBays; bay++) {
       const bz = z - d / 2 + sideBayW * (bay + 0.5);
       const bucket = alternateLit && (floor * 7 + bay * 3) % 17 === 0 ? 'curtain' : 'glass';
-      out[bucket].push(facadePanel(sideBayW * 0.70, 1.18, 'right')
+      out[bucket].push(facadePanel(sideBayW * 0.70, 1.18, 'right', bucket)
         .translate(x + w / 2 + 0.055, y, bz));
       out.glass.push(facadePanel(sideBayW * 0.70, 1.18, 'left')
         .translate(x - w / 2 - 0.055, y, bz));
@@ -749,7 +831,7 @@ function addConnectedCrown(out: StructureParts, {
     }
     out.dark.push(cylinder(0.10, 0.13, 4.6, 8)
       .translate(x, mastBase + mastH + 2.25, z));
-    out.curtain.push(cylinder(0.24, 0.24, 0.26, 10)
+    out.curtain.push(markWorldBeacon(cylinder(0.24, 0.24, 0.26, 10))
       .translate(x, mastBase + mastH + 4.5, z));
     return mastBase + mastH + 4.65;
   }
@@ -800,7 +882,7 @@ function addConnectedCrown(out: StructureParts, {
     { style: 'needle', role: 'needle', centerX: x, centerZ: z },
   ));
   out.dark.push(cylinder(0.085, 0.12, 4.0, 8).translate(x, cursor + 9.38, z));
-  out.curtain.push(cylinder(0.22, 0.22, 0.22, 10).translate(x, cursor + 11.28, z));
+  out.curtain.push(markWorldBeacon(cylinder(0.22, 0.22, 0.22, 10)).translate(x, cursor + 11.28, z));
   return cursor + 11.4;
 }
 
@@ -1100,7 +1182,10 @@ export const STRUCTURE_BUILDERS: Record<string, StructureBuilder> = {
 // -------------------------------------------------------------------------
 
 const PAL = {
-  timber: [0x4b3222, 0x74523a, 0x25221f],
+  // Weathered bare timber, not charred wood. These are authored sRGB values;
+  // the former roof/side palette had only ~2–4% linear reflectance and lost
+  // its panel detail in shade even with correctly bounded normal maps.
+  timber: [0x806550, 0xa48a68, 0x514b43],
   paleWood: [0x76634b, 0x9a8768, 0x3a332b],
   canvas: [0x95866a, 0xb7ab8d, 0x605b4d],
   khaki: [0x596044, 0x78805c, 0x2e3529],
@@ -1172,7 +1257,8 @@ function addGableWindows(
     const width = w * 0.17;
     const height = wallH * 0.34;
     const y = y0 + wallH * 0.58;
-    colored(out, box(width, height, 0.06).translate(x, y, d / 2 + 0.05), 0x52656a, rng, 0.04);
+    colored(out, markWorldAperture(box(width, height, 0.06), [0, 0, 1])
+      .translate(x, y, d / 2 + 0.05), 0x52656a, rng, 0.04);
     for (const side of [-1, 1]) colored(out,
       box(0.065, height + 0.16, 0.09).translate(x + side * (width / 2 + 0.045), y, d / 2 + 0.09), trim, _detailRng);
     for (const side of [-1, 1]) colored(out,
@@ -1294,7 +1380,7 @@ function debris(
   const service = box(0.12, 0.62, 0.86);
   service.rotateZ(Math.PI / 2 - 0.16);
   colored(out, service.translate(-meta.hw * 0.42, 0.22, meta.hl * 0.28), dark, rng, 0.08);
-  return merge(out);
+  return merge(out.map(ensureWorldNightEmissionMask));
 }
 
 function makeFieldHut(rng: Rng): THREE.BufferGeometry {
@@ -1415,8 +1501,10 @@ function makeGuardPost(rng: Rng): THREE.BufferGeometry {
   const out: THREE.BufferGeometry[] = [], p = PAL.steel, y0 = 1.2;
   colored(out, box(3.2, 2.6, 3.2).translate(0, y0 + 1.3, 0), p[0], rng);
   for (const side of [-1, 1]) {
-    colored(out, box(2.2, 0.65, 0.08).translate(0, y0 + 1.65, side * 1.64), 0x73909a, rng);
-    colored(out, box(0.08, 0.65, 2.2).translate(side * 1.64, y0 + 1.65, 0), 0x73909a, rng);
+    colored(out, markWorldAperture(box(2.2, 0.65, 0.08), [0, 0, side])
+      .translate(0, y0 + 1.65, side * 1.64), 0x73909a, rng);
+    colored(out, markWorldAperture(box(0.08, 0.65, 2.2), [side, 0, 0])
+      .translate(side * 1.64, y0 + 1.65, 0), 0x73909a, rng);
   }
   colored(out, slab(3.9, 0.16, 3.9).translate(0, y0 + 2.72, 0), p[2], rng);
   for (const x of [-1.2, 1.2]) for (const z of [-1.2, 1.2]) colored(out, box(0.18, y0, 0.18).translate(x, y0 / 2, z), p[2], rng);
@@ -1450,7 +1538,8 @@ function makeQuonsetHut(rng: Rng): THREE.BufferGeometry {
     const rib = archShell(w + 0.12, h + 0.08, 0.08); rib.translate(0, 0, z); colored(out, rib, p[1], rng, 0.04);
   }
   colored(out, box(3.5, 3.0, 0.10).translate(0, 1.5, d / 2 + 0.06), p[2], rng);
-  for (const x of [-2.2, 2.2]) colored(out, box(0.65, 0.9, 0.08).translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
+  for (const x of [-2.2, 2.2]) colored(out, markWorldAperture(box(0.65, 0.9, 0.08), [0, 0, 1])
+    .translate(x, 1.9, d / 2 + 0.12), 0x6f8790, rng);
   return mergeConnectedStructure('quonsethut', out);
 }
 
@@ -1473,7 +1562,8 @@ function makeCheckpointHut(rng: Rng): THREE.BufferGeometry {
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, pitchRoofPlane(slab(w + 0.7, 0.16, d + 1.1), 'x', -1, 0.08, 'skillion')
     .translate(0, h + 0.08, 0), p[2], rng);
-  for (const side of [-1, 1]) colored(out, box(0.08, 1.0, 2.7).translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
+  for (const side of [-1, 1]) colored(out, markWorldAperture(box(0.08, 1.0, 2.7), [side, 0, 0])
+    .translate(side * (w / 2 + 0.05), 1.95, 0), 0x718b90, rng);
   colored(out, box(2.5, 0.12, 1.8).translate(0, 0.12, d / 2 + 0.85), p[1], rng);
   for (const x of [-1.0, 1.0]) colored(out, box(0.12, 2.2, 0.12).translate(x, 1.15, d / 2 + 1.55), p[2], rng);
   colored(out, pitchSkillionRoof(slab(2.8, 0.10, 2.0), 'z', 1, 0.12)
@@ -1486,7 +1576,7 @@ function makeSecurityOffice(rng: Rng): THREE.BufferGeometry {
   colored(out, box(w, h, d).translate(0, h / 2, 0), p[0], rng);
   colored(out, slab(w + 0.55, 0.24, d + 0.55).translate(0, h + 0.08, 0), p[2], rng);
   for (const side of [-1, 1]) for (const x of [-2.25, 0, 2.25]) {
-    colored(out, box(1.28, 1.25, 0.09).translate(x, 3.05, side * (d / 2 + 0.04)),
+    colored(out, markWorldAperture(box(1.28, 1.25, 0.09), [0, 0, side]).translate(x, 3.05, side * (d / 2 + 0.04)),
       side > 0 && x === 0 ? 0x9ca488 : 0x58737b, rng, 0.035);
   }
   for (const x of [-2.25, 0, 2.25]) {
@@ -1516,7 +1606,7 @@ function makeServiceGarage(rng: Rng): THREE.BufferGeometry {
     colored(out, box(3.95, 0.24, 0.22).translate(x, 3.68, d / 2 + 0.04), p[1], _detailRng);
   }
   for (const side of [-1, 1]) {
-    colored(out, box(0.10, 1.3, 2.2).translate(side * (w / 2 + 0.04), 3.05, -2.2),
+    colored(out, markWorldAperture(box(0.10, 1.3, 2.2), [side, 0, 0]).translate(side * (w / 2 + 0.04), 3.05, -2.2),
       0x58737b, rng, 0.035);
   }
   colored(out, box(2.6, 1.0, 1.45).translate(-3.25, 0.5, -d / 2 - 0.66), p[1], rng);
@@ -1546,7 +1636,7 @@ function makeRelayStation(rng: Rng): THREE.BufferGeometry {
       .translate(0, mastY + i * 1.45, 0), p[1], _detailRng);
   }
   colored(out, cylinder(0.10, 0.13, 2.7, 8).translate(0, mastY + 6.55, 0), p[2], rng);
-  colored(out, cylinder(0.28, 0.28, 0.20, 10).translate(0, mastY + 7.84, 0), 0xa66d31, rng);
+  colored(out, markWorldBeacon(cylinder(0.28, 0.28, 0.20, 10)).translate(0, mastY + 7.84, 0), 0xa66d31, rng);
   return mergeConnectedStructure('relaystation', out);
 }
 
@@ -1557,8 +1647,8 @@ function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
   for (const y of [2.25, 4.75]) {
     for (const x of [-2.65, -0.9, 0.9, 2.65]) {
       const paneColor = (Math.round(x * 10 + y * 7) % 3 === 0) ? 0xa49b7c : 0x58737b;
-      colored(out, box(1.12, 1.18, 0.09).translate(x, y, d / 2 + 0.04), paneColor, rng, 0.035);
-      colored(out, box(0.09, 1.18, 1.12).translate(w / 2 + 0.04, y, x), paneColor, rng, 0.035);
+      colored(out, markWorldAperture(box(1.12, 1.18, 0.09), [0, 0, 1]).translate(x, y, d / 2 + 0.04), paneColor, rng, 0.035);
+      colored(out, markWorldAperture(box(0.09, 1.18, 1.12), [1, 0, 0]).translate(w / 2 + 0.04, y, x), paneColor, rng, 0.035);
     }
     colored(out, box(w + 0.10, 0.18, 0.18).translate(0, y - 0.76, d / 2 + 0.04), p[1], _detailRng);
     colored(out, box(0.18, 0.18, d + 0.10).translate(w / 2 + 0.04, y - 0.76, 0), p[1], _detailRng);

@@ -147,6 +147,7 @@
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@napi-rs/canvas": "0.1.100",
     "@stryker-mutator/core": "^10.0.0",
     "@types/node": "^24.10.12",
     "@types/three": "^0.185.4",

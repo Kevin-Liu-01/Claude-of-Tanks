@@ -24,13 +24,13 @@ emitDestroyed(destroyed);
 assert.deepEqual(calls.pop(), ['destroyed', destroyed], 'destruction event identity is preserved');
 setDestroyedEventSink(null);
 
-registerWorldDestructibles({
+const releaseInactive = registerWorldDestructibles({
   key: 'inactive',
   isActive: () => false,
   sweep: () => calls.push(['inactive-sweep']),
   impact: () => calls.push(['inactive-impact']),
 });
-registerWorldDestructibles({
+const releaseOldActive = registerWorldDestructibles({
   key: 'active',
   isActive: () => true,
   sweep: (...args) => calls.push(['sweep', ...args]),
@@ -44,13 +44,22 @@ assert.deepEqual(calls, [
 ], 'only the active world receives shell traffic');
 
 calls.length = 0;
-registerWorldDestructibles({
+const releaseReplacement = registerWorldDestructibles({
   key: 'active',
   isActive: () => true,
   sweep: () => calls.push(['replacement-sweep']),
   impact: () => calls.push(['replacement-impact']),
 });
+releaseOldActive();
+releaseOldActive();
 notifyShellSweep(0, 0, 0, 1, 1, 1);
 assert.deepEqual(calls, [['replacement-sweep']], 'same-key rebuild replaces stale handlers');
+calls.length = 0;
+releaseReplacement();
+releaseInactive();
+releaseReplacement();
+notifyShellSweep(0, 0, 0, 1, 1, 1);
+notifyShellImpact(0, 0, 0, { r: 4.6, he: true });
+assert.deepEqual(calls, [], 'final eviction removes callbacks; stale and repeated disposal is safe');
 
-console.log('destructibles.selftest: provider, sink, activity, and replacement routing passed');
+console.log('destructibles.selftest: provider, sink, activity, replacement and identity-safe eviction passed');

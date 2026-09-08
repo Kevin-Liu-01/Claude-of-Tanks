@@ -523,7 +523,7 @@ function buildT72M1JaguarHullDetails(P: PolishBuilderPort): void {
     // (r-fix receipt: pods proud of the glacis at y 1.20 cost the FRONT
     // registered mask 0.28 — tucked onto the plate line they stay guarded
     // pods for the eye and mask-interior for the gate)
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.085, r: 0.038,
       shield: true, seed: 7351 + (s > 0 ? 1 : 0),
     }), s * 0.96,
@@ -1288,7 +1288,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   ruGlacisKit(P, { w: 3.30, y: 1.18, z: 2.66, eyeX: 0.96, eyeZ: 2.98,
     eyeSplit: true, hookY: 0.92, hookZ: 3.10, lights: false });
   for (const s of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.10, r: 0.042,
       shield: true, seed: 9351 + (s > 0 ? 1 : 0),
     }), s * 1.16, 1.22, 2.52, [-0.30, 0, 0]);
@@ -1822,7 +1822,7 @@ function addPL01HullFurniture(P: PolishBuilderPort, context: PL01BuildContext): 
   // r8 receipt: shields at 1.52 topped 1.81 over the 1.68 fold cols; r9
   // containment receipt: the ±1.22 seat sat mid-course in the idler sweep)
   for (const s of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.11, r: 0.040,
       shield: true, seed: 1010 + (s > 0 ? 1 : 0),
     }), s * 0.76, 1.12, 3.02, [-0.44, 0, 0]);

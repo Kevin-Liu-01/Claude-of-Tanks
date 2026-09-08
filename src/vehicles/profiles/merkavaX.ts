@@ -1,6 +1,7 @@
 // Independent first-party Merkava X constructions. Source archives are local
 // comparison inputs only; neither builder calls an earlier Merkava profile.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
@@ -189,7 +190,7 @@ function merkava3HullDetails(P: TankBuilderPort): void {
     const z=side<0?2.90:2.28;
     P.addEquipment('hullDetail',box(.24,.23,.20),side*1.55,1.575,z-MK3.center);
     P.addEquipment('hullDark',box(.19,.17,.032),side*1.55,1.575,z+.105-MK3.center);
-    P.addEquipment('hullGlass',box(.13,.11,.010),side*1.55,1.575,z+.124-MK3.center);
+    P.addEquipment('hullGlass',markVehicleNightLens(box(.13,.11,.010), 'headlight'),side*1.55,1.575,z+.124-MK3.center);
     // Rear containers have a separate overhanging cap and horizontal ribs.
     P.addEquipment('hullDetail',box(.7399,.5649,.4767),side*.73815,1.22325+MK3.ground,-3.91415-MK3.center);
     P.addEquipment('hullDetail',box(.7781,.1323,.515),side*.75655,1.52955+MK3.ground,-3.9305-MK3.center);
@@ -359,7 +360,7 @@ function merkava4HullDetails(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',cylX(.020,.117,16),side*.970,1.185,3.322);
     P.addEquipment('hullDetail',torus(.044,.0145,16,8),side*.970,1.1925,3.373,0,Math.PI/2);
     P.addEquipment('hullDark',box(.24,.15,.07),side*1.48,1.414,2.80);
-    P.addEquipment('hullGlass',box(.17,.082,.010),side*1.48,1.420,2.840);
+    P.addEquipment('hullGlass',markVehicleNightLens(box(.17,.082,.010), 'headlight'),side*1.48,1.420,2.840);
     P.addEquipment('hullDetail',box(.125,.025,.23),side*1.80,1.199,3.20);
     P.addEquipment('hullDetail',box(.025,.055,.15),side*1.773,1.220,3.16);
     P.addEquipment('hullDetail',cylY(.028,.1999,12),side*1.8237,1.30635,3.2452);

@@ -18,6 +18,10 @@ import {
 } from './factoryGeometry.ts';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
+import {
+  markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
+  transferVehicleNightLenses, finalizeVehicleNightLighting,
+} from './vehicleNightLighting.ts';
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';
 import { suspensionPatternFor } from './suspensionPatterns.ts';
@@ -5303,10 +5307,13 @@ function headlight(
   z: number,
   rx = 0,
   r = 0.055,
+  nightLight = true,
 ): void {
   const P = requireGeometryAddPort(builder);
   P.add('hullDetail', cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
-  P.add('hullGlass', xform(cylZ(r * 0.8, 0.02, 12), 0, 0, r * 0.72), x, y, z, rx, 0, 0);
+  const lens = cylZ(r * 0.8, 0.02, 12);
+  if (nightLight) markVehicleNightLens(lens, 'headlight');
+  P.add('hullGlass', xform(lens, 0, 0, r * 0.72), x, y, z, rx, 0, 0);
   P.add('hullDark', xform(box(0.02, r * 2.3, 0.02), 0, 0, r * 0.5), x, y, z, rx, 0, 0); // brush guard rib
 }
 
@@ -6778,7 +6785,7 @@ function buildM1A2(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.16, 0.08, 0.05), s * 1.45, 1.12, -3.99);            // taillights
     P.add('hullDark', box(0.2, 0.09, 0.09), s * 1.35, 1.18, 2.98);              // headlight clusters
-    P.add('hullGlass', box(0.16, 0.06, 0.02), s * 1.35, 1.18, 3.032);           // lens strip
+    P.add('hullGlass', markVehicleNightLens(box(0.16, 0.06, 0.02), 'headlight'), s * 1.35, 1.18, 3.032); // lens strip
     P.add('hullDetail', torus(0.05, 0.016, 12), s * 1.1, 1.44, 1.9);            // lifting eyes
     liftEye(P, 'hullDetail', s * 1.5, 1.49, -2.6);
   }
@@ -7284,7 +7291,7 @@ function buildLeo2A7DeckFixtures(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.30, 0.10, 0.18), s * 1.45, 1.72, 2.28, -0.15, 0, 0);
     P.add('hullDark', box(0.24, 0.05, 0.06), s * 1.45, 1.735, 2.36, -0.15, 0, 0);
-    P.add('hullGlass', box(0.07, 0.035, 0.02), s * 1.52, 1.74, 2.40, -0.15, 0, 0);
+    P.add('hullGlass', markVehicleNightLens(box(0.07, 0.035, 0.02), 'headlight'), s * 1.52, 1.74, 2.40, -0.15, 0, 0);
     P.add('hullDetail', box(0.02, 0.10, 0.20), s * (1.45 - 0.17), 1.75, 2.30, -0.15, 0, 0); // guard rib
     P.add('hullDetail', box(0.02, 0.10, 0.20), s * (1.45 + 0.17), 1.75, 2.30, -0.15, 0, 0);
   }
@@ -10131,6 +10138,7 @@ export function createTank(
     if (!list.length) return;
     const [parentKey, matKey] = BUCKET_DEF[bucket];
     const authoredRanges = authoredRangesFor(list);
+    prepareVehicleNightLensParts(list);
     const merged = mergeAll(list);
     if (CAMO_BUCKETS.has(bucket)) {
       boxUV(merged, spec.visual.camoScale ?? 0.34);
@@ -10143,6 +10151,7 @@ export function createTank(
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
     tagMergedBucket(bucket, mesh);
+    registerVehicleNightLensMesh(mesh, list);
     const parent = mergedBucketParents[parentKey];
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
@@ -12093,6 +12102,7 @@ export function createTank(
       });
       const batchStats = batchMobileStaticChildren(mobileBatchParents, disposables,
         (sources, batch) => {
+          transferVehicleNightLenses(sources, batch);
           // Markings hide as a unit on destruction. Replace retained source
           // references with the exact merged draw so the existing wreck/reset
           // lifecycle remains byte-for-byte equivalent.
@@ -12122,6 +12132,7 @@ export function createTank(
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
+    finalizeVehicleNightLighting(root);
   };
   const createTankMarkingsStage6 = (): void => {
     createTankMarkingsStage3();

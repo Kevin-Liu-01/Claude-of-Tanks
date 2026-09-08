@@ -12,6 +12,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { requireRequestedViews, requireNativeCapture } from './map-art-guards.mjs';
 
 // Exclusive run lock (controls_gunnery r3): parallel harness instances on one
 // machine starve each other's vite/Chromium cold starts into spurious
@@ -94,6 +95,7 @@ await page.setViewport({ width, height, deviceScaleFactor: dpr });
 const consoleErrors = [];
 page.on('console', (msg) => {
   if (msg.type() === 'error' && !msg.text().includes('favicon')) consoleErrors.push(msg.text());
+  if (msg.type() === 'warn' && msg.text().includes('[sourcedTextures]')) consoleErrors.push(msg.text());
 });
 page.on('pageerror', (err) => consoleErrors.push(String(err)));
 
@@ -118,8 +120,7 @@ try {
   const views = await page.evaluate(() =>
     window.__SHOTS && Array.isArray(window.__SHOTS.views) ? window.__SHOTS.views : []
   );
-  const targets = onlyViews ? views.filter((v) => onlyViews.includes(v)) : views;
-  if (targets.length === 0) throw new Error('No screenshot views exposed via window.__SHOTS.views');
+  const targets = requireRequestedViews(views, onlyViews);
 
   if (tankId) {
     await page.evaluate(async ({ id, roster }) => {
@@ -168,17 +169,34 @@ try {
     }
     await new Promise((r) => setTimeout(r, settleMs));
     const file = `${outDir}/${view}.png`;
-    await page.screenshot({ path: file });
     const renderState = await page.evaluate(() => {
-      const canvas = window.__DEBUG.renderer.domElement;
+      const D = window.__DEBUG;
+      const canvas = D.renderer.domElement;
+      const authoredSky = D.world?.config?.sky;
       return {
         canvas: [canvas.width, canvas.height],
         renderScale: canvas.dataset.renderScale,
         dynScale: canvas.dataset.dynScale,
         postAA: canvas.dataset.postAa,
         softDepthCopies: window.__DEBUG.post.lateFx?.softDepthCopies ?? 0,
+        lighting: {
+          mapId: D.world?.config?.id ?? null,
+          authoredSun: authoredSky?.sunIntensity ?? null,
+          authoredSunColor: authoredSky?.sunColorHex ?? null,
+          authoredHemi: authoredSky?.hemiIntensity ?? null,
+          authoredExposure: authoredSky?.postExposure ?? null,
+          sun: D.lighting.csm.lights.map(light => ({
+            intensity: light.intensity, color: light.color.getHex(),
+          })),
+          hemi: D.lighting.hemi.intensity,
+          exposure: D.scene.userData.postExposure ?? null,
+          fogDensity: D.scene.fog?.density ?? null,
+        },
       };
     });
+    requireNativeCapture(renderState, width, height, dpr, dynScale);
+    if (consoleErrors.length) throw new Error(`Browser errors before ${view} capture:\n${consoleErrors.join('\n')}`);
+    await page.screenshot({ path: file });
     console.log(`[shots] state ${view} ${JSON.stringify(renderState)}`);
     // tank_models r3: fail instead of shipping an empty turntable.
     if (view === 'garage') {

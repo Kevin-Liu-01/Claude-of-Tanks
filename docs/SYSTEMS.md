@@ -630,7 +630,7 @@ The browser world exposes:
 - destructible registration and revision;
 - map dressing, sky, lighting, and minimap data.
 
-The dedicated service inflates server/world-collision-manifests.json so it can
+The dedicated service inflates per-map shards from server/world-collision-manifests/ so it can
 run collision without WebGL or DOM dependencies. The manifest and browser
 world must describe matching obstacles and destructible identifiers.
 
@@ -664,7 +664,7 @@ recesses, courtyards, bays, and underpasses as exact compound shapes. One compou
 remains one broad-phase record; the allocation-free movement, navigation,
 raycast, loose-prop, and headless paths inspect its authored parts only in the
 narrow phase. Dedicated authority consumes the identical version-2 nested shape
-format from the packed 20-map collision manifest.
+format from the packed 30-map collision manifest.
 
 `structureCollision.selftest.mjs` builds all 111 heavyweight, site, small-building,
 blocking-item, and sourced structure families across deterministic variants and

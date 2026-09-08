@@ -8,6 +8,7 @@
 // is the matte vertex-colored bucket (containers, tar decks).
 
 import * as THREE from 'three';
+import { markWorldLantern } from '../worldNightEmissionGeometry.ts';
 import {
   box, gablePrism as createGablePrism, jitterUV, pitchRoofPlane, scaleUV,
 } from '../propGeometry.ts';
@@ -355,6 +356,7 @@ export function makeLighthouse(
   // lantern: glass drum + red cap
   const lant = new THREE.CylinderGeometry(1.0, 1.0, 1.5, 10, 1);
   lant.translate(0, 1.1 + towH + 0.95, 0);
+  if (buckets.glass) markWorldLantern(lant);
   (buckets.glass || buckets.dark).push(lant);
   const cap = new THREE.ConeGeometry(1.25, 1.0, 10, 1);
   cap.translate(0, 1.1 + towH + 2.1, 0);

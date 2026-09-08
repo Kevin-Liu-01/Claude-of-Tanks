@@ -1,6 +1,7 @@
 // Independent first-party T-72B3M (2022) construction from scalar source
 // measurements. No source topology, source loading, or donor builder calls.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
@@ -112,7 +113,7 @@ function deckEquipment(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',cylY(.374,.043,32),-.079,1.540,1.720);
   P.addEquipment('hullDark',box(.39,.027,.085),.002,1.491,2.03);
   for(const x of [-.863,.868]){
-    P.addEquipment('hullDetail',cylZ(.076,.105,24),x,1.318,2.999);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.076,.105,24),'headlight'),x,1.318,2.999);
     for(const dx of [-.118,.118])P.addEquipment('hullDetail',beamBetween([x+dx,1.12,3.007],[x+dx,1.38,2.85],.009));
   }
   for(const x of [-.193,.596])for(let i=0;i<8;i++)P.addEquipment('hullDetail',box(.061,.012,.24),x-.315+i*.089,1.542,-3.214,.244);

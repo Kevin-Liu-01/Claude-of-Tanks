@@ -63,6 +63,7 @@ const runtimeOptions = {
   },
   awaitInitialCloudWarm: async () => events.push(['initialClouds']),
   applySkyPreset: (skyConfig) => events.push(['sky', skyConfig.preset]),
+  applySkyPresentation: (skyConfig) => events.push(['skyPresentation', skyConfig.preset]),
   setSun: (skyConfig) => events.push(['sun', skyConfig.preset]),
   getFogDensity: () => 0.0012,
   onFogDensityChanged: (density) => events.push(['fog', density]),
@@ -102,7 +103,7 @@ assert.deepEqual(runtime.raycast('o', 'd', 5), {
   origin: 'o', direction: 'd', maxDistance: 5, mapId: 'desert',
 });
 await runtime.queueMinimap();
-assert.deepEqual(minimapUrls.at(-1), ['desert', '/game/minimaps/desert.webp?v=north-up-v5']);
+assert.deepEqual(minimapUrls.at(-1), ['desert', '/game/minimaps/desert.webp?v=north-up-v7']);
 assert.ok(events.some(([kind, preset]) => kind === 'sky' && preset === 'desert'));
 assert.ok(!events.some(([kind]) => kind === 'compile'), 'fast activation skips pre-atmosphere programs');
 assert.ok(!events.some(([kind]) => kind === 'shadow'), 'fast activation skips exhaustive shadow warm');
@@ -133,6 +134,31 @@ runtime.setPendingMapId('winter');
 assert.equal(runtime.pendingMapId, 'winter');
 runtime.enforceCacheBudget();
 assert.equal(coordinator.enforceCacheBudgetCalls, 4);
+
+const bakedSkies = events.filter(([kind]) => kind === 'sky').length;
+runtime.setDormant(true);
+runtime.invalidateSkyPresentation(); // the Garage now shows another map's sky
+runtime.setDormant(false);
+assert.deepEqual(events.slice(-4), [
+  ['skyPresentation', 'desert'], ['fog', 0.0012], ['sun', 'desert'],
+  ['dormant', cachedWorld.group, true],
+], 'resuming the same battlefield restores its atmosphere before revealing it');
+assert.equal(events.filter(([kind]) => kind === 'sky').length, bakedSkies,
+  'restoring a Garage-overridden sky must reuse the existing battlefield PMREM');
+const afterRestore = events.length;
+runtime.setDormant(false);
+assert.equal(events.length, afterRestore, 'an unchanged live sky does no repeated work');
+runtime.invalidateSkyPresentation();
+runtime.activate(cachedWorld, { services: false });
+assert.equal(events.filter(([kind]) => kind === 'skyPresentation').length, 2,
+  'covered same-map activation also restores the Garage-overridden atmosphere');
+runtime.invalidateSkyPresentation();
+runtime.activate(builtWorld, { services: false });
+assert.equal(events.filter(([kind]) => kind === 'sky').length, bakedSkies + 1,
+  'changing battlefield still bakes its new environment exactly once');
+runtime.setDormant(false);
+assert.equal(events.filter(([kind]) => kind === 'skyPresentation').length, 2,
+  'a full sky activation clears the old presentation invalidation');
 
 function deferred() {
   let resolve;
@@ -266,4 +292,4 @@ assert.deepEqual(unreadable.traces.at(-1).error, {
   name: 'Error', message: 'Unprintable activation error',
 });
 
-console.log('worldActivationRuntime.selftest: activation, services, warm, dormancy, partial and failure traces passed');
+console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, partial and failure traces passed');

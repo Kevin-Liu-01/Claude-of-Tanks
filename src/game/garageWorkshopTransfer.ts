@@ -76,9 +76,9 @@ function bufferAttribute(source: NonNullable<AttributeWire>): THREE.BufferAttrib
   return new THREE.BufferAttribute(source.array, source.itemSize, source.normalized);
 }
 
-function instancedAttribute(source: NonNullable<AttributeWire>): THREE.InstancedBufferAttribute {
-  // A cast of BufferAttribute does not set Three's runtime instancing flag.
-  // Without it, matrix/color inputs advance per vertex and overrun buffers.
+function instancedBufferAttribute(source: NonNullable<AttributeWire>): THREE.InstancedBufferAttribute {
+  // The runtime type owns Three's vertexAttribDivisor; a type assertion on an
+  // ordinary BufferAttribute consumes one matrix/color per vertex and overruns buffers.
   return new THREE.InstancedBufferAttribute(source.array, source.itemSize, source.normalized);
 }
 
@@ -174,8 +174,8 @@ function rebuildNodeObject(
       resolvedMaterials.length === 1 ? resolvedMaterials[0] : resolvedMaterials,
       source.count,
     );
-    if (source.instanceMatrix) mesh.instanceMatrix = instancedAttribute(source.instanceMatrix);
-    if (source.instanceColor) mesh.instanceColor = instancedAttribute(source.instanceColor);
+    if (source.instanceMatrix) mesh.instanceMatrix = instancedBufferAttribute(source.instanceMatrix);
+    if (source.instanceColor) mesh.instanceColor = instancedBufferAttribute(source.instanceColor);
     object = mesh;
   } else if (source.kind === 'mesh') {
     object = new THREE.Mesh(

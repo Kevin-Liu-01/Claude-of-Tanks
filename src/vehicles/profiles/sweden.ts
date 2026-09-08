@@ -248,7 +248,7 @@ function addStrv81Package(P: SwedishBuilderPort): void {
     P.add('turretGlass', box(0.092, 0.022, 0.014), x, 0.956, z + 0.035, 0, ry, 0);
   }
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.14, r: 0.050,
       shield: true, seed: 8135 + (side > 0 ? 1 : 0),
     }), side * 0.78, 1.47, 3.06);
@@ -578,7 +578,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
       P.add('hullDetail', box(0.86, 0.028, 0.035), side * 0.49, 1.65,
         -2.02 + i * 0.105);
     }
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.12, r: 0.050,
       shield: true, seed: 300 + (side > 0 ? 1 : 0),
     }), side * 1.02, 1.38, 2.62);
@@ -833,7 +833,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
 
   // ---- A-era lamps + fixed Ksp 58 fender box (left) — family MG identity.
   for (const s of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.13, r: 0.048,
       shield: false, seed: 10450 + (s > 0 ? 1 : 0),
     }), s * 1.22, 1.56, 3.24);                                                // plain A-era pods

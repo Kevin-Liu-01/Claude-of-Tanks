@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -110,6 +111,8 @@ interface AbramsHullConfig {
   readonly tipYOff?: number;
   readonly rearFlapCamo?: boolean;
   readonly cleanBow?: boolean;
+  readonly authoredBowLights?: boolean;
+  readonly bowLightForwardM?: number;
   readonly noCable?: boolean;
   readonly noRearFace?: boolean;
   readonly sootZ?: number;
@@ -1500,26 +1503,28 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const glacisTopZ = g.glacisTopZ ?? noseRake[0][0];
   const noseTipY = deckAt(g, g.nose);
   const bowLightX = g.bowLightX ?? bw * 0.72;
+  const bowLightZ = g.nose + (g.bowLightForwardM ?? 0);
+  if (g.bowLightForwardM) P.hullG.userData.bowLampSeatForwardM = g.bowLightForwardM;
   const boardZ = glacisTopZ + (g.nose - glacisTopZ) * 0.30;
   const boardY = deckAt(g, boardZ);
   const abramsHullHullStage7 = (): void => {
     for (const side of [-1, 1]) {
       P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
       P.add('hullDetail', cylY(0.085 * s, 0.085 * s, 0.03, 12), side * 1.1 * s, deckAt(g, glacisTopZ - 0.5) + 0.015, glacisTopZ - 0.5);
-      P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bowLightX, noseTipY - 0.14, g.nose - 0.3);
-      headlight(P, side * bowLightX, noseTipY - 0.12, g.nose - 0.21, -0.12, 0.045 * s);
+      P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bowLightX, noseTipY - 0.14, bowLightZ - 0.3);
+      headlight(P, side * bowLightX, noseTipY - 0.12, bowLightZ - 0.21, -0.12, 0.045 * s, !g.authoredBowLights);
       // g.cleanBow (visual r2, tejas): the heavy near-black brush-guard bars +
       // shackle rings read as debris fragments scattered on the glacis at
       // critic zoom (fleet class: isu122s orange fragments). Slim scheme-tone
       // frames instead; same footprint, detail bucket.
       if (g.cleanBow) {
-        P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bowLightX - 0.11 * s), noseTipY - 0.12, g.nose - 0.24);
-        P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bowLightX + 0.11 * s), noseTipY - 0.12, g.nose - 0.24);
-        P.add('hullDetail', box(0.24 * s, 0.014, 0.13), side * bowLightX, noseTipY - 0.065, g.nose - 0.24);
+        P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bowLightX - 0.11 * s), noseTipY - 0.12, bowLightZ - 0.24);
+        P.add('hullDetail', box(0.014, 0.12 * s, 0.13), side * (bowLightX + 0.11 * s), noseTipY - 0.12, bowLightZ - 0.24);
+        P.add('hullDetail', box(0.24 * s, 0.014, 0.13), side * bowLightX, noseTipY - 0.065, bowLightZ - 0.24);
       } else {
-        P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX - 0.12 * s), noseTipY - 0.12, g.nose - 0.24);
-        P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX + 0.12 * s), noseTipY - 0.12, g.nose - 0.24);
-        P.add('hullDark', box(0.26 * s, 0.02, 0.15), side * bowLightX, noseTipY - 0.06, g.nose - 0.24);
+        P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX - 0.12 * s), noseTipY - 0.12, bowLightZ - 0.24);
+        P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX + 0.12 * s), noseTipY - 0.12, bowLightZ - 0.24);
+        P.add('hullDark', box(0.26 * s, 0.02, 0.15), side * bowLightX, noseTipY - 0.06, bowLightZ - 0.24);
       }
       P.add('hullDetail', torus(0.05 * s, 0.015, 12), side * 1.05 * s, boardY - 0.06, boardZ - 0.22, Math.PI / 2, 0, 0);
       const toeY = lineAt(noseRake, bowZ + (g.nose - bowZ) * 0.35);
@@ -1996,6 +2001,9 @@ const TEJAS_HULL: AbramsHullConfig = {
   // no glacis cable, rear-face kit authored on the visible walls, soot on
   // the visible -3.937 plane (the default rearZ+0.012 sat inside the loft).
   rearFlapCamo: true, cleanBow: true, noCable: true, noRearFace: true,
+  // This family's rebuilt nose encloses the inherited drums. Its visible
+  // forward pod lenses below own lighting; retain the old geometry unlit.
+  authoredBowLights: true,
   sootZ: -3.9405,
   // Visual r5 fleet law: skirt seam/clip/trim ink -> hullShadow mid-tier.
   softSeams: true,
@@ -2138,6 +2146,10 @@ export function buildM1A1BareHull(builder: RuntimeValue, {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
+    // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
+    // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.
+    authoredBowLights: false,
+    bowLightForwardM: 0.150,
     returnRollerZs,
     returnTrackTopY,
     returnRollerR,
@@ -4193,7 +4205,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
     // in the body classification for hullLengthM)
     for (const side of [-1, 1]) {
       P.add('hull', box(0.09, 0.14, 0.058), side * 1.05, 1.27, 3.906);
-      P.add('hullDark', box(0.07, 0.12, 0.02), side * 1.05, 1.27, 3.928);
+      P.add('hullDark', markVehicleNightLens(box(0.07, 0.12, 0.02), 'headlight'), side * 1.05, 1.27, 3.928);
     }
     // Tail plan mid-step: ref rear runs -3.94 (|x|<=0.95) / -3.83 (to ±1.06) /
     // -3.635 full width; the tailPull loft carries the first and third, this
@@ -10532,6 +10544,11 @@ function createM1A3BuildLayout() {
   });
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
+    // Exterior-to-aperture rays require 110 mm total forward travel: the
+    // previous 55 mm seat still buried both lenses in the single-sided bow.
+    // Move the whole pod/drum/guard; hull stock remains 12 mm behind the lens.
+    authoredBowLights: false,
+    bowLightForwardM: 0.110,
     bodyHalfW: 1.78,
     nose: 4.00,
     deck: [[4.00, 1.24], [3.72, 1.31], [3.30, 1.42], [2.30, 1.62],

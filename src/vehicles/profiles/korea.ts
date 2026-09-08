@@ -169,7 +169,7 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
   }
   P.add('hullDark', box(2.72, 0.055, 0.12), 0, 1.22, 3.48, -0.26, 0, 0);
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 3, spacing: 0.12, r: 0.042,
       shield: true, seed: 1010 + (side > 0 ? 1 : 0),
     }), side * 1.17, 1.48, 3.30, [-0.18, 0, 0]);

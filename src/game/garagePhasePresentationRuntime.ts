@@ -31,7 +31,8 @@ export interface GaragePhasePresentationOptions {
   garagePosition: THREE.Vector3;
   lighting: GarageLightingPort;
   sunDirection: THREE.Vector3;
-  getSkyConfig(): GarageSkyConfig;
+  getGarageSkyConfig(): GarageSkyConfig;
+  getBattleSkyConfig(): GarageSkyConfig | null;
   getGroundHeight(x: number, z: number): number;
   getPhase(): string;
   shouldReleaseGpuOnBattle(): boolean;
@@ -75,7 +76,8 @@ export function createGaragePhasePresentationRuntime({
   garagePosition,
   lighting,
   sunDirection,
-  getSkyConfig,
+  getGarageSkyConfig,
+  getBattleSkyConfig,
   getGroundHeight,
   getPhase,
   shouldReleaseGpuOnBattle,
@@ -85,7 +87,7 @@ export function createGaragePhasePresentationRuntime({
 }: GaragePhasePresentationOptions): GaragePhasePresentationRuntime {
   const required = [scene?.add, stageRoot?.removeFromParent,
     dressingRoot?.removeFromParent, lighting?.setFarCascadeDormant,
-    lighting?.setSun, getSkyConfig, getGroundHeight, getPhase,
+    lighting?.setSun, getGarageSkyConfig, getBattleSkyConfig, getGroundHeight, getPhase,
     shouldReleaseGpuOnBattle,
     posePedestal, poseCamera, restorePresentationGpu];
   if (!(garagePosition instanceof THREE.Vector3)
@@ -155,7 +157,11 @@ export function createGaragePhasePresentationRuntime({
   };
 
   const setSunTrim = (active: boolean): void => {
-    const skyConfig = getSkyConfig() || {};
+    // The selected workshop can belong to a different map from the live
+    // battle/Studio/capture. Removing its neutral key must restore that live
+    // world's light, not reapply the workshop's untrimmed preset.
+    const skyConfig = active ? getGarageSkyConfig() : getBattleSkyConfig();
+    if (!skyConfig) throw new Error('Battle lighting requires an active world sky preset');
     lighting.setSun(sunDirection, active
       ? {
           ...skyConfig,

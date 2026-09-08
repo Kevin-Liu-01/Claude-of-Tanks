@@ -330,7 +330,7 @@ const CLOUD_ANISOTROPY = 8;
 // r5: per-cloud macro opacity variation — breaks the uniform cotton-blob read
 // (each mass gets its own 0.74-1.0 alpha weight from the clustering noise).
 const CLOUD_ALPHA_VAR = 0.26;
-const CLOUD_ALT = 620; // cumulus deck altitude (m) — projection plane height
+const CLOUD_ALT = 560; // readable low cloud banks above fair-weather horizons
 const CIRRUS_ALT = 1350;
 // r6 GEOMETRY REWORK ("sky is a flat two-tone gradient — clouds only exist in
 // the top quarter of the frame, empty gradient from there to a uniform white
@@ -353,10 +353,11 @@ const CIRRUS_DOME_RADIUS = 3600;
 const CLOUD_UV_METERS = 3200; // meters per cumulus texture repeat
 const CIRRUS_UV_METERS = 5600;
 // Slant-distance haze rates (1/m): haze = 1-exp(-(t*k)^2) on the analytic
-// slant range t to the virtual deck. Cumulus: ~8% hazed overhead (30 deg),
-// ~26% at 15 deg, ~65% at 8 deg, ~93% at 5 deg — bases melt into the horizon
+// slant range t to the virtual deck. Cumulus: ~4% hazed at 30 deg,
+// ~16% at 15 deg, ~44% at 8 deg, ~77% at 5 deg — lower banks retain modeled
+// bodies while their bases melt into the horizon
 // atmosphere instead of clipping. Cirrus sits higher so its rate is slower.
-const CLOUD_HAZE_K = 0.00023;
+const CLOUD_HAZE_K = 0.00019;
 const CIRRUS_HAZE_K = 0.00010;
 // direction.y band where deck alpha melts out at the horizon line itself.
 // r5: [0.012, 0.055] → [0.007, 0.034] — the deck used to vanish ~3 deg above
@@ -416,7 +417,7 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   // slant-haze so a broken low deck stays readable at grazing elevations:
   //   winter.js suggested values — cloudAltM: 340, cloudHazeK: 0.00015,
   //   cloudUvM: 2400 (smaller masses read as broken stratus).
-  // null = AUTO: fair-weather maps keep the 620 m cumulus deck; presets that
+  // null = AUTO: fair-weather maps keep the 560 m cumulus deck; presets that
   // read as OVERCAST (both decks near-opaque + turbid sky — winter is the
   // only current match) drop to a 340 m broken-stratus deck so grazing
   // establishing cameras see modeled cloud instead of a bare grey gradient.

@@ -14,40 +14,19 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { MAP_ART_VIEWS as VIEWS, preflightMapArt } from './map-art-guards.mjs';
 
-const VIEWS = {
-  verdant: 'battlefield',
-  desert: 'battlefield_desert',
-  winter: 'battlefield_winter',
-  urban: 'battlefield_urban',
-  // maps r1 — the second four battlefields
-  coastal: 'battlefield_coastal',
-  autumn: 'battlefield_autumn',
-  steppe: 'battlefield_steppe',
-  railyard: 'battlefield_railyard',
-  frontier: 'battlefield_frontier',
-  fjord: 'battlefield_fjord',
-  delta: 'battlefield_delta',
-  badlands: 'battlefield_badlands',
-  monsoon: 'battlefield_monsoon',
-  alpine: 'battlefield_alpine',
-  caldera: 'battlefield_caldera',
-  foundry: 'battlefield_foundry',
-  ruinspires: 'battlefield_ruinspires',
-  blackglass: 'battlefield_blackglass',
-  titan_gorge: 'battlefield_titan_gorge',
-  skybridge: 'battlefield_skybridge',
-};
 const THUMB_W = 512, THUMB_H = 288;
 const HERO_W = 3840, HERO_H = 2160;
 const QUALITY = 88;
 
 const args = process.argv.slice(2);
 const onlyIx = args.indexOf('--only');
-const only = onlyIx >= 0 ? args[onlyIx + 1].split(',') : null;
+const only = onlyIx >= 0 ? (args[onlyIx + 1] || '').split(',') : null;
 const shotsIx = args.indexOf('--shots-dir');
 const shotsDir = resolve(shotsIx >= 0 ? args[shotsIx + 1] : 'shots');
 
+preflightMapArt({ only, shotsDir });
 mkdirSync(resolve('public/maps/thumbs'), { recursive: true });
 
 const entries = {};
@@ -70,8 +49,8 @@ for (const [id, view] of Object.entries(VIEWS)) {
     process.exit(1);
   }
   // Encode the selected-map hero at the exact source dimensions. The separate
-  // picker derivative prevents the twenty-card garage list from decoding or
-  // transferring twenty 4K images just to draw small previews.
+  // picker derivative prevents the map list from decoding or transferring
+  // every 4K image just to draw small previews.
   execFileSync('cwebp', ['-quiet', '-m', '6', '-sharp_yuv', '-q', String(QUALITY),
     '-resize', String(HERO_W), String(HERO_H),
     src, '-o', heroOut], { stdio: 'pipe' });

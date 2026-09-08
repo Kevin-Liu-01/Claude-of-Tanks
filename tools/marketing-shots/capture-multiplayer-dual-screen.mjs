@@ -206,12 +206,12 @@ async function createStartingRoom(authorityPage, playerPage, signalUrl, config) 
 async function startLightAuthority(authorityPage) {
   await authorityPage.evaluate(async () => {
     const state = globalThis.__COT_DUAL;
-    const [{ beginPrivateHostMatch }, { createDedicatedWorldCollision }] = await Promise.all([
+    const [{ beginPrivateHostMatch }, { createBrowserDedicatedWorldCollision }] = await Promise.all([
       import('/src/net/privateMatchHandoff.ts'),
-      import('/server/dedicatedWorldCollision.ts'),
+      import('/server/dedicatedWorldCollisionBrowser.ts'),
       import('/src/vehicles/tankFactory.ts'),
     ]);
-    state.worldCollision = createDedicatedWorldCollision(state.startingLobby.mapId);
+    state.worldCollision = await createBrowserDedicatedWorldCollision(state.startingLobby.mapId);
     state.match = beginPrivateHostMatch({
       session: state.session,
       lobbyState: state.startingLobby,

@@ -1,6 +1,7 @@
 // Independent T-90MS Tagil X source-scalar construction. No existing vehicle
 // builder, source mesh, texture, vertex table, or source rig is used at runtime.
 import * as THREE from 'three';
+import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
@@ -70,7 +71,7 @@ function glacis(P:TankBuilderPort):void{
         P.addExternalArmor('hull',markEraFurniture(box(.265,.012,.024).rotateX(.451)),x,1.442-(z-2.024)*.485,z);
       for(const x of [side*.13,side*.72])P.addExternalArmor('hull',markEraFurniture(box(.068,.029,.090).rotateX(.53)),x,1.15,2.843);
     });
-    P.addEquipment('hullDetail',cylZ(.066,.11,24),side*.774,1.108,2.858);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.066,.11,24),'headlight'),side*.774,1.108,2.858);
     for(const dx of [-.093,.093])P.addEquipment('hullDetail',beamBetween([side*.774+dx,1.015,2.874],[side*.774+dx,1.245,2.730],.008));
   }
   P.addEquipment('hullDetail',cylY(.294,.038,32).scale(1,1,.83),-.056,1.494,1.609);

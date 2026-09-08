@@ -1,24 +1,88 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { constants } from 'node:os';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createCaptureLock } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 
-const suiteName = process.argv[2];
-const suite = SELFTEST_SUITES[suiteName];
-if (!suite) {
-  console.error('Unknown self-test suite "' + (suiteName || '') + '". Expected: ' + Object.keys(SELFTEST_SUITES).join(', '));
-  process.exit(2);
+// This real browser regression owns the shared lease inside its process.
+// Other subprocess tests either remain CPU-only or reject browser CLI input
+// before acquisition. Keep those ordinary tests under the runner's lease.
+export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
+  'tools/source-dimension-frame.browser.selftest.mjs',
+]);
+
+export function runSelftestFile(file, { spawnProcess = spawn, signals = process } = {}) {
+  return new Promise((resolveResult) => {
+    const child = spawnProcess(process.execPath, [file], {
+      cwd: process.cwd(), env: process.env, stdio: 'inherit',
+    });
+    let error, interruptedBy;
+    const interrupt = () => { interruptedBy = 'SIGINT'; child.kill('SIGINT'); };
+    const terminate = () => { interruptedBy = 'SIGTERM'; child.kill('SIGTERM'); };
+    signals.once('SIGINT', interrupt);
+    signals.once('SIGTERM', terminate);
+    child.once('error', (failure) => { error = failure; });
+    child.once('close', (status, signal) => {
+      signals.removeListener('SIGINT', interrupt);
+      signals.removeListener('SIGTERM', terminate);
+      const exitSignal = interruptedBy || signal;
+      // A child may clean up and exit zero after SIGTERM. The requested suite
+      // interruption must still stop subsequent tests with the normal code.
+      resolveResult({ status: exitSignal ? 128 + constants.signals[exitSignal] : status, error });
+    });
+  });
 }
 
-console.log('[selftests] ' + suiteName + ': ' + suite.length + ' files');
-for (const file of suite) {
-  const result = spawnSync(process.execPath, [file], {
-    cwd: process.cwd(),
-    env: process.env,
-    stdio: 'inherit',
-  });
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    console.error('[selftests] FAIL ' + file);
-    process.exit(result.status ?? 1);
+export async function runSelftestSuite(suiteName, suite, {
+  runFile = runSelftestFile,
+  lock = createCaptureLock(),
+  ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES,
+  refreshMs = 30_000,
+  log = console.log,
+  logError = console.error,
+} = {}) {
+  let held = false;
+  let refresher;
+  const release = () => {
+    clearInterval(refresher);
+    if (!held) return;
+    held = false;
+    lock.release();
+  };
+  process.once('exit', release);
+  log('[selftests] ' + suiteName + ': ' + suite.length + ' files');
+  try {
+    for (const file of suite) {
+      if (ownedLeaseFiles.includes(file)) release();
+      else if (!held) {
+        await lock.acquire(45 * 60 * 1000);
+        held = true;
+        refresher = setInterval(() => lock.refresh(), refreshMs);
+        refresher.unref();
+      }
+      // Awaiting the child keeps the lease heartbeat responsive throughout
+      // full-fleet CPU tests; spawnSync could let a healthy lease go stale.
+      const result = await runFile(file);
+      if (result.error) throw result.error;
+      if (result.status !== 0) {
+        logError('[selftests] FAIL ' + file);
+        return result.status ?? 1;
+      }
+    }
+    log('[selftests] PASS ' + suiteName);
+    return 0;
+  } finally {
+    process.removeListener('exit', release);
+    release();
   }
 }
-console.log('[selftests] PASS ' + suiteName);
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const suiteName = process.argv[2];
+  const suite = SELFTEST_SUITES[suiteName];
+  if (!suite) {
+    console.error('Unknown self-test suite "' + (suiteName || '') + '". Expected: ' + Object.keys(SELFTEST_SUITES).join(', '));
+    process.exitCode = 2;
+  } else process.exitCode = await runSelftestSuite(suiteName, suite);
+}

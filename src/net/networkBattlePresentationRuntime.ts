@@ -35,7 +35,7 @@ export interface NetworkBattlePresentationRequest {
 }
 
 const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
-  'atmosphere', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
+  'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
 type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
 type NetworkRevealSlice = 'activation' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
 
@@ -182,6 +182,7 @@ export interface NetworkBattlePresentationOptions {
   };
   warm: {
     atmosphere?(initial: SampledSnapshotFrame): MaybePromise<void>;
+    nightLighting?(): MaybePromise<void>;
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
@@ -457,6 +458,9 @@ export function createNetworkBattlePresentationRuntime(
       await warm.atmosphere?.(initial);
       throwIfNetworkBattleEntryAborted(signal);
       mark('atmosphere');
+      await warm.nightLighting?.();
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('nightLighting');
 
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain(preparedBridge);

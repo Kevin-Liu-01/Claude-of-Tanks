@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import { createStudioAccess } from './studioAccess.ts';
 
 class FakeKeyTarget {
@@ -27,10 +29,11 @@ let fxCreates = 0;
 let prepares = 0;
 let enters = 0;
 let ticks = 0;
+const timing = [];
 let contextFx = null;
 const runtime = {
   active: false,
-  tick(dt) { ticks += dt; },
+  tick(dt, wallDt) { ticks += dt; timing.push([dt, wallDt]); },
   async enter() { enters += 1; this.active = true; },
 };
 
@@ -77,6 +80,9 @@ assert.equal(keys.listeners.size, 0, 'the full Studio runtime replaces lazy key 
 assert.equal(access.presentation.active, true);
 access.presentation.tick(0.25);
 assert.equal(ticks, 0.25, 'the stable composition proxy forwards to the live runtime');
+assert.deepEqual(timing.at(-1), [.25, .25], 'manual Studio callers preserve their explicit interval');
+access.presentation.tick(.1, .5);
+assert.deepEqual(timing.at(-1), [.1, .5], 'the lazy presentation proxy preserves raw timing separately');
 assert.equal(await access.loadRuntime(), runtime, 'runtime acquisition is idempotent');
 
 let attempts = 0;
@@ -96,5 +102,31 @@ const retrying = createStudioAccess({
 await assert.rejects(retrying.loadRuntime(), /transient chunk failure/);
 assert.equal(await retrying.loadRuntime(), runtime, 'failed chunk acquisition retries cleanly');
 assert.equal(attempts, 2);
+
+// Execute the real Studio tick without its DOM/UI constructor. Playback,
+// camera and post must keep bounded dt while the governor receives raw time.
+const studioSource = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
+const tickStart = studioSource.indexOf('  function tick(dt: number, frameWallDtSeconds = dt): void {');
+const tickEnd = studioSource.indexOf('\n  function urlParam(', tickStart);
+assert(tickStart >= 0 && tickEnd > tickStart);
+const tickSource = stripTypeScriptTypes(studioSource.slice(tickStart, tickEnd));
+const frameCalls = [];
+const tick = new Function('calls', `
+  let poolSweepAcc = 0, lastFov = 55, frameDirty = true;
+  const recording = null, timeScale = 1, clockMs = 0, _fwd = {};
+  const perf = { skippedFrames: 0, renderedFrames: 0 }, storyboard = { durationMs: 1000 };
+  const updateCamera = dt => { calls.push(['camera', dt]); return true; };
+  const panel = { tick: dt => calls.push(['panel', dt]) }, getWorld = () => null;
+  const camera = { fov: 55, getWorldDirection() {} }, lighting = { update() {}, updateFrustums() {} };
+  const advanceTimeline = dt => calls.push(['timeline', dt]), stepFx = () => {};
+  const sweepPool = () => {}, stopRecording = () => {}, post = { render: (...args) => calls.push(['post', ...args]) };
+  ${tickSource}
+  return tick;
+`)(frameCalls);
+tick(.1, .5);
+assert.deepEqual(frameCalls, [['camera', .1], ['panel', .1], ['timeline', 100], ['post', .1, .5]]);
+frameCalls.length = 0;
+tick(.02);
+assert.deepEqual(frameCalls.at(-1), ['post', .02, .02]);
 
 console.log('studioAccess.selftest: intent, retry, F8 ownership, and runtime proxy passed');

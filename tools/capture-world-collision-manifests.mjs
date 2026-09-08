@@ -7,15 +7,20 @@
  *   npx vite --host 127.0.0.1 --port 5197
  *   agent-browser --session cot-manifest open http://127.0.0.1:5197/
  *   node tools/capture-world-collision-manifests.mjs cot-manifest
+ *   node tools/capture-world-collision-manifests.mjs cot-manifest --maps whiteout
  */
 
 import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { MAP_IDS } from '../src/world/maps/index.ts';
+import {
+  assertUnchangedCollisionShards, collisionCaptureOptions, readCollisionCaptureEntries,
+  collisionManifestDirectory, writeCollisionManifestIndex, writeCollisionManifestShard,
+} from './worldCollisionManifestFiles.mjs';
 
-const session = process.argv[2] || 'cot-manifest';
-const outputUrl = new URL('../server/world-collision-manifests.json', import.meta.url);
+const options = collisionCaptureOptions(process.argv.slice(2));
+const { session } = options;
+const maps = options.partial ? readCollisionCaptureEntries(options.mapIds) : {};
+const CAPTURE_TIMEOUT_MS = 60_000;
 
 function evaluate(script) {
   const raw = execFileSync('agent-browser', [
@@ -23,7 +28,10 @@ function evaluate(script) {
     '--json',
     'eval',
     script,
-  ], { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
+  ], {
+    encoding: 'utf8', maxBuffer: 128 * 1024 * 1024,
+    timeout: CAPTURE_TIMEOUT_MS, killSignal: 'SIGTERM',
+  });
   const envelope = JSON.parse(raw);
   if (!envelope.success) throw new Error(envelope.error || 'browser evaluation failed');
   return envelope.data.result;
@@ -32,8 +40,8 @@ function evaluate(script) {
 const ready = evaluate('typeof window.__DEBUG === "object"');
 if (!ready) throw new Error('game debug facade is not ready in the capture browser');
 
-const maps = {};
-for (const mapId of MAP_IDS) {
+for (const mapId of options.mapIds) {
+  console.log(`capturing ${mapId} (timeout ${CAPTURE_TIMEOUT_MS / 1000}s)`);
   const script = `(async () => {
     const world = await window.__DEBUG.switchMap(${JSON.stringify(mapId)});
     const n = (value) => Math.round(value * 10000) / 10000;
@@ -69,18 +77,13 @@ for (const mapId of MAP_IDS) {
       concealers: world.getConcealment().map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
     };
   })()`;
-  maps[mapId] = evaluate(script);
-  const data = maps[mapId];
+  const data = evaluate(script);
+  maps[mapId] = writeCollisionManifestShard(mapId, data);
   console.log(`${mapId}: ${data.obstacles.length} obstacles, ` +
     `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
 }
 
-const manifest = {
-  version: 2,
-  terrainSeed: 1337,
-  propsSeed: 2002,
-  vegetationSeed: 2001,
-  maps,
-};
-writeFileSync(outputUrl, JSON.stringify(manifest));
-console.log(`wrote ${fileURLToPath(outputUrl)}`);
+if (options.partial) assertUnchangedCollisionShards(maps, options.mapIds);
+writeCollisionManifestIndex(maps);
+console.log(`captured ${options.mapIds.length} map shards; published ${Object.keys(maps).length}-map index at ` +
+  fileURLToPath(new URL('index.json', collisionManifestDirectory)));

@@ -13,7 +13,7 @@ interface LightingViewportOwner {
 interface ViewportEnvironment {
   window: Pick<Window,
     'innerWidth' | 'innerHeight' | 'addEventListener' | 'removeEventListener'
-  >;
+  > & Partial<Pick<Window, 'devicePixelRatio' | 'matchMedia'>>;
   documentElement: Element;
   ResizeObserver?: typeof ResizeObserver;
   setInterval: typeof globalThis.setInterval;
@@ -22,6 +22,8 @@ interface ViewportEnvironment {
 
 export interface ViewportRuntime {
   apply(): void;
+  /** Repair a silent density change before a visible frame; inert otherwise. */
+  syncPixelRatio(): boolean;
   dispose(): void;
   isRecovering(): boolean;
 }
@@ -47,8 +49,8 @@ function browserEnvironment(): ViewportEnvironment {
 }
 
 /**
- * Owns renderer/post/shadow viewport synchronization and the first-layout
- * recovery path for hosts that temporarily report a 0x0 viewport at boot.
+ * Owns renderer/post/shadow synchronization for layout and pixel-density
+ * changes, plus first-layout recovery for hosts reporting 0x0 at boot.
  */
 export function createViewportRuntime({
   container,
@@ -62,6 +64,10 @@ export function createViewportRuntime({
   const win = environment.window;
   let observer: ResizeObserver | null = null;
   let interval: ReturnType<typeof globalThis.setInterval> | null = null;
+  let resolutionQuery: MediaQueryList | null = null;
+  let watchedPixelRatio = win.devicePixelRatio ?? 1;
+  let lastAppliedPixelRatio = watchedPixelRatio;
+  let appliedViewport: { width: number; height: number; pixelRatio: number } | null = null;
   let disposed = false;
 
   const dimensions = () => ({
@@ -75,7 +81,57 @@ export function createViewportRuntime({
     const { width, height } = dimensions();
     post.setSize(width, height);
     lighting.updateFrustums();
+    lastAppliedPixelRatio = win.devicePixelRatio ?? 1;
+    appliedViewport = { width, height, pixelRatio: lastAppliedPixelRatio };
+    watchPixelRatio();
   };
+
+  function onViewportChange(): void {
+    if (disposed) return;
+    const { width, height } = dimensions();
+    if (width <= 0 || height <= 0) {
+      watchPixelRatio();
+      return;
+    }
+    if (appliedViewport?.width === width && appliedViewport.height === height
+      && appliedViewport.pixelRatio === (win.devicePixelRatio ?? 1)) return;
+    apply();
+  }
+
+  function onPixelRatioChange(): void {
+    // A window resize may already have applied this ratio. Ignore its queued
+    // media event (and late events from queries detached during re-arming).
+    if (disposed || (win.devicePixelRatio ?? 1) === watchedPixelRatio) return;
+    onViewportChange();
+  }
+
+  function syncPixelRatio(): boolean {
+    // Some hosts change DPR/query.matches without delivering either resize
+    // or MediaQueryList events. The normal frame path is one scalar compare:
+    // no layout reads, objects, query allocation, timers or scheduling.
+    if (disposed || (win.devicePixelRatio ?? 1) === lastAppliedPixelRatio) return false;
+    const { width, height } = dimensions();
+    if (width <= 0 || height <= 0) {
+      watchPixelRatio();
+      return false;
+    }
+    apply();
+    stopRecovery();
+    return true;
+  }
+
+  function watchPixelRatio(): void {
+    if (!win.matchMedia) return;
+    const pixelRatio = win.devicePixelRatio ?? 1;
+    if (resolutionQuery && pixelRatio === watchedPixelRatio) return;
+    resolutionQuery?.removeEventListener('change', onPixelRatioChange);
+    watchedPixelRatio = pixelRatio;
+    // DPR can change without a CSS resize when moving between displays or
+    // changing host density. Events remain the immediate path; syncPixelRatio
+    // covers silent hosts through the already-owned presentation cadence.
+    resolutionQuery = win.matchMedia(`(resolution: ${pixelRatio}dppx)`);
+    resolutionQuery.addEventListener('change', onPixelRatioChange);
+  }
 
   const stopRecovery = () => {
     observer?.disconnect();
@@ -92,7 +148,8 @@ export function createViewportRuntime({
     return true;
   };
 
-  win.addEventListener('resize', apply);
+  win.addEventListener('resize', onViewportChange);
+  watchPixelRatio();
 
   const initial = dimensions();
   if (
@@ -109,14 +166,22 @@ export function createViewportRuntime({
     }
     interval = environment.setInterval(tryRecover, 250);
     tryRecover();
+  } else {
+    // Renderer construction precedes awaited boot work. A resize in that gap
+    // may leave a positive but stale canvas before our listeners exist. Rejoin
+    // all size owners once at startup; unchanged frames still read only DPR.
+    apply();
   }
 
   return {
     apply,
+    syncPixelRatio,
     dispose() {
       if (disposed) return;
       disposed = true;
-      win.removeEventListener('resize', apply);
+      win.removeEventListener('resize', onViewportChange);
+      resolutionQuery?.removeEventListener('change', onPixelRatioChange);
+      resolutionQuery = null;
       stopRecovery();
     },
     isRecovering: () => observer !== null || interval !== null,

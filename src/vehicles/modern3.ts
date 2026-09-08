@@ -613,7 +613,7 @@ export function buildK2(P: Modern3BuilderPort) {
       P.add('hull', box(0.26, 0.13, 0.11), s * 1.36, 1.25, 3.375);             // headlight housing
       P.add('hullDetail', box(0.02, 0.15, 0.02), s * 1.27, 1.26, 3.46);
       P.add('hullDetail', box(0.02, 0.15, 0.02), s * 1.45, 1.26, 3.46);
-      const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.15, rake: -0.19, seed: 3 + s });
+      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.15, rake: -0.19, seed: 3 + s });
       lc.position.set(s * 1.36, 1.26, 3.44);
       P.hullG.add(lc);
     }
@@ -1515,7 +1515,7 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
       P.add('hull', box(0.24, 0.12, 0.10), s * 1.50, 1.305, 3.30);             // headlight housing box (critic r1)
       P.add('hullDetail', box(0.02, 0.14, 0.02), s * 1.42, 1.315, 3.38);       // brush-guard bar
       P.add('hullDetail', box(0.02, 0.14, 0.02), s * 1.58, 1.315, 3.38);
-      const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, rake: -0.11, seed: 3 + s });
+      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, rake: -0.11, seed: 3 + s });
       lc.position.set(s * 1.50, 1.315, 3.36);
       P.hullG.add(lc);
     }
@@ -1987,10 +1987,10 @@ function buildType10Native2026(
     P.add('hullDark', box(0.858, 0.0242, 0.0242), -1.221, 1.6962, 2.20);          // glacis fold line
     P.add('hullDark', box(1.738, 0.0242, 0.0242), 0.781, 1.6962, 2.20);
     {
-      const lcL = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.154, rake: -0.30, seed: 3 });
+      const lcL = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.154, rake: -0.30, seed: 3 });
       lcL.position.set(-1.408, 1.21, 3.652);
       P.hullG.add(lcL);
-      const lcR = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.154, rake: -0.30, seed: 4 });
+      const lcR = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.154, rake: -0.30, seed: 4 });
       lcR.position.set(1.408, 1.21, 3.652);
       P.hullG.add(lcR);
       const cable = FITTINGS.towCable({ mats: P.mats, r: 0.0209, seed: 7,
@@ -3175,7 +3175,7 @@ export function buildBradley(P: Modern3BuilderPort) {
       });
       P.hullG.add(cable);
       for (const s of [-1, 1]) {
-        const lamp = FITTINGS.lightCluster({
+        const lamp = FITTINGS.lightCluster({ nightKind: 'headlight',
           mats: P.mats, pods: 2, spacing: 0.16, r: 0.05, rake: -0.25, seed: s + 3,
         });
         lamp.position.set(s * 1.22, 1.16, 3.135);
@@ -4241,10 +4241,10 @@ export function buildBMP2(P: Modern3BuilderPort) {
       pts: [[-0.95, 1.50, 2.096], [-0.15, 1.38, 2.646], [0.85, 1.46, 2.306]],
     });
     P.hullG.add(cable);
-    const lampL = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.05, rake: -0.22, seed: 2 });
+    const lampL = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, r: 0.05, rake: -0.22, seed: 2 });
     lampL.position.set(-1.05, 1.415, 2.516);
     P.hullG.add(lampL);
-    const lampR = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.05, rake: -0.22, seed: 5 });
+    const lampR = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.14, r: 0.05, rake: -0.22, seed: 5 });
     lampR.position.set(1.05, 1.415, 2.516);
     P.hullG.add(lampR);
     for (const s of [-1, 1]) {
@@ -4877,7 +4877,7 @@ export function buildPuma(P: Modern3BuilderPort) {
     });
     P.hullG.add(cable);
     for (const s of [-1, 1]) {
-      const lamp = FITTINGS.lightCluster({
+      const lamp = FITTINGS.lightCluster({ nightKind: 'headlight',
         mats: P.mats, pods: 2, spacing: 0.15, r: 0.048, rake: -0.35, seed: s + 5,
       });
       lamp.position.set(s * 1.06, 1.52, 3.42);                                 // guarded clusters low on the bow
@@ -5205,7 +5205,7 @@ function buildType89Hull(P: Modern3BuilderPort) {
     });
     P.hullG.add(cable);
     for (const s of [-1, 1]) {
-      const lamp = FITTINGS.lightCluster({
+      const lamp = FITTINGS.lightCluster({ nightKind: 'headlight',
         mats: P.mats, pods: 2, spacing: 0.14, r: 0.045, rake: -0.45, seed: s + 4,
       });
       lamp.position.set(s * 1.12, 1.04, 3.16);                                 // guarded clusters low on the new

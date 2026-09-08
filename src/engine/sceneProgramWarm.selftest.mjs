@@ -432,6 +432,32 @@ test('combined preparation polls only after the final restored submission checkp
   f.assertFacadeReleased();
 });
 
+test('timed combined preparation captures existing programs before submitting new ones', () => {
+  const f = fixture({ linker: true });
+  const existing = [{ program: {} }, { program: {} }];
+  f.renderer.info.programs.push(...existing);
+  const timing = {};
+  const steps = pauseBeforeLinker(f, { timing });
+  const submitted = f.materialVisits.length;
+  assert.ok(submitted > 0, 'native compilation adds programs after the automatic baseline capture');
+  assert.equal(f.renderer.info.programs.length, existing.length + submitted);
+  assert.equal(timing.queryCount, undefined, 'baseline capture does not query readiness');
+  assert.equal(timing.programsBefore, existing.length);
+  assert.equal(timing.programsAfter, existing.length + submitted);
+  assert.equal(steps.next().done, true);
+  assert.equal(timing.existingQueryCount, existing.length,
+    'the owner retains membership from before compilation without a caller-supplied set');
+  assert.equal(timing.newQueryCount, submitted,
+    'programs added by native compilation are absent from the automatic baseline');
+  assert.equal(timing.queryCount, existing.length + submitted);
+  assert.equal(timing.queryCount, timing.existingQueryCount + timing.newQueryCount);
+  assert.equal(timing.queryMs, timing.existingQueryMs + timing.newQueryMs);
+  assert.equal(f.events.filter((event) => event === 'linkerQuery').length, timing.queryCount,
+    'cohort diagnostics issue exactly one native query per ready program');
+  f.assertUntouched();
+  f.assertFacadeReleased();
+});
+
 test('abort at the submission/linker handoff preserves the reason without any further GPU access', () => {
   const f = fixture({ linker: true });
   const controller = new AbortController();

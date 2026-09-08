@@ -18,7 +18,7 @@ const start = source.indexOf('  const D_CELL = 8;');
 const end = source.indexOf('\n  return { group, obstacles, colliders,', start);
 assert.ok(start > 0 && end > start, 'production post-build runtime boundaries exist');
 const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end)}
-return { crushDestructible, resetDestructibles, updateProps, crushAnims, pendingBlasts };
+return { crushDestructible, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
 }`);
 const runtimeBody = runtimeSource.slice(runtimeSource.indexOf('{') + 1, runtimeSource.lastIndexOf('}'));
 
@@ -94,7 +94,11 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));
+  // map.ts registers only after completed scene assembly, not during props
+  // construction. Exercise that real registration/disposal contract here too.
+  const unregisterDestructibles = runtime.registerDestructibles();
   function dispose() {
+    unregisterDestructibles();
     for (const pool of pools.values()) {
       pool.imI.geometry.dispose(); pool.imI.dispose();
       if (pool.imB) { pool.imB.geometry.dispose(); pool.imB.dispose(); }

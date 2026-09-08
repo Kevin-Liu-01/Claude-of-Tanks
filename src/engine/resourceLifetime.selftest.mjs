@@ -5,6 +5,7 @@ import {
   releaseObject3DGpuResources,
   registerRetainedObject3DResources,
   residentResourceLimits,
+  visitOwnedObject3DGeometries,
 } from './resourceLifetime.ts';
 
 assert.deepEqual(residentResourceLimits('mobile'), {
@@ -93,5 +94,51 @@ const programRetained = releaseObject3DGpuResources(suspendedRoot, {
 assert.deepEqual(programRetained,
   { objects: 2, geometries: 1, materials: 0, textures: 1 },
   'phase suspension can retain compiled programs while releasing buffers and textures');
+
+// Explicit read-only inventory uses the same live ownership declarations as
+// disposal, but must not detach, dispose or change any owner/resource state.
+const inventoryParent = new THREE.Scene(), inventoryRoot = new THREE.Group();
+inventoryParent.add(inventoryRoot);
+const inventoryGeometry = new THREE.BoxGeometry();
+const inventoryOffTree = new THREE.BoxGeometry(2, 2, 2);
+const inventoryLater = new THREE.PlaneGeometry();
+const inventoryTexture = new THREE.Texture();
+const inventoryMaterial = new THREE.MeshStandardMaterial({ map: inventoryTexture });
+const inventoryMesh = new THREE.InstancedMesh(inventoryGeometry, inventoryMaterial, 2);
+inventoryMesh.visible = false;
+inventoryRoot.add(inventoryMesh, new THREE.Mesh(inventoryGeometry, inventoryMaterial));
+const declaredGeometries = new Set([inventoryGeometry, inventoryOffTree]);
+registerRetainedObject3DResources(inventoryRoot, { geometries: declaredGeometries });
+registerRetainedObject3DResources(inventoryMesh, { geometries: [inventoryOffTree] });
+let inventoryDisposals = 0;
+for (const resource of [inventoryGeometry, inventoryOffTree, inventoryLater, inventoryMaterial, inventoryTexture, inventoryMesh]) {
+  resource.addEventListener('dispose', () => { inventoryDisposals++; });
+}
+const inventoryBefore = {
+  parent: inventoryRoot.parent, children: [...inventoryRoot.children],
+  geometry: inventoryMesh.geometry, material: inventoryMesh.material, texture: inventoryMaterial.map,
+  matrixArray: inventoryMesh.instanceMatrix.array.slice(), position: inventoryGeometry.attributes.position.array.slice(),
+  groups: JSON.stringify(inventoryGeometry.groups), visible: inventoryMesh.visible,
+};
+const firstInventory = [];
+assert.equal(visitOwnedObject3DGeometries(inventoryRoot, geometry => firstInventory.push(geometry)), 2);
+assert.deepEqual(new Set(firstInventory), new Set([inventoryGeometry, inventoryOffTree]), 'attached/declaration aliases deduplicate');
+declaredGeometries.add(inventoryLater);
+const laterInventory = [];
+assert.equal(visitOwnedObject3DGeometries(inventoryRoot, geometry => laterInventory.push(geometry)), 3);
+assert.deepEqual(new Set(laterInventory), new Set([inventoryGeometry, inventoryOffTree, inventoryLater]),
+  'streamed off-tree additions remain visible without replacing the declaration');
+assert.equal(inventoryDisposals, 0, 'inventory must never invoke mesh, geometry, material or texture disposal');
+assert.equal(inventoryRoot.parent, inventoryBefore.parent);
+assert.deepEqual(inventoryRoot.children, inventoryBefore.children);
+assert.equal(inventoryMesh.geometry, inventoryBefore.geometry);
+assert.equal(inventoryMesh.material, inventoryBefore.material);
+assert.equal(inventoryMaterial.map, inventoryBefore.texture);
+assert.equal(inventoryMesh.visible, inventoryBefore.visible);
+assert.deepEqual(inventoryMesh.instanceMatrix.array, inventoryBefore.matrixArray);
+assert.deepEqual(inventoryGeometry.attributes.position.array, inventoryBefore.position);
+assert.equal(JSON.stringify(inventoryGeometry.groups), inventoryBefore.groups);
+disposeObject3DResources(inventoryRoot);
+assert.equal(inventoryDisposals, 6, 'normal final cleanup still sees the complete inventory');
 
 console.log('resourceLifetime self-test passed');

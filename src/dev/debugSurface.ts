@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { Object3D, PerspectiveCamera } from 'three';
 /**
  * Explicit browser diagnostics surface.
  *
@@ -8,6 +9,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import type { PrivateBattleLaunchRequest } from '../net/networkBattleLaunchRuntime.ts';
+import { visitOwnedObject3DGeometries } from '../engine/resourceLifetime.ts';
+import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
+import { inspectNightWorldFixture, type NightWorldFixtureKind } from './nightWorldFixtureInspection.ts';
 
 type UnknownAction = CallableFunction;
 
@@ -31,6 +35,7 @@ export interface DebugSurfaceDependencies {
   quality: Readonly<Record<string, UnknownAction>>;
   getFx(): RuntimeValue;
   getBattleAtmosphere?(): RuntimeValue;
+  getNightLighting?(): RuntimeValue;
   getPedestalVisual(): RuntimeValue;
   isPedestalOnStage(): boolean;
   getSelectedSpecId(): string;
@@ -96,6 +101,7 @@ export function installDebugSurface(
     bus: deps.bus,
     get fx() { return deps.getFx(); },
     get battleAtmosphere() { return deps.getBattleAtmosphere?.() ?? null; },
+    get nightLighting() { return deps.getNightLighting?.() ?? null; },
     input: deps.input,
     settings: deps.settings,
     pauseInfo: deps.pauseInfo,
@@ -117,6 +123,27 @@ export function installDebugSurface(
     selectGarageTank: deps.selectGarageTank,
     stagePedestalTank: deps.stagePedestalTank,
     get world() { return deps.getWorld(); },
+    inspectNightWindow: () => {
+      const world = deps.getWorld() as { group?: Object3D } | null;
+      const camera = deps.camera as PerspectiveCamera;
+      return world?.group ? inspectNightWindow(world.group, camera.position) : null;
+    },
+    inspectNightShtora: () => {
+      const game = deps.game as { player?: { visual?: { root?: Object3D } } };
+      const root = game.player?.visual?.root, camera = deps.camera as PerspectiveCamera;
+      return root ? inspectNightShtora(root, camera.position) : null;
+    },
+    inspectNightHeadlight: () => {
+      const game = deps.game as { player?: { visual?: { root?: Object3D } } };
+      const root = game.player?.visual?.root, camera = deps.camera as PerspectiveCamera;
+      return root ? inspectNightHeadlight(root, camera.position) : null;
+    },
+    inspectNightWorldFixture: (kind: NightWorldFixtureKind) => {
+      const world = deps.getWorld() as { group?: Object3D } | null;
+      const camera = deps.camera as PerspectiveCamera;
+      return world?.group ? inspectNightWorldFixture(world.group, camera.position, kind) : null;
+    },
+    visitOwnedGeometries: visitOwnedObject3DGeometries,
     switchMap: deps.switchMap,
     flags: deps.flags,
     frameInfo: deps.frameInfo,

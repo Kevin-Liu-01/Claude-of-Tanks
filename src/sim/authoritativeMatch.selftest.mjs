@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { Euler, Quaternion, Vector3 } from 'three';
 import '../vehicles/tankFactory.ts'; // register the full authored fleet
-import { createAuthoritativeMatch } from './authoritativeMatch.ts';
+import { createAuthoritativeMatch, authoritativeTerrainCacheStats } from './authoritativeMatch.ts';
+import { createHeightField, createLayout } from '../world/terrain.ts';
+import { getMapConfig } from '../world/maps/index.ts';
 import { createEnvelope, MESSAGE_TYPES, PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import { createSnapshotDelta, SnapshotAssembler } from '../net/snapshot.ts';
 import { snapshotWireCodec } from '../net/snapshotWireCodec.ts';
@@ -19,6 +21,19 @@ function articulatedGunDirection(entity) {
     Math.sin(state.gunPitch),
     Math.cos(state.turretYaw) * Math.cos(state.gunPitch),
   ).applyQuaternion(hull).normalize();
+}
+
+{
+  const heightField = createHeightField(1337, getMapConfig('coastal'));
+  const before = authoritativeTerrainCacheStats();
+  const supplied = createAuthoritativeMatch({
+    mapId: 'coastal', worldCollision: { mapId: 'coastal', heightField },
+    players: [{ id: 'supplied-field', specId: 'm1a2', team: 'alpha' }],
+  });
+  assert.strictEqual(supplied.heightField, heightField,
+    'authority uses the exact supplied collision terrain and layout');
+  assert.deepEqual(authoritativeTerrainCacheStats(), before,
+    'supplied collision terrain never triggers an unused second terrain bake');
 }
 
 const match = createAuthoritativeMatch({
@@ -752,13 +767,38 @@ for (const mapId of MAP_IDS) {
   });
   const alpha = deployment.entities[0].state;
   const bravo = deployment.entities[1].state;
-  const dx = bravo.pos.x - alpha.pos.x;
-  const dz = bravo.pos.z - alpha.pos.z;
+  const config = getMapConfig(mapId);
+  const { spawns } = createLayout(config);
+  const enemyCenter = spawns.enemies.reduce((center, enemy) => ({
+    x: center.x + enemy.x / spawns.enemies.length,
+    z: center.z + enemy.z / spawns.enemies.length,
+  }), { x: 0, z: 0 });
+  // All Alpha formation columns inherit the player-zone yaw. A one-player
+  // Bravo roster occupies the first authored pad, which may be far out on a
+  // flank: that array entry is not the center of the opposing deployment.
+  const zoneDx = enemyCenter.x - spawns.player.x, zoneDz = enemyCenter.z - spawns.player.z;
+  const zoneDistance = Math.hypot(zoneDx, zoneDz);
+  const alphaDot = Math.sin(alpha.yaw) * zoneDx / zoneDistance + Math.cos(alpha.yaw) * zoneDz / zoneDistance;
+  assert.ok(alphaDot > 1 - 1e-9, `${mapId}: Alpha yaw faces the exact opposing deployment centroid`);
+  assert.equal(alpha.yaw, spawns.player.yaw, `${mapId}: authority preserves the canonical Alpha formation yaw`);
+  // Retain an independent actual-entity check, so a second PI rotation at
+  // the authority seam would still fail even if layout tests remained green.
+  const dx = alpha.pos.x - bravo.pos.x, dz = alpha.pos.z - bravo.pos.z;
   const distance = Math.hypot(dx, dz);
-  const alphaDot = Math.sin(alpha.yaw) * dx / distance + Math.cos(alpha.yaw) * dz / distance;
-  const bravoDot = Math.sin(bravo.yaw) * -dx / distance + Math.cos(bravo.yaw) * -dz / distance;
-  assert.ok(alphaDot > 0.96, `${mapId}: Alpha spawn faces the opposing zone`);
-  assert.ok(bravoDot > 0.96, `${mapId}: Bravo spawn faces the opposing zone`);
+  const bravoDot = Math.sin(bravo.yaw) * dx / distance + Math.cos(bravo.yaw) * dz / distance;
+  assert.ok(bravoDot > 0.96, `${mapId}: Bravo spawn faces the opposing Alpha formation`);
+
+  const reordered = createLayout({
+    ...config, spawns: { ...config.spawns, enemies: [...config.spawns.enemies].reverse() },
+  }).spawns;
+  assert.equal(reordered.player.yaw, spawns.player.yaw,
+    `${mapId}: enemy pad ordering cannot redirect the Alpha deployment`);
+  for (const enemy of spawns.enemies) {
+    assert.equal(reordered.enemies.find((pad) => pad.x === enemy.x && pad.z === enemy.z)?.yaw, enemy.yaw,
+      `${mapId}: each Bravo pad retains its own opposing-zone yaw when reordered`);
+  }
 }
 
+assert.equal(authoritativeTerrainCacheStats().retainedMaps, 2,
+  'fallback authority terrain retains only two maps after a complete roster sweep');
 console.log('authoritativeMatch.selftest: identity, deployment, movement, world, combat authority, and events passed');

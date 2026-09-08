@@ -44,6 +44,7 @@ function firstPendingProgram(
   cursor: number,
   timing: ForwardProgramCompileTiming | undefined,
   now: () => number,
+  existingPrograms?: ReadonlySet<LinkedProgram>,
 ): number {
   for (; cursor < programs.length; cursor += 1) {
     const program = programs[cursor]?.program;
@@ -57,6 +58,7 @@ function firstPendingProgram(
         recordCompileTiming(timing, 'queryMs', elapsed);
         recordCompileTiming(timing, 'maxQueryMs', elapsed, 'max');
         recordCompileTiming(timing, 'queryCount', 1);
+        recordQueryCohort(timing, elapsed, existingPrograms?.has(programs[cursor]));
       }
     }
     if (pending) break;
@@ -87,6 +89,15 @@ export interface ForwardProgramCompileTiming {
   queryMs?: number;
   maxQueryMs?: number;
   queryCount?: number;
+  // Cohorts record membership before scene preparation, not readiness or GPU
+  // compilation cost. Earlier calls may pay queued work from later programs;
+  // programs added by other rendering between yields also count as new.
+  existingQueryMs?: number;
+  maxExistingQueryMs?: number;
+  existingQueryCount?: number;
+  newQueryMs?: number;
+  maxNewQueryMs?: number;
+  newQueryCount?: number;
   pollMs?: number;
   maxPollMs?: number;
   /** Synchronous linker rounds, including initial context/extension setup. */
@@ -103,7 +114,7 @@ export interface ForwardProgramWarmOwner {
     stats?: ForwardProgramWarmStats | null,
   ): Generator<void, void, void>;
   linkerBreathingSlices(maxSlices: number, timing?: ForwardProgramCompileTiming,
-    signal?: AbortSignal): Generator<void, void, void>;
+    signal?: AbortSignal, existingPrograms?: ReadonlySet<LinkedProgram>): Generator<void, void, void>;
   invalidate(): void;
 }
 
@@ -175,6 +186,17 @@ function measureCompileOperation<Result>(
   const startedAt = diagnosticNow(now);
   try { return run(); }
   finally { recordCompileTiming(timing, field, diagnosticNow(now) - startedAt); }
+}
+
+function recordQueryCohort(
+  timing: ForwardProgramCompileTiming,
+  elapsed: number,
+  existing: boolean | undefined,
+): void {
+  if (existing === undefined) return;
+  recordCompileTiming(timing, existing ? 'existingQueryMs' : 'newQueryMs', elapsed);
+  recordCompileTiming(timing, existing ? 'maxExistingQueryMs' : 'maxNewQueryMs', elapsed, 'max');
+  recordCompileTiming(timing, existing ? 'existingQueryCount' : 'newQueryCount', 1);
 }
 
 function recordProgramCount(
@@ -367,13 +389,14 @@ export function createForwardProgramWarmOwner({
       return epoch === ownedEpoch && renderer.info === info && !gl.isContextLost();
     };
     if (!valid()) return;
+    const existingPrograms = options.timing ? snapshotRendererPrograms(renderer) : undefined;
     yield* compileSceneSteps(options);
     if (!valid()) return;
     // Caller crosses a rendering/task boundary before the first native query.
     // Keep the same renderer lifetime across submission AND this checkpoint.
     yield;
     if (!valid()) return;
-    yield* linkerBreathingSlices(24, options.timing, options.signal);
+    yield* linkerBreathingSlices(24, options.timing, options.signal, existingPrograms);
   };
 
   const compile = (root: Object3D, timing?: ForwardProgramCompileTiming): void => {
@@ -429,6 +452,7 @@ export function createForwardProgramWarmOwner({
     maxSlices: number,
     timing?: ForwardProgramCompileTiming,
     signal?: AbortSignal,
+    existingPrograms?: ReadonlySet<LinkedProgram>,
   ): Generator<void, void, void> {
     signal?.throwIfAborted();
     const ownedEpoch = epoch;
@@ -457,7 +481,8 @@ export function createForwardProgramWarmOwner({
       for (let slice = 0; slice < maxSlices; slice += 1) {
         signal?.throwIfAborted();
         if (epoch !== ownedEpoch || renderer.info !== info || gl.isContextLost?.()) return;
-        cursor = firstPendingProgram(gl, parallelCompile.COMPLETION_STATUS_KHR, programs, cursor, timing, now);
+        cursor = firstPendingProgram(gl, parallelCompile.COMPLETION_STATUS_KHR, programs, cursor, timing, now,
+          existingPrograms);
         if (cursor === programs.length) return;
         finishPoll();
         recordCompileTiming(timing, 'yields', 1);

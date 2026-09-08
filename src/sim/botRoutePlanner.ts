@@ -1,3 +1,4 @@
+import { createNavigationLiquidSafety } from './navigationLiquidSafety.ts';
 import {
   TERRAIN_MARGIN_EPS,
   groundResistanceFor,
@@ -26,6 +27,8 @@ const NEIGHBOR_STEPS: ReadonlyArray<readonly [number, number, number]> = [
 
 type GroundType = 'hard' | 'medium' | 'soft';
 export type BotRoutePoint = [number, number];
+/** Map-authored route preference, not a depth/drowning or collision rule. */
+export type NavigationWaterPolicy = 'avoid-liquid';
 
 interface Position2 {
   x: number;
@@ -33,6 +36,8 @@ interface Position2 {
 }
 
 interface NavigationHeightField {
+  readonly navigationWaterPolicy?: NavigationWaterPolicy;
+  getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getGroundType?(x: number, z: number): string;
 }
@@ -50,6 +55,11 @@ type ObstacleQuery<T extends NavigationObstacle = NavigationObstacle> = (
 ) => T[];
 
 export interface BotNavigationGrid {
+  readonly navigationWaterPolicy?: NavigationWaterPolicy;
+  /** One bit per NEIGHBOR_STEPS edge; allocated only for explicit dry routing. */
+  readonly waterBlockedEdges?: Uint8Array;
+  readonly liquidField?: NavigationHeightField;
+  readonly exactConnectorClear?: (x: number, z: number) => boolean;
   readonly heights: Float32Array;
   readonly blocked: Uint8Array;
   readonly groundTypes: Uint8Array;
@@ -84,6 +94,7 @@ interface RouteSolution {
 }
 
 interface RouteSearchState {
+  projectReachableGoal?: boolean;
   navigation: BotNavigationGrid;
   spec: TerrainMobilitySpec;
   seed: number;
@@ -213,6 +224,74 @@ function sampleNavigationRow<T extends NavigationObstacle>(
   }
 }
 
+/**
+ * One construction-only water pass. Preserve the original terrain/obstacle
+ * sampling order above; opt-out maps allocate/query nothing here.
+ *
+ * This is sampled centerline safety, not depth or a swept-hull certificate.
+ * Both directions share one edge test; segment intervals are at most 2.5 m.
+ */
+function navigationSampleIsLiquid(field: NavigationHeightField, x: number, z: number): boolean {
+  // Called only after addDryNavigationPolicy validates the field capability.
+  const mask = field.getWaterMaskAt!(x, z);
+  if (!Number.isFinite(mask) || mask < 0 || mask > 1) {
+    throw new TypeError('navigation liquid coverage must be finite and within 0..1');
+  }
+  return mask > 0;
+}
+
+function navigationEdgeCrossesLiquid(
+  field: NavigationHeightField, ix: number, iz: number,
+  step: readonly [number, number, number],
+): boolean {
+  const [dx, dz, distanceScale] = step;
+  const intervals = Math.ceil(CELL_M * distanceScale / 2.5);
+  for (let sample = 1; sample < intervals; sample++) {
+    const fraction = sample / intervals;
+    if (navigationSampleIsLiquid(field,
+      worldCoord(ix) + dx * CELL_M * fraction,
+      worldCoord(iz) + dz * CELL_M * fraction)) return true;
+  }
+  return false;
+}
+
+function addDryNavigationPolicy(
+  heightField: NavigationHeightField,
+  heights: Float32Array,
+  blocked: Uint8Array,
+  groundTypes: Uint8Array,
+  exactConnectorClear: (x: number, z: number) => boolean,
+): Readonly<BotNavigationGrid> {
+  if (typeof heightField.getWaterMaskAt !== 'function') {
+    throw new TypeError('avoid-liquid navigation requires getWaterMaskAt');
+  }
+  const waterBlockedEdges = new Uint8Array(GRID_N * GRID_N);
+  for (let index = 0; index < blocked.length; index++) {
+    const ix = index % GRID_N, iz = Math.floor(index / GRID_N);
+    if (navigationSampleIsLiquid(heightField, worldCoord(ix), worldCoord(iz))) {
+      blocked[index] = 1;
+    }
+  }
+  const forwardSteps = [1, 3, 6, 7] as const;
+  const opposite = [1, 0, 3, 2, 7, 6, 5, 4] as const;
+  for (let index = 0; index < blocked.length; index++) {
+    if (blocked[index]) continue;
+    const ix = index % GRID_N, iz = Math.floor(index / GRID_N);
+    for (const direction of forwardSteps) {
+      const [dx, dz] = NEIGHBOR_STEPS[direction];
+      const nx = ix + dx, nz = iz + dz;
+      if (isOutsideGrid(nx, nz) || blocked[cellIndex(nx, nz)]) continue;
+      if (!navigationEdgeCrossesLiquid(heightField, ix, iz, NEIGHBOR_STEPS[direction])) continue;
+      waterBlockedEdges[index] |= 1 << direction;
+      waterBlockedEdges[cellIndex(nx, nz)] |= 1 << opposite[direction];
+    }
+  }
+  return Object.freeze({
+    heights, blocked, groundTypes, navigationWaterPolicy: 'avoid-liquid', waterBlockedEdges,
+    liquidField: heightField, exactConnectorClear,
+  });
+}
+
 /** Build the immutable terrain/cover grid once for every bot in a match. */
 export function createBotNavigationGrid<T extends NavigationObstacle>({
   heightField,
@@ -231,6 +310,15 @@ export function createBotNavigationGrid<T extends NavigationObstacle>({
     sampleNavigationRow(iz, heightField, queryObstacles, obstacles, candidates,
       heights, groundTypes, blocked);
   }
+  if (heightField.navigationWaterPolicy === 'avoid-liquid') {
+    return addDryNavigationPolicy(heightField, heights, blocked, groundTypes, (x,z) => {
+      const nearby = queryObstacles ? queryObstacles(x-4.5,z-4.5,x+4.5,z+4.5,candidates) : obstacles;
+      return !isSolidObstacleAt(nearby,x,z);
+    });
+  }
+  if (heightField.navigationWaterPolicy !== undefined) {
+    throw new TypeError('unknown navigation water policy');
+  }
   return Object.freeze({ heights, blocked, groundTypes });
 }
 
@@ -241,7 +329,12 @@ function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
     && navigation.groundTypes instanceof Uint8Array
     && navigation.heights.length === count
     && navigation.blocked.length === count
-    && navigation.groundTypes.length === count;
+    && navigation.groundTypes.length === count
+    && (navigation.navigationWaterPolicy === undefined
+      ? navigation.waterBlockedEdges === undefined
+      : navigation.navigationWaterPolicy === 'avoid-liquid'
+        && navigation.waterBlockedEdges instanceof Uint8Array
+        && navigation.waterBlockedEdges.length === count);
 }
 
 function nearestOpen(blocked: Uint8Array, ix: number, iz: number): [number, number] {
@@ -289,6 +382,7 @@ function relaxNeighbor(
   node: HeapNode,
   step: readonly [number, number, number],
   search: RouteSearchState,
+  edgeBit = 0,
 ): void {
   const [dx, dz, distanceScale] = step;
   const nx = node.ix + dx;
@@ -298,6 +392,7 @@ function relaxNeighbor(
   const nextIndex = cellIndex(nx, nz);
   if (closed[nextIndex] || navigation.blocked[nextIndex]) return;
   if (diagonalCornerIsBlocked(node, dx, dz, navigation.blocked)) return;
+  if (navigation.waterBlockedEdges && (navigation.waterBlockedEdges[node.index] & edgeBit)) return;
   const distance = CELL_M * distanceScale;
   const signedGrade = (navigation.heights[nextIndex] - navigation.heights[node.index]) / distance;
   const ground = routeGroundType(spec, navigation.groundTypes, node.index, nextIndex);
@@ -308,7 +403,8 @@ function relaxNeighbor(
   if (nextCost >= costs[nextIndex]) return;
   costs[nextIndex] = nextCost;
   parents[nextIndex] = node.index;
-  const heuristic = Math.hypot(search.goalX - nx, search.goalZ - nz) * CELL_M;
+  const heuristic = search.projectReachableGoal
+    ? 0 : Math.hypot(search.goalX - nx, search.goalZ - nz) * CELL_M;
   heap.push({ index: nextIndex, ix: nx, iz: nz, score: nextCost + heuristic });
 }
 
@@ -365,6 +461,59 @@ function solveRoute(
   return reconstructRoute(parents, costs, startIndex, goalIndex);
 }
 
+/**
+ * One bounded Dijkstra traversal, not a search per candidate bank. Select the
+ * nearest reachable allowed cell using directed vehicle mobility, then path
+ * cost and stable cell index as ties. A blocked rounded start fails closed:
+ * this policy does not invent a path from a wet/solid deployment position.
+ */
+function solveDryRoute(
+  from: Position2,
+  to: Position2,
+  navigation: BotNavigationGrid,
+  spec: TerrainMobilitySpec,
+  seed: number,
+): RouteSolution {
+  if (from.x < WORLD_MIN || from.x > WORLD_MAX || from.z < WORLD_MIN || from.z > WORLD_MAX) {
+    return { points: [], cost: Infinity };
+  }
+  const sx = worldCell(from.x), sz = worldCell(from.z);
+  const startIndex = cellIndex(sx, sz);
+  if (navigation.blocked[startIndex]) return { points: [], cost: Infinity };
+  const costs = new Float64Array(GRID_N * GRID_N);
+  costs.fill(Infinity);
+  const parents = new Int32Array(GRID_N * GRID_N);
+  parents.fill(-1);
+  const closed = new Uint8Array(GRID_N * GRID_N);
+  const heap = new MinHeap();
+  const search: RouteSearchState = {
+    navigation, spec, seed, costs, parents, closed, heap,
+    goalX: worldCell(to.x), goalZ: worldCell(to.z), projectReachableGoal: true,
+  };
+  let bestIndex = startIndex;
+  let bestDistanceSq = Infinity;
+  costs[startIndex] = 0;
+  heap.push({ index: startIndex, ix: sx, iz: sz, score: 0 });
+  while (heap.length) {
+    const node = heap.pop();
+    if (!node) break;
+    if (closed[node.index]) continue;
+    closed[node.index] = 1;
+    const dx = worldCoord(node.ix) - to.x, dz = worldCoord(node.iz) - to.z;
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq < bestDistanceSq || (distanceSq === bestDistanceSq
+      && (costs[node.index] < costs[bestIndex]
+        || (costs[node.index] === costs[bestIndex] && node.index < bestIndex)))) {
+      bestIndex = node.index;
+      bestDistanceSq = distanceSq;
+    }
+    for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
+      relaxNeighbor(node, NEIGHBOR_STEPS[direction], search, 1 << direction);
+    }
+  }
+  return reconstructRoute(parents, costs, startIndex, bestIndex);
+}
+
 function roleDetourPoint(
   start: Position2,
   goal: Position2,
@@ -402,9 +551,11 @@ function shouldUseRoleDetour(
   return terrainBurden <= 1.25;
 }
 
-function simplifyRoute(raw: readonly BotRoutePoint[], goal: Position2): BotRoutePoint[] {
+function simplifyRoute(
+  raw: readonly BotRoutePoint[], goal: Position2, preserveGridEndpoints = false,
+): BotRoutePoint[] {
   if (!raw.length) return [];
-  const points: BotRoutePoint[] = [];
+  const points: BotRoutePoint[] = preserveGridEndpoints ? [raw[0]] : [];
   for (let index = 1; index < raw.length; index++) {
     const prior = raw[index - 1];
     const current = raw[index];
@@ -414,7 +565,53 @@ function simplifyRoute(raw: readonly BotRoutePoint[], goal: Position2): BotRoute
         || Math.sign(current[1] - prior[1]) !== Math.sign(next[1] - current[1]));
     if (turns || index % 3 === 0 || index === raw.length - 1) points.push(current);
   }
-  points[points.length - 1] = [goal.x, goal.z];
+  if (!preserveGridEndpoints) points[points.length - 1] = [goal.x, goal.z];
+  return points;
+}
+
+function planDryRoute(
+  start: Position2, goal: Position2, grid: BotNavigationGrid,
+  spec: TerrainMobilitySpec, seed: number, rng: () => number,
+  role: string, useRoleDetour: boolean,
+): BotRoutePoint[] {
+  const direct = solveDryRoute(start, goal, grid, spec, seed);
+  if (!direct.points.length) return [];
+  const terminal = direct.points[direct.points.length - 1];
+  const effectiveGoal = { x: terminal[0], z: terminal[1] };
+  let raw = direct.points;
+  if (useRoleDetour) {
+    const requestedVia = roleDetourPoint(start, effectiveGoal, role, rng);
+    const first = solveDryRoute(start, requestedVia, grid, spec, seed);
+    const firstEnd = first.points[first.points.length - 1];
+    if (firstEnd) {
+      const effectiveVia = { x: firstEnd[0], z: firstEnd[1] };
+      const second = solveDryRoute(effectiveVia, effectiveGoal, grid, spec, seed);
+      const secondEnd = second.points[second.points.length - 1];
+      if (secondEnd && secondEnd[0] === terminal[0] && secondEnd[1] === terminal[1]
+        && shouldUseRoleDetour(start, effectiveGoal, effectiveVia, direct, first, second)) {
+        raw = first.points.concat(second.points.slice(1));
+      }
+    }
+  }
+  // Preserve both snapped ingress and terminal. Never reinsert an exact wet
+  // goal, or skip the snapped start and shortcut the first cached grid edge.
+  const points = simplifyRoute(raw, effectiveGoal, true);
+  const safe = createNavigationLiquidSafety(grid.liquidField, spec);
+  const last = points[points.length - 1];
+  const dx = goal.x-last[0], dz=goal.z-last[1], distance=Math.hypot(dx,dz);
+  if (safe && distance > 0 && distance < CELL_M && Math.max(Math.abs(goal.x),Math.abs(goal.z)) <= WORLD_MAX
+    && safe(last[0],last[1],Math.atan2(dx,dz),distance)) {
+    let clear = true, previousH = grid.liquidField!.getHeightAt(last[0],last[1]);
+    const steps = Math.max(1,Math.ceil(distance/2));
+    for (let i=1;i<=steps;i++) {
+      const x=last[0]+dx*i/steps, z=last[1]+dz*i/steps;
+      const h=grid.liquidField!.getHeightAt(x,z);
+      const ground=grid.liquidField!.getGroundType?.(x,z) ?? 'medium';
+      if (!grid.exactConnectorClear!(x,z) || !Number.isFinite(terrainTravelCostFactor(spec,ground as GroundType,(h-previousH)/(distance/steps || 1)))) { clear=false; break; }
+      previousH=h;
+    }
+    if (clear && distance > 0) points.push([goal.x,goal.z]);
+  }
   return points;
 }
 
@@ -450,6 +647,9 @@ export function planBotRoute({
   });
   if (!isValidNavigationGrid(grid)) {
     throw new TypeError('navigation must be a bot navigation grid');
+  }
+  if (grid.navigationWaterPolicy === 'avoid-liquid') {
+    return planDryRoute(start, goal, grid, spec, seed, rng, role, useRoleDetour);
   }
   const direct = solveRoute(start, goal, grid, spec, seed);
   let raw = direct.points;

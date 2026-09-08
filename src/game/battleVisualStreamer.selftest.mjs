@@ -11,6 +11,7 @@ const timings = [];
 const yieldFlags = [];
 const initializedTextures = [];
 const compiled = [];
+const registered = [];
 const primed = [];
 let restored = 0;
 let clock = 0;
@@ -49,6 +50,13 @@ const streamer = createBattleVisualStreamer({
     warm() { return () => { restored += 1; }; },
   },
   forwardProgramWarm: { compile(root) { compiled.push(root); } },
+  onVisualReady(entity) {
+    assert.equal(entity.visual.root.parent, scene,
+      'late emitter registration sees the staged scene-attached visual');
+    assert.equal(compiled.includes(entity.visual.root), false,
+      'late emitter registration precedes its forward-program warm');
+    registered.push(entity.specId);
+  },
   recordTiming(timing) { timings.push(timing); },
   now: () => { clock += 2; return clock; },
 });
@@ -64,6 +72,7 @@ assert.deepEqual(builderRequests, [['alpha', 'bravo']],
   'all exact builders resolve concurrently before procedural construction');
 assert.deepEqual(primed, ['alpha', 'bravo']);
 assert.equal(compiled.length, 2);
+assert.deepEqual(registered, ['alpha', 'bravo']);
 assert.equal(restored, 2);
 assert.equal(initializedTextures.length, 2);
 assert.equal(timings.length, 2);

@@ -125,10 +125,10 @@ host migration or automatic match restoration after host loss.
 - `server/dedicatedMatchServer.ts` and `dedicatedMatchRegistry.ts` own ranked
   WebSocket authority and reconnectable match lifetimes.
 
-All twenty maps use the same authored collision, terrain, foliage concealment,
+All thirty maps use the same authored collision, terrain, foliage concealment,
 destructible indices, and loadout rules in solo, browser-hosted, and dedicated play.
 Dedicated Node matches inflate collision from the generated
-`server/world-collision-manifests.json`; browser hosts use the live `World`
+checksummed per-map shards in `server/world-collision-manifests/`; browser hosts use the live `World`
 collision facade.
 
 ## Protocol and authority

@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from './nightWindowInspection.ts';
+import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicles/vehicleNightLighting.ts';
+import { markWorldWindowPane, markWorldBeacon, ensureWorldNightEmissionMask } from '../world/worldNightEmissionGeometry.ts';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+
+const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+material.userData.nightLightKind = 'window';
+const cloth = ensureWorldNightEmissionMask(new THREE.BoxGeometry(1, 2, .03));
+const beacon = markWorldBeacon(new THREE.CylinderGeometry(.2, .2, .3, 8).translate(0, 3, 0));
+const pane = markWorldWindowPane(new THREE.BoxGeometry(1, 2, .03), 'curtain', [0, 0, 1]).translate(5, 2, 0);
+const geometry = mergeGeometries([cloth, beacon, pane].map(part => part.toNonIndexed()));
+const mesh = new THREE.Mesh(geometry, material); root.add(mesh);
+root.position.set(20, 3, -10); root.rotation.y = .6;
+const before = [...root.children];
+const reference = new THREE.Vector3(20, 5, 0);
+const seat = inspectNightWindow(root, reference);
+assert.equal(seat.ownerUuid, mesh.uuid);
+assert.equal(seat.lineOfSight, 'authored-emissive-face');
+assert(seat.faceIndex > cloth.index.count / 3 + beacon.index.count / 3, 'cloth, beacon and thin pane sides are skipped');
+const localPoint = root.worldToLocal(new THREE.Vector3().fromArray(seat.point));
+assert(Math.abs(localPoint.z - .015) < 1e-6 && Math.abs(localPoint.x - 5) < .5);
+const expectedNormal = new THREE.Vector3(0, 0, 1).transformDirection(root.matrixWorld);
+assert(expectedNormal.distanceTo(new THREE.Vector3().fromArray(seat.direction)) < 1e-8);
+const toCamera = new THREE.Vector3().fromArray(seat.camera).sub(new THREE.Vector3().fromArray(seat.point));
+assert(Math.abs(toCamera.dot(expectedNormal) - 4) < 1e-8,
+  'reverse ray does not mutate the returned external camera into a near-clipped pane');
+assert(Math.abs(toCamera.length() - Math.hypot(4, .65, .25)) < 1e-8);
+assert.deepEqual(root.children, before, 'inspection adds no lights, markers or extra geometry');
+
+const obstructionGeometry = new THREE.BoxGeometry(2, 3, .1).translate(5, 2, .3);
+const obstruction = new THREE.Mesh(obstructionGeometry, new THREE.MeshBasicMaterial());
+root.add(obstruction);
+assert.equal(inspectNightWindow(root, reference), null, 'buried lens/roof/solid frame fails closed');
+obstruction.visible = false;
+assert(inspectNightWindow(root, reference), 'invisible geometry is not a rendered occluder');
+obstruction.visible = true; obstruction.position.z = 3.3;
+assert.equal(inspectNightWindow(root, reference), null, 'neighbor facade blocking the proposed external camera is rejected');
+obstruction.removeFromParent(); mesh.visible = false;
+assert.equal(inspectNightWindow(root, reference), null, 'hidden facade never supplies a capture');
+for (const geo of [cloth, beacon, pane, geometry, obstructionGeometry]) geo.dispose();
+material.dispose(); obstruction.material.dispose();
+const vehicle = new THREE.Group(), lens = markWorldBeacon(new THREE.BoxGeometry(.25, .25, .04));
+const redMaterial = new THREE.MeshStandardMaterial(); redMaterial.userData.nightEmissionMask = true;
+const emitter = new THREE.Mesh(lens, redMaterial); vehicle.add(emitter);
+const shtora = inspectNightShtora(vehicle, new THREE.Vector3(0, 1, 5));
+assert.equal(shtora.kind, 'shtora'); assert.equal(shtora.materialUuid, redMaterial.uuid);
+assert(shtora.direction[2] > .99, 'front aperture selected from the actual player rig');
+assert.equal(inspectNightWindow(vehicle, reference), null, 'Shtora glass does not become a world window');
+emitter.visible = false;
+assert.equal(inspectNightShtora(vehicle, reference), null, 'hidden Shtora cannot satisfy an exposed-source receipt');
+lens.dispose(); redMaterial.dispose();
+{
+  const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
+  const parts = [markVehicleNightLens(new THREE.BoxGeometry(.2, .2, .04), 'marker'),
+    markVehicleNightLens(new THREE.BoxGeometry(.2, .2, .04), 'headlight').translate(2, 0, 0)];
+  prepareVehicleNightLensParts(parts);
+  const geometry = mergeGeometries(parts), mesh = new THREE.Mesh(geometry, material);
+  registerVehicleNightLensMesh(mesh, parts); root.add(mesh);
+  const before = [...root.children], reference = new THREE.Vector3(0, 1, 4);
+  const seat = inspectNightHeadlight(root, reference);
+  assert.equal(seat.kind, 'headlight'); assert.equal(seat.materialUuid, material.uuid);
+  assert(seat.point[0] > 1.9, 'nearer mask1 parking light cannot substitute for a driving aperture');
+  assert.equal(inspectNightShtora(root, reference), null);
+  const wallGeometry = new THREE.BoxGeometry(.5, .5, .1), wallMaterial = new THREE.MeshBasicMaterial();
+  const wall = new THREE.Mesh(wallGeometry, wallMaterial); wall.position.set(2, 0, .08); root.add(wall);
+  assert.equal(inspectNightHeadlight(root, reference), null, 'buried authored driving lamp fails closed');
+  wall.removeFromParent(); assert.deepEqual(root.children, before);
+  mesh.visible = false; assert.equal(inspectNightHeadlight(root, reference), null);
+  for (const part of [...parts, geometry, wallGeometry]) part.dispose();
+  material.dispose(); wallMaterial.dispose();
+}
+console.log('nightWindowInspection: exact outward masked pane, authored transforms, obstruction/hidden rejection and no scene edits PASS');

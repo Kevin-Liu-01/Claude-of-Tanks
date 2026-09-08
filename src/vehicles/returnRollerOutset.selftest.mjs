@@ -23,12 +23,47 @@ function fixture(options={},high=true){
     for(const r of resources)r.dispose();
   }
 }
+function originalGearAttributes(geometry){
+  // Shared lamp materials add a disabled channel to some M1A2 gear. Keep
+  // the four historical physical hashes; inherited gear must remain unlit.
+  const mask=geometry.getAttribute('nightEmissionMask');
+  if(mask){
+    assert.ok(mask.array instanceof Uint8Array,'night mask is byte-sized');
+    assert.equal(mask.itemSize,1);assert.equal(mask.normalized,false);
+    assert.equal(mask.count,geometry.getAttribute('position').count,'one mask value per original vertex');
+    assert.ok(mask.array.every(value=>value===0),'inherited gear masks must never emit light');
+  }
+  return Object.keys(geometry.attributes).filter(key=>key!=='nightEmissionMask');
+}
 function fingerprint(root,accept=()=>true){
   const h=createHash('sha256'),buffer=a=>h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));
   root.traverse(o=>{if(!o.name.startsWith('gear')||!o.geometry||!accept(o))return;
-    h.update(o.name);for(const k of Object.keys(o.geometry.attributes).sort()){h.update(k);buffer(o.geometry.attributes[k].array);}
+    h.update(o.name);for(const k of originalGearAttributes(o.geometry).sort()){h.update(k);buffer(o.geometry.attributes[k].array);}
     if(o.geometry.index)buffer(o.geometry.index.array);if(o.instanceMatrix)buffer(o.instanceMatrix.array);
   });return h.digest('hex');
+}
+{
+  const geometry=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
+  geometry.setAttribute('normal',new THREE.Float32BufferAttribute([0,0,1,0,0,1,0,0,1],3));
+  geometry.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,0,1],2));geometry.setIndex([0,1,2]);
+  const mesh=new THREE.InstancedMesh(geometry,new THREE.MeshBasicMaterial(),1);mesh.name='gearFixture';
+  const measure=()=>fingerprint(mesh),original=measure();
+  geometry.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,0,0],1));
+  assert.equal(measure(),original,'validated unlit metadata preserves original gear bytes');
+  for(const invalid of [new THREE.Float32BufferAttribute([0,0,0],1),new THREE.Uint8BufferAttribute([0,0,0],3),
+    new THREE.Uint8BufferAttribute([0,0],1),new THREE.Uint8BufferAttribute([0,0,0],1,true),
+    new THREE.Uint8BufferAttribute([0,1,0],1),new THREE.Uint8BufferAttribute([0,2,0],1),new THREE.Uint8BufferAttribute([0,3,0],1)]){
+    geometry.setAttribute('nightEmissionMask',invalid);assert.throws(measure);
+  }
+  geometry.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,0,0],1));
+  geometry.setAttribute('unrecognizedSemanticChannel',new THREE.Uint8BufferAttribute([0,0,0],1));
+  assert.notEqual(measure(),original,'unknown attributes remain hashed');geometry.deleteAttribute('unrecognizedSemanticChannel');
+  for(const attribute of [geometry.attributes.position,geometry.attributes.normal,geometry.attributes.uv,geometry.index,mesh.instanceMatrix]){
+    const old=attribute.array[0];attribute.array[0]=old+1;
+    assert.notEqual(measure(),original,'position/normal/UV/index/instance mutations remain guarded');attribute.array[0]=old;
+  }
+  mesh.name='gearChanged';assert.notEqual(measure(),original,'gear identity remains guarded');mesh.name='gearFixture';
+  assert.equal(measure(),original);geometry.dispose();mesh.material.dispose();
 }
 function centers(mesh){
   const matrix=new THREE.Matrix4(),rows=[];

@@ -7,6 +7,7 @@ import { SNAPSHOT_FLAGS } from './snapshot.ts';
 const visuals = [];
 const visualOptions = [];
 const textureWarms = [];
+const registeredVisuals = [];
 const scene = { add() {} };
 const game = {
   tanks: [],
@@ -60,6 +61,7 @@ const bridge = createBrowserBattleBridge({
   viewerId: 'guest',
   createTankVisual: fakeVisual,
   prepareVisualTextures: async (...args) => { textureWarms.push(args); },
+  onVisualReady: (entity) => registeredVisuals.push(entity),
   clearVehicleDecals: (visual) => {
     destructionOrder.push(`decals:${visuals.indexOf(visual)}`);
   },
@@ -75,6 +77,10 @@ assert.deepEqual(textureWarms.map((args) => args[4]), ['summer', 'winter'],
   'every distinct vehicle/camo variant is prewarmed before reveal');
 assert.equal(visuals.every((visual) => !visual.visible), true,
   'prepared multiplayer visuals stay hidden at the staging origin');
+assert.deepEqual(registeredVisuals.map((entity) => entity.id), ['host', 'guest'],
+  'each fully constructed actor publishes one explicit late-emitter lifecycle event');
+assert.ok(registeredVisuals.every((entity) => entity.networkVisible === false),
+  'emitter registration alone never reveals a network actor before authority');
 
 const entity = (id, team, x, z) => ({
   id, specId: 'm1a2', team, x, y: 1.2, z,
@@ -399,4 +405,196 @@ bridge.dispose();
     'a fresh authority sample cannot spend the display correction clock a second time');
   predictionBridge.dispose();
 }
-console.log('browserBattleBridge.selftest: hidden authority-pose reveal passed');
+function rosterSchedulingFixture({ rosterScheduling, onCreate = () => {}, onWarm = async () => {} } = {}) {
+  const stagedVisuals = [];
+  const warmed = [];
+  const attached = [];
+  const registered = [];
+  const stagedGame = { tanks: [], tankById: new Map(), player: null, shells: [],
+    spotting: null, timeS: 0, preBattleS: 0, result: null, resultReason: null };
+  const stagedBridge = createBrowserBattleBridge({
+    engineCtx: { scene: { add(root) { attached.push(root); } }, anisotropy: 2 },
+    game: stagedGame,
+    bus: { emit() {} },
+    viewerId: 'roster-0',
+    rosterScheduling,
+    createTankVisual(specId, _ctx, options) {
+      const visual = { root: { position: new Vector3() }, visible: true, disposals: 0,
+        setVisible(value) { this.visible = value; },
+        dispose() { this.disposals++; } };
+      stagedVisuals.push({ specId, options, visual });
+      onCreate();
+      return visual;
+    },
+    async prepareVisualTextures(...args) {
+      warmed.push(args);
+      await onWarm(...args);
+    },
+    onVisualReady(actor) { registered.push(actor); },
+  });
+  return { bridge: stagedBridge, game: stagedGame, visuals: stagedVisuals, warmed, attached, registered };
+}
+
+const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => Object.freeze({
+  id: `roster-${index}`, name: `Commander ${index}`, specId: 'm1a2',
+  camo: index % 2 ? 'summer' : 'winter', team: index < 7 ? 'alpha' : 'bravo',
+})));
+
+{
+  let ambientFrames = 0;
+  const waits = [];
+  const priorFrame = Object.getOwnPropertyDescriptor(globalThis, 'requestAnimationFrame');
+  const fixture = rosterSchedulingFixture({ rosterScheduling: {
+    now: () => 0,
+    yieldTask: async () => { waits.push('task'); },
+    yieldFrame: async () => { waits.push('frame'); },
+  }, onWarm: async (_spec, _anisotropy, _quality, tick) => { await tick(); await tick(); } });
+  const progress = [];
+  try {
+    Object.defineProperty(globalThis, 'requestAnimationFrame', {
+      configurable: true, writable: true,
+      value(callback) { ambientFrames++; queueMicrotask(callback); return ambientFrames; },
+    });
+    await fixture.bridge.prepareRoster([...fullCachedRoster,
+      Object.freeze({ id: 'watcher', specId: 'not-a-vehicle', team: 'spectator' }),
+    ], (fraction, specId) => progress.push([fraction, specId]));
+    assert.equal(ambientFrames, 0,
+      'a cached 14-entity roster does not force one ambient animation frame per entity');
+    assert.deepEqual(waits, [], 'cached checkpoints below the loading budget do not wait');
+    assert.equal(fixture.visuals.length, 14);
+    assert.equal(fixture.bridge.entities.size, 14,
+      'duplicate vehicle picks retain fourteen distinct network identities');
+    assert.deepEqual(fixture.visuals.map(({ options }) => [options.camoPattern, options.quality]),
+      fullCachedRoster.map((player, index) => [player.camo, index === 0 ? 'high' : 'ai']),
+      'cached staging preserves the immutable camouflage and local/replica quality tuple');
+    assert.deepEqual(fixture.warmed.map(([spec, anisotropy, quality, _tick, camo]) =>
+      [spec.id, anisotropy, quality, camo]), [
+      ['m1a2', 2, 'high', 'winter'], ['m1a2', 2, 'ai', 'summer'], ['m1a2', 2, 'ai', 'winter'],
+    ], 'only exact spec/camouflage/quality tuples share texture preparation');
+    assert.equal(new Set(fixture.visuals.map(({ options }) => options.camoSeed)).size, 14,
+      'shared spec picks retain identity-derived camouflage seeds');
+    assert.deepEqual(fixture.registered.map((actor) => actor.id), fullCachedRoster.map((player) => player.id));
+    assert.ok(fixture.registered.every((actor) => actor.networkVisible === false
+      && actor._networkPoseReady === false && !actor.visual.visible
+      && actor.state.pos.equals(new Vector3())), 'staged entities have no authority pose or visible enemy data');
+    assert.deepEqual(fixture.attached, fixture.visuals.map(({ visual }) => visual.root));
+    assert.deepEqual(progress, fullCachedRoster.map((_player, index) => [(index + 1) / 14, 'm1a2']));
+    assert.deepEqual(fixture.game.tanks, [], 'preparation does not publish the private bridge roster');
+    assert.equal(fixture.game.tankById.size, 0);
+    assert.equal(fixture.game.player, null);
+  } finally {
+    if (priorFrame) Object.defineProperty(globalThis, 'requestAnimationFrame', priorFrame);
+    else delete globalThis.requestAnimationFrame;
+    fixture.bridge.dispose();
+  }
+}
+
+{
+  let clock = 0;
+  const waits = [];
+  const fixture = rosterSchedulingFixture({
+    rosterScheduling: {
+      now: () => clock,
+      yieldTask: async () => { waits.push(['task', clock, fixture.visuals.length]); },
+      yieldFrame: async () => { waits.push(['frame', clock, fixture.visuals.length]); },
+    },
+    onCreate: () => { clock += 4; },
+  });
+  try {
+    await fixture.bridge.prepareRoster(fullCachedRoster);
+    assert.deepEqual(waits, [
+      ['task', 8, 2], ['task', 16, 4], ['task', 24, 6], ['task', 32, 8],
+      ['task', 40, 10], ['task', 48, 12], ['frame', 56, 14],
+    ], '8ms exhausted slices yield tasks and the first checkpoint past 50ms permits a progress frame');
+    assert.ok(fixture.visuals.every(({ visual }) => !visual.visible));
+    const firstActors = [...fixture.bridge.entities.values()];
+    clock = 500;
+    await fixture.bridge.prepareRoster(fullCachedRoster);
+    assert.equal(waits.length, 7, 'a new prepareRoster call starts its own loading budget and paint cadence');
+    assert.equal(fixture.visuals.length, 14, 'already staged IDs do not construct duplicate replicas');
+    assert.deepEqual([...fixture.bridge.entities.values()], firstActors);
+    assert.equal(fixture.registered.length, 14, 'cached IDs do not repeat the visual lifecycle publication');
+    await fixture.bridge.prepareRoster([]);
+    assert.equal(waits.length, 7, 'empty roster preparation adds no scheduler work');
+  } finally {
+    fixture.bridge.dispose();
+  }
+}
+
+{
+  let clock = 0;
+  const waits = [];
+  const fixture = rosterSchedulingFixture({
+    rosterScheduling: {
+      now: () => clock,
+      yieldTask: async () => { waits.push(['task', clock]); },
+      yieldFrame: async () => { waits.push(['frame', clock]); },
+    },
+    async onWarm(_spec, _anisotropy, _quality, tick) {
+      for (let step = 0; step < 3; step++) { clock += 4; await tick(); }
+    },
+    onCreate: () => { clock += 4; },
+  });
+  try {
+    await fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1));
+    assert.deepEqual(waits, [['task', 8], ['task', 16]],
+      'texture painter checkpoints and actor construction consume the same per-call budget');
+    assert.equal(fixture.visuals[0].visual.visible, false);
+  } finally {
+    fixture.bridge.dispose();
+  }
+}
+
+{
+  let clock = 0;
+  let completions = 0;
+  const frames = [];
+  const timers = [];
+  const keys = ['requestAnimationFrame', 'setTimeout'];
+  const prior = new Map(keys.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  const fixture = rosterSchedulingFixture({
+    rosterScheduling: { now: () => clock, yieldTask: async () => {} },
+    onCreate: () => { clock += 50; },
+  });
+  let pending;
+  try {
+    Object.defineProperty(globalThis, 'requestAnimationFrame', {
+      configurable: true, writable: true,
+      value(callback) { frames.push(callback); return frames.length; },
+    });
+    Object.defineProperty(globalThis, 'setTimeout', {
+      configurable: true, writable: true,
+      value(callback, delay) { timers.push({ callback, delay }); return timers.length; },
+    });
+    pending = fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1)).then(() => { completions++; });
+    for (let turn = 0; turn < 32 && frames.length === 0; turn++) await Promise.resolve();
+    assert.equal(frames.length, 1, 'an exhausted paint interval requests one animation callback');
+    assert.deepEqual(timers.map(({ delay }) => delay), [34],
+      'roster preparation uses the bounded fallback when animation callbacks never fire');
+    assert.equal(completions, 0);
+    timers[0].callback();
+    await pending;
+    assert.equal(completions, 1, 'the fallback completes hidden-document roster preparation');
+    frames[0]();
+    timers[0].callback();
+    await Promise.resolve();
+    assert.equal(completions, 1, 'late callbacks cannot duplicate completion or construction');
+    assert.equal(fixture.visuals.length, 1);
+    assert.equal(fixture.visuals[0].visual.visible, false);
+    assert.equal(timers.length, 1);
+  } finally {
+    // Drain the sole held entity checkpoint even when a regression assertion fails.
+    for (const callback of frames) callback();
+    for (const timer of timers) timer.callback();
+    try { await pending; } finally {
+      for (const key of keys) {
+        const descriptor = prior.get(key);
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else delete globalThis[key];
+      }
+      fixture.bridge.dispose();
+    }
+  }
+}
+
+console.log('browserBattleBridge.selftest: hidden authority-pose reveal and roster scheduling passed');

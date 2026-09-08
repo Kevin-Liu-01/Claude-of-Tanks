@@ -1,6 +1,7 @@
 // Independent T-72B obr.1987 source study. The supplied two-object model is
 // fused; only geometric scalar measurements inform these original solids.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
@@ -87,7 +88,7 @@ function engineDeck(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',cylX(.090,2.15,24),0,1.04,-3.305);
   P.addEquipment('hullDetail',cylY(.249,.037,28),-.472,1.413,1.693);
   for(const x of [-.795,.795]) {
-    P.addEquipment('hullDetail',cylZ(.075,.064,20),x,1.047,2.595);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.075,.064,20),'headlight'),x,1.047,2.595);
     P.addEquipment('hullDetail',beamBetween([x-.069,1.095,2.52],[x-.069,1.12,2.65],.009));
     P.addEquipment('hullDetail',beamBetween([x+.069,1.095,2.52],[x+.069,1.12,2.65],.009));
   }

@@ -9,10 +9,13 @@
 // TaskDuration over a quiet window. taskCoreEquivalent=1 means one CPU core
 // was occupied continuously for the complete window; unlike FPS this exposes
 // expensive work on a static Garage frame.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
+import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -32,6 +35,12 @@ const garageSettleSeconds = Math.max(
   Math.min(60, Number(option('garage-settle', '16')) || 16),
 );
 const outputPath = option('out', '');
+const sha256 = content => createHash('sha256').update(content).digest('hex');
+const buildIndexHash = production ? sha256(readFileSync(resolve('dist/index.html'))) : null;
+const acquisitionHash = sha256([
+  readFileSync(fileURLToPath(import.meta.url)),
+  readFileSync(new URL('./phase-environment-receipt.mjs', import.meta.url)),
+].join('\n'));
 const viewport = {
   width: Math.max(640, Number(option('width', '1280')) || 1280),
   height: Math.max(360, Number(option('height', '577')) || 577),
@@ -429,6 +438,7 @@ const measurePhase = async (name) => {
   try { await cdp.send('HeapProfiler.collectGarbage'); } catch (_) { /* optional */ }
   await sleep(500);
   await page.evaluate(() => { window.__PHASE_RESOURCE_FRAMES = []; });
+  const environmentBefore = await page.evaluate(readPhaseEnvironment);
   const resourcesBefore = await sampleResources();
   const metricsBefore = await metricMap();
   const startedAt = performance.now();
@@ -436,6 +446,7 @@ const measurePhase = async (name) => {
   const wallSeconds = (performance.now() - startedAt) / 1000;
   const metricsAfter = await metricMap();
   const resourcesAfter = await sampleResources();
+  const environmentAfter = await page.evaluate(readPhaseEnvironment);
   const frameWorkload = await page.evaluate(() => {
     const frames = window.__PHASE_RESOURCE_FRAMES || [];
     const summarize = (values) => {
@@ -484,6 +495,8 @@ const measurePhase = async (name) => {
   const frameLoopAfter = resourcesAfter.caches.frameLoopScheduler || {};
   return {
     name,
+    environmentBefore,
+    environmentAfter,
     wallSeconds: +wallSeconds.toFixed(3),
     taskSeconds: +taskSeconds.toFixed(3),
     taskCoreEquivalent: +(taskSeconds / wallSeconds).toFixed(3),
@@ -846,7 +859,14 @@ try {
 
   const phases = [garageIdle, battleActive, garageReturned];
   const budgets = evaluateBudgets(phases);
+  if (production && sha256(readFileSync(resolve('dist/index.html'))) !== buildIndexHash) {
+    throw new Error('Production build changed during the phase-resource probe');
+  }
   report = {
+    schemaVersion: 2,
+    buildIndexHash,
+    acquisitionHash,
+    browserVersion: await browser.version(),
     ok: pageErrors.length === 0 && (!gate || budgets.pass),
     production,
     trace,

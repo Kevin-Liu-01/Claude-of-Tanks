@@ -1,5 +1,6 @@
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
@@ -1033,7 +1034,7 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
       // (+28 shoe voxels measured at three heights) — inboard of the
       // 1.09 lane edge the clip is zero by construction, and the real
       // T-90A carries its light clusters flanking the driver's hatch.
-      const lc = FITTINGS.lightCluster({ mats: lcMats, pods: 2, spacing: 0.15, rake: -0.30, seed: 3 });
+      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: lcMats, pods: 2, spacing: 0.15, rake: -0.30, seed: 3 });
       lc.position.set(sL * 0.95, 1.10, 2.97);
       P.hullG.add(lc);
       const tl = FITTINGS.lightCluster({ mats: lcMats, pods: 1, r: 0.038, lens: 'dark', rake: 0.0, seed: 4 });
@@ -2692,7 +2693,7 @@ function buildPT91MHull(P: T90BuilderPort): void {
   // 1.33 bin line; envelope inside the fender-box silhouette (x to 1.479,
   // z to 3.06 vs the 3.435 fender tips).
   for (const s of [-1, 1]) {
-    const lc = FITTINGS.lightCluster({
+    const lc = FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, r: 0.05, guard: true, rake: -0.30, seed: 9,
     });
     lc.position.set(s * 1.44, 1.235, 3.02);
@@ -5126,7 +5127,7 @@ function buildT90(P: T90BuilderPort): void {
     // carries its clusters on the fender line)
     const lcMats = { ...P.mats, dark: rehookClone(P.mats.dark, 0x3a3e30, 0x10140c), detail: rehookClone(P.mats.detail, null, 0x0e120b) };
     for (const sL of [-1, 1]) {
-      const lc = FITTINGS.lightCluster({ mats: lcMats, pods: 2, spacing: 0.15, rake: -0.30, seed: 3 });
+      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: lcMats, pods: 2, spacing: 0.15, rake: -0.30, seed: 3 });
       lc.position.set(sL * 1.66, 1.50, 2.62);   // base ON the fender shelf top (1.50)
       P.hullG.add(lc);
       const tl = FITTINGS.lightCluster({ mats: lcMats, pods: 1, r: 0.038, lens: 'dark', rake: 0.0, seed: 4 });
@@ -7684,7 +7685,13 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   // land directly on the raised shoulder bridges.
   for (const s of [-1, 1]) {
     P.add('hull', box(0.34, 0.18, 0.25), s * 1.40, 1.29, 2.68, -0.18, -s * 0.18, 0);
-    for (const dx of [-0.075, 0.075]) P.add('hullGlass', cylY(0.047, 0.052, 0.025, 10), s * 1.40 + dx, 1.36, 2.76);
+    // These existing discs faced upward. Seat their apertures in the actual
+    // canted cassette front, with 5.5 mm of rear stock entering its housing.
+    for (const dx of [-0.075, 0.075]) {
+      const lens = markVehicleNightLens(cylY(0.047, 0.052, 0.025, 10).rotateX(Math.PI / 2), 'headlight');
+      P.add('hullGlass', KIT.xform(lens, dx, 0.025, 0.132),
+        s * 1.40, 1.29, 2.68, -0.18, -s * 0.18, 0);
+    }
     P.add('hullDark', box(0.38, 0.025, 0.30), s * 1.40, 1.39, 2.66, -0.18, -s * 0.18, 0);
     P.add('hullDark', torus(0.105, 0.024, 14), s * 0.73, 0.66, 3.09, Math.PI / 2, 0, 0);
   }
