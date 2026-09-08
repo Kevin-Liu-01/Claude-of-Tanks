@@ -72,3 +72,12 @@ Publication requires resolving/reproducing that integration failure against
 current main and completing the composed release. These local receipts are
 not combined into a fabricated green release, and do not supersede any of
 the broader 59-ID material, running-gear or switch-lag work.
+
+A later native failure in `.qa-dev/burlak-release-bWZIfd/` was traced to the
+public HTML fallback serving the 404 document for existing Gallery/audit
+HTML URLs. This routing defect was repaired independently in `90e8b9fd3`
+and published with integrated evidence in `41f7eaff8`. It was not a geometry
+failure or permission to bypass native checks. The subsequent combined
+seven-ID bodywork run rendered all 84 requested native views successfully;
+its remaining release qualification is tracked in
+`fixed-stock-paint-qualified-20260908.md`.
