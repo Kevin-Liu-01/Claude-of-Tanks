@@ -50,7 +50,9 @@ function applicationLocation(frame, origin) {
   let url;
   try { url = new URL(frame.url); } catch { return null; }
   if (url.origin !== origin || url.username || url.password || url.search || url.hash) return null;
-  if (!/^\/(?:assets\/[A-Za-z0-9_-]+\.(?:m?js)|src\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.[cm]?[jt]sx?)$/.test(url.pathname)) return null;
+  // Pinned Three builds retain these dotted chunk names. Admit only those
+  // known prefixes, not arbitrary dotted assets or private script locations.
+  if (!/^\/(?:assets\/(?:[A-Za-z0-9_-]+\.(?:m?js)|three\.(?:module|core)-[A-Za-z0-9_-]+\.js)|src\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.[cm]?[jt]sx?)$/.test(url.pathname)) return null;
   if (url.pathname.length > 200 || !integer(frame.lineNumber) || !integer(frame.columnNumber)) return null;
   const functionName = typeof frame.functionName === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]{0,95}$/.test(frame.functionName)
     ? frame.functionName : '(anonymous)';

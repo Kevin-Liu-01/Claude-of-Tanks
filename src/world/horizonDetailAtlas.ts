@@ -102,19 +102,26 @@ function paintWoodlandBranches(ctx: Context, x: number, width: number,
 function paintWoodlandTree(ctx: Context, rng: Random, x: number, width: number,
   height: number): void {
   const top = ROOT - height;
-  const lean = (rng() - 0.5) * width * 0.22;
+  const lean = (rng() - 0.5) * width * 0.32;
   const crownX = x + lean;
-  const crownY = top + height * 0.29;
+  const crownY = top + height * (0.32 + rng() * 0.08);
+  const broad = 0.32 + rng() * 0.12;
+  const understory = rng() < 0.30;
   paintWoodlandBranches(ctx, x, width, height, lean);
   ctx.beginPath();
-  ellipse(ctx, crownX, crownY, width * 0.34, height * 0.23);
-  // Independent branch masses break both the upper contour and the sides.
-  // They overlap the central crown, rather than forming a detached cloud.
+  ellipse(ctx, crownX, crownY, width * broad, height * 0.28);
+  // The same seven branch masses now mix a deeper interlocking canopy with
+  // occasional low attached growth. Do not add a separate shrub draw/form.
   for (let i = 0; i < 7; i++) {
-    const angle = i / 7 * Math.PI * 2;
-    ellipse(ctx, crownX + Math.cos(angle) * width * (0.22 + rng() * 0.08),
-      crownY + Math.sin(angle) * height * (0.12 + rng() * 0.04),
-      width * (0.15 + rng() * 0.075), height * (0.12 + rng() * 0.05));
+    if (understory && i >= 5) {
+      ellipse(ctx, x + lean * 0.2 + (i - 5.5) * width * 0.10,
+        ROOT - 9 - rng() * 3, width * (0.16 + rng() * 0.05), 5.5);
+    } else {
+      const angle = Math.PI + i / 6 * Math.PI * 1.35;
+      ellipse(ctx, crownX + Math.cos(angle) * width * (0.22 + rng() * 0.10),
+        crownY + Math.sin(angle) * height * (0.12 + rng() * 0.04),
+        width * (0.16 + rng() * 0.08), height * (0.14 + rng() * 0.07));
+    }
   }
   const shade = ctx.createLinearGradient(crownX - width / 2, top, crownX + width / 2, crownY + height * 0.32);
   shade.addColorStop(0, gray(239));
@@ -128,7 +135,7 @@ function paintWoodlandTree(ctx: Context, rng: Random, x: number, width: number,
   // polka dots spread down a filled rock-like trunk apron.
   for (let i = 0; i < 8; i++) {
     const px = crownX + (rng() - 0.5) * width * 0.76;
-    const py = top + height * (0.13 + rng() * 0.37);
+    const py = top + height * (0.13 + rng() * 0.53);
     ctx.beginPath();
     ctx.moveTo(px - width * 0.15, py + height * 0.035);
     ctx.quadraticCurveTo(px - width * 0.04, py - height * 0.05,
@@ -320,7 +327,8 @@ function paintBand(ctx: Context, kind: HorizonDetailKind, seed: number): void {
   ctx.fillStyle = gray(layout.rootTone);
   ctx.fillRect(0, ROOT - 4, WIDTH, 4);
   for (let i = 0; i < layout.count; i++) {
-    const x = (i + rng() * 0.82) / layout.count * WIDTH;
+    const x = (i + rng() * 0.82) / layout.count * WIDTH
+      + (kind === 'woodland' ? Math.sin(i * 1.73 + seed * 0.0001) * 7 : 0);
     const width = layout.widthMin + rng() * layout.widthRange;
     const height = layout.heightMin + rng() * layout.heightRange;
     const shapeSeed = (rng() * 0xFFFFFFFF) >>> 0;
