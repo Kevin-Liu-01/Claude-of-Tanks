@@ -466,6 +466,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/battleAtmosphereAccess.selftest.mjs',
     'tools/daynight-atmosphere-probe.selftest.mjs',
     'tools/night-window-census.selftest.mjs',
+    'tools/night-fixture-census.selftest.mjs',
     'src/vehicles/equipmentDamage.selftest.mjs',
     'src/vehicles/vehicleReadability.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
