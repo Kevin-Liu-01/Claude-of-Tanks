@@ -35,7 +35,7 @@ The following content intentionally remains source-language content:
   document language, and `Intl` formatting.
 - `src/ui/i18nCatalog.en-US.json` is the source catalog.
 - `src/ui/i18nCatalog.zh-CN.json` is the reviewed Simplified Chinese catalog.
-- `src/ui/i18nCatalog.ts` registers those JSON files with the game runtime.
+- `src/ui/i18nCatalog.ts` assembles those JSON files for direct use by the game runtime.
 - `src/presentation/staticI18n.ts` translates static public-page text and
   attributes. `data-i18n-html` is restricted to source-controlled rich copy.
 

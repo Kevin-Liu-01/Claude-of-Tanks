@@ -28,7 +28,6 @@ Object.defineProperty(globalThis, 'window', {
   value: new EventTarget(),
 });
 
-await import('./i18nCatalog.ts');
 const { formatNumber, getLocale, setLocale, t } = await import('./i18n.ts');
 
 assert.equal(getLocale(), 'zh-CN', 'supported navigator.languages value wins on first boot');

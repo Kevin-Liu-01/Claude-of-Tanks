@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import './i18nCatalog.ts';
 import { getLocale, setLocale } from './i18n.ts';
 import { battleControlHintGroups } from './settings.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';

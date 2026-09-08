@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { createTank } from '../vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../vehicles/specs.ts';
 import { collectSurfacePickTargets, effectiveVisible } from './surfaceMarkup.ts';
-import '../ui/i18nCatalog.ts';
 
 let visiblePrimitiveCount = 0;
 let fittingPrimitiveCount = 0;

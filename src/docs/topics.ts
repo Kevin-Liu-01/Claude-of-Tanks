@@ -1,5 +1,4 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
-import '../ui/i18nCatalog.ts';
 import { t } from '../ui/i18n.ts';
 
 type TopicSection = readonly [string, ...string[]];

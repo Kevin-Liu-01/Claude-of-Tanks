@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import '../ui/i18nCatalog.ts';
 import {
   formatGitHubStarCount,
   mountGitHubStars,
