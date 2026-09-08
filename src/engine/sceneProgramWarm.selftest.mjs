@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createForwardProgramWarmOwner } from './programWarm.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 let passed = 0;
 function test(name, run) {
@@ -8,7 +10,8 @@ function test(name, run) {
   passed++;
 }
 
-function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, empty = false, linker = false } = {}) {
+function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, empty = false,
+  linker = false, layered = false } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const geometry = new THREE.BoxGeometry();
@@ -43,13 +46,21 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
     mesh.position.set(index, 1, 2);
     scene.add(mesh);
   }
+  if (layered) {
+    camera.layers.enable(LATE_FX_LAYER);
+    child.layers.set(LATE_FX_LAYER);
+    hiddenMesh.layers.set(LATE_FX_LAYER);
+    instance.layers.enable(LATE_FX_LAYER);
+    excludedLight.layers.set(LATE_FX_LAYER);
+  }
+  const cameraMask = camera.layers.mask;
   if (empty) scene.clear();
   const originals = [];
   scene.traverse((object) => originals.push(object));
   const renderables = originals.filter((object) => object.isMesh || object.isPoints || object.isLine || object.isSprite);
   const expectedLights = [];
   scene.traverseVisible((object) => {
-    if (object.isLight && object.layers.test(camera.layers)) expectedLights.push(object);
+    if (object.isLight) expectedLights.push(object);
   });
   const snapshots = originals.map((object) => ({
     object, parent: object.parent, children: [...object.children], visible: object.visible,
@@ -65,13 +76,15 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
   const priorTarget = new THREE.WebGLRenderTarget(2, 2);
   const hdrTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
   hdrTarget.texture.colorSpace = THREE.LinearSRGBColorSpace;
+  const lateTarget = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, depthBuffer: true });
   let disposals = 0;
   for (const resource of [geometry, shared, transparent, pointsMaterial, lineMaterial, spriteMaterial,
-    instance, priorTarget, hdrTarget]) {
+    instance, priorTarget, hdrTarget, lateTarget]) {
     resource.addEventListener('dispose', () => { disposals++; });
   }
   const events = [];
   const visits = [];
+  const passVisits = [];
   const materialVisits = [];
   const facades = new Set();
   const batches = [];
@@ -137,7 +150,9 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
       assert.ok(root instanceof THREE.Object3D, 'facade retains the native compile object contract');
       assert.equal(root.parent, null);
       assert.deepEqual(root.children, [], 'original objects are never attached to the facade');
-      assert.equal(target, targetPolicy === 'hdr' ? hdrTarget : priorTarget,
+      const expectedTarget = layered && camera.layers.mask === 1 << LATE_FX_LAYER
+        ? lateTarget : targetPolicy === 'hdr' ? hdrTarget : priorTarget;
+      assert.equal(target, expectedTarget,
         'preserve HDR binding and existing null=no-target-override policy');
       facades.add(root);
       const lights = [];
@@ -153,12 +168,14 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
         // additional-root lights, then all submitted renderable materials.
         targetScene.traverseVisible(collectLight);
         root.traverseVisible(collectLight);
-        assert.deepEqual(lights, expectedLights, 'never duplicate or omit the real scene lights');
+        assert.deepEqual(lights, expectedLights.filter((light) => light.layers.test(camera.layers)),
+          'never duplicate or omit the real scene lights for the active camera mask');
         root.traverse((object) => {
           if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return;
           assert.ok(renderables.includes(object), 'shader selection receives the original renderable');
           assert.equal(object.parent, snapshots.find((entry) => entry.object === object).parent);
           visits.push(object);
+          passVisits.push({ object, mask: camera.layers.mask, target, lights: [...lights] });
           batch.push(object);
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           for (const material of materials) {
@@ -183,7 +200,8 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
     now: () => clock,
   });
   return {
-    owner, renderer, scene, camera, gl, events, visits, materialVisits, batches, facades, renderables,
+    owner, renderer, scene, camera, gl, events, visits, passVisits, materialVisits, batches, facades, renderables,
+    cameraMask, hdrTarget, lateTarget,
     hiddenMesh, child, instance, layerExcluded,
     block() { blocked = true; },
     nativeDepth: () => nativeDepth,
@@ -201,6 +219,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
         assert.equal(object.geometry, entry.geometry);
       }
       assert.equal(transparent.side, THREE.DoubleSide);
+      assert.equal(camera.layers.mask, cameraMask, 'restore the caller camera mask before every checkpoint');
       assert.equal(graphEvents, 0, 'even temporary reparenting/restoration is forbidden');
       assert.equal(disposals, 0, 'submission never disposes caller resources');
       assert.equal(uniformCalls, 0, 'this owner only submits programs, without eager uniform initialization');
@@ -281,6 +300,121 @@ test('timings retain whole-job program counts across all native batches', () => 
   assert.deepEqual(f.renderer.info.programs.slice(0, residentPrograms.length), residentPrograms);
   assert.ok(timing.submissionSlices >= 1);
   assert.ok(Object.values(timing).every((value) => Number.isFinite(value) && value >= 0));
+});
+
+function compositorPasses(f) {
+  return [
+    { layerMask: f.cameraMask & ~(1 << LATE_FX_LAYER), target: f.hdrTarget },
+    { layerMask: 1 << LATE_FX_LAYER, target: f.lateTarget },
+  ];
+}
+
+test('opt-in compositor passes submit hidden and overlapping objects with their exact lights and targets', () => {
+  const f = fixture({ layered: true });
+  const timing = {};
+  const passes = compositorPasses(f);
+  f.renderer.info.programs.push({ program: {} });
+  drain(f, stepsFor(f, { timing, passes }));
+  const expected = passes.flatMap((pass) => f.renderables
+    .filter((object) => (object.layers.mask & pass.layerMask) !== 0)
+    .map((object) => ({ object: object.uuid, mask: pass.layerMask, target: pass.target.texture.uuid })));
+  assert.deepEqual(f.passVisits.map(({ object, mask, target }) =>
+    ({ object: object.uuid, mask, target: target.texture.uuid })), expected,
+    'late-only objects never acquire ordinary-light variants, and overlap objects warm both passes');
+  assert.equal(f.visits.filter((object) => object === f.instance).length, 2);
+  assert.ok(f.visits.includes(f.child), 'an excluded renderable parent does not prune a late-layer child');
+  assert.ok(f.visits.includes(f.hiddenMesh), 'hidden variants still compile within their selected layer');
+  assert.ok(!f.visits.includes(f.layerExcluded), 'unselected render layers create no unused forward variant');
+  assert.equal(timing.programsBefore, 1, 'counts retain the beginning of the complete two-pass job');
+  assert.equal(timing.programsAfter, 1 + f.materialVisits.length);
+  assert.equal(f.passVisits.find((visit) => visit.object === f.child).lights.length, 1,
+    'the late pass receives only its layer-selected light, not ordinary scene or duplicated root lights');
+});
+
+function pauseBetweenPasses(f, options) {
+  const passes = compositorPasses(f);
+  const ordinaryCount = f.renderables.filter((object) => (object.layers.mask & passes[0].layerMask) !== 0).length;
+  const steps = stepsFor(f, { passes, ...options });
+  let checkpoints = 0;
+  for (;;) {
+    assert.equal(steps.next().done, false, 'yield after the restored ordinary pass before starting late FX');
+    f.assertUntouched();
+    if (f.visits.length === ordinaryCount) {
+      f.assertFacadeReleased();
+      return steps;
+    }
+    assert.ok(++checkpoints <= ordinaryCount, 'ordinary pass has a bounded worklist');
+  }
+}
+
+for (const checkpoint of ['batch', 'between-passes']) {
+for (const boundary of ['return', 'throw', 'abort', 'epoch', 'renderer', 'context']) {
+  test(`layered ${checkpoint} ${boundary} restores camera/target and prevents later-pass work`, () => {
+    const f = fixture({ layered: true });
+    const controller = new AbortController();
+    const failure = new Error('layered warm cancelled');
+    const options = { passes: compositorPasses(f), signal: controller.signal };
+    const steps = checkpoint === 'batch' ? firstSlice(f, options) : pauseBetweenPasses(f, options);
+    const eventCount = f.events.length;
+    if (boundary === 'return') steps.return();
+    else if (boundary === 'throw') assert.throws(() => steps.throw(failure), (error) => error === failure);
+    else {
+      if (boundary === 'abort') controller.abort(failure);
+      if (boundary === 'epoch') f.owner.invalidate();
+      if (boundary === 'renderer') f.renderer.info = { programs: [] };
+      if (boundary === 'context') f.gl.lost = true;
+      if (boundary !== 'context') f.block();
+      if (boundary === 'abort') assert.throws(() => steps.next(), (error) => error === failure);
+      else assert.equal(steps.next().done, true);
+    }
+    if (boundary !== 'context') assert.equal(f.events.length, eventCount);
+    assert.ok(f.passVisits.every((visit) => visit.mask !== 1 << LATE_FX_LAYER));
+    f.assertUntouched();
+    f.assertFacadeReleased();
+  });
+}
+}
+
+test('an unselected pass binds no target and does not prune hidden late descendants', () => {
+  const f = fixture({ layered: true });
+  const passes = [{ layerMask: 0, target: f.hdrTarget }, compositorPasses(f)[1]];
+  const steps = stepsFor(f, { passes });
+  assert.equal(steps.next().done, false, 'the empty ordinary pass still leaves a restored pass checkpoint');
+  assert.equal(f.events.includes('setTarget'), false);
+  assert.equal(f.events.includes('compileEnter'), false);
+  f.assertUntouched();
+  drain(f, steps);
+  assert.equal(f.visits.length, 3);
+  assert.ok(f.visits.includes(f.child) && f.visits.includes(f.hiddenMesh) && f.visits.includes(f.instance));
+  assert.ok(f.passVisits.every((visit) => visit.mask === 1 << LATE_FX_LAYER && visit.target === f.lateTarget));
+});
+
+test('native failure in the late pass restores both camera and complete target state', () => {
+  const failure = new Error('late native compile failed');
+  let f;
+  f = fixture({ layered: true, onVisit() {
+    if (f.camera.layers.mask === 1 << LATE_FX_LAYER) throw failure;
+  } });
+  assert.throws(() => drain(f, stepsFor(f, { passes: compositorPasses(f) })), (error) => error === failure);
+  f.assertUntouched();
+  f.assertFacadeReleased();
+});
+
+test('synchronous late-pass cancellation finishes native compile and restores before throwing', () => {
+  const failure = new Error('cancelled inside the late compile');
+  const controller = new AbortController();
+  let f;
+  f = fixture({ layered: true, onVisit(_object, state) {
+    if (f.camera.layers.mask !== 1 << LATE_FX_LAYER) return;
+    assert.equal(state.nativeDepth, 1);
+    controller.abort(failure);
+  } });
+  assert.throws(() => drain(f, stepsFor(f, { passes: compositorPasses(f), signal: controller.signal })),
+    (error) => error === failure);
+  assert.equal(f.passVisits.filter((visit) => visit.mask === 1 << LATE_FX_LAYER).length, 3,
+    'abort is observed after the entire native late batch exits');
+  f.assertUntouched();
+  f.assertFacadeReleased();
 });
 
 test('an empty scene completes without a target bind or native compile and reports unchanged program counts', () => {
@@ -409,13 +543,16 @@ function pauseBeforeLinker(f, options = {}) {
   assert.equal(typeof f.owner.prepareSceneSteps, 'function',
     'the combined owner must retain one renderer lifetime across submission and linking');
   const steps = f.owner.prepareSceneSteps({ sliceMs: 5, ...options });
+  const objectCount = options.passes ? options.passes.reduce((count, pass) => count
+    + f.renderables.filter((object) => (object.layers.mask & pass.layerMask) !== 0).length, 0)
+    : f.renderables.length;
   let checkpoints = 0;
   for (;;) {
     assert.equal(steps.next().done, false, 'the final native submission must yield before linker work');
     f.assertUntouched();
     assert.equal(f.events.includes('getExtension'), false);
     assert.equal(f.events.includes('linkerQuery'), false);
-    if (f.visits.length === f.renderables.length) return steps;
+    if (f.visits.length === objectCount) return steps;
     assert.ok(++checkpoints <= f.renderables.length + 1, 'combined submission has a bounded worklist');
   }
 }
@@ -432,12 +569,13 @@ test('combined preparation polls only after the final restored submission checkp
   f.assertFacadeReleased();
 });
 
-test('timed combined preparation captures existing programs before submitting new ones', () => {
-  const f = fixture({ linker: true });
+for (const layered of [false, true]) {
+test(`timed ${layered ? 'two-pass' : 'default'} preparation captures existing programs before submitting new ones`, () => {
+  const f = fixture({ linker: true, layered });
   const existing = [{ program: {} }, { program: {} }];
   f.renderer.info.programs.push(...existing);
   const timing = {};
-  const steps = pauseBeforeLinker(f, { timing });
+  const steps = pauseBeforeLinker(f, { timing, passes: layered ? compositorPasses(f) : undefined });
   const submitted = f.materialVisits.length;
   assert.ok(submitted > 0, 'native compilation adds programs after the automatic baseline capture');
   assert.equal(f.renderer.info.programs.length, existing.length + submitted);
@@ -457,6 +595,7 @@ test('timed combined preparation captures existing programs before submitting ne
   f.assertUntouched();
   f.assertFacadeReleased();
 });
+}
 
 test('abort at the submission/linker handoff preserves the reason without any further GPU access', () => {
   const f = fixture({ linker: true });
@@ -472,10 +611,11 @@ test('abort at the submission/linker handoff preserves the reason without any fu
   f.assertUntouched();
 });
 
+for (const layered of [false, true]) {
 for (const invalidation of ['renderer-info', 'owner-epoch']) {
-  test(`${invalidation} at the submission/linker handoff cannot start a new renderer-lifetime poll`, () => {
-    const f = fixture({ linker: true });
-    const steps = pauseBeforeLinker(f);
+  test(`${invalidation} at the ${layered ? 'two-pass' : 'default'} submission/linker handoff stops polling`, () => {
+    const f = fixture({ linker: true, layered });
+    const steps = pauseBeforeLinker(f, { passes: layered ? compositorPasses(f) : undefined });
     if (invalidation === 'renderer-info') f.renderer.info = { programs: [] };
     else f.owner.invalidate();
     f.block();
@@ -485,6 +625,7 @@ for (const invalidation of ['renderer-info', 'owner-epoch']) {
     f.assertFacadeReleased();
     f.assertUntouched();
   });
+}
 }
 
 test('context loss at the submission/linker handoff cannot acquire an extension or query programs', () => {
@@ -501,5 +642,58 @@ test('context loss at the submission/linker handoff cannot acquire an extension 
   f.assertFacadeReleased();
   f.assertUntouched();
 });
+
+// Execute the production adapter body, not a parallel reconstruction of its
+// pass choices. Strip its single local type annotation for this Node harness.
+const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+const networkCompileBody = mainSource.match(
+  /compile: async \(signal\?: AbortSignal\) => \{([\s\S]*?)\n\s{10}\},/,
+)?.[1];
+assert.ok(networkCompileBody, 'network entry retains its scoped async compile adapter');
+const networkCompileFactory = new Function('post', 'camera', 'LATE_FX_LAYER', 'forwardProgramWarm', 'nextPaintFrame',
+  `return async (signal) => {${networkCompileBody.replace(': ForwardProgramCompileTiming', '')}};`);
+for (const composited of [false, true]) {
+  const camera = new THREE.PerspectiveCamera();
+  camera.layers.enable(7);
+  camera.layers.enable(LATE_FX_LAYER);
+  const initialMask = camera.layers.mask;
+  const sceneTarget = { name: 'actual sceneAA target' };
+  const lateTarget = { name: 'actual lateFx target' };
+  const post = composited ? {
+    composer: { renderTarget1: { name: 'not either scene-pass destination' } },
+    sceneAA: { sceneTarget }, lateFx: { target: lateTarget },
+  } : null;
+  const signal = new AbortController().signal;
+  let paints = 0;
+  let finalized = false;
+  let receivedTiming;
+  const compile = networkCompileFactory(post, camera, LATE_FX_LAYER, {
+    *prepareSceneSteps(options) {
+      assert.equal(options.signal, signal);
+      assert.equal(camera.layers.mask, initialMask, 'the adapter never leaves camera state changed');
+      assert.deepEqual(options.passes, composited ? [
+        { layerMask: initialMask & ~(1 << LATE_FX_LAYER), target: sceneTarget },
+        { layerMask: 1 << LATE_FX_LAYER, target: lateTarget },
+      ] : undefined, 'use exact pass targets/masks, or preserve the non-composer default');
+      if (composited) {
+        assert.equal(options.passes[0].target, sceneTarget);
+        assert.equal(options.passes[1].target, lateTarget);
+      }
+      receivedTiming = options.timing;
+      try {
+        yield;
+        options.timing.programsAfter = 3;
+        yield;
+      } finally { finalized = true; }
+    },
+  }, async () => { paints++; });
+  const receipt = await compile(signal);
+  assert.deepEqual(receipt, { programsAfter: 3 });
+  assert.notEqual(receipt, receivedTiming, 'the adapter returns its completed diagnostic copy');
+  assert.equal(paints, 2, 'each owner checkpoint retains its loader paint opportunity');
+  assert.equal(finalized, true);
+  assert.equal(camera.layers.mask, initialMask);
+  passed++;
+}
 
 console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and cancellation cases passed`);

@@ -15,7 +15,8 @@ const VALIDATION_FAILURE_CODES = new Set(['nodes-shape', 'nodes-limit', 'samples
   'time-deltas-shape', 'time-deltas-count', 'time-range', 'duration-limit', 'node-id', 'node-id-duplicate',
   'node-children-shape', 'node-children-limit', 'edge-count-limit', 'child-node-missing',
   'child-multiple-parents', 'root-parent', 'tree-edge-count', 'sample-node-missing', 'lineage-cycle',
-  'lineage-depth', 'lineage-disconnected', 'sample-delta', 'sample-duration-overrun']);
+  'lineage-depth', 'lineage-disconnected', 'sample-delta', 'sample-duration-overrun',
+  'sample-timestamp-underflow', 'sample-timestamp-unsafe']);
 const emptyTotals = () => Object.fromEntries(CATEGORIES.map((key) => [key, 0]));
 const invalid = (profileFailureCode) => {
   throw Object.assign(new Error('source_profile_invalid_profile'), { profileFailureCode });
@@ -73,6 +74,7 @@ function validateProfile(profile) {
   if (!Array.isArray(profile.timeDeltas)) invalid('time-deltas-shape');
   if (profile.samples.length !== profile.timeDeltas.length) invalid('time-deltas-count');
   if (!finite(profile.startTime) || !finite(profile.endTime) || profile.startTime < 0 ||
+      profile.startTime > Number.MAX_SAFE_INTEGER || profile.endTime > Number.MAX_SAFE_INTEGER ||
       profile.endTime < profile.startTime) invalid('time-range');
   if (profile.endTime - profile.startTime > 40000000) invalid('duration-limit');
   return (profile.endTime - profile.startTime) / 1000;
@@ -141,18 +143,46 @@ function addBins(bins, from, to, leaf) {
   }
 }
 
-function accumulate(profile, index, durationMs) {
+/** CDP deltas are signed integer microseconds between delivered samples.
+ * DevTools reconstructs timestamps, then sorts paired timestamps and samples:
+ * https://chromium.googlesource.com/devtools/devtools-frontend/+/9a696c4e723caa3c7e1f78886da353f1f06a79b0/front_end/core/sdk/CPUProfileDataModel.ts
+ * Keep relative integer clocks to avoid adding small deltas to absolute doubles.
+ * Validate every delivered timestamp before sorting; never clamp or discard one.
+ */
+function normalizeSamples(profile) {
+  const durationUs = profile.endTime - profile.startTime;
+  const rows = [];
+  const normalization = { negativeDeltaCount: 0, reorderedSampleCount: 0, equalTimestampCount: 0 };
+  let timeUs = 0;
+  for (let ordinal = 0; ordinal < profile.samples.length; ordinal++) {
+    const delta = profile.timeDeltas[ordinal];
+    if (!Number.isSafeInteger(delta)) invalid('sample-delta');
+    timeUs += delta;
+    if (!Number.isSafeInteger(timeUs)) invalid('sample-timestamp-unsafe');
+    if (timeUs < 0) invalid('sample-timestamp-underflow');
+    if (timeUs > durationUs) invalid('sample-duration-overrun');
+    normalization.negativeDeltaCount += Number(delta < 0);
+    rows.push({ id: profile.samples[ordinal], timeUs, ordinal });
+  }
+  rows.sort((a, b) => a.timeUs - b.timeUs || a.ordinal - b.ordinal);
+  for (let position = 0; position < rows.length; position++) {
+    normalization.reorderedSampleCount += Number(rows[position].ordinal !== position);
+    normalization.equalTimestampCount += Number(position > 0 && rows[position].timeUs === rows[position - 1].timeUs);
+  }
+  return { rows, normalization };
+}
+
+function accumulate(samples, index) {
   const sampledMs = emptyTotals();
   const bins = [];
   let elapsed = 0;
+  let previousTimeUs = 0;
   let applicationInclusiveSampledMs = 0;
   let maxSampleIntervalMs = 0;
-  for (let sample = 0; sample < profile.samples.length; sample++) {
-    const delta = profile.timeDeltas[sample];
-    if (!integer(delta)) invalid('sample-delta');
-    const weight = delta / 1000;
-    if (elapsed + weight > durationMs + 0.001) invalid('sample-duration-overrun');
-    const id = profile.samples[sample];
+  for (const sample of samples) {
+    const weight = (sample.timeUs - previousTimeUs) / 1000;
+    previousTimeUs = sample.timeUs;
+    const id = sample.id;
     const lineage = lineageOf(id, index);
     const leaf = index.nodes.get(id);
     sampledMs[leaf.category] += weight;
@@ -189,8 +219,13 @@ function exportBins(bins, keys) {
 }
 
 /** Self/inclusive weights are not additive. Inclusive recursion is deduplicated.
- * A long sample delta is explicitly reported; sampling cannot prove when within
- * that interval a function ran. Non-app strings and all raw node IDs are dropped.
+ * After stable paired ordering, each sample retains our prior-interval convention:
+ * it owns the interval from the preceding timestamp (initially profile start).
+ * Equal timestamps retain provider order and zero-weight samples. No final-sample
+ * tail is fabricated. This is not DevTools' separate sample-duration convention.
+ * Long normalized intervals remain explicit uncertainty, not exact CPU timing.
+ * Non-app strings, raw timestamps and node IDs are dropped; normalization counts
+ * explain reordering without retaining the provider's sample arrays.
  */
 export function summarizeMultiplayerSourceProfile(profile, options) {
   const origin = parseOrigin(options?.origin);
@@ -198,7 +233,8 @@ export function summarizeMultiplayerSourceProfile(profile, options) {
   const index = indexNodes(profile, origin);
   // Validate even unsampled nodes; malformed cycles cannot be hidden off-path.
   for (const id of index.nodes.keys()) lineageOf(id, index);
-  const accumulated = accumulate(profile, index, profileDurationMs);
+  const normalized = normalizeSamples(profile);
+  const accumulated = accumulate(normalized.rows, index);
   const { bins, ...totals } = accumulated;
   const { selected, total } = selectFunctions(index.functions);
   const keys = new Map([...selected.keys()].map((key, offset) => [key, offset]));
@@ -206,6 +242,7 @@ export function summarizeMultiplayerSourceProfile(profile, options) {
     nonIdleSampledMs: totals.sampledDurationMs - totals.sampledMs.idle,
     unsampledTailMs: Math.max(0, profileDurationMs - totals.sampledDurationMs),
     sampleCount: profile.samples.length, nodeCount: profile.nodes.length,
+    normalization: normalized.normalization,
     functions: [...selected.values()], functionsOmitted: total - selected.size,
     bins: exportBins(bins, keys), binMs: BIN_MS,
     locationCoordinates: 'generated-one-based', attribution: 'statistical-sample-weights-not-exact-cpu-time' };
