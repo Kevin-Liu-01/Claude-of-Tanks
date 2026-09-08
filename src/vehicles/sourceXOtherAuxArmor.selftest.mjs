@@ -8,6 +8,7 @@ import {assertConvexArmorOutline} from '../sim/armorOutline.test-support.mjs';
 import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
+import {withHistoricalFixedGuardPaint} from './historicalFixedGuardPaint.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
 const BEFORE={
  'k1a1_x/high':'be2113456e6aae39d798f2472f42744aa994fcf87156932491651fa4da917bbf',
@@ -209,13 +210,30 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
   for(const quality of['high','low']){
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
-      tank.root.updateMatrixWorld(true);assert.equal(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'complete native geometry/material/instance/owner fingerprint unchanged');
+      tank.root.updateMatrixWorld(true);
+      if(id==='leclerc_x'||id==='amx40_x'){
+        const original=withHistoricalFixedGuardPaint(id,()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242}));
+        try{
+          original.root.updateMatrixWorld(true);
+          assert.equal(shapeHash(original.root),BEFORE[`${id}/${quality}`],
+            `${id}/${quality}: original full native fingerprint after only authenticated fixed-guard finish inverses`);
+        }finally{original.dispose();}
+        assert.notEqual(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'real painted model must not masquerade as the historical finish');
+        const painted=tank.root.getObjectByName('hullPaintedDetail');
+        // This legacy fingerprint uses geometry-only receipt materials. The
+        // rendered texture/name/UV contract is checked by registeredGuardPaint.
+        assert.equal(painted?.material,tank.root.getObjectByName('hull').material);
+        assert.equal(painted?.userData.combatHitboxRole,'nonArmor');
+        assert.equal(painted?.userData.materialOnlyPaintSourceBucket,'hullDetail');
+      }else assert.equal(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'complete native geometry/material/instance/owner fingerprint unchanged');
+      // All surface, air, seam and projectile checks below still use the
+      // actual painted model, never the historical comparison construction.
       const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!m.userData.vehicleMarking)meshes.push(m);});
       const spec=getSpec(id);facets(id,spec,meshes);air(id,spec);const count=seams(id,spec);
       const halfOpen=openBoundaries(id,spec);
       if(id==='type10_x')type10HeldOut(spec,meshes);
       actualProtection(spec);
-      console.log(`sourceXOtherAuxArmor: ${id}/${quality} physical panels, air, donor values, ${count} seams/${halfOpen} owned edges and immutable native mesh PASS`);
+      console.log(`sourceXOtherAuxArmor: ${id}/${quality} physical panels, air, donor values, ${count} seams/${halfOpen} owned edges and authenticated native mesh PASS`);
     }finally{tank.dispose();}
   }
 }
