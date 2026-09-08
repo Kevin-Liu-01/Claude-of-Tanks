@@ -243,11 +243,11 @@ function validateGeometry(geometry, segs) {
   }
 }
 
-function validateEastSeams(west, east) {
-  for (let westLevel = 0; westLevel < 3; westLevel++) {
-    for (let eastLevel = 0; eastLevel < 3; eastLevel++) {
-      const westSegs = [96, 48, 24][westLevel];
-      const eastSegs = [96, 48, 24][eastLevel];
+function validateEastSeams(west, east, levels = [96, 48, 24]) {
+  for (let westLevel = 0; westLevel < levels.length; westLevel++) {
+    for (let eastLevel = 0; eastLevel < levels.length; eastLevel++) {
+      const westSegs = levels[westLevel];
+      const eastSegs = levels[eastLevel];
       const sharedSegs = Math.min(westSegs, eastSegs);
       for (let row = 0; row <= sharedSegs; row++) {
         const wi = (row * westSegs / sharedSegs * (westSegs + 1) + westSegs) * 3;
@@ -264,6 +264,73 @@ function validateEastSeams(west, east) {
   }
 }
 
+function buildCheckedChunk(hf, x, z, pool, label, hash = null) {
+  const progress = { done: 0, total: 1 };
+  const eagerFine = drainWithCount(api.buildFineGridSteps(hf, x, z, progress));
+  const liveFine = drainWithCount(api.buildFineGridSteps(hf, x, z, null, 1));
+  assert.equal(eagerFine.checkpoints, 12, 'startup retains eight-row checkpoints');
+  assert.equal(liveFine.checkpoints, 99, 'live work yields every padded fine-grid row');
+  assert.deepEqual(bytes(liveFine.value.hgrid), bytes(eagerFine.value.hgrid));
+  hash?.update(bytes(liveFine.value.hgrid));
+  const geometries = [];
+  for (const [segs, grid] of [[96, liveFine.value], [48, liveFine.value], [24, liveFine.value], [24, null]]) {
+    const eager = drainWithCount(api.buildChunkGeometrySteps(hf, x, z, segs, grid, progress, pool));
+    const live = drainWithCount(api.buildChunkGeometrySteps(hf, x, z, segs, grid, null, pool, 1));
+    assert.equal(eager.checkpoints, Math.floor((segs + 1) / 8));
+    assert.equal(live.checkpoints, segs + 1, 'live geometry yields every surface row before atomic finalization');
+    assert.equal(eager.value.index, live.value.index, 'streamed geometry retains shared world-local topology');
+    const eagerArrays = geometryArrays(eager.value);
+    geometryArrays(live.value).forEach((array, index) => {
+      assert.deepEqual(bytes(array), bytes(eagerArrays[index]), `${label}: live/startup bytes match`);
+      hash?.update(bytes(array));
+    });
+    validateGeometry(live.value, segs);
+    geometries.push(live.value);
+    eager.value.dispose();
+  }
+  return geometries;
+}
+
+function validateShorelineCrossing(hf, geometry, segs) {
+  // The east edge at x=-128 intersects both wet core and dry bank. Require
+  // both from actual emitted vertices so an unrelated corner cannot pass.
+  let wet = 0, dry = 0;
+  for (let row = 0; row <= segs; row++) {
+    const vertex = (row * (segs + 1) + segs) * 3;
+    const positions = geometry.attributes.position.array;
+    const water = hf.getWaterMaskAt(positions[vertex], positions[vertex + 2]);
+    if (water > 0.98) wet++;
+    if (water === 0) dry++;
+  }
+  assert.ok(wet > 0 && dry > 0, 'shoreline seam must include actual wet-core and dry-bank vertices');
+}
+
+function testOasisShorelineChunks(hf) {
+  // Separate from the historical four-chunk digest: these inspect the real
+  // spring, not the spawn and opposite map corners. Shape approval/golden
+  // updates remain independent of exact emitter, topology and seam parity.
+  const pool = new Map();
+  for (const z of [-128, 0]) {
+    const west = buildCheckedChunk(hf, -256, z, pool, 'oasis shoreline west');
+    const east = buildCheckedChunk(hf, -128, z, pool, 'oasis shoreline east');
+    try {
+      validateEastSeams(west, east, [96, 48, 24, 24]);
+      for (let lod = 0; lod < 4; lod++) validateShorelineCrossing(hf, west[lod], [96, 48, 24, 24][lod]);
+      assert.throws(() => validateShorelineCrossing({ getWaterMaskAt: () => 0 }, west[0], 96),
+        /actual wet-core and dry-bank/, 'an entirely dry unrelated chunk must not satisfy shoreline coverage');
+      const position = east[0].attributes.position.array;
+      const originalY = position[1];
+      position[1] = originalY + 1;
+      assert.throws(() => validateEastSeams(west, east, [96, 48, 24, 24]),
+        /shared border vertices/, 'the shoreline seam check rejects a one-metre crack');
+      position[1] = originalY;
+    } finally {
+      for (const geometry of [...west, ...east]) geometry.dispose();
+    }
+  }
+  console.log('terrainStreaming.selftest: Oasis spring four chunks, wet/dry borders, all LOD paths and east seams passed');
+}
+
 async function testAllMapBytes() {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig, MAP_IDS } = await import('./maps/index.ts');
@@ -278,36 +345,18 @@ async function testAllMapBytes() {
     const chunks = [];
     const pool = new Map();
     for (const [x, z] of [[nearX, nearZ], [nearX + 128, nearZ], [-512, -512], [384, 384]]) {
-      const progress = { done: 0, total: 1 };
-      const eagerFine = drainWithCount(api.buildFineGridSteps(hf, x, z, progress));
-      const liveFine = drainWithCount(api.buildFineGridSteps(hf, x, z, null, 1));
-      assert.equal(eagerFine.checkpoints, 12, 'startup retains eight-row checkpoints');
-      assert.equal(liveFine.checkpoints, 99, 'live work yields every padded fine-grid row');
-      assert.deepEqual(bytes(liveFine.value.hgrid), bytes(eagerFine.value.hgrid));
-      hash.update(bytes(liveFine.value.hgrid));
-      const geometries = [];
-      for (const [segs, grid] of [[96, liveFine.value], [48, liveFine.value], [24, liveFine.value], [24, null]]) {
-        const eager = drainWithCount(api.buildChunkGeometrySteps(hf, x, z, segs, grid, progress, pool));
-        const live = drainWithCount(api.buildChunkGeometrySteps(hf, x, z, segs, grid, null, pool, 1));
-        assert.equal(eager.checkpoints, Math.floor((segs + 1) / 8));
-        assert.equal(live.checkpoints, segs + 1, 'live geometry yields every surface row before atomic finalization');
-        assert.equal(eager.value.index, live.value.index, 'streamed geometry retains shared world-local topology');
-        const eagerArrays = geometryArrays(eager.value);
-        geometryArrays(live.value).forEach((array, index) => {
-          assert.deepEqual(bytes(array), bytes(eagerArrays[index]), `${mapId}: live/startup bytes match`);
-          hash.update(bytes(array));
-        });
-        validateGeometry(live.value, segs);
-        geometries.push(live.value);
-        eager.value.dispose();
-      }
-      chunks.push(geometries);
+      chunks.push(buildCheckedChunk(hf, x, z, pool, mapId, hash));
     }
     validateEastSeams(chunks[0], chunks[1]);
     assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: reviewed authored geometry and bounds`);
     for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
+    if (mapId === 'oasis') testOasisShorelineChunks(hf);
   }
   console.log('terrainStreaming.selftest: 30 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
 }
 
-if (!process.argv.includes('--scheduler-only')) await testAllMapBytes();
+if (process.argv.includes('--oasis-shoreline-only')) {
+  const { createHeightField } = await import('./terrain.ts');
+  const { getMapConfig } = await import('./maps/index.ts');
+  testOasisShorelineChunks(createHeightField(1337, getMapConfig('oasis')));
+} else if (!process.argv.includes('--scheduler-only')) await testAllMapBytes();

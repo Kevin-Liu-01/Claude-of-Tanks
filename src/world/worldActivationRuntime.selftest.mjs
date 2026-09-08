@@ -292,4 +292,22 @@ assert.deepEqual(unreadable.traces.at(-1).error, {
   name: 'Error', message: 'Unprintable activation error',
 });
 
+for (const version of [undefined, 'capture-fixture']) {
+  const urls = [];
+  const instance = createWorldActivationRuntime({
+    ...runtimeOptions,
+    minimapAssetVersion: version,
+    loadMinimapAsset: async (activeWorld, url) => { urls.push([activeWorld.mapId, url]); return true; },
+  });
+  const oasisWorld = world('oasis');
+  instance.activate(oasisWorld);
+  await instance.queueMinimap();
+  assert.deepEqual(urls, [['oasis', `/game/minimaps/oasis.webp?v=${version || 'north-up-v7-oasis-shoreline-v2'}`]],
+    'actual activation loads the refreshed Oasis raster, coalescing the prepared request');
+  instance.activate(cachedWorld);
+  await instance.queueMinimap();
+  assert.deepEqual(urls.at(-1), ['desert', `/game/minimaps/desert.webp?v=${version || 'north-up-v7'}`],
+    'other map cache keys and explicit capture/test revisions stay unchanged');
+}
+
 console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, partial and failure traces passed');
