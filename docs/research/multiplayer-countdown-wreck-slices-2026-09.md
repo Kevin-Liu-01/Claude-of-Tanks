@@ -155,6 +155,18 @@ ordinal equivalence and instrumented candidate attribution are therefore not
 certified by this run. The independently compared final output still matches
 the baseline exactly.
 
+### Final main integration
+
+The runtime commit `cd7939351001b4b0581aa93beaec0869957ca06b` was rebased
+cleanly onto `ec7322cd588c337fa5fd2626c55e6cbea5eeb229`, which adds the
+non-activating continuous-shoe foundation. All eleven final focused checks
+passed on that rebased tree: countdown, frame pump, private handoff, wreck
+steps, exact wreck geometry, wreck output, props scheduling, both probe tools,
+and the incoming shoe-floor and track-course controls. TypeScript/core-unused
+checks and the public build passed again (925 modules and 18 localized routes).
+The native comparison above predates this foundation integration; it is not
+presented as a browser capture of the rebased build or of production.
+
 The vehicle constructor itself remains synchronous. Large final geometry
 merges and other world atoms also remain; this change is not a claim of
 stall-free loading or a measured overall speedup. Ordinary multiplayer lobbies
