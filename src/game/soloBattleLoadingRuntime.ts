@@ -1,7 +1,7 @@
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { AudioMixer } from '../audio/audio.ts';
-import { gameModeDefinition, normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import { t } from '../ui/i18n.ts';
 import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
@@ -158,7 +158,7 @@ export interface SoloBattleLoadingStartOptions {
   gameMode?: string;
 }
 
-function loadingModeLabel(gameMode: string, requestedMapId: string | null): string {
+export function soloBattleLoadingModeLabel(gameMode: string, requestedMapId: string | null): string {
   const battlefield = requestedMapId === 'random'
     ? t('battleLoad.battlefieldAny')
     : t('battleLoad.battlefieldSelected');
@@ -167,7 +167,8 @@ function loadingModeLabel(gameMode: string, requestedMapId: string | null): stri
       ? `${t('battleLoad.randomAnyBattlefield')}`
       : `${t('battleLoad.randomStandard')}`;
   }
-  return `${gameModeDefinition(gameMode).label} · ${battlefield}`;
+  const mode = normalizeGameMode(gameMode);
+  return `${t(`playMenu.matchMode.${mode}.label`)} · ${battlefield}`;
 }
 
 function plannedWorldVehicleIds(mapConfig: BattlefieldMapConfig): string[] {
@@ -364,7 +365,7 @@ export function createSoloBattleLoadingRuntime(
         mapName: mapName || resolved,
         thumb: getMapThumb(resolved),
         biome: resolved,
-        mode: loadingModeLabel(normalizedGameMode, mapId),
+        mode: soloBattleLoadingModeLabel(normalizedGameMode, mapId),
         allies: [],
         enemies: [],
       });

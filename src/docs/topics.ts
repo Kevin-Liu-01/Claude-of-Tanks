@@ -265,13 +265,13 @@ function formatText(text: string): string {
   return text.replace(/`([^`]+)`/g, '<code>$1</code>');
 }
 
-function sectionId(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+export function topicSectionId(index: number): string {
+  return `topic-section-${index + 1}`;
 }
 
 function sectionMarkup(section: TopicSection, index: number, icon: DocsIconKey, media?: TopicMedia): string {
   const [title, ...paragraphs] = section;
-  return `<section class="topic-section" id="${sectionId(title)}"><p class="section-index">${String(index + 1).padStart(2, '0')} // ${title}</p><h2><span class="topic-section-icon" data-doc-icon="${icon}"></span><span>${title}</span></h2>${paragraphs.map((text) => `<p>${formatText(text)}</p>`).join('')}${media ? mediaFigure(media) : ''}</section>`;
+  return `<section class="topic-section" id="${topicSectionId(index)}"><p class="section-index">${String(index + 1).padStart(2, '0')} // ${title}</p><h2><span class="topic-section-icon" data-doc-icon="${icon}"></span><span>${title}</span></h2>${paragraphs.map((text) => `<p>${formatText(text)}</p>`).join('')}${media ? mediaFigure(media) : ''}</section>`;
 }
 
 function renderTopicPage(): void {
@@ -286,7 +286,7 @@ function renderTopicPage(): void {
   const heroMarkup = topic.hero.endsWith('.webm')
     ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.webm$/, '.jpg')}" aria-label="${heroAlt}"><source src="${topic.hero}" type="video/webm"></video>`
     : `<img src="${topic.hero}" alt="${heroAlt}">`;
-  const sectionMap = topic.sections.map(([title], index) => `<a href="#${sectionId(title)}"><span data-doc-icon="${topic.sectionIcons[index] || topic.icon}"></span><b>${String(index + 1).padStart(2, '0')}</b><strong>${title}</strong></a>`).join('');
+  const sectionMap = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"><span data-doc-icon="${topic.sectionIcons[index] || topic.icon}"></span><b>${String(index + 1).padStart(2, '0')}</b><strong>${title}</strong></a>`).join('');
   root.innerHTML = `
     <header class="topic-hero">${heroMarkup}<div class="topic-hero-shade"></div><div class="shell"><p class="topic-kicker"><span data-doc-icon="${topic.icon}"></span><span>${t('docs.topic.kicker', { label: topic.label })}</span></p><h1>${topic.title}</h1><p>${topic.lede}</p></div></header>
     <nav class="topic-nav" aria-label="${t('docs.topic.navAria')}"><div class="shell"><a href="/docs"><span class="topic-nav-icon" data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${topicNav}</div></nav>
