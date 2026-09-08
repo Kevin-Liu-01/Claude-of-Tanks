@@ -226,9 +226,12 @@ if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffe
 const networkWarmPort = main.slice(main.indexOf('battleWarm.warmNetworkOpeningEffects({'));
 const networkWarmBody = networkWarmPort.match(/warmRender: \(\) => \{([\s\S]*?)\n\s{14}\},/)?.[1];
 assert.ok(networkWarmBody, 'network entry supplies the covered post-composer warm callback');
-const renderNetworkWarm = new Function('post', 'renderer', networkWarmBody);
+const renderNetworkWarm = new Function('post', 'renderer', 'timing', 'performance', networkWarmBody);
 for (const initial of [true, false]) {
   let draws = 0;
+  const timing = {};
+  let clock = 10;
+  const performance = { now: () => clock };
   const target = { name: 'prior private target' };
   let restoredTarget = null;
   const renderer = { getRenderTarget: () => target, getActiveCubeFace: () => 3,
@@ -238,16 +241,30 @@ for (const initial of [true, false]) {
     assert.equal(this.renderToScreen, false, 'warm effects never reach the default framebuffer');
     assert.equal(dt, 0, 'covered submission does not advance presentation time');
     draws++;
+    clock += 7;
   } };
-  renderNetworkWarm({ composer }, renderer);
+  renderNetworkWarm({ composer }, renderer, timing, performance);
   assert.equal(draws, 1, 'the actual post pipeline submits one covered frame');
+  assert.equal(timing.openingRenderMs, 7, 'retain the actual compositor cost separately from scar preparation');
   assert.equal(composer.renderToScreen, initial);
   assert.deepEqual(restoredTarget, [target, 3, 2]);
-  composer.render = () => { throw new Error('warm draw failed'); };
+  composer.render = () => { clock += 3; throw new Error('warm draw failed'); };
   restoredTarget = null;
-  assert.throws(() => renderNetworkWarm({ composer }, renderer), /warm draw failed/);
+  assert.throws(() => renderNetworkWarm({ composer }, renderer, timing, performance), /warm draw failed/);
+  assert.equal(timing.openingRenderMs, 3, 'failed draw cost is retained without swallowing its exception');
   assert.equal(composer.renderToScreen, initial, 'failed submission restores the output target policy');
   assert.deepEqual(restoredTarget, [target, 3, 2], 'a failing pass cannot leave its render target bound');
+  restoredTarget = null;
+  const brokenClock = { now() { throw new Error('diagnostic clock failed'); } };
+  assert.throws(() => renderNetworkWarm({ composer }, renderer, {}, brokenClock), /warm draw failed/,
+    'optional timing never replaces the actual draw failure');
+  assert.equal(composer.renderToScreen, initial);
+  assert.deepEqual(restoredTarget, [target, 3, 2]);
+  composer.render = () => { draws++; };
+  const invalidTiming = {};
+  renderNetworkWarm({ composer }, renderer, invalidTiming, brokenClock);
+  assert.equal(draws, 2, 'missing clock does not prevent the mandatory draw');
+  assert.deepEqual(invalidTiming, {}, 'failed optional timings are not reported as successful zeroes');
 }
 const enemyAt = deferredWarm.indexOf('getBattleVisuals().stream(');
 const openingAt = deferredWarm.indexOf('combatWarm.warmOpeningChunked(6, guardedYield)');

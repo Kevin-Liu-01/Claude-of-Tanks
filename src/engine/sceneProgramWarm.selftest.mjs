@@ -200,7 +200,8 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
                   assert.equal(target, priorTarget, 'reflection does not borrow a pass target');
                   assert.equal(camera.layers.mask, cameraMask, 'reflection sees the restored camera');
                   uniformCalls++;
-                } };
+                  return {};
+                }, getAttributes() { assertActive('attribute reflection'); return {}; } };
                 properties.programs.set(key, program);
                 renderer.info.programs.push(program);
               }
@@ -784,5 +785,21 @@ for (const composited of [false, true]) {
   assert.equal(camera.layers.mask, initialMask);
   passed++;
 }
+
+test('pass-aware scene reuse keeps every submission but skips only witnessed reflection', () => {
+  const f = fixture({ linker: true, layered: true, firstUse: true });
+  const options = { initializeUniforms: true, passes: [
+    { layerMask: f.cameraMask & ~(1 << LATE_FX_LAYER), target: f.hdrTarget },
+    { layerMask: 1 << LATE_FX_LAYER, target: f.lateTarget },
+  ] };
+  for (const _ of f.owner.prepareSceneSteps(options)) f.assertUntouched();
+  const before = f.renderer.info.programs.length;
+  const timing = {};
+  for (const _ of f.owner.prepareSceneSteps({ ...options, timing })) f.assertUntouched();
+  assert.equal(timing.uniformReused, before);
+  assert.equal(timing.uniformCount, 0);
+  assert.equal(timing.queryCount, undefined);
+  assert.ok(timing.submissionMs > 0, 'reuse never bypasses the exact scene compilation');
+});
 
 console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and cancellation cases passed`);
