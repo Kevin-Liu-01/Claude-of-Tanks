@@ -79,6 +79,15 @@ roller, paint or triangle receipt therefore cannot close their review.
   source tires with circular supported primitives. Its old 174-triangle
   links, LOW gear budget and HIGH-to-LOW ratio still fail. Neither candidate
   is admitted for fleet rollout; do not combine their best metrics.
+- A later T-90A X native-stock pilot meets the local 60 mm pad / 20 mm crest
+  dimensions but still measures only about 93 mm of assembled visible tread
+  at HIGH, versus 120 mm on the measured same-nation original controls.
+  This is **not country-matched thickness**. The next fit must reproduce the
+  effective visible tread gauge at both HIGH and LOW, while retaining fitted
+  internal guide geometry, axle stations and positive moving-stock clearance.
+  Placeholder-material construction timings are not camouflage creation or
+  browser selection timings. Failed 15 Hz terrain-cache trials also remain
+  excluded: a lower query count is not useful if real shoes enter a crest.
 - Published construction-cost/resource-ownership checkpoints do not solve the
   whole switch issue. Prior native logs contain roughly 600 ms frame intervals,
   but idle/throttled Gallery ticks are not automatically rendering stalls.
@@ -183,6 +192,10 @@ Measure original-fleet track band, shoe web, pad, grouser and pin dimensions
 in metres and select comparable control vehicles **in the same nation and
 running-gear family**. The owner repeated this requirement on 2026-09-08;
 one universal thickness setting is not proof of country-matched appearance.
+Measure instantiated stock in its real rig/root scale, including the carrier,
+web, pad and crest rather than just config values. Separate the visible
+outboard tread gauge from inward guide horns; do not thicken hidden horns to
+claim a visual match or reproduce an original LOW-detail thinning mistake.
 Adjust the actual smart
 shoe/band primitives, not just a cosmetic outer belt. Recompute the whole
 moving envelope, upper run and end-wheel tangency after thickness changes.

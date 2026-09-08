@@ -72,3 +72,28 @@ test-only exact historical inverse for the Leclerc/AMX-40 bucket snapshots.
 The run remains **interrupted / not a full release pass**. Native snapshots
 and partial phases are not combined into a green composed receipt. A fresh
 complete composed release on the final integrated inputs is still required.
+
+## Later failed release and current integration
+
+The fresh `final-bodywork-release-Ms4OAc` run on `4831d43d0` passed its
+thirteen focused tests, typecheck, 84 native views, anatomy/marking freshness,
+whole-fleet module-hit checks and scoped asset/technical checks. Its composed
+model phases also passed for all seven targets, but the full `npm test`
+lifecycle failed at the historical T-90M lamp buffer expectation. The private
+production build phase was never reached. **That release remains failed.**
+
+The subsequent `release-tail-diagnostic-rBa4lI` retains real child exit codes
+and continues only as a diagnostic, not a replacement composed release. It
+also found the published Mk10 foundation/history conflict, the American
+gunmetal/night-mask comparison, Polders' superseded authored-map digest and a
+managed-heap plateau failure in the server collision test. Narrow successor
+contracts preserve the independently published vehicle/map histories; no
+failed candidate output or relaxed geometric threshold is substituted.
+
+The clean `cot-fleet-bodywork-final-integration-20260908` tree integrates the
+seven-target bodywork pass with current published foundation/test repairs and
+the separately checked Mk3D front-fender returns. The earlier dirty candidate
+and every failed receipt remain untouched. New combined geometry requires
+fresh anatomy, assets, actual native views and the complete composed release.
+The broader 59-target performance, wheel, track-gauge and closure program is
+still open; this bodywork subset cannot certify those separate requirements.
