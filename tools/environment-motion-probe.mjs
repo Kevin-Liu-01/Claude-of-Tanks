@@ -505,6 +505,26 @@ async function acquireCase(page, context, testCase, base, row, saveCapture, writ
   } finally { await cdp.detach(); }
 }
 
+/** Recover only interrupted acquisitions; saved PNGs never need retransferring.
+ * Layout evidence and context/video cleanup do not depend on image recovery.
+ */
+export async function finishCaseContext(page, context, row, saveCapture, acquisitionCompleted) {
+  if (page && !page.isClosed()) {
+    if (!acquisitionCompleted) {
+      try {
+        const partial = await bounded(page.evaluate(() => window.__ENV_CAPTURE_RESULT ?? null), 5000, 'partial frames');
+        if (partial) saveCapture(partial);
+      } catch (error) { row.errors.push(`partial evidence: ${error}`); }
+    }
+    try {
+      row.finalLayout = await bounded(page.evaluate(expression(browserLayoutReceipt)), 5000, 'final layout');
+    } catch (error) { row.errors.push(`final layout evidence: ${error}`); }
+  }
+  // Context close owns both page disposal and video finalization. No CLI recorder state exists.
+  try { await bounded(context.close(), 30000, 'context/video close'); row.contextClosed = true; }
+  catch (error) { row.errors.push(String(error)); }
+}
+
 async function runCase(browser, testCase, base, output, report, write) {
   const id = `${testCase.device}/${testCase.mapId}`;
   fs.mkdirSync(path.join(output, testCase.device), { recursive: true });
@@ -512,7 +532,7 @@ async function runCase(browser, testCase, base, output, report, write) {
   report.cases.push(row);
   const options = contextOptions(testCase, base, path.join(output, testCase.device, `raw-${testCase.mapId}`));
   const context = await browser.newContext(options);
-  let page, video;
+  let page, video, acquisitionCompleted = false;
   const logs = [];
   const saveCapture = capture => {
     if (capture.frames[0]?.label === 'start') {
@@ -545,18 +565,10 @@ async function runCase(browser, testCase, base, output, report, write) {
     page.on('response', response => { if (response.status() >= 400) row.errors.push(`HTTP ${response.status()}: ${response.url()}`); });
     console.log(`[motion] pid=${process.pid} ${id} context/video owned`);
     await bounded(acquireCase(page, context, testCase, base, row, saveCapture, write), 420000, id);
+    acquisitionCompleted = true;
   } catch (error) { row.errors.push(String(error)); }
   finally {
-    if (page && !page.isClosed()) {
-      try {
-        const partial = await bounded(page.evaluate(() => window.__ENV_CAPTURE_RESULT ?? null), 5000, 'partial frames');
-        if (partial) saveCapture(partial);
-        row.finalLayout = await bounded(page.evaluate(expression(browserLayoutReceipt)), 5000, 'final layout');
-      } catch (error) { row.errors.push(`partial evidence: ${error}`); }
-    }
-    // Context close owns both page disposal and video finalization. No CLI recorder state exists.
-    try { await bounded(context.close(), 30000, 'context/video close'); row.contextClosed = true; }
-    catch (error) { row.errors.push(String(error)); }
+    await finishCaseContext(page, context, row, saveCapture, acquisitionCompleted);
     if (video && row.contextClosed) {
       try {
         const target = path.join(output, `${id}.webm`);

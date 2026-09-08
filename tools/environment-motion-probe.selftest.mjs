@@ -10,7 +10,7 @@ import { baseDynamicScale, internalPixelRatio } from '../src/engine/renderScaleP
 import { PRESETS } from '../src/engine/quality.ts';
 import { MOTION_CASES, MOTION_PROTOCOL, validateMotionReceipt, validateLiveSequence,
   contextOptions, validateOneCaseGate, captureRenderedFrames, startLivePan, decodeFramePng,
-  bounded, runMotionProbe, closeBrowserOwner, motionAcquisitionHash, validateEffectiveQuality } from './environment-motion-probe.mjs';
+  bounded, runMotionProbe, closeBrowserOwner, finishCaseContext, motionAcquisitionHash, validateEffectiveQuality } from './environment-motion-probe.mjs';
 
 assert.equal(MOTION_CASES.length, 9);
 assert.equal(new Set(MOTION_CASES.map(row => `${row.device}/${row.mapId}`)).size, 9);
@@ -78,6 +78,59 @@ assert.equal(closed.forced, false); assert.deepEqual(ownership, ['close']);
 const forced = await closeBrowserOwner({ close: () => new Promise(() => {}),
   kill: async () => ownership.push('owned-kill') }, 2);
 assert.equal(forced.forced, true); assert.deepEqual(ownership, ['close', 'owned-kill']);
+
+// Run the real final-evidence/close owner without a browser. Completed capture
+// results have already been persisted; only interrupted work needs PNG recovery.
+async function finalEvidenceFixture({ completed = false, partialError = false, saveError = false,
+  layoutError = false, closeError = false, pageClosed = false, errors = [] } = {}) {
+  const calls = [], partial = { frames: [{ label: 'start', png: 'already-captured-pixels' }] };
+  const layout = { inner: [1440, 900] }, row = { errors: [...errors], receipts: ['previously-saved'] };
+  const page = { isClosed: () => pageClosed, async evaluate(fn) {
+    if (typeof fn === 'function') {
+      calls.push('partial');
+      if (partialError) throw new Error('partial unavailable');
+      return partial;
+    }
+    calls.push('layout');
+    if (layoutError) throw new Error('layout unavailable');
+    return layout;
+  } };
+  const context = { async close() { calls.push('close'); if (closeError) throw new Error('close unavailable'); } };
+  await finishCaseContext(page, context, row, value => {
+    calls.push('save'); assert.equal(value, partial);
+    if (saveError) throw new Error('save unavailable');
+    row.receipts.push(value.frames[0].label);
+  }, completed);
+  return { calls, row, layout };
+}
+const completedEvidence = await finalEvidenceFixture({ completed: true });
+assert.deepEqual(completedEvidence.calls, ['layout', 'close']);
+assert.deepEqual(completedEvidence.row.receipts, ['previously-saved']);
+assert.deepEqual(completedEvidence.row.finalLayout, completedEvidence.layout);
+assert.equal(completedEvidence.row.contextClosed, true);
+assert.deepEqual(completedEvidence.row.errors, []);
+const qualityFailureEvidence = await finalEvidenceFixture({ completed: true, errors: ['quality failed'] });
+assert.deepEqual(qualityFailureEvidence.calls, ['layout', 'close']);
+assert.deepEqual(qualityFailureEvidence.row.errors, ['quality failed'], 'Saving every frame does not waive quality failure');
+const interruptedEvidence = await finalEvidenceFixture();
+assert.deepEqual(interruptedEvidence.calls, ['partial', 'save', 'layout', 'close']);
+assert.deepEqual(interruptedEvidence.row.receipts, ['previously-saved', 'start']);
+for (const failure of ['partialError', 'saveError']) {
+  const result = await finalEvidenceFixture({ [failure]: true });
+  assert.deepEqual(result.calls.slice(-2), ['layout', 'close'], `${failure} cannot suppress layout or disposal`);
+  assert.equal(result.row.errors.length, 1); assert.match(result.row.errors[0], /partial evidence/);
+  assert.deepEqual(result.row.finalLayout, result.layout); assert.equal(result.row.contextClosed, true);
+}
+const failedFinalEvidence = await finalEvidenceFixture({ partialError: true, layoutError: true });
+assert.deepEqual(failedFinalEvidence.calls, ['partial', 'layout', 'close']);
+assert.equal(failedFinalEvidence.row.errors.length, 2);
+assert.match(failedFinalEvidence.row.errors[1], /final layout evidence/);
+assert.equal(failedFinalEvidence.row.contextClosed, true);
+const failedCloseEvidence = await finalEvidenceFixture({ completed: true, layoutError: true, closeError: true });
+assert.deepEqual(failedCloseEvidence.calls, ['layout', 'close']);
+assert.equal(failedCloseEvidence.row.errors.length, 2); assert.equal(failedCloseEvidence.row.contextClosed, undefined);
+const closedPageEvidence = await finalEvidenceFixture({ pageClosed: true });
+assert.deepEqual(closedPageEvidence.calls, ['close']); assert.equal(closedPageEvidence.row.contextClosed, true);
 
 // Execute the actual browser callback with an owned fake render loop. No GPU or
 // timing certification: prove dt is forwarded, camera RAF stays live, images are
