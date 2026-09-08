@@ -19,6 +19,8 @@ worktree and never stage generated tank work wholesale.
 - `docs/tank-generation/README.md` — source/markup intake, measured construction,
   prompts, quality gates and resumable tank-generation handoffs. Read before
   new source-backed tanks, family rebuilds or exact-surface geometry repairs.
+  Begin with [`docs/tank-generation/SKILL.md`](docs/tank-generation/SKILL.md);
+  this documentation-only directory is not discovered by the source-code index.
 - `docs/tank-generation/fleet-style-performance-priority.md` — urgent open
   fleet-wide primitive/cost, switching, roller/track, chassis-closure and
   material-role work; read before adding further tank micro-detail.
@@ -53,7 +55,6 @@ worktree and never stage generated tank work wholesale.
 | Directory | Skill | Purpose |
 |---|---|---|
 | `api/` | [`api/SKILL.md`](api/SKILL.md) | Maintain deployed signaling, ICE credential, and public GitHub-count HTTP entrypoints. |
-| `docs/tank-generation/` | [`docs/tank-generation/SKILL.md`](docs/tank-generation/SKILL.md) | Reconstruct, edit, verify, and hand off first-party procedural tanks from supplied models, photographs, and Gallery surface markup. |
 | `server/` | [`server/SKILL.md`](server/SKILL.md) | Implement and operate Claude of Tanks signaling and dedicated authoritative multiplayer servers. |
 | `src/` | [`src/SKILL.md`](src/SKILL.md) | Navigate browser boot and shared source contracts while preserving subsystem and bundle boundaries. |
 | `src/app/` | [`src/app/SKILL.md`](src/app/SKILL.md) | Maintain typed application composition, lazy owner access, frame wiring, and combat warm lifecycle. |
