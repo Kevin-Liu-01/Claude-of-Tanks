@@ -19,6 +19,7 @@ import {
 } from './factoryGeometry.ts';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
+import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
 import {
   markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
   transferVehicleNightLenses, finalizeVehicleNightLighting,
@@ -7788,6 +7789,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   hull: ['hullG', 'hull'], hullCupola: ['hullG', 'hull'], hullHatch: ['hullG', 'hull'],
   hullExternalArmor: ['hullG', 'hull'], hullEquipment: ['hullG', 'hull'],
   hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
+  // Fixed painted hull fittings retain their detail LOD and non-armor role.
+  hullPaintedDetail: ['hullG', 'hull'],
   // Open slat-armor bars and their stand-off frames are equipment, not
   // continuous body skin. Separate buckets preserve ordinary material,
   // disposal, LOD, attachment and track-clearance ownership while allowing
@@ -7851,6 +7854,7 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
 const CAMO_BUCKETS = new Set([
+  'hullPaintedDetail',
   'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
@@ -8520,6 +8524,7 @@ function markingArmorMeshes(owner: THREE.Object3D, ownerName: VehicleOwner): Veh
   const meshes: VehicleMesh[] = [];
   owner.traverse((object) => {
     if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || !names.has(object.name)
+        || object.userData.materialOnlyPaintMigration === true
         || !markingObjectVisibleInTree(object, owner)) return;
     if (!object.geometry?.attributes?.position) return;
     meshes.push(object);
@@ -10165,6 +10170,11 @@ export function createTank(
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
     tagMergedBucket(bucket, mesh);
+    const paintSourceBucket = materialOnlyPaintSourceBucket(list);
+    if (paintSourceBucket) {
+      mesh.userData.materialOnlyPaintMigration = true;
+      mesh.userData.materialOnlyPaintSourceBucket = paintSourceBucket;
+    }
     registerVehicleNightLensMesh(mesh, list);
     const parent = mergedBucketParents[parentKey];
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);

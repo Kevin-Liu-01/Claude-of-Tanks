@@ -1,6 +1,7 @@
 // A5-only first-party fittings from fixed local-source scalar measurements.
 // No source mesh connectivity, buffers, textures or loaders are used here.
 import * as THREE from 'three';
+import { boxUV } from '../factoryGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 
@@ -9,10 +10,14 @@ type PlanPoint = readonly [x: number, z: number];
 function addPart(P: TankBuilderPort, owner: 'hull' | 'turret', name: string,
   geometry: THREE.BufferGeometry): void {
   const parent = owner === 'hull' ? P.hullG : P.turretG;
-  const mesh = new THREE.Mesh(geometry, P.mats.detail);
+  // Fixed steel service covers share the body finish; separate optics and
+  // hoist fittings retain their own equipment paint.
+  const paintedCover = owner === 'hull' && (name === 'ServiceCoverRight' || name === 'ServiceCoverLeft');
+  if (paintedCover) boxUV(geometry, P.spec.visual.camoScale ?? .34);
+  const mesh = new THREE.Mesh(geometry, paintedCover ? P.mats.hull : P.mats.detail);
   mesh.name = `leo2a5_xSourceFixture_${name}`;
   mesh.position.copy(parent.position).multiplyScalar(-1);
-  mesh.userData = { appearanceRole: 'fittingPaint', combatHitboxRole: 'equipment',
+  mesh.userData = { appearanceRole: paintedCover ? 'armorPaint' : 'fittingPaint', combatHitboxRole: 'equipment',
     sourceA5FinalFitting: true };
   mesh.castShadow = mesh.receiveShadow = true;
   P.disposables.push(geometry);

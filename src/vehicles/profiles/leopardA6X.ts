@@ -1,5 +1,6 @@
 // Independent plain Leopard 2A6 source-study build. Scalar dimensions describe
 // authored solids; no donor builder, source topology, or source asset is loaded.
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
@@ -151,10 +152,10 @@ function skirts(P: TankBuilderPort): void {
       [3.711525, side < 0 ? -1.785 : 1.674585, side < 0 ? -1.674585 : 1.785, 1.002, 1.27]]));
     skirtSupports(P, side);
     const x0 = side < 0 ? -1.678 : 1.06, x1 = side < 0 ? -1.06 : 1.678;
-    P.addMudguard(`a6x_front_guard_${side}`, 'hullDetail', wall([
+    P.addMudguard(`a6x_front_guard_${side}`, 'hullPaintedDetail', markFixedPaintedPanel(wall([
       [3.074, x0, x1, 1.310, 1.420], [3.50, x0, x1, 1.246, 1.318],
       [3.75, x0, x1, 1.115, 1.194], [3.815, x0, x1, 1.000, 1.009],
-    ]));
+    ]), 'a6-fixed-front-guard', 'hullDetail'));
   }
 }
 
@@ -165,7 +166,9 @@ function skirtSupports(P: TankBuilderPort, side: number): void {
     [1.65721, 1.61942], [1.64287, 1.61942]];
   const mirrored = side < 0 ? ring.map(([x, y]) => [-x, y] as [number, number]).reverse() : ring;
   for (const [back, front] of [[-.567805, -.251205], [-.245175, .811865], [.837935, 1.589835]]) {
-    P.addEquipment('hullDetail', sectionSolid([{ z: back, ring: mirrored }, { z: front, ring: mirrored }]));
+    P.addEquipment('hullPaintedDetail', markFixedPaintedPanel(
+      sectionSolid([{ z: back, ring: mirrored }, { z: front, ring: mirrored }]),
+      'a6-fixed-upper-sheet', 'hullDetail'));
   }
   for (const [z, top] of [[1.643775, 1.64596], [2.085605, 1.64528], [2.254175, 1.61199]]) {
     const a = side < 0 ? -1.717155 : 1.498355, b = side < 0 ? -1.498355 : 1.717155;
