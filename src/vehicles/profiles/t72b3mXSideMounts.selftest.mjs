@@ -6,15 +6,48 @@ import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
 
 const PRESERVED=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t72b3m_x.side-mount-preservation.json',import.meta.url),'utf8'));
+function legacyAttributeNames(g){
+  // The held-out shape ledger predates semantic lamp masks. Validate that
+  // exact byte channel independently, retaining every original buffer/order.
+  const a=g.getAttribute('nightEmissionMask');
+  if(a){
+    assert.ok(a.array instanceof Uint8Array,'night mask is byte-sized');
+    assert.equal(a.itemSize,1);assert.equal(a.normalized,false);
+    assert.equal(a.count,g.getAttribute('position').count,'one mask value per original vertex');
+    assert.ok(a.array.every(v=>v===0||v===1||v===2),'only supported semantic lens values');
+  }
+  return Object.keys(g.attributes).filter(k=>k!=='nightEmissionMask');
+}
 function geometryHash(m){
   const h=createHash('sha256');
-  for(const [key,a]of Object.entries(m.geometry.attributes)){
+  for(const key of legacyAttributeNames(m.geometry)){
+    const a=m.geometry.attributes[key];
     h.update(key);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));
   }
   const i=m.geometry.index;if(i)h.update(Buffer.from(i.array.buffer,i.array.byteOffset,i.array.byteLength));
   h.update(JSON.stringify(m.matrixWorld.elements));
   if(m.isInstancedMesh)h.update(Buffer.from(m.instanceMatrix.array.buffer));
   return h.digest('hex');
+}
+
+{
+  const g=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
+  g.setAttribute('normal',new T.Float32BufferAttribute([0,0,1,0,0,1,0,0,1],3));
+  g.setAttribute('uv',new T.Float32BufferAttribute([0,0,1,0,0,1],2));g.setIndex([0,1,2]);
+  const m=new T.InstancedMesh(g,new T.MeshBasicMaterial(),1),measure=()=>geometryHash(m),legacy=measure();
+  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));assert.equal(measure(),legacy);
+  for(const invalid of [new T.Float32BufferAttribute([0,1,2],1),new T.Uint8BufferAttribute([0,1,2],3),
+    new T.Uint8BufferAttribute([0,1],1),new T.Uint8BufferAttribute([0,1,2],1,true),new T.Uint8BufferAttribute([0,1,3],1)]){
+    g.setAttribute('nightEmissionMask',invalid);assert.throws(measure);
+  }
+  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));
+  g.setAttribute('unrecognizedSemanticChannel',new T.Uint8BufferAttribute([0,1,2],1));
+  assert.notEqual(measure(),legacy,'unknown channels remain hashed');g.deleteAttribute('unrecognizedSemanticChannel');
+  for(const a of [g.attributes.position,g.attributes.normal,g.attributes.uv,g.index,m.instanceMatrix]){
+    const old=a.array[0];a.array[0]=old+1;assert.notEqual(measure(),legacy,'all original geometry/index/instance bytes remain guarded');a.array[0]=old;
+  }
+  m.matrixWorld.elements[12]=1;assert.notEqual(measure(),legacy,'ownership frame remains guarded');m.matrixWorld.elements[12]=0;
+  assert.equal(measure(),legacy);g.dispose();m.material.dispose();
 }
 
 function paintQuadSide(m,start){
@@ -36,7 +69,9 @@ function paintQuadSide(m,start){
 
 function verifiedPaintBuffer(m){
   assert.equal(m.isInstancedMesh,undefined,'no physical instances may be excluded as paint');
-  assert.deepEqual(Object.keys(m.geometry.attributes).sort(),['normal','position','uv']);
+  assert.deepEqual(legacyAttributeNames(m.geometry).sort(),['normal','position','uv']);
+  const mask=m.geometry.getAttribute('nightEmissionMask');
+  assert.ok(!mask||mask.array.every(v=>v===0),'authenticated paint cannot contain a glowing lamp face');
   const {position:p,normal,uv}=m.geometry.attributes,index=m.geometry.index;
   assert.ok(p.count===4||p.count===8,'only one or two complete marking quads may be excluded');
   assert.equal(p.itemSize,3);assert.equal(normal.itemSize,3);assert.equal(uv.itemSize,2);
@@ -57,6 +92,13 @@ function verifiedPaintMeshes(tank){
     if(!m.isMesh||!m.userData.vehicleMarking)return;
     assert.equal(m.parent.name,'rig_hull','the deliberate pair belongs only to the fixed tub');
     sides.push(...verifiedPaintBuffer(m));paint.add(m);
+    // An otherwise exact paint quad with a live lens tag must not qualify.
+    const changed=m.clone();changed.geometry=m.geometry.clone();
+    try{
+      const values=new Uint8Array(changed.geometry.attributes.position.count);values[0]=1;
+      changed.geometry.setAttribute('nightEmissionMask',new T.BufferAttribute(values,1));
+      assert.throws(()=>verifiedPaintBuffer(changed));
+    }finally{changed.geometry.dispose();}
   });
   assert.deepEqual(sides.sort(),[-1,1],'exclude exactly the approved right/left paint pair');
   return paint;

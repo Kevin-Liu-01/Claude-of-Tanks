@@ -117,6 +117,43 @@ function actualWiring(parts,all){
       `actual factory contains ${m.name} vertex ${i}, not merely an isolated helper`);
   }
 }
+function preservedMeshHash(m){
+  const g=m.geometry,mask=g.getAttribute('nightEmissionMask');
+  // Keep the immutable pre-cupola geometry hash, separating only the validated
+  // later-added lighting channel. No physical attribute or owner is omitted.
+  if(mask){
+    assert.ok(mask.array instanceof Uint8Array,'night mask is byte-sized');
+    assert.equal(mask.itemSize,1);assert.equal(mask.normalized,false);
+    assert.equal(mask.count,g.getAttribute('position').count,'one mask value per original vertex');
+    assert.ok(mask.array.every(v=>v===0||v===1||v===2),'only supported semantic lens values');
+  }
+  const h=createHash('sha256');for(const[k,a]of Object.entries(g.attributes)){
+    if(k==='nightEmissionMask')continue;
+    h.update(k);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
+  const ix=g.index;if(ix)h.update(Buffer.from(ix.array.buffer,ix.array.byteOffset,ix.array.byteLength));
+  h.update(JSON.stringify(m.matrixWorld.elements));
+  if(m.isInstancedMesh)h.update(Buffer.from(m.instanceMatrix.array.buffer));
+  return h.digest('hex');
+}
+{
+  const g=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
+  g.setAttribute('normal',new T.Float32BufferAttribute([0,0,1,0,0,1,0,0,1],3));
+  g.setAttribute('uv',new T.Float32BufferAttribute([0,0,1,0,0,1],2));g.setIndex([0,1,2]);
+  const m=new T.InstancedMesh(g,new T.MeshBasicMaterial(),1),measure=()=>preservedMeshHash(m),legacy=measure();
+  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));assert.equal(measure(),legacy);
+  for(const invalid of [new T.Float32BufferAttribute([0,1,2],1),new T.Uint8BufferAttribute([0,1,2],3),
+    new T.Uint8BufferAttribute([0,1],1),new T.Uint8BufferAttribute([0,1,2],1,true),new T.Uint8BufferAttribute([0,1,3],1)]){
+    g.setAttribute('nightEmissionMask',invalid);assert.throws(measure);
+  }
+  g.setAttribute('nightEmissionMask',new T.Uint8BufferAttribute([0,1,2],1));
+  g.setAttribute('unrecognizedSemanticChannel',new T.Uint8BufferAttribute([0,1,2],1));
+  assert.notEqual(measure(),legacy,'unknown channels remain hashed');g.deleteAttribute('unrecognizedSemanticChannel');
+  for(const a of [g.attributes.position,g.attributes.normal,g.attributes.uv,g.index,m.instanceMatrix]){
+    const old=a.array[0];a.array[0]=old+1;assert.notEqual(measure(),legacy,'all original geometry/index/instance bytes remain guarded');a.array[0]=old;
+  }
+  m.matrixWorld.elements[12]=1;assert.notEqual(measure(),legacy,'ownership frame remains guarded');m.matrixWorld.elements[12]=0;
+  assert.equal(measure(),legacy);g.dispose();m.material.dispose();
+}
 function nonTarget(t,quality){
   // Immutable pre-edit capture .qa-dev/reports/strv-cupola-before-GuXMa5.
   // Root concurrently corrected ONLY the named inferred suspension outputs;
@@ -128,12 +165,7 @@ function nonTarget(t,quality){
   t.root.traverse(m=>{if(!m.isMesh||m.userData.vehicleMarking===true)return;
     const n=seen[m.name]??0;seen[m.name]=n+1;
     const name=`${m.name}#${n}`;if(omitted.has(name))return;
-    const h=createHash('sha256');for(const[k,a]of Object.entries(m.geometry.attributes)){
-      h.update(k);h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
-    const ix=m.geometry.index;if(ix)h.update(Buffer.from(ix.array.buffer,ix.array.byteOffset,ix.array.byteLength));
-    h.update(JSON.stringify(m.matrixWorld.elements));
-    if(m.isInstancedMesh)h.update(Buffer.from(m.instanceMatrix.array.buffer));
-    rows.push([name,h.digest('hex')]);
+    rows.push([name,preservedMeshHash(m)]);
   });
   rows.sort(([a],[b])=>a.localeCompare(b));
   const expected=quality==='high'?'480848c64d41234c0062f44125c92084ac4aafbcd57515b4501f4a6349c04e45'

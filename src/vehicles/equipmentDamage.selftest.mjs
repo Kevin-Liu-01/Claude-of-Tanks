@@ -213,6 +213,19 @@ for (const kind of ['pen', 'he_pen', 'nonpen', 'ricochet', 'spaced_absorb', 'he_
   assert.equal(disposed, 1);
 }
 
+function legacyAttributeNames(geometry) {
+  // Night-lens metadata was added after these immutable rest captures. Validate
+  // that single channel separately; retain every original shape/instance byte.
+  const a = geometry.getAttribute('nightEmissionMask');
+  if (a) {
+    assert.ok(a.array instanceof Uint8Array, 'night mask is byte-sized');
+    assert.equal(a.itemSize, 1); assert.equal(a.normalized, false);
+    assert.equal(a.count, geometry.getAttribute('position').count, 'one mask value per original vertex');
+    assert.ok(a.array.every(v => v === 0 || v === 1 || v === 2), 'only supported semantic lens values');
+  }
+  return Object.keys(geometry.attributes).filter(k => k !== 'nightEmissionMask');
+}
+
 function restHash(visual) {
   const hash = createHash('sha256');
   visual.root.traverse((object) => {
@@ -220,7 +233,7 @@ function restHash(visual) {
       object.scale.toArray(), object.visible]));
     const geometry = object.geometry;
     if (geometry) {
-      const names = Object.keys(geometry.attributes);
+      const names = legacyAttributeNames(geometry);
       names.sort();
       for (const name of names) {
         const array = geometry.attributes[name].array;
@@ -237,17 +250,56 @@ function restHash(visual) {
   return hash.digest('hex');
 }
 
-// Recorded BEFORE adding the opt-in/hook: real fleet rest meshes and armor do not change.
+{
+  const geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0], 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0,0,1,0,0,1,0,0,1], 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0,0,1,0,0,1], 2)); geometry.setIndex([0,1,2]);
+  const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial(), 1), root = new THREE.Group(); root.add(mesh);
+  const measure = () => restHash({ root }), legacy = measure();
+  geometry.setAttribute('nightEmissionMask', new THREE.Uint8BufferAttribute([0,1,2], 1));
+  assert.equal(measure(), legacy, 'valid lighting metadata preserves original rest bytes');
+  for (const invalid of [new THREE.Float32BufferAttribute([0,1,2], 1), new THREE.Uint8BufferAttribute([0,1,2], 3),
+    new THREE.Uint8BufferAttribute([0,1], 1), new THREE.Uint8BufferAttribute([0,1,2], 1, true), new THREE.Uint8BufferAttribute([0,1,3], 1)]) {
+    geometry.setAttribute('nightEmissionMask', invalid); assert.throws(measure);
+  }
+  geometry.setAttribute('nightEmissionMask', new THREE.Uint8BufferAttribute([0,1,2], 1));
+  geometry.setAttribute('unrecognizedSemanticChannel', new THREE.Uint8BufferAttribute([0,1,2], 1));
+  assert.notEqual(measure(), legacy, 'no unknown channel is excluded'); geometry.deleteAttribute('unrecognizedSemanticChannel');
+  for (const a of [geometry.attributes.position, geometry.attributes.normal, geometry.attributes.uv, geometry.index, mesh.instanceMatrix]) {
+    const old = a.array[0]; a.array[0] = old + 1;
+    assert.notEqual(measure(), legacy, 'every original shape/index/instance buffer remains guarded'); a.array[0] = old;
+  }
+  mesh.position.x = 1; assert.notEqual(measure(), legacy, 'rest pose remains guarded'); mesh.position.x = 0;
+  root.name = 'changed'; assert.notEqual(measure(), legacy, 'owner node identity remains guarded'); root.name = '';
+  mesh.visible = false; assert.notEqual(measure(), legacy, 'visibility remains guarded'); mesh.visible = true;
+  assert.equal(measure(), legacy); geometry.dispose(); mesh.material.dispose();
+}
+
+// 37de0b6aa deliberately turned and seated four existing T-90M lamp discs.
+// Exact pre-source/current decomposition: all 109 nodes / 63 meshes agree;
+// only hullGlass position/normal vertices [108,588) changed (four x 120).
+// All UV/color/index/instance bytes, owners and daytime material properties
+// remain exact. Keep the historical fixture, but hash the COMPLETE current
+// model for damage/reset: never omit the corrected lamps from preservation.
+const T90M_REST_REVISIONS = Object.freeze({
+  beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
+  forwardLampSeat: '777b006368c4a4022dee803e11a5b461885ca148bf48d0af6221d71ec0bac1fc',
+});
+
+// Recorded before the equipment-damage opt-in/hook; only the independently
+// verified intentional lamp-seat revision above versions a physical rest row.
 for (const [id, rest, armor] of [
   ['leo2a6', '1e43e9490747a8f27765216bf7d67135c2b1f1c9d9e31221e901832e7b6633d2',
     'f029abdac12ed1a9891ac7f48e7d6ada06190ffe8b0615a7d12e00aa7d8c1566'],
-  ['t90m', 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
+  ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
     '050d079304b3b60b62cea6f714d2fadbdcf7cfe79fa7e8796826f121dc382e65'],
   ['m1a2', '4bb6afa27dc3889d689291e7ee1cba45ed7f7804fae3941ed28762f9a2014af4',
     '47159a9590d264887e9883ab2e4fa8dc31634a4ed184e176be7fcb05a8909036'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  assert.equal(restHash(visual), rest, `${id}: exact pre-change intact draw content`);
+  assert.equal(restHash(visual), rest, `${id}: exact approved intact draw content`);
+  if (id === 't90m') assert.notEqual(restHash(visual), T90M_REST_REVISIONS.beforeForwardLampSeat,
+    'the intentionally corrected forward lamp geometry must not revert to upward discs');
   const armorHash = createHash('sha256');
   armorHash.update(JSON.stringify(getSpec(id).armor));
   assert.equal(armorHash.digest('hex'), armor, `${id}: unchanged authoritative armor`);
@@ -265,6 +317,12 @@ for (const [id, rest, armor] of [
     assert.equal(visual.applyEquipmentDamage(contact), false, 'wrecks reject new equipment damage');
     visual.resetDestroyed();
     assert.equal(restHash(visual), rest, 'wreck reset restores normals, pose and geometry');
+  } else {
+    assert.equal(restHash(visual), rest, 'unsupported equipment hit cannot alter the approved rest');
+    visual.setDestroyed(); visual.resetDestroyed();
+    assert.equal(restHash(visual), rest, 'wreck repair retains the complete approved model, including lamp seats');
+    visual.resetForGaragePresentation();
+    assert.equal(restHash(visual), rest, 'garage reset retains the complete approved model');
   }
   visual.dispose();
 }
