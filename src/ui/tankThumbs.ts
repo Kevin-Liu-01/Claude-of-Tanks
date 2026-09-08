@@ -23,7 +23,7 @@ import {
 import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
-import { waitForTopMaskPrograms, type TopMaskProgram } from './topMaskProgramWarm.ts';
+import { waitForTopMaskPrograms, type TopMaskProgram, type TopMaskProgramPreparation } from './topMaskProgramWarm.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
 let errorGuardInstalled = false;
@@ -629,8 +629,19 @@ async function compileMaskPass(
   scene: THREE.Scene,
   camera: THREE.OrthographicCamera,
   sourceLifetime: MaskSourceLifetime | null,
-): Promise<void> {
+): Promise<TopMaskProgramPreparation> {
   sourceLifetime?.assertAlive();
+  const info = renderer.info;
+  const context = renderer.getContext();
+  const rendererIsCurrent = (): boolean => renderer.info === info && renderer.getContext() === context;
+  const lifetime = {
+    isCurrent() {
+      sourceLifetime?.assertAlive();
+      return rendererIsCurrent();
+    },
+    isContextLost: () => context.isContextLost(),
+    hasProgram: (program: TopMaskProgram) => !!info.programs?.some((candidate) => Object.is(candidate, program)),
+  };
   const previousTarget = renderer.getRenderTarget();
   const face = renderer.getActiveCubeFace();
   const mip = renderer.getActiveMipmapLevel();
@@ -640,30 +651,27 @@ async function compileMaskPass(
     renderer.setRenderTarget(target);
     const materials = renderer.compile(scene, camera);
     sourceLifetime?.assertAlive();
-    // Pin the submitted identities before an ordinary frame can replace each
-    // shared material's currentProgram with its world-rendering variant.
+    // Shared materials retain ordinary/instanced/batched and both-sided
+    // variants. currentProgram names only the final visited variant, not the
+    // full compiled cohort. Freeze the complete cache before another frame.
     for (const material of materials) {
-      const properties = renderer.properties.get(material) as { currentProgram?: TopMaskProgram };
-      const program = properties.currentProgram;
-      if (!program?.program || typeof program.isReady !== 'function') {
-        throw new Error('top_mask_program_unavailable');
-      }
-      programs.push(program);
+      const properties = renderer.properties.get(material) as { programs?: Map<RuntimeValue, TopMaskProgram> };
+      const cache = properties?.programs;
+      if (!(cache instanceof Map) || !cache.size) throw new Error('top_mask_program_cache_unavailable');
+      programs.push(...cache.values());
     }
   } catch (error) {
     failed = true;
     throw error;
   } finally {
-    try { renderer.setRenderTarget(previousTarget, face, mip); }
+    try {
+      // A replaced context must not receive render targets from its old owner.
+      if (!rendererIsCurrent()) throw new Error('top_mask_program_context_changed');
+      renderer.setRenderTarget(previousTarget, face, mip);
+    }
     catch (error) { if (!failed) throw error; }
   }
-  const context = renderer.getContext();
-  await waitForTopMaskPrograms(programs, {
-    isContextLost() {
-      sourceLifetime?.assertAlive();
-      return context.isContextLost();
-    },
-  });
+  return waitForTopMaskPrograms(programs, lifetime);
 }
 
 function renderMaskPixels(
@@ -803,9 +811,11 @@ async function submitMaskPass(
   cam.updateMatrixWorld(true);
   const compile: TopMaskLoadInterval = { stage: `${layer}Compile`, startTime: performance.now() };
   trace.intervals.push(compile);
-  try { await compileMaskPass(renderer, target, scene, cam, sourceLifetime); }
+  let prepared: TopMaskProgramPreparation;
+  try { prepared = await compileMaskPass(renderer, target, scene, cam, sourceLifetime); }
   finally { compile.endTime = performance.now(); }
   sourceLifetime?.assertAlive();
+  prepared.assertCurrent();
   const submitted = renderMaskPixels(renderer, target, pixels, scene, cam, trace, layer);
   // A synchronous render/binding failure cannot hand the renderer to another
   // pass. Drain its submitted writer and propagate the original failure first.
