@@ -122,3 +122,8 @@ Garage and shared responsive styles are static Vite-managed CSS imported in
 responsive-before-Garage cascade order by `src/main.ts`. Do not move them back
 into JavaScript or reverse that order. Avoid boot-critical imports and do not
 leave XP/currency labels after progression removal.
+
+All user-visible strings route through `i18n.ts` `t()` with mirrored keys in
+`i18nCatalog.en-US.ts` / `i18nCatalog.zh-CN.ts` (add both in the same commit).
+After editing UI surfaces, run `node tools/i18n-scan.mjs` to catch hardcoded
+English that missed `t()`, and `node src/ui/i18n.selftest.mjs` to verify catalog parity.

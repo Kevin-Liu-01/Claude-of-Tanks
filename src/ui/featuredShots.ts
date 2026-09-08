@@ -11,8 +11,9 @@
  * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
  * stay browsable without returning to the player-facing loading rotation.
  */
-import { getMapName, isMapId } from '../world/maps/catalog.ts';
+import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
 import { MAP_HEROES } from './mapThumbs.ts';
+import { t } from './i18n.ts';
 
 export interface FeaturedShot {
   readonly img: string;
@@ -162,7 +163,7 @@ export function featuredShotForMap(mapId: string): FeaturedShot {
   // battle scene or change the owner's separate featured-gallery rotation.
   if (isMapId(key)) {
     return {
-      img: MAP_HEROES[key], cap: `${getMapName(key)} — battlefield overview`,
+      img: MAP_HEROES[key], capKey: t('garage.featuredShot.mapOverview', { name: getLocalizedMapName(key) }),
       maps: [key], focal: '50% 50%',
     };
   }
