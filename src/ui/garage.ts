@@ -50,8 +50,8 @@ import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.ts';
-import { t, formatNumber, formatDate, getLocale } from './i18n.ts';
-import { hrefForLocale } from './localeRouting.ts';
+import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
+import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import type { PlayMode } from '../net/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
@@ -499,6 +499,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }));
   const technicalViews = garageTechnicalViews();
   const technicalViewById = new Map(technicalViews.map((view) => [view.id, view]));
+  const currentLocale = getLocale();
+  const nextLocale = currentLocale === 'zh-CN' ? 'en-US' : 'zh-CN';
+  const localeSwitchLabel = t(nextLocale === 'zh-CN'
+    ? 'publicNav.language.switchToChinese'
+    : 'publicNav.language.switchToEnglish');
   ensureFonts();
   const root = document.createElement('div');
   root.className = 'cot-garage';
@@ -540,6 +545,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" title="${t('garage.nav.docs')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
     `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
+    `<button class="nv cot-nav-desktop cot-locale-switcher" data-nav="locale" type="button" ` +
+    `aria-label="${localeSwitchLabel}" title="${localeSwitchLabel}">` +
+    `${uiIconSVG('globe', 15, 'currentColor', 'nvi')}` +
+    `<span class="cot-locale-options" aria-hidden="true">` +
+    `<span${currentLocale === 'en-US' ? ' class="is-current"' : ''}>EN</span><i>/</i>` +
+    `<span${currentLocale === 'zh-CN' ? ' class="is-current"' : ''}>中文</span></span></button>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="${t('garage.nav.githubAria')}" title="${t('garage.nav.github')}">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
@@ -564,6 +575,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-mobile-nav="docs">` +
     `<img src="/brand/nav/docs.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.docs')}</strong><small>${t('garage.nav.mobileDocsSub')}</small></span></button>` +
+    `<button type="button" data-mobile-nav="locale" aria-label="${localeSwitchLabel}">` +
+    `${uiIconSVG('globe', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
+    `<strong>${t('settings.language.title')}</strong><small>EN / 中文</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
     `${uiIconSVG('battleRecord', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.record')}</strong><small>${t('garage.nav.mobileRecordSub')}</small></span></button>` +
@@ -2840,9 +2854,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     window.location.href = hrefForLocale('/home', getLocale());
   };
+  const switchLocale = () => {
+    emit('ui:click', {});
+    setLocale(nextLocale);
+    window.location.assign(currentLocationHrefForLocale(window.location, nextLocale));
+  };
   requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
   requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
   requiredElement<HTMLElement>(root, '[data-nav="docs"]').addEventListener('click', openDocs);
+  requiredElement<HTMLElement>(root, '[data-nav="locale"]').addEventListener('click', switchLocale);
   requiredElement<HTMLElement>(root, '[data-nav="home"]').addEventListener('click', openHome);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
@@ -2866,6 +2886,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       else if (destination === 'studio') openStudio();
       else if (destination === 'gallery') openSelectedInGallery();
       else if (destination === 'docs') openDocs();
+      else if (destination === 'locale') switchLocale();
       else if (destination === 'record') {
         emit('ui:click', {});
         openServiceRecord();
