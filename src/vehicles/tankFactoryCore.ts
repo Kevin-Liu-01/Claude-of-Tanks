@@ -30,6 +30,7 @@ import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
+import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
@@ -12038,6 +12039,7 @@ export function createTank(
       root.traverse((o) => {
         if (isVehicleBatchedMesh(o)) o.dispose();
         if (isVehicleInstancedMesh(o)) o.dispose();
+        if (isVehicleMesh(o)) disposeOwnedFittingGeometry(o.geometry);
         // PERF (performance_budget r3): kit-merged GLB geometry is baked
         // per instance (modelLoader mergeStaticKit) — unlike the shared
         // cache geometry it must die with the visual or eviction leaks it.

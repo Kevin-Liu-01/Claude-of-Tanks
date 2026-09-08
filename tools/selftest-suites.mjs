@@ -4,6 +4,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/convexArmorPlate.selftest.mjs',
     'src/vehicles/calibrationStockGeometry.selftest.mjs',
     'src/vehicles/roundedBoxGeometryCache.selftest.mjs',
+    'src/vehicles/ownedFittingGeometry.selftest.mjs',
     'tools/chieftain10-collision.selftest.mjs',
     'src/vehicles/jagdpanzerE100XArmor.selftest.mjs',
     'src/vehicles/sourceXOtherAuxArmor.selftest.mjs',
