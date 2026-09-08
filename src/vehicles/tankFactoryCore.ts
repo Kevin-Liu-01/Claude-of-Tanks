@@ -29,7 +29,9 @@ import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAx
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
+import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
+import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
@@ -913,6 +915,8 @@ interface TankFactoryOptions {
   materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   geometryReceipt?: boolean;
+  /** Default-on anatomy metadata; static wreck baking discards this receipt. */
+  eraVisualBindingReceipt?: boolean;
   batchStatic?: boolean;
   deferStaticBatch?: boolean;
   battleDetailLod?: boolean;
@@ -9202,41 +9206,6 @@ function collectEraSurfaces(
   return { surfaces, exactSurfaces, allPoints };
 }
 
-function describeEraSurface(surface: EraSurface): {
-  center: THREE.Vector3;
-  normal: THREE.Vector3;
-} {
-  const center = surface.reduce(
-    (sum, value) => sum.add(new THREE.Vector3().fromArray(value)), new THREE.Vector3(),
-  ).multiplyScalar(1 / surface.length);
-  const origin = new THREE.Vector3().fromArray(surface[0]);
-  const normal = new THREE.Vector3().fromArray(surface[1]).sub(origin)
-    .cross(new THREE.Vector3().fromArray(surface[3]).sub(origin)).normalize();
-  return { center, normal };
-}
-
-function deduplicateEraSurfaces(surfaces: readonly EraSurface[]): EraSurface[] {
-  const deduplicated: EraSurface[] = [];
-  for (const surface of surfaces) {
-    const descriptor = describeEraSurface(surface);
-    const duplicateIndex = deduplicated.findIndex((candidate) => {
-      const candidateDescriptor = describeEraSurface(candidate);
-      return descriptor.normal.dot(candidateDescriptor.normal) > 0.995
-        && descriptor.center.distanceTo(candidateDescriptor.center) < 0.05;
-    });
-    if (duplicateIndex < 0) {
-      deduplicated.push(surface);
-      continue;
-    }
-    const candidateDescriptor = describeEraSurface(deduplicated[duplicateIndex]);
-    if (descriptor.center.dot(descriptor.normal)
-        > candidateDescriptor.center.dot(descriptor.normal)) {
-      deduplicated[duplicateIndex] = surface;
-    }
-  }
-  return deduplicated;
-}
-
 interface TankPresentationSetup {
   staticPreview: boolean;
   restScan: RestContactReceipt | null;
@@ -9306,6 +9275,7 @@ export function createTank(
     materialMode = 'rendered',
     proceduralOnly = false,
     geometryReceipt = false,
+    eraVisualBindingReceipt = true,
     batchStatic = false,
     deferStaticBatch = false,
     battleDetailLod = false,
@@ -10201,46 +10171,51 @@ export function createTank(
     root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
       [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
     );
-    const receiptPlates = (owner: VehicleOwner) => {
-      const exactZones = new Map<string, boolean>();
-      return gameplayEraByOwner[owner].filter((plate) => {
-        if (exactZones.has(plate.name)) return !exactZones.get(plate.name);
-        const parts = eraBoundPartsByPlate.get(plate.name) || [];
-        const exact = parts.length > 0 && createEraSurfaceFrame(plate) !== null && parts.every(
-          (part) => part.userData.eraHitFaceVertexStarts != null,
-        );
-        exactZones.set(plate.name, exact);
-        return true;
-      }).map((plate) => ({ owner, plate }));
-    };
-    root.userData.eraVisualBindingReceipt = Object.freeze({
-      revision: 'canonical-gameplay-era-binding-r1',
-      // Generated anatomy expands a canonical zone into many same-name hit
-      // faces. Fully annotated zones already collect every native facet in
-      // one pass; emit/cache that complete result once per owner and name.
-      // Legacy or mixed zones keep every row and its authored fitting frame:
-      // different plate normals can legitimately change their PCA result.
-      plates: Object.freeze(([
-        ...receiptPlates('hull'),
-        ...receiptPlates('turret'),
-      ]).map(({ owner, plate }) => {
-        const binding = eraVisualBindings.get(plate.name);
-        const registeredOwner = destructibleClusterOwners.get(plate.name) || null;
-        return Object.freeze({
-          name: plate.name,
-          owner,
-          registered: root.userData.eraClusterNames.includes(plate.name),
-          registeredOwner,
-          ownerMatches: registeredOwner === owner,
-          partCount: layeredEraPartsByCluster.get(plate.name) || 0,
-          cassetteCount: layeredEraCassetteCounts.get(plate.name) || 0,
-          automaticPartCount: binding?.automaticPartCount || 0,
-          visualSectors: Object.freeze([...(binding?.visualSectors || [])].sort()),
-          maximumSeatDistanceM: binding ? binding.maximumSeatDistanceM : null,
-          fittedSurfaces: fittedEraSurfaces(plate),
-        });
-      })),
-    });
+    // Static world wrecks retain only baked geometry and never consume the
+    // fitted anatomy receipt. Keep all ERA seating and gameplay bindings
+    // above, and preserve the default for live, workshop and audit callers.
+    if (eraVisualBindingReceipt) {
+      const receiptPlates = (owner: VehicleOwner) => {
+        const exactZones = new Map<string, boolean>();
+        return gameplayEraByOwner[owner].filter((plate) => {
+          if (exactZones.has(plate.name)) return !exactZones.get(plate.name);
+          const parts = eraBoundPartsByPlate.get(plate.name) || [];
+          const exact = parts.length > 0 && createEraSurfaceFrame(plate) !== null && parts.every(
+            (part) => part.userData.eraHitFaceVertexStarts != null,
+          );
+          exactZones.set(plate.name, exact);
+          return true;
+        }).map((plate) => ({ owner, plate }));
+      };
+      root.userData.eraVisualBindingReceipt = Object.freeze({
+        revision: 'canonical-gameplay-era-binding-r1',
+        // Generated anatomy expands a canonical zone into many same-name hit
+        // faces. Fully annotated zones already collect every native facet in
+        // one pass; emit/cache that complete result once per owner and name.
+        // Legacy or mixed zones keep every row and its authored fitting frame:
+        // different plate normals can legitimately change their PCA result.
+        plates: Object.freeze(([
+          ...receiptPlates('hull'),
+          ...receiptPlates('turret'),
+        ]).map(({ owner, plate }) => {
+          const binding = eraVisualBindings.get(plate.name);
+          const registeredOwner = destructibleClusterOwners.get(plate.name) || null;
+          return Object.freeze({
+            name: plate.name,
+            owner,
+            registered: root.userData.eraClusterNames.includes(plate.name),
+            registeredOwner,
+            ownerMatches: registeredOwner === owner,
+            partCount: layeredEraPartsByCluster.get(plate.name) || 0,
+            cassetteCount: layeredEraCassetteCounts.get(plate.name) || 0,
+            automaticPartCount: binding?.automaticPartCount || 0,
+            visualSectors: Object.freeze([...(binding?.visualSectors || [])].sort()),
+            maximumSeatDistanceM: binding ? binding.maximumSeatDistanceM : null,
+            fittedSurfaces: fittedEraSurfaces(plate),
+          });
+        })),
+      });
+    }
   };
   const createTankAssemblyStage30 = (): void => {
     createTankHullStage4();
@@ -12038,6 +12013,7 @@ export function createTank(
       root.traverse((o) => {
         if (isVehicleBatchedMesh(o)) o.dispose();
         if (isVehicleInstancedMesh(o)) o.dispose();
+        if (isVehicleMesh(o)) disposeOwnedFittingGeometry(o.geometry);
         // PERF (performance_budget r3): kit-merged GLB geometry is baked
         // per instance (modelLoader mergeStaticKit) — unlike the shared
         // cache geometry it must die with the visual or eviction leaks it.

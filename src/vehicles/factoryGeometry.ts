@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { cachedRoundedBoxGeometry } from './roundedBoxGeometryCache.ts';
 
 // Existing authored profiles build points incrementally, so their inferred
 // type is number[] rather than a fixed tuple. Named accessors inside this
@@ -69,7 +69,7 @@ export function box(width: number, height: number, depth: number): THREE.BufferG
   const minimumDimension = Math.min(width, height, depth);
   if (minimumDimension < 0.06) return new THREE.BoxGeometry(width, height, depth);
   const radius = Math.min(0.024, minimumDimension * 0.24);
-  return new RoundedBoxGeometry(
+  return cachedRoundedBoxGeometry(
     width,
     height,
     depth,

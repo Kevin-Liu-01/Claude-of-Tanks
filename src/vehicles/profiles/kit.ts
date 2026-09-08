@@ -9,6 +9,7 @@
 // contain, decode, or reproduce source mesh topology.
 import * as THREE from 'three';
 import { KIT } from '../tankFactoryCore.ts';
+import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -1283,6 +1284,7 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     if (!geos.length) continue;
     prepareVehicleNightLensParts(geos);
     const merged = KIT.mergeAll(geos);
+    ownFittingGeometry(merged);
     const material = fitMat(mats, slot);
     const camoUvScale = Number(material.userData?.camoUvScale);
     if (Number.isFinite(camoUvScale) && camoUvScale > 0) {

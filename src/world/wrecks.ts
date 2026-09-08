@@ -306,6 +306,9 @@ export function bakeTankWreck(
       // roughness, camouflage, track, decal, and burnt maps here was pure
       // discarded work (nine modern wrecks dominated Ruinspires props time).
       materialMode: 'geometry-only',
+      // No anatomy consumer survives the static position/normal/color bake.
+      // Leave visual ERA placement and all normal factory defaults intact.
+      eraVisualBindingReceipt: false,
       proceduralOnly: true,    // synchronous, no GLB, decor hard-skips
     });
     // settled wreck pose through the factory's own machinery: ageS far past
