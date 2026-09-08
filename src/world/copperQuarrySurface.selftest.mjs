@@ -93,8 +93,33 @@ for (let z = -180; z < 220; z += 16) for (let x = -240; x < 40; x += 16) {
   equalSurface(gated, uncut, x, z, 'Other map IDs ignore quarry opt-in');
 }
 
-// Pre-patch digests include ALL other29 maps, including already-capped
-// Skybridge, so a Copper-only fix cannot redefine their shapes or metadata.
+function appendHorizonReceipt(hash, id, ring) {
+  hash.update(id); hash.update(new Uint8Array(ring.positions.buffer));
+  hash.update(new Uint8Array(ring.heights.buffer)); hash.update(JSON.stringify(ring.rows));
+  hash.update(String(ring.maxHeight));
+  return hash;
+}
+
+// 56924f7bf intentionally lowered Polders from .50 to .18 after these
+// 31e5b130b fixtures. Restoring ONLY its historical amplitude reproduces all
+// three original other29 digests. Freeze the current Polders bytes separately;
+// neither this attribution nor the new distant detail may hide terrain drift.
+// Titan's later finite-cap restoration likewise uses its explicit authoring
+// opt-out here; titanGorgeHorizon.selftest owns current Titan byte/shape guards.
+const currentPolders = [
+  'a0426c3d4076df1019c84c6ecc857ef0429053013648f520b7ea0ffb8e8a3cde',
+  '567fb227b17a2c6425e0a516ecabffd99584d9f0a5aabffa23e9e76ec6117161',
+  '23ec6c333415a6d27b7265618e2316385b29bd9b4ef35f2fe3f4f3be5ece4d42',
+];
+function assertCurrentPolders(ring, index) {
+  assert.ok(Math.max(...ring.heights) > 30 && Math.max(...ring.heights) < 40,
+    'Current Polders keeps its authored low skyline');
+  assert.equal(appendHorizonReceipt(createHash('sha256'), 'polders', ring).digest('hex'),
+    currentPolders[index], 'Current Polders buffers and metadata remain byte-identical');
+}
+
+// Preserve ALL original digests, including already-capped Skybridge. Only
+// declared Polders/Titan historical inputs differ inside this old aggregate.
 const previous = [
   '4de06b66a9c7c529a316a2ba08e36ced902b1ba84ad6244779f3dcd7f9108c16',
   'cc5598e54f4a2b7ed2a5990920b6e2bb2f56cf575483f955bd9f796efab3cb4a',
@@ -102,12 +127,28 @@ const previous = [
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');
+  const unrelatedMutation = createHash('sha256');
   for (const id of MAP_IDS) {
-    const ring = sampleHorizonGeometry(getMapConfig(id), seed);
+    const config = getMapConfig(id), ring = sampleHorizonGeometry(config, seed);
     if (id !== 'copper_mesa') {
-      hash.update(id); hash.update(new Uint8Array(ring.positions.buffer));
-      hash.update(new Uint8Array(ring.heights.buffer)); hash.update(JSON.stringify(ring.rows));
-      hash.update(String(ring.maxHeight)); continue;
+      const historicalRing = id === 'polders' ? sampleHorizonGeometry({ ...config,
+        horizon: { ...config.horizon, amp: 0.50 } }, seed)
+        : id === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
+          horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
+      appendHorizonReceipt(hash, id, historicalRing);
+      const mutated = id === 'verdant'
+        ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;
+      if (id === 'verdant') mutated.positions[0] += 1;
+      appendHorizonReceipt(unrelatedMutation, id, mutated);
+      if (id === 'polders') {
+        assert.equal(config.horizon.amp, 0.18, 'Current Polders amplitude cannot revert to its old mountain profile');
+        assertCurrentPolders(ring, index);
+        const raised = { ...ring, positions: ring.positions.slice(), heights: ring.heights.slice() };
+        raised.positions[1] += 0.1; raised.heights[0] += 0.1;
+        assert.throws(() => assertCurrentPolders(raised, index), { code: 'ERR_ASSERTION' },
+          'The current Polders receipt rejects sub-metre height drift');
+      }
+      continue;
     }
     assert.equal(ring.rows.length, 10); assert.equal(ring.positions.length, 8610);
     assert.equal(ring.heights.length, 2870);
@@ -136,7 +177,9 @@ for (const [index, seed] of seeds.entries()) {
       assert.ok(capQuads >= 35 && area > 150000, 'Both ranges have finite attached cap surfaces');
     }
   }
-  assert.equal(hash.digest('hex'), previous[index], 'Other29 horizon buffers remain byte-identical');
+  assert.equal(hash.digest('hex'), previous[index], 'Declared historical Polders/Titan inputs preserve the original other29 receipt');
+  assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), previous[index]),
+    { code: 'ERR_ASSERTION' }, 'Historical Polders attribution never hides unrelated geometry drift');
 }
 for (const segments of [96, 48, 24]) {
   const index = acquireTerrainChunkIndex(new Map(), segments);

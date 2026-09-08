@@ -149,7 +149,9 @@ export function installProductionEntryObserver() {
     return Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
       'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
       'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
-      'pollMs', 'maxPollMs', 'pollCount', 'yields'].map((key) => [key, finite(value[key])]));
+      'pollMs', 'maxPollMs', 'pollCount', 'yields',
+      'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending']
+      .map((key) => [key, finite(value[key])]));
   };
   const worldLoadReceipt = (world) => world ? {
     id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,
