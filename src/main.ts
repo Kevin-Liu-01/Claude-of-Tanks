@@ -1663,6 +1663,7 @@ const battleRollout = createBattleRolloutRuntime({
 // default-frame reveal share one typed lifecycle owner.
 const battleEntryLifecycle = createBattleEntryLifecycle({
   nextFrame,
+  wakeFrameLoop: () => frameLoop.restart(),
   getRevealContext: () => ({
     phase: game.phase,
     garageHidden: !garage.isOpen,
