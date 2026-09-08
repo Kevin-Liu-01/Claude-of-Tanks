@@ -41,6 +41,11 @@ without creating per-building materials.
 `propsModelStore.ts` owns the bounds-checked packed runtime representation of
 the attributed `props-models.json` authoring source; regenerate it with
 `npm run world:props:pack` after intentional source changes.
+`structureCollision.ts` keeps projection/key caches construction-local. Any
+optimization must retain exact polygon order and runtime/authoring output;
+numeric inputs outside the certified raster-bounds domain use the original
+predicate path. Static wreck baking alone may omit the default-on factory ERA
+audit receipt; it must retain ERA geometry, seating and cluster ownership.
 `headlessCollisionWorld.ts` owns the typed inflation and query facade for exact
 authored collision records on a dedicated server without importing renderer or
 DOM state.

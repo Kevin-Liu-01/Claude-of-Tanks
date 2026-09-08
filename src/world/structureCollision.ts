@@ -253,9 +253,20 @@ function dedupeProjectedTriangles(triangles: number[][]): number[][] {
   return [...deduped.values()];
 }
 
-function sharedVertexCount(keys: ReadonlySet<string>, polygon: number[]): number {
+function projectedPolygonKeys(polygon: number[], cache: Map<number[], Set<string>>): Set<string> {
+  let keys = cache.get(polygon);
+  if (!keys) {
+    keys = polygonVertexKeys(polygon);
+    cache.set(polygon, keys);
+  }
+  return keys;
+}
+
+function sharedVertexCount(
+  keys: ReadonlySet<string>, polygon: number[], cache: Map<number[], Set<string>>,
+): number {
   let shared = 0;
-  for (const key of polygonVertexKeys(polygon)) if (keys.has(key)) shared++;
+  for (const key of projectedPolygonKeys(polygon, cache)) if (keys.has(key)) shared++;
   return shared;
 }
 
@@ -272,11 +283,11 @@ function combinedConvexHull(first: number[], second: number[]): number[] | null 
   return hullArea <= sourceArea + Math.max(1e-5, sourceArea * 1e-4) ? hull : null;
 }
 
-function mergeFirstProjectedPair(polygons: number[][]): boolean {
+function mergeFirstProjectedPair(polygons: number[][], vertexKeys: Map<number[], Set<string>>): boolean {
   for (let first = 0; first < polygons.length; first++) {
-    const firstKeys = polygonVertexKeys(polygons[first]);
+    const firstKeys = projectedPolygonKeys(polygons[first], vertexKeys);
     for (let second = first + 1; second < polygons.length; second++) {
-      if (sharedVertexCount(firstKeys, polygons[second]) < 2) continue;
+      if (sharedVertexCount(firstKeys, polygons[second], vertexKeys) < 2) continue;
       const hull = combinedConvexHull(polygons[first], polygons[second]);
       if (!hull) continue;
       polygons[first] = hull;
@@ -289,7 +300,12 @@ function mergeFirstProjectedPair(polygons: number[][]): boolean {
 
 function mergeProjectedTriangles(triangles: number[][]) {
   const polygons = dedupeProjectedTriangles(triangles);
-  while (mergeFirstProjectedPair(polygons)) { /* restart after each exact merge */ }
+  // Pair search restarts in the same order, but unchanged polygon arrays need
+  // not rebuild welded vertex strings for every comparison. Each accepted
+  // hull is a new array, so its keys cannot alias the replaced polygon's keys.
+  // This construction-local cache is discarded with this one merge call.
+  const vertexKeys = new Map<number[], Set<string>>();
+  while (mergeFirstProjectedPair(polygons, vertexKeys)) { /* restart after each exact merge */ }
   return uniquePolygons(polygons);
 }
 
@@ -361,16 +377,52 @@ function collapseDenseFootprint(source: number[][]) {
   return best?.polygons ?? [hull];
 }
 
-function rasterFootprintRectangles(source: number[][], resolution: number) {
+interface RasterCandidatePolygon {
+  points: number[];
+  bounds: ReturnType<typeof boundsOf>;
+}
+
+function rasterCandidatePolygons(source: number[][]) {
+  const polygons: RasterCandidatePolygon[] = [];
+  // Runtime source positions are Float32. Restrict rejection to that exact
+  // finite domain: its edge differences/products stay representable in Double.
+  // Other numeric inputs retain the original predicate, including its quirks.
+  for (const points of source) {
+    if (!points.every((value) => Number.isFinite(value) && Math.fround(value) === value)) return null;
+    const bounds = boundsOf([points]);
+    const values = Object.values(bounds);
+    if (!values.every(Number.isFinite)) return null;
+    // The ray intersection performs several floating operations. Widen only
+    // the rejection envelope; inclusive edge samples still use the exact test.
+    const guard = Math.max(1, ...values.map(Math.abs)) * Number.EPSILON * 16;
+    polygons.push({ points, bounds: {
+      minX: bounds.minX - guard, maxX: bounds.maxX + guard,
+      minZ: bounds.minZ - guard, maxZ: bounds.maxZ + guard,
+    } });
+  }
+  return polygons;
+}
+
+function rasterCellOccupied(x: number, z: number, source: number[][], row?: RasterCandidatePolygon[]) {
+  return row
+    ? row.some((polygon) => x >= polygon.bounds.minX && x <= polygon.bounds.maxX
+      && pointInPolygon(x, z, polygon.points))
+    : containsAny(x, z, source);
+}
+
+function rasterFootprintRectangles(source: number[][], resolution: number, useBounds = false) {
   const bounds = boundsOf(source);
   const width = bounds.maxX - bounds.minX;
   const depth = bounds.maxZ - bounds.minZ;
   if (width <= 1e-6 || depth <= 1e-6) return [];
   const dx = width / resolution, dz = depth / resolution;
+  const candidates = useBounds ? rasterCandidatePolygons(source) : null;
   interface Span { x0: number; x1: number; z0: number; z1: number }
   let active = new Map<string, Span>();
   const complete: Span[] = [];
   for (let zIndex = 0; zIndex < resolution; zIndex++) {
+    const z = bounds.minZ + (zIndex + 0.5) * dz;
+    const row = candidates?.filter((polygon) => z >= polygon.bounds.minZ && z <= polygon.bounds.maxZ);
     const next = new Map<string, Span>();
     let runStart = -1;
     const flush = (runEnd: number) => {
@@ -389,8 +441,7 @@ function rasterFootprintRectangles(source: number[][], resolution: number) {
     };
     for (let xIndex = 0; xIndex < resolution; xIndex++) {
       const x = bounds.minX + (xIndex + 0.5) * dx;
-      const z = bounds.minZ + (zIndex + 0.5) * dz;
-      const occupied = containsAny(x, z, source);
+      const occupied = rasterCellOccupied(x, z, source, row);
       if (occupied && runStart < 0) runStart = xIndex;
       if (!occupied && runStart >= 0) flush(xIndex);
     }
@@ -448,13 +499,16 @@ function makeBand(
 
 function makeRuntimeBand(
   solids: LocalSolid[], minY: number, maxY: number, groundContact = false,
+  projectedCache?: Map<LocalSolid, number[][]>,
 ): StructureCollisionRuntimeBand {
-  const source = collisionSource(solids, groundContact);
+  const source = collisionSource(solids, groundContact, projectedCache);
   const collision = source.length <= 64 ? source : collapseRuntimeFootprint(source);
   return { minY, maxY, parts: collision.map(polygonShape) };
 }
 
-function collisionSource(solids: LocalSolid[], groundContact: boolean): number[][] {
+function collisionSource(
+  solids: LocalSolid[], groundContact: boolean, projectedCache?: Map<LocalSolid, number[][]>,
+): number[][] {
   // Open-ended decorative cylinders high on towers (rails, collars and trim)
   // have no projected cap area. Ground-bearing open solids remain physical
   // because they can be structural walls or posts. Triangle-pair merging is
@@ -472,7 +526,11 @@ function collisionSource(solids: LocalSolid[], groundContact: boolean): number[]
       : [solid.points]);
   }
   return uniquePolygons(activeSolids.flatMap((solid) => {
-    const projected = mergeProjectedTriangles(solid.projectedTriangles);
+    let projected = projectedCache?.get(solid);
+    if (!projected) {
+      projected = mergeProjectedTriangles(solid.projectedTriangles);
+      projectedCache?.set(solid, projected);
+    }
     return projected.length ? projected : [solid.points];
   }));
 }
@@ -483,7 +541,7 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
   // ordinary authored polygons exactly; only dense scanned silhouettes use a
   // single bounded raster pass before falling back to their enclosing hull.
   for (const resolution of [32, 24, 16]) {
-    const polygons = rasterFootprintRectangles(source, resolution);
+    const polygons = rasterFootprintRectangles(source, resolution, true);
     if (polygons.length > 0 && polygons.length <= 64) return polygons;
   }
   const points: Array<[number, number]> = [];
@@ -542,6 +600,14 @@ export function deriveStructureCollisionProfile(
   };
 }
 
+function deriveRuntimeCollisionBands(solids: LocalSolid[]): StructureCollisionRuntimeProfile {
+  // One extraction owns these immutable projections across contact/shell bands.
+  // The cache ends here; no geometry-keyed or global residency spans calls.
+  const projectedCache = new Map<LocalSolid, number[][]>();
+  return deriveCollisionBands(solids, (active, minY, maxY, ground) =>
+    makeRuntimeBand(active, minY, maxY, ground, projectedCache));
+}
+
 /**
  * Build the certified runtime shape without re-running the expensive quality
  * sampler embedded in authoring audits. The release gate independently scores
@@ -550,7 +616,7 @@ export function deriveStructureCollisionProfile(
 export function deriveRuntimeStructureCollisionProfile(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeProfile {
-  return deriveCollisionBands(collectSolids(buckets), makeRuntimeBand);
+  return deriveRuntimeCollisionBands(collectSolids(buckets));
 }
 
 /** Same collision result, exposing the already-extracted solids to cosmetic admission. */
@@ -558,7 +624,7 @@ export function deriveRuntimeStructureCollisionWithSolids(
   buckets: StructureGeometryBuckets,
 ): { profile: StructureCollisionRuntimeProfile; solids: readonly StructureSourceSolid[]; contactTop: number } {
   const solids = collectSolids(buckets);
-  return { profile: deriveCollisionBands(solids, makeRuntimeBand), solids, contactTop: CONTACT_TOP };
+  return { profile: deriveRuntimeCollisionBands(solids), solids, contactTop: CONTACT_TOP };
 }
 
 /**

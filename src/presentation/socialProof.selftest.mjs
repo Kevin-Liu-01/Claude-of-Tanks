@@ -9,7 +9,7 @@ const styles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
 
 assert.match(home, /<header class="v5-hero">[\s\S]*?<\/header>\s*<section class="v5-social-proof" aria-labelledby="social-proof-title">/,
   'social proof must be the first landing-page section after the hero');
-assert.match(home, /Public engagement snapshot captured August 31, 2026/,
+assert.match(home, /Public engagement snapshot captured September 8, 2026/,
   'static platform counts must disclose their capture date');
 assert.match(home,
   /<h2 id="social-proof-title"><span[^>]*data-i18n-html="home\.social\.kicker"[^>]*>Featured by <em>Three\.js<\/em><\/span><span[^>]*data-i18n="home\.social\.title"[^>]*>Shared across the web<\/span><\/h2>/,
@@ -64,7 +64,7 @@ assert.ok(!home.includes('The engine behind the game'), 'removed Three.js kicker
 assert.ok(!home.includes('shared the full game showcase with its community'),
   'removed Three.js supporting sentence must stay absent');
 
-for (const value of ['396K', '77.8K', '1,566', '393 comments', '269', '19.5K', '37.9K', '162K', '112K']) {
+for (const value of ['445K', '79.4K', '1,598', '430K views', '1,483 upvotes', '365 comments', '272', '20.5K', '38K', '185K', '118K']) {
   assert.ok(home.includes(value), `missing verified engagement value ${value}`);
 }
 for (const label of ['views', 'likes', 'replies', 'reposts and quotes', 'bookmarks', 'upvotes', 'comments']) {
