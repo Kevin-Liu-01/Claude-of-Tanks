@@ -460,7 +460,8 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
     ], (fraction, specId) => progress.push([fraction, specId]));
     assert.equal(ambientFrames, 0,
       'a cached 14-entity roster does not force one ambient animation frame per entity');
-    assert.deepEqual(waits, [], 'cached checkpoints below the loading budget do not wait');
+    assert.deepEqual(waits, ['task'],
+      'new cached actors leave the preceding world task once, not once per checkpoint');
     assert.equal(fixture.visuals.length, 14);
     assert.equal(fixture.bridge.entities.size, 14,
       'duplicate vehicle picks retain fourteen distinct network identities');
@@ -503,6 +504,7 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
   try {
     await fixture.bridge.prepareRoster(fullCachedRoster);
     assert.deepEqual(waits, [
+      ['task', 0, 0],
       ['task', 8, 2], ['task', 16, 4], ['task', 24, 6], ['task', 32, 8],
       ['task', 40, 10], ['task', 48, 12], ['frame', 56, 14],
     ], '8ms exhausted slices yield tasks and the first checkpoint past 50ms permits a progress frame');
@@ -510,12 +512,12 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
     const firstActors = [...fixture.bridge.entities.values()];
     clock = 500;
     await fixture.bridge.prepareRoster(fullCachedRoster);
-    assert.equal(waits.length, 7, 'a new prepareRoster call starts its own loading budget and paint cadence');
+    assert.equal(waits.length, 8, 'already staged actors add no initial task or loading budget wait');
     assert.equal(fixture.visuals.length, 14, 'already staged IDs do not construct duplicate replicas');
     assert.deepEqual([...fixture.bridge.entities.values()], firstActors);
     assert.equal(fixture.registered.length, 14, 'cached IDs do not repeat the visual lifecycle publication');
     await fixture.bridge.prepareRoster([]);
-    assert.equal(waits.length, 7, 'empty roster preparation adds no scheduler work');
+    assert.equal(waits.length, 8, 'empty roster preparation adds no scheduler work');
   } finally {
     fixture.bridge.dispose();
   }
@@ -537,7 +539,7 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
   });
   try {
     await fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1));
-    assert.deepEqual(waits, [['task', 8], ['task', 16]],
+    assert.deepEqual(waits, [['task', 0], ['task', 8], ['task', 16]],
       'texture painter checkpoints and actor construction consume the same per-call budget');
     assert.equal(fixture.visuals[0].visual.visible, false);
   } finally {
@@ -595,6 +597,94 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
       fixture.bridge.dispose();
     }
   }
+}
+
+{
+  let release;
+  const boundary = new Promise(resolve => { release = resolve; });
+  const fixture = rosterSchedulingFixture({ rosterScheduling: {
+    now: () => 0, yieldTask: () => boundary,
+    yieldFrame: async () => { assert.fail('the initial task does not require an animation frame'); },
+  } });
+  const progress = [];
+  const pending = fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1), value => progress.push(value));
+  try {
+    await Promise.resolve();
+    assert.equal(fixture.visuals.length, 0, 'no tank construction in the world activation task');
+    assert.equal(fixture.warmed.length, 0, 'cached texture/import microtasks cannot bypass the boundary');
+    assert.deepEqual(progress, [], 'no false construction progress before yielding');
+    release();
+    await pending;
+    assert.equal(fixture.visuals.length, 1);
+    assert.deepEqual(progress, [1]);
+    assert.equal(fixture.game.player, null, 'staging still cannot publish the bridge');
+  } finally { release(); try { await pending; } finally { fixture.bridge.dispose(); } }
+}
+
+{
+  let release;
+  const boundary = new Promise(resolve => { release = resolve; });
+  const fixture = rosterSchedulingFixture({ rosterScheduling: {
+    now: () => 0, yieldTask: () => boundary,
+  } });
+  const pending = fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1));
+  const rejected = assert.rejects(pending, /disposed battle bridge/);
+  fixture.bridge.dispose();
+  release();
+  await rejected;
+  assert.equal(fixture.visuals.length, 0, 'disposing during the owned task cannot resurrect tank visuals');
+  assert.equal(fixture.warmed.length, 0);
+  await assert.rejects(fixture.bridge.prepareRoster([]), /disposed battle bridge/);
+}
+
+{
+  let release, entered, painterFinished = false;
+  const boundary = new Promise(resolve => { release = resolve; });
+  const warming = new Promise(resolve => { entered = resolve; });
+  const fixture = rosterSchedulingFixture({ rosterScheduling: {
+    now: () => 0, yieldTask: async () => {},
+  }, async onWarm(_spec, _anisotropy, _quality, tick) {
+    entered(); await boundary; await tick();
+    painterFinished = true;
+  } });
+  const pending = fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1));
+  const rejected = assert.rejects(pending, /disposed battle bridge/);
+  await warming;
+  fixture.bridge.dispose(); release();
+  await rejected;
+  assert.equal(painterFinished, true, 'disposal cannot interrupt shared in-place texture promotion');
+  assert.equal(fixture.visuals.length, 0,
+    'the synchronous texture compatibility fallback cannot swallow disposal and build a stale tank');
+}
+
+{
+  const failure = new Error('task scheduling failed');
+  const fixture = rosterSchedulingFixture({ rosterScheduling: {
+    now: () => 0, yieldTask: async () => { throw failure; },
+  } });
+  try {
+    await assert.rejects(fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1)), error => error === failure);
+    assert.equal(fixture.visuals.length, 0);
+    assert.equal(fixture.warmed.length, 0);
+  } finally { fixture.bridge.dispose(); }
+}
+
+{
+  let clock = 0, tasks = 0, painterFinished = false;
+  const failure = new Error('late texture scheduling failure');
+  const fixture = rosterSchedulingFixture({ rosterScheduling: {
+    now: () => clock,
+    yieldTask: async () => { if (++tasks > 1) throw failure; },
+  }, async onWarm(_spec, _anisotropy, _quality, tick) {
+    clock = 10; await tick();
+    clock = 20; await tick();
+    painterFinished = true;
+  } });
+  try {
+    await assert.rejects(fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1)), error => error === failure);
+    assert.equal(painterFinished, true, 'shared texture promotion drains despite a rejected scheduling task');
+    assert.equal(fixture.visuals.length, 0, 'the compatibility fallback cannot swallow a scheduling failure');
+  } finally { fixture.bridge.dispose(); }
 }
 
 console.log('browserBattleBridge.selftest: hidden authority-pose reveal and roster scheduling passed');

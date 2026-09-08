@@ -378,6 +378,7 @@ export function createBrowserBattleBridge<
   let perspectiveTeam: Team = null;
   let snapshotPhase: string | null = null;
   let mounted = false;
+  let disposed = false;
   let legacyState: LegacyGameState<
     TLegacyEntity,
     TLegacyShell,
@@ -607,16 +608,39 @@ export function createBrowserBattleBridge<
     players: RosterPlayer[],
     onProgress: ((fraction: number, specId: string) => void) | null = null,
   ): Promise<void> {
+    const assertActive = () => {
+      if (disposed) throw new Error('Cannot prepare a disposed battle bridge');
+    };
+    assertActive();
     const active = (players || []).filter((player) => player.team !== 'spectator');
     // Entry owns an opaque loader until this exact roster is ready. Share one
     // budget across texture checkpoints and construction: cache hits need no
     // frame wait, while expensive work yields tasks and periodic progress paints.
     // The shared scheduler also bounds waits when hidden-tab rAF stops firing.
-    const yieldWork = createOpaqueLoadingYielder(8, 50, rosterScheduling);
+    const schedule = createOpaqueLoadingYielder(8, 50, rosterScheduling);
+    const yieldWork = async (force = false) => {
+      await schedule(force);
+      assertActive();
+    };
+    const schedulingFailure: { rethrow?: () => never } = {};
+    const textureTick = async () => {
+      // Shared texture promotion paints live canvases in place. Drain it even
+      // if this bridge is disposed or the scheduler fails, then reject before
+      // constructing anything. Throwing inside a painter leaves partial pixels.
+      try { await schedule(); } catch (error) {
+        schedulingFailure.rethrow ??= () => { throw error; };
+      }
+    };
+    // Cached imports/textures resolve as microtasks. Leave the world activation
+    // task before the first new tank can extend it by another full construction.
+    // Existing/empty rosters need no extra task or frame. This is a scheduling
+    // boundary only; the opaque loader and authority/reveal barriers remain held.
+    if (active.some((player) => !entities.has(player.id))) await yieldWork(true);
     const warmed = new Set();
     for (let index = 0; index < active.length; index++) {
       const player = active[index];
       await ensureTankBuilder(player.specId);
+      assertActive();
       const quality = browserRosterTextureQuality(player.id, id, spectator);
       const camo = player.camo || 'factory';
       const warmKey = `${player.specId}:${camo}:${quality}`;
@@ -627,11 +651,13 @@ export function createBrowserBattleBridge<
             readSpec(player.specId),
             engineCtx.anisotropy ?? 4,
             quality,
-            yieldWork,
+            textureTick,
             camo,
           );
         } catch (_) { /* createTank retains its synchronous compatibility path */ }
       }
+      assertActive();
+      schedulingFailure.rethrow?.();
       ensureEntity({
         id: player.id,
         name: player.name,
@@ -1446,6 +1472,7 @@ export function createBrowserBattleBridge<
   }
 
   function dispose(): void {
+    disposed = true;
     unmount();
     for (const entity of entities.values()) {
       entity._networkAmmoSelectionPending = false;

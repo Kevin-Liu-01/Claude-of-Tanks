@@ -27,6 +27,7 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle',
   `return ${stripTypeScriptTypes(`function* testSurfaceSteps(group, engineCtx, mapId, P, atlases) {
     const { ${families.join(', ')} } = atlases;
     const noi = null, aniso = 4;
+    const grimeTex = makeGrimeTexture(); // Completed before the material stage.
     ${source.slice(start, end)}
     return { mats, grimeTex, retainedSurfaceMaterials };
   }`)};`)(THREE, resolveStructureWindowStyle, registerRetainedObject3DResources,
