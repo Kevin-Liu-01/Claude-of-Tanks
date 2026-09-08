@@ -1094,3 +1094,33 @@ test regression. The queued additional production CPU capture was cancelled
 before acquisition and produced no new browser evidence. An unfinished optional
 waiting-room-dwell probe is excluded from this commit, as are all transient QA
 reports, screenshots and unrelated vehicle/environment changes.
+
+### Completed waiting-room cache attribution
+
+The native private-room probe now supports the explicit
+`--entry-profile=timings --wait-for-room-map` scenario. Its default remains the
+immediate native Start flow. The optional scenario observes both actual Winter
+waiting rooms for at most 15 seconds before Start; it does not force map state,
+readiness, camera, quality or resource completion. Pre-Start completion alone is
+insufficient: both post-Start observations must report a completed cached Winter
+activation with unchanged promotion counters. A joined build that finishes after
+Start fails this attribution check instead of being described as a cache hit.
+
+The bounded, allowlisted receipt is published before the first page read, then
+updated after samples, so an outer deadline retains partial dwell evidence even
+while a read is pending. Copied counter snapshots exclude room codes, arbitrary
+map names, resource URLs and error messages. Deterministic cases cover completed
+and pending peers, wrong map/phase, hidden rooms, invalid counters, read failures,
+deadlines, cancellation during a deferred read and false cached-launch claims.
+The probe, entry-observer and source-profile selftests pass. This is diagnostic
+tooling, not a runtime loading change or a new live cache-performance certificate.
+
+A separate immediate-start production CPU capture on `v1.0.0+g004ce1e04`
+reached live battle on both peers and verified room/browser cleanup with zero
+application exceptions. It failed during profile summarization with the newly
+retained `sample-delta` validation code. No raw profile was retained. It therefore
+does not establish the offending delta value, CPU attribution or a completed
+countdown/lifecycle gate. The guest's counters show a partial prefetch promoted
+after Start, and substantial world/FX/reveal tasks remain. The historical stall
+cause and the pass-aware shader-warm experiment remain open; neither is claimed
+fixed or included in this tooling commit.
