@@ -435,6 +435,63 @@ The first full-suite attempt, `final-npm-test-r1.log`, stops on the
 `sourceXOtherAuxArmor` full-scene fingerprint. The mismatch is being decomposed
 before changing any expected digest. The suite is not reported as passing.
 
+## Recovery round 7 — exterior lamp seating and nonblocking capture
+
+`398deb8a3` corrects the actual exterior visibility of the existing M1A3 and
+MBT-70 lamp assemblies. Their total authored forward offsets are now 110 mm
+and 150 mm respectively; the housings still overlap their supporting hulls
+by 12.18 mm and 7.67 mm. No meshes were added. Exterior-to-lens ray checks,
+including both front quarter views, pass all 72 samples per model/quality.
+The unchanged T-90M and Proryv placements pass 120 samples per quality.
+The default regression now builds all four vehicles at both quality levels
+and checks the actual exterior faces, replacing the misleading inside-out
+ray as the visibility oracle. Canonical anatomy regeneration/check and fresh
+native photographs of this correction remain required.
+
+`abb174100` replaces synchronous motion-proof PNG encoding with asynchronous
+`toBlob` encoding at the same rendered-frame receipt. The probe still takes
+exactly three timed pan snapshots, preserves capture order and frame/pixel
+pairing, and restores the render wrapper after the final requested snapshot.
+Timeout, cancellation and failed readbacks retain fail-closed cleanup. No
+quality policy, floor, camera route or acceptance limit changed. The single
+Winter desktop acquisition in `motion-one-async-r1` passes on the unchanged
+R4 public build, including DPR2 at dynamic scale 1. Its 484 actual pan frames,
+six PNGs and 24-second video are retained; the saved-evidence gate also passes.
+This is visual acquisition evidence, not a new FPS or memory benchmark. The
+final client build still needs its own one-case gate and nine-case matrix.
+
+`6fcb9f39e` and `2b1b5e625` preserve all fourteen Other and eighteen Soviet
+legacy scene hashes. Exact attribute decomposition proves that the newly
+registered `nightEmissionMask` is the only mismatch. Shape hashes still cover
+every former geometry/instance/transform attribute; the mask has its own
+strict byte type, layout, count and value checks. Malformed mask, unknown
+attribute and position-mutation controls prevent silent geometry exclusions.
+Focused Other/Soviet tests pass; unchanged Western and optimization checks
+also pass, including 15,975 optimization controls. The prior failed full-suite
+receipt is retained, and a final complete run remains required.
+
+`ea90a8901` adds a diagnostic-only exact-fixture census. It establishes that
+Urban has no relay instance at all, while Airfield has a real authored radar
+relay. The verification camera now targets that existing fixture; no prop was
+invented or moved to satisfy the test. Census reports cannot qualify a release.
+
+The eight MBT-70 rear hull-detail/track overlap voxels are confirmed unchanged
+by the lamp work: full mesh inventories/matrices and every rear vertex match
+the pre-lamp source, with only forward fixture positions changed. Existing
+MBT-70/T-90M reference-fidelity failures likewise remain documented, and M1A3
+and Proryv still have no registered comparison oracle. No fake reference,
+passing ledger, geometry tolerance or tank redesign has been substituted.
+Owner direction on publishing this focused lighting work with those existing
+qualification limitations has been requested; publication remains pending.
+
+The complete 29-test post suite and TypeScript/core-unused checks pass.
+The core suite's unrelated repository-hygiene failure was a missing allowlist
+entry for the already tracked and indexed tank-generation handbook;
+`deddbd62c` repairs it, and `8297588ec` keeps its stable handbook link outside
+the generated directory index. Agent-docs scaffold/doctor passes all four
+checks. The queued second core run was canceled before any test began so the
+scoped source repairs could complete; it is neither a pass nor a test failure.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
