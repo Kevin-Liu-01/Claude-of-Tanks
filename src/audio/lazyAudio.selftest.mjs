@@ -41,6 +41,85 @@ await lazy.preload();
 assert.equal(lazy.ready, false,
   'preloading transfers/evaluates the full mixer without constructing it before a gesture');
 
+let preparedContexts = 0;
+let preparedTransfers = 0;
+let preparedMixers = 0;
+let preparedResumes = 0;
+let adoptedPreparedContext;
+const preparedContext = {
+  state: 'suspended',
+  resume() { preparedResumes++; this.state = 'running'; return Promise.resolve(); },
+};
+const prepared = createLazyAudio({
+  createContext: () => { preparedContexts++; return preparedContext; },
+  loadMixer: async () => {
+    preparedTransfers++;
+    return { createAudio({ context }) {
+      preparedMixers++;
+      adoptedPreparedContext = context;
+      return { resume() {}, bindBus() {}, mute() {}, loadingOn() {}, ambientOn() {} };
+    } };
+  },
+});
+assert.equal(preparedContexts, 0, 'constructing the facade never opens an audio device');
+prepared.prepare(); prepared.prepare();
+await Promise.resolve();
+assert.equal(preparedContexts, 1, 'repeated Ready gestures share one context');
+assert.equal(preparedResumes, 1, 'running context is not resumed again during preparation');
+assert.equal(preparedTransfers, 0, 'Ready does not fetch the mixer');
+assert.equal(preparedMixers, 0, 'Ready does not synthesize or construct the mixer');
+assert.equal(prepared.ready, false);
+assert.equal(prepared.loadingActive, false, 'Ready does not play the loading tone');
+prepared.resume();
+await prepared.preload(); await Promise.resolve();
+assert.equal(preparedContexts, 1, 'Battle does not reopen the prepared device');
+assert.equal(preparedMixers, 1, 'Battle creates the mixer exactly once');
+assert.equal(adoptedPreparedContext, preparedContext, 'Battle adopts the exact prepared context');
+
+let preparationAttempts = 0;
+const retryPreparation = createLazyAudio({
+  createContext: () => {
+    preparationAttempts++;
+    if (preparationAttempts === 1) throw new Error('device temporarily unavailable');
+    return preparedContext;
+  },
+  loadMixer: () => { throw new Error('preparation must not transfer the mixer'); },
+});
+assert.doesNotThrow(() => retryPreparation.prepare(), 'device denial cannot reject Ready');
+retryPreparation.prepare();
+assert.equal(preparationAttempts, 2, 'failed preparation remains retryable');
+const absentAudio = createLazyAudio({ createContext: () => null });
+assert.doesNotThrow(() => absentAudio.prepare(), 'missing WebAudio does not block readiness');
+assert.equal(absentAudio.loadingActive, false);
+
+let deniedResumeCalls = 0;
+const deniedResume = createLazyAudio({
+  createContext: () => ({ state: 'suspended', resume: () => {
+    deniedResumeCalls++;
+    return Promise.reject(new Error('autoplay denied'));
+  } }),
+});
+deniedResume.prepare();
+await new Promise((resolve) => setImmediate(resolve));
+deniedResume.prepare();
+await new Promise((resolve) => setImmediate(resolve));
+assert.equal(deniedResumeCalls, 2, 'denied resume is observed and retryable, never unhandled');
+let throwingResumeCalls = 0;
+const throwingResume = createLazyAudio({ createContext: () => ({
+  state: 'suspended', resume() {
+    if (++throwingResumeCalls === 1) throw new Error('device interrupted');
+    return Promise.resolve();
+  },
+}) });
+assert.doesNotThrow(() => throwingResume.prepare());
+throwingResume.prepare();
+assert.equal(throwingResumeCalls, 2, 'synchronous resume failure is retryable on the same device');
+const pendingResume = createLazyAudio({ createContext: () => ({
+  state: 'suspended', resume: () => new Promise(() => {}),
+}) });
+assert.equal(pendingResume.prepare(), undefined, 'Ready never waits on audio permission');
+assert.equal(pendingResume.loadingActive, false);
+
 const handoffCalls = [];
 let graphReady = false;
 const handoffContext = { state: 'running' };
