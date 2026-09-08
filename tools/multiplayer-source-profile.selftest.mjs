@@ -64,6 +64,41 @@ for (const mutate of [
   const invalid = profile(); mutate(invalid);
   assert.throws(() => summarizeMultiplayerSourceProfile(invalid, { origin }), /source_profile_invalid_profile/);
 }
+
+for (const [failureCode, mutate] of [
+  ['nodes-shape', (p) => { p.nodes = []; }],
+  ['nodes-limit', (p) => { p.nodes = Array(20001).fill(p.nodes[0]); }],
+  ['samples-shape', (p) => { p.samples = null; }],
+  ['samples-limit', (p) => { p.samples = Array(40001).fill(2); }],
+  ['time-deltas-shape', (p) => { p.timeDeltas = null; }],
+  ['time-deltas-count', (p) => { p.timeDeltas.pop(); }],
+  ['time-range', (p) => { p.endTime = Infinity; }],
+  ['duration-limit', (p) => { p.endTime = p.startTime + 40000001; }],
+  ['node-id', (p) => { p.nodes[1].id = -1; }],
+  ['node-id-duplicate', (p) => { p.nodes.push(p.nodes[1]); }],
+  ['node-children-shape', (p) => { p.nodes[1].children = {}; }],
+  ['node-children-limit', (p) => { p.nodes[1].children = Array(20001).fill(3); }],
+  ['edge-count-limit', (p) => { p.nodes[7].children = [1]; }],
+  ['child-node-missing', (p) => { p.nodes[0].children.push(999); }],
+  ['child-multiple-parents', (p) => { p.nodes[1].children.push(6); }],
+  ['root-parent', (p) => { p.nodes = [node(1, '(root)'), node(2, '(idle)', '', [1])]; }],
+  ['tree-edge-count', (p) => { p.nodes[0].children.pop(); }],
+  ['sample-node-missing', (p) => { p.samples[0] = 999; }],
+  ['lineage-cycle', (p) => { p.nodes = [node(1, '(root)'), node(2, '(idle)', '', [3]),
+    node(3, '(program)', '', [2])]; }],
+  ['lineage-depth', (p) => { p.nodes = Array.from({ length: 129 }, (_, i) =>
+    node(i + 1, '(idle)', '', i < 128 ? [i + 2] : [])); }],
+  ['sample-delta', (p) => { p.timeDeltas[0] = -1; }],
+  ['sample-duration-overrun', (p) => { p.timeDeltas[0] = 11000; }],
+]) {
+  const rejected = profile();
+  mutate(rejected);
+  assert.throws(() => summarizeMultiplayerSourceProfile(rejected, { origin }), (error) => {
+    assert.equal(error.message, 'source_profile_invalid_profile');
+    assert.deepEqual(sourceProfileFailureDetails(error), { stage: null, failure: 'unknown', failureCode });
+    return true;
+  });
+}
 for (const path of [`${origin}/assets/private.js?PRIVATE_TOKEN`, `${origin}/private/PRIVATE_TOKEN.js`,
   `${origin}/assets/%50RIVATE.js`, `https://PRIVATE_SECRET@game.example.test/assets/main.js`,
   'file:///PRIVATE_PATH/main.js', 'data:text/javascript,PRIVATE_SECRET']) {
@@ -199,6 +234,24 @@ const timedFailure = assert.rejects(timedProfile.stop(), (error) => {
 await timeoutFixture.clock.advance(50); await timedFailure; released(timeoutFixture);
 assert.deepEqual(sourceProfileFailureDetails({ profileStage: 'PRIVATE', operationFailure: 'PRIVATE' }),
   { stage: null, failure: 'unknown' });
+assert.deepEqual(sourceProfileFailureDetails({ profileStage: 'summarize',
+  profileFailureCode: 'PRIVATE_TOKEN https://PRIVATE_URL', message: 'PRIVATE_MESSAGE' }),
+{ stage: 'summarize', failure: 'unknown' }, 'only fixed validation codes leave failure classification');
+
+const invalidCapture = fixture({ send: (method) => {
+  if (method !== 'Profiler.stop') return;
+  const rejected = profile(); rejected.timeDeltas[0] = -1;
+  return { profile: rejected };
+} });
+const invalidSampler = await startMultiplayerSourceProfile(invalidCapture.page, { origin }, invalidCapture.clock);
+await assert.rejects(invalidSampler.stop(), (error) => {
+  assert.deepEqual(sourceProfileFailureDetails(error), {
+    stage: 'summarize', failure: 'unknown', failureCode: 'sample-delta',
+  }, 'stop preserves the exact validation code through its redacted error wrapper');
+  assert.doesNotMatch(JSON.stringify(error), /PRIVATE|https?:|nodes|samples|timeDeltas/);
+  return true;
+});
+released(invalidCapture);
 
 for (const sameTurn of [false, true]) {
   let resolveCreation;

@@ -10,6 +10,7 @@ import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../vehicles/materials.ts';
+import { createOpaqueLoadingYielder, type FrameSchedulerOptions } from '../engine/frameScheduler.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import { pushHullFromHull, pushHullFromObstacle } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -278,6 +279,7 @@ export interface BrowserBattleBridgeOptions<
   worldCollision?: WorldCollision | null;
   createTankVisual?: CreateTankVisual;
   prepareVisualTextures?: PrepareVisualTextures;
+  rosterScheduling?: FrameSchedulerOptions;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
   onVisualReady?: (entity: BridgeEntity) => void;
 }
@@ -334,13 +336,6 @@ function hashString(value: RuntimeValue): number {
   return hash >>> 0;
 }
 
-function nextFrame(): Promise<void> {
-  return new Promise<void>((resolve) => {
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
-    else setTimeout(resolve, 0);
-  });
-}
-
 /**
  * Reconcile viewer-filtered network snapshots into first-party tank visuals.
  * No local gameplay is simulated here; interpolation output is presentation
@@ -359,6 +354,7 @@ export function createBrowserBattleBridge<
   worldCollision = null,
   createTankVisual = defaultCreateTankVisual,
   prepareVisualTextures = defaultPrepareVisualTextures,
+  rosterScheduling,
   clearVehicleDecals = null,
   onVisualReady,
 }: BrowserBattleBridgeOptions<
@@ -608,6 +604,11 @@ export function createBrowserBattleBridge<
     onProgress: ((fraction: number, specId: string) => void) | null = null,
   ): Promise<void> {
     const active = (players || []).filter((player) => player.team !== 'spectator');
+    // Entry owns an opaque loader until this exact roster is ready. Share one
+    // budget across texture checkpoints and construction: cache hits need no
+    // frame wait, while expensive work yields tasks and periodic progress paints.
+    // The shared scheduler also bounds waits when hidden-tab rAF stops firing.
+    const yieldWork = createOpaqueLoadingYielder(8, 50, rosterScheduling);
     const warmed = new Set();
     for (let index = 0; index < active.length; index++) {
       const player = active[index];
@@ -622,7 +623,7 @@ export function createBrowserBattleBridge<
             readSpec(player.specId),
             engineCtx.anisotropy ?? 4,
             quality,
-            nextFrame,
+            yieldWork,
             camo,
           );
         } catch (_) { /* createTank retains its synchronous compatibility path */ }
@@ -636,7 +637,7 @@ export function createBrowserBattleBridge<
         x: 0, y: 0, z: 0, yaw: 0,
       });
       if (onProgress) onProgress((index + 1) / Math.max(1, active.length), player.specId);
-      await nextFrame();
+      await yieldWork();
     }
   }
 

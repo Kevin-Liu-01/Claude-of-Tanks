@@ -11,8 +11,15 @@ const MAX_SAMPLES = 40000;
 const MAX_FUNCTIONS = 64;
 const BIN_MS = 100;
 const CATEGORIES = ['application', 'idle', 'program', 'gc', 'other'];
+const VALIDATION_FAILURE_CODES = new Set(['nodes-shape', 'nodes-limit', 'samples-shape', 'samples-limit',
+  'time-deltas-shape', 'time-deltas-count', 'time-range', 'duration-limit', 'node-id', 'node-id-duplicate',
+  'node-children-shape', 'node-children-limit', 'edge-count-limit', 'child-node-missing',
+  'child-multiple-parents', 'root-parent', 'tree-edge-count', 'sample-node-missing', 'lineage-cycle',
+  'lineage-depth', 'lineage-disconnected', 'sample-delta', 'sample-duration-overrun']);
 const emptyTotals = () => Object.fromEntries(CATEGORIES.map((key) => [key, 0]));
-const invalid = () => { throw new Error('source_profile_invalid_profile'); };
+const invalid = (profileFailureCode) => {
+  throw Object.assign(new Error('source_profile_invalid_profile'), { profileFailureCode });
+};
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
 
@@ -59,49 +66,64 @@ function category(frame, location) {
 }
 
 function validateProfile(profile) {
-  if (!Array.isArray(profile?.nodes) || !profile.nodes.length || profile.nodes.length > MAX_NODES ||
-      !Array.isArray(profile.samples) || profile.samples.length > MAX_SAMPLES ||
-      !Array.isArray(profile.timeDeltas) || profile.samples.length !== profile.timeDeltas.length) invalid();
+  if (!Array.isArray(profile?.nodes) || !profile.nodes.length) invalid('nodes-shape');
+  if (profile.nodes.length > MAX_NODES) invalid('nodes-limit');
+  if (!Array.isArray(profile.samples)) invalid('samples-shape');
+  if (profile.samples.length > MAX_SAMPLES) invalid('samples-limit');
+  if (!Array.isArray(profile.timeDeltas)) invalid('time-deltas-shape');
+  if (profile.samples.length !== profile.timeDeltas.length) invalid('time-deltas-count');
   if (!finite(profile.startTime) || !finite(profile.endTime) || profile.startTime < 0 ||
-      profile.endTime < profile.startTime || profile.endTime - profile.startTime > 40000000) invalid();
+      profile.endTime < profile.startTime) invalid('time-range');
+  if (profile.endTime - profile.startTime > 40000000) invalid('duration-limit');
   return (profile.endTime - profile.startTime) / 1000;
+}
+
+function assignParents(nodes) {
+  let edges = 0;
+  for (const [id, node] of nodes) for (const child of node.children) {
+    if (++edges >= nodes.size) invalid('edge-count-limit');
+    if (!nodes.has(child)) invalid('child-node-missing');
+    if (nodes.get(child).parent !== null) invalid('child-multiple-parents');
+    nodes.get(child).parent = id;
+  }
+  return edges;
 }
 
 function indexNodes(profile, origin) {
   const nodes = new Map();
   const functions = new Map();
   for (const node of profile.nodes) {
-    if (!integer(node?.id) || nodes.has(node.id) || !Array.isArray(node.children ?? []) ||
-        (node.children?.length ?? 0) > MAX_NODES) invalid();
+    if (!integer(node?.id)) invalid('node-id');
+    if (nodes.has(node.id)) invalid('node-id-duplicate');
+    if (!Array.isArray(node.children ?? [])) invalid('node-children-shape');
+    if ((node.children?.length ?? 0) > MAX_NODES) invalid('node-children-limit');
     const location = applicationLocation(node.callFrame, origin);
     const key = location ? JSON.stringify(location) : null;
     if (key && !functions.has(key)) functions.set(key, { ...location, selfSampledMs: 0, inclusiveSampledMs: 0 });
     nodes.set(node.id, { children: node.children ?? [], parent: null, key,
       category: category(node.callFrame, location), lineage: null });
   }
-  let edges = 0;
-  for (const [id, node] of nodes) for (const child of node.children) {
-    if (++edges >= nodes.size || !nodes.has(child) || nodes.get(child).parent !== null) invalid();
-    nodes.get(child).parent = id;
-  }
+  const edges = assignParents(nodes);
   const root = profile.nodes[0].id;
-  if (nodes.get(root).parent !== null || edges !== nodes.size - 1) invalid();
+  if (nodes.get(root).parent !== null) invalid('root-parent');
+  if (edges !== nodes.size - 1) invalid('tree-edge-count');
   return { nodes, functions, root };
 }
 
 function lineageOf(id, index) {
   const leaf = index.nodes.get(id);
-  if (!leaf) return invalid();
+  if (!leaf) return invalid('sample-node-missing');
   if (leaf.lineage) return leaf.lineage;
   const seen = new Set();
   const keys = new Set();
   let current = id;
   while (current !== null) {
-    if (seen.has(current) || seen.size >= 128) invalid();
+    if (seen.has(current)) invalid('lineage-cycle');
+    if (seen.size >= 128) invalid('lineage-depth');
     seen.add(current);
     const node = index.nodes.get(current);
     if (node.key) keys.add(node.key);
-    if (node.parent === null && current !== index.root) invalid();
+    if (node.parent === null && current !== index.root) invalid('lineage-disconnected');
     current = node.parent;
   }
   leaf.lineage = [...keys];
@@ -127,9 +149,9 @@ function accumulate(profile, index, durationMs) {
   let maxSampleIntervalMs = 0;
   for (let sample = 0; sample < profile.samples.length; sample++) {
     const delta = profile.timeDeltas[sample];
-    if (!integer(delta)) invalid();
+    if (!integer(delta)) invalid('sample-delta');
     const weight = delta / 1000;
-    if (elapsed + weight > durationMs + 0.001) invalid();
+    if (elapsed + weight > durationMs + 0.001) invalid('sample-duration-overrun');
     const id = profile.samples[sample];
     const lineage = lineageOf(id, index);
     const leaf = index.nodes.get(id);
@@ -194,13 +216,18 @@ const PROFILE_STAGES = ['create-session', 'enable', 'sampling-interval', 'before
 
 export function sourceProfileFailureDetails(error) {
   return { stage: PROFILE_STAGES.includes(error?.profileStage) ? error.profileStage : null,
-    failure: browserOperationFailure(error) };
+    failure: browserOperationFailure(error),
+    // Validation diagnostics retain only fixed codes, never profile nodes,
+    // timing arrays, provider messages, or arbitrary error properties.
+    ...(VALIDATION_FAILURE_CODES.has(error?.profileFailureCode)
+      ? { failureCode: error.profileFailureCode } : {}) };
 }
 
 function profileError(code, error, stage) {
   const detail = sourceProfileFailureDetails(error);
   return Object.assign(new Error(code), { profileStage: detail.stage ?? stage,
-    operationFailure: detail.failure });
+    operationFailure: detail.failure,
+    ...(detail.failureCode ? { profileFailureCode: detail.failureCode } : {}) });
 }
 
 function commandRunner(clock, timeoutMs) {

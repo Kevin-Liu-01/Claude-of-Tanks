@@ -21,6 +21,9 @@ function browserFixture() {
   let tasks;
   const context = {
     window: { __DEBUG: debug,
+      __WORLD_PREFETCH: { requested: 1, completed: 0, joined: 0, promoted: 0,
+        cancelled: 0, skippedCapacity: 0, lastMs: 0, active: 'PRIVATE_MAP', lastMap: 'PRIVATE_MAP',
+        room: 'PRIVATE_ROOM', player: 'PRIVATE_PLAYER' },
       __NETWORK_LOAD: { map: 'winter', mode: 'PRIVATE_ROOM', worldMs: 20, stages: { compile: 4 },
         status: 'pending', startedAt: 110, endedAt: Infinity,
         stageIntervals: [{ stage: 'panelMasks', startTime: 118, endTime: 120 },
@@ -117,6 +120,106 @@ f.debug.renderer.info.render.frame += 100;
 assert.deepEqual(JSON.parse(JSON.stringify(f.run(readProductionEntryObserver, 'stop'))), receipt,
   'stop is idempotent and never duplicates pending observer records');
 
+{
+  const prefetch = browserFixture();
+  const raw = prefetch.context.window.__WORLD_PREFETCH;
+  const initial = { requested: 1, completed: 0, joined: 0, promoted: 0,
+    cancelled: 0, skippedCapacity: 0, lastMs: 0 };
+  assert.equal(prefetch.run(readProductionEntryObserver).worldPrefetch.launch, null,
+    'an observer installed before launch does not invent a launch snapshot');
+  Object.assign(raw, { completed: 1, lastMs: 120 });
+  prefetch.run(readProductionEntryObserver, 'launch');
+  Object.assign(raw, { requested: 2, completed: 2, joined: 1, promoted: 1, lastMs: 240 });
+  prefetch.context.window.__WORLD_LOAD.cached = true;
+  const result = JSON.parse(JSON.stringify(prefetch.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.worldPrefetch, { start: initial,
+    launch: { ...initial, completed: 1, lastMs: 120 },
+    end: { ...initial, requested: 2, completed: 2, joined: 1, promoted: 1, lastMs: 240 } },
+  'copied pre-launch counters distinguish completed waiting-room work from later promotion');
+  assert.equal(result.worldLoad.cached, true, 'world activation retains the independent completed-cache signal');
+  raw.completed = 99;
+  assert.deepEqual(JSON.parse(JSON.stringify(prefetch.run(readProductionEntryObserver, 'stop'))), result);
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+}
+{
+  const prefetch = browserFixture();
+  let reads = 0;
+  Object.defineProperty(prefetch.context.window.__WORLD_PREFETCH, 'requested', {
+    get() { reads++; return 1; },
+  });
+  for (let frame = 0; frame < 10; frame++) prefetch.step();
+  assert.equal(reads, 0, 'prefetch counters add no per-frame reads');
+  prefetch.run(readProductionEntryObserver, 'launch');
+  prefetch.run(readProductionEntryObserver, 'stop');
+  assert.equal(reads, 2, 'launch and final snapshots read each allowlisted counter once');
+}
+for (const value of [undefined, null, [], 7, 'PRIVATE_PREFETCH']) {
+  const malformed = browserFixture();
+  malformed.context.window.__WORLD_PREFETCH = value;
+  malformed.run(readProductionEntryObserver, 'launch');
+  const result = malformed.run(readProductionEntryObserver, 'stop');
+  assert.equal(result.worldPrefetch.launch, null);
+  assert.equal(result.worldPrefetch.end, null, 'missing or malformed prefetch records remain unknown');
+}
+{
+  const malformed = browserFixture();
+  malformed.context.window.__WORLD_PREFETCH = { requested: NaN, completed: Infinity,
+    joined: -1, promoted: 'PRIVATE_COUNTER', cancelled: null, skippedCapacity: 3, lastMs: -10,
+    PRIVATE_NUMERIC: 123 };
+  const result = JSON.parse(JSON.stringify(malformed.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.worldPrefetch.end, { requested: null, completed: null,
+    joined: null, promoted: null, cancelled: null, skippedCapacity: 3, lastMs: null });
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+}
+
+const worldSliceStages = {
+  propsDetail: ['yard-clutter', 'boundary-walls', 'village-well', 'settlement-dressing',
+    'military-clutter', 'hay-and-crates', 'roadside-utilities', 'rock-variants', 'tactical-outcrops',
+    'surface-rocks', 'embedded-rocks', 'boulder-outcrops', 'rock-instances', 'field-haystacks',
+    'field-logs-and-stumps', 'finalize'],
+  vegetationDetail: ['grassPrep', 'grassScatter', 'grassCarpet', 'treePrep', 'treeClusters',
+    'treeLoneAndBelts', 'treeRimAndMeshes', 'treeRootDecals', 'bushes', 'finalize', 'other'],
+};
+for (const [family, stages] of Object.entries(worldSliceStages)) {
+  for (let offset = 0; offset < stages.length; offset += 8) {
+    const detail = browserFixture();
+    const rows = stages.slice(offset, offset + 8).map((stage, index) => ({ stage, ms: index }));
+    detail.context.window.__WORLD_LOAD.buildDetail[family] = { synchronousMs: 123,
+      slowest: rows.map((row) => ({ ...row, specId: 'PRIVATE_PLAYER', url: 'PRIVATE_URL' })) };
+    const result = JSON.parse(JSON.stringify(detail.run(readProductionEntryObserver, 'stop')));
+    assert.deepEqual(result.worldLoad.buildDetail[family], { synchronousMs: 123, slowest: rows },
+      'only source-owned family tags and finite durations survive slow-slice attribution');
+    assert.equal(result.worldLoad.buildDetail.terrain.totalMs, 2, 'existing numeric details remain intact');
+    assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+  }
+}
+{
+  const detail = browserFixture();
+  detail.context.window.__WORLD_LOAD.buildDetail.propsDetail = { slowest: [
+    { stage: 'slice-0', ms: 0 }, { stage: 'slice-4', ms: 161 }, { stage: 'slice-4095', ms: 1 },
+    { stage: 'slice-4096', ms: 1 }, { stage: 'slice-01', ms: 1 }, { stage: 'slice-PRIVATE', ms: 1 },
+    { stage: 'PRIVATE_STAGE', ms: 2 }, { stage: 'grassPrep', ms: 3 },
+  ] };
+  const result = JSON.parse(JSON.stringify(detail.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.worldLoad.buildDetail.propsDetail.slowest, [
+    { stage: 'slice', index: 0, ms: 0 }, { stage: 'slice', index: 4, ms: 161 },
+    { stage: 'slice', index: 4095, ms: 1 },
+  ], 'anonymous props slices retain bounded integer indices, never arbitrary strings or other-family tags');
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+}
+for (const rows of [undefined, null, 'PRIVATE_ROWS', { stage: 'finalize', ms: 1 },
+  [null, 7, 'PRIVATE_ROW', { stage: 'finalize', ms: NaN }, { stage: 'finalize', ms: Infinity },
+    { stage: 'finalize', ms: -1 }, { stage: 'finalize', ms: 'PRIVATE_DURATION' }]]) {
+  const malformed = browserFixture();
+  malformed.context.window.__WORLD_LOAD.status = 'failed';
+  malformed.context.window.__WORLD_LOAD.buildDetail.propsDetail = { slowest: rows };
+  const result = JSON.parse(JSON.stringify(malformed.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.worldLoad.buildDetail.propsDetail.slowest, [],
+    'failed builds retain their status without admitting malformed or invalid-duration slices');
+  assert.equal(result.worldLoad.status, 'failed');
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+}
+
 const background = browserFixture();
 background.step({ loaderOn: true, display: 'grid', waiting: true });
 for (const second of [5, 4, 3, 2, 1]) background.step({ loaderOn: false, display: 'none',
@@ -136,6 +239,9 @@ bounded.context.window.__NETWORK_LOAD.revealSlices = Array.from({ length: 40 }, 
 bounded.context.window.__TOP_MASK_LOAD.intervals = Array.from({ length: 40 }, (_, index) => ({
   stage: 'hullRender', startTime: index, endTime: index + 1, private: 'PRIVATE_DETAIL',
 }));
+bounded.context.window.__WORLD_LOAD.buildDetail.propsDetail = {
+  slowest: Array.from({ length: 20 }, () => ({ stage: 'finalize', ms: 1 })),
+};
 for (let index = 0; index < 6020; index++) bounded.step({ waiting: index % 2 === 0 });
 bounded.tasks(Array.from({ length: 300 }, () => ({ startTime: 150, duration: 70 })));
 const boundedReceipt = bounded.run(readProductionEntryObserver, 'stop');
@@ -147,6 +253,7 @@ assert.equal(boundedReceipt.longTasks.length, 256);
 assert.equal(boundedReceipt.networkLoad.stageIntervals.length, 32);
 assert.equal(boundedReceipt.networkLoad.revealSlices.length, 32);
 assert.equal(boundedReceipt.topMaskLoad.intervals.length, 16);
+assert.equal(boundedReceipt.worldLoad.buildDetail.propsDetail.slowest.length, 8);
 assert.doesNotMatch(JSON.stringify(boundedReceipt), /PRIVATE/);
 assert.ok(boundedReceipt.longTasksDropped > 0);
 
