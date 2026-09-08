@@ -45,8 +45,13 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 type Rng = () => number;
 type Rgb = [number, number, number];
 export type MaterialTextureQuality = 'low' | 'ai' | 'preview' | 'high';
+export type ResolvedMaterialCamoPattern = Exclude<CamoPatternId, 'auto'> | 'urban';
 type MaterialPatternId = CamoPatternId | 'urban' | typeof CUSTOM_CAMO_ID | string;
 type BakeYield = () => Promise<void> | void;
+
+export interface SharedTextureLease {
+  release(): void;
+}
 
 interface MaterialVisual {
   scheme?: string;
@@ -3662,6 +3667,9 @@ function exposureTrim(canvas: HTMLCanvasElement, k = 0.86): void {
 }
 
 const TEX_CACHE = new Map<string, SharedTextureEntry>();
+// Pending owners protect an existing entry while an in-place bake yields and
+// the last visual may release it. Completed leases use ordinary entry refs.
+const TEXTURE_LEASE_PENDING = new Map<string, number>();
 
 function sharedTextureIdentity(specId: string, selection: string | null = null): SharedTextureIdentity {
   if (selection == null) return { key: specId, patternId: resolveCamoPattern(specId), fixed: false };
@@ -3938,6 +3946,56 @@ export function prebakeSharedTextures(
 }
 
 /**
+ * Own an exact match texture identity before its visuals exist. Selection must
+ * already be concrete: mutable Garage defaults and map-relative AUTO are not
+ * lease identities. The caller cancels between completed tasks, then releases
+ * after visual acquisition or drains/releases every successful lease on exit.
+ * This owner's tick failures reject only after its painter finishes: aborting
+ * halfway through an existing entry's promotion would leave live maps incomplete.
+ * Joining a rejected legacy prebake still propagates that operation's failure.
+ */
+export async function acquireSharedTextureLease(
+  specValue: RuntimeValue,
+  aniso: number,
+  quality: MaterialTextureQuality,
+  selection: string,
+  tick: BakeYield | null = null,
+): Promise<SharedTextureLease> {
+  const spec = requireMaterialTankSpec(specValue);
+  if ((selection !== 'urban' && !isBuiltInCamoId(selection)) || selection === 'auto') {
+    throw new TypeError('Shared texture leases require a concrete built-in camouflage');
+  }
+  const { key } = sharedTextureIdentity(spec.id, selection);
+  TEXTURE_LEASE_PENDING.set(key, (TEXTURE_LEASE_PENDING.get(key) || 0) + 1);
+  const outcome: { failure?: { error: RuntimeValue } } = {};
+  const drainTick = tick ? async (): Promise<void> => {
+    try { await tick(); }
+    catch (error) { outcome.failure ??= { error }; }
+  } : null;
+  try {
+    await prebakeSharedTextures(spec, aniso, quality, drainTick, selection);
+    if (outcome.failure) throw outcome.failure.error;
+    const entry = TEX_CACHE.get(key);
+    if (!entry) throw new Error(`vehicle material lease ${key} has no texture entry`);
+    entry.refs++;
+    let released = false;
+    return { release() {
+      if (released) return;
+      released = true;
+      if (TEX_CACHE.get(key) === entry) releaseSharedTextures(entry);
+    } };
+  } finally {
+    const remaining = (TEXTURE_LEASE_PENDING.get(key) || 1) - 1;
+    if (remaining) TEXTURE_LEASE_PENDING.set(key, remaining);
+    else {
+      TEXTURE_LEASE_PENDING.delete(key);
+      const entry = TEX_CACHE.get(key);
+      if (entry && entry.refs <= 0) disposeSharedTextureEntry(entry);
+    }
+  }
+}
+
+/**
  * PERF (perf-budget handoff): pre-upload every cached spec's burnt/ember maps
  * so the first kill of a battle doesn't pay a texture-upload stall inside a
  * combat frame (probe measured a 125 ms frame at first blood). Call once at
@@ -3964,7 +4022,7 @@ function disposeSharedTextureEntry(entry: SharedTextureEntry): void {
 function releaseSharedTextures(shared: SharedTextureEntry | null | undefined): void {
   const entry = shared && TEX_CACHE.get(shared.cacheKey);
   if (!entry) return;
-  if (--entry.refs <= 0) disposeSharedTextureEntry(entry);
+  if (--entry.refs <= 0 && !TEXTURE_LEASE_PENDING.has(entry.cacheKey)) disposeSharedTextureEntry(entry);
 }
 
 /**
@@ -3973,7 +4031,7 @@ function releaseSharedTextures(shared: SharedTextureEntry | null | undefined): v
  */
 export function discardPrebakedSharedTextures(specId: string): boolean {
   const entry = TEX_CACHE.get(specId);
-  if (!entry || entry.refs > 0) return false;
+  if (!entry || entry.refs > 0 || TEXTURE_LEASE_PENDING.has(entry.cacheKey)) return false;
   disposeSharedTextureEntry(entry);
   return true;
 }
@@ -4164,7 +4222,7 @@ const CUSTOM_CAMO_LS_PREFIX = 'cot.camoCustom.v1.';
 // bot-biome-camo intent, extended). Element 0 stays the r8 canonical scheme.
 // EVERY pool member must belong on its biome field — the coastal pool stays
 // green-family for exactly the r8 reason above.
-const BIOME_PATTERN: Readonly<Record<string, readonly MaterialPatternId[]>> = {
+const BIOME_PATTERN: Readonly<Record<string, readonly ResolvedMaterialCamoPattern[]>> = {
   verdant: ['summer', 'flecktarn', 'amoeba', 'dpm', 'tigerstripe', 'merdc'],
   desert: ['desert', 'chocchip', 'digitaldesert', 'pinkdesert'],
   winter: ['winter', 'washworn', 'winterbands', 'merdcwinter'],
@@ -4261,13 +4319,19 @@ function resolveCamoPattern(specId: string): MaterialPatternId {
   return pool[(h >>> 0) % pool.length];
 }
 
-/** Resolve a match-owned built-in choice without consulting local storage. */
-function resolveMultiplayerCamoPattern<Value>(specId: string, selection: Value): MaterialPatternId {
-  const safe = networkCamoId(selection);
+/** Resolve trusted match material input without local storage. The internal
+ * urban painter is a concrete AUTO result, not an addition to the wire allowlist. */
+export function resolveMultiplayerCamoPattern<Value>(
+  specId: string,
+  selection: Value,
+  mapId: string = activeBiome,
+): ResolvedMaterialCamoPattern {
+  const safe = selection === 'urban' ? 'urban' : networkCamoId(selection);
   if (safe !== 'auto') return safe;
-  const pool = BIOME_PATTERN[activeBiome];
+  const biome = Object.prototype.hasOwnProperty.call(BIOME_PATTERN, mapId) ? mapId : 'verdant';
+  const pool = BIOME_PATTERN[biome];
   let h = 0;
-  const key = `${specId}:${activeBiome}`;
+  const key = `${specId}:${biome}`;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
   return pool[(h >>> 0) % pool.length];
 }
@@ -4318,8 +4382,9 @@ export function hasCamoPaint(specId: string): boolean {
   // second clause: pool membership (camo r2 — BIOME_PATTERN rows are pools
   // now). AUTO always resolves to a pool member, so AUTO always qualifies;
   // a hand-picked pool scheme earns on its own biome the same way.
+  const pool: readonly string[] = BIOME_PATTERN[activeBiome] || [];
   return (PATTERN_SEASON[pat] || []).includes(activeBiome)
-    || (BIOME_PATTERN[activeBiome] || []).includes(pat);
+    || pool.includes(pat);
 }
 
 function applySharedCamoVisual(

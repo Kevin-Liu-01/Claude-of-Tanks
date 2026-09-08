@@ -4,7 +4,9 @@ import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 import type {
   BrowserBattleBridge,
   createBrowserBattleBridge,
+  prepareBrowserBattleRosterAssets,
 } from './browserBattleBridge.ts';
+import type { BrowserRosterAssetPreparation } from './browserRosterAssets.ts';
 import type { createBrowserInputRuntime } from './browserInputRuntime.ts';
 import type { SampledSnapshotFrame } from './snapshot.ts';
 import type { createNetworkStatus } from '../ui/networkStatus.ts';
@@ -20,6 +22,7 @@ export interface NetworkBattlePresentationPlayer {
   specId: string;
   team?: string;
   name?: string;
+  camo?: string;
 }
 
 export interface NetworkBattlePresentationRequest {
@@ -38,7 +41,7 @@ const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapsho
   'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'compile', 'panelJoin', 'combatWarm', 'reveal', 'readyBarrier'] as const;
 type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
 type NetworkRevealSlice = 'activation' | 'finalShadows' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
-type NetworkPreparationSlice = 'panelMasks' | 'compile';
+type NetworkPreparationSlice = 'rosterAssets' | 'panelMasks' | 'compile';
 
 interface NetworkLoadInterval<Stage extends string> {
   stage: Stage;
@@ -62,6 +65,7 @@ export interface NetworkBattleLoadTrace {
   modulesMs?: number;
   worldMs?: number;
   connectMs?: number;
+  rosterAssetsFailed?: boolean;
   blackCheck?: RuntimeValue;
   programCompile?: RuntimeValue;
   scarCompile?: RuntimeValue;
@@ -117,6 +121,37 @@ function observePreparation<T>(promise: Promise<T>): Promise<PromiseSettledResul
   );
 }
 
+/** Import completion can outlive acquisition failure. Close admission before
+ * draining the material owner, so late imports cannot start abandoned work. */
+function createRosterAssetLifetime(trace: NetworkBattleLoadTrace, now: () => number) {
+  let closed = false;
+  let preparation: BrowserRosterAssetPreparation | null = null;
+  let pending: Promise<PromiseSettledResult<void>> | null = null;
+  return {
+    start(create: () => BrowserRosterAssetPreparation): void {
+      if (closed) return;
+      pending = observePreparation(measurePreparation(trace, now, 'rosterAssets', () => {
+        preparation = create();
+        return preparation.ready;
+      }));
+    },
+    async join(): Promise<void> {
+      const result = await pending;
+      // Optional prepainting retains the ordinary roster retry/fallback path.
+      trace.rosterAssetsFailed = result?.status === 'rejected';
+    },
+    players(fallback: NetworkBattlePresentationPlayer[]): NetworkBattlePresentationPlayer[] {
+      return preparation?.players ?? fallback;
+    },
+    async dispose(): Promise<void> {
+      closed = true;
+      const drain = preparation?.dispose();
+      await pending;
+      await drain;
+    },
+  };
+}
+
 type NetworkMatchPort = NetworkBrowserMatch;
 
 type NetworkBridgePort = BrowserBattleBridge;
@@ -127,6 +162,7 @@ type NetworkStatusPort = ReturnType<typeof createNetworkStatus>;
 
 interface BrowserBattleBridgeModulePort {
   createBrowserBattleBridge: typeof createBrowserBattleBridge;
+  prepareBrowserBattleRosterAssets: typeof prepareBrowserBattleRosterAssets;
 }
 
 interface NetworkStatusModulePort {
@@ -188,6 +224,11 @@ export interface NetworkBattlePresentationOptions {
     getMatch(): NetworkMatchPort | null;
   };
   bridge: {
+    prepareRosterAssets(
+      factory: typeof prepareBrowserBattleRosterAssets,
+      request: NetworkBattlePresentationRequest,
+      spectator: boolean,
+    ): BrowserRosterAssetPreparation;
     installInputRuntime(factory: typeof createBrowserInputRuntime): void;
     createStatus(factory: typeof createNetworkStatus): NetworkStatusPort;
     publishStatus(status: NetworkStatusPort): void;
@@ -268,7 +309,7 @@ function validateNetworkPresentationPorts(options: NetworkBattlePresentationOpti
     checkedIntegrationPort(
       options.bridge ?? {},
       'network battle bridge',
-      ['installInputRuntime', 'createStatus', 'publishStatus', 'attachRecovery',
+      ['prepareRosterAssets', 'installInputRuntime', 'createStatus', 'publishStatus', 'attachRecovery',
         'create', 'publish', 'groundSampler', 'waitForInitialSnapshot',
         'waitForPeerReadiness'],
     );
@@ -361,6 +402,7 @@ export function createNetworkBattlePresentationRuntime(
         preparationSlices: [],
       };
       const timer = createNetworkLoadTimer(trace, now);
+      const rosterAssets = createRosterAssetLifetime(trace, now);
       const mark = timer.mark;
       recordTrace(trace);
 
@@ -393,6 +435,9 @@ export function createNetworkBattlePresentationRuntime(
       const { modules } = await entry.acquire({
         loadModules: async () => {
           const [modules] = await Promise.all([entry.loadModules(), load.ensureBattleVisuals()]);
+          rosterAssets.start(() => bridge.prepareRosterAssets(
+            modules[0].prepareBrowserBattleRosterAssets, request, spectator,
+          ));
           return modules;
         },
         loadWorld: () => entry.loadWorld(mapId, (fraction, label) => {
@@ -428,6 +473,12 @@ export function createNetworkBattlePresentationRuntime(
       bridge.installInputRuntime(createBrowserInputRuntime);
       mark('modulesWorldAndConnect');
 
+      // Asset painting overlaps acquisition, but scene objects still wait for
+      // the world and connection. Never race the painter with visual creation.
+      await rosterAssets.join();
+      throwIfNetworkBattleEntryAborted(signal);
+      const preparedPlayers = rosterAssets.players(matchPlayers);
+
       const status = bridge.createStatus(createNetworkStatus);
       bridge.publishStatus(status);
       bridge.attachRecovery(entry.getMatch()?.client ?? null, status);
@@ -445,19 +496,24 @@ export function createNetworkBattlePresentationRuntime(
         viewerId,
         own,
         mapId,
-        matchPlayers,
+        matchPlayers: preparedPlayers,
         modeLabel,
         connectMatch,
+        signal,
         connectAfterWorld,
         transitionShown,
       }, spectator);
       try {
-        await preparedBridge.prepareRoster(matchPlayers, (fraction, specId) => {
+        await preparedBridge.prepareRoster(preparedPlayers, (fraction, specId) => {
           load.battleLoad.progress(
             0.56 + fraction * 0.27,
             `Painting ${roster.vehicleName(specId)}`,
           );
         });
+        throwIfNetworkBattleEntryAborted(signal);
+        // Every visual now owns its own cache reference; release temporary
+        // entry leases before advancing to snapshot/render preparation.
+        await rosterAssets.dispose();
         throwIfNetworkBattleEntryAborted(signal);
       } catch (error) {
         preparedBridge.dispose();
@@ -593,6 +649,7 @@ export function createNetworkBattlePresentationRuntime(
       load.setAdaptiveSuspended(false);
       timer.finish('complete');
       } catch (error) {
+        await rosterAssets.dispose();
         timer.finish('failed');
         throw error;
       }

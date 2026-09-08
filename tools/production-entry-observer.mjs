@@ -221,7 +221,10 @@ export function installProductionEntryObserver() {
         startedAt: finite(network.startedAt), endedAt: finite(network.endedAt),
         stageIntervals: intervals(network.stageIntervals, networkStageNames),
         ...(Array.isArray(network.preparationSlices) ? {
-          preparationSlices: intervals(network.preparationSlices, ['panelMasks', 'compile'], 2),
+          preparationSlices: intervals(network.preparationSlices, ['rosterAssets', 'panelMasks', 'compile'], 3),
+        } : {}),
+        ...(Object.hasOwn(network, 'rosterAssetsFailed') ? {
+          rosterAssetsFailed: typeof network.rosterAssetsFailed === 'boolean' ? network.rosterAssetsFailed : null,
         } : {}),
         revealSlices: intervals(network.revealSlices,
           ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']),

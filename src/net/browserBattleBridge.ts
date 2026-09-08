@@ -38,6 +38,10 @@ import type {
 } from './localTankPrediction.ts';
 import { createSpecialActionState } from '../sim/specialActions.ts';
 import type { SpecialActionState } from '../sim/specialActionPolicy.ts';
+import { browserRosterTextureQuality } from './browserRosterAssets.ts';
+
+// Loaded with the bridge, never added to the boot-critical module graph.
+export { prepareBrowserBattleRosterAssets } from './browserRosterAssets.ts';
 
 type Team = string | null;
 
@@ -548,7 +552,7 @@ export function createBrowserBattleBridge<
     const visual = createTankVisual(spec.id, engineCtx, {
       camoSeed: 4000 + (hashString(snapshot.id) % 100000),
       camoPattern: camo,
-      quality: snapshot.id === id ? 'high' : 'ai',
+      quality: browserRosterTextureQuality(snapshot.id, id, spectator),
     });
     engineCtx.scene.add(visual.root);
     visual.setVisible(false);
@@ -613,7 +617,7 @@ export function createBrowserBattleBridge<
     for (let index = 0; index < active.length; index++) {
       const player = active[index];
       await ensureTankBuilder(player.specId);
-      const quality = !spectator && player.id === id ? 'high' : 'ai';
+      const quality = browserRosterTextureQuality(player.id, id, spectator);
       const camo = player.camo || 'factory';
       const warmKey = `${player.specId}:${camo}:${quality}`;
       if (!warmed.has(warmKey)) {
