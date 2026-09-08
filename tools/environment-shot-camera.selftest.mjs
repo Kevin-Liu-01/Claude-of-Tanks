@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PerspectiveCamera, Vector3 } from 'three';
 import {
-  selectStandView, selectHorizonScopeTarget, resolveEnvironmentShotModes,
+  selectStandView, selectHorizonScopeTarget, selectHorizonViews, resolveEnvironmentShotModes,
   stageHorizonScopeCapture, restoreHorizonArcadeCapture,
 } from './environment-shot-camera.mjs';
 
@@ -32,6 +32,41 @@ for (const conflicting of legacyFlags.slice(1)) {
 const auditSource = readFileSync(new URL('./map-environment-audit.mjs', import.meta.url), 'utf8');
 assert.match(auditSource, /await captureEvidenceShot\(mapId, 'establishing'\);\s*if \(establishingOnly\) return;\s*if \(horizonQuadrants\)/,
   'establishing-only exits after the unchanged canonical shot, before every extra view');
+const legacyViews = [[300, 300], [-300, 300], [-300, -300], [300, -300]];
+assert.deepEqual(selectHorizonViews(), legacyViews, 'default quadrant positions and order are exact');
+for (const [view, position] of Object.entries({ en: [300, 300], es: [300, -300], wn: [-300, 300], ws: [-300, -300] })) {
+  assert.deepEqual(selectHorizonViews(view), [position]);
+  assert.deepEqual(resolveEnvironmentShotModes(['--shots', `--horizon-view=${view}`]), {
+    captureShots: true, establishingOnly: false, horizonOnly: false, horizonScopes: false,
+    horizonQuadrants: true, horizonView: view,
+  });
+}
+const focusedArgs = ['--shots', '--horizon-only', '--horizon-scopes', '--horizon-view=es', '--horizon-scope-ndc=0.4,-0.2'];
+const focusedModes = resolveEnvironmentShotModes(focusedArgs);
+assert.deepEqual(focusedModes.horizonScopeNdc, [0.4, -0.2]);
+assert.equal(focusedModes.horizonView, 'es');
+for (const ndc of ['-1,1', '1,-1', '0,0', '1e-1, -2e-1']) {
+  assert.deepEqual(resolveEnvironmentShotModes(['--shots', '--horizon-scopes', `--horizon-scope-ndc=${ndc}`]).horizonScopeNdc,
+    ndc.split(',').map(Number));
+}
+for (const arg of ['--horizon-view=n', '--horizon-view=ES', '--horizon-view=', '--horizon-view',
+  '--horizon-scope-ndc', '--horizon-scope-ndc=', '--horizon-scope-ndc=0,', '--horizon-scope-ndc=,0',
+  '--horizon-scope-ndc=0,0,0', '--horizon-scope-ndc=NaN,0', '--horizon-scope-ndc=0,Infinity',
+  '--horizon-scope-ndc=-1.001,0', '--horizon-scope-ndc=0,1.001']) {
+  assert.throws(() => resolveEnvironmentShotModes(['--shots', '--horizon-scopes', arg]), /horizon-/, arg);
+}
+assert.throws(() => resolveEnvironmentShotModes(['--horizon-view=es']), /require --shots/);
+assert.throws(() => resolveEnvironmentShotModes(['--shots', '--horizon-only', '--horizon-scope-ndc=0,0']), /requires --horizon-scopes/);
+assert.throws(() => resolveEnvironmentShotModes(['--shots', '--establishing-only', '--horizon-view=es']), /cannot be combined/);
+assert.throws(() => resolveEnvironmentShotModes([...focusedArgs, '--horizon-view=en']), /Duplicate/);
+assert.throws(() => resolveEnvironmentShotModes([...focusedArgs, '--horizon-scope-ndc=0,0']), /Duplicate/);
+const hashBlock = auditSource.slice(auditSource.indexOf('const harnessHash ='), auditSource.indexOf('const acquisition ='));
+assert.match(hashBlock, /'environment-shot-camera\.mjs'/, 'camera helpers belong to the acquisition fingerprint');
+assert.match(hashBlock, /harnessHash\.update\(file\)\.update\(fs\.readFileSync\(new URL\(file, import\.meta\.url\)\)\)/);
+assert.match(auditSource.slice(auditSource.indexOf('const acquisition ='), auditSource.indexOf('if (baseline) requireComparableRun')),
+  /\.\.\.horizonFocus/, 'custom view and ray are explicit in acquisition receipts');
+assert.match(auditSource.slice(auditSource.indexOf('const report ='), auditSource.indexOf('requireTimingBuildProvenance(report)')),
+  /\.\.\.horizonFocus/, 'custom focus remains explicit in the top-level report');
 
 const scene = { clusters: [{ x: 0, z: 0, r: 28 }], concealers: [], buildings: [] };
 const first = selectStandView(scene);
@@ -127,6 +162,81 @@ for (const [x, z] of [[300, 300], [-300, 300], [-300, -300], [300, -300]]) {
   assert.equal(camera.userData.scoped, false);
   assert.equal(D.rig.mode, 'ARCADE');
 }
+for (const ndc of [null, [NaN, 0], [0, Infinity], [-1.1, 0], [0, 1.1], [0], [0, 0, 0], ['0', 0]]) {
+  assert.throws(() => selectHorizonScopeTarget('coastal', ndc), /finite coordinates/);
+}
+for (const mapId of ['coastal', 'polders']) {
+  assert.deepEqual(selectHorizonScopeTarget(mapId, [0.4, -0.2]), { mapId, ndcX: 0.4, ndcY: -0.2 },
+    'an explicit ray overrides only the target, including the default lowland adjustment');
+}
+const poseBeforeInvalid = cameraPose();
+for (const ndc of [[NaN, 0], [0, Infinity], [-1.001, 0], [0, 1.001]]) {
+  assert.throws(() => stageHorizonScopeCapture({ mapId: D.world.mapId, ndcX: ndc[0], ndcY: ndc[1] }, D), /finite NDC/);
+  assert.deepEqual(cameraPose(), poseBeforeInvalid, 'invalid inputs cannot partially alter the rig');
+}
+
+// Execute the actual audit horizon loop with mock browser/file ports. Real
+// Three projections and the existing snapSniper(8) fixture remain in use.
+const shotBodyStart = auditSource.indexOf('{', auditSource.indexOf('async function captureMapShots(mapId)')) + 1;
+const shotBodyEnd = auditSource.indexOf('\n  const poleDetail =', shotBodyStart);
+assert.ok(shotBodyStart > 0 && shotBodyEnd > shotBodyStart);
+const captureHorizon = new (Object.getPrototypeOf(async function () {}).constructor)('ports', `
+  const { mapId, page, fs, path, outDir, captureEvidenceShot, establishingOnly,
+    horizonQuadrants, horizonView, horizonScopes, horizonScopeNdc, horizonOnly,
+    selectHorizonViews, selectHorizonScopeTarget, stageHorizonScopeCapture,
+    restoreHorizonArcadeCapture, setTimeout } = ports;
+  ${auditSource.slice(shotBodyStart, shotBodyEnd)}
+`);
+
+async function runHorizonLoop(modes, views = selectHorizonViews) {
+  camera.position.set(300, 50, 300); camera.fov = 60; camera.lookAt(0, 24, 0);
+  camera.userData.scoped = false; camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
+  D.rig.mode = 'ARCADE'; D.rig.zoom = 1; D.world.mapId = 'coastal';
+  D.world.heightField = { getHeightAt: () => 0 };
+  const shots = [], contracts = [];
+  const priorWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  globalThis.window = { __DEBUG: D };
+  try {
+    await captureHorizon({ ...modes, mapId: 'coastal', outDir: '/fixture',
+      page: { evaluate: async (fn, arg) => fn(arg, D) },
+      fs: { mkdirSync() {}, writeFileSync(file, json) { contracts.push({ file, value: JSON.parse(json) }); } },
+      path: { join: (...parts) => parts.join('/') },
+      captureEvidenceShot: async (mapId, name, match = true) => { shots.push({ mapId, name, match, ...cameraPose() }); },
+      selectHorizonViews: views, selectHorizonScopeTarget, stageHorizonScopeCapture, restoreHorizonArcadeCapture,
+      setTimeout: callback => callback(),
+    });
+    return { shots, contracts, restored: cameraPose() };
+  } finally {
+    if (priorWindow) Object.defineProperty(globalThis, 'window', priorWindow); else delete globalThis.window;
+  }
+}
+const defaultModes = resolveEnvironmentShotModes(['--shots', '--horizon-only', '--horizon-scopes']);
+const defaultCapture = await runHorizonLoop(defaultModes);
+assert.equal(defaultCapture.shots.length, 9); assert.equal(defaultCapture.contracts.length, 4);
+assert.deepEqual(defaultCapture, await runHorizonLoop(defaultModes, () => legacyViews),
+  'actual default callsite emits the identical nine poses and four contracts');
+const focusedCapture = await runHorizonLoop(focusedModes);
+assert.deepEqual(focusedCapture.shots.map(shot => shot.name), ['establishing', 'horizon-es', 'horizon-es-scope'],
+  'single quadrant changes collection only; retain the establishing context and full scope frame');
+assert.deepEqual(focusedCapture.shots.slice(1).map(shot => shot.match), [false, false], 'no old pose replay overrides the chosen scope ray');
+assert.deepEqual(focusedCapture.shots[1].position, [300, 50, -300]);
+assert.equal(focusedCapture.contracts.length, 1);
+const focusedContract = focusedCapture.contracts[0].value;
+assert.deepEqual(focusedContract.ndc, [0.4, -0.2]);
+assert.deepEqual([focusedContract.mapId, focusedContract.mode, focusedContract.zoom, focusedContract.fov, focusedContract.scoped],
+  ['coastal', 'SNIPER', 8, 7.5, true]);
+assert.deepEqual(focusedCapture.shots[2].position, focusedContract.arcade.position);
+const projection = new PerspectiveCamera(focusedContract.arcade.fov, 1440 / 900, 0.1, 3000);
+projection.position.fromArray(focusedContract.arcade.position);
+projection.quaternion.fromArray(focusedContract.arcade.quaternion); projection.updateMatrixWorld(true);
+const requestedRay = new Vector3(0.4, -0.2, 0.5).unproject(projection).sub(projection.position).normalize();
+projection.quaternion.fromArray(focusedCapture.shots[2].quaternion);
+assert.ok(projection.getWorldDirection(new Vector3()).distanceTo(requestedRay) < 1e-12,
+  'actual focused scope quaternion centers the explicit low/right wide-frame ray');
+assert.deepEqual(focusedCapture.restored.position, focusedContract.arcade.position);
+assert.deepEqual(focusedCapture.restored.quaternion, focusedContract.arcade.quaternion);
+assert.equal(focusedCapture.restored.scoped, false);
+assert.equal(focusedCapture.restored.mode, 'ARCADE');
 D.world.mapId = 'fjord';
 assert.throws(() => stageHorizonScopeCapture({ mapId: 'winter' }, D), /requested map/);
 D.shotMode = false;
