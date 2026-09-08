@@ -52,6 +52,7 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
+import { copyResolvedDepth } from './resolvedDepthCopy.ts';
 import {
   canRecoverAutoTier,
   getPreset,
@@ -1629,7 +1630,7 @@ export class LateFxPass extends Pass {
         this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
         this.copyQuad.render(renderer);
       }
-      renderer.copyTextureToTexture(this.sceneDepth, this.targetDepth);
+      copyResolvedDepth(renderer, this.sceneTarget, this.target);
       this.softDepthCopies++;
       softState.uSceneDepth.value = this.sceneDepth;
       softState.uCameraNear.value = this.camera.near;

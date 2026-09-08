@@ -251,3 +251,86 @@ discovery reports 789 checks, not 789 executed passes. Changed React Doctor is
 not runtime work. Independent review found no blocker. A direct rerun of
 `sourceXFleet.selftest.mjs` reconfirmed the unrelated T-90M fingerprint failure
 above; the full suite is not declared green here.
+
+## Query-free resolved-depth copy
+
+The measured state-query boundary now has a narrow replacement at the existing
+LateFX depth handoff. `copyResolvedDepth` performs the same full-size
+`DEPTH_BUFFER_BIT`/`NEAREST` blit as pinned Three 0.185.1 without the generic
+CPU-upload path's five UNPACK-state reads. It does not change color copying,
+the source depth sampler, hardware depth testing, compositor order, quality,
+loading barriers, countdown, shadow priming or black-scene verification.
+
+The fast path accepts only initialized, distinct, compatible ordinary 2D
+targets with an already-resolved source and a current single-sample destination.
+It reads fresh framebuffer/texture ownership and uploaded-version properties
+on every invocation; no native handles are cached across resize, disposal or
+context restoration. It binds through Three's state owner and independently
+unbinds READ and DRAW, retaining the existing following `setRenderTarget` call.
+Unsupported states or a Three revision change take the original native path
+before any mutation. Errors after a blit is attempted are propagated after
+both cleanup attempts; they are never retried through the fallback.
+
+`node tools/resolved-depth-copy.browser.selftest.mjs` passed all twelve native
+cases on Chrome 151.0.7922.47, Apple M5 Max/ANGLE Metal, Three r185. The cases
+cover actual 0/4-sample source framebuffers, empty cleared depth, resize,
+renderer state reset, disposal/reinitialization, and real WebGL context loss
+and restoration. Native and candidate results are byte-identical; copying
+depth preserves deliberately different destination color. Independent no-copy
+and wrong-source-sampler negative controls fail pixel parity as intended.
+Every candidate call records exactly one depth-only blit, zero native state
+queries, and zero native fallbacks. The fixture source hash is
+`e684ab3013d7a84462b05585eca53f5a58624827c524428cebc38224780b314a`.
+This establishes tested rendering equivalence, not universal hardware coverage
+or proof that earlier queued GPU work disappeared.
+
+Two complete local private-room runs also passed on that hardware, using the
+production build, in-memory signaling, two fresh browser contexts, 1280×800
+DPR 1 and cached Winter. The frozen build was `v1.0.0+g5d998fbfc.dirty`, index
+SHA-256 `2de600107f8476d73ae97bdd112f31d5bc5724a923b2ae26606d088580f7d6f1`,
+runtime-diff SHA-256
+`038fd2eb97ce71b5f8504d1305c56de6c12c276c693ad408e3576d7b86a034f2`.
+Both captures verified unchanged source/build identity. Run 1 was clear/day;
+run 2's actual room receipt was clear/night, so it is additional functional
+coverage, **not a matched timing replication**. Entry remained high quality,
+scale 1 in both. The room flow selected its ordinary environment; no timing
+result is discarded or relabeled to hide the differing condition.
+
+| Synchronous measurement, host / guest | Previous day checkpoint | Candidate day | Candidate night |
+| --- | ---: | ---: | ---: |
+| Opening compositor | 75.1 / 88.2 ms | 34.1 / 69.7 ms | 32.7 / 72.0 ms |
+| LateFX pass | 55.6 / 59.2 ms | 13.9 / 44.0 ms | 13.2 / 36.1 ms |
+| LateFX renderer draws, total | 12.9 / 13.8 ms | 13.8 / 43.7 ms | 13.1 / 35.9 ms |
+| Final shadow priming, total | 160 / 79 ms | 150 / 107 ms | 106 / 113 ms |
+| Black-scene verification draw | 43.0 / 93.5 ms | 25.4 / 71.5 ms | 28.4 / 46.5 ms |
+| Black-scene readback, including waits | 119.7 / 119.6 ms | 133.3 / 92.7 ms | 128.2 / 106.5 ms |
+| Launch to first hidden loader | 1,849.7 / 1,915.5 ms | 1,800.7 / 1,909.0 ms | 1,688.1 / 1,821.3 ms |
+
+Neither candidate opening pass called the native texture-copy fallback or its
+five `getParameter` queries. However, the guest's following renderer draw is
+more expensive: removing a synchronization boundary did not remove all queued
+GPU work. End-to-end loading is still variable, and the day guest's total is
+essentially unchanged. Ship this narrowly verified removal of unnecessary
+synchronous queries; do not describe it as eliminating 42–45 ms of GPU work,
+a general loading-speed percentage, or a fix for historical 214–319 ms stalls.
+
+Both runs displayed `5,4,3,2,1`, moved/fired, returned to Garage, closed both
+room memberships and exited their owned browser/server processes. Page errors
+were zero and black-scene rescue was unused. Inspected day screenshots show
+the world, tank and HUD; whole-game pixel parity is not claimed. Follow-on day
+movement p99 gaps were 40.3/35.7 ms, with 51.8/40.4 ms maxima; the host had
+adapted to medium and the guest to low, both scale 1. Night p99 gaps were
+37.0/37.5 ms with 49.6/48.1 ms maxima, both adaptive low scale 1. These differing
+effective workloads do not establish a live frame-budget improvement.
+
+Raw receipts remain untracked at `.qa-entry/depth-copy-query-free-r1/report.json`
+(SHA-256 `37e105912f0dcdad2812f92daede9e33faf18dafe5a7ee19699525d5061d76a9`)
+and `.qa-entry/depth-copy-query-free-r2/report.json`
+(SHA-256 `913ac706333ef67379402730be61240eca42e933b4de9077040ebf17ec3c22b2`).
+These are local tests, not production, remote-device, distant-network or relay
+certification. Independent exact-file review found no blocker. Focused CPU
+tests, typecheck/core-unused, public build and strict changed-module complexity
+checks pass. The staged six-file React Doctor scan scored 92/100; its two
+warnings concern property reads in the small CPU test's expected-call table,
+not the frame loop. No rule is suppressed. Registry discovery has 791 checks;
+the pre-existing full-suite T-90M geometry failure remains outside this release.
