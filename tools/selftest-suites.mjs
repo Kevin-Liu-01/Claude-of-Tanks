@@ -48,6 +48,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90AwXHullEnds.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXRear.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXSkirtMounts.selftest.mjs',
+    'src/vehicles/burlakFixedSidePaint.selftest.mjs',
     'src/vehicles/profiles/t90msXGunBase.selftest.mjs',
     'src/vehicles/profiles/t90msXMast.selftest.mjs',
     'src/vehicles/profiles/t90msXOpticalHead.selftest.mjs',
