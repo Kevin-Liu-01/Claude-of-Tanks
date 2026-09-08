@@ -35,6 +35,44 @@ const bandPixels = (data, width, height, variant) => {
   return data.subarray(start, start + height / 4 * width * 4);
 };
 
+// Native Canvas2D 0.1.100 seed4242 receipts from the accepted atlas foundation.
+// A woodland repair must not redraw scrub, conifers, rocks, snow or mesas.
+const unchangedFamilyHashes = {
+  desktop: {
+    conifer: 'b65ea388c74c030d1b97f9c3ee2876e3f57084381720ab0850a7bcbd0b9c7205',
+    scrub: '2cff2805613fe2dcd3994093e1ffa98c5d05c6181bab971be818c4f03a513c1b',
+    rock: '511ba49122d2bfba6828551f9b24a3b84fef19183639e0cbd1e2319e05ab429a',
+    snow: '9ee001e940b980951a6e2ff21c1abfba6e1e9494f97f49da7a6867c8e77ae343',
+    mesa: 'f4a4f086a1b2de1aea756c62232f741cd62228c8c90aee77d1af7c0234dfeaeb',
+  },
+  mobile: {
+    conifer: '8202b8351d75d778ce633f63cf70458c73f847e3293e2b48aa113fde382627b4',
+    scrub: '0b60315e25037dce34c378d340cf30c581e64c9173005b03936f26b0c4dfdbe8',
+    rock: '656d0cbc8f77b536f4c18f434754eec4075f5cc841a35b1c35f6d0bc440a2010',
+    snow: '9241c8fd245a722630884ce8194c02d9ca1767da701ec2b5af4f6a1005e77d4e',
+    mesa: '5c7b995998f43b75e38c343c1c0950c61ab79b1201f68c337f93130543d89406',
+  },
+};
+
+function inspectWoodlandUnderCanopy(data, width, height, label) {
+  const scale = height / 64;
+  const y = Math.round(height - 10 * scale);
+  const solid = x => data[(y * width + x) * 4 + 3] >= 97;
+  let count = 0, narrowSupports = 0;
+  for (let x = 0; x < width; x++) {
+    if (!solid(x)) continue;
+    count++;
+    if (solid((x + width - 1) % width)) continue;
+    let run = 1;
+    while (run < width && solid((x + run) % width)) run++;
+    if (run <= Math.ceil(7 * scale)) narrowSupports++;
+  }
+  assert.ok(count / width > 0.08 && count / width < 0.45,
+    `${label}: open under-canopy gaps around supported trunks, not a filled boulder base`);
+  assert.ok(narrowSupports >= 12, `${label}: many independent slender connected trunks`);
+  return { underCanopyCoverage: count / width, narrowSupports };
+}
+
 function inspectBand(data, width, height, label) {
   const scale = height / 64;
   const gutter = Math.round(4 * scale);
@@ -110,9 +148,14 @@ function inspectAtlas(kind, seed, tier, secondaryKind) {
     assert.equal(texture.anisotropy, 2);
     assert.equal(texture.colorSpace, THREE.SRGBColorSpace);
     assert.equal(texture.generateMipmaps, true);
-    const bands = Array.from({ length: 4 }, (_, variant) => inspectBand(
-      bandPixels(data, image.width, image.height, variant), image.width, image.height / 4,
-      `${tier}/${kind}${secondaryKind ? `+${secondaryKind}` : ''}/${variant}`));
+    const bands = Array.from({ length: 4 }, (_, variant) => {
+      const band = bandPixels(data, image.width, image.height, variant);
+      const label = `${tier}/${kind}${secondaryKind ? `+${secondaryKind}` : ''}/${variant}`;
+      const result = inspectBand(band, image.width, image.height / 4, label);
+      const family = variant >= 2 && secondaryKind ? secondaryKind : kind;
+      return family === 'woodland' ? { ...result,
+        ...inspectWoodlandUnderCanopy(band, image.width, image.height / 4, label) } : result;
+    });
     assert.equal(new Set(bands.map(band => band.hash)).size, 4, 'four independently painted variants');
     if (values['out-dir']) writeFileSync(join(values['out-dir'],
       `${tier}-${kind}${secondaryKind ? `-${secondaryKind}` : ''}-${seed}.png`), image.toBuffer('image/png'), { flag: 'wx' });
@@ -139,6 +182,8 @@ try {
     const expectedBytes = tier === 'desktop' ? 393216 : 98304;
     assert.ok(batch.every(row => row.rgbaBytes === expectedBytes));
     for (const row of batch) {
+      if (row.kind !== 'woodland') assert.equal(row.hash, unchangedFamilyHashes[tier][row.kind],
+        `${tier}/${row.kind}: exact unchanged non-woodland native raster`);
       const repeated = createHorizonDetailAtlas(row.kind, row.seed);
       const changed = createHorizonDetailAtlas(row.kind, row.seed + 1);
       try {
@@ -168,12 +213,21 @@ try {
   detached[lonely] = detached[lonely + 1] = detached[lonely + 2] = 220;
   detached[lonely + 3] = 255;
   assert.throws(() => inspectBand(detached, sample.width, sample.height / 4, 'floater mutation'), /detached floaters/);
+  const solidBase = source.slice();
+  const supportY = sample.height / 4 - 10;
+  for (let x = 0; x < sample.width; x++) solidBase[(supportY * sample.width + x) * 4 + 3] = 255;
+  assert.throws(() => inspectWoodlandUnderCanopy(solidBase, sample.width, sample.height / 4,
+    'old broad-base mutation'), /open under-canopy gaps/);
+  const missingTrunks = source.slice();
+  for (let x = 0; x < sample.width; x++) missingTrunks[(supportY * sample.width + x) * 4 + 3] = 8;
+  assert.throws(() => inspectWoodlandUnderCanopy(missingTrunks, sample.width, sample.height / 4,
+    'unsupported crown mutation'), /open under-canopy gaps/);
   const receipt = { proof: 'Real native Canvas2D raster only; no GPU, scope or final-world visual acceptance',
     rasterizer: { name: packageInfo.name, version: packageInfo.version, module: modulePath },
     rows: rows.map(({ data, ...row }) => row) };
   if (values['out-dir']) writeFileSync(join(values['out-dir'], 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
   console.log(JSON.stringify(receipt, null, 2));
-  console.log('horizonDetailAtlas.selftest: PASS native six-family atlas, two-tier raster, strict roots/seams/detail, mixed bands, deterministic lifetime and unchanged budget');
+  console.log('horizonDetailAtlas.selftest: PASS native six-family atlas, two-tier raster, strict roots/seams/detail, open woodland branches, five unchanged families, mixed bands, deterministic lifetime and unchanged budget');
 } finally {
   for (const [key, value] of savedGlobals) {
     if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
