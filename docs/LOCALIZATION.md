@@ -6,8 +6,9 @@ public URL alias for Chinese is `/cn`: `/cn/`, `/cn/home`, `/cn/gallery`,
 routes. The alias is intentionally shorter than the canonical locale code;
 HTML `lang`, Open Graph locale, Intl formatting, and hreflang use `zh-CN`.
 
-The language control is available in the shared public navigation and under
-**Settings → Language** in the Garage. The selection is stored as `cot.locale`.
+The language control is available in the shared public navigation, directly in
+the Garage navigation (or its compact menu), and under **Settings → Language**.
+The selection is stored as `cot.locale`.
 Resolution follows explicit URL prefix, saved selection, supported browser
 language, then `en-US`. Switching language keeps the current route, query, and
 hash while adding or removing `/cn`.

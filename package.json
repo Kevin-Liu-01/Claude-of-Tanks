@@ -132,7 +132,7 @@
     "typecheck:cloudflare": "npm --prefix cloudflare/signaling run typecheck",
     "deploy:net:cloudflare": "npm --prefix cloudflare/signaling run deploy",
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
-    "typecheck": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs"
+    "typecheck": "node node_modules/@typescript/native/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs"
   },
   "keywords": [
     "threejs",
@@ -156,13 +156,14 @@
   "devDependencies": {
     "@napi-rs/canvas": "0.1.100",
     "@stryker-mutator/core": "^10.0.0",
+    "@typescript/native": "npm:typescript@7.0.2",
     "@types/node": "^24.10.12",
     "@types/three": "^0.185.4",
     "@types/ws": "^8.18.1",
     "c8": "^12.0.0",
     "gt": "^2.20.1",
     "puppeteer": "^25.4.0",
-    "typescript": "7.0.2",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-compiler-api": "npm:typescript@^5.9.3",
     "vite": "^8.1.5"
   },

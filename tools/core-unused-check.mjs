@@ -5,7 +5,7 @@ import { relative, resolve, sep } from 'node:path';
 import process from 'node:process';
 
 const root = process.cwd();
-const compiler = resolve(root, 'node_modules/typescript/bin/tsc');
+const compiler = resolve(root, 'node_modules/@typescript/native/bin/tsc');
 const result = spawnSync(process.execPath, [compiler,
   '-p', 'tsconfig.json', '--noEmit', '--noUnusedLocals', '--noUnusedParameters',
 ], {
@@ -25,6 +25,11 @@ const isCoreRuntime = (fileName) => {
 };
 const diagnosticPattern = /^(.*?)\(\d+,\d+\): error TS(6133|6192|6196|6198|6199):.*$/gm;
 const compilerOutput = `${result.stdout || ''}${result.stderr || ''}`;
+if (result.status !== 0 && !/error TS(?:6133|6192|6196|6198|6199):/.test(compilerOutput)) {
+  process.stderr.write(compilerOutput);
+  process.exitCode = result.status || 1;
+  process.exit();
+}
 const diagnostics = [...compilerOutput.matchAll(diagnosticPattern)]
   .filter((match) => isCoreRuntime(match[1]))
   .map((match) => match[0]);

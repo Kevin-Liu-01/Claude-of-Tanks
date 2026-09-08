@@ -26,18 +26,20 @@ const pages = [
   ['docs-audio.html', '/docs'],
   ['docs-interface.html', '/docs'],
   ['docs-studio.html', '/docs'],
-  ['404.html', null],
 ];
 const expectedLinks = [
   ['/home', 'Home'],
   ['/studio', 'Studio'],
-  ['/gallery', 'Tank Gallery'],
+  ['/gallery', 'Gallery'],
   ['/docs', 'Docs'],
   ['https://github.com/Kevin-Liu-01/claude-of-tanks', 'GitHub'],
   ['/', 'Play Now'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
+const homeCss = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
+const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
+const galleryCss = readFileSync(join(ROOT, 'src/gallery/gallery.css'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');
 assert.equal(formatGitHubStarCount(1200), '1.2K');
 assert.equal(repositoryStatsEndpointAvailable({ hostname: '127.0.0.1', protocol: 'http:' }), false);
@@ -115,16 +117,20 @@ assert.match(navSource, /setLocale\(next\)/,
   'the public locale switcher must persist through the canonical i18n owner');
 assert.match(navCss, /\.public-nav__locale\{[^}]*display:flex;[^}]*height:34px;/,
   'the public locale switcher must be a first-class desktop navigation control');
+for (const [surface, css] of [
+  ['shared public navigation', navCss],
+  ['Home', homeCss],
+  ['Docs', docsCss],
+  ['Gallery', galleryCss],
+]) {
+  assert.doesNotMatch(css, /cot-warning-tape/,
+    `${surface} must leave the warning-tape motif exclusively to the 404 page`);
+}
 
 for (const [file, activeHref] of pages) {
   const html = readFileSync(join(ROOT, file), 'utf8');
   assert.match(html, /<link rel="stylesheet" href="\/src\/presentation\/publicNav\.css">/);
-  if (file === '404.html') {
-    assert.match(html, /<script type="module" src="\/src\/presentation\/notFound\.ts"><\/script>/,
-      'the 404 runtime must import the shared public navigation');
-  } else {
-    assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/);
-  }
+  assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/);
   const nav = /<nav class="public-nav"[\s\S]*?<\/nav>/.exec(html)?.[0];
   assert.ok(nav, `${file} must contain the shared public nav`);
   const linksBlock = /<div class="public-nav__links">([\s\S]*?)<\/div>/.exec(nav)?.[1];
@@ -157,6 +163,12 @@ for (const [file, activeHref] of pages) {
   assert.doesNotMatch(linksBlock, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
     `${file} GitHub control must not ship a stale numeric fallback`);
 }
+
+const notFoundHtml = readFileSync(join(ROOT, '404.html'), 'utf8');
+assert.doesNotMatch(notFoundHtml, /publicNav\.(?:css|ts)|<nav class="public-nav"/,
+  'the intentionally minimal 404 must stay independent of the full public navigation');
+assert.match(notFoundHtml, /<script type="module" src="\/src\/presentation\/notFound\.ts"><\/script>/,
+  'the standalone 404 must keep its focused localization runtime');
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
 assert.match(gameHtml,
