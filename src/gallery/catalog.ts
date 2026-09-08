@@ -1,7 +1,7 @@
 import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
-import { vehicleEraLabel } from '../vehicles/taxonomy.ts';
-import { t } from '../ui/i18n.ts';
+import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
+import { getLocale, t } from '../ui/i18n.ts';
 
 interface GalleryShellSpec {
   name?: string;
@@ -128,12 +128,11 @@ function protectionFeatures(spec: GalleryVehicleSpec): string[] {
 
 function joinTechnicalList(items: readonly string[]): string {
   if (items.length < 2) return items[0] || '';
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+  return new Intl.ListFormat(getLocale(), { style: 'long', type: 'conjunction' }).format([...items]);
 }
 
 function mobilityAssessment(powerToWeight: number, topSpeed: number): string {
-  if (powerToWeight >= 25 && topSpeed >= 60) return t('gallery.brief.mobility.veryHigh').length > 0 ? t('gallery.brief.mobility.high') : t('gallery.brief.mobility.high');
+  if (powerToWeight >= 25 && topSpeed >= 60) return t('gallery.brief.mobility.veryHigh');
   if (powerToWeight >= 18 || topSpeed >= 55) return t('gallery.brief.mobility.high');
   if (powerToWeight >= 13) return t('gallery.brief.mobility.moderate');
   return t('gallery.brief.mobility.low');
@@ -143,7 +142,7 @@ function protectionAssessment(bestKe: number): string {
   if (bestKe >= 700) return t('gallery.brief.protection.veryHigh');
   if (bestKe >= 400) return t('gallery.brief.protection.high');
   if (bestKe >= 180) return t('gallery.brief.protection.moderate');
-  return t('gallery.brief.protection.moderate');
+  return t('gallery.brief.protection.low');
 }
 
 export function technicalLabel<T>(value: T): string {
@@ -384,7 +383,7 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     : 0;
   const tier = tankTier(spec.id);
   const nation = String(spec.nation || t('gallery.nation.unknown'));
-  const era = vehicleEraLabel(spec.era);
+  const era = vehicleEraLabelI18n(spec.era, t);
 
   return Object.freeze({
     id: spec.id,

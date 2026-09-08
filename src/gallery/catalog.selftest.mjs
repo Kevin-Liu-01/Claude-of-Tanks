@@ -44,6 +44,12 @@ assert.ok(Number.isFinite(serialized.protection.armorPlateCount));
 
 const sample = createGalleryRecord(getSpec(VISIBLE_TANK_IDS[0]));
 assert.match(sample.brief.join(' '), new RegExp(sample.displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+assert.ok(records.some((record) => record.brief.some((paragraph) =>
+  paragraph.includes('a high power-to-weight ratio and high maximum road speed'))),
+'Gallery briefs preserve the top mobility assessment bucket');
+assert.ok(records.some((record) => record.brief.some((paragraph) =>
+  paragraph.includes('limited kinetic protection, which increases the importance of positioning'))),
+'Gallery briefs preserve the low protection assessment bucket');
 
 const magazineRecord = createGalleryRecord(getSpec('pl01_105'));
 assert.equal(magazineRecord.metrics.autoloader, true);
