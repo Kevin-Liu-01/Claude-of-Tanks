@@ -47,6 +47,22 @@ assert.notEqual(describeAttribute(attribute).sha256, described.sha256);
 const pixels = new Uint8Array([1, 2, 3, 255, 4, 5, 6, 255]);
 const texture = new THREE.DataTexture(pixels, 2, 1), hidden = new THREE.DataTexture(pixels.slice(), 2, 1);
 assert.equal(describeTexture(texture).baseLevelPixelBytes, 8);
+const canvasReads = [];
+const canvasImage = { width: 2, height: 1,
+  data() { throw new Error('Native raw-buffer API is not typed image data'); },
+  getContext(kind) {
+    assert.equal(kind, '2d');
+    return { getImageData(...rect) { canvasReads.push(rect); return { data: pixels.slice() }; } };
+  },
+};
+const canvasTexture = new THREE.CanvasTexture(canvasImage);
+assert.equal(describeTexture(canvasTexture).sha256, describeTexture(texture).sha256,
+  'Canvas data() must not bypass the actual Canvas2D pixel read');
+assert.deepEqual(canvasReads, [[0, 0, 2, 1]]);
+const invalidCanvas = new THREE.CanvasTexture({ ...canvasImage, getContext() {
+  return { getImageData() { return { data: [...pixels] }; } };
+} });
+assert.throws(() => describeTexture(invalidCanvas), /No pixel-upload stub/, 'A canvas pixel substitute remains rejected');
 const geometry = new THREE.BufferGeometry().setAttribute('position', attribute).setIndex([0, 1, 0]);
 const material = new THREE.MeshBasicMaterial({ map: texture });
 const root = new THREE.Group(), a = new THREE.Mesh(geometry, material), b = new THREE.Mesh(geometry, material);
