@@ -915,6 +915,8 @@ interface TankFactoryOptions {
   materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   geometryReceipt?: boolean;
+  /** Default-on anatomy metadata; static wreck baking discards this receipt. */
+  eraVisualBindingReceipt?: boolean;
   batchStatic?: boolean;
   deferStaticBatch?: boolean;
   battleDetailLod?: boolean;
@@ -9273,6 +9275,7 @@ export function createTank(
     materialMode = 'rendered',
     proceduralOnly = false,
     geometryReceipt = false,
+    eraVisualBindingReceipt = true,
     batchStatic = false,
     deferStaticBatch = false,
     battleDetailLod = false,
@@ -10168,46 +10171,51 @@ export function createTank(
     root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
       [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
     );
-    const receiptPlates = (owner: VehicleOwner) => {
-      const exactZones = new Map<string, boolean>();
-      return gameplayEraByOwner[owner].filter((plate) => {
-        if (exactZones.has(plate.name)) return !exactZones.get(plate.name);
-        const parts = eraBoundPartsByPlate.get(plate.name) || [];
-        const exact = parts.length > 0 && createEraSurfaceFrame(plate) !== null && parts.every(
-          (part) => part.userData.eraHitFaceVertexStarts != null,
-        );
-        exactZones.set(plate.name, exact);
-        return true;
-      }).map((plate) => ({ owner, plate }));
-    };
-    root.userData.eraVisualBindingReceipt = Object.freeze({
-      revision: 'canonical-gameplay-era-binding-r1',
-      // Generated anatomy expands a canonical zone into many same-name hit
-      // faces. Fully annotated zones already collect every native facet in
-      // one pass; emit/cache that complete result once per owner and name.
-      // Legacy or mixed zones keep every row and its authored fitting frame:
-      // different plate normals can legitimately change their PCA result.
-      plates: Object.freeze(([
-        ...receiptPlates('hull'),
-        ...receiptPlates('turret'),
-      ]).map(({ owner, plate }) => {
-        const binding = eraVisualBindings.get(plate.name);
-        const registeredOwner = destructibleClusterOwners.get(plate.name) || null;
-        return Object.freeze({
-          name: plate.name,
-          owner,
-          registered: root.userData.eraClusterNames.includes(plate.name),
-          registeredOwner,
-          ownerMatches: registeredOwner === owner,
-          partCount: layeredEraPartsByCluster.get(plate.name) || 0,
-          cassetteCount: layeredEraCassetteCounts.get(plate.name) || 0,
-          automaticPartCount: binding?.automaticPartCount || 0,
-          visualSectors: Object.freeze([...(binding?.visualSectors || [])].sort()),
-          maximumSeatDistanceM: binding ? binding.maximumSeatDistanceM : null,
-          fittedSurfaces: fittedEraSurfaces(plate),
-        });
-      })),
-    });
+    // Static world wrecks retain only baked geometry and never consume the
+    // fitted anatomy receipt. Keep all ERA seating and gameplay bindings
+    // above, and preserve the default for live, workshop and audit callers.
+    if (eraVisualBindingReceipt) {
+      const receiptPlates = (owner: VehicleOwner) => {
+        const exactZones = new Map<string, boolean>();
+        return gameplayEraByOwner[owner].filter((plate) => {
+          if (exactZones.has(plate.name)) return !exactZones.get(plate.name);
+          const parts = eraBoundPartsByPlate.get(plate.name) || [];
+          const exact = parts.length > 0 && createEraSurfaceFrame(plate) !== null && parts.every(
+            (part) => part.userData.eraHitFaceVertexStarts != null,
+          );
+          exactZones.set(plate.name, exact);
+          return true;
+        }).map((plate) => ({ owner, plate }));
+      };
+      root.userData.eraVisualBindingReceipt = Object.freeze({
+        revision: 'canonical-gameplay-era-binding-r1',
+        // Generated anatomy expands a canonical zone into many same-name hit
+        // faces. Fully annotated zones already collect every native facet in
+        // one pass; emit/cache that complete result once per owner and name.
+        // Legacy or mixed zones keep every row and its authored fitting frame:
+        // different plate normals can legitimately change their PCA result.
+        plates: Object.freeze(([
+          ...receiptPlates('hull'),
+          ...receiptPlates('turret'),
+        ]).map(({ owner, plate }) => {
+          const binding = eraVisualBindings.get(plate.name);
+          const registeredOwner = destructibleClusterOwners.get(plate.name) || null;
+          return Object.freeze({
+            name: plate.name,
+            owner,
+            registered: root.userData.eraClusterNames.includes(plate.name),
+            registeredOwner,
+            ownerMatches: registeredOwner === owner,
+            partCount: layeredEraPartsByCluster.get(plate.name) || 0,
+            cassetteCount: layeredEraCassetteCounts.get(plate.name) || 0,
+            automaticPartCount: binding?.automaticPartCount || 0,
+            visualSectors: Object.freeze([...(binding?.visualSectors || [])].sort()),
+            maximumSeatDistanceM: binding ? binding.maximumSeatDistanceM : null,
+            fittedSurfaces: fittedEraSurfaces(plate),
+          });
+        })),
+      });
+    }
   };
   const createTankAssemblyStage30 = (): void => {
     createTankHullStage4();

@@ -72,6 +72,7 @@ export interface CreateTankOptions {
   deferStaticBatch?: boolean;
   geometryQuality?: 'high' | 'low';
   geometryReceipt?: boolean;
+  eraVisualBindingReceipt?: boolean;
   materialMode?: 'rendered' | 'geometry-only';
   proceduralOnly?: boolean;
   quality?: 'high' | 'ai' | 'low' | 'preview';

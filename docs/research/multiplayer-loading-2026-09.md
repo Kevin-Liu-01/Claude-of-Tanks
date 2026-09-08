@@ -1,5 +1,9 @@
 # Multiplayer entry and visible countdown — September 2026
 
+Follow-up: [exact-output props construction reductions and cold two-client
+comparison](multiplayer-props-loading-2026-09.md). These reduce loading work;
+they do not establish that historical gameplay stalls are solved.
+
 ## Scope
 
 This change covers private/LAN and dedicated-adapter battle entry, the visible
