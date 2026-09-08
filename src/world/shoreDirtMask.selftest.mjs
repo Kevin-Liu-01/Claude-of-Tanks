@@ -202,6 +202,46 @@ function checkMangrove(seed, size) {
   } finally { old.dispose(); current.dispose(); }
 }
 
+function historicalOasis(cfg) {
+  return { ...cfg, terrain: { ...cfg.terrain, lakes: [
+    { x: -138, z: -16, r: 52, depth: 0.75, level: -1.2 },
+    { x: -182, z: 32, r: 57, depth: 0.75, level: -1.2 },
+    { x: -134, z: 84, r: 48, depth: 0.65, level: -1.2 },
+  ] } };
+}
+
+function verifyOasisChannels(before, after) {
+  let waterChanges = 0;
+  for (let i = 0; i < before.length; i++) {
+    if (i % 4 !== 2) assert.equal(after[i], before[i], 'Oasis road/rut/village-soil bytes stay exact');
+    else if (before[i] !== after[i]) waterChanges++;
+  }
+  assert.equal(waterChanges, 2663, 'only the authored Oasis water footprint changes');
+}
+
+function checkOasis() {
+  const cfg = getMapConfig('oasis'), historical = historicalOasis(cfg);
+  const original = bake(createHeightField(1337, historical), historical);
+  const current = bake(createHeightField(1337, cfg), cfg);
+  try {
+    checkTexture(current, 512);
+    assert.equal(hash(bytes(original)), ORIGINAL.oasis, 'preserve the original three-cell RGBA oracle');
+    assert.equal(hash(bytes(current)), 'f288a45dd5ab44336039e28307f9c33d6aefbf0deef7e124eaa11f660b97d8c6',
+      'reviewed authored asymmetric Oasis contour, not a replacement historical baseline');
+    verifyOasisChannels(bytes(original), bytes(current));
+    const roadMutation = bytes(current).slice(); roadMutation[0] ^= 1;
+    assert.throws(() => verifyOasisChannels(bytes(original), roadMutation), /road\/rut\/village-soil/);
+    const waterMutation = bytes(current).slice(); waterMutation[2] ^= 1;
+    assert.throws(() => verifyOasisChannels(bytes(original), waterMutation), /water footprint/);
+  } finally { original.dispose(); current.dispose(); }
+}
+
+if (process.argv.includes('--oasis-only')) {
+  checkOasis();
+  console.log('shoreDirtMask.selftest: Oasis historical RGBA, current water-only footprint and mutation guards passed');
+  process.exit(0);
+}
+
 checkEmptyAndInvalid();
 for (const step of [2, 4]) {
   checkMetric(step);
@@ -214,12 +254,16 @@ for (const id of MAP_IDS) {
   assert.ok(!cfg.splat?.shoreDirt, `${id}: bank pass is opt-in only`);
   // Independent authored harvest wear has its own immutable Longleaf control.
   // Keep this pre-bank baseline byte-exact with both later opt-in stamps off.
-  const control = cfg.terrain?.workedGround
+  let control = cfg.terrain?.workedGround
     ? { ...cfg, terrain: { ...cfg.terrain, workedGround: [] } } : cfg;
+  // The later Oasis contour intentionally changes water only; keep its exact
+  // old input behind the immutable pre-shore-pass hash and test current below.
+  if (id === 'oasis') control = historicalOasis(control);
   const texture = bake(createHeightField(1337, control), control);
   try { assert.equal(hash(bytes(texture)), ORIGINAL[id], `${id}: full original RGBA byte control`); }
   finally { texture.dispose(); }
 }
+checkOasis();
 for (const seed of [1337, 2049, 4093]) checkMangrove(seed, 512);
 const savedWindow = globalThis.window;
 try {
