@@ -7,6 +7,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { merkava4RearFoldSolids } from './merkava4RearHull.ts';
+import { addMerkavaXShoulderReturns } from './merkavaXShoulderReturns.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
@@ -316,6 +317,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     sprocket:{z:3.040-MK3.center,y:.874,r:.350},idler:{z:-3.365-MK3.center,y:.844,r:.342},
     topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true});
   merkava3HullDetails(P);
+  addMerkavaXShoulderReturns(P, 'merkava3d_x');
   P.add('turret',merkava3Shell());
   P.add('turret',cylY(1.07,.23,40),0,.09,0);
   merkava3TurretDetails(P);
@@ -550,6 +552,7 @@ export function buildMerkava4X(P: TankBuilderPort): void {
     sprocket:{z:3.285,y:.761,r:.336},idler:{z:-3.020,y:.722,r:.314},
     topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true});
   merkava4HullDetails(P);
+  addMerkavaXShoulderReturns(P, 'merkava4_x');
   P.add('turret',merkava4Shell());
   // The source has a raised asymmetric central roof, not one flat turtle
   // shell: its rear ledge is right of the gunner's lower optic berth and
