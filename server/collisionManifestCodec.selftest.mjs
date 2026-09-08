@@ -22,6 +22,24 @@ const manifest = {
   colliders: [record], concealers: [[2, 3, 4, 0.75]],
 };
 const packed = encodeCollisionManifest(manifest);
+// A fixed mixed geometry corpus tests dictionary efficiency independently of
+// evolving map layouts. Real manifests still have exact byte ceilings below.
+const footprint = ['v', -4.125, -7.875, 3.625, -7.875, 4.125, -6.625,
+  4.125, 6.625, 3.625, 7.875, -3.625, 7.875, -4.125, 6.625, -4.125, -6.625];
+const wall = ['v', -3.625, -7.875, 3.625, -7.875, 3.625, -7.625, -3.625, -7.625];
+const codecFixtureRecords = [0, 1, 2, 3].map(p => ({
+  b: [-4.125, 0, -7.875, 4.125, 3.125, 7.875],
+  s: ['m', footprint, wall, ['c', p + 0.125, p + 0.375, 0.625]],
+  q: 1, p, k: 'building',
+}));
+const codecFixture = { obstacles: codecFixtureRecords, colliders: codecFixtureRecords,
+  concealers: [[1.125, 2.375, 3.625, 0.75]] };
+const codecFixtureText = JSON.stringify(codecFixture);
+const encodedFixture = encodeCollisionManifest(codecFixture);
+assert.deepEqual(decodeCollisionManifest(encodedFixture), codecFixture);
+assert.equal(encodedFixture.obstacles[0].s[1], 0, 'fixed corpus exercises reference zero');
+assert.ok(Buffer.byteLength(JSON.stringify(encodedFixture)) < Buffer.byteLength(codecFixtureText) * 0.8,
+  'exact dictionary materially reduces the fixed mixed primitive corpus');
 assert.deepEqual(collisionCaptureOptions(['owned-session']), {
   session: 'owned-session', mapIds: MAP_IDS, partial: false,
 }, 'existing complete export keeps the full canonical roster');
@@ -110,11 +128,28 @@ for (const [tool, args] of [
 }
 assert.deepEqual(readFileSync(new URL('index.json', directory)), indexBeforeRetiredCli,
   'retired CLI invocations never alter the published index');
-let rawBytes = 0, encodedBytes = 0;
+// Frozen published receipts at afaf62b60, before native recapture. Tight OBBs
+// replace redundant compound walls: raw bytes shrink faster than dictionary
+// bytes, so raw-relative compression is not a stable map storage budget.
+// Keep every map below its prior actual encoded size (not a relaxed ratio).
+const previousShardBytes = {
+  verdant: 1402315, desert: 599567, winter: 1177056, urban: 2645339,
+  coastal: 853167, autumn: 1372225, steppe: 719830, railyard: 872036,
+  frontier: 1667904, fjord: 1410232, delta: 1430739, badlands: 839003,
+  monsoon: 1888601, alpine: 1795157, caldera: 1218614, foundry: 1149519,
+  ruinspires: 2960310, blackglass: 1727148, titan_gorge: 849674, skybridge: 1097045,
+  polders: 953559, copper_mesa: 727167, airfield: 786018, oasis: 685786,
+  whiteout: 541698, orchard: 1135684, longleaf: 1218490, mangrove: 1055765,
+  saltwind: 873926, reservoir: 1282807,
+};
+assert.deepEqual(Object.keys(previousShardBytes), MAP_IDS, 'storage budget covers every canonical map');
+let rawBytes = 0, encodedBytes = 0, publishedBytes = 0;
 for (const id of MAP_IDS) {
   const bytes = readFileSync(new URL(`${id}.json`, directory));
   const entry = index.maps[id];
   assert.equal(bytes.length, entry.bytes, `${id} byte receipt`);
+  assert.ok(bytes.length <= previousShardBytes[id], `${id} published shard must not exceed its prior byte budget`);
+  publishedBytes += bytes.length;
   assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256, `${id} checksum receipt`);
   const original = decodeCollisionManifest(JSON.parse(bytes.toString('utf8')));
   validateCollisionManifestCounts(original, entry);
@@ -123,10 +158,11 @@ for (const id of MAP_IDS) {
   assert.deepEqual(decoded, original, `${id} exact all-record primitive round trip`);
   assert.deepEqual(encodeCollisionManifest(decoded), encoded, `${id} deterministic dictionary order`);
   assert.deepEqual(collisionManifestCounts(decoded), collisionManifestCounts(original), `${id} exact census`);
-  rawBytes += JSON.stringify(original).length;
-  encodedBytes += JSON.stringify(encoded).length;
+  rawBytes += Buffer.byteLength(JSON.stringify(original));
+  encodedBytes += Buffer.byteLength(JSON.stringify(encoded));
 }
-assert.ok(encodedBytes < rawBytes * 0.8, 'exact dictionary materially reduces the current 30-map fixture');
+assert.equal(encodedBytes, publishedBytes, 'published shards are the canonical exact dictionary encoding');
+assert.ok(publishedBytes <= 36936381, 'complete roster storage cannot exceed the frozen published budget');
 
 // Hash-valid corruptions must still be rejected by the loader's schema/census.
 const temporary = mkdtempSync(join(tmpdir(), 'cot-collision-codec-'));

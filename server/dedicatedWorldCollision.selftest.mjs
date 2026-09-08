@@ -33,20 +33,25 @@ const expected = {
   blackglass: [3515, 4371, 2270],
   titan_gorge: [2472, 2284, 1144],
   skybridge: [3108, 3161, 1892],
-  polders: [4051, 3823, 3506],
+  // Native 3c06d3352 capture: authored drainage contours change seeded
+  // vegetation/prop acceptance. Keep the exact census, not a tolerance.
+  polders: [3955, 3734, 3407],
   // V23 native receipt (9fdbc49b): quarry-only producer A/B reproduces
   // every captured record. Existing slope/RNG rules yield +2 surface-rock
   // cover, -5 outcrop cover and -1 slope-rejected sapling; named prop counts
   // and 79 bush concealers are unchanged. No census tolerance is introduced.
   copper_mesa: [2556, 2375, 1811],
-  airfield: [3252, 3226, 2823],
+  // The shared terrain exclusion now follows the actual hardstand rectangle
+  // plus its shoulder; the airfield configuration itself is unchanged.
+  airfield: [3160, 3135, 2739],
   oasis: [2470, 2257, 1852],
   whiteout: [1449, 1267, 805],
   orchard: [4403, 4163, 4454],
   longleaf: [5631, 5421, 6154],
   mangrove: [4918, 4740, 5666],
   saltwind: [3349, 3158, 2723],
-  reservoir: [5932, 5749, 6443],
+  // Refreshed forked roads, assembly hardstand and grounded waterworks.
+  reservoir: [6142, 5939, 6673],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
@@ -170,9 +175,11 @@ function expectedWaterworksBounds(field, name, center, width, depth, waterLevel)
     }
   }
   // Independent authored dimensions: dry kiosk embeds 12 cm; hydraulic feet
-  // extend 1.2 m below the water plane; every full-footprint cap adds 6 cm.
+  // extend 1.2 m below the water plane. The taller intake body has a closed
+  // full-footprint 1.04 m hood; the ordinary kiosk/bank caps add 6 cm.
   const bottom = name === 'kiosk' ? low - 0.12 : waterLevel - 1.2;
-  const top = (name === 'kiosk' ? high + 3.2 : waterLevel + (name === 'intake' ? 3.8 : 1.1)) + 0.06;
+  const top = name === 'intake' ? waterLevel + 7.4 + 1.04
+    : (name === 'kiosk' ? high + 3.2 : waterLevel + 1.1) + 0.06;
   return { min: [x - width / 2, bottom, z - depth / 2].map(capturedNumber),
     max: [x + width / 2, top, z + depth / 2].map(capturedNumber) };
 }
@@ -206,6 +213,29 @@ function assertWaterworks(mapWorld) {
       `${name}: the narrow phase does not extend beyond the real rectangular footprint`);
     }
     assertAuthoredContact(mapWorld, obs[0], cols[0], x, z, `Reservoir ${name}`);
+    if (name === 'intake') assertIntakeHood(cols[0]);
+  }
+  const bank = colliders.find(record => record.shape2.cx === config.bank[0]);
+  const intake = colliders.find(record => record.shape2.cx === config.intake[0]);
+  assert.equal(bank.max[0], intake.min[0], 'bank and intake meet without a phantom water gap');
+  assert.equal(bank.min[1], intake.min[1], 'both hydraulic bodies share the submerged foundation depth');
+  assert.ok(intake.min[2] >= bank.min[2] && intake.max[2] <= bank.max[2],
+    'the full intake interface is supported inside the bank span');
+}
+
+function assertIntakeHood(record) {
+  const direction = new Vector3(-1, 0, 0), hit = new Vector3();
+  const x = record.max[0] + 0.5;
+  for (const z of [record.min[2] + 0.001, record.shape2.cz, record.max[2] - 0.001]) {
+    const below = new Vector3(x, record.max[1] - 0.001, z);
+    assert.ok(Math.abs(rayCollisionRecord(below, direction, record, 1, hit) - 0.5) < 1e-9,
+      'the closed service hood blocks grazing shells across its full actual width');
+    assert.equal(rayCollisionRecord(new Vector3(x, record.max[1] + 0.001, z),
+      direction, record, 1, hit), -1, 'no invisible cover above the hood');
+  }
+  for (const z of [record.min[2] - 0.001, record.max[2] + 0.001]) {
+    assert.equal(rayCollisionRecord(new Vector3(x, record.max[1] - 0.001, z),
+      direction, record, 1, hit), -1, 'no invisible cover outside the hood footprint');
   }
 }
 
