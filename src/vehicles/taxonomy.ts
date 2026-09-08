@@ -123,7 +123,7 @@ const ERA_I18N: Readonly<Record<string, { short: string; long: string }>> = Obje
   modern: Object.freeze({ short: 'garage.era.modern', long: 'garage.era.modern' }),
   'cold-war': Object.freeze({ short: 'garage.era.coldWar', long: 'garage.era.coldWar' }),
   ww2: Object.freeze({ short: 'garage.era.worldWar2', long: 'garage.era.worldWar2' }),
-  interwar: Object.freeze({ short: 'garage.era.worldWar2', long: 'garage.era.worldWar2' }),
+  interwar: Object.freeze({ short: 'garage.era.interwar', long: 'garage.era.interwar' }),
 });
 
 /** Returns a translated era label when an i18n key exists, else falls back
