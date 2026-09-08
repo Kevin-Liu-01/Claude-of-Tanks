@@ -39,10 +39,16 @@ export async function runSelftestSuite(suiteName, suite, {
   lock = createCaptureLock(),
   ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES,
   refreshMs = 30_000,
+  maxLeaseBatchMs = 45_000,
+  now = () => performance.now(),
   log = console.log,
   logError = console.error,
 } = {}) {
+  if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
+    throw new TypeError('maxLeaseBatchMs must be finite and positive');
+  }
   let held = false;
+  let acquiredAt = 0;
   let refresher;
   const release = () => {
     clearInterval(refresher);
@@ -54,10 +60,15 @@ export async function runSelftestSuite(suiteName, suite, {
   log('[selftests] ' + suiteName + ': ' + suite.length + ' files');
   try {
     for (const file of suite) {
+      // Complete every child before yielding. Long full-fleet suites must
+      // rejoin the FIFO between bounded batches, rather than starving native
+      // geometry/visual verification for the entire npm lifecycle.
+      if (held && now() - acquiredAt >= maxLeaseBatchMs) release();
       if (ownedLeaseFiles.includes(file)) release();
       else if (!held) {
         await lock.acquire(45 * 60 * 1000);
         held = true;
+        acquiredAt = now();
         refresher = setInterval(() => lock.refresh(), refreshMs);
         refresher.unref();
       }

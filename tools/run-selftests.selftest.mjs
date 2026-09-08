@@ -63,6 +63,39 @@ assert.equal(await runSelftestSuite('terminated', ['a'], terminated.options), 1,
   'signal termination preserves the old null-status failure code');
 assert.equal(terminated.held, false);
 
+// Fake elapsed time: even a child that exceeds the entire batch budget keeps
+// exclusive ownership until it has completed. Subsequent files rejoin FIFO,
+// with exact coverage/order and no reset of failure behavior.
+const fair = fixture();
+let clockMs = 0;
+const fairRunFile = fair.options.runFile;
+fair.options.now = () => clockMs;
+fair.options.maxLeaseBatchMs = 45_000;
+fair.options.runFile = async (file) => {
+  const result = await fairRunFile(file);
+  clockMs += file === 'long-child' ? 120_000 : 30_000;
+  assert.equal(fair.held, file !== 'browser', 'never release a live child mid-file');
+  return result;
+};
+assert.equal(await runSelftestSuite('fair', ['a', 'b', 'long-child', 'c', 'browser', 'd'], fair.options), 0);
+assert.deepEqual(fair.events, ['[selftests] fair: 6 files', 'acquire', 'a', 'b',
+  'release', 'acquire', 'long-child', 'release', 'acquire', 'c',
+  'release', 'browser', 'acquire', 'd', '[selftests] PASS fair', 'release']);
+const boundaryFail = fixture({ failAt: 'b' });
+let failureClock = 0;
+const failureRunFile = boundaryFail.options.runFile;
+boundaryFail.options.now = () => failureClock;
+boundaryFail.options.runFile = async (file) => { const result = await failureRunFile(file); failureClock += 45_000; return result; };
+assert.equal(await runSelftestSuite('boundary-fail', ['a', 'b', 'never'], boundaryFail.options), 7);
+assert.equal(boundaryFail.events.includes('never'), false);
+assert.equal(boundaryFail.events.filter(event => event === 'acquire').length, 2);
+assert.equal(boundaryFail.held, false);
+for (const budget of [0, -1, NaN, Infinity]) {
+  const invalidBudget = fixture();
+  await assert.rejects(runSelftestSuite('invalid-budget', ['never'], { ...invalidBudget.options, maxLeaseBatchMs: budget }), /finite and positive/);
+  assert.equal(invalidBudget.events.length, 0, 'invalid scheduling options cannot acquire or run');
+}
+
 for (const signal of ['SIGINT', 'SIGTERM']) {
   const signals = new EventEmitter(), child = new EventEmitter(), kills = [];
   child.kill = (value) => { kills.push(value); return true; };
@@ -115,4 +148,4 @@ const invalid = spawnSync(process.execPath, ['tools/run-selftests.mjs', 'missing
 assert.equal(invalid.status, 2);
 assert.match(invalid.stderr, /Unknown self-test suite/);
 assert.equal(invalid.stdout, '', 'unknown suites do not acquire resources or launch checks');
-console.log('run-selftests: contiguous FIFO leases, nonnested browser ownership, refresh, order and failure/signal cleanup pass');
+console.log('run-selftests: bounded FIFO batches, nonnested browser ownership, refresh, exact order and failure/signal cleanup pass');
