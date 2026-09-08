@@ -894,3 +894,90 @@ The runner makes no frame-budget assertion. These results do not certify stable
 60 Hz, larger rooms, long sessions, separate devices, distant networks or relays;
 historical combat stalls remain unresolved. Only the approved multiplayer source,
 tests and this report were pushed; local QA artifacts and vehicle work were excluded.
+
+### Joined-room intent and redundant FX compilation
+
+The next baseline (`shader-cohort-baseline-timings-visual`, `ed7054141` plus
+numeric-only diagnostics) passed the native two-client entry/return scenario.
+It added 81 scene programs per peer. Host/guest KHR query totals were
+162.0/312.6 ms, all measured while querying programs already resident before
+scene preparation; single calls reached 110.8/227.2 ms. The subsequent 81 new
+program queries per peer measured 0 ms at the available clock resolution.
+
+This is **call-site timing, not GPU compilation-cost attribution**. Three adds
+programs to its cache immediately after linking is submitted; membership does
+not prove readiness. Existing programs are queried first, so an earlier query
+may absorb command-queue or driver work associated with newer programs. Other
+rendering between preparation yields can also add programs to the new cohort.
+Neither the zero-duration measurements nor the old/new split justifies skipping
+readiness checks. The 24-yield bound limits pending retries, not the duration
+of an individual native call or a scan of already-ready programs.
+
+The scoped follow-up addresses two source-proven costs without changing those
+readiness gates:
+
+- An already-joined, waiting room with a fixed map now uses the existing
+  `{ intent: true }` prefetch path. Previously it waited for 1,200 ms of Garage
+  inactivity and used the lower-priority background lane. It still uses fine
+  construction slices, cooperative background yields, bounded residency,
+  stale-map cancellation and hidden cache completion. No passive Garage or
+  random-map construction was added. This improves overlap during room dwell;
+  it does not remove construction work or promise savings on immediate launch.
+- Opening FX no longer subtree-compiles its scene-attached root immediately
+  before the mandatory compositor warm draw. Pinned Three 0.185.1 collects
+  lights from both the target scene and a distinct compile root, counting the
+  FX root's two PointLights twice and requesting an unnecessary `N+2` variant.
+  Whole-scene submission, lazy armor-scar compilation, the exact opaque/late-FX
+  compositor draw, pooled staging/reset and visibility/layer restoration remain.
+  Watchdog, final-camera reveal, awaited loader fade and all-peer READY/countdown
+  ordering are unchanged.
+
+Both behavior changes have red-first regressions. The real FX fixture reproduces
+the duplicate-light traversal and still requires the production warm draw.
+Coordinator coverage proves explicit intent bypasses inactivity while retaining
+background pacing, hidden completion and cancelled-build lease release. Numeric
+cohort diagnostics add no GL queries and remain opt-in.
+
+Baseline HIGH clear/day entry was 4,437/4,474 ms, including peer readiness;
+largest tasks were 261/313 ms. Both inspected LOW interaction screenshots show
+the battlefield, player and populated panel, with no rescue or application error.
+The separate 20-second sequential foreground samples reached 340.2/390.1 ms
+maximum frame gaps despite zero hard snaps, dropped input history, estimated
+missing snapshots or observer failures. This run has no CPU timeline attribution
+for those gaps and no frame-budget assertion; it does not establish their cause
+or resolve the historical combat-stall question.
+
+The candidate (`intent-fx-candidate-timings-visual`) passed the same native
+scenario in HIGH clear/day, with identical watchdog luminance, zero application
+errors, completed masks before activation, both visible 5→1 countdowns and
+verified room/browser/window cleanup. Both inspected interaction screenshots
+show the battlefield, vehicle and populated panel. The program increase between
+scene preparation and the watchdog fell from 28 to 14 for each peer; the watchdog
+itself added no programs (231→231 host, 193→193 guest). This supports eliminating
+redundant variants, not a claimed wall-time speedup.
+
+Candidate host/guest entry was 5,693/5,519 ms, including peer readiness, slower
+than this baseline. World/module/connect stages were 2,623.4/2,772.9 ms; scene
+compilation was 349.6/508.3 ms and FX warm was 352.4/171.8 ms. Native queries
+still reached 128.3/286.1 ms individually, and largest loading tasks were
+436/407 ms. These variable samples do not isolate the effect of room dwell or
+certify overall faster loading. The prefetch change is justified by explicit
+intent and preserved background scheduling, not by asserting this sample won.
+
+The candidate's separate LOW 20-second sequential foreground samples reported
+p50/p95/p99/max frame gaps of 22.3/31.2/38.1/46.6 ms (host) and
+19.9/27.5/34.3/41.0 ms (guest), with zero hard snaps, dropped history, estimated
+missing snapshots and observer failures. That is not a stable-60-Hz or broad
+network certificate, nor proof that the preceding baseline's large gaps are fixed.
+
+Validation includes shader-owner tests and 19 scene-submission cases, FX staging,
+room-intent/coordinator pacing, entry/activation/barrier/abort, handoff, countdown,
+Garage return, observer and native-harness regressions. The outdated source-only
+intent assertion was updated to require the new explicit-intent call; passive
+Garage guards remain. Typecheck, production build and diff checks pass. Changed
+runtime owner metrics have no complexity/`any`/`unknown` violations; the observer's
+pre-existing cognitive-25 receipt is unchanged. React Doctor's expanded
+ten-source-file changed scan reported 88/100 and no new diagnostics; its score
+is not directly comparable to the earlier four-file 91/100 instrumentation-only
+scan. No warnings were suppressed. The previously documented unchanged full-suite
+fleet timeout remains unresolved; this is not a full `npm test` pass.

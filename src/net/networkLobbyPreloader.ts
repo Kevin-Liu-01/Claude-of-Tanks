@@ -10,7 +10,7 @@ export interface NetworkLobbyPreloaderOptions {
   ensureTankBuilders(specIds: string[]): Promise<RuntimeValue>;
   loadWorldModule(): Promise<RuntimeValue>;
   cancelBackgroundWorldBuildsExcept(mapId: string | null): void;
-  prefetchWorld(mapId: string): RuntimeValue;
+  prefetchWorld(mapId: string, options?: { intent?: boolean }): RuntimeValue;
 }
 
 export interface NetworkLobbyPreloader {
@@ -91,7 +91,7 @@ export function createNetworkLobbyPreloader({
       mapIntentInitialized = true;
       requestedMapId = nextMapId;
       cancelBackgroundWorldBuildsExcept(nextMapId);
-      if (nextMapId) prefetchWorld(nextMapId);
+      if (nextMapId) prefetchWorld(nextMapId, { intent: true });
     }
     return true;
   };
