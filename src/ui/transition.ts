@@ -28,6 +28,7 @@ import {
   randomFeaturedShot,
 } from './featuredShots.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
+import { t } from './i18n.ts';
 
 const FADE_IN_MS = 190;
 const FADE_OUT_MS = 140;
@@ -191,7 +192,7 @@ export function createTransition(): TransitionScreen {
       titleEl.textContent = o.title || '';
       subEl.textContent = o.sub || '';
       meterEl.classList.toggle('off', o.progress === false);
-      api.progress(0, 'Loading');
+      api.progress(0, t('transition.stage.loading'));
       const shot = o.hero
         ? FEATURED_SHOTS.find((entry) => entry.img === o.hero) || { img: o.hero, focal: 'center' }
         : o.mapId ? featuredShotForMap(o.mapId) : randomFeaturedShot();
@@ -270,7 +271,7 @@ export function createTransition(): TransitionScreen {
       let result!: Result;
       try {
         result = await work(api.progress);
-        api.progress(1, 'Ready');
+        api.progress(1, t('transition.stage.ready'));
         if (warmAfterWork) preloadImage(warmAfterWork, { priority: 'low' });
       } finally {
         const dwell = (o.minShowMs != null ? o.minShowMs : 800) -

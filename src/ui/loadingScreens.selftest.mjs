@@ -11,7 +11,7 @@ import {
 } from './featuredShots.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
-import { getMapName } from '../world/maps/catalog.ts';
+import { getLocalizedMapName } from '../world/maps/catalog.ts';
 
 function webpDimensions(buffer) {
   assert.equal(buffer.subarray(0, 4).toString(), 'RIFF', 'map image must be RIFF WebP');
@@ -138,7 +138,7 @@ for (const id of approved) {
 }
 
 for (const shot of FEATURED_SHOTS) {
-  assert.ok(shot.cap && shot.focal, `missing loading-screen metadata for ${shot.img}`);
+  assert.ok(shot.capKey && shot.focal, `missing loading-screen metadata for ${shot.img}`);
   const asset = fileURLToPath(new URL(`../../public${shot.img}`, import.meta.url));
   assert.ok((await stat(asset)).size > 50_000, `featured capture is missing or undersized: ${shot.img}`);
 }
@@ -154,7 +154,8 @@ for (const mapId of Object.keys(MAP_THUMBS)) {
   if (!TRANSITION_SHOTS.some((entry) => entry.maps?.includes(mapId))) {
     assert.equal(shot.img, MAP_HEROES[mapId],
       `${mapId}: without a curated action still use its exact native 4K overview`);
-    assert.equal(shot.cap, `${getMapName(mapId)} — battlefield overview`);
+    assert.equal(shot.capKey, 'garage.featuredShot.battlefieldOverview');
+    assert.deepEqual(shot.capVars, { name: getLocalizedMapName(mapId) });
     assert.deepEqual(shot.maps, [mapId], 'an overview only depicts its own battlefield');
   }
 }
@@ -469,7 +470,7 @@ assert.ok(cameraPrepareAt >= 0 && revealPrimeAt > cameraPrepareAt &&
   loaderFadeAt > revealPrimeAt && battleOpenAt > loaderFadeAt,
   'solo battle entry must lock the chase camera and paint it before the roster loader fades');
 assert.match(mainFrameSource,
-  /post\.render\(dtSeconds\);[\s\S]{0,320}if \(game\.phase === 'garage'\) clearGaragePresentationDirty\(\);\s*if \(frame\.inBattle\) battleEntryLifecycle\.noteBattleFrame\(\);/,
+  /post\.render\(dtSeconds,\s*frameWallDtSeconds\);[\s\S]{0,320}if \(game\.phase === 'garage'\) clearGaragePresentationDirty\(\);\s*if \(frame\.inBattle\) battleEntryLifecycle\.noteBattleFrame\(\);/,
   'the reveal barrier must advance only after a real battle frame is rendered');
 assert.match(battleEntryLifecycleSource,
   /noteBattleFrame\(\) \{ presentedBattleFrameSerial \+= 1; \}[\s\S]*firstRequiredSerial = presentedBattleFrameSerial \+ 1/,

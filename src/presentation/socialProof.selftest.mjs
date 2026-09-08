@@ -11,8 +11,9 @@ assert.match(home, /<header class="v5-hero">[\s\S]*?<\/header>\s*<section class=
   'social proof must be the first landing-page section after the hero');
 assert.match(home, /Public engagement snapshot captured August 31, 2026/,
   'static platform counts must disclose their capture date');
-assert.match(home, /<h2 id="social-proof-title"><span>Featured by <em>Three\.js<\/em><\/span><span>Shared across the web<\/span><\/h2>/,
-  'social-proof headline must preserve the authored two-line lockup');
+assert.match(home,
+  /<h2 id="social-proof-title"><span[^>]*data-i18n-html="home\.social\.kicker"[^>]*>Featured by <em>Three\.js<\/em><\/span><span[^>]*data-i18n="home\.social\.title"[^>]*>Shared across the web<\/span><\/h2>/,
+  'social-proof headline must preserve its authored two-line lockup and localization bindings');
 assert.ok(!home.includes('Community signal // August 2026'),
   'the retired social-proof eyebrow must stay absent');
 assert.match(home, /<div class="v5-social-proof__platforms" aria-hidden="true"><span class="v5-social-platform-icon v5-social-platform-icon--x"><\/span><span class="v5-social-platform-icon v5-social-platform-icon--reddit"><\/span><\/div>/,

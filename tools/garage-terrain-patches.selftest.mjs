@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const result = spawnSync(process.execPath, [
-  new URL('./generate-garage-terrain-patches.mjs', import.meta.url).pathname,
+  fileURLToPath(new URL('./generate-garage-terrain-patches.mjs', import.meta.url)),
   '--check',
 ], {
-  cwd: new URL('..', import.meta.url).pathname,
+  cwd: fileURLToPath(new URL('..', import.meta.url)),
   encoding: 'utf8',
 });
 

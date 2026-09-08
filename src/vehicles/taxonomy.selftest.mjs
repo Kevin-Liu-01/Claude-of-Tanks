@@ -8,6 +8,7 @@ import {
   isVehicleRole,
   vehicleEraForId,
   vehicleEraLabel,
+  vehicleEraLabelI18n,
 } from './taxonomy.ts';
 
 const counts = new Map(VEHICLE_ERA_ORDER.map((era) => [era, 0]));
@@ -30,5 +31,7 @@ assert.equal(TANK_SPECS.m60a1.era, VEHICLE_ERAS.COLD_WAR);
 assert.equal(TANK_SPECS.challenger2.era, VEHICLE_ERAS.MODERN);
 assert.equal(TANK_SPECS.abramsx.era, VEHICLE_ERAS.NEXT_GENERATION);
 assert.equal(vehicleEraLabel(VEHICLE_ERAS.WORLD_WAR_II, { short: true }), 'WWII');
+assert.equal(vehicleEraLabelI18n(VEHICLE_ERAS.INTERWAR, (key) => key), 'garage.era.interwar',
+  'localized taxonomy keeps Interwar distinct from World War II');
 
 console.log(`taxonomy.selftest: ${SAVED_TANK_IDS.length} saved vehicles across ${counts.size} canonical eras`);
