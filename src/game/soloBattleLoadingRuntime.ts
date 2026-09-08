@@ -3,6 +3,7 @@ import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { AudioMixer } from '../audio/audio.ts';
 import { gameModeDefinition, normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
+import { t } from '../ui/i18n.ts';
 import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
 import type { MaterialTankSpec } from '../vehicles/materials.ts';
 import type { WorldRuntime } from '../world/map.ts';
@@ -158,11 +159,13 @@ export interface SoloBattleLoadingStartOptions {
 }
 
 function loadingModeLabel(gameMode: string, requestedMapId: string | null): string {
-  const battlefield = requestedMapId === 'random' ? 'Any Battlefield' : 'Selected Battlefield';
+  const battlefield = requestedMapId === 'random'
+    ? t('battleLoad.battlefieldAny')
+    : t('battleLoad.battlefieldSelected');
   if (gameMode === 'standard') {
     return requestedMapId === 'random'
-      ? 'Random Battle · Any Battlefield'
-      : 'Random Battle · Standard';
+      ? `${t('battleLoad.randomAnyBattlefield')}`
+      : `${t('battleLoad.randomStandard')}`;
   }
   return `${gameModeDefinition(gameMode).label} · ${battlefield}`;
 }

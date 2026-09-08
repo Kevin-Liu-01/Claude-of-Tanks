@@ -98,6 +98,7 @@ import type { ReplayFlightTimeline, ReplayPose, ReplayPoseState } from './replay
 import type { ArmorEnvelope, CrewBox, ModuleBox } from '../vehicles/specHelpers.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { WorldRayHit } from '../world/map.ts';
+import { t } from '../ui/i18n.ts';
 
 type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
@@ -1422,13 +1423,13 @@ export function createKillCam(deps: KillcamDeps) {
     const skipIcon = el('span', 'ico', skip);
     skipIcon.innerHTML = uiIconSVG('chevronRight', 10);
     const skipKey = el('kbd', '', skip);
-    skipKey.textContent = 'ANY KEY';
+    skipKey.textContent = t('killcam.anyKey');
     const skipText = el('span', '', skip);
-    skipText.textContent = 'Skip replay';
+    skipText.textContent = t('killcam.skipReplay');
     const annot = el('div', 'cot-kc-annot', root);
     const hd = el('div', 'hd', annot);
     const hdMeta = el('div', 'm', hd);
-    hdMeta.innerHTML = `${uiIconSVG('battleRecord', 10)}<span>Ballistic analysis</span>`;
+    hdMeta.innerHTML = `${uiIconSVG('battleRecord', 10)}<span>${t('killcam.ballisticAnalysis')}</span>`;
     const shellRow = el('div', 'shellrow', hd);
     const shellIcon = el('span', 'ico', shellRow);
     shellIcon.innerHTML = uiIconSVG('shell', 12);
@@ -1436,10 +1437,10 @@ export function createKillCam(deps: KillcamDeps) {
     const hdW = el('div', 'w', hd);
     const rows = el('div', 'cot-kc-rows', annot);
     const banner = el('div', 'cot-kc-banner', annot);
-    banner.innerHTML = `${uiIconSVG('ammoRack', 11)}<span>AMMO RACK DETONATION</span>`;
+    banner.innerHTML = `${uiIconSVG('ammoRack', 11)}<span>${t('killcam.ammoRackDetonation')}</span>`;
     // killer card (death view only — populated per replay in beginXray)
     const killer = el('div', 'cot-kc-killer', root);
-    killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>Destroyed by</span></div>` +
+    killer.innerHTML = `<div class="kk">${uiIconSVG('skull', 10)}<span>${t('killcam.destroyedByHeading')}</span></div>` +
       '<div class="nm"><span class="sil"></span><span class="t"><span class="n"></span><i class="v"></i></span></div>' +
       '<div class="rows"></div>';
     const sil = killer.querySelector<HTMLElement>('.sil');
@@ -2264,14 +2265,14 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   const replayStatIcons: Readonly<Record<string, string>> = {
-    Distance: 'scope',
-    'Impact angle': 'turretRing',
-    Armor: 'shield',
-    Damage: 'damage',
-    Pen: 'penetration',
-    Zone: 'autoAim',
-    'Closing speed': 'speed',
-    'Failed modules': 'repair',
+    [t('killcam.stat.distance')]: 'scope',
+    [t('killcam.stat.impactAngle')]: 'turretRing',
+    [t('killcam.stat.armor')]: 'shield',
+    [t('killcam.stat.damage')]: 'damage',
+    [t('killcam.stat.pen')]: 'penetration',
+    [t('killcam.stat.zone')]: 'autoAim',
+    [t('killcam.stat.closingSpeed')]: 'speed',
+    [t('killcam.stat.failedModules')]: 'repair',
   };
 
   function appendReplayStat(
@@ -2295,7 +2296,7 @@ export function createKillCam(deps: KillcamDeps) {
     }
     const external = !!event.zone
       && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(event.zone);
-    return external ? 'external — no armor' : '—';
+    return external ? t('killcam.externalNoArmor') : '—';
   }
 
   function penetrationQualifier(
@@ -2304,10 +2305,10 @@ export function createKillCam(deps: KillcamDeps) {
     residual: number,
     nominal: number,
   ): string {
-    if (event.eraPlate) return 'ERA';
+    if (event.eraPlate) return t('killcam.era');
     const belowRollFloor = nominal > 0 && residual < nominal * 0.75 - 2;
     return residual > 0 && (fresh > residual + 1 || belowRollFloor)
-      ? 'SCREENS'
+      ? t('killcam.screens')
       : '';
   }
 
@@ -2317,8 +2318,8 @@ export function createKillCam(deps: KillcamDeps) {
     residual: number,
     nominal: number,
   ): string {
-    if (cut) return `fresh → after ${qualifier === 'ERA' ? 'ERA' : 'screens'} / nominal`;
-    return residual > 0 && nominal > 0 ? 'roll / nominal' : '';
+    if (cut) return t('killcam.legend.fresh', { tag: qualifier });
+    return residual > 0 && nominal > 0 ? t('killcam.legend.roll') : '';
   }
 
   function appendPenetrationQualifier(
@@ -2329,7 +2330,8 @@ export function createKillCam(deps: KillcamDeps) {
     if (!qualifier || !output) return;
     const chip = el('span', 'q', output);
     chip.textContent = qualifier;
-    chip.style.color = qualifier === 'ERA' ? '#ffb43c' : '#9fb0bf';
+    const isEra = t('killcam.era') === qualifier;
+    chip.style.color = isEra ? '#ffb43c' : '#9fb0bf';
   }
 
   function appendPenetrationStat(d: KillcamDom, event: KillcamHitEvent): void {
@@ -2341,48 +2343,51 @@ export function createKillCam(deps: KillcamDeps) {
     const value = residual > 0
       ? `${cut ? `${fresh} → ` : ''}${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
       : '—';
-    const row = appendReplayStat(d, 'Pen', value, true);
+    const row = appendReplayStat(d, t('killcam.stat.pen'), value, true);
     row.classList.add('pen');
     appendPenetrationQualifier(row, qualifier);
     const legend = penetrationLegend(cut, qualifier, residual, nominal);
     row.title = legend
-      ? `Penetration (mm): ${legend}`
-      : 'Penetration roll at impact';
+      ? t('killcam.penTitle', { legend })
+      : t('killcam.penTitleRoll');
     if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;
   }
 
   function populateBallisticStats(d: KillcamDom, event: KillcamHitEvent): void {
     const meta = d.hdMeta.querySelector('span');
-    if (meta) meta.textContent = 'Ballistic analysis';
-    appendReplayStat(d, 'Distance', `${Math.round(event.flightDistM || 0)} m`);
-    appendReplayStat(d, 'Impact angle', `${Math.round(event.impactAngleDeg || 0)}°`);
-    appendReplayStat(d, 'Armor', replayArmorText(event));
-    appendReplayStat(d, 'Damage', `${Math.round(event.damage || 0)}`);
+    if (meta) meta.textContent = t('killcam.ballisticAnalysis');
+    appendReplayStat(d, t('killcam.stat.distance'), `${Math.round(event.flightDistM || 0)} m`);
+    appendReplayStat(d, t('killcam.stat.impactAngle'), `${Math.round(event.impactAngleDeg || 0)}°`);
+    appendReplayStat(d, t('killcam.stat.armor'), replayArmorText(event));
+    appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
     appendPenetrationStat(d, event);
-    appendReplayStat(d, 'Zone', zoneLabel(event.zone), true);
+    appendReplayStat(d, t('killcam.stat.zone'), zoneLabel(event.zone), true);
   }
 
   function populateCollisionStats(d: KillcamDom, event: KillcamHitEvent): void {
     const meta = d.hdMeta.querySelector('span');
-    if (meta) meta.textContent = 'Collision analysis';
-    d.hdK.textContent = 'HULL IMPACT';
-    appendReplayStat(d, 'Closing speed', `${Math.round((event.closingMps || 0) * 3.6)} km/h`);
-    appendReplayStat(d, 'Damage', `${Math.round(event.damage || 0)}`);
-    appendReplayStat(d, 'Failed modules', `${(event.modulesHit || []).length}`, true);
+    if (meta) meta.textContent = t('killcam.collisionAnalysis');
+    d.hdK.textContent = t('killcam.hullImpact');
+    appendReplayStat(d, t('killcam.stat.closingSpeed'), `${Math.round((event.closingMps || 0) * 3.6)} km/h`);
+    appendReplayStat(d, t('killcam.stat.damage'), `${Math.round(event.damage || 0)}`);
+    appendReplayStat(d, t('killcam.stat.failedModules'), `${(event.modulesHit || []).length}`, true);
   }
 
   function populateReplayDom(d: KillcamDom, playerKill: boolean): void {
     const event = pb.snap.ev;
-    d.titleT.textContent = playerKill ? 'FINAL BLOW' : 'KILL CAM';
+    d.titleT.textContent = playerKill ? t('killcam.finalBlow') : t('killcam.killCam');
     d.titleS.textContent = pb.replayKind === 'collision'
-      ? (playerKill ? `${event.targetName || 'enemy'} rammed` : `rammed by ${event.attackerName || 'enemy'}`)
-      : (playerKill ? `${event.targetName || 'enemy'} destroyed`
-        : `destroyed by ${event.attackerName || 'enemy fire'}`);
+      ? (playerKill
+        ? t('killcam.rammedTarget', { name: event.targetName || t('killcam.enemy') })
+        : t('killcam.rammedBy', { name: event.attackerName || t('killcam.enemy') }))
+      : (playerKill
+        ? t('killcam.destroyedTarget', { name: event.targetName || t('killcam.enemy') })
+        : t('killcam.destroyedByLine', { name: event.attackerName || t('killcam.enemyFire') }));
     const shellName = shellDisplayName(event);
     d.hdK.textContent = shellName
       ? `${event.shellType || ''} · ${shellName}`
       : (event.shellType || '');
-    d.hdW.textContent = `${event.attackerName || 'Enemy'} → ${event.targetName || ''}`;
+    d.hdW.textContent = `${event.attackerName || t('killcam.enemy')} → ${event.targetName || ''}`;
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);
@@ -4885,17 +4890,17 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function populateCollisionKillerStats(d: KillcamDom, event: KillcamHitEvent): void {
-    appendKillerStat(d, 'Cause', 'Hull collision', 'w', 'damage');
+    appendKillerStat(d, t('killcam.stat.cause'), t('killcam.hullCollision'), 'w', 'damage');
     appendKillerStat(
       d,
-      'Damage',
+      t('killcam.stat.damage'),
       (event.damage || 0) > 0 ? `−${Math.round(event.damage || 0)}` : '0',
       'dmg',
       'damage',
     );
     appendKillerStat(
       d,
-      'Closing speed',
+      t('killcam.stat.closingSpeed'),
       `${Math.round((event.closingMps || 0) * 3.6)} km/h`,
       '',
       'speed',
@@ -4905,10 +4910,10 @@ export function createKillCam(deps: KillcamDeps) {
   function populateProjectileKillerStats(d: KillcamDom, event: KillcamHitEvent): void {
     const shellName = shellDisplayName(event);
     const shell = `${event.shellType || ''}${shellName ? ` ${shellName}` : ''}`.trim() || '—';
-    appendKillerStat(d, 'Shell', shell, 'w', 'shell');
+    appendKillerStat(d, t('killcam.stat.shell'), shell, 'w', 'shell');
     appendKillerStat(
       d,
-      'Damage',
+      t('killcam.stat.damage'),
       (event.damage || 0) > 0 ? `−${Math.round(event.damage || 0)}` : '0',
       'dmg',
       'damage',
@@ -4933,11 +4938,11 @@ export function createKillCam(deps: KillcamDeps) {
     } catch (_) {
       vehicleSpec = null;
     }
-    const killerName = event.attackerName || vehicleSpec?.name || 'Enemy';
+    const killerName = event.attackerName || vehicleSpec?.name || t('killcam.enemy');
     d.killer.name.textContent = killerName;
     const vehicleBits: string[] = [];
     const tier = event.attackerSpecId ? tierNumeral(event.attackerSpecId) : '';
-    if (tier) vehicleBits.push(`Tier ${tier}`);
+    if (tier) vehicleBits.push(t('killcam.tier', { tier }));
     if (vehicleSpec && !killerName.toLowerCase().includes(vehicleSpec.name.toLowerCase())) {
       vehicleBits.push(vehicleSpec.name);
     }
@@ -5045,12 +5050,12 @@ export function createKillCam(deps: KillcamDeps) {
     icon.innerHTML = uiIconSVG(killcamLabelIcon(key), 9);
     const copy = el('span', 'copy', label);
     el('span', 'main', copy).textContent = text;
-    el('span', 's', copy).textContent = ' · near miss';
+    el('span', 's', copy).textContent = t('killcam.nearMiss');
     pushXrayLabel(label, world, key, { micro: true });
   }
 
   const xrayModuleStateWords: Readonly<Record<ModuleStateName, string>> = {
-    red: 'DESTROYED', yellow: 'DAMAGED', ok: 'HIT',
+    red: t('killcam.xray.destroyed'), yellow: t('killcam.xray.damaged'), ok: t('killcam.xray.hit'),
   };
   const xrayModuleStateColors: Readonly<Record<ModuleStateName, string>> = {
     red: '#ff5a4a', yellow: '#ffb43c', ok: '#8a97a3',
@@ -5059,7 +5064,7 @@ export function createKillCam(deps: KillcamDeps) {
     ok: 0, yellow: 1, red: 2,
   };
   const xrayMicroLabels: Readonly<Record<string, string>> = {
-    ammoRack: 'AMMO', engine: 'ENGINE', fuelTank: 'FUEL',
+    ammoRack: t('killcam.xray.ammo'), engine: t('killcam.xray.engine'), fuelTank: t('killcam.xray.fuel'),
   };
 
   function mergeXrayModuleHits(event: KillcamHitEvent): Map<string, ModuleHit> {
@@ -5112,7 +5117,7 @@ export function createKillCam(deps: KillcamDeps) {
       anchor.getWorldPosition(_p);
       addXrayLabel(
         d, _p, '#ff7d8a', KC_CREW_LABELS[crewId] || crewId,
-        'KNOCKED OUT', false, false, `c:${crewId}`,
+        t('killcam.knockedOut'), false, false, `c:${crewId}`,
       );
     }
   }

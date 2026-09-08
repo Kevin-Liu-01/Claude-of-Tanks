@@ -4,6 +4,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
+import { t } from './i18n.ts';
 
 export interface HitEventPresentation {
   readonly kind?: string;
@@ -89,17 +90,47 @@ const HIT_OUTCOMES = {
   },
 } as const satisfies Readonly<Record<HitOutcomeId, HitOutcomePresentation>>;
 
+// Translated label cache per outcome id. The canonical English strings remain
+// the fallback when the catalog lookup misses (i18n.selftest verifies parity).
+const HIT_OUTCOME_LABEL_KEYS: Readonly<Record<HitOutcomeId, string>> = Object.freeze({
+  penetration: 'hud.hitOutcome.penetration',
+  ricochet: 'hud.hitOutcome.ricochet',
+  blocked: 'hud.hitOutcome.blocked',
+  era_absorbed: 'hud.hitOutcome.era_absorbed',
+  spaced_absorbed: 'hud.hitOutcome.spaced_absorbed',
+  passed_through: 'hud.hitOutcome.passed_through',
+  splash: 'hud.hitOutcome.splash',
+  no_damage: 'hud.hitOutcome.no_damage',
+  module_hit: 'hud.hitOutcome.module_hit',
+});
+
+/** Resolve the localized label for one outcome id. */
+export function hitOutcomeLabel(id: HitOutcomeId): string {
+  return t(HIT_OUTCOME_LABEL_KEYS[id] || 'hud.hitOutcome.no_damage');
+}
+
 /**
  * Canonical presentation for a resolved shell-hit event. HUD, shot reports,
  * incoming-fire cards, and the kill cam all consume this one vocabulary so a
  * ricochet cannot become RICOCHET in one surface and NO PENETRATION in another.
+ * The `label` field is localized at this boundary so every consumer inherits
+ * the translation without each panel re-resolving the key.
  */
-export function hitOutcomeFor(ev: HitEventPresentation): HitOutcomePresentation {
+export function hitOutcomeFor(ev: HitEventPresentation): HitOutcomePresentation & { label: string } {
   const damage = Number.isFinite(ev.damage) ? Math.max(0, ev.damage || 0) : 0;
   const componentHits = (ev.modulesHit?.length || 0) + (ev.crewHit?.length || 0);
   // A shell can destroy a track, optic, gun, or crew member without removing
   // hull HP. Preserve that tactically important result instead of flattening
   // it into PENETRATION or NO DAMAGE.
+  const base = resolveHitOutcome(ev, damage, componentHits);
+  return { ...base, label: hitOutcomeLabel(base.id) };
+}
+
+function resolveHitOutcome(
+  ev: HitEventPresentation,
+  damage: number,
+  componentHits: number,
+): HitOutcomePresentation {
   if (damage <= 0 && componentHits > 0) return HIT_OUTCOMES.module_hit;
   if (ev.kind === 'pen' || ev.kind === 'he_pen') return HIT_OUTCOMES.penetration;
   if (ev.kind === 'ricochet') return HIT_OUTCOMES.ricochet;

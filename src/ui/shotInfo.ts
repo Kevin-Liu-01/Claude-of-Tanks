@@ -46,6 +46,7 @@ import {
   type EndScreenTeamRow,
 } from './endScreen.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import { t } from './i18n.ts';
 
 type EntityId = string;
 type TeamSide = 'ally' | 'enemy' | null;
@@ -792,7 +793,7 @@ function appendShotCardHeader(
   const header = el('div', 'cot-si-hd', card);
   const state = el('div', 'cot-si-state', header);
   const kicker = el('span', 'cot-si-kicker', state);
-  kicker.innerHTML = `${GLYPH.ballistic}<span>Ballistic readout</span>`;
+  kicker.innerHTML = `${GLYPH.ballistic}<span>${t('shotInfo.kicker')}</span>`;
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
@@ -1262,8 +1263,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function renderLog(): void {
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
-    sec1.innerHTML = `<span>Your shots</span><span>last ${shotLog.length}</span>`;
-    if (!shotLog.length) el('div', 'cot-si-empty', logPanel).textContent = 'No shots connected yet.';
+    sec1.innerHTML = `<span>${t('shotInfo.yourShots')}</span><span>${t('shotInfo.yourShotsLast', { n: shotLog.length })}</span>`;
+    if (!shotLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyShots');
     for (const it of shotLog) {
       const r = el('div', 'cot-si-lrow', logPanel);
       r.innerHTML =
@@ -1274,8 +1275,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
     const sec2 = el('div', 'sec', logPanel);
-    sec2.innerHTML = `<span>Damage received</span><span>−${Math.round(total)}</span>`;
-    if (!receivedLog.length) el('div', 'cot-si-empty', logPanel).textContent = 'Nothing received.';
+    sec2.innerHTML = `<span>${t('shotInfo.damageReceived')}</span><span>${t('shotInfo.damageAmount', { amount: Math.round(total) })}</span>`;
+    if (!receivedLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyReceived');
     for (let i = receivedLog.length - 1; i >= 0; i--) {
       const e = receivedLog[i];
       const r = el('div', 'cot-si-lrow', logPanel);

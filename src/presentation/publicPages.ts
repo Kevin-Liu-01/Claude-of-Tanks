@@ -1,4 +1,6 @@
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { t } from '../ui/i18n.ts';
+import '../ui/i18nCatalog.ts';
 
 const responsiveLayout = installResponsiveLayout();
 const isCompactSurface = (): boolean => {
@@ -251,8 +253,9 @@ function mountViewportVideo(video: HTMLVideoElement): void {
     control = document.createElement('button');
     control.type = 'button';
     control.className = 'v5-video-control';
-    control.textContent = 'Play video';
-    control.setAttribute('aria-label', `Play ${video.dataset.label || 'video'}`);
+    control.textContent = t('publicPages.video.playButton');
+    const videoLabel = video.dataset.label || 'video';
+    control.setAttribute('aria-label', t('publicPages.video.playAria', { label: videoLabel }));
     control.addEventListener('click', () => {
       loadSource();
       video.play().then(() => setControlVisible(false)).catch(() => setControlVisible(true));

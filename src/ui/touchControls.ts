@@ -4,6 +4,7 @@
 
 import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { t } from './i18n.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,
@@ -378,27 +379,27 @@ export function createTouchControls({
   const root = document.createElement('div');
   root.className = 'cot-touch';
   root.setAttribute('role', 'group');
-  root.setAttribute('aria-label', 'Mobile battle controls');
+  root.setAttribute('aria-label', t('touch.rootAria'));
   const aimLayer = document.createElement('div');
   aimLayer.className = 'cot-touch-aim';
   aimLayer.setAttribute('role', 'group');
-  aimLayer.setAttribute('aria-label', 'Mobile aiming surface');
-  aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="Swipe to aim"></div>` +
-    `<div class="aimhint">Swipe to aim</div>`;
-  root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="Battle options">` +
-    `<button class="quick sound" type="button" aria-label="Mute sound">${SOUND}<span class="ql">Sound</span></button>` +
-    `<button class="quick graphics" type="button" aria-label="Change graphics quality">${GRAPHICS}<span class="ql">GFX</span></button>` +
-    `<button class="quick settings" type="button" aria-label="Open settings">${SETTINGS}<span class="ql">Settings</span></button></div>` +
+  aimLayer.setAttribute('aria-label', t('touch.aimAria'));
+  aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>` +
+    `<div class="aimhint">${t('touch.aimHint')}</div>`;
+  root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="${t('touch.toolbar')}">` +
+    `<button class="quick sound" type="button" aria-label="${t('touch.mute')}">${SOUND}<span class="ql">${t('touch.sound')}</span></button>` +
+    `<button class="quick graphics" type="button" aria-label="${t('touch.gfxAria')}">${GRAPHICS}<span class="ql">${t('touch.gfx')}</span></button>` +
+    `<button class="quick settings" type="button" aria-label="${t('touch.settingsAria')}">${SETTINGS}<span class="ql">${t('touch.settings')}</span></button></div>` +
     // One triangle glyph (U+25B2, text presentation on
     // every platform) rotated per direction — U+25C0/U+25B6 carry DEFAULT
     // EMOJI PRESENTATION on iOS, so the left/right arrows rendered as blue
     // emoji buttons next to the clean text up/down triangles.
-    `<div class="joy" role="group" aria-label="Movement joystick"><span class="arrow u">&#9650;</span><span class="arrow d">&#9650;</span>` +
+    `<div class="joy" role="group" aria-label="${t('touch.joystick')}"><span class="arrow u">&#9650;</span><span class="arrow d">&#9650;</span>` +
     `<span class="arrow l">&#9650;</span><span class="arrow r">&#9650;</span><div class="knob"></div></div>` +
-    `<button class="round fire alt" type="button" aria-label="Fire gun left">${SHELL}<span class="lb">Fire</span></button>` +
-    `<button class="round autoaim" type="button" aria-label="Toggle auto-aim" aria-pressed="false">${AUTO_AIM}<span class="lb">Auto Aim</span></button>` +
-    `<button class="round scope" type="button" aria-label="Toggle sniper mode">${SCOPE}<span class="lb">Scope</span></button>` +
-    `<button class="round fire" type="button" aria-label="Fire gun">${SHELL}<span class="lb">Fire</span></button>` +
+    `<button class="round fire alt" type="button" aria-label="${t('touch.fireLeftAria')}">${SHELL}<span class="lb">${t('touch.fire')}</span></button>` +
+    `<button class="round autoaim" type="button" aria-label="${t('touch.autoAimAria')}" aria-pressed="false">${AUTO_AIM}<span class="lb">${t('touch.autoAim')}</span></button>` +
+    `<button class="round scope" type="button" aria-label="${t('touch.scopeAria')}">${SCOPE}<span class="lb">${t('touch.scope')}</span></button>` +
+    `<button class="round fire" type="button" aria-label="${t('touch.fireAria')}">${SHELL}<span class="lb">${t('touch.fire')}</span></button>` +
     `<div class="fire-cancel" aria-hidden="true"><b>&times;</b></div>`;
   document.body.appendChild(aimLayer);
   document.body.appendChild(root);
@@ -583,13 +584,13 @@ export function createTouchControls({
     activeFireButton.classList.toggle('aiming', st.dragging);
     activeFireButton.classList.toggle('autofire', st.autoFiring);
     const label = activeFireButton.querySelector('.lb');
-    if (label) label.textContent = st.cancelHot ? 'Release cancels' :
-      (st.autoFiring ? 'Auto fire' : (st.active ? 'Release fires' : 'Fire'));
+    if (label) label.textContent = st.cancelHot ? t('touch.fire.cancel') :
+      (st.autoFiring ? t('touch.fire.auto') : (st.active ? t('touch.fire.releaseFires') : t('touch.fire')));
     activeFireButton.setAttribute('aria-label', st.active
-      ? (st.cancelHot ? 'Release to cancel shot' : (st.autoFiring
-        ? 'Auto fire active; drag to aim; release to stop'
-        : 'Drag to aim; release to fire; hold for auto fire'))
-      : (activeFireButton.classList.contains('alt') ? 'Fire gun left' : 'Fire gun'));
+      ? (st.cancelHot ? t('touch.fire.cancelAria') : (st.autoFiring
+        ? t('touch.fire.autoAria')
+        : t('touch.fire.dragAria')))
+      : (activeFireButton.classList.contains('alt') ? t('touch.fireLeftAria') : t('touch.fireAria')));
   }
   function parkFireCancel(button: HTMLButtonElement): void {
     const r = button.getBoundingClientRect();
@@ -648,15 +649,15 @@ export function createTouchControls({
     autoAim.classList.toggle('on', !!on);
     autoAim.setAttribute('aria-pressed', on ? 'true' : 'false');
     const label = autoAim.querySelector('.lb');
-    if (label) label.textContent = on ? 'Locked' : 'Auto Aim';
+    if (label) label.textContent = on ? t('touch.autoAim.locked') : t('touch.autoAim');
   });
   const soundButton = root.querySelector<HTMLButtonElement>('.quick.sound')!;
   soundButton.addEventListener('click', (e) => {
     e.stopPropagation();
     const muted = !!onToggleSound();
     soundButton.classList.toggle('muted', muted);
-    soundButton.innerHTML = `${muted ? SOUND_OFF : SOUND}<span class="ql">${muted ? 'Muted' : 'Sound'}</span>`;
-    soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+    soundButton.innerHTML = `${muted ? SOUND_OFF : SOUND}<span class="ql">${muted ? t('touch.muted') : t('touch.sound')}</span>`;
+    soundButton.setAttribute('aria-label', muted ? t('touch.unmute') : t('touch.mute'));
     soundButton.setAttribute('aria-pressed', muted ? 'true' : 'false');
   });
   const graphicsButton = root.querySelector<HTMLButtonElement>('.quick.graphics')!;
@@ -668,11 +669,13 @@ export function createTouchControls({
   function renderGraphicsButton(): void {
     const name = graphicsChoice();
     const label = PRESETS[name]?.label || name;
-    const short = label === 'Performance' ? 'Perf' : label === 'Balanced' ? 'Bal' :
-      label === 'Quality' ? 'Qual' : label;
-    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = `GFX ${short}`;
-    graphicsButton.setAttribute('aria-label', `Graphics quality: ${label}. Tap to change level`);
-    graphicsButton.title = `Graphics: ${label}`;
+    const short = label === 'Performance' ? t('touch.gfx.perf')
+      : label === 'Balanced' ? t('touch.gfx.bal')
+        : label === 'Quality' ? t('touch.gfx.qual')
+          : label;
+    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = t('touch.gfx.label', { short });
+    graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
+    graphicsButton.title = t('touch.gfx.title', { label });
   }
   graphicsButton.addEventListener('click', (e) => {
     e.stopPropagation();
