@@ -25,15 +25,62 @@ seven-model Abrams WIP resolves:
 - Older Challenger performance targets: `fv4034`, `challenger2`, `challenger2e`,
   `ua_challenger2`, `challenger_3`, `challenger_3x`.
 
-That is 51 initial measurement targets, including the Revolution Proto control,
-not a ceiling on the owner's all-new-tanks scope. Resolve any further new or
-substantially rebuilt IDs from generation records before rollout and append
-them to the ledger; do not silently omit non-X additions.
+That was 51 initial measurement targets, including the Revolution Proto control,
+not a ceiling on the owner's all-new-tanks scope. The owner's reiterated
+2026-09-08 request includes the nine recent non-X rebuilds listed below:
+the required review now covers **59 vehicles**, with four separate controls.
+Resolve further new or substantially rebuilt IDs from generation records before
+rollout and append them to the ledger; do not silently omit non-X additions.
 `challenger_3x` is not in the 43 source-X set. Original `abramsx`, `m1a2` and
 `leclerc` are useful additional established-style controls, not authorization
 to rebuild their silhouettes. Freeze and serialize the exact registry-derived
 ID list before a run; fail on omitted IDs. Audit lower hull/chassis closure
 across the entire playable fleet, reporting unmodified legacy defects separately.
+
+### Exact required review manifest — 2026-09-08
+
+This is an acceptance manifest, not runtime opt-in or a release receipt. It
+matches the 59-ID review policy in the unfinished integrated fleet worktree.
+The seven Abrams X builds are still WIP and must not be substituted with
+original Abrams models when a clean-main registry does not contain them.
+
+| Group | Count | Required IDs |
+|---|---:|---|
+| First source-study wave | 13 | `leo2a7v_x`, `leo2a6m_x`, `leo2a4m_x`, `leo2a5_x`, `merkava4_x`, `merkava3d_x`, `k2_x`, `kf51_x`, `t90a_x`, `t90a_vladimir_x`, `t90m_x`, `t90sm_x`, `t14_x` |
+| Second source-study wave | 23 | `leo2a6_x`, `k1a1_x`, `amx30_x`, `t62mv1_x`, `t72b_1987_x`, `t80u_x`, `leclerc_x`, `leclerc_classic_x`, `chieftain_mk10_x`, `t72b3_x`, `jpz_e100_x`, `type10_x`, `type90_x`, `amx40_x`, `ariete_c1_x`, `strv122_x`, `t72b3m_x`, `challenger1_x`, `t72bu_x`, `chieftain5_x`, `t90_x`, `t90a_burlak_x`, `t90ms_x` |
+| Conventional Abrams rebuild | 7 | `m1a1_x`, `m1a1ha_x`, `m1a2_x`, `m1a2_tusk_x`, `m1a2_sepv2_x`, `m1a2_sepv3_x`, `ua_m1a1_x` |
+| Revolution | 1 | `leo2_revolution` |
+| Recent non-X rebuilds | 9 | `cv90`, `cv90_mkiv`, `type89_light_tiger`, `spz_puma_s1`, `vt4a1`, `type99a`, `ztz99a2`, `ztz99a2_prototype`, `t72m1_jaguar` |
+| Older Challenger review | 6 | `fv4034`, `challenger2`, `challenger2e`, `ua_challenger2`, `challenger_3`, `challenger_3x` |
+
+Separate controls: `leo2_revolution_proto`, `abramsx`, `m1a2`, `leclerc`.
+The 53 new/rebuilt targets do not include the six older Challengers. A 53-ID
+roller, paint or triangle receipt therefore cannot close their review.
+
+### Current evidence boundaries and immediate work
+
+- All 59 IDs have been built at HIGH and LOW in the expanded material
+  observation census. Its 118 rows establish coverage, **not material
+  correctness**. The older census missed registered `addMudguard` geometry
+  and direct service-cover meshes; those paths must be observed explicitly.
+- Burlak's eight fixed side sheets, Mk5 X's four folded skins and 22 fixed
+  panels across seven further IDs have bounded material/geometry/native
+  evidence in isolated checkpoints. This is not full-fleet finish approval.
+  Remaining fixed stock versus flexible material classifications stay open.
+- Older Challenger budget failures remain open, including excessive
+  return-roller/shoe detail and ineffective HIGH-to-LOW reduction on CR3/CR3X.
+  A cheaper primitive is rejected if its guide horns, wheel faces, continuous
+  carrier or moving shoes intersect actual stock.
+- The T-90A X fitted-gear pilot reaches approximately 71k HIGH / 50k LOW total
+  triangles while preserving road-wheel stations and outer faces, but live
+  nonflat terrain contact still fails. It is **not admitted for fleet rollout**.
+- Published construction-cost/resource-ownership checkpoints do not solve the
+  whole switch issue. Native probes still record approximately 600 ms frame
+  stalls. Continue cold/warm/revisit and real selection-path measurements.
+
+Every result must name its exact input revision, IDs, detail levels, checks
+and unresolved failures. Do not erase failed physical gates or replace a full
+release result with a collection of unrelated narrow passes.
 
 ## Urgent issues and required outcomes
 
