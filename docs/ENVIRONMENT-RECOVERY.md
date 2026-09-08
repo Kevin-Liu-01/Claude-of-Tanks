@@ -626,6 +626,44 @@ The newly requested biome-specific horizon-cluster work is isolated in
 `/Users/kevinliu/.codex/worktrees/cot-horizon-detail-20260907`, separate from
 this completed map/nighttime checkpoint and all frozen capture builds.
 
+## Published map/night checkpoint and horizon follow-up
+
+`0cc77469161e1f4cf5abd0b6d836ac2db233597a` was pushed to `origin/main` with
+the completed thirty-map/environment and nighttime-lighting integration.
+`963957d3fc86e951fc464cc22e94adb5449effd7` was subsequently pushed with the
+seeded biome-atlas factory and its native Canvas2D tests. That second commit
+does **not** connect the new atlas to live map geometry by itself.
+
+The live ridge-cluster integration is checkpointed locally at `dba1c5ce3`.
+It supplies six silhouette families with explicit recipes for all thirty
+maps, a single bounded static mesh/atlas owner per map, and reversible night
+dimming. Its frozen native candidate is
+`cot-horizon-review-r1-20260907`; the clean public build has index SHA256
+`cf1339a14bd8c461fff79f125b41cd60992fe17afe81afdcc141bbf2a0af809d`.
+The build and focused CPU/texture checks pass, but in-world art acceptance is
+still pending. These local commits are not described as shipped.
+
+The matched pre-change capture (`horizon-density-before-r1`) contains 45
+native desktop images across Verdant, Titan Gorge, Winter, Coastal and Polders.
+The Polders scope views point into sky, so they are retained as non-diagnostic
+rather than accepted as landscape proof. `55de389bf` adds a lowland-specific
+scope target without changing the other cameras and a separate explicit
+establishing-only capture mode. The first corrected Polders acquisition
+(`horizon-polders-before-r2`) failed before map capture because the Garage
+slideshow changed during its eight-frame warmup. Its incomplete report remains
+a failure; neither frozen build was changed or rebuilt to conceal it.
+
+Focused source-cache isolation, night-lamp reset mocks and horizon receipts
+were repaired in `91f751abe`, `61dd9b220` and `d62d691b8` respectively. The
+historical horizon hashes were not replaced: restoring only Polders' former
+`.50` amplitude reproduces all six original aggregate digests. Separate exact
+current `.18` receipts and mutation controls now protect the intentionally
+lowered skyline. All ninety current/baseline land buffers (thirty maps,
+three seeds) remain byte-identical. The combined focused receipt is
+`horizon-detail-verification-r1.json` under the existing evidence root.
+None of these focused passes substitutes for the open full-suite, strict
+memory, high-DPI motion or final visual gates above.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
