@@ -1045,7 +1045,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     console.error('[play-menu] failed to open', error);
   }),
   onPlayModeIntent: playSurface.preload,
-  onBattleIntent: battleIntent.preload,
+  onBattleIntent: (options) => {
+    // A retained Solo button must not start competing map/roster preparation
+    // while this player is already preparing an authoritative room.
+    if (!currentNetworkRoom()?.prepareLobby()) battleIntent.preload(options);
+  },
   onTankIntent: pedestal.preloadIntent,
   onStudioIntent: preloadStudioIntent,
   // MAP-CONFIG WIRING: every registered battlefield plus Random.
@@ -1238,7 +1242,11 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
   onMapSelect: (mapId: string) => {
     battleIntent.invalidateMapPlan();
     if (mapId !== 'random') worldRuntime.setPendingMapId(mapId);
-    cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
+    // Guests can browse locally without changing the host's room map. Keep
+    // that build alive until canonical room state accepts another map.
+    if (!currentNetworkRoom()?.prepareLobby()) {
+      cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
+    }
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the

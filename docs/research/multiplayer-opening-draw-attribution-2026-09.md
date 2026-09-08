@@ -426,3 +426,121 @@ selftest filenames. The final release changes only this document and the
 before execution after native rejection. No new runtime build or full-suite
 pass is claimed. The existing full-suite T-90M fingerprint failure remains
 outside this change.
+
+## Canonical lobby preparation and verified reveal recovery
+
+The next review found a distinct source-backed loading regression. A Not Ready
+guest can close the room overlay and browse Garage maps without changing the
+host's canonical map. The Garage callback previously cancelled background
+worlds according to that local selection. A permanent map-ID latch in
+`networkLobbyPreloader` then prevented later unchanged room packets from
+requesting the cancelled map again. The same latch also stranded failed,
+capacity-rejected, or subsequently evicted preparation. This is not evidence
+for the exact cause of the historical 214–319 ms live-frame stalls.
+
+Waiting-room intent now reasserts the canonical map through the existing world
+coordinator, which owns cache/in-flight deduplication and capacity admission.
+The room coordinator exposes the same intent boundary to Garage map browsing
+and Solo-button hovering. Both pending and retained rooms take precedence over
+local Solo preparation, including while Not Ready; only accepted host room
+state changes the prepared map. Random is a handled intent with no fixed map.
+No scene budget, build pacing, renderer quality, transport, or authority policy
+changes. A cancelled job that is still draining remains owned until settlement;
+a later waiting packet can retry, and foreground acquisition retains its
+existing drain-before-replacement behavior.
+
+Null lobby callbacks are deliberately not treated as a blanket cancellation:
+the same notification is used by successful lobby-to-match handoff. Leaving
+clears room ownership, so subsequent independent Garage/Solo activity resumes
+its ordinary policy without a stale preparation latch.
+
+The integrated regression uses the real room coordinator, lobby preloader and
+world-build coordinator with deferred map construction. Before the fix, its
+unchanged-packet retry test failed (`1 !== 2` builds). Afterward all 13 cases
+pass, including exact original in-flight Promise/world identity, duplicate
+packets, accepted map changes, Random, capacity/eviction/cancellation retry,
+leave/rejoin, retained-state priority and null handoff. Actual `main.ts`
+callbacks also have source-contract checks; no dynamic source evaluation is
+introduced. Independent review found no new authority or hot-loop regression.
+
+A second review closed an unexpected graphics-watchdog rejection escape hatch.
+The watchdog already owns drained asynchronous readback and fresh synchronous
+compatibility fallback. An unexpected throw/rejection is now a failed graphics
+receipt, not permission to reveal. The existing awaited resource lifetime,
+timing closure and cancellation-precedence checkpoint remain intact. No
+reveal, fade, READY, countdown consumption or successful loading-state reset
+is permitted on that path. The launch owner continues its covered Garage
+recovery. Updated synchronous/four-outcome asynchronous regressions were red
+before the runtime change; presentation, launch/recovery and all 33 async
+black-watchdog cases pass afterward.
+
+The temporary-workspace reset removed earlier untracked raw QA archives named
+above. Their historical summaries/hashes remain documentation, not newly
+available raw evidence. This recovery uses a persistent isolated worktree and
+fresh immutable baseline/candidate evidence, without touching the shared dirty
+checkout or unrelated vehicle work.
+
+Release CPU validation passes every registered `src/net` check plus the
+world-build/covered-compositor/async-watchdog owners (60 files total),
+typecheck/core-unused, the public build, import integrity and 793-entry test
+discovery. Strict complexity checks pass on all three changed network owners.
+The broad `npm test` attempt was intentionally interrupted in the unrelated
+wheel-quality sweep; that interrupted line is not a wheel regression. A
+separate direct run of `sourceXFleet.selftest.mjs` reconfirmed the pre-existing
+T-90M fingerprint failure (`27bb658d` actual versus `ffbd40d4` expected). No
+full-suite pass or vehicle receipt fix is claimed for this multiplayer slice.
+
+### Fresh native before-Ready regression evidence
+
+The committed `tools/lobby-prefetch-before-ready.browser.selftest.mjs` runs
+CPU-only guards by default. Explicit acquisition uses an immutable public
+build, two pristine native browser contexts, trusted UI clicks and read-only
+observation. It rejects a missed race, software rendering, incomplete evidence
+or an existing output directory. FIFO capture admission has a separate bounded
+deadline so another lane's GPU work cannot consume the scenario clock. Resource
+acquisitions retain ownership inside the producer and drain before cleanup;
+CPU tests include late lock, preview and browser settlement after a deadline.
+
+The initial acquisition timed out while queued, before creating a browser or
+room, and is retained as an acquisition failure rather than runtime evidence.
+The subsequent baseline and candidate used the same acquisition SHA-256:
+`1647148d6ed83217e01d6925b729a324d33c480abeaae6d6d97c769af7cf5b7b`.
+Both ran Chrome 151.0.7922.47 on Apple M5 Max ANGLE/Metal, 1280×800 at DPR 1,
+with loopback signaling and real WebRTC between two clients on one machine.
+No rendering, readiness, clock, quality or endpoint substitution was applied.
+
+| Evidence | Immutable baseline | Fixed candidate |
+|---|---|---|
+| Build index SHA-256 | `45a7579b693db580b9e3eea9141d4999b5146f64e9a7168913f311b0665be013` | `18d5ffe6e79b40c3acc651c1ca6d4f80044cf9d343457da75048ff4d5250e421` |
+| Report SHA-256 | `a14a0036b322f32af4e0aaae62c9e869e72c964b6fa1abf7c95de8c85fe72cdf` | `e8a76aea34848381096113992167f653225c82ac15eac2021d19594a80bf7e99` |
+| Trusted guest Desert click | Canonical Winter actively building; both Not Ready | Same captured precondition |
+| Guest Winter preparation | Cancelled once; never completed before the 15-second deadline | Original request completed before Ready; zero cancellations or promotions |
+| Result | Regression reproduced | Pass: both clients consume cached Winter and enter battle |
+
+Candidate countdown observation captured 5, 4, 3, 2, 1 on both clients, then
+ROLL OUT after 5000.1 ms on the host and 4911 ms on the guest from the first
+observed 5. Snapshots advanced by 49 on each client and inputs by 90/81.
+Native host/guest screenshots were inspected: Winter terrain, tanks, HUD and
+ROLL OUT are visible, with no black canvas or context corruption. Screenshot
+SHA-256 values are
+`70840c0c5693d40fe8f088268cfd2499b4bc71291bade4f2adad5b1b42cb2093`
+and `e36b284e0952051451276414dd1a22c22c08268c7bf8151fa25ca4c047db26b9`.
+Both owned room memberships closed; browser, preview and capture lease cleanup
+completed, and immutable build identity remained unchanged. The separate owned
+loopback signaling process was stopped after acquisition.
+
+Raw reports and PNGs remain local under
+`.qa-lobby-before-ready-baseline-r2-20260908/` and
+`.qa-lobby-before-ready-candidate-r1-20260908/`; build output and QA artifacts
+are not committed. These are loading/reveal regressions, not production,
+remote-device, firing, movement-smoothness or sustained frame-budget
+certification. They do not establish the cause of the historical stalls.
+
+Changed-source React Doctor scans reported no issues for the five-file
+preparation set (91/100) and the later eight-file runtime/test set (89/100).
+The populations differ, so their scores are not a comparable regression
+baseline; no rule was suppressed and no score improvement is claimed.
+The final staged ten-file source/test scan, including the browser regression,
+also reports 89/100 with no issues. Independent final review found no concrete
+shipping blocker. All owned QA processes were stopped; foreign browser work
+was left untouched.

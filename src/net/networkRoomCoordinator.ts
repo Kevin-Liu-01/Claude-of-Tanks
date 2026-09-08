@@ -80,7 +80,7 @@ export interface NetworkRoomCoordinatorOptions {
   input: RoomChatInput;
   setGarageStatus: (status: GarageRoomStatus | null) => void;
   emitRoomState: (payload: RuntimeValue) => void;
-  preloadLobbyIntent: (state: NetworkRoomState) => void;
+  preloadLobbyIntent: (state: NetworkRoomState) => boolean;
   equipmentFor: (specId: string) => RuntimeValue;
   camoFor: (specId: string) => string;
   onRematch: (state: NetworkRoomState) => RuntimeValue;
@@ -91,6 +91,7 @@ export interface NetworkRoomCoordinatorOptions {
 
 export interface NetworkRoomCoordinator {
   handleLobbyChange(context: NetworkLobbyContext | null): void;
+  prepareLobby(): boolean;
   syncPendingLobbySelection(): void;
   syncVehicle(specId: string): void;
   syncCamo(specId: string): void;
@@ -366,6 +367,11 @@ export function createNetworkRoomCoordinator({
   };
 
   const coordinator: NetworkRoomCoordinator = {
+    prepareLobby() {
+      const state = activeRoom ?? pendingLobby?.state;
+      return state ? preloadLobbyIntent(state) : false;
+    },
+
     handleLobbyChange(context) {
       if (context && !activeRoom) roomGeneration++;
       pendingLobby = context?.state ? context : null;

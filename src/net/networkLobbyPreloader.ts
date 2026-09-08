@@ -21,7 +21,8 @@ export interface NetworkLobbyPreloader {
 
 /**
  * Own fire-and-forget room preparation without repeating transfers on every
- * lobby state packet. Failed transfers leave their key retryable.
+ * lobby state packet. Failed transfers leave their key retryable. World
+ * residency belongs to the world coordinator, not a permanent map-ID latch.
  */
 export function createNetworkLobbyPreloader({
   getGamePhase,
@@ -38,8 +39,6 @@ export function createNetworkLobbyPreloader({
   const pending = new Map<string, Promise<void>>();
   const preparedBuilders = new Set<string>();
   const pendingBuilders = new Set<string>();
-  let mapIntentInitialized = false;
-  let requestedMapId: string | null = null;
 
   const request = (key: string, start: () => Promise<RuntimeValue>): void => {
     if (prepared.has(key) || pending.has(key)) return;
@@ -87,12 +86,11 @@ export function createNetworkLobbyPreloader({
 
     const mapId = state.mapId;
     const nextMapId = !mapId || mapId === 'random' ? null : mapId;
-    if (!mapIntentInitialized || nextMapId !== requestedMapId) {
-      mapIntentInitialized = true;
-      requestedMapId = nextMapId;
-      cancelBackgroundWorldBuildsExcept(nextMapId);
-      if (nextMapId) prefetchWorld(nextMapId, { intent: true });
-    }
+    // Cached and in-flight builds coalesce at the world owner. Reasserting
+    // intent also permits a later packet to retry failed/cancelled builds or
+    // maps skipped for capacity; merely remembering their ID would lose them.
+    cancelBackgroundWorldBuildsExcept(nextMapId);
+    if (nextMapId) prefetchWorld(nextMapId, { intent: true });
     return true;
   };
 
