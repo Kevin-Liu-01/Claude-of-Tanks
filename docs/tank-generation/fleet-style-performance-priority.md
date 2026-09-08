@@ -75,8 +75,11 @@ roller, paint or triangle receipt therefore cannot close their review.
   triangles while preserving road-wheel stations and outer faces, but live
   nonflat terrain contact still fails. It is **not admitted for fleet rollout**.
 - Published construction-cost/resource-ownership checkpoints do not solve the
-  whole switch issue. Native probes still record approximately 600 ms frame
-  stalls. Continue cold/warm/revisit and real selection-path measurements.
+  whole switch issue. Prior native logs contain roughly 600 ms frame intervals,
+  but idle/throttled Gallery ticks are not automatically rendering stalls.
+  Attribute intervals to active selection and presented frames before claiming
+  a switch freeze or speedup. Continue cold/warm/revisit and real selection-path
+  measurements; JavaScript stage visibility is not the first presented pixel.
 
 Every result must name its exact input revision, IDs, detail levels, checks
 and unresolved failures. Do not erase failed physical gates or replace a full

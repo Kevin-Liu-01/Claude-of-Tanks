@@ -1,4 +1,4 @@
-# Continuous shoe floor foundation — local candidate
+# Continuous shoe floor foundation — verified non-activating checkpoint
 
 This opt-in foundation does not activate a profile, change a mesh, or claim a
 fleet-wide track repair. Per-vehicle primitive/profile changes and complete
@@ -62,3 +62,56 @@ requested interval width was smaller than the separately included Float32
 error bound. The stopping criterion now subtracts that same bound before
 testing interval convergence; the emitted conservative lower bound still
 includes the full upload error. No geometry acceptance threshold was loosened.
+
+## Independent integration verification — 2026-09-08
+
+Runtime commit `87353fd1f246fe17598e2e6625b8403743857f6c` is based on
+published `96304baf18d733b80565769a2906d4df7c9aa66a`. This is the same
+non-activating foundation as isolated candidate `079bd2e8079ef07db045dd1d04e52886b8cb6776`;
+do not apply both when integrating a pilot.
+
+The independent baseline is `41f7eaff8e649dbaf75c665d642ed7e05509d2d1`.
+Its vehicle and movement sources are byte-identical to the integration base.
+Sixteen actual factory cases (HIGH/LOW for `t80u_x`, `t90a_x`, `t90m`,
+`t90sm`, `m1a2`, `leo2a5`, `m60a1`, `merkava4_x`) compare exactly before/after:
+native attributes/indices, instance matrices, hierarchy, transforms,
+seating/contact outputs and four recorded states across twenty-four actual
+sync steps with unequal track travel and nonflat sampling. This tests
+absent-option behavior, not a terrain
+certificate for either opted-in pilot. No expected fixture was regenerated.
+
+| Check | Result |
+| --- | --- |
+| Sixteen independent native default cases | PASS — exact deep comparison |
+| Ten focused regression files | PASS |
+| Original suspension/floor checks | PASS — all 174 playable tanks; five suspension families |
+| Continuous interval helper | PASS — 38,912 native-matrix heldouts |
+| New support modules' complexity/type inventory | PASS — 17 functions; zero complexity violations, explicit `any` or `unknown` |
+| Typecheck and core-unused check | PASS |
+| Public build | PASS — 925 transformed modules; 174 procedural playables, zero GLB-sourced |
+| Tracked runtime/tool/config input guard | PASS — no changes during validation |
+
+The ten files are `continuousShoeFloor`, `track-course-intervals`,
+`roadWheelRestHeights`, `suspensionPatterns`, `fleetFloorClearance`,
+`runningGearCadence`, `trackShoeDimensions`, `roundedTrackContact`,
+`tankAssets`, and `track-geometry` selftests. The two new modules were checked
+with `node tools/code-quality-metrics.ts src/vehicles/continuousShoeFloor.ts
+tools/track-course-intervals.mjs --gate`. This is not a claim that the legacy
+factory's entire complexity inventory has been retired.
+
+Local frozen evidence:
+`cot-continuous-shoe-foundation-20260908/.qa-dev/foundation-verified-lxOJKb/receipt.json`,
+SHA-256 `4ba41fda1118fdb5870468e38b538588cc4e624a8d54e7929412799753b3117f`.
+The baseline/candidate recorder SHA-256 is
+`269c24a8d6462423738f7eaf09f968c3bf82103e2efc1444fc192d35d606d612`;
+the orchestration driver is
+`4f55091044ecbcbb2f059d70c20326b26387f82a8d96bb61487e62767840c1ce`.
+Those ignored diagnostic files and private sources are not shipping artifacts.
+The standard build's chunk-size warning remains; it is not a measured switch
+latency result.
+
+Full `npm test`, per-vehicle geometry/anatomy release, actual browser switching,
+and admission of new running gear are **not** certified by this checkpoint.
+No runtime profile opts in here and no model, icon or technical diagram changes.
+The [59-vehicle priority](../tank-generation/fleet-style-performance-priority.md)
+and both terrain/cadence pilots remain open.
