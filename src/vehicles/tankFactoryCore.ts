@@ -8,6 +8,7 @@
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { continuousShoeFloor, shoeConformanceAlpha, assertShoeFloorFrame } from './continuousShoeFloor.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
@@ -394,6 +395,8 @@ interface RunningGearConfig {
   wheelPattern?: WheelPatternId;
   trackPattern?: TrackPatternId;
   trackShoeDimensions?: TrackShoeDimensions;
+  /** Complete near/far moving-shoe floor certificate, in authored hull metres. */
+  continuousShoeFloorYM?: number;
   trackLinkCrossSection?: TrackLinkCrossSection;
   suspensionPattern?: SuspensionPatternId;
   /** Source-measured native arm and independent fixed/moving boss dimensions. */
@@ -672,6 +675,7 @@ function sampleWheelGroundDeviation(
 
 interface RunningGearUnit {
   __units?: RunningGearUnit[];
+  continuousShoeFloorYM?: number;
   contactGeom: GearContactGeometry;
   trackHitbox: TrackHitboxReceipt[];
   roadWheelLayout?: {
@@ -3376,6 +3380,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         trackPatternId: trackPattern.id,
         trackPatternLabel: trackPattern.label,
         ...(cfg.trackShoeDimensions ? { trackShoeDimensions: { ...cfg.trackShoeDimensions } } : {}),
+        ...(cfg.continuousShoeFloorYM !== undefined ? {continuousShoeFloorYM: cfg.continuousShoeFloorYM} : {}),
         ...(cfg.trackLinkCrossSection ? { trackLinkCrossSection: { ...cfg.trackLinkCrossSection } } : {}),
         suspensionPatternId: suspensionPattern.id,
         suspensionPatternLabel: suspensionPattern.label,
@@ -4643,6 +4648,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     bottomYM: Math.min(gearBandBotY, gearPadBotY, gearWheelBotY, gearEndBotY),
     endRise: { dzM: 0.4, frontM: 0.35, rearM: 0.35 },
   };
+  gearContactGeom.bottomYM = continuousShoeFloor(gearContactGeom.bottomYM, cfg.continuousShoeFloorYM);
   // Wrap approach-rise: lowest band-centerline height in the 0.45 m just
   // BEYOND each end of the flat contact run, relative to the run. The solve
   // samples one guard point past each line end at this height so the rising
@@ -4842,8 +4848,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     mats.trackTexR.offset.y = -(r / trackTextureRepeatM) % 1;
   }
 
+  let groundConformanceInitialized = false;
   const gearUnit: RunningGearUnit = {
     contactGeom: gearContactGeom,
+    ...(cfg.continuousShoeFloorYM !== undefined ? {continuousShoeFloorYM: cfg.continuousShoeFloorYM} : {}),
     trackHitbox: [{
       x0: xc - trackW / 2,
       x1: xc + trackW / 2,
@@ -4860,6 +4868,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     updateSurface: updateGearSurface,
     /** Restore the authored flat-ground running-gear pose for showroom use. */
     resetPose() {
+      groundConformanceInitialized = false;
       for (const { list } of made) {
         for (const e of list) {
           const source = e.suspensionSource || e;
@@ -4958,6 +4967,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       frame.hpz = hullG.position.z;
       frame.invHsy = 1 / Math.max(Math.abs(frame.hsy), 1e-6);
       let settling = false;
+      const initializeContact = cfg.continuousShoeFloorYM !== undefined && !groundConformanceInitialized;
+      const alpha = shoeConformanceAlpha(dt, initializeContact);
       for (const { list } of made) {
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -4999,11 +5010,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           // Frame-rate independent damping. Distant gear updates at 15/30 Hz,
           // so the caller accumulates skipped dt and lands the same response
           // as a near tank without doing extra terrain work.
-          const alpha = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.12)) * 20);
           e.off += (target - e.off) * alpha;
           if (Math.abs(target - e.off) > 0.0005) settling = true;
         }
       }
+      groundConformanceInitialized = true;
       return settling;
     },
 
@@ -5113,8 +5124,10 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
   const cgs = units.map((u) => u.contactGeom);
   const zF = Math.max(...cgs.map((c) => c.zCenterM + c.halfLenM));
   const zR = Math.min(...cgs.map((c) => c.zCenterM - c.halfLenM));
+  const continuousFloors = units.map(u => u.continuousShoeFloorYM).filter((y): y is number => y !== undefined);
   P.gear = {
     __units: units,
+    ...(continuousFloors.length ? {continuousShoeFloorYM: Math.min(...continuousFloors, ...cgs.map(c => c.bottomYM))} : {}),
     addRoadWheelLayer(geometry, material, layer) {
       let result: THREE.InstancedMesh | null = null;
       for (const entry of units) {
@@ -10833,6 +10846,12 @@ export function createTank(
     presentationAnchor,
     presentationTrackFloorYM,
   } = resolveTankPresentationSetup(specId, opts, geometryOnly, root, P.gear);
+  const continuousRootFloor = (): number | undefined => {
+    const floor = P.gear?.continuousShoeFloorYM;
+    if (floor !== undefined) assertShoeFloorFrame(hullG, root.scale);
+    return floor;
+  };
+  continuousRootFloor();
   const composeContactGeom = (scan: RestContactReceipt | null): TankContactGeometry | null => {
     if (!gearCG && !scan) return null;
     const halfLenM = gearCG?.halfLenM ?? scan?.halfLenM ?? null;
@@ -11228,13 +11247,13 @@ export function createTank(
         this.presentationFloorYM = presentationFloorYM;
         presentationFloorMeasured = true;
       }
-      root.position.y = floorYM - this.presentationFloorYM;
+      root.position.y = floorYM - continuousShoeFloor(this.presentationFloorYM, continuousRootFloor());
       return root.position.y;
     },
 
     /** Seat the load-bearing track run on a rigid presentation surface. */
     seatRunningGearOnFloor(floorYM = 0) {
-      const trackFloorYM = this.presentationTrackFloorYM;
+      const trackFloorYM = continuousShoeFloor(this.presentationTrackFloorYM ?? Infinity, continuousRootFloor());
       if (typeof trackFloorYM !== 'number' || !Number.isFinite(trackFloorYM)) {
         return this.seatOnFloor(floorYM);
       }
@@ -11304,6 +11323,7 @@ export function createTank(
      *   camera guard band; exact running gear catches up on re-entry.
      */
     syncFromState(stateValue, dt = SIM_STEP, viewDistM, presentationStateValue = null, detailVisible = true) {
+      if (P.gear?.continuousShoeFloorYM !== undefined) continuousRootFloor();
       const state = requireTankPoseState(stateValue);
       const presentationState = presentationStateValue == null
         ? null

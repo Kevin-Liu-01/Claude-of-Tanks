@@ -32,6 +32,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/portrait-camera.selftest.mjs',
     'src/vehicles/sourceXMarkings.selftest.mjs',
     'src/vehicles/trackShoeDimensions.selftest.mjs',
+    'src/vehicles/continuousShoeFloor.selftest.mjs',
+    'tools/track-course-intervals.selftest.mjs',
     'src/vehicles/roadWheelRestHeights.selftest.mjs',
     'src/vehicles/suspensionArmGeometry.selftest.mjs',
     'src/vehicles/returnRollerOutset.selftest.mjs',
