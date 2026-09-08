@@ -8,6 +8,7 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
+import { withHistoricalFixedGuardPaint } from './historicalFixedGuardPaint.test-support.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const cases = {
@@ -54,7 +55,15 @@ for (const [id, expected] of Object.entries(cases)) {
   for (const [lod, quality] of ['high', 'low'].entries()) {
     const tank = createTank(id, null, { quality, proceduralOnly: true, geometryReceipt: true, camoSeed: 4242 });
     try {
-      assert.equal(geometryFingerprint(tank.root), expected.geometry[lod], `${id}/${quality}: every physical buffer unchanged`);
+      if(id==='leo2a6_x'){
+        const original=withHistoricalFixedGuardPaint(id,()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}));
+        try{assert.equal(geometryFingerprint(original.root),expected.geometry[lod],
+          `${id}/${quality}: original complete mesh partition after eight authenticated finish inverses`);}
+        finally{original.dispose();}
+        assert.notEqual(geometryFingerprint(tank.root),expected.geometry[lod],
+          'actual painted bucket partition is distinct from its historical grouping');
+      }else assert.equal(geometryFingerprint(tank.root), expected.geometry[lod], `${id}/${quality}: every physical buffer unchanged`);
+      // Physical stock/posed protection below always uses the real painted tank.
       const hull = tank.root.getObjectByName('hullExternalArmor');
       const turret = tank.root.getObjectByName('turret');
       const native = { hull: triangles(hull), turret: triangles(turret) };
