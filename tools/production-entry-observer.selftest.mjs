@@ -152,6 +152,33 @@ assert.ok(boundedReceipt.longTasksDropped > 0);
 
 const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback', 'hullCanvas',
   'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'];
+{
+  const watchdog = browserFixture();
+  const row = { startTime: 1, endTime: 90, setupMs: 2, renderMs: 30, readbackMs: 55, enqueueMs: 3, waitMs: 52,
+    reduceMs: 0.2, restoreMs: 1.8, programsBeforeRender: 12, programsAfterRender: 15 };
+  watchdog.context.window.__NETWORK_LOAD.blackCheck.measurements = Array.from({ length: 20 }, () => ({
+    ...row, name: 'PRIVATE_NAME', url: 'PRIVATE_URL', error: 'PRIVATE_ERROR' }));
+  const receipt = JSON.parse(JSON.stringify(watchdog.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(receipt.networkLoad.blackCheck.measurements, Array.from({ length: 8 }, () => row));
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+  const malformedWatchdog = browserFixture();
+  malformedWatchdog.context.window.__NETWORK_LOAD.blackCheck.measurements = [null, { renderMs: Infinity,
+    readbackMs: 'PRIVATE_ERROR', endTime: NaN }];
+  const malformed = JSON.parse(JSON.stringify(malformedWatchdog.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(malformed.networkLoad.blackCheck.measurements,
+    Array.from({ length: 2 }, () => Object.fromEntries(Object.keys(row).map((key) => [key, null]))));
+
+  const detailed = browserFixture();
+  const steps = Object.fromEntries(['contextQuery', 'createBuffer', 'bindingQuery', 'bindBuffer',
+    'bufferData', 'sizeQuery', 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release'].map((key) => [key, 2]));
+  detailed.context.window.__NETWORK_LOAD.blackCheck = { failed: true, measurements: [{ ...row,
+    readbackSteps: { ...steps, url: 'PRIVATE_URL', name: 'PRIVATE_NAME', copy: Infinity } }] };
+  const measured = JSON.parse(JSON.stringify(detailed.run(readProductionEntryObserver, 'stop')));
+  assert.equal(measured.networkLoad.blackCheck.error, true, 'failed graphics receipts remain visible to QA');
+  assert.deepEqual(measured.networkLoad.blackCheck.measurements, [{ ...row,
+    readbackSteps: { ...steps, copy: null } }]);
+  assert.doesNotMatch(JSON.stringify(measured), /PRIVATE/);
+}
 for (const status of ['complete', 'failed']) {
   const mask = browserFixture();
   const stages = status === 'failed' ? maskStages.slice(0, 4) : maskStages;

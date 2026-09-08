@@ -4,8 +4,9 @@ import { isNetworkBattleEntryAbortError } from './networkBattleEntryAbort.ts';
 
 function deferred() {
   let resolve;
-  const promise = new Promise((done) => { resolve = done; });
-  return { promise, resolve };
+  let reject;
+  const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
 }
 
 async function waitForEvent(events, name) {
@@ -438,6 +439,109 @@ for (const [failure, slice] of [['primeReveal', 'primeReveal'], ['hide', 'loader
   assert.ok(harness.trace.revealSlices.some((row) => row.stage === 'blackWatchdog' && row.endTime > 0),
     'the caught watchdog failure still closes its timing interval');
   assert.ok(harness.events.includes('ready'));
+}
+
+{
+  const harness = createHarness();
+  const failed = { before: 0, after: null, rescued: false, stage: null, failed: true };
+  harness.options.presentation.runBlackWatchdog = async () => failed;
+  await assert.rejects(harness.runtime.present(harness.request), /Battle graphics could not be verified/);
+  assert.equal(harness.trace.blackCheck, failed);
+  assert.equal(harness.trace.status, 'failed');
+  assert.equal(harness.loaderVisible, true, 'known-black or unrestorable frames remain covered');
+  for (const event of ['loading:false', 'ambient:true', 'primeReveal', 'hide', 'ready']) {
+    assert.ok(!harness.events.includes(event), `failed graphics verification cannot reach ${event}`);
+  }
+}
+
+for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) {
+  const harness = createHarness();
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const gate = deferred();
+  const receipt = { ok: true, checked: 2 };
+  const failure = new Error('async watchdog failed');
+  const signals = [];
+  const cancelled = outcome.startsWith('cancel-');
+  const rejected = outcome.endsWith('reject');
+  let settled = false;
+  harness.options.presentation.runBlackWatchdog = (signal) => {
+    signals.push(signal);
+    harness.events.push('blackWatchdog');
+    return gate.promise;
+  };
+  const pending = harness.runtime.present(harness.request);
+  // Observe settlement without leaving a rejected entry promise unhandled.
+  const result = pending.then(
+    () => { settled = true; return { ok: true }; },
+    (error) => { settled = true; return { ok: false, error }; },
+  );
+  try {
+    await waitForEvent(harness.events, 'blackWatchdog');
+    assert.equal(settled, false, `${outcome}: entry awaits the watchdog result`);
+    assert.deepEqual(signals, [controller.signal], 'the watchdog receives the exact entry signal');
+    assert.equal(harness.loaderVisible, true, 'a pending watchdog remains under the opaque loader');
+    assert.equal(harness.trace.status, 'pending');
+    assert.equal(harness.trace.blackCheck, undefined, 'pending telemetry never stores a Promise');
+    assert.equal(harness.trace.endedAt, undefined);
+    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
+    assert.equal(harness.trace.stageIntervals.at(-1).endTime, undefined);
+    assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
+      ['activation', 'blackWatchdog']);
+    assert.ok(harness.trace.revealSlices[0].endTime > 0);
+    assert.equal(harness.trace.revealSlices.at(-1).endTime, undefined);
+    const forbidden = ['loading:false', 'ambient:true', 'primeReveal', 'hide', 'ready',
+      'waiting:false', 'adaptive:false'];
+    for (const event of forbidden) {
+      assert.ok(!harness.events.includes(event), `${outcome}: pending watchdog cannot reach ${event}`);
+    }
+    assert.ok(!harness.progress.some(([fraction, label]) => fraction === 1 || label === 'Ready'),
+      'a pending watchdog cannot publish terminal loading progress');
+
+    if (cancelled) {
+      controller.abort('leave while checking the first battle frame');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(settled, false, 'cancellation still joins the owned watchdog work');
+      assert.equal(harness.trace.status, 'pending');
+    }
+    harness.events.push('watchdogSettled');
+    if (rejected) gate.reject(failure);
+    else gate.resolve(receipt);
+    const completed = await result;
+    assert.deepEqual(harness.trace.blackCheck, rejected ? { error: failure.message } : receipt,
+      'telemetry records the settled receipt or ordinary rejection, never the pending Promise');
+    if (!rejected) assert.strictEqual(harness.trace.blackCheck, receipt);
+    const slice = harness.trace.revealSlices.find((row) => row.stage === 'blackWatchdog');
+    assert.ok(slice.endTime > slice.startTime, 'resolution and rejection both close watchdog timing');
+    if (cancelled) {
+      assert.equal(completed.ok, false);
+      assert.ok(isNetworkBattleEntryAbortError(completed.error),
+        'entry cancellation wins even when the best-effort watchdog rejects');
+      assert.equal(harness.trace.status, 'failed');
+      assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
+      assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
+      assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
+        ['activation', 'blackWatchdog']);
+      assert.ok(slice.endTime <= harness.trace.endedAt);
+      assert.equal(harness.loaderVisible, true);
+      for (const event of forbidden) {
+        assert.ok(!harness.events.includes(event), `${outcome}: cancelled watchdog cannot reach ${event}`);
+      }
+      assert.ok(!harness.progress.some(([fraction, label]) => fraction === 1 || label === 'Ready'));
+    } else {
+      assert.deepEqual(completed, { ok: true }, 'ordinary async watchdog rejection remains best-effort');
+      assert.equal(harness.trace.status, 'complete');
+      for (const event of ['loading:false', 'ambient:true', 'primeReveal', 'hide', 'ready']) {
+        assert.ok(harness.events.indexOf(event) > harness.events.indexOf('watchdogSettled'),
+          `${outcome}: ${event} follows the settled watchdog`);
+      }
+      assert.ok(harness.events.indexOf('hidden') < harness.events.indexOf('ready'));
+      assert.equal(harness.loaderVisible, false);
+    }
+  } finally {
+    gate.resolve(receipt);
+    await result;
+  }
 }
 
 {

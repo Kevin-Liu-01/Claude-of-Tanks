@@ -134,7 +134,19 @@ export function installProductionEntryObserver() {
         stages: numericTree(network.stages),
         blackCheck: network.blackCheck ? { before: finite(network.blackCheck.before),
           after: finite(network.blackCheck.after), rescued: network.blackCheck.rescued === true,
-          error: !!network.blackCheck.error } : null,
+          error: !!network.blackCheck.error || network.blackCheck.failed === true,
+          measurements: Array.isArray(network.blackCheck.measurements)
+            ? network.blackCheck.measurements.slice(0, 8).map((row) => ({
+              ...Object.fromEntries(['startTime', 'endTime', 'setupMs', 'renderMs', 'readbackMs', 'enqueueMs', 'waitMs',
+                'reduceMs', 'restoreMs', 'programsBeforeRender', 'programsAfterRender']
+                .map((key) => [key, finite(row?.[key])])),
+              ...(row?.readbackSteps && typeof row.readbackSteps === 'object' ? {
+                readbackSteps: Object.fromEntries(['contextQuery', 'createBuffer', 'bindingQuery',
+                  'bindBuffer', 'bufferData', 'sizeQuery', 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release']
+                  .map((key) => [key, finite(row.readbackSteps[key])])),
+              } : {}),
+            })) : [],
+        } : null,
       } : null,
       worldLoad: world ? {
         id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,

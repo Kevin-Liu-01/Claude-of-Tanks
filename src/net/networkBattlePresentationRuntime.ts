@@ -197,7 +197,7 @@ export interface NetworkBattlePresentationOptions {
     setGarageLighting(active: boolean): void;
     setWaitingForPeers(waiting: boolean): void;
     activate(request: NetworkBattleActivationRequest): void;
-    runBlackWatchdog(): RuntimeValue;
+    runBlackWatchdog(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   };
 }
 
@@ -497,7 +497,7 @@ export function createNetworkBattlePresentationRuntime(
       timer.endSlice();
       timer.beginSlice('blackWatchdog');
       try {
-        trace.blackCheck = presentation.runBlackWatchdog();
+        trace.blackCheck = await presentation.runBlackWatchdog(signal);
       } catch (error) {
         trace.blackCheck = {
           error: error instanceof Error ? error.message : String(error),
@@ -505,7 +505,12 @@ export function createNetworkBattlePresentationRuntime(
       } finally {
         timer.endSlice();
       }
+      throwIfNetworkBattleEntryAborted(signal);
 
+      if (trace.blackCheck && typeof trace.blackCheck === 'object'
+        && 'failed' in trace.blackCheck && trace.blackCheck.failed === true) {
+        throw new Error('Battle graphics could not be verified. Please retry from the Garage.');
+      }
       load.audio.loadingOn(false);
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');

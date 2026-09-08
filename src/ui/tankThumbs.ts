@@ -22,7 +22,7 @@ import {
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { beginTopMaskReadback } from './topMaskReadback.ts';
+import { beginRgba8Readback } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram } from './topMaskProgramWarm.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
@@ -691,7 +691,7 @@ async function renderMaskPixels(
     // fence completes, without a blocking GPU readPixels on the reveal frame.
     const gl = renderer.getContext();
     if (!('fenceSync' in gl)) throw new Error('top-down masks require WebGL2 readback');
-    readback = beginTopMaskReadback(gl, MASK_RT_SIZE, MASK_RT_SIZE, pixels);
+    readback = beginRgba8Readback(gl, MASK_RT_SIZE, MASK_RT_SIZE, pixels);
   } catch (error) {
     failure = { reason: error };
   }

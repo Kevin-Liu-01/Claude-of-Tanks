@@ -52,7 +52,7 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
+  mountDiagOverlay, runSceneBlackWatchdog, runSceneBlackWatchdogAsync, reclaimShadows,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -2056,7 +2056,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             setGarageSpots(active);
             setGarageSunTrim(active);
           },
-          runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
+          runBlackWatchdog: (signal?: AbortSignal) => runSceneBlackWatchdogAsync(
+            renderer, scene, camera, { signal, measureTimings: true },
+          ),
         },
       },
       launcher: {

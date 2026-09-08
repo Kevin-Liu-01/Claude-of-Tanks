@@ -630,3 +630,96 @@ was 20.7/28.8/38.6/45.9 ms. Both reported zero hard snaps, dropped history,
 estimated missing snapshots and observer failures. This is not a stable 60 Hz,
 larger-room, relay-only or separate-device certificate. This run's room was
 closed and owned browsers/servers stopped; excluded QA artifacts remain local.
+
+## Covered scene watchdog: synchronous GPU waits and cancellation
+
+The next measured local baseline (`watchdog-baseline-timings`, based on
+`bc4f36ac9` with timing-only instrumentation) used two fresh contexts, HIGH,
+clear/day Frosthollow and loopback signaling. It passed native entry, both full
+5→1 countdowns, nonblack/no-rescue reveal, input/snapshot progress, Garage return
+and room/browser cleanup with zero application errors. Unlike the historical
+samples, this receipt separates the actual watchdog draw from pixel readback:
+
+| Peer | Watchdog draw | Synchronous readback | Watchdog total | Entry / largest task |
+| --- | --- | --- | --- | --- |
+| Host | 54.8 ms | 69.5 ms | 124.8 ms | 4,851 / 562 ms |
+| Guest | 58.9 ms | 86.4 ms | 146.1 ms | 4,667 / 409 ms |
+
+Program counts did not change during either diagnostic draw (245 and 207).
+That excludes new program creation in those measured intervals, not lazy
+uniform initialization, native driver work or GPU queue synchronization. It
+does not establish the cause of historical combat stalls.
+
+The candidate shares the existing bounded RGBA8 pixel-pack-buffer helper
+between player-panel preparation and an asynchronous healthy-scene probe.
+Bindings are restored before yielding; every submitted fence is settled before
+its target is disposed. Entry cancellation is checked before any subsequent
+scene access. Compatibility settings never remain tentatively changed across
+an await: a black/unreadable sample, or changed shadow/environment/fog state,
+triggers a fresh synchronous compatibility check. Failed rescue measurements
+now roll back their tentative quality changes; a successfully confirmed rescue
+survives consumer diagnostic callback failure.
+
+Network entry awaits the check under the loader and checks cancellation before
+releasing loading audio, displaying Ready, priming/fading or sending READY.
+A known failed graphics receipt stays covered and goes through existing
+Garage recovery. Ordinary optional diagnostic exceptions retain their previous
+best-effort behavior. This adds no per-frame work, changes no match authority,
+and does not lower scene quality.
+
+Candidate A (`watchdog-async-a-timings-visual`) passed the complete native local
+pair and inspected screenshots, but exposed a remaining synchronous setup
+wait: its enqueue took 95.7/96.4 ms despite the subsequent 31.1/54.0 ms being
+yielded fence waits. Watchdog totals were 233.5/231.4 ms; this is not evidence
+of a watchdog speedup. Entry was 4,384/4,262 ms with largest tasks 384/348 ms;
+different preparation/driver timing prevents attributing those end-to-end
+differences to this candidate. The separate 20-second-per-role LOW interaction
+sample reported max frame gaps 47.4/44.8 ms and zero hard snaps, dropped history,
+estimated missing snapshots or observer failures. These same-machine samples
+are functional checks, not a consistent frame-budget or remote-network certificate.
+
+The instrumented repeat B (`watchdog-steps-b-timings`) isolated that enqueue
+stall: `getBufferParameter(BUFFER_SIZE)` took 70.6/66.5 ms out of
+70.8/66.6 ms submission. Other submission operations were 0–0.1 ms. The fix
+keeps the allocation check, but performs it after the fence signals and before
+copying/accepting pixels. A post-query deadline/context check prevents a slow
+query from authorizing a late copy. Allocation failures are now reported after
+the fence (or an earlier terminal timeout/context failure), with untouched
+destination bytes and bounded cleanup. No `getError()` state is consumed.
+
+Final local candidate C (`watchdog-final-c-timings-visual`) passed the same
+complete native pair and inspected screenshots with zero application errors:
+
+| Peer | Watchdog draw | Enqueue | Yielded/read completion | Size query | Entry / largest task |
+| --- | --- | --- | --- | --- | --- |
+| Host | 74.7 ms | 0.1 ms | 75.3 ms | 0.1 ms | 4,870 / 472 ms |
+| Guest | 61.4 ms | 0.1 ms | 87.1 ms | 1.8 ms | 4,774 / 309 ms |
+
+The lower-band luminance exactly matched the earlier candidates:
+109.96803977272727 / 137.07291666666666, with no rescue or new watchdog
+programs. Both masks completed before activation; both foreground countdowns
+showed 5→1; native Garage return and room/browser/window cleanup passed.
+Submission no longer contains the measured blocking size query. Watchdog wall
+time still includes real rendering and yielded GPU waits (150.6/149.2 ms total),
+and there is no claimed end-to-end loading speedup from these noisy samples.
+Nested timing fields overlap and must not be summed as independent CPU costs.
+
+The separate LOW 20-second-per-role interaction sample reported host
+p50/p95/p99/max frame gaps 21.9/27.8/34.1/49.9 ms and guest
+21.5/31.0/39.0/44.5 ms. Both had zero hard snaps, dropped history, estimated
+missing snapshots and observer failures. Larger rooms, other weather/times,
+remote devices, relay-only paths and the historical combat stall cause remain
+outside this receipt.
+
+Focused readback, mask, device, presentation, entry cancellation, launch,
+production-UI harness and observer checks pass, including 25 synchronous and
+33 asynchronous watchdog cases. The suite index verifies 687 registered checks;
+that is not a claim that the full suite passed. The previous full-suite fleet
+timeout documented above remains unresolved and was not weakened. Application
+typecheck, unused-owner check and public production build pass. Four changed
+runtime owners have 184 functions, zero complexity violations and no explicit
+`any`/`unknown`. Final changed-file React Doctor is 88/100 over 13 files, with
+14 reviewed test-only warnings (sequential fixture isolation, short assertion
+projections and serialization-boundary checks), none suppressed. The clean
+baseline scan skipped source analysis; an intermediate scan had incomplete
+maintainability output, so no like-for-like score improvement is claimed.
