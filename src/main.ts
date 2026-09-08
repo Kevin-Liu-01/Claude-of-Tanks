@@ -2245,13 +2245,19 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
               { layerMask: lateMask, target: post.lateFx.target },
             ] : undefined;
-            // Permit rendering between batches and before driver queries;
-            // this is not a GPU-completion guarantee. One owner lifetime spans
-            // submission and bounded first-use reflection of selected materials.
-            // The real effects/reveal draws remain the readiness barrier.
-            for (const _ of forwardProgramWarm.prepareSceneSteps({ signal, timing, passes,
-              initializeUniforms: true })) await nextPaintFrame();
-            return { ...timing };
+            // Strict preparation admits bounded groups and returns an explicit
+            // first-use result. Covered entry checks it before any real draw.
+            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true });
+            try {
+              while (true) {
+                const step = steps.next();
+                if (step.done) return { ...timing, preparation: step.value };
+                await nextPaintFrame();
+              }
+            } finally {
+              // A failed paint must close the suspended generator as well.
+              steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' });
+            }
           },
         },
         presentation: {

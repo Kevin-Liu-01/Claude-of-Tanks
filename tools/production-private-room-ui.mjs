@@ -660,6 +660,41 @@ export function readProductionRenderingContext() {
     }
     return children.length <= 512 ? 0 : null;
   }
+  function gpuString(value) {
+    if (typeof value !== 'string') return null;
+    const text = value.trim();
+    // Reject rather than truncate: a discarded suffix could identify software.
+    return text && text.length <= 256 && !/[\u0000-\u001f\u007f]/.test(text) ? text : null;
+  }
+  function gpuBackend(renderer) {
+    if (!renderer) return 'unknown';
+    if (/swiftshader|llvmpipe|softpipe|lavapipe|software|basic render|\bwarp\b|swrast|osmesa|gdi generic/i.test(renderer)) {
+      return 'software';
+    }
+    // A hardware-like unmasked name is diagnostic, not hardware certification.
+    return /\b(apple|nvidia|amd|ati|intel|geforce|radeon|adreno|mali|powervr|vivante|videocore)\b/i.test(renderer)
+      ? 'hardware-like' : 'unknown';
+  }
+  function gpuContext() {
+    const result = { gpu: null, gpuVendor: null, gpuUnmasked: false, glVersion: null, gpuBackend: 'unknown' };
+    try {
+      const gl = debug?.renderer?.getContext?.();
+      if (!gl || gl.isContextLost?.() === true) return result;
+      function parameter(key) {
+        try { return Number.isInteger(key) && key > 0 ? gpuString(gl.getParameter(key)) : null; }
+        catch { return null; }
+      }
+      result.glVersion = parameter(gl.VERSION);
+      const extension = gl.getExtension?.('WEBGL_debug_renderer_info');
+      if (!extension) return result;
+      // Never substitute masked RENDERER/VENDOR labels for missing identity.
+      result.gpu = parameter(extension.UNMASKED_RENDERER_WEBGL);
+      result.gpuVendor = parameter(extension.UNMASKED_VENDOR_WEBGL);
+      result.gpuUnmasked = result.gpu !== null;
+      result.gpuBackend = gpuBackend(result.gpu);
+    } catch { /* Privacy, unavailable context and driver failures remain unknown. */ }
+    return result;
+  }
   return {
     condition: ['clear', 'fog', 'rain', 'snow'].includes(weather?.condition) ? weather.condition : null,
     timeOfDay: ['day', 'night'].includes(weather?.timeOfDay) ? weather.timeOfDay : null,
@@ -667,6 +702,7 @@ export function readProductionRenderingContext() {
     particleCount: particles(),
     preset: ['low', 'medium', 'high', 'ultra', 'mobile-low', 'mobile', 'mobile-high'].includes(preset) ? preset : null,
     renderScale: finite(debug?.post?.dynScale, 2),
+    ...gpuContext(),
   };
 }
 

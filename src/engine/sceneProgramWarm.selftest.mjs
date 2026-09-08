@@ -11,7 +11,8 @@ function test(name, run) {
 }
 
 function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, empty = false,
-  linker = false, layered = false, firstUse = false } = {}) {
+  linker = false, layered = false, firstUse = false, uniquePrograms = false, extraMeshes = 48,
+  clockFrozen = false } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const geometry = new THREE.BoxGeometry();
@@ -41,7 +42,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
   const excludedLight = new THREE.PointLight(0xffffff, 1);
   excludedLight.layers.set(7);
   scene.add(excludedLight);
-  for (let index = 0; index < 48; index++) {
+  for (let index = 0; index < extraMeshes; index++) {
     const mesh = new THREE.Mesh(geometry, shared);
     mesh.position.set(index, 1, 2);
     scene.add(mesh);
@@ -191,7 +192,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
             const sides = firstUse && material.transparent && material.side === THREE.DoubleSide
               ? ['back', 'front'] : ['single'];
             for (const side of sides) {
-              const key = firstUse ? `${camera.layers.mask}:${!!object.isInstancedMesh}:${side}`
+              const key = firstUse ? `${uniquePrograms ? object.id : ''}:${camera.layers.mask}:${!!object.isInstancedMesh}:${side}`
                 : renderer.info.programs.length;
               let program = properties.programs.get(key);
               if (!program) {
@@ -200,6 +201,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
                   assert.equal(target, priorTarget, 'reflection does not borrow a pass target');
                   assert.equal(camera.layers.mask, cameraMask, 'reflection sees the restored camera');
                   uniformCalls++;
+                  program.reflected = true;
                   return {};
                 }, getAttributes() { assertActive('attribute reflection'); return {}; } };
                 properties.programs.set(key, program);
@@ -222,13 +224,14 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
   };
   const owner = createForwardProgramWarmOwner({
     renderer, scene, camera, getTarget: () => targetPolicy === 'hdr' ? hdrTarget : null,
-    now: () => clock,
+    now: () => clockFrozen ? 0 : clock,
   });
   return {
     owner, renderer, scene, camera, gl, events, visits, passVisits, materialVisits, batches, facades, renderables,
     cameraMask, hdrTarget, lateTarget,
     hiddenMesh, child, instance, layerExcluded,
     block() { blocked = true; },
+    advance(ms) { clock += ms; },
     nativeDepth: () => nativeDepth,
     uniformCalls: () => uniformCalls,
     assertUntouched() {
@@ -760,6 +763,7 @@ for (const composited of [false, true]) {
   const compile = networkCompileFactory(post, camera, LATE_FX_LAYER, {
     *prepareSceneSteps(options) {
       assert.equal(options.signal, signal);
+      assert.equal(options.strict, true, 'network adapter opts into completion-enforced bounded admission');
       assert.equal(camera.layers.mask, initialMask, 'the adapter never leaves camera state changed');
       assert.deepEqual(options.passes, composited ? [
         { layerMask: initialMask & ~(1 << LATE_FX_LAYER), target: sceneTarget },
@@ -774,11 +778,12 @@ for (const composited of [false, true]) {
         yield;
         options.timing.programsAfter = 3;
         yield;
+        return { status: 'complete', pending: 0 };
       } finally { finalized = true; }
     },
   }, async () => { paints++; });
   const receipt = await compile(signal);
-  assert.deepEqual(receipt, { programsAfter: 3 });
+  assert.deepEqual(receipt, { programsAfter: 3, preparation: { status: 'complete', pending: 0 } });
   assert.notEqual(receipt, receivedTiming, 'the adapter returns its completed diagnostic copy');
   assert.equal(paints, 2, 'each owner checkpoint retains its loader paint opportunity');
   assert.equal(finalized, true);
@@ -831,5 +836,134 @@ test('newest pending scene link gates older queries without losing hidden or pas
   f.assertFacadeReleased();
   f.assertUntouched();
 });
+
+function strictSceneResult(f, steps, onYield = () => {}) {
+  for (let count = 0; count < 10000; count++) {
+    const step = steps.next();
+    f.assertUntouched();
+    if (step.done) { f.assertFacadeReleased(); return step.value; }
+    onYield(count);
+  }
+  assert.fail('strict scene preparation must remain finite');
+}
+
+test('strict admission drains before admitting the entire cheap large scene', () => {
+  const f = fixture({ linker: true, firstUse: true, uniquePrograms: true, extraMeshes: 256, clockFrozen: true });
+  const timing = {};
+  const steps = f.owner.prepareSceneSteps({ strict: true, timing });
+  assert.equal(steps.next().done, false);
+  assert.ok(f.visits.length <= 32 && f.visits.length < f.renderables.length,
+    'watermark is checked after native batches, not after up to256 cheap objects');
+  const admitted = f.visits.length;
+  let ready = false;
+  const query = f.gl.getProgramParameter;
+  f.gl.getProgramParameter = (handle, token) => { query(handle, token); return ready; };
+  for (let index = 0; index < 3; index++) {
+    assert.equal(steps.next().done, false);
+    assert.equal(f.visits.length, admitted, 'pending first cohort blocks admission of another native batch');
+  }
+  ready = true;
+  let largestUnreflected = 0;
+  assert.deepEqual(strictSceneResult(f, steps, () => {
+    largestUnreflected = Math.max(largestUnreflected, f.renderer.info.programs.filter((p) => !p.reflected).length);
+  }), { status: 'complete', pending: 0 });
+  assert.ok(f.renderer.info.programs.length > 128);
+  assert.ok(largestUnreflected <= 64, 'this fixture stays within one batch beyond the32-entry watermark');
+  assert.equal(f.visits.length, f.renderables.length);
+  assert.equal(timing.uniformCount, f.renderer.info.programs.length);
+  assert.equal(timing.uniformPending, 0);
+});
+
+test('strict whole-operation deadline is not renewed after each admitted cohort', () => {
+  const f = fixture({ linker: true, firstUse: true, uniquePrograms: true, extraMeshes: 256 });
+  const timing = { uniformPending: 0 };
+  const steps = f.owner.prepareSceneSteps({ strict: true, timing });
+  const result = strictSceneResult(f, steps, () => f.advance(1000));
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.reason, 'budget');
+  assert.ok(f.visits.length < f.renderables.length, 'deadline stops admission instead of beginning another five-second drain');
+  assert.notEqual(timing.uniformPending, 0, 'partial submission cannot retain an invented complete-scene zero');
+});
+
+test('strict total round budget is shared by independently pending cohorts', () => {
+  const f = fixture({ linker: true, firstUse: true, uniquePrograms: true, extraMeshes: 256, clockFrozen: true });
+  let attempts = 0;
+  let firstGroupReady = false;
+  const query = f.gl.getProgramParameter;
+  f.gl.getProgramParameter = (handle, token) => {
+    query(handle, token);
+    attempts++;
+    if (attempts >= 600 && f.visits.length <= 32) firstGroupReady = true;
+    return f.visits.length <= 32 && firstGroupReady;
+  };
+  const timing = {};
+  const result = strictSceneResult(f, f.owner.prepareSceneSteps({ strict: true, timing }));
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.reason, 'budget');
+  assert.ok(f.visits.length > 32 && f.visits.length < f.renderables.length);
+  assert.ok(attempts < 1100, 'second pending cohort does not receive a fresh1024-round allocation');
+  assert.ok(timing.uniformCount > 0 && timing.uniformPending > 0);
+});
+
+test('strict recapture covers a replacement native handle on the same wrapper', () => {
+  const f = fixture({ linker: true, firstUse: true, uniquePrograms: true, extraMeshes: 128, clockFrozen: true });
+  const steps = f.owner.prepareSceneSteps({ strict: true });
+  steps.next();
+  const retained = f.renderer.info.programs[0];
+  let replaced = false;
+  const queries = [];
+  const query = f.gl.getProgramParameter;
+  f.gl.getProgramParameter = (handle, token) => { queries.push(handle); return query(handle, token); };
+  const compile = f.renderer.compile;
+  f.renderer.compile = (...args) => {
+    if (!replaced && retained.reflected) {
+      retained.program = {};
+      retained.reflected = false;
+      replaced = true;
+    }
+    return compile(...args);
+  };
+  assert.deepEqual(strictSceneResult(f, steps), { status: 'complete', pending: 0 });
+  assert.equal(replaced, true);
+  assert.ok(queries.includes(retained.program), 'replacement handle needs its own readiness and table proof');
+});
+
+for (const terminal of ['abort', 'return', 'throw', 'epoch', 'info', 'context', 'loss']) {
+  test(`strict interleaved ${terminal} releases the facade before any further submission`, () => {
+    const f = fixture({ linker: true, firstUse: true, uniquePrograms: true, extraMeshes: 256, clockFrozen: true });
+    const controller = new AbortController();
+    const steps = f.owner.prepareSceneSteps({ strict: true, signal: controller.signal });
+    assert.equal(steps.next().done, false);
+    const submitted = f.visits.length;
+    const reason = new Error(`strict ${terminal}`);
+    if (terminal === 'abort') controller.abort(reason);
+    if (terminal === 'epoch') f.owner.invalidate();
+    if (terminal === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+    if (terminal === 'context') f.renderer.getContext = () => ({ ...f.gl });
+    if (terminal === 'loss') f.gl.lost = true;
+    if (terminal === 'return') steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' });
+    else if (terminal === 'throw') assert.throws(() => steps.throw(reason), (error) => error === reason);
+    else if (terminal === 'abort') assert.throws(() => steps.next(), (error) => error === reason);
+    else assert.deepEqual(strictSceneResult(f, steps), { status: 'incomplete', pending: null, reason: 'invalidated' });
+    assert.equal(f.visits.length, submitted);
+    assert.equal(f.events.includes('linkerQuery'), false);
+    f.assertFacadeReleased();
+    f.assertUntouched();
+  });
+}
+
+{
+  const reason = new Error('paint opportunity rejected');
+  let finalized = false;
+  const compile = networkCompileFactory(null, new THREE.PerspectiveCamera(), LATE_FX_LAYER, {
+    *prepareSceneSteps() {
+      try { yield; assert.fail('rejected caller must not resume preparation'); }
+      finally { finalized = true; }
+    },
+  }, async () => { throw reason; });
+  await assert.rejects(compile(), (error) => error === reason);
+  assert.equal(finalized, true, 'adapter closes strict owner when nextPaintFrame rejects');
+  passed++;
+}
 
 console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and cancellation cases passed`);

@@ -14,6 +14,7 @@ import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts'
 import type { OpeningEffectsWarmOptions } from '../game/battleWarmRuntime.ts';
 import type { NetworkBrowserMatch } from './networkBrowserSessionRuntime.ts';
 import type { NetworkBattleActivationRequest } from './networkBattleActivationRuntime.ts';
+import type { ProgramPreparationResult } from '../engine/programWarm.ts';
 
 type MaybePromise<T> = T | PromiseLike<T>;
 
@@ -258,7 +259,7 @@ export interface NetworkBattlePresentationOptions {
       signal?: AbortSignal,
     ): MaybePromise<RuntimeValue>;
     shotCards(specIds: string[]): void;
-    compile(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+    compile(signal?: AbortSignal): MaybePromise<{ preparation: ProgramPreparationResult }>;
     finalShadows(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   };
   presentation: {
@@ -568,10 +569,15 @@ export function createNetworkBattlePresentationRuntime(
         load.battleLoad.progress(0.87, 'Compiling combat shaders');
         await load.nextFrame();
         throwIfNetworkBattleEntryAborted(signal);
-        try {
-          trace.programCompile = await measurePreparation(trace, now, 'compile', () => warm.compile(signal));
-        } catch (_) { /* warm only */ }
+        const compiled = await measurePreparation(trace, now, 'compile', () => warm.compile(signal));
+        trace.programCompile = compiled;
         throwIfNetworkBattleEntryAborted(signal);
+        // Exhausting a cooperative generator is not proof that its programs
+        // are ready. Never move unfinished shader work into the atomic opening
+        // render; the finally block drains the borrowed panel before recovery.
+        if (compiled?.preparation?.status !== 'complete' || compiled.preparation.pending !== 0) {
+          throw new Error('Battle shaders could not finish preparing. Please retry from the Garage.');
+        }
         mark('compile');
         load.battleLoad.progress(0.875, 'Completing player panel');
         const result = await panel;
@@ -584,6 +590,10 @@ export function createNetworkBattlePresentationRuntime(
         // This non-rejecting join preserves the primary error and drains every
         // writer before Garage restoration or opening-effect material changes.
         await panel;
+        // Shader generators may reject with the raw AbortSignal reason.
+        // Cancellation wins after this shader/panel scope has fully drained;
+        // unrelated later render failures retain their original error policy.
+        throwIfNetworkBattleEntryAborted(signal);
       }
       throwIfNetworkBattleEntryAborted(signal);
 
