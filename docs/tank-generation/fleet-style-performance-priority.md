@@ -155,6 +155,14 @@ not remeshed source triangle payloads. Reuse geometry with correct ownership
 and disposal; never dispose a shared primitive while another tank still uses
 it. Preserve exact hull/turret identity rather than making all X tanks one base.
 
+The owner's later clarification explicitly prioritizes **fitted, efficient new
+running-gear primitives** over preserving unsuitable source wheel/link topology.
+Do not keep a distorted rotating tire or expensive copied-looking face solely
+to satisfy a byte-preservation snapshot. Record the intended shape deviation,
+retain road-wheel stations and hull/turret identity, and test the replacement's
+actual stock, moving fit and cost independently. The source witness remains
+documented; it must not be silently rewritten as if the new shape were original.
+
 ### FSP-03/FSP-04 — real rollers and substantial tracks
 
 For each target, enumerate expected return-roller pairs and their positions.
@@ -167,7 +175,10 @@ an explicit style/mechanical deviation instead of silently certifying it as
 source-exact.
 
 Measure original-fleet track band, shoe web, pad, grouser and pin dimensions
-in metres and select comparable control vehicles. Adjust the actual smart
+in metres and select comparable control vehicles **in the same nation and
+running-gear family**. The owner repeated this requirement on 2026-09-08;
+one universal thickness setting is not proof of country-matched appearance.
+Adjust the actual smart
 shoe/band primitives, not just a cosmetic outer belt. Recompute the whole
 moving envelope, upper run and end-wheel tangency after thickness changes.
 Keep one animated course, no clipping through wheels/hull/skirts, no doubled
@@ -185,11 +196,10 @@ yawed turrets, moving running gear and all ERA-spent/reset states.
 Do not use invisible/shadow-only filler, a giant internal box, or camouflage
 to mask missing stock. Preserve optical recesses, exhaust/service openings,
 turret-ring clearance and the space needed for moving suspension/track shoes.
-The preceding Abrams request explicitly asks for no exposed wheel at the
-shoulder/skirt areas. Record the chosen coverage extent; hiding complete lower
-road-wheel faces changes the source silhouette and cannot be silently described
-as merely repairing an upper seam. Physical closure and source fidelity are
-separate checks with separate raw results.
+The owner clarified the preceding Abrams request: **close upper gaps; keep
+lower wheels visible**. Do not ask again or hide the complete road-wheel faces
+to satisfy it. Physical closure and source fidelity are separate checks with
+separate raw results.
 
 ### FSP-06 — deliberate camouflage and accessory materials
 
