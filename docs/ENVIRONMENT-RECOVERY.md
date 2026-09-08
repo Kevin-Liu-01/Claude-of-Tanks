@@ -671,6 +671,44 @@ of current main `db400d61b`. Both focused tests pass again on unchanged clean
 checkpoint does not publish the still-local horizon placement or change any
 runtime rendering code.
 
+## Progressive checkpoint — 2026-09-08
+
+`7e0216e5e` published bounded raw-resize and PNG-phase diagnostics; it did
+not alter the runtime or relax quality gates. `a08063cc3` and `34e3a0876`
+subsequently published the lowland capture framing and fresh natural Garage
+archive-entry acquisition, preserving current main through `e199032a3`.
+All five published capture files are byte-identical to the tested `800b6ff4f`
+source. Its four CPU controls passed, and the unchanged tools completed the
+corrected nine-image Polders baseline plus the 45-image candidate acquisition.
+The separate clean-integration CPU rerun passes all four controls on unchanged
+`34e3a0876` in `incremental-capture-tests-r3.{json,log}`. This is capture-tool
+verification, not a new runtime visual or performance certification.
+
+The candidate `horizon-density-after-r1` completed on native ANGLE Metal/M5 Max,
+with 45 PNGs, 20 scope contracts, no page errors and unchanged frozen source,
+build index and acquisition tools. All 45 camera projections match; 43 full
+pose receipts match. Polders' first two unscoped views retain an inactive zoom
+value of eight instead of two; that mismatch remains in the integrity report.
+All corrected Polders scope poses match exactly. Older v5 images are static
+art references, not timing baselines for the new v6 acquisition.
+
+**Art acceptance fails.** Verdant's pale, squat ridge groups read as rocks,
+not layered forest; Titan's dominant background still reads as smooth pink
+mounds. Winter/Coastal details are generally too faint. The full review is
+`horizon-density-after-r1-art-review.md` under the existing evidence root.
+The live horizon placement is therefore still local. Current refinements
+target Titan's actual land silhouette and a confirmed second baked fog blend
+in the detail colors; neither is represented as visually accepted yet.
+
+The single frozen-R5 DPR diagnostic `motion-r5-dpr-diagnostic-r1` completed
+with six images and a finalized native recording. It did not reproduce the
+earlier scale drop: all sampled frames stayed at scale one. DPR2 nevertheless
+had a 24.4 ms median raw frame gap, and its PNG completion took 6.9 seconds.
+The one-second resize window does not span the governor's 1.5-second decision
+cadence; raw sampling also ends before PNG completion. The old failure remains
+failed, and no sustained high-DPI, new-horizon or full-matrix acceptance follows
+from this diagnostic. Its `diagnostic-summary.md` records the causal limits.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
