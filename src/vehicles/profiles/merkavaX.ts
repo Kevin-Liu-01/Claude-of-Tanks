@@ -8,6 +8,7 @@ import { markEraHitFaces } from './eraHitFaces.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { merkava4RearFoldSolids } from './merkava4RearHull.ts';
 import { addMerkavaXShoulderReturns } from './merkavaXShoulderReturns.ts';
+import { addMerkava3dXFrontReturns } from './merkava3dXFrontReturn.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
@@ -318,6 +319,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true});
   merkava3HullDetails(P);
   addMerkavaXShoulderReturns(P, 'merkava3d_x');
+  addMerkava3dXFrontReturns(P);
   P.add('turret',merkava3Shell());
   P.add('turret',cylY(1.07,.23,40),0,.09,0);
   merkava3TurretDetails(P);
