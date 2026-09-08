@@ -60,6 +60,12 @@ The following content intentionally remains source-language content:
 - `tools/generate-localized-pages.mjs` materializes the `/cn` HTML shells after
   every build; `tools/generate-locale-sitemap.mjs` owns the paired sitemap graph.
 
+Vercel routing middleware uses the Node.js runtime because its legacy Edge
+bundler rejects the JSON import attributes used by the catalogs. Deployment
+transpilation uses the TypeScript 6 compatibility API and rewrites relative
+`.ts` imports to `.js`; project typechecking remains on native TypeScript 7.
+`tools/typescriptToolchain.selftest.mjs` guards these separate toolchain roles.
+
 ## General Translation workflow
 
 The repository is bound to its General Translation project through
