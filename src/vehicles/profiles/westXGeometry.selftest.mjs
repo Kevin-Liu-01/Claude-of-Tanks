@@ -83,7 +83,14 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       }
     } else if (id === 'merkava4_x') {
       for (const side of [-1, 1]) {
-        near(verticalHit(hull, side * 1.74, 2.84), 1.30775, .012, `${id}: source fender transition is enclosed`);
+        // The requested finite shoulder return covers this old source plane.
+        // Retain the original measured witness and tolerance: it must still
+        // exist below the added sheet, not be replaced by a moved source ruler.
+        const transitionHits=new THREE.Raycaster(new THREE.Vector3(side*1.74,6,2.84),
+          new THREE.Vector3(0,-1,0),0,7).intersectObject(hull,false);
+        const retained=transitionHits.find(hit=>Math.abs(hit.point.y-1.30775)<=.012);
+        near(retained?.point.y,1.30775,.012,`${id}: original source fender transition remains enclosed beneath the new folded return`);
+        near(transitionHits[0]?.point.y,1.33980,.001,`${id}: added return follows the adjacent deck slope, not an open gap`);
         near(verticalHit(hull, side * 1.44, 3.75), 1.04897, .015, `${id}: descending beak, not raised flat guard`);
       }
     }
