@@ -4,7 +4,7 @@
 // the nose, the footprint is XZ-centered, and the lowest tire point is y=0.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeWreckGeometries } from '../exactWreckGeometry.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -97,8 +97,9 @@ function paint<T extends THREE.BufferGeometry>(
 }
 
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const geometry = mergeGeometries(parts.map((part) => part.index ? part.toNonIndexed() : part), false);
-  if (!geometry) throw new Error('civilian vehicle geometry merge produced no result');
+  // Keep the primitives' exact indices: paint already belongs to their stored
+  // vertices. Expanding each triangle corner here only duplicated every stream.
+  const geometry = mergeWreckGeometries(parts);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   for (const part of parts) part.dispose();

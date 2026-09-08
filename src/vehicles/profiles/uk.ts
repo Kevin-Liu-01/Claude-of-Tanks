@@ -3708,7 +3708,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
       // photo-parity r2 gap #5: lights sit LOW on the bow corners in a
       // chunky wrap-over brush-guard frame (not bare pods on the shelf top)
       P.add('hullDetail', box(0.30, 0.045, 0.16), s * 1.14, 1.36, 3.02);
-      const hl = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.15, r: 0.05, rake: -0.55, seed: 3 + s });
+      const hl = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.15, r: 0.05, rake: -0.55, seed: 3 + s });
       hl.position.set(s * 1.14, 1.425, 3.03);
       P.hullG.add(hl);
       P.add('hullDark', box(0.022, 0.115, 0.17), s * 1.14 - 0.155, 1.44, 3.03);
@@ -4047,7 +4047,7 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   P.addEquipment('hullDark', cylZ(0.090, 0.12, 16), 0.48, 1.58, 2.31, -0.18, 0, 0);
   P.addEquipment('hullGlass', cylZ(0.068, 0.014, 16), 0.48, 1.59, 2.377, -0.18, 0, 0);
   for (const s of [-1, 1]) {
-    const lamp = FITTINGS.lightCluster({
+    const lamp = FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.16, r: 0.090, rake: -0.44,
       seed: 31 + s,
     });

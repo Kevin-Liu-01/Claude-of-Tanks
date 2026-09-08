@@ -10,6 +10,8 @@ import {
 
 export interface WorldScene {
   group: THREE.Object3D;
+  /** Final-eviction hook for external bindings, separate from GPU release. */
+  dispose?(): void;
 }
 
 type ProgressListener = (fraction: number, label: string) => void;
@@ -173,25 +175,37 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     return modulePromise;
   };
 
+  const releaseWorld = (id: string, world: World): void => {
+    world.dispose?.();
+    const preserveRoots = dependencies.scene.children.filter(
+      (child) => child !== world.group,
+    );
+    // Dormant cached worlds may be detached from the scene but still share
+    // immutable geometry/materials with the discarded completed build.
+    for (const retained of cache.values()) {
+      if (retained.group !== world.group && !preserveRoots.includes(retained.group)) {
+        preserveRoots.push(retained.group);
+      }
+    }
+    const released = disposeObject3DResources(world.group, {
+      preserveRoots,
+      onDispose: (type: string, resource: DisposableResource) => {
+        if (type === 'material' && isMaterial(resource)) {
+          dependencies.releaseShadowMaterial(resource);
+        }
+      },
+    });
+    dependencies.renderer.renderLists?.dispose?.();
+    lastRelease = { id, ...released };
+  };
+
   const enforceCacheBudget = (): void => {
     if (!Number.isFinite(limits.worldScenes)) return;
     for (const [id, cached] of cache) {
       if (cache.size <= limits.worldScenes) break;
       if (cached === dependencies.getCurrentWorld() || builds.has(id)) continue;
       cache.delete(id);
-      const preserveRoots = dependencies.scene.children.filter(
-        (child) => child !== cached.group,
-      );
-      const released = disposeObject3DResources(cached.group, {
-        preserveRoots,
-        onDispose: (type: string, resource: DisposableResource) => {
-          if (type === 'material' && isMaterial(resource)) {
-            dependencies.releaseShadowMaterial(resource);
-          }
-        },
-      });
-      dependencies.renderer.renderLists?.dispose?.();
-      lastRelease = { id, ...released };
+      releaseWorld(id, cached);
     }
   };
 
@@ -211,6 +225,8 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     const background = options.background ?? false;
     const waitForGarageLull = options.waitForGarageLull ?? true;
     let record = builds.get(mapId);
+    const cancelledPredecessor = record?.cancelled ? record.promise : null;
+    if (record?.cancelled) record = undefined;
     if (record && !background && record.background) {
       record.background = false;
       record.interruptBackgroundWait();
@@ -278,14 +294,21 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         }
       };
 
-      const awaitGarageLull = async (): Promise<void> => {
-        while (created.background && created.waitForGarageLull) {
+      const pollGarageLull = async (): Promise<void> => {
+        while (created.background && created.waitForGarageLull && !created.cancelled) {
           const activity = dependencies.getGarageActivity();
           const idle = activity.phase === 'garage' && !activity.transitionActive &&
             now() - activity.lastActivityAt >= 1200;
           if (idle) return;
           await sleep(120);
         }
+      };
+
+      const awaitGarageLull = async (): Promise<void> => {
+        // Subscribe once per pacing wait, not once per 120 ms poll: reactions
+        // on the unresolved interrupt promise otherwise accumulate indefinitely.
+        await Promise.race([pollGarageLull(), created.backgroundInterrupted]);
+        throwIfCancelled();
       };
 
       const acquireBackgroundLease = async (): Promise<void> => {
@@ -322,15 +345,28 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         await paceBuild();
       };
 
-      const promise = loadModule().then(({ createMapAsync }) => createMapAsync(
-        dependencies.engineContext,
-        { mapId, seed: 1337 },
-        handleProgress,
-        { fineSlices: true },
-      )).then((next) => {
+      const startBuild = async (): Promise<World> => {
+        // A late old assembly can register same-ID destructible callbacks.
+        // Wait for its disposal before building the fresh request; observing
+        // settlement here does not change the predecessor caller's rejection.
+        if (cancelledPredecessor) {
+          await cancelledPredecessor.then(() => undefined, () => undefined);
+        }
+        const { createMapAsync } = await loadModule();
+        throwIfCancelled();
+        return createMapAsync(dependencies.engineContext, { mapId, seed: 1337 },
+          handleProgress, { fineSlices: true });
+      };
+
+      const promise = startBuild().then((next) => {
         releaseBackgroundLease();
         finishBuildStage();
         next.group.visible = false;
+        // Cancellation during the final pacing yield must finish assembly so
+        // a real world owns every resource before this final-disposal path.
+        // Earlier partial-builder rollback remains outside this coordinator.
+        if (created.cancelled) releaseWorld(mapId, next);
+        throwIfCancelled();
         cache.set(mapId, next);
         if (startedInBackground) {
           stats.completed += 1;
@@ -340,8 +376,10 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         return next;
       }).finally(() => {
         releaseBackgroundLease();
-        if (builds.get(mapId) === created) builds.delete(mapId);
-        if (stats.active === mapId) stats.active = null;
+        if (builds.get(mapId) === created) {
+          builds.delete(mapId);
+          if (stats.active === mapId) stats.active = null;
+        }
       });
       created.promise = promise;
       builds.set(mapId, created);

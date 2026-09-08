@@ -13,7 +13,7 @@ The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu.
 - Production-visible fleet: 164 first-party procedural vehicles.
 - Playable saved fleet with the keyed local-development projection: 201 first-party procedural vehicles.
 - Saved vehicle records: 203, including two non-playable reference placeholders.
-- Authored battlefields: 20.
+- Authored battlefields: 30.
 - Simulation rate: fixed 60 Hz.
 - Standard battle format: teams of up to seven vehicles, presented as 7v7 where the selected mode supports it.
 - Supported play: local bot battles and multiplayer paths documented in the technical manual.
@@ -43,7 +43,7 @@ The Tank Gallery at https://cot.kevinliu.studio/gallery exposes the production f
 
 ## Battlefields and world systems
 
-The twenty current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, and Skybridge Chasm.
+The thirty current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, Skybridge Chasm, Tidegate Polders, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Whiteout Station, Orchard Valley, Longleaf Crossing, Mangrove Reach, Saltwind Narrows, and Highland Reservoir.
 
 Map configurations provide terrain and simulation descriptors without requiring the renderer. World presentation adds roads, structures, foliage, fog, sky, lighting, cover, collision, minimaps, destructibles, movable and crushable props, toppling objects, wrecks, detached remnants, utility networks, craters, and persistent destruction where the current mode supports it.
 

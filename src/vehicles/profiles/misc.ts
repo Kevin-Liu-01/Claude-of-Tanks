@@ -4212,7 +4212,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
         P.add('hullDark', box(0.035, 0.13, 0.70), s * 1.505, 1.70, -2.20);       // bin strap faces
         P.add('hullDetail', box(0.17, 0.02, 0.72), s * 1.42, 1.79, -2.20);       // lid seam
       }
-      const lc = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.15, rake: -0.18, seed: s > 0 ? 4 : 3 });
+      const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: P.mats, pods: 2, spacing: 0.15, rake: -0.18, seed: s > 0 ? 4 : 3 });
       lc.position.set(s * 1.26, 1.235, 3.02);
       P.hullG.add(lc);
       P.add('hullDetail', box(0.36, 0.07, 0.22), s * 1.26, 1.19, 3.00);          // lamp pedestal seated on the outer bow nose

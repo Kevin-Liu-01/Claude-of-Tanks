@@ -336,11 +336,21 @@ const _quat = new Quaternion();
 const _euler = new Euler();
 const _unit = new Vector3(1, 1, 1);
 const terrainCache = new Map<string, SharedTerrain>();
+const TERRAIN_IDLE_LIMIT = 2;
+let terrainBuilds = 0;
+
+export function authoritativeTerrainCacheStats() {
+  return { retainedMaps: terrainCache.size, limit: TERRAIN_IDLE_LIMIT, builds: terrainBuilds };
+}
 
 function sharedTerrain(mapId: string): SharedTerrain {
   const key = String(mapId || 'verdant');
   let cached = terrainCache.get(key);
-  if (cached) return cached;
+  if (cached) {
+    terrainCache.delete(key);
+    terrainCache.set(key, cached);
+    return cached;
+  }
   const config = getMapConfig(key);
   // The rendered battlefields use seed 1337 unless explicitly overridden.
   // Height fields are immutable after construction, so dedicated matches can
@@ -355,6 +365,10 @@ function sharedTerrain(mapId: string): SharedTerrain {
     layout: createLayout(config),
   };
   terrainCache.set(key, cached);
+  terrainBuilds++;
+  while (terrainCache.size > TERRAIN_IDLE_LIMIT) {
+    terrainCache.delete(terrainCache.keys().next().value!);
+  }
   return cached;
 }
 
@@ -408,6 +422,23 @@ function spawnFor(
     const base = layout.spawns.player;
     const row = Math.floor(index / 4);
     const col = index % 4;
+    const formation = base.formation;
+    if (formation) {
+      const { columnSpacingM, rowSpacingM } = formation;
+      if (!Number.isFinite(columnSpacingM) || columnSpacingM <= 0
+        || !Number.isFinite(rowSpacingM) || rowSpacingM <= 0) {
+        throw new TypeError('spawn formation spacing must be finite and positive');
+      }
+      const yaw = finite(base.yaw, 0);
+      const right = (col - 1.5) * columnSpacingM;
+      const back = row * rowSpacingM;
+      const sin = Math.sin(yaw), cos = Math.cos(yaw);
+      return {
+        x: base.x + right * cos - back * sin,
+        z: base.z - right * sin - back * cos,
+        yaw,
+      };
+    }
     return {
       x: base.x + (col - 1.5) * 8,
       z: base.z - row * 10,
@@ -602,9 +633,12 @@ export function createAuthoritativeMatch({
   if (worldCollision && worldCollision.mapId && worldCollision.mapId !== mapId) {
     throw new Error(`world collision map mismatch: expected ${mapId}, got ${worldCollision.mapId}`);
   }
-  const shared = sharedTerrain(mapId);
-  const heightField = worldCollision?.heightField || shared.heightField;
-  const layout = shared.layout;
+  // A browser world or dedicated collision lease already owns the exact field.
+  // Do not bake a second 5.5 MB field merely to obtain its existing layout.
+  const suppliedHeightField = worldCollision?.heightField;
+  const shared = suppliedHeightField ? null : sharedTerrain(mapId);
+  const heightField = suppliedHeightField || shared!.heightField;
+  const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
   const entityById = new Map<string, AuthoritativeEntity>();

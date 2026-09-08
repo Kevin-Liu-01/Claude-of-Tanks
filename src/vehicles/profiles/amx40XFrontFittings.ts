@@ -1,6 +1,7 @@
 // First-party folded metal and lamp primitives. Source scalar stations are
 // authoring measurements only; no imported mesh topology enters this builder.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {blindTube} from './measuredPrimitives.ts';
@@ -53,10 +54,10 @@ function lamps(P:TankBuilderPort,side:number):void {
   const left=side<0,cx=left?-1.2988:1.3076,cy=left?1.399:1.3951;
   const z0=left?3.0772:3.085,front=left?3.2139:3.2217;
   add(P,blindTube(.0879,.0701,front-z0,.013,32),cx,cy,(front+z0)/2,'hullDark');
-  add(P,cylZ(.0679,.003,32),cx,cy,front-.007,'hullGlass');
+  add(P,markVehicleNightLens(cylZ(.0679,.003,32),'headlight'),cx,cy,front-.007,'hullGlass');
   const mx=left?-1.4629:1.4697,my=left?1.36285:1.358,mz=left?3.177:3.1846;
   add(P,box(.151,.115,.067),mx,my,mz,'hullDark');
-  add(P,box(.117,.083,.003),mx,my,mz+.034,'hullGlass');
+  add(P,markVehicleNightLens(box(.117,.083,.003),'marker'),mx,my,mz+.034,'hullGlass');
 }
 function mountingWeb(x:number):THREE.BufferGeometry {
   // Six 29.8mm longitudinal webs, with a real transverse pin bore. Their

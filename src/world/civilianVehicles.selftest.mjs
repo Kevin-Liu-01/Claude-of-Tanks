@@ -47,7 +47,7 @@ for (const [kind, receipt] of Object.entries(CIVILIAN_VEHICLE_RECEIPTS)) {
     }
   }
 
-  const triangles = geometry.getAttribute('position').count / 3;
+  const triangles = (geometry.index?.count ?? geometry.getAttribute('position').count) / 3;
   assert.ok(triangles <= receipt.triangleBudget,
     `${kind} stays within its ${receipt.triangleBudget}-triangle instanced-geometry budget (got ${triangles})`);
   geometry.computeBoundingBox();

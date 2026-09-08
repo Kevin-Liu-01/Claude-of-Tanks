@@ -279,6 +279,7 @@ export interface BrowserBattleBridgeOptions<
   createTankVisual?: CreateTankVisual;
   prepareVisualTextures?: PrepareVisualTextures;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
+  onVisualReady?: (entity: BridgeEntity) => void;
 }
 
 export interface BrowserBattleBridge {
@@ -359,6 +360,7 @@ export function createBrowserBattleBridge<
   createTankVisual = defaultCreateTankVisual,
   prepareVisualTextures = defaultPrepareVisualTextures,
   clearVehicleDecals = null,
+  onVisualReady,
 }: BrowserBattleBridgeOptions<
   TLegacyEntity,
   TLegacyShell,
@@ -597,6 +599,7 @@ export function createBrowserBattleBridge<
     }
     entities.set(entity.id, entity);
     roster.push(entity);
+    onVisualReady?.(entity);
     return entity;
   }
 

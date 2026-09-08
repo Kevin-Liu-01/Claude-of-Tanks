@@ -179,7 +179,40 @@ export function createGaragePedestalRuntime({
   let pollToken = 0;
   let shownToken = 0;
   let pendingSince = 0;
+  let disposed = false;
   const cache = new Map<string, GaragePedestalVisual>();
+  const parked = new WeakMap<GaragePedestalVisual, number>();
+  const trackedDisposal = new WeakSet<GaragePedestalVisual>();
+  const retired = new WeakSet<GaragePedestalVisual>();
+
+  // A parked root is deliberately parentless, so parent presence alone can
+  // no longer distinguish it from an externally disposed visual. Preserve
+  // that invalidation contract without disposing any additional resource.
+  const trackDisposal = (visual: GaragePedestalVisual) => {
+    if (trackedDisposal.has(visual)) return;
+    trackedDisposal.add(visual);
+    const originalDispose = visual.dispose;
+    visual.dispose = () => {
+      if (retired.has(visual)) return;
+      retired.add(visual);
+      parked.delete(visual);
+      if (cache.get(visual.specId) === visual) cache.delete(visual.specId);
+      if (current === visual) current = null;
+      originalDispose.call(visual);
+    };
+  };
+
+  const fielded = (visual: GaragePedestalVisual) => getPhase() !== 'garage'
+    && (getBattlePlayer()?.visual === visual
+      || getBattleEntity(visual.specId)?.visual === visual);
+
+  const reusable = (visual: GaragePedestalVisual) => !retired.has(visual)
+    && (visual.root.parent === scene || (parked.has(visual)
+      && visual.root.parent === null && visual.root.visible === false
+      && visual.root.position.y === parked.get(visual)));
+
+  // Direct Studio boot intentionally warms its future Garage hero while idle.
+  const canStage = () => !disposed && (getPhase() === 'garage' || getPhase() === 'studio');
 
   if (debugTarget) {
     debugTarget.__SWITCH_TIMINGS = [];
@@ -235,7 +268,8 @@ export function createGaragePedestalRuntime({
   };
 
   const park = (visual: GaragePedestalVisual | null) => {
-    if (!visual || visual === current) return;
+    if (!visual || visual === current || fielded(visual)) return;
+    if (visual.root.parent !== scene) return;
     // Never strip the last visible cover while a replacement is compiling.
     if (isOnStage(visual) && !isOnStage(current)) {
       trace('park-deferred', { id: visual.specId, pv: visualState(current) });
@@ -243,7 +277,10 @@ export function createGaragePedestalRuntime({
     }
     trace('park', { id: visual.specId });
     visual.setVisible?.(false);
+    visual.root.visible = false;
     visual.root.position.y = garagePosition.y + PARK_OFFSET_Y;
+    visual.root.removeFromParent();
+    parked.set(visual, visual.root.position.y);
   };
 
   const evict = (specId: string, visual: GaragePedestalVisual) => {
@@ -256,12 +293,14 @@ export function createGaragePedestalRuntime({
   const trim = (maxEntries = residentLimit) => {
     for (const [specId, visual] of cache) {
       if (cache.size <= maxEntries) break;
-      if (visual === current || visual.__pedestalCompiling || isOnStage(visual)) continue;
+      if (visual === current || visual.__pedestalCompiling || isOnStage(visual)
+        || fielded(visual)) continue;
       evict(specId, visual);
     }
   };
 
   const touch = (specId: string, visual: GaragePedestalVisual) => {
+    trackDisposal(visual);
     cache.delete(specId);
     cache.set(specId, visual);
     // Prefer never-shown speculative entries, then fall back to true LRU.
@@ -270,7 +309,7 @@ export function createGaragePedestalRuntime({
       for (const [candidateId, candidate] of cache) {
         if (cache.size <= residentLimit) return;
         if (candidate === current || candidate.__pedestalCompiling
-          || candidate === visual || isOnStage(candidate)) continue;
+          || candidate === visual || isOnStage(candidate) || fielded(candidate)) continue;
         if (pass === 1 && candidate.__everShown) continue;
         evict(candidateId, candidate);
       }
@@ -354,6 +393,7 @@ export function createGaragePedestalRuntime({
   };
 
   const set = (specId: string, force = false): Promise<void> => {
+    if (!canStage()) return Promise.resolve();
     if (!force && current?.specId === specId) {
       if (switchPending() || isOnStage(current)) {
         trace('same-spec-return', { id: specId, pv: visualState(current) });
@@ -376,19 +416,24 @@ export function createGaragePedestalRuntime({
     };
 
     let cached = cache.get(specId);
-    if (cached && !cached.root.parent) {
+    if (cached && !reusable(cached)) {
       trace('purge-detached', { id: specId });
+      parked.delete(cached);
       cache.delete(specId);
       cached = undefined;
     }
     if (cached) {
       const cachedToken = pollToken;
       const revealCached = () => {
-        if (cachedToken !== pollToken || !cached) return;
+        if (!canStage() || cachedToken !== pollToken || !cached) return;
+        if (cache.get(specId) !== cached || !reusable(cached)) return;
         current = cached;
         touch(specId, cached);
+        parked.delete(cached);
+        if (!cached.root.parent) scene.add(cached.root);
         pose(cached);
         cached.setVisible?.(true);
+        cached.root.visible = true;
         retirePrevious();
         recordSwitch(specId, startedAt, 'cached');
       };
@@ -413,7 +458,7 @@ export function createGaragePedestalRuntime({
       ).catch(() => undefined),
     ]).then(async () => {
       phases.prebakeMs = Math.round(now() - phaseAt);
-      if (buildToken !== pollToken) {
+      if (!canStage() || buildToken !== pollToken) {
         trace('prebake-stale', { id: specId, tok: buildToken });
         retirePrevious();
         return;
@@ -429,17 +474,20 @@ export function createGaragePedestalRuntime({
       incoming.__pedestalCompileP = compileWork.finally(() => {
         incoming.__pedestalCompiling = false;
         incoming.__pedestalCompileP = null;
-        if (cache.get(specId) === incoming) touch(specId, incoming);
+        if (!disposed && cache.get(specId) === incoming) touch(specId, incoming);
       });
       await incoming.__pedestalCompileP;
       phases.compileMs = Math.round(now() - phaseAt);
-      if (buildToken !== pollToken) {
+      if (!canStage() || buildToken !== pollToken
+        || cache.get(specId) !== incoming || !reusable(incoming)) {
         trace('compile-stale', { id: specId, tok: buildToken });
+        park(incoming);
         return;
       }
       current = incoming;
       pose(incoming);
       incoming.setVisible?.(true);
+      incoming.root.visible = true;
       retirePrevious();
       recordSwitch(specId, startedAt, 'procedural', phases);
     });
@@ -459,16 +507,19 @@ export function createGaragePedestalRuntime({
   };
 
   const adoptBattlePlayer = (specId: string) => {
+    if (disposed || getPhase() !== 'garage') return false;
     const incoming = getBattlePlayer()?.visual;
-    if (!incoming || incoming.specId !== specId) return false;
+    if (!incoming || incoming.specId !== specId || retired.has(incoming)) return false;
     const cached = cache.get(specId);
-    if (cached?.root?.parent && cached !== incoming) return false;
+    if (cached && reusable(cached) && cached !== incoming) return false;
     const outgoing = current;
     incoming.spec = getSpec(specId);
     if (!incoming.root.parent) scene.add(incoming.root);
     current = incoming;
+    parked.delete(incoming);
     pose(incoming);
     incoming.setVisible?.(true);
+    incoming.root.visible = true;
     incoming.__everShown = true;
     touch(specId, incoming);
     if (outgoing && outgoing !== incoming) park(outgoing);
@@ -480,6 +531,7 @@ export function createGaragePedestalRuntime({
   };
 
   const lendToBattle = (specId: string) => {
+    if (disposed) return false;
     const visual = current;
     const entity = getBattleEntity(specId);
     if (!visual || visual.specId !== specId || !entity) return false;
@@ -492,13 +544,17 @@ export function createGaragePedestalRuntime({
       return false;
     }
     entity.visual = visual;
+    // A slow Garage selection must not finish after the current hero has
+    // been handed to simulation and move that actor back onto the podium.
+    pollToken += 1;
+    preloader.invalidate();
     visual.setGroundSampler?.(groundSampler);
     trace('lend-battle', { id: specId });
     return true;
   };
 
   const watchdog = scheduleWatchdog(() => {
-    if (!isBootComplete() || getPhase() !== 'garage') return;
+    if (disposed || !isBootComplete() || getPhase() !== 'garage') return;
     const wanted = getSelectedId();
     if (!wanted || switchPending()) return;
     if (current?.specId === wanted && isOnStage(current)) return;
@@ -521,6 +577,12 @@ export function createGaragePedestalRuntime({
     poseCurrent: () => { if (current) pose(current); },
     adoptBattlePlayer,
     lendToBattle,
-    dispose: () => cancelWatchdog(watchdog),
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      pollToken += 1;
+      preloader.invalidate();
+      cancelWatchdog(watchdog);
+    },
   };
 }

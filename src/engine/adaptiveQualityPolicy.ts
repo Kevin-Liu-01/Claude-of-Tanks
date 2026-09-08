@@ -1,5 +1,12 @@
 import { overloadReliefLever } from './renderScalePolicy.ts';
 
+/** Sample real cadence, not simulation's bounded delta; warm renders stay inert. */
+export function adaptiveFrameSeconds(presentationSeconds: number, wallSeconds = presentationSeconds): number {
+  if (!Number.isFinite(presentationSeconds) || presentationSeconds <= 0
+    || !Number.isFinite(wallSeconds) || wallSeconds <= 0 || wallSeconds > .25) return 0;
+  return wallSeconds;
+}
+
 export type AdaptiveQualityAction =
   | 'none'
   | 'trim-down'
@@ -132,6 +139,13 @@ export class AdaptiveQualityPolicy {
     if (next === this.scale) return false;
     this.scale = next;
     return true;
+  }
+
+  /** Sizing may raise the legal floor without starting a new workload. */
+  reconcileDynamicScaleFloor(floor: number): boolean {
+    // Keep the already-clamped raster and its observable policy in agreement.
+    // This is not a recovery decision: retain every trim/load/backoff record.
+    return this.setDynamicScale(Math.max(floor, this.scale));
   }
 
   forceTrim(next: number, maximumTrim: number): boolean {

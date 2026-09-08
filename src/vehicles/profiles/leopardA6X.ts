@@ -1,6 +1,7 @@
 // Independent plain Leopard 2A6 source-study build. Scalar dimensions describe
 // authored solids; no donor builder, source topology, or source asset is loaded.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
@@ -232,7 +233,7 @@ function openConnector(width: number, length: number): THREE.BufferGeometry {
 function bowFurniture(P: TankBuilderPort, side: number): void {
   const x = side * .841965;
   P.addEquipment('hullDetail', cylZ(.10466, .225, 24), x, 1.26415, 3.53584);
-  P.addEquipment('hullGlass', cylZ(.091, .006, 24), x, 1.26415, 3.647335);
+  P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.091, .006, 24), 'headlight'), x, 1.26415, 3.647335);
   P.addEquipment('hullDetail', wall([[3.4045, x - .079, x + .079, 1.138, 1.205],
     [3.56, x - .079, x + .079, 1.138, 1.205]]));
   for (const absoluteX of [.38272, .51931, .65654]) {

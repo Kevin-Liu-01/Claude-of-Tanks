@@ -17,7 +17,9 @@
 
 import { Euler, Quaternion, Vector3 } from 'three';
 import { computeDispersionRadM } from '../sim/movement.ts';
+import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
+import { botNominalGunLaneClear } from '../sim/botGunLane.ts';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.ts';
 import {
   blastRadiusM,
@@ -85,7 +87,7 @@ interface AiGunSpec extends MovementGunSpec {
 type AiSpec = Omit<MovementSpec, 'gun' | 'armor' | 'dims'> & {
   id: string;
   gun: AiGunSpec;
-  armor?: ArmorModel;
+  armor?: ArmorModel & NonNullable<MovementSpec['armor']>;
   dims: MovementSpec['dims'] & { lengthM?: number };
 };
 
@@ -208,6 +210,8 @@ interface AiObstacle {
 }
 
 interface AiHeightField {
+  readonly navigationWaterPolicy?: 'avoid-liquid';
+  getWaterMaskAt?(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { y: number };
@@ -739,6 +743,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ensureAiInput(entity);
 
   const spec = entity.spec;
+  const liquidSafe = createNavigationLiquidSafety(hf, spec);
   // BATTLE-AI r7 doctrine wiring (see roleOf/ROLE_TUNE above).
   const role = roleOf(spec);
   const tune = ROLE_TUNE[role];
@@ -780,6 +785,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let mode: AiMode = 'patrol';               // 'patrol'|'engage'|'seekCover'|'flank'
   let target: AiEntity | null = null;         // TankEntity or null
   let losClear = false;
+  let gunLaneClear = true;
+  let gunLaneNextCheckS = -Infinity;
+  let gunLaneTargetId: string | null = null;
+  let gunLaneBlockedT = 0;
+  let gunLaneChecks = 0;
+  let gunLaneMoves = 0;
   let acquiredAtS = -Infinity;               // when current target was first seen
   let lastSeenAtS = -Infinity;
   const lastSeen = { x: 0, z: 0 };
@@ -1876,6 +1887,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     ux: number,
     uz: number,
   ): number {
+    if (liquidSafe && !liquidSafe(sx,sz,Math.atan2(ux,uz),TERRAIN_ROUTE_LOOK_M)) return Infinity;
     let previousH = startH;
     let worstCost = 1;
     const debuff = entity.state._debuff;
@@ -1922,6 +1934,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const s = Math.sin(angle);
       const ux = dirx * c + dirz * s;
       const uz = -dirx * s + dirz * c;
+      if (liquidSafe && findBlockingObstacle(sx,sz,ux,uz,TERRAIN_ROUTE_LOOK_M,spec.dims.widthM*0.5+1.4)) continue;
       const terrainCost = terrainLineCost(sx, sz, startH, ux, uz);
       if (!Number.isFinite(terrainCost)) continue;
       const cx = sx + ux * TERRAIN_ROUTE_LOOK_M;
@@ -2017,6 +2030,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 500) continue;
       const d1 = Math.hypot(cx - sourceX, cz - sourceZ);
       if (d1 < 2) continue; // standing on this corner already
+      if (liquidSafe && !liquidSafe(sourceX,sourceZ,Math.atan2(cx-sourceX,cz-sourceZ),d1)) continue;
       if (nowS < lastCorner.untilS &&
           Math.hypot(cx - lastCorner.x, cz - lastCorner.z) < 3) continue;
       if (routeSegmentHitsBox(sourceX, sourceZ, cx, cz, box, margin)) continue;
@@ -2051,9 +2065,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       chooseRouteCorner(
         box, sourceX, sourceZ, gx, gz, directionX, directionZ, margin,
       );
-      return;
+      if (!liquidSafe || routeActive) return;
     }
-    if (nowS < terrainRouteUntilS) {
+    if (liquidSafe || nowS < terrainRouteUntilS) {
       planTerrainRoute(sourceX, sourceZ, directionX, directionZ, gx, gz);
     }
   }
@@ -3021,6 +3035,27 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     _dbg.yawErrMrad = +(fireGate.yawError * 1000).toFixed(1);
     _dbg.pitchErrMrad = +(fireGate.pitchError * 1000).toFixed(1);
     _dbg.distM = Math.round(fireGate.distance);
+    _dbg.gunLaneClear = gunLaneClear;
+    _dbg.gunLaneChecks = gunLaneChecks;
+    _dbg.gunLaneMoves = gunLaneMoves;
+  }
+
+  function nominalGunLanePass(shell: DamageShellSpec, dt: number, timeS: number,
+    ordinaryShot: boolean): boolean {
+    // Blind fire retains its remembered-point policy; do not query hidden
+    // transforms or let this gate remove intentionally sampled aim errors.
+    if (!ordinaryShot || fireGate.blindFire || fireGate.blindLock || !target) {
+      gunLaneBlockedT = Math.max(0, gunLaneBlockedT - dt * 2);
+      return true;
+    }
+    if (target.id !== gunLaneTargetId || timeS >= gunLaneNextCheckS) {
+      gunLaneClear = botNominalGunLaneClear(entity, target, shell, deps.raycast);
+      gunLaneTargetId = target.id;
+      gunLaneNextCheckS = timeS + LOS_INTERVAL_S;
+      gunLaneChecks++;
+    }
+    gunLaneBlockedT = gunLaneClear ? 0 : gunLaneBlockedT + dt;
+    return gunLaneClear;
   }
 
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
@@ -3051,11 +3086,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       && (penGateOk || chosenSlot === heSlot);
     const blindShot = fireGate.blindFire && fireGate.reactionReady
       && fireGate.reloadReady && fireGate.rangeReady && fireGate.aligned;
+    const clearGunLane = nominalGunLanePass(shell, dt, timeS, ordinaryShot);
     const friendlyRisk = updateFriendlyFireGate(
       input,
       shell,
       dt,
-      ordinaryShot || blindShot,
+      (ordinaryShot && clearGunLane) || blindShot,
     );
     if (input.fire) lastFiredAtS = timeS;
     publishFireDebug(friendlyRisk);
@@ -3449,6 +3485,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     friendlyLaneMoves++;
   }
 
+  function updateGunLaneRelocation(timeS: number): void {
+    if (gunLaneBlockedT < 1.5 || !target || !losClear || timeS < scootUntilS) return;
+    // Reuse the established gun-limit relocation rather than a new route
+    // planner or an accuracy/ammunition bonus. Clear the settle latch so a
+    // genuine cover obstruction cannot hold this move in place.
+    // Failed searches also require fresh blocked dwell before scanning again.
+    gunLaneBlockedT = 0;
+    if (!pickFlatCell()) return;
+    beginScoot(10);
+    settleUntilS = -1;
+    gunLaneMoves++;
+  }
+
   function driveCurrentMode(input: AiInput, timeS: number, targetDistance: number): void {
     input.brake = false;
     driveIntent = false;
@@ -3560,6 +3609,19 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function finishStep(input: AiInput, dt: number, timeS: number): void {
     avoidAllies(input, dt);
+    if (liquidSafe) {
+      const st = entity.state;
+      const speed = Math.abs(st.speed);
+      const sign = speed > 0.2 ? Math.sign(st.speed) : Math.sign(input.throttle);
+      // Controller safety can only brake after allied avoidance, never add a reverse ram.
+      // Conservative 2m/s² nominal stop envelope; collision impulses still obey shared physics.
+      const stopM = sign * (1.5 + speed * 0.2 + speed * speed / 4);
+      if (!liquidSafe(st.pos.x,st.pos.z,st.yaw,stopM)) {
+        input.throttle = 0;
+        input.brake = true;
+        routeTimer = Math.min(routeTimer,0.1);
+      }
+    }
     input.actionBits = chooseAiSupportActionBits(entity, timeS, {
       safeToReloadMagazine: !target || !losClear || mode === 'seekCover',
       wantsSuspensionAim: !!target && losClear
@@ -3592,6 +3654,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // fire-discipline gate observes the corridor, keeping AI/fire ordering
     // deterministic and identical for both teams.
     updateFriendlyLaneRelocation(timeS);
+    updateGunLaneRelocation(timeS);
 
     driveCurrentMode(input, timeS, distToTarget);
 

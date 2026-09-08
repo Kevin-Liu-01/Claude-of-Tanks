@@ -1,6 +1,7 @@
 // Source-specific bow lamps, carried gear, shoulder boxes and rear fixtures.
 // Dimensions are scalar reconstruction estimates in the frozen source frame.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -19,13 +20,13 @@ function bowLamps(P:TankBuilderPort,side:-1|1):void {
   for(const [dx,z] of [[-.161,3.745],[0,3.716],[.161,3.704]]){
     P.addEquipment('hullDark',cylZ(.073,.086,24),x+side*dx,1.087,z-.040);
     P.addEquipment('hullDetail',cylZ(.068,.026,24),x+side*dx,1.087,z-.010,-.12,side*.12);
-    P.addEquipment('hullGlass',cylZ(.053,.006,24),x+side*dx,1.087,z+.004,-.12,side*.12);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.053,.006,24),'headlight'),x+side*dx,1.087,z+.004,-.12,side*.12);
   }
   // Square upper lamp is seated on a small bridge on the sloping shoulder.
   P.addEquipment('hullDetail',box(.156,.051,.19),side*1.616,1.473,2.955,.147);
   P.addEquipment('hullDetail',box(.140,.127,.100),side*1.616,1.536,2.932);
   P.addEquipment('hullDark',box(.118,.101,.013),side*1.616,1.536,2.988);
-  P.addEquipment('hullGlass',box(.090,.074,.004),side*1.616,1.536,2.997);
+  P.addEquipment('hullGlass',markVehicleNightLens(box(.090,.074,.004),'marker'),side*1.616,1.536,2.997);
 }
 
 function bowTowing(P:TankBuilderPort,side:-1|1):void {

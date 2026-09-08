@@ -298,4 +298,22 @@ for (const reason of ['aborted', 'invalidated', 'renderer-restored']) {
     (error) => error === controller.signal.reason);
 }
 
+{
+  const fixture = timedForwardFixture();
+  fixture.renderer.pending = false;
+  const existing = new Set(fixture.renderer.info.programs);
+  fixture.renderer.info.programs.push({ program: {} });
+  const timing = {};
+  assert.equal([...fixture.owner.linkerBreathingSlices(3, timing, undefined, existing)].length, 0);
+  assert.equal(timing.existingQueryMs, 7);
+  assert.equal(timing.maxExistingQueryMs, 7);
+  assert.equal(timing.existingQueryCount, 1);
+  assert.equal(timing.newQueryMs, 7);
+  assert.equal(timing.maxNewQueryMs, 7);
+  assert.equal(timing.newQueryCount, 1);
+  assert.equal(timing.queryMs, timing.existingQueryMs + timing.newQueryMs,
+    'cohort timing classifies existing native calls without introducing more queries');
+  assert.equal(fixture.events.filter(([name]) => name === 'query').length, 2);
+}
+
 console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');

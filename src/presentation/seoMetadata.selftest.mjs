@@ -53,6 +53,12 @@ for (const [file, canonical] of indexedPages) {
   const description = attribute(html, 'meta', 'name', 'description');
   assert.ok(title.length >= 30 && title.length <= 80, `${file} needs a descriptive title`);
   assert.ok(description.length >= 100 && description.length <= 240, `${file} needs a detailed meta description`);
+  const head = html.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+  for (const [, total] of head.matchAll(/\b(\d+)\s+(?:authored\s+)?battlefields\b/gi)) {
+    assert.equal(Number(total), PRODUCT_STATS.battlefields,
+      `${file} head battlefield counts must match the canonical total, including title/social/JSON-LD`);
+  }
+  if (file === 'index.html') assert.match(title, new RegExp(`\\b${PRODUCT_STATS.battlefields} Battlefields\\b`));
   assert.ok(!titles.has(title), `${file} duplicates a title`);
   assert.ok(!descriptions.has(description), `${file} duplicates a meta description`);
   titles.add(title);

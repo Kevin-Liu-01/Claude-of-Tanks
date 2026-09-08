@@ -1,6 +1,6 @@
 # Claude of Tanks technical field manual
 
-> Detailed public documentation for the current Claude of Tanks simulation, 164 production-visible procedural vehicles, 20 battlefields, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
+> Detailed public documentation for the current Claude of Tanks simulation, 164 production-visible procedural vehicles, 30 battlefields, Three.js renderer, multiplayer authority, interface, mobile support, Tank Gallery, and Scene Studio.
 
 ## Manual
 
@@ -11,7 +11,7 @@
 - [Vehicles and running gear](https://cot.kevinliu.studio/docs/vehicles): Vehicle specifications, procedural rigs, anatomy, tracks, suspension, recoil, LOD, and release verification.
 - [Renderer and graphics](https://cot.kevinliu.studio/docs/rendering): Three.js rendering, adaptive quality, pixel density, shadows, post-processing, recovery, and mobile GPU behavior.
 - [Performance and loading](https://cot.kevinliu.studio/docs/performance): Cold boot, staged battle loading, frame evidence, constrained devices, and release budgets.
-- [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Twenty authored maps, terrain, routes, structures, collision, environment, destruction, props, and wrecks.
+- [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Thirty authored maps, terrain, routes, structures, collision, environment, destruction, props, and wrecks.
 - [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Perception, deterministic route planning, gun handling, team safety, survival behavior, and tests.
 - [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, input intent, authority, snapshots, prediction, reconciliation, spotting, bots, and ranked services.
 - [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Weapons, engines, spatial listeners, bounded mix state, crew radio, and killcam timing.

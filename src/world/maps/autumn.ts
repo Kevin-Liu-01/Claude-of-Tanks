@@ -4,6 +4,8 @@
 // broadleaf forest runs the vegetation hue system in orange/gold; farmland
 // patchwork, hay, and a ruined stone bridge dress the valley floor.
 
+import { createMarshChannel } from './marshChannel.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The river: a W-E chain of shallow channel links routed along LOW ground
@@ -11,7 +13,7 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // terrain's own valleys). dip deepens where the route crosses a saddle so
 // the channel keeps reading; the two authored FORDS pinch it to a wade, and
 // the link at x=-20 sits under the N-S road = the road ford/causeway.
-const RIVER = [
+const RIVER_STATIONS = [
   { x: -460, z: -186, dip: 1.4 }, { x: -420, z: -206, dip: 1.4 },
   { x: -380, z: -198, dip: 1.4 }, { x: -340, z: -170, dip: 1.6 },
   { x: -300, z: -142, r: 16, dip: 0.8 },              // WEST FORD
@@ -28,6 +30,19 @@ const RIVER = [
   { x: 340, z: -162, dip: 1.4 }, { x: 380, z: -162, dip: 1.4 },
   { x: 420, z: -170, dip: 1.4 }, { x: 460, z: -154, dip: 1.4 },
 ].map((m) => ({ r: 25, ...m }));
+const FORDS = RIVER_STATIONS.filter(station => station.r < 25);
+const RIVER = createMarshChannel(RIVER_STATIONS).map(station => {
+  let r = station.r;
+  // New overlaps connect the river, but the north/south crossing section
+  // at each authored ford stays inside its original narrow bank envelope.
+  for (const ford of FORDS) {
+    const along = Math.abs(station.x - ford.x);
+    if (along >= r) continue;
+    const across = Math.max(0, ford.r - Math.abs(station.z - ford.z));
+    r = Math.min(r, Math.hypot(along, across));
+  }
+  return r === station.r ? station : { ...station, r };
+});
 
 export default {
   id: 'autumn',

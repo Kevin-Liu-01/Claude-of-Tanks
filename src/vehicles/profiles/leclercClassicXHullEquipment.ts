@@ -1,5 +1,6 @@
 // Older supplied-file lamp pockets and upturned exhaust: original primitives.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
@@ -53,12 +54,12 @@ function lampGlass(P: TankBuilderPort, right: boolean): void {
   const dish = [[0, 3.391994526], [.03, 3.4012], [.05, 3.42496],
     [.054518, 3.447822], [.05, 3.44680], [.03, 3.41189], [0, 3.400365164],
     [0, 3.391994526]].map(([r, z]) => new THREE.Vector2(r, z));
-  P.addEquipment('hullGlass', new THREE.LatheGeometry(dish, 40).rotateX(Math.PI / 2),
+  P.addEquipment('hullGlass', markVehicleNightLens(new THREE.LatheGeometry(dish, 40).rotateX(Math.PI / 2), 'headlight', { curvedAperture: true }),
     right ? .9694035 : -.9719255, 1.3849, 0);
   for (const x of (right ? [1.0585931, 1.1047525] : [-1.10654575, -1.0603862])) {
     P.addEquipment('hullDark', KIT.box(.0419141, .0845537, .0794611),
       x, 1.382128715, 3.42067838);
-    P.addEquipment('hullGlass', KIT.box(.0419141, .0845537, .002),
+    P.addEquipment('hullGlass', markVehicleNightLens(KIT.box(.0419141, .0845537, .002), 'marker'),
       x, 1.382128715, 3.459408926);
   }
 }

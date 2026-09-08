@@ -113,4 +113,53 @@ assert.ok(out.includes(building) && out.includes(rock), 'grid keeps nearby exact
 assert.equal(out.filter((record) => record === lBuilding).length, 1,
   'compound structure occupies one deduplicated broad-phase record');
 
+// Map and headless worlds share tree records between independent movement and
+// shell grids. Their visitation counters must never suppress each other's hits.
+const sharedTree = setCircleShape(rec(5), 0, 0, 2);
+const movementOnly = setCircleShape(rec(), -6, -6, 1);
+const shellOnly = setCircleShape(rec(), 6, 6, 1);
+const movementGrid = createObstacleGrid([movementOnly, sharedTree], 4);
+const shellGrid = createObstacleGrid([sharedTree, shellOnly], 4);
+const sharedOut = [];
+for (let step = 0; step < 4; step++) {
+  movementGrid(-8, -8, 8, 8, sharedOut);
+  assert.deepEqual(sharedOut, [movementOnly, sharedTree],
+    'movement query retains the shared tree after a shell-grid query');
+  shellGrid(-8, -8, 8, 8, sharedOut);
+  assert.deepEqual(sharedOut, [sharedTree, shellOnly],
+    'shell query retains the shared tree after a movement-grid query');
+}
+movementGrid(20, 20, 21, 21, sharedOut);
+assert.deepEqual(sharedOut, [], 'queries clear the caller-owned output');
+shellGrid(-8, -8, 8, 8, sharedOut);
+movementGrid(-8, -8, 8, 8, sharedOut);
+assert.deepEqual(sharedOut, [movementOnly, sharedTree],
+  'unequal grid counters do not interfere when queries are interleaved');
+
+// Deduplication is by record identity, not input slot. Cell traversal order and
+// original record references stay stable even when a record is supplied twice.
+const duplicateGrid = createObstacleGrid([
+  shellOnly, sharedTree, movementOnly, sharedTree,
+], 4);
+duplicateGrid(-8, -8, 8, 8, sharedOut);
+assert.deepEqual(sharedOut, [movementOnly, sharedTree, shellOnly],
+  'duplicate input references retain one hit in original cell traversal order');
+assert.strictEqual(sharedOut[1], sharedTree, 'grid results preserve record identity');
+assert.equal(Object.hasOwn(sharedTree, '__gridStamp'), false,
+  'grid visitation does not mutate shared collision records');
+
+const immutableRecord = Object.freeze({
+  min: Object.freeze([-1, 0, -1]), max: Object.freeze([1, 2, 1]), dead: true,
+});
+const immutableInput = [immutableRecord];
+const immutableGrid = createObstacleGrid(immutableInput, 4);
+immutableInput.length = 0;
+immutableGrid(-2, -2, 2, 2, sharedOut);
+assert.deepEqual(sharedOut, [immutableRecord],
+  'grid retains immutable original records independently of the input array');
+assert.strictEqual(sharedOut[0], immutableRecord,
+  'broad phase neither clones records nor filters gameplay state');
+immutableGrid(1.5, 1.5, 1.75, 1.75, sharedOut);
+assert.deepEqual(sharedOut, [], 'cell candidates still obey exact AABB rejection');
+
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');

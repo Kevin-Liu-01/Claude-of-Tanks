@@ -1,6 +1,7 @@
 // New first-party Armata X: authored from scalar source measurements and
 // neutral source views, not the old T-14 builder or source topology.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -141,7 +142,7 @@ function addFrontShoulder(P: TankBuilderPort, side: number): void {
   // Source Object_13 housing, partially recessed into the Y1.42345 floor;
   // no oversized dark box protruding over the shoulder.
   P.addEquipment('hullDark', box(.12624, .03979, .03979), side * 1.62075, 1.41738, 3.54464);
-  P.addEquipment('hullGlass', box(.098, .023, .004), side * 1.62075, 1.425, 3.566);
+  P.addEquipment('hullGlass', markVehicleNightLens(box(.098, .023, .004), 'headlight'), side * 1.62075, 1.425, 3.566);
 }
 
 function addRearLattice(P: TankBuilderPort, side: number): void {

@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict';
-import { AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
+import { adaptiveFrameSeconds, AdaptiveQualityPolicy } from './adaptiveQualityPolicy.ts';
+
+assert.equal(adaptiveFrameSeconds(.1, .5), 0, 'a true long hitch is excluded despite bounded presentation dt');
+assert.equal(adaptiveFrameSeconds(.1, .12), .12, 'sustained 120ms frames remain real overload evidence');
+assert.equal(adaptiveFrameSeconds(.1, .25), .25, 'the existing 250ms boundary remains inclusive');
+assert.equal(adaptiveFrameSeconds(.1, .250001), 0);
+assert.equal(adaptiveFrameSeconds(0, .12), 0, 'zero-delta warm renders cannot invent a timing sample');
+assert.equal(adaptiveFrameSeconds(0), 0);
+assert.equal(adaptiveFrameSeconds(1 / 60), 1 / 60, 'standalone rendered frames retain the explicit caller interval');
+for (const invalid of [NaN, Infinity, -Infinity, -1, 0]) {
+  assert.equal(adaptiveFrameSeconds(.1, invalid), 0);
+  assert.equal(adaptiveFrameSeconds(invalid, .12), 0);
+}
 
 const healthy = (overrides = {}) => ({
   clockSeconds: 10,
@@ -19,6 +31,15 @@ const overloaded = (overrides = {}) => healthy({
   achievedFps: 40,
   ...overrides,
 });
+
+{
+  const policy = new AdaptiveQualityPolicy(1);
+  const sampled = adaptiveFrameSeconds(.1, .12);
+  assert.equal(policy.evaluate(overloaded({ frameEmaMs: sampled * 1000,
+    achievedFps: 1 / sampled, maximumTrim: 0 })), 'resolution-down',
+  'real sustained low-FPS evidence still activates ordinary quality relief');
+  assert.equal(policy.dynamicScale, .91);
+}
 
 function assertNoTrimAfterTwoWindows(windowFactory, message) {
   const policy = new AdaptiveQualityPolicy(1);
@@ -367,6 +388,38 @@ assertNoTrimAfterTwoWindows(
   policy.evaluate(overloaded({ clockSeconds: 12, achievedFps: 70 }));
   assert.ok(policy.learnedBaselineFps < baseline,
     'a material cadence decline decays the learned baseline toward reality');
+}
+
+{
+  const policy = new AdaptiveQualityPolicy(1);
+  policy.evaluate(healthy({ clockSeconds: 10 }));
+  policy.evaluate(overloaded({ clockSeconds: 12 }));
+  policy.evaluate(overloaded({ clockSeconds: 14 }));
+  policy.evaluate(overloaded({ clockSeconds: 16 }));
+  policy.evaluate(healthy({ clockSeconds: 17.5 }));
+  policy.evaluate(overloaded({ clockSeconds: 18 }));
+  assert.ok(Math.abs(policy.dynamicScale - 0.91) < 1e-12);
+  assert.equal(policy.performanceTrim, 1);
+  const { scale, ...evidence } = { ...policy };
+  assert.equal(scale, policy.dynamicScale);
+  assert.equal(policy.reconcileDynamicScaleFloor(0.9), false,
+    'a legal DPR2 relief state must not be raised to the ordinary base');
+  assert.equal(policy.reconcileDynamicScaleFloor(1), true,
+    'DPR1 sizing reconciles the raw scalar with its already-effective floor');
+  assert.equal(policy.dynamicScale, 1);
+  assert.equal(policy.reconcileDynamicScaleFloor(1), false,
+    'repeated sizing is idempotent');
+  assert.equal(policy.reconcileDynamicScaleFloor(0.9), false,
+    'a lower floor neither lowers scale nor resurrects stale relief');
+  const { scale: reconciledScale, ...retainedEvidence } = { ...policy };
+  assert.equal(reconciledScale, 1);
+  assert.deepEqual(retainedEvidence, evidence,
+    'sizing preserves every learned cadence, trim, strike, clock and backoff slot');
+  assert.equal(policy.evaluate(overloaded({ clockSeconds: 19 })), 'resolution-down',
+    'real overload can still reduce resolution immediately after returning to DPR2');
+  assert.equal(policy.evaluate(healthy({ clockSeconds: 23 })), 'none',
+    'the pre-resize flapping history still delays resolution recovery');
+  assert.equal(policy.evaluate(healthy({ clockSeconds: 25 })), 'resolution-up');
 }
 
 console.log('adaptiveQualityPolicy.selftest: ordered relief and recovery policy passed');

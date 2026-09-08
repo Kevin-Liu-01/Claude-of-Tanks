@@ -1,5 +1,6 @@
 // Independent scalar-authored AW T-90 equipment and removable side cassettes.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
@@ -64,7 +65,7 @@ function projectorBody(P:TankBuilderPort,x:number):void{
     [x+w/2-c,high],[x-w/2+c,high],[x-w/2,high-c],[x-w/2,low+c],
   ] as const}))));
   // Genuine circular IR face is an opaque optical surface, not a weapon bore.
-  sensorPart(P,KIT.cylZ(.1157,.0175,28).translate(x,1.77158,1.70842));
+  sensorPart(P,markVehicleNightLens(KIT.cylZ(.1157,.0175,28),'shtora').translate(x,1.77158,1.70842));
   for(const[y,h]of [[1.82853,.1365],[1.69878,.1048]])sensorPart(P,KIT.box(.352,h,.0166).translate(x,y,1.37007));
   for(const y of [1.62923,1.91323])for(const[z,d,w]of [[1.43207,.0586,.2906],[1.52287,.1172,.3228],[1.63712,.0879,.3228]]){
     sensorPart(P,KIT.box(w,.0163,d).translate(x,y,z));

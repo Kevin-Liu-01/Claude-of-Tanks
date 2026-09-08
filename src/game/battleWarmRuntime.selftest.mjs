@@ -201,10 +201,29 @@ assert.ok(networkFx.calls.includes('armor-scar'),
 assert.ok(networkFx.calls.includes('clear-scars'),
   'the warm scar is removed before battle reveal');
 assert.equal(decalRoot.visible, false, 'decal warm restores vehicle visibility');
-assert.equal(networkCompiles, 2, 'FX and vehicle-owned decal programs compile under cover');
+assert.equal(networkCompiles, 1, 'the lazy vehicle-owned decal still compiles under cover');
 assert.deepEqual(networkTexturePolicy, { assets: 'ready-only' },
   'network entry cannot wait indefinitely for optional atlas image requests');
 assert.equal(networkFx.calls[0], 'textures', 'textures finish before atomic scar/FX staging');
+
+const noScarFx = createFxProbe();
+const noScarCamera = new PerspectiveCamera();
+const noScarMask = noScarCamera.layers.mask;
+const noScarCompiles = [];
+await warmNetworkOpeningEffects({
+  fx: noScarFx,
+  post: { prepareSoftParticles: () => noScarFx.calls.push('soft') },
+  camera: noScarCamera,
+  shells: [],
+  compilePrograms: (root) => noScarCompiles.push(root),
+  warmRender: () => noScarFx.calls.push('render'),
+});
+assert.deepEqual(noScarCompiles, [], 'entry without a scar needs no redundant FX subtree compile');
+assert.equal(noScarFx.calls.filter((call) => call === 'render').length, 1,
+  'the exact compositor warm draw is still required without a scar');
+assert.equal(noScarFx.calls.at(-1), 'reset');
+assert.equal(noScarFx.group.visible, false);
+assert.equal(noScarCamera.layers.mask, noScarMask);
 
 let releaseNetworkTextures;
 const deferredNetworkFx = createFxProbe();
@@ -288,6 +307,10 @@ try {
   let stagedTracer = null;
   let compiledScarMesh = null;
   let submittedScarMesh = null;
+  const compiledWarmRoots = [];
+  const compiledWarmLights = [];
+  assert.equal(fx.group.children.filter((object) => object.isPointLight).length, 2,
+    'the real scene-attached FX graph owns its two default-layer lights');
   const guidedPools = fx.group.children.filter((mesh) => mesh.isInstancedMesh
     && (mesh.renderOrder === 25 || mesh.renderOrder === 26));
   assert.equal(guidedPools.length, 2, 'the real missile body and flare pools are present');
@@ -298,6 +321,16 @@ try {
     shells,
     decalVisual: scarVisual,
     compilePrograms(root) {
+      compiledWarmRoots.push(root);
+      const lights = [];
+      const collectLight = (object) => {
+        if (object.isLight && object.layers.test(camera.layers)) lights.push(object);
+      };
+      // Pinned Three compile gathers target-scene lights, then subtree lights
+      // when root !== targetScene. An attached FX root duplicates its lights.
+      fxScene.traverseVisible(collectLight);
+      if (root !== fxScene) root.traverseVisible(collectLight);
+      compiledWarmLights.push(lights);
       if (root === scarRoot) compiledScarMesh = root.getObjectByName('fx_impactDecals');
     },
     warmRender() {
@@ -342,6 +375,10 @@ try {
   };
   invalidateBattleWarmRuntime();
   await warmNetworkOpeningEffects(options);
+  assert.ok(compiledWarmLights.every((lights) => new Set(lights).size === lights.length),
+    'covered FX warming must not compile a duplicated-light variant from the scene-attached FX root');
+  assert.deepEqual(compiledWarmRoots, [scarRoot],
+    'retain only the lazy vehicle scar compile; the exact compositor draw warms existing FX pools');
   assert.equal(nativeSubmissionCalls, 1);
   assert.equal(submissionValidated, true, 'real staged resources satisfy submission assertions');
   assert.equal(fx.group.visible, false);

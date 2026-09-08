@@ -61,6 +61,19 @@ function attribute(a) {
     sha256: hash(Buffer.from(b.buffer, b.byteOffset, b.byteLength)) };
 }
 
+function legacyAttributeNames(g) {
+  // Keep all immutable pre-foundation fingerprints. Only the independently
+  // validated, later-added lighting channel is separate from physical shape.
+  const a = g.getAttribute('nightEmissionMask');
+  if (a) {
+    assert.ok(a.array instanceof Uint8Array, 'night mask is byte-sized');
+    assert.equal(a.itemSize, 1); assert.equal(a.normalized, false);
+    assert.equal(a.count, g.getAttribute('position').count, 'one mask value per original vertex');
+    assert.ok(a.array.every(v => v === 0 || v === 1 || v === 2), 'only supported semantic lens values');
+  }
+  return Object.keys(g.attributes).filter(k => k !== 'nightEmissionMask');
+}
+
 function sceneRows(root) {
   const rows = []; root.updateMatrixWorld(true);
   function visit(o, path) {
@@ -69,7 +82,7 @@ function sceneRows(root) {
     if (o.geometry) {
       const g = o.geometry;
       row.geometry = { index: attribute(g.index), attributes: Object.fromEntries(
-        Object.keys(g.attributes).sort().map(k => [k, attribute(g.attributes[k])])),
+        legacyAttributeNames(g).sort().map(k => [k, attribute(g.attributes[k])])),
       groups: g.groups, drawRange: g.drawRange };
       row.instanceMatrix = attribute(o.instanceMatrix);
       row.instanceColor = attribute(o.instanceColor); row.count = o.count;
@@ -81,7 +94,7 @@ function sceneRows(root) {
 
 function geometryHash(g) {
   const h = createHash('sha256');
-  for (const key of Object.keys(g.attributes).sort()) {
+  for (const key of legacyAttributeNames(g).sort()) {
     const a = g.attributes[key].array;
     h.update(key).update(Buffer.from(a.buffer, a.byteOffset, a.byteLength));
   }
@@ -89,6 +102,35 @@ function geometryHash(g) {
     const a = g.index.array; h.update(Buffer.from(a.buffer, a.byteOffset, a.byteLength));
   }
   return h.digest('hex');
+}
+
+{
+  const g = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0], 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute([0,0,1,0,0,1,0,0,1], 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0,0,1,0,0,1], 2)); g.setIndex([0,1,2]);
+  const m = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial(), 1), root = new THREE.Group(); root.add(m);
+  const measure = () => [hash(JSON.stringify(sceneRows(root))), geometryHash(g)], legacy = measure();
+  g.setAttribute('nightEmissionMask', new THREE.Uint8BufferAttribute([0,1,2], 1));
+  assert.deepEqual(measure(), legacy, 'valid lighting metadata preserves both original fingerprint boundaries');
+  for (const invalid of [new THREE.Float32BufferAttribute([0,1,2], 1), new THREE.Uint8BufferAttribute([0,1,2], 3),
+    new THREE.Uint8BufferAttribute([0,1], 1), new THREE.Uint8BufferAttribute([0,1,2], 1, true), new THREE.Uint8BufferAttribute([0,1,3], 1)]) {
+    g.setAttribute('nightEmissionMask', invalid);
+    assert.throws(() => sceneRows(root)); assert.throws(() => geometryHash(g));
+  }
+  g.setAttribute('nightEmissionMask', new THREE.Uint8BufferAttribute([0,1,2], 1));
+  g.setAttribute('unrecognizedSemanticChannel', new THREE.Uint8BufferAttribute([0,1,2], 1));
+  assert.ok(measure().every((v, i) => v !== legacy[i]), 'neither boundary excludes unknown attributes');
+  g.deleteAttribute('unrecognizedSemanticChannel');
+  for (const a of [g.attributes.position, g.attributes.normal, g.attributes.uv, g.index]) {
+    const old = a.array[0]; a.array[0] = old + 1;
+    assert.ok(measure().every((v, i) => v !== legacy[i]), 'original geometry and index bytes remain guarded'); a.array[0] = old;
+  }
+  const old = m.instanceMatrix.array[0]; m.instanceMatrix.array[0] = old + 1;
+  assert.notEqual(measure()[0], legacy[0], 'instance buffers remain guarded'); m.instanceMatrix.array[0] = old;
+  root.name = 'changed'; assert.notEqual(measure()[0], legacy[0], 'owner hierarchy remains guarded'); root.name = '';
+  m.position.x = 1; assert.notEqual(measure()[0], legacy[0], 'local/world transforms remain guarded'); m.position.x = 0;
+  m.visible = false; assert.notEqual(measure()[0], legacy[0], 'visibility remains guarded'); m.visible = true;
+  assert.deepEqual(measure(), legacy); g.dispose(); m.material.dispose();
 }
 
 function checkMk5(quality, coldSpec) {

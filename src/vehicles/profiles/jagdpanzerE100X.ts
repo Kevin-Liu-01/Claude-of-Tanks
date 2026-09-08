@@ -1,6 +1,7 @@
 // Original first-party reconstruction of the supplied fictional vehicle.
 // The private comparison GLB is never a playable asset or vertex source.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { beamBetween, blindTube } from './measuredPrimitives.ts';
@@ -170,7 +171,7 @@ function hatches(P:TankBuilderPort):void {
   }
   // Central bow lamp has a recessed lens inside the cylindrical guard.
   place(P,'hullDetail',blindTube(.0864,.068,.135,.037,24),-.0126,1.7331,3.5660);
-  place(P,'hullGlass',cylZ(.063,.004,24),-.0126,1.7331,3.5985);
+  place(P,'hullGlass',markVehicleNightLens(cylZ(.063,.004,24),'headlight'),-.0126,1.7331,3.5985);
   place(P,'hullDetail',box(.086,.16,.053),-.0126,1.671,3.528);
 }
 

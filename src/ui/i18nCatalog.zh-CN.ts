@@ -2601,7 +2601,7 @@ export const zhCN: Record<string, string> = {
   'docs.topic.rendering.media2': '当前世界光照下近距离的车辆材质表现',
   'docs.topic.worlds.label': '战场与毁坏',
   'docs.topic.worlds.title': '为装甲机动而生的战场',
-  'docs.topic.worlds.lede': '二十张战场共用同一套世界契约，但保留各自的路线、地标、掩体、氛围与视野。地形与碰撞对仿真可用，且不需要导入渲染器。',
+  'docs.topic.worlds.lede': '三十张战场共用同一套世界契约，但保留各自的路线、地标、掩体、氛围与视野。地形与碰撞对仿真可用，且不需要导入渲染器。',
   'docs.topic.worlds.s1.t': '地图契约',
   'docs.topic.worlds.s1.p1': '每张地图提供地形高度、地表材质、障碍、碰撞、隐蔽、出生组、占领区、灯光、天气、声音上下文与确定性的开场相机。仿真消费者使用这些接口，而不是遍历场景。',
   'docs.topic.worlds.s1.p2': '注册表是选择、加载、Studio、截图与文档计数的唯一来源。',

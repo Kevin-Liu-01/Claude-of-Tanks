@@ -1,6 +1,7 @@
 // Four additive, independently authored source-study Leopards. No donor
 // builder, source loader, external topology, or texture is used here.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { bindPartitionedEraCover } from './sourceEraCover.ts';
@@ -228,7 +229,7 @@ function fans(P: TankBuilderPort, y: number, z: number, radius = .51): void {
 function bowFittings(P: TankBuilderPort, y: number, z: number, spareTracks: boolean): void {
   for (const side of [-1, 1]) {
     P.addEquipment('hullDark', box(.35, .17, .09), side * 1.22, y, z);
-    P.addEquipment('hullGlass', box(.22, .085, .014), side * 1.22, y + .018, z + .05);
+    P.addEquipment('hullGlass', markVehicleNightLens(box(.22, .085, .014), 'headlight'), side * 1.22, y + .018, z + .05);
     P.addEquipment('hullDetail', box(.41, .025, .18), side * 1.22, y + .108, z - .008);
     for (const x of [1.04, 1.4]) P.addEquipment('hullDetail', cylY(.012, .012, .15, 8), side * x, y + .057, z + .085);
     P.addEquipment('hullDark', cylZ(.092, .12, 12), side * .82, y - .07, z + .06);
@@ -625,7 +626,7 @@ function a5BowFittings(P:TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.191,.045,.110),side*.8359,1.1753,3.7372);
     P.addEquipment('hullDark',cylZ(.093,.089,18),side*.8359,1.276,3.751);
     P.addEquipment('hullDetail',torus(.083,.012,18,6),side*.8359,1.276,3.797,Math.PI/2);
-    P.addEquipment('hullGlass',cylZ(.077,.008,18),side*.8359,1.276,3.799);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.077,.008,18), 'headlight'),side*.8359,1.276,3.799);
     P.addEquipment('hullDetail',box(.126,.1512,.0764),side*1.5705,1.4092,3.648);
   }
 }
@@ -740,7 +741,7 @@ function a6BowFittings(P:TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.12,.09,.10),lampX,1.300,3.520);
     P.addEquipment('hullDark',cylZ(.0952,.16797,22),lampX,1.34070,3.52656);
     P.addEquipment('hullDetail',torus(.084,.010,22,7),lampX,1.34070,3.6106,Math.PI/2);
-    P.addEquipment('hullGlass',cylZ(.073,.005,22),lampX,1.34070,3.60809);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.073,.005,22), 'headlight'),lampX,1.34070,3.60809);
     // An open protective hoop follows the circular lamp, not a broad
     // raised opaque box. Its lower feet land on the true lamp carrier.
     P.addEquipment('hullDetail',torus(.106,.006,24,6),lampX,1.3407,3.629,Math.PI/2);
@@ -770,7 +771,7 @@ function a7BowFittings(P:TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.06793,.07436,.0635),side*.911,1.17336,3.6338);
     P.addEquipment('hullDark',cylZ(.1065,.128,22),side*.911,1.2872,3.6187);
     P.addEquipment('hullDetail',torus(.095,.0115,22,7),side*.911,1.2872,3.6735,Math.PI/2);
-    P.addEquipment('hullGlass',cylZ(.081,.007,22),side*.911,1.2872,3.68151);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.081,.007,22), 'headlight'),side*.911,1.2872,3.68151);
     // The vertical towing eye is normal to X; its slender width must not
     // become a horizontal ring across the roof-continuity projection.
     P.addEquipment('hullDetail',torus(.064,.018,20,8).scale(1,1,1.50),

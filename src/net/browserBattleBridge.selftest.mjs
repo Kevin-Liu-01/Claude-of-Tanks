@@ -7,6 +7,7 @@ import { SNAPSHOT_FLAGS } from './snapshot.ts';
 const visuals = [];
 const visualOptions = [];
 const textureWarms = [];
+const registeredVisuals = [];
 const scene = { add() {} };
 const game = {
   tanks: [],
@@ -60,6 +61,7 @@ const bridge = createBrowserBattleBridge({
   viewerId: 'guest',
   createTankVisual: fakeVisual,
   prepareVisualTextures: async (...args) => { textureWarms.push(args); },
+  onVisualReady: (entity) => registeredVisuals.push(entity),
   clearVehicleDecals: (visual) => {
     destructionOrder.push(`decals:${visuals.indexOf(visual)}`);
   },
@@ -75,6 +77,10 @@ assert.deepEqual(textureWarms.map((args) => args[4]), ['summer', 'winter'],
   'every distinct vehicle/camo variant is prewarmed before reveal');
 assert.equal(visuals.every((visual) => !visual.visible), true,
   'prepared multiplayer visuals stay hidden at the staging origin');
+assert.deepEqual(registeredVisuals.map((entity) => entity.id), ['host', 'guest'],
+  'each fully constructed actor publishes one explicit late-emitter lifecycle event');
+assert.ok(registeredVisuals.every((entity) => entity.networkVisible === false),
+  'emitter registration alone never reveals a network actor before authority');
 
 const entity = (id, team, x, z) => ({
   id, specId: 'm1a2', team, x, y: 1.2, z,

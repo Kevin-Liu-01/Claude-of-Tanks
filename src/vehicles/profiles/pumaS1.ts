@@ -224,7 +224,7 @@ function addHullShell(P: PumaS1BuilderPort): void {
   P.add('hullDark', KIT.torus(0.31, 0.014, 20), 0.68, 2.108, 1.48);
   for (const x of [0.48, 0.68, 0.88]) KIT.periscope(P, 'hullDetail', x, 2.095, 1.80);
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.135, r: 0.047, shield: true,
       rake: -0.28, seed: side < 0 ? 110 : 111,
     }), side * 1.04, 1.52, 2.72, [-0.35, 0, 0]);

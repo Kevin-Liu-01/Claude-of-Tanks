@@ -21,6 +21,7 @@ let holdNextRestore = false;
 let notifyRestoreStarted = null;
 let releaseHeldRestore = null;
 const authoredSky = { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 };
+let battleSky = { sunColorHex: 0xffb985, sunIntensity: 3.5, hemiIntensity: 0.64 };
 
 const runtime = createGaragePhasePresentationRuntime({
   scene,
@@ -32,7 +33,8 @@ const runtime = createGaragePhasePresentationRuntime({
     setSun: (direction, config) => calls.push(['sun', direction, config]),
   },
   sunDirection,
-  getSkyConfig: () => authoredSky,
+  getGarageSkyConfig: () => authoredSky,
+  getBattleSkyConfig: () => battleSky,
   getGroundHeight: (x, z) => (x + z) / -1000,
   getPhase: () => phase,
   shouldReleaseGpuOnBattle: () => releaseOnBattle,
@@ -74,10 +76,20 @@ assert.deepEqual(trimmed[2], {
   haze: 0.2,
 });
 assert.deepEqual(authoredSky, { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 },
-  'showroom trim must not mutate the authored battlefield preset');
+  'showroom trim must not mutate the authored Garage preset');
 runtime.setSunTrim(false);
-assert.equal(calls.at(-1)[2], authoredSky,
-  'battle presentation restores the exact authored preset object');
+assert.equal(calls.at(-1)[2], battleSky,
+  'battle presentation restores its exact preset, not the selected Garage map');
+battleSky = { sunColorHex: 0xd9e8ff, sunIntensity: 2.8, hemiIntensity: 0.9 };
+runtime.setSunTrim(false);
+assert.equal(calls.at(-1)[2], battleSky,
+  'Studio/capture map switches restore the current world, not the previous battle');
+battleSky = null;
+assert.throws(() => runtime.setSunTrim(false), /requires an active world sky preset/,
+  'missing battle lighting must not silently substitute the Garage map');
+runtime.setSunTrim(true);
+assert.deepEqual(calls.at(-1)[2], trimmed[2],
+  'returning to the Garage keeps its authored neutral key even without a battle world');
 
 runtime.place();
 assert.equal(garagePosition.y, 3);

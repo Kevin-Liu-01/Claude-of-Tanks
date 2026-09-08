@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MathUtils, type Scene, type Vector3 } from 'three';
 import { mulberry32 } from '../game/stateCore.ts';
+import { awaitMapCaptureReadiness, type CaptureWorld } from './mapCaptureReadiness.ts';
 import type { ShotViewName } from './shotContract.ts';
 import type {
   ShotBus,
@@ -48,6 +49,16 @@ const VIEW_TIME: Readonly<Partial<Record<ShotViewName, number>>> = {
   battlefield_blackglass: 2.0,
   battlefield_titan_gorge: 2.0,
   battlefield_skybridge: 2.0,
+  battlefield_polders: 2.0,
+  battlefield_copper_mesa: 2.0,
+  battlefield_airfield: 2.0,
+  battlefield_oasis: 2.0,
+  battlefield_whiteout: 2.0,
+  battlefield_orchard: 2.0,
+  battlefield_longleaf: 2.0,
+  battlefield_mangrove: 2.0,
+  battlefield_saltwind: 2.0,
+  battlefield_reservoir: 2.0,
   killcam_firing: 1.0,
   killcam_collision: 1.0,
   killcam_xray: 1.0,
@@ -73,6 +84,16 @@ const VIEW_MAP: Partial<Record<ShotViewName, string>> = {
   battlefield_blackglass: 'blackglass',
   battlefield_titan_gorge: 'titan_gorge',
   battlefield_skybridge: 'skybridge',
+  battlefield_polders: 'polders',
+  battlefield_copper_mesa: 'copper_mesa',
+  battlefield_airfield: 'airfield',
+  battlefield_oasis: 'oasis',
+  battlefield_whiteout: 'whiteout',
+  battlefield_orchard: 'orchard',
+  battlefield_longleaf: 'longleaf',
+  battlefield_mangrove: 'mangrove',
+  battlefield_saltwind: 'saltwind',
+  battlefield_reservoir: 'reservoir',
 };
 
 interface ShotRuntimeEntity extends ShotEntity {
@@ -104,7 +125,7 @@ interface ForcedAim {
   [key: string]: RuntimeValue;
 }
 
-interface RuntimeShotWorld extends ShotWorld {
+interface RuntimeShotWorld extends ShotWorld, CaptureWorld {
   mapId: string;
   config: {
     shot: {
@@ -189,6 +210,7 @@ interface ShotRuntimeContext {
   setShotHudFrame(enabled: boolean): void;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
+  restoreGarageGpuIfSuspended(): Promise<void>;
   hideGarage(): void;
   hideEndOverlay(): void;
   setLastFov(fov: number): void;
@@ -242,6 +264,7 @@ async function ensureShotWorld(
   let world = context.getWorld();
   if (!world || world.mapId !== mapId) await context.switchMap(mapId);
   world = context.getWorld();
+  await awaitMapCaptureReadiness(world, context.getWorld);
   context.lighting.setFarCascadeDormant(false);
   context.setWorldDormant(false);
   context.setCamoBiome(mapId);
@@ -372,7 +395,9 @@ export async function setShotView(
   context.resetPostPerfTrims();
   context.setShotHudFrame(false);
   context.game.phase = 'shot';
-  context.setGarageSpots(true);
+  // Use the ordinary phase owner: battlefield captures must detach the whole
+  // workshop (including its archive timer), not merely hide its DOM panels.
+  context.setGarageSpots(name === 'garage');
   for (const entity of context.game.tanks) {
     entity.input.throttle = 0;
     entity.input.steer = 0;
@@ -396,6 +421,9 @@ export async function setShotView(
     VIEW_MAP[name] || 'verdant',
     featuredPlayerId,
   );
+  // Acquisition may mount a world for terrain/roster preparation. A Garage
+  // recipe still owns only the showroom when it starts painting.
+  context.setWorldDormant(name === 'garage');
   const helpers = createRecipeHelpers(context);
   const world = context.getWorld();
   const fx = context.getFx();
@@ -454,4 +482,7 @@ export async function setShotView(
   context.lighting.updateFrustums();
   context.lighting.update(true);
   context.setLastFov(context.camera.fov);
+  // Constrained devices released this phase on battle entry. Restore only
+  // after the Garage recipe and its final camera/light owners are in place.
+  if (name === 'garage') await context.restoreGarageGpuIfSuspended();
 }

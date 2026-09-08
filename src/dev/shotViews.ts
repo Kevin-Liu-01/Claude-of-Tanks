@@ -633,6 +633,16 @@ export function createShotViews({
   battlefield_blackglass() { mapEstablishingShot(); },
   battlefield_titan_gorge() { mapEstablishingShot(); },
   battlefield_skybridge() { mapEstablishingShot(); },
+  battlefield_polders() { mapEstablishingShot(); },
+  battlefield_copper_mesa() { mapEstablishingShot(); },
+  battlefield_airfield() { mapEstablishingShot(); },
+  battlefield_oasis() { mapEstablishingShot(); },
+  battlefield_whiteout() { mapEstablishingShot(); },
+  battlefield_orchard() { mapEstablishingShot(); },
+  battlefield_longleaf() { mapEstablishingShot(); },
+  battlefield_mangrove() { mapEstablishingShot(); },
+  battlefield_saltwind() { mapEstablishingShot(); },
+  battlefield_reservoir() { mapEstablishingShot(); },
   // The projectile recipe below is shared so the firing and x-ray captures
   // resolve the exact same seeded shot. Only the staged playback beat differs.
   killcam_firing() {

@@ -1,6 +1,7 @@
 // Independently authored first-party Panther X. GRIP420 / David Falke's FBX
 // remains a local comparison oracle; no source geometry or texture is loaded.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
@@ -161,7 +162,7 @@ function pantherSkirts(P: TankBuilderPort): void {
     // Source front lamps sit in the broad shallow berth at Z3.66..3.83.
     P.addEquipment('hullDetail',box(.557,.148,.171),side*1.2635,1.144,3.7445);
     P.addEquipment('hullDark',cylZ(.055,.027,20),side*1.0825,1.141,3.778);
-    P.addEquipment('hullGlass',cylZ(.041,.012,20),side*1.0825,1.141,3.795);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.041,.012,20), 'headlight'),side*1.0825,1.141,3.795);
     P.addEquipment('hullDark',cylZ(.037,.020,16),side*1.181,1.1245,3.78);
     P.addEquipment('hullDetail',box(.317,.023,.064),side*1.3315,1.1805,3.735);
   }
