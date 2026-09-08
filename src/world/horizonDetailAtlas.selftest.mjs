@@ -35,21 +35,21 @@ const bandPixels = (data, width, height, variant) => {
   return data.subarray(start, start + height / 4 * width * 4);
 };
 
-// Native Canvas2D 0.1.100 seed4242 receipts from the accepted atlas foundation.
-// A woodland repair must not redraw scrub, conifers, rocks, snow or mesas.
+// Native Canvas2D 0.1.100 seed4242 receipts from the accepted atlas foundation
+// and the separately reviewed woodland-r3 atlas. Snow must not redraw them.
 const unchangedFamilyHashes = {
   desktop: {
+    woodland: '96155221bbe9126019decd88e9b439314c0919d38698db9c56e67f7deb26ebfd',
     conifer: 'b65ea388c74c030d1b97f9c3ee2876e3f57084381720ab0850a7bcbd0b9c7205',
     scrub: '2cff2805613fe2dcd3994093e1ffa98c5d05c6181bab971be818c4f03a513c1b',
     rock: '511ba49122d2bfba6828551f9b24a3b84fef19183639e0cbd1e2319e05ab429a',
-    snow: '9ee001e940b980951a6e2ff21c1abfba6e1e9494f97f49da7a6867c8e77ae343',
     mesa: 'f4a4f086a1b2de1aea756c62232f741cd62228c8c90aee77d1af7c0234dfeaeb',
   },
   mobile: {
+    woodland: 'd66cc5db79f7f0f07fd1613d113e1d853d77d35ccd07463a31345ecfa2969cbf',
     conifer: '8202b8351d75d778ce633f63cf70458c73f847e3293e2b48aa113fde382627b4',
     scrub: '0b60315e25037dce34c378d340cf30c581e64c9173005b03936f26b0c4dfdbe8',
     rock: '656d0cbc8f77b536f4c18f434754eec4075f5cc841a35b1c35f6d0bc440a2010',
-    snow: '9241c8fd245a722630884ce8194c02d9ca1767da701ec2b5af4f6a1005e77d4e',
     mesa: '5c7b995998f43b75e38c343c1c0950c61ab79b1201f68c337f93130543d89406',
   },
 };
@@ -89,6 +89,57 @@ function inspectWoodlandLayering(data, width, height, label) {
     `${label}: overlapping lower-canopy mass, not a sparse picket row or filled hedge`);
   assert.ok(range > 0.25, `${label}: irregular clustered canopy density, not a uniform strip`);
   return { lowerCanopyCoverage: coverage, canopyDensityRange: range };
+}
+
+function snowSkyline(data, width, height) {
+  const top = new Int16Array(width).fill(height - Math.round(height / 16) - 1);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < top[x]; y++) {
+      if (data[(y * width + x) * 4 + 3] < 97) continue;
+      top[x] = y;
+      break;
+    }
+  }
+  return top;
+}
+
+function inspectSnowSkyline(top, scale, label) {
+  const step = Math.max(1, Math.round(4 * scale));
+  const turns = [];
+  // Sample at a physical atlas scale, so a one-pixel raster staircase cannot
+  // count as fractured geological variation. Keep broad crests, not spikes.
+  for (let x = step * 2; x < top.length - step * 2; x += step) {
+    if (top[x] <= top[x - step] && top[x] < top[x + step]
+      && Math.max(top[x - step * 2], top[x + step * 2]) - top[x] >= 2 * scale) turns.push(x);
+  }
+  assert.ok(turns.length >= 5, `${label}: several resolved fractured shoulders`);
+  const intervals = turns.slice(1).map((x, i) => x - turns[i]);
+  const mean = intervals.reduce((sum, value) => sum + value, 0) / intervals.length;
+  const variance = intervals.reduce((sum, value) => sum + (value - mean) ** 2, 0) / intervals.length;
+  const variation = Math.sqrt(variance) / mean;
+  assert.ok(variation > 0.18, `${label}: irregular crest spacing, not a regular sawtooth fence`);
+  return { resolvedCrests: turns.length, crestSpacingVariation: variation };
+}
+
+function inspectSnowBreaks(data, width, height, label) {
+  const top = snowSkyline(data, width, height);
+  const root = height - Math.round(height / 16) - 1;
+  let upperFace = 0, exposedRock = 0, snowCap = 0;
+  for (let x = 0; x < width; x++) {
+    const end = top[x] + (root - top[x]) * 0.48;
+    for (let y = top[x]; y < end; y++) {
+      const i = (y * width + x) * 4;
+      if (data[i + 3] !== 255) continue;
+      upperFace++;
+      if (data[i] <= 210) exposedRock++;
+      if (data[i] >= 232) snowCap++;
+    }
+  }
+  const rockFraction = exposedRock / upperFace, capFraction = snowCap / upperFace;
+  assert.ok(rockFraction > 0.025 && rockFraction < 0.50,
+    `${label}: substantive upper rock fractures, not plain round snow humps or bare rock`);
+  assert.ok(capFraction > 0.08, `${label}: snow still caps the fractured rock`);
+  return { ...inspectSnowSkyline(top, height / 64, label), upperRockFraction: rockFraction, snowCapFraction: capFraction };
 }
 
 function inspectBand(data, width, height, label) {
@@ -171,6 +222,7 @@ function inspectAtlas(kind, seed, tier, secondaryKind) {
       const label = `${tier}/${kind}${secondaryKind ? `+${secondaryKind}` : ''}/${variant}`;
       const result = inspectBand(band, image.width, image.height / 4, label);
       const family = variant >= 2 && secondaryKind ? secondaryKind : kind;
+      if (family === 'snow') return { ...result, ...inspectSnowBreaks(band, image.width, image.height / 4, label) };
       return family === 'woodland' ? { ...result,
         ...inspectWoodlandUnderCanopy(band, image.width, image.height / 4, label),
         ...inspectWoodlandLayering(band, image.width, image.height / 4, label) } : result;
@@ -201,8 +253,8 @@ try {
     const expectedBytes = tier === 'desktop' ? 393216 : 98304;
     assert.ok(batch.every(row => row.rgbaBytes === expectedBytes));
     for (const row of batch) {
-      if (row.kind !== 'woodland') assert.equal(row.hash, unchangedFamilyHashes[tier][row.kind],
-        `${tier}/${row.kind}: exact unchanged non-woodland native raster`);
+      if (row.kind !== 'snow') assert.equal(row.hash, unchangedFamilyHashes[tier][row.kind],
+        `${tier}/${row.kind}: exact unchanged non-snow native raster`);
       const repeated = createHorizonDetailAtlas(row.kind, row.seed);
       const changed = createHorizonDetailAtlas(row.kind, row.seed + 1);
       try {
@@ -253,12 +305,28 @@ try {
   }
   assert.throws(() => inspectWoodlandLayering(hedge, sample.width, sample.height / 4,
     'uniform hedge mutation'), /irregular clustered canopy density/);
+  const snow = rows.find(row => row.kind === 'snow' && row.tier === 'desktop');
+  const snowBand = bandPixels(snow.data, snow.width, snow.height, 0);
+  const plainSnow = snowBand.slice();
+  for (let i = 0; i < plainSnow.length; i += 4) {
+    if (plainSnow[i + 3] >= 97) plainSnow[i] = plainSnow[i + 1] = plainSnow[i + 2] = 238;
+  }
+  assert.throws(() => inspectSnowBreaks(plainSnow, snow.width, snow.height / 4,
+    'plain snow mutation'), /substantive upper rock fractures/);
+  const sawtooth = Int16Array.from({ length: snow.width }, (_, x) => 12 + Math.abs(x % 24 - 12));
+  assert.throws(() => inspectSnowSkyline(sawtooth, 1, 'regular sawtooth mutation'), /irregular crest spacing/);
+  const detachedSnow = snowBand.slice();
+  const snowFloater = (5 * snow.width + 190) * 4;
+  detachedSnow[snowFloater] = detachedSnow[snowFloater + 1] = detachedSnow[snowFloater + 2] = 220;
+  detachedSnow[snowFloater + 3] = 255;
+  assert.throws(() => inspectBand(detachedSnow, snow.width, snow.height / 4,
+    'detached snow mutation'), /detached floaters/);
   const receipt = { proof: 'Real native Canvas2D raster only; no GPU, scope or final-world visual acceptance',
     rasterizer: { name: packageInfo.name, version: packageInfo.version, module: modulePath },
     rows: rows.map(({ data, ...row }) => row) };
   if (values['out-dir']) writeFileSync(join(values['out-dir'], 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
   console.log(JSON.stringify(receipt, null, 2));
-  console.log('horizonDetailAtlas.selftest: PASS native six-family atlas, two-tier raster, strict roots/seams/detail, open woodland branches, five unchanged families, mixed bands, deterministic lifetime and unchanged budget');
+  console.log('horizonDetailAtlas.selftest: PASS native six-family atlas, two-tier raster, strict roots/seams/detail, open woodland branches, fractured snow shelves, five unchanged families, mixed bands, deterministic lifetime and unchanged budget');
 } finally {
   for (const [key, value] of savedGlobals) {
     if (value === undefined) delete globalThis[key]; else globalThis[key] = value;

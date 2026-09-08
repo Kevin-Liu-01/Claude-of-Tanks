@@ -197,6 +197,45 @@ function paintConifer(ctx: Context, rng: Random, x: number, width: number,
   ctx.restore();
 }
 
+function traceSnowShelf(ctx: Context, rng: Random, x: number, width: number, height: number): void {
+  const top = ROOT - height;
+  const crest = x + (rng() - 0.5) * width * 0.24;
+  const shoulder = 0.20 + rng() * 0.18;
+  // Broad broken cornices over an offset rock shoulder. Short ledges and
+  // recessed notches interrupt the skyline without independent needle peaks.
+  ctx.lineTo(x - width * 0.43, top + height * 0.70);
+  ctx.lineTo(x - width * 0.33, top + height * 0.48);
+  ctx.lineTo(x - width * 0.23, top + height * 0.51);
+  ctx.lineTo(crest - width * 0.14, top + height * 0.12);
+  ctx.lineTo(crest + width * 0.02, top);
+  ctx.lineTo(crest + width * 0.10, top + height * 0.04);
+  ctx.lineTo(crest + width * 0.14, top + height * shoulder);
+  ctx.lineTo(x + width * 0.34, top + height * (shoulder - 0.06));
+  ctx.lineTo(x + width * 0.43, top + height * 0.67);
+  ctx.lineTo(x + width * 0.50, ROOT);
+}
+
+function paintSnowBreak(ctx: Context, rng: Random, x: number, width: number, height: number): void {
+  const top = ROOT - height;
+  // The exposed face reaches under the cap, rather than a little triangular
+  // boulder confined to the buried base. All fractures remain root-connected.
+  ctx.beginPath();
+  ctx.moveTo(x - width * 0.50, ROOT);
+  ctx.lineTo(x - width * 0.33, top + height * 0.61);
+  ctx.lineTo(x - width * 0.20, top + height * 0.65);
+  ctx.lineTo(x - width * 0.11, top + height * (0.24 + rng() * 0.08));
+  ctx.lineTo(x + width * 0.03, top + height * 0.16);
+  ctx.lineTo(x + width * 0.09, top + height * 0.44);
+  ctx.lineTo(x + width * 0.29, top + height * 0.39);
+  ctx.lineTo(x + width * 0.50, ROOT);
+  ctx.closePath();
+  const shade = ctx.createLinearGradient(x - width * 0.25, top, x + width * 0.35, ROOT);
+  shade.addColorStop(0, gray(184 + Math.round(rng() * 12)));
+  shade.addColorStop(1, gray(214));
+  ctx.fillStyle = shade;
+  ctx.fill();
+}
+
 function paintRock(ctx: Context, rng: Random, x: number, width: number,
   height: number, kind: 'rock' | 'mesa' | 'snow'): void {
   const top = ROOT - height;
@@ -206,12 +245,7 @@ function paintRock(ctx: Context, rng: Random, x: number, width: number,
   ctx.beginPath();
   ctx.moveTo(left, ROOT);
   if (isSnow) {
-    // A windward rise, broad rounded cornice and downwind shoulder. The
-    // contrasting break below is still attached to this same snow shelf.
-    ctx.bezierCurveTo(left + width * 0.04, top + height * 0.45,
-      x - width * 0.25, top + height * 0.03, x + width * 0.04, top + 1);
-    ctx.bezierCurveTo(x + width * 0.28, top - 1,
-      right - width * 0.04, top + height * 0.20, right, ROOT);
+    traceSnowShelf(ctx, rng, x, width, height);
   } else if (kind === 'mesa') {
     ctx.lineTo(left + width * 0.12, top + height * 0.40);
     ctx.lineTo(left + width * 0.26, top + height * 0.06);
@@ -241,17 +275,7 @@ function paintRock(ctx: Context, rng: Random, x: number, width: number,
   ctx.fill();
   ctx.save();
   ctx.clip();
-  if (isSnow) {
-    ctx.beginPath();
-    ctx.moveTo(left, ROOT);
-    ctx.lineTo(x - width * 0.23, top + height * 0.60);
-    ctx.lineTo(x - width * 0.08, top + height * 0.48);
-    ctx.lineTo(x + width * 0.11, top + height * 0.76);
-    ctx.lineTo(right, ROOT);
-    ctx.closePath();
-    ctx.fillStyle = gray(184 + Math.round(rng() * 24));
-    ctx.fill();
-  }
+  if (isSnow) paintSnowBreak(ctx, rng, x, width, height);
   // Local oblique fractures/strata stop within the individual block: no
   // full-width horizontal contour stripe or full-height vertical fiber.
   const lines = isSnow || kind === 'rock' ? 3 : 5;
@@ -260,7 +284,7 @@ function paintRock(ctx: Context, rng: Random, x: number, width: number,
     const start = left + rng() * width * 0.25;
     ctx.beginPath();
     ctx.moveTo(start, y);
-    if (kind === 'rock') {
+    if (kind === 'rock' || isSnow) {
       ctx.lineTo(start + width * 0.16, y + height * 0.22);
       ctx.lineTo(start + width * 0.09, y + height * 0.34);
       ctx.lineTo(start + width * 0.28, y + height * 0.66);
@@ -268,8 +292,8 @@ function paintRock(ctx: Context, rng: Random, x: number, width: number,
       ctx.quadraticCurveTo(x, y + height * (rng() - 0.5) * 0.14,
         right - rng() * width * 0.18, y + height * 0.035);
     }
-    ctx.strokeStyle = gray(isSnow ? 215 + Math.round(rng() * 17) : 188 + Math.round(rng() * 29));
-    ctx.lineWidth = isSnow ? 0.8 : 1.0 + rng() * 0.8;
+    ctx.strokeStyle = gray(isSnow ? 201 + Math.round(rng() * 17) : 188 + Math.round(rng() * 29));
+    ctx.lineWidth = isSnow ? 1.4 : 1.0 + rng() * 0.8;
     ctx.stroke();
   }
   if (!isSnow) {
