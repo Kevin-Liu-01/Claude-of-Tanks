@@ -68,12 +68,13 @@ import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
   nextFrame,
+  nextPaintFrame,
 } from './engine/frameScheduler.ts';
 import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
-import { createForwardProgramWarmOwner } from './engine/programWarm.ts';
+import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
 import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
@@ -2059,9 +2060,13 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             });
           },
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
-          compile: async () => {
-            forwardProgramWarm.compile(scene);
-            for (const _ of forwardProgramWarm.linkerBreathingSlices(24)) await nextFrame();
+          compile: async (signal?: AbortSignal) => {
+            const timing: ForwardProgramCompileTiming = {};
+            // Permit rendering between batches and before driver queries;
+            // this is not a GPU-completion guarantee. One owner lifetime spans
+            // submission, the post-paint checkpoint, and readiness polling.
+            for (const _ of forwardProgramWarm.prepareSceneSteps({ signal, timing })) await nextPaintFrame();
+            return { ...timing };
           },
         },
         presentation: {

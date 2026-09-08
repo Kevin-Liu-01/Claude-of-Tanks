@@ -60,6 +60,7 @@ export interface NetworkBattleLoadTrace {
   worldMs?: number;
   connectMs?: number;
   blackCheck?: RuntimeValue;
+  programCompile?: RuntimeValue;
   totalMs?: number;
 }
 
@@ -191,7 +192,7 @@ export interface NetworkBattlePresentationOptions {
       bridge: NetworkBridgePort,
     ): MaybePromise<RuntimeValue>;
     shotCards(specIds: string[]): void;
-    compile(): MaybePromise<RuntimeValue>;
+    compile(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   };
   presentation: {
     resetRoundState(): void;
@@ -484,7 +485,7 @@ export function createNetworkBattlePresentationRuntime(
       await load.nextFrame();
       throwIfNetworkBattleEntryAborted(signal);
       try {
-        await warm.compile();
+        trace.programCompile = await warm.compile(signal);
       } catch (_) { /* warm only */ }
       throwIfNetworkBattleEntryAborted(signal);
       mark('compile');

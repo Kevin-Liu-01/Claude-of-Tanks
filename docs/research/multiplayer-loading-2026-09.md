@@ -759,3 +759,138 @@ The functional runner has no frame-budget assertion. This is not stable 60 Hz,
 HIGH gameplay, a larger-room/long-session test or a separate-device/distant/
 relay-only network certificate. Production artifacts remain local and excluded
 from the release. The full-suite timeout limitation above still applies.
+
+### Scene submission and readiness-query audit
+
+The next scoped probe separates target binding, native submission, restoration,
+extension lookup, and readiness queries. Numeric-only receipts are bounded by
+the production entry observer; time spent yielding is excluded from synchronous
+query totals. Counts distinguish native queries from scheduler polling rounds.
+
+On `98b24722c` plus timing-only instrumentation
+(`scene-compile-baseline-timings`), native shader submission took 51.9/52.6 ms
+for host/guest. The first polling round took 127.9/227.6 ms. That initial receipt
+did **not** distinguish extension lookup from individual program queries.
+Both peers added exactly 81 scene programs (136→217 and 98→179).
+
+The candidate submits original renderables in bounded native batches against
+the real scene, camera and HDR target. It includes hidden descendants and
+multi-material/instanced variants without reparenting, cloning, mutating their
+visibility or eagerly initializing uniforms. Target/cube-face/mip state is
+restored before every yield. One renderer-lifetime owner spans submission,
+the pre-poll checkpoint and readiness checks; cancellation preserves its original
+reason, and context/owner invalidation stops stale work. The synchronous Studio
+and ordinary subtree compile paths retain their existing behavior.
+
+Candidate A (`scene-compile-sliced-a-timings`) used rAF checkpoints. It passed
+the full native entry/return scenario, but was **not** a loading speedup:
+entry was 5,783/5,639 ms, with largest tasks 753/754 ms. Submission totals were
+99.8/97.4 ms in 9/10 scheduler slices, largest slice 17.0/20.4 ms. Compilation
+wall time was 372.9/331.0 ms and both polls reached their 24-yield bound. Each
+native batch repeats Three's full-scene light traversal, so batching overhead
+must be measured, not assumed free. Other loading stages also slowed in this
+run; those differences cannot be attributed solely to shader submission.
+
+Candidate B (`scene-compile-sliced-b-timings-visual`) added a task boundary
+after the final submission and detailed query timing. Native entry, both
+foreground 5→1 countdowns, completed panel masks before activation, nonblack
+reveal, advancing network traffic, native Garage return and room/browser/window
+cleanup passed with zero application errors. Both inspected screenshots show
+the battlefield, vehicle and populated panel. The exact scene luminance and
+81-program increases matched the baseline. Entry was 4,662/4,563 ms; largest
+tasks were 567/335 ms. Submission was 52.0/58.6 ms, largest slice 16.3/14.5 ms.
+However, extension lookup cost only 0.1/0.0 ms, whereas completion queries took
+135.4/303.3 ms total, including single calls of **113.8/277.0 ms**. This identifies
+a concrete loading stall in `getProgramParameter(COMPLETION_STATUS_KHR)` on this
+browser/driver, not the cause of the earlier historical combat stalls. A paint
+opportunity alone did not eliminate it. Compile wall time was 304.9/374.5 ms.
+
+The B LOW interaction sample (20 seconds per foreground role, sequential roles
+with two rendered contexts on one machine) reported p50/p95/p99/max frame gaps
+of 25.5/33.8/39.8/46.6 ms and 25.7/37.8/47.0/59.0 ms. Hard snaps, dropped history,
+estimated missing snapshots and observer failures were zero. This remains a
+functional sample, not stable 60 Hz or an end-to-end performance certificate.
+
+The follow-up experiment places a bounded, zero-timeout WebGL2 fence poll
+before shader-readiness queries. This gives queued GPU commands time to drain;
+it does not infer shader readiness from fence completion. Existing KHR checks
+remain in place, including the unsupported/failed/timed-out fence fallback.
+The rationale follows MDN's [WebGL blocking-call guidance](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#avoid_blocking_api_calls_in_production)
+and [zero-timeout sync status API](https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext/clientWaitSync).
+Candidate C (`scene-compile-fence-c-timings-visual`) passed the same native
+lifecycle scenario, but used clear/night instead of B's clear/day. The screenshots
+show a rendered night battlefield and populated masks; luminance was 15.58/18.89
+with no rescue, and the scene still added 81 programs per peer. Its submission
+slices peaked at 9.6/13.2 ms. The fence took 146.7/344.7 ms of wall time, followed
+by 27.3/132.5 ms of KHR queries; the largest individual query was 15.8/75.7 ms.
+Compile wall time was 241.7/546.1 ms and entry was 4,889/4,796 ms. The LOW
+interaction sample reached 49.3/45.9 ms maximum frame gaps, with no hard snaps,
+dropped history, estimated missing snapshots or observer failures.
+
+**Release decision:** the extra submission fence is not shipped. Different
+lighting and mixed host/guest results do not establish a speedup; fence completion
+also did not eliminate blocking shader queries. This does not prove the fence
+caused the overall slowdown. Its experimental helper and tests were removed
+from the release. Retain bounded native submission, one lifetime across submission
+and readiness polling, rendering/task checkpoints, and numeric diagnostics;
+preserve the existing KHR and real-render readiness checks. No shader/quality,
+countdown, activation or Garage-return safety gate is weakened.
+
+The fence-free release candidate D (`scene-compile-release-d-timings-visual`)
+passed native room creation/invite, ready/launch, both foreground 5→1 countdowns,
+completed masks before activation, nonblack/no-rescue reveal, advancing input
+and snapshots, Garage return, and room/browser/window cleanup. Application errors
+were zero. In HIGH clear/night, network-owner totals (including peer readiness)
+were 6,102/5,899 ms; largest tasks were 667/734 ms. Submission was 97.0/86.1 ms
+total, split into 7/9 scheduler slices with 20.1/17.7 ms maxima. Budgets are
+cooperative, not a preemptive bound on native driver calls. Both KHR polls reached
+their existing 24-yield limit; the subsequent real render remains the fallback.
+World preparation and watchdog draw were also slower (3,328.7/3,185.3 ms and
+239/261 ms). These variable samples do not certify overall faster loading.
+
+D's LOW interaction sample reached 71.8/59.7 ms maximum frame gaps, with zero
+hard snaps, dropped history, estimated missing snapshots or observer failures.
+It is not stable 60 Hz, and the historical combat-stall cause remains unproven.
+The release addresses indivisible scene submission and stale-work cancellation;
+it does not claim to eliminate all driver or world-loading stalls.
+
+Validation: 18 new scene-submission/identity/cancellation cases, the existing
+program-warm tests, frame scheduler, 25 synchronous and 33 asynchronous watchdog
+cases, entry-abort, presentation, launch, activation, handoff, countdown/teardown,
+entry observer, private-room harness and revision-version tests pass. Production
+build and typecheck pass. The unchanged full-suite fleet timeout documented above
+remains unresolved; no full-suite pass is claimed. Runtime owner metrics report
+zero complexity, `any`, or `unknown` violations. The observer's pre-existing
+`receipt` function remains cyclomatic 17 / cognitive 25 (same as `98b24722c`);
+new numeric projection is separate. React Doctor is 89/100 with two reviewed,
+unsuppressed warnings: deliberate sequential yielding between shader batches,
+and a test's intentional JSON serialization-boundary check. This is unchanged
+from the earlier 89/100 scan, not a claimed baseline score improvement.
+
+### Production verification of bounded scene submission
+
+Vercel reported successful deployment of `e6d808eec`, and the live site served
+exactly `v1.0.0+ge6d808eec` before `production-scene-release-d-timings-visual`.
+The native two-client test passed room creation/invite, ready/launch, visible
+5→1 countdowns for both peers, masks completed before activation, nonblack/no-rescue
+reveal, advancing input/snapshots, movement/shooting feedback, Garage return and
+verified room/browser/window cleanup. Application errors were zero. Both inspected
+screenshots show the battlefield, player vehicle, and populated damage-panel mask.
+
+On HIGH clear/day Frosthollow entry, host/guest network-owner totals were
+4,976/4,831 ms, including peer readiness. Native submission totaled 57.4/55.8 ms,
+distributed across 7/6 scheduler slices with 10.3/12.1 ms maxima. Programs added
+remained exactly 81 per peer. Compilation wall time was 319.6/284.5 ms. KHR queries
+still took 160.0/155.6 ms total, with single calls of 112.6/113.8 ms; watchdog draw
+was 148.9/68.3 ms. Largest loading tasks were 312/233 ms. Loader fades took
+231.1/230.3 ms, and luminance matched the earlier clear/day baseline exactly.
+This confirms bounded submission, not a stall-free or overall faster entry.
+
+The separate LOW interaction sample used two rendered contexts on one machine,
+20 seconds per foreground role measured sequentially. Frame p50/p95/p99/max was
+23.2/30.4/38.9/45.9 ms for host and 21.2/31.3/39.6/50.7 ms for guest. Both had zero
+hard snaps, dropped history, estimated missing snapshots and observer failures.
+The runner makes no frame-budget assertion. These results do not certify stable
+60 Hz, larger rooms, long sessions, separate devices, distant networks or relays;
+historical combat stalls remain unresolved. Only the approved multiplayer source,
+tests and this report were pushed; local QA artifacts and vehicle work were excluded.
