@@ -881,7 +881,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     garageVariantLabel.textContent = variantDisplayName;
     garageVariantTrigger.title = `${variantDisplayName} · ${variantLocation}`;
     garageVariantTrigger.setAttribute('aria-label',
-      `车库环境：${variantDisplayName}。点击切换环境`);
+      t('garage.tools.environmentAria', { name: variantDisplayName }));
     root.dataset.garageVariant = selected.id;
     for (const [id, button] of garageVariantButtons) {
       const active = id === selected.id;
