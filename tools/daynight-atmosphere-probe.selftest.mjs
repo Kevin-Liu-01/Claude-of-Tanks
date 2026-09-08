@@ -8,6 +8,7 @@ import ts from 'typescript-compiler-api';
 import { inspectNightWindow } from '../src/dev/nightWindowInspection.ts';
 import { inspectNightWorldFixture } from '../src/dev/nightWorldFixtureInspection.ts';
 import { markWorldWindowPane } from '../src/world/worldNightEmissionGeometry.ts';
+import airfieldConfig from '../src/world/maps/airfield.ts';
 
 // Execute actual maintained functions without importing the browser-owning CLI.
 const source = readFileSync(new URL('./daynight-atmosphere-probe.mjs', import.meta.url), 'utf8');
@@ -126,6 +127,10 @@ const good = { mapId: 'winter', day: state('day', 1), night: state('night', 3), 
 const validStreetLampFixture = load('validStreetLampFixture');
 const focusedChecks = load('checkFocusedFixtureCase', { checkNightLightingCycle, validStreetLampFixture });
 const requestedVehicleFixtures = load('requestedVehicleFixtures', { assert });
+const worldFixtureCases = load('worldFixtureCases');
+assert.deepEqual(worldFixtureCases(), [['urban', 'structure-window'], ['airfield', 'relay-beacon'], ['coastal', 'lighthouse']]);
+assert(airfieldConfig.props.tacticalBeats.some(beat => beat.id === 'eastern-radar-berm' && beat.structure === 'relaystation'),
+  'relay proof targets an explicitly authored fixture, not an optional congested Urban placement');
 assert.deepEqual(requestedVehicleFixtures([]), []);
 assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv']),
   ['m1a3', 'mbt70', 't90m', 't90m_proryv']);

@@ -5,6 +5,8 @@
 // node tools/daynight-atmosphere-probe.mjs --out=/tmp/cot-daynight-UNIQUE [--gate]
 // Same-build diagnostic only: add --window-census-source=/absolute/rejected-report.json
 // to record bounded pane/occluder receipts, not approve visuals or run the matrix.
+// --fixture-census-source=/absolute/rejected-fixture-report.json does the same
+// for a failed relay/headlight closeup against that exact unchanged build.
 // Optional 9-shot desktop fixture suite, separate from the default 31-shot matrix:
 // --world-fixtures-only --expected-build-index-hash=<sha256> --out=/absolute/fresh --gate
 // Or 3 shots per explicitly requested repair variant (maximum 4):
@@ -18,12 +20,15 @@ import { preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { selectBattleWeather } from '../src/engine/battleWeatherPolicy.ts';
 import { collectNightWindowCensus } from './night-window-census.mjs';
+import { collectNightFixtureCensus } from './night-fixture-census.mjs';
 
 const outputArgument = process.argv.find(x => x.startsWith('--out='))?.slice(6);
 assert(outputArgument, 'An explicit unique --out= directory is required');
 const out = resolve(outputArgument);
 const censusSourcePath = process.argv.find(x => x.startsWith('--window-census-source='))?.slice('--window-census-source='.length);
 const censusSource = censusSourcePath ? JSON.parse(readFileSync(resolve(censusSourcePath), 'utf8')) : null;
+const fixtureCensusPath = process.argv.find(x => x.startsWith('--fixture-census-source='))?.slice('--fixture-census-source='.length);
+const fixtureCensusSource = fixtureCensusPath ? JSON.parse(readFileSync(resolve(fixtureCensusPath), 'utf8')) : null;
 const worldFixturesOnly = process.argv.includes('--world-fixtures-only');
 const vehicleFixtureIds = requestedVehicleFixtures(process.argv);
 const optionalFixtureSuite = worldFixturesOnly || vehicleFixtureIds.length > 0;
@@ -31,6 +36,7 @@ const expectedBuildHash = process.argv.find(x => x.startsWith('--expected-build-
 assert(!optionalFixtureSuite || (!censusSource && !(worldFixturesOnly && vehicleFixtureIds.length)
   && /^[a-f0-9]{64}$/.test(expectedBuildHash ?? '')),
   'Fixture suites require an explicit production index SHA-256 and cannot be mixed with each other or a census');
+assert(!fixtureCensusSource || (!optionalFixtureSuite && !censusSource), 'Fixture census is a separate diagnostic-only acquisition');
 mkdirSync(out); // Refuse existing evidence; never overwrite or mix probe runs.
 const report = { schemaVersion: 6, startedAt: new Date().toISOString(),
   method: 'Native production day/night/day plus former rain/snow/fog seeds; desktop High and emulated tablet real mobile quality; actual bounded headlights, authored fixture/window emission, retained equipment damage and Garage cleanup. Staged screenshots suspend post adaptivity after entry, not quality-adaptation acceptance. No performance measurement or physical-device certification.',
@@ -40,7 +46,7 @@ const report = { schemaVersion: 6, startedAt: new Date().toISOString(),
   errors: [], consoleErrors: [], cleanupErrors: [], passed: false };
 if (worldFixturesOnly) {
   report.mode = 'world-fixtures-only';
-  report.method = 'Separate 9-shot desktop High suite: actual intact Urban structure window and relay beacon, Coastal lighthouse lantern; exact build, bidirectional aperture sightlines, stable instance/face identity, day/night/day and Garage reset. Native images require human review; no performance or mobile certification.';
+  report.method = 'Separate 9-shot desktop High suite: actual intact Urban structure window, Airfield authored radar relay beacon, Coastal lighthouse lantern; exact build, bidirectional aperture sightlines, stable instance/face identity, day/night/day and Garage reset. Native images require human review; no performance or mobile certification.';
 }
 if (vehicleFixtureIds.length) {
   report.mode = 'vehicle-fixtures-only'; report.vehicleFixtureIds = vehicleFixtureIds;
@@ -198,6 +204,12 @@ function installNightLightProbe() {
     return { ...seat, point: d.camera.position.clone().fromArray(seat.point),
       direction: d.camera.position.clone().fromArray(seat.direction) };
   }
+  function closeupReceipt(seat) {
+    return { kind: seat.kind, ownerUuid: seat.ownerUuid, materialUuid: seat.materialUuid ?? null, slot: seat.slot ?? null,
+      ownerName: seat.ownerName ?? null, mask: seat.mask ?? null,
+      faceIndex: seat.faceIndex ?? null, lineOfSight: seat.lineOfSight ?? null,
+      point: seat.point.toArray(), sourcePoint: seat.sourcePoint ?? null, direction: seat.direction.toArray() };
+  }
   probe.stageNightLightCloseup = kind => {
     const d = window.__DEBUG;
     if (!savedCamera) savedCamera = { position: d.camera.position.clone(), quaternion: d.camera.quaternion.clone(), fov: d.camera.fov };
@@ -215,10 +227,7 @@ function installNightLightProbe() {
     if (seat.kind === 'streetlamp') target.y -= 1.2;
     d.camera.lookAt(target); d.camera.fov = seat.fov ?? (seat.camera ? 40 : 48); d.camera.updateProjectionMatrix();
     probe.beginStateEpoch();
-    return { kind: seat.kind, ownerUuid: seat.ownerUuid, materialUuid: seat.materialUuid ?? null, slot: seat.slot ?? null,
-      ownerName: seat.ownerName ?? null, mask: seat.mask ?? null,
-      faceIndex: seat.faceIndex ?? null, lineOfSight: seat.lineOfSight ?? null,
-      point: seat.point.toArray(), sourcePoint: seat.sourcePoint ?? null, direction: seat.direction.toArray() };
+    return closeupReceipt(seat);
   };
   probe.restoreNightLightCamera = () => {
     if (!savedCamera) return;
@@ -346,6 +355,26 @@ async function windowCensus() {
   report.visualAcceptance = 'diagnostic-only-no-visual-approval'; save();
   await nativeGraphics('graphicsAfterWindowCensus');
   await screenshot('window-census-source-scene', await evaluateWithin(readVisualState));
+}
+
+async function fixtureCensus() {
+  assert.equal(report.build, fixtureCensusSource.build, 'Fixture census must use the exact rejected production build');
+  const source = [...fixtureCensusSource.worldFixtures, ...fixtureCensusSource.vehicleFixtures]
+    .find(row => row.checks.completed === false);
+  assert(source && ['relay-beacon', 'headlight'].includes(source.kind), 'Require a failed relay or driving-aperture case');
+  report.mode = 'fixture-census-only'; report.diagnosticOnly = true;
+  report.visualAcceptance = 'diagnostic-only-no-visual-approval';
+  report.failedSource = { reportPath: resolve(fixtureCensusPath), label: source.label, checks: source.checks };
+  report.failedSource.reportSha256 = createHash('sha256').update(readFileSync(resolve(fixtureCensusPath))).digest('hex');
+  report.censusHelperSha256 = createHash('sha256').update(readFileSync(new URL('./night-fixture-census.mjs', import.meta.url))).digest('hex');
+  await stage(source.mapId, source.specId);
+  await atmosphereReceipt(seedFor('temperate', 'day'), source.mapId);
+  const modules = readdirSync('dist/assets').filter(file => /^three\.core-.+\.js$/.test(file));
+  assert.equal(modules.length, 1, 'Use one exact retained production Three core');
+  report.fixtureCensus = await evaluateWithin(collectNightFixtureCensus,
+    { moduleUrl: `/assets/${modules[0]}`, kind: source.kind, limit: 256 }, 120_000, 'Bounded actual fixture rejection census');
+  save(); await nativeGraphics('graphicsAfterFixtureCensus');
+  await screenshot('fixture-census-source-scene', await evaluateWithin(readVisualState));
 }
 
 function seedFor(biome, timeOfDay) {
@@ -579,11 +608,16 @@ function checkWorldFixtureCase(row) {
   };
 }
 
+function worldFixtureCases() {
+  // Urban's optional placement pass can legitimately omit a relay when all
+  // 80 sites conflict. Airfield has an explicit authored radar-relay beat.
+  // The actual mesh/active-instance/mask/LOS checks remain mandatory.
+  return [['urban', 'structure-window'], ['airfield', 'relay-beacon'], ['coastal', 'lighthouse']];
+}
+
 async function worldFixturePictures() {
   let stagedMap = null;
-  for (const [mapId, kind] of [
-    ['urban', 'structure-window'], ['urban', 'relay-beacon'], ['coastal', 'lighthouse'],
-  ]) {
+  for (const [mapId, kind] of worldFixtureCases()) {
     const label = `high-${mapId}-${kind}`, row = { label, mapId, specId: 'm1a1', kind,
       visualAcceptance: 'requires-human-screenshot-review', checks: { completed: false } };
     report.worldFixtures.push(row); save();
@@ -876,9 +910,10 @@ try {
       await completeOptionalFixtureSuite(garageBaseline);
       break;
     }
-    if (censusSource) {
+    if (censusSource || fixtureCensusSource) {
       assert.equal(tier.label, 'high');
-      await windowCensus();
+      if (fixtureCensusSource) await fixtureCensus();
+      else await windowCensus();
       await stopFrameObserver();
       await within(page.close(), 10_000, 'Page close');
       break;
@@ -898,7 +933,7 @@ try {
     await stopFrameObserver();
     await within(page.close(), 10_000, 'Page close');
   }
-  const matrixPassed = !optionalFixtureSuite && !censusSource && report.equipment.applied === true && report.equipment.duplicate === false
+  const matrixPassed = !optionalFixtureSuite && !censusSource && !fixtureCensusSource && report.equipment.applied === true && report.equipment.duplicate === false
     && report.cases.length === 6 && report.cases.every(row => Object.values(row.checks).every(Boolean))
     && report.focusedFixtures.length === 2 && report.focusedFixtures.every(row => Object.values(row.checks).every(Boolean))
     && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.structuralPassed)
