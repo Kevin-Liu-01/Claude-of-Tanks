@@ -756,4 +756,220 @@ assert.deepEqual(await wreckLifetimeProbe('query-failure'), { renders: 1, querie
   } finally { steps.return(); }
 }
 
+async function scarFirstUseProbe({ initialVisible = false, change = '', readyAfter = 1, checkpoint = 1 } = {}) {
+  const controller = new AbortController();
+  const fx = createFxProbe();
+  const root = new Group();
+  root.visible = initialVisible;
+  const camera = new PerspectiveCamera();
+  const mask = camera.layers.mask;
+  let expectedRootVisible = initialVisible;
+  let expectedMask = mask;
+  let expectedFxVisible = false;
+  const scar = new Object3D();
+  const nextRoot = new Group();
+  const timing = {};
+  let queries = 0;
+  let uniforms = 0;
+  let draws = 0;
+  let warmCheckpoints = 0;
+  let lost = false;
+  const gl = {
+    isContextLost: () => lost,
+    getExtension: () => ({ COMPLETION_STATUS_KHR: 0x91B1 }),
+    getProgramParameter() {
+      queries += 1;
+      if (change === 'query-failure') throw new Error('driver query');
+      if (change === 'query-loss') lost = true;
+      return queries > readyAfter;
+    },
+  };
+  const renderer = { info: { programs: [] }, getContext: () => gl };
+  fx.armorScar = () => { root.add(scar); fx.calls.push('scar'); };
+  fx.clearVehicleDecals = () => { scar.removeFromParent(); fx.calls.push('clear'); };
+  const priorRaf = globalThis.requestAnimationFrame;
+  const priorWarn = console.warn;
+  console.warn = () => {};
+  globalThis.requestAnimationFrame = (callback) => {
+    if (scar.parent) {
+      warmCheckpoints += 1;
+      assert.equal(root.visible, expectedRootVisible, 'scar waits cannot overwrite the latest root visibility');
+      assert.equal(scar.visible, false, 'even an originally visible vehicle cannot expose the warm scar at a yield');
+      assert.equal(camera.layers.mask, expectedMask);
+      assert.ok(!fx.calls.includes('opening'), 'the live muzzle/FX staging cannot age during shader waits');
+      if (warmCheckpoints === checkpoint) {
+        if (change.startsWith('visibility-')) {
+          root.visible = expectedRootVisible = !initialVisible;
+          camera.layers.mask = expectedMask = 7;
+          fx.group.visible = expectedFxVisible = true;
+        }
+        if (change === 'abort' || change === 'visibility-abort') controller.abort();
+        if (change === 'epoch' || change === 'visibility-epoch') invalidateBattleWarmRuntime();
+        if (change === 'info') renderer.info = { programs: [...renderer.info.programs] };
+        if (change === 'context') renderer.getContext = () => ({ ...gl });
+        if (change === 'loss') lost = true;
+        if (change === 'reuse-other' || change === 'reuse-same') {
+          scar.removeFromParent();
+          assert.equal(scar.visible, true, 'a scar is drawable before another owner borrows it from the pool');
+          (change === 'reuse-other' ? nextRoot : root).add(scar);
+          scar.visible = false; // The new owner now controls this flag, even on the same root.
+          scar.removeFromParent();
+          assert.equal(scar.visible, false, 'the old removal listener relinquishes ownership exactly once');
+          (change === 'reuse-other' ? nextRoot : root).add(scar);
+          root.visible = true;
+        }
+      }
+    }
+    queueMicrotask(() => callback(performance.now()));
+    return warmCheckpoints;
+  };
+  try {
+    const promise = warmNetworkOpeningEffects({
+      fx, post: { prepareSoftParticles() {} }, camera, shells: [],
+      decalVisual: { root }, renderer, signal: controller.signal, timing,
+      compilePrograms(candidate) {
+        assert.equal(candidate, root);
+        assert.equal(scar.parent, root);
+        if (change === 'no-new-program') return;
+        renderer.info.programs.push({ program: {}, getUniforms() {
+          assert.equal(root.visible, expectedRootVisible);
+          assert.equal(scar.visible, false);
+          uniforms += 1;
+          if (change === 'uniform-failure') throw new Error('driver reflection');
+        } });
+      },
+      warmRender() {
+        assert.equal(scar.parent, root, 'the final compositor consumes the exact compiled pooled mesh');
+        assert.equal(scar.visible, true);
+        assert.equal(root.visible, true);
+        if (!change) assert.equal(uniforms, 1, 'new scar uniforms must be ready before the first draw');
+        draws += 1;
+      },
+    });
+    if (change === 'abort' || change === 'visibility-abort') await assert.rejects(promise, { name: 'AbortError' });
+    else await promise;
+    if (change === 'reuse-other' || change === 'reuse-same') {
+      assert.equal(scar.parent, change === 'reuse-other' ? nextRoot : root);
+      assert.equal(scar.visible, false, 'stale cleanup cannot overwrite a newer scar owner');
+      assert.equal(root.visible, true);
+      assert.ok(!fx.calls.includes('clear') && !fx.calls.includes('reset'));
+      scar.removeFromParent();
+      assert.equal(scar.visible, false, 'terminal cleanup removes the temporary removal listener');
+    } else {
+      assert.equal(scar.parent, null);
+      assert.equal(scar.visible, true, 'returned pooled scars retain their own original drawable visibility');
+      assert.equal(root.visible, expectedRootVisible);
+    }
+    assert.equal(camera.layers.mask, expectedMask);
+    assert.equal(fx.group.visible, expectedFxVisible);
+    if (draws) assert.equal(fx.calls.at(-1), 'reset');
+    else assert.ok(!fx.calls.includes('opening'), 'stale scar waits never stage live FX');
+    return { queries, uniforms, draws, warmCheckpoints, timing };
+  } finally {
+    if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = priorRaf;
+    console.warn = priorWarn;
+  }
+}
+
+for (const initialVisible of [false, true]) {
+  const result = await scarFirstUseProbe({ initialVisible });
+  assert.equal(result.uniforms, 1, 'the post-scene scar cohort receives explicit native first use');
+  assert.equal(result.queries, 2);
+  assert.equal(result.draws, 1);
+  assert.ok(result.warmCheckpoints >= 2);
+  assert.equal(result.timing.uniformCount, 1);
+  assert.equal(result.timing.uniformPending, 0);
+}
+
+for (const checkpoint of [1, 2]) {
+  for (const change of ['abort', 'epoch', 'info', 'context', 'loss']) {
+    const result = await scarFirstUseProbe({ initialVisible: true, change, checkpoint });
+    assert.equal(result.uniforms, 0, `${change}: no native reflection after a stale wait`);
+    assert.equal(result.draws, 0);
+    assert.equal(result.queries, checkpoint - 1);
+  }
+}
+for (const change of ['query-failure', 'uniform-failure']) {
+  const result = await scarFirstUseProbe({ change, readyAfter: 0 });
+  assert.equal(result.draws, 1, `${change}: valid-lifetime native failure retains the same real draw`);
+  assert.equal(result.timing.uniformPending, 1);
+}
+for (const change of ['reuse-other', 'reuse-same']) {
+  const result = await scarFirstUseProbe({ change });
+  assert.equal(result.uniforms, 0);
+  assert.equal(result.draws, 0, `${change}: a reused pooled mesh invalidates the old scar job`);
+}
+for (const change of ['visibility-healthy', 'visibility-abort', 'visibility-epoch']) {
+  const result = await scarFirstUseProbe({ initialVisible: false, change });
+  assert.equal(result.draws, change === 'visibility-healthy' ? 1 : 0,
+    `${change}: asynchronous presentation changes are not restored to stale pre-wait values`);
+}
+{
+  const result = await scarFirstUseProbe({ change: 'query-loss', readyAfter: 0 });
+  assert.equal(result.uniforms, 0, 'context loss inside a native query cannot authorize reflection');
+  assert.equal(result.draws, 0);
+}
+{
+  const result = await scarFirstUseProbe({ change: 'no-new-program' });
+  assert.equal(result.queries, 0);
+  assert.equal(result.uniforms, 0);
+  assert.equal(result.warmCheckpoints, 0, 'reused programs do not create metadata waits');
+  assert.equal(result.draws, 1);
+}
+
+for (const change of ['abort', 'epoch', 'info', 'context']) {
+  const fx = createFxProbe();
+  const camera = new PerspectiveCamera();
+  const controller = new AbortController();
+  const gl = { isContextLost: () => false };
+  const renderer = { info: { programs: [] }, getContext: () => gl };
+  let releaseTextures;
+  fx.warmTexturesChunked = () => new Promise((resolve) => { releaseTextures = resolve; });
+  const promise = warmNetworkOpeningEffects({
+    fx, post: { prepareSoftParticles() {} }, camera, shells: [], renderer, signal: controller.signal,
+    compilePrograms() { assert.fail('abandoned atlas work cannot compile'); },
+    warmRender() { assert.fail('abandoned atlas work cannot render'); },
+  });
+  for (let attempt = 0; attempt < 200 && !releaseTextures; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+  assert.equal(typeof releaseTextures, 'function');
+  if (change === 'abort') controller.abort();
+  if (change === 'epoch') invalidateBattleWarmRuntime();
+  if (change === 'info') renderer.info = { programs: [] };
+  if (change === 'context') renderer.getContext = () => ({ ...gl });
+  fx.group.visible = true;
+  camera.layers.mask = 7;
+  fx.calls.push('newer-live-FX');
+  releaseTextures();
+  if (change === 'abort') await assert.rejects(promise, { name: 'AbortError' });
+  else await promise;
+  assert.deepEqual(fx.calls, ['newer-live-FX'], `${change}: pending atlas cancellation cannot reset newer FX`);
+  assert.equal(camera.layers.mask, 7);
+  assert.equal(fx.group.visible, true);
+}
+
+{
+  const fx = createFxProbe();
+  let textureSteps = 0;
+  fx.warmTexturesChunked = async (yieldForBudget) => {
+    textureSteps += 1;
+    invalidateBattleWarmRuntime();
+    await yieldForBudget(true);
+    textureSteps += 1;
+  };
+  const priorWarn = console.warn;
+  try {
+    console.warn = () => {};
+    await warmNetworkOpeningEffects({
+      fx, post: { prepareSoftParticles() {} }, camera: new PerspectiveCamera(), shells: [],
+      compilePrograms() { assert.fail('invalidated texture producer cannot compile'); },
+      warmRender() { assert.fail('invalidated texture producer cannot draw'); },
+    });
+  } finally { console.warn = priorWarn; }
+  assert.equal(textureSteps, 1, 'an internal stale texture checkpoint must stop the producer itself');
+  assert.ok(!fx.calls.includes('reset'));
+}
+
 console.log('battleWarmRuntime.selftest: Studio invalidation and covered FX staging passed');

@@ -284,8 +284,16 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
   compile.context.window.__NETWORK_LOAD.programCompile = {
     ...row, submissionMs: Infinity, url: 'PRIVATE_URL', name: 'PRIVATE_NAME', detail: { secret: 'PRIVATE' },
   };
+  compile.context.window.__NETWORK_LOAD.scarCompile = {
+    uniformCount: 3, uniformPending: 0, uniformMs: 4.5, maxUniformMs: Infinity,
+    url: 'PRIVATE_URL', detail: { secret: 'PRIVATE' },
+  };
   const receipt = JSON.parse(JSON.stringify(compile.run(readProductionEntryObserver, 'stop')));
   assert.deepEqual(receipt.networkLoad.programCompile, { ...row, submissionMs: null });
+  assert.deepEqual(receipt.networkLoad.scarCompile, {
+    ...Object.fromEntries(fields.map((key) => [key, null])),
+    uniformCount: 3, uniformPending: 0, uniformMs: 4.5,
+  });
   assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
 }
 {

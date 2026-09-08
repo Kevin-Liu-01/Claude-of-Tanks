@@ -223,7 +223,7 @@ if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffe
 }
 // Execute the exact production callback, not a parallel fake warmer. A plain
 // renderer.render never submits LateFxPass.Copy or its layer-only variants.
-const networkWarmPort = main.slice(main.indexOf('return battleWarm.warmNetworkOpeningEffects({'));
+const networkWarmPort = main.slice(main.indexOf('battleWarm.warmNetworkOpeningEffects({'));
 const networkWarmBody = networkWarmPort.match(/warmRender: \(\) => \{([\s\S]*?)\n\s{14}\},/)?.[1];
 assert.ok(networkWarmBody, 'network entry supplies the covered post-composer warm callback');
 const renderNetworkWarm = new Function('post', 'renderer', networkWarmBody);

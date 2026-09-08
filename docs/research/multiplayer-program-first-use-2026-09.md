@@ -341,3 +341,124 @@ are not controlled. These observations do not establish a matched production
 speedup, eliminate the remaining night stalls, or certify HIGH gameplay and
 separate-device/network performance. Final publication changes only this ledger
 after the frozen runtime checks; temporary runners and capture files stay out.
+
+### Remaining first-combat stall: source attribution
+
+The preserved `invite-wreck-r3` guest CPU profile places 1,542.61 ms of inclusive
+sample weight inside the actual compositor call from network opening-effects
+warmup, versus the measured 1,561-ms task. The base SceneAA pass reaches Three's
+`setProgram → getUniforms → onFirstUse → WebGLUniforms` path. Inclusive samples
+overlap and must not be summed into a second wall-time measurement. The profile
+has ±118.65-ms clock uncertainty and a 236.14-ms largest sample; it identifies
+the driver-facing path, not a particular material or shader handle.
+
+Source inspection finds a concrete coverage hole: the first vehicle armor scar
+attaches a lazy decal mesh and submits its shader **after** the main scene's
+bounded reflection pass. The next operation stages effects and draws the real
+compositor without a readiness/reflection checkpoint for that new cohort.
+Preparing that exact cohort cooperatively is a candidate correction, not yet
+proof that this one effect accounts for the complete pause. The new
+`scarCompile` observer field retains only the same bounded numeric counters as
+`programCompile`, separately, to test that hypothesis without retaining object
+names, URLs, or identities.
+
+The proposed alternative explanation—new muzzle lights changing the compile
+variant—is not supported by the fresh-entry source. Both pooled point lights
+are already attached and visible during the scene compile; changing their
+intensity does not change Three's point-light count. Nor is the standalone
+offscreen/post-pass warmer a drop-in replacement for the full compositor: it
+has different pass enablement, render targets, depth copying and temporal
+history. The real complete draw and reveal gate remain required.
+
+The later 639-ms watchdog draw has a distinct sampled path through
+`WebGLUniforms.upload → texture sampler upload → texSubImage2D`. Its subsequent
+2.8-second asynchronous readback is yielded elapsed time, not an additional
+2.8-second synchronous upload. The profile does not retain the offending
+texture identity. This cost remains open independently of the scar-program
+coverage fix.
+
+### Published preload build: production recheck
+
+`production-f520626e0-r1` exercised the actual Cloudflare-backed website at
+`v1.0.0+gf520626e0` with two fresh native browser contexts and guest profiling.
+This is the published **pre-scar-fix baseline**, not evidence for the new local
+candidate. Both prepared Winter maps were complete before launch and reused
+without promotion. Both foreground clients displayed `5,4,3,2,1`, moved/fired,
+returned to Garage and closed the room; browser closure and room cleanup passed.
+Page/observer errors, profile failures, hard snaps and black-frame rescues were
+zero. The inspected guest image shows the tank/world/HUD on native Apple M5 Max
+ANGLE.
+
+This run selected clear/day, HIGH/scale 1 during entry. Loading including the
+ready barrier took 2,026/2,089 ms (host/guest), after an explicit waiting-room map
+preparation dwell. It is **not** a two-second cold-navigation claim. Combat warm
+took 121/113 ms; the largest entry tasks were 311/335 ms. Those tasks align with
+the main cohort's native readiness queries (`maxExistingQueryMs` 311.5/335.2),
+while uniform reflection itself totaled only 4.1/5.9 ms. Thus the large night
+compositor stall did not recur in this sample, but smooth-loading acceptance
+still fails: native readiness queries can themselves block despite the bounded
+JavaScript scheduler. The later, separate LOW moving/firing samples reached
+39.4/50.0-ms maximum callback gaps. Scenario randomness, driver caches, foreign
+GPU activity and profiling remain uncontrolled.
+
+### Cooperative scar preparation candidate
+
+The local candidate captures the exact newly submitted scar wrapper/native
+program pairs, restores the vehicle and camera immediately, then consumes the
+existing bounded readiness/reflection job between paints. Only the temporary
+scar stays hidden; the same attached mesh is shown again for the unchanged real
+compositor draw. No muzzle effect is allowed to age away during those waits.
+
+The entry AbortSignal now reaches this stage. Renderer-info/context identity,
+context loss and warm-generation invalidation stop abandoned work, including
+inside cooperative texture preparation. A one-shot removal listener restores
+temporary mesh visibility **before** decal pooling can lend it to a different
+owner; same-root reuse also invalidates the old job. Camera, FX-group and tank
+visibility are saved/restored around each synchronous mutation rather than
+rewinding newer state after an await. Cancelled pre-draw work does not reset a
+newer owner's live FX. Synchronous solo/capture warming is unchanged.
+
+Fourteen focused selftest commands passed, including the real FX-graph staging
+contract, exact production compositor callback, presentation/launch/activation,
+readiness, countdown, Garage return, and bounded observer privacy. The new
+scar test was red before implementation. Typecheck and changed-owner complexity
+gates passed (617 functions across the three touched runtime modules, zero
+violations, zero explicit `any`/`unknown`). Independent source/caller review
+found no remaining blocker. These are code/behavior checks, not native
+performance acceptance.
+
+React Doctor reported 49/100 with six `await-in-loop` warnings on the changed
+files: five sequential test-case loops and the intentional paint-yield loop.
+The latter must remain serial to bound work and validate ownership between
+native calls; parallelizing the tests would overlap shared lifecycle fixtures.
+No warning is suppressed. The initial scan had no changed files, and earlier
+scores covered different file sets, so no controlled score improvement is
+claimed. The full-suite upstream vehicle-receipt limitation recorded above
+remains outside this multiplayer change.
+
+### Scar candidate native acceptance
+
+`scar-cohort-r1` tested the frozen candidate at
+`v1.0.0+gf520626e0.dirty` (index SHA-256
+`b9eb0f0c81a61694f20aa218b74c78b3daee7b5b665633893d5184fa9f49389a`).
+Two fresh native browser contexts used local-loopback signaling and the normal
+private-room UI. This was a local candidate test, not a production deployment.
+Both cached Winter maps completed before launch; both clients displayed the
+full foreground `5,4,3,2,1` countdown, moved/fired, returned to Garage and closed
+the room. Page errors, observer failures, black-frame rescues and hard snaps were
+zero; browser and room cleanup passed. The inspected guest capture shows the
+live tank, battlefield and HUD on native Apple M5 Max ANGLE.
+
+Both clients captured exactly one new scar program, reflected it before the
+real compositor draw, and finished with zero pending programs or failures.
+The scar job yielded once on each peer. This verifies that the previously
+missing native cohort is now admitted, not that all first-use stalls are gone.
+Clear/day HIGH entry took 1,938/2,068 ms (host/guest), after a 6.45-second
+waiting-room preparation dwell. Combat warm took 151/104 ms. Largest recorded
+entry tasks remained 235/223 ms, and maximum entry callback gaps were
+239.3/224.0 ms. The guest's 223-ms task aligns with the main cohort's existing
+program readiness query, separate from the new scar job. The later LOW
+dual-render movement/firing sample reached 54.4/45.2-ms maximum callback gaps.
+This is functional acceptance with an observed coverage correction, **not**
+smooth-loading acceptance or a controlled before/after speedup. Night loading,
+driver-query stalls and deferred texture uploads remain open.

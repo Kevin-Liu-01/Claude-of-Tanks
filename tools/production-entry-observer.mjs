@@ -193,6 +193,7 @@ export function installProductionEntryObserver() {
         connectMs: finite(network.connectMs), totalMs: finite(network.totalMs),
         stages: numericTree(network.stages),
         programCompile: programCompileReceipt(network.programCompile),
+        scarCompile: programCompileReceipt(network.scarCompile),
         shadowPrime: network.shadowPrime ? Object.fromEntries(['cascadeCount', 'totalMs', 'maxMs']
           .map((key) => [key, finite(network.shadowPrime[key])])) : null,
         blackCheck: network.blackCheck ? { before: finite(network.blackCheck.before),
