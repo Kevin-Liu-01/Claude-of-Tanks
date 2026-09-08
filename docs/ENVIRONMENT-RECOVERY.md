@@ -376,6 +376,65 @@ stopped at the fidelity harness's initial registry readiness, before scores or
 images existed. Earlier eight release phases passed; this startup failure is
 not a fidelity pass and must be diagnosed before continuation. No push yet.
 
+## Recovery round 6 — accepted collision refresh and remaining failures
+
+`846e24d35` commits the complete native collision refresh, the exact intake-hood
+and adjoining-bank assertions, and all thirty per-map storage budgets. Dedicated
+collision, codec and loader tests pass. The published corpus shrinks from
+36,936,381 to 33,770,102 bytes; every individual shard is smaller. The original
+codec test nevertheless failed because the raw corpus shrank faster, changing
+encoded/raw from 77.17% to 80.16%. Its 20% dictionary-efficiency requirement now
+uses a fixed mixed-primitive fixture, while the actual thirty-map corpus must
+remain below **each** prior published byte ceiling. No codec/runtime algorithm,
+quantization, collision tolerance or decoding correctness assertion changed.
+This storage check is separate from runtime memory acceptance.
+
+The five-sweep `candidate-residency-extended-r1.json` acquisition is complete.
+It preserves thirteen strict managed-heap failures; same-map GPU geometry,
+textures, programs and backing storage remain exactly stable. Managed growth
+slows but does not establish a plateau. Offline comparison of the original
+two Coastal snapshots resolves all 642 newly observed instruction streams to
+preexisting function definitions. Their direct closure counts are individually
+unchanged (793 total in each snapshot); replaced per-world closures remain
+bounded. The actual CSM shader-map reference count is 604 in both snapshots.
+Compilation/tier progression explains the instruction-byte increase, but is
+not subtracted from the failed original managed-heap gate.
+
+The R4 build passed with index SHA-256
+`722f133c43716a44b7f1b8bae6d5942938c79b4e04b821489d8bac7a18ed05b1`.
+Its default 31 lighting captures pass structural/lifecycle checks with no
+console or cleanup errors. Visual review confirms actual streetlamp light on
+walls and pavement, headlight road pools, window emission and restored daylight.
+However, Shtora appears amber at night. `1969759bd` reduces only added red-mask
+radiance to preserve red through ACES; native verification remains required.
+
+Additional R4 fixture checks fail closed: Urban's relay camera cannot locate an
+unobstructed authored aperture, and M1A3's exterior camera rays hit actual hull
+faces roughly 41–47 mm before its headlights. The latter is a real remaining
+placement defect: the earlier outward ray began inside single-sided hull
+geometry and missed its backface. Neither partial fixture run is accepted.
+
+`motion-one-r2` passes its live pan and scope but retains the DPR2-only scale
+failure (0.91, internal ratio 1.365). The raw-cadence correction did not resolve
+it. A bounded diagnostic on the same frozen build measured synchronous PNG
+readbacks taking 49–69 ms at DPR1 and 181 ms at DPR2. Those stalls enter ordinary
+frame cadence. The capture method is being corrected without changing quality
+floors, adaptation, timeouts or parity requirements; no nine-case matrix is
+unlocked by the failed receipt.
+
+The four lamp-model release check ran, but is **not passed**. M1A3 and Proryv
+have no registered local reference oracles. Separate remaining checks in
+`lamp-remaining-gates-r2` report all four contiguity/fitting censuses passing;
+MBT70's strict track test fails eight hull-detail voxels. Fresh registered
+MBT70/T90M fidelity and geometry checks also fail. Their exact before/after
+receipts are preserved separately; do not publish a passing qualification or
+redesign unrelated vehicles merely to clear those scores. Attribution against
+the actual lamp-only delta remains necessary.
+
+The first full-suite attempt, `final-npm-test-r1.log`, stops on the
+`sourceXOtherAuxArmor` full-scene fingerprint. The mismatch is being decomposed
+before changing any expected digest. The suite is not reported as passing.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
@@ -383,7 +442,7 @@ not a fidelity pass and must be diagnosed before continuation. No push yet.
 3. Final native night brightness/glow/contact and DPR motion review: pending.
 4. Frame timing and cache-eviction acquisitions: recorded; strict memory and
    quality acceptance remain open as detailed above.
-5. Thirty-map visual/art/minimap refresh: completed. Fresh collision shards
-   require the corrected exact waterworks assertions and focused recheck.
+5. Thirty-map visual/art/minimap refresh and native collision refresh: completed;
+   exact waterworks, census, codec and loader checks pass.
 6. Current-main integration is checkpointed; final release verification and
    non-forced publication remain pending.
