@@ -29,6 +29,7 @@ import { resolveSuspensionShape, sourceArmCenter, endpointAxialScale, endpointAx
 import { dimensionedSuspensionArm } from './suspensionArmGeometry.ts';
 import { replaceMeasuredWheelSolids, measuredWheelBackDepth, type MeasuredTireBand } from './measuredWheelGeometry.ts';
 import { authoredEraSurfaces } from './eraAuthoredFaces.ts';
+import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
 import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
@@ -9201,41 +9202,6 @@ function collectEraSurfaces(
     if (surface) surfaces.push(surface);
   }
   return { surfaces, exactSurfaces, allPoints };
-}
-
-function describeEraSurface(surface: EraSurface): {
-  center: THREE.Vector3;
-  normal: THREE.Vector3;
-} {
-  const center = surface.reduce(
-    (sum, value) => sum.add(new THREE.Vector3().fromArray(value)), new THREE.Vector3(),
-  ).multiplyScalar(1 / surface.length);
-  const origin = new THREE.Vector3().fromArray(surface[0]);
-  const normal = new THREE.Vector3().fromArray(surface[1]).sub(origin)
-    .cross(new THREE.Vector3().fromArray(surface[3]).sub(origin)).normalize();
-  return { center, normal };
-}
-
-function deduplicateEraSurfaces(surfaces: readonly EraSurface[]): EraSurface[] {
-  const deduplicated: EraSurface[] = [];
-  for (const surface of surfaces) {
-    const descriptor = describeEraSurface(surface);
-    const duplicateIndex = deduplicated.findIndex((candidate) => {
-      const candidateDescriptor = describeEraSurface(candidate);
-      return descriptor.normal.dot(candidateDescriptor.normal) > 0.995
-        && descriptor.center.distanceTo(candidateDescriptor.center) < 0.05;
-    });
-    if (duplicateIndex < 0) {
-      deduplicated.push(surface);
-      continue;
-    }
-    const candidateDescriptor = describeEraSurface(deduplicated[duplicateIndex]);
-    if (descriptor.center.dot(descriptor.normal)
-        > candidateDescriptor.center.dot(descriptor.normal)) {
-      deduplicated[duplicateIndex] = surface;
-    }
-  }
-  return deduplicated;
 }
 
 interface TankPresentationSetup {
