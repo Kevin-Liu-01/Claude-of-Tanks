@@ -520,12 +520,24 @@ for (const production of [true, false]) {
   const make = kind => async options => {
     calls.push(kind);
     assert.equal(options.root, '/fixture/build');
-    assert.equal((production ? options.preview : options.server).host, '127.0.0.1');
+    const network = production ? options.preview : options.server;
+    assert.equal(network.host, '127.0.0.1');
+    assert.equal(network.port, 0, 'both branches request an OS-assigned port, never blocked random 6566');
     return stub;
   };
   assert.equal(await selectServer(production, '/fixture/build', make('preview'), make('dev')), stub);
   assert.deepEqual(calls, production ? ['preview'] : ['dev', 'listen']);
 }
+const addressStart = tool.indexOf('  const address =', serverStart);
+const addressEnd = tool.indexOf('  browser =', addressStart);
+assert.ok(addressEnd > addressStart);
+const actualPort = new Function('server', `${tool.slice(addressStart, addressEnd)}\nreturn port;`);
+for (const port of [49152, 51999]) {
+  assert.equal(actualPort({ config: { server: { port: 0 }, preview: { port: 0 } },
+    httpServer: { address: () => ({ address: '127.0.0.1', port }) } }), port,
+  'navigation resolves the bound port, never configured zero or a guessed fallback');
+}
+assert.match(tool, /page\.goto\(`http:\/\/127\.0\.0\.1:\$\{port\}/, 'navigation uses the resolved server address');
 const closeStart = tool.lastIndexOf('} finally {\n  try {\n    if (browser)');
 assert.ok(closeStart > 0);
 const closeOwned = new AsyncFunction('browser', 'server', 'clearInterval', 'releaseCaptureLock', 'lockRefresher',

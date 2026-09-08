@@ -769,7 +769,9 @@ try {
   process.on('exit', releaseCaptureLock);
   lockRefresher = setInterval(refreshCaptureLock, 60_000);
   lockRefresher.unref();
-  const selectedPort = 6100 + Math.floor(Math.random() * 500);
+  // Let the OS select an available ephemeral port. The former random range
+  // included Chromium-blocked 6566, failing navigation before game boot.
+  const selectedPort = 0;
   server = production
     ? await preview({ root: ROOT, logLevel: 'error',
       preview: { host: '127.0.0.1', port: selectedPort, strictPort: false } })
