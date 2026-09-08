@@ -886,6 +886,33 @@ still be evaluated. No live horizon child ships in this evidence checkpoint.
 The broader motion matrix, strict managed-heap failures and all-map art
 acceptance remain open without tolerance changes or category subtraction.
 
+## Rejected forest R8 and acquisition repair — 2026-09-08
+
+Frozen R8 `cda9db292` completed eighteen native Verdant/Coastal images with
+unchanged source/build/acquisition and exact R4/R6/R7 poses and scope contracts.
+The irregular crown texture reduces R7's periodic pattern, but actual review
+still finds flat pebbly/brushy patches rather than convincing woodland mass.
+Both the surface-only candidate and the separate live horizon child remain
+unpublished. Local `f5f351f0d` reduces construction indexing work while retaining
+exact R8 pixels; that optimization does not turn rejected artwork into a pass.
+Evidence: `horizon-density-after-r8-{integrity.json,review.md}` and
+`forest-crown-r3-{parity,construction}.json` under the persistent evidence root.
+
+The next proposed forest experiment is finite-depth, terrain-seated canopy
+shells on Verdant, Coastal and Frontier, not further scalar noise tuning.
+`forest-horizon-next-approach.md` records source boundaries, atlas/geometry
+ceilings, exact nonpilot exclusions and native art/motion gates. This is a
+design note, not an implemented result. Existing strict performance and
+managed-heap failures remain open; no resource or tolerance waiver is implied.
+
+Published `ca3ae80a2` separately repairs map-audit acquisition: both development
+and production preview request an OS-assigned ephemeral port and navigate to
+the actual bound address. The old random range included Chromium-blocked 6566,
+which caused an Oasis candidate run to fail before game boot. The failed R1
+receipt is retained. The full acquisition selftest and fresh native baseline/
+candidate R2 captures pass with the same corrected tool hash. This is a
+test-runner fix, not a gameplay rendering change.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
