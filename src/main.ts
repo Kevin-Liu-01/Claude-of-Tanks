@@ -75,6 +75,7 @@ import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
 import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
+import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
@@ -2062,10 +2063,17 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           shotCards: (specIds: readonly string[]) => currentHud()?.warmShotCards(specIds),
           compile: async (signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming = {};
+            const lateMask = 1 << LATE_FX_LAYER;
+            // Match SceneAAPass and LateFxPass light selection and their exact
+            // destinations; do not compile late FX under ordinary scene lights.
+            const passes = post?.composer ? [
+              { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+              { layerMask: lateMask, target: post.lateFx.target },
+            ] : undefined;
             // Permit rendering between batches and before driver queries;
             // this is not a GPU-completion guarantee. One owner lifetime spans
             // submission, the post-paint checkpoint, and readiness polling.
-            for (const _ of forwardProgramWarm.prepareSceneSteps({ signal, timing })) await nextPaintFrame();
+            for (const _ of forwardProgramWarm.prepareSceneSteps({ signal, timing, passes })) await nextPaintFrame();
             return { ...timing };
           },
         },

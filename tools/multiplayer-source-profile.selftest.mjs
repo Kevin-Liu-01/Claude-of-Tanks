@@ -50,6 +50,67 @@ assert.deepEqual(splitResult.bins.map((row) => row.application), [100, 100, 50],
   'sample weights split across bins rather than all landing in the completion bin');
 assert.equal(splitResult.maxSampleIntervalMs, 250, 'sampling gaps remain explicit uncertainty');
 
+const unordered = profile();
+unordered.samples = [6, 2, 8, 3];
+unordered.timeDeltas = [4000, -2000, 3000, 0]; // relative timestamps: 4, 2, 5, 5 ms
+const untouched = structuredClone(unordered);
+const reordered = summarizeMultiplayerSourceProfile(unordered, { origin });
+assert.deepEqual(unordered, untouched, 'normalization never mutates the provider profile');
+assert.deepEqual(reordered.sampledMs, { application: 3, idle: 2, program: 0, gc: 0, other: 0 });
+assert.equal(reordered.sampledDurationMs, 5);
+assert.equal(reordered.unsampledTailMs, 5);
+assert.equal(reordered.maxSampleIntervalMs, 2);
+assert.equal(reordered.sampleCount, 4, 'zero-weight equal-time samples remain represented');
+assert.equal(reordered.applicationInclusiveSampledMs, 3);
+assert.deepEqual(reordered.normalization, {
+  negativeDeltaCount: 1, reorderedSampleCount: 2, equalTimestampCount: 1,
+});
+const sortedEquivalent = { ...profile(), samples: [2, 6, 8, 3], timeDeltas: [2000, 2000, 1000, 0] };
+const { normalization: ignoredNormalization, ...normalizedWeights } = reordered;
+const { normalization: sortedNormalization, ...sortedWeights } = summarizeMultiplayerSourceProfile(
+  sortedEquivalent, { origin });
+assert.deepEqual(normalizedWeights, sortedWeights, 'sorted prior-interval attribution matches monotonic input exactly');
+assert.deepEqual(sortedNormalization, { negativeDeltaCount: 0, reorderedSampleCount: 0, equalTimestampCount: 1 });
+assert.deepEqual(safe.normalization, { negativeDeltaCount: 0, reorderedSampleCount: 0, equalTimestampCount: 0 });
+assert.doesNotMatch(JSON.stringify(reordered), /PRIVATE|https?:|samples|timeDeltas|timestamps|ordinal/);
+
+for (const first of [2, 3]) {
+  const tied = { ...profile(), samples: [6, first, first === 2 ? 3 : 2], timeDeltas: [4000, -2000, 0] };
+  const result = summarizeMultiplayerSourceProfile(tied, { origin });
+  assert.equal(result.sampledMs[first === 2 ? 'idle' : 'gc'], 2,
+    'the first original sample at an equal timestamp owns its preceding interval');
+  assert.equal(result.sampledMs[first === 2 ? 'gc' : 'idle'], 0);
+  assert.equal(result.sampledMs.application, 2);
+  assert.equal(result.sampleCount, 3);
+}
+const crossBins = { ...profile(), endTime: 1_300_000,
+  samples: [6, 2, 3], timeDeltas: [250000, -200000, 100000] };
+const crossResult = summarizeMultiplayerSourceProfile(crossBins, { origin });
+assert.deepEqual(crossResult.bins.map(({ application, idle, gc }) => ({ application, idle, gc })), [
+  { application: 0, idle: 50, gc: 50 }, { application: 50, idle: 0, gc: 50 },
+  { application: 50, idle: 0, gc: 0 },
+], 'paired timestamp sorting preserves the correct prior intervals across bin boundaries');
+assert.equal(crossResult.sampledDurationMs, 250, 'coverage ends at the last sorted sample, not the last delivered sample');
+assert.equal(crossResult.unsampledTailMs, 50);
+assert.equal(crossResult.maxSampleIntervalMs, 100);
+for (const samples of [[], [6, 2, 3]]) {
+  const zero = { ...profile(), endTime: 1_000_000, samples, timeDeltas: samples.map(() => 0) };
+  const result = summarizeMultiplayerSourceProfile(zero, { origin });
+  assert.equal(result.sampleCount, samples.length);
+  assert.equal(result.sampledDurationMs, 0);
+  assert.equal(result.maxSampleIntervalMs, 0);
+  assert.equal(result.unsampledTailMs, 0);
+  assert.deepEqual(result.functions, []);
+  assert.deepEqual(result.bins, []);
+  assert.deepEqual(result.normalization, { negativeDeltaCount: 0, reorderedSampleCount: 0,
+    equalTimestampCount: Math.max(0, samples.length - 1) });
+}
+assert.equal(summarizeMultiplayerSourceProfile({ ...profile(), samples: [], timeDeltas: [] },
+  { origin }).unsampledTailMs, 10, 'empty samples do not invent coverage');
+const fractionalClock = { ...profile(), startTime: 1_000_000.5, endTime: 1_010_000.5 };
+assert.deepEqual(summarizeMultiplayerSourceProfile(fractionalClock, { origin }), safe,
+  'valid finite fractional absolute clocks do not change relative integer-delta attribution');
+
 for (const mutate of [
   (p) => { p.samples = [999]; }, (p) => { p.timeDeltas[0] = -1; },
   (p) => { p.samples.pop(); }, (p) => { p.endTime = Infinity; },
@@ -88,7 +149,8 @@ for (const [failureCode, mutate] of [
     node(3, '(program)', '', [2])]; }],
   ['lineage-depth', (p) => { p.nodes = Array.from({ length: 129 }, (_, i) =>
     node(i + 1, '(idle)', '', i < 128 ? [i + 2] : [])); }],
-  ['sample-delta', (p) => { p.timeDeltas[0] = -1; }],
+  ['sample-delta', (p) => { p.timeDeltas[0] = 0.5; }],
+  ['sample-timestamp-underflow', (p) => { p.timeDeltas[0] = -1; }],
   ['sample-duration-overrun', (p) => { p.timeDeltas[0] = 11000; }],
 ]) {
   const rejected = profile();
@@ -98,6 +160,30 @@ for (const [failureCode, mutate] of [
     assert.deepEqual(sourceProfileFailureDetails(error), { stage: null, failure: 'unknown', failureCode });
     return true;
   });
+}
+for (const [timeDeltas, failureCode] of [
+  [[1000, -1001, 2000], 'sample-timestamp-underflow'],
+  [[11000, -1000], 'sample-duration-overrun'],
+  [[10001], 'sample-duration-overrun'],
+  [[NaN], 'sample-delta'], [[Infinity], 'sample-delta'], [[-Infinity], 'sample-delta'],
+  [[0.5], 'sample-delta'], [[-0.5], 'sample-delta'],
+  [[Number.MAX_SAFE_INTEGER + 1], 'sample-delta'],
+  [[-Number.MAX_SAFE_INTEGER - 1], 'sample-delta'],
+  [[1, Number.MAX_SAFE_INTEGER], 'sample-timestamp-unsafe'],
+]) {
+  const rejected = { ...profile(), samples: timeDeltas.map(() => 6), timeDeltas };
+  assert.throws(() => summarizeMultiplayerSourceProfile(rejected, { origin }),
+    (error) => error.profileFailureCode === failureCode,
+    'every delivered cumulative timestamp must be safe and in range before sorting');
+}
+for (const startTime of [Number.MAX_SAFE_INTEGER + 1, -1, Infinity, NaN]) {
+  assert.throws(() => summarizeMultiplayerSourceProfile({ ...profile(), startTime, endTime: startTime },
+    { origin }), (error) => error.profileFailureCode === 'time-range');
+}
+for (const timeDeltas of [[4000, -2000, 0], [0, 0, 0]]) {
+  assert.throws(() => summarizeMultiplayerSourceProfile({ ...profile(), samples: [6, 999, 2], timeDeltas },
+    { origin }), (error) => error.profileFailureCode === 'sample-node-missing',
+  'unknown IDs are rejected even in reordered or zero-weight samples');
 }
 for (const path of [`${origin}/assets/private.js?PRIVATE_TOKEN`, `${origin}/private/PRIVATE_TOKEN.js`,
   `${origin}/assets/%50RIVATE.js`, `https://PRIVATE_SECRET@game.example.test/assets/main.js`,
@@ -246,7 +332,7 @@ const invalidCapture = fixture({ send: (method) => {
 const invalidSampler = await startMultiplayerSourceProfile(invalidCapture.page, { origin }, invalidCapture.clock);
 await assert.rejects(invalidSampler.stop(), (error) => {
   assert.deepEqual(sourceProfileFailureDetails(error), {
-    stage: 'summarize', failure: 'unknown', failureCode: 'sample-delta',
+    stage: 'summarize', failure: 'unknown', failureCode: 'sample-timestamp-underflow',
   }, 'stop preserves the exact validation code through its redacted error wrapper');
   assert.doesNotMatch(JSON.stringify(error), /PRIVATE|https?:|nodes|samples|timeDeltas/);
   return true;

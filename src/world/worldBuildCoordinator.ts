@@ -334,7 +334,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         await awaitGarageLull();
         await acquireBackgroundLease();
         throwIfCancelled();
-        if (created.background && backgroundLease) await yieldBackground(true);
+        // Explicit room/Battle intent keeps the 4ms budget: fine terrain rows
+        // must not each cost a display frame. Passive speculation stays forced.
+        if (created.background && backgroundLease) await yieldBackground(created.waitForGarageLull);
         else await yieldForeground();
       };
 
