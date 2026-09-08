@@ -23,7 +23,7 @@
     "balance:update": "node tools/balance-matchups.mjs --update",
     "balance:check": "node src/vehicles/fleetBalance.selftest.mjs && node src/vehicles/balanceMatchups.selftest.mjs && node tools/balance-matchups.mjs --check",
     "test:seo": "node src/productStats.selftest.mjs && node src/presentation/seoMetadata.selftest.mjs",
-    "test:public-nav": "node src/presentation/publicNav.selftest.mjs",
+    "test:public-nav": "node src/presentation/publicNav.selftest.mjs && node src/presentation/notFound.selftest.mjs",
     "test:docs-reels": "node src/docs/battleReels.selftest.mjs",
     "i18n:translate": "gt translate --config gt.config.json",
     "i18n:validate": "gt translate --config gt.config.json --dry-run --omit-config-ids && node src/ui/i18n.selftest.mjs",

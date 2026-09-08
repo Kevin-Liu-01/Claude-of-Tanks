@@ -20,6 +20,7 @@
 // Build output is unaffected: the plugin only applies to `vite dev`/`serve`,
 // and every headless tool that calls createServer() inherits this config.
 import { readFileSync } from 'node:fs';
+import type { ServerResponse } from 'node:http';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
@@ -88,8 +89,27 @@ const rewriteRoutes: Connect.NextHandleFunction = (req, res, next) => {
     const topic = path.split('/').filter(Boolean).at(-1);
     req.url = `/docs-${topic}.html${query}`;
   }
+  else if (path === '/404' || path === '/404/') {
+    forceNotFoundStatus(res);
+    req.url = '/404.html' + query;
+  }
+  else if (path !== '/' && !path.startsWith('/api/') &&
+    req.headers.accept?.includes('text/html')) {
+    forceNotFoundStatus(res);
+    req.url = '/404.html' + query;
+  }
   next();
 };
+
+/** Keep Vite's static-file layer from replacing an intentional 404 with 200. */
+function forceNotFoundStatus(res: ServerResponse): void {
+  res.statusCode = 404;
+  const writeHead = res.writeHead;
+  res.writeHead = ((...args: Parameters<typeof res.writeHead>) => {
+    args[0] = 404;
+    return writeHead.apply(res, args);
+  }) as typeof res.writeHead;
+}
 
 export default defineConfig({
   plugins: [
@@ -145,6 +165,7 @@ export default defineConfig({
       // surfaces. Presentation routes never inherit the playable boot graph.
       input: {
         main: resolve(process.cwd(), 'index.html'),
+        notFound: resolve(process.cwd(), '404.html'),
         home: resolve(process.cwd(), 'home.html'),
         docs: resolve(process.cwd(), 'docs.html'),
         docsTopic: resolve(process.cwd(), 'docs-topic.html'),
@@ -166,7 +187,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     entries: [
-      'index.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html',
+      'index.html', '404.html', 'home.html', 'docs.html', 'docs-topic.html', 'gallery.html',
       'docs-build.html', 'docs-models.html',
       'docs-simulation.html', 'docs-vehicles.html', 'docs-rendering.html',
       'docs-performance.html', 'docs-worlds.html', 'docs-ai.html',

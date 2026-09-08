@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#05080b">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="The requested Claude of Tanks route could not be found. Return to the Garage, Home, or technical field manual.">
+  <meta property="og:site_name" content="Claude of Tanks">
+  <meta property="og:title" content="Route Not Found — Claude of Tanks">
+  <meta property="og:description" content="The requested Claude of Tanks route could not be found.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cot.kevinliu.studio/brand/og/home.jpg">
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+  <link rel="preload" href="/media/featured/f10_studio_urban_crossfire.webp" as="image">
+  <link rel="stylesheet" href="/src/presentation/notFound.css">
+  <link rel="stylesheet" href="/src/presentation/publicNav.css">
+  <title>Route Not Found — Claude of Tanks</title>
+</head>
+<body class="not-found-page">
+  <nav class="public-nav" aria-label="Primary navigation">
+    <div class="public-nav__inner">
+      <a class="public-nav__brand" href="/home" data-i18n-aria-label="publicNav.brandAria"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
+      <div class="public-nav__links">
+        <a href="/home"><img class="public-nav__icon public-nav__icon--home" src="/brand/nav/home.svg" alt=""><span data-i18n="publicNav.home">Home</span></a><a href="/studio"><img class="public-nav__icon public-nav__icon--studio" src="/brand/nav/studio.svg" alt=""><span data-i18n="publicNav.studio">Studio</span></a><a href="/gallery"><img class="public-nav__icon public-nav__icon--tank" src="/brand/nav/tank-gallery.svg" alt=""><span data-i18n="publicNav.gallery">Tank Gallery</span></a><a href="/docs"><img class="public-nav__icon public-nav__icon--docs" src="/brand/nav/docs.svg" alt=""><span data-i18n="publicNav.docs">Docs</span></a>
+        <a class="public-nav__github" href="https://github.com/Kevin-Liu-01/claude-of-tanks" target="_blank" rel="noreferrer" data-i18n-aria-label="publicNav.githubAria"><span class="public-nav__github-label" data-i18n="publicNav.githubLabel">GitHub</span><span class="public-nav__stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>
+        <a class="public-nav__cta" href="/"><span class="public-nav__play-icon" aria-hidden="true"></span><span data-i18n="publicNav.playNow">Play Now</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="not-found" aria-labelledby="not-found-title">
+    <div class="not-found__scene" aria-hidden="true"></div>
+    <div class="not-found__shade" aria-hidden="true"></div>
+    <div class="not-found__grid" aria-hidden="true"></div>
+    <section class="not-found__content">
+      <p class="not-found__eyebrow" data-i18n="notFound.eyebrow">Navigation failure // Sector unavailable</p>
+      <div class="not-found__code" aria-hidden="true">404</div>
+      <div class="not-found__panel">
+        <p class="not-found__status"><span aria-hidden="true"></span><b data-i18n="notFound.status">HTTP 404 // No contact</b></p>
+        <h1 id="not-found-title" data-i18n="notFound.title">This route fell off the map.</h1>
+        <p class="not-found__lede" data-i18n="notFound.lede">Recon found no valid page at this coordinate. Return to the motor pool or re-enter through the field manual.</p>
+        <div class="not-found__coordinate">
+          <span data-i18n="notFound.requested">Requested coordinate</span>
+          <code data-not-found-path>/unknown-sector</code>
+        </div>
+        <div class="not-found__actions">
+          <a class="not-found__primary" href="/"><span class="not-found__tank-icon" aria-hidden="true"></span><span data-i18n="notFound.garage">Return to Garage</span></a>
+          <a href="/home" data-i18n="notFound.home">Open Home</a>
+          <a href="/docs" data-i18n="notFound.docs">Read Docs</a>
+        </div>
+        <p class="not-found__footer" data-i18n="notFound.footer">No vehicle or account data was affected.</p>
+      </div>
+    </section>
+    <div class="not-found__reticle" aria-hidden="true"><span></span><i></i><b></b></div>
+  </main>
+
+  <script type="module" src="/src/presentation/notFound.ts"></script>
+</body>
+</html>

@@ -346,6 +346,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/presentation/socialProof.selftest.mjs',
     'src/presentation/publicLoading.selftest.mjs',
     'src/presentation/publicNav.selftest.mjs',
+    'src/presentation/notFound.selftest.mjs',
     'src/presentation/seoMetadata.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/topics.selftest.mjs',
