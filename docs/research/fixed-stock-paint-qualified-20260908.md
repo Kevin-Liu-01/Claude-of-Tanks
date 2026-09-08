@@ -44,3 +44,28 @@ paint correction and both Merkava X shoulder-return corrections. That is
 seven targets, not completion of the 59-target running-gear/style program.
 Track thickness, efficient road wheels and older Challenger budgets remain
 separate pending work; paint-only changes do not certify those requirements.
+
+## Combined native checkpoint, still release-pending
+
+On authored tree `ca475a6bf`, the combined seven-ID run
+`.qa-dev/combined-visible-release-hb7Qgt/` passed eleven focused tests,
+typecheck, 84 native images, full anatomy/marking updates, and all 603 fleet
+technical diagrams. Only six targets' technical image triplets changed;
+Burlak's triplet was already current. The only anatomy changes are the two
+Merkava hull/upper-collision receipts; their outer bounds and all turret,
+module, ERA and track data remain unchanged.
+
+The root reviewed actual HIGH/LOW, factory/winter and front/side/rear images
+across all seven IDs. The 11 m Leopard 2A6 X front-left framing clips its
+muzzle and is finish-only evidence. Supplemental 15 m captures in
+`.qa-dev/a6-unclipped-finish-native/` contain four HIGH/LOW factory/winter
+front-left images with the complete gun in frame; HIGH winter and LOW
+factory were separately inspected. These images do not certify unchanged
+running gear as having passed the new style or performance requirements.
+
+The anatomy check process also completed with 174 current receipts across
+56 groups. The owner then stopped only the child-free driver to integrate a
+test-only exact historical inverse for the Leclerc/AMX-40 bucket snapshots.
+The run remains **interrupted / not a full release pass**. Native snapshots
+and partial phases are not combined into a green composed receipt. A fresh
+complete composed release on the final integrated inputs is still required.
