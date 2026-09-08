@@ -1,0 +1,104 @@
+{
+  "protocol": "published-post-foundation-successor-v1",
+  "commit": "099edfa49603bc473548f6986c8598267a24a4db",
+  "capturedAt": "2026-09-08T22:56:01.630Z",
+  "node": "v24.13.0",
+  "options": {
+    "proceduralOnly": true,
+    "geometryReceipt": true,
+    "batchStatic": false
+  },
+  "algorithm": "Unchanged service-frame draw-index world-position multiset at 1e-5 m, subtracting exact helper draw vertices with multiplicity; vehicle markings and procShadow_ proxies retain their existing exclusions.",
+  "historicalStatus": "pre-foundation receipt retained; not a current whole-model preservation claim",
+  "preFoundationHistory": [
+    [
+      "high",
+      317904,
+      "f8ca53fd1bdb78ead30c90b2d50ffde9464888ebaeb0f8da690dacfe3adb1c31"
+    ],
+    [
+      "low",
+      291504,
+      "2f8909bdea9e969f2dc65834150533937167523b47073aee5c858de0e07120d3"
+    ]
+  ],
+  "successor": {
+    "high": {
+      "count": 318516,
+      "sha256": "e927370c12f00c11a34427869aead2258efaf86dd0ddbcac31ce47b665cbf4bf"
+    },
+    "low": {
+      "count": 292116,
+      "sha256": "29edd3bbcd982846879d481ca9f66a28c9ed884f5f807a8c63847750a0bacac2"
+    }
+  },
+  "originalPublishedTest": {
+    "sourceSha256": "473b4a8e5aebed17330df280207dd61a44fe587a0fbabcd76424183a7fe38ae2",
+    "untouchedExitCode": 1,
+    "actualHigh": 318516,
+    "expectedHigh": 317904
+  },
+  "authoredSources": {
+    "src/vehicles/profiles/chieftain10X.ts": "bef8c25b586b9b59a744a71761ba23fd3abf456655f4091e8f50c2962f8de353",
+    "src/vehicles/profiles/chieftain10XAftCasting.ts": "f2aa34a46d45c1528497a88c4be3e6a387196ead87a0803234896cccd296e933",
+    "src/vehicles/profiles/chieftain10XBasket.ts": "04d56fbb2aa469f1de35f46e65d038fb0951ed65a0bb1dc993803af128253f01",
+    "src/vehicles/profiles/chieftain10XBowLights.ts": "00618365219b24e8773522733ae6c20f7e32f94e9bb740eec3d30281f6437b9e",
+    "src/vehicles/profiles/chieftain10XCaseChannel.ts": "b877ae47e4b19be14de6cb2964d93553b913a45aebb2b3e624b8ba8cb19c0566",
+    "src/vehicles/profiles/chieftain10XCastFloor.ts": "10e06f2021c21191ad3aa95b47b04b2a72a23ddc1f552ff5875d98c1ddc18027",
+    "src/vehicles/profiles/chieftain10XCupola.ts": "5c1c021bad1bcefd0f65b09fafcd3ecbb1f210f31d15b73f56b1e6ad0697680f",
+    "src/vehicles/profiles/chieftain10XEngineDeck.ts": "5deba85de83a13225f8b3cff37d3c5568a594d38d6b3962ea904ebe8c23efb7f",
+    "src/vehicles/profiles/chieftain10XFenderCases.ts": "b1a295e4f7922d1f16d41531d5195a54edb8cfa046e0b4e2aaee9372d7d2f64c",
+    "src/vehicles/profiles/chieftain10XFenders.ts": "29a25aa7838cbd28d4d7abf309c7990d9b7b0565e46f0e47ccea12371c5313ac",
+    "src/vehicles/profiles/chieftain10XGun.ts": "606d716ead7a049557f9142a9dfeeee6ec6d5a2f1808374d5a9fa590db73c72f",
+    "src/vehicles/profiles/chieftain10XGunCarriage.ts": "5d4a810566411c12b233b0c9cda9df5e06cd90b2a8eaa777980096e98fa8e1d0",
+    "src/vehicles/profiles/chieftain10XRearEquipment.ts": "01b4839d41cfc4394742aeb074f1a9a9075aefade8205b8d94eb8fd329709a9b",
+    "src/vehicles/profiles/chieftain10XRearHull.ts": "87fd3ed7abb208e6caf5b14e58c24e56c50a30238d88d6ee187a3c03e14b7307",
+    "src/vehicles/profiles/chieftain10XRearSupport.ts": "429d5c581596644b8f15910e2374432d0094ee3bc44a6d6fd72ef5ce6dba2020",
+    "src/vehicles/profiles/chieftain10XServiceFrame.ts": "ef67fed10ff481026c7875d55c8333dc637e9009f2fe109cfdb2b7f6ef1efa47",
+    "src/vehicles/profiles/chieftain10XSkirts.ts": "e3b3c1e4c5955a8463bab7cff71f78eab36a72c71c7ad824a5e8da32a36ddb54",
+    "src/vehicles/profiles/chieftain10XStowage.ts": "8465e2bdd7c409867e15f351cf1cde18d4969518c766245c7d520c36d7936e67",
+    "src/vehicles/profiles/chieftain10XUpperFittings.ts": "3d786a1d289beccc40f7b424e43118a582128a5c56b2425d5393be9b24f88ffb",
+    "src/vehicles/profiles/chieftain10XWheels.ts": "07df0bf280bd991cd51f144206dceef43475a2a001bd1cfbf8f7a363fbe72034",
+    "src/vehicles/profiles/chieftainXFoundation.ts": "e90c75351459ab6cbb42da27df4e4c3a82c3ab4ded691aeacf4bc451eb015885",
+    "src/vehicles/profiles/sectionSolid.ts": "b266fe61c777c856c90329ba513e7d92f70236ea48d4d38957b423abc5a8a9db",
+    "src/vehicles/profiles/roundedTrackContact.ts": "f4b2328f07dd53442194c0f672b492574b56a0fa252da4e29ad9410d3504c036",
+    "src/vehicles/profiles/sourceMachineGun.ts": "28074ae9c9250194c164351bae2ee9a274ca8b5ef53dae2132903ce98bc2a58b"
+  },
+  "laterMetadataAnnotation": {
+    "file": "src/vehicles/profiles/chieftain10XBowLights.ts",
+    "commit": "b2f3aa9a805df952299ebe7e0280c4ddb4a9ee31",
+    "currentSourceSha256": "0b46fc5827cd703aa887ec32cfbf46e65d5d79cdfaa9519656ca312536a29cfe",
+    "scope": "Exact import and markVehicleNightLens(front,headlight) wrapper only; authenticate complete source before/after. No geometry or current metadata rollback."
+  },
+  "dependencies": {
+    "three": "0.185.1",
+    "typescript": "7.0.2"
+  },
+  "dependencyFileHashes": {
+    "build/three.module.js": "bbf5ed13fe4373f5bd38b14ea8e62e9f157327da5638edc6d3863e08b167c9c7",
+    "build/three.core.js": "3718df126d69c125362a03340913204470d8c50238605150e57f808840fb7759",
+    "examples/jsm/utils/BufferGeometryUtils.js": "5c552223a9309883743b80538d6e9cdb45e3227f30d3ec56fb2c39b46e78d595",
+    "examples/jsm/geometries/RoundedBoxGeometry.js": "c1b7c9bd2cddff2e3f3a0723f618a3d364a47450e3d25771d21faed88410bec8"
+  },
+  "publishedRuntimeSources": {
+    "package-lock.json": "601b6cf1fe3b749446b87bd09df842d67866d562357b0cf89373e00052cbaef0",
+    "src/vehicles/profiles/chieftain10X.ts": "bef8c25b586b9b59a744a71761ba23fd3abf456655f4091e8f50c2962f8de353",
+    "src/vehicles/profiles/chieftain10XServiceFrame.ts": "ef67fed10ff481026c7875d55c8333dc637e9009f2fe109cfdb2b7f6ef1efa47",
+    "src/vehicles/profiles/chieftainXFoundation.ts": "e90c75351459ab6cbb42da27df4e4c3a82c3ab4ded691aeacf4bc451eb015885",
+    "src/vehicles/profiles/sectionSolid.ts": "b266fe61c777c856c90329ba513e7d92f70236ea48d4d38957b423abc5a8a9db",
+    "src/vehicles/profiles/kit.ts": "d89ed50f9c3b02c72bee4aad6d3f3238eb6a06e50d251ef997ee6b3517d2eb99",
+    "src/vehicles/tankFactoryCore.ts": "3f01e051848dcb473ccca3ddbd0f7fb59fd3170fde8a984d69224eeff4d9995c",
+    "src/vehicles/factoryGeometry.ts": "5fa3b4f1911c7f57b93d0a7c5054d1e638b5482176c9a281f5558264a4de494c",
+    "src/vehicles/profileBuilderAdapter.ts": "762f6ffa6c47a024b8c26fea09059706793276361b93914bdbe1d9ef52636468"
+  },
+  "publishedLockfileSha256": "601b6cf1fe3b749446b87bd09df842d67866d562357b0cf89373e00052cbaef0",
+  "controlCaptureSha256": "fdde7eda27c48ed2dd2b82fb1d5765a98c8c4d25caaef6102892300369b4229a",
+  "currentComparison": {
+    "commit": "c5ca781e2966d27ddace5116b2c6ea518ef20cf2",
+    "capturedAt": "2026-09-08T22:56:11.314Z",
+    "sourceTestSha256": "473b4a8e5aebed17330df280207dd61a44fe587a0fbabcd76424183a7fe38ae2",
+    "lockfileSha256": "6ef8d14f6fc4304d732f86aa163df6be2fc13ad40b7691bcfbe34314930ff69f",
+    "equalToPublishedBothQualities": true,
+    "scope": "Diagnostic equality only; baseline values derive solely from immutable099."
+  }
+}

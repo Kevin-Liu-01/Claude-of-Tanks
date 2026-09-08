@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
+import {readFileSync} from 'node:fs';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
+import {assertPublishedChieftainFoundationSources, PRE_FOUNDATION_HISTORY}
+  from './chieftain10XPublishedFoundation.test-support.mjs';
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
   new THREE.Vector3(...d), 0, far).intersectObjects(meshes, false)[0];
@@ -105,13 +108,48 @@ function preservation(tank, fixture, expectedCount, expectedHash) {
   const rows = [...actual].filter(([, n]) => n).sort(([a], [b]) => a.localeCompare(b));
   assert.equal(rows.reduce((sum, [, n]) => sum + n, 0), expectedCount);
   assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'), expectedHash,
-    'subtracting only the new helper preserves every old physical vertex, including all gear and turret');
+    'subtracting only the service helper preserves the published099 post-foundation physical vertices, including all gear and turret');
 }
 
-for (const [quality, count, hash] of [
-  ['high', 317904, 'f8ca53fd1bdb78ead30c90b2d50ffde9464888ebaeb0f8da690dacfe3adb1c31'],
-  ['low', 291504, '2f8909bdea9e969f2dc65834150533937167523b47073aee5c858de0e07120d3'],
-]) {
+function negativeControls(tank, fixture, count, hash) {
+  const p = tank.root.getObjectByName('turret').geometry.attributes.position;
+  const oldX = p.getX(0);
+  try {
+    p.setX(0, oldX + .001);
+    assert.throws(() => preservation(tank, fixture, count, hash),
+      /published099 post-foundation physical vertices/, 'A 1 mm actual unrelated turret change must fail');
+  } finally { p.setX(0, oldX); }
+  let wheel;
+  tank.root.traverse(m => { if (!wheel && m.isInstancedMesh && m.userData.runningGear) wheel = m; });
+  assert.ok(wheel, 'A native moving-gear instance participates in the control');
+  const original = new THREE.Matrix4(); wheel.getMatrixAt(0, original);
+  try {
+    const changed = original.clone(); changed.elements[12] += .001; wheel.setMatrixAt(0, changed);
+    assert.throws(() => preservation(tank, fixture, count, hash),
+      /published099 post-foundation physical vertices/, 'A moved actual gear instance must fail');
+  } finally { wheel.setMatrixAt(0, original); }
+  const part = fixture.parts[0].geometry.attributes.position, x = part.getX(0);
+  try {
+    part.setX(0, x + .001);
+    assert.throws(() => preservation(tank, fixture, count, hash),
+      /every added draw vertex exists/, 'An invented service-frame subtraction must fail');
+  } finally { part.setX(0, x); }
+  preservation(tank, fixture, count, hash);
+}
+
+// The old pre-foundation receipt remains explicit history, not an active claim
+// that the later owner-requested casting never changed. The successor values
+// were captured independently from immutable published099, not this candidate.
+const published = assertPublishedChieftainFoundationSources();
+for (const mutated of ['src/vehicles/profiles/chieftain10X.ts',
+  'src/vehicles/profiles/chieftain10XBowLights.ts']) {
+  assert.throws(() => assertPublishedChieftainFoundationSources(file => {
+    const source = readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
+    return file === mutated ? source + '\n// unauthorized source mutation' : source;
+  }), /source contract|annotation source/, 'Family source mutations cannot silently replace the published contract');
+}
+for (const [quality] of PRE_FOUNDATION_HISTORY) {
+  const {count, sha256:hash} = published[quality];
   const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false }), fixture = fixtures();
   try {
@@ -119,6 +157,7 @@ for (const [quality, count, hash] of [
     const all = []; tank.root.traverse(m => { if (m.isMesh && !m.userData.vehicleMarking
       && !m.name.startsWith('procShadow_')) all.push(m); });
     sourceSurfaces(all); contacts(fixture.parts, all); preservation(tank, fixture, count, hash);
+    negativeControls(tank, fixture, count, hash);
     const hull = all.filter(m => m.name === 'hull' || m.name.startsWith('hull'));
     const matrices = hull.map(m => m.matrixWorld.clone()), buffers = hull.map(m => m.geometry);
     for (const yaw of [-.71, .63, 0]) {
@@ -128,4 +167,4 @@ for (const [quality, count, hash] of [
     }
   } finally { tank.dispose(); fixture.dispose(); }
 }
-console.log('chieftain10XServiceFrame: high/low source crowns/web underside, five real rail gaps, supported folded feet, exact add-only preservation and hull ownership pass');
+console.log('chieftain10XServiceFrame: high/low source crowns/web underside, five real rail gaps, supported folded feet, published099 successor preservation, rejection controls and hull ownership pass; pre-foundation receipt retained as history');
