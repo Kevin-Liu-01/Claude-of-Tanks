@@ -3,8 +3,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * Boot-light audio facade.
  *
  * The full synthesized/spatial mixer is intentionally loaded only after
- * explicit sound intent. A Battle click still creates and resumes an
- * AudioContext synchronously inside the gesture, then starts this module's
+ * explicit sound intent. Ready may silently prepare the shared AudioContext
+ * inside its gesture. A Battle click still creates/resumes it when needed,
+ * then starts this module's
  * tiny oscillator-only loading bed immediately. The dynamically imported
  * mixer adopts that exact context and replaces the fallback without an
  * autoplay-policy gap.
@@ -36,6 +37,8 @@ export interface LazyAudioOptions {
 
 export interface LazyAudio {
   preload(): Promise<AudioMixerModule | null>;
+  /** Gesture-only device preparation; no mixer, tone, or dependency transfer. */
+  prepare(): void;
   resume(): void;
   bindBus(bus: EventBus): void;
   update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
@@ -134,8 +137,16 @@ export function createLazyAudio({
   const unlockContext = (): AudioContext | null => {
     if (!context) context = createContext();
     if (!context) return null;
-    if (context.state === 'suspended') void context.resume();
+    if (context.state === 'suspended') void context.resume().catch(() => {});
     return context;
+  };
+
+  const prepare = (): void => {
+    // Audio device creation is synchronous in browsers. Pay that first-use
+    // cost at explicit Ready intent, not on the synchronized battle edge.
+    // Preparation is optional: unavailable devices must not block readiness,
+    // and a later Battle gesture still retries the normal unlock path.
+    try { unlockContext(); } catch { /* optional device preparation */ }
   };
 
   const settleReal = (created: AudioMixer): AudioMixer => {
@@ -207,6 +218,7 @@ export function createLazyAudio({
 
   return {
     preload,
+    prepare,
     resume,
     bindBus(nextBus: EventBus) {
       bus = nextBus;

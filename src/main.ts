@@ -975,6 +975,7 @@ const playSurface = createPlaySurfaceRuntime({
       isCamoAllowed: (camo: string) => isBuiltInCamoId(camo),
       getCamoName: (camo: string) => t(`camoPattern.${camo}`) || t('camoPattern.factory'),
       getVehicleName: (specId: string) => getSpec(specId).name,
+      onReadyIntent: () => audio.prepare(),
       onNetworkStart: beginNetworkBattle,
       onNetworkClose: (reason: string) => {
         if (networkSession.match && !battleEntryLifecycle.pending && !isIntentionalRoomCloseReason(reason)) {
@@ -2530,7 +2531,10 @@ bus.on('ui:roomOpen', async () => {
 bus.on('ui:roomReady', (payload) => {
   const ready = typeof payload === 'object' && payload !== null
     && Reflect.get(payload, 'ready') === true;
-  currentNetworkRoom()?.setReady(ready);
+  const accepted = currentNetworkRoom()?.setReady(ready);
+  // Keep device unlock in the Garage gesture; the pending-room command may
+  // resolve its menu asynchronously and would otherwise lose that boundary.
+  if (accepted && ready) audio.prepare();
 });
 
 bus.on('ui:roomStart', () => currentNetworkRoom()?.startRound());
