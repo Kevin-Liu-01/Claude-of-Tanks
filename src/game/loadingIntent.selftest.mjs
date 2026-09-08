@@ -84,8 +84,8 @@ assert.match(networkBattleComposition, /createLobby\(\{/,
   'joined rooms need one typed lobby-intent owner');
 assert.match(networkLobbyPreloader, /for \(const player of state\.players \|\| \[\]\)[\s\S]{0,260}missingBuilders\.push\(specId\)[\s\S]{0,280}ensureTankBuilders\(missingBuilders\)/,
   'joined rooms should transfer only missing roster builders');
-assert.match(networkLobbyPreloader, /if \(nextMapId\) prefetchWorld\(nextMapId\);/,
-  'fixed host maps should use the quiet background world path');
+assert.match(networkLobbyPreloader, /if \(nextMapId\) prefetchWorld\(nextMapId, \{ intent: true \}\);/,
+  'joined-room fixed maps should use explicit-intent background preparation, not passive Garage construction');
 assert.match(networkBattleComposition, /createPresentation\(\{/,
   'main should compose one intent-loaded network presentation owner');
 assert.doesNotMatch(main, /async function presentNetworkBattle\(/,

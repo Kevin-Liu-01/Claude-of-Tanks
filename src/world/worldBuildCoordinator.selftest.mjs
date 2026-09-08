@@ -403,4 +403,53 @@ await cancelledLeaseReturnsLateGrant();
 await sameIdDemandWaitsForDiscard();
 await genuineErrorsStayGenuine();
 
-console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction and cancellation ownership passed');
+const intentLeases = [];
+const intentYields = [];
+let intentReleases = 0;
+let cancelIntent = false;
+const intentCoordinator = createWorldBuildCoordinator({
+  engineContext: {},
+  scene: new THREE.Scene(),
+  renderer: { renderLists: { dispose() {} } },
+  deviceTier: 'desktop',
+  getCurrentWorld: () => null,
+  getGarageActivity: () => ({
+    phase: 'garage', transitionActive: false, lastActivityAt: 1000,
+  }),
+  releaseShadowMaterial() {},
+  now: () => 1000,
+  sleep: async () => assert.fail('explicit map intent does not wait for Garage inactivity'),
+  loadModule: async () => ({
+    async createMapAsync(_engine, _options, onProgress, slicing) {
+      assert.equal(slicing.fineSlices, true, 'intent preserves fine-grained map construction');
+      await onProgress('Surveying terrain', 0.2);
+      await onProgress('Sealing the battlefield', 1);
+      return { group: new THREE.Group() };
+    },
+  }),
+  acquireBackgroundWork: async (kind, stillValid) => {
+    assert.equal(stillValid(), true);
+    intentLeases.push(kind);
+    return { release() { intentReleases++; } };
+  },
+  foregroundYielder: () => async () => assert.fail('intent remains background work'),
+  backgroundYielder: () => async (force) => {
+    intentYields.push(force);
+    if (cancelIntent) intentCoordinator.cancelBackgroundExcept(null);
+  },
+  resourceLimits: { pedestalVisuals: 4, worldScenes: 4 },
+});
+const intentWorld = await intentCoordinator.prefetch('fjord', { intent: true });
+assert.ok(intentWorld, 'explicit map intent proceeds despite recent Garage activity');
+assert.deepEqual(intentLeases, ['world-intent', 'world-intent']);
+assert.deepEqual(intentYields, [true, true], 'each intent slice still forces a background yield');
+assert.equal(intentReleases, 2, 'every background slice returns its work lease');
+assert.equal(intentWorld.group.visible, false, 'intent construction does not activate its world');
+cancelIntent = true;
+assert.equal(await intentCoordinator.prefetch('alpine', { intent: true }), null,
+  'a stale intent build still cancels at its next construction boundary');
+assert.equal(intentCoordinator.cache.has('alpine'), false, 'cancelled intent is never cached');
+assert.equal(intentCoordinator.stats.cancelled, 1);
+assert.equal(intentReleases, 3, 'cancelled intent returns its final work lease');
+
+console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing and cancellation ownership passed');
