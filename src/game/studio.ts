@@ -17,7 +17,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * Integration contract (kept deliberately tiny — see main.ts):
  *   - main.ts creates it once post-boot: createStudio(ctx)
  *   - main.ts tick() delegates the WHOLE frame while active:
- *       if (studio.active) { studio.tick(dtR); return; }
+ *       if (studio.active) { studio.tick(dtR, frameWallDtS); return; }
  *   - everything else (entry key, URL param, panel, capture, __STUDIO API)
  *     lives here. Exit hands control back through ctx.enterGarage().
  *
@@ -376,7 +376,7 @@ interface RemoveActorOptions {
 
 interface StudioRuntime {
   readonly active: boolean;
-  tick(deltaSeconds: number): void;
+  tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: EnterOptions): Promise<void>;
   exit(): void;
   api: StudioPanelApi & Readonly<Record<string, RuntimeValue>>;
@@ -2731,7 +2731,6 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // Studio visit (or F8 before the first battle) has no HUD runtime yet.
       hud?.setMode?.('hidden');
       setGarageSpots(false);
-      setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
       ensureFxBus();
       active = true;        // tick branch takes the frame from here on
       panel.show();
@@ -2758,6 +2757,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ]);
       mark('worldAndFx');
       setWorldDormant(false);
+      // Cold /studio and first-use F8 have no battlefield preset until the
+      // awaited acquisition has activated its world. Never borrow the Garage
+      // (or previous map's) sun while the requested map is still loading.
+      setGarageSunTrim(false);
       setCamoBiome(mapId);
       // Direct entry has no actors and should not repaint the hidden garage
       // hero. Existing actors can occur only through an API re-entry.
@@ -2872,7 +2875,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   // --- per-frame (owns the whole frame while active; called from main tick) ---
-  function tick(dt: number): void {
+  function tick(dt: number, frameWallDtSeconds = dt): void {
     const cameraMoved = updateCamera(dt);
     poolSweepAcc += dt;
     if (poolSweepAcc >= 0.5) {
@@ -2897,7 +2900,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lastFov = camera.fov;
     }
     lighting.update();
-    post.render(dt);
+    post.render(dt, frameWallDtSeconds);
     perf.renderedFrames++;
     frameDirty = false;
     if (recording && !recording.stopping && clockMs >= storyboard.durationMs) {

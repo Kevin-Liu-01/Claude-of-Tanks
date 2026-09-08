@@ -2610,7 +2610,7 @@ export const enUS: Record<string, string> = {
   'docs.topic.rendering.media2': 'Close vehicle material response under the current world lighting',
   'docs.topic.worlds.label': 'Battlefields and destruction',
   'docs.topic.worlds.title': 'Battlefields are built for armored movement',
-  'docs.topic.worlds.lede': 'Twenty battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
+  'docs.topic.worlds.lede': 'Thirty battlefields share world contracts but keep authored routes, landmarks, cover, atmosphere, and sightlines. Terrain and collision are available to the simulation without importing the renderer.',
   'docs.topic.worlds.s1.t': 'Map contract',
   'docs.topic.worlds.s1.p1': 'Each map provides terrain height, ground materials, obstacles, collision, concealment, spawn groups, capture areas, lighting, weather, sound context, and a deterministic establishing camera. Simulation consumers use these interfaces rather than scene traversal.',
   'docs.topic.worlds.s1.p2': 'The registry is the source for selection, loading, Studio, screenshots, and documentation counts.',

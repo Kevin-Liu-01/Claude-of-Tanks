@@ -1,6 +1,7 @@
 // Independently authored T-72B3 X. Only measured dimensions/planes inform these
 // mathematical solids; no source mesh, rig, texture or donor builder is used.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
@@ -88,7 +89,7 @@ function engineDeck(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',cylY(.338,.036,32),-.0429,1.4813,1.61995);
   P.addEquipment('hullDark',box(.365,.019,.064),.039,1.49165,1.7325);
   for(const x of [-.859,.866]){
-    P.addEquipment('hullDetail',cylZ(.082,.104,24),x,1.144,2.777);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.082,.104,24),'headlight'),x,1.144,2.777);
     for(const dx of [-.093,.093])P.addEquipment('hullDetail',beamBetween([x+dx,1.11,2.699],[x+dx,1.30,2.79],.008));
   }
 }

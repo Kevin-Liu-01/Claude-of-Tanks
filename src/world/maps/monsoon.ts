@@ -1,12 +1,27 @@
 // monsoon.js — storm-dark tropical highlands with jungle belts, washed-out
 // roads, a ruined hill town and saturated lowland marshes.
 
+import { createMarshChannel } from './marshChannel.ts';
+
+// Rainwater follows the lower saddle into the eastern floodplain; the
+// original western/eastern bowls remain anchors along one continuous run.
+const floodChannel = createMarshChannel([
+  { x: -354, z: -250, r: 30, dip: 0.70 },
+  { x: -236, z: -124, r: 58, dip: 2.0 },
+  { x: -118, z: -144, r: 29, dip: 0.70 },
+  { x: -18, z: -88, r: 30, dip: 0.70 },
+  { x: 94, z: 10, r: 30, dip: 0.70 },
+  { x: 152, z: 124, r: 32, dip: 0.75 },
+  { x: 210, z: 184, r: 52, dip: 2.2 },
+  { x: 318, z: 278, r: 30, dip: 0.70 },
+]);
+
 export default {
   id: 'monsoon',
   name: 'Monsoon Ridge',
   blurb: 'A storm rolls across jungle ridges and the shattered town in the valley',
   terrain: {
-    hillScale: 1.32, microScale: 1.1, rimH: 44,
+    hillScale: 1.32, microScale: 1.1, rimH: 44, clearMarshVeg: true,
     roads: { paths: [
       [[-424, -442], [-342, -274], [-306, -82], [-322, 108], [-254, 286], [-174, 462]],
       [[-62, -468], [-42, -282], [-8, -112], [28, 48], [54, 224], [106, 466]],
@@ -15,7 +30,7 @@ export default {
       [[-310, 204], [-164, 168], [-18, 210], [120, 274], [238, 328]],
     ] },
     marshes: [
-      { x: -236, z: -124, r: 58, dip: 2.0 }, { x: 210, z: 184, r: 52, dip: 2.2 },
+      ...floodChannel,
       { x: 294, z: -260, r: 38, dip: 1.8 },
     ],
     village: { x0: -132, x1: 156, z0: -112, z1: 174, cx: 12, cz: 26, feather: 50, flatten: 0.74, relief: 0.28 },
@@ -35,6 +50,8 @@ export default {
     ],
   },
   splat: {
+    seaLake: true, seaFoam: 0.06, seaRamp: [0.10, 0.44], iceDrift: 0.02,
+    marshGloss: 0.84, iceSky: [0.20, 0.34, 0.32],
     tintA: [0.67, 0.93, 0.65], tintB: [0.41, 0.61, 0.43], tintC: [0.85, 1.02, 0.72],
     roadTint: [0.55, 0.49, 0.40], midRelief: 1.0,
   },

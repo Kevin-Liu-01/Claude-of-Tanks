@@ -40,11 +40,24 @@ import ruinspires from './ruinspires.ts';
 import blackglass from './blackglass.ts';
 import titanGorge from './titanGorge.ts';
 import skybridge from './skybridge.ts';
+// Inhabited-environment expansion — ten individually authored route graphs.
+import polders from './polders.ts';
+import copperMesa from './copperMesa.ts';
+import airfield from './airfield.ts';
+import oasis from './oasis.ts';
+import whiteout from './whiteout.ts';
+import orchard from './orchard.ts';
+import longleaf from './longleaf.ts';
+import mangrove from './mangrove.ts';
+import saltwind from './saltwind.ts';
+import reservoir from './reservoir.ts';
 
 const CONFIGS = {
   verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
   frontier, fjord, delta, badlands, monsoon, alpine, caldera, foundry,
   ruinspires, blackglass, titan_gorge: titanGorge, skybridge,
+  polders, copper_mesa: copperMesa, airfield, oasis, whiteout,
+  orchard, longleaf, mangrove, saltwind, reservoir,
 } satisfies Record<MapId, object>;
 
 export type BattlefieldMapConfig = (typeof CONFIGS)[MapId];

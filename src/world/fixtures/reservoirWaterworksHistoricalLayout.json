@@ -1,0 +1,40 @@
+{
+  "source": "f05e84385:src/world/maps/reservoir.ts",
+  "purpose": "Exact height-authoring inputs for the original V25/V27 waterworks geometry oracles, before c8476fa77 redesigned roads, hardstand and deployment pads.",
+  "terrain": {
+    "hillScale": 1.08,
+    "microScale": 0.78,
+    "rimH": 38,
+    "clearMarshVeg": true,
+    "softLakes": true,
+    "village": { "x0": -212, "x1": 26, "z0": -108, "z1": 130, "cx": -92, "cz": 12, "feather": 44, "flatten": 0.82, "relief": 0.18 },
+    "roads": { "paths": [
+      [[-102, -464], [-138, -116], [-138, -42], [-82, -42], [-82, 100], [-124, 222], [-62, 464]],
+      [[-362, -462], [-334, -280], [-320, -94], [-344, 94], [-302, 282], [-242, 464]],
+      [[302, -458], [42, -244], [-22, -102], [-82, -42], [-22, 42], [-4, 78], [40, 242], [308, 464]],
+      [[374, -448], [342, -276], [348, -96], [346, 92], [340, 280], [370, 464]],
+      [[-302, 282], [-124, 222], [40, 242], [180, 266], [340, 280]]
+    ] },
+    "lakes": [
+      { "x": 164, "z": -26, "r": 110, "depth": 1.0, "level": -8.0 },
+      { "x": 104, "z": 72, "r": 80, "depth": 1.0, "level": -8.0 },
+      { "x": 212, "z": 68, "r": 68, "depth": 1.0, "level": -8.0 }
+    ],
+    "marshes": [],
+    "landforms": [
+      { "kind": "ridge", "x": -276, "z": 14, "length": 426, "width": 80, "height": 9.2, "yawDeg": 4 },
+      { "kind": "ridge", "x": 340, "z": 12, "length": 446, "width": 76, "height": 8.6, "yawDeg": -2 },
+      { "kind": "ridge", "x": 102, "z": -256, "length": 290, "width": 64, "height": 7.2, "yawDeg": 88 },
+      { "kind": "ridge", "x": 102, "z": 282, "length": 290, "width": 68, "height": 7.0, "yawDeg": 86 },
+      { "kind": "basin", "x": 162, "z": 12, "rx": 152, "rz": 232, "height": -5.0, "wetScale": 0.2 },
+      { "kind": "knoll", "x": -126, "z": 250, "rx": 94, "rz": 68, "height": 5.8 }
+    ]
+  },
+  "spawns": {
+    "player": { "x": -108, "z": -392 },
+    "enemies": [
+      { "x": -252, "z": 386 }, { "x": -168, "z": 424 }, { "x": -84, "z": 380 }, { "x": 0, "z": 426 },
+      { "x": 84, "z": 382 }, { "x": 168, "z": 424 }, { "x": 252, "z": 386 }
+    ]
+  }
+}

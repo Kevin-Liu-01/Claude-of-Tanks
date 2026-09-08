@@ -1,5 +1,6 @@
 // Ariete source-frame hull fittings, independently made from stock and tubes.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -40,7 +41,7 @@ function frontGuard(P: TankBuilderPort, side: -1 | 1): void {
   // The source lamps have a recessed pair under their upper visor.
   for (const dx of [-.054, .054]) {
     P.addEquipment('hullDark', cylZ(.048, .018, 20), x + dx, 1.073243, 3.381);
-    P.addEquipment('hullGlass', cylZ(.037, .004, 20), x + dx, 1.073243, 3.391);
+    P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.037, .004, 20), 'headlight'), x + dx, 1.073243, 3.391);
   }
   P.addMudguard(`ariete-source-front-flexible-leaf-${side}`, 'hullDark',
     box(.485, .248, .015), side * 1.240, .882, 3.394);

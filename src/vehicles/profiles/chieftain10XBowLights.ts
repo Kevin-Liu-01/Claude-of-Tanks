@@ -1,6 +1,7 @@
 // First-party Mk10 paired lamp stocks and open diamond-section guards.
 // Locations and section stations come from separate source scalar studies.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -40,7 +41,7 @@ function lamp(P: TankBuilderPort, side: number, centerX: number): void {
   // not falsely represented as an empty optical aperture.
   const front = new THREE.CylinderGeometry(.0618, .0618, .001, 24)
     .rotateX(Math.PI / 2).translate(x, y, 3.4029879);
-  add(P, 'hullGlass', front, 'lampFace');
+  add(P, 'hullGlass', markVehicleNightLens(front, 'headlight'), 'lampFace');
   add(P, 'hullDetail', box(.024, .0098, .039).translate(x, 1.2431, 3.3583), 'lampFoot');
   add(P, 'hullDetail', box(.0274, .071, .026).translate(x, 1.2775, 3.357), 'lampUpright');
 }

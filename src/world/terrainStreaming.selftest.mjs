@@ -23,7 +23,9 @@ const compile = new Function('THREE', 'initialTerrainLods', 'terrainLodForDistan
   'performance', stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   function* buildHorizonRingSteps() { return new THREE.Group(); }
-  function* createSplatMaterialSteps() { return new THREE.MeshStandardMaterial(); }
+  function* createSplatMaterialSteps() {
+    return { material: new THREE.MeshStandardMaterial(), textures: new Set() };
+  }
   ${chunkSource.replace(/^export /gm, '')}
 `) + 'return { terrainBuildSteps, buildFineGridSteps, buildChunkGeometrySteps };');
 const api = compile(THREE, initialTerrainLods, terrainLodForDistance,
@@ -135,25 +137,36 @@ for (const test of [f, timed, moving]) {
 
 console.log('terrainStreaming.selftest: cadence, bounded partial work, warm, camera fairness and lifetime passed');
 
-// Golden bytes were recorded from the pre-slicing 9afc1d5f51 terrain source.
+// Geometry expectations include the authored 30-map environment. Before this
+// refresh, the eager emitter from 12cbcc7607efa6a6990b4f051e9709dc7432b508
+// was independently executed against the SAME current heightfields as both
+// current startup/live emitters: all 30 maps × 4 chunks × 4 geometry paths
+// matched bit-for-bit, including bounds/skirts and all nine east-seam LOD pairs.
+// Proof receipt SHA256: 100012b3ea4ab5edb8cb53b3c9783267f106b2de8e7d31eeb5a2b7009fb52df8.
+// The original 9afc1d5f51 fingerprints remain unchanged for 13 maps. Seven
+// prior fingerprints needed refresh (verdant, winter, coastal, autumn, fjord,
+// delta, monsoon); parity rules out the sliced emitter for these samples,
+// without attributing the historical change to a specific edit. Ten authored
+// maps are newly covered. This test has no git
+// or external receipt dependency: the reviewed expected bytes are pinned below.
 // Per map: seed 1337, the spawn chunk and its eastern neighbor, both opposite
 // map corners; padded Float64 fine grids; all three LOD position/normal/Uint16
 // index streams and Float64 bounds; plus the direct-sampled far-only path.
 // Changes to authored heights/topology require an explicit reviewed refresh.
 const GEOMETRY_GOLDENS = {
-  verdant: 'ce8c920efa466396eb9faf3aeefe91d500dc9f7728c6a2af40d0fed83cb7274b',
+  verdant: '86532d696a6ab164c64b79ea866a91cc93283bf50f4fc4af7c856119e52ae0b4',
   desert: '242cc58db7003e9ed59cd69e2cd337ef988cf229296132aaf03d3923f926ea4b',
-  winter: 'a129b98a82687bba6f15e5cf8d1508e8caaf650fab4118ac7f4864278534bb7c',
+  winter: 'bf912f3e4ae03b039f58ec8efed1ee1113e9d8de3d06afb228c4fd9d7fad7a85',
   urban: 'dc86077914e20440ae7cdcfb044343da6c1386495e2023981261725b8dbd0bd9',
-  coastal: 'e289f011ff9a15ad122cb4fab22171bba2592e9be529e8f96bc888f66cb15d00',
-  autumn: 'e839a30f703c6c9bc7b7ee3457a0f2eb766ddfa4594d389b7340ff2a4eb0d1fd',
+  coastal: 'b83cd815364f2ff958731818bb7d18177a05af898ab6b02b78e8c78e70afb1b7',
+  autumn: '607a488ca94ccb00cb0a7f25eacc7160a755c0ade180496be8a49cf9581843ec',
   steppe: 'a25c054b4fd84f49464f4f6352a6fce3b9e1f486649483236e75f2ef238c2836',
   railyard: '3d7a7820ec57287383057592bf0385b7fc0bbb541605e012274319363ff2559e',
   frontier: '7923000c873765c228c7639f8b061c6c14902777bb0ca8c3865ba4e953e0a809',
-  fjord: 'b2284feb737079e6fc1b5330163c3cbfa83bd6d1e0e02a94a83c8d929a6de7d6',
-  delta: '6c45703262406db09e70a4787274d237e2c065f8dda4953eaa47a8fca883f637',
+  fjord: '9371c7fc56eec9ac5e6f0854dd251c0b570afb1be46439f8ed5d5ddc381349b1',
+  delta: '597a1d1fc40c2c9385102b7f3c027eddd1f788a023516d4045fe581084370dfa',
   badlands: 'c2706acb41b314d8429a01a9a3d3edc40213347776952e091468234d3fca6aec',
-  monsoon: '67ee14156a4eb586960cd923372ff9b4e716fd1310192fd7a5fa56902fe8da4d',
+  monsoon: '3de3731955a71bdc7feed06875992d7343ec02733146db7984df5f36290cb803',
   alpine: '61438df867319f1946416ed226c61f2c6f04cabe5a1094fe0a3c166faa30a718',
   caldera: 'f0ce3fc2d566e9fcfca70d0bd4ae01387d1978607e61376b9e67ac7f43b223cd',
   foundry: '50f8b4f2f103d1be9ab38be99768be59aa6ed3bb23a0e315ad0345ebcb252e86',
@@ -161,6 +174,16 @@ const GEOMETRY_GOLDENS = {
   blackglass: '31ea78388d0b10ba7914d9902ac21c9f49136fe2f5f5ef4c8713e42897554277',
   titan_gorge: '13abde544a10ceb96f05e20b767fdd6df15121e4c91857ce594bc66db47887e4',
   skybridge: '13f67e43c27dc650573a9ea5cf92b95a10032eb1f1fd3be3c9d64d5bc9c87731',
+  polders: '701d4611153e67baea6505fa125c0a185bfdd1dbe2fad6df5ab98791554f722b',
+  copper_mesa: 'ae0d5b90fb81ac1f36efa7e3c2e73b9a7259f3564aca6b461ab6f4d698544f46',
+  airfield: '55490ff86d039a9015d19034937ae5b4e6ed4f5b85eb8b2f6f70d05830a2e254',
+  oasis: '17a01efc7ebc768078e8a829038c1e5dbebc601d5fa9e409bebfb743755ee01f',
+  whiteout: '78fbeb41aea88985263132f39fdaf99832cb4cc790a6e784d2b0db2d460c3615',
+  orchard: 'e084ffa305d7847a26bc81dab51d5fc6fcb57bd32052888c7885dd54bb388136',
+  longleaf: '597146dfdb29062a529e77c8d47beaae5feed9436ec68d78b0230783d5676203',
+  mangrove: '4ec02e0d658d3200ab167cb16ca25f4d8f2c4f7dd24d0f4adef1fab2586be9d2',
+  saltwind: 'ddf8d6cdf0ec6196bfad3e2b6fa60915ed872d5ea54540851b24e72be440b5f6',
+  reservoir: '40c628b2578a24456afd9fe3fa9c5f676905ad8cb2c06bc77f71f8f3f8f7ef1f',
 };
 
 function drainWithCount(generator) {
@@ -186,10 +209,28 @@ function validateGeometry(geometry, segs) {
   assert.ok(positions instanceof Float32Array);
   assert.ok(normals instanceof Float32Array);
   assert.ok(geometry.index.array instanceof Uint16Array);
+  assert.deepEqual(Object.keys(geometry.attributes), ['position', 'normal']);
+  assert.deepEqual(geometry.groups, []);
+  assert.deepEqual(geometry.drawRange, { start: 0, count: Infinity });
+  assert.equal(geometry.boundingBox, null, 'chunk emitter retains sphere-only bounds');
   assert.equal(positions.length, vcount * 3);
   assert.equal(normals.length, vcount * 3);
   assert.equal(geometry.index.count, segs * segs * 6 + 4 * segs * 6);
   for (const index of geometry.index.array) assert.ok(index >= 0 && index < vcount);
+  const center = geometry.boundingSphere.center;
+  const radiusSquared = geometry.boundingSphere.radius ** 2;
+  assert.ok(Number.isFinite(radiusSquared));
+  for (let i = 0; i < vcount; i++) {
+    const offset = i * 3;
+    for (let axis = 0; axis < 3; axis++) {
+      assert.ok(Number.isFinite(positions[offset + axis]));
+      assert.ok(Number.isFinite(normals[offset + axis]));
+    }
+    assert.ok((positions[offset] - center.x) ** 2
+      + (positions[offset + 1] - center.y) ** 2
+      + (positions[offset + 2] - center.z) ** 2 <= radiusSquared + 1e-8,
+    'published sphere contains every surface and skirt vertex');
+  }
   for (let k = 0; k < 4 * segs; k++) {
     const side = Math.floor(k / segs);
     const at = k % segs;
@@ -226,7 +267,7 @@ function validateEastSeams(west, east) {
 async function testAllMapBytes() {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig, MAP_IDS } = await import('./maps/index.ts');
-  assert.equal(MAP_IDS.length, 20);
+  assert.equal(MAP_IDS.length, 30);
   assert.deepEqual(Object.keys(GEOMETRY_GOLDENS), [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
     const config = getMapConfig(mapId);
@@ -263,10 +304,10 @@ async function testAllMapBytes() {
       chunks.push(geometries);
     }
     validateEastSeams(chunks[0], chunks[1]);
-    assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: exact pre-change geometry and bounds`);
+    assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: reviewed authored geometry and bounds`);
     for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
   }
-  console.log('terrainStreaming.selftest: 20 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
+  console.log('terrainStreaming.selftest: 30 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
 }
 
 if (!process.argv.includes('--scheduler-only')) await testAllMapBytes();

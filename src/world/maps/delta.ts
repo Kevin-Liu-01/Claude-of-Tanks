@@ -1,11 +1,13 @@
 // delta.js — humid river delta with a fordable braided channel, dense palms,
 // market compounds, fishing sheds and soft-ground flanking lanes.
 
-const river = [
+import { createMarshChannel } from './marshChannel.ts';
+
+const river = createMarshChannel([
   [-332, -320, 31], [-274, -256, 30], [-224, -188, 33], [-168, -118, 34],
   [-106, -52, 35], [-36, 12, 38], [34, 76, 37], [102, 142, 35],
   [174, 214, 33], [250, 282, 32], [324, 348, 30],
-].map(([x, z, r]) => ({ x, z, r, dip: 1.15 }));
+].map(([x, z, r]) => ({ x, z, r, dip: 1.15 })));
 
 export default {
   id: 'delta',

@@ -18,6 +18,7 @@ import {
   certifyGroundedStructureParts, certifyStructureAttachments,
 } from '../structureConnectivity.ts';
 import { CIVILIAN_VEHICLE_RECEIPTS } from './civilianVehicleKit.ts';
+import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -525,6 +526,8 @@ function bLamp(rng: Rng): THREE.BufferGeometry { // baked: cast-iron street lamp
   const lens = new THREE.CylinderGeometry(0.20, 0.20, 0.055, 6, 1);
   const lensPart = P(lens.translate(0.98, H - 0.455, 0), LAMP_GLASS, 0.035, rng);
   parts.push(lensPart);
+  // Tag the authored lens before merging, never infer a lamp from paint color.
+  for (const part of parts) setNightEmissionMask(part, part === lensPart ? 1 : 0);
   const connectivity = certifyGroundedStructureParts('streetlamp', parts, {
     epsilon: 0.025, groundMinY: -0.04, groundMaxY: 0.02,
   });

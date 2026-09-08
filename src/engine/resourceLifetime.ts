@@ -182,6 +182,18 @@ function collectOwnedTreeResources(
   return objects;
 }
 
+/** Explicit read-only diagnostics, including live off-tree ownership declarations.
+ * The visitor must not mutate or retain resources. Nothing is cached globally.
+ */
+export function visitOwnedObject3DGeometries(
+  root: Object3D, visit: (geometry: BufferGeometry) => void,
+): number {
+  const owned = createResourceBag();
+  collectOwnedTreeResources(root, owned, false);
+  for (const geometry of owned.geometries) visit(geometry);
+  return owned.geometries.size;
+}
+
 /**
  * Release the WebGL allocations owned by a retained Object3D subtree without
  * destroying its CPU-side scene graph. Three.js resources are intentionally

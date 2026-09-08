@@ -29,6 +29,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { compactWreckGeometry } from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
 import { VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 
@@ -197,6 +198,7 @@ function wreckVertexColor(
   pz: number,
   up: number,
   rustPhase: number,
+  color: [number, number, number],
 ): readonly [number, number, number] {
   const panel = hash3(
     Math.round(px * 2.4) * 0.5,
@@ -207,16 +209,25 @@ function wreckVertexColor(
   const rust = hash3(px * 1.7 + rustPhase, py * 1.9, pz * 1.7 - rustPhase);
   if (rust > 0.80 && up < 0.85) {
     const level = 0.085 + grain * 0.075;
-    return [level * 1.75, level * 0.9, level * 0.55];
+    color[0] = level * 1.75;
+    color[1] = level * 0.9;
+    color[2] = level * 0.55;
+    return color;
   }
   const level = 0.046 + panel * 0.022 + grain * 0.017 + up * up * 0.020;
-  return [level * 1.05, level, level * 0.93];
+  color[0] = level * 1.05;
+  color[1] = level;
+  color[2] = level * 0.93;
+  return color;
 }
 
 function paintWreckGeometry(merged: THREE.BufferGeometry, rustPhase: number): void {
   const position = merged.attributes.position;
   const normal = merged.attributes.normal;
   const colors = new Float32Array(position.count * 3);
+  // A bake paints tens of thousands of vertices; reuse one tuple without
+  // changing arithmetic or retaining scratch state beyond this construction.
+  const scratchColor: [number, number, number] = [0, 0, 0];
   for (let i = 0; i < position.count; i++) {
     const color = wreckVertexColor(
       position.getX(i),
@@ -224,6 +235,7 @@ function paintWreckGeometry(merged: THREE.BufferGeometry, rustPhase: number): vo
       position.getZ(i),
       Math.max(0, normal.getY(i)),
       rustPhase,
+      scratchColor,
     );
     colors[i * 3] = color[0];
     colors[i * 3 + 1] = color[1];
@@ -255,7 +267,7 @@ function wreckBakeResult(
     hx: (bounds.max.x - bounds.min.x) / 2,
     hz: (bounds.max.z - bounds.min.z) / 2,
     h: bounds.max.y - bounds.min.y,
-    tris: (merged.attributes.position.count / 3) | 0,
+    tris: ((merged.index?.count ?? merged.attributes.position.count) / 3) | 0,
   };
 }
 
@@ -317,6 +329,7 @@ export function bakeTankWreck(
     // frame review); charred steel must stay near-black even sunlit.
     const rustPhase = rng() * 40;
     paintWreckGeometry(merged, rustPhase);
+    compactWreckGeometry(merged);
     const shadowGeo = mergeShadowGeometry(proxyGeos);
     const result = wreckBakeResult(merged, shadowGeo);
     for (const geometry of normalized) geometry.dispose();

@@ -1,6 +1,7 @@
 // Original metre-space K1A1 X solids. The owner-supplied OBJ is a local-only
 // scalar/ray oracle: no source vertices, indices, textures or rig are shipped.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -119,7 +120,7 @@ function skirtsAndGuards(P: TankBuilderPort): void {
     guardOuterFold(P,side);
     P.addEquipment('hullDetail',box(.1719,.054,.1563),side*1.75195,1.402,3.24315);
     P.addEquipment('hullDark',cylZ(.0425,.0312,20),side*1.5825,1.24,3.7002);
-    P.addEquipment('hullGlass',cylZ(.033,.003,20),side*1.5825,1.24,3.7173);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.033,.003,20),'headlight'),side*1.5825,1.24,3.7173);
     rearGuardFold(P,side);
   }
 }

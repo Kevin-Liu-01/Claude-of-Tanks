@@ -3,6 +3,9 @@
 // all textures canvas-generated, everything merged into few draw calls.
 
 import * as THREE from 'three';
+import { configureWorldLampMaterial, registerWorldNightLighting } from './worldNightLighting.ts';
+import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
+import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
@@ -13,10 +16,13 @@ import {
 import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings } from './sourcedTextures.ts';
+import { applySourcedBuildings, type BuildingPaletteId } from './sourcedTextures.ts';
+import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
+import type { RiverLandingAnchor } from './maps/riverLandings.ts';
 // world-dressing r1: building-catalog extension + destructible small props
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
@@ -27,8 +33,11 @@ import {
   type DestructiblePropType,
 } from './maps/inhabitKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
+import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
+import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
+  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
@@ -43,10 +52,14 @@ import {
 } from './collision.ts';
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
-  deriveRuntimeStructureCollisionProfile,
+  deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
 } from './structureCollision.ts';
 import {
-  hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
+  attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES,
+  type GroundCoverSolidProfile,
+} from './groundCoverClearance.ts';
+import {
+  cropRowSegmentIsSupported, hedgehogBeamSpecs, planGroundedObbPose, planGroundedSegment, planUtilityPoleStation,
   sampleDiscGround, sampleObbGround, type GroundedSegmentEndpoint,
 } from './propPlacement.ts';
 import {
@@ -55,6 +68,8 @@ import {
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { mergeWreckGeometries } from './exactWreckGeometry.ts';
+import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 import { preloadPropModels, requirePropModels, type BakedPropModel } from './propsModelStore.ts';
@@ -208,6 +223,10 @@ interface TankWreckSettings {
 type WallRun = readonly [number, number, number, number, number?];
 
 interface PropsSettings {
+  sourcedPalette?: BuildingPaletteId;
+  bathhouseStyle?: 'timber';
+  loggingYard?: LoggingYardConfig;
+  reservoirWaterworks?: ReservoirWaterworksConfig;
   plan: string[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
@@ -251,6 +270,7 @@ interface PropsSettings {
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
   extraKits?: readonly string[] | null;
+  riverLandings?: readonly RiverLandingAnchor[];
 }
 
 export interface PropsMapConfig {
@@ -503,7 +523,9 @@ export interface PropsRuntime {
   utilityNetwork: UtilityNetwork | null;
   utilityPolePlacements: UtilityPolePlacementReceipt[];
   decorationGroundingReceipts: DecorationGroundingReceipt[];
-  sourcedTexturesReady: Promise<void[]>;
+  sourcedTexturesReady: Promise<SourcedTextureResult[]>;
+  /** Register only after assembly succeeds; return an identity-safe disposer. */
+  registerDestructibles(): () => void;
   getLoosePropStats(): { total: number; active: number };
   features: {
     buildings: PlacedBuilding[];
@@ -796,7 +818,7 @@ function sampleStructureDetail(
   }
 }
 
-function makeStructureDetail(
+export function makeStructureDetail(
   noi: SimplexNoise,
   anisotropy: number,
   kind: 'wood' | 'canvas' | 'steel',
@@ -812,7 +834,10 @@ function makeStructureDetail(
   }
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, kind === 'canvas' ? 0.9 : 1.45, anisotropy),
+    // The Sobel derivative already sums four neighboring height samples.
+    // The former 1.45 gain bent shallow timber grain/corrugation almost
+    // sideways, creating black-white stripes on otherwise flat walls.
+    normal: normalFromHeight(hgt, s, kind === 'wood' ? 0.16 : kind === 'steel' ? 0.14 : 0.09, anisotropy),
     surface: surfaceFromHeight(hgt, s, anisotropy, kind === 'steel'
       ? { roughMin: 0.52, roughMax: 0.84, aoMin: 0.76 }
       : kind === 'canvas'
@@ -1554,8 +1579,10 @@ function addRowhouseWindow(
   z: number,
   side: number,
 ): void {
-  parts[pickRowhousePaneBucket(rng, lowContrastFacade)].push(
-    box(0.05, style.height, style.width).translate(x + side * 0.012, y, z),
+  const paneBucket = pickRowhousePaneBucket(rng, lowContrastFacade);
+  parts[paneBucket].push(
+    markWorldWindowPane(box(0.05, style.height, style.width), paneBucket, [side, 0, 0])
+      .translate(x + side * 0.012, y, z),
   );
   const jambWidth = 0.14, proudness = side * 0.065;
   parts[style.trimBucket].push(box(jambWidth, style.height + 0.14, 0.13)
@@ -1587,8 +1614,10 @@ function addRowhouseGableWindows(
   const x = w * (0.14 + rng() * 0.08);
   for (const z of [d / 2 + 0.05, -d / 2 - 0.05]) {
     for (const side of [-1, 1]) {
-      parts[pickRowhousePaneBucket(rng, lowContrastFacade)].push(
-        box(style.width, style.height, 0.06).translate(side * x, y, z),
+      const paneBucket = pickRowhousePaneBucket(rng, lowContrastFacade);
+      parts[paneBucket].push(
+        markWorldWindowPane(box(style.width, style.height, 0.06), paneBucket, [0, 0, Math.sign(z)])
+          .translate(side * x, y, z),
       );
       parts.stone.push(box(style.width + 0.28, 0.10, 0.16)
         .translate(side * x, y - style.height / 2 - 0.06, z));
@@ -2255,8 +2284,9 @@ export function createProps(
   engineCtx: EngineContext,
   seed = 2002,
   cfg: PropsMapConfig | null = null,
+  vegetation: FisheryVegetation | null = null,
 ): PropsRuntime {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -2278,8 +2308,9 @@ export async function createPropsAsync(
   cfg: PropsMapConfig | null = null,
   tick: ((done: number, total: number) => Promise<void> | void) | null = null,
   fineSlices = false,
+  vegetation: FisheryVegetation | null = null,
 ): Promise<PropsRuntime> {
-  const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
   const slices: Array<{ stage: string; ms: number }> = [];
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
@@ -2315,6 +2346,7 @@ function* propsBuildSteps(
   engineCtx: EngineContext,
   seed: number,
   cfg: PropsMapConfig | null,
+  vegetation: FisheryVegetation | null,
 ): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
   const P: PropsSettings = {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
@@ -2394,7 +2426,7 @@ function* propsBuildSteps(
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
-  const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId);
+  const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId, P);
 
   const windowStyle = resolveStructureWindowStyle(mapId);
   const mats: Record<string, THREE.MeshStandardMaterial> = {
@@ -2479,6 +2511,14 @@ function* propsBuildSteps(
   // (macro tone breakup + streaky weathering) that de-grids every tiled
   // hard-surface texture — walls stop reading as a repeated stamp at zoom
   const grimeTex = makeGrimeTexture(noi, aniso);
+  // Empty geometry buckets still have CSM-registered materials; shader-only
+  // uGrime is also invisible to a mesh/material-property traversal. Declare
+  // both on their world owner so eviction releases every shadow registration
+  // and texture, while GPU suspension retains the same reusable CPU objects.
+  const retainedSurfaceMaterials = Object.values(mats);
+  registerRetainedObject3DResources(group, {
+    materials: retainedSurfaceMaterials, textures: [grimeTex],
+  });
   yield { fine: true };
   // r5 terrain_environment: WINTER SNOW-CAP — on the winter map every prop
   // material whitens its UP-FACING fragments toward drifted snow (clumpy,
@@ -2582,6 +2622,7 @@ ${snowCap ? `
   const looseRecords: LooseDestructibleRecord[] = []; // physics-class records; sleeping records cost no update work
   const activeLoose: LooseDestructibleRecord[] = []; // only awake records, bounded by the local interaction area
   const dPools = new Map<string, DestructiblePool>(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
+  const wallSpans = new Map<DestructibleRecord, WallSpan>();
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
   const _structureTint = new THREE.Color();
@@ -2710,6 +2751,7 @@ ${snowCap ? `
   }
 
   const buildingFeatures: PlacedBuilding[] = [];
+  let wharfFishery: FisheryPacket | null = null;
   const tacticalBeatFeatures: TacticalBeatFeature[] = [];
   // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
   const bakedInstances = new Map<string, BakedInstanceGroup>();
@@ -2853,6 +2895,7 @@ ${snowCap ? `
     // Map-quality structure pass: eight new heavyweight landmarks. They use
     // the same bucket merge path, so detail rises without one mesh per house.
     ...STRUCTURE_BUILDERS,
+    bathhouse: P.bathhouseStyle === 'timber' ? makeTimberBathhouse : STRUCTURE_BUILDERS.bathhouse,
   };
   const builders = P.plan.map((n) => BUILDER_BY_NAME[n] || makeCottage);
   let bi = 0;
@@ -2891,15 +2934,22 @@ ${snowCap ? `
     };
     const structureId = P.plan[bi] || 'cottage';
     const info = builders[bi](rng, tmp, pickWall(rng));
-    addCatalogExterior(tmp, { id: structureId, info, variant: bi });
+    addCatalogExterior(tmp, { id: structureId, info, variant: bi,
+      bathhouseStyle: structureId === 'bathhouse' ? P.bathhouseStyle : undefined });
     const fit = groundFit(px, pz, info.w, info.d, rot);
     if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);
+    const obstacleStart = obstacles.length, colliderStart = colliders.length;
     addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
     buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
+    if (mapId === 'mangrove' && structureId === 'fishery' && !wharfFishery) {
+      wharfFishery = { buckets: tmp, source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
+        records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
+        feature: buildingFeatures[buildingFeatures.length - 1] };
+    }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
     bi++;
     return true;
@@ -3491,17 +3541,28 @@ ${snowCap ? `
       return moduleIndex === 0 || gapAt < 0
         || (center - WALL_SEG) < gapAt * (along / nSeg6);
     }
+    // Classify the original indexed slots before fitting the retained islands.
+    // Exclusion boundaries and their posts stay fixed, not merely the number
+    // of skipped slots: distributing the entire run would narrow road gaps.
+    const exclusions = new Uint8Array(nMod);
     for (let k = 0; k < nMod; k++) {
-      const t0 = k * WALL_SEG, t1 = Math.min((k + 1) * WALL_SEG, along);
+      const decisionT = (k * WALL_SEG + Math.min((k + 1) * WALL_SEG, along)) / 2;
+      const decisionX = x0 + tx * decisionT, decisionZ = z0 + tz * decisionT;
+      const inGap = isGapModule(decisionT);
+      const skip = heightField._roadDist(decisionX, decisionZ) < 5.5 || noVeg(decisionX, decisionZ)
+        || Math.max(Math.abs(decisionX), Math.abs(decisionZ)) > 478;
+      exclusions[k] = (inGap ? 1 : 0) | (skip ? 2 : 0);
+    }
+    const spanEdges = wallIslandEdges(along, exclusions, WALL_SEG);
+    for (let k = 0; k < nMod; k++) {
+      const inGap = (exclusions[k] & 1) !== 0, skip = (exclusions[k] & 2) !== 0;
+      const decisionT = (k * WALL_SEG + Math.min((k + 1) * WALL_SEG, along)) / 2;
+      const t0 = exclusions[k] ? k * WALL_SEG : spanEdges[k];
+      const t1 = exclusions[k] ? Math.min((k + 1) * WALL_SEG, along) : spanEdges[k + 1];
       const tc = (t0 + t1) / 2;
       const cx = x0 + tx * tc, cz = z0 + tz * tc;
-      // legacy gapAt (authored in the old ~6 m segmentation): modules whose
-      // center falls in that span render the static breach instead
-      const inGap = isGapModule(tc);
-      const skip = heightField._roadDist(cx, cz) < 5.5 || noVeg(cx, cz)
-        || Math.max(Math.abs(cx), Math.abs(cz)) > 478;
       if (inGap || skip) {
-        if (!skip && inGap && beginsGap(k, tc)) addBrokenBreach(t0, t1);
+        if (!skip && inGap && beginsGap(k, decisionT)) addBrokenBreach(t0, t1);
         if (prevBuilt) endPost(x0 + tx * t0, z0 + tz * t0); // post at the lip
         prevBuilt = false;
         continue;
@@ -3511,8 +3572,12 @@ ${snowCap ? `
       const yb = heightField.getHeightAt(x0 + tx * t1, z0 + tz * t1);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, t1 - t0) * 0.85;
-      addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
+      const record = addDestructible(wallKind, cx, cy - 0.13, cz, yaw,
         runH * (0.94 + rng() * 0.12), tiltX, (rng() - 0.5) * 0.02);
+      // Preserve seeded placement/breaches. Once the shared kit is built,
+      // fit this same slot to a continuous, grounded masonry span.
+      wallSpans.set(record, { x0: x0 + tx * t0, z0: z0 + tz * t0,
+        x1: x0 + tx * t1, z1: z0 + tz * t1 });
       prevBuilt = true;
     }
     if (prevBuilt) endPost(x1, z1); // closing post
@@ -3757,10 +3822,13 @@ ${snowCap ? `
     const industrialLoose = ['trashcan', 'gasbottle', 'jerrycan', 'loosewheel', 'bucket', 'drum'];
     const ruralLoose = ['churn', 'bucket', 'jerrycan', 'loosewheel', 'gasbottle', 'trashcan'];
     const dryLoose = ['jerrycan', 'gasbottle', 'bucket', 'loosewheel', 'trashcan', 'cone'];
-    const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera';
-    const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier';
+    const isIndustrial = mapId === 'urban' || mapId === 'railyard' || mapId === 'foundry' || mapId === 'caldera'
+      || mapId === 'copper_mesa' || mapId === 'airfield' || mapId === 'whiteout';
+    const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier' || mapId === 'oasis';
     const looseKinds = isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose;
     const looseCap = inh.looseClutter ?? (P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
+    const loosePlacement = { authoredSites: looseCap, acceptedSites: 0, placedMembers: 0, kinds: [] as string[] };
+    const placedLooseKinds = new Set<string>();
     const placeLooseRoadsideClutter = (): void => {
     for (let k = 0; k < looseCap; k++) {
       const spot = findRoadsideSpot(
@@ -3768,6 +3836,7 @@ ${snowCap ? `
       );
       if (!spot) continue;
       const members = vrng() < 0.42 ? 2 : 1;
+      let acceptedMembers = 0;
       for (let j = 0; j < members; j++) {
         const a = vrng() * Math.PI * 2;
         const rr = j ? 0.65 + vrng() * 0.75 : 0;
@@ -3776,10 +3845,16 @@ ${snowCap ? `
         const kind = looseKinds[(vrng() * looseKinds.length) | 0];
         addDestructible(kind, x, heightField.getHeightAt(x, z) - 0.015, z,
           vrng() * Math.PI * 2, 0.88 + vrng() * 0.18);
+        acceptedMembers++;
+        placedLooseKinds.add(kind);
       }
+      if (acceptedMembers) loosePlacement.acceptedSites++;
+      loosePlacement.placedMembers += acceptedMembers;
     }
     };
     placeLooseRoadsideClutter();
+    loosePlacement.kinds = [...placedLooseKinds].sort();
+    group.userData.looseClutterPlacement = loosePlacement;
     // campsites / supply dumps: tents, firewood, crates, drums — the "life"
     // clusters at village outskirts and along the approach woods
     const placeSupplyCamps = (): void => {
@@ -4371,6 +4446,10 @@ ${snowCap ? `
   yield { fine: true, stage: 'field-haystacks' };
 
   // --- field clutter: fallen logs + stumps (visual ground detail) ---
+  function beginFieldTimberCapture(): FieldTimberPiece[] | null {
+    return P.loggingYard ? [] : null;
+  }
+  const fieldTimber = beginFieldTimberCapture();
   function placeFieldLogsAndStumps(): void {
   for (let i = 0, placed = 0; P.logs && i < 260 && placed < 26; i++) {
     const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
@@ -4394,18 +4473,21 @@ ${snowCap ? `
         relief: pose.relief, baseClearance: -r * 0.1,
         start: pose.start, end: pose.end,
       });
+      fieldTimber?.push({ geometry: log, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: len, height: 0, yaw });
     } else { // stump
       const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
       const support = sampleDiscGround(heightField, x, z, r, 0.06);
       const st = new THREE.CylinderGeometry(r * 0.92, r * 1.15, h, 8, 1);
       scaleUV(st, 1.5, 0.5);
-      st.rotateY(rng() * Math.PI);
+      const yaw = rng() * Math.PI;
+      st.rotateY(yaw);
       st.translate(x, support.y + h / 2, z);
       buckets.wood.push(st);
       decorationGroundingReceipts.push({
         kind: 'stump', x, y: support.y, z, relief: support.spread, baseClearance: -0.06,
         supportMin: support.min, supportMax: support.max,
       });
+      fieldTimber?.push({ geometry: st, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: 0, height: h, yaw });
     }
     placed++;
   }
@@ -4440,7 +4522,7 @@ ${snowCap ? `
       const x = crng() * cs;
       const hgt = cs * (0.50 + crng() * 0.42);
       const lean = (crng() - 0.5) * 16;
-      const lum = 0.30 + crng() * 0.20;
+      const lum = 0.17 + crng() * 0.11;
       _col.setHSL(0.115 + crng() * 0.02, 0.34, lum);
       cctx.strokeStyle = _col.getStyle();
       cctx.lineWidth = 1.2 + crng() * 1.1;
@@ -4448,16 +4530,25 @@ ${snowCap ? `
       cctx.moveTo(x, cs + 2);
       cctx.quadraticCurveTo(x + lean * 0.4, cs - hgt * 0.6, x + lean, cs - hgt);
       cctx.stroke();
-      _col.setHSL(0.105 + crng() * 0.02, 0.38, Math.min(0.62, lum + 0.12));
+      _col.setHSL(0.105 + crng() * 0.02, 0.38, Math.min(0.35, lum + 0.065));
       cctx.fillStyle = _col.getStyle();
       cctx.beginPath();
       cctx.ellipse(x + lean, cs - hgt, 1.7 + crng(), 4.5 + crng() * 2.5, lean * 0.03, 0, Math.PI * 2);
       cctx.fill();
     }
     const cid = cctx.getImageData(0, 0, cs, cs);
-    for (let i = 0; i < cs * cs; i++) { // mean-tone flood so mips don't halo
+    for (let i = 0; i < cs * cs; i++) {
+      const x = i % cs, y = Math.floor(i / cs);
+      // Dense stalk bases formerly merged into luminous rectangular walls.
+      // Four coarse gaps remain resolved in the existing 64px mip, while
+      // each clump retains the original seeded stems and seed heads. This
+      // pixel-only cut consumes no random draws or extra rows/materials.
+      if (x % 64 < 24) cid.data[i * 4 + 3] = 0;
+      const rootShade = 0.98 - y / cs * 0.18;
+      for (let channel = 0; channel < 3; channel++) cid.data[i * 4 + channel] *= rootShade;
+      // Muted mean-tone flood prevents bright RGB fringes in transparent mips.
       if (cid.data[i * 4 + 3] < 24) {
-        cid.data[i * 4] = 150; cid.data[i * 4 + 1] = 122; cid.data[i * 4 + 2] = 62;
+        cid.data[i * 4] = 126; cid.data[i * 4 + 1] = 110; cid.data[i * 4 + 2] = 66;
       }
     }
     cctx.putImageData(cid, 0, 0);
@@ -4505,9 +4596,17 @@ ${snowCap ? `
       col.push(cshade, cshade, cshade, cshade, cshade, cshade);
       if (sIt > 0) {
         const b0 = (sIt - 1) * 2, b1 = sIt * 2;
-        idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+        // Plot-center qualification cannot see a shoreline crossing its edge.
+        // Keep every seeded draw and original row vertex, but emit only dry,
+        // grounded spans. Clipped plots are not refilled with extra attempts.
+        const p0 = b0 * 3;
+        if (cropRowSegmentIsSupported(heightField,
+          pos[p0], pos[p0 + 2], pos[p0 + 1] - 0.02, sx2, sz2, gy)) {
+          idx.push(b0, b1, b0 + 1, b0 + 1, b1, b1 + 1);
+        }
       }
     }
+    if (idx.length === 0) return;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
     geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uv), 2));
@@ -4564,7 +4663,7 @@ ${snowCap ? `
     cropTex: THREE.CanvasTexture,
     cropGeos: THREE.BufferGeometry[],
   ): void {
-    if (cropGeos.length === 0) return;
+    if (cropGeos.length === 0) { cropTex.dispose(); return; }
     const cropMat = new THREE.MeshStandardMaterial({
       map: cropTex, alphaTest: 0.42, alphaToCoverage: true, side: THREE.DoubleSide,
       vertexColors: true, roughness: 1.0, metalness: 0.0,
@@ -4937,7 +5036,7 @@ ${snowCap ? `
       }
       function finalizeWreckMeshes(): void {
         if (wreckGeos.length === 0) return;
-        const wm = new THREE.Mesh(mergeGeometries(wreckGeos, false), mats.baked);
+        const wm = new THREE.Mesh(mergeWreckGeometries(wreckGeos), mats.baked);
         wm.name = 'tank-wrecks';
         // PERF: the full hulks never enter the shadow passes — the factory's
         // own low-poly proxies (baked below in the same pose) cast instead,
@@ -4980,6 +5079,10 @@ ${snowCap ? `
   // r6: every 4th candidate may land in a 90 m OUTSKIRT band around the town
   // rect — shelled approaches carry debris too; the establishing camera used
   // to frame nothing but clean lawn between itself and the first block
+  function beginWaterworksRubbleCapture(): WaterworksRubblePacket[] | null {
+    return mapId === 'reservoir' && P.reservoirWaterworks ? [] : null;
+  }
+  const waterworksRubble = beginWaterworksRubbleCapture();
   function placeStreetRubble(): void {
     if (P.rubblePiles <= 0) return;
     const rrng = mulberry32(seed + 403);
@@ -4996,7 +5099,14 @@ ${snowCap ? `
       const nearSpawn = [L.spawns.player, ...L.spawns.enemies]
         .some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 20);
       if (nearSpawn || Math.hypot(x - junction.x, z - junction.z) < 16) return false;
+      const capture = waterworksRubble && waterworksRubble.length < 3;
+      const stoneStart = capture ? buckets.stone.length : 0;
+      const woodStart = capture ? buckets.wood.length : 0;
       addRubblePile(x, z, 1.6 + rrng() * 1.3, rrng);
+      if (capture) waterworksRubble!.push({
+        stone: buckets.stone.slice(stoneStart), wood: buckets.wood.slice(woodStart),
+        obstacle: obstacles[obstacles.length - 1], collider: colliders[colliders.length - 1],
+      });
       return true;
     };
     for (let i = 0, placed = 0; i < P.rubblePiles * 14 && placed < P.rubblePiles; i++) {
@@ -5633,15 +5743,56 @@ ${snowCap ? `
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing only: pushes into the existing material buckets, no colliders.
+  const wharfDressingStart = buckets.wood.length;
   dressMapExtras({
-    mapId, extraKits: P.extraKits, L, heightField, rng, buckets,
+    mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
   });
+
+  // All seeded decoration has finished. Relocate accepted records before
+  // merging, pool collider refits and spatial indexing; never resample RNG.
+  function composeAuthoredLoggingYard(): void {
+    if (!fieldTimber) return;
+    group.userData.loggingYard = composeLoggingYard(P.loggingYard, heightField, fieldTimber,
+      [...obstacles, ...colliders], destructibles, dPools);
+    fieldTimber.length = 0;
+  }
+  composeAuthoredLoggingYard();
+
+  // Reservoir reuses three accepted street-rubble packets, never a synthetic
+  // quota. Plan against all late props before changing any geometry or slot.
+  function composeAuthoredReservoirWaterworks(): void {
+    if (!waterworksRubble) return;
+    group.userData.reservoirWaterworks = composeReservoirWaterworks(mapId, P.reservoirWaterworks,
+      heightField, waterworksRubble, buckets, [...obstacles, ...colliders]);
+    waterworksRubble.length = 0;
+  }
+  composeAuthoredReservoirWaterworks();
+
+  function composeAuthoredFisheryWharf(): void {
+    if (mapId !== 'mangrove') return;
+    group.userData.fisheryWharf = composeMangroveFisheryWharf(mapId, heightField, wharfFishery,
+      P.riverLandings?.find(site => site.lakeIndex === 20), [...obstacles, ...colliders],
+      vegetation, buckets.wood.slice(wharfDressingStart));
+    wharfFishery = null;
+  }
+  composeAuthoredFisheryWharf();
+  vegetation = null;
+
+  // Delta uses two resident procedural plaster families. Fold the incidental
+  // third paint tone after authoring so river-supported placement cannot add
+  // another uploaded atlas/shader, or change geometry, UV jitter or RNG order.
+  if (mapId === 'delta') {
+    buckets.plaster2.push(...buckets.plaster3);
+    buckets.plaster3.length = 0;
+  }
 
   // --- merge buckets into one mesh per material ---
   function* mergeMaterialBuckets(): Generator<PropsBuildSlice, void, void> {
     for (const key of Object.keys(buckets)) {
       if (buckets[key].length === 0) continue;
+      if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
+      if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
       const merged = mergeGeometries(buckets[key].map((geometry) =>
         (geometry.index ? geometry.toNonIndexed() : geometry)), false);
@@ -5665,16 +5816,27 @@ ${snowCap ? `
   // broken slot: two matrix writes, no per-frame cost once settled.
   // -------------------------------------------------------------------------
   const _zeroScale = new THREE.Vector3(1e-4, 1e-4, 1e-4);
+  const groundCoverDetails = {
+    families: 0, solidCount: 0, profileBytes: 0,
+    placements: 0, placementBytes: 0, unsupportedTransforms: 0, buildMs: 0,
+  };
+  group.userData.groundCoverDetails = groundCoverDetails;
   function refitDestructibleColliders(
     geometry: THREE.BufferGeometry,
     pool: DestructiblePool,
-  ): void {
+    kind: string,
+  ): GroundCoverSolidProfile | null {
     const positions = geometry.getAttribute('position');
-    if (!positions || !pool.records.length) return;
+    if (!positions || !pool.records.length) return null;
     // Refit every destructible obstacle to the actual ground-bearing solids.
     // Roof overhangs, open bays and support gaps remain visually and
     // physically open instead of inheriting the metadata placement box.
-    const contactBand = deriveRuntimeStructureCollisionProfile({ baked: [geometry] }).contact;
+    // Reuse this extraction only for building families. Crates, moving props,
+    // walls (including their later terrain fit) and trees retain the cheap path.
+    const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
+      ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
+    const contactBand = source?.profile.contact
+      ?? deriveRuntimeStructureCollisionProfile({ baked: [geometry] }).contact;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledBand = record.sc === 1 ? contactBand : {
@@ -5698,6 +5860,25 @@ ${snowCap ? `
         applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw);
       }
     }
+    if (!source) return null;
+    const start = performance.now();
+    const detail = createGroundCoverSolidProfile(source.solids, source.contactTop);
+    groundCoverDetails.buildMs += performance.now() - start;
+    return detail;
+  }
+  function sealGroundCoverPlacements(pool: DestructiblePool, detail: GroundCoverSolidProfile): void {
+    const start = performance.now();
+    groundCoverDetails.families++;
+    groundCoverDetails.solidCount += detail.solidCount;
+    groundCoverDetails.profileBytes += detail.byteLength;
+    for (const record of pool.records) {
+      if (!record.ob) continue;
+      if (attachGroundCoverSolidProfile(record.ob, detail, pool.mats4[record.slot].elements)) {
+        groundCoverDetails.placements++;
+        groundCoverDetails.placementBytes += GROUND_COVER_PLACEMENT_BYTES;
+      } else groundCoverDetails.unsupportedTransforms++;
+    }
+    groundCoverDetails.buildMs += performance.now() - start;
   }
   function tintDestructibleInstances(
     kind: string,
@@ -5719,9 +5900,23 @@ ${snowCap ? `
     const meta = pool.meta;
     // Wall modules use the map-toned masonry materials; other objects keep
     // the wood, straw, vehicle, or baked family selected by their metadata.
-    const material = mats[meta.mat] || mats.baked;
+    let material = mats[meta.mat] || mats.baked;
+    if (kind === 'lamp') {
+      // One material for the whole instanced lamp family, not per fixture.
+      // Other baked props keep their existing non-emissive shader.
+      material = material.clone();
+      engineCtx.setupShadowMaterial(material, grimeHook);
+      material.customProgramCacheKey = () => 'world-streetlamp-v1' + (snowCap ? 's' : '');
+      configureWorldLampMaterial(material);
+      retainedSurfaceMaterials.push(material);
+    }
     const geoI = meta.build(drng);
-    refitDestructibleColliders(geoI, pool);
+    const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
+    for (const record of pool.records) {
+      const span = wallSpans.get(record);
+      if (span) fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG);
+    }
+    if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     tintDestructibleInstances(kind, pool, imI);
@@ -5732,6 +5927,7 @@ ${snowCap ? `
     if (meta.cls === 'topple' || meta.cls === 'toss' || meta.cls === 'physics') imI.frustumCulled = false; // instances animate
     else imI.computeBoundingSphere();
     imI.name = 'destructible-' + kind;
+    if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
     if (meta.broken) {
@@ -5744,6 +5940,7 @@ ${snowCap ? `
       imB.matrixAutoUpdate = false;
       imB.frustumCulled = false; // slots appended over the battle
       imB.name = 'destructible-' + kind + '-broken';
+      if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
       group.add(imB);
       pool.imB = imB;
     }
@@ -5755,6 +5952,9 @@ ${snowCap ? `
     }
   }
   yield* finalizeDestructiblePools();
+  // Construction-only spans are now sealed into matrices/support/colliders;
+  // runtime destruction closures must not retain the placement graph.
+  wallSpans.clear();
   // spatial hash over destructible records for the shell paths (8 m cells)
   const D_CELL = 8;
   const dHash = new Map<string, number[]>();
@@ -5979,6 +6179,7 @@ ${snowCap ? `
     // and a later tank can push the exact same object again after it settles.
     if (rec.cls === 'physics') return kickLooseRecord(idx, dx, dz, speed, cause);
     rec.state = 1;
+    setWorldNightFixtureActive(pool.imI, rec.slot, false);
     if (rec.ob) rec.ob.crushed = true;          // ghost for collision + AI
     if (rec.col) rec.col.dead = true;           // shells/LOS pass the breach
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.ts loop
@@ -6130,7 +6331,7 @@ ${snowCap ? `
       }
     }
   }
-  registerWorldDestructibles({
+  const registerDestructibles = (): (() => void) => registerWorldDestructibles({
     key: mapId,
     isActive: () => {
       for (let o: THREE.Object3D | null = group; o; o = o.parent) {
@@ -6333,6 +6534,7 @@ ${snowCap ? `
     rec.state = 0;
     const pool = dPools.get(rec.kind);
     if (pool && pool.imI) {
+      setWorldNightFixtureActive(pool.imI, rec.slot, true);
       pool.imI.setMatrixAt(rec.slot, pool.mats4[rec.slot]);
       pool.imI.instanceMatrix.needsUpdate = true;
     }
@@ -6379,10 +6581,16 @@ ${snowCap ? `
     }
   }
 
+  registerWorldNightLighting(group, mats.curtain, destructibles, mapId, [
+    { material: mats.glass, intensity: 2 },
+    { material: mats.structureWood, intensity: 1.2 },
+    { material: mats.structureMetal, intensity: 1.2 },
+    { material: mats.structureCanvas, intensity: 1.2 },
+  ]);
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
     destructibles, looseRecords, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     utilityPolePlacements, decorationGroundingReceipts,
-    sourcedTexturesReady,
+    sourcedTexturesReady, registerDestructibles,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures } };
 }

@@ -11,6 +11,9 @@
  * surfaces use the smaller `TRANSITION_SHOTS` set so older marketing renders
  * stay browsable without returning to the player-facing loading rotation.
  */
+import { getMapName, isMapId } from '../world/maps/catalog.ts';
+import { MAP_HEROES } from './mapThumbs.ts';
+
 export interface FeaturedShot {
   readonly img: string;
   readonly bootImg?: string;
@@ -152,5 +155,16 @@ export function randomFeaturedShot(): FeaturedShot {
  */
 export function featuredShotForMap(mapId: string): FeaturedShot {
   const key = String(mapId || '').trim().toLowerCase();
-  return TRANSITION_SHOTS.find((shot) => shot.maps?.includes(key)) || nextFeaturedShot();
+  const curated = TRANSITION_SHOTS.find((shot) => shot.maps?.includes(key));
+  if (curated) return curated;
+  // New battlefields already have native 4K overview captures. Use their
+  // exact map art until an action still is curated; never mislabel a random
+  // battle scene or change the owner's separate featured-gallery rotation.
+  if (isMapId(key)) {
+    return {
+      img: MAP_HEROES[key], cap: `${getMapName(key)} — battlefield overview`,
+      maps: [key], focal: '50% 50%',
+    };
+  }
+  return nextFeaturedShot();
 }

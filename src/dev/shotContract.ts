@@ -9,6 +9,16 @@ export const SHOT_VIEWS = [
   'battlefield_alpine', 'battlefield_caldera', 'battlefield_foundry',
   'battlefield_ruinspires', 'battlefield_blackglass',
   'battlefield_titan_gorge', 'battlefield_skybridge', 'killcam_firing',
+  'battlefield_polders',
+  'battlefield_copper_mesa',
+  'battlefield_airfield',
+  'battlefield_oasis',
+  'battlefield_whiteout',
+  'battlefield_orchard',
+  'battlefield_longleaf',
+  'battlefield_mangrove',
+  'battlefield_saltwind',
+  'battlefield_reservoir',
   'killcam_collision', 'killcam_xray',
 ] as const;
 

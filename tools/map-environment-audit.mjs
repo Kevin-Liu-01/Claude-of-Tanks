@@ -4,8 +4,13 @@
 //   node tools/map-environment-audit.mjs
 //   node tools/map-environment-audit.mjs --out=/private/tmp/cot-map-audit --shots
 //   node tools/map-environment-audit.mjs --maps=verdant,coastal --samples=90
+//   node tools/map-environment-audit.mjs --production --root=/path/to/built/tree
 //   node tools/map-environment-audit.mjs --baseline=/path/to/report.json
 //   node tools/map-environment-audit.mjs --gate --baseline=/path/to/report.json
+//   node tools/map-environment-audit.mjs --poses=/path/to/matched/shots --shots
+//   node tools/map-environment-audit.mjs --maps=fjord,winter --shots --horizon-quadrants
+//   node tools/map-environment-audit.mjs --maps=fjord --shots --horizon-only --horizon-scopes
+//   node tools/map-environment-audit.mjs --tier=mobile --width=1024 --height=768 --shots
 //
 // The report intentionally combines authored intent (config/features), built
 // scene complexity, renderer counters, and steady-frame samples. Screenshots
@@ -14,9 +19,27 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createServer } from 'vite';
+import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { MAP_IDS } from '../src/world/maps/index.ts';
+import { sampleRenderedFrames } from './render-frame-sampler.mjs';
+import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
+import { PINNED_SCENE, primePinnedSceneStorage, configurePinnedScene, capturePinnedScene } from './pinned-scene-acquisition.mjs';
+import {
+  ACQUISITION_PROTOCOL, settleMapTextures, applyTimingCamera, captureTimingState,
+  requireComparableRun, requireTimingReceipt, requireSameTimingState,
+  waitForTimingGarage, warmTimingGarage, captureTimingGarageOwner, captureTimingBackend,
+  requireTimingGarageSetup, requireSameTimingGarageSetup, requireSameTimingGarageOwner,
+  requireTimingBuildProvenance,
+  selectTimingArchiveTarget, captureTimingGarageArchive,
+  requireSameTimingGarageArchive,
+  captureTimingPhaseOwnership, requireTimingPhaseOwnership,
+} from './map-environment-acquisition.mjs';
+import { selectStandView, stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environment-shot-camera.mjs';
+import { evaluateQuality } from './map-environment-quality.mjs';
+import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
 const valueArg = (name, fallback) => {
@@ -26,6 +49,12 @@ const valueArg = (name, fallback) => {
 };
 const flagArg = (name) => args.includes(`--${name}`);
 const ROOT = path.resolve(valueArg('root', process.cwd()));
+// The repo's Vite warmup plugin resolves its source graph from cwd. A baseline
+// in another worktree must never warm the implementation's module graph.
+process.chdir(ROOT);
+const { MAP_IDS } = await import(pathToFileURL(path.join(ROOT, 'src/world/maps/index.ts')).href);
+const { FEATURED_SHOTS } = await import(pathToFileURL(path.join(ROOT, 'src/ui/featuredShots.ts')).href);
+const garageArchiveTarget = selectTimingArchiveTarget(FEATURED_SHOTS);
 
 const requested = valueArg('maps', MAP_IDS.join(','))
   .split(',').map((id) => id.trim()).filter(Boolean);
@@ -34,8 +63,16 @@ if (unknown.length) throw new Error(`Unknown map ids: ${unknown.join(', ')}`);
 
 const outDir = path.resolve(ROOT, valueArg('out', '.qa-map-environment'));
 const captureShots = flagArg('shots');
+const horizonOnly = flagArg('horizon-only');
+const horizonScopes = flagArg('horizon-scopes');
+const horizonQuadrants = flagArg('horizon-quadrants') || horizonOnly || horizonScopes;
+if ((horizonOnly || horizonScopes) && !captureShots) throw new Error('Horizon capture options require --shots');
 const enforceGate = flagArg('gate');
 const includeInventory = flagArg('inventory');
+const syncGpu = flagArg('sync-gpu');
+const production = flagArg('production');
+const tier = valueArg('tier', 'auto');
+if (!['auto', 'desktop', 'mobile'].includes(tier)) throw new Error('tier must be auto, desktop or mobile');
 const width = Number.parseInt(valueArg('width', '1440'), 10);
 const height = Number.parseInt(valueArg('height', '900'), 10);
 const sampleCount = Math.max(30, Number.parseInt(valueArg('samples', '75'), 10));
@@ -45,59 +82,44 @@ const baselinePath = valueArg('baseline', '');
 const baseline = baselinePath
   ? JSON.parse(fs.readFileSync(path.resolve(ROOT, baselinePath), 'utf8')) : null;
 const baselineById = new Map((baseline?.maps || []).map((row) => [row.id, row]));
+// Timing baselines need no image capture. Keep matched visual viewpoints
+// independently selectable so a clean timing rerun doesn't discard them.
+const poseRootArg = valueArg('poses', '');
+const poseRoot = poseRootArg ? path.resolve(ROOT, poseRootArg)
+  : baselinePath ? path.join(path.dirname(path.resolve(ROOT, baselinePath)), 'shots') : '';
+const harnessHash = createHash('sha256');
+for (const file of ['map-environment-audit.mjs', 'map-environment-acquisition.mjs',
+  'pinned-scene-acquisition.mjs', 'world-residency-acquisition.mjs',
+  'render-frame-sampler.mjs', 'map-environment-quality.mjs']) {
+  harnessHash.update(file).update(fs.readFileSync(new URL(file, import.meta.url)));
+}
+const acquisition = {
+  protocol: ACQUISITION_PROTOCOL, harnessHash: harnessHash.digest('hex'),
+  viewport: { width, height, dpr: 1 },
+  sampleCount, repeats, settleMs, syncGpu, tier, captureShots, production, garageArchiveTarget, maps: requested,
+};
+if (baseline) requireComparableRun(baseline, acquisition);
 fs.mkdirSync(outDir, { recursive: true });
 
-const server = await createServer({
-  root: ROOT,
-  logLevel: 'error',
-  server: {
-    host: '127.0.0.1', port: 6100 + Math.floor(Math.random() * 500),
-    strictPort: false, hmr: false, watch: null,
-  },
-  optimizeDeps: {
-    entries: ['index.html'],
-    include: [
-      'three',
-      'three/examples/jsm/loaders/GLTFLoader.js',
-      'three/examples/jsm/utils/SkeletonUtils.js',
-      'three/examples/jsm/utils/BufferGeometryUtils.js',
-      'three/examples/jsm/geometries/RoundedBoxGeometry.js',
-    ],
-  },
-});
-await server.listen();
-const address = server.httpServer.address();
-const port = typeof address === 'object' && address ? address.port : server.config.server.port;
-const browser = await puppeteer.launch({
-  headless: 'new',
-  // Uncap rAF for performance certification. Sampling a compositor-locked
-  // 60 Hz cadence only reports host/vsync jitter (16.7 vs 18 ms), not whether
-  // added world detail changed renderer throughput.
-  args: [
-    '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
-    '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-renderer-backgrounding',
-  ],
-});
-const page = await browser.newPage();
-await page.setViewport({ width, height, deviceScaleFactor: 1 });
-page.setDefaultTimeout(180000);
-
+let server, browser, page, lockRefresher;
 const pageErrors = [];
-page.on('pageerror', (error) => pageErrors.push(String(error)));
-page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('favicon')) {
-    pageErrors.push(message.text());
-  }
-});
+const readBuildIndexHash = () => production
+  ? createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'dist/index.html'))).digest('hex') : null;
 
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 6,
   generatedAt: new Date().toISOString(),
-  revision: process.env.GIT_COMMIT || null,
+  revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
+  dirtyPaths: execFileSync('git', ['status', '--short'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean),
   viewport: { width, height, dpr: 1 },
-  sampleCount, repeats,
+  sampleCount, repeats, syncGpu, tier, horizonOnly, horizonScopes,
+  acquisition,
+  buildIndexHash: readBuildIndexHash(),
+  captureLock: 'cot-shots',
+  matchedPoseRoot: poseRoot || null,
   maps: [],
 };
+requireTimingBuildProvenance(report);
 
 const percentile = (values, fraction) => {
   if (!values.length) return 0;
@@ -107,25 +129,20 @@ const percentile = (values, fraction) => {
 const round = (value, digits = 3) => Number(Number(value || 0).toFixed(digits));
 
 async function sampleFrames(count) {
-  const frames = await page.evaluate((n) => new Promise((resolve) => {
-    const values = [];
-    let previous = performance.now();
-    let warm = 8;
-    const tick = (now) => {
-      if (warm > 0) warm--;
-      else values.push(now - previous);
-      previous = now;
-      if (values.length >= n) resolve(values);
-      else requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }), count);
+  const result = await page.evaluate(sampleRenderedFrames, { count, syncGpu });
+  const frames = result.samples.map((sample) => sample.intervalMs);
+  const costs = result.samples.map((sample) => sample.renderMs);
   return {
+    sampleCount: result.samples.length,
     medianMs: round(percentile(frames, 0.5)),
     p95Ms: round(percentile(frames, 0.95)),
     p99Ms: round(percentile(frames, 0.99)),
     maxMs: round(Math.max(...frames)),
     fpsMedian: round(1000 / Math.max(0.001, percentile(frames, 0.5)), 1),
+    renderMedianMs: round(percentile(costs, 0.5)),
+    renderP95Ms: round(percentile(costs, 0.95)),
+    callsMax: Math.max(...result.samples.map((sample) => sample.calls)),
+    trianglesMax: Math.max(...result.samples.map((sample) => sample.triangles)),
   };
 }
 
@@ -137,6 +154,10 @@ function combineFrameRuns(runs) {
     p99Ms: round(at('p99Ms')),
     maxMs: round(at('maxMs')),
     fpsMedian: round(at('fpsMedian'), 1),
+    renderMedianMs: round(at('renderMedianMs')),
+    renderP95Ms: round(at('renderP95Ms')),
+    callsMax: Math.max(...runs.map((run) => run.callsMax)),
+    trianglesMax: Math.max(...runs.map((run) => run.trianglesMax)),
     runs,
   };
 }
@@ -144,13 +165,36 @@ function combineFrameRuns(runs) {
 async function stageMap(mapId) {
   const view = mapId === 'verdant' ? 'battlefield' : `battlefield_${mapId}`;
   await page.evaluate((name) => window.__SHOTS.set(name), view);
+  const readiness = await page.evaluate(settleMapTextures, { mapId });
   await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
+  const prior = baselineById.get(mapId)?.acquisition;
+  if (prior) await page.evaluate(applyTimingCamera, prior.state.camera);
   await new Promise((resolve) => setTimeout(resolve, settleMs));
   await page.evaluate(() => new Promise((resolve) => {
     let left = 5;
     const tick = () => { if (--left <= 0) resolve(); else requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }));
+  const prepared = await page.evaluate(settleResidencyTerrain);
+  await page.evaluate(sampleRenderedFrames, { count: 8, syncGpu });
+  const terrain = await page.evaluate(settleResidencyTerrain, prepared);
+  return { readiness, terrain };
+}
+
+async function timingReceipt(mapId, prepared) {
+  const receipt = {
+    phaseOwnership: await page.evaluate(captureTimingPhaseOwnership),
+    garage: await page.evaluate(captureTimingGarageOwner),
+    garageArchive: await page.evaluate(captureTimingGarageArchive, garageArchiveTarget),
+    scene: await page.evaluate(capturePinnedScene, PINNED_SCENE),
+    state: await page.evaluate(captureTimingState),
+    readiness: prepared.readiness,
+    terrain: await page.evaluate(settleResidencyTerrain, prepared.terrain),
+  };
+  requireTimingReceipt(receipt, mapId, acquisition.viewport);
+  requireSameTimingGarageOwner(report.garageSetup.owner, receipt.garage);
+  requireSameTimingGarageArchive(report.garageSetup.archive, receipt.garageArchive);
+  return receipt;
 }
 
 async function collectMap(mapId, frames) {
@@ -314,6 +358,10 @@ async function collectMap(mapId, frames) {
       id,
       name: config.name,
       frames: frameStats,
+      sourcedTextureReadiness: world.minimapTextureState ? {
+        settled: world.minimapTextureState.settled,
+        results: world.minimapTextureState.results || null,
+      } : null,
       // The app renders through a compositor. renderer.info at this point is
       // the final post pass, not the world pass; label it honestly and use
       // scene/subtree family counts for stable complexity gates.
@@ -347,6 +395,7 @@ async function collectMap(mapId, frames) {
           destructibleKinds: interactionKinds.size,
           looseProps: world.looseProps.length,
           looseKinds: looseKinds.size,
+          loosePlacement: world.group.getObjectByName('props')?.userData.looseClutterPlacement ?? null,
           wrecks: world.tankWreckSpots.length,
           craters: props.craters || 0,
           rubblePiles: props.rubblePiles || 0,
@@ -366,35 +415,76 @@ async function collectMap(mapId, frames) {
   }, { id: mapId, frameStats: frames, includeInventory });
 }
 
-function evaluateQuality(row) {
-  const q = row.quality;
-  const checks = {
-    mapAuthorship: q.map.landforms >= 5 && q.map.tacticalBeats === 3
-      && q.map.roads >= 2 && q.map.wallRuns >= 6,
-    buildingQuality: q.buildings.placed >= 15 && q.buildings.familyCount >= 11
-      && q.buildings.destructibleFamilies >= 4,
-    decorationQuality: q.decorations.destructibles >= 350
-      && q.decorations.destructibleKinds >= 32 && q.decorations.looseProps >= 50
-      && q.decorations.wrecks >= 4,
-    utilityPoleGrounding: !q.decorations.utilityPoles.enabled
-      || (q.decorations.utilityPoles.stations > 0
-        && q.decorations.utilityPoles.unsupportedPosts === 0
-        && q.decorations.utilityPoles.sourceTrianglesPerPost > 0
-        && q.decorations.utilityPoles.sourceTrianglesPerPost <= 3000
-        && q.decorations.utilityPoles.maxAcceptedPairRelief <= 0.401),
-    decorationGrounding: q.decorations.grounding.unsupportedDestructibles === 0
-      && q.decorations.grounding.unsupportedWideDecorations === 0,
-    foliageQuality: q.foliage.configuredSpecies >= 2 && q.foliage.concealers >= 20,
-    waterQuality: q.water.features === 0 || q.water.liquid || q.water.frozen
-      || q.water.softInteraction,
-  };
-  return { checks, pass: Object.values(checks).every(Boolean) };
+async function captureEvidenceShot(mapId, name, matchSavedPose = true) {
+  const dir = path.join(outDir, 'shots', mapId);
+  const beforePose = matchSavedPose && poseRoot && path.join(poseRoot, mapId, `${name}.pose.json`);
+  if (beforePose && fs.existsSync(beforePose)) {
+    const pose = JSON.parse(fs.readFileSync(beforePose, 'utf8'));
+    await page.evaluate((saved) => {
+      const D = window.__DEBUG;
+      D.camera.position.fromArray(saved.position);
+      D.camera.quaternion.fromArray(saved.quaternion);
+      D.camera.fov = saved.fov;
+      D.camera.updateProjectionMatrix();
+      D.camera.updateMatrixWorld(true);
+      D.world.update(0, D.camera.position);
+      D.lighting.updateFrustums();
+      D.lighting.update(true);
+    }, pose);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  }
+  const pose = await page.evaluate(() => {
+    const D = window.__DEBUG;
+    const hf = D.world.heightField;
+    const p = D.camera.position;
+    const terrainY = (hf.getHeightAtFast || hf.getHeightAt)(p.x, p.z);
+    return {
+      position: p.toArray(), quaternion: D.camera.quaternion.toArray(), fov: D.camera.fov,
+      scoped: D.camera.userData.scoped === true, rigMode: D.rig.mode, rigZoom: D.rig.zoom,
+      terrainClearance: p.y - terrainY,
+      nearGroundWarning: p.y - terrainY < 0.5,
+    };
+  });
+  fs.writeFileSync(path.join(dir, `${name}.pose.json`), `${JSON.stringify(pose, null, 2)}\n`);
+  await page.screenshot({ path: path.join(dir, `${name}.png`) });
+  return { pose, matchedBaseline: Boolean(beforePose && fs.existsSync(beforePose)) };
 }
 
 async function captureMapShots(mapId) {
   const dir = path.join(outDir, 'shots', mapId);
   fs.mkdirSync(dir, { recursive: true });
-  await page.screenshot({ path: path.join(dir, 'establishing.png') });
+  await captureEvidenceShot(mapId, 'establishing');
+
+  if (horizonQuadrants) {
+    for (const [x, z] of [[300, 300], [-300, 300], [-300, -300], [300, -300]]) {
+      await page.evaluate(({ x, z }) => {
+        const D = window.__DEBUG;
+        const hf = D.world.heightField;
+        const hAt = hf.getHeightAtFast || hf.getHeightAt;
+        D.camera.position.set(x, Math.max(50, hAt(x, z) + 12), z);
+        D.camera.fov = 60;
+        D.camera.lookAt(0, 24, 0);
+        D.camera.updateProjectionMatrix();
+        D.camera.updateMatrixWorld(true);
+        D.world.update(0, D.camera.position);
+        D.lighting.updateFrustums();
+        D.lighting.update(true);
+      }, { x, z });
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      const name = `horizon-${x > 0 ? 'e' : 'w'}${z > 0 ? 'n' : 's'}`;
+      await captureEvidenceShot(mapId, name, false);
+      if (horizonScopes) {
+        const contract = await page.evaluate(stageHorizonScopeCapture, { mapId });
+        // Scope grade approaches its target over several genuine renders.
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        await captureEvidenceShot(mapId, `${name}-scope`, false);
+        fs.writeFileSync(path.join(dir, `${name}-scope.contract.json`), `${JSON.stringify(contract, null, 2)}\n`);
+        await page.evaluate(restoreHorizonArcadeCapture, contract.arcade);
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+    }
+  }
+  if (horizonOnly) return;
 
   const poleDetail = await page.evaluate(() => {
     const D = window.__DEBUG;
@@ -432,7 +522,7 @@ async function captureMapShots(mapId) {
   });
   if (poleDetail) {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'utility-poles.png') });
+    await captureEvidenceShot(mapId, 'utility-poles');
     fs.writeFileSync(path.join(dir, 'utility-poles.json'), `${JSON.stringify(poleDetail, null, 2)}\n`);
   }
 
@@ -473,7 +563,7 @@ async function captureMapShots(mapId) {
   });
   if (decorationDetail) {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'grounded-decoration.png') });
+    await captureEvidenceShot(mapId, 'grounded-decoration');
     fs.writeFileSync(path.join(dir, 'grounded-decoration.json'),
       `${JSON.stringify(decorationDetail, null, 2)}\n`);
   }
@@ -509,7 +599,7 @@ async function captureMapShots(mapId) {
   });
   if (details.hasDetail) {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'detail.png') });
+    await captureEvidenceShot(mapId, 'detail');
   }
   const closeups = await page.evaluate(() => {
     const D = window.__DEBUG;
@@ -545,22 +635,21 @@ async function captureMapShots(mapId) {
   });
   if (closeups.hasBuilding) {
     await new Promise((resolve) => setTimeout(resolve, 320));
-    await page.screenshot({ path: path.join(dir, 'building.png') });
+    await captureEvidenceShot(mapId, 'building');
   }
   if (closeups.hasFoliage) {
-    await page.evaluate(() => {
+    const standInputs = await page.evaluate(() => {
+      const world = window.__DEBUG.world;
+      const features = world.getMinimapFeatures();
+      return { clusters: features.treeClusters, buildings: features.buildings,
+        concealers: world.getConcealment() };
+    });
+    const standView = selectStandView(standInputs);
+    await page.evaluate(({ x, z, target: cluster }) => {
       const D = window.__DEBUG;
       const world = D.world;
       const hf = world.heightField;
       const hAt = hf.getHeightAtFast || hf.getHeightAt;
-      const clusters = world.getMinimapFeatures().treeClusters || [];
-      const cluster = [...clusters].sort((a, b) => (b.r || 0) - (a.r || 0))[0];
-      // Place the camera outside the authored stand radius. A fixed offset
-      // could land inside a large grove and photograph the back of one alpha
-      // card instead of evaluating the tree-line silhouette players see.
-      const standRadius = Math.max(8, cluster.r || 18);
-      const x = cluster.x - standRadius - 14;
-      const z = cluster.z + standRadius * 0.26;
       D.camera.position.set(x, hAt(x, z) + 4.2, z);
       D.camera.fov = 50;
       D.camera.lookAt(cluster.x, hAt(cluster.x, cluster.z) + 3.6, cluster.z);
@@ -569,11 +658,42 @@ async function captureMapShots(mapId) {
       world.update(0, D.camera.position);
       D.lighting.updateFrustums();
       D.lighting.update(true);
-    });
+    }, standView);
     await new Promise((resolve) => setTimeout(resolve, 320));
-    await page.screenshot({ path: path.join(dir, 'foliage.png') });
+    const capture = await captureEvidenceShot(mapId, 'foliage');
+    // Keep the generated selection as a candidate, not a false receipt of
+    // camera placement when the matched baseline pose took precedence.
+    const receipt = { selection: standView, selectionApplied: !capture.matchedBaseline,
+      cameraPose: capture.pose, matchedBaseline: capture.matchedBaseline };
+    fs.writeFileSync(path.join(dir, 'foliage-site.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   }
   if (details.hasWater) {
+    await page.evaluate(() => {
+      const D = window.__DEBUG;
+      const hf = D.world.heightField;
+      const hAt = hf.getHeightAtFast || hf.getHeightAt;
+      const water = D.world.getMinimapFeatures().waterOrSoft;
+      const x0 = Math.min(...water.map((disc) => disc.x - disc.r));
+      const x1 = Math.max(...water.map((disc) => disc.x + disc.r));
+      const z0 = Math.min(...water.map((disc) => disc.z - disc.r));
+      const z1 = Math.max(...water.map((disc) => disc.z + disc.r));
+      const x = (x0 + x1) * 0.5;
+      const z = (z0 + z1) * 0.5;
+      const span = Math.max((x1 - x0) / D.camera.aspect, z1 - z0, 100) * 1.14;
+      const targetY = hAt(x, z);
+      D.camera.position.set(x, targetY + span / (2 * Math.tan(Math.PI / 6)), z);
+      D.camera.fov = 60;
+      D.camera.up.set(0, 0, 1);
+      D.camera.lookAt(x, targetY, z);
+      D.camera.up.set(0, 1, 0);
+      D.camera.updateProjectionMatrix();
+      D.camera.updateMatrixWorld(true);
+      D.world.update(0, D.camera.position);
+      D.lighting.updateFrustums();
+      D.lighting.update(true);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await captureEvidenceShot(mapId, 'water-overhead');
     await page.evaluate(() => {
       const D = window.__DEBUG;
       const world = D.world;
@@ -597,7 +717,11 @@ async function captureMapShots(mapId) {
       D.lighting.update(true);
     });
     await new Promise((resolve) => setTimeout(resolve, 350));
-    await page.screenshot({ path: path.join(dir, 'water.png') });
+    // Terrain corrections can invalidate an old near-bank camera. Preserve
+    // the matched view unchanged, and also retain the current-height view as
+    // explicitly unmatched evidence rather than silently moving the baseline.
+    await captureEvidenceShot(mapId, 'water-current', false);
+    await captureEvidenceShot(mapId, 'water');
 
     // Exercise the same allocation-free track-contact path used by moving
     // vehicles. This verifies that liquid replaces dry dust with spray and
@@ -633,24 +757,110 @@ async function captureMapShots(mapId) {
       D.fx.setFrozen(true);
     });
     await new Promise((resolve) => setTimeout(resolve, 220));
-    await page.screenshot({ path: path.join(dir, 'water-interaction.png') });
+    await captureEvidenceShot(mapId, 'water-interaction');
   }
 }
 
 try {
-  await page.goto(`http://127.0.0.1:${port}/`, {
+  await acquireCaptureLock(20 * 60 * 1000);
+  process.on('exit', releaseCaptureLock);
+  lockRefresher = setInterval(refreshCaptureLock, 60_000);
+  lockRefresher.unref();
+  const selectedPort = 6100 + Math.floor(Math.random() * 500);
+  server = production
+    ? await preview({ root: ROOT, logLevel: 'error',
+      preview: { host: '127.0.0.1', port: selectedPort, strictPort: false } })
+    : await createServer({
+      root: ROOT, logLevel: 'error',
+      server: { host: '127.0.0.1', port: selectedPort, strictPort: false, hmr: false, watch: null },
+      optimizeDeps: {
+        entries: ['index.html'],
+        include: [
+          'three',
+          'three/examples/jsm/loaders/GLTFLoader.js',
+          'three/examples/jsm/utils/SkeletonUtils.js',
+          'three/examples/jsm/utils/BufferGeometryUtils.js',
+          'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+        ],
+      },
+    });
+  if (!production) await server.listen();
+  const address = server.httpServer.address();
+  const port = address.port;
+  browser = await puppeteer.launch({
+    headless: 'new',
+    // The natural workshop deadline is 180 s; preserve its own bounded error.
+    protocolTimeout: 240000,
+    // Native submitted cadence; --sync-gpu remains a separate diagnostic.
+    args: [
+      '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
+      '--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-renderer-backgrounding',
+    ],
+  });
+  page = await browser.newPage();
+  await page.setViewport({ width, height, deviceScaleFactor: 1 });
+  await page.evaluateOnNewDocument(primePinnedSceneStorage, PINNED_SCENE);
+  page.setDefaultTimeout(180000);
+  page.on('pageerror', error => pageErrors.push(String(error)));
+  page.on('console', message => {
+    if (message.type() === 'error' && !message.text().includes('favicon')) pageErrors.push(message.text());
+  });
+  await page.goto(`http://127.0.0.1:${port}/${tier === 'auto' ? '' : `?tier=${tier}`}`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
+  await page.evaluate(configurePinnedScene, PINNED_SCENE);
+  await page.evaluate(waitForTimingGarage);
+  await page.evaluate(() => window.__SHOTS.set('garage'));
+  await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
+  const archiveWaitStarted = performance.now();
+  // Observe the recurring production pair. Never force the slideshow forward,
+  // hide it, or replace this readiness barrier with additional warm frames.
+  const archiveHandle = await page.waitForFunction(captureTimingGarageArchive,
+    { timeout: 120000, polling: 100 }, garageArchiveTarget);
+  const archiveBefore = await archiveHandle.jsonValue();
+  await archiveHandle.dispose();
+  const archiveWait = { target: garageArchiveTarget, timeoutMs: 120000,
+    elapsedMs: performance.now() - archiveWaitStarted };
+  const garageOwner = await page.evaluate(captureTimingGarageOwner);
+  const phaseBefore = await page.evaluate(captureTimingPhaseOwnership);
+  report.garageSetup = { ownerBefore: garageOwner, archiveBefore, archiveWait, phaseBefore };
+  requireTimingPhaseOwnership(phaseBefore, 'garage', 'verdant');
+  const garageWarm = await page.evaluate(warmTimingGarage, { archive: archiveBefore });
+  const warmedGarageOwner = await page.evaluate(captureTimingGarageOwner);
+  report.garageSetup = {
+    ownerBefore: garageOwner, owner: warmedGarageOwner, warm: garageWarm,
+    phaseBefore, phaseOwnership: await page.evaluate(captureTimingPhaseOwnership),
+    archiveBefore, archive: await page.evaluate(captureTimingGarageArchive, garageArchiveTarget), archiveWait,
+    backend: await page.evaluate(captureTimingBackend), browserVersion: await browser.version(),
+  };
+  requireTimingGarageSetup(report.garageSetup);
+  if (baseline) requireSameTimingGarageSetup(baseline.garageSetup, report.garageSetup);
+  report.browser = await page.evaluate(() => ({
+    userAgent: navigator.userAgent,
+    canvasWidth: window.__DEBUG.renderer.domElement.width,
+    canvasHeight: window.__DEBUG.renderer.domElement.height,
+    maxTextureSize: window.__DEBUG.renderer.capabilities.maxTextureSize,
+  }));
   for (const mapId of requested) {
     process.stdout.write(`[map-audit] ${mapId} ... `);
-    await stageMap(mapId);
+    const prepared = await stageMap(mapId);
+    const acquired = await timingReceipt(mapId, prepared);
+    const before = baselineById.get(mapId);
+    if (before) requireSameTimingState(before.acquisition, acquired);
     const frameRuns = [];
-    for (let repeat = 0; repeat < repeats; repeat++) frameRuns.push(await sampleFrames(sampleCount));
+    for (let repeat = 0; repeat < repeats; repeat++) {
+      const acquisitionBefore = await timingReceipt(mapId, prepared);
+      requireSameTimingState(acquired, acquisitionBefore);
+      const samples = await sampleFrames(sampleCount);
+      const acquisitionAfter = await timingReceipt(mapId, prepared);
+      requireSameTimingState(acquired, acquisitionAfter);
+      frameRuns.push({ ...samples, acquisitionBefore, acquisitionAfter });
+    }
     const frames = combineFrameRuns(frameRuns);
     const row = await collectMap(mapId, frames);
+    row.acquisition = acquired;
     row.gate = evaluateQuality(row);
-    const before = baselineById.get(mapId);
     if (before) {
       const oldFrames = before.frames;
       const oldScene = before.scene;
@@ -663,7 +873,11 @@ try {
         instancedFamilyDelta: row.scene.instancedMeshNodes - oldScene.instancedMeshNodes,
         materialDelta: row.scene.materials - oldScene.materials,
         textureDelta: row.scene.textures - oldScene.textures,
+        renderMedianDeltaMs: round(frames.renderMedianMs - oldFrames.renderMedianMs),
+        renderP95DeltaMs: round(frames.renderP95Ms - oldFrames.renderP95Ms),
         pass: frames.medianMs <= oldFrames.medianMs + absoluteBudgetMs
+          && frames.renderMedianMs <= oldFrames.renderMedianMs + Math.max(0.25, oldFrames.renderMedianMs * 0.05)
+          && frames.renderP95Ms <= oldFrames.renderP95Ms + Math.max(0.5, oldFrames.renderP95Ms * 0.05)
           && row.scene.meshNodes <= oldScene.meshNodes + 3
           && row.scene.instancedMeshNodes <= oldScene.instancedMeshNodes + 3
           && row.scene.materials <= oldScene.materials
@@ -681,9 +895,11 @@ try {
     maxMeshFamilies: Math.max(...report.maps.map((row) => row.scene.meshNodes)),
     maxSceneTriangles: Math.max(...report.maps.map((row) => row.scene.triangles)),
     baselineFailures: report.maps.filter((row) => row.baseline && !row.baseline.pass).map((row) => row.id),
+    uncomparedMaps: report.maps.filter((row) => !row.baseline).map((row) => row.id),
     qualityFailures: report.maps.filter((row) => !row.gate.pass).map((row) => row.id),
   };
   report.pageErrors = pageErrors;
+  if (readBuildIndexHash() !== report.buildIndexHash) throw new Error('Production build changed during timing');
   fs.writeFileSync(path.join(outDir, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   console.log(`[map-audit] wrote ${path.join(outDir, 'report.json')}`);
   if (pageErrors.length) {
@@ -698,7 +914,23 @@ try {
     console.error(`[map-audit] environment quality gate failed: ${report.summary.qualityFailures.join(', ')}`);
     process.exitCode = 1;
   }
+} catch (error) {
+  report.acquisitionError = String(error);
+  report.pageErrors = pageErrors;
+  fs.writeFileSync(path.join(outDir, 'report.incomplete.json'), `${JSON.stringify(report, null, 2)}\n`);
+  throw error;
 } finally {
-  await browser.close();
-  await server.close();
+  try {
+    if (browser) await browser.close();
+  } finally {
+    try {
+      if (server?.close) await server.close();
+      else if (server) await new Promise((resolve, reject) => {
+        server.httpServer.close(error => error ? reject(error) : resolve());
+      });
+    } finally {
+      clearInterval(lockRefresher);
+      releaseCaptureLock();
+    }
+  }
 }

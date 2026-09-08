@@ -28,6 +28,7 @@ import { addT90SMLeftLauncherShelf, t90SMLeftCarrierRoof, t90SMLeftCarrierBreakp
 import { addT90SMRightLauncherBracket } from './t90SMXRightLauncherBracket.ts';
 import { addT90SMLeftSmokeMounts } from './t90SMXLeftSmokeMounts.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 const cylY=(radius:number,height:number,segments=24): THREE.BufferGeometry => KIT.cylY(radius,radius,height,segments);
@@ -268,7 +269,7 @@ function engineDeck(P: TankBuilderPort,y: number,rear: number,width: number): vo
 function bowGear(P: TankBuilderPort,y: number,z: number,modern: boolean,driverY=modern?1.54:1.50,driverZ=1.81,sourceM=false,finalBowStrip=true): void {
   for(const side of [-1,1]) {
     P.addEquipment('hullDark',cylZ(.09,.10,14),side*.85,y,z);
-    P.addEquipment('hullGlass',cylZ(.066,.015,16),side*.85,y,z+.062);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.015,16), 'headlight'),side*.85,y,z+.062);
     P.addEquipment('hullDetail',box(.27,.028,.28),side*.85,y+.115,z-.018,-.12);
     for(const dx of [-.105,.105])P.addEquipment('hullDetail',cylY(.013,.16,8),side*.85+dx,y+.034,z+.074);
     P.addEquipment('hullDetail',torus(.055,.020,12,6),side*.79,.64,z+.02);
@@ -662,7 +663,7 @@ function classicSensors(P: TankBuilderPort,d: Datum,mirror: number): void {
     const x=side*.82,z=1.65;
     onTurret(P,d,'turretDetail',box(.40,.27,.23),x,d.gun[1]-.02,z);
     onTurret(P,d,'turretDark',cylZ(.133,.025,20),x,d.gun[1]-.02,z+.127);
-    onTurret(P,d,'turretGlass',cylZ(.108,.012,24),x,d.gun[1]-.02,z+.145);
+    onTurret(P,d,'turretGlass',markVehicleNightLens(cylZ(.108,.012,24),'shtora'),x,d.gun[1]-.02,z+.145);
     onTurret(P,d,'turretDetail',box(.44,.028,.28),x,d.gun[1]+.132,z-.005);
     onTurret(P,d,'turretDetail',box(.16,.14,.18),x,d.gun[1]-.15,z-.19);
   }

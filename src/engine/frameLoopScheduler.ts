@@ -1,4 +1,14 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+
+export const PRESENTATION_MAX_FRAME_RATE = 60;
+export const MAX_CALIBRATED_FRAME_BUDGET_MS = 34;
+
+/** A render governor must not demand a cadence its frame owner cannot deliver. */
+export function presentationFrameBudgetMs(observedCadenceMs: number): number {
+  return Math.min(MAX_CALIBRATED_FRAME_BUDGET_MS,
+    Math.max(1000 / PRESENTATION_MAX_FRAME_RATE, observedCadenceMs));
+}
+
 type FrameCallback = (timestampMs: number) => void;
 type InputListener = () => void;
 
@@ -88,7 +98,7 @@ export function createFrameLoopScheduler({
   hasBackgroundWork = () => false,
   backgroundTick = null,
   idleIntervalMs = 1000,
-  maximumFrameRate = 60,
+  maximumFrameRate = PRESENTATION_MAX_FRAME_RATE,
   requestFrame = (callback) => requestAnimationFrame(callback),
   cancelFrame = (id) => cancelAnimationFrame(id),
   now = () => performance.now(),

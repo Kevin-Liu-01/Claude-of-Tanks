@@ -16,6 +16,7 @@
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { FITTINGS, KIT, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -1238,7 +1239,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
           const merkavaChassisHullCourse15 = (): void => {
             P.add('hullDetail', KIT.cylZ(0.05, 0.0675, 12), hx, hy + 0.02, hz, -0.3, 0, 0);
             P.add('hullDetail', KIT.xform(KIT.cylZ(0.032, 0.02, 12), 0, 0, 0.036), hx, hy + 0.02, hz, -0.3, 0, 0);
-            P.add('hullDark', KIT.xform(KIT.cylZ(0.013, 0.022, 12), 0, 0, 0.037), hx, hy + 0.02, hz, -0.3, 0, 0);
+            P.add('hullDark', KIT.xform(markVehicleNightLens(KIT.cylZ(0.013, 0.022, 12), 'headlight'), 0, 0, 0.037), hx, hy + 0.02, hz, -0.3, 0, 0);
             P.add('hullDetail', KIT.xform(box(0.013, 0.115, 0.013), 0, 0, 0.025), hx, hy + 0.02, hz, -0.3, 0, 0);
           };
           merkavaChassisHullCourse15();
@@ -1246,7 +1247,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
           // — the sky-mirror glass lens read as a bright blue tile on the sand ref)
           const merkavaChassisHullCourse16 = (): void => {
             P.add('hullDetail', KIT.cylZ(0.05, 0.0675, 12), hx, hy + 0.02, hz, -0.3, 0, 0);
-            P.add('hullDark', KIT.xform(KIT.cylZ(0.04, 0.02, 12), 0, 0, 0.036), hx, hy + 0.02, hz, -0.3, 0, 0);
+            P.add('hullDark', KIT.xform(markVehicleNightLens(KIT.cylZ(0.04, 0.02, 12), 'headlight'), 0, 0, 0.036), hx, hy + 0.02, hz, -0.3, 0, 0);
             P.add('hullDark', KIT.xform(box(0.02, 0.115, 0.02), 0, 0, 0.025), hx, hy + 0.02, hz, -0.3, 0, 0);
           };
           merkavaChassisHullCourse16();

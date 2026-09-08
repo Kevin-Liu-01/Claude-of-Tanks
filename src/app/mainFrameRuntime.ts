@@ -31,7 +31,7 @@ import type {
 
 interface FrameStudio {
   readonly active: boolean;
-  tick(dtSeconds: number): void;
+  tick(dtSeconds: number, frameWallDtSeconds?: number): void;
 }
 
 interface FrameTrace {
@@ -45,6 +45,7 @@ export interface MainFrameRuntimeOptions {
   game: MainGameState;
   scheduleFrame(): void;
   isGraphicsContextLost(): boolean;
+  syncViewportPixelRatio(): boolean;
   battleEntryLifecycle: BattleEntryLifecycle;
   getFx(): MainFxRuntime | null;
   getWorld(): MainWorld | null;
@@ -53,6 +54,7 @@ export interface MainFrameRuntimeOptions {
   getShotMode(): boolean;
   getShotHudFrame(): boolean;
   sniperFill: SniperFillRuntime;
+  updateNightLighting?(): void;
   resolveFxSubject(id: string): RuntimeValue;
   battleHudFrame: BattleHudFrameRuntime;
   lighting: MainLightingRuntime;
@@ -94,6 +96,7 @@ export function createMainFrameRuntime({
   game,
   scheduleFrame,
   isGraphicsContextLost,
+  syncViewportPixelRatio,
   battleEntryLifecycle,
   getFx,
   getWorld,
@@ -102,6 +105,7 @@ export function createMainFrameRuntime({
   getShotMode,
   getShotHudFrame,
   sniperFill,
+  updateNightLighting,
   resolveFxSubject,
   battleHudFrame,
   lighting,
@@ -129,6 +133,7 @@ export function createMainFrameRuntime({
   const required = [
     scheduleFrame,
     isGraphicsContextLost,
+    syncViewportPixelRatio,
     getFx,
     getWorld,
     getBaseFogDensity,
@@ -153,6 +158,7 @@ export function createMainFrameRuntime({
   let lastFov = camera.fov;
   let lastCinematicActive = false;
   let lastRenderedPhase = game.phase;
+  let viewportChanged = false;
 
   const noteFovPrimed = (fov: number): void => {
     lastFov = fov;
@@ -168,6 +174,7 @@ export function createMainFrameRuntime({
 
   const renderShotFrame = (
     dtSeconds: number,
+    frameWallDtSeconds: number,
     fx: MainFxRuntime | null,
     world: MainWorld | null,
   ): void => {
@@ -175,9 +182,10 @@ export function createMainFrameRuntime({
     world?.update(0, camera.position, forward, null);
     sniperFill.update();
     fx?.update(dtSeconds, game.shells, camera, resolveFxSubject);
+    updateNightLighting?.();
     if (getShotHudFrame()) battleHudFrame.redrawFrozen();
     lighting.update(true);
-    post.render(dtSeconds);
+    post.render(dtSeconds, frameWallDtSeconds);
   };
 
   const prepareGarageFrame = (nowMs: number, dtSeconds: number): boolean => {
@@ -231,6 +239,7 @@ export function createMainFrameRuntime({
   const renderPresentation = (
     frame: BattleFrameReceipt,
     dtSeconds: number,
+    frameWallDtSeconds: number,
   ): void => {
     const profileGarageReturn = game.phase === 'garage'
       && lastRenderedPhase !== 'garage'
@@ -241,14 +250,14 @@ export function createMainFrameRuntime({
       lastFov = camera.fov;
     }
     const garageShadowsDirty = game.phase === 'garage'
-      && (showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
+      && (viewportChanged || showroom.moving || pedestal.switchPending || isGaragePresentationDirty());
     lighting.setStaticPresentationDormant(
       game.phase === 'garage' && !garageShadowsDirty,
     );
     const lightingStartedAt = profileGarageReturn ? performance.now() : 0;
     lighting.update(false, dtSeconds);
     const postStartedAt = profileGarageReturn ? performance.now() : 0;
-    post.render(dtSeconds);
+    post.render(dtSeconds, frameWallDtSeconds);
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;
     if (game.phase === 'garage') clearGaragePresentationDirty();
     if (frame.inBattle) battleEntryLifecycle.noteBattleFrame();
@@ -282,7 +291,8 @@ export function createMainFrameRuntime({
     updateCinematicVeil(frame.killcamActive);
     sniperFill.update();
     updateWorldPresentation(frame, appliedDtSeconds, fx);
-    renderPresentation(frame, appliedDtSeconds);
+    updateNightLighting?.();
+    renderPresentation(frame, appliedDtSeconds, frameWallDtSeconds);
   };
 
   const tick = (nowMs: number): void => {
@@ -304,6 +314,13 @@ export function createMainFrameRuntime({
       return;
     }
 
+    viewportChanged = syncViewportPixelRatio();
+    if (viewportChanged && game.phase === 'garage') {
+      // Resizing clears the canvas. The same existing tick must paint rather
+      // than being skipped by the settled-Garage pacer. Do not start a loop.
+      garageFramePacer.noteActivity(nowMs);
+    }
+
     const fx = getFx();
     const world = getWorld();
 
@@ -313,12 +330,12 @@ export function createMainFrameRuntime({
 
     const studio = getStudio();
     if (studio.active) {
-      studio.tick(dtR);
+      studio.tick(dtR, frameWallDtS);
       return;
     }
 
     if (getShotMode()) {
-      renderShotFrame(dtR, fx, world);
+      renderShotFrame(dtR, frameWallDtS, fx, world);
       return;
     }
     renderLiveFrame(dtR, frameWallDtS, nowMs, fx);

@@ -1,6 +1,7 @@
 // Independent source-measured AW-labelled T-90 X. Analytic first-party
 // solids only: no source topology, old T-90 builder or runtime source loader.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
@@ -83,7 +84,7 @@ function deck(P:TankBuilderPort):void{
   }
   P.addEquipment('hullDetail',cylY(.294,.038,32).scale(1,1,.83),-.0561,1.494,1.6091);
   for(const x of [-.774,.771]){
-    P.addEquipment('hullDetail',cylZ(.066,.11,24),x,1.108,2.858);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.066,.11,24),'headlight'),x,1.108,2.858);
     for(const dx of [-.095,.095])P.addEquipment('hullDetail',beamBetween([x+dx,1.015,2.874],[x+dx,1.245,2.73],.009));
   }
   P.addEquipment('hullDetail',box(1.85,.03,.028),0,1.187,2.593);

@@ -8,9 +8,10 @@
  *   (EASU + RCAS)
  *
  * The scene renders into a quality-aware multisampled HalfFloat HDR target
- * with a DepthTexture, then resolves once into the composer's single-sampled
- * ping-pong buffers. This preserves real geometry/foliage edge coverage while
- * avoiding MSAA on every fullscreen post pass. OutputGradePass applies the
+ * with a DepthTexture, then the aerial pass reads its resolved color directly
+ * into the composer's single-sampled ping-pong buffers. This preserves real
+ * geometry/foliage edge coverage while avoiding MSAA on every fullscreen post
+ * pass. OutputGradePass applies the
  * renderer's exact tone mapping + output transfer and the display-space grade
  * in one draw; scope neighbor samples run through that same output transform.
  * SMAA and reconstruction still run last on the values the eye sees, so the
@@ -36,7 +37,6 @@
  */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import {
@@ -69,10 +69,16 @@ import {
   type ReconstructionMode,
 } from './renderScalePolicy.ts';
 import {
+  adaptiveFrameSeconds,
   AdaptiveQualityPolicy,
   type AdaptiveQualityAction,
 } from './adaptiveQualityPolicy.ts';
+import {
+  MAX_CALIBRATED_FRAME_BUDGET_MS,
+  presentationFrameBudgetMs,
+} from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
+import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -134,7 +140,7 @@ export interface PostRuntime {
   readonly dynScale: number;
   readonly perfTrim: number;
   warmFirstFrame(yieldBeforePass?: ((label: string) => Promise<void>) | null): Promise<PostWarmTiming[]>;
-  render(dt: number): void;
+  render(dt: number, frameWallDtSeconds?: number): void;
   setSize(width: number, height: number): void;
   prepareSoftParticles(): void;
   attachLateFxState(state: LateFxSoftStateInput | null | undefined): void;
@@ -349,12 +355,12 @@ const AERIAL_ZOOM_FLOOR = 0.26; // density multiplier floor at max zoom
 // (horizon ring, far hills) carry only low-frequency bakes — at x8 their
 // texel footprint is tens of screen pixels and the wall reads as smooth
 // vinyl. When the FOV drops toward scope range, the aerial pass now overlays
-// a WORLD-SPACE two-octave value noise (reconstructed from scene depth + the
+// a WORLD-SPACE value noise (reconstructed from scene depth + the
 // per-pixel view ray) onto far pixels: a luminance-only modulation, so the
 // backdrop's hue/art direction is untouched but the surface reads as forest/
 // meadow texture at any magnification. World-anchored => no screen-door
-// shimmer while panning, deterministic for captures. Zero effect in arcade
-// cameras (fov >= AERIAL_DETAIL_FOV) and on near geometry (< 220 m).
+// shimmer while panning, deterministic for captures. Scope starts at 90 m;
+// arcade retains a reduced far-field floor beyond 430 m.
 const AERIAL_DETAIL_FOV = 20; // deg — detail fades in below this FOV
 // r5 ("sniper x8: midfield grass is a flat yellow-green wash with no detail
 // texture; horizon rock band a formless gray gradient smear; far-tree
@@ -373,13 +379,12 @@ const AERIAL_DETAIL_FAR = 320; // m — full strength by here
 // r5: 0.26 → 0.34 — at 0.26 the overlay measurably existed but visually
 // vanished under the haze; x8 needs the full grain to read as surface.
 const AERIAL_DETAIL_AMP = 0.34; // peak luminance modulation (+/-17%)
-// r5 ARCADE FAR-FIELD SHARE ("winter alpine ring faces are untextured flat
-// matte facets at 1:1"): the establishing cameras (fov 45) had uDetailW = 0,
-// so the horizon ring rendered as bare gradients in every wide shot. Far
-// pixels now always carry a fraction of the detail overlay — fading in from
-// 430 m (past all gameplay-range geometry) so only backdrop surfaces (ring
-// walls, far forest combs) get re-textured; the finest octave stays gated to
-// scope FOVs (subpixel at establishing distance = shimmer while panning).
+// Retain the far-field floor in both arcade and scope. The old oblique plane
+// collapsed on certain slopes and painted fibers AFTER the materials/haze.
+// V9 Fjord EN surface samples measured 17.62x p90 projection stretch versus
+// 1.48x in WS; one EN face reached 16,430x. The horizon's own triplanar detail
+// cannot fix that second overlay. Four-corner volumetric noise below removes
+// its fixed blind direction without adding hashes or texture reads.
 const AERIAL_DETAIL_ARCADE = 0.55; // arcade-share of AERIAL_DETAIL_AMP
 const AERIAL_DETAIL_ARCADE_NEAR = 430; // m
 const AERIAL_DETAIL_ARCADE_FAR = 950; // m
@@ -883,9 +888,7 @@ const AerialShader = {
     uniform vec2 uInvSize;
     uniform float uFirefly;
     varying vec2 vUv;
-    // 2D value noise on a hashed integer lattice — smooth (quintic fade),
-    // tileless, cheap enough for a fullscreen pass that only pays it while
-    // scoped (uDetailW gates the whole block).
+    // The broad horizontal cloud shadow field keeps its existing 2D noise.
     float vhash( vec2 p ) {
       return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
     }
@@ -895,6 +898,32 @@ const AerialShader = {
       vec2 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
       return mix( mix( vhash( i ), vhash( i + vec2( 1.0, 0.0 ) ), u.x ),
                   mix( vhash( i + vec2( 0.0, 1.0 ) ), vhash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+    }
+    // Volumetric detail: interpolate the four corners of the containing
+    // tetrahedron, not eight cube corners or three projected planes. Each
+    // octave still pays four hashes/sines and no texture reads. The weights
+    // form a partition of unity, preserving the old [0,1] range and mean.
+    // Quintic coordinate fade joins cube faces smoothly; tetrahedral joins
+    // are continuous. Explicit x/y/z tie priority avoids degenerate corners.
+    float vhash3( vec3 p ) {
+      return fract( sin( dot( p, vec3( 127.1, 311.7, 74.7 ) ) ) * 43758.5453 );
+    }
+    float vnoise3( vec3 p ) {
+      vec3 i = floor( p );
+      vec3 f = fract( p );
+      vec3 u = f * f * f * ( f * ( f * 6.0 - 15.0 ) + 10.0 );
+      float xy = step( f.y, f.x );
+      float yz = step( f.z, f.y );
+      float xz = step( f.z, f.x );
+      vec3 a = vec3( xy * xz, ( 1.0 - xy ) * yz, ( 1.0 - xz ) * ( 1.0 - yz ) );
+      vec3 b = vec3( max( xy, xz ), max( 1.0 - xy, yz ), max( 1.0 - xz, 1.0 - yz ) );
+      float hi = max( u.x, max( u.y, u.z ) );
+      float lo = min( u.x, min( u.y, u.z ) );
+      float mid = u.x + u.y + u.z - hi - lo;
+      return vhash3( i ) * ( 1.0 - hi )
+           + vhash3( i + a ) * ( hi - mid )
+           + vhash3( i + b ) * ( mid - lo )
+           + vhash3( i + vec3( 1.0 ) ) * lo;
     }
     void main() {
       vec4 texel = texture2D( tDiffuse, vUv );
@@ -986,27 +1015,25 @@ const AerialShader = {
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
           texel.rgb = mix( texel.rgb, grey, hueW * gDom );
         }
-        // far-field detail (see AERIAL_DETAIL_* const block): world-anchored
-        // value noise re-textures backdrop surfaces the x8 scope magnifies
-        // past their bake frequency — and, at a reduced share, the horizon
-        // ring / far forest in ARCADE establishing shots (bare-gradient fix).
+        // Same arcade/scope amplitude, distances and chroma policy; sample
+        // true world volume so every slope retains two surface dimensions.
         {
           float dwS = uDetailW * smoothstep( ${AERIAL_DETAIL_NEAR.toFixed(1)}, ${AERIAL_DETAIL_FAR.toFixed(1)}, rayT );
           float dw = max( dwS, ${AERIAL_DETAIL_ARCADE.toFixed(2)}
             * smoothstep( ${AERIAL_DETAIL_ARCADE_NEAR.toFixed(1)}, ${AERIAL_DETAIL_ARCADE_FAR.toFixed(1)}, rayT ) );
           if ( dw > 0.003 ) {
             vec3 wp = uCamPos + ray * rayT;
-            // slope-aware planar coords: xz carries flat ground, the y term
-            // keeps texture alive on the near-vertical horizon-ring faces
-            vec2 dp = wp.xz + vec2( wp.y * 0.85, wp.y * 0.37 );
-            float dnM = vnoise( dp * ( 1.0 / 15.0 ) );
+            float dnM = vnoise3( wp * ( 1.0 / 15.0 ) );
             float dn = dnM * 0.42
-                     + vnoise( dp * ( 1.0 / 4.6 ) + vec2( 7.3, 2.9 ) ) * 0.28
-                     + vnoise( dp * ( 1.0 / 1.6 ) + vec2( 3.1, 9.7 ) ) * 0.17
-                     // finest octave is SCOPE-ONLY (subpixel grain shimmers
-                     // in arcade pans; under x8 it reads as grass/leaf grain)
-                     + ( vnoise( dp * ( 1.0 / 0.55 ) + vec2( 9.4, 4.2 ) ) - 0.5 ) * 0.13 * ( dwS / max( dw, 1e-3 ) )
+                     + vnoise3( wp * ( 1.0 / 4.6 ) + vec3( 7.3, 2.9, 5.1 ) ) * 0.28
+                     + vnoise3( wp * ( 1.0 / 1.6 ) + vec3( 3.1, 9.7, 2.3 ) ) * 0.17
                      + 0.065;
+            // Do not evaluate the zero-weight finest octave in arcade:
+            // twelve hashes there, sixteen in scope (previously sixteen).
+            if ( dwS > 0.0 ) {
+              dn += ( vnoise3( wp * ( 1.0 / 0.55 ) + vec3( 9.4, 4.2, 6.7 ) ) - 0.5 )
+                  * 0.13 * ( dwS / max( dw, 1e-3 ) );
+            }
             texel.rgb *= 1.0 + ( dn - 0.5 ) * ${AERIAL_DETAIL_AMP.toFixed(3)} * dw;
             // green-keyed chroma octave: swings far grass/canopy between
             // olive and warm dry-brown at ~15 m patch scale, so magnified
@@ -1476,78 +1503,6 @@ function requireDepthTexture(
 }
 
 /**
- * Render the world into a dedicated multisampled HDR target, resolve it, then
- * copy the resolved color into the composer's current read buffer. Keeping the
- * composer buffers single-sampled is important: otherwise every aerial/AO/
- * bloom/grade/SMAA fullscreen draw would pay MSAA bandwidth for no visual gain.
- */
-class SceneAAPass extends RenderPass {
-  readonly sceneTarget: THREE.WebGLRenderTarget;
-  readonly copyMaterial: THREE.ShaderMaterial;
-  readonly copyQuad: FullScreenQuad;
-
-  constructor(
-    scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
-    target: THREE.WebGLRenderTarget,
-  ) {
-    super(scene, camera);
-    this.sceneTarget = target;
-    this.copyMaterial = new THREE.ShaderMaterial({
-      name: 'SceneAAPass.Copy',
-      uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
-      vertexShader: CopyShader.vertexShader,
-      fragmentShader: CopyShader.fragmentShader,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.NoBlending,
-      toneMapped: false,
-    });
-    this.copyMaterial.uniforms.tDiffuse.value = target.texture;
-    this.copyQuad = new FullScreenQuad(this.copyMaterial);
-  }
-
-  setSize(width: number, height: number): void {
-    this.sceneTarget.setSize(width, height);
-  }
-
-  setSamples(samples: number): void {
-    if (this.sceneTarget.samples === samples) return;
-    this.sceneTarget.samples = samples;
-    // Sample count is part of the framebuffer allocation. Dispose only the
-    // GPU objects; Three recreates them lazily with the same target/textures.
-    this.sceneTarget.dispose();
-  }
-
-  render(
-    renderer: THREE.WebGLRenderer,
-    _writeBuffer: THREE.WebGLRenderTarget,
-    readBuffer: THREE.WebGLRenderTarget,
-  ): void {
-    const oldAutoClear = renderer.autoClear;
-    const oldLayerMask = this.camera.layers.mask;
-    renderer.autoClear = false;
-    try {
-      // Layer 30 is transparent combat media and must wait until the opaque
-      // scene depth is resolved. It is deliberately absent from this pass.
-      this.camera.layers.disable(LATE_FX_LAYER);
-      renderer.setRenderTarget(this.sceneTarget);
-      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-      renderer.render(this.scene, this.camera);
-
-      // One cheap full-screen draw hands the resolved scene to the composer's
-      // single-sampled ping-pong chain.
-      this.copyMaterial.uniforms.tDiffuse.value = this.sceneTarget.texture;
-      renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
-      this.copyQuad.render(renderer);
-    } finally {
-      this.camera.layers.mask = oldLayerMask;
-      renderer.autoClear = oldAutoClear;
-    }
-  }
-}
-
-/**
  * Composite transparent combat media after distance haze and GTAO. Puffs
  * already fog themselves at their own camera-space depth; running them before
  * the depth-driven post passes made the mountain/terrain depth behind a puff
@@ -1555,7 +1510,7 @@ class SceneAAPass extends RenderPass {
  * smoke column. This pass avoids that category error and gives the shaders a
  * resolved scene-depth source for soft intersections.
  */
-class LateFxPass extends Pass {
+export class LateFxPass extends Pass {
   readonly scene: THREE.Scene;
   readonly camera: THREE.PerspectiveCamera;
   readonly sceneTarget: THREE.WebGLRenderTarget;
@@ -1567,6 +1522,7 @@ class LateFxPass extends Pass {
   prepared: boolean;
   readonly copyMaterial: THREE.ShaderMaterial;
   readonly copyQuad: FullScreenQuad;
+  directColorSource: SceneAerialPass | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -1608,6 +1564,7 @@ class LateFxPass extends Pass {
     if (this.softState === softState) return;
     this.softState = softState || null;
     this.prepared = false;
+    this.directColorSource?.endDirectColorFrame();
     if (this.softState) {
       this.softState.uSoftViewport.value.set(this.target.width, this.target.height);
       this.softState.uCameraNear.value = this.camera.near;
@@ -1615,6 +1572,7 @@ class LateFxPass extends Pass {
     }
   }
   setSize(width: number, height: number): void {
+    this.directColorSource?.endDirectColorFrame();
     this.target.setSize(width, height);
     if (this.softState) this.softState.uSoftViewport.value.set(width, height);
     this.prepared = false;
@@ -1636,9 +1594,23 @@ class LateFxPass extends Pass {
     writeBuffer: THREE.WebGLRenderTarget,
     readBuffer: THREE.WebGLRenderTarget,
   ): void {
+    const directColor = this.directColorSource?.consumeDirectColor(this.target, readBuffer) === true;
     const softState = this.softState;
     if (!softState || !softState.isActive()) {
       this.needsSwap = false;
+      // Activity can disappear after Aerial prepared color. Restore the normal
+      // unswapped composer input instead of exposing its previous-frame color.
+      if (directColor) {
+        const oldAutoClear = renderer.autoClear;
+        renderer.autoClear = false;
+        try {
+          this.copyMaterial.uniforms.tDiffuse.value = this.target.texture;
+          renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+          this.copyQuad.render(renderer);
+        } finally {
+          renderer.autoClear = oldAutoClear;
+        }
+      }
       return;
     }
     this.needsSwap = true;
@@ -1652,9 +1624,11 @@ class LateFxPass extends Pass {
       // hardware depth testing uses target.depthTexture: source and attached
       // destination are distinct, so there is no framebuffer feedback loop.
       renderer.setRenderTarget(this.target);
-      renderer.clear(true, true, true);
-      this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
-      this.copyQuad.render(renderer);
+      renderer.clear(!directColor, true, true);
+      if (!directColor) {
+        this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
+        this.copyQuad.render(renderer);
+      }
       renderer.copyTextureToTexture(this.sceneDepth, this.targetDepth);
       this.softDepthCopies++;
       softState.uSceneDepth.value = this.sceneDepth;
@@ -1749,13 +1723,15 @@ export function createPost(
     renderer.domElement.dataset.postAa = 'smaa-high+fsr1';
   };
   publishAAState();
-  composer.addPass(sceneAA); // 1. multisampled scene + single resolve/copy
+  composer.addPass(sceneAA); // 1. multisampled scene + single resolve
 
   // 2. depth-driven aerial perspective — one distance curve for every
   // material (see AerialShader above). Runs in linear HDR space, pre-bloom.
   // The sampled depth belongs to SceneAAPass' independent target, so neither
   // composer ping-pong buffer can form a framebuffer feedback loop.
-  const aerial = new ShaderPass(AerialShader);
+  const aerial = new SceneAerialPass(AerialShader, sceneTarget);
+  sceneAA.directColorConsumer = aerial;
+  lateFx.directColorSource = aerial;
   aerial.uniforms.tDepth.value = sceneDepth;
   composer.addPass(aerial);
 
@@ -2141,9 +2117,10 @@ export function createPost(
   // The rebuild keeps the stepped/rate-limited/retina-fenced shape and fixes
   // the decision logic:
   //  - BUDGET-RELATIVE thresholds: the frame budget is the best stable
-  //    display cadence observed this session, never faster than 8.5 ms and
-  //    capped at 34 ms. A 60 Hz panel therefore targets 16.7 ms while a
-  //    120 Hz panel targets 8.5 ms. Keeping the best cadence prevents a live
+  //    display cadence observed this session, bounded by the canonical
+  //    presentation cap and the existing 34 ms slow-display ceiling. Short
+  //    catch-up intervals on a fast panel cannot demand a rate above the
+  //    scheduler's deliberate cap. Keeping the best cadence prevents a live
   //    battle slowdown from redefining 12-30 fps as the new healthy target.
   //  - MISS-RATIO evidence: a step needs the EMA level AND the share of
   //    frames blowing budget x 1.35 to agree (down needs > 15% missed, up
@@ -2179,8 +2156,7 @@ export function createPost(
   // evidence can safely begin sooner. Recovery remains backoff-protected.
   const DYN_INTERVAL_S = 1.5;
   const DYN_WARMUP_S = 3; // ignore boot/shader-compile turbulence
-  const DYN_TARGET_MS = 8.5; // 120 fps budget (+~2% vsync slack)
-  const DYN_BUDGET_MAX_MS = 34; // starved cadences never fake a lax budget
+  const DYN_TARGET_MS = presentationFrameBudgetMs(0);
   const DYN_MISS_AT = 1.12; // a frame > budget x this counts as missed
   const DYN_MIN_WINDOW_FRAMES = 30; // no decision on a thin evidence window
   // High starts at its complete 1.5x configured ratio. Lower/mobile presets
@@ -2201,7 +2177,7 @@ export function createPost(
   let dynWinFrames = 0; // evidence window since the last decision
   let dynWinMisses = 0;
   let dynBudgetMs = DYN_TARGET_MS;
-  let dynBestCadenceMs = DYN_BUDGET_MAX_MS;
+  let dynBestCadenceMs = MAX_CALIBRATED_FRAME_BUDGET_MS;
   let dynLastDecision = 0;
   let dynPin: number | null = null; // QA capture pin (see pinDynScale below); null = live
   // Battlefield/roster construction intentionally monopolizes frames behind
@@ -2292,7 +2268,7 @@ export function createPost(
   /** Collect one frame of evidence and ask the pure policy for a bounded step. */
   function dynGovern(dt: number): void {
     if (adaptiveSuspended) return;
-    if (!(dt > 0) || dt > 0.25) return; // hitches/tab-switch: not a trend
+    if (!(dt > 0)) return; // adaptiveFrameSeconds excludes warm/hitch samples
     // rAF-starvation fallback frames (main.ts ticks hidden documents at
     // ~10 Hz) carry loop cadence, not GPU cost — they must never govern.
     if (document.hidden) return;
@@ -2330,8 +2306,7 @@ export function createPost(
     const sorted = dynRingScratch.subarray(0, dynRingN).sort();
     const p10 = sorted[Math.floor(dynRingN * 0.10)];
     dynBestCadenceMs = Math.min(dynBestCadenceMs, p10);
-    dynBudgetMs = Math.min(DYN_BUDGET_MAX_MS,
-      Math.max(DYN_TARGET_MS, dynBestCadenceMs));
+    dynBudgetMs = presentationFrameBudgetMs(dynBestCadenceMs);
     const missRatio = dynWinMisses / dynWinFrames;
     // perf-governor r2: achieved fps this window (counted frames over counted
     // time — >250 ms hitch frames are excluded from both, so a uniform
@@ -2367,7 +2342,7 @@ export function createPost(
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynBudgetMs = DYN_TARGET_MS;
-    dynBestCadenceMs = DYN_BUDGET_MAX_MS;
+    dynBestCadenceMs = MAX_CALIBRATED_FRAME_BUDGET_MS;
     dynLastDecision = dynClock;
     renderer.domElement.dataset.perfTrim = '0';
     applyAoEnabled();
@@ -2435,16 +2410,29 @@ export function createPost(
   }
 
   /** Complete allocation-free post transaction for one rendered frame. */
-  function renderFrame(dt: number): void {
+  function renderFrame(dt: number, frameWallDtSeconds = dt): void {
     // A governor resize must land before any pass reads resolution uniforms.
-    dynGovern(dt);
+    // Animation stays bounded; cadence and hitch filtering need actual time.
+    dynGovern(adaptiveFrameSeconds(dt, frameWallDtSeconds));
     updateAerialZoom();
     grade.uniforms.uExposure.value = scene.userData.postExposure || 1;
     aerial.uniforms.uCloudShade.value = scene.userData.cloudShadeAmp ?? CLOUD_SHADE_DEFAULT;
     updateScopeGrade();
     updateAerialFogColors();
     updateAerialCameraBasis();
-    composer.render(dt);
+    // Only this complete frame transaction can bypass LateFX's input copy.
+    // Individual warm/debug renders deliberately keep the original path.
+    const passes = composer.passes;
+    const directColor = passes[0] === sceneAA && passes[1] === aerial
+      && passes[2] === gtao && passes[3] === lateFx
+      && sceneAA.enabled && aerial.enabled && !gtao.enabled && lateFx.enabled
+      && lateFx.softState?.isActive();
+    aerial.beginDirectColorFrame(directColor ? lateTarget : null);
+    try {
+      composer.render(dt);
+    } finally {
+      aerial.endDirectColorFrame();
+    }
   }
 
   // Live preset switching (settings UI writes quality.setPresetName): retarget
@@ -2510,6 +2498,7 @@ export function createPost(
      * alongside this — the composer is the single render entry point
      * (ARCHITECTURE.md §4 step 10).
      * @param {number} dt - render delta time in seconds (forwarded to passes)
+     * @param {number} frameWallDtSeconds - raw main-loop gap for quality sampling
      * @returns {void}
      */
     render: renderFrame,
@@ -2524,6 +2513,9 @@ export function createPost(
      * @returns {void}
      */
     setSize(w, h) {
+      qualityPolicy.reconcileDynamicScaleFloor(
+        dynamicScaleFloor(renderer.getPixelRatio(), preset),
+      );
       applySize(w, h);
     },
 

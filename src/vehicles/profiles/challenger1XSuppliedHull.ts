@@ -1,6 +1,7 @@
 // Independent first-party construction from the owner-selected file's scalar
 // planes, circular sections and hardware dimensions. No source topology.
 import * as THREE from 'three';
+import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { roofSheet, beamBetween } from './measuredPrimitives.ts';
@@ -101,7 +102,7 @@ function frontGuards(P:TankBuilderPort,side:number):void{
   ],m(.48)));
   caseBox(P,side*47.3,54.02,82.0,17.7,7.79,11.6);
   equipment(P,cylZ(m(3.7),m(2.1),28),side*47.3,54.7,86.1);
-  equipment(P,cylZ(m(3.05),m(.45),28),side*47.3,54.7,87.24,'hullGlass');
+  equipment(P,markVehicleNightLens(cylZ(m(3.05),m(.45),28),'headlight'),side*47.3,54.7,87.24,'hullGlass');
   for(const dx of [-6.4,6.4])caseBox(P,side*47.3+dx,54.8,84,1.0,7.8,7.5);
   caseBox(P,side*47.3,58.0,84,12.8,1.0,7.5);
   equipment(P,cylX(m(1.4),m(5.4),20),side*63.0,54.2,82.4);

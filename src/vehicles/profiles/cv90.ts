@@ -143,7 +143,7 @@ function buildCv90Hull(P: CvBuilderPort): void {
     P.add('hullDetail', box(0.020, 0.18, 0.40), 1.455, 1.39, -2.63 + index * 0.10);
   }
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.13, r: 0.050,
       guard: true, rake: -0.30, seed: 900 + side,
     }), side * 1.06, 1.39, 2.72, [-0.30, 0, 0]);
@@ -435,7 +435,7 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
     P.add('hullDetail', box(1.32, 0.020, 0.052), -0.75, 1.859, 0.75 - index * 0.145);
   }
   for (const side of [-1, 1]) {
-    mount(P, 'hull', FITTINGS.lightCluster({
+    mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 2, spacing: 0.14, r: 0.052,
       guard: true, rake: -0.34, seed: 904 + side,
     }), side * 1.15, 1.47, 2.91, [-0.33, 0, 0]);

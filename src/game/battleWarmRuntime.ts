@@ -805,7 +805,9 @@ export async function warmNetworkOpeningEffects({
     post.prepareSoftParticles();
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
     fx.group.visible = true;
-    compilePrograms(fx.group);
+    // Do not subtree-compile this scene-attached root: Three counts its lights
+    // twice. Existing pools were submitted by the covered scene warm; the real
+    // draw below warms the production pass variants and their buffers.
     // A combined-layer renderer.render is NOT equivalent: the live late pass
     // uses layer 30 alone, separate light/program variants and a depth copy.
     warmRender();

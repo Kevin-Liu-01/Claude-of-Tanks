@@ -5,6 +5,7 @@
 // indicator. DOM/canvas only — no scene objects.
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
+import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
@@ -28,6 +29,7 @@ import type { DriveTelemetry } from './driveTelemetry.ts';
 import type { HitEventPresentation } from './hitEventFormat.ts';
 import type { ShotInfoRuntime } from './shotInfo.ts';
 import type { SpectatorCardPayload } from './spectatorSwitcher.ts';
+import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
 import {
   minimapAngleForDirection,
   minimapYawForHeading,
@@ -250,6 +252,7 @@ interface HudMinimapSnapshot {
   renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   exclude?: THREE.Object3D[];
+  requireTextured?: boolean;
 }
 
 interface HudHitEvent extends HitEventPresentation {
@@ -487,7 +490,8 @@ export interface HudRuntime {
   ): void;
   preloadMinimapAsset(src: string): Promise<HTMLImageElement>;
   buildMinimapFromAsset(heightField: HudHeightField, src: string): Promise<boolean>;
-  exportMinimapBackground(type?: string, quality?: number): string | null;
+  exportMinimapBackground(type?: string, quality?: number, requireTextured?: boolean): string | null;
+  getMinimapCaptureReceipt(): MinimapCaptureReceipt | null;
   setDamagePanel(panel: DamagePanelController): void;
   forceAimDisplay(frame: HudAimInput): void;
 }
@@ -2311,6 +2315,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // Keeping the decoded baked image as the draw source avoids iPad Safari's
   // memory-pressure canvas purge, which left live blips over a blank panel.
   let mmBg: HTMLCanvasElement | HTMLImageElement | null = null;
+  let mmCaptureReceipt: MinimapCaptureReceipt | null = null;
 
   // --- internal state ---
   let mode: HudMode = 'hidden';
@@ -4278,13 +4283,16 @@ export function initHud(bus: EventBus): HudRuntime {
     snap: HudMinimapSnapshot | null | undefined,
     N0: number,
   ): HTMLCanvasElement | null {
-    try {
+    return captureMinimapScene(snap?.requireTextured === true, () => {
       if (!snap || !snap.renderer || !snap.scene) return null;
       // r7: SUPERSAMPLE the one-time capture at 2x the display resolution —
       // the caller downsamples it, anti-aliasing tree crowns/road edges into
       // the higher-detail satellite look the flat 1x pass lacked.
       const N = N0 * 2;
       const { renderer, scene, exclude } = snap;
+      if (snap.requireTextured && renderer.getContext().isContextLost()) {
+        throw new Error('WebGL context is lost during minimap capture');
+      }
       const half = mapWorldSize / 2;
       // A straight down-look with +Z as screen-up naturally puts world -X on
       // screen-right (Three.js's right-handed lookAt basis). Keep that native
@@ -4354,9 +4362,7 @@ export function initHud(bus: EventBus): HudRuntime {
       }
       x2.putImageData(img, 0, 0);
       return c;
-    } catch (e) {
-      return null; // procedural cartography fallback
-    }
+    });
   }
 
   // MAP-CONFIG WIRING: per-map minimap palette (src/world/maps/*.js cfg.minimap)
@@ -4423,18 +4429,28 @@ export function initHud(bus: EventBus): HudRuntime {
     patches: MapDisc[] | undefined,
     palette: HudMinimapPalette,
   ): void {
-    if (!patches) return;
+    if (!patches?.length) return;
     context.fillStyle = palette.water;
-    context.strokeStyle = palette.waterStroke;
-    context.lineWidth = 0.8;
+    // One nonzero fill unions consistently wound lake lobes: overlapping
+    // construction patches must not add dark seams or double their opacity.
+    // The terrain shoreline supplies the bank detail without a diagram border.
+    context.beginPath();
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
-      const point = worldToMap(patch.x, patch.z);
-      context.beginPath();
-      context.arc(point[0], point[1], (patch.r / mapWorldSize) * MM, 0, Math.PI * 2);
-      context.fill();
-      context.stroke();
+      // Project every WORLD-space shoreline vertex through the same -X/right,
+      // +Z/up basis as the terrain raster and tank markers. Offsetting a map
+      // circle by +cos(angle) would mirror the asymmetric capes and coves.
+      for (let vertex = 0; vertex < SHORELINE_SEGMENTS; vertex++) {
+        const angle = vertex / SHORELINE_SEGMENTS * Math.PI * 2;
+        const radius = shorelineRadiusAt(patch, angle);
+        const point = worldToMap(patch.x + Math.cos(angle) * radius,
+          patch.z + Math.sin(angle) * radius);
+        if (vertex === 0) context.moveTo(point[0], point[1]);
+        else context.lineTo(point[0], point[1]);
+      }
+      context.closePath();
     }
+    context.fill();
   }
 
   function mixedForestFill(color: string): string {
@@ -4642,6 +4658,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // floor so clusters merge into readable blocks.
     paintMinimapBuildings(octx, f.buildings, pal);
     mmBg = out;
+    mmCaptureReceipt = { source: snapBg ? 'scene' : 'procedural',
+      generation: mmBuildGeneration, width: out.width, height: out.height };
   }
 
   function preloadMinimapAsset(src: string): Promise<HTMLImageElement> {
@@ -4678,6 +4696,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // Draw the decoded asset directly. A second offscreen canvas duplicates
     // the pixels and can be silently purged by iPadOS Safari under WebGL
     // pressure; the retained Image remains re-decodable by the browser.
+    mmCaptureReceipt = { source: 'asset', generation,
+      width: image.naturalWidth, height: image.naturalHeight };
     mmBg = image;
     drawMinimapBackground();
     mmDirty = true;
@@ -5948,6 +5968,7 @@ export function initHud(bus: EventBus): HudRuntime {
       snap?: HudMinimapSnapshot | null,
     ) {
       mmBuildGeneration++;
+      mmCaptureReceipt = null;
       buildMinimapBg(heightField, features, palette, snap);
       drawMinimapBackground();
       mmDirty = true;
@@ -5960,7 +5981,10 @@ export function initHud(bus: EventBus): HudRuntime {
       return installMinimapAsset(heightField, src, generation);
     },
 
-    exportMinimapBackground(type = 'image/webp', quality = 0.92) {
+    getMinimapCaptureReceipt: () => mmCaptureReceipt ? { ...mmCaptureReceipt } : null,
+
+    exportMinimapBackground(type = 'image/webp', quality = 0.92, requireTextured = false) {
+      if (requireTextured) requireSceneMinimap(mmCaptureReceipt, mmBuildGeneration);
       if (!mmBg) return null;
       if (mmBg instanceof HTMLCanvasElement) return mmBg.toDataURL(type, quality);
       const out = document.createElement('canvas');
@@ -6029,6 +6053,7 @@ export function initHud(bus: EventBus): HudRuntime {
       getMinimapBackgroundDataUrl: (type, quality) =>
         hud.exportMinimapBackground(type, quality),
       getMinimapState: () => ({
+        capture: hud.getMinimapCaptureReceipt(),
         rotationRad: 0,
         rotationDeg: 0,
         orientationSource: 'north-up',

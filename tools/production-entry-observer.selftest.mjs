@@ -156,6 +156,7 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
   const compile = browserFixture();
   const fields = ['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
     'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
+    'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
     'pollMs', 'maxPollMs', 'pollCount', 'yields'];
   const row = Object.fromEntries(fields.map((key) => [key, 2]));
   compile.context.window.__NETWORK_LOAD.programCompile = {

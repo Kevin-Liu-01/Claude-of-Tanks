@@ -31,8 +31,21 @@ assert.equal(
 );
 assert.equal(
   digest(bakeCumulusPixels(64, 64, config)),
-  '302872d5fc762a9d5fec7d31b24b216f09c6863a03fa73cfc1e00e10f6e59df9',
-  'cumulus pixels remain deterministic across worker extraction',
+  'ae6f83e53b294f0babcc0a382dc51d346da576bfbfcfacd69cdddc1fd6500ee9',
+  'coherent periodic cumulus pixels remain byte-identical in main and worker bakes',
 );
+
+const cumulus = bakeCumulusPixels(128, 128, config);
+assert.equal(cumulus.byteLength, 128 * 128 * 4, 'richer billows do not add texture channels or size');
+let covered = 0;
+let dense = 0;
+for (let i = 3; i < cumulus.length; i += 4) {
+  covered += Number(cumulus[i] > 12);
+  dense += Number(cumulus[i] > 100);
+}
+assert.ok(covered / (128 * 128) > 0.35 && covered / (128 * 128) < 0.55,
+  'fair-weather cloud banks retain generous open-sky gaps');
+assert.ok(dense / (128 * 128) > 0.10 && dense / (128 * 128) < 0.25,
+  'the deck has coherent opaque bodies without becoming uniform overcast');
 
 console.log('skyCloudBake.selftest: deterministic cirrus and cumulus bytes passed');
