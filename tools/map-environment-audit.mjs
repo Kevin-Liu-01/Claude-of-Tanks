@@ -10,7 +10,10 @@
 //   node tools/map-environment-audit.mjs --poses=/path/to/matched/shots --shots
 //   node tools/map-environment-audit.mjs --maps=fjord,winter --shots --horizon-quadrants
 //   node tools/map-environment-audit.mjs --maps=fjord --shots --horizon-only --horizon-scopes
+//   node tools/map-environment-audit.mjs --shots --establishing-only
 //   node tools/map-environment-audit.mjs --tier=mobile --width=1024 --height=768 --shots
+// --establishing-only captures one canonical wide shot per map, requires --shots,
+// and rejects --horizon-only, --horizon-scopes, or --horizon-quadrants.
 //
 // The report intentionally combines authored intent (config/features), built
 // scene complexity, renderer counters, and steady-frame samples. Screenshots
@@ -37,7 +40,10 @@ import {
   requireSameTimingGarageArchive,
   captureTimingPhaseOwnership, requireTimingPhaseOwnership,
 } from './map-environment-acquisition.mjs';
-import { selectStandView, stageHorizonScopeCapture, restoreHorizonArcadeCapture } from './environment-shot-camera.mjs';
+import {
+  selectStandView, selectHorizonScopeTarget, resolveEnvironmentShotModes,
+  stageHorizonScopeCapture, restoreHorizonArcadeCapture,
+} from './environment-shot-camera.mjs';
 import { evaluateQuality } from './map-environment-quality.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
@@ -62,11 +68,7 @@ const unknown = requested.filter((id) => !MAP_IDS.includes(id));
 if (unknown.length) throw new Error(`Unknown map ids: ${unknown.join(', ')}`);
 
 const outDir = path.resolve(ROOT, valueArg('out', '.qa-map-environment'));
-const captureShots = flagArg('shots');
-const horizonOnly = flagArg('horizon-only');
-const horizonScopes = flagArg('horizon-scopes');
-const horizonQuadrants = flagArg('horizon-quadrants') || horizonOnly || horizonScopes;
-if ((horizonOnly || horizonScopes) && !captureShots) throw new Error('Horizon capture options require --shots');
+const { captureShots, establishingOnly, horizonOnly, horizonScopes, horizonQuadrants } = resolveEnvironmentShotModes(args);
 const enforceGate = flagArg('gate');
 const includeInventory = flagArg('inventory');
 const syncGpu = flagArg('sync-gpu');
@@ -112,7 +114,7 @@ const report = {
   revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
   dirtyPaths: execFileSync('git', ['status', '--short'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean),
   viewport: { width, height, dpr: 1 },
-  sampleCount, repeats, syncGpu, tier, horizonOnly, horizonScopes,
+  sampleCount, repeats, syncGpu, tier, establishingOnly, horizonOnly, horizonScopes,
   acquisition,
   buildIndexHash: readBuildIndexHash(),
   captureLock: 'cot-shots',
@@ -454,6 +456,7 @@ async function captureMapShots(mapId) {
   const dir = path.join(outDir, 'shots', mapId);
   fs.mkdirSync(dir, { recursive: true });
   await captureEvidenceShot(mapId, 'establishing');
+  if (establishingOnly) return;
 
   if (horizonQuadrants) {
     for (const [x, z] of [[300, 300], [-300, 300], [-300, -300], [300, -300]]) {
@@ -474,7 +477,7 @@ async function captureMapShots(mapId) {
       const name = `horizon-${x > 0 ? 'e' : 'w'}${z > 0 ? 'n' : 's'}`;
       await captureEvidenceShot(mapId, name, false);
       if (horizonScopes) {
-        const contract = await page.evaluate(stageHorizonScopeCapture, { mapId });
+        const contract = await page.evaluate(stageHorizonScopeCapture, selectHorizonScopeTarget(mapId));
         // Scope grade approaches its target over several genuine renders.
         await new Promise((resolve) => setTimeout(resolve, 350));
         await captureEvidenceShot(mapId, `${name}-scope`, false);
