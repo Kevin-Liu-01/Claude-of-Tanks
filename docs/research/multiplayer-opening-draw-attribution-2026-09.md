@@ -130,3 +130,63 @@ The previous full `npm test` run remains blocked in
 fingerprint mismatch (`27bb658d` actual, `ffbd40d4` expected). No vehicle
 source or receipt is changed by this checkpoint, and the full suite is not
 reported as green. Raw QA artifacts remain untracked and outside the release.
+
+## Rejected atlas-upload scheduling pilot
+
+On 2026-09-08 a candidate explicitly uploaded the six final particle atlas
+textures after CPU baking, with one paint opportunity after each native
+`renderer.initTexture` call, before staging any live pooled effects. It kept
+the exact texture identities, samplers, compositor chain and quality. Its
+lease checks covered abort, entry invalidation and renderer/context renewal.
+
+The candidate passed the particle, covered warmup, observer, entry-lifecycle
+and network-presentation selftests, typecheck/core-unused and production build.
+Independent review found no correctness blocker. Changed-source React Doctor
+scored 84/100: two intentional sequential-await warnings (the upload loop and
+its serial lifecycle test) and a JSON-boundary assertion in the observer test.
+No rule was suppressed. Those checks establish correctness, not a speedup.
+
+The native two-client run used the same local in-memory signaling, cached
+Winter clear/day, high-quality scale-1 entry protocol as the preceding local
+checkpoint. Both contexts used the same Apple M5 Max/Metal machine. The exact
+build was `v1.0.0+g7a43597e9.dirty`, based on
+`7a43597e9d2415b1b64b9d265367a2da626210d8`, with document SHA-256
+`998418c1dd99819c494fe9604c8b8a480b02df71160bcf657bca5fa6cb4dad46`.
+The wrapper verified unchanged source/build identity across the capture.
+
+| Measurement | Previous host / guest | Candidate host / guest |
+| --- | ---: | ---: |
+| Launch to first hidden loader | 1,679.4 / 1,779.4 ms | 1,844.6 / 1,927.3 ms |
+| Combat warm stage | 92 / 156 ms | 132 / 209 ms |
+| Opening compositor total | 56.0 / 99.6 ms | 60.3 / 92.7 ms |
+| SceneAA call | 18.0 / 46.3 ms | 18.6 / 44.0 ms |
+| LateFX call | 37.4 / 52.5 ms | 41.3 / 48.0 ms |
+| Explicit six-atlas upload calls, total | Not measured | 12.9 / 12.3 ms |
+| Slowest explicit atlas upload call | Not measured | 5.5 / 5.1 ms |
+
+Each candidate client recorded six uploads and six paint opportunities. These
+are synchronous native-call durations, not GPU-completion measurements.
+Both clients showed `5,4,3,2,1`, moved and fired, returned to Garage and closed
+their rooms. Page errors were zero; neither client needed black-scene rescue.
+The owned browser and server processes exited. The retained screenshots show
+the tank, world and HUD; this is not a pixel-parity or exhaustive visual gate.
+Follow-on adaptive-low scale-1 movement p99 gaps were 39.3/36.5 ms, with
+54.9/41.8 ms maxima, not evidence of consistent frame budgets.
+
+**Decision: do not ship this scheduling change.** The explicit uploads were
+small, LateFX remained expensive, and combat warming acquired additional waits.
+One before/after run cannot prove a regression or its cause, but it provides
+no convincing performance benefit to justify adding the six waits. It also
+does not explain the historical 214–319 ms stalls. The seven candidate source
+and test files were restored to the current main bytes; this release adds only
+this evidence note. Earlier loading/countdown/cleanup improvements stay intact.
+
+The rejected implementation remains recoverable locally in
+`.qa-entry/atlas-upload-timings-r1/candidate.patch` (SHA-256
+`8dd43161a6c013e090edec2fa925f5430e46813391ec5e4168e971ddc6f726dd`).
+Its complete native receipt is in the same directory as `report.json`
+(SHA-256 `b49ea737f08ce46ec80ee8a5695a6e3af6eac3945f81ef2b8ee777ca74d7c62a`).
+These local artifacts are deliberately not part of the public repository.
+Post-withdrawal runtime and tool bytes match main; focused checks and the
+789-entry registry discovery pass. The unrelated full-suite vehicle failure
+described above remains unresolved and is not reported as passing.
