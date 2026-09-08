@@ -1873,6 +1873,7 @@ export function createPost(
   // composition, so the wrapper below lets the stock pass do all the work,
   // reprojects pdRenderTarget into a ping-pong history, then reproduces the
   // two-step Default composition (copy + multiply-blend) fed by the history.
+  let resetTemporalAoHistory = (): void => {};
   {
     if (GTAOPass.OUTPUT.Off !== -1 || GTAOPass.OUTPUT.Default !== 0) {
       throw new Error('post.ts: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r3 render wrapper');
@@ -1940,6 +1941,7 @@ export function createPost(
     let emaPrev = gtao.pdRenderTarget.clone();
     let emaCur = gtao.pdRenderTarget.clone();
     let emaLastMs = -1e9; // >250 ms without an AO render → history is stale
+    resetTemporalAoHistory = () => { emaLastMs = -1e9; };
     const prevViewProj = emaMat.uniforms.uPrevViewProj.value;
     const currentViewProj = new THREE.Matrix4();
     let stableCameraFrames = 0;
@@ -1949,7 +1951,7 @@ export function createPost(
       emaCur.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
       emaMat.uniforms.uTexel.value.set(
         1 / gtao.pdRenderTarget.width, 1 / gtao.pdRenderTarget.height);
-      emaLastMs = -1e9; // reseed — old history is the wrong resolution
+      resetTemporalAoHistory(); // old history is the wrong resolution
     };
     gtao.setSize = (w, h) => {
       const s = preset.aoScale || 1;
@@ -2090,6 +2092,16 @@ export function createPost(
   // sharpness and only the 3D frame pays the reduced raster cost.
   let cssW = 0;
   let cssH = 0;
+  // EffectComposer's explicit-target constructor starts with these dimensions
+  // and renderer ratio. Replay the final patched pass chain once at startup.
+  let appliedSize: {
+    width: number; height: number; ratio: number; aoScale: number; bloomScale: number;
+    samples: number; info: THREE.WebGLRenderer['info']; ready: boolean;
+  } | null = {
+    width: size.x, height: size.y, ratio: renderer.getPixelRatio(),
+    aoScale: preset.aoScale || 1, bloomScale: preset.bloomScale || 1,
+    samples: msaaSamples, info: renderer.info, ready: false,
+  };
   const _nativeSize = new THREE.Vector2();
   // --- Dynamic resolution governor (performance_budget r5, REBUILT
   // engine-aa r1) ------------------------------------------------------------
@@ -2233,8 +2245,21 @@ export function createPost(
       preset,
       qualityPolicy.dynamicScale,
     );
-    composer.setPixelRatio(renderScale);
-    composer.setSize(w, h);
+    const next = { width: w, height: h, ratio: renderScale,
+      aoScale: preset.aoScale || 1, bloomScale: preset.bloomScale || 1,
+      samples: msaaSamples, info: renderer.info, ready: true };
+    const previous = appliedSize;
+    // A partial/throwing transaction must be retried, never published as warm.
+    appliedSize = null;
+    const ratioChanged = !previous || previous.ratio !== renderScale;
+    const sizeChanged = !previous || previous.width !== w || previous.height !== h;
+    const passesChanged = !previous?.ready || previous.aoScale !== next.aoScale
+      || previous.bloomScale !== next.bloomScale || previous.samples !== next.samples
+      || previous.info !== next.info;
+    // Public setPixelRatio already sizes the whole chain at its current CSS
+    // dimensions. Only a simultaneous CSS change needs the second traversal.
+    if (ratioChanged) composer.setPixelRatio(renderScale);
+    if (sizeChanged || (!ratioChanged && passesChanged)) composer.setSize(w, h);
     renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
     renderer.domElement.dataset.dynScale = qualityPolicy.dynamicScale.toFixed(3);
     // Keep the screen-space helpers in step with both internal/native sizes.
@@ -2246,6 +2271,7 @@ export function createPost(
       1 / Math.max(1, Math.round(h * renderScale)));
     const native = renderer.getDrawingBufferSize(_nativeSize);
     upscaler.setOutputSize(native.x, native.y);
+    appliedSize = next;
   }
   function applyAdaptiveQualityAction(action: AdaptiveQualityAction): void {
     if (action === 'trim-down' || action === 'trim-up') {
@@ -2347,6 +2373,9 @@ export function createPost(
     dynLastDecision = dynClock;
     renderer.domElement.dataset.perfTrim = '0';
     applyAoEnabled();
+    // Phase/governor resets must still reject the preceding scene's AO, even
+    // when physical dimensions and already-prepared render targets are reused.
+    resetTemporalAoHistory();
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
   }
 
