@@ -80,14 +80,19 @@ for (const treeline of [0, 0.03, 0.35, 0.8]) {
         for (const mesaSurface of [undefined, false, true]) {
           const options = { ...base, mesaSurface };
           const current = recordSample(sampleHorizonTextureTerrain, options, u, v, coherentNoise);
-          assert.deepEqual(current.calls, previous.calls,
-            'Fine grain/talus already ran: same ordered noise coordinates, values and total calls');
-          assert.equal(current.calls.length, banding > 0.003 ? 9 : 7);
+          const fine = mesaSurface ? 1 - previous.result.belowTree : treeline > 0 ? 0 : 1;
+          const retained = frequencyU => !(((fine === 0 || options.grainAmp === 0)
+            && (frequencyU === 90 || frequencyU === 34)) || (fine === 0 && frequencyU === 64));
+          assert.deepEqual(current.calls, previous.calls.filter(call => retained(call.args[2])),
+            'Only exact-zero grain/talus calls are removed; retain every ordered coordinate and value');
+          assert.equal(current.calls.length, (banding > 0.003 ? 9 : 7)
+            - (fine === 0 ? 3 : options.grainAmp === 0 ? 2 : 0));
           assert.deepEqual(current.calls.map(call => call.args.slice(2)), [
             [90, 100, 17], [34, 38, 5], [9, 1.1, 77], [46, 2.6, 9],
             [31, 9.5, 118], [64, 46, 205], [7, treeline > 0 ? 3.6 : 11, 41],
             ...(banding > 0.003 ? [[2.2, 0.6, 23], [1.5, 9, 311]] : []),
-          ], 'Do not hide a reordered or added noise evaluation behind equivalent output');
+          ].filter(([frequencyU]) => retained(frequencyU)),
+          'Do not hide a reordered or added noise evaluation behind equivalent output');
           const { luminance: _oldLuminance, ...oldFields } = previous.result;
           const { luminance, ...newFields } = current.result;
           assert.deepEqual(newFields, oldFields, 'Biome, ridge, segmentation and gully are unchanged');

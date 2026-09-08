@@ -365,13 +365,24 @@ interface HorizonTextureColor {
   b: number;
 }
 
-function createHorizonNoiseSampler(noise: SimplexNoise): HorizonNoiseSampler {
+export function createHorizonNoiseSampler(noise: SimplexNoise): HorizonNoiseSampler {
   const tau = Math.PI * 2;
-  return (u, v, frequencyU, frequencyV, offset) => noise.noise3d(
-    Math.cos(u * tau) * frequencyU * 0.5 + offset,
-    Math.sin(u * tau) * frequencyU * 0.5 - offset * 0.7,
-    v * frequencyV + offset * 1.31,
-  );
+  // A pixel recipe changes frequencies and altitude while reusing its angle.
+  // Keep only the last exact angular pair for this construction, not a cache
+  // of texture samples or map resources. Object.is preserves signed zero.
+  let previousU = NaN, cosine = NaN, sine = NaN;
+  return (u, v, frequencyU, frequencyV, offset) => {
+    if (!Object.is(u, previousU)) {
+      previousU = u;
+      cosine = Math.cos(u * tau);
+      sine = Math.sin(u * tau);
+    }
+    return noise.noise3d(
+      cosine * frequencyU * 0.5 + offset,
+      sine * frequencyU * 0.5 - offset * 0.7,
+      v * frequencyV + offset * 1.31,
+    );
+  };
 }
 
 function applyHorizonStrata(
@@ -404,11 +415,14 @@ export function sampleHorizonTextureTerrain(
   const belowTree = treeline > 0
     ? 1 - smoothstep(treeline * 0.85, treeline * 1.08, v) : 0;
   // A small band of scrub at a mesa's base must not disable rock grain and
-  // scree over the entire cliff. Reuse the existing local biome mask; all
-  // noise samples below already run on the old path, even at zero weight.
+  // scree over the entire cliff. Reuse the existing local biome mask, skipping
+  // pure noise only where its contribution is exactly zero.
   const fineDetail = options.mesaSurface ? 1 - belowTree : treeline > 0 ? 0 : 1;
-  let luminance = 1 + (sampleNoise(u, v, 90, 100, 17) * 0.05
-    + sampleNoise(u, v, 34, 38, 5) * 0.06) * grainAmp * fineDetail;
+  let luminance = 1;
+  if (fineDetail !== 0 && grainAmp !== 0) {
+    luminance += (sampleNoise(u, v, 90, 100, 17) * 0.05
+      + sampleNoise(u, v, 34, 38, 5) * 0.06) * grainAmp * fineDetail;
+  }
   const faceVariation = smoothstep(0.25, 0.75,
     sampleNoise(u, v * 0.25, 9, 1.1, 77) * 0.5 + 0.5);
   const ridge = 1 - Math.abs(sampleNoise(u, v, 46, 2.6, 9));
@@ -419,8 +433,10 @@ export function sampleHorizonTextureTerrain(
   const scree = smoothstep(0.72, 0.92, ridge) * (1 - gully)
     * gullyAmp * faceVariation * segment;
   luminance *= 1 - gully * 0.13 + scree * 0.04;
-  const talus = sampleNoise(u, v, 64, 46, 205);
-  luminance *= 1 + talus * 0.045 * (0.5 + 0.5 * gullyAmp) * fineDetail;
+  if (fineDetail !== 0) {
+    const talus = sampleNoise(u, v, 64, 46, 205);
+    luminance *= 1 + talus * 0.045 * (0.5 + 0.5 * gullyAmp) * fineDetail;
+  }
   luminance *= treeline > 0
     ? 1 + sampleNoise(u, v, 7, 3.6, 41) * 0.05
     : 1 + sampleNoise(u, v, 7, 11, 41) * 0.06;
