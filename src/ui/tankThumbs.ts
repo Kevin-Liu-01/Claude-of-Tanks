@@ -22,7 +22,7 @@ import {
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
-import { beginRgba8Readback } from '../engine/rgba8Readback.ts';
+import { beginRgba8Readback, type Rgba8ReadbackStage } from '../engine/rgba8Readback.ts';
 import { waitForTopMaskPrograms, type TopMaskProgram } from './topMaskProgramWarm.ts';
 
 const PORTRAIT_SOURCES = ['thumb-angle', 'angle', 'side', 'side_silhouette'] as const;
@@ -112,6 +112,7 @@ export interface TopMaskLoadTrace {
   startedAt: number;
   endedAt?: number;
   intervals: TopMaskLoadInterval[];
+  readbacks: Partial<Record<'hull' | 'turret', Partial<Record<Rgba8ReadbackStage, number>>>>;
 }
 
 declare global {
@@ -119,7 +120,7 @@ declare global {
 }
 
 function beginTopMaskLoad(): TopMaskLoadTrace {
-  const trace: TopMaskLoadTrace = { status: 'pending', startedAt: performance.now(), intervals: [] };
+  const trace: TopMaskLoadTrace = { status: 'pending', startedAt: performance.now(), intervals: [], readbacks: {} };
   // Only the latest new bake is published. Older pending callbacks retain their
   // own trace and cannot replace it; cache hits do not erase useful timings.
   try { if (typeof window !== 'undefined') window.__TOP_MASK_LOAD = trace; }
@@ -460,7 +461,7 @@ const pendingMasks = new Map<string, Promise<TopDownMaskEntry | null>>();
 let maskWorkTail = Promise.resolve();
 const MASK_CACHE_MAX = 10;
 let maskRT: THREE.WebGLRenderTarget | null = null;
-let maskPixels: Uint8Array | null = null;
+const maskPixels: Partial<Record<'hull' | 'turret', Uint8Array>> = {};
 
 interface MaskPixelBounds {
   minX: number;
@@ -472,6 +473,11 @@ interface MaskPixelBounds {
 interface MaskRenderResources {
   target: THREE.WebGLRenderTarget;
   pixels: Uint8Array;
+}
+
+interface PendingMaskPass {
+  // Observe rejection immediately, even while the next layer's compile waits.
+  completion: Promise<PromiseSettledResult<MaskPassResult | null>>;
 }
 
 interface MaskCanvasResult {
@@ -607,15 +613,14 @@ function watchMaskSourceLifetime(root: THREE.Object3D): MaskSourceLifetime {
   };
 }
 
-function ensureMaskRenderResources(): MaskRenderResources {
+function ensureMaskRenderResources(layer: 'hull' | 'turret'): MaskRenderResources {
   if (!maskRT) {
     maskRT = new THREE.WebGLRenderTarget(MASK_RT_SIZE, MASK_RT_SIZE, {
       depthBuffer: true, stencilBuffer: false,
     });
-    maskPixels = new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
   }
-  if (!maskPixels) maskPixels = new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
-  return { target: maskRT, pixels: maskPixels };
+  const pixels = maskPixels[layer] ??= new Uint8Array(MASK_RT_SIZE * MASK_RT_SIZE * 4);
+  return { target: maskRT, pixels };
 }
 
 async function compileMaskPass(
@@ -661,7 +666,7 @@ async function compileMaskPass(
   });
 }
 
-async function renderMaskPixels(
+function renderMaskPixels(
   renderer: THREE.WebGLRenderer,
   target: THREE.WebGLRenderTarget,
   pixels: Uint8Array,
@@ -669,7 +674,7 @@ async function renderMaskPixels(
   camera: THREE.OrthographicCamera,
   trace: TopMaskLoadTrace,
   layer: 'hull' | 'turret',
-): Promise<void> {
+): { completion: Promise<void>; failed: boolean } {
   const previousTarget = renderer.getRenderTarget();
   const previousFace = renderer.getActiveCubeFace();
   const previousMip = renderer.getActiveMipmapLevel();
@@ -691,7 +696,8 @@ async function renderMaskPixels(
     // fence completes, without a blocking GPU readPixels on the reveal frame.
     const gl = renderer.getContext();
     if (!('fenceSync' in gl)) throw new Error('top-down masks require WebGL2 readback');
-    readback = beginRgba8Readback(gl, MASK_RT_SIZE, MASK_RT_SIZE, pixels);
+    const timings = trace.readbacks[layer] = {};
+    readback = beginRgba8Readback(gl, MASK_RT_SIZE, MASK_RT_SIZE, pixels, { timings });
   } catch (error) {
     failure = { reason: error };
   }
@@ -702,6 +708,14 @@ async function renderMaskPixels(
   catch (error) { failure ??= { reason: error }; }
   try { renderer.setClearColor(previousColor, previousAlpha); }
   catch (error) { failure ??= { reason: error }; }
+  return { completion: finishMaskReadback(readback, failure, interval), failed: failure !== null };
+}
+
+async function finishMaskReadback(
+  readback: Promise<void> | null,
+  failure: { reason: RuntimeValue } | null,
+  interval: TopMaskLoadInterval,
+): Promise<void> {
   if (readback) {
     try { await readback; }
     catch (error) { failure ??= { reason: error }; }
@@ -768,7 +782,7 @@ function maskPassResult(
 
 /** One alpha-coverage pass -> white mask canvas (also reports plan bounds).
  *  @returns {{canvas:HTMLCanvasElement,minX:number,maxX:number,minZ:number,maxZ:number}|null} */
-async function renderMaskPass(
+async function submitMaskPass(
   scene: THREE.Scene,
   camX: number,
   camZ: number,
@@ -776,12 +790,12 @@ async function renderMaskPass(
   trace: TopMaskLoadTrace,
   layer: 'hull' | 'turret',
   sourceLifetime: MaskSourceLifetime | null,
-): Promise<MaskPassResult | null> {
+): Promise<PendingMaskPass> {
   sourceLifetime?.assertAlive();
   const engine = maskEngineCtx;
-  if (!engine) return null;
+  if (!engine) return { completion: Promise.resolve({ status: 'fulfilled', value: null }) };
   const renderer = engine.renderer;
-  const { target, pixels } = ensureMaskRenderResources();
+  const { target, pixels } = ensureMaskRenderResources(layer);
   const cam = new THREE.OrthographicCamera(-halfM, halfM, halfM, -halfM, 0.1, 80);
   cam.position.set(camX, 40, camZ);
   cam.up.set(0, 0, 1);
@@ -792,8 +806,28 @@ async function renderMaskPass(
   try { await compileMaskPass(renderer, target, scene, cam, sourceLifetime); }
   finally { compile.endTime = performance.now(); }
   sourceLifetime?.assertAlive();
-  await renderMaskPixels(renderer, target, pixels, scene, cam, trace, layer);
-  sourceLifetime?.assertAlive();
+  const submitted = renderMaskPixels(renderer, target, pixels, scene, cam, trace, layer);
+  // A synchronous render/binding failure cannot hand the renderer to another
+  // pass. Drain its submitted writer and propagate the original failure first.
+  if (submitted.failed) await submitted.completion;
+  const result = submitted.completion.then(() => {
+    sourceLifetime?.assertAlive();
+    return finishMaskPass(pixels, camX, camZ, halfM, trace, layer);
+  });
+  return { completion: result.then(
+    (value) => ({ status: 'fulfilled', value }),
+    (reason: RuntimeValue) => ({ status: 'rejected', reason }),
+  ) };
+}
+
+function finishMaskPass(
+  pixels: Uint8Array,
+  camX: number,
+  camZ: number,
+  halfM: number,
+  trace: TopMaskLoadTrace,
+  layer: 'hull' | 'turret',
+): MaskPassResult | null {
   // Alpha coverage becomes a white mask. readPixels rows are bottom-up, so
   // maskCanvasFromPixels flips them while collecting exact plan bounds.
   return measureTopMaskStage(trace, `${layer}Canvas`, () => {
@@ -822,6 +856,7 @@ async function renderMaskEntry(
   const hullG = root.getObjectByName('rig_hull');
   const turretG = root.getObjectByName('rig_turret');
   if (!hullG || !turretG) { scene.remove(root); return null; }
+  const passes: PendingMaskPass[] = [];
   try {
   // neutral articulation for the canonical masks
   turretG.rotation.y = 0;
@@ -837,7 +872,8 @@ async function renderMaskEntry(
   turretG.visible = false;
   hullG.visible = true;
   const hullHalf = overall * 0.62 + MASK_MARGIN_M;
-  const hull = await renderMaskPass(scene, 0, 0, hullHalf, trace, 'hull', sourceLifetime);
+  const hullPass = await submitMaskPass(scene, 0, 0, hullHalf, trace, 'hull', sourceLifetime);
+  passes.push(hullPass);
   sourceLifetime?.assertAlive();
 
   // turret pass (hull hidden), centered on the PIVOT; the frustum must reach
@@ -848,7 +884,12 @@ async function renderMaskEntry(
     (spec.armor && spec.armor.gunBarrel && spec.armor.gunBarrel.lengthM) || 4,
     overall - (dims.hullLengthM || overall) / 2 - tp[2]);
   const turretHalf = Math.max(2.2, gunReach + 1.6) + MASK_MARGIN_M;
-  const turret = await renderMaskPass(scene, tp[0], tp[2], turretHalf, trace, 'turret', sourceLifetime);
+  // Hull pixels are already captured in its own PBO. Reuse the framebuffer
+  // while that copy waits; only this transaction may change clone visibility.
+  const turretPass = await submitMaskPass(scene, tp[0], tp[2], turretHalf, trace, 'turret', sourceLifetime);
+  passes.push(turretPass);
+  const hull = completedMaskPass(await hullPass.completion);
+  const turret = completedMaskPass(await turretPass.completion);
   sourceLifetime?.assertAlive();
   if (!hull || !turret) return null;
 
@@ -875,10 +916,18 @@ async function renderMaskEntry(
     pxPerM: MASK_SIZE / (hullHalf * 2), // hull layer scale (turret differs)
   };
   } finally {
+    // Compile/render/source failures must join every submitted writer before
+    // clone disposal, cache publication, or the next tank can reuse pixels.
+    await Promise.all(passes.map((pass) => pass.completion));
     hullG.visible = true;
     turretG.visible = true;
     scene.remove(root);
   }
+}
+
+function completedMaskPass(result: PromiseSettledResult<MaskPassResult | null>): MaskPassResult | null {
+  if (result.status === 'rejected') throw result.reason;
+  return result.value;
 }
 
 /**

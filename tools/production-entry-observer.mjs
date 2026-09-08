@@ -154,6 +154,16 @@ export function installProductionEntryObserver() {
       'openingRenderMs']
       .map((key) => [key, finite(value[key])]));
   };
+  const topMaskReadbacks = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return { readbacks: Object.fromEntries(['hull', 'turret'].map((layer) => {
+      const timings = value[layer];
+      if (!timings || typeof timings !== 'object' || Array.isArray(timings)) return [layer, null];
+      return [layer, Object.fromEntries(['contextQuery', 'createBuffer', 'bindingQuery',
+        'bindBuffer', 'bufferData', 'sizeQuery', 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release']
+        .map((stage) => [stage, nonnegative(timings[stage])]))];
+    })) };
+  };
   const worldLoadReceipt = (world) => world ? {
     id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,
     status: ['pending', 'complete', 'failed'].includes(world.status) ? world.status : null,
@@ -219,6 +229,7 @@ export function installProductionEntryObserver() {
         startedAt: finite(topMask.startedAt), endedAt: finite(topMask.endedAt),
         intervals: intervals(topMask.intervals, ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback',
           'hullCanvas', 'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'], 16),
+        ...topMaskReadbacks(topMask.readbacks),
       } : null };
   };
   state.startCounters = counters();

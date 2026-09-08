@@ -338,6 +338,45 @@ for (const status of ['complete', 'failed']) {
   assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
 }
 
+{
+  const stages = ['contextQuery', 'createBuffer', 'bindingQuery', 'bindBuffer',
+    'bufferData', 'sizeQuery', 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release'];
+  const hull = Object.fromEntries(stages.map((stage, index) => [stage, index]));
+  const turret = Object.fromEntries(stages.map((stage) => [stage, 0]));
+  const mask = browserFixture();
+  mask.context.window.__TOP_MASK_LOAD.readbacks = {
+    hull: { ...hull, privateNumeric: 100, url: 'PRIVATE_URL', error: new Error('PRIVATE_ERROR') },
+    turret: { ...turret, privateNumeric: 200, name: 'PRIVATE_NAME' },
+    ...Object.fromEntries(Array.from({ length: 100 }, (_, index) => [`PRIVATE_LAYER_${index}`, hull])),
+  };
+  const result = JSON.parse(JSON.stringify(mask.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.topMaskLoad.readbacks, { hull, turret },
+    'readback timing coverage is bounded to two fixed layers and twelve exact numeric stages');
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE|privateNumeric/);
+
+  for (const invalid of [undefined, null, NaN, Infinity, -Infinity, -1, 'PRIVATE_VALUE', true, {}, [], 1n]) {
+    const malformed = browserFixture();
+    malformed.context.window.__TOP_MASK_LOAD.readbacks = { hull: { ...hull, copy: invalid } };
+    const measured = JSON.parse(JSON.stringify(malformed.run(readProductionEntryObserver, 'stop')));
+    assert.deepEqual(measured.topMaskLoad.readbacks, { hull: { ...hull, copy: null }, turret: null },
+      'non-finite, negative, and nonnumeric stage values remain unknown; missing layers stay unknown');
+    assert.doesNotMatch(JSON.stringify(measured), /PRIVATE/);
+  }
+  for (const invalid of [undefined, null, 'PRIVATE_RECORD', 42, [], true, () => {}]) {
+    const malformed = browserFixture();
+    malformed.context.window.__TOP_MASK_LOAD.readbacks = invalid;
+    const measured = malformed.run(readProductionEntryObserver, 'stop');
+    assert.equal(Object.hasOwn(measured.topMaskLoad, 'readbacks'), false,
+      'missing or malformed optional readbacks preserve the legacy receipt shape');
+    const live = browserFixture();
+    live.context.window.__TOP_MASK_LOAD.readbacks = { hull: invalid, turret: {} };
+    const layers = JSON.parse(JSON.stringify(live.run(readProductionEntryObserver, 'stop')));
+    assert.deepEqual(layers.topMaskLoad.readbacks, {
+      hull: null, turret: Object.fromEntries(stages.map((stage) => [stage, null])),
+    }, 'malformed layers are unknown and missing stage values are never invented');
+  }
+}
+
 for (const value of [undefined, null, 'PRIVATE_TRACE', 42, []]) {
   const malformed = browserFixture();
   malformed.context.window.__TOP_MASK_LOAD = value;

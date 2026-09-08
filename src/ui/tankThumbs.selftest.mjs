@@ -250,6 +250,7 @@ function fakeRenderer(sources) {
   const readbackFailures = new Set();
   const properties = new WeakMap();
   let targetRestoreFailure = null;
+  let targetRestoreLayer = null;
   let currentFrame = null;
   let heldFences = false;
   const describe = (scene) => {
@@ -285,7 +286,10 @@ function fakeRenderer(sources) {
         [0, 0, 384, 384, gl.RGBA, gl.UNSIGNED_BYTE, 0]);
       assert.equal(target.width, 384); assert.equal(target.height, 384);
       events.push({ kind: 'read', ...currentFrame, target });
-      if (readbackFailures.has(currentFrame.id)) throw new Error('injected readback failure');
+      if (readbackFailures.has(currentFrame.id) || readbackFailures.has(`${currentFrame.id}:${currentFrame.layer}`)) {
+        throw new Error('injected readback failure');
+      }
+      pack.frame = { ...currentFrame };
       const hull = currentFrame.layer === 'hull';
       const [x0, x1, y0, y1, coverage] = hull ? [80, 119, 20, 59, 120] : [160, 179, 250, 269, 200];
       for (let row = y0; row <= y1; row++) for (let column = x0; column <= x1; column++) {
@@ -295,7 +299,7 @@ function fakeRenderer(sources) {
     },
     fenceSync(condition, flags) {
       assert.deepEqual([condition, flags], [gl.SYNC_GPU_COMMANDS_COMPLETE, 0]);
-      const sync = { signaled: !heldFences, deleted: 0 }; syncs.push(sync); return sync;
+      const sync = { signaled: !heldFences, deleted: 0, ...currentFrame }; syncs.push(sync); return sync;
     },
     flush() {},
     clientWaitSync(sync, flags, timeout) {
@@ -306,7 +310,7 @@ function fakeRenderer(sources) {
       assert.deepEqual([binding, offset, destinationOffset, length], [gl.PIXEL_PACK_BUFFER, 0, 0, 384 * 384 * 4]);
       destinations.push(pixels);
       pixels.set(pack.data);
-      events.push({ kind: 'copy', ...currentFrame });
+      events.push({ kind: 'copy', ...pack.frame });
     },
     deleteSync(sync) { sync.deleted++; },
     deleteBuffer(buffer) { buffer.deleted++; },
@@ -317,7 +321,7 @@ function fakeRenderer(sources) {
     getActiveMipmapLevel: () => mip,
     setRenderTarget(next, nextFace = 0, nextMip = 0) {
       if (targetRestoreFailure && target?.width === 384 && next?.width !== 384
-          && events.at(-1)?.kind === 'read') {
+          && events.at(-1)?.kind === 'read' && (!targetRestoreLayer || currentFrame?.layer === targetRestoreLayer)) {
         const failure = targetRestoreFailure;
         targetRestoreFailure = null;
         throw failure;
@@ -338,7 +342,9 @@ function fakeRenderer(sources) {
       const material = scene.children[0].getObjectByName('test-hull').material;
       const program = { program: {}, checks: 0, isReady() {
         program.checks++;
-        if (compileFailures.has(frame.id)) throw new Error('injected compile failure');
+        if (compileFailures.has(frame.id) || compileFailures.has(`${frame.id}:${frame.layer}`)) {
+          throw new Error('injected compile failure');
+        }
         return compileGates.get(`${frame.id}:${frame.layer}`)?.ready ?? true;
       } };
       properties.set(material, { currentProgram: program });
@@ -361,7 +367,7 @@ function fakeRenderer(sources) {
   return { renderer, gl, events, buffers, syncs, destinations, compileGates, compileFailures, readbackFailures,
     state: () => ({ target, face, mip, color: color.getHex(), alpha, pack }),
     initialPack,
-    failNextTargetRestore(error) { targetRestoreFailure = error; },
+    failNextTargetRestore(error, layer = null) { targetRestoreFailure = error; targetRestoreLayer = layer; },
     holdFences() { heldFences = true; },
     releaseFences() { heldFences = false; for (const sync of syncs) sync.signaled = true; },
     assertReleased() {
@@ -462,8 +468,18 @@ try {
   assert.deepEqual(fake.state(), afterCompileState, 'render/readback submission restores current target and color before waiting');
   assert.equal(fake.destinations.length, 0, 'pending fence cannot expose incomplete pixels');
   a.assertCloneDisposals(0);
-  assert.equal(fake.events.filter((event) => event.kind === 'compile').length, 1,
-    'neither turret nor another tank compiles while shared pixel ownership is pending');
+  await advanceUntil(() => fake.events.some((event) => event.kind === 'read' && event.layer === 'turret'));
+  assert.equal(fake.events.filter((event) => event.kind === 'compile').length, 2,
+    'turret compile/draw overlaps the hull fence, but another tank cannot start');
+  assert.equal(fake.destinations.length, 0, 'both masks can be submitted before either copy completes');
+  const turretFence = fake.syncs.find((sync) => sync.layer === 'turret');
+  assert(turretFence, 'turret submission owns its fence');
+  turretFence.signaled = true;
+  await advanceUntil(() => fake.destinations.length === 1);
+  assert.deepEqual(fake.events.filter((event) => event.kind === 'copy').map(({ id, layer }) => [id, layer]),
+    [['mask-test-a', 'turret']], 'the turret copy may complete before the hull without corrupting either layer');
+  assert(!fake.events.some((event) => event.id === 'mask-test-b'), 'next tank still waits for the hull');
+  a.assertCloneDisposals(0);
   const duringReadback = { name: 'external-during-readback' };
   fake.renderer.setRenderTarget(duringReadback, 1, 6);
   fake.renderer.setClearColor(0x654321, 0.8);
@@ -481,11 +497,15 @@ try {
     'each tank owns both passes and canvas copies before the next tank runs');
   assert.equal(new Set(fake.events.map((event) => event.target).filter(Boolean)).size, 1,
     'all mask passes reuse the one shared render target');
-  assert.equal(new Set(fake.destinations).size, 1, 'serialized passes safely reuse one pixel buffer');
+  assert.equal(new Set(fake.destinations).size, 2, 'one pixel buffer per layer is reused only between serialized tanks');
   assert.equal(window.__TOP_MASK_LOAD.status, 'complete');
-  assert.deepEqual(window.__TOP_MASK_LOAD.intervals.map(({ stage }) => stage),
+  assert.deepEqual(window.__TOP_MASK_LOAD.intervals.map(({ stage }) => stage).sort(),
     ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback', 'hullCanvas',
-      'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas']);
+      'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'].sort());
+  for (const layer of ['hull', 'turret']) {
+    assert(Number.isFinite(window.__TOP_MASK_LOAD.readbacks[layer].copy));
+    assert(Number.isFinite(window.__TOP_MASK_LOAD.readbacks[layer].wait));
+  }
 
   for (const [layer, sourceX, sourceY, coverage] of [['hull', 80, 20, 120], ['turret', 160, 250, 200]]) {
     const output = entryA[layer].canvas;
@@ -586,6 +606,118 @@ try {
   assert.equal(fake.destinations.length, copiesAfterRestore, 'no late copy remains after the queue resumes');
   assert.deepEqual(fake.state(), afterReadbackState);
 
+  // Both orders of failure must drain the other layer before releasing the
+  // cloned source or admitting another tank to the shared framebuffer.
+  for (const failure of ['turret-compile', 'turret-restore', 'hull-copy', 'turret-copy', 'disposed-both']) {
+    const name = `mask-overlap-${failure}`;
+    const borrowed = addSource(name);
+    const following = addSource(`${name}-next`);
+    fake.holdFences();
+    const turretGate = deferred();
+    if (failure === 'turret-compile') fake.compileFailures.add(`${name}:turret`);
+    if (failure === 'turret-restore') fake.failNextTargetRestore(new Error('turret restore failed'), 'turret');
+    if (failure === 'hull-copy') fake.compileGates.set(`${name}:turret`, turretGate);
+    const request = prepareTopDownMasks(spec(name), borrowed.visual);
+    const trace = window.__TOP_MASK_LOAD;
+    let finished = false;
+    request.then(() => { finished = true; });
+    const next = prepareTopDownMasks(spec(following.root.name), following.visual);
+    const bothSubmitted = ['turret-copy', 'turret-restore', 'disposed-both'].includes(failure);
+    await advanceUntil(() => fake.events.some((event) => event.id === name
+      && event.layer === 'turret' && event.kind === (bothSubmitted ? 'read' : 'compile')));
+    const owned = fake.syncs.filter((sync) => sync.id === name);
+    assert.equal(owned.length, bothSubmitted ? 2 : 1);
+    if (failure.endsWith('copy')) {
+      const layer = failure === 'hull-copy' ? 'hull' : 'turret';
+      const copy = fake.gl.getBufferSubData;
+      fake.gl.getBufferSubData = () => { fake.gl.getBufferSubData = copy; throw new Error(`${layer} copy failed`); };
+      const failedFence = owned.find((sync) => sync.layer === layer);
+      assert(failedFence, `${layer}: the failed copy owns its fence`);
+      failedFence.signaled = true;
+      await advanceUntil(() => failedFence.deleted === 1);
+    } else if (failure === 'disposed-both') borrowed.disposeBorrowed('material');
+    await microtasks();
+    assert.equal(finished, false, `${failure}: settlement waits for the other outstanding phase`);
+    borrowed.assertCloneDisposals(0);
+    assert(!fake.events.some((event) => event.id === following.root.name));
+    fake.renderer.setRenderTarget(afterReadbackState.target, afterReadbackState.face, afterReadbackState.mip);
+    turretGate.resolve();
+    fake.releaseFences();
+    const [result, successor] = await settle(Promise.all([request, next]));
+    assert.equal(result, null);
+    assert(successor?.ready);
+    assert.equal(trace.status, 'failed');
+    assert(trace.intervals.every((row) => row.endTime >= row.startTime));
+    assert(owned.every((sync) => sync.deleted === 1));
+    borrowed.assertUntouched();
+    assert.deepEqual(fake.state(), afterReadbackState);
+  }
+
+  {
+    const lostSource = addSource('mask-overlap-context-lost');
+    const following = addSource('mask-after-overlap-context-lost');
+    const contextQuery = fake.gl.isContextLost;
+    const copiesBefore = fake.destinations.length;
+    fake.holdFences();
+    const request = prepareTopDownMasks(spec(lostSource.root.name), lostSource.visual);
+    const trace = window.__TOP_MASK_LOAD;
+    let finished = false;
+    request.then(() => { finished = true; });
+    const next = prepareTopDownMasks(spec(following.root.name), following.visual);
+    await advanceUntil(() => fake.events.some((event) => event.id === lostSource.root.name
+      && event.layer === 'turret' && event.kind === 'read'));
+    const ownedSyncs = fake.syncs.filter((sync) => sync.id === lostSource.root.name);
+    const ownedBuffers = fake.buffers.filter((buffer) => buffer.frame?.id === lostSource.root.name);
+    assert.equal(ownedSyncs.length, 2, 'context loss exercises both pending layer fences');
+    assert.equal(ownedBuffers.length, 2, 'each pending layer owns a distinct PBO');
+    assert.equal(fake.destinations.length, copiesBefore);
+    try {
+      fake.gl.isContextLost = () => true;
+      await advanceUntil(() => ownedSyncs.filter((sync) => sync.deleted === 1).length === 1);
+      assert.equal(finished, false, 'one failed layer cannot release the other pending writer');
+      lostSource.assertCloneDisposals(0);
+      assert(!fake.events.some((event) => event.id === following.root.name));
+      assert.equal(await settle(request), null, 'context loss preserves the vector-mask fallback');
+      assert.equal(trace.status, 'failed');
+      assert(ownedSyncs.every((sync) => sync.deleted === 1));
+      assert(ownedBuffers.every((buffer) => buffer.deleted === 1));
+      assert.equal(fake.destinations.length, copiesBefore, 'lost-context writers never copy stale pixels');
+      assert(!trace.intervals.some((row) => row.stage.endsWith('Canvas')));
+      lostSource.assertUntouched();
+      assert(!fake.events.some((event) => event.id === following.root.name),
+        'the queued successor has not submitted work before context restoration');
+      assert.deepEqual(fake.state(), afterReadbackState);
+    } finally {
+      fake.gl.isContextLost = contextQuery;
+      fake.releaseFences();
+    }
+    assert((await settle(next))?.ready, 'restoration lets the next queued tank prepare normally');
+    following.assertUntouched();
+    assert.deepEqual(fake.events.filter((event) => event.kind === 'copy').slice(-2)
+      .map(({ id, layer }) => [id, layer]),
+    [[following.root.name, 'hull'], [following.root.name, 'turret']]);
+    assert.equal(fake.destinations.length, copiesBefore + 2, 'no old writer copies after restoration');
+    assert.equal(timers.size, 0, 'both lost-context writers and the successor leave no detached polls');
+    assert.deepEqual(fake.state(), afterReadbackState);
+  }
+
+  const slowTurret = addSource('mask-held-turret-compile');
+  const slowTurretGate = deferred();
+  fake.compileGates.set(`${slowTurret.root.name}:turret`, slowTurretGate);
+  const slowTurretRequest = prepareTopDownMasks(spec(slowTurret.root.name), slowTurret.visual);
+  await advanceUntil(() => fake.events.some((event) => event.kind === 'copy' && event.id === slowTurret.root.name));
+  assert(!fake.events.some((event) => event.kind === 'render' && event.id === slowTurret.root.name && event.layer === 'turret'));
+  slowTurret.assertCloneDisposals(0);
+  fake.renderer.setRenderTarget({ name: 'frame-while-turret-compiles' }, 4, 7);
+  fake.renderer.setClearColor(0xabcdef, 0.2);
+  const slowTurretState = fake.state();
+  slowTurretGate.resolve();
+  assert((await settle(slowTurretRequest))?.ready);
+  assert.deepEqual(fake.state(), slowTurretState, 'turret restores the current frame state, never the hull submission state');
+  slowTurret.assertUntouched();
+  fake.renderer.setRenderTarget(afterReadbackState.target, afterReadbackState.face, afterReadbackState.mip);
+  fake.renderer.setClearColor(afterReadbackState.color, afterReadbackState.alpha);
+
   for (const when of ['queued', 'hull-readback']) for (const resource of ['geometry', 'material']) {
     const name = `mask-source-dispose-${when}-${resource}`;
     const borrowed = addSource(name);
@@ -609,6 +741,7 @@ try {
       await advanceUntil(() => fake.events.some((event) => event.kind === 'read' && event.id === name));
     }
     borrowed.disposeBorrowed(resource);
+    const submissionsAtDisposal = fake.events.filter((event) => event.id === name && event.kind !== 'copy').length;
     await microtasks();
     assert.equal(borrowedSettled, false, 'disposal cannot abandon queued ownership or a submitted PBO writer');
     borrowed.assertCloneDisposals(0);
@@ -622,8 +755,8 @@ try {
     assert.equal(borrowedResult, null, `${when}/${resource}: disposed source uses the existing fallback`);
     assert(followingResult?.ready, `${when}/${resource}: disposal cannot poison the queue`);
     assert.equal(borrowedTrace.status, 'failed');
-    assert(!fake.events.some((event) => event.id === name && event.layer === 'turret'),
-      `${when}/${resource}: no turret compile/render/read occurs after source disposal`);
+    assert.equal(fake.events.filter((event) => event.id === name && event.kind !== 'copy').length,
+      submissionsAtDisposal, `${when}/${resource}: no further compile/render/read occurs after source disposal`);
     if (when === 'queued') {
       assert(!fake.events.some((event) => event.id === name),
         'a source disposed while queued never reaches its first compile');
