@@ -570,6 +570,34 @@ receipt records only concurrent authorized documentation/test changes, no
 generated runtime or asset mutations, and no staged comparison GLBs. The R5
 public build was not rebuilt or replaced.
 
+## Full-suite checkpoint
+
+The single complete `npm test` attempt in `final-npm-test-r2.log` runs on an
+unchanged, clean `74e2c3439` source. It stops at pre-suite file 26,
+`roadWheelRestHeights.selftest.mjs`: 25 of 252 pre tests passed; the 496 core
+and 29 post tests did not start. The earlier separately passing post run is
+not represented as completion of this invocation. Its exact JSON receipt
+retains the nonzero exit and source/status equality.
+
+Bounded decomposition recovers all eight original road-wheel hashes and
+every original height/support/movement assertion. The only added attributes
+are all-zero masks on three high-detail M1A2 gear meshes and one low-detail
+gear mesh; no physical byte changed. `60e533d78` keeps all eight original
+digests and passes the focused test with strict all-zero metadata checks and
+malformed-mask/physical-mutation controls.
+
+The bounded vehicle batch passes sixteen tests unchanged. Its only failure,
+`returnRollerOutset.selftest.mjs`, has the same inherited all-zero M1A2 gear
+attributes. Exact decomposition recovers all four original digests, including
+both unchanged Leopard 2A5 tiers. `b88d7cd48` preserves those digests and passes
+the focused roller/attachment tests with equivalent negative controls.
+
+The nine-test world batch passes eight unchanged. Reservoir's historical
+partition hash is the remaining failure under investigation. No failing
+physical digest is silently replaced and no broad geometry attribute is
+dropped from the existing oracle. These focused results do not turn the
+failed complete-suite invocation into a pass.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
