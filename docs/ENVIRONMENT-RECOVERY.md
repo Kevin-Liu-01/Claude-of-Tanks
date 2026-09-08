@@ -820,6 +820,42 @@ plateau. All 13 strict failures and the original measured growth remain
 unwaived. See `late-heap-coastal-r1/residual-summary-r1.json` for the bounded
 retainer checks; no category subtraction or tolerance change is permitted.
 
+## Snow artwork checkpoint and rejected slope layout — 2026-09-08
+
+`cdedd5606` isolates the two-file snow-atlas refinement from local `0ee8af9aa`:
+broken snow shelves and connected exposed rock replace rounded cornices. The
+same four bands, dimensions and resource ownership are retained; five other
+biome families keep exact native raster hashes. The public source has no live
+caller of `createHorizonDetailAtlas`, so this is a dormant artwork foundation,
+not a claim that the new snow/horizon details are visible in production. It
+does not enable weather, a live detail child, a draw or an allocation there.
+
+On the current `007c45499` main base, all seven publication checks pass in
+`horizon-snow-publication-r1.{json,log}`: native two-tier atlas controls,
+existing horizon lifecycle, atmosphere, performance-HUD retention, full
+typecheck/core-unused, atlas complexity and public build. The exact atlas
+source/test match frozen R6. Its production index is
+`cc375a7d5e50633f33ecb3d17aa1f90d5a0862ce23deef97c3887cb7b0488450`.
+No new gameplay performance or memory acquisition is claimed for dormant art.
+
+The separate live slope-layout candidate remains rejected. Frozen R6
+`ee8e9734e` passed eleven checks/build and produced 45 matched native images
+for Verdant, Titan Gorge, Winter, Coastal and Polders, plus nine matched
+Frontier images. All 54 saved poses and 24 scope contracts match their R4
+baselines; both runs report no page errors or context loss, and owned browser
+processes, ports and queue tickets are released. See
+`horizon-density-after-r6-integrity.json` and
+`horizon-frontier-after-r6/acquisition-receipt.json`.
+
+Actual review still finds thin single-file forest rows around mostly bare
+hills. Verdant's EN foreground ridge loses visible crest cover; Frontier WN
+and WS lose substantial forest without convincing slope coverage replacing
+it. Valid terrain roots do not make this composition acceptable. Preserve
+these images as failed art evidence, not final all-map acceptance. The next
+refinement should address forest surface/stand mass within existing budgets.
+All strict managed-heap and ordinary/high-DPI motion gates remain open; no
+tolerance change, category subtraction or broader completion is implied.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
