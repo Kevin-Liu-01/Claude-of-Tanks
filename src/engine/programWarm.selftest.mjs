@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {
   compileForRenderTarget,
   createForwardProgramWarmOwner,
@@ -314,6 +315,421 @@ for (const reason of ['aborted', 'invalidated', 'renderer-restored']) {
   assert.equal(timing.queryMs, timing.existingQueryMs + timing.newQueryMs,
     'cohort timing classifies existing native calls without introducing more queries');
   assert.equal(fixture.events.filter(([name]) => name === 'query').length, 2);
+}
+
+function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = true,
+  clockFailure = false, clockFrozen = false } = {}) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const material = new THREE.MeshStandardMaterial({ transparent: true, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  scene.add(mesh);
+  const events = [];
+  let clock = 0;
+  const state = { query: () => true, reflect: () => {}, compile: () => {}, blocked: false,
+    queryMs: 2, uniformMs: 7 };
+  const assertActive = () => assert.equal(state.blocked, false, 'no access after owner invalidation');
+  const programs = names.map((name) => ({
+    name, program: { name },
+    getUniforms() {
+      assertActive();
+      assertRestored();
+      events.push(['uniform', name]);
+      clock += state.uniformMs;
+      state.reflect(name);
+    },
+  }));
+  const unrelated = { name: 'garage', program: { name: 'garage' },
+    getUniforms() { assert.fail('unsubmitted Garage material is outside the first-use cohort'); } };
+  const materialProperties = {
+    programs: new Map(programs.map((program) => [program.name, program])),
+    currentProgram: programs[1] ?? programs[0],
+  };
+  const gl = {
+    lost: false,
+    isContextLost() { assertActive(); return this.lost; },
+    getExtension() { assertActive(); events.push(['extension']);
+      return extension ? { COMPLETION_STATUS_KHR: 0x91b1 } : null; },
+    getProgramParameter(handle, token) {
+      assertActive();
+      assertRestored();
+      assert.equal(token, 0x91b1);
+      events.push(['query', handle.name]);
+      clock += state.queryMs;
+      return state.query(handle.name);
+    },
+  };
+  const renderer = {
+    target: 'prior', face: 3, mip: 2,
+    info: { programs: [unrelated, ...programs] },
+    properties: { get(value) { assertActive(); assert.equal(value, material); return materialProperties; } },
+    getContext() { assertActive(); return gl; },
+    getRenderTarget() { assertActive(); return this.target; },
+    getActiveCubeFace() { return this.face; },
+    getActiveMipmapLevel() { return this.mip; },
+    setRenderTarget(target, face = 0, mip = 0) { this.target = target; this.face = face; this.mip = mip; },
+    compile(root) {
+      assertActive();
+      assert.equal(this.target, 'hdr');
+      const materials = new Set();
+      root.traverse((object) => materials.add(object.material));
+      state.compile();
+      return materials;
+    },
+  };
+  function assertRestored() {
+    assert.deepEqual([renderer.target, renderer.face, renderer.mip], ['prior', 3, 2]);
+    assert.equal(camera.layers.mask, 1);
+    assert.equal(mesh.parent, scene);
+  }
+  const owner = createForwardProgramWarmOwner({
+    renderer, scene, camera, getTarget: () => 'hdr',
+    now() { if (clockFailure) throw new Error('clock unavailable'); return clockFrozen ? 0 : clock; },
+  });
+  return { owner, renderer, gl, events, programs, unrelated, materialProperties, state, assertRestored,
+    advance(ms) { clock += ms; },
+    prepare(options = {}) { return owner.prepareSceneSteps({ initializeUniforms: true, ...options }); },
+    drain(steps) {
+      let yields = 0;
+      while (!steps.next().done) { assertRestored(); assert.ok(++yields < 1000, 'bounded first-use job'); }
+      assertRestored();
+      return yields;
+    },
+  };
+}
+
+{
+  const f = firstUseFixture();
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, name]) => name),
+    ['back', 'front', 'instanced'],
+    'first-use warms every retained compiled-material variant, not just currentProgram or new programs');
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, name]) => name),
+    ['back', 'front', 'instanced'], 'unrelated retained Garage programs are never queried');
+  assert.equal(timing.uniformCount, 3);
+  assert.equal(timing.uniformMs, 21);
+  assert.equal(timing.maxUniformMs, 7);
+  assert.equal(timing.uniformFailures, 0);
+  assert.equal(timing.uniformYields, 3, 'each native reflection releases the task before another');
+  assert.equal(timing.uniformPending, 0);
+  assert.equal(timing.programsBefore, 4);
+  assert.equal(timing.programsAfter, 4, 'zero new wrapper count does not mean uniform tables were initialized');
+}
+
+{
+  const f = firstUseFixture();
+  const timing = {};
+  f.drain(f.prepare({ initializeUniforms: false, timing }));
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 0);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query').map(([, name]) => name),
+    ['garage', 'back', 'front', 'instanced'], 'default retains its original all-renderer bounded polling');
+  assert.equal(timing.uniformCount, undefined, 'default diagnostics remain unchanged');
+}
+
+for (const result of [false, null, 1]) {
+  const f = firstUseFixture({ names: ['pending', 'ready'] });
+  const timing = {};
+  f.state.query = (name) => name === 'ready' ? true : result;
+  f.drain(f.prepare({ timing }));
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform'), [['uniform', 'ready']],
+    'only explicit completion permits reflection, while independent ready programs can advance');
+  assert.ok(f.events.filter(([kind, name]) => kind === 'query' && name === 'pending').length <= 120);
+  assert.equal(timing.uniformPending, 1, 'exhausted readiness rounds cannot claim completion');
+}
+
+{
+  const f = firstUseFixture({ names: ['waiting'] });
+  const timing = {};
+  let ready = false;
+  f.state.query = () => ready;
+  const steps = f.prepare({ timing });
+  assert.equal(steps.next().done, false, 'submission checkpoint precedes native queries');
+  assert.equal(steps.next().done, false, 'pending link yields without reflection');
+  assert.equal(timing.uniformCount, 0);
+  ready = true;
+  f.drain(steps);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform'), [['uniform', 'waiting']]);
+  assert.equal(timing.uniformPending, 0);
+}
+
+{
+  const f = firstUseFixture({ names: ['waiting'] });
+  const timing = {};
+  f.state.query = () => false;
+  const steps = f.prepare({ timing });
+  steps.next();
+  steps.next();
+  const events = f.events.length;
+  f.advance(5001);
+  assert.equal(steps.next().done, true, 'the wall-clock deadline includes caller wait time');
+  assert.equal(f.events.length, events, 'deadline fallback performs no final blocking reflection/query');
+  assert.equal(timing.uniformPending, 1);
+}
+
+for (const boundary of ['abort', 'epoch', 'info', 'context', 'return', 'throw']) {
+  const f = firstUseFixture();
+  const controller = new AbortController();
+  const original = new Error(`first-use ${boundary}`);
+  const steps = f.prepare({ signal: controller.signal });
+  steps.next();
+  assert.equal(steps.next().done, false, 'first reflection yields before the next program');
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 1);
+  const events = f.events.length;
+  if (boundary === 'abort') controller.abort(original);
+  if (boundary === 'epoch') f.owner.invalidate();
+  if (boundary === 'info') f.renderer.info = { programs: [] };
+  if (boundary === 'context') f.gl.lost = true;
+  if (boundary !== 'context') f.state.blocked = true;
+  if (boundary === 'return') steps.return();
+  else if (boundary === 'throw') assert.throws(() => steps.throw(original), (error) => error === original);
+  else if (boundary === 'abort') assert.throws(() => steps.next(), (error) => error === original);
+  else assert.equal(steps.next().done, true);
+  assert.equal(f.events.length, events, 'no later query/reflection after abandonment');
+  f.assertRestored();
+}
+
+{
+  const f = firstUseFixture();
+  const timing = {};
+  const steps = f.prepare({ timing });
+  steps.next();
+  steps.next();
+  const later = { program: { name: 'later' }, getUniforms() { assert.fail('live additions are not submitted'); } };
+  f.renderer.info.programs = [later, f.programs[2], f.programs[1]];
+  f.materialProperties.currentProgram = later;
+  f.materialProperties.programs.set('later', later);
+  f.drain(steps);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, name]) => name),
+    ['back', 'front', 'instanced'], 'array compaction and later material selection do not redirect frozen identities');
+  assert.equal(timing.uniformCount, 3);
+}
+
+for (const mutation of ['remove', 'replace-handle', 'destroy']) {
+  const f = firstUseFixture({ names: ['stale', 'ready'] });
+  const timing = {};
+  const steps = f.prepare({ timing });
+  steps.next();
+  if (mutation === 'remove') f.renderer.info.programs.splice(1, 1);
+  if (mutation === 'replace-handle') f.programs[0].program = { name: 'replacement' };
+  if (mutation === 'destroy') f.programs[0].program = undefined;
+  f.drain(steps);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'query'), [['query', 'ready']]);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform'), [['uniform', 'ready']]);
+  assert.equal(timing.uniformPending, 0, 'removed/replaced captured handles are no longer live pending work');
+}
+
+{
+  const f = firstUseFixture();
+  const timing = {};
+  f.state.reflect = (name) => { if (name === 'front') throw new Error('uniform reflection failed'); };
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.uniformCount, 3);
+  assert.equal(timing.uniformFailures, 1);
+  assert.equal(timing.uniformPending, 1, 'a failed call is left to the unchanged real-render fallback');
+  assert.equal(timing.uniformMs, 21, 'failed native reflection retains its elapsed time');
+}
+
+{
+  const f = firstUseFixture({ extension: false });
+  const timing = {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(timing.uniformCount, 3, 'missing KHR retains guarded per-program synchronous fallback');
+  assert.equal(timing.uniformYields, 3);
+  assert.equal(timing.uniformPending, 0, 'this reports reflection completion, not proven link readiness');
+  assert.equal(timing.queryCount, undefined, 'fallback does not fabricate native completion queries');
+}
+
+for (const operation of ['extension', 'query']) {
+  const f = firstUseFixture();
+  const timing = {};
+  if (operation === 'extension') f.gl.getExtension = () => { throw new Error('extension lookup failed'); };
+  else f.state.query = () => { throw new Error('native query failed'); };
+  f.drain(f.prepare({ timing }));
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 0,
+    'a native failure cannot be interpreted as the unsupported-extension readiness fallback');
+  assert.equal(timing.uniformPending, 3);
+}
+
+for (const boundary of ['abort', 'epoch', 'info', 'context', 'handle', 'remove', 'deadline']) {
+  const f = firstUseFixture({ names: ['first', 'next'] });
+  const controller = new AbortController();
+  const original = new Error(`query invalidated ${boundary}`);
+  const timing = {};
+  f.state.query = (name) => {
+    if (name !== 'first') return true;
+    if (boundary === 'abort') controller.abort(original);
+    if (boundary === 'epoch') f.owner.invalidate();
+    if (boundary === 'info') f.renderer.info = { programs: [] };
+    if (boundary === 'context') f.gl.lost = true;
+    if (boundary === 'handle') f.programs[0].program = { name: 'replaced' };
+    if (boundary === 'remove') f.renderer.info.programs.splice(1, 1);
+    if (boundary === 'deadline') f.advance(5001);
+    return true;
+  };
+  const steps = f.prepare({ timing, signal: controller.signal });
+  if (boundary === 'abort') assert.throws(() => f.drain(steps), (error) => error === original);
+  else f.drain(steps);
+  const reflected = f.events.filter(([kind]) => kind === 'uniform');
+  assert.deepEqual(reflected, ['handle', 'remove'].includes(boundary) ? [['uniform', 'next']] : [],
+    `${boundary}: recheck lifetime and deadline between successful readiness query and reflection`);
+}
+
+{
+  const f = firstUseFixture({ names: ['pending'], clockFailure: true });
+  const controller = new AbortController();
+  const original = new Error('aborted at final bounded wait');
+  f.state.query = () => false;
+  const steps = f.prepare({ signal: controller.signal });
+  steps.next();
+  for (let round = 0; round < 120; round++) assert.equal(steps.next().done, false);
+  controller.abort(original);
+  assert.throws(() => steps.next(), (error) => error === original,
+    'even the last readiness wait preserves cancellation when the clock is unavailable');
+}
+
+for (const diagnostics of ['frozen', 'clock-unavailable']) {
+  const f = firstUseFixture({ clockFailure: diagnostics === 'clock-unavailable' });
+  const timing = diagnostics === 'frozen' ? Object.freeze({}) : {};
+  f.drain(f.prepare({ timing }));
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 3,
+    'optional diagnostics do not change actual first-use work');
+}
+
+{
+  const f = firstUseFixture({ names: Array.from({ length: 136 }, (_, index) => `fast-${index}`) });
+  f.state.queryMs = 0.02;
+  f.state.uniformMs = 0.05;
+  const timing = {};
+  assert.equal(f.drain(f.prepare({ timing })), 5,
+    '136 cheap programs need one submission wait plus four bounded first-use waits, not 137 waits');
+  assert.equal(timing.uniformCount, 136);
+  assert.equal(timing.queryCount, 136);
+  assert.equal(timing.uniformYields, 4);
+  assert.equal(timing.uniformPending, 0);
+}
+
+for (const [sliceMs, expectedFirstChunk] of [[undefined, 2], [0, 1], [1, 1], [8, 4], [100, 4], [NaN, 2]]) {
+  const f = firstUseFixture({ names: Array.from({ length: 10 }, (_, index) => `timed-${index}`) });
+  f.state.queryMs = 1;
+  f.state.uniformMs = 1;
+  const steps = f.prepare({ sliceMs });
+  assert.equal(steps.next().done, false);
+  assert.equal(steps.next().done, false);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, expectedFirstChunk,
+    'the 4 ms default and clamped 1–8 ms override budget total native query plus reflection time');
+  steps.return();
+}
+
+for (const result of ['pending', 'failure']) {
+  const f = firstUseFixture();
+  f.state.queryMs = 6;
+  f.state.query = () => {
+    if (result === 'failure') throw new Error('native query failed');
+    return false;
+  };
+  const steps = f.prepare();
+  steps.next();
+  assert.equal(steps.next().done, false);
+  assert.equal(f.events.filter(([kind]) => kind === 'query').length, 1,
+    `${result}: expensive non-reflecting queries must release a slice before another query`);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 0);
+  steps.return();
+}
+
+for (const failure of [false, true]) {
+  const f = firstUseFixture();
+  f.state.queryMs = 0;
+  f.state.uniformMs = 6;
+  f.state.reflect = () => { if (failure) throw new Error('reflection failed'); };
+  const steps = f.prepare();
+  steps.next();
+  assert.equal(steps.next().done, false);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 1,
+    'an expensive indivisible reflection releases the slice even when it fails');
+  steps.return();
+}
+
+for (const clock of ['unavailable', 'frozen']) {
+for (const work of ['ready', 'pending', 'failed', 'stale']) {
+  const f = firstUseFixture({ names: Array.from({ length: 65 }, (_, index) => `bounded-${index}`),
+    clockFailure: clock === 'unavailable', clockFrozen: clock === 'frozen' });
+  f.state.queryMs = 0;
+  f.state.uniformMs = 0;
+  f.state.query = () => {
+    if (work === 'failed') throw new Error('query failed');
+    return work !== 'pending';
+  };
+  const timing = {};
+  const steps = f.prepare({ timing });
+  steps.next();
+  if (work === 'stale') for (const program of f.programs) program.program = undefined;
+  assert.equal(steps.next().done, false, `${clock}/${work}: finite entry ceiling always yields`);
+  const queries = f.events.filter(([kind]) => kind === 'query').length;
+  assert.equal(queries, work === 'stale' ? 0 : 32, 'at most 32 cohort entries per checkpoint');
+  assert.equal(timing.uniformCount, work === 'ready' ? 32 : 0);
+  if (work === 'stale') assert.equal(timing.uniformPending, 0);
+  steps.return();
+}
+}
+
+{
+  const f = firstUseFixture({ names: ['first', 'second', 'third', 'fourth'] });
+  f.state.queryMs = 1;
+  f.state.uniformMs = 1;
+  const steps = f.prepare();
+  steps.next();
+  steps.next();
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 2);
+  f.advance(1000);
+  assert.equal(steps.next().done, false);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 4,
+    'the next slice starts after caller paint time, not at the previous yield');
+  assert.equal(steps.next().done, true);
+}
+
+{
+  const f = firstUseFixture({ names: Array.from({ length: 10 }, (_, index) => `cancel-${index}`) });
+  f.state.queryMs = 0;
+  f.state.uniformMs = 0;
+  const controller = new AbortController();
+  const original = new Error('cancelled inside cheap reflection chunk');
+  f.state.reflect = (name) => { if (name === 'cancel-1') controller.abort(original); };
+  const steps = f.prepare({ signal: controller.signal });
+  steps.next();
+  assert.throws(() => steps.next(), (error) => error === original);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 2,
+    'chunking cannot defer cancellation until the next scheduling checkpoint');
+  f.assertRestored();
+}
+
+{
+  const f = firstUseFixture({ names: Array.from({ length: 33 }, (_, index) => `retained-${index}`),
+    clockFrozen: true });
+  f.state.queryMs = 0;
+  f.state.uniformMs = 0;
+  f.state.query = (name) => name !== 'retained-32';
+  const steps = f.prepare();
+  steps.next();
+  steps.next(); // 32 ready entries exhaust the first chunk.
+  steps.next(); // The last pending entry releases the round.
+  const queries = f.events.filter(([kind]) => kind === 'query').length;
+  assert.equal(steps.next().done, false, 'already-initialized entries also count against the ceiling');
+  assert.equal(f.events.filter(([kind]) => kind === 'query').length, queries);
+  steps.return();
+}
+
+{
+  const f = firstUseFixture({ names: Array.from({ length: 32 }, (_, index) => `pending-${index}`),
+    clockFrozen: true });
+  f.state.queryMs = 0;
+  f.state.query = () => false;
+  const timing = {};
+  assert.equal(f.drain(f.prepare({ timing })), 121,
+    'a final-entry budget checkpoint also releases the pending round, without two consecutive waits');
+  assert.equal(timing.uniformYields, 120);
+  assert.equal(timing.queryCount, 32 * 120);
+  assert.equal(timing.uniformPending, 32);
 }
 
 console.log('programWarm.selftest: target compile, forward owner, and uniform draining passed');

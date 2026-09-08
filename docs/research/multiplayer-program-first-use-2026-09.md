@@ -28,8 +28,8 @@ The opt-in job checks cancellation, owner epoch, renderer-info identity,
 context loss, program removal, and native-handle replacement around cooperative
 checkpoints. Camera layers and render targets are restored before yielding.
 When KHR parallel compilation is available, only an explicit completed query
-permits reflection; unsupported KHR uses guarded synchronous reflection, one
-program per yield, without claiming observed link completion. Query failures
+permits reflection; unsupported KHR uses guarded synchronous reflection
+without claiming observed link completion. Query failures
 and unfinished programs retain the real-render fallback.
 
 The first-use phase is bounded between native calls by five seconds and 120
@@ -48,7 +48,7 @@ watchdog rendering, nonblack-frame verification, loader fade, and the all-peer
 five-second countdown remain mandatory. A completed cohort is not permission
 to reveal an unrendered frame.
 
-## Publication status
+## Initial candidate publication status
 
 **Runtime withheld.** Candidate `cdb7be8c9` is preserved on
 `codex/multiplayer-program-first-use-r1`. The main landing contains only the
@@ -126,3 +126,79 @@ only as finite numbers; arbitrary strings/nested details remain excluded. Its
 observer test first failed on the omitted fields, then passed. Source-profile,
 private-room capture selftests, changed-tool metrics and whitespace checks pass.
 No QA runner, report JSON, screenshots, build output, or unrelated work is staged.
+
+## Follow-up: bounded first-use and final-camera shadows
+
+The follow-up keeps the same finite selected-material cohort and lifetime
+checks, but groups queries/reflection into four-millisecond work chunks
+(caller bounds 1–8 ms). Every 32 visited entries also forces a checkpoint,
+including failed, stale, completed and pending entries. Paint waits do not
+consume the next work budget. Pending rounds still yield. Individual native
+calls remain indivisible. The deterministic 136-cheap-program case performs
+the same queries/reflections with five total waits instead of 137; this is
+scheduler evidence, not a native speed claim.
+
+After atomic player activation, while the loader still suppresses normal
+scene paints, multiplayer now primes the final camera's four shadow cascades
+one per task. This reuses the Garage's existing exact-cascade renderer path;
+it does not lower shadow quality, omit far cascades, or add an alternative
+render loop. Garage dormancy is released and the final camera FOV/fits are
+published before priming. The next canonical frame consumes the primed maps.
+The real watchdog, verified reveal frame, awaited fade, all-peer readiness,
+and five-second countdown remain mandatory.
+Spectators retain their existing watchdog and canonical redraw path: their
+activation starts a moving camera blend, not a final snapped camera, so old-fit
+maps must not be presented as final-camera priming.
+
+The extracted shadow helper preserves the exact renderer callback, target,
+face/mip, camera/light layers and original shadow flags on failure. Cancellation,
+stale ownership and context changes reject entry without releasing readiness.
+Cleanup attempts the remaining restorations even if target restoration throws;
+an invalidated renderer never receives old native target bindings/disposal
+hooks. Only successful priming publishes the reusable-frame flag.
+
+The observer retains a bounded `finalShadows` interval plus finite cascade
+count, total and maximum draw time, separately from the watchdog. New public
+helper and presentation tests cover deferred work, failures, aborts, context
+loss and exact restoration. Review also reproduced late cleanup context loss
+and the helper-to-lighting await race; both now reject even without a caller
+lease, and tests prove the next lighting update is not suppressed.
+
+### Follow-up native acceptance
+
+The `bounded-first-use-shadows-r1` capture passed on the frozen local public
+build `v1.0.0+gee6a69389.dirty` (`main-BmgYa8u7.js`). The suffix records only
+the untracked QA runner/artifacts; tracked runtime was committed. Acquisition
+again used two fresh native contexts, Winter clear/day, HIGH/scale 1 during
+entry, waiting-room map preparation, and guest CPU profiling. Both clients
+rendered a verified frame, showed `5,4,3,2,1`, moved/fired, returned to Garage,
+and closed the room. Page errors and black-frame rescues were zero; browser
+closure was verified. Inspected images show tank/terrain/HUD and Apple M5 Max
+ANGLE, not a black canvas or software renderer.
+
+| Follow-up loading measurement | Host | Guest |
+| --- | ---: | ---: |
+| Total, including ready barrier | 2,139 ms | 2,282 ms |
+| Scene compile / first-use phase | 320 ms | 369 ms |
+| Uniform attempts / yields | 158 / 8 | 136 / 10 |
+| Uniform time / failures / live pending | 4.4 ms / 0 / 0 | 4.8 ms / 0 / 0 |
+| Four shadow draws: total / max | 116 / 92 ms | 64 / 36 ms |
+| Watchdog render / asynchronous readback | 40.7 / 302.6 ms | 43.2 / 52.3 ms |
+| Largest task starting inside network loading | 137 ms | 305 ms |
+| Largest native readiness query | 136.4 ms | 212.4 ms |
+
+This accepts the follow-up's functional behavior and removes the demonstrated
+per-program scheduling overhead in the withheld candidate. It is one same-
+machine observation, not a statistically controlled comparison to production:
+room seeds, driver caches and external GPU contention are not controlled. The
+guest's 305 ms loading task and long native queries remain unresolved; no hard
+frame-budget or universally faster-than-main claim follows from these data.
+The existing later LOW dual-render moving/firing sample observed maximum
+callback gaps of 44.9/40.4 ms and zero hard snaps, not HIGH gameplay certification.
+
+Focused renderer/presentation/barrier/launch tests, typecheck, production build
+and changed-owner metrics pass (213 functions, zero complexity violations,
+zero explicit any/unknown). React Doctor's changed score remains 49/100; new
+warnings are cold test operations, not new live-frame work. The full suite is
+still subject to the independently reproduced upstream T-90M receipt mismatch
+documented above. No test expectation or graphics quality was weakened.

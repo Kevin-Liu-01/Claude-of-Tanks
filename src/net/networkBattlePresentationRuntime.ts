@@ -37,7 +37,7 @@ export interface NetworkBattlePresentationRequest {
 const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
   'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
 type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
-type NetworkRevealSlice = 'activation' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
+type NetworkRevealSlice = 'activation' | 'finalShadows' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
 
 interface NetworkLoadInterval<Stage extends string> {
   stage: Stage;
@@ -61,6 +61,7 @@ export interface NetworkBattleLoadTrace {
   connectMs?: number;
   blackCheck?: RuntimeValue;
   programCompile?: RuntimeValue;
+  shadowPrime?: RuntimeValue;
   totalMs?: number;
 }
 
@@ -193,6 +194,7 @@ export interface NetworkBattlePresentationOptions {
     ): MaybePromise<RuntimeValue>;
     shotCards(specIds: string[]): void;
     compile(signal?: AbortSignal): MaybePromise<RuntimeValue>;
+    finalShadows(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   };
   presentation: {
     resetRoundState(): void;
@@ -249,7 +251,7 @@ function validateNetworkPresentationPorts(options: NetworkBattlePresentationOpti
     checkedIntegrationPort(
       options.warm ?? {},
       'network battle warmup',
-      ['getFx', 'terrain', 'wrecks', 'playerPanel', 'openingEffects', 'shotCards', 'compile'],
+      ['getFx', 'terrain', 'wrecks', 'playerPanel', 'openingEffects', 'shotCards', 'compile', 'finalShadows'],
     );
     checkedIntegrationPort(
       options.presentation ?? {},
@@ -500,6 +502,15 @@ export function createNetworkBattlePresentationRuntime(
       timer.beginSlice('activation');
       presentation.activate({ viewerId, own, spectator, mapId, bridge: preparedBridge, fx });
       timer.endSlice();
+      throwIfNetworkBattleEntryAborted(signal);
+      // Spectator camera blending settles during the existing real-frame
+      // reveal path; only the player activation snaps a reusable final pose.
+      if (!spectator) {
+        timer.beginSlice('finalShadows');
+        trace.shadowPrime = await warm.finalShadows(signal);
+        timer.endSlice();
+        throwIfNetworkBattleEntryAborted(signal);
+      }
       timer.beginSlice('blackWatchdog');
       try {
         trace.blackCheck = await presentation.runBlackWatchdog(signal);

@@ -11,7 +11,7 @@ function test(name, run) {
 }
 
 function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, empty = false,
-  linker = false, layered = false } = {}) {
+  linker = false, layered = false, firstUse = false } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const geometry = new THREE.BoxGeometry();
@@ -96,6 +96,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
   let forbiddenAccesses = 0;
   let nativeDepth = 0;
   let uniformCalls = 0;
+  const cachedMaterials = new Map();
   const assertActive = (operation) => {
     if (blocked) forbiddenAccesses++;
     assert.equal(blocked, false, `no stale ${operation}`);
@@ -133,6 +134,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
   };
   const renderer = {
     info: { programs: [] },
+    properties: { get(material) { assertActive('material properties'); return cachedMaterials.get(material); } },
     getContext() { assertActive('context acquisition'); events.push('getContext'); return gl; },
     getRenderTarget() { assertActive('target query'); return target; },
     getActiveCubeFace() { assertActive('cube-face query'); return face; },
@@ -181,7 +183,29 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
           for (const material of materials) {
             materialVisits.push({ object, material });
             batchMaterials.add(material);
-            renderer.info.programs.push({ program: {}, getUniforms() { uniformCalls++; } });
+            let properties = cachedMaterials.get(material);
+            if (!properties) {
+              properties = { programs: new Map() };
+              cachedMaterials.set(material, properties);
+            }
+            const sides = firstUse && material.transparent && material.side === THREE.DoubleSide
+              ? ['back', 'front'] : ['single'];
+            for (const side of sides) {
+              const key = firstUse ? `${camera.layers.mask}:${!!object.isInstancedMesh}:${side}`
+                : renderer.info.programs.length;
+              let program = properties.programs.get(key);
+              if (!program) {
+                program = { program: {}, getUniforms() {
+                  assertActive('uniform reflection');
+                  assert.equal(target, priorTarget, 'reflection does not borrow a pass target');
+                  assert.equal(camera.layers.mask, cameraMask, 'reflection sees the restored camera');
+                  uniformCalls++;
+                } };
+                properties.programs.set(key, program);
+                renderer.info.programs.push(program);
+              }
+              properties.currentProgram = program;
+            }
           }
           clock += 4;
           onVisit?.(object, { nativeDepth, visits: visits.length });
@@ -205,6 +229,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
     hiddenMesh, child, instance, layerExcluded,
     block() { blocked = true; },
     nativeDepth: () => nativeDepth,
+    uniformCalls: () => uniformCalls,
     assertUntouched() {
       for (const entry of snapshots) {
         const object = entry.object;
@@ -222,7 +247,8 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
       assert.equal(camera.layers.mask, cameraMask, 'restore the caller camera mask before every checkpoint');
       assert.equal(graphEvents, 0, 'even temporary reparenting/restoration is forbidden');
       assert.equal(disposals, 0, 'submission never disposes caller resources');
-      assert.equal(uniformCalls, 0, 'this owner only submits programs, without eager uniform initialization');
+      if (!firstUse) assert.equal(uniformCalls, 0,
+        'default submission does not initialize uniforms');
       assert.equal(forbiddenAccesses, 0, 'caught failures cannot hide stale scene/GPU access');
       assert.equal(nativeDepth, 0, 'a native compile always finishes before a checkpoint');
       assert.equal(target, priorTarget);
@@ -640,6 +666,69 @@ test('context loss at the submission/linker handoff cannot acquire an extension 
   assert.equal(f.visits.length, visits);
   assert.equal(f.events.filter((event) => event === 'setTarget').length, targetChanges);
   f.assertFacadeReleased();
+  f.assertUntouched();
+});
+
+for (const layered of [false, true]) {
+test(`first-use ${layered ? 'two-pass' : 'default'} material cohort retains exact variants and restores every checkpoint`, () => {
+  const f = fixture({ linker: true, layered, firstUse: true });
+  const timing = {};
+  const unrelated = { program: {}, getUniforms() { assert.fail('unsubmitted material'); } };
+  f.renderer.info.programs.push(unrelated);
+  const steps = pauseBeforeLinker(f, { timing, initializeUniforms: true,
+    passes: layered ? compositorPasses(f) : undefined });
+  const cohort = f.renderer.info.programs.slice(1);
+  assert.ok(cohort.length > new Set(f.materialVisits.map(({ material }) => material)).size,
+    'transparent sides and shared-material instancing create more than one program per material');
+  const later = { program: {}, getUniforms() { assert.fail('later live-array addition'); } };
+  f.renderer.info.programs.unshift(later);
+  drain(f, steps);
+  assert.equal(f.uniformCalls(), cohort.length, 'each captured wrapper initializes once across duplicate batches');
+  assert.equal(timing.uniformCount, cohort.length);
+  assert.equal(timing.uniformPending, 0);
+  assert.equal(timing.uniformFailures, 0);
+  assert.equal(timing.uniformYields, Math.floor(cohort.length / 32),
+    'cheap exact pass variants share bounded first-use chunks instead of one wait per program');
+  assert.equal(timing.queryCount, cohort.length, 'no query for unrelated or late-added wrappers');
+  assert.equal(timing.newQueryCount, cohort.length);
+  assert.equal(timing.existingQueryCount ?? 0, 0);
+  assert.equal(timing.programsBefore, 1);
+  assert.equal(timing.programsAfter, cohort.length + 1,
+    'first-use reflection preserves submission count receipt despite external list additions');
+});
+}
+
+test('first-use cancellation during compile restores both pass state and skips material property access', () => {
+  const controller = new AbortController();
+  const original = new Error('cancelled during native submission');
+  const f = fixture({ layered: true, firstUse: true, onVisit() { controller.abort(original); } });
+  f.renderer.properties.get = () => assert.fail('no material reads after native compile was cancelled');
+  const steps = f.owner.prepareSceneSteps({ initializeUniforms: true,
+    passes: compositorPasses(f), signal: controller.signal });
+  assert.throws(() => steps.next(), (error) => error === original);
+  f.assertUntouched();
+  f.assertFacadeReleased();
+});
+
+test('a missing selected-material cache fails optional first-use without leaking the pass state', () => {
+  const f = fixture({ layered: true, firstUse: true });
+  f.renderer.properties = undefined;
+  const steps = f.owner.prepareSceneSteps({ initializeUniforms: true, passes: compositorPasses(f) });
+  assert.throws(() => steps.next(), /Compiled material program cache unavailable/);
+  f.assertUntouched();
+  f.assertFacadeReleased();
+  assert.equal(f.events.includes('getExtension'), false);
+});
+
+test('empty first-use preparation does not acquire an extension or invent pending work', () => {
+  const f = fixture({ empty: true, firstUse: true });
+  const timing = {};
+  const steps = f.owner.prepareSceneSteps({ initializeUniforms: true, timing });
+  assert.equal(steps.next().done, false, 'retain the existing final submission checkpoint');
+  assert.equal(steps.next().done, true);
+  assert.equal(timing.uniformCount, 0);
+  assert.equal(timing.uniformPending, 0);
+  assert.equal(f.events.includes('getExtension'), false);
   f.assertUntouched();
 });
 
