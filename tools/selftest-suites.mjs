@@ -447,6 +447,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/settingsControls.selftest.mjs',
     'src/vehicles/specHelpers.selftest.mjs',
     'src/dev/perfTrace.selftest.mjs',
+    'src/ui/perfHud.selftest.mjs',
     'src/dev/mainDiagnosticsRuntime.selftest.mjs',
     'src/dev/debugBattleEntryRuntime.selftest.mjs',
     'src/dev/perfDiagnosticsAccess.selftest.mjs',
