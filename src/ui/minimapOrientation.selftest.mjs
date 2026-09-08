@@ -4,6 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { MAP_IDS, getMapConfig } from '../world/maps/index.ts';
 import { createLayout } from '../world/terrain.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
+import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import {
   minimapAngleForDirection,
   minimapYawForHeading,
@@ -52,9 +53,22 @@ assert.match(hudSource,
 assert.match(hudSource,
   /mmBg = image;[\s\S]{0,120}drawMinimapBackground\(\)/,
   'production retains the decoded image instead of a purge-prone iPad canvas copy');
-assert.match(worldActivationSource,
-  /minimapAssetVersion \|\| 'north-up-v7'/,
-  'refreshed environment rasters bypass stale orientation and shoreline browser caches');
+const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(mainSource, /import \{ minimapAssetUrl as getMinimapAssetUrl \} from '\.\/ui\/minimapAssetUrl\.ts'/);
+assert.match(mainSource, /getMinimapAssetUrl\(mapId, import\.meta\.env\.BASE_URL \|\| '\/'\)/,
+  'intent prefetch uses the same versioned URL owner as activation');
+assert.match(worldActivationSource, /minimapAssetUrl\(mapId, baseUrl, options\.minimapAssetVersion\)/);
+assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
+  'callers cannot retain a stale hardcoded raster revision');
+for (const mapId of MAP_IDS) {
+  const revision = mapId === 'oasis' ? 'north-up-v7-oasis-shoreline-v2' : 'north-up-v7';
+  assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
+    'only the refreshed Oasis raster invalidates its previous browser cache entry');
+  assert.equal(minimapAssetUrl(mapId, '/game/'), `/game/minimaps/${mapId}.webp?v=${revision}`);
+  assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
+    `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
+}
+assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v7');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.
