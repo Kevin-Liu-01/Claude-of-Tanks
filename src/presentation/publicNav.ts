@@ -1,13 +1,41 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
-import { t } from '../ui/i18n.ts';
+import { getLocale, setLocale, t } from '../ui/i18n.ts';
 
 installResponsiveLayout();
 bindStaticI18nAuto();
 
 const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
   .then(({ mountGitHubStars }) => mountGitHubStars(document));
+
+function mountLocaleSwitcher(): void {
+  const links = document.querySelector<HTMLElement>('.public-nav__links');
+  if (!links || links.querySelector('.public-nav__locale')) return;
+
+  const current = getLocale();
+  const next = current === 'zh-CN' ? 'en-US' : 'zh-CN';
+  const button = document.createElement('button');
+  button.className = 'public-nav__locale';
+  button.type = 'button';
+  button.dataset.locale = current;
+  button.setAttribute('aria-label', t(next === 'zh-CN'
+    ? 'publicNav.language.switchToChinese'
+    : 'publicNav.language.switchToEnglish'));
+  button.title = button.getAttribute('aria-label') || '';
+  button.innerHTML =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/>' +
+    '<path d="M3.8 12h16.4M12 3.5c2.2 2.4 3.3 5.2 3.3 8.5S14.2 18.1 12 20.5M12 3.5C9.8 5.9 8.7 8.7 8.7 12s1.1 6.1 3.3 8.5"/></svg>' +
+    `<span data-locale-option="en-US"${current === 'en-US' ? ' class="is-current"' : ''}>EN</span>` +
+    '<i aria-hidden="true">/</i>' +
+    `<span data-locale-option="zh-CN"${current === 'zh-CN' ? ' class="is-current"' : ''}>中文</span>`;
+  button.addEventListener('click', () => {
+    setLocale(next);
+    window.location.reload();
+  });
+
+  links.insertBefore(button, links.querySelector('.public-nav__github, .public-nav__cta'));
+}
 
 function mountMobileNavigation(): void {
   const links = document.querySelector<HTMLElement>('.public-nav__links');
@@ -88,6 +116,7 @@ function mountMobileNavigation(): void {
   links.append(trigger, menu);
 }
 
+mountLocaleSwitcher();
 mountMobileNavigation();
 
 window.setTimeout(() => {

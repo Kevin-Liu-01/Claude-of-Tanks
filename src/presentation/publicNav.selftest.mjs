@@ -26,6 +26,7 @@ const pages = [
   ['docs-audio.html', '/docs'],
   ['docs-interface.html', '/docs'],
   ['docs-studio.html', '/docs'],
+  ['404.html', null],
 ];
 const expectedLinks = [
   ['/home', 'Home'],
@@ -106,11 +107,22 @@ assert.match(navSource, /garage\.href = '\/'/,
   'the public mobile menu must expose the garage alongside every public page');
 assert.match(navSource, /event\.code !== 'Escape'/,
   'the public mobile navigation must close with Escape');
+assert.match(navSource, /className = 'public-nav__locale'/,
+  'public pages must expose a visible locale switcher in the shared navigation');
+assert.match(navSource, /setLocale\(next\)/,
+  'the public locale switcher must persist through the canonical i18n owner');
+assert.match(navCss, /\.public-nav__locale\{[^}]*display:flex;[^}]*height:34px;/,
+  'the public locale switcher must be a first-class desktop navigation control');
 
 for (const [file, activeHref] of pages) {
   const html = readFileSync(join(ROOT, file), 'utf8');
   assert.match(html, /<link rel="stylesheet" href="\/src\/presentation\/publicNav\.css">/);
-  assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/);
+  if (file === '404.html') {
+    assert.match(html, /<script type="module" src="\/src\/presentation\/notFound\.ts"><\/script>/,
+      'the 404 runtime must import the shared public navigation');
+  } else {
+    assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/);
+  }
   const nav = /<nav class="public-nav"[\s\S]*?<\/nav>/.exec(html)?.[0];
   assert.ok(nav, `${file} must contain the shared public nav`);
   const linksBlock = /<div class="public-nav__links">([\s\S]*?)<\/div>/.exec(nav)?.[1];
@@ -130,7 +142,7 @@ for (const [file, activeHref] of pages) {
     if (link.attrs.includes('aria-current="page"')) activeLinks.push(link.href);
   }
   assert.deepEqual(actualLinks, expectedLinks, `${file} nav links drifted`);
-  assert.deepEqual(activeLinks, [activeHref]);
+  assert.deepEqual(activeLinks, activeHref ? [activeHref] : []);
   assert.ok(links.find(({ href }) => href === '/studio'), `${file} must link Scene Studio`);
   assert.ok(linksBlock.includes('public-nav__icon--docs') && linksBlock.includes('/brand/nav/docs.svg'),
     `${file} must use the shared Docs product mark`);

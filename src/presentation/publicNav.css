@@ -38,6 +38,26 @@
 }
 .public-nav__brand b{color:#e9a346;font-weight:900}
 .public-nav__links{position:relative;display:flex;align-items:center;gap:8px}
+.public-nav__locale{
+  display:flex;
+  height:34px;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:0 10px;
+  border:1px solid rgba(220,230,233,.18);
+  border-radius:2px;
+  background:rgba(255,255,255,.018);
+  color:#7f8b92;
+  font:900 8px 'ABC Monument Grotesk','Arial Narrow',Arial,sans-serif;
+  letter-spacing:.08em;
+  cursor:pointer;
+  transition:background-color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
+    color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out);
+}
+.public-nav__locale svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5}
+.public-nav__locale i{font-style:normal;opacity:.34}
+.public-nav__locale .is-current{color:#ffd27a}
 .public-nav__links a{
   display:flex;
   align-items:center;
@@ -143,7 +163,7 @@
   cursor:pointer;
 }
 .public-nav__menu-trigger svg{width:19px;height:19px}
-.public-nav__menu-trigger:focus-visible,.public-nav__links a:focus-visible{
+.public-nav__menu-trigger:focus-visible,.public-nav__locale:focus-visible,.public-nav__links a:focus-visible{
   outline:2px solid #ffd27a;
   outline-offset:2px;
 }
@@ -188,6 +208,7 @@ body[data-cot-panels='overlay'] .public-nav__brand img{width:28px;height:34px}
 body[data-cot-panels='overlay'] .public-nav__links{gap:5px}
 body[data-cot-panels='overlay'] .public-nav__links>a:not(.public-nav__github):not(.public-nav__cta){display:none}
 body[data-cot-panels='overlay'] .public-nav__links a{gap:5px;height:40px;padding-inline:10px;font-size:7px;letter-spacing:.08em}
+body[data-cot-panels='overlay'] .public-nav__locale{height:40px;padding-inline:8px}
 body[data-cot-panels='overlay'] .public-nav__icon{width:12px;height:12px}
 body[data-cot-panels='overlay'] .public-nav__icon--tank{width:17px;height:14px}
 body[data-cot-panels='overlay'] .public-nav__icon--studio,
@@ -205,12 +226,16 @@ body[data-cot-width='phone'] .public-nav__links a{gap:3px;padding-inline:5px;fon
 body[data-cot-width='phone'] .public-nav__links .public-nav__github{gap:5px;padding-inline:6px}
 body[data-cot-width='phone'] .public-nav__stars{padding-left:5px}
 body[data-cot-width='phone'] .public-nav__links .public-nav__cta{padding-inline:7px}
+body[data-cot-width='phone'] .public-nav__locale{width:42px;padding:0;gap:2px;font-size:6.5px;letter-spacing:0}
+body[data-cot-width='phone'] .public-nav__locale svg{display:none}
 
 body[data-cot-input='coarse'] .public-nav__links a,
-body[data-cot-input='coarse'] .public-nav__menu-trigger{min-height:44px}
+body[data-cot-input='coarse'] .public-nav__menu-trigger,
+body[data-cot-input='coarse'] .public-nav__locale{min-height:44px}
 
 @media(hover:hover) and (pointer:fine){
   .public-nav__links a:hover{color:#efeee9;border-color:rgba(233,163,70,.5);background:rgba(255,255,255,.05);transform:translateY(-1px)}
+  .public-nav__locale:hover{color:#efeee9;border-color:rgba(233,163,70,.5);background:rgba(255,255,255,.05);transform:translateY(-1px)}
   .public-nav__links a:hover .public-nav__icon{opacity:1;transform:translateY(-1px)}
   .public-nav__links .public-nav__cta:hover{background:#ffdba1;color:#18130c}
 }

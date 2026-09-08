@@ -181,7 +181,7 @@ body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
 body[data-cot-width='phone'] .cot-set-tabs{overflow-x:hidden}
 body[data-cot-width='phone'] .cot-set-tab{
-  flex:1 1 0;min-width:0;padding-inline:4px;font-size:9px;letter-spacing:.11em;
+  flex:1 1 0;min-width:0;padding-inline:2px;font-size:8px;letter-spacing:.07em;
 }
 body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:8px}
 body[data-cot-width='compact'] .cot-set-body,

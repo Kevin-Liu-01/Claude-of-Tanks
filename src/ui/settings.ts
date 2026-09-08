@@ -70,7 +70,7 @@ const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   'mobile-high': 'settings.preset.mobileHigh',
 });
 
-type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics';
+type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics' | 'language';
 type BindingSlotKey = BindingSlot | 'pad';
 type NumericSettingKey =
   | 'sensitivity'
@@ -533,6 +533,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="gameplay" type="button">${t('settings.tab.gameplay')}</button>` +
     `<button class="cot-set-tab" data-tab="sound" type="button">${t('settings.tab.sound')}</button>` +
     `<button class="cot-set-tab" data-tab="graphics" type="button">${t('settings.tab.graphics')}</button>` +
+    `<button class="cot-set-tab" data-tab="language" type="button">${t('settings.tab.language')}</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
     `<button class="cot-set-btn swap" type="button">${t('settings.conflict.swap')}</button>` +
@@ -1068,8 +1069,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       ? t('settings.graphics.note.mobile')
       : t('settings.graphics.note.desktop');
 
-    // Language picker. Lives under Graphics tab for now (matches Settings panel
-    // layout); the language only affects UI text, not rendering quality.
+  }
+
+  // --- LANGUAGE tab -----------------------------------------------------------
+  function renderLanguage() {
+    body.textContent = '';
     const langCard = groupCard(body, t('settings.language.title'));
     const langRow = el('div', 'cot-set-row', langCard);
     settingLabel(langRow, t('settings.language.label'), SETTINGS_OPTION_ICONS.graphicsQuality);
@@ -1108,6 +1112,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
     else if (activeTab === 'sound') renderSound();
+    else if (activeTab === 'language') renderLanguage();
     else renderGameplay();
     applyZebra();
     updateScrollFades(); // fades follow the fresh content's real overflow
@@ -1421,7 +1426,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
     t.addEventListener('click', () => {
       const tab = t.dataset.tab;
-      if (tab === 'controls' || tab === 'gameplay' || tab === 'sound' || tab === 'graphics') {
+      if (tab === 'controls' || tab === 'gameplay' || tab === 'sound' || tab === 'graphics' || tab === 'language') {
         activeTab = tab;
       }
       renderTab();
