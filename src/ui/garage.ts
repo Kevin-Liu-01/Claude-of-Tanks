@@ -341,6 +341,11 @@ const NATION_FULL_LABEL: Readonly<Record<string, string>> = {
   France: 'France', Israel: 'Israel', China: 'China', 'South Korea': 'South Korea',
   Japan: 'Japan', Italy: 'Italy', Poland: 'Poland', Ukraine: 'Ukraine',
 };
+const CAMO_TAG_NATION: Readonly<Partial<Record<CamoTagId, string>>> = Object.freeze({
+  usa: 'USA', de: 'Germany', ru: 'Russia', uk: 'UK', fr: 'France', cn: 'China',
+  it: 'Italy', jp: 'Japan', pl: 'Poland', kr: 'South Korea', se: 'Sweden',
+  il: 'Israel', ua: 'Ukraine',
+});
 function nationFullLabel(nation: string): string {
   return NATION_FULL_LABEL[nation] || nation;
 }
@@ -523,15 +528,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `title="${t('garage.nav.record')}" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
     `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span></button>` +
-    `<div class="cot-garage-variant-control">` +
-    `<button class="nv cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
-    `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
-    `aria-controls="cot-garage-variant-menu">${uiIconSVG('garage', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label cot-garage-variant-label">${t('garage.tools.environments')}</span>` +
-    `${uiIconSVG('chevronRight', 10, 'currentColor', 'cot-garage-variant-chevron')}</button></div>` +
     `</div></div>` +
-    `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" ` +
-    `aria-label="${t('garage.tools.environments')}" hidden></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
     `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
@@ -657,8 +654,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="${t('garage.carousel.next')}">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
-    `<div class="cot-leftcol"><div class="cot-maps" id="cot-garage-maps"></div>` +
+    `<div class="cot-leftcol">` +
+    `<div class="cot-garage-variant-control">` +
+    `<button class="cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
+    `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
+    `aria-controls="cot-garage-variant-menu">` +
+    `<img class="cot-garage-variant-trigger-thumb" alt="" draggable="false">` +
+    `<span class="cot-garage-variant-trigger-copy"><small>${uiIconSVG('garage', 11)}` +
+    `<span>${t('garage.nav.stagingArea')}</span></small>` +
+    `<strong class="cot-garage-variant-label">${t('garage.tools.environments')}</strong></span>` +
+    `<span class="cot-garage-variant-action"><span>${t('garage.setup.change')}</span>` +
+    `${uiIconSVG('chevronRight', 11, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
+    `<div class="cot-maps" id="cot-garage-maps"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
+    `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" ` +
+    `aria-label="${t('garage.tools.environments')}" hidden></div>` +
     `<div class="hint">&#8592; &#8594; ${t('garage.hint.select')} &nbsp;&middot;&nbsp; ${t('garage.hint.battle')}</div>`;
   document.body.appendChild(root);
   mountGitHubStars(root);
@@ -827,6 +837,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const garageVariantTrigger = requiredElement<HTMLButtonElement>(root, '.cot-garage-variant-trigger');
   const garageVariantMenu = requiredElement<HTMLElement>(root, '.cot-garage-variant-menu');
   const garageVariantLabel = requiredElement<HTMLElement>(root, '.cot-garage-variant-label');
+  const garageVariantThumb = requiredElement<HTMLImageElement>(root, '.cot-garage-variant-trigger-thumb');
   const recordModal = requiredElement<HTMLElement>(root, '.cot-record-modal');
   const recordClose = requiredElement<HTMLButtonElement>(root, '.cot-record-close');
   const mobileNavTrigger = requiredElement<HTMLButtonElement>(root, '.cot-mobile-nav-trigger');
@@ -893,6 +904,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const variantDisplayName = t(`garage.variant.${selected.id}`) || selected.name;
     const variantLocation = t(`garageVariant.${selected.id}.location`) || selected.location;
     garageVariantLabel.textContent = variantDisplayName;
+    garageVariantThumb.src = selected.thumb || selected.hero || '';
+    garageVariantThumb.hidden = !garageVariantThumb.src;
     garageVariantTrigger.title = `${variantDisplayName} · ${variantLocation}`;
     garageVariantTrigger.setAttribute('aria-label',
       t('garage.tools.environmentAria', { name: variantDisplayName }));
@@ -1447,8 +1460,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       button.className = 'cot-camo-tag';
       button.dataset.camoTag = tagId;
       const tagLabel = t(`camoTag.${tagId}`) || CAMO_TAG_LABEL[tagId];
-      button.textContent = tagLabel;
+      const tagNation = CAMO_TAG_NATION[tagId];
+      if (tagNation) {
+        button.classList.add('is-nation');
+        button.innerHTML = flagIconHTML(tagNation, 16);
+      } else {
+        button.textContent = tagLabel;
+      }
       button.title = `${t('garage.camo.showTag')} ${tagLabel}`;
+      button.setAttribute('aria-label', `${t('garage.camo.showTag')} ${tagLabel}`);
       button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
       button.addEventListener('click', () => {
         emit('ui:click', {});
