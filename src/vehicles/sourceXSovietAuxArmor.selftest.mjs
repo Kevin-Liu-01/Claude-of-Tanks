@@ -37,11 +37,41 @@ function geometryHash(root){
   root.traverse(m=>{
     h.update(m.name).update(JSON.stringify(m.matrix.elements));if(!m.geometry)return;
     for(const k of Object.keys(m.geometry.attributes).sort()){
-      const a=m.geometry.attributes[k].array;h.update(k).update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));
+      const attribute=m.geometry.attributes[k],a=attribute.array;
+      // This new semantic lighting channel is not shape. Keep all 18 literal
+      // legacy fingerprints intact and validate the complete channel separately.
+      if(k==='nightEmissionMask'){
+        assert.ok(a instanceof Uint8Array,'night mask keeps its byte-sized semantic representation');
+        assert.equal(attribute.itemSize,1);assert.equal(attribute.normalized,false);
+        assert.equal(attribute.count,m.geometry.getAttribute('position').count,'one mask value per original vertex');
+        assert.ok(a.every(value=>value===0||value===1||value===2),'only unlit/warm/red aperture values');
+        continue;
+      }
+      h.update(k).update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));
     }
     for(const a of [m.geometry.index?.array,m.instanceMatrix?.array])if(a)
       h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));
   });return h.digest('hex');
+}
+
+// A malformed semantic channel must fail, not disappear from the shape audit.
+{
+  const g=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
+  const m=new THREE.Mesh(g),root=new THREE.Group();root.add(m);
+  const legacy=geometryHash(root);
+  g.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
+  assert.equal(geometryHash(root),legacy,'valid metadata leaves every legacy byte unchanged');
+  for(const invalid of [new THREE.Float32BufferAttribute([0,1,2],1),
+    new THREE.Uint8BufferAttribute([0,1,2],3),new THREE.Uint8BufferAttribute([0,1],1),
+    new THREE.Uint8BufferAttribute([0,1,2],1,true),new THREE.Uint8BufferAttribute([0,1,3],1)]){
+    g.setAttribute('nightEmissionMask',invalid);assert.throws(()=>geometryHash(root));
+  }
+  g.setAttribute('nightEmissionMask',new THREE.Uint8BufferAttribute([0,1,2],1));
+  g.setAttribute('unrecognizedSemanticChannel',new THREE.Uint8BufferAttribute([0,1,2],1));
+  assert.notEqual(geometryHash(root),legacy,'no other attribute is silently excluded');
+  g.deleteAttribute('unrecognizedSemanticChannel');g.getAttribute('position').setX(0,.001);
+  assert.notEqual(geometryHash(root),legacy,'physical position bytes remain guarded');
+  g.dispose();m.material.dispose();
 }
 
 function isolated(spec,plates=fields(spec)){
