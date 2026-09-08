@@ -52,7 +52,7 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
+  mountDiagOverlay, runSceneBlackWatchdog, runSceneBlackWatchdogAsync, reclaimShadows,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -2019,6 +2019,13 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             compilePrograms: (root: THREE.Object3D) => forwardProgramWarm.compile(root),
             warmRender,
           }),
+          playerPanel: async (bridge, viewerId) => {
+            const entity = bridge.entities.get(viewerId);
+            if (!entity) return;
+            const panel = currentDamagePanel();
+            if (!panel) throw new Error('network panel warm requires the prepared battle HUD');
+            await panel.prepareTankMasks(entity.spec, entity.visual);
+          },
           openingEffects: (fx, bridge) => {
             let decalVisual: { root: THREE.Object3D } | null = null;
             for (const entity of bridge.entities.values()) {
@@ -2067,7 +2074,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             setGarageSpots(active);
             setGarageSunTrim(active);
           },
-          runBlackWatchdog: () => runSceneBlackWatchdog(renderer, scene, camera),
+          runBlackWatchdog: (signal?: AbortSignal) => runSceneBlackWatchdogAsync(
+            renderer, scene, camera, { signal, measureTimings: true },
+          ),
         },
       },
       launcher: {

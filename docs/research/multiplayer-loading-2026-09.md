@@ -471,3 +471,291 @@ render/readback, then consider awaitable covered preparation, yielding only
 between completed passes after restoring renderer state and consuming shared
 pixels. Preserve per-spec pending/cache ownership and shared-resource lifetime;
 moving the timer later would merely move the hitch into countdown or gameplay.
+
+### Covered damage-panel masks (E)
+
+An instrumented, behavior-unchanged baseline (`mask-baseline-timings`, local
+loopback, two fresh HIGH/clear/day Frosthollow clients) confirms a specific fade
+stall. The host mask timer occupies a 335 ms task; the guest occupies a 480 ms
+task. Absolute intervals locate both wholly inside loader fade. Hull render
+took 307.7/401.8 ms, hull readback 7.8/20.2 ms, turret render 12.0/24.7 ms and
+turret readback 3.7/27.4 ms. These are main-thread operation durations, not GPU
+timings. Most of this particular pause is first-render preparation rather than
+the pixel copy. Whole-entry maxima were still 767/491 ms (RAF 768.2/548.7 ms),
+so removing masks from fade does not explain every loading stall.
+
+The player panel now exposes nonmutating, awaitable cache preparation. Private,
+LAN and dedicated-adapter entry await the exact viewer entity's masks under
+the opaque loader, before final scene/effects warm and atomic activation.
+Spectators skip that player-only step. Abort checks bracket it; synchronous
+`setTank` adopts completed masks without scheduling GPU work during reveal.
+The shared lazy API still serves solo callers. No authority or countdown policy
+changes, eager Garage warming, geometry edits or image-quality reductions occur.
+
+Mask programs compile with the actual mask scene, camera and target, then
+restore target/cube face/mip before bounded readiness polling. Unlike the pinned
+Three.js `compileAsync`, the poll owns exact program references rather than
+re-reading mutable material properties. It detects context loss and destroyed
+programs, preserves failures and stops after five seconds. This avoids the
+native timer's uncaught exception/hung promise when Garage cancellation disposes
+the source materials; another world render cannot substitute a ready program.
+The [renderer API's asynchronous compilation guidance](https://threejs.org/docs/pages/WebGLRenderer.html#compileAsync)
+motivated preparing programs before their first mask draw, but its native timer
+is not reused. Borrowed programs are never disposed by the mask owner.
+Both 384×384 RGBA passes retain their exact camera, alpha threshold, row flip,
+plan bounds and 192×192 downscale. A small WebGL2 pixel-pack-buffer/fence owner
+submits each readback, restores bindings before yielding, polls at 4 ms with a
+five-second deadline, then copies and releases the buffer/fence on every exit.
+The pinned Three.js async readback was inspected but not reused: it leaves its
+PBO bound across polling and lacks rejection cleanup. Dependencies are unchanged.
+
+Different tank preparations serialize through both passes and canvas copies;
+same-ID callers join one promise. Pending ownership is separate from the bounded
+completed cache so eviction cannot launch overlapping work into shared pixels.
+Borrowed hierarchy clones never dispose the live vehicle's geometry/materials;
+source-disposal listeners cover queued time and every asynchronous pass boundary,
+and detach on settlement. Owned factory fallback builds dispose even when
+rendering or callbacks fail.
+Clone-only instanced buffers and batched geometry/control textures are explicitly
+released after pending work drains. Batched control data is detached in the
+synchronous native-clone transaction, with original data identities/upload
+versions restored even on cloning failure; colored batch controls are preserved.
+Source invalidation does not negatively cache the spec, so the next match can
+prepare the same tank from its fresh visual. Ordinary GPU failures retain the
+bounded negative-cache policy.
+Failure retains the existing vector fallback. Diagnostics export only the latest
+transaction's allowlisted finite stage clocks, capped at 16 intervals—no tank
+identity, room data, URLs or raw error contents.
+
+Candidate E's first local entry run (`mask-async-timings-visual`) confirmed that
+both masks finished before activation, with no mask work in fade. Hull draws
+were 2.0/2.0 ms and turret draws 1.2/1.3 ms, versus the baseline's hundreds of
+milliseconds. Entry took 5,948/5,778 ms; largest tasks were 474/438 ms and RAF
+gaps 477.9/440.5 ms. Both peers showed the full foreground 5→1 countdown and
+nonblack reveal without application exceptions. However, the subsequent LOW
+combat/feedback probe failed without a classified diagnostic or completed
+performance receipt. Browser cleanup succeeded but room cleanup was not
+verified. That entire run is a failure, not a performance certificate.
+
+The entry-only repeat (`mask-async-repeat-timings`) passed native Garage exit,
+room/browser cleanup, countdown, nonblack reveal and zero application errors.
+Mask draws remained 2.4/2.5 ms and 1.5/1.8 ms. It nevertheless reached a separate
+2,236/2,234 ms black-watchdog interval, 2,967/2,974 ms largest tasks and
+2,970.6/2,976.5 ms RAF gaps (entry 8,675/8,452 ms). Thus removing the mask hitch
+is not evidence that all loading is smooth. The watchdog's final-camera draw
+and synchronous readback remain candidates requiring finer operation-level
+instrumentation; these intervals do not establish a unique cause. Neither run
+used separate devices, distant networks or relay-only transport, and neither
+explains the historical combat stalls. Both preceded the final bounded-program
+poll and source-lifetime hardening.
+
+Regression coverage includes exact pixels/cameras and borrowed-source pose,
+per-ID coalescing, more than ten pending jobs, completed/failed cache eviction,
+callback exceptions, program replacement/destruction, context loss, timeout,
+null/OOM PBO allocation, binding restoration and cleanup. A failed renderer
+restore still drains a submitted readback before releasing shared pixels to
+the next job. The existing observer and browser-failure tests now have explicit
+suite entries instead of hidden imports, satisfying the repository's exactly-one
+lifecycle-owner rule. Temporary profiles, screenshots and room artifacts are
+not release contents.
+
+The full `npm test` attempt did not pass: its pre suite stopped in the unchanged
+`src/vehicles/fleetLazy.selftest.mjs` child-process fleet sweep at the existing
+240-second timeout (`ETIMEDOUT`, no failed assertion). This slice changes no
+vehicle builders or that test, and no timeout was weakened. Machine contention
+was present during verification, but its contribution was not isolated. The
+focused multiplayer/UI checks and full application typecheck are separate
+passing evidence, not substitutes for a claimed full-suite pass.
+
+Final typed metrics over the four changed mask/presentation owners report 113
+functions, zero complexity violations, zero explicit `any` and zero `unknown`.
+The staged-file React Doctor scan is 87/100 over 14 files: all 25 warnings are
+in tests, with no runtime finding. Sequential fake-clock/failure scenarios must
+settle before the next shared fixture; short event-array projections improve
+assertion readability; JSON roundtrips verify the observer's transport/cross-VM
+boundary. These reviewed test-only warnings were not suppressed. The earlier
+89/100 scan covered only nine already-tracked files, so it excluded the new
+regression fixtures and is not a like-for-like regression score.
+
+The final bounded-program/source-lifetime build (`f9b5549d1`,
+`mask-final-timings-visual`) passed the complete native local two-client run:
+invite, ready/launch, foreground 5→1 for both peers, masks complete before
+activation, nonblack/no-rescue reveal, advancing input/snapshots, native Garage
+exit and verified room/browser cleanup. There were zero application errors.
+The screenshots show populated tank/module masks and the battle HUD without a
+black reveal. Entry used HIGH, clear/day, Frosthollow, on one machine with local
+loopback signaling:
+
+| Peer | Entry | Largest task / maximum RAF gap | Panel preparation | Watchdog / fade |
+| --- | --- | --- | --- | --- |
+| Host | 4,527 ms | 544 / 545.2 ms | 92.5 ms | 148.3 / 231.5 ms |
+| Guest | 4,402 ms | 421 / 422.2 ms | 140.0 ms | 181.2 / 248.8 ms |
+
+Hull mask draws were 1.5/1.9 ms and turret draws 0.9/1.2 ms, with no mask work
+in fade. Readback wall time includes yielded fence polling and is not GPU time.
+The subsequent interaction probe explicitly used LOW, with two loaded/rendered
+contexts and 20 seconds per foreground role, measured sequentially. Host frame
+gaps were p50/p95/p99/max 21.9/28.8/35.9/47.1 ms; guest gaps were
+21.0/35.5/42.9/57.1 ms. Both reported zero hard snaps, dropped input history,
+estimated missing snapshots and observer failures. Native windows were restored
+and sessions detached. These are functional and bounded observation receipts,
+not consistent frame-budget, HIGH combat, relay, separate-device or historical
+combat-stall certificates. The remaining watchdog pause still needs finer
+render/readback attribution.
+
+Production E served exactly `v1.0.0+gf9b5549d1` before the native live test
+(`production-e-timings-visual`). The complete run passed production room
+creation/invite, ready/launch, both foreground 5→1 countdowns, nonblack/no-rescue
+reveal, live input/snapshot progress, interaction sampling, native Garage exit,
+and verified room/browser/window cleanup, with zero application errors.
+Both player masks finished before activation, and inspected screenshots show
+their populated panel silhouettes. This again used two fresh contexts on the
+same machine, HIGH clear/day Frosthollow entry:
+
+| Peer | Entry | Largest task / maximum RAF gap | Panel preparation | Watchdog / fade |
+| --- | --- | --- | --- | --- |
+| Host | 7,777 ms | 1,494 / 1,494.3 ms | 706.4 ms | 214.4 / 231.0 ms |
+| Guest | 7,645 ms | 1,481 / 1,482.5 ms | 708.4 ms | 213.5 / 230.8 ms |
+
+Hull draws stayed at 1.7/1.9 ms and turret draws at 1.0/1.3 ms, with no mask
+work in fade. Program-preparation intervals were approximately 657 ms for the
+hull; these include asynchronous readiness waiting and are not synchronous-task
+or GPU durations. Wreck warm occupied 1,506.7/1,492.2 ms and effects preparation
+1,246.0/1,254.1 ms. The runtime is functionally verified, but loading is not
+uniformly smooth and no end-to-end speedup is claimed from this noisy comparison.
+
+The separate LOW gameplay sample used 20 seconds per foreground role with two
+rendered contexts. Host frame p50/p95/p99/max was 23.3/31.5/42.6/53.6 ms; guest
+was 20.7/28.8/38.6/45.9 ms. Both reported zero hard snaps, dropped history,
+estimated missing snapshots and observer failures. This is not a stable 60 Hz,
+larger-room, relay-only or separate-device certificate. This run's room was
+closed and owned browsers/servers stopped; excluded QA artifacts remain local.
+
+## Covered scene watchdog: synchronous GPU waits and cancellation
+
+The next measured local baseline (`watchdog-baseline-timings`, based on
+`bc4f36ac9` with timing-only instrumentation) used two fresh contexts, HIGH,
+clear/day Frosthollow and loopback signaling. It passed native entry, both full
+5→1 countdowns, nonblack/no-rescue reveal, input/snapshot progress, Garage return
+and room/browser cleanup with zero application errors. Unlike the historical
+samples, this receipt separates the actual watchdog draw from pixel readback:
+
+| Peer | Watchdog draw | Synchronous readback | Watchdog total | Entry / largest task |
+| --- | --- | --- | --- | --- |
+| Host | 54.8 ms | 69.5 ms | 124.8 ms | 4,851 / 562 ms |
+| Guest | 58.9 ms | 86.4 ms | 146.1 ms | 4,667 / 409 ms |
+
+Program counts did not change during either diagnostic draw (245 and 207).
+That excludes new program creation in those measured intervals, not lazy
+uniform initialization, native driver work or GPU queue synchronization. It
+does not establish the cause of historical combat stalls.
+
+The candidate shares the existing bounded RGBA8 pixel-pack-buffer helper
+between player-panel preparation and an asynchronous healthy-scene probe.
+Bindings are restored before yielding; every submitted fence is settled before
+its target is disposed. Entry cancellation is checked before any subsequent
+scene access. Compatibility settings never remain tentatively changed across
+an await: a black/unreadable sample, or changed shadow/environment/fog state,
+triggers a fresh synchronous compatibility check. Failed rescue measurements
+now roll back their tentative quality changes; a successfully confirmed rescue
+survives consumer diagnostic callback failure.
+
+Network entry awaits the check under the loader and checks cancellation before
+releasing loading audio, displaying Ready, priming/fading or sending READY.
+A known failed graphics receipt stays covered and goes through existing
+Garage recovery. Ordinary optional diagnostic exceptions retain their previous
+best-effort behavior. This adds no per-frame work, changes no match authority,
+and does not lower scene quality.
+
+Candidate A (`watchdog-async-a-timings-visual`) passed the complete native local
+pair and inspected screenshots, but exposed a remaining synchronous setup
+wait: its enqueue took 95.7/96.4 ms despite the subsequent 31.1/54.0 ms being
+yielded fence waits. Watchdog totals were 233.5/231.4 ms; this is not evidence
+of a watchdog speedup. Entry was 4,384/4,262 ms with largest tasks 384/348 ms;
+different preparation/driver timing prevents attributing those end-to-end
+differences to this candidate. The separate 20-second-per-role LOW interaction
+sample reported max frame gaps 47.4/44.8 ms and zero hard snaps, dropped history,
+estimated missing snapshots or observer failures. These same-machine samples
+are functional checks, not a consistent frame-budget or remote-network certificate.
+
+The instrumented repeat B (`watchdog-steps-b-timings`) isolated that enqueue
+stall: `getBufferParameter(BUFFER_SIZE)` took 70.6/66.5 ms out of
+70.8/66.6 ms submission. Other submission operations were 0–0.1 ms. The fix
+keeps the allocation check, but performs it after the fence signals and before
+copying/accepting pixels. A post-query deadline/context check prevents a slow
+query from authorizing a late copy. Allocation failures are now reported after
+the fence (or an earlier terminal timeout/context failure), with untouched
+destination bytes and bounded cleanup. No `getError()` state is consumed.
+
+Final local candidate C (`watchdog-final-c-timings-visual`) passed the same
+complete native pair and inspected screenshots with zero application errors:
+
+| Peer | Watchdog draw | Enqueue | Yielded/read completion | Size query | Entry / largest task |
+| --- | --- | --- | --- | --- | --- |
+| Host | 74.7 ms | 0.1 ms | 75.3 ms | 0.1 ms | 4,870 / 472 ms |
+| Guest | 61.4 ms | 0.1 ms | 87.1 ms | 1.8 ms | 4,774 / 309 ms |
+
+The lower-band luminance exactly matched the earlier candidates:
+109.96803977272727 / 137.07291666666666, with no rescue or new watchdog
+programs. Both masks completed before activation; both foreground countdowns
+showed 5→1; native Garage return and room/browser/window cleanup passed.
+Submission no longer contains the measured blocking size query. Watchdog wall
+time still includes real rendering and yielded GPU waits (150.6/149.2 ms total),
+and there is no claimed end-to-end loading speedup from these noisy samples.
+Nested timing fields overlap and must not be summed as independent CPU costs.
+
+The separate LOW 20-second-per-role interaction sample reported host
+p50/p95/p99/max frame gaps 21.9/27.8/34.1/49.9 ms and guest
+21.5/31.0/39.0/44.5 ms. Both had zero hard snaps, dropped history, estimated
+missing snapshots and observer failures. Larger rooms, other weather/times,
+remote devices, relay-only paths and the historical combat stall cause remain
+outside this receipt.
+
+Focused readback, mask, device, presentation, entry cancellation, launch,
+production-UI harness and observer checks pass, including 25 synchronous and
+33 asynchronous watchdog cases. The suite index verifies 687 registered checks;
+that is not a claim that the full suite passed. The previous full-suite fleet
+timeout documented above remains unresolved and was not weakened. Application
+typecheck, unused-owner check and public production build pass. Four changed
+runtime owners have 184 functions, zero complexity violations and no explicit
+`any`/`unknown`. Final changed-file React Doctor is 88/100 over 13 files, with
+14 reviewed test-only warnings (sequential fixture isolation, short assertion
+projections and serialization-boundary checks), none suppressed. The clean
+baseline scan skipped source analysis; an intermediate scan had incomplete
+maintainability output, so no like-for-like score improvement is claimed.
+
+### Production verification of the yielded watchdog
+
+Production served exactly `v1.0.0+g40f93855d` before the fresh native two-client
+run (`production-watchdog-c-timings-visual`). Production room creation/invite,
+ready/launch, both foreground 5→1 countdowns, complete masks before activation,
+nonblack/no-rescue reveal, advancing input/snapshots, native Garage return and
+verified room/browser/window cleanup all passed, with zero application errors.
+Both inspected screenshots show the rendered battlefield and populated player
+panel masks. This was HIGH clear/day Frosthollow entry on one machine:
+
+| Peer | Entry | Largest task / maximum RAF gap | Watchdog draw / enqueue | Watchdog total / fade |
+| --- | --- | --- | --- | --- |
+| Host | 4,745 ms | 324 / 326.2 ms | 78.5 / 0.1 ms | 208.3 / 230.5 ms |
+| Guest | 4,597 ms | 315 / 318.1 ms | 80.6 / 0.1 ms | 211.4 / 231.0 ms |
+
+Luminance again exactly matched the local candidates, with unchanged watchdog
+program counts. Submission remained 0.1 ms for each peer, but completion is
+**not guaranteed stall-free**: the guest's post-fence buffer-size validation
+still took 53.7 ms (host 0 ms). Its enclosing 130.1 ms completion interval
+includes that synchronous query and yielded waiting; it is not wholly yielded
+time or a GPU-duration measurement. Moving the validation removed the observed
+submission stall, not every possible driver query stall. Wreck warm was
+123.2/123.0 ms, panel preparation 101.2/103.0 ms, scene compilation 322.8/319.3 ms
+and opening effects 167.7/163.8 ms. Loading still has material pauses, and these
+noisy samples do not establish an end-to-end speedup or the historical combat
+stall cause.
+
+The separate LOW interaction sample used two rendered contexts and 20 seconds
+per foreground role, measured sequentially. Host frame p50/p95/p99/max was
+21.9/27.6/31.6/39.1 ms; guest was 21.5/28.7/35.2/47.7 ms. Both reported zero hard
+snaps, dropped input history, estimated missing snapshots and observer failures.
+The functional runner has no frame-budget assertion. This is not stable 60 Hz,
+HIGH gameplay, a larger-room/long-session test or a separate-device/distant/
+relay-only network certificate. Production artifacts remain local and excluded
+from the release. The full-suite timeout limitation above still applies.

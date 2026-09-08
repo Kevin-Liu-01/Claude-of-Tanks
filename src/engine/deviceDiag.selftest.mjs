@@ -28,6 +28,8 @@ let currentTarget = originalTarget;
 const renderer = {
   shadowMap: { enabled: true },
   getRenderTarget: () => currentTarget,
+  getActiveCubeFace: () => 0,
+  getActiveMipmapLevel: () => 0,
   setRenderTarget: (target) => { currentTarget = target; },
   clear() {},
   render() {},
@@ -76,6 +78,8 @@ const probeTargets = new Set();
 const reclaimRenderer = {
   shadowMap: { enabled: false },
   getRenderTarget: () => reclaimCurrentTarget,
+  getActiveCubeFace: () => 0,
+  getActiveMipmapLevel: () => 0,
   setRenderTarget: (target) => {
     reclaimCurrentTarget = target;
     if (target !== reclaimTarget) probeTargets.add(target);
@@ -94,4 +98,45 @@ assert.equal(reclaimCurrentTarget, reclaimTarget,
 assert.equal(probeTargets.size, 1,
   'shadow reclaim reuses one GPU readback target for all measurements');
 
-console.log('deviceDiag.selftest: UI gates + reusable readback ownership passed');
+const savedPerformance = Object.getOwnPropertyDescriptor(globalThis, 'performance');
+let clock = 0;
+Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => clock } });
+try {
+  const original = { target: new THREE.WebGLCubeRenderTarget(8), face: 4, mip: 2 };
+  let bound = { ...original };
+  let failReadback = false;
+  const timedRenderer = {
+    shadowMap: { enabled: true }, info: { programs: [{}, {}] },
+    getRenderTarget: () => bound.target,
+    getActiveCubeFace: () => bound.face,
+    getActiveMipmapLevel: () => bound.mip,
+    setRenderTarget(target, face = 0, mip = 0) { clock += 1; bound = { target, face, mip }; },
+    clear() { clock += 2; },
+    render() { clock += 13; this.info.programs.push({}); },
+    readRenderTargetPixels(target, x, y, width, height, buffer) {
+      clock += 21;
+      assert.deepEqual([x, y, width, height], [0, 0, 64, 22]);
+      assert.equal(target, bound.target);
+      if (failReadback) throw new Error('readback failed');
+      buffer.fill(18);
+      for (let i = 3; i < buffer.length; i += 4) buffer[i] = 0;
+    },
+  };
+  const timed = runSceneBlackWatchdog(timedRenderer, scene, {}, { measureTimings: true });
+  assert.deepEqual(bound, original, 'probe restores exact cube face and mip, not only target');
+  assert.deepEqual(timed, { before: 18, after: null, rescued: false, stage: null,
+    measurements: [{ startTime: 0, endTime: 38, setupMs: 3, renderMs: 13, readbackMs: 21,
+      reduceMs: 0, restoreMs: 1, programsBeforeRender: 2, programsAfterRender: 3 }] });
+  failReadback = true;
+  const failed = runSceneBlackWatchdog(timedRenderer, scene, {}, { measureTimings: true });
+  assert.deepEqual(bound, original, 'failure restores cube face and mip too');
+  assert.equal(failed.measurements[0].endTime, 76);
+  assert.equal(failed.measurements[0].readbackMs, 21, 'failed operation retains elapsed work');
+  assert.equal(failed.measurements[0].reduceMs, undefined, 'unexecuted operation is not zero');
+  assert.equal(Object.hasOwn(result, 'measurements'), false, 'ordinary watchdog avoids timing output');
+  original.target.dispose();
+} finally {
+  Object.defineProperty(globalThis, 'performance', savedPerformance);
+}
+
+console.log('deviceDiag.selftest: UI gates + reusable readback ownership and stage timing passed');

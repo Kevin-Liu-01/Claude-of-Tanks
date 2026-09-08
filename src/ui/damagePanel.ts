@@ -20,6 +20,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { ensureStyle } from './dom.ts';
 import {
   getTopDownMasks,
+  prepareTopDownMasks,
   type TankMaskSpec,
   type TankMaskVisual,
   type TopDownMaskEntry,
@@ -146,6 +147,7 @@ type ModuleIconPainter = (context: CanvasRenderingContext2D, color: string) => v
 
 export interface DamagePanelController {
   root: HTMLElement;
+  prepareTankMasks(spec: DamagePanelTankSpec, sourceVisual?: TankMaskVisual | null): Promise<boolean>;
   setTank(spec: DamagePanelTankSpec, sourceVisual?: TankMaskVisual | null): void;
   update(combat: DamagePanelCombatState): void;
   setPose(hullYaw?: number | null, turretYaw?: number | null, camYaw?: number | null): void;
@@ -1127,6 +1129,11 @@ export function createDamagePanel(): DamagePanelController {
 
   return {
     root,
+
+    /** Populate only the shared mask cache; live player/HUD state stays unchanged. */
+    async prepareTankMasks(spec, sourceVisual = null) {
+      return (await prepareTopDownMasks(spec, sourceVisual)) !== null;
+    },
 
     /**
      * Set the tank whose plan/modules the panel shows. Kicks the offscreen

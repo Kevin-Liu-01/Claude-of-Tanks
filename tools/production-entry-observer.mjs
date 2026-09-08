@@ -32,7 +32,7 @@ export function installProductionEntryObserver() {
   };
   const stageNames = ['Opening battle channel', 'Securing match channel', 'Loading battlefield',
     'Synchronizing authority', 'Warming suspension terrain', 'Priming wreck variants',
-    'Priming combat effects', 'Compiling combat shaders', 'Ready', 'Restoring Garage'];
+    'Preparing player panel', 'Priming combat effects', 'Compiling combat shaders', 'Ready', 'Restoring Garage'];
   const sample = () => {
     const loader = document.querySelector('.cot-bl');
     const overlay = document.querySelector('.cot-prebattle');
@@ -101,13 +101,14 @@ export function installProductionEntryObserver() {
     return output;
   };
   const networkStageNames = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
-    'atmosphere', 'terrainGrid', 'wreckWarm', 'compile', 'combatWarm', 'reveal', 'readyBarrier'];
-  const intervals = (value, allowedStages) => Array.isArray(value) ? value.slice(0, 32)
+    'atmosphere', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'];
+  const intervals = (value, allowedStages, limit = 32) => Array.isArray(value) ? value.slice(0, limit)
     .filter((row) => allowedStages.includes(row?.stage))
     .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [];
   const receipt = () => {
     const network = window.__NETWORK_LOAD;
     const world = window.__WORLD_LOAD;
+    const topMask = window.__TOP_MASK_LOAD;
     const end = counters();
     const delta = Object.fromEntries(Object.keys(end).map((key) => [key,
       end[key] !== null && state.startCounters[key] !== null &&
@@ -133,7 +134,19 @@ export function installProductionEntryObserver() {
         stages: numericTree(network.stages),
         blackCheck: network.blackCheck ? { before: finite(network.blackCheck.before),
           after: finite(network.blackCheck.after), rescued: network.blackCheck.rescued === true,
-          error: !!network.blackCheck.error } : null,
+          error: !!network.blackCheck.error || network.blackCheck.failed === true,
+          measurements: Array.isArray(network.blackCheck.measurements)
+            ? network.blackCheck.measurements.slice(0, 8).map((row) => ({
+              ...Object.fromEntries(['startTime', 'endTime', 'setupMs', 'renderMs', 'readbackMs', 'enqueueMs', 'waitMs',
+                'reduceMs', 'restoreMs', 'programsBeforeRender', 'programsAfterRender']
+                .map((key) => [key, finite(row?.[key])])),
+              ...(row?.readbackSteps && typeof row.readbackSteps === 'object' ? {
+                readbackSteps: Object.fromEntries(['contextQuery', 'createBuffer', 'bindingQuery',
+                  'bindBuffer', 'bufferData', 'sizeQuery', 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release']
+                  .map((key) => [key, finite(row.readbackSteps[key])])),
+              } : {}),
+            })) : [],
+        } : null,
       } : null,
       worldLoad: world ? {
         id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,
@@ -145,6 +158,12 @@ export function installProductionEntryObserver() {
           .filter((row) => ['build', 'present', 'compile', 'shadowWarm', 'clouds', 'activate'].includes(row?.stage))
           .map((row) => ({ stage: row.stage, startTime: finite(row.startTime), endTime: finite(row.endTime) })) : [],
         buildDetail: numericTree(world.buildDetail), error: !!world.error,
+      } : null,
+      topMaskLoad: topMask && typeof topMask === 'object' && !Array.isArray(topMask) ? {
+        status: ['pending', 'complete', 'failed'].includes(topMask.status) ? topMask.status : null,
+        startedAt: finite(topMask.startedAt), endedAt: finite(topMask.endedAt),
+        intervals: intervals(topMask.intervals, ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback',
+          'hullCanvas', 'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'], 16),
       } : null };
   };
   state.startCounters = counters();

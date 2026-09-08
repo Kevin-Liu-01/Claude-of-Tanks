@@ -23,14 +23,19 @@ function browserFixture() {
     window: { __DEBUG: debug,
       __NETWORK_LOAD: { map: 'winter', mode: 'PRIVATE_ROOM', worldMs: 20, stages: { compile: 4 },
         status: 'pending', startedAt: 110, endedAt: Infinity,
-        stageIntervals: [{ stage: 'compile', startTime: 120, endTime: 124 },
+        stageIntervals: [{ stage: 'panelMasks', startTime: 118, endTime: 120 },
+          { stage: 'compile', startTime: 120, endTime: 124 },
           { stage: 'reveal', startTime: 124 }, { stage: 'PRIVATE_STAGE', startTime: 125 }],
         revealSlices: [{ stage: 'activation', startTime: 124, endTime: 126 },
           { stage: 'primeReveal', startTime: NaN, endTime: 'PRIVATE_END' }],
         blackCheck: { before: 40, after: null, error: 'PRIVATE_ERROR' } },
       __WORLD_LOAD: { id: 'winter', cached: false, status: 'pending', startedAt: 110,
         stageIntervals: [{ stage: 'build', startTime: 110 }],
-        buildDetail: { terrain: { totalMs: 2 }, url: 'PRIVATE_URL' }, error: { message: 'PRIVATE_ERROR' } } },
+        buildDetail: { terrain: { totalMs: 2 }, url: 'PRIVATE_URL' }, error: { message: 'PRIVATE_ERROR' } },
+      __TOP_MASK_LOAD: { status: 'pending', startedAt: 125, endedAt: Infinity,
+        specId: 'PRIVATE_SPEC', url: 'PRIVATE_URL', error: new Error('PRIVATE_ERROR'),
+        intervals: [{ stage: 'build', startTime: 126, endTime: 127 },
+          { stage: 'hullRender', startTime: 128 }, { stage: 'PRIVATE_STAGE', startTime: 129 }] } },
     document: { querySelector: (selector) => selector === '.cot-bl' ? loader : overlay,
       hasFocus: () => surface.focused, get hidden() { return surface.hidden; } },
     getComputedStyle: (node) => node === loader ? { display: surface.display, opacity: surface.opacity }
@@ -90,6 +95,7 @@ assert.equal(receipt.networkLoad.status, 'pending');
 assert.equal(receipt.networkLoad.startedAt, 110);
 assert.equal(receipt.networkLoad.endedAt, null, 'non-finite network clock values remain unknown');
 assert.deepEqual(receipt.networkLoad.stageIntervals, [
+  { stage: 'panelMasks', startTime: 118, endTime: 120 },
   { stage: 'compile', startTime: 120, endTime: 124 },
   { stage: 'reveal', startTime: 124, endTime: null },
 ]);
@@ -99,6 +105,10 @@ assert.deepEqual(receipt.networkLoad.revealSlices, [
 ]);
 assert.equal(receipt.worldLoad.status, 'pending', 'failure evidence retains unfinished world intervals');
 assert.equal(receipt.worldLoad.stageIntervals[0].endTime, null);
+assert.deepEqual(receipt.topMaskLoad, { status: 'pending', startedAt: 125, endedAt: null,
+  intervals: [{ stage: 'build', startTime: 126, endTime: 127 },
+    { stage: 'hullRender', startTime: 128, endTime: null }] },
+  'a pending mask transaction retains only bounded timing fields');
 assert.equal(receipt.clock, 'page-performance-now-ms');
 assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
 assert.equal(f.queued.size, 0);
@@ -123,6 +133,9 @@ bounded.context.window.__NETWORK_LOAD.stageIntervals = Array.from({ length: 40 }
 bounded.context.window.__NETWORK_LOAD.revealSlices = Array.from({ length: 40 }, (_, index) => ({
   stage: 'loaderFade', startTime: index, endTime: index + 1,
 }));
+bounded.context.window.__TOP_MASK_LOAD.intervals = Array.from({ length: 40 }, (_, index) => ({
+  stage: 'hullRender', startTime: index, endTime: index + 1, private: 'PRIVATE_DETAIL',
+}));
 for (let index = 0; index < 6020; index++) bounded.step({ waiting: index % 2 === 0 });
 bounded.tasks(Array.from({ length: 300 }, () => ({ startTime: 150, duration: 70 })));
 const boundedReceipt = bounded.run(readProductionEntryObserver, 'stop');
@@ -133,8 +146,77 @@ assert.ok(boundedReceipt.transitionsDropped > 0);
 assert.equal(boundedReceipt.longTasks.length, 256);
 assert.equal(boundedReceipt.networkLoad.stageIntervals.length, 32);
 assert.equal(boundedReceipt.networkLoad.revealSlices.length, 32);
+assert.equal(boundedReceipt.topMaskLoad.intervals.length, 16);
 assert.doesNotMatch(JSON.stringify(boundedReceipt), /PRIVATE/);
 assert.ok(boundedReceipt.longTasksDropped > 0);
+
+const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback', 'hullCanvas',
+  'turretCompile', 'turretRender', 'turretReadback', 'turretCanvas'];
+{
+  const watchdog = browserFixture();
+  const row = { startTime: 1, endTime: 90, setupMs: 2, renderMs: 30, readbackMs: 55, enqueueMs: 3, waitMs: 52,
+    reduceMs: 0.2, restoreMs: 1.8, programsBeforeRender: 12, programsAfterRender: 15 };
+  watchdog.context.window.__NETWORK_LOAD.blackCheck.measurements = Array.from({ length: 20 }, () => ({
+    ...row, name: 'PRIVATE_NAME', url: 'PRIVATE_URL', error: 'PRIVATE_ERROR' }));
+  const receipt = JSON.parse(JSON.stringify(watchdog.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(receipt.networkLoad.blackCheck.measurements, Array.from({ length: 8 }, () => row));
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+  const malformedWatchdog = browserFixture();
+  malformedWatchdog.context.window.__NETWORK_LOAD.blackCheck.measurements = [null, { renderMs: Infinity,
+    readbackMs: 'PRIVATE_ERROR', endTime: NaN }];
+  const malformed = JSON.parse(JSON.stringify(malformedWatchdog.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(malformed.networkLoad.blackCheck.measurements,
+    Array.from({ length: 2 }, () => Object.fromEntries(Object.keys(row).map((key) => [key, null]))));
+
+  const detailed = browserFixture();
+  const steps = Object.fromEntries(['contextQuery', 'createBuffer', 'bindingQuery', 'bindBuffer',
+    'bufferData', 'sizeQuery', 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release'].map((key) => [key, 2]));
+  detailed.context.window.__NETWORK_LOAD.blackCheck = { failed: true, measurements: [{ ...row,
+    readbackSteps: { ...steps, url: 'PRIVATE_URL', name: 'PRIVATE_NAME', copy: Infinity } }] };
+  const measured = JSON.parse(JSON.stringify(detailed.run(readProductionEntryObserver, 'stop')));
+  assert.equal(measured.networkLoad.blackCheck.error, true, 'failed graphics receipts remain visible to QA');
+  assert.deepEqual(measured.networkLoad.blackCheck.measurements, [{ ...row,
+    readbackSteps: { ...steps, copy: null } }]);
+  assert.doesNotMatch(JSON.stringify(measured), /PRIVATE/);
+}
+for (const status of ['complete', 'failed']) {
+  const mask = browserFixture();
+  const stages = status === 'failed' ? maskStages.slice(0, 4) : maskStages;
+  mask.context.window.__TOP_MASK_LOAD = { status, startedAt: 200, endedAt: 220,
+    specId: 'PRIVATE_SPEC', rawError: { message: 'PRIVATE_ERROR', url: 'PRIVATE_URL' },
+    intervals: stages.map((stage, index) => ({ stage, startTime: 201 + index,
+      endTime: 202 + index, detail: 'PRIVATE_DETAIL' })) };
+  const result = JSON.parse(JSON.stringify(mask.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.topMaskLoad, { status, startedAt: 200, endedAt: 220,
+    intervals: stages.map((stage, index) => ({ stage, startTime: 201 + index, endTime: 202 + index })) },
+  'complete and failing transactions retain ordered timing-only partial data');
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+}
+
+for (const value of [undefined, null, 'PRIVATE_TRACE', 42, []]) {
+  const malformed = browserFixture();
+  malformed.context.window.__TOP_MASK_LOAD = value;
+  assert.equal(malformed.run(readProductionEntryObserver, 'stop').topMaskLoad, null,
+    'missing and non-record mask traces remain unknown');
+}
+
+{
+  const panel = browserFixture();
+  panel.step({ label: 'Preparing player panel' });
+  assert.equal(panel.run(readProductionEntryObserver, 'stop').frames.at(-1).loaderStage,
+    'Preparing player panel', 'the covered panel stage has an allowlisted progress label');
+}
+for (const rows of ['PRIVATE_INTERVALS', { stage: 'build' }, [null, 'PRIVATE_ROW', 7,
+  { stage: 'PRIVATE_STAGE', startTime: 1 },
+  { stage: 'hullReadback', startTime: NaN, endTime: 'PRIVATE_END' }]]) {
+  const malformed = browserFixture();
+  malformed.context.window.__TOP_MASK_LOAD = { status: 'PRIVATE_STATUS', startedAt: NaN,
+    endedAt: 'PRIVATE_END', intervals: rows };
+  const result = JSON.parse(JSON.stringify(malformed.run(readProductionEntryObserver, 'stop')));
+  assert.deepEqual(result.topMaskLoad, { status: null, startedAt: null, endedAt: null,
+    intervals: Array.isArray(rows) ? [{ stage: 'hullReadback', startTime: null, endTime: null }] : [] });
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
+}
 
 for (const failure of [null, 'start', 'entry', 'stop']) {
   const calls = [];

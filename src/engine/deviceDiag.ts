@@ -25,6 +25,7 @@
 // Overlay visibility: explicit only (`?diag` / `?diag=1`). Rescue logic stays
 // active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
+import { beginRgba8Readback, type Rgba8ReadbackStage } from './rgba8Readback.ts';
 
 interface DeviceDiagResult {
   basic: boolean;
@@ -45,15 +46,35 @@ interface SceneBandProbe {
   dispose(): void;
 }
 
+interface SceneBandTiming {
+  startTime: number;
+  endTime?: number;
+  setupMs?: number;
+  renderMs?: number;
+  readbackMs?: number;
+  enqueueMs?: number;
+  waitMs?: number;
+  readbackSteps?: Partial<Record<Rgba8ReadbackStage, number>>;
+  reduceMs?: number;
+  restoreMs?: number;
+  programsBeforeRender?: number;
+  programsAfterRender?: number;
+}
+
 export interface SceneWatchdogResult {
   before: number;
   after: number | null;
   rescued: boolean;
   stage: string | null;
+  /** Covered async entry must not reveal a known-black or unrestorable frame. */
+  failed?: boolean;
+  measurements?: SceneBandTiming[];
 }
 
 interface SceneWatchdogOptions {
   onRescue?: (result: SceneWatchdogResult) => void;
+  /** Bounded operation timings for covered network entry, never a frame-loop probe. */
+  measureTimings?: boolean;
 }
 
 interface SceneWatchdogStage {
@@ -361,7 +382,36 @@ const ENV_COMP_INTENSITY = 3.1;
  * Every measurement restores the caller's render target; dispose ends the
  * transaction and makes accidental reuse fail loudly.
  */
-function createSceneBandProbe(renderer: THREE.WebGLRenderer): SceneBandProbe {
+function sceneProbeClock(): number {
+  try {
+    const value = performance.now();
+    return Number.isFinite(value) ? value : NaN;
+  } catch (_) { return NaN; }
+}
+
+function finishSceneProbeTiming(timing?: SceneBandTiming): void {
+  const endedAt = timing ? sceneProbeClock() : NaN;
+  if (timing && Number.isFinite(endedAt)) timing.endTime = endedAt;
+}
+
+function timedSceneProbeStep<T>(
+  timing: SceneBandTiming | undefined,
+  key: 'setupMs' | 'renderMs' | 'readbackMs' | 'enqueueMs' | 'reduceMs' | 'restoreMs',
+  operation: () => T,
+): T {
+  if (!timing) return operation();
+  const startedAt = sceneProbeClock();
+  try { return operation(); }
+  finally {
+    const elapsed = sceneProbeClock() - startedAt;
+    if (Number.isFinite(elapsed) && elapsed >= 0) timing[key] = elapsed;
+  }
+}
+
+function createSceneBandProbe(
+  renderer: THREE.WebGLRenderer,
+  measurements?: SceneBandTiming[],
+): SceneBandProbe {
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const buf = new Uint8Array(64 * 22 * 4);
   let disposed = false;
@@ -369,16 +419,33 @@ function createSceneBandProbe(renderer: THREE.WebGLRenderer): SceneBandProbe {
     measure(scene: THREE.Scene, camera: THREE.Camera): number {
       if (disposed) throw new Error('scene-band probe already disposed');
       const prev = renderer.getRenderTarget();
+      const prevFace = renderer.getActiveCubeFace();
+      const prevMip = renderer.getActiveMipmapLevel();
+      const timing: SceneBandTiming | undefined = measurements && measurements.length < 8
+        ? { startTime: sceneProbeClock() } : undefined;
+      if (timing && measurements) measurements.push(timing);
       try {
-        renderer.setRenderTarget(rt);
-        renderer.clear();
-        renderer.render(scene, camera);
-        renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i += 4) sum += buf[i] + buf[i + 1] + buf[i + 2];
-        return sum / (buf.length / 4) / 3;
+        timedSceneProbeStep(timing, 'setupMs', () => {
+          renderer.setRenderTarget(rt);
+          renderer.clear();
+        });
+        if (timing) timing.programsBeforeRender = renderer.info.programs?.length;
+        timedSceneProbeStep(timing, 'renderMs', () => renderer.render(scene, camera));
+        if (timing) timing.programsAfterRender = renderer.info.programs?.length;
+        timedSceneProbeStep(timing, 'readbackMs', () => {
+          renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
+        });
+        return timedSceneProbeStep(timing, 'reduceMs', () => {
+          let sum = 0;
+          for (let i = 0; i < buf.length; i += 4) sum += buf[i] + buf[i + 1] + buf[i + 2];
+          return sum / (buf.length / 4) / 3;
+        });
       } finally {
-        renderer.setRenderTarget(prev);
+        try {
+          timedSceneProbeStep(timing, 'restoreMs', () => renderer.setRenderTarget(prev, prevFace, prevMip));
+        } finally {
+          finishSceneProbeTiming(timing);
+        }
       }
     },
     dispose() {
@@ -409,6 +476,7 @@ function createWatchdogProbe(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
+  measurements?: SceneBandTiming[],
 ): SceneWatchdogProbe {
   if (FORCE === 'blackscene') {
     const simulated = [0, 0, 42, 42];
@@ -420,7 +488,7 @@ function createWatchdogProbe(
       dispose() {},
     };
   }
-  const probe = createSceneBandProbe(renderer);
+  const probe = createSceneBandProbe(renderer, measurements);
   return {
     measure: () => probe.measure(scene, camera),
     dispose: () => probe.dispose(),
@@ -512,19 +580,137 @@ function tryWatchdogStages(
   onRescue?: (result: SceneWatchdogResult) => void,
 ): boolean {
   const applied: SceneWatchdogStage[] = [];
-  for (const stage of stages) {
-    if (!stage.can()) continue;
-    stage.apply();
-    applied.push(stage);
-    const luminance = probe.measure();
-    note(`watchdog: +${stage.label} -> band ${luminance.toFixed(1)}`);
-    if (luminance < 6) continue;
-    keepRequiredWatchdogStages(applied, probe, note);
-    markWatchdogRescued(out, stage, luminance, onRescue);
-    return true;
+  let confirmed = false;
+  try {
+    for (const stage of stages) {
+      if (!stage.can()) continue;
+      stage.apply();
+      applied.push(stage);
+      const luminance = probe.measure();
+      note(`watchdog: +${stage.label} -> band ${luminance.toFixed(1)}`);
+      if (luminance < 6) continue;
+      keepRequiredWatchdogStages(applied, probe, note);
+      confirmed = true;
+      markWatchdogRescued(out, stage, luminance, onRescue);
+      return true;
+    }
+    return false;
+  } finally {
+    // A failed draw/read/confirmation must not leave tentative quality changes
+    // installed. Once confirmed, consumer diagnostic callbacks cannot undo it.
+    if (!confirmed) {
+      for (let index = applied.length - 1; index >= 0; index--) applied[index].revert();
+    }
   }
-  for (let index = applied.length - 1; index >= 0; index--) applied[index].revert();
-  return false;
+}
+
+/** Own just the async measurement; never mutate compatibility settings. */
+async function measureSceneBandAsync(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  signal?: AbortSignal,
+  measurements?: SceneBandTiming[],
+): Promise<{ before: number; rendererRestored: boolean }> {
+  const timing: SceneBandTiming | undefined = measurements ? { startTime: sceneProbeClock() } : undefined;
+  if (timing) measurements!.push(timing);
+  const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
+  const pixels = new Uint8Array(64 * 22 * 4);
+  let readback: Promise<void> | undefined;
+  let before = 0;
+  let rendererRestored = true;
+  try {
+    const target = renderer.getRenderTarget();
+    const face = renderer.getActiveCubeFace();
+    const mip = renderer.getActiveMipmapLevel();
+    try {
+      timedSceneProbeStep(timing, 'setupMs', () => {
+        renderer.setRenderTarget(rt);
+        renderer.clear();
+      });
+      if (timing) timing.programsBeforeRender = renderer.info.programs?.length;
+      timedSceneProbeStep(timing, 'renderMs', () => renderer.render(scene, camera));
+      if (timing) timing.programsAfterRender = renderer.info.programs?.length;
+      if (timing) timing.readbackSteps = {};
+      readback = timedSceneProbeStep(timing, 'enqueueMs', () => beginRgba8Readback(
+        renderer.getContext() as WebGL2RenderingContext, 64, 22, pixels, { timings: timing?.readbackSteps },
+      ));
+    } finally {
+      timedSceneProbeStep(timing, 'restoreMs', () => {
+        try { renderer.setRenderTarget(target, face, mip); }
+        catch (_) {
+          // Retry a transient failure before yielding. If restoration is still
+          // impossible, do not let a fresh probe borrow this soon-disposed RT.
+          try { renderer.setRenderTarget(target, face, mip); }
+          catch (error) { rendererRestored = false; throw error; }
+        }
+      });
+    }
+    const waitStarted = timing ? sceneProbeClock() : NaN;
+    try { await readback; }
+    finally {
+      const elapsed = timing ? sceneProbeClock() - waitStarted : NaN;
+      if (timing && Number.isFinite(elapsed) && elapsed >= 0) {
+        timing.waitMs = elapsed;
+        timing.readbackMs = (timing.enqueueMs ?? 0) + timing.waitMs;
+      }
+    }
+    signal?.throwIfAborted();
+    before = timedSceneProbeStep(timing, 'reduceMs', () => {
+      let sum = 0;
+      for (let i = 0; i < pixels.length; i += 4) sum += pixels[i] + pixels[i + 1] + pixels[i + 2];
+      return sum / (pixels.length / 4) / 3;
+    });
+  } catch (_) {
+    // Unsupported/broken PBO readback is not evidence of a black scene. The
+    // bounded owner is drained below before a fresh compatibility measurement.
+  } finally {
+    try { await readback?.catch(() => {}); }
+    finally {
+      rt.dispose();
+      finishSceneProbeTiming(timing);
+    }
+  }
+  return { before, rendererRestored };
+}
+
+/**
+ * Network entry owns a covered, cancellable transaction. Queue the healthy
+ * frame read into a PBO, restore all bindings before yielding, and settle its
+ * bounded owner before disposal. No compatibility setting changes span awaits.
+ * Rare black/error probes use the existing synchronous ladder from a fresh
+ * measurement, so an old boot/reclaim callback cannot invalidate its diagnosis.
+ */
+export async function runSceneBlackWatchdogAsync(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  { signal, ...options }: SceneWatchdogOptions & { signal?: AbortSignal } = {},
+): Promise<SceneWatchdogResult> {
+  signal?.throwIfAborted();
+  if (FORCE === 'blackscene') {
+    const forced = runSceneBlackWatchdog(renderer, scene, camera, options);
+    if (forced.before < 6 && !forced.rescued) forced.failed = true;
+    return forced;
+  }
+  const shadow = renderer.shadowMap.enabled;
+  const environment = scene.environment;
+  const fog = scene.fog;
+  const measurements: SceneBandTiming[] | undefined = options.measureTimings ? [] : undefined;
+  const { before, rendererRestored } = await measureSceneBandAsync(renderer, scene, camera, signal, measurements);
+  // The room may have closed and disposed its scene while the fence was pending.
+  signal?.throwIfAborted();
+  if (!rendererRestored) return { before: 0, after: null, rescued: false, stage: null,
+    failed: true, ...(measurements ? { measurements } : {}) };
+  if (before >= 6 && shadow === renderer.shadowMap.enabled
+    && environment === scene.environment && fog === scene.fog) {
+    return { before, after: null, rescued: false, stage: null,
+      ...(measurements ? { measurements } : {}) };
+  }
+  const result = runSceneBlackWatchdog(renderer, scene, camera, options);
+  if (result.before < 6 && !result.rescued) result.failed = true;
+  if (measurements) result.measurements = [...measurements, ...(result.measurements ?? [])].slice(0, 8);
+  return result;
 }
 
 /**
@@ -580,15 +766,17 @@ export function runSceneBlackWatchdog(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
-  { onRescue }: SceneWatchdogOptions = {},
+  { onRescue, measureTimings = false }: SceneWatchdogOptions = {},
 ): SceneWatchdogResult {
-  const probe = createWatchdogProbe(renderer, scene, camera);
+  const measurements: SceneBandTiming[] | undefined = measureTimings ? [] : undefined;
+  const probe = createWatchdogProbe(renderer, scene, camera, measurements);
   const stages = createWatchdogStages(renderer, scene);
   const out: SceneWatchdogResult = {
     before: 0,
     after: null,
     rescued: false,
     stage: null,
+    ...(measurements ? { measurements } : {}),
   };
   const bag = window.__GL_DIAG;
   const note = (message: string) => {

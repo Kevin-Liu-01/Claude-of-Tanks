@@ -35,7 +35,7 @@ export interface NetworkBattlePresentationRequest {
 }
 
 const NETWORK_LOAD_STAGES = ['modulesWorldAndConnect', 'roster', 'initialSnapshot',
-  'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
+  'atmosphere', 'nightLighting', 'terrainGrid', 'wreckWarm', 'panelMasks', 'compile', 'combatWarm', 'reveal', 'readyBarrier'] as const;
 type NetworkLoadStage = typeof NETWORK_LOAD_STAGES[number];
 type NetworkRevealSlice = 'activation' | 'blackWatchdog' | 'primeReveal' | 'loaderFade';
 
@@ -185,6 +185,7 @@ export interface NetworkBattlePresentationOptions {
     getFx(): NetworkBattleFxPort;
     terrain(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
     wrecks(bridge: NetworkBridgePort): MaybePromise<RuntimeValue>;
+    playerPanel(bridge: NetworkBridgePort, viewerId: string): MaybePromise<RuntimeValue>;
     openingEffects(
       fx: NetworkBattleFxPort,
       bridge: NetworkBridgePort,
@@ -197,7 +198,7 @@ export interface NetworkBattlePresentationOptions {
     setGarageLighting(active: boolean): void;
     setWaitingForPeers(waiting: boolean): void;
     activate(request: NetworkBattleActivationRequest): void;
-    runBlackWatchdog(): RuntimeValue;
+    runBlackWatchdog(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   };
 }
 
@@ -247,7 +248,7 @@ function validateNetworkPresentationPorts(options: NetworkBattlePresentationOpti
     checkedIntegrationPort(
       options.warm ?? {},
       'network battle warmup',
-      ['getFx', 'terrain', 'wrecks', 'openingEffects', 'shotCards', 'compile'],
+      ['getFx', 'terrain', 'wrecks', 'playerPanel', 'openingEffects', 'shotCards', 'compile'],
     );
     checkedIntegrationPort(
       options.presentation ?? {},
@@ -469,6 +470,14 @@ export function createNetworkBattlePresentationRuntime(
       throwIfNetworkBattleEntryAborted(signal);
       mark('wreckWarm');
 
+      load.battleLoad.progress(0.86, 'Preparing player panel');
+      throwIfNetworkBattleEntryAborted(signal);
+      if (!spectator && preparedBridge.entities.get(viewerId)) {
+        await warm.playerPanel(preparedBridge, viewerId);
+      }
+      throwIfNetworkBattleEntryAborted(signal);
+      mark('panelMasks');
+
       // Wreck preparation installs the final material hooks. Submit the whole
       // scene now, before opening effects perform the first compositor draw.
       load.battleLoad.progress(0.87, 'Compiling combat shaders');
@@ -492,7 +501,7 @@ export function createNetworkBattlePresentationRuntime(
       timer.endSlice();
       timer.beginSlice('blackWatchdog');
       try {
-        trace.blackCheck = presentation.runBlackWatchdog();
+        trace.blackCheck = await presentation.runBlackWatchdog(signal);
       } catch (error) {
         trace.blackCheck = {
           error: error instanceof Error ? error.message : String(error),
@@ -500,7 +509,12 @@ export function createNetworkBattlePresentationRuntime(
       } finally {
         timer.endSlice();
       }
+      throwIfNetworkBattleEntryAborted(signal);
 
+      if (trace.blackCheck && typeof trace.blackCheck === 'object'
+        && 'failed' in trace.blackCheck && trace.blackCheck.failed === true) {
+        throw new Error('Battle graphics could not be verified. Please retry from the Garage.');
+      }
       load.audio.loadingOn(false);
       load.audio.ambientOn(true);
       load.battleLoad.progress(1, 'Ready');
