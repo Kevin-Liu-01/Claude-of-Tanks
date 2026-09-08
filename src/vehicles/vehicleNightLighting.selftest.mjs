@@ -107,7 +107,42 @@ console.log('vehicleNightLighting: authored aperture/clone/scale/roll/yaw, peris
 // Opt-in CPU integration oracle. --baseline=<ref> loads edited vehicle sources
 // from that known revision, making geometry/draw-order parity visible
 // without maintaining duplicate builders or requiring a native renderer.
-if (process.argv.includes('--fleet')) {
+function assertExteriorHeadlightFaces(root, label, expectedRays) {
+  const meshes=[];
+  root.traverseVisible(mesh=>{if(mesh.isMesh&&!mesh.userData.shadowOnly)meshes.push(mesh);});
+  let checked=0;
+  for(const mesh of meshes){
+    if(!vehicleNightLightEmittersFor(mesh).some(lamp=>lamp.kind==='headlight'))continue;
+    const geometry=mesh.geometry,mask=geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
+    const position=geometry.getAttribute('position'),normal=geometry.getAttribute('normal');
+    const count=geometry.index?.count??position.count;
+    for(let offset=0;offset<count;offset+=3){
+      const ids=[0,1,2].map(corner=>geometry.index?.getX(offset+corner)??offset+corner);
+      if(!ids.every(vertex=>mask.getX(vertex)===1))continue;
+      const point=new THREE.Vector3();
+      for(const vertex of ids)point.add(new THREE.Vector3().fromBufferAttribute(position,vertex));
+      point.multiplyScalar(1/3).applyMatrix4(mesh.matrixWorld);
+      const direction=new THREE.Vector3().fromBufferAttribute(normal,ids[0])
+        .applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld));
+      for(const side of[-.65,0,.65]){
+        const camera=point.clone().addScaledVector(direction,4)
+          .addScaledVector(new THREE.Vector3(-direction.z,0,direction.x),side)
+          .add(new THREE.Vector3(0,side===0?0:.25,0));
+        const delta=point.clone().sub(camera),distance=delta.length();
+        const hit=new THREE.Raycaster(camera,delta.normalize(),.02,distance+.02).intersectObjects(meshes,false)[0];
+        assert.ok(hit?.object===mesh&&hit.faceIndex===offset/3,
+          `${label} aperture face ${offset/3}, view ${side}: first exterior hit must be the lens, not ${hit?.object.name}/${hit?.faceIndex}`);
+        checked++;
+      }
+    }
+  }
+  assert.equal(checked,expectedRays,`${label} all complete authored apertures are visible from front and both quarters`);
+}
+
+// Keep the four repaired lamp assemblies in the ordinary npm test path.
+// Explicit --fleet still supports the broader opt-in census and baseline mode.
+const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--physical');
+{
   const { createHash } = await import('node:crypto');
   const baseline = process.argv.find(arg => arg.startsWith('--baseline='))?.slice(11);
   if (baseline) {
@@ -136,7 +171,7 @@ if (process.argv.includes('--fleet')) {
   const allIds = process.argv.includes('--all') ? (await import('./specs.ts')).DEVELOPMENT_TANK_IDS : null;
   const offset = Number(process.argv.find(arg => arg.startsWith('--offset='))?.slice(9) ?? 0);
   const count = Number(process.argv.find(arg => arg.startsWith('--count='))?.slice(8) ?? Infinity);
-  const ids = (requestedIds ?? allIds ?? (process.argv.includes('--physical') ? physicalIds : ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'])).slice(offset, offset + count);
+  const ids = (requestedIds ?? allIds ?? (physicalRun ? physicalIds : ['m48', ...tejasIds, 't90a_vladimir', 't90a_x'])).slice(offset, offset + count);
   const rows = [];
   for (const id of ids) for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality, camoSeed: 4242 });
@@ -169,7 +204,7 @@ if (process.argv.includes('--fleet')) {
       if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
       if (id === 'm48') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
       if (shtoraIds.includes(id)) assert.equal(coverage.shtora, 2, `${id}/${quality} real Shtora pair survives batch/rig setup`);
-      if (tejasIds.includes(id) || process.argv.includes('--exposed') || process.argv.includes('--physical')) {
+      if (tejasIds.includes(id) || process.argv.includes('--exposed') || physicalRun) {
         const hull = visual.root.getObjectByName('hull');
         assert.ok(hull, `${id}/${quality} has the authored hull to test against`);
         let checked = 0;
@@ -178,15 +213,23 @@ if (process.argv.includes('--fleet')) {
             if (lamp.kind !== 'headlight') continue;
             const point = new THREE.Vector3().fromArray(lamp.position).applyMatrix4(owner.matrixWorld);
             const direction = new THREE.Vector3().fromArray(lamp.direction).transformDirection(owner.matrixWorld);
-            const ray = new THREE.Raycaster(point.clone().addScaledVector(direction, .002), direction, .001, .5);
+            // Start OUTSIDE: an outward ray starting inside a single-sided
+            // hull misses its backface and falsely approves a buried lens.
+            const ray = new THREE.Raycaster(point.clone().addScaledVector(direction, .5), direction.clone().negate(), .001, .498);
             assert.equal(ray.intersectObject(hull, false).length, 0,
               `${id}/${quality} actual emitting aperture is not buried behind the rebuilt bow`);
+            if(physicalIds.includes(id)){
+              const support=new THREE.Raycaster(point,direction.clone().negate(),0,.025).intersectObject(hull,false)[0];
+              assert.ok(support&&support.distance>.005,
+                `${id}/${quality} original pod remains connected to nearby hull stock behind its exposed lens`);
+            }
             checked++;
           }
         });
         assert.ok(checked >= 2, `${id}/${quality} tests both real bow lenses, not an empty registration`);
         if (physicalIds.includes(id)) assert.equal(checked, id.startsWith('t90') ? 4 : 2,
           `${id}/${quality} restores only the existing lamp apertures`);
+        if(physicalIds.includes(id))assertExteriorHeadlightFaces(visual.root,`${id}/${quality}`,id.startsWith('t90')?120:72);
       }
     }
     const hull = visual.root.getObjectByName('hull'), hullHash = createHash('sha256');

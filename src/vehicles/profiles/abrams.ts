@@ -2146,10 +2146,10 @@ export function buildM1A1BareHull(builder: RuntimeValue, {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
-    // This donor omits the exposed Tejas pod stage. Move its existing lamp
-    // assemblies clear of the measured 97.5 mm installed hull occlusion.
+    // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
+    // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.
     authoredBowLights: false,
-    bowLightForwardM: 0.115,
+    bowLightForwardM: 0.150,
     returnRollerZs,
     returnTrackTopY,
     returnRollerR,
@@ -10544,10 +10544,11 @@ function createM1A3BuildLayout() {
   });
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
-    // Existing aperture was 48 mm behind the bow. Keep the whole pod, drum,
-    // lens and guard together; its rear stock remains seated in the hull.
+    // Exterior-to-aperture rays require 110 mm total forward travel: the
+    // previous 55 mm seat still buried both lenses in the single-sided bow.
+    // Move the whole pod/drum/guard; hull stock remains 12 mm behind the lens.
     authoredBowLights: false,
-    bowLightForwardM: 0.055,
+    bowLightForwardM: 0.110,
     bodyHalfW: 1.78,
     nose: 4.00,
     deck: [[4.00, 1.24], [3.72, 1.31], [3.30, 1.42], [2.30, 1.62],
