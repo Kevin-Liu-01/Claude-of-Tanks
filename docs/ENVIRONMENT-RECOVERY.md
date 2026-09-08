@@ -492,6 +492,32 @@ the generated directory index. Agent-docs scaffold/doctor passes all four
 checks. The queued second core run was canceled before any test began so the
 scoped source repairs could complete; it is neither a pass nor a test failure.
 
+## Final client freeze — R5
+
+`03972db04` checkpoints the final physical lamp source and twelve reviewed
+technical diagrams plus their manifest. Canonical anatomy update and check
+both pass: 174 current receipts, 56 demand groups, 1,496 modules, 348 track
+sides, zero failures/outside-envelope modules, and 522 current technical
+assets. The 79 preexisting published-dimension warnings remain visible. Each
+changed diagram differs at only 5–11 bow-lamp pixels; no labels, layouts,
+portraits or other catalog records changed.
+
+`6a5b50a81` integrates `98b24722c` from main. The two merge conflicts were the
+network load-stage union and its ordering regression: both `nightLighting`
+and the new `panelMasks` stage are retained before shader compilation.
+Focused network presentation/input/transport/handoff checks and full
+TypeScript/core-unused checks pass in `final-integration-check-r1.log`.
+An independent read-only review found no lost lamp preparation, late-visual
+registration, Garage reset, readback cleanup or lazy fleet boundary.
+
+The immutable client is
+`/Users/kevinliu/.codex/worktrees/cot-environment-final-r5-review-20260907`.
+Its public build passes (`final-r5-public-build.log`) with index SHA-256
+`985c766d9f307883c119c1e8f439c85a7de0899d17c01170bb422195a7c5b428`.
+The public registry retains 174 first-party procedural playables and zero
+runtime GLB sources. Fresh R5 night/fixture and motion acceptance is pending;
+the passing R4 one-case result is not reused as this build's admission gate.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.
