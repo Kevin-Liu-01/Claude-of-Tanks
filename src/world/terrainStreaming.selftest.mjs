@@ -174,7 +174,10 @@ const GEOMETRY_GOLDENS = {
   blackglass: '31ea78388d0b10ba7914d9902ac21c9f49136fe2f5f5ef4c8713e42897554277',
   titan_gorge: '13abde544a10ceb96f05e20b767fdd6df15121e4c91857ce594bc66db47887e4',
   skybridge: '13f67e43c27dc650573a9ea5cf92b95a10032eb1f1fd3be3c9d64d5bc9c87731',
-  polders: '701d4611153e67baea6505fa125c0a185bfdd1dbe2fad6df5ab98791554f722b',
+  // Published 37271a90b authored basin contours, then 56924f7bf revised
+  // drainage/composition. Authenticated history replay preserves emitter and
+  // eager/live parity: docs/POLDERS-STREAMING-GOLDEN.md.
+  polders: 'b933cb9c4bd67070e904ffe66696ec235014bb53398886534f920f1345bc5f51',
   copper_mesa: 'ae0d5b90fb81ac1f36efa7e3c2e73b9a7259f3564aca6b461ab6f4d698544f46',
   airfield: '55490ff86d039a9015d19034937ae5b4e6ed4f5b85eb8b2f6f70d05830a2e254',
   oasis: '17a01efc7ebc768078e8a829038c1e5dbebc601d5fa9e409bebfb743755ee01f',
@@ -340,15 +343,36 @@ async function testAllMapBytes() {
     const config = getMapConfig(mapId);
     const hf = createHeightField(1337, config);
     const hash = createHash('sha256');
+    const corrupt = mapId === 'polders' ? createHash('sha256') : null;
+    let streams = 0;
+    const checkedHash = { update(data) {
+      hash.update(data);
+      if (!corrupt) return;
+      // Stream 1 is the padded fine grid; stream 2 is the actual first
+      // LOD's position bytes. Flip one bit of its first height on a copy.
+      const payload = ++streams === 2 ? data.slice() : data;
+      if (streams === 2) payload[4] ^= 1;
+      corrupt.update(payload);
+    } };
     const nearX = Math.min(256, Math.max(-512, Math.floor((config.spawns.player.x + 512) / 128) * 128 - 512));
     const nearZ = Math.min(384, Math.max(-512, Math.floor((config.spawns.player.z + 512) / 128) * 128 - 512));
     const chunks = [];
     const pool = new Map();
     for (const [x, z] of [[nearX, nearZ], [nearX + 128, nearZ], [-512, -512], [384, 384]]) {
-      chunks.push(buildCheckedChunk(hf, x, z, pool, mapId, hash));
+      chunks.push(buildCheckedChunk(hf, x, z, pool, mapId, checkedHash));
     }
     validateEastSeams(chunks[0], chunks[1]);
     assert.equal(hash.digest('hex'), GEOMETRY_GOLDENS[mapId], `${mapId}: reviewed authored geometry and bounds`);
+    if (corrupt) {
+      assert.equal(streams, 4 * (1 + 4 * 4), 'all fine-grid and geometry streams enter both hashes');
+      assert.throws(() => assert.equal(corrupt.digest('hex'), GEOMETRY_GOLDENS.polders),
+        { code: 'ERR_ASSERTION' }, 'one-bit corruption in current Polders height bytes must fail');
+      for (const stale of [
+        '701d4611153e67baea6505fa125c0a185bfdd1dbe2fad6df5ab98791554f722b',
+        '96956e342ce22d4aebc4a43168fc47ea1698d81c3712169cf2c5484e1b6cf49f',
+      ]) assert.throws(() => assert.equal(GEOMETRY_GOLDENS.polders, stale),
+        { code: 'ERR_ASSERTION' }, 'neither superseded published landform may replace the current golden');
+    }
     for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
     if (mapId === 'oasis') testOasisShorelineChunks(hf);
   }
