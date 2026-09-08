@@ -3,6 +3,7 @@ import { createNetworkLobbyPreloader } from './networkLobbyPreloader.ts';
 
 const calls = [];
 const mapRequests = [];
+const residentMaps = new Set();
 let phase = 'garage';
 let failChat = true;
 const preloader = createNetworkLobbyPreloader({
@@ -18,6 +19,9 @@ const preloader = createNetworkLobbyPreloader({
   loadWorldModule: async () => { calls.push('world-module'); },
   cancelBackgroundWorldBuildsExcept: (mapId) => calls.push(`cancel:${mapId}`),
   prefetchWorld: (mapId, options) => {
+    // The real world coordinator owns cache/in-flight deduplication.
+    if (residentMaps.has(mapId)) return null;
+    residentMaps.add(mapId);
     mapRequests.push({ mapId, options });
     calls.push(`map:${mapId}`);
   },

@@ -55,7 +55,7 @@ const options = {
   input: {},
   setGarageStatus: (status) => calls.push(['garage', status]),
   emitRoomState: (payload) => calls.push(['emit', payload]),
-  preloadLobbyIntent: (state) => calls.push(['preload', state.roomCode]),
+  preloadLobbyIntent: (state) => { calls.push(['preload', state.roomCode]); return true; },
   equipmentFor: (id) => [`equipment:${id}`],
   camoFor: () => 'summer',
   onRematch: (state) => calls.push(['rematch', state.round]),

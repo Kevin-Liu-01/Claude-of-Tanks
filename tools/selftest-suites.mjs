@@ -535,6 +535,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/net/networkBattlePresentationRuntime.selftest.mjs',
     'src/net/networkRoomCoordinator.selftest.mjs',
     'src/net/networkLobbyPreloader.selftest.mjs',
+    'src/net/networkLobbyMapPreparation.selftest.mjs',
     'src/net/networkBattleLaunchRuntime.selftest.mjs',
     'src/net/networkBattleActivationRuntime.selftest.mjs',
     'src/net/matchRuntime.deadPeer.selftest.mjs',
@@ -797,5 +798,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90ATurretSeat.selftest.mjs',
     'tools/source-dimension-frame.browser.selftest.mjs',
     'tools/resolved-depth-copy.browser.selftest.mjs',
+    'tools/lobby-prefetch-before-ready.browser.selftest.mjs',
   ]),
 });

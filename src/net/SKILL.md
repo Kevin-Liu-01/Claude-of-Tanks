@@ -44,7 +44,10 @@ play without importing Three.js rendering or DOM state.
 - `networkRoomCoordinator.ts` owns browser room subscriptions, garage/menu/chat
   presentation, selection commands, readiness, and rematch admission.
 - `networkLobbyPreloader.ts` coalesces joined-room transfers, retries failed
-  optional chunks, and warms only new roster builders or changed fixed maps.
+  optional chunks, and warms new roster builders. It reasserts canonical map
+  intent on waiting-room packets; the world coordinator owns in-flight/cache
+  deduplication and retry admission, not a permanent map-ID latch. Garage
+  browsing must preserve joined-room preparation, including while Not Ready.
 - `networkBattleLaunchRuntime.ts` owns private/LAN, retained-room rematch, and
   ranked launch policy, including cold-loader presentation and terminal cleanup.
 - `networkBattlePresentationRuntime.ts` owns the shared cold-client path from
@@ -96,6 +99,11 @@ play without importing Three.js rendering or DOM state.
 - Failed entry keeps an opaque loader through Garage restoration and its first
   paint. Settle in-flight world activation before restoring Garage, without
   waiting on an unrelated stalled transport.
+- Unexpected black-frame watchdog rejection fails closed after awaited resource
+  draining; the watchdog itself owns compatibility fallback. Preserve the
+  cancellation checkpoint before reporting graphics failure. A null lobby
+  callback is also used for successful match handoff, so it must not blindly
+  cancel the room's in-flight map build.
 - A bridge must remain private until its exact roster and viewer-bearing first
   snapshot are ready. Keep that order in `networkBattlePresentationRuntime.ts`;
   failed unpublished bridges are disposed before the launcher handles cleanup.

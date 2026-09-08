@@ -554,7 +554,10 @@ export function createNetworkBattlePresentationRuntime(
       try {
         trace.blackCheck = await presentation.runBlackWatchdog(signal);
       } catch (error) {
+        // The watchdog owns compatibility fallback; an unexpected rejection
+        // leaves the frame unverified and must keep the reveal covered.
         trace.blackCheck = {
+          failed: true,
           error: error instanceof Error ? error.message : String(error),
         };
       } finally {
