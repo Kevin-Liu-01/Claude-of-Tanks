@@ -17,10 +17,7 @@ import { privateRoomFailurePresentation } from './privateRoomFailurePresentation
 export type { PlayMode } from '../net/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.ts';
 import { normalizeRoomCode } from '../net/protocol.ts';
-import {
-  createRoomInviteUrl,
-  roomInviteTitle,
-} from '../net/roomInvite.ts';
+import { createRoomInviteUrl } from '../net/roomInvite.ts';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -373,9 +370,9 @@ function clearRoomUrl(): void {
 }
 
 function lobbyTeamLabel(team: LobbyTeam): string {
-  if (team === 'alpha') return 'Team Alpha';
-  if (team === 'bravo') return 'Team Bravo';
-  return 'Spectator';
+  if (team === 'alpha') return t('playMenu.team.alpha');
+  if (team === 'bravo') return t('playMenu.team.bravo');
+  return t('playMenu.team.spectator');
 }
 
 function playerId(): string {
@@ -567,7 +564,7 @@ export function createPlayMenu({
   onLobbyChange,
   isVehicleAllowed = () => true,
   isCamoAllowed = () => true,
-  getCamoName = (camo) => camo || 'Factory',
+  getCamoName = (camo) => camo || t('camoPattern.factory'),
   getVehicleName = (specId) => specId,
 }: PlayMenuOptions): PlayMenuRuntime {
   ensureFonts();
@@ -589,7 +586,7 @@ export function createPlayMenu({
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
-        <span class="identity-note">A unique callsign is ready automatically. Edit it only if you want to.</span></div>
+        <span class="identity-note">${t('playMenu.identity.note')}</span></div>
       <div class="room-actions">
         <div class="room-action"><div class="room-action-head"><i>${t('playMenu.create.kicker')}</i><b>${t('playMenu.create.title')}</b>
           <span>${t('playMenu.create.desc')}</span></div>
@@ -716,7 +713,9 @@ export function createPlayMenu({
     option.setAttribute('aria-selected', 'false');
     option.dataset.value = map.id;
     option.dataset.label = map.name;
-    option.dataset.meta = map.id === 'random' ? `${battlefieldCount} battlefields` : 'Battlefield';
+    option.dataset.meta = map.id === 'random'
+      ? t('playMenu.map.battlefieldsCount', { count: battlefieldCount })
+      : t('playMenu.map.battlefield');
     option.dataset.thumb = map.thumb || '';
     const thumb = document.createElement('span');
     thumb.className = `menu-select-thumb${map.thumb ? '' : ' is-random'}`;
@@ -745,7 +744,9 @@ export function createPlayMenu({
     option.setAttribute('aria-selected', 'false');
     option.dataset.value = vehicle.id;
     option.dataset.label = vehicle.name;
-    option.dataset.meta = Number.isFinite(vehicle.tier) ? `Tier ${vehicle.tier}` : 'Combat vehicle';
+    option.dataset.meta = Number.isFinite(vehicle.tier)
+      ? t('studioPanel.picker.tierPrefix', { tier: Number(vehicle.tier) })
+      : t('studioPanel.picker.combatVehicle');
     option.dataset.thumb = iconUrl(vehicle.id, 'angle');
     const thumb = document.createElement('img');
     thumb.className = 'menu-select-thumb';
@@ -899,11 +900,13 @@ export function createPlayMenu({
     if (resolvedHost) invitedHostName = resolvedHost;
     const code = normalizeRoomCode(roomCode);
     root.classList.add('invite-entry');
-    eyebrow.textContent = mode === 'lan' ? 'LAN invitation' : 'Private invitation';
-    menuTitle.textContent = roomInviteTitle(invitedHostName);
-    menuLead.textContent = connected
-      ? 'You are in room ' + code + '. Choose your vehicle, team, and ready state.'
-      : 'Room ' + code + ' is ready. Connecting you directly to the host.';
+    eyebrow.textContent = t(mode === 'lan' ? 'playMenu.eyebrow.lan' : 'playMenu.eyebrow.private');
+    menuTitle.textContent = invitedHostName
+      ? t('playMenu.invite.titleHost', { host: invitedHostName })
+      : t('playMenu.invite.titlePrivate');
+    menuLead.textContent = t(connected ? 'playMenu.invite.connected' : 'playMenu.invite.connecting', {
+      code,
+    });
     const metadataUrl = new URL(window.location.href);
     metadataUrl.searchParams.set('room', code);
     metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
@@ -942,7 +945,9 @@ export function createPlayMenu({
     failureDetail.textContent = failure.detail;
     retryBtn.hidden = !failure.canRetry || !lastConnectionKind || !!session || !!activeRoom;
     editCodeBtn.hidden = !failure.editCode;
-    editCodeBtn.textContent = failure.roomEnded ? 'Join another room' : 'Edit room code';
+    editCodeBtn.textContent = failure.roomEnded
+      ? t('playMenu.failure.joinAnotherRoom')
+      : t('playMenu.failure.editCode');
     settingsBtn.hidden = !failure.editSettings;
     clearFailure();
     const invalidInput = failure.code === 'invalid_room_code' ? codeInput
@@ -1004,7 +1009,7 @@ export function createPlayMenu({
   }
 
   function setClosePurpose(inRoom: boolean): void {
-    const label = inRoom ? 'Back to garage — stay in room' : 'Close';
+    const label = t(inRoom ? 'playMenu.close.backToGarage' : 'playMenu.close');
     closeBtn.setAttribute('aria-label', label);
     closeBtn.title = label;
   }
@@ -1121,13 +1126,15 @@ export function createPlayMenu({
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
     const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
-    battlefieldName.textContent = selectedMap?.name || next.mapId || 'Random battlefield';
+    battlefieldName.textContent = selectedMap?.name || next.mapId || t('playMenu.map.random');
     const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
       : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
-    battlefieldRole.textContent = role === 'host' ? 'Host selectable' : 'Selected by host';
+    battlefieldRole.textContent = t(role === 'host'
+      ? 'playMenu.map.hostSelectable'
+      : 'playMenu.map.selectedByHost');
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
@@ -1205,7 +1212,9 @@ export function createPlayMenu({
     catch (_) { vehicleName.textContent = player.specId; }
     const vehicleCamo = document.createElement('span');
     vehicleCamo.className = 'vehicle-camo';
-    vehicleCamo.textContent = `${getCamoName(player.camo || 'factory')} camouflage`;
+    vehicleCamo.textContent = t('playMenu.lobby.camouflage', {
+      name: getCamoName(player.camo || 'factory'),
+    });
     vehicleCopy.append(vehicleName, vehicleCamo);
     vehicle.append(icon, vehicleCopy);
     return vehicle;
@@ -1218,7 +1227,7 @@ export function createPlayMenu({
       isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
     const host = document.createElement('span');
     host.className = 'host';
-    host.textContent = player.isHost ? 'HOST' : '';
+    host.textContent = player.isHost ? t('playMenu.lobby.host') : '';
     const playerName = document.createElement('b');
     playerName.className = 'name';
     playerName.textContent = player.name;
@@ -1227,7 +1236,9 @@ export function createPlayMenu({
     team.textContent = lobbyTeamLabel(player.team);
     const ready = document.createElement('span');
     ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
-    ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
+    ready.textContent = player.team === 'spectator'
+      ? t('playMenu.lobby.watching')
+      : t(player.ready ? 'playMenu.lobby.ready' : 'playMenu.lobby.notReady');
     row.append(host, playerName, createLobbyVehicle(player), team, ready);
     return row;
   }
@@ -1241,15 +1252,13 @@ export function createPlayMenu({
 
   function renderLobbyNote(next: SerializedLobby): void {
     const fillNote = next.gameMode === 'endless_horde'
-      ? ' All players deploy together; escalating enemy waves are authority-owned.'
-      : ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
+      ? t('playMenu.note.hordeFill')
+      : t('playMenu.note.botFill', { size: next.teamSize || 1 });
     const relayNote = mode === 'private' && roomIce && !roomIce.relayAvailable
-      ? ' TURN relay is unavailable; restrictive networks may not connect.'
+      ? t('playMenu.note.relayUnavailable')
       : '';
-    note.textContent = (mode === 'lan'
-      ? 'LAN gameplay stays on direct Wi-Fi WebRTC paths; signaling only introduces the peers.'
-      : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') +
-      fillNote + relayNote;
+    note.textContent = `${t(mode === 'lan' ? 'playMenu.note.lan' : 'playMenu.note.private')} ${fillNote}${
+      relayNote ? ` ${relayNote}` : ''}`;
   }
 
   function renderLobby(next: SerializedLobby): void {
@@ -1347,7 +1356,7 @@ export function createPlayMenu({
     const generation = ++requestGeneration;
     lastConnectionKind = kind;
     clearFailure();
-    setStatus(kind === 'create' ? 'Creating room…' : 'Joining room…');
+    setStatus(t(kind === 'create' ? 'playMenu.status.creatingRoom' : 'playMenu.status.joiningRoom'));
     try {
       const connected = await connectRoom(kind, generation);
       if (connected && generation === requestGeneration) {
@@ -1378,9 +1387,7 @@ export function createPlayMenu({
     if (!signalInput.value) {
       showFailure('signaling_unavailable');
     } else {
-      setStatus(mode === 'lan'
-        ? 'LAN is ready. Create a room and share its invite link; gameplay stays on your Wi-Fi.'
-        : 'Create a code or join an existing room.');
+      setStatus(t(mode === 'lan' ? 'playMenu.status.lanReady' : 'playMenu.status.privateReady'));
     }
   }
   root.querySelectorAll<HTMLButtonElement>('.mode').forEach((button) => button.addEventListener('click', () => {

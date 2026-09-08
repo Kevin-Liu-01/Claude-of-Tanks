@@ -308,6 +308,14 @@ assert.match(playMenuSource,
   /roomIce && !roomIce\.relayAvailable[\s\S]{0,300}playMenu\.room\.turnUnconfigured/,
   'the real room UI cannot label an uncertified direct-only deployment universally ready');
 assert.match(playMenuSource,
+  /eyebrow\.textContent = t\(mode === 'lan' \? 'playMenu\.eyebrow\.lan' : 'playMenu\.eyebrow\.private'\)/,
+  'private and LAN invite entry must render its eyebrow through the active locale');
+assert.match(playMenuSource,
+  /menuLead\.textContent = t\(connected \? 'playMenu\.invite\.connected' : 'playMenu\.invite\.connecting'/,
+  'private and LAN invite entry must render its room status through the active locale');
+assert.match(playMenuSource, /class="identity-note">\$\{t\('playMenu\.identity\.note'\)\}/,
+  'private and LAN room setup must render its callsign note through the active locale');
+assert.match(playMenuSource,
   /if \(connected && generation === requestGeneration\)[\s\S]{0,180}setStatus\(roomConnectionStatus/,
   'a superseded room acquisition cannot publish a stale success status');
 console.log('privateRoomConnectionRuntime.selftest: host resume, cold join, cancellation and teardown passed');
