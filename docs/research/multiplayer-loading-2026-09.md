@@ -1014,3 +1014,83 @@ separate-device/distant/relay-only performance and the historical stall cause
 are not certified by this release. The final 25 synchronous and 33 asynchronous
 watchdog cases and revision-version test also passed. Owned local QA servers
 were stopped; screenshots and temporary reports remain excluded from git.
+
+### Budgeted roster preparation and retained diagnostic attribution
+
+The next slice starts from `0cc774691`, including the newer environment work;
+comparisons to the preceding environment are not matched baselines. Roster
+preparation used a private raw-rAF helper for every texture-painter checkpoint
+and every entity, including cache hits. That helper had no fallback when rAF
+existed but stopped firing. It now shares the existing opaque-loading scheduler
+across each preparation call: an 8 ms cooperative work budget and 50 ms progress
+paint interval, with the scheduler's 34 ms fallback for suppressed callbacks.
+These are checkpoint budgets, not a bound on an indivisible texture or tank
+construction call. No new preload/cache residency, visual quality change,
+authority change or early bridge publication was introduced.
+
+A red-first cached fourteen-player fixture observed fourteen forced frames;
+the same fixture now completes without scheduling any frame when below budget.
+Other deterministic cases cover task/frame cadence, a fresh per-call budget,
+shared painter/construction scheduling, a non-firing rAF and late callbacks,
+spectator exclusion, immutable camo/quality tuples, distinct duplicate-spec
+identities, hidden staging and unchanged private bridge publication. Independent
+review found no changed scene/resource ownership or abort/reveal ordering.
+
+The native production baseline (`roster-base-timings-visual`, serving exactly
+`v1.0.0+g0cc774691`) and local public-build candidate
+(`roster-candidate-timings-visual`) both passed the two-client room lifecycle,
+foreground 5→1 countdown, complete masks before activation, nonblack/no-rescue
+reveal, advancing input/snapshots, movement/shooting and verified Garage-return,
+room/browser/window cleanup. Application errors were zero. Inspected screenshots
+show the battlefield, tank and populated panel. HIGH clear/day Frosthollow
+watchdog luminance was identical across the two runs.
+
+Host/guest roster stages measured 429.2/520.7 ms in the production baseline
+and 393.7/330.5 ms in the local candidate. This is consistent with removing
+scheduling debt, but is not an isolated causal benchmark: signaling and asset
+delivery differ, and total entry did not improve. Network-owner totals,
+including peer readiness, were 7,214/6,949 ms versus 7,442/7,348 ms. World/module/
+connect stages were 3,166.8/2,930.4 ms versus 4,014.7/3,992.3 ms. Largest tasks
+remained 1,903/1,913 ms versus 1,288/1,361 ms. Known GPU warm work still stalls:
+both runs hit the 24-yield linker limit; candidate FX warm was 954.9/1,026.9 ms
+and watchdog rendering was 342.3/342.8 ms. No broad loading-speed or smoothness
+certificate follows from this scheduling fix.
+
+Separate LOW 20-second foreground samples on the same machine with two rendered
+contexts reached 62.7/72.8 ms maximum frame gaps in the baseline and 82.3/92.5 ms
+in the candidate. All reported zero hard snaps, dropped history, estimated
+missing snapshots and observer failures. These are short sequential-role
+samples, not stable-60-Hz, large-room, distant-network or long-session proof.
+
+Two test-tool blind spots are also addressed without changing runtime behavior:
+
+- The earlier production CPU capture (`production-entry-cpu-guest-visual`)
+  reached live battle on both clients, then failed with only
+  `source_profile_stop_failed` / `summarize` / `unknown`. Each profile validation
+  exit now carries a fixed allowlisted failure code through the redacted error
+  wrapper. Validation limits and accepted profiles are unchanged; this adds
+  attribution rather than claiming the original cause is repaired.
+- The entry observer previously discarded slow-slice arrays. It now retains up
+  to eight fixed, source-owned stage tags or bounded anonymous slice indices,
+  plus copied start/launch/end prefetch counters. Unknown strings, invalid
+  durations, resource URLs, room/player data and arbitrary error messages remain
+  excluded. These counters distinguish completed room-dwell preparation from a
+  joined/promoted build that finishes only after launch.
+
+Focused bridge, scheduler, entry, input, net, handoff and diagnostic suites,
+typecheck and the public build pass. The three changed runtime/tool owners have
+zero complexity, `any` or `unknown` violations. The observer's inherited
+over-complex receipt was split at its existing world-receipt boundary. React
+Doctor's six-file changed scan is 88/100: sequential cooperative awaits and
+explicit serialization-boundary test copies remain unsuppressed. The full
+repository baseline is 43/100 across 1,889 files and is not a comparable scoped
+score; unrelated diagnostics were not changed.
+
+The full `npm test` run passed its previously timing-out 200-profile lazy-fleet
+gate and continued through the early fleet checks. It was intentionally stopped
+during pretest to finish the explicitly requested scoped landing (SIGTERM / exit
+143 at `m1a3Concept.selftest.mjs`); this is not a full-suite pass or a reproduced
+test regression. The queued additional production CPU capture was cancelled
+before acquisition and produced no new browser evidence. An unfinished optional
+waiting-room-dwell probe is excluded from this commit, as are all transient QA
+reports, screenshots and unrelated vehicle/environment changes.
