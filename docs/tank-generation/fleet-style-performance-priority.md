@@ -186,5 +186,22 @@ Existing routes: [tool map](tool-map.md), [performance architecture](../PERFORMA
 Read the current CLI and queue ownership first. Diagnostic tools with debug
 staging do not replace real-pointer selection/convergence checks.
 
-Publication remains separately authorized. Recording this urgent backlog does
-not waive existing source/geometry failures or permit a broad unverified push.
+## Recovery and verified checkpoint publication — 2026-09-08
+
+The owner has authorized more frequent scoped commits and pushes to
+`origin/main`: **“Yes—push verified checkpoints as they pass.”** Include the
+requested Abrams/fleet material, running-gear and performance work with its
+necessary tests/docs; exclude unrelated experiments, private source models and
+temporary QA. This is not an as-is publication waiver or authority to weaken
+existing quality gates.
+
+The owner's coverage choice is to close upper shoulder/skirt gaps while keeping
+lower road wheels visible. When thick tracks conflict with old link shapes,
+prioritize fitted, efficient new running-gear primitives while preserving the
+hull/turret silhouette and road-wheel stations.
+
+The [2026-09-08 recovery record](../research/fleet-wip-recovery-20260908.md)
+separates interrupted lifecycle results, bounded frozen passes, remaining
+failures and the next verification/publication steps. This backlog remains
+open; neither that record nor an independent documentation checkpoint certifies
+the unfinished fleet changes.
