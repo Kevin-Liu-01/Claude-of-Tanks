@@ -417,6 +417,9 @@ export function createNetworkBattleLaunchRuntime({
             modeLabel,
             transitionShown: true,
             signal: entryController.signal,
+            // Retained authority also needs the newly selected world's collision;
+            // guests can reconnect while their independent world load runs.
+            connectAfterWorld: existingMatch.role === 'host',
             connectMatch: () => {
               const match = getMatch();
               if (!match) throw new Error('The retained room transport is unavailable.');
