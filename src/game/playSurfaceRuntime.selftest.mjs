@@ -1,6 +1,63 @@
 import assert from 'node:assert/strict';
 import { createPlaySurfaceRuntime } from './playSurfaceRuntime.ts';
 
+for (const mode of ['private', 'lan']) {
+for (const outcome of ['ready', 'deferred', 'reject', 'throw']) {
+  const preloads = [];
+  const shown = [];
+  const failures = [];
+  const invite = { roomCode: 'ABC123', autoJoin: true };
+  const failure = new Error('optional preload failed');
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const startPreload = (name) => {
+    preloads.push(name);
+    if (outcome === 'deferred') return gate;
+    if (outcome === 'reject') return Promise.reject(failure);
+    if (outcome === 'throw') throw failure;
+  };
+  const surface = createPlaySurfaceRuntime({
+    loadMenuModule: async () => ({
+      createPlayMenu: () => ({
+        show: (selectedMode, selectedInvite) => shown.push([selectedMode, selectedInvite]),
+        showCurrentRoom: () => false,
+        hide() {},
+      }),
+      preloadPlayMode: (selectedMode) => startPreload(`mode:${selectedMode}`),
+    }),
+    createMenuOptions: () => ({}),
+    getSelectedSpecId: () => 'm1a2',
+    getSelectedMapId: () => 'winter',
+    startSolo: () => assert.fail('an invite must not start solo'),
+    showActiveRoom: () => false,
+    preloadCommon: [() => startPreload('hud'), () => startPreload('fx')],
+    preloadNetworkPresentation: () => startPreload('network'),
+    preloadPrivateMatch: () => startPreload('private'),
+    reportError: (scope, error) => failures.push({ scope, error }),
+  });
+  assert.deepEqual(preloads, [], 'constructing the owner does not start passive Garage preparation');
+  const opening = surface.open({ mode, invite });
+  try {
+    const opened = await Promise.race([
+      opening.then(() => true),
+      new Promise((resolve) => setImmediate(() => resolve(false))),
+    ]);
+    assert.equal(opened, true, `${mode}/${outcome}: optional preparation never gates room opening`);
+    assert.deepEqual(preloads, ['hud', 'fx', 'network', 'private', `mode:${mode}`],
+      `${mode}: a fresh no-hover invite starts the existing explicit preload policy`);
+    assert.deepEqual(shown, [[mode, invite]], 'native mode and invite pass through unchanged');
+    if (outcome === 'reject' || outcome === 'throw') {
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(failures.length, 5, 'every failed optional task is observed without blocking the others');
+      assert.ok(failures.every((entry) => entry.error === failure), 'optional failures retain their identity');
+    } else assert.deepEqual(failures, []);
+  } finally {
+    release();
+    await opening;
+  }
+}
+}
+
 const events = [];
 let createCalls = 0;
 let activeRoom = false;
@@ -57,6 +114,7 @@ assert.deepEqual(events.slice(0, 5), [
 assert.ok(!events.some((event) => event[1] === 'dedicated'),
   'private intent never warms the dedicated client');
 
+const beforeSolo = events.slice();
 await runtime.open({ mode: 'solo', specId: 't90m', mapId: 'desert' });
 assert.deepEqual(soloStarts, [{ specId: 't90m', mapId: 'desert' }]);
 assert.equal(createCalls, 0, 'solo entry does not construct the play menu');
@@ -64,10 +122,13 @@ await runtime.open({ mode: 'solo', specId: 'm1a2', mapId: 'winter', gameMode: 'z
 assert.deepEqual(soloStarts.at(-1), {
   specId: 'm1a2', mapId: 'winter', gameMode: 'zone_control',
 }, 'solo objective selection reaches the battle-loading boundary');
+assert.deepEqual(events, beforeSolo, 'direct solo entry adds no common or multiplayer preload');
 
 activeRoom = true;
+const beforeActiveRoom = events.slice();
 await runtime.open({ mode: 'private' });
 assert.equal(createCalls, 0, 'an active room wins before menu acquisition');
+assert.deepEqual(events, beforeActiveRoom, 'the active-room guard starts no extra preload');
 activeRoom = false;
 
 const customStarts = [];
@@ -89,9 +150,11 @@ assert.deepEqual(customStarts, [],
 assert.deepEqual(soloStarts.at(-1), { specId: 'm1a2', mapId: 'winter' });
 
 menuShowsRoom = true;
+const beforeCurrentRoom = events.slice();
 await runtime.open({ mode: 'ranked' });
 assert.equal(events.filter((event) => event[0] === 'show').length, 2,
   'an already presented room prevents operation replacement');
+assert.deepEqual(events, beforeCurrentRoom, 'the retained-menu room guard starts no extra preload');
 assert.equal(await runtime.showCurrentRoom(), true);
 runtime.hideForBattle();
 await Promise.resolve();

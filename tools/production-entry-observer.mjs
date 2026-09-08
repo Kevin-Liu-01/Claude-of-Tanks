@@ -149,7 +149,9 @@ export function installProductionEntryObserver() {
     return Object.fromEntries(['targetBindMs', 'submissionMs', 'targetRestoreMs', 'programsBefore', 'programsAfter',
       'maxSubmissionMs', 'submissionSlices', 'extensionMs', 'queryMs', 'maxQueryMs', 'queryCount',
       'existingQueryMs', 'maxExistingQueryMs', 'existingQueryCount', 'newQueryMs', 'maxNewQueryMs', 'newQueryCount',
-      'pollMs', 'maxPollMs', 'pollCount', 'yields'].map((key) => [key, finite(value[key])]));
+      'pollMs', 'maxPollMs', 'pollCount', 'yields',
+      'uniformMs', 'maxUniformMs', 'uniformCount', 'uniformFailures', 'uniformYields', 'uniformPending']
+      .map((key) => [key, finite(value[key])]));
   };
   const worldLoadReceipt = (world) => world ? {
     id: world.id === 'winter' ? 'winter' : null, cached: typeof world.cached === 'boolean' ? world.cached : null,
@@ -186,11 +188,13 @@ export function installProductionEntryObserver() {
         startedAt: finite(network.startedAt), endedAt: finite(network.endedAt),
         stageIntervals: intervals(network.stageIntervals, networkStageNames),
         revealSlices: intervals(network.revealSlices,
-          ['activation', 'blackWatchdog', 'primeReveal', 'loaderFade']),
+          ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']),
         modulesMs: finite(network.modulesMs), worldMs: finite(network.worldMs),
         connectMs: finite(network.connectMs), totalMs: finite(network.totalMs),
         stages: numericTree(network.stages),
         programCompile: programCompileReceipt(network.programCompile),
+        shadowPrime: network.shadowPrime ? Object.fromEntries(['cascadeCount', 'totalMs', 'maxMs']
+          .map((key) => [key, finite(network.shadowPrime[key])])) : null,
         blackCheck: network.blackCheck ? { before: finite(network.blackCheck.before),
           after: finite(network.blackCheck.after), rescued: network.blackCheck.rescued === true,
           error: !!network.blackCheck.error || network.blackCheck.failed === true,

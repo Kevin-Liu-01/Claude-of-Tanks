@@ -31,6 +31,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
+import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 
 export type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
 
@@ -100,13 +101,14 @@ interface TreelineCrownOptions {
   samples?: number;
 }
 
-interface HorizonTextureOptions {
+export interface HorizonTextureOptions {
   banding: number;
   snowline: number;
   treeline: number;
   grainAmp: number;
   gullyAmp?: number;
   coolRock?: boolean;
+  mesaSurface?: boolean;
 }
 
 type HorizonProfile = (
@@ -341,7 +343,7 @@ export function sampleHorizonSilhouette({
 // centred on 0.62 (recentred by the material color) — hue stays in the
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
-type HorizonNoiseSampler = (
+export type HorizonNoiseSampler = (
   u: number,
   v: number,
   frequencyU: number,
@@ -349,7 +351,7 @@ type HorizonNoiseSampler = (
   offset: number,
 ) => number;
 
-interface HorizonTextureTerrainSample {
+export interface HorizonTextureTerrainSample {
   luminance: number;
   belowTree: number;
   ridge: number;
@@ -392,7 +394,7 @@ function applyHorizonStrata(
     - (1 - smoothstep(0.05, 0.4, v)) * 0.08);
 }
 
-function sampleHorizonTextureTerrain(
+export function sampleHorizonTextureTerrain(
   sampleNoise: HorizonNoiseSampler,
   options: HorizonTextureOptions,
   u: number,
@@ -401,7 +403,10 @@ function sampleHorizonTextureTerrain(
   const { banding, treeline, grainAmp, gullyAmp = 1 } = options;
   const belowTree = treeline > 0
     ? 1 - smoothstep(treeline * 0.85, treeline * 1.08, v) : 0;
-  const fineDetail = treeline > 0 ? 0 : 1;
+  // A small band of scrub at a mesa's base must not disable rock grain and
+  // scree over the entire cliff. Reuse the existing local biome mask; all
+  // noise samples below already run on the old path, even at zero weight.
+  const fineDetail = options.mesaSurface ? 1 - belowTree : treeline > 0 ? 0 : 1;
   let luminance = 1 + (sampleNoise(u, v, 90, 100, 17) * 0.05
     + sampleNoise(u, v, 34, 38, 5) * 0.06) * grainAmp * fineDetail;
   const faceVariation = smoothstep(0.25, 0.75,
@@ -1578,6 +1583,7 @@ function* buildHorizonMaterialSteps({
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
   const detailTex = yield* makeHorizonTextureSteps(gnoi, {
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
+    mesaSurface: style === 'mesa',
   });
   const mat = new THREE.MeshBasicMaterial({
     vertexColors: true, side: THREE.DoubleSide, map: detailTex,
@@ -1688,7 +1694,8 @@ function* buildHorizonMaterialSteps({
           // first cut). ±0.29 lands at the crown-mottle read real hills give.
           // r7: the vMapUv-based overlay is itself u-degenerate on grazed
           // walls — fade it where the triplanar fix takes over.
-          diffuseColor.rgb *= 1.0 + (dA * 0.28 + dB * 0.30) * (1.0 - fixW * 0.8);
+          ${style === 'mesa' ? HORIZON_MESA_SURFACE_FRAGMENT + '\n          diffuseColor.rgb *= horizonSurfaceGain;'
+            : 'diffuseColor.rgb *= 1.0 + (dA * 0.28 + dB * 0.30) * (1.0 - fixW * 0.8);'}
           if (uSlopeSplat > 0.001) {
             vec3 hn = normalize(vHNrm);
             float slopeF = 1.0 - clamp(hn.y, 0.0, 1.0);
@@ -1737,8 +1744,8 @@ function* buildHorizonMaterialSteps({
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => (style === 'alpine'
-      ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-') + style;
+    mat.customProgramCacheKey = () => style === 'mesa' ? 'horizon-ring-mesa-surface-r2'
+      : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-') + style;
   }
   return mat;
 }

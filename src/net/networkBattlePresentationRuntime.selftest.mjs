@@ -214,6 +214,14 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
         events.push('compiled');
         return { submissionMs: 15, pollMs: 2, yields: 1 };
       },
+      finalShadows: async (signal) => {
+        assert.strictEqual(signal, request.signal, 'final shadows receive the exact entry signal');
+        assert.equal(loaderVisible, true, 'final shadows run under the opaque loader');
+        events.push('finalShadows');
+        elapsedMs += timing.shadowMs ?? 0;
+        events.push('shadowsReady');
+        return { draws: 1, durationMs: 12 };
+      },
     },
     presentation: {
       resetRoundState: () => events.push('reset'),
@@ -292,7 +300,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   ]) assert.ok(harness.events.indexOf(before) >= 0
     && harness.events.indexOf(before) < harness.events.indexOf(after), `${before} precedes ${after}`);
   for (const [before, after] of [
-    ['waiting:true', 'activate'], ['activate', 'blackWatchdog'],
+    ['waiting:true', 'activate'], ['activate', 'finalShadows'],
+    ['finalShadows', 'shadowsReady'], ['shadowsReady', 'blackWatchdog'],
     ['blackWatchdog', 'primeReveal'], ['primed', 'hide'],
     ['hidden', 'ready'], ['peersReady', 'waiting:false'],
     ['waiting:false', 'adaptive:false'],
@@ -304,6 +313,8 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
     harness.events.indexOf('primeReveal') < harness.events.indexOf('hide'),
   'one complete battle frame is presented before the opaque loader exits');
   assert.deepEqual(harness.trace.blackCheck, { ok: true });
+  assert.deepEqual(harness.trace.shadowPrime, { draws: 1, durationMs: 12 },
+    'the trace retains the resolved final shadow receipt, not its promise');
   assert.deepEqual(harness.trace.programCompile, { submissionMs: 15, pollMs: 2, yields: 1 },
     'the trace retains the resolved compile receipt, not its promise');
   assert.ok(harness.trace.totalMs > 0, 'the complete network entry is timed');
@@ -316,7 +327,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       `${row.stage}: absolute intervals retain the original aggregate duration`);
   });
   assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-    ['activation', 'blackWatchdog', 'primeReveal', 'loaderFade']);
+    ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']);
   const revealStage = harness.trace.stageIntervals.find((row) => row.stage === 'reveal');
   harness.trace.revealSlices.forEach((row, index, rows) => {
     assert.ok(row.startTime >= (index ? rows[index - 1].endTime : revealStage.startTime));
@@ -331,6 +342,120 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   'moving scene compilation earlier keeps displayed progress monotonic');
   assert.ok(harness.progress.some(([fraction, label]) =>
     fraction === 1 && label === 'Ready'), 'the loader reaches its terminal state');
+}
+
+for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) {
+  const harness = createHarness();
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  const gate = deferred();
+  const receipt = { draws: 1, durationMs: 12 };
+  const failure = new Error('final shadow render failed');
+  const cancelled = outcome.startsWith('cancel-');
+  const rejected = outcome.endsWith('reject');
+  const forbidden = ['blackWatchdog', 'loading:false', 'ambient:true', 'primeReveal',
+    'hide', 'ready', 'waiting:false', 'adaptive:false'];
+  let settled = false;
+  harness.options.warm.finalShadows = (signal) => {
+    assert.strictEqual(signal, controller.signal);
+    harness.events.push('finalShadows');
+    return gate.promise;
+  };
+  const result = harness.runtime.present(harness.request).then(
+    () => { settled = true; return { ok: true }; },
+    (error) => { settled = true; return { ok: false, error }; },
+  );
+  try {
+    await waitForEvent(harness.events, 'finalShadows');
+    assert.equal(settled, false, `${outcome}: final shadow work is joined`);
+    assert.equal(harness.events.filter((event) => event === 'activate').length, 1,
+      'the final camera is activated exactly once before shadow preparation');
+    assert.equal(harness.loaderVisible, true);
+    assert.equal(harness.trace.status, 'pending');
+    assert.equal(harness.trace.shadowPrime, undefined, 'a pending receipt is never a Promise');
+    assert.equal(harness.trace.endedAt, undefined);
+    assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
+    assert.equal(harness.trace.stageIntervals.at(-1).endTime, undefined);
+    assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
+      ['activation', 'finalShadows']);
+    assert.equal(harness.trace.revealSlices.at(-1).endTime, undefined);
+    for (const event of forbidden) {
+      assert.ok(!harness.events.includes(event), `${outcome}: pending shadows cannot reach ${event}`);
+    }
+    if (cancelled) {
+      controller.abort('leave while final shadows are pending');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(settled, false, 'cancellation must drain owned shadow work before returning');
+      assert.equal(harness.trace.status, 'pending');
+    }
+    harness.events.push('shadowsSettled');
+    if (rejected) gate.reject(failure);
+    else gate.resolve(receipt);
+    const completed = await result;
+    assert.equal(harness.events.filter((event) => event === 'activate').length, 1);
+    assert.strictEqual(harness.trace.shadowPrime, rejected ? undefined : receipt);
+    const slice = harness.trace.revealSlices.find((row) => row.stage === 'finalShadows');
+    assert.ok(slice.endTime > slice.startTime && slice.endTime <= harness.trace.endedAt);
+    if (cancelled || rejected) {
+      assert.equal(completed.ok, false);
+      if (rejected) assert.strictEqual(completed.error, failure,
+        'fatal shadow failures propagate unchanged, including cancellation while draining');
+      else assert.ok(isNetworkBattleEntryAbortError(completed.error));
+      assert.equal(harness.trace.status, 'failed');
+      assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
+      assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
+        ['activation', 'finalShadows']);
+      assert.equal(harness.loaderVisible, true, 'the launcher retains opaque Garage recovery ownership');
+      assert.strictEqual(harness.publishedBridge, harness.preparedBridge);
+      assert.equal(harness.disposed, false, 'the presentation owner does not double-dispose its published bridge');
+      for (const event of forbidden) {
+        assert.ok(!harness.events.includes(event), `${outcome}: failed shadows cannot reach ${event}`);
+      }
+      assert.ok(!harness.progress.some(([fraction, label]) => fraction === 1 || label === 'Ready'));
+    } else {
+      assert.deepEqual(completed, { ok: true });
+      assert.equal(harness.trace.status, 'complete');
+      assert.ok(harness.events.indexOf('blackWatchdog') > harness.events.indexOf('shadowsSettled'));
+      assert.ok(harness.events.indexOf('hidden') < harness.events.indexOf('ready'));
+    }
+  } finally {
+    gate.resolve(receipt);
+    await result;
+  }
+}
+
+for (const outcome of ['return', 'throw']) {
+  const harness = createHarness();
+  const receipt = { draws: 0, skipped: true };
+  const failure = new Error('synchronous shadow failure');
+  harness.options.warm.finalShadows = () => {
+    if (outcome === 'throw') throw failure;
+    return receipt;
+  };
+  if (outcome === 'return') {
+    await harness.runtime.present(harness.request);
+    assert.strictEqual(harness.trace.shadowPrime, receipt, 'synchronous shadow adapters are supported');
+  } else {
+    await assert.rejects(harness.runtime.present(harness.request), (error) => error === failure);
+    assert.equal(harness.trace.status, 'failed');
+    assert.equal(harness.trace.revealSlices.at(-1).stage, 'finalShadows');
+    assert.equal(harness.trace.revealSlices.at(-1).endTime, harness.trace.endedAt);
+    assert.equal(harness.loaderVisible, true);
+    assert.ok(!harness.events.includes('blackWatchdog') && !harness.events.includes('ready'));
+  }
+}
+
+{
+  const harness = createHarness();
+  const controller = new AbortController();
+  harness.request.signal = controller.signal;
+  harness.options.presentation.activate = () => controller.abort('closed during atomic activation');
+  await assert.rejects(harness.runtime.present(harness.request), isNetworkBattleEntryAbortError);
+  assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage), ['activation']);
+  assert.equal(harness.loaderVisible, true);
+  for (const event of ['finalShadows', 'blackWatchdog', 'primeReveal', 'hide', 'ready']) {
+    assert.ok(!harness.events.includes(event), `obsolete activation cannot reach ${event}`);
+  }
 }
 
 for (const outcome of ['success', 'cancel', 'failure']) {
@@ -384,6 +509,67 @@ for (const kind of ['spectator', 'missing-viewer']) {
   assert.equal(harness.panelRequests.length, 0, `${kind}: do not prepare another player panel`);
   assert.ok(harness.trace.stageIntervals.some((row) => row.stage === 'panelMasks'));
   assert.ok(harness.events.includes('compile'), `${kind}: the normal scene warm still runs`);
+  assert.equal(harness.events.includes('finalShadows'), kind !== 'spectator',
+    'only a player has the snapped final-camera pose required for covered shadow reuse');
+}
+
+for (const pauseAt of ['primeReveal', 'hide']) {
+  const harness = createHarness('', pauseAt, { revealMs: 2200, fadeMs: 230 });
+  harness.request.own.team = 'spectator';
+  harness.options.warm.finalShadows = () => {
+    assert.fail('a blending spectator camera cannot reuse player-primed shadows');
+  };
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, pauseAt);
+  assert.ok(harness.events.indexOf('blackWatchdog') > harness.events.indexOf('activate'));
+  assert.ok(harness.events.indexOf('primeReveal') > harness.events.indexOf('blackWatchdog'));
+  assert.equal(harness.loaderVisible, true, `${pauseAt}: spectator entry remains covered`);
+  assert.equal(harness.trace.status, 'pending');
+  assert.equal(harness.trace.shadowPrime, undefined, 'spectators do not claim a shadow-prime receipt');
+  assert.ok(!harness.trace.revealSlices.some((row) => row.stage === 'finalShadows'));
+  assert.ok(!harness.events.includes('ready'), `${pauseAt}: spectators retain the complete reveal barrier`);
+  assert.equal(harness.countdownMs, 5000, 'spectator preparation cannot spend the shared countdown');
+  harness.revealGate.resolve();
+  await pending;
+  assert.equal(harness.trace.status, 'complete');
+  assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
+    ['activation', 'blackWatchdog', 'primeReveal', 'loaderFade']);
+  assert.ok(harness.events.indexOf('ready') > harness.events.indexOf('hidden'));
+  assert.equal(harness.readySentAt, 2430, 'spectator READY follows its real frame and full loader fade');
+  assert.equal(harness.countdownMs, 5000, 'spectators retain the full five-second authority countdown');
+}
+
+for (const outcome of ['resolve', 'reject', 'cancel']) {
+  const harness = createHarness();
+  const controller = new AbortController();
+  const gate = deferred();
+  harness.request.signal = controller.signal;
+  harness.options.warm.wrecks = async (_bridge, signal) => {
+    assert.strictEqual(signal, controller.signal, 'wreck work receives the entry cancellation signal');
+    harness.events.push('wrecksDeferred');
+    await gate.promise;
+    signal.throwIfAborted();
+  };
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'wrecksDeferred');
+  assert.equal(harness.loaderVisible, true);
+  assert.equal(harness.trace.stageIntervals.at(-1).stage, 'wreckWarm');
+  assert.ok(!harness.events.includes('compile'));
+  assert.ok(!harness.events.includes('ready'));
+  assert.equal(harness.countdownMs, 5000, 'pending wreck warm cannot spend the countdown');
+  if (outcome === 'cancel') controller.abort('return during wreck preparation');
+  if (outcome === 'reject') gate.reject(new Error('wreck preparation failed'));
+  else gate.resolve();
+  if (outcome === 'resolve') await pending;
+  else {
+    await assert.rejects(pending, outcome === 'cancel'
+      ? (error) => error === controller.signal.reason : /wreck preparation failed/);
+    assert.equal(harness.trace.status, 'failed');
+    assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
+    for (const stage of ['compile', 'effects', 'activate', 'hide', 'ready']) {
+      assert.ok(!harness.events.includes(stage), `${outcome}: wreck failure cannot reach ${stage}`);
+    }
+  }
 }
 
 for (const pauseAt of ['compileFrame', 'compile']) {
@@ -497,7 +683,7 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
     assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
     assert.equal(harness.trace.stageIntervals.at(-1).endTime, undefined);
     assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-      ['activation', 'blackWatchdog']);
+      ['activation', 'finalShadows', 'blackWatchdog']);
     assert.ok(harness.trace.revealSlices[0].endTime > 0);
     assert.equal(harness.trace.revealSlices.at(-1).endTime, undefined);
     const forbidden = ['loading:false', 'ambient:true', 'primeReveal', 'hide', 'ready',
@@ -531,7 +717,7 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
       assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
       assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
       assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-        ['activation', 'blackWatchdog']);
+        ['activation', 'finalShadows', 'blackWatchdog']);
       assert.ok(slice.endTime <= harness.trace.endedAt);
       assert.equal(harness.loaderVisible, true);
       for (const event of forbidden) {
@@ -567,11 +753,11 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
 }
 
 {
-  const harness = createHarness('', 'ready', { revealMs: 2200, fadeMs: 230 });
+  const harness = createHarness('', 'ready', { shadowMs: 1700, revealMs: 2200, fadeMs: 230 });
   const pending = harness.runtime.present(harness.request);
   await waitForEvent(harness.events, 'ready');
-  assert.equal(harness.elapsedMs, 2430, 'first visible frame and fade finish before READY');
-  assert.equal(harness.readySentAt, 2430, 'local READY cannot spend authority countdown behind the loader');
+  assert.equal(harness.elapsedMs, 4130, 'final shadows, first visible frame, and fade finish before READY');
+  assert.equal(harness.readySentAt, 4130, 'local READY cannot spend authority countdown behind the loader');
   assert.equal(harness.loaderVisible, false, 'waiting happens in the visible battlefield');
   assert.equal(harness.waitingForPeers, true, 'the visible battlefield explains peer loading');
   assert.equal(harness.countdownMs, 5000, 'expensive reveal and fade consume no authority countdown');
@@ -724,6 +910,13 @@ for (const pauseAt of ['primeReveal', 'hide', 'ready']) {
   delete harness.options.warm.playerPanel;
   assert.throws(() => createNetworkBattlePresentationRuntime(harness.options),
     /requires every lifecycle port/, 'the covered player-panel preparation port is required');
+}
+
+for (const invalid of [undefined, null, true]) {
+  const harness = createHarness();
+  harness.options.warm.finalShadows = invalid;
+  assert.throws(() => createNetworkBattlePresentationRuntime(harness.options),
+    /requires every lifecycle port/, 'the final-camera shadow preparation port must be a function');
 }
 
 assert.throws(

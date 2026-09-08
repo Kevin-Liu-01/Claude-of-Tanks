@@ -165,6 +165,9 @@ export function createPlaySurfaceRuntime({
         return;
       }
 
+      // Direct links and touch opens may have no preceding hover/focus intent.
+      // Start the same optional transfers without delaying native room entry.
+      preload(mode);
       pendingSoloStart = typeof request.startSolo === 'function'
         ? request.startSolo : null;
       const menu = await ensureMenu();
