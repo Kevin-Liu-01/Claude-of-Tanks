@@ -1,5 +1,11 @@
 # Environment pass — September 2026
 
+This document preserves the original pass and its historical evidence. Some
+temporary outputs referenced below were later lost. Current recovery,
+publication and acceptance status lives in
+[ENVIRONMENT-RECOVERY.md](ENVIRONMENT-RECOVERY.md); do not interpret older
+“not pushed” notes or missing capture paths as the current release state.
+
 ## Objective and visual reference
 
 Upgrade all existing battlefields, ground and mountain materials, horizons,

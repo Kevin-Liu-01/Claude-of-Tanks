@@ -626,6 +626,89 @@ The newly requested biome-specific horizon-cluster work is isolated in
 `/Users/kevinliu/.codex/worktrees/cot-horizon-detail-20260907`, separate from
 this completed map/nighttime checkpoint and all frozen capture builds.
 
+## Published map/night checkpoint and horizon follow-up
+
+`0cc77469161e1f4cf5abd0b6d836ac2db233597a` was pushed to `origin/main` with
+the completed thirty-map/environment and nighttime-lighting integration.
+`963957d3fc86e951fc464cc22e94adb5449effd7` was subsequently pushed with the
+seeded biome-atlas factory and its native Canvas2D tests. That second commit
+does **not** connect the new atlas to live map geometry by itself.
+
+The live ridge-cluster integration is checkpointed locally at `dba1c5ce3`.
+It supplies six silhouette families with explicit recipes for all thirty
+maps, a single bounded static mesh/atlas owner per map, and reversible night
+dimming. Its frozen native candidate is
+`cot-horizon-review-r1-20260907`; the clean public build has index SHA256
+`cf1339a14bd8c461fff79f125b41cd60992fe17afe81afdcc141bbf2a0af809d`.
+The build and focused CPU/texture checks pass, but in-world art acceptance is
+still pending. These local commits are not described as shipped.
+
+The matched pre-change capture (`horizon-density-before-r1`) contains 45
+native desktop images across Verdant, Titan Gorge, Winter, Coastal and Polders.
+The Polders scope views point into sky, so they are retained as non-diagnostic
+rather than accepted as landscape proof. `55de389bf` adds a lowland-specific
+scope target without changing the other cameras and a separate explicit
+establishing-only capture mode. The first corrected Polders acquisition
+(`horizon-polders-before-r2`) failed before map capture because the Garage
+slideshow changed during its eight-frame warmup. Its incomplete report remains
+a failure; neither frozen build was changed or rebuilt to conceal it.
+
+Focused source-cache isolation, night-lamp reset mocks and horizon receipts
+were repaired in `91f751abe`, `61dd9b220` and `d62d691b8` respectively. The
+historical horizon hashes were not replaced: restoring only Polders' former
+`.50` amplitude reproduces all six original aggregate digests. Separate exact
+current `.18` receipts and mutation controls now protect the intentionally
+lowered skyline. All ninety current/baseline land buffers (thirty maps,
+three seeds) remain byte-identical. The combined focused receipt is
+`horizon-detail-verification-r1.json` under the existing evidence root.
+None of these focused passes substitutes for the open full-suite, strict
+memory, high-DPI motion or final visual gates above.
+
+The independent cache-instrumentation and Garage-lamp-reset test repairs were
+also applied to the publication worktree as `a56cbb8c7` and `20d4c65cc`, on top
+of current main `db400d61b`. Both focused tests pass again on unchanged clean
+`0be4cd540` in `incremental-tests-r2.{json,log}`. This test/documentation-only
+checkpoint does not publish the still-local horizon placement or change any
+runtime rendering code.
+
+## Progressive checkpoint — 2026-09-08
+
+`7e0216e5e` published bounded raw-resize and PNG-phase diagnostics; it did
+not alter the runtime or relax quality gates. `a08063cc3` and `34e3a0876`
+subsequently published the lowland capture framing and fresh natural Garage
+archive-entry acquisition, preserving current main through `e199032a3`.
+All five published capture files are byte-identical to the tested `800b6ff4f`
+source. Its four CPU controls passed, and the unchanged tools completed the
+corrected nine-image Polders baseline plus the 45-image candidate acquisition.
+The separate clean-integration CPU rerun passes all four controls on unchanged
+`34e3a0876` in `incremental-capture-tests-r3.{json,log}`. This is capture-tool
+verification, not a new runtime visual or performance certification.
+
+The candidate `horizon-density-after-r1` completed on native ANGLE Metal/M5 Max,
+with 45 PNGs, 20 scope contracts, no page errors and unchanged frozen source,
+build index and acquisition tools. All 45 camera projections match; 43 full
+pose receipts match. Polders' first two unscoped views retain an inactive zoom
+value of eight instead of two; that mismatch remains in the integrity report.
+All corrected Polders scope poses match exactly. Older v5 images are static
+art references, not timing baselines for the new v6 acquisition.
+
+**Art acceptance fails.** Verdant's pale, squat ridge groups read as rocks,
+not layered forest; Titan's dominant background still reads as smooth pink
+mounds. Winter/Coastal details are generally too faint. The full review is
+`horizon-density-after-r1-art-review.md` under the existing evidence root.
+The live horizon placement is therefore still local. Current refinements
+target Titan's actual land silhouette and a confirmed second baked fog blend
+in the detail colors; neither is represented as visually accepted yet.
+
+The single frozen-R5 DPR diagnostic `motion-r5-dpr-diagnostic-r1` completed
+with six images and a finalized native recording. It did not reproduce the
+earlier scale drop: all sampled frames stayed at scale one. DPR2 nevertheless
+had a 24.4 ms median raw frame gap, and its PNG completion took 6.9 seconds.
+The one-second resize window does not span the governor's 1.5-second decision
+cadence; raw sampling also ends before PNG completion. The old failure remains
+failed, and no sustained high-DPI, new-horizon or full-matrix acceptance follows
+from this diagnostic. Its `diagnostic-summary.md` records the causal limits.
+
 ## Acceptance checklist
 
 1. Polders contour/terrain/route tests and matched native views: completed.

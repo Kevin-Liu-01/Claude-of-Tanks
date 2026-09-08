@@ -208,6 +208,62 @@ export function validateScopeReceipt(receipt, testCase) {
   return errors;
 }
 
+/** Browser-only scalar observation. Never changes cadence or quality policy.
+ * Canvas governor EMA/budget/FPS are its existing ~1Hz telemetry, not exact
+ * decision-window internals. Raw wall dt is reported only when actually passed.
+ */
+export function startResizeObservation({ label, maxFrames = 512, timeoutMs = 30000 }) {
+  if (window.__ENV_RESIZE_OBSERVER) throw new Error('A resize observation is already active');
+  if (typeof label !== 'string' || !label.startsWith('resize-') || label.length > 64
+    || !Number.isInteger(maxFrames) || maxFrames < 1 || maxFrames > 512
+    || !Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30000) throw new Error('Invalid resize observation bounds');
+  const D = window.__DEBUG, original = D.post.render;
+  const result = window.__ENV_RESIZE_RESULT = { label, maxFrames, timeoutMs, startedAtMs: performance.now(), frames: [],
+    stoppedAtMs: null, finishedAtMs: null, stopReason: null, snapshotAtMs: null,
+    truncated: false, restored: false, telemetryCadence: 'existing-canvas-approximately-1Hz', diagnosticOnly: true };
+  const numeric = value => value !== null && value !== undefined && value !== ''
+    && Number.isFinite(Number(value)) ? Number(value) : null;
+  let timer;
+  const stop = reason => {
+    if (result.stopReason !== null) return;
+    result.stopReason = reason; result.stoppedAtMs = performance.now(); clearTimeout(timer);
+  };
+  const finish = () => {
+    stop('closed-before-snapshot');
+    if (D.post.render === wrapped) { D.post.render = original; result.restored = true; }
+    result.finishedAtMs = performance.now();
+    if (result.restored) delete window.__ENV_RESIZE_OBSERVER;
+    return result;
+  };
+  function wrapped(...args) {
+    const renderStartedAtMs = performance.now();
+    const rendered = original.apply(this, args);
+    if (result.stopReason !== null) return rendered;
+    if (result.frames.length === maxFrames) { result.truncated = true; stop('frame-cap'); return rendered; }
+    const canvas = D.renderer.domElement, data = canvas.dataset;
+    result.frames.push({ frame: result.frames.length + 1, renderStartedAtMs, renderEndedAtMs: performance.now(),
+      dt: Number.isFinite(args[0]) ? args[0] : null,
+      wallDt: Number.isFinite(args[1]) ? args[1] : null, wallDtProvided: args.length > 1,
+      renderFrame: D.renderer.info.render.frame, outputPixelRatio: D.renderer.getPixelRatio(),
+      dynScale: D.post.dynScale, renderScale: numeric(data.renderScale), perfTrim: D.post.perfTrim,
+      preset: D.quality.resolvePresetName(), postAA: data.postAa,
+      frameEmaMs: numeric(data.frameEmaMs), dynBudgetMs: numeric(data.dynBudgetMs),
+      fps: numeric(data.fps), fpsBaseline: numeric(data.fpsBaseline) });
+    return rendered;
+  }
+  window.__ENV_RESIZE_OBSERVER = { result, finish, snapshot(name, timestamp) {
+    if (name !== label || result.stopReason !== null) return;
+    result.snapshotAtMs = timestamp; stop('snapshot');
+  } };
+  timer = setTimeout(() => { stop('timeout'); finish(); }, timeoutMs);
+  D.post.render = wrapped;
+  return { label, startedAtMs: result.startedAtMs, maxFrames, timeoutMs };
+}
+
+export function finishResizeObservation() {
+  return window.__ENV_RESIZE_OBSERVER?.finish() ?? window.__ENV_RESIZE_RESULT ?? null;
+}
+
 /** Browser-side: three bounded canvas snapshots, after production post.render.
  * toBlob snapshots those exact pixels now; encoding and data-URL delivery finish
  * asynchronously, without synchronous PNG compression in the render callback.
@@ -245,6 +301,7 @@ export function captureRenderedFrames({ pan = false, label = 'frame', timeoutMs 
     const encode = (blob, frame) => {
       if (settled) return; // A queued toBlob callback cannot be cancelled.
       try {
+        frame.captureTiming.blobCallbackAtMs = performance.now();
         if (!blob) throw new Error('Rendered-frame PNG encoding returned no Blob');
         const reader = new FileReader(); readers.add(reader);
         reader.onerror = () => fail(reader.error || new Error('Rendered-frame PNG read failed'));
@@ -255,17 +312,24 @@ export function captureRenderedFrames({ pan = false, label = 'frame', timeoutMs 
             fail(new Error('Rendered-frame PNG read returned invalid data')); return;
           }
           frame.png = reader.result;
+          frame.captureTiming.dataUrlReadyAtMs = performance.now();
           readers.delete(reader); reader.onload = reader.onerror = reader.onabort = null;
           pending--; finish();
         };
+        frame.captureTiming.dataUrlReadStartedAtMs = performance.now();
         reader.readAsDataURL(blob);
       } catch (error) { fail(error); }
     };
     const take = name => {
       const receipt = motionReceipt();
-      const frame = { label: name, receipt, capturedAfterRealRender: true };
+      const frame = { label: name, receipt, capturedAfterRealRender: true,
+        captureTiming: { receiptAtMs: receipt.timestamp, toBlobStartedAtMs: null, toBlobReturnedAtMs: null,
+          blobCallbackAtMs: null, dataUrlReadStartedAtMs: null, dataUrlReadyAtMs: null } };
       result.frames.push(frame); pending++;
-      D.renderer.domElement.toBlob(blob => encode(blob, frame), 'image/png');
+      window.__ENV_RESIZE_OBSERVER?.snapshot(name, receipt.timestamp);
+      frame.captureTiming.toBlobStartedAtMs = performance.now();
+      try { D.renderer.domElement.toBlob(blob => encode(blob, frame), 'image/png'); }
+      finally { frame.captureTiming.toBlobReturnedAtMs = performance.now(); }
     };
     const completeAcquisition = () => {
       acquisitionDone = true; releaseRender(); finish();
@@ -444,6 +508,30 @@ const expression = (fn, argument) => `(() => {
   return (${fn.toString()})(${JSON.stringify(argument)});
 })()`;
 
+/** Retain the exact existing browser-only resize, fixed settle and capture.
+ * Observation is armed first and its owner is released even on acquisition failure.
+ */
+export async function observeViewportResize({ evaluate, page, cdp, testCase, size, label, row, saveCapture, write }) {
+  await evaluate(startResizeObservation, { label: `resize-${label}` });
+  try {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    if (testCase.device === 'desktop') {
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width: size.width, height: size.height,
+        deviceScaleFactor: size.dpr, mobile: false });
+    }
+    await page.waitForTimeout(1000);
+    const resize = await evaluate(captureRenderedFrames, { label: `resize-${label}` }); saveCapture(resize);
+    const receipt = resize.frames[0].receipt;
+    row.resizes.push(receipt); row.errors.push(...validateMotionReceipt(receipt, size));
+  } finally {
+    try {
+      const observation = await evaluate(finishResizeObservation);
+      row.resizeObservations.push(observation);
+      write(`${row.id}-resize-${label}-observation.json`, observation);
+    } catch (error) { row.errors.push(`resize observation: ${error}`); }
+  }
+}
+
 async function acquireCase(page, context, testCase, base, row, saveCapture, write) {
   const evaluate = (fn, arg, timeout = 30000) => bounded(page.evaluate(expression(fn, arg)), timeout, fn.name);
   await page.addInitScript(value => { window.__ENV_REQUEST = value; }, testCase);
@@ -486,21 +574,13 @@ async function acquireCase(page, context, testCase, base, row, saveCapture, writ
   }
   if (row.errors.length) return;
   row.resizes = [];
+  row.resizeObservations = [];
   const alternate = testCase.device === 'desktop' ? { ...testCase, dpr: 2 }
     : { ...testCase, width: testCase.height, height: testCase.width };
   const cdp = await context.newCDPSession(page);
   try {
     for (const [label, size] of [['alternate', alternate], ['restored', testCase]]) {
-      await page.setViewportSize({ width: size.width, height: size.height });
-      if (testCase.device === 'desktop') {
-        // Change browser DPR, not renderer dimensions or runtime adaptation.
-        await cdp.send('Emulation.setDeviceMetricsOverride', { width: size.width, height: size.height,
-          deviceScaleFactor: size.dpr, mobile: false });
-      }
-      await page.waitForTimeout(1000);
-      const resize = await evaluate(captureRenderedFrames, { label: `resize-${label}` }); saveCapture(resize);
-      const receipt = resize.frames[0].receipt;
-      row.resizes.push(receipt); row.errors.push(...validateMotionReceipt(receipt, size));
+      await observeViewportResize({ evaluate, page, cdp, testCase, size, label, row, saveCapture, write });
     }
   } finally { await cdp.detach(); }
 }
@@ -547,6 +627,7 @@ async function runCase(browser, testCase, base, output, report, write) {
       fs.writeFileSync(path.join(output, file), buffer);
       write(`${id}-${frame.label}.json`, frame.receipt);
       row.receipts.push({ label: frame.label, receipt: frame.receipt, capturedAfterRealRender: frame.capturedAfterRealRender,
+        captureTiming: frame.captureTiming,
         png: { file, bytes: buffer.length, sha256: createHash('sha256').update(buffer).digest('hex') } });
     }
   };

@@ -122,6 +122,14 @@ export interface SceneProgramCompileOptions {
   signal?: AbortSignal;
   timing?: ForwardProgramCompileTiming;
   sliceMs?: number;
+  /** Opt-in real scene passes; omitted retains native all-descendant selection. */
+  passes?: readonly SceneProgramCompilePass[];
+}
+
+export interface SceneProgramCompilePass {
+  readonly layerMask: number;
+  /** The actual scene-pass destination; null retains the current target. */
+  readonly target: RenderTarget;
 }
 
 export interface ForwardProgramWarmOptions {
@@ -214,26 +222,35 @@ function isForwardRenderable(object: Object3D): boolean {
   return !!(renderable.isMesh || renderable.isPoints || renderable.isLine || renderable.isSprite);
 }
 
+function compileScenePassBatch(
+  { renderer, scene, camera, getTarget, now }: ForwardProgramWarmOptions,
+  root: Object3D,
+  timing: ForwardProgramCompileTiming | undefined,
+  pass: SceneProgramCompilePass | undefined,
+): void {
+  const priorMask = camera.layers.mask;
+  try {
+    if (pass) camera.layers.mask = pass.layerMask;
+    compileForRenderTarget({ renderer, root, camera, targetScene: scene,
+      target: pass ? pass.target : getTarget(), timing, now });
+  } finally {
+    if (pass) camera.layers.mask = priorMask;
+  }
+}
+
 /**
  * A compile-only traversal view, never inserted into the scene. Native compile
- * visits all descendants (including hidden variants), but gets its lights,
- * environment and fog from the real target scene. Original objects retain their
- * parents, transforms and material identities throughout every checkpoint.
+ * visits all selected descendants (including hidden variants), but gets its
+ * lights, environment and fog from the real target scene. Original objects keep
+ * their parents, transforms and material identities throughout every checkpoint.
  */
-function* compileSceneProgramSteps(
+function* compileScenePassSteps(
   options: ForwardProgramWarmOptions,
-  isCurrent: () => boolean,
-  { signal, timing, sliceMs = 8 }: SceneProgramCompileOptions,
+  valid: () => boolean,
+  { timing, sliceMs = 8 }: SceneProgramCompileOptions,
+  pass: SceneProgramCompilePass | undefined,
 ): Generator<void, void, void> {
-  signal?.throwIfAborted();
-  const { renderer, scene, camera, getTarget, now = () => performance.now() } = options;
-  const info = renderer.info;
-  const gl = renderer.getContext();
-  const valid = (): boolean => {
-    signal?.throwIfAborted();
-    return isCurrent() && renderer.info === info && !gl.isContextLost();
-  };
-  if (!valid()) return;
+  const { scene, now = () => performance.now() } = options;
   const objects: Object3D[] = [];
   const facade = new Object3D();
   let start = 0;
@@ -242,20 +259,21 @@ function* compileSceneProgramSteps(
   facade.traverse = (visit) => {
     for (let index = start; index < end; index += 1) visit(objects[index]);
   };
-  const before = renderer.info?.programs?.length ?? 0;
-  recordCompileTiming(timing, 'programsAfter', before, 'set');
   const budget = Number.isFinite(sliceMs) ? Math.max(1, Math.min(16, sliceMs)) : 8;
   try {
-    scene.traverse((object) => { if (isForwardRenderable(object)) objects.push(object); });
+    scene.traverse((object) => {
+      if (isForwardRenderable(object) && (!pass || (object.layers.mask & pass.layerMask) !== 0)) {
+        objects.push(object);
+      }
+    });
     let sliceAt = diagnosticNow(now);
     let submitted = 0;
     while (start < objects.length && valid()) {
       end = Math.min(start + 16, objects.length);
-      compileForRenderTarget({ renderer, root: facade, camera, targetScene: scene,
-        target: getTarget(), timing, now });
+      compileScenePassBatch(options, facade, timing, pass);
       submitted += end - start;
       start = end;
-      // Abort only after native compile exits and restores the render target.
+      // Abort only after native compile restores both camera and render target.
       if (!valid()) return;
       if (start === objects.length || diagnosticNow(now) - sliceAt >= budget || submitted >= 256) {
         recordCompileTiming(timing, 'maxSubmissionMs', diagnosticNow(now) - sliceAt, 'max');
@@ -268,6 +286,35 @@ function* compileSceneProgramSteps(
   } finally {
     objects.length = 0;
     start = end = 0;
+  }
+}
+
+function* compileSceneProgramSteps(
+  options: ForwardProgramWarmOptions,
+  isCurrent: () => boolean,
+  compileOptions: SceneProgramCompileOptions,
+): Generator<void, void, void> {
+  const { signal, timing, passes } = compileOptions;
+  signal?.throwIfAborted();
+  const { renderer } = options;
+  const info = renderer.info;
+  const gl = renderer.getContext();
+  const valid = (): boolean => {
+    signal?.throwIfAborted();
+    return isCurrent() && renderer.info === info && !gl.isContextLost();
+  };
+  if (!valid()) return;
+  const before = renderer.info?.programs?.length ?? 0;
+  recordCompileTiming(timing, 'programsAfter', before, 'set');
+  try {
+    const workPasses = passes ?? [undefined];
+    for (let index = 0; index < workPasses.length; index += 1) {
+      if (index > 0) yield; // Each pass releases its facade and restores state first.
+      if (!valid()) return;
+      yield* compileScenePassSteps(options, valid, compileOptions, workPasses[index]);
+      if (!valid()) return;
+    }
+  } finally {
     recordCompileTiming(timing, 'programsBefore', before, 'set');
   }
 }

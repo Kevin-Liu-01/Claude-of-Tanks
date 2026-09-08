@@ -44,6 +44,11 @@ function validateEntryProfile(entryProfile) {
   }
 }
 
+function validateWaitingRoomMap(waitForRoomMap, entryProfile) {
+  if (typeof waitForRoomMap !== 'boolean') throw new TypeError('waiting-room map option must be boolean');
+  if (waitForRoomMap && !entryProfile) throw new TypeError('waiting-room map requires an explicit entry profile');
+}
+
 function loopbackHostname(hostname) {
   return ['127.0.0.1', 'localhost', '[::1]'].includes(hostname);
 }
@@ -74,12 +79,13 @@ function validateRenderWorkload(renderWorkload, measurePerformance) {
   }
 }
 
-function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, entryProfile, localSignaling, renderWorkload, ammoSlot, screenshots }) {
+function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, entryProfile, waitForRoomMap, localSignaling, renderWorkload, ammoSlot, screenshots }) {
   return { ...(forceRelay ? { forceRelay: true } : {}),
     ...(frameTrace ? { frameTrace: true } : {}),
     ...(cpuTimeline ? { cpuTimeline: true } : {}),
     ...(sourceProfile === undefined ? {} : { sourceProfile }),
     ...(entryProfile === undefined ? {} : { entryProfile }),
+    ...(waitForRoomMap ? { waitForRoomMap: true } : {}),
     ...(localSignaling ? { localSignaling: true } : {}),
     ...(renderWorkload === undefined ? {} : { renderWorkload }),
     ...(ammoSlot === undefined ? {} : { ammoSlot }),
@@ -88,7 +94,7 @@ function captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, en
 
 export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, measurePerformance = false,
   ammoSlot, cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, entryProfile,
-  localSignaling = false, renderWorkload } = {}) {
+  waitForRoomMap = false, localSignaling = false, renderWorkload } = {}) {
   let origin;
   try { origin = new URL(url); } catch (_) { throw new TypeError('an explicit frontend origin is required'); }
   if (!['https:', 'http:'].includes(origin.protocol) || origin.pathname !== '/' ||
@@ -103,6 +109,7 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
   validateFrameTrace(frameTrace, cpuTimeline, measurePerformance);
   validateSourceProfile(sourceProfile, measurePerformance, cpuTimeline, frameTrace);
   validateEntryProfile(entryProfile);
+  validateWaitingRoomMap(waitForRoomMap, entryProfile);
   validateLocalSignaling(localSignaling, origin);
   validateRenderWorkload(renderWorkload, measurePerformance);
   if (typeof forceRelay !== 'boolean' || (forceRelay && !measurePerformance)) {
@@ -114,7 +121,93 @@ export function productionUiOptions({ url, timeoutMs = 300_000, screenshots, mea
     throw new TypeError('screenshots require --performance and an absolute artifact subdirectory');
   }
   return { origin: origin.origin, timeoutMs,
-    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, entryProfile, localSignaling, renderWorkload, ammoSlot, screenshots }) };
+    ...captureOptions({ forceRelay, frameTrace, cpuTimeline, sourceProfile, entryProfile, waitForRoomMap, localSignaling, renderWorkload, ammoSlot, screenshots }) };
+}
+
+/** Fixed scenario projection only: no room codes, arbitrary map names, or URLs. */
+export function readProductionRoomMapState() {
+  const stats = window.__WORLD_PREFETCH;
+  const counters = stats && typeof stats === 'object' ? Object.fromEntries(
+    ['requested', 'completed', 'joined', 'promoted', 'cancelled', 'skippedCapacity', 'lastMs']
+      .map((key) => [key, typeof stats[key] === 'number' && Number.isFinite(stats[key]) && stats[key] >= 0
+        ? stats[key] : null])) : null;
+  const waitingRoom = window.__DEBUG?.game?.phase === 'garage' &&
+    !!document.querySelector('.cot-play .lobby.show')?.getClientRects().length;
+  const selectedWinter = document.querySelector('.cot-play [data-control="map"]')?.value === 'winter';
+  const lastCompletedWinter = stats?.lastMap === 'winter';
+  const idle = stats?.active === null;
+  return { waitingRoom, selectedWinter, lastCompletedWinter, idle, counters,
+    ready: waitingRoom && selectedWinter && lastCompletedWinter && idle &&
+      counters?.completed > 0 && counters?.requested > 0 && counters?.promoted !== null };
+}
+
+/** Poll real joined-room work; native map selection/readiness remain untouched. */
+export async function waitForCompletedRoomMap(pages, { timeoutMs = 15_000,
+  now = () => performance.now(), delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  onEvidence = () => {}, isCancelled = () => false,
+} = {}) {
+  if (!Array.isArray(pages) || pages.length !== 2 || !Number.isSafeInteger(timeoutMs) ||
+      timeoutMs < 1 || timeoutMs > 15_000) throw new TypeError('waiting-room map requires two peers and a timeout up to 15000 ms');
+  const started = now();
+  const receipt = { scenario: 'completed-waiting-room-winter', timeoutMs,
+    clock: 'harness-performance.now', dwellMs: 0, completedBeforeLaunch: false, launchVerified: false,
+    peers: ['host', 'guest'].map((role) => ({ role, start: null, beforeLaunch: null,
+      afterLaunch: null, readFailure: null })) };
+  let problem;
+  try {
+    // The outer deadline can win while a page read is pending. Retain this
+    // owned receipt early; subsequent samples replace only copied snapshots.
+    onEvidence(receipt);
+    while (!receipt.completedBeforeLaunch) {
+      if (isCancelled()) throw failure('waiting_room_map');
+      const remaining = timeoutMs - (now() - started);
+      if (remaining <= 0) throw Object.assign(failure('waiting_room_map'), { operationFailure: 'deadline' });
+      await Promise.all(pages.map(async (page, index) => {
+        const peer = receipt.peers[index];
+        try {
+          const state = await bounded(Promise.resolve().then(() => page.evaluate(readProductionRoomMapState)),
+            Math.min(2000, remaining), 'waiting_room_map');
+          peer.start ??= state;
+          peer.beforeLaunch = state;
+        } catch (error) { peer.readFailure = browserOperationFailure(error); }
+      }));
+      receipt.dwellMs = Math.max(0, now() - started);
+      if (isCancelled() || now() - started > timeoutMs) throw failure('waiting_room_map');
+      if (receipt.peers.some((peer) => peer.readFailure)) throw failure('waiting_room_map');
+      receipt.completedBeforeLaunch = receipt.peers.every((peer) => peer.beforeLaunch?.ready === true);
+      if (!receipt.completedBeforeLaunch) {
+        const remaining = timeoutMs - (now() - started);
+        if (remaining > 0) await delay(Math.min(100, remaining));
+      }
+    }
+  } catch (error) { problem = error; }
+  finally {
+    receipt.dwellMs = Math.max(0, now() - started);
+    onEvidence(receipt);
+  }
+  if (problem) throw retainFailureEvidence(problem, { waitingRoomMap: receipt });
+  return receipt;
+}
+
+/** Completed-before-Start and cached-after-Start are separate required facts. */
+export function recordCompletedRoomMapLaunch(receipt, entry) {
+  const count = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+  const peers = receipt.peers.map((peer) => {
+    const observation = entry?.peers?.find((row) => row.role === peer.role)?.observation;
+    const world = observation?.worldLoad;
+    const afterLaunch = { winter: world?.id === 'winter', complete: world?.status === 'complete',
+      cached: typeof world?.cached === 'boolean' ? world.cached : null,
+      promotedAtLaunch: count(observation?.worldPrefetch?.launch?.promoted),
+      promotedAtEnd: count(observation?.worldPrefetch?.end?.promoted) };
+    const before = peer.beforeLaunch?.counters?.promoted;
+    afterLaunch.promotedDelta = afterLaunch.promotedAtEnd !== null && count(before) !== null
+      ? afterLaunch.promotedAtEnd - before : null;
+    return { ...peer, afterLaunch };
+  });
+  const launchVerified = receipt.completedBeforeLaunch && peers.every(({ beforeLaunch, afterLaunch }) =>
+    beforeLaunch?.ready === true && afterLaunch.winter && afterLaunch.complete && afterLaunch.cached === true &&
+    afterLaunch.promotedAtLaunch === beforeLaunch.counters.promoted && afterLaunch.promotedDelta === 0);
+  return { ...receipt, peers, launchVerified };
 }
 
 /** Optional diagnosis has measurable overhead and is not a timing certification. */
@@ -784,17 +877,34 @@ async function completeProductionBattleEntry(pages, options, { run, left, onEvid
   });
 }
 
-function entryReceiptFields(entry) {
-  return entry ? { entry } : {};
+function entryReceiptFields(entry, waitingRoomMap) {
+  return { ...(entry ? { entry } : {}), ...(waitingRoomMap ? { waitingRoomMap } : {}) };
+}
+
+async function completeProductionRoomEntry(pages, options, { run, left, isCancelled, onEvidence }) {
+  let waitingRoomMap = null;
+  if (options.waitForRoomMap) await run('waiting_room_map', () => waitForCompletedRoomMap(pages, {
+    timeoutMs: Math.max(1, Math.min(15_000, Math.floor(left()))), isCancelled,
+    onEvidence: (receipt) => { waitingRoomMap = receipt; onEvidence(null, receipt); },
+  }));
+  await completeProductionBattleEntry(pages, options, {
+    run, left, onEvidence: (receipt) => {
+      if (waitingRoomMap) waitingRoomMap = recordCompletedRoomMapLaunch(waitingRoomMap, receipt);
+      onEvidence(receipt, waitingRoomMap);
+    },
+  });
+  if (options.waitForRoomMap) await run('waiting_room_map_cache', async () => {
+    if (!waitingRoomMap?.launchVerified) throw failure('waiting_room_map_cache');
+  });
 }
 
 /** Native deployed controls only; never override endpoints, import /src, or change game state. */
 export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   launchBrowser = null, onStage = () => {}, measurePerformance = false, screenshots, ammoSlot,
   cpuTimeline = false, forceRelay = false, frameTrace = false, sourceProfile, entryProfile,
-  localSignaling = false, renderWorkload } = {}) {
+  waitForRoomMap = false, localSignaling = false, renderWorkload } = {}) {
   const options = productionUiOptions({ url, timeoutMs, screenshots, measurePerformance, ammoSlot,
-    cpuTimeline, forceRelay, frameTrace, sourceProfile, entryProfile, localSignaling, renderWorkload });
+    cpuTimeline, forceRelay, frameTrace, sourceProfile, entryProfile, waitForRoomMap, localSignaling, renderWorkload });
   const started = performance.now();
   const owners = { browser: null, pages: [], roomCreated: false, renderWorkload: null, cancelled: false,
     health: observeBrowserHealth(() => performance.now() - started) };
@@ -803,6 +913,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   let result;
   let completedPerformance = null;
   let completedEntry = null;
+  let waitingRoomMap = null;
   let browserLaunch = null;
   let signalingTransport = null;
   let pageErrors = 0;
@@ -860,8 +971,9 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       await host.waitForFunction(() => document.querySelector('.cot-play [data-action="start"]')?.disabled === false,
         { timeout: left() });
     });
-    await completeProductionBattleEntry(owners.pages, options, {
-      run, left, onEvidence: (receipt) => { completedEntry = receipt; },
+    await completeProductionRoomEntry(owners.pages, options, {
+      run, left, isCancelled: () => owners.cancelled,
+      onEvidence: (entry, roomMap) => { completedEntry = entry; waitingRoomMap = roomMap; },
     });
     const before = await Promise.all(owners.pages.map((page) => page.evaluate(readUiState)));
     await run('battle_progress', () => Promise.all(owners.pages.map((page, index) => page.waitForFunction((prior) =>
@@ -921,14 +1033,14 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       signalingTransport, nativeInviteJoined: true, nativeReadyAndLaunch: true, peers,
       nativeExitAndRoomClose: true, pageErrors };
     if (performanceReceipt) result.performance = performanceReceipt;
-    Object.assign(result, entryReceiptFields(completedEntry));
+    Object.assign(result, entryReceiptFields(completedEntry, waitingRoomMap));
   } catch (error) {
     owners.cancelled = true;
     problem = failure(error?.stage === 'relay_gameplay' ? 'relay_gameplay' : stage);
     Object.assign(problem, productionDiagnosticDetails(error));
     retainFailureEvidence(problem, { performance: completedPerformance,
       signalingTransport,
-      ...entryReceiptFields(completedEntry),
+      ...entryReceiptFields(completedEntry, waitingRoomMap),
       partialRelay: productionFailureEvidence(error).partialRelay,
       ...nativePreparationEvidence(error),
       ...(workloadFailureEvidence(error) ? { renderWorkload: workloadFailureEvidence(error) } : {}) });
@@ -946,7 +1058,7 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   if (!cleanup.browserClosed || !cleanup.roomCleanupVerified) throw retainFailureEvidence(
     Object.assign(failure('cleanup'), { cleanup }), { performance: completedPerformance, partialRelay: null,
       signalingTransport, browserHealth,
-      ...entryReceiptFields(completedEntry) });
+      ...entryReceiptFields(completedEntry, waitingRoomMap) });
   return { ...result, browserHealth, cleanup };
 }
 
@@ -959,6 +1071,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     if (process.argv.includes('--source-profile')) throw new TypeError('source profile must select host or guest');
     if (process.argv.includes('--entry-profile')) throw new TypeError('entry profile must select host, guest, or timings');
+    if (option('wait-for-room-map') !== undefined) throw new TypeError('waiting-room map is a boolean flag');
     if (process.argv.includes('--render-workload')) throw new TypeError('render workload requires an explicit mode');
     const result = await verifyProductionPrivateRoomUi({ url: option('url'),
       measurePerformance: process.argv.includes('--performance'),
@@ -967,6 +1080,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       frameTrace: process.argv.includes('--frame-trace'),
       sourceProfile: option('source-profile'),
       entryProfile: option('entry-profile'),
+      waitForRoomMap: process.argv.includes('--wait-for-room-map'),
       localSignaling: process.argv.includes('--local-signaling'),
       renderWorkload: option('render-workload'),
       ammoSlot: ammoSlot === undefined ? undefined : Number(ammoSlot),
