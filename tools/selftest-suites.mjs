@@ -6,6 +6,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/roundedBoxGeometryCache.selftest.mjs',
     'src/vehicles/ownedFittingGeometry.selftest.mjs',
     'src/vehicles/eraSurfaceDeduplication.selftest.mjs',
+    'src/vehicles/eraWholeFitReuse.selftest.mjs',
     'tools/chieftain10-collision.selftest.mjs',
     'src/vehicles/jagdpanzerE100XArmor.selftest.mjs',
     'src/vehicles/sourceXOtherAuxArmor.selftest.mjs',
