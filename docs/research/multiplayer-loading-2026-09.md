@@ -977,7 +977,40 @@ intent assertion was updated to require the new explicit-intent call; passive
 Garage guards remain. Typecheck, production build and diff checks pass. Changed
 runtime owner metrics have no complexity/`any`/`unknown` violations; the observer's
 pre-existing cognitive-25 receipt is unchanged. React Doctor's expanded
-ten-source-file changed scan reported 88/100 and no new diagnostics; its score
+eleven-source-file final changed scan reported 88/100 and no new diagnostics; its score
 is not directly comparable to the earlier four-file 91/100 instrumentation-only
 scan. No warnings were suppressed. The previously documented unchanged full-suite
 fleet timeout remains unresolved; this is not a full `npm test` pass.
+
+### Production verification of room intent and FX warm
+
+Vercel reported success for `0fe2cf0e9`, and the live site served exactly
+`v1.0.0+g0fe2cf0e9` before `production-intent-fx-timings-visual`. The native
+two-client room/invite/ready/launch scenario passed, including both foreground
+5→1 countdowns, completed panel masks before activation, nonblack/no-rescue
+reveal, advancing snapshots/input, shooting and movement feedback, Garage return
+and verified room/browser/window cleanup. Application errors were zero. Both
+inspected screenshots show the battlefield, tank and populated panel.
+
+HIGH clear/day host/guest network-owner totals were 5,128/4,954 ms, including
+peer readiness. The post-scene program increase remained 14 per peer, with no
+programs added by watchdog rendering (231→231 and 193→193). Luminance exactly
+matched the earlier clear/day samples. These are repeatable structural and
+functional checks, not proof of an overall speedup.
+
+Loading pauses remain: largest tasks were 682/724 ms; FX warm took
+454.5/489.4 ms and watchdog draw 239.2/246.9 ms. Both shader-readiness polls
+reached their existing 24-yield limit and used the subsequent real-render
+fallback. Therefore lower query totals in this run (117.4/8.6 ms) cannot be
+read as complete linker-drain costs or evidence of eliminating shader stalls.
+Awaited loader fades were 233.1/237.3 ms.
+
+The separate LOW 20-second samples, measured sequentially with two rendered
+contexts on one machine, produced frame p50/p95/p99/max of
+24.0/39.5/54.2/78.6 ms and 20.7/38.4/49.7/56.1 ms. Both had zero hard snaps,
+dropped input history, estimated missing snapshots and observer failures.
+The runner has no frame-budget assertion. Stable 60 Hz, larger/longer sessions,
+separate-device/distant/relay-only performance and the historical stall cause
+are not certified by this release. The final 25 synchronous and 33 asynchronous
+watchdog cases and revision-version test also passed. Owned local QA servers
+were stopped; screenshots and temporary reports remain excluded from git.
