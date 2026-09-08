@@ -976,13 +976,16 @@ export function createPlayMenu({
   function roomConnectionStatus(action: 'created' | 'joined'): string {
     if (mode === 'private' && roomIce && !roomIce.relayAvailable) {
       const reason = roomIce.degradedReason === 'turn_service_unconfigured'
-        ? 'the production TURN service is not configured'
-        : 'the TURN relay is temporarily unavailable';
-      return `Direct-only room ${action}; ${reason}, so some external networks cannot connect.`;
+        ? t('playMenu.room.turnUnconfigured')
+        : t('playMenu.room.turnUnavailable');
+      const actionLabel = t(action === 'created'
+        ? 'playMenu.room.actionCreated'
+        : 'playMenu.room.actionJoined');
+      return t('playMenu.room.directOnly', { action: actionLabel, reason });
     }
     return action === 'created'
-      ? 'Room ready. Copy the invite link.'
-      : 'Connected. Choose a team and ready up.';
+      ? t('playMenu.room.readyCopy')
+      : t('playMenu.room.connectedChooseTeam');
   }
 
   function notifyLobbyChange(next: SerializedLobby | null = state): void {

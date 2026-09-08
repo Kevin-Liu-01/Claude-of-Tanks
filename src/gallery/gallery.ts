@@ -63,13 +63,13 @@ const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
   return element;
 };
 
-const GALLERY_SECTION_INFO: Readonly<Record<string, string>> = Object.freeze({
-  'Operational profile': t('gallery.dossier.ratingHint'),
-  'Technical summary': t('gallery.dossier.summaryHint'),
-  Articulation: t('gallery.dossier.articulationHint'),
-  'Surface markup': t('gallery.dossier.markupHint'),
-  Specification: t('gallery.dossier.specificationHint'),
-  'Ammunition suite': t('gallery.dossier.ammunitionHint'),
+const GALLERY_SECTION_INFO_KEYS: Readonly<Record<string, string>> = Object.freeze({
+  'gallery.dossier.section.operational': 'gallery.dossier.ratingHint',
+  'gallery.dossier.section.summary': 'gallery.dossier.summaryHint',
+  'gallery.dossier.section.articulation': 'gallery.dossier.articulationHint',
+  'gallery.dossier.section.markup': 'gallery.dossier.markupHint',
+  'gallery.dossier.section.specification': 'gallery.dossier.specificationHint',
+  'gallery.dossier.section.ammunition': 'gallery.dossier.ammunitionHint',
 });
 
 function appendGalleryInfo(
@@ -121,15 +121,21 @@ function mountGalleryInfo(): void {
         : (activeMode === 'armor' ? 'armor_side' : 'angle')), t('gallery.about.image.layer')),
   });
   document.querySelectorAll('.section-label').forEach((heading) => {
-    const label = heading.querySelector('span')?.textContent.trim();
-    if (label && GALLERY_SECTION_INFO[label]) appendGalleryInfo(heading, {
+    const labelElement = heading.querySelector<HTMLElement>('[data-i18n]');
+    const labelKey = labelElement?.dataset.i18n || '';
+    const helpKey = GALLERY_SECTION_INFO_KEYS[labelKey];
+    if (helpKey) {
+      const label = t(labelKey);
+      appendGalleryInfo(heading, {
       label: `${t('gallery.about.layersTitle')} · ${label}`,
-      title: label, text: GALLERY_SECTION_INFO[label],
+      title: label, text: t(helpKey),
       image: () => galleryVehicleImage(
-        label === t('gallery.dossier.section.specification') || label === t('gallery.dossier.section.ammunition') ? 'side' : 'angle',
+        labelKey === 'gallery.dossier.section.specification'
+          || labelKey === 'gallery.dossier.section.ammunition' ? 'side' : 'angle',
         t('gallery.about.image.reference', { label }),
       ),
     });
+    }
   });
 }
 
