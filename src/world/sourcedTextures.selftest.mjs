@@ -6,7 +6,10 @@ const loadedImageUrls = [];
 const loadedImages = new Map();
 
 // Exercise actual private cache/applySet paths without adding runtime test APIs.
-const sourcedUrl = new URL('./sourcedTextures.ts', import.meta.url).href;
+// mapQuality imports terrain before this test, which already loads the public
+// module. Use an isolated test identity so the hook still injects private cache
+// access instead of silently receiving that pre-existing uninstrumented module.
+const sourcedUrl = new URL('./sourcedTextures.ts?selftest=private-cache', import.meta.url).href;
 const hooks = registerHooks({ load(url, context, nextLoad) {
   const result = nextLoad(url, context);
   return url === sourcedUrl ? { ...result, source: `${result.source}\nexport { applySet, _compositeCache };\n` } : result;
@@ -72,7 +75,7 @@ const {
   applySourcedBuildings, applySourcedTerrain, composeAlbedo, composeSurface,
   sourcedBuildingTintPolicy, resolveSourcedTerrainPalette, resolveSourcedBuildingPalette,
   applySet, _compositeCache,
-} = await import('./sourcedTextures.ts');
+} = await import(sourcedUrl);
 hooks.deregister();
 const { MAP_IDS, getMapConfig } = await import('./maps/index.ts');
 const image = (pixels) => ({ width: 2, height: 2, pixels: new Uint8ClampedArray(pixels) });

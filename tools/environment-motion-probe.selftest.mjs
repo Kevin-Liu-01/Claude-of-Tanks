@@ -10,7 +10,8 @@ import { baseDynamicScale, internalPixelRatio } from '../src/engine/renderScaleP
 import { PRESETS } from '../src/engine/quality.ts';
 import { MOTION_CASES, MOTION_PROTOCOL, validateMotionReceipt, validateLiveSequence,
   contextOptions, validateOneCaseGate, captureRenderedFrames, startLivePan, decodeFramePng,
-  bounded, runMotionProbe, closeBrowserOwner, finishCaseContext, motionAcquisitionHash, validateEffectiveQuality } from './environment-motion-probe.mjs';
+  bounded, runMotionProbe, closeBrowserOwner, finishCaseContext, motionAcquisitionHash, validateEffectiveQuality,
+  startResizeObservation, finishResizeObservation, observeViewportResize } from './environment-motion-probe.mjs';
 
 assert.equal(MOTION_CASES.length, 9);
 assert.equal(new Set(MOTION_CASES.map(row => `${row.device}/${row.mapId}`)).size, 9);
@@ -137,7 +138,7 @@ assert.deepEqual(closedPageEvidence.calls, ['close']); assert.equal(closedPageEv
 // captured in the render callback, and every success/failure restores ownership.
 function fakeBrowser({ manualEncoding = false } = {}) {
   let now = 0, nextRaf = 0;
-  const rafs = new Map(), submitted = [], blobs = [], readers = [];
+  const rafs = new Map(), submitted = [], blobs = [], readers = [], argumentsSeen = [];
   const state = { base: [0, 10, 0], yaw: 0, pitch: 0, durationMs: 8000,
     yawSpan: 40 * Math.PI / 180, lateralM: 6, progress: 0, frames: 0, done: false };
   const D = { game: { timeS: 1 }, camera: { position: new Vector3(0, 10, 0) },
@@ -151,7 +152,7 @@ function fakeBrowser({ manualEncoding = false } = {}) {
           if (!manualEncoding) queueMicrotask(request.deliver);
         },
         toDataURL() { throw new Error('Synchronous PNG compression must never run'); } } },
-    post: { dynScale: 1, perfTrim: 0, render(dt, extra) { assert.equal(this, D.post); assert.equal(extra, 'forwarded'); submitted.push(now);
+    post: { dynScale: 1, perfTrim: 0, render(dt, ...extra) { assert.equal(this, D.post); argumentsSeen.push([dt, ...extra]); submitted.push(now);
       D.game.timeS += dt; D.renderer.info.render.frame++; return 'render-return-value'; } } };
   class Reader {
     constructor() { this.aborted = false; readers.push(this); }
@@ -169,14 +170,16 @@ function fakeBrowser({ manualEncoding = false } = {}) {
       pan: { ...state }, timestamp: now, renderFrame: D.renderer.info.render.frame, gameTimeS: D.game.timeS }) };
   vm.createContext(sandbox);
   vm.runInContext(`globalThis.startLivePan = ${startLivePan.toString()};
-    globalThis.capture = ${captureRenderedFrames.toString()};`, sandbox);
-  const advance = (time, dt) => {
+    globalThis.capture = ${captureRenderedFrames.toString()};
+    globalThis.observe = ${startResizeObservation.toString()};
+    globalThis.finishObservation = ${finishResizeObservation.toString()};`, sandbox);
+  const advance = (time, dt, wallDt = 'forwarded') => {
     now = time;
     const callbacks = [...rafs.values()]; rafs.clear();
     for (const callback of callbacks) callback(time);
-    return D.post.render(dt, 'forwarded');
+    return D.post.render(dt, wallDt);
   };
-  return { sandbox, D, original, advance, rafs, blobs, readers };
+  return { sandbox, D, original, advance, rafs, blobs, readers, argumentsSeen };
 }
 const fake = fakeBrowser();
 const pending = fake.sandbox.capture({ pan: true });
@@ -188,6 +191,8 @@ assert.equal(captured.frames[1].receipt.pan.progress, 0.5);
 assert.equal(fake.D.post.render, fake.original);
 assert.equal(fake.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
 assert.equal(fake.rafs.size, 0);
+assert.deepEqual(fake.argumentsSeen, [[.016, 'forwarded'], [4, 'forwarded'], [4, 'forwarded']],
+  'all post arguments and their original receiver remain unchanged');
 assert.equal(validateLiveSequence(captured, testCase).length, 0);
 assert.throws(() => fake.sandbox.startLivePan(), /already started/);
 assert.deepEqual(captured.frames.map(frame => frame.png),
@@ -207,6 +212,7 @@ assert.equal(typeof asynchronous.sandbox.window.__ENV_CAPTURE_CLEANUP, 'function
 assert.throws(() => asynchronous.sandbox.capture(), /already active/);
 asynchronous.advance(9000, 1); // Ordinary game rendering continues while PNG work remains.
 asynchronous.blobs[2].deliver(); asynchronous.blobs[0].deliver(); asynchronous.blobs[1].deliver();
+asynchronous.advance(9500, .5);
 asynchronous.readers[2].complete(); asynchronous.readers[0].complete(); asynchronous.readers[1].complete();
 const asynchronousResult = await asynchronousCapture;
 assert.deepEqual(Array.from(asynchronousResult.frames, frame => [frame.label, frame.receipt.timestamp, frame.png]), [
@@ -216,6 +222,10 @@ assert.deepEqual(Array.from(asynchronousResult.frames, frame => [frame.label, fr
 ]);
 assert.equal(asynchronousResult.submittedFrames, 4);
 assert.equal(asynchronousResult.positiveDtS, 8.016);
+assert.deepEqual(Array.from(asynchronousResult.frames, frame => ({ ...frame.captureTiming })), [0, 4000, 8000].map(time => ({
+  receiptAtMs: time, toBlobStartedAtMs: time, toBlobReturnedAtMs: time,
+  blobCallbackAtMs: 9000, dataUrlReadStartedAtMs: 9000, dataUrlReadyAtMs: 9500,
+})), 'actual snapshot, asynchronous Blob and FileReader timestamps do not conflate capture with encoding');
 assert.equal(asynchronous.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
 assert.equal(validateLiveSequence(asynchronousResult, testCase).length, 0);
 for (const mutate of [value => { value.frames[1].receipt.pan.progress = 1; },
@@ -288,6 +298,121 @@ for (const failure of ['null-blob', 'read-error', 'read-abort', 'invalid-data', 
   assert.equal(broken.sandbox.window.__ENV_CAPTURE_CLEANUP, undefined);
   assert.equal(broken.sandbox.window.__ENV_CAPTURE_RESULT.frames[0].png, undefined);
 }
+
+// The resize observer starts before browser emulation, forwards raw wall delta
+// verbatim and stops sampling at the same existing PNG snapshot, not after encode.
+const resizeFake = fakeBrowser({ manualEncoding: true });
+resizeFake.sandbox.observe({ label: 'resize-alternate' });
+const observerRender = resizeFake.D.post.render;
+Object.assign(resizeFake.D.renderer.domElement.dataset,
+  { frameEmaMs: '19.40', dynBudgetMs: '16.67', fps: '50.2', fpsBaseline: '59.9' });
+resizeFake.advance(1, .1, .5);
+resizeFake.advance(2, .1, .12);
+resizeFake.advance(3, 0, 0);
+resizeFake.D.post.render(.016); // An old/manual caller truly omits wall dt.
+resizeFake.D.post.dynScale = .91; resizeFake.D.renderer.domElement.dataset.renderScale = '1.365';
+const resizeCapture = resizeFake.sandbox.capture({ label: 'resize-alternate' });
+assert.equal(resizeFake.advance(4, .016, .02), 'render-return-value');
+assert.equal(resizeFake.D.post.render, observerRender, 'snapshot wrapper restores its own prior render owner');
+const resizeState = resizeFake.sandbox.window.__ENV_RESIZE_OBSERVER.result;
+assert.equal(resizeState.stopReason, 'snapshot'); assert.equal(resizeState.snapshotAtMs, 4);
+assert.equal(resizeState.frames.length, 5);
+assert.deepEqual(Array.from(resizeState.frames, f => [f.dt, f.wallDt, f.wallDtProvided]),
+  [[.1, .5, true], [.1, .12, true], [0, 0, true], [.016, null, false], [.016, .02, true]],
+  'hitches, bounded simulation dt, sustained overload, warm zero and missing raw input stay distinguishable');
+assert.deepEqual(resizeFake.argumentsSeen, [[.1, .5], [.1, .12], [0, 0], [.016], [.016, .02]]);
+assert.equal(resizeState.frames[0].frameEmaMs, 19.4); assert.equal(resizeState.frames[0].dynBudgetMs, 16.67);
+assert.equal(resizeState.frames[0].fps, 50.2); assert.equal(resizeState.frames[0].fpsBaseline, 59.9);
+assert.equal(resizeState.frames[4].dynScale, .91); assert.equal(resizeState.frames[4].renderScale, 1.365);
+resizeFake.advance(100, .1, .1); resizeFake.blobs[0].deliver(); resizeFake.readers[0].complete();
+await resizeCapture;
+const finishedResize = resizeFake.sandbox.finishObservation();
+assert.equal(finishedResize.frames.length, 5, 'PNG encoding/transport frames cannot lengthen the observed resize window');
+assert.equal(finishedResize.restored, true); assert.equal(finishedResize.finishedAtMs, 100);
+assert.equal(resizeFake.D.post.render, resizeFake.original);
+assert.equal(resizeFake.sandbox.window.__ENV_RESIZE_OBSERVER, undefined);
+assert.equal(resizeFake.sandbox.finishObservation(), finishedResize, 'completed scalar receipt remains available');
+assert.doesNotThrow(() => JSON.stringify(finishedResize), 'no renderer/scene/material roots in retained data');
+assert.equal(resizeFake.D.post.dynScale, .91, 'observer never restores, clamps or pins runtime quality');
+
+const cappedResize = fakeBrowser();
+cappedResize.sandbox.observe({ label: 'resize-alternate', maxFrames: 2 });
+cappedResize.advance(0, .016, .016); cappedResize.advance(1, .016, .016); cappedResize.advance(2, .016, .016);
+const cappedResult = cappedResize.sandbox.finishObservation();
+assert.equal(cappedResult.frames.length, 2); assert.equal(cappedResult.truncated, true);
+assert.equal(cappedResult.stopReason, 'frame-cap'); assert.equal(cappedResult.restored, true);
+assert.equal(cappedResize.argumentsSeen.length, 3, 'observation cap never drops a production render');
+assert.equal(cappedResult.frames[0].frameEmaMs, null, 'absent1Hz telemetry is unavailable, not zero');
+
+const missingRaw = fakeBrowser();
+missingRaw.sandbox.observe({ label: 'resize-restored' });
+missingRaw.advance(0, .016, null); missingRaw.advance(1, .016, NaN);
+const missingRawResult = missingRaw.sandbox.finishObservation();
+assert.deepEqual(Array.from(missingRawResult.frames, f => f.wallDt), [null, null]);
+assert.equal(missingRawResult.stopReason, 'closed-before-snapshot');
+
+const timeoutResize = fakeBrowser();
+timeoutResize.sandbox.observe({ label: 'resize-alternate', timeoutMs: 2 });
+await new Promise(resolve => setTimeout(resolve, 8));
+const timeoutResult = timeoutResize.sandbox.finishObservation();
+assert.equal(timeoutResult.stopReason, 'timeout'); assert.equal(timeoutResult.restored, true);
+assert.equal(timeoutResult.snapshotAtMs, null); assert.equal(timeoutResult.frames.length, 0);
+assert.equal(timeoutResize.D.post.render, timeoutResize.original);
+
+const foreignResize = fakeBrowser();
+foreignResize.sandbox.observe({ label: 'resize-alternate' });
+assert.throws(() => foreignResize.sandbox.observe({ label: 'resize-alternate' }), /already active/);
+const resizeOwner = foreignResize.D.post.render, foreignOwner = () => 'foreign';
+foreignResize.D.post.render = foreignOwner;
+assert.equal(foreignResize.sandbox.finishObservation().restored, false);
+assert.equal(foreignResize.D.post.render, foreignOwner, 'cleanup cannot replace another active render wrapper');
+foreignResize.D.post.render = resizeOwner;
+assert.equal(foreignResize.sandbox.finishObservation().restored, true);
+assert.equal(foreignResize.D.post.render, foreignResize.original);
+for (const bad of [{ label: 'pan' }, { label: 'resize-x', maxFrames: 0 }, { label: 'resize-x', maxFrames: 513 },
+  { label: 'resize-x', timeoutMs: 0 }, { label: 'resize-x', timeoutMs: 30001 }]) {
+  assert.throws(() => foreignResize.sandbox.observe(bad), /bounds/);
+  assert.equal(foreignResize.D.post.render, foreignResize.original);
+}
+
+async function viewportObservationFixture({ mobile = false, captureFailure = false, observeFailure = false } = {}) {
+  const size = mobile ? { ...mobileCase, width: mobileCase.height, height: mobileCase.width } : { ...testCase, dpr: 2 };
+  const calls = [], row = { id: 'test', resizes: [], resizeObservations: [], errors: [] };
+  const frame = { label: 'resize-alternate', receipt: receiptFor(size) }, observed = { stopReason: 'snapshot', frames: [] };
+  const evaluate = async (fn, args) => {
+    calls.push(fn.name);
+    if (fn === startResizeObservation) { assert.equal(args.label, 'resize-alternate'); return; }
+    if (fn === captureRenderedFrames) {
+      if (captureFailure) throw new Error('original capture failure');
+      return { frames: [frame] };
+    }
+    assert.equal(fn, finishResizeObservation);
+    if (observeFailure) throw new Error('observer recovery failure');
+    return observed;
+  };
+  const pending = observeViewportResize({ evaluate, testCase: mobile ? mobileCase : testCase, size,
+    label: 'alternate', row, saveCapture(value) { assert.equal(value.frames[0], frame); calls.push('save'); },
+    write(_name, value) { assert.equal(value, observed); calls.push('write-observation'); },
+    page: { async setViewportSize(value) { assert.deepEqual(value, { width: size.width, height: size.height }); calls.push('viewport'); },
+      async waitForTimeout(ms) { assert.equal(ms, 1000); calls.push('fixed-settle'); } },
+    cdp: { async send(method, value) { assert.equal(method, 'Emulation.setDeviceMetricsOverride');
+      assert.deepEqual(value, { width: size.width, height: size.height, deviceScaleFactor: size.dpr, mobile: false }); calls.push('browser-dpr'); } },
+  });
+  if (captureFailure) await assert.rejects(pending, /original capture failure/); else await pending;
+  return { calls, row, observed };
+}
+const observedDesktop = await viewportObservationFixture();
+assert.deepEqual(observedDesktop.calls, ['startResizeObservation', 'viewport', 'browser-dpr', 'fixed-settle',
+  'captureRenderedFrames', 'save', 'finishResizeObservation', 'write-observation']);
+assert.deepEqual(observedDesktop.row.errors, []);
+assert.equal(observedDesktop.row.resizeObservations[0], observedDesktop.observed);
+const observedMobile = await viewportObservationFixture({ mobile: true });
+assert.deepEqual(observedMobile.calls, ['startResizeObservation', 'viewport', 'fixed-settle',
+  'captureRenderedFrames', 'save', 'finishResizeObservation', 'write-observation']);
+const failedViewportCapture = await viewportObservationFixture({ captureFailure: true });
+assert.deepEqual(failedViewportCapture.calls.slice(-2), ['finishResizeObservation', 'write-observation']);
+const failedViewportObservation = await viewportObservationFixture({ captureFailure: true, observeFailure: true });
+assert.match(failedViewportObservation.row.errors[0], /observer recovery failure/);
 
 const png = Buffer.alloc(33);
 Buffer.from('89504e470d0a1a0a', 'hex').copy(png); png.writeUInt32BE(1440, 16); png.writeUInt32BE(900, 20);

@@ -7,10 +7,12 @@ import {
   waitForTimingGarage, warmTimingGarage, captureTimingGarageOwner, captureTimingBackend,
   requireTimingGarageSetup, requireSameTimingGarageSetup,
   requireTimingBuildProvenance,
-  selectTimingArchiveTarget, captureTimingGarageArchive,
+  selectTimingArchiveTarget, captureTimingGarageArchive, waitForTimingGarageArchiveEntry,
   captureTimingPhaseOwnership, requireTimingPhaseOwnership,
 } from './map-environment-acquisition.mjs';
 import { PINNED_SCENE } from './pinned-scene-acquisition.mjs';
+
+assert.equal(ACQUISITION_PROTOCOL, 'settled-pinned-map-timing-v6', 'natural-entry acquisition is explicitly versioned');
 
 const scene = {
   protocol: PINNED_SCENE.protocol, selectedSpecId: 'm1a2',
@@ -57,7 +59,9 @@ const phaseReceipt = garage => ({
 const garageSetup = {
   ownerBefore: garage, owner: garage,
   phaseBefore: phaseReceipt(true), phaseOwnership: phaseReceipt(true),
-  archiveBefore: archive, archive, archiveWait: { target: archiveTarget, elapsedMs: 300, timeoutMs: 120000 },
+  archiveBefore: archive, archive, archiveWait: { protocol: 'natural-canonical-entry-v1',
+    target: archiveTarget, elapsedMs: 300, timeoutMs: 120000,
+    departureObserved: true, departureElapsedMs: 100 },
   warm: { frames: 8, stable: true, archiveUnchanged: true, renderer: { geometries: 100, textures: 30, programs: 20 } },
   backend: { vendor: 'Apple', renderer: 'ANGLE Metal Renderer: Apple M5 Max', version: 'WebGL 2.0', contextLost: false },
   browserVersion: 'Chrome/151.0.7922.47',
@@ -84,12 +88,16 @@ const baseline = {
   })) } }],
 };
 requireComparableRun(baseline, settings);
+assert.throws(() => requireComparableRun({ ...baseline,
+  acquisition: { ...settings, protocol: 'settled-pinned-map-timing-v5' } }, settings), /recapture/,
+  'historical static images do not become a fresh-entry timing baseline');
 requireComparableRun(baseline, { ...settings, maps: ['verdant', 'oasis'] });
 for (const [key, value] of [
   ['sampleCount', 100], ['repeats', 5], ['settleMs', 1100], ['syncGpu', true], ['tier', 'auto'],
   ['harnessHash', 'other-tool'], ['viewport', { width: 1920, height: 1080, dpr: 1 }],
   ['maps', ['oasis', 'verdant']], ['captureShots', true], ['production', false], ['production', undefined],
   ['garageArchiveTarget', { primary: '/media/wrong.webp', secondary: archiveTarget.secondary }],
+  ['protocol', 'settled-pinned-map-timing-v5'],
 ]) assert.throws(() => requireComparableRun(baseline, { ...settings, [key]: value }), undefined, key);
 assert.throws(() => requireComparableRun({ schemaVersion: 2 }, settings), /recapture/);
 assert.throws(() => requireComparableRun({ ...baseline, schemaVersion: 3 }, settings), /recapture/);
@@ -136,6 +144,10 @@ for (const mutate of [
   b => { b.garageSetup.archive.residentImageCount = 3; },
   b => { b.garageSetup.archiveWait.elapsedMs = 120001; },
   b => { b.garageSetup.archiveWait.timeoutMs = 240000; },
+  b => { delete b.garageSetup.archiveWait.protocol; },
+  b => { b.garageSetup.archiveWait.departureObserved = false; },
+  b => { b.garageSetup.archiveWait.departureElapsedMs = -1; },
+  b => { b.garageSetup.archiveWait.departureElapsedMs = 301; },
   b => { delete b.acquisition.garageArchiveTarget; },
   b => { b.garageSetup.backend.contextLost = true; },
   b => { b.garageSetup.backend.renderer = ''; },
@@ -333,6 +345,7 @@ try {
     getObjectByName: name => monitorObjects.find(object => object.name === name) };
   const browserArchive = Function(`return (${captureTimingGarageArchive.toString()})`)();
   assert.deepEqual(browserArchive(archiveTarget), archive);
+  assert.equal(browserArchive(archiveTarget, true), null, 'an already-matching hold is not a fresh entry');
   const pendingStates = [
     () => { monitorTextures[0].isDataTexture = true; },
     () => { monitorTextures[1].image.complete = false; },
@@ -345,6 +358,7 @@ try {
   for (const mutate of pendingStates) {
     mutate();
     assert.equal(browserArchive(archiveTarget), null, 'partial/failed/transitioning producer is not ready');
+    assert.equal(browserArchive(archiveTarget, true), true, 'observe the actual producer leaving the canonical hold');
     delete monitorTextures[0].isDataTexture;
     monitorTextures[1].image.complete = true;
     monitorTextures[1].image.naturalWidth = archive.screens[1].width;
@@ -389,6 +403,20 @@ try {
   await assert.rejects(transitionFailure, /archive changed/);
   assert.equal(debug.post.render, render, 'mid-warm transition fails without retrying or adding frames');
   monitorObjects[0].material.uniforms.uImageB.value = monitorTextures[0];
+  for (const mutate of [
+    () => { archiveData.battleScreenResidentImageCount = 3; },
+    () => { monitorObjects[0].material.uniforms.uImageA.value = monitorTextures[1]; },
+    () => { monitorObjects[1].material.uniforms.uTransition.value = 0.01; },
+  ]) {
+    const guarded = browserGarageWarm({ archive });
+    mutate();
+    assert.throws(() => debug.post.render(), /submitted frame 1\/8.*residentImages=.*screens=/);
+    await assert.rejects(guarded, /archive changed/);
+    assert.equal(debug.post.render, render);
+    archiveData.battleScreenResidentImageCount = 2;
+    monitorObjects[0].material.uniforms.uImageA.value = monitorTextures[0];
+    monitorObjects[1].material.uniforms.uTransition.value = 0;
+  }
 
   const texture = { isTexture: true }, shaderTexture = { isTexture: true };
   const geometry = {};
@@ -432,24 +460,55 @@ assert.ok(tool.includes('if (readBuildIndexHash() !== report.buildIndexHash)'), 
 // Execute the exact production/dev selection and close branches with ports;
 // these fixtures launch neither a server nor a browser.
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-const archiveStart = tool.indexOf('  const archiveWaitStarted =');
+const archiveStart = tool.indexOf('  const { archiveBefore, archiveWait } =');
 const archiveEnd = tool.indexOf('  const garageOwner =', archiveStart);
-const waitForArchive = new AsyncFunction('page', 'captureTimingGarageArchive', 'garageArchiveTarget',
+const waitForArchive = new AsyncFunction('page', 'waitForTimingGarageArchiveEntry', 'garageArchiveTarget',
   `${tool.slice(archiveStart, archiveEnd)}\nreturn { archiveBefore, archiveWait };`);
-let archiveDisposals = 0;
-const predicate = () => archive;
-const acquiredArchive = await waitForArchive({ async waitForFunction(fn, options, target) {
-  assert.equal(fn, predicate);
-  assert.deepEqual(options, { timeout: 120000, polling: 100 });
-  assert.deepEqual(target, archiveTarget);
-  return { jsonValue: async () => fn(target), dispose: async () => { archiveDisposals++; } };
-} }, predicate, archiveTarget);
-assert.deepEqual(acquiredArchive.archiveBefore, archive);
-assert.equal(archiveDisposals, 1, 'release the scalar browser result handle');
-assert.equal(acquiredArchive.archiveWait.timeoutMs, 120000);
-await assert.rejects(waitForArchive({ async waitForFunction() {
-  throw new Error('archive image predicate timed out');
-} }, predicate, archiveTarget), /timed out/, 'failed or forever-pending image aborts without another attempt');
+for (const initiallyMatching of [false, true]) {
+  let clockMs = 0, archiveDisposals = 0;
+  const phases = [], timeouts = [];
+  const page = { async waitForFunction(fn, options, target, departing) {
+    assert.equal(fn, captureTimingGarageArchive);
+    assert.equal(options.polling, 100);
+    assert.deepEqual(target, archiveTarget);
+    phases.push(departing); timeouts.push(options.timeout);
+    clockMs += departing ? (initiallyMatching ? 6400 : 100) : 36000;
+    return { jsonValue: async () => departing ? true : archive,
+      dispose: async () => { archiveDisposals++; } };
+  } };
+  const acquire = (port, target) => waitForTimingGarageArchiveEntry(port, target, { now: () => clockMs });
+  const result = await waitForArchive(page, acquire, archiveTarget);
+  assert.deepEqual(phases, [true, false], 'one departure then one entry; no warm/retry loop');
+  assert.deepEqual(timeouts, [120000, initiallyMatching ? 113600 : 119900], 'entry receives only remaining total budget');
+  assert.deepEqual(result.archiveBefore, archive);
+  assert.equal(result.archiveWait.protocol, 'natural-canonical-entry-v1');
+  assert.equal(result.archiveWait.departureObserved, true);
+  assert.equal(result.archiveWait.departureElapsedMs, initiallyMatching ? 6400 : 100);
+  assert.equal(result.archiveWait.elapsedMs, clockMs);
+  assert.equal(archiveDisposals, 2, 'release both scalar browser handles');
+}
+for (const failingPhase of [true, false]) {
+  const phases = [];
+  await assert.rejects(waitForTimingGarageArchiveEntry({ async waitForFunction(fn, options, target, departing) {
+    phases.push(departing);
+    if (departing === failingPhase) throw new Error('archive image predicate timed out');
+    return { jsonValue: async () => true, dispose: async () => {} };
+  } }, archiveTarget), /timed out/, 'a missing natural edge fails without another attempt');
+  assert.deepEqual(phases, failingPhase ? [true] : [true, false]);
+}
+let deadlineClock = 0, deadlineWaits = 0, deadlineDisposals = 0;
+await assert.rejects(waitForTimingGarageArchiveEntry({ async waitForFunction() {
+  deadlineWaits++;
+  return { jsonValue: async () => true, dispose: async () => { deadlineClock = 120000; deadlineDisposals++; } };
+} }, archiveTarget, { now: () => deadlineClock }), /total 120000 ms deadline/);
+assert.equal(deadlineWaits, 1, 'do not reset the timeout after departure consumes its budget');
+assert.equal(deadlineDisposals, 1);
+let brokenHandleDisposals = 0;
+await assert.rejects(waitForTimingGarageArchiveEntry({ async waitForFunction() {
+  return { jsonValue: async () => { throw new Error('scalar read failed'); },
+    dispose: async () => { brokenHandleDisposals++; } };
+} }, archiveTarget), /scalar read failed/);
+assert.equal(brokenHandleDisposals, 1, 'failed scalar reads still release their handle');
 const serverStart = tool.indexOf('  const selectedPort =');
 const serverEnd = tool.indexOf('  const address =', serverStart);
 assert.ok(serverStart > 0 && serverEnd > serverStart);
