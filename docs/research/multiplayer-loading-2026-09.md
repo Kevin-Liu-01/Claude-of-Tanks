@@ -723,3 +723,39 @@ runtime owners have 184 functions, zero complexity violations and no explicit
 projections and serialization-boundary checks), none suppressed. The clean
 baseline scan skipped source analysis; an intermediate scan had incomplete
 maintainability output, so no like-for-like score improvement is claimed.
+
+### Production verification of the yielded watchdog
+
+Production served exactly `v1.0.0+g40f93855d` before the fresh native two-client
+run (`production-watchdog-c-timings-visual`). Production room creation/invite,
+ready/launch, both foreground 5→1 countdowns, complete masks before activation,
+nonblack/no-rescue reveal, advancing input/snapshots, native Garage return and
+verified room/browser/window cleanup all passed, with zero application errors.
+Both inspected screenshots show the rendered battlefield and populated player
+panel masks. This was HIGH clear/day Frosthollow entry on one machine:
+
+| Peer | Entry | Largest task / maximum RAF gap | Watchdog draw / enqueue | Watchdog total / fade |
+| --- | --- | --- | --- | --- |
+| Host | 4,745 ms | 324 / 326.2 ms | 78.5 / 0.1 ms | 208.3 / 230.5 ms |
+| Guest | 4,597 ms | 315 / 318.1 ms | 80.6 / 0.1 ms | 211.4 / 231.0 ms |
+
+Luminance again exactly matched the local candidates, with unchanged watchdog
+program counts. Submission remained 0.1 ms for each peer, but completion is
+**not guaranteed stall-free**: the guest's post-fence buffer-size validation
+still took 53.7 ms (host 0 ms). Its enclosing 130.1 ms completion interval
+includes that synchronous query and yielded waiting; it is not wholly yielded
+time or a GPU-duration measurement. Moving the validation removed the observed
+submission stall, not every possible driver query stall. Wreck warm was
+123.2/123.0 ms, panel preparation 101.2/103.0 ms, scene compilation 322.8/319.3 ms
+and opening effects 167.7/163.8 ms. Loading still has material pauses, and these
+noisy samples do not establish an end-to-end speedup or the historical combat
+stall cause.
+
+The separate LOW interaction sample used two rendered contexts and 20 seconds
+per foreground role, measured sequentially. Host frame p50/p95/p99/max was
+21.9/27.6/31.6/39.1 ms; guest was 21.5/28.7/35.2/47.7 ms. Both reported zero hard
+snaps, dropped input history, estimated missing snapshots and observer failures.
+The functional runner has no frame-budget assertion. This is not stable 60 Hz,
+HIGH gameplay, a larger-room/long-session test or a separate-device/distant/
+relay-only network certificate. Production artifacts remain local and excluded
+from the release. The full-suite timeout limitation above still applies.
