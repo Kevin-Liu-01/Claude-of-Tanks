@@ -1,5 +1,6 @@
 // Original folded sheet sections from independent plane/dimension readings.
 // Rear skin and thicker forward apron are separate courses, not six boxes.
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween} from './measuredPrimitives.ts';
@@ -34,7 +35,8 @@ function addSkirtCourse(P:TankBuilderPort,side:number,rear:boolean):void {
   const stations=rear?[-3.29,-2.7634,-2.2,-1.5,-.846]:[-.846,0,1.5,2.7595,2.7748,3.188];
   const rows=stations.map(z=>({z,ring:ring(z,rear).map(([x,y])=>[side<0?-x+.0025:x,y] as SectionPoint)}));
   if(side<0)for(const row of rows)row.ring.reverse();
-  P.addMudguard(`amx40-x-${rear?'aft-skin':'fore-apron'}`,'hullDetail',sectionSolid(rows));
+  P.addMudguard(`amx40-x-${rear?'aft-skin':'fore-apron'}`,'hullPaintedDetail',
+    markFixedPaintedPanel(sectionSolid(rows),'amx40-fixed-folded-skirt','hullDetail'));
   if(!rear) {
     const x=side<0?-1.61735:1.61985;
     // Small forward top step belongs to the rolled attachment flange.

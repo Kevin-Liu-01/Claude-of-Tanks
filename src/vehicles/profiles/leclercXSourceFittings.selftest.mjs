@@ -53,7 +53,7 @@ for (const quality of ['high', 'low']) {
     tank.root.updateMatrixWorld(true);
     const all = [];
     tank.root.traverse(m => {if (m.isMesh && !m.name.startsWith('procShadow_') && !m.userData.vehicleMarking) all.push(m);});
-    guards(all, tank.root.getObjectByName('hull'), tank.root.getObjectByName('hullDetail'));
+    guards(all, tank.root.getObjectByName('hull'), tank.root.getObjectByName('hullPaintedDetail'));
     stocks(all, tank.root.getObjectByName('turret'), tank.root.getObjectByName('turretDetail'));
     near(tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
       6.239235, .000001, 'gun endpoint unchanged');

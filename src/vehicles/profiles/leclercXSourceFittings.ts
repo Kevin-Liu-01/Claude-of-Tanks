@@ -1,6 +1,7 @@
 // Independently constructed folded guards and stepped rectangular antenna
 // stocks. Dimensions and intersecting planes are scalar source measurements;
 // no reference topology or source vertex contour is used by these primitives.
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -36,7 +37,8 @@ function guard(left: number, right: number) {
 export function addLeclercXFrontGuards(P: TankBuilderPort): void {
   // The two measured source spans are translated, not mirrored about X=0.
   for (const [side, left, right] of [[-1, -1.6509963, -.9320235], [1, .9502472, 1.66922]])
-    P.addMudguard(`leclerc_x_bow_guard_${side}`, 'hullDetail', guard(left, right));
+    P.addMudguard(`leclerc_x_bow_guard_${side}`, 'hullPaintedDetail',
+      markFixedPaintedPanel(guard(left, right), 'leclerc-fixed-bow-guard', 'hullDetail'));
 }
 
 function rectangularStock(rows: readonly (readonly [y: number, bounds: Bounds])[]) {
