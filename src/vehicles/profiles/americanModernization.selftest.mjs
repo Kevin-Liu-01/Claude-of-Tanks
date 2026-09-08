@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
+import { installNightEmissionMask, NIGHT_EMISSION_ATTRIBUTE } from '../../engine/nightEmissionMaterial.ts';
+import { vehicleNightLightEmittersFor } from '../vehicleNightLighting.ts';
 
 const make = (id) => createTank(id, null, {
   proceduralOnly: true,
@@ -25,11 +27,67 @@ const materialFinish = (material) => ({
   programKey: material?.customProgramCacheKey?.(),
 });
 
+function compiledFinish(material) {
+  const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>',
+    fragmentShader: '#include <common>\n#include <emissivemap_fragment>' };
+  material.onBeforeCompile(shader, {});
+  return { ...shader, uniforms: Object.fromEntries(Object.entries(shader.uniforms)
+    .map(([key, entry]) => [key, entry.value?.toArray?.() ?? entry.value])) };
+}
+
 const m1a3ReferenceTank = make('m1a3');
 const m1a3Browning = m1a3ReferenceTank.root.getObjectByName('browningDerivedMachineGunBody');
 assert.ok(m1a3Browning?.isMesh, 'M1A3 exposes the canonical Browning gunmetal reference');
 const M1A3_BROWNING_GUNMETAL = Object.freeze(materialFinish(m1a3Browning.material));
+const M1A3_BROWNING_SHADER = compiledFinish(m1a3Browning.material);
+// Published shared lamp materials have a second, exact neutral-metal contract.
+// Do not discard program keys or accept arbitrary shader wrappers as a finish.
+const maskedReference = m1a3Browning.material.clone();
+installNightEmissionMask(maskedReference);
+const MASKED_BROWNING_GUNMETAL = Object.freeze(materialFinish(maskedReference));
+const MASKED_BROWNING_SHADER = compiledFinish(maskedReference);
+maskedReference.dispose();
 m1a3ReferenceTank.dispose();
+
+function assertGunmetalFinish(part, material, label) {
+  const masked = material.userData.nightEmissionMask === true;
+  assert.deepEqual(materialFinish(material), masked ? MASKED_BROWNING_GUNMETAL : M1A3_BROWNING_GUNMETAL,
+    `${label}: gunmetal matches the M1A3 Browning finish`);
+  assert.deepEqual(compiledFinish(material), masked ? MASKED_BROWNING_SHADER : M1A3_BROWNING_SHADER,
+    `${label}: only the exact published neutral lamp shader may wrap the finish`);
+  if (!masked) return;
+  assert.equal(material.userData.nightEmissionActivity, '', `${label}: no invented instance activity`);
+  const mask = part.geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
+  assert.equal(mask?.count, part.geometry.getAttribute('position').count, `${label}: every metal vertex has an explicit lamp mask`);
+  const emitters = vehicleNightLightEmittersFor(part);
+  assert.ok([...mask.array].every(value => value === 0 || (emitters.length > 0 && (value === 1 || value === 2))),
+    `${label}: unregistered service hardware cannot glow`);
+}
+
+// Rejection controls keep this a physical material contract, not a wildcard
+// exclusion for the newly shared night shader.
+{
+  const tank = make('m1a1');
+  const cable = tank.root.getObjectByName('fitting_towCable_dark');
+  assert.ok(cable?.isMesh && cable.material.userData.nightEmissionMask === true);
+  assertGunmetalFinish(cable, cable.material, 'reference cable');
+  const color = cable.material.color.getHex();
+  cable.material.color.setHex(0x0000ff);
+  assert.throws(() => assertGunmetalFinish(cable, cable.material, 'blue mutation'), /gunmetal matches/);
+  cable.material.color.setHex(color);
+  const compile = cable.material.onBeforeCompile;
+  cable.material.onBeforeCompile = function (shader, renderer) {
+    compile.call(this, shader, renderer); shader.fragmentShader += '\n// unauthorized finish';
+  };
+  assert.throws(() => assertGunmetalFinish(cable, cable.material, 'shader mutation'), /gunmetal matches|exact published neutral/);
+  cable.material.onBeforeCompile = compile;
+  const mask = cable.geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
+  const original = mask.getX(0); mask.setX(0, 1);
+  assert.throws(() => assertGunmetalFinish(cable, cable.material, 'glowing cable'), /cannot glow/);
+  mask.setX(0, original);
+  assertGunmetalFinish(cable, cable.material, 'restored reference cable');
+  tank.dispose();
+}
 
 for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']) {
   const tank = make(id);
@@ -265,8 +323,7 @@ for (const id of [
   for (const part of serviceParts) {
     const materials = Array.isArray(part.material) ? part.material : [part.material];
     for (const material of materials) {
-      assert.deepEqual(materialFinish(material), M1A3_BROWNING_GUNMETAL,
-        `${id}/${part.name || 'equipment'}: gunmetal matches the M1A3 Browning finish`);
+      assertGunmetalFinish(part, material, `${id}/${part.name || 'equipment'}`);
     }
   }
   tank.dispose();
