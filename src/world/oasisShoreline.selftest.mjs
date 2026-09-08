@@ -56,6 +56,27 @@ function inspectCoverage() {
   return { previousArea, area, sharedArea };
 }
 
+function coveCount(contour) {
+  const points = contour.radii.map((_, i) => {
+    const angle = i * Math.PI / 8, radius = shorelineRadiusAt(contour, angle);
+    return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
+  });
+  return points.filter((b, i) => {
+    const a = points[(i + 15) % 16], c = points[(i + 1) % 16];
+    return (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x) < -100;
+  }).length;
+}
+
+function inspectIrregularBanks() {
+  // Geometric inward turns, not just non-equal radius values. The native R2
+  // rejected shape already had unequal radii but only one real indentation.
+  const rejectedSmoothBasin = { ...lake,
+    radii: [0.44, 0.55, 0.80, 0.91, 0.935, 0.86, 0.68, 0.63,
+      0.62, 0.65, 0.71, 0.79, 0.77, 0.78, 0.76, 0.55] };
+  assert.equal(coveCount(rejectedSmoothBasin), 1);
+  assert.ok(coveCount(lake) >= 3, 'multiple asymmetric capes/coves, not a smooth kidney-shaped pool');
+}
+
 function inspectSupportPoint(field, before, x, z, receipt, pad) {
   assert.equal(field.getWaterMaskAt(x, z), 0, 'route/deployment surface remains dry');
   const delta = Math.abs(field.getHeightAt(x, z) - before.getHeightAt(x, z));
@@ -128,6 +149,7 @@ function inspectBanks(field) {
 }
 
 const bounds = inspectContour(), coverage = inspectCoverage();
+inspectIrregularBanks();
 for (const seed of [1337, 2049, 7719]) {
   const field = createHeightField(seed, oasis), before = createHeightField(seed, original);
   const routes = inspectRoutes(field, before), banks = inspectBanks(field);
