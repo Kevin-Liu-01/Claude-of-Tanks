@@ -28,7 +28,7 @@ function assertBoundedSubdivisionRelief(position, style, label) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
   const anchors = style === 'alpine' ? [1, 4, 9, 14, 19, 24, 29, 32]
-    : ['skybridge', 'copper_mesa'].includes(label) ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
+    : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
   let reliefSamples = 0;
   for (let span = 1; span < anchors.length; span++) {
     for (let column = 0; column < columns - 1; column++) {
@@ -295,6 +295,8 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // fixtures in31e5b130b. Exact before/current decomposition recovers all three
 // ORIGINAL other28 digests by changing only that historical input. Keep the
 // historical hashes, and independently freeze every current Polders byte.
+// Titan's subsequent finite-cap restoration has an explicit false authoring
+// override; titanGorgeHorizon.selftest guards its current shape and every byte.
 const currentPoldersReceipts = new Map([
   [1337, 'a0426c3d4076df1019c84c6ecc857ef0429053013648f520b7ea0ffb8e8a3cde'],
   [2049, '567fb227b17a2c6425e0a516ecabffd99584d9f0a5aabffa23e9e76ec6117161'],
@@ -310,8 +312,8 @@ function assertCurrentPolders(ring, config, seed) {
     currentPoldersReceipts.get(seed), 'Current Polders position/heights/rows/maxHeight remain exact');
 }
 
-// Hash actual buffers and row metadata. The other27 use their current inputs;
-// only Polders' historical amplitude is reproduced for the old aggregate.
+// Hash actual buffers and row metadata. Only the declared Polders amplitude
+// and Titan cap opt-out reproduce historical inputs for the old aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unrelatedMutation = createHash('sha256');
 const unchangedReceipts = [
@@ -339,7 +341,9 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
   else {
     const historicalRing = mapId === 'polders' ? sampleHorizonGeometry({ ...config,
-      horizon: { ...config.horizon, amp: 0.50 } }, seed) : ring;
+      horizon: { ...config.horizon, amp: 0.50 } }, seed)
+      : mapId === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
+        horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
     appendHorizonReceipt(unchangedGeometry.get(seed), mapId, historicalRing);
     if (seed === 1337) {
       const mutated = mapId === 'verdant'
@@ -362,7 +366,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   }
 }
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'the other27 current maps plus historical Polders retain all three original finite-cap receipts');
+  'the original finite-cap receipts remain exact with only declared historical Polders/Titan inputs');
 assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
   { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
@@ -447,7 +451,7 @@ try {
     assert.equal(mesh.geometry.index.count, style === 'alpine' ? 55104 : 15498,
       `${mapId}: topology correction does not add triangles`);
     const { position, color, normal, uv } = mesh.geometry.attributes;
-    if (mapId === 'skybridge' || mapId === 'copper_mesa') {
+    if (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge') {
       const sampled = sampleHorizonGeometry(config, 1337);
       for (let row = 0; row < sampled.rows.length; row++) {
         for (let column = 0; column < 287; column++) {
