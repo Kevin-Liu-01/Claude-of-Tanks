@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createBattleEntryLifecycle } from '../game/battleEntryLifecycle.ts';
+import { createBattleEntryAcquisition } from '../game/battleEntryAcquisition.ts';
 import { createGarageReturnRuntime } from '../game/garageReturnRuntime.ts';
 import { createNetworkBattleLaunchRuntime } from './networkBattleLaunchRuntime.ts';
 import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
@@ -146,6 +147,90 @@ assert.ok(host.calls.some(([name, world]) => name === 'prepareRound' && world ==
 assert.ok(host.calls.some(([name]) => name === 'finishRematch'));
 assert.ok(host.calls.filter(([name]) => name === 'cover').length >= 2,
   'rematch entry reacquires the covered rendering owner');
+
+for (const role of ['host', 'client']) {
+  const nextWorld = deferred();
+  const previousCollision = { mapId: 'verdant' };
+  const nextCollision = { mapId: 'winter' };
+  let currentCollision = previousCollision;
+  const order = [];
+  const preparedCollisions = [];
+  const acquisition = createBattleEntryAcquisition();
+  const rematch = createHarness({
+    getWorldCollision: () => currentCollision,
+    presentBattle: (request) => acquisition.acquireNetwork({
+      loadModules: async () => [],
+      loadWorld: async () => {
+        order.push('world-start');
+        await nextWorld.promise;
+        currentCollision = nextCollision;
+        order.push('world-ready');
+        return nextCollision;
+      },
+      connect: () => { order.push('connect'); return request.connectMatch(); },
+      publishMatch() {},
+      connectAfterWorld: request.connectAfterWorld,
+    }),
+  });
+  rematch.match = {
+    playerId: role === 'host' ? 'host' : 'friend', role,
+    prepareRound: ({ worldCollision }) => { preparedCollisions.push(worldCollision); },
+  };
+  const launcher = createNetworkBattleLaunchRuntime(rematch.options);
+  const loading = launcher.beginRematch({ ...rematchState, mapId: 'winter' });
+  await nextTurn();
+  assert.deepEqual(order, role === 'host' ? ['world-start'] : ['world-start', 'connect'],
+    'a rematch host waits for exact new-map collision while a guest connects independently');
+  assert.deepEqual(preparedCollisions, [], 'an unfinished replacement world cannot initialize authority');
+  nextWorld.resolve();
+  assert.equal(await loading, true);
+  assert.deepEqual(order, role === 'host'
+    ? ['world-start', 'world-ready', 'connect']
+    : ['world-start', 'connect', 'world-ready']);
+  assert.deepEqual(preparedCollisions, role === 'host' ? [nextCollision] : [],
+    'only the rematch host initializes authority, with the exact newly acquired collision owner');
+}
+
+{
+  const nextWorld = deferred();
+  const acquisition = createBattleEntryAcquisition();
+  const preparedCollisions = [];
+  const recoveryCoverage = [];
+  let collisionReads = 0;
+  const rematch = createHarness({
+    getWorldCollision: () => { collisionReads++; return { mapId: 'verdant' }; },
+    presentBattle: (request) => acquisition.acquireNetwork({
+      loadModules: async () => [],
+      loadWorld: () => nextWorld.promise,
+      connect: request.connectMatch,
+      publishMatch() {},
+      connectAfterWorld: request.connectAfterWorld,
+    }),
+  });
+  rematch.match = {
+    playerId: 'host', role: 'host',
+    prepareRound: ({ worldCollision }) => { preparedCollisions.push(worldCollision); },
+  };
+  rematch.options.enterGarage = () => {
+    recoveryCoverage.push(rematch.options.lifecycle.renderingCovered && rematch.options.battleLoad.visible);
+    rematch.calls.push(['garage']);
+  };
+  const launcher = createNetworkBattleLaunchRuntime(rematch.options);
+  const loading = launcher.beginRematch({ ...rematchState, mapId: 'winter' });
+  await nextTurn();
+  nextWorld.reject(new Error('replacement Winter world failed'));
+  assert.equal(await loading, false, 'failed host replacement world follows normal rematch recovery');
+  assert.equal(collisionReads, 0, 'failed replacement never reads the previous map collision');
+  assert.deepEqual(preparedCollisions, [], 'failed replacement never initializes stale-map authority');
+  assert.deepEqual(recoveryCoverage, [true], 'Garage restoration remains covered by the opaque loader');
+  assert.deepEqual(rematch.calls.filter(([name]) =>
+    ['garage', 'uncover', 'frame', 'hide'].includes(name)).map(([name]) => name),
+  ['garage', 'uncover', 'frame', 'hide'], 'Garage paints before the failure cover fades');
+  assert.equal(rematch.match, null, 'failed rematch closes the retained transport');
+  assert.equal(rematch.options.battleLoad.visible, false);
+  assert.equal(rematch.calls.filter(([name]) => name === 'finishRematch').length, 1);
+  assert.deepEqual(rematch.calls.at(-2), ['roomFailure', 'connection_failed', 'private']);
+}
 
 host.match = null;
 await runtime.beginRanked({

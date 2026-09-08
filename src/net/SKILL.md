@@ -99,6 +99,9 @@ play without importing Three.js rendering or DOM state.
 - Failed entry keeps an opaque loader through Garage restoration and its first
   paint. Settle in-flight world activation before restoring Garage, without
   waiting on an unrelated stalled transport.
+- Both first-entry and retained-rematch hosts must acquire the selected world's
+  collision before preparing authority. Guest module, world and connection work
+  stays concurrent; a retained transport does not remove the host dependency.
 - Unexpected black-frame watchdog rejection fails closed after awaited resource
   draining; the watchdog itself owns compatibility fallback. Preserve the
   cancellation checkpoint before reporting graphics failure. A null lobby

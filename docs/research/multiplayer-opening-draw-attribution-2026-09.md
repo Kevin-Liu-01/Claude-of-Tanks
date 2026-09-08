@@ -544,3 +544,73 @@ The final staged ten-file source/test scan, including the browser regression,
 also reports 89/100 with no issues. Independent final review found no concrete
 shipping blocker. All owned QA processes were stopped; foreign browser work
 was left untouched.
+
+### Retained-room replacement-map dependency
+
+The requirement-by-requirement follow-up found a separate rematch ordering
+defect. First-entry hosts already declare `connectAfterWorld`; retained hosts
+did not, even though `prepareRound` reads the currently installed world's
+collision. Changing maps between rounds could therefore prepare new-map
+authority against the preceding map. Retaining a transport does not make the
+authority's world dependency disappear.
+
+The regression composes the real launch owner and real battle-entry acquisition
+with a deferred Verdant-to-Winter replacement. Before the fix, the host admitted
+`connect` while only `world-start` was expected. The rematch host now declares
+the same dependency as initial host entry. Tests prove exact new collision
+identity reaches `prepareRound` only after the replacement settles, while
+guests continue connecting concurrently and never prepare authority. Rejected
+replacement worlds perform no stale collision read or authority preparation;
+they close the retained transport and restore/paint Garage under the opaque
+cover before fading it. Focused launcher, acquisition, presentation, activation
+and barrier checks pass, as does typecheck/core-unused. The changed runtime
+has 31 functions, zero strict complexity violations and no explicit any/unknown.
+
+The changed-pair React Doctor scan scores 49/100 and reports existing test-only
+array traversal/indexing warnings and the existing `new Function` execution of
+a fixed repository `main.ts` callback slice. Source review confirmed those
+pre-existing test paths; no runtime evaluation or untrusted input was added,
+and no scanner rule was suppressed. This is not a clean scan or a comparable
+score to the previous ten-file release population.
+
+### Live immediate-start check of `6dbc1de07`
+
+The canonical site and main asset stayed at `v1.0.0+g6dbc1de07` and
+`/assets/main-lZPx77og.js` before and after a fresh two-context production run.
+The HTML SHA-256 was
+`e0fd5e32b2f541f7e8ea07977f297a2214fb346c130ea42903de0ab8148a9bad`.
+The committed production UI driver used real Private 1v1 controls, the built
+Cloudflare endpoint, native invite, Ready and immediate Start. Browser caches
+were disabled; this does not establish cold OS/driver caches. The run used
+high graphics, scale 1, clear/night Winter. It did not force authority weather.
+
+| Live measurement | Host | Guest |
+|---|---:|---:|
+| Start to first observed hidden loader | 5,406.6 ms | 5,307.4 ms |
+| World acquisition | 3,251 ms | 2,576 ms |
+| Match connection | 7 ms | 76 ms |
+| Total entry including ready barrier | 5,430 ms | 5,510 ms |
+| Largest entry long task | 208 ms | 190 ms |
+| Maximum entry callback gap | 210.1 ms | 251.3 ms |
+
+Both foreground observations contained `5,4,3,2,1`; first-observed 5 to
+ROLL OUT was 4,930.9/4,921.6 ms, not a new three-second countdown. Each
+graphics receipt was nonblack (23.3845/29.0554 initial luminance), with no
+rescue or error, and reveal was primed before loading disappeared. No
+observation drops, page exceptions, renderer crashes or browser disconnects
+were recorded. Host native exit closed the room and returned the guest to
+Garage; both memberships, the browser and capture lease were cleaned up.
+
+The guest's reveal was not slower in this run. Construction and covered GPU
+preparation, not the 7/76 ms connection step, remain the larger entry costs.
+Cold props-generator slices reached 185.4/170.8 ms, so this is not a smooth-
+animation completion claim. Existing stage intervals and slice ordinals
+provide the next attribution targets; the old historical stalls remain a
+separate, unproven cause. This run also predates the retained-host rematch
+dependency fix described above and cannot certify that fix's native path.
+
+Raw report: `.qa-entry-production-6dbc-immediate-20260908/report.json`, SHA-256
+`50c67a974208a66b5adc46cae98295b2a12417a6452c4c55a283ed27fb99c67d`.
+This timing-only driver records launch policy but does not retain an unmasked
+GPU identity or final PNG, so no hardware-renderer or image-parity claim is
+made from this report alone.
