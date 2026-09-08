@@ -28,7 +28,7 @@ function assertBoundedSubdivisionRelief(position, style, label) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
   const anchors = style === 'alpine' ? [1, 4, 9, 14, 19, 24, 29, 32]
-    : ['skybridge', 'copper_mesa'].includes(label) ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
+    : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
   let reliefSamples = 0;
   for (let span = 1; span < anchors.length; span++) {
     for (let column = 0; column < columns - 1; column++) {
@@ -282,9 +282,40 @@ function assertAlpineSurfaceShader(shader, normals, label) {
 // Actual full-circle geometry, all maps and three seeds, without repeating
 // expensive texture bakes. Numeric bounds complement, never replace, matched
 // establishing/water/foliage renders from several map-edge viewpoints.
-// Captured before the two map-local finite-cap corrections. Hash the actual
-// buffers and row metadata so these fixes cannot quietly reshape the other28.
+function appendHorizonReceipt(hash, mapId, ring) {
+  hash.update(mapId);
+  hash.update(new Uint8Array(ring.positions.buffer));
+  hash.update(new Uint8Array(ring.heights.buffer));
+  hash.update(JSON.stringify(ring.rows));
+  hash.update(String(ring.maxHeight));
+  return hash;
+}
+
+// 56924f7bf deliberately lowered Polders from .50 to .18 after the finite-cap
+// fixtures in31e5b130b. Exact before/current decomposition recovers all three
+// ORIGINAL other28 digests by changing only that historical input. Keep the
+// historical hashes, and independently freeze every current Polders byte.
+// Titan's subsequent finite-cap restoration has an explicit false authoring
+// override; titanGorgeHorizon.selftest guards its current shape and every byte.
+const currentPoldersReceipts = new Map([
+  [1337, 'a0426c3d4076df1019c84c6ecc857ef0429053013648f520b7ea0ffb8e8a3cde'],
+  [2049, '567fb227b17a2c6425e0a516ecabffd99584d9f0a5aabffa23e9e76ec6117161'],
+  [7719, '23ec6c333415a6d27b7265618e2316385b29bd9b4ef35f2fe3f4f3be5ece4d42'],
+]);
+function assertCurrentPolders(ring, config, seed) {
+  assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
+  assert.equal(ring.positions.length, 8610);
+  assert.equal(ring.heights.length, 2870);
+  assert.ok(Math.max(...ring.heights) > 30 && Math.max(...ring.heights) < 40,
+    'Polders stays a low distant ridge rather than returning to a mountain wall');
+  assert.equal(appendHorizonReceipt(createHash('sha256'), 'polders', ring).digest('hex'),
+    currentPoldersReceipts.get(seed), 'Current Polders position/heights/rows/maxHeight remain exact');
+}
+
+// Hash actual buffers and row metadata. Only the declared Polders amplitude
+// and Titan cap opt-out reproduce historical inputs for the old aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
+const unrelatedMutation = createHash('sha256');
 const unchangedReceipts = [
   '0da99e0beb5098b7226d610001e47a01267cfe49aead052467da8625a1c08dd0',
   '21d1fb66558b453abc3cf33cb9cd9269dc1c072c731b4878b5eab237eebca623',
@@ -309,16 +340,35 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
   else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
   else {
-    const hash = unchangedGeometry.get(seed);
-    hash.update(mapId);
-    hash.update(new Uint8Array(ring.positions.buffer));
-    hash.update(new Uint8Array(ring.heights.buffer));
-    hash.update(JSON.stringify(ring.rows));
-    hash.update(String(ring.maxHeight));
+    const historicalRing = mapId === 'polders' ? sampleHorizonGeometry({ ...config,
+      horizon: { ...config.horizon, amp: 0.50 } }, seed)
+      : mapId === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
+        horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
+    appendHorizonReceipt(unchangedGeometry.get(seed), mapId, historicalRing);
+    if (seed === 1337) {
+      const mutated = mapId === 'verdant'
+        ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;
+      if (mapId === 'verdant') mutated.positions[0] += 1;
+      appendHorizonReceipt(unrelatedMutation, mapId, mutated);
+    }
+    if (mapId === 'polders') {
+      assertCurrentPolders(ring, config, seed);
+      if (seed === 1337) {
+        const raised = { ...ring, positions: ring.positions.slice(), heights: ring.heights.slice() };
+        raised.positions[1] += 0.1; raised.heights[0] += 0.1;
+        assert.throws(() => assertCurrentPolders(raised, config, seed), { code: 'ERR_ASSERTION' },
+          'Current Polders guard detects even sub-metre height creep below its broad shape ceiling');
+        assert.throws(() => assertCurrentPolders(ring, { ...config,
+          horizon: { ...config.horizon, amp: 0.19 } }, seed), { code: 'ERR_ASSERTION' },
+        'Current Polders authored amplitude cannot silently creep upward');
+      }
+    }
   }
 }
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'the other28 maps remain byte-identical across all three audited seeds');
+  'the original finite-cap receipts remain exact with only declared historical Polders/Titan inputs');
+assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
+  { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
 const originalNoise = SimplexNoise.prototype.noise;
 let geometryNoiseCalls = 0;
@@ -401,7 +451,7 @@ try {
     assert.equal(mesh.geometry.index.count, style === 'alpine' ? 55104 : 15498,
       `${mapId}: topology correction does not add triangles`);
     const { position, color, normal, uv } = mesh.geometry.attributes;
-    if (mapId === 'skybridge' || mapId === 'copper_mesa') {
+    if (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge') {
       const sampled = sampleHorizonGeometry(config, 1337);
       for (let row = 0; row < sampled.rows.length; row++) {
         for (let column = 0; column < 287; column++) {

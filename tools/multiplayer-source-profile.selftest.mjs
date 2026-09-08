@@ -32,6 +32,53 @@ assert.equal(update.column, 28);
 assert.equal(safe.bins[0].application, 3);
 assert.equal(safe.bins[0].other, 2);
 assert.doesNotMatch(JSON.stringify(safe), /PRIVATE|https?:|scriptId|startTime|deoptReason/);
+
+for (const chunk of ['three.module-fm2vrK64.js', 'three.core-CtuFz7CI.js']) {
+  const bundled = profile();
+  bundled.nodes[5].callFrame.url = `${origin}/assets/${chunk}`;
+  const original = structuredClone(bundled);
+  const result = summarizeMultiplayerSourceProfile(bundled, { origin });
+  assert.deepEqual(result.sampledMs, safe.sampledMs,
+    'known same-origin Three chunks retain application weights instead of disappearing into other');
+  assert.deepEqual(result.functions.find((row) => row.functionName === 'cast'), {
+    path: `/assets/${chunk}`, functionName: 'cast', line: 4, column: 28,
+    selfSampledMs: 2, inclusiveSampledMs: 2,
+  });
+  assert.equal(result.applicationInclusiveSampledMs, safe.applicationInclusiveSampledMs);
+  assert.deepEqual(result.bins, safe.bins, 'recognition preserves bounded bin weights and function indices');
+  assert.deepEqual(bundled, original, 'chunk recognition never mutates provider data');
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE|https?:|scriptId/);
+
+  for (const url of [`${origin}/assets/${chunk}?PRIVATE_QUERY`,
+    `${origin}/assets/${chunk}#PRIVATE_FRAGMENT`,
+    `https://PRIVATE_USER@game.example.test/assets/${chunk}`,
+    `https://user:PRIVATE_PASSWORD@game.example.test/assets/${chunk}`,
+    `https://foreign.example.test/assets/${chunk}`]) {
+    const rejected = profile();
+    rejected.nodes[5].callFrame.url = url;
+    rejected.nodes[5].callFrame.functionName = 'PRIVATE_FUNCTION';
+    const redacted = summarizeMultiplayerSourceProfile(rejected, { origin });
+    assert.equal(redacted.sampledMs.application, 1);
+    assert.equal(redacted.sampledMs.other, 4, 'unsafe vendor locations remain unattributed');
+    assert.equal(redacted.functions.length, 1);
+    assert.doesNotMatch(JSON.stringify(redacted), /PRIVATE|foreign|three\./);
+  }
+}
+
+for (const path of ['three.extra-Abcd123.js', 'three.module-Abcd123.private.js',
+  'three.core-Abcd123.js.map', 'three.module.js', 'three.module-.js',
+  'three.core-Abcd123.mjs', 'PRIVATE/three.module-Abcd123.js',
+  '%74hree.module-Abcd123.js', 'other.module-Abcd123.js']) {
+  const rejected = profile();
+  rejected.nodes[5].callFrame.url = `${origin}/assets/${path}`;
+  rejected.nodes[5].callFrame.functionName = 'PRIVATE_FUNCTION';
+  const result = summarizeMultiplayerSourceProfile(rejected, { origin });
+  assert.equal(result.sampledMs.application, 1, 'unknown dotted names and paths remain excluded');
+  assert.equal(result.sampledMs.other, 4);
+  assert.equal(result.functions.length, 1);
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE|three\.|other\.module/);
+}
+
 for (const name of ['toString', 'constructor', '__proto__', 'hasOwnProperty', 'valueOf']) {
   const builtin = profile();
   builtin.nodes[1].callFrame.functionName = name;
