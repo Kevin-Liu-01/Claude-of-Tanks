@@ -6,10 +6,12 @@ import { sampleHorizonGeometry } from './maps/horizon.ts';
 // Pinned dba1c5ce3 decomposition: every other map is unchanged, and the
 // explicit historical Titan input reproduces its actual original buffers.
 const seeds = [1337, 2049, 7719];
-const originalOther29 = [
-  '2906127e4e87dfee376ba98cefab6cd49f99cf8ccc37a41a8e4e18a6d1bf3371',
-  'ab2aa390a05d22d9c23f4015cc0200f173e31204d4231da109a7a0e3aa10d541',
-  '9a49a0e45e575b352e5c40c4b637e6fe8111c24f56a1ad34b749dca4afe9b8ea',
+// Pre-restoration 28d5fd378 executable, excluding restored Verdant.
+// originalVerdantHorizon.selftest owns the original Verdant geometry oracle.
+const originalOther28 = [
+  'f54d545335afbeb1e69ffda3885531257d36679e0207b5e226b49f25f6e4a889',
+  '572d59aca8b3212be236a5ecf1978f1039058054d3c035248c2a1dc6da0c931c',
+  'a679499bf0cd8a02f147bc4c28228971a2e9ad92df5132a9cd794acd03b5cb2d',
 ];
 const originalTitan = [
   '71fed723702ef66dfb6444b47fdb856382c50c2ec24a15fea6073ed89e87dd51',
@@ -80,17 +82,17 @@ function capSurfaces(ring) {
 
 const receipts = [];
 for (const [index, seed] of seeds.entries()) {
-  const other29 = createHash('sha256'), unrelatedMutation = createHash('sha256');
+  const other28 = createHash('sha256'), unrelatedMutation = createHash('sha256');
   for (const id of MAP_IDS) {
-    if (id === 'titan_gorge') continue;
+    if (id === 'titan_gorge' || id === 'verdant') continue;
     const cfg = getMapConfig(id), ring = sampleHorizonGeometry(cfg, seed);
-    appendReceipt(other29, id, ring);
-    const mutated = id === 'verdant' ? { ...ring, positions: ring.positions.slice() } : ring;
-    if (id === 'verdant') mutated.positions[0] += 0.125;
+    appendReceipt(other28, id, ring);
+    const mutated = id === 'desert' ? { ...ring, positions: ring.positions.slice() } : ring;
+    if (id === 'desert') mutated.positions[0] += 0.125;
     appendReceipt(unrelatedMutation, id, mutated);
   }
-  assert.equal(other29.digest('hex'), originalOther29[index], 'All other29 current maps stay byte-identical');
-  assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), originalOther29[index]),
+  assert.equal(other28.digest('hex'), originalOther28[index], 'All28 other unrestored maps stay byte-identical');
+  assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), originalOther28[index]),
     { code: 'ERR_ASSERTION' }, 'The other29 oracle catches unrelated geometry drift');
 
   const ring = sampleHorizonGeometry(config, seed), historical = sampleHorizonGeometry(historicalConfig, seed);

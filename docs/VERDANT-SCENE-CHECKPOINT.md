@@ -1,5 +1,15 @@
 # Verdant scene checkpoint: harvested village approach
 
+> Superseded on 2026-09-08: the user rejected the watershed/pastoral horizon
+> prototype after seeing the native capture and explicitly requested the old
+> Verdant horizon. Do not resume this redesign. The local prototype checkpoint
+> `7997efb42` is not approved for publication. The restoration instead uses the
+> original `822daf5fa` (2026-07-27) `buildHorizonRing` geometry and baked palette,
+> implemented in `src/world/originalVerdantHorizon.ts`. Historical uploaded
+> positions, colours, normals and indices match exactly over three seeds.
+> All29 other horizons remain unchanged. Road continuity, objective/spawn
+> safety and nighttime-loading fixes continue independently.
+
 ## Status and scope
 
 Proposed next checkpoint, recorded 2026-09-08 (America/Los_Angeles). This is

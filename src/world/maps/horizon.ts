@@ -32,6 +32,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 import { texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
+import { buildOriginalVerdantHorizon, sampleOriginalVerdantHorizon } from '../originalVerdantHorizon.ts';
 
 export type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
 
@@ -1201,6 +1202,7 @@ export function sampleHorizonGeometry(
 ): HorizonRingGeometry {
   const horizon = cfg?.horizon ?? {};
   const mapId = cfg?.id ?? 'verdant';
+  if (mapId === 'verdant') return sampleOriginalVerdantHorizon(seed);
   const style = resolveHorizonStyle(horizon, mapId);
   const noise = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
   const source = buildInitialHorizonGeometry(
@@ -1984,6 +1986,7 @@ export function* buildHorizonRingSteps(
 ): Generator<void, THREE.Mesh, void> {
   const H = cfg?.horizon || {};
   const mapId = cfg?.id || 'verdant';
+  if (mapId === 'verdant') return buildOriginalVerdantHorizon(seed);
   const style = resolveHorizonStyle(H, mapId);
   const profile = PROFILES[style];
   const {

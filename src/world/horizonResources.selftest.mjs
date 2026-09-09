@@ -312,16 +312,18 @@ function assertCurrentPolders(ring, config, seed) {
     currentPoldersReceipts.get(seed), 'Current Polders position/heights/rows/maxHeight remain exact');
 }
 
-// Hash actual buffers and row metadata. Only the declared Polders amplitude
-// and Titan cap opt-out reproduce historical inputs for the old aggregate.
+// Pre-restoration 28d5fd378 executable, excluding intentionally restored
+// Verdant (originalVerdantHorizon.selftest owns its historical byte oracle).
+// Historical Polders/Titan inputs remain unchanged for this aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unrelatedMutation = createHash('sha256');
 const unchangedReceipts = [
-  '0da99e0beb5098b7226d610001e47a01267cfe49aead052467da8625a1c08dd0',
-  '21d1fb66558b453abc3cf33cb9cd9269dc1c072c731b4878b5eab237eebca623',
-  '8c9f97155a8ad453d2eb11634fbca3db8a0da6d981e4e96d29b7ba8f9a2b1b56',
+  '69b4089c96843d2ca4e624150d7abb99aa833d80fe4c8c66d87dd98ea6cd49b6',
+  'bd7e9ef2fc597965a78ed60d0fa9538268573f203c07a42b71bd070aa34a7023',
+  '220c565ad6ef56f2fd6477d0544de2dfb6dee4854e24dddd4bb0b8cf5c1d053b',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
+  if (mapId === 'verdant') continue;
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
   const p = ring.positions, n = 287, label = `${mapId}/${seed}`;
   assert.equal(ring.rows.length, config.horizon.style === 'alpine' ? 33 : 10);
@@ -346,9 +348,9 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
         horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
     appendHorizonReceipt(unchangedGeometry.get(seed), mapId, historicalRing);
     if (seed === 1337) {
-      const mutated = mapId === 'verdant'
+      const mutated = mapId === 'desert'
         ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;
-      if (mapId === 'verdant') mutated.positions[0] += 1;
+      if (mapId === 'desert') mutated.positions[0] += 1;
       appendHorizonReceipt(unrelatedMutation, mapId, mutated);
     }
     if (mapId === 'polders') {
@@ -366,7 +368,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   }
 }
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'the original finite-cap receipts remain exact with only declared historical Polders/Titan inputs');
+  'non-Verdant receipts remain exact with only declared historical Polders/Titan inputs');
 assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
   { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
@@ -424,7 +426,7 @@ globalThis.document = {
 try {
   // Cover every topology plus the exact map seeds that exposed folded alpine
   // rows in the matched winter/fjord/alpine visual captures.
-  for (const mapId of ['verdant', 'desert', 'skybridge', 'copper_mesa', 'titan_gorge', 'urban', 'winter', 'fjord', 'alpine']) {
+  for (const mapId of ['desert', 'skybridge', 'copper_mesa', 'titan_gorge', 'urban', 'winter', 'fjord', 'alpine']) {
     const config = getMapConfig(mapId);
     const style = config.horizon.style;
     const mesh = buildHorizonRing(null, {
@@ -564,7 +566,7 @@ try {
     'sea wave variation reuses the existing detail samples at sub-percent contrast');
   disposeObject3DResources(coastal);
 
-  for (const mapId of ['verdant', 'fjord', 'longleaf']) {
+  for (const mapId of ['fjord', 'longleaf']) {
     // Unlike the lifetime cases above, build the real nonzero treeline. Its
     // skyline changes authored rows as separate mountain ranges overlap.
     const config = getMapConfig(mapId);
