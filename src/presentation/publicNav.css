@@ -1,5 +1,7 @@
 @import url('../ui/motion.css');
 
+html,body{min-height:var(--cot-viewport-height,100dvh)}
+
 .public-nav{
   position:sticky;
   z-index:110;

@@ -43,7 +43,7 @@ function ensureStyle() {
   style.id = STYLE_ID;
   style.textContent = `
 .cot-room-chat{position:fixed;z-index:46;left:max(18px,env(safe-area-inset-left));
-  top:clamp(270px,50%,calc(100vh - 230px));bottom:auto;transform:translateY(-50%);
+  top:clamp(270px,50%,calc(var(--cot-viewport-height,100dvh) - 230px));bottom:auto;transform:translateY(-50%);
   width:min(380px,calc(50vw - 34px));min-width:280px;display:grid;gap:7px;pointer-events:none;
   color:#e5edf3;font-family:${FONT_STACK};text-shadow:0 1px 3px rgba(0,0,0,.95)}
 .cot-room-chat[hidden]{display:none}.cot-room-chat *{box-sizing:border-box}

@@ -31,6 +31,9 @@ export type ViewportInputMode = 'coarse' | 'fine';
 export interface ViewportMeasurements {
   width?: number;
   height?: number;
+  offsetLeft?: number;
+  offsetTop?: number;
+  visualScale?: number;
   coarsePointer?: boolean;
   hover?: boolean;
 }
@@ -38,6 +41,9 @@ export interface ViewportMeasurements {
 export interface ViewportSnapshot {
   readonly width: number;
   readonly height: number;
+  readonly offsetLeft: number;
+  readonly offsetTop: number;
+  readonly visualScale: number;
   readonly widthBand: ViewportWidthBand;
   readonly heightBand: ViewportHeightBand;
   readonly widthDensity: 'narrow' | 'roomy';
@@ -81,11 +87,20 @@ export function viewportHeightBand(height: number): ViewportHeightBand {
 export function classifyViewport({
   width,
   height,
+  offsetLeft = 0,
+  offsetTop = 0,
+  visualScale = 1,
   coarsePointer = false,
   hover = true,
 }: ViewportMeasurements = {}): Readonly<ViewportSnapshot> {
   const safeWidth = typeof width === 'number' && Number.isFinite(width) ? Math.max(1, width) : 1;
   const safeHeight = typeof height === 'number' && Number.isFinite(height) ? Math.max(1, height) : 1;
+  const safeOffsetLeft = typeof offsetLeft === 'number' && Number.isFinite(offsetLeft)
+    ? Math.max(0, offsetLeft) : 0;
+  const safeOffsetTop = typeof offsetTop === 'number' && Number.isFinite(offsetTop)
+    ? Math.max(0, offsetTop) : 0;
+  const safeVisualScale = typeof visualScale === 'number' && Number.isFinite(visualScale)
+    ? Math.max(.01, visualScale) : 1;
   const widthBand = viewportWidthBand(safeWidth);
   const heightBand = viewportHeightBand(safeHeight);
   const widthDensity = safeWidth <= 380 ? 'narrow' : 'roomy';
@@ -106,6 +121,9 @@ export function classifyViewport({
   return Object.freeze({
     width: safeWidth,
     height: safeHeight,
+    offsetLeft: safeOffsetLeft,
+    offsetTop: safeOffsetTop,
+    visualScale: safeVisualScale,
     widthBand,
     heightBand,
     widthDensity,
@@ -123,6 +141,9 @@ function measureViewport(win: Window): Required<ViewportMeasurements> {
   return {
     width: Math.round(viewport?.width || win.innerWidth || 1),
     height: Math.round(viewport?.height || win.innerHeight || 1),
+    offsetLeft: Math.round(viewport?.offsetLeft || 0),
+    offsetTop: Math.round(viewport?.offsetTop || 0),
+    visualScale: viewport?.scale || 1,
     coarsePointer: !!win.matchMedia?.('(pointer: coarse)').matches,
     hover: !!win.matchMedia?.('(hover: hover)').matches,
   };
@@ -147,6 +168,7 @@ export function installResponsiveLayout(
   let current: ViewportSnapshot | null = null;
   let frame = 0;
   const layoutKeys = [
+    'width', 'height', 'offsetLeft', 'offsetTop', 'visualScale',
     'widthBand', 'heightBand', 'widthDensity', 'heightDensity', 'orientation', 'input', 'overlayPanels',
   ] as const satisfies readonly (keyof ViewportSnapshot)[];
 
@@ -163,8 +185,12 @@ export function installResponsiveLayout(
     body.dataset.cotOrientation = next.orientation;
     body.dataset.cotInput = next.input;
     body.dataset.cotPanels = next.overlayPanels ? 'overlay' : 'persistent';
+    body.dataset.cotViewport = 'visual';
     root.style.setProperty('--cot-viewport-width', `${next.width}px`);
     root.style.setProperty('--cot-viewport-height', `${next.height}px`);
+    root.style.setProperty('--cot-viewport-offset-left', `${next.offsetLeft}px`);
+    root.style.setProperty('--cot-viewport-offset-top', `${next.offsetTop}px`);
+    root.style.setProperty('--cot-viewport-scale', next.visualScale.toFixed(4));
     root.style.setProperty('--cot-ui-scale', next.scale.toFixed(4));
 
     if (changed) {
@@ -180,6 +206,7 @@ export function installResponsiveLayout(
   win.addEventListener('resize', refresh, { passive: true });
   win.addEventListener('orientationchange', refresh, { passive: true });
   win.visualViewport?.addEventListener('resize', refresh, { passive: true });
+  win.visualViewport?.addEventListener('scroll', refresh, { passive: true });
   pointerQuery?.addEventListener?.('change', refresh);
   hoverQuery?.addEventListener?.('change', refresh);
   apply();
@@ -192,6 +219,7 @@ export function installResponsiveLayout(
       win.removeEventListener('resize', refresh);
       win.removeEventListener('orientationchange', refresh);
       win.visualViewport?.removeEventListener('resize', refresh);
+      win.visualViewport?.removeEventListener('scroll', refresh);
       pointerQuery?.removeEventListener?.('change', refresh);
       hoverQuery?.removeEventListener?.('change', refresh);
       delete responsiveWindow[RESPONSIVE_LAYOUT_HANDLE];

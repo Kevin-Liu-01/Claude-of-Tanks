@@ -370,7 +370,7 @@ const SI_CSS = `
 .cot-si-log{position:absolute;right:16px;top:clamp(272px,30vh,336px);width:340px;display:none;
   pointer-events:auto;background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.94));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 6px 22px rgba(0,0,0,.55);
-  max-height:calc(100vh - 560px);min-height:120px;overflow-y:auto;}
+  max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
 .cot-si-log .sec{font-size:9.5px;font-weight:800;letter-spacing:.18em;color:${COL.dim};
   font-family:${FONT_COND};text-transform:uppercase;

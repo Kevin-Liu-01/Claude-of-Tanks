@@ -125,7 +125,7 @@ const CSS = `
 .cot-modal__button:active{transform:scale(.97)}.cot-modal__button--primary{border-color:#f0b04a;background:linear-gradient(#efaa45,#c8731d);color:#1c1003}
 .cot-modal__button--primary:hover,.cot-modal__button--primary:focus-visible{background:linear-gradient(#ffc164,#df8525);color:#120a02}
 body[data-cot-width='phone'] .cot-modal-root{padding:8px;place-items:end center}
-body[data-cot-width='phone'] .cot-modal{width:100%;max-height:calc(100dvh - 16px)}
+body[data-cot-width='phone'] .cot-modal{width:100%;max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
 body[data-cot-width='phone'] .cot-modal__header{padding:16px 16px 13px}
 body[data-cot-width='phone'] .cot-modal__body{padding:16px}
 body[data-cot-width='phone'] .cot-modal__footer{padding:11px 16px;flex-wrap:wrap}

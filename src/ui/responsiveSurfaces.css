@@ -6,6 +6,19 @@
 }
 body[data-cot-input='coarse']{--cot-control-floor:44px}
 
+/* iOS Chrome/Firefox can size fixed boxes against a stale layout viewport.
+   Pin every fullscreen game surface to the measured visual viewport instead
+   of trusting svh/dvh there. The renderer's #app root uses the same contract
+   in index.html, so DOM chrome and the WebGL frame keep identical bounds. */
+body[data-cot-viewport='visual'] :is(
+  .cot-garage,.cot-hud,.cot-touch,.cot-touch-aim,.cot-bl,.cot-trans,
+  .cot-settings,.cot-resume,.cot-play,.cot-es,.cot-end,.cot-studio,
+  .cot-si-stats,.cot-kc,.cot-kc-fadeblk,.cot-cine-letterbox,.cot-modal-root
+){
+  width:var(--cot-viewport-width,100dvw);
+  height:var(--cot-viewport-height,100dvh);
+}
+
 /* BATTLE HUD -------------------------------------------------------------- */
 body[data-cot-width='laptop'] .cot-ear{width:clamp(172px,14vw,194px)}
 body[data-cot-width='laptop'] .cot-killfeed{left:clamp(184px,15vw,210px)}
@@ -105,7 +118,7 @@ body[data-cot-width='phone'] .cot-si-cardhost{
 }
 body[data-cot-width='phone'] .cot-si-diag{display:none}
 body[data-cot-width='phone'] .cot-si-body{padding-bottom:5px}
-body[data-cot-height='short'] .cot-si-cardhost{max-height:calc(100vh - 126px);overflow-y:auto}
+body[data-cot-height='short'] .cot-si-cardhost{max-height:calc(var(--cot-viewport-height,100dvh) - 126px);overflow-y:auto}
 
 body[data-cot-width='compact'] .cot-si-cardhost,
 body[data-cot-width='compact'] .cot-si-log,
@@ -166,12 +179,12 @@ body.cot-touch-layout .cot-si-toasthost{
 body.cot-touch-layout .cot-si-toast:nth-last-of-type(n+2){display:none}
 
 /* SETTINGS --------------------------------------------------------------- */
-body[data-cot-width='tablet'] .cot-set-panel{width:min(744px,calc(100vw - 32px));max-height:calc(100dvh - 32px)}
+body[data-cot-width='tablet'] .cot-set-panel{width:min(744px,calc(100vw - 32px));max-height:calc(var(--cot-viewport-height,100dvh) - 32px)}
 body[data-cot-width='compact'] .cot-settings,
 body[data-cot-width='phone'] .cot-settings{align-items:stretch;justify-content:stretch;padding:0}
 body[data-cot-width='compact'] .cot-set-panel,
 body[data-cot-width='phone'] .cot-set-panel{
-  width:100vw;max-width:none;height:100dvh;max-height:none;border-inline:0;display:flex;flex-direction:column;
+  width:100vw;max-width:none;height:var(--cot-viewport-height,100dvh);max-height:none;border-inline:0;display:flex;flex-direction:column;
 }
 body[data-cot-width='compact'] .cot-set-hdr,
 body[data-cot-width='phone'] .cot-set-hdr{flex:0 0 auto;padding:12px var(--cot-edge) 9px}
@@ -199,7 +212,7 @@ body[data-cot-width='phone'] .cot-set-row{align-items:flex-start;flex-direction:
 body[data-cot-width='phone'] .cot-set-row .chips,
 body[data-cot-width='phone'] .cot-set-slider,
 body[data-cot-width='phone'] .cot-set-seg{width:100%;justify-content:flex-end;flex-wrap:wrap}
-body[data-cot-height='short'] .cot-set-panel{height:100dvh;max-height:none}
+body[data-cot-height='short'] .cot-set-panel{height:var(--cot-viewport-height,100dvh);max-height:none}
 body[data-cot-height='short'] .cot-set-body{min-height:0;flex:1 1 auto}
 body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
@@ -296,7 +309,7 @@ body[data-cot-width='phone'] .cot-bl{--bl-edge:max(10px,env(safe-area-inset-left
 body[data-cot-width='tablet'] .cot-bl .briefing,
 body[data-cot-width='compact'] .cot-bl .briefing,
 body[data-cot-width='phone'] .cot-bl .briefing{
-  width:calc(100vw - (var(--bl-edge) * 2));height:calc(100dvh - max(14px,env(safe-area-inset-top)) - max(14px,env(safe-area-inset-bottom)));
+  width:calc(100vw - (var(--bl-edge) * 2));height:calc(var(--cot-viewport-height,100dvh) - max(14px,env(safe-area-inset-top)) - max(14px,env(safe-area-inset-bottom)));
   min-height:0;padding:clamp(14px,2.4vh,24px) clamp(10px,2.4vw,22px) max(12px,env(safe-area-inset-bottom));
 }
 /* On the smallest stages the briefing already fills the viewport, so its
@@ -336,7 +349,7 @@ body[data-cot-width='phone'] .cot-bl .row .nm{font-size:8.5px}
 body[data-cot-width='phone'] .cot-bl .thead{font-size:8px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-bl .briefing{padding-inline:8px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-bl .team.foe .row{padding-left:2px}
-body[data-cot-height='short'] .cot-bl .briefing{width:calc(100vw - max(16px,env(safe-area-inset-left) + env(safe-area-inset-right)));height:calc(100dvh - 10px);padding:8px max(10px,env(safe-area-inset-left)) max(7px,env(safe-area-inset-bottom))}
+body[data-cot-height='short'] .cot-bl .briefing{width:calc(100vw - max(16px,env(safe-area-inset-left) + env(safe-area-inset-right)));height:calc(var(--cot-viewport-height,100dvh) - 10px);padding:8px max(10px,env(safe-area-inset-left)) max(7px,env(safe-area-inset-bottom))}
 body[data-cot-height='short'] .cot-bl .cap{padding-bottom:5px}
 body[data-cot-height='short'] .cot-bl .cap::before{display:none}
 body[data-cot-height='short'] .cot-bl .mapname{margin-top:3px;font-size:clamp(21px,4vw,34px)}
@@ -477,7 +490,7 @@ body[data-cot-width='phone'] .cot-studio .badge button{font-size:8px;padding:5px
 body[data-cot-width='compact'] .cot-studio .mapBtn,
 body[data-cot-width='phone'] .cot-studio .mapBtn{height:126px}
 body[data-cot-width='compact'] .cot-studio .mapPop,
-body[data-cot-width='phone'] .cot-studio .mapPop{max-height:calc(100dvh - 150px)}
+body[data-cot-width='phone'] .cot-studio .mapPop{max-height:calc(var(--cot-viewport-height,100dvh) - 150px)}
 body[data-cot-width='compact'] .cot-studio .tlmarker,
 body[data-cot-width='phone'] .cot-studio .tlmarker{width:14px;height:14px;top:2px;min-height:0}
 body[data-cot-width='compact'] .cot-studio .shotcard,
@@ -648,10 +661,10 @@ body[data-cot-height='compact'] .cot-room-chat-log,
 body[data-cot-height='short'] .cot-room-chat-log{max-height:105px}
 body[data-cot-width='compact'] .cot-room-chat,
 body[data-cot-width='phone'] .cot-room-chat{
-  top:clamp(340px,calc(50% + 20px),calc(100dvh - 80px));bottom:auto;width:min(360px,44vw);min-width:220px;
+  top:clamp(340px,calc(50% + 20px),calc(var(--cot-viewport-height,100dvh) - 80px));bottom:auto;width:min(360px,44vw);min-width:220px;
 }
 body[data-cot-width='compact'] .cot-room-chat-log,
-body[data-cot-width='phone'] .cot-room-chat-log{max-height:clamp(48px,calc(100dvh - 440px),92px)}
+body[data-cot-width='phone'] .cot-room-chat-log{max-height:clamp(48px,calc(var(--cot-viewport-height,100dvh) - 440px),92px)}
 body.cot-touch-layout[data-cot-width='compact'] .cot-room-chat,
 body.cot-touch-layout[data-cot-width='phone'] .cot-room-chat{top:180px}
 
@@ -677,11 +690,11 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-killer,
 body[data-cot-width='compact'][data-cot-orientation='portrait'] .cot-kc-annot,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-kc-annot{max-height:calc(31dvh - 12px);overflow:hidden}
 body[data-cot-height='short'] .cot-kc-annot{
-  left:var(--cot-edge);bottom:38px;width:min(200px,35vw);max-height:calc(100dvh - 82px);overflow:hidden;
+  left:var(--cot-edge);bottom:38px;width:min(200px,35vw);max-height:calc(var(--cot-viewport-height,100dvh) - 82px);overflow:hidden;
   background:linear-gradient(145deg,rgba(17,25,31,.92),rgba(7,12,16,.9));
 }
 body[data-cot-height='short'] .cot-kc-killer{
-  right:var(--cot-edge);top:auto;bottom:38px;width:min(188px,33vw);max-height:calc(100dvh - 82px);overflow:hidden;
+  right:var(--cot-edge);top:auto;bottom:38px;width:min(188px,33vw);max-height:calc(var(--cot-viewport-height,100dvh) - 82px);overflow:hidden;
   background:linear-gradient(145deg,rgba(17,25,31,.92),rgba(7,12,16,.9));
 }
 body[data-cot-width='compact'] .cot-kc-title,
@@ -742,7 +755,7 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-status{
   top:max(146px,calc(env(safe-area-inset-top) + 138px));
 }
 body[data-cot-width] .cot-network-diagnostics{
-  box-sizing:border-box;max-width:calc(100vw - 16px);max-height:calc(100dvh - 80px);
+  box-sizing:border-box;max-width:calc(100vw - 16px);max-height:calc(var(--cot-viewport-height,100dvh) - 80px);
   overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;
 }
 body[data-cot-width='compact'] .cot-network-diagnostics,
@@ -751,7 +764,7 @@ body[data-cot-width='phone'] .cot-network-diagnostics{
   width:min(390px,calc(100vw - 16px));font-size:8.5px;line-height:1.4;
 }
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-diagnostics{
-  top:max(194px,calc(env(safe-area-inset-top) + 186px));max-height:calc(100dvh - 210px);
+  top:max(194px,calc(env(safe-area-inset-top) + 186px));max-height:calc(var(--cot-viewport-height,100dvh) - 210px);
 }
 
 body[data-cot-width] .cot-trans{box-sizing:border-box;padding:var(--cot-edge)}

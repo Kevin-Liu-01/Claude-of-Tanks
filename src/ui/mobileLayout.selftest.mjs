@@ -174,8 +174,8 @@ assert.match(battleLoad,
   /<main class="briefing">[\s\S]*role="progressbar"[\s\S]*aria-valuenow="0"/,
   'battle loading must use one bounded briefing surface with an accessible real progress meter');
 assert.match(responsiveSurfaces,
-  /data-cot-width='phone'\] \.cot-bl \.briefing\{[\s\S]*height:calc\(100dvh/,
-  'phone loading briefings must consume safe dynamic viewport height instead of a fixed hero split');
+  /data-cot-width='phone'\] \.cot-bl \.briefing\{[\s\S]*height:calc\(var\(--cot-viewport-height,100dvh\)/,
+  'phone loading briefings must consume the measured visual viewport instead of a fixed hero split');
 assert.match(responsiveSurfaces,
   /data-cot-width='compact'\] \.cot-bl \.briefing,[\s\S]*data-cot-width='phone'\] \.cot-bl \.briefing,[\s\S]*data-cot-height='short'\] \.cot-bl \.briefing\{[\s\S]*background:transparent;border-color:transparent;box-shadow:none/,
   'compact, phone, and short battle loading must drop the viewport-sized briefing card shell');
