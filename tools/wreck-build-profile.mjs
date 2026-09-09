@@ -24,7 +24,9 @@ const BODY_STAGES = new Map([
   ['paintWreckGeometrySteps', 'paintWreckGeometry'], ['mergeShadowGeometrySteps', 'mergeShadowGeometry'],
   ['wreckBakeResult', 'wreckBakeResult'],
 ]);
-const GEOMETRY_STAGES = new Map([['compactWreckGeometrySteps', 'compactWreckGeometry']]);
+// Both generic and pre-paint entrypoints delegate their actual compaction to
+// this one body. Keep the metric single-counted whichever path is selected.
+const GEOMETRY_STAGES = new Map([['compactInputSteps', 'compactWreckGeometry']]);
 const CALL_STAGES = new Map([
   ['createTank', 'createTank'], ['visual.setDestroyed', 'visual.setDestroyed'], ['owner.visual.dispose', 'visual.dispose'],
 ]);
@@ -252,6 +254,7 @@ async function run(output, constructorOnly = false) {
       'Constructor modules acquired before each measured bake; fresh processes, no warmed repeat builds',
       'Inclusive stages overlap; self durations exclude instrumented descendants',
       'Generator-body spans require the synchronous bakeTankWreck drain; async suspension is not measured',
+      'Compaction spans cover the shared compactInputSteps body, excluding entrypoint eligibility checks',
       'Control and normalization-only candidate modify source in memory; no runtime files are changed'] };
   const write = () => writeFileSync(join(output, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   const lock = createCaptureLock(); let refresh, child;

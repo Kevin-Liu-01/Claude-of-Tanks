@@ -10,7 +10,10 @@ import { scaleUV } from './propGeometry.ts';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG } from './maps/inhabitKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
-import { deriveRuntimeStructureCollisionProfile, applyStructureCollisionBand } from './structureCollision.ts';
+import { deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
+  applyStructureCollisionBand } from './structureCollision.ts';
+import { attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
+  GROUND_COVER_PLACEMENT_BYTES } from './groundCoverClearance.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { composeLoggingYard } from './loggingYard.ts';
 import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
@@ -26,7 +29,9 @@ function section(start, end) {
 const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, setObbShape,
   sampleDiscGround, sampleObbGround, planGroundedSegment, scaleUV, DESTRUCTIBLE_TYPES,
   DESTRUCTIBLE_BUILDING_TYPES, FENCE_SEG, WALL_SEG, pickCivilianVehicleKind,
-  deriveRuntimeStructureCollisionProfile, applyStructureCollisionBand, setWorldNightFixtureActive };
+  deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
+  applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
+  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive };
 // Real source stages, not a replacement placement algorithm. The log stream
 // starts at an explicit test checkpoint; this does not claim a full-world
 // source census. Heavy traffic has its actual dedicated production RNG seed.
@@ -53,6 +58,7 @@ const factory = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   }
   ${section('  function beginFieldTimberCapture(', '  // --- standing crop fields')}
   const dPools = context.pools;
+  ${section('  const groundCoverDetails =', '  group.userData.groundCoverDetails =')}
   ${section('  function refitDestructibleColliders(', '  function tintDestructibleInstances(')}
   ${section('  function restoreDestructibleRecord(', '  function resetDestructibles(')}
   return { ...context, buckets, fieldTimber, decorationGroundingReceipts, refitDestructibleColliders,
@@ -142,7 +148,7 @@ for (const seed of [1337, 2025]) {
     assert.equal(pool.mats4.length, oldPool.mats4.length);
     const geometry = pool.meta.build(mulberry32(901));
     const oldGeometry = oldPool.meta.build(mulberry32(901));
-    after.refitDestructibleColliders(geometry, pool);
+    after.refitDestructibleColliders(geometry, pool, kind);
     const material = new THREE.MeshBasicMaterial();
     pool.imI = new THREE.InstancedMesh(geometry, material, pool.mats4.length);
     const oldMesh = new THREE.InstancedMesh(oldGeometry, material, oldPool.mats4.length);
