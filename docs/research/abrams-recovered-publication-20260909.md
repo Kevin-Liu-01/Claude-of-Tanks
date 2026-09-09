@@ -44,7 +44,31 @@ targeted release command. No queued phase is recorded as passed. Historical
 failed source/visual checks and six unavailable independent variant oracles
 remain explicit, even if the preservation checkpoint is published.
 
+Generation is now complete: 181 marking receipts (no further byte changes),
+208 catalog technical-image sets / 624 outputs, then all ten required files
+for each of the seven new tanks and three framing-affected existing tanks.
+The final 100 selected files pass offline size/SHA-256 verification; exactly
+ten manifest rows differ and 95 asset paths changed or were added. Unselected
+manifest rows remain byte-equivalent as parsed records. All seven angle
+portraits were visually inspected for complete rendering and variant presence;
+this limited inspection is not a new 9/10 source-fidelity acceptance score.
+The complete anatomy/release checks remain separately logged while running.
+
 The unrelated older MBT lifecycle continuation stopped at the existing
 `loadingIntent` source-pattern test; neither it nor the historical interrupted
 Abrams lifecycle is a full-suite PASS. See the
 [MBT-70 qualification note](mbt70-upper-fender-sides-20260909.md).
+
+## Newly exposed performance debt
+
+Fresh current-schema generation, not copying an archived manifest, exposes a
+large armor-plate payload in the recovered specs: A1/HA/Ukrainian A1 each have
+2,258 plates, A2 has 2,421, TUSK 2,966, SEP v2 5,216 and SEP v3 2,378.
+These are gameplay plate records, not rendered triangle counts. The seven new
+rows grow the pretty-printed icon manifest from 14,530,247 to 28,442,182 bytes.
+The row comparison found only seven new IDs and the three documented
+framing refreshes, not unrelated fleet data replacement. The large diff is
+therefore real recovered payload and an additional open performance issue;
+it must not be called an optimization or hidden by stripping collision data
+from the generator's receipts. Profiling/coalescing the authored finite plates
+and measuring switching/ballistics cost remain unfinished work.
