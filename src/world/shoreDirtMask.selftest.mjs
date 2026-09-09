@@ -9,6 +9,7 @@ import { resolveDeviceTier } from '../engine/quality.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
 import { historicalShorelineConfig, historicalReservoirConfig } from './shorelineHistoryTestOracle.mjs';
+import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 
 // Captured BEFORE adding the shore pass, from normal production imports:
 // createHeightField(1337) -> makeMaskTexture(noise seed3010), desktop512.
@@ -292,8 +293,10 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-assert.equal(hash(source.slice(source.indexOf('const SPLAT_COMMON_FRAG'), source.indexOf('function* createSplatMaterialSteps'))),
-  'd470ffa221c1ed9617c7794f0734932fb904beb1e204e1af6a10d1f415e14713', 'complete splat shader is byte-identical');
+// Historical full shader: d470ffa221c1ed9617c7794f0734932fb904beb1e204e1af6a10d1f415e14713.
+// Later world-chart/shore/worn-blend changes have separate current behavior
+// gates. Keep the immutable RGBA receipts above and test their actual consumer.
+assertTerrainMaskShaderContract(source);
 assert.match(source, /S\.shoreDirt \? \(S\.seaRamp\?\.\[0\] \?\? 0\.40\) : null/);
 assert.match(source, /stampShoreDirtMask\(px, dist, s, MAP_SIZE, shoreDirtStart\)/, 'production passes the original road scratch, not a new buffer');
 console.log('shoreDirtMask.selftest: 29 immutable historical map controls, twelve current Mangrove/Polders masks, RGB/physics/roads/landings and metric budget checks passed');
