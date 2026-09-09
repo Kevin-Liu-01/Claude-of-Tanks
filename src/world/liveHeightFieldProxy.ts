@@ -7,6 +7,7 @@ interface HeightFieldLike<Normal> {
   getNormalAt(x: number, z: number): Normal;
   getGroundType(x: number, z: number): string;
   getWaterMaskAt(x: number, z: number): number;
+  getWaterDepthAt?(x: number, z: number): number;
 }
 
 interface HeightFieldWorld<Normal> {
@@ -20,6 +21,7 @@ export interface LiveHeightFieldProxy<Normal> {
   getNormalAt(x: number, z: number): Normal;
   getGroundType(x: number, z: number): string;
   getWaterMaskAt(x: number, z: number): number;
+  getWaterDepthAt(x: number, z: number): number;
   readonly size: number;
   readonly minY: number;
   readonly maxY: number;
@@ -75,6 +77,9 @@ export function createLiveHeightFieldProxy<Normal>({
     },
     getWaterMaskAt(x, z) {
       return field()?.getWaterMaskAt(x, z) ?? 0;
+    },
+    getWaterDepthAt(x, z) {
+      return field()?.getWaterDepthAt?.(x, z) ?? 0;
     },
     get size() { return field()?.size ?? 1000; },
     get minY() { return field()?.minY ?? 0; },

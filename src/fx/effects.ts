@@ -41,6 +41,7 @@ interface FxEngineContext {
 interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
   getWaterMaskAt?(x: number, z: number): number;
+  getWaterDepthAt?(x: number, z: number): number;
   getGroundType?(x: number, z: number): string;
 }
 
@@ -1351,7 +1352,17 @@ export function createFx(
       varying float vWater;
       void main() {
         float strength = mix(0.34, 0.52, vWater);
-        float a = texture2D( uMap, vUv ).a * vFade * strength;
+        float coverage;
+        if (vWater > 0.5) {
+          vec2 p = vUv * 2.0 - 1.0;
+          float radius = length(p);
+          float ring = 0.35 + (1.0 - vFade) * 0.58;
+          coverage = (1.0 - smoothstep(0.06, 0.18, abs(radius - ring)))
+            * (1.0 - smoothstep(0.80, 1.0, radius));
+        } else {
+          coverage = texture2D(uMap, vUv).a;
+        }
+        float a = coverage * vFade * strength;
         if ( a < 0.01 ) discard;
         vec3 color = mix(vec3(0.055, 0.05, 0.042), vec3(0.74, 0.84, 0.84), vWater);
         gl_FragColor = vec4(color, a);
@@ -1377,6 +1388,8 @@ export function createFx(
     water = false,
   ): void {
     for (let i = 0; i < MAX_PRINTS; i++) {
+      const age = particles.getTime() - printBirth.array[i * 4];
+      if (age >= (printSurface.array[i * 4] > 0.5 ? 4.6 : PRINT_DUR)) continue;
       const dx = pos.x - printCenters[i * 2], dz = pos.z - printCenters[i * 2 + 1];
       if (dx * dx + dz * dz < 0.85) return; // a print already covers this spot
     }
@@ -1391,16 +1404,14 @@ export function createFx(
     const hl = water ? 0.78 : 0.62;
     const arr = printPos.array;
     const v = i * 4 * 3;
-    const corners = [
-      [pos.x - rx * hw - fx2 * hl, pos.z - rz * hw - fz2 * hl],
-      [pos.x + rx * hw - fx2 * hl, pos.z + rz * hw - fz2 * hl],
-      [pos.x + rx * hw + fx2 * hl, pos.z + rz * hw + fz2 * hl],
-      [pos.x - rx * hw + fx2 * hl, pos.z - rz * hw + fz2 * hl],
-    ];
     for (let k = 0; k < 4; k++) {
-      arr[v + k * 3] = corners[k][0];
-      arr[v + k * 3 + 1] = groundY(corners[k][0], corners[k][1]) + (water ? 0.065 : 0.035);
-      arr[v + k * 3 + 2] = corners[k][1];
+      const side = k === 1 || k === 2 ? 1 : -1, forward = k < 2 ? -1 : 1;
+      const x = pos.x + side * rx * hw + forward * fx2 * hl;
+      const z = pos.z + side * rz * hw + forward * fz2 * hl;
+      const depth = water ? heightField?.getWaterDepthAt?.(x, z) ?? 0 : 0;
+      arr[v + k * 3] = x;
+      arr[v + k * 3 + 1] = groundY(x, z) + depth + (water ? 0.065 : 0.035);
+      arr[v + k * 3 + 2] = z;
     }
     const b = printBirth.array;
     b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = b[i * 4 + 3] = particles.getTime();
@@ -3562,7 +3573,7 @@ export function createFx(
   ): void {
     if (intensity > 0.06 && !frozen) stampTrackPrint(pos, dir, true);
     if (frozen || rng() > intensity * (0.72 + waterMask * 0.36)) return;
-    const gy = groundY(pos.x, pos.z);
+    const gy = groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0);
     _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.45;
     _puffO.pos[1] = Math.max(pos.y, gy) + 0.20 + waterMask * 0.16;
     _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.45;
