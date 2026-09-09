@@ -39,6 +39,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/suspensionArmGeometry.selftest.mjs',
     'src/vehicles/returnRollerOutset.selftest.mjs',
     'src/vehicles/efficientReturnRoller.selftest.mjs',
+    'src/vehicles/returnRollerGeometry.selftest.mjs',
     'src/vehicles/suspensionClearance.selftest.mjs',
     'src/vehicles/profiles/t90AwXDetails.selftest.mjs',
     'src/vehicles/profiles/t90AwXHullEnds.selftest.mjs',
