@@ -93,3 +93,19 @@ Ignored log: `.qa-dev/side-fender-preservation-focused.log`, SHA-256
 No full suite, build, anatomy, browser capture or release job is duplicated
 here; parent owns final composition and those publication checks. These CPU
 results are not new native screenshot or source-fidelity claims.
+
+## Latest-main preservation integration
+
+Integrated after the published MBT-70 checkpoint `1f412d2d2` in
+`cot-tank-recovery-publication-20260909`. The same three focused tests and
+typecheck passed again. Maintained generation refreshed exactly six IDs / 60
+files; 44 files changed on disk, including the manifest. An independent row
+comparison confirmed that only the six scoped tank records changed.
+
+`tank-assets-check --ids=t90m_x,t90a_vladimir_x,leo2a7v_x,leo2a6m_x,leo2a4m_x,leo2_revolution`
+passed all nine views, file/metadata freshness, geometry and muzzle bores.
+The driver ended `RECOVERED SIDE FINISH INTEGRATION: PASS` in
+`.qa-dev/recovered-side-finish-integration.log`. This is the bounded as-is
+preservation check, not a complete fleet/anatomy/source-fidelity release.
+Final composed anatomy and targeted-release attempts remain with the seven-
+Abrams integration; the separate frozen MBT full lifecycle is still running.
