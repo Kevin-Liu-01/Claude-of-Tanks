@@ -2,6 +2,11 @@
 
 Status: **candidate; not release-qualified or published** (2026-09-08).
 
+The finite receiving-plane details and original after-capture evidence below
+are superseded by the [2 mm cap/flange correction](merkava3d-front-return-finite-plane-correction.md).
+The original source study, failed controls and receipts remain historical
+evidence; they are not silently relabeled as the corrected runtime.
+
 This addresses the owner's request to close the exposed **upper** end-wheel
 opening while retaining the visible lower wheels. It does not change the Mk.4,
 the running gear, the hull datums, armor resistance, or any release threshold.
