@@ -70,13 +70,12 @@ function disposeBuckets(buckets) {
 
 const original = build();
 const { buckets, receipts } = original;
-// Captured from the production kit immediately before the optional reed guard.
-// Pin every non-boat position/normal/UV/index byte and remaining shared RNG.
-// The independently owned boat-grounding fix intentionally changes hull bytes;
-// it must not change the default jetty/reed geometry or later seeded stream.
+// Pin the current tapered river reeds and unchanged jetties, excluding boats.
+// The reed contact test separately verifies exact root draws and non-reed bytes;
+// all grounding, population and RNG checks here remain unchanged.
 assert.equal(geometryReceipt({
   wood: buckets.wood.filter((_, i) => i % 24 >= 10), straw: buckets.straw,
-}).hash, '2d7126935971bbd2961f6d05d00ad04d216aaf965b684c5d9313e4785b49500e');
+}).hash, 'f2e13a39f24bc57e627262a1189be25cb853f63b5fad37a529ff824dd42a9c05');
 assert.equal(original.calls, 1207);
 assert.equal(original.state, -1144973475);
 const explicitReeds = build(mangrove, hf, anchors.map((anchor) => ({ ...anchor, shoreReeds: true, jettyLength: 7.6 })));
@@ -109,12 +108,12 @@ assert.deepEqual(repeated.receipts, receipts, 'landing placement and support rec
 disposeBuckets(repeated.buckets);
 console.log(`riverLandings.selftest: 3 beached boats, 30 supported piles; ${triangles} triangles in 2 existing buckets`);
 
-// The frozen pre-art production kit was evaluated against these same canonical
-// fields. All default sites must survive the stronger full-width wet-tip check;
-// changed hull transforms are independently checked by beachedBoat.selftest.
+// Current reed geometry is evaluated against these same canonical fields.
+// All default sites must survive the full-width wet-tip check; boat transforms
+// are independently checked by beachedBoat.selftest.
 for (const [seed, hash] of [
-  [2025, 'a5b461654309d30a75b0928e9de19c00c56a1baf1116d31e34edba07c46508b8'],
-  [7719, '0222c6d9bc68ea024d182e522ba9989bb04147a72c166e79556edb8652dd2738'],
+  [2025, '8028dc2d52f9384cf5762fb0924763c42b16488adbec3ec32e7044d626446961'],
+  [7719, '3872d39feadee5bb0def8ae84650e1e68df0f8a25ca9ea932c9c2f2b7d17d29c'],
 ]) {
   const field = createHeightField(seed, mangrove);
   const defaults = build(mangrove, field);

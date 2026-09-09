@@ -185,7 +185,7 @@ verification; a queued experiment is not a completed test or a release hold.
 - Published `f363fbd5e`: inverted woody-root cones are turned outward and seated
   at the ground, removing blunt lateral tabs. Same geometry/storage/instances;
   a small lower-trunk correction, not the complete tree-variety request.
-- Water/contact is prepared for incremental publication after seven focused
+- Water/contact is published through `1db45b0ad` after seven focused
   tests, TS7/build, five native material views and normal Coastal dry-to-water
   driving followed by clean Garage return. Coast/lake/river/marsh sheets use
   existing textures and pooled wakes; sand/snow get their own low contact puffs.
@@ -195,6 +195,21 @@ verification; a queued experiment is not a completed test or a release hold.
 - Broader shoreline debris/plant/farm composition, rejected Coastal crop and
   Foundry art drafts, road-outlet composition and full-family rollout remain
   open. These are separate from the accepted contact and intrusive-prop fixes.
+
+### River-bank plant checkpoint — 2026-09-09
+
+The Autumn/Delta/Mangrove reed correction replaces square posts with thin,
+tapered stems, seats each root in its own bed and attaches existing heads.
+Actual Autumn before/after images were independently reviewed; counts, RNG,
+collision and final GPU geometry budgets stay unchanged. This is a small
+contact/shape correction, not a new population or whole-bank beautification.
+See `RIVER-REED-CONTACT-CANDIDATE.md` for evidence and limits.
+
+The Coastal/Fjord driftwood experiment remains local and rejected: its native
+close-up reads as a thin notched strip with stretched grain, not natural wood.
+It is excluded from the reed release. Existing farm, boat, wreck and tree
+families still need composition/variety improvements; larger populations are
+not a substitute for better existing forms.
 
 ## Acceptance is visual and measured
 

@@ -1,69 +1,68 @@
-# River reed contact candidate — local, art unreviewed
+# River reed contact checkpoint
 
-Base: published `1db45b0adf445d83deda74fe04b161d9d970161c`.
-Only `mapKits.ts:reedClump` and its `addRiverBankReeds` argument seam change.
-River reeds reuse the unchanged winter tapered-stem builder. Each existing
-stem is planted 0.06m into its own terrain bed; the existing occasional head
-attaches to the first emitted stem tip. Winter callers/output remain unchanged.
-No clumps/root XZ draws, collision records, map shapes, palettes, material or
-texture families are added or relocated. Saltwind's no-reeds policy remains.
+This narrow correction replaces thick square reed posts with tapered, leaning
+stems on Autumn, Delta and Mangrove. Each existing stem seats 0.06 metres into
+its own terrain bed; the occasional head attaches to its emitted stem tip.
+It reuses the unchanged winter stem builder. Winter output, clump/root XZ draws,
+counts, collision, palettes and material families stay unchanged. Saltwind still
+has no river reeds. This is not a lush wetland redesign or completion of the
+broader plant/farm request; distribution and shoreline coverage are unchanged.
 
-## Measured scope
+## Cost and verification
 
-First normal FIFO packet: session67678, wrapper10851, worker27182, all terminal.
-Evidence: `/Users/kevinliu/.codex/visualizations/2026/environment-recovery-20260907/river-reed-contact-r1.Dzj7Sk/`.
-`report.json` retains commands/source hashes and identical before/after pins.
-`river.log` records actual three-map geometry, exact RNG/placement/collision
-and other-bucket comparisons; `inventory.json` contains every baseline/current
-row from the three historical suites' separate diagnostic continuations.
+The focused source-executed test checks actual buffers, root/head seating,
+RNG, collision and unaffected material buckets over three seeds. Negative
+controls reject old square posts, clump-center grounding and detached heads.
 
-| Seed1337 kit | Existing reed pieces | Premerge bytes, whole kit, before → after |
+| Seed 1337 kit | Existing pieces | Whole-kit primitive bytes, before → after |
 | --- | ---: | ---: |
 | Autumn | 1,644 | 1,398,600 → 872,520 |
 | Delta | 859 | 745,920 → 471,040 |
 | Mangrove | 85 | 131,880 → 104,680 |
 
-Pieces include occasional heads. Each still has12 triangles. Primitive
-position/normal/UV/index storage decreases320B per piece (24→14 vertices),
-but explicit Three nonindexed expansion preserves36 vertices/1,152 attribute
-bytes per piece. **Final GPU bytes are unchanged, not reduced.** This expansion
-model is not a claim that the entire production-world owner was captured.
-Construction adds7–13 bed queries per clump (old1, new8–14); no timing,
-retained-heap, GPU-performance or native visual acceptance claim is made.
+Pieces include heads. Each retains 12 triangles. Primitive storage falls by
+320 bytes per piece (24 to 14 vertices), but both expand to 36 nonindexed
+vertices / 1,152 attribute bytes in the production bucket. **Final GPU geometry
+bytes are unchanged, not reduced.** No new texture, material, draw family,
+animation or per-frame work. Construction adds 7–13 height queries per clump;
+this is not zero added CPU work.
 
-## Checks and retained failures
+The original packet `river-reed-contact-r1.Dzj7Sk` passes the focused test,
+full TypeScript 7 and strict changed-file quality checks. Doctor exits 0 with
+two test-only bounded array-lookup warnings. Original stale aggregate failures
+remain retained; see `SHORELINE-REGRESSION-RECONCILIATION.md` for attribution.
 
-- Focused source-executed geometry/RNG/bucket test PASS, including actual
-  old-box, clump-center-bed and detached-head negative controls.
-- Native TypeScript7 and strict changed runtime/test quality PASS
-  (95functions; zero complexity/explicit-any/unknown violations).
-- Doctor exits0; two test-only bounded three-map array-lookup warnings remain.
-- Published1db already fails winter's nonwinter aggregate and Coastal's
-  nonboat aggregate; its landing test passes. Candidate keeps those failures
-  and adds the intended Mangrove reed-byte aggregate mismatch.
-- Original assertions/goldens are untouched. Separate diagnostic continuations
-  record mismatches instead of stopping only at those aggregates; all other
-  physical/structural checks complete. Those continuations are NOT suite passes.
-  Their all30×3 kit rows differ from1db only on Autumn/Delta/Mangrove.
-- After this packet, only the focused test's brittle source-spelling assertion
-  for bucket expansion was removed at review request. Geometry calculations
-  remain unchanged; final test-only revision awaits its narrow rerun with the
-  next approved batch. Runtime hash remains
-  `d35667abf83d7b0a531e934e6d8572bfd6bee0f9df06af694c102d102e0a3481`.
+The combined packet `shoreline-combined-packet-r1.PsvvAm` passes the focused
+reed test, full TS7, production build, then all three reconciled normal suites
+(boats, winter geometry, river landings) and scoped Doctor. The final release
+omits the unrelated, rejected Coastal/Fjord driftwood candidate and receives
+its own normal release checks.
 
-## Next bounded visual comparison — prepared, not acquired
+## Actual native visual review
 
-Use the same production preview/quality/cameras on1db and the candidate.
-Suggested seed1337 root anchors already emitted by the actual kit:
-Autumn `[-432.6583023,1.59687793,-192.6928101]`,
-Delta `[-298.1047897,2.90088367,-328.1619797]`.
-Prepare low near-bank views focused roughly0.8m above those roots and a
-context view along the corresponding authored river reach. These are candidate
-bank locations, not yet slope/visibility-certified camera receipts: verify the
-actual local bed relief/occlusion once during approved capture preparation and
-save fixed absolute poses before either build is viewed. No camera sweep,
-extra plants or exclusion of a failed contact view is authorized by this note.
-Inspect every visible root/head, remaining underwater stems, thin-stem aliasing
-and mid-distance legibility. Existing per-disc clump distribution is unchanged;
-this is not a union-shore relocation or whole-wetland composition improvement.
-No native/build/collision/minimap acquisition has been performed for this candidate.
+Evidence root:
+`/Users/kevinliu/.codex/visualizations/2026/environment-recovery-20260907/`.
+
+- Baseline: `shoreline-combined-packet-r1.PsvvAm/baseline-autumn-close.png`.
+- Candidate: `river-reed-autumn-native-r3.ougp01/candidate-autumn-close.png`.
+- Same actual eight-stem Autumn clump, merged-mesh offsets, absolute camera,
+  High quality, 1440×900/DPR 1 and Apple M5 Max/Metal Chrome. No added test plants.
+  All eight roots seat 0.06 metres below their own bed, within 2e-7 metres
+  numerical discrepancy; measured head attachment error is zero.
+- Root and independent reviewer inspected both images: square posts and floating
+  crossbar are gone; thin leaning stems are seated. They remain dark, wiry and
+  sparse. Accepted for this contact/shape correction, not full-bank composition.
+- No observed page/GL/program errors; exact camera/quality/texture policy and
+  source/build pins held. Browser/server closed and FIFO released after the
+  14.265-second candidate run. Delta/Mangrove native views, temporal aliasing,
+  physical iPad/Safari and steady-state performance remain uncertified.
+- Attached counts changed during ordinary terrain/grass preparation. Separated
+  captures are **not** stable whole-scene resource or timing parity evidence.
+  The geometry-budget claim comes from actual nonindexed expansion tests.
+
+Earlier acquisition failures remain intact. In-page JSON strings avoid CLI
+numeric rounding. Changing `AGENT_BROWSER_DEFAULT_TIMEOUT` between commands
+caused blank pages: agent-browser 0.34 fingerprints it and restarts its daemon.
+The fixed runner keeps it constant and retains a separate external deadline.
+Short namespace/session names avoid macOS's 103-byte socket limit. None of these
+capture fixes changes game code or disables a visual guard.
