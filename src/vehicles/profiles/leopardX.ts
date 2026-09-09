@@ -7,6 +7,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { bindPartitionedEraCover } from './sourceEraCover.ts';
 import { markEraFurniture } from './eraHitFaces.ts';
 import { addLeopardA5XSourceDetails } from './leopardA5XDetails.ts';
+import { leopardReturnRollers } from './leopardReturnRollers.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -1069,11 +1070,11 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
     [3.715,1.01,1.085,1.098],
   ];
   P.add('hull', sectionSolid(stations.map((s) => tub(s, 1.51))));
-  P.gear = KIT.buildRunningGear(P, { style:'rubber', wheelR:.375, wheelW:.37,
+  P.gear = KIT.buildRunningGear(P, leopardReturnRollers(P,{ style:'rubber', wheelR:.375, wheelW:.37,
     wheelZs:[-2.38,-1.57,-.76,.05,.86,1.67,2.48], wheelY:.46, xc:1.48,
     trackW:.66, trackTh:.074, topY:1.32, botY:.105,
     sprocket:{z:-3.120,y:.9647,r:.3813}, idler:{z:3.247,y:.9063,r:.2785},
-    paintedEnds:true, arms:true, coveredTop:true });
+    paintedEnds:true, arms:true, coveredTop:true },[-2.05,-.35,1.25,2.20]));
   a7Skirts(P);
   fans(P,2.018,-2.82,.54);
   driver(P,1.783,-.54,1.14);

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { leopardReturnRollers } from './leopardReturnRollers.ts';
 
 type XY = readonly [number, number];
 type Section = { z: number; ring: readonly XY[] };
@@ -89,7 +90,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
     hullSection(3.86, 1.03, 0.996, 0.980),
   ]));
 
-  P.gear = KIT.buildRunningGear(P, {
+  P.gear = KIT.buildRunningGear(P, leopardReturnRollers(P, {
     style: 'rubber', wheelR: 0.3305, wheelW: 0.35,
     wheelZs: [-2.211, -1.471, -0.663, 0.092, 0.828, 1.588, 2.386],
     wheelY: 0.421, xc: 1.312, trackW: 0.535, trackTh: 0.072,
@@ -97,7 +98,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
     idler: { z: 3.202, y: 0.809, r: 0.2777 },
     topY: 1.157, botY: 0.048, paintedEnds: true, arms: true,
     coveredTop: true,
-  });
+  },[-1.93,-.29,1.25,2.06]));
 
   // AMAP heavy forward skirt modules meet the shoulder skin and are capped
   // on every side. Rear cage armor has its own frame and hull-mounted feet.

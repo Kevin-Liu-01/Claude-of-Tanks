@@ -330,7 +330,7 @@ export function trackPatternWithDimensions(
   return Object.freeze({ ...pattern, ...dimensions });
 }
 
-interface RunningGearConfig {
+export interface RunningGearConfig {
   style?: string;
   wheelR: number;
   wheelW: number;
