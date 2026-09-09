@@ -213,10 +213,15 @@ not a substitute for better existing forms.
 
 Remaining verification is explicit: sun-facing river/marsh appearance and
 constrained-device costs are not certified by the Coastal driving evidence.
-A separate regression audit also finds the Mangrove distant-stem cap no longer
-contained by its seam-corrected crown (variant 0, seed 2001); an isolated
-attachment follow-up is in preparation. It is pre-existing, not a reed change,
-and the failed full-suite boundary is not relabeled as passing.
+A separate regression audit found the Mangrove distant-stem cap no longer
+contained by its seam-corrected crown (variant 0, seed 2001). The isolated repair
+at `5c6a6f852` fits the existing cap into its actual crown without extra geometry
+or per-frame work. All46 seeded variants, integrated reed/contact tests, TS7 and
+production build pass; four native images were reviewed. The visual difference
+is subtle and joins partly overlap other foliage. See
+`MANGROVE-STEM-CONTACT-CHECKPOINT.md` for exact evidence and cost limitations.
+This was pre-existing, not a reed change; the historical failed full-suite
+boundary remains recorded separately from the repaired focused checks.
 
 ## Acceptance is visual and measured
 
