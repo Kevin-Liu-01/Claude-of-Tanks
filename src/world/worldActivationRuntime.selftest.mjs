@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { Group } from 'three';
 import { createWorldActivationRuntime } from './worldActivationRuntime.ts';
+import { createBattleAtmosphereAccess } from '../engine/battleAtmosphereAccess.ts';
+import { createBattleAtmosphereRuntime } from '../engine/battleAtmosphereRuntime.ts';
 
 function group(childCount = 3) {
   return {
@@ -310,4 +313,130 @@ for (const version of [undefined, 'capture-fixture']) {
     'other map cache keys and explicit capture/test revisions stay unchanged');
 }
 
-console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, partial and failure traces passed');
+// Compose the real world and selected-atmosphere owners. These spies count
+// full-preset/bake *requests*, not GPU duration or actual native PMREM work.
+function coveredAtmosphereHarness(load) {
+  const activity = [];
+  const worlds = new Map(['verdant', 'winter', 'desert'].map((id, index) => [id, {
+    ...world(id), group: new Group(),
+    config: { sky: Object.freeze({ sunIntensity: 3 + index, fogDensity: .001 + index * .0001 }) },
+  }]));
+  const instance = traceHarness({
+    coordinator: { ...coordinator, cache: worlds },
+    applySkyPreset: (preset) => activity.push(['bake', preset]),
+    applySkyPresentation: (preset) => activity.push(['presentation', preset]),
+    setSun: () => {}, onFogDensityChanged: () => {},
+  }).runtime;
+  const module = { createBattleAtmosphereRuntime };
+  const atmosphere = createBattleAtmosphereAccess(() => ({
+    getWorldRoot: () => instance.current?.group ?? null,
+    getAuthoredPreset: () => instance.current.config.sky,
+    applyPreset: (preset) => {
+      activity.push(['bake', preset]);
+      instance.markEnvironmentPrepared(instance.current);
+    },
+  }), load ?? (() => Promise.resolve(module)));
+  return { instance, worlds, atmosphere, module, activity,
+    bakes: () => activity.filter(([kind]) => kind === 'bake') };
+}
+const coveredOptions = { precompile: false, services: false, atmosphere: 'covered-battle' };
+function assertSingleSelectedBake(h, seed) {
+  assert.equal(h.bakes().length, 1, 'covered entry requests exactly one final selected IBL');
+  if (seed === 3) assert.equal(h.bakes()[0][1].skyIntensity, .05, 'that one request is moonlight, not intermediate daylight');
+  else assert.deepEqual(h.bakes()[0][1], h.instance.current.config.sky, 'day/legacy authority keeps the exact authored preset');
+}
+
+for (const mapId of ['verdant', 'winter']) for (const seed of [3, 13, undefined]) {
+  const h = coveredAtmosphereHarness();
+  try {
+    await h.instance.ensure(mapId, null, coveredOptions);
+    // The synchronous solo start calls these between ensure and final warm.
+    h.instance.switchMap(mapId);
+    h.instance.setDormant(false);
+    assert.equal(h.bakes().length, 0, 'first/same-map start must not bake before its selected atmosphere');
+    await h.atmosphere.prepare(seed, mapId);
+    assertSingleSelectedBake(h, seed);
+    await h.atmosphere.prepare(seed, mapId);
+    assertSingleSelectedBake(h, seed);
+    await h.instance.ensure(mapId, null, { precompile: false, services: false });
+    assertSingleSelectedBake(h, seed);
+
+    h.atmosphere.reset(); // Existing Garage restoration is intentionally unchanged.
+    assert.deepEqual(h.bakes().at(-1)[1], h.worlds.get(mapId).config.sky);
+    h.instance.setDormant(true);
+    h.instance.invalidateSkyPresentation();
+    const resetBakeCount = h.bakes().length;
+    // A successful night→Garage reset already restored the authored IBL.
+    // Ordinary Studio/capture recovery must not bake that same target again.
+    await h.instance.ensure(mapId, null, { precompile: false, services: false });
+    assert.equal(h.bakes().length, resetBakeCount, 'completed reset clears deferral before ordinary same-map activation');
+    h.instance.setDormant(true);
+    h.instance.invalidateSkyPresentation();
+    h.activity.length = 0;
+    await h.instance.ensure(mapId, null, coveredOptions);
+    assert.equal(h.bakes().length, 0, 'cached rematch does not pay an intermediate environment bake');
+    assert.equal(h.activity.filter(([kind]) => kind === 'presentation').length, 1, 'cached Garage sky is still restored');
+    await h.atmosphere.prepare(seed, mapId);
+    assertSingleSelectedBake(h, seed);
+  } finally { h.atmosphere.current?.dispose(); }
+}
+
+// Omit the covered intent: the real former daytime-then-night sequence must
+// fail the one-bake oracle. Ordinary callers keep that authored activation.
+{
+  const h = coveredAtmosphereHarness();
+  try {
+    await h.instance.ensure('winter', null, { precompile: false, services: false });
+    assert.deepEqual(h.bakes()[0][1], h.worlds.get('winter').config.sky);
+    await h.atmosphere.prepare(3, 'winter');
+    assert.equal(h.bakes().length, 2);
+    assert.throws(() => assertSingleSelectedBake(h, 3), /exactly one/);
+  } finally { h.atmosphere.current?.dispose(); }
+}
+
+// A stale lazy atmosphere must not overwrite ordinary capture/Studio recovery
+// or a newer map selection after its world has already activated.
+for (const recovery of ['ordinary-ensure', 'ordinary-activate', 'ordinary-resume', 'new-selection']) {
+  const gate = deferred(), h = coveredAtmosphereHarness(() => gate.promise);
+  await h.instance.ensure('winter', null, coveredOptions);
+  h.instance.markEnvironmentPrepared(null);
+  h.instance.markEnvironmentPrepared(h.worlds.get('desert'));
+  const stale = h.atmosphere.prepare(3, 'winter');
+  let latest;
+  if (recovery === 'new-selection') {
+    await h.instance.ensure('desert', null, coveredOptions);
+    latest = h.atmosphere.prepare(13, 'desert');
+  } else {
+    h.atmosphere.reset();
+    if (recovery === 'ordinary-ensure') await h.instance.ensure('winter', null, { precompile: false, services: false });
+    else if (recovery === 'ordinary-activate') h.instance.activate(h.worlds.get('winter'), { services: false });
+    else {
+      h.instance.setDormant(true);
+      h.instance.invalidateSkyPresentation();
+      h.instance.switchMap('winter'); // Same-map shot/capture path.
+      h.instance.setDormant(false);
+    }
+  }
+  gate.resolve(h.module);
+  try {
+    await Promise.all([stale, latest]);
+    assertSingleSelectedBake(h, 13);
+    assert.deepEqual(h.bakes()[0][1], h.instance.current.config.sky,
+      'neither a cancelled night nor the superseded map may replace the final authored environment');
+    if (recovery !== 'new-selection') {
+      await h.instance.ensure('winter', null, { precompile: false, services: false });
+      assert.equal(h.bakes().length, 1, 'ordinary recovery clears its deferred environment only once');
+    }
+  } finally { h.atmosphere.current?.dispose(); }
+}
+
+{
+  const h = coveredAtmosphereHarness();
+  for (const invalid of [{ atmosphere: 'covered-battle' }, { ...coveredOptions, compilePrograms: true }]) {
+    await assert.rejects(h.instance.ensure('winter', null, invalid), /must precede combat program warming/);
+  }
+  assert.equal(h.instance.current, null);
+  assert.equal(h.activity.length, 0, 'invalid early warm intent cannot change sky or scene ownership');
+}
+
+console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, traces and single selected battle IBL/recovery passed');

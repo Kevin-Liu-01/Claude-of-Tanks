@@ -89,7 +89,7 @@ export interface SoloBattleLoadingRuntimeOptions {
   ensureWorld(
     mapId: string,
     onProgress: (fraction: number, label: string) => void,
-    options: { precompile: boolean; services: boolean },
+    options: { precompile: boolean; services: boolean; atmosphere: 'covered-battle' },
   ): AsyncLoadResult;
   ensureBattleVisuals(): AsyncLoadResult;
   getBattleVisuals(): BattleVisualStreamer;
@@ -408,7 +408,7 @@ export function createSoloBattleLoadingRuntime(
         () => ensureWorld(
           resolved,
           (fraction, label) => battleLoad.progress(0.02 + fraction * 0.53, label),
-          { precompile: false, services: false },
+          { precompile: false, services: false, atmosphere: 'covered-battle' },
         ),
         async () => {
           const mapConfig = await mapConfigPromise;
