@@ -133,9 +133,10 @@ export default {
   },
 
   horizon: {
-    // Original four-row backdrop restored from 822daf5fa, without later
-    // mountain textures or canopy ribbons. See originalVerdantHorizon.ts.
-    baseHex: 0x38542c, amp: 1.0, style: 'rolling', treeline: 0,
+    // Low pastoral watersheds and supported woodland across the slopes.
+    // The user chose this newer horizon over the original mountain wall.
+    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
   },
 
   sky: DEFAULT_GARAGE_SKY,
