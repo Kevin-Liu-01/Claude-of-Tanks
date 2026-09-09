@@ -5841,11 +5841,12 @@ ${snowCap ? `
 
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
-  // dressing only: pushes into the existing material buckets, no colliders.
+  // dressing pushes into existing buckets; small coal piles share rock collision.
   const wharfDressingStart = buckets.wood.length;
   dressMapExtras({
     mapId, extraKits: P.extraKits, riverLandings: P.riverLandings, L, heightField, rng, buckets,
     groundingReceipts: decorationGroundingReceipts,
+    obstacles, colliders,
   });
   yield { fine: true, stage: 'map-extras' };
 

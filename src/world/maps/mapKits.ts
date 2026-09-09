@@ -15,8 +15,8 @@
 // All geometry is procedural THREE.BufferGeometry pushed into the existing
 // material buckets (wood/straw/stone), so it merges into the per-material
 // prop meshes and inherits map-toned textures + the grime overlay for free.
-// Everything here is soft dressing: no obstacles/colliders (same rule as the
-// road-side fence runs), tanks drive through reeds, not into invisible walls.
+// Most extras are soft dressing. The small rail coal stockpiles alone publish
+// their actual convex rock footprints through the supplied collision sinks.
 
 import * as THREE from 'three';
 import { box, jitterUV, pitchSkillionRoof, scaleUV, slabBox } from '../propGeometry.ts';
@@ -25,6 +25,7 @@ import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { planRiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
 import { createSnowDrift } from './snowDrift.ts';
+import { cloneCollisionRecord, convexHull2, setConvexShape, type CollisionRecord } from '../collision.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -76,11 +77,13 @@ interface DressingContext {
   rng: Rng;
   buckets: DressingBuckets;
   groundingReceipts?: GroundingReceipt[] | null;
+  obstacles?: CollisionRecord[];
+  colliders?: CollisionRecord[];
 }
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders'
 >;
 
 const _groundUp = new THREE.Vector3(0, 1, 0);
@@ -1053,9 +1056,10 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
+  obstacles, colliders,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
-  const focused = { L, heightField, rng, buckets, groundingReceipts };
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders };
   if (kits.includes('coastal')) dressCoastalShore(focused);
   if (kits.includes('river')) {
     if (riverLandings?.length) dressLakeRiverLandings(focused, riverLandings);
@@ -1559,21 +1563,107 @@ function addRailYardLines(
   }
 }
 
+type CoalVertex = readonly [number, number, number];
+
+function coalSiteIsClear(
+  field: DressingHeightField, x: number, z: number, radius: number,
+  obstacles: readonly CollisionRecord[],
+): boolean {
+  let low = Infinity, high = -Infinity;
+  for (let iz = -2; iz <= 2; iz++) for (let ix = -2; ix <= 2; ix++) {
+    const px = x + ix * radius / 2, pz = z + iz * radius / 2;
+    if (field._roadDist(px, pz) < 7 || field.getWaterMaskAt?.(px, pz) > 0.01) return false;
+    const y = field.getHeightAt(px, pz);
+    if (!Number.isFinite(y)) return false;
+    low = Math.min(low, y); high = Math.max(high, y);
+  }
+  if (high - low > 0.4) return false;
+  return !obstacles.some(record => record.min[0] < x + radius + 0.5
+    && record.max[0] > x - radius - 0.5 && record.min[2] < z + radius + 0.5
+    && record.max[2] > z - radius - 0.5);
+}
+
+function coalFacet(
+  positions: number[], colors: number[], uvs: number[],
+  a: CoalVertex, b: CoalVertex, c: CoalVertex, phase: number,
+): void {
+  // Three small irregular facets retain a granular highlight, not smooth
+  // interpolated ellipsoid normals. No additional seeded draws are consumed.
+  const middle: CoalVertex = [(a[0] + b[0] + c[0]) / 3,
+    (a[1] + b[1] + c[1]) / 3 + 0.015 * (1 + Math.sin(phase * 2.7)),
+    (a[2] + b[2] + c[2]) / 3];
+  const corners = [a, b, c];
+  for (let edge = 0; edge < 3; edge++) {
+    const shade = 0.032 + 0.012 * Math.sin(phase * 4.1 + edge * 1.7);
+    for (const vertex of [corners[edge], corners[(edge + 1) % 3], middle]) {
+      positions.push(...vertex);
+      colors.push(shade * 0.94, shade, shade * 1.03);
+      uvs.push(vertex[0] * 0.6, vertex[2] * 0.6);
+    }
+  }
+}
+
+function makeCoalStockpile(
+  field: DressingHeightField, x: number, z: number,
+  radius: number, length: number, phase: number,
+): THREE.BufferGeometry {
+  const base: CoalVertex[] = [], shoulder: CoalVertex[] = [];
+  const height = 0.66 + (radius - 1.1) * 0.36;
+  for (let i = 0; i < 8; i++) {
+    const angle = i * Math.PI / 4;
+    const dx = Math.cos(angle) * radius, dz = Math.sin(angle) * length;
+    base.push([x + dx, field.getHeightAt(x + dx, z + dz) - 0.05, z + dz]);
+    const sx = x + dx * 0.47 + radius * 0.08, sz = z + dz * 0.47;
+    shoulder.push([sx, field.getHeightAt(sx, sz) + height * (0.54 + 0.06 * Math.sin(i * 2 + phase)), sz]);
+  }
+  const peak: CoalVertex = [x - radius * 0.1, field.getHeightAt(x - radius * 0.1, z) + height, z];
+  const positions: number[] = [], colors: number[] = [], uvs: number[] = [];
+  for (let i = 0; i < 8; i++) {
+    const next = (i + 1) % 8;
+    // Clockwise XZ winding faces upward in Three's Y-up world.
+    coalFacet(positions, colors, uvs, base[i], shoulder[i], base[next], phase + i * 3);
+    coalFacet(positions, colors, uvs, base[next], shoulder[i], shoulder[next], phase + i * 3 + 1);
+    coalFacet(positions, colors, uvs, shoulder[i], peak, shoulder[next], phase + i * 3 + 2);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.name = 'rail-coal-stockpile';
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function registerCoalStockpile(geometry: THREE.BufferGeometry, ctx: FocusedDressingContext): void {
+  const position = geometry.getAttribute('position'), points: Array<[number, number]> = [];
+  let low = Infinity, high = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    points.push([position.getX(i), position.getZ(i)]);
+    low = Math.min(low, position.getY(i)); high = Math.max(high, position.getY(i));
+  }
+  // Same ordinary conservative vertical prism as authored rocks: exact
+  // projected convex footprint/Y bounds, not a rectangular invisible wall.
+  const record = setConvexShape({min: [0, low, 0], max: [0, high, 0], kind: 'coal-heap'}, convexHull2(points));
+  ctx.obstacles?.push(record);
+  ctx.colliders?.push(cloneCollisionRecord(record));
+}
+
 function addRailYardCoalHeaps(
-  heightField: DressingHeightField,
-  rng: Rng,
-  buckets: DressingBuckets,
+  heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
+  ctx: FocusedDressingContext,
 ): void {
   for (let i = 0; i < 7; i++) {
-    const x = 34 + rng() * 50, z = -140 + rng() * 280;
-    if (heightField._roadDist(x, z) < 7) continue;
-    const r = 2.2 + rng() * 2.4;
-    const heap = new THREE.SphereGeometry(1, 10, 6);
-    scaleUV(heap, 2, 1);
-    heap.scale(r, r * 0.36, r * (0.7 + rng() * 0.4));
-    heap.rotateY(rng() * Math.PI);
-    heap.translate(x, heightField.getHeightAt(x, z) + r * 0.05, z);
-    buckets.dark.push(heap);
+    const oldX = 34 + rng() * 50, oldZ = -140 + rng() * 280;
+    if (heightField._roadDist(oldX, oldZ) < 7) continue;
+    // Preserve all original accepted/rejected RNG draws before new admission.
+    const size = rng(), stretch = rng(), phase = rng() * Math.PI;
+    const radius = 1.1 + size * 0.5, length = radius * (1.15 + stretch * 0.2);
+    // An unloading strip east of the outer siding, not piles across tracks.
+    const x = 84 + (oldX - 34) * 0.14, z = -52 + i * 7 + oldZ / 140;
+    if (!buckets.baked || !coalSiteIsClear(heightField, x, z, length, ctx.obstacles ?? [])) continue;
+    const heap = makeCoalStockpile(heightField, x, z, radius, length, phase);
+    buckets.baked.push(heap);
+    registerCoalStockpile(heap, ctx);
   }
 }
 
@@ -1628,9 +1718,10 @@ function addRailYardSupplies(
 }
 
 function dressRailYard(
-  { L, heightField, rng, buckets }: FocusedDressingContext, washoutLiquid = false,
+  ctx: FocusedDressingContext, washoutLiquid = false,
 ): void {
+  const { L, heightField, rng, buckets } = ctx;
   addRailYardLines(heightField, rng, buckets, washoutLiquid);
-  addRailYardCoalHeaps(heightField, rng, buckets);
+  addRailYardCoalHeaps(heightField, rng, buckets, ctx);
   addRailYardSupplies(L.village, heightField, rng, buckets);
 }
