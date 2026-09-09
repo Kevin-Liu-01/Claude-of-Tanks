@@ -66,6 +66,7 @@ export function createShallowWaterSurface(
   const clock = { value: 0 };
   const material = new THREE.MeshStandardMaterial({
     color: profile.color, roughness: profile.roughness, metalness: 0,
+    envMapIntensity: 0.25,
     transparent: true, opacity: profile.opacity, depthWrite: false,
     side: THREE.DoubleSide,
   });
@@ -104,11 +105,18 @@ export function createShallowWaterSurface(
       vec2 drift = uWaterFlow * uWaterTime;
       vec2 wave = texture2D(uWaterWave, waveUV + drift).xy * 2.0 - 1.0;
       wave += (texture2D(uWaterWave, waveUV * 0.61 - drift * 0.7).xy * 2.0 - 1.0) * 0.55;
-      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * 0.22, 1.0, wave.y * 0.22)), 0.0)).xyz);
+      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * 0.85, 1.0, wave.y * 0.85)), 0.0)).xyz);
       normal *= faceDirection;
     `);
+    // The game's strong sun/bloom exposure turns a broad default dielectric
+    // highlight into a white sheet. Keep the directional glint, at a bounded
+    // energy, without changing world lighting or adding a reflection pass.
+    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_fragment>',
+      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.10;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
+      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(0.16));\n#include <opaque_fragment>');
   };
-  material.customProgramCacheKey = () => 'shallow-water-v1';
+  material.customProgramCacheKey = () => 'shallow-water-v3';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;

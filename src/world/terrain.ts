@@ -2973,6 +2973,12 @@ void splatCompute() {
   // when its albedo and normal detail were correct. Ice and open water keep
   // their authored response through iceW; every dry texel is >= 0.92.
   gSplatRough = max(rough0, 0.92 * (1.0 - iceW) + shoreW * -0.04);
+  // Liquid's actual sheen now belongs to the translucent surface above this
+  // bed. Two reflective layers washed the whole bay white at grazing angles.
+  // Retain the authored pigment/detail below the water, but make it matte and
+  // dimmer; dry ground and the complete legacy ice response remain unchanged.
+  gSplatRough = mix(gSplatRough, 0.95, fMs * uSea);
+  gSplatAlbedo *= 1.0 - fMs * uSea * 0.42;
   gSplatNrm = n.xyz * 2.0 - 1.0;
   gSplatFar = farM;
   // steep faces beyond gameplay range: their per-texel normal shading is the
@@ -3140,7 +3146,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v26';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v27';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
