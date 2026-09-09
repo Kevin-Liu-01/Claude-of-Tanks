@@ -67,3 +67,41 @@ scale tests are not physical-device or distant-network certification.
 
 Integrated test, build, native and landing results are recorded below when
 they actually complete; retained evidence above is not substituted for them.
+
+### Integrated verification, September 9 UTC
+
+- Typecheck/core-unused and the public production build passed on the
+  integration candidate.
+- All **46** selected tests passed: every changed selftest (30), plus 16
+  dependent world/terrain/shadow/network/registry tests. This includes actual
+  headless bakes of the complete admitted wreck roster, paint/topology parity,
+  worker cancellation/transfer/error ownership, all-map casts and collision
+  receipts, wall batching, loading UI and room-entry lifecycles.
+- One `npm test` lifecycle was started, then deliberately interrupted while
+  its pre suite was passing: it duplicated the release task's unrelated fleet
+  validation. Its exit was 143. It is **not** reported as a complete suite pass.
+  The explicit diff-complete selection used the normal shared FIFO runner.
+- A fresh immutable public-build native two-client check passed. Both peers
+  showed the complete foreground 5/4/3/2/1 sequence, nonblack reveal without
+  rescue, advancing battle, native Garage return and room closure. There were
+  zero application exceptions, renderer crashes or dropped observations.
+  All rooms, browser, preview, signaling and capture lease were released.
+- That native check observed 4,689/4,824 ms preparation (host/guest), and
+  4,881/4,874 ms from the first observed 5 to rollout. Largest observed rAF
+  gaps across loading/countdown were 191.4/152.5 ms. These remain explicit
+  limits; this sample is not a controlled speedup or zero-lag certification.
+- The frozen build content SHA-256 was
+  `45f33618331abf8513e3b284dc7a6780f9e4eba0e49d7d7be51da1a8fd04d4d0`;
+  build/acquisition identity stayed unchanged. Its version was
+  `v1.0.0+g3b0844f48.dirty` because observer/fixture-only integration edits were
+  pending at build time. The later commit does not claim different native
+  measurements.
+- After that check, main added an independent Verdant horizon restoration.
+  The candidate rebased cleanly onto `7b91b838b`; the only Verdant runtime delta
+  from that new base is the authored wreck cast. The native scenario was
+  Winter, not a validation of the newly restored Verdant horizon.
+
+Local machine receipts are under
+`/private/tmp/cot-wreck-loading-delivery.JiN907/.qa-delivery/`:
+`scoped-tests.json`, `scoped-tests.log`, `native/report.json`, and build/type
+logs. Temporary artifacts are deliberately not committed.
