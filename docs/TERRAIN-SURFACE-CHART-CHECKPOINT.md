@@ -58,3 +58,32 @@ exclusion while allowing the new shoreline multiplier.
 Merge `fdba96038` incorporates published `origin/main` at `0aada3574`, including
 the approved newer Verdant horizon and independently shipped wreck/loading
 work. It does not roll those changes back. Final integrated checks follow below.
+
+The integrated public build and native TypeScript7 check passed. Focused
+projection, sand-coverage, road-material, source-preparation, all-30-map quality,
+newer-Verdant horizon and local-import-integrity checks passed. The Mangrove
+palette receipt now excludes only independently owned wreck donor IDs from its
+historical palette projection; all other non-palette values remain checked,
+with the original frozen receipt and independently derived projection retained.
+Its native Canvas pigment, physical and mutation checks passed. The scoped
+scanner still reports test-only source-expression evaluators/loop lookups; it
+did not find a runtime defect. This is not a claim that every scanner check or
+the full repository test suite passed.
+
+Final native capture: clean `d6cc60fe38bfef5143075c900728603797a27e94`, output
+`/Users/kevinliu/.codex/visualizations/2026/environment-recovery-20260907/terrain-chart-shore-integrated-r1`.
+
+- Public index SHA256: `59ab7595eef38f12b8677e607f3c6182cdb5bd1b67b99afbefb3817a1a56a6ee`.
+- Report SHA256: `961a65834d5677d2a79b73be517e2e7eaea9bfd43709dd7c461be507a7955aa7`.
+- Coastal, Saltwind and Verdant establishing views were captured at 1440×900,
+  DPR1, with zero page errors and no authored-quality/grounding failures.
+- All three images were inspected. Verdant retains the approved low pastoral
+  horizon; both coastal maps retain the beach and still need the separate
+  inland sand-pigment correction identified above.
+- This integrated run has no baseline cost comparison. Its scene includes
+  independently published wreck changes, so it must not be presented as a
+  whole-scene resource A/B against the older canopy baseline.
+- Browser, server and owned capture lease closed normally (exit0).
+
+After capture, published `508bb19b0` was merged normally; it changes only
+historical vehicle-light tests/documentation, not this captured runtime.
