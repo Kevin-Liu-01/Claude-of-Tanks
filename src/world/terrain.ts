@@ -153,6 +153,8 @@ interface TerrainSettings {
   clearMarshVeg?: boolean;
   hardstands?: readonly HardstandConfig[];
   workedGround?: readonly WorkedGroundPatch[];
+  /** Use authored activity footprints instead of blanket settlement wear. */
+  villageWear?: 'activity-patches';
   quarryBenches?: boolean;
 }
 
@@ -1849,6 +1851,7 @@ export function makeMaskTexture(
   shoreDirtStart: number | null = null,
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
+  const activityWear = layout.terrain.villageWear === 'activity-patches';
   // MOBILE r1: tier-scaled mask (features derive from T = s/MAP_SIZE, so the
   // bake is resolution-relative; mobile trades 0.5 m/texel road-edge crispness
   // for a 16 MB saving on its ~192 MB budget)
@@ -1935,7 +1938,9 @@ export function makeMaskTexture(
         const x = (tx + 0.5) / T - HALF, i = tz * s + tx, j = i * 4;
         paintRoadMask(x, z, i, j);
         px[j + 2] = (landGrid ? landAt(x, z) : sampleMarshMask(x, z)) * 255;
-        paintVillageMask(x, z, j);
+        // Existing roads and liquid margins keep every original mask channel.
+        // Only dry, off-road settlement soil moves to authored yard footprints.
+        if (!activityWear || px[j] || px[j + 2]) paintVillageMask(x, z, j);
       }
     }
   }

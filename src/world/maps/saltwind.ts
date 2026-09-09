@@ -7,6 +7,19 @@ export default {
   terrain: {
     hillScale: 0.86, microScale: 0.70, rimH: 28, clearMarshVeg: true, softLakes: true,
     village: { x0: -252, x1: -18, z0: -116, z1: 138, cx: -136, cz: 10, feather: 44, flatten: 0.86, relief: 0.14 },
+    villageWear: 'activity-patches',
+    workedGround: [
+      // Existing stall ring at the harbor-road junction (-190, -36).
+      { feather: 7, strength: 0.94, boundary: [[-212, -58], [-186, -66], [-169, -52], [-163, -29], [-183, -17], [-211, -29]] },
+      // Fishery and southern cross-street frontages; not the whole village pad.
+      { feather: 7, strength: 0.84, boundary: [[-214, -107], [-191, -125], [-154, -128], [-124, -115], [-101, -108], [-91, -86], [-104, -65], [-140, -69], [-158, -79], [-191, -64], [-214, -82]] },
+      // Crofts along the market stair-road, with a notch between court groups.
+      { feather: 7, strength: 0.8, boundary: [[-173, -30], [-137, -35], [-115, -26], [-98, -45], [-62, -43], [-62, -14], [-83, -2], [-69, 34], [-99, 45], [-106, 70], [-122, 57], [-122, 25], [-146, 27], [-169, 18]] },
+      // Dry approach from actual landing 1 (-283.54, -21.89) past its beached
+      // boat (-264.88, -21.71) toward the harbor frontage.
+      // The existing stamp preserves all wet pixels, including the quay edge.
+      { feather: 6, strength: 0.88, boundary: [[-286, -38], [-261, -44], [-221, -49], [-206, -31], [-232, -22], [-260, -17], [-280, -20]] },
+    ],
     roads: { paths: [
       // Quayside frontages bend with the bay; the inland market stair-road
       // meets them on the dry limestone shoulder, clear of the harbor mouth.
