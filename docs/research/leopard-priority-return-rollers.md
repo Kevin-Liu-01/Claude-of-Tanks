@@ -173,3 +173,15 @@ All tracked runtime/tool/test inputs remained unchanged throughout that run.
 CORE, POST and the private build were not reached. A fresh complete release
 remains required before publication; neither the targeted passes nor later
 diagnostic continuations waive this regression failure.
+
+## Complete integration acceptance
+
+The unchanged roller implementation subsequently passed the complete
+[nine-ID release](nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass)
+at `6c27d4f2d`: all target gates, 858 ordered regressions, and both builds.
+Its actual roller regression includes 16 builds, 256 articulated poses and
+12 rejecting controls, with all original body/road-wheel witnesses retained.
+The runtime projection metadata was synchronized to the existing captured
+images; no image or anchor was re-framed. This supersedes the unfinished
+release boundary above without relabelling any failed receipt. Broader
+unpublished return-roller candidates remain outside this checkpoint.

@@ -168,13 +168,42 @@ into a pass. Its frozen source and all nine oracle hashes stayed unchanged:
 `4cba7d4341dba19cff2845a6b425d670d7b5928a98d35ee07ae93366c5b1cd28`.
 The hygiene log's 857 count is tracked self-test files; the suite contains
 858 ordered entries. It does not indicate a missing check or wrong checkout.
-CORE, POST and both builds still require a fresh complete successful run.
+At that failed boundary, CORE, POST and both builds still required a fresh
+complete successful run; the unchanged retry below supplies it.
 
-## Release boundary — still pending
+## Complete nine-ID release — PASS
 
-After the scoped correction and early receipt guards pass, one fresh
-composed nine-ID gate must pass the full regression suite and private
-build, followed by the public build. The earlier anatomy update/check
-remains recorded above. Diagnostic tail runs and targeted passes are not
-a substitute for that complete release. No nine-tank playable checkpoint
-has been published from these failed runs.
+The clean retry at `6c27d4f2dcd7439f47f2e855aea2472c2689a0bb`, based on
+published `7a26c2690`, ran from 10:55:46 to 12:03:12 UTC on 2026-09-09.
+It passed native type checking/core-unused, the complete command below,
+and then `npm run build` for the public artifact:
+
+```sh
+node tools/tank-release-check.mjs --ids=t90a_burlak_x,leo2a5_x,leo2a6_x,leclerc_x,amx40_x,merkava3d_x,merkava4_x,leo2a7v_x,leo2_revolution --gate
+```
+
+All target gates passed: anatomy freshness, native centering, module
+alignment/hits, all 90 selected assets, track duplicates, muzzle bores,
+barrel circularity, source fidelity for all nine tanks, strict geometry, stock
+contact/clipping/sweep, continuity and fittings. No source was missing and
+no floor was relaxed. The complete npm lifecycle passed **278 PRE + 545
+CORE + 35 POST = 858 ordered checks**, followed by the normal private build.
+Both earlier failure points passed inside this actual run. Public stripping
+confirmed 174 procedural playables and zero GLB-sourced playable entries.
+
+Terminal receipt: `.qa-dev/nine-complete-OriY2f/receipt.json`, SHA-256
+`1767d3b9e1560aa9cb8aa4c90fba2801a471f95c3937d05ca202f2e25e35bb10`.
+All 2,270 tracked runtime/tool/config input files remained at fingerprint
+`ed28ba99b9258f47d754aa04b30a338df6944d5c00f0d73f1f310ce2d2d60684`;
+all nine source-oracle hashes also stayed unchanged. The earlier full
+anatomy update/check and native visual review remain recorded above and in
+the two source packets. Subsequent closeout edits are documentation and the
+generator-owned ledger timestamp only, not a different tested implementation.
+
+This is the release evidence for the nine-ID checkpoint, not a claim that
+all fleet work is finished. Existing 79 full-fleet dimension warnings,
+15/120 battle-pacing timeouts and build chunk-size warnings remain. The
+Revolution's geometry minimum remains narrowly above 92 (92.031900), not
+a perfect-fidelity claim. No production FPS, zero-lag tank switching,
+unpublished roller candidate, raw source model or temporary QA artifact is
+included in this acceptance. The earlier failed receipts remain failures.

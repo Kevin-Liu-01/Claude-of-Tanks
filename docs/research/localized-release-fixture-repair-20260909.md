@@ -19,8 +19,9 @@ cases on Chrome 151 / ANGLE Metal Apple M5 Max / Three 185. Native cases retain
 byte parity, color preservation, no-copy/wrong-sampler negative controls, zero
 fallbacks, context restoration, and browser/server/lock cleanup; errors are empty.
 
-This removes four existing suite failures. It is not a full-suite or tank-release
-PASS; independent world and profiling fixture failures remain under repair.
+This removed four existing suite failures. At that historical boundary it
+was not a full-suite or tank-release PASS; independent world and profiling
+fixture failures still required repair.
 
 Subsequent seven-tank release retry on the repaired main passed anatomy,
 centering, modules, assets, tracks and bores, then timed out at the fidelity
@@ -51,7 +52,8 @@ core-unused checks plus the complete anatomy update/check: 174 anatomy and
 174 marking-seat receipts current, 1,496 modules and 348 track sides with zero
 failures or outside-module results, all 79 existing dimension-drift warnings
 retained, and 522 technical-card files current with no tracked generation drift.
-The current seven-ID full release remains pending. See the
-[integration checkpoint](seven-tank-bodywork-integration-20260909.md#current-full-release--pending)
-for completed phases and the explicit unfinished release boundary; no earlier
-failure is erased by these narrow passes.
+That seven-ID release was still pending at the time. The later combined
+[nine-tank release](nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass)
+passed the complete 858-check lifecycle and both private/public builds on
+unchanged frozen inputs. That complete run supplies acceptance; none of the
+earlier failures is erased or relabelled by the narrow intermediate passes.
