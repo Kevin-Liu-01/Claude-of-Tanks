@@ -85,8 +85,12 @@ for (const seed of [1337, 2049, 7719]) {
         assert.ok(cursor < before.length, `${name}: surviving rails and later extras are byte-identical`);
         cursor++;
       }
-      if (legacy) assert.deepEqual(legacy.buckets[name].map(hashGeometry), before,
-        `${name}: non-Skybridge rail kits ignore the new policy, even with the same wet height field`);
+      // Coal has its own all-map dry-footprint policy. This fixture continues
+      // to isolate Skybridge's rail washout from every other dressing family.
+      const nonCoal = geometries => geometries.filter(geometry => geometry.name !== 'rail-coal-stockpile');
+      if (legacy) assert.deepEqual(nonCoal(legacy.buckets[name]).map(hashGeometry),
+        nonCoal(original.buckets[name]).map(hashGeometry),
+        `${name}: non-Skybridge rails ignore washout, even with the same wet height field`);
     }
 
     // Audit the emitted geometry itself on a denser grid than the policy:

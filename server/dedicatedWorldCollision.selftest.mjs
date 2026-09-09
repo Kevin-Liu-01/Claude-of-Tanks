@@ -11,10 +11,13 @@ import { pushHullFromObstacle, rayCollisionRecord, shellPassesThroughCollisionRe
 import { decodeCollisionManifest, encodeCollisionManifest } from './collisionManifestCodec.ts';
 
 const authoredWorlds = new Map();
+const coalCensus = { railyard: 7, caldera: 7, foundry: 6, skybridge: 4 };
 
 // Public-fleet wreck recapture: different hulk footprints change accepted
 // placements on six maps. These exact counts preserve every non-wreck record
 // and concealment list; terrain rejection and placement budgets are unchanged.
+// The scoped coal capture adds 24 movement/shell pairs on four rail maps;
+// its exact native-control attribution is in RAIL-COAL-STOCKPILES-CHECKPOINT.md.
 const expected = {
   verdant: [6501, 6250, 6763],
   desert: [2381, 2337, 1823],
@@ -23,19 +26,19 @@ const expected = {
   coastal: [3308, 3103, 2648],
   autumn: [6085, 5811, 6261],
   steppe: [2234, 1950, 1392],
-  railyard: [2708, 2547, 1973],
+  railyard: [2715, 2554, 1973],
   frontier: [7436, 7174, 7583],
   fjord: [6377, 6218, 5597],
   delta: [7119, 6877, 8532],
   badlands: [2840, 2676, 1888],
   monsoon: [9271, 9036, 11093],
   alpine: [8539, 8342, 7575],
-  caldera: [4685, 4580, 3572],
-  foundry: [3946, 3791, 2939],
+  caldera: [4692, 4587, 3572],
+  foundry: [3952, 3797, 2939],
   ruinspires: [2823, 5139, 1159],
   blackglass: [3516, 4372, 2270],
   titan_gorge: [2471, 2283, 1144],
-  skybridge: [3108, 3161, 1892],
+  skybridge: [3112, 3165, 1892],
   // Native 3c06d3352 capture: authored drainage contours change seeded
   // vegetation/prop acceptance. Keep the exact census, not a tolerance.
   polders: [3955, 3734, 3407],
@@ -67,7 +70,7 @@ MAP_IDS.map((id) => `${id}.json`).sort(), 'exactly one collision shard exists fo
 for (const [mapId, counts] of Object.entries(expected)) {
   assert.deepEqual(Object.values(stats[mapId]), counts, `${mapId} manifest census`);
   const mapWorld = createDedicatedWorldCollision(mapId);
-  if (mapId === 'reservoir' || mapId === 'longleaf') authoredWorlds.set(mapId, mapWorld);
+  if (mapId === 'reservoir' || mapId === 'longleaf' || mapId in coalCensus) authoredWorlds.set(mapId, mapWorld);
   const hedgehogObstacles = mapWorld.getObstacles().filter((record) => record.kind === 'hedgehog');
   const hedgehogColliders = mapWorld.getColliders().filter((record) => record.kind === 'hedgehog');
   assert.ok(hedgehogObstacles.length >= 3 && hedgehogObstacles.length % 3 === 0,
@@ -280,6 +283,39 @@ function assertLoggingYard(mapWorld, independentWorld) {
     assert.equal(independentCollider.dead, undefined);
     assertAuthoredContact(independentWorld, independent, independentCollider, x, z, 'independent Longleaf flatbed');
   }
+}
+
+function assertCoalStockpiles(mapId, mapWorld) {
+  const obstacles = mapWorld.getObstacles().filter(record => record.kind === 'coal-heap');
+  const colliders = mapWorld.getColliders().filter(record => record.kind === 'coal-heap');
+  assert.equal(obstacles.length, coalCensus[mapId], `${mapId}: native coal movement census`);
+  assert.equal(colliders.length, obstacles.length, `${mapId}: native coal shell census`);
+  for (const [index, obstacle] of obstacles.entries()) {
+    const collider = colliders[index];
+    assert.deepEqual(collider, obstacle);
+    assert.notEqual(collider, obstacle); assert.notEqual(collider.shape2, obstacle.shape2);
+    assert.equal(obstacle.shape2?.kind, 'convex', 'coal retains the actual packed vertex hull');
+    const { cx: x, cz: z } = obstacle.shape2;
+    assert.ok(obstacle.max[0] - obstacle.min[0] < 5 && obstacle.max[2] - obstacle.min[2] < 5,
+      'small stockpiles cannot regress to giant placeholder bounds');
+    assert.ok(obstacle.max[1] - mapWorld.heightField.getHeightAt(x, z) < 1,
+      'captured piles remain sub-metre above their terrain support');
+    assert.equal(shellPassesThroughCollisionRecord(collider), false);
+    assertAuthoredContact(mapWorld, obstacle, collider, x, z, `${mapId} coal ${index}`);
+    for (const railX of [40, 49, 58, 67, 76]) {
+      assert.equal(pushHullFromObstacle({ x: railX, z }, 0, 1, 1, 0, 2, 1.5, obstacle, { x: 0, z: 0 }), false,
+        'new solid coal leaves every adjacent rail lane driveable');
+    }
+    assert.equal(rayCollisionRecord(new Vector3(x - 10, collider.max[1] + 0.01, z),
+      new Vector3(1, 0, 0), collider, 20, new Vector3()), -1, 'no invisible coal cover above the actual apex');
+  }
+}
+
+for (const mapId of Object.keys(coalCensus)) {
+  const source = authoredWorlds.get(mapId);
+  const restored = roundTripFeatureWorld(mapId, source, 'coal-heap');
+  assertCoalStockpiles(mapId, source);
+  assertCoalStockpiles(mapId, restored);
 }
 
 const reservoir = authoredWorlds.get('reservoir');

@@ -54,10 +54,10 @@
       "concealers": 1392
     },
     "railyard": {
-      "bytes": 715823,
-      "sha256": "131d0ab8187a48a8ec25f1b9f41f53e081f6f37f74b39664af5808289d87e2e3",
-      "obstacles": 2708,
-      "colliders": 2547,
+      "bytes": 717932,
+      "sha256": "b1a6074d412c59b7ce8ccf135e2746cd5fb6889c6f9c7126dd7ec93329cbbd4d",
+      "obstacles": 2715,
+      "colliders": 2554,
       "concealers": 1973
     },
     "frontier": {
@@ -103,17 +103,17 @@
       "concealers": 7575
     },
     "caldera": {
-      "bytes": 1116535,
-      "sha256": "aafbbef188816f28501c37ee3b19de56a4ba0b5c9a2e34be1e7daf36497281af",
-      "obstacles": 4685,
-      "colliders": 4580,
+      "bytes": 1118645,
+      "sha256": "5856945f6cda9cd4cd899b6668cdc4bc34db3818f9bd6fc14f4ce0365f6c1c19",
+      "obstacles": 4692,
+      "colliders": 4587,
       "concealers": 3572
     },
     "foundry": {
-      "bytes": 995880,
-      "sha256": "2c671505f585af7c69bcd799acd5c2184da514f0053785fa552971af943da4c7",
-      "obstacles": 3946,
-      "colliders": 3791,
+      "bytes": 997688,
+      "sha256": "c04c0eb6794034bdc02b5199a3cd34bfe12d7d77934ed29fa5e7bd72050cd0bd",
+      "obstacles": 3952,
+      "colliders": 3797,
       "concealers": 2939
     },
     "ruinspires": {
@@ -138,10 +138,10 @@
       "concealers": 1144
     },
     "skybridge": {
-      "bytes": 927640,
-      "sha256": "e38e10530a44dc08c0ac988bf251d623b466f0e0c3b1bb78ef587474128e3172",
-      "obstacles": 3108,
-      "colliders": 3161,
+      "bytes": 928864,
+      "sha256": "0d8da5e34c18a0c160d70c3f80317ccb10986aab5e62b4241a4dda7368e6886b",
+      "obstacles": 3112,
+      "colliders": 3165,
       "concealers": 1892
     },
     "polders": {
