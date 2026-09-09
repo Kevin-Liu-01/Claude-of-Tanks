@@ -184,6 +184,7 @@ export default {
     sandbagLines: 10,
     hedgehogs: 5,
     cropFields: 7, // the harvest is in — stubble plots + standing rows
+    cropForm: 'harvest',
     // world-dressing r1: harvest dressing — stook-heavy fields, wattle yard
     // hurdles, churns + laundry in the farmyards, carts on the lanes
     wallStyle: 'fieldstone',

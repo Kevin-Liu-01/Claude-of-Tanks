@@ -252,6 +252,7 @@ interface PropsSettings {
   rubblePiles: number;
   wrecks: number;
   cropFields: number;
+  cropForm?: 'harvest' | 'wet-upright';
   lampposts: boolean;
   hedgehogs: number;
   destructibleBuildings: string[];
@@ -4573,13 +4574,102 @@ ${snowCap ? `
     finalizeCropFields(cropTex, cropGeos);
   }
 
+  function paintWetCropLeaves(cctx: CanvasRenderingContext2D, x: number, hgt: number, lean: number, width: number): void {
+    for (let leaf = 0; leaf < 2; leaf++) {
+      const t = .36 + leaf * .25;
+      // Exact points on the stalk quadratic, including its 2px buried start.
+      const lx = x + lean * (.8 * t + .2 * t * t);
+      const ly = 258 - (1.2 * hgt + 4) * t + (.2 * hgt + 2) * t * t;
+      const reach = (leaf ? -1 : 1) * (22 + Math.abs(lean) * 2);
+      cctx.beginPath();
+      cctx.moveTo(lx, ly);
+      cctx.quadraticCurveTo(lx + reach * .5, ly - hgt * .18 - width, lx + reach, ly - hgt * .22);
+      cctx.quadraticCurveTo(lx + reach * .5, ly - hgt * .18 + width, lx, ly);
+      cctx.fill();
+    }
+  }
+
+  function paintCropPanicle(cctx: CanvasRenderingContext2D, x: number, y: number, length: number, spread: number): void {
+    cctx.beginPath();
+    cctx.moveTo(x, y);
+    cctx.quadraticCurveTo(x + spread * .2, y - length * .7, x + spread * .4, y - length);
+    for (let branch = 0; branch < 5; branch++) {
+      const t = (branch + 1) / 6, side = branch % 2 ? -1 : 1;
+      const bx = x + spread * .4 * t, by = y - length * (1.4 * t - .4 * t * t);
+      cctx.moveTo(bx, by);
+      cctx.quadraticCurveTo(bx + side * spread, by - length * .18,
+        bx + side * spread * .85, by - length * .06);
+    }
+    cctx.stroke();
+  }
+
+  function biomeCropHeight(wet: boolean, standing: boolean, growth: number, headLength: number): number {
+    // Admission keeps the upper40% of this draw; restore its full height span.
+    if (wet) return 256 * (.64 + ((growth - .60) / .40) * .25);
+    return 256 * (standing ? .55 + headLength * .28 : .10 + growth * .19);
+  }
+
+  function biomeCropLean(wet: boolean, standing: boolean, bend: number): number {
+    return (bend - .5) * (wet ? 10 : standing ? 20 : 8);
+  }
+
+  function paintCropStalk(cctx: CanvasRenderingContext2D, x: number, hgt: number, lean: number, width: number): void {
+    cctx.lineWidth = width;
+    cctx.beginPath();
+    cctx.moveTo(x, 258);
+    cctx.quadraticCurveTo(x + lean * .4, 256 - hgt * .6, x + lean, 256 - hgt);
+    cctx.stroke();
+  }
+
+  function finishStandingCrop(cctx: CanvasRenderingContext2D, x: number, y: number,
+    wet: boolean, headLength: number, headWidth: number): void {
+    // Small branching heads, not the legacy broad elliptical wheat pegs.
+    paintCropPanicle(cctx, x, y,
+      (wet ? 12 : 7) + headLength * 5, (wet ? 3 : 1.2) + headWidth * 1.2);
+  }
+
+  function finishBrokenCrop(cctx: CanvasRenderingContext2D, x: number, y: number, width: number): void {
+    // A broken, oblique cut at the actual shortened stalk tip.
+    cctx.beginPath();
+    cctx.moveTo(x - width * .6, y + width);
+    cctx.lineTo(x + width * .6, y);
+    cctx.stroke();
+  }
+
+  function paintBiomeCrop(cctx: CanvasRenderingContext2D, crng: () => number, form: NonNullable<PropsSettings['cropForm']>): void {
+    for (let b = 0; b < 260; b++) {
+      // Keep all nine legacy draws in their original order: this same stream
+      // selects plots immediately after the atlas, including cut/headless stems.
+      const x = crng() * 256, growth = crng(), bend = crng();
+      const lum = .17 + crng() * .11, hue = crng(), girth = crng();
+      const headHue = crng(), headWidth = crng(), headLength = crng();
+      const wet = form === 'wet-upright';
+      // Admit wet stems after all draws: open gaps between whole attached
+      // plants without changing the following plot/row placement stream.
+      if (wet && growth < .60) continue;
+      const standing = wet || growth > .88;
+      const hgt = biomeCropHeight(wet, standing, growth, headLength);
+      const lean = biomeCropLean(wet, standing, bend);
+      const width = (wet ? .55 : .65) + girth * .45;
+      _col.setHSL(wet ? .20 + hue * .035 : .105 + hue * .025, wet ? .40 : .30, lum);
+      cctx.strokeStyle = cctx.fillStyle = _col.getStyle();
+      paintCropStalk(cctx, x, hgt, lean, width);
+      if (wet) paintWetCropLeaves(cctx, x, hgt, lean, .8 + girth * .6);
+      _col.setHSL(wet ? .17 + headHue * .025 : .10 + headHue * .02, .34, lum + .045);
+      cctx.strokeStyle = _col.getStyle();
+      if (standing) finishStandingCrop(cctx, x + lean, 256 - hgt, wet, headLength, headWidth);
+      else finishBrokenCrop(cctx, x + lean, 256 - hgt, width);
+    }
+  }
+
   function createCropTexture(crng: () => number): THREE.CanvasTexture {
     const cs = 256;
     const cc = document.createElement('canvas');
     cc.width = cc.height = cs;
     const cctx = canvas2d(cc, { willReadFrequently: true });
     cctx.clearRect(0, 0, cs, cs);
-    for (let b = 0; b < 260; b++) { // wheat stalks with seed heads
+    if (P.cropForm) paintBiomeCrop(cctx, crng, P.cropForm);
+    else for (let b = 0; b < 260; b++) { // legacy wheat: other maps stay byte-identical
       const x = crng() * cs;
       const hgt = cs * (0.50 + crng() * 0.42);
       const lean = (crng() - 0.5) * 16;
@@ -4604,12 +4694,14 @@ ${snowCap ? `
       // Four coarse gaps remain resolved in the existing 64px mip, while
       // each clump retains the original seeded stems and seed heads. This
       // pixel-only cut consumes no random draws or extra rows/materials.
-      if (x % 64 < 24) cid.data[i * 4 + 3] = 0;
+      if (!P.cropForm && x % 64 < 24) cid.data[i * 4 + 3] = 0;
       const rootShade = 0.98 - y / cs * 0.18;
       for (let channel = 0; channel < 3; channel++) cid.data[i * 4 + channel] *= rootShade;
       // Muted mean-tone flood prevents bright RGB fringes in transparent mips.
       if (cid.data[i * 4 + 3] < 24) {
-        cid.data[i * 4] = 126; cid.data[i * 4 + 1] = 110; cid.data[i * 4 + 2] = 66;
+        cid.data[i * 4] = P.cropForm === 'wet-upright' ? 88 : 126;
+        cid.data[i * 4 + 1] = P.cropForm === 'wet-upright' ? 112 : 110;
+        cid.data[i * 4 + 2] = P.cropForm === 'wet-upright' ? 56 : 66;
       }
     }
     cctx.putImageData(cid, 0, 0);

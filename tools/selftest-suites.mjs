@@ -777,6 +777,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/structureSurface.selftest.mjs',
     'src/world/environmentSurfaceColor.selftest.mjs',
     'src/world/cropLighting.selftest.mjs',
+    'src/world/cropBiomeIdentity.selftest.mjs',
     'src/world/horizonResources.selftest.mjs',
     'src/world/horizonVerdant.selftest.mjs',
     'src/world/horizonMesaTexture.selftest.mjs',
