@@ -391,7 +391,7 @@ function css(h: number, s: number, l: number): string {
   return _cc.getStyle(THREE.SRGBColorSpace);
 }
 
-function finishAlphaTexture(
+function finishAlphaPixels(
   c: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   floodR: number,
@@ -399,7 +399,7 @@ function finishAlphaTexture(
   floodB: number,
   radialFalloff = false,
   tone: ToneFunction | null = null,
-): THREE.CanvasTexture {
+): ImageData {
   // flood transparent texels with the mean foliage tone so mip averaging does
   // not darken distant cards toward black (non-premultiplied-alpha bleed).
   // radialFalloff pulls border alpha to 0 so deep mips average BELOW the
@@ -416,6 +416,19 @@ function finishAlphaTexture(
     }
   }
   applyTone(d, tone);
+  return id;
+}
+
+function finishAlphaTexture(
+  c: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+  floodR: number,
+  floodG: number,
+  floodB: number,
+  radialFalloff = false,
+  tone: ToneFunction | null = null,
+): THREE.CanvasTexture {
+  const id = finishAlphaPixels(c, ctx, floodR, floodG, floodB, radialFalloff, tone);
   ctx.putImageData(id, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -562,11 +575,11 @@ function makeBarkTexture(seed: number): {
 // Two tuft variants: 0 = lush meadow tuft, 1 = drier mixed tuft. Dense at the
 // root line, ragged at the top so minified mips fade the card edges instead of
 // exposing a translucent rectangle.
-function makeGrassCardTexture(
+export function makeGrassCardTexture(
   rng: RandomSource,
   variant: number,
   tone: ToneFunction | null = null,
-): THREE.CanvasTexture {
+): THREE.Texture {
   // Grass never occupies enough screen space to justify a 256 px procedural
   // atlas. A simpler 128 px silhouette minifies more cleanly and quarters the
   // texture traffic without changing the authored meadow palette.
@@ -626,7 +639,16 @@ function makeGrassCardTexture(
       }
     }
   }
-  return finishAlphaTexture(c, ctx, 74, 88, 42, false, tone);
+  // Keep straight-alpha padding in ImageData. Writing it back through Canvas
+  // premultiplies RGB by zero alpha, turning the padded texels black again.
+  // ImageData is a native TexImageSource: the same flip/filter/mip policy
+  // uploads this existing pixel buffer without retaining a second canvas.
+  const pixels = finishAlphaPixels(c, ctx, 74, 88, 42, false, tone);
+  const texture = new THREE.Texture(pixels);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 // Broadleaf foliage card: dozens of small leaf-ellipse clumps, centre-heavy so
@@ -2514,7 +2536,7 @@ function* vegetationBuildSteps(
   const makeTuftFarGeometry = (w: number, h: number): THREE.BufferGeometry =>
     buildGrassTuftGeometry(w, h, 1, 1.5);
 
-  const grassTex: THREE.CanvasTexture[] = [];
+  const grassTex: THREE.Texture[] = [];
   grassTex.push(makeGrassCardTexture(mulberry32(seed + 41), 0, veg.grassTexTone));
   yield { stage: 'grassPrep', fine: true };
   grassTex.push(makeGrassCardTexture(mulberry32(seed + 42), 1, veg.grassTexTone));

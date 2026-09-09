@@ -63,6 +63,6 @@ assert.match(source, /const s = 128;[\s\S]*?const dryChance = variant === 0 \? 0
   'both grass atlases retain their size and biome-sensitive living/dry mix');
 assert.match(source, /if \(veg\.tuftTone\) \[th, ts, tl\] = veg\.tuftTone\(th, ts, tl\);/,
   'authored instance biome palettes are retained');
-assert.match(source, /finishAlphaTexture\(c, ctx, 74, 88, 42, false, tone\)/,
+assert.match(source, /finishAlphaPixels\(c, ctx, 74, 88, 42, false, tone\)/,
   'authored atlas biome palettes and alpha coverage remain intact');
 console.log('grassLighting.selftest: fixed buffers, soft form normals, reed scales and biome contracts passed');
