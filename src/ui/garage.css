@@ -50,10 +50,28 @@
 .cot-header-nav .nv .nvi-product{width:18px;height:16px;}
 .cot-header-nav .nv .nav-label{display:inline;}
 .cot-header-nav .cot-locale-switcher{gap:5px;padding-inline:8px;}
+.cot-locale-credit-wrap{position:relative;display:inline-flex;height:34px;align-items:stretch;}
 .cot-locale-options{display:inline-flex;align-items:center;gap:3px;color:#687680;
   font-size:7px;line-height:1;letter-spacing:.03em;text-transform:none;}
 .cot-locale-options i{font-style:normal;opacity:.38;}
 .cot-locale-options .is-current{color:#ffd27a;}
+.cot-locale-credit{position:absolute;z-index:30;top:calc(100% + 9px);left:50%;width:218px;min-height:58px;
+  padding:9px 12px;display:flex;align-items:center;justify-content:flex-start;gap:10px;
+  color:#eef3f6;background:linear-gradient(145deg,rgba(18,23,28,.99),rgba(5,8,11,.99));
+  border:1px solid rgba(146,164,180,.36);text-decoration:none;
+  box-shadow:0 18px 48px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.05);
+  opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,-5px);
+  transition:opacity .14s ease,transform .14s ease-out,visibility 0s linear .14s;}
+.cot-locale-credit::before{position:absolute;top:-5px;left:50%;width:8px;height:8px;
+  border-top:1px solid rgba(146,164,180,.36);border-left:1px solid rgba(146,164,180,.36);
+  background:#11161b;content:'';transform:translateX(-50%) rotate(45deg);}
+.cot-locale-credit img{width:30px;height:30px;flex:none;object-fit:contain;}
+.cot-locale-credit>span{display:flex;min-width:0;flex-direction:column;align-items:flex-start;gap:4px;}
+.cot-locale-credit small{color:#e9a346;font-size:6.5px;font-weight:900;letter-spacing:.18em;line-height:1;text-transform:uppercase;}
+.cot-locale-credit strong{color:#f2f5f6;font-size:8px;font-weight:900;letter-spacing:.1em;line-height:1.2;text-transform:uppercase;white-space:nowrap;}
+.cot-locale-credit-wrap:hover .cot-locale-credit,
+.cot-locale-credit-wrap:focus-within .cot-locale-credit{opacity:1;visibility:visible;pointer-events:auto;
+  transform:translate(-50%,0);transition-delay:0s;}
 .cot-header-nav .cot-record-trigger{position:relative;}
 .cot-header-nav .cot-record-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
   background:rgba(35,24,10,.94);}

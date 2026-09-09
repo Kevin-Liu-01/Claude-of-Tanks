@@ -51,6 +51,7 @@ project's first-party code or Reserved Content.
 |---|---|---|---|---|
 | National and territory flags (selective 4x3 SVG imports; the build includes only roster nations rather than the complete catalog). | Panayiotis Lipiridis and flag-icons contributors | https://flagicons.lipis.dev/ / https://github.com/lipis/flag-icons | MIT | npm package `flag-icons`; mapping/render adapter in `src/ui/{flagCodes,flags}.js` |
 | Three.js logo mark (official icon geometry, presented in the landing-page engine credit through a CSS color mask). | three.js authors | https://github.com/mrdoob/three.js/blob/072dcccba979a47a44a44769c051793ebe800d67/files/icon.svg | MIT | `public/brand/threejs-mark.svg` |
+| General Translation GT mark (official 96 px transparent export, presented only in the language-switcher attribution). | General Translation, Inc. | https://generaltranslation.com/brand/no-bg-gt-logo-dark-96.png | General Translation trademark/branding; not covered by the project license. | `public/brand/partners/general-translation.png` |
 
 ## Brand / logo set (public/brand/) — added 2026-07-31
 

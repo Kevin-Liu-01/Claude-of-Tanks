@@ -542,12 +542,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" title="${t('garage.nav.docs')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
     `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
-    `<button class="nv cot-nav-desktop cot-locale-switcher" data-nav="locale" type="button" ` +
+    `<div class="cot-locale-credit-wrap cot-nav-desktop">` +
+    `<button class="nv cot-locale-switcher" data-nav="locale" type="button" ` +
     `aria-label="${localeSwitchLabel}" title="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 15, 'currentColor', 'nvi')}` +
     `<span class="cot-locale-options" aria-hidden="true">` +
     `<span${currentLocale === 'en-US' ? ' class="is-current"' : ''}>EN</span><i>/</i>` +
     `<span${currentLocale === 'zh-CN' ? ' class="is-current"' : ''}>中文</span></span></button>` +
+    `<a class="cot-locale-credit" href="https://generaltranslation.com/" target="_blank" rel="noreferrer" ` +
+    `aria-label="${t('publicNav.language.creditEyebrow')} ${t('publicNav.language.creditName')}">` +
+    `<img src="/brand/partners/general-translation.png" alt="" draggable="false">` +
+    `<span><small>${t('publicNav.language.creditEyebrow')}</small>` +
+    `<strong>${t('publicNav.language.creditName')}</strong></span></a></div>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
     `target="_blank" rel="noopener noreferrer" aria-label="${t('garage.nav.githubAria')}" title="${t('garage.nav.github')}">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +

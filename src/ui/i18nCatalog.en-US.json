@@ -1723,6 +1723,8 @@
   "publicNav.garage": "Garage",
   "publicNav.language.switchToChinese": "Switch interface language to Simplified Chinese",
   "publicNav.language.switchToEnglish": "Switch interface language to English",
+  "publicNav.language.creditEyebrow": "FULLY INTERNATIONALIZED BY",
+  "publicNav.language.creditName": "GENERAL TRANSLATION",
   "metadata.imageAlt": "Claude of Tanks in-engine armored battle with the crest wordmark",
   "metadata.game.title": "Claude of Tanks — Free Browser Tank Game",
   "metadata.game.description": "Play browser-native armored warfare with a large first-party vehicle fleet, authored battlefields, physical gunnery, bot and multiplayer battles, X-ray killcams, and Scene Studio. No install or account required.",

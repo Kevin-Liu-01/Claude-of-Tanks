@@ -113,10 +113,16 @@ assert.match(navSource, /event\.code !== 'Escape'/,
   'the public mobile navigation must close with Escape');
 assert.match(navSource, /className = 'public-nav__locale'/,
   'public pages must expose a visible locale switcher in the shared navigation');
+assert.match(navSource, /className = 'public-nav__locale-credit'/,
+  'the public locale switcher must expose General Translation attribution');
+assert.match(navSource, /\/brand\/partners\/general-translation\.png/,
+  'the public locale attribution must use the packaged GT mark');
 assert.match(navSource, /setLocale\(next\)/,
   'the public locale switcher must persist through the canonical i18n owner');
 assert.match(navCss, /\.public-nav__locale\{[^}]*display:flex;[^}]*height:34px;/,
   'the public locale switcher must be a first-class desktop navigation control');
+assert.match(navCss, /\.public-nav__locale-wrap:hover \.public-nav__locale-credit,[\s\S]*?\.public-nav__locale-wrap:focus-within \.public-nav__locale-credit/,
+  'the GT credit must appear for both pointer hover and keyboard focus');
 for (const [surface, css] of [
   ['shared public navigation', navCss],
   ['Home', homeCss],
