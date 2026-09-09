@@ -39,12 +39,15 @@ const battleVisuals = {
     events.push(`upload:${root.name}`);
     return { textures: 1, totalMs: 1 };
   },
-  async stageBattleVisualReveal(entity) {
+  async stageBattleVisualReveal(entity, _yield, initiallyHidden, options) {
+    assert.equal(initiallyHidden, false);
+    assert.deepEqual(options, { compilePrograms: false },
+      'early player textures remain staged but final light/camouflage state owns its first compile');
     events.push(`reveal:${entity.specId}`);
     return {
       preUploadYieldMs: 1,
       textureUploadMs: 2,
-      compileMs: 3,
+      compileMs: 0,
       postCompileYieldMs: 4,
       totalMs: 10,
     };
@@ -197,11 +200,15 @@ try {
   assert.ok(events.indexOf('loader:show') < events.indexOf('audio:resume'));
   assert.ok(events.indexOf('acquisition:done') < events.indexOf('battle:setup'));
   assert.ok(events.indexOf('deployment:warm') < events.indexOf('loader:hide'));
+  assert.ok(events.indexOf('reveal:m1a2') < events.indexOf('camo:ready'),
+    'early player upload still precedes final camouflage');
+  assert.ok(events.indexOf('camo:ready') < events.indexOf('deployment:warm'));
   assert.ok(events.indexOf('reveal:fallback') < events.indexOf('loader:hide'));
   assert.ok(events.indexOf('loader:hide') < events.indexOf('battle:open'));
   assert.equal(globalThis.__BATTLE_LOAD.map, 'verdant');
   assert.equal(globalThis.__BATTLE_LOAD.visiblePreBattleS, 2);
   assert.equal(globalThis.__VISUAL_LOAD_TIMINGS.length, 1);
+  assert.equal(globalThis.__VISUAL_LOAD_TIMINGS[0].compileMs, 0);
 } finally {
   delete globalThis.__BATTLE_LOAD;
   delete globalThis.__VISUAL_LOAD_TIMINGS;

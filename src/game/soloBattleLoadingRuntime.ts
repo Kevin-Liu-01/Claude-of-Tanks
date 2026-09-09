@@ -461,9 +461,13 @@ export function createSoloBattleLoadingRuntime(
       (host.__VISUAL_LOAD_TIMINGS ||= []).push(playerVisualTiming);
       const uploadStartedAt = now();
       if (!game.player) throw new Error('solo battle loading requires a player after setup');
+      // Upload now; deployment owns the first forward compile after final
+      // camouflage and the selected day/night light signature are installed.
       const playerStageReceipt = await battleVisuals.stageBattleVisualReveal(
         game.player,
         loadYield,
+        false,
+        { compilePrograms: false },
       );
       playerVisualTiming.uploadMs = Math.round(now() - uploadStartedAt);
       playerVisualTiming.preUploadYieldMs = playerStageReceipt.preUploadYieldMs;
