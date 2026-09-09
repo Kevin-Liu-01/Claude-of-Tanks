@@ -3490,7 +3490,7 @@ function* vegetationBuildSteps(
       },
       far: (r, pal, k) => {
         const pair = scaleFar(buildOakFarGeometry(r, pal, k), farScale[0], farScale[1], farScale[2]);
-        if (tidalMangrove) shapeMangroveFarStem(pair.trunk, k);
+        if (tidalMangrove) shapeMangroveFarStem(pair.trunk, k, pair.canopy);
         return pair;
       },
     };

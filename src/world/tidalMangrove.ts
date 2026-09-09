@@ -41,19 +41,87 @@ export function bendMangroveRoot(geometry: BufferGeometry, angle: number, length
   geometry.computeVertexNormals();
 }
 
-/** Same closed distant stem; remove the oak-derived oversized post silhouette. */
-export function shapeMangroveFarStem(geometry: BufferGeometry, variant: number): void {
+type MangroveCapColumn = { x: number; z: number };
+type MangrovePosition = BufferGeometry['attributes'][string];
+
+/** A sufficient disk interior inside actual outward triangle planes; not an
+ * assumption that a closed, jittered lobe must also be convex. */
+function mangroveLobeCapHeight(p: MangrovePosition, begin: number, cx: number, cz: number,
+  preferredY: number, radius: number): number | undefined {
+  // The extra 0.1 mm keeps the final Float32 cap off a tangent face.
+  const paddedRadius = radius + 1e-4;
+  let low = 0, high = Infinity;
+  for (let i = begin; i < begin + 60; i += 3) {
+    const ax = p.getX(i), ay = p.getY(i), az = p.getZ(i);
+    const bx = p.getX(i + 1) - ax, by = p.getY(i + 1) - ay, bz = p.getZ(i + 1) - az;
+    const dx = p.getX(i + 2) - ax, dy = p.getY(i + 2) - ay, dz = p.getZ(i + 2) - az;
+    const nx = by * dz - bz * dy, ny = bz * dx - bx * dz, nz = bx * dy - by * dx;
+    const norm = Math.hypot(nx, ny, nz);
+    const rhs = nx * (ax - cx) + ny * ay + nz * (az - cz) - paddedRadius * Math.hypot(nx, nz);
+    if (!Number.isFinite(norm + rhs) || norm < 1e-12) return undefined;
+    if (Math.abs(ny) <= norm * 1e-12) {
+      if (rhs < 0) return undefined;
+    } else if (ny > 0) high = Math.min(high, rhs / ny);
+    else low = Math.max(low, rhs / ny);
+  }
+  if (!Number.isFinite(high) || high - low <= 2e-4) return undefined;
+  const inset = Math.min(radius, (high - low) / 2);
+  return Math.max(low + inset, Math.min(preferredY, high - inset));
+}
+
+function moveMangroveCapColumn(p: MangrovePosition, begin: number, column: MangroveCapColumn,
+  x: number, z: number, radius: number): boolean {
+  let cx = 0, cz = 0;
+  for (let i = begin; i < begin + 60; i++) { cx += p.getX(i); cz += p.getZ(i); }
+  cx /= 60; cz /= 60;
+  const travel = Math.hypot(cx - x, cz - z), reach = radius * 2;
+  if (!Number.isFinite(travel)) return false;
+  // Move toward a real lobe center by at most one existing cap diameter.
+  const fraction = travel > reach ? reach / travel : 1;
+  column.x = x + (cx - x) * fraction; column.z = z + (cz - z) * fraction;
+  return true;
+}
+
+/** Construction-only, for two library variants; no geometry/state is retained. */
+function mangroveCapAttachment(canopy: BufferGeometry, x: number, y: number, z: number,
+  radius: number): MangroveCapColumn & { y: number } {
+  const target = { x, y, z }, column = { x, z }, p = canopy?.attributes.position;
+  if (!p || canopy.index || p.count < 360 || p.count > 480 || p.count % 60 !== 0) return target;
+  for (let pass = 0; pass < 2; pass++) {
+    let best = Infinity;
+    for (let begin = 0; begin < p.count; begin += 60) {
+      if (pass === 1 && !moveMangroveCapColumn(p, begin, column, x, z, radius)) continue;
+      const cy = mangroveLobeCapHeight(p, begin, column.x, column.z, y, radius);
+      if (cy === undefined) continue;
+      const distance = (column.x - x) ** 2 + (cy - y) ** 2 + (column.z - z) ** 2;
+      if (distance < best) { best = distance; target.x = column.x; target.y = cy; target.z = column.z; }
+    }
+    if (best < Infinity) break; // Preserve the original bend whenever its column fits.
+  }
+  // Unsupported/malformed future crowns retain the legacy finite stem rather
+  // than crashing map load. Actual-builder tests must still prove containment.
+  return target;
+}
+
+/** Same closed distant stem and ground ring; attach its cap to its actual crown. */
+export function shapeMangroveFarStem(geometry: BufferGeometry, variant: number, canopy: BufferGeometry): void {
   const p = geometry.attributes.position;
-  let height = 0;
+  let height = 0, radius = 0;
   for (let i = 0; i < p.count; i++) height = Math.max(height, p.getY(i));
+  if (!(height > 0) || !Number.isFinite(height)) return;
+  for (let i = 0; i < p.count; i++) {
+    if (p.getY(i) === height) radius = Math.max(radius, Math.hypot(p.getX(i), p.getZ(i)) * .5);
+  }
   const angle = variant === 0 ? 0 : 2.2;
-  // The short inherited oak stem stopped 43 cm beneath its closed crown.
-  // Extend that same cap into the existing lobe; the ground ring stays fixed.
-  const crownHeight = variant === 0 ? 2.86 : height;
+  // Keep exact ground-ring bytes (including Float32 dust). The legacy bend and
+  // height are preferences, never evidence that the cap meets a lobe.
+  const legacyHeight = variant === 0 ? 2.86 : height;
+  const cx = Math.cos(angle) * .24, cz = Math.sin(angle) * .24;
+  const cap = mangroveCapAttachment(canopy, cx, legacyHeight, cz, radius);
   for (let i = 0; i < p.count; i++) {
     const t = p.getY(i) / height;
-    p.setXYZ(i, p.getX(i) * .5 + Math.cos(angle) * .24 * t, crownHeight * t,
-      p.getZ(i) * .5 + Math.sin(angle) * .24 * t);
+    if (t === 1) p.setXYZ(i, p.getX(i) * .5 + cap.x, cap.y, p.getZ(i) * .5 + cap.z);
+    else p.setXYZ(i, p.getX(i) * .5 + cx * t, legacyHeight * t, p.getZ(i) * .5 + cz * t);
   }
   geometry.computeVertexNormals();
 }

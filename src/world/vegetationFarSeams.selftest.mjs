@@ -187,16 +187,43 @@ for (const make of [factories[1], factories[3]]) {
 assert.ok(tornGaps[0] > .7 && tornGaps[1] > .15, 'authentic old physical tears remain negative evidence');
 
 let near = 0, far = 0, bushes = 0;
-function compareFarPart(actual, old, poisonedNormals, held, key, label) {
+function attachmentDelta(actual, old, label) {
+  assert.deepEqual(budget(actual), budget(old), label + ': exact attachment storage');
+  assert.deepEqual(actual.index?.array, old.index?.array);
+  assert.deepEqual(actual.groups, old.groups); assert.deepEqual(actual.drawRange, old.drawRange);
+  assert.deepEqual(actual.userData, old.userData);
+  const p = old.attributes.position, q = actual.attributes.position;
+  const top = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
+  assert.equal(new Set(Array.from({ length: p.count }, (_, i) => p.getY(i))).size, 2);
+  let cap = 0;
+  for (let i = 0; i < p.count; i++) {
+    if (p.getY(i) === top) cap++;
+    else assert.deepEqual([q.getX(i), q.getY(i), q.getZ(i)], [p.getX(i), p.getY(i), p.getZ(i)],
+      label + ': exact ground ring; only the pre-existing cap may move to its changed crown');
+  }
+  assert.equal(cap, 30);
+  for (const [name, attr] of Object.entries(actual.attributes)) {
+    assert.ok(attr.array.every(Number.isFinite));
+    if (name !== 'position' && name !== 'normal') assert.ok(bytes(attr.array).equals(bytes(old.attributes[name].array)), label + '/' + name);
+  }
+}
+function compareFarPart(actual, old, poisonedNormals, held, key, label, crownAttachment) {
   assert.deepEqual(budget(actual), budget(old)); assert.deepEqual(actual.index?.array, old.index?.array);
-  if (key === 'trunk') exact(actual, old, label + '/far trunk');
+  // Only Mangrove's willow cap follows its changed actual crown. Independent
+  // packed-vertex/triangle ray containment remains in tidalMangrove.selftest.
+  if (key === 'trunk' && crownAttachment) attachmentDelta(actual, old, label + '/far trunk');
+  else if (key === 'trunk') exact(actual, old, label + '/far trunk');
   else {
     assert.deepEqual(actual.attributes.uv.array, old.attributes.uv.array);
     const n = actual.attributes.normal;
     for (let i = 0; i < n.count; i++) assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-6);
   }
   exact(actual, poisonedNormals, label + '/all final transforms overwrite intermediate normals');
-  if (held) { exact(actual, held, label + '/frozen joined far output'); held.dispose(); }
+  if (held) {
+    if (key === 'trunk' && crownAttachment) attachmentDelta(actual, held, label + '/frozen joined far attachment');
+    else exact(actual, held, label + '/frozen joined far output');
+    held.dispose();
+  }
   actual.dispose(); old.dispose(); poisonedNormals.dispose();
 }
 function compareLibrary(seed, veg, label) {
@@ -219,7 +246,8 @@ function compareLibrary(seed, veg, label) {
       const held = frozen?.SPECIES[species].far(frozenRng.rng, frozen.palOf(species), k);
       if (held) assert.deepEqual(receipt, frozenRng.receipt());
       for (const key of Object.keys(actual)) {
-        compareFarPart(actual[key], old[key], poisonedNormals[key], held?.[key], key, label);
+        compareFarPart(actual[key], old[key], poisonedNormals[key], held?.[key], key, label,
+          species === 'willow' && veg.willowForm === 'tidalMangrove');
       }
       far++;
     }
