@@ -1118,10 +1118,12 @@ function addRootButtresses(
     const tiltRoll = rng() * 0.06;
     if (tidalMangrove) bendMangroveRoot(root, angle, length, 0.10 + tiltRoll);
     else {
-      root.rotateZ(Math.PI / 2 - 0.10 - tiltRoll);
+      // Cone +Y is its tip: point it outward/down, with the broad cap inside the flare.
+      root.rotateZ(-Math.PI / 2 - 0.10 - tiltRoll);
       root.rotateY(-angle);
       root.scale(1, 0.48, 1);
-      root.translate(Math.cos(angle) * length * 0.42, radius * 0.24, Math.sin(angle) * length * 0.42);
+      // The half-length and .48 vertical scale cancel the downward tip offset.
+      root.translate(Math.cos(angle) * length * 0.42, length * 0.24 * Math.sin(0.10 + tiltRoll), Math.sin(angle) * length * 0.42);
     }
     parts.push(paintFlat(root, color.clone().multiplyScalar(0.90 + rng() * 0.10), 0));
   }

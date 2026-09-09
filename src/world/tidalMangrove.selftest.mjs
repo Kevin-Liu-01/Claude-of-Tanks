@@ -384,16 +384,18 @@ const shapes = [
   { cy: 3.85, rx: 3.20, ry: 1.55, rz: 3.55, trunkH: 2.7, n: 72 },
   { cy: 3.30, rx: 3.85, ry: 1.15, rz: 3.45, trunkH: 2.2, n: 76 },
 ];
-const legacy = [
-  '612546ebfe9bd3d7c6f414246d841afbf660058f0a2bc08ab7abd9b08d7972cb',
-  '124c54404075087caacdf1ba19a25988988fb74d012eaea313664c8a21f83f23',
-  '7589604acb6f44b3b7681bb11f4e5f58f6cbaf135c0858e85e4f3a58ff5ef9f5',
+// Reviewed woody-root orientation/seating only; old→new provenance is retained
+// in docs/WOODY-ROOT-ORIENTATION-CANDIDATE.md. Tidal geometry remains current.
+const ordinaryWoody = [
+  '0fc02117cfbf74e33ddd3d04e223abc726440f353e06afeab574525cac5cdd08',
+  '7eb7c8a96e48d99d0936f55e6c9bed80a06b70519be21034fcd3fdf56b6554a2',
+  'c18bf2827f158293076fceabfa77025c3ee299c9273c1d384e39ced0d0b4ff7f',
 ];
 globalThis.__tidalRng = [];
 for (let k = 0; k < 3; k++) {
   const oldRng = mulberry32(2242 + k * 7), newRng = mulberry32(2242 + k * 7);
   const old = buildBroadleafTrunk(oldRng, shapes[k]), actual = buildBroadleafTrunk(newRng, shapes[k], true);
-  assert.equal(hash(old), legacy[k], 'all other maps retain their exact legacy trunk bytes');
+  assert.equal(hash(old), ordinaryWoody[k], 'ordinary trunks retain reviewed outward/downward woody-root geometry');
   assert.deepEqual(budget(actual), budget(old));
   assert.equal(newRng(), oldRng(), 'five existing roots consume exactly the same seeded stream');
   for (const a of Object.values(actual.attributes)) assert.ok(a.array.every(Number.isFinite));
