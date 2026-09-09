@@ -473,6 +473,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleRuntime.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
+    'src/fx/trackContact.selftest.mjs',
+    'src/world/trackSurface.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
     'src/game/battlePresentationRuntime.selftest.mjs',

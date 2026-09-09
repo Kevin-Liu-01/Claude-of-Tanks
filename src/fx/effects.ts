@@ -11,6 +11,7 @@
  * through update(dt), so setFrozen() fully pins the frame for screenshots.
  */
 import * as THREE from 'three';
+import type { TrackSurface } from '../world/trackSurface.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
@@ -43,6 +44,7 @@ interface FxHeightField {
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getGroundType?(x: number, z: number): string;
+  getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
 
 interface FxOptions {
@@ -1302,7 +1304,7 @@ export function createFx(
   const printPos = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4 * 3), 3);
   const printUv = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4 * 2), 2);
   const printBirth = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4).fill(-1e9), 1);
-  // 0 = dry tread print, 1 = churned-water wake. Sharing the same dynamic
+  // 0 = earth, 1 = water, 2 = sand, 3 = snow. Sharing the same dynamic
   // quad ring keeps wet interaction inside the existing single draw call.
   const printSurface = new THREE.Float32BufferAttribute(new Float32Array(MAX_PRINTS * 4), 1);
   printPos.setUsage(THREE.DynamicDrawUsage);
@@ -1334,10 +1336,12 @@ export function createFx(
       varying vec2 vUv;
       varying float vFade;
       varying float vWater;
+      varying float vSurface;
       uniform float uTime;
       void main() {
         vUv = uv;
-        vWater = aSurface;
+        vWater = aSurface == 1.0 ? 1.0 : 0.0;
+        vSurface = aSurface;
         float age = uTime - aBirth;
         float duration = mix(${PRINT_DUR.toFixed(1)}, 4.6, vWater);
         vFade = ( age >= 0.0 && age < duration )
@@ -1350,6 +1354,7 @@ export function createFx(
       varying vec2 vUv;
       varying float vFade;
       varying float vWater;
+      varying float vSurface;
       void main() {
         float strength = mix(0.34, 0.52, vWater);
         float coverage;
@@ -1365,6 +1370,8 @@ export function createFx(
         float a = coverage * vFade * strength;
         if ( a < 0.01 ) discard;
         vec3 color = mix(vec3(0.055, 0.05, 0.042), vec3(0.74, 0.84, 0.84), vWater);
+        if (vSurface > 1.5) color = vSurface > 2.5
+          ? vec3(0.37, 0.43, 0.49) : vec3(0.16, 0.12, 0.075);
         gl_FragColor = vec4(color, a);
       }`,
     transparent: true,
@@ -1386,10 +1393,11 @@ export function createFx(
     pos: THREE.Vector3,
     dir: THREE.Vector3,
     water = false,
+    drySurface: TrackSurface = 0,
   ): void {
     for (let i = 0; i < MAX_PRINTS; i++) {
       const age = particles.getTime() - printBirth.array[i * 4];
-      if (age >= (printSurface.array[i * 4] > 0.5 ? 4.6 : PRINT_DUR)) continue;
+      if (age >= (printSurface.array[i * 4] === 1 ? 4.6 : PRINT_DUR)) continue;
       const dx = pos.x - printCenters[i * 2], dz = pos.z - printCenters[i * 2 + 1];
       if (dx * dx + dz * dz < 0.85) return; // a print already covers this spot
     }
@@ -1416,7 +1424,7 @@ export function createFx(
     const b = printBirth.array;
     b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = b[i * 4 + 3] = particles.getTime();
     const s = printSurface.array;
-    s[i * 4] = s[i * 4 + 1] = s[i * 4 + 2] = s[i * 4 + 3] = water ? 1 : 0;
+    s[i * 4] = s[i * 4 + 1] = s[i * 4 + 2] = s[i * 4 + 3] = water ? 1 : drySurface;
     printPos.addUpdateRange(v, 12);
     printBirth.addUpdateRange(i * 4, 4);
     printSurface.addUpdateRange(i * 4, 4);
@@ -3737,6 +3745,34 @@ export function createFx(
     particles.emit('dust', _puffO);
   }
 
+  /** One low contact puff replaces the large earth wake; same dust pool. */
+  function emitTrackPowder(
+    pos: THREE.Vector3,
+    dir: THREE.Vector3,
+    intensity: number,
+    gy: number,
+    surface: TrackSurface,
+  ): void {
+    const snow = surface === 3;
+    _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.4;
+    _puffO.pos[1] = gy + 0.12;
+    _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.4;
+    _puffO.vel[0] = -dir.x * (0.8 + intensity * 1.4) + (rng() - 0.5) * 0.8;
+    _puffO.vel[1] = 0.25 + intensity * 0.7 + rng() * 0.2;
+    _puffO.vel[2] = -dir.z * (0.8 + intensity * 1.4) + (rng() - 0.5) * 0.8;
+    _puffO.life = snow ? 0.46 + rng() * 0.28 : 0.28 + rng() * 0.25;
+    _puffO.size0 = (0.12 + intensity * 0.1) * dustSizeCap;
+    _puffO.size1 = (snow ? 0.68 + intensity * 0.58 : 0.42 + intensity * 0.44) * dustSizeCap;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 1.2;
+    col3(snow ? 0xdde4e8 : 0xc7b38d, _puffO.col0);
+    col3(snow ? 0xb2c1cd : 0xa28f6d, _puffO.col1);
+    _puffO.alpha = (0.1 + intensity * 0.12) * dustAlphaCap;
+    _puffO.grav = snow ? -0.65 : -1.8;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+  }
+
   function emitUpperTrackWake(
     pos: THREE.Vector3,
     dir: THREE.Vector3,
@@ -4839,12 +4875,17 @@ export function createFx(
         emitWetTrackDust(pos, dir, intensity, waterMask);
         return;
       }
-      if (intensity > 0.08 && !frozen) stampTrackPrint(pos, dir);
+      const surface = heightField?.getTrackSurfaceAt?.(pos.x, pos.z) ?? 0;
+      if (intensity > 0.08 && !frozen) stampTrackPrint(pos, dir, false, surface);
       const groundType = heightField?.getGroundType?.(pos.x, pos.z) ?? 'medium';
       const surfaceMultiplier = drySurfaceMultiplier(groundType);
       if (rng() > intensity * 0.85 * surfaceMultiplier) return;
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
+      if (surface !== 0) {
+        if (!frozen) emitTrackPowder(pos, dir, intensity, gy, surface);
+        return;
+      }
       updateDryDustColors(groundType);
       const sizeVariation = 0.6 + rng() * 0.8;
       const alphaVariation = 0.55 + rng() * 0.65;
