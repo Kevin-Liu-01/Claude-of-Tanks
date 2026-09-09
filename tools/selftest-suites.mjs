@@ -741,6 +741,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/liquidSurfaceDetail.selftest.mjs',
     'src/world/iceSurfaceDetail.selftest.mjs',
     'src/world/vegetationLighting.selftest.mjs',
+    'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
     'src/world/vegetationResources.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
