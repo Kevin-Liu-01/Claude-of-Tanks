@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { localizeHtmlDocument } from '../presentation/localizedHtml.ts';
+import { renderProductStats } from '../productStats.ts';
+import { catalogText } from './i18nCatalog.ts';
 import {
   currentLocationHrefForLocale,
   hrefForLocale,
@@ -45,7 +47,8 @@ const routeIds = new Set(PUBLIC_ROUTE_RECORDS.map(({ id }) => id));
 assert.equal(routeIds.size, PUBLIC_ROUTE_RECORDS.length, 'public route ids must remain unique');
 for (const route of PUBLIC_ROUTE_RECORDS) {
   assert.ok(readFileSync(join(ROOT, route.sourceHtml), 'utf8'), `${route.sourceHtml} must exist`);
-  const localized = localizeHtmlDocument(readFileSync(join(ROOT, route.sourceHtml), 'utf8'), route, 'zh-CN');
+  const source = renderProductStats(readFileSync(join(ROOT, route.sourceHtml), 'utf8'));
+  const localized = localizeHtmlDocument(source, route, 'zh-CN');
   assert.match(localized, /<html\b[^>]*lang="zh-CN"/i, `${route.id} needs canonical HTML language`);
   assert.match(localized, new RegExp(`<title>${route.id === 'notFound' ? '未找到路线' : '[^<]+'}`),
     `${route.id} needs localized title metadata`);
@@ -54,6 +57,26 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
     assert.match(localized, /hreflang="zh-CN"/);
     assert.match(localized, /hreflang="x-default"/);
     assert.match(localized, new RegExp(`rel="canonical" href="https://cot\\.kevinliu\\.studio/cn${route.pathname === '/' ? '/' : route.pathname}"`));
+  }
+  if (route.id.startsWith('docs')) {
+    // Localized JSON-LD must agree with the page's declared zh-CN language:
+    // the TechArticle headline and BreadcrumbList names must follow the locale,
+    // not remain English discovery copy.
+    assert.match(localized, /"inLanguage":"zh-CN"/, `${route.id} JSON-LD must declare zh-CN`);
+    const expected = catalogText('zh-CN', `metadata.${route.id}.headline`);
+    const structures = [...localized.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .map((m) => JSON.parse(m[1]));
+    const flat = JSON.stringify(structures);
+    assert.ok(flat.includes(`"headline":"${expected}"`),
+      `${route.id} JSON-LD headline must be localized to "${expected}"`);
+    const crumb = '文档';
+    if (route.id !== 'docs') {
+      assert.ok(flat.includes(`"name":"${crumb}"`),
+        `${route.id} BreadcrumbList parent must be localized to "${crumb}"`);
+    }
+    const expectedDescription = renderProductStats(catalogText('zh-CN', `metadata.${route.id}.structuredDescription`));
+    assert.ok(flat.includes(`"description":"${expectedDescription}"`),
+      `${route.id} JSON-LD description must be localized`);
   }
 }
 
