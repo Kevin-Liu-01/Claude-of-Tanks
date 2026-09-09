@@ -108,7 +108,7 @@ release result with a collection of unrelated narrow passes.
 | --- | --- | --- |
 | FSP-01 | Measure and reduce excessive geometry/construction cost; eliminate the reported tank-switch stalls. | OPEN — user report; causal profiling pending |
 | FSP-02 | Use shared or newly authored, tank-appropriate primitives for road wheels and repeated fittings. Preserve distinct vehicle shapes. | OPEN |
-| FSP-03 | Add and verify actual return rollers on every new X tank and Revolution. | OPEN — 11 probable missing cases in initial census; physical verification pending |
+| FSP-03 | Add and verify return rollers across the full fleet wherever the actual vehicle has them; preserve genuinely rollerless suspensions. | OPEN — the initial 11 zero-station cases require vehicle-specific eligibility and physical verification, not blanket additions |
 | FSP-04 | Thicken the new tracks to the established original-fleet visual standard, with correct moving-shoe and end-wheel clearances. | OPEN |
 | FSP-05 | Complete lower hull/chassis side plates and connect hull sides, shoulders, fenders and skirts without accidental holes or floating panels. | OPEN |
 | FSP-06 | Apply deliberate material roles: camouflage on painted vehicle bodywork; distinct materials/colors for accessory equipment, cloth, bags and mechanisms. | OPEN |
@@ -124,7 +124,8 @@ LOD-selected instance-expanded scene triangles:
   reduction, and 67.8% of its high total is running gear. These are pre-frustum
   estimates, not measured GPU submissions.
 - Eleven IDs have zero native roller stations and no roller-named scene stock;
-  this is a probable-missing list, not proof excluding untagged merged shapes.
+  this is an inspection list, not proof of a defect: it neither excludes
+  untagged merged shapes nor establishes that the real vehicle uses rollers.
 - `challenger_3x` took a median 2,267.7 ms across five warm Node construction
   samples. Node timing excludes browser textures, uploads and useful paint.
 
@@ -182,14 +183,27 @@ documented; it must not be silently rewritten as if the new shape were original.
 
 ### FSP-03/FSP-04 — real rollers and substantial tracks
 
-For each target, enumerate expected return-roller pairs and their positions.
+The owner's latest instruction (2026-09-08 local / 2026-09-09 UTC) supersedes
+the earlier blanket-add rule: cover the full fleet, **except tanks that do not
+have return rollers in real life**. Establish eligibility and the correct
+variant's count/layout from a manual, manufacturer evidence or clear reference
+views before changing geometry. Record unknowns as unknown; a missing config
+entry or an incomplete supplied model is not proof that rollers should exist.
+For example, the US Army's [FM 100-2-3, T-62 entry](https://www.trngcmd.marines.mil/Portals/207/Docs/MCIS/ITEP/RITC-East/FM%20100-2-3.pdf)
+explicitly identifies a rollerless return run. Do not add fictitious rollers
+to the T-62 / T-62MV-1 X to satisfy the old census. Concepts and fictional
+vehicles need a documented donor/design decision, not a fabricated historical
+claim.
+
+For each eligible target, enumerate expected return-roller pairs and positions.
 Check actual rendered geometry on **both sides**, including high/low and
 animated suspension/track poses. A config number, name tag, hidden marker or
 duplicate road wheel is not proof of a roller. Rollers must be mounted to the
 running-gear assembly, remain on their axes and support the upper return run.
-If a supplied model has no rollers, record the owner's requested addition as
-an explicit style/mechanical deviation instead of silently certifying it as
-source-exact.
+If the supplied model omits rollers that the actual vehicle has, document the
+reference-backed correction. If the actual vehicle is rollerless, verify its
+road-wheel-supported return path instead; zero rollers is then the correct
+result. Never place dummy or hidden rollers just to make a count check pass.
 
 Measure original-fleet track band, shoe web, pad, grouser and pin dimensions
 in metres and select comparable control vehicles **in the same nation and
