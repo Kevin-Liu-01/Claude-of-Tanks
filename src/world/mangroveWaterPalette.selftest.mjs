@@ -56,20 +56,30 @@ const changedHorizon = { ...verdant, horizon: { ...verdant.horizon, treeline: 0 
 assert.equal(stringify(historicalPaletteConfig(changedHorizon)), stringify(historicalPaletteConfig(verdant)),
   'negative control demonstrates historical projection alone would hide a current horizon mutation');
 assert.throws(() => verifyCurrentVerdantHorizon(changedHorizon), /current pastoral Verdant horizon/);
-// The original b66d receipt is the authenticated pre-c8476fa77 other29
+// The original other29 receipt is
+// b66d67a8425f3da8180017c3936c7e2fa9a0cfcfd6a7e8e48dedd3e2a4ea86e8.
+// It is the authenticated pre-c8476fa77 other29
 // configuration (f4854d513), NOT the introducing 2b2d14b39 source, whose
 // actual digest is e0b4112aa40fc3411635e04638e334fbdc50af7251b11825ae52c5e245c4d779.
-// Preserve the original receipt unchanged with its exact historical inputs;
-// later Reservoir/Longleaf/Polders/Oasis authoring and Verdant's restored
-// horizon are not palette changes.
+// Published deaf6bf112 changed wreck donor IDs, owned by wreckRoster.selftest,
+// not water pigment. Omit ONLY that field from both sides of this receipt;
+// wreck era/count/debris and every other property remain covered. The new
+// digest was independently derived from frozen c4762727724e, whose raw replay
+// still produced b66d above (maps tree f7f97155e28e09bf1b7afeaca34340450caf7086,
+// history-helper blob cc0e5f36f6205e9237f79a129ac185a3a2dae407).
+function paletteReceiptInput(config) {
+  if (!config.props?.tankWrecks) return config;
+  const { ids: _donorIds, ...tankWrecks } = config.props.tankWrecks;
+  return { ...config, props: { ...config.props, tankWrecks } };
+}
 function verifyHistoricalConfigs(resolve) {
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
-    if (id !== 'mangrove') unchangedMaps.push([id, stringify(historicalPaletteConfig(resolve(id)))]);
+    if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historicalPaletteConfig(resolve(id))))]);
   }
   assert.equal(hash(JSON.stringify(unchangedMaps)),
-    'b66d67a8425f3da8180017c3936c7e2fa9a0cfcfd6a7e8e48dedd3e2a4ea86e8', 'original other29 config digest');
-  const historical = historicalShorelineConfig(resolve('mangrove'));
+    '99347e4fcf9a54d89ee07e150aa8583e154b26e454cad2120f1cd745edb68750', 'other29 config digest excluding wreck donor IDs only');
+  const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),
     'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede', 'original non-palette Mangrove digest');
 }
@@ -79,8 +89,25 @@ assert.throws(() => verifyHistoricalConfigs(id => id === 'verdant'
   ? { ...getMapConfig(id), terrain: { ...getMapConfig(id).terrain, hillScale: -1 } } : getMapConfig(id)), /other29 config/);
 assert.throws(() => verifyHistoricalConfigs(id => id === 'mangrove'
   ? { ...cfg, terrain: { ...cfg.terrain, hillScale: -1 } } : getMapConfig(id)), /non-palette Mangrove/);
+function withWreckFields(config, fields) {
+  return { ...config, props: { ...config.props, tankWrecks: { ...config.props.tankWrecks, ...fields } } };
+}
+verifyHistoricalConfigs(id => withWreckFields(getMapConfig(id), { ids: ['different-donor'] }));
+for (const id of ['verdant', 'mangrove']) {
+  const original = getMapConfig(id);
+  for (const changed of [
+    withWreckFields(original, { count: original.props.tankWrecks.count + 1 }),
+    withWreckFields(original, { era: 'different-era' }),
+    withWreckFields(original, { debris: !original.props.tankWrecks.debris }),
+    { ...original, props: { ...original.props, rocks: original.props.rocks + 1 } },
+    { ...original, splat: { ...original.splat, microAmp: -1 } },
+  ]) assert.throws(() => verifyHistoricalConfigs(key => key === id ? changed : getMapConfig(key)),
+    /other29 config|non-palette Mangrove/, 'the narrow donor exclusion cannot hide a sibling-property mutation');
+}
 const nonPalette = config => stringify({ ...config, splat: { ...config.splat, mudTone: null, iceSky: null } });
 assert.equal(nonPalette(oldCfg), nonPalette(cfg), 'current palette A/B differs in exactly the two permitted fields');
+assert.notEqual(nonPalette(withWreckFields(oldCfg, { ids: ['different-donor'] })), nonPalette(cfg),
+  'current palette A/B still compares every non-palette field, including donor IDs');
 const mutation = currentInputs.slice(); mutation[0] += 'corrupt';
 assert.throws(() => verifyUnmutatedInputs(mutation), /remain unmutated/);
 assert.deepEqual(cfg.splat.iceSky, [.18, .19, .145]);
@@ -219,7 +246,7 @@ try {
   assert.equal(resolveDeviceTier(), 'mobile');
   for (const seed of [3003, 1337, 2002]) checkLayer(seed, 128);
   verifyUnmutatedInputs(MAP_IDS.map(id => stringify(getMapConfig(id))));
-  console.log(`mangroveWaterPalette.selftest: PASS six native sea bakes (${packageInfo.name}@${packageInfo.version}), exact alpha/normals/physics/resources, untouched other29 configs`);
+  console.log(`mangroveWaterPalette.selftest: PASS six native sea bakes (${packageInfo.name}@${packageInfo.version}), exact alpha/normals/physics/resources, other29 configs excluding only separately owned wreck donor IDs`);
 } finally {
   for (const [key, value] of originals) {
     if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
