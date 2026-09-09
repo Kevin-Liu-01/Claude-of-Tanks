@@ -167,8 +167,65 @@ const stone = section(source, 'function buildStoneCourseEdges', 'function makeWo
 const grime = section(source, 'function* makeGrimeTexture', '/**');
 const tone = section(terrain, 'const _toneCol =', '// ---------------------------------------------------------------------------\n// Procedural PBR');
 const current = helpers + stone + grime;
-assert.equal([...source.matchAll(/const g = propsBuildSteps\(/g)].length, 2,
-  'both public synchronous and asynchronous paths drain the same props generator');
+// cd7939351 made the async iterator typed so rejected awaits can IteratorClose
+// delegated owners. Execute both real wrappers; declaration spelling is not an
+// ownership contract. The injected producer below delegates to real painters.
+const wrappers = section(source, 'export function createProps(', '\nfunction* propsBuildSteps(');
+function publicOwner(iterator, wrapperSource = wrappers) {
+  const runtime = {}, calls = [], events = [];
+  function* build(...args) {
+    calls.push(args);
+    try {
+      runtime.textures = yield* iterator;
+      events.push('published');
+      return runtime;
+    } finally { events.push('closed'); }
+  }
+  const api = new Function('propsBuildSteps', 'ensureTankBuilder',
+    stripTypeScriptTypes(wrapperSource).replace(/^export /gm, '')
+      + '\nreturn { createProps, createPropsAsync };')(build, () => {
+    assert.fail('texture row checkpoints must not acquire a vehicle builder');
+  });
+  return { api, runtime, calls, events };
+}
+function assertPublicOwner(owner, result, args) {
+  assert.equal(result, owner.runtime, 'publish the original owner, not a clone or yield value');
+  assert.equal(owner.calls.length, 1, 'one producer owns the entire invocation');
+  assert.equal(owner.calls[0].length, args.length);
+  args.forEach((value, index) => assert.equal(owner.calls[0][index], value,
+    'forward the identical producer argument at index ' + index));
+  assert.deepEqual(owner.events, ['published', 'closed'], 'complete and close exactly once');
+}
+async function checkWrapperOwnership(wrapperSource) {
+  const height = {}, engine = {}, config = {}, vegetation = {}, textures = {};
+  for (const async of [false, true]) for (const defaults of [false, true]) {
+    const owner = publicOwner((function* () {
+      yield { fine: true, stage: 'owned-rows' };
+      yield undefined;
+      return textures;
+    })(), wrapperSource);
+    const explicit = [height, engine, 7719, config];
+    const result = async
+      ? await owner.api.createPropsAsync(...(defaults ? [height, engine]
+        : [...explicit, null, true, vegetation]))
+      : owner.api.createProps(...(defaults ? [height, engine] : [...explicit, vegetation]));
+    assertPublicOwner(owner, result, defaults
+      ? [height, engine, 2002, null, null] : [...explicit, vegetation]);
+    assert.equal(result.textures, textures, 'the published texture owner is not replaced');
+  }
+}
+await checkWrapperOwnership(wrappers);
+for (const [before, after] of [
+  ['seed, cfg, vegetation);', 'seed + 1, cfg, vegetation);'],
+  ['while (!r.done) r = g.next();', 'if (!r.done) r = g.next();'],
+  ['return r.value;', 'return { ...r.value };'],
+  ['return runtime;', 'return { ...runtime };'],
+]) {
+  const mutated = wrappers.replace(before, after);
+  assert.notEqual(mutated, wrappers, 'the negative control must change the real wrapper');
+  await assert.rejects(checkWrapperOwnership(mutated), assert.AssertionError,
+    'reject changed forwarding, incomplete drains and cloned sync/async ownership');
+}
 assert.match(source, /const stone = yield\* makeStone\(noi, aniso, T\.stone \|\| null\)/);
 assert.match(source, /const grimeTex = yield\* makeGrimeTexture\(noi, aniso\)/);
 assert.ok(source.indexOf('const grimeTex = yield*') < source.indexOf('const sourcedTexturesReady ='),
@@ -258,7 +315,7 @@ function advance(job) {
       'the complete texture set is published without a suspended partial owner');
     assert.equal(job.probe.calls(), beforeCalls, 'texture publication does not repaint noise');
     job.result = finish(job, result.value);
-    return;
+    return result;
   }
   assert.equal(canvasCount, beforeCanvases, 'row/tone checkpoints hold no new CanvasTexture');
   const rows = job.kind === 'stone' ? 512 : 256;
@@ -274,11 +331,20 @@ function advance(job) {
     assert.deepEqual(result.value, { fine: true, stage: 'stone-tone' });
     assert.equal(job.probe.calls(), beforeCalls);
   }
+  return result;
 }
-function drain(job) {
-  while (job.result === null) advance(job);
-  assert.equal(job.steps, job.kind === 'stone' ? 33 : 16);
-  return job.result;
+function* checkedPainter(job) {
+  try {
+    let result = advance(job);
+    while (!result.done) {
+      yield result.value;
+      result = advance(job);
+    }
+    assert.equal(job.steps, job.kind === 'stone' ? 33 : 16);
+    return result.value;
+  } finally {
+    if (job.result === null) job.value.return();
+  }
 }
 function checkCancellation(api, kind, method) {
   const pending = job(api, kind, { seed: 81, anisotropy: 2, tone: null });
@@ -306,19 +372,32 @@ try {
     const control = job(baseline, kind, sample);
     return finish(control, control.value);
   });
+  const height = {}, engine = {}, vegetation = {};
   for (let index = 0; index < cases.length; index++) {
     const { kind, sample } = cases[index];
-    assert.deepEqual(drain(job(candidate, kind, sample)), controls[index],
+    const pending = job(candidate, kind, sample);
+    const owner = publicOwner(checkedPainter(pending));
+    const args = [height, engine, sample.seed, sample, vegetation];
+    assertPublicOwner(owner, owner.api.createProps(...args), args);
+    assert.deepEqual(pending.result, controls[index],
       kind + ': synchronous drain must match the independent prechange algorithm byte for byte');
   }
   const interleaved = cases.map(({ kind, sample }) => job(candidate, kind, sample));
-  while (interleaved.some(pending => pending.result === null)) {
-    for (const pending of interleaved) {
-      if (pending.result !== null) continue;
+  await Promise.all(interleaved.map(async pending => {
+    const owner = publicOwner(checkedPainter(pending));
+    const args = [height, engine, pending.sample.seed, pending.sample, vegetation];
+    let ticks = 0;
+    const result = await owner.api.createPropsAsync(...args.slice(0, 4), async (done, total) => {
+      assert.equal(done, ++ticks);
+      assert.equal(total, 180);
+      assert.equal(owner.runtime.textures, undefined, 'no partial texture owner at an awaited checkpoint');
+      assert.deepEqual(owner.events, [], 'the producer stays open while a row tick is awaited');
       await new Promise(resolve => setImmediate(resolve));
-      advance(pending);
-    }
-  }
+    }, true, vegetation);
+    assertPublicOwner(owner, result, args);
+    assert.equal(ticks, pending.steps, 'every real row/tone checkpoint reaches the async scheduler');
+    assert.equal(result._buildDetail.sliceCount, pending.steps + 1);
+  }));
   interleaved.forEach((pending, index) => {
     assert.deepEqual(pending.result, controls[index],
       pending.kind + ': independent interleaved painters retain exact pixels, maps, settings and RNG');
