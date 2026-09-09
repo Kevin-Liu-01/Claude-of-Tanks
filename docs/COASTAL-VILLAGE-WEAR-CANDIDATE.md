@@ -37,6 +37,14 @@ is added. The existing RGBA mask remains 1,048,576 bytes at desktop512 and
 262,144 bytes at mobile256 with identical sampling/mipmap policy. The complete
 splat source remains SHA256
 `4e3118087bf09d46b113a31a85792608723549d0e11400359a2febd0655a9498`.
+Review-only parent source receipts: createHeightField body
+`e5c98c158e1419794e04b11638cb850cbf60580921db07ff585703c7979d93af`,
+vegetation.ts `0aad8b3e66da9257761b63ca3782a5420cb02c67a930e6f2ef67cf5d480bf28a`,
+props.ts `48a3e6e9b31941a929e201266847886bbbfebaf291bbdb51dc7c2d8a9102393c`.
+These broad source hashes are evidence for this isolated diff, not permanent
+executable village-wear gates. A follow-up removed those unrelated locks from
+the new test; it retains the actual full-mask, scope, resource-policy and
+sampled gameplay-input assertions.
 
 Authoring data is added: eight patch objects and 67 coordinate pairs in the two
 map configurations, plus their existing resolved-layout references. This is
