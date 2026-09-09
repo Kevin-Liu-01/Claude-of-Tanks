@@ -269,6 +269,9 @@ function renderedPresentationCenter(visual) {
   // generation and the public manifest cannot match runtime exactly.
   const iconProjection = assetProjection(iconBox, { xM, zM });
   const assetAnchor = visual.assetPresentationAnchor || visual.presentationAnchor;
+  // Existing images use this anchor, not the newly proposed pixel centroid.
+  // Keep that capture fit separate from the full-generation proposal below.
+  const capturedProjection = assetProjection(iconBox, assetAnchor);
   const anchorPixelX = canvas.width * (0.5
     - (assetAnchor.xM - boundsCenter.x) / (half * 2));
   const anchorPixelY = canvas.height * (0.5
@@ -279,6 +282,11 @@ function renderedPresentationCenter(visual) {
     currentAnchor: {
       xM: Number(assetAnchor.xM.toFixed(4)),
       zM: Number(assetAnchor.zM.toFixed(4)),
+    },
+    capturedProjection: {
+      centerYM: Number(capturedProjection.center.y.toFixed(4)),
+      topHalfM: Number(capturedProjection.topHalf.toFixed(4)),
+      sideHalfM: Number(capturedProjection.sideHalf.toFixed(4)),
     },
     residualPx: Number(Math.hypot(pixelX - anchorPixelX, pixelY - anchorPixelY).toFixed(2)),
     deltaM: Number(Math.hypot(
@@ -1043,7 +1051,7 @@ window.__GEN = (ids, views) => {
 
 window.__AUDIT = (ids) => {
   const auditIds = ids && ids.length ? ids : ALL_TANK_IDS;
-  const result = { schemaVersion: TANK_ASSET_SCHEMA_VERSION, ids: [...ALL_TANK_IDS], tanks: {} };
+  const result = { schemaVersion: TANK_ASSET_SCHEMA_VERSION, requiredViews: Object.keys(TANK_ASSET_VIEWS), ids: [...ALL_TANK_IDS], tanks: {} };
   for (const id of auditIds) {
     try { result.tanks[id] = inspectOne(id, false).meta; }
     catch (error) { result.tanks[id] = { error: String(error && error.stack || error) }; }

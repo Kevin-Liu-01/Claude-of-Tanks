@@ -4,19 +4,21 @@
 //   node tools/presentation-centering.mjs --check
 //   node tools/presentation-centering.mjs --check --ids=m46_patton,m47_patton
 //   node tools/presentation-centering.mjs --update
+//   node tools/presentation-centering.mjs --sync-assets --ids=a,b
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { presentationNumberSource as numberSource, presentationReceiptErrors } from './presentation-receipt.mjs';
+import { presentationNumberSource as numberSource, presentationReceiptErrors, syncAssetProjectionSource } from './presentation-receipt.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
 const update = args.includes('--update');
 const check = args.includes('--check');
-if (update === check) {
-  console.error('usage: node tools/presentation-centering.mjs (--check | --update) [--ids=a,b]');
+const syncAssets = args.includes('--sync-assets');
+if (Number(update) + Number(check) + Number(syncAssets) !== 1) {
+  console.error('usage: node tools/presentation-centering.mjs (--check | --update | --sync-assets) [--ids=a,b]');
   process.exit(2);
 }
 
@@ -31,6 +33,10 @@ function opt(name, fallback = '') {
 const selectedIds = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
 if (update && selectedIds.length) {
   console.error('[presentation-centering] --update always regenerates the complete fleet');
+  process.exit(2);
+}
+if (syncAssets && !selectedIds.length) {
+  console.error('[presentation-centering] --sync-assets requires explicit --ids=a,b');
   process.exit(2);
 }
 
@@ -166,11 +172,14 @@ try {
     writeFileSync(outputPath, generatedSource(rows));
     console.log(`[presentation-centering] wrote ${ids.length} rendered anchors -> ${outputPath}`);
   } else {
-    const receiptErrors = ids.flatMap(id => presentationReceiptErrors(id,
-      rows[id], rows[id]?.projection,
-      TANK_PRESENTATION_ANCHORS[id], TANK_PRESENTATION_PROJECTIONS[id]));
+    const receiptErrors = check ? ids.flatMap(id => presentationReceiptErrors(id,
+      rows[id]?.currentAnchor, rows[id]?.capturedProjection,
+      TANK_PRESENTATION_ANCHORS[id], TANK_PRESENTATION_PROJECTIONS[id])) : [];
     if (receiptErrors.length) {
-      throw new Error(`${receiptErrors.join('\n')}; run npm run tank:centering:update`);
+      const recovery = selectedIds.length
+        ? `regenerate stale selected assets, or use --sync-assets --ids=${ids.join(',')} only when their saved captures are current`
+        : 'run npm run tank:centering:update';
+      throw new Error(`${receiptErrors.join('\n')}; ${recovery}`);
     }
     if (!selectedIds.length) {
       const expected = generatedSource(rows);
@@ -204,7 +213,27 @@ try {
     if (exportedOffCenter.length) {
       throw new Error(`exported top center exceeds ${MAX_EXPORTED_RESIDUAL_PX}px:\n`
         + exportedOffCenter.slice(0, 20).map((row) => `  ${row.id}: ${row.residualPx}px `
-          + `(x ${row.deltaXPx}px, y ${row.deltaYPx}px)`).join('\n'));
+        + `(x ${row.deltaXPx}px, y ${row.deltaYPx}px)`).join('\n'));
+    }
+    if (syncAssets) {
+      const before = readFileSync(outputPath, 'utf8');
+      const iconsRoot = resolve(root, 'public/icons');
+      const manifest = JSON.parse(readFileSync(resolve(iconsRoot, 'tank-assets.json'), 'utf8'));
+      const live = await page.evaluate(tankIds => window.__AUDIT(tankIds), ids);
+      const captureErrors = ids.flatMap(id => presentationReceiptErrors(id,
+        rows[id]?.currentAnchor, rows[id]?.capturedProjection,
+        live.tanks[id]?.presentationAnchor, live.tanks[id]?.presentationProjection));
+      if (captureErrors.length) throw new Error(captureErrors.join('\n'));
+      const next = syncAssetProjectionSource(before, ids, manifest, live, TANK_PRESENTATION_ANCHORS, file => {
+        const target = resolve(iconsRoot, file);
+        if (!target.startsWith(`${iconsRoot}${sep}`)) throw new Error('asset path escapes icons directory');
+        return readFileSync(target);
+      });
+      if (pageErrors.length || readFileSync(outputPath, 'utf8') !== before) {
+        throw new Error('capture errors or concurrent generated-source change; no projection written');
+      }
+      writeFileSync(outputPath, next);
+      console.log(`[presentation-centering] synced ${ids.length} hash-verified saved/native projections; all anchors and unselected rows retained`);
     }
     console.log(`[presentation-centering] PASS ${ids.length} tanks; maximum rendered residual `
       + `${maximum.residualPx.toFixed(2)} px (${maximum.id}); maximum exported top residual `
