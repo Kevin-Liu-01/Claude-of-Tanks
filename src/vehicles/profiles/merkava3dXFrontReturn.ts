@@ -19,14 +19,15 @@ export function addMerkava3dXFrontReturns(P: TankBuilderPort): void {
     const bucket = side < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
     const geometry = sectionSolid(STATIONS.map(([z,hem]) => {
       const roof = roofAt(z);
-      const ring: SectionPoint[] = [[INNER_X,roof-.016],[WALL_INNER_X,roof-.016],
-        [WALL_INNER_X,hem],[OUTER_X,hem],[OUTER_X,roof],[INNER_X,roof]];
+      const ring: SectionPoint[] = [[INNER_X,roof-.018],[WALL_INNER_X,roof-.018],
+        [WALL_INNER_X,hem],[OUTER_X,hem],[OUTER_X,roof-.002],[INNER_X,roof-.002]];
       return {z,ring:side<0 ? ring.map(([x,y])=>[-x,y] as SectionPoint).reverse() : ring};
     }));
     P.addMudguard('merkava3d-x-front-side-return',bucket,geometry);
-    // A short folded end shares the original flap's rake and finite stock.
+    // A 2 mm cap on each local Y/Z face separates painted/rubber planes
+    // while retaining the original flap's rake and positive finite lap.
     // It is only the outboard 90 mm, never a face spanning the track mouth.
     P.addMudguard('merkava3d-x-front-corner-return',bucket,
-      KIT.box(.090,.36,.045),side*1.877,1.25,3.8158175,-.12);
+      KIT.box(.090,.364,.049),side*1.877,1.25,3.8158175,-.12);
   }
 }

@@ -20,7 +20,7 @@ const material=new T.MeshBasicMaterial({side:T.DoubleSide});
 const v=a=>new T.Vector3(...a);
 const hits=(meshes,p,d,far)=>new T.Raycaster(v(p),v(d),0,far).intersectObjects(meshes,false);
 const stats={builds:0,contacts:0,oldGapWitnesses:0,phases:0,instances:0,triangleTests:0,
-  rejectedAabbs:0,containmentExclusions:0,gearMeshes:new Set(),stockTypes:new Set(),negativeControls:0};
+  rejectedAabbs:0,containmentExclusions:0,capPlanePairs:0,gearMeshes:new Set(),stockTypes:new Set(),negativeControls:0};
 
 function geometryHash(g){
   const h=crypto.createHash('sha256');
@@ -67,6 +67,24 @@ function closed(g){
   assert.ok(vol>1e-5,'Positive finite outward stock');
   assert.ok([...edges.values()].every(([n,w])=>n===2&&w===0),'Closed caps, folds and walls with opposing edge winding');
 }
+// Recover every plane from actual emitted triangles, not a nominal box.
+function assertSeparatedCapPlanes(cap,receiver){
+  const planes=mesh=>{
+    const p=mesh.geometry.attributes.position,index=mesh.geometry.index,out=[];
+    for(let i=0;i<(index?.count??p.count);i+=3){
+      const a=[0,1,2].map(j=>new T.Vector3().fromBufferAttribute(p,index?index.getX(i+j):i+j));
+      const n=a[1].clone().sub(a[0]).cross(a[2].clone().sub(a[0])).normalize(),d=n.dot(a[0]);
+      if(!out.some(q=>q.n.distanceToSquared(n)<1e-12&&Math.abs(q.d-d)<2e-7))out.push({n,d,p:a[0]});
+    }
+    assert.equal(out.length,6,'Actual closed plain cap/flap has six finite planes');return out;
+  };
+  let pairs=0;
+  for(const a of planes(cap))for(const b of planes(receiver))if(Math.abs(a.n.dot(b.n))>1-1e-8){
+    assert.ok(Math.abs(a.n.dot(b.p)-a.d)>.001,
+      'Every parallel new cap plane is separated from the unchanged rubber receiver by >1 mm');pairs++;
+  }
+  assert.equal(pairs,12);return pairs;
+}
 function contact(c){
   const sideReturns=c.added.filter(m=>m.name.endsWith('side-return'));
   const corners=c.added.filter(m=>m.name.endsWith('corner-return'));
@@ -76,7 +94,8 @@ function contact(c){
       for(const x of [1.834,1.836,1.838]){
         const a=hits(c.old,[side*x,roof+.025,z],[0,-1,0],.07)[0];
         const b=hits(sideReturns,[side*x,roof+.025,z],[0,-1,0],.07)[0];
-        assert.ok(a&&b&&Math.abs(a.point.y-b.point.y)<2e-6,'Finite inner flange laps the actual unchanged shoulder');stats.contacts++;
+        assert.ok(a&&b&&a.point.y-b.point.y>.001&&a.point.y-b.point.y<.004,
+          'Finite inner flange is embedded in the actual unchanged shoulder, not coplanar');stats.contacts++;
       }
     }
     for(const y of [1.25,1.30,1.36])for(const z of [3.192,3.197,3.200]){
@@ -87,7 +106,22 @@ function contact(c){
     for(const y of [1.13,1.22,1.32,1.39])for(const x of [1.834,1.836,1.838]){
       const a=hits(c.old,[side*x,y,3.92],[0,0,-1],.16)[0];
       const b=hits(corners,[side*x,y,3.92],[0,0,-1],.16)[0];
-      assert.ok(a&&b&&Math.abs(a.point.z-b.point.z)<2e-6,'End fold laps the original rubber flap at its actual rake');stats.contacts++;
+      assert.ok(a&&b&&b.point.z-a.point.z>.001&&b.point.z-a.point.z<.004,
+        'Finite cap separates its exposed plane from the unchanged rubber flap');
+      const old=hits(c.old.filter(m=>m.name==='merkava3d-x-front-flap'),[side*x,y,3.92],[0,0,-1],.16).map(h=>h.point.z);
+      const added=hits(corners,[side*x,y,3.92],[0,0,-1],.16).map(h=>h.point.z);
+      assert.ok(old.length>=2&&added.length>=2
+        &&Math.min(Math.max(...old),Math.max(...added))-Math.max(Math.min(...old),Math.min(...added))>.040,
+        'Actual entry/exit stock retains more than 40 mm positive lap');stats.contacts++;
+    }
+    const cap=corners.find(m=>new T.Box3().setFromObject(m).getCenter(new T.Vector3()).x*side>0);
+    const flap=c.old.find(m=>m.name==='merkava3d-x-front-flap'&&new T.Box3().setFromObject(m).getCenter(new T.Vector3()).x*side>0);
+    assert.ok(cap&&flap);stats.capPlanePairs+=assertSeparatedCapPlanes(cap,flap);
+    for(const depth of[.045,.049]){
+      const predecessor=new T.Mesh(KIT.xform(KIT.box(.090,.36,depth),side*1.877,1.25,3.8158175,-.12),material);
+      assert.throws(()=>assertSeparatedCapPlanes(predecessor,flap),
+        'Original cap and depth-only correction retain forbidden coincident finite planes');
+      predecessor.geometry.dispose();stats.negativeControls++;
     }
     for(const y of [1.18,1.28,1.38]){
       const a=hits(sideReturns,[side*1.912,y,3.84],[0,0,-1],.06)[0];
