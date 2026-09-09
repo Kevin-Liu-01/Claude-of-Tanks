@@ -156,11 +156,37 @@ export function* compactWreckGeometrySteps(
 ): Generator<WreckGeometryBuildSlice, THREE.BufferGeometry, void> {
   const input = staticInput(geometry);
   if (!input) return geometry;
+  return yield* compactInputSteps(geometry, input, 0);
+}
+
+/** Wreck paint is a pure function of the exact stored position/normal words
+ * and one invocation-local rust phase. Its RGB therefore cannot distinguish
+ * corners already equal in those two streams. Deduplicate before painting,
+ * but include the future RGB bytes in the original storage-benefit decision.
+ * True certifies this path (including no saving); false requires the caller's
+ * ordinary paint-then-compact fallback. Input ownership matches the generic API.
+ */
+export function* compactWreckGeometryForPaintSteps(
+  geometry: THREE.BufferGeometry,
+): Generator<WreckGeometryBuildSlice, boolean, void> {
+  const input = staticInput(geometry);
+  if (!input || input.streams.length !== 2 || !input.streams.every(stream =>
+    (stream.name === 'position' || stream.name === 'normal') && stream.size === 3)) return false;
+  yield* compactInputSteps(geometry, input, 3);
+  return true;
+}
+
+function* compactInputSteps(
+  geometry: THREE.BufferGeometry,
+  input: Input,
+  futureWordsPerCorner: number,
+): Generator<WreckGeometryBuildSlice, THREE.BufferGeometry, void> {
   const index = yield* buildIndexSteps(input);
   // WebGL2 reserves index 65535 for primitive restart, so 65536 vertices
   // require Uint32 even though their maximum index fits an unsigned short.
-  const retainedBytes = index.unique * input.wordsPerCorner * 4 + input.count * (index.unique <= 65535 ? 2 : 4);
-  if (retainedBytes >= input.bytes) return geometry;
+  const wordsPerCorner = input.wordsPerCorner + futureWordsPerCorner;
+  const retainedBytes = index.unique * wordsPerCorner * 4 + input.count * (index.unique <= 65535 ? 2 : 4);
+  if (retainedBytes >= input.bytes + input.count * futureWordsPerCorner * 4) return geometry;
   // Build every output before installation, so allocation failure cannot leave
   // a partially replaced geometry. No geometry/material identity is changed.
   const attributes: Array<readonly [string, THREE.BufferAttribute]> = [];

@@ -142,7 +142,7 @@ export default {
     // plain (baked roster tanks, paired duel beats), tank-trap lines
     tankWrecks: {
       era: 'modern', count: 5, debris: true,
-      ids: ['type99a', 'challenger2', 't90m', 'k2', 'm1a2'],
+      ids: ['pl01', 'pt91m', 't72b3m', 'type99a', 't90m'],
     },
     sandbagLines: 10,
     hedgehogs: 6,

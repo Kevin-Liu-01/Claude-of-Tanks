@@ -12,6 +12,9 @@ import { decodeCollisionManifest, encodeCollisionManifest } from './collisionMan
 
 const authoredWorlds = new Map();
 
+// Public-fleet wreck recapture: different hulk footprints change accepted
+// placements on six maps. These exact counts preserve every non-wreck record
+// and concealment list; terrain rejection and placement budgets are unchanged.
 const expected = {
   verdant: [6501, 6250, 6763],
   desert: [2381, 2337, 1823],
@@ -24,14 +27,14 @@ const expected = {
   frontier: [7436, 7174, 7583],
   fjord: [6377, 6218, 5597],
   delta: [7119, 6877, 8532],
-  badlands: [2841, 2677, 1888],
-  monsoon: [9269, 9034, 11093],
+  badlands: [2840, 2676, 1888],
+  monsoon: [9271, 9036, 11093],
   alpine: [8539, 8342, 7575],
-  caldera: [4684, 4579, 3572],
+  caldera: [4685, 4580, 3572],
   foundry: [3946, 3791, 2939],
-  ruinspires: [2822, 5138, 1159],
-  blackglass: [3515, 4371, 2270],
-  titan_gorge: [2472, 2284, 1144],
+  ruinspires: [2823, 5139, 1159],
+  blackglass: [3516, 4372, 2270],
+  titan_gorge: [2471, 2283, 1144],
   skybridge: [3108, 3161, 1892],
   // Native 3c06d3352 capture: authored drainage contours change seeded
   // vegetation/prop acceptance. Keep the exact census, not a tolerance.

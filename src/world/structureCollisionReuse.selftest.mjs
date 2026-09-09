@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { makeOnionChurch } from './maps/villageKit.ts';
 import { addCatalogExterior } from './maps/exteriorDetailKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
+import { SOURCED_STRUCTURE_TYPES } from './sourcedStructureTypes.ts';
 import { createObstacleGrid } from './collision.ts';
 import { createGroundCoverClearance, createGroundCoverSolidProfile,
   attachGroundCoverSolidProfile } from './groundCoverClearance.ts';
@@ -48,16 +49,19 @@ const hooks = registerHooks({ load(url, context, nextLoad) {
   }
   const merge = 'function mergeProjectedTriangles(triangles: number[][]) {';
   const dense = 'if (projectedCount > 512) {';
+  const band = text.match(/function makeRuntimeBand\([\s\S]*?\): StructureCollisionRuntimeBand \{/)?.[0];
   assert.equal(text.split(merge).length, 2);
   assert.equal(text.split(dense).length, 2);
+  assert.ok(band, 'runtime band boundary must exist');
   text = text.replace(merge, `${merge}
     __reuseCounts.merges++;
     if (!triangles.length) __reuseCounts.empty++;
     if (__reuseInputs.has(triangles)) __reuseCounts.repeated++;
     __reuseInputs.add(triangles);`)
-    .replace(dense, `${dense} __reuseCounts.dense++;`);
+    .replace(dense, `${dense} __reuseCounts.dense++;`)
+    .replace(band, `${band} __reuseCounts.bands++;`);
   text += `
-    const __reuseCounts = { merges: 0, empty: 0, repeated: 0, dense: 0 };
+    const __reuseCounts = { merges: 0, empty: 0, repeated: 0, dense: 0, bands: 0 };
     const __reuseInputs = new Set();
     export function reuseCounts() { return { ...__reuseCounts }; }
     export function resetReuseCounts() {
@@ -75,6 +79,25 @@ try {
 const ownedGeometry = new Set();
 const own = geometry => { ownedGeometry.add(geometry); return geometry; };
 const box = (height = 6) => own(new THREE.BoxGeometry(2, height, 3).translate(0, height / 2, 0));
+// The actual licensed source streams and shared authored scale/sink settings,
+// using the same collision fixture transform as structureCollision.selftest.
+function sourcedSandbag(spec, models) {
+  const model = models[spec.model];
+  assert.ok(model, `${spec.model}: real source model exists`);
+  const [minX, minY, minZ] = model.bbox.min;
+  const [maxX, maxY, maxZ] = model.bbox.max;
+  const scale = spec.targetH / Math.max(1e-6, maxY - minY);
+  const centerX = (minX + maxX) * 0.5, centerZ = (minZ + maxZ) * 0.5;
+  const positions = new Float32Array(model.positions.length);
+  for (let index = 0; index < positions.length; index += 3) {
+    positions[index] = (model.positions[index] - centerX) * scale;
+    positions[index + 1] = (model.positions[index + 1] - minY) * scale - spec.sink;
+    positions[index + 2] = (model.positions[index + 2] - centerZ) * scale;
+  }
+  return own(new THREE.BufferGeometry()
+    .setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    .setIndex(new THREE.BufferAttribute(new Uint16Array(model.indices), 1)));
+}
 function seeded(seed = 0x51a7c7) {
   let draws = 0;
   const rng = () => {
@@ -116,6 +139,12 @@ function compare(buckets, label) {
   assert.deepEqual(withSolids, control.deriveRuntimeStructureCollisionWithSolids(buckets),
     `${label}: consumer source solids and contactTop remain exact, with no cache field added`);
   assert.deepEqual(withSolids.profile, actual, `${label}: both runtime APIs use the same profile`);
+  cached.resetReuseCounts();
+  const contact = cached.deriveRuntimeStructureContactBand(buckets);
+  assert.deepEqual(contact, expected.contact, `${label}: contact-only matches the complete original profile exactly`);
+  assert.equal(cached.reuseCounts().bands, 1, `${label}: contact-only constructs no discarded shell bands`);
+  assert.notEqual(contact, actual.contact, `${label}: separate calls own their result band`);
+  assert.notEqual(contact.parts, actual.contact.parts, `${label}: separate calls own their polygon array`);
   assert.equal(geometryHash(buckets), before, `${label}: all source geometry streams remain untouched`);
   return { profile: actual, counts, withSolids };
 }
@@ -170,12 +199,35 @@ try {
   assert.ok(mixed.counts.control.merges > 1);
   const ignored = { ...ordinary, glass: [box(20)], curtain: [box(30)], unused: undefined };
   assert.deepEqual(compare(ignored, 'ignored buckets').profile, ordinaryResult.profile);
-  for (const buckets of [{}, { roof: [box()] }, { stone: [own(new THREE.BufferGeometry())] },
+  for (const buckets of [{}, { roof: [box()] }, { glass: [box()], curtain: [box()] },
+    { stone: [own(new THREE.BufferGeometry())] },
+    { stone: [own(new THREE.BufferGeometry().setAttribute('position',
+      new THREE.Float32BufferAttribute([0, 0, 0, 1, 1, 1], 3)))] },
+    { stone: [box(0.01)] }, { stone: [box().translate(0, 10, 0)] },
     { stone: [{ getAttribute() { throw new TypeError('source position unavailable'); } }] }]) {
-    for (const entrypoint of ['deriveRuntimeStructureCollisionProfile', 'deriveRuntimeStructureCollisionWithSolids']) {
+    for (const entrypoint of ['deriveRuntimeStructureCollisionProfile', 'deriveRuntimeStructureCollisionWithSolids',
+      'deriveRuntimeStructureContactBand']) {
       assert.deepEqual(errorReceipt(cached, entrypoint, buckets), errorReceipt(control, entrypoint, buckets),
         `${entrypoint}: original extraction/error semantics`);
     }
+    assert.deepEqual(errorReceipt(cached, 'deriveRuntimeStructureContactBand', buckets),
+      errorReceipt(control, 'deriveRuntimeStructureCollisionProfile', buckets),
+      'contact-only rejects the same unsupported/groundless sources as the complete profile');
+  }
+
+  const sandbagSamples = [];
+  const models = JSON.parse(readFileSync(new URL('./props-models.json', import.meta.url), 'utf8'));
+  for (const id of ['sandbagsmall', 'sandbagbig']) {
+    const buckets = { baked: [sourcedSandbag(SOURCED_STRUCTURE_TYPES[id], models)] };
+    const result = compare(buckets, `real ${id}`);
+    const times = {};
+    for (const entrypoint of ['deriveRuntimeStructureCollisionProfile', 'deriveRuntimeStructureContactBand']) {
+      const started = performance.now();
+      const output = cached[entrypoint](buckets);
+      times[entrypoint] = performance.now() - started;
+      assert.deepEqual(output.contact ?? output, result.profile.contact);
+    }
+    sandbagSamples.push({ id, shellBandsSkipped: result.profile.shell.length, milliseconds: times });
   }
 
   const guardRng = seeded();
@@ -196,6 +248,10 @@ try {
   ordinaryResult.withSolids.solids[0].projectedTriangles[0][0] += 300;
   assert.deepEqual(cached.deriveRuntimeStructureCollisionProfile(ordinary), original,
     'mutated caller outputs cannot poison another extraction');
+  const contact = cached.deriveRuntimeStructureContactBand(ordinary);
+  contact.parts[0].points[0] += 400;
+  assert.deepEqual(cached.deriveRuntimeStructureContactBand(ordinary), original.contact,
+    'contact-only calls own fresh polygons and retain no mutated output');
   ordinary.stone[0].translate(3, 0.5, -2);
   const changed = compare(ordinary, 'mutated input geometry in an independent call').profile;
   assert.notDeepEqual(changed, original, 'later calls re-extract current geometry rather than reuse stale projections');
@@ -232,8 +288,8 @@ try {
     samples.push({ seed, geometries: Object.values(buckets).flat().length, shellBands: result.profile.shell.length,
       buildMs, merges: result.counts, profileMs: times });
   }
-  console.log('structureCollisionReuse.selftest: exact uncached-source/profile/consumer parity, empty/dense/error/mutation cases and bounded real-builder CPU attribution pass');
-  console.log(JSON.stringify({ meaning: 'same-process CPU attribution, not GPU/native-frame acceptance', samples }));
+  console.log('structureCollisionReuse.selftest: exact uncached-source/profile/contact-only/consumer parity, empty/dense/error/mutation cases, real sandbags and bounded real-builder CPU attribution pass');
+  console.log(JSON.stringify({ meaning: 'same-process CPU attribution, not GPU/native-frame acceptance', sandbagSamples, samples }));
 } finally {
   cached.resetReuseCounts(); control.resetReuseCounts();
   for (const geometry of ownedGeometry) geometry.dispose();

@@ -589,4 +589,81 @@ assert.equal(intentCoordinator.cache.has('alpine'), false, 'cancelled intent is 
 assert.equal(intentCoordinator.stats.cancelled, 1);
 assert.equal(intentReleases, 3, 'cancelled intent returns its final work lease');
 
-console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing and cancellation ownership passed');
+async function unchangedProgressStillSchedulesEveryCheckpoint() {
+  const notifications = [], lateNotifications = [];
+  let yields = 0, clock = 0;
+  const f = cancellationFixture({
+    now: () => ++clock,
+    foregroundYielder: () => async () => { yields++; },
+    loadModule: async () => ({ async createMapAsync(_engine, _options, progress) {
+      await progress('Surveying terrain', 0);
+      await progress('Assembling wrecks', 0.5);
+      for (let i = 0; i < 1000; i++) await progress('Assembling wrecks', 0.5);
+      f.coordinator.beginBuild('progress-dedup', (fraction, label) => {
+        lateNotifications.push([fraction, label]);
+      });
+      assert.deepEqual(lateNotifications, [[0.5, 'Assembling wrecks']],
+        'late listeners receive current progress even without another publication');
+      await progress('Sealing the battlefield', 0.5);
+      await progress('Sealing the battlefield', 0.50001);
+      await progress('Sealing the battlefield', 0.50001);
+      await progress('Assembling wrecks', 0.5);
+      await progress('Sealing the battlefield', 1);
+      return { group: new THREE.Group() };
+    } }),
+  });
+  const throwingObserver = f.coordinator.beginBuild('progress-dedup', () => {
+    throw new Error('advisory observer failure');
+  });
+  const build = f.coordinator.beginBuild('progress-dedup', (fraction, label) => {
+    notifications.push([fraction, label]);
+  });
+  assert.equal(build.promise, throwingObserver.promise);
+  await build.promise;
+  const changes = [[0.5, 'Assembling wrecks'], [0.5, 'Sealing the battlefield'],
+    [0.50001, 'Sealing the battlefield'], [0.5, 'Assembling wrecks'], [1, 'Sealing the battlefield']];
+  assert.equal(notifications.length, 6, '1001 identical checkpoints publish one change');
+  assert.deepEqual(notifications, [[0, 'Surveying terrain'], ...changes],
+    'only identical label/fraction pairs are skipped, never fine progress or stage changes');
+  assert.deepEqual(lateNotifications, changes);
+  assert.equal(yields, 1007, 'all fine checkpoints retain their scheduling opportunity');
+  assert.ok(build.stageTimings.heightField > 0,
+    'an initial checkpoint equal to defaults still initializes stage timing');
+}
+
+async function unchangedProgressStillCancelsAndReturnsLeases() {
+  const notifications = [];
+  let leases = 0, releases = 0, yields = 0, admittedSlices = 0;
+  const f = cancellationFixture({
+    acquireBackgroundWork: async () => {
+      leases++;
+      return { release() { releases++; } };
+    },
+    backgroundYielder: () => async () => {
+      if (++yields === 2) f.coordinator.cancelBackgroundExcept();
+    },
+    loadModule: async () => ({ async createMapAsync(_engine, _options, progress) {
+      for (let i = 0; i < 10; i++) {
+        await progress('Assembling wrecks', 0.5);
+        admittedSlices++;
+      }
+      assert.fail('cancelled duplicate checkpoints cannot finish assembly');
+    } }),
+  });
+  const build = f.coordinator.beginBuild('duplicate-cancel', (fraction, label) => {
+    notifications.push([fraction, label]);
+  }, { background: true, waitForGarageLull: false });
+  await assert.rejects(build.promise, /Cancelled stale battlefield prefetch/);
+  assert.deepEqual(notifications, [[0, 'Surveying terrain'], [0.5, 'Assembling wrecks']]);
+  assert.equal(yields, 2);
+  assert.equal(admittedSlices, 2, 'existing admitted-slice semantics survive duplicate progress');
+  assert.equal(leases, 2);
+  assert.equal(releases, 2, 'cancellation returns every acquired lease exactly once');
+  assert.equal(f.coordinator.cache.size, 0);
+  assert.equal(f.coordinator.stats.cancelled, 1);
+}
+
+await unchangedProgressStillSchedulesEveryCheckpoint();
+await unchangedProgressStillCancelsAndReturnsLeases();
+
+console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing, progress dedup and cancellation ownership passed');

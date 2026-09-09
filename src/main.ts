@@ -2219,6 +2219,8 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           finalShadows: async (signal?: AbortSignal) => {
             signal?.throwIfAborted();
             const entryInfo = renderer.info;
+            const casterBatchMs: number[] = [];
+            let casterCount = 0;
             // Activation owns the final battlefield camera. Leave Garage's
             // dormant shadow state before fitting it, while entry still covers
             // all ordinary scene paints. The first revealed frame reuses these
@@ -2231,10 +2233,21 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               signal,
               isCurrent: () => !graphicsContextLost && renderer.info === entryInfo,
               yieldBeforeCascade: nextPaintFrame,
+              casterWarmup: {
+                yieldBeforeBatch: nextPaintFrame,
+                onBatch: (batch) => {
+                  casterBatchMs.push(batch.elapsedMs);
+                  casterCount += batch.casterCount;
+                },
+              },
             });
             return { cascadeCount: cascadeMs.length,
               totalMs: cascadeMs.reduce((total, ms) => total + ms, 0),
-              maxMs: Math.max(0, ...cascadeMs) };
+              maxMs: Math.max(0, ...cascadeMs),
+              casterWarmup: { batches: casterBatchMs.length, casterCount,
+                batchMs: casterBatchMs,
+                totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
+                maxMs: Math.max(0, ...casterBatchMs) } };
           },
           compile: async (signal?: AbortSignal) => {
             const timing: ForwardProgramCompileTiming = {};

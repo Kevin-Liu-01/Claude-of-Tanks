@@ -32,7 +32,8 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 import { texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
-import { buildOriginalVerdantHorizon, sampleOriginalVerdantHorizon } from '../originalVerdantHorizon.ts';
+import { shapeVerdantOutland, mapVerdantOutlandUv, sampleVerdantWoodland, verdantGroundChannel,
+  paintVerdantCanopy, createVerdantWoodland, VERDANT_OUTLAND_SIZE, VERDANT_HORIZON_FRAGMENT } from '../horizonVerdant.ts';
 
 export type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
 
@@ -103,6 +104,7 @@ interface TreelineCrownOptions {
 }
 
 export interface HorizonTextureOptions {
+  verdantSeed?: number;
   banding: number;
   snowline: number;
   treeline: number;
@@ -621,6 +623,14 @@ function* makeHorizonTextureSteps(
     const v = 1 - y / (sv - 1);
     const tone = toneOptions ? sampleHorizonBiomeTone(sampleNoise, toneOptions, v) : null;
     for (let x = 0; x < su; x++) {
+      if (options.verdantSeed !== undefined) {
+        const cover = sampleVerdantWoodland((x / (su - 1) - .5) * VERDANT_OUTLAND_SIZE,
+          (v - .5) * VERDANT_OUTLAND_SIZE, options.verdantSeed);
+        const offset = (y * su + x) * 4;
+        for (let channel = 0; channel < 3; channel++) d[offset + channel] = verdantGroundChannel(cover, channel) * 255;
+        d[offset + 3] = 255;
+        continue;
+      }
       const color = tone ?? sampleHorizonTexturePixel(sampleNoise, options, x / su, v);
       const offset = (y * su + x) * 4;
       d[offset] = clamp(color.r * 159, 0, 255);
@@ -717,7 +727,7 @@ function* makeDetailNoiseTextureSteps(
 // neutral green-grey and multiplied by the crest colors so haze/sun grading
 // stays continuous with the distant terrain proxy.
 // ---------------------------------------------------------------------------
-function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
+function makeTreeLineTexture(profileSeed: number, verdant = false): THREE.CanvasTexture {
   // Four crown variants share one atlas and one material. Earlier revisions
   // repeated one strip every 56 m on every ridge and flank; scopes exposed the
   // same conifer triangles as giant fins. A connected, low-frequency canopy
@@ -729,7 +739,8 @@ function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
   ctx.clearRect(0, 0, w, h);
   const variants = HORIZON_TREELINE_ATLAS_VARIANTS;
   const bandH = Math.floor(h / variants);
-  for (let variant = 0; variant < variants; variant++) {
+  if (verdant) paintVerdantCanopy(ctx, w, h, profileSeed);
+  for (let variant = 0; !verdant && variant < variants; variant++) {
     // CanvasTexture flips Y at upload, so variant zero is drawn into the
     // bottom canvas band to keep its UV range at v=0..0.25.
     const bandTop = (variants - 1 - variant) * bandH;
@@ -765,7 +776,7 @@ function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
   const id = ctx.getImageData(0, 0, w, h);
   const d = id.data;
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i + 3] < 40) { d[i] = 138; d[i + 1] = 152; d[i + 2] = 100; } // r7: follow the lit ink base
+    if (d[i + 3] < 40) { d[i] = verdant ? 194 : 138; d[i + 1] = verdant ? 194 : 152; d[i + 2] = verdant ? 194 : 100; } // neutral pilot ink; original biome unchanged
   }
   ctx.putImageData(id, 0, 0);
   const t = new THREE.CanvasTexture(c);
@@ -1202,7 +1213,6 @@ export function sampleHorizonGeometry(
 ): HorizonRingGeometry {
   const horizon = cfg?.horizon ?? {};
   const mapId = cfg?.id ?? 'verdant';
-  if (mapId === 'verdant') return sampleOriginalVerdantHorizon(seed);
   const style = resolveHorizonStyle(horizon, mapId);
   const noise = new SimplexNoise({ random: mulberry32(((seed ^ 0x7A11) ^ idHash(mapId)) >>> 0) });
   const source = buildInitialHorizonGeometry(
@@ -1210,6 +1220,7 @@ export function sampleHorizonGeometry(
     style, PROFILES[style], noise, horizon.amp ?? 1,
   );
   const ring = subdivideHorizonGeometry(source, style, noise);
+  if (mapId === 'verdant') shapeVerdantOutland(ring, seed, horizon.amp ?? 1);
   if (usesFiniteTableCaps(horizon, mapId, style)) {
     // Titan's tall ranges need a slightly lower erosion stratum to expose
     // broad summit surfaces without steepening their supported approaches.
@@ -1600,6 +1611,7 @@ function* buildHorizonMaterialSteps({
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
   const detailTex = yield* makeHorizonTextureSteps(gnoi, {
+    verdantSeed: mapId === 'verdant' ? seed : undefined,
     banding, snowline, treeline, grainAmp, gullyAmp, coolRock: style === 'alpine',
     mesaSurface: style === 'mesa',
   });
@@ -1673,7 +1685,8 @@ function* buildHorizonMaterialSteps({
         + 'uniform float uWallFix;\nuniform float uCapFix;\n'
         + 'varying vec3 vHNrm;\nvarying vec3 vHPos;\n' +
         shader.fragmentShader.replace(
-          '#include <map_fragment>', style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT : /* glsl */`#include <map_fragment>
+          '#include <map_fragment>', mapId === 'verdant' ? VERDANT_HORIZON_FRAGMENT
+            : style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT : /* glsl */`#include <map_fragment>
         float horizonMarine = clamp(-vMapUv.y, 0.0, 1.0);
         float horizonWaterVariation = 0.0;
         {
@@ -1762,7 +1775,7 @@ function* buildHorizonMaterialSteps({
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => style === 'mesa' ? 'horizon-ring-mesa-surface-r2'
+    mat.customProgramCacheKey = () => mapId === 'verdant' ? 'horizon-verdant-watershed-r1' : style === 'mesa' ? 'horizon-ring-mesa-surface-r2'
       : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-') + style;
   }
   return mat;
@@ -1791,7 +1804,11 @@ function addHorizonTreeline({
   const N = HORIZON_SEGMENTS;
   if (treeline < 0.14) return;
     const profileSeed = ((seed ^ 0xA771) ^ idHash(mapId)) >>> 0;
-    const combTex = makeTreeLineTexture(profileSeed);
+    const combTex = makeTreeLineTexture(profileSeed, mapId === 'verdant');
+    if (mapId === 'verdant') {
+      mesh.add(createVerdantWoodland({ positions: pos, colors: col, rows, seed, layers: treelineLayers, atlas: combTex }));
+      return;
+    }
     // Alpine walls contain interpolated geometry rows for smooth shading.
     // Planting a ribbon on every row stacked visible contour stripes. Instead,
     // resolve the actual angular skyline once and follow that one envelope.
@@ -1986,7 +2003,6 @@ export function* buildHorizonRingSteps(
 ): Generator<void, THREE.Mesh, void> {
   const H = cfg?.horizon || {};
   const mapId = cfg?.id || 'verdant';
-  if (mapId === 'verdant') return buildOriginalVerdantHorizon(seed);
   const style = resolveHorizonStyle(H, mapId);
   const profile = PROFILES[style];
   const {
@@ -2034,6 +2050,7 @@ export function* buildHorizonRingSteps(
   // room for this relief within the previous vertex AND triangle ceilings.
   // Coastal apertures then lower the same annulus into a sea-level apron.
   const ring = subdivideHorizonGeometry(initialRing, style, noi);
+  if (mapId === 'verdant') shapeVerdantOutland(ring, seed, amp);
   if (usesFiniteTableCaps(H, mapId, style)) {
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64,
       mapId === 'titan_gorge' ? 1.25 : Infinity);
@@ -2071,7 +2088,7 @@ export function* buildHorizonRingSteps(
   const col = buildHorizonColors({
     style, rows, heights: hs, maxHeight: maxH,
     base, fog: fogC, rock: rockC, snow: snowC, forest: forestC,
-    snowline, treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
+    snowline, treeline: mapId === 'verdant' ? 0 : treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
     gradients, sun: [lx, ly, lz], seaOpening: H.seaOpening,
   });
   yield;
@@ -2081,6 +2098,7 @@ export function* buildHorizonRingSteps(
     .__HORIZON_DEBUG;
   if (horizonDebug) applyHorizonDebugColors(col, rows.length);
   const geo = buildHorizonGeometry(ring, col, uvA, gradients);
+  if (mapId === 'verdant') mapVerdantOutlandUv(geo);
   yield;
   // DoubleSide: the shallow inner skirt annulus is seen from ABOVE by raised
   // establishing cameras — with default FrontSide it backface-culls and the

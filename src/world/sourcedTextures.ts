@@ -446,11 +446,15 @@ function swapTexture(tex: THREE.Texture, canvas: HTMLCanvasElement): void {
   tex.needsUpdate = true;
 }
 
-async function applySet(
-  setKey: keyof typeof SETS,
-  layer: TextureLayer,
-  opts: ComposeOptions,
-): Promise<Pick<SourcedTextureResult, 'applied' | 'failures'>> {
+interface LoadedTextureSet {
+  color: HTMLImageElement | null;
+  normal: HTMLImageElement | null;
+  rough: HTMLImageElement | null;
+  ao: HTMLImageElement | null;
+  failures: string[];
+}
+
+async function loadSetImages(setKey: keyof typeof SETS): Promise<LoadedTextureSet> {
   const set = SETS[setKey];
   const failures: string[] = [];
   const source = (url: string): Promise<HTMLImageElement | null> => loadImage(url).catch((error) => {
@@ -462,9 +466,18 @@ async function applySet(
     set.rough ? source(set.rough) : null,
     set.ao ? source(set.ao) : null,
   ]);
-  if (!color || !normal) return { applied: false, failures };
+  return { color, normal, rough, ao, failures };
+}
+
+function composeSet(
+  setKey: keyof typeof SETS,
+  images: LoadedTextureSet,
+  opts: ComposeOptions,
+): { albedo: HTMLCanvasElement; normal: HTMLCanvasElement; surface: HTMLCanvasElement | null } | null {
+  const { color, normal, rough, ao } = images;
+  if (!color || !normal) return null;
   const size = Math.min(color.width, texSize(1024));
-  const separateSurface = !!layer.surface;
+  const separateSurface = !!opts.separateSurface;
   const cacheOpts = { ...opts, separateSurface };
   const key = compositeKey(setKey, cacheOpts);
   let composite = _compositeCache.get(key);
@@ -477,16 +490,26 @@ async function applySet(
     };
   }
   touchLru(_compositeCache, key, composite, COMPOSITE_CACHE_MAX);
-  swapTexture(layer.albedo, composite.canvas);
-  if (layer.surface && composite.surface) swapTexture(layer.surface, composite.surface);
-
   let normalEntry = _normalCache.get(setKey);
   if (!normalEntry || normalEntry.size !== size) {
     normalEntry = { size, canvas: normalCanvas(normal) };
   }
   touchLru(_normalCache, setKey, normalEntry, NORMAL_CACHE_MAX);
-  swapTexture(layer.normal, normalEntry.canvas);
-  return { applied: true, failures };
+  return { albedo: composite.canvas, normal: normalEntry.canvas, surface: composite.surface };
+}
+
+async function applySet(
+  setKey: keyof typeof SETS,
+  layer: TextureLayer,
+  opts: ComposeOptions,
+): Promise<Pick<SourcedTextureResult, 'applied' | 'failures'>> {
+  const images = await loadSetImages(setKey);
+  const composed = composeSet(setKey, images, { ...opts, separateSurface: !!layer.surface });
+  if (!composed) return { applied: false, failures: images.failures };
+  swapTexture(layer.albedo, composed.albedo);
+  if (layer.surface && composed.surface) swapTexture(layer.surface, composed.surface);
+  swapTexture(layer.normal, composed.normal);
+  return { applied: true, failures: images.failures };
 }
 
 async function sourceJob(
@@ -533,6 +556,100 @@ export function applySourcedTerrain(
     }));
   }
   return Promise.all(jobs);
+}
+
+export interface TerrainSourcePreparation {
+  /** Image IO only: callers never need to await this to start building. */
+  ready: Promise<void>;
+  tryCreateLayer(key: LayerKey, anisotropy: number): TextureLayer | null;
+  apply(layers: Partial<Record<LayerKey, TextureLayer>>): Promise<SourcedTextureResult[]>;
+}
+
+interface PreparedTerrainEntry {
+  set: keyof typeof SETS;
+  opts: ComposeOptions;
+  images: LoadedTextureSet | null;
+  created: WeakSet<TextureLayer>;
+}
+
+function sourcedCanvasTexture(
+  canvas: HTMLCanvasElement, anisotropy: number, srgb: boolean,
+): THREE.CanvasTexture {
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = anisotropy;
+  if (srgb) texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/**
+ * Async map builds overlap source downloads with height/horizon preparation.
+ * Each layer composes at its existing checkpoint, only if its images have
+ * settled. Otherwise the original procedural painter and late swap still run.
+ * No new wait, placeholder, global cache, or pending GPU owner is introduced:
+ * abandoning preparation before creation only leaves shared image IO to settle.
+ */
+export function prepareSourcedTerrain(
+  mapId: string, settings: SourcedTerrainSettings = {},
+): TerrainSourcePreparation {
+  const plan: TerrainPlan = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)];
+  const entries = new Map<LayerKey, PreparedTerrainEntry>();
+  const jobs: Promise<void>[] = [];
+  for (const key of ['G', 'D', 'R', 'M'] as const) {
+    const value = plan[key];
+    if (!value) continue;
+    const entry = typeof value === 'string' ? { set: value } : value;
+    const prepared: PreparedTerrainEntry = {
+      set: entry.set,
+      opts: {
+        roughInAlpha: true,
+        roughMul: (entry.roughMul ?? 1) * (key === 'M' ? settings.mudRough ?? 1 : 1),
+        tint: entry.tint || null, desat: entry.desat ?? 0, lift: entry.lift ?? 0,
+      },
+      images: null, created: new WeakSet(),
+    };
+    entries.set(key, prepared);
+    jobs.push(loadSetImages(entry.set).then((images) => { prepared.images = images; }, () => {
+      // The legacy source job reports construction/Canvas failures if used.
+      // Merely prefetching must neither reject nor replace the fallback.
+    }));
+  }
+  return {
+    ready: Promise.all(jobs).then(() => {}),
+    tryCreateLayer(key, anisotropy) {
+      const entry = entries.get(key);
+      if (!entry?.images) return null;
+      // A failed source composition must retain the same fallback policy as
+      // sourceJob, not turn an optional image into a map-loading failure.
+      let composed: ReturnType<typeof composeSet>;
+      try { composed = composeSet(entry.set, entry.images, entry.opts); }
+      catch { return null; }
+      if (!composed) return null;
+      const layer = {
+        albedo: sourcedCanvasTexture(composed.albedo, anisotropy, true),
+        normal: sourcedCanvasTexture(composed.normal, anisotropy, false),
+      };
+      entry.created.add(layer);
+      return layer;
+    },
+    apply(layers) {
+      const pending: Partial<Record<LayerKey, TextureLayer>> = {};
+      const direct: SourcedTextureResult[] = [];
+      for (const key of ['G', 'D', 'R', 'M'] as const) {
+        const layer = layers[key];
+        const entry = entries.get(key);
+        if (layer && entry?.images && entry.created.has(layer)) {
+          const target = `terrain ${mapId}/${key}`;
+          const failures = entry.images.failures;
+          if (failures.length) console.warn(`[sourcedTextures] ${target}: ${failures.join('; ')}`);
+          direct.push({ target, applied: true, failures });
+        } else if (layer) pending[key] = layer;
+      }
+      return applySourcedTerrain(mapId, pending, settings).then((late) =>
+        [...direct, ...late].sort((a, b) =>
+          'GDRM'.indexOf(a.target.slice(-1)) - 'GDRM'.indexOf(b.target.slice(-1))));
+    },
+  };
 }
 
 /**

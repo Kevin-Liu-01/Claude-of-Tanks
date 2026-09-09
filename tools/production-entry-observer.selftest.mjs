@@ -335,6 +335,24 @@ const maskStages = ['clone', 'build', 'hullCompile', 'hullRender', 'hullReadback
 {
   const shadows = browserFixture();
   shadows.context.window.__NETWORK_LOAD.shadowPrime = {
+    cascadeCount: 4, totalMs: 21, maxMs: 9,
+    casterWarmup: { batches: 140, casterCount: 200, totalMs: 80, maxMs: Infinity,
+      batchMs: [3, NaN, 'PRIVATE_VALUE', ...Array(140).fill(1)], owner: 'PRIVATE_OWNER' },
+  };
+  const receipt = JSON.parse(JSON.stringify(shadows.run(readProductionEntryObserver, 'stop')));
+  const warm = receipt.networkLoad.shadowPrime.casterWarmup;
+  assert.equal(warm.batches, 140, 'retain total count independently of the bounded sample');
+  assert.equal(warm.casterCount, 200);
+  assert.equal(warm.totalMs, 80);
+  assert.equal(warm.maxMs, null);
+  assert.equal(warm.batchMs.length, 128);
+  assert.deepEqual(warm.batchMs.slice(0, 3), [3, null, null]);
+  assert.equal(receipt.networkLoad.shadowPrime.totalMs, 21, 'final maps keep separate timing');
+  assert.doesNotMatch(JSON.stringify(receipt), /PRIVATE/);
+}
+{
+  const shadows = browserFixture();
+  shadows.context.window.__NETWORK_LOAD.shadowPrime = {
     cascadeCount: 4, totalMs: 21, maxMs: Infinity, name: 'PRIVATE_NAME',
   };
   shadows.context.window.__NETWORK_LOAD.revealSlices = [

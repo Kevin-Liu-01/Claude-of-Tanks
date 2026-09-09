@@ -313,7 +313,7 @@ function assertCurrentPolders(ring, config, seed) {
 }
 
 // Pre-restoration 28d5fd378 executable, excluding intentionally restored
-// Verdant (originalVerdantHorizon.selftest owns its historical byte oracle).
+// Verdant (horizonVerdant.selftest owns its pastoral geometry/woodland oracle).
 // Historical Polders/Titan inputs remain unchanged for this aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unrelatedMutation = createHash('sha256');

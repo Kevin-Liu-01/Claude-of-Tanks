@@ -43,17 +43,19 @@ function verifyUnmutatedInputs(inputs) {
   assert.deepEqual(inputs, currentInputs, 'actual current map inputs remain unmutated through all bakes');
 }
 function verifyCurrentVerdantHorizon(config) {
-  // Exact published 1e0b2608b input, source blob ff51870b56b69c5f7bd220cd7e8bd90c917f0f1f.
+  // User-approved return to 7997efb42's pastoral horizon, not the short-lived
+  // 1e0b2608b original mountain wall. No terrain or palette input changed.
   assert.deepEqual(config.horizon, {
-    baseHex: 0x38542c, amp: 1.0, style: 'rolling', treeline: 0,
-  }, 'current restored Verdant horizon remains exact before historical substitution');
+    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
+  }, 'current pastoral Verdant horizon remains exact before historical substitution');
 }
 const verdant = getMapConfig('verdant');
 verifyCurrentVerdantHorizon(verdant);
-const changedHorizon = { ...verdant, horizon: { ...verdant.horizon, treeline: 0.94 } };
+const changedHorizon = { ...verdant, horizon: { ...verdant.horizon, treeline: 0 } };
 assert.equal(stringify(historicalPaletteConfig(changedHorizon)), stringify(historicalPaletteConfig(verdant)),
   'negative control demonstrates historical projection alone would hide a current horizon mutation');
-assert.throws(() => verifyCurrentVerdantHorizon(changedHorizon), /current restored Verdant horizon/);
+assert.throws(() => verifyCurrentVerdantHorizon(changedHorizon), /current pastoral Verdant horizon/);
 // The original b66d receipt is the authenticated pre-c8476fa77 other29
 // configuration (f4854d513), NOT the introducing 2b2d14b39 source, whose
 // actual digest is e0b4112aa40fc3411635e04638e334fbdc50af7251b11825ae52c5e245c4d779.

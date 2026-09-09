@@ -12,7 +12,7 @@ import { rayCollisionRecord, setObbShape } from './collision.ts';
 import { box, jitterUV } from './propGeometry.ts';
 import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile,
-  deriveRuntimeStructureCollisionWithSolids } from './structureCollision.ts';
+  deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand } from './structureCollision.ts';
 import { attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
   GROUND_COVER_PLACEMENT_BYTES } from './groundCoverClearance.ts';
 
@@ -161,7 +161,8 @@ const legacyRunSource = runSource.replace('wallIslandEdges(along, exclusions, WA
 const legacyWallEdges = (length, exclusions, moduleLength) =>
   Float64Array.from({ length: exclusions.length + 1 }, (_, index) => Math.min(index * moduleLength, length));
 const rubbleSource = sourceFunction('  function roughenChunk<', '  function addRubblePile(');
-const finalSource = sourceFunction('  function finalizeDestructiblePool(', '  function* finalizeDestructiblePools(');
+const prepareSource = sourceFunction('  function* prepareDestructiblePoolGeometry(', '  function* finalizeDestructiblePool(');
+const finalSource = sourceFunction('  function* finalizeDestructiblePool(', '  function* finalizeDestructiblePools(');
 const cleanupSource = sourceFunction('  wallSpans.clear();', '  // spatial hash');
 assert.ok(source.indexOf('  yield* finalizeDestructiblePools();') < source.indexOf('  wallSpans.clear();'),
   'construction spans are released only after every pool has consumed them');
@@ -169,19 +170,54 @@ const refitSource = sourceFunction('  function refitDestructibleColliders(', '  
 const breakAnimationSource = sourceFunction('  function animateBrokenRecord(', '  /**\n   * Break/topple/toss');
 const breakRecordSource = sourceFunction('  function breakRecord(', '  /** main.ts crushables-loop contract');
 const restoreSource = sourceFunction('  function restoreDestructibleRecord(', '  function restoreToppledPoles(');
-const { refit, seal, groundCoverDetails } = new Function('deriveRuntimeStructureCollisionProfile', 'applyStructureCollisionBand',
-  'DESTRUCTIBLE_BUILDING_TYPES', 'deriveRuntimeStructureCollisionWithSolids', 'createGroundCoverSolidProfile',
-  'attachGroundCoverSolidProfile', 'GROUND_COVER_PLACEMENT_BYTES',
-  `const groundCoverDetails = { families:0, solidCount:0, profileBytes:0, placements:0,
-    placementBytes:0, unsupportedTransforms:0, buildMs:0 };
-    ${refitSource}; return { refit:refitDestructibleColliders, seal:sealGroundCoverPlacements, groundCoverDetails };`)(
-  deriveRuntimeStructureCollisionProfile, applyStructureCollisionBand, DESTRUCTIBLE_BUILDING_TYPES,
-  deriveRuntimeStructureCollisionWithSolids, createGroundCoverSolidProfile, attachGroundCoverSolidProfile,
-  GROUND_COVER_PLACEMENT_BYTES);
+function collisionFixture(contact) {
+  return new Function('deriveRuntimeStructureContactBand', 'applyStructureCollisionBand',
+    'DESTRUCTIBLE_BUILDING_TYPES', 'deriveRuntimeStructureCollisionWithSolids', 'createGroundCoverSolidProfile',
+    'attachGroundCoverSolidProfile', 'GROUND_COVER_PLACEMENT_BYTES',
+    `const groundCoverDetails = { families:0, solidCount:0, profileBytes:0, placements:0,
+      placementBytes:0, unsupportedTransforms:0, buildMs:0 };
+      ${refitSource}; return { refit:refitDestructibleColliders, seal:sealGroundCoverPlacements, groundCoverDetails };`)(
+    contact, applyStructureCollisionBand, DESTRUCTIBLE_BUILDING_TYPES,
+    deriveRuntimeStructureCollisionWithSolids, createGroundCoverSolidProfile, attachGroundCoverSolidProfile,
+    GROUND_COVER_PLACEMENT_BYTES);
+}
+const { refit, seal, groundCoverDetails } = collisionFixture(deriveRuntimeStructureContactBand);
+// Independent pre-change contact computation: the optimized contact-only path
+// must match the full profile that uninterrupted pool finalization used.
+const legacyRefit = collisionFixture(input => deriveRuntimeStructureCollisionProfile(input).contact).refit;
+function poolFinalizer(fixture, field, drng, overrides = {}) {
+  const bindings = { THREE, mats: { stone: material }, drng,
+    refitDestructibleColliders: refit, sealGroundCoverPlacements: seal, fitWallSpan,
+    heightField: field, wallSpans: fixture.spans, WALL_SEG,
+    tintDestructibleInstances: () => {}, destructibleCastsShadow: () => false,
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group: new THREE.Group(), ...overrides };
+  const functions = new Function('bindings', `const {
+    THREE, mats, drng, refitDestructibleColliders, sealGroundCoverPlacements, fitWallSpan,
+    heightField, wallSpans, WALL_SEG, tintDestructibleInstances, destructibleCastsShadow,
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group
+  } = bindings; ${prepareSource}; ${finalSource};
+  return { prepare: prepareDestructiblePoolGeometry, finalize: finalizeDestructiblePool };`)(bindings);
+  return { ...functions, group: bindings.group };
+}
+function assertGeometryEqual(actual, expected, label) {
+  assert.deepEqual(Object.keys(actual.attributes), Object.keys(expected.attributes), `${label}: attribute names/order`);
+  for (const key of Object.keys(expected.attributes)) {
+    for (const property of ['itemSize', 'normalized', 'usage']) {
+      assert.equal(actual.attributes[key][property], expected.attributes[key][property], `${label}: ${key}.${property}`);
+    }
+    assert.deepEqual(actual.attributes[key].array, expected.attributes[key].array, `${label}: exact ${key} bytes`);
+  }
+  assert.deepEqual(actual.index?.array, expected.index?.array, `${label}: exact triangle indices`);
+  assert.deepEqual(actual.groups, expected.groups, `${label}: material groups`);
+  assert.deepEqual(actual.drawRange, expected.drawRange, `${label}: draw range`);
+}
 let sourceSlots = 0, maxCoverIncrease = -Infinity, sumCoverIncrease = 0, maxRelief = 0;
 let maxCapAboveMidpoint = -Infinity, sumCapAboveMidpoint = 0, worstCoverSite;
-let lifecycleCycles = 0;
+let lifecycleCycles = 0, poolCheckpoints = 0, cancelledPools = 0;
 function checkSourceLifecycle(pool) {
+  assert.ok(pool.records.every(record => record.cls === 'break' && !record.body),
+    'this extracted lifecycle fixture covers static wall break/reset, not loose/topple/toss branches');
+  assert.ok(!pool.meta.instanceTintStrength, 'wall lifecycle does not enter building-only tint generation');
   const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive',
     `const _quat = new THREE.Quaternion(), _upAxis = new THREE.Vector3(0,1,0),
       _mat4 = new THREE.Matrix4(), _posv = new THREE.Vector3(), _zeroScale = new THREE.Vector3(1e-4,1e-4,1e-4);
@@ -328,11 +364,35 @@ for (const seed of [1337, 2049, 7719]) {
   let kitDraws = 0;
   const kitNext = seeded(seed), kitRng = () => { kitDraws++; return kitNext(); };
   const pool = { meta: DESTRUCTIBLE_TYPES.wallstone, records, mats4: matrices, nBroken: 0 };
-  const finalize = new Function('THREE', 'mats', 'drng', 'refitDestructibleColliders', 'sealGroundCoverPlacements', 'fitWallSpan', 'heightField', 'wallSpans', 'WALL_SEG', 'tintDestructibleInstances', 'destructibleCastsShadow', 'group', 'DESTRUCTIBLE_BUILDING_TYPES', 'prepareWorldStructureNightFixture',
-    `${finalSource}; return finalizeDestructiblePool;`)(THREE, { stone: material }, kitRng, refit, seal,
-    fitWallSpan, field, spans, WALL_SEG, () => {}, () => false, group,
-    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture);
-  finalize('wallstone', pool);
+  const reference = sourceRunFixture(runSource, config.props.wallRuns, field, seed);
+  let expectedDraws = 0;
+  const expectedNext = seeded(seed), expectedRng = () => { expectedDraws++; return expectedNext(); };
+  const expectedIntact = DESTRUCTIBLE_TYPES.wallstone.build(expectedRng);
+  const referencePool = { records: reference.records, mats4: reference.matrices };
+  legacyRefit(expectedIntact, referencePool, 'wallstone');
+  // Original uninterrupted order: build, refit all contact colliders, fit all
+  // complete spans, then construct the broken kit from the same RNG stream.
+  for (const record of reference.records) {
+    fitWallSpan(reference.matrices[record.slot], expectedIntact, field,
+      reference.spans.get(record), record, WALL_SEG);
+  }
+  const expectedBroken = DESTRUCTIBLE_TYPES.wallstone.broken(expectedRng);
+  const { finalize } = poolFinalizer(fixture, field, kitRng, { group });
+  let completedFits = 0;
+  for (const checkpoint of finalize('wallstone', pool)) {
+    completedFits += 8; poolCheckpoints++;
+    assert.deepEqual(checkpoint, { fine: true, progress: false, stage: 'wall-fit-wallstone' });
+    assert.equal(group.children.length, 0, 'no partial intact or broken mesh is published at a fit checkpoint');
+    assert.equal(pool.imI, undefined); assert.equal(pool.imB, undefined);
+    for (let index = 0; index < completedFits; index++) {
+      assert.deepEqual(matrices[index].elements, reference.matrices[index].elements,
+        'each completed fit is already exact before the next batch starts');
+      assert.deepEqual(records[index], reference.records[index], 'complete collider/support receipt at each checkpoint');
+    }
+    assert.ok(records.slice(completedFits).every(record => record.groundSupport === null),
+      'the checkpoint does not begin a later wall fit');
+  }
+  assert.equal(completedFits / 8, Math.floor((records.length - 1) / 8), 'one checkpoint per eight completed fits');
   assert.equal(records.length, authoredSlots);
   assert.equal(pool.imI.count, authoredSlots);
   assert.equal(group.children.length, 2, 'one intact and one existing broken pool, no added draw families');
@@ -340,11 +400,15 @@ for (const seed of [1337, 2049, 7719]) {
   assert.equal(pool.imI.material, material);
   assert.equal(pool.imB.material, material, 'no extra material or shader variant');
   assert.equal(fixture.draws, drawCount, 'fitting consumes no placement RNG');
-  const expectedRng = seeded(seed);
-  const expectedIntact = DESTRUCTIBLE_TYPES.wallstone.build(expectedRng);
-  const expectedBroken = DESTRUCTIBLE_TYPES.wallstone.broken(expectedRng);
-  assert.deepEqual(pool.imI.geometry.attributes.position.array, expectedIntact.attributes.position.array);
-  assert.deepEqual(pool.imB.geometry.attributes.position.array, expectedBroken.attributes.position.array, 'same kit RNG and same broken primitive budget');
+  assertGeometryEqual(pool.imI.geometry, expectedIntact, 'unchanged intact geometry');
+  assertGeometryEqual(pool.imB.geometry, expectedBroken, 'unchanged broken geometry');
+  assert.deepEqual(matrices.map(matrix => matrix.elements), reference.matrices.map(matrix => matrix.elements),
+    'cooperative fitting preserves all original double-precision placements');
+  assert.deepEqual(records, reference.records, 'cooperative fitting preserves complete collider and support records');
+  assert.deepEqual(pool.imI.instanceMatrix.array, new Float32Array(reference.matrices.flatMap(matrix => matrix.elements)),
+    'published instance matrices preserve the original float32 transform stream');
+  assert.equal(kitDraws, expectedDraws, 'same intact and broken builder RNG consumption');
+  assert.equal(kitRng(), expectedRng(), 'the next seeded draw is unchanged after finalization');
   assert.ok(kitDraws > 0);
   for (const record of records) {
     const mesh = new Mesh(pool.imI.geometry, material);
@@ -373,12 +437,112 @@ for (const seed of [1337, 2049, 7719]) {
   new Function('wallSpans', cleanupSource)(spans);
   assert.equal(spans.size, 0, 'no span-to-record placement graph survives construction');
   checkSourceLifecycle(pool);
+  disposeFixture(reference);
   for (const geometry of [...Object.values(buckets).flat(), pool.imI.geometry, pool.imB.geometry, expectedIntact, expectedBroken]) geometry.dispose();
+}
+
+function trackedFinalization(overrides = {}) {
+  const field = { ...flatField, getHeightAt: (x, z) => 3 + x * .1 + z * .2 };
+  const fixture = sourceRunFixture(runSource, [[0, 0, 0, 51]], field, 991);
+  assert.equal(fixture.records.length, 17, 'small real-kit fixture spans both eight-fit checkpoints');
+  const geometries = [];
+  const track = (geometry, kind) => {
+    const receipt = { geometry, kind, disposals: 0 };
+    geometry.addEventListener('dispose', () => { receipt.disposals++; });
+    geometries.push(receipt); return geometry;
+  };
+  const meta = { ...DESTRUCTIBLE_TYPES.wallstone,
+    build: rng => track(DESTRUCTIBLE_TYPES.wallstone.build(rng), 'intact'),
+    broken: rng => track(DESTRUCTIBLE_TYPES.wallstone.broken(rng), 'broken') };
+  const pool = { meta, records: fixture.records, mats4: fixture.matrices, nBroken: 0 };
+  const owner = poolFinalizer(fixture, field, seeded(991), overrides);
+  return { fixture, pool, owner, geometries };
+}
+function assertUnpublished(test) {
+  assert.equal(test.owner.group.children.length, 0, 'untransferred geometry never publishes partial meshes');
+  assert.equal(test.pool.imI, undefined); assert.equal(test.pool.imB, undefined);
+  assert.equal(test.geometries.filter(item => item.kind === 'broken').length, 0,
+    'no broken builder runs before every intact fit completes');
+}
+function assertClosed(test, iterator) {
+  assert.deepEqual(iterator.return(), { done: true, value: undefined });
+  assert.deepEqual(iterator.next(), { done: true, value: undefined });
+  assertUnpublished(test);
+  assert.equal(test.geometries.length, 1, 'one invocation-owned intact kit only');
+  assert.equal(test.geometries[0].disposals, 1, 'IteratorClose/error releases intact geometry exactly once');
+  disposeFixture(test.fixture);
+}
+for (const method of ['prepare', 'finalize']) {
+  const unstarted = trackedFinalization();
+  const unopened = unstarted.owner[method]('wallstone', unstarted.pool);
+  unopened.return();
+  assert.deepEqual(unopened.next(), { done: true, value: undefined });
+  assert.equal(unstarted.geometries.length, 0, 'closing before first next never enters either builder');
+  assertUnpublished(unstarted); disposeFixture(unstarted.fixture);
+  for (const boundary of [1, 2]) {
+    const test = trackedFinalization();
+    const iterator = test.owner[method]('wallstone', test.pool);
+    for (let index = 0; index < boundary; index++) {
+      assert.deepEqual(iterator.next(), { done: false,
+        value: { fine: true, progress: false, stage: 'wall-fit-wallstone' } });
+      assertUnpublished(test);
+      assert.equal(test.geometries[0].disposals, 0, 'geometry remains owned while suspended');
+      assert.equal(test.fixture.records.filter(record => record.groundSupport !== null).length, (index + 1) * 8,
+        'suspension occurs only between complete fits');
+    }
+    assertClosed(test, iterator); cancelledPools++;
+  }
+}
+for (const method of ['prepare', 'finalize']) for (const phase of ['refit', 'fit']) {
+  const failure = new Error(`original ${method} ${phase} failure`);
+  let fitCount = 0;
+  const test = trackedFinalization({
+    refitDestructibleColliders: (...args) => {
+      if (phase === 'refit') throw failure;
+      return refit(...args);
+    },
+    fitWallSpan: (...args) => {
+      fitWallSpan(...args);
+      if (++fitCount === 9) throw failure;
+    },
+  });
+  const iterator = test.owner[method]('wallstone', test.pool);
+  if (phase === 'fit') {
+    assert.equal(iterator.next().done, false, 'fit failure occurs after a real suspended batch');
+    assertUnpublished(test);
+  }
+  assert.throws(() => iterator.next(), error => error === failure, 'original refit/fit error escapes unchanged');
+  assertClosed(test, iterator);
+}
+// Successful preparation transfers geometry to its caller; closing that done
+// iterator must not reclaim it. Successful finalization transfers both kits to
+// the group, so only the normal world resource owner disposes them.
+for (const method of ['prepare', 'finalize']) {
+  const test = trackedFinalization(), iterator = test.owner[method]('wallstone', test.pool);
+  let step = iterator.next();
+  while (!step.done) { assertUnpublished(test); step = iterator.next(); }
+  iterator.return(); iterator.return();
+  assert.equal(test.geometries.length, method === 'prepare' ? 1 : 2, 'builders execute exactly once on success');
+  assert.ok(test.geometries.every(item => item.disposals === 0), 'successful transfer does not dispose live geometry');
+  if (method === 'prepare') {
+    assertUnpublished(test);
+    assert.equal(step.value.geoI, test.geometries[0].geometry);
+    assert.equal(step.value.groundCoverDetail, null, 'walls do not allocate building-only solid profiles');
+  } else {
+    assert.equal(test.owner.group.children.length, 2);
+    assert.equal(test.pool.imI.geometry, test.geometries[0].geometry);
+    assert.equal(test.pool.imB.geometry, test.geometries[1].geometry);
+  }
+  for (const item of test.geometries) item.geometry.dispose();
+  iterator.return();
+  assert.ok(test.geometries.every(item => item.disposals === 1), 'normal owner cleanup releases each transferred kit once');
+  disposeFixture(test.fixture);
 }
 assert.deepEqual(groundCoverDetails, { families:0, solidCount:0, profileBytes:0, placements:0,
   placementBytes:0, unsupportedTransforms:0, buildMs:0 }, 'walls retain the cheap collider path, without building-only solid profiles');
 material.dispose();
 console.log(JSON.stringify({ seams, vertices, legacyMisses, sourceSlots, endpointRays, legacyEndpointMisses, lifecycleCycles,
+  poolCheckpoints, cancelledPools,
   maxCoverIncrease, meanCoverIncrease: sumCoverIncrease / sourceSlots, maxRelief,
   maxCapAboveMidpoint, meanCapAboveMidpoint: sumCapAboveMidpoint / sourceSlots, worstCoverSite }));
 console.log('wallSpanPlacement: actual kit seams, ground support, source run/finalization, collision and unchanged instance/material budgets passed');

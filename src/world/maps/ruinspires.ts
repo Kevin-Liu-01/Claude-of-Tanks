@@ -87,7 +87,8 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 96, outcrops: 10, craters: 128, rubblePiles: 188,
     hedgehogs: 38, sandbagLines: 26, townCraters: true,
-    tankWrecks: { era: 'modern', count: 9, debris: true },
+    tankWrecks: { era: 'modern', count: 9, debris: true,
+      ids: ['bmpt_t90', 'leclerc_xlr', 'm1a2_sepv3', 'ua_t84_oplot_m', 'kf51', 'pl01', 'm2a2_bradley', 'leo2a7v', 't90m'] },
     inhabit: {
       stalls: 1, benches: 8, coreClutter: 34, drums: 20,
       trucks: 10, jeeps: 8, drumClusters: 10, camps: 3, modernClutter: 44,

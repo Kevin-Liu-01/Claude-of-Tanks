@@ -74,7 +74,8 @@ export default {
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 264, outcrops: 58, craters: 74, rubblePiles: 22,
     hedgehogs: 22, sandbagLines: 24,
-    tankWrecks: { era: 'modern', count: 7, debris: true },
+    tankWrecks: { era: 'modern', count: 7, debris: true,
+      ids: ['merkava3d', 'k2', 'merkava4b', 'm60a3', 'ariete', 't72b3m', 'm1a2_sepv3'] },
     inhabit: {
       stalls: 4, benches: 2, coreClutter: 26, drums: 12, pots: 7,
       trucks: 7, jeeps: 5, drumClusters: 8, camps: 5, modernClutter: 28,

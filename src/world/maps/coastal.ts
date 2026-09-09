@@ -168,7 +168,7 @@ export default {
     // + landing-defense dressing (hedgehog obstacles, sandbag lines)
     tankWrecks: {
       era: 'modern', count: 5, debris: true,
-      ids: ['merkava3d', 'ariete', 'type10', 'leclerc', 'm1a1'],
+      ids: ['m2a2_bradley', 'bmp3', 'merkava3d', 'ariete', 'type10'],
     },
     sandbagLines: 10,
     hedgehogs: 7,
