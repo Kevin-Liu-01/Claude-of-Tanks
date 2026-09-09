@@ -13,7 +13,7 @@ function section(start, end) {
   assert.ok(a >= 0 && b > a, `actual production stage exists: ${start}`);
   return source.slice(a, b);
 }
-const treatment = '    if (veg.stubblePatches) t[5] *= stubbleHeightScale(x, z);';
+const treatment = ' * (veg.stubblePatches ? stubbleHeightScale(x, z) : 1)';
 assert.equal(source.split(treatment).length, 2, 'one record-construction application, never a frame update');
 const stages = [
   section('  // shared placement filter/tint', "  yield { stage: 'grassPrep' }; // perf-r3"),
@@ -27,16 +27,16 @@ const stages = [
 function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
   return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry', `return (${stripTypeScriptTypes(`
-    function build(heightField, config, mobileTier, mulberry32) {
+    function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       ${section('const HALF = 512;', 'function treePositionNoise(')}
       const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation };
       const L = heightField._layout, noVeg = heightField._noVeg, _c = new THREE.Color();
       ${section('  const grassPerChunk =', '  const uWindTime =')}
-      const grassVariants = [0, 1].map(v => ({
-        geo: buildGrassTuftGeometry(v === 0 ? 0.92 : 1.14, v === 0 ? 0.74 : 0.58),
-        geoFar: buildGrassTuftGeometry(v === 0 ? 0.92 : 1.14, v === 0 ? 0.74 : 0.58, 1, 1.5),
-        matMid: new THREE.MeshLambertMaterial(), matNear: new THREE.MeshLambertMaterial(),
-      }));
+      const grassVariants = [], grassTex = [null, null], grassFadeEnd = GRASS_FADE_END;
+      const makeTuftFarGeometry = (w, h) => buildGrassTuftGeometry(w, h, 1, 1.5);
+      const makeGrassMaterial = () => new THREE.MeshLambertMaterial();
+      ${section('  function* buildGrassVariants():', '  yield* buildGrassVariants();')}
+      for (const _ of buildGrassVariants()) {}
       ${body}
       function chunk(ix, iz) {
         const gc = { ix, iz, x0: -HALF + ix * CHUNK_SIZE, z0: -HALF + iz * CHUNK_SIZE,
@@ -44,7 +44,7 @@ function compile(legacy) {
         advanceGrassChunk(gc, grassPerChunk);
         return gc;
       }
-      return { chunk, carpetCell, rebuildCarpet, carpetSets, group, grassVariants, stubbleHeightScale };
+      return { chunk, carpetCell, rebuildCarpet, carpetSets, group, grassVariants, stubbleHeightScale, makeTuft };
     }
   `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry);
 }
@@ -200,5 +200,45 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(receipt.shortened, 0);
   assert.deepEqual(bRandom.snapshot(), aRandom.snapshot());
   dispose(before); dispose(after);
+}
+// The new closure dependency must receive the already-shortened physical
+// height before accepting a record. Exercise both its observation and veto,
+// rather than keeping every comparison on the optional-null branch.
+{
+  const field = createHeightField(1337, longleaf), patch = longleaf.vegetation.stubblePatches[0];
+  let blocked = false, lastQuery = null, queries = 0;
+  const fixture = build(field, longleaf, false, mulberry32, (...args) => {
+    queries++; lastQuery = args;
+    assert.ok(args.every(Number.isFinite) && args[3] > 0 && args[4] > 0,
+      'real production variant dimensions reach the clearance callback');
+    return blocked;
+  });
+  try {
+    for (const carpet of [false, true]) {
+      let accepted = 0;
+      for (let sample = 0; sample < 64 && !accepted; sample++) {
+        const x = patch.x0 + (sample % 8 + .5) / 8 * (patch.x1 - patch.x0);
+        const z = patch.z0 + (Math.floor(sample / 8) + .5) / 8 * (patch.z1 - patch.z0);
+        blocked = false;
+        const rolls = tracedRandom(), rng = rolls.make(4000 + sample);
+        const tuple = fixture.makeTuft(x, z, rng, carpet)?.slice();
+        if (!tuple) continue;
+        const query = lastQuery.slice(), variant = fixture.grassVariants[tuple[9]];
+        assert.deepEqual(query.slice(0, 3), [tuple[0], tuple[1], tuple[2]]);
+        assert.equal(query[3], variant.height * tuple[5] * (carpet ? 1.04 : 1),
+          'clearance sees the actual shortened packed height, including carpet scale');
+        assert.equal(fixture.stubbleHeightScale(x, z), .16);
+        const beforeQueries = queries, rejectedRolls = tracedRandom();
+        blocked = true;
+        assert.equal(fixture.makeTuft(x, z, rejectedRolls.make(4000 + sample), carpet), null,
+          'a true clearance veto cannot be bypassed by the extracted-source harness');
+        assert.equal(queries, beforeQueries + 1);
+        assert.deepEqual(lastQuery, query, 'the veto evaluates the same physical candidate');
+        assert.deepEqual(rejectedRolls.snapshot(), rolls.snapshot(), 'clearance preserves all seeded draws and tails');
+        accepted++;
+      }
+      assert.equal(accepted, 1, `actual ${carpet ? 'carpet' : 'midfield'} core candidate exercises clearance`);
+    }
+  } finally { dispose(fixture); }
 }
 console.log(JSON.stringify({ test: 'loggingYardGrass', scope: 'actual CPU grass stages, two chunks and two carpet rebuilds per case; not GPU or whole-map census', receipts }));

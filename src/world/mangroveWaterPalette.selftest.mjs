@@ -9,6 +9,7 @@ import { NoColorSpace, RepeatWrapping, SRGBColorSpace } from 'three';
 import { createHeightField, makeSeaLayer } from './terrain.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
+import { historicalShorelineConfig, historicalPaletteConfig } from './shorelineHistoryTestOracle.mjs';
 
 // Real production imports and native Canvas2D only. This tests the returned
 // packed pixels, including premultiplied backing-store quantization; it does
@@ -35,16 +36,35 @@ const v34Tone = (_h, s, l) => [.115, Math.min(1, s * .75), Math.min(1, l * .88)]
 const oldCfg = { ...cfg, splat: { ...cfg.splat, mudTone: oldTone, iceSky: [.22, .42, .40] } };
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
 const hash = value => createHash('sha256').update(value).digest('hex');
-// Pre-edit normal-import controls: no mutation of the other29 configs, and
-// exactly two permitted Mangrove fields. No generated control from the new tone.
-const unchangedMaps = [];
-for (const id of MAP_IDS) {
-  if (id !== 'mangrove') unchangedMaps.push([id, stringify(getMapConfig(id))]);
+// The original b66d receipt is the authenticated pre-c8476fa77 other29
+// configuration (f4854d513), NOT the introducing 2b2d14b39 source, whose
+// actual digest is e0b4112aa40fc3411635e04638e334fbdc50af7251b11825ae52c5e245c4d779.
+// Preserve the original receipt unchanged with its exact historical inputs;
+// later Reservoir/Longleaf/Polders/Oasis authoring is not a palette change.
+function verifyHistoricalConfigs(resolve) {
+  const unchangedMaps = [];
+  for (const id of MAP_IDS) {
+    if (id !== 'mangrove') unchangedMaps.push([id, stringify(historicalPaletteConfig(resolve(id)))]);
+  }
+  assert.equal(hash(JSON.stringify(unchangedMaps)),
+    'b66d67a8425f3da8180017c3936c7e2fa9a0cfcfd6a7e8e48dedd3e2a4ea86e8', 'original other29 config digest');
+  const historical = historicalShorelineConfig(resolve('mangrove'));
+  assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),
+    'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede', 'original non-palette Mangrove digest');
 }
-assert.equal(hash(JSON.stringify(unchangedMaps)),
-  'b66d67a8425f3da8180017c3936c7e2fa9a0cfcfd6a7e8e48dedd3e2a4ea86e8');
-assert.equal(hash(stringify({ ...cfg, splat: { ...cfg.splat, mudTone: null, iceSky: null } })),
-  'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede');
+verifyHistoricalConfigs(getMapConfig);
+assert.throws(() => verifyHistoricalConfigs(id => id === 'verdant'
+  ? { ...getMapConfig(id), terrain: { ...getMapConfig(id).terrain, hillScale: -1 } } : getMapConfig(id)), /other29 config/);
+assert.throws(() => verifyHistoricalConfigs(id => id === 'mangrove'
+  ? { ...cfg, terrain: { ...cfg.terrain, hillScale: -1 } } : getMapConfig(id)), /non-palette Mangrove/);
+const nonPalette = config => stringify({ ...config, splat: { ...config.splat, mudTone: null, iceSky: null } });
+assert.equal(nonPalette(oldCfg), nonPalette(cfg), 'current palette A/B differs in exactly the two permitted fields');
+const currentInputs = MAP_IDS.map(id => stringify(getMapConfig(id)));
+function verifyUnmutatedInputs(inputs) {
+  assert.deepEqual(inputs, currentInputs, 'actual current map inputs remain unmutated through all bakes');
+}
+const mutation = currentInputs.slice(); mutation[0] += 'corrupt';
+assert.throws(() => verifyUnmutatedInputs(mutation), /remain unmutated/);
 assert.deepEqual(cfg.splat.iceSky, [.18, .19, .145]);
 assert.deepEqual(cfg.splat.mudTone(.51, .3, .2), [.115, .3 * .75, .2 * 1.8]);
 
@@ -180,6 +200,7 @@ try {
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
   assert.equal(resolveDeviceTier(), 'mobile');
   for (const seed of [3003, 1337, 2002]) checkLayer(seed, 128);
+  verifyUnmutatedInputs(MAP_IDS.map(id => stringify(getMapConfig(id))));
   console.log(`mangroveWaterPalette.selftest: PASS six native sea bakes (${packageInfo.name}@${packageInfo.version}), exact alpha/normals/physics/resources, untouched other29 configs`);
 } finally {
   for (const [key, value] of originals) {

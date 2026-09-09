@@ -12,6 +12,8 @@ import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import * as seam from './destructibles.ts';
 import * as loose from './loosePropPhysics.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
+import { registerWorldNightLighting } from './worldNightLighting.ts';
+import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -78,10 +80,13 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
   bodies.forEach((r, i) => { r.looseIndex = i; });
   const group = new THREE.Group();
   new THREE.Scene().add(group);
+  const mats = Object.fromEntries(['curtain', 'glass', 'structureWood', 'structureMetal', 'structureCanvas']
+    .map(key => [key, new THREE.MeshStandardMaterial()]));
   const events = [];
   seam.setDestroyedEventSink((event) => events.push(event));
   const context = {
     THREE, ...seam, ...loose, setToppleAxis, settledToppleAngle,
+    registerWorldNightLighting, setWorldNightFixtureActive, mats,
     destructibles: records, dPools: pools, obstacles, looseRecords: bodies, activeLoose: [],
     heightField: { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }) },
     group, mapId: 'authority-fixture', seed: 7719, drng: rng, mulberry32: seeded,
@@ -94,6 +99,13 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));
+  assert.equal(mats.curtain.userData.nightEmissionMask, true,
+    'the real post-build lighting dependency executes on the fixture owner');
+  assert.equal(mats.curtain.userData.nightLightKind, 'window');
+  for (const key of ['glass', 'structureWood', 'structureMetal', 'structureCanvas']) {
+    assert.equal(mats[key].userData.nightEmissionMask, undefined,
+      'unprepared fixture materials are not accidentally enrolled by registration');
+  }
   // map.ts registers only after completed scene assembly, not during props
   // construction. Exercise that real registration/disposal contract here too.
   const unregisterDestructibles = runtime.registerDestructibles();
@@ -103,7 +115,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
       pool.imI.geometry.dispose(); pool.imI.dispose();
       if (pool.imB) { pool.imB.geometry.dispose(); pool.imB.dispose(); }
     }
-    material.dispose(); group.removeFromParent(); seam.setDestroyedEventSink(null);
+    material.dispose(); Object.values(mats).forEach(mat => mat.dispose());
+    group.removeFromParent(); seam.setDestroyedEventSink(null);
   }
   return { ...runtime, records, pools, events, dispose };
 }

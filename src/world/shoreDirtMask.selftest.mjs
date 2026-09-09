@@ -8,6 +8,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
+import { historicalShorelineConfig, historicalReservoirConfig } from './shorelineHistoryTestOracle.mjs';
 
 // Captured BEFORE adding the shore pass, from normal production imports:
 // createHeightField(1337) -> makeMaskTexture(noise seed3010), desktop512.
@@ -144,7 +145,7 @@ function checkProtected(field, control, texture, original, cfg) {
   for (const beat of cfg.props.tacticalBeats) {
     assert.deepEqual(fieldValues(field, beat.x, beat.z), fieldValues(control, beat.x, beat.z), 'landmark support/physics unchanged');
   }
-  for (const anchor of cfg.props.riverLandings) {
+  for (const anchor of cfg.props.riverLandings ?? []) {
     const landing = planRiverLanding(field, field._layout.lakes, anchor);
     assert.ok(landing, 'all three real landings remain available');
     assert.deepEqual(landing, planRiverLanding(control, control._layout.lakes, anchor), 'working-bank support remains exact');
@@ -187,27 +188,27 @@ function benchmark(before, size) {
   }
   return trials.sort((a, b) => a - b)[1];
 }
-function checkMangrove(seed, size) {
-  const cfg = getMapConfig('mangrove');
+function checkShoreMap(id, seed, size) {
+  const cfg = getMapConfig(id);
+  if (id === 'mangrove') assert.equal(cfg.props.riverLandings.length, 3,
+    'generalizing the bank check cannot silently skip any original Mangrove landing');
   const controlCfg = { ...cfg, splat: { ...cfg.splat, shoreDirt: false } };
   const field = createHeightField(seed, cfg), control = createHeightField(seed, controlCfg);
   const old = bake(control, controlCfg), current = bake(field, cfg);
   try {
     checkTexture(current, size); checkTexture(old, size);
     verifyPreserved(bytes(old), bytes(current));
-    if (seed === 1337 && size === 512) assert.equal(hash(bytes(old)), ORIGINAL.mangrove);
+    if (id === 'mangrove' && seed === 1337 && size === 512) assert.equal(hash(bytes(old)), ORIGINAL.mangrove);
     checkProtected(field, control, current, old, cfg);
     const dryAreaM2 = checkRealMaskOracle(bytes(old), bytes(current), size);
-    console.log(JSON.stringify({ seed, size, dryAreaM2, addedConstructionMedianMs: +benchmark(bytes(old), size).toFixed(3) }));
+    assert.throws(() => checkRealMaskOracle(bytes(old), bytes(old), size), /materially wider/,
+      'omitting the bank pass must fail the same real-mask coverage oracle');
+    console.log(JSON.stringify({ id, seed, size, dryAreaM2, addedConstructionMedianMs: +benchmark(bytes(old), size).toFixed(3) }));
   } finally { old.dispose(); current.dispose(); }
 }
 
 function historicalOasis(cfg) {
-  return { ...cfg, terrain: { ...cfg.terrain, lakes: [
-    { x: -138, z: -16, r: 52, depth: 0.75, level: -1.2 },
-    { x: -182, z: 32, r: 57, depth: 0.75, level: -1.2 },
-    { x: -134, z: 84, r: 48, depth: 0.65, level: -1.2 },
-  ] } };
+  return historicalShorelineConfig(cfg);
 }
 
 function verifyOasisChannels(before, after) {
@@ -251,7 +252,7 @@ assert.deepEqual(Object.keys(ORIGINAL).sort(), [...MAP_IDS].sort());
 for (const id of MAP_IDS) {
   if (id === 'mangrove') continue;
   const cfg = getMapConfig(id);
-  assert.ok(!cfg.splat?.shoreDirt, `${id}: bank pass is opt-in only`);
+  assert.equal(!!cfg.splat?.shoreDirt, id === 'polders', `${id}: only the published Polders opt-in joins Mangrove`);
   // Independent authored harvest wear has its own immutable Longleaf control.
   // Keep this pre-bank baseline byte-exact with both later opt-in stamps off.
   let control = cfg.terrain?.workedGround
@@ -259,17 +260,34 @@ for (const id of MAP_IDS) {
   // The later Oasis contour intentionally changes water only; keep its exact
   // old input behind the immutable pre-shore-pass hash and test current below.
   if (id === 'oasis') control = historicalOasis(control);
+  // 37271a90b / 56924f7bf changed Polders drainage, pads, field patch and
+  // opt-in bank soil. Preserve its original input/golden, not a new digest.
+  if (id === 'polders') control = historicalShorelineConfig(control);
+  // The original Reservoir mask predates c8476fa77's intentionally moved
+  // roads/assembly apron. The exact old input still reproduces ORIGINAL.
+  if (id === 'reservoir') control = historicalReservoirConfig(control);
   const texture = bake(createHeightField(1337, control), control);
   try { assert.equal(hash(bytes(texture)), ORIGINAL[id], `${id}: full original RGBA byte control`); }
   finally { texture.dispose(); }
 }
+// Keep current Reservoir covered too: without an opt-in, the shore pass must
+// be byte-inert even on its new hardstand/road layout. Historical and current
+// layouts must not accidentally collapse back into the same fixture.
+{
+  const cfg = getMapConfig('reservoir'), field = createHeightField(1337, cfg);
+  const current = bake(field, cfg), disabled = bake(field, cfg, false);
+  try {
+    assert.deepEqual(bytes(current), bytes(disabled), 'current Reservoir does not receive unrequested bank soil');
+    assert.notEqual(hash(bytes(current)), ORIGINAL.reservoir, 'current authored roads remain distinct from historical input');
+  } finally { current.dispose(); disabled.dispose(); }
+}
 checkOasis();
-for (const seed of [1337, 2049, 4093]) checkMangrove(seed, 512);
+for (const id of ['mangrove', 'polders']) for (const seed of [1337, 2049, 4093]) checkShoreMap(id, seed, 512);
 const savedWindow = globalThis.window;
 try {
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
   resolveDeviceTier();
-  for (const seed of [1337, 2049, 4093]) checkMangrove(seed, 256);
+  for (const id of ['mangrove', 'polders']) for (const seed of [1337, 2049, 4093]) checkShoreMap(id, seed, 256);
 } finally {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
@@ -278,4 +296,4 @@ assert.equal(hash(source.slice(source.indexOf('const SPLAT_COMMON_FRAG'), source
   'd470ffa221c1ed9617c7794f0734932fb904beb1e204e1af6a10d1f415e14713', 'complete splat shader is byte-identical');
 assert.match(source, /S\.shoreDirt \? \(S\.seaRamp\?\.\[0\] \?\? 0\.40\) : null/);
 assert.match(source, /stampShoreDirtMask\(px, dist, s, MAP_SIZE, shoreDirtStart\)/, 'production passes the original road scratch, not a new buffer');
-console.log('shoreDirtMask.selftest: 29 immutable map controls, six real Mangrove masks, RGB/physics/roads/landings and metric budget checks passed');
+console.log('shoreDirtMask.selftest: 29 immutable historical map controls, twelve current Mangrove/Polders masks, RGB/physics/roads/landings and metric budget checks passed');

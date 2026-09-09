@@ -10,6 +10,7 @@ import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { rayCollisionRecord, setObbShape } from './collision.ts';
 import { box, jitterUV } from './propGeometry.ts';
+import { prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { applyStructureCollisionBand, deriveRuntimeStructureCollisionProfile,
   deriveRuntimeStructureCollisionWithSolids } from './structureCollision.ts';
 import { attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
@@ -181,7 +182,7 @@ let sourceSlots = 0, maxCoverIncrease = -Infinity, sumCoverIncrease = 0, maxReli
 let maxCapAboveMidpoint = -Infinity, sumCapAboveMidpoint = 0, worstCoverSite;
 let lifecycleCycles = 0;
 function checkSourceLifecycle(pool) {
-  const lifecycle = new Function('THREE', 'dPools', 'destructibles',
+  const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive',
     `const _quat = new THREE.Quaternion(), _upAxis = new THREE.Vector3(0,1,0),
       _mat4 = new THREE.Matrix4(), _posv = new THREE.Vector3(), _zeroScale = new THREE.Vector3(1e-4,1e-4,1e-4);
       const events = [], fx = [], pendingBlasts = [];
@@ -189,7 +190,7 @@ function checkSourceLifecycle(pool) {
       const emitDestroyed = event => events.push(event), emitBreakFx = (...args) => fx.push(args);
       ${breakAnimationSource}; ${breakRecordSource}; ${restoreSource};
       return { breakRecord, restoreDestructibleRecord, resetBrokenPools, events, fx };`)(
-    THREE, new Map([['wallstone', pool]]), pool.records);
+    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive);
   const intact = pool.imI.instanceMatrix.array.slice(), placements = pool.mats4.map(m => m.elements.slice());
   const record = pool.records[0], ob = record.ob, col = record.col;
   const bounds = [ob.min.slice(), ob.max.slice(), col.min.slice(), col.max.slice()];
@@ -327,9 +328,10 @@ for (const seed of [1337, 2049, 7719]) {
   let kitDraws = 0;
   const kitNext = seeded(seed), kitRng = () => { kitDraws++; return kitNext(); };
   const pool = { meta: DESTRUCTIBLE_TYPES.wallstone, records, mats4: matrices, nBroken: 0 };
-  const finalize = new Function('THREE', 'mats', 'drng', 'refitDestructibleColliders', 'sealGroundCoverPlacements', 'fitWallSpan', 'heightField', 'wallSpans', 'WALL_SEG', 'tintDestructibleInstances', 'destructibleCastsShadow', 'group',
+  const finalize = new Function('THREE', 'mats', 'drng', 'refitDestructibleColliders', 'sealGroundCoverPlacements', 'fitWallSpan', 'heightField', 'wallSpans', 'WALL_SEG', 'tintDestructibleInstances', 'destructibleCastsShadow', 'group', 'DESTRUCTIBLE_BUILDING_TYPES', 'prepareWorldStructureNightFixture',
     `${finalSource}; return finalizeDestructiblePool;`)(THREE, { stone: material }, kitRng, refit, seal,
-    fitWallSpan, field, spans, WALL_SEG, () => {}, () => false, group);
+    fitWallSpan, field, spans, WALL_SEG, () => {}, () => false, group,
+    DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture);
   finalize('wallstone', pool);
   assert.equal(records.length, authoredSlots);
   assert.equal(pool.imI.count, authoredSlots);
