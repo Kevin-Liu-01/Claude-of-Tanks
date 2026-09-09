@@ -93,16 +93,15 @@ const fragmentBefore = {
     '3a11310b2e069474320b083357e99608a1b1872fd309895abde3dc22403b9a65',
     'bc735136c246f16feae2a620a6656787d9b45b81e949962003b414f2869a4e1d'],
 };
-// Refreshed only for the separately audited beachedBoat heel/contact repair.
-// Replaying the original constructor from 0e1a52ea4 reproduced all three old
-// aggregate hashes exactly. Only Coastal/Fjord/Mangrove boat bytes changed;
-// all other geometry, counts, storage and RNG matched. beachedBoat.selftest
-// retains independent pre-repair non-boat byte/budget controls for every caller.
+// Non-winter aggregate reconciled for published coal/buoys and seated reeds.
+// Restoring only old coal/buoys against published1db reproduced all three prior
+// aggregate hashes; riverReedContact separately isolates the reed geometry edit.
+// Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '4950fb009f7a2b969bade3f16fcde7b2a79d9b1659b5129196812e84efe84a06',
-  2049: 'c2d1b67b04dbc1e94f3742858e92f07268a21ad7cfb20f570fff87a6abb976d4',
-  7719: 'f3f22c9c4e36a05dd9ce46e075b905dcc43ac7d74b532f61c576c20e91203085',
+  1337: '1b9ad42c147adc417740701d7c4fd20b09cd0614c11d3523a1d31d5c50af41ba',
+  2049: '105ad16521f022055e588fafc46404881fb9d20c7ea2c36e28832c06ebfd9fcd',
+  7719: '1b3742e177bcd069cc8d82721f23a33d1cba80f5336a7367de924d53cf7b68ff',
 };
 
 function build(mapId, seed) {
@@ -460,7 +459,7 @@ for (const seed of [1337, 2049, 7719]) {
     }
   }
   assert.equal(others.digest('hex'), otherHashes[seed],
-    'all 27 non-Winter kits match their audited boat-repair baseline with unchanged RNG');
+    'all 27 non-Winter kits match the reconciled coal/buoy/reed baseline with unchanged RNG');
 }
 console.log(`winterLakeGeometry.selftest: ${berms} byte-identical berms, ${wedges} plates; zero V25 count/storage/RNG increase. Earlier geometry savings retained: ${reducedBytes} premerge bytes, ${finalAttributeBytesSaved} final nonindexed bytes across9map/seed cases`);
 
