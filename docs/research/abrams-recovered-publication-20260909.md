@@ -1,8 +1,9 @@
 # Recovered seven-Abrams publication integration
 
-Status: local integration and generated-data validation in progress. This is
-the user's authorized as-is preservation checkpoint, not a completed fidelity
-or performance release. See the [source recovery record](../tank-generation/recovery/abrams-seven-preservation-20260909.md)
+Status: **published to origin/main at `92b328a83d4dca5cb9d155ca8ad69d37b5203bf4`**.
+This is the user's authorized as-is preservation checkpoint; the strict checks
+are still in progress, not a completed fidelity or performance release.
+See the [source recovery record](../tank-generation/recovery/abrams-seven-preservation-20260909.md)
 and [whole-task inventory](tank-work-recovery-inventory-20260909.md).
 
 ## Exact integration
@@ -53,6 +54,10 @@ manifest rows remain byte-equivalent as parsed records. All seven angle
 portraits were visually inspected for complete rendering and variant presence;
 this limited inspection is not a new 9/10 source-fidelity acceptance score.
 The complete anatomy/release checks remain separately logged while running.
+The fresh 181-row anatomy check has passed; the marking check and subsequent
+checks are still pending. The published checkpoint is not presented as their
+result. Remote `refs/heads/main` was explicitly resolved to the full hash above
+after the non-force push; the publication tree was clean.
 
 The unrelated older MBT lifecycle continuation stopped at the existing
 `loadingIntent` source-pattern test; neither it nor the historical interrupted
