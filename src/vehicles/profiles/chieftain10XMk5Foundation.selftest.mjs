@@ -133,14 +133,89 @@ function geometryHash(g) {
   assert.deepEqual(measure(), legacy); g.dispose(); m.material.dispose();
 }
 
+// Published deaf6bf11 (parent 7b91b838b) stopped boxUV/bakeDirt in
+// geometry-only consumers. The immutable old scene includes both channels;
+// keep measuring it through the unchanged full-attribute path below, then
+// separately prove that the optimized consumer differs ONLY in those paints.
+// This is the exact published CAMO_BUCKETS set, not a spatial/mesh exclusion.
+const PAINT_BAKED_BUCKETS = new Set([
+  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+  'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'turretCupola', 'turretHatch',
+  'turretExternalArmor', 'turretEquipment', 'gun', 'gunMount',
+]);
+function geometryOnlyParity(renderedRows, optimizedRows) {
+  const rows = structuredClone(optimizedRows), changed = [];
+  assert.equal(rows.length, renderedRows.length, 'material mode cannot remove scene nodes');
+  for (const [i, row] of rows.entries()) {
+    const expected = renderedRows[i];
+    if (!row.geometry || !PAINT_BAKED_BUCKETS.has(row.name)) continue;
+    assert.equal(row.path, expected.path); assert.equal(row.name, expected.name);
+    const attrs = row.geometry.attributes, full = expected.geometry.attributes;
+    assert.equal(attrs.color, undefined, 'optimized merged camouflage stock omits only the dirt bake');
+    assert.ok(full.color, 'the full consumer still carries the original dirt colors');
+    assert.deepEqual({ ...attrs.uv, sha256: full.uv.sha256 }, full.uv,
+      'UV omission preserves its complete attribute shape and type');
+    // Normalize only the separately authenticated paint contributions. Every
+    // original physical attribute, index, instance, owner and transform stays
+    // in this full-scene comparison; neither live geometry is modified.
+    attrs.uv = full.uv; attrs.color = full.color;
+    row.geometry.attributes = Object.fromEntries(Object.entries(attrs).sort(([a], [b]) => a.localeCompare(b)));
+    changed.push(row.name);
+  }
+  assert.ok(changed.length > 0, 'actual optimized paint omission was exercised');
+  assert.deepEqual(rows, renderedRows, 'geometry-only retains all non-paint scene bytes');
+  return changed;
+}
+
+function paintOmissionControls(renderedRows, optimizedRows) {
+  const index = optimizedRows.findIndex(row => row.name === 'hull');
+  assert.ok(index >= 0, 'negative controls mutate actual merged hull stock');
+  for (const mutate of [
+    row => { row.geometry.attributes.position.sha256 = 'changed'; },
+    row => { row.geometry.attributes.normal.sha256 = 'changed'; },
+    row => { row.geometry.index = { unexpected: true }; },
+    row => { row.geometry.attributes.extraPhysicalChannel = { unexpected: true }; },
+    row => { row.geometry.attributes.uv.itemSize = 3; },
+    row => { row.geometry.attributes.color = renderedRows[index].geometry.attributes.color; },
+    row => { row.instanceMatrix = { unexpected: true }; },
+    row => { row.matrix[12] += .001; },
+    row => { row.matrixWorld[12] += .001; },
+    row => { row.path += '/extra'; },
+    row => { row.visible = !row.visible; },
+  ]) {
+    const bad = structuredClone(optimizedRows); mutate(bad[index]);
+    assert.throws(() => geometryOnlyParity(renderedRows, bad), assert.AssertionError,
+      'paint omission cannot excuse physical, attribute-shape or scene drift');
+  }
+  const other = optimizedRows.findIndex(row => row.geometry && !PAINT_BAKED_BUCKETS.has(row.name)
+    && row.geometry.attributes.uv);
+  assert.ok(other >= 0, 'an actual non-camouflage UV channel remains guarded');
+  for (const channel of ['uv', 'color']) {
+    const bad = structuredClone(optimizedRows), attrs = bad[other].geometry.attributes;
+    // This Mk5 stock has UVs but no baked vertex colors: exercise both real
+    // UV removal and unauthorized color insertion, without inventing stock.
+    if (attrs[channel]) delete attrs[channel]; else attrs[channel] = { unexpected: true };
+    assert.throws(() => geometryOnlyParity(renderedRows, bad), assert.AssertionError,
+      `the authorized camouflage omission cannot alter non-camouflage ${channel}`);
+  }
+}
+
 function checkMk5(quality, coldSpec) {
   assert.equal(semantic(CHIEFTAIN5_X_DATUMS.chieftain5_x), MK5_DATUMS, 'Mk5 physical datum record is unchanged');
   const tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
-    camoSeed: 4242, materialMode: 'geometry-only', geometryReceipt: true });
+    camoSeed: 4242, materialMode: 'rendered', geometryReceipt: true });
   try {
     const rows = sceneRows(tank.root);
     assert.deepEqual([hash(JSON.stringify(rows)), rows.length, rows.filter(r => r.geometry).length],
       MK5_BEFORE[quality], `Mk5/${quality}: immutable complete pre-foundation scene`);
+    const optimized = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
+      camoSeed: 4242, materialMode: 'geometry-only', geometryReceipt: true });
+    try {
+      const optimizedRows = sceneRows(optimized.root);
+      const painted = geometryOnlyParity(rows, optimizedRows);
+      paintOmissionControls(rows, optimizedRows);
+      console.log(`Mk5/${quality}: exact geometry-only paint omission [${painted.join(', ')}], 13 rejecting controls PASS`);
+    } finally { optimized.dispose(); }
     // The original capture pinned cold metadata once, before either build.
     // Its own native gear then attaches the longstanding derived trackShapes.
     // Admit exactly that lifecycle addition, and pin the complete warmed
