@@ -36,11 +36,30 @@ const v34Tone = (_h, s, l) => [.115, Math.min(1, s * .75), Math.min(1, l * .88)]
 const oldCfg = { ...cfg, splat: { ...cfg.splat, mudTone: oldTone, iceSky: [.22, .42, .40] } };
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
 const hash = value => createHash('sha256').update(value).digest('hex');
+// Snapshot before historical projection, not after: the test-only fixture
+// must not mutate a current input while preparing an old receipt.
+const currentInputs = MAP_IDS.map(id => stringify(getMapConfig(id)));
+function verifyUnmutatedInputs(inputs) {
+  assert.deepEqual(inputs, currentInputs, 'actual current map inputs remain unmutated through all bakes');
+}
+function verifyCurrentVerdantHorizon(config) {
+  // Exact published 1e0b2608b input, source blob ff51870b56b69c5f7bd220cd7e8bd90c917f0f1f.
+  assert.deepEqual(config.horizon, {
+    baseHex: 0x38542c, amp: 1.0, style: 'rolling', treeline: 0,
+  }, 'current restored Verdant horizon remains exact before historical substitution');
+}
+const verdant = getMapConfig('verdant');
+verifyCurrentVerdantHorizon(verdant);
+const changedHorizon = { ...verdant, horizon: { ...verdant.horizon, treeline: 0.94 } };
+assert.equal(stringify(historicalPaletteConfig(changedHorizon)), stringify(historicalPaletteConfig(verdant)),
+  'negative control demonstrates historical projection alone would hide a current horizon mutation');
+assert.throws(() => verifyCurrentVerdantHorizon(changedHorizon), /current restored Verdant horizon/);
 // The original b66d receipt is the authenticated pre-c8476fa77 other29
 // configuration (f4854d513), NOT the introducing 2b2d14b39 source, whose
 // actual digest is e0b4112aa40fc3411635e04638e334fbdc50af7251b11825ae52c5e245c4d779.
 // Preserve the original receipt unchanged with its exact historical inputs;
-// later Reservoir/Longleaf/Polders/Oasis authoring is not a palette change.
+// later Reservoir/Longleaf/Polders/Oasis authoring and Verdant's restored
+// horizon are not palette changes.
 function verifyHistoricalConfigs(resolve) {
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
@@ -53,16 +72,13 @@ function verifyHistoricalConfigs(resolve) {
     'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede', 'original non-palette Mangrove digest');
 }
 verifyHistoricalConfigs(getMapConfig);
+verifyUnmutatedInputs(MAP_IDS.map(id => stringify(getMapConfig(id))));
 assert.throws(() => verifyHistoricalConfigs(id => id === 'verdant'
   ? { ...getMapConfig(id), terrain: { ...getMapConfig(id).terrain, hillScale: -1 } } : getMapConfig(id)), /other29 config/);
 assert.throws(() => verifyHistoricalConfigs(id => id === 'mangrove'
   ? { ...cfg, terrain: { ...cfg.terrain, hillScale: -1 } } : getMapConfig(id)), /non-palette Mangrove/);
 const nonPalette = config => stringify({ ...config, splat: { ...config.splat, mudTone: null, iceSky: null } });
 assert.equal(nonPalette(oldCfg), nonPalette(cfg), 'current palette A/B differs in exactly the two permitted fields');
-const currentInputs = MAP_IDS.map(id => stringify(getMapConfig(id)));
-function verifyUnmutatedInputs(inputs) {
-  assert.deepEqual(inputs, currentInputs, 'actual current map inputs remain unmutated through all bakes');
-}
 const mutation = currentInputs.slice(); mutation[0] += 'corrupt';
 assert.throws(() => verifyUnmutatedInputs(mutation), /remain unmutated/);
 assert.deepEqual(cfg.splat.iceSky, [.18, .19, .145]);

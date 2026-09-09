@@ -57,6 +57,15 @@ export function historicalReservoirConfig(cfg) {
 }
 
 export function historicalPaletteConfig(cfg) {
+  // Published 1e0b2608bc6e5fec2a3c2f32225358c6fcc62b97 restored Verdant's
+  // original backdrop. The palette receipt predates that restoration; retain
+  // its exact horizon input from source blob 16ec7c8a93f5362ddfd64ebc2af32b067cfa09e1.
+  // The caller separately locks the CURRENT horizon so this historical view
+  // cannot conceal a later runtime change. Never mutate the live config.
+  if (cfg.id === 'verdant') return { ...cfg, horizon: {
+    baseHex: 0x4d6540, amp: 1.0, style: 'rolling', treeline: 0.94, treelineLayers: 2,
+    forestHex: 0x33502e, rockHex: 0x77725f, haze: 0.95, grain: 0.7,
+  } };
   if (cfg.id === 'reservoir') return historicalReservoirConfig(cfg);
   if (cfg.id === 'longleaf') {
     const { workedGround: _laterHarvest, ...terrain } = cfg.terrain;
