@@ -176,6 +176,26 @@ test pass. This unblocks validation but is not an artwork acceptance. Native,
 build and art CPU batches share the normal FIFO acquisition queue with vehicle
 verification; a queued experiment is not a completed test or a release hold.
 
+### Water, contact and intrusive-prop checkpoint — 2026-09-09
+
+- Published `ccfc44730`: oversized pass-through black coal domes become small,
+  matte, supported stockpiles with synchronized client/server collision on the
+  four affected rail/industrial maps. Native before/after reviewed; fewer coal
+  triangles, existing material family, no extra texture/draw family.
+- Published `f363fbd5e`: inverted woody-root cones are turned outward and seated
+  at the ground, removing blunt lateral tabs. Same geometry/storage/instances;
+  a small lower-trunk correction, not the complete tree-variety request.
+- Water/contact is prepared for incremental publication after seven focused
+  tests, TS7/build, five native material views and normal Coastal dry-to-water
+  driving followed by clean Garage return. Coast/lake/river/marsh sheets use
+  existing textures and pooled wakes; sand/snow get their own low contact puffs.
+  Exact added cost is one water draw and bounded geometry/sampler buffers, not
+  zero added work. No physical-iPad or no-regression certificate is implied.
+  See `SHALLOW-WATER-CONTACT.md` for raw timing limitations and ownership proof.
+- Broader shoreline debris/plant/farm composition, rejected Coastal crop and
+  Foundry art drafts, road-outlet composition and full-family rollout remain
+  open. These are separate from the accepted contact and intrusive-prop fixes.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
