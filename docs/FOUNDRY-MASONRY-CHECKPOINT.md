@@ -79,3 +79,43 @@ The initial Doctor scan covered three tracked files with no issues. A final
 staged-file scan includes both new tests/fixtures: five files, score100, no
 issues (`final-doctor.json` beside the integration report). The explicit
 module-quality check also included the new tests and frozen fixture.
+
+## Roof reflection follow-up
+
+Candidate `8abe1bcb2` separately reduces the broad white highlight on Ironworks'
+tile roofs. Only Foundry's existing material roughness scalar changes, from1
+to1.3: Three multiplies this by the surface texture's green channel before
+clamping physical roughness. Albedo, normal and surface pixels remain exact;
+Copper Mesa and the other28 maps retain their old material values. No extra
+texture, cache, shader variant or frame updater is introduced.
+
+The real material/uniform/clone/serialization test covers all30 maps, shared
+texture ownership and negative controls. Desktop/mobile native JPEG tests
+verify the actual surface response and dependency shader ordering. Native TS7
+and core-unused pass. Existing explicit module-quality failures remain limited
+to the unchanged `addWallRun` and `createPropsAsync` functions; the new helper
+does not introduce a violating function. This is not a clean global lint claim.
+
+All six matched native images were personally reviewed by the primary agent
+and an independent reviewer. The building view loses the white glare while
+retaining warm terracotta and tile relief; establishing/detail controls remain
+stable. Repetitive roofs and flat dark fixtures still need separate art work.
+Evidence: `foundry-roof-native-r1.oSiGrN` in the environment-recovery archive
+above. Same actual High/M5 Max, 1440×900 DPR1 policies; no page errors. Static
+captures still explicitly record `sameFrameProof:false`.
+
+One serial 75-sample ×3 synchronized A/B passed unchanged gates without a retry
+(`foundry-roof-frame-cost-r1.3nnLjA/pair-status.json`). Render median/p95 remain
+3.1/3.4ms; post-render intervals are21.0ms median, p95 22.2→22.0ms. Maximum
+draws544 and triangles3,645,209, scene inventory and renderer residency are
+identical. These intervals are not live-game FPS or an all-map/mobile/memory
+certificate. Sources and both private builds stayed frozen throughout.
+
+The final three-file Doctor scan reports49/100, not a pass: its new `no-eval`
+finding is a high-confidence false positive for a Node-only test that reads
+the fixed local `props.ts` file and executes its extracted constructor—no
+user/network input. Its other warning is the unchanged pole lookup immediately
+after synchronous `addBakedInstance` creates that entry. Neither finding is
+suppressed or hidden. Receipt: `foundry-roof-main-check.88o8cx/doctor.log`.
+The subsequent native TS7 and ordinary public build both pass, with all three
+source/test/registry hashes unchanged (`foundry-roof-public-build.gJzpfZ`).
