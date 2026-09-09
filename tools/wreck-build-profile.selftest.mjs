@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import ts from 'typescript-compiler-api';
 import { createPropsProfiler, registerProfileCancellation } from './props-build-profile.mjs';
 import { transform, transformConstructor } from './wreck-build-profile.mjs';
@@ -31,10 +32,28 @@ assert.equal(emitter.listenerCount('SIGTERM'), 0);
 assert.equal(cancellation.isInterrupted(), true, 'cleanup retains interruption evidence');
 
 const wreckSource = readFileSync(new URL('../src/world/wrecks.ts', import.meta.url), 'utf8');
+const geometrySource = readFileSync(new URL('../src/world/exactWreckGeometry.ts', import.meta.url), 'utf8');
 const control = transform(wreckSource, 'control');
 const candidate = transform(wreckSource, 'normalize-first');
+const geometryControl = transform(geometrySource, 'control', 'geometry');
+const geometryCandidate = transform(geometrySource, 'normalize-first', 'geometry');
 assert.deepEqual(candidate.counts, control.counts, 'candidate and control share exact observer coverage');
+assert.deepEqual(geometryCandidate, geometryControl, 'normalization experiment cannot change compaction');
+assert.deepEqual({ ...control.counts, ...geometryControl.counts }, {
+  'visual.dispose': 1, collectWreckGeometry: 1, normalizeGeometry: 1, normalizeGeometrySet: 1,
+  mergeRequired: 1, paintWreckGeometry: 1, mergeShadowGeometry: 1, wreckBakeResult: 1,
+  createTank: 1, 'visual.setDestroyed': 1, compactWreckGeometry: 1,
+}, 'both modules retain every original observer stage exactly once');
+for (const name of ['collectWreckGeometrySteps', 'normalizeGeometrySetSteps', 'paintWreckGeometrySteps',
+  'mergeShadowGeometrySteps', 'normalizeGeometry', 'mergeRequired', 'wreckBakeResult']) {
+  assert.throws(() => transform(wreckSource.replace(` ${name}(`, ` missing_${name}(`), 'control'), /Exact .* hook/);
+  assert.throws(() => transform(`${wreckSource}\nfunction ${name}() { return; }`, 'control'), /Exact .* hook/);
+}
+assert.throws(() => transform(wreckSource.replace('owner.visual.dispose()', 'owner.visual.close()'), 'control'), /Exact visual.dispose hook/);
+assert.throws(() => transform(geometrySource.replace('function* compactWreckGeometrySteps(', 'function* missingCompaction('), 'control', 'geometry'), /Exact compactWreckGeometry hook/);
+assert.throws(() => transform(`${geometrySource}\nfunction* compactWreckGeometrySteps() { return; }`, 'control', 'geometry'), /Exact compactWreckGeometry hook/);
 assert.throws(() => transform(wreckSource, 'unknown'));
+assert.throws(() => transform(wreckSource, 'control', 'unknown'), /Known wreck source kind/);
 assert.throws(() => transform('function {', 'control'));
 assert.throws(() => transformConstructor('', 'unknown'), /Known constructor source kind/);
 
@@ -66,12 +85,74 @@ for (const indexed of [false, true]) for (const keepNormal of [false, true]) for
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3).fill(0.7), 3));
   geometry.morphAttributes.position = [geometry.attributes.position.clone()];
   const inputs = [geometry, geometry.clone(), geometry.clone()];
-  const outputs = [originalNormalize, controlNormalize, candidateNormalize].map((normalizer, index) => normalizer.invoke(inputs[index], keepNormal));
+  const owners = inputs.map(() => ({ geometries: new Set() }));
+  const outputs = [originalNormalize, controlNormalize, candidateNormalize].map((normalizer, index) => normalizer.invoke(inputs[index], keepNormal, owners[index]));
   try {
     assert.deepEqual(snapshot(outputs[1]), snapshot(outputs[0]), 'observation alone preserves every normalized output bit');
     assert.deepEqual(snapshot(outputs[2]), snapshot(outputs[0]), 'normalization candidate preserves indexed/non-indexed/missing-normal/morph/group output bits');
+    owners.forEach((owner, index) => assert.deepEqual([...owner.geometries], [outputs[index]],
+      'all normalization variants register the exact owned output'));
   } finally { for (const owned of new Set([...inputs, ...outputs])) owned.dispose(); }
 }
+for (const normalizer of [originalNormalize, controlNormalize, candidateNormalize]) {
+  const input = new THREE.BoxGeometry(1, 2, 3), owner = { geometries: new Set() };
+  input.deleteAttribute('normal');
+  const expand = input.toNonIndexed.bind(input), failure = new Error('normal generation failed');
+  let allocated;
+  input.toNonIndexed = () => {
+    allocated = expand();
+    allocated.computeVertexNormals = () => { throw failure; };
+    return allocated;
+  };
+  try {
+    assert.throws(() => normalizer.invoke(input, true, owner), error => error === failure);
+    assert.deepEqual([...owner.geometries], [allocated], 'failed normalization registers the allocated clone before throwing');
+    normalizer.profiler.measure('after-allocation-error', () => {});
+  } finally { input.dispose(); allocated?.dispose(); }
+}
+
+// Execute the whole tiny compactor module in memory: observing a generator
+// call alone would report a span before any work. Its body must instead stay
+// balanced through the existing synchronous drain, early return and failure.
+function compaction(source) {
+  const javascript = ts.transpileModule(source, { compilerOptions: {
+    target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS,
+  } }).outputText;
+  const exports = {}, profiler = createPropsProfiler();
+  const require = id => {
+    if (id === 'three') return THREE;
+    assert.equal(id, 'three/examples/jsm/utils/BufferGeometryUtils.js');
+    return { mergeGeometries };
+  };
+  new Function('require', 'exports', 'globalThis', javascript)(require, exports, { __WRECK_PROFILE: profiler });
+  return { invoke: exports.compactWreckGeometrySteps, profiler };
+}
+const originalCompact = compaction(geometrySource), observedCompact = compaction(geometryControl.source);
+for (const closeEarly of [false, true]) {
+  const input = new THREE.BoxGeometry(1, 2, 3), raw = input.toNonIndexed(), observed = raw.clone();
+  const before = observedCompact.profiler.operations.compactWreckGeometry?.calls ?? 0;
+  const a = originalCompact.invoke(raw), b = observedCompact.invoke(observed);
+  assert.equal(observedCompact.profiler.operations.compactWreckGeometry?.calls ?? 0, before,
+    'iterator creation cannot record compaction work');
+  try {
+    let step;
+    do {
+      step = a.next();
+      const observedStep = b.next();
+      assert.equal(observedStep.done, step.done);
+      if (step.done) {
+        assert.equal(step.value, raw);
+        assert.equal(observedStep.value, observed, 'observer preserves returned geometry ownership');
+      } else assert.deepEqual(observedStep, step, 'observer preserves every yielded checkpoint');
+      if (closeEarly && !step.done) { assert.deepEqual(b.return(), a.return()); break; }
+    } while (!step.done);
+    assert.deepEqual(snapshot(observed), snapshot(raw), 'observed compaction preserves exact output');
+    assert.equal(observedCompact.profiler.operations.compactWreckGeometry.calls, before + 1);
+    observedCompact.profiler.measure('after-compaction', () => {});
+  } finally { a.return(); b.return(); input.dispose(); raw.dispose(); observed.dispose(); }
+}
+assert.throws(() => observedCompact.invoke(null).next());
+observedCompact.profiler.measure('after-compaction-error', () => {});
 for (const normalizer of [controlNormalize, candidateNormalize]) {
   const before = normalizer.profiler.operations.normalizeGeometry.calls;
   assert.throws(() => normalizer.invoke(null, true));
