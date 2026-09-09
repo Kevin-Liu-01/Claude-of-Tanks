@@ -26,6 +26,8 @@ function mountLocaleSwitcher(): void {
 
   const current = getLocale();
   const next = current === 'zh-CN' ? 'en-US' : 'zh-CN';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'public-nav__locale-wrap';
   const button = document.createElement('button');
   button.className = 'public-nav__locale';
   button.type = 'button';
@@ -45,7 +47,19 @@ function mountLocaleSwitcher(): void {
     window.location.assign(currentLocationHrefForLocale(window.location, next));
   });
 
-  links.insertBefore(button, links.querySelector('.public-nav__github, .public-nav__cta'));
+  const credit = document.createElement('a');
+  credit.className = 'public-nav__locale-credit';
+  credit.href = 'https://generaltranslation.com/';
+  credit.target = '_blank';
+  credit.rel = 'noreferrer';
+  credit.setAttribute('aria-label', `${t('publicNav.language.creditEyebrow')} ${t('publicNav.language.creditName')}`);
+  credit.innerHTML =
+    '<img src="/brand/partners/general-translation.png" alt="" draggable="false">' +
+    `<span><small>${t('publicNav.language.creditEyebrow')}</small>` +
+    `<strong>${t('publicNav.language.creditName')}</strong></span>`;
+  wrapper.append(button, credit);
+
+  links.insertBefore(wrapper, links.querySelector('.public-nav__github, .public-nav__cta'));
 }
 
 function mountMobileNavigation(): void {
