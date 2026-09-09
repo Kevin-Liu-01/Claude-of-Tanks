@@ -2052,6 +2052,19 @@ vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
 // x1.16 with an offset, masked by the warped ~10-20 m noise patches (n1w):
 // no world-periodic feature survives more than ~one tile in any direction.
 const mat2 TILEROT = mat2(0.7431, 0.6691, -0.6691, 0.7431);
+// Fixed heightfield chart. Camera/normal-derived axes move pigment across a
+// stationary surface. Its sampled normal must return to the world-XZ frame
+// used by the existing terrain normal accumulator, via this chart's transpose.
+vec2 groundChartUv(vec2 xz) {
+  return vec2(TILEROT[0].x * xz.x + TILEROT[1].x * xz.y,
+              TILEROT[0].y * xz.x + TILEROT[1].y * xz.y);
+}
+vec2 groundChartNormalXZ(vec2 encoded) {
+  float u = encoded.x * 2.0 - 1.0;
+  float v = encoded.y * 2.0 - 1.0;
+  return vec2(TILEROT[0].x * u + TILEROT[0].y * v,
+              TILEROT[1].x * u + TILEROT[1].y * v);
+}
 vec4 groundSamp(sampler2D t, vec2 uv, float df, float mb) {
   vec4 sA = splatSamp(t, uv, df, mb);
   vec4 sB = splatSamp(t, TILEROT * uv * 1.16 + vec2(0.37, 0.61), df, mb);
@@ -2833,20 +2846,11 @@ void splatCompute() {
   // stamped muddy cloud-shadow blotches across mid-distance sand/meadow
   a.rgb *= 1.0 - motG * 0.13 * smoothstep(0.55, 0.95, mot);
   a.rgb *= 1.0 + motG * 0.13 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
-  // >>> gameplay_feel r4: grazing-view meadow rescue. ------------------------
-  // Driving toward rising ground the chase/scope camera sees the meadow at a
-  // few degrees of incidence: the projected pixel footprint stretches far
-  // past the 16x aniso budget, the sampler mip-blurs everything along the
-  // compressed (view) axis, and the smooth-noise meadow tint bands smear
-  // into kilometer-long "aurora" streaks — the whole face collapses to a
-  // featureless green wall (r4 drive critique, drive_chase.png: 85% of the
-  // frame). Slope alone is NOT the trigger (the r4 wall measures ~6-15 deg);
-  // VIEW GRAZING is. Fix: where the view grazes the surface, resample the
-  // grass layer in a view-aligned surface basis with the texture COUNTER-
-  // STRETCHED along the compressed axis — content elongates toward the
-  // camera exactly like real grass read at grazing, and its cross-view
-  // frequency stays resolvable by the sampler at any incidence. Gated off
-  // roads/dirt/marsh/rock and off the near field (< ~35 m resolves fine).
+  // >>> grazing-view meadow detail. -----------------------------------------
+  // The activation/LOD weights remain view-dependent; the sampled chart does
+  // not. This fixed world-XZ chart is intended for heightfield meadow, not a
+  // replacement for vertical-rock triplanar mapping. Hardware filtering owns
+  // the grazing footprint instead of a moving counter-stretched texture axis.
   {
     vec3 vDirN = normalize(cameraPosition - wp);
     float dNV = saturate(dot(vDirN, wn));
@@ -2862,22 +2866,11 @@ void splatCompute() {
                  * (1.0 - projW)
                  * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);
     if (grazeW > 0.004) {
-      // surface basis: e1 = cross-view tangent (fine axis), e2 = down-view
-      // tangent (compressed axis, counter-stretched ~4.5:1)
-      vec3 e1 = normalize(cross(wn, vDirN));
-      vec3 e2 = cross(e1, wn);
-      // r2: counter-stretch eased 0.22 -> 0.32 — the 4.5:1 stretch printed a
-      // visible directional combing band across the 60-130 m midfield
-      // r3 terrain_environment: eased again 0.32 -> 0.48 (~2:1) — the r2
-      // stretch still resolved as an anisotropic combed smear right of the
-      // road in player_view; a gentler counter-stretch plus ISOTROPIC value
-      // breakup (planar-warped n1w below) keeps the grazing rescue without
-      // printing a directional texture band
-      vec2 uvG = vec2(dot(wp, e1), dot(wp, e2) * 0.58);
+      vec2 uvG = groundChartUv(wp.xz);
       vec4 aG = splatSamp(uAlbG, uvG * 0.240, df, 0.0);
       vec4 nG = splatSamp(uNrmG, uvG * 0.240, df, 0.0);
-      // value breakup in the SAME stretched space (replaces the smeared
-      // planar tint bands instead of re-projecting them)
+      nG.xy = groundChartNormalXZ(nG.xy) * 0.5 + 0.5;
+      // Pigment breakup shares the same stationary chart.
       float n1G = texture2D(uNoise, uvG * 0.0117).r;
       float n2G = texture2D(uNoise, uvG * 0.0031 + vec2(0.41, 0.13)).g;
       aG.rgb *= (0.88 + n1G * 0.18) * (0.94 + n2G * 0.12);
@@ -2891,18 +2884,15 @@ void splatCompute() {
       a = mix(a, aG, gMix);
       n = mix(n, nG, gMix);
     }
-    // steep NEAR faces (a genuine 15-30 deg climb face inside ~60 m) also
-    // get their blade/clod relief back in the face's own plane — this is
-    // what restores grass detail right in front of the hull on a climb.
+    // Near climb faces retain their bounded relief in the same fixed chart;
+    // an interpolated-normal-derived UV basis would fold across the slope.
     float faceW = smoothstep(0.02, 0.085, slope) * (1.0 - steepW)
                 * (1.0 - smoothstep(20.0, 60.0, camDist))
                 * (1.0 - fD) * (1.0 - fM) * (1.0 - roadCore) * (1.0 - fR);
     if (faceW > 0.004) {
-      vec2 hn2 = wn.xz / max(length(wn.xz), 1e-4);
-      vec2 uvFace = vec2(dot(wp.xz, vec2(-hn2.y, hn2.x)),
-                         dot(wp.xz, hn2) / max(wn.y, 0.30));
-      vec3 dnF = texture2D(uNrmD, uvFace * 1.07).xyz * 2.0 - 1.0;
-      n.xy += dnF.xy * 0.22 * faceW;
+      vec2 uvFace = groundChartUv(wp.xz);
+      vec2 dnF = groundChartNormalXZ(texture2D(uNrmD, uvFace * 1.07).xy);
+      n.xy += dnF * 0.22 * faceW;
     }
   }
   // <<< gameplay_feel r4 -----------------------------------------------------
@@ -3093,7 +3083,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v23';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v24';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
