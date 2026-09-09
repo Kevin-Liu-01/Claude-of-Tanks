@@ -229,7 +229,7 @@ interface WheelEntry {
 }
 
 interface WheelInstanceLayer {
-  im: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
+  im: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material | THREE.Material[]>;
   list: WheelEntry[];
 }
 
@@ -364,6 +364,10 @@ interface RunningGearConfig {
   rollerR?: number;
   /** Complete axial return-roller envelope; absent preserves the native family. */
   returnRollerWidthM?: number;
+  /** Complete fitted X-axis rotor with groups [rubber, painted wheel metal].
+   * Already sized; core owns/disposes it and applies native roller motion.
+   * Omission retains the original separate tire/dish recipe byte-for-byte. */
+  returnRollerGeometry?: THREE.BufferGeometry;
   /** Inward offset from the native shoe lane, applied to the animated roller. */
   returnRollerInsetM?: number;
   /** Independently measured outward roller-axis offset; defaults to zero.
@@ -3172,6 +3176,9 @@ function buildTrackCourse({
 }
 
 function validateReturnRollerDimensions(cfg: RunningGearConfig): void {
+  if(cfg.returnRollerGeometry!==undefined
+    &&(!(cfg.returnRollerGeometry instanceof THREE.BufferGeometry)||!cfg.rollers?.length))
+    throw new RangeError('Native return-roller geometry requires a buffer and explicit roller stations');
   if (cfg.returnRollerWidthM !== undefined && (!Number.isFinite(cfg.returnRollerWidthM)
     || cfg.returnRollerWidthM <= 0 || cfg.returnRollerWidthM > 1)) {
     throw new RangeError('Native return-roller width must be finite and inside (0, 1] metres');
@@ -3537,13 +3544,13 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage9();
   const made: WheelInstanceLayer[] = [];
-  const mkInst = (
+  const mkInst = <M extends THREE.Material | THREE.Material[]>(
     geo: THREE.BufferGeometry,
-    mat: THREE.Material,
+    mat: M,
     list: WheelEntry[],
     appearanceRole?: string,
     name?: string,
-  ): THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> => {
+  ): THREE.InstancedMesh<THREE.BufferGeometry, M> => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     im.userData.runningGear = true;
     im.userData.runningGearUnitId = runningGearUnitId;
@@ -3864,6 +3871,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       });
     }
     if (rollerEntries.length) {
+      if(cfg.returnRollerGeometry){
+        // Per-group material roles must survive normalization: an object-wide
+        // wheelTire role would wrongly repaint the entire closed rotor rubber.
+        mkInst(cfg.returnRollerGeometry,[mats.rubber,mats.wheels],rollerEntries,
+          undefined,'gearReturnRollerRotors');
+      }else{
       const rollerSeg = Math.max(8, seg - 6);
       const rollerTire = mergeAll([
         cylX(rollerR, trackW * 0.50, rollerSeg),
@@ -3881,6 +3894,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       }
       mkInst(rollerTire, mats.rubber, rollerEntries, 'wheelTire', 'gearReturnRollerTires');
       mkInst(rollerDish, mats.wheels, rollerEntries, 'wheelDish', 'gearReturnRollerDiscs');
+      }
     }
   };
   const buildRunningGearRunningGearStage17 = (): void => {

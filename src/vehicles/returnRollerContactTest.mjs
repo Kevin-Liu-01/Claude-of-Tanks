@@ -44,7 +44,8 @@ export function auditVisibleReturnRollerContact(tank,gear,state,{radiusM,distanc
   throw new RangeError('Contact audit requires a positive actual radius and nonempty finite distances');
  const rows=[];
  tank.root.updateMatrixWorld(true);const hull=tank.root.getObjectByName('rig_hull'),receipt=hull.userData.runningGearReceipts[0];
- const tires=hull.getObjectByName('gearReturnRollerTires'),camera=new T.PerspectiveCamera(50,1,.01,1000);
+ const tires=hull.getObjectByName('gearReturnRollerRotors')??hull.getObjectByName('gearReturnRollerTires');
+ const camera=new T.PerspectiveCamera(50,1,.01,1000);
  if(!tires?.isInstancedMesh||!drawable(tires))throw new Error('Contact requires submitted physical roller instances');
  const p=tires.geometry.attributes.position;let actualRadius=0;
  for(let i=0;i<p.count;i++)actualRadius=Math.max(actualRadius,Math.hypot(p.getY(i),p.getZ(i)));
