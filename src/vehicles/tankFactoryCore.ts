@@ -60,6 +60,8 @@ import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
 import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { WheelPattern, WheelPatternId } from './wheelPatterns.ts';
 import type { TrackPattern, TrackPatternId } from './trackPatterns.ts';
+import type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
+export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abramsSourceXTrackShoe.ts';
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
@@ -313,6 +315,21 @@ type DimensionedTrackPattern = Omit<TrackPattern, keyof TrackShoeDimensions>
   & Required<Omit<TrackShoeDimensions, 'pinCentreY'>>
   & Pick<TrackShoeDimensions, 'pinCentreY'>;
 
+/** One fresh authored shoe for each native near/far stream; no family-wide activation. */
+export interface TrackShoeBuildParameters {
+  trackW: number;
+  pitch: number;
+  pattern: DimensionedTrackPattern;
+  pinCapOuter: number | null;
+  radialScale: number;
+  widthScale: number;
+  section?: TrackLinkCrossSection;
+  guideProfile?: TrackGuideProfile;
+  outsole?: TrackOutsoleDimensions;
+  far: boolean;
+  high: boolean;
+}
+
 /** Source-measured native shoe dimensions, without changing family grammar. */
 export function trackPatternWithDimensions(
   pattern: TrackPattern,
@@ -358,10 +375,16 @@ export interface RunningGearConfig {
   wheelTireBands?: readonly MeasuredTireBand[];
   /** First-party physical hub/core replacing generic injected dish geometry. */
   wheelCoreGeometry?: { disc: THREE.BufferGeometry; dark?: THREE.BufferGeometry | null };
+  /** Fresh first-party solids adopted by the existing native wheel train. */
+  roadWheelGeometry?: WheelGeometrySet;
   layers?: number[][] | null;
   sprocket: GearEndpoint;
   idler: GearEndpoint;
   rollers?: GearEndpoint[];
+  /** Source-authored end stock retains native spin, course and resource ownership. */
+  idlerGeometry?: { body: THREE.BufferGeometry; dark: THREE.BufferGeometry };
+  /** Asymmetric drive stock authored with local +X outboard. */
+  sprocketStockGeometry?: { body: THREE.BufferGeometry; dark: THREE.BufferGeometry };
   rollerR?: number;
   /** Complete axial return-roller envelope; absent preserves the native family. */
   returnRollerWidthM?: number;
@@ -369,11 +392,15 @@ export interface RunningGearConfig {
    * Already sized; core owns/disposes it and applies native roller motion.
    * Omission retains the original separate tire/dish recipe byte-for-byte. */
   returnRollerGeometry?: THREE.BufferGeometry;
+  /** Separate fresh tire/dish stock, scaled by the existing optional width rule. */
+  returnRollerStockGeometry?: { tire: THREE.BufferGeometry; disc: THREE.BufferGeometry };
   /** Inward offset from the native shoe lane, applied to the animated roller. */
   returnRollerInsetM?: number;
   /** Independently measured outward roller-axis offset; defaults to zero.
    * Does not move road wheels, end wheels, bands or the shoe course. */
   returnRollerOutsetM?: number;
+  /** Explicit receiver for the source-authored return-roller spindles only. */
+  returnRollerHullHalfWidthM?: number;
   trackW: number;
   trackTh?: number;
   /** Physical continuous shoe web, when narrower than its pin/grouser span.
@@ -403,6 +430,10 @@ export interface RunningGearConfig {
   wheelPattern?: WheelPatternId;
   trackPattern?: TrackPatternId;
   trackShoeDimensions?: TrackShoeDimensions;
+  trackOutsoleDimensions?: TrackOutsoleDimensions;
+  trackGuideProfile?: TrackGuideProfile;
+  /** Caller supplies both fresh shoe LODs; absence preserves the native recipe. */
+  trackShoeBuilder?: (parameters: TrackShoeBuildParameters) => THREE.BufferGeometry;
   /** Complete near/far moving-shoe floor certificate, in authored hull metres. */
   continuousShoeFloorYM?: number;
   trackLinkCrossSection?: TrackLinkCrossSection;
@@ -2590,11 +2621,14 @@ function sprocketGeo(
   pattern: WheelPattern | null = null,
   includeTeeth = true,
   engagementRadius: number | null = null,
+  stock: RunningGearConfig['sprocketStockGeometry'] = undefined,
 ): {
   body: THREE.BufferGeometry;
   dark: THREE.BufferGeometry;
   toothCount: number;
   toothPitchRadius: number;
+  leftBody?: THREE.BufferGeometry;
+  leftDark?: THREE.BufferGeometry;
 } {
   // r7b TOOTHED-RING REBUILD (hard critique on both judged WWII closeups AND
   // the Sherman drive-end misread): the r5 "teeth hidden just inside the
@@ -2621,34 +2655,47 @@ function sprocketGeo(
   const n = Math.max(4, Math.round((Math.PI * 2 * pitchRadius) / linkM));
   const pitchArc = (Math.PI * (rootR + tipR)) / n;       // circumferential pitch at mid
   const toothPhase = Math.PI / 2;                         // link zero is top dead centre
-  const body: THREE.BufferGeometry[] = [cylX(r * 0.88, w * 0.80, seg)];
-  const dark: THREE.BufferGeometry[] = [];
+  const body: THREE.BufferGeometry[] = stock ? [stock.body] : [cylX(r * 0.88, w * 0.80, seg)];
+  const dark: THREE.BufferGeometry[] = stock ? [stock.dark] : [];
+  const leftBody = stock ? mirrorSprocketStock(stock.body) : null;
+  const leftDark = stock ? [mirrorSprocketStock(stock.dark)] : null;
   const ringSeg = Math.max(12, seg - 8);
-  body.push(cylX(r * 0.30, w * 1.14, 12));               // hub
-  body.push(cylX(r * 0.17, w * 1.26, 10));               // hub cap
+  if (!stock) {
+    body.push(cylX(r * 0.30, w * 1.14, 12));             // hub
+    body.push(cylX(r * 0.17, w * 1.26, 10));             // hub cap
+  }
   const span = ringSpan ?? w;                            // rings ride the BAND edges
   const ringOffsets = [-(span / 2) * 0.99, (span / 2) * 0.99];
-  for (const off of ringOffsets) {
+  for (const off of stock ? [] : ringOffsets) {
     // Open carrier rings expose the central drum and hub. These used to be
     // full discs at the band edges, which visually erased the entire wheel.
     body.push(xform(torus(r * 0.84, r * 0.10, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
     dark.push(xform(torus(r * 0.69, r * 0.055, ringSeg, 4), off, 0, 0, 0, 0, Math.PI / 2));
   }
-  if (includeTeeth) dark.push(sprocketTeethGeo(
-    w * 0.13, tipR - rootR, pitchArc * 0.46,
-    n, rootR, tipR, ringOffsets, toothPhase,
-  ));
+  if (includeTeeth) {
+    const engagement = sprocketTeethGeo(w * 0.13, tipR - rootR, pitchArc * 0.46,
+      n, rootR, tipR, ringOffsets, toothPhase);
+    dark.push(engagement);
+    // Symmetric teeth keep their exact generated diagonals and normals.
+    leftDark?.push(engagement.clone());
+  }
   const boltCount = pattern?.endFasteners ?? 8;
-  for (let k = 0; k < boltCount; k++) {                  // dark bolt ring on the hub boss
+  for (let k = 0; k < (stock ? 0 : boltCount); k++) {     // dark bolt ring on the hub boss
     const a = (k / boltCount) * Math.PI * 2;
     dark.push(xform(cylX(0.02, w * 1.06, 6),
       0, Math.sin(a) * r * 0.44, Math.cos(a) * r * 0.44));
   }
+  const mergedBody = mergeAll(body), mergedDark = mergeAll(dark);
+  // mergeAll disposes nonindexed inputs, but creates temporary flat copies
+  // for indexed input. The transferred source originals still belong here.
+  if (stock?.body.index) stock.body.dispose();
+  if (stock?.dark.index) stock.dark.dispose();
   return {
-    body: mergeAll(body),
-    dark: mergeAll(dark),
+    body: mergedBody,
+    dark: mergedDark,
     toothCount: includeTeeth ? n : 0,
     toothPitchRadius: pitchRadius,
+    ...(leftBody && leftDark ? { leftBody, leftDark: mergeAll(leftDark) } : {}),
   };
 }
 
@@ -3258,6 +3305,103 @@ function sourceWheelSolids(cfg:RunningGearConfig,segments:number,pattern:WheelPa
   return replaceMeasuredWheelSolids(originals,cfg,cfg.wheelR,cfg.wheelW,segments);
 }
 
+function validateNativeGearSolid(geometry: THREE.BufferGeometry, label: string): void {
+  if (!(geometry instanceof THREE.BufferGeometry)) throw new TypeError(`${label} requires BufferGeometry stock`);
+  const position = geometry.getAttribute('position');
+  const count = geometry.index?.count ?? position?.count ?? 0;
+  if (!position || position.itemSize !== 3 || position.count < 3 || count < 3 || count % 3)
+    throw new RangeError(`${label} requires nonempty triangles`);
+  for (const attribute of Object.values(geometry.attributes)) {
+    if (!Array.from(attribute.array).every(Number.isFinite)) throw new RangeError(`${label} requires finite attributes`);
+  }
+  if (geometry.index && Array.from(geometry.index.array).some(i => i < 0 || i >= position.count))
+    throw new RangeError(`${label} has an invalid triangle index`);
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  if (!bounds || bounds.max.x - bounds.min.x <= 1e-7
+    || bounds.max.y - bounds.min.y <= 1e-7 || bounds.max.z - bounds.min.z <= 1e-7)
+    throw new RangeError(`${label} requires three-dimensional stock`);
+}
+
+function validateNativeGearOverrides(cfg: RunningGearConfig): void {
+  if (cfg.roadWheelGeometry !== undefined) {
+    const g = cfg.roadWheelGeometry;
+    if (!g || !g.disc) throw new TypeError('Native road-wheel geometry requires a steel core');
+    validateNativeGearSolid(g.disc, 'Native road-wheel geometry');
+    if (g.tire !== null) validateNativeGearSolid(g.tire, 'Native road-wheel tire');
+    if (g.dark !== null) validateNativeGearSolid(g.dark, 'Native road-wheel hardware');
+    const solids = [g.disc, g.tire, g.dark].filter(Boolean);
+    if (new Set(solids).size !== solids.length) throw new RangeError('Native road-wheel solids must be distinct');
+  }
+  for (const g of [cfg.idlerGeometry, cfg.sprocketStockGeometry]) {
+    if (g === undefined) continue;
+    if (!g || !g.body || !g.dark || g.body === g.dark)
+      throw new TypeError('Native end-wheel stock requires two distinct material solids');
+    validateNativeGearSolid(g.body, 'Native end-wheel body');
+    validateNativeGearSolid(g.dark, 'Native end-wheel hardware');
+  }
+  if (cfg.returnRollerStockGeometry !== undefined) {
+    const g = cfg.returnRollerStockGeometry;
+    if (!g || !g.tire || !g.disc || g.tire === g.disc || cfg.returnRollerGeometry || !cfg.rollers?.length)
+      throw new TypeError('Native return-roller stock requires distinct tire/dish and explicit stations');
+    validateNativeGearSolid(g.tire, 'Native return-roller tire');
+    validateNativeGearSolid(g.disc, 'Native return-roller dish');
+  }
+  if (cfg.trackShoeBuilder !== undefined && typeof cfg.trackShoeBuilder !== 'function')
+    throw new TypeError('Native track shoe builder must be a function');
+  if ((cfg.trackGuideProfile || cfg.trackOutsoleDimensions) && !cfg.trackShoeBuilder)
+    throw new TypeError('Authored guide/outsole dimensions require their actual shoe builder');
+}
+
+// BatchedMesh cannot reverse front-face winding per instance. Bake only the
+// authored asymmetric drive's left reflection, retaining positive instances.
+function mirrorSprocketStock(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const mirrored = geometry.clone().scale(-1, 1, 1);
+  if (!mirrored.index) {
+    for (const attribute of Object.values(mirrored.attributes)) {
+      for (let i = 0; i < attribute.count; i += 3) {
+        for (let component = 0; component < attribute.itemSize; component++) {
+          const b = attribute.getComponent(i + 1, component);
+          attribute.setComponent(i + 1, component, attribute.getComponent(i + 2, component));
+          attribute.setComponent(i + 2, component, b);
+        }
+      }
+      attribute.needsUpdate = true;
+    }
+    return mirrored;
+  }
+  const index = mirrored.index;
+  for (let i = 0; i < index.count; i += 3) {
+    const b = index.getX(i + 1);
+    index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b);
+  }
+  index.needsUpdate = true;
+  return unindexedNativeEndStock(mirrored);
+}
+
+function unindexedNativeEndStock(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  if (!geometry.index) return geometry;
+  const flat = geometry.toNonIndexed();
+  geometry.dispose();
+  return flat;
+}
+
+function runningGearShoeOuterReach(pattern: DimensionedTrackPattern, cfg: RunningGearConfig,
+  grouserPeakScale: number, radialScale: number): number {
+  const outsole = cfg.trackOutsoleDimensions;
+  if (outsole) {
+    for (const key of ['padHeight', 'grouserHeight'] as const) {
+      if (!Number.isFinite(outsole[key]) || outsole[key] < pattern[key] || outsole[key] > .15)
+        throw new RangeError('Invalid outward-only track outsole');
+    }
+  }
+  const outer = outsole ? { ...pattern, ...outsole } : pattern;
+  return ((outer.padHeight - pattern.padHeight) / 2 + Math.max(
+    outer.padHeight / 2 + outer.grouserHeight * grouserPeakScale,
+    outer.padHeight / 2 + outer.shoulderHeight,
+  )) * radialScale;
+}
+
 function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): RunningGearUnit {
   if (!P.spec || !P.disposables) {
     throw new TypeError('Running gear requires a vehicle spec and disposal registry');
@@ -3266,6 +3410,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const disposables = P.disposables;
   const { mats, hullG, q } = P;
   validateReturnRollerDimensions(cfg);
+  validateNativeGearOverrides(cfg);
   const { wheelYs, roadWheelOutsetM } = resolveRoadWheelStations(cfg);
   const {sideStations,sideStationReceipt,wheelOutsetForSide,sideOutsetReceipt}=
     sourceRoadPlacement(cfg,roadWheelOutsetM);
@@ -3349,10 +3494,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     shoePitchM: lp, textureRepeatM: trackTextureRepeatM,
     frontEnd, rearEnd, contact,
   } = course;
-  const shoeOuterReach = Math.max(
-    trackPattern.padHeight / 2 + trackPattern.grouserHeight * grouserPeakScale,
-    trackPattern.padHeight / 2 + trackPattern.shoulderHeight,
-  ) * shoeRadialScale;
+  const shoeOuterReach = runningGearShoeOuterReach(trackPattern, cfg, grouserPeakScale, shoeRadialScale);
   const shoeDetailMode = 'family-integrated';
   const buildRunningGearReceiptStage2 = (): void => {
     if (P.geometryReceipt) {
@@ -3391,6 +3533,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         trackPatternId: trackPattern.id,
         trackPatternLabel: trackPattern.label,
         ...(cfg.trackShoeDimensions ? { trackShoeDimensions: { ...cfg.trackShoeDimensions } } : {}),
+        ...(cfg.trackOutsoleDimensions ? { trackOutsoleDimensions: { ...cfg.trackOutsoleDimensions },
+          outsoleSourceDeviation: 'outward-only stock; local axles and inner course unchanged; whole-root floor reseated' } : {}),
+        ...(cfg.trackGuideProfile ? { trackGuideProfile: { ...cfg.trackGuideProfile,
+          stations: cfg.trackGuideProfile.stations.map(row => [...row]) } } : {}),
         ...(cfg.continuousShoeFloorYM !== undefined ? {continuousShoeFloorYM: cfg.continuousShoeFloorYM} : {}),
         ...(cfg.trackLinkCrossSection ? { trackLinkCrossSection: { ...cfg.trackLinkCrossSection } } : {}),
         suspensionPatternId: suspensionPattern.id,
@@ -3520,7 +3666,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage8();
 
-  let { tire, disc, dark } = sourceWheelSolids(cfg,seg,wheelPattern);
+  let { tire, disc, dark } = cfg.roadWheelGeometry ?? sourceWheelSolids(cfg,seg,wheelPattern);
   // Some modern pressed-steel wheel assemblies are measurably oval in the
   // normalized side reference (vertical tire diameter exceeds the fore/aft
   // diameter).  Scaling the authored wheel geometry, rather than faking the
@@ -3882,11 +4028,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           undefined,'gearReturnRollerRotors');
       }else{
       const rollerSeg = Math.max(8, seg - 6);
-      const rollerTire = mergeAll([
+      const rollerTire = cfg.returnRollerStockGeometry?.tire ?? mergeAll([
         cylX(rollerR, trackW * 0.50, rollerSeg),
         cylX(rollerR * 0.92, trackW * 0.54, rollerSeg),
       ]);
-      const rollerDish = mergeAll([
+      const rollerDish = cfg.returnRollerStockGeometry?.disc ?? mergeAll([
         cylX(rollerR * 0.76, trackW * 0.57, rollerSeg),
         cylX(rollerR * wheelPattern.rollerHub, trackW * 0.63, 8),
         cylX(rollerR * 0.18, trackW * 0.69, 8),
@@ -3898,6 +4044,23 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       }
       mkInst(rollerTire, mats.rubber, rollerEntries, 'wheelTire', 'gearReturnRollerTires');
       mkInst(rollerDish, mats.wheels, rollerEntries, 'wheelDish', 'gearReturnRollerDiscs');
+      }
+      if (cfg.returnRollerHullHalfWidthM !== undefined) {
+        const receiver = cfg.returnRollerHullHalfWidthM;
+        const width = cfg.returnRollerWidthM ?? trackW * .69;
+        const centers = [xcLeft, xcRight].map(center => center
+          - (cfg.returnRollerInsetM ?? 0) + (cfg.returnRollerOutsetM ?? 0));
+        const lengths = centers.map(center => center - width / 2 - receiver + .003);
+        if (!Number.isFinite(receiver) || receiver <= 0 || lengths.some(n => n <= 0 || n > .8))
+          throw new RangeError('Invalid native return-roller receiver');
+        for (const side of [-1, 1] as const) {
+          const length = lengths[side < 0 ? 0 : 1], radius = Math.min(.025, rollerR * .30);
+          const stock = cylX(radius, length, q ? 8 : 4);
+          const mounting = rollerEntries.filter(e => Math.sign(e.x) === side).map(e => ({
+            ...e, x: side * (receiver + length / 2),
+          }));
+          mkInst(stock, mats.wheels, mounting, 'wheelDish', 'gearReturnRollerSpindles');
+        }
       }
     }
   };
@@ -3931,15 +4094,18 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const sprocketEngagementR = (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M;
     const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sourceToothTip(sprocket,sprocket.r + bandOuterR),
       lp, cfg.endRingSpan ?? trackW, wheelPattern, cfg.sprocketTeeth !== false,
-      sprocketEngagementR);
-    const ig = idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
+      sprocketEngagementR, cfg.sprocketStockGeometry);
+    const ig = cfg.idlerGeometry ? {
+      body: unindexedNativeEndStock(cfg.idlerGeometry.body),
+      dark: unindexedNativeEndStock(cfg.idlerGeometry.dark),
+    } : idlerGeo(idler.r, trackW * 0.74, seg, wheelPattern);
     return {
       sg,
       ig,
       sprocketDepthScale: cfg.sprocketDepthScale ?? cfg.endWheelDepthScale ?? 1,
       idlerDepthScale: cfg.idlerDepthScale ?? cfg.endWheelDepthScale ?? 1,
       sprocketSpinR: sg.toothCount
-        ? sg.toothPitchRadius
+        ? (cfg.sprocketStockGeometry ? sg.toothCount * lp / (Math.PI * 2) : sg.toothPitchRadius)
         : (sprocket.trackR ?? sprocket.r) + TRACK_WRAP_CLEARANCE_M,
       idlerSpinR: (idler.trackR ?? idler.r) + TRACK_WRAP_CLEARANCE_M,
     };
@@ -3961,6 +4127,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     if (sprocketDepthScale !== 1) {
       sg.body.scale(sprocketDepthScale, 1, 1);
       sg.dark.scale(sprocketDepthScale, 1, 1);
+      sg.leftBody?.scale(sprocketDepthScale, 1, 1);
+      sg.leftDark?.scale(sprocketDepthScale, 1, 1);
     }
     if (idlerDepthScale !== 1) {
       ig.body.scale(idlerDepthScale, 1, 1);
@@ -3999,6 +4167,9 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage20();
   const darkMat = mats.spareTrack || mats.dark;
+  const stockMirrors = sg.leftBody && sg.leftDark
+    ? new Map([[sg.body, sg.leftBody], [sg.dark, sg.leftDark]]) : null;
+  if (stockMirrors) disposables.push(...stockMirrors.values());
   const buildRunningGearReceiptStage7 = (): void => {
     if (P.batchStatic) {
       const buildRunningGearAssemblyCourse1 = (): void => {
@@ -4013,6 +4184,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           for (const { geo } of items) {
             vertexCapacity += geo.getAttribute('position').count;
             indexCapacity += geo.index?.count || 0;
+            const mirror = stockMirrors?.get(geo);
+            if (mirror) { vertexCapacity += mirror.getAttribute('position').count; indexCapacity += mirror.index?.count || 0; }
           }
           const batch = new THREE.BatchedMesh(
             items.length * 2,
@@ -4035,9 +4208,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           const entries: SpinnerBatchEntry[] = [];
           for (const { geo, end, spinR } of items) {
             const geometryId = batch.addGeometry(geo);
+            const mirror = stockMirrors?.get(geo);
+            const leftGeometryId = mirror ? batch.addGeometry(mirror) : geometryId;
             for (const side of [-1, 1] as const) {
               entries.push({
-                instanceId: batch.addInstance(geometryId),
+                instanceId: batch.addInstance(side < 0 ? leftGeometryId : geometryId),
                 side, r: spinR,
                 x: side * (xcForSide(side) + endpointAxleOutset(end,side)), y: end.y, z: end.z,
                 scaleX: endpointAxialScale(end,side),
@@ -4071,7 +4246,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
           const name = geo === gp.body ? 'gearEndWheelBody' : 'gearEndWheelHardware';
           for (const side of [-1, 1] as const) {
             const sideXc = xcForSide(side);
-            const mesh = new THREE.Mesh(geo, mat);
+            const mesh = new THREE.Mesh(side < 0 ? stockMirrors?.get(geo) ?? geo : geo, mat);
             mesh.userData.runningGear = true;
             mesh.userData.runningGearUnitId = runningGearUnitId;
             mesh.userData.runningGearEndKind = gp === sg ? 'sprocket' : 'idler';
@@ -4219,15 +4394,28 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // ---- individual link pads instanced along the loop (both sides) ----------
   const nP = pts.length;
   const rOut = trackTh / 2 + TRACK_SHOE_BAND_GAP_M;
-  const integratedShoe = trackShoeGeometry(
+  const integratedShoe = cfg.trackShoeBuilder ? cfg.trackShoeBuilder({
+    trackW, pitch: lp, pattern: trackPattern, pinCapOuter, radialScale: shoeRadialScale,
+    widthScale: shoeWidthScale, section: cfg.trackLinkCrossSection, far: false, high: Boolean(q),
+    guideProfile: cfg.trackGuideProfile, outsole: cfg.trackOutsoleDimensions,
+  }) : trackShoeGeometry(
     trackW, lp, trackPattern, pinCapOuter,
     shoeRadialScale, shoeWidthScale, cfg.trackLinkCrossSection,
   );
-  const simplifiedShoe = simplifiedTrackShoeGeometry(
+  const simplifiedShoe = cfg.trackShoeBuilder ? cfg.trackShoeBuilder({
+    trackW, pitch: lp, pattern: trackPattern, pinCapOuter, radialScale: shoeRadialScale,
+    widthScale: shoeWidthScale, section: cfg.trackLinkCrossSection, far: true, high: Boolean(q),
+    guideProfile: cfg.trackGuideProfile, outsole: cfg.trackOutsoleDimensions,
+  }) : simplifiedTrackShoeGeometry(
     trackW, lp, trackPattern, shoeRadialScale, shoeWidthScale,
     cfg.trackLinkCrossSection, pinCapOuter,
   );
   const buildRunningGearAssemblyStage15 = (): void => {
+    if (cfg.trackShoeBuilder) {
+      validateNativeGearSolid(integratedShoe, 'Native near shoe');
+      validateNativeGearSolid(simplifiedShoe, 'Native far shoe');
+      if (integratedShoe === simplifiedShoe) throw new TypeError('Native shoe streams require distinct owned geometry');
+    }
     disposables.push(integratedShoe, simplifiedShoe);
   };
   const buildRunningGearRunningGearStage27 = (): void => {

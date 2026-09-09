@@ -2,6 +2,7 @@
 // Main armor and internal volumes are calibrated to these first-party geometry receipts.
 import type { CombatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ABRAMS } from './combatAnatomyGroups/abrams.generated.ts';
+import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_ABRAMSSOURCEX } from './combatAnatomyGroups/abramsSourceX.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AFV } from './combatAnatomyGroups/afv.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX30X } from './combatAnatomyGroups/amx30X.generated.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_AMX40X } from './combatAnatomyGroups/amx40X.generated.ts';
@@ -60,6 +61,7 @@ import { COMBAT_ANATOMY_CALIBRATIONS as CALIBRATIONS_WW2 } from './combatAnatomy
 
 export const COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<string, CombatAnatomyCalibration>> = Object.freeze(Object.assign({},
   CALIBRATIONS_ABRAMS,
+  CALIBRATIONS_ABRAMSSOURCEX,
   CALIBRATIONS_AFV,
   CALIBRATIONS_AMX30X,
   CALIBRATIONS_AMX40X,

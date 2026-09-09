@@ -15,6 +15,8 @@ vm.runInContext(['orthoCam','sideInspectionCamera','technicalInspectionCamera'].
 const INSET_IDS=[
   'merkava3d_x','merkava4_x','leo2a7v_x','leo2a6m_x','leo2a4m_x','leo2a5_x',
   'k2_x','kf51_x','t14_x','t90a_x','t90a_vladimir_x','t90m_x','t90sm_x',
+  'm1a1_x','m1a1ha_x','m1a2_x','m1a2_tusk_x',
+  'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x',
 ];
 const LEGACY_IDS=INSET_IDS.map(id=>id.slice(0,-2));
 
@@ -70,4 +72,4 @@ assert.match(page,/const sideCam = technicalInspectionCamera\(id, center, size, 
   'actual technical render branch uses the tested layout');
 assert.match(page,/if \(wants\('side'\) \|\| wants\('sideSilhouette'\)\) \{\s*const sideCam = sideInspectionCamera/,
   'ordinary side rendering retains the legacy camera');
-console.log('technical-framing: all 13 source X models high/low fit complete silhouettes inside gutters with 9px footer clearance; original fleet cameras/anchors unchanged');
+console.log(`technical-framing: all ${INSET_IDS.length} source X models high/low fit complete silhouettes inside gutters with 9px footer clearance; original fleet cameras/anchors unchanged`);

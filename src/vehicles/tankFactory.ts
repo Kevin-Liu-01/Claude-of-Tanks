@@ -37,6 +37,7 @@ import './afvFamily.ts';
 import './sheridan.ts';
 import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
+import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -49,6 +50,7 @@ registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 applyFleetBalancePass(TANK_SPECS);
 synchronizeSourceXCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
+synchronizeAbramsSourceXCombatMetadata();
 finalizeFirstPartyRoster();
 for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(TANK_SPECS[id]);
 registerVehicleMarkingSeatRecords(VEHICLE_MARKING_SEATS);

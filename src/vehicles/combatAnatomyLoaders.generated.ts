@@ -7,6 +7,7 @@ type CalibrationGroupModule = { COMBAT_ANATOMY_CALIBRATIONS: Readonly<Record<str
 
 export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise<CalibrationGroupModule>>> = Object.freeze({
   "abrams": () => import('./combatAnatomyGroups/abrams.generated.ts'),
+  "abramsSourceX": () => import('./combatAnatomyGroups/abramsSourceX.generated.ts'),
   "afv": () => import('./combatAnatomyGroups/afv.generated.ts'),
   "amx30X": () => import('./combatAnatomyGroups/amx30X.generated.ts'),
   "amx40X": () => import('./combatAnatomyGroups/amx40X.generated.ts'),

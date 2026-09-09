@@ -8,11 +8,18 @@ import { T90_X_REFERENCE_OVERRIDES } from './t90-x-reference-overrides.ts';
 import { LEOPARD_X_REFERENCE_OVERRIDES } from './leopard-x-reference-overrides.ts';
 import { WEST_X_REFERENCE_OVERRIDES } from './west-x-reference-overrides.ts';
 import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from './second-wave-x-reference-overrides.ts';
+import { ABRAMS_X_REFERENCE_OVERRIDES } from './abrams-x-reference-overrides.ts';
 
 const page = fs.readFileSync(new URL('./procedural-fidelity.html', import.meta.url), 'utf8');
 const registryText = page.match(/const LOCAL_REFERENCE_OVERRIDES = (\{[\s\S]*?\n\});/)[1];
 const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE,
-  T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES });
+  T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES,
+  ABRAMS_X_REFERENCE_OVERRIDES });
+for (const [id, source] of Object.entries(ABRAMS_X_REFERENCE_OVERRIDES)) {
+  assert.equal(registry[id], source, 'actual fixed source registration survives the VM fixture');
+  assert.equal(requiredMinimumForQualityBar(source.qualityBar), 92);
+  assert.equal(validatedPreservationOracle(source, id), null, 'new Abrams cannot use a preservation exemption');
+}
 const rebuilt = registry.leo2_revolution;
 const preserved = registry.leo2_revolution_proto;
 assert.equal(rebuilt.qualityBar, 'exemplar');

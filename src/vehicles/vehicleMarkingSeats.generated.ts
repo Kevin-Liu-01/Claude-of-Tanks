@@ -3,6 +3,7 @@
 
 import type { VehicleMarkingSeatRecord } from './vehicleMarkingSeatRegistry.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_ABRAMS } from './vehicleMarkingSeatGroups/abrams.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_ABRAMSSOURCEX } from './vehicleMarkingSeatGroups/abramsSourceX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AFV } from './vehicleMarkingSeatGroups/afv.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AMX30X } from './vehicleMarkingSeatGroups/amx30X.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_AMX40X } from './vehicleMarkingSeatGroups/amx40X.generated.ts';
@@ -63,6 +64,7 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze(Object.assign({},
   SEATS_ABRAMS,
+  SEATS_ABRAMSSOURCEX,
   SEATS_AFV,
   SEATS_AMX30X,
   SEATS_AMX40X,
