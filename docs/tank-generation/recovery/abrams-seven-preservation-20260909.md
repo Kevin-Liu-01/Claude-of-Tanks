@@ -1,6 +1,7 @@
 # Seven conventional Abrams X — recovered working checkpoint
 
-Status: faithful current-main port in validation, not release-qualified.
+Status: faithful current-main port; focused/native-construction, type and public
+build checks pass. Generated-asset/composed release qualification remains pending.
 The owner explicitly requested publishing the unfinished side/fender work and
 the seven Abrams after disclosure of the failures. That is a scoped as-is
 preservation instruction, not a waiver that turns a failed gate into a pass.
@@ -144,7 +145,16 @@ Results will be appended after execution, not inferred from queued commands.
   separate unresolved strict triangle/performance budgets.
 - Existing movement, combat and spotting selftests: PASS after the optional
   finite-stock armor recovery; no simulation threshold was changed.
-- Final types/public build: pending. Selected assets are deliberately deferred
+- Final types/public build: PASS on preservation commit
+  `194afae702ad00372c246b8842902fdfe4ab18a3`. The public strip check records
+  181 playables and zero GLB-sourced playables. Vite's large-chunk warning is
+  not a fleet performance acceptance result. The final log is
+  `.qa-dev/abrams-recovery-final-type-build-v2.log`, SHA-256
+  `fb0954f0b7c8236b8947f1dc32d3211b987068bb5b419580756d2a3805478f51`.
+  All 80 changed source/tool files retain their tested manifest hashes; the
+  proof-only follow-up changes neither runtime nor tests. Copied extra EOF
+  blank-line warnings were retained instead of rewriting frozen inputs.
+- Selected assets are deliberately deferred
   to the integration owner: all seven lack generated presentation-anchor rows,
   so one maintained full centering update must precede fresh selected artwork.
 - Final composed anatomy update/check and targeted release attempt belong to
