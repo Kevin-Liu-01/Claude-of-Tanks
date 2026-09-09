@@ -120,6 +120,18 @@ function createHarness({ width = 1280, height = 720, devicePixelRatio = 1,
 
 const RESIZE_ORDER = ['renderer', 'camera', 'post', 'frustums'];
 
+{
+  const h = createHarness({ width: 430, height: 613 });
+  h.container.clientHeight = 733;
+  h.listeners.get('cot:layoutchange')();
+  assert.equal(h.camera.aspect, 430 / 733,
+    'visual-viewport layout events resize the camera when window.resize is absent');
+  assert.deepEqual(h.postSize, { width: 430, height: 733 });
+  h.runtime.dispose();
+  assert.equal(h.listeners.has('cot:layoutchange'), false,
+    'dispose detaches the visual-viewport layout listener');
+}
+
 for (const options of [
   { width: 1920, height: 1080, canvasWidth: 1280, canvasHeight: 577 },
   { width: 1920, height: 1080, devicePixelRatio: 2, rendererPixelRatio: 1 },

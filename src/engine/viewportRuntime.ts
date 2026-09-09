@@ -149,6 +149,10 @@ export function createViewportRuntime({
   };
 
   win.addEventListener('resize', onViewportChange);
+  // responsiveLayout.ts follows window.visualViewport directly because iOS
+  // third-party browsers can change the visible height without dispatching a
+  // window resize. Its event fires after #app has the corrected CSS size.
+  win.addEventListener('cot:layoutchange', onViewportChange);
   watchPixelRatio();
 
   const initial = dimensions();
@@ -180,6 +184,7 @@ export function createViewportRuntime({
       if (disposed) return;
       disposed = true;
       win.removeEventListener('resize', onViewportChange);
+      win.removeEventListener('cot:layoutchange', onViewportChange);
       resolutionQuery?.removeEventListener('change', onPixelRatioChange);
       resolutionQuery = null;
       stopRecovery();

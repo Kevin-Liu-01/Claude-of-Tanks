@@ -4,6 +4,7 @@ import {
   VIEWPORT_HEIGHT_BANDS,
   VIEWPORT_WIDTH_BANDS,
   classifyViewport,
+  installResponsiveLayout,
   viewportHeightBand,
   viewportWidthBand,
 } from './responsiveLayout.ts';
@@ -12,6 +13,10 @@ const RESPONSIVE_SURFACES_CSS = await readFile(
   'utf8',
 );
 const GARAGE_CSS = await readFile(new URL('./garage.css', import.meta.url), 'utf8');
+const INDEX_HTML = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
+const HOME_CSS = await readFile(new URL('../../public/home.css', import.meta.url), 'utf8');
+const GALLERY_CSS = await readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8');
+const PUBLIC_NAV_CSS = await readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8');
 
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.phone, { min: 0, max: 519 });
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.desktop, { min: 1440, max: Infinity });
@@ -96,6 +101,74 @@ for (const [width, height, widthBand, heightBand, orientation, overlayPanels, fo
   assert.equal(layout.input, coarsePointer ? 'coarse' : 'fine', `${width}x${height} input mode`);
 }
 
+{
+  const viewportListeners = new Map();
+  const windowListeners = new Map();
+  const properties = new Map();
+  const events = [];
+  let queuedFrame = null;
+  const visualViewport = {
+    width: 430,
+    height: 613,
+    offsetLeft: 0,
+    offsetTop: 0,
+    scale: 1,
+    addEventListener(type, callback) { viewportListeners.set(type, callback); },
+    removeEventListener(type, callback) {
+      if (viewportListeners.get(type) === callback) viewportListeners.delete(type);
+    },
+  };
+  const mediaQuery = matches => ({
+    matches,
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  const win = {
+    innerWidth: 430,
+    innerHeight: 733,
+    visualViewport,
+    matchMedia(query) { return mediaQuery(query === '(pointer: coarse)'); },
+    addEventListener(type, callback) { windowListeners.set(type, callback); },
+    removeEventListener(type, callback) {
+      if (windowListeners.get(type) === callback) windowListeners.delete(type);
+    },
+    requestAnimationFrame(callback) { queuedFrame = callback; return 1; },
+    cancelAnimationFrame() { queuedFrame = null; },
+    dispatchEvent(event) { events.push(event); return true; },
+  };
+  const doc = {
+    body: { dataset: {} },
+    documentElement: {
+      style: { setProperty(name, value) { properties.set(name, value); } },
+    },
+  };
+
+  const handle = installResponsiveLayout(win, doc);
+  assert.equal(properties.get('--cot-viewport-height'), '613px',
+    'the visual viewport, not the stale layout viewport, owns fullscreen height');
+  assert.equal(properties.get('--cot-viewport-width'), '430px');
+  assert.equal(properties.get('--cot-viewport-offset-top'), '0px');
+  assert.equal(properties.get('--cot-viewport-scale'), '1.0000');
+  assert.equal(doc.body.dataset.cotViewport, 'visual');
+  assert.equal(events.length, 1);
+
+  visualViewport.height = 733;
+  visualViewport.offsetTop = 22;
+  viewportListeners.get('scroll')();
+  assert.ok(queuedFrame, 'visual viewport scroll schedules one synchronized layout');
+  queuedFrame();
+  assert.equal(properties.get('--cot-viewport-height'), '733px');
+  assert.equal(properties.get('--cot-viewport-offset-top'), '22px');
+  assert.equal(handle.snapshot().height, 733);
+  assert.equal(events.length, 2,
+    'exact visual viewport changes emit even when the semantic height band stays unchanged');
+
+  handle.destroy();
+  assert.equal(viewportListeners.has('resize'), false);
+  assert.equal(viewportListeners.has('scroll'), false);
+  assert.equal(windowListeners.has('resize'), false);
+}
+
 assert.match(RESPONSIVE_SURFACES_CSS, /body\[data-cot-width='tablet'\] \.cot-set-panel/,
   'settings must consume the shared tablet contract');
 assert.match(RESPONSIVE_SURFACES_CSS, /body\[data-cot-width='phone'\] \.cot-si-diag\{display:none\}/,
@@ -107,5 +180,17 @@ assert.match(RESPONSIVE_SURFACES_CSS, /body\[data-cot-width='tablet'\]\[data-cot
 assert.match(GARAGE_CSS,
   /\.cot-featured\{display:none;[^}]*\}[\s\S]*body\[data-cot-height='tall'\] \.cot-featured\{display:block;\}/,
   'Battle Gallery must reserve sidebar height only on tall viewports');
+assert.match(INDEX_HTML,
+  /const viewport = window\.visualViewport;[\s\S]*--cot-viewport-height[\s\S]*#app \{[^}]*--cot-viewport-height[\s\S]*#cot-boot \{[\s\S]*--cot-viewport-height/,
+  'the first boot paint and renderer root must consume the visual viewport before modules load');
+assert.match(RESPONSIVE_SURFACES_CSS,
+  /body\[data-cot-viewport='visual'\] :is\([\s\S]*\.cot-garage[\s\S]*\.cot-hud[\s\S]*\.cot-bl[\s\S]*height:var\(--cot-viewport-height,100dvh\)/,
+  'garage, battle, loading, and modal roots must share one measured fullscreen height');
+assert.match(HOME_CSS, /\.v5-hero\{[^}]*var\(--cot-viewport-height,100dvh\)/,
+  'the public hero must not trust broken third-party iOS small viewport units');
+assert.match(GALLERY_CSS, /\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100dvh\) - 64px\)/,
+  'the gallery workspace must fit the measured viewport below navigation');
+assert.match(PUBLIC_NAV_CSS, /html,body\{min-height:var\(--cot-viewport-height,100dvh\)\}/,
+  'public pages must cover the measured mobile viewport');
 
 console.log(`responsive viewport contract: PASS (${matrix.length} representative viewports)`);

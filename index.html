@@ -94,6 +94,20 @@
        for exactly the same reason — first paint must not wait on /src/main.ts). -->
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin />
+  <script>
+    // iOS third-party browsers can expose a layout viewport that is taller or
+    // shorter than the actually visible page. Seed the real visual dimensions
+    // before first paint; responsiveLayout.ts keeps these values live once the
+    // application module has loaded.
+    (() => {
+      const viewport = window.visualViewport;
+      const root = document.documentElement;
+      const width = Math.max(1, Math.round(viewport?.width || window.innerWidth || 1));
+      const height = Math.max(1, Math.round(viewport?.height || window.innerHeight || 1));
+      root.style.setProperty('--cot-viewport-width', `${width}px`);
+      root.style.setProperty('--cot-viewport-height', `${height}px`);
+    })();
+  </script>
   <script type="module" src="/src/ui/localeBootstrap.ts"></script>
   <link rel="stylesheet" href="/src/presentation/mediaArchive.css" />
   <style>
@@ -110,7 +124,8 @@
          so any future variable face picks up optical sizing automatically. */
       font-optical-sizing: auto;
     }
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #05080b;
+    html, body { margin: 0; padding: 0; width: var(--cot-viewport-width, 100dvw);
+      height: var(--cot-viewport-height, 100dvh); overflow: hidden; background: #05080b;
       /* MOBILE-UX r1: no double-tap zoom anywhere (taps stay instant); menus
          keep one-finger scrolling — their own overflow containers pan as
          normal under touch-action: manipulation. */
@@ -124,7 +139,7 @@
       /* type mandate: UI weight floor is 500 — nothing renders at book/regular */
       font-weight: 500;
     }
-    #app { width: 100%; height: 100%; }
+    #app { width: var(--cot-viewport-width, 100dvw); height: var(--cot-viewport-height, 100dvh); }
     canvas, img { image-rendering: auto; }
     canvas { display: block; }
     /* MOBILE-UX r1: the 3D surface is a gameplay surface on every screen
@@ -157,7 +172,8 @@
       font-weight: 700 900; font-style: normal; font-display: optional; }
 
     #cot-boot {
-      position: fixed; inset: 0; z-index: 200; overflow: hidden;
+      position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
+      height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: 'ABC Monument Grotesk', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       color: #e6edf3; -webkit-user-select: none; user-select: none; cursor: default;

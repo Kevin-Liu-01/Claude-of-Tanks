@@ -1,6 +1,9 @@
 import { getLocale, t } from '../ui/i18n.ts';
+import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { localizeDocumentLinks, synchronizeLocaleRoute } from '../ui/localeRouting.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
+
+installResponsiveLayout();
 
 const locale = getLocale();
 const localeRouteChanged = synchronizeLocaleRoute(locale);

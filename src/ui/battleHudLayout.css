@@ -101,7 +101,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* Debrief actions get their own row. Only the report scrolls, so the last
    combatant can never disappear behind a fixed Battle Again/Garage footer. */
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es{
-  height:100dvh;box-sizing:border-box;padding:12px var(--cot-edge);overflow:hidden;
+  height:var(--cot-viewport-height,100dvh);box-sizing:border-box;padding:12px var(--cot-edge);overflow:hidden;
 }
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-report{
   flex:1 1 0;min-height:0;max-height:600px;overflow:auto;overscroll-behavior:contain;

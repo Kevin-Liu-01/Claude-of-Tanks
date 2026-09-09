@@ -130,7 +130,7 @@ interface PerformanceWithMemory extends Performance {
 
 const PERF_HUD_CSS = `
 #cot-perfhud{position:fixed;top:12px;right:12px;z-index:360;
-  width:min(386px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-sizing:border-box;
+  width:min(386px,calc(100vw - 24px));max-height:calc(var(--cot-viewport-height,100dvh) - 24px);box-sizing:border-box;
   overflow:auto;padding:0;font:10px/1.42 ui-monospace,SFMono-Regular,Menlo,monospace;
   font-variant-numeric:tabular-nums;color:#dce6ed;background:rgba(5,9,12,.96);
   border:1px solid rgba(176,195,209,.3);border-top-color:rgba(240,176,74,.66);
