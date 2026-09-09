@@ -13,7 +13,7 @@ This is the implementation guide for the complete pass, following the
 | Work | State |
 |---|---|
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
-| Torn tree crowns / moving terrain texture coordinates | Defects identified; focused fixes in progress |
+| Torn tree crowns / moving terrain texture coordinates | Fixed and committed locally; native images reviewed; held after Verdant timing gate failed |
 | Verdant two-dimensional outland | Local prototype; pure checks pass; native review pending |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |
@@ -24,6 +24,11 @@ R12/R14 forest images), current source and four personally viewed official
 WoT references. The older 28-map capture is historical evidence, not a fresh
 certification of current main. A config review covers all 30 maps; do not
 describe that as personally viewing every current map at every quality level.
+
+Fresh main/candidate captures now also cover Verdant, Coastal and Winter with
+26 exactly matched camera receipts. See [foundation verification](MAP-RENDER-FOUNDATIONS.md)
+for the failed performance check and explicit release hold, and the bounded
+[Verdant scene checkpoint](VERDANT-SCENE-CHECKPOINT.md) for the next art work.
 
 ## What makes the reference work
 
