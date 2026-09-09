@@ -188,9 +188,66 @@ assert.match(props, /DESTRUCTIBLE_BUILDING_TYPES\[kind\]\s*\? deriveRuntimeStruc
   'ordinary crates, walls and moving props do not acquire cosmetic detail');
 assert.match(props, /attachGroundCoverSolidProfile\(record\.ob, detail, pool\.mats4\[record\.slot\]\.elements\)/,
   'snapshot actual rendered matrix, never infer placement from collision bounds');
-const finalization = props.slice(props.indexOf('  function finalizeDestructiblePool('),
-  props.indexOf('  function* finalizeDestructiblePools('));
-assert.ok(finalization.indexOf('sealGroundCoverPlacements') > finalization.indexOf('fitWallSpan('),
-  'cosmetic binding must follow final placement refinement');
+const poolHeaders = [
+  '  function* prepareDestructiblePoolGeometry(',
+  '  function* finalizeDestructiblePool(',
+  '  function* finalizeDestructiblePools(',
+];
+const preparationSteps = [
+  'refitDestructibleColliders(geoI, pool, kind)',
+  'fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG)',
+  'transferred = true;',
+  'return { geoI, groundCoverDetail };',
+];
+const publicationSteps = [
+  'yield* prepareDestructiblePoolGeometry(kind, pool)',
+  'sealGroundCoverPlacements(pool, groundCoverDetail)',
+  'new THREE.InstancedMesh(geoI, material, pool.mats4.length)',
+  'imI.setMatrixAt(i, pool.mats4[i])',
+  'group.add(imI)',
+];
+
+function orderedOffsets(source, landmarks, label) {
+  let previous = -1;
+  return landmarks.map(landmark => {
+    const offset = source.indexOf(landmark);
+    assert.notEqual(offset, -1, `${label}: missing ${landmark}`);
+    assert.equal(source.lastIndexOf(landmark), offset, `${label}: ambiguous ${landmark}`);
+    assert.ok(offset > previous, `${label}: out of order ${landmark}`);
+    previous = offset;
+    return offset;
+  });
+}
+
+function assertFinalPlacementOrder(source) {
+  const [prepare, finalize, end] = orderedOffsets(source, poolHeaders, 'pool generators');
+  // Fitting is delegated, not performed in the finalizer. Require the fit
+  // before preparation transfers ownership, then exhaust it before sealing.
+  // wallSpanPlacement.selftest separately executes these real generators to
+  // verify every fit completes across yields before any mesh is published.
+  orderedOffsets(source.slice(prepare, finalize), preparationSteps, 'fit completion');
+  orderedOffsets(source.slice(finalize, end), publicationSteps, 'prepare-seal-publish');
+}
+
+assertFinalPlacementOrder(props);
+for (const landmark of [...poolHeaders, ...preparationSteps, ...publicationSteps]) {
+  assert.throws(() => assertFinalPlacementOrder(props.replace(landmark, '')), /missing/,
+    `missing source landmarks cannot pass through indexOf(-1): ${landmark}`);
+}
+for (const [first, second] of [
+  [preparationSteps[1], preparationSteps[3]],
+  [publicationSteps[0], publicationSteps[1]],
+  [publicationSteps[1], publicationSteps[2]],
+  [publicationSteps[3], publicationSteps[4]],
+]) {
+  const placeholder = '__GROUND_COVER_ORDER_MUTATION__';
+  assert.ok(!props.includes(placeholder));
+  const reordered = props.replace(first, placeholder).replace(second, first).replace(placeholder, second);
+  assert.throws(() => assertFinalPlacementOrder(reordered), /out of order/,
+    `reordered source cannot bind or publish an unfinished placement: ${first}`);
+}
+assert.throws(() => assertFinalPlacementOrder(props.replace(publicationSteps[0],
+  'prepareDestructiblePoolGeometry(kind, pool)')), /missing/,
+'calling a generator without yield* cannot stand in for completed preparation');
 console.log('groundCoverClearance.selftest: actual raised guardpost, source/collision parity, final instance transforms, unsupported fallbacks, solid/bridge/crate contact, stable compaction and streaming pass');
 console.log(JSON.stringify({ guardpost: detail, placementBytes: GROUND_COVER_PLACEMENT_BYTES }));
