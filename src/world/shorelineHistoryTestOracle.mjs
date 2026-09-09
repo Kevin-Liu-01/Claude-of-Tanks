@@ -57,6 +57,13 @@ export function historicalReservoirConfig(cfg) {
 }
 
 export function historicalPaletteConfig(cfg) {
+  // The coastal sand-relief opt-in postdates the original palette receipt.
+  // At 42ea275dfe55 coastal/saltwind had no rippleShoreOnly field. Current
+  // authoring is guarded in terrainSandCoverage; preserve every other field.
+  if (cfg.id === 'coastal' || cfg.id === 'saltwind') {
+    const { rippleShoreOnly: _laterShoreCoverage, ...splat } = cfg.splat;
+    return { ...cfg, splat };
+  }
   // Published 1e0b2608bc6e5fec2a3c2f32225358c6fcc62b97 restored Verdant's
   // original backdrop. The palette receipt predates that restoration; retain
   // its exact horizon input from source blob 16ec7c8a93f5362ddfd64ebc2af32b067cfa09e1.

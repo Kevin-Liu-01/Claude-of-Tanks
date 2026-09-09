@@ -38,7 +38,7 @@ assert.match(source,
   /float meadowG = [^;]+\(1\.0 - fMs\);/,
   'grass coloration cannot tint open water or lake ice');
 assert.match(source,
-  /float bedW = [^;]+\(1\.0 - fMs\);/,
+  /float bedW = [^;]+\(1\.0 - fMs\) \* sandCoverage;/,
   'coastal water cannot inherit the neighboring sand dune bedforms');
 assert.match(source,
   /float farG = [^;]+\(1\.0 - fMs\)/,

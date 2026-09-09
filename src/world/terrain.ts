@@ -187,6 +187,8 @@ interface SplatConfig {
   midReliefFar?: number;
   rippleDir?: readonly [number, number];
   rippleAmp?: number;
+  /** Mixed grassy coasts: sand relief follows the existing beach blend only. */
+  rippleShoreOnly?: boolean;
 }
 
 export interface TerrainMapConfig extends HorizonMapConfig {
@@ -2002,7 +2004,7 @@ uniform sampler2D uMask, uNoise;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uIceDrift, uMidRelief, uFieldPatch;
-uniform vec3 uRipple; // xy = wind dir, z = ripple normal amplitude
+uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
 uniform float uMidFar;    // r3: far edge of the mid-relief dapple band (m)
@@ -2435,7 +2437,11 @@ void splatCompute() {
   // wind-aligned sand ripples: anisotropic normal waves instead of dot noise.
   // Two wavelengths: ~2 m gameplay-range ripples + ~11 m dune-face waves that
   // still resolve in establishing shots.
-  if (uRipple.z > 0.001) {
+  // Coastal maps use grass as G and beach sand as D. Their wind ripples
+  // belong only to the existing shore apron, not inland pasture/road dust.
+  // Dry dune maps retain full coverage and their exact existing response.
+  float sandCoverage = uRipple.w > 0.5 ? seaSand : 1.0;
+  if (uRipple.z * sandCoverage > 0.001) {
     float rphase = dot(uv, uRipple.xy);
     // r8: the ~11 m dune-face wave now fades by 300 m (was 420) and its
     // amplitude is modulated by a ~150 m noise field — past ~300 m the sin
@@ -2448,7 +2454,7 @@ void splatCompute() {
                   * (1.0 - smoothstep(40.0, 150.0, camDist))
               + sin(rphase * 0.55 + texture2D(uNoise, uv * 0.006).g * 4.0) * 1.1
                   * (1.0 - smoothstep(110.0, 300.0, camDist)) * rMod)
-              * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs);
+              * uRipple.z * (1.0 - fR) * (1.0 - triW * 0.9) * (1.0 - fMs) * sandCoverage;
     n.xy += uRipple.xy * rw;
     // r3 terrain_environment: DUNE BEDFORMS that survive the establishing
     // shot. Both ripple octaves above die by 300 m, so the whole central
@@ -2461,7 +2467,7 @@ void splatCompute() {
     float bedMod = smoothstep(0.30, 0.72, texture2D(uNoise, uvW * 0.0035 + vec2(0.67, 0.23)).r);
     float bed = sin(bedPhase);
     float bedW = min(uRipple.z * 2.2, 1.0) * bedMod * (1.0 - fR) * (1.0 - roadCore)
-               * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - fMs);
+               * (1.0 - triW) * smoothstep(60.0, 170.0, effDist) * (1.0 - fMs) * sandCoverage;
     // r4: 0.105 -> 0.15 — the dune trains must survive the establishing shot
     // (the mid-map otherwise reads as one blown "whipped cream" sheet)
     a.rgb *= 1.0 + bed * 0.15 * bedW;
@@ -2474,7 +2480,7 @@ void splatCompute() {
     // flow in the two fixed WALL planes (samples mixed, never coordinates):
     // fine granular normal, down-slope flow streak, and a gentle slip-face
     // albedo darkening so lit faces keep surface definition.
-    float sandFaceW = triW * (1.0 - fR) * (1.0 - fMs);
+    float sandFaceW = triW * (1.0 - fR) * (1.0 - fMs) * sandCoverage;
     if (sandFaceW > 0.01) {
       vec3 wg1 = texture2D(uNrmG, gWallUVx * 0.55).xyz;
       vec3 wg2 = texture2D(uNrmG, gWallUVz * 0.55).xyz;
@@ -3062,7 +3068,7 @@ function* createSplatMaterialSteps(
     const rd = S.rippleDir || [0.8, 0.6];
     const rl = Math.hypot(rd[0], rd[1]) || 1;
     shader.uniforms.uRipple = {
-      value: new THREE.Vector3(rd[0] / rl, rd[1] / rl, S.rippleAmp ?? 0),
+      value: new THREE.Vector4(rd[0] / rl, rd[1] / rl, S.rippleAmp ?? 0, S.rippleShoreOnly ? 1 : 0),
     };
   }
   const splatHook: MaterialShaderHook = (shader) => {
@@ -3083,7 +3089,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v24';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v25';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
