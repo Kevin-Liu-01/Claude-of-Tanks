@@ -155,9 +155,11 @@ const CSS = `
 .cot-bl .fpct{font-size:19px;font-weight:700;color:#ffd27a;}
 .cot-bl .fbar{position:relative;height:5px;background:rgba(255,255,255,.07);overflow:hidden;
   box-shadow:inset 0 0 0 1px rgba(146,164,180,.22);}
-.cot-bl .ffill{position:absolute;left:0;top:0;bottom:0;width:0%;
+.cot-bl .ffill{position:absolute;left:0;top:0;bottom:0;width:100%;
+  transform:scaleX(0);transform-origin:left center;
   background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
-  box-shadow:0 0 14px rgba(240,160,48,.5);transition:width .18s linear;}
+  box-shadow:0 0 14px rgba(240,160,48,.5);transition:transform .18s linear;}
+.cot-bl.on .ffill{will-change:transform;}
 .cot-bl .count{margin-top:13px;text-align:center;font-family:${FONT_COND};
   font-size:15px;font-weight:800;letter-spacing:.3em;text-indent:.3em;
   color:#dce6ee;text-transform:uppercase;min-height:24px;
@@ -167,7 +169,7 @@ const CSS = `
   line-height:1.45;padding:0 5%;}
 .cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
   letter-spacing:.2em;text-transform:uppercase;font-size:9.5px;margin-right:8px;}
-@media (prefers-reduced-motion:reduce){.cot-bl.leaving{transition-duration:1ms;}}
+@media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .ffill{transition-duration:1ms;}}
 `;
 
 const BATTLE_TIPS: ReadonlyArray<readonly [string, string]> = [
@@ -275,6 +277,9 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   // `covering` follows the actual composited surface through its exit fade so
   // battle input cannot steer a camera that is only partly exposed yet.
   let covering = false;
+  let shownFill = '';
+  let shownPercent = -1;
+  let shownStage = '';
 
   function fillTeam(
     host: HTMLElement,
@@ -347,11 +352,27 @@ export function createBattleLoadScreen(): BattleLoadScreen {
      * @param {string} [label] stage name
      */
     progress(f: number, label?: string) {
-      const v = Math.max(0, Math.min(1, f));
-      fillEl.style.width = `${(v * 100).toFixed(1)}%`;
-      pctEl.textContent = `${Math.round(v * 100)}%`;
-      progressEl.setAttribute('aria-valuenow', String(Math.round(v * 100)));
-      if (label) stageEl.textContent = translateStageLabel(label);
+      const v = Number.isNaN(f) ? 0 : Math.max(0, Math.min(1, f));
+      const fill = v.toFixed(3);
+      const percent = Math.round(v * 100);
+      // Progress is event-driven; tween the fill without animating layout or
+      // repeatedly replacing unchanged live-region text at fine checkpoints.
+      if (fill !== shownFill) {
+        shownFill = fill;
+        fillEl.style.transform = `scaleX(${fill})`;
+      }
+      if (percent !== shownPercent) {
+        shownPercent = percent;
+        pctEl.textContent = `${percent}%`;
+        progressEl.setAttribute('aria-valuenow', String(percent));
+      }
+      if (label) {
+        const stage = translateStageLabel(label);
+        if (stage !== shownStage) {
+          shownStage = stage;
+          stageEl.textContent = stage;
+        }
+      }
     },
 
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */

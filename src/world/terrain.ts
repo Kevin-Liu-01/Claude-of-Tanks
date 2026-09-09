@@ -12,7 +12,8 @@ import {
   type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { applySourcedTerrain, type TerrainPaletteId } from './sourcedTextures.ts';
+import { applySourcedTerrain, prepareSourcedTerrain, type TerrainPaletteId,
+  type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
@@ -2973,6 +2974,7 @@ function* createSplatMaterialSteps(
   mapId = 'verdant',
   landformW: HeightField['_mesaW'] = null,
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
+  sourcePreparation: TerrainSourcePreparation | null = null,
 ): Generator<void, { material: THREE.MeshStandardMaterial; textures: THREE.Texture[] }, void> {
   const S = splatCfg || {};
   const rockMask = selectTerrainLandformMask(S, landformW);
@@ -2985,17 +2987,19 @@ function* createSplatMaterialSteps(
   // every steep face seen at grazing angles (mesa flanks, cut banks): past a
   // 4:1 footprint the sampler can only blur along the compressed axis.
   const aniso = Math.max(16, engineCtx.anisotropy ?? 4);
-  const grass = makeGrassLayer(3000, aniso, S.grassTone || null);
+  const grass = sourcePreparation?.tryCreateLayer('G', aniso)
+    ?? makeGrassLayer(3000, aniso, S.grassTone || null);
   yield;
-  const dirt = makeDirtLayer(3001, aniso, S.dirtTone || null);
+  const dirt = sourcePreparation?.tryCreateLayer('D', aniso)
+    ?? makeDirtLayer(3001, aniso, S.dirtTone || null);
   yield;
   // r7: cfg.splat.sandstone routes the R layer to the stratified
   // sedimentary painter (desert cliffs). The sourced Rock063 set is
   // disabled for that map in sourcedTextures.ts — its wavy metamorphic
   // structure was the "wet-sand swirl" artifact on every canyon wall.
-  const rock = S.sandstone
+  const rock = sourcePreparation?.tryCreateLayer('R', aniso) ?? (S.sandstone
     ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
-    : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null);
+    : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null));
   yield;
   const wet = S.iceLake
     ? makeIceLayer(3003, aniso)
@@ -3008,7 +3012,8 @@ function* createSplatMaterialSteps(
   // docs/ATTRIBUTION.md) replace the procedural layer textures in place when
   // available; procedural stays the synchronous fallback behind the flag in
   // sourcedTextures.ts and on any load failure.
-  const sourcedTexturesReady = applySourcedTerrain(mapId, layers, S);
+  const sourcedTexturesReady = sourcePreparation
+    ? sourcePreparation.apply(layers) : applySourcedTerrain(mapId, layers, S);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
     S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null);
@@ -3360,8 +3365,9 @@ export async function buildTerrainMeshesAsync(
   tick: TerrainBuildTick | null = null,
   fineSlices = false,
   streamOpts: TerrainStreamOptions | null = null,
+  sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}),
 ): Promise<THREE.Group> {
-  const g = terrainBuildSteps(heightField, engineCtx, cfg, streamOpts);
+  const g = terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
   let r = g.next();
   while (!r.done) {
     if (tick && (fineSlices || r.value[2])) await tick(r.value[0], r.value[1]);
@@ -3375,6 +3381,7 @@ function* terrainBuildSteps(
   engineCtx: TerrainEngineContext,
   cfg: TerrainMapConfig | null,
   streamOpts: TerrainStreamOptions | null = null,
+  sourcePreparation: TerrainSourcePreparation | null = null,
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
@@ -3393,6 +3400,7 @@ function* terrainBuildSteps(
     (cfg && cfg.id) || 'verdant',
     heightField._mesaW || null,
     heightField._waterWetnessAt || null,
+    sourcePreparation,
   );
   let materialStep = materialSteps.next();
   while (!materialStep.done) {

@@ -135,7 +135,8 @@ function assertNativeReceipt(report) {
  * FIFO cancellation is delayed until admission/timeout drains its exact ticket.
  * During native verification cancellation is checked at existing stage boundaries.
  * Native acquisition deadlines and cleanup can extend the nominal scenario cap. */
-export async function acquireLoadingEvidence(dist, { signal, onStage = () => {} } = {}, overrides = {}) {
+export async function acquireLoadingEvidence(dist, { signal, onStage = () => {}, entryProfile = 'timings' } = {}, overrides = {}) {
+  check(['timings', 'host', 'guest'].includes(entryProfile), 'invalid_entry_profile');
   const deps = { ...defaultDependencies, ...overrides }, lock = deps.createLock();
   const acquisitions = createAcquisitionOwner(), started = deps.now();
   const report = { ok: false, stages: [], errors: [], cleanup: {}, ownedRoomObserved: false };
@@ -165,7 +166,7 @@ export async function acquireLoadingEvidence(dist, { signal, onStage = () => {} 
     enter('native_verification');
     check(remaining() >= 30000, 'scenario_deadline');
     report.native = await deps.verify({ url: `http://127.0.0.1:${server.httpServer.address().port}`,
-      timeoutMs: Math.floor(remaining()), localSignaling: true, entryProfile: 'timings',
+      timeoutMs: Math.floor(remaining()), localSignaling: true, entryProfile,
       onStage(next) {
         enter(next);
         if (next === 'ready_and_launch') {
@@ -202,7 +203,8 @@ export async function acquireLoadingEvidence(dist, { signal, onStage = () => {} 
   return report;
 }
 
-export async function runMultiplayerLoadingBuildProbe({ dist, out, expectedBuildIndexHash, signal, onStage } = {}) {
+export async function runMultiplayerLoadingBuildProbe({ dist, out, expectedBuildIndexHash, signal, onStage, entryProfile = 'timings' } = {}) {
+  check(['timings', 'host', 'guest'].includes(entryProfile), 'invalid_entry_profile');
   check(typeof dist === 'string' && isAbsolute(dist) && typeof out === 'string' && isAbsolute(out) &&
     resolve(out) !== resolve(out, '..'), 'absolute_paths_required');
   check(/^[a-f0-9]{64}$/.test(expectedBuildIndexHash ?? ''), 'approved_index_sha_required');
@@ -219,12 +221,12 @@ export async function runMultiplayerLoadingBuildProbe({ dist, out, expectedBuild
   const report = { protocol: 'multiplayer-loading-immutable-native-v1', pid: process.pid, sourceVersion,
     expectedBuildIndexHash, before, startedAt: new Date().toISOString(),
     scenario: { canonicalMap: 'winter', freshBrowserContexts: 2, cacheDisabled: true,
-      entryProfile: 'timings', waitForRoomMap: false, localSignaling: true, signalingPort: 7777,
+      entryProfile, waitForRoomMap: false, localSignaling: true, signalingPort: 7777,
       previewPort: 0, timeoutMs: SCENARIO_TIMEOUT_MS, captureQueueTimeoutMs: CAPTURE_QUEUE_TIMEOUT_MS,
       overrides: false, backgroundScheduling: 'native' },
     cancellation: 'Queued cancellation drains FIFO admission/timeout before release; native verification cancels at existing stage boundaries. Cleanup is awaited, not abandoned at a deadline.' };
   try {
-    Object.assign(report, await acquireLoadingEvidence(buildRoot, { signal, onStage }));
+    Object.assign(report, await acquireLoadingEvidence(buildRoot, { signal, onStage, entryProfile }));
   } catch (error) {
     report.ok = false; report.errors = [{ stage: 'acquisition', ...productionDiagnosticDetails(error) }];
   } finally {
@@ -243,16 +245,19 @@ export async function runMultiplayerLoadingBuildProbe({ dist, out, expectedBuild
 export function parseLoadingProbeArgs(args) {
   const values = {};
   for (const arg of args) {
-    const match = arg.match(/^--(dist|out|expected-build-index-hash)=(.+)$/);
-    assert.ok(match && !Object.hasOwn(values, match[1]), 'Only unique --dist, --out, --expected-build-index-hash are accepted');
+    const match = arg.match(/^--(dist|out|expected-build-index-hash|entry-profile)=(.+)$/);
+    assert.ok(match && !Object.hasOwn(values, match[1]), 'Only unique --dist, --out, --expected-build-index-hash, --entry-profile are accepted');
     values[match[1]] = match[2];
   }
-  return { dist: values.dist, out: values.out, expectedBuildIndexHash: values['expected-build-index-hash'] };
+  const entryProfile = values['entry-profile'];
+  check(entryProfile === undefined || ['timings', 'host', 'guest'].includes(entryProfile), 'invalid_entry_profile');
+  return { dist: values.dist, out: values.out, expectedBuildIndexHash: values['expected-build-index-hash'],
+    ...(entryProfile === undefined ? {} : { entryProfile }) };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   if (process.argv.slice(2).join(' ') === '--help') {
-    console.log('node tools/multiplayer-loading-build-probe.mjs --dist=/absolute/immutable-public-dist --out=/absolute/fresh-output --expected-build-index-hash=<sha256>');
+    console.log('node tools/multiplayer-loading-build-probe.mjs --dist=/absolute/immutable-public-dist --out=/absolute/fresh-output --expected-build-index-hash=<sha256> [--entry-profile=timings|host|guest]');
   } else {
     const controller = new AbortController(), cancel = () => controller.abort();
     process.on('SIGINT', cancel); process.on('SIGTERM', cancel);

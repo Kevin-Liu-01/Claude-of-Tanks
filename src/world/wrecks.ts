@@ -29,9 +29,12 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { compactWreckGeometrySteps, type WreckGeometryBuildSlice } from './exactWreckGeometry.ts';
+import {
+  compactWreckGeometryForPaintSteps, compactWreckGeometrySteps,
+  type WreckGeometryBuildSlice,
+} from './exactWreckGeometry.ts';
 import { createTank } from '../vehicles/fleetFactory.ts';
-import { VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
+import { resolveWreckRoster } from './wreckRoster.ts';
 
 export interface WreckOptions {
   seed?: number;
@@ -438,8 +441,11 @@ function* buildTankWreckSteps(
     // ~0.16 albedo which tonemapped to TAN under a 3.5+ sun (steppe/verdant
     // frame review); charred steel must stay near-black even sunlit.
     const rustPhase = rng() * 40;
+    // RGB is determined by these exact position/normal words. Paint only the
+    // first-occurrence representatives, retaining the original corner index.
+    const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);
     yield* paintWreckGeometrySteps(merged, rustPhase);
-    yield* compactWreckGeometrySteps(merged);
+    if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
     const result = wreckBakeResult(merged, shadowGeo);
     yield { fine: true, stage: 'finalize' };
@@ -456,21 +462,13 @@ function* buildTankWreckSteps(
 }
 
 /**
- * Era-appropriate wreck id pools (base-roster procedural ids only — always
- * registered, always buildable without a GLB fetch).
+ * Public-roster wreck pools. Saved/hidden builder donors are not eligible;
+ * only the selected public vehicle's procedural family is demand-loaded.
  * @param {string} era canonical vehicle era
  * @returns {string[]}
  */
 export function wreckPool(era: string): string[] {
-  if (era === VEHICLE_ERAS.INTERWAR || era === VEHICLE_ERAS.WORLD_WAR_II) {
-    return ['tiger1', 'panther_g', 't34_85', 'm4a3e8', 'is2', 'kv2'];
-  }
-  if (era === VEHICLE_ERAS.COLD_WAR) {
-    return ['m60a1', 'm48', 't80u', 'type74', 'leo1a5', 'chieftain5',
-      'type59', 'strv103', 'm1a1', 'bmp2'];
-  }
-  return ['m1a2', 't90m', 'leo2a7', 't90a', 'challenger2', 'leclerc',
-    'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete', 'pt91m', 'strv122'];
+  return resolveWreckRoster(era);
 }
 
 function debrisBaseColor(

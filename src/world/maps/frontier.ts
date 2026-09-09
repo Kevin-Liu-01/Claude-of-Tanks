@@ -69,7 +69,8 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 28, rocks: 205, outcrops: 28, craters: 68, rubblePiles: 12,
     cropFields: 9, hedgehogs: 14, sandbagLines: 18,
-    tankWrecks: { era: 'modern', count: 6, debris: true },
+    tankWrecks: { era: 'modern', count: 6, debris: true,
+      ids: ['m1a2', 't90m', 'm551_sheridan', 'm60a2', 'marder1a3', 'pl01'] },
     inhabit: {
       stalls: 2, benches: 3, coreClutter: 18, bales: 14, stooks: 12,
       troughs: 2, churns: 2, laundry: 2, handcarts: 3, carts: 4,

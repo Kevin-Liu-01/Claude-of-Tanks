@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loading UI motion regression fixture</title>
+<style>body{margin:0;background:#253929;min-height:100dvh}</style>
+<script type="module">
+  import '../../src/ui/motion.css';
+  import '../../src/ui/responsiveSurfaces.css';
+  import { createBattleLoadScreen } from '../../src/ui/battleLoad.ts';
+  import { initHud } from '../../src/ui/hud.ts';
+  import { MAP_HEROES } from '../../src/ui/mapThumbs.ts';
+  import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
+
+  // Real adapters and styles without map/renderer work obscuring UI regressions.
+  installResponsiveLayout();
+  const hud = initHud({ on() { return () => {}; }, off() {}, emit() {} });
+  const load = createBattleLoadScreen();
+  const info = { mapName: 'Verdant', biome: 'verdant', thumb: MAP_HEROES.verdant,
+    allies: [{ id: 'm1a2', name: 'M1A2 Abrams', tier: 'X', isPlayer: true }],
+    enemies: [{ id: 't90m', name: 'T-90M', tier: 'X' }] };
+  load.show(info);
+  window.loadingMotionFixture = { load, hud, info };
+</script>
