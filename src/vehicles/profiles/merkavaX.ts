@@ -9,6 +9,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { merkava4RearFoldSolids } from './merkava4RearHull.ts';
 import { addMerkavaXShoulderReturns } from './merkavaXShoulderReturns.ts';
 import { addMerkava3dXFrontReturns } from './merkava3dXFrontReturn.ts';
+import { addMerkava4XEndReturns } from './merkava4XEndReturns.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
@@ -555,6 +556,7 @@ export function buildMerkava4X(P: TankBuilderPort): void {
     topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true});
   merkava4HullDetails(P);
   addMerkavaXShoulderReturns(P, 'merkava4_x');
+  addMerkava4XEndReturns(P);
   P.add('turret',merkava4Shell());
   // The source has a raised asymmetric central roof, not one flat turtle
   // shell: its rear ledge is right of the gunner's lower optic berth and
