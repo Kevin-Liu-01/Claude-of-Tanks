@@ -11,6 +11,8 @@
 // --world-fixtures-only --expected-build-index-hash=<sha256> --out=/absolute/fresh --gate
 // Or 3 shots per explicitly requested repair variant (maximum 4):
 // --vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv --expected-build-index-hash=<sha256>
+// Or one FIRST battle selected as night before entry (3 desktop Urban/m1a3 shots):
+// --cold-night-entry --expected-build-index-hash=<sha256> --out=/absolute/fresh --gate
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -30,9 +32,13 @@ const censusSource = censusSourcePath ? JSON.parse(readFileSync(resolve(censusSo
 const fixtureCensusPath = process.argv.find(x => x.startsWith('--fixture-census-source='))?.slice('--fixture-census-source='.length);
 const fixtureCensusSource = fixtureCensusPath ? JSON.parse(readFileSync(resolve(fixtureCensusPath), 'utf8')) : null;
 const worldFixturesOnly = process.argv.includes('--world-fixtures-only');
+const coldNightEntry = process.argv.includes('--cold-night-entry');
 const vehicleFixtureIds = requestedVehicleFixtures(process.argv);
 const optionalFixtureSuite = worldFixturesOnly || vehicleFixtureIds.length > 0;
 const expectedBuildHash = process.argv.find(x => x.startsWith('--expected-build-index-hash='))?.slice('--expected-build-index-hash='.length);
+assert(!coldNightEntry || (!optionalFixtureSuite && !censusSource && !fixtureCensusSource
+  && /^[a-f0-9]{64}$/.test(expectedBuildHash ?? '')),
+  'Cold night entry requires an exact production index SHA-256 and is a separate acquisition');
 assert(!optionalFixtureSuite || (!censusSource && !(worldFixturesOnly && vehicleFixtureIds.length)
   && /^[a-f0-9]{64}$/.test(expectedBuildHash ?? '')),
   'Fixture suites require an explicit production index SHA-256 and cannot be mixed with each other or a census');
@@ -51,6 +57,10 @@ if (worldFixturesOnly) {
 if (vehicleFixtureIds.length) {
   report.mode = 'vehicle-fixtures-only'; report.vehicleFixtureIds = vehicleFixtureIds;
   report.method = 'Separate bounded desktop High driving-lens repair suite; three actual visible-aperture day/night/day images per explicit vehicle ID, exact production hash, semantic lamp role and bidirectional line of sight, Garage reset. Native images require human review; no performance or mobile certification.';
+}
+if (coldNightEntry) {
+  report.mode = 'cold-night-entry';
+  report.method = 'One first Urban/m1a3 battle selected as clear night before beginSoloBattle; real covered render, preparation/reveal receipts, headlight and streetlamp apertures, three desktop High images and Garage reset. Cold means first battle in this fresh page, not cache-disabled network loading. No performance measurement or physical-device certification.';
 }
 const save = () => writeFileSync(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
 const deadlines = { progressMs: 5_000, settleMs: 30_000 };
@@ -290,6 +300,194 @@ async function stage(mapId, specId = 'm1a1') {
     const telemetry = document.getElementById('cot-perfhud');
     if (telemetry) telemetry.style.display = 'none';
   });
+}
+
+// Optional first-entry observation only. Wrappers call the actual owners once,
+// preserve this/arguments/results, and never select weather or render a frame.
+function installColdNightEntryObserver() {
+  const d = window.__DEBUG, probe = window.__equipmentDamageProbe;
+  if (probe.coldEntry) throw new Error('Cold entry observer already installed');
+  const receipt = { events: [], firstBattleRender: null, resolved: false };
+  const owned = [];
+  const snapshot = () => ({ phase: d.game.phase, battleCount: d.game.battleCount,
+    weather: d.battleAtmosphere.current?.weather ?? null,
+    nightLighting: probe.readNightLighting() });
+  function observePrepare(owner, name) {
+    const original = owner.prepare;
+    const wrapped = async function (...args) {
+      receipt.events.push({ name: `${name}:start`, args });
+      const result = await Reflect.apply(original, this, args);
+      receipt.events.push({ name: `${name}:done`, state: snapshot() });
+      return result;
+    };
+    owner.prepare = wrapped;
+    owned.push({ owner, key: 'prepare', original, wrapped });
+  }
+  observePrepare(d.battleAtmosphere, 'atmosphere');
+  observePrepare(d.nightLighting, 'nightLighting');
+  const original = d.post.render;
+  const wrapped = function () {
+    const result = Reflect.apply(original, this, arguments);
+    if (!receipt.firstBattleRender && d.game.phase === 'battle') {
+      const loader = document.querySelector('.cot-bl');
+      const style = loader ? getComputedStyle(loader) : null;
+      const rect = loader?.getBoundingClientRect();
+      receipt.firstBattleRender = { ...snapshot(),
+        render: probe.renderReceipt(),
+        loader: { on: !!loader?.classList.contains('on'), leaving: !!loader?.classList.contains('leaving'),
+          display: style?.display ?? null, opacity: Number(style?.opacity ?? 0),
+          coversViewport: !!rect && rect.left <= 0 && rect.top <= 0
+            && rect.right >= window.innerWidth && rect.bottom >= window.innerHeight },
+        glError: d.renderer.getContext().getError() };
+      receipt.events.push({ name: 'firstBattleRender' });
+    }
+    return result;
+  };
+  d.post.render = wrapped;
+  owned.push({ owner: d.post, key: 'render', original, wrapped });
+  probe.coldEntry = { receipt, dispose() {
+    for (const { owner, key, original, wrapped } of owned) {
+      if (owner[key] !== wrapped && owner[key] !== original) throw new Error('Cold entry observer ownership changed');
+      owner[key] = original;
+    }
+    return { restored: true };
+  } };
+}
+
+async function beginColdNightBattle({ mapId, specId, seed }) {
+  const d = window.__DEBUG, receipt = window.__equipmentDamageProbe.coldEntry.receipt;
+  if (d.game.phase !== 'garage' || d.battleAtmosphere.current?.weather
+    || d.nightLighting.current?.emitterCount) throw new Error('Cold entry requires a pristine battle lifecycle');
+  d.shotMode = false;
+  // startBattle increments this counter once; production owns all preparation.
+  d.game.battleCount = seed - 1;
+  receipt.events.push({ name: 'beginSoloBattle', mapId, specId, seed, priorBattleCount: d.game.battleCount });
+  const firstTiming = window.__VISUAL_LOAD_TIMINGS?.length ?? 0;
+  await d.beginSoloBattle({ mapId, specId, randomRoster: false });
+  receipt.resolved = true;
+  receipt.events.push({ name: 'entryResolved' });
+  receipt.reveal = window.__BATTLE_REVEAL;
+  receipt.deployment = window.__BATTLE_COUNTDOWN_WARM;
+  receipt.loading = window.__BATTLE_LOAD;
+  receipt.playerStaging = (window.__VISUAL_LOAD_TIMINGS ?? []).slice(firstTiming)
+    .filter(row => row.specId === specId && row.textureUploadMs !== undefined);
+}
+
+function assertColdNightEntry(receipt, expected) {
+  assert(receipt.resolved, 'First night entry must resolve normally');
+  assert.deepEqual(receipt.events.map(row => row.name), ['beginSoloBattle',
+    'atmosphere:start', 'atmosphere:done', 'nightLighting:start', 'nightLighting:done',
+    'firstBattleRender', 'entryResolved'], 'Exactly one selected night preparation precedes first render/reveal');
+  assert.deepEqual(receipt.events[1].args, [expected.seed, 'urban']);
+  assert.deepEqual(receipt.events[3].args, []);
+  assert.equal(receipt.events[0].priorBattleCount, expected.seed - 1);
+  const first = receipt.firstBattleRender;
+  assert(first && first.phase === 'battle' && first.battleCount === expected.seed);
+  assert.deepEqual(first.weather, expected, 'First render must already have the selected real night');
+  assertRenderedState(first);
+  assert(first.loader.on && !first.loader.leaving && first.loader.display !== 'none'
+    && first.loader.opacity === 1 && first.loader.coversViewport, 'First render must complete under the opaque loading cover');
+  assert.equal(first.glError, 0);
+  assert(validNightLightState(first), 'Actual first rendered night pool and authored masks must be active');
+  assert(receipt.reveal?.primed && receipt.reveal.loaderVisible && receipt.reveal.garageHidden,
+    'Production covered reveal must complete before loader dismissal');
+  const stages = Object.keys(receipt.deployment?.stages ?? {});
+  const required = ['camo', 'atmosphere', 'nightLighting', 'allyVisuals', 'forwardPrograms', 'postPasses', 'openingFrame'];
+  assert(required.every((key, i) => stages.includes(key)
+    && (i === 0 || stages.indexOf(required[i - 1]) < stages.indexOf(key))), 'Final shader and post readiness order is retained');
+  assert(receipt.deployment.done && receipt.deployment.doneBeforeRollout && !receipt.deployment.error);
+  assert(receipt.playerStaging.length === 1 && receipt.playerStaging[0].compileMs === 0,
+    'Early player texture upload must not submit the obsolete forward program');
+  assert(receipt.loading?.stages?.open !== undefined, 'Normal battle opening must complete');
+}
+
+function readColdHeadlightFace(fixture) {
+  const d = window.__DEBUG;
+  const mesh = d.game.player.visual.root.getObjectByProperty('uuid', fixture.ownerUuid);
+  const geometry = mesh?.geometry, position = geometry?.getAttribute('position');
+  const mask = geometry?.getAttribute('nightEmissionMask');
+  const offset = fixture.faceIndex * 3;
+  if (!position || !mask || !Number.isSafeInteger(fixture.faceIndex) || fixture.faceIndex < 0
+    || offset + 2 >= (geometry.index?.count ?? position.count)) throw new Error('Missing actual selected driving face');
+  mesh.updateWorldMatrix(true, false);
+  const point = d.camera.position.clone().set(0, 0, 0), masks = [];
+  for (let corner = 0; corner < 3; corner++) {
+    const vertex = geometry.index?.getX(offset + corner) ?? offset + corner;
+    masks.push(mask.getX(vertex));
+    point.add(d.camera.position.clone().fromBufferAttribute(position, vertex));
+  }
+  point.multiplyScalar(1 / 3).applyMatrix4(mesh.matrixWorld);
+  return { ownerUuid: mesh.uuid, materialUuid: mesh.material.uuid,
+    faceIndex: fixture.faceIndex, masks, point: point.toArray() };
+}
+
+function assertColdNightFixture(kind, fixture, state, face = null) {
+  assert(validNightLightState(state, kind === 'headlight-aperture'));
+  const material = state.nightLighting.materials.find(row => row.uuid === fixture.materialUuid);
+  assert(material?.masked && material.intensity >= 3, 'The inspected real aperture must emit');
+  if (kind === 'streetlamp') {
+    assert(validStreetLampFixture(fixture, state.nightLighting), 'Point pool light must attach to this intact streetlamp');
+  } else {
+    assert.equal(fixture.kind, 'headlight');
+    assert.equal(fixture.lineOfSight, 'authored-emissive-face');
+    // The vehicle inspector returns an actual face centroid, not a world-lamp
+    // mask/sourcePoint receipt. A whole-lens source centroid need not coincide
+    // with one triangle centroid. Read the selected uploaded triangle instead.
+    assert(Number.isSafeInteger(fixture.faceIndex) && fixture.faceIndex >= 0);
+    assert.deepEqual(face, { ownerUuid: fixture.ownerUuid, materialUuid: fixture.materialUuid,
+      faceIndex: fixture.faceIndex, masks: [1, 1, 1], point: fixture.point },
+    'The selected real driving face, transform, material and every uploaded mask vertex must match');
+  }
+}
+
+async function coldNightEntryPictures(garageBaseline) {
+  const expected = selectBattleWeather(seedFor('temperate', 'night'), 'temperate');
+  report.coldNight = { mapId: 'urban', specId: 'm1a3', expected, passed: false }; save();
+  await evaluateWithin(installColdNightEntryObserver);
+  try {
+    await evaluateWithin(beginColdNightBattle, { mapId: 'urban', specId: 'm1a3', seed: expected.seed },
+      180_000, 'First real night entry');
+  } finally {
+    report.coldNight.entry = await evaluateWithin(() => window.__equipmentDamageProbe.coldEntry.receipt);
+    report.coldNight.observerCleanup = await evaluateWithin(() => window.__equipmentDamageProbe.coldEntry.dispose()); save();
+  }
+  assertColdNightEntry(report.coldNight.entry, expected);
+  await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.tanks.every(x => x.visual)', { timeout: 180_000 });
+  await evaluateWithin(() => {
+    const d = window.__DEBUG, p = d.game.player.state.pos;
+    d.shotMode = true; d.post.setAdaptiveSuspended(true);
+    d.camera.position.set(p.x + 12, p.y + 7, p.z - 14);
+    d.camera.lookAt(p.x, p.y + 2, p.z + 22);
+    d.camera.fov = 50; d.camera.updateProjectionMatrix();
+    window.__equipmentDamageProbe.beginStateEpoch();
+    const telemetry = document.getElementById('cot-perfhud');
+    if (telemetry) telemetry.style.display = 'none';
+  });
+  await settle(30);
+  report.coldNight.established = await evaluateWithin(readVisualState); save();
+  assert.deepEqual(report.coldNight.established.weather, expected);
+  assert(clearWeatherState(report.coldNight.established) && validNightLightState(report.coldNight.established));
+  await screenshot('cold-night-urban-established', report.coldNight.established);
+  for (const kind of ['headlight-aperture', 'streetlamp']) {
+    const fixture = await evaluateWithin(kind => window.__equipmentDamageProbe.stageNightLightCloseup(kind), kind);
+    const row = { kind, fixture, structuralPassed: false };
+    report.lightCloseups.push(row); save();
+    try {
+      await settle(30);
+      const state = row.state = await evaluateWithin(readVisualState);
+      const face = row.face = kind === 'headlight-aperture' ? await evaluateWithin(readColdHeadlightFace, fixture) : null;
+      save(); // Retain the exact fixture and state even if an assertion fails.
+      assert.deepEqual(state.weather, expected);
+      assertColdNightFixture(kind, fixture, state, face);
+      row.structuralPassed = true; save();
+      await screenshot(`cold-night-urban-${kind}`, state);
+    } finally { await evaluateWithin(() => window.__equipmentDamageProbe.restoreNightLightCamera()); }
+  }
+  await nativeGraphics('coldNightGraphicsAfter');
+  report['high-garage'] = await garageReceipt(garageBaseline);
+  report.coldNight.passed = true; save();
+  await stopFrameObserver();
+  await within(page.close(), 10_000, 'Page close');
 }
 
 function assertRenderedState(state) {
@@ -874,7 +1072,7 @@ try {
   save();
   const entry = readFileSync('dist/index.html');
   report.build = createHash('sha256').update(entry).digest('hex');
-  if (optionalFixtureSuite) assert.equal(report.build, expectedBuildHash, 'Exact approved production index required');
+  if (optionalFixtureSuite || coldNightEntry) assert.equal(report.build, expectedBuildHash, 'Exact approved production index required');
   assert(!entry.toString().includes('/@vite/client'), 'Production build required');
   server = await preview({ logLevel: 'error', preview: { host: '127.0.0.1', port: 5852, strictPort: true } });
   server.httpServer.on('connection', socket => {
@@ -905,6 +1103,11 @@ try {
     assert.equal(garageBaseline.phase, 'garage'); assert.equal(garageBaseline.weather, null);
     report[`${tier.label}-garageBaseline`] = garageBaseline; save();
     await nativeGraphics(`${tier.label}-graphics`);
+    if (coldNightEntry) {
+      assert.equal(tier.label, 'high');
+      await coldNightEntryPictures(garageBaseline);
+      break;
+    }
     if (optionalFixtureSuite) {
       assert.equal(tier.label, 'high');
       await completeOptionalFixtureSuite(garageBaseline);
@@ -933,7 +1136,7 @@ try {
     await stopFrameObserver();
     await within(page.close(), 10_000, 'Page close');
   }
-  const matrixPassed = !optionalFixtureSuite && !censusSource && !fixtureCensusSource && report.equipment.applied === true && report.equipment.duplicate === false
+  const matrixPassed = !coldNightEntry && !optionalFixtureSuite && !censusSource && !fixtureCensusSource && report.equipment.applied === true && report.equipment.duplicate === false
     && report.cases.length === 6 && report.cases.every(row => Object.values(row.checks).every(Boolean))
     && report.focusedFixtures.length === 2 && report.focusedFixtures.every(row => Object.values(row.checks).every(Boolean))
     && report.lightCloseups.length === 4 && report.lightCloseups.every(row => row.structuralPassed)
@@ -947,9 +1150,21 @@ try {
     && report.vehicleFixtures.every(row => Object.values(row.checks).every(Boolean))
     && report.screenshots.length === vehicleFixtureIds.length * 3 && report.screenshots.every(row => row.completed)
     && report['high-garage']?.phase === 'garage' && validNightLightState(report['high-garage']);
-  report.passed = matrixPassed || fixturesPassed || vehiclesPassed;
+  const coldPassed = coldNightEntry && report.coldNight?.passed && report.screenshots.length === 3
+    && report.screenshots.every(row => row.completed) && report['high-garage']?.phase === 'garage'
+    && validNightLightState(report['high-garage']);
+  report.passed = matrixPassed || fixturesPassed || vehiclesPassed || coldPassed;
 } catch (error) { report.errors.push(error.stack ?? String(error)); save(); }
 finally {
+  if (coldNightEntry) {
+    await cleanupStep('Cold entry observer cleanup', async () => {
+      if (page && !page.isClosed()) await evaluateWithin(() => window.__equipmentDamageProbe?.coldEntry?.dispose());
+    });
+    await cleanupStep('Exact cold-entry build after acquisition', () => {
+      report.buildAfter = createHash('sha256').update(readFileSync('dist/index.html')).digest('hex');
+      assert.equal(report.buildAfter, expectedBuildHash);
+    });
+  }
   await cleanupStep('Completed-render observer cleanup', stopFrameObserver, 12_000);
   await cleanupStep('Owned browser shutdown', stopOwnedBrowser, 25_000);
   await cleanupStep('Owned preview shutdown', stopOwnedPreview, 15_000);

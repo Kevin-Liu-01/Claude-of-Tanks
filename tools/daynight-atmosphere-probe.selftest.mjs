@@ -5,10 +5,12 @@ import { webcrypto } from 'node:crypto';
 import { BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, MeshStandardMaterial,
   Group, Scene, PerspectiveCamera, SpotLight, PointLight, InstancedMesh, Matrix4, BoxGeometry } from 'three';
 import ts from 'typescript-compiler-api';
-import { inspectNightWindow } from '../src/dev/nightWindowInspection.ts';
+import { inspectNightHeadlight, inspectNightWindow } from '../src/dev/nightWindowInspection.ts';
+import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../src/vehicles/vehicleNightLighting.ts';
 import { inspectNightWorldFixture } from '../src/dev/nightWorldFixtureInspection.ts';
 import { markWorldWindowPane } from '../src/world/worldNightEmissionGeometry.ts';
 import airfieldConfig from '../src/world/maps/airfield.ts';
+import { selectBattleWeather } from '../src/engine/battleWeatherPolicy.ts';
 
 // Execute actual maintained functions without importing the browser-owning CLI.
 const source = readFileSync(new URL('./daynight-atmosphere-probe.mjs', import.meta.url), 'utf8');
@@ -525,6 +527,134 @@ for (const fault of [null, 'attached', 'weather', 'lighting', 'lamps', 'lamp-glo
 assert(source.indexOf('report[`${tier.label}-coldGarage`]')
   < source.indexOf('const garageBaseline = await enterAuthoredGarage()'),
   'preserve the raw cold boot receipt before establishing the authored Garage baseline');
+
+// The optional cold mode observes the first ordinary render, not a later
+// weather toggle. Execute its real hooks with independent lifecycle fixtures.
+const coldExpected = selectBattleWeather(load('seedFor', { selectBattleWeather })('temperate', 'night'), 'temperate');
+assert.equal(coldExpected.timeOfDay, 'night');
+const assertColdNightEntry = load('assertColdNightEntry', { assert, assertRenderedState, validNightLightState });
+async function coldEntryFixture(fault = null) {
+  const pool = structuredClone(good.night.nightLighting), calls = [], token = {};
+  let renders = 0, observedPool = structuredClone(good.day.nightLighting);
+  const window = { innerWidth: 1440, innerHeight: 900, __VISUAL_LOAD_TIMINGS: [] };
+  const game = { phase: 'garage', battleCount: 0 };
+  const post = { render(...args) {
+    calls.push({ name: 'render', receiver: this, args });
+    if (fault === 'render-throw') throw new Error('Real render failed');
+    renders++; return token;
+  } };
+  const atmosphere = { current: null, async prepare(seed, mapId) {
+    calls.push({ name: 'atmosphere', receiver: this, args: [seed, mapId] });
+    this.current = { weather: fault === 'late-night' ? selectBattleWeather(1, 'temperate') : selectBattleWeather(seed, 'temperate') };
+    return token;
+  } };
+  const nightLighting = { current: null, async prepare(...args) {
+    calls.push({ name: 'nightLighting', receiver: this, args });
+    this.current = { emitterCount: 3 }; observedPool = pool; return token;
+  } };
+  const d = window.__DEBUG = { game, post, battleAtmosphere: atmosphere, nightLighting,
+    renderer: { getContext: () => ({ getError: () => fault === 'gl-error' ? 1282 : 0 }) },
+    async beginSoloBattle(options) {
+      assert.deepEqual(options, { mapId: 'urban', specId: 'm1a3', randomRoster: false });
+      assert.equal(game.battleCount, coldExpected.seed - 1, 'Select night before the actual battle increment');
+      assert.equal(atmosphere.current, null, 'No eager manual atmosphere preparation');
+      assert.equal(nightLighting.current, null, 'No eager manual pool preparation');
+      game.battleCount++; game.phase = 'battle';
+      assert.strictEqual(await atmosphere.prepare(game.battleCount, options.mapId), token);
+      assert.strictEqual(await nightLighting.prepare(), token);
+      if (fault === 'duplicate-prepare') await nightLighting.prepare();
+      if (fault !== 'no-render') assert.strictEqual(post.render(.016, 'ordinary'), token);
+      if (fault === 'late-night') atmosphere.current = { weather: coldExpected };
+      window.__BATTLE_REVEAL = { primed: true, loaderVisible: true, garageHidden: true };
+      window.__BATTLE_COUNTDOWN_WARM = { done: true, doneBeforeRollout: true,
+        stages: { camo: 0, atmosphere: 0, nightLighting: 0, allyVisuals: 0, forwardPrograms: 0, postPasses: 0, openingFrame: 0 } };
+      window.__BATTLE_LOAD = { stages: { open: 0 } };
+      window.__VISUAL_LOAD_TIMINGS.push({ specId: 'm1a3', textureUploadMs: 1, compileMs: 0 });
+    } };
+  const probe = window.__equipmentDamageProbe = {
+    readNightLighting: () => structuredClone(observedPool),
+    renderReceipt: () => ({ stateEpoch: 0, completedEpoch: renders ? 0 : -1, renderCount: renders }),
+  };
+  const bindings = { window, document: { querySelector(selector) {
+    assert.equal(selector, '.cot-bl');
+    return { classList: { contains: key => key === 'on' },
+      getBoundingClientRect: () => ({ left: 0, top: 0, right: 1440, bottom: 900 }) };
+  } }, getComputedStyle: () => ({ display: 'flex', opacity: fault === 'transparent-cover' ? '0.5' : '1' }) };
+  const originals = [post.render, atmosphere.prepare, nightLighting.prepare];
+  load('installColdNightEntryObserver', bindings)();
+  assert.throws(() => load('installColdNightEntryObserver', bindings)(), /already installed/);
+  const begin = load('beginColdNightBattle', { window });
+  if (fault === 'render-throw') {
+    await assert.rejects(begin({ mapId: 'urban', specId: 'm1a3', seed: coldExpected.seed }), /Real render failed/);
+    assert.equal(probe.coldEntry.receipt.firstBattleRender, null, 'Thrown render cannot certify first-frame readiness');
+  } else {
+    await begin({ mapId: 'urban', specId: 'm1a3', seed: coldExpected.seed });
+    if (fault) assert.throws(() => assertColdNightEntry(probe.coldEntry.receipt, coldExpected));
+    else assertColdNightEntry(probe.coldEntry.receipt, coldExpected);
+  }
+  assert(calls.filter(row => row.name === 'render').every(row => row.receiver === post
+    && row.args[0] === .016 && row.args[1] === 'ordinary'));
+  assert(calls.filter(row => row.name === 'atmosphere').every(row => row.receiver === atmosphere));
+  assert(calls.filter(row => row.name === 'nightLighting').every(row => row.receiver === nightLighting));
+  assert.deepEqual(probe.coldEntry.dispose(), { restored: true });
+  assert.deepEqual(probe.coldEntry.dispose(), { restored: true }, 'Owned cleanup is idempotent');
+  assert.deepEqual([post.render, atmosphere.prepare, nightLighting.prepare], originals);
+  return { receipt: probe.coldEntry.receipt, probe, post };
+}
+const cold = await coldEntryFixture();
+for (const fault of ['late-night', 'no-render', 'render-throw', 'duplicate-prepare', 'transparent-cover', 'gl-error']) {
+  await coldEntryFixture(fault);
+}
+for (const mutate of [
+  row => { row.firstBattleRender.nightLighting.attached = false; },
+  row => { row.firstBattleRender.nightLighting.lights[0].castShadow = true; },
+  row => { row.firstBattleRender.nightLighting.materials[0].intensity = 0; },
+  row => { row.firstBattleRender.loader.coversViewport = false; },
+  row => { row.reveal.loaderVisible = false; },
+  row => { delete row.deployment.stages.forwardPrograms; },
+  row => { row.deployment.stages = { camo: 0, atmosphere: 0, allyVisuals: 0, nightLighting: 0,
+    forwardPrograms: 0, postPasses: 0, openingFrame: 0 }; },
+  row => { row.playerStaging[0].compileMs = 10; },
+  row => { delete row.loading.stages.open; },
+]) {
+  const invalid = structuredClone(cold.receipt); mutate(invalid);
+  assert.throws(() => assertColdNightEntry(invalid, coldExpected), assert.AssertionError);
+}
+cold.post.render = () => {};
+assert.throws(() => cold.probe.coldEntry.dispose(), /ownership changed/);
+const assertColdNightFixture = load('assertColdNightFixture', { assert, validNightLightState, validStreetLampFixture });
+const coldLamp = { ...structuredClone(good.night), playerSpecId: 'm1a3' };
+const vehicle = new Group(), inspectionCamera = new PerspectiveCamera();
+inspectionCamera.position.set(0, 1, 5);
+for (const kind of ['marker', 'headlight']) {
+  const lens = markVehicleNightLens(new BoxGeometry(.2, .2, .04), kind);
+  if (kind === 'headlight') lens.translate(2, 0, 0);
+  prepareVehicleNightLensParts([lens]);
+  const mesh = new Mesh(lens, new MeshStandardMaterial());
+  registerVehicleNightLensMesh(mesh, [lens]); vehicle.add(mesh);
+}
+vehicle.rotation.y = .1; vehicle.position.set(1, .5, 0);
+const aperture = inspectNightHeadlight(vehicle, inspectionCamera.position);
+assert.equal(aperture.ownerUuid, vehicle.children[1].uuid, 'Closer parking lamp cannot substitute for a driving aperture');
+assert(!Object.hasOwn(aperture, 'mask') && !Object.hasOwn(aperture, 'sourcePoint'),
+  'Actual inspector schema has neither world-fixture field: retain this r1 regression fixture');
+coldLamp.nightLighting.materials[0].uuid = aperture.materialUuid;
+const readFace = load('readColdHeadlightFace', { window: { __DEBUG: {
+  camera: inspectionCamera, game: { player: { visual: { root: vehicle } } } } } });
+const face = readFace(aperture);
+assertColdNightFixture('headlight-aperture', aperture, coldLamp, face);
+for (const change of [{ point: [2, 2, 3] }, { faceIndex: -1 }, { materialUuid: 'wrong' }, { lineOfSight: 'occluded' }]) {
+  assert.throws(() => assertColdNightFixture('headlight-aperture', { ...aperture, ...change }, coldLamp, face));
+}
+vehicle.children[1].geometry.getAttribute('nightEmissionMask').array.fill(0);
+assert.throws(() => assertColdNightFixture('headlight-aperture', aperture, coldLamp, readFace(aperture)),
+  'An actual dark uploaded face cannot pass through trusted inspector metadata');
+assert.throws(() => readFace({ ...aperture, ownerUuid: 'missing' }), /Missing actual selected/);
+assert.throws(() => readFace({ ...aperture, faceIndex: 9999 }), /Missing actual selected/);
+for (const mesh of vehicle.children) { mesh.geometry.dispose(); mesh.material.dispose(); }
+assert.doesNotMatch(tree.statements.find(node => ts.isFunctionDeclaration(node)
+  && node.name?.text === 'beginColdNightBattle').getText(tree), /\.prepare\(/,
+  'The probe cannot implement a late or duplicate manual night preparation');
 
 assert.doesNotMatch(source, /beginPrecipitationControl|setPrecipitationBudget|installFrameAccounting|p95Ms|sampleMs/);
 assert.match(source, /No performance measurement or physical-device certification/);

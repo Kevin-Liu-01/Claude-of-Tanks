@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { WebGLLights } from 'three/src/renderers/webgl/WebGLLights.js';
+import { createNightLightingAccess } from '../engine/nightLightingAccess.ts';
+import { registerNightLightEmitters } from '../engine/nightLightingRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
 
-function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false } = {}) {
+function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false,
+  night = false, failNight = false, pauseNight = false } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
+  let releaseNight;
+  const nightGate = new Promise((resolve) => { releaseNight = resolve; });
   let generation = 0;
   let pending = false;
   let destructionWarmed = false;
@@ -22,11 +28,30 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     phase: 'battle',
     preBattleS: 4,
     tanks: [
-      { specId: 'ally', team: 'player', isPlayer: true, visual: { root: playerRoot } },
+      { id: 'player', specId: 'ally', team: 'player', isPlayer: true,
+        visual: { root: playerRoot }, combat: { destroyed: false } },
       { specId: 'enemy', team: 'enemy' },
     ],
   };
   game.player = game.tanks[0];
+  scene.add(playerRoot);
+  registerNightLightEmitters(playerRoot, [{ kind: 'headlight', position: [0, 1, 2] }]);
+  let atmosphereReady = false;
+  const lamps = createNightLightingAccess({
+    scene, getWorldRoot: () => worldGroup, getEntities: () => game.tanks,
+    getCameraPosition: () => new THREE.Vector3(),
+    isNight: () => atmosphereReady && night,
+    isBattlePresentation: () => true, isEntityVisible: () => true,
+  });
+  const lightState = new WebGLLights({ has: () => false });
+  const lightSignatures = [];
+  const compile = () => {
+    const lights = [];
+    scene.traverseVisible(object => { if (object.isLight) lights.push(object); });
+    lightState.setup(lights);
+    lightSignatures.push([lightState.state.spot.length, lightState.state.point.length]);
+    calls.push(['compile']);
+  };
 
   const runtime = createSoloBattleDeploymentRuntime({
     game,
@@ -49,7 +74,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       },
     },
     forwardProgramWarm: {
-      compile: () => calls.push(['compile']),
+      compile,
       initializeSteps: function* () {},
       linkerBreathingSlices: function* () {},
       invalidate: () => {},
@@ -75,6 +100,12 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         calls.push([hidden ? 'enemies' : 'allies']);
         onProgress?.(1);
         if (!hidden && failAllies) throw new Error('allied warm failed');
+        const ally = { id: 'late-ally', team: 'player', specId: 'late-ally',
+          visual: { root: new THREE.Group() }, combat: { destroyed: false } };
+        registerNightLightEmitters(ally.visual.root, [{ kind: 'headlight', position: [2, 1, 2] }]);
+        scene.add(ally.visual.root); game.tanks.push(ally);
+        lamps.appendEntity(ally); // same explicit production construction hook
+        compile();
         return 1;
       },
       stageRootTextureUploads: async () => ({ textures: 0, totalMs: 0 }),
@@ -96,6 +127,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       uncoverRendering: () => {},
       noteBattleFrame: () => {},
       primeReveal: async () => {
+        lamps.update();
         calls.push(['reveal']);
         return { primed: true, frameSerial: 1, waitMs: 0 };
       },
@@ -107,9 +139,15 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       calls.push(['atmosphere']);
       if (pauseAtmosphere) await atmosphereGate;
       if (failAtmosphere) throw new Error('atmosphere failed');
+      atmosphereReady = true;
       calls.push(['atmosphereReady']);
     },
-    prepareNightLighting: async () => calls.push(['nightLighting']),
+    prepareNightLighting: async () => {
+      calls.push(['nightLighting']);
+      if (pauseNight) await nightGate;
+      if (failNight) throw new Error('night lighting failed');
+      await lamps.prepare();
+    },
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
@@ -123,6 +161,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     runtime,
     calls,
     releaseAtmosphere,
+    releaseNight, lamps, lightSignatures,
     get generation() { return generation; },
     set generation(value) { generation = value; },
     get pending() { return pending; },
@@ -141,7 +180,7 @@ for (const [before, after] of [
   ['atmosphereReady', 'allies'],
   ['atmosphereReady', 'compile'],
   ['allies', 'terrain'],
-  ['allies', 'nightLighting'],
+  ['nightLighting', 'allies'],
   ['nightLighting', 'terrain'],
   ['nightLighting', 'compile'],
   ['terrain', 'camera'],
@@ -161,6 +200,37 @@ assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.doneBeforeRollout, true);
 assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, true);
 assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentUniformsDeferred, true);
 assert.equal(globalThis.__COMBAT_OPENING_WARM.covered, true);
+assert.deepEqual(happy.lightSignatures, [[0, 0], [0, 0]], 'day constructs no night light pool');
+assert.equal(happy.lamps.current, null);
+
+const nocturnal = createHarness({ night: true });
+assert.equal((await nocturnal.runtime.warm(Promise.resolve())).revealPrimed, true);
+assert.deepEqual(nocturnal.lightSignatures, [[2, 1], [2, 1]],
+  'real Three light signatures are final before BOTH allied and scene/player submissions');
+assert.equal(nocturnal.lamps.current.emitterCount, 2,
+  'player collected before streaming and late ally appended without another prepare');
+assert.equal(nocturnal.calls.filter(([name]) => name === 'nightLighting').length, 1);
+assert.equal(nocturnal.lamps.current.lights.filter(light => light.isSpotLight && light.intensity > 0).length, 2,
+  'late allied headlight is active by the final covered reveal');
+assert.ok(nocturnal.lamps.current.lights.every(light => light.castShadow === false));
+nocturnal.lamps.dispose();
+
+const failedNight = createHarness({ night: true, failNight: true });
+assert.equal((await failedNight.runtime.warm(Promise.resolve())).revealPrimed, false);
+assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /night lighting failed/);
+assert.equal(failedNight.calls.some(([name]) => ['allies', 'compile', 'reveal'].includes(name)), false,
+  'failed night setup cannot compile the day signature or reveal the battle');
+
+const cancelledNight = createHarness({ night: true, pauseNight: true });
+const pendingNight = cancelledNight.runtime.warm(Promise.resolve());
+for (let i = 0; i < 20 && !cancelledNight.calls.some(([name]) => name === 'nightLighting'); i++) {
+  await new Promise(resolve => setImmediate(resolve));
+}
+assert.ok(cancelledNight.calls.some(([name]) => name === 'nightLighting'));
+cancelledNight.generation = 2; cancelledNight.releaseNight();
+assert.equal((await pendingNight).revealPrimed, false);
+assert.equal(cancelledNight.calls.some(([name]) => ['allies', 'compile', 'reveal'].includes(name)), false);
+cancelledNight.lamps.dispose();
 
 const cancelled = createHarness();
 let releaseCamo;
@@ -203,4 +273,4 @@ assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /allied warm failed/);
 
 delete globalThis.__BATTLE_COUNTDOWN_WARM;
 delete globalThis.__COMBAT_OPENING_WARM;
-console.log('soloBattleDeploymentRuntime.selftest: order, cancellation, and fallback pass');
+console.log('soloBattleDeploymentRuntime.selftest: exact day/night light signatures, late actors, order, cancellation and fallback pass');

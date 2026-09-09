@@ -268,6 +268,11 @@ export function createSoloBattleDeploymentRuntime(
         await options.prepareAtmosphere?.();
         requireCurrent(generation);
         mark('atmosphere');
+        // A first night must attach its fixed light pool before any allied
+        // shader submission. Their construction hook appends new emitters.
+        await options.prepareNightLighting?.();
+        requireCurrent(generation);
+        mark('nightLighting');
         battleLoad.progress(0.91, 'Finishing camouflage');
         const coveredYield = createLoadingYielder(18, 80);
         const battleVisuals = getBattleVisuals();
@@ -282,9 +287,6 @@ export function createSoloBattleDeploymentRuntime(
         );
         requireCurrent(generation);
         mark('allyVisuals');
-        await options.prepareNightLighting?.();
-        requireCurrent(generation);
-        mark('nightLighting');
 
         // Hidden opponents cannot participate in the first revealed frame.
         // The deferred warm owner streams the same exact builders during the

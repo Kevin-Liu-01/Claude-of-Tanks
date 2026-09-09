@@ -65,6 +65,11 @@ export interface BattleVisualStageReceipt {
   totalMs: number;
 }
 
+export interface BattleVisualStageOptions {
+  /** Covered solo entry compiles after final camouflage and night-light setup. */
+  readonly compilePrograms?: boolean;
+}
+
 export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisualEntity[] }> {
   game: TGame;
   scene: Scene;
@@ -109,6 +114,7 @@ export interface BattleVisualStreamer<Entity extends BattleVisualEntity = Battle
     entity: Entity,
     yieldForBudget: VisualBudgetYield,
     initiallyHidden?: boolean,
+    options?: BattleVisualStageOptions,
   ): Promise<BattleVisualStageReceipt>;
 }
 
@@ -163,6 +169,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     entity: Entity,
     yieldForBudget: VisualBudgetYield,
     initiallyHidden = false,
+    options: BattleVisualStageOptions = {},
   ): Promise<BattleVisualStageReceipt> => {
     const visual = entity.visual;
     const root = visual?.root;
@@ -190,9 +197,11 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     visual.prewarmBurn?.();
     armorAimOverlay.prime(entity);
     const restoreArmorWarmVisibility = armorAimOverlay.warm();
-    try { forwardProgramWarm.compile(root); } catch { /* first render fallback */ }
+    try {
+      if (options.compilePrograms !== false) forwardProgramWarm.compile(root);
+    } catch { /* first render fallback */ }
     finally { restoreArmorWarmVisibility(); }
-    const compileMs = Math.round(now() - compileAt);
+    const compileMs = options.compilePrograms === false ? 0 : Math.round(now() - compileAt);
     root.userData.loadCompileMs = compileMs;
     if (initiallyHidden) {
       visual.setVisible?.(false);
