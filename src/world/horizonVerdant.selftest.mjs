@@ -43,7 +43,7 @@ function inspectWoodland(mesh, ring, seed, atlasHeight) {
   assert.ok(p.count > 600 && p.count <= 1152, 'bounded old two-rank vertex capacity');
   const bytes = Object.values(geometry.attributes).reduce((sum, a) => sum + a.array.byteLength, 0)
     + geometry.index.array.byteLength;
-  assert.ok(bytes <= 43752, 'old Verdant child GPU allocation ceiling');
+  assert.ok(bytes <= 40320, 'bounded woodland allocation stays below the old 43752-byte child ceiling');
   assert.equal(geometry.index.count, p.count / 4 * 6);
   for (let base = 0; base < p.count; base += 4) {
     const endpoints = [];
