@@ -1473,10 +1473,12 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
     -2px 2px 0 rgba(4,7,10,.98),-2px 0 0 rgba(4,7,10,.98),
     0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
 .cot-prebattle .n.tick{animation:cot-pb-pop var(--cot-motion-slow) var(--cot-ease-out);}
+.cot-prebattle .n.tick-alt{animation:cot-pb-pop-alt var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
 .cot-prebattle.waiting .n{font-size:48px;letter-spacing:.12em;text-indent:.12em;}
 .cot-prebattle.waiting .k{font-size:14px;letter-spacing:.16em;text-indent:.16em;}
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
+@keyframes cot-pb-pop-alt{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
 .cot-special{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:88px;transform:translateX(-50%);
   min-width:164px;min-height:42px;padding:5px 12px 5px 8px;display:none;

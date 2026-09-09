@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import winter from './maps/winter.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
+import { createWreckBakeClient } from './wreckBakeClient.ts';
 
 // Independent synchronous control copied before this scheduling change from
 // c5ca781e2, props.ts SHA256:
@@ -181,11 +182,11 @@ function publicOwner(iterator, wrapperSource = wrappers) {
       return runtime;
     } finally { events.push('closed'); }
   }
-  const api = new Function('propsBuildSteps', 'ensureTankBuilder',
+  const api = new Function('propsBuildSteps', 'ensureTankBuilder', 'createWreckBakeClient',
     stripTypeScriptTypes(wrapperSource).replace(/^export /gm, '')
       + '\nreturn { createProps, createPropsAsync };')(build, () => {
     assert.fail('texture row checkpoints must not acquire a vehicle builder');
-  });
+  }, createWreckBakeClient);
   return { api, runtime, calls, events };
 }
 function assertPublicOwner(owner, result, args) {
@@ -209,14 +210,17 @@ async function checkWrapperOwnership(wrapperSource) {
       ? await owner.api.createPropsAsync(...(defaults ? [height, engine]
         : [...explicit, null, true, vegetation]))
       : owner.api.createProps(...(defaults ? [height, engine] : [...explicit, vegetation]));
-    assertPublicOwner(owner, result, defaults
-      ? [height, engine, 2002, null, null] : [...explicit, vegetation]);
+    const forwarded = defaults ? [height, engine, 2002, null, null] : [...explicit, vegetation];
+    // Node keeps the synchronous bake path; only the async wrapper forwards
+    // its explicit worker-mode flag to the same texture-owning producer.
+    assertPublicOwner(owner, result, async ? [...forwarded, false] : forwarded);
     assert.equal(result.textures, textures, 'the published texture owner is not replaced');
   }
 }
 await checkWrapperOwnership(wrappers);
 for (const [before, after] of [
   ['seed, cfg, vegetation);', 'seed + 1, cfg, vegetation);'],
+  ['wreckWorker !== null);', 'true);'],
   ['while (!r.done) r = g.next();', 'if (!r.done) r = g.next();'],
   ['return r.value;', 'return { ...r.value };'],
   ['return runtime;', 'return { ...runtime };'],
@@ -394,7 +398,7 @@ try {
       assert.deepEqual(owner.events, [], 'the producer stays open while a row tick is awaited');
       await new Promise(resolve => setImmediate(resolve));
     }, true, vegetation);
-    assertPublicOwner(owner, result, args);
+    assertPublicOwner(owner, result, [...args, false]);
     assert.equal(ticks, pending.steps, 'every real row/tone checkpoint reaches the async scheduler');
     assert.equal(result._buildDetail.sliceCount, pending.steps + 1);
   }));

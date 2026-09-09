@@ -143,7 +143,7 @@ export default {
     // the armor that fought over the railhead
     tankWrecks: {
       era: 'modern', count: 6, debris: true,
-      ids: ['kf51', 'challenger2', 'leo2a7', 'leclerc', 't90m', 'type99a'],
+      ids: ['k1a1', 'type90', 'kf51', 'challenger2', 'leclerc', 'leo2a7v'],
     },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum

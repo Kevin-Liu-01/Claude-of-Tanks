@@ -69,6 +69,21 @@ await test('pre-aborted admission starts neither FIFO ticket nor service', async
   assert.deepEqual(f.events, ['release']); assert.equal(report.acquisitions.admitted, 0);
 });
 
+await test('optional entry source profiling forwards one role without changing native gates', async () => {
+  for (const role of ['host', 'guest']) {
+    const f = fixture();
+    const report = await acquireLoadingEvidence('/immutable/dist', { entryProfile: role }, f.deps);
+    assert.equal(report.ok, true); assert.equal(f.options.entryProfile, role);
+    assert.equal(parseLoadingProbeArgs([`--entry-profile=${role}`]).entryProfile, role);
+  }
+  const f = fixture();
+  await assert.rejects(acquireLoadingEvidence('/immutable/dist', { entryProfile: 'both' }, f.deps),
+    { probeCode: 'invalid_entry_profile' });
+  assert.deepEqual(f.events, []);
+  assert.throws(() => parseLoadingProbeArgs(['--entry-profile=both']), { probeCode: 'invalid_entry_profile' });
+  assert.throws(() => parseLoadingProbeArgs(['--entry-profile=host', '--entry-profile=guest']));
+});
+
 await test('cancellation while queued drains late lock and refuses every later resource', async () => {
   const f = fixture(), gate = deferred(), started = deferred();
   f.deps.createLock = () => ({ acquire() { f.events.push('lock'); started.resolve(); return gate.promise; },

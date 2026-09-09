@@ -1,9 +1,17 @@
 # Verdant scene checkpoint: harvested village approach
 
-> Superseded on 2026-09-08: the user rejected the watershed/pastoral horizon
+> Latest direction (2026-09-08): after seeing the restored original horizon,
+> the user reversed that choice: “go with your version”. Reinstate only the
+> low pastoral watershed and slope-supported woodland horizon from
+> `7997efb42`. Its worked-ground, village palette, roofs and grass/stubble
+> proposal below are NOT part of this reinstatement. Roads, spawns, gameplay
+> terrain and nighttime work remain unchanged. The old implementation is
+> recoverable in Git at `1e0b2608b`, not retained as a second runtime path.
+>
+> Previous direction, now superseded: the user rejected the watershed/pastoral horizon
 > prototype after seeing the native capture and explicitly requested the old
-> Verdant horizon. Do not resume this redesign. The local prototype checkpoint
-> `7997efb42` is not approved for publication. The restoration instead uses the
+> Verdant horizon. At that point the local prototype checkpoint
+> `7997efb42` was not approved for publication. The restoration used the
 > original `822daf5fa` (2026-07-27) `buildHorizonRing` geometry and baked palette,
 > implemented in `src/world/originalVerdantHorizon.ts`. Historical uploaded
 > positions, colours, normals and indices match exactly over three seeds.
@@ -11,6 +19,36 @@
 > safety and nighttime-loading fixes continue independently.
 
 ## Status and scope
+
+### Horizon-only reinstatement
+
+The production horizon code matches the `7997efb42` candidate; the rest of
+that candidate remains excluded. Focused tests cover all29 other horizons
+over three seeds, the preserved Verdant XZ/skirt, four supported woodland
+rows, genuine Canvas2D desktop/mobile atlases, shader integration and final
+disposal of both geometry/material owners and all three textures.
+
+This restores the modern horizon's bounded resource budget, not the original
+bare wall's smaller budget: two meshes/materials and three textures versus
+one mesh/material and zero textures. Base geometry is157,716 bytes, with
+woodland capped at40,320 bytes; desktop texture payloads total1,048,576 raw
+RGBA bytes before mipmaps. No new per-frame updater is introduced. These are
+resource bounds, not a claim of zero loading-time or frame-time difference.
+The original implementation and its historical tests remain recoverable in Git.
+
+Verified production capture: `verdant-newer-horizon-r1/report.json` in the
+local environment-recovery evidence archive, revision `363b19261`,1440×900,
+matching the previous establishing camera exactly. The tall pale wall is
+replaced by low distant hills, with woodland visible on the left slopes and
+the village/foreground retained. No browser errors; authored quality gates
+pass. Build, TypeScript, mapQuality, horizonVerdant, horizonResources,
+horizonNoiseSampling, Titan/Copper, Mangrove palette and import-integrity
+tests pass. This single visual run is not a paired performance benchmark.
+The scoped new module/config complexity scan passes; the shared legacy
+horizon module still has two complexity violations, and React Doctor's
+maintainability scoring was incomplete. No whole-repository scan pass claimed.
+
+### Earlier whole-scene proposal (not included)
 
 Proposed next checkpoint, recorded 2026-09-08 (America/Los_Angeles). This is
 a documentation-only handoff, not an implemented or visually accepted scene.

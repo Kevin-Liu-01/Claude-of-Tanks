@@ -7,7 +7,7 @@ import { sampleHorizonGeometry } from './maps/horizon.ts';
 // explicit historical Titan input reproduces its actual original buffers.
 const seeds = [1337, 2049, 7719];
 // Pre-restoration 28d5fd378 executable, excluding restored Verdant.
-// originalVerdantHorizon.selftest owns the original Verdant geometry oracle.
+// horizonVerdant.selftest owns the separately revised Verdant geometry oracle.
 const originalOther28 = [
   'f54d545335afbeb1e69ffda3885531257d36679e0207b5e226b49f25f6e4a889',
   '572d59aca8b3212be236a5ecf1978f1039058054d3c035248c2a1dc6da0c931c',

@@ -197,7 +197,7 @@ export default {
     // the shelled-town read finally includes the armor that died taking it
     tankWrecks: {
       era: 'modern', count: 6, debris: true,
-      ids: ['leclerc', 'kf51', 'challenger2', 'm1a2', 't90m', 'leo2a7'],
+      ids: ['leclerc_xlr', 'bmpt_t90', 'challenger2', 'm1a2', 't90m', 'leo2a7v'],
     },
     sandbagLines: 12,
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —

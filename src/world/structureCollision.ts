@@ -562,19 +562,26 @@ function collectSolids(buckets: StructureGeometryBuckets) {
   return solids;
 }
 
-function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
+function deriveContactBand<T extends StructureCollisionRuntimeBand>(
   solids: LocalSolid[],
   createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
-): { contact: T; shell: T[] } {
+): T {
   const contactSolids = solids.filter((solid) =>
     solid.bucket !== 'roof' && solid.minY <= CONTACT_TOP && solid.maxY >= 0.06);
   if (!contactSolids.length) throw new Error('structure has no ground-contact collision solids');
-  const contact = createBand(
+  return createBand(
     contactSolids,
     Math.min(...contactSolids.map((solid) => solid.minY)),
     Math.max(...contactSolids.map((solid) => solid.maxY)),
     true,
   );
+}
+
+function deriveCollisionBands<T extends StructureCollisionRuntimeBand>(
+  solids: LocalSolid[],
+  createBand: (active: LocalSolid[], minY: number, maxY: number, ground: boolean) => T,
+): { contact: T; shell: T[] } {
+  const contact = deriveContactBand(solids, createBand);
   const minY = Math.min(...solids.map((solid) => solid.minY));
   const maxY = Math.max(...solids.map((solid) => solid.maxY));
   const shell: T[] = [];
@@ -617,6 +624,13 @@ export function deriveRuntimeStructureCollisionProfile(
   buckets: StructureGeometryBuckets,
 ): StructureCollisionRuntimeProfile {
   return deriveRuntimeCollisionBands(collectSolids(buckets));
+}
+
+/** Exact full-profile contact result for consumers that do not use shell bands. */
+export function deriveRuntimeStructureContactBand(
+  buckets: StructureGeometryBuckets,
+): StructureCollisionRuntimeBand {
+  return deriveContactBand(collectSolids(buckets), makeRuntimeBand);
 }
 
 /** Same collision result, exposing the already-extracted solids to cosmetic admission. */

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { compactWreckGeometrySteps } from './exactWreckGeometry.ts';
+import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './exactWreckGeometry.ts';
 
 // Execute the actual world-owned pipeline with a small deterministic Three
 // hierarchy. Only the synchronous vehicle constructor is replaced here;
@@ -64,7 +64,9 @@ function makeVisual(specId, context, options) {
   const hull = new THREE.Group(); hull.position.set(context.offset, 1, 0); root.add(hull);
   const material = new THREE.MeshStandardMaterial(); context.materials.add(material);
   const shadowMaterial = new THREE.MeshBasicMaterial({ colorWrite: false }); context.materials.add(shadowMaterial);
-  const bodyGeometry = track(new THREE.BoxGeometry(3, 2, 6, 8, 8, 8), true);
+  // Keep more than 2,048 unique rows after pre-paint deduplication so this
+  // fixture still verifies an actual intermediate painter checkpoint.
+  const bodyGeometry = track(new THREE.BoxGeometry(3, 2, 6, 16, 16, 16), true);
   hull.add(new THREE.Mesh(bodyGeometry, material));
   const instanceGeometry = track(new THREE.BoxGeometry(0.6, 0.7, 0.8), true);
   const instances = new THREE.InstancedMesh(instanceGeometry, material, 33);
@@ -101,7 +103,7 @@ function mergeObserved(...args) {
   return result && track(result);
 }
 function* compactObserved(geometry) {
-  const steps = compactWreckGeometrySteps(geometry);
+  const steps = compactWreckGeometryForPaintSteps(geometry);
   try {
     let result = steps.next();
     while (!result.done) {
@@ -110,11 +112,13 @@ function* compactObserved(geometry) {
       result = steps.next();
     }
     return result.value;
-  } finally { steps.return(geometry); }
+  } finally { steps.return(false); }
 }
-const api = new Function('THREE', 'mergeGeometries', 'compactWreckGeometrySteps', 'createTank', 'console', 'observePaint',
+const api = new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
+  'compactWreckGeometrySteps', 'createTank', 'console', 'observePaint',
   stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
-  THREE, mergeObserved, compactObserved, makeVisual, { warn(...args) { active.warnings.push(args); } },
+  THREE, mergeObserved, compactObserved, compactWreckGeometrySteps, makeVisual,
+  { warn(...args) { active.warnings.push(args); } },
   () => { active.painted++; });
 
 function start(f) { return api.bakeTankWreckSteps(f, 'fixture', { seed: f.seed, pop: f.pop }); }

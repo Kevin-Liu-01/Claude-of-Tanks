@@ -382,10 +382,20 @@ function measurementCode(value) {
     'feedback_native_input_preparation_failed', 'predicted_feedback_confirmation_mismatch'].includes(value) ? value : null;
 }
 
+function productionOperationFailure(error) {
+  const classified = browserOperationFailure(error);
+  if (classified !== 'unknown') return classified;
+  // Some Puppeteer releases retain Error.prototype.name on their subclasses.
+  // Inspect only exact known class names; never publish messages or stacks.
+  const name = error?.constructor?.name;
+  return ['TimeoutError', 'ProtocolError', 'TargetCloseError'].includes(name)
+    ? browserOperationFailure({ name, message: error.message }) : classified;
+}
+
 /** No arbitrary strings or raw nested errors cross the public receipt boundary. */
 export function productionDiagnosticDetails(error) {
   return { diagnosticCode: productionDiagnosticCode(error),
-    operationFailure: browserOperationFailure(error),
+    operationFailure: productionOperationFailure(error),
     measurementDiagnosticCode: measurementCode(error?.measurementDiagnosticCode),
     traceStage: ['end-mark', 'end-command', 'flush'].includes(error?.traceStage) ? error.traceStage : null,
     traceFailure: ['timeout', 'not-started', 'protocol-or-target-error'].includes(error?.traceFailure)
@@ -993,10 +1003,14 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
     const invite = new URL('/', options.origin);
     invite.searchParams.set('room', code);
     if (measurePerformance || entryProfile) invite.searchParams.set('debug', '1');
-    await run('guest_native_invite', async () => {
+    await run('guest_invite_navigation', async () => {
       await guest.goto(invite.href, { waitUntil: 'domcontentloaded' });
+    });
+    await run('guest_invite_membership', async () => {
       await guest.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2,
         { timeout: left() });
+    });
+    await run('host_invite_membership', async () => {
       await host.waitForFunction(() => document.querySelector('.cot-play .lobby.show .players')?.children.length === 2,
         { timeout: left() });
     });
