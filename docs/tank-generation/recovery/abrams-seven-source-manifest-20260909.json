@@ -1087,7 +1087,14 @@
       "archiveSha256": "0f2f346d9572ed57499c9df06a5ea3206e38a1e4c529436fcef6b9109a61f41d"
     }
   ],
-  "portHashStatus": "Working source snapshot before final focused/type/public checks; current final commit remains authoritative.",
+  "portHashStatus": "Frozen source/tool hashes at 194afae702ad00372c246b8842902fdfe4ab18a3; focused/type/public build passed; generated-asset/composed release qualification remains pending.",
+  "validatedPortCommit": "194afae702ad00372c246b8842902fdfe4ab18a3",
+  "changedSourceToolClosure": {
+    "fileCount": 80,
+    "sha256": "f9b091c3735e357c91145d2cce0d23ad0eef5d8df95bd4513dad7d35f0f2ed82",
+    "encoding": "SHA256 of sorted changed src/tools paths, each path + NUL + its lowercase content SHA256, joined by newline; no final newline",
+    "manifestHashMismatches": 0
+  },
   "aliasedDependencies": [
     {
       "sourcePath": "src/vehicles/profiles/sourceEraCover.ts",
@@ -1188,6 +1195,14 @@
     }
   ],
   "localProofs": {
+    "finalTypePublicBuild": {
+      "path": ".qa-dev/abrams-recovery-final-type-build-v2.log",
+      "sha256": "fb0954f0b7c8236b8947f1dc32d3211b987068bb5b419580756d2a3805478f51",
+      "status": "PASS typecheck/core-unused and public Vite build/strip-NC",
+      "playables": 181,
+      "glbSourcedPlayables": 0,
+      "exitCode": 0
+    },
     "simulationCompatibility": {
       "path": ".qa-dev/abrams-recovery-sim-compatibility.log",
       "sha256": "dbb900d93a8cecac33be10ac03a472a340572daabcb3293fa23ef1bef2f30048",
