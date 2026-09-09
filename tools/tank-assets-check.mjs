@@ -12,6 +12,8 @@ import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, expectedMuzzleBoreCount,
 } from '../src/vehicles/tankAssets.ts';
 import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
+import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
+import { presentationReceiptErrors } from './presentation-receipt.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -89,6 +91,20 @@ if (manifest && JSON.stringify(manifest.requiredViews) !== JSON.stringify(Object
   failures.push('manifest required-view contract is stale');
 }
 
+// Fail stale saved/runtime projection pairs before acquiring a browser. The
+// presentationHash intentionally covers only X/Z, not the side-card Y fit.
+if (manifest) {
+  const receiptErrors = (onlyTanks.length ? onlyTanks : DEVELOPMENT_TANK_IDS).flatMap(id => {
+    const saved = manifest.tanks?.[id];
+    return presentationReceiptErrors(id, saved?.presentationAnchor, saved?.presentationProjection,
+      TANK_PRESENTATION_ANCHORS[id], TANK_PRESENTATION_PROJECTIONS[id]);
+  });
+  if (receiptErrors.length) {
+    console.error(`[tank-assets-check] FAIL (${receiptErrors.length})\n  - ${receiptErrors.join('\n  - ')}`);
+    process.exit(2);
+  }
+}
+
 const viteCacheDir = resolve('/tmp', `cot-assets-check-vite-${process.pid}`);
 const server = await createServer({
   root: process.cwd(), configFile: false, cacheDir: viteCacheDir, logLevel: 'error',
@@ -159,6 +175,9 @@ try {
     if (saved && saved.presentationHash !== live.presentationHash) {
       failures.push(`${id}: stale presentation center ${saved.presentationHash || 'missing'} != ${live.presentationHash}`);
     }
+    if (saved) failures.push(...presentationReceiptErrors(id,
+      live.presentationAnchor, live.presentationProjection,
+      saved.presentationAnchor, saved.presentationProjection));
     if (!Number.isFinite(live.presentationAnchor?.xM)
         || !Number.isFinite(live.presentationAnchor?.zM)) {
       failures.push(`${id}: missing finite presentation center`);
