@@ -13,8 +13,9 @@ This is the implementation guide for the complete pass, following the
 | Work | State |
 |---|---|
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
-| Torn tree crowns / moving terrain texture coordinates | Fixed and committed locally; native images reviewed; held after Verdant timing gate failed |
-| Verdant horizon | Original July 27 geometry and palette restored and pushed in `1e0b2608b`; replacement prototype rejected by the user |
+| Torn tree crowns | Coherent-corner candidate is local and image-reviewed; construction/owner-memory evidence exists, but browser cost acceptance remains open |
+| Moving terrain texture coordinates / inland sand relief | World-fixed detail chart and Coastal/Saltwind beach-only relief pushed in `cb955e194`; native three-map checks pass ([evidence](TERRAIN-SURFACE-CHART-CHECKPOINT.md)); inland pale sand pigment remains separate |
+| Verdant horizon | User reversed the restoration request: newer low pastoral watershed/layered woodland horizon reinstated and pushed in `139585281`; no broader village/ground/palette prototype was reinstated |
 | Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
 | Road continuity | All 22 changed minimaps/collision shards captured; shared placement/bot checks pass. Local `6c68fdd2c` is held for measured query cost, Delta's encoded storage budget and the Longleaf donor fixture—not released |
 | Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass. Flat window interiors and unshadowed point-light occlusion remain ([entry](NIGHT-ENTRY-CHECKPOINT.md), [aim](NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](NIGHT-WORLD-INTENSITY-CHECKPOINT.md)) |
@@ -30,15 +31,16 @@ describe that as personally viewing every current map at every quality level.
 
 Fresh main/candidate captures now also cover Verdant, Coastal and Winter with
 26 exactly matched camera receipts. See [foundation verification](MAP-RENDER-FOUNDATIONS.md)
-for the failed performance check and explicit release hold. The
-[Verdant scene checkpoint](VERDANT-SCENE-CHECKPOINT.md) is now a superseded
-proposal, not instructions for the next art work. The user rejected its native
-result and explicitly requested the original horizon. Do not resume or publish
-the `7997efb42` prototype, including its other unaccepted pastoral refinements.
-The restoration's original positions, colors, normals and indices are tested
-against historical fixtures over three seeds; the public build and native
-establishing view were checked. This is restoration, not a new visual-quality
-or comparative performance claim. Other 29 horizons were left unchanged.
+for the historical failed performance check; the isolated canopy candidate is
+still held. The [Verdant scene checkpoint](VERDANT-SCENE-CHECKPOINT.md) remains
+a superseded whole-scene proposal. The user first requested the original
+horizon, then explicitly reversed that request after viewing it: "go with your
+version." Commit `139585281` therefore restores only the newer low pastoral
+horizon from `7997efb42`, not that prototype's other village, ground or palette
+changes. Its resource/test alignment and native evidence are in `363b19261`
+and `7b91b838b`. The integrated view was checked again at `d6cc60fe3` for the
+terrain surface checkpoint. Other 29 horizons were left unchanged; none of
+these static views certifies the complete performance or visual-quality goal.
 
 ## What makes the reference work
 
@@ -90,7 +92,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 
 | Map | Primary composition and next visual emphasis |
 |---|---|
-| Verdant Fields | Retain the restored original horizon per the user's explicit override; keep road, spawn and loading repairs independent of another outland redesign |
+| Verdant Fields | Retain the newer low pastoral horizon per the user's latest reversal; keep road, spawn and loading repairs independent of another outland redesign |
 | Amberford | Autumn ford, riparian growth and hillside farms; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
@@ -126,11 +128,12 @@ gameplay layout while developing a distinctive visual hierarchy.
 1. **Correct the foundations:** welded foliage and world-anchored terrain shading.
    Separate commits, targeted regressions, native before/after. These should not
    be held behind a whole new landscape algorithm.
-2. **Respect the Verdant restoration:** the attempted coordinated pastoral scene
-   was rejected. Its watershed and palette changes are not a foundation for the
-   rollout. Preserve the restored horizon while finishing the requested road,
-   objective/spawn and nighttime-entry corrections. Continue the broader art
-   work on other map families with fixed native views before generalizing it.
+2. **Respect the latest Verdant choice:** keep the reinstated newer low pastoral
+   horizon. The whole-scene prototype's other changes remain unaccepted; do not
+   treat the horizon-only approval as approval for them. Finish road,
+   objective/spawn and nighttime-entry corrections independently. Continue the
+   broader art work on other map families with fixed native views before
+   generalizing it.
 3. **Prove different families:** Ironworks (built/industrial), Glacier Pass
    (snow/rock), Saltmere Bay (shore/water). Each gets its own composition; do not
    generalize grassland colors/terrain to the others.
