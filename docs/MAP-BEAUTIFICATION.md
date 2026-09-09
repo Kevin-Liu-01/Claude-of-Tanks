@@ -207,9 +207,12 @@ See `RIVER-REED-CONTACT-CANDIDATE.md` for evidence and limits.
 
 The Coastal/Fjord driftwood experiment remains local and rejected: its native
 close-up reads as a thin notched strip with stretched grain, not natural wood.
-It is excluded from the reed release. Existing farm, boat, wreck and tree
-families still need composition/variety improvements; larger populations are
-not a substitute for better existing forms.
+It is excluded from the reed release. A separate closed-log prototype is saved
+locally at `0a2452f1b`, also unshipped: its first contact method added 7,317–7,892
+terrain queries per tested kit; its cheaper 16/24-query method failed the
+unchanged contact check at −0.07892 m. Neither draft is part of the crop release.
+Existing farm, boat, wreck and tree families still need composition/variety
+improvements; larger populations are not a substitute for better existing forms.
 
 Remaining verification is explicit: sun-facing river/marsh appearance and
 constrained-device costs are not certified by the Coastal driving evidence.
@@ -222,6 +225,17 @@ is subtle and joins partly overlap other foliage. See
 `MANGROVE-STEM-CONTACT-CHECKPOINT.md` for exact evidence and cost limitations.
 This was pre-existing, not a reed change; the historical failed full-suite
 boundary remains recorded separately from the repaired focused checks.
+
+### Crop identity checkpoint — 2026-09-09
+
+`3bfd72f90` adds two opt-in crop forms without changing field placement or
+geometry: broken golden harvest stubble for Autumn and narrower green upright
+crops for Delta. All eight matched native images were reviewed; the old pale
+card ranks are reduced, but grass still obscures Autumn's low stubble and
+Delta retains regular dotted rows at distance. The other 28 painters are
+unchanged. Focused integration tests, TS7 and public build pass. See
+`CROP-BIOME-IDENTITY-CHECKPOINT.md` for source pins, earlier failures, exact
+resource contracts and the remaining full-frame/mobile performance limits.
 
 ## Acceptance is visual and measured
 
