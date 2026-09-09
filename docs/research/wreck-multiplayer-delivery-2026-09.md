@@ -100,6 +100,15 @@ they actually complete; retained evidence above is not substituted for them.
   The candidate rebased cleanly onto `7b91b838b`; the only Verdant runtime delta
   from that new base is the authored wreck cast. The native scenario was
   Winter, not a validation of the newly restored Verdant horizon.
+- The final rebased tree passed typecheck/core-unused, the public production
+  build, and six overlap checks: map quality, wreck roster, Verdant horizon,
+  horizon resources, all 30 dedicated collision manifests, and the complete
+  test registry. No failed assertion was skipped.
+- The live Cloudflare dependency/room-lifecycle probe passed before landing:
+  create, join, relay, resume, relay after resume, guest leave, host close and
+  room removal. It advertised five relay entries, including two secure relay
+  entries. This bounded probe did not allocate a TURN game session or claim
+  physical distant-network coverage.
 
 Local machine receipts are under
 `/private/tmp/cot-wreck-loading-delivery.JiN907/.qa-delivery/`:
