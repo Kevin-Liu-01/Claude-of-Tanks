@@ -90,6 +90,7 @@ export default {
     rippleDir: [0.85, 0.5],
     rippleAmp: 0.20, // faint wind ripple on the dune band
     rippleShoreOnly: true, // pasture stays grass; wind relief belongs to the strand
+    wornDirtStrength: 0.22, // inland wear stays muted turf, not broad beach-sand islands
   },
 
   vegetation: {
