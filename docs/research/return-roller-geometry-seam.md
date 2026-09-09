@@ -69,3 +69,27 @@ families remain represented. No actual profile opts in during ordinary
 construction. The contact sampler name adaptation is ready for the separate
 per-vehicle contact qualification; this checkpoint does not claim those
 unrun fit gates passed.
+
+## Group-aware quality interoperability
+
+A later Merkava trial exposed an inherited checker assumption: it counted
+separate tire/dish objects, so a single closed two-material rotor was reported
+as single-material when its real shaft used the model-specific name
+`gearMerkavaReturnSpindles`. This was a checker mismatch, not authority to
+delete or hide the shaft. The factory seam was held from publication.
+
+`wheelQuality.ts` now recognizes only the exact composite rotor name and
+requires two distinct actual rubber/`wheelPaint` materials, fully covering
+positive nonoverlapping triangle groups 0/1, nonzero draw/instance counts,
+visible/color-writing materials, and no uniform object-level finish override.
+Its two counted parts are actual rendered finish regions, not invented mesh
+instances. Malformed composite stock gets an explicit issue even if another
+named spindle is present; the old missing-dish single-material rejection stays.
+
+Final follow-up `.qa-dev/roller-seam-after-AVs8KY/receipt.json` passes all
+eight checks with unchanged inputs. The focused test now has 32 rejecting
+controls, including missing/overlapping/unpainted/undrawn groups, an invisible
+rubber material, a uniform-role override, and the preserved legacy missing-dish
+failure. Both actual factory qualities pass the full wheel audit. All 174
+unchanged default models, types and original exact-pose comparisons also pass.
+No new vehicle fit, rendered pixel review or profile activation is claimed.

@@ -325,7 +325,29 @@ function auditWheelObject(
   auditWheelPartPattern(name, objectData, patternIds, issues);
   auditRoadWheelDiscs(object, name, counters, issues);
   if (name === 'gearEndWheelBody') counters.endBodies++;
-  if (name.startsWith('gearReturnRoller')) counters.returnRollerParts++;
+  if (name.startsWith('gearReturnRoller')) {
+    if(name==='gearReturnRollerRotors'){
+      // A single closed rotor legitimately has two rendered finish regions.
+      // Count real, complete groups, never a spare object or metadata tag.
+      const g=renderObject.geometry,m=materialsOf(object);
+      const total=g?.index?.count??g?.getAttribute('position')?.count??0;
+      const groups=g?[...g.groups].sort((a,b)=>a.start-b.start):[];
+      const valid=Array.isArray(renderObject.material)&&m.length===2&&m[0]!==m[1]
+        &&['tireRubber','wheelTire'].includes(String(materialAppearanceRole(m[0]!)))
+        &&materialAppearanceRole(m[1]!)==='wheelPaint'
+        &&objectData.appearanceRole===undefined
+        &&m.every(material=>material.visible&&material.colorWrite&&material.opacity>0)
+        &&total>0&&total%3===0&&(renderObject.count??1)>0
+        &&g?.drawRange.start===0&&g.drawRange.count>=total
+        &&groups.length===2&&groups[0]!.start===0
+        &&groups.every(group=>Number.isInteger(group.count)&&group.count>0&&group.count%3===0)
+        &&groups[1]!.start===groups[0]!.count
+        &&groups[1]!.start+groups[1]!.count===total
+        &&groups.some(group=>group.materialIndex===0)&&groups.some(group=>group.materialIndex===1);
+      if(!valid)issues.push({code:'invalid-composite-return-roller-materials',object:name});
+      counters.returnRollerParts+=valid?2:1;
+    }else counters.returnRollerParts++;
+  }
   auditSuspensionPattern(name, objectData, issues);
   auditSuspensionLinks(renderObject, name, objectData, counters, issues);
   auditSuspensionJoints(renderObject, name, objectData, counters, issues);

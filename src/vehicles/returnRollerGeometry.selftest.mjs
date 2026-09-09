@@ -7,6 +7,7 @@ import {getSpec} from './specs.ts';
 import {createTankState} from '../sim/movement.ts';
 import {efficientReturnRoller} from './efficientReturnRoller.ts';
 import {normalizeTankAppearance,tagVehicleMaterial} from './appearanceAudit.ts';
+import {auditTankWheelQuality} from './wheelQuality.ts';
 
 const BASE={wheelR:.4,wheelW:.3,wheelZs:[-1,0,1],wheelY:.5,xc:1.3,
  sprocket:{z:-2,y:.7,r:.3},idler:{z:2,y:.7,r:.3},trackW:.5,topY:1,
@@ -60,6 +61,32 @@ for(const quality of['high','low']){
   const originalPaint=candidate.P.mats.wheels.color.getHex();
   for(const f of[base,undefinedOption,candidate])normalizeTankAppearance(f.P.hullG);
   assert.equal(candidate.P.mats.wheels.color.getHex(),originalPaint);assert.notEqual(im.material[0].color.getHex(),im.material[1].color.getHex());
+  const rollerIssues=()=>auditTankWheelQuality(candidate.P.hullG).issues.filter(issue=>/return-roller/.test(issue.code));
+  assert.deepEqual(rollerIssues(),[],'Actual complete rubber/painted groups qualify even without a second decorative mesh');
+  const groups=im.geometry.groups.map(group=>({...group})),materials=im.material;
+  const reject=mutate=>{
+   mutate();assert.ok(rollerIssues().some(issue=>issue.code==='invalid-composite-return-roller-materials'));
+   im.geometry.groups=groups.map(group=>({...group}));im.geometry.setDrawRange(0,Infinity);im.material=materials;
+   materials[0].visible=true;materials[0].colorWrite=true;materials[0].opacity=1;
+   delete im.userData.appearanceRole;im.count=4;negativeControls++;
+  };
+  reject(()=>im.geometry.clearGroups());
+  reject(()=>im.geometry.groups[1].start-=3);
+  reject(()=>im.geometry.groups[1].count-=3);
+  reject(()=>im.geometry.groups[0].count=0);
+  reject(()=>im.geometry.groups[1].materialIndex=0);
+  reject(()=>im.material=[materials[0],materials[0]]);
+  reject(()=>im.material=materials[0]);
+  reject(()=>im.geometry.setDrawRange(0,0));
+  reject(()=>im.material[0].visible=false);
+  reject(()=>im.material[0].colorWrite=false);
+  reject(()=>im.material[0].opacity=0);
+  reject(()=>im.userData.appearanceRole='wheelTire');
+  reject(()=>im.count=0);
+  assert.deepEqual(rollerIssues(),[],'Restoring real groups restores qualification');
+  const oldDish=base.P.hullG.getObjectByName('gearReturnRollerDiscs');oldDish.removeFromParent();
+  assert.ok(auditTankWheelQuality(base.P.hullG).issues.some(issue=>issue.code==='single-material-return-rollers'),
+   'Legacy one-material missing-dish rejection remains in force');base.P.hullG.add(oldDish);negativeControls++;
   assert.equal(candidate.P.disposables.filter(r=>r===leaf.rotor).length,1,'Core owns the adopted buffer exactly once');
   const actualCost=im.geometry.index.count/3+leaf.spindle.index.count/3;
   assert.equal(actualCost,quality==='high'?160:80);assert.equal(actualCost*im.count,quality==='high'?640:320);
@@ -101,6 +128,7 @@ for(const quality of['high','low']){
  try{
   const im=tank.root.getObjectByName('gearReturnRollerRotors');assert.equal(im.geometry,rotor);assert.equal(im.count,8);
   assert.deepEqual(im.material,[captured.mats.rubber,captured.mats.wheels]);assert.equal(im.parent.name,'rig_hull');
+  assert.deepEqual(auditTankWheelQuality(tank.root).issues,[],'Real two-finish factory rotor passes the unchanged wider mechanical checks');
   const state=createTankState(getSpec('leo2a6m_x'),new T.Vector3(),.12);
   for(const distance of[15,75,200]){
    state.trackScroll.l=.37;state.trackScroll.r=-.29;
