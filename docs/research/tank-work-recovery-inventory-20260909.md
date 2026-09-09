@@ -23,8 +23,10 @@ The seven conventional Abrams X source/support/history and regenerated asset
 sets are now also published at **92b328a83d4dca5cb9d155ca8ad69d37b5203bf4**,
 under the owner's explicit as-is instruction. Types/public build, fourteen
 native constructions, focused physical/default/simulation tests, the anatomy
-refresh and the 100 selected asset hashes passed. The strict qualification
-checks remain in progress and the known failures remain documented in
+refresh and the 100 selected asset hashes passed. The final complete anatomy
+procedure also passed; the targeted release stopped at source availability
+(seven unavailable references, none measured), leaving standard/full-suite/
+private-build phases unrun. Known failures remain documented in
 [the Abrams publication record](abrams-recovered-publication-20260909.md).
 
 - Initial registry: 458 worktrees, 270 existing; 149 tank/fleet/gear/fidelity
