@@ -90,3 +90,8 @@ loader corruption checks, existing lifecycle-memory bounds, signaling and TS7.
 The baseline and candidate builds are retained in independent worktrees. Any
 later integration with held roads or relocated Foundry donors needs fresh
 collision capture for the changed source; do not transplant these shards blindly.
+
+Root reviewed the native close/context pairs and published this scoped repair
+as `ccfc44730` on `origin/main`, including the four refreshed collision shards.
+It fixes oversized pass-through coal domes; it is not the held Foundry compound
+redesign or a claim of complete industrial-map beautification.

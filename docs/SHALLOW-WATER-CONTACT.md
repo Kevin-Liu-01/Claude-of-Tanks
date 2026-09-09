@@ -1,4 +1,4 @@
-# Shallow water contact candidate
+# Shallow water contact
 
 This is a presentation change, not a fluid/buoyancy engine. The authoritative
 terrain, navigation ground types, vehicle support and hit positions stay on
@@ -71,8 +71,8 @@ Map-owned shared texture retention covers the new material's hidden samplers.
   maintained `typescript-compiler-api` import makes both pass; no dependency
   or runtime changes were needed. Original failures remain in session 33311
   and `track-contact-compiler-r1.YMPY27/REVIEW.md` under the evidence root.
-- Not yet published. Constrained-device performance remains an acceptance
-  limitation. The terrain shader cache key is now
+- Constrained-device performance remains an acceptance limitation. The terrain
+  shader cache key is now
   v27; the water shader's bounded-highlight candidate is v3.
 - The local sand/snow contact checkpoint is integrated, including exact
   water-versus-powder expiry tests. Broader shoreline dressing is not claimed
@@ -111,3 +111,37 @@ Evidence root: `/Users/kevinliu/.codex/visualizations/2026/environment-recovery-
   scale 1. No page errors, failed programs, lost context or observed GL errors.
   Build/source pins stay unchanged. Both browsers/previews close and FIFO leases
   release. These are not physical-iPad/Safari or no-regression certificates.
+
+## Bounded draw-cost review and integration
+
+`shallow-water-cost-r1.Hfevdz` records one fresh native OFF/ON/ON/OFF acquisition
+with 48 sampled frames per block, fixed camera, High/1440×900/DPR 1, unchanged
+source and all 3,387 build-file hashes. Each block keeps the same retained scene,
+geometry, material and texture owners: only surface visibility changes. The
+complete render changes from 368 to 369 calls and 1,625,184 to 1,629,046 triangles.
+This isolates the sheet draw, not construction, full-feature memory or FX cost.
+
+Submission-to-`gl.finish` wall medians are 6.50 / 6.15 / 7.90 / 7.40 ms; pooled
+OFF/ON medians are 7.10 / 7.05 ms and p95 values 8.9 / 9.2 ms. GPU query medians
+drift strongly (42.57 / 43.76 / 27.55 / 17.75 ms) and exceed the corresponding
+completion wall measurements. A foreign Chrome-for-Testing GPU process and
+heavy Node work remain active. These samples cannot certify no regression or
+quiet-machine GPU attribution. They do verify the exact bounded draw delta;
+there is no retry, relaxed threshold, hidden tier reduction or zero-cost claim.
+The admitted run takes 33 seconds, has no page/GL errors, and closes its own
+browser/server and releases the shared FIFO.
+
+Incremental publication integrates only water/contact and its tests/docs with
+the previously accepted coal/root corrections. The current-main integration
+packet passes actual nine-map track classification, terrain-resource ownership,
+full TS7 and production build (existing chunk warning). The coal command in
+session 66771 initially names the wrong directory and fails before loading;
+session 12365 reruns only its correct `src/world/maps/` path and passes the
+30-map non-coal/RNG/collision checks. The original failure is not relabeled a
+pass. Build index: `732c52affc1d52cfa7e32140f5434ccfe083e928c9381413bf24f5db79952742`.
+The subsequent rebase adds only an unrelated vehicle-inventory document.
+
+This is the user-requested incremental shallow-contact feature, not closure of
+the broader environment performance/memory, shoreline-decoration or all-map
+beautification work. The existing simulation/bed, navigation and collision data
+remain authoritative; no reflection engine, buoyancy or drowning rules ship.

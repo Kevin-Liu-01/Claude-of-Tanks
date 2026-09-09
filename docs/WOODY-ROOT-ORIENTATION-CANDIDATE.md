@@ -1,4 +1,4 @@
-# Woody-root orientation candidate — not published
+# Woody-root orientation — published scoped correction
 
 Base: `7351f0b4ad92c97be03e7be0bb7a700a3f332484`; isolated
 `codex/woody-root-orientation-20260909`. Crop silhouette work remains separate.
@@ -65,4 +65,8 @@ instances, 1,342,864 triangles, 172 geometries, 32 materials and 40 textures;
 full texture inventories agree too. These are owners/counts, not a heap test.
 `sameFrameProof:false` and collector `comparability:not-established` remain.
 Both worker PIDs exited and source/build hashes stayed frozen; no retry or
-additional cost acquisition was performed. Awaiting root review, not published.
+additional cost acquisition was performed.
+
+Root reviewed the native pair and published the scoped orientation correction
+as `f363fbd5e` on `origin/main`. This accepts the small visible root-seating fix,
+not the unresolved tidal far-model issue or a full woodland/art/performance pass.
