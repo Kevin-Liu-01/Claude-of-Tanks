@@ -61,3 +61,17 @@ all thirteen independent X model/identity/combat registrations. These are
 Node procedural tests, not native GPU or whole-game performance captures.
 The parent release must still rerun its complete composed checks; this
 test-only correction is not a waiver for any other failed regression.
+
+## Optical beam versus physical cap — 2026-09-09
+
+The later published `6468ee7bc` correctly directs upward-raked headlight
+beams down toward the roadway. The prior seating fixture incorrectly reused
+that optical direction as the physical lens normal and stopped the seven-ID
+bodywork release. Seating now ray-measures the actual tagged emitting cap;
+the original physical cant, exposure, positive stock lap and source hashes
+remain enforced. Optical direction is checked separately for the published
+0.08 downward slope and matching azimuth. Float32 metre-scale cap positions
+produce about 3.4 microradians of reconstructed-normal error; the new azimuth
+comparison permits 20 microradians and rejects an injected 0.01-radian turn.
+An injected upward beam also fails. HIGH/LOW lamp-history and the complete
+13-original/13-X fleet regression pass. No runtime geometry or lighting changed.
