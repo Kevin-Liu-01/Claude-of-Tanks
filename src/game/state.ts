@@ -89,6 +89,7 @@ import {
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
+import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
 import {
@@ -669,7 +670,7 @@ interface BattleSpawnContext {
   options: SetupBattleOptions;
   playerSpecId: string;
   allies: Set<SoloEntity>;
-  allyTaken: Waypoint[];
+  placement: MatchPlacement;
   enemyCenterX: number;
   enemyCenterZ: number;
   playerPerpendicularX: number;
@@ -694,52 +695,14 @@ interface OpeningLane {
   side: number;
 }
 
-function spawnCellBlocked(
-  context: BattleSpawnContext,
-  x: number,
-  z: number,
-  margin = 2.6,
-): boolean {
-  for (const obstacle of context.obstacles) {
-    if (obstacle.crushed) continue;
-    if (x > obstacle.min[0] - margin && x < obstacle.max[0] + margin &&
-        z > obstacle.min[2] - margin && z < obstacle.max[2] + margin) return true;
-  }
-  return false;
-}
-
-function allyCellTaken(context: BattleSpawnContext, x: number, z: number): boolean {
-  for (const point of context.allyTaken) {
-    if (Math.hypot(point[0] - x, point[1] - z) < 14) return true;
-  }
-  return false;
-}
-
 function selectAllySpawn(context: BattleSpawnContext): SpawnPoint {
   const { world } = context;
   const playerSpawn = world.spawnPoints.player;
   const slot = ALLY_SPAWN_SLOTS[context.allyIndex++ % ALLY_SPAWN_SLOTS.length];
-  let x = playerSpawn.pos[0] + context.playerPerpendicularX * slot.lat -
+  const x = playerSpawn.pos[0] + context.playerPerpendicularX * slot.lat -
     context.playerForwardX * slot.back;
-  let z = playerSpawn.pos[2] + context.playerPerpendicularZ * slot.lat -
+  const z = playerSpawn.pos[2] + context.playerPerpendicularZ * slot.lat -
     context.playerForwardZ * slot.back;
-  if (world.heightField.getNormalAt) {
-    for (let offsetIndex = 0; offsetIndex < 8; offsetIndex++) {
-      const lateral = slot.lat + Math.sign(slot.lat || 1) * offsetIndex * 9;
-      const candidateX = playerSpawn.pos[0] + context.playerPerpendicularX * lateral -
-        context.playerForwardX * slot.back;
-      const candidateZ = playerSpawn.pos[2] + context.playerPerpendicularZ * lateral -
-        context.playerForwardZ * slot.back;
-      if (world.heightField.getNormalAt(candidateX, candidateZ).y < 0.85) continue;
-      if (world.heightField.getGroundType?.(candidateX, candidateZ) === 'soft') continue;
-      if (spawnCellBlocked(context, candidateX, candidateZ) ||
-          allyCellTaken(context, candidateX, candidateZ)) continue;
-      x = candidateX;
-      z = candidateZ;
-      break;
-    }
-  }
-  context.allyTaken.push([x, z]);
   return {
     pos: [x, world.heightField.getHeightAt(x, z), z],
     yaw: playerSpawn.yaw,
@@ -747,22 +710,8 @@ function selectAllySpawn(context: BattleSpawnContext): SpawnPoint {
 }
 
 function selectEnemySpawn(context: BattleSpawnContext): SpawnPoint {
-  const { world } = context;
-  let spawn = world.spawnPoints.enemies[context.enemyIndex++];
-  if (!spawnCellBlocked(context, spawn.pos[0], spawn.pos[2])) return spawn;
-  for (const radius of [4, 7]) {
-    for (let index = 0; index < 8; index++) {
-      const angle = (index / 8) * Math.PI * 2;
-      const x = spawn.pos[0] + Math.sin(angle) * radius;
-      const z = spawn.pos[2] + Math.cos(angle) * radius;
-      if (spawnCellBlocked(context, x, z)) continue;
-      return {
-        pos: [x, world.heightField.getHeightAt(x, z), z],
-        yaw: spawn.yaw,
-      };
-    }
-  }
-  return spawn;
+  const { enemies } = context.world.spawnPoints;
+  return enemies[context.enemyIndex++ % enemies.length];
 }
 
 function selectEntitySpawn(
@@ -1044,7 +993,10 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     const entity = game.tanks[index];
     const isPlayer = entity.specId === context.playerSpecId;
     const isAlly = !isPlayer && context.allies.has(entity);
-    const spawn = selectEntitySpawn(context, isPlayer, isAlly);
+    const preferred = selectEntitySpawn(context, isPlayer, isAlly);
+    const safe = context.placement.spawn({ x: preferred.pos[0], z: preferred.pos[2], yaw: preferred.yaw },
+      entity.id, placementTankRadius(entity.spec));
+    const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     if (!isPlayer) createBattleBot(context, entity, index, spawn);
     warmStartBattleEntity(entity, context.world);
@@ -1120,7 +1072,15 @@ export function setupBattle(
         out,
       )
     : null;
-  const botNavigation = createBotNavigationGrid({
+  const placement = createMatchPlacement({
+    mapId: game.mapId,
+    heightField: world.heightField, obstacles: world.getObstacles(), queryObstacles: world.queryObstacles,
+    anchors: matchPlacementAnchors({
+      player: { x: sp.player.pos[0], z: sp.player.pos[2], yaw: sp.player.yaw },
+      enemies: sp.enemies.map(point => ({ x: point.pos[0], z: point.pos[2], yaw: point.yaw })),
+    }), mode: game.gameMode,
+  });
+  const botNavigation = placement.navigation ?? createBotNavigationGrid({
     heightField: world.heightField,
     queryObstacles: botObstacleQuery,
     getObstacles: () => world.getObstacles(),
@@ -1167,7 +1127,7 @@ export function setupBattle(
     options: opts,
     playerSpecId,
     allies: allySet,
-    allyTaken: [],
+    placement,
     enemyCenterX,
     enemyCenterZ,
     playerPerpendicularX: Math.cos(playerYaw),
@@ -1190,6 +1150,7 @@ export function setupBattle(
     mode: game.gameMode,
     entities: game.tanks,
     seed: COMBAT_SEED + game.battleCount,
+    placement,
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     setActive(modeEntity, active) {
