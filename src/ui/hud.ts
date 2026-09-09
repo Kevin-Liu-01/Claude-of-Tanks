@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
+import { installBattleHudLayout } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
@@ -1715,6 +1716,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
+  installBattleHudLayout(root);
 
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = requireCanvasContext(retCanvas);

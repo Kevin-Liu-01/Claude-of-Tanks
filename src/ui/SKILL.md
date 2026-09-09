@@ -119,6 +119,12 @@ replacement would destroy controls. Locale changes reload the current surface
 atomically; do not add screen-local partial refreshes.
 
 ## Common tasks → first action
+
+Battle overlay placement is owned by `battleHudLayout.ts` / `.css`: event-time
+lane measurements keep rosters, incoming alerts, chat, reports, minimap and
+driving controls apart. Do not restore independent fixed offsets in those
+components. Run `battleHudLayout.selftest.mjs` and the rendered matrix in
+`tools/battle-hud-layout.browser.mjs`; see `docs/BATTLE-UI-QA.md` for coverage.
 <!-- agent-docs:fill:tasks -->
 Inspect the live rendered surface, locate event/callback ownership, change the
 smallest screen module, then run its selftest and browser verification.

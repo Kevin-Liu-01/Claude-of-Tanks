@@ -774,6 +774,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/touchControlsAccess.selftest.mjs',
     'src/ui/settingsAccess.selftest.mjs',
     'src/ui/hudMagazine.selftest.mjs',
+    'src/ui/battleHudLayout.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/chunkRecovery.selftest.mjs',
     'src/ui/icons.selftest.mjs',

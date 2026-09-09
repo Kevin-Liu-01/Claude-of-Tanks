@@ -793,7 +793,7 @@ function appendShotCardHeader(
   const header = el('div', 'cot-si-hd', card);
   const state = el('div', 'cot-si-state', header);
   const kicker = el('span', 'cot-si-kicker', state);
-  kicker.innerHTML = `${GLYPH.ballistic}<span>${t('shotInfo.kicker')}</span>`;
+  kicker.innerHTML = `${GLYPH.ballistic}<span>${t('killcam.ballisticAnalysis')}</span>`;
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
@@ -985,6 +985,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   cardHost.setAttribute('role', 'status');
   cardHost.setAttribute('aria-live', 'polite');
   const logPanel = el('div', 'cot-si-log', root);
+  logPanel.tabIndex = 0;
   const toastHost = el('div', 'cot-si-toasthost', root);
   toastHost.setAttribute('role', 'status');
   toastHost.setAttribute('aria-live', 'polite');
@@ -1242,19 +1243,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     while (cardHost.firstChild) cardHost.firstChild.remove();
     const card = buildCard(ev, cls);
     cardHost.appendChild(card);
-    // Center the report in the open vertical lane between the ENEMY roster
-    // and minimap. These event-time reads keep 1v1 and 7v7 equally balanced
-    // without putting layout work in the render loop.
-    const rosterBottom = document.querySelector('.cot-ear.r')?.getBoundingClientRect().bottom || 0;
-    const minimapTop = document.querySelector('.cot-minimap')?.getBoundingClientRect().top || 0;
-    const cardHeight = card.getBoundingClientRect().height;
-    if (rosterBottom > 0) {
-      const laneTop = rosterBottom + 8;
-      const laneBottom = minimapTop > laneTop ? minimapTop - 8 : laneTop + cardHeight;
-      const centeredTop = laneTop + Math.max(0, (laneBottom - laneTop - cardHeight) / 2);
-      cardHost.style.setProperty('--cot-si-roster-bottom', `${Math.ceil(laneTop)}px`);
-      cardHost.style.setProperty('--cot-si-card-top', `${Math.ceil(centeredTop)}px`);
-    }
+    // battleHudLayout owns this lane, including subsequent viewport/map resizes.
     const fade = setTimeout(() => card.classList.add('out'), 6200);
     setTimeout(() => { clearTimeout(fade); if (card.parentNode) card.remove(); }, 7200);
   }
@@ -1263,7 +1252,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   function renderLog(): void {
     logPanel.textContent = '';
     const sec1 = el('div', 'sec', logPanel);
-    sec1.innerHTML = `<span>${t('shotInfo.yourShots')}</span><span>${t('shotInfo.yourShotsLast', { n: shotLog.length })}</span>`;
+    sec1.innerHTML = `<span>${t('action.shotLog')}</span><span>${shotLog.length} / 6</span>`;
     if (!shotLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyShots');
     for (const it of shotLog) {
       const r = el('div', 'cot-si-lrow', logPanel);
@@ -1275,7 +1264,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
     const sec2 = el('div', 'sec', logPanel);
-    sec2.innerHTML = `<span>${t('shotInfo.damageReceived')}</span><span>${t('shotInfo.damageAmount', { amount: Math.round(total) })}</span>`;
+    sec2.innerHTML = `<span>${t('endScreen.damageReceived')}</span><span>${t('shotInfo.damageAmount', { amount: Math.round(total) })}</span>`;
     if (!receivedLog.length) el('div', 'cot-si-empty', logPanel).textContent = t('shotInfo.emptyReceived');
     for (let i = receivedLog.length - 1; i >= 0; i--) {
       const e = receivedLog[i];
