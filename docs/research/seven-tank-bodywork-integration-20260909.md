@@ -154,3 +154,29 @@ five caller-wiring checks, the existing 18 fidelity lifecycle cases, suite
 integrity (849 ordered checks), syntax, typecheck and core-unused all passed.
 Already-private tools and the CPU-only circularity probe were left unchanged.
 This is not a release PASS: a fresh complete composed run is still required.
+
+### Isolated-cache retry — Chieftain fixture boundary
+
+The next composed run started at `13c5f3070`, rebased onto published
+`7e7fdae30` with the exact isolated-runner patch later published as `eb1a05d31`.
+It passed all seven targeted anatomy, centering, module, asset, track, muzzle,
+barrel, source-fidelity and strict standard gates. Source median remained 96.6;
+all seven fresh strict geometry floors passed (minimum 92.3/92), with no
+clipping/continuity/weapon failures or optimizer-cache 504 errors.
+
+The full npm lifecycle passed 135 PRE files, then failed
+`chieftain10XMk5Foundation.selftest.mjs`: the HIGH Mk5 complete-scene hash was
+`6f4b7cf5ae5269b392c05596c8dc8bf5249e3216dde3658a90acef94f3041033`
+instead of immutable `03e1d603add977c5ad36503bf1bda6684cf6d4216517d140e538ecb6a4305992`.
+Both had 74 scene rows and 42 geometries. The process (session `10395`) exited
+1; raw output is preserved in `.qa-closeout/release-retry.log`. It did not run
+CORE, POST or the final private build and is **not** a full-release PASS.
+
+Before that failure, test-only `338a82e1b` integrated published world repair
+`3dc8f08a0`: the two mask tests retain their immutable RGBA receipts and check
+the actual active shader consumer with negative controls. Both repaired tests
+passed separately here. No measured runtime inputs changed during the run.
+The known Chieftain failure is under exact historical-mode investigation;
+no immutable hash has been refreshed. Remaining PRE and CORE/POST diagnostics
+are split between the two release audits to discover additional blockers.
+Those continuation diagnostics are explicitly not a full npm or release pass.
