@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
 import { disposeObject3DResources, releaseObject3DGpuResources } from '../engine/resourceLifetime.ts';
 import mangrove from './maps/mangrove.ts';
-import { relocateTidalMangroves, tidalMangroveStations } from './tidalMangrove.ts';
+import { relocateTidalMangroves, shapeMangroveFarStem, tidalMangroveStations } from './tidalMangrove.ts';
 import { createStructureClearances } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { createProps, preloadPropModels } from './props.ts';
@@ -42,10 +42,10 @@ registerHooks({ load(href, context, next) {
   source += `\nexport function mulberry32(seed: number): RandomSource {
     const next = originalMulberry32(seed), row = { seed, count: 0, next };
     globalThis.__tidalRng.push(row); return () => { row.count++; return next(); };
-  }\nexport { buildBroadleafTrunk };`;
+  }\nexport { buildBroadleafTrunk, buildOakFarGeometry };`;
   return { ...result, source };
 } });
-const { createVegetation, buildBroadleafTrunk, mulberry32 } = await import('./vegetation.ts');
+const { createVegetation, buildBroadleafTrunk, buildOakFarGeometry, mulberry32 } = await import('./vegetation.ts');
 
 function hash(g) {
   const h = createHash('sha256');
@@ -88,31 +88,144 @@ function crownContains(canopy, point) {
   return false;
 }
 
+// Exact published1db mapping, retained only as a negative/preservation control.
+function legacyFarStem(geometry, variant) {
+  const p = geometry.attributes.position;
+  const height = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
+  const angle = variant === 0 ? 0 : 2.2, crownHeight = variant === 0 ? 2.86 : height;
+  for (let i = 0; i < p.count; i++) {
+    const t = p.getY(i) / height;
+    p.setXYZ(i, p.getX(i) * .5 + Math.cos(angle) * .24 * t, crownHeight * t,
+      p.getZ(i) * .5 + Math.sin(angle) * .24 * t);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function checkFarAttachment(legacy, actual, canopy) {
+  assert.deepEqual(budget(actual), budget(legacy));
+  assert.deepEqual(actual.index?.array, legacy.index?.array);
+  assert.deepEqual(actual.groups, legacy.groups); assert.deepEqual(actual.drawRange, legacy.drawRange);
+  for (const [name, attr] of Object.entries(actual.attributes)) {
+    assert.ok(attr.array.every(Number.isFinite), name + ': finite');
+    if (name !== 'position' && name !== 'normal') assert.deepEqual(attr.array, legacy.attributes[name].array, name);
+  }
+  const p = legacy.attributes.position, q = actual.attributes.position, normal = actual.attributes.normal;
+  const height = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
+  const cap = Array.from({ length: p.count }, (_, i) => i).filter(i => p.getY(i) === height);
+  assert.equal(cap.length, 30, 'the pre-existing top ring/cap owns exactly 30 packed vertices');
+  assert.equal(new Set(Array.from({ length: p.count }, (_, i) => p.getY(i))).size, 2);
+  const offset = new THREE.Vector3().fromBufferAttribute(q, cap[0]).sub(new THREE.Vector3().fromBufferAttribute(p, cap[0]));
+  const center = cap.reduce((v, i) => v.add(new THREE.Vector3().fromBufferAttribute(p, i)), new THREE.Vector3()).multiplyScalar(1 / cap.length);
+  const radius = Math.max(...cap.map(i => Math.hypot(p.getX(i) - center.x, p.getZ(i) - center.z)));
+  assert.ok(Math.hypot(offset.x, offset.z) <= radius * 2 + 1e-6, 'fallback moves at most one existing cap diameter');
+  let connection = 0;
+  for (let i = 0; i < p.count; i++) {
+    if (p.getY(i) !== height) {
+      assert.deepEqual([q.getX(i), q.getY(i), q.getZ(i)], [p.getX(i), p.getY(i), p.getZ(i)],
+        'actual ground ring stays byte exact; only pre-existing cap vertices may move');
+    } else {
+      const delta = new THREE.Vector3().fromBufferAttribute(q, i).sub(new THREE.Vector3().fromBufferAttribute(p, i));
+      assert.ok(delta.distanceTo(offset) < 1e-6, 'cap translates rigidly; no narrowing to hide a point-contact defect');
+      assert.equal(q.getY(i), q.getY(cap[0]), 'the existing cap stays horizontal');
+      if (crownContains(canopy, new THREE.Vector3().fromBufferAttribute(q, i))) connection++;
+    }
+  }
+  assert.ok(connection > 0, 'the actual reshaped stem cap still intersects an actual closed crown lobe');
+  assert.equal(connection, cap.length, 'every packed cap vertex lies inside an actual closed crown lobe');
+  const av = new THREE.Vector3(), bv = new THREE.Vector3(), cv = new THREE.Vector3();
+  for (let i = 0; i < q.count; i += 3) {
+    av.fromBufferAttribute(q, i); bv.fromBufferAttribute(q, i + 1); cv.fromBufferAttribute(q, i + 2);
+    if ([i, i + 1, i + 2].every(j => p.getY(j) === height)) {
+      assert.ok(crownContains(canopy, av.clone().add(bv).add(cv).multiplyScalar(1 / 3)),
+        'actual cap triangle interiors attach too, not just isolated ring points');
+    }
+    const face = bv.sub(av).cross(cv.sub(av));
+    assert.ok(face.lengthSq() > 1e-12);
+    assert.ok(face.normalize().dot(av.fromBufferAttribute(normal, i)) > .5, 'finite outward far stem normals');
+  }
+  return offset;
+}
+
 function checkFarStems(before, after) {
   for (let variant = 0; variant < 2; variant++) {
     const a = before.treeGeoFar.willow[variant], b = after.treeGeoFar.willow[variant];
     assert.equal(hash(b.canopy), hash(a.canopy), 'all distant crown bytes/RNG exact');
-    const p = a.trunk.attributes.position, q = b.trunk.attributes.position, normal = b.trunk.attributes.normal;
-    const height = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
-    const crownHeight = variant === 0 ? 2.86 : height;
-    const angle = variant === 0 ? 0 : 2.2;
-    let connection = 0;
-    for (let i = 0; i < p.count; i++) {
-      const t = p.getY(i) / height;
-      assert.ok(Math.abs(q.getY(i) - crownHeight * t) < 2e-7, 'ground ring fixed; only the approved short cap rises into its crown');
-      assert.ok(Math.abs(q.getX(i) - p.getX(i) * .5 - Math.cos(angle) * .24 * t) < 1e-6);
-      assert.ok(Math.abs(q.getZ(i) - p.getZ(i) * .5 - Math.sin(angle) * .24 * t) < 1e-6);
-      if (t === 1 && crownContains(b.canopy, new THREE.Vector3().fromBufferAttribute(q, i))) connection++;
-    }
-    assert.ok(connection > 0, 'the actual reshaped stem cap still intersects an actual closed crown lobe');
-    const av = new THREE.Vector3(), bv = new THREE.Vector3(), cv = new THREE.Vector3();
-    for (let i = 0; i < q.count; i += 3) {
-      av.fromBufferAttribute(q, i); bv.fromBufferAttribute(q, i + 1); cv.fromBufferAttribute(q, i + 2);
-      const face = bv.sub(av).cross(cv.sub(av));
-      assert.ok(face.lengthSq() > 1e-12);
-      assert.ok(face.normalize().dot(av.fromBufferAttribute(normal, i)) > .5, 'finite outward far stem normals');
-    }
+    const legacy = legacyFarStem(a.trunk.clone(), variant);
+    checkFarAttachment(legacy, b.trunk, b.canopy);
+    legacy.dispose();
   }
+}
+
+function checkFarSeedVariation() {
+  const seeds = [0, 1, 1337, 2001, 2049, 7719, 0xffffffff,
+    ...Array.from({ length: 16 }, (_, i) => Math.imul(i + 1, 2654435761) >>> 0)];
+  globalThis.__tidalRng = [];
+  const buildFar = (seed, variant) => {
+    const rng = mulberry32(seed + 261 + variant * 101), row = globalThis.__tidalRng.at(-1);
+    const pair = buildOakFarGeometry(rng, {}, variant);
+    pair.trunk.scale(1.45, .82, 1.45); pair.canopy.scale(1.45, .82, 1.45);
+    return { ...pair, row };
+  };
+  let shiftedColumns = 0, maxCapShift = 0, maxCapHeight = 0, maxCapLeanRadians = 0;
+  for (const seed of seeds) for (let variant = 0; variant < 2; variant++) {
+    const pair = buildFar(seed, variant), repeat = buildFar(seed, variant);
+    const legacy = legacyFarStem(pair.trunk.clone(), variant), crownHash = hash(pair.canopy);
+    const buffers = Object.values(pair.trunk.attributes).map(a => a.array);
+    shapeMangroveFarStem(pair.trunk, variant, pair.canopy);
+    shapeMangroveFarStem(repeat.trunk, variant, repeat.canopy);
+    assert.equal(hash(pair.canopy), crownHash, 'attachment never writes to its crown');
+    assert.equal(hash(pair.trunk), hash(repeat.trunk), 'same actual seeded crown produces the same attachment');
+    assert.deepEqual([pair.row.count, pair.row.next(), pair.row.next()], [repeat.row.count, repeat.row.next(), repeat.row.next()]);
+    Object.values(pair.trunk.attributes).forEach((a, i) => assert.equal(a.array, buffers[i], 'all existing backing stores reused'));
+    const offset = checkFarAttachment(legacy, pair.trunk, pair.canopy);
+    const shift = Math.hypot(offset.x, offset.z), p = pair.trunk.attributes.position;
+    if (shift > 1e-6) shiftedColumns++;
+    maxCapShift = Math.max(maxCapShift, shift);
+    const top = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
+    const cap = Array.from({ length: p.count }, (_, i) => i).filter(i => p.getY(i) === top);
+    const center = cap.reduce((v, i) => v.add(new THREE.Vector3().fromBufferAttribute(p, i)), new THREE.Vector3()).multiplyScalar(1 / cap.length);
+    maxCapHeight = Math.max(maxCapHeight, top);
+    maxCapLeanRadians = Math.max(maxCapLeanRadians, Math.atan2(Math.hypot(center.x, center.z), top));
+    if (seed === 2001 && variant === 0) {
+      const p = legacy.attributes.position, height = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
+      assert.equal(Array.from({ length: p.count }, (_, i) => i).filter(i => p.getY(i) === height
+        && crownContains(pair.canopy, new THREE.Vector3().fromBufferAttribute(p, i))).length, 0,
+      'published production-seed short stem is genuinely detached from the current closed crown');
+      assert.throws(() => checkFarAttachment(legacy, legacy, pair.canopy), /actual reshaped stem cap/);
+      const movedGround = pair.trunk.clone();
+      const ground = Array.from({ length: p.count }, (_, i) => i).find(i => p.getY(i) !== height);
+      movedGround.attributes.position.setY(ground, p.getY(ground) + .01);
+      assert.throws(() => checkFarAttachment(legacy, movedGround, pair.canopy), /actual ground ring/);
+      movedGround.dispose();
+    }
+    for (const g of [legacy, pair.trunk, pair.canopy, repeat.trunk, repeat.canopy]) g.dispose();
+  }
+  // Deliberately missing primary column: a real closed lobe still provides a
+  // bounded centroid-column attachment, without narrowing the original cap.
+  const raw = buildFar(2001, 0), legacy = legacyFarStem(raw.trunk.clone(), 0);
+  const lobe = new THREE.IcosahedronGeometry(.95, 0); lobe.translate(1.2, 3, 0);
+  const positions = new Float32Array(360 * 3);
+  for (let i = 0; i < 6; i++) positions.set(lobe.attributes.position.array, i * 60 * 3);
+  const crown = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const attached = raw.trunk.clone(); shapeMangroveFarStem(attached, 0, crown);
+  assert.ok(checkFarAttachment(legacy, attached, crown).x > .4, 'missing fixed column takes the bounded real-lobe fallback');
+  for (const mode of ['nonfinite', 'degenerate', 'out-of-reach', 'unsupported']) {
+    const invalid = crown.clone(), candidate = raw.trunk.clone();
+    if (mode === 'nonfinite') invalid.attributes.position.array.fill(NaN);
+    else if (mode === 'degenerate') invalid.attributes.position.array.fill(0);
+    else if (mode === 'out-of-reach') invalid.translate(100, 0, 0);
+    else invalid.setAttribute('position', new THREE.BufferAttribute(new Float32Array(60 * 3), 3));
+    assert.doesNotThrow(() => shapeMangroveFarStem(candidate, 0, invalid));
+    assert.equal(hash(candidate), hash(legacy), mode + ': preserve the finite legacy form, never crash map load');
+    if (mode === 'out-of-reach') assert.throws(() => checkFarAttachment(legacy, candidate, invalid), /actual reshaped stem cap/,
+      'safe runtime fallback does not certify a detached attachment');
+    candidate.dispose(); invalid.dispose();
+  }
+  for (const g of [raw.trunk, raw.canopy, legacy, lobe, crown, attached]) g.dispose();
+  console.log(JSON.stringify({ protocol: 'tidal-far-attachment-v1', variants: seeds.length * 2,
+    shiftedColumns, maxCapShift, maxCapHeight, maxCapLeanRadians, malformedFallbackCases: 4,
+    acceptance: 'geometry-only; malformed safe retention is not attachment or art acceptance' }));
 }
 
 function checkRootGeometry(g) {
@@ -403,6 +516,7 @@ for (let k = 0; k < 3; k++) {
   old.dispose(); actual.dispose();
 }
 
+checkFarSeedVariation();
 globalThis.fetch = async url => new Response(readFileSync(url));
 await preloadPropModels(); await Promise.all(wreckPool('modern').map(id => ensureTankBuilder(id)));
 checkThicketPlan();
