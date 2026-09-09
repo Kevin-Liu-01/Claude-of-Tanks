@@ -661,6 +661,12 @@ export function prepareSourcedTerrain(
 // Per-map albedo tints for the sourced building sets (multiplies RGB after
 // AO) — the raw CC0 sets ignore cfg.props.tones, so urban kept terracotta
 // roofs and desert adobe stayed white without these.
+const FOUNDRY_BUILDING_TINTS = {
+  plaster: { tint: [0.82, 0.71, 0.59], desat: 0.20 },
+  roof: { tint: [0.62, 0.55, 0.52], desat: 0.44, lift: 0.018 },
+  wood: { tint: [0.64, 0.54, 0.43], desat: 0.18 },
+  stone: { tint: [0.94, 0.76, 0.62], desat: 0.18 },
+} satisfies Partial<Record<BuildingBucket, BuildingTint>>;
 const BUILDING_TINTS = {
   urban:  { plaster: { tint: [0.94, 0.86, 0.74], desat: 0.16 } }, // Steinburg lime render
   ruinspires: {
@@ -717,11 +723,12 @@ const BUILDING_TINTS = {
     roof: { tint: [0.52, 0.43, 0.40], desat: 0.42 },
     wood: [0.57, 0.47, 0.36], stone: [0.71, 0.55, 0.42],
   },
-  foundry: {
-    plaster: { tint: [0.82, 0.71, 0.59], desat: 0.20 },
-    roof: { tint: [0.62, 0.55, 0.52], desat: 0.44, lift: 0.018 },
-    wood: { tint: [0.64, 0.54, 0.43], desat: 0.18 },
-    stone: { tint: [0.94, 0.76, 0.62], desat: 0.18 },
+  foundry: FOUNDRY_BUILDING_TINTS,
+  // Ironworks opts into one masonry experiment; Copper Mesa still inherits
+  // the exact foundry family above. Only the existing brick pigment changes.
+  ironworks: {
+    ...FOUNDRY_BUILDING_TINTS,
+    stone: { tint: [0.80, 0.75, 0.70], desat: 0.34 },
   },
 } satisfies Record<string, Partial<Record<BuildingBucket, BuildingTint>>>;
 
