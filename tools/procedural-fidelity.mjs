@@ -5,6 +5,7 @@
 // profile. This is a QA oracle only; no source vertices enter game code.
 import fs from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -30,29 +31,39 @@ const PRESERVATION_PASS = 99;
 const rows = [];
 const browserErrors = [];
 const metric = (value) => Number.isFinite(value) ? value.toFixed(0) : 'NA';
+// Worktrees may share node_modules. A private optimizer cache prevents one
+// comparison/dev server invalidating another's in-flight dependency URLs.
+let cacheDir = null;
+let server = null;
+let browser = null;
+let page = null;
+let acquisitionFailed = false;
 
-const server = await createServer({
-  root: ROOT,
-  logLevel: 'error',
-  server: { port: 6700 + Math.floor(Math.random() * 220), strictPort:false, hmr:false, watch:null },
-});
-await server.listen();
-const browser = await puppeteer.launch({
-  headless:'new',
-  args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-await page.setViewport({ width:1500, height:800, deviceScaleFactor:1 });
-page.setDefaultTimeout(90000);
-page.on('pageerror', (error) => browserErrors.push(String(error)));
-page.on('console', (message) => {
-  const text = message.text();
-  if (message.type() === 'error' && !text.includes('favicon')) browserErrors.push(text);
-  if (text.includes('glb swap failed')) browserErrors.push(text);
-});
-
-const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
 try {
+  cacheDir = fs.mkdtempSync(path.join(tmpdir(), 'cot-fidelity-vite-'));
+  server = await createServer({
+    root: ROOT,
+    cacheDir,
+    optimizeDeps: { noDiscovery: true },
+    logLevel: 'error',
+    server: { port: 6700 + Math.floor(Math.random() * 220), strictPort:false, hmr:false, watch:null },
+  });
+  await server.listen();
+  browser = await puppeteer.launch({
+    headless:'new',
+    args:['--use-gl=angle','--enable-webgl','--no-sandbox','--disable-dev-shm-usage'],
+  });
+  page = await browser.newPage();
+  await page.setViewport({ width:1500, height:800, deviceScaleFactor:1 });
+  page.setDefaultTimeout(90000);
+  page.on('pageerror', (error) => browserErrors.push(String(error)));
+  page.on('console', (message) => {
+    const text = message.text();
+    if (message.type() === 'error' && !text.includes('favicon')) browserErrors.push(text);
+    if (text.includes('glb swap failed')) browserErrors.push(text);
+  });
+
+  const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
   await page.goto(urlFor(requested?.[0] || 'm1a2'), { waitUntil:'domcontentloaded', timeout:90000 });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)', { timeout:90000 });
   const discovered = await page.evaluate('window.__REFERENCE_IDS');
@@ -123,9 +134,28 @@ try {
       console.log(`[board] ${row.id}`);
     }
   }
+} catch (error) {
+  acquisitionFailed = true;
+  console.error('[fidelity acquisition]', JSON.stringify({
+    url: page?.url() ?? null, error: String(error), browserErrors,
+  }));
+  throw error;
 } finally {
-  await browser.close();
-  await server.close();
+  const cleanupErrors = [];
+  for (const [resource, close] of [
+    ['browser', async () => { if (browser) await browser.close(); }],
+    ['server', async () => { if (server) await server.close(); }],
+    ['cache', () => { if (cacheDir) fs.rmSync(cacheDir, { recursive:true, force:true }); }],
+  ]) {
+    try { await close(); }
+    catch (error) {
+      cleanupErrors.push(error);
+      console.error(`[fidelity cleanup ${resource}]`, String(error));
+    }
+  }
+  if (cleanupErrors.length && !acquisitionFailed) {
+    throw new AggregateError(cleanupErrors, 'fidelity resource cleanup failed');
+  }
 }
 
 const scoredRows = rows.filter((row) => Number.isFinite(row.score));
