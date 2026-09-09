@@ -154,3 +154,22 @@ The early source run and anatomy preflight are not a complete release. The
 composed two-ID release gate remains required before pushing the playable
 changes. Private source meshes and temporary captures remain excluded from
 tracked changes.
+
+## First composed release: targeted gates pass, regression run blocked
+
+The fresh two-ID composed command on `ae57717a8` passed anatomy freshness,
+centering, module alignment/hits, gallery freshness, track duplication,
+round barrels and open bores, nine-view source fidelity, strict geometry,
+track clipping/sweep, contiguity and fittings. Raw geometry minima are
+92.207143 for A7V and 92.031900 for Revolution against the unchanged 92
+floor. Only those two geometry-gate records and ledger rows changed.
+
+The command then failed in npm PRE at the unrelated
+`chieftain10XMk5Foundation.selftest.mjs` immutable Mk5 scene assertion.
+The failed receipt is retained unchanged and is **not** a release pass:
+`.qa-dev/priority-leopard-release-abi9JJ/receipt.json`, SHA-256
+`3ccbe02e4b84a5af2d02671936776a905909e26b24b1e8f78f18055828992c77`.
+All tracked runtime/tool/test inputs remained unchanged throughout that run.
+CORE, POST and the private build were not reached. A fresh complete release
+remains required before publication; neither the targeted passes nor later
+diagnostic continuations waive this regression failure.

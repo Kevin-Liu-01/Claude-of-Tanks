@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-09T01:47:09.655Z",
+ "generatedAt": "2026-09-09T07:10:46.929Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 69,
  "total": 161,
@@ -1536,13 +1536,26 @@
    }
   },
   {
-   "id": "leo2a7v_x",
-   "geoMin": 92.1,
+   "id": "leo2_revolution",
+   "geoMin": 92,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 92.1,
+    "wholeCurves": 92,
+    "dims": 97.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "leo2a7v_x",
+   "geoMin": 92.2,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.2,
     "dims": 92.2,
     "floaters": 100
    },
@@ -1560,19 +1573,6 @@
     "turretCurves": 96.5,
     "wholeCurves": 92.3,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "leo2_revolution",
-   "geoMin": 92.2,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92.2,
-    "dims": 97.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
