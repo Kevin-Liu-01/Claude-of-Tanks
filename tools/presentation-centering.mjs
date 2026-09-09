@@ -9,6 +9,8 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { presentationNumberSource as numberSource, presentationReceiptErrors } from './presentation-receipt.mjs';
+import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
 const update = args.includes('--update');
@@ -37,11 +39,6 @@ const outputPath = resolve(root, 'src/vehicles/presentationAnchors.generated.ts'
 const cacheDir = resolve('/tmp', `cot-centering-vite-${process.pid}`);
 const MAX_RESIDUAL_PX = 0.25;
 const MAX_EXPORTED_RESIDUAL_PX = 0.5;
-
-function numberSource(value) {
-  const rounded = Number(Number(value).toFixed(4));
-  return Object.is(rounded, -0) ? '0' : String(rounded);
-}
 
 function generatedSource(rows) {
   const records = Object.keys(rows).sort().map((id) => (
@@ -169,6 +166,12 @@ try {
     writeFileSync(outputPath, generatedSource(rows));
     console.log(`[presentation-centering] wrote ${ids.length} rendered anchors -> ${outputPath}`);
   } else {
+    const receiptErrors = ids.flatMap(id => presentationReceiptErrors(id,
+      rows[id], rows[id]?.projection,
+      TANK_PRESENTATION_ANCHORS[id], TANK_PRESENTATION_PROJECTIONS[id]));
+    if (receiptErrors.length) {
+      throw new Error(`${receiptErrors.join('\n')}; run npm run tank:centering:update`);
+    }
     if (!selectedIds.length) {
       const expected = generatedSource(rows);
       const current = existsSync(outputPath) ? readFileSync(outputPath, 'utf8') : '';

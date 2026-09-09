@@ -32,6 +32,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/section-slab-bounds.selftest.mjs',
     'tools/board-camera.selftest.mjs',
     'tools/technical-framing.selftest.mjs',
+    'tools/presentation-receipt.selftest.mjs',
     'tools/portrait-camera.selftest.mjs',
     'src/vehicles/sourceXMarkings.selftest.mjs',
     'src/vehicles/trackShoeDimensions.selftest.mjs',
