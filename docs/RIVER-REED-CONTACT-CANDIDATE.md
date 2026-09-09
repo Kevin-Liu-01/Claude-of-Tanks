@@ -66,3 +66,19 @@ caused blank pages: agent-browser 0.34 fingerprints it and restarts its daemon.
 The fixed runner keeps it constant and retains a separate external deadline.
 Short namespace/session names avoid macOS's 103-byte socket limit. None of these
 capture fixes changes game code or disables a visual guard.
+
+## Reed-only release verification
+
+`river-reed-release-r1.yTbFdT` checks clean `687aa19b2`, containing only the
+reed runtime correction over published `1db45b0ad`. The focused reed test,
+normal beached-boat, winter-geometry and river-landing suites, full native TS7,
+scoped Doctor and production build all exit 0. Source pins are unchanged;
+wrapper 88165 / worker 90475 finish and release their FIFO lease. No browser
+is acquired for this CPU/build packet. Existing build chunk warnings and
+Doctor's non-fatal test warnings are not suppressed.
+
+Build index SHA256:
+`2054a0173a7c4ba9df2e6840eb16034ede2168d67f25fbc90526be2418de67ec`.
+The previously inspected Autumn pixels use the identical reed implementation;
+the release merely omits the rejected changes on Coastal/Fjord. This is not a
+full-suite, all-map visual or no-performance-regression certificate.
