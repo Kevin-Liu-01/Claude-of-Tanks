@@ -249,7 +249,7 @@ interface GarageTreeEngineContext {
 interface GarageTreeGeometryBuild {
   readonly trunk: THREE.BufferGeometry;
   readonly foliage: THREE.BufferGeometry;
-  readonly foliageTexture: THREE.CanvasTexture | null;
+  readonly foliageTexture: THREE.Texture | null;
 }
 
 function context2d(
@@ -427,12 +427,14 @@ function finishAlphaTexture(
   floodB: number,
   radialFalloff = false,
   tone: ToneFunction | null = null,
-): THREE.CanvasTexture {
+): THREE.Texture {
   const id = finishAlphaPixels(c, ctx, floodR, floodG, floodB, radialFalloff, tone);
-  ctx.putImageData(id, 0, 0);
-  const t = new THREE.CanvasTexture(c);
+  // Preserve the same straight-alpha edge padding as grass. A Canvas
+  // round-trip would discard RGB wherever radial falloff makes alpha zero.
+  const t = new THREE.Texture(id);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
+  t.needsUpdate = true;
   return t;
 }
 
@@ -658,7 +660,7 @@ export function makeGrassCardTexture(
 // highlights — the old texel-scale leaf mush averaged into "flat acrylic
 // noise" on every card by 15 m (the diorama-prop critique). Distinct readable
 // leaf shapes are what survive minification as foliage.
-function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.CanvasTexture {
+export function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.Texture {
   // MOBILE r1: tier-scaled atlas (painter is K-relative)
   const s = texSize(512), K = s / 256;
   const c = document.createElement('canvas');
@@ -755,7 +757,7 @@ function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | null = n
 }
 
 // Conifer foliage card: fanned needle sprays, muted olive-green.
-function makeNeedleSprayTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.CanvasTexture {
+export function makeNeedleSprayTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.Texture {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -791,7 +793,7 @@ function makeNeedleSprayTexture(rng: RandomSource, tone: ToneFunction | null = n
 // length (base at the bottom). Dense overlapping leaflets fill a contiguous
 // silhouette with a serrated edge so the frond reads as a mass, not sparse
 // scribbles; dry tips, darker underside strokes for depth.
-function makePalmFrondTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.CanvasTexture {
+export function makePalmFrondTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.Texture {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -861,7 +863,7 @@ function makePalmFrondTexture(rng: RandomSource, tone: ToneFunction | null = nul
 }
 
 // Bare-twig card (winter birch crowns / bare shrubs): dark branching strokes.
-function makeTwigTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.CanvasTexture {
+export function makeTwigTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.Texture {
   const s = 256;
   const c = document.createElement('canvas');
   c.width = c.height = s;
@@ -2161,7 +2163,7 @@ function buildDetailedGarageTree(
 ): GarageTreeGeometryBuild {
   const archetype = TREE_ARCHETYPES[species];
   let pair: TreeGeometryPair;
-  let foliageTexture: THREE.CanvasTexture;
+  let foliageTexture: THREE.Texture;
   switch (archetype.family) {
     case 'conifer': {
       const scale = TREE_GEOMETRY_SCALE[species];
@@ -3385,7 +3387,7 @@ function* vegetationBuildSteps(
     texSeed: number;
     nearSeed: number;
     farSeed: number;
-    tex(rng: RandomSource, palette: VegetationPalette): THREE.CanvasTexture;
+    tex(rng: RandomSource, palette: VegetationPalette): THREE.Texture;
     near(index: number, palette: VegetationPalette): TreeGeometryPair;
     far(rng: RandomSource, palette: VegetationPalette, index: number): FarTreeGeometryPair;
   }
@@ -3502,7 +3504,7 @@ function* vegetationBuildSteps(
     return veg.palettes.oak || {};
   };
 
-  const foliageTex = {} as Record<Species, THREE.CanvasTexture>;
+  const foliageTex = {} as Record<Species, THREE.Texture>;
   const foliageMats = {} as Record<Species, THREE.MeshStandardMaterial>;
   const foliageDepthMats = {} as Record<Species, THREE.MeshDepthMaterial>;
   function* createFoliageMaterials(): Generator<BuildYield, void, void> {

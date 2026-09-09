@@ -161,7 +161,8 @@ Object.defineProperty(globalThis, 'document', {
       const canvas = { width: 0, height: 0 };
       const context = {
         clearRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
-        getImageData: () => ({ data: new Uint8ClampedArray(canvas.width * canvas.height * 4) }),
+        getImageData: () => ({ width: canvas.width, height: canvas.height,
+          data: new Uint8ClampedArray(canvas.width * canvas.height * 4) }),
         putImageData() {},
         set strokeStyle(value) { strokes.push(value); },
       };
@@ -199,7 +200,7 @@ assert.ok(colors.every((color) => color.g > Math.max(color.r, color.b) * 1.6),
 const source = await readFile(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.equal((source.match(/texture2D\(/g) || []).length, 4,
   'foliage detail stays within the existing four texture-fetch expressions');
-assert.equal((source.match(/new THREE\.(?:Canvas|Data)Texture\(/g) || []).length, 5,
+assert.equal((source.match(/new THREE\.(?:CanvasTexture|DataTexture|Texture)\(/g) || []).length, 6,
   'no extra texture source is introduced by the lighting repair');
 assert.doesNotMatch(source, /diffuseColor\.rgb \+= diffuseColor\.rgb \* rim/,
   'camera-angle albedo glow cannot return alongside energy-normalized scattering');

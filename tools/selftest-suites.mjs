@@ -737,6 +737,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/civilianVehicleGeometry.selftest.mjs',
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
+    'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
     'src/world/environmentSurfaceColor.selftest.mjs',
     'src/world/horizonResources.selftest.mjs',
