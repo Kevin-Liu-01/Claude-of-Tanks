@@ -43,6 +43,7 @@ interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
+  getWaterSurfaceHeightAt?(x: number, z: number): number;
   getGroundType?(x: number, z: number): string;
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
@@ -1416,9 +1417,12 @@ export function createFx(
       const side = k === 1 || k === 2 ? 1 : -1, forward = k < 2 ? -1 : 1;
       const x = pos.x + side * rx * hw + forward * fx2 * hl;
       const z = pos.z + side * rz * hw + forward * fz2 * hl;
-      const depth = water ? heightField?.getWaterDepthAt?.(x, z) ?? 0 : 0;
+      const surfaceY = water
+        ? heightField?.getWaterSurfaceHeightAt?.(x, z)
+          ?? groundY(x, z) + (heightField?.getWaterDepthAt?.(x, z) ?? 0)
+        : groundY(x, z);
       arr[v + k * 3] = x;
-      arr[v + k * 3 + 1] = groundY(x, z) + depth + (water ? 0.065 : 0.035);
+      arr[v + k * 3 + 1] = surfaceY + (water ? 0.065 : 0.035);
       arr[v + k * 3 + 2] = z;
     }
     const b = printBirth.array;
@@ -3581,7 +3585,8 @@ export function createFx(
   ): void {
     if (intensity > 0.06 && !frozen) stampTrackPrint(pos, dir, true);
     if (frozen || rng() > intensity * (0.72 + waterMask * 0.36)) return;
-    const gy = groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0);
+    const gy = heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z)
+      ?? groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0);
     _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.45;
     _puffO.pos[1] = Math.max(pos.y, gy) + 0.20 + waterMask * 0.16;
     _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.45;

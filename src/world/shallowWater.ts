@@ -5,10 +5,47 @@ import { waterContactProfile } from './waterContact.ts';
 const GRID_STEP_M = 8;
 const MIN_COVERAGE = 0.002;
 
+export interface ShallowWaterGeometry {
+  geometry: THREE.BufferGeometry;
+  heightAt(x: number, z: number): number;
+}
+
+function surfaceCell(value: number, half: number, step: number, segments: number): number {
+  let cell = Math.min(segments - 1, Math.max(0, Math.floor((value + half) / step)));
+  // Match the packed Float32 X/Z boundaries, including non-integral grid steps.
+  if (cell > 0 && value < Math.fround(cell * step - half)) cell--;
+  else if (cell < segments - 1 && value >= Math.fround((cell + 1) * step - half)) cell++;
+  return cell;
+}
+
+function waterHeightSampler(
+  heights: Float32Array,
+  admitted: Uint8Array,
+  field: Pick<HeightField, 'size' | 'getHeightAt'>,
+  segments: number,
+): (x: number, z: number) => number {
+  const count = segments + 1, step = field.size / segments, half = field.size / 2;
+  const boundary = Math.fround(half);
+  return (x, z) => {
+    if (!Number.isFinite(x) || !Number.isFinite(z)
+      || x < -boundary || x > boundary || z < -boundary || z > boundary) return field.getHeightAt(x, z);
+    const cx = surfaceCell(x, half, step, segments), cz = surfaceCell(z, half, step, segments);
+    const cell = cz * segments + cx;
+    if (!(admitted[cell >> 3] & (1 << (cell & 7)))) return field.getHeightAt(x, z);
+    const x0 = Math.fround(cx * step - half), x1 = Math.fround((cx + 1) * step - half);
+    const z0 = Math.fround(cz * step - half), z1 = Math.fround((cz + 1) * step - half);
+    const u = (x - x0) / (x1 - x0), v = (z - z0) / (z1 - z0);
+    const key = cz * count + cx;
+    const a = heights[key], b = heights[key + 1], c = heights[key + count], d = heights[key + count + 1];
+    return u + v <= 1 ? a * (1 - u - v) + b * u + c * v
+      : b * (1 - v) + c * (1 - u) + d * (u + v - 1);
+  };
+}
+
 /** One bounded, static surface, not a fluid solver or another scene/reflection pass. */
 export function* shallowWaterGeometrySteps(
   field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt'>,
-): Generator<void, THREE.BufferGeometry | null, void> {
+): Generator<void, ShallowWaterGeometry | null, void> {
   const segments = Math.ceil(field.size / GRID_STEP_M);
   const count = segments + 1, step = field.size / segments, half = field.size / 2;
   const wet = new Float32Array(count * count);
@@ -17,6 +54,7 @@ export function* shallowWaterGeometrySteps(
     yield;
   }
   const slots = new Int32Array(count * count).fill(-1);
+  const admitted = new Uint8Array(Math.ceil(segments * segments / 8));
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
   function vertex(x: number, z: number): number {
     const key = z * count + x;
@@ -36,6 +74,8 @@ export function* shallowWaterGeometrySteps(
         && field.getWaterMaskAt((x + 0.5) * step - half, (z + 0.5) * step - half) <= MIN_COVERAGE) continue;
       const a = vertex(x, z), b = vertex(x + 1, z), c = vertex(x, z + 1), d = vertex(x + 1, z + 1);
       indices.push(a, c, b, b, c, d);
+      const cell = z * segments + x;
+      admitted[cell >> 3] |= 1 << (cell & 7);
     }
     yield;
   }
@@ -45,7 +85,13 @@ export function* shallowWaterGeometrySteps(
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();
-  return geometry;
+  const packedPositions = geometry.getAttribute('position');
+  for (let key = 0; key < slots.length; key++) wet[key] = slots[key] < 0 ? NaN : packedPositions.getY(slots[key]);
+  // Reuse the wet grid as exact packed heights; admission cannot be inferred
+  // from four populated corners around an omitted cell. At 1024 m these two
+  // retained buffers total 66,564 + 2,048 = 68,612 bytes. The separate factory
+  // captures neither temporary slots/arrays nor the rendered geometry owner.
+  return { geometry, heightAt: waterHeightSampler(wet, admitted, field, segments) };
 }
 
 export interface ShallowWaterSurface {

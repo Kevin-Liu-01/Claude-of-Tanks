@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import ts from 'typescript';
+import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { mulberry32 } from './particles.ts';
 
@@ -104,9 +104,11 @@ assert.throws(() => verifyPowder(oldDust), assert.AssertionError, 'old large ear
 // Actual ring writer uses the same four vertices/attribute and old water flag.
 function verifyPrints() {
   const attr = size => new THREE.Float32BufferAttribute(new Float32Array(size), 1);
-  const bindings = { MAX_PRINTS: 96, printCenters: new Float32Array(192).fill(1e9),
+  let time = 7;
+  const bindings = { MAX_PRINTS: 96, PRINT_DUR: 12, printCenters: new Float32Array(192).fill(1e9),
     printPos: attr(1152), printBirth: attr(384), printSurface: attr(384),
-    groundY: (x, z) => x * .01 + z * .02, particles: { getTime: () => 7 } };
+    groundY: (x, z) => x * .01 + z * .02, particles: { getTime: () => time },
+    heightField: { getWaterDepthAt: () => .58 } };
   const stamp = compile(`let printCursor=0; ${functions(['stampTrackPrint'])} return stampTrackPrint;`, bindings);
   const arrays = [bindings.printPos.array, bindings.printBirth.array, bindings.printSurface.array];
   for (let i = 0; i < 120; i++) {
@@ -117,12 +119,34 @@ function verifyPrints() {
       assert.equal(bindings.printSurface.array[slot * 4 + k], type);
       assert.equal(bindings.printBirth.array[slot * 4 + k], 7);
       const at = slot * 12 + k * 3, x = arrays[0][at], z = arrays[0][at + 2];
-      assert.ok(Math.abs(arrays[0][at + 1] - bindings.groundY(x, z) - (type === 1 ? .065 : .035)) < 1e-5);
+      assert.ok(Math.abs(arrays[0][at + 1] - bindings.groundY(x, z) - (type === 1 ? .645 : .035)) < 1e-5);
     }
   }
   [bindings.printPos, bindings.printBirth, bindings.printSurface].forEach((attr, i) => {
     assert.equal(attr.array, arrays[i], 'ring never replaces its retained buffers');
   });
+  const repeat = new THREE.Vector3(700, 0, 0);
+  stamp(repeat, dir, false, 3);
+  const dryVersion = bindings.printBirth.version;
+  time = 12; stamp(repeat, dir, false, 3);
+  assert.equal(bindings.printBirth.version, dryVersion, 'snow retains the full 12-second dry-print duration');
+  time = 19.1; stamp(repeat, dir, false, 3);
+  assert.equal(bindings.printBirth.version, dryVersion + 1, 'expired dry contact can be stamped again');
+  repeat.x += 3; stamp(repeat, dir, true);
+  const wetVersion = bindings.printBirth.version;
+  time = 23.1; stamp(repeat, dir, true);
+  assert.equal(bindings.printBirth.version, wetVersion);
+  time = 24; stamp(repeat, dir, true);
+  assert.equal(bindings.printBirth.version, wetVersion + 1, 'water alone expires at 4.6 seconds');
+  bindings.heightField.getWaterSurfaceHeightAt = (x, z) => bindings.groundY(x, z) + .23;
+  repeat.x = 710; stamp(repeat, dir, true);
+  const visibleSlot = bindings.printCenters.findIndex((x, i) => i % 2 === 0 && x === 710) / 2;
+  assert.ok(visibleSlot >= 0);
+  for (let k = 0; k < 4; k++) {
+    const at = visibleSlot * 12 + k * 3, x = arrays[0][at], z = arrays[0][at + 2];
+    assert.ok(Math.abs(arrays[0][at + 1] - bindings.groundY(x, z) - .295) < 1e-5,
+      'wet corners use the rendered surface even when authored depth differs');
+  }
   const reset = body('resetAll');
   for (const statement of ['printBirth.array.fill(-1e9);', 'printSurface.array.fill(0);',
     'printCenters.fill(1e9);', 'printCursor = 0;']) assert.ok(reset.includes(statement));
