@@ -118,17 +118,19 @@ function assertCurrentPolders(ring, index) {
     currentPolders[index], 'Current Polders buffers and metadata remain byte-identical');
 }
 
-// Preserve ALL original digests, including already-capped Skybridge. Only
-// declared Polders/Titan historical inputs differ inside this old aggregate.
+// Pre-restoration 28d5fd378 executable, excluding Copper and restored Verdant.
+// originalVerdantHorizon.selftest independently guards its historical bytes.
+// Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 const previous = [
-  '4de06b66a9c7c529a316a2ba08e36ced902b1ba84ad6244779f3dcd7f9108c16',
-  'cc5598e54f4a2b7ed2a5990920b6e2bb2f56cf575483f955bd9f796efab3cb4a',
-  'b51bde98a0b87b1d47690a842e806f54bc433a687facc779f3f536f78d7fe5be',
+  '0fec8c52ad8151041650f650c3828576946f1cbb5cb4752a470967789efa96d5',
+  '45a822319c3c326fcd06336e53dfcb16af141a1e77992f5f042966689506bfcb',
+  '0463fce8b97028463b74ffcc29dbc9f3c0761004e559b01cf85fab1362f55fd3',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');
   const unrelatedMutation = createHash('sha256');
   for (const id of MAP_IDS) {
+    if (id === 'verdant') continue;
     const config = getMapConfig(id), ring = sampleHorizonGeometry(config, seed);
     if (id !== 'copper_mesa') {
       const historicalRing = id === 'polders' ? sampleHorizonGeometry({ ...config,
@@ -136,9 +138,9 @@ for (const [index, seed] of seeds.entries()) {
         : id === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
           horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
       appendHorizonReceipt(hash, id, historicalRing);
-      const mutated = id === 'verdant'
+      const mutated = id === 'desert'
         ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;
-      if (id === 'verdant') mutated.positions[0] += 1;
+      if (id === 'desert') mutated.positions[0] += 1;
       appendHorizonReceipt(unrelatedMutation, id, mutated);
       if (id === 'polders') {
         assert.equal(config.horizon.amp, 0.18, 'Current Polders amplitude cannot revert to its old mountain profile');
@@ -177,7 +179,7 @@ for (const [index, seed] of seeds.entries()) {
       assert.ok(capQuads >= 35 && area > 150000, 'Both ranges have finite attached cap surfaces');
     }
   }
-  assert.equal(hash.digest('hex'), previous[index], 'Declared historical Polders/Titan inputs preserve the original other29 receipt');
+  assert.equal(hash.digest('hex'), previous[index], 'Baseline other28 receipt remains exact with historical Polders/Titan inputs');
   assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), previous[index]),
     { code: 'ERR_ASSERTION' }, 'Historical Polders attribution never hides unrelated geometry drift');
 }
