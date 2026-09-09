@@ -864,6 +864,15 @@ function _mustReplace(src: string, anchor: string, replacement: string): string 
   return out;
 }
 
+function cropAttributeNormal(shader: MaterialShader): void {
+  // Crop cards carry authored up normals on both faces, with no normal/bump
+  // map. Keep Three's transformed normal path, minus its backface inversion.
+  const normalChunk = _mustReplace(THREE.ShaderChunk.normal_fragment_begin,
+    'normal *= faceDirection;', '');
+  shader.fragmentShader = _mustReplace(shader.fragmentShader,
+    '#include <normal_fragment_begin>', normalChunk);
+}
+
 function* makeGrimeTexture(
   noi: SimplexNoise,
   anisotropy: number,
@@ -4713,7 +4722,8 @@ ${snowCap ? `
       vertexColors: true, roughness: 1.0, metalness: 0.0,
     });
     cropMat.envMapIntensity = 0.5;
-    engineCtx.setupShadowMaterial(cropMat);
+    engineCtx.setupShadowMaterial(cropMat, cropAttributeNormal);
+    cropMat.customProgramCacheKey = () => 'world-crop-authored-normal-v1';
     const merged = mergeGeometries(cropGeos, false);
     // Explicit up normals avoid alpha-strip lighting and missing-normal crashes.
     const nPos = merged.attributes.position.count;
