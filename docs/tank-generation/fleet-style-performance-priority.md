@@ -80,8 +80,11 @@ roller, paint or triangle receipt therefore cannot close their review.
   links, LOW gear budget and HIGH-to-LOW ratio still fail. Neither candidate
   is admitted for fleet rollout; do not combine their best metrics.
 - A later T-90A X native-stock pilot meets the local 60 mm pad / 20 mm crest
-  dimensions but still measures only about 93 mm of assembled visible tread
+  dimensions but still measures only about 93 mm of outboard shoe stock
   at HIGH, versus 120 mm on the measured same-nation original controls.
+  The separate inner-carrier-face to outer-crest assembly depth is about
+  99.5 mm versus 152 mm. Those are different physical measurements, not
+  competing estimates of one dimension; matching only one is insufficient.
   This is **not country-matched thickness**. The next fit must reproduce the
   effective visible tread gauge at both HIGH and LOW, while retaining fitted
   internal guide geometry, axle stations and positive moving-stock clearance.
@@ -196,6 +199,13 @@ Measure instantiated stock in its real rig/root scale, including the carrier,
 web, pad and crest rather than just config values. Separate the visible
 outboard tread gauge from inward guide horns; do not thicken hidden horns to
 claim a visual match or reproduce an original LOW-detail thinning mistake.
+For each comparison, retain the actual selected near/far mesh, detail level,
+camera distance, track phase, signed outboard axial section and local loaded-run
+normal. Report the shoe's own radial span and the inner-carrier-face to outer
+crest depth separately, alongside its solid section, pin extrema and full
+collision envelope. A hidden far LOD must not set the visible comparison.
+Use the complete mesh/instance/rig/world transform, not `root.scale` alone:
+the original FV4034's authored 1.1 factor appears inside that transform chain.
 Adjust the actual smart
 shoe/band primitives, not just a cosmetic outer belt. Recompute the whole
 moving envelope, upper run and end-wheel tangency after thickness changes.
