@@ -15,6 +15,10 @@ worktrees, so the counts below are snapshots, not a frozen repository lease.
 Post-snapshot publication: MBT-70 fender checkpoint
 **1f412d2d28f3b55ac5cb0c64469a6907795a0d21** was verified at origin/main
 at 17:34 UTC. This does not change the pinned comparison used for the counts.
+Subsequent publication through **9dc23a5a173e3d45a488b4b6ec3317150f63bd4d**
+also preserved the six-ID canvas/smoke integration, refreshed only those
+assets, and published this inventory. **3398ecaa2** corrected direct MBT-70
+test registration. These are published checkpoints, not missing local work.
 
 - Initial registry: 458 worktrees, 270 existing; 149 tank/fleet/gear/fidelity
   name matches. The subsequent all-existing status scan covered 271 paths,
@@ -47,7 +51,7 @@ untracked Git status was clean.
 | Work / location under W | Exact local checkpoint | Classification and remaining boundary |
 |---|---|---|
 | Nine-tank bodywork + A7V/Revolution | cot-nine-tank-verified-integration-20260909, 6bba0ee6d2cba74942878e0e420c7bcc96db71c4 | Published history. The priority source/anatomy/assets patches at 79d887d19 / 748c38092 / ae57717a8 are git-cherry equivalent to origin. Old f4512b2f5 is an unpublished *hold note*, superseded by the completed release, not a missing runtime implementation. |
-| Canvas and smoke, separately owned | cot-side-fender-preservation-20260909, 9c3bd346a; canvas 91987740f + cf80be36d, smoke 22409bce7, evidence 381a9fec8 | Local completed preservation checkpoint; owner reports three focused tests and types PASS. Parent integration is local, assets/push pending. Not part of pinned origin. Original smoke 0ef0abbb9 and integrated f6689bde are copies of this same work, not two missing fixes. |
+| Canvas and smoke, separately owned | cot-side-fender-preservation-20260909, 9c3bd346a; canvas 91987740f + cf80be36d, smoke 22409bce7, evidence 381a9fec8 | Published after the pinned scan, through 9dc23a5a1: T-90M X / Vladimir X canvas and A7V X / A6M X / A4M X / Revolution smoke. Three focused tests, types, scoped assets/geometry/muzzle checks PASS. Original smoke 0ef0abbb9 and integrated f6689bde are copies of this same work, not two missing fixes. |
 | Leclerc X / Strv 122 X wheel tessellation | cot-source-wheel-detail-budget-20260909, 648518cf99fa6ad4d7e6207d9ee43a34177a6a06 + 5ca30a7fe4dfae7632e5d37e00a061086d76a25b | Local completed focused/native checkpoint; composed release pending. Integrated 875525048 + Strv history 2bffdc13a are the same feature lineage, not another optimization. |
 | Five-model efficient rollers | cot-leopard-efficient-rollers-20260909, bfdc4f1d131d1ea6b4c75ee44db8658936c6042d + 0121238b29e9c3cb4e3fa930e9d2bf5c804da355 | Partially published: A7V/Revolution released separately. A4M X, A5 X and KF51 X remain local. Full-five measured-motion/source-contract/type proof passed; native/anatomy/composed qualification pending for the remaining three. Old 2748eca9c / 9c7ea6059 fittings are superseded, not preferred restore targets. |
 | Merkava Mk3D/Mk4 X rollers | cot-merkava-return-rollers-20260909, eac96616a4c0241cbb3af3fa1e28037855f512c9; runtime repair a6a3c85708bbd7d0e660a2484fb706972c1813e9 | Local completed measured-fit/history/types checkpoint, not released. Preserve earlier failed e901/65f262bb3 evidence; variant-specific roller count remains inferred. GPU/source scoring and composed release pending. |

@@ -189,6 +189,16 @@ The recovery now registers that test directly and removes its duplicate
 parent import; the unchanged geometry test still runs once. The corrected
 hygiene check passes on the current publication tree.
 
+The corrected CORE/POST continuation on the frozen MBT-70 qualification tree
+also stopped: `src/game/loadingIntent.selftest.mjs:161` expects the old exact
+`ensureWorld(..., { precompile: false })` source spelling, while that tree
+already includes `atmosphere: 'covered-battle'`. This is outside the recovered
+vehicle changes. Its passing preceding CORE entries do not qualify the
+unexecuted remainder or POST phase; the full lifecycle remains **FAIL**, not
+PASS. The log is `.qa-dev/mbt70-core-post-resume.log` in
+`cot-mbt70-upper-fenders-20260909`. No unrelated loading behavior or assertion
+was changed to publish the authorized vehicle checkpoint.
+
 ### Whole-task preservation inventory
 
 Read-only ancestry reconciliation against `47e86743d` confirmed these existing
