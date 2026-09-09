@@ -47,6 +47,7 @@ export default {
     bushCount: 0.5, bushSpecies: 'oak',
   },
   props: {
+    sourcedPalette: 'ironworks',
     plan: ['firestation', 'foundryoffice', 'containerRow', 'gantry', 'stack', 'shed',
       'watertower', 'factory', 'depot', 'warehouse', 'containerRow', 'cornershop',
       'rowhouse', 'factory', 'ruin', 'stack', 'depot', 'gantry',
