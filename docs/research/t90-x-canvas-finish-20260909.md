@@ -15,3 +15,11 @@ negative control. CPU canvas fixtures are not native pixel evidence.
 This is a narrow material checkpoint, not completion of fleet gear/performance
 work or a complete release gate. The original fixture failure is not counted
 as a pass; the corrected test passed in session 41749 on 2026-09-09 UTC.
+
+The composed canvas/Leopard-smoke checkpoint passed TypeScript and 48 native
+views: six IDs × HIGH/LOW × factory/winter × front-left/right at 8 m, 1200 ×
+800. All paired accessory finishes stayed invariant across camouflage changes.
+The T-90M winter boot, Vladimir factory boot and both Leopard launcher frames
+were visually reviewed. Raw images and frozen-input receipts are local-only in
+`.qa-dev/cloth-smoke-native-20260909`; session 64844 completed successfully.
+This adds native material/attachment evidence, not a full release PASS.
