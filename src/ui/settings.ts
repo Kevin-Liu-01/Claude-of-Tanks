@@ -37,7 +37,7 @@ import {
   SETTINGS_OPTION_ICONS,
   type SettingsIconSpec,
 } from './settingsIcons.ts';
-import { isAnyModalOpen } from './modal.ts';
+import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import {
@@ -523,7 +523,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // --- DOM ---------------------------------------------------------------------
   const root = el('div', 'cot-settings');
   root.innerHTML =
-    `<div class="cot-set-panel">` +
+    `<div class="cot-set-panel" role="dialog" aria-modal="true" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
     `<span class="cot-set-paused">${t('settings.paused')}</span>` +
     `<button class="cot-set-close" type="button" title="${t('settings.close.title')}">&#10005;</button></div>` +
@@ -1265,6 +1265,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // While the panel is open it owns the keyboard: nothing leaks to the HUD
     // shell hotkeys or the garage's Enter-to-battle handler behind it.
     e.stopPropagation();
+    containModalTab(e, root, requiredElement<HTMLButtonElement>(root, '.cot-set-close'));
     if (e.code === 'Escape') {
       e.preventDefault();
       if (conflict) clearConflict();
@@ -1353,6 +1354,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // battle to resume — the garage gear context labels the same button CLOSE.
     resumeBtn.textContent = canLeave ? t('settings.resume') : t('settings.close.title');
     root.classList.add('open');
+    requiredElement<HTMLButtonElement>(root, '.cot-set-close').focus({ preventScroll: true });
     updateScrollFades(); // measured after display flips — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
     window.addEventListener('keyup', onPanelKeyUp, true);

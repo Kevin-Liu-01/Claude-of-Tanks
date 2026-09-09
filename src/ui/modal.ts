@@ -15,6 +15,20 @@ export const MODAL_FOCUSABLE_SELECTOR = [
 ].join(',');
 
 const MODAL_SIZES = new Set(['small', 'medium', 'large', 'wide']);
+
+/** Shared keyboard boundary for the modal shell and in-battle Settings. */
+export function containModalTab(event: KeyboardEvent, panel: HTMLElement, fallback: HTMLElement): void {
+  if (event.key !== 'Tab') return;
+  const focusable = [...panel.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
+    .filter((node) => !node.hidden && node.getClientRects().length && node.getAttribute('aria-hidden') !== 'true');
+  const first = focusable[0] || fallback;
+  const last = focusable.at(-1) || fallback;
+  const outside = !panel.contains(document.activeElement);
+  if (outside || (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus({ preventScroll: true });
+  }
+}
 export type ModalSize = 'small' | 'medium' | 'large' | 'wide';
 
 export interface ModalOpenOptions {
@@ -263,23 +277,7 @@ export function createModal({
       controller.close();
       return;
     }
-    if (event.key !== 'Tab') return;
-    const focusable = [...panel.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)]
-      .filter((node) => !node.hidden && node.getClientRects().length && node.getAttribute('aria-hidden') !== 'true');
-    if (!focusable.length) {
-      event.preventDefault();
-      closeButton.focus();
-      return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    containModalTab(event, panel, closeButton);
   });
   return controller;
 }

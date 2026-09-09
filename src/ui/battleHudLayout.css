@@ -1,0 +1,116 @@
+/* One event-measured lane per side: rosters above, driving controls below.
+   These selectors intentionally outrank battle-lazy injected component CSS. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
+  max-width:32vh;max-height:32vh;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost,
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
+  top:var(--hud-right-top);right:12px;bottom:auto;width:var(--hud-side-width);
+  max-height:var(--hud-right-height);min-height:0;overflow:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:safe center}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost:empty{pointer-events:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-shrink:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:8px;flex-wrap:wrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:3px 6px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .b{width:auto;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .z{text-align:right}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag{max-width:100%;overflow:hidden}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud .cot-si-toasthost{
+  top:var(--hud-left-top);bottom:auto;left:12px;width:var(--hud-side-width);
+  min-height:0;height:var(--hud-toast-height);overflow:hidden;justify-content:flex-start;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-toast{flex:0 0 48px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='0'] .cot-si-toasthost{visibility:hidden}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='1'] .cot-si-toast:nth-last-child(n+2),
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud[data-toast-rows='2'] .cot-si-toast:nth-last-child(n+3){display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat{
+  left:12px;top:var(--hud-chat-top);bottom:auto;transform:none;
+  width:var(--hud-side-width);min-width:0;max-height:var(--hud-chat-height);
+  grid-template-rows:minmax(0,1fr) auto;gap:4px;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-log{
+  min-height:0;max-height:max(0px,calc(var(--hud-chat-height) - 62px));overflow:auto;
+  overscroll-behavior:contain;scrollbar-width:thin;pointer-events:auto;justify-content:normal;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-name{
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-message{grid-template-columns:minmax(0,1fr);gap:3px;flex-shrink:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-controls{min-width:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-count{bottom:-11px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='compact']:not(.cot-touch-layout) .cot-er{min-height:0;padding-block:2px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short']:not(.cot-touch-layout) .cot-ear{display:none}
+/* A narrow mouse window still needs all six keyboard/click actions. Move its
+   status instruments above that tray, instead of letting the tray hit them. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shells{
+  left:auto;right:8px;bottom:8px;transform:none;gap:4px;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-shell,.cot-con){width:44px;height:52px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-dp{
+  left:8px;bottom:80px;transform:scale(.75);transform-origin:left bottom;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-drive{
+  left:140px;bottom:80px;transform:scale(.75);transform-origin:left bottom;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-height='short'] .cot-dp canvas{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone']{--hud-side-width:calc(50vw - 20px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-diag{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-controls{padding:4px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-send{min-width:42px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-sub{height:auto;flex-wrap:wrap;gap:3px}
+/* The full report is a scrollable reader; it never paints over the map. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid #f0a030;outline-offset:2px}
+
+/* Tablet mouse layouts cannot fit health, speed, six actions and a map on
+   one row. Keep the ammo tray at floor level and lift the two instruments. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-shells{
+  left:12px;right:auto;bottom:12px;transform:none;gap:4px;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) :is(.cot-shell,.cot-con){width:48px;height:52px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:84px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{transform:translate(-50%,-50%) scale(.7)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:80px}
+/* Keep touch health inside the gap between thumbs; the old inline schematic
+   width overrode the responsive HP-only width and hit the joystick. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-dp{left:270px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(112px,30vw,150px)!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:172px}
+/* Spectating has no driving/weapon actions. Keep just navigation and the
+   spectator strip at the floor, leaving chat above it. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating :is(.cot-dp,.cot-drive,.cot-touch .joy,.cot-touch .round){display:none!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-spec{
+  left:12px;right:auto;bottom:12px;width:calc(100vw - 24px);transform:none;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-spec.in{transform:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-width='compact'] .cot-prebattle{width:calc(100vw - 248px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-special{
+  left:auto;right:12px;bottom:84px;transform:none;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-width='phone'] .cot-special{bottom:184px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'] .cot-prebattle{width:calc(100vw - 132px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-prebattle{width:calc(100vw - 420px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-special{
+  bottom:calc(max(22px,env(safe-area-inset-bottom)) + 174px);
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-special{right:182px}
+
+/* Debrief actions get their own row. Only the report scrolls, so the last
+   combatant can never disappear behind a fixed Battle Again/Garage footer. */
+body[data-cot-width][data-cot-height][data-cot-input] .cot-es{
+  height:100dvh;box-sizing:border-box;padding:12px var(--cot-edge);overflow:hidden;
+}
+body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-report{
+  flex:1 1 0;min-height:0;max-height:600px;overflow:auto;overscroll-behavior:contain;
+  scrollbar-width:thin;pointer-events:auto;
+}
+body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
+  position:relative;inset:auto;flex:0 0 auto;margin:8px 0 0;padding:4px 0;
+  width:min(1160px,100%);justify-content:center;
+}
+/* Chat and touch controls are siblings of the HUD, so its cinematic veil
+   alone cannot hide them during the killcam/results handoff. */
+body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-aim){visibility:hidden!important;pointer-events:none!important}
