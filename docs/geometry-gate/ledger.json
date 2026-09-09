@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-09T11:00:04.924Z",
+ "generatedAt": "2026-09-09T17:10:07.872Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 69,
+ "passed": 68,
  "total": 161,
  "rows": [
   {
@@ -1132,6 +1132,19 @@
    }
   },
   {
+   "id": "mbt70",
+   "geoMin": 89.2,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 89.2,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t64bv1",
    "geoMin": 89.5,
    "gatePassed": false,
@@ -1225,16 +1238,6 @@
     "turretCurves": 90.6,
     "stations": 90.7,
     "dims": 95.9,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "mbt70",
-   "geoMin": 90.1,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 90.1,
-    "dims": 100,
     "floaters": 100
    }
   },
