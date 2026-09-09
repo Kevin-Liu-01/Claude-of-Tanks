@@ -84,13 +84,19 @@ published work; it is not proof that every line is missing on main.
 
 The large second-wave dirty tree is mostly already accounted for: of its 355
 changed vehicle/fidelity source paths, **313 equal current origin bytes and
-41 equal historical origin blobs**. Only the old core amalgam differs
-(97 added / 156 removed lines versus pinned main). Do not publish the 726-file
-dirty tree wholesale.
+41 equal historical origin blobs**. The remaining old core amalgam differs
+(97 added / 156 removed lines versus pinned main), but a subsequent complete
+hunk/API review against `1f412d2d2` identified no missing authored behavior.
+Its inline ERA deduplication and unconditional receipts are predecessors of
+the current helper/default-true paths. The remaining differences omit later
+published floor certificates, efficient rollers, paint semantics, disposal and
+build optimizations. This is an obsolete combination, not a missing whole-core
+replacement; no new runtime tests were claimed by that read-only review.
+Do not publish the 726-file dirty tree wholesale.
 
 | Absolute worktree + relative file | Blob | Feature / classification |
 |---|---|---|
-| /Users/kevinliu/.codex/worktrees/cot-source-x-second-wave-20260906 / src/vehicles/tankFactoryCore.ts | 3185598d4d011fa2aebbb7f0f15462198d3e20f0 | Old source-X integration amalgam; pending hunk review, not a new whole-core replacement. |
+| /Users/kevinliu/.codex/worktrees/cot-source-x-second-wave-20260906 / src/vehicles/tankFactoryCore.ts | 3185598d4d011fa2aebbb7f0f15462198d3e20f0 | Complete hunk/API review found obsolete combinations/current equivalents, not missing authored behavior. Original file remains untouched; do not import. |
 | /Users/kevinliu/claude-of-tanks-bwp1 / src/vehicles/afvFamily.js | 107a877ae3c8598efa386c69bedf7cd95a303a3e | Old Upiór → BWP-1 naming precursor. Current main already has the BWP-1 ID/name in afvFamily.ts and tankLabels.ts; no blind restoration. |
 | Same bwp1 tree / src/vehicles/profiles/afvFamily.js | 23d30c2382b833be22e2aac906d3d5d4cffd8f1e | BWP-1 turret number decal precursor. |
 | Same bwp1 tree / src/vehicles/tankLabels.js | 4d48f7fb819ae9d6c8d29529579520d30edc5070 | BWP-1 label/aliases precursor. |
