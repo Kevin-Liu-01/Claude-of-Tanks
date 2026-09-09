@@ -7808,6 +7808,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'], gunMountCloth: ['gunG', 'canvasCloth'],
+  // Continuous mantlet boots are silhouette skin, not distant-LOD stowage.
+  gunMountCanvasSkin: ['gunG', 'canvasCloth'],
   gunMountGlass: ['gunG', 'glass'],
   // Opt-in independent twin-gun tubes. Only authored multi-muzzle profiles
   // use these buckets; the rest of the fleet retains the merged recoilG path.
@@ -7865,6 +7867,7 @@ const CAMO_BUCKETS = new Set([
 const LOD0_KEEP = new Set([
   'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
+  'gunMountCanvasSkin',
 ]);
 
 // Baked per-vertex weathering for camo surfaces: vertical dust gradient (heavy
