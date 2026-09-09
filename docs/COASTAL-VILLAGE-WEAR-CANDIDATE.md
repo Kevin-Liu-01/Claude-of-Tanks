@@ -1,7 +1,8 @@
 # Coastal village-wear candidate
 
-This is an unreviewed visual candidate, not a native-art or performance acceptance.
-It starts from `c97e20fd249ac35351a35a3549c63858488c0ab3` and leaves the earlier
+This is a native-image-reviewed, scoped village-ground improvement. Complete
+performance/memory acceptance is separate. It starts from
+`c97e20fd249ac35351a35a3549c63858488c0ab3` and leaves the earlier
 accepted worn-sand source/captures untouched.
 
 ## Intent and scope
@@ -52,8 +53,8 @@ not zero added JavaScript memory. No additional retained raster or scratch
 array is created. Existing bounded polygon stamping visits at most 7,996/2,162
 bounding-box pixels on Coastal desktop/mobile and 10,384/2,766 on Saltwind;
 the conservative maximum segment checks are 62,416/16,863 and 116,309/30,735.
-Road/water rejection reduces actual work. No construction timing or retained
-heap comparison has been measured for this candidate.
+Road/water rejection reduces actual work. A scoped mask-cost comparison is
+recorded below; complete construction time and retained heap are not certified.
 
 ## Verification
 
@@ -92,5 +93,51 @@ Corrected frozen receipt SHA256:
 New mask-test log SHA256:
 `e985d063c28bf1f5043bec55a1368f6ce219f7f90a1b1db662fbcf32e0e500fc`.
 
-No build, native Canvas/browser capture, timing acceptance, push, or visual
-approval has occurred for this candidate.
+## Native visual acceptance
+
+Clean candidate9eb055905f35dd6fe71b58af89b730bb1aa8802e passed the public build,
+then one maintained native Coastal/Saltwind capture with exact baseline poses.
+Both the independent reviewer and primary agent viewed all four original
+before/after PNGs. Coastal now reads as pasture around fishery/cottage frontages;
+Saltwind retains market soil while its empty lots and town edges return to green.
+The existing sparse village grass and raised road embankments remain separate.
+
+Candidate index SHA256 is
+`828b3b5df3fc6b89b801cc234543f3a6a04d7ce0486060bfd9be868b08506a56`.
+The native report, original images, comparison script and receipt are in
+`coastal-village-wear-visual-r1` under the external evidence directory above.
+Comparison SHA256:
+`0ee2458ad5ca32c65ddf9ba8977a99ca33bd700a75b189fa3eb9e73a45f4ff0c`.
+The baseline is the frozen2c9d47d55 capture in `coastal-worn-ground-r1`.
+
+The two exact camera poses, acquisition state, complete material/texture
+inventories and scene/subtree scalar counts match. Browser errors are empty.
+Coastal retains172 geometries/32 materials/40 textures/1,342,864 scene triangles;
+Saltwind166/33/42/1,366,623. Chrome151.0.7922.47, ANGLE Metal Apple M5 Max,
+desktop1440×900 DPR1; no physical iPad or whole-browser heap claim follows.
+Read-only changed-scope React Doctor also passed with no findings.
+
+The scoped runtime and test corrections were integrated as85f93d809/853c6bc6b.
+The complete mask and all-biome resource tests plus TypeScript7 pass again on
+the integration branch containing the already-published grass-padding fix.
+
+## Scoped mask-generation cost
+
+The one declared FIFO CPU acquisition used the actual current mask function,
+policy off/on, with the same preconstructed field and seeded noise inputs.
+Two warmup rounds precede eight paired AB/BA observations per map/tier. All
+80 outputs (including warmups) match the authenticated full mask hashes and
+are disposed. Every one of the 32 paired wall deltas favors the new policy:
+
+| Map/tier | Previous mean wall | Activity mean wall | Change |
+|---|---:|---:|---:|
+| Coastal512 | 26.830 ms | 24.988 ms | −6.86% |
+| Saltwind512 | 19.265 ms | 17.494 ms | −9.19% |
+| Coastal256 | 5.428 ms | 5.109 ms | −5.87% |
+| Saltwind256 | 4.907 ms | 4.517 ms | −7.93% |
+
+Mean CPU time also decreases in all four cases; two individual desktop CPU
+deltas are positive and remain in the raw receipt. The script and all samples
+are external `coastal-village-wear-mask-cost-r1.mjs/.json` files. This measures
+the same-function policy change, not a rebuilt historical binary, total map
+construction, frame time or whole-browser heap. No repeat/tuning round ran.
