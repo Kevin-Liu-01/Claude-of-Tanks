@@ -19,6 +19,13 @@ Subsequent publication through **9dc23a5a173e3d45a488b4b6ec3317150f63bd4d**
 also preserved the six-ID canvas/smoke integration, refreshed only those
 assets, and published this inventory. **3398ecaa2** corrected direct MBT-70
 test registration. These are published checkpoints, not missing local work.
+The seven conventional Abrams X source/support/history and regenerated asset
+sets are now also published at **92b328a83d4dca5cb9d155ca8ad69d37b5203bf4**,
+under the owner's explicit as-is instruction. Types/public build, fourteen
+native constructions, focused physical/default/simulation tests, the anatomy
+refresh and the 100 selected asset hashes passed. The strict qualification
+checks remain in progress and the known failures remain documented in
+[the Abrams publication record](abrams-recovered-publication-20260909.md).
 
 - Initial registry: 458 worktrees, 270 existing; 149 tank/fleet/gear/fidelity
   name matches. The subsequent all-existing status scan covered 271 paths,
@@ -50,6 +57,7 @@ untracked Git status was clean.
 
 | Work / location under W | Exact local checkpoint | Classification and remaining boundary |
 |---|---|---|
+| Seven conventional Abrams X | cot-abrams-seven-preservation-20260909, source 194afae70 + proof fd6557bd1; published through 92b328a83 | Recovered and pushed as-is with complete assets and preserved history. Not a completed source/visual/performance release. The two raw snapshot branches below remain local forensic archives. |
 | Nine-tank bodywork + A7V/Revolution | cot-nine-tank-verified-integration-20260909, 6bba0ee6d2cba74942878e0e420c7bcc96db71c4 | Published history. The priority source/anatomy/assets patches at 79d887d19 / 748c38092 / ae57717a8 are git-cherry equivalent to origin. Old f4512b2f5 is an unpublished *hold note*, superseded by the completed release, not a missing runtime implementation. |
 | Canvas and smoke, separately owned | cot-side-fender-preservation-20260909, 9c3bd346a; canvas 91987740f + cf80be36d, smoke 22409bce7, evidence 381a9fec8 | Published after the pinned scan, through 9dc23a5a1: T-90M X / Vladimir X canvas and A7V X / A6M X / A4M X / Revolution smoke. Three focused tests, types, scoped assets/geometry/muzzle checks PASS. Original smoke 0ef0abbb9 and integrated f6689bde are copies of this same work, not two missing fixes. |
 | Leclerc X / Strv 122 X wheel tessellation | cot-source-wheel-detail-budget-20260909, 648518cf99fa6ad4d7e6207d9ee43a34177a6a06 + 5ca30a7fe4dfae7632e5d37e00a061086d76a25b | Local completed focused/native checkpoint; composed release pending. Integrated 875525048 + Strv history 2bffdc13a are the same feature lineage, not another optimization. |
