@@ -36,6 +36,18 @@ RGBA bytes before mipmaps. No new per-frame updater is introduced. These are
 resource bounds, not a claim of zero loading-time or frame-time difference.
 The original implementation and its historical tests remain recoverable in Git.
 
+Verified production capture: `verdant-newer-horizon-r1/report.json` in the
+local environment-recovery evidence archive, revision `363b19261`,1440×900,
+matching the previous establishing camera exactly. The tall pale wall is
+replaced by low distant hills, with woodland visible on the left slopes and
+the village/foreground retained. No browser errors; authored quality gates
+pass. Build, TypeScript, mapQuality, horizonVerdant, horizonResources,
+horizonNoiseSampling, Titan/Copper, Mangrove palette and import-integrity
+tests pass. This single visual run is not a paired performance benchmark.
+The scoped new module/config complexity scan passes; the shared legacy
+horizon module still has two complexity violations, and React Doctor's
+maintainability scoring was incomplete. No whole-repository scan pass claimed.
+
 ### Earlier whole-scene proposal (not included)
 
 Proposed next checkpoint, recorded 2026-09-08 (America/Los_Angeles). This is
