@@ -7,6 +7,7 @@ import * as T from 'three';
 import {KIT,registerProfiledBuilders} from './tankFactoryCore.ts';
 import {T90_PROFILES} from './profiles/t90.ts';
 import {markVehicleNightLens,vehicleNightLightEmittersFor} from './vehicleNightLighting.ts';
+import {NIGHT_EMISSION_ATTRIBUTE} from '../engine/nightEmissionMaterial.ts';
 
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const BEFORE='a93e505c9c98e06ad45c4b189ec6228864472651f9c0b245d2cb4d6a51500e50';
@@ -74,8 +75,25 @@ export function assertCurrentT90MLampSeats(tank){
     const ancestors=[];for(let owner=m.parent;owner;owner=owner.parent)ancestors.push(owner.name);
     assert.ok(ancestors.includes('rig_hull')&&!ancestors.includes('rig_turret'),'Actual hull ownership through the native LOD group');
     const p=new T.Vector3(...lamp.position).applyMatrix4(m.matrixWorld);
-    const n=new T.Vector3(...lamp.direction).transformDirection(m.matrixWorld);
+    // Since 6468ee7bc the optical road beam is deliberately downward even
+    // when the physical housing rakes upward. Measure the actual emitting
+    // cap here; beam metadata is not the stock normal used for seating rays.
+    const lens=new T.Mesh(m.geometry,double.material);
+    lens.matrixAutoUpdate=false;lens.matrixWorld.copy(m.matrixWorld);
+    const hit=new T.Raycaster(p.clone().add(new T.Vector3(0,0,.03)),new T.Vector3(0,0,-1),.001,.06)
+      .intersectObject(lens,false).find(h=>h.point.distanceToSquared(p)<1e-10);
+    assert.ok(hit?.face,'Emitter center lies on a real finite lens cap');
+    const mask=m.geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE);
+    assert.ok(mask&&[hit.face.a,hit.face.b,hit.face.c].every(i=>mask.getX(i)===1),
+      'Measured cap is the actual tagged headlight aperture, not adjacent glass');
+    const n=hit.face.normal.clone().transformDirection(m.matrixWorld);
     assert.ok(n.z>.95&&Math.abs(n.y)>.15&&Math.abs(n.x)>.15,'Aperture follows the real canted forward housing, not old upward discs');
+    const beam=new T.Vector3(...lamp.direction).transformDirection(m.matrixWorld);
+    assert.ok(Math.abs(beam.y/Math.hypot(beam.x,beam.z)+.08)<1e-6,'Optical beam retains its published downward road aim');
+    // Cross-products reconstructed from ~47 mm caps at metre-scale Float32
+    // coordinates have a few microradians of quantization (observed 3.4e-6).
+    assert.ok(Math.abs(beam.x*n.z-beam.z*n.x)<2e-5&&beam.x*n.x+beam.z*n.z>0,
+      `Road aim preserves the physical aperture azimuth: ${JSON.stringify({beam:beam.toArray(),cap:n.toArray(),cross:beam.x*n.z-beam.z*n.x})}`);
     const exposed=new T.Raycaster(p.clone().addScaledVector(n,.5),n.clone().negate(),.001,.498).intersectObject(hull,false);
     assert.equal(exposed.length,0,'No hull stock buries the real emitting aperture');
     const ranges=new T.Raycaster(p,n.clone().negate(),0,.08).intersectObject(double,false).map(h=>h.distance)
