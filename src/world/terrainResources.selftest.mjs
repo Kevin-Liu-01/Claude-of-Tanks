@@ -4,6 +4,16 @@ import { buildTerrainMeshes, createLayout } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources, releaseObject3DGpuResources } from '../engine/resourceLifetime.ts';
 
+const textureUniformNames = ['uAlbG', 'uAlbD', 'uAlbR', 'uAlbM', 'uNrmG', 'uNrmD', 'uNrmR', 'uNrmM', 'uMask', 'uNoise'];
+function ownedTextureBindings(uniforms) {
+  const bindings = Object.entries(uniforms).filter(([, uniform]) => uniform.value?.isTexture);
+  assert.deepEqual(bindings.map(([name]) => name).sort(), [...textureUniformNames].sort(),
+    'exactly eight surface maps + mask + noise, with no missing or extra texture binding');
+  const textures = textureUniformNames.map(name => uniforms[name].value);
+  assert.equal(new Set(textures).size, 10, 'all ten hidden texture bindings have distinct identities');
+  return textures;
+}
+
 // Actual terrain builder and shader bindings; canvas pixels/GPU uploads are
 // intentionally not simulated by this lifetime test. The native repeat-world
 // probe verifies resident texture counts after these disposal events.
@@ -37,7 +47,15 @@ try {
   }, config);
   const results = await group.userData.sourcedTexturesReady;
   assert.ok(results.every(row => row.applied && !row.failures.length), 'in-place sourced swaps actually settle');
-  const material = group.children.find(child => child.material?.customProgramCacheKey() === 'world-terrain-splat-v23').material;
+  // The old v23 selector predates the published world-chart (42ea275df),
+  // shore-relief (97f143920) and worn-strength (c97e20fd2) shader changes.
+  // Those revisions retain this owner and its ten textures; shader cache-key
+  // revisions are not the resource-lifetime contract.
+  assert.ok(group.userData.sourcedTexturesReady instanceof Promise, 'terrain exposes its sourced-texture readiness owner');
+  const materials = new Set(group.children.filter(child => child.isMesh
+    && child.material?.userData.sourcedTexturesReady === group.userData.sourcedTexturesReady).map(child => child.material));
+  assert.equal(materials.size, 1, 'actual terrain meshes share one sourced-texture material');
+  const [material] = materials;
   const compile = () => {
     const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader,
       fragmentShader: THREE.ShaderLib.standard.fragmentShader };
@@ -45,8 +63,15 @@ try {
     return shader;
   };
   const shader = compile();
-  const textures = Object.values(shader.uniforms).map(uniform => uniform.value).filter(value => value?.isTexture);
-  assert.equal(new Set(textures).size, 10, 'eight surface maps + mask + noise, with no added texture');
+  const textures = ownedTextureBindings(shader.uniforms);
+  const missingMask = { ...shader.uniforms };
+  delete missingMask.uMask;
+  assert.throws(() => ownedTextureBindings(missingMask), /no missing or extra texture binding/,
+    'negative: a missing hidden mask cannot satisfy the resource contract');
+  assert.throws(() => ownedTextureBindings({ ...shader.uniforms, uNoise: shader.uniforms.uMask }), /distinct identities/,
+    'negative: aliasing the noise and mask cannot hide a lost resource');
+  assert.throws(() => ownedTextureBindings({ ...shader.uniforms, uUnexpected: shader.uniforms.uMask }), /no missing or extra texture binding/,
+    'negative: even an extra sampler alias is outside the ten-binding contract');
   assert.ok(textures.every(texture => !Object.values(material).includes(texture)),
     'the regression really covers shader-only identities invisible to ordinary material traversal');
   const images = textures.map(texture => texture.image);
@@ -61,7 +86,7 @@ try {
       assert.equal(texture.image, images[index], 'suspension preserves CPU images for reupload');
     });
     const resumed = compile();
-    assert.deepEqual(Object.values(resumed.uniforms).map(uniform => uniform.value).filter(value => value?.isTexture), textures,
+    assert.deepEqual(ownedTextureBindings(resumed.uniforms), textures,
       'recompiled shader uses exactly the owned textures after resume');
   }
   disposeObject3DResources(group);
