@@ -64,7 +64,39 @@ Invalid stations and roots plus a deliberately raised penetrating roller
 are rejecting controls. Rotor/spindle geometry and instance buffers must
 each be disposed exactly once, including the real far battle LOD.
 
-Fresh focused checks and typecheck on this exact two-ID main-based tree are
-pending. Native GPU images, source comparison, anatomy and complete composed
-release belong to the parent integration and remain required. Earlier
-five-model Node geometry passes are not substituted for these receipts.
+## Fresh results on the isolated two-ID tree
+
+The implementation is saved locally as `53ebf5e44`. Fresh focused checks
+PASS: 16 actual native Node constructions, 256 motion poses and 12 rejecting
+controls, plus the shared calibration unit's nine measured poses and three
+rejecting controls. Each native road axle reaches configured +0.30 m
+compression and −0.22 m droop within the unchanged tolerance.
+
+| Vehicle | Minimum road-stock separation, H / L (mm) | Maximum rendered-support gap, H / L (mm) |
+| --- | ---: | ---: |
+| Leopard 2A7V X | 41.050 / 41.045 | 0.858 / 3.275 |
+| Leopard 2 Revolution | 20.916 / 20.983 | 0.815 / 3.243 |
+
+The gap checks retain actual band/shoe visibility, material groups, element
+counts and LOD state at all three distances. Here the real draw-eligible
+band supports the rollers; the farther shoes alone are not mislabeled as
+contacting. The complete continuous shoe bound is at least 10.701 mm for
+A7V and 8.701 mm for Revolution. Maximum sampled track numerical residual
+is only 0.042 micrometres, inside the unchanged 2 micrometre tolerance.
+Finite mounting, exact retained body/road/lower-course witnesses, LOW/far
+persistence, A6M/T62 controls and exact-once geometry/instance disposal pass.
+
+Both receipts record identical before/after input hashes and exclude private
+oracles and temporary QA from the commit:
+
+- `.qa-dev/leopard-priority-focused-qO9uX1/receipt.json`: PASS. SHA-256
+  `c25d4f06ef454ceb11fc151b8fd745bc4c475bde0df44540981ac7996433d67a`.
+- `.qa-dev/leopard-priority-types-tgGNNj/receipt.json`: full
+  `npm run typecheck` and `core-unused-check` PASS. SHA-256
+  `b49e9cc167155c5fb8a8c40880e2fccfe4fe656e261154823503967c55a9ce32`.
+
+These are procedural Node geometry and render-state checks, not GPU pixels.
+Native GPU images, source comparison, anatomy and complete composed release
+belong to the parent integration and remain required before publication.
+Earlier five-model passes are not substituted for these fresh receipts;
+neither the full fleet's performance nor publication is claimed here.
