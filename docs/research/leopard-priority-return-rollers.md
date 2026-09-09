@@ -95,8 +95,43 @@ oracles and temporary QA from the commit:
   `npm run typecheck` and `core-unused-check` PASS. SHA-256
   `b49e9cc167155c5fb8a8c40880e2fccfe4fe656e261154823503967c55a9ce32`.
 
-These are procedural Node geometry and render-state checks, not GPU pixels.
-Native GPU images, source comparison, anatomy and complete composed release
-belong to the parent integration and remain required before publication.
-Earlier five-model passes are not substituted for these fresh receipts;
-neither the full fleet's performance nor publication is claimed here.
+These focused tests are procedural Node geometry and render-state checks,
+not GPU pixels. Earlier five-model passes do not substitute for these fresh
+receipts; neither full-fleet performance nor publication is claimed here.
+
+## Native rendering and early source comparison
+
+The exact isolated implementation also passed 48 native GPU captures:
+two vehicles × HIGH/LOW geometry × factory/winter finish × front-left,
+rear-left and left views × 15/75 m, at 1200 × 800. Texture quality stayed
+HIGH independently of geometry quality. Input-stability and finish-pair
+checks passed with no rendering errors. Near-view review found no visible
+running-gear blocker. Skirts occlude most return rollers, so these pictures
+are not substituted for the explicit count and contact measurements above.
+
+- Native receipt: `.qa-dev/priority-leopard-release-GUep7p/receipt.json`,
+  SHA-256 `37b1e046f0a623b741252287110d22532bf45f9bb2dfc0804deea7f055df71d5`.
+- Native manifest: `.qa-dev/priority-leopard-release-GUep7p/native/tank-assets.json`,
+  SHA-256 `24b9c70e2563b3466b633db4bbd1609994e96e6d03e96f848bad66786e5ab825`.
+
+An early HIGH-geometry source diagnostic passed all nine original-policy
+views per vehicle, with zero browser errors or unavailable references:
+
+| Vehicle | Aggregate fidelity | Lowest view | Unchanged per-view floor |
+| --- | ---: | ---: | ---: |
+| Leopard 2A7V X | 94.031929 | 92.246480, left | 92 |
+| Leopard 2 Revolution | 93.912351 | 92.031900, left | 92 |
+
+Revolution's margin is only 0.031900 points; do not describe it as a broad
+accuracy margin. No scoring, camera, registration, threshold or runtime
+changes were made to obtain this pass. The diagnostic used the isolated
+cache/resource-cleanup runner now published in `f9f3a4cfa`, with the priority
+tree's unchanged scoring page and source registrations. Its receipt pins
+the exact external runner and matching before/after runtime/oracle hashes:
+`.qa-dev/leopard-priority-source-early-RJHUSc/receipt.json`, SHA-256
+`042ed518589f367795ce6bbbd35fb70616a24301f8a42de998d5ad893d897a1c`.
+
+This early source run is not a complete release: fresh anatomy and generated
+assets plus the composed two-ID release gate remain required before pushing
+the playable changes. Private source meshes and temporary captures remain
+excluded from tracked changes.
