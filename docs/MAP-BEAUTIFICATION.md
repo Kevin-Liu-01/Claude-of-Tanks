@@ -15,7 +15,8 @@ This is the implementation guide for the complete pass, following the
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
 | Torn tree crowns / moving terrain texture coordinates | Fixed and committed locally; native images reviewed; held after Verdant timing gate failed |
 | Verdant horizon | Original July 27 geometry and palette restored and pushed in `1e0b2608b`; replacement prototype rejected by the user |
-| Road continuity and mode placement | Separate fixes in progress; require regenerated collision/minimap data and shared solo/server validation |
+| Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
+| Road continuity | Separate endpoint/shoulder fixes in progress; regenerated collision/minimap data and final verification remain outstanding |
 | Nighttime entry | Final-light-first correction pushed; focused first-night/headlight/lantern/Garage check passed, lighting art issues remain ([evidence](NIGHT-ENTRY-CHECKPOINT.md)) |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |

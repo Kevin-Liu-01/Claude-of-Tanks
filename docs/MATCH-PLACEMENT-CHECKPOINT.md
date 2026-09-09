@@ -1,7 +1,8 @@
 # Shared match placement checkpoint
 
-Runtime checkpoint: `1f9e87d70`, based on `a4dcbc10b`. This is a local,
-headless-verified checkpoint, not a completed combined map release.
+Integrated runtime checkpoint: `f9c88b5d7` (source `1f9e87d70`, based on
+`a4dcbc10b`). This independent safety release uses the current, unchanged road
+and collision inputs below. It is not a completed combined map release.
 
 ## Changes
 
@@ -40,8 +41,12 @@ wave-health preservation. Placement receipt SHA-256:
 Also passed: TypeScript, strict changed-runtime complexity checks, movement
 (135), combat (532), spotting (99), match modes, authoritative match,
 bot route planner, and all-30-map authoritative bot tests. No browser, native
-capture, full production build, full test suite or visual playtest was run for
-this checkpoint.
+capture, full test suite or visual playtest was run for this checkpoint.
+Root integration with the original Verdant restoration and night-loading
+correction repeated the all-map placement/authority/bot and core simulation
+gates, full no-emit TypeScript, and the production public build; all passed,
+with the same placement/input hashes. No road geometry or collision shard
+changes are bundled with this independent release.
 
 ## Construction bounds
 
