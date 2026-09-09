@@ -118,7 +118,12 @@ individual and combined cleanup failures, primary-error preservation, and
 unchanged successful/failing scorer output. These tests do not replace native
 fidelity or composed release checks.
 
-## Current full release — pending
+## Historical full-release attempts
+
+These are preserved intermediate failures, not the current release status.
+The complete nine-ID integration, including these seven tanks, subsequently
+passed all 858 ordered checks and both builds; see the authoritative
+[nine-tank release](nine-tank-bodywork-rollers-integration-20260909.md#complete-nine-id-release--pass).
 
 The isolated `codex/bodywork-closeout-r1` candidate at `1415c90fe` is based on
 published main `508bb19b0`. Fresh full-fleet anatomy update/check completed:
@@ -176,7 +181,7 @@ Before that failure, test-only `338a82e1b` integrated published world repair
 `3dc8f08a0`: the two mask tests retain their immutable RGBA receipts and check
 the actual active shader consumer with negative controls. Both repaired tests
 passed separately here. No measured runtime inputs changed during the run.
-The known Chieftain failure is under exact historical-mode investigation;
-no immutable hash has been refreshed. Remaining PRE and CORE/POST diagnostics
-are split between the two release audits to discover additional blockers.
+At that historical boundary the Chieftain failure was under exact-mode
+investigation; no immutable hash was refreshed. Remaining PRE and CORE/POST
+diagnostics were split between the two audits to discover additional blockers.
 Those continuation diagnostics are explicitly not a full npm or release pass.
