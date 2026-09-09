@@ -51,3 +51,10 @@ The scoped integration receipt is PASS; it explicitly retains
 `fullReleasePass: false`. It is not a substitute for the composed release
 command, and previous failed full-suite results remain recorded. Do not cite
 the individual passes above as a clean full `npm test` or a finished fleet pass.
+
+The first composed release stopped at Mk3D presentation centering: 0.34 px
+residual exceeded the unchanged 0.25 px limit after its fender correction.
+The maintained centering generator was rerun; only the two changed Merkava
+anchors/projections and their corresponding icons were retained. Unrelated
+sub-millimetre M1A3/MBT-70 regeneration noise was excluded. The subsequent
+release run is pending; this correction is not itself a release PASS.
