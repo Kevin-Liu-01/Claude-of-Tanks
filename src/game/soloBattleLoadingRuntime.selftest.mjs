@@ -123,7 +123,7 @@ const runtime = createSoloBattleLoadingRuntime({
   hasCachedWorld: () => false,
   getWorld: () => world,
   ensureWorld: async (_mapId, onProgress, options) => {
-    assert.deepEqual(options, { precompile: false, services: false });
+    assert.deepEqual(options, { precompile: false, services: false, atmosphere: 'covered-battle' });
     onProgress(0.5, 'Terrain');
     events.push('world:ready');
   },

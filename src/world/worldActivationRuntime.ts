@@ -64,7 +64,11 @@ export interface WorldActivationOptions {
   precompile?: boolean;
   compilePrograms?: boolean;
   services?: boolean;
+  /** Covered solo/network entry prepares its selected atmosphere before warm. */
+  atmosphere?: 'covered-battle';
 }
+
+type WorldSceneActivationOptions = Pick<WorldActivationOptions, 'services' | 'atmosphere'>;
 
 type CoordinatorDependencies<World extends ActiveWorld> = Omit<
   WorldBuildCoordinatorDependencies<World>,
@@ -134,7 +138,7 @@ export interface WorldActivationRuntime<
   queueMinimap(world?: World | null): Promise<boolean> | null;
   prepareServices(world?: World | null): void;
   prepareBattleServices(world?: World | null): void;
-  activate(world: World, options?: { services?: boolean }): World;
+  activate(world: World, options?: WorldSceneActivationOptions): World;
   switchMap(mapId: string): World | Promise<World>;
   ensure(
     mapId?: string | null,
@@ -143,6 +147,8 @@ export interface WorldActivationRuntime<
   ): Promise<World>;
   setDormant(dormant: boolean): void;
   invalidateSkyPresentation(): void;
+  /** A selected/reset battle preset has completed its synchronous IBL bake. */
+  markEnvironmentPrepared(world: World | null): void;
 }
 
 /**
@@ -167,6 +173,7 @@ export function createWorldActivationRuntime<
   let servicesMapId: string | null = null;
   let skyMapId = options.initialMapId;
   let skyPresentationDirty = false;
+  let skyEnvironmentDeferred = false;
 
   const coordinatorDependencies = options.coordinatorDependencies;
   let coordinator = options.coordinator;
@@ -215,12 +222,20 @@ export function createWorldActivationRuntime<
     queueMinimap(world);
   };
 
-  const restoreAtmosphere = (world: World): void => {
+  const restoreAtmosphere = (world: World, atmosphere?: 'covered-battle'): void => {
     const skyConfig = world.config.sky ?? {} as SkyConfig;
-    if (skyMapId !== world.mapId) {
-      skyMapId = world.mapId;
+    if (atmosphere === 'covered-battle') {
+      // This authored daytime presentation is only intermediate. The covered
+      // deployment/authority owner bakes the selected day/night IBL once.
+      if (skyMapId !== world.mapId || skyPresentationDirty) {
+        options.applySkyPresentation(skyConfig);
+        options.onFogDensityChanged(options.getFogDensity());
+      }
+      skyEnvironmentDeferred = true;
+    } else if (skyMapId !== world.mapId || skyEnvironmentDeferred) {
       options.applySkyPreset(skyConfig);
       options.onFogDensityChanged(options.getFogDensity());
+      skyEnvironmentDeferred = false;
     } else if (skyPresentationDirty) {
       // Garage variants only retarget the visible sky; the last battlefield's
       // PMREM remains resident. Restore that sky/fog without rebaking its IBL
@@ -228,17 +243,18 @@ export function createWorldActivationRuntime<
       options.applySkyPresentation(skyConfig);
       options.onFogDensityChanged(options.getFogDensity());
     }
+    skyMapId = world.mapId;
     skyPresentationDirty = false;
     options.setSun(skyConfig);
   };
 
-  const activate = (world: World, { services = true }: { services?: boolean } = {}): World => {
+  const activate = (world: World, { services = true, atmosphere }: WorldSceneActivationOptions = {}): World => {
     options.swapSceneWorld(current?.group ?? null, world.group);
     current = world;
     dormant = false;
     options.ensureCloudTextures();
     pendingMapId = world.mapId;
-    restoreAtmosphere(world);
+    restoreAtmosphere(world, atmosphere);
     if (services) prepareServices(world);
     else {
       collider = null;
@@ -403,6 +419,10 @@ export function createWorldActivationRuntime<
     onProgress: ProgressListener | null = null,
     activationOptions: WorldActivationOptions | null = null,
   ): Promise<World> => {
+    if (activationOptions?.atmosphere === 'covered-battle'
+      && (activationOptions.precompile !== false || activationOptions.compilePrograms === true)) {
+      throw new TypeError('Covered battle atmosphere must precede combat program warming');
+    }
     const id = mapId || pendingMapId;
     coordinator.cancelBackgroundExcept(id);
     const cached = cache.get(id) ?? null;
@@ -427,9 +447,15 @@ export function createWorldActivationRuntime<
       const needsServices = activationOptions?.services !== false
         && servicesMapId !== next.mapId;
       if (current !== next || dormant) {
-        activate(next, { services: activationOptions?.services !== false });
-      } else if (needsServices) {
-        prepareServices(next);
+        activate(next, {
+          services: activationOptions?.services !== false,
+          atmosphere: activationOptions?.atmosphere,
+        });
+      } else {
+        // A cancelled covered entry may leave this same active world with
+        // presentation only. Explicit ordinary/capture ensure restores its IBL.
+        if (!activationOptions?.atmosphere && skyEnvironmentDeferred) restoreAtmosphere(next);
+        if (needsServices) prepareServices(next);
       }
       timer.mark('activate');
       timer.complete();
@@ -478,6 +504,9 @@ export function createWorldActivationRuntime<
     },
     ensure,
     invalidateSkyPresentation() { skyPresentationDirty = true; },
+    markEnvironmentPrepared(world) {
+      if (world && world === current) skyEnvironmentDeferred = false;
+    },
     setDormant(nextDormant) {
       if (!current) return;
       if (!nextDormant && skyPresentationDirty) restoreAtmosphere(current);

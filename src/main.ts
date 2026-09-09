@@ -1428,6 +1428,7 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
     sky.applyPreset(preset, scene);
     lighting.setSun(sky.sunDir, preset);
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+    worldRuntime.markEnvironmentPrepared(currentWorld());
   },
 }));
 const nightLighting = createNightLightingAccess({
@@ -2104,7 +2105,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           // weather. Early world warming compiles a different light variant;
           // retain world/services here and the covered real-frame gates below.
           loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
-            ensureWorld(mapId, onProgress, { precompile: false })
+            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle' })
           ),
           publishMatch: (match) => networkSession.publishMatch(match),
           getMatch: () => networkSession.match,

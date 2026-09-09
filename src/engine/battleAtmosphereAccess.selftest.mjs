@@ -117,19 +117,46 @@ function harness(load) {
 // owners, without importing/booting main.ts or copying its adapter logic.
 const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
 const tree = ts.createSourceFile('main.ts', mainSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-function mainCallback(name, bindings, containingCall = null, exposeFogBaseline = false) {
+function sourceCallback(sourceTree, name, containingCall = null) {
   const matches = [];
   function visit(node) {
     const owner = node.parent?.parent;
     const belongs = !containingCall || (owner && ts.isCallExpression(owner)
-      && owner.expression.getText(tree) === containingCall);
+      && owner.expression.getText(sourceTree) === containingCall);
     if ((ts.isVariableDeclaration(node) || ts.isPropertyAssignment(node))
-      && node.name.getText(tree) === name && belongs) matches.push(node.initializer);
+      && node.name.getText(sourceTree) === name && belongs && node.initializer
+      && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
+      matches.push(node.initializer);
+    }
     ts.forEachChild(node, visit);
   }
-  visit(tree);
+  visit(sourceTree);
   assert.equal(matches.length, 1, `unambiguous source-owned ${name} callback`);
-  const expression = stripTypeScriptTypes(`const callback = ${matches[0].getText(tree)};`);
+  return matches[0];
+}
+
+// Data settings can share a callback name; only actual function initializers
+// qualify, and two real callbacks must still fail the ambiguity guard.
+{
+  const fixture = (source) => ts.createSourceFile('callback.ts', source,
+    ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  for (const expression of ['() => 7', 'function () { return 7; }']) {
+    const source = fixture(`const options = { atmosphere: 'covered-battle' };
+      const atmosphere = false;
+      const adapters = { atmosphere: ${expression} };`);
+    assert.equal(sourceCallback(source, 'atmosphere').getText(source), expression,
+      'same-name property and variable data literals are not callbacks');
+  }
+  assert.throws(() => sourceCallback(fixture("const options = { atmosphere: 'covered-battle' };"),
+    'atmosphere'), /unambiguous source-owned atmosphere callback/, 'a literal alone cannot satisfy the callback guard');
+  assert.throws(() => sourceCallback(fixture(`const first = { atmosphere: () => 1 };
+    const second = { atmosphere: function () { return 2; } };`), 'atmosphere'),
+  /unambiguous source-owned atmosphere callback/, 'duplicate actual function initializers remain ambiguous');
+}
+
+function mainCallback(name, bindings, containingCall = null, exposeFogBaseline = false) {
+  const callback = sourceCallback(tree, name, containingCall);
+  const expression = stripTypeScriptTypes(`const callback = ${callback.getText(tree)};`);
   const result = exposeFogBaseline ? '{ callback, getBaseFogDensity: () => baseFogDensity }' : 'callback';
   return compileFunction(`${expression};return ${result};`, Object.keys(bindings))(...Object.values(bindings));
 }
@@ -137,6 +164,38 @@ function mainCallback(name, bindings, containingCall = null, exposeFogBaseline =
 const calls = [], weather = { current: { weather: { timeOfDay: 'night' } },
   reset() { calls.push('reset'); this.current.weather = null; },
   prepare: (...args) => { calls.push(args); } };
+const worldLoads = [];
+const loadNetworkWorld = mainCallback('loadWorld', {
+  ensureWorld: (...args) => { worldLoads.push(args); return 'prepared-world'; },
+});
+const worldProgress = () => {};
+assert.equal(loadNetworkWorld('winter', worldProgress), 'prepared-world');
+assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atmosphere: 'covered-battle' }]],
+  'actual network world adapter explicitly defers intermediate IBL until the authority-selected atmosphere');
+{
+  const effects = [], activeWorld = {}, scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0, .001);
+  let failedBake = false;
+  const applySelected = mainCallback('applyPreset', {
+    sky: { sunDir: 'moon-direction', applyPreset(preset, target) {
+      assert.equal(target, scene);
+      effects.push(['bake', preset]);
+      if (failedBake) throw new Error('environment bake failed');
+    } },
+    lighting: { setSun: (direction, preset) => effects.push(['sun', direction, preset]) },
+    worldRuntime: { markEnvironmentPrepared: (world) => effects.push(['prepared', world]) },
+    currentWorld: () => activeWorld, baseFogDensity: 0, scene, THREE,
+  }, null, true);
+  const preset = { skyIntensity: .05 };
+  applySelected.callback(preset);
+  assert.deepEqual(effects, [['bake', preset], ['sun', 'moon-direction', preset], ['prepared', activeWorld]],
+    'actual selected/reset adapter acknowledges only the successfully baked active world, after lighting');
+  assert.equal(applySelected.getBaseFogDensity(), .001);
+  effects.length = 0;
+  failedBake = true;
+  assert.throws(() => applySelected.callback(preset), /environment bake failed/);
+  assert.deepEqual(effects, [['bake', preset]], 'a failed bake must leave deferred recovery pending');
+}
 const nightLighting = { reset() { calls.push('night-reset'); } };
 const garagePhasePresentation = {
   setActive: (active) => calls.push(['active', active]),
