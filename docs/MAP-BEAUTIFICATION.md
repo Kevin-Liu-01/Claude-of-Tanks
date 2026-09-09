@@ -13,15 +13,16 @@ This is the implementation guide for the complete pass, following the
 | Work | State |
 |---|---|
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
-| Torn tree crowns | Coherent-corner candidate is local and image-reviewed. The first fixed-work A/B/B/A did not clear the strict cost gate; it is held. An index-preserving candidate retains identical expanded triangle attributes while reducing its near-card buffer bytes by about41%; native combined acceptance is pending |
+| Torn tree crowns | Coherent-corner candidate is local and image-reviewed. The first fixed-work A/B/B/A did not clear the strict cost gate; it is held. An index-preserving candidate retains identical expanded triangle attributes while reducing its near-card buffer bytes by about41%. A later pair used Medium versus High and is not comparable; the preboot-preset collector repair has CPU coverage, but fresh matched native acceptance is still pending |
 | Dark grass speckles | Grass atlases retain transparent-edge color in `a38ab190d`; native Coastal/Verdant pairs show reduced black speckling with exact scene/material/texture inventories ([evidence](GRASS-ATLAS-PADDING-CHECKPOINT.md)). Distribution/tone and complete frame/heap parity remain separate |
 | Dark foliage atlas edges | The same straight-alpha correction covers the four tree atlas families in `090bdcb1d`;64 real Canvas cases and22 matched native poses pass with unchanged resource inventories ([evidence](FOLIAGE-ATLAS-PADDING-CHECKPOINT.md)). This is a subtle edge correction, not a crown-shape redesign |
 | Moving terrain texture coordinates / inland sand relief | World-fixed detail chart and Coastal/Saltwind beach-only relief pushed in `cb955e194`; native three-map checks pass ([evidence](TERRAIN-SURFACE-CHART-CHECKPOINT.md)). Coastal/Saltwind ambient sand marbling is reduced in `c97e20fd2`, with matched native pairs and unchanged scene/texture counts ([evidence](COASTAL-WORN-GROUND-CANDIDATE.md)); broad town wear remains separate |
 | Verdant horizon | User reversed the restoration request: newer low pastoral watershed/layered woodland horizon reinstated and pushed in `139585281`; no broader village/ground/palette prototype was reinstated |
 | Coastal/Saltwind blanket village sand | Four existing-channel activity footprints per map replace broad off-road settlement wear in `85f93d809`, with scoped tests in `853c6bc6b`. Both native before/after pairs were personally reviewed; roads/water/terrain heights and other28 masks remain exact ([evidence](COASTAL-VILLAGE-WEAR-CANDIDATE.md)). Sparse village grass remains separate |
+| Coastal/Saltwind meadow and standing grain | Local grass-height `a0b39f32f`/`92aca325e` and crop-rhythm `9c294f83d` candidates are combined at `a7b398ec0` for visual review. Existing meadow/wear fields organize tuft heights; unequal crop stands and row phases remove the identical-slot pattern. Separate actual-tuple/raster/row tests and TypeScript pass, with unchanged placement/RNG and retained attribute/texture capacities. Combined native appearance, construction/frame cost and residency are **not yet verified**; no visual change from this candidate is published |
 | Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
-| Road continuity | All 22 changed minimaps/collision shards captured; shared placement/bot checks pass. Local `6c68fdd2c` is held for measured query cost, Delta's encoded storage budget and the Longleaf donor fixture—not released |
-| Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass. Flat window interiors and unshadowed point-light occlusion remain ([entry](NIGHT-ENTRY-CHECKPOINT.md), [aim](NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](NIGHT-WORLD-INTENSITY-CHECKPOINT.md)) |
+| Road continuity | The22-map continuity candidate remains unpublished. Its later four-map R3 corridor has wide affected terrain; road-only `8367e8c42` narrows that footprint but retains four failed outer-bank slopes and two failed Reservoir footprint limits. Raw failures and exact cross-sections are preserved for native geometric review; no limits were weakened. Query cost, regenerated collision/storage and mode-placement acceptance remain separate release holds |
+| Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass ([entry](NIGHT-ENTRY-CHECKPOINT.md), [aim](NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](NIGHT-WORLD-INTENSITY-CHECKPOINT.md)). A new source audit found a discarded authored-day PMREM bake before selected-night preparation on first/different-map entry; its covered-entry fix is local and unvalidated. Service windows glow but are not all spatial lights; do not treat that as delayed loading or illuminate every pane. Flat interiors and unshadowed point-light occlusion remain |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |
 | No performance/memory regressions | Required, **not yet demonstrated** for the latest drafts |
@@ -148,6 +149,14 @@ gameplay layout while developing a distinctive visual hierarchy.
 Each checkpoint must state: implemented, image-reviewed, tests, performance
 comparison, committed and pushed. These are separate statuses. Small local
 experiments are preserved but are not shipped as finished work.
+
+The shared ground-cover regression's obsolete non-generator signature was
+repaired separately in `9fcc26fc9`, without runtime or golden changes. It now
+requires actual delegated fit completion before sealing and publication;
+seventeen negative controls and the existing executable wall-span lifecycle
+test pass. This unblocks validation but is not an artwork acceptance. While
+the shared vehicle release owns the acquisition window, new optional native,
+build and art CPU batches are paused; isolated source work remains checkpointed.
 
 ## Acceptance is visual and measured
 
