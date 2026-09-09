@@ -108,4 +108,6 @@ The driver ended `RECOVERED SIDE FINISH INTEGRATION: PASS` in
 `.qa-dev/recovered-side-finish-integration.log`. This is the bounded as-is
 preservation check, not a complete fleet/anatomy/source-fidelity release.
 Final composed anatomy and targeted-release attempts remain with the seven-
-Abrams integration; the separate frozen MBT full lifecycle is still running.
+Abrams integration. The separate MBT lifecycle subsequently passed its PRE
+stage and stopped on a missing direct test registration; the corrected
+registration passes hygiene. See the MBT-70 note for the retained failure.
