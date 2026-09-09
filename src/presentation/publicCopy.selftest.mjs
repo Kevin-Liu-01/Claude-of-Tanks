@@ -50,6 +50,7 @@ assert.doesNotMatch(gallerySource, /mountMediaArchive|galleryArchiveOpen/);
 assert.match(docsScriptSource, /mountMediaArchive\([\s\S]*?\{ mode: 'wall', limit: 88, filters: false \}/);
 
 const homeSource = readFileSync(join(ROOT, 'home.html'), 'utf8');
+const homeStyles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
 const docsSource = readFileSync(join(ROOT, 'docs.html'), 'utf8');
 const galleryHtmlSource = readFileSync(join(ROOT, 'gallery.html'), 'utf8');
 const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
@@ -60,6 +61,16 @@ assert.match(homeSource, /\/media\/promo-v13\/claude-of-tanks-promo-clean\.mp4/)
 assert.doesNotMatch(homeSource, /claude-of-tanks-promo-badged\.mp4/);
 assert.match(docsSource, /\/media\/promo-v13\/claude-of-tanks-promo-badged\.mp4/);
 assert.match(docsSource, /<track kind="captions"[^>]+claude-of-tanks-promo-v13\.vtt/);
+assert.match(
+  homeStyles,
+  /html\[lang\^='zh'\] \.v5-hero-copy h1\{[^}]*font-family:'PingFang SC','Noto Sans CJK SC','Microsoft YaHei'[^}]*\}/,
+  'Chinese hero typography must use an explicit CJK font stack',
+);
+assert.match(
+  homeStyles,
+  /html\[lang\^='zh'\] \.v5-hero-copy h1 span\{[^}]*color:(?!transparent)[^;}]+;[^}]*-webkit-text-stroke:[^;}]+;[^}]*paint-order:stroke fill[^}]*\}/,
+  'Chinese hollow headline must mask joined glyph seams and paint its outline behind the face',
+);
 
 const landingIcons = [
   'play', 'screenshots', 'vehicle', 'battlefield', 'gpu', 'multiplayer',

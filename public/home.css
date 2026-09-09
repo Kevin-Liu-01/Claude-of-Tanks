@@ -157,4 +157,8 @@ button{font:inherit;color:inherit}
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']){--pad:18px}
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .footer .inner{align-items:flex-start;flex-direction:column}
 :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .footer .brand span{display:inline}
+/* Paint CJK outlines behind a dark translucent face. This preserves the hollow
+   headline treatment while masking the doubled seams where brush strokes meet. */
+html[lang^='zh'] .v5-hero-copy h1{font-family:'PingFang SC','Noto Sans CJK SC','Microsoft YaHei','Segoe UI',sans-serif;line-height:1.15;letter-spacing:.018em}
+html[lang^='zh'] .v5-hero-copy h1 span{color:rgba(7,10,13,.78);-webkit-text-stroke:1.35px rgba(238,244,248,.9);paint-order:stroke fill}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
