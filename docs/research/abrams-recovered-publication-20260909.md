@@ -77,3 +77,7 @@ therefore real recovered payload and an additional open performance issue;
 it must not be called an optimization or hidden by stripping collision data
 from the generator's receipts. Profiling/coalescing the authored finite plates
 and measuring switching/ballistics cost remain unfinished work.
+This is not a measured diagnosis of the reported switching lag. Current
+`src/` references the JSON manifest only from its self-test, not a runtime
+fetch path; the authored spec/plate construction and trace costs need separate
+profiling before attributing a frame-time regression to them.
