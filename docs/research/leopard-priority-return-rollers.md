@@ -131,7 +131,26 @@ the exact external runner and matching before/after runtime/oracle hashes:
 `.qa-dev/leopard-priority-source-early-RJHUSc/receipt.json`, SHA-256
 `042ed518589f367795ce6bbbd35fb70616a24301f8a42de998d5ad893d897a1c`.
 
-This early source run is not a complete release: fresh anatomy and generated
-assets plus the composed two-ID release gate remain required before pushing
-the playable changes. Private source meshes and temporary captures remain
-excluded from tracked changes.
+## Anatomy and generated-asset preflight
+
+The required anatomy update/check sequence also passed, using separate FIFO
+leases per phase. All 174 playable anatomy and marking receipts are current;
+combat-anatomy tests pass, and 1,496 modules plus 348 track sides produce zero
+hit-probe failures or outside-envelope modules. The probe retains 79 fleet
+dimension-drift warnings; this roller pass does not claim to fix those
+existing fleet dimension differences. All 522 playable technical diagrams
+passed geometry/metadata freshness. The two requested tanks then regenerated
+their 20 normal/technical gallery outputs. No unrelated output changed.
+
+Only `tracks` changed in the two generated anatomy rows: hull, turret,
+structures, crew and module data remain identical. Generated images and
+manifest changes are limited to `leo2a7v_x` and `leo2_revolution`.
+
+Nine-phase preflight receipt:
+`.qa-dev/priority-leopard-release-uc4HQY/receipt.json`, SHA-256
+`3b65051024b55f23e3963f4ccf7dccf2b6c5be24d95f4c8e6e8c49c7acedfc9c`.
+
+The early source run and anatomy preflight are not a complete release. The
+composed two-ID release gate remains required before pushing the playable
+changes. Private source meshes and temporary captures remain excluded from
+tracked changes.
