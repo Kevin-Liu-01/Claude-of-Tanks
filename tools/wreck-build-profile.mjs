@@ -18,9 +18,16 @@ const INPUTS = Object.freeze({ specId: 't90m', seed: 2526, pop: false, camoSeed:
   quality: 'low', geometryQuality: 'low', materialMode: 'geometry-only', proceduralOnly: true, anisotropy: 4 });
 const hash = value => createHash('sha256').update(value).digest('hex');
 const bytes = array => Buffer.from(array.buffer, array.byteOffset, array.byteLength);
-const BODY_STAGES = new Set(['collectWreckGeometry', 'normalizeGeometry', 'normalizeGeometrySet',
-  'mergeRequired', 'paintWreckGeometry', 'mergeShadowGeometry', 'wreckBakeResult']);
-const CALL_STAGES = new Set(['createTank', 'visual.setDestroyed', 'compactWreckGeometry', 'visual.dispose']);
+const BODY_STAGES = new Map([
+  ['collectWreckGeometrySteps', 'collectWreckGeometry'], ['normalizeGeometry', 'normalizeGeometry'],
+  ['normalizeGeometrySetSteps', 'normalizeGeometrySet'], ['mergeRequired', 'mergeRequired'],
+  ['paintWreckGeometrySteps', 'paintWreckGeometry'], ['mergeShadowGeometrySteps', 'mergeShadowGeometry'],
+  ['wreckBakeResult', 'wreckBakeResult'],
+]);
+const GEOMETRY_STAGES = new Map([['compactWreckGeometrySteps', 'compactWreckGeometry']]);
+const CALL_STAGES = new Map([
+  ['createTank', 'createTank'], ['visual.setDestroyed', 'visual.setDestroyed'], ['owner.visual.dispose', 'visual.dispose'],
+]);
 const FACTORY_STAGES = new Set(['boxUV', 'bakeDirt', 'mergeAll', 'buildRunningGear', 'batchMobileStaticChildren',
   'installCoplanarDepthLayers', 'fittedEraSurfaces', 'resolveTankPresentationSetup', 'createNonRenderingTankMaterials']);
 const PROFILE_STAGES = new Set(['buildT90MProryvNative2026', 'buildT90MProryv', 'replaceT90MProryvHull',
@@ -45,15 +52,20 @@ function identity() {
     wreckHash: hash(readFileSync(join(ROOT, 'src/world/wrecks.ts'))) };
 }
 
-export function transform(source, mode) {
+export function transform(source, mode, kind = 'wreck') {
   assert.ok(['control', 'normalize-first'].includes(mode));
+  assert.ok(['wreck', 'geometry'].includes(kind), 'Known wreck source kind');
+  const bodies = kind === 'wreck' ? BODY_STAGES : GEOMETRY_STAGES;
+  const calls = kind === 'wreck' ? CALL_STAGES : new Map();
   const file = ts.createSourceFile('wrecks.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const edits = [], counts = {};
   const add = (at, text, end) => edits.push({ at, text, end });
   const count = name => { counts[name] = (counts[name] ?? 0) + 1; };
   const visit = node => {
-    if (ts.isFunctionDeclaration(node) && node.body && BODY_STAGES.has(node.name?.text)) {
-      const name = node.name.text;
+    if (ts.isFunctionDeclaration(node) && node.body && bodies.has(node.name?.text)) {
+      const name = bodies.get(node.name.text);
+      // This tool drains bakeTankWreck synchronously. Time the generator body,
+      // not iterator creation; do not reuse these spans for an async consumer.
       let observe = name === 'normalizeGeometry'
         ? 'globalThis.__WRECK_PROFILE.observeNormalization(geometry, keepNormal);' : '';
       const begin = `const __wreckToken = globalThis.__WRECK_PROFILE.begin(${JSON.stringify(name)}); try {${observe}`;
@@ -69,6 +81,7 @@ export function transform(source, mode) {
           geometry.morphAttributes = {};
           geometry.clearGroups();
           const normalized = geometry.index ? geometry.toNonIndexed() : geometry;
+          owner?.geometries.add(normalized);
           if (keepNormal && !normalized.attributes.normal) normalized.computeVertexNormals();
           normalized.morphAttributes = {};
           normalized.clearGroups();
@@ -81,8 +94,8 @@ export function transform(source, mode) {
       count(name);
     }
     if (ts.isCallExpression(node)) {
-      const name = node.expression.getText(file);
-      if (CALL_STAGES.has(name)) {
+      const name = calls.get(node.expression.getText(file));
+      if (name) {
         add(node.getStart(file), `globalThis.__WRECK_PROFILE.measure(${JSON.stringify(name)}, () => (`);
         add(node.end, '))'); count(name);
       }
@@ -95,7 +108,7 @@ export function transform(source, mode) {
     transformed = transformed.slice(0, edit.at) + edit.text + transformed.slice(edit.end ?? edit.at);
   }
   assert.equal(ts.createSourceFile('wrecks.ts', transformed, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS).parseDiagnostics.length, 0);
-  for (const name of [...BODY_STAGES, ...CALL_STAGES]) assert.equal(counts[name], 1, `Exact ${name} hook`);
+  for (const name of [...bodies.values(), ...calls.values()]) assert.equal(counts[name], 1, `Exact ${name} hook`);
   return { source: transformed, counts };
 }
 
@@ -169,11 +182,14 @@ async function worker(mode) {
   };
   globalThis.__WRECK_PROFILE = profiler;
   const target = pathToFileURL(join(ROOT, 'src/world/wrecks.ts')).href;
+  const wreckTargets = new Map([
+    [target, 'wreck'], [pathToFileURL(join(ROOT, 'src/world/exactWreckGeometry.ts')).href, 'geometry'],
+  ]);
   const constructorTargets = new Map([
     [pathToFileURL(join(ROOT, 'src/vehicles/tankFactoryCore.ts')).href, 'factory'],
     [pathToFileURL(join(ROOT, 'src/vehicles/profiles/t90.ts')).href, 'profile'],
   ]);
-  let hooks = null; const constructorStages = {};
+  const hooks = {}, observedModules = new Set(), constructorStages = {};
   const loader = registerHooks({ load(url, context, nextLoad) {
     const result = nextLoad(url, context);
     if (mode === 'constructor' && constructorTargets.has(url)) {
@@ -181,8 +197,11 @@ async function worker(mode) {
       Object.assign(constructorStages, transformed.stages);
       return { ...result, source: transformed.source };
     }
-    if (url !== target) return result;
-    const transformed = transform(result.source.toString(), mode === 'constructor' ? 'control' : mode); hooks = transformed.counts;
+    if (!wreckTargets.has(url)) return result;
+    const kind = wreckTargets.get(url);
+    assert.ok(!observedModules.has(kind), `Duplicate ${kind} module hook`);
+    const transformed = transform(result.source.toString(), mode === 'constructor' ? 'control' : mode, kind);
+    Object.assign(hooks, transformed.counts); observedModules.add(kind);
     return { ...result, source: transformed.source };
   } });
   let baked;
@@ -190,6 +209,7 @@ async function worker(mode) {
     assert.equal(typeof globalThis.document, 'undefined', 'No Canvas/browser fixture is needed for the real geometry-only bake');
     const { ensureTankBuilder } = await import(pathToFileURL(join(ROOT, 'src/vehicles/fleetFactory.ts')).href);
     const { bakeTankWreck } = await import(target);
+    assert.equal(observedModules.size, 2, 'Both wreck and geometry modules must be instrumented');
     const acquisitionStart = performance.now(); await ensureTankBuilder(INPUTS.specId);
     const builderAcquisitionMs = performance.now() - acquisitionStart;
     const start = performance.now();
@@ -197,7 +217,10 @@ async function worker(mode) {
       { seed: INPUTS.seed, pop: INPUTS.pop });
     const bakeMs = performance.now() - start;
     assert.ok(baked, 'Exact real T-90M bake must succeed');
-    assert.ok(hooks);
+    for (const name of [...BODY_STAGES.values(), ...GEOMETRY_STAGES.values(), ...CALL_STAGES.values()]) {
+      assert.equal(hooks[name], 1, `Exact ${name} hook`);
+      assert.ok(profiler.operations[name]?.calls > 0, `Executed ${name} hook`);
+    }
     process.stdout.write(`${JSON.stringify({ mode, pid: process.pid, builderAcquisitionMs, bakeMs,
       operations: profiler.operations, normalization, hooks, constructorStages, output: outputIdentity(baked) })}\n`);
   } finally { baked?.geo.dispose(); baked?.shadowGeo?.dispose(); loader.deregister(); }
@@ -228,6 +251,7 @@ async function run(output, constructorOnly = false) {
     limitations: ['Node CPU diagnostic; not native GPU, raster, loading or visual evidence',
       'Constructor modules acquired before each measured bake; fresh processes, no warmed repeat builds',
       'Inclusive stages overlap; self durations exclude instrumented descendants',
+      'Generator-body spans require the synchronous bakeTankWreck drain; async suspension is not measured',
       'Control and normalization-only candidate modify source in memory; no runtime files are changed'] };
   const write = () => writeFileSync(join(output, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
   const lock = createCaptureLock(); let refresh, child;
@@ -271,7 +295,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     await run(args.find(arg => arg.startsWith('--out=')).slice(6), args.includes('--constructor'));
   } else if (args.length === 2 && args.includes('--selftest') && args.some(arg => arg.startsWith('--root='))) {
     const source = readFileSync(join(ROOT, 'src/world/wrecks.ts'), 'utf8');
-    for (const mode of ['control', 'normalize-first']) transform(source, mode);
+    const geometrySource = readFileSync(join(ROOT, 'src/world/exactWreckGeometry.ts'), 'utf8');
+    for (const mode of ['control', 'normalize-first']) {
+      transform(source, mode);
+      transform(geometrySource, mode, 'geometry');
+    }
     transformConstructor(readFileSync(join(ROOT, 'src/vehicles/tankFactoryCore.ts'), 'utf8'), 'factory');
     transformConstructor(readFileSync(join(ROOT, 'src/vehicles/profiles/t90.ts'), 'utf8'), 'profile');
     console.log('wreck-build-profile: exact hooks and in-memory candidate syntax pass; no tank built');
