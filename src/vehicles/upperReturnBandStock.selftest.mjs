@@ -72,4 +72,31 @@ for(const quality of['high','low'])for(const rigidLinkChords of[false,true]){
   }
  }finally{for(const f of[base,lined,legacy,absent,explicit])f.dispose();}
 }
+{
+ const f=fixture('low',0),left=f.P.hullG.getObjectByName('gearTrackBandL'),right=f.P.hullG.getObjectByName('gearTrackBandR');
+ const original=right.geometry.attributes.position;
+ const reject=(zs,depth,mutate=()=>{})=>{
+  const before=left.geometry.attributes.position.array.slice();mutate();
+  try{assert.throws(()=>lineUpperReturnBand(f.P,zs,depth));negativeControls++;
+   assert.deepEqual(left.geometry.attributes.position.array,before,'Invalid right stock must not partly mutate the left band');}
+  finally{right.geometry.setAttribute('position',original);if(!right.parent)f.P.hullG.add(right);}
+ };
+ try{
+  for(const depth of[0,-.001,NaN,Infinity])reject(stations,depth);
+  for(const zs of[[],[NaN],[Infinity],[-.8,-.8],[-.8,-.8+1e-7],[-.8,999]])reject(zs,.0038);
+  reject(stations,.0038,()=>right.removeFromParent());
+  reject(stations,.0038,()=>right.geometry.setAttribute('position',new T.Float32BufferAttribute([0,0,0],3)));
+  for(const invalid of['zero','nonfinite'])reject(stations,.0038,()=>{
+   const p=original.clone();
+   for(let base=0;base<p.count;base+=24){
+    const z=(p.getZ(base+2)+p.getZ(base+6))/2;
+    if(!stations.some(s=>Math.abs(s-z)<2e-6))continue;
+    const y=(p.getY(base+2)+p.getY(base+6))/2;
+    p.setY(base+2,y);p.setZ(base+2,z);
+    p.setY(base+6,invalid==='zero'?y:Infinity);p.setZ(base+6,z);
+   }
+   right.geometry.setAttribute('position',p);
+  });
+ }finally{f.dispose();}
+}
 console.log('upperReturnBandStock:',JSON.stringify({poses,negativeControls,defaultBytesUnchanged:true,addedTriangles:0}));
