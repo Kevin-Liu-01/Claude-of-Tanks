@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
 
@@ -287,8 +288,9 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
       equip('turretDark', box(0.36, 0.08, 0.27), side * x, y, z, 0, side * 0.40);
       for (let i = 0; i < 4; i++) {
         const dx = (i - 1.5) * 0.085;
-        equip('turretDetail', cylZ(0.034, 0.17, 10), side * x + dx, y + 0.075, z + 0.01, -0.32, side * 0.40);
-        equip('turretDark', cylZ(0.025, 0.012, 10), side * x + dx, y + 0.102, z + 0.089, -0.32, side * 0.40);
+        const launcher = cappedSmokeLauncherGeometry(.034, .17, .025, .012, 10);
+        equip('turretDetail', launcher.body, side * x + dx, y + .075, z + .01, -.32, side * .40);
+        equip('turretDark', launcher.cap, side * x + dx, y + .075, z + .01, -.32, side * .40);
       }
     }
   }
