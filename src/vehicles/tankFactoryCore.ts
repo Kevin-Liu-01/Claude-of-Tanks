@@ -389,6 +389,9 @@ interface RunningGearConfig {
   /** Seat rigid links between two live course samples, not on one tangent.
    * Opt-in for measured rounded contact courses; established rigs unchanged. */
   rigidLinkChords?: boolean;
+  /** Asymmetric inner band stock retains the original outer-face carrier.
+   * Opt-in only: default symmetric bands keep their existing live midpoint. */
+  trackCarrierFromOuterFace?: boolean;
   frontArcSteps?: number;
   rearArcSteps?: number;
   tautFrontSpan?: boolean;
@@ -4352,10 +4355,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     distance:number,out:THREE.Vector2):void=>{
     const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegment(d),segment=segsT[index];
     const base=index*24,t=(d-segment.c0)/segment.l;
-    const y0=(attribute.getY(base+2)+attribute.getY(base+6))/2;
-    const z0=(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
-    const y1=(attribute.getY(base)+attribute.getY(base+8))/2;
-    const z1=(attribute.getZ(base)+attribute.getZ(base+8))/2;
+    const y0=cfg.trackCarrierFromOuterFace?attribute.getY(base+2)+(bandBasePos[(base+6)*3+1]-bandBasePos[(base+2)*3+1])/2:(attribute.getY(base+2)+attribute.getY(base+6))/2;
+    const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
+    const y1=cfg.trackCarrierFromOuterFace?attribute.getY(base)+(bandBasePos[(base+8)*3+1]-bandBasePos[base*3+1])/2:(attribute.getY(base)+attribute.getY(base+8))/2;
+    const z1=cfg.trackCarrierFromOuterFace?attribute.getZ(base)+(bandBasePos[(base+8)*3+2]-bandBasePos[base*3+2])/2:(attribute.getZ(base)+attribute.getZ(base+8))/2;
     const length=Math.max(Math.hypot(z1-z0,y1-y0),1e-6);
     out.set(z0+(z1-z0)*t-(y1-y0)/length*rOut,
       y0+(y1-y0)*t+(z1-z0)/length*rOut);
@@ -4371,13 +4374,20 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     // Recover this LIVE belt segment's f0/f1 centerline directly from the
     // deformed outer/inner face vertices. The visible casting belt is the
     // shoe's sole position/tangent source, with only rOut along its normal.
-    const y0 = (bandPosition.getY(vertexBase + 2)
+    // The opt-in uses the ORIGINAL nominal half-stock vector; native band
+    // conformance translates each cross-section without rotating its stock.
+    // Additional inner lining therefore cannot move either shoe sampler.
+    const y0 = cfg.trackCarrierFromOuterFace ? bandPosition.getY(vertexBase+2)
+      +(bandBasePos[(vertexBase+6)*3+1]-bandBasePos[(vertexBase+2)*3+1])/2 : (bandPosition.getY(vertexBase + 2)
       + bandPosition.getY(vertexBase + 6)) / 2;
-    const z0 = (bandPosition.getZ(vertexBase + 2)
+    const z0 = cfg.trackCarrierFromOuterFace ? bandPosition.getZ(vertexBase+2)
+      +(bandBasePos[(vertexBase+6)*3+2]-bandBasePos[(vertexBase+2)*3+2])/2 : (bandPosition.getZ(vertexBase + 2)
       + bandPosition.getZ(vertexBase + 6)) / 2;
-    const y1 = (bandPosition.getY(vertexBase)
+    const y1 = cfg.trackCarrierFromOuterFace ? bandPosition.getY(vertexBase)
+      +(bandBasePos[(vertexBase+8)*3+1]-bandBasePos[vertexBase*3+1])/2 : (bandPosition.getY(vertexBase)
       + bandPosition.getY(vertexBase + 8)) / 2;
-    const z1 = (bandPosition.getZ(vertexBase)
+    const z1 = cfg.trackCarrierFromOuterFace ? bandPosition.getZ(vertexBase)
+      +(bandBasePos[(vertexBase+8)*3+2]-bandBasePos[vertexBase*3+2])/2 : (bandPosition.getZ(vertexBase)
       + bandPosition.getZ(vertexBase + 8)) / 2;
     const y = y0 + (y1 - y0) * progress;
     const z = z0 + (z1 - z0) * progress;
