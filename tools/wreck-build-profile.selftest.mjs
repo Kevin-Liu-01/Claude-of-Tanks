@@ -50,8 +50,8 @@ for (const name of ['collectWreckGeometrySteps', 'normalizeGeometrySetSteps', 'p
   assert.throws(() => transform(`${wreckSource}\nfunction ${name}() { return; }`, 'control'), /Exact .* hook/);
 }
 assert.throws(() => transform(wreckSource.replace('owner.visual.dispose()', 'owner.visual.close()'), 'control'), /Exact visual.dispose hook/);
-assert.throws(() => transform(geometrySource.replace('function* compactWreckGeometrySteps(', 'function* missingCompaction('), 'control', 'geometry'), /Exact compactWreckGeometry hook/);
-assert.throws(() => transform(`${geometrySource}\nfunction* compactWreckGeometrySteps() { return; }`, 'control', 'geometry'), /Exact compactWreckGeometry hook/);
+assert.throws(() => transform(geometrySource.replace('function* compactInputSteps(', 'function* missingCompaction('), 'control', 'geometry'), /Exact compactWreckGeometry hook/);
+assert.throws(() => transform(`${geometrySource}\nfunction* compactInputSteps() { return; }`, 'control', 'geometry'), /Exact compactWreckGeometry hook/);
 assert.throws(() => transform(wreckSource, 'unknown'));
 assert.throws(() => transform(wreckSource, 'control', 'unknown'), /Known wreck source kind/);
 assert.throws(() => transform('function {', 'control'));
@@ -125,13 +125,16 @@ function compaction(source) {
     return { mergeGeometries };
   };
   new Function('require', 'exports', 'globalThis', javascript)(require, exports, { __WRECK_PROFILE: profiler });
-  return { invoke: exports.compactWreckGeometrySteps, profiler };
+  return { invoke: exports.compactWreckGeometrySteps,
+    paint: exports.compactWreckGeometryForPaintSteps, profiler };
 }
 const originalCompact = compaction(geometrySource), observedCompact = compaction(geometryControl.source);
-for (const closeEarly of [false, true]) {
-  const input = new THREE.BoxGeometry(1, 2, 3), raw = input.toNonIndexed(), observed = raw.clone();
+for (const entrypoint of ['invoke', 'paint']) for (const closeEarly of [false, true]) {
+  const input = new THREE.BoxGeometry(1, 2, 3), raw = input.toNonIndexed();
+  if (entrypoint === 'paint') raw.deleteAttribute('uv');
+  const observed = raw.clone();
   const before = observedCompact.profiler.operations.compactWreckGeometry?.calls ?? 0;
-  const a = originalCompact.invoke(raw), b = observedCompact.invoke(observed);
+  const a = originalCompact[entrypoint](raw), b = observedCompact[entrypoint](observed);
   assert.equal(observedCompact.profiler.operations.compactWreckGeometry?.calls ?? 0, before,
     'iterator creation cannot record compaction work');
   try {
@@ -141,17 +144,36 @@ for (const closeEarly of [false, true]) {
       const observedStep = b.next();
       assert.equal(observedStep.done, step.done);
       if (step.done) {
-        assert.equal(step.value, raw);
-        assert.equal(observedStep.value, observed, 'observer preserves returned geometry ownership');
+        assert.equal(step.value, entrypoint === 'paint' ? true : raw);
+        assert.equal(observedStep.value, entrypoint === 'paint' ? true : observed,
+          'observer preserves geometry ownership or pre-paint admission result');
       } else assert.deepEqual(observedStep, step, 'observer preserves every yielded checkpoint');
       if (closeEarly && !step.done) { assert.deepEqual(b.return(), a.return()); break; }
     } while (!step.done);
     assert.deepEqual(snapshot(observed), snapshot(raw), 'observed compaction preserves exact output');
-    assert.equal(observedCompact.profiler.operations.compactWreckGeometry.calls, before + 1);
+    assert.equal(observedCompact.profiler.operations.compactWreckGeometry.calls, before + 1,
+      `${entrypoint}: shared body records exactly one completed/closed compaction`);
     observedCompact.profiler.measure('after-compaction', () => {});
   } finally { a.return(); b.return(); input.dispose(); raw.dispose(); observed.dispose(); }
 }
+const beforeInvalid = observedCompact.profiler.operations.compactWreckGeometry.calls;
 assert.throws(() => observedCompact.invoke(null).next());
+assert.equal(observedCompact.profiler.operations.compactWreckGeometry.calls, beforeInvalid,
+  'invalid input rejected before shared compaction does not invent an executed span');
+for (const entrypoint of ['invoke', 'paint']) {
+  const input = new THREE.BoxGeometry(1, 2, 3), geometry = input.toNonIndexed();
+  if (entrypoint === 'paint') geometry.deleteAttribute('uv');
+  const before = observedCompact.profiler.operations.compactWreckGeometry.calls;
+  const failure = new Error(`failed ${entrypoint} attribute installation`);
+  geometry.setAttribute = () => { throw failure; };
+  const steps = observedCompact[entrypoint](geometry);
+  try {
+    assert.throws(() => { while (!steps.next().done) {} }, error => error === failure);
+    assert.equal(observedCompact.profiler.operations.compactWreckGeometry.calls, before + 1,
+      'a failure inside the shared body closes its actual timing span');
+    observedCompact.profiler.measure('after-shared-compaction-error', () => {});
+  } finally { steps.return(); input.dispose(); geometry.dispose(); }
+}
 observedCompact.profiler.measure('after-compaction-error', () => {});
 for (const normalizer of [controlNormalize, candidateNormalize]) {
   const before = normalizer.profiler.operations.normalizeGeometry.calls;
