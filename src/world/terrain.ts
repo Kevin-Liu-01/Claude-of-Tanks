@@ -230,8 +230,10 @@ export interface HeightField {
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
   getWaterMaskAt(x: number, z: number): number;
-  /** Visible shallow liquid above the unchanged collision/drive bed. Zero on ice/dry ground. */
+  /** Authored shallow depth used to build the sheet. Zero on ice/dry ground. */
   getWaterDepthAt?(x: number, z: number): number;
+  /** Exact rendered triangle height, installed when the liquid mesh is built. */
+  getWaterSurfaceHeightAt?(x: number, z: number): number;
   /** Presentation-only; simulation/headless fields may omit this query. */
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
   size: number;
@@ -3536,7 +3538,8 @@ function* terrainBuildSteps(
       step = waterSteps.next();
     }
     if (step.value) {
-      const water = createShallowWaterSurface(step.value,
+      heightField.getWaterSurfaceHeightAt = step.value.heightAt;
+      const water = createShallowWaterSurface(step.value.geometry,
         materialStep.value.waterMask, materialStep.value.waterNormal,
         heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78]);
       group.add(water.mesh);

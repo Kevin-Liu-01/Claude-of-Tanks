@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import ts from 'typescript';
+import ts from 'typescript-compiler-api';
 import { trackSurfaceAt, trackSurfacePolicy } from './trackSurface.ts';
 import { resolveSourcedTerrainPalette } from './sourcedTextures.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';

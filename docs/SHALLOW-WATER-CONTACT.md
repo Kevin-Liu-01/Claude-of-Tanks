@@ -18,9 +18,16 @@ compacted). This is a bounded added cost, not a zero-cost or no-regression
 certification. Native frame and memory acceptance is still required.
 
 Track spray and expanding ripple rings use the existing particle and 96-quad
-tread/wake pools at the new waterline. The dry tread branch is retained; an
+tread/wake pools at the new waterline. Contact samples the exact rendered
+triangles, not the continuous depth curve between their vertices. The sampler
+reuses the construction height grid and adds a compact cell-admission bitset:
+68,612 retained CPU bytes at the maximum 1024-metre grid. It does not query
+shore masks, allocate, or search geometry during contact. The dry tread branch is retained; an
 expired-print admission fix allows a repeatedly traversed spot to receive a
-new print/wake. World replacement and Garage fall back to zero water depth.
+new print/wake. The proxy follows world replacement and falls back to zero
+when there is no field. That null-field test is not a Garage-transition test:
+Garage can retain a dormant world, while the existing FX phase owner suspends
+battle effects. A native transition check is still required.
 Map-owned shared texture retention covers the new material's hidden samplers.
 
 ## Evidence status
@@ -50,8 +57,23 @@ Map-owned shared texture retention covers the new material's hidden samplers.
   a full-feature, steady-state or tablet performance gate.
 - R2's growing resource counts across different poses are not a memory A/B:
   moving the camera warms other materials, geometry and textures too.
+- Integration caught a shoreline-interior height mismatch: the 8-metre mesh
+  and the analytic contact depth only agreed at vertices. The candidate now
+  uses one triangle-height sampler for wakes, spray and buoys, with independent
+  interior/omitted-cell regression coverage. Native review is still pending.
+- The integrated alignment/powder candidate passes all seven focused tests,
+  TS7, strict metrics for both water modules (12 functions, no violations),
+  and the seven-file water/terrain Doctor scan. Production build also passes;
+  its existing large-chunk warning remains. These are session 65572 results,
+  not a native visual/performance acceptance or a clean full-FX Doctor claim.
+- Two integrated contact tests initially failed before assertions because
+  `typescript` now resolves the TS7 version-only package. Using the already
+  maintained `typescript-compiler-api` import makes both pass; no dependency
+  or runtime changes were needed. Original failures remain in session 33311
+  and `track-contact-compiler-r1.YMPY27/REVIEW.md` under the evidence root.
 - Not yet published. Buoy visual seating, live motion and constrained-device
   performance remain acceptance checks. The terrain shader cache key is now
   v27; the water shader's bounded-highlight candidate is v3.
-- Sand/snow contact variants and broader shoreline dressing are separate work;
-  neither is claimed complete here. Rain/snow weather remains removed.
+- The local sand/snow contact checkpoint is integrated, including exact
+  water-versus-powder expiry tests. Its native appearance and broader shoreline
+  dressing are not claimed complete here. Rain/snow weather remains removed.

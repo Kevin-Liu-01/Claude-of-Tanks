@@ -39,6 +39,7 @@ interface DressingHeightField {
   getHeightAt(x: number, z: number): number;
   getWaterMaskAt(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
+  getWaterSurfaceHeightAt?(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
 }
 
@@ -1229,7 +1230,9 @@ function addCoastalBuoys(
     if (Math.max(Math.abs(x), Math.abs(z)) > 480) continue;
     const buoy = new THREE.SphereGeometry(0.32 + rng() * 0.12, 8, 6);
     scaleUV(buoy, 1.5, 1);
-    buoy.translate(x, heightField.getHeightAt(x, z) + (heightField.getWaterDepthAt?.(x, z) ?? 0) + 0.16, z);
+    const waterline = heightField.getWaterSurfaceHeightAt?.(x, z)
+      ?? heightField.getHeightAt(x, z) + (heightField.getWaterDepthAt?.(x, z) ?? 0);
+    buoy.translate(x, waterline + 0.16, z);
     buckets.plaster.push(jitterUV(buoy, rng));
   }
 }

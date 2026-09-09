@@ -43,6 +43,14 @@ assert.equal(proxy.getTrackSurfaceAt(0, 0), 0, 'older/mock field stays ordinary'
 assert.equal(proxy.size, 800);
 assert.equal(proxy.minY, -12);
 assert.equal(proxy.maxY, 44);
+assert.equal(proxy.getWaterSurfaceHeightAt(2, 3), 105, 'unbuilt sheet falls back to authored bed');
+world = { heightField: { ...priorField, getWaterDepthAt: () => 0.58,
+  getWaterSurfaceHeightAt: () => 106.25 } };
+assert.equal(proxy.getWaterSurfaceHeightAt(2, 3), 106.25, 'contact uses rendered sheet, not analytic depth');
+exactMode = false;
+assert.equal(proxy.getWaterSurfaceHeightAt(2, 3), 106.25, 'live/capture modes agree on visible waterline');
+world = { heightField: { ...priorField, getWaterSurfaceHeightAt: () => 203 } };
+assert.equal(proxy.getWaterSurfaceHeightAt(2, 3), 203, 'map replacement cannot retain the previous sampler');
 
 world = null;
 assert.equal(proxy.getHeightAt(2, 3), 0);
@@ -50,6 +58,7 @@ assert.equal(proxy.getNormalAt(0, 0), fallbackNormal);
 assert.equal(proxy.getGroundType(0, 0), 'hard');
 assert.equal(proxy.getWaterMaskAt(0, 0), 0);
 assert.equal(proxy.getTrackSurfaceAt(0, 0), 0);
+assert.equal(proxy.getWaterSurfaceHeightAt(0, 0), 0);
 assert.equal(proxy.size, 1000);
 
 console.log('liveHeightFieldProxy.selftest: fast live and exact authoring terrain paths pass');
