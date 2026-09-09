@@ -57,4 +57,9 @@ residual exceeded the unchanged 0.25 px limit after its fender correction.
 The maintained centering generator was rerun; only the two changed Merkava
 anchors/projections and their corresponding icons were retained. Unrelated
 sub-millimetre M1A3/MBT-70 regeneration noise was excluded. The subsequent
-release run is pending; this correction is not itself a release PASS.
+release run passed centering (maximum 0.00 px rendered, 0.14 px exported top),
+all seven module alignments, current assets, track duplication, muzzles,
+barrel circularity and registered source fidelity. All seven strict geometry
+gates passed (minimum 92.3/92); contact/clipping, continuity and weapon checks
+also passed. The composed command then entered the full `npm test` lifecycle,
+which remains pending. None of these completed phases is a full release PASS.
