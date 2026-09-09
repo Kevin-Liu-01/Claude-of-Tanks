@@ -27,7 +27,7 @@ expired-print admission fix allows a repeatedly traversed spot to receive a
 new print/wake. The proxy follows world replacement and falls back to zero
 when there is no field. That null-field test is not a Garage-transition test:
 Garage can retain a dormant world, while the existing FX phase owner suspends
-battle effects. A native transition check is still required.
+battle effects. The native live-drive transition below verifies that owner.
 Map-owned shared texture retention covers the new material's hidden samplers.
 
 ## Evidence status
@@ -48,8 +48,8 @@ Map-owned shared texture retention covers the new material's hidden samplers.
 - R3 completed dry/shore/immersed, opposite low-angle and night views with
   no errors. Low-angle immersion and night lights are visible, but the direct
   sun highlight remains overexposed, so daytime appearance is still rejected.
-  The next candidate bounds the surface specular energy without changing the
-  scene lighting. It awaits integrated checks and a native preview.
+  The subsequent R4 candidate bounds the surface specular energy without
+  changing the scene lighting; its accepted scoped preview is recorded below.
 - R3's same-build water-mesh on/off samples isolate the extra draw only:
   371→372 calls and +3,862 triangles at this Coastal pose. The two off/on/on/off
   median render times were 3.8/3.9/4.9/3.7 ms; the second on block has an
@@ -60,7 +60,7 @@ Map-owned shared texture retention covers the new material's hidden samplers.
 - Integration caught a shoreline-interior height mismatch: the 8-metre mesh
   and the analytic contact depth only agreed at vertices. The candidate now
   uses one triangle-height sampler for wakes, spray and buoys, with independent
-  interior/omitted-cell regression coverage. Native review is still pending.
+  interior/omitted-cell regression coverage. R4 and the live drive use this fix.
 - The integrated alignment/powder candidate passes all seven focused tests,
   TS7, strict metrics for both water modules (12 functions, no violations),
   and the seven-file water/terrain Doctor scan. Production build also passes;
@@ -71,9 +71,43 @@ Map-owned shared texture retention covers the new material's hidden samplers.
   maintained `typescript-compiler-api` import makes both pass; no dependency
   or runtime changes were needed. Original failures remain in session 33311
   and `track-contact-compiler-r1.YMPY27/REVIEW.md` under the evidence root.
-- Not yet published. Buoy visual seating, live motion and constrained-device
-  performance remain acceptance checks. The terrain shader cache key is now
+- Not yet published. Constrained-device performance remains an acceptance
+  limitation. The terrain shader cache key is now
   v27; the water shader's bounded-highlight candidate is v3.
 - The local sand/snow contact checkpoint is integrated, including exact
-  water-versus-powder expiry tests. Its native appearance and broader shoreline
-  dressing are not claimed complete here. Rain/snow weather remains removed.
+  water-versus-powder expiry tests. Broader shoreline dressing is not claimed
+  complete here. Rain/snow weather remains removed.
+
+## Native R4 and actual-drive review
+
+Evidence root: `/Users/kevinliu/.codex/visualizations/2026/environment-recovery-20260907/`.
+
+- `shallow-water-native-r4.JCVlSt`: sand, immersed, opposite low-angle,
+  nighttime and snow captures from the production build. Root visually reviewed
+  all five: the broad white sun-glare patch is gone, the waterline crosses the
+  lower hull, submerged wheels remain faintly visible, and headlights illuminate
+  the surface at night. Sand/snow use short low puffs rather than tall earth
+  clouds. Accepted for this shallow-contact presentation, not whole-map art:
+  the water is still deliberately simple, with no refraction or fluid motion.
+  These static captures manually stage FX and do not prove actual driving.
+- `shallow-water-live-r1.GKX9rY`: normal solo battle entry, authored Coastal
+  spawn `[232, -352]`, one initial hull-yaw change, then held forward through
+  normal input/60-Hz simulation/FX. No teleport, forced speed, suspension,
+  manual particle emission or shot mode. The tank reaches `[383.1062, -352]`
+  in 11.5021 seconds wall time / 11.5 seconds simulation / 11.4996 seconds FX,
+  with both rear contact masks at 1 / 0.954724. The 24 scalar samples advance
+  monotonically. Root reviewed dry, shoreline, immersed and Garage images.
+- The shoreline trigger samples tank-center coverage first; both rear contacts
+  are still dry at that trigger. The later screenshot is bracketed by rear
+  coverage 0.0463 / 0.0224 and 1 / 0.9238. It is not an exact first-contact frame.
+  The immersed observation records 20 live wet and 76 dry slots in the existing
+  global 96-quad pool. Those are lifetime-slot counts, not player-only or pixel
+  counts; independent expiry behavior is covered by the focused selftest.
+- Normal `leaveBattleToGarage` detaches the retained FX group, disables its late
+  particle activity, leaves zero live wet/dry slots and zero attached columns,
+  guided missiles or impact decals, and unmounts the world. The screenshot is
+  clean. This verifies actual phase ownership rather than a null-field mock.
+- Both packets use Apple M5 Max/Metal Chrome at 1440×900, DPR 1, High, trim 0,
+  scale 1. No page errors, failed programs, lost context or observed GL errors.
+  Build/source pins stay unchanged. Both browsers/previews close and FIFO leases
+  release. These are not physical-iPad/Safari or no-regression certificates.

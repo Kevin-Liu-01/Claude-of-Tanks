@@ -16,6 +16,22 @@ Each admitted sand/snow event uses one existing dust-pool puff instead of the ea
 
 ## Limitations / integration
 
-Classification conservatively follows authored material inputs, not rendered pixel/slope/noise readback. It adds event-gated scalar/grid/shore queries; reduced particle work and unchanged GPU owners do not establish CPU/GPU no-regression. Ordinary hard-ground dust remains unchanged on roads/ice; only the new powder is excluded. Actual driving appearance, contact and whole-scene inventories await native review.
+Classification conservatively follows authored material inputs, not rendered pixel/slope/noise readback. It adds event-gated scalar/grid/shore queries; reduced particle work and unchanged GPU owners do not establish CPU/GPU no-regression. Ordinary hard-ground dust remains unchanged on roads/ice; only the new powder is excluded.
 
 Root owns surgical integration into the separate water candidate. Preserve its newer wet-ring branch, actual water-depth behavior, expired-slot admission and allocation-free corner writer; its expiry/duration checks must use exact surface==1, never surface>0. This older source base does not contain those water corrections. Do not replace effects.ts, terrain.ts or the proxy wholesale. Foundry R2 remains a separate art-unapproved local checkpoint and is not included here.
+
+## Integrated review
+
+Integrated with the newer water candidate at `22f7966a3`. Both contact tests now
+use the existing `typescript-compiler-api` package after the original `typescript`
+import resolved the TS7 version-only package and failed before assertions.
+No dependency changes or disabled assertions. Seven focused tests, TS7 and
+production build pass together; the full-FX Doctor limitations above remain.
+
+Native production-build R4 (`shallow-water-native-r4.JCVlSt` under the evidence
+root) includes reviewed sand and snow views with actual material codes 2 and 3:
+short, low, subtle powder rather than the old tall earth clouds. Those views
+stage FX; they are not natural driving or performance evidence. The subsequent
+`shallow-water-live-r1.GKX9rY` uses real held-input driving from dry Coastal spawn
+through beach into water, then verifies clean Garage ownership. See
+`SHALLOW-WATER-CONTACT.md` for exact evidence and remaining device/performance limits.
