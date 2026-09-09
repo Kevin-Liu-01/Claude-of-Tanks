@@ -128105,7 +128105,7 @@
             ],
             "max": [
               -1.0445,
-              1.2633,
+              1.2683,
               3.5595
             ],
             "turretLocal": false
@@ -128120,7 +128120,7 @@
             ],
             "max": [
               1.5795,
-              1.2633,
+              1.2683,
               3.5595
             ],
             "turretLocal": false
@@ -128189,15 +128189,15 @@
           }
         ]
       },
-      "geometryHash": "3dab09c1",
-      "metadataHash": "45c13814",
+      "geometryHash": "662512e3",
+      "metadataHash": "04e9edc2",
       "presentationAnchor": {
         "xM": 0,
         "zM": 0.0788
       },
       "presentationHash": "75b27724",
       "presentationProjection": {
-        "centerYM": 1.9893,
+        "centerYM": 1.9843,
         "topHalfM": 6.4532,
         "sideHalfM": 3.2266
       },
@@ -128205,11 +128205,13 @@
         "version": 1,
         "issues": [],
         "roles": {
+          "wheelDish": 6,
           "wheelTire": 1,
-          "wheelDish": 5,
           "wheelInset": 1,
           "suspensionLink": 1,
           "suspensionJoint": 1,
+          "tireRubber": 2,
+          "wheelPaint": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -128217,7 +128219,6 @@
           "armorPaint": 5,
           "fittingPaint": 3,
           "gunmetal": 6,
-          "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 5,
           "gearShadow": 1,
@@ -128296,24 +128297,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93946,
-          "sha256": "398f5cdce1faac92bf660775d228dc65550ef096f7da41211bff34e3b7997174"
+          "bytes": 93682,
+          "sha256": "6ccf8c6a4dfc566a99c91c82b34fd5526d46c5f5aa847483816b2bf038f92f58"
         },
         "modulesSide": {
           "file": "leo2_revolution_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94970,
-          "sha256": "8999beb93835d7cb251f00e4eac24ee7f59a064039800a60f80b55c73a292a35"
+          "bytes": 94515,
+          "sha256": "761878e72f5521d3ec0d761a0e88080bd8df7161b90add263365b7a5a2b9150d"
         },
         "crewSide": {
           "file": "leo2_revolution_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86056,
-          "sha256": "218cc1cbafebd750017e4437702da894c3d7cd8aef18f4f3b72bd3402d7362b4"
+          "bytes": 85751,
+          "sha256": "3b34b6fbaacec8ec10e53946a36d8c580d7baedc003cb71a00f0990dbf0c753e"
         },
         "markings": {
           "file": "leo2_revolution_markings.png",
@@ -169426,7 +169427,7 @@
             ],
             "max": [
               -1.15,
-              1.4242,
+              1.4279,
               3.6047
             ],
             "turretLocal": false
@@ -169441,7 +169442,7 @@
             ],
             "max": [
               1.81,
-              1.4242,
+              1.4279,
               3.6047
             ],
             "turretLocal": false
@@ -169510,15 +169511,15 @@
           }
         ]
       },
-      "geometryHash": "c4976397",
-      "metadataHash": "4e223b58",
+      "geometryHash": "4fcedd9c",
+      "metadataHash": "b6607e14",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0659
       },
       "presentationHash": "736348bc",
       "presentationProjection": {
-        "centerYM": 2.7825,
+        "centerYM": 2.7753,
         "topHalfM": 7.5592,
         "sideHalfM": 3.7796
       },
@@ -169526,11 +169527,13 @@
         "version": 1,
         "issues": [],
         "roles": {
+          "wheelDish": 6,
           "wheelTire": 1,
-          "wheelDish": 5,
           "wheelInset": 1,
           "suspensionLink": 1,
           "suspensionJoint": 1,
+          "tireRubber": 2,
+          "wheelPaint": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
@@ -169538,7 +169541,6 @@
           "fittingPaint": 21,
           "armorPaint": 7,
           "gunmetal": 6,
-          "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 17,
           "gearShadow": 1,
@@ -169570,24 +169572,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78577,
-          "sha256": "baf1cf3c2b1c35ee2296be63590bd1ccfe61956a4d0bc411581649d097e3e299"
+          "bytes": 78341,
+          "sha256": "02a01a12b5fd4ca35cf5beea05ccb9bee46600269f721c8f499344f449488c0a"
         },
         "modulesSide": {
           "file": "leo2a7v_x_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77942,
-          "sha256": "d2f1f3700e4ea345de1d4103ff106a73e1413f198e2f2435e60375a05aaf6314"
+          "bytes": 77720,
+          "sha256": "d5c1ca582433c7c74da566f6ce72024ce364f7a4aceb308725c6501e5e3be2e4"
         },
         "crewSide": {
           "file": "leo2a7v_x_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69961,
-          "sha256": "ab48c34ccb31a682f20cb32199664ac6641b2271547ec67ae85d3532dae7bc84"
+          "bytes": 69719,
+          "sha256": "8d47c3668a71a0037262580ceb0e6728ab0ae59a0e3fb52e22409a8bcd81f15c"
         },
         "angle": {
           "file": "leo2a7v_x_angle.webp",
