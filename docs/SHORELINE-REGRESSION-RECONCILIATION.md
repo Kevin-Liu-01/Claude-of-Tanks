@@ -33,3 +33,8 @@ checks rerun maintained suites normally.
 The intermediate `d8068f451` checkpoint additionally contained Coastal/Fjord
 driftwood. That art was rejected after native inspection and is not released.
 Its aggregate values are not used here.
+
+All three reconciled maintained suites and the focused reed test pass normally
+on the clean reed-only release `687aa19b2` in `river-reed-release-r1.yTbFdT`.
+Full TS7, scoped Doctor and production build pass in that same source-pinned
+packet. The original failed and diagnostic receipts remain preserved.

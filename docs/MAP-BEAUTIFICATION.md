@@ -211,6 +211,13 @@ It is excluded from the reed release. Existing farm, boat, wreck and tree
 families still need composition/variety improvements; larger populations are
 not a substitute for better existing forms.
 
+Remaining verification is explicit: sun-facing river/marsh appearance and
+constrained-device costs are not certified by the Coastal driving evidence.
+A separate regression audit also finds the Mangrove distant-stem cap no longer
+contained by its seam-corrected crown (variant 0, seed 2001); an isolated
+attachment follow-up is in preparation. It is pre-existing, not a reed change,
+and the failed full-suite boundary is not relabeled as passing.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
