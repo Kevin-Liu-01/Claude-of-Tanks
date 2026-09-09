@@ -44,6 +44,19 @@ function ray(mesh,x,z,up=false) {
     .intersectObject(mesh,false)[0]?.point.y??NaN;
 }
 
+function pitchingMount(tank,id){
+  const mount=tank.root.getObjectByName('gunMount'),parts=[mount];
+  assert.ok(mount?.isMesh&&mount.geometry.attributes.position.count>0,`${id}: actual metal mantlet`);
+  if(id==='t90a_vladimir_x'||id==='t90m_x'){
+    const cloth=tank.root.getObjectByName('gunMountCanvasSkin');
+    assert.ok(cloth?.isMesh&&cloth.geometry.attributes.position.count>0,`${id}: actual separately finished boot`);
+    assert.equal(cloth.parent,tank.root.getObjectByName('rig_gun'),'continuous boot keeps its original pitching owner');
+    parts.push(cloth);
+  }
+  return parts;
+}
+const mountBounds=parts=>parts.reduce((box,part)=>box.union(new THREE.Box3().setFromObject(part,true)),new THREE.Box3());
+
 function assertCaps(mesh,id) {
   const points=vertices(mesh),index=mesh.geometry.index;
   for(const [z,sign] of [[-3.43,-1],[3.43,1]]) {
@@ -104,8 +117,8 @@ function assertSourceEquipmentSections(tank,id) {
     near(ray(detail,.5956,-3.6273),1.82427,.014,'A: separate raised drum strap tensioner');
     near(ray(mesh('turretDetail'),-.390,-1.00694),2.64861,.006,'A: mast neck shoulder, not widened or translated silhouette');
   } else if(id==='t90a_vladimir_x') {
-    near(ray(mesh('gunMount'),0,1.23),2.086,.020,'Vladimir: rounded rear canvas boot crown');
-    near(ray(mesh('gunMount'),0,1.60),1.920,.020,'Vladimir: tucked circular front canvas cuff');
+    near(ray(mesh('gunMountCanvasSkin'),0,1.23),2.086,.020,'Vladimir: rounded rear canvas boot crown');
+    near(ray(mesh('gunMountCanvasSkin'),0,1.60),1.920,.020,'Vladimir: tucked circular front canvas cuff');
   } else if(id==='t90m_x') {
     near(ray(mesh('hullExternalArmor'),.70,2.40),1.226,.025,'M: stepped measured middle glacis field');
     near(ray(mesh('turretDetail'),-1.45,.50),1.88519,.024,'M: real inner folded carrier roof');
@@ -114,7 +127,7 @@ function assertSourceEquipmentSections(tank,id) {
     near(ray(mesh('hullExternalArmor'),1.843,.525),1.32474,.012,'M: separately seated outer curtain');
     near(ray(mesh('turret'),.90,-.80),1.96962,.015,'M: broad nearly level aft roof shoulder');
     near(ray(mesh('turret'),.90,.507),1.92279,.015,'M: independently inclined forward roof shoulder');
-    near(ray(mesh('gunMount'),-.27,1.80),1.71804,.016,'M: source forward canvas cradle cover');
+    near(ray(mesh('gunMountCanvasSkin'),-.27,1.80),1.71804,.016,'M: source forward canvas cradle cover');
   } else if(id==='t90sm_x') {
     const casing=mesh('hullDetail');
     const hit=new THREE.Raycaster(new THREE.Vector3(-1.30,1.10,-2.70),new THREE.Vector3(0,1,0),0,.40)
@@ -174,8 +187,7 @@ for(const [id,source] of Object.entries(SOURCE)) {
     const tip=new THREE.Box3().setFromPoints(gp.filter(p=>p.z>front-.025));
     near(tip.getCenter(new THREE.Vector3()).y,source.gunY,.035,`${id}: true bore height`);
     assert.ok(tip.max.x-tip.min.x>.14&&tip.max.x-tip.min.x<.27,`${id}: circular full-size muzzle, not a point`);
-    const mount=tank.root.getObjectByName('gunMount');
-    assert.ok(new THREE.Box3().setFromObject(mount,true).max.z<2.4,
+    assert.ok(mountBounds(pitchingMount(tank,id)).max.z<2.4,
       `${id}: thermal sleeves, evacuator and muzzle fixtures cannot remain on the non-recoiling mantlet`);
     assert.equal(gun.parent.name,'rig_recoil',`${id}: the full detailed tube follows native recoil`);
     assertWheelInstances(tank,source,id);
@@ -203,12 +215,15 @@ for(const id of Object.keys(SOURCE)) {
   try {
     const spec=getSpec(id),gun=tank.root.getObjectByName('rig_gun');
     const mount=gun.getObjectByName('gunMount'),recoil=gun.getObjectByName('rig_recoil');
+    const parts=pitchingMount(tank,id);
     const shell=tank.root.getObjectByName('rig_turret').getObjectByName('turret');
     assert.ok(mount?.isMesh&&mount.geometry.getAttribute('position').count>0,`${id}: real low-quality pitching mantlet mesh`);
     const poses=[];
     for(const pitch of [-spec.gunDepressionDeg,0,spec.gunElevationDeg]) {
       gun.rotation.x=-pitch*Math.PI/180;tank.root.updateMatrixWorld(true);
-      const mountBox=new THREE.Box3().setFromObject(mount,true);
+      // Same former aggregate stock, now split by metal/canvas finish; never
+      // admit the barrel, arbitrary gun decorations or an enlarged box proxy.
+      const mountBox=mountBounds(parts);
       assert.ok(boxGap(mountBox,new THREE.Box3().setFromObject(shell,true))<=.125,`${id}: mantlet remains seated at ${pitch} degrees`);
       assert.ok(boxGap(mountBox,new THREE.Box3().setFromObject(recoil,true))<=.10,`${id}: barrel remains attached at ${pitch} degrees`);
       poses.push(mount.matrixWorld.elements.slice());
