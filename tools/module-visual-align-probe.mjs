@@ -23,9 +23,8 @@
 // By default this is an audit. --gate exits non-zero when a playable vehicle
 // drifts, so tank:release:check can make the anatomy pass mandatory.
 
-import { createServer } from 'vite';
-import puppeteer from 'puppeteer';
 import { writeFileSync } from 'node:fs';
+import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
@@ -37,23 +36,20 @@ const TOL = 0.15;
 const FACE_TOL = 0.035;
 const MIN_VOLUME_DEPTH_M = 0.05;
 
-const server = await createServer({
+const pageErrors = [];
+const rows = [];
+await withIsolatedCaptureBrowser({
   root: process.cwd(), logLevel: 'error',
   server: { port: 7300 + Math.floor(Math.random() * 200), strictPort: false, hmr: false, watch: null },
-});
-await server.listen();
-const browser = await puppeteer.launch({
+}, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
-page.setDefaultTimeout(45000);
-const pageErrors = [];
-page.on('pageerror', (e) => pageErrors.push(String(e)));
+}, async ({ server, browser }) => {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  page.setDefaultTimeout(45000);
+  page.on('pageerror', (e) => pageErrors.push(String(e)));
 
-const rows = [];
-try {
   await page.goto(`http://localhost:${server.config.server.port}/?nosplash`, {
     waitUntil: 'domcontentloaded', timeout: 120000,
   });
@@ -427,10 +423,7 @@ try {
       console.error(`  ${row.id.padEnd(20)} ERROR ${String((e && e.message) || e).slice(0, 110)}`);
     }
   }
-} finally {
-  await browser.close();
-  await server.close();
-}
+});
 
 const drift = rows.filter((r) => r.flags && r.flags.length);
 console.log(`\n[mod-align] ${rows.length} scanned, ${drift.length} failing calibrated anatomy receipts`);

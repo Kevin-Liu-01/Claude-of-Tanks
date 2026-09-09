@@ -15,8 +15,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createServer } from 'vite';
-import puppeteer from 'puppeteer';
+import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { unavailableOracleReport } from './geometry-gate-policy.mjs';
 
 const ROOT = process.cwd();
@@ -27,16 +26,15 @@ const CHECK = args.includes('--check');
 const OUT = path.join(ROOT, 'docs', 'geometry-gate');
 fs.mkdirSync(OUT, { recursive: true });
 
-const server = await createServer({
+const rows = [];
+await withIsolatedCaptureBrowser({
   root: ROOT,
   logLevel: 'error',
   server: { port: 7400 + Math.floor(Math.random() * 200), strictPort: false, hmr: false, watch: null },
-});
-await server.listen();
-const browser = await puppeteer.launch({
+}, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
+}, async ({ server, browser }) => {
 const page = await browser.newPage();
 // Startup import/runtime failures must remain visible instead of appearing
 // only as an unexplained registry timeout during an authored-fleet audit.
@@ -49,8 +47,6 @@ page.setDefaultTimeout(150000);
 const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
 const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a2&registry=1`;
 
-const rows = [];
-try {
   // Discover eligible IDs without loading an optional local comparison file.
   // Worktrees intentionally omit quarantined GLBs, so registry discovery must
   // not depend on any one source asset being present.
@@ -109,10 +105,7 @@ try {
       console.error(`[geo] ${id}: ${error.message}`);
     }
   }
-} finally {
-  await browser.close();
-  await server.close();
-}
+});
 
 // --ids runs MERGE into the fleet ledger (never shrink it to the subset)
 const ledgerPath = path.join(OUT, 'ledger.json');
