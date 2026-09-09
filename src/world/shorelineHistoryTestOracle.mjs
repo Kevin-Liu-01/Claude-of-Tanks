@@ -59,10 +59,11 @@ export function historicalReservoirConfig(cfg) {
 export function historicalPaletteConfig(cfg) {
   // Coastal surface-only settings postdate the original palette receipt.
   // At 42ea275dfe55 neither setting existed. Current authoring is guarded by
-  // terrainSandCoverage/terrainWornDirt; preserve every other field.
+  // terrainSandCoverage/terrainWornDirt/villageWear; preserve every other field.
   if (cfg.id === 'coastal' || cfg.id === 'saltwind') {
     const { rippleShoreOnly: _laterShoreCoverage, wornDirtStrength: _laterWornBlend, ...splat } = cfg.splat;
-    return { ...cfg, splat };
+    const { villageWear: _laterVillageCoverage, workedGround: _laterActivityAreas, ...terrain } = cfg.terrain;
+    return { ...cfg, terrain, splat };
   }
   // Published 1e0b2608bc6e5fec2a3c2f32225358c6fcc62b97 restored Verdant's
   // original backdrop. The palette receipt predates that restoration; retain

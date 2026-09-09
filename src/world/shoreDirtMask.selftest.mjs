@@ -253,10 +253,10 @@ for (const id of MAP_IDS) {
   if (id === 'mangrove') continue;
   const cfg = getMapConfig(id);
   assert.equal(!!cfg.splat?.shoreDirt, id === 'polders', `${id}: only the published Polders opt-in joins Mangrove`);
-  // Independent authored harvest wear has its own immutable Longleaf control.
-  // Keep this pre-bank baseline byte-exact with both later opt-in stamps off.
+  // Harvest/activity wear has its own current controls. Keep this pre-bank
+  // baseline byte-exact with later stamps off and original village paint on.
   let control = cfg.terrain?.workedGround
-    ? { ...cfg, terrain: { ...cfg.terrain, workedGround: [] } } : cfg;
+    ? { ...cfg, terrain: { ...cfg.terrain, workedGround: [], villageWear: undefined } } : cfg;
   // The later Oasis contour intentionally changes water only; keep its exact
   // old input behind the immutable pre-shore-pass hash and test current below.
   if (id === 'oasis') control = historicalOasis(control);
