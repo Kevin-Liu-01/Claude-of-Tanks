@@ -442,6 +442,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainRoadMaterial.selftest.mjs',
     'src/world/treeSpecies.selftest.mjs',
     'src/world/treeTrunkQuality.selftest.mjs',
+    'src/world/woodyRootOrientation.selftest.mjs',
     'src/world/battlefieldBounds.selftest.mjs',
     'tools/coplanar-surface-overlap.selftest.mjs',
     'src/engine/frameScheduler.selftest.mjs',
