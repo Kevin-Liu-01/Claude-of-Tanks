@@ -1,0 +1,494 @@
+{
+  "counts": {
+    "outsideRefsReflogs": 413,
+    "noAuthored": 305,
+    "allNewSourceBlobsPublished": 58,
+    "allNewSourceBlobsLocal": 3,
+    "unmatched": 47
+  },
+  "residual": [
+    {
+      "commit": "404b0856c7b919e6d9cebb796e0ac273cae35876",
+      "date": "2026-08-28T14:41:45-07:00",
+      "subject": "On codex/t64-idler-lift-r1: autostash",
+      "unmatched": [
+        "src/vehicles/profiles/russia.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "1d54d48db2857d7bc3c1d92d08994a82a8488ee7",
+      "date": "2026-08-26T17:02:28-07:00",
+      "subject": "On codex/gallery-killcam-anatomy-r1: autostash",
+      "unmatched": [
+        "src/vehicles/internalAnatomyVisuals.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "b98b5cb29ca006deb0592eff2cee07ccfb69f58c",
+      "date": "2026-08-17T11:26:59-07:00",
+      "subject": "WIP on main: 3257d16a type10-pair enlarge order banked (§5.336): lane live, pin superseded by owner authority",
+      "unmatched": [
+        "src/vehicles/afvFamily.js",
+        "src/vehicles/modern2.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/casemate.js",
+        "src/vehicles/profiles/italy.js",
+        "src/vehicles/profiles/misc.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "548d3032e526f9acdc6dfa2c7b74e687a6b7d6f9",
+      "date": "2026-08-17T12:23:58-07:00",
+      "subject": "WIP on main: 516d4598 oplot right wall + ua-t80 rebase LANDED (§5.350): 66fc1724/1e175410/fe3c4dc8 — asymmetry law, russian domes, T-90 fronts, skirts",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "92990c8c0631d66387b4182a8930c741129e3eb7",
+      "date": "2026-08-28T18:47:49-07:00",
+      "subject": "On codex/bot-full-catalog-r1: codex-bot-full-catalog-r1",
+      "unmatched": [
+        "src/vehicles/fleetFactory.ts",
+        "src/vehicles/specs.js",
+        "src/vehicles/tankFactory.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "4ea444ef114413abe27e66613508c1aaf98f823d",
+      "date": "2026-08-20T16:57:18-07:00",
+      "subject": "On codex/motion-smoothing-r1: codex-motion-sync",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "5aa7680697c338c7e64396aaee361b757814c467",
+      "date": "2026-08-17T14:01:56-07:00",
+      "subject": "On main: merge-shield: tankFactory+calibrations lane WIP",
+      "unmatched": [
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "5ce53c50ea2ad3f1482a2222f8c959d47a855593",
+      "date": "2026-08-29T22:14:52-07:00",
+      "subject": "On codex/russian-camo-restoration-r1: autostash",
+      "unmatched": [
+        "src/vehicles/materials.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "08045d1913f466c987169a8e801b87c5e4968dc3",
+      "date": "2026-08-17T14:02:23-07:00",
+      "subject": "On main: merge-shield-4: all colliding WIP",
+      "unmatched": [
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "5f048990df4fd4f4148699df03568f560b500177",
+      "date": "2026-08-20T17:11:23-07:00",
+      "subject": "index on codex/motion-smoothing-r1: 4e3ecd8d Keep battle gallery title on one line",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "cd22a5182ca250df3bd5c76b1a8b5b67f166d1d0",
+      "date": "2026-08-25T13:15:07-07:00",
+      "subject": "On codex/leo2a6m-glacis-shoulders-r1: autostash",
+      "unmatched": [
+        "src/vehicles/profiles/leopard.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "c12389b4ec40e4f73809be47e821fd3a9d73b9e4",
+      "date": "2026-08-17T12:02:47-07:00",
+      "subject": "WIP on main: 1dbdda15 LANE I t95 REDESIGN LANDED (§5.346): ce210ed4 84.9/dims-100 vs the WoT print, maskFloorOracle loader law, maps land the held state — specs.js hunk-split (foreign combatAnatomy stream held out)",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/japan.js",
+        "src/vehicles/profiles/ukraine.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "074e511d45ba3eb336f2fec82b6d50f132f0a18f",
+      "date": "2026-08-28T16:15:20-07:00",
+      "subject": "On codex/american-modernization-r1: codex-american-modernization-pre-72e",
+      "unmatched": [
+        "src/vehicles/profiles/abrams.js",
+        "src/vehicles/profiles/kit.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "175c5d22ccb50e1c6199fa3fad38bde267b7b2a2",
+      "date": "2026-08-17T11:26:22-07:00",
+      "subject": "WIP on main: 3257d16a type10-pair enlarge order banked (§5.336): lane live, pin superseded by owner authority",
+      "unmatched": [
+        "src/vehicles/afvFamily.js",
+        "src/vehicles/modern2.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/casemate.js",
+        "src/vehicles/profiles/italy.js",
+        "src/vehicles/profiles/misc.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "0c71bdcf79ef1ad239386969f12f6e93b2371d9a",
+      "date": "2026-08-30T17:10:20-07:00",
+      "subject": "On codex/kf51-cheeks-r1: codex-kf51-cheeks-r1-current-main-sync",
+      "unmatched": [
+        "src/vehicles/profiles/leopard.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "af7285c6ff87f1719d9706ae23f7a80d13267f8d",
+      "date": "2026-08-28T14:43:40-07:00",
+      "subject": "On codex/t64-idler-lift-r1: autostash",
+      "unmatched": [
+        "src/vehicles/profiles/russia.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "137ce92130efa670293eeafaf34594911de0b79a",
+      "date": "2026-09-02T23:21:30-07:00",
+      "subject": "untracked files on codex/ifv-compact-scale-r1: 6d701a85c fix(puma): close hull seams and wrap rear tracks",
+      "unmatched": [
+        "src/vehicles/profiles/advancedIfvScale.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "2e7d997a95972da75311ce7280a75a372d3ca2bf",
+      "date": "2026-08-17T14:01:56-07:00",
+      "subject": "WIP on main: bd064725 residue + LEOPARD TRIO LANDED (§5.366): marder 82.5 + clone floats seated + leo2a4m 86.1 + leo2a6m 91 gestalt + kf51b descent",
+      "unmatched": [
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/misc.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "ff87b1d1e837d648b21cf458c80c83eb8c5dd3bc",
+      "date": "2026-08-17T14:01:15-07:00",
+      "subject": "WIP on main: bd064725 residue + LEOPARD TRIO LANDED (§5.366): marder 82.5 + clone floats seated + leo2a4m 86.1 + leo2a6m 91 gestalt + kf51b descent",
+      "unmatched": [
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/misc.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "e19a95d32ccf416b84be39afd0abb8c994b17479",
+      "date": "2026-08-17T12:38:29-07:00",
+      "subject": "WIP on (no branch): a7218931 bradley fills + attachments order banked (§5.349): sweep handoff now mandatory, all three bradleys in scope",
+      "unmatched": [
+        "src/vehicles/profiles/leopard.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "e4a3e56bbc58c48a27d3a3f9de13d1c13836d4a3",
+      "date": "2026-08-17T12:03:03-07:00",
+      "subject": "WIP on main: 1dbdda15 LANE I t95 REDESIGN LANDED (§5.346): ce210ed4 84.9/dims-100 vs the WoT print, maskFloorOracle loader law, maps land the held state — specs.js hunk-split (foreign combatAnatomy stream held out)",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/japan.js",
+        "src/vehicles/profiles/ukraine.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "bcb9cd39c85b258611a7763b725608aebf56de34",
+      "date": "2026-08-24T18:14:59-07:00",
+      "subject": "On codex/performance-loading-r1: codex-perf-loading-r1-tracked",
+      "unmatched": [
+        "src/vehicles/materials.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "51d47515923e59c4c4ef27fd462dbff68e436c5c",
+      "date": "2026-08-17T12:24:12-07:00",
+      "subject": "WIP on main: 516d4598 oplot right wall + ua-t80 rebase LANDED (§5.350): 66fc1724/1e175410/fe3c4dc8 — asymmetry law, russian domes, T-90 fronts, skirts",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "6afef13e9ac69bcc60974d283484481ba07b85ca",
+      "date": "2026-09-08T21:12:22-07:00",
+      "subject": "On codex/original-leo2a7-return-rollers-20260909: owned original leo roller implementation pending shared core seam",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "ef27f2c62cee183f85e3082fba1a37c45b791856",
+      "date": "2026-08-28T15:41:16-07:00",
+      "subject": "On codex/american-modernization-r1: american-modernization-r1",
+      "unmatched": [
+        "src/vehicles/profiles/abrams.js",
+        "src/vehicles/profiles/kit.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "4b3352a2afda7719eccddcbe24bd6e04e2ee0d04",
+      "date": "2026-08-17T22:11:53-07:00",
+      "subject": "On codex/fv510-milan-r1: autostash",
+      "unmatched": [
+        "src/vehicles/profiles/uk.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "7a70b2adcd834d1552d9db5af51d67eff799a4e8",
+      "date": "2026-08-28T18:28:57-07:00",
+      "subject": "On codex/t90-mg-forward-r1: codex-t90-mg-forward-refresh",
+      "unmatched": [
+        "src/vehicles/profiles/t90.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "7a73b645828245096d150365b3de837503c6deef",
+      "date": "2026-08-26T20:51:57-07:00",
+      "subject": "On codex/kf51b-track-gun-panel-seat-r1: codex-kf51b-pre-main-push",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "14848e242e2ca5d26ec1048db6607da477b50889",
+      "date": "2026-08-24T12:45:19-07:00",
+      "subject": "On codex/fleet-centering-audit-r1: codex-fleet-centering-integration",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "ad8c12eb805b7b4751208591a5fee4597a785b93",
+      "date": "2026-08-17T11:26:31-07:00",
+      "subject": "WIP on main: 3257d16a type10-pair enlarge order banked (§5.336): lane live, pin superseded by owner authority",
+      "unmatched": [
+        "src/vehicles/afvFamily.js",
+        "src/vehicles/modern2.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/casemate.js",
+        "src/vehicles/profiles/italy.js",
+        "src/vehicles/profiles/misc.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "e59dea4f796fe32670aac0986f5b404ac5b0b6c9",
+      "date": "2026-08-17T13:57:32-07:00",
+      "subject": "WIP on main: bd064725 residue + LEOPARD TRIO LANDED (§5.366): marder 82.5 + clone floats seated + leo2a4m 86.1 + leo2a6m 91 gestalt + kf51b descent",
+      "unmatched": [
+        "src/vehicles/modern3.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "dba8a6297492443c54fa1dae128ad8dd0bfbe6bc",
+      "date": "2026-08-17T12:23:49-07:00",
+      "subject": "WIP on main: 516d4598 oplot right wall + ua-t80 rebase LANDED (§5.350): 66fc1724/1e175410/fe3c4dc8 — asymmetry law, russian domes, T-90 fronts, skirts",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "acb8fa2543273fd79e626c191645cabca6cbdb2f",
+      "date": "2026-08-26T20:27:28-07:00",
+      "subject": "On codex/kf51b-track-gun-panel-seat-r1: codex-kf51b-seat-post-gate",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "76c57e40e130eb24431bf2ec7b1284bab2d2f29f",
+      "date": "2026-08-17T14:02:07-07:00",
+      "subject": "WIP on main: bd064725 residue + LEOPARD TRIO LANDED (§5.366): marder 82.5 + clone floats seated + leo2a4m 86.1 + leo2a6m 91 gestalt + kf51b descent",
+      "unmatched": [
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/misc.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "8cd08217386f2190f51c0c16196a2401c2fd4d37",
+      "date": "2026-08-17T12:03:01-07:00",
+      "subject": "WIP on main: 1dbdda15 LANE I t95 REDESIGN LANDED (§5.346): ce210ed4 84.9/dims-100 vs the WoT print, maskFloorOracle loader law, maps land the held state — specs.js hunk-split (foreign combatAnatomy stream held out)",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/japan.js",
+        "src/vehicles/profiles/ukraine.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "c642af62898785feb827272df4c3b9e40393fa27",
+      "date": "2026-08-30T16:38:36-07:00",
+      "subject": "On codex/kf51-cheeks-r1: codex-kf51-cheeks-r1-wip",
+      "unmatched": [
+        "src/vehicles/profiles/leopard.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "085493fb757d8bfafd1610979fe226d36d57c311",
+      "date": "2026-08-17T14:02:24-07:00",
+      "subject": "WIP on main: bd064725 residue + LEOPARD TRIO LANDED (§5.366): marder 82.5 + clone floats seated + leo2a4m 86.1 + leo2a6m 91 gestalt + kf51b descent",
+      "unmatched": [
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/misc.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "355fd378d0f9a68330a7b332122b7134e9cd4b77",
+      "date": "2026-08-26T17:57:16-07:00",
+      "subject": "On codex/gallery-killcam-anatomy-r1: codex-gallery-anatomy-sync-20260826",
+      "unmatched": [
+        "src/vehicles/internalAnatomyVisuals.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "196333a0bfae414f6c1f27d42e6c53aec1e46af1",
+      "date": "2026-08-17T13:42:41-07:00",
+      "subject": "WIP on main: 4442a528 BRADLEY CLOSEOUT LANDED (§5.365): hang diagnosed, m2a2 49.1/dims-100 honest, packets x3, silhouette truth-up",
+      "unmatched": [
+        "src/vehicles/profiles/afvFamily.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "686cdb1033fb27ba822eed99f6dd6d71760b2a42",
+      "date": "2026-08-24T11:46:26-07:00",
+      "subject": "On codex/fleet-centering-audit-r1: codex-fleet-centering-rebase",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "f17c8349f3c9541da4e80a27a00d7d9d15e29425",
+      "date": "2026-08-17T12:02:37-07:00",
+      "subject": "WIP on main: 1dbdda15 LANE I t95 REDESIGN LANDED (§5.346): ce210ed4 84.9/dims-100 vs the WoT print, maskFloorOracle loader law, maps land the held state — specs.js hunk-split (foreign combatAnatomy stream held out)",
+      "unmatched": [
+        "src/vehicles/modern2.js",
+        "src/vehicles/modern3.js",
+        "src/vehicles/profiles/afvFamily.js",
+        "src/vehicles/profiles/japan.js",
+        "src/vehicles/profiles/ukraine.js",
+        "src/vehicles/tankFactory.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "a4829f9175b748c4fb8a910710ead52ce629c4fe",
+      "date": "2026-08-28T16:18:12-07:00",
+      "subject": "On codex/american-modernization-r1: codex-american-modernization-pre-rebase",
+      "unmatched": [
+        "src/vehicles/profiles/abrams.js",
+        "src/vehicles/profiles/kit.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "428e9b044e7f380924efb72f1fe3ac32cb87cea0",
+      "date": "2026-08-26T19:36:09-07:00",
+      "subject": "On codex/kf51b-track-gun-panel-seat-r1: codex-kf51b-seat-wip",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "e6a0931a8d81e7d853d23f81c3d8829bdcefa470",
+      "date": "2026-09-02T23:21:30-07:00",
+      "subject": "On codex/ifv-compact-scale-r1: ifv-compact-scale-wip",
+      "unmatched": [
+        "src/vehicles/profiles/cv90.ts",
+        "src/vehicles/profiles/pumaS1.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "c9bae3268ce51e6a739266805bca26b4876dfb5a",
+      "date": "2026-09-03T11:08:16-07:00",
+      "subject": "On codex/challenger1-kv2-balance-r1: autostash",
+      "unmatched": [
+        "src/vehicles/balanceAudit.ts",
+        "src/vehicles/tier.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "fabafbbde2a4a545865b20a3755fbbb17e2406b3",
+      "date": "2026-09-02T16:49:27-07:00",
+      "subject": "On codex/fleet-shoulder-mudguard-r1: codex-fleet-shoulder-mudguard-r1-wip",
+      "unmatched": [
+        "src/vehicles/profiles/uk.ts"
+      ],
+      "deletions": []
+    },
+    {
+      "commit": "e0e96f6f929c29972f5abda7b1b6193ec548abfa",
+      "date": "2026-08-26T20:00:58-07:00",
+      "subject": "On codex/kf51b-track-gun-panel-seat-r1: codex-kf51b-seat-wip",
+      "unmatched": [
+        "src/vehicles/tankFactoryCore.js"
+      ],
+      "deletions": []
+    }
+  ],
+  "origin": "7351f0b4ad92c97be03e7be0bb7a700a3f332484",
+  "semantics": "Source-byte membership, not semantic equivalence or release qualification. No new refs created."
+}
