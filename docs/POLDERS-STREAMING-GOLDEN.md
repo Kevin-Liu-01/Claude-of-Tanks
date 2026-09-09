@@ -66,3 +66,14 @@ Verification command:
 ```sh
 node src/world/terrainStreaming.selftest.mjs
 ```
+
+## Integration verification
+
+The isolated integration at `41d6cc9a56d5dc3a94af382c4f945c675747e17d`,
+on `ea4956cfa0637cb98cf2ba04fc15b9b0b86d5380`, passed the maintained
+terrain-streaming, Polders-shoreline, authored-lake-composition and terrain-LOD
+selftests on 2026-09-08, 23:50:35–23:51:42 UTC. All tracked source, tool,
+server and package inputs were unchanged across the run. Local receipt
+`.qa-dev/polders-history-verified-yN3omC/receipt.json` has SHA-256
+`8208e28814f34ba6d5b22c81345d40338504371db83af807a11f5e55191b1ef7`.
+This test-only checkpoint does not claim a complete fleet release or build.
