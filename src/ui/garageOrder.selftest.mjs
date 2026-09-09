@@ -34,16 +34,16 @@ assert.match(garageSource,
 assert.match(garageSource,
   /previousCard\?\.setAttribute\('aria-selected', 'false'\);[\s\S]*?card\?\.setAttribute\('aria-selected', 'true'\);[\s\S]*?aria-activedescendant/,
   'selection keeps the focusable vehicle catalog accessibility state synchronized');
-assert.match(garageSource, /shellAmmunitionCapacity\(shell\).*carried/,
+assert.match(garageSource, /t\('garage\.dossier\.shell\.carried', \{ n: shellAmmunitionCapacity\(shell\) \}\)/,
   'the dossier exposes authoritative per-channel ammunition capacity');
 assert.match(garageSource,
-  /technicalSection \+\s*equipmentSection \+\s*`<section class="cot-stat-section cot-performance-section">\$\{statSectionTitle\('speed', 'Performance'/,
+  /technicalSection \+\s*equipmentSection \+\s*`<section class="cot-stat-section cot-performance-section">\$\{statSectionTitle\('speed', t\('garage\.dossier\.section\.performance'\)/,
   'the persistent equipment loadout appears above primary performance instead of below the dossier fold');
 assert.match(garageSource,
   /<button type="button" class="eqslot"[\s\S]*<button type="button" class="eqslot empty"/,
   'equipment slots must remain native keyboard-operable controls');
 assert.match(garageSource,
-  /class="cot-compact-equipment-trigger"[\s\S]*aria-label="Edit equipment loadout"/,
+  /class="cot-compact-equipment-trigger"[\s\S]*aria-label="\$\{t\('garage\.dossier\.equipment\.heading'\)\}"/,
   'compact equipment affordance labels its selected-tank loadout action');
 assert.match(garageSource,
   /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger'\)[\s\S]*setGaragePanel\(openGaragePanel\(\) === 'equipment'/,
@@ -60,7 +60,7 @@ assert.match(garageSource,
 assert.match(garageSource, /document\.addEventListener\('cot:boot-dismiss'/,
   'Garage listens for the boot fade before revealing first-visit chrome');
 assert.match(garageSource,
-  /class="card-era">\$\{vehicleEraLabel\((?:s|spec)\.era, \{ short: true \}\)\}<\/span>/,
+  /class="card-era">\$\{vehicleEraLabelI18n\((?:s|spec)\.era, t, \{ short: true \}\)\}<\/span>/,
   'garage cards show the canonical vehicle era in their top-right metadata slot');
 assert.doesNotMatch(garageSource,
   /class="designation">\$\{s\.markings\?\.designation/,
@@ -291,7 +291,7 @@ assert.doesNotMatch(garageSource,
   /cot-dossier-head[\s\S]*?Open in Tank Gallery/,
   'the vehicle header does not duplicate the technical Gallery action');
 assert.match(garageSource,
-  /class="cot-gallery-link cot-technical-gallery"[\s\S]*?Inspect in Gallery[\s\S]*?class="go"/,
+  /class="cot-gallery-link cot-technical-gallery"[\s\S]*?t\('garage\.dossier\.inspectGallery'\)[\s\S]*?class="go"/,
   'the layer-specific Gallery action reuses the primary orange-accent CTA treatment');
 assert.match(garageSource,
   /\['ArrowLeft', 'ArrowRight', 'Home', 'End'\][\s\S]*?activateTechnicalTab/,
