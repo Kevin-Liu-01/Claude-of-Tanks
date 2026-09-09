@@ -16,8 +16,31 @@ function requireIntegration(source) {
     'Only mesa compiles the recipe; every other style retains the exact generic GLSL');
   assert.equal((source.match(/diffuseColor\.rgb \*= horizonSurfaceGain;/g) ?? []).length, 1,
     'The caller applies the recipe exactly once');
-  assert.match(source, /mat\.customProgramCacheKey = \(\) => style === 'mesa' \? 'horizon-ring-mesa-surface-r2'\s*:\s*\(style === 'alpine' \? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-'\) \+ style;/,
-    'Mesa receives a distinct shader cache key without changing other style keys');
+  // 139585281 added a Verdant-first fragment/key branch; it did not change
+  // Mesa's r2 recipe or any other style key. Exercise the actual key function
+  // instead of requiring Mesa to remain the first textual ternary branch.
+  const cacheAssignment = source.match(/mat\.customProgramCacheKey = (\(\) => [^;]+);/);
+  assert.ok(cacheAssignment, 'The material declares its custom shader cache identity');
+  const cacheKey = new Function('mapId', 'style', `return (${cacheAssignment[1]})();`);
+  const styleKeys = {
+    mesa: 'horizon-ring-mesa-surface-r2',
+    alpine: 'horizon-ring-world-surface-r3-alpine',
+    rolling: 'horizon-ring-relief-r2-rolling',
+    escarpment: 'horizon-ring-relief-r2-escarpment',
+  };
+  const verdantKey = cacheKey('verdant', 'rolling');
+  assert.ok(typeof verdantKey === 'string' && verdantKey.length > 0);
+  assert.ok(!Object.values(styleKeys).includes(verdantKey),
+    'Verdant compiles a different fragment and must not alias a generic or Mesa program');
+  for (const [style, expected] of Object.entries(styleKeys)) {
+    for (const mapId of ['titan_gorge', 'desert', 'winter', 'coastal']) {
+      assert.equal(cacheKey(mapId, style), expected, 'Non-Verdant style cache identities remain exact');
+    }
+    assert.equal(cacheKey('verdant', style), verdantKey,
+      'The map-specific cache branch follows the map-specific fragment priority');
+  }
+  assert.match(source, /'#include <map_fragment>', mapId === 'verdant' \? VERDANT_HORIZON_FRAGMENT\s*:\s*style === 'alpine' \? ALPINE_HORIZON_MAP_FRAGMENT/,
+    'Verdant/alpine fragment dispatch explains their distinct shader cache identities');
 }
 const integration = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
 requireIntegration(integration);
@@ -112,5 +135,10 @@ assert.throws(() => requireIntegration(integration.replace("${style === 'mesa' ?
   '${true ? HORIZON_MESA_SURFACE_FRAGMENT')), { code: 'ERR_ASSERTION' }, 'Unrelated styles cannot inherit the added ALU');
 assert.throws(() => requireIntegration(integration.replace('horizon-ring-mesa-surface-r2', 'horizon-ring-relief-r2-mesa')),
   { code: 'ERR_ASSERTION' }, 'Stale shader cache identity is rejected');
+assert.throws(() => requireIntegration(integration.replace('horizon-verdant-watershed-r1', 'horizon-ring-relief-r2-rolling')),
+  { code: 'ERR_ASSERTION' }, 'Verdant cannot reuse the different generic rolling shader program');
+assert.throws(() => requireIntegration(integration.replace("mapId === 'verdant' ? VERDANT_HORIZON_FRAGMENT",
+  "mapId === 'coastal' ? VERDANT_HORIZON_FRAGMENT")), { code: 'ERR_ASSERTION' },
+  'A distinct cache key cannot hide incorrect map-specific fragment dispatch');
 console.log('horizonMesaSurface: existing-input-only recipe, exact non-mesa/cap/sea paths, bounded broken beds, derivative fade, mesa-only integration/cache and negative controls PASS',
   JSON.stringify({ minimum, maximum, altered, nativeVisualAcceptance: 'not measured by this CPU test' }));
