@@ -61,9 +61,13 @@ No golden was refreshed and no tank runtime changed for this repair.
 After the frozen preflight completed, the candidate was rebased onto
 `afdad2440`, retaining published ground-cover fixture repair `9fcc26fc9` and
 the intervening environment documentation. Reviewed test-only repairs
-`731bbf3cf` and `457bc1863` were then integrated as `1f49d3dd7` and
-`7a8a3624a`. Compared with the preflight candidate, only these three test
-files changed under `src/`; tank runtime and generated assets stayed exact.
+`731bbf3cf` and `457bc1863` were integrated, then rebased onto published
+`7a26c2690` as `953f3e527` and `c433e5ef7`. Compared with the preflight,
+five test files changed under `src/`: these two, ground-cover clearance,
+terrain-resource lifecycle and horizon/Mesa surface. The latter two preserve
+the published readiness-owner/cache contract and reject false matches;
+they do not change world runtime. Tank runtime and generated assets stayed
+exact across those test-only integrations.
 
 The formation repair preserves the historical nominal spawn formula and
 tests its composition with the published safe-placement resolver. It keeps
@@ -93,9 +97,64 @@ Local receipt: `.qa-dev/nine-preflight-1ZwvfN/receipt.json`, SHA-256
 `774005048c9dee0dbd5ce4f064130563ece50c03183d78daf17659f6e1d6648d`.
 This preflight is not the complete release or permission to publish.
 
-## Release boundary
+## First nine-ID complete release: failed, preserved
 
-One fresh composed nine-ID gate will supersede the two failed full-suite
-runs. The required anatomy update/check, full regression suite and private
-build remain mandatory. Diagnostic tail runs are only early blocker checks;
-they are not a substitute for that complete release.
+Candidate `74d189dfa` ran from 09:00:23 to 09:52:43 UTC on 2026-09-09.
+Type checking and all nine target gates passed, including source fidelity,
+the unchanged 92-point geometry floor, physical contact/clipping, barrel
+bores, fittings and track continuity. All 277 PRE tests passed. CORE then
+failed at `tankAssets.selftest.mjs`: runtime hit-marker projections were
+stale relative to the newly captured Leopard images. Revolution's saved
+vertical center was 1.9843 m versus runtime 1.9893 m; A7V X's was 2.7753 m
+versus 2.7825 m. The other 199 catalog entries matched their saved receipts.
+CORE/POST and both builds therefore did **not** complete. This is not a
+release pass or permission to publish.
+
+Local immutable receipt: `.qa-dev/nine-complete-8VUYww/receipt.json`, SHA-256
+`45cb9a551a39f448519046360b821c0592201ad009d74b1c4a3fe19b971e8df9`.
+The frozen source fingerprint and all nine source-oracle hashes stayed
+unchanged. The dedicated Chieftain and formation repairs passed inside
+this actual run. Existing dimension and battle-pacing warnings were not
+silently cleared.
+
+The first attempted repair used the full-fleet centering generator. Its
+native generation passed, but the repair harness correctly failed its
+scope invariant: that generator proposes new pixel-centroid anchors,
+including small A7V, M1A3 and MBT-70 changes. Those new fits are not the
+camera fits of the retained images. Its output is preserved at
+`.qa-dev/leopard-projection-repair-BXkM6y/full-generated-scope-rejected.ts`;
+none of that broad regeneration was adopted. The original incomplete
+harness receipt is retained, not relabelled a pass.
+
+The maintained `presentation-centering --sync-assets --ids=...` correction
+verifies all selected image/thumbnail hashes and fresh native geometry,
+metadata and projection at the existing anchor. It then updates only the
+selected projection rows. Existing centroid residual limits remain separate
+checks; neither the full generator nor its exact global check is relaxed.
+Both release preflights now reject stale saved/runtime or native/captured
+projections early. The pure regression has 169 rejecting controls.
+
+An initial native sync caught a missing browser import before any write;
+`.qa-dev/verified-scoped-projection-sync-B7kMpU/receipt.json` preserves that
+failure. The import and binding test were corrected. The fresh four-phase
+repair passed from 10:14:34 to 10:20:04 UTC: native selected sync, nine-tank
+centering, nine-tank assets and the complete `tankAssets.selftest.mjs`.
+Only the two measured Y projection values changed. All 201 anchors and
+projection pairs now match the saved catalog; every one of the 2,010 image
+files and the entire manifest stayed byte-identical. Maximum nine-tank
+rendered/exported center residuals remain 0.08/0.14 pixels.
+
+Repair receipt: `.qa-dev/verified-scoped-projection-sync-YEhRsG/receipt.json`,
+SHA-256 `8f8aa260b57db8f796282e353a44f073a724f398b181f0f57ec6dc17c1d02525`.
+Its catalog test confirms metadata for all 174 playable tanks, not a
+fleet-wide style/performance release. Full-suite registration is now
+278 PRE + 545 CORE + 35 POST = 858 ordered checks.
+
+## Release boundary — still pending
+
+After the scoped correction and early receipt guards pass, one fresh
+composed nine-ID gate must pass the full regression suite and private
+build, followed by the public build. The earlier anatomy update/check
+remains recorded above. Diagnostic tail runs and targeted passes are not
+a substitute for that complete release. No nine-tank playable checkpoint
+has been published from these failed runs.

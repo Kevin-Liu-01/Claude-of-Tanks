@@ -708,4 +708,8 @@ controlled statistical speedup claim. In particular, the observed covered
 gaps are not zero; historical 214–319 ms stalls remain unattributed. The
 separate desktop/mobile motion fixture and explicit loading-work reductions
 support the implemented improvements without claiming perfect frame cadence.
-Changes remain uncommitted and unpushed in the isolated worktree.
+At that historical measurement boundary the changes were uncommitted.
+They subsequently landed in published `deaf6bf112`; see
+[the delivery record](wreck-multiplayer-delivery-2026-09.md). That landing
+does not convert the measurements above into a zero-lag or fleet-wide
+performance claim.
