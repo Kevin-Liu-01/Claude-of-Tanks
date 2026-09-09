@@ -646,6 +646,15 @@ function makeRoofTiles(
   };
 }
 
+function makeRoofMaterial(roof: GeneratedSurfaceTextures, mapId: string): THREE.MeshStandardMaterial {
+  // Ironworks' sourced tile sheet needs a roughness-map gain, not darker
+  // pigment. >1 is intentional: Three multiplies this existing uniform by
+  // surface G, then clamps physical roughness to1. Shared pixels stay exact.
+  return new THREE.MeshStandardMaterial({ map: roof.albedo, normalMap: roof.normal,
+    roughnessMap: roof.surface, aoMap: roof.surface,
+    roughness: mapId === 'foundry' ? 1.3 : 1, metalness: 0 });
+}
+
 function buildStoneCourseEdges(size: number, rng: () => number): number[] {
   const rowE = [0];
   while (rowE[rowE.length - 1] < size) {
@@ -2493,8 +2502,7 @@ function* propsBuildSteps(
       roughnessMap: plaster2.surface, aoMap: plaster2.surface, roughness: 1, metalness: 0 }),
     plaster3: new THREE.MeshStandardMaterial({ map: plaster3.albedo, normalMap: plaster3.normal,
       roughnessMap: plaster3.surface, aoMap: plaster3.surface, roughness: 1, metalness: 0 }),
-    roof: new THREE.MeshStandardMaterial({ map: roofT.albedo, normalMap: roofT.normal,
-      roughnessMap: roofT.surface, aoMap: roofT.surface, roughness: 1, metalness: 0 }),
+    roof: makeRoofMaterial(roofT, mapId),
     stone: new THREE.MeshStandardMaterial({ map: stone.albedo, normalMap: stone.normal,
       roughnessMap: stone.surface, aoMap: stone.surface, roughness: 1, metalness: 0 }),
     wood: new THREE.MeshStandardMaterial({ map: wood.albedo, normalMap: wood.normal,
