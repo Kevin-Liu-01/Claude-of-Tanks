@@ -150,6 +150,26 @@ Its catalog test confirms metadata for all 174 playable tanks, not a
 fleet-wide style/performance release. Full-suite registration is now
 278 PRE + 545 CORE + 35 POST = 858 ordered checks.
 
+## Native test-process failure — preserved, not waived
+
+The clean `a3777557f` complete run passed type checking, every nine-tank
+target gate and all 278 PRE checks. At 10:53:18 UTC, the CORE observer
+test process terminated with SIGSEGV/exit 139, without an assertion failure.
+The matching local macOS report `node-2026-09-09-035318.ips` identifies
+PID 92357, `EXC_BAD_ACCESS` at address `0xe`, and V8 garbage-collection
+frames headed by `ClearStaleLeftTrimmedPointerVisitor`, followed by
+`ContextifyScript`. This identifies the native crash boundary, not its
+underlying engine defect. No runtime or test code was changed in response.
+
+The exact observer test passed three subsequent unchanged runs through the
+shared FIFO runner. Those diagnostic passes do not turn the complete run
+into a pass. Its frozen source and all nine oracle hashes stayed unchanged:
+`.qa-dev/nine-complete-MjteF5/receipt.json`, SHA-256
+`4cba7d4341dba19cff2845a6b425d670d7b5928a98d35ee07ae93366c5b1cd28`.
+The hygiene log's 857 count is tracked self-test files; the suite contains
+858 ordered entries. It does not indicate a missing check or wrong checkout.
+CORE, POST and both builds still require a fresh complete successful run.
+
 ## Release boundary — still pending
 
 After the scoped correction and early receipt guards pass, one fresh
