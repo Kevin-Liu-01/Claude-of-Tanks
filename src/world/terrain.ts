@@ -12,7 +12,7 @@ import {
   type TerrainLodLevel,
 } from './terrainLodPolicy.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
-import { applySourcedTerrain, prepareSourcedTerrain, type TerrainPaletteId,
+import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, type TerrainPaletteId,
   type TerrainSourcePreparation } from './sourcedTextures.ts';
 import { buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
@@ -24,6 +24,7 @@ import { composeLakeHeight, type LakeHeightResult } from './lakeHeightCompositio
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import { roadCoreMask } from './roadMaskProfile.ts';
+import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
@@ -231,6 +232,8 @@ export interface HeightField {
   getWaterMaskAt(x: number, z: number): number;
   /** Visible shallow liquid above the unchanged collision/drive bed. Zero on ice/dry ground. */
   getWaterDepthAt?(x: number, z: number): number;
+  /** Presentation-only; simulation/headless fields may omit this query. */
+  getTrackSurfaceAt?(x: number, z: number): TrackSurface;
   size: number;
   minY: number;
   maxY: number;
@@ -1126,6 +1129,16 @@ export function createHeightField(
     return _scratchN.set(hl - hr, 2 * NEPS, hd - hu).normalize();
   }
 
+  const trackPolicy = trackSurfacePolicy(resolveSourcedTerrainPalette(cfg?.id ?? 'verdant', cfg?.splat));
+  function getTrackSurfaceAt(x: number, z: number): TrackSurface {
+    if (trackPolicy === 'earth') return 0;
+    const roadDistance = gridSample(gRoadDist, x, z);
+    if (roadDistance < 14) return 0;
+    const wetness = liquidWater ? waterWetnessAt(x, z)
+      : sampleShorelineMask(_MARSHES, _LAKES, x, z);
+    return trackSurfaceAt(trackPolicy, roadDistance, wetness, waterRampStart, waterRampEnd);
+  }
+
   function getGroundType(x: number, z: number): GroundType {
     if (gridSample(gRoadDist, x, z) < 4.3) return 'hard';
     for (const lk of _LAKES) {
@@ -1245,7 +1258,7 @@ export function createHeightField(
 
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
-    getWaterMaskAt, getWaterDepthAt,
+    getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     size: MAP_SIZE, minY, maxY,

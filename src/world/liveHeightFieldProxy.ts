@@ -1,3 +1,5 @@
+import type { TrackSurface } from './trackSurface.ts';
+
 interface HeightFieldLike<Normal> {
   size: number;
   minY: number;
@@ -8,6 +10,7 @@ interface HeightFieldLike<Normal> {
   getGroundType(x: number, z: number): string;
   getWaterMaskAt(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
+  getTrackSurfaceAt?(x: number, z: number): TrackSurface;
 }
 
 interface HeightFieldWorld<Normal> {
@@ -22,6 +25,7 @@ export interface LiveHeightFieldProxy<Normal> {
   getGroundType(x: number, z: number): string;
   getWaterMaskAt(x: number, z: number): number;
   getWaterDepthAt(x: number, z: number): number;
+  getTrackSurfaceAt(x: number, z: number): TrackSurface;
   readonly size: number;
   readonly minY: number;
   readonly maxY: number;
@@ -80,6 +84,9 @@ export function createLiveHeightFieldProxy<Normal>({
     },
     getWaterDepthAt(x, z) {
       return field()?.getWaterDepthAt?.(x, z) ?? 0;
+    },
+    getTrackSurfaceAt(x, z) {
+      return field()?.getTrackSurfaceAt?.(x, z) ?? 0;
     },
     get size() { return field()?.size ?? 1000; },
     get minY() { return field()?.minY ?? 0; },

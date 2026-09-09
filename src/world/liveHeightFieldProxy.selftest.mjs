@@ -14,6 +14,7 @@ let world = {
     getNormalAt: () => normal,
     getGroundType: () => 'soft',
     getWaterMaskAt: () => 0.25,
+    getTrackSurfaceAt: () => 3,
   },
 };
 const fallbackNormal = { x: 0, y: 1, z: 0, fallback: true };
@@ -33,6 +34,12 @@ assert.deepEqual(calls, { exact: 2, fast: 2 });
 assert.equal(proxy.getNormalAt(0, 0), normal);
 assert.equal(proxy.getGroundType(0, 0), 'soft');
 assert.equal(proxy.getWaterMaskAt(0, 0), 0.25);
+assert.equal(proxy.getTrackSurfaceAt(0, 0), 3);
+const priorField = world.heightField;
+world = { heightField: { ...priorField, getTrackSurfaceAt: () => 2 } };
+assert.equal(proxy.getTrackSurfaceAt(0, 0), 2, 'same proxy follows rematch/map replacement');
+world = { heightField: { ...priorField, getTrackSurfaceAt: undefined } };
+assert.equal(proxy.getTrackSurfaceAt(0, 0), 0, 'older/mock field stays ordinary');
 assert.equal(proxy.size, 800);
 assert.equal(proxy.minY, -12);
 assert.equal(proxy.maxY, 44);
@@ -42,6 +49,7 @@ assert.equal(proxy.getHeightAt(2, 3), 0);
 assert.equal(proxy.getNormalAt(0, 0), fallbackNormal);
 assert.equal(proxy.getGroundType(0, 0), 'hard');
 assert.equal(proxy.getWaterMaskAt(0, 0), 0);
+assert.equal(proxy.getTrackSurfaceAt(0, 0), 0);
 assert.equal(proxy.size, 1000);
 
 console.log('liveHeightFieldProxy.selftest: fast live and exact authoring terrain paths pass');
