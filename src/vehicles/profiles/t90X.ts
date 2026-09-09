@@ -203,12 +203,12 @@ function mGunBoot(P:TankBuilderPort):void {
     [right-.007-M.gun[0],low-M.gun[1]],[right-M.gun[0],low-M.gun[1]],
     [right-M.gun[0],high-M.gun[1]],[left-M.gun[0],high-M.gun[1]],
   ]}));
-  P.add('gunMount',sectionSolid(sections));
+  P.add('gunMountCanvasSkin',sectionSolid(sections));
   for(const side of [-1,1]) {
     const flap:readonly(readonly[number,number,number,number])[]=side<0?
       [[1.800,-.4149,1.583,1.718],[1.950,-.2404,1.6265,1.671],[2.005,-.131,1.641,1.654]]:
       [[1.800,.3187,1.5846,1.718],[1.950,.1854,1.6272,1.671],[2.005,.115,1.641,1.654]];
-    P.add('gunMount',sectionSolid(flap.map(([z,outer,low,high]):SolidSection=>{
+    P.add('gunMountCanvasSkin',sectionSolid(flap.map(([z,outer,low,high]):SolidSection=>{
       const left=Math.min(outer,side*.097),right=Math.max(outer,side*.097);
       return {z:z-M.gun[2],ring:[[left-M.gun[0],low-M.gun[1]],[right-M.gun[0],low-M.gun[1]],
         [right-M.gun[0],high-M.gun[1]],[left-M.gun[0],high-M.gun[1]]]};
@@ -228,7 +228,7 @@ function vMantlet(P:TankBuilderPort):void {
     const a=i*Math.PI/12,fold=1+(station===0||station===4?0:.012*Math.cos(a*6+station*.7));
     return [Math.cos(a)*r*fold,(low+high)/2+Math.sin(a)*(high-low)/2*fold-V.gun[1]] as const;
   })}));
-  P.add('gunMount',sectionSolid(sections));
+  P.add('gunMountCanvasSkin',sectionSolid(sections));
   P.add('gunMount',cylZ(.199,.040,32),.008,1.754-V.gun[1],1.514-V.gun[2]);
   P.add('gunMount',cylZ(.151,.026,32),0,0,1.707-V.gun[2]);
 }

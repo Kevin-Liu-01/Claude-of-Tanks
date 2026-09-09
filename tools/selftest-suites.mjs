@@ -124,6 +124,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/sectionSolid.selftest.mjs',
     'src/vehicles/profiles/t14XGeometry.selftest.mjs',
     'src/vehicles/sourceXFleet.selftest.mjs',
+    'src/vehicles/t90XCanvasFinish.selftest.mjs',
     'src/vehicles/historicalT90MLamps.selftest.mjs',
     'src/vehicles/sourceXSecondWave.selftest.mjs',
     'src/vehicles/sourceXSecondWaveLazy.selftest.mjs',
