@@ -225199,7 +225199,7 @@
           }
         ]
       },
-      "geometryHash": "9c0f7039",
+      "geometryHash": "5202cd2a",
       "metadataHash": "7d8a9912",
       "presentationAnchor": {
         "xM": -0.0005,
@@ -225224,7 +225224,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "armorPaint": 8,
+          "armorPaint": 10,
           "gearShadow": 3,
           "fittingPaint": 9,
           "opticGlass": 2,
@@ -225260,15 +225260,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28170,
-          "sha256": "c842d093e22380c3f5ac7808debd6297822ec19a1500eca4580379ff2f0da7b9",
+          "bytes": 28102,
+          "sha256": "5b5887121366cf230ae3556d4a667917f2ba210bc68cf52002b06ba5df07dedd",
           "thumbnail": {
             "file": "thumbs/mbt70_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10746,
-            "sha256": "c1171b8450c380cba6aaf9bb975ea88bc363dbd39e619feec3c02920cdfdf6e6"
+            "bytes": 10808,
+            "sha256": "6e88807ec901cf2df1d4e3201e066ccb5944da0408bcf12e253067900a07771f"
           }
         },
         "top": {
@@ -225276,56 +225276,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14032,
-          "sha256": "7639d039734abb6e5930c7ef103ce3ba531c72694185ca0ec59cdd7f254d7664"
+          "bytes": 14148,
+          "sha256": "a04d310270e43ee174327815d7f722485dae63d0159d6ae8732dca117473e6e4"
         },
         "side": {
           "file": "mbt70_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11912,
-          "sha256": "1ae10524f149e0bb7ccd93696a66d1ff7c1a21130ddecf74d35987f56e73914f"
+          "bytes": 12146,
+          "sha256": "c85807a931c3dd5fc3a6b34777f14b33231cd72e7a29c724316489b973ea0c55"
         },
         "topSilhouette": {
           "file": "mbt70_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1349,
-          "sha256": "43bda4d0a4f2b5070e0ff3e3d82fd9dd6d3b38ef8a7cd8fb482f9315384141bd"
+          "bytes": 1276,
+          "sha256": "e02742f546572e093623f9781078072f8808e0f93fc584a1e927b1bd0443dceb"
         },
         "sideSilhouette": {
           "file": "mbt70_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5119,
-          "sha256": "37d1110707c48e8e76fe93ef9d0624734c846ce8c2c3ad36f01f647d72867154"
+          "bytes": 5126,
+          "sha256": "9e70f413df10e157177629ed6bfb52b8af6b05246e06f62aafbd387f40203c6b"
         },
         "armorSide": {
           "file": "mbt70_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 101469,
-          "sha256": "c06d756d7042c7b1617223eb8ef3488d99e434ab6cad351c088420dc7c65d2fe"
+          "bytes": 102219,
+          "sha256": "2c30b76ef09ccc3def047b73c6138696125530319db1c0e1d3a91ac5c98ef7ad"
         },
         "modulesSide": {
           "file": "mbt70_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 104880,
-          "sha256": "52be6939a90eaf843b3d823efca3c4272bda806fd6e207612ad25c5a0a8e9ddd"
+          "bytes": 104770,
+          "sha256": "bf8a9855f6868bbe9ebcdc9f8425cfbbe8985208e5a17fae640df6d5b4481902"
         },
         "crewSide": {
           "file": "mbt70_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90637,
-          "sha256": "ec19a1c3165155f20064d57b9ddbf6d4639811db9b57cd12955c5340cc918319"
+          "bytes": 90096,
+          "sha256": "0542b245d5cfa6d47dc87904b973cddfe59f123ebcec31c530865eeb640be265"
         },
         "markings": {
           "file": "mbt70_markings.png",
