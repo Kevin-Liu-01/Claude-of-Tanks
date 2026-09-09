@@ -62,4 +62,15 @@ all seven module alignments, current assets, track duplication, muzzles,
 barrel circularity and registered source fidelity. All seven strict geometry
 gates passed (minimum 92.3/92); contact/clipping, continuity and weapon checks
 also passed. The composed command then entered the full `npm test` lifecycle,
-which remains pending. None of these completed phases is a full release PASS.
+which subsequently failed in the unrelated world shoreline regression below.
+None of these completed phases is a full release PASS.
+
+On runtime input `183548a33` (later documentation/report-only head
+`b0ed8d90f`), the full lifecycle passed 270 PRE files and the first 436 CORE
+files, including all reached vehicle geometry, floor, asset, anatomy and gun
+articulation checks. CORE stopped at `src/world/shoreDirtMask.selftest.mjs:254`:
+`polders: bank pass is opt-in only`. The map currently enables `shoreDirt`,
+whereas this historical-control test assumes only Mangrove enables it.
+The map owner has been notified. Existing RGBA goldens must not be replaced
+or the failed test silently skipped to publish vehicle work. Remaining CORE,
+POST and the composed command's final private build are not yet release-green.
