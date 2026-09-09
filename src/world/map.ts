@@ -69,6 +69,8 @@ interface TerrainUserData {
   sourcedTexturesReady?: Promise<SourcedTextureResult[]>;
   streamingStats?: RuntimeValue;
   updateLOD(cameraPosition: THREE.Vector3): void;
+  updateWater?(deltaSeconds: number): void;
+  setWaterTime?(timeSeconds: number): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
   [key: string]: RuntimeValue;
 }
@@ -538,6 +540,7 @@ function assembleWorld(
       focusPos: THREE.Vector3 | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
+      terrain.userData.updateWater?.(dt);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
@@ -550,7 +553,7 @@ function assembleWorld(
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
-    setWindTime(t: number) { vegetation.setWindTime(t); },
+    setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); },
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1

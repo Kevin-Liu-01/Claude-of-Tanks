@@ -27,6 +27,8 @@ import { roadCoreMask } from './roadMaskProfile.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
+import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
+import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -227,6 +229,8 @@ export interface HeightField {
   getNormalAt(x: number, z: number): THREE.Vector3;
   getGroundType(x: number, z: number): GroundType;
   getWaterMaskAt(x: number, z: number): number;
+  /** Visible shallow liquid above the unchanged collision/drive bed. Zero on ice/dry ground. */
+  getWaterDepthAt?(x: number, z: number): number;
   size: number;
   minY: number;
   maxY: number;
@@ -663,6 +667,7 @@ export function createHeightField(
   const padPts = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES];
   const lakeLevels = new Float64Array(Math.max(1, _LAKES.length)); // filled below
   const liquidWater = !!cfg?.splat?.seaLake && !T.frozenMarshes;
+  const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
   const waterRampStart = cfg?.splat?.seaRamp?.[0] ?? 0.40;
   const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
   let liquidSurfaces: Float64Array | null = null;
@@ -1153,6 +1158,10 @@ export function createHeightField(
     return smoothstep(waterRampStart, waterRampEnd, wetness);
   }
 
+  function getWaterDepthAt(x: number, z: number): number {
+    return liquidDepthM ? shallowWaterDepth(getWaterMaskAt(x, z), liquidDepthM) : 0;
+  }
+
   function waterWetnessAt(x: number, z: number): number {
     let wetness = liquidIndex
       ? sampleIndexedMarshWetness(_MARSHES, liquidIndex,
@@ -1236,7 +1245,7 @@ export function createHeightField(
 
   return {
     getHeightAt, getHeightAtFast, warmFastTilesAround, getNormalAt, getGroundType,
-    getWaterMaskAt,
+    getWaterMaskAt, getWaterDepthAt,
     ...(cfg?.navigationWaterPolicy
       ? { navigationWaterPolicy: cfg.navigationWaterPolicy } : {}),
     size: MAP_SIZE, minY, maxY,
@@ -3004,7 +3013,10 @@ function* createSplatMaterialSteps(
   landformW: HeightField['_mesaW'] = null,
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
-): Generator<void, { material: THREE.MeshStandardMaterial; textures: THREE.Texture[] }, void> {
+): Generator<void, {
+  material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
+  waterMask: THREE.Texture; waterNormal: THREE.Texture;
+}, void> {
   const S = splatCfg || {};
   const rockMask = selectTerrainLandformMask(S, landformW);
   // r6 terrain_environment: the mesa/rim landform weight rides the MASK's
@@ -3133,7 +3145,7 @@ function* createSplatMaterialSteps(
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,
   // so the same ten identities remain valid through async loading/reupload.
-  return { material: mat, textures: [
+  return { material: mat, waterMask: mask, waterNormal: wet.normal, textures: [
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
   ] };
@@ -3497,6 +3509,22 @@ function* terrainBuildSteps(
     }
   }
   for (let cz = 0; cz < CHUNKS; cz++) yield* buildTerrainRow(cz);
+  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
+    const waterSteps = shallowWaterGeometrySteps(heightField);
+    let step = waterSteps.next();
+    while (!step.done) {
+      yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+      step = waterSteps.next();
+    }
+    if (step.value) {
+      const water = createShallowWaterSurface(step.value,
+        materialStep.value.waterMask, materialStep.value.waterNormal,
+        heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78]);
+      group.add(water.mesh);
+      group.userData.updateWater = water.update;
+      group.userData.setWaterTime = water.setTime;
+    }
+  }
   const streamStats: TerrainStreamingStats = {
     enabled: streamFarLods,
     totalGeometryCount: CHUNKS * CHUNKS * LOD_SEGS.length,
