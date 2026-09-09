@@ -1,5 +1,78 @@
 # Missing tank-work audit — 2026-09-09
 
+## Current takeaway and preservation (20:55–20:58 UTC)
+
+There is genuinely unpublished work: **nine previously identified groups / 17
+vehicles**, plus an older original T-62 change and an archived non-playable
+Leopard 2A7. The groups are Leclerc X/Strv 122 X wheel optimization; A4M X/A5 X/
+KF51 X rollers; two Merkava X rollers; Centurion III/V/Strv 81 rollers;
+Challenger 3/3X spindles; K2 X/T14 X rollers; T80U X and T90A X fitted-gear
+pilots; and Type 10 X painted skirts. These are missing updates, not 17
+entirely absent tanks. Their exact historical heads and qualification limits
+remain in the tables below.
+
+At `2026-09-09T20:55:44.099Z`, the remote was independently verified as
+`9e9291ebe038ee6b859a0bdc5084cd6475021726`. All those saved commits still
+resolve, remain reachable from local branches, and are not remote ancestors.
+Type 10's branch now points to its newer preservation child, not its original
+source head. The A7V X/Revolution portion of the old five-Leopard branch is
+already published and must not be counted twice.
+
+The seven Abrams X models, MBT-70 fenders, nine-tank bodywork/A7V/Revolution,
+and six-tank canvas/smoke recovery are already published. Their documented
+release exceptions are not erased by this audit.
+
+### Newly preserved working copies
+
+The following owned working copies were committed locally, with their pending
+release status recorded. All three now have zero tracked/untracked Git changes;
+ignored native QA remains on disk and is not in the commits.
+
+| Scope | New local checkpoint | Qualification boundary |
+|---|---|---|
+| Five-tank gear integration | `c9db910e917a6730c31cb47e587edb0bb1816fec` | 14 focused checks and types passed; 120 native images captured. Full visual/anatomy/assets/release work remains. This composes two existing groups, not five new missing tanks. |
+| Type 10 X assets/receipt | `7f6186647726a30312aca460a2eecbc7da846ba9` | Preserves the source parent `a4f09c1ef`, seven images, manifest, ledger timestamp and first release outcome. Geometry passed; the complete release rerun is pending. |
+| AMX-30 X visible wheel-face repair | `5d2c1352163fb6ce08a3ec9f3a27e6a328d19b2e` | New work, not an older lost implementation. Both-quality physical rays, closed rings, wheel/track/suspension tests and types passed; 24 native images captured. Full release remains pending. |
+
+Their worktrees are, respectively,
+`cot-fleet-running-gear-integration-20260909`,
+`cot-fleet-painted-bodywork-20260909`, and
+`cot-amx30-wheel-face-style-20260909` under
+`/Users/kevinliu/.codex/worktrees/`. None of these three model checkpoints was
+pushed to main. Local preservation is not remote backup or release acceptance.
+
+The stale ammunition census that stopped Type 10's first release was reproduced
+on unchanged published vehicle source, corrected, and separately pushed at
+`9e9291ebe`. It now explicitly tests 535 existing, 69 second-wave X and 21 Abrams
+X channels (625 total). Both the ammunition-flow and seven-Abrams registry
+tests pass. No ammunition runtime or geometry threshold changed.
+
+### Other unfinished work and raw-object protection
+
+The separate active performance tree,
+`cot-interactive-performance-20260909`, has **85 uncommitted paths** at this
+recheck on `47e86743d098b868513aa841a9e9c00675ad49fd`. These include loading,
+garage return, shader readiness, HUD, grass and timing probes. Its owner is
+still working; this audit did not stage or alter those files or certify a
+latency improvement.
+
+All eight stashes and the existing 49 recovery refs remain intact. Additionally,
+all **47 residual raw snapshots** in the JSON appendix now have verified local
+refs under `refs/recovery/tank-raw-audit-20260909/<full-commit-hash>`, protecting
+their objects against ordinary unreachable-object pruning. The transaction
+only created absent refs and verified each exact target. It did not restore
+their trees, change any branch checkout, or push the snapshots. The JSON's
+earlier “no new refs” field describes its original scan, before this preservation.
+
+This does not prove 47 missing features: some are obsolete or already published
+in later form, and other mixed historical deltas still need semantic review.
+The earlier broad sweep covered branches, all then-existing worktrees, all eight
+stashes, reflogs and raw Git objects; the final check here was targeted, not a
+new full sweep. Deleted untracked files, already-pruned objects and unknown
+external directories cannot be recovered or ruled out by this inventory.
+
+Earlier sections below retain their original observation times and counts.
+
 Read-only follow-up against fetched `origin/main` **7351f0b4ad92c97be03e7be0bb7a700a3f332484**. This is an inventory, not a new visual, geometry, or release certificate.
 
 ## Finding
@@ -164,3 +237,153 @@ features. Their exact locators and unresolved boundaries remain in this report,
 its JSON appendix and the original recovery inventory. No historical runtime
 was restored, no stash was popped, and no source model or temporary QA was
 staged. Only this ledger update is a publication candidate.
+
+## Latest read-only reconciliation
+
+Remote `refs/heads/main` was independently queried again and resolved to
+**034bb8344c6b164fe943747c9eada604b942a699**. The all-existing-worktree scan
+at **2026-09-09T20:04:39.944Z** covered 472 registered worktrees / 284 existing
+directories, 58 dirty worktrees and 870 branches, with zero Git status errors.
+All eight stashes remain. All 49 protected recovery refs still resolve to the
+commit named in each ref. Other tasks are active; these are timestamped counts.
+
+All nine current tank-group heads in the preceding table were resolved again
+as actual commit objects with named local branches. None is an ancestor of
+the queried remote. The previous partial-publication distinction still applies
+to the five-Leopard branch: its A7V X/Revolution subset is already on main.
+
+### Additional original T-62 checkpoint is genuinely absent
+
+`codex/t62-obj1975-scale-tracks-r2` points to
+**f616f2c02bcb04972e771af6dc29872f9b72f233**. It preserves the original
+`t62mv1` / T-62 obr. 1975 change, not the separately rebuilt `t62mv1_x`:
+
+- Uniform 0.90 hull/turret-root scale with corresponding contact and hitbox
+  scaling.
+- 0.135 m authored shoe pitch, 0.050 m return sag and 12-step terminal arcs.
+- Adjusted dimensions, a focused scale/track selftest, and historical assets.
+
+This was previously only an unresolved historical branch locator. The feature
+was now compared with current source: `buildT62MV1` still calls the unchanged
+shared chassis without those overrides or final scaling, and neither current
+source nor published history contains `t62-obr1975-compact-track-wrap-r1`.
+The local branch still exists, but has no worktree checked out at that head.
+Its commit is not on origin/main. No current qualification was run, and Git
+alone does not establish whether the old change was intentionally abandoned.
+Do not reintroduce its old generated assets or JS-era files wholesale.
+
+The located backlog is therefore **nine current groups / seventeen vehicles,
+plus this additional historical T-62 change**. The archived original-development
+Leopard 2A7 checkpoint is separate again and remains non-playable.
+
+### Historical items that are not newly missing features
+
+Read-only authored-diff and current-source checks further narrowed several
+older branch/dirty-file buckets. These are feature observations, not whole-tree
+equivalence or fresh geometry acceptance:
+
+| Historical locator | Current-source disposition |
+|---|---|
+| K2 wheel/track seating `3be351db25d1` | `modern3.ts` retains the six compressed wheel stations, three roller stations, -2.395 rear contact and matching ISU decoration loop. |
+| KF51B centering `d3cc1c2e1532` | Current owner-specific turret code has a later forward datum (0.65 m), superseding the old 0.30 m move. Do not move it backward to restore this old patch. |
+| Strv 81 closure `209b37fafb1e` | `profiles/sweden.ts` retains the donor closed casting and removal of the duplicate full-size prism. |
+| Type 10 mantlet `e292b73c7c6c` | The typed `TYPE10_MANTLET_FIT` and live Type 10/Type 10B callers retain the compact housing, face, cover and auxiliary-port placement. |
+| MBT-70/Abrams roller/lift `3a120e5a9437` | `modern2.ts` retains MBT-70's three roller stations; `profiles/abrams.ts` retains the shared 0.012 m lift helper and its use. This is distinct from unfinished new Abrams-X gear work. |
+| Dirty BWP-1 decal precursor | The `BWP-1` turret decal is already in `profiles/afvFamily.ts`; the old uncommitted renaming file is not a missing new paint feature. |
+| Dirty Vladimir donor cleanup | Current `profiles/t90.ts` already removes the fixed raised turret/casemate island and old thin silhouette patches, using a later 1.50–1.51 m central deck and revised bow/stern. The older 1.48–1.49 m proposal should not overwrite it. |
+| Dirty `.wt-recheck` AFV combination | Current source retains BMPT separated rack arms/tubes and the Upiór corrected prow, rear doors and running-gear direction. M3A3's symmetric skirt/apron behavior moved into shared Bradley dressing rather than remaining duplicated here. |
+
+The Challenger-family, A6M field-ERA, modern-tank seating, fleet-balance and
+German MBT-70 additions also have explicitly located published successors:
+`ea8eff446`, `1d3bac072`, `0ce8c1614`, `27797d3f4` and `fe7f4919b`, respectively.
+Their historical complete mixed patches are not certified byte-equivalent by
+this note. The old autoloader branches are also mixed: current Carro/AbramsX
+magazine settings and the published crew-layout system supersede parts of them,
+while the old ZTZ-85 loader proposal differs from the current manual-crew layout.
+That difference is an unresolved historical design decision, not authorization
+to change crew rules during a recovery audit.
+
+### Uncommitted work and live checks were not lost
+
+- `cot-fleet-running-gear-integration-20260909` has **10 uncommitted source/test
+  files** composing the already-listed Leclerc/Strv and three-Leopard changes
+  onto current main. This is not a new five-tank group to double-count. Its
+  existing focused-test driver was observed running; Leclerc passed and the
+  next test was queued. No duplicate driver was started.
+- `cot-interactive-performance-20260909` has **84 uncommitted paths** at the
+  timestamp above, up from the prior 76 as its owner continues work. The
+  previous functional-only/remaining-latency qualification boundary remains;
+  these files were not staged, reverted or claimed released.
+- Type 10 X's existing driver completed full anatomy/marking/module/technical
+  checks and typecheck, and entered targeted release. No final release pass
+  had been reported at this observation. Its local source commit and generated
+  assets remain distinct from a published checkpoint.
+- The existing 63-tank review job completed **378 native images**, contact
+  sheets and **126 gallery/far-mode geometry-count rows**. These artifacts are
+  still under `.qa-dev/fleet-style-review-20260909` in the publication worktree.
+  Completion of capture is not completion of visual review or fleet fixes.
+
+No runtime, source model, index, stash, branch or remote was changed in this
+reconciliation. Only this local report was updated. The 47 raw-object residual
+combinations remain located in the JSON appendix; selected identifiable
+features above are now classified, but the full semantics of every historical
+mixed snapshot are not resolved. Deleted untracked files and already-pruned
+objects remain outside what this Git/on-disk audit can prove.
+
+### Final location recheck (20:15 UTC)
+
+The remote still resolves to `034bb8344c6b164fe943747c9eada604b942a699`.
+All nine current checkpoint objects and the additional original T-62 object
+were resolved independently again; each has a named local branch and none is
+an ancestor of that remote. This confirms their saved locations, not blanket
+patch absence: the previously identified partial Leopard publication still
+applies.
+
+The five-tank integration's existing driver has now finished successfully:
+all 14 focused checks and final typecheck passed. Its ten source/test files
+remain uncommitted; this does not complete its visual/anatomy/release work.
+Type 10 X passed its measured source comparison (95.3 against 92) and standard
+geometry gate (93.6 against 92), and its existing release driver is now running
+the full test suite. There is still no final release result. Its source commit
+is local and nine generated asset/ledger paths are currently uncommitted.
+
+The active performance worktree now has **83 uncommitted paths**, measured at
+`2026-09-09T20:15:20.727Z`; the earlier 84-path figure is its prior snapshot,
+not an additional missing group. No files in that other task were changed.
+
+This follow-up changes only the local audit report. It does not restore old
+runtime code, activate failed pilots, commit their artifacts, or push them.
+
+### Current publication and running-job reconciliation (20:28 UTC)
+
+The actual remote now resolves to
+`f363fbd5e6f7064eec4952f47d2c67635bd63fce`. Its two additional commits concern
+rail coal and woody roots, not vehicle geometry. A targeted read-only recheck
+at `2026-09-09T20:28:40.334Z` confirmed all nine tank checkpoint objects, the
+historical T-62 checkpoint, and the archived original Leopard 2A7 checkpoint
+still resolve under their named local branches and are not remote ancestors.
+This was a targeted reconciliation, not another all-worktree/object-store scan.
+
+- The five-tank integration still has ten uncommitted source/test files.
+  Its fourteen focused checks and typecheck passed. Its already-running native
+  driver completed 24 images each for Leclerc X, Strv 122 X, A4M X and A5 X;
+  KF51 X was queued. Capture completion is not visual acceptance or release.
+- Type 10 X's existing release driver has now **failed**, rather than being
+  silently cancelled. Source comparison (95.3/92) and standard geometry
+  (93.6/92) passed; the full suite stopped in
+  `src/sim/ammunitionFlow.selftest.mjs:152`, whose ammunition-channel census
+  reported 556 against expected 535. That observation does not attribute the
+  failure to the paint change. The private-build phase did not run. The saved
+  source commit and nine uncommitted generated paths remain on disk.
+- A newly started AMX-30 X wheel-face regression is in
+  `/Users/kevinliu/.codex/worktrees/cot-amx30-wheel-face-style-20260909`.
+  Its sole changed file is `src/vehicles/profiles/amx30X.selftest.mjs`;
+  the runtime remains unchanged. It is new test-only work, not a recovered
+  implementation or an additional completed fix.
+- The separate active performance worktree still has 83 uncommitted paths.
+  Its owner reports that native timing acceptance remains constrained by
+  machine load. It was not modified or counted as verified tank performance.
+
+The distinction remains: saved locally, published remotely, and fully
+qualified are three separate states. No runtime restore, staging, commit,
+push, stash operation or cleanup was performed in this reconciliation.
