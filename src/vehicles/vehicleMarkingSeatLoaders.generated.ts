@@ -7,6 +7,7 @@ type MarkingSeatGroupModule = { VEHICLE_MARKING_SEATS: Readonly<Record<string, V
 
 export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => Promise<MarkingSeatGroupModule>>> = Object.freeze({
   "abrams": () => import('./vehicleMarkingSeatGroups/abrams.generated.ts'),
+  "abramsSourceX": () => import('./vehicleMarkingSeatGroups/abramsSourceX.generated.ts'),
   "afv": () => import('./vehicleMarkingSeatGroups/afv.generated.ts'),
   "amx30X": () => import('./vehicleMarkingSeatGroups/amx30X.generated.ts'),
   "amx40X": () => import('./vehicleMarkingSeatGroups/amx40X.generated.ts'),

@@ -1,0 +1,1238 @@
+{
+  "schemaVersion": 1,
+  "scope": "Seven conventional Abrams X recovery; original Abrams, AbramsX and M1A3 unchanged",
+  "roots": {
+    "original": "/Users/kevinliu/.codex/worktrees/cot-abrams-source-x-20260907",
+    "integrated": "/Users/kevinliu/.codex/worktrees/cot-abrams-source-x-integrated-20260907"
+  },
+  "rawSnapshots": {
+    "original": "e9e564c516ba0e6a6a68271d5f9c55d74dca70ba",
+    "integrated": "5f5c9eba5f3981af5707b4211ad62451f964cd41"
+  },
+  "portBase": "5b322420483210485dc802bf3f40af0f250ca59e",
+  "historicalLifecycle": {
+    "path": ".qa-dev/reports/full-lifecycle-current-iGTqnX/receipt.json",
+    "sha256": "180f8829bc666c3fc581c7b33f1deac600dcbca4928280d7afa75a8d37e61ccc",
+    "sourceSha256": "b22f5600925545d415937d1270e786b552646ce06116d9d01a06d7478c0c322a",
+    "startedAt": "2026-09-08T14:21:02.982Z",
+    "completedChecks": 179,
+    "scheduledChecks": 843,
+    "failedChecks": [
+      {
+        "file": "src/vehicles/sourceXWesternAuxArmor.selftest.mjs",
+        "status": 1,
+        "log": "012-src__vehicles__sourceXWesternAuxArmor.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/sourceXSovietAuxArmor.selftest.mjs",
+        "status": 1,
+        "log": "013-src__vehicles__sourceXSovietAuxArmor.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/eraBindingReceipt.selftest.mjs",
+        "status": 1,
+        "log": "032-src__vehicles__eraBindingReceipt.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/profiles/type10XSkirts.selftest.mjs",
+        "status": 1,
+        "log": "059-src__vehicles__profiles__type10XSkirts.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/t72BUReceivingRuntime.selftest.mjs",
+        "status": 1,
+        "log": "084-src__vehicles__t72BUReceivingRuntime.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/leopardSideReceivingCasting.selftest.mjs",
+        "status": 1,
+        "log": "097-src__vehicles__leopardSideReceivingCasting.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/abramsSourceXCrows.selftest.mjs",
+        "status": 1,
+        "log": "116-src__vehicles__abramsSourceXCrows.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/abramsSourceXCitv.selftest.mjs",
+        "status": 1,
+        "log": "119-src__vehicles__abramsSourceXCitv.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/abramsSourceXMarkings.selftest.mjs",
+        "status": 1,
+        "log": "132-src__vehicles__abramsSourceXMarkings.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/abramsSourceXSkirtArmor.selftest.mjs",
+        "status": 1,
+        "log": "134-src__vehicles__abramsSourceXSkirtArmor.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/abramsSourceXRackArmor.selftest.mjs",
+        "status": 1,
+        "log": "135-src__vehicles__abramsSourceXRackArmor.selftest.mjs.log"
+      },
+      {
+        "file": "src/vehicles/fleetLazy.selftest.mjs",
+        "status": 1,
+        "log": "148-src__vehicles__fleetLazy.selftest.mjs.log"
+      }
+    ],
+    "uncompletedChecks": 664,
+    "status": "interrupted-without-terminal-completion-field; not a full-suite pass"
+  },
+  "files": [
+    {
+      "path": "src/vehicles/abramsSourceXAftCase.selftest.mjs",
+      "originalSha256": "768d01a0a441e973bc37f628cf9c325675d64b9a85cbfaf342a737d54c4c9da2",
+      "integratedSha256": "768d01a0a441e973bc37f628cf9c325675d64b9a85cbfaf342a737d54c4c9da2",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXCitv.selftest.mjs",
+      "originalSha256": "7c76597098de9ce73bf98f0adbbe92e2d2197c2ac98e7400cf30da1e53a6510f",
+      "integratedSha256": "009bd4f65351763ca305a85d57ea6fdcb43c3902741794cc09faef3e0224c1c5",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXContainers.selftest.mjs",
+      "originalSha256": "f981c37ca2d2bd7fb5b98d606f39fdd194271fbfbb3ab6bdfae86ef845d0108e",
+      "integratedSha256": "f981c37ca2d2bd7fb5b98d606f39fdd194271fbfbb3ab6bdfae86ef845d0108e",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXCounterAssault.selftest.mjs",
+      "originalSha256": "070bdf47f844563a104dd7ae8c51e9a03dd14bc8bce645a8d73ef5794eff344a",
+      "integratedSha256": "070bdf47f844563a104dd7ae8c51e9a03dd14bc8bce645a8d73ef5794eff344a",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXCrows.selftest.mjs",
+      "originalSha256": "665808d3d96ccccfa25b3bab570f3b377adf38efef6799639eed0cf797792dc2",
+      "integratedSha256": "cff1b4fe4bc4268232d5b9f3ea65651942b5cf50dc473c935a3029be22daa04c",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXDatums.ts",
+      "originalSha256": "cbcec1c9158ab9ddfd5de9b7f3b3de4c2bdde66677dfbee188bfa939f77a92a0",
+      "integratedSha256": "cbcec1c9158ab9ddfd5de9b7f3b3de4c2bdde66677dfbee188bfa939f77a92a0",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "308b7e57a825a8b290c394051d6b4c8ac6c05a805ec63a0d3ee17c3565916ae1"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXDrive.selftest.mjs",
+      "originalSha256": "86ae9580a1f23aab59867c3b70e53b145dfb13a10df375df23e440d50dff8b4b",
+      "integratedSha256": "dfce678c42fd561c390f56963f8282db3c050101311dc9bb7b06e96cc7cc1f69",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXDriveBudget.selftest.mjs",
+      "originalSha256": null,
+      "integratedSha256": "575b916b7fc1bb90677e107572e57c7232f94903fe3333268bb820b5b57de172",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEndGear.selftest.mjs",
+      "originalSha256": "00d2925093cb1847cf5127487728b05c707fb9e6a29a40ad818f6a40b20b4f1d",
+      "integratedSha256": "00d2925093cb1847cf5127487728b05c707fb9e6a29a40ad818f6a40b20b4f1d",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "ec7644b2c3b4e58bd2b9c7a71c0b1ae4837d94a1af2a30ca2d795f0296f05275"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEquipment.selftest.mjs",
+      "originalSha256": "946be9e8e661a3e90a4253e84b785f971106e97ccc8b9203cadc7787777c8e52",
+      "integratedSha256": "946be9e8e661a3e90a4253e84b785f971106e97ccc8b9203cadc7787777c8e52",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEquipmentQuality.fixture.json",
+      "originalSha256": null,
+      "integratedSha256": "02afb3c17318200c487c1825f4417a9273af3fcb46b5bebfab9f7b225b4701a7",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEquipmentQuality.selftest.mjs",
+      "originalSha256": null,
+      "integratedSha256": "5c06d94d8d1d174c960ec4162e8ffdb73cf656cf3e80d97198d359bd73f58932",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEquipmentQuality.test-support.mjs",
+      "originalSha256": null,
+      "integratedSha256": "fd51998880029511f3947f3ef0573aa36d311a00ed37c193bdf5dd53573cac5b",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEquipmentQualityLegacy.test-support.mjs",
+      "originalSha256": null,
+      "integratedSha256": "f1f96841ac6248420c31197516b995fc48c80cd52c022dcf4a1fd63d0671f059",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXEra.selftest.mjs",
+      "originalSha256": "bd9004bcb8f53d932043f1ea5c3f31c25dbb64ec2ec2b148bde75119e10acd6f",
+      "integratedSha256": "bd9004bcb8f53d932043f1ea5c3f31c25dbb64ec2ec2b148bde75119e10acd6f",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXFinalizedEra.selftest.mjs",
+      "originalSha256": "2ebc4acd6c77031687e542fc73d9724970ed11819a7281662beceae69aae05f5",
+      "integratedSha256": "2ebc4acd6c77031687e542fc73d9724970ed11819a7281662beceae69aae05f5",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXFleet.selftest.mjs",
+      "originalSha256": "8d8a5b4ded61f68184c598c0b0133098004b45be06bcd869c83c0b5a37f41636",
+      "integratedSha256": "8d8a5b4ded61f68184c598c0b0133098004b45be06bcd869c83c0b5a37f41636",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXFrontDeck.selftest.mjs",
+      "originalSha256": "80ebfb5702110a688fd7cf28a39e17027189720a1d6faab2c85c99cf432178d8",
+      "integratedSha256": "80ebfb5702110a688fd7cf28a39e17027189720a1d6faab2c85c99cf432178d8",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXGearPreservation.test-support.mjs",
+      "originalSha256": "e8bca6fe8b3d75024d267d881636ec45365165148edba37e53eab21e03dab618",
+      "integratedSha256": "8c04b348db90e77cc93f75009724ec02ae383cf20868da9b6d96cfee3093e1b6",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXGeometry.selftest.mjs",
+      "originalSha256": "a1753dbd34a9d70c9cd27135c8eef12e93b62a47449c279636ea290321424dc0",
+      "integratedSha256": "a1753dbd34a9d70c9cd27135c8eef12e93b62a47449c279636ea290321424dc0",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "a1753dbd34a9d70c9cd27135c8eef12e93b62a47449c279636ea290321424dc0"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXHatches.selftest.mjs",
+      "originalSha256": "b78ff6785c4447769a433d3a51c7383fd8935efda5ef8285bc21d6573f43f21f",
+      "integratedSha256": "b78ff6785c4447769a433d3a51c7383fd8935efda5ef8285bc21d6573f43f21f",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXHullDeck.selftest.mjs",
+      "originalSha256": "2d85ae5ff393b37a37405334ee9a84b7c29771569806e491267891d9473f7b53",
+      "integratedSha256": "2d85ae5ff393b37a37405334ee9a84b7c29771569806e491267891d9473f7b53",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXHullFittings.selftest.mjs",
+      "originalSha256": "df5d0d25d712e5bc3b1850ca26ed24a49e364d413bc5bdf104b92a4cfdc8a19a",
+      "integratedSha256": "df5d0d25d712e5bc3b1850ca26ed24a49e364d413bc5bdf104b92a4cfdc8a19a",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXLoader.selftest.mjs",
+      "originalSha256": "6fb8e01580a27046eecf32b16cc9f2a7e2696c4b3191e0874dd5aaf4ae57c79c",
+      "integratedSha256": "6fb8e01580a27046eecf32b16cc9f2a7e2696c4b3191e0874dd5aaf4ae57c79c",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXLoaderFeed.selftest.mjs",
+      "originalSha256": "16fc8fee2ebe0e08b180a24101b2b3166ceede68fe1305ddef2fd3dfc5b6da76",
+      "integratedSha256": "16fc8fee2ebe0e08b180a24101b2b3166ceede68fe1305ddef2fd3dfc5b6da76",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXLoaderShields.selftest.mjs",
+      "originalSha256": "bb85be906b9cddd7a0049c3ca9b6b36ea53d3516e585a8d41e688aef107d9a66",
+      "integratedSha256": "bb85be906b9cddd7a0049c3ca9b6b36ea53d3516e585a8d41e688aef107d9a66",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXMarkings.selftest.mjs",
+      "originalSha256": "99f7d06673684427ea9e90c544e12dd61c8ae252bc90cfad210dbc80d89647c5",
+      "integratedSha256": "aaf09ed8e0032999d2946e08f071f7ef315835a62da1f36255a6604105ec37ec",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXMuzzle.selftest.mjs",
+      "originalSha256": "fc93d3d40bbbb6b9b18494a005e80b167c218da4b23d00ef826cca0bb25f3b4d",
+      "integratedSha256": "fc93d3d40bbbb6b9b18494a005e80b167c218da4b23d00ef826cca0bb25f3b4d",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "fc93d3d40bbbb6b9b18494a005e80b167c218da4b23d00ef826cca0bb25f3b4d"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXPresentation.selftest.mjs",
+      "originalSha256": "6ac4e4efe938da8376f1532972d592414cc7c5506756bd84f780320cce62dcef",
+      "integratedSha256": "6ac4e4efe938da8376f1532972d592414cc7c5506756bd84f780320cce62dcef",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXR4Equipment.test-support.mjs",
+      "originalSha256": null,
+      "integratedSha256": "a03c4bc84d95e8ebb735d2d9ca41fea8b9a3932e1c00a8f5a97d4513f0a9c1d2",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXR4EquipmentRecipes.fixture.json",
+      "originalSha256": null,
+      "integratedSha256": "0436832b8368cf81cdd9bb2a2afc6e0047f72b294ff4c22d73d25605196fad28",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXR4Era.fixture.json",
+      "originalSha256": null,
+      "integratedSha256": "7ffc7e8693095610b2b0a6c017a74fc934328fb5f897d2db003b76eacbfd27e0",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXR4Era.test-support.mjs",
+      "originalSha256": null,
+      "integratedSha256": "8101959ed0aebd5dfab332cae3e2c686d842927f941b9b3c3436e9d5eb9b3a87",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXR4Visual.test-support.mjs",
+      "originalSha256": "5e53bf882855a40d66bf06355c4d299770d29294404596e09ef725912cb13e07",
+      "integratedSha256": "ef26e0ea89835f66c4685aa81fffddcc44729399c16c485288f337d366eb8863",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXRack.selftest.mjs",
+      "originalSha256": "872711a9359bb6c3c9f0ca1f39b5b761a9e429393becc972e72ea1cf83aef560",
+      "integratedSha256": "872711a9359bb6c3c9f0ca1f39b5b761a9e429393becc972e72ea1cf83aef560",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXRackArmor.selftest.mjs",
+      "originalSha256": "c36f0974e6f4d0117ee2335c83208e04c6f1379c8b13ebefa079ed9b7933dcb5",
+      "integratedSha256": "c36f0974e6f4d0117ee2335c83208e04c6f1379c8b13ebefa079ed9b7933dcb5",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXRackArmor.ts",
+      "originalSha256": "ab6697d9a2b9a6ad317b31bcced4ce3009c752813b9126f8092d2583ccc9d256",
+      "integratedSha256": "72c453d4f946d822271101e7c399245874f6191b036b4e684da035f9dc9be8ff",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "1bc9c6af56588f71bf89b0b4af29d61270a0129ecad10b97e287853aa8446ccc"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXRearGrilles.selftest.mjs",
+      "originalSha256": "aedab6fa43a69a5c7e491066d60b7c797fdd5dabd504cd5f93b471030ef5eebd",
+      "integratedSha256": "aedab6fa43a69a5c7e491066d60b7c797fdd5dabd504cd5f93b471030ef5eebd",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "aedab6fa43a69a5c7e491066d60b7c797fdd5dabd504cd5f93b471030ef5eebd"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXShoulderClosure.selftest.mjs",
+      "originalSha256": null,
+      "integratedSha256": "c2d170932c1455ca5ac54ae925a64b24d96359b264098ccf661090840479c47e",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "c2d170932c1455ca5ac54ae925a64b24d96359b264098ccf661090840479c47e"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSkirtArmor.selftest.mjs",
+      "originalSha256": "da5ee3e086338d8c48f9058fe7d782a045246e2eadbcaa53c263256faa82be57",
+      "integratedSha256": "1726d8e5b6a24209a4ec630f98cb69b647829fab5be6790cc4c1ed29eae253e4",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSkirtArmor.ts",
+      "originalSha256": "c550ae51d7e795546e61c377589665c8d28a84659ad9eec279e9c017e335a5de",
+      "integratedSha256": "c550ae51d7e795546e61c377589665c8d28a84659ad9eec279e9c017e335a5de",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "6e67e228f0c434f024954f7a819c15f7bbe9067307d8e2b6bc468e7b301536b9"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSkirtReturns.selftest.mjs",
+      "originalSha256": "c0e401dcbfe718e7fd8df24c302534b588cb8f815b7d37ecfc92a73bad4e78c5",
+      "integratedSha256": "f2b2b289061dc1089dd4ccf85c511da2ef8e2bc29698898b9f6d3b37a027bf5b",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "f2b2b289061dc1089dd4ccf85c511da2ef8e2bc29698898b9f6d3b37a027bf5b"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSpecs.selftest.mjs",
+      "originalSha256": "56d52142064fc1cba1e81dd7bd12fa1756785c2a436a161516008789203ef1ba",
+      "integratedSha256": "56d52142064fc1cba1e81dd7bd12fa1756785c2a436a161516008789203ef1ba",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "56d52142064fc1cba1e81dd7bd12fa1756785c2a436a161516008789203ef1ba"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSpecs.ts",
+      "originalSha256": "9aaa058c336d0eb9becc7bf323366cce5421cf320f4565047b64d0bb477a1e1c",
+      "integratedSha256": "9aaa058c336d0eb9becc7bf323366cce5421cf320f4565047b64d0bb477a1e1c",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "8e65c17f36d0677cae94fa1ebf6cd60d32476b9bab70d69a9e02d11a762aa988"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXStern.selftest.mjs",
+      "originalSha256": "171bb6bb6484637f43640b8099a15ccf5e1e55f0aebcc81c5331e75e2074f150",
+      "integratedSha256": "2e0aef296db094472c0bb1497ef744508f8e32191567935459a8396aa240c795",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSternArms.selftest.mjs",
+      "originalSha256": "ad8db26255b7c3f51d278024757fa04170557946e0fb11c63000d0cdf5739b07",
+      "integratedSha256": "0f84ada88a7d505d2ac512023bb71fb5332c1864640b240c7a097fb730f954e9",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSternHistorical.test-support.mjs",
+      "originalSha256": null,
+      "integratedSha256": "74cce666afc0e287887b7ae90d9c15c29567a157e454f402db4e37f21c06d356",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXSternTopology.selftest.mjs",
+      "originalSha256": null,
+      "integratedSha256": "a7d73005f21625714a28b7d4b1580caea53dfeaae8f398d711be791ceb92f7e7",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXStowage.selftest.mjs",
+      "originalSha256": "a18ac6e2668c36d3b1a420ec539d530b632c83154fb6b918754a76fcc93f0e22",
+      "integratedSha256": "a18ac6e2668c36d3b1a420ec539d530b632c83154fb6b918754a76fcc93f0e22",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXStructure.selftest.mjs",
+      "originalSha256": "4ec2ea84f4e1a38a19ef5478f868a1326ad6215f5e31134cb231446306d885d2",
+      "integratedSha256": "4ec2ea84f4e1a38a19ef5478f868a1326ad6215f5e31134cb231446306d885d2",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXTrackGuide.selftest.mjs",
+      "originalSha256": "fb0d44f9a1f7bf389cd8bd0f2a6c979e1d3782c63a02885c603e75a5fca3f496",
+      "integratedSha256": "e7825f5c760ad6dcf403ee59fd5aafb9dab35331c3c86df9f8944d2226e23d3d",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "424dbd5d208dece721735cc3678c528e4eb6bede2be91ac554b3cb8b0acc2e59"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXTrackRelief.selftest.mjs",
+      "originalSha256": null,
+      "integratedSha256": "8dc7ab0d8c6f9bef6f862e54fb2513afc3c9aaace1d456dd7f942d66242f496c",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXTrackRelief.test-support.mjs",
+      "originalSha256": null,
+      "integratedSha256": "5f22d5eb6b98dba989cb4bc4f284a505db37fdedb03c964602f8872f245399c7",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXUserSurfaces.selftest.mjs",
+      "originalSha256": "86e9c18b4e070efe382a7bd21fe12eef23655aa63c47baf86e4de72daf15e911",
+      "integratedSha256": "86e9c18b4e070efe382a7bd21fe12eef23655aa63c47baf86e4de72daf15e911",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "86e9c18b4e070efe382a7bd21fe12eef23655aa63c47baf86e4de72daf15e911"
+    },
+    {
+      "path": "src/vehicles/abramsSourceXWheelQuality.selftest.mjs",
+      "originalSha256": null,
+      "integratedSha256": "cb4e5b1c54ccdb8a51ab46d899e38260f1b9c72f0e6679c99951616ee15b4172",
+      "choice": "raw-snapshot-only-not-claimed-recovered-runtime",
+      "portSha256": null
+    },
+    {
+      "path": "src/vehicles/abramsSourceXWheels.selftest.mjs",
+      "originalSha256": "f6c6bff5ad45b0605334aa3684bd171f3b9dd6c8f8b4bf2af9ebc00e10ab496d",
+      "integratedSha256": "f6c6bff5ad45b0605334aa3684bd171f3b9dd6c8f8b4bf2af9ebc00e10ab496d",
+      "choice": "recovered-focused-test-current-pass; raw-earlier-version-retained",
+      "portSha256": "f6c6bff5ad45b0605334aa3684bd171f3b9dd6c8f8b4bf2af9ebc00e10ab496d"
+    },
+    {
+      "path": "src/vehicles/combatAnatomyGroups/abramsSourceX.generated.ts",
+      "originalSha256": "50b382ec0bdf6bcb8ea31f926cd26eeeb5481b008ea128703f54a2f3fa8711da",
+      "integratedSha256": "b2f82ee33f3ceb4b18fffa96d26f826c811b72a8b53a607aed5966da6856c091",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "b2f82ee33f3ceb4b18fffa96d26f826c811b72a8b53a607aed5966da6856c091"
+    },
+    {
+      "path": "src/vehicles/compactRoundMember.ts",
+      "originalSha256": null,
+      "integratedSha256": "d0803df14df55d1a81129763f6342c07303720050cb6e120e50eeafaf73f4dd1",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "dd3d6588ff23b5ea36c26234de3246a35c1d3e7953f8f592e0ed003a393e5922"
+    },
+    {
+      "path": "src/vehicles/presentationAnchors.generated.ts",
+      "originalSha256": "36583bfd23c7f93c839bfec6934b76e138b830f5ee84ad3e73c8a1a2289d8a1e",
+      "integratedSha256": "79b676361876a8c8f50ed198fbc0369059a15f9aab48cb201657ba4185e47d0e",
+      "choice": "existing-main-unmodified-pending-selected-recapture",
+      "portSha256": "09841fc28e8155d6faa6669583358f2b8816e6f9da6ccf8494e67ff2202d932a"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsPaintedHullPanel.ts",
+      "originalSha256": null,
+      "integratedSha256": "d24a5ee814a1fadb146254ad4a18b885d1c6eff554015cdb6f0b9769677e5fa9",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "7b249d1e45aae8d67a3ce3241f3762a8582eda49e1db9b543d3194d863edf69b"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceX.ts",
+      "originalSha256": "27bef4b97011521c8b21e21740fe8290019b9174d5d4f1320747e1dfb2b9adec",
+      "integratedSha256": "c71e186ed9a74619eb23ccced098f55413914245fc755fce1103da37ab18f7b2",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "43124d13f409d7da7bcc69b271ee090c10f98a5eb0cadfa2c34550b58745adad"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXAftCase.ts",
+      "originalSha256": "47d6cd9d94da3af17e975a9ae830c39a479f6934d285340900fc5225e1814603",
+      "integratedSha256": "47d6cd9d94da3af17e975a9ae830c39a479f6934d285340900fc5225e1814603",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "ebf44928c88e7b4e6c6491689cc0d9f5b65df5162c62a13541aa0aaf0c02636c"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXAratBrackets.ts",
+      "originalSha256": "8ea335a030400213d87329e59dca18bebdad230d95f5b77369e8a881a7216810",
+      "integratedSha256": "8ea335a030400213d87329e59dca18bebdad230d95f5b77369e8a881a7216810",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "f0a432d2ce0ec36acc7b9fe69f4993821ab1b51ddd8323b4d7531fc801f3e83b"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCitv.ts",
+      "originalSha256": "ac110ac28dd9b89180fee6f5938d0b5a1380e1f217e708acca19bae12d3c0ca1",
+      "integratedSha256": "ac110ac28dd9b89180fee6f5938d0b5a1380e1f217e708acca19bae12d3c0ca1",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "cff49db6edee481f25e7287fff9096da422f84fe3a647a2571ae45dd5c68434a"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXContainers.ts",
+      "originalSha256": "e7f2bba9b64760f0eb3bc5d06ac9cc42b7a80f7ee4ce4ee586d6d2eda4f2f912",
+      "integratedSha256": "a6eeec32bbe04da5e6045ebaace98e47e93df262001909b3a2f8bc38a304b089",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "17fe2ebcbbee0c9fceab17dd379c12b40dcbc3e9386e61deb6e88a016ab74846"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCounterAssault.ts",
+      "originalSha256": "2fd2c3af00fca126cf0d1d5df2c2b6bba6c49c31f2e1b209f02d10cb32252582",
+      "integratedSha256": "76aa1adb6dd4a14e2661a2b08260f3c3a1c27274bb9ce6e4b8e6c4439386b4f0",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "0ee9b99baebdc3bf3b88f7ab6e28b70cdcf9626d39385cccf4088c9982c5dafa"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCrows.ts",
+      "originalSha256": "28f33b8e13a10691af4a1d820dbe9f94461c18b268d33ca858b2c08d5912a280",
+      "integratedSha256": "7a08c223d2ecaf533a2f7989d213ffff0ce148d3b7bb91912422fdb978417a36",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "7718b5dd058721217349f3eeb29a9cbe63764d34b0ce386996c412343f57c090"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCrowsFeed.ts",
+      "originalSha256": "15b01c8c12c10fa99a64a5a32abf5b131d23aed90c192e3fa3f82f481d07e111",
+      "integratedSha256": "49a8960effccef615c2e64b2da77d49b72bd67f0fd9e6c027b1c50289a931226",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "920201f9da5064ff4645a792f9b1883e7f8d4ebb311c177356f5402d87d90712"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXDrive.ts",
+      "originalSha256": "5177acfe3bef6baaf5eba5e96dd395bd84f4af4e8f7d45e43b6cc866524d9509",
+      "integratedSha256": "02b05fc46e7afa604532228a5ada5ea19dc773dadbe2f3ae2bc31ee9d209ab25",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "d07e8c5903a71bb06ec54b308abb18f771139919f22a2805ba31a605b8405f71"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXEquipment.ts",
+      "originalSha256": "d34dab626da4e64f45dfea52c1776d214967622399b71ae7e464d31973203637",
+      "integratedSha256": "36402090280b1ca1d0d0f80bdfd5c1b67ee7f3cb720eb64e46864adf355947b2",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "9175f08a2e2bd2e187376c4c842b69acf0ef759eda191683cfd6c0afee639327"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXEra.ts",
+      "originalSha256": "cbc193f2b076f0b3be1d6dd69b1dbcbf5945561defeb996c34df6ba9f336ba5c",
+      "integratedSha256": "7f01771acf820cb0db47dda394c6260ec8040bb21c27d8cfe1eefc3821bf1092",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "fa481b8f08996fbfb5e08a2c0b7c32b7f40a3b0fb3a7279653f1c742a08742dc"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXGeometry.ts",
+      "originalSha256": "13e1f2443adcc544fc0b55dc3ce8bf532d9bbb23d51f953b2947a78ec38840e0",
+      "integratedSha256": "13e1f2443adcc544fc0b55dc3ce8bf532d9bbb23d51f953b2947a78ec38840e0",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "1bdcb1af6586449bb9e511d2a2d9e30438111e880f27bf2fa92191cf49a3739e"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXHatches.ts",
+      "originalSha256": "15eb2af688661c933dba5e19b3545b6523fa254a0d05d42389bb8863f6095b07",
+      "integratedSha256": "15eb2af688661c933dba5e19b3545b6523fa254a0d05d42389bb8863f6095b07",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "08349ddde94191bc3237a442c22792a887c7229b5b9a8150a2a43a917dcd75ca"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXHull.ts",
+      "originalSha256": "cc68f4b77b6e8728069085c14b2f157a3d4cd4c0b69828bd9e0dc0fb734cf02e",
+      "integratedSha256": "975d95499436975ac5c7b5dc7e9d346a4b01d2df03d2471b4b6ad5b55144ccb5",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "4082e00b5684724905ee3063bd5a5746f5cd5c88eb74ef28b28fca5565ff5a48"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXHullDeck.ts",
+      "originalSha256": "3311efe81b19a4cf67edff0ca65933fae2d09f949bad2d411975fd99928ecbe6",
+      "integratedSha256": "3311efe81b19a4cf67edff0ca65933fae2d09f949bad2d411975fd99928ecbe6",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "01d120a6721eb6b23a6b012c9f4e67e1a434410f0ac5f41f5edde6aebc7ea155"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXHullFittings.ts",
+      "originalSha256": "182a4d15a3d57a193eec92043d41dd7e2c6b00c1a47bac1b6121bc1797954782",
+      "integratedSha256": "182a4d15a3d57a193eec92043d41dd7e2c6b00c1a47bac1b6121bc1797954782",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "0af4fb42a88faa42f9fdb2d4c23f4afa264114dc1d11c72087514dc00f2fa5f0"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXLoader.ts",
+      "originalSha256": "7ea65ad3ece7c8ed2421177b1a985423022a91464f262e93a0b11552fb329cd6",
+      "integratedSha256": "f48d782a4f0d203ea5ba41a8275f885f9ffb039d9b2e5ffe735953b25e2aff86",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "724426c91f30b9d204e29cc29e19f38e25ab48f4108b26375d9284707d835041"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXLoaderFeed.ts",
+      "originalSha256": "baf160184937c608dda0600856976c8f393dc83652819ba2ec1d123761d52051",
+      "integratedSha256": "baf160184937c608dda0600856976c8f393dc83652819ba2ec1d123761d52051",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "e266c1fc264d5bb6930af8388785cb738891da660d722a1ffbcf7ffdceb46488"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXLoaderShields.ts",
+      "originalSha256": "0e61edb9ce7e3ed05b4993af5880484ae206cb9316a04b5e0065ada257d996b4",
+      "integratedSha256": "0e61edb9ce7e3ed05b4993af5880484ae206cb9316a04b5e0065ada257d996b4",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "803e71bcc9efa392e8cea1c5e76626c57ebaf4042aaf276f0d3f168ed5326ff9"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXMuzzle.ts",
+      "originalSha256": "dd97c017ed324a09d66ae195339ca25d28d801a7f36866bb985dff611a6717b1",
+      "integratedSha256": "dd97c017ed324a09d66ae195339ca25d28d801a7f36866bb985dff611a6717b1",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "2e47fdd2ef9719411f9fef31fcc304fee964afc18c963d0adbdd3d60451ff3e7"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXRack.ts",
+      "originalSha256": "1782a0c96ae428fbaed66a5deef133fd05314c3fdf5ab79ba100fab043fd8489",
+      "integratedSha256": "1782a0c96ae428fbaed66a5deef133fd05314c3fdf5ab79ba100fab043fd8489",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "154f9bae208721d499c54ceb2155e20f303f40295d0777082b80e03a7f7c9e22"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXRearGrilles.ts",
+      "originalSha256": "e2bfa0d4ac0b8156b973c710d9aa4454ce4eea337c08c4bc7987a008f7a75a7f",
+      "integratedSha256": "e2bfa0d4ac0b8156b973c710d9aa4454ce4eea337c08c4bc7987a008f7a75a7f",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "71c9c00f17ac791d268d63357d3ad23c30b0a1451dc3c9faef096d8e16340f0a"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXShoulderClosure.ts",
+      "originalSha256": null,
+      "integratedSha256": "2b7d77dab3b37f70b603bc7135bad42a7062fb208b4e3a8c0faedab2f3d13f6f",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "2aac827e24f160aa27571806ee9d6bb9dbeff4554a64c7022edb44275b59a2c9"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXSkirtReturns.ts",
+      "originalSha256": "bbfc311f13749c5e9dafa8654b6273ef2d92baacede42cb152f8658b53442108",
+      "integratedSha256": "6f064a6e77cd618e8b16f105eda62c4f37e8e1afd5e0f3ee33766112df0f90a4",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "688bdcd4d743826612b2103be260acbf9a48fc36f7438a7053433003f4d1cfe7"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXStern.ts",
+      "originalSha256": "1051a8e945cb016d4c06b4ee1ee3c1b14055ac8544fcb87ee4c61eaf5a7be1da",
+      "integratedSha256": "1ac15d31c0abc1e1781042cd9a71be56169f0bd7813ffbdea76c4ebd4bc51779",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "0a54232c9c8839caff555a1fb47618b82ab1b626adfe9b9345eef6796b24a784"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXStowage.ts",
+      "originalSha256": "3018f3c33e3517114c637f4d637125bd88c91e6124b7b33615d0658548b36dad",
+      "integratedSha256": "3018f3c33e3517114c637f4d637125bd88c91e6124b7b33615d0658548b36dad",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "baf6d3849a9a0722174288cffb2385c218c1d10f20e82457acec1ce1178409a5"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXTrackRelief.ts",
+      "originalSha256": null,
+      "integratedSha256": "2c8c64bcdb849ddc96ce1dd7fce79d62198fea06eed76fb83aea304c511b9568",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "0ebd65533b822c3640be4488c1142f834b9e025456e30c2d20c6326b52f424d7"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXWheels.ts",
+      "originalSha256": "e9edb1123a794d1e8bd6cee3aad7ff1df57ad4af73d3eca21ce3586ad9216fdb",
+      "integratedSha256": "7e8142652eac9fd73752555edf861ab20d8183904d1f1acccc514b516516ecfd",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "333aececaf670f089a486699315f51063e801d3942615a33b452f69f25fb5570"
+    },
+    {
+      "path": "src/vehicles/runningGearPrimitives.ts",
+      "originalSha256": null,
+      "integratedSha256": "9c282e2303c55a13e551a3d5fdd05c2b0e937ea560eff80f11a9ffba988d247a",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "6332f4b4204552176ee6694f785cb185a1d3d5caac0f402bf15ad1969dc3e378"
+    },
+    {
+      "path": "src/vehicles/stitchedGearStock.ts",
+      "originalSha256": null,
+      "integratedSha256": "55fbf806ad158d4461702444659eb066cf83fdeba024d4952d31a3e9b36b4d23",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "dbfd0616f9b966c66ab7fc0fc2e70217040d140b9a22331d54c03aa2ffcfab7f"
+    },
+    {
+      "path": "src/vehicles/tankBuildCooperation.ts",
+      "originalSha256": null,
+      "integratedSha256": "0c3c142dc68ca977da5fa38fee43a0e89d68ed44a83a12c1a82bd006a5b19784",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "80561dff394f42f957ac017302897586c655e83791f9c79e38fe98c492b55d2a"
+    },
+    {
+      "path": "src/vehicles/tankFactoryCore.ts",
+      "originalSha256": "238a5c503fb1ac7dbd7009dcc1fafe61a247850a18dc1dbf4439f96de93c2a63",
+      "integratedSha256": "95f7c3e3a8f7f7d7579174419b9acc5dcbfef59ae763ca4c2e12d65257fa2d07",
+      "choice": "surgical-current-main-port",
+      "portSha256": "bf559afe4da7c3d635a14c79dbd3a0dff35b26d6fe4cf6357eb9ce4a6fa812c4"
+    },
+    {
+      "path": "src/vehicles/vehicleMarkingSeatGroups/abramsSourceX.generated.ts",
+      "originalSha256": "edc2c6729dec710040057e6bf7d520079fa0f0c5d672838b9e355b584196755e",
+      "integratedSha256": "3e5db429f1bce52f31e326b1e1acbbcebe6191fa88d925b6954305dec6e5ece8",
+      "choice": "integrated-preserved-or-compatible-port",
+      "portSha256": "3e5db429f1bce52f31e326b1e1acbbcebe6191fa88d925b6954305dec6e5ece8"
+    },
+    {
+      "path": "src/vehicles/fleetFactory.ts",
+      "originalSha256": "f76adb5d06ddb95342ce039d4c270a2309622b4b87b02c5f2327eec0892a490a",
+      "integratedSha256": "0c87b470af8933f5ebb331ddb5afdc21fab6bad0f8978a2100b29220caed95ef",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "0d7e44197074bbf85e9e01e7bced04d642bb36c3a5948654cd8bba147cbb5d7d"
+    },
+    {
+      "path": "src/vehicles/fleetManifest.ts",
+      "originalSha256": "7230fd3c4b9d16d3c70c9162da17494c10b3dfa4900a458d1f29df23733a6471",
+      "integratedSha256": "dc2412c95e1a5cce9a9fd588a31619e7b2b10a29c9d1e5ce25ac943bfeba282c",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "5a005619d0192d7e5d6709ac6c6ca64be087164b3537c323eb0fc101af869e72"
+    },
+    {
+      "path": "src/vehicles/fleetOrder.ts",
+      "originalSha256": "f7ae5d586263066230c41ab5b3cd6baa4694711051b0d693a9b43c655250f44a",
+      "integratedSha256": "f7ae5d586263066230c41ab5b3cd6baa4694711051b0d693a9b43c655250f44a",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "89a3bacb81032a35337d277b833db113fc69ce69205a7d5e0114e37a549423cb"
+    },
+    {
+      "path": "src/vehicles/profiledProcedurals.ts",
+      "originalSha256": "333038e450ace7132df45769200b64003e9266d504abfb1b0ca522b4fe9bfd45",
+      "integratedSha256": "f88779cce3638b5cbdca1ed294de9de5bf04aeab4ab568a7117bf3f676ffbe31",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "7ad64eaa2876d6932f878e3972a2da42255a9a29c35413f54babd419b1fca87f"
+    },
+    {
+      "path": "src/vehicles/tankFactory.ts",
+      "originalSha256": "4ce25a6ff0790dc2714df2b1d35191e18f9100b71796f234bd65c7706ac570f5",
+      "integratedSha256": "3b66cdabf82ccfc58caf665e17adcdc3becb9f156dfaf07f928b457b83af07e8",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "3b66cdabf82ccfc58caf665e17adcdc3becb9f156dfaf07f928b457b83af07e8"
+    },
+    {
+      "path": "src/vehicles/taxonomy.ts",
+      "originalSha256": "94e9f732fdc506e34ff578f356dc70f25b0f01a9b7c04363fdcb10e1603cb0c5",
+      "integratedSha256": "e23d254c69bc0191b3208a04fb3175218f87c6215445f64d348996215d4e1233",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "00b9032bbd11f5fa80091c305605565449d4cc2264681ffe777dd61b24dd346c"
+    },
+    {
+      "path": "src/vehicles/tier.ts",
+      "originalSha256": "8769e01e146ba7fa0e9646f0f71e90829332be42fa5f81ecc39a4d24ec2471fd",
+      "integratedSha256": "ada9a6a1faab58aead3c430dc45fa71133963e685bea69e1546fbf0d63e50a0f",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "793a397d672a86b51b2b66db9f391ca25fbfed25d850c04221cf1077b94ac998"
+    },
+    {
+      "path": "src/vehicles/decorations.ts",
+      "originalSha256": "32f3fa2cc7120177cc6ed259cd3e816e9cd5ef984487824f4e96029a84d63e80",
+      "integratedSha256": "9f6e9048581abd97fb3fcd6f88a600046d647c48168804b1aa35aa72d196c6c5",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "09d1e8e4b8432506e6c63af9bc592f8d0f556fc740c30bd4b21bb622ce08beed"
+    },
+    {
+      "path": "src/vehicles/vehicleMarkings.ts",
+      "originalSha256": "b601658685c46907eb3ee38a6aa7ca09eff83359e0db47e6e32376855c759670",
+      "integratedSha256": "7b0874914eff1aa6014f702018b66d5ff9db015679c2e6d7b1705957564aab62",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "25d04b68f9ed0d5ac5eefcca4fc353cc38d95034468af698bef13234c39083fa"
+    },
+    {
+      "path": "src/vehicles/internalLayoutRegistry.ts",
+      "originalSha256": "c4a0c30a4175f7a5ccf1cb6494dd11ba8163e71c55468f2aa411359b7a3696c6",
+      "integratedSha256": "6c6d1f333c4ca6c0a31fd448610b80d54f5ec39f69e2b9e0ec875348132802c8",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "6c6d1f333c4ca6c0a31fd448610b80d54f5ec39f69e2b9e0ec875348132802c8"
+    },
+    {
+      "path": "tools/icons-page.html",
+      "originalSha256": "fd7c02fa259114d9170f84bfc4e3db18f66944ad3f25b1f6dfb17a087beab330",
+      "integratedSha256": "ca7fc5687359c31d154f6256099a30b61346a7b09a1de1459c3c9bed39ab9099",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "7edc4512c2fe7f92fc78682fda316a4433546c090ec855a25df44eb8acbb4983"
+    },
+    {
+      "path": "tools/procedural-fidelity.html",
+      "originalSha256": "4b3de24389d2ae3289f77460e537a42b8d3e03b921af6db95c32134c26647f07",
+      "integratedSha256": "eee97f9d26cbea10c26a04570f1c5b3803414de1ac4de22886f0ca68f197eee2",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "073cadd362a6cd88452b60de51c361a63f9f63dbc8e08944d91cedbef33baa77"
+    },
+    {
+      "path": "tools/abrams-x-reference-overrides.ts",
+      "originalSha256": "d810382e21af472d02130240ed99d3e89e490c67ce7924c39ef74de16f6877fe",
+      "integratedSha256": "d810382e21af472d02130240ed99d3e89e490c67ce7924c39ef74de16f6877fe",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "dff2e278dcde1bdef39c594adf77967b3a643bae4efb5cca067fd492bc679c74"
+    },
+    {
+      "path": "tools/source-world-registration.mjs",
+      "originalSha256": "2c905ecacb0f4bb03e89522c1d6490120f1431ebadd1cbd482404c280b6b997b",
+      "integratedSha256": "5c694ed608937bb122d76f4ce6fe10710b210d251101bae3841568eaf1894a8c",
+      "choice": "surgical-current-main-additive-seven-ID-port",
+      "portSha256": "9ea27d9aa27d87ec0fa64483193cf16b46df69175961266ada9659904f7cfa51"
+    },
+    {
+      "path": "src/vehicles/profiles/sourceEraCover.ts",
+      "originalSha256": "3f1904515f37ad24ed9c4ef0a2b8b98cb81fe53b7fffa96282aa9f7560768bc7",
+      "integratedSha256": "0fab7f986eb3fdcec788a7b675307388df5f96f738e30403469a4cea4a0f14ec",
+      "portSha256": "40b21a898be7c0629ec6251b40616ac2f691e413e899b99d2295271aaf854320",
+      "choice": "existing-main-unchanged-Abrams-only-recovered-alias"
+    },
+    {
+      "path": "src/vehicles/profiles/sourceEraCoverTopology.ts",
+      "originalSha256": null,
+      "integratedSha256": "fc230ad1a358e8b7eaa858b914ea3d3c0b44e4c63344398c77a8673ed7bea319",
+      "portSha256": null,
+      "choice": "Abrams-only-recovered-alias"
+    },
+    {
+      "path": "src/vehicles/eraAuthoredFaces.ts",
+      "originalSha256": "1e3a51f8dc1a261aa236491cb9711e3a9d2f275398fd923eb94a98bcc071bcf9",
+      "integratedSha256": "1e3a51f8dc1a261aa236491cb9711e3a9d2f275398fd923eb94a98bcc071bcf9",
+      "portSha256": "1e3a51f8dc1a261aa236491cb9711e3a9d2f275398fd923eb94a98bcc071bcf9",
+      "choice": "existing-main-exact-guard-preserved"
+    },
+    {
+      "path": "src/sim/armor.ts",
+      "originalSha256": "2329ad9d8e0b89c3adb172d7f28512974fae9569e4cca738b5955efe323a8eb6",
+      "integratedSha256": "6da74cbfeee111dd9cecbf804a37e6ee899eed590d27a972275faa43887284f2",
+      "portSha256": "6da74cbfeee111dd9cecbf804a37e6ee899eed590d27a972275faa43887284f2",
+      "choice": "surgical-opt-in-excluded-edge-port"
+    },
+    {
+      "path": "src/vehicles/specHelpers.ts",
+      "originalSha256": "47de02df99f292a1798077f02fc0b3ca9bf3ca565c099dcb3771d9334aa025b0",
+      "integratedSha256": "0a3dfc7574b58b0b031d2bbc74e571c541a70ab1f13957013f6e90a2324d7f32",
+      "portSha256": "0a3dfc7574b58b0b031d2bbc74e571c541a70ab1f13957013f6e90a2324d7f32",
+      "choice": "exact-integrated-optional-excludedEdges-type-field; no runtime change"
+    },
+    {
+      "path": "src/sim/armorSurfaceGroup.selftest.mjs",
+      "originalSha256": "b26b5b8a3c7dac911a8bd4086ed204398fe1366d2e7bd47cb568e05a3385b7a9",
+      "integratedSha256": "06c8712e9fb39ca9c2bfc0df782cbc486d1697d60dc36ca1001f1ffa025177fd",
+      "portSha256": "2030b458f54e1bbae77c8e4fd54b9c9b411223a745c8669500e451b5be93e220",
+      "choice": "archived-simulation-compatibility-test-recovered-and-passed"
+    }
+  ],
+  "historyDocuments": [
+    {
+      "sourcePath": "docs/research/abrams-idler-crown-budget-20260907.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-idler-crown-budget-20260907.md",
+      "originalSha256": null,
+      "integratedSha256": "64b7dae2bff703d63d4616a52cd4a439c3cef504ece64e92bd1b5edf63e52664",
+      "archiveSha256": "48b763bed8280264dd0961f6ae4b068b931241dc1bba644ebcf693da7ec40b57"
+    },
+    {
+      "sourcePath": "docs/research/abrams-low-drive-stock-20260907.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-low-drive-stock-20260907.md",
+      "originalSha256": null,
+      "integratedSha256": "6fb0aa6d439fc9932f9721278dbd2e66688c44228fff48aca0a87f4569c38b5a",
+      "archiveSha256": "4b4215c2b712007ebd8dc06e413ec51150625903f00bf64c27547ef474826b24"
+    },
+    {
+      "sourcePath": "docs/research/abrams-low-equipment-quality-20260907.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-low-equipment-quality-20260907.md",
+      "originalSha256": null,
+      "integratedSha256": "be45a0262de45792f8b9cc36345d16539080f7e0ab2c2429809a24ae1024c2a2",
+      "archiveSha256": "0d528448b4de5c1b47a674c3f98cc43d5d4b0735011b5059718efb9230c39c37"
+    },
+    {
+      "sourcePath": "docs/research/abrams-r4-history-recovery-20260908.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-r4-history-recovery-20260908.md",
+      "originalSha256": null,
+      "integratedSha256": "cd13c859a93523248ae333073bfebb75421fd0493cd175c6881ceb6af74924c2",
+      "archiveSha256": "9ed2f826d04a38ab682e8034b2e6a36014998b48363f9429accf328f8c1a43a1"
+    },
+    {
+      "sourcePath": "docs/research/abrams-skirt-joint-recovery-20260908.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-skirt-joint-recovery-20260908.md",
+      "originalSha256": null,
+      "integratedSha256": "27c12a3c2ca10377ea09e8b4f5b9aaffe0ae30895a058bf6198f9d62ea2a7d91",
+      "archiveSha256": "2e95a214999dfae1e7a3f17c73818c8fdd927aaed76a58e3b45a2c1fd044177a"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-aft-case.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-aft-case.md",
+      "originalSha256": "a40c3f8ad3ce7f571652a318a1863c87cd7b44ede8dc69ed13cf513888b2b7d0",
+      "integratedSha256": "a40c3f8ad3ce7f571652a318a1863c87cd7b44ede8dc69ed13cf513888b2b7d0",
+      "archiveSha256": "1e017a02e5b4b2189c8e8548288e2386d9c726cd8b183d0db1832d6e7cb074ca"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-citv-audit.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-citv-audit.md",
+      "originalSha256": "1e0b1bea338b70636107a46711bf254e41020001461ca6edb7dbc5cc1a43b6e9",
+      "integratedSha256": "1e0b1bea338b70636107a46711bf254e41020001461ca6edb7dbc5cc1a43b6e9",
+      "archiveSha256": "94b7050c2121ac9bcaff173c6e25502e32f9080c6e2d4f5721ad86ce85faff74"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-counter-assault-r4.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-counter-assault-r4.md",
+      "originalSha256": "dcfeabc42833fa3fbd4babb618a6e637606a7efb3f063bc9034c133e2c492729",
+      "integratedSha256": "dcfeabc42833fa3fbd4babb618a6e637606a7efb3f063bc9034c133e2c492729",
+      "archiveSha256": "af8c951f01e29d46f52f26c6b113cde0efac40eeba30fc8e16030e4248b2ce3e"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-drive-r4.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-drive-r4.md",
+      "originalSha256": "a0b272007dd3d6419486f3c44d17debc5a766ae978eb610cfd4dcac77eb6c9ce",
+      "integratedSha256": "a0b272007dd3d6419486f3c44d17debc5a766ae978eb610cfd4dcac77eb6c9ce",
+      "archiveSha256": "60ab19be2b6cccee5f8ba695d79fb1535859fa52c180505e18921d84a40c1ae8"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-hatch-r5.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-hatch-r5.md",
+      "originalSha256": "f545ec975750a9a1613af1d05653ae0423be7be4321c3934023516f5992154f2",
+      "integratedSha256": "f545ec975750a9a1613af1d05653ae0423be7be4321c3934023516f5992154f2",
+      "archiveSha256": "3f844129b54573c92965f0006407029263234512dbc868632d5b748df18dcb44"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-hull-deck-r3.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-hull-deck-r3.md",
+      "originalSha256": "a942191d17cb84eac6a576380a8abe68ecd802ee20fed30ac07fd54573d3d21c",
+      "integratedSha256": "a942191d17cb84eac6a576380a8abe68ecd802ee20fed30ac07fd54573d3d21c",
+      "archiveSha256": "f03e0ce60065e08df4272cf28a305377abb227c05d543a6ed96094653ab9ea3d"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-integration-visual-review.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-integration-visual-review.md",
+      "originalSha256": "8ca3feeb6b0c6af20baf367564b24c7fa2e76976e4ba9643b14f8fb5eb4cf94f",
+      "integratedSha256": "8ca3feeb6b0c6af20baf367564b24c7fa2e76976e4ba9643b14f8fb5eb4cf94f",
+      "archiveSha256": "125865969ab2dc7a6eb1131ad96b2b303d1ec00504cf8858bde2f9ebec539528"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-loader-feed.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-loader-feed.md",
+      "originalSha256": "38bd8ad3568cc61a3cf80dd0fcaad2f693fdf1745e0f2bf1a540266c4eade1ba",
+      "integratedSha256": "38bd8ad3568cc61a3cf80dd0fcaad2f693fdf1745e0f2bf1a540266c4eade1ba",
+      "archiveSha256": "770a48d2d9cb5fb2e8ec4000fabaf05b7a88b1d02e399ce9debc38d0e051c2f7"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-loader-r4.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-loader-r4.md",
+      "originalSha256": "734bbef49fffbf6d8822c115b01cf7319cd6bef8e4373ec90a3d9e22f5b358e2",
+      "integratedSha256": "734bbef49fffbf6d8822c115b01cf7319cd6bef8e4373ec90a3d9e22f5b358e2",
+      "archiveSha256": "008459222a07000868a93e828a2cf9d4777f462b5d525c12cc923f5ae948f5f7"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-loader-shields.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-loader-shields.md",
+      "originalSha256": "07e48caa489e3b7e1bf3be64bf4c43f8beae52d350bee94c4d7ddf2b342ccf10",
+      "integratedSha256": "07e48caa489e3b7e1bf3be64bf4c43f8beae52d350bee94c4d7ddf2b342ccf10",
+      "archiveSha256": "95ff728092f7e2af55068fdcbd0b451549d464e27342f2f6d579a8349ddaf774"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-muzzle-r4.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-muzzle-r4.md",
+      "originalSha256": "d7c70e37326be219b2b31754e6ba7747e0ffbd6b3dc44b0dabe52f300db24d65",
+      "integratedSha256": "d7c70e37326be219b2b31754e6ba7747e0ffbd6b3dc44b0dabe52f300db24d65",
+      "archiveSha256": "039f2e2243b5a0af63b8cb23c3c82102a2b94e44251075ce644703a7c4b35225"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-rack-collision.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-rack-collision.md",
+      "originalSha256": "2d6db94a81cc5be456e426c98c02fc40050cb67f7d2c6911ee171b44989d4dd5",
+      "integratedSha256": "2d6db94a81cc5be456e426c98c02fc40050cb67f7d2c6911ee171b44989d4dd5",
+      "archiveSha256": "66717cf70308d23f01f3b0adcd35f969b80e1165a7204bde13b238d2483ee4b5"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-rack-r3.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-rack-r3.md",
+      "originalSha256": "82cef40d96e28330eb2dd8e7be0bb090cc9ae28f23d8f514bbcf518c4fba3934",
+      "integratedSha256": "82cef40d96e28330eb2dd8e7be0bb090cc9ae28f23d8f514bbcf518c4fba3934",
+      "archiveSha256": "175982871ac29ceed9564086150140c4e0ef777d35277d54b0ed6a7acc1de28b"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-regression-completion.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-regression-completion.md",
+      "originalSha256": "c02995ba469bb874dfa61108aefc2a0730747ca56105585643592e2dd62d8bf3",
+      "integratedSha256": "c02995ba469bb874dfa61108aefc2a0730747ca56105585643592e2dd62d8bf3",
+      "archiveSha256": "2573e92726efd0ff3fe4ee34160e75e2d5be60b82e9674502393af1fdbae16e8"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-skirt-armor-r4.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-skirt-armor-r4.md",
+      "originalSha256": "7bd171c70c01f30e74fcecd43f4a081fde76f1fbf7c0d15bab8f4f0b9b31ffb7",
+      "integratedSha256": "7bd171c70c01f30e74fcecd43f4a081fde76f1fbf7c0d15bab8f4f0b9b31ffb7",
+      "archiveSha256": "c15ac717606bb554496d521e13f5d78ba4bb48822c5e432297e04a37ae0e7061"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-stern-r3.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-stern-r3.md",
+      "originalSha256": "2d34e754b8516784e025704aa633d4303d7bdd29fa3167a4cb9d8bc0e7a1ddf5",
+      "integratedSha256": "2d34e754b8516784e025704aa633d4303d7bdd29fa3167a4cb9d8bc0e7a1ddf5",
+      "archiveSha256": "a3137eebde2dd27df128ff5099696e71019f8a6fc0764f7f3dab707f555462d8"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-track-height-diagnosis.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-track-height-diagnosis.md",
+      "originalSha256": "ecd32c7d701c4a3a60199c2bd13309a16bf7a7953f10b016161bed9c64f1473e",
+      "integratedSha256": "ecd32c7d701c4a3a60199c2bd13309a16bf7a7953f10b016161bed9c64f1473e",
+      "archiveSha256": "d269d08b381363a73d7a5fe71b20e11c5eaf6b3c06fe3c9c38528dea5b098396"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-user-surfaces-r5.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-user-surfaces-r5.md",
+      "originalSha256": "48178a2e0633160c0e2d9970285fe82f89fbaa052dce40684485ca504ad7a18f",
+      "integratedSha256": "9181a34adbeeb209d41a8b10febe8b95ceeb5b2cce41e6a9e450b3b489da6bfc",
+      "archiveSha256": "4ef7689a452d9acc5135016aeacd89111dfcb7452c97f65772056ee1f61dd716"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-variants.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-variants.md",
+      "originalSha256": "8a0a62e19ed29d6878bf38add40eefc7a3987aa555b158ad3c9d97ff276a1c2c",
+      "integratedSha256": "8a0a62e19ed29d6878bf38add40eefc7a3987aa555b158ad3c9d97ff276a1c2c",
+      "archiveSha256": "3c36d89b973906b2210d2c13e0ac7402f7ef7829d570bd185cd144f8338998d2"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-visual-review-r2.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review-r2.md",
+      "originalSha256": "6c44664bd1866b49262dfd5ae5f0307aa24758d6037f1dad6d1460c111b57211",
+      "integratedSha256": "6c44664bd1866b49262dfd5ae5f0307aa24758d6037f1dad6d1460c111b57211",
+      "archiveSha256": "457200d1abaf99713c03f1899df1b30e2d67b0a4997efdecc2bb35b019651dd5"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-visual-review-r3.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review-r3.md",
+      "originalSha256": "783f29e4cdef2161a63c2ad03110ba35c1ce8e0fea65003ad46686e6ff76fc25",
+      "integratedSha256": "783f29e4cdef2161a63c2ad03110ba35c1ce8e0fea65003ad46686e6ff76fc25",
+      "archiveSha256": "277889c5b8df22f39c50092458de2e09f84c11b6e62306378751601aaac2a0fb"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-visual-review-r4.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review-r4.md",
+      "originalSha256": "7bfc971d1599686fa7ec7b220f993b57fa7960d27f2bb7ad401f2e6e7aef33a6",
+      "integratedSha256": "7bfc971d1599686fa7ec7b220f993b57fa7960d27f2bb7ad401f2e6e7aef33a6",
+      "archiveSha256": "8e4a6fae1cefda97586f2726884e5efd4cdea057b054e5927c2d767643b75d8d"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x-visual-review.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x-visual-review.md",
+      "originalSha256": "a87b31723219ffa3fc5494a8c9b8105c5c321f14c43f60137ac5b7d817757042",
+      "integratedSha256": "a87b31723219ffa3fc5494a8c9b8105c5c321f14c43f60137ac5b7d817757042",
+      "archiveSha256": "b72a063b19c613c5f6596ddf6ecd79aa69b7c18f6c9f3c757fef33a93465bf71"
+    },
+    {
+      "sourcePath": "docs/research/abrams-source-x.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-source-x.md",
+      "originalSha256": "aa06c6818bbc17291c7b4702e6a1616d88305d622a06ac561993841c6fc8c8a5",
+      "integratedSha256": "aa06c6818bbc17291c7b4702e6a1616d88305d622a06ac561993841c6fc8c8a5",
+      "archiveSha256": "3ec5e5b138f7a1c86aefaadc404cdc97b559adfb3a005ee0c270bc716b919531"
+    },
+    {
+      "sourcePath": "docs/research/abrams-track-receiving-relief-20260907.md",
+      "recoveredPath": "docs/tank-generation/recovery/abrams-history/abrams-track-receiving-relief-20260907.md",
+      "originalSha256": null,
+      "integratedSha256": "fa045884ebb003a0cdd9c885f7f7d60882283c1d7524f0a8be9c1b63eeaf6122",
+      "archiveSha256": "0f2f346d9572ed57499c9df06a5ea3206e38a1e4c529436fcef6b9109a61f41d"
+    }
+  ],
+  "portHashStatus": "Working source snapshot before final focused/type/public checks; current final commit remains authoritative.",
+  "aliasedDependencies": [
+    {
+      "sourcePath": "src/vehicles/profiles/sourceEraCover.ts",
+      "recoveredPath": "src/vehicles/profiles/abramsSourceXCover.ts",
+      "integratedSha256": "0fab7f986eb3fdcec788a7b675307388df5f96f738e30403469a4cea4a0f14ec",
+      "portSha256": "0f49a0300fa20e486c4dd4894ff8bf5ee69c58034d67bfd4f4cff2be3826f3bb",
+      "choice": "exact-integrated-algorithm; family-local import/module names only; other consumers unchanged",
+      "archiveCopies": [
+        {
+          "path": "docs/tank-generation/recovery/abrams-history/dependencies/original-sourceEraCover.ts.txt",
+          "sha256": "b17edbfd3024b91fe6bafa291c7672b55836107d0c5c53fa6044c879f7441058"
+        },
+        {
+          "path": "docs/tank-generation/recovery/abrams-history/dependencies/integrated-sourceEraCover.ts.txt",
+          "sha256": "71b01d0ca786acfcd090c6e3f67644e55cac93c87a20df6bfaf9b02b4676fb64"
+        }
+      ]
+    },
+    {
+      "sourcePath": "src/vehicles/profiles/sourceEraCoverTopology.ts",
+      "recoveredPath": "src/vehicles/profiles/abramsSourceXCoverTopology.ts",
+      "integratedSha256": "fc230ad1a358e8b7eaa858b914ea3d3c0b44e4c63344398c77a8673ed7bea319",
+      "portSha256": "8fc984eb866402ccea20db365f15b3921c0046110a898f1ed5359a4a882174ad",
+      "choice": "exact-integrated-algorithm; family-local import/module names only; other consumers unchanged",
+      "archiveCopies": [
+        {
+          "path": "docs/tank-generation/recovery/abrams-history/dependencies/integrated-sourceEraCoverTopology.ts.txt",
+          "sha256": "8fc984eb866402ccea20db365f15b3921c0046110a898f1ed5359a4a882174ad"
+        }
+      ]
+    }
+  ],
+  "portIntegrationFiles": [
+    {
+      "path": "src/vehicles/abramsSourceXRecovery.selftest.mjs",
+      "portSha256": "ecf260952dfb7282ce6de2b9d523ac29e2928398b09e16947d59df165007eff4",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/combatAnatomyCalibrations.ts",
+      "portSha256": "392a9d716a2e3b74b125a47eea01188206f63c504b501eb40f2e20c6092b2c9c",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/combatAnatomyLoaders.generated.ts",
+      "portSha256": "ac72b000b642a35731e035dfc63244d11cdcb9bb5cd4ff6d2f53a6cf653b2f0a",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/nativeGearStockOverrides.selftest.mjs",
+      "portSha256": "b2289c63bcda7f3392c6a2e3ff5f9e585200a7a1aab9efef566319e8a49bba3a",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCover.selftest.mjs",
+      "portSha256": "0857f9e6f50b3357281e889501a31e6239b291df59590ecaaa23dfa8dbf4c0e9",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCover.ts",
+      "portSha256": "0f49a0300fa20e486c4dd4894ff8bf5ee69c58034d67bfd4f4cff2be3826f3bb",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXCoverTopology.ts",
+      "portSha256": "8fc984eb866402ccea20db365f15b3921c0046110a898f1ed5359a4a882174ad",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/profiles/abramsSourceXTrackShoe.ts",
+      "portSha256": "c9755bc0b8904d7bf868106218dd45ddffa75b6c24c6483fc845c30121fb5a96",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/vehicleMarkingSeatLoaders.generated.ts",
+      "portSha256": "2b88497a322e9588315bc97e57e8fb4e397750b1290b25a1381d25c5da657616",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "src/vehicles/vehicleMarkingSeats.generated.ts",
+      "portSha256": "0fb0b6f4bb85ac621abf0d0b4f8aa8c74786931a135f61dff5f9838a5cdbac92",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "tools/preservation-oracle.selftest.mjs",
+      "portSha256": "7e149edf1f031fce403fa62086c69baa26fd31cf3c2393e1957b85a48a1b430a",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "tools/selftest-suites.mjs",
+      "portSha256": "de35f35ade61b26710124dc91757acf479773d9143a15fd80a14899e5b2fdbe9",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    },
+    {
+      "path": "tools/technical-framing.selftest.mjs",
+      "portSha256": "495369d490fa27e00901e2cd554479cac8f4d6dd17ae9a668b14a92ff582602e",
+      "choice": "bounded-current-main-integration; archive source aliases and validation described in preservation handoff"
+    }
+  ],
+  "localProofs": {
+    "simulationCompatibility": {
+      "path": ".qa-dev/abrams-recovery-sim-compatibility.log",
+      "sha256": "dbb900d93a8cecac33be10ac03a472a340572daabcb3293fa23ef1bef2f30048",
+      "status": "PASS existing movement/combat/spotting"
+    },
+    "firstFinalType": {
+      "path": ".qa-dev/abrams-recovery-final-type-build.log",
+      "sha256": "34d82941bee41bf6416db24e6a4490653816d0d22e4c40e602f067e4dddb44e0",
+      "status": "FAIL missing separate specHelpers.ArmorPlate optional declaration; build not reached"
+    },
+    "native": {
+      "path": ".qa-dev/abrams-recovery-native-v3.log",
+      "sha256": "8e2f465c58051d1a8fe4baf220f952d417b1d9b17735e316a175a96cf999e360",
+      "status": "PASS",
+      "builds": 14
+    },
+    "cover": {
+      "path": ".qa-dev/abrams-recovery-cover-v2.log",
+      "sha256": "4316bda19e6a9ffe915871996139030d8bb62eab866c9fbb36ff7c58b3b7e116",
+      "status": "PASS"
+    },
+    "physicalFirst": {
+      "path": ".qa-dev/abrams-recovery-focused-v1.log",
+      "sha256": "74c77a87ca12cfec8c2c68499a674abdb06683f0e0529cc4907f057bde5753b5",
+      "status": "6 physical passes; two test API migration failures retained"
+    },
+    "physicalGear": {
+      "path": ".qa-dev/abrams-recovery-gear-v2.log",
+      "sha256": "3e5d9e8bed3d1837e69828e823759aedc2ce490ee790213fb519af537334f16c",
+      "status": "PASS end gear + guide"
+    },
+    "patterns": {
+      "path": ".qa-dev/abrams-recovery-patterns-v2.log",
+      "sha256": "096304847b337af78241de334e9649336a84bd5d8051127bbd8b83647d1ec6c9",
+      "status": "PASS track/suspension/wheel quality across181 playable IDs"
+    },
+    "rackEdges": {
+      "path": ".qa-dev/armor-excluded-edges-after.log",
+      "sha256": "40dada9bacde03be0ecf43ae4e8c24bcc355909dab41ebf7132f7eee2e245ffd",
+      "status": "PASS; retained pre-port negative at armor-excluded-edges-before.log"
+    },
+    "convexDefault": {
+      "path": ".qa-dev/armor-convex-preservation.log",
+      "sha256": "4fce34e90e21484613794ff511f0e9daaa742b44c749adaa47f169a6ee7d2216",
+      "status": "PASS"
+    }
+  }
+}

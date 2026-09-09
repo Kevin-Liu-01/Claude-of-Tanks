@@ -20,6 +20,8 @@ export interface PlateOptions {
 export interface ArmorPlate {
   name: string;
   verts: Vec3Tuple[];
+  /** Finite-stock opt-in ([] for closed stock); listed seams are half-open. */
+  excludedEdges?: readonly number[];
   physicalMm: number;
   keMm: number;
   ceMm: number;

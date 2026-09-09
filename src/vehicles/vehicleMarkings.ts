@@ -138,6 +138,13 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   t90ms_x: anchor('turret', 'right', .23, .47, .24, 1),
   // X rebuilds choose their own actual skirt stations; these normalized
   // hints are ray-seated on the new geometry, never inherited turret decals.
+  m1a1_x: anchor('turret', 'left', .25, .70, .24, 1),
+  m1a1ha_x: anchor('turret', 'left', .25, .70, .24, 1),
+  m1a2_x: anchor('turret', 'left', .25, .70, .24, 1),
+  m1a2_tusk_x: anchor('turret', 'right', .32, .81, .24, 1),
+  m1a2_sepv2_x: anchor('turret', 'right', .32, .81, .24, 1),
+  m1a2_sepv3_x: anchor('turret', 'left', .25, .70, .24, 1),
+  ua_m1a1_x: anchor('turret', 'left', .25, .70, .24, 1),
   t90a_x: anchor('hull', 'right', .3985, .5722, .24, -1),
   t90a_vladimir_x: anchor('hull', 'left', .3918, .5509, .24, 1),
   t90m_x: anchor('turret', 'left', .1509, .5880, .24, 1),

@@ -45,6 +45,7 @@ import './afvFamily.ts';
 import './sheridan.ts';
 import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
+import { ABRAMS_SOURCE_X_IDS, synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
 
 import {
   SAVED_TANK_IDS,
@@ -82,6 +83,7 @@ export interface CreateTankOptions {
 applyFleetBalancePass(TANK_SPECS);
 synchronizeSourceXCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
+synchronizeAbramsSourceXCombatMetadata();
 finalizeFirstPartyRoster();
 applyNativeFamilyOrderToCatalogs();
 
@@ -179,6 +181,9 @@ const GROUP_LOADERS = Object.freeze({
   ukraine: () => import('./profiles/ukraine.ts').then((mod) => registerProfiles(mod.UKRAINE_PROFILES)),
   poland: () => import('./profiles/poland.ts').then((mod) => registerProfiles(mod.POLAND_PROFILES)),
   abrams: () => import('./profiles/abrams.ts').then((mod) => registerProfiles(mod.ABRAMS_PROFILES)),
+  abramsSourceX: () => import('./profiles/abramsSourceX.ts').then((mod) => registerProfiles(
+    Object.fromEntries(ABRAMS_SOURCE_X_IDS.map((id) => [id, { build: mod.buildAbramsX }])),
+  )),
   patton: () => import('./profiles/patton.ts').then((mod) => registerProfiles(mod.PATTON_PROFILES)),
   ww2: () => import('./profiles/ww2.ts').then((mod) => registerProfiles(mod.WW2_PROFILES)),
   casemate: () => import('./profiles/casemate.ts').then((mod) => {

@@ -5,6 +5,8 @@ import { WW2_PROFILES } from './profiles/ww2.ts';
 import { CASEMATE_PROFILES } from './profiles/casemate.ts';
 import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.ts';
 import { ABRAMS_PROFILES } from './profiles/abrams.ts';
+import { buildAbramsX } from './profiles/abramsSourceX.ts';
+import { FLEET_GROUP_IDS } from './fleetManifest.ts';
 import { RUSSIA_PROFILES as RUSSIA_RESIDUE_PROFILES } from './profiles/russia.ts';
 import { T90_PROFILES } from './profiles/t90.ts';
 import { T72_PROFILES } from './profiles/t72.ts';
@@ -119,6 +121,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...CASEMATE_PROFILES,
   ...SOVIET_HEAVY_PROFILES,
   ...ABRAMS_PROFILES,
+  ...Object.fromEntries(FLEET_GROUP_IDS.abramsSourceX.map((id) => [id, {build: buildAbramsX}])),
   ...RUSSIA_PROFILES,
   ...UK_PROFILES,
   ...CHALLENGER_PROFILES,

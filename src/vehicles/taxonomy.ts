@@ -50,6 +50,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
     'amx30_x', 'amx40_x', 't62mv1_x',
+    'm1a1_x', 'm1a1ha_x',
     'challenger1_x',
     't72bu_x',
     'chieftain5_x',
@@ -70,6 +71,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'leclerc_x', 'leclerc_classic_x', 't72b_1987_x', 't80u_x', 'chieftain_mk10_x', 't72b3_x', 'type10_x', 'type90_x',
     'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x', 'leo2a5_x', 'merkava4_x', 'merkava3d_x',
     'k2_x', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x',
+    'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x',
     'm1a2_legacy', 'm1a2', 't72b3m', 'pt91m', 't84', 't90', 't90a',
     't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 't72b3',
     'leo2a7', 'strv122', 'challenger2', 'challenger2e', 'ua_challenger2', 'k2', 'k1a1', 'type10', 'recon_tank',

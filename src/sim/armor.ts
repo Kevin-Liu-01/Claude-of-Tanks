@@ -53,6 +53,10 @@ export interface EraProtection {
 export interface ArmorPlate {
   name: string;
   verts: readonly Vec3Tuple[];
+  /** Finite-stock opt-in: [] retains closed boundaries; listed cut edges are
+   * owned by another face. Unlike openEdges, acute exterior tolerance is
+   * bounded by distance to the finite stock instead of supporting lines. */
+  excludedEdges?: readonly number[];
   physicalMm: number;
   keMm: number;
   ceMm: number;
@@ -614,6 +618,61 @@ function edgeInside(a: Vector3, b: Vector3): boolean {
   return _tmp.dot(_n) >= -1e-6;
 }
 
+/** Finite authored stock faces use a distance tolerance, not the legacy area epsilon. */
+function nearPolygonBoundary(verts: readonly Vec3Tuple[]): boolean {
+  for (let index = 0; index < verts.length; index++) {
+    _v0.fromArray(verts[index]);
+    _v1.fromArray(verts[(index + 1) % verts.length]);
+    _e1.subVectors(_v1, _v0);
+    _e2.subVectors(_pt, _v0);
+    const lengthSq = _e1.lengthSq();
+    const along = lengthSq ? Math.max(0, Math.min(1, _e2.dot(_e1) / lengthSq)) : 0;
+    const x = _e2.x - along * _e1.x;
+    const y = _e2.y - along * _e1.y;
+    const z = _e2.z - along * _e1.z;
+    if (x * x + y * y + z * z <= 1e-14) return true;
+  }
+  return false;
+}
+
+function intersectPlatePolygon(frame: FrameIndex, plate: ArmorPlate): number {
+  const verts = plate.verts;
+  if (verts.length < 3) return -1;
+  if (plate.traceBounds && intersectAABB(frame, plate.traceBounds.min, plate.traceBounds.max) < 0) return -1;
+  _v0.fromArray(verts[0]);
+  _n.set(0, 0, 0);
+  for (let index = 1; index < verts.length - 1; index++) {
+    _e1.fromArray(verts[index]).sub(_v0);
+    _e2.fromArray(verts[index + 1]).sub(_v0);
+    _n.add(_tmp.crossVectors(_e1, _e2));
+  }
+  const normalSize = _n.lengthSq();
+  if (!Number.isFinite(normalSize) || normalSize < 1e-24) return -1;
+  _n.normalize();
+  const denominator = _dirL[frame].dot(_n);
+  if (!Number.isFinite(denominator) || denominator >= -1e-9) return -1;
+  const t = _tmp.subVectors(_v0, _fromL[frame]).dot(_n) / denominator;
+  if (!(t >= 0 && t <= 1)) return -1;
+  _pt.copy(_fromL[frame]).addScaledVector(_dirL[frame], t);
+  let outside = false;
+  for (let index = 0; index < verts.length; index++) {
+    _v0.fromArray(verts[index]);
+    _v1.fromArray(verts[(index + 1) % verts.length]);
+    _e1.subVectors(_v1, _v0);
+    _e2.subVectors(_pt, _v0);
+    const edgeLength = _e1.length();
+    const side = _tmp.crossVectors(_e1, _e2).dot(_n);
+    if (!Number.isFinite(edgeLength) || !(side >= -1e-7 * edgeLength)) return -1;
+    if (plate.openEdges?.includes(index) && side <= 1e-7 * edgeLength) return -1;
+    if (side < 0) outside = true;
+    if (plate.excludedEdges?.includes(index) && Math.abs(side) <= 1e-12 * edgeLength) return -1;
+  }
+  // Supporting-line tolerances alone grow without bound at acute tips.
+  // Require actual distance to a finite edge before admitting roundoff outside.
+  if (outside && !nearPolygonBoundary(verts)) return -1;
+  return t;
+}
+
 /**
  * Segment-vs-AABB slab test in a local frame. On hit, `_aabbExitT` holds the
  * exit parameter (the box SPAN along the segment is [entry, _aabbExitT] —
@@ -1007,7 +1066,11 @@ function tracePlates(
     if (plate.kind === 'external' && hasTrackShape(trackShapes, plate.moduleLink)) continue;
     const frameForPlate = plate.gunFollow ? FR_GUN : frame;
     const t = plate.convexPolygon
-      ? intersectConvexPlate(frameForPlate, plate.verts, plate.openEdges, plate.traceBounds)
+      // Existing second-wave plates keep their exact open-edge predicate;
+      // finite stock unions explicitly opt into excluded-edge semantics.
+      ? plate.excludedEdges !== undefined
+        ? intersectPlatePolygon(frameForPlate, plate)
+        : intersectConvexPlate(frameForPlate, plate.verts, plate.openEdges, plate.traceBounds)
       : intersectQuad(frameForPlate, plate.verts);
     if (t < 0) continue;
     if (hasCoincidentSurface(out, plate, frameForPlate, t)) continue;

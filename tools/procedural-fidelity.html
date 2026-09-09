@@ -40,6 +40,7 @@ import { T90_X_REFERENCE_OVERRIDES } from '/tools/t90-x-reference-overrides.ts';
 import { LEOPARD_X_REFERENCE_OVERRIDES } from '/tools/leopard-x-reference-overrides.ts';
 import { WEST_X_REFERENCE_OVERRIDES } from '/tools/west-x-reference-overrides.ts';
 import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-reference-overrides.ts';
+import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 
@@ -60,6 +61,7 @@ if (!spec) failFidelity(`Unknown tank id: ${id}`);
 // original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
   ...SECOND_WAVE_X_REFERENCE_OVERRIDES,
+  ...ABRAMS_X_REFERENCE_OVERRIDES,
   ...T90_X_REFERENCE_OVERRIDES,
   ...LEOPARD_X_REFERENCE_OVERRIDES,
   ...WEST_X_REFERENCE_OVERRIDES,
