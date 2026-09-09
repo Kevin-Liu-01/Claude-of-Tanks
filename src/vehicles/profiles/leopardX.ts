@@ -8,6 +8,7 @@ import { bindPartitionedEraCover } from './sourceEraCover.ts';
 import { markEraFurniture } from './eraHitFaces.ts';
 import { addLeopardA5XSourceDetails } from './leopardA5XDetails.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
+import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -340,8 +341,9 @@ function smokeBank(P: TankBuilderPort, d: Datum, side: number, x: number, y: num
     const zz = z + (col - 1.5) * .18 + row * .13;
     const yy = y + row * .17;
     equip(P, d, 'turretDark', box(.10, .12, .13), side * (x - .045), yy - .045, zz);
-    equip(P, d, 'turretDetail', cylZ(.043, .22, 12), side * x, yy, zz, -.48, side * 1.00);
-    equip(P, d, 'turretDark', cylZ(.034, .012, 12), side * (x + .084), yy + .052, zz + .050, -.48, side * 1.00);
+    const launcher = cappedSmokeLauncherGeometry(.043, .22, .034, .012, 12);
+    equip(P, d, 'turretDetail', launcher.body, side * x, yy, zz, -.48, side * 1.00);
+    equip(P, d, 'turretDark', launcher.cap, side * x, yy, zz, -.48, side * 1.00);
   }
 }
 
