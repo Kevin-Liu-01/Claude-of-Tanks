@@ -16,7 +16,7 @@ This is the implementation guide for the complete pass, following the
 | Torn tree crowns / moving terrain texture coordinates | Fixed and committed locally; native images reviewed; held after Verdant timing gate failed |
 | Verdant horizon | Original July 27 geometry and palette restored and pushed in `1e0b2608b`; replacement prototype rejected by the user |
 | Road continuity and mode placement | Separate fixes in progress; require regenerated collision/minimap data and shared solo/server validation |
-| Nighttime entry | Final-light-first loading correction checkpointed; first-night order verified, appearance follow-through pending ([evidence](NIGHT-ENTRY-CHECKPOINT.md)) |
+| Nighttime entry | Final-light-first correction pushed; focused first-night/headlight/lantern/Garage check passed, lighting art issues remain ([evidence](NIGHT-ENTRY-CHECKPOINT.md)) |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |
 | No performance/memory regressions | Required, **not yet demonstrated** for the latest drafts |
