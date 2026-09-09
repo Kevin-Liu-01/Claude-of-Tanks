@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import fs from 'node:fs';
+import {authenticateMerkavaEndReturnHistory} from './merkavaXEndReturnHistory.test-support.mjs';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders,KIT} from '../tankFactoryCore.ts';
@@ -10,12 +10,8 @@ import {getSpec} from '../specs.ts';
 
 const ID='merkava3d_x';
 const labels=new Set(['merkava3d-x-front-side-return','merkava3d-x-front-corner-return']);
-const beforeProfile='a7cb2366ce25ac6c6e3ff9c9d78ad7bf4c8fa2a6b0f6211ef9d92e6391d127f6';
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
-const source=fs.readFileSync(new URL('./merkavaX.ts',import.meta.url),'utf8');
-const oldSource=source.replace("import { addMerkava3dXFrontReturns } from './merkava3dXFrontReturn.ts';\n",'')
-  .replace('  addMerkava3dXFrontReturns(P);\n','');
-assert.equal(hash(oldSource),beforeProfile,'Authenticate the complete prechange profile, not a refreshed native baseline');
+authenticateMerkavaEndReturnHistory(ID);
 const material=new T.MeshBasicMaterial({side:T.DoubleSide});
 const v=a=>new T.Vector3(...a);
 const hits=(meshes,p,d,far)=>new T.Raycaster(v(p),v(d),0,far).intersectObjects(meshes,false);
