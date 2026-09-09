@@ -182,9 +182,11 @@ assert.ok(copperMesa.terrain.landforms.some((form) => form.kind === 'basin' && f
   'mine has a deep authored ore cut');
 assert.ok(airfield.splat.pavedRoads && airfield.vegetation.avoid.length === 5,
   'airfield preserves its long cleared paved strip');
-assert.ok(oasis.terrain.dunes && oasis.terrain.lakes.length === 3 && !oasis.terrain.marshes.length
+assert.ok(oasis.terrain.dunes && oasis.terrain.lakes.length === 1
+  && oasis.terrain.lakes[0].radii.length === 16 && oasis.terrain.lakes[0].level === -1.2
+  && !oasis.terrain.marshes.length
   && oasis.vegetation.belts.length === 2,
-  'oasis combines dune arms, one hooked three-cell spring and planted shore palms');
+  'oasis combines dune arms, the published single authored spring contour and planted shore palms');
 assert.ok(whiteout.terrain.frozenMarshes && whiteout.props.snowCap && whiteout.vegetation.clusterCount <= 8,
   'polar station is exposed snow country rather than an alpine forest');
 assert.equal(orchard.vegetation.belts.length, 6, 'orchard has six deliberately planted contour rows');

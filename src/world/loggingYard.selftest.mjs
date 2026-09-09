@@ -13,6 +13,7 @@ import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { deriveRuntimeStructureCollisionProfile, applyStructureCollisionBand } from './structureCollision.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { composeLoggingYard } from './loggingYard.ts';
+import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import longleaf from './maps/longleaf.ts';
 import verdant from './maps/verdant.ts';
 
@@ -25,7 +26,7 @@ function section(start, end) {
 const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, setObbShape,
   sampleDiscGround, sampleObbGround, planGroundedSegment, scaleUV, DESTRUCTIBLE_TYPES,
   DESTRUCTIBLE_BUILDING_TYPES, FENCE_SEG, WALL_SEG, pickCivilianVehicleKind,
-  deriveRuntimeStructureCollisionProfile, applyStructureCollisionBand };
+  deriveRuntimeStructureCollisionProfile, applyStructureCollisionBand, setWorldNightFixtureActive };
 // Real source stages, not a replacement placement algorithm. The log stream
 // starts at an explicit test checkpoint; this does not claim a full-world
 // source census. Heavy traffic has its actual dedicated production RNG seed.
