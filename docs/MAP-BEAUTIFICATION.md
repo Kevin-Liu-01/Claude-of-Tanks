@@ -14,7 +14,7 @@ This is the implementation guide for the complete pass, following the
 |---|---|
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
 | Torn tree crowns | Coherent-corner candidate is local and image-reviewed; construction/owner-memory evidence exists, but browser cost acceptance remains open |
-| Moving terrain texture coordinates / inland sand relief | World-fixed detail chart and Coastal/Saltwind beach-only relief pushed in `cb955e194`; native three-map checks pass ([evidence](TERRAIN-SURFACE-CHART-CHECKPOINT.md)); inland pale sand pigment remains separate |
+| Moving terrain texture coordinates / inland sand relief | World-fixed detail chart and Coastal/Saltwind beach-only relief pushed in `cb955e194`; native three-map checks pass ([evidence](TERRAIN-SURFACE-CHART-CHECKPOINT.md)). Coastal/Saltwind ambient sand marbling is reduced in `c97e20fd2`, with matched native pairs and unchanged scene/texture counts ([evidence](COASTAL-WORN-GROUND-CANDIDATE.md)); broad town wear remains separate |
 | Verdant horizon | User reversed the restoration request: newer low pastoral watershed/layered woodland horizon reinstated and pushed in `139585281`; no broader village/ground/palette prototype was reinstated |
 | Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
 | Road continuity | All 22 changed minimaps/collision shards captured; shared placement/bot checks pass. Local `6c68fdd2c` is held for measured query cost, Delta's encoded storage budget and the Longleaf donor fixture—not released |
