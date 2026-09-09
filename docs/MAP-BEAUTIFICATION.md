@@ -16,8 +16,8 @@ This is the implementation guide for the complete pass, following the
 | Torn tree crowns / moving terrain texture coordinates | Fixed and committed locally; native images reviewed; held after Verdant timing gate failed |
 | Verdant horizon | Original July 27 geometry and palette restored and pushed in `1e0b2608b`; replacement prototype rejected by the user |
 | Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
-| Road continuity | Separate endpoint/shoulder fixes in progress; regenerated collision/minimap data and final verification remain outstanding |
-| Nighttime entry | Final-light-first correction pushed; focused first-night/headlight/lantern/Garage check passed, lighting art issues remain ([evidence](NIGHT-ENTRY-CHECKPOINT.md)) |
+| Road continuity | All 22 changed minimaps/collision shards captured; shared placement/bot checks pass. Local `6c68fdd2c` is held for measured query cost, Delta's encoded storage budget and the Longleaf donor fixture—not released |
+| Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass. Flat window interiors and unshadowed point-light occlusion remain ([entry](NIGHT-ENTRY-CHECKPOINT.md), [aim](NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](NIGHT-WORLD-INTENSITY-CHECKPOINT.md)) |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |
 | No performance/memory regressions | Required, **not yet demonstrated** for the latest drafts |
