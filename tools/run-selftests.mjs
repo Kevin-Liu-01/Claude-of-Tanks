@@ -5,11 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 
-// This real browser regression owns the shared lease inside its process.
+// These real browser regressions own the shared lease inside their processes.
 // Other subprocess tests either remain CPU-only or reject browser CLI input
 // before acquisition. Keep those ordinary tests under the runner's lease.
 export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/source-dimension-frame.browser.selftest.mjs',
+  'tools/resolved-depth-copy.browser.selftest.mjs',
 ]);
 
 export function runSelftestFile(file, { spawnProcess = spawn, signals = process } = {}) {

@@ -140,10 +140,37 @@ await assert.rejects(runSelftestFile('bad-launch.mjs', {
 }), /synchronous launch failure/);
 assert.equal(spawnSignals.listenerCount('SIGINT') + spawnSignals.listenerCount('SIGTERM'), 0);
 
-assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, ['tools/source-dimension-frame.browser.selftest.mjs']);
+assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
+  'tools/source-dimension-frame.browser.selftest.mjs',
+  'tools/resolved-depth-copy.browser.selftest.mjs',
+]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {
   assert.equal(Object.values(SELFTEST_SUITES).flat().filter((entry) => entry === file).length, 1);
 }
+// Exercise the actual production default registry, including CPU-only CLI
+// guards whose filenames contain "browser" but acquire no real lease here.
+const cpuBrowserGuard = 'tools/lobby-prefetch-before-ready.browser.selftest.mjs';
+function actualRegistryFixture(ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES) {
+  const result = fixture();
+  result.options.ownedLeaseFiles = ownedLeaseFiles;
+  result.options.runFile = async file => {
+    assert.equal(result.held, !SELFTEST_OWNED_LEASE_FILES.includes(file),
+      `${file}: runner must release before a child acquires the same FIFO`);
+    result.events.push(file);
+    return { status: 0 };
+  };
+  return result;
+}
+const registered = actualRegistryFixture();
+assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
+assert.deepEqual(registered.events, ['[selftests] actual-registry: 4 files', 'acquire', 'cpu', 'release',
+  ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
+const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
+await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
+  /runner must release/);
+assert.equal(oldRegistry.held, false, 'the old nested-lock failure still releases owned runner resources');
+const overbroadRegistry = actualRegistryFixture([...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard]);
+await assert.rejects(runSelftestSuite('overbroad-registry', [cpuBrowserGuard], overbroadRegistry.options), /runner must release/);
 const invalid = spawnSync(process.execPath, ['tools/run-selftests.mjs', 'missing-suite'], { encoding: 'utf8' });
 assert.equal(invalid.status, 2);
 assert.match(invalid.stderr, /Unknown self-test suite/);
