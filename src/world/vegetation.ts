@@ -1820,6 +1820,45 @@ function jitterRadial(
   return geo;
 }
 
+function canopyJitterNoise(key: number): number {
+  key = Math.imul(key ^ key >>> 16, 0x7feb352d);
+  key = Math.imul(key ^ key >>> 15, 0x846ca68b);
+  return ((key ^ key >>> 16) >>> 0) / 4294967296;
+}
+
+function canopyCornerKey(x: number, y: number, z: number, seed: number): number {
+  // Micrometre keys join duplicated shell corners, including cone UV seams.
+  return seed ^ Math.imul(Math.round(x * 1e6), 73856093)
+    ^ Math.imul(Math.round(y * 1e6), 19349663) ^ Math.imul(Math.round(z * 1e6), 83492791);
+}
+
+function jitterFarShell(
+  geo: THREE.BufferGeometry,
+  rng: RandomSource,
+  amount: number,
+): THREE.BufferGeometry {
+  const pos = attribute(geo, 'position');
+  let seed: number | undefined;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    if (Math.hypot(x, z) > 1e-4) {
+      // Preserve both historical draws per eligible vertex, even duplicates.
+      const draw = rng();
+      rng();
+      if (seed === undefined) seed = (draw * 4294967296) >>> 0;
+      if (amount === 0) continue;
+      const y = pos.getY(i), key = canopyCornerKey(x, y, z, seed);
+      const f = 1 + (canopyJitterNoise(key) - 0.5) * 2 * amount;
+      pos.setX(i, Math.abs(x) < 1e-10 ? 0 : x * f);
+      pos.setZ(i, Math.abs(z) < 1e-10 ? 0 : z * f);
+      pos.setY(i, y + (canopyJitterNoise(key ^ 0x9e3779b9) - 0.5) * amount * 0.8);
+    }
+  }
+  // Far callers replace every normal after final scaling; near palms keep
+  // the original jitterRadial path and its complete original output.
+  return geo;
+}
+
 // Sphere-project the normals of a canopy lobe (centered on cx/cy/cz, in the
 // geometry's local space) with an up-bias, mirroring the near-LOD foliage
 // cards: the crown lights as one smooth sunlit volume instead of a shattered
@@ -1895,7 +1934,7 @@ function buildOakFarGeometry(
       ? 1
       : (index < 3 ? 0.62 + rng() * 0.32 : 0.30 + rng() * 0.26);
     const blob = new THREE.IcosahedronGeometry((1.25 + rng() * 0.6) * big, 0);
-    jitterRadial(blob, rng, index < 3 ? 0.34 : 0.46);
+    jitterFarShell(blob, rng, index < 3 ? 0.34 : 0.46);
     blob.scale(
       (1.1 + rng() * 0.3) * wideF,
       (0.72 + rng() * 0.25) * tallF,
@@ -1958,7 +1997,7 @@ function buildPineFarGeometry(
     // and the tier stack hides the lost height ring; jitter keeps the
     // silhouette ragged. See the oak-lobe decimation note above.
     const cone = new THREE.ConeGeometry(r, h, 7, 1, true);
-    jitterRadial(cone, rng, 0.36);
+    jitterFarShell(cone, rng, 0.36);
     sphereNormals(cone, 0, h * -0.25, 0, 0.75); // radial+up: lit side / sky-filled side
     cone.translate((rng() - 0.5) * 0.55, y + h / 2, (rng() - 0.5) * 0.55);
     canopyParts.push(paintCanopy(cone, hue, sat, l0, l1, 1.2, 6.6, rng, 0.35));
@@ -1970,7 +2009,7 @@ function buildPineFarGeometry(
     const t = (ty - 1.2) / 5.4;
     const rr = (1.0 - t) * 1.5 + 0.35;
     const tuft = new THREE.IcosahedronGeometry(0.38 + rng() * 0.3, 0);
-    jitterRadial(tuft, rng, 0.4);
+    jitterFarShell(tuft, rng, 0.4);
     tuft.scale(1.3, 0.7, 1.3);
     sphereNormals(tuft, 0, 0, 0, 0.85);
     tuft.translate(Math.cos(a) * rr, ty, Math.sin(a) * rr);
@@ -2019,7 +2058,7 @@ function buildPalmFarGeometry(
   // mass, and the tiny r8 core left only a spiky star (the "glitched
   // scaffolding" establishing-shot read)
   const core = new THREE.IcosahedronGeometry(1.15, 0); // PERF r3: far-LOD detail 0 (see oak note)
-  jitterRadial(core, rng, 0.28);
+  jitterFarShell(core, rng, 0.28);
   core.scale(1.35, 0.62, 1.35);
   sphereNormals(core, 0, 0, 0, 1.2);
   core.translate(px, H + 0.1, pz);
@@ -2028,7 +2067,7 @@ function buildPalmFarGeometry(
   // dead-frond skirt: a ring of drooping khaki mass under the crown — the
   // second value the range silhouette needs so it reads palm, not asterisk
   const skirt = new THREE.IcosahedronGeometry(0.85, 0); // PERF r3: far-LOD detail 0 (see oak note)
-  jitterRadial(skirt, rng, 0.3);
+  jitterFarShell(skirt, rng, 0.3);
   skirt.scale(1.25, 0.45, 1.25);
   sphereNormals(skirt, 0, 0, 0, 0.7);
   skirt.translate(px, H - 0.45, pz);
@@ -2107,7 +2146,7 @@ function buildBirchFarGeometry(
   // broom-shaped twig mass. Pairs with the far-canopy edge erosion.
   for (let b = 0; b < 5 + ((rng() * 3) | 0); b++) {
     const blob = new THREE.IcosahedronGeometry(0.65 + rng() * 0.45, 0); // PERF r3: far-LOD detail 0
-    jitterRadial(blob, rng, 0.45);
+    jitterFarShell(blob, rng, 0.45);
     blob.scale(0.72, 1.6 + rng() * 0.5, 0.72);
     sphereNormals(blob, 0, 0, 0, 1.0);
     blob.translate((rng() - 0.5) * 2.1, H * 0.74 + (rng() - 0.4) * 1.7, (rng() - 0.5) * 2.1);
