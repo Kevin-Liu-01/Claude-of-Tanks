@@ -181,8 +181,13 @@ packet and ledger now record this actual failed result instead of the stale
 standard check completed every physical phase: `clip 0/0+0/0`, enclosed holes
 `0`, and fitting census `mg1+8d`, all **PASS**. Its overall status remains
 **FAIL solely on the same source floor**, covered by the scoped exception.
-The full 862-file npm lifecycle is still running in its frozen qualification
-worktree. It has not been counted as a passing publication check.
+The original 862-entry npm lifecycle passed all 278 PRE entries, then stopped
+at the first CORE test: `public-repo-hygiene` rejected the new fender test
+because it was executed by import but absent from `SELFTEST_SUITES`. The 548
+remaining CORE and 35 POST entries did not run. This is not a full-suite PASS.
+The recovery now registers that test directly and removes its duplicate
+parent import; the unchanged geometry test still runs once. The corrected
+hygiene check passes on the current publication tree.
 
 ### Whole-task preservation inventory
 
@@ -220,11 +225,12 @@ Abrams X models. Known failed/incomplete quality checks must remain documented;
 compilable, loadable integration and source-file exclusion are still required.
 This does not authorize blindly merging superseded running-gear prototypes.
 
-MBT-70 can be published as an explicitly unqualified preservation checkpoint
-after the final focused/build checks above, while the frozen 862-file lifecycle
-continues separately. Do not call that in-progress lifecycle PASS. Reconcile
-newer main changes in a separate publication tree so the ongoing test inputs
-remain unchanged. Older branches are recovery locators, not a blanket merge list.
+MBT-70 was authorized as an explicitly unqualified preservation checkpoint
+after the final focused/build checks above, while the separate lifecycle was
+still running. Its later failed result and registration correction are retained
+above; do not relabel the original run PASS. Newer main changes were reconciled
+in a separate publication tree, preserving the original run's runtime inputs.
+Older branches are recovery locators, not a blanket merge list.
 
 Source binaries, comparison boards and temporary logs stay ignored. Only
 scoped runtime/test changes, maintained MBT-70 assets and this report belong
