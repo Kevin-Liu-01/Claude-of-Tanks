@@ -22,7 +22,7 @@ This is the implementation guide for the complete pass, following the
 | Standing-grain backface lighting | Published in `85d68decd`: preserve the authored upward crop normals on both card faces instead of reversing them into black bands. Matched native front/back/establishing views were reviewed, three-sweep resource comparisons pass, and the fixed full-frame cost pair passes. Geometry, palettes, alpha and crop placement remain unchanged. [Scoped evidence and limits](COASTAL-MEADOW-NATIVE-REVIEW.md) |
 | Coastal/Saltwind meadow and crop composition | The grass-height candidate remains unpublished. The unequal crop-rhythm candidate at `83e74e4de` and the root-color interpolation experiment at `4ac879eed` both completed matched native captures but were **rejected visually**: their establishing views still read as parallel pegs; darker roots merely add gray stalk columns. Focused tests/typecheck/private builds pass, but these art candidates are not shipped or advanced to performance acceptance. The rejected root-depth receipt is preserved in its branch at `69e37bd58` |
 | Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
-| Road continuity | The22-map continuity candidate remains unpublished. Authored-exit correction `dffb01ab2` brings matched Alpine/Reservoir grading footprints below14%, but its complete eight-case run still fails five physical limits. A focused follow-up fixes those exact sections by restoring the Reservoir apron connection and intersecting Alpine recovery masks; full dense footprint/approach acceptance is still pending. Original layout/dressing changes remain separately reported. Query cost, regenerated collision/storage, native road views and mode placement remain release holds |
+| Road continuity | The22-map continuity candidate remains unpublished. Local checkpoints `d55bc626f` and `06e84b2e3` now pass the all30-map physical inventory and all30×5-mode placement checks; all22 changed collision shards are freshly captured with lossless packing, leaving eight unchanged. The four-map horizon pilot passes packed terrain-contact/winding checks, but all eight latest matched native views were **rejected visually**: angular, differently shaded road strips still meet implausible outer slopes. Two north Frontier exits are also unresolved. Candidate minimap refresh is underway; the previous five-map native frame-time failure remains held. Only the independent exact-output lookup optimization `d9960ad92` is published |
 | Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass ([entry](NIGHT-ENTRY-CHECKPOINT.md), [aim](NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](NIGHT-WORLD-INTENSITY-CHECKPOINT.md)). Covered entry now skips the discarded authored-day PMREM bake: actual native A/B observes two bake returns on baseline versus one selected-night return on the candidate, ready before the first covered frame. [Evidence and limits](NIGHT-SINGLE-BAKE-REVIEW.md). This is not a measured general loading-speed or memory claim. Service windows glow but are not all spatial lights; flat interiors and unshadowed point-light occlusion remain |
 | Ironworks masonry | Foundry-only brick pigment and roof reflection refinements are image-reviewed and published, preserving Copper Mesa and other material buckets. Roof gain uses the existing material uniform, without extra textures. Matched native views and scoped cost comparisons pass with actual timing deltas retained ([evidence](FOUNDRY-MASONRY-CHECKPOINT.md)). Flat trim and settlement composition remain separate |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
@@ -151,6 +151,22 @@ gameplay layout while developing a distinctive visual hierarchy.
 Each checkpoint must state: implemented, image-reviewed, tests, performance
 comparison, committed and pushed. These are separate statuses. Small local
 experiments are preserved but are not shipped as finished work.
+
+### Active visual work — 2026-09-09
+
+The current road contact correction closes the exposed edge gaps, but does not
+yet make those roads look natural. Its retained eight-image rejection is in
+`horizon-outlet-lip-r2.2hdc1S/VISUAL-REVIEW.md` under the local environment
+evidence directory. The next road change must address the outer route and
+landform together, not merely repaint the strip.
+
+In parallel, two isolated art candidates address larger scene weaknesses:
+Coastal grain silhouettes are being rebuilt at physical stalk scale without
+the full-height alpha cutouts; Ironworks is getting one rail-served loading
+compound composed from existing building donors and existing ground channels.
+Neither candidate is image-accepted or published. The broader field/forest,
+snow/rock, settlement and all-map rollout work remains open; these candidates
+do not narrow the whole-scene visual target.
 
 The shared ground-cover regression's obsolete non-generator signature was
 repaired separately in `9fcc26fc9`, without runtime or golden changes. It now
