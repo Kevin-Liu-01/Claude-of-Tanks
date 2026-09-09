@@ -3,7 +3,9 @@
 ## Current status
 
 Implementation: complete; focused fit, motion and asset checks PASS.
-Publication: NOT PUBLISHED. This is a scoped addition to FSP-05 in the
+Publication: pushed to `origin/main` at
+`1f412d2d28f3b55ac5cb0c64469a6907795a0d21` on 2026-09-09, with the
+owner-authorized source-fidelity exception below. This is a scoped addition to FSP-05 in the
 [fleet bodywork backlog](../tank-generation/fleet-style-performance-priority.md),
 not completion of the wider fleet pass. The full release gate still fails
 three source-comparison views that also failed on the untouched baseline.
@@ -179,8 +181,8 @@ packet and ledger now record this actual failed result instead of the stale
 standard check completed every physical phase: `clip 0/0+0/0`, enclosed holes
 `0`, and fitting census `mg1+8d`, all **PASS**. Its overall status remains
 **FAIL solely on the same source floor**, covered by the scoped exception.
-The full 862-file npm lifecycle is still running; publication remains pending
-its compatibility result.
+The full 862-file npm lifecycle is still running in its frozen qualification
+worktree. It has not been counted as a passing publication check.
 
 ### Whole-task preservation inventory
 
@@ -230,3 +232,18 @@ to the publication set. Final local receipts are
 `.qa-dev/mbt70-fidelity-with-upper-fenders.log`,
 `.qa-dev/mbt70-foot-seated-track-clip.log`, `.qa-dev/mbt70-final-assets.log`,
 `.qa-dev/mbt70-foot-seated-fidelity.log` and `.qa-dev/mbt70-release.log`.
+
+### Published preservation checkpoint
+
+The scoped geometry/tests, assets and truthful failed-gate report were
+integrated in `cot-tank-recovery-publication-20260909`. On the `5b3224204`
+base, the focused MBT-70 fidelity test, scoped asset check, typecheck and
+public build all passed (`.qa-dev/mbt70-latest-main-integration.log`). The
+three commits were then rebased without conflicts over the independent road
+lookup change `d9960ad92` and pushed without force. The remote main hash was
+verified as `1f412d2d28f3b55ac5cb0c64469a6907795a0d21`.
+
+This publishes the requested fenders, not a claim that every fleet repair or
+the full lifecycle is complete. See the broader
+[recovery inventory](tank-work-recovery-inventory-20260909.md) for missing,
+already-published and superseded work.
