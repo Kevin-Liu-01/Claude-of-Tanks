@@ -102,7 +102,87 @@ assert.deepEqual(serviceCap.getAttribute('position').array, servicePositions, 's
 const serviceMask = serviceCap.getAttribute(NIGHT_EMISSION_ATTRIBUTE), serviceNormals = serviceCap.getAttribute('normal');
 for (let i = 0; i < serviceMask.count; i++) if (serviceMask.getX(i)) assert.ok(serviceNormals.getY(i) > .98, 'only actual upward aperture glows');
 serviceCap.dispose(); serviceMaterial.dispose();
+
+// Authored lens rake is decorative geometry, not necessarily optical aim.
+// Exercise azimuth, role and sign independently of any particular builder.
+for (const kind of ['headlight', 'shtora', 'marker']) for (const pitch of [-.12, -1e-8, 0, 1e-8, .18]) {
+  const lens = markVehicleNightLens(cylZ(.08, .02, 16), kind);
+  const lensPose = new THREE.Matrix4().compose(new THREE.Vector3(.7, 1.1, 3.9),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, -.35, 0)), new THREE.Vector3(1.2, .8, 1.6));
+  lens.applyMatrix4(lensPose);
+  prepareVehicleNightLensParts([lens]);
+  const bytes = Object.fromEntries(Object.entries(lens.attributes).map(([key, attr]) => [key, attr.array.slice()]));
+  const indices = lens.index?.array.slice();
+  const lensMaterial = new THREE.MeshStandardMaterial();
+  const owner = new THREE.Mesh(lens, lensMaterial);
+  registerVehicleNightLensMesh(owner, [lens]);
+  const [emitter] = vehicleNightLightEmittersFor(owner);
+  const actual = new THREE.Vector3().fromArray(emitter.direction);
+  const outward = new THREE.Vector3(0, 0, 1).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(lensPose));
+  close(new THREE.Vector3().fromArray(emitter.position), new THREE.Vector3(0, 0, .01).applyMatrix4(lensPose), `${kind}/${pitch}: aperture seat unchanged`);
+  if (kind === 'headlight' && pitch < -1e-7) {
+    assert.ok(Math.abs(actual.y / Math.hypot(actual.x, actual.z) + .08) < 1e-12, 'upward driving lamp uses the existing downward road slope');
+    assert.ok(Math.abs(actual.x * outward.z - actual.z * outward.x) < 2e-7 && actual.dot(outward) > 0,
+      'optical correction preserves horizontal azimuth, including its sign');
+  } else close(actual, outward, `${kind}/${pitch}: already-valid aim or non-driving role unchanged`);
+  assert.equal(emitter.intensity, kind === 'headlight' ? 80 : 0);
+  assert.equal(emitter.range, kind === 'headlight' ? 42 : 0);
+  for (const [key, original] of Object.entries(bytes)) assert.deepEqual(lens.getAttribute(key).array, original, `${key}: registration leaves every aperture/mask byte unchanged`);
+  assert.deepEqual(lens.index?.array, indices);
+  assert.strictEqual(emitter.emission.material, lensMaterial);
+  lens.dispose(); lensMaterial.dispose();
+}
 console.log('vehicleNightLighting: authored aperture/clone/scale/roll/yaw, periscope exclusion, zero added owners, batch transport, destruction/garage restoration PASS');
+
+function assertM1A3RoadBeams(root, label) {
+  // Exact player pose from the completed cold-night Urban r2 capture. This is
+  // a local road-tangent-plane proof, not a claim about unknown terrain ahead.
+  const nativePose = new THREE.Matrix4().fromArray([
+    .9984977381716386, 0, -.054792945404696376, 0,
+    -9.675932139275984e-18, 1, -1.7632555221134806e-16, 0,
+    .054792945404696376, 1.7659083788634307e-16, .9984977381716386, 0,
+    -7.658522125720524e-19, -1.6163570222854615, -330, 1,
+  ]);
+  const poses = [nativePose];
+  for (const mirror of [1, -1]) poses.push(new THREE.Matrix4().compose(new THREE.Vector3(4, 2, -6),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-.22, .71, .16)), new THREE.Vector3(mirror, 1, 1)));
+  const scene = new THREE.Scene(), lightRuntime = createNightLightingRuntime(scene);
+  const savedMatrix = root.matrix.clone(), savedAuto = root.matrixAutoUpdate;
+  scene.add(root); root.matrixAutoUpdate = false;
+  const lamps = [];
+  root.traverse(owner => {
+    for (const lamp of vehicleNightLightEmittersFor(owner)) if (lamp.kind === 'headlight') lamps.push({ owner, lamp });
+  });
+  assert.equal(lamps.length, 2, `${label}: test both actual exported M1A3 lamps`);
+  lightRuntime.prepare([{ root, priority: 1 }], true);
+  for (const [poseIndex, ownerPose] of poses.entries()) {
+    root.matrix.copy(ownerPose); root.updateMatrixWorld(true);
+    const road = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0).applyMatrix4(ownerPose);
+    lightRuntime.update(new THREE.Vector3().setFromMatrixPosition(ownerPose));
+    const spots = lightRuntime.lights.filter(light => light.isSpotLight && light.intensity > 0);
+    assert.equal(spots.length, 2);
+    for (const { owner, lamp } of lamps) {
+      const point = new THREE.Vector3().fromArray(lamp.position).applyMatrix4(owner.matrixWorld);
+      const beam = new THREE.Vector3().fromArray(lamp.direction).transformDirection(owner.matrixWorld);
+      const local = point.clone().applyMatrix4(ownerPose.clone().invert());
+      assert.ok(Math.abs(Math.abs(local.x) - .82) < 2e-6 && Math.abs(local.y - 1.1250758171081543) < 2e-6
+        && Math.abs(local.z - 3.9420950412750244) < 2e-6, `${label}: original native aperture coordinates retained`);
+      const hit = new THREE.Ray(point, beam).intersectPlane(road, new THREE.Vector3());
+      assert.ok(hit && point.distanceTo(hit) > 14 && point.distanceTo(hit) < 14.2 && point.distanceTo(hit) < lamp.range,
+        `${label}/pose${poseIndex}: center ray reaches the owner's road plane ahead, within the existing 42m range`);
+      const actualSpot = spots.find(spot => spot.position.distanceTo(point) < 2e-6);
+      assert.ok(actualSpot, `${label}: runtime still seats a pooled spot on this real aperture`);
+      close(actualSpot.target.position.clone().sub(actualSpot.position).normalize(), beam, 'runtime transforms housing-local road aim with pitch/roll/mirroring');
+      // Actual rejected M1A3 optical direction was the decorative lens's +.12
+      // rake. It misses the same road plane ahead under every owner transform.
+      const oldUp = new THREE.Vector3(0, Math.sin(.12), Math.cos(.12)).transformDirection(ownerPose);
+      assert.equal(new THREE.Ray(point, oldUp).intersectPlane(road, new THREE.Vector3()), null, 'old upward-rake mutation must fail the road intersection');
+      if (poseIndex > 0) assert.ok(beam.y > 0, 'pitched hull may aim upward in world Y while still aiming down relative to its roadway');
+    }
+  }
+  lightRuntime.reset(); lightRuntime.dispose(); scene.remove(root);
+  root.matrix.copy(savedMatrix); root.matrixAutoUpdate = savedAuto; root.updateMatrixWorld(true);
+}
 
 // Opt-in CPU integration oracle. --baseline=<ref> loads edited vehicle sources
 // from that known revision, making geometry/draw-order parity visible
@@ -200,6 +280,7 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     });
     const coverage = visual.root.userData.nightLightCoverage ?? { headlights: 0, shtora: 0 };
     if (!baseline) {
+      if (id === 'm1a3') assertM1A3RoadBeams(visual.root, `${id}/${quality}`);
       if (sourceStudyLampIds.has(id)) assert.ok(coverage.headlights > 0, `${id}/${quality} retains actual authored front fixtures`);
       if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
       if (id === 'm48') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);

@@ -85,6 +85,15 @@ function apertureFrame(geometry: THREE.BufferGeometry, definition: LensDefinitio
   }
   if (areaSum < 1e-12 || normal.lengthSq() < 1e-12) throw new Error('Authored night lens aperture collapsed');
   center.divideScalar(areaSum); normal.normalize();
+  // Lens housing rake is not an optical road-beam aim. Retain the authored
+  // azimuth/seat and every already-downward beam; only upward driving lamps
+  // adopt the runtime's existing .08 downward slope in their owner frame.
+  // Float32-scale deadband keeps horizontal caps' trig residue unchanged.
+  const horizontal = Math.hypot(normal.x, normal.z);
+  if (definition.kind === 'headlight' && normal.y > 1e-7 && horizontal > 0) {
+    normal.y = -.08 * horizontal;
+    normal.normalize();
+  }
   return { position: [center.x, center.y, center.z], direction: [normal.x, normal.y, normal.z] };
 }
 
