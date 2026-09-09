@@ -11,6 +11,7 @@ const RESPONSIVE_SURFACES_CSS = await readFile(
   new URL('./responsiveSurfaces.css', import.meta.url),
   'utf8',
 );
+const GARAGE_CSS = await readFile(new URL('./garage.css', import.meta.url), 'utf8');
 
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.phone, { min: 0, max: 519 });
 assert.deepEqual(VIEWPORT_WIDTH_BANDS.desktop, { min: 1440, max: Infinity });
@@ -103,5 +104,8 @@ assert.match(RESPONSIVE_SURFACES_CSS, /body\[data-cot-height='short'\] \.cot-stu
   'Studio must have a short-screen composition independent of device width');
 assert.match(RESPONSIVE_SURFACES_CSS, /body\[data-cot-width='tablet'\]\[data-cot-orientation='portrait'\] \.cot-es/,
   'after-action reports must handle portrait tablets beyond legacy phone widths');
+assert.match(GARAGE_CSS,
+  /\.cot-featured\{display:none;[^}]*\}[\s\S]*body\[data-cot-height='tall'\] \.cot-featured\{display:block;\}/,
+  'Battle Gallery must reserve sidebar height only on tall viewports');
 
 console.log(`responsive viewport contract: PASS (${matrix.length} representative viewports)`);
