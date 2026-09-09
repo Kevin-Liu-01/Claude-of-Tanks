@@ -58,6 +58,41 @@ in the isolated Chieftain repair tree, SHA-256
 `0e871a699ef987bb280893d8b15299f74816b03e5a494b388467a7b9bb8504ce`.
 No golden was refreshed and no tank runtime changed for this repair.
 
+After the frozen preflight completed, the candidate was rebased onto
+`afdad2440`, retaining published ground-cover fixture repair `9fcc26fc9` and
+the intervening environment documentation. Reviewed test-only repairs
+`731bbf3cf` and `457bc1863` were then integrated as `1f49d3dd7` and
+`7a8a3624a`. Compared with the preflight candidate, only these three test
+files changed under `src/`; tank runtime and generated assets stayed exact.
+
+The formation repair preserves the historical nominal spawn formula and
+tests its composition with the published safe-placement resolver. It keeps
+explicit-spawn bypass semantics and exercises overlap, wet, steep and
+obstructed rejection controls. The ground-cover fixture recognizes the
+published generator finalization path and rejects missing/reordered stages.
+Neither repair changes simulation/world runtime or relaxes a tank gate.
+
+## Fresh union preflight
+
+The nine-phase preflight passed at `44e34b413` from 08:06:02 to 08:49:28 UTC
+on 2026-09-09. It includes native type checking/core-unused, anatomy and
+marking regeneration/checks, all technical-view regeneration, the complete
+combat-anatomy test, full-fleet module hits and technical-view freshness.
+The input fingerprint remained exactly
+`c44879180bfe596695dd018a1246b17918d0e9a065749fd2a465c340b1fedb6b`.
+
+Anatomy covers 174 playable tanks. Module hits checked 1,496 modules and 348
+track sides with zero failures/outside-envelope hits; the 79 pre-existing
+dimension-drift warnings remain documented, not silently cleared. All 522
+required technical files for the 174 playable tanks are current. Regeneration
+also checked the 201-entry asset catalog without unexpected tracked changes.
+The technical-only phase intentionally skipped bore checking; the complete
+release below still requires its dedicated bore gates.
+
+Local receipt: `.qa-dev/nine-preflight-1ZwvfN/receipt.json`, SHA-256
+`774005048c9dee0dbd5ce4f064130563ece50c03183d78daf17659f6e1d6648d`.
+This preflight is not the complete release or permission to publish.
+
 ## Release boundary
 
 One fresh composed nine-ID gate will supersede the two failed full-suite
