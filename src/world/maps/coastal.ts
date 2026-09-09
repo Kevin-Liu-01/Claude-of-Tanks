@@ -89,6 +89,7 @@ export default {
     microAmp: 0.8,
     rippleDir: [0.85, 0.5],
     rippleAmp: 0.20, // faint wind ripple on the dune band
+    rippleShoreOnly: true, // pasture stays grass; wind relief belongs to the strand
   },
 
   vegetation: {
