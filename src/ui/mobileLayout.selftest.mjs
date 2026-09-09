@@ -45,7 +45,7 @@ assert.match(garage,
   /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"/,
   'overlay garages must expose explicit map and camouflage drawers');
 assert.match(garageSource,
-  /<nav class="cot-garage-tools" aria-label="Garage setup previews">[\s\S]*aria-label="Open battlefield selection"[\s\S]*cot-garage-map-preview[\s\S]*aria-label="Open camouflage selection"[\s\S]*cot-garage-camo-preview/,
+  /<nav class="cot-garage-tools" aria-label="\$\{t\('garage\.tools\.stagingAreas'\)\}">[\s\S]*aria-label="\$\{t\('garage\.tools\.chooseStaging'\)\}"[\s\S]*cot-garage-map-preview[\s\S]*aria-label="\$\{t\('garage\.tools\.appearanceHint'\)\}"[\s\S]*cot-garage-camo-preview/,
   'compact garages must expose real map and camouflage preview cards without a disclosure step');
 assert.equal((garageSource.match(/<canvas width="64" height="44">/g) || []).length, 4,
   'the compact camouflage card must mirror the map card with four live previews');
@@ -67,7 +67,7 @@ assert.match(garage,
   /data-cot-panels='overlay'\] \.cot-eqpick\.open\{[\s\S]*left:max\(var\(--cot-overlay-edge\)[\s\S]*right:max\(var\(--cot-overlay-edge\)[\s\S]*bottom:max\(8px,env\(safe-area-inset-bottom\)\)/,
   'the compact equipment picker must stay inside the usable viewport');
 assert.match(garageSource,
-  /cot-cards" role="listbox" tabindex="0" aria-label="Vehicle catalog"[\s\S]*card\.setAttribute\('role', 'option'\)[\s\S]*cardsEl\.setAttribute\('aria-activedescendant', card\.id\)/,
+  /cot-cards" role="listbox" tabindex="0" aria-label="\$\{t\('garage\.carousel\.listAria'\)\}"[\s\S]*card\.setAttribute\('role', 'option'\)[\s\S]*cardsEl\.setAttribute\('aria-activedescendant', card\.id\)/,
   'the horizontally scrolling vehicle catalog must stay keyboard-focusable and expose its active option');
 assert.match(garage,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\]\[data-cot-panels='overlay'\] \.cot-garage\{[\s\S]*--cot-compact-left-width:clamp\(112px,21vw,132px\)[\s\S]*left:calc\(max\(8px,env\(safe-area-inset-left\)\) \+ var\(--cot-compact-left-width\) \+ 8px\)/,
@@ -217,13 +217,13 @@ assert.match(shotInfo, /if \(!\(ev\.damage > 0\)\) t\.classList\.add\('deflected
 assert.match(hud,
   /function resetCombatPresentation\(\)[\s\S]*hitDirs\.length = 0[\s\S]*hitMark = null[\s\S]*liveNums\.length = 0[\s\S]*dmgLayer\.replaceChildren\(\)[\s\S]*killfeed\.replaceChildren\(\)/,
   'phase changes must clear every transient combat-feedback surface together');
-assert.match(hud, /MUZZLE BLOCKED · \$\{Math\.round\(view\.blockedDistM\)\} M[\s\S]*GUN TRAVEL LIMIT/,
+assert.match(hud, /t\('hud\.aimWarning\.muzzleBlocked', \{ dist: Math\.round\(view\.blockedDistM\) \}\)[\s\S]*t\('hud\.gunTravelLimit'\)/,
   'aim warnings must distinguish a physical bore obstruction from a gun travel limit');
 assert.match(hud, /state\.visible = !!view\.blockedLabel/,
   'blocked-path copy must honor the stable dwell gate instead of flickering with every terrain graze');
 assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;[\s\S]*--hud-layer-controls:24;--hud-layer-score:30/,
   'battle UI must declare one ordered layer contract with world indicators below fixed controls');
-assert.match(hud, /Detected[\s\S]*Enemy has visual contact/,
+assert.match(hud, /t\('hud\.sixth\.label'\)[\s\S]*t\('hud\.sixth\.sub'\)/,
   'sixth sense must present one explicit detection state with supporting copy');
 assert.match(hud, /uiIconSVG\('lightbulb', 24\)/,
   'the detected state must use the shared lightbulb warning glyph');
@@ -231,13 +231,13 @@ assert.match(hud,
   /cot-net-unit fps[\s\S]*cot-net-unit ping[\s\S]*netLastPaintMs[\s\S]*now - netLastPaintMs < 250/,
   'player FPS and latency telemetry must use structured 4 Hz instruments instead of per-frame text churn');
 assert.match(hud,
-  /MAGAZINE RELOAD IN PROGRESS[\s\S]*MAGAZINE ALREADY FULL/,
+  /t\('hud\.alert\.magazineReloadInProgress'\)[\s\S]*t\('hud\.alert\.magazineAlreadyFull'\)/,
   'magazine feedback must distinguish an active reload from a full magazine');
 assert.doesNotMatch(hud, /FULL_OR_RELOADING/,
   'the HUD must not collapse distinct magazine reload denials into a generic state');
 assert.match(input, /showDebugHud: false[\s\S]*storedSettings\.showDebugHud[\s\S]*key === 'showDebugHud'/,
   'debug HUD visibility must have one persisted input-setting owner');
-assert.match(settings, /Debug telemetry dashboard \(top-right\)[\s\S]*ui:debugHud/,
+assert.match(settings, /t\('settings\.interface\.debugHud'\)[\s\S]*ui:debugHud/,
   'Interface settings must expose the lazy debug dashboard');
 assert.match(main, /bus\.on\('ui:debugHud'[\s\S]*perfHud\.setVisible[\s\S]*input\.setSetting\('showDebugHud'/,
   'settings and F8 must converge on the same diagnostics visibility path');
@@ -313,7 +313,7 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-height='short'\] \.cot-set-body\{min-height:0;flex:1 1 auto\}/,
   'short landscape settings must shrink their scroll body so the action footer stays on-screen');
 assert.match(settings,
-  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? 'Touch aim' : 'Mouse'[\s\S]*if \(!touchLayout\) \{[\s\S]*'Right click \(RMB\)'/,
+  /const touchLayout = !!\(input\.isTouchLayout[\s\S]*touchLayout \? t\('settings\.aim\.touch'\) : t\('settings\.aim\.mouse'\)[\s\S]*if \(!touchLayout\) \{[\s\S]*t\('settings\.rmb\.label'\)/,
   'touch settings must show touch aiming language and omit mouse-only RMB controls');
 assert.match(settings,
   /body\.cot-touch-layout \.cot-settings button\{min-height:44px;\}[\s\S]*\.cot-set-close\{width:44px;height:44px;\}/,
@@ -322,10 +322,10 @@ assert.match(settings,
   /range\.setAttribute\('aria-label', label\)[\s\S]*num\.setAttribute\('aria-label', `\$\{label\} value`\)/,
   'settings sliders and exact-value fields must expose their visible labels to assistive technology');
 assert.match(touch,
-  /root\.setAttribute\('role', 'group'\)[\s\S]*aimLayer\.setAttribute\('role', 'group'\)[\s\S]*role="group" aria-label="Swipe to aim"[\s\S]*role="toolbar" aria-label="Battle options"[\s\S]*role="group" aria-label="Movement joystick"/,
+  /root\.setAttribute\('role', 'group'\)[\s\S]*aimLayer\.setAttribute\('role', 'group'\)[\s\S]*role="group" aria-label="\$\{t\('touch\.aimHint'\)\}"[\s\S]*role="toolbar" aria-label="\$\{t\('touch\.toolbar'\)\}"[\s\S]*role="group" aria-label="\$\{t\('touch\.joystick'\)\}"/,
   'touch HUD labels must sit on semantic roles that expose them without prohibited ARIA');
 assert.match(hud,
-  /driveEl\.setAttribute\('role', 'status'\)[\s\S]*driveEl\.setAttribute\('aria-label', 'Vehicle speedometer'\)/,
+  /driveEl\.setAttribute\('role', 'status'\)[\s\S]*driveEl\.setAttribute\('aria-label', t\('hud\.drive\.aria'\)\)/,
   'the shared analog speedometer must expose its live status semantics on every input mode');
 
 assert.doesNotMatch(playMenu, /<select data-control="(?:map|team|size)"/,
