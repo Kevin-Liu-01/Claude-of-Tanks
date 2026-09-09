@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMask } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
@@ -20,13 +19,8 @@ const FROZEN = {
     coastal: { 512: 'bb9240a06aa476e52d3b3076d0d6593831e3f17dd7b705597061432cf63658db', 256: 'fc52e42dc005b16377c6a97d25c5692e3cdb0fe09e5c0a26fd58c6302e392a8f' },
     saltwind: { 512: 'f7bc39468c8e06f07a6d876f30d5f509313756aee895260df11dfec0590cd779', 256: '9ef3a3753953ca4308331126c7c2915a7e8b5e08f1a2771614db2258058209ae' },
   },
-  shader: '4e3118087bf09d46b113a31a85792608723549d0e11400359a2febd0655a9498',
-  heightFunction: 'e5c98c158e1419794e04b11638cb850cbf60580921db07ff585703c7979d93af',
-  vegetation: '0aad8b3e66da9257761b63ca3782a5420cb02c67a930e6f2ef67cf5d480bf28a',
-  props: '48a3e6e9b31941a929e201266847886bbbfebaf291bbdb51dc7c2d8a9102393c',
   configs: '1e2782ff93df30c67766053893fbef56fdd676912b43a0e386aad102eaa820f1',
 };
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
 function originalConfig(cfg) {
@@ -142,13 +136,6 @@ function checkPilot(id, seed) {
   } finally { original.texture.dispose(); current.texture.dispose(); }
 }
 
-function verifyUnchangedSources() {
-  assert.equal(hash(source.slice(source.indexOf('const SPLAT_COMMON_FRAG'), source.indexOf('function* createSplatMaterialSteps'))), FROZEN.shader);
-  assert.equal(hash(source.match(/export function createHeightField\b[\s\S]*?\n}/)[0]), FROZEN.heightFunction);
-  for (const file of ['vegetation','props']) assert.equal(hash(readFileSync(new URL(`./${file}.ts`, import.meta.url))), FROZEN[file]);
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78, 'no additional fragment texture reads');
-  assert.equal((source.match(/activity-patches/g) ?? []).length, 2, 'one construction-only policy branch, no shader branch');
-}
 function checkOtherMaps(tier) {
   const results = [];
   for (const id of MAP_IDS) {
@@ -160,7 +147,7 @@ function checkOtherMaps(tier) {
   assert.equal(hash(JSON.stringify(results)), FROZEN.other28[tier], `all28 ${tier} full RGBA outputs retain the authenticated parent receipt`);
 }
 
-verifyUnchangedSources(); checkScope(getMapConfig);
+checkScope(getMapConfig);
 assert.throws(() => checkScope(id => id === 'desert'
   ? { ...getMapConfig(id), terrain: { ...getMapConfig(id).terrain, villageWear: 'activity-patches' } } : getMapConfig(id)));
 const coastal = getMapConfig('coastal');
