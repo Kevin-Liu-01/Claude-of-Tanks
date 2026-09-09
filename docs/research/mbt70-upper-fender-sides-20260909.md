@@ -7,7 +7,10 @@ Publication: NOT PUBLISHED. This is a scoped addition to FSP-05 in the
 [fleet bodywork backlog](../tank-generation/fleet-style-performance-priority.md),
 not completion of the wider fleet pass. The full release gate still fails
 three source-comparison views that also failed on the untouched baseline.
-No scoped publication exception has been granted.
+Kevin subsequently explicitly requested publication of this task's work,
+including MBT-70, after being shown these failures and asked to choose a
+scoped exception or hold. This authorizes publication of the documented
+MBT-70 source-view failures, not relabeling them PASS or waiving new failures.
 
 ## Owner contract and preserved inputs
 
@@ -147,11 +150,79 @@ Final source report (`2026-09-09T12:54:08.765Z`): aggregate
 per-view **90**. The same three views fail on the baseline; final values are
 not exactly unchanged. No source or threshold was altered to hide failures.
 
-Next action requires the owner's choice: keep this fix local pending broader
-MBT-70 source-shape correction, or explicitly allow these documented source
-failures for this scoped repair. If an exception is granted, complete the
-remaining release/integration qualification against current `origin/main`
-before pushing. Local preservation is not release approval.
+## Owner-authorized publication follow-up
+
+On 2026-09-09, after the explicit failed-view disclosure and publication-choice
+question, Kevin requested: “commit asnd push origin main on everything you
+worked on here including the mbt 70. but we need all the other fixes u did on
+tanks”. The response stated that this is being treated as authorization for
+the three documented pre-existing MBT-70 source-comparison failures. This is
+an as-is source-fidelity exception for this bounded fender repair only.
+It is not a source-fidelity pass or authorization to publish unrelated WIP.
+
+The two local checkpoints were rebased without conflicts onto
+`47e86743d098b868513aa841a9e9c00675ad49fd`, retaining all seven newer environment
+commits. Rebased checkpoints: `a99d64271` (geometry/tests), `c95a1d5f4`
+(assets/report). Post-rebase TypeScript 7/core-unused, private build and public
+build **PASS**. The public asset strip confirms no registered playable refers
+to a stripped path. Build chunk-size warnings remain. Final complete anatomy
+verification **PASS**: 174 anatomy receipts, 174 marking receipts, the native
+anatomy self-test, all 1,496 modules / 348 track sides (zero failures/outside
+modules; 79 existing dimension warnings retained), and all 522 technical
+images/metadata are current. This is a fresh full check, not a relabeling of
+the earlier stale-asset failure.
+
+Fresh `geometry-gate --ids=mbt70 --check` retains **FAIL** at 89.2/90 for
+`wholeCurves`; dimensions and floaters are both 100. The generated MBT-70
+packet and ledger now record this actual failed result instead of the stale
+90.1 pass. All 160 other ledger rows are unchanged. The subsequent maintained
+standard check completed every physical phase: `clip 0/0+0/0`, enclosed holes
+`0`, and fitting census `mg1+8d`, all **PASS**. Its overall status remains
+**FAIL solely on the same source floor**, covered by the scoped exception.
+The full 862-file npm lifecycle is still running; publication remains pending
+its compatibility result.
+
+### Whole-task preservation inventory
+
+Read-only ancestry reconciliation against `47e86743d` confirmed these existing
+published checkpoints; do not duplicate them or describe the entire backlog
+as uncommitted:
+
+- `6bba0ee6d`: nine-tank bodywork/Leopard-roller release, complete 858-check
+  lifecycle; includes the preceding seven-tank bodywork checkpoint.
+- `57bf9fc13`, `b9c45b91b`, `e8ef757e2`, `d17d8adfa`: construction caches,
+  fitting-buffer disposal and ERA reuse.
+- `598b7be78`, `5adbd5930`, `d0d01a903`, `87353fd1f`, `965860648`,
+  `0aada3574`: efficient-roller and fitted-track foundations.
+- Earlier source-study fleet releases `c26b31942` and `099edfa49` are retained.
+
+Additional local candidates are preserved, but have no complete passing release:
+
+| Local work | Checkpoint locator | Outstanding qualification |
+|---|---|---|
+| T90 canvas, Leopard smoke frames, Leclerc/Strv wheel reduction | `916902f3e`, `f6689bde9`, `875525048`; combined `1338e180c` | Native/preflight passed; complete release pending |
+| A4M/A5/KF51 efficient rollers | `bfdc4f1d1`, `0121238b2` | Focused/source passed; composed release pending |
+| K2/T14 rollers | `67146638a`, `1b17c1eef` | K2 source gate failure |
+| Merkava full-stroke rollers | `a6a3c8570`, `eac96616a` | Focused/types passed; source/count/release pending |
+| Centurion supports | `1eddc3428`, `a65a7374f` | Physical checkpoint; native/release pending |
+| Challenger shafts | `7a7c9d49f` | Source/portrait blockers |
+| T90/T80 running gear | `eed11d3c4`, `744fab71e` | Unqualified pilots |
+| Seven conventional Abrams X rebuilds | `codex/abrams-source-x-integrated-20260907` | Broad unfinished integration, not present on main |
+
+After the separate disclosure of unfinished candidates and the seven-model
+Abrams rebuild, Kevin clarified: “commit and push all our side /fender tank
+changes and the abrams too”, then requested a full search for work that may
+have been canceled without publication. This explicitly expands the as-is
+publication scope to the recovered side/fender changes and seven conventional
+Abrams X models. Known failed/incomplete quality checks must remain documented;
+compilable, loadable integration and source-file exclusion are still required.
+This does not authorize blindly merging superseded running-gear prototypes.
+
+MBT-70 can be published as an explicitly unqualified preservation checkpoint
+after the final focused/build checks above, while the frozen 862-file lifecycle
+continues separately. Do not call that in-progress lifecycle PASS. Reconcile
+newer main changes in a separate publication tree so the ongoing test inputs
+remain unchanged. Older branches are recovery locators, not a blanket merge list.
 
 Source binaries, comparison boards and temporary logs stay ignored. Only
 scoped runtime/test changes, maintained MBT-70 assets and this report belong
