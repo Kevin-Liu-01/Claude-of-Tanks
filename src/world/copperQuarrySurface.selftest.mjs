@@ -119,7 +119,7 @@ function assertCurrentPolders(ring, index) {
 }
 
 // Pre-restoration 28d5fd378 executable, excluding Copper and restored Verdant.
-// originalVerdantHorizon.selftest independently guards its historical bytes.
+// horizonVerdant.selftest independently guards its revised geometry.
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 const previous = [
   '0fec8c52ad8151041650f650c3828576946f1cbb5cb4752a470967789efa96d5',
