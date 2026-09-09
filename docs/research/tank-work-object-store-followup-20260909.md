@@ -100,3 +100,67 @@ not a claim that every historical byte or mixed patch is equivalent:
 The full semantic disposition of the older mixed snapshots remains open. The
 JSON appendix is an inventory of exact objects, not an automatic restore list.
 Neither this document nor that appendix imports historical runtime geometry.
+
+## Current recheck: unpublished does not mean deleted
+
+The next read-only recheck pinned the actual remote `refs/heads/main` to
+`25658c449dc5757af9549969507c6ff37b3cd862`. All nine current tank checkpoint
+heads below resolved locally and were not ancestors of that remote. The
+existing per-feature comparisons above still matter: the five-Leopard branch
+contains two already-published models, so only its remaining three count here.
+
+| Unpublished group | Vehicles still affected | Saved local head | Boundary |
+|---|---|---|---|
+| Wheel-detail optimization | Leclerc X, Strv 122 X | `5ca30a7fe4dfae7632e5d37e00a061086d76a25b` | Focused/native evidence retained; composed release pending. |
+| Remaining Leopard-family rollers | Leopard 2A4M X, Leopard 2A5 X, KF51 X | `0121238b29e9c3cb4e3fa930e9d2bf5c804da355` | A7V X/Revolution already published; remaining three local. |
+| Merkava return rollers | Merkava Mk3D X, Mk4 X | `eac96616a4c0241cbb3af3fa1e28037855f512c9` | Measured-fit checkpoint; complete qualification pending. |
+| Dual return rollers | Centurion III, Centurion V, Strv 81 | `a65a7374f2ab18feb5db387caa0cc1ff550fe35e` | Measured-motion checkpoint; complete qualification pending. |
+| Hull-to-hub supports | Challenger 3, Challenger 3 X | `ec95e0daa777d20472dbd324899423343c0628d1` | Existing centering failure and unavailable oracle remain. |
+| K2/T14 rollers | K2 X, T-14 X | `983e91a1eb74f5f5d76dee1dffa3c0cd98f6494d` | K2 fails the unchanged source gate; updated full-stroke proof still required. |
+| Fitted running-gear pilot | T-80U X | `6e3bbb3d5ff649dfd8de9dc352e8d33abd21cdaf` | Unactivated WIP with remaining intersections. |
+| Original-gauge running-gear pilot | T-90A X | `b6b05a8fe40a47bee4570720a6935711b8d3a2af` | Unactivated WIP; terrain, bodywork and performance unfinished. |
+| Fixed skirt camouflage | Type 10 X | `a4f09c1ef0111e5699eee0f11ddc98409d03d89f` | Fourteen fixed painted pieces reassigned; focused/native checks passed. Full qualification still running at this recheck. |
+
+That is **nine groups / seventeen distinct vehicles**, not nine fully releasable
+commits. Original-development Leopard 2A7 remains an additional archived,
+non-playable checkpoint, not a missing new X variant.
+
+Type 10 X is in
+`/Users/kevinliu/.codex/worktrees/cot-fleet-painted-bodywork-20260909`.
+Its source is committed locally; eight changed asset/manifest paths were still
+uncommitted when scanned. The existing qualification driver completed the full
+anatomy update and selected icon generation, then entered `tank:anatomy:check`.
+It had not returned a final release result. No duplicate driver was started.
+
+### Performance work is also still on disk
+
+`/Users/kevinliu/.codex/worktrees/cot-interactive-performance-20260909` retains
+**76 uncommitted paths** on base
+`47e86743d098b868513aa841a9e9c00675ad49fd`, including source, regression tests,
+probes and `docs/research/interactive-performance-20260909.md`. Its changes
+include HUD observer/ammunition work, cooperative grass construction, covered
+loading/return ownership, shader readiness and scene-watchdog work. They were
+inspected without staging or modifying that worktree. Its own latest R4 receipt
+states functional-only success and retains long-task/smoothness failures;
+these are not certified tank-switch latency fixes merely because code exists.
+
+The separate `cot-track-contact-materials-20260909` tree has eight dirty paths
+in FX/world contact sampling and test registration. Those concern terrain
+surface/contact effects, not vehicle track thickness or road-wheel geometry.
+They must not be counted as the missing tank primitive rollout.
+
+### Sweep coverage and remaining uncertainty
+
+The refreshed all-existing-worktree status scan used `--no-optional-locks` and
+`--porcelain=v1 -uall`: **471 registered worktrees, 283 existing directories,
+57 dirty worktrees, zero status errors**. A subsequent ref check counted 869
+local branches and confirmed the same eight stash hashes. Other tasks were
+active, so these are observation-time counts. All 49 existing recovery refs
+remained present. The shared conflicted checkout was not altered.
+
+This recheck does not turn the 47 raw-object residual combinations, 13 older
+mixed branch heads, or historical dirty-file buckets into proven missing
+features. Their exact locators and unresolved boundaries remain in this report,
+its JSON appendix and the original recovery inventory. No historical runtime
+was restored, no stash was popped, and no source model or temporary QA was
+staged. Only this ledger update is a publication candidate.
