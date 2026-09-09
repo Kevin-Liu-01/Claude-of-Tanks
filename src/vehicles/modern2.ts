@@ -20,6 +20,7 @@ import { KIT } from './tankFactoryCore.ts';
 // synchronous top-level createTank rigs.
 import { FITTINGS, muzzleBore } from './profiles/kit.ts';
 import { buildM1A1BareHull } from './profiles/abrams.ts';
+import { foldedShoulderReturn } from './profiles/foldedShoulderReturn.ts';
 import { createType99Armor } from './profiles/type99Armor.ts';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.ts';
 import {
@@ -2267,6 +2268,43 @@ function buildLeo1A5(P: Modern2BuilderPort) {
 // launcher, bustle and raised commander station. No source vertices or
 // materials enter runtime.
 // ---------------------------------------------------------------------------
+function addMBT70UpperFenderReturns(P: Modern2BuilderPort): void {
+  // Shallow fixed metal aprons, not the donor's full-depth side skirts.
+  // The complete fold begins outboard of the native band (|x| <= 1.715),
+  // including its roof lip. The lip laps the existing 1.725 m deck edge;
+  // both ends enter the existing fenders, ahead of the stern drive stock.
+  // These hull-local stations follow the retained deck, before its .94 Z
+  // scale and -.14 m seat. No running-gear or suspension datum changes.
+  const rows: readonly (readonly [number, number, number])[] = [
+    [-2.62, 1.719, 1.716799], [-2.25, 1.719, 1.716],
+    [-1.73, 1.719, 1.666], [-0.95, 1.719, 1.486],
+    [1.30, 1.719, 1.486], [1.88, 1.719, 1.461],
+    [1.95, 1.719, 1.516], [2.13, 1.719, 1.516],
+    [2.27, 1.719, 1.406], [2.32, 1.719, 1.458],
+    [2.46, 1.719, 1.454], [2.48, 1.719, 1.361],
+    [2.60, 1.719, 1.360294],
+  ];
+  for (const side of [-1, 1]) {
+    const geometry = foldedShoulderReturn({
+      // Stand the exposed web 2 mm outside the old fender caps: the finite
+      // end lap remains, without two visible faces on the same plane.
+      outerX: 1.752, skirtTop: 1.137, offsetZ: 0, offsetY: 0, rows,
+    }, side);
+    geometry.userData.mbt70UpperFenderReturn = true;
+    P.addMudguard(`mbt70_upper_fender_return_${side}`,
+      side < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', geometry);
+    // The donor's stern lane carve ends its wide deck at z=-2.50. A finite
+    // inner riser supports the 120 mm roof tip on the existing rear fender,
+    // rather than pretending that the narrow stern wedge reaches this lip.
+    const mount = KIT.box(0.012, 0.071, 0.116);
+    mount.userData.mbt70UpperFenderReturn = true;
+    mount.userData.mbt70UpperFenderMount = true;
+    P.addMudguard(`mbt70_upper_fender_mount_${side}`,
+      side < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR', mount,
+      side * 1.726, 1.6705, -2.56);
+  }
+}
+
 function buildMBT70BareHull(P: Modern2BuilderPort): void {
   const { box } = KIT;
   buildM1A1BareHull(P, {
@@ -2279,7 +2317,6 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
       box(0.42, 0.09, 1.18), side * 1.54, 1.37, 3.10, -0.055, 0, 0);
     P.addMudguard(`mbt70_m1_rear_fender_${side}`, 'hull',
       box(0.42, 0.09, 1.32), side * 1.54, 1.64, -3.16, 0.035, 0, 0);
-    P.add('hullDetail', box(0.06, 0.08, 5.46), side * 1.69, 1.39, 0.10);
     P.add('hull', box(0.12, 0.48, 1.38), side * 0.96, 1.41, -3.05, 0.025 * side, 0, 0);
     P.add('hull', box(0.48, 0.10, 1.34), side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
     P.add('hullDetail', box(0.035, 0.34, 1.18), side * 1.00, 1.43, -3.05,
@@ -2288,6 +2325,7 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
       P.add('hullDetail', box(0.11, 0.035, 0.035), side * 1.20, 1.66, z);
     }
   }
+  addMBT70UpperFenderReturns(P);
 }
 
 function buildMBT70(P: Modern2BuilderPort) {
