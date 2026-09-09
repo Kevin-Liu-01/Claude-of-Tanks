@@ -14,7 +14,9 @@ This is the implementation guide for the complete pass, following the
 |---|---|
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
 | Torn tree crowns / moving terrain texture coordinates | Fixed and committed locally; native images reviewed; held after Verdant timing gate failed |
-| Verdant two-dimensional outland | Local prototype; pure checks pass; native review pending |
+| Verdant horizon | Original July 27 geometry and palette restored and pushed in `1e0b2608b`; replacement prototype rejected by the user |
+| Road continuity and mode placement | Separate fixes in progress; require regenerated collision/minimap data and shared solo/server validation |
+| Nighttime entry | Duplicate pre-light shader preparation identified; final-light-first loading fix under native validation |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |
 | No performance/memory regressions | Required, **not yet demonstrated** for the latest drafts |
@@ -27,8 +29,15 @@ describe that as personally viewing every current map at every quality level.
 
 Fresh main/candidate captures now also cover Verdant, Coastal and Winter with
 26 exactly matched camera receipts. See [foundation verification](MAP-RENDER-FOUNDATIONS.md)
-for the failed performance check and explicit release hold, and the bounded
-[Verdant scene checkpoint](VERDANT-SCENE-CHECKPOINT.md) for the next art work.
+for the failed performance check and explicit release hold. The
+[Verdant scene checkpoint](VERDANT-SCENE-CHECKPOINT.md) is now a superseded
+proposal, not instructions for the next art work. The user rejected its native
+result and explicitly requested the original horizon. Do not resume or publish
+the `7997efb42` prototype, including its other unaccepted pastoral refinements.
+The restoration's original positions, colors, normals and indices are tested
+against historical fixtures over three seeds; the public build and native
+establishing view were checked. This is restoration, not a new visual-quality
+or comparative performance claim. Other 29 horizons were left unchanged.
 
 ## What makes the reference work
 
@@ -80,7 +89,7 @@ gameplay layout while developing a distinctive visual hierarchy.
 
 | Map | Primary composition and next visual emphasis |
 |---|---|
-| Verdant Fields | Pastoral church green, farm courts, harvested/meadow patchwork; broad low wooded watersheds |
+| Verdant Fields | Retain the restored original horizon per the user's explicit override; keep road, spawn and loading repairs independent of another outland redesign |
 | Amberford | Autumn ford, riparian growth and hillside farms; warm leaf litter against cool water |
 | Tarkhan Steppe | Open golden folds, sparse windbreaks and distant farms; avoid enclosing mountains |
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
@@ -116,9 +125,11 @@ gameplay layout while developing a distinctive visual hierarchy.
 1. **Correct the foundations:** welded foliage and world-anchored terrain shading.
    Separate commits, targeted regressions, native before/after. These should not
    be held behind a whole new landscape algorithm.
-2. **Finish one whole pastoral scene:** Verdant ground, outland, forest coverage,
-   road/yard transitions and palette together. Compare against the reference at
-   tank height, not just a distant camera. The current watershed is only a study.
+2. **Respect the Verdant restoration:** the attempted coordinated pastoral scene
+   was rejected. Its watershed and palette changes are not a foundation for the
+   rollout. Preserve the restored horizon while finishing the requested road,
+   objective/spawn and nighttime-entry corrections. Continue the broader art
+   work on other map families with fixed native views before generalizing it.
 3. **Prove different families:** Ironworks (built/industrial), Glacier Pass
    (snow/rock), Saltmere Bay (shore/water). Each gets its own composition; do not
    generalize grassland colors/terrain to the others.
