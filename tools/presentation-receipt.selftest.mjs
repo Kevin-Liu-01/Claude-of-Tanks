@@ -56,6 +56,8 @@ assert.ok(centering.indexOf('const receiptErrors = check ? ids.flatMap') < cente
 assert.match(centering, /presentationNumberSource as numberSource/);
 assert.match(centering, /rows\[id\]\?\.currentAnchor, rows\[id\]\?\.capturedProjection,\s*TANK_PRESENTATION_ANCHORS\[id\], TANK_PRESENTATION_PROJECTIONS\[id\]/);
 assert.match(page, /const capturedProjection = assetProjection\(iconBox, assetAnchor\)/);
+assert.match(page, /import \{\s*TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS,/,
+  'native audit requiredViews has its actual imported binding');
 assert.match(page, /const iconProjection = assetProjection\(iconBox, \{ xM, zM \}\)/, 'full generation retains proposed centroid fit');
 assert.match(centering, /if \(current !== expected\)/, 'keep full-fleet exact source equality');
 assert.match(centering, /const MAX_RESIDUAL_PX = 0\.25;/);
