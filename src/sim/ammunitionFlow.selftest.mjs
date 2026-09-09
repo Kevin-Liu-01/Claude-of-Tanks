@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { SECOND_WAVE_X_IDS } from '../vehicles/sourceXSecondWaveSpecs.ts';
+import { ABRAMS_SOURCE_X_IDS } from '../vehicles/abramsSourceXSpecs.ts';
 import {
   firstAvailableAmmunitionSlot,
   hasAmmunition,
@@ -144,15 +145,19 @@ for (const spec of Object.values(TANK_SPECS)) {
   }
 }
 assert.equal(guidedRounds.length, 22, 'the complete guided-ammunition fleet is covered');
-// Preserve the existing 535 channels, including the restored MBT-70 mixed
-// gun/launcher channels, and exercise all 69 added channels in
-// the 23 independently selectable second-wave X models, not only their donors.
+// Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
+// separately from the 69 second-wave and 21 conventional Abrams X channels.
+// Every new variant is exercised in the fleet loop above, not just its donor.
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
 assert.equal(SECOND_WAVE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 69);
-assert.equal(Object.values(TANK_SPECS).filter(spec => !SECOND_WAVE_X_IDS.includes(spec.id))
+assert.equal(ABRAMS_SOURCE_X_IDS.length, 7);
+assert.equal(ABRAMS_SOURCE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 21);
+const addedXIds = new Set([...SECOND_WAVE_X_IDS, ...ABRAMS_SOURCE_X_IDS]);
+assert.equal(addedXIds.size, 30, 'the two additive X batches have distinct identities');
+assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id))
   .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
   'the pre-existing ammunition-channel census remains intact');
-assert.equal(authoredShellChannels, 604,
+assert.equal(authoredShellChannels, 625,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
