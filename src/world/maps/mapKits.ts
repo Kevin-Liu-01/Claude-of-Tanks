@@ -492,37 +492,16 @@ export const MARKET_BUILDERS: Record<string, StructureBuilder> = {
 // FROSTHOLLOW LAKE BASIN — explicit-position dressing
 // =============================================================================
 
-// One clump of frozen shoreline reeds: 6-11 thin rimed stalks with a couple
-// of bent heads. Straw bucket — winter maps tone straw to pale rime.
+// River reeds reuse the existing tapered stem topology, but retain every
+// original clump/root XZ draw. Bed seating is per stem, not the clump center.
 function reedClump(
   buckets: DressingBuckets,
   rng: Rng,
+  heightField: DressingHeightField,
   x: number,
-  y: number,
   z: number,
 ): void {
-  // stalks sized to survive establishing-shot minification (~350 m): a
-  // 5 cm-wide stick disappears at that range, so the clump reads through a
-  // few taller, thicker rimed stems over a skirt of short ones
-  const n = 8 + ((rng() * 7) | 0);
-  for (let k = 0; k < n; k++) {
-    const tall = k < 3;
-    const h = tall ? 1.15 + rng() * 0.6 : 0.6 + rng() * 0.6;
-    const w = tall ? 0.10 + rng() * 0.05 : 0.06 + rng() * 0.04;
-    const st = box(w, h, w, 2.0);
-    st.rotateX((rng() - 0.5) * 0.24);
-    st.rotateZ((rng() - 0.5) * 0.24);
-    st.rotateY(rng() * Math.PI);
-    st.translate(x + (rng() - 0.5) * 2.2, y + h / 2 - 0.06, z + (rng() - 0.5) * 2.2);
-    buckets.straw.push(st);
-  }
-  // the odd broken-over head
-  if (rng() < 0.6) {
-    const bh = box(0.07, 0.55, 0.07, 2.0);
-    bh.rotateZ(1.2 + rng() * 0.3);
-    bh.translate(x + (rng() - 0.5) * 1.2, y + 0.55, z + (rng() - 0.5) * 1.2);
-    buckets.straw.push(bh);
-  }
+  winterReedClump(buckets, rng, heightField, x, z);
 }
 
 function winterSurface(
@@ -1279,7 +1258,7 @@ function addRiverBankReeds(
       const x = m.x + Math.cos(a) * rr, z = m.z + Math.sin(a) * rr;
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) continue;
       if (heightField._roadDist(x, z) < 6) continue;
-      reedClump(buckets, rng, x, heightField.getHeightAt(x, z), z);
+      reedClump(buckets, rng, heightField, x, z);
     }
   }
 }
