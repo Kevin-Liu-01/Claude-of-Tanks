@@ -40,7 +40,9 @@ export function registerWorldNightLighting(
     curtain.userData.nightLightKind = 'window';
     markers.push({
       kind: 'marker', position: [0, 0, 0],
-      emission: { material: curtain, color: 0xffffff, intensity: 0.9 },
+      // Occupied panes are dimmer diffuse interiors, not exposed lamp bulbs.
+      // Two stops below the former input; keep authored masks/tint untouched.
+      emission: { material: curtain, color: 0xffffff, intensity: 0.225 },
     });
   }
   // Intact service structures and actual lanterns remain eligible even in a
@@ -75,7 +77,9 @@ export function registerWorldNightLighting(
     lens.set(0.98, 3.895, 0).applyMatrix4(matrix);
     emitters.push({
       kind: 'building', position: [lens.x, lens.y, lens.z],
-      color: 0xffc889, intensity: 24, range: 17,
+      // Restrain nearby facade spill from the existing unshadowed point.
+      // The visible bulb keeps its original radiance and physical seat.
+      color: 0xffc889, intensity: 6, range: 17,
       emission: { material, color: 0xffffff, intensity: 3 },
       isActive: () => {
         const enabled = record.state === 0 ? 1 : 0;
