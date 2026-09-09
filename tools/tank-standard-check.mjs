@@ -2,6 +2,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 import { strictTrackClipPassed } from './track-clip-result.mjs';
 import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
+import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
 // aggregates the standard's machine-checkable gates per tank:
 //   A.  geometry-gate components (latest docs/geometry-gate/<id>.json,
@@ -71,21 +72,17 @@ if (ids.length) {
 const standard = new Map(); // id -> { census, holes } | { error }
 let fixture = null;
 if ((ids.length && !noRender) || wantFixture) {
-  const { createServer } = await import('vite');
-  const puppeteer = (await import('puppeteer')).default;
   await acquireLock(20 * 60 * 1000);
   const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
   lockRefresher.unref();
-  const server = await createServer({
+  try {
+    await withIsolatedCaptureBrowser({
     root: process.cwd(), logLevel: 'error',
     server: { port: 7400 + Math.floor(Math.random() * 400), strictPort: false, hmr: false, watch: null },
-  });
-  await server.listen();
-  const browser = await puppeteer.launch({
+  }, {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  try {
+  }, async ({ server, browser }) => {
     const page = await browser.newPage();
     page.setDefaultTimeout(120000);
     let pageError = null;
@@ -109,9 +106,8 @@ if ((ids.length && !noRender) || wantFixture) {
       await page.waitForFunction('window.__FIXTURE_READY === true', { polling: 50 });
       fixture = await page.evaluate('window.__FIXTURE');
     }
+    });
   } finally {
-    await browser.close();
-    await server.close();
     clearInterval(lockRefresher);
     releaseLock();
   }

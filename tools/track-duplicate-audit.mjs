@@ -5,8 +5,7 @@
 // detail. A separate connector mesh, overlapping smart layer or static
 // track-like course fails. This tool is report-only and never edits geometry.
 
-import { createServer } from 'vite';
-import puppeteer from 'puppeteer';
+import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 
 // Loading the factory initializes every extension pack before the roster is
 // read, matching the provenance audit's complete-fleet discovery order.
@@ -19,22 +18,19 @@ const ids = idArg
   ? idArg.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean)
   : [...ALL_TANK_IDS];
 
-const server = await createServer({
+const failures = [];
+const layered = [];
+await withIsolatedCaptureBrowser({
   root: process.cwd(),
   logLevel: 'error',
   server: { port: 7680 + Math.floor(Math.random() * 120), strictPort: false, hmr: false, watch: null },
-});
-await server.listen();
-const browser = await puppeteer.launch({
+}, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
-const page = await browser.newPage();
-page.setDefaultTimeout(120000);
+}, async ({ server, browser }) => {
+  const page = await browser.newPage();
+  page.setDefaultTimeout(120000);
 
-const failures = [];
-const layered = [];
-try {
   for (const id of ids) {
     await page.goto(
       `http://localhost:${server.config.server.port}/tools/track-duplicate-audit.html?id=${encodeURIComponent(id)}`,
@@ -47,10 +43,7 @@ try {
       ? (result.error || result.staticRoadWheelOverlays?.length)
       : !result.pass) failures.push(result);
   }
-} finally {
-  await browser.close();
-  await server.close();
-}
+});
 
 console.log(`[track-duplicate] audited ${ids.length} first-party tanks`);
 console.log(`[track-duplicate] ${ids.length - layered.length}/${ids.length} use one integrated `

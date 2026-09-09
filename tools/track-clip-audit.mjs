@@ -16,8 +16,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // writes shots/track-clip-shoes.json: the per-zone band-vs-shoe comparison
 // with blind spots (shoeVox > 0 while bandVox = 0 — the m1a1ha class)
 // ranked worst-first.
-import { createServer } from 'vite';
-import puppeteer from 'puppeteer';
+import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 await acquireLock(45 * 60 * 1000);
@@ -26,20 +25,18 @@ const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
 refresher.unref();
 
 const idArg = process.argv.find((a) => a.startsWith('--ids='));
-const server = await createServer({
+try {
+await withIsolatedCaptureBrowser({
   root: process.cwd(), logLevel: 'error',
   server: { port: 7461 + Math.floor(Math.random() * 30), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-});
-await server.listen();
-const port = server.config.server.port;
-const browser = await puppeteer.launch({
+}, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-});
+}, async ({ server, browser }) => {
+const port = server.config.server.port;
 const page = await browser.newPage();
 page.setDefaultTimeout(180000);
 const results = [];
-try {
   let ids;
   if (idArg) {
     ids = idArg.slice(6).split(',');
@@ -102,8 +99,8 @@ try {
   for (const bz of blind) {
     console.log(`[track-clip]   BLIND-SPOT ${bz.id.padEnd(18)} ${bz.zone.padEnd(5)} band ${String(bz.bandVox).padStart(5)} shoe ${String(bz.shoeVox).padStart(5)} ${bz.shoeHits.map((h) => `${h.mesh}(${h.vox})`).join(' ')}`);
   }
+});
 } finally {
-  await browser.close();
-  await server.close();
+  clearInterval(refresher);
   releaseLock();
 }

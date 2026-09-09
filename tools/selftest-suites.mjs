@@ -21,6 +21,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',
+    'tools/isolated-capture-browser.selftest.mjs',
     'tools/reference-gun-pivot.selftest.mjs',
     'tools/source-world-registration.selftest.mjs',
     'tools/source-dimension-frame.selftest.mjs',
