@@ -418,6 +418,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/foundryMasonry.selftest.mjs',
+    'src/world/foundryRoof.selftest.mjs',
     'src/world/sourcedTerrainPreparation.selftest.mjs',
     'src/world/spawnClearance.selftest.mjs',
     'src/world/treeGrounding.selftest.mjs',
