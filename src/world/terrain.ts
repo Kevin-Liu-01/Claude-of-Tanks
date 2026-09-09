@@ -587,19 +587,43 @@ export function createHeightField(
     (s) => [s.x, s.z, _VILLAGE.cx, _VILLAGE.cz]
   );
 
-  function buildRoadLookupGrid(): void {
+  function stampRoadLookupSegment(route: number, segment: number,
+    ax: number, az: number, bx: number, bz: number): void {
+    // Hoist segment constants, retaining segDist's exact arithmetic and each
+    // cell's route/segment order. Every winner still rounds through Float32;
+    // squared-distance comparisons would change near-equal ownership ties.
+    const dx = bx - ax, dz = bz - az;
+    const l2 = dx * dx + dz * dz;
     for (let gz = 0; gz < GN; gz++) {
       const z = gz * CELL - HALF;
       for (let gx = 0; gx < GN; gx++) {
         const x = gx * CELL - HALF;
         const i = gz * GN + gx;
-        for (let r = 0; r < roads.length; r++) {
-          const nodes = roads[r];
-          for (let s = 0; s < nodes.length - 1; s++) {
-            const { d, t } = segDist(x, z, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
-            if (d < gRoadDist[i]) { gRoadDist[i] = d; gSegRoad[i] = r; gSegIdx[i] = s; gSegT[i] = t; }
-          }
+        let t = l2 > 0 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0;
+        t = clamp(t, 0, 1);
+        const ex = ax + dx * t - x, ez = az + dz * t - z;
+        const d = Math.sqrt(ex * ex + ez * ez);
+        if (d < gRoadDist[i]) {
+          gRoadDist[i] = d; gSegRoad[i] = route; gSegIdx[i] = segment; gSegT[i] = t;
         }
+      }
+    }
+  }
+
+  function buildRoadLookupGrid(): void {
+    for (let r = 0; r < roads.length; r++) {
+      const nodes = roads[r];
+      for (let s = 0; s < nodes.length - 1; s++) {
+        stampRoadLookupSegment(r, s, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
+      }
+    }
+    // Deployment corridors do not depend on road-grid writes. Keep their
+    // original per-cell accumulation and store only the final Float32 value.
+    for (let gz = 0; gz < GN; gz++) {
+      const z = gz * CELL - HALF;
+      for (let gx = 0; gx < GN; gx++) {
+        const x = gx * CELL - HALF;
+        const i = gz * GN + gx;
         let cw = 0;
         for (const c of corridors) {
           const { d } = segDist(x, z, c[0], c[1], c[2], c[3]);
