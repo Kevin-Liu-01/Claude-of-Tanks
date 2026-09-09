@@ -1,6 +1,7 @@
 // Deterministic 1200x630 social cards composed from approved in-engine captures.
-// The default /brand/og-image.png remains the canonical game card; this tool
-// creates route-specific companions with the same bottom-left brand lockup.
+// The default game card and every route companion share the owner-approved
+// bottom-left Monument Grotesk lockup, rendered from the current crest master.
+// Preview a subset with --only=game,home,docs-models before regenerating all.
 import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,9 +9,10 @@ import puppeteer from 'puppeteer';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUTPUT = join(ROOT, 'public/brand/og');
-const LOGO = join(ROOT, 'public/brand/logo-full.svg');
+const LOGO = join(ROOT, 'public/brand/logo-mark.svg');
 
 export const OG_IMAGE_CARDS = [
+  ['game', '', 'public/media/featured/f7_studio_t90_column_fire.webp', '50% 38%'],
   ['home', 'HOME', 'public/media/showcase-r1/87_action_verdant_column_massacre.webp', '50% 48%'],
   ['gallery', 'TANK GALLERY', 'public/media/showcase-r2/11_gallery_hero.webp', '50% 48%'],
   ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%'],
@@ -34,11 +36,13 @@ function asDataUrl(path, mime) {
   return `data:${mime};base64,${readFileSync(path).toString('base64')}`;
 }
 
-function cardHtml(label, source, position, fit) {
+export function cardHtml(label, source, position, fit = 'cover') {
   const image = asDataUrl(join(ROOT, source), 'image/webp');
   const logo = asDataUrl(LOGO, 'image/svg+xml');
+  const font = asDataUrl(join(ROOT, 'public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2'), 'font/woff2');
   const contain = fit === 'contain';
   return `<!doctype html><html><head><style>
+    @font-face{font-family:'ABC Monument Grotesk';src:url(${font}) format('woff2');font-weight:700 900;font-display:block}
     *{box-sizing:border-box}html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#071018}
     .card,.backdrop,.hero,.shade,.grain{position:absolute;inset:0}
     .backdrop{width:100%;height:100%;object-fit:cover;object-position:${position};filter:blur(${contain ? 18 : 0}px) saturate(.88) brightness(.6);transform:scale(${contain ? 1.08 : 1})}
@@ -47,37 +51,59 @@ function cardHtml(label, source, position, fit) {
     .grain{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
     .rule{position:absolute;top:42px;right:48px;width:92px;height:3px;background:#f5a623;box-shadow:0 0 18px rgba(245,166,35,.28)}
     .label{position:absolute;top:57px;right:48px;color:#f4f7f9;font:700 15px/1 Arial,sans-serif;letter-spacing:3.3px;text-shadow:0 2px 7px #000;text-align:right}
-    .logo{position:absolute;left:42px;bottom:21px;width:350px;height:auto;filter:drop-shadow(0 3px 10px rgba(0,0,0,.78))}
+    .lockup{position:absolute;left:64px;bottom:46px;display:flex;align-items:center;gap:20px;font-family:'ABC Monument Grotesk',sans-serif}
+    .crest{width:150px;height:150px;flex:none;object-fit:contain;filter:drop-shadow(0 6px 26px rgba(0,0,0,.65))}
+    .wordmark{font-weight:800;font-size:64px;letter-spacing:.10em;color:#f2f7fb;line-height:1;text-shadow:0 2px 24px rgba(0,0,0,.8)}
+    .wordmark-subtitle{margin-top:0;font-weight:700;font-size:25px;letter-spacing:.30em;color:#f0a030}
     .edge{position:absolute;inset:14px;border:1px solid rgba(189,207,218,.2)}
-  </style></head><body><div class="card">
+    .game .backdrop,.game .grain,.game .edge{display:none}
+    .game .hero{filter:none}
+    .game .shade{background:linear-gradient(0deg,rgba(5,8,11,.82) 0%,rgba(5,8,11,.42) 24%,rgba(5,8,11,0) 48%)}
+  </style></head><body><div class="card${label ? '' : ' game'}">
     <img class="backdrop" src="${image}"><img class="hero" src="${image}">
     <div class="shade"></div><div class="grain"></div><div class="edge"></div>
-    <div class="rule"></div><div class="label">${label}</div><img class="logo" src="${logo}">
+    ${label ? `<div class="rule"></div><div class="label">${label}</div>` : ''}
+    <div class="lockup" aria-label="Claude of Tanks">
+      <img class="crest" src="${logo}" alt="">
+      <div><div class="wordmark">CLAUDE</div><div class="wordmark-subtitle">OF TANKS</div></div>
+    </div>
   </div></body></html>`;
 }
 
-mkdirSync(OUTPUT, { recursive: true });
-const browser = await puppeteer.launch({
-  headless: 'new',
-  args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
-});
-const page = await browser.newPage();
-await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
-
-for (const [name, label, source, position, fit = 'cover'] of OG_IMAGE_CARDS) {
-  await page.setContent(cardHtml(label, source, position, fit), { waitUntil: 'load' });
-  await page.evaluate(async () => {
-    await Promise.all([...document.images].map((image) => image.complete
-      ? (image.naturalWidth ? Promise.resolve() : Promise.reject(new Error('image failed to decode')))
-      : new Promise((resolveImage, rejectImage) => {
-          image.addEventListener('load', resolveImage, { once: true });
-          image.addEventListener('error', rejectImage, { once: true });
-        })));
+export async function generateOgImages(cards = OG_IMAGE_CARDS) {
+  mkdirSync(OUTPUT, { recursive: true });
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
   });
-  const target = join(OUTPUT, `${name}.jpg`);
-  await page.screenshot({ path: target, type: 'jpeg', quality: 88, captureBeyondViewport: false });
-  console.log(`wrote ${target}`);
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
+
+    for (const [name, label, source, position, fit = 'cover'] of cards) {
+      await page.setContent(cardHtml(label, source, position, fit), { waitUntil: 'load' });
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        if (!document.fonts.check('800 64px "ABC Monument Grotesk"')) throw new Error('brand font failed to load');
+        await Promise.all([...document.images].map((image) => image.complete
+          ? (image.naturalWidth ? Promise.resolve() : Promise.reject(new Error('image failed to decode')))
+          : new Promise((resolveImage, rejectImage) => {
+              image.addEventListener('load', resolveImage, { once: true });
+              image.addEventListener('error', rejectImage, { once: true });
+            })));
+      });
+      const target = name === 'game' ? join(ROOT, 'public/brand/og-image.png') : join(OUTPUT, `${name}.jpg`);
+      const format = name === 'game' ? { type: 'png' } : { type: 'jpeg', quality: 88 };
+      await page.screenshot({ path: target, ...format, captureBeyondViewport: false });
+      console.log(`wrote ${target}`);
+    }
+  } finally {
+    await browser.close();
+  }
 }
 
-await page.close();
-await browser.close();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const only = process.argv.find((argument) => argument.startsWith('--only='))?.slice(7).split(',');
+  if (only?.some((name) => !OG_IMAGE_CARDS.some(([id]) => id === name))) throw new Error('unknown OG card in --only');
+  await generateOgImages(only ? OG_IMAGE_CARDS.filter(([name]) => only.includes(name)) : OG_IMAGE_CARDS);
+}

@@ -69,6 +69,19 @@ Gallery, and Studio consume that manifest through the shared media archive
 component. Raw 4K PNGs remain local capture evidence; compressed WebP frames,
 review sheets, and the manifest are shipped artifacts.
 
+### Open Graph branding
+
+`npm run og:images` regenerates the default game card and all 17 route/private-room
+cards at 1200×630. Each uses the current `public/brand/logo-mark.svg` at its native
+square aspect ratio, with the bottom-left ABC Monument Grotesk lockup: white
+CLAUDE, amber OF TANKS. Do not substitute the compact all-white website lockup
+or a precomposed raster logo. The default retains the owner-selected T-90 column
+photo; route companions retain their own photography and page labels.
+
+Preview three representatives with `npm run og:images -- --only=game,home,docs-models`,
+then regenerate the full set and run `node tools/marketing-shots/og-images.selftest.mjs`
+and `npm run test:seo`. Existing canonical image URLs stay unchanged.
+
 ### Current UI evidence
 
 The R1 archive remains the source of truth for action, hero, vehicle, and
