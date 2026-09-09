@@ -25,7 +25,7 @@ const MODERN_FAMILIES = [
 ];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 const LAYERED_TREELINES = new Map([
-  ['coastal', 2], ['autumn', 2],
+  ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
 ]);
 const polePolicyByMap = new Map();
