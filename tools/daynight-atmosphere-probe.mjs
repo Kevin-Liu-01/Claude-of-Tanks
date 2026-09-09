@@ -702,6 +702,17 @@ function checkAtmosphereCase(row, preset) {
   };
 }
 
+function validOccupiedWindowFixture(fixture, pool) {
+  const material = pool.materials.find(material => material.uuid === fixture.materialUuid);
+  // Validate the selected real pane, not an unrelated brighter window. This
+  // is the reviewed scalar input, not a visual-quality minimum or pixel test.
+  return fixture.kind === 'window' && !!fixture.ownerUuid && !!fixture.materialUuid
+    && fixture.lineOfSight === 'authored-emissive-face'
+    && Number.isSafeInteger(fixture.faceIndex) && fixture.faceIndex >= 0
+    && material?.kind === 'window' && material.masked === true
+    && Number.isFinite(material.intensity) && Math.abs(material.intensity - .225) < 1e-6;
+}
+
 async function nightLightCloseups(label) {
   try {
     for (const kind of ['headlight', 'world']) {
@@ -713,10 +724,11 @@ async function nightLightCloseups(label) {
       report.lightCloseups.push(row); save();
       assert.equal(state.weather?.timeOfDay, 'night');
       assert(state.nightLighting.attached && state.nightLighting.emitterCount > 0);
+      assert(kind === 'headlight' ? fixture.kind === 'headlight'
+        : fixture.kind === 'streetlamp' || fixture.kind === 'window', 'Closeup must retain the requested authored source role');
       if (fixture.kind === 'streetlamp') assert(validStreetLampFixture(fixture, state.nightLighting));
       if (fixture.kind === 'window') {
-        assert.equal(fixture.lineOfSight, 'authored-emissive-face');
-        assert(state.nightLighting.materials.some(material => material.kind === 'window' && material.masked && material.intensity >= .55));
+        assert(validOccupiedWindowFixture(fixture, state.nightLighting), 'Selected masked window must retain its reviewed emission and visible face');
       }
       await screenshot(row.label, state);
       row.structuralPassed = true; save();

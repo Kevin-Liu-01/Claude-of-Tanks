@@ -9,6 +9,7 @@ import { inspectNightHeadlight, inspectNightWindow } from '../src/dev/nightWindo
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../src/vehicles/vehicleNightLighting.ts';
 import { inspectNightWorldFixture } from '../src/dev/nightWorldFixtureInspection.ts';
 import { markWorldWindowPane } from '../src/world/worldNightEmissionGeometry.ts';
+import { installNightEmissionMask } from '../src/engine/nightEmissionMaterial.ts';
 import airfieldConfig from '../src/world/maps/airfield.ts';
 import { selectBattleWeather } from '../src/engine/battleWeatherPolicy.ts';
 
@@ -127,6 +128,7 @@ const good = { mapId: 'winter', day: state('day', 1), night: state('night', 3), 
   legacy: [state('day', 13), state('night', 3)],
   expected: [weather('day', 1), weather('night', 3), weather('day', 1), weather('day', 13), weather('night', 3)] };
 const validStreetLampFixture = load('validStreetLampFixture');
+const validOccupiedWindowFixture = load('validOccupiedWindowFixture');
 const focusedChecks = load('checkFocusedFixtureCase', { checkNightLightingCycle, validStreetLampFixture });
 const requestedVehicleFixtures = load('requestedVehicleFixtures', { assert });
 const worldFixtureCases = load('worldFixtureCases');
@@ -360,7 +362,8 @@ for (const overrides of [{ unmaskedGpu: false }, { contextLost: true }, { glErro
   const lamp = new InstancedMesh(lampGeometry, lampMaterial, 2); lamp.name = 'destructible-lamp';
   const instance = new Matrix4().makeRotationY(.5).setPosition(10, 2, 15);
   lamp.setMatrixAt(1, instance); world.add(lamp);
-  const windowMaterial = new MeshStandardMaterial({ emissive: 0xffbd72, emissiveIntensity: .55 });
+  const windowMaterial = new MeshStandardMaterial({ emissive: 0xffbd72, emissiveIntensity: .225 });
+  installNightEmissionMask(windowMaterial);
   windowMaterial.userData.nightLightKind = 'window';
   const windowGeometry = new BoxGeometry(1, 2, .03), pane = new Mesh(windowGeometry, windowMaterial);
   markWorldWindowPane(windowGeometry, 'curtain', [0, 0, 1]);
@@ -399,7 +402,41 @@ for (const overrides of [{ unmaskedGpu: false }, { contextLost: true }, { glErro
     assert.deepEqual([camera.position.toArray(), camera.quaternion.toArray(), camera.fov], originalCamera);
     assert.equal(scene.children.length, nodes, 'readbacks and closeups add no fake lighting or geometry');
     lamp.removeFromParent();
-    assert.equal(probe.stageNightLightCloseup('world').kind, 'window', 'occupied facade is an authored fallback');
+    const paneFixture = probe.stageNightLightCloseup('world');
+    assert.equal(paneFixture.kind, 'window', 'occupied facade is an authored fallback');
+    const panePool = probe.readNightLighting();
+    assert(validOccupiedWindowFixture(paneFixture, panePool), 'real inspected pane has the exact reviewed masked emission');
+    for (const mutate of [
+      (fixture, material) => { material.intensity = 0; },
+      (fixture, material) => { material.intensity = .9; },
+      (fixture, material) => { material.intensity = .55; },
+      (fixture, material) => { material.intensity = .225 + 2e-6; },
+      (fixture, material) => { material.intensity = NaN; },
+      (fixture, material) => { material.masked = false; },
+      (fixture, material) => { material.kind = 'fixture'; },
+      fixture => { fixture.kind = 'streetlamp'; },
+      fixture => { fixture.lineOfSight = null; },
+      fixture => { fixture.faceIndex = -1; },
+      fixture => { fixture.ownerUuid = null; },
+      fixture => { fixture.materialUuid = 'missing-material'; },
+    ]) {
+      const fixture = structuredClone(paneFixture), pool = structuredClone(panePool);
+      const selected = pool.materials.find(material => material.uuid === fixture.materialUuid);
+      pool.materials.push({ ...selected, uuid: 'unrelated-correctly-lit-window' });
+      mutate(fixture, selected);
+      assert.equal(validOccupiedWindowFixture(fixture, pool), false, 'wrong selected pane cannot pass via another glowing window');
+    }
+    const roundedPool = structuredClone(panePool);
+    roundedPool.materials.find(material => material.uuid === paneFixture.materialUuid).intensity += 5e-7;
+    assert(validOccupiedWindowFixture(paneFixture, roundedPool), 'serialization-scale numeric tolerance only');
+    const closeupsReport = { lightCloseups: [] };
+    await load('nightLightCloseups', { assert, window, report: closeupsReport, save() {},
+      evaluateWithin: async (callback, argument) => callback(argument), settle: async () => {},
+      readVisualState: () => ({ weather: { timeOfDay: 'night' }, nightLighting: probe.readNightLighting() }),
+      validStreetLampFixture, validOccupiedWindowFixture, screenshot: async () => {},
+    })('cpu-fixture');
+    assert.equal(closeupsReport.lightCloseups.length, 2, 'real maintained closeup route reaches the selected window assertion');
+    assert(closeupsReport.lightCloseups.every(row => row.structuralPassed));
     probe.restoreNightLightCamera(); pane.removeFromParent();
     assert.throws(() => probe.stageNightLightCloseup('world'), /No authored/);
     probe.restoreNightLightCamera(); spot.intensity = spot2.intensity = 0;
