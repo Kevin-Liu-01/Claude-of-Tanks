@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 import { stampWorkedGroundMask } from './workedGroundMask.ts';
 import { createHeightField, makeMaskTexture, mulberry32 } from './terrain.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
@@ -128,6 +129,8 @@ try {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;
 }
 const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
-assert.equal(hash(source.slice(source.indexOf('const SPLAT_COMMON_FRAG'), source.indexOf('function* createSplatMaterialSteps'))),
-  'd470ffa221c1ed9617c7794f0734932fb904beb1e204e1af6a10d1f415e14713', 'complete splat shader unchanged');
+// Historical full shader: d470ffa221c1ed9617c7794f0734932fb904beb1e204e1af6a10d1f415e14713.
+// Projection/sand/worn-blend gates own later shader improvements independently;
+// the historical mask controls above still feed the current A-channel path.
+assertTerrainMaskShaderContract(source);
 console.log(JSON.stringify({ test: 'workedGroundMask', scope: 'CPU production masks; no native/performance acceptance', receipts }));
