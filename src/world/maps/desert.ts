@@ -279,7 +279,7 @@ export default {
     // tanks), convoy dressing + defended-crossroads clutter
     tankWrecks: {
       era: 'modern', count: 5, debris: true,
-      ids: ['m1a2', 't90m', 'merkava3d', 'ariete', 'type99a'],
+      ids: ['m60a3', 'merkava4b', 'm1a2', 'type99a', 'ariete'],
     },
     sandbagLines: 12,
     hedgehogs: 8,

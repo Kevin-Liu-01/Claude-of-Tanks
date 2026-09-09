@@ -270,7 +270,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         created.stageMark = sampleNow;
       };
       const yieldForeground = dependencies.foregroundYielder?.()
-        ?? createOpaqueLoadingYielder(24, 80);
+        // Keep covered construction responsive: 80 ms permits five display
+        // intervals between frame requests even before a slow slice overruns.
+        ?? createOpaqueLoadingYielder(12, 32);
       const yieldBackground = dependencies.backgroundYielder?.()
         ?? createFrameBudgetYielder(4);
 
@@ -287,6 +289,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
           created.stageLabel = label;
           created.stageMark = sampleNow;
         }
+        // Fine construction checkpoints still pace and cancel independently.
+        // Only observable changes need to repeat the loading UI's DOM work.
+        if (label === created.label && fraction === created.fraction) return;
         created.label = label;
         created.fraction = fraction;
         for (const listener of created.listeners) {

@@ -1259,6 +1259,7 @@ export function createLighting(
         cascadeLimit = csm.lights.length,
         signal,
         isCurrent,
+        casterWarmup,
       }: ShadowPrimeOptions = {},
     ): Promise<number[]> {
       signal?.throwIfAborted();
@@ -1278,7 +1279,7 @@ export function createLighting(
       const gl = renderer2.getContext();
       const timings = await primeShadowCascades({
         renderer: renderer2, scene: scene2, camera: camera2,
-        lights: csm.lights, count: primeCount, yieldBeforeCascade, signal, isCurrent,
+        lights: csm.lights, count: primeCount, yieldBeforeCascade, signal, isCurrent, casterWarmup,
       });
       signal?.throwIfAborted();
       // Revalidate the await handoff even for Garage callers without a lease.

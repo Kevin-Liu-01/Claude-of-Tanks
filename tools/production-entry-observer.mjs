@@ -233,8 +233,16 @@ export function installProductionEntryObserver() {
         stages: numericTree(network.stages),
         programCompile: programCompileReceipt(network.programCompile),
         scarCompile: programCompileReceipt(network.scarCompile),
-        shadowPrime: network.shadowPrime ? Object.fromEntries(['cascadeCount', 'totalMs', 'maxMs']
-          .map((key) => [key, finite(network.shadowPrime[key])])) : null,
+        shadowPrime: network.shadowPrime ? {
+          ...Object.fromEntries(['cascadeCount', 'totalMs', 'maxMs']
+            .map((key) => [key, finite(network.shadowPrime[key])])),
+          ...(network.shadowPrime.casterWarmup ? { casterWarmup: {
+            ...Object.fromEntries(['batches', 'casterCount', 'totalMs', 'maxMs']
+              .map((key) => [key, finite(network.shadowPrime.casterWarmup[key])])),
+            batchMs: Array.isArray(network.shadowPrime.casterWarmup.batchMs)
+              ? network.shadowPrime.casterWarmup.batchMs.slice(0, 128).map(finite) : [],
+          } } : {}),
+        } : null,
         blackCheck: network.blackCheck ? { before: finite(network.blackCheck.before),
           after: finite(network.blackCheck.after), rescued: network.blackCheck.rescued === true,
           error: !!network.blackCheck.error || network.blackCheck.failed === true,

@@ -232,7 +232,7 @@ export default {
     // snow-cap shader dusts them like every prop), frozen supply columns
     tankWrecks: {
       era: 'modern', count: 5, debris: true,
-      ids: ['k2', 'type10', 't80u', 'leo2a7', 't90m'],
+      ids: ['cv90', 'strv122', 'k2', 'type10', 't80u'],
     },
     sandbagLines: 10,
     hedgehogs: 8,

@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { compactWreckGeometry, compactWreckGeometrySteps, mergeWreckGeometries } from './exactWreckGeometry.ts';
+import { compactWreckGeometry, compactWreckGeometrySteps, compactWreckGeometryForPaintSteps,
+  mergeWreckGeometries } from './exactWreckGeometry.ts';
 
 const owned = new Set();
 const own = geometry => { owned.add(geometry); return geometry; };
@@ -130,11 +131,11 @@ function stagedFixture() {
   return geometry;
 }
 
-function checkCompactionCancellation(stages) {
+function checkCompactionCancellation(stages, makeGeometry = stagedFixture, prepare = compactWreckGeometrySteps) {
   for (let checkpoint = 0; checkpoint < stages.length; checkpoint++) {
     for (const method of ['return', 'throw']) {
-      const geometry = stagedFixture(), original = snapshot(geometry);
-      const cancelled = compactWreckGeometrySteps(geometry);
+      const geometry = makeGeometry(), original = snapshot(geometry);
+      const cancelled = prepare(geometry);
       for (let i = 0; i <= checkpoint; i++) assert.equal(cancelled.next().value.stage, stages[i]);
       if (method === 'return') assert.equal(cancelled.return(geometry).done, true);
       else {
@@ -147,9 +148,9 @@ function checkCompactionCancellation(stages) {
   }
 }
 
-function checkCompactionInterleaving(control) {
-  const jobs = [stagedFixture(), stagedFixture()].map(geometry => ({ geometry,
-    before: snapshot(geometry), steps: compactWreckGeometrySteps(geometry), done: false }));
+function checkCompactionInterleaving(control, makeGeometry = stagedFixture, prepare = compactWreckGeometrySteps) {
+  const jobs = [makeGeometry(), makeGeometry()].map(geometry => ({ geometry,
+    before: snapshot(geometry), steps: prepare(geometry), done: false }));
   while (jobs.some(job => !job.done)) for (const job of jobs) {
     if (job.done) continue;
     const result = job.steps.next(); job.done = result.done;
@@ -207,8 +208,77 @@ function checkStagedCompaction() {
   checkCompactionInterleaving(control);
 }
 
+function paintInput(unique = 3072, count = 6144) {
+  const geometry = own(new THREE.BufferGeometry());
+  const position = new Float32Array(count * 3), normal = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    position[i * 3] = i % unique;
+    normal[i * 3 + 1] = 1;
+  }
+  geometry.setAttribute('position', new THREE.BufferAttribute(position, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+  return geometry;
+}
+
+function paintDerivedColor(geometry) {
+  const { position, normal } = geometry.attributes, values = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i++) {
+    values[i * 3] = Math.sin(position.getX(i) * 0.37);
+    values[i * 3 + 1] = normal.getY(i) * 0.4;
+    values[i * 3 + 2] = position.getZ(i) * 0.13 + 0.2;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(values, 3));
+}
+
+function checkPrePaintCompaction(unique, count) {
+  const control = paintInput(unique, count), geometry = paintInput(unique, count);
+  paintDerivedColor(control); compactWreckGeometry(control);
+  const before = snapshot(geometry), stages = [], steps = compactWreckGeometryForPaintSteps(geometry);
+  let next = steps.next();
+  while (!next.done) {
+    assertUntouched(geometry, before);
+    stages.push(next.value.stage); next = steps.next();
+  }
+  assert.equal(next.value, true, 'P/N certification includes non-saving inputs');
+  paintDerivedColor(geometry);
+  assert.deepEqual(geometry.index?.array ?? null, control.index?.array ?? null);
+  assert.equal(geometry.index?.array.constructor, control.index?.array.constructor);
+  assert.deepEqual(orderedWords(geometry), orderedWords(control));
+  for (const name of Object.keys(control.attributes)) {
+    assert.deepEqual(geometry.attributes[name].array, control.attributes[name].array,
+      'first-occurrence representatives and exact stored colors match paint-then-compact');
+  }
+  return { geometry, stages };
+}
+
+function checkPrePaintCases() {
+  const { geometry, stages } = checkPrePaintCompaction(3072, 6144);
+  checkCompactionCancellation(stages, paintInput, compactWreckGeometryForPaintSteps);
+  checkCompactionInterleaving(geometry, paintInput, compactWreckGeometryForPaintSteps);
+  const narrowSaving = checkPrePaintCompaction(28, 30).geometry;
+  assert.ok(narrowSaving.index, 'future RGB makes a real saving that P/N-only byte accounting would reject');
+  const naive = paintInput(28, 30); compactWreckGeometry(naive);
+  assert.equal(naive.index, null, 'negative control proves this threshold fixture is discriminating');
+  assert.equal(checkPrePaintCompaction(34, 36).geometry.index, null,
+    'equal retained/source bytes keep the original non-indexed representation');
+  for (const unique of [65535, 65536]) checkPrePaintCompaction(unique, unique * 3);
+  for (const modify of [
+    g => g.deleteAttribute('normal'),
+    g => g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(6144 * 3), 3)),
+    g => g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(6144 * 2), 2)),
+    g => g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(6144 * 2), 2)),
+    g => g.attributes.normal.setUsage(THREE.DynamicDrawUsage),
+    g => g.setIndex([0, 1, 2]),
+  ]) {
+    const input = paintInput(); modify(input); const before = snapshot(input);
+    assert.deepEqual(compactWreckGeometryForPaintSteps(input).next(), { done: true, value: false });
+    assertUntouched(input, before);
+  }
+}
+
 try {
   checkStagedCompaction();
+  checkPrePaintCases();
   const geometry = triangleFixture();
   geometry.name = 'test-wreck'; geometry.userData.owner = { name: 'static-wreck-owner' };
   geometry.addGroup(0, 9, 2); geometry.addGroup(9, 15, 4); geometry.setDrawRange(3, 12);

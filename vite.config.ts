@@ -112,6 +112,8 @@ function forceNotFoundStatus(res: ServerResponse): void {
 }
 
 export default defineConfig({
+  // Static wreck workers retain the same on-demand fleet-family imports.
+  worker: { format: 'es' },
   plugins: [
     {
       name: 'cot-app-version',

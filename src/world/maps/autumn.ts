@@ -179,7 +179,7 @@ export default {
     // tanks) + harvest-season logistics dressing
     tankWrecks: {
       era: 'modern', count: 5, debris: true,
-      ids: ['t90a', 't80u', 'm1a1', 'k2', 'challenger2'],
+      ids: ['m60a2', 'ua_t84_oplot_m', 't90a', 'm1a1', 't80u'],
     },
     sandbagLines: 10,
     hedgehogs: 5,

@@ -53,6 +53,7 @@ import {
 import {
   appendStructureCollisionBand, applyStructureCollisionBand,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
+  deriveRuntimeStructureContactBand,
 } from './structureCollision.ts';
 import {
   attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES,
@@ -67,7 +68,9 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { bakeTankWreckSteps, bakeWreckDebris } from './wrecks.ts';
+import { createWreckBakeClient } from './wreckBakeClient.ts';
+import { resolveWreckRoster } from './wreckRoster.ts';
 import { mergeWreckGeometries } from './exactWreckGeometry.ts';
 import { fitWallSpan, wallIslandEdges, type WallSpan } from './wallSpanPlacement.ts';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
@@ -468,6 +471,7 @@ interface PropsBuildSlice {
   /** Internal batches pace work without consuming another placement stage. */
   progress?: boolean;
   tankBuilder?: string;
+  wreckBake?: { specId: string; options: { seed: number; pop: boolean }; result: WreckBake | null };
   stage?: string;
 }
 
@@ -2327,8 +2331,11 @@ export async function createPropsAsync(
   // IteratorClose must reach delegated builders when an awaited import/tick
   // rejects. Use the standard iterator return() contract: no final runtime is
   // published on cancellation, and nested builders release partial owners.
+  const wreckCount = cfg?.props?.tankWrecks
+    ? (cfg.props.tankWrecks.count ?? 3) : (cfg?.props?.wrecks ?? 4);
+  const wreckWorker = typeof Worker === 'undefined' || wreckCount <= 0 ? null : createWreckBakeClient();
   const g: Iterator<PropsBuildSlice | undefined, PropsRuntime, void> =
-    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation);
+    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null);
   const slices: Array<{ stage: string; ms: number }> = [];
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
@@ -2336,12 +2343,18 @@ export async function createPropsAsync(
   let i = 0;
   const total = fineSlices ? 180 : 9;
   try {
+    wreckWorker?.prepare();
     while (!r.done) {
       const sliceMs = performance.now() - nextStartedAt;
       synchronousMs += sliceMs;
       const step = r.value;
       slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
-      if (step?.tankBuilder) await ensureTankBuilder(step.tankBuilder);
+      if (step?.tankBuilder && !wreckWorker) await ensureTankBuilder(step.tankBuilder);
+      if (step?.wreckBake && wreckWorker) {
+        const request = step.wreckBake;
+        request.result = await wreckWorker.bake(request.specId, request.options,
+          () => tick?.(i, total));
+      }
       if (tick && (fineSlices || !step || !step.fine)) {
         if (step?.progress !== false) i++;
         await tick(i, total);
@@ -2366,6 +2379,7 @@ export async function createPropsAsync(
       // Cleanup must not replace the failed import/tick/build outcome.
       try { g.return?.(); } catch (_) { /* retain the original failure */ }
     }
+    wreckWorker?.dispose();
   }
 }
 
@@ -2375,6 +2389,7 @@ function* propsBuildSteps(
   seed: number,
   cfg: PropsMapConfig | null,
   vegetation: FisheryVegetation | null,
+  workerWrecks = false,
 ): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
   const P: PropsSettings = {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
@@ -4896,7 +4911,8 @@ ${snowCap ? `
     if (wreckCount > 0) {
       const wrng = mulberry32(seed + 909);
       const era = (wCfg && wCfg.era) || 'ww2';
-      const pool = (wCfg && wCfg.ids) || wreckPool(era);
+      const pool = resolveWreckRoster(era, wCfg?.ids);
+      if (pool.length === 0) return;
       const bakeCache = new Map<string, WreckBake | null>(); // specId|pop -> bake result
       const wreckGeos: THREE.BufferGeometry[] = [];
       const wreckShadowGeos: THREE.BufferGeometry[] = []; // factory shadow proxies, wreck-posed
@@ -4906,9 +4922,24 @@ ${snowCap ? `
       function* bakeFor(specId: string, pop: boolean): Generator<PropsBuildSlice, WreckBake | null, void> {
         const key = specId + (pop ? '|p' : '');
         if (bakeCache.has(key)) return bakeCache.get(key) ?? null;
-        const baked = yield* bakeTankWreckSteps(engineCtx, specId, {
-          seed: seed + bakeCache.size * 131, pop,
-        });
+        const options = { seed: seed + bakeCache.size * 131, pop };
+        let baked: WreckBake | null;
+        if (workerWrecks) {
+          const request: NonNullable<PropsBuildSlice['wreckBake']> = { specId, options, result: null };
+          try {
+            yield { fine: true, progress: false, stage: `wreck-${specId}:worker`, wreckBake: request };
+            baked = request.result;
+            request.result = null; // cache below becomes the sole owner
+          } finally {
+            // A cancelled tick may close us after transfer but before next().
+            if (request.result) {
+              disposeWreckGeometry(request.result.geo);
+              if (request.result.shadowGeo) disposeWreckGeometry(request.result.shadowGeo);
+            }
+          }
+        } else {
+          baked = yield* bakeTankWreckSteps(engineCtx, specId, options);
+        }
         bakeCache.set(key, baked);
         return baked;
       }
@@ -4918,10 +4949,10 @@ ${snowCap ? `
         yaw: number,
       ): Generator<PropsBuildSlice, boolean, void> {
         // Explicit map pools are deliberate story casts: consume them in
-        // order so the complete modern wreck vocabulary is guaranteed across
-        // the legacy-map set. Unauthored pools retain seeded random variety.
+        // order so new silhouettes are used across the battlefield roster,
+        // including the two-wreck mobile cap. Unauthored pools stay seeded.
         const specId = wCfg?.ids?.length
-          ? pool[wreckPickSerial++ % pool.length]
+          ? pool[wreckPickSerial % pool.length]
           : pool[(wrng() * pool.length) | 0];
         const pop = wrng() < 0.45; // mix ammo-rack tosses with unseated kills
         // The async world builder resolves only the selected wreck's authored
@@ -4989,6 +5020,9 @@ ${snowCap ? `
           baseClearance: support.maxFloat,
           supportMin: support.min, supportMax: support.max,
         });
+        // A rejected slope/bake is not a placed wreck. Retry this donor on the
+        // next supported site instead of skipping it and later repeating one.
+        wreckPickSerial++;
         return true;
       }
       let placedW = 0;
@@ -5884,7 +5918,7 @@ ${snowCap ? `
     const source = DESTRUCTIBLE_BUILDING_TYPES[kind]
       ? deriveRuntimeStructureCollisionWithSolids({ baked: [geometry] }) : null;
     const contactBand = source?.profile.contact
-      ?? deriveRuntimeStructureCollisionProfile({ baked: [geometry] }).contact;
+      ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledBand = record.sc === 1 ? contactBand : {
@@ -5944,7 +5978,38 @@ ${snowCap ? `
     }
     imI.instanceColor!.needsUpdate = true;
   }
-  function finalizeDestructiblePool(kind: string, pool: DestructiblePool): void {
+  function* prepareDestructiblePoolGeometry(
+    kind: string, pool: DestructiblePool,
+  ): Generator<PropsBuildSlice, {
+    geoI: THREE.BufferGeometry; groundCoverDetail: GroundCoverSolidProfile | null;
+  }, void> {
+    const geoI = pool.meta.build(drng);
+    let transferred = false;
+    try {
+      const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
+      let fitted = 0;
+      for (let index = 0; index < pool.records.length; index++) {
+        const record = pool.records[index];
+        const span = wallSpans.get(record);
+        if (!span) continue;
+        // Complete each terrain fit in the original order; only the boundary
+        // between records changes. Micro-batches do not advance loading progress.
+        fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG);
+        if (++fitted % 8 === 0 && index + 1 < pool.records.length) {
+          yield { fine: true, progress: false, stage: 'wall-fit-' + kind };
+        }
+      }
+      transferred = true;
+      return { geoI, groundCoverDetail };
+    } finally {
+      // No mesh owns this geometry yet. IteratorClose on cancellation must
+      // release it before the next pool can build or be published.
+      if (!transferred) geoI.dispose();
+    }
+  }
+  function* finalizeDestructiblePool(
+    kind: string, pool: DestructiblePool,
+  ): Generator<PropsBuildSlice, void, void> {
     const meta = pool.meta;
     // Wall modules use the map-toned masonry materials; other objects keep
     // the wood, straw, vehicle, or baked family selected by their metadata.
@@ -5958,12 +6023,7 @@ ${snowCap ? `
       configureWorldLampMaterial(material);
       retainedSurfaceMaterials.push(material);
     }
-    const geoI = meta.build(drng);
-    const groundCoverDetail = refitDestructibleColliders(geoI, pool, kind);
-    for (const record of pool.records) {
-      const span = wallSpans.get(record);
-      if (span) fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG);
-    }
+    const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
@@ -5996,7 +6056,7 @@ ${snowCap ? `
   function* finalizeDestructiblePools(): Generator<PropsBuildSlice | undefined, void, void> {
     for (const [kind, pool] of dPools) {
       yield; // perf-r3: one instanced-pool build per slice (geometry per kind)
-      finalizeDestructiblePool(kind, pool);
+      yield* finalizeDestructiblePool(kind, pool);
     }
   }
   yield* finalizeDestructiblePools();

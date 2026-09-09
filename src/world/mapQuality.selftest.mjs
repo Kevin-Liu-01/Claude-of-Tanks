@@ -10,7 +10,12 @@ import {
 } from './maps/horizon.ts';
 import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
+import { isPublicWreckDonor, WRECK_ROSTER_POOLS } from './wreckRoster.ts';
 import './treeGrounding.selftest.mjs';
+
+// Match the world's metadata-registration boundary, without acquiring any
+// vehicle geometry. Bare specs also retain incomplete/hidden donor records.
+await import('../vehicles/fleetFactory.ts');
 
 const EXPANSION = [
   'frontier', 'fjord', 'delta', 'badlands',
@@ -19,16 +24,18 @@ const EXPANSION = [
 const EXTREME = ['ruinspires', 'blackglass', 'titan_gorge', 'skybridge'];
 const LEGACY = ['verdant', 'desert', 'winter', 'urban',
   'coastal', 'autumn', 'steppe', 'railyard'];
-const MODERN_FAMILIES = [
-  'm1a2', 't90m', 'leo2a7', 'm1a1', 't90a', 't80u', 'challenger2',
-  'leclerc', 'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete',
-];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 const LAYERED_TREELINES = new Map([
   ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
 ]);
 const polePolicyByMap = new Map();
+const battlefieldWrecks = new Set();
+const mobileWrecks = new Set();
+// Existing desktop caps are deliberate scene budgets, not a variety knob.
+const extraWreckBudget = { urban: 6, railyard: 6, frontier: 6, delta: 6,
+  badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
+  ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8 };
 
 assert.equal(MAP_IDS.length, 30, 'the battlefield roster contains thirty maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
@@ -46,6 +53,17 @@ for (const mapId of MAP_IDS) {
   assert.ok(config.name && config.blurb, `${mapId}: player-facing copy exists`);
   assert.ok(config.terrain && config.vegetation && config.props && config.sky,
     `${mapId}: complete biome configuration`);
+  const cast = config.props.tankWrecks;
+  assert.equal(cast.count, extraWreckBudget[mapId] ?? 5,
+    `${mapId}: more wreck types never raise the existing placement budget`);
+  assert.equal(cast.ids.length, cast.count, `${mapId}: every wreck slot has an authored donor`);
+  assert.equal(new Set(cast.ids).size, cast.ids.length, `${mapId}: no repeated donor in a map cast`);
+  for (const id of cast.ids) {
+    assert.ok(isPublicWreckDonor(id), `${mapId}/${id}: wreck donor is actually publicly playable`);
+    assert.ok(WRECK_ROSTER_POOLS.modern.includes(id), `${mapId}/${id}: curated modern battlefield donor`);
+    battlefieldWrecks.add(id);
+  }
+  cast.ids.slice(0, 2).forEach(id => mobileWrecks.add(id));
   const treelineLayers = resolveHorizonTreelineLayers(config.horizon);
   assert.ok(Number.isInteger(treelineLayers)
     && treelineLayers >= 1 && treelineLayers <= HORIZON_TREELINE_MAX_LAYERS,
@@ -127,6 +145,11 @@ for (const mapId of MAP_IDS) {
       `${mapId}: strongpoints distribute choices instead of forming one clutter knot`);
   }
 }
+
+assert.deepEqual([...battlefieldWrecks].sort(), [...WRECK_ROSTER_POOLS.modern].sort(),
+  'every modern wreck donor is authored into real map placements, not only a fallback pool');
+assert.deepEqual([...mobileWrecks].sort(), [...WRECK_ROSTER_POOLS.modern].sort(),
+  'the complete wreck variety is represented within the existing two-slot mobile casts');
 
 const cityMaterialMaps = ['urban', 'foundry', 'ruinspires', 'blackglass', 'skybridge', 'caldera'];
 const repairedHeavyFamilies = ['factory', 'foundryoffice', 'depot', 'warehouse', 'firestation'];
@@ -261,8 +284,6 @@ for (const mapId of ['titan_gorge', 'skybridge']) {
     `${mapId}: distant skyline reads at Grand Canyon scale`);
 }
 
-const legacyWreckFamilies = new Set();
-const legacyMobileWreckFamilies = new Set();
 for (const mapId of LEGACY) {
   const config = getMapConfig(mapId);
   const wrecks = config.props.tankWrecks;
@@ -270,18 +291,12 @@ for (const mapId of LEGACY) {
   assert.equal(wrecks.era, 'modern', `${mapId}: modern wreck backport`);
   assert.equal(wrecks.debris, true, `${mapId}: detached wreck debris backport`);
   assert.equal(wrecks.ids.length, wrecks.count, `${mapId}: deliberate no-repeat wreck cast`);
-  wrecks.ids.forEach((id) => legacyWreckFamilies.add(id));
-  wrecks.ids.slice(0, 2).forEach((id) => legacyMobileWreckFamilies.add(id));
   const clutter = config.props.inhabit.modernClutter;
   assert.equal(typeof clutter, 'object', `${mapId}: authored modern-clutter mix`);
   for (const kind of CLUTTER_FAMILIES) {
     assert.ok(clutter[kind] >= 3, `${mapId}: ${kind} family backported`);
   }
 }
-assert.deepEqual([...legacyWreckFamilies].sort(), [...MODERN_FAMILIES].sort(),
-  'legacy maps collectively cover the complete modern wreck roster');
-assert.deepEqual([...legacyMobileWreckFamilies].sort(), [...MODERN_FAMILIES].sort(),
-  'two-wreck mobile budgets collectively cover the complete modern wreck roster');
 
 for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
   const cfg = getMapConfig(mapId);

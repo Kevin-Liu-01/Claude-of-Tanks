@@ -11,7 +11,7 @@ import {
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
 } from './terrain.ts';
-import type { HeightField } from './terrain.ts';
+import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
   createVegetation,
   createVegetationAsync,
@@ -25,6 +25,7 @@ import {
 import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
+import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import {
   createObstacleGrid,
   rayCollisionRecord,
@@ -219,6 +220,8 @@ export async function createMapAsync(
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
   // parsed before even the height field could start.
   const propModelsReady = preloadPropModels();
+  const terrainConfig: TerrainMapConfig = config;
+  const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {});
   const step = async (label: string, fraction: number): Promise<void> => {
     if (onStep) await onStep(label, fraction);
   };
@@ -242,7 +245,7 @@ export async function createMapAsync(
       // Heightfield/collision/spotting data remains complete and deterministic.
       streamFarLods: true,
       focus: heightField._layout.spawns.player,
-    }));
+    }, terrainSources));
   await step('Planting vegetation', 0.58);
   const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
     sub('Planting vegetation', 0.58, 0.82), fineSlices);

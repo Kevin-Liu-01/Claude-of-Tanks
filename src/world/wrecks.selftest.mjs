@@ -4,7 +4,8 @@ import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreck, bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
 
 assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
-assert.ok(wreckPool('ww2').length >= 6, 'WWII wreck pool remains populated');
+assert.deepEqual(wreckPool('ww2'), ['kv2', 'jpz_e100_x'],
+  'historical wrecks use the retained public vehicles, never retired donors');
 assert.ok(wreckPool('cold-war').includes('m60a1'), 'Cold War wreck pool uses period vehicles');
 assert.ok(wreckPool('next-generation').includes('kf51'), 'next-generation maps retain current wreck language');
 

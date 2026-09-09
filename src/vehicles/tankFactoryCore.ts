@@ -10141,7 +10141,10 @@ export function createTank(
     const authoredRanges = authoredRangesFor(list);
     prepareVehicleNightLensParts(list);
     const merged = mergeAll(list);
-    if (CAMO_BUCKETS.has(bucket)) {
+    // Non-rendering consumers retain geometry, not this temporary paint.
+    // Static wrecks replace both UVs and vertex colors in their final bake;
+    // keep the rendered/inspection path unchanged.
+    if (!geometryOnly && CAMO_BUCKETS.has(bucket)) {
       boxUV(merged, spec.visual.camoScale ?? 0.34);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);

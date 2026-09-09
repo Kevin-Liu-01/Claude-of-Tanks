@@ -97,7 +97,8 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: true,
     rocks: 286, outcrops: 78, craters: 88, rubblePiles: 58,
     hedgehogs: 30, sandbagLines: 28,
-    tankWrecks: { era: 'modern', count: 8, debris: true },
+    tankWrecks: { era: 'modern', count: 8, debris: true,
+      ids: ['k2', 'type10', 'type90', 'k1a1', 'm2a2_bradley', 'pl01', 'leclerc_xlr', 'm1a2_sepv3'] },
     inhabit: {
       stalls: 0, benches: 2, coreClutter: 32, drums: 18,
       trucks: 10, jeeps: 7, drumClusters: 10, camps: 4, modernClutter: 36,

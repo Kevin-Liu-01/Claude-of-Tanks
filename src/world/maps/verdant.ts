@@ -107,7 +107,7 @@ export default {
     // all destructible (drive-through, shell-breakable)
     tankWrecks: {
       era: 'modern', count: 5, debris: true,
-      ids: ['m1a1', 'leo2a7', 'challenger2', 'leclerc', 't90a'],
+      ids: ['m551_sheridan', 'marder1a3', 'leo2a7v', 'm1a1', 't90a'],
     },
     sandbagLines: 12,
     hedgehogs: 6,

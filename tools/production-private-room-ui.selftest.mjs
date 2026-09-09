@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { productionUiOptions, validateUiProgress, cleanupProductionUi,
@@ -1099,6 +1100,72 @@ assert.deepEqual(incomplete, { roomCleanupVerified: false, browserClosed: false,
 assert.equal(kills, 1, 'failed native close still terminates only the browser process owned by this probe');
 
 let launchCalls = 0;
+// Puppeteer Error subclasses can inherit name='Error'; class identity still
+// distinguishes a native navigation wait from a timed-out CDP operation.
+class TimeoutError extends Error {}
+class ProtocolError extends Error {}
+class TargetCloseError extends Error {}
+for (const [error, expected] of [
+  [new TimeoutError('Navigation timeout of 60000 ms exceeded; PRIVATE_URL'), 'wait-timeout'],
+  [new ProtocolError('Page.navigate timed out. PRIVATE_URL protocolTimeout'), 'protocol-timeout'],
+  [new ProtocolError('Protocol error: Session closed PRIVATE_URL'), 'target-closed'],
+  [new ProtocolError('PRIVATE_PROTOCOL_REJECTION'), 'protocol-error'],
+  [new TargetCloseError('PRIVATE_TARGET'), 'target-closed'],
+  [new Error('Page.navigate timed out. PRIVATE_URL protocolTimeout'), 'unknown'],
+]) {
+  assert.equal(error.name, 'Error', 'fixture reproduces inherited rather than overridden Error.name');
+  const projected = relayProbe.productionDiagnosticDetails(error);
+  assert.equal(projected.operationFailure, expected);
+  assert.doesNotMatch(JSON.stringify(projected), /PRIVATE|Page\.navigate|Navigation timeout|stack/);
+}
+for (const failedStage of ['guest_invite_navigation', 'guest_invite_membership', 'host_invite_membership']) {
+  const stages = [];
+  let pageCount = 0, browserCloses = 0;
+  const failure = failedStage === 'guest_invite_navigation'
+    ? new ProtocolError('Page.navigate timed out. PRIVATE_INVITE')
+    : new TimeoutError('Waiting for PRIVATE_MEMBERSHIP failed');
+  const browser = Object.assign(new EventEmitter(), {
+    process: () => ({ spawnargs: ['node', '--headless=new'] }),
+    async close() { browserCloses++; },
+    async createBrowserContext() {
+      const role = pageCount++ === 0 ? 'host' : 'guest';
+      let href = 'https://game.example.test/';
+      return { async newPage() { return Object.assign(new EventEmitter(), {
+        isClosed: () => false, url: () => href,
+        setDefaultTimeout() {}, setDefaultNavigationTimeout() {},
+        async setCacheEnabled() {}, async setViewport() {}, async bringToFront() {},
+        async waitForSelector() {}, async click() {},
+        async goto(next) {
+          href = next;
+          if (stages.at(-1) === failedStage) throw failure;
+        },
+        async waitForFunction(predicate) {
+          assert.match(predicate.toString(), /\.players/);
+          if (stages.at(-1) === failedStage) throw failure;
+          assert.equal(role, 'guest', 'guest membership succeeds before the host membership wait');
+        },
+        async $$eval() { return ['solo', 'private', 'lan']; },
+        async $eval(selector, read) {
+          return read({ value: 'wss://signal.example.test/rooms', textContent: 'ABCD12' });
+        },
+        async evaluate() { return { phase: 'garage', hasRoomUrl: false }; },
+      }); } };
+    },
+  });
+  await assert.rejects(verifyProductionPrivateRoomUi({ url: 'https://game.example.test',
+    onStage: stage => stages.push(stage), launchBrowser: async () => browser,
+  }), error => {
+    assert.equal(error.stage, failedStage, 'the exact failing native invite operation is retained');
+    assert.equal(error.operationFailure, failedStage === 'guest_invite_navigation' ? 'protocol-timeout' : 'wait-timeout');
+    assert.equal(error.cleanup.roomCleanupVerified, true);
+    assert.equal(error.cleanup.browserClosed, true);
+    assert.doesNotMatch(JSON.stringify(error), /PRIVATE|ABCD12|signal\.example|stack/);
+    assert.doesNotMatch(JSON.stringify(relayProbe.productionFailureEvidence(error)), /PRIVATE|ABCD12/);
+    return true;
+  });
+  assert.equal(stages.at(-1), failedStage, 'failed invite work cannot proceed to Ready or entry');
+  assert.equal(browserCloses, 1, 'the existing browser owner still closes exactly once');
+}
 for (const diagnosticCode of ['frame_trace_start_failed', 'frame_trace_stop_failed',
   'frame_trace_cleanup_failed', 'feedback_qa_unavailable', 'feedback_sample_missing',
   'feedback_ammo_selection_timeout', 'predicted_feedback_confirmation_mismatch',

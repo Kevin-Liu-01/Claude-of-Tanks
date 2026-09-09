@@ -86,8 +86,11 @@ export function createOpaqueLoadingYielder(
 
   return async (force = false) => {
     const checkpoint = now();
-    if (!force && checkpoint - sliceStart < budgetMs) return;
-    if (checkpoint - lastPaint >= paintEveryMs) {
+    // Other preparation jobs can consume the paint interval while this job
+    // awaits a task. A fresh task slice must not hide an overdue frame request.
+    const paintDue = checkpoint - lastPaint >= paintEveryMs;
+    if (!force && !paintDue && checkpoint - sliceStart < budgetMs) return;
+    if (paintDue) {
       await yieldFrame();
       lastPaint = now();
     } else {

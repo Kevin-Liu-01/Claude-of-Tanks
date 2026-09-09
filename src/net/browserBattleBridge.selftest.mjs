@@ -506,7 +506,7 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
     assert.deepEqual(waits, [
       ['task', 0, 0],
       ['task', 8, 2], ['task', 16, 4], ['task', 24, 6], ['task', 32, 8],
-      ['task', 40, 10], ['task', 48, 12], ['frame', 56, 14],
+      ['task', 40, 10], ['task', 48, 12], ['frame', 52, 13],
     ], '8ms exhausted slices yield tasks and the first checkpoint past 50ms permits a progress frame');
     assert.ok(fixture.visuals.every(({ visual }) => !visual.visible));
     const firstActors = [...fixture.bridge.entities.values()];

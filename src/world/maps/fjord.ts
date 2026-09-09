@@ -80,7 +80,8 @@ export default {
     buildingLat: [11, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
     rocks: 245, outcrops: 42, craters: 54, rubblePiles: 18, hedgehogs: 14,
-    sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true },
+    sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true,
+      ids: ['leo2a7v', 't90a', 'cv90', 'strv122', 'marder1a3'] },
     inhabit: {
       stalls: 1, benches: 4, coreClutter: 22, trucks: 5, jeeps: 3,
       drumClusters: 6, camps: 2, modernClutter: 20,

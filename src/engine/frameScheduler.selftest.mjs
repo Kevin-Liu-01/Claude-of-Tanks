@@ -128,4 +128,75 @@ now = 81;
 await coveredYield(true);
 assert.equal(taskYields, 2, 'forced checkpoints still avoid unnecessary paints');
 
+{
+  let clock = 0;
+  let taskDelay = 66;
+  const frames = [];
+  const tasks = [];
+  const yieldWork = createOpaqueLoadingYielder(24, 80, {
+    now: () => clock,
+    yieldFrame: async () => { frames.push(clock); clock += 17; },
+    yieldTask: async () => { tasks.push(clock); clock += taskDelay; },
+  });
+  await yieldWork();
+  clock = 23;
+  await yieldWork();
+  assert.deepEqual([tasks, frames], [[], []], 'cheap checkpoints preserve the initial work budget');
+
+  clock = 24;
+  await yieldWork();
+  assert.equal(clock, 90, 'other work may consume wall time while the task yield is pending');
+  assert.deepEqual(tasks, [24]);
+  assert.deepEqual(frames, []);
+  await yieldWork();
+  assert.deepEqual(frames, [90],
+    'an overdue paint wins even when task completion just reset the slice budget');
+  assert.equal(clock, 107);
+
+  taskDelay = 0;
+  await yieldWork();
+  clock = 130;
+  await yieldWork();
+  assert.deepEqual(tasks, [24], 'frame completion starts a fresh cheap-work budget');
+  clock = 131;
+  await yieldWork();
+  assert.deepEqual(tasks, [24, 131], 'the fresh task budget expires at its exact boundary');
+  clock = 186;
+  await yieldWork();
+  assert.deepEqual(frames, [90], 'the next paint deadline starts at frame completion, not request time');
+  clock = 187;
+  await yieldWork();
+  assert.deepEqual(frames, [90, 187], 'the exact paint deadline bypasses a one-millisecond-old slice');
+  assert.equal(clock, 204);
+
+  await yieldWork(true);
+  assert.deepEqual(tasks, [24, 131, 186, 204], 'force still yields a task before the paint deadline');
+  clock = 284;
+  await yieldWork(true);
+  assert.deepEqual(frames, [90, 187, 284], 'force still selects a frame once the paint deadline is due');
+}
+
+for (const kind of ['task', 'frame']) {
+  let clock = 0;
+  const calls = [];
+  const expected = new Error(`${kind} yield failed`);
+  let failure = expected;
+  const perform = async selected => {
+    calls.push(selected);
+    if (failure) throw failure;
+  };
+  const yieldWork = createOpaqueLoadingYielder(12, 80, {
+    now: () => clock,
+    yieldFrame: () => perform('frame'),
+    yieldTask: () => perform('task'),
+  });
+  clock = kind === 'frame' ? 80 : 12;
+  await assert.rejects(yieldWork(), error => error === expected,
+    `${kind} rejection must reach the construction owner unchanged`);
+  assert.deepEqual(calls, [kind]);
+  failure = null;
+  await yieldWork();
+  assert.deepEqual(calls, [kind, kind], 'a failed yield does not pretend its deadline was serviced');
+}
+
 console.log('[frameScheduler] all tests passed');
