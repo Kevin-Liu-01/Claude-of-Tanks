@@ -60,11 +60,13 @@ try {
   refresh = setInterval(() => lock.refresh(), 30_000); refresh.unref();
   server = await createServer({ root: process.cwd(), logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
-    plugins: [{ name: 'resolved-depth-copy-fixture', configureServer(instance) {
+    // Serve the owned fixture before application route rewriting can turn this
+    // deliberately private test URL into the public not-found document.
+    plugins: [{ name: 'resolved-depth-copy-fixture', enforce: 'pre', configureServer(instance) {
       instance.middlewares.use((request, response, next) => {
         if (request.url !== '/__depth_copy_fixture') return next();
         response.setHeader('Content-Type', 'text/html');
-        response.end('<!doctype html><html><head><link rel="icon" href="data:,"></head><body></body></html>');
+        response.end('<!doctype html><html><head><link rel="icon" href="data:,"></head><body data-depth-copy-fixture="1"></body></html>');
       });
     } }],
   });
@@ -79,8 +81,12 @@ try {
   page.on('console', message => {
     if (message.type() === 'error' && report.errors.length < 12) report.errors.push(message.text());
   });
-  await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__depth_copy_fixture`,
+  const navigation = await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/__depth_copy_fixture`,
     { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  report.documentStatus = navigation?.status();
+  assert.equal(report.documentStatus, 200, 'owned native fixture must be served successfully');
+  assert.equal(await page.evaluate(() => document.body.dataset.depthCopyFixture), '1',
+    'native gate must run on its own fixture, not an application fallback document');
   await runFixture(page, report);
   assert.equal(sourceHash(), report.sourceHash, 'source changed during native acquisition');
   assert.deepEqual(report.errors, []);
