@@ -93,6 +93,7 @@ import {
 } from './specialActions.ts';
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
+import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from './matchPlacement.ts';
 import type {
   GameModeId,
   MatchModeController,
@@ -660,6 +661,12 @@ export function createAuthoritativeMatch({
   let countdownRemainingS = Math.max(0, finite(countdownS, 5));
   const staticObstacles = worldCollision && typeof worldCollision.getObstacles === 'function'
     ? worldCollision.getObstacles() : [];
+  const normalizedGameMode = normalizeGameMode(gameMode);
+  const placement = createMatchPlacement({
+    mapId,
+    heightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
+    anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
+  });
   const nearbyObstacles: AuthoritativeObstacle[] = [];
   const obstacleIndex = new Map<AuthoritativeObstacle, number>(
     staticObstacles.map((obstacle, index) => [obstacle, index]),
@@ -694,7 +701,9 @@ export function createAuthoritativeMatch({
     if (team === TEAM_SPECTATOR) return;
     const spec = getSpec(String(record.specId || ''));
     if (!spec) throw new TypeError(`unknown vehicle spec: ${String(record.specId)}`);
-    const pad = spawnFor(teamIndex[team]++, team, layout, record.spawn);
+    const preferred = spawnFor(teamIndex[team]++, team, layout, record.spawn);
+    const explicit = !!record.spawn && Number.isFinite(record.spawn.x) && Number.isFinite(record.spawn.z);
+    const pad = placement.spawn(preferred, id, placementTankRadius(spec), explicit);
     _spawn.set(pad.x, heightField.getHeightAt(pad.x, pad.z), pad.z);
     const state = createTankState(spec, _spawn, pad.yaw);
     const input = makeInput();
@@ -763,13 +772,13 @@ export function createAuthoritativeMatch({
     rng: mulberry32(seed + 31000),
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
-  const botNavigation = entities.some((entity) => entity.bot)
+  const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
     ? createBotNavigationGrid({
       heightField,
       queryObstacles: worldCollision?.queryObstacles || null,
       getObstacles: () => staticObstacles,
     })
-    : null;
+    : null);
 
   function initializeBot(entity: AuthoritativeEntity, index: number): void {
     const opponents = entities.filter((entry) => entry.team !== entity.team);
@@ -842,11 +851,11 @@ export function createAuthoritativeMatch({
     for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
   }
 
-  const normalizedGameMode = normalizeGameMode(gameMode);
   const modeController = createMatchModeController({
     mode: normalizedGameMode,
     entities,
     seed,
+    placement,
     revive: reviveForMode,
     setActive(entity, active) { entity.modeActive = active; },
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),

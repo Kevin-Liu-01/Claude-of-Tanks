@@ -337,6 +337,75 @@ function isValidNavigationGrid(navigation: BotNavigationGrid): boolean {
         && navigation.waterBlockedEdges.length === count);
 }
 
+/** Objective-only dry view: share immutable terrain values; never change the
+ * bot owner's blocked bytes or authored navigation policy. */
+export function createDryNavigationView(navigation: BotNavigationGrid, field: NavigationHeightField,
+  connectorClear: (x: number, z: number) => boolean): Readonly<BotNavigationGrid> {
+  if (!isValidNavigationGrid(navigation)) throw new TypeError('valid navigation grid required');
+  if (navigation.navigationWaterPolicy === 'avoid-liquid') return navigation;
+  return addDryNavigationPolicy(field, navigation.heights, navigation.blocked.slice(),
+    navigation.groundTypes, connectorClear);
+}
+
+function connectedNavigationCells(navigation: BotNavigationGrid, point: Position2,
+  clear: (from: Position2, to: Position2) => boolean, visit: (index: number) => boolean): boolean {
+  const cx = worldCell(point.x), cz = worldCell(point.z);
+  const target = { x: 0, z: 0 };
+  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+    const ix = cx + dx, iz = cz + dz;
+    if (isOutsideGrid(ix, iz)) continue;
+    const index = cellIndex(ix, iz);
+    if (navigation.blocked[index]) continue;
+    target.x = worldCoord(ix); target.z = worldCoord(iz);
+    if (clear(point, target) && visit(index)) return true;
+  }
+  return false;
+}
+
+function reachableNeighbor(node: HeapNode, direction: number, navigation: BotNavigationGrid,
+  spec: TerrainMobilitySpec): number {
+  const [dx, dz, scale] = NEIGHBOR_STEPS[direction], x = node.ix + dx, z = node.iz + dz;
+  if (isOutsideGrid(x, z)) return -1;
+  const index = cellIndex(x, z);
+  if (navigation.blocked[index] || diagonalCornerIsBlocked(node, dx, dz, navigation.blocked)) return -1;
+  if (navigation.waterBlockedEdges && navigation.waterBlockedEdges[node.index] & (1 << direction)) return -1;
+  const grade = (navigation.heights[index] - navigation.heights[node.index]) / (CELL_M * scale);
+  const ground = routeGroundType(spec, navigation.groundTypes, node.index, index);
+  // Objective access must permit carrying the flag/ball back out as well as
+  // descending into a clearing. This objective-only flood is conservative;
+  // the bot planner's existing directional movement policy is unchanged.
+  return terrainSlopeMargin(spec, ground, grade) > TERRAIN_MARGIN_EPS
+    && terrainSlopeMargin(spec, ground, -grade) > TERRAIN_MARGIN_EPS ? index : -1;
+}
+
+/** Flood once from physically connected authored pads. No nearest-open-cell
+ * teleport and no repeated A* search for each objective placement candidate. */
+export function createNavigationReachability(navigation: BotNavigationGrid, spec: TerrainMobilitySpec,
+  starts: readonly Position2[], connectorClear: (from: Position2, to: Position2) => boolean) {
+  if (!isValidNavigationGrid(navigation)) throw new TypeError('valid navigation grid required');
+  const mask = new Uint8Array(GRID_N * GRID_N), queue = new Int32Array(mask.length);
+  let read = 0, write = 0;
+  const add = (index: number): boolean => {
+    if (!mask[index]) { mask[index] = 1; queue[write++] = index; }
+    return false;
+  };
+  for (const start of starts) connectedNavigationCells(navigation, start, connectorClear, add);
+  const node = { index: 0, ix: 0, iz: 0, score: 0 };
+  while (read < write) {
+    node.index = queue[read++]; node.ix = node.index % GRID_N; node.iz = Math.floor(node.index / GRID_N);
+    for (let direction = 0; direction < NEIGHBOR_STEPS.length; direction++) {
+      const index = reachableNeighbor(node, direction, navigation, spec);
+      if (index >= 0) add(index);
+    }
+  }
+  return mask;
+}
+
+export function navigationReachabilityContains(navigation: BotNavigationGrid, mask: Uint8Array,
+  point: Position2, connectorClear: (from: Position2, to: Position2) => boolean): boolean {
+  return connectedNavigationCells(navigation, point, connectorClear, index => mask[index] === 1);
+}
+
 function nearestOpen(blocked: Uint8Array, ix: number, iz: number): [number, number] {
   for (let radius = 0; radius < 8; radius++) {
     for (let dz = -radius; dz <= radius; dz++) {

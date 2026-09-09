@@ -9,6 +9,8 @@ import {
   totalAmmunition,
   totalAmmunitionCapacity,
 } from './ammunition.ts';
+import type { MatchPlacement } from './matchPlacement.ts';
+import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
@@ -76,7 +78,6 @@ const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
 const HORDE_INITIAL_ACTIVE = 3;
 const PICKUP_RADIUS_M = 7;
-const WORLD_MARGIN_M = 420;
 
 interface Vec3Like { x: number; y: number; z: number }
 interface ObjectivePoint { x: number; z: number }
@@ -118,6 +119,7 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
   mode?: string;
   entities: Entity[];
   seed?: number;
+  placement?: MatchPlacement;
 }
 
 interface TeamScore { alpha: number; bravo: number }
@@ -275,6 +277,7 @@ function pointSegmentDistanceSq(point: Vec3Like, a: Vec3Like, b: Vec3Like): numb
 export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
   terrainHeight = () => 0, emit = () => {},
+  placement,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
   if (!Array.isArray(entities) || entities.length < 1 || typeof revive !== 'function') {
     throw new TypeError('match mode controller requires entities and a revive hook');
@@ -285,7 +288,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const spawns = new Map<string, MatchModeSpawn>();
   const entityById = new Map<string, Entity>();
   const destroyed = new Map<string, boolean>();
-  const respawnAt = new Map<string, number>();
+  const respawnAt = new Map<string, { atS: number; healthScale: number }>();
   const teams: Record<ObjectiveTeam, Entity[]> = { alpha: [], bravo: [] };
   const centers: Record<ObjectiveTeam, MatchModeSpawn> = {
     alpha: { x: 0, z: -180, yaw: 0 }, bravo: { x: 0, z: 180, yaw: Math.PI },
@@ -320,8 +323,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       yaw: Math.atan2(yawX, yawZ),
     };
   }
-  const midX = (centers.alpha.x + centers.bravo.x) * 0.5;
-  const midZ = (centers.alpha.z + centers.bravo.z) * 0.5;
+  if (placement) {
+    centers.alpha = placement.centers.alpha;
+    centers.bravo = placement.centers.bravo;
+  }
+  const midX = placement?.middle.x ?? (centers.alpha.x + centers.bravo.x) * 0.5;
+  const midZ = placement?.middle.z ?? (centers.alpha.z + centers.bravo.z) * 0.5;
   let axisX = centers.bravo.x - centers.alpha.x;
   let axisZ = centers.bravo.z - centers.alpha.z;
   const axisLength = Math.hypot(axisX, axisZ) || 1;
@@ -345,8 +352,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     })) : [];
   const zones: ZoneState[] = id === 'zone_control'
     ? [-105, 0, 105].map((offset, index) => {
-      const x = midX + lateralX * offset;
-      const z = midZ + lateralZ * offset;
+      const x = placement?.zones[index]?.x ?? midX + lateralX * offset;
+      const z = placement?.zones[index]?.z ?? midZ + lateralZ * offset;
       return {
         id: `zone-${index + 1}`,
         x, y: terrainHeight(x, z) + 0.12, z,
@@ -400,10 +407,19 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     flag.returnAtS = null;
   };
 
+  let placementTimeS = 0;
   const reviveAtSpawn = (entity: Entity, healthScale = 1): void => {
     const spawn = spawns.get(entity.id);
     if (!spawn) return;
-    revive(entity, spawn, healthScale);
+    const safeSpawn = placement ? placement.respawn(spawn, entity.id,
+      entities.filter(other => other !== entity && !other.combat.destroyed && other.modeActive !== false)
+        .map(other => ({ x: other.state.pos.x, z: other.state.pos.z, radius: 4.5 }))) : spawn;
+    if (!safeSpawn) {
+      if (id === 'endless_horde') deactivate(entity);
+      respawnAt.set(entity.id, { atS: placementTimeS + 1, healthScale });
+      return; // keep pending, but never retry a bounded search at 60 Hz
+    }
+    revive(entity, safeSpawn, healthScale);
     entity.modeActive = true;
     entity.modeSpeedMultiplier = id === 'turbo_ball' ? 1.85
       : id === 'endless_horde' && teamOf(entity) === 'bravo'
@@ -450,10 +466,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const kind: PickupState['kind'] = rng() < healChance ? 'heal' : 'ammo';
     const along = (rng() * 2 - 1) * Math.min(145, axisLength * 0.28);
     const lateral = (rng() * 2 - 1) * 135;
-    const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M,
+    let x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M,
       midX + axisX * along + lateralX * lateral));
-    const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M,
+    let z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M,
       midZ + axisZ * along + lateralZ * lateral));
+    if (placement) {
+      const safe = placement.pickup({ x, z }, pickups.filter(pickup => pickup.active)
+        .map(pickup => ({ x: pickup.x, z: pickup.z, radius: PICKUP_RADIUS_M })));
+      if (!safe) return;
+      x = safe.x; z = safe.z;
+    }
     let activeCount = 0;
     let oldestActive: PickupState | null = null;
     let pickup: PickupState | null = null;
@@ -513,15 +535,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     destroyed.set(entity.id, isDead);
     if (!isDead) return;
     dropCarriedFlags(entity, timeS);
-    if (definition.respawns) respawnAt.set(entity.id, timeS + RESPAWN_S);
+    if (definition.respawns) respawnAt.set(entity.id, { atS: timeS + RESPAWN_S, healthScale: 1 });
   };
 
   const handleDeathsAndRespawns = (timeS: number): void => {
     for (const entity of entities) {
-      if (entity.modeActive === false) continue;
+      if (entity.modeActive === false && !respawnAt.has(entity.id)) continue;
       observeEntityDeath(entity, timeS);
       const due = respawnAt.get(entity.id);
-      if (due != null && timeS >= due) reviveAtSpawn(entity, 1);
+      if (due != null && timeS >= due.atS) reviveAtSpawn(entity, due.healthScale);
     }
   };
 
@@ -737,7 +759,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const livingHordeEnemyCount = (): number => {
     let alive = 0;
     for (const enemy of hordeEnemies) {
-      if (enemy.modeActive !== false && !enemy.combat.destroyed) alive++;
+      if (respawnAt.has(enemy.id) || (enemy.modeActive !== false && !enemy.combat.destroyed)) alive++;
     }
     return alive;
   };
@@ -871,6 +893,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     usesElimination: id === 'standard',
     step(dt, timeS) {
       if (result) return result;
+      placementTimeS = timeS;
       handleDeathsAndRespawns(timeS);
       if (id === 'capture_the_flag') return stepFlags(timeS);
       if (id === 'zone_control') return stepZones(dt);

@@ -604,6 +604,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/navigationLiquidSafety.selftest.mjs',
     'src/sim/formationPlacement.selftest.mjs',
     'src/sim/matchModes.selftest.mjs',
+    'src/sim/matchPlacement.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
     'src/sim/authoritativeBotControls.selftest.mjs',
     'src/sim/ai.aim.selftest.mjs',
