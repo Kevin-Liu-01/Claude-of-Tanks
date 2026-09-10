@@ -12,8 +12,13 @@ All checks still run exactly once in fresh processes. Worker limits, browser
 barriers, lease draining, failure handling and every existing assertion stay
 unchanged. The catalog regression protects the grouped entries as well as
 complete exact-once discovery. This is scheduling work, not a skip-tests path.
-The next full release qualifies the changed order; no matched full-suite
-speedup percentage is claimed from the earlier, differently scoped run.
+The complete T-14 release at `f33618e06` qualifies the changed order with all
+947 entries passing in one uninterrupted lifecycle: 301 pre / 608 core / 38 post.
+Phase times were 560.249 / 718.733 / 145.728 seconds, totaling 23m44.710s;
+232.649 seconds were explicitly measured runner FIFO wait. Summed overlapping
+child time was 3,525.876 seconds. See the
+[frozen qualification](t14-roller-release-20260910.md). No matched full-suite
+speedup percentage is claimed from earlier, differently scoped runs.
 
 ## Four-worker extension (opt-in, no gate removals)
 
