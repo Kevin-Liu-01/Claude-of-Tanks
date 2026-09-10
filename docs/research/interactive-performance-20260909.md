@@ -2270,3 +2270,64 @@ native AudioContext constructor. Action callback maxima are
 **182.2 / 111.8 / 38.5 ms**, and first opaque-cover observations occur after
 **132.2 / 139.6 / 91.2 ms**. Those are not a claim of steady-state gameplay
 throughput, a matched-roster speedup, or resolution of all historical stalls.
+
+#### Cold solo entry: cover before the real runtime download
+
+The followup found a separate ordering gap: accepted Battle input awaited the
+first `soloBattleLoadingRuntime` import before showing the loading UI. The
+rendering-covered flag alone is not a visible DOM cover. Native AudioContext
+construction was already after the subsequent cover/paint boundary; this is
+not an audio-before-cover finding.
+
+The accepted solo-entry lifecycle now calls `battleLoad.showPending()` before
+that import. It reuses the existing canonical loader with localized generic
+labels and empty rosters, then enriches the same element after acquisition.
+Duplicate entry remains rejected; rejected imports restore Garage before the
+paint boundary and fade. A failed recovery paint keeps the cover in place.
+No audio settings, render quality, world content, or simulation behavior change.
+
+Ten focused CPU checks passed during implementation; six final combined checks
+also pass, including the new probe contracts and suite discovery. Typecheck and
+public build pass. Runtime metrics: 567 functions, zero violations, zero
+`any`/`unknown`. React Doctor reports 91/100 with four new warnings confined to
+ordered microtask-await loops in the regression test. Applying its parallel-loop
+suggestion is rejected: those assertions intentionally inspect successive
+dependent async boundaries, an exception described by the canonical rule. No
+suppression or runtime workaround was introduced. The 923 discovered entries
+are a registry count, not a fresh full-suite execution claim.
+
+The ordinary native action candidate (`solo-cold-import-actions-candidate-r1/`)
+passes the unchanged Garage/input/audio/action acquisition. First cover is
+observed after 2.2 ms; Battle, night Rematch and Garage return complete, and
+screenshots retain authored high-quality graphics. This random-roster run is
+functional evidence, not a controlled gameplay throughput comparison.
+
+A separate frozen native probe holds exactly one real emitted loading-module
+request for a 1.5-second observation, then releases it unchanged. It verifies
+the served HTML and returned module hashes, one trusted Battle click,
+fullscreen cover, same-root roster enrichment, completed battle, and owned
+request/browser cleanup. Both runs use native Apple M5 Max graphics and the
+ordinary FIFO; neither replaces runtime modules or disables audio/graphics.
+
+- Negative control: local immutable `43321e687`, HTML SHA256
+  `9de7cb7ae46dd1dd09452f3c69229d779b0f94f5ab3dff7412c20251bd525856`,
+  `solo-cold-cover-baseline-held-r1/`: fails precisely because the held import
+  has no visible loader and no timely cover. The real battle still completes
+  after release. This is a local build, not the differently hashed live HTML.
+- Candidate: runtime `480bb4339`, HTML SHA256
+  `35cf7368d42dc7ae8289486855a225e98b934e3f4516efc0745e20caf6780d11`,
+  `solo-cold-cover-candidate-held-r1/`: passes, first cover at **5.0 ms**,
+  empty pending rosters while held, then 7/7 rows in the same loader and normal
+  battle reveal. Screenshots of the held state and completed battle inspected.
+
+Both use acquisition SHA256
+`7ca344327b8f475b50aa271d93b53ee44b1519d0b9adea8746ca55986f33554a`
+and release the identical 7,746-byte module, SHA256
+`c17918bb11efcc7f3e9c01cb023cdbf316ec4e186164726ac2811149b06c62da`.
+Both have empty browser/cleanup error arrays and close their owned browser and
+release the FIFO. The preserved negative receipt is an expected test failure,
+not a retry erased from the record. The DOM/rAF/screenshot evidence establishes
+visible UI under a held request, not physical display scanout or zero lag.
+
+These are pre-publication receipts. The historical 214–319 ms gameplay stalls
+and remaining native cold-start costs are not closed by this loading fix.
