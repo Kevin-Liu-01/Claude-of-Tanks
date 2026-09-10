@@ -47,9 +47,7 @@ for (const scale of [1, 1.32, 1.5]) for (const round of [false, true]) for (cons
   port._shtoraRed?.dispose(); port.mats.dark.dispose();
 }
 
-// T-90 X's canonical eyes/complete roof-weapon checkpoint is preserved but
-// not in this publication: its strict turret-curve release gate failed.
-for (const id of ['t90a_x', 't90a_vladimir_x', 't90a', 't90a_vladimir']) for (const quality of ['high', 'low']) {
+for (const id of ['t90_x', 't90a_x', 't90a_vladimir_x', 't90a', 't90a_vladimir']) for (const quality of ['high', 'low']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);

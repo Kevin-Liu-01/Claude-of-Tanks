@@ -9,6 +9,9 @@ import {traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 import {withHistoricalBurlakSideFinish} from './burlakFixedSidePaint.test-support.mjs';
+import {historicalT90FittingsBuilder} from './t90FittingsHistory.test-support.mjs';
+import {withHistoricalClosedWheelFaces,hasRepairedWheelFaces} from './sourceXWheelFaceHistory.test-support.mjs';
+import {FIXED_SOURCE_SKIRTS,withHistoricalFixedSkirtFinish} from './fixedSourceSkirtPaint.test-support.mjs';
 
 // Captured before auxiliary metadata authoring/wiring, with complete frozen
 // post-optics native models. No position/index/normal/UV/instance or scene-node
@@ -114,7 +117,7 @@ function metadataInvariant(spec){
 }
 
 function nativeFacets(t,spec){
-  const meshes=['hullRubber','hullDetail',...(spec.id==='t90a_burlak_x'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
+  const meshes=['hullRubber','hullDetail','hullFixedPaintedBodywork',...(spec.id==='t90a_burlak_x'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
   let count=0;
   for(const p of fields(spec)){
     const r=finiteRay(p);
@@ -130,7 +133,7 @@ function nativeFacets(t,spec){
 }
 
 function bilateralGrid(t,spec){
-  const meshes=['hullRubber','hullDetail',...(spec.id==='t90a_burlak_x'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
+  const meshes=['hullRubber','hullDetail','hullFixedPaintedBodywork',...(spec.id==='t90a_burlak_x'?['hullTrackGuardL','hullTrackGuardR']:[])].map(n=>t.root.getObjectByName(n)).filter(Boolean);
   let positive=0,negative=0;
   for(const side of [-1,1])for(const z of [-2.75,-2.2,-1.5,-.7,0,.6,1.3,2,2.7])for(const y of [.58,.72,.86,1,1.13,1.30]){
     const from=vector([side*2.3,y,z]),to=vector([side*1.5,y,z]);
@@ -206,9 +209,12 @@ for(const id of ids){
     assert.deepEqual(fields(getSpec(id)),fields(spec),'actual registered API matches exact auxiliary recipes');
     const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
-      if(id==='t90a_burlak_x'){
-        const original=withHistoricalBurlakSideFinish(()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242}));
-        try{assert.equal(geometryHash(original.root),BEFORE[id][quality==='high'?0:1],`${id}/${quality}: complete original geometry hash after only the eight declared finish inverses`);}
+      if(hasRepairedWheelFaces(id)){
+        const build=()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+        const finish=()=>Object.hasOwn(FIXED_SOURCE_SKIRTS,id)?withHistoricalFixedSkirtFinish(id,build,
+          id==='t90_x'?historicalT90FittingsBuilder:undefined):build();
+        const original=withHistoricalClosedWheelFaces(id,()=>id==='t90a_burlak_x'?withHistoricalBurlakSideFinish(build):finish());
+        try{assert.equal(geometryHash(original.root),BEFORE[id][quality==='high'?0:1],`${id}/${quality}: complete original hash after only declared tire-opening/finish inverses`);}
         finally{original.dispose();}
       }else assert.equal(geometryHash(t.root),BEFORE[id][quality==='high'?0:1],`${id}/${quality}: every frozen native buffer/transform unchanged`);
       facets+=nativeFacets(t,spec);const grid=bilateralGrid(t,spec);gaps(spec);facetSeam(spec);liveProtection(spec);

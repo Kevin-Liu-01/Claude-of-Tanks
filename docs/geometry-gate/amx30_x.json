@@ -1,6 +1,6 @@
 {
  "id": "amx30_x",
- "geoMin": 92.9,
+ "geoMin": 93,
  "requiredMinimum": 92,
  "registration": {
   "passed": true,
@@ -112,17 +112,17 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.94028201219513,
+ "rawGeoMin": 93.00973704268293,
  "rawComponents": {
-  "hullCurves": 92.94028201219513,
+  "hullCurves": 93.00973704268293,
   "stations": 97.43466479846977,
   "turretCurves": 96.21668526785714,
-  "wholeCurves": 94.17889672256098,
+  "wholeCurves": 94.24835175304878,
   "dims": 100,
   "floaters": 100
  },
  "components": {
-  "hullCurves": 92.9,
+  "hullCurves": 93,
   "stations": 97.4,
   "turretCurves": 96.2,
   "wholeCurves": 94.2,
@@ -565,7 +565,7 @@
    ]
   },
   "front_hull": {
-   "score": 92.94028201219513,
+   "score": 93.00973704268293,
    "meanPct": 0.51,
    "p95Pct": 1.48,
    "coverPct": 0,
@@ -673,7 +673,7 @@
    ]
   },
   "front_whole": {
-   "score": 94.17889672256098,
+   "score": 94.24835175304878,
    "meanPct": 0.42,
    "p95Pct": 1.21,
    "coverPct": 0,

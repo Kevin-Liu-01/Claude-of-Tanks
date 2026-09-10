@@ -5,6 +5,7 @@ import {createTank} from '../tankFactory.ts';
 import {addStrv122XSuppliedCupola} from './strv122XSuppliedCupola.ts';
 import {addStrv122XSuppliedEquipment} from './strv122XSuppliedEquipment.ts';
 import {STRV122_SUPPLIED_DATUMS as D} from './strv122XSuppliedFrame.ts';
+import {withHistoricalStrv122Wheels} from '../strv122WheelHistory.test-support.mjs';
 
 const near=(a,b,e,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=e,
   `${label}: ${a} versus complete-source ${b} ±${e}`);
@@ -202,7 +203,13 @@ try{unchangedEquipmentEmissions();for(const quality of ['high','low']){
     t.root.traverse(m=>{if(!m.isMesh||m.userData.shadowOnly||m.userData.vehicleMarking||/Proxy|procShadow/.test(m.name))return;
       const p=new T.Mesh(m.geometry,material);p.name=m.name;p.matrixWorld.copy(m.matrixWorld);all.push(p);probes.push(p);});
     sourceSurfaces(all);sourceAir(all);contacts(parts,all.find(m=>m.name==='turret'));
-    actualWiring(parts,all);nonTarget(t,quality);
+    actualWiring(parts,all);
+    // Keep every immutable pre-cupola byte, inverting only the independently
+    // authenticated later wheel tessellation. Physical checks above use t.
+    const historical=withHistoricalStrv122Wheels(()=>createTank('strv122_x',null,
+      {quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242}));
+    try{historical.root.updateMatrixWorld(true);nonTarget(historical,quality);}
+    finally{historical.dispose();}
   }finally{t.dispose();}
 }}finally{for(const m of parts)m.geometry.dispose();material.dispose();}
 console.log('strv122XSuppliedCupola: actual high/low source heads, nine radial feet, open band/hatch/sight, positive support and immutable non-target geometry PASS');

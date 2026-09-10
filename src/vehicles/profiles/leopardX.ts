@@ -8,6 +8,7 @@ import { bindPartitionedEraCover } from './sourceEraCover.ts';
 import { markEraFurniture } from './eraHitFaces.ts';
 import { addLeopardA5XSourceDetails } from './leopardA5XDetails.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
+import { lineUpperReturnBand } from '../upperReturnBandStock.ts';
 import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -1175,11 +1176,12 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
     [-.77,1.85,.529,1.618],[1.60,1.85,.533,1.684],[2.75,1.85,.536,1.45],
     [3.44,1.82,.75,1.32],[3.86,1.018,.97,.994]];
   P.add('hull',sectionSolid(stations.map(s=>tub(s,1.40))));
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.3459,wheelW:.35,
+  P.gear=KIT.buildRunningGear(P,leopardReturnRollers(P,{style:'rubber',wheelR:.3459,wheelW:.35,
     wheelZs:[-2.469,-1.693,-.846,-.054,.719,1.516,2.353],wheelY:.444,xc:1.352,
     trackW:.590,trackTh:.072,topY:1.242,botY:.106,
     sprocket:{z:-3.064,y:.874,r:.368},idler:{z:3.209,y:.846,r:.290},
-    paintedEnds:true,arms:true,coveredTop:true});
+    // Rearward shift to the last axle-pair midpoint clears full compression.
+    paintedEnds:true,arms:true,coveredTop:true},[-2.08,-.40,1.12,1.9345]));
   for(const side of [-1,1]) {
     for(let i=0;i<5;i++) skirt(P,side,-.79+i*.82,.012+i*.82,1.852,1.69,.87,
       i<3?1.68:1.68-(i-2)*.15,i<2?1.68:1.68-(i-1)*.15);
@@ -1223,7 +1225,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   const d=LEOPARD_X_DATUMS.leo2a5_x;
   begin(P,d);
   a5HullShell(P);
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.3516,wheelW:.34,
+  P.gear=KIT.buildRunningGear(P,leopardReturnRollers(P,{style:'rubber',wheelR:.3516,wheelW:.34,
     wheelZs:[-2.25,-1.40,-.57,.28,1.06,1.86,2.70],wheelY:.44,xc:1.371,
     // Source flat-course rays: outer pad Y0, broad web to .08837, guide
     // tip .16344, return outer face1.31284. Rim and pitch radii differ.
@@ -1232,7 +1234,12 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
       hornHeight:.06464,pinRadius:.01636,pinCentreY:-.01945},
     shoeWidthScale:1.032,
     sprocket:{z:-2.91,y:.914,r:.360,trackR:.2712},idler:{z:3.46,y:.915,r:.273,trackR:.2471},
-    paintedEnds:true,arms:true,coveredTop:true});
+    // Actual native placement (including the 12 mm shoe/course offset)
+    // puts the A5 web 14.03 mm inward of the carrier's inner face.
+    paintedEnds:true,arms:true,coveredTop:true,trackCarrierFromOuterFace:true},[-1.94,-.16,1.48,2.30],.01403));
+  // Keep the actual near-shoe web and distant carrier load-bearing at the
+  // same supports. Only inner stock grows; the protected shoe course stays.
+  lineUpperReturnBand(P,[-1.94,-.16,1.48,2.30],.01403);
   a5Skirts(P);
   a5InnerSuspension(P);
   fans(P,1.811,-2.89,.514);

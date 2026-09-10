@@ -63,6 +63,9 @@ function fender(P:TankBuilderPort,side:number):void {
 function runningGear(P:TankBuilderPort):void {
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.3568,wheelY:.395,
     wheelW:.453,wheelFaceDepthScale:.81,wheelZs:[-1.70205,-.91970,-.12865,.67990,1.47690,2.28460],
+    // Fitted annular rubber exposes the existing recessed six-rib steel face;
+    // it does not move the dish or enlarge the original rolling envelope.
+    wheelTireInnerRadiusM:.30685,
     xc:1.4491,xcLeft:1.4518,xcRight:1.4464,trackW:.5564,trackTh:.018,
     sprocket:{z:-2.55065,y:.7365,r:.3305,trackR:.291},idler:{z:2.96555,y:.78960,r:.2844,trackR:.270},
     rollers:[{z:-1.51910,y:.98965,r:.10905},{z:.34900,y:.98965,r:.10905},{z:1.94500,y:.98965,r:.10905}],

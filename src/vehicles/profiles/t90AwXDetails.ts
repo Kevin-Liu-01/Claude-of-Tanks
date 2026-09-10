@@ -1,6 +1,6 @@
 // Independent scalar-authored AW T-90 equipment and removable side cassettes.
 import * as THREE from 'three';
-import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { addShtoraEyes } from './shtora.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
@@ -56,26 +56,16 @@ export function addT90AWSideEra(P:TankBuilderPort):void{
   }
 }
 
-function projectorBody(P:TankBuilderPort,x:number):void{
-  const low=1.63648,high=1.90508;
-  const rows=[[1.37837,.3809,.0103],[1.39497,.3281,.0077],[1.68787,.3281,.0077],
-    [1.68788,.27,.0254],[1.71627,.27,.0254]];
-  sensorPart(P,sectionSolid(rows.map(([z,w,c])=>({z,ring:[
-    [x-w/2+c,low],[x+w/2-c,low],[x+w/2,low+c],[x+w/2,high-c],
-    [x+w/2-c,high],[x-w/2+c,high],[x-w/2,high-c],[x-w/2,low+c],
-  ] as const}))));
-  // Genuine circular IR face is an opaque optical surface, not a weapon bore.
-  sensorPart(P,markVehicleNightLens(KIT.cylZ(.1157,.0175,28),'shtora').translate(x,1.77158,1.70842));
-  for(const[y,h]of [[1.82853,.1365],[1.69878,.1048]])sensorPart(P,KIT.box(.352,h,.0166).translate(x,y,1.37007));
-  for(const y of [1.62923,1.91323])for(const[z,d,w]of [[1.43207,.0586,.2906],[1.52287,.1172,.3228],[1.63712,.0879,.3228]]){
-    sensorPart(P,KIT.box(w,.0163,d).translate(x,y,z));
-  }
-  for(const side of [-1,1])for(const z of [1.46822,1.58292]){
-    sensorPart(P,KIT.box(.0264,.2075,.035).translate(x+side*.17725,1.77083,z));
-  }
-}
 export function addT90AWProjectors(P:TankBuilderPort):void{
-  projectorBody(P,.876);projectorBody(P,-.8784);
+  addShtoraEyes({ mats: P.mats, turretG: P.turretG,
+    add: (slot, geometry, x, y, z) => P.addEquipment(slot, geometry, x, y, z),
+  }, { x: .8772, y: 1.77158, z: 1.55, scale: 1.35, round: true, kit: true,
+    offset: [-YAW[0] - .0012, -YAW[1], -YAW[2]] });
+  // Source rear mounting plates retain their seats and meet the new chassis.
+  for (const x of [.876, -.8784]) {
+    sensorPart(P,KIT.box(.352,.241,.028).translate(x,1.769,1.376));
+    sensorPart(P,KIT.box(.19,.12,.25).translate(x,1.70,1.385));
+  }
 }
 
 export function addT90AWRearCases(P:TankBuilderPort):void{

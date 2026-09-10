@@ -99,11 +99,14 @@ try {
         'all existing cassette / skirt / hull / turret / gear buffers and world transforms unchanged');
       assert.equal(after.added, 28, 'six compact three-piece carriers plus two five-piece receivers');
       const all = physical(after.tank.root), old = physical(before.tank.root);
+      const fixedSkirts = old.filter(m => m.name === 'hullFixedPaintedBodywork');
+      assert.equal(fixedSkirts.length, 1, 'the same permanent sheets now live in their painted bucket');
+      assert.equal(fixedSkirts[0].userData.appearanceRole, 'armorPaint');
       sourceSurfaces(all);
       for (const side of [-1, 1]) {
         const x = v => side > 0 ? v : -.0018999576568603516 - v;
         for (const z of [1.50, 1.74, 2.30]) {
-          const skin = ray(old.filter(m => m.name === 'hullRubber'), [x(1.75), 1.35, z], [0, -1, 0], .2);
+          const skin = ray(fixedSkirts, [x(1.75), 1.35, z], [0, -1, 0], .2);
           const baseTop = ray(parts.filter(m => m.name === 'carrierBase'), [x(1.75), 1.35, z], [0, -1, 0], .2);
           assert.ok(skin && baseTop && baseTop.point.y > skin.point.y && skin.point.y > 1.1875,
             'each measured carrier really intersects the unchanged fixed skirt');

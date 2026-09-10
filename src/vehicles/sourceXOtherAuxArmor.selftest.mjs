@@ -9,6 +9,9 @@ import {tankPoseFromState,traceTank} from '../sim/armor.ts';
 import {createShell} from '../sim/ballistics.ts';
 import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 import {withHistoricalFixedGuardPaint} from './historicalFixedGuardPaint.test-support.mjs';
+import {withHistoricalClosedWheelFaces} from './sourceXWheelFaceHistory.test-support.mjs';
+import {historicalLeclercShoe,withHistoricalLeclercGear} from './leclercGearHistory.test-support.mjs';
+import {KIT} from './tankFactoryCore.ts';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
 const BEFORE={
  'k1a1_x/high':'be2113456e6aae39d798f2472f42744aa994fcf87156932491651fa4da917bbf',
@@ -205,26 +208,76 @@ function type10HeldOut(spec,meshes){
   console.log(`Type10 independent held-outs: ${count} actual native rays, maximum error ${maximum}m; fascia/depth single billing and source air PASS`);
 }
 const selected=process.argv.find(a=>a.startsWith('--ids='))?.slice(6).split(',');
+{
+  const parameters={trackW:.636079,pitch:.15,pinCapOuter:.3180395,radialScale:1,widthScale:1,
+    pattern:{surface:'rubber-block',padHeight:.027,grouserHeight:.013,padCoverage:.8,
+      shoulderHeight:.01,webHeight:.026,webDepth:.8,hornHeight:.081,
+      pinStyle:'end-caps',pinRadius:.0222443,pinCentreY:-.0051314},
+    section:{padWidthM:.5253277,pinCapLengthM:.0404054,pinHalfSpacingM:.0388075,
+      connectorInnerM:.2577995,connectorOuterM:.3099674,connectorHeightM:.035629,
+      connectorDepthM:.0985811,connectorCentreYDeltaM:-.0005601}};
+  const dispose=THREE.BufferGeometry.prototype.dispose,farShoe=KIT.simplifiedTrackShoeGeometry;
+  const events=new Map();
+  THREE.BufferGeometry.prototype.dispose=function(){events.set(this,(events.get(this)??0)+1);return dispose.call(this);};
+  try{
+    for(const far of[false,true]){
+      const restored=historicalLeclercShoe({...parameters,far});
+      assert.equal(events.has(restored),false,'returned geometry stays caller-owned');restored.dispose();
+    }
+    KIT.simplifiedTrackShoeGeometry=(...args)=>{
+      const geometry=farShoe(...args),position=geometry.getAttribute('position');
+      position.setX(position.count-1,position.getX(position.count-1)+.001);return geometry;
+    };
+    assert.throws(()=>historicalLeclercShoe({...parameters,far:true}),/exact four eight-sided pin buffers/,
+      'unrelated pin changes cannot be silently replaced with historical stock');
+    assert.ok(events.size>20,'success and rejected native streams exercise real ownership');
+    for(const count of events.values())assert.equal(count,1,'one disposal event per owned intermediate');
+  }finally{THREE.BufferGeometry.prototype.dispose=dispose;KIT.simplifiedTrackShoeGeometry=farShoe;}
+}
+// Fail closed on an undeclared caller, opt-in, custom primitive or missing
+// native call. Throwing comparisons must restore the shared factory hook.
+{
+  const original=KIT.buildRunningGear;
+  assert.throws(()=>withHistoricalClosedWheelFaces('not-a-repaired-tank',()=>{}));
+  assert.throws(()=>withHistoricalLeclercGear('amx30_x',()=>{}));
+  assert.throws(()=>withHistoricalClosedWheelFaces('amx30_x',()=>KIT.buildRunningGear(
+    {spec:{id:'amx30_x'}},{wheelTireInnerRadiusM:.315})),/exact declared annular repair/);
+  assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>KIT.buildRunningGear(
+    {spec:{id:'amx30_x'}},{})),/cannot affect another tank/);
+  assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>KIT.buildRunningGear(
+    {spec:{id:'leclerc_x'}},{trackShoeBuilder:()=>{}})),/custom shoe/);
+  let disposed=0;
+  assert.throws(()=>withHistoricalLeclercGear('leclerc_x',()=>({dispose(){disposed++;}})));
+  assert.equal(disposed,1,'failed native-call ownership witness disposes its returned tank');
+  assert.equal(KIT.buildRunningGear,original,'every negative case restores the native factory');
+}
 for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.includes(id))){
   preservation(id,donor);
   for(const quality of['high','low']){
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
       tank.root.updateMatrixWorld(true);
-      if(id==='leclerc_x'||id==='amx40_x'||id==='type10_x'){
-        const original=withHistoricalFixedGuardPaint(id,()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242}));
+      const paintedId=['leclerc_x','amx40_x','type10_x'].includes(id);
+      const repairedGear=['amx30_x','leclerc_x','leclerc_classic_x'].includes(id);
+      if(paintedId||repairedGear){
+        const native=()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+        const finish=()=>paintedId?withHistoricalFixedGuardPaint(id,native):native();
+        const original=id==='amx30_x'?withHistoricalClosedWheelFaces(id,finish)
+          :id.startsWith('leclerc')?withHistoricalLeclercGear(id,finish):finish();
         try{
           original.root.updateMatrixWorld(true);
           assert.equal(shapeHash(original.root),BEFORE[`${id}/${quality}`],
-            `${id}/${quality}: original full native fingerprint after only authenticated fixed-guard finish inverses`);
+            `${id}/${quality}: original full native fingerprint after only exact declared finish/primitive inverses`);
         }finally{original.dispose();}
-        assert.notEqual(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'real painted model must not masquerade as the historical finish');
+        assert.notEqual(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'real repaired model must not masquerade as its historical baseline');
+        if(paintedId){
         const painted=tank.root.getObjectByName('hullPaintedDetail');
         // This legacy fingerprint uses geometry-only receipt materials. The
         // rendered texture/name/UV contract is checked by registeredGuardPaint.
         assert.equal(painted?.material,tank.root.getObjectByName('hull').material);
         assert.equal(painted?.userData.combatHitboxRole,'nonArmor');
         assert.equal(painted?.userData.materialOnlyPaintSourceBucket,'hullDetail');
+        }
       }else assert.equal(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'complete native geometry/material/instance/owner fingerprint unchanged');
       // All surface, air, seam and projectile checks below still use the
       // actual painted model, never the historical comparison construction.

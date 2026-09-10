@@ -20,7 +20,8 @@ const SOURCES={
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: actual ${a}, source ${b} ±${t}`);
 // Exercise the actual standard census and its unchanged MG rejection policy
 // without starting a renderer. Passing this source-construction test must not
-// turn the genuinely unarmed T90 source into a production standard pass.
+// turn the genuinely unarmed historical T90 carrier into a production pass.
+// The owner's added complete NSVT is tested separately from that source stock.
 const standardPage=readFileSync(new URL('../../../tools/standard-check-page.html',import.meta.url),'utf8');
 const censusSource=standardPage.match(/function censusFittings\(root\) \{[\s\S]*?\n\}/)?.[0];
 assert.ok(censusSource,'actual standard fitting census remains available');
@@ -104,9 +105,15 @@ function roofWeapon(t,id){
   const mg=t.root.getObjectByName('sourceMachineGun_turretDark'),census=censusFittings(t.root);
   if(id==='t90_x'){
     assert.equal(mg,undefined,'source-empty T90 channel is not a fabricated named weapon');
-    assert.equal(census.mg,0,'source-empty T90 mount has no false recognized MG');
-    assert.equal(standardWeaponPass({census}),false,'actual full-standard MG0 rejection remains required');
-    return undefined;
+    const added=t.root.getObjectByName('t90XMountedNsvt');
+    const body=added?.getObjectByName('browningDerivedMachineGunBody');
+    assert.ok(body?.isMesh&&body.geometry.attributes.position.count>0,
+      'added T90 weapon requires a physical complete NSVT body, not a census marker');
+    assert.equal(added.parent,t.root.getObjectByName('rig_turret'));
+    assert.equal(added.userData.weaponClass,'nsvt');
+    assert.equal(census.mg,1,'complete owner-added T90 weapon earns exactly one census entry');
+    assert.equal(standardWeaponPass({census}),true,'real NSVT satisfies unchanged standard MG rule');
+    return added;
   }
   assert.ok(mg?.isMesh,`${id}: complete source weapon remains a real mesh`);
   assert.equal(mg.parent.parent,t.root.getObjectByName('rig_turret'));
@@ -115,8 +122,22 @@ function roofWeapon(t,id){
   return mg;
 }
 function emptyT90Mount(t){
+  const added=t.root.getObjectByName('t90XMountedNsvt'),parent=added.parent,index=parent.children.indexOf(added);
+  parent.remove(added);
+  try{historicalEmptyT90Mount(t);}
+  finally{
+    parent.add(added);
+    parent.children.splice(parent.children.indexOf(added),1);
+    parent.children.splice(index,0,added);
+  }
+}
+function historicalEmptyT90Mount(t){
   // Complete-source held-outs from t90_x.remaining-roof-heldouts.json:
   // retain the interrupted lower web, flanking rim and real axial opening.
+  // Only the named owner-added NSVT is detached; every source mesh remains.
+  const census=censusFittings(t.root);
+  assert.equal(census.mg,0,'retained unarmed source mount has no false recognized MG');
+  assert.equal(standardWeaponPass({census}),false,'actual full-standard MG0 rejection remains required');
   const meshes=visible(t.root);
   const hit=(p,d,far)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];
   near(hit([-.6,2.65,.11],[0,-1,0],.025)?.point.y,2.636280059814453,.00001,'actual source channel lower web remains present');
@@ -126,8 +147,8 @@ function emptyT90Mount(t){
   assert.equal(hit([-.42,2.72,.40],[0,-1,0],.10),undefined,'source guard and chute retain their open mouth');
   assert.throws(()=>roofWeapon(t,'t90a_burlak_x'),/complete source weapon remains a real mesh/,
     'negative control: absence cannot satisfy the armed-family requirement');
-  const fake=new THREE.Group();fake.userData={fittingRoot:true,fitting:'openYokeRws'};t.root.add(fake);
-  try{assert.throws(()=>roofWeapon(t,'t90_x'),/no false recognized MG/,
+  const fake=new THREE.Group();fake.name='t90XMountedNsvt';fake.userData={fittingRoot:true,fitting:'pintleMG',weaponClass:'nsvt'};t.root.add(fake);
+  try{assert.throws(()=>roofWeapon(t,'t90_x'),/physical complete NSVT body/,
     'negative control: a marker-only weapon cannot certify this empty source mount');}
   finally{t.root.remove(fake);}
 }
@@ -171,4 +192,4 @@ for(const[id,s]of Object.entries(SOURCES))for(const quality of ['high','low']){
   const t=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frame(t,id,s);bore(t,s);gear(t,s);reactive(t,s);equipment(t,id);antennas(t,id);staggerMotion(t,id,s);}finally{t.dispose();}
 }
-console.log('awSecondWaveGeometry: actual high/low source joints, metal bore depth, native axles, reactive backing and fitting ownership pass; T90 empty mount/standard MG0 rejection and armed-family negative controls pass; visual/release gates separate');
+console.log('awSecondWaveGeometry: actual high/low source joints, metal bore depth, native axles, reactive backing and fitting ownership pass; added T90 NSVT and retained unarmed carrier/MG0 negative controls pass; visual/release gates separate');

@@ -1,7 +1,7 @@
 // First-party folded stock, stepped pivot body and open return guard. Only
 // scalar dimensions/planes from the local AW reference; no imported topology.
 import * as THREE from 'three';
-import {KIT} from './kit.ts';
+import {KIT,FITTINGS} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import {T90_AW_X_SOURCE_DATUMS} from '../t90AwXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -128,4 +128,23 @@ function hangingChute(P:TankBuilderPort):void{
 }
 export function addT90AWAAReceiver(P:TankBuilderPort):void{
   pivotBody(P);channel(P);curvedGuard(P);foldedClips(P);hangingChute(P);
+}
+
+/** Complete the empty AA stock with the shared receiver, not a second
+ * pedestal on top of it. The full-width receiver bears on both source rails
+ * at 2.65968 m; the chamfered receiver edges engage their upper surfaces.
+ * The source ears
+ * and transverse pins retain their measured positions around the receiver. */
+export function addT90AWRoofMachineGun(P:TankBuilderPort):void{
+  const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'nsvt',scale:1,
+    tone:'dark',ammo:true,shield:false,ring:false,barrelBridge:true,
+    mount:'external-cradle',seed:90010});
+  weapon.name='t90XMountedNsvt';
+  // Park the entire AA weapon rearward on the existing transverse cradle.
+  // Receiver and barrel remain one straight, full-size assembly; no isolated
+  // barrel tilt or duplicate pedestal. The two rails support the receiver at
+  // authored z=.270. This is a first-party stowed pose, not a source claim.
+  weapon.rotation.y=Math.PI;
+  weapon.position.set(-.58325-PIVOT[0],2.650-PIVOT[1],.370-PIVOT[2]);
+  P.turretG.add(weapon);
 }

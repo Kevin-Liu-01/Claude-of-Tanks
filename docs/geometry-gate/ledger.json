@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-10T06:57:29.276Z",
+ "generatedAt": "2026-09-10T10:53:34.288Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 68,
  "total": 161,
@@ -1658,6 +1658,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "leo2a5_x",
+   "geoMin": 92.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 92.7,
+    "stations": 96,
+    "turretCurves": 93.5,
+    "wholeCurves": 92.4,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t84",
    "geoMin": 92.5,
    "gatePassed": true,
@@ -1698,31 +1714,15 @@
   },
   {
    "id": "amx30_x",
-   "geoMin": 92.9,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.9,
-    "stations": 97.4,
-    "turretCurves": 96.2,
-    "wholeCurves": 94.2,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "leo2a5_x",
    "geoMin": 93,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
     "hullCurves": 93,
-    "stations": 96,
-    "turretCurves": 93.5,
-    "wholeCurves": 93.1,
+    "stations": 97.4,
+    "turretCurves": 96.2,
+    "wholeCurves": 94.2,
     "dims": 100,
     "floaters": 100
    },
@@ -1843,15 +1843,15 @@
   },
   {
    "id": "kf51_x",
-   "geoMin": 93.6,
+   "geoMin": 93.7,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "hullCurves": 93.6,
+    "hullCurves": 93.7,
     "stations": 100,
     "turretCurves": 94.4,
-    "wholeCurves": 95.6,
+    "wholeCurves": 95.7,
     "dims": 99.6,
     "floaters": 100
    },
@@ -1881,9 +1881,9 @@
    "gatePassed": true,
    "components": {
     "hullCurves": 93.8,
-    "stations": 98.5,
-    "turretCurves": 95.2,
-    "wholeCurves": 94.6,
+    "stations": 98.1,
+    "turretCurves": 95.1,
+    "wholeCurves": 94.3,
     "dims": 100,
     "floaters": 100
    },

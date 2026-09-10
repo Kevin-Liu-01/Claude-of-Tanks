@@ -43,11 +43,58 @@ function checkRunningGear(tank,quality) {
   close(band.geometry.boundingBox.min.y,.0375,1e-6,'one thin backing carrier seated within the shoe web');
   assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined,'no second decorative course');
 }
+
+function checkVisibleWheelFaces(tank, quality) {
+  const tires = tank.root.getObjectByName('gearRoadWheelTires');
+  const discs = tank.root.getObjectByName('gearRoadWheelDiscs');
+  const matrix = new THREE.Matrix4();
+  const point = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  // Cast from outside the complete native tank, rather than checking that a
+  // hidden painted disk exists behind the rubber. Fixed witness radii are
+  // inside even LOW's 12-sided aperture (303.3 mm inradius) and outside the
+  // hub/fastener pattern; a 305 mm ray legitimately meets LOW's rubber edge.
+  for (let i = 0; i < tires.count; i++) {
+    tires.getMatrixAt(i, matrix);
+    matrix.premultiply(tires.matrixWorld);
+    const side = Math.sign(new THREE.Vector3().setFromMatrixPosition(matrix).x);
+    direction.set(-side, 0, 0).transformDirection(tires.matrixWorld);
+    for (const radial of [.275, .285, .295]) for (const angle of [.35, 1.10, 2.10, 2.90]) {
+      point.set(side * .80, Math.sin(angle) * radial, Math.cos(angle) * radial).applyMatrix4(matrix);
+      const hit = new THREE.Raycaster(point, direction, 0, 1).intersectObject(tank.root, true)
+        .find(h => !h.object.userData.shadowOnly && !h.object.userData.authoredShadowProxy);
+      assert.ok(hit?.object === discs, `${quality} wheel ${i}: painted face must be the first visible stock at r=${radial}; hit ${hit?.object.name ?? 'nothing'}`);
+    }
+  }
+  // The tire remains a finite closed ring and is not recolored armor or an
+  // invisible/open-ended cylinder. Its outer rolling radius stays unchanged.
+  const p = tires.geometry.attributes.position;
+  const radii = Array.from({length:p.count}, (_, i) => Math.hypot(p.getY(i), p.getZ(i)));
+  close(Math.min(...radii), .314, 1e-6, 'physical tire opening');
+  close(Math.max(...radii), .36545, 1e-6, 'unchanged rolling radius');
+  const triangleCount = (tires.geometry.index?.count ?? p.count) / 3;
+  assert.equal(triangleCount, 8 * (quality === 'high' ? 26 : 12),
+    'the closed four-wall tire ring costs no more triangles than the two former capped cylinders');
+  const edgeCounts = new Map();
+  const vertex = i => [p.getX(i), p.getY(i), p.getZ(i)].map(v => Math.round(v * 1e6)).join(',');
+  const index = tires.geometry.index;
+  for (let i = 0; i < triangleCount * 3; i += 3) {
+    const vertices = [0, 1, 2].map(j => vertex(index ? index.getX(i + j) : i + j));
+    for (let j = 0; j < 3; j++) {
+      const edge = [vertices[j], vertices[(j + 1) % 3]].sort().join('|');
+      edgeCounts.set(edge, (edgeCounts.get(edge) ?? 0) + 1);
+    }
+  }
+  assert.ok([...edgeCounts.values()].every(count => count === 2), 'every physical tire-ring edge is closed');
+  assert.equal(tires.userData.appearanceRole, 'wheelTire');
+  assert.equal(discs.userData.appearanceRole, 'wheelDish');
+}
 for(const quality of ['high','low']) {
   const tank=createTank('amx30_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     checkRunningGear(tank,quality);
+    checkVisibleWheelFaces(tank,quality);
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     const recoil=tank.root.getObjectByName('rig_recoil'),muzzle=tank.root.getObjectByName('rig_muzzle');
     const ray=(origin,direction,far=12)=>new THREE.Raycaster(new THREE.Vector3(...origin),new THREE.Vector3(...direction),0,far).intersectObject(tank.root,true)[0];

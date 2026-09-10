@@ -75,7 +75,9 @@ function hull(P: TankBuilderPort): void {
 
 function runningGear(P: TankBuilderPort): void {
   const zs = [-1.90045, -1.10856, -.26549, .56651, 1.38765, 2.17177];
-  const wheels = leclercWheelSolids();
+  // Keep the measured stepped sections; distant wheels need half the radial
+  // tessellation, not the gallery's complete 32-sided face on every axle.
+  const wheels = leclercWheelSolids(P.q ? 32 : 16);
   // Source upper shoe faces rise from about 1.17 to 1.185 m. Concealed return
   // supports are inferred, but seat that measured course rather than a low
   // generic run. Ground/road axes are unchanged by the optional rounded knee.

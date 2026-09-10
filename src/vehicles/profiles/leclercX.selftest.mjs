@@ -133,6 +133,7 @@ function checkMovingGear(root, all, gear) {
 // materials divide single components: measure all source turret meshes, not
 // merely its first camo primitive. Neither glTF data nor builder constants are
 // imported into this regression.
+const faceTriangles = new Map();
 for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear;
   let tank, gear;
@@ -152,6 +153,8 @@ for (const quality of ['high', 'low']) {
     const all = [];
     root.traverse(o => { if (o.isMesh && !o.name.startsWith('procShadow_') && !o.userData.vehicleMarking) all.push(o); });
     checkSourceWheelFaces(all);
+    faceTriangles.set(quality, all.filter(m => /^leclercSourceWheel/.test(m.name))
+      .reduce((sum, m) => sum + (m.geometry.index?.count ?? m.geometry.attributes.position.count) / 3 * m.count, 0));
     const turret = get('rig_turret'), gun = get('rig_gun'), recoil = get('rig_recoil');
     const muzzle = get('rig_muzzle');
     near(turret.position.x, -.00215335966, 1e-6, 'actual source yaw X');
@@ -219,4 +222,6 @@ for (const quality of ['high', 'low']) {
     }
   } finally { tank.dispose(); }
 }
-console.log('leclercX.selftest: source frame, two actual sight recesses, closed hull and native lane/gun ownership passed');
+assert.equal(faceTriangles.get('low'), faceTriangles.get('high') / 2,
+  'actual moving LOW steel/groove instances use half the gallery triangles');
+console.log('leclercX.selftest: source frame, two actual sight recesses, closed hull, native lane/gun ownership and quality-scaled wheels passed');

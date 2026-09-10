@@ -1,6 +1,7 @@
 // First-party T-90 AW shoulder sections and folded exhaust furniture.
 // Measurements are scalar surface stations; the original mesh is not loaded.
 import {sectionSolid} from './sectionSolid.ts';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {roofSheet} from './measuredPrimitives.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 type CrownStation=readonly[z:number,top:number,bottom:number];
@@ -35,8 +36,8 @@ function skirtRing(low:number,outer:number,side:number,inner:number,crownOuter:n
   return side<0?ring.map(([x,y])=>[-x,y] as const).reverse():ring;
 }
 function skirtCourse(P:TankBuilderPort,rows:readonly HemStation[],side:number,inner=1.669,crownOuter=1.77735):void{
-  P.addMudguard('t90-aw-x-fixed-skirt','hullRubber',sectionSolid(rows.map(([z,y,x])=>({z,
-    ring:skirtRing(y,x+(side<0?.0019:0),side,inner+(side<0?.0019:0),crownOuter+(side<0?.0019:0))}))));
+  P.addMudguard('t90-aw-x-fixed-skirt','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid(rows.map(([z,y,x])=>({z,
+    ring:skirtRing(y,x+(side<0?.0019:0),side,inner+(side<0?.0019:0),crownOuter+(side<0?.0019:0))}))), 't90-aw-x-fixed-skirt','hullRubber'));
 }
 export function addT90AWSkirts(P:TankBuilderPort,side:number):void{
   // Distinct left-rear rising hem, not a mirrored full-height rubber box.
