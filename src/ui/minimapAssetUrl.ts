@@ -3,6 +3,6 @@ export function minimapAssetUrl(mapId: string, baseUrl = '/', version?: string):
   const assetVersion = version || (mapId === 'oasis'
     ? 'north-up-v7-oasis-shoreline-v2' : mapId === 'autumn'
       ? 'north-up-v7-autumn-headlands' : mapId === 'foundry'
-        ? 'north-up-v7-foundry-service-court' : 'north-up-v7');
+        ? 'north-up-v7-foundry-localized-soil' : 'north-up-v7');
   return `${baseUrl || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=${assetVersion}`;
 }

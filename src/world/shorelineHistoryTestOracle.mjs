@@ -4,11 +4,14 @@ import { createLakeChannel } from './maps/marshChannel.ts';
 // c3ad3042999d7241824ad9a4670fcbd73a5fb84a (d46da09ea). Preserve that
 // historical input without refreshing older pixel/config goldens. Current
 // court authoring and output are independently checked by foundryServiceCourt.
+// The later material-only villageWear/townWear pair is independently guarded
+// by villageWear's actual Foundry masks; no historical golden is refreshed.
 export function historicalFoundryServiceInput(cfg) {
   if (cfg.id !== 'foundry') return cfg;
-  const { workedGround: _laterCourtWear, ...terrain } = cfg.terrain;
+  const { workedGround: _laterCourtWear, villageWear: _laterCoverage, ...terrain } = cfg.terrain;
   const { foundryServiceCourt: _laterCourt, ...props } = cfg.props;
-  return { ...cfg, terrain, props };
+  const { townWear: _laterStrength, ...splat } = cfg.splat;
+  return { ...cfg, terrain, props, splat };
 }
 
 // Test-only reconstruction of the three subsequently edited inputs at

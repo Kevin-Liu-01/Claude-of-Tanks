@@ -2628,12 +2628,16 @@ void splatCompute() {
     if (dNear2 > 0.001) {
       vec3 dn2 = texture2D(uNrmG, uv * 2.71).xyz * 2.0 - 1.0;
       float openNear2 = dNear2 * (1.0 - roadCore);
-      n.xy += dn2.xy * 0.18 * openNear2 * (1.0 - fMs);
+      // Detail belongs to the remaining base layer. Reapplying turf after
+      // the dirt/rock blend made worked yards inherit the meadow's grain.
+      // The same coverage also keeps base snow/sand off exposed soil/rock.
+      float nearG = openNear2 * meadowG * (1.0 - fR);
+      n.xy += dn2.xy * 0.18 * nearG;
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
       float gl2 = dot(texture2D(uAlbG, uv * 2.71).rgb, vec3(0.36, 0.42, 0.22));
       float glM = dot(texture2D(uAlbG, uv * 2.71, 6.0).rgb, vec3(0.36, 0.42, 0.22));
-      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * openNear2 * (1.0 - fMs);
+      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * nearG;
     }
   }
   {
@@ -2890,7 +2894,7 @@ void splatCompute() {
     }
     // coarse turf relief at range (all maps): the far band keeps macro
     // normal structure where the per-texel detail normals have faded out
-    float farG = farM * (1.0 - fR) * (1.0 - fMs) * (1.0 - projW);
+    float farG = farM * (1.0 - fR) * meadowG * (1.0 - roadCore);
     if (farG > 0.003) {
       // Coarse turf is low relief, not another giant clod normal. Albedo
       // retains the source detail while the actual hills own broad shading.
@@ -3161,7 +3165,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v27';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v28';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

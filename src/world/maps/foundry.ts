@@ -18,6 +18,7 @@ export default {
       ],
     },
     marshes: [],
+    villageWear: 'activity-patches',
     // A compact loading court and its southern access, not a new flattened
     // terrain pad. Existing mask alpha supplies broken soil/wheel wear.
     workedGround: [
@@ -49,6 +50,7 @@ export default {
   splat: {
     tintA: [0.72, 0.73, 0.70], tintB: [0.47, 0.49, 0.48], tintC: [0.84, 0.81, 0.74],
     roadTint: [0.51, 0.51, 0.49], midRelief: 0.72,
+    townWear: 1.6, // Soil-dominant loading areas; existing alpha owns their irregular extent.
   },
   vegetation: {
     species: ['poplar', 'oak', 'birch'], clusterMix: [['poplar', 0.42], ['oak', 0.38], ['birch', 0.20]],
