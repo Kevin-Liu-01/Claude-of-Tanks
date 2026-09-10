@@ -68,6 +68,7 @@ export type WorldHeightField = HeightField;
 
 interface TerrainUserData {
   sourcedTexturesReady?: Promise<SourcedTextureResult[]>;
+  cancelSourcedTextures?(): void;
   streamingStats?: RuntimeValue;
   updateLOD(cameraPosition: THREE.Vector3): void;
   updateWater?(deltaSeconds: number): void;
@@ -226,48 +227,56 @@ export async function createMapAsync(
   // parsed before even the height field could start.
   const propModelsReady = preloadPropModels();
   const terrainConfig: TerrainMapConfig = config;
-  const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {});
-  const step = async (label: string, fraction: number): Promise<void> => {
-    if (onStep) await onStep(label, fraction);
-  };
-  // perf-r3 (play-session probe): the old five-yield build left each
-  // subsystem ATOMIC — 1.5-2.4 s tasks that pinned the loading bar (and
-  // fused into a single ~29 s task on a loaded machine). Each subsystem now
-  // drains its chunked twin, yielding through `step` after every slice so
-  // the bar creeps THROUGH a subsystem instead of jumping between them.
-  const sub = (label: string, f0: number, f1: number): BuildSliceProgress => (
-    completed: number,
-    total: number,
-  ) => step(label, f0 + (f1 - f0) * Math.min(1, completed / Math.max(1, total)));
-  await step('Surveying terrain', 0.0);
-  const heightField = fineSlices
-    ? await createHeightFieldAsync(seed, config, fraction => step('Surveying terrain', fraction * 0.34))
-    : createHeightField(seed, config);
-  await step('Building terrain meshes', 0.34);
-  const terrain = requireTerrainRoot(await buildTerrainMeshesAsync(heightField, engineCtx, config,
-    sub('Building terrain meshes', 0.34, 0.58), fineSlices, {
-      // The deployment view gets exact near/mid detail and every other chunk
-      // gets its exact visible coarse level. Missing levels grow one geometry
-      // at a time as the camera approaches.
-      // Heightfield/collision/spotting data remains complete and deterministic.
-      streamFarLods: true,
-      focus: heightField._layout.spawns.player,
-    }, terrainSources));
-  await step('Planting vegetation', 0.58);
-  const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
-    sub('Planting vegetation', 0.58, 0.82), fineSlices);
-  await step('Placing structures', 0.82);
-  await propModelsReady;
-  const props = await createPropsAsync(heightField, engineCtx, 2002, config,
-    sub('Placing structures', 0.82, 0.96), fineSlices, vegetation);
-  await step('Sealing the battlefield', 0.96);
-  const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
-  world._buildDetail = {
-    vegetation: vegetation._buildDetail || null,
-    terrain: terrain.userData.streamingStats || null,
-    props: props._buildDetail || null,
-  };
-  return world;
+  const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
+  let completed = false;
+  try {
+    const step = async (label: string, fraction: number): Promise<void> => {
+      if (onStep) await onStep(label, fraction);
+    };
+    // perf-r3 (play-session probe): the old five-yield build left each
+    // subsystem ATOMIC — 1.5-2.4 s tasks that pinned the loading bar (and
+    // fused into a single ~29 s task on a loaded machine). Each subsystem now
+    // drains its chunked twin, yielding through `step` after every slice so
+    // the bar creeps THROUGH a subsystem instead of jumping between them.
+    const sub = (label: string, f0: number, f1: number): BuildSliceProgress => (
+      completed: number,
+      total: number,
+    ) => step(label, f0 + (f1 - f0) * Math.min(1, completed / Math.max(1, total)));
+    await step('Surveying terrain', 0.0);
+    const heightField = fineSlices
+      ? await createHeightFieldAsync(seed, config, fraction => step('Surveying terrain', fraction * 0.34))
+      : createHeightField(seed, config);
+    await step('Building terrain meshes', 0.34);
+    const terrain = requireTerrainRoot(await buildTerrainMeshesAsync(heightField, engineCtx, config,
+      sub('Building terrain meshes', 0.34, 0.58), fineSlices, {
+        // The deployment view gets exact near/mid detail and every other chunk
+        // gets its exact visible coarse level. Missing levels grow one geometry
+        // at a time as the camera approaches.
+        // Heightfield/collision/spotting data remains complete and deterministic.
+        streamFarLods: true,
+        focus: heightField._layout.spawns.player,
+      }, terrainSources));
+    await step('Planting vegetation', 0.58);
+    const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
+      sub('Planting vegetation', 0.58, 0.82), fineSlices);
+    await step('Placing structures', 0.82);
+    await propModelsReady;
+    const props = await createPropsAsync(heightField, engineCtx, 2002, config,
+      sub('Placing structures', 0.82, 0.96), fineSlices, vegetation);
+    await step('Sealing the battlefield', 0.96);
+    const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
+    world._buildDetail = {
+      vegetation: vegetation._buildDetail || null,
+      terrain: terrain.userData.streamingStats || null,
+      props: props._buildDetail || null,
+    };
+    completed = true;
+    return world;
+  } finally {
+    if (!completed) {
+      try { terrainSources.cancel?.(); } catch { /* preserve the original build failure */ }
+    }
+  }
 }
 
 /**
@@ -441,6 +450,7 @@ function assembleWorld(
   return {
     mapId: config.id,
     dispose() {
+      terrain.userData.cancelSourcedTextures?.();
       unregisterDestructibles();
       vegetation.dispose();
     },

@@ -293,7 +293,8 @@ interface TerrainIndexRecord {
 }
 
 type TerrainIndexPool = Map<number, TerrainIndexRecord>;
-type TerrainBuildProgress = readonly [number, number, boolean];
+type TerrainSourceCheckpoint = () => Promise<void>;
+type TerrainBuildProgress = readonly [number, number, boolean, TerrainSourceCheckpoint?];
 type TerrainBuildTick = (completed: number, total: number) => Promise<void> | void;
 
 interface TerrainProgressState {
@@ -3116,7 +3117,7 @@ function* createSplatMaterialSteps(
   landformW: HeightField['_mesaW'] = null,
   waterWetnessAt: HeightField['_waterWetnessAt'] | null = null,
   sourcePreparation: TerrainSourcePreparation | null = null,
-): Generator<void, {
+): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
 }, void> {
@@ -3131,9 +3132,14 @@ function* createSplatMaterialSteps(
   // every steep face seen at grazing angles (mesa flanks, cut banks): past a
   // 4:1 footprint the sampler can only blur along the compressed axis.
   const aniso = Math.max(16, engineCtx.anisotropy ?? 4);
+  function* prepareSourceLayer(key: 'G' | 'D' | 'R'): Generator<TerrainSourceCheckpoint, void, void> {
+    if (sourcePreparation?.prepareLayer) yield () => sourcePreparation.prepareLayer!(key);
+  }
+  yield* prepareSourceLayer('G');
   const grass = sourcePreparation?.tryCreateLayer('G', aniso)
     ?? makeGrassLayer(3000, aniso, S.grassTone || null);
   yield;
+  yield* prepareSourceLayer('D');
   const dirt = sourcePreparation?.tryCreateLayer('D', aniso)
     ?? makeDirtLayer(3001, aniso, S.dirtTone || null);
   yield;
@@ -3141,6 +3147,7 @@ function* createSplatMaterialSteps(
   // sedimentary painter (desert cliffs). The sourced Rock063 set is
   // disabled for that map in sourcedTextures.ts — its wavy metamorphic
   // structure was the "wet-sand swirl" artifact on every canyon wall.
+  yield* prepareSourceLayer('R');
   const rock = sourcePreparation?.tryCreateLayer('R', aniso) ?? (S.sandstone
     ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
     : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null));
@@ -3507,7 +3514,7 @@ export async function buildTerrainMeshesAsync(
   tick: TerrainBuildTick | null = null,
   fineSlices = false,
   streamOpts: TerrainStreamOptions | null = null,
-  sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}),
+  sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}, { worker: true }),
 ): Promise<THREE.Group> {
   const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
     terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
@@ -3515,13 +3522,20 @@ export async function buildTerrainMeshesAsync(
   try {
     let r = g.next();
     while (!r.done) {
-      if (tick && (fineSlices || r.value[2])) await tick(r.value[0], r.value[1]);
+      if (tick && (fineSlices || r.value[2] || r.value[3])) await tick(r.value[0], r.value[1]);
+      if (r.value[3]) {
+        await r.value[3]();
+        // Recheck the caller's generation/pacing guard before allocating the
+        // layer textures, including cancellation during native worker work.
+        if (tick) await tick(r.value[0], r.value[1]);
+      }
       r = g.next();
     }
     completed = true;
     return r.value;
   } finally {
     if (!completed) {
+      try { sourcePreparation.cancel?.(); } catch { /* preserve the original build failure */ }
       // Close private CPU continuations; this is not partial asset disposal.
       try { g.return?.(); } catch { /* preserve the original pacing failure */ }
     }
@@ -3557,12 +3571,12 @@ function* terrainBuildSteps(
   let materialStep = materialSteps.next();
   try {
     while (!materialStep.done) {
-      yield [1, CHUNKS * CHUNKS + 2, false];
+      yield [1, CHUNKS * CHUNKS + 2, false, materialStep.value || undefined];
       materialStep = materialSteps.next();
     }
   } finally {
     if (!materialStep.done) {
-      const pending: Iterator<void, object, void> = materialSteps;
+      const pending: Iterator<void | TerrainSourceCheckpoint, object, void> = materialSteps;
       try { pending.return?.(); } catch { /* preserve the original pacing failure */ }
     }
   }
@@ -3735,5 +3749,6 @@ function* terrainBuildSteps(
   group.userData.streamingStats = streamStats;
   streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
   group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;
+  group.userData.cancelSourcedTextures = sourcePreparation?.cancel;
   return group;
 }

@@ -602,14 +602,19 @@ export function applySourcedTerrain(
 export interface TerrainSourcePreparation {
   /** Image IO only: callers never need to await this to start building. */
   ready: Promise<void>;
+  /** Async terrain alone requests an already-loaded layer at its checkpoint. */
+  prepareLayer?(key: LayerKey): Promise<void>;
   tryCreateLayer(key: LayerKey, anisotropy: number): TextureLayer | null;
   apply(layers: Partial<Record<LayerKey, TextureLayer>>): Promise<SourcedTextureResult[]>;
+  /** Final build/world cancellation, never temporary GPU suspension. */
+  cancel(): void;
 }
 
 interface PreparedTerrainEntry {
   set: keyof typeof SETS;
   opts: ComposeOptions;
   images: LoadedTextureSet | null;
+  composed: ReturnType<typeof composeSet>;
   created: WeakSet<TextureLayer>;
 }
 
@@ -625,17 +630,20 @@ function sourcedCanvasTexture(
 
 /**
  * Async map builds overlap source downloads with height/horizon preparation.
- * Each layer composes at its existing checkpoint, only if its images have
- * settled. Otherwise the original procedural painter and late swap still run.
- * No new wait, placeholder, global cache, or pending GPU owner is introduced:
- * abandoning preparation before creation only leaves shared image IO to settle.
+ * Source IO alone never composes. Async consumers opt into per-layer worker
+ * checkpoints, only for already-settled images; pending IO retains the original
+ * procedural painter and source-readiness swap. Prepared output is CPU canvas
+ * data, not a speculative Texture owner. Authoring remains synchronous.
  */
 export function prepareSourcedTerrain(
   mapId: string, settings: SourcedTerrainSettings = {},
+  { worker = false }: Pick<SourcedTextureApplicationOptions, 'worker'> = {},
 ): TerrainSourcePreparation {
   const plan: TerrainPlan = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, settings)];
   const entries = new Map<LayerKey, PreparedTerrainEntry>();
   const jobs: Promise<void>[] = [];
+  const abort = new AbortController();
+  const application = { worker, signal: abort.signal };
   for (const key of ['G', 'D', 'R', 'M'] as const) {
     const value = plan[key];
     if (!value) continue;
@@ -647,7 +655,7 @@ export function prepareSourcedTerrain(
         roughMul: (entry.roughMul ?? 1) * (key === 'M' ? settings.mudRough ?? 1 : 1),
         tint: entry.tint || null, desat: entry.desat ?? 0, lift: entry.lift ?? 0,
       },
-      images: null, created: new WeakSet(),
+      images: null, composed: null, created: new WeakSet(),
     };
     entries.set(key, prepared);
     jobs.push(loadSetImages(entry.set).then((images) => { prepared.images = images; }, () => {
@@ -657,15 +665,28 @@ export function prepareSourcedTerrain(
   }
   return {
     ready: Promise.all(jobs).then(() => {}),
+    ...(worker ? { async prepareLayer(key: LayerKey): Promise<void> {
+      const entry = entries.get(key);
+      if (!entry?.images || abort.signal.aborted) return;
+      try {
+        const composed = await composeSetAsync(entry.set, entry.images, entry.opts, abort.signal);
+        if (!abort.signal.aborted) entry.composed = composed;
+      } catch {
+        // The same source job below owns reporting and the exact fallback.
+      }
+    } } : {}),
     tryCreateLayer(key, anisotropy) {
       const entry = entries.get(key);
-      if (!entry?.images) return null;
+      if (!entry?.images || abort.signal.aborted) return null;
       // A failed source composition must retain the same fallback policy as
       // sourceJob, not turn an optional image into a map-loading failure.
       let composed: ReturnType<typeof composeSet>;
-      try { composed = composeSet(entry.set, entry.images, entry.opts); }
+      try { composed = worker ? entry.composed : composeSet(entry.set, entry.images, entry.opts); }
       catch { return null; }
       if (!composed) return null;
+      // A tier switch after the awaited checkpoint cannot publish old-size
+      // output or reintroduce a synchronous cache miss in this constructor.
+      if (worker && composed.albedo.width !== Math.min(entry.images.color!.width, texSize(1024))) return null;
       const layer = {
         albedo: sourcedCanvasTexture(composed.albedo, anisotropy, true),
         normal: sourcedCanvasTexture(composed.normal, anisotropy, false),
@@ -679,16 +700,20 @@ export function prepareSourcedTerrain(
       for (const key of ['G', 'D', 'R', 'M'] as const) {
         const layer = layers[key];
         const entry = entries.get(key);
-        if (layer && entry?.images && entry.created.has(layer)) {
+        if (!abort.signal.aborted && layer && entry?.images && entry.created.has(layer)) {
           const target = `terrain ${mapId}/${key}`;
           const failures = entry.images.failures;
           if (failures.length) console.warn(`[sourcedTextures] ${target}: ${failures.join('; ')}`);
           direct.push({ target, applied: true, failures });
         } else if (layer) pending[key] = layer;
       }
-      return applySourcedTerrain(mapId, pending, settings).then((late) =>
+      return applySourcedTerrain(mapId, pending, settings, application).then((late) =>
         [...direct, ...late].sort((a, b) =>
           'GDRM'.indexOf(a.target.slice(-1)) - 'GDRM'.indexOf(b.target.slice(-1))));
+    },
+    cancel() {
+      abort.abort();
+      for (const entry of entries.values()) entry.composed = null;
     },
   };
 }
