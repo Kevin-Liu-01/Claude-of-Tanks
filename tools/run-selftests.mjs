@@ -27,7 +27,7 @@ export function selftestChildEnv(env = process.env) {
 // controls scheduling only: no test, assertion or failure gate is omitted.
 export function selftestWorkerCount(env = process.env) {
   const count = Number(env.COT_SELFTEST_WORKERS ?? 1);
-  if (count !== 1 && count !== 2) throw new TypeError('COT_SELFTEST_WORKERS must be 1 or 2');
+  if (!Number.isInteger(count) || count < 1 || count > 4) throw new TypeError('COT_SELFTEST_WORKERS must be an integer from 1 to 4');
   return count;
 }
 
@@ -71,9 +71,9 @@ export async function runSelftestSuite(suiteName, suite, {
   if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
     throw new TypeError('maxLeaseBatchMs must be finite and positive');
   }
-  if (concurrency !== 1 && concurrency !== 2) throw new TypeError('concurrency must be 1 or 2');
-  if (concurrency === 2) return runSelftestCpuPool(suiteName, suite, {
-    runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) throw new TypeError('concurrency must be an integer from 1 to 4');
+  if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
+    concurrency, runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
   });
   let held = false;
   let acquiredAt = 0;
