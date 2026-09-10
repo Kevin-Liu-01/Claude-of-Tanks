@@ -366,3 +366,59 @@ export async function withGarageActionProfile({
     }
   }
 }
+
+function garageActionTraceWindow(trace) {
+  return { traceComplete: trace?.complete === true,
+    baselinePageTimeMs: trace?.baselinePageTimeMs ?? null,
+    captureEndPageTimeMs: trace?.captureEndPageTimeMs ?? null,
+    clockDriftMs: trace?.clockDriftMs ?? null, rowsRecorded: trace?.rows?.length ?? null,
+    rowsDropped: trace?.rowsDropped ?? null, dataLossOccurred: trace?.dataLossOccurred ?? null };
+}
+
+/** Bounded timeline attribution, separate from functional/readiness acceptance. */
+export async function withGarageActionTrace({
+  page, enabled, action, startTrace, onTrace, onOwner, onCleanupError,
+}, work) {
+  if (!enabled) return work();
+  let owner = null, completion = null, actionFailed = false, result = null;
+  const capture = { action, protocol: 'garage-action-frame-trace-v1', attributionOnly: true,
+    durationLimitMs: 30000, completedAction: false };
+  const stop = reason => {
+    if (completion) return completion;
+    completion = (async () => {
+      let trace = null, failure = null;
+      try { if (owner) trace = await owner.stop(reason); }
+      catch { failure = new Error('action_trace_stop_failed'); }
+      const clickedAt = result?.clickedAt, endedAt = clickedAt + result?.totalMs;
+      const coversAction = Number.isFinite(clickedAt) && Number.isFinite(endedAt)
+        && Number.isFinite(result?.totalMs) && result.totalMs >= 0
+        && Number.isFinite(trace?.baselinePageTimeMs) && Number.isFinite(trace?.captureEndPageTimeMs)
+        && trace.baselinePageTimeMs <= clickedAt && trace.captureEndPageTimeMs >= endedAt;
+      const stopReason = trace?.stopReason ?? reason;
+      Object.assign(capture, { ...garageActionTraceWindow(trace),
+        completeForAction: capture.completedAction && coversAction && trace?.complete === true
+          && stopReason === 'action-complete',
+        censored: !capture.completedAction || !coversAction || stopReason !== 'action-complete',
+        stopReason, observationError: failure ? failure.message : owner ? null : 'action_trace_start_failed' });
+      // The collector already strips raw URLs, arguments, stacks and identities.
+      try { await onTrace(trace, { ...capture }); }
+      catch { failure ??= new Error('action_trace_write_failed'); }
+      if (failure) throw failure;
+    })();
+    return completion;
+  };
+  try {
+    owner = await startTrace(page, { durationMs: capture.durationLimitMs });
+    onOwner?.({ stop });
+    result = await work();
+    capture.completedAction = true;
+    return result;
+  } catch (error) {
+    actionFailed = true;
+    throw error;
+  } finally {
+    try { await stop(actionFailed ? 'action-failed' : 'action-complete'); }
+    catch (error) { if (actionFailed) onCleanupError(error); else throw error; }
+    finally { onOwner?.(null); }
+  }
+}

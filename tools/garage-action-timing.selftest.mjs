@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActionProfile } from './garage-action-timing.mjs';
+import { readFileSync } from 'node:fs';
+import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActionProfile,
+  withGarageActionTrace } from './garage-action-timing.mjs';
 
 const names = ['window', 'document', 'performance', 'PerformanceObserver',
   'requestAnimationFrame', 'cancelAnimationFrame', 'getComputedStyle', 'Element'];
@@ -365,4 +367,122 @@ assert.deepEqual(failedStart.events, ['Profiler.enable', 'Profiler.start', 'Prof
 const failedWrite = profileFixture({ failWrite: true });
 await assert.rejects(failedWrite.run(), /write failed/);
 assert.equal(failedWrite.events.at(-1), 'Profiler.disable');
-console.log('garage-action-timing.selftest: bounded intervals, LongTask/LoAF attribution, visibility, diagnostics and cleanup pass');
+
+function traceFixture(options = {}) {
+  const { enabled = true, failStart = false, failWork = false, failStop = false,
+    failWrite = false, interrupt = false, traceResult = {} } = options;
+  const events = [], saved = [], cleanup = [], owners = [];
+  const workError = Object.hasOwn(options, 'workError') ? options.workError : new Error('original action error');
+  const receipt = { clickedAt: 110, totalMs: 20 };
+  let active;
+  return { events, saved, cleanup, owners, workError, receipt,
+    run: () => withGarageActionTrace({
+      enabled, action: 'battle', page: {},
+      startTrace: async (_page, options) => {
+        events.push('start');
+        assert.deepEqual(options, { durationMs: 30000 });
+        if (failStart) throw new Error('frame_trace_start_failed');
+        return { stop: async reason => {
+          events.push(`stop:${reason}`);
+          if (failStop) throw new Error('PRIVATE protocol details');
+          return { complete: true, baselinePageTimeMs: 100, captureEndPageTimeMs: 140,
+            clockDriftMs: 0, rows: [{ kind: 'gc', startOffsetMs: 12, durationMs: 5, thread: 'page-main' }],
+            rowsDropped: 0, dataLossOccurred: false, stopReason: reason, ...traceResult };
+        } };
+      },
+      onOwner: owner => { active = owner; owners.push(owner === null ? 'released' : 'owned'); },
+      onTrace: async (trace, capture) => {
+        events.push('write');
+        if (failWrite) throw new Error('PRIVATE output path');
+        saved.push({ trace, capture });
+      },
+      onCleanupError: error => cleanup.push(error.message),
+    }, async () => {
+      events.push('trusted-action');
+      if (interrupt) {
+        const first = active.stop('interrupted');
+        assert.equal(active.stop('interrupted'), first, 'signal and finally share one stop/persist owner');
+        await first;
+      }
+      if (failWork) throw workError;
+      return receipt;
+    }),
+  };
+}
+const noTrace = traceFixture({ enabled: false });
+assert.equal(await noTrace.run(), noTrace.receipt);
+assert.deepEqual(noTrace.events, ['trusted-action'], 'default never starts a trace or writes an artifact');
+assert.deepEqual(noTrace.owners, []);
+const traced = traceFixture();
+assert.equal(await traced.run(), traced.receipt, 'diagnostic preserves the exact functional receipt');
+assert.deepEqual(traced.events, ['start', 'trusted-action', 'stop:action-complete', 'write']);
+assert.deepEqual(traced.owners, ['owned', 'released']);
+assert.equal(traced.saved[0].capture.attributionOnly, true);
+assert.equal(traced.saved[0].capture.completeForAction, true);
+assert.equal(traced.saved[0].capture.censored, false);
+assert.equal(traced.saved[0].capture.rowsRecorded, 1);
+const deadlineTrace = traceFixture({ traceResult: { stopReason: 'deadline', captureEndPageTimeMs: 125 } });
+assert.equal(await deadlineTrace.run(), deadlineTrace.receipt, 'deadline does not alter functional/readiness gates');
+assert.equal(deadlineTrace.saved[0].capture.traceComplete, true, 'the bounded trace itself may be complete');
+assert.equal(deadlineTrace.saved[0].capture.completeForAction, false, 'never claim a censored action was covered');
+assert.equal(deadlineTrace.saved[0].capture.censored, true);
+for (const traceResult of [
+  { complete: false, rowsDropped: 1 },
+  { complete: false, dataLossOccurred: true },
+  { baselinePageTimeMs: 111 },
+  { captureEndPageTimeMs: null },
+]) {
+  const incomplete = traceFixture({ traceResult });
+  assert.equal(await incomplete.run(), incomplete.receipt);
+  assert.equal(incomplete.saved[0].capture.completeForAction, false);
+}
+const traceActionFailure = traceFixture({ failWork: true });
+await assert.rejects(traceActionFailure.run(), error => error === traceActionFailure.workError);
+assert.equal(traceActionFailure.saved[0].capture.completedAction, false);
+assert.equal(traceActionFailure.saved[0].capture.censored, true);
+assert.equal(traceActionFailure.saved[0].capture.stopReason, 'action-failed');
+const traceStartFailure = traceFixture({ failStart: true });
+await assert.rejects(traceStartFailure.run(), /frame_trace_start_failed/);
+assert.deepEqual(traceStartFailure.events, ['start', 'write'], 'failed startup cannot stop a foreign trace or click');
+assert.equal(traceStartFailure.saved[0].trace, null);
+assert.equal(traceStartFailure.saved[0].capture.rowsRecorded, null);
+assert.equal(traceStartFailure.saved[0].capture.observationError, 'action_trace_start_failed');
+const traceStopFailure = traceFixture({ failStop: true });
+await assert.rejects(traceStopFailure.run(), /action_trace_stop_failed/);
+assert.equal(traceStopFailure.saved[0].trace, null, 'failed flush is unavailable, not an empty trace');
+assert.equal(traceStopFailure.saved[0].capture.observationError, 'action_trace_stop_failed');
+assert.ok(!JSON.stringify(traceStopFailure.saved).includes('PRIVATE'));
+assert.deepEqual(traceStopFailure.owners, ['owned', 'released']);
+const traceDoubleFailure = traceFixture({ failWork: true, failStop: true });
+await assert.rejects(traceDoubleFailure.run(), error => error === traceDoubleFailure.workError);
+assert.deepEqual(traceDoubleFailure.cleanup, ['action_trace_stop_failed']);
+for (const workError of [null, undefined, 0, false, '']) {
+  const falsyFailure = traceFixture({ failWork: true, failStop: true, workError });
+  let caught = false;
+  try { await falsyFailure.run(); }
+  catch (error) { caught = true; assert.equal(error, workError); }
+  assert.equal(caught, true, 'every thrown JS value survives trace cleanup failure');
+  assert.equal(falsyFailure.saved[0].capture.stopReason, 'action-failed');
+  assert.deepEqual(falsyFailure.cleanup, ['action_trace_stop_failed']);
+}
+const traceWriteFailure = traceFixture({ failWrite: true });
+await assert.rejects(traceWriteFailure.run(), /action_trace_write_failed/);
+assert.deepEqual(traceWriteFailure.owners, ['owned', 'released']);
+const interruptedTrace = traceFixture({ interrupt: true, failWork: true });
+await assert.rejects(interruptedTrace.run(), error => error === interruptedTrace.workError);
+assert.deepEqual(interruptedTrace.events, ['start', 'trusted-action', 'stop:interrupted', 'write']);
+assert.equal(interruptedTrace.saved[0].capture.censored, true);
+assert.equal(interruptedTrace.saved[0].capture.completedAction, false);
+assert.deepEqual(interruptedTrace.owners, ['owned', 'released']);
+
+const probeSource = readFileSync(new URL('./garage-battle-actions-probe.mjs', import.meta.url), 'utf8');
+assert.match(probeSource, /if \(traceActions && profileActions\) throw/);
+assert.ok(probeSource.indexOf('if (traceActions && profileActions)') < probeSource.indexOf('await mkdir(out)'));
+assert.match(probeSource, /traceActions \? \[readFile\(new URL\('\.\/multiplayer-frame-trace\.mjs'/,
+  'only requested timeline acquisitions hash the collector');
+assert.match(probeSource, /traceActions \? \(await import\('\.\/multiplayer-frame-trace\.mjs'\)\)/);
+assert.match(probeSource, /measurementMode: traceActions \? 'timeline-trace-attribution-only'/);
+assert.match(probeSource, /const file = `\$\{action\}\.trace\.json`;[\s\S]*?flag: 'wx'/);
+assert.match(probeSource, /activeActionTrace\?\.stop\('interrupted'\)[\s\S]*?finally\(closeOwnedBrowser\)/);
+assert.match(probeSource, /if \(activeActionTrace\) \{[\s\S]*?await activeActionTrace\.stop/);
+console.log('garage-action-timing.selftest: bounded intervals, LongTask/LoAF, optional action timelines and owned cleanup pass');

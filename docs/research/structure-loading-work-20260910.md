@@ -309,9 +309,12 @@ throughput comparison. The added LoAF observer changes acquisition from r2.
 The first gap, 2714.4–2835.5 ms, overlaps 110 ms of a Long Task and one
 115.7 ms LoAF. That frame exposes a 13.8 ms `frameScheduler` rAF entry point,
 but does not account for all remaining time. Both sampled UI labels say
-`Building terrain meshes`; the world record starts at 2703.9 ms and reports
-222 ms of height-field work, so UI text alone is not an exact nested-stage
-attribution. The worst gap is not fixed or assigned to Canvas/GPU/OS by this
+`Building terrain meshes`. That label is published only after height-field
+completion. The world activation record starts at 2703.9 ms but can join an
+earlier intent-prefetched construction; its copied 222 ms height-field stage
+cannot be added to that activation timestamp to locate the stage. Other
+preparation jobs remain concurrent, so the label alone is not an exact
+nested-function attribution. The worst gap is not fixed or assigned to Canvas/GPU/OS by this
 receipt. Rematch's worst gap overlaps two LoAFs with scheduler continuation
 records, despite no overlapping ≥50 ms Long Task. No observation was dropped
 for these overlap summaries. Foundations/rubble/curbs completed-family costs
@@ -326,3 +329,52 @@ Six focused integration selftests, native TypeScript/core-unused and the
 public build pass on rebased `8c1b4c2c2`. The registry now contains 955 files;
 this is not a fresh full 955-file test-run claim. The upstream 954-file full
 run does not already include this follow-up's new cache test or runtime.
+
+## Published actual-control check
+
+The six-commit follow-up pushed without force to `origin/main` at
+`85aa9224a3b6acb7ffb81594cce42601a1ff4a47`, independently verified remotely.
+Vercel deployment `FUHCXoxcn8EWU3gbAtxFhGhSdGsn` reports success; the public
+site serves `v1.0.0+g85aa9224a`. The live
+`heightfield-yield-production-r1/report.json` passes the same actual-control,
+audio, warm and source-readiness checks. All error/failure/cleanup arrays are
+empty; day/night/Garage screenshots were inspected, browser ownership closed.
+Report SHA256:
+`42e54dcfcd78cfb577e4bc30ca4c93dbbea069202cdf19dde19e57cd07ca1cb9`.
+Live HTML SHA256:
+`5f86df9854bedcd14ae52cc0379afa89057f79ceb58fd48a6a80c16e177fd47d`.
+Acquisition and native graphics settings match the local follow-up.
+
+| Live control | Cover ms | Ready ms | Callback-gap maximum ms |
+| --- | ---: | ---: | ---: |
+| Battle | 2.5 | 8310.9 | 161.8 |
+| Rematch | 134.3 | 5526.2 | 66.3 |
+| Garage | 83.8 | 317.5 | 46.2 |
+
+First entry still has a covered 161.8 ms gap at 4046.8–4208.6 ms. It overlaps
+a 94 ms Long Task plus two LoAFs. One exposes a 94.3 ms resumed scheduler
+callback; the trace does not name its nested hot function or classify the
+remaining 67.8 ms. Rematch again shows shorter grouped work without an
+overlapping ≥50 ms Long Task. The foundation family is 24.9 ms. These are
+retained remaining costs, not a performance certificate or evidence that
+historical 214–319 ms stalls were solved. Publication completes this bounded
+runtime delivery; native timeline attribution and finer completed-instance
+foundation pacing are the next separate investigations.
+
+The maintained action probe now offers opt-in `--trace-actions`, reusing the
+existing browser-wide, owned CDP timeline collector. It is incompatible with
+CPU profiling and is explicitly diagnostic-only. Each real action gets a
+fresh sanitized `.trace.json`, bounded to 30 seconds, 50,000 retained rows and
+the collector's 32 MiB trace buffer. Performance marks align page time;
+incomplete/censored actions are separate from functional/readiness acceptance.
+The collector's event whitelist and privacy filtering are unchanged. Its
+timeline can identify retained GC/task/paint categories, not specific Canvas
+calls or unretained compilation events, and not GPU hardware durations.
+
+Syntax checks, the existing action-timing and shared trace selftests pass.
+Tests cover default no-op, actual-window coverage, deadlines, incomplete
+flushes, startup/action/write/cleanup failure, interruption/idempotent ownership,
+and preservation of falsy JavaScript exceptions. Strict metrics pass on all
+three changed tool files: 167 functions, no violations or any/unknown. The
+first draft's new cyclomatic-26 closure failed metrics; pure metadata extraction
+removed that violation before the passing run. No gate was weakened.
