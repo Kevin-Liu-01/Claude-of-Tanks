@@ -195,6 +195,18 @@ sleep, bounded caches, phase detachment, heap and cleanup checks pass. These
 content-budget failures require their own evidence-backed optimization, not
 deleting useful caches or labeling this gate green.
 
+## Regression scope
+
+The optional full `npm test` invocation is retained in
+`texture-preparation-full-tests-r1.log`. It reached pre-suite progress 112/302
+before being intentionally interrupted with SIGINT (exit 130); all owned
+children drained and the resource lease was released. The full-fleet geometry
+scans are outside this two-file loading correction. This prefix is not a full
+pre/core/post pass and must not be combined with another run to imply one.
+The release qualification is the ten focused tests, public build,
+typecheck/unused/metrics/Doctor, native controls, repeat profile, and explicit
+failed/refused broader gates recorded above.
+
 ## Remaining acceptance scope
 
 After the candidate is qualified, use the existing unprofiled actual-controls
