@@ -2,6 +2,9 @@
 // Opt-in native AUDIO experiment; plays a quiet 440 Hz tone per real click.
 // NEVER run under runSelftestSuite's outer lease: this CLI owns the shared FIFO.
 // node tools/audio-default-sink-probe.mjs --allow-native-audio --out=/absolute/new-directory [--blocks=3] [--executable-path=/absolute/chrome]
+// --fresh-browser-per-arm requires --blocks=1 (default in this mode), an explicit
+// --executable-path and --expected-browser-version=Chrome/152.0.7977.83. Four A/B/B/A
+// browser lifetimes are fully closed serially; OS/default-device cache is NOT reset.
 // No game boot, build, autoplay bypass, fake audio, device enumeration or mic.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -18,21 +21,44 @@ import { audioSinkOrder, deadline, summarizeAudioSinkExperiment } from './audio-
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ROUTE = '/__audio_default_sink_fixture';
-const HELP = 'node tools/audio-default-sink-probe.mjs --allow-native-audio --out=/absolute/new-directory [--blocks=3] [--executable-path=/absolute/chrome]';
+const HELP = 'node tools/audio-default-sink-probe.mjs --allow-native-audio --out=/absolute/new-directory [--blocks=3] [--executable-path=/absolute/chrome] [--expected-browser-version=Chrome/version] [--fresh-browser-per-arm (exactly one block)]';
 
 export function audioProbeOptions(args) {
-  assert.ok(args.every(arg => /^(--allow-native-audio|--(?:out|blocks|executable-path)=.+)$/.test(arg)), 'Unknown argument');
+  assert.ok(args.every(arg => /^(--(?:allow-native-audio|fresh-browser-per-arm)|--(?:out|blocks|executable-path|expected-browser-version)=.+)$/.test(arg)), 'Unknown argument');
   assert.ok(args.includes('--allow-native-audio'), 'Explicit --allow-native-audio required; this emits a quiet test tone');
   const value = name => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
-  const out = value('out'), executablePath = value('executable-path'), blocks = Number(value('blocks') ?? 3);
+  const freshBrowserPerArm = args.includes('--fresh-browser-per-arm');
+  const out = value('out'), executablePath = value('executable-path');
+  const expectedBrowserVersion = value('expected-browser-version');
+  const blocks = Number(value('blocks') ?? (freshBrowserPerArm ? 1 : 3));
   assert.ok(out && isAbsolute(out), '--out must be an absolute new directory');
   assert.ok(!executablePath || isAbsolute(executablePath), '--executable-path must be absolute');
+  assert.ok(!expectedBrowserVersion || /^Chrome\/\d+\.\d+\.\d+\.\d+$/.test(expectedBrowserVersion), 'Expected exact Chrome/version');
+  if (freshBrowserPerArm) {
+    assert.equal(blocks, 1, 'Fresh-browser mode is bounded to four A/B/B/A samples');
+    assert.ok(executablePath && expectedBrowserVersion, 'Fresh-browser mode requires explicit executable and expected browser version');
+  }
   audioSinkOrder(blocks);
-  return { out: resolve(out), blocks, executablePath };
+  return { out: resolve(out), blocks, executablePath, expectedBrowserVersion, freshBrowserPerArm };
+}
+
+export async function runAudioBrowserGroups(options, runGroup) {
+  const order = audioSinkOrder(options.blocks);
+  const groups = options.freshBrowserPerArm ? order.map(scenario => [scenario]) : [order];
+  // runGroup owns and drains browser/server/cache cleanup. No next launch can
+  // begin until the previous group resolves; any failure stops admission.
+  for (let index = 0; index < groups.length; index++) await runGroup(groups[index], index);
+}
+
+export function verifyAudioProbeVersion(version, expectedVersion, previousVersion = version) {
+  if (expectedVersion) assert.equal(version, expectedVersion, 'Unexpected native Chrome version');
+  assert.equal(version, previousVersion, 'Browser version changed between arms');
+  return version;
 }
 
 export function audioProbeLaunchOptions(executablePath) {
   return nativeBrowserLaunchOptions({ headless: false, timeout: 30000, protocolTimeout: 30000,
+    handleSIGINT: false, handleSIGTERM: false,
     ...(executablePath ? { executablePath } : {}), ignoreDefaultArgs: ['--mute-audio'],
     args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 }
@@ -75,7 +101,7 @@ async function sampleClick(page, mode) {
     do { await new Promise(requestAnimationFrame); } while (performance.now() - startedAt < 250);
   }, mode);
   await page.click('#audio-sink-start'); // Native input, never dispatchEvent/evaluate(click).
-  const result = await deadline(page.evaluate(() => window.__AUDIO_SINK_PROBE.finished), 18000, 'native audio attempt');
+  const result = await deadline(page.evaluate(() => window.__AUDIO_SINK_PROBE.finished), 25000, 'native audio attempt');
   result.foreground = await page.evaluate(() => ({ hidden: document.hidden, focused: document.hasFocus() }));
   await page.evaluate(() => window.__AUDIO_SINK_PROBE.dispose());
   return result;
@@ -111,18 +137,26 @@ async function runSample(browser, url, scenario, report) {
 }
 
 export async function runAudioSinkProbe(options) {
-  const { out, blocks, executablePath } = audioProbeOptions(['--allow-native-audio', `--out=${options.out}`,
-    `--blocks=${options.blocks ?? 3}`, ...(options.executablePath ? [`--executable-path=${options.executablePath}`] : [])]);
+  const { out, blocks, executablePath, expectedBrowserVersion, freshBrowserPerArm } = audioProbeOptions([
+    '--allow-native-audio', `--out=${options.out}`,
+    ...(options.blocks === undefined ? [] : [`--blocks=${options.blocks}`]),
+    ...(options.executablePath ? [`--executable-path=${options.executablePath}`] : []),
+    ...(options.expectedBrowserVersion ? [`--expected-browser-version=${options.expectedBrowserVersion}`] : []),
+    ...(options.freshBrowserPerArm ? ['--fresh-browser-per-arm'] : []),
+  ]);
   mkdirSync(out); // Never overwrite historical evidence.
-  const report = { protocol: 'audio-default-sink-ABBA-v1', ok: false,
+  const report = { protocol: 'audio-default-sink-ABBA-v2', ok: false,
     baseRevision: '559e7b779ef18588f9e0e5a91c73a37c971d0128',
     revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
     acquisitionHash: acquisitionHash(), startedAt: new Date().toISOString(), blocks,
-    semantics: 'A: interactive/default; B: interactive/none then await setSinkId(empty string). No explicit sampleRate in either arm.',
-    cacheScope: 'Fresh browser context and AudioContext per sample; one shared browser process/audio service, OS/device cache unspecified.',
-    samples: [], errors: [], cleanupErrors: [], browserClosed: false, serverClosed: false, lockReleased: false };
+    freshBrowserPerArm, executablePath: executablePath ?? null, expectedBrowserVersion: expectedBrowserVersion ?? null,
+    semantics: 'A: interactive/default; B: interactive/none then await setSinkId(empty string), followed by separately timed resume if suspended. No explicit sampleRate in either arm.',
+    cacheScope: freshBrowserPerArm
+      ? 'Fresh browser process/audio service per arm, previous browser fully closed; OS/default-device cache unspecified.'
+      : 'Fresh browser context and AudioContext per sample; shared browser/audio service cannot demonstrate cold B startup.',
+    browserRuns: [], samples: [], errors: [], cleanupErrors: [], browserClosed: false, serverClosed: false, lockReleased: false };
   const lock = createCaptureLock();
-  let refresh, held = false, browser, interrupted = null, closing;
+  let refresh, held = false, browser, interrupted = null;
   const active = () => { if (interrupted) throw new Error(`Interrupted by ${interrupted}`); };
   const interrupt = signal => { interrupted ||= signal; if (browser) void browser.close().catch(() => {}); };
   const sigint = () => interrupt('SIGINT'), sigterm = () => interrupt('SIGTERM');
@@ -132,48 +166,72 @@ export async function runAudioSinkProbe(options) {
     // the existing non-abortable FIFO producer drains before this owner exits.
     await lock.acquire(45 * 60_000); held = true; active();
     refresh = setInterval(() => lock.refresh(), 30000); refresh.unref();
-    await withIsolatedCaptureBrowser(serverOptions(), audioProbeLaunchOptions(executablePath), async owners => {
-      active(); report.launch = verifyAudioLaunch(owners.browser); report.browserVersion = await owners.browser.version();
-      const url = `http://127.0.0.1:${owners.server.httpServer.address().port}${ROUTE}`;
-      for (const scenario of audioSinkOrder(blocks)) {
-        active(); await runSample(owners.browser, url, scenario, report);
-      }
-    }, {
-      createViteServer: async value => {
-        const server = await createServer(value), close = server.close.bind(server);
-        server.close = async () => {
-          const pending = close();
-          try { await deadline(pending, 10000, 'owned Vite close'); report.serverClosed = true; }
-          catch (error) {
-            // A deadline is not cancellation: drain the admitted close before
-            // the shared helper deletes its cache or releases our FIFO lease.
-            await Promise.allSettled([pending]); throw error;
-          }
-        };
-        return server;
-      },
-      launchBrowser: async value => {
-        browser = await puppeteer.launch(value);
-        const close = browser.close.bind(browser);
-        browser.close = () => {
-          closing ??= (async () => {
+    await runAudioBrowserGroups({ blocks, freshBrowserPerArm }, async (scenarios, browserRunIndex) => {
+      active();
+      let closing;
+      const browserRun = { browserRunIndex, admittedAt: new Date().toISOString(), pid: null,
+        browserClosed: false, processExited: false, serverClosed: false };
+      report.browserRuns.push(browserRun);
+      await withIsolatedCaptureBrowser(serverOptions(), audioProbeLaunchOptions(executablePath), async owners => {
+        active(); browserRun.launch = verifyAudioLaunch(owners.browser);
+        assert.ok(Number.isInteger(browserRun.pid) && browserRun.pid > 0, 'Owned native browser PID required');
+        browserRun.version = verifyAudioProbeVersion(await owners.browser.version(), expectedBrowserVersion, report.browserVersion);
+        report.browserVersion ??= browserRun.version; report.launch ??= browserRun.launch;
+        const url = `http://127.0.0.1:${owners.server.httpServer.address().port}${ROUTE}`;
+        for (const scenario of scenarios) {
+          active(); await runSample(owners.browser, url, { ...scenario, browserRunIndex, browserPid: browserRun.pid }, report);
+        }
+      }, {
+        createViteServer: async value => {
+          const server = await createServer(value), close = server.close.bind(server);
+          server.close = async () => {
             const pending = close();
-            try { await deadline(pending, 15000, 'owned browser close'); report.browserClosed = true; }
+            try { await deadline(pending, 10000, 'owned Vite close'); browserRun.serverClosed = true; }
             catch (error) {
-              const child = browser.process();
-              if (child && child.exitCode === null && child.signalCode === null) {
-                const exited = new Promise(resolve => child.once('exit', resolve));
-                child.kill('SIGKILL'); await deadline(exited, 5000, 'owned browser kill/drain');
-              }
-              await Promise.allSettled([pending]);
-              throw error;
+              // A deadline is not cancellation: drain the admitted close before
+              // the shared helper deletes its cache or releases our FIFO lease.
+              await Promise.allSettled([pending]); throw error;
             }
-          })();
-          return closing;
-        };
-        return browser;
-      },
-      logCleanupError: (resource, error) => report.cleanupErrors.push(`${resource}: ${error}`),
+          };
+          return server;
+        },
+        launchBrowser: async value => {
+          const launched = await puppeteer.launch(value);
+          browser = launched;
+          const close = launched.close.bind(launched), child = launched.process();
+          browserRun.pid = child?.pid ?? null;
+          launched.close = () => {
+            closing ??= (async () => {
+              const pending = close();
+              try {
+                await deadline(pending, 15000, 'owned browser close');
+                if (child && child.exitCode === null && child.signalCode === null) {
+                  await deadline(new Promise(resolve => child.once('exit', resolve)), 5000, 'owned browser exit');
+                }
+                browserRun.browserClosed = true;
+              }
+              catch (error) {
+                if (child && child.exitCode === null && child.signalCode === null) {
+                  const exited = new Promise(resolve => child.once('exit', resolve));
+                  child.kill('SIGKILL'); await deadline(exited, 5000, 'owned browser kill/drain');
+                }
+                await Promise.allSettled([pending]);
+                throw error;
+              } finally {
+                browserRun.exitCode = child?.exitCode ?? null;
+                browserRun.signalCode = child?.signalCode ?? null;
+                browserRun.processExited = !!child && (Number.isInteger(child.exitCode) || typeof child.signalCode === 'string');
+                browserRun.closedAt = new Date().toISOString();
+              }
+            })();
+            return closing;
+          };
+          return launched;
+        },
+        logCleanupError: (resource, error) => report.cleanupErrors.push(`${resource}: ${error}`),
+      });
+      assert.ok(browserRun.browserClosed && browserRun.processExited && browserRun.serverClosed,
+        'Previous browser/server must be closed before admitting another arm');
     });
     active();
     assert.equal(acquisitionHash(), report.acquisitionHash, 'Acquisition source changed during measurement');
@@ -183,9 +241,12 @@ export async function runAudioSinkProbe(options) {
     if (held) { lock.release(); report.lockReleased = true; }
     process.removeListener('SIGINT', sigint); process.removeListener('SIGTERM', sigterm);
   }
-  report.summary = summarizeAudioSinkExperiment(report.samples);
+  report.browserClosed = report.browserRuns.length > 0 && report.browserRuns.every(run => run.browserClosed && run.processExited);
+  report.serverClosed = report.browserRuns.length > 0 && report.browserRuns.every(run => run.serverClosed);
+  report.summary = summarizeAudioSinkExperiment(report.samples, freshBrowserPerArm);
   report.ok = report.samples.length === blocks * 4 && report.samples.every(row => row.ok && row.browserContextClosed
     && row.foreground?.focused && !row.foreground?.hidden) && report.errors.length === 0 && report.cleanupErrors.length === 0
+    && report.browserRuns.length === (freshBrowserPerArm ? 4 : 1)
     && report.browserClosed && report.serverClosed && report.lockReleased;
   report.hypothesisPassed = report.ok && report.summary.verdict === 'promising-microprobe-only';
   writeFileSync(join(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });

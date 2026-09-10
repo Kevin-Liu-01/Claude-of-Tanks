@@ -66,13 +66,28 @@ export function audioSinkReadiness(row) {
   return { ok: reasons.length === 0, reasons, wallSeconds, clockSeconds, outputSeconds };
 }
 
+async function observeRunningDefaultRoute(context, row, env, wait) {
+  const now = () => env.performance.now();
+  row.routeAtSettlement = contextState(context, now);
+  if (row.routeAtSettlement.sink !== 'default') throw new Error('default output not selected');
+  // setSinkId fulfillment can precede running-state restoration. Preserve
+  // that intermediate receipt, then explicitly measure a bounded resume of
+  // the SAME context; this is not another gesture or a reconstructed context.
+  if (row.routeAtSettlement.state === 'suspended') {
+    row.postSinkResumeActivation = env.navigator.userActivation?.isActive === true;
+    await wait(timedCall(() => context.resume(), now, row, 'postSinkResume'), 8000, 'post-sink resume');
+  }
+  row.route = contextState(context, now);
+  if (row.route.sink !== 'default' || row.route.state !== 'running') throw new Error('default output not running');
+}
+
 /** Called only by the actual button listener. The injected environment is for
  * deterministic CPU tests; the native runner uses the untouched window APIs. */
-export async function runAudioSinkAttempt(event, mode, env = globalThis, onContext = () => {}) {
+export async function runAudioSinkAttempt(event, mode, env = globalThis, onContext = () => {}, wait = deadline) {
   const now = () => env.performance.now();
   const row = { mode, ok: false, timeOrigin: env.performance.timeOrigin, clickedAtMs: now(), trusted: event.isTrusted === true,
     userActivation: env.navigator.userActivation?.isActive === true, constructor: null,
-    initial: null, route: null, graphStart: null, graphEnd: null, signalPeak: 0,
+    initial: null, routeAtSettlement: null, route: null, graphStart: null, graphEnd: null, signalPeak: 0,
     events: [], error: null, cleanupErrors: [], closed: false, fallbackRequired: false };
   let context, oscillator, gain, analyser, stateChange, sinkChange, cancelled = false;
   try {
@@ -98,9 +113,8 @@ export async function runAudioSinkAttempt(event, mode, env = globalThis, onConte
     const routed = mode === 'default' ? Promise.resolve()
       : timedCall(() => context.setSinkId(''), now, row, 'setSink');
     row.handlerSyncEndMs = now();
-    await deadline(Promise.all([resumed, routed]), 8000, 'resume/default route');
-    row.route = contextState(context, now);
-    if (row.route.sink !== 'default' || row.route.state !== 'running') throw new Error('default output not running');
+    await wait(Promise.all([resumed, routed]), 8000, 'resume/default route');
+    await observeRunningDefaultRoute(context, row, env, wait);
     oscillator = context.createOscillator(); gain = context.createGain(); analyser = context.createAnalyser();
     oscillator.frequency.value = 440; gain.gain.value = 0.01; analyser.fftSize = 256;
     oscillator.connect(gain); gain.connect(analyser); analyser.connect(context.destination);
@@ -109,7 +123,7 @@ export async function runAudioSinkAttempt(event, mode, env = globalThis, onConte
     oscillator.start(); oscillator.stop(context.currentTime + 0.8);
     // Same nonzero, quietly audible graph and observation window in both arms.
     // This is graph/default-route readiness, never physical speaker loopback.
-    await deadline((async () => {
+    await wait((async () => {
       do {
         await new Promise(resolve => env.requestAnimationFrame(resolve));
         if (cancelled) return;
@@ -133,7 +147,7 @@ export async function runAudioSinkAttempt(event, mode, env = globalThis, onConte
         try { node?.disconnect(); } catch (error) { row.cleanupErrors.push(String(error)); }
       }
       try {
-        await deadline(context.close(), 3000, 'audio close');
+        await wait(context.close(), 3000, 'audio close');
         row.closed = context.state === 'closed';
       } catch (error) { row.cleanupErrors.push(String(error)); }
     } else row.closed = true;
@@ -209,7 +223,7 @@ const median = values => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-export function summarizeAudioSinkExperiment(rows) {
+export function summarizeAudioSinkExperiment(rows, freshBrowserPerArm = false) {
   const reasons = [];
   if (rows.length < 4 || rows.length % 4) reasons.push('incomplete-ABBA');
   for (let index = 0; index < rows.length; index++) {
@@ -223,6 +237,9 @@ export function summarizeAudioSinkExperiment(rows) {
     constructorMedianMs: median(group.map(row => row.constructor?.endMs - row.constructor?.startMs)),
     constructorMaxMs: Math.max(...group.map(row => row.constructor?.endMs - row.constructor?.startMs)),
     syncHandlerMedianMs: median(group.map(row => row.handlerSyncEndMs - row.clickedAtMs)),
+    routeSettlementMedianMs: median(group.map(row => row.routeAtSettlement?.atMs - row.clickedAtMs)),
+    postSinkResumeMedianMs: median(group.map(row => row.postSinkResume
+      ? row.postSinkResume.settledMs - row.postSinkResume.startMs : 0)),
     routeMedianMs: median(group.map(row => row.route?.atMs - row.clickedAtMs)),
     maxCallbackGapMs: Math.max(...group.map(row => row.maxCallbackGapMs ?? Infinity)),
   }));
@@ -231,8 +248,10 @@ export function summarizeAudioSinkExperiment(rows) {
   if (!(b.routeMedianMs <= a.routeMedianMs + 50)) reasons.push('default-route-readiness-regression');
   const exercised = a.constructorMaxMs >= 50;
   const improved = a.syncHandlerMedianMs - b.syncHandlerMedianMs >= 20;
-  return { verdict: reasons.length ? 'reject' : exercised && improved ? 'promising-microprobe-only' : 'inconclusive',
+  return { verdict: reasons.length ? 'reject' : freshBrowserPerArm && exercised && improved ? 'promising-microprobe-only' : 'inconclusive',
     reasons: [...new Set(reasons)], metrics, baselineConstructorStallExercised: exercised,
     physicalAudibility: 'not measured; no microphone or loopback capture',
-    inferenceLimit: 'Fresh browser contexts, shared browser audio service and unspecified OS/driver cache. Not production or cold-OS proof.' };
+    inferenceLimit: freshBrowserPerArm
+      ? 'Fresh browser process/audio service per arm, previous browser fully closed. OS/device cache remains unspecified; not cold-OS or production proof.'
+      : 'Shared-browser ABBA cannot compare cold first-use A versus B. Browser contexts are fresh, browser audio service and OS/driver caches are not.' };
 }
