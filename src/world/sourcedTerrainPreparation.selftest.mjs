@@ -348,6 +348,116 @@ await withFixture(async f => {
   assert.match(String(terrain.buildTerrainMeshesAsync), /sourcePreparation = prepareSourcedTerrain/);
   assert.match(String(terrain.buildTerrainMeshesAsync), /terrainBuildSteps\(heightField, engineCtx, cfg, streamOpts, sourcePreparation\)/);
   assert.match(String(terrain._terrainBuildSteps), /createSplatMaterialSteps\([\s\S]*?sourcePreparation,?\s*\)/);
+
+  const requested = [];
+  const asyncPreparation = f.prepareSourcedTerrain('winter', {}, { worker: true });
+  await asyncPreparation.ready;
+  const consumer = { ...asyncPreparation, async prepareLayer(key) {
+    requested.push(key); await asyncPreparation.prepareLayer(key);
+  } };
+  terrain._paintCalls.length = 0;
+  const steps = terrain._createSplatMaterialSteps({ anisotropy: 16 }, {}, {},
+    'winter', null, null, consumer);
+  try {
+    for (const key of ['G', 'D', 'R']) {
+      const checkpoint = steps.next();
+      assert.equal(typeof checkpoint.value, 'function');
+      assert.equal(requested.includes(key), false, 'iterator exposes work before invoking async composition');
+      await checkpoint.value();
+      assert.equal(requested.at(-1), key);
+      assert.equal(steps.next().value, undefined, 'original post-layer checkpoint is retained');
+    }
+    assert.deepEqual(calls(), [], 'ready source layers never call replaced procedural painters');
+    assert.equal(steps.next().value, undefined);
+    assert.deepEqual(calls(), ['ground:mud'], 'wet layer stays procedural without an async request');
+  } finally { steps.return(); asyncPreparation.cancel(); }
 });
+
+// Execute the actual public async wrapper with one private source checkpoint,
+// not a replacement wrapper. Pacing/generation guards must bracket it even for
+// coarse callers, and every failure closes the private iterator and consumer.
+{
+  const fixtureKey = '__preparedTerrainIterator';
+  const previous = Object.getOwnPropertyDescriptor(globalThis, fixtureKey);
+  const url = new URL('./terrain.ts?selftest=source-checkpoint-wrapper', import.meta.url).href;
+  const hooks = registerHooks({ load(path, context, next) {
+    const result = next(path, context);
+    return path === url ? { ...result, source: `${result.source}\n
+      terrainBuildSteps = (...args) => globalThis.${fixtureKey}(...args);` } : result;
+  } });
+  try {
+    const { buildTerrainMeshesAsync } = await import(url);
+    hooks.deregister();
+    for (const when of ['before', 'after', 'checkpoint', 'success', 'ordinary-coarse']) {
+      let nexts = 0, closes = 0, cancels = 0, ticks = 0, work = 0, release;
+      const held = new Promise(resolve => { release = resolve; });
+      const result = new THREE.Group();
+      const originalFailure = 0;
+      globalThis[fixtureKey] = () => ({
+        next() {
+          if (++nexts > 1) return { done: true, value: result };
+          return { done: false, value: [1, 66, false, when === 'ordinary-coarse' ? undefined : async () => {
+            work++; await held;
+            if (when === 'checkpoint') throw originalFailure;
+          }] };
+        },
+        return() { closes++; throw new Error('secondary iterator close failure'); },
+      });
+      const preparation = { cancel() { cancels++; throw new Error('secondary cancel failure'); } };
+      const pending = buildTerrainMeshesAsync({}, {}, null, () => {
+        ticks++;
+        if (when === 'before' || when === 'after' && ticks === 2) throw originalFailure;
+      }, false, null, preparation);
+      const outcome = pending.then(value => ({ value }), error => ({ error }));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(nexts, when === 'ordinary-coarse' ? 2 : 1,
+        'held source work cannot advance into texture/material construction');
+      assert.equal(work, ['before', 'ordinary-coarse'].includes(when) ? 0 : 1);
+      release();
+      const settled = await outcome;
+      const succeeded = ['success', 'ordinary-coarse'].includes(when);
+      if (succeeded) assert.equal(settled.value, result);
+      else assert.equal(settled.error, originalFailure, 'cleanup must preserve even falsy thrown values');
+      assert.equal(cancels, succeeded ? 0 : 1);
+      assert.equal(closes, succeeded ? 0 : 1);
+      assert.equal(nexts, succeeded ? 2 : 1);
+      assert.equal(ticks, when === 'ordinary-coarse' ? 0 : ['after', 'success'].includes(when) ? 2 : 1);
+    }
+  } finally {
+    hooks.deregister();
+    if (previous) Object.defineProperty(globalThis, fixtureKey, previous);
+    else delete globalThis[fixtureKey];
+  }
+}
+
+// Final world disposal reaches the explicit terrain consumer before the
+// existing resource owners. A GPU-only Texture.dispose cannot call this port.
+{
+  const url = new URL('./map.ts?selftest=prepared-source-disposal', import.meta.url).href;
+  const hooks = registerHooks({ load(path, context, next) {
+    const result = next(path, context);
+    return path === url ? { ...result, source: `${result.source}\nexport { assembleWorld };` } : result;
+  } });
+  try {
+    const { assembleWorld } = await import(url);
+    hooks.deregister();
+    const events = [], terrain = new THREE.Group(), scene = new THREE.Scene();
+    terrain.userData.cancelSourcedTextures = () => events.push('cancel-sources');
+    terrain.userData.sourcedTexturesReady = Promise.resolve([]);
+    const texture = new THREE.Texture();
+    terrain.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map: texture })));
+    const vegetation = { group: new THREE.Group(), treeObstacles: [],
+      setGroundCoverClearance() {}, dispose() { events.push('vegetation'); } };
+    const props = { group: new THREE.Group(), obstacles: [], colliders: [],
+      registerDestructibles: () => () => events.push('unregister') };
+    const field = { _layout: { spawns: { player: { x: 0, z: 0, yaw: 0 }, enemies: [] } },
+      getHeightAt: () => 0 };
+    const world = assembleWorld({ scene }, { id: 'verdant' }, field, terrain, vegetation, props);
+    texture.dispose(); assert.deepEqual(events, []);
+    world.dispose(); assert.deepEqual(events, ['cancel-sources', 'unregister', 'vegetation']);
+    terrain.children[0].geometry.dispose(); terrain.children[0].material.dispose();
+    scene.remove(world.group);
+  } finally { hooks.deregister(); }
+}
 
 console.log(`sourcedTerrainPreparation.selftest: readiness, fallback, ownership, palette, builder seam and ${native ? 'native' : 'fixture'} pixel/metadata parity passed`);

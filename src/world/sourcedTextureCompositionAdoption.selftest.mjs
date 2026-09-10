@@ -15,7 +15,7 @@ const hooks = registerHooks({ load(path, context, next) {
   if (path === qualityUrl) return { format: 'module', shortCircuit: true,
     source: 'export const texSize = size => Math.min(size, globalThis.__sourceTestCap);' };
   const result = next(path, context);
-  return path === url ? { ...result, source: `${result.source}\nexport { applySet, composeSet, composeSetAsync, loadSetImages, _compositeCache, _normalCache };` } : result;
+  return path === url ? { ...result, source: `${result.source}\nexport { applySet, composeSet, composeSetAsync, loadSetImages, _compositeCache, _normalCache, _imgCache };` } : result;
 } });
 
 let canvasCount = 0, reads = 0, failAdoption = false;
@@ -45,7 +45,8 @@ function scale(image, size) {
   }
   return output;
 }
-const loaded = new Map(), failedUrls = new Set();
+const loaded = new Map(), failedUrls = new Set(), pendingImages = [];
+let holdImages = false;
 class TestImage {
   constructor() {
     this.width = this.height = 2;
@@ -53,12 +54,13 @@ class TestImage {
   }
   set src(url) {
     loaded.set(url, this);
-    queueMicrotask(() => failedUrls.has(url) ? this.onerror(new Error('missing source')) : this.onload());
+    const settle = () => failedUrls.has(url) ? this.onerror(new Error('missing source')) : this.onload();
+    if (holdImages) pendingImages.push(settle); else queueMicrotask(settle);
   }
 }
 globalThis.document = { createElement: tag => { assert.equal(tag, 'canvas'); return new TestCanvas(); } };
 globalThis.Image = TestImage; globalThis.ImageData = TestImageData;
-const { applySet, composeSet, composeSetAsync, loadSetImages, _compositeCache, _normalCache,
+const { applySet, composeSet, composeSetAsync, loadSetImages, _compositeCache, _normalCache, _imgCache,
   applySourcedBuildings, applySourcedTerrain, prepareSourcedTerrain } = await import(url);
 hooks.deregister();
 
@@ -97,6 +99,95 @@ const preparation = prepareSourcedTerrain('urban'); await preparation.ready;
 assert.equal(canvasCount, beforePreparation, 'unused source preparation remains image-only');
 assert.ok(preparation.tryCreateLayer('G', 8));
 assert.equal(driver.calls.length, 0, 'early preparation has no new speculative composition owner');
+
+// Async terrain requests composition only at its actual layer checkpoint.
+// Its synchronous constructor must neither re-read inputs nor create a worker
+// job, including when IO settles after that checkpoint has already passed.
+reset();
+const demanded = prepareSourcedTerrain('urban', {}, { worker: true });
+await demanded.ready;
+const beforeDemand = canvasCount, beforeDemandReads = reads;
+assert.equal(driver.calls.length, 0, 'settled prefetch alone remains image-only');
+assert.equal(demanded.tryCreateLayer('G', 16), null);
+assert.equal(canvasCount, beforeDemand);
+const demand = demanded.prepareLayer('G'); await flush();
+assert.equal(driver.calls.length, 1);
+assert.equal(driver.calls[0].input.options.roughInAlpha, true);
+assert.equal(driver.calls[0].input.includeSurface, false);
+assert.equal(demanded.tryCreateLayer('G', 16), null, 'held worker cannot expose a texture');
+complete(driver.calls[0]); await demand;
+assert.equal(reads, beforeDemandReads, 'successful worker preparation avoids main input readbacks');
+const direct = demanded.tryCreateLayer('G', 16);
+assert.ok(direct.albedo.isCanvasTexture && direct.normal.isCanvasTexture);
+direct.albedo.dispose(); direct.normal.dispose();
+assert.equal(driver.calls[0].signal.aborted, false, 'temporary GPU release is not source consumer cancellation');
+const directImage = direct.albedo.image, generation = direct.albedo.version;
+const directReceipt = await demanded.apply({ G: direct });
+assert.deepEqual(directReceipt, [{ target: 'terrain urban/G', applied: true, failures: [] }]);
+assert.equal(direct.albedo.image, directImage);
+assert.equal(direct.albedo.version, generation, 'direct prepared ownership never reswaps');
+const callsBeforeHit = driver.calls.length;
+const cached = prepareSourcedTerrain('urban', {}, { worker: true }); await cached.ready;
+await cached.prepareLayer('G');
+const cachedLayer = cached.tryCreateLayer('G', 16);
+assert.equal(cachedLayer.albedo.image, directImage);
+assert.equal(driver.calls.length, callsBeforeHit, 'prepared cache hits bypass the worker');
+for (const owner of [direct, cachedLayer]) for (const texture of Object.values(owner)) texture.dispose();
+cached.cancel(); demanded.cancel();
+
+// Preserve the old IO policy: no new wait on a missing source request. The
+// later source-readiness promise still reports the real applied images.
+reset(); _imgCache.clear(); holdImages = true;
+const late = prepareSourcedTerrain('urban', {}, { worker: true });
+await late.prepareLayer('G');
+assert.equal(driver.calls.length, 0);
+assert.equal(late.tryCreateLayer('G', 16), null);
+holdImages = false; pendingImages.splice(0).forEach(settle => settle());
+await late.ready;
+const readsBeforeLate = reads;
+assert.equal(late.tryCreateLayer('G', 16), null, 'newly settled images cannot sneak into inline composeSet');
+assert.equal(reads, readsBeforeLate);
+const lateLayer = layer(), lateImage = lateLayer.albedo.image;
+let lateSettled = false;
+const lateReady = late.apply({ G: lateLayer }).then(result => { lateSettled = true; return result; });
+await flush(); assert.equal(driver.calls.length, 1);
+assert.equal(lateSettled, false); assert.equal(lateLayer.albedo.image, lateImage);
+complete(driver.calls[0]);
+assert.deepEqual(await lateReady, [{ target: 'terrain urban/G', applied: true, failures: [] }]);
+assert.notEqual(lateLayer.albedo.image, lateImage); late.cancel();
+
+// Cancellation is explicit final-build/world ownership, not Texture.dispose.
+// It cannot populate caches or adopt a completed response after abandonment.
+for (const when of ['before-demand', 'held-demand', 'late-apply']) {
+  reset();
+  const abandoned = prepareSourcedTerrain('urban', {}, { worker: true }); await abandoned.ready;
+  const abandonedLayer = layer(), image = abandonedLayer.albedo.image;
+  if (when === 'before-demand') abandoned.cancel();
+  const pending = when === 'late-apply' ? abandoned.apply({ G: abandonedLayer }) : abandoned.prepareLayer('G');
+  await flush(); abandoned.cancel();
+  const beforeCancel = canvasCount;
+  if (when !== 'before-demand') {
+    assert.equal(driver.calls.length, 1); assert.equal(driver.calls[0].signal.aborted, true);
+    complete(driver.calls[0]);
+  }
+  await pending;
+  assert.equal(canvasCount, beforeCancel);
+  assert.equal(_compositeCache.size, 0); assert.equal(_normalCache.size, 0);
+  assert.equal(abandoned.tryCreateLayer('G', 16), null);
+  assert.equal(abandonedLayer.albedo.image, image); assert.equal(abandonedLayer.albedo.disposals, 0);
+}
+
+for (const mode of ['null', 'reject', 'unsupported', 'adoption']) {
+  reset(); driver.mode = mode; driver.available = mode !== 'unsupported';
+  const fallback = prepareSourcedTerrain('urban', {}, { worker: true }); await fallback.ready;
+  const pending = fallback.prepareLayer('G'); await flush();
+  if (mode === 'adoption') { failAdoption = true; complete(driver.calls[0]); }
+  await pending;
+  const result = fallback.tryCreateLayer('G', 16);
+  assert.ok(result, `prepared ${mode} retains the exact full source composer fallback`);
+  assert.equal((await fallback.apply({ G: result }))[0].applied, true);
+  result.albedo.dispose(); result.normal.dispose(); fallback.cancel();
+}
 
 // Misses publish only after complete adoption, with no input readback on main.
 // Joined callers recheck the completed cache before allocating their canvases.
