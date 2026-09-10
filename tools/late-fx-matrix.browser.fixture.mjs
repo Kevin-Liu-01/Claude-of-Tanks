@@ -114,7 +114,8 @@ function createFixture(renderer, samples, aoEnabled) {
   });
   const readMaterial = copyMaterial();
   const readQuad = new FullScreenQuad(readMaterial);
-  const trace = { traversals: [], sourceOrigin: null, fxOrigin: null, sourceSamples: null };
+  const trace = { traversals: [], sourceOrigin: null, fxOrigin: null, sourceSamples: null,
+    fxScene: null, fxCamera: null, fxDraws: 0, callbackCalls: 0, callbackIdentity: true };
   const update = scene.updateMatrixWorld;
   scene.updateMatrixWorld = function (...args) {
     const target = renderer.getRenderTarget();
@@ -126,9 +127,74 @@ function createFixture(renderer, samples, aoEnabled) {
     const gl = renderer.getContext();
     trace.sourceSamples = gl.getParameter(gl.SAMPLES);
   };
-  fx.onBeforeRender = () => { trace.fxOrigin = fx.matrixWorld.elements.slice(12, 15); };
+  const defaultFxCallback = fx.onBeforeRender;
+  // The reference deliberately exercises exact-identity callback fallback.
+  // The candidate leaves its callback at Three's default so the view is used.
+  function referenceFxCallback(callbackRenderer, callbackScene, callbackCamera) {
+    trace.callbackCalls++;
+    trace.callbackIdentity &&= this === fx && callbackRenderer === renderer
+      && callbackScene === scene && callbackCamera === camera;
+  }
   return { renderer, scene, camera, parent, backdrop, occluder, fx, source, late,
-    composer, sceneAA, aerial, ao, lateFx, readTarget, readMaterial, readQuad, trace };
+    composer, sceneAA, aerial, ao, lateFx, readTarget, readMaterial, readQuad, trace,
+    defaultFxCallback, referenceFxCallback, retainedRenderScene: null };
+}
+
+// Synchronous diagnostic scope only: preserve direct draw order, receiver,
+// exact arguments, return values and original exceptions. No wrapper crosses
+// a readback/await or overwrites a replacement installed by a draw callback.
+export function withDirectDrawObserver(renderer, observe, render) {
+  const original = renderer.renderBufferDirect;
+  let observationFailure;
+  function observed(...args) {
+    // A diagnostic failure must not suppress a draw or replace its exception.
+    try { observe(this, args); }
+    catch (error) { observationFailure ??= () => { throw error; }; }
+    return original.apply(this, args);
+  }
+  renderer.renderBufferDirect = observed;
+  let result;
+  try { result = render(); }
+  finally {
+    if (renderer.renderBufferDirect === observed) renderer.renderBufferDirect = original;
+  }
+  observationFailure?.();
+  return result;
+}
+
+function renderObserved(fixture) {
+  const { renderer, composer, fx, trace } = fixture;
+  const original = renderer.renderBufferDirect;
+  withDirectDrawObserver(renderer, (receiver, args) => {
+    if (args[4] !== fx) return;
+    trace.fxOrigin = fx.matrixWorld.elements.slice(12, 15);
+    trace.fxScene = args[1];
+    trace.fxCamera = args[0];
+    trace.fxDraws++;
+    trace.callbackIdentity &&= receiver === renderer;
+  }, () => composer.render(1 / 60));
+  requireThat(renderer.renderBufferDirect === original, 'direct draw observer must restore its owned method');
+}
+
+function renderSceneReceipt(fixture, options) {
+  const { scene, trace } = fixture;
+  if (options.hiddenFx) {
+    requireThat(trace.fxDraws === 0, 'hidden FX must not submit a direct draw');
+    return 'unobserved-hidden';
+  }
+  requireThat(trace.fxDraws === 1 && trace.fxCamera === fixture.camera,
+    'one real FX draw must use the original camera');
+  if (!options.reuse) {
+    requireThat(trace.fxScene === scene && trace.callbackCalls === 1 && trace.callbackIdentity,
+      'reference callback must keep the original object/renderer/scene/camera identities');
+    return 'original';
+  }
+  requireThat(trace.fxScene !== scene && Object.getPrototypeOf(trace.fxScene) === scene
+    && trace.callbackCalls === 0 && trace.callbackIdentity,
+  'candidate must render the inherited scene view without custom FX callbacks');
+  fixture.retainedRenderScene ??= trace.fxScene;
+  requireThat(fixture.retainedRenderScene === trace.fxScene, 'candidate scene view must be retained across frames');
+  return 'retained-view';
 }
 
 function setPose(fixture, frame, cameraFrame = frame) {
@@ -151,14 +217,18 @@ function renderFixture(fixture, frame, options = {}) {
   if (options.staleGeometry) scene.matrixWorldAutoUpdate = false;
   fixture.fx.visible = !options.hiddenFx;
   fixture.fx.material.depthTest = !options.noDepthTest;
+  fixture.fx.onBeforeRender = options.reuse ? fixture.defaultFxCallback : fixture.referenceFxCallback;
   trace.traversals.length = 0;
   trace.sourceOrigin = trace.fxOrigin = trace.sourceSamples = null;
+  trace.fxScene = trace.fxCamera = null;
+  trace.fxDraws = trace.callbackCalls = 0;
+  trace.callbackIdentity = true;
   lateFx.sceneMatrixSource = options.reuse ? sceneAA : null;
   if (options.reuse) sceneAA.beginMatrixFrame(renderer);
   else sceneAA.endMatrixFrame();
   aerial.beginDirectColorFrame(fixture.ao.enabled ? null : fixture.late);
   try {
-    fixture.composer.render(1 / 60);
+    renderObserved(fixture);
     requireThat(scene.matrixWorldAutoUpdate === !options.staleGeometry,
       'LateFX must restore its incoming matrix-update flag');
   } finally {
@@ -167,6 +237,7 @@ function renderFixture(fixture, frame, options = {}) {
     scene.matrixWorldAutoUpdate = oldFlag;
   }
   requireThat(!sceneAA.consumeMatrixFrame(renderer, scene, fixture.camera), 'frame permission must be closed');
+  const renderScene = renderSceneReceipt(fixture, options);
   fixture.readMaterial.uniforms.tDiffuse.value = fixture.composer.readBuffer.texture;
   renderer.setRenderTarget(fixture.readTarget);
   renderer.clear(true, true, false);
@@ -175,7 +246,8 @@ function renderFixture(fixture, frame, options = {}) {
   renderer.readRenderTargetPixels(fixture.readTarget, 0, 0, WIDTH, HEIGHT, pixels);
   requireThat(renderer.getContext().getError() === renderer.getContext().NO_ERROR, 'no native GL errors');
   return { pixels, traversals: [...trace.traversals], sourceOrigin: trace.sourceOrigin,
-    fxOrigin: trace.fxOrigin, sourceSamples: trace.sourceSamples };
+    fxOrigin: trace.fxOrigin, sourceSamples: trace.sourceSamples, renderScene,
+    callbackCalls: trace.callbackCalls, directDrawObserverRestored: true };
 }
 
 function assertOrigin(actual, expected, label) {
@@ -209,7 +281,10 @@ function checkPair(pair, frame, samples, aoEnabled, previous) {
   return { pixels: reference.pixels, receipt: { samples, aoEnabled, frame,
     width: WIDTH, height: HEIGHT, parityDifference, referenceTraversals: reference.traversals,
     candidateTraversals: candidate.traversals, sourceOrigin: candidate.sourceOrigin,
-    fxOrigin: candidate.fxOrigin, movingPixels, negativeDifferences: negatives } };
+    fxOrigin: candidate.fxOrigin, movingPixels, negativeDifferences: negatives,
+    referenceRenderScene: reference.renderScene, candidateRenderScene: candidate.renderScene,
+    referenceCallbackCalls: reference.callbackCalls, candidateCallbackCalls: candidate.callbackCalls,
+    directDrawObserverRestored: reference.directDrawObserverRestored && candidate.directDrawObserverRestored } };
 }
 
 function disposeFixture(fixture) {
