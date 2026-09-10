@@ -8,9 +8,13 @@ not a zero-lag or release certificate.
 
 Latest follow-up (2026-09-10): see
 [the opaque-loading paint boundary](opaque-loading-paint-boundary-20260910.md)
-and [foundation-decal pacing](foundation-decal-pacing-20260910.md) for current
-qualification evidence and still-open cold-loading/Ready stalls. Terrain-row
-qualification remains in progress. The dated checkpoints below are retained
+and [foundation-decal pacing](foundation-decal-pacing-20260910.md), plus the
+[integrated terrain-row qualification](splat-field-row-pacing-20260910.md#integrated-release-checkpoint),
+for current qualification evidence and still-open cold-loading/Ready stalls.
+All 956 current checks have cumulative PASS coverage; types/build and native
+actual-control gates pass. Strict performance acceptance remains open: the
+latest loading callback gap is 94.3 ms and the camera certificate is refused.
+The dated checkpoints below are retained
 history, not a replacement for that newer evidence or a combined-release certificate.
 
 Earlier UI checkpoint (2026-09-10): hit-card preparation uses an exact-output
