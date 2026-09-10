@@ -153,3 +153,64 @@ report and screenshots retained separately under
 `/private/tmp/cot-interactive-baseline.gsRCvU/sky-environment-production-r1`.
 That live result must be read independently; this local pass does not certify
 production smoothness or resolve the historical gameplay-stall attribution.
+
+### Production result and the next bounded fix
+
+The live acquisition navigated `d06a0ef5663a521f1e5d8811d89a824fd1cce384`
+(READY deployment `dpl_2DypNX3iTwGvWm5rMijPWLHxxpQ6`) at
+18:47:45–18:48:08 UTC. Its report SHA-256 is
+`47fb5b583da02983c81624c2dc22c24cf6dffa944a65c29e745d9722cb6e0948`;
+served HTML SHA-256 is
+`293a50dd6e04e458e7c6bb0236d57d8492f48e26f7f846200938512029d5fa88`.
+Functional, boot/audio ownership, warm/source readiness and cleanup pass;
+all three native screenshots were inspected. The later alias check had
+advanced to `8f879124415f2734e8020de07b69a03afac4d96c`, a Type 10-only
+descendant retaining both exact Sky runtime files. The alias did not remain
+unchanged for the entire verification interval.
+
+| Action | Cover | Ready | Worst callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 3.4 ms | 9,686.3 ms | 355.1 ms |
+| Battle Again | 140.3 ms | 6,215.9 ms | 422.3 ms |
+| Return to Garage | 90.4 ms | 379.5 ms | 53.4 ms |
+
+Rematch/return `worldServices` are 11/24 ms, but the cold rendering path is
+not smooth. Local and production acquisitions match the ordered 14-member
+rosters, acquisition hash, Chrome version, high quality, viewport, DPR,
+resolution scale and trim. Production's 66-object terrain forward batches
+take 335/408 ms; its 61-object vegetation batches take 352/345 ms. Terrain
+program preparation exhausts 1,024 query/yield rounds in only 8/9 ms and
+returns incomplete (`budget`), pending 3/6, with zero uniform preparations.
+The local preparation completed. These receipts identify a cold first-use
+handoff failure, not a particular driver instruction or GPU duration.
+
+The source explains the premature exit: `prepareTerrainPrograms` used forced
+opaque-loading yields, which are task-only until the 32 ms paint cadence is
+due. Native program readiness can therefore consume all rounds before a
+single rendering opportunity. The follow-up uses `nextPaintFrame` at this
+specific generator checkpoint, preserving the existing five-second deadline
+and 1,024-round safety bound per root, cancellation/root checks and honest incomplete
+fallback. Visible vegetation receives the same strict source-target
+preparation before its first forward submission; hidden roots, FX and inactive
+worlds remain excluded. The separate forward-warm change bounds terrain and
+vegetation cohorts and preserves nested renderable descendants through layer
+masking with scoped LOD handling.
+
+These covered-loading findings do not prove the cause of historical 214–319 ms
+gameplay stalls. The production acquisition also has a 292.2 ms
+Ready-to-uncovered interval with a 165 ms long task. No functional PASS here
+is a strict sustained-frame or zero-latency certificate.
+
+The follow-up's ten distinct focused integration tests pass across
+`native-program-integration-r1.log` and `native-program-final-r1.log`, including
+the native pending-frame regression, exact source target, hidden vegetation,
+cancel/detach, nested renderables/lights, LOD selection, CSM restoration before
+each yield, iterator close and renderer failure. Typecheck/core-unused pass.
+The two runtime files pass strict metrics: 45 functions, zero complexity
+violations and no explicit `any`/`unknown`. Independent source review found no
+blocker. These tests prove scheduling/state contracts, not native completion.
+The final changed-scope Doctor scan exits zero at 90/100 with five warnings:
+three sequential awaits (the intentional scheduling/ordering contract and its
+test), and two chained array assertions in the cohort test. The earlier
+partial scan was 91/100 before that test file was added to the diff. These are
+reviewed warnings, not a claim of a warning-free scan; no rule was suppressed.

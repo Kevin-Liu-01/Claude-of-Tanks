@@ -16,6 +16,11 @@ interface RenderableObject extends Object3D {
   isSprite?: boolean;
 }
 
+interface WarmLod extends Object3D {
+  isLOD?: boolean;
+  autoUpdate?: boolean;
+}
+
 interface SavedShadowState {
   shadow: ShadowState;
   autoUpdate: boolean;
@@ -105,6 +110,35 @@ function restoreShadows(states: readonly SavedShadowState[]): void {
   }
 }
 
+function renderWithoutShadowUpdates(lights: readonly ShadowLight[], render: () => void): void {
+  const states = disableShadows(lights);
+  try { render(); } finally { restoreShadows(states); }
+}
+
+/** Mask a draw, never its descendants; freeze the already-selected LODs only
+ * during this synchronous render. No temporary state survives a checkpoint. */
+function renderSelectedCohort(
+  root: Object3D, selected: ReadonlySet<Object3D> | null, render: () => void,
+): void {
+  const masks: Array<{ object: Object3D; mask: number }> = [];
+  const lods: Array<{ object: WarmLod; autoUpdate: boolean | undefined }> = [];
+  root.traverseVisible((object) => {
+    const lod = object as WarmLod;
+    if (lod.isLOD) lods.push({ object: lod, autoUpdate: lod.autoUpdate });
+    if (selected && isRenderable(object) && !selected.has(object)) {
+      masks.push({ object, mask: object.layers.mask });
+    }
+  });
+  try {
+    for (const { object } of lods) object.autoUpdate = false;
+    for (const { object } of masks) object.layers.mask = 0;
+    render();
+  } finally {
+    for (const state of masks) state.object.layers.mask = state.mask;
+    for (const state of lods) state.object.autoUpdate = state.autoUpdate;
+  }
+}
+
 function hideVisible(object: Object3D, hidden: Object3D[]): void {
   if (object.visible === false) return;
   object.visible = false;
@@ -126,14 +160,9 @@ function renderCohort(
       if (!visibleChildren.has(child)) hideVisible(child, hidden);
     }
   }
-  if (visibleObjects) {
-    for (const object of renderablesUnder(root)) {
-      if (!visibleObjects.has(object)) hideVisible(object, hidden);
-    }
-  }
   const startedAt = context.now();
   try {
-    context.warmRender();
+    renderSelectedCohort(root, visibleObjects, context.warmRender);
   } catch {
     // The complete covered scene render remains the compatibility fallback.
   } finally {
@@ -150,7 +179,8 @@ function* warmWorldRoot(
     if (child.visible === false) continue;
     const label = `world:${child.name || child.type}`;
     const renderables = renderablesUnder(child);
-    const cohortSize = child.name === 'props' ? 4 : Math.max(1, renderables.length);
+    const bounded = child.name === 'props' || child.name === 'terrain' || child.name === 'vegetation';
+    const cohortSize = bounded ? 4 : Math.max(1, renderables.length);
     for (let index = 0; index < renderables.length; index += cohortSize) {
       const cohort = renderables.slice(index, index + cohortSize);
       yield {
@@ -190,26 +220,19 @@ export function* createIsolatedForwardWarmBatches({
   cohortSize = 4,
   now = () => performance.now(),
 }: IsolatedForwardWarmOptions): Generator<DeploymentForwardWarmBatch> {
-  const renderables: RenderableObject[] = [];
   const lightRoots = sceneLightRoots(scene);
   const rootWasVisible = root.visible;
-  root.visible = true;
-  root.traverseVisible((object) => {
-    if (isRenderable(object)) renderables.push(object);
-  });
-  root.visible = rootWasVisible;
+  let renderables: RenderableObject[];
+  try {
+    root.visible = true;
+    renderables = renderablesUnder(root);
+  } finally { root.visible = rootWasVisible; }
   if (!renderables.length) return;
 
   const size = Math.max(1, Math.floor(cohortSize));
   for (let index = 0; index < renderables.length; index += size) {
     const cohort = new Set(renderables.slice(index, index + size));
-    const hiddenObjects: Object3D[] = [];
     const hiddenRoots: Object3D[] = [];
-    for (const object of renderables) {
-      if (cohort.has(object) || object.visible === false) continue;
-      object.visible = false;
-      hiddenObjects.push(object);
-    }
     for (const child of scene.children) {
       if (child === root || child.visible === false || lightRoots.has(child)) continue;
       child.visible = false;
@@ -218,10 +241,9 @@ export function* createIsolatedForwardWarmBatches({
     const startedAt = now();
     root.visible = true;
     try {
-      warmRender();
+      renderSelectedCohort(root, cohort, warmRender);
     } finally {
       root.visible = rootWasVisible;
-      for (const object of hiddenObjects) object.visible = true;
       for (const child of hiddenRoots) child.visible = true;
     }
     yield {
@@ -247,25 +269,23 @@ export function* createDeploymentForwardWarmBatches({
   warmRender,
   now = () => performance.now(),
 }: DeploymentForwardWarmOptions): Generator<DeploymentForwardWarmBatch> {
-  const shadowState = disableShadows(csmLights ?? []);
   const contentRoots = visibleContentRoots(scene, sceneLightRoots(scene));
-  const context: CohortRenderContext = { contentRoots, warmRender, now };
+  const context: CohortRenderContext = {
+    contentRoots, now,
+    warmRender: () => renderWithoutShadowUpdates(csmLights ?? [], warmRender),
+  };
 
-  try {
-    for (const root of contentRoots) {
-      if (root === worldGroup && root.children.length > 1) {
-        yield* warmWorldRoot(root, context);
-      } else if (root === playerRoot) {
-        yield* warmPlayerRoot(root, context);
-      } else {
-        yield {
-          label: root.name || root.type,
-          objects: root.children.length,
-          ms: renderCohort(context, root),
-        };
-      }
+  for (const root of contentRoots) {
+    if (root === worldGroup && root.children.length > 0) {
+      yield* warmWorldRoot(root, context);
+    } else if (root === playerRoot) {
+      yield* warmPlayerRoot(root, context);
+    } else {
+      yield {
+        label: root.name || root.type,
+        objects: root.children.length,
+        ms: renderCohort(context, root),
+      };
     }
-  } finally {
-    restoreShadows(shadowState);
   }
 }

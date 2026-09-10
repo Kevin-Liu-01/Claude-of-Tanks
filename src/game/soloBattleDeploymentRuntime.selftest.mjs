@@ -12,7 +12,7 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false,
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
-  streamedCadence = null, terrainPrograms = '' } = {}) {
+  streamedCadence = null, terrainPrograms = '', vegetationPrograms = '' } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -22,6 +22,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   let pending = false;
   let destructionWarmed = false;
   let clock = 0;
+  let programFrames = 0;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const worldGroup = new THREE.Group();
@@ -30,6 +31,10 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   const terrain = new THREE.Group();
   terrain.name = 'terrain';
   if (terrainPrograms) worldGroup.add(terrain);
+  const vegetation = new THREE.Group();
+  vegetation.name = 'vegetation';
+  vegetation.visible = vegetationPrograms !== 'hidden';
+  if (vegetationPrograms) worldGroup.add(vegetation);
   const sourceTarget = new THREE.WebGLRenderTarget(4, 4);
   camera.layers.enable(LATE_FX_LAYER);
   const fxGroup = new THREE.Group();
@@ -133,21 +138,30 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       },
       initializeSteps: function* () {},
       prepareSceneSteps: function* (options) {
-        assert.strictEqual(options.visibleRoot, terrain, 'only the current direct terrain root is selected');
+        const root = options.visibleRoot;
+        assert.ok(root === terrain || root === vegetation, 'only current terrain/vegetation roots are selected');
+        assert.equal(root.visible, true, 'hidden world roots must not be prepared');
+        const mode = root === terrain ? terrainPrograms : vegetationPrograms;
+        const label = `${root.name}Programs`;
         assert.equal(options.strict, true);
         assert.equal(options.sliceMs, 4);
         assert.deepEqual(options.passes, [{ layerMask: 1, target: sourceTarget }],
           'prepare the source AA target, excluding the separate late-FX pass');
-        calls.push(['terrainPrograms']);
+        calls.push([label]);
         try {
           yield;
-          calls.push(['terrainProgramsResumed']);
-          if (terrainPrograms === 'throw') throw new Error('native reflection failed');
+          if (mode === 'pending-frames') {
+            let remaining = 1023;
+            while (programFrames < 3 && remaining-- > 0) yield;
+            if (programFrames < 3) return { status: 'incomplete', pending: 2, reason: 'budget' };
+          }
+          calls.push([`${label}Resumed`]);
+          if (mode === 'throw') throw new Error('native reflection failed');
           options.timing.uniformCount = 2;
-          return terrainPrograms === 'incomplete'
+          return mode === 'incomplete'
             ? { status: 'incomplete', pending: 2, reason: 'query' }
             : { status: 'complete', pending: 0 };
-        } finally { calls.push(['terrainProgramsClosed']); }
+        } finally { calls.push([`${label}Closed`]); }
       },
       linkerBreathingSlices: function* () {},
       invalidate: () => {},
@@ -231,15 +245,21 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     setDestructionWarmed: (value) => { destructionWarmed = value; },
     now: streamedCadence?.now ?? (() => ++clock),
     yieldFrame: async () => calls.push(['frame']),
+    yieldProgramFrame: async () => {
+      programFrames++;
+      const root = calls.at(-1)?.[0] === 'vegetationPrograms' ? vegetation : terrain;
+      const mode = root === terrain ? terrainPrograms : vegetationPrograms;
+      if (mode === 'cancel') generation++;
+      if (mode === 'detach') worldGroup.remove(root);
+      if (mode === 'late-cancel') {
+        // This direct frame port has one await boundary (the ordinary
+        // covered yielder below has an additional guarding wrapper).
+        queueMicrotask(() => { generation++; });
+      }
+      calls.push(['programFrame']);
+    },
     createLoadingYielder: streamedCadence?.createLoadingYielder ?? (() => async (force) => {
       const previous = calls.at(-1)?.[0];
-      if (previous === 'terrainPrograms') {
-        if (terrainPrograms === 'cancel') generation++;
-        if (terrainPrograms === 'detach') worldGroup.remove(terrain);
-        if (terrainPrograms === 'late-cancel') {
-          queueMicrotask(() => queueMicrotask(() => { generation++; }));
-        }
-      }
       if (cancelCompile && previous === 'compileSlice') generation++;
       if ((lateCancelCompile === 'slice' && previous === 'compileSlice')
         || (lateCancelCompile === 'final' && previous === 'compileClosed')
@@ -457,6 +477,35 @@ for (const terrainPrograms of ['complete', 'incomplete', 'throw', 'cancel', 'lat
     }
     assert.equal(harness.calls.filter(([name]) => name === 'terrainProgramsClosed').length, 1,
       'all paths close the terrain preparation iterator exactly once');
+  } finally { harness.disposeWarmResources(); }
+}
+// Native readiness advances on rendering opportunities, not arbitrary task
+// count. Replacing this checkpoint with the ordinary forced yielder consumes
+// all 1,024 attempts and leaves the receipt incomplete in this regression.
+const pendingPrograms = createHarness({ terrainPrograms: 'pending-frames', vegetationPrograms: 'complete' });
+try {
+  await pendingPrograms.runtime.warm(Promise.resolve());
+  const names = pendingPrograms.calls.map(([name]) => name);
+  assert.equal(names.filter(name => name === 'programFrame').length, 4);
+  assert.deepEqual(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentTerrainPrograms.result,
+    { status: 'complete', pending: 0 });
+  assert.deepEqual(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentVegetationPrograms.result,
+    { status: 'complete', pending: 0 });
+  assert.ok(names.indexOf('terrainProgramsClosed') < names.indexOf('vegetationPrograms'));
+  assert.ok(names.indexOf('vegetationProgramsClosed') < names.indexOf('warmRender'));
+} finally { pendingPrograms.disposeWarmResources(); }
+for (const vegetationPrograms of ['hidden', 'incomplete', 'detach']) {
+  const harness = createHarness({ vegetationPrograms });
+  try {
+    if (vegetationPrograms === 'detach') {
+      await assert.rejects(harness.runtime.warm(Promise.resolve()), /superseded/);
+      assert.ok(!harness.calls.some(([name]) => ['warmRender', 'reveal'].includes(name)));
+    } else {
+      await harness.runtime.warm(Promise.resolve());
+      const receipt = globalThis.__BATTLE_COUNTDOWN_WARM.deploymentVegetationPrograms;
+      if (vegetationPrograms === 'hidden') assert.equal(receipt, undefined);
+      else assert.deepEqual(receipt.result, { status: 'incomplete', pending: 2, reason: 'query' });
+    }
   } finally { harness.disposeWarmResources(); }
 }
 const staleCompile = createHarness({ cancelCompile: true });
