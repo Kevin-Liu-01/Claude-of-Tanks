@@ -71,6 +71,18 @@ let api, before;
 try { api = await import(observedUrl); before = (await import(priorUrl)).default; }
 finally { hook.deregister(); }
 const current = getMapConfig('autumn');
+// This historical comparison owns pigment only. Leaf-bearing silhouette is
+// independently exercised by autumnLeafSprays.selftest; keep exact old alpha
+// and painter RNG assertions below by disabling that opt-in on fixture copies.
+function paletteOnly(config) {
+  const palettes = Object.fromEntries(Object.entries(config.vegetation.palettes ?? {}).map(([species, palette]) => {
+    const { birchLeaves, ...pigment } = palette;
+    if (birchLeaves !== undefined) assert.ok(config.id === 'autumn' && ['birch', 'aspen'].includes(species)
+      && birchLeaves === true, 'leaf-form opt-in is separate and Autumn birch/aspen only');
+    return [species, pigment];
+  }));
+  return { ...config, vegetation: { ...config.vegetation, palettes } };
+}
 const snapshot = value => JSON.stringify(value, (_, item) => typeof item === 'function' ? item.toString() : item);
 function withoutPalettes(config) { const {palettes, ...vegetation} = config.vegetation; return {...config, vegetation}; }
 assert.equal(snapshot(withoutPalettes(current)), snapshot(withoutPalettes(before)), 'non-palette Autumn input unchanged');
@@ -133,7 +145,7 @@ function textureContract(a, b) {
   assert.ok(!bytes(aa).equals(bytes(bb)), 'actual atlas RGB changed');
 }
 try {
-  const libraries = [before,current].map(config => api.seasonalLibrary(2001, config.vegetation, {setupShadowMaterial() {}}));
+  const libraries = [before,current].map(paletteOnly).map(config => api.seasonalLibrary(2001, config.vegetation, {setupShadowMaterial() {}}));
   const [a,b] = libraries;
   assert.deepEqual(b.speciesList, a.speciesList); assert.equal(b.bushSpecies, 'oak');
   for (const sp of a.speciesList) {

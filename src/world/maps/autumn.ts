@@ -130,12 +130,14 @@ export default {
       },
       // Birch keeps gold; aspen is paler straw, not a second identical gold.
       birch: {
+        birchLeaves: true,
         texTone: (h: number, s: number, l: number) => [clamp01(0.115 + (h - 0.10) * 0.12), clamp01(s * 0.55 + 0.12), clamp01(l * 0.92 + 0.10)],
         cardHue: 0.115, cardSat: 0.28, cardL0: 0.42,
         canopy: { hue: 0.115, sat: 0.34, l0: 0.36, l1: 0.52 },
         jitterHue: 0.6,
       },
       aspen: {
+        birchLeaves: true,
         texTone: (h: number, s: number, l: number) => [clamp01(0.135 + (h - 0.10) * 0.10), clamp01(s * 0.40 + 0.08), clamp01(l * 0.92 + 0.10)],
         cardHue: 0.135, cardSat: 0.16, cardL0: 0.42,
         canopy: { hue: 0.135, sat: 0.24, l0: 0.36, l1: 0.52 },

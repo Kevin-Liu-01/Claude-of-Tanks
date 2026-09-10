@@ -61,6 +61,8 @@ interface CanopyPalette {
 }
 
 interface VegetationPalette {
+  /** Leaf-bearing birch/aspen; omitted for the existing bare winter crowns. */
+  birchLeaves?: boolean;
   canopy?: CanopyPalette;
   cardHue?: number;
   cardSat?: number;
@@ -882,6 +884,65 @@ export function makePalmFrondTexture(rng: RandomSource, tone: ToneFunction | nul
   ctx.quadraticCurveTo(bx + 4, s * 0.5, bx + Math.sin(2.6) * 5, 10);
   ctx.stroke();
   return finishAlphaTexture(c, ctx, 55, 76, 38, false, tone);
+}
+
+// One leaf-bearing spray atlas, sharing the bare-twig atlas's 256px budget.
+// Branch-connected leaves and open gaps survive minification without a solid
+// circular underlay. The existing palette separates gold birch from pale aspen.
+export function makeBirchLeafTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.Texture {
+  const s = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = context2d(c, { willReadFrequently: true });
+  ctx.clearRect(0, 0, s, s);
+  ctx.lineCap = 'round';
+  for (let spray = 0; spray < 11; spray++) {
+    const angle = spray * 2.39996 + (rng() - 0.5) * 0.7;
+    const length = 52 + rng() * 48;
+    const x = 128 + (rng() - 0.5) * 44, y = 128 + (rng() - 0.5) * 44;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.strokeStyle = css(0.10, 0.12, 0.24 + rng() * 0.07);
+    ctx.lineWidth = 1.35;
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.quadraticCurveTo(length * 0.5, -4, length, 0);
+    ctx.stroke();
+    for (let pair = 0; pair < 7; pair++) {
+      const t = (pair + 0.7) / 7.8;
+      for (const side of [-1, 1]) {
+        const at = clamp(t + (rng() - 0.5) * 0.055, 0.02, 0.98);
+        const leafLength = (5.5 + rng() * 4.0) * (1.2 - t * 0.35);
+        const leafWidth = leafLength * (0.48 + rng() * 0.16);
+        const light = 0.26 + rng() * 0.12 + (side < 0 ? 0.025 : 0);
+        ctx.save();
+        ctx.translate(-8 + (length + 16) * at - 8 * at * at, -8 * at * (1 - at));
+        ctx.rotate(side * (0.65 + rng() * 0.55));
+        // The pointed petiole meets the branch; broad serration-scale edges
+        // read as individual leaves rather than disconnected brush flecks.
+        ctx.fillStyle = css(0.10 + (rng() - 0.5) * 0.09, 0.30 + rng() * 0.15, light);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(leafLength * 0.55, -leafWidth, leafLength * 1.5, -leafWidth * 0.5);
+        ctx.lineTo(leafLength * 1.9, 0);
+        ctx.quadraticCurveTo(leafLength, leafWidth * 1.1, 0, 0);
+        ctx.fill();
+        ctx.strokeStyle = css(0.10, 0.20, light * 0.72);
+        ctx.lineWidth = 0.55;
+        ctx.beginPath(); ctx.moveTo(1, 0); ctx.lineTo(leafLength * 1.35, 0); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+  return finishAlphaTexture(c, ctx, 92, 83, 60, true, tone);
+}
+
+export function makeBirchFoliageTexture(rng: RandomSource, palette: VegetationPalette = {}): THREE.Texture {
+  return palette.birchLeaves === true
+    ? makeBirchLeafTexture(rng, palette.texTone || null)
+    : makeTwigTexture(rng, palette.texTone || null);
 }
 
 // Bare-twig card (winter birch crowns / bare shrubs): dark branching strokes.
@@ -2327,7 +2388,7 @@ function buildDetailedGarageTree(
       const scale = TREE_GEOMETRY_SCALE[species];
       pair.trunk.scale(scale[0], scale[1], scale[2]);
       pair.cards.scale(scale[0], scale[1], scale[2]);
-      foliageTexture = makeTwigTexture(mulberry32(seed + 54), palette.texTone || null);
+      foliageTexture = makeBirchFoliageTexture(mulberry32(seed + 54), palette);
       break;
     }
     default: {
@@ -3570,7 +3631,7 @@ function* vegetationBuildSteps(
     },
     birch: {
       texSeed: 54, nearSeed: 85, farSeed: 77,
-      tex: (r, pal) => makeTwigTexture(r, pal.texTone || null),
+      tex: makeBirchFoliageTexture,
       // content_breadth r3: pal now reaches the near builder (winter card
       // tint + snow load; verdant/urban pass no birch palette -> unchanged)
       // r5 terrain_environment: k selects BIRCH_VAR — three distinct
@@ -3580,7 +3641,7 @@ function* vegetationBuildSteps(
     },
     aspen: {
       texSeed: 64, nearSeed: 331, farSeed: 351,
-      tex: (r, pal) => makeTwigTexture(r, pal.texTone || null),
+      tex: makeBirchFoliageTexture,
       near: (k, pal) => scaleNear(
         buildBirchGeometry(mulberry32(seed + 331 + k * 7), pal, BIRCH_VAR[k % 3]),
         ...TREE_GEOMETRY_SCALE.aspen,
