@@ -12,6 +12,35 @@ export function presentationFrameBudgetMs(observedCadenceMs: number): number {
 type FrameCallback = (timestampMs: number) => void;
 type InputListener = () => void;
 
+/** Diagnostic decisions only: 0 = admitted, 1 = rate limited, 2 = backgrounded. */
+export type FrameLoopDecisionObserver = (
+  sequence: number, rafMs: number, entryMs: number,
+  deadlineBeforeMs: number, deadlineAfterMs: number, decision: 0 | 1 | 2,
+  restartSequence: number, resetSequence: number,
+) => void;
+
+interface FrameLoopObservationState {
+  active: boolean;
+  callbacks: number;
+  restartSequence: number;
+  resetSequence: number;
+  observerErrors: number;
+  error: string | null;
+  initialDeadlineMs: number;
+  intervalMs: number;
+  toleranceMs: number;
+}
+
+export interface FrameLoopObservation {
+  readonly state: Readonly<FrameLoopObservationState>;
+  dispose(): void;
+}
+
+interface ActiveFrameLoopObservation {
+  observer: FrameLoopDecisionObserver;
+  state: FrameLoopObservationState;
+}
+
 interface DocumentState {
   readonly hidden: boolean;
   hasFocus(): boolean;
@@ -46,6 +75,7 @@ export interface FrameLoopSchedulerOptions {
   maximumFrameRate?: number;
   requestFrame?(callback: FrameCallback): number;
   cancelFrame?(id: number): void;
+  /** Monotonic callback-entry clock in the same time origin as requestFrame timestamps. */
   now?(): number;
   setDelayed?(callback: () => void, delayMs: number): RuntimeValue;
   clearDelayed?(handle: RuntimeValue): void;
@@ -58,6 +88,8 @@ export interface FrameLoopSchedulerOptions {
 export interface FrameLoopScheduler {
   schedule(): void;
   restart(): void;
+  /** Explicit QA attachment; storage and bounds belong to the observing tool. */
+  observeAnimationDecisions(observer: FrameLoopDecisionObserver): FrameLoopObservation;
   /** Accepted network activity can service hidden authority without waiting for a throttled timer. */
   wakeBackground(): boolean;
   dispose(): void;
@@ -118,11 +150,13 @@ export function createFrameLoopScheduler({
   let nextAnimationTickMs = -Infinity;
   let lastBackgroundTickMs = -Infinity;
   let backgroundTickRunning = false;
+  let lastAnimationEntryMs = -Infinity;
+  let diagnostic: ActiveFrameLoopObservation | null = null;
   const idleDelayMs = Math.max(100, Math.min(5000, idleIntervalMs));
   const animationIntervalMs = Number.isFinite(maximumFrameRate) && maximumFrameRate > 0
     ? 1000 / Math.min(240, maximumFrameRate)
     : 0;
-  // Browser rAF timestamps can land just before the nominal deadline. Admit
+  // Browser callback entry can land just before the nominal deadline. Admit
   // bounded early jitter instead of missing that display slot and then
   // catching up on the next one. Keep the absolute deadline grid below: a
   // timestamp-relative reset would under-deliver on 75/90/144 Hz displays.
@@ -142,15 +176,61 @@ export function createFrameLoopScheduler({
     queued: 'none' as 'animation' | 'idle' | 'none',
   };
 
+  const observeAnimationDecisions = (observer: FrameLoopDecisionObserver): FrameLoopObservation => {
+    if (disposed) throw new Error('Frame scheduler is disposed');
+    if (diagnostic) throw new Error('Frame scheduler already has a decision observer');
+    if (typeof observer !== 'function') throw new TypeError('A decision observer must be a function');
+    const owned: ActiveFrameLoopObservation = { observer, state: {
+      active: true, callbacks: 0, restartSequence: 0, resetSequence: 0,
+      observerErrors: 0, error: null, initialDeadlineMs: nextAnimationTickMs,
+      intervalMs: animationIntervalMs, toleranceMs: animationToleranceMs,
+    } };
+    diagnostic = owned;
+    return {
+      state: owned.state,
+      dispose() {
+        owned.state.active = false;
+        if (diagnostic === owned) diagnostic = null;
+      },
+    };
+  };
+
+  const recordDecision = (owned: ActiveFrameLoopObservation, rafMs: number,
+    entryMs: number, deadlineBeforeMs: number, decision: 0 | 1 | 2) => {
+    if (diagnostic !== owned) return;
+    const state = owned.state;
+    state.callbacks++;
+    try {
+      owned.observer(state.callbacks, rafMs, entryMs, deadlineBeforeMs,
+        nextAnimationTickMs, decision, state.restartSequence, state.resetSequence);
+    } catch {
+      // An engineering observer must never break/retry a gameplay tick. Keep
+      // a bounded failure receipt without inspecting an arbitrary thrown value.
+      state.observerErrors++;
+      state.error = 'Frame scheduler decision observer threw';
+      state.active = false;
+      if (diagnostic === owned) diagnostic = null;
+    }
+  };
+
   // Focus is the reliable discriminator for this app: embedded Codex panes
   // can report `hidden` while they are visibly focused, whereas an occluded
   // browser window can remain `visible` after the user switches apps. In both
   // ordinary tab switches and window blur, no presentation work is useful.
   const isBackgrounded = () => !documentState.hasFocus();
 
-  const runTick = (timestampMs: number) => {
-    lastTickWallMs = now();
+  const runTick = (timestampMs: number, wallMs = now()) => {
+    lastTickWallMs = wallMs;
     tick(timestampMs);
+  };
+
+  const animationAdmissionTime = (rafMs: number, entryMs: number): number => {
+    // A callback cannot enter before its own RAF timestamp, or move the
+    // monotonic entry clock backwards. Reject incompatible injected clocks
+    // without inventing a maximum native callback delay or rebasing time.
+    if (!Number.isFinite(entryMs) || entryMs < rafMs || entryMs < lastAnimationEntryMs) return rafMs;
+    lastAnimationEntryMs = entryMs;
+    return entryMs;
   };
 
   const runBackgroundTick = (force = false): boolean => {
@@ -176,11 +256,18 @@ export function createFrameLoopScheduler({
       if (!backgroundSuspended) stats.backgroundSuspensions += 1;
       backgroundSuspended = true;
       nextAnimationTickMs = -Infinity;
+      if (diagnostic) diagnostic.state.resetSequence++;
       return;
     }
     frameQueued = true;
     stats.queued = 'animation';
     frameId = requestFrame((timestampMs) => {
+      // Eligibility uses when this callback actually begins, not the earlier
+      // shared RAF timestamp. The simulation and absolute deadline grid below
+      // retain that original RAF timestamp; the observer retains the raw clock.
+      const observation = diagnostic;
+      const entryMs = now();
+      const deadlineBeforeMs = nextAnimationTickMs;
       frameId = null;
       frameQueued = false;
       stats.queued = 'none';
@@ -188,12 +275,16 @@ export function createFrameLoopScheduler({
         if (!backgroundSuspended) stats.backgroundSuspensions += 1;
         backgroundSuspended = true;
         nextAnimationTickMs = -Infinity;
+        if (diagnostic) diagnostic.state.resetSequence++;
+        if (observation) recordDecision(observation, timestampMs, entryMs, deadlineBeforeMs, 2);
         return;
       }
       backgroundSuspended = false;
+      const admissionMs = animationAdmissionTime(timestampMs, entryMs);
       if (animationIntervalMs > 0 &&
-          timestampMs + animationToleranceMs < nextAnimationTickMs) {
+          admissionMs + animationToleranceMs < nextAnimationTickMs) {
         stats.frameRateLimitedCallbacks += 1;
+        if (observation) recordDecision(observation, timestampMs, entryMs, deadlineBeforeMs, 1);
         scheduleAnimation();
         return;
       }
@@ -209,7 +300,8 @@ export function createFrameLoopScheduler({
         }
       }
       stats.animationTicks += 1;
-      runTick(timestampMs);
+      if (observation) recordDecision(observation, timestampMs, entryMs, deadlineBeforeMs, 0);
+      runTick(timestampMs, admissionMs);
     });
   };
 
@@ -243,6 +335,10 @@ export function createFrameLoopScheduler({
     if (disposed) return;
     cancelQueued();
     nextAnimationTickMs = -Infinity;
+    if (diagnostic) {
+      diagnostic.state.restartSequence++;
+      diagnostic.state.resetSequence++;
+    }
     // A wake is always immediate. The resulting tick chooses idle cadence
     // again only after input/phase owners have had a chance to mutate state.
     scheduleAnimation();
@@ -279,6 +375,7 @@ export function createFrameLoopScheduler({
       if (!backgroundSuspended) stats.backgroundSuspensions += 1;
       backgroundSuspended = true;
       nextAnimationTickMs = -Infinity;
+      if (diagnostic) diagnostic.state.resetSequence++;
       cancelQueued();
       runBackgroundTick(true);
       syncRescueInterval();
@@ -294,6 +391,7 @@ export function createFrameLoopScheduler({
     if (!backgroundSuspended) stats.backgroundSuspensions += 1;
     backgroundSuspended = true;
     nextAnimationTickMs = -Infinity;
+    if (diagnostic) diagnostic.state.resetSequence++;
     cancelQueued();
     runBackgroundTick(true);
     syncRescueInterval();
@@ -326,6 +424,7 @@ export function createFrameLoopScheduler({
   return {
     schedule,
     restart,
+    observeAnimationDecisions,
     wakeBackground() {
       const serviced = runBackgroundTick();
       if (serviced) stats.backgroundActivityTicks++;
@@ -335,6 +434,8 @@ export function createFrameLoopScheduler({
     dispose() {
       if (disposed) return;
       disposed = true;
+      if (diagnostic) diagnostic.state.active = false;
+      diagnostic = null;
       cancelQueued();
       clearRecurring(timerHandle);
       documentState.removeEventListener?.('visibilitychange', onVisibilityChange);

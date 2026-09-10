@@ -166,3 +166,27 @@ export function checkGarageAudioIntent(receipt, actions) {
   }
   return failures;
 }
+
+/** Separate from the zero-constructor Garage-orbit gate: only a real splash
+ * entry gesture may pay silent preparation before the first Battle click. */
+export function checkBootAudioIntent(receipt, actions) {
+  const failures = [
+    ...checkObserver(receipt?.before, 'Before boot entry', 0),
+    ...checkObserver(receipt?.after, 'After boot entry', 1),
+  ];
+  if (receipt?.opaqueBefore !== true || receipt?.gateReady !== true || receipt?.dismissed !== true) failures.push('Boot entry: missing opaque ready gate or dismissal');
+  if (!receipt?.after?.observer?.events?.some(event => event.type === 'pointerdown' && event.trusted && event.canvasTarget)) failures.push('Boot entry: missing trusted gate pointer');
+  if (receipt?.after?.observer?.eventsDropped) failures.push('Boot entry: incomplete pointer observation');
+  if (!Number.isFinite(receipt?.armedAtMs) || !Number.isFinite(receipt?.finishedAtMs)
+      || !(receipt.finishedAtMs > receipt.armedAtMs)) failures.push('Boot entry: missing timing edges');
+  const invocation = receipt?.after?.observer?.invocations?.[0];
+  if (!(invocation?.startMs >= receipt?.armedAtMs && invocation?.endMs <= receipt?.finishedAtMs)) failures.push('Boot entry: constructor is outside the observed gesture');
+  // Production entry runs in window capture; this observer runs in document
+  // capture of that same trusted pointer, before target/bubble or any microtask.
+  const pointer = receipt?.after?.observer?.events?.find(event => event.type === 'pointerdown' && event.trusted && event.canvasTarget);
+  if (!Number.isFinite(pointer?.atMs) || !(invocation?.endMs <= pointer.atMs)) failures.push('Boot entry: construction was not synchronous in the entry handler');
+  for (const action of ['battle', 'battle-again', 'return-to-garage']) {
+    failures.push(...checkObserver(actions.find(row => row.action === action)?.garageAudioIntent, action, 1));
+  }
+  return failures;
+}

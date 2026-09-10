@@ -646,7 +646,7 @@ export function createAudio({
   }
 
   function applyMaster(): void {
-    if (!ctx) return;
+    if (!ctx || !master) return;
     // Same sleeping-node pin as applyChannelVolumes (probe-found Chrome quirk).
     const t = ctx!.currentTime;
     const v = muted ? 0 : masterVolume;

@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
+import type { FrameLoopDecisionObserver, FrameLoopObservation } from '../engine/frameLoopScheduler.ts';
 /**
  * Explicit browser diagnostics surface.
  *
@@ -45,6 +46,7 @@ export interface DebugSurfaceDependencies {
   getBattleVisualPoolStats(): RuntimeValue;
   getGarageFramePacerStats(): RuntimeValue;
   getFrameLoopSchedulerStats(): RuntimeValue;
+  observeFrameLoopScheduler(observer: FrameLoopDecisionObserver): FrameLoopObservation;
   getPhaseSceneResidency(): RuntimeValue;
   getGarageGpuResidency(): RuntimeValue;
   getLastWorldRelease(): RuntimeValue;
@@ -116,6 +118,7 @@ export function installDebugSurface(
     get battleVisualPool() { return deps.getBattleVisualPoolStats(); },
     get garageFramePacer() { return deps.getGarageFramePacerStats(); },
     get frameLoopScheduler() { return deps.getFrameLoopSchedulerStats(); },
+    observeFrameLoopScheduler: deps.observeFrameLoopScheduler,
     get phaseSceneResidency() { return deps.getPhaseSceneResidency(); },
     get garageGpuResidency() { return deps.getGarageGpuResidency(); },
     get lastWorldRelease() { return deps.getLastWorldRelease(); },

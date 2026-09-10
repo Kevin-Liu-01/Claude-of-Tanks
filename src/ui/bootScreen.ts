@@ -12,9 +12,9 @@
  *    bar tracks wall-clock work instead of a fake timer),
  *  - the current stage name + percentage,
  *  - rotating gameplay tips,
- *  - a "press any key" gate into the garage. The gate is not decoration: an
- *    AudioContext may only start from a user gesture, so the keypress that
- *    dismisses it is also what lets audio.resume() succeed.
+ *  - a "press any key" gate into the garage. An accepted trusted Garage entry
+ *    can silently prepare its audio device
+ *    before dismissing the opaque splash, without starting the mixer/sounds.
  *
  * HARNESS CONTRACT (docs/SCREENSHOT_CONTRACT.md): every headless probe drives
  * the page through window.__SHOTS / window.__DEBUG and never presses a key, so
@@ -86,7 +86,7 @@ export interface BootScreen {
   end(key: string): void;
   sub(fraction: number): void;
   note(text: string): void;
-  ready(): Promise<void>;
+  ready(onEntryGesture?: () => void): Promise<void>;
   dismiss(): void;
   readonly gated: boolean;
 }
@@ -296,6 +296,8 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let curKey: string | null = null;
   let dismissed = false;
   let finished = false;
+  let readyPromise: Promise<void> | null = null;
+  let stopEntryGate = (): void => {};
   let raf = 0;
   let heroStartRaf = 0;
   let entranceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -413,7 +415,9 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
      * resolves once the player commits (immediately under automation).
      * @returns {Promise<void>}
      */
-    ready() {
+    ready(onEntryGesture) {
+      if (readyPromise) return readyPromise;
+      if (dismissed) return Promise.resolve();
       finished = true;
       target = 1;
       shown = Math.max(shown, 0.985);
@@ -422,8 +426,15 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (elStage) elStage.textContent = mode === 'studio' ? t('boot.stage.studioReady') : t('boot.stage.readyBattle');
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }
       if (elGate) elGate.classList.add('on');
-      return new Promise<void>((resolve) => {
+      return readyPromise = new Promise<void>((resolve) => {
+        stopEntryGate = () => {
+          window.removeEventListener('keydown', go, true);
+          window.removeEventListener('pointerdown', go, true);
+          stopEntryGate = () => {};
+          resolve();
+        };
         const go = (ev: Event) => {
+          if (dismissed) return;
           // Credits and GitHub are deliberate splash controls, not entry
           // gestures. Let them remain interactive without dismissing the
           // game gate underneath the modal/link click.
@@ -432,10 +443,10 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
           // consume the gate
           if (ev.type === 'keydown' && ev instanceof KeyboardEvent &&
               ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(ev.key)) return;
-          window.removeEventListener('keydown', go, true);
-          window.removeEventListener('pointerdown', go, true);
+          if (mode === 'garage' && ev.isTrusted) {
+            try { onEntryGesture?.(); } catch { /* optional preparation cannot trap entry */ }
+          }
           api.dismiss();
-          resolve();
         };
         window.addEventListener('keydown', go, true);
         window.addEventListener('pointerdown', go, true);
@@ -446,6 +457,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
     dismiss() {
       if (dismissed) return;
       dismissed = true;
+      stopEntryGate();
       if (tipTimer) clearInterval(tipTimer);
       if (raf) cancelAnimationFrame(raf);
       if (heroStartRaf) cancelAnimationFrame(heroStartRaf);

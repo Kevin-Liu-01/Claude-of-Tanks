@@ -3067,6 +3067,7 @@ if (diagnosticsRequested) {
       getBattleVisualPoolStats: () => battleVisualPool.stats(),
       getGarageFramePacerStats: () => ({ ...garageFramePacer.stats }),
       getFrameLoopSchedulerStats: () => ({ ...frameLoop.stats }),
+      observeFrameLoopScheduler: (observer) => frameLoop.observeAnimationDecisions(observer),
       getPhaseSceneResidency: () => garagePhasePresentation.diagnostics().scene,
       getGarageGpuResidency: () => garagePhasePresentation.diagnostics().gpu,
       getLastWorldRelease: () => (worldRuntime.lastRelease
@@ -3139,7 +3140,7 @@ relaxShaderChecks(renderer);
 // ready() arms the "press any key" entry gate (auto-dismissed under
 // ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
-const entryReady = boot.ready();
+const entryReady = boot.ready(() => audio.prepare());
 if (pendingRoomInvitePromise) {
   Promise.all([entryReady, pendingRoomInvitePromise]).then(([, invite]) => {
     if (!invite) return;
