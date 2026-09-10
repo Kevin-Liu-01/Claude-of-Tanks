@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { presentationNumberSource, presentationReceiptErrors, syncAssetProjectionSource } from './presentation-receipt.mjs';
+import { spawnSync } from 'node:child_process';
+import { presentationNumberSource, presentationReceiptErrors, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
 
 // Actual saved/runtime disagreement from frozen nine-tank release 74d189dfa.
 const cases = [
@@ -148,4 +149,37 @@ assert.match(centering, /if \(syncAssets && !selectedIds\.length\)/);
 assert.match(centering, /window\.__AUDIT\(tankIds\)/);
 assert.match(centering, /readFileSync\(outputPath, 'utf8'\) !== before/, 'reject concurrent generated-source changes');
 assert.match(centering, /target\.startsWith\(`\$\{iconsRoot\}\$\{sep\}`\)/);
+
+// Selected native regeneration changes the paired anchor/projection, not just
+// old-image metadata. No immutable golden or acceptance threshold is replaced.
+const selectedId=ids[0],savedProjections=Object.fromEntries(cases.map(([id,,p])=>[id,p]));
+const nativeRow={xM:.0012,zM:.0901,currentAnchor:anchors[selectedId],
+  projection:{...savedProjections[selectedId],topHalfM:6.4645}};
+const measuredRows={[selectedId]:nativeRow};
+const nativeSnapshot=JSON.stringify(measuredRows);
+const updateSelected=(s=expected,sel=[selectedId],r=measuredRows)=>
+  updateSelectedPresentationSource(s,sel,r,anchors,savedProjections);
+const updated=updateSelected();
+assert.equal(updated,expected.replace('xM: 0, zM: 0.0788','xM: 0.0012, zM: 0.0901').replace('topHalfM: 6.4532','topHalfM: 6.4645'));
+assert.equal(updated.split('\n').filter((line,i)=>line!==expected.split('\n')[i]).length,2,'only two exact selected rows change');
+for(const sel of [[],[selectedId,selectedId],['../bad'],['unknown'],null])assert.throws(()=>updateSelected(expected,sel));
+for(const mutate of [
+  r=>{r.extra=r[selectedId];},r=>{delete r[selectedId];},r=>{r[selectedId].error='capture failure';},
+  r=>{r[selectedId].currentAnchor.zM+=.01;},r=>{r[selectedId].xM=NaN;},
+  r=>{r[selectedId].zM='0';},r=>{r[selectedId].projection.centerYM=Infinity;},
+  r=>{r[selectedId].projection.topHalfM=0;},r=>{r[selectedId].projection.sideHalfM=.000001;},
+]){const bad=structuredClone(measuredRows);mutate(bad);assert.throws(()=>updateSelected(expected,[selectedId],bad));}
+for(const line of expected.split('\n').filter(line=>line.startsWith(`  ${selectedId}:`))){
+  assert.throws(()=>updateSelected(expected.replace(line,'')));
+  assert.throws(()=>updateSelected(expected+'\n'+line));
+}
+assert.equal(JSON.stringify(measuredRows),nativeSnapshot,'generation transform never edits input measurements');
+assert.match(centering,/updateSelectedPresentationSource\(originalSource, ids, rows/);
+assert.match(centering,/readFileSync\(outputPath, 'utf8'\) !== originalSource/);
+for(const args of [['--update','--ids='],['--update','--ids']]){
+  const rejected=spawnSync(process.execPath,[new URL('./presentation-centering.mjs',import.meta.url).pathname,...args],{encoding:'utf8'});
+  assert.equal(rejected.status,2,'empty explicit scope cannot become a full-fleet rewrite');
+  assert.match(rejected.stderr,/explicit --ids scope must not be empty/);
+  assert.equal(rejected.stdout,'','invalid CLI scope exits before browser launch');
+}
 console.log(`presentation-receipt: existing capture framing, original stale-Y failures, ${negatives} rejected mutations, hash-verified atomic scoped sync and both preflight consumers PASS`);

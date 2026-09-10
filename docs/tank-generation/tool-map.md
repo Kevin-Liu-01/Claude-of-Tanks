@@ -193,6 +193,17 @@ working command or count bespoke diagnostic crops as official certification.
 
 After geometry stops changing, run the required coupled generation sequence:
 
+Check the selected presentation center during preflight as well as in release.
+If added/removed opaque stock changes its centroid, regenerate only the affected
+native anchors and their paired projections with
+`capture_tank_step node tools/presentation-centering.mjs --update --ids=example_x`,
+then regenerate the selected assets below. This mode preserves every unselected
+source byte and rejects missing/nonfinite measurements, ambiguous rows and
+concurrent source edits. It is **not** a check pass: run the unchanged rendered
+and exported centering checks after regeneration. `--sync-assets` instead keeps
+existing anchors and requires already-current hash-verified images; it cannot
+repair an off-center anchor. Unscoped `--update` still regenerates the whole fleet.
+
 ```sh
 capture_tank_step npm run tank:anatomy:update
 capture_tank_step npm run tank:anatomy:check
