@@ -964,6 +964,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/resolved-depth-copy.browser.selftest.mjs',
     'tools/late-fx-matrix.browser.selftest.mjs',
     'tools/articulated-shadow-batch.browser.selftest.mjs',
+    'tools/track-texture-source.browser.selftest.mjs',
     'tools/lobby-prefetch-before-ready.browser.selftest.mjs',
     'tools/multiplayer-loading-build-probe.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
