@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PROCEDURAL_PROFILES } from './profiledProcedurals.ts';
 import { MISC_PROFILES } from './profiles/misc.ts';
 import { FLEET_GROUP_IDS } from './fleetManifest.ts';
+import {runFleetSweep} from './fleetSweep.test-support.mjs';
 const canonicalOnlyIds = new Set([
   'amx40', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2',
   'challenger_3', 'challenger_3x', 'mbt70', 't14',
@@ -40,7 +41,7 @@ const anatomyRegistryUrl = pathToFileURL(join(here, 'combatAnatomyCalibrationReg
 const facadeSource = await readFile(join(here, 'fleetFactory.ts'), 'utf8');
 assert.doesNotMatch(facadeSource, /from ['"]\.\/modern[12]\.js['"]/,
   'browser fleet facade must not statically import combined legacy builders');
-execFileSync(process.execPath, ['--input-type=module', '-e', `
+await runFleetSweep(`
   import assert from 'node:assert/strict';
   const fleet = await import(${JSON.stringify(facadeUrl)});
   const specs = await import(${JSON.stringify(specsUrl)});
@@ -107,11 +108,13 @@ execFileSync(process.execPath, ['--input-type=module', '-e', `
   assert.equal(fleet.isTankBuilderReady('t90m'), true);
   await fleet.ensureFullFleet();
   const { VISIBLE_TANK_IDS } = specs;
+  process.send({kind:'fleet-start',ids:VISIBLE_TANK_IDS});
   for (const id of VISIBLE_TANK_IDS) {
     const visual = fleet.createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
     visual.dispose();
+    process.send({kind:'fleet-complete',id});
   }
   console.log('demand-loaded fleet sweep:', VISIBLE_TANK_IDS.length);
-`], { stdio: 'inherit', timeout: 240000 });
+`);
 
 console.log(`fleetLazy.selftest: PASS (${owners.size} demand-owned profiles)`);

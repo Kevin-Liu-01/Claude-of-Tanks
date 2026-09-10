@@ -215,3 +215,30 @@ cap was backface-culled. Starting at |x|=.90 outside the closed hub restores
 the same physical receiver test. The hull-lap range and exact 3 mm hub
 engagement assertions are unchanged and pass at HIGH/LOW and all three
 tested hull yaws. No production geometry changed in either test correction.
+
+The full 27-file Type 10-related preflight then passed, including native
+running gear, original Type 10 controls, materials, source/historical
+preservation, roof/gun fixtures, wrecks, balance and ordering. Its logs are
+retained at `.qa-dev/type10-related-preflight-mO9vAw/`.
+
+The following complete attempt on `dafbba644` passed all **306 pre-tests**
+and reached 207 core tests, stopping on the obsolete world-loading
+source-order assertion already corrected upstream in `f6622924a`. It is
+retained as FAIL at `.qa-dev/type10-integrated-tail-lGzyku/`. After rebase,
+that world test passes. The next attempt on `c4662ac83` nevertheless hit the
+fleet-loading aggregate 240-second watchdog again, even with exclusive CPU
+scheduling (`.qa-dev/type10-integrated-tail-NiJTz9/`). Neither attempt is a
+complete lifecycle PASS.
+
+The functional loading sweep now reports completed vehicle IDs through IPC.
+Its watchdog changes explicitly from a **240-second aggregate wall limit**
+to a **240-second no-progress limit**. Only the next ID in the declared,
+unique fleet sequence resets the deadline; arbitrary logs, duplicate or
+out-of-order IDs cannot. A zero exit without every ID is rejected. A stalled
+child receives SIGTERM then SIGKILL after five seconds if needed, and the
+parent retains its queue lease until the owned child closes. Total duration
+and longest progress interval are always reported; exceeding 240 seconds
+in total remains a **SLOW diagnostic**, not a performance PASS. Coverage and
+all tank assertions remain intact. This is a functional-test flakiness fix,
+not evidence that tank switching is fast. Deterministic stalled/malformed/
+incomplete/signal/spawn/exit controls and actual IPC/exit controls pass.

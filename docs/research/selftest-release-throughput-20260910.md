@@ -27,6 +27,21 @@ current relief and canyon checks. This is a test/tool-only checkpoint, not a
 complete npm lifecycle or tank release claim. Frozen Type 10 contact/source
 evidence is unaffected. A new official complete lifecycle follows these fixes.
 
+## Progress-aware fleet loading watchdog
+
+Exclusive scheduling alone did not eliminate the functional sweep's
+aggregate timeout: the unchanged source later passed in 175.345 s but also
+timed out at 240 s when run alone. The sweep now reports ordered completion
+of every declared vehicle over IPC. Its watchdog is explicitly a 240-second
+**no-progress** limit, not the former aggregate wall-time limit. Logs and
+duplicate/out-of-order IDs cannot refresh it; missing coverage or failed
+exit still fails. Cancellation and a stalled child drain before queue
+release, with SIGKILL escalation after five seconds. Total duration and
+maximum progress interval remain visible, with a SLOW warning above the old
+aggregate limit. This avoids treating a slow progressing functional sweep
+as a hang; it does not qualify vehicle construction or switching speed.
+Deterministic failure/timeout/cleanup and real IPC/exit controls pass.
+
 ## Timeout-sensitive fleet loading — exclusive CPU scheduling
 
 The Type 10 release retry on `06446f5f3` timed out the unchanged 240-second
