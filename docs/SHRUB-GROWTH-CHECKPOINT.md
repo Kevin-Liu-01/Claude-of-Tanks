@@ -21,8 +21,15 @@ Evidence root:
   including 60 map-palette/prototype cases, folded winding/UV/fold/ground
   negative controls, complete Autumn/Verdant producer parity, near/far and
   resource contracts, map integration, full TS7, strict function metrics,
-  diff and public build. Doctor records one test-only chained-iteration
-  warning; its single-loop cleanup requires the final release recheck.
+  diff and public build. Doctor recorded one test-only chained-iteration
+  warning; its single-loop cleanup passes the final release recheck below.
+- `shrub-growth-release-r1.mQLf3T/report.json`: all 25 stages pass after
+  integration over `bcf8ae4f0`, with the reviewed vegetation source unchanged.
+  This repeats the shrub/map/resource checks and adds the actual program,
+  geometry/shadow and offscreen warm tests, solo deployment/loading,
+  loading-screen and Orchard fixture tests. Full TS7, strict metrics and
+  public build pass; Doctor reports zero errors and zero warnings across
+  all four changed code/test/registry files. Source pins remained stable.
 - Complete producer comparisons cover 986 Autumn and 1,051 Verdant shrubs.
   Every placement/instance-color/fade/LOD buffer, concealment disc, seeded
   stream and non-bush geometry remains exact against the pinned predecessor.
@@ -59,5 +66,9 @@ Tested world source SHA-256:
 `51cb2a27da5e7ee4e7bdfbb0ee5ef1219914dd6e59db72197e93c49ea625c24d`.
 Candidate public build index:
 `bf26c74d72dce2633e215a2014cb7ddf51805e195149e8b328bb1d25c22fab06`.
+Final integrated code commit: `b5d3065f4`; public build index:
+`b9bfe547924399f77b69819d7271a402475520c2b3a46c125f41d79a057d2c2f`.
+Native pictures are from the prior candidate build with identical world
+source, not a new deployment-timing measurement on the integrated base.
 Baseline: `cd62def6e`. Water/contact and rail-coal repairs remain separate
 published checkpoints. This does not complete the broader environment pass.
