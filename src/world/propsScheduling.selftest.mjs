@@ -334,7 +334,13 @@ const groundCandidate = source.slice(groundStart, groundEnd);
 const groundOriginal = groundCandidate
   .replace('function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void>',
     'function placeGroundBlendDecals(): void')
-  .replace(/\n    \/\/ Yield only after a complete family transfers its meshes to the props\n    \/\/ group\. Keep temporary geometry assembly and its exact RNG order atomic\./, '')
+  .replace(/function\* (collectFoundationDecals|collectCourtyardDecals|placeFoundationDecals)(\([\s\S]*?\)): Generator<PropsBuildSlice, void, void>/g,
+    'function $1$2: void')
+  .replace(/yield\* (collectFoundationDecals|collectCourtyardDecals|placeFoundationDecals)\(/g, '$1(')
+  .replace(/\n        yield \{ fine: true, progress: false, stage: 'ground-foundation-instances' \};/g, '')
+  .replace(/      let collected = false;\n      try \{\n([\s\S]*?)        collected = true;\n      } finally \{[\s\S]*?^      }\n/m,
+    (_owner, collection) => collection.replace(/^  /gm, ''))
+  .replace(/\n    \/\/ Yield only after a complete family transfers its meshes to the props\n    \/\/ group\. Foundation inputs above stay private until collection completes\./, '')
   .replace(/\n    yield \{ fine: true, progress: false, stage: 'ground-(foundations|scars)' \};/g, '');
 // Frozen pre-change body: reconstructing the synchronous control above must
 // remove only scheduling, never silently share a changed formula with control.
@@ -345,9 +351,24 @@ const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.i
 assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
 const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
 
-function groundFixture(code = groundCandidate, streetRows = true, foundry = false) {
+function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
+  buildings = 1, crushables = 1, stacks = 1, rejectCourtyards = false, disposeFailureAt = -1,
+} = {}) {
   const group = new THREE.Group(), buckets = { stone: [] }, commands = [], randoms = [], textures = [];
-  const buildingFeatures = [{ x: 38, z: 40, w: 6, d: 9, rot: 0.35 }];
+  const inputs = [], disposedInputs = [], heightQueries = [], privateRandoms = [];
+  class InputGeometry extends THREE.BufferGeometry {
+    constructor() {
+      super();
+      const index = inputs.length;
+      inputs.push(this);
+      this.addEventListener('dispose', () => {
+        disposedInputs.push(this);
+        if (index === disposeFailureAt) throw new Error('input disposal failed');
+      });
+    }
+  }
+  const buildingFeatures = Array.from({ length: buildings }, (_, index) =>
+    ({ x: 38 + index * 10, z: 40, w: 6, d: 9, rot: 0.35 }));
   const random = seededRandom(2002);
   const canvas = {};
   const ctx = {
@@ -363,9 +384,13 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     putImageData(image) { canvas.pixels = image.data; },
   };
   const dependencies = {
-    THREE, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
+    THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
     rng() { const value = random(); randoms.push(value); return value; },
-    mulberry32: seededRandom, seed: 2002, aniso: 4, noi: { noise: (x, y) => Math.sin(x + y) * 0.5 },
+    mulberry32(seed) {
+      const next = seededRandom(seed);
+      return () => { const value = next(); privateRandoms.push([seed, value]); return value; };
+    },
+    seed: 2002, aniso: 4, noi: { noise: (x, y) => Math.sin(x + y) * 0.5 },
     document: { createElement(tag) { assert.equal(tag, 'canvas'); return canvas; } },
     canvas2d() { return ctx; },
     engineCtx: { setupShadowMaterial() {} },
@@ -376,10 +401,11 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     P: { streetRows, townCraters: true, craters: 8 },
     L: { spawns: { player: { x: -100, z: -100 }, enemies: [{ x: 100, z: 100 }] } },
     v: { cx: 10, cz: 40, x0: -65, x1: 65, z0: -65, z1: 65 },
-    heightField: { getHeightAt: (x, z) => x * 0.001 + z * 0.002,
+    heightField: { getHeightAt(x, z) { heightQueries.push([x, z]); return x * 0.001 + z * 0.002; },
       _roadDist: () => 10, getGroundType: () => 'hard', getNormalAt: () => ({ y: 1 }) },
-    noVeg: () => false, placedB: [], crushables: [{ x: 12, z: 18 }],
-    stackSpots: [{ x: 8, z: 16, r: 2 }], wreckScorch: [[-20, 50]],
+    noVeg: () => rejectCourtyards, placedB: [],
+    crushables: Array.from({ length: crushables }, (_, index) => ({ x: 12 + index, z: 18 })),
+    stackSpots: Array.from({ length: stacks }, (_, index) => ({ x: 8 + index, z: 16, r: 2 })), wreckScorch: [[-20, 50]],
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -387,9 +413,10 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     + '\nreturn { run: placeGroundBlendDecals, reconform: () => reconformFoundryFoundations?.() };')(...Object.values(dependencies));
   const geometry = geo => ({ index: geo.index ? Array.from(geo.index.array) : null,
     attributes: Object.fromEntries(Object.entries(geo.attributes).map(([name, attr]) => [name, Array.from(attr.array)])) });
-  return { ...api, group, buckets, randoms, commands, buildingFeatures,
+  return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs,
+    foundationCount: buildings + crushables + stacks + (streetRows && !rejectCourtyards ? 84 : 0),
     kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
-    snapshot: () => ({ randoms, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
+    snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
       meshes: group.children.map(mesh => ({ geometry: geometry(mesh.geometry), data: mesh.userData,
         receiveShadow: mesh.receiveShadow, castShadow: mesh.castShadow, order: mesh.renderOrder,
         map: mesh.material.map.name, transparent: mesh.material.transparent, depthWrite: mesh.material.depthWrite })) }),
@@ -403,20 +430,40 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
   };
 }
 
-for (const [streetRows, foundry] of [[true, false], [false, true]]) {
-  const before = groundFixture(groundOriginal, streetRows, foundry);
-  const after = groundFixture(groundCandidate, streetRows, foundry);
+function advanceFoundationInputs(h, iterator) {
+  for (let index = 0; index < h.foundationCount; index++) {
+    assert.deepEqual(iterator.next(), { done: false,
+      value: { fine: true, progress: false, stage: 'ground-foundation-instances' } });
+    assert.equal(h.inputs.length, index + 1, 'only one complete instance precedes each private checkpoint');
+    const geometry = h.inputs[index];
+    assert.ok(geometry.index && geometry.getAttribute('position') && geometry.getAttribute('normal'));
+    assert.deepEqual(h.kinds(), [], 'no partially collected foundation mesh is published');
+    assert.deepEqual(h.commands, [], 'no texture or Canvas work begins during collection');
+    assert.deepEqual(h.disposedInputs, [], 'private inputs remain available until resume or cancellation');
+  }
+}
+
+for (const [streetRows, foundry, options] of [
+  [true, false, {}], [false, true, { buildings: 5, crushables: 3, stacks: 2 }],
+  [true, false, { buildings: 2, rejectCourtyards: true }],
+]) {
+  const before = groundFixture(groundOriginal, streetRows, foundry, options);
+  const after = groundFixture(groundCandidate, streetRows, foundry, options);
   try {
     before.run();
     const iterator = after.run();
+    advanceFoundationInputs(after, iterator);
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
     assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
-    assert.ok(after.kinds().includes('crater') && after.kinds().includes('scorch'));
+    assert.equal(after.kinds().includes('crater'), !options.rejectCourtyards);
+    assert.ok(after.kinds().includes('scorch'));
     assert.equal(after.commands.some(command => command[0] === 'clear'), false, 'churn painter has not started');
     assert.equal(iterator.next().done, true);
-    assert.ok(after.kinds().includes('churn') && after.buckets.stone.length > 0 && after.randoms.length > 0);
+    assert.equal(after.kinds().includes('churn'), !options.rejectCourtyards);
+    assert.equal(after.buckets.stone.length > 0, !options.rejectCourtyards);
+    assert.ok(after.randoms.length > 0);
     assert.deepEqual(after.snapshot(), before.snapshot(), 'exact geometry, RNG, material policy and canvas command/alpha parity');
     if (foundry) {
       before.buildingFeatures[0].x += 4; after.buildingFeatures[0].x += 4;
@@ -428,23 +475,24 @@ for (const [streetRows, foundry] of [[true, false], [false, true]]) {
 
 // Real async wrapper must pace both new boundaries without advancing coarse
 // progress. Rejection closes the delegated iterator before another family runs.
-for (const cancelAt of [0, 1, null]) {
+for (const cancelAt of ['ground-foundations', 'ground-scars', null]) {
   const h = groundFixture(), iterator = h.run(), failure = new Error('cancel decal family'), ticks = [];
   const steps = (function* () { yield* iterator; yield { fine: true, stage: 'ground-decals' }; })();
   const f = fixture(steps);
   try {
     const pending = f.run({}, {}, 2002, { props: { wrecks: 0 } }, (done, total) => {
       ticks.push([done, total]);
-      if (ticks.length - 1 === cancelAt) throw failure;
+      if (f.events.at(-1)[1]?.stage === cancelAt) throw failure;
     }, true);
     if (cancelAt === null) {
       await pending;
-      assert.deepEqual(ticks, [[0, 180], [0, 180], [1, 180]]);
+      assert.deepEqual(ticks, [...Array.from({ length: h.foundationCount }, () => [0, 180]),
+        [0, 180], [0, 180], [1, 180]]);
       assert.ok(h.kinds().includes('churn'));
     } else {
       await assert.rejects(pending, error => error === failure);
       assert.equal(iterator.next().done, true);
-      assert.equal(h.kinds().includes('crater'), cancelAt === 1);
+      assert.equal(h.kinds().includes('crater'), cancelAt === 'ground-scars');
       assert.equal(h.kinds().includes('churn'), false);
       assert.equal(h.commands.some(command => command[0] === 'clear'), false);
       assert.equal(f.runtime._buildDetail, undefined, 'cancelled props cannot publish a runtime');
@@ -452,6 +500,61 @@ for (const cancelAt of [0, 1, null]) {
     }
     assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
   } finally { h.dispose(); }
+}
+
+// Cancel at first/last building, last crushable/stack and first/last courtyard.
+// The real public wrapper closes both delegated collectors, including when an
+// individual disposer throws; no later instance, Canvas command or runtime runs.
+for (const cancelAt of [0, 2, 4, 6, 7, 90]) {
+  const h = groundFixture(groundCandidate, true, false,
+    { buildings: 3, crushables: 2, stacks: 2, disposeFailureAt: cancelAt === 7 ? 0 : -1 });
+  const iterator = h.run(), f = fixture(iterator), failure = new Error('cancel private foundation'), ticks = [];
+  try {
+    await assert.rejects(f.run({}, {}, 2002, { props: { wrecks: 0 } }, (done, total) => {
+      ticks.push([done, total]);
+      if (ticks.length - 1 === cancelAt) return Promise.reject(failure);
+    }, true), error => error === failure);
+    assert.equal(h.inputs.length, cancelAt + 1);
+    assert.deepEqual(new Set(h.disposedInputs), new Set(h.inputs), 'release every completed private input');
+    assert.equal(h.disposedInputs.length, h.inputs.length, 'dispose each input exactly once');
+    assert.deepEqual(h.commands, []);
+    assert.deepEqual(h.kinds(), []);
+    assert.deepEqual(h.randoms, []);
+    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 180]));
+    assert.equal(iterator.next().done, true);
+    assert.equal(f.runtime._buildDetail, undefined);
+    assert.equal(f.args[0][6].signal.aborted, true);
+    assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
+  } finally { h.dispose(); }
+}
+{
+  const h = groundFixture(), iterator = h.run(), f = fixture(iterator);
+  const failure = new Error('held foundation checkpoint rejected');
+  let rejectTick;
+  const heldTick = new Promise((_resolve, reject) => { rejectTick = reject; });
+  const pending = f.run({}, {}, 2002, { props: { wrecks: 0 } }, () => heldTick, true);
+  try {
+    assert.equal(h.inputs.length, 1, 'an unresolved tick holds exactly its completed instance');
+    assert.deepEqual(h.commands, []);
+    assert.deepEqual(h.kinds(), []);
+    assert.deepEqual(h.disposedInputs, []);
+    rejectTick(failure);
+    await assert.rejects(pending, error => error === failure);
+    assert.equal(h.inputs.length, 1);
+    assert.deepEqual(h.disposedInputs, h.inputs);
+    assert.equal(iterator.next().done, true);
+    assert.equal(f.runtime._buildDetail, undefined);
+  } finally { h.dispose(); }
+}
+{
+  const before = groundFixture(groundOriginal, false), after = groundFixture(groundCandidate, false);
+  const f = fixture(after.run()), ticks = [];
+  try {
+    before.run();
+    await f.run({}, {}, 2002, { props: { wrecks: 0 } }, (...tick) => ticks.push(tick), false);
+    assert.deepEqual(ticks, [], 'coarse callers gain no callbacks or awaited foundation boundary');
+    assert.deepEqual(after.snapshot(), before.snapshot());
+  } finally { before.dispose(); after.dispose(); }
 }
 
 // Freeze the entire original street block, not a second implementation of its
@@ -534,7 +637,7 @@ for (const [operation, stage, next] of [
   ['placeStreetRubble();', 'street-rubble', 'function placeStreetCurbs'],
   ['placeStreetCurbs();', 'street-curbs', 'function placeCentralMonument'],
   ['placeCentralMonument();', 'street-details', 'function* placeGroundBlendDecals'],
-  ['placeFoundationDecals();', 'ground-foundations', 'placeBattleScars(corridors);'],
+  ['yield* placeFoundationDecals();', 'ground-foundations', 'placeBattleScars(corridors);'],
   ['placeBattleScars(corridors);', 'ground-scars', 'placeTrackTears(corridors);'],
   ['yield* placeGroundBlendDecals();', 'ground-decals', 'let poleIM:'],
   ['  dressMapExtras({', 'map-extras', 'function composeAuthoredLoggingYard'],
