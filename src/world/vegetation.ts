@@ -2266,27 +2266,29 @@ interface BushSprayBuffers {
   flex: Float32Array;
 }
 
-// Write one flat, two-triangle spray directly into the final nonindexed
-// storage. YXZ keeps the leaf sprays mostly upright, with a varied local roll.
+// Two wings share an outward crease: one convex leaf cluster, with a
+// continuous atlas across all four triangles rather than crossed flat walls.
 function writeBushSpray(
   buffers: BushSprayBuffers, offset: number,
   cx: number, cy: number, cz: number, width: number,
-  pitch: number, yaw: number, roll: number, shiftX: number, shiftY: number, shade: number,
+  pitch: number, yaw: number, roll: number, shade: number,
 ): void {
   const cp = Math.cos(pitch), sp = Math.sin(pitch), ca = Math.cos(yaw), sa = Math.sin(yaw);
   const cr = Math.cos(roll), sr = Math.sin(roll);
   const rx = ca * cr + sa * sp * sr, ry = cp * sr, rz = -sa * cr + ca * sp * sr;
   const ux = -ca * sr + sa * sp * cr, uy = cp * cr, uz = sa * sr + ca * sp * cr;
-  for (let v = 0; v < 6; v++) {
-    // Same full-atlas winding as PlaneGeometry's [0,2,1, 2,3,1].
-    const right = v === 2 || v === 4 || v === 5;
-    const top = v === 0 || v === 2 || v === 5;
-    const x = ((right ? 0.5 : -0.5) + shiftX) * width;
-    const y = ((top ? 0.4 : -0.4) + shiftY) * width;
+  for (let v = 0; v < 12; v++) {
+    const corner = v % 6;
+    const right = corner === 2 || corner === 4 || corner === 5;
+    const top = corner === 0 || corner === 2 || corner === 5;
+    const column = Math.floor(v / 6) + (right ? 1 : 0), u = column * 0.5;
+    const x = (u - 0.5) * width * (top ? 0.90 : 1);
+    const y = (top ? 0.4 : -0.4) * width;
+    const fold = column === 1 ? width * 0.15 : 0;
     const i = offset + v, p = i * 3;
-    buffers.position[p] = cx + rx * x + ux * y;
-    buffers.position[p + 1] = cy + ry * x + uy * y;
-    buffers.position[p + 2] = cz + rz * x + uz * y;
+    buffers.position[p] = cx + rx * x + ux * y + sa * cp * fold;
+    buffers.position[p + 1] = cy + ry * x + uy * y - sp * fold;
+    buffers.position[p + 2] = cz + rz * x + uz * y + ca * cp * fold;
     // Use the actual packed vertex, not one card-center normal. The positive
     // upward floor retains lateral form without the old downward black pole.
     let nx = buffers.position[p], ny = (buffers.position[p + 1] - 0.55) * 0.65;
@@ -2301,14 +2303,28 @@ function writeBushSpray(
     buffers.color[p] = _c.r * 1.7 * value;
     buffers.color[p + 1] = _c.g * 1.7 * value;
     buffers.color[p + 2] = _c.b * 1.7 * value;
-    buffers.uv[i * 2] = right ? 1 : 0; buffers.uv[i * 2 + 1] = top ? 1 : 0;
+    buffers.uv[i * 2] = u; buffers.uv[i * 2 + 1] = top ? 1 : 0;
     buffers.flex[i] = 0.22;
   }
 }
 
-// Two overlapping, noncoplanar sprays per existing random branch node.
-// 32 flat sprays replace16 bowed cards: still64 triangles/192 vertices,
-// with no temporary PlaneGeometry, indexed expansion or geometry merge.
+// Exact minimum among a folded spray's two bottom edges and its crease.
+// Pitch/roll keep its local long axis upwards, so the tapered top is higher.
+function bushSprayBottom(width: number, pitch: number, roll: number): number {
+  const cp = Math.cos(pitch);
+  return width * (-0.4 * cp * Math.cos(roll)
+    + Math.min(-0.5 * Math.abs(cp * Math.sin(roll)), -0.15 * Math.sin(pitch)));
+}
+
+function bushSprayPitch(branch: number, variation: number): number {
+  if (branch >= 12) return -1.00 + variation * 0.28;
+  if (branch < 4) return 0.35 + variation * 0.45;
+  return (variation - 0.5) * 1.20;
+}
+
+// Four irregular grounded branches, eight overlapping interior clusters and
+// four upper shoots. 16 folded sprays retain64 triangles/192 vertices, with
+// no temporary geometry or per-frame work. They form a body, not a saucer.
 function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.BufferGeometry {
   const hue0 = pal.cardHue ?? 0.24, sat0 = pal.cardSat ?? 0.26;
   const buffers: BushSprayBuffers = {
@@ -2324,21 +2340,19 @@ function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.B
     const pitchRoll = rng(), yawRoll = rng(), rollRoll = rng();
     const shadeRoll = rng(), hueRoll = rng(), satRoll = rng(); // Exact old11-draw/node stream.
     _c.setHSL(hue0 + (hueRoll - 0.5) * 0.055, sat0 * 0.85 + satRoll * 0.04, 0.5, THREE.SRGBColorSpace);
-    const yaw = yawRoll * Math.PI * 2, pitch = (pitchRoll - 0.5) * 0.80;
-    const roll = (rollRoll - 0.5) * 1.20;
+    const lower = i < 4, upper = i >= 12;
+    const direction = lower ? i * Math.PI * 0.5 + (yawRoll - 0.5) * 0.90 : Math.atan2(dx, dz);
+    const yaw = direction + (yawRoll - 0.5) * 0.65;
+    // Upper clusters arch over the body, rather than repeating the upright
+    // skirt as four tall blades. Interior branches cross at varied angles.
+    const pitch = bushSprayPitch(i, pitchRoll);
+    const roll = (rollRoll - 0.5) * (lower ? 0.70 : 1.30);
+    const radius = lower ? 0.46 + rad * 0.24 : upper ? 0.10 + rad * 0.36 : rad * 0.52;
     const shade = (0.60 + 0.30 * rad) * (0.94 + shadeRoll * 0.12);
-    const cy = 0.55 + dy * rad * 0.42 + (0.5 - pitchRoll) * 0.12;
-    // Both planes contain this shared branch anchor strictly inside their
-    // rectangles. Opposite in-plane offsets make distinct overlapping sprays
-    // without depending on nearby parallel sheets to intersect. Random nodes
-    // fill the interior as well as the outer skirt, not a tangent shell/rings.
-    writeBushSpray(buffers, i * 12,
-      dx * rad * 0.96, cy, dz * rad * 0.96,
-      w * 0.74, pitch, yaw + 0, roll, 0.14, 0.05, shade * 1);
-    writeBushSpray(buffers, i * 12 + 6,
-      dx * rad * 0.96, cy, dz * rad * 0.96,
-      w * 0.68, -pitch * 0.65, yaw + (1.05 + (rollRoll - 0.5) * 0.30),
-      -roll * 0.75, -0.12, -0.08, shade * 0.96);
+    const cy = lower ? -0.045 - bushSprayBottom(w, pitch, roll)
+      : upper ? 0.82 + dy * 0.10 : 0.55 + dy * 0.18;
+    writeBushSpray(buffers, i * 12, Math.sin(direction) * radius, cy, Math.cos(direction) * radius,
+      w, pitch, yaw, roll, shade);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(buffers.position, 3));
