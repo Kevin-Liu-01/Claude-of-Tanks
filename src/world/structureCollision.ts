@@ -41,6 +41,14 @@ interface SolidComponent {
 
 type PositionAttribute = BufferAttribute | InterleavedBufferAttribute;
 
+interface IndexedVertex {
+  x: number;
+  y: number;
+  z: number;
+  weldKey: string;
+  projectionKey: string;
+}
+
 type StructureGeometryBuckets = Record<string, BufferGeometry[] | undefined>;
 
 export interface StructureFootprintReceipt {
@@ -112,17 +120,33 @@ function streamVertex(index: BufferAttribute | null, streamIndex: number): numbe
   return index ? index.getX(streamIndex) : streamIndex;
 }
 
+function indexedVertex(
+  position: PositionAttribute, vertex: number, cache: Map<number, IndexedVertex>,
+): IndexedVertex {
+  let cached = cache.get(vertex);
+  if (!cached) {
+    const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
+    cached = { x, y, z, weldKey: vertexKey(x, y, z),
+      projectionKey: `${Math.round(x * WELD_SCALE)},${Math.round(z * WELD_SCALE)}` };
+    cache.set(vertex, cached);
+  }
+  return cached;
+}
+
 function joinTrianglesBySharedVertex(
   position: PositionAttribute,
   index: BufferAttribute | null,
   triangleCount: number,
   sets: DisjointSet,
+  vertices: Map<number, IndexedVertex> | null = null,
 ): void {
   const owners = new Map<string, number>();
   for (let triangle = 0; triangle < triangleCount; triangle++) {
     for (let corner = 0; corner < 3; corner++) {
       const vertex = streamVertex(index, triangle * 3 + corner);
-      const key = vertexKey(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
+      const cached = vertices ? indexedVertex(position, vertex, vertices) : null;
+      const key = cached ? cached.weldKey
+        : vertexKey(position.getX(vertex), position.getY(vertex), position.getZ(vertex));
       const owner = owners.get(key);
       if (owner == null) owners.set(key, triangle);
       else sets.join(triangle, owner);
@@ -135,6 +159,7 @@ function collectSolidComponents(
   index: BufferAttribute | null,
   triangleCount: number,
   sets: DisjointSet,
+  vertices: Map<number, IndexedVertex> | null = null,
 ): Map<number, SolidComponent> {
   const components = new Map<number, SolidComponent>();
   for (let triangle = 0; triangle < triangleCount; triangle++) {
@@ -152,11 +177,14 @@ function collectSolidComponents(
     const projected: number[] = [];
     for (let corner = 0; corner < 3; corner++) {
       const vertex = streamVertex(index, triangle * 3 + corner);
-      const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
+      const cached = vertices?.get(vertex);
+      const x = cached ? cached.x : position.getX(vertex);
+      const y = cached ? cached.y : position.getY(vertex);
+      const z = cached ? cached.z : position.getZ(vertex);
       component.minY = Math.min(component.minY, y);
       component.maxY = Math.max(component.maxY, y);
       component.vertices.set(
-        `${Math.round(x * WELD_SCALE)},${Math.round(z * WELD_SCALE)}`,
+        cached ? cached.projectionKey : `${Math.round(x * WELD_SCALE)},${Math.round(z * WELD_SCALE)}`,
         [x, z],
       );
       projected.push(x, z);
@@ -192,8 +220,11 @@ function geometrySolids(geometry: BufferGeometry, bucket: string): LocalSolid[] 
   const index = geometry.getIndex();
   const triangleCount = Math.floor((index?.count ?? position.count) / 3);
   const sets = disjointSet(triangleCount);
-  joinTrianglesBySharedVertex(position, index, triangleCount, sets);
-  const components = collectSolidComponents(position, index, triangleCount, sets);
+  // Call-local and referenced-index-bounded: no geometry/version cache survives
+  // mutation or another extraction. Preserve every original join and Map.set.
+  const vertices = index ? new Map<number, IndexedVertex>() : null;
+  joinTrianglesBySharedVertex(position, index, triangleCount, sets, vertices);
+  const components = collectSolidComponents(position, index, triangleCount, sets, vertices);
   return solidsFromComponents(components.values(), bucket);
 }
 
