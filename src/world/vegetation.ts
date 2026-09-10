@@ -2164,29 +2164,95 @@ function buildBirchFarGeometry(
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
 }
 
-// squat card clump for hedgerow/field bushes.
-// r2 terrain_environment: the roadside shrubs were the loudest "flat acrylic
-// splat" tell at 10-40 m — more, smaller cards (16 vs 11) for a ragged
-// silhouette, a LOW normal up-bias (0.75) so the sides of the clump actually
-// shade around the volume, a deeper core->rim AO ramp, and a vertical
-// understory gradient so the skirt sits dark against the lit crown.
+interface BushSprayBuffers {
+  position: Float32Array;
+  normal: Float32Array;
+  uv: Float32Array;
+  color: Float32Array;
+  flex: Float32Array;
+}
+
+// Write one flat, two-triangle spray directly into the final nonindexed
+// storage. YXZ keeps the leaf sprays mostly upright, with a varied local roll.
+function writeBushSpray(
+  buffers: BushSprayBuffers, offset: number,
+  cx: number, cy: number, cz: number, width: number,
+  pitch: number, yaw: number, roll: number, shiftX: number, shiftY: number, shade: number,
+): void {
+  const cp = Math.cos(pitch), sp = Math.sin(pitch), ca = Math.cos(yaw), sa = Math.sin(yaw);
+  const cr = Math.cos(roll), sr = Math.sin(roll);
+  const rx = ca * cr + sa * sp * sr, ry = cp * sr, rz = -sa * cr + ca * sp * sr;
+  const ux = -ca * sr + sa * sp * cr, uy = cp * cr, uz = sa * sr + ca * sp * cr;
+  for (let v = 0; v < 6; v++) {
+    // Same full-atlas winding as PlaneGeometry's [0,2,1, 2,3,1].
+    const right = v === 2 || v === 4 || v === 5;
+    const top = v === 0 || v === 2 || v === 5;
+    const x = ((right ? 0.5 : -0.5) + shiftX) * width;
+    const y = ((top ? 0.4 : -0.4) + shiftY) * width;
+    const i = offset + v, p = i * 3;
+    buffers.position[p] = cx + rx * x + ux * y;
+    buffers.position[p + 1] = cy + ry * x + uy * y;
+    buffers.position[p + 2] = cz + rz * x + uz * y;
+    // Use the actual packed vertex, not one card-center normal. The positive
+    // upward floor retains lateral form without the old downward black pole.
+    let nx = buffers.position[p], ny = (buffers.position[p + 1] - 0.55) * 0.65;
+    let nz = buffers.position[p + 2];
+    const length = Math.hypot(nx, ny, nz) || 1;
+    nx /= length; nz /= length; ny = Math.max(0.28, ny / length + 0.55);
+    const inverse = 1 / Math.hypot(nx, ny, nz);
+    buffers.normal[p] = nx * inverse;
+    buffers.normal[p + 1] = ny * inverse;
+    buffers.normal[p + 2] = nz * inverse;
+    const value = shade * (0.88 + 0.18 * clamp((buffers.position[p + 1] + 0.1) / 1.6, 0, 1));
+    buffers.color[p] = _c.r * 1.7 * value;
+    buffers.color[p + 1] = _c.g * 1.7 * value;
+    buffers.color[p + 2] = _c.b * 1.7 * value;
+    buffers.uv[i * 2] = right ? 1 : 0; buffers.uv[i * 2 + 1] = top ? 1 : 0;
+    buffers.flex[i] = 0.22;
+  }
+}
+
+// Two overlapping, noncoplanar sprays per existing random branch node.
+// 32 flat sprays replace16 bowed cards: still64 triangles/192 vertices,
+// with no temporary PlaneGeometry, indexed expansion or geometry merge.
 function buildBushCards(rng: RandomSource, pal: VegetationPalette = {}): THREE.BufferGeometry {
   const hue0 = pal.cardHue ?? 0.24, sat0 = pal.cardSat ?? 0.26;
-  const parts: THREE.BufferGeometry[] = [];
-  const cy = 0.55;
+  const buffers: BushSprayBuffers = {
+    position: new Float32Array(192 * 3), normal: new Float32Array(192 * 3),
+    uv: new Float32Array(192 * 2), color: new Float32Array(192 * 3), flex: new Float32Array(192),
+  };
   for (let i = 0; i < 16; i++) {
     let dx = rng() * 2 - 1, dy = rng() * 2 - 1, dz = rng() * 2 - 1;
     const dl = Math.hypot(dx, dy, dz) || 1;
     dx /= dl; dy /= dl; dz /= dl;
     const rad = Math.pow(0.3 + 0.7 * rng(), 0.8);
     const w = 0.72 + rng() * 0.55;
-    _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
-    const vGrad = 0.78 + 0.42 * clamp(dy * 0.5 + 0.5, 0, 1); // lit top, shaded skirt
-    const shade = (0.34 + 0.62 * rad) * vGrad * (0.9 + rng() * 0.2);
-    parts.push(foliageCard(w, w * 0.8, dx * rad * 0.85, cy + dy * rad * 0.38, dz * rad * 0.85,
-      _e, shade, hue0 + (rng() - 0.5) * 0.055, sat0 + rng() * 0.06, 0.22, 0, cy, 0, 0.75, 0.45));
+    const pitchRoll = rng(), yawRoll = rng(), rollRoll = rng();
+    const shadeRoll = rng(), hueRoll = rng(), satRoll = rng(); // Exact old11-draw/node stream.
+    _c.setHSL(hue0 + (hueRoll - 0.5) * 0.055, sat0 * 0.85 + satRoll * 0.04, 0.5, THREE.SRGBColorSpace);
+    const yaw = yawRoll * Math.PI * 2, pitch = (pitchRoll - 0.5) * 0.80;
+    const roll = (rollRoll - 0.5) * 1.20;
+    const shade = (0.60 + 0.30 * rad) * (0.94 + shadeRoll * 0.12);
+    const cy = 0.55 + dy * rad * 0.42 + (0.5 - pitchRoll) * 0.12;
+    // Both planes contain this shared branch anchor strictly inside their
+    // rectangles. Opposite in-plane offsets make distinct overlapping sprays
+    // without depending on nearby parallel sheets to intersect. Random nodes
+    // fill the interior as well as the outer skirt, not a tangent shell/rings.
+    writeBushSpray(buffers, i * 12,
+      dx * rad * 0.96, cy, dz * rad * 0.96,
+      w * 0.74, pitch, yaw + 0, roll, 0.14, 0.05, shade * 1);
+    writeBushSpray(buffers, i * 12 + 6,
+      dx * rad * 0.96, cy, dz * rad * 0.96,
+      w * 0.68, -pitch * 0.65, yaw + (1.05 + (rollRoll - 0.5) * 0.30),
+      -roll * 0.75, -0.12, -0.08, shade * 0.96);
   }
-  return mergeParts(parts);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(buffers.position, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(buffers.normal, 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(buffers.uv, 2));
+  geometry.setAttribute('color', new THREE.BufferAttribute(buffers.color, 3));
+  geometry.setAttribute('aFlex', new THREE.BufferAttribute(buffers.flex, 1));
+  return geometry;
 }
 
 function garageTreePalette(

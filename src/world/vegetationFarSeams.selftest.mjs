@@ -108,7 +108,7 @@ function compile(input = text, mode = 'current') {
       const cfg = { vegetation: input }, veg = ${variable('veg')};
       ${input.slice(start, end)}
       return { SPECIES, palOf, speciesList, bushSpecies }; }
-    ({library, mulberry32, randomCore, rngReceipt, buildBushCards, buildPalmGeometry, sphereNormals,
+    ({library, mulberry32, randomCore, rngReceipt, buildBushCards, buildBroadleafCards, buildPalmGeometry, sphereNormals,
       jitterShell: typeof jitterFarShell === 'function' ? jitterFarShell : jitterRadial,
       ${farNames.join(',')}});`), {
     THREE, mergeGeometries, Float32Array, TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, bendMangroveRoot, shapeMangroveFarStem,
@@ -266,7 +266,15 @@ const badNear = compile(text, 'near-palm'), badIndex = compile(text, 'indexed');
 const a = current.buildPalmGeometry(current.mulberry32(1337)), b = badNear.buildPalmGeometry(badNear.mulberry32(1337));
 assert.throws(() => exact(a.trunk, b.trunk, 'near-palm opt-in'), /exact bytes/);
 for (const g of [...Object.values(a), ...Object.values(b)]) g.dispose();
-const cards = current.buildBushCards(current.mulberry32(77)), indexed = badIndex.buildBushCards(badIndex.mulberry32(77));
+// Bush sprays now write final buffers directly. Exercise the still-merged
+// broadleaf cards so the indexed-merge mutation changes the actual draw API.
+const cardRng = random(77), indexedRng = random(77);
+const cards = current.buildBroadleafCards(cardRng.rng, 58, 1);
+const indexed = badIndex.buildBroadleafCards(indexedRng.rng, 58, 1);
+assert.deepEqual(cardRng.receipt(), indexedRng.receipt(), 'index control preserves constructor RNG');
+assert.equal(cards.index, null); assert.ok(indexed.index, 'mutation really retained an index');
+const expanded = indexed.toNonIndexed();
+try { exact(cards, expanded, 'index control expanded geometry'); } finally { expanded.dispose(); }
 assert.throws(() => exact(cards, indexed, 'index regression'), /exact storage/);
 for (const name of Object.keys(cards.attributes)) {
   const bad = cards.clone(); bad.attributes[name].array[0] += .125;
