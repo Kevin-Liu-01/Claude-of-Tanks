@@ -105,3 +105,38 @@ predates the separate props-wait diagnostics integration. No production result
 for the new combined build is claimed yet. See
 [the loading/resource release receipt](loading-resource-release-20260910.md)
 for the retained failed/refused sustained-frame and resource gates.
+
+## Production actual controls
+
+The non-force landing is `c4c56ac68` plus props diagnostics `f6622924a`; the public
+site served `v1.0.0+gf6622924a`. The committed real-control probe passed all four
+boot/audio-clock/warm/source gates on production, with empty errors, failures
+and cleanup errors. Both warm owners completed before rollout. The three
+Battle/Rematch/Garage PNGs were inspected; the owned browser and local preview
+server are closed. This is one unprofiled native high-quality 1280×720/DPR1 run,
+not sustained-frame, multiplayer or separate-device certification.
+
+Receipt: `/private/tmp/cot-interactive-baseline.gsRCvU/hidden-readiness-production-r1/report.json`.
+SHA-256: `4c7c3caebe33133b0ab019bf2b60b9b867345b97ad57427ce6c2e7ae940a1706`.
+Built HTML SHA-256:
+`f3fdae26d136c248c8e654cabeaf306dd0b4d1225f41a30ad5fead8c8fceaa5f`.
+
+| Action | Cover | Click to probe-ready | Largest callback-start gap |
+| --- | ---: | ---: | ---: |
+| Battle | 3.2 ms | 12,204.5 ms | 93.7 ms |
+| Rematch | 167.5 ms | 7,588.8 ms | 133.0 ms |
+| Garage | 140.0 ms | 456.0 ms | 50.9 ms |
+
+Neither exact hidden window (15837.9–16333.4 and 25055.2–25534.0 ms) overlapped
+a recorded callback gap above 50 ms. Individual compile maxima were 2.0/1.5 ms;
+the single reflected program took 18.7/4.3 ms, with three readiness polls each.
+The first reflection still exceeds a 16.7 ms frame budget: bounded readiness
+does not make an indivisible native call free. Actual hidden draws were 7/7/5
+and 8/5/4 ms. These results support the specific bypass correction, not the
+historical 214–319 ms cause or universal absence of shader stalls.
+
+Earlier uncovered Battle gaps remain 65.9/56.6/53.6/71.4 ms and Rematch gaps
+70.6/50.2/51.5/50.5 ms. The larger table maxima were covered. Existing rounded
+visual-build timing narrows those earlier continuations to vehicle construction;
+it does not yet identify its exact first-step substage. The next bounded
+diagnostic records actual iterator steps and synchronous core stage windows.

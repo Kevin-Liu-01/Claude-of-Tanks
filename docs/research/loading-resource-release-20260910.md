@@ -100,3 +100,16 @@ is the next bounded correction, not proof of the historical gameplay stall cause
 The cold Battle also spent 16,300 ms wall time placing props, with 2,091.7 ms
 reported synchronous slice time; waiting/network/scheduling time must not be
 called CPU time. The 23.5 second first entry is not an instant-loading result.
+
+## Follow-up landing and production result
+
+`c4c56ac68` corrects the hidden-reflection readiness bypass, and `f6622924a`
+adds bounded props-wait attribution without changing pacing. Both are pushed
+and live. The subsequent production controls passed all four gates, with no
+recorded >50 ms callback gap inside either exact hidden-warm interval. Other
+uncovered countdown gaps still reached 71.4 ms; sustained-frame/resource failures
+above remain open. Full details and immutable receipt hashes are in
+[hidden program readiness](hidden-program-readiness-20260910.md) and
+[props wait attribution](props-await-attribution-20260910.md). The combined scan's
+raw Doctor49 result and reviewed fixed-source test-fixture findings are retained,
+not represented as a scanner pass. Tests, typecheck and public build passed.

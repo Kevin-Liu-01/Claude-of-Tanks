@@ -54,3 +54,26 @@ No rule was suppressed. Serial test awaits preserve pacing/lifetime assertions;
 the runtime array/checkpoint observations are qualified in the hidden-readiness
 receipt. The observer adds one settlement reaction, but no extra awaited hop;
 current production ticks return native promises, not exotic thenables.
+
+## Production acquisition
+
+The same `f6622924a` real-control production run linked in the hidden-readiness
+receipt passed all four functional/readiness gates. Its cold Battle recorded
+5217 ms props wall time: 2250.8 ms generator slices, 213.6 ms ordinary slice-tick
+awaits, and 2748.4 ms inclusive wreck-bake awaits. The roughly 4.2 ms remainder
+includes wrapper/bookkeeping/rounding; it is not attributed CPU time. The
+prop-model consumer await was 0 ms at the available clock resolution.
+
+Six actual wreck requests took 703.8 ms (Leclerc XLR), 501.4 ms (BMPT T-90),
+426.4 ms (Challenger 2), 371.1 ms (M1A2), 309.2 ms (T-90M), and 436.5 ms
+(Leopard 2A7V). Their 204.8 ms nested checkpoint time is already included, not
+another additive delay. There were no fallback builder imports or dropped rows.
+The largest ordinary generator slice was 24.4 ms; the largest tick await was
+26.3 ms. These are elapsed timings, not isolated worker CPU measurements.
+
+The prior 16.3-second props run predates these fields, so its unexplained
+remainder cannot retroactively be assigned to wrecks or the network. This new
+receipt closes attribution for this acquisition, not the old cause or a claim
+that cold loading is instant. Wreck imports/construction/transfer/hydration are
+still one inclusive operation. Geometry, requested donor diversity and pacing
+were not reduced to obtain the result.
