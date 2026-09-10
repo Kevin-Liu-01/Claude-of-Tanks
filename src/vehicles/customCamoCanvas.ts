@@ -5,6 +5,7 @@
 import { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './camoPolicy.ts';
 import type { CustomCamoAsset, CustomCamoBrush } from './camoPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import type { MaterialCanvasContext } from './materialPainter.ts';
 
 export { CUSTOM_CAMO_ASSETS, CUSTOM_CAMO_BRUSHES } from './camoPolicy.ts';
 
@@ -36,7 +37,7 @@ function pointXY(point: ReadonlyArray<number>, width: number, height: number): [
   return [(point[0] / 100) * width, (point[1] / 100) * height];
 }
 
-type CustomCamoAssetPainter = (ctx: CanvasRenderingContext2D) => void;
+type CustomCamoAssetPainter = (ctx: MaterialCanvasContext) => void;
 
 const CUSTOM_CAMO_ASSET_PAINTERS: Readonly<Record<CustomCamoAsset, CustomCamoAssetPainter>> = {
   chevron(ctx) {
@@ -72,7 +73,7 @@ const CUSTOM_CAMO_ASSET_PAINTERS: Readonly<Record<CustomCamoAsset, CustomCamoAss
 };
 
 function drawAsset(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   asset: CustomCamoAsset,
   x: number,
   y: number,
@@ -103,7 +104,7 @@ function resolveAsset(value: RuntimeValue): CustomCamoAsset {
 }
 
 function paintStampStroke(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   stroke: CamoStrokeInput,
   points: ReadonlyArray<ReadonlyArray<number>>,
   width: number,
@@ -119,7 +120,7 @@ function paintStampStroke(
 }
 
 function paintSprayStroke(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   points: ReadonlyArray<ReadonlyArray<number>>,
   width: number,
   height: number,
@@ -153,7 +154,7 @@ function paintSprayStroke(
 }
 
 function paintPixelStroke(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   points: ReadonlyArray<ReadonlyArray<number>>,
   width: number,
   height: number,
@@ -172,7 +173,7 @@ function paintPixelStroke(
 }
 
 function paintSinglePoint(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   brush: CustomCamoBrush,
   point: ReadonlyArray<number>,
   width: number,
@@ -190,7 +191,7 @@ function paintSinglePoint(
 }
 
 function paintLineStroke(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   points: ReadonlyArray<ReadonlyArray<number>>,
   width: number,
   height: number,
@@ -206,7 +207,7 @@ function paintLineStroke(
 }
 
 function paintStrokeGeometry(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   stroke: CamoStrokeInput,
   brush: CustomCamoBrush,
   points: ReadonlyArray<ReadonlyArray<number>>,
@@ -230,7 +231,7 @@ function paintStrokeGeometry(
 
 /** Paint normalized vector strokes into one tile-sized canvas region. */
 export function paintCustomCamoStrokes(
-  ctx: CanvasRenderingContext2D,
+  ctx: MaterialCanvasContext,
   strokes: readonly CamoStrokeInput[] | null | undefined,
   {
   width, height, colorA, colorB, eraseColor,
