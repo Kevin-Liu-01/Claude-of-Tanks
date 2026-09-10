@@ -5720,10 +5720,10 @@ ${snowCap ? `
       group.add(mesh);
       return mesh.geometry;
     }
-    function collectFoundationDecals(
+    function* collectFoundationDecals(
       dirtDiscs: THREE.BufferGeometry[],
       apronGeos: THREE.BufferGeometry[],
-    ): void {
+    ): Generator<PropsBuildSlice, void, void> {
       for (const building of buildingFeatures) {
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
@@ -5732,12 +5732,15 @@ ${snowCap ? `
           dirtDiscs.push(conformedDisc(building.x, building.z,
             Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04]));
         }
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const prop of crushables) {
         dirtDiscs.push(conformedDisc(prop.x, prop.z, 1.15, [0.05, 0.05, 0.04, 0.03]));
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
       for (const stack of stackSpots) {
         dirtDiscs.push(conformedDisc(stack.x, stack.z, stack.r, [0.05, 0.05, 0.04, 0.03]));
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }
     function courtyardDecalIsClear(x: number, z: number): boolean {
@@ -5747,7 +5750,7 @@ ${snowCap ? `
         Math.hypot(x - building.x, z - building.z) < building.rr + 1);
       return !onBuilding && !noVeg(x, z);
     }
-    function collectCourtyardDecals(apronGeos: THREE.BufferGeometry[]): void {
+    function* collectCourtyardDecals(apronGeos: THREE.BufferGeometry[]): Generator<PropsBuildSlice, void, void> {
       if (!P.streetRows) return;
       const crng2 = mulberry32(seed + 771);
       for (let i = 0, placed = 0; i < 700 && placed < 84; i++) {
@@ -5757,13 +5760,28 @@ ${snowCap ? `
         apronGeos.push(conformedDisc(x, z,
           4.5 + crng2() * 7.0, [0.04, 0.04, 0.04, 0.03]));
         placed++;
+        yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
     }
-    function placeFoundationDecals(): void {
+    function* placeFoundationDecals(): Generator<PropsBuildSlice, void, void> {
       const dirtDiscs: THREE.BufferGeometry[] = [];
       const apronGeos: THREE.BufferGeometry[] = [];
-      collectFoundationDecals(dirtDiscs, apronGeos);
-      collectCourtyardDecals(apronGeos);
+      let collected = false;
+      try {
+        yield* collectFoundationDecals(dirtDiscs, apronGeos);
+        yield* collectCourtyardDecals(apronGeos);
+        collected = true;
+      } finally {
+        if (!collected) {
+          // Only private inputs exist at these checkpoints. Drain every input
+          // on IteratorClose without masking the owning build's cancellation.
+          for (const geometries of [dirtDiscs, apronGeos]) {
+            for (const geometry of geometries) {
+              try { geometry.dispose(); } catch (_) { /* continue releasing private inputs */ }
+            }
+          }
+        }
+      }
       const contactGeometry = addDecalMesh(dirtDiscs, makeGroundDecalTexture(noi, aniso, 'dirt'), {
         receiveShadow: false,
         groundContact: true,
@@ -5926,9 +5944,9 @@ ${snowCap ? `
     }
     const corridors: DriveCorridor[] = [L.spawns.player, ...L.spawns.enemies]
       .map((spawn) => [spawn.x, spawn.z, v.cx ?? 10, v.cz ?? 40]);
-    placeFoundationDecals();
+    yield* placeFoundationDecals();
     // Yield only after a complete family transfers its meshes to the props
-    // group. Keep temporary geometry assembly and its exact RNG order atomic.
+    // group. Foundation inputs above stay private until collection completes.
     yield { fine: true, progress: false, stage: 'ground-foundations' };
     placeBattleScars(corridors);
     yield { fine: true, progress: false, stage: 'ground-scars' };
