@@ -186,6 +186,122 @@ await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers, lis
   });
 }
 
+// Exercise the opaque default itself: injected frame ports below intentionally
+// bypass it and cannot prove whether real rAF microtasks resume loading work.
+await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers, listeners }) => {
+  let clock = 0, completed = false;
+  const yieldWork = createOpaqueLoadingYielder(12, 80, { now: () => clock });
+  clock = 80;
+  const pending = yieldWork().then(() => { completed = true; });
+  clock = 90;
+  frames[0]();
+  // Drain the frame resolver and its caller continuation in their real order.
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(completed, false, 'opaque default cannot resume in the rAF microtask checkpoint');
+  assert.equal(tasks.length, 1);
+  assert.equal(timers[0].cancelled, true);
+  assert.equal(listeners.size, 0);
+  clock = 130;
+  tasks[0](); await pending;
+  assert.equal(completed, true);
+
+  clock = 141;
+  await yieldWork();
+  assert.equal(tasks.length, 1, 'slice budget starts at post-frame task completion, not rAF time');
+  clock = 142;
+  const budget = yieldWork();
+  assert.equal(tasks.length, 2);
+  tasks[1](); await budget;
+  clock = 209;
+  const beforePaint = yieldWork();
+  assert.equal(frames.length, 1, 'paint interval also starts at post-frame task completion');
+  assert.equal(tasks.length, 3);
+  tasks[2](); await beforePaint;
+  clock = 210;
+  const duePaint = yieldWork();
+  assert.equal(frames.length, 2, 'overdue paint still wins over a fresh one-millisecond task slice');
+  frames[1](); await Promise.resolve();
+  tasks[3](); await duePaint;
+});
+
+await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers }) => {
+  let clock = 0, overridden = 0;
+  const taskOnly = createOpaqueLoadingYielder(12, Infinity, { now: () => clock });
+  clock = 10000;
+  const budget = taskOnly();
+  assert.equal(tasks.length, 1);
+  tasks[0](); await budget;
+  const forced = taskOnly(true);
+  tasks[1](); await forced;
+  assert.equal(frames.length, 0, 'Infinity remains task-only, even at forced checkpoints');
+  assert.equal(timers.length, 0);
+
+  const custom = createOpaqueLoadingYielder(12, 80,
+    { now: () => clock, yieldFrame: async () => { overridden++; } });
+  clock += 80;
+  await custom();
+  assert.equal(overridden, 1);
+  assert.equal(tasks.length, 2, 'explicit frame ports retain their exact supplied contract');
+  assert.equal(frames.length, 0);
+
+  const visible = createFrameBudgetYielder(12, { now: () => clock });
+  clock += 12;
+  const visiblePending = visible();
+  frames[0](); await visiblePending;
+  assert.equal(tasks.length, 2, 'visible work still resumes at nextFrame without a following task');
+  assert.deepEqual(timers.map(({ delay }) => delay), [34]);
+});
+
+for (const failureAt of ['timeout', 'task']) {
+  await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers, cancelledFrames, listeners }) => {
+    let clock = 0;
+    const yieldWork = createOpaqueLoadingYielder(12, 80, { now: () => clock });
+    const expected = new Error('post-frame task rejected');
+    clock = 80;
+    const pending = yieldWork();
+    const rejected = assert.rejects(pending, failureAt === 'timeout'
+      ? /Visible paint frame did not arrive within 1000 ms/ : error => error === expected);
+    if (failureAt === 'timeout') timers[0].callback();
+    else {
+      frames[0](); await Promise.resolve();
+      tasks[0].reject(expected);
+    }
+    await rejected;
+    assert.equal(timers[0].cancelled, true);
+    assert.deepEqual(cancelledFrames, [1]);
+    assert.equal(listeners.size, 0);
+    const count = tasks.length;
+    frames[0](); timers[0].callback(); await Promise.resolve();
+    assert.equal(tasks.length, count, 'failed waits cannot restart via stale callbacks');
+    const retry = yieldWork();
+    assert.equal(frames.length, 2, 'failed default frame/task leaves both deadlines unsatisfied');
+    frames[1](); await Promise.resolve();
+    tasks.at(-1)(); await retry;
+  });
+}
+
+for (const hidden of [true, false]) {
+  await withFrameHost({ hidden, taskScheduler: true }, async ({ frames, tasks, timers,
+    cancelledFrames, listeners, setHidden }) => {
+    let clock = 0, completed = false;
+    const yieldWork = createOpaqueLoadingYielder(12, 80, { now: () => clock });
+    clock = 80;
+    const pending = yieldWork().then(() => { completed = true; });
+    if (hidden) { assert.equal(timers[0].delay, 34); timers[0].callback(); }
+    else setHidden(true);
+    await Promise.resolve();
+    assert.equal(completed, false, 'hidden fallback still crosses a task boundary');
+    assert.equal(listeners.size, 0);
+    assert.equal(timers[0].cancelled, true);
+    assert.deepEqual(cancelledFrames, [1]);
+    tasks[0](); await pending;
+    assert.equal(completed, true);
+    frames[0](); timers[0].callback(); await Promise.resolve();
+    assert.equal(tasks.length, 1, 'hidden cleanup prevents duplicate continuation tasks');
+  });
+}
+
 let now = 0;
 let frameYields = 0;
 let taskYields = 0;
@@ -202,7 +318,7 @@ now = 12;
 await visibleYield();
 assert.equal(frameYields, 1, 'visible work yields on the budget boundary');
 await visibleYield(true);
-assert.equal(frameYields, 2, 'forced visible checkpoints always paint');
+assert.equal(frameYields, 2, 'forced visible checkpoints always request the injected frame port');
 
 now = 0;
 frameYields = 0;
@@ -214,7 +330,7 @@ assert.equal(taskYields, 1, 'covered work normally yields only its task');
 assert.equal(frameYields, 0);
 now = 80;
 await coveredYield();
-assert.equal(frameYields, 1, 'covered work guarantees a bounded progress paint');
+assert.equal(frameYields, 1, 'covered work periodically requests its injected progress-frame port');
 now = 81;
 await coveredYield(true);
 assert.equal(taskYields, 2, 'forced checkpoints still avoid unnecessary paints');
