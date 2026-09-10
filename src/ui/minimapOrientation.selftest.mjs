@@ -61,7 +61,8 @@ assert.match(worldActivationSource, /minimapAssetUrl\(mapId, baseUrl, options\.m
 assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
 for (const mapId of MAP_IDS) {
-  const revision = (mapId === 'frontier' || mapId === 'alpine') ? 'north-up-v7-regional-relief-v1'
+  const revision = mapId === 'badlands' ? 'north-up-v7-redrock-canyon-v1'
+    : (mapId === 'frontier' || mapId === 'alpine') ? 'north-up-v7-regional-relief-v1'
     : mapId === 'oasis' ? 'north-up-v7-oasis-shoreline-v2'
     : mapId === 'autumn' ? 'north-up-v7-autumn-headlands'
       : mapId === 'foundry' ? 'north-up-v7-foundry-localized-soil' : 'north-up-v7';
