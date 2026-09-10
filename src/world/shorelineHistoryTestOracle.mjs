@@ -4,6 +4,8 @@ import frontier from './maps/frontier.ts';
 import alpine from './maps/alpine.ts';
 import { createLakeChannel } from './maps/marshChannel.ts';
 
+const clamp01 = x => Math.max(0, Math.min(1, x));
+
 // Published d948cb5733 added only landforms[*].relief. Authenticated Git blobs:
 // Frontier 2ad3e2945ac1dc7edaf4b79945d8f3ba785eacb8 -> fdbd9878c5bf4bf06adc822edc4fae4258206099;
 // Alpine   6029267c78dd0e4d5eb2517d2b31e2013985f168 -> 75e6783b68fa503af689bcf4c9e77ba9f97b85c2.
@@ -32,7 +34,9 @@ function badlandsAuthoring(cfg) {
     microScale: terrain.microScale, rimH: terrain.rimH, dunesAmp: terrain.dunes?.amp,
     mesas: terrain.mesas, landforms: terrain.landforms,
     roads: [terrain.roads?.paths?.[0], terrain.roads?.paths?.[2]],
-  }, beatX: [props.tacticalBeats?.[0]?.x, props.tacticalBeats?.[2]?.x],
+  }, material: { rippleAmp: cfg.splat.rippleAmp, strata: cfg.splat.strata,
+    rockTone: cfg.splat.rockTone.toString(), banding: cfg.horizon.banding },
+  beatX: [props.tacticalBeats?.[0]?.x, props.tacticalBeats?.[2]?.x],
   wallX: props.wallRuns?.slice(0, 4).map(row => [row[0], row[2]]) };
 }
 const currentBadlandsAuthoring = structuredClone(badlandsAuthoring(badlands));
@@ -47,12 +51,18 @@ export function historicalBadlandsInput(cfg) {
   assert.deepEqual(badlandsAuthoring(cfg), currentBadlandsAuthoring,
     'current Badlands authoring must match its canonical config before historical projection');
   const { redrockCanyon: _laterCanyon, ...terrain } = cfg.terrain;
+  const { banding: _laterQuietBedding, ...horizon } = cfg.horizon;
   const roads = [
     [[-432, -452], [-360, -292], [-330, -92], [-356, 112], [-292, 306], [-210, 470]],
     [[344, -452], [302, -272], [326, -82], [286, 112], [320, 298], [382, 456]],
   ];
   const wallX = [[-302, -212], [-294, -204], [202, 298], [198, 294]];
   return { ...cfg, blurb: 'Layered red escarpments frame a fortified desert logistics outpost',
+    // Exact pre-refinement palette; redrockMaterial independently guards the
+    // live material values and production uniform/painter connections.
+    horizon, splat: { ...cfg.splat, strata: .14, rippleAmp: .28,
+      // Preserve native TypeScript-stripped spacing for immutable config hashes.
+      rockTone: (h        , s        , l        ) => [0.045, clamp01(s * 0.62), clamp01(0.47 + (l - 0.5) * 0.72)] },
     terrain: { ...terrain, hillScale: .68, microScale: .74, rimH: 38,
       dunes: { ...terrain.dunes, amp: 3 }, mesas: { amp: 24, thr0: .74, thr1: .80 },
       roads: { ...terrain.roads, paths: terrain.roads.paths.map((path, index) =>

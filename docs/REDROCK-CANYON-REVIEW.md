@@ -102,19 +102,45 @@ and the `north-up-v7-redrock-canyon-v1` minimap URL revision. Build warnings
 about existing large chunks remain; no complete npm lifecycle or physical-device
 performance certification is implied.
 
-## Next material refinement
+## Material refinement — September 10
 
 Independent inspection of the native hero and clear road-eye view identifies
 two conspicuous repetitions, not a need for more geometry. The terrain shader's
 roughly 26m dune-bed sine applies albedo and normal variation across the whole
-flat floor and never fades out. Badlands currently enables it through
+flat floor and never fades out. The canyon checkpoint enabled it through
 `rippleAmp: 0.28`, although this valley is an alluvial canyon floor rather than
 an erg. Cliff bands combine the small repeated sandstone tile with another
 world-height sine/caprock layer. The horizon has its own mesa banding.
 
-The next matched-view experiment should reduce those existing map-local
-strengths and retain irregular gravel/scour variation. Do not add another
-noise layer, texture or frame update to conceal the repetition. If the baked
-cliff relief still dominates, adjust its existing tile painter with an explicit
-map-local profile at unchanged texture dimensions. These are diagnosed causes
-and a next experiment, not a claim that material polish has shipped.
+The accepted material refinement changes four existing Badlands controls:
+`rippleAmp` .28 → .045, `strata` .14 → .035, rock luminance contrast .72 → .34
+(midpoint .47 → .43), and horizon banding .16 → .045. Geometry, routes,
+placement, lighting and all other maps remain unchanged. No shader work,
+textures, materials, meshes or per-frame owners were added.
+
+`redrock-material-compare-r1.Ke9iUJ` captures the exact previously shipped
+absolute camera positions/quaternions/projections, including the 68° hero FOV.
+Receipt SHA256:
+`6a2ed305e2a4914d4e9ec742a4fa9cf54f719c3733632d2b3bdef6530f11bcbc`.
+Both 1440×900 road views and the actual 3840×2160 hero show much less floor-wide
+striping and quieter cliff bedding. Native Chrome/Apple Metal reports clean
+GL/program/page checks, unchanged source/build pins and complete owned cleanup.
+The capture receipt intentionally does not confer art or performance approval;
+the narrow visual judgment is recorded here after viewing the actual images.
+
+The matching textured minimap is 440×440; the maintained thumbnail is 512×288.
+Only these three Badlands assets change. All 31 collision files, 87 sibling
+images and the map-art registry remain byte-exact. The shared minimap URL owner
+invalidates only Badlands' raster cache (`north-up-v7-redrock-material-v2`).
+Hero/thumbnail/minimap encoded sizes fall from 894,422/31,020/76,626 bytes to
+788,668/25,144/71,282 bytes; dimensions remain unchanged.
+
+Eleven focused material, canyon, historical-palette, mask, horizon-resource and
+all-map terrain-LOD tests pass without changing original fixture goldens.
+TypeScript, direct public Vite build and asset stripping pass; acquisition build
+index SHA256 is `56155e5504df9d4d791b93d5a727bcc2b86b6dd70661cc54aac8d95df0809fe2`.
+These are not full npm-lifecycle or constrained-device FPS/retained-memory gates.
+
+Remaining art work is explicit: the road still has regular corrugation, the
+floor has sparse empty stretches, and broad cliff surfaces remain too uniform.
+This is a scoped improvement, not completion of the environment beautification.
