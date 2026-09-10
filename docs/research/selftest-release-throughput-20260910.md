@@ -1,5 +1,20 @@
 # Self-test release throughput — 2026-09-10
 
+## Group whole-fleet CPU scans before the bounded drain
+
+The 935-entry Merkava release at `99be9953c` records eleven independent
+whole-fleet scans taking roughly 135–144 seconds each. Scattering them among
+short tests leaves occupied batches waiting on one long child after the
+45-second admission deadline. The catalog now groups four such checks at the
+start of `pre`, six at the start of `core`, and the one long `post` check first.
+No check moves between lifecycle phases; the remaining order is unchanged.
+All checks still run exactly once in fresh processes. Worker limits, browser
+barriers, lease draining, failure handling and every existing assertion stay
+unchanged. The catalog regression protects the grouped entries as well as
+complete exact-once discovery. This is scheduling work, not a skip-tests path.
+The next full release qualifies the changed order; no matched full-suite
+speedup percentage is claimed from the earlier, differently scoped run.
+
 ## Four-worker extension (opt-in, no gate removals)
 
 The fourteen-tank frozen-tree release now supplies full real qualification:

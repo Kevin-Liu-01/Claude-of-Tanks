@@ -1,6 +1,12 @@
 /** Ordered regression suites used by npm's pretest/test/posttest lifecycle. */
 export const SELFTEST_SUITES = Object.freeze({
   pre: Object.freeze([
+    // Group independent full-fleet builders to fill the four CPU slots before
+    // the 45-second FIFO drain. Every check stays in its original lifecycle.
+    'src/vehicles/fleetLazy.selftest.mjs',
+    'src/vehicles/wheelQuality.selftest.mjs',
+    'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
+    'src/vehicles/eraGameplayRegistration.selftest.mjs',
     'src/sim/convexArmorPlate.selftest.mjs',
     'src/sim/armorSurfaceGroup.selftest.mjs',
     'src/vehicles/calibrationStockGeometry.selftest.mjs',
@@ -83,14 +89,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-clip-result.selftest.mjs',
     'tools/standard-continuity-policy.selftest.mjs',
     'tools/preservation-oracle.selftest.mjs',
-    'src/vehicles/fleetLazy.selftest.mjs',
     'tools/attribution-audit.mjs',
     'src/vehicles/suspensionPatterns.selftest.mjs',
     'src/sim/ammunition.selftest.mjs',
     'src/sim/ammunitionFlow.selftest.mjs',
     'src/sim/autoloader.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
-    'src/vehicles/wheelQuality.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
@@ -110,7 +114,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t80UTurretGlacis.selftest.mjs',
     'src/vehicles/profiles/t80CastTurretFamily.selftest.mjs',
     'src/vehicles/profiles/t80MachineGunSeat.selftest.mjs',
-    'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
     'src/vehicles/profiles/turretEraSurfaceSeating.selftest.mjs',
     'src/vehicles/profiles/mbt70Fidelity.selftest.mjs',
     'src/vehicles/profiles/mbt70UpperFenders.selftest.mjs',
@@ -291,7 +294,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
-    'src/vehicles/eraGameplayRegistration.selftest.mjs',
     'src/vehicles/profiles/fleetEraFinish.selftest.mjs',
     'src/vehicles/profiles/type10GunSeat.selftest.mjs',
     'src/vehicles/profiles/type10RoofEraSeating.selftest.mjs',
@@ -304,6 +306,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/udes03Fidelity.selftest.mjs',
   ]),
   core: Object.freeze([
+    // Group independent full-fleet builders to fill the four CPU slots before
+    // the 45-second FIFO drain. Every check stays in its original lifecycle.
+    'src/gallery/surfaceMarkupFleet.selftest.mjs',
+    'src/vehicles/fleetFloorClearance.selftest.mjs',
+    'src/vehicles/vehicleMarkings.selftest.mjs',
+    'src/vehicles/tankAssets.selftest.mjs',
+    'src/vehicles/combatAnatomy.selftest.mjs',
+    'src/vehicles/gunArticulation.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/selfhost-deployment.selftest.mjs',
     'server/processShutdown.selftest.mjs',
@@ -366,7 +376,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/clock.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
-    'src/gallery/surfaceMarkupFleet.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
@@ -428,7 +437,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
     'src/vehicles/balanceMatchups.selftest.mjs',
-    'src/vehicles/fleetFloorClearance.selftest.mjs',
     'src/vehicles/fleetOrder.selftest.mjs',
     'src/vehicles/profiles/abramsRoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/abramsTurretLift.selftest.mjs',
@@ -713,7 +721,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/sharedTextureLease.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
-    'src/vehicles/vehicleMarkings.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
     'src/vehicles/profiles/leopard2A6UA.selftest.mjs',
     'src/vehicles/profiles/type99Armor.selftest.mjs',
@@ -730,11 +737,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger2Geometry.selftest.mjs',
     'src/vehicles/profiles/challenger2Family.selftest.mjs',
     'src/vehicles/profiles/challenger3HullClosure.selftest.mjs',
-    'src/vehicles/tankAssets.selftest.mjs',
     'src/vehicles/battleDetailLod.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
-    'src/vehicles/combatAnatomy.selftest.mjs',
-    'src/vehicles/gunArticulation.selftest.mjs',
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
@@ -917,6 +921,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/marketing-shots/showcase-r2.selftest.mjs',
   ]),
   post: Object.freeze([
+    // Group independent full-fleet builders to fill the four CPU slots before
+    // the 45-second FIFO drain. Every check stays in its original lifecycle.
+    'src/vehicles/mudguardFenderSeating.selftest.mjs',
     'src/audio/lazyAudio.selftest.mjs',
     'src/vehicles/profiles/strv81TurretClosure.selftest.mjs',
     'src/vehicles/profiles/jpzE100Modernization.selftest.mjs',
@@ -932,7 +939,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/m60a3TurretEra.selftest.mjs',
     'src/vehicles/profiles/kv2FrontChamferClosure.selftest.mjs',
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
-    'src/vehicles/mudguardFenderSeating.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
     'src/vehicles/tankFactoryStaging.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
