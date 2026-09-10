@@ -174,7 +174,7 @@ const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
   /runner must release/);
 assert.equal(oldRegistry.held, false, 'the old nested-lock failure still releases owned runner resources');
-for (const concurrency of [1, 2, 3, 4]) for (const lateFx of [
+for (const concurrency of [1, 2, 3, 4, 5, 6, 7, 8]) for (const lateFx of [
   'tools/late-fx-matrix.browser.selftest.mjs', 'tools/articulated-shadow-batch.browser.selftest.mjs',
 ]) {
   const current = actualRegistryFixture();
