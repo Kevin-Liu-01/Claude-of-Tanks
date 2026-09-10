@@ -19,9 +19,19 @@ const releaseStart = propsSource.indexOf('  composeAuthoredFisheryWharf();');
 const releaseEnd = propsSource.indexOf('  // Delta uses', releaseStart);
 assert.ok(releaseStart > 0 && releaseEnd > releaseStart);
 const releaseBlock = propsSource.slice(releaseStart, releaseEnd);
-// Published 9b21e0a31b consumes vegetation for Autumn dressing between these
-// operations. Allow exactly that block, not arbitrary code or a conditional
-// release. The production hook below still observes the actual released input.
+// Foundry and published 9b21e0a31b Autumn dressing consume vegetation before
+// release. Allow only these exact, ordered blocks, not arbitrary code or a
+// conditional release. The production hook below observes the released input.
+const foundryConsumer = `  function composeAuthoredFoundryCourt(): void {
+    if (!foundryDonors) return;
+    const receipt = composeFoundryServiceCourt(mapId, P.foundryServiceCourt, heightField,
+      foundryDonors, [...obstacles, ...colliders], vegetation);
+    group.userData.foundryServiceCourt = receipt;
+    if (receipt?.status === 'placed') reconformFoundryFoundations?.();
+    foundryDonors.length = 0;
+    reconformFoundryFoundations = null;
+  }
+  composeAuthoredFoundryCourt();\n`;
 const autumnConsumer = `  if (autumnCropRows && autumnFieldContext) {
     composeAutumnHeadlandDressing(destructibleContext, autumnFieldContext,
       autumnCropRows, placedB, autumnFieldStart, autumnFieldEnd, vegetation?.treeObstacles ?? []);
@@ -29,11 +39,13 @@ const autumnConsumer = `  if (autumnCropRows && autumnFieldContext) {
     autumnFieldContext = null;
   }\n`;
 function assertConstructionRelease(block) {
+  assert.equal(block.split(foundryConsumer).length, 2, 'exact Foundry consumer occurs once');
   assert.equal(block.split(autumnConsumer).length, 2, 'exact published Autumn consumer occurs once');
-  assert.ok(block.indexOf(autumnConsumer) > block.indexOf('composeAuthoredFisheryWharf();')
+  assert.ok(block.indexOf(foundryConsumer) > block.indexOf('composeAuthoredFisheryWharf();')
+    && block.indexOf(autumnConsumer) > block.indexOf(foundryConsumer)
     && block.indexOf(autumnConsumer) < block.indexOf('vegetation = null;'),
-  'the consumer executes after wharf construction and before release');
-  assert.match(block.replace(autumnConsumer, ''), /^\s*composeAuthoredFisheryWharf\(\);\s+vegetation = null;\s*$/,
+  'Foundry then Autumn execute after wharf construction and before release');
+  assert.match(block.replace(foundryConsumer, '').replace(autumnConsumer, ''), /^\s*composeAuthoredFisheryWharf\(\);\s+vegetation = null;\s*$/,
     'construction input is cleared unconditionally after consumers and before runtime closures');
 }
 assertConstructionRelease(releaseBlock);
@@ -41,6 +53,14 @@ assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation
 assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '  if (autumnCropRows) vegetation = null;')));
 assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '  vegetation = oldVegetation;')));
 assert.throws(() => assertConstructionRelease(releaseBlock.replace(autumnConsumer, '') + autumnConsumer));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(foundryConsumer, '')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(foundryConsumer, foundryConsumer + foundryConsumer)));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(foundryConsumer, '') + foundryConsumer));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(foundryConsumer + autumnConsumer, autumnConsumer + foundryConsumer)));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('  composeAuthoredFoundryCourt();', '  if (foundryDonors) composeAuthoredFoundryCourt();')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('    foundryDonors.length = 0;\n', '')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('    reconformFoundryFoundations = null;\n', '')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '  retainedVegetation = vegetation;\n  vegetation = null;')));
 
 const seed = Number(process.argv.find(a => a.startsWith('--seed='))?.slice(7));
 // V29 actual world-space bytes, captured before the two inner-pile change.

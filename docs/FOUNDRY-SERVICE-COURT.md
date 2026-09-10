@@ -54,6 +54,12 @@ textures, per-frame work or draw owners are added by this court.
   budgets, mask results and owner counts remain unchanged. The earlier broader
   Doctor inventory also reported an existing non-null assertion in `props.ts`;
   this court does not change or suppress it.
+- Rebased on `54629c70c`, retaining main's richer Autumn palette controls.
+  Eleven world tests, typecheck, clean four-file Doctor and public build pass.
+  The wharf release fixture now admits only the exact Foundry and Autumn
+  consumers in order, with missing/duplicate/reordered/retained-reference
+  negative controls; its actual three-seed producer checks remain intact.
+  All accepted world-runtime and generated collision bytes match pre-rebase.
 
 ## Native evidence and cost limits
 
@@ -84,6 +90,16 @@ selftests all pass against this generated shard with stable source inputs.
 That covers headless census/cache/lifecycle behavior, not deployed multiplayer
 latency, browser driving or whole-game memory use.
 
+The production minimap is a baked raster, not the live feature fallback.
+Foundry's image was regenerated through the source-owned `bakeMinimapForMap`
+textured-scene path and visually reviewed at its original 440x440 resolution.
+The six placed donors and all texture-readiness receipts were verified in that
+capture. The WebP is 37,922 bytes (348 bytes smaller); the other 29 images stay
+exact. Only Foundry's shared asset URL revision changes, so both intent prefetch
+and activation request the new positions without invalidating other maps.
+The five minimap/loading/readiness selftests, typecheck and final public build
+pass after installing that image and URL revision.
+
 Local evidence root:
 `/Users/kevinliu/.codex/visualizations/2026/environment-recovery-20260907/`
 
@@ -97,6 +113,12 @@ Local evidence root:
   native resource/collision records and exact Foundry-only manifest write.
 - `foundry-service-court-server-r1.pryyEl`: three maintained server tests on
   the generated shard; all pass without source or shard changes.
+- `foundry-service-integration-r1.sjONlc`: post-rebase tests and public build;
+  all fifteen stages pass with stable source pins.
+- `foundry-minimap-r1.Vaiuaz`: old/new original WebPs, scene/source/build
+  receipts, error-free native export, cleanup and Foundry-only publication.
+- `foundry-minimap-checks-r1.DLxKCk`: final asset/URL tests and public build,
+  all eight stages passing with stable source pins.
 
 Earlier failed check packets are retained. They caught an ambiguous test
 instrumentation anchor, a TypeScript closure-narrowing issue, excessive helper
