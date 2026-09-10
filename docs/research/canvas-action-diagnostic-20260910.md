@@ -39,7 +39,8 @@ CPU validation through one ordinary FIFO admission passed: syntax checks for the
 probe/helper/selftest, the existing `garage-action-timing.selftest.mjs` including
 the new fake-native lifecycle/exception cases, and strict metrics on all three
 changed JavaScript files (186 functions; zero complexity/type violations).
-Native acquisition remains pending and requires a separate approved capture.
+Native acquisition was pending at that CPU checkpoint; the subsequent approved
+capture is recorded below.
 
 ## Native acquisition on the opaque-loading candidate
 

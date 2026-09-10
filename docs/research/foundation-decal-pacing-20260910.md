@@ -25,7 +25,8 @@ Texture painting, geometry merging, individual geometry construction and runs
 of rejected courtyard candidates remain synchronous. Checkpoints permit the
 existing covered-build pacing owner to yield; they do not guarantee a paint
 after each instance or a particular maximum frame gap. No native/browser capture
-or speedup claim is attached to this patch.
+was attached to the initial patch; the subsequent integration capture is recorded
+below. No speedup claim is made.
 
 ## Verification
 
