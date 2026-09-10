@@ -520,6 +520,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/driveTelemetry.selftest.mjs',
     'src/world/terrainLodPolicy.selftest.mjs',
     'src/world/terrainStreaming.selftest.mjs',
+    'src/world/terrainSplatFields.selftest.mjs',
     'src/world/worldFramePresentationRuntime.selftest.mjs',
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/ui/hitEventFormat.selftest.mjs',
