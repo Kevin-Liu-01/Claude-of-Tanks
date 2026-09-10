@@ -1,6 +1,7 @@
 # Merkava X fitted-roller release candidate — 2026-09-10
 
-Status: preparing, not published. The complete Centurion/Merkava recovery
+Status: qualified for publication as runtime checkpoint `8ff6d7cf6`, on top
+of current main `b2aaac31b`. The complete Centurion/Merkava recovery
 remains preserved at `82fb32fa0` in the five-roller worktree. This isolated
 candidate excludes Centurion runtime/tests and its dual-drum audit extension;
 those source-gate failures do not belong in this two-vehicle checkpoint.
@@ -59,7 +60,36 @@ All 543 technical diagrams are current; only sixteen changed Merkava images
 and their two manifest rows are included. Muzzle/bore checks are not supplied
 by that diagram-only freshness command and remain in the official release.
 
-Before publication, the complete official release remains required.
+## Completed release and current-main integration
+
+The complete twelve-stage official release passed on frozen
+`99be9953c2c1064d3d3223f28f4d4a2b92ea3210`, start and finish unchanged.
+The uninterrupted npm lifecycle passed **935 entries**: 300 pre, 597 core,
+38 post. Geometry/source, anatomy, centering, module alignment/hits, selected
+asset freshness, duplicate tracks, muzzle bores, barrel circularity, npm and
+the private build all passed. Separate types/core-unused, scoped Doctor and
+public build also passed. Raw receipt and logs remain in the isolated
+Merkava worktree at `.qa-dev/merkava-publication-sbihL6/receipt.json`.
+
+While that release ran, the independently qualified loading/rendering work
+landed on main. The final candidate `8ff6d7cf6` includes that new main, and
+Git proves its complete `src/vehicles`, `src/sim` and `public/icons` trees
+are identical to the frozen Merkava release. Seven fresh integration entries
+pass: upload-program readiness, deployment shadows, offscreen warming,
+retained late-FX views, color handoff, catalog discovery and the native
+late-FX matrix. All twelve native rendering cases pass. Fresh source fidelity
+is unchanged at 95.0/94.3; types/core-unused, Doctor and public build pass too.
+Receipt: `.qa-dev/merkava-main-integration-tAYsmP/receipt.json` in the clean
+publication worktree. This is focused integration coverage, not a claim that
+a second uninterrupted 945-entry suite ran on the combined revision.
+
+Both final neutral boards are byte-identical to the inspected release views:
+Mk3D SHA256 `4d63ac94b2260f20382032023ef13aba2fe868240b78e5213344e1f746242ef5`,
+Mk4 `a4233a77898872c445f093fc3a6c1cd3493285271f40827e50124fdf1bbb36f7`.
+Final scoped Doctor reports zero errors and eleven retained offline-selftest
+warnings. Private comparison models, temporary QA outputs and unrelated fleet
+image regeneration are excluded from the publication.
+
 This checkpoint does not certify country-wide track-gauge matching or finish
 the fleet performance backlog. Failed Centurion/prototype drafts stay preserved
 outside this checkpoint.
