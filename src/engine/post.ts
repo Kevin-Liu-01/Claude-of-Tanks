@@ -80,6 +80,7 @@ import {
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
+import { LateFxSceneView } from './lateFxSceneView.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -1525,6 +1526,7 @@ export class LateFxPass extends Pass {
   readonly copyQuad: FullScreenQuad;
   directColorSource: SceneAerialPass | null = null;
   sceneMatrixSource: SceneAAPass | null = null;
+  private readonly renderSceneView: LateFxSceneView;
 
   constructor(
     scene: THREE.Scene,
@@ -1536,6 +1538,7 @@ export class LateFxPass extends Pass {
     super();
     this.scene = scene;
     this.camera = camera;
+    this.renderSceneView = new LateFxSceneView(scene);
     this.sceneTarget = sceneTarget;
     this.target = target;
     this.sceneDepth = requireDepthTexture(sceneTarget, 'LateFxPass scene target');
@@ -1647,7 +1650,7 @@ export class LateFxPass extends Pass {
         // The source draw has already updated every layer this frame. Avoid a
         // second full graph traversal, without freezing transforms next frame.
         if (reuseMatrices) this.scene.matrixWorldAutoUpdate = false;
-        renderer.render(this.scene, this.camera);
+        renderer.render(this.renderSceneView.select(this.camera), this.camera);
       } finally {
         this.scene.matrixWorldAutoUpdate = oldMatrixWorldAutoUpdate;
         this.scene.background = oldBackground;

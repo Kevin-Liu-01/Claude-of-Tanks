@@ -72,9 +72,9 @@ function fixture(autoClear = true) {
       lineage.set(output, lineage.get(input));
     },
     render: (object, view) => {
-      const isScene = object === scene;
+      const isScene = object === scene || Object.getPrototypeOf(object) === scene;
       // Mirror pinned WebGLRenderer: update every layer before filtering it.
-      if (isScene && scene.matrixWorldAutoUpdate) scene.updateMatrixWorld();
+      if (isScene && object.matrixWorldAutoUpdate) object.updateMatrixWorld();
       const fx = isScene && current === lateTarget;
       if (isScene) observeSceneDraw?.(fx);
       const kind = isScene ? (fx ? 'fx' : 'world') : object.material.name;
