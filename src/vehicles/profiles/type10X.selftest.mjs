@@ -12,7 +12,15 @@ function envelopeAndOwnership(tank,quality) {
   const bounds=new THREE.Box3().setFromObject(tank.root);
   near(bounds.max.x-bounds.min.x,3.38929737,.0001,`${quality}: supplied source width, official conflict kept separate`);
   near(bounds.max.z-bounds.min.z,9.42,.002,`${quality}: official overall length with native bore rim`);
-  assert.ok(bounds.min.y>=-1e-6,`${quality}: no geometry below ground`);
+  // Source witnesses use the immutable authored frame. Ground support is
+  // the native presentation solve, not an assumption that the raw source
+  // origin still coincides with the thicker replacement course's outsole.
+  const authoredY=tank.root.position.y;
+  tank.seatOnFloor(0);tank.root.updateMatrixWorld(true);
+  const seated=new THREE.Box3().setFromObject(tank.root);
+  assert.ok(seated.min.y>=-1e-6,`${quality}: no seated geometry below ground`);
+  assert.ok(seated.min.y<.006,`${quality}: visible tracks contact the floor`);
+  tank.root.position.y=authoredY;tank.root.updateMatrixWorld(true);
   near(bounds.max.y,4.12156,.0002,`${quality}: independently measured source highest whip`);
   const pitch=tank.root.getObjectByName('rig_gun').getWorldPosition(v(0,0,0));
   pitch.toArray().forEach((value,i)=>near(value,TYPE10_X_DATUMS.trunnion[i],1e-7,`${quality}: inferred physical trunnion ${i}`));

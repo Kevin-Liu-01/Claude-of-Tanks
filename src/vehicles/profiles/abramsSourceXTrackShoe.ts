@@ -590,6 +590,12 @@ function appendTrackShoeConnectors(
 
 export function buildAbramsSourceXTrackShoe(p: TrackShoeBuildParameters, guide?: TrackGuideProfile, outsole?: TrackOutsoleDimensions): THREE.BufferGeometry {
   if(p.pattern.id !== 'nato-double-pin') throw new Error('Abrams recovered shoes require their authored NATO double-pin recipe');
+  return buildFleetTrackShoe(p,guide,outsole);
+}
+
+/** Quality-aware shared stock retaining the caller's national tread recipe.
+ * Identity-specific adapters still enforce their own pattern contract. */
+export function buildFleetTrackShoe(p: TrackShoeBuildParameters, guide?: TrackGuideProfile, outsole?: TrackOutsoleDimensions): THREE.BufferGeometry {
   return p.far ? simplifiedTrackShoeGeometry(p.trackW,p.pitch,p.pattern,p.radialScale,p.widthScale,p.section,p.pinCapOuter,guide,outsole,p.high?'high':'low')
     : fleetTrackShoeGeometry(p.trackW,p.pitch,p.pattern,p.pinCapOuter,p.radialScale,p.widthScale,p.section,guide,p.high?'high':'low',outsole);
 }
