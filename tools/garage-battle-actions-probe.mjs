@@ -7,6 +7,8 @@
 // Options: --spec=m1a1 --map=urban --cpu-rate=1 --cover-limit-ms=500 --timeout-ms=90000
 // Optional --profile-actions writes per-action .cpuprofile files; attribution-only,
 // never compare those timings with an unprofiled acceptance run.
+// Optional --trace-actions writes sanitized per-action .trace.json timelines.
+// Diagnostic-only, capped at 30 seconds/action; incompatible with --profile-actions.
 // Optional --audio-clock-gate also requires passively observed loading-clock
 // advancement and stopped loading/ambient owners on return; no test sounds.
 // Optional --garage-gesture-audio-gate verifies a real Garage canvas drag does
@@ -28,7 +30,8 @@ import puppeteer from 'puppeteer';
 import { createCaptureLock } from './capture-lock.mjs';
 import { checkGarageBattleActions, checkGarageActionAudio, checkGarageActionWarmReadiness } from './garage-battle-actions-contract.mjs';
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
-import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActionProfile } from './garage-action-timing.mjs';
+import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActionProfile,
+  withGarageActionTrace } from './garage-action-timing.mjs';
 import { waitForGarageAction } from './garage-action-failure.mjs';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
   checkGarageAudioIntent, checkBootAudioIntent } from './garage-audio-intent.mjs';
@@ -46,6 +49,9 @@ const coverLimitMs = Number(option('cover-limit-ms', '500'));
 const timeoutMs = Number(option('timeout-ms', '90000'));
 const profileActions = process.argv.includes('--profile-actions')
   || ['1', 'true'].includes(option('profile-actions', 'false').toLowerCase());
+const traceActions = process.argv.includes('--trace-actions')
+  || ['1', 'true'].includes(option('trace-actions', 'false').toLowerCase());
+if (traceActions && profileActions) throw new Error('--trace-actions and --profile-actions are separate diagnostic acquisitions');
 const audioClockGate = process.argv.includes('--audio-clock-gate');
 const garageGestureAudioGate = process.argv.includes('--garage-gesture-audio-gate');
 const bootAudioGate = process.argv.includes('--boot-audio-gate');
@@ -69,8 +75,10 @@ const report = { schemaVersion: 2,
   passScope: warmReadinessGate && sourceReadinessGate ? 'real-control-functional-and-warm-and-source-readiness'
     : warmReadinessGate ? 'real-control-functional-and-warm-readiness'
       : sourceReadinessGate ? 'real-control-functional-and-source-readiness' : 'real-control-functional-only',
-  measurementMode: profileActions ? 'cpu-profile-attribution-only' : 'unprofiled-functional',
+  measurementMode: traceActions ? 'timeline-trace-attribution-only'
+    : profileActions ? 'cpu-profile-attribution-only' : 'unprofiled-functional',
   profileActions, profiles: [],
+  ...(traceActions ? { traceActions: true, traces: [] } : {}),
   audioClockGate,
   bootAudioGate,
   ...(garageGestureAudioGate ? { garageGestureAudioGate: true } : {}),
@@ -84,13 +92,15 @@ const report = { schemaVersion: 2,
     readFile(new URL('./phase-environment-receipt.mjs', import.meta.url)),
     readFile(new URL('./garage-action-timing.mjs', import.meta.url)),
     readFile(new URL('./garage-action-failure.mjs', import.meta.url)),
+    ...(traceActions ? [readFile(new URL('./multiplayer-frame-trace.mjs', import.meta.url))] : []),
     ...(garageGestureAudioGate || bootAudioGate ? [readFile(new URL('./garage-audio-intent.mjs', import.meta.url))] : []),
     ...(sourceReadinessGate ? [readFile(new URL('./sourced-texture-readiness.mjs', import.meta.url))] : []),
   ])).concat(retryCatalogs).join('\n')),
   startedAt: new Date().toISOString(), actions: [], errors: [], cleanupErrors: [], failures: [] };
 const lock = createCaptureLock();
+const startTrace = traceActions ? (await import('./multiplayer-frame-trace.mjs')).startMultiplayerFrameTrace : null;
 let browser, page, cdp, refresher;
-let leaseAcquired = false, interruptedBy = null, closingBrowser;
+let leaseAcquired = false, interruptedBy = null, closingBrowser, activeActionTrace;
 
 function assertProbeActive() {
   if (interruptedBy) throw new Error(`Probe interrupted by ${interruptedBy}`);
@@ -108,7 +118,9 @@ function interruptProbe(signal) {
   // Closing the owned browser interrupts any active navigation/action wait.
   // During acquisition or launch there is no browser yet: the post-await
   // guards handle that lifetime, without releasing another owner's lease.
-  void closeOwnedBrowser();
+  // Flush our bounded trace while its page clock still exists, then close.
+  void Promise.resolve(activeActionTrace?.stop('interrupted'))
+    .catch(() => {}).finally(closeOwnedBrowser);
 }
 const onSigint = () => interruptProbe('SIGINT');
 const onSigterm = () => interruptProbe('SIGTERM');
@@ -119,7 +131,16 @@ async function runAction(action, selector) {
   assertProbeActive();
   await page.waitForSelector(selector, { visible: true });
   await page.evaluate((label, target) => window.__ACTION_TRACE.arm(label, target), action, selector);
-  const receipt = await withGarageActionProfile({
+  const receipt = await withGarageActionTrace({
+    page, enabled: traceActions, action, startTrace,
+    onOwner: owner => { activeActionTrace = owner; },
+    onTrace: async (trace, capture) => {
+      const file = `${action}.trace.json`;
+      await writeFile(resolve(out, file), `${JSON.stringify({ ...capture, trace })}\n`, { flag: 'wx' });
+      report.traces.push({ ...capture, file });
+    },
+    onCleanupError: error => report.cleanupErrors.push(`trace ${action}: ${String(error)}`),
+  }, () => withGarageActionProfile({
     page, cdp, enabled: profileActions, action,
     onProfile: async (profile, capture) => {
       const file = `${action}.cpuprofile`;
@@ -128,13 +149,14 @@ async function runAction(action, selector) {
     },
     onCleanupError: error => report.cleanupErrors.push(`profile ${action}: ${String(error)}`),
   }, async () => {
+    assertProbeActive();
     await waitForGarageAction(page, { action, retryTitles, timeoutMs,
       onCleanupError: error => report.cleanupErrors.push(`action ${action}: ${String(error)}`),
     }, async () => {
       await page.click(selector);
     });
     return page.evaluate(() => window.__ACTION_TRACE.finish());
-  });
+  }));
   receipt.timingDiagnostic = summarizeGarageActionTiming(receipt);
   receipt.environment = await page.evaluate(readPhaseEnvironment);
   if (garageGestureAudioGate || bootAudioGate) receipt.garageAudioIntent = await page.evaluate(readGarageAudioIntent);
@@ -258,6 +280,10 @@ try {
     await page.screenshot({ path: resolve(out, 'failure.png') }).catch(() => {});
   }
 } finally {
+  if (activeActionTrace) {
+    try { await activeActionTrace.stop(interruptedBy ? 'interrupted' : 'probe-finally'); }
+    catch (error) { report.cleanupErrors.push(`trace cleanup: ${String(error)}`); }
+  }
   if ((garageGestureAudioGate || bootAudioGate) && page && !page.isClosed()) {
     try {
       report.garageAudioObserverCleanup = await page.evaluate(() => window.__GARAGE_AUDIO_INTENT?.stop() ?? null);
@@ -285,6 +311,10 @@ try {
     failures: audioFailures,
     caveat: 'Passive existing-context clock and loading/ambient ownership only; no PCM or audible-output proof.' };
   report.functionalPass = report.failures.length === 0;
+  if (traceActions) report.traceDiagnostics = {
+    complete: report.traces.length === 3 && report.traces.every(trace => trace.completeForAction),
+    caveat: 'Diagnostic overhead; 30-second action trace deadline can censor a longer action. Functional/readiness gates are unchanged. Sanitized timeline event categories are not JS hot-function or GPU hardware-duration attribution.',
+  };
   if (bootAudioGate) {
     const failures = checkBootAudioIntent(report.bootAudioIntent, report.actions);
     report.bootAudio = { pass: failures.length === 0, failures,
