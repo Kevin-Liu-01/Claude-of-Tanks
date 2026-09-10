@@ -116,3 +116,22 @@ injected `yieldFrame` bypass was added. Cleanup restores the real host before
 awaiting any later work. The focused run passes in
 `opaque-paint-bridge-fixture-r1.log`; an independent read-only review found no
 blocker. This covers hidden-host completion, not visible-paint certification.
+
+### Resumed-suite action-probe fixture correction
+
+The resumed suite (`opaque-paint-suite-resume-r1.log`) subsequently stopped at
+`garage-battle-actions-contract.selftest.mjs`. Its late browser-close cancellation
+case expected one functional-gate invocation but observed zero. The SIGTERM
+exit-code assertion had already passed; cancellation was not reporting success.
+The stripped-import fixture omitted the new `withGarageActionTrace` binding, so
+the first action instead failed with a `ReferenceError` before reaching its gate.
+
+The fixture now supplies the actual disabled trace wrapper and additionally
+requires all three actions to complete before the closing-phase signal, with
+only the interruption retained as a failure. The probe, cancellation contract
+and functional/readiness gates are unchanged. This repairs fixture coverage,
+not a production runtime defect or the remaining loading pauses.
+
+The focused ordinary-FIFO run passes, including all 183 lifecycle assertions;
+see `opaque-paint-actions-contract-fixture-r1.log`. The original failed resume
+receipt remains retained; this focused result is not a completed full-suite run.
