@@ -260,9 +260,18 @@ export async function createMapAsync(
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
     await step('Placing structures', 0.82);
+    const propModelsAwaitStart = performance.now();
     await propModelsReady;
+    const propModelsAwaitEnd = performance.now();
     const props = await createPropsAsync(heightField, engineCtx, 2002, config,
       sub('Placing structures', 0.82, 0.96), fineSlices, vegetation);
+    if (props._buildDetail) {
+      const elapsedMs = propModelsAwaitEnd - propModelsAwaitStart;
+      // Time at the consumer's await, not the overlapped archive transfer's
+      // duration or CPU cost. All timestamps use the page performance clock.
+      props._buildDetail.propModelsAwait = { count: 1, totalMs: elapsedMs, maxMs: elapsedMs,
+        startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
+    }
     await step('Sealing the battlefield', 0.96);
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {

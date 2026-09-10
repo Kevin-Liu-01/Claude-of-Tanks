@@ -14,7 +14,8 @@ const start = source.indexOf('export async function createPropsAsync(');
 const end = source.indexOf('\nfunction* propsBuildSteps(', start);
 assert.ok(start >= 0 && end > start);
 const wrapper = stripTypeScriptTypes(source.slice(start, end)).replace('export ', '');
-function fixture(steps, acquire = async () => {}, close = () => {}, workerClient = null) {
+function fixture(steps, acquire = async () => {}, close = () => {}, workerClient = null,
+  now = () => performance.now()) {
   const events = [], runtime = {}, args = [];
   const nested = (function* () {
     try {
@@ -27,10 +28,177 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
     args.push(values);
     return yield* nested;
   }
-  const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient',
+  const run = new Function('propsBuildSteps', 'ensureTankBuilder', 'Worker', 'createWreckBakeClient', 'performance',
     wrapper + '\nreturn createPropsAsync;')(build, acquire,
-    workerClient ? function Worker() {} : undefined, () => workerClient);
+    workerClient ? function Worker() {} : undefined, () => workerClient, { now });
   return { run, events, runtime, args };
+}
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+
+// All clocks are page-clock elapsed intervals, not CPU samples. The worker
+// interval includes its checkpoint; adding the two would double-count 7ms.
+{
+  let clock = 100, disposed = 0;
+  const sliceTick = deferred(), beforeCheckpoint = deferred(), checkpointTick = deferred();
+  const afterCheckpoint = deferred(), enteredBake = deferred(), enteredCheckpoint = deferred();
+  const request = { specId: 't90m', options: {}, result: null }, baked = {};
+  const client = {
+    prepare() {}, dispose() { disposed++; },
+    async bake(id, options, checkpoint) {
+      enteredBake.resolve();
+      await beforeCheckpoint.promise;
+      const pending = checkpoint();
+      assert.equal(pending, checkpointTick.promise, 'observer retains original pacing promise identity');
+      enteredCheckpoint.resolve();
+      await pending;
+      await afterCheckpoint.promise;
+      return baked;
+    },
+  };
+  const steps = { *[Symbol.iterator]() {
+    clock += 2; yield { fine: true };
+    clock += 3; yield { fine: true, progress: false, wreckBake: request };
+    clock += 2;
+  } };
+  const f = fixture(steps, undefined, undefined, client, () => clock);
+  const ticks = [];
+  const result = f.run({}, {}, 2002, null, i => {
+    ticks.push(i);
+    if (ticks.length === 1) return sliceTick.promise;
+    if (ticks.length === 2) return checkpointTick.promise;
+    clock += 4;
+  }, true);
+  assert.equal(clock, 102);
+  clock = 107; sliceTick.resolve();
+  await enteredBake.promise;
+  assert.equal(clock, 110);
+  clock = 130; beforeCheckpoint.resolve();
+  await enteredCheckpoint.promise;
+  clock = 137; checkpointTick.resolve();
+  await flush();
+  assert.equal(request.result, null, 'held bake never advances the generator');
+  clock = 150; afterCheckpoint.resolve();
+  const runtime = await result;
+  const timing = runtime._buildDetail.awaitTimings;
+  assert.equal(runtime._buildDetail.synchronousMs, 7);
+  assert.deepEqual(timing.sliceTicks, { count: 2, totalMs: 9, maxMs: 5 });
+  assert.deepEqual(timing.wreckCheckpoints, { count: 1, totalMs: 7, maxMs: 7 });
+  assert.deepEqual(timing.wreckBakes, { count: 1, totalMs: 40, maxMs: 40 });
+  assert.deepEqual(timing.builderImports, { count: 0, totalMs: 0, maxMs: 0 });
+  assert.deepEqual(timing.wreckRows, [{ specId: 't90m', startMs: 110, endMs: 150,
+    elapsedMs: 40, includedCheckpointMs: 7 }]);
+  assert.equal(timing.wreckRowsDropped, 0);
+  assert.equal(clock - 100, 7 + timing.sliceTicks.totalMs + timing.wreckBakes.totalMs);
+  assert.deepEqual(ticks, [1, 1, 1]);
+  assert.equal(request.result, baked);
+  assert.equal(disposed, 1);
+}
+{
+  let clock = 20;
+  const imported = deferred();
+  const f = fixture([{ tankBuilder: 't90m', fine: true }], () => imported.promise,
+    undefined, null, () => clock);
+  const pending = f.run({}, {}, 2002, null, () => { clock += 2; }, true);
+  assert.deepEqual(f.events.map(([kind]) => kind), ['work']);
+  clock = 33; imported.resolve();
+  const runtime = await pending;
+  assert.deepEqual(runtime._buildDetail.awaitTimings.builderImports, { count: 1, totalMs: 13, maxMs: 13 });
+  assert.deepEqual(runtime._buildDetail.awaitTimings.sliceTicks, { count: 1, totalMs: 2, maxMs: 2 });
+  assert.deepEqual(runtime._buildDetail.awaitTimings.wreckRows, []);
+}
+{
+  let clock = 0;
+  const client = { prepare() {}, dispose() {}, async bake(_id, _options, checkpoint) {
+    clock += 3; await checkpoint(); return null;
+  } };
+  const requests = Array.from({ length: 35 }, (_, i) => ({ fine: true,
+    wreckBake: { specId: `fixture-${i}`, options: {}, result: null } }));
+  const f = fixture(requests, undefined, undefined, client, () => clock);
+  const timing = (await f.run({}, {}, 2002, null, null, true))._buildDetail.awaitTimings;
+  assert.deepEqual(timing.wreckBakes, { count: 35, totalMs: 105, maxMs: 3 });
+  assert.equal(timing.wreckRowsLimit, 32);
+  assert.equal(timing.wreckRows.length, 32);
+  assert.equal(timing.wreckRowsDropped, 3);
+  assert.deepEqual(timing.wreckCheckpoints, { count: 0, totalMs: 0, maxMs: 0 }, 'absent tick is not pacing');
+  assert.deepEqual(timing.sliceTicks, { count: 0, totalMs: 0, maxMs: 0 });
+}
+{
+  let clock = 0, index = 0;
+  const values = [undefined, null, false, 0, 7, 'ignored', { then: 3 }];
+  const f = fixture(values.map(() => ({ fine: true })), undefined, undefined, null, () => clock);
+  const runtime = await f.run({}, {}, 2002, null, () => { clock += 2; return values[index++]; }, true);
+  assert.equal(index, values.length, 'void callbacks may return ignored synchronous values');
+  assert.deepEqual(runtime._buildDetail.awaitTimings.sliceTicks, { count: 7, totalMs: 14, maxMs: 2 });
+}
+for (const failureAt of ['tick', 'bake', 'import']) {
+  let disposed = 0;
+  const rejection = deferred();
+  const client = { prepare() {}, dispose() { disposed++; }, bake: () => rejection.promise };
+  const steps = failureAt === 'bake'
+    ? [{ wreckBake: { specId: 't90m', options: {}, result: null } }]
+    : [{ tankBuilder: 't90m' }];
+  const f = fixture(steps, () => rejection.promise, undefined, failureAt === 'import' ? null : client);
+  const pending = f.run({}, {}, 2002, null, () => rejection.promise, true);
+  rejection.reject(0);
+  await assert.rejects(pending, error => error === 0, 'timing cannot replace falsy rejections');
+  assert.equal(f.runtime._buildDetail, undefined);
+  assert.equal(f.args[0][6].signal.aborted, true);
+  assert.equal(disposed, failureAt === 'import' ? 0 : 1);
+  assert.deepEqual(f.events.map(([kind]) => kind), ['work', 'closed']);
+}
+
+// Execute the actual map wrapper: the archive request begins before independent
+// work, but only time spent at its existing consumer await is reported.
+{
+  const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+  const begin = mapSource.indexOf('export async function createMapAsync(');
+  const end = mapSource.indexOf('\n/**', begin);
+  assert.ok(begin > 0 && end > begin);
+  const code = stripTypeScriptTypes(mapSource.slice(begin, end)).replace('export ', '');
+  for (const fail of [false, true]) {
+    let clock = 0, cancelled = 0;
+    const events = [], archive = deferred(), props = { _buildDetail: {} }, world = {};
+    const height = { _layout: { spawns: { player: {} } } };
+    const ports = {
+      getMapConfig: () => ({ id: 'urban', splat: {} }),
+      preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
+      prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
+      createHeightFieldAsync: async () => { clock += 10; return height; },
+      createHeightField: () => assert.fail('fine path stays async'),
+      requireTerrainRoot: value => value,
+      buildTerrainMeshesAsync: async () => { clock += 20; return { userData: {} }; },
+      createVegetationAsync: async () => { clock += 30; return {}; },
+      createPropsAsync: async () => { events.push('props'); clock += 5; return props; },
+      assembleWorld: () => { events.push('assemble'); return world; },
+      performance: { now: () => clock },
+    };
+    const run = new Function(...Object.keys(ports), code + '\nreturn createMapAsync;')(...Object.values(ports));
+    const pending = run({}, { mapId: 'urban' }, label => { clock++; events.push(label); }, { fineSlices: true });
+    await flush();
+    assert.equal(clock, 64);
+    assert.equal(events[0], 'archive-request');
+    assert.equal(events.includes('props'), false);
+    clock = 164;
+    if (fail) {
+      archive.reject(0);
+      await assert.rejects(pending, error => error === 0);
+      assert.equal(cancelled, 1);
+      assert.equal(events.includes('props'), false);
+      assert.equal(events.includes('assemble'), false);
+    } else {
+      archive.resolve();
+      assert.equal(await pending, world);
+      assert.equal(cancelled, 0);
+      assert.deepEqual(world._buildDetail.props.propModelsAwait,
+        { count: 1, totalMs: 100, maxMs: 100, startMs: 64, endMs: 164 });
+    }
+  }
 }
 
 {

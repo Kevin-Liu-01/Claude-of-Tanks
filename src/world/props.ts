@@ -483,11 +483,29 @@ interface PropsBuildSlice {
   stage?: string;
 }
 
+interface PropsAwaitTiming {
+  count: number;
+  totalMs: number;
+  maxMs: number;
+}
+
 interface PropsBuildDetail {
   sliceCount: number;
   synchronousMs: number;
   maxSliceMs: number;
   slowest: Array<{ stage: string; ms: number }>;
+  propModelsAwait?: PropsAwaitTiming & { startMs: number; endMs: number };
+  awaitTimings: {
+    clock: 'performance.now';
+    sliceTicks: PropsAwaitTiming;
+    wreckCheckpoints: PropsAwaitTiming;
+    builderImports: PropsAwaitTiming;
+    wreckBakes: PropsAwaitTiming;
+    wreckRowsLimit: number;
+    wreckRowsDropped: number;
+    wreckRows: Array<{ specId: string; startMs: number; endMs: number;
+      elapsedMs: number; includedCheckpointMs: number }>;
+  };
 }
 
 interface TankWreckSpot {
@@ -2457,11 +2475,35 @@ export async function createPropsAsync(
     propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null,
       { worker: true, signal: sourceAbort.signal });
   const slices: Array<{ stage: string; ms: number }> = [];
+  const awaitTimings: PropsBuildDetail['awaitTimings'] = {
+    clock: 'performance.now',
+    sliceTicks: { count: 0, totalMs: 0, maxMs: 0 },
+    wreckCheckpoints: { count: 0, totalMs: 0, maxMs: 0 },
+    builderImports: { count: 0, totalMs: 0, maxMs: 0 },
+    wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
+    wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
+  };
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
   let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
   let i = 0;
   const total = fineSlices ? 180 : 9;
+  const observeTick = (timing: PropsAwaitTiming): Promise<void> | void => {
+    if (!tick) return;
+    const startedAt = performance.now();
+    const settled = (): void => { recordPropsAwait(timing, startedAt); };
+    try {
+      const pending = tick?.(i, total);
+      // Observe settlement without wrapping the returned promise or inserting
+      // another awaited hop into the caller's original pacing continuation.
+      if (pending && typeof pending.then === 'function') void pending.then(settled, settled);
+      else settled();
+      return pending;
+    } catch (error) {
+      settled();
+      throw error;
+    }
+  };
   try {
     r = g.next();
     wreckWorker?.prepare();
@@ -2470,15 +2512,29 @@ export async function createPropsAsync(
       synchronousMs += sliceMs;
       const step = r.value;
       slices.push({ stage: step?.stage || `slice-${slices.length}`, ms: sliceMs });
-      if (step?.tankBuilder && !wreckWorker) await ensureTankBuilder(step.tankBuilder);
+      if (step?.tankBuilder && !wreckWorker) {
+        const startedAt = performance.now();
+        await ensureTankBuilder(step.tankBuilder);
+        recordPropsAwait(awaitTimings.builderImports, startedAt);
+      }
       if (step?.wreckBake && wreckWorker) {
         const request = step.wreckBake;
+        const startedAt = performance.now();
+        const checkpointsBefore = awaitTimings.wreckCheckpoints.totalMs;
         request.result = await wreckWorker.bake(request.specId, request.options,
-          () => tick?.(i, total));
+          () => observeTick(awaitTimings.wreckCheckpoints));
+        const endMs = recordPropsAwait(awaitTimings.wreckBakes, startedAt);
+        // Inclusive elapsed time includes nested checkpoints, worker transfer
+        // and main-thread hydration. It is not worker CPU time or network time.
+        if (awaitTimings.wreckRows.length < awaitTimings.wreckRowsLimit) {
+          awaitTimings.wreckRows.push({ specId: request.specId, startMs: startedAt, endMs,
+            elapsedMs: endMs - startedAt,
+            includedCheckpointMs: awaitTimings.wreckCheckpoints.totalMs - checkpointsBefore });
+        } else awaitTimings.wreckRowsDropped++;
       }
       if (tick && (fineSlices || !step || !step.fine)) {
         if (step?.progress !== false) i++;
-        await tick(i, total);
+        await observeTick(awaitTimings.sliceTicks);
       }
       nextStartedAt = performance.now();
       r = g.next();
@@ -2493,12 +2549,22 @@ export async function createPropsAsync(
       synchronousMs,
       maxSliceMs: slowest[0]?.ms || 0,
       slowest,
+      awaitTimings,
     };
     return runtime;
   } finally {
     closeIncompletePropsBuild(!!r?.done, g, sourceAbort);
     wreckWorker?.dispose();
   }
+}
+
+function recordPropsAwait(timing: PropsAwaitTiming, startedAt: number): number {
+  const endedAt = performance.now();
+  const elapsedMs = endedAt - startedAt;
+  timing.count++;
+  timing.totalMs += elapsedMs;
+  timing.maxMs = Math.max(timing.maxMs, elapsedMs);
+  return endedAt;
 }
 
 function createPropsWreckWorker(cfg: PropsMapConfig | null): ReturnType<typeof createWreckBakeClient> | null {
