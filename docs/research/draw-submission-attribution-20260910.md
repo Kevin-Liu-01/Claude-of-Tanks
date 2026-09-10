@@ -53,7 +53,63 @@ budget still fails (median59.9 FPS, p99 25.3 ms), and diagnostic overhead
 independently refuses speed certification. The process exits1 accordingly.
 Do not use these numbers as an uninstrumented before/after speed comparison.
 
-Next candidate: preserve the exact three authored vehicle shadow proxies
-and all four moving cascades, while batching their compatible submissions.
-Adoption requires actual native shadow-image and lifecycle verification.
-Historical untraced 214–319 ms stalls remain unproven.
+## Articulated vehicle-shadow batching
+
+The candidate preserves the original hull/turret/gun proxy vertices, materials,
+owning rigs and all four moving shadow cascades. Compatible two- or three-proxy
+vehicles use one `BatchedMesh` submission per eligible cascade. Unsupported
+inputs retain the original path; late mirrored transforms use an original-object
+draw over the already-uploaded packed geometry range. Browsers without
+`WEBGL_multi_draw` retain the original number of native submissions, not an
+assumed saving. No shadow cadence, resolution, model detail or simulation
+setting changes.
+
+Focused CPU checks cover immutable geometry, independent cascade culling,
+articulation, hidden and mirrored parts, atomic admission and disposal. Real
+factory checks cover an articulated M1A2 and fixed-casemate Jagdpanzer, including
+movement, distant detail, wreck presentation and Garage reset. These and full
+typecheck pass after the mirrored-range fix. The registry discovers 950 checks;
+that is not a claim that all 950 were rerun for this render-only slice.
+
+### Native first-run failure and corrected contract
+
+`articulated-shadow-native-r1/report.json` is retained as a **failure**, not
+overwritten. Five ordinary poses produced byte-identical composed PCF images,
+but the mirrored gun lost 418 shadow-coverage pixels across four light cameras.
+That was a real bug: its noncasting source geometry had never been uploaded
+through `WebGLObjects.update`. The fallback now uses the already-uploaded exact
+packed range while retaining the original object's winding and model-view.
+
+The first diagnostic also compared packed RGBA shadow-color attachments
+bit-for-bit. All twenty non-mirrored attachments had identical clear/nonclear
+coverage; their maximum decoded depth difference was `2^-23`. Large byte
+differences were packing carries, not missing surfaces. Pinned Three r185's
+`WebGLLights`, `WebGLShadowMap` and PCF shader sample the native comparison depth
+texture, **not** this RGBA attachment. Consequently native-v2 requires exact
+composed PCF pixels and exact per-camera coverage, retaining packed-color and
+decoded-depth differences diagnostically without inventing a tolerance. This
+does not establish bit identity of the native depth texture, nor universal
+image parity outside the exercised poses and cameras.
+
+### Corrected native acquisition
+
+`articulated-shadow-native-r2/report.json` passes native-v2, SHA256
+`d21e78b85f796b388f4fdb0599f49904649f1dcd84a426b813ad554c69a50875`.
+Chrome151 / native ANGLE Metal Apple M5 Max / Three185, with
+`WEBGL_multi_draw` actually available. All six poses (initial, yaw/pitch,
+translated, hidden gun, mirrored gun and reset) have **zero** composed-pixel
+differences and **zero** coverage-mask differences in all four shadow cameras.
+Same-owner reset additionally restores every raw RGBA byte exactly. Deliberately
+missing and stale guns both fail the rendered-image and coverage gates.
+
+Normal reference/candidate total submissions are 13/5, including the common
+ground draw: vehicle shadows fall from twelve to four. Hidden-gun totals are
+9/5; the mirrored fallback is 13/9. The latter now preserves every pixel.
+Packed-color diagnostic depth differences remain at most `2^-23`. All source
+hashes stay fixed through acquisition; 70 raw images are retained and all
+browser/server/fixture/lock cleanup checks pass. The native fixture canvas was
+visually inspected. This is an exact exercised-image and submission result,
+not an FPS result or a native test of hardware without multi-draw support.
+
+Full-game candidate results follow after acquisition. Historical untraced
+214–319 ms stalls remain unproven.

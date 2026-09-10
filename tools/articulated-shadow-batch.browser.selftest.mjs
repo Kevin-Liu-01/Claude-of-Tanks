@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Native exact-pixel/submission regression, never an FPS or full-game benchmark.
+// Native exact composed-PCF/coverage/submission regression, never an FPS or full-game benchmark.
 // node tools/articulated-shadow-batch.browser.selftest.mjs [--out=/absolute/new-directory]
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -21,7 +21,13 @@ function sourceReceipt() {
     'tools/capture-lock.mjs', 'package.json', 'package-lock.json',
     'node_modules/three/package.json', 'node_modules/three/build/three.core.js', 'node_modules/three/build/three.module.js',
     'node_modules/vite/package.json', 'node_modules/puppeteer/package.json',
-    'node_modules/three/src/objects/BatchedMesh.js', 'node_modules/three/src/renderers/webgl/WebGLShadowMap.js'];
+    'node_modules/three/src/objects/BatchedMesh.js', 'node_modules/three/src/renderers/webgl/WebGLShadowMap.js',
+    'node_modules/three/src/renderers/webgl/WebGLLights.js',
+    'node_modules/three/src/renderers/shaders/ShaderChunk/packing.glsl.js',
+    'node_modules/three/src/renderers/shaders/ShaderChunk/shadowmap_pars_fragment.glsl.js',
+    'node_modules/three/src/renderers/shaders/ShaderChunk/project_vertex.glsl.js',
+    'node_modules/three/src/renderers/shaders/ShaderChunk/batching_vertex.glsl.js',
+    'node_modules/three/src/renderers/shaders/ShaderLib/depth.glsl.js'];
   return { revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }).trim(),
     files: Object.fromEntries(paths.map(path => [path, hash(readFileSync(join(rootDir, path)))])) };
 }
@@ -57,9 +63,14 @@ function retainPixels(report, directory) {
   report.rawOutputs = number;
 }
 
-const report = { protocol: 'articulated-shadow-batch-native-v1', ok: false, source: null,
+const report = { protocol: 'articulated-shadow-batch-native-v2', ok: false, source: null,
   fixture: null, artifacts: {}, errors: [], browserClosed: false, serverClosed: false, lockReleased: false,
-  caveats: ['Exact RGBA packed shadow-color attachments plus composed PCF ground pixels; native depth texture drives PCF.',
+  caveats: ['Gate: exact composed PCF RGBA and per-camera clear/nonclear caster coverage (clear is exactly RGBA255).',
+    'Cross-arm packed-color byte differences and Three-decoded color-depth differences are retained diagnostics without a tolerance gate.',
+    'Same-owner reset additionally requires exact original raw RGBA bytes, preserving deterministic same-path restoration.',
+    'Pinned Three r185 PCF samples native depth textures, not packed RGBA color; native depth bit identity is not measured.',
+    'Decoded diagnostics use the pinned packing formula in JavaScript; they do not reproduce GPU arithmetic or polygon-offset depth storage.',
+    'Both negative controls must change composed PCF pixels and coverage. Native-v1 packed-color byte equality is a different contract.',
     'Four real light cameras and full native frustum traversal; no fake culling, quality changes, timing or FPS claim.',
     'WEBGL_multi_draw availability is observed. Its absence requires exact original-count fallback, not invented savings.',
     'Queued signals use ordinary OS termination; dead FIFO tickets are reaped by the existing shared owner.'] };
@@ -130,7 +141,7 @@ try {
     } finally { await canvas.dispose(); }
   }
   assert.equal(report.fixture.cases.length, 6); assert.equal(report.fixture.negatives.length, 2);
-  assert.equal(report.fixture.ok, true, 'exact shadow pixels, articulation and draw accounting must pass');
+  assert.equal(report.fixture.ok, true, 'exact composed PCF pixels, coverage, articulation and draw accounting must pass');
   assert.deepEqual(sourceReceipt(), report.source, 'scoped sources changed during native acquisition');
 } catch (error) { report.errors.push(String(error)); }
 finally {

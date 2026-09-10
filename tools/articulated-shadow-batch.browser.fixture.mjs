@@ -13,6 +13,33 @@ function difference(a, b) {
   }
   return { channels, maximum };
 }
+function shadowDiagnostic(a, b) {
+  requireThat(a.length === b.length && a.length % 4 === 0, 'matching RGBA shadow extents required');
+  const coverage = { referencePixels: 0, candidatePixels: 0, differingPixels: 0, missingPixels: 0, extraPixels: 0 };
+  const packedDepth = { changedPixels: 0, maximumDifference: 0, maximumBothCoveredDifference: 0 };
+  const covered = (bytes, i) => bytes[i] !== 255 || bytes[i + 1] !== 255 || bytes[i + 2] !== 255 || bytes[i + 3] !== 255;
+  // Three r185 packing.glsl.js unpackRGBAToDepth, applied to normalized RGBA8.
+  // Diagnostic color depth only: PCF consumes the separate native depth texture.
+  const depth = (bytes, i) => bytes[i] / 256 + bytes[i + 1] / 65536
+    + bytes[i + 2] / 16777216 + bytes[i + 3] / (255 * 16777216);
+  for (let i = 0; i < a.length; i += 4) {
+    const ca = covered(a, i), cb = covered(b, i), delta = Math.abs(depth(a, i) - depth(b, i));
+    coverage.referencePixels += +ca; coverage.candidatePixels += +cb;
+    coverage.differingPixels += +(ca !== cb); coverage.missingPixels += +(ca && !cb); coverage.extraPixels += +(!ca && cb);
+    packedDepth.changedPixels += +(delta !== 0);
+    packedDepth.maximumDifference = Math.max(packedDepth.maximumDifference, delta);
+    if (ca && cb) packedDepth.maximumBothCoveredDifference = Math.max(packedDepth.maximumBothCoveredDifference, delta);
+  }
+  return { coverage, packedDepth };
+}
+function comparePixels(reference, candidate) {
+  requireThat(reference.length === 5 && candidate.length === 5, 'four shadow maps and one composed PCF image required');
+  const differences = reference.map((bytes, i) => difference(bytes, candidate[i]));
+  const shadowDiagnostics = reference.slice(0, 4).map((bytes, i) => ({ role: `shadow-${i}`, ...shadowDiagnostic(bytes, candidate[i]) }));
+  const composedExact = differences[4].channels === 0;
+  const coverageExact = shadowDiagnostics.every(value => value.coverage.differingPixels === 0);
+  return { differences, shadowDiagnostics, parity: { pass: composedExact && coverageExact, composedExact, coverageExact } };
+}
 function packed(bytes) {
   let text = '';
   for (let start = 0; start < bytes.length; start += 8192) text += String.fromCharCode(...bytes.subarray(start, start + 8192));
@@ -140,21 +167,28 @@ export function installArticulatedShadowBatchFixture() {
         const multiDraw = !!gl.getExtension('WEBGL_multi_draw');
         report.hardware = { backend, threeRevision: THREE.REVISION, multiDraw, shadowType: 'PCFShadowMap' };
         const reference = createScene(false, owned), candidate = createScene(true, owned);
+        let initialPixels;
         for (const [name, index, hidden, mirrored] of [['initial', 0, false, false], ['yaw-pitch', 1, false, false],
           ['moved', 2, false, false], ['hidden-gun', 2, true, false], ['mirrored-gun', 1, false, true], ['reset', 0, false, false]]) {
           pose(reference, index, hidden, mirrored); pose(candidate, index, hidden, mirrored);
           const a = render(reference, renderer), b = render(candidate, renderer);
-          const differences = a.pixels.map((bytes, i) => difference(bytes, b.pixels[i]));
-          const row = { name, reference: retained(a), candidate: retained(b), differences };
+          const row = { name, reference: retained(a), candidate: retained(b), ...comparePixels(a.pixels, b.pixels) };
           report.cases.push(row);
-          if (name === 'initial') requireThat(a.perCamera.every(value => value > 0)
-            && a.pixels.slice(0, 4).every(bytes => bytes.some(value => value !== 255)), 'every shadow camera must contain actual caster pixels');
-          if (name === 'reset') for (const arm of ['reference', 'candidate']) {
-            if (row[arm].pixels.some((value, i) => value.rgbaBase64 !== report.cases[0][arm].pixels[i].rgbaBase64)) {
-              report.errors.push(`${arm}: reset failed exact initial-pose pixel restoration`);
+          if (name === 'initial') {
+            initialPixels = { reference: a.pixels, candidate: b.pixels };
+            requireThat(a.perCamera.every(value => value > 0)
+              && a.pixels.slice(0, 4).every(bytes => bytes.some(value => value !== 255)), 'every shadow camera must contain actual caster pixels');
+          }
+          if (name === 'reset') {
+            row.reset = { reference: comparePixels(initialPixels.reference, a.pixels), candidate: comparePixels(initialPixels.candidate, b.pixels) };
+            for (const arm of ['reference', 'candidate']) {
+              if (!row.reset[arm].parity.pass) report.errors.push(`${arm}: reset failed exact initial-pose PCF pixels or shadow coverage restoration`);
+              if (row.reset[arm].differences.some(value => value.channels)) {
+                report.errors.push(`${arm}: reset failed exact initial-pose raw RGBA restoration`);
+              }
             }
           }
-          if (differences.some(value => value.channels)) report.errors.push(`${name}: exact native pixel parity failed`);
+          if (!row.parity.pass) report.errors.push(`${name}: exact composed PCF pixels or shadow coverage parity failed`);
           const sourceCalls = a.perCamera.reduce((sum, value) => sum + value, 0), batchCalls = b.perCamera.reduce((sum, value) => sum + value, 0);
           if (!(multiDraw ? batchCalls < sourceCalls && b.calls < a.calls : batchCalls === sourceCalls && b.calls === a.calls)) {
             report.errors.push(`${name}: native draw reduction/fallback accounting failed`);
@@ -172,10 +206,10 @@ export function installArticulatedShadowBatchFixture() {
         try { candidate.batch.onBeforeShadow = THREE.BatchedMesh.prototype.onBeforeShadow; stale = render(candidate, renderer); }
         finally { candidate.batch.onBeforeShadow = hook; }
         for (const [name, value] of [['missing-gun', missing], ['stale-articulation', stale]]) {
-          const differences = expected.pixels.map((bytes, i) => difference(bytes, value.pixels[i]));
-          report.negatives.push({ name, differences, render: retained(value) });
-          if (!(differences.slice(0, 4).some(row => row.channels > 0) && differences[4].channels > 0)) {
-            report.errors.push(`${name}: negative control failed to change raw and composed shadows`);
+          const comparison = comparePixels(expected.pixels, value.pixels);
+          report.negatives.push({ name, ...comparison, render: retained(value) });
+          if (comparison.parity.composedExact || comparison.parity.coverageExact) {
+            report.errors.push(`${name}: negative control failed to change composed PCF pixels and shadow coverage`);
           }
         }
         // Reset on the same owner, then publish the real candidate ground-shadow canvas.

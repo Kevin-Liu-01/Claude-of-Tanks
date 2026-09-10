@@ -15,6 +15,7 @@ interface SourceRecord {
   readonly instance: number;
   readonly matrix: Matrix4;
   readonly sphere: Sphere;
+  readonly group: Parameters<WebGLRenderer['renderBufferDirect']>[5];
   visible: boolean;
 }
 
@@ -138,7 +139,10 @@ class ArticulatedShadowBatch extends BatchedMesh {
       // mirrored fallback may allocate a sphere or mutate borrowed geometry.
       const sphere = new Sphere();
       this.getBoundingSphereAt(geometry, sphere);
-      this.records.push({ source, instance, matrix, sphere, visible: true });
+      const range = this.getGeometryRangeAt(geometry);
+      if (!range) throw new Error('Missing articulated shadow geometry range');
+      const group = { start: range.start, count: range.count, materialIndex: 0 };
+      this.records.push({ source, instance, matrix, sphere, group, visible: true });
     }
     // Root insertion may synchronously throw from a user event handler. No
     // original caster is changed until all construction/insertion succeeded.
@@ -172,13 +176,15 @@ class ArticulatedShadowBatch extends BatchedMesh {
       if (!this.frustum.intersectsSphere(this.sphere)) return;
     }
     source.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, source.matrixWorld);
-    // The pinned shadow renderer passes null scene/group; its declaration is
-    // narrower than that implementation. Keep the exact native call contract.
+    // ShadowMap has already uploaded this batch geometry before the hook.
+    // Borrow its exact packed range: the noncasting source geometry may never
+    // have reached WebGLObjects.update. Keep the original object for winding.
+    // Pinned shadow rendering passes a null scene despite its narrower type.
     const draw = renderer.renderBufferDirect as (
       camera: Camera, scene: Scene | null, geometry: BufferGeometry, material: Material,
       object: Object3D, group: Parameters<WebGLRenderer['renderBufferDirect']>[5] | null,
     ) => void;
-    draw.call(renderer, camera, null, source.geometry, material, source, null);
+    draw.call(renderer, camera, null, this.geometry, material, source, record.group);
   }
 
   private synchronize(renderer: WebGLRenderer, camera: Camera, shadowCamera: Camera, material: Material): void {
