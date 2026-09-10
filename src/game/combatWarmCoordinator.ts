@@ -4,12 +4,17 @@ import {
 } from '../engine/frameScheduler.ts';
 
 type WarmGenerator = Generator<object | void, object | void, void>;
-type WarmFactory = () => WarmGenerator;
+export interface CombatWarmExecution {
+  /** The coordinator switches an in-flight job back to synchronous drain. */
+  cooperative: boolean;
+}
+export const COMBAT_WARM_PROGRAM_CHECKPOINT = Object.freeze({ force: true });
+type WarmFactory = (execution?: CombatWarmExecution) => WarmGenerator;
 type WarmKind = 'opening' | 'rare';
 
 export interface CombatWarmCoordinatorOptions {
-  createOpening(): WarmGenerator;
-  createRare(): WarmGenerator;
+  createOpening: WarmFactory;
+  createRare: WarmFactory;
   createYielder?: (budgetMs: number) => WorkYielder;
 }
 
@@ -35,6 +40,7 @@ export function createCombatWarmCoordinator({
   let rareReady = false;
   let openingGenerator: WarmGenerator | null = null;
   let rareGenerator: WarmGenerator | null = null;
+  const executions = new WeakMap<WarmGenerator, CombatWarmExecution>();
 
   const close = (generator: WarmGenerator | null): void => {
     if (!generator) return;
@@ -51,6 +57,8 @@ export function createCombatWarmCoordinator({
   };
 
   const drainGenerator = (generator: WarmGenerator): void => {
+    const execution = executions.get(generator);
+    if (execution) execution.cooperative = false;
     let result = generator.next();
     while (!result.done) result = generator.next();
   };
@@ -94,18 +102,31 @@ export function createCombatWarmCoordinator({
     let generator = generatorFor(kind);
     if (isReady(kind) && !generator) return;
     if (!generator) {
-      generator = factory();
+      const execution = { cooperative: true };
+      generator = factory(execution);
+      executions.set(generator, execution);
       storeGenerator(kind, generator);
     }
     const yieldForBudget = providedYielder ?? createYielder(budgetMs);
-    for (;;) {
-      if (generatorFor(kind) !== generator) return;
-      const result = generator.next();
-      if (result.done) {
-        clearGeneratorIfCurrent(kind, generator);
-        return;
+    try {
+      for (;;) {
+        if (generatorFor(kind) !== generator) return;
+        const result = generator.next();
+        if (result.done) {
+          clearGeneratorIfCurrent(kind, generator);
+          return;
+        }
+        await yieldForBudget(result.value === COMBAT_WARM_PROGRAM_CHECKPOINT);
       }
-      await yieldForBudget();
+    } catch (error) {
+      // Rare warm may retain a finite program cohort while awaiting its caller.
+      // A failed wait abandons that job, never its newer replacement. Opening
+      // warm retains its existing resumability policy.
+      if (kind === 'rare' && generatorFor(kind) === generator) {
+        close(generator);
+        clearGeneratorIfCurrent(kind, generator);
+      }
+      throw error;
     }
   };
 

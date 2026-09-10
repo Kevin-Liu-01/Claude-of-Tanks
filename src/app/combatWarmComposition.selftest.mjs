@@ -7,6 +7,7 @@ const calls = {
   battleInvalidate: 0,
   forwardInvalidate: 0,
   pending: [],
+  rareExecutions: [],
 };
 const game = { tanks: [], phase: 'garage', preBattleS: Infinity };
 const scene = new THREE.Scene();
@@ -15,7 +16,7 @@ const battleWarm = {
   requireRuntime() {
     return {
       createCombatOpeningWarmSteps: function* () {},
-      createCombatRareWarmSteps: function* () {},
+      createCombatRareWarmSteps: function* (_context, execution) { calls.rareExecutions.push(execution); },
     };
   },
   warmBattleTerrainTiles: async () => {},
@@ -64,6 +65,14 @@ const owner = createCombatWarmComposition({
 await owner.warmStudioPipeline();
 assert.equal(calls.studio, 1, 'Studio warm delegates through the shared typed owner');
 assert.deepEqual(studioTrace, { totalMs: 1, stages: {} });
+
+await owner.combatWarm.warmRareChunked(6, async () => {});
+assert.equal(calls.rareExecutions.at(-1).cooperative, true,
+  'composition forwards the cooperative execution context into the battle-only owner');
+owner.combatWarm.reset();
+owner.combatWarm.drain();
+assert.equal(calls.rareExecutions.at(-1), undefined,
+  'composition preserves fresh synchronous capture/drain mode');
 
 owner.combatWarm.markOpeningReady();
 owner.combatWarm.markRareReady();

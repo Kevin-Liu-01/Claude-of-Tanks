@@ -45,8 +45,9 @@ Checkout source hash was unchanged at both sample edges:
 
 The 3,449 positive renderer submissions covered 60,006.9 ms with an admitted
 terminal interval of 16 ms. These are RAF-observed submission intervals, not
-physical display/GPU durations. Certification was REFUSED: machine load ranged
-16.23→14.65 (maximum 16.45; allowed 9), and the unrelated interactive-browser GPU
+physical display/GPU durations. Certification was REFUSED: starting machine load
+16.23 exceeded 9, and peak 16.45 exceeded 14 (9 plus 5 probe headroom); ending load
+was 14.65. The unrelated interactive-browser GPU
 process reached 103.7% CPU (allowed 15%). That is process CPU, not GPU utilization.
 No foreign headless GPU processes were observed. Foreign processes were neither
 terminated nor altered for this test.
@@ -65,6 +66,37 @@ remains unproven; this release does not claim those failures are all resolved.
 
 ## Live verification
 
-The already-published countdown boundary was verified at `v1.0.0+gdab4f986e`.
-Post-publication version and real-button controls for the combined release are
-recorded after deployment, separately from the sustained failed probe above.
+`origin/main` was non-force fast-forwarded through `b2b37420b` and `57fe26ac9`;
+the public site returned HTTP 200 with `v1.0.0+g57fe26ac9`. Production real-button
+controls then passed splash entry, Battle, Rematch and Garage return, with all
+four boot/audio-clock/warm/source gates passing. Both day/night reveals applied
+six of six source sets with no failures. Errors, cleanup errors and failures
+were empty; the three final screenshots were inspected. The owned browser closed.
+
+Receipt: `/private/tmp/cot-interactive-baseline.gsRCvU/loading-resource-production-controls-r1/report.json`.
+SHA-256: `a2504c1825d38744bc872bdaff2d38456d7af841320cfb978f3b95683a59e727`.
+Built HTML SHA-256:
+`986a21c7175733849158e2d8fc9f99198afcffee483a200a03abeb9b93d6503f`.
+Chrome 151.0.7922.47 / native ANGLE Metal Apple M5 Max, high 1280×720/DPR 1,
+normal transitions, no quality reduction. No profiler or trace overhead was
+enabled. These control timings are separate from the sustained failed probe.
+
+| Action | Cover observed | Click to probe-ready | Largest callback-start gap |
+| --- | ---: | ---: | ---: |
+| Battle | 2.3 ms | 23,543.9 ms | 111.8 ms |
+| Rematch | 159.5 ms | 6,447.0 ms | 183.9 ms |
+| Garage | 94.3 ms | 369.1 ms | 54.1 ms |
+
+**Functional pass is not a responsiveness pass.** The rematch gap was uncovered
+at countdown 1. Its LoAF contained a 169.2 ms `Scheduler.yield.then` continuation,
+not the earlier paired pre-paint callbacks. Recorded visual construction ended
+before it. Reconstructed rounded stage boundaries place it inside the 545 ms
+rare hidden-variant warm; that stage's three actual renders were only 8/5/5 ms.
+No per-operation trace identifies the exact leaf. Source inspection found that
+hidden-variant compilation still directly reflects new `getUniforms()` before
+its 6 ms checkpoint, bypassing the existing parallel-link readiness owner. This
+is the next bounded correction, not proof of the historical gameplay stall cause.
+
+The cold Battle also spent 16,300 ms wall time placing props, with 2,091.7 ms
+reported synchronous slice time; waiting/network/scheduling time must not be
+called CPU time. The 23.5 second first entry is not an instant-loading result.

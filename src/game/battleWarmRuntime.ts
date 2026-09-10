@@ -17,6 +17,7 @@ import type {
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
 import {
   captureNewProgramUniformSteps,
+  ProgramUniformPreparationError,
   snapshotRendererPrograms,
   type ForwardProgramCompileTiming,
   type ForwardProgramWarmOwner,
@@ -27,6 +28,10 @@ import {
   nextPaintFrame,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
+import {
+  COMBAT_WARM_PROGRAM_CHECKPOINT,
+  type CombatWarmExecution,
+} from './combatWarmCoordinator.ts';
 
 interface Vec3Like {
   x: number;
@@ -1168,10 +1173,36 @@ function* warmDestroyedRosterVariantsSteps(
 function* compileHiddenVariantsSteps(
   context: CombatWarmRuntimeContext,
   detail: Record<string, RuntimeValue> | null = null,
+  execution: CombatWarmExecution = { cooperative: false },
 ): WarmGenerator {
   const {
     game, renderer, camera, forwardProgramWarm, lighting,
   } = context;
+  const generation = warmGeneration;
+  const lifetime = execution.cooperative ? { info: renderer.info, gl: renderer.getContext() } : null;
+  const valid = (): boolean => !lifetime || (generation === warmGeneration
+    && renderer.info === lifetime.info && renderer.getContext() === lifetime.gl
+    && !lifetime.gl.isContextLost?.());
+  const assertCurrent = (): void => {
+    if (!valid()) throw new ProgramUniformPreparationError({ status: 'incomplete', reason: 'invalidated', pending: null });
+  };
+  const timing: ForwardProgramCompileTiming = {};
+  if (detail) {
+    detail.programs = timing;
+    detail.programPendingScope = 'latest captured cohort; bounded best-effort readiness, not an aggregate completion guarantee';
+  }
+  const compile = (object: Object3D): void => {
+    const startedAt = performance.now();
+    try { forwardProgramWarm.compile(object, timing); }
+    finally {
+      if (detail) {
+        const elapsed = performance.now() - startedAt;
+        detail.compileCount = Number(detail.compileCount ?? 0) + 1;
+        detail.compileMs = Number(detail.compileMs ?? 0) + elapsed;
+        detail.maxCompileMs = Math.max(Number(detail.maxCompileMs ?? 0), elapsed);
+      }
+    }
+  };
   const compileAll = function* (root: Object3D): WarmGenerator {
     const objects: Object3D[] = [];
     root.traverse((object) => {
@@ -1187,19 +1218,56 @@ function* compileHiddenVariantsSteps(
     });
     let sliceAt = performance.now();
     for (const object of objects) {
+      assertCurrent();
       const wasVisible = object.visible;
+      let uniforms: Generator<void, void, void> | null = null;
+      let drainSubmitted: (() => void) | null = null;
       try {
         object.visible = true;
-        const before = (renderer.info.programs || []).length;
-        forwardProgramWarm.compile(object);
-        const programs = renderer.info.programs || [];
-        for (let index = before; index < programs.length; index += 1) {
-          try { programs[index].getUniforms(); } catch (_) { /* warm only */ }
+        if (execution.cooperative) {
+          const before = snapshotRendererPrograms(renderer);
+          compile(object);
+          assertCurrent();
+          // Capture before restoring the staged object; consume only afterwards.
+          uniforms = captureNewProgramUniformSteps(renderer, before, { isCurrent: valid, timing });
+          const submitted = (renderer.info.programs || []).filter(program => !before.has(program))
+            .map(program => ({ program, handle: program.program }));
+          drainSubmitted = () => {
+            assertCurrent();
+            const visible = object.visible;
+            try {
+              object.visible = true;
+              for (const entry of submitted) {
+                if (entry.program.program !== entry.handle || !renderer.info.programs?.includes(entry.program)) continue;
+                try { entry.program.getUniforms(); } catch (_) { /* legacy synchronous drain */ }
+              }
+            } finally { object.visible = visible; }
+          };
+        } else {
+          const before = (renderer.info.programs || []).length;
+          compile(object);
+          initializeNewProgramUniforms(renderer, before);
         }
-      } catch (_) { /* warm only */ }
+      } catch (_) { assertCurrent(); /* warm only */ }
       finally {
         object.visible = wasVisible;
       }
+      try {
+        if (uniforms) {
+          for (const _step of uniforms) {
+            yield COMBAT_WARM_PROGRAM_CHECKPOINT;
+            assertCurrent();
+            if (!execution.cooperative) {
+              // drain() may resume this exact suspended generator. Never spin
+              // a cooperative KHR poller synchronously or restart its effects.
+              uniforms.return();
+              drainSubmitted?.();
+              break;
+            }
+          }
+        }
+      } finally { uniforms?.return(); }
+      assertCurrent();
       if (performance.now() - sliceAt >= 6) {
         yield;
         sliceAt = performance.now();
@@ -1209,16 +1277,22 @@ function* compileHiddenVariantsSteps(
   };
 
   for (const entity of game.tanks) {
+    assertCurrent();
     if (!entity.visual?.root) continue;
-    try { yield* compileAll(entity.visual.root); } catch (_) { /* warm only */ }
+    try { yield* compileAll(entity.visual.root); } catch (_) { assertCurrent(); /* warm only */ }
     yield;
   }
+  assertCurrent();
   const world = context.world();
   if (world?.group) {
-    try { yield* compileAll(world.group); } catch (_) { /* warm only */ }
+    try { yield* compileAll(world.group); } catch (_) { assertCurrent(); /* warm only */ }
     yield;
-    for (const _ of forwardProgramWarm.linkerBreathingSlices(40)) yield;
+    for (const _ of forwardProgramWarm.linkerBreathingSlices(40)) {
+      yield;
+      assertCurrent();
+    }
   }
+  assertCurrent();
 
   const flips: Object3D[] = [];
   const collectFlips = (): void => {
@@ -1246,22 +1320,26 @@ function* compileHiddenVariantsSteps(
     unflip();
   } catch (_) { unflip(); }
   yield;
+  assertCurrent();
 
   for (const fov of [20, 8]) {
+    const priorFov = camera.fov;
     try {
       collectFlips();
-      const priorFov = camera.fov;
       camera.fov = fov;
       camera.updateProjectionMatrix();
       lighting?.updateFrustums?.();
       const renderAt = performance.now();
       context.warmRender();
       if (detail) detail[`scope${fov}RenderMs`] = Math.round(performance.now() - renderAt);
+    } catch (_) { /* warm only */ }
+    finally {
       camera.fov = priorFov;
       camera.updateProjectionMatrix();
       unflip();
-    } catch (_) { unflip(); }
+    }
     yield;
+    assertCurrent();
   }
   lighting?.updateFrustums?.();
   return undefined;
@@ -1431,6 +1509,7 @@ function* warmCombatDestructionEffectSteps(
 
 export function* createCombatRareWarmSteps(
   context: CombatWarmRuntimeContext,
+  execution?: CombatWarmExecution,
 ): WarmGenerator {
   if (context.isRareReady()) return;
   if (!context.isOpeningReady()) yield* createCombatOpeningWarmSteps(context);
@@ -1473,8 +1552,9 @@ export function* createCombatRareWarmSteps(
 
   for (const _ of context.deploymentShadowWarm.warmDepthProgramSteps()) yield;
   mark('shadows');
-  rareTrace.hiddenDetail = {};
-  yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail);
+  rareTrace.hiddenDetail = { startedAt: performance.now() };
+  try { yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail, execution); }
+  finally { rareTrace.hiddenDetail.finishedAt = performance.now(); }
   mark('hiddenVariants');
   context.markRareReady();
   rareTrace.totalMs = Math.round(performance.now() - startedAt);
