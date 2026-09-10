@@ -1,0 +1,200 @@
+import * as THREE from 'three';
+import { installArticulatedShadowBatch } from '../src/engine/articulatedShadowBatch.ts';
+import { markShadowOnly, routeShadowOnlyLayer, SHADOW_ONLY_LAYER } from '../src/engine/renderLayers.ts';
+
+const WIDTH = 192, HEIGHT = 160, SHADOW_SIZE = 128;
+const requireThat = (condition, message) => { if (!condition) throw new Error(message); };
+function difference(a, b) {
+  requireThat(a.length === b.length, 'matching pixel extents required');
+  let channels = 0, maximum = 0;
+  for (let index = 0; index < a.length; index++) {
+    const delta = Math.abs(a[index] - b[index]);
+    if (delta) channels++; maximum = Math.max(maximum, delta);
+  }
+  return { channels, maximum };
+}
+function packed(bytes) {
+  let text = '';
+  for (let start = 0; start < bytes.length; start += 8192) text += String.fromCharCode(...bytes.subarray(start, start + 8192));
+  return btoa(text);
+}
+function createScene(batched, owned) {
+  const scene = new THREE.Scene(); scene.name = batched ? 'candidate' : 'reference';
+  scene.background = new THREE.Color(0x13202a);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+  const root = new THREE.Group(), turret = new THREE.Group(), gun = new THREE.Group();
+  root.name = 'moving-root'; turret.name = 'yaw'; gun.name = 'pitch';
+  root.add(turret); turret.position.y = 1.1; turret.add(gun); gun.position.set(0, 0.35, 0.4); scene.add(root);
+  const material = new THREE.MeshBasicMaterial({ name: 'ProceduralShadowProxy', colorWrite: false, depthWrite: false });
+  const depth = new THREE.MeshDepthMaterial({ name: 'ProceduralShadowProxyDepth', depthPacking: THREE.RGBADepthPacking,
+    polygonOffset: true, polygonOffsetFactor: 1.25, polygonOffsetUnits: 2 });
+  const make = (geometry, parent, name, position) => {
+    geometry.clearGroups(); // One authored proxy material, like the factory's convex source.
+    const mesh = markShadowOnly(new THREE.Mesh(geometry, material)); mesh.name = name;
+    mesh.castShadow = true; mesh.customDepthMaterial = depth; mesh.userData.authoredShadowProxy = true;
+    mesh.position.set(...position); parent.add(mesh); return mesh;
+  };
+  const sources = [make(new THREE.BoxGeometry(2.4, 0.8, 3.2), root, 'hull', [0, 0.7, 0]),
+    make(new THREE.BoxGeometry(1.8, 0.65, 1.8), turret, 'turret', [0, 0.15, 0]),
+    make(new THREE.BoxGeometry(0.24, 0.24, 2.8), gun, 'gun', [0, 0, 1.4])];
+  const geometryOwners = sources.map(mesh => mesh.geometry);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshStandardMaterial({ color: 0xa8a292, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  const camera = new THREE.PerspectiveCamera(48, WIDTH / HEIGHT, 0.1, 40);
+  camera.position.set(6, 7, 9); camera.lookAt(0, 0.5, 0);
+  const lights = [[-5, 9, 4], [7, 10, 5], [-6, 7, -6], [6, 12, -6]].map((position, index) => {
+    const light = new THREE.DirectionalLight(0xffffff, 0.65); light.name = `native-shadow-${index}`;
+    light.position.set(...position); light.castShadow = true; light.shadow.mapSize.set(SHADOW_SIZE, SHADOW_SIZE);
+    const extent = 5 - index * 0.65;
+    Object.assign(light.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: 0.5, far: 24 });
+    light.shadow.camera.updateProjectionMatrix(); light.shadow.bias = -0.0002;
+    scene.add(light, light.target); return light;
+  });
+  const target = new THREE.WebGLRenderTarget(WIDTH, HEIGHT, { depthBuffer: true });
+  const owner = { scene, root, turret, gun, sources, material, depth, geometryOwners, ground, camera, lights, batch: null, target };
+  owned.push(owner);
+  if (batched) {
+    owner.batch = installArticulatedShadowBatch(root, sources);
+    requireThat(owner.batch?.isBatchedMesh, 'actual helper must admit the three authored proxies');
+  }
+  return owner;
+}
+function pose(owner, index, hidden = false, mirrored = false) {
+  const poses = [[0, 0, 0, 0], [0.45, 0.13, 0.38, -0.18], [-0.4, -0.16, -0.48, 0.24]];
+  const [x, body, yaw, pitch] = poses[index];
+  owner.root.position.set(x, 0, index * 0.12); owner.root.rotation.y = body;
+  owner.turret.rotation.y = yaw; owner.gun.rotation.x = pitch; owner.gun.visible = !hidden;
+  owner.gun.scale.x = mirrored ? -1 : 1;
+}
+function render(owner, renderer) {
+  const original = renderer.renderBufferDirect, autoReset = renderer.info.autoReset;
+  const cameraMask = owner.camera.layers.mask, perCamera = [0, 0, 0, 0], hooks = [];
+  let sourceDrawCalls = 0, batchDrawCalls = 0;
+  const beforeRender = owner.batch?.onBeforeRender;
+  const hookDescriptor = owner.batch && Object.getOwnPropertyDescriptor(owner.batch, 'onBeforeRender');
+  if (owner.batch) owner.batch.onBeforeRender = function (...args) {
+    hooks.push(owner.lights.findIndex(light => light.shadow.camera === args[2]));
+    return Reflect.apply(beforeRender, this, args);
+  };
+  function observed(...args) {
+    const before = renderer.info.render.calls;
+    try { return Reflect.apply(original, this, args); }
+    finally {
+      const index = owner.lights.findIndex(light => light.shadow.camera === args[0]);
+      if (index >= 0) {
+        const calls = renderer.info.render.calls - before; perCamera[index] += calls;
+        if (owner.sources.includes(args[4])) sourceDrawCalls += calls;
+        if (args[4] === owner.batch) batchDrawCalls += calls;
+      }
+    }
+  }
+  renderer.renderBufferDirect = observed; renderer.info.autoReset = false; renderer.info.reset();
+  try { renderer.setRenderTarget(owner.target); renderer.render(owner.scene, owner.camera); }
+  finally {
+    requireThat(renderer.renderBufferDirect === observed, 'draw observer ownership changed');
+    renderer.renderBufferDirect = original; renderer.info.autoReset = autoReset;
+    if (owner.batch) {
+      if (hookDescriptor) Object.defineProperty(owner.batch, 'onBeforeRender', hookDescriptor);
+      else delete owner.batch.onBeforeRender;
+    }
+  }
+  const calls = renderer.info.render.calls;
+  requireThat(owner.camera.layers.mask === cameraMask, 'shadow layer routing must restore the presentation camera');
+  requireThat(new Set(owner.lights.map(light => light.shadow.camera.id)).size === 4, 'four actual shadow camera owners required');
+  requireThat(new Set(owner.lights.map(light => light.shadow.camera.matrixWorld.elements.join(','))).size === 4,
+    'the four native shadow camera transforms must differ');
+  if (owner.batch) requireThat(hooks.length === 4 && hooks.every((value, index) => value === index),
+    'the pinned BatchedMesh base hook must see every actual shadow camera');
+  const pixels = owner.lights.map(light => {
+    requireThat(light.shadow.map?.depthTexture?.isDepthTexture, 'native PCF depth texture required');
+    const bytes = new Uint8Array(SHADOW_SIZE ** 2 * 4);
+    renderer.readRenderTargetPixels(light.shadow.map, 0, 0, SHADOW_SIZE, SHADOW_SIZE, bytes); return bytes;
+  });
+  const color = new Uint8Array(WIDTH * HEIGHT * 4);
+  renderer.readRenderTargetPixels(owner.target, 0, 0, WIDTH, HEIGHT, color); pixels.push(color);
+  requireThat(renderer.getContext().getError() === renderer.getContext().NO_ERROR, 'native GL error');
+  return { calls, perCamera, hooks, sourceDrawCalls, batchDrawCalls, pixels };
+}
+function retained(result) {
+  return { calls: result.calls, perCamera: result.perCamera, baseHookCameras: result.hooks,
+    sourceDrawCalls: result.sourceDrawCalls, batchDrawCalls: result.batchDrawCalls,
+    pixels: result.pixels.map((bytes, index) => ({ role: index < 4 ? `shadow-${index}` : 'composed',
+      width: index < 4 ? SHADOW_SIZE : WIDTH, height: index < 4 ? SHADOW_SIZE : HEIGHT, rgbaBase64: packed(bytes) })) };
+}
+
+export function installArticulatedShadowBatchFixture() {
+  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+  renderer.setSize(WIDTH, HEIGHT); renderer.setPixelRatio(1);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; routeShadowOnlyLayer(renderer);
+  document.body.append(renderer.domElement);
+  const owned = [], report = { ok: false, disposed: false, hardware: null, cases: [], negatives: [], errors: [] };
+  let ran = false;
+  return { report,
+    run() {
+      requireThat(!ran, 'fixture runs once'); ran = true;
+      try {
+        const gl = renderer.getContext(), debug = gl.getExtension('WEBGL_debug_renderer_info');
+        const backend = debug && gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
+        requireThat(THREE.REVISION === '185' && typeof backend === 'string' && /ANGLE/i.test(backend)
+          && !/swiftshader|llvmpipe|software|lavapipe|swrast/i.test(backend), 'native ANGLE and pinned Three r185 required');
+        const multiDraw = !!gl.getExtension('WEBGL_multi_draw');
+        report.hardware = { backend, threeRevision: THREE.REVISION, multiDraw, shadowType: 'PCFShadowMap' };
+        const reference = createScene(false, owned), candidate = createScene(true, owned);
+        for (const [name, index, hidden, mirrored] of [['initial', 0, false, false], ['yaw-pitch', 1, false, false],
+          ['moved', 2, false, false], ['hidden-gun', 2, true, false], ['mirrored-gun', 1, false, true], ['reset', 0, false, false]]) {
+          pose(reference, index, hidden, mirrored); pose(candidate, index, hidden, mirrored);
+          const a = render(reference, renderer), b = render(candidate, renderer);
+          const differences = a.pixels.map((bytes, i) => difference(bytes, b.pixels[i]));
+          const row = { name, reference: retained(a), candidate: retained(b), differences };
+          report.cases.push(row);
+          if (name === 'initial') requireThat(a.perCamera.every(value => value > 0)
+            && a.pixels.slice(0, 4).every(bytes => bytes.some(value => value !== 255)), 'every shadow camera must contain actual caster pixels');
+          if (name === 'reset') for (const arm of ['reference', 'candidate']) {
+            if (row[arm].pixels.some((value, i) => value.rgbaBase64 !== report.cases[0][arm].pixels[i].rgbaBase64)) {
+              report.errors.push(`${arm}: reset failed exact initial-pose pixel restoration`);
+            }
+          }
+          if (differences.some(value => value.channels)) report.errors.push(`${name}: exact native pixel parity failed`);
+          const sourceCalls = a.perCamera.reduce((sum, value) => sum + value, 0), batchCalls = b.perCamera.reduce((sum, value) => sum + value, 0);
+          if (!(multiDraw ? batchCalls < sourceCalls && b.calls < a.calls : batchCalls === sourceCalls && b.calls === a.calls)) {
+            report.errors.push(`${name}: native draw reduction/fallback accounting failed`);
+          }
+          if (mirrored ? b.sourceDrawCalls <= 0 : b.sourceDrawCalls !== 0) report.errors.push(`${name}: unexpected direct-source fallback coverage`);
+          requireThat(candidate.sources.every((mesh, i) => mesh.geometry === candidate.geometryOwners[i]
+            && mesh.material === candidate.material && mesh.customDepthMaterial === candidate.depth
+            && mesh.layers.mask === 2 ** SHADOW_ONLY_LAYER && mesh.castShadow === false), 'source ownership or shadow routing changed');
+        }
+        pose(reference, 1); pose(candidate, 1); const expected = render(reference, renderer);
+        pose(reference, 1, true); const missing = render(reference, renderer);
+        pose(candidate, 0); render(candidate, renderer); pose(candidate, 1);
+        const hook = candidate.batch.onBeforeShadow;
+        let stale;
+        try { candidate.batch.onBeforeShadow = THREE.BatchedMesh.prototype.onBeforeShadow; stale = render(candidate, renderer); }
+        finally { candidate.batch.onBeforeShadow = hook; }
+        for (const [name, value] of [['missing-gun', missing], ['stale-articulation', stale]]) {
+          const differences = expected.pixels.map((bytes, i) => difference(bytes, value.pixels[i]));
+          report.negatives.push({ name, differences, render: retained(value) });
+          if (!(differences.slice(0, 4).some(row => row.channels > 0) && differences[4].channels > 0)) {
+            report.errors.push(`${name}: negative control failed to change raw and composed shadows`);
+          }
+        }
+        // Reset on the same owner, then publish the real candidate ground-shadow canvas.
+        pose(candidate, 0); renderer.setRenderTarget(null); renderer.render(candidate.scene, candidate.camera);
+        report.ok = report.errors.length === 0;
+      } catch (error) { report.errors.push(String(error)); }
+      return report;
+    },
+    dispose() {
+      if (report.disposed) return;
+      for (const owner of owned) {
+        owner.batch?.dispose();
+        requireThat(owner.sources.every(mesh => mesh.castShadow), 'batch disposal must restore original source shadow flags');
+        for (const geometry of owner.geometryOwners) geometry.dispose();
+        owner.material.dispose(); owner.depth.dispose(); owner.ground.geometry.dispose(); owner.ground.material.dispose();
+        for (const light of owner.lights) { light.shadow.map?.depthTexture?.dispose(); light.shadow.map?.dispose(); }
+        owner.target.dispose();
+      }
+      renderer.dispose(); renderer.domElement.remove(); report.disposed = true;
+    },
+  };
+}

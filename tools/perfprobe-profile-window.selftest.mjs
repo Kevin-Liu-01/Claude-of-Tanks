@@ -175,11 +175,11 @@ const task = (startTime, duration) => ({ startTime, duration, name: 'self', attr
 const source = readFileSync(new URL('./perfprobe.mjs', import.meta.url), 'utf8');
 const early = source.indexOf('if (profileWindow) await beginWindowProfile()');
 const entry = source.indexOf("await D.beginBattleEntry('m1a2', map)");
-assert.ok(early > 0 && early < source.indexOf('waitForControl: true, profileWindow })') && early < entry);
+assert.ok(early > 0 && early < source.indexOf('waitForControl: true, profileWindow, drawAttribution })') && early < entry);
 const stop = source.indexOf('if (profileWindow) await finishWindowProfile()');
 assert.ok(stop > source.indexOf('recordPerfRosterEdges(rosterProvenance, perf)'));
 assert.ok(stop < source.indexOf('const heapPostGc = await page.evaluate(readPerfHeapSnapshot, true)'));
-assert.match(source, /if \(!noTrend && !profileWindow\)/);
+assert.match(source, /if \(!noTrend && !profileWindow && !drawAttribution\)/);
 assert.match(source, /REFUSED — CPU-profile diagnostic overhead/);
 assert.match(source, /speedCertification: false/);
 assert.match(source, /if \(\(rosterProvenance \|\| profileWindow\) && !report\)/);

@@ -55,6 +55,7 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 // between captures aged the old dt-accumulators in wall-clock time).
 import { fxNow, emitPopTrail } from '../fx/clock.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
+import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 import type { ArmorEnvelope, ArmorPlate } from './specHelpers.ts';
 import type { VehicleMarkingAnchor, VehicleMarkingRecord } from './vehicleMarkings.ts';
@@ -1713,7 +1714,8 @@ function installProceduralShadowProxies(
   gunG: THREE.Group,
   recoilG: THREE.Group,
   disposables: DisposableVehicleResource[],
-): void {
+): THREE.Mesh[] {
+  const sources: THREE.Mesh[] = [];
   for (const group of [hullG, turretG, recoilG]) {
     group.traverse((object) => {
       if (isVehicleMesh(object) || isVehicleInstancedMesh(object)) object.castShadow = false;
@@ -1747,10 +1749,12 @@ function installProceduralShadowProxies(
     mesh.raycast = () => {};
     markShadowOnly(mesh);
     parent.add(mesh);
+    sources.push(mesh);
   };
   if (hullGeo) add(hullG, hullGeo, 'hull');
   if (turretGeo) add(turretG, turretGeo, 'turret');
   if (gunGeo) add(gunG, gunGeo, 'gun');
+  return sources;
 }
 
 // Closed track band swept around a 2D loop in the (z,y) plane.
@@ -10631,6 +10635,7 @@ function* createTankOwnedSteps(
   };
   createTankAssemblyStage32();
   const decalMeshes: VehicleMesh[] = [];
+  let proceduralShadowSources: THREE.Mesh[] = [];
   const createTankMarkingsStage2 = (): void => {
     for (const d of decals) {
       const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
@@ -10657,7 +10662,8 @@ function* createTankOwnedSteps(
       decalMeshes.push(mesh);
     }
 
-    installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, disposables);
+    proceduralShadowSources = installProceduralShadowProxies(
+      spec, hullG, turretG, gunG, recoilG, disposables);
   };
   const createTankMarkingsStage5 = (): void => {
     createTankMarkingsStage2();
@@ -12433,6 +12439,10 @@ function* createTankOwnedSteps(
     // every final color-pass mesh receives exactly one stable layer.
     installCoplanarDepthLayers(root);
     finalizeVehicleNightLighting(root);
+    // Retain each authored hull/turret/gun proxy and its articulation owner.
+    // Only battle builds combine their submissions; no silhouette, cascade
+    // cadence or Studio/Gallery selection geometry changes here.
+    if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
   };
   const createTankMarkingsStage6 = (): void => {
     createTankMarkingsStage3();

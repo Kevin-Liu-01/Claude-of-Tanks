@@ -13,6 +13,7 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
+  'tools/articulated-shadow-batch.browser.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file
