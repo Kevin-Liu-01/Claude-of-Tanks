@@ -78,7 +78,8 @@ not a current release queue. Do not repeat it without checking ancestry.
   published through `c1142f59b`. The thicker-track/structural-wheel pilot is
   separate and remains local: retained-axle source score 74.6; raised-axle
   alternative 90.7, both below the strict 92 release floor. No pass waiver.
-- Type 10 X's current follow-up reduces redundant folded-sheet tessellation
+- Type 10 X's release-qualified follow-up (`1146c8bf1`, assets `8d58a9032`)
+  reduces redundant folded-sheet tessellation
   and attaches its existing six rollers using shared spindle primitives.
   It is tracked separately in
   [the Type 10 cost/contact checkpoint](../research/type10-x-cost-contact-20260910.md).

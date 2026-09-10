@@ -1,8 +1,9 @@
 # Type 10 X — efficient closed skirts and mounted return rollers
 
-Status: **candidate; final release running, not yet published**.
+Status: **release PASS; wider-track redesign remains open**.
 Base: `85aa9224a`. Worktree: `/private/tmp/cot-japan-running-gear.PUiEBf`.
-Source checkpoint: `a57476e9a` (saved locally; not a completed release).
+Original source checkpoint: `a57476e9a`; rebased source: `1146c8bf1`.
+Rebased selected assets: `8d58a9032`; integration base: `2e2fa5999`.
 
 ## Actual change
 
@@ -47,10 +48,11 @@ unchanged. Track gauge and the broader running-gear budget remain open.
 - Early strict source-shape preflight: 93.6/92. Final composed validation is
   recorded in `.qa-dev/type10-release-NwGauA/receipt.json`; do not equate the
   early shape result with full release completion.
-- The continuing official release also passed source fidelity (95.3),
+- The complete official release also passed source fidelity (95.3),
   centering, calibrated module alignment and module hits (nine modules,
-  two track sides, no failures or outside-envelope results). Full lifecycle
-  tests and builds must still finish before publication.
+  two track sides, no failures or outside-envelope results). All **955**
+  lifecycle checks passed uninterrupted: 302 pre, 614 core and 39 post,
+  followed by the private build and the separate public build.
 - Fresh initial standard native views are byte-identical to the previously
   published Type 10 paint checkpoint's four views. The new run's final views
   are separately captured under the release directory. Source GLB SHA-256:
@@ -70,8 +72,24 @@ unchanged. Track gauge and the broader running-gear budget remain open.
 Earlier local diagnostic failures remain saved: one inferred literal-array
 type needed an explicit `number[]` annotation; an uncommitted release driver
 initially named a nonexistent `wheelPatterns.selftest.mjs`. Corrected final
-execution must complete uninterrupted; failed prefixes are not combined into
-an npm pass.
+execution completed uninterrupted; failed prefixes are not combined into
+an npm pass. The first post-rebase diagnostic driver misspelled two test
+filenames; its failed result remains separate from the complete corrected run.
+
+## Integration verification
+
+The 15 upstream commits through `2e2fa5999` changed no vehicle source or assets.
+After rebase, all seven frozen Type 10 source/test SHA-256 values still match
+the complete release receipt. Eleven focused checks cover the changed frame
+scheduler, bridge, world scheduling, terrain fields, action timing, frame trace
+and test/release scheduling. All eleven passed, followed by fresh typecheck,
+selected Type 10 asset validation, private build and public build.
+The complete original release is `.qa-dev/type10-release-NwGauA/receipt.json`;
+the integration receipt is `.qa-dev/type10-integration-OoT81Q/receipt.json`.
+The rebased tree has 956 registered tests; this record does not claim a second
+uninterrupted 956-test invocation. Native geometry, armor/ballistics checks,
+full anatomy and the original uninterrupted 955-test release remain tied to
+their unchanged frozen inputs.
 
 ## Release policy
 
