@@ -598,7 +598,11 @@ export function makeGrassCardTexture(
   for (let b = 0; b < nBlades; b++) {
     const dry = rng() < dryChance;
     const bx = 4 + rng() * (s - 8);
-    const bw = 3 + rng() * 4;
+    // Each metre-wide card holds a sward, not a cluster of broad spear leaves.
+    // Narrow the existing curved silhouettes to 45% of their former width;
+    // retain their roots, tips, colors and random stream. No additional cards,
+    // texture storage, shader work or construction-time painting operations.
+    const bw = 1.35 + rng() * 1.8;
     const tall = rng();
     const tipX = bx + (rng() - 0.5) * (variant === 0 ? 45 : 65);
     const tipY = s - (0.35 + 0.62 * tall) * s;
@@ -1495,7 +1499,9 @@ function buildPalmGeometry(
     organicizeTrunk(seg, i * 0.73 + leanA, 0, 0, 0.045);
     // ring-band illusion: alternating leaf-scar bands in warm brown
     _c.setHSL(0.072, 0.30, (i % 2 ? 0.34 : 0.43) + rng() * 0.03, THREE.SRGBColorSpace); // r2: bark-map compensation
-    seg.rotateZ(Math.atan2(x1 - x0, H / NSEG) * -1);
+    // Tilt by the full horizontal bend, then yaw it into the XZ direction.
+    // Using signed X here bent Z-facing segments toward the wrong joint.
+    seg.rotateZ(Math.atan2(Math.hypot(x1 - x0, z1 - z0), H / NSEG) * -1);
     seg.rotateY(-leanA);
     seg.translate((x0 + x1) / 2, (t0 + t1) * 0.5 * H, (z0 + z1) / 2);
     trunkParts.push(paintFlat(seg, _c.clone(), t1 * 0.2));
@@ -2047,7 +2053,7 @@ function buildPalmFarGeometry(
     const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0) * 1.04;
     const seg = new THREE.CylinderGeometry(
       (0.13 + (1 - t1) * 0.11) * rfMul, (0.15 + (1 - t0) * 0.11) * rfMul, segLen, 5, 1);
-    seg.rotateZ(-Math.atan2(x1 - x0, H / NSEG));
+    seg.rotateZ(-Math.atan2(Math.hypot(x1 - x0, z1 - z0), H / NSEG));
     seg.rotateY(-leanA);
     seg.translate((x0 + x1) / 2, (t0 + t1) * 0.5 * H, (z0 + z1) / 2);
     _c.setHSL(0.074, 0.28, 0.37 + (i % 2) * 0.05, THREE.SRGBColorSpace);

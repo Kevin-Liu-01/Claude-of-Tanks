@@ -36,10 +36,11 @@ function legacyRoundTrip(pixels) {
 }
 
 function inspectPixels(pixels, painted, old) {
-  let padded = 0, opaque = 0;
+  let padded = 0, opaque = 0, covered = 0;
   for (let i = 0; i < pixels.length; i += 4) {
     assert.equal(pixels[i + 3], painted[i + 3], 'blade coverage is unchanged');
     assert.equal(pixels[i + 3], old[i + 3], 'no alpha expansion or extra covered fragments');
+    if (pixels[i + 3] / 255 >= .44) covered++;
     if (pixels[i + 3] === 0) {
       padded++;
       assert.ok(pixels[i] + pixels[i + 1] + pixels[i + 2] > 0, 'transparent padding retains pigment');
@@ -51,7 +52,11 @@ function inspectPixels(pixels, painted, old) {
         'fully covered pigment is not brightened');
     }
   }
-  assert.ok(padded > 1000 && opaque > 1000, 'exercise both substantial empty space and real blades');
+  // Fine blades include antialiased edges: require substantial coverage at
+  // the real material cutoff, not a thick-blade-specific count of alpha=255.
+  // Fully opaque texels still exercise the exact pigment assertions above.
+  assert.ok(padded > 1000 && covered > 1000 && opaque > 0,
+    'exercise substantial empty space, visible blades and opaque pigment');
 }
 
 function inspectMipEdges(current, old) {
