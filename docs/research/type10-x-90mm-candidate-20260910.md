@@ -55,9 +55,26 @@ independent current-relief/canyon proofs. No tank or terrain runtime changed.
 The fixes were separately pushed as `88e48ff85` to `origin/main`, excluding
 this unreleased candidate. See `selftest-release-throughput-20260910.md`.
 
-A fresh complete official npm lifecycle and typecheck/private/public builds
-are running on frozen runtime/test commit `996df6b06` in
-`.qa-dev/durable-final-20260910/`. Their final outcomes are not yet claimed.
+The fresh official npm lifecycle on frozen runtime/test commit `996df6b06`
+**failed**: all 307 pre-tests passed (22m02.791s), then 92 of 93 completed
+core checks passed (4m35.088s). The one failure was generated garage terrain
+freshness after the upstream Redrock refinement. Post-tests did not run.
+All active full-fleet workers drained successfully; this remains a failed
+lifecycle, not a composed PASS. Typecheck/core-unused and both private/public
+builds completed successfully. Logs are in `.qa-dev/durable-final-20260910/`.
+
+The owning garage generator refreshed its stale excerpt and its freshness
+check passed. The first affected-consumer attempt then missed the unchanged
+100 ms headless build budget at 100.9 ms; the other consumer did not run.
+Retain that failed attempt in `garage-refresh.log` and retry the affected
+checks after integration, without widening the timing limit.
+
+The owner separately approved on 2026-09-10: **"Push after affected checks;
+finish full suite separately"**, in direct response to the stale garage
+failure and the proposed targeted release. This permits publishing this
+checkpoint after refreshed data and affected checks pass, while the full
+suite runs separately. It does not turn the failed lifecycle into a PASS,
+waive physical fit checks, or apply automatically to other candidates.
 
 Publication is limited to Kevin's explicit Type 10 fitting decision quoted
 below, together with his standing instruction to push completed checkpoints
@@ -65,7 +82,8 @@ to `origin/main`. The question named the frozen source-shape failure and the
 roughly 9 cm ground-envelope change; the answer selected the fitted running
 gear. Retain the raw geometric and silhouette failures caused by that chosen
 target. This exception does not extend to other tanks, physical intersections,
-missing coverage, failing integration tests, or unfinished release checks.
+missing physical coverage or failing affected checks. The separate targeted
+publication approval above governs the pending full-suite result only.
 
 ## Implemented
 
