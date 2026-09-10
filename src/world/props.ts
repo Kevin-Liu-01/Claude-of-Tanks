@@ -38,6 +38,10 @@ import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } fro
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import {
+  captureAutumnCropRow, autumnHeadlandSite, autumnHeadlandClearsRows,
+  type AutumnCropRow, type AutumnHeadlandSite,
+} from './autumnHeadlands.ts';
+import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
 import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
@@ -2304,6 +2308,100 @@ function addDestructibleRecord(
   return record;
 }
 
+function autumnHeadlandTerrainClear(field: FieldScatterContext, site: AutumnHeadlandSite,
+  radius: number): boolean {
+  if (!isFieldScatterPointClear(field, site.x, site.z)) return false;
+  const { village, heightField, spawns } = field;
+  if (Math.max(Math.abs(site.x), Math.abs(site.z)) + radius > 420) return false;
+  if (site.x > village.x0 - 8 - radius && site.x < village.x1 + 8 + radius
+      && site.z > village.z0 - 8 - radius && site.z < village.z1 + 8 + radius) return false;
+  if (heightField._roadDist(site.x, site.z) < 8 + radius) return false;
+  return !spawns.some(spawn => Math.hypot(site.x - spawn.x, site.z - spawn.z) < 18 + radius);
+}
+
+function autumnHeadlandFootprintDry(field: FieldScatterContext, site: AutumnHeadlandSite,
+  radius: number): boolean {
+  for (let sample = 0; sample < 8; sample++) {
+    const a = sample * Math.PI / 4;
+    const x = site.x + Math.cos(a) * radius, z = site.z + Math.sin(a) * radius;
+    if (field.noVegetation(x, z) || field.heightField.getGroundType(x, z) === 'soft') return false;
+  }
+  return true;
+}
+
+function autumnHeadlandClearsBlockers(blockers: readonly CollisionRecord[], record: DestructibleRecord,
+  site: AutumnHeadlandSite, radius: number): boolean {
+  return !blockers.some(ob => ob !== record.ob && site.x + radius > ob.min[0]
+    && site.x - radius < ob.max[0] && site.z + radius > ob.min[2] && site.z - radius < ob.max[2]);
+}
+
+function relocateAutumnHarvestRecord(context: DestructibleBuildContext, record: DestructibleRecord,
+  site: AutumnHeadlandSite, placement: GroundedDestructiblePlacement): void {
+  const pool = context.pools.get(record.kind);
+  const matrix = pool?.mats4[record.slot];
+  if (!pool || !matrix || pool.records[record.slot] !== record || pool.imI || pool.imB || record.state !== 0 || !record.ob
+      || record.col || record.body || record.loopRef || record.cls !== 'break') {
+    throw new Error('Autumn headland relocation requires an unfinalized harvest obstacle');
+  }
+  record.x = site.x; record.z = site.z; record.y = placement.y;
+  record.groundSupport = placement.support;
+  // Preserve the original yaw, scale and matrix object. Intact, broken and
+  // rematch reset all read this canonical slot after pool finalization.
+  matrix.setPosition(site.x, placement.y, site.z);
+  record.ob.min[1] = placement.y; record.ob.max[1] = placement.y + record.h;
+  const extents = getDestructibleContactExtents(pool.meta, record.sc, record.yaw, record.r);
+  applyDestructibleObstacleShape(record.ob, pool.meta, record, extents);
+}
+
+function autumnHarvestDonors(records: readonly DestructibleRecord[], first: number,
+  end: number): DestructibleRecord[] {
+  const donors: DestructibleRecord[] = [];
+  let bales = 0, stooks = 0;
+  for (let index = first; index < end; index++) {
+    const record = records[index];
+    if (record.kind !== 'bale' && record.kind !== 'stook') throw new Error('Invalid Autumn field donor range');
+    if (record.kind === 'bale' && bales++ < 12) donors.push(record);
+    if (record.kind === 'stook' && stooks++ < 12) donors.push(record);
+  }
+  return donors;
+}
+
+function autumnHarvestRadius(record: DestructibleRecord): number {
+  // Actual intact geometry envelopes, not the smaller ground-contact radius:
+  // horizontal bale cylinder (half-length .725, radius .72), or six leaned
+  // stook stems (center .22 + bottom radius .16 + .625*sin(.34)).
+  const envelope = record.kind === 'bale' ? Math.hypot(.725, .72) : .22 + .16 + .625 * Math.sin(.34);
+  return Math.max(record.r, envelope * record.sc) + .25;
+}
+
+function tryAutumnHeadlandMove(context: DestructibleBuildContext, field: FieldScatterContext,
+  rows: readonly AutumnCropRow[], buildings: readonly PlacedRadius[], record: DestructibleRecord,
+  station: number, trees: readonly CollisionRecord[]): boolean {
+  const radius = autumnHarvestRadius(record), site = autumnHeadlandSite(rows, station, radius);
+  if (!site || !autumnHeadlandClearsRows(rows, site, radius)) return false;
+  if (!autumnHeadlandTerrainClear(field, site, radius) || !autumnHeadlandFootprintDry(field, site, radius)) return false;
+  if (buildings.some(b => Math.hypot(site.x - b.x, site.z - b.z) < b.rr + radius)) return false;
+  if (!autumnHeadlandClearsBlockers(context.obstacles, record, site, radius)
+      || !autumnHeadlandClearsBlockers(context.colliders, record, site, radius)
+      || !autumnHeadlandClearsBlockers(trees, record, site, radius)) return false;
+  const meta = resolveDestructibleMeta(context, record.kind);
+  const placement = groundDestructiblePlacement(context.heightField, meta, site.x,
+    context.heightField.getHeightAt(site.x, site.z) - .03, site.z, record.yaw, record.sc, 0, 0);
+  if (!placement.support || placement.support.spread > .25) return false;
+  relocateAutumnHarvestRecord(context, record, site, placement);
+  return true;
+}
+
+function composeAutumnHeadlandDressing(context: DestructibleBuildContext, field: FieldScatterContext,
+  rows: readonly AutumnCropRow[], buildings: readonly PlacedRadius[], first: number, end: number,
+  trees: readonly CollisionRecord[]): void {
+  const donors = autumnHarvestDonors(context.records, first, end);
+  let donor = 0;
+  for (let station = 0; station < rows.length * 2 && donor < donors.length; station++) {
+    if (tryAutumnHeadlandMove(context, field, rows, buildings, donors[donor], station, trees)) donor++;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // createProps
 // ---------------------------------------------------------------------------
@@ -2682,6 +2780,9 @@ ${snowCap ? `
   // -------------------------------------------------------------------------
   const drng = mulberry32(seed + 9001); // own stream — never shifts placements
   const destructibles: DestructibleRecord[] = []; // records: {kind,cls,x,y,z,yaw,sc,r,h,slot,state,ob}
+  const autumnCropRows: AutumnCropRow[] | null = mapId === 'autumn' ? [] : null;
+  let autumnFieldContext: FieldScatterContext | null = null;
+  let autumnFieldStart = 0, autumnFieldEnd = 0;
   const looseRecords: LooseDestructibleRecord[] = []; // physics-class records; sleeping records cost no update work
   const activeLoose: LooseDestructibleRecord[] = []; // only awake records, bounded by the local interaction area
   const dPools = new Map<string, DestructiblePool>(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
@@ -3769,8 +3870,13 @@ ${snowCap ? `
       const baleCount = inh.bales ?? 0;
       const stookCount = inh.stooks ?? 0;
       const sledCount = inh.sleds ?? 0;
+      if (autumnCropRows) {
+        autumnFieldContext = fieldContext;
+        autumnFieldStart = destructibles.length;
+      }
       if (baleCount > 0) scatterFieldProps(fieldContext, 'bale', baleCount);
       if (stookCount > 0) scatterFieldProps(fieldContext, 'stook', stookCount);
+      if (autumnCropRows) autumnFieldEnd = destructibles.length;
       if (sledCount > 0) scatterFieldProps(fieldContext, 'sled', sledCount);
     };
     // industrial dressing: oil drums + pallet spots along streets/aprons
@@ -4782,7 +4888,11 @@ ${snowCap ? `
       const offset = (row - (nRows - 1) / 2) * rowPitch;
       const rx = cx + px2 * offset, rz = cz + pz2 * offset;
       const half = pw * (0.44 + crng() * 0.08);
+      const before = cropGeos.length;
       appendCropRowGeometry(cropGeos, crng, rx, rz, half, rowH, tintL, dx, dz);
+      if (autumnCropRows && cropGeos.length > before) {
+        captureAutumnCropRow(autumnCropRows, cropGeos[before], cx, cz, dx, dz, row);
+      }
     }
   }
 
@@ -5971,6 +6081,12 @@ ${snowCap ? `
     wharfFishery = null;
   }
   composeAuthoredFisheryWharf();
+  if (autumnCropRows && autumnFieldContext) {
+    composeAutumnHeadlandDressing(destructibleContext, autumnFieldContext,
+      autumnCropRows, placedB, autumnFieldStart, autumnFieldEnd, vegetation?.treeObstacles ?? []);
+    autumnCropRows.length = 0;
+    autumnFieldContext = null;
+  }
   vegetation = null;
 
   // Delta uses two resident procedural plaster families. Fold the incidental

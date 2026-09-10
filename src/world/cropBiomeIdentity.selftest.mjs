@@ -10,6 +10,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import ts from 'typescript-compiler-api';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { cropRowSegmentIsSupported } from './propPlacement.ts';
+import { captureAutumnCropRow } from './autumnHeadlands.ts';
 
 // Real Canvas2D + current coverage mips and row construction. This is not a
 // browser appearance, raster-overdraw, construction-time or FPS acceptance.
@@ -221,8 +222,10 @@ const rowNames = ['cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCrop
 const rowSource = rowNames.map(name => declaration(source, name)).join('\n');
 const rowFixture = await loadFixture(`${painterSource}\n${rowSource}\nplaceCropFields(); return group;`,
   ['THREE', 'document', '_col', 'aniso', 'seed', 'group', 'L', 'v', 'P', 'heightField', 'noVeg', 'mulberry32',
-    'cropRowSegmentIsSupported', 'mergeGeometries', 'engineCtx']);
-function buildPlots(form, seed) {
+    'cropRowSegmentIsSupported', 'mergeGeometries', 'engineCtx', 'autumnCropRows', 'captureAutumnCropRow']);
+function buildPlots(mapId, seed) {
+  const form = getMapConfig(mapId).props.cropForm;
+  const autumnCropRows = mapId === 'autumn' ? [] : null;
   const group = new THREE.Group(), L = { village: { x0: 800, x1: 900, z0: 800, z1: 900 },
     spawns: { player: { x: 900, z: 900 }, enemies: [] } };
   const field = { getHeightAt: (x, z) => x * .002 - z * .003, getNormalAt: () => ({ y: 1 }),
@@ -230,17 +233,19 @@ function buildPlots(form, seed) {
   const api = rowFixture({
     THREE, document: documentPort, _col: new THREE.Color(), aniso: 4, seed, group, L, v: L.village,
     P: { cropFields: 2, cropForm: form }, heightField: field, noVeg: field._noVeg, mulberry32,
+    autumnCropRows, captureAutumnCropRow,
     cropRowSegmentIsSupported, mergeGeometries, engineCtx: { setupShadowMaterial(material) { buildMips(material.map, .42); } },
   });
   assert.equal(api, group); assert.equal(group.children.length, 1);
+  if (autumnCropRows) assert.ok(autumnCropRows.length > 0, 'Autumn executes the real emitted-row observer');
   return group.children[0];
 }
 function checkRows() {
   for (const seed of [2001, 1337]) {
-    const old = buildPlots(undefined, seed);
+    const old = buildPlots('verdant', seed);
     try {
-      for (const form of ['harvest', 'wet-upright']) {
-        const actual = buildPlots(form, seed);
+      for (const mapId of ['autumn', 'delta']) {
+        const actual = buildPlots(mapId, seed);
         try {
           for (const [key, attr] of Object.entries(old.geometry.attributes)) {
             assert.deepEqual(actual.geometry.attributes[key].array, attr.array, `actual placed ${key} bytes unchanged`);
