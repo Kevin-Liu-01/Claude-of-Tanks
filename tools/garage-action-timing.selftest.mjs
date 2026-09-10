@@ -5,6 +5,7 @@ const names = ['window', 'document', 'performance', 'PerformanceObserver',
   'requestAnimationFrame', 'cancelAnimationFrame', 'getComputedStyle', 'Element'];
 const saved = new Map(names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
 let now = 0, nextFrame = 0, observer;
+const observers = [];
 const frames = new Map(), listeners = new Map();
 const elements = new Map();
 const stage = { textContent: 'Building world' };
@@ -12,12 +13,13 @@ const loader = { getClientRects: () => [{}], querySelector: () => stage };
 class Target { closest(selector) { return selector === '.battle' ? this : null; } }
 class TaskObserver {
   static supportedEntryTypes = ['longtask'];
+  static failType = null;
   pending = [];
   disconnected = false;
-  constructor(callback) { this.callback = callback; observer = this; }
-  observe(options) { this.options = options; }
-  takeRecords() { return this.pending.splice(0); }
-  disconnect() { this.disconnected = true; }
+  constructor(callback) { this.callback = callback; observer = this; observers.push(this); }
+  observe(options) { this.options = options; if (options.type === TaskObserver.failType) throw new Error('observe denied'); }
+  takeRecords() { if (this.failDrain) throw new Error('drain failed'); return this.pending.splice(0); }
+  disconnect() { this.disconnected = true; if (this.failDisconnect) throw new Error('disconnect failed'); }
 }
 const game = { phase: 'garage', battleCount: 0, preBattleS: 0, mapId: 'urban', tanks: [] };
 const browserWindow = { __DEBUG: { game, selectedSpecId: 'm1a1',
@@ -189,6 +191,126 @@ try {
   assert.equal(observer.disconnected, true);
   assert.equal(frames.size, 0);
   assert.ok([...listeners.values()].every(set => set.size === 0));
+
+  const script = overrides => ({ sourceURL: 'http://fixture/assets/main.js', sourceFunctionName: 'buildWorld',
+    sourceCharPosition: 42, invoker: 'Window.requestAnimationFrame', invokerType: 'user-callback',
+    windowAttribution: 'self', startTime: 150, duration: 80, executionStart: 151,
+    forcedStyleAndLayoutDuration: 0, pauseDuration: 0,
+    get window() { throw new Error('Window references must never be accessed'); }, ...overrides });
+  const animation = (startTime, duration, scripts = []) => ({ startTime, duration, scripts,
+    renderStart: 0, styleAndLayoutStart: 0, blockingDuration: 0, firstUIEventTimestamp: 0 });
+  const beginAnimation = (types = ['longtask', 'long-animation-frame'], trusted = true) => {
+    TaskObserver.supportedEntryTypes = types;
+    observers.length = 0;
+    browserWindow.location = { origin: 'http://fixture' };
+    game.phase = 'garage'; game.battleCount = 0; elements.clear();
+    installGarageActionTiming();
+    const api = browserWindow.__ACTION_TRACE;
+    api.arm('battle', '.battle'); now = 100;
+    dispatch('click', { target: new Target(), isTrusted: trusted });
+    tick(110);
+    return { api, loaf: observers.find(value => value.options?.type === 'long-animation-frame'),
+      tasks: observers.find(value => value.options?.type === 'longtask') };
+  };
+  const stopped = fixture => {
+    fixture.api.stop(); fixture.api.stop();
+    assert.ok(observers.every(value => value.disconnected));
+    assert.equal(frames.size, 0);
+    assert.ok([...listeners.values()].every(set => set.size === 0));
+  };
+  const observed = beginAnimation();
+  assert.deepEqual(observed.loaf.options, { type: 'long-animation-frame', buffered: true });
+  game.phase = 'battle'; game.battleCount = 1; tick(300);
+  observed.loaf.pending.push(animation(40, 60), animation(80, 80), animation(150, 115, [script(),
+    script({ sourceURL: 'https://foreign.invalid/private.js' }), script({ sourceURL: '', sourceCharPosition: -1,
+      executionStart: Infinity, pauseDuration: NaN, invoker: 'x'.repeat(900) })]),
+    animation(280, 80), animation(300, 80));
+  const animationRow = observed.api.finish();
+  assert.equal(animationRow.longAnimationFrameSupported, true);
+  assert.equal(animationRow.longAnimationFrames.length, 3, 'drain retains only strict click/completion overlap, including straddles');
+  const entry = animationRow.longAnimationFrames[1];
+  assert.deepEqual([entry.startTime, entry.duration, entry.renderStart, entry.styleAndLayoutStart,
+    entry.blockingDuration, entry.firstUIEventTimestamp], [150, 115, 0, 0, 0, 0], 'raw finite zeros remain meaningful');
+  assert.equal(entry.scriptsFiltered, 1, 'foreign script metadata is excluded explicitly');
+  assert.equal(entry.scripts.length, 2);
+  assert.equal(entry.scripts[0].sourceCharPosition, 42);
+  assert.equal(entry.scripts[0].forcedStyleAndLayoutDuration, 0);
+  assert.equal(entry.scripts[1].sourceCharPosition, -1);
+  assert.equal(entry.scripts[1].executionStart, null);
+  assert.equal(entry.scripts[1].pauseDuration, null);
+  assert.equal(entry.scripts[1].invoker.length, 512);
+  assert.ok(!Object.hasOwn(entry.scripts[0], 'window'));
+  assert.doesNotMatch(JSON.stringify(animationRow.longAnimationFrames), /foreign\.invalid/);
+  const animationSummary = summarizeGarageActionTiming(animationRow);
+  assert.equal(animationSummary.overlappingLongAnimationFrameCount, 3);
+  assert.equal(animationSummary.unattributedGapMs, 190, 'LoAF attribution never subtracts from the existing LongTask remainder');
+  assert.equal(animationSummary.overlappingLongTaskCount, 0);
+  assert.equal(animationSummary.longAnimationFrameEvidenceIncomplete, true, 'filtered script details stay explicit');
+  observed.loaf.pending.push(animation(180, 80));
+  observed.api.arm('battle-again', '.battle'); now = 500;
+  dispatch('click', { target: new Target(), isTrusted: true }); tick(510);
+  const rearmed = observed.api.finish();
+  assert.equal(animationRow.longAnimationFrames.length, 4, 'rearm drains the old owner before replacing it');
+  assert.deepEqual(rearmed.longAnimationFrames, []);
+  observed.loaf.callback({ getEntries: () => [animation(180, 80), animation(490, 80)] });
+  assert.equal(rearmed.longAnimationFrames.length, 1, 'late old entries are filtered; genuine new-window straddles survive');
+  observed.loaf.pending.push(animation(520, 80));
+  stopped(observed);
+  assert.equal(rearmed.longAnimationFrames.length, 2, 'stop drains pending evidence before disconnect');
+  observed.loaf.callback({ getEntries() { throw new Error('late callback must not run'); } });
+  assert.equal(rearmed.longAnimationFrameSupported, true);
+
+  const capped = beginAnimation(['long-animation-frame']);
+  const forty = Array.from({ length: 40 }, () => script());
+  capped.loaf.callback({ getEntries: () => Array.from({ length: 130 }, () => animation(150, 115, forty)) });
+  capped.loaf.pending.push(animation(NaN, 80), animation(150, Infinity));
+  const cappedRow = capped.api.finish();
+  assert.equal(cappedRow.longTaskSupported, false, 'LoAF availability is independent of LongTask support');
+  assert.equal(cappedRow.longAnimationFrames.length, 128);
+  assert.equal(cappedRow.longAnimationFramesDropped, 4);
+  assert.equal(cappedRow.longAnimationFramesInvalid, 2);
+  assert.ok(cappedRow.longAnimationFrames.every(value => value.scripts.length === 32 && value.scriptsDropped === 8));
+  assert.equal(summarizeGarageActionTiming(cappedRow).unattributedGapMs, null);
+  assert.equal(summarizeGarageActionTiming(cappedRow).longAnimationFrameEvidenceIncomplete, true);
+  stopped(capped);
+
+  const synthetic = beginAnimation(undefined, false);
+  synthetic.loaf.pending.push(animation(150, 100));
+  assert.deepEqual(synthetic.api.finish().longAnimationFrames, [], 'untrusted clicks never admit LoAF attribution');
+  assert.equal(summarizeGarageActionTiming(synthetic.api.finish()).overlappingLongAnimationFrameCount, null);
+  stopped(synthetic);
+  const unavailable = beginAnimation(['longtask']);
+  assert.equal(unavailable.api.finish().longAnimationFrameSupported, false);
+  assert.equal(unavailable.api.finish().longAnimationFrames, null, 'unsupported is not an observed empty window');
+  assert.equal(summarizeGarageActionTiming(unavailable.api.finish()).overlappingLongAnimationFrames, null);
+  stopped(unavailable);
+  TaskObserver.failType = 'long-animation-frame';
+  const denied = beginAnimation();
+  denied.tasks.pending.push(task(105, 80));
+  assert.equal(denied.api.finish().longTaskSupported, true);
+  assert.equal(denied.api.finish().longAnimationFrameSupported, false);
+  assert.equal(denied.api.finish().longAnimationFrames, null);
+  assert.equal(denied.api.finish().longTasks.length, 1);
+  assert.equal(summarizeGarageActionTiming(denied.api.finish()).overlappingLongTaskMs, 5);
+  assert.match(denied.api.finish().longAnimationFrameObservationError, /observe denied/);
+  assert.equal(denied.loaf.disconnected, true);
+  stopped(denied); TaskObserver.failType = null;
+  for (const failure of ['callback', 'drain', 'disconnect']) {
+    const broken = beginAnimation();
+    broken.tasks.pending.push(task(105, 80));
+    if (failure === 'callback') broken.loaf.callback({ getEntries() { throw new Error('callback failed'); } });
+    else if (failure === 'drain') broken.loaf.failDrain = true;
+    else broken.loaf.failDisconnect = true;
+    const brokenRow = broken.api.finish();
+    stopped(broken);
+    assert.equal(brokenRow.longAnimationFrameSupported, false);
+    assert.equal(brokenRow.longAnimationFrames, null, 'failed empty observation is unavailable, not evidence of absence');
+    assert.match(brokenRow.longAnimationFrameObservationError, /failed/);
+    assert.equal(brokenRow.longTaskSupported, true, 'observer failures cannot disable the original LongTask evidence');
+    assert.equal(brokenRow.longTasks.length, 1);
+    assert.equal(summarizeGarageActionTiming(brokenRow).overlappingLongTaskMs, 5);
+    assert.equal(summarizeGarageActionTiming(brokenRow).unattributedGapMs, 5);
+  }
 } finally {
   browserWindow.__ACTION_TRACE?.stop();
   for (const name of names) {
@@ -243,4 +365,4 @@ assert.deepEqual(failedStart.events, ['Profiler.enable', 'Profiler.start', 'Prof
 const failedWrite = profileFixture({ failWrite: true });
 await assert.rejects(failedWrite.run(), /write failed/);
 assert.equal(failedWrite.events.at(-1), 'Profiler.disable');
-console.log('garage-action-timing.selftest: bounded intervals, long-task overlap, visibility, diagnostics and cleanup pass');
+console.log('garage-action-timing.selftest: bounded intervals, LongTask/LoAF attribution, visibility, diagnostics and cleanup pass');

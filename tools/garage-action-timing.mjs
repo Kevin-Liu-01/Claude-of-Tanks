@@ -5,6 +5,61 @@ export function installGarageActionTiming() {
   let taskObserver = null;
   let taskSupport = false;
   let taskObservationError = null;
+  let animationObserver = null, animationSupport = false, animationError = null, animationStopped = false;
+  const finite = value => Number.isFinite(value) ? value : null;
+  const text = value => typeof value === 'string' ? value.slice(0, 512) : null;
+  const failAnimation = error => {
+    animationSupport = false;
+    animationError = String(error).slice(0, 512);
+    if (row) {
+      row.longAnimationFrameSupported = false;
+      row.longAnimationFrameObservationError = animationError;
+      if (!row.longAnimationFrames?.length) row.longAnimationFrames = null;
+    }
+    try { animationObserver?.disconnect(); } catch { /* Preserve the first diagnostic failure. */ }
+  };
+  const copyAnimationScript = script => {
+    // Empty source locations are explicitly unattributed, not foreign URLs.
+    if (script.sourceURL) {
+      try {
+        if (script.sourceURL.length > 2048
+          || new URL(script.sourceURL).origin !== window.location.origin) return null;
+      } catch { return null; }
+    }
+    return { sourceURL: text(script.sourceURL), sourceFunctionName: text(script.sourceFunctionName),
+      sourceCharPosition: finite(script.sourceCharPosition), invoker: text(script.invoker),
+      invokerType: text(script.invokerType), windowAttribution: text(script.windowAttribution),
+      startTime: finite(script.startTime), duration: finite(script.duration),
+      executionStart: finite(script.executionStart),
+      forcedStyleAndLayoutDuration: finite(script.forcedStyleAndLayoutDuration),
+      pauseDuration: finite(script.pauseDuration) };
+  };
+  const collectAnimations = entries => {
+    if (animationStopped || !animationSupport || !row?.trusted || row.clickedAt == null) return;
+    const end = row.totalMs == null ? Infinity : row.clickedAt + row.totalMs;
+    for (const entry of entries) {
+      const startTime = finite(entry.startTime), duration = finite(entry.duration);
+      if (startTime == null || duration == null || duration < 0 || !Number.isFinite(startTime + duration)) {
+        row.longAnimationFramesDropped++; row.longAnimationFramesInvalid++; continue;
+      }
+      if (startTime + duration <= row.clickedAt || startTime >= end) continue;
+      if (row.longAnimationFrames.length >= 128) { row.longAnimationFramesDropped++; continue; }
+      const scripts = [], inputs = entry.scripts ?? [];
+      let scriptsFiltered = 0;
+      for (let index = 0; index < Math.min(inputs.length, 32); index++) {
+        const script = copyAnimationScript(inputs[index]);
+        if (script) scripts.push(script); else scriptsFiltered++;
+      }
+      row.longAnimationFrames.push({ startTime, duration,
+        renderStart: finite(entry.renderStart), styleAndLayoutStart: finite(entry.styleAndLayoutStart),
+        blockingDuration: finite(entry.blockingDuration), firstUIEventTimestamp: finite(entry.firstUIEventTimestamp),
+        scripts, scriptsDropped: Math.max(0, inputs.length - 32), scriptsFiltered });
+    }
+  };
+  const drainAnimations = () => {
+    try { collectAnimations(animationObserver?.takeRecords() || []); }
+    catch (error) { failAnimation(error); }
+  };
   const audioContextIds = new WeakMap();
   let audioContextSerial = 0, previousAudio = null;
   const audioReceipt = () => ({ samples: [], samplesDropped: 0, unavailableSamples: 0,
@@ -88,6 +143,22 @@ export function installGarageActionTiming() {
       taskObserver.observe({ type: 'longtask', buffered: true });
     }
   } catch (error) { taskSupport = false; taskObservationError = String(error); }
+  // Independent observer: LoAF support/failure never changes the LongTask gate.
+  // renderStart includes rAF/style/layout work; it is NOT a GPU timestamp.
+  try {
+    animationSupport = typeof PerformanceObserver !== 'undefined'
+      && PerformanceObserver.supportedEntryTypes.includes('long-animation-frame');
+    if (animationSupport) {
+      animationObserver = new PerformanceObserver(list => {
+        if (animationStopped) return;
+        try { collectAnimations(list.getEntries()); } catch (error) { failAnimation(error); }
+      });
+      animationObserver.observe({ type: 'long-animation-frame', buffered: true });
+    }
+  } catch (error) {
+    failAnimation(error);
+    try { animationObserver?.disconnect(); } catch { /* Retain the original observer failure. */ }
+  }
 
   const sampleGap = (now, nextContext) => {
     // Preserve the original end-of-sample→next-callback diagnostic. The new
@@ -164,6 +235,7 @@ export function installGarageActionTiming() {
   };
   const finish = () => {
     collectTasks(taskObserver?.takeRecords() || []);
+    drainAnimations();
     if (!row) return null;
     row.diagnosticsCapturedAtMs = performance.now();
     if (window.__SOURCE_READINESS) row.sourceReadiness = window.__SOURCE_READINESS.finish();
@@ -186,6 +258,7 @@ export function installGarageActionTiming() {
   raf = requestAnimationFrame(tick);
   window.__ACTION_TRACE = {
     arm(action, target) {
+      drainAnimations(); // Pending old-window records must not follow a rearm.
       selector = target;
       window.__SOURCE_READINESS?.arm(action);
       previousAudio = null;
@@ -193,6 +266,9 @@ export function installGarageActionTiming() {
         audio: audioReceipt(),
         callbackSamples: 0, worstCallbackGap: null, frameGaps: [], frameGapsDropped: 0,
         longTaskSupported: taskSupport, longTaskObservationError: taskObservationError,
+        longAnimationFrameSupported: animationSupport, longAnimationFrameObservationError: animationError,
+        longAnimationFrames: animationSupport ? [] : null,
+        longAnimationFramesDropped: 0, longAnimationFramesInvalid: 0,
         longTasks: [], longTasksDropped: 0, visibilityEvents: [], visibilityEventsDropped: 0 };
     },
     done: () => row?.totalMs != null,
@@ -201,6 +277,11 @@ export function installGarageActionTiming() {
       cancelAnimationFrame(raf);
       window.__SOURCE_READINESS?.stop();
       taskObserver?.disconnect();
+      if (!animationStopped) {
+        drainAnimations();
+        animationStopped = true;
+        try { animationObserver?.disconnect(); } catch (error) { failAnimation(error); }
+      }
       previousAudio = null;
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('visibilitychange', onVisibility);
@@ -224,12 +305,20 @@ export function summarizeGarageActionTiming(row) {
   if (!gap) return { available: false };
   const tasks = row.longTasks.filter(task => task.startMs < gap.endMs && task.endMs > gap.startMs);
   const overlap = row.longTaskSupported ? taskOverlapMs(gap, tasks) : null;
+  const animations = row.longAnimationFrameSupported && row.trusted
+    ? row.longAnimationFrames.filter(frame => frame.startTime < gap.endMs
+      && frame.startTime + frame.duration > gap.startMs) : null;
   return { available: true, interval: 'callback-start-to-callback-start',
     worstGapStartMs: gap.startMs, worstGapEndMs: gap.endMs, worstGapMs: gap.durationMs,
     overlappingLongTaskCount: row.longTaskSupported ? tasks.length : null,
     overlappingLongTaskMs: overlap,
     unattributedGapMs: overlap == null ? null : Math.max(0, gap.durationMs - overlap),
     longTaskEvidenceIncomplete: !row.longTaskSupported || row.longTasksDropped > 0,
+    overlappingLongAnimationFrameCount: animations?.length ?? null,
+    overlappingLongAnimationFrames: animations,
+    longAnimationFrameEvidenceIncomplete: !animations || row.longAnimationFramesDropped > 0
+      || animations.some(frame => frame.scriptsDropped > 0 || frame.scriptsFiltered > 0),
+    longAnimationFrameCaveat: 'LoAF intervals may combine multiple short tasks and rendering work. Script locations identify entry points, not sampled hot functions; missing attribution is not idle. Rendering timing is not GPU duration or presentation acknowledgement.',
     hiddenAtEitherEndpoint: !!(gap.before?.hidden || gap.after?.hidden),
     visibilityEventsWithinGap: row.visibilityEvents.filter(event => event.atMs >= gap.startMs && event.atMs <= gap.endMs),
     caveat: 'Long-task overlap is main-thread scheduling evidence, not a JS function or GPU-duration attribution. Unattributed time does not identify OS/GPU/visibility as its cause.' };

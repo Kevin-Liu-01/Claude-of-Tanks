@@ -199,3 +199,27 @@ one four-item fixture `.filter().map()` warning in `propsScheduling.selftest.mjs
 The same trusted-source/cancellation rationale applies; none are production
 runtime findings or suppressed. An intervening invocation using a caret ref
 was rejected by CLI validation and was not a completed scan.
+
+## Next attribution boundary
+
+The maintained action probe now collects bounded, feature-detected Long
+Animation Frame entries independently of Long Tasks. A frame can contain
+several shorter tasks, so the absence of a ≥50 ms Long Task does not establish
+that the main thread was idle. Script entry points and render/style timestamps
+can narrow that distinction, but do not measure GPU duration or establish
+which nested function dominated. See the [Chrome API explanation](https://developer.chrome.com/docs/web-platform/long-animation-frames)
+and [renderStart semantics](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceLongAnimationFrameTiming/renderStart).
+
+This is QA-only observation, not a production render-loop change. Each actual
+trusted action retains at most 128 entries and 32 script records per entry,
+with bounded strings, no Window references and explicit filtered/dropped counts.
+Unsupported or failed observation remains unavailable, never an empty success.
+The previous Long Task summary, timing windows and acceptance gates are
+unchanged. The local r1/r2 receipts above predate this added observer; a new
+capture is required before making claims from it.
+
+The focused timing selftest passes with caps, trusted-window filtering,
+strict endpoint overlap, same-origin source metadata, finite zero timestamps,
+observer failure/unsupported handling, pending-record drains, rearm and
+idempotent cleanup. Failure in this observer does not change Long Task
+support, retained entries or overlap calculations.
