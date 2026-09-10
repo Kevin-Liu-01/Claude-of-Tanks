@@ -191,3 +191,42 @@ Ready times include countdown/readiness; these are not steady-state FPS.
 Random bot compositions differ from prior live runs, so lower transition
 totals are not an isolated loading-speed estimate. The cold audio startup and
 strict gameplay timing limits remain separate outstanding issues.
+
+## Published and verified
+
+Commit `01d62ab36c34969af83b8dc1a14430392f8c6c37` was pushed without force
+to `origin/main`, verified with `git ls-remote`. Vercel deployment
+`FN5zDLvhpa124VKCgDTmFUnTWn4Z` succeeded; the public website served
+`v1.0.0+g01d62ab36` before the live probe.
+
+`frame-warm-production-actions-r1/report.json`, SHA256
+`5d081445591bf945b8010b9417d0d9aa91a6d386408f91cc1e7196d6dd70537d`,
+passes the same actual-control/audio/gesture/warm/source-readiness gates on
+`https://cot.kevinliu.studio`. Public HTML hash:
+`26a6ddd8219c7fb286e13b21a6755b41b99c89507921e9bca091a8380791539c`.
+Chrome151; failure, error and cleanup arrays are empty. The day battle,
+night rematch and returned Garage screenshots were visually inspected.
+
+| Live action | Click → cover | Click → ready | Maximum callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 2.6 ms | 8,577.5 ms | 175.7 ms |
+| Battle Again | 132.2 ms | 5,681.9 ms | 65.9 ms |
+| Return to Garage | 91.0 ms | 334.0 ms | 47.1 ms |
+
+In the separate complete local caster-stage observation, both Battle and
+Rematch select 70 casters rather than the old 48, including all 22 named
+layer29 map-wreck proxies. Each observed proxy submits once; the caster stage
+contains 57 distinct shadow submissions and zero forward submissions, versus
+1,452 total entries across the older repeated cohorts. Submitted entries are
+not serialized cohort membership, and the old identity capture was capped.
+All four final cascades remain, while intentional geometry-upload forward
+work is unchanged. The final-cascade identity capture is still capped, so
+its full phase classification is not inferred from that receipt. These
+observations verify the mechanism, not a causal timing estimate.
+
+The strict gameplay FAIL remains open. The candidate's 117 three-callback
+slow cohorts reject the second source callback with a 1.500–1.667 ms deadline
+deficit, just beyond the unchanged 1.5 ms allowance. A fitted model accounts
+for these outcomes, but actual scheduler-entry wall time was not recorded.
+Measuring that directly is the next diagnostic; changing a tolerance merely
+to pass is not a fix. Historical untraced 214–319 ms stalls remain unproven.
