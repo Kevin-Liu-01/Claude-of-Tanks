@@ -121,6 +121,7 @@ export function installGarageActionTiming() {
     sampleGap(now, nextContext);
     lastContext = nextContext;
     const uncovered = !transition && !battleLoad;
+    window.__SOURCE_READINESS?.observe(now, uncovered);
     const ready = row.action === 'return-to-garage'
       ? d.game.phase === 'garage' && painted(document.querySelector('.cot-garage'))
         && d.pedestalOnStage && d.pedestalVisual?.specId === row.before.selectedSpecId
@@ -165,6 +166,7 @@ export function installGarageActionTiming() {
     collectTasks(taskObserver?.takeRecords() || []);
     if (!row) return null;
     row.diagnosticsCapturedAtMs = performance.now();
+    if (window.__SOURCE_READINESS) row.sourceReadiness = window.__SOURCE_READINESS.finish();
     row.loadingTraces = {};
     for (const name of ['__BATTLE_LOAD', '__BATTLE_COUNTDOWN_WARM', '__COMBAT_OPENING_WARM',
       '__BATTLE_DEFERRED_WARM', '__COMBAT_RARE_WARM', '__COMBAT_WARM',
@@ -185,6 +187,7 @@ export function installGarageActionTiming() {
   window.__ACTION_TRACE = {
     arm(action, target) {
       selector = target;
+      window.__SOURCE_READINESS?.arm(action);
       previousAudio = null;
       row = { action, clickedAt: null, trusted: false, coverMs: null, totalMs: null, maxFrameGapMs: 0,
         audio: audioReceipt(),
@@ -196,6 +199,7 @@ export function installGarageActionTiming() {
     finish,
     stop() {
       cancelAnimationFrame(raf);
+      window.__SOURCE_READINESS?.stop();
       taskObserver?.disconnect();
       previousAudio = null;
       document.removeEventListener('click', onClick, true);

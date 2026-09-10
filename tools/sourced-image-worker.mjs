@@ -3,7 +3,7 @@ import { stripTypeScriptTypes } from 'node:module';
 export const SOURCE_WORKER_PROTOCOL = 'urban-sourced-image-worker-composition-v1';
 
 /** Exact production bodies, with only TS/export syntax removed. */
-export function extractWorkerComposer(source) {
+function extractComposerBodies(source) {
   const slice = (start, end) => {
     if (source.split(start).length !== 2) throw new Error(`Ambiguous composer owner: ${start}`);
     const begin = source.indexOf(start), finish = source.indexOf(end, begin + start.length);
@@ -16,10 +16,20 @@ export function extractWorkerComposer(source) {
     slice('export function composeAlbedo(', '/** Pack AO'),
     slice('export function composeSurface(', '// Pigment variants'),
   ].join('\n').replace(/^export /gm, '');
+  return stripTypeScriptTypes(bodies);
+}
+
+/** Independent pinned legacy main-thread Canvas implementation. */
+export function extractMainComposer(source) {
+  return 'let _readbackCanvas = null, _readbackCtx = null, _readbackSize = 0;\n'
+    + extractComposerBodies(source) + '\nreturn { composeAlbedo, composeSurface };';
+}
+
+export function extractWorkerComposer(source) {
   const marker = '/*__PRODUCTION_COMPOSERS__*/';
   const runtime = workerRuntime.toString();
   if (runtime.split(marker).length !== 2) throw new Error('Worker composer injection marker changed');
-  return `(${runtime.replace(marker, stripTypeScriptTypes(bodies))})(${JSON.stringify(SOURCE_WORKER_PROTOCOL)});\n`;
+  return `(${runtime.replace(marker, extractComposerBodies(source))})(${JSON.stringify(SOURCE_WORKER_PROTOCOL)});\n`;
 }
 
 // Serialized into its own one-shot worker realm. No Canvas work runs at startup.

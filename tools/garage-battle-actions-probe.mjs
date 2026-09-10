@@ -14,6 +14,8 @@
 // and the existing audio-clock gate. Native options/output are never modified.
 // Optional --warm-readiness-gate requires the first Battle and Rematch countdown
 // warm owners to finish without an error before rollout. It does not change work.
+// Optional --source-readiness-gate requires the existing source settlement to
+// be fully applied at first uncovered battle and finish; it never delays reveal.
 // Reports click→first painted opaque cover and click→ready, not steady-state FPS.
 // Roster receipts are retained; random bot composition must not be mistaken for
 // a matched-roster throughput benchmark. Queue this outside other native jobs.
@@ -28,6 +30,7 @@ import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActio
 import { waitForGarageAction } from './garage-action-failure.mjs';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
   checkGarageAudioIntent } from './garage-audio-intent.mjs';
+import { installSourcedTextureReadiness, checkSourcedTextureReadiness } from './sourced-texture-readiness.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2)
   .find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -44,6 +47,7 @@ const profileActions = process.argv.includes('--profile-actions')
 const audioClockGate = process.argv.includes('--audio-clock-gate');
 const garageGestureAudioGate = process.argv.includes('--garage-gesture-audio-gate');
 const warmReadinessGate = process.argv.includes('--warm-readiness-gate');
+const sourceReadinessGate = process.argv.includes('--source-readiness-gate');
 if (![cpuRate, coverLimitMs, timeoutMs].every(value => Number.isFinite(value) && value > 0)
   || cpuRate < 1 || timeoutMs < 1000) throw new Error('Invalid timing/CPU option');
 url.searchParams.set('debug', '1');
@@ -57,12 +61,15 @@ const retryCatalogs = await Promise.all(['en-US', 'zh-CN'].map(locale =>
   readFile(new URL(`../src/ui/i18nCatalog.${locale}.json`, import.meta.url), 'utf8')));
 const retryTitles = retryCatalogs.map(catalog => JSON.parse(catalog)['boot.retry']);
 const report = { schemaVersion: 2,
-  passScope: warmReadinessGate ? 'real-control-functional-and-warm-readiness' : 'real-control-functional-only',
+  passScope: warmReadinessGate && sourceReadinessGate ? 'real-control-functional-and-warm-and-source-readiness'
+    : warmReadinessGate ? 'real-control-functional-and-warm-readiness'
+      : sourceReadinessGate ? 'real-control-functional-and-source-readiness' : 'real-control-functional-only',
   measurementMode: profileActions ? 'cpu-profile-attribution-only' : 'unprofiled-functional',
   profileActions, profiles: [],
   audioClockGate,
   ...(garageGestureAudioGate ? { garageGestureAudioGate: true } : {}),
   ...(warmReadinessGate ? { warmReadinessGate: true } : {}),
+  ...(sourceReadinessGate ? { sourceReadinessGate: true } : {}),
   url: url.href, specId, mapId, cpuRate, coverLimitMs,
   timeoutMs, viewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
   acquisitionHash: hash((await Promise.all([
@@ -72,6 +79,7 @@ const report = { schemaVersion: 2,
     readFile(new URL('./garage-action-timing.mjs', import.meta.url)),
     readFile(new URL('./garage-action-failure.mjs', import.meta.url)),
     ...(garageGestureAudioGate ? [readFile(new URL('./garage-audio-intent.mjs', import.meta.url))] : []),
+    ...(sourceReadinessGate ? [readFile(new URL('./sourced-texture-readiness.mjs', import.meta.url))] : []),
   ])).concat(retryCatalogs).join('\n')),
   startedAt: new Date().toISOString(), actions: [], errors: [], cleanupErrors: [], failures: [] };
 const lock = createCaptureLock();
@@ -192,6 +200,7 @@ try {
     Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
   });
   await page.evaluateOnNewDocument(installGarageActionTiming);
+  if (sourceReadinessGate) await page.evaluateOnNewDocument(installSourcedTextureReadiness);
   if (garageGestureAudioGate) await page.evaluateOnNewDocument(installGarageAudioIntent);
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   if (!navigation?.ok()) throw new Error(`Navigation failed: ${navigation?.status()}`);
@@ -261,9 +270,15 @@ try {
     report.warmReadiness = { gateRequested: true, pass: failures.length === 0, failures,
       caveat: 'Production countdown warm completion before rollout only; no physical display or GPU-duration proof.' };
   }
+  if (sourceReadinessGate) {
+    const failures = report.actions.flatMap(action => checkSourcedTextureReadiness(action));
+    report.sourceReadiness = { gateRequested: true, pass: failures.length === 0, failures,
+      caveat: 'Existing source settlement and application at reveal only; no worker-routing or GPU-duration proof.' };
+  }
   report.pass = report.functionalPass && (!(audioClockGate || garageGestureAudioGate) || report.audioClock.pass)
     && (!garageGestureAudioGate || report.garageGestureAudio.pass)
-    && (!warmReadinessGate || report.warmReadiness.pass);
+    && (!warmReadinessGate || report.warmReadiness.pass)
+    && (!sourceReadinessGate || report.sourceReadiness.pass);
   await writeFile(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
   console.log(JSON.stringify(report, null, 2));
   if (!report.pass) process.exitCode = interruptedBy === 'SIGINT' ? 130 : interruptedBy === 'SIGTERM' ? 143 : 1;

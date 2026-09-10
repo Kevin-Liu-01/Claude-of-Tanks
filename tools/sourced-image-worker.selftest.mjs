@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
+import { readLegacyComposerFixture } from './sourced-image-legacy-reference.mjs';
 import { SOURCE_WORKER_PROTOCOL, extractWorkerComposer, validateWorkerReply } from './sourced-image-worker.mjs';
 import { createBitmapOwner, runWorkerComposition, workerCompositionCases, validateWorkerTrial } from './sourced-image-worker-browser.mjs';
 import { urbanCompositionCases } from './sourced-image-composition.mjs';
 import { parseCompositionOptions } from './sourced-image-composition-probe.mjs';
 
-const source = await readFile(new URL('../src/world/sourcedTextures.ts', import.meta.url), 'utf8');
+const source = await readLegacyComposerFixture();
+const policySource = await readFile(new URL('../src/world/sourcedTextures.ts', import.meta.url), 'utf8');
 const workerSource = extractWorkerComposer(source);
 assert.equal(SOURCE_WORKER_PROTOCOL, 'urban-sourced-image-worker-composition-v1');
-const originalCases = await urbanCompositionCases(source), originalCaseSnapshot = JSON.stringify(originalCases);
+const originalCases = await urbanCompositionCases(policySource), originalCaseSnapshot = JSON.stringify(originalCases);
 const workerCases = workerCompositionCases(originalCases);
 assert.equal(originalCases.length, 6); assert.equal(workerCases.length, 9);
 assert.equal(JSON.stringify(originalCases), originalCaseSnapshot, 'Fixture generation never mutates the approved corpus');
