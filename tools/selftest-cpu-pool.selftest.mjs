@@ -7,11 +7,11 @@ import { runSelftestSuite, runSelftestFile, selftestWorkerCount } from './run-se
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 assert.equal(selftestWorkerCount({}), 1, 'parallel scheduling is initially opt-in');
-assert.equal(selftestWorkerCount({ COT_SELFTEST_WORKERS: '2' }), 2);
-for (const value of ['0', '3', '', 'NaN', 'Infinity', '2x']) {
-  assert.throws(() => selftestWorkerCount({ COT_SELFTEST_WORKERS: value }), /1 or 2/);
+for(const value of [1,2,3,4])assert.equal(selftestWorkerCount({ COT_SELFTEST_WORKERS: String(value) }), value);
+for (const value of ['0', '5', '2.5', '', 'NaN', 'Infinity', '2x']) {
+  assert.throws(() => selftestWorkerCount({ COT_SELFTEST_WORKERS: value }), /integer from 1 to 4/);
 }
-function fixture() {
+function fixture(concurrency=2) {
   const starts = [], pending = new Map(), active = new Set(), timings = [], errors = [];
   let held = false, clock = 0, acquisitions = 0, refreshes = 0;
   const lock = {
@@ -23,11 +23,11 @@ function fixture() {
     release() { assert.equal(held, true); assert.equal(active.size, 0, 'never release a live child'); held = false; },
     refresh() { assert.equal(held, true); refreshes++; },
   };
-  const options = { concurrency: 2, lock, ownedLeaseFiles: ['browser'], now: () => clock,
+  const options = { concurrency, lock, ownedLeaseFiles: ['browser'], now: () => clock,
     refreshMs: 5, log() {}, logError: error => errors.push(error), onTiming: row => timings.push(row),
     runFile(file) {
       assert.equal(held, file !== 'browser');
-      assert.ok(active.size < 2);
+      assert.ok(active.size < concurrency);
       if (file === 'browser') assert.equal(active.size, 0, 'browser runs alone');
       active.add(file); starts.push(file);
       return new Promise((resolve, reject) => pending.set(file, { resolve, reject }));
@@ -108,15 +108,60 @@ const blocked = fixture();
 blocked.options.lock.acquire = async () => { throw new Error('busy'); };
 await assert.rejects(runSelftestSuite('blocked', ['never'], blocked.options), /busy/);
 assert.deepEqual(blocked.starts, []); assert.equal(blocked.held, false);
-for (const concurrency of [0, -1, 3, NaN, Infinity]) {
+for (const concurrency of [0, -1, 5, 2.5, NaN, Infinity]) {
   const invalid = fixture();
-  await assert.rejects(runSelftestSuite('invalid', ['never'], { ...invalid.options, concurrency }), /1 or 2/);
+  await assert.rejects(runSelftestSuite('invalid', ['never'], { ...invalid.options, concurrency }), /integer from 1 to 4/);
   assert.equal(invalid.acquisitions, 0); assert.deepEqual(invalid.starts, []);
 }
 
-for (const signal of ['SIGINT', 'SIGTERM']) {
+for (const concurrency of [3, 4]) {
+  const files = Array.from({ length: concurrency }, (_, index) => `cpu-${index}`);
+  const barrier = fixture(concurrency);
+  const barrierRun = runSelftestSuite('wide-barrier', [...files, 'browser', 'after'], barrier.options);
+  await tick(); assert.deepEqual(barrier.starts, files);
+  for (const file of files.slice(1)) { barrier.finish(file); await tick(); }
+  assert.deepEqual(barrier.starts, files, 'browser waits for every CPU peer');
+  assert.equal(barrier.held, true);
+  barrier.finish(files[0]); await tick();
+  assert.deepEqual(barrier.starts, [...files, 'browser']); assert.equal(barrier.held, false);
+  barrier.finish('browser'); await tick(); barrier.finish('after');
+  assert.equal(await barrierRun, 0); assert.equal(barrier.acquisitions, 2);
+  assert.equal(barrier.timings.length, files.length + 2);
+
+  const failure = fixture(concurrency);
+  const failureRun = runSelftestSuite('wide-failure', [...files, 'never'], failure.options);
+  await tick(); failure.finish(files.at(-1), { status: 9 }); await tick();
+  assert.deepEqual(failure.starts, files); assert.equal(failure.held, true);
+  failure.finish(files[0], { status: 7 }); await tick();
+  for (const file of files.slice(1, -1)) failure.finish(file);
+  assert.equal(await failureRun, 7, 'registry order wins over completion order at every width');
+  assert.equal(failure.held, false); assert.deepEqual(failure.starts, files);
+
+  const observer = fixture(concurrency), error = new Error('wide observer failure');
+  observer.options.onTiming = () => { throw error; };
+  let settled = false;
+  const observerRun = runSelftestSuite('wide-observer', [...files, 'never'], observer.options)
+    .catch(failure => { settled = true; return failure; });
+  await tick(); observer.finish(files[0]); await tick();
+  assert.equal(settled, false); assert.equal(observer.held, true);
+  for (const file of files.slice(1)) observer.finish(file);
+  assert.equal(await observerRun, error); assert.equal(observer.held, false);
+  assert.deepEqual(observer.starts, files);
+
+  const fair = fixture(concurrency);
+  const fairRun = runSelftestSuite('wide-fifo', [...files, 'after'], fair.options);
+  await tick(); fair.time(46_000);
+  for (const file of files.slice(1)) { fair.finish(file); await tick(); }
+  assert.deepEqual(fair.starts, files); assert.equal(fair.held, true);
+  fair.finish(files[0]); await tick();
+  assert.equal(fair.acquisitions, 2); assert.deepEqual(fair.starts, [...files, 'after']);
+  fair.finish('after'); assert.equal(await fairRun, 0); assert.equal(fair.held, false);
+}
+
+for (const concurrency of [2, 3, 4]) for (const signal of ['SIGINT', 'SIGTERM']) {
   const signals = new EventEmitter(), children = new Map(), kills = [];
-  const state = fixture();
+  const state = fixture(concurrency);
+  const files = Array.from({ length: concurrency }, (_, index) => `cpu-${index}`);
   state.options.runFile = file => runSelftestFile(file, {
     signals, spawnProcess() {
       const child = new EventEmitter(); child.kill = value => kills.push([file, value]);
@@ -124,45 +169,48 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
       child.once('close', () => state.active.delete(file)); return child;
     },
   });
-  const pending = runSelftestSuite('signal', ['a', 'b', 'never'], state.options);
+  const pending = runSelftestSuite('signal', [...files, 'never'], state.options);
   await tick(); signals.emit(signal);
-  assert.deepEqual(kills, [['a', signal], ['b', signal]], 'signal reaches both owned children');
+  assert.deepEqual(kills, files.map(file => [file, signal]), 'signal reaches all owned children');
   const otherSignal = signal === 'SIGINT' ? 'SIGTERM' : 'SIGINT';
   assert.equal(signals.emit(signal), true, 'repeated signal stays handled during drain');
-  assert.equal(signals.emit(otherSignal), true, 'mixed signal also reaches both survivors');
-  assert.deepEqual(kills.slice(2), [['a', signal], ['b', signal], ['a', otherSignal], ['b', otherSignal]]);
-  children.get('a').emit('close', 0); await tick(); assert.equal(state.held, true);
+  assert.equal(signals.emit(otherSignal), true, 'mixed signal also reaches all survivors');
+  assert.deepEqual(kills.slice(concurrency), [signal, otherSignal].flatMap(value => files.map(file => [file, value])));
+  for (const file of files.slice(0, -1)) children.get(file).emit('close', 0);
+  await tick(); assert.equal(state.held, true);
   const count = kills.length;
   assert.equal(signals.listenerCount('SIGINT'), 1);
   assert.equal(signals.listenerCount('SIGTERM'), 1);
   assert.equal(signals.emit(signal), true);
   assert.equal(signals.emit(otherSignal), true);
-  assert.deepEqual(kills.slice(count), [['b', signal], ['b', otherSignal]], 'only live peer receives repeats');
-  assert.deepEqual(state.starts, ['a', 'b'], 'interrupted pool admits no more work');
-  children.get('b').emit('close', 0);
+  assert.deepEqual(kills.slice(count), [[files.at(-1), signal], [files.at(-1), otherSignal]], 'only live peer receives repeats');
+  assert.deepEqual(state.starts, files, 'interrupted pool admits no more work');
+  children.get(files.at(-1)).emit('close', 0);
   assert.equal(await pending, signal === 'SIGINT' ? 130 : 143);
-  assert.equal(state.held, false); assert.deepEqual(state.starts, ['a', 'b']);
+  assert.equal(state.held, false); assert.deepEqual(state.starts, files);
   assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
 }
 
 // Real fresh Node processes must overlap to satisfy this rendezvous. This is
 // a concurrency/independence proof, not a timing speedup or performance gate.
+for (const concurrency of [2, 3, 4]) {
 const directory = mkdtempSync(join(tmpdir(), 'cot-cpu-pool-'));
 try {
-  const files = ['a', 'b'].map(id => join(directory, `${id}.mjs`));
+  const files = Array.from({ length: concurrency }, (_, index) => join(directory, `${index}.mjs`));
   for (const [index, file] of files.entries()) {
-    const own = join(directory, `${index}.ready`), peer = join(directory, `${1 - index}.ready`);
+    const own = join(directory, `${index}.ready`), peers = files.map((_, index) => join(directory, `${index}.ready`));
     writeFileSync(file, `import assert from 'node:assert/strict';
 import {writeFileSync,existsSync} from 'node:fs';
 globalThis.executions=(globalThis.executions||0)+1;assert.equal(globalThis.executions,1);
 writeFileSync(${JSON.stringify(own)},String(process.pid));
 const until=Date.now()+10000;
-while(!existsSync(${JSON.stringify(peer)})){assert.ok(Date.now()<until,'both fresh children must overlap');await new Promise(r=>setTimeout(r,5));}
+while(!${JSON.stringify(peers)}.every(path=>existsSync(path))){assert.ok(Date.now()<until,'all fresh children must overlap');await new Promise(r=>setTimeout(r,5));}
 `);
   }
-  const real = fixture();
+  const real = fixture(concurrency);
   assert.equal(await runSelftestSuite('real-processes', files, { ...real.options, runFile: runSelftestFile }), 0);
-  assert.notEqual(readFileSync(join(directory, '0.ready'), 'utf8'), readFileSync(join(directory, '1.ready'), 'utf8'));
+  assert.equal(new Set(files.map((_, index) => readFileSync(join(directory, `${index}.ready`), 'utf8'))).size, concurrency);
   assert.equal(real.held, false);
 } finally { rmSync(directory, { recursive: true, force: true }); }
-console.log('selftest CPU pool: two fresh workers, exact dispatch/coverage, exclusive browser barriers, bounded FIFO batches, failure/observer/signal drain and real-process rendezvous pass');
+}
+console.log('selftest CPU pool: two to four fresh workers, exact dispatch/coverage, exclusive browser barriers, bounded FIFO batches, failure/observer/signal drain and real-process rendezvous pass');

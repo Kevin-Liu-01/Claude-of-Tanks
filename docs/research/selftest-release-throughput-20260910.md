@@ -1,5 +1,33 @@
 # Self-test release throughput — 2026-09-10
 
+## Four-worker extension (opt-in, no gate removals)
+
+`COT_SELFTEST_WORKERS=4 npm test` now allows up to four fresh CPU children;
+integer widths 1–4 are supported and the default remains **1**. The machine
+used for this recovery has 18 physical CPU cores and 128 GiB RAM. Browser
+checks still run alone, every assertion still executes, and the 45-second
+admission window still drains live children before rejoining the shared FIFO.
+There is no result cache or new skip-tests path.
+
+Expanded regressions pass at widths 3/4 for exact admission, exclusive browser
+barriers, earliest-registry failure status, observer-error drain, FIFO requeue,
+and repeated/mixed signals. A real fresh-process rendezvous requires all 2,
+3, or 4 children to overlap and records distinct process IDs. All 930 catalog
+entries remain discoverable. Independent static review found no blocker.
+
+The same eight-file sample passed at both widths: two-worker elapsed
+5.683 s (0.00045 s FIFO), four-worker elapsed 5.514 s (2.514 s FIFO).
+Occupied time excluding explicitly measured queue wait was 5.683 versus
+2.999 s. This is one small matched sample, not a full-suite speed guarantee;
+it is not randomized and source compilation/OS caches are unspecified.
+Receipt: `.qa-dev/throughput-Jo4TmQ/receipt.json` (local, not shipped).
+Both runner modules pass strict metrics: 23 functions, zero complexity or
+explicit-type violations. Typecheck/core-unused and scoped Doctor pass;
+Doctor reports zero new findings. Complete four-worker qualification remains
+the separate fourteen-tank composed release, not this focused tooling check.
+
+The sections below retain the original two-worker/sequential evidence.
+
 ## Bounded CPU scheduling (opt-in checkpoint)
 
 `COT_SELFTEST_WORKERS=2 npm test` admits at most two top-level CPU test files

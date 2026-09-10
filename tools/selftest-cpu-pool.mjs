@@ -1,7 +1,7 @@
-// Two fresh CPU subprocesses share one runner-owned lease. Real browser
+// Bounded fresh CPU subprocesses share one runner-owned lease. Real browser
 // regressions are barriers: drain CPU children, release, then run alone.
 export async function runSelftestCpuPool(name, files, options) {
-  const { runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs,
+  const { concurrency, runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs,
     now, log, logError, onTiming } = options;
   let held = false, acquiredAt = 0, refresher, next = 0, failure;
   const active = new Map();
@@ -24,7 +24,7 @@ export async function runSelftestCpuPool(name, files, options) {
     if ((result.error || result.status !== 0) && (!failure || index < failure.index)) failure = row;
   };
   const admit = async () => {
-    while (!failure && next < files.length && active.size < 2) {
+    while (!failure && next < files.length && active.size < concurrency) {
       const file = files[next];
       if (ownedLeaseFiles.includes(file)) {
         if (active.size) break;
@@ -53,7 +53,7 @@ export async function runSelftestCpuPool(name, files, options) {
     }
   };
   process.once('exit', release);
-  log(`[selftests] ${name}: ${files.length} files (2 CPU workers; browser barriers)`);
+  log(`[selftests] ${name}: ${files.length} files (${concurrency} CPU workers; browser barriers)`);
   try {
     while (next < files.length || active.size) {
       await admit();
