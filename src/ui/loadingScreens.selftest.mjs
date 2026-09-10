@@ -519,13 +519,16 @@ assert.match(deploymentShadowWarmSource,
   /const prime = async[\s\S]{0,6500}preservePrimedCascadesForNextFrame\(\)/,
   'covered cascade slices must hand their exact maps to the first full frame');
 assert.match(deploymentShadowWarmSource,
-  /async function warmCasterBatches\([\s\S]{0,1200}shadowOnlyWarm\(\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
+  /async function warmCasterBatches\([\s\S]{0,1200}observeRender\('caster-batch', batchTimes\.length, firstLight\)[\s\S]{0,500}await yieldCovered\(yieldForBudget\)/,
   'deployment shadows must upload caster resources in bounded depth-only batches');
 assert.match(deploymentShadowWarmSource,
-  /casterState = createCasterBatches\(scene, camera\);[\s\S]{0,220}await warmCasterBatches\(casterState, lights\[0\], yieldForBudget\);[\s\S]{0,160}await warmCascades\(lights, yieldForBudget\)/,
+  /const observeRender: ObserveShadowWarm = \(phase, index, light, render = shadowOnlyWarm\)/,
+  'observed caster/cascade renders must retain the exact offscreen shadow renderer');
+assert.match(deploymentShadowWarmSource,
+  /casterState = createCasterBatches\(scene, camera\);[\s\S]{0,220}await warmCasterBatches\(casterState, lights\[0\], yieldForBudget, observeRender\);[\s\S]{0,160}await warmCascades\(lights, yieldForBudget, observeRender\)/,
   'deployment shadows must bind caster resources in bounded depth-only batches before full cascade renders');
 assert.match(deploymentShadowWarmSource,
-  /scene\.overrideMaterial = uploadMaterial;[\s\S]{0,160}warmRender\(\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
+  /scene\.overrideMaterial = uploadMaterial;[\s\S]{0,160}observeRender\('geometry-upload', index\+\+, light, warmRender\)[\s\S]{0,180}scene\.overrideMaterial = priorOverrideMaterial/,
   'deployment geometry must upload through one shared shader and always restore production materials');
 assert.match(deploymentShadowWarmSource,
   /function restoreCasterState\([\s\S]{0,240}object\.castShadow = true;[\s\S]{0,220}object\.autoUpdate = autoUpdate/,
@@ -534,7 +537,7 @@ assert.match(deploymentShadowWarmSource,
   /preservePrimedCascadesForNextFrame\(\);[\s\S]{0,100}restoreCasterState\(casterState\);[\s\S]{0,60}primed = true/,
   'all shadow casters must be restored before the primed warm transaction completes');
 assert.match(deploymentShadowWarmSource,
-  /casterState = createCasterBatches\(scene, camera\);[\s\S]{0,400}await warmCascades\(lights, yieldForBudget\);[\s\S]{0,160}restoreCasterState\(casterState\)/,
+  /casterState = createCasterBatches\(scene, camera\);[\s\S]{0,400}await warmCascades\(lights, yieldForBudget, observeRender\);[\s\S]{0,160}restoreCasterState\(casterState\)/,
   'shadow-only full cascades must keep live-camera LODs pinned until every exact map is rendered');
 assert.match(soloLoadingSource,
   /const resolved = battleIntent\.consumeMap\(specId, requestedMapId\)/,

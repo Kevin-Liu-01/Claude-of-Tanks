@@ -3,6 +3,98 @@
 Follow-up to [frame/matrix measurement](frame-matrix-reuse-20260910.md).
 Evidence root: `/private/tmp/cot-interactive-baseline.gsRCvU`.
 
+## Follow-up: bounded deployment buffer uploads
+
+The subsequent production profile, `deployment-shadow-production-profile-r1/`,
+used HTML SHA256 `06f9e98949055b33406dd4f3ff1502ac1dc17d936bf28bb5e50522d3843`.
+Its first caster batches were 13/6 ms, **not** the preceding 233/213 ms stalls;
+those earlier native causes remain unproven. Functional/audio/cleanup gates
+passed, but this is attribution evidence, not smoothness acceptance.
+
+Intersecting profile-start and profile-stop brackets places the Battle profile
+start in page time 4364.260–4395.160 ms. Whole sample intervals guaranteed
+inside the corresponding long task across that entire uncertainty range show:
+
+- 11253–11374 ms: 72.642 ms of native `bufferData` sample weight under
+  deployment `warm → prime → renderer → WebGLAttributes`. The upload receipt
+  independently reports 120 ms for its single whole-scene submission.
+- 5589.6–5727.6 ms: 72.289 ms native `getImageData`, under sourced
+  `applySet → composeSet → composeAlbedo/readScaledPixels`.
+- 5779.7–5924.7 ms: 113.068 ms native `AudioContext`. The passive constructor
+  observer independently records 5779.8–5920.6 ms (140.8 ms) inside this task.
+
+The latter two long tasks account for 283 ms of the worst 335.9 ms
+callback-start gap. The other 52.9 ms is not assigned to GPU/driver wait.
+Sample weights are not exact native-operation durations, and cannot explain
+uncaptured historical pauses.
+
+The upload correction reuses `warmSceneOffscreenBatched` with the existing
+offscreen render and shared unlit upload material, at 12 objects/45000 weight
+per cohort. Original geometry, instances, LOD selection, render target,
+camera, texture sizes and final cascade rendering remain unchanged. Layer
+masks and material overrides restore synchronously before each covered yield,
+including errors; a mesh parent never prunes its child's later batch.
+`geometryUploadMs` now sums actual batch submissions (not the intervening
+waits); individual batch durations and their maximum are reported separately.
+One native buffer allocation remains atomic: cohort bounds are not a promise
+that every browser/driver operation fits a frame.
+
+A bounded warm-only observer records actual direct-draw identity, selected
+material and CPU submission time for upload, caster and cascade passes.
+Camera identity distinguishes shadow, forward and other submissions, including
+unculled forward draws through the shadow-only camera. No GL queries or
+renderer-property allocations are introduced. Own/inherited method descriptors,
+receiver/arguments/return values and original errors survive observation; a
+hook-installed replacement is never overwritten. Caps of 64 render rows and
+256 detailed draw rows explicitly count dropped observations without dropping
+real draws. Final quotas reserve 32/24/8 render rows and 128/96/32 detailed
+draw rows for upload/caster/cascade respectively, so upload cohorts cannot
+consume later shadow observations. This diagnostic does not run in the gameplay
+loop and does not claim shader compilation or GPU-duration attribution.
+
+### Upload candidate verification
+
+Focused deployment-shadow, offscreen-warm, solo-deployment and loading-screen
+tests pass. They include nested renderable parents, 27-object upload coverage,
+exception/cancellation restoration, exact cascades and diagnostic ownership/caps.
+Typecheck/core-unused, public build and strict metrics (47 functions, zero
+complexity violations or explicit any/unknown) pass. Changed-scope Doctor is
+91/100 with five ordered-test-loop warnings, zero errors and no runtime warning.
+Logs: `deployment-upload-batches-checks-r3.log` and
+`deployment-upload-batches-final-checks-r1.log`. Earlier r1 stopped at an obsolete
+source matcher; r2 passed behavior tests then caught Material.id typing. The
+matcher retains its order/renderer requirements and the diagnostic now uses the
+public material UUID; neither failure was waived.
+
+`deployment-upload-batches-candidate-actions-r1/` is an unprofiled native
+candidate, not production. HTML SHA256:
+`7b7960a984750501330c29fd106bf123b6d4d93909799eede9177528b43c0a59`.
+Actual Battle/night-rematch/Garage controls, audio-clock/intent and all cleanup
+gates passed with no application errors. The three resulting screenshots were
+inspected. M5 Max, 1280×720/DPR1, high, scale1/trim0 and SMAA-high/FSR1 remained
+unchanged; both battles retain all 14 roster entities and the rematch 110 night
+emitters. This capture precedes the diagnostic-only phase reservation above.
+
+| Action | Cover ms | Ready ms | Largest callback-start gap ms | Upload batches / max submission ms |
+| --- | ---: | ---: | ---: | ---: |
+| Battle | 2.1 | 6602.9 | 156.4 | 104 / 15 |
+| Night rematch | 140.6 | 5656.5 | 100.4 | 105 / 39 |
+| Garage return | 97.0 | 347.7 | 44.4 | not run |
+
+The preceding unprofiled production capture had a 106 ms whole-scene cold upload;
+the profiled production capture had 120 ms. Cohort subdivision removes that
+single whole-scene submission, but these sequential local/production samples
+are not a repeated matched cold-cache speed certificate. In the candidate,
+the cold 1,014,720-vertex object's cohort took 11 ms (10.6 ms before its first draw).
+The rematch's 39 ms cohort spent 38.8 ms inside one 24-vertex direct draw while its
+JS program count grew 353→354. This identifies a submission, not the native
+compile/link/driver operation. First caster batches were 13/8 ms; cascades ≤3 ms.
+
+Other stalls remain: the candidate's native AudioContext constructor took 144 ms
+inside its largest entry gap; rematch's worst gap was during allied preparation.
+Do not infer the latter's native cause from that label or claim this patch
+completes loading, sustained battle, or cross-device performance work.
+
 ## Attribution before the change
 
 The maintained production action profiler completed Battle, Battle Again and

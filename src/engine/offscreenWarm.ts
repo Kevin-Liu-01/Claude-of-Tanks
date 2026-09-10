@@ -46,6 +46,13 @@ export interface OffscreenWarmBatchOptions {
   maxObjects?: number;
   maxWeight?: number;
   yieldBeforeBatch?: ((index: number) => void | Promise<void>) | null;
+  /** Synchronous, caller-owned offscreen render; never disposed by this helper. */
+  renderBatch?: (() => void) | null;
+}
+
+interface WarmBatchSelection {
+  renderables: Array<{ object: WarmRenderable; weight: number }>;
+  lods: Array<{ object: WarmRenderable; autoUpdate: boolean | undefined }>;
 }
 
 /**
@@ -154,11 +161,31 @@ export async function warmSceneOffscreenBatched(
   maxObjects = 24,
   maxWeight = 90_000,
   yieldBeforeBatch = null,
+  renderBatch = null,
   }: OffscreenWarmBatchOptions = {},
 ): Promise<number[]> {
-  const warmer = createOffscreenSceneWarmer(renderer, scene, camera, scale);
-  const renderables: Array<{ object: WarmRenderable; weight: number }> = [];
-  const lods: Array<{ object: WarmRenderable; autoUpdate: boolean | undefined }> = [];
+  const ownedWarmer = renderBatch ? null : createOffscreenSceneWarmer(renderer, scene, camera, scale);
+  const warmer = renderBatch ?? ownedWarmer!;
+  const { renderables, lods } = collectWarmBatchSelection(scene, camera);
+  const batches = splitWarmBatches(renderables, maxObjects, maxWeight);
+  const timings: number[] = [];
+  try {
+    for (let index = 0; index < batches.length; index++) {
+      if (yieldBeforeBatch) await yieldBeforeBatch(index);
+      const startedAt = performance.now();
+      renderSelectedWarmBatch(renderables, batches[index]!, warmer);
+      timings.push(Math.round(performance.now() - startedAt));
+    }
+  } finally {
+    for (const state of lods) state.object.autoUpdate = state.autoUpdate;
+    ownedWarmer?.dispose();
+  }
+  return timings;
+}
+
+function collectWarmBatchSelection(scene: Scene, camera: Camera): WarmBatchSelection {
+  const renderables: WarmBatchSelection['renderables'] = [];
+  const lods: WarmBatchSelection['lods'] = [];
   scene.traverseVisible((object) => {
     const renderable = object as WarmRenderable;
     if (renderable.isLOD) {
@@ -178,6 +205,12 @@ export async function warmSceneOffscreenBatched(
     const instances = renderable.isInstancedMesh ? Math.max(1, renderable.count || 0) : 1;
     renderables.push({ object: renderable, weight: vertices + instances * 16 + 2_000 });
   });
+  return { renderables, lods };
+}
+
+function splitWarmBatches(
+  renderables: WarmBatchSelection['renderables'], maxObjects: number, maxWeight: number,
+): WarmRenderable[][] {
   const batches: WarmRenderable[][] = [];
   let batch: WarmRenderable[] = [];
   let weight = 0;
@@ -191,30 +224,21 @@ export async function warmSceneOffscreenBatched(
     weight += renderable.weight;
   }
   if (batch.length) batches.push(batch);
+  return batches;
+}
 
+function renderSelectedWarmBatch(
+  renderables: WarmBatchSelection['renderables'], batch: WarmRenderable[], render: () => void,
+): void {
   // Layers gate a renderable without pruning its descendants. Toggling
   // `visible` would accidentally hide a child batch whenever a renderable
   // parent (rare, but legal in Three.js) belonged to another batch.
   const layerMasks = renderables.map(({ object }) => ({ object, mask: object.layers.mask }));
-  const layerMaskByObject = new Map(layerMasks.map((state) => [state.object, state.mask]));
-  const timings: number[] = [];
+  const selected = new Set(batch);
   try {
-    for (const { object } of renderables) object.layers.mask = 0;
-    for (let index = 0; index < batches.length; index++) {
-      if (yieldBeforeBatch) await yieldBeforeBatch(index);
-      const currentBatch = batches[index]!;
-      for (const object of currentBatch) {
-        object.layers.mask = layerMaskByObject.get(object) ?? 0;
-      }
-      const startedAt = performance.now();
-      warmer();
-      timings.push(Math.round(performance.now() - startedAt));
-      for (const object of currentBatch) object.layers.mask = 0;
-    }
+    for (const { object } of layerMasks) if (!selected.has(object)) object.layers.mask = 0;
+    render();
   } finally {
     for (const state of layerMasks) state.object.layers.mask = state.mask;
-    for (const state of lods) state.object.autoUpdate = state.autoUpdate;
-    warmer.dispose();
   }
-  return timings;
 }

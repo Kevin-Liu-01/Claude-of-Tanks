@@ -87,12 +87,65 @@ function fakeRenderer({ throwOnRender = false } = {}) {
     scale: 0.25,
     maxObjects: 1,
     maxWeight: Infinity,
-    yieldBeforeBatch: async () => { yields++; },
+    yieldBeforeBatch: async () => {
+      yields++;
+      assert.deepEqual(meshes.map((mesh) => mesh.layers.mask), masks,
+        'no temporary layer masks survive into a covered yield');
+    },
   });
   assert.equal(timings.length, 3, 'one-object limit creates bounded warm batches');
   assert.equal(yields, 3, 'each upload batch yields before submitting work');
   assert.deepEqual(meshes.map((mesh) => mesh.layers.mask), masks,
     'batched warm restores every production layer mask');
+}
+
+for (const failure of [null, 'render', 'yield']) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const makeMesh = () => new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const parent = makeMesh();
+  const child = makeMesh();
+  parent.add(child);
+  const hidden = makeMesh();
+  hidden.visible = false;
+  const excluded = makeMesh();
+  excluded.layers.set(3);
+  const invisibleMaterial = makeMesh();
+  invisibleMaterial.material.visible = false;
+  const lod = new THREE.LOD();
+  lod.addLevel(parent, 0);
+  scene.add(lod, hidden, excluded, invisibleMaterial);
+  const all = [parent, child, hidden, excluded, invisibleMaterial];
+  const masks = all.map((object) => object.layers.mask);
+  const submitted = [];
+  const originalFailure = new Error(`injected ${failure}`);
+  let yields = 0;
+  const task = warmSceneOffscreenBatched({}, scene, camera, {
+    maxObjects: 1,
+    maxWeight: Infinity,
+    yieldBeforeBatch: () => {
+      assert.deepEqual(all.map((object) => object.layers.mask), masks);
+      if (++yields === 2 && failure === 'yield') throw originalFailure;
+    },
+    renderBatch: () => {
+      assert.equal(lod.autoUpdate, false, 'the selected production LOD is stable while warming');
+      const active = [parent, child].filter((object) => object.layers.test(camera.layers));
+      assert.equal(active.length, 1, 'a renderable parent cannot prune its child batch');
+      assert.equal(parent.visible, true);
+      submitted.push(active[0]);
+      if (failure === 'render') throw originalFailure;
+    },
+  });
+  if (failure) await assert.rejects(task, (error) => error === originalFailure);
+  else {
+    assert.equal((await task).length, 2);
+    assert.deepEqual(submitted, [parent, child], 'each eligible object is submitted exactly once');
+  }
+  assert.deepEqual(all.map((object) => object.layers.mask), masks, 'restore layers on success, render error and cancellation');
+  assert.equal(lod.autoUpdate, true, 'restore caller LOD policy');
+  assert.equal(hidden.visible, false);
+  assert.equal(invisibleMaterial.material.visible, false);
+  for (const object of all) { object.geometry.dispose(); object.material.dispose(); }
 }
 
 console.log('offscreenWarm self-test passed');
