@@ -259,6 +259,7 @@ type CreateTankVisual = (
     camoSeed: number;
     camoPattern: string;
     quality: 'high' | 'ai' | 'low' | 'preview';
+    eraVisualBindingReceipt: false;
   },
 ) => TankVisual;
 
@@ -554,6 +555,9 @@ export function createBrowserBattleBridge<
       camoSeed: 4000 + (hashString(snapshot.id) % 100000),
       camoPattern: camo,
       quality: browserRosterTextureQuality(snapshot.id, id, spectator),
+      // Generated anatomy and live strip/reset clusters already own gameplay.
+      // Do not re-run the authoring-only fitted-surface audit for each peer.
+      eraVisualBindingReceipt: false,
     });
     engineCtx.scene.add(visual.root);
     visual.setVisible(false);

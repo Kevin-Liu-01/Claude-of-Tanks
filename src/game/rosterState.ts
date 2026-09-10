@@ -307,6 +307,9 @@ function* buildRosterVisual(
       geometryQuality: battleGeometryQuality(playerActor, deviceTier),
       batchStatic: true,
       battleDetailLod: battleBot && !mobileBot,
+      // Battles use the checked anatomy and live ERA clusters, not a fresh
+      // geometric audit. Keep the detailed fitted-surface report in authoring.
+      eraVisualBindingReceipt: false,
     };
     visual = cooperative
       ? yield* createTankSteps(specId, engineCtx, options)

@@ -26,6 +26,8 @@ const busEvents = [];
 const destructionOrder = [];
 
 function fakeVisual(_specId, _engineCtx, opts) {
+  assert.equal(opts.eraVisualBindingReceipt, false,
+    'network actors keep live ERA state without rebuilding the authoring audit');
   visualOptions.push(opts);
   const visual = {
     root: { position: new Vector3() },
@@ -419,6 +421,8 @@ function rosterSchedulingFixture({ rosterScheduling, onCreate = () => {}, onWarm
     viewerId: 'roster-0',
     rosterScheduling,
     createTankVisual(specId, _ctx, options) {
+      assert.equal(options.eraVisualBindingReceipt, false,
+        'every staged participant omits only the fitted-surface audit');
       const visual = { root: { position: new Vector3() }, visible: true, disposals: 0,
         setVisible(value) { this.visible = value; },
         dispose() { this.disposals++; } };

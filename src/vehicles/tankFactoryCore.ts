@@ -10499,9 +10499,9 @@ function* createTankOwnedSteps(
     root.userData.eraClusterOwners = Object.freeze(Object.fromEntries(
       [...destructibleClusterOwners.entries()].sort(([a], [b]) => a.localeCompare(b))),
     );
-    // Static world wrecks retain only baked geometry and never consume the
-    // fitted anatomy receipt. Keep all ERA seating and gameplay bindings
-    // above, and preserve the default for live, workshop and audit callers.
+    // Battles consume checked anatomy and the live clusters above; static
+    // wrecks retain baked geometry. Both can omit this authoring-only audit.
+    // Preserve the default for workshop, Gallery and anatomy/release callers.
     if (eraVisualBindingReceipt) {
       const receiptPlates = (owner: VehicleOwner) => {
         const exactZones = new Map<string, boolean>();
