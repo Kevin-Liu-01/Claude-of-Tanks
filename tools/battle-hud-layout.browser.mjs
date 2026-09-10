@@ -19,6 +19,18 @@ const cases = [
 const states = ['idle','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','ended'];
 const reports=[];const errors=[];
 function measure(state){
+  // Kept inside the serialized page callback so browser execution needs no
+  // Node-side closure. Preserve selector/DOM order for overlap diagnostics.
+  function collectVisibleRects(selectors){
+    const rects=[];
+    for(const selector of selectors)for(const el of document.querySelectorAll(selector)){
+      if(!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
+      const r=el.getBoundingClientRect();
+      if(r.width<1||r.height<1)continue;
+      rects.push({name:el.className,x:r.x,y:r.y,right:r.right,bottom:r.bottom});
+    }
+    return rects;
+  }
   const selectors = state==='settings' ? ['.cot-set-hdr','.cot-set-tabs','.cot-set-body','.cot-set-ftr'] :
     state==='ended' ? ['.es-hero','.es-report','.es-actions'] :
     ['.cot-ear.l','.cot-ear.r','.cot-top','.cot-net','.cot-drive','.cot-dp','.cot-minimap',
@@ -26,13 +38,7 @@ function measure(state){
      '.cot-room-chat:not([hidden])','.cot-spec.show','.cot-prebattle',
      '.cot-shell','.cot-con','.cot-special','.cot-touch.on .joy','.cot-touch.on .round',
      '.cot-touch.on .mobile-chrome'];
-  const rects=[];
-  for(const selector of selectors)for(const el of document.querySelectorAll(selector)){
-    if(!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
-    const r=el.getBoundingClientRect();
-    if(r.width<1||r.height<1)continue;
-    rects.push({name:el.className,x:r.x,y:r.y,right:r.right,bottom:r.bottom});
-  }
+  const rects=collectVisibleRects(selectors);
   const failures=[];
   for(let i=0;i<rects.length;i++){
     const a=rects[i];
@@ -43,7 +49,16 @@ function measure(state){
     }
   }
   if(!rects.length) failures.push('no visible UI checked');
-  return {failures,rects,body:document.body.dataset};
+  const ammoTransitions=failures.length?[...document.querySelectorAll('.cot-shell')].map(el=>({
+    className:el.className,ariaHidden:el.getAttribute('aria-hidden'),
+    opacity:getComputedStyle(el).opacity,transform:getComputedStyle(el).transform,
+    drawerOpen:el.parentElement.classList.contains('touch-open'),
+    animations:el.getAnimations().map(animation=>({
+      playState:animation.playState,currentTime:animation.currentTime,
+      timing:animation.effect?.getComputedTiming(),
+    })),
+  })):undefined;
+  return {failures,rects,body:document.body.dataset,ammoTransitions};
 }
 try {
   for (const [name,width,height,touch,locale='en-US'] of cases) {
@@ -54,6 +69,26 @@ try {
     page.on('pageerror',error=>errors.push(`${name}: ${error.message}`));
     await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}`,{waitUntil:'networkidle'});
     await page.waitForFunction(()=>!!window.__HUD_LAYOUT);
+    // Exercise the real DOMTokenList/MutationObserver path. Removing a class
+    // which is already absent still produces mutation records in browsers.
+    // The HUD does this every battle update; it must not measure layout again.
+    await page.waitForTimeout(180);
+    const idleLayoutReads=await page.evaluate(async()=>{
+      const root=document.querySelector('.cot-hud');
+      const special=document.querySelector('.cot-special');
+      const original=root.getClientRects;
+      let reads=0;
+      root.getClientRects=function(){reads++;return original.call(this);};
+      try {
+        for(let i=0;i<24;i++){
+          special.classList.remove('pending');
+          await new Promise(requestAnimationFrame);
+        }
+        await new Promise(requestAnimationFrame);
+        return reads;
+      } finally { root.getClientRects=original; }
+    });
+    if(idleLayoutReads>1)errors.push(`${name}: unchanged HUD caused ${idleLayoutReads} layout measurements`);
     async function check(state){
       const result=await page.evaluate(measure,state);
       if(state==='combined'||state==='spectator'||result.failures.length)

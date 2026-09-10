@@ -11,9 +11,10 @@ import { installBattleHudLayout } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
 import { spectatorCardModel, spectatorSwitcherMarkup } from './spectatorSwitcher.ts';
 import { fillDriveTelemetry, isDriveSampleDue } from './driveTelemetry.ts';
+import { createRetainedAmmunitionSlot, type RetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
 import { uiPixelRatio } from '../engine/resolutionPolicy.ts';
 import { getDeviceTier } from '../engine/quality.ts';
-import { t } from './i18n.ts';
+import { getLocale, t } from './i18n.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
@@ -457,7 +458,6 @@ interface SceneRenderable extends THREE.Object3D {
 
 interface ShellSlotButton extends HTMLButtonElement {
   _icon: HTMLCanvasElement;
-  _iconType: string | null;
 }
 
 interface AlertOptions { tone?: string; icon?: string }
@@ -2191,22 +2191,19 @@ export function initHud(bus: EventBus): HudRuntime {
   shellBox.setAttribute('role', 'group');
   shellBox.setAttribute('aria-label', t('hud.ammunition.aria'));
   const slotEls: ShellSlotButton[] = [];
+  const slotPresentations: RetainedAmmunitionSlot[] = [];
   let touchAmmoOpen = false;
+  let renderedTouchAmmoOpen: boolean | undefined;
   function setTouchAmmoOpen(open: boolean): void {
     const touch = document.body.classList.contains('cot-touch-layout');
     touchAmmoOpen = !!open && touch;
-    shellBox.classList.toggle('touch-open', touchAmmoOpen);
+    if (renderedTouchAmmoOpen !== touchAmmoOpen) {
+      shellBox.classList.toggle('touch-open', touchAmmoOpen);
+      renderedTouchAmmoOpen = touchAmmoOpen;
+    }
     let rank = 0;
-    for (let i = 0; i < slotEls.length; i++) {
-      const slot = slotEls[i];
-      const selected = slot.classList.contains('sel');
-      const available = !touch || selected || touchAmmoOpen;
-      slot.style.setProperty('--touch-ammo-x', selected ? '0px' : `${-(++rank * 56)}px`);
-      slot.tabIndex = available ? 0 : -1;
-      if (available) slot.removeAttribute('aria-hidden');
-      else slot.setAttribute('aria-hidden', 'true');
-      if (touch && selected) slot.setAttribute('aria-expanded', touchAmmoOpen ? 'true' : 'false');
-      else slot.removeAttribute('aria-expanded');
+    for (const slot of slotPresentations) {
+      slot.layout(touch, touchAmmoOpen, slot.selected ? 0 : ++rank);
     }
   }
   function activateShellSlot(index: number, event: Event): void {
@@ -2229,7 +2226,26 @@ export function initHud(bus: EventBus): HudRuntime {
       `<div class="tip"><div class="tnm"></div>${t('hud.shell.pen')} <b class="p"></b> &nbsp;&middot;&nbsp; ${t('hud.shell.dmg')} <b class="d"></b></div>` +
       `<div class="cool"></div>`;
     s._icon = requireElement<HTMLCanvasElement>(s, 'canvas');
-    s._iconType = null;
+    slotPresentations.push(createRetainedAmmunitionSlot({
+      index: i,
+      elements: {
+        button: s,
+        type: requireElement<HTMLElement>(s, '.ty'),
+        underline: requireElement<HTMLElement>(s, '.clr'),
+        name: requireElement<HTMLElement>(s, '.tnm'),
+        penetration: requireElement<HTMLElement>(s, '.p'),
+        damage: requireElement<HTMLElement>(s, '.d'),
+        count: requireElement<HTMLElement>(s, '.cnt'),
+        cooldown: requireElement<HTMLElement>(s, '.cool'),
+      },
+      locale: getLocale,
+      drawIcon: (type) => drawShellIcon(s._icon, type),
+      typeLabel: shellTypeLabel,
+      count: shellCount,
+      selectionLabel: ammunitionSelectionLabel,
+      typeColors: SHELL_TYPE_COLOR,
+      underlineColors: SHELL_CLASS_UNDERLINE,
+    }));
     s.addEventListener('pointerdown', (event) => {
       if (document.body.classList.contains('cot-touch-layout')) activateShellSlot(i, event);
     });
@@ -2437,7 +2453,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function selectSlot(i: number): void {
     localSlot = i;
-    for (let k = 0; k < 3; k++) slotEls[k].classList.toggle('sel', k === i);
+    for (let k = 0; k < 3; k++) slotPresentations[k].select(k === i);
     setTouchAmmoOpen(false);
   }
 
@@ -3959,46 +3975,9 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   // ---------- shell selector ----------
-  function renderShellSlot(
-    element: ShellSlotButton,
-    shell: HudShellCard,
-    index: number,
-    selectedSlot: number,
-    pending = false,
-  ): void {
-    const type = shell.type || '';
-    if (element._iconType !== type) {
-      drawShellIcon(element._icon, type);
-      element._iconType = type;
-    }
-    const typeEl = requireElement<HTMLElement>(element, '.ty');
-    typeEl.textContent = shellTypeLabel(type);
-    typeEl.style.color = SHELL_TYPE_COLOR[type] || '#9fb0bf';
-    requireElement<HTMLElement>(element, '.clr').style.background =
-      SHELL_CLASS_UNDERLINE[type] || 'rgba(146,164,180,.4)';
-    requireElement<HTMLElement>(element, '.tnm').textContent = shell.name || '—';
-    requireElement<HTMLElement>(element, '.p').textContent = shell.penLabel != null
-      ? String(shell.penLabel)
-      : '—';
-    requireElement<HTMLElement>(element, '.d').textContent = shell.dmg != null
-      ? String(shell.dmg)
-      : '—';
-    const view = ammunitionSlotViewState(shell, index === selectedSlot);
-    requireElement<HTMLElement>(element, '.cnt').textContent = `${view.count}`;
-    element.classList.toggle('sel', view.selected);
-    element.classList.toggle('empty', view.empty);
-    element.setAttribute('aria-pressed', view.selected ? 'true' : 'false');
-    element.setAttribute('aria-busy', pending && view.selected ? 'true' : 'false');
-    const name = shell.name || shell.type || `slot ${index + 1}`;
-    element.setAttribute(
-      'aria-label',
-      ammunitionSelectionLabel(name, view.count, view.selected, pending),
-    );
-  }
-
   function renderShells(shells: HudShellCard[] | null | undefined, slot: number, pending = false): void {
     for (let i = 0; i < 3; i++) {
-      renderShellSlot(slotEls[i], shells?.[i] || DEFAULT_SHELLS[i], i, slot, pending);
+      slotPresentations[i].render(shells?.[i] || DEFAULT_SHELLS[i], i === slot, pending);
     }
     if (ammoSwitchingStatus.hidden === pending) {
       ammoSwitchingStatus.textContent = pending ? 'SWITCHING' : '';
@@ -4011,13 +3990,12 @@ export function initHud(bus: EventBus): HudRuntime {
   // dim/sweep the active shell plate during reload (WoT ammo-plate feedback)
   function updateShellCooldown(reload: ReloadView | null | undefined, slot: number, pending = false): void {
     for (let i = 0; i < 3; i++) {
-      const coolEl = requireElement<HTMLElement>(slotEls[i], '.cool');
       if (i === slot && pending) {
-        coolEl.style.height = '100%';
+        slotPresentations[i].setCooldown('100%');
       } else if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001) {
-        coolEl.style.height = `${((reload.t / reload.totalS) * 100).toFixed(1)}%`;
+        slotPresentations[i].setCooldown(`${((reload.t / reload.totalS) * 100).toFixed(1)}%`);
       } else {
-        coolEl.style.height = '0';
+        slotPresentations[i].setCooldown('0');
       }
     }
   }

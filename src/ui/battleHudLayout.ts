@@ -13,8 +13,36 @@ export function battleSideStack(height: number, chat: boolean, toastCount: numbe
 export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
   const observed = new Set<Element>();
+  const attributes = new WeakMap<Element, Map<string, string | null>>();
   const resize = new ResizeObserver(schedule);
-  const changes = new MutationObserver(schedule);
+  // DOMTokenList.remove() still emits an attribute record when the class was
+  // already absent (the special-action HUD clears `pending` every frame).
+  // A pulse can also remove then re-add the same class within one task. Compare
+  // the final delivered value with the previous batch, not each intermediate
+  // oldValue. Seed at registration so the very first such batch is a no-op too.
+  const changes = new MutationObserver(records => {
+    let changed = false;
+    for (const record of records) {
+      if (record.type === 'childList') { changed = true; continue; }
+      const name = record.attributeName;
+      if (name === null) continue;
+      const target = record.target as Element;
+      const previous = attributes.get(target);
+      const value = target.getAttribute(name);
+      if (previous?.get(name) !== value) changed = true;
+      previous?.set(name, value);
+    }
+    // Process every record, even after finding a real change, so another
+    // watched attribute cannot retain a stale baseline into the next batch.
+    if (changed) schedule();
+  });
+  const watchAttributes = (target: Element, names: string[], childList = false) => {
+    let previous = attributes.get(target);
+    if (!previous) { previous = new Map(); attributes.set(target, previous); }
+    for (const name of names) previous.set(name, target.getAttribute(name));
+    changes.observe(target, { attributes: true,
+      attributeFilter: names, childList });
+  };
   const read = (selector: string) => {
     const node = document.querySelector<HTMLElement>(selector);
     if (!node || !node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') return null;
@@ -25,7 +53,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (observed.has(node)) continue;
       observed.add(node);
       resize.observe(node);
-      changes.observe(node, { attributes: true, attributeFilter: ['class', 'hidden'], childList: content });
+      watchAttributes(node, ['class', 'hidden'], content);
     }
   };
   function leftFloor(height: number, touch: boolean): number {
@@ -46,14 +74,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   function refresh() {
     frame = 0;
-    document.body.toggleAttribute('data-cot-battle-layout', !!root.getClientRects().length);
-    if (!root.getClientRects().length) return;
+    const visible = !!root.getClientRects().length;
+    if (document.body.hasAttribute('data-cot-battle-layout') !== visible) {
+      document.body.toggleAttribute('data-cot-battle-layout', visible);
+    }
+    if (!visible) return;
     observe('.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-special,.cot-spec,.cot-top,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat', true);
     const height = window.visualViewport?.height || window.innerHeight;
     const width = window.visualViewport?.width || window.innerWidth;
     const touch = document.body.classList.contains('cot-touch-layout');
-    document.body.dataset.hudTray = width < 1000 ? 'stacked' : 'inline';
+    const tray = width < 1000 ? 'stacked' : 'inline';
+    if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     const map = read('.cot-minimap');
     const top = read('.cot-top')?.bottom || 64;
     const leftTop = Math.max(top, read('.cot-ear.l')?.bottom || 0,
@@ -71,17 +103,29 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'chat-height': stack.chatHeight,
     };
     for (const [name, value] of Object.entries(properties)) {
-      document.body.style.setProperty(`--hud-${name}`, `${Math.floor(value)}px`);
+      const property = `--hud-${name}`;
+      const pixels = `${Math.floor(value)}px`;
+      if (document.body.style.getPropertyValue(property) !== pixels) {
+        document.body.style.setProperty(property, pixels);
+      }
     }
-    root.dataset.toastRows = String(stack.toastRows);
+    const toastRows = String(stack.toastRows);
+    if (root.dataset.toastRows !== toastRows) root.dataset.toastRows = toastRows;
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(refresh);
   }
-  changes.observe(document.body, { childList: true, attributes: true, attributeFilter: ['class'] });
-  changes.observe(root, { childList: true, attributes: true, attributeFilter: ['style'] });
+  watchAttributes(document.body, ['class'], true);
+  watchAttributes(root, ['style'], true);
   window.addEventListener('resize', schedule, { passive: true });
   window.visualViewport?.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('cot:layoutchange', schedule);
+  // Transforms (notably the spectator tray's entrance) do not resize the
+  // border box. Measure the settled position without polling its animation.
+  const transitionFinished = (event: Event) => {
+    if (observed.has(event.target as Element)) schedule();
+  };
+  window.addEventListener('transitionend', transitionFinished);
+  window.addEventListener('transitioncancel', transitionFinished);
   schedule();
 }
