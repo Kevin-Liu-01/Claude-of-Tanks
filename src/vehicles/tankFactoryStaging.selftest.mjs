@@ -1,6 +1,8 @@
 // Exact geometry/material/order goldens captured from the pre-staging core.
-// This does not certify native pixels or wall-time improvements. Intentional
-// visual changes must regenerate these receipts through the factory oracle.
+// This does not certify native pixels or wall-time improvements. Original
+// fingerprints stay immutable. The exact 2963f43c2 shadow-submission call is
+// disabled only for a historical receipt; current sync/staged outputs retain
+// their full shadow batches and are compared without normalization.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -18,6 +20,9 @@ const facadeUrl = pathToFileURL(root + '/src/vehicles/fleetFactory.ts').href;
 const facadeCoreUrl = coreUrl + '?factory-staging-facade-test';
 const candidateFacadeUrl = facadeUrl + '?factory-staging-test';
 const candidateCore = readFileSync(new URL(coreUrl), 'utf8');
+const shadowBatchCall = '    if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);';
+assert.equal(candidateCore.split(shadowBatchCall).length, 2,
+  'historical projection requires exactly the published shadow finalizer call');
 const goldenSourceSha256 = 'a8f314131f821dbbe878c49ffefbf1794de99ae8cdfdfe0ec75dd09fedc2625c';
 const goldenReceipts = [
   {
@@ -108,6 +113,8 @@ const hook = registerHooks({
       '      globalThis.__factoryStagingSlice(result.value);\n      const pausedAt = performance.now();');
     source = source.replace('    finalizeVehicleNightLighting(root);',
       "    if (globalThis.__factoryStagingFailFinalize) throw new Error('injected finalizer failure');\n    finalizeVehicleNightLighting(root);");
+    source = source.replace(shadowBatchCall,
+      '    if (batchStatic && !globalThis.__factoryStagingHistoricalShadow) installArticulatedShadowBatch(root, proceduralShadowSources);');
     return { ...result, source };
   },
 });
@@ -163,6 +170,22 @@ function receipt(visual) {
     detailGroups: visual.root.userData.battleDetailGroupCount, detailCount: visual.root.userData.battleDetailObjectCount,
   };
 }
+function historicalShadowReceipt(id, options, synchronous) {
+  if (!options.batchStatic) return receipt(synchronous);
+  let historical;
+  globalThis.__factoryStagingHistoricalShadow = true;
+  try {
+    historical = candidate.createTank(id, null, options);
+    assert.equal(historical.root.getObjectByName('articulatedShadowBatch'), undefined,
+      'historical comparison alone retains the original proxy submissions');
+    assert.ok(synchronous.root.getObjectByName('articulatedShadowBatch')?.isBatchedMesh,
+      'current comparison must retain the actual published shadow batch');
+    return receipt(historical);
+  } finally {
+    globalThis.__factoryStagingHistoricalShadow = false;
+    historical?.dispose();
+  }
+}
 let checks = 0;
 let goldenIndex = 0;
 function check(value, message) { assert.ok(value, message); checks++; }
@@ -208,7 +231,8 @@ for (const [id, options] of [
     });
     const golden = goldenReceipts[goldenIndex++];
     equal({ id, options }, { id: golden.id, options: golden.options }, "fixture order matches independent original receipt");
-    equal(digest(JSON.stringify(receipt(synchronous))), golden.sha256, `${id}: synchronous output matches pre-staging original geometry/material/order`);
+    equal(digest(JSON.stringify(historicalShadowReceipt(id, options, synchronous))), golden.sha256,
+      `${id}: original geometry/material/order retained across the explicit shadow-submission change`);
     equal(receipt(staged), receipt(synchronous), `${id}: stepped output preserves exact original geometry/material/order/pose`);
     check(Number.isFinite(staged.root.userData.decorBuildMs), 'decoration active time is retained');
     check(staged.root.userData.decorYieldMs >= 0, 'decoration wait is separately retained');
