@@ -32,6 +32,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 import { texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
+import { shapeRedrockOutland, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { shapeVerdantOutland, mapVerdantOutlandUv, sampleVerdantWoodland, verdantGroundChannel,
   paintVerdantCanopy, createVerdantWoodland, VERDANT_OUTLAND_SIZE, VERDANT_HORIZON_FRAGMENT } from '../horizonVerdant.ts';
 
@@ -52,6 +53,7 @@ export interface HorizonConfig {
   treeline?: number;
   treelineLayers?: number;
   finiteTableCaps?: boolean;
+  redrockCanyon?: boolean;
   banding?: number;
   rockHex?: number;
   snowHex?: number;
@@ -887,6 +889,7 @@ interface HorizonColorContext {
   gradients: HorizonGradients;
   sun: readonly [number, number, number];
   seaOpening?: HorizonSeaOpening;
+  redrockCanyon?: boolean;
 }
 
 function seaOpeningWeight(angle: number, opening: HorizonSeaOpening | undefined): number {
@@ -1209,7 +1212,7 @@ function usesFiniteTableCaps(horizon: HorizonConfig, mapId: string, style: Horiz
 
 /** Actual geometry without texture baking, for full-angle headless audits. */
 export function sampleHorizonGeometry(
-  cfg: HorizonMapConfig | null | undefined, seed: number,
+  cfg: HorizonMapConfig | null | undefined, seed: number, ground?: CanyonGround,
 ): HorizonRingGeometry {
   const horizon = cfg?.horizon ?? {};
   const mapId = cfg?.id ?? 'verdant';
@@ -1221,6 +1224,7 @@ export function sampleHorizonGeometry(
   );
   const ring = subdivideHorizonGeometry(source, style, noise);
   if (mapId === 'verdant') shapeVerdantOutland(ring, seed, horizon.amp ?? 1);
+  if (mapId === 'badlands' && horizon.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
   if (usesFiniteTableCaps(horizon, mapId, style)) {
     // Titan's tall ranges need a slightly lower erosion stratum to expose
     // broad summit surfaces without steepening their supported approaches.
@@ -1439,6 +1443,7 @@ function buildHorizonColors(context: HorizonColorContext): Float32Array {
       const slope = context.gradients.slope[index];
       color.copy(context.base).multiplyScalar(0.82 + altitude * 0.34);
       applyHorizonSurfaceBands(color, scratch, context, row, angle, altitude, slope, rowIndex);
+      if (context.redrockCanyon) tintRedrockOutlandFloor(color, context.heights[index], slope);
       applyHorizonDirectionalLight(color, scratch, context, row, angle, index);
       applyHorizonToneAndHaze(color, context, row, angle, altitude, rowIndex);
       if (context.seaOpening) {
@@ -2000,6 +2005,7 @@ export function* buildHorizonRingSteps(
   _engineCtx: object | null,
   cfg: HorizonMapConfig | null | undefined,
   seed: number,
+  ground?: CanyonGround,
 ): Generator<void, THREE.Mesh, void> {
   const H = cfg?.horizon || {};
   const mapId = cfg?.id || 'verdant';
@@ -2051,6 +2057,7 @@ export function* buildHorizonRingSteps(
   // Coastal apertures then lower the same annulus into a sea-level apron.
   const ring = subdivideHorizonGeometry(initialRing, style, noi);
   if (mapId === 'verdant') shapeVerdantOutland(ring, seed, amp);
+  if (mapId === 'badlands' && H.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
   if (usesFiniteTableCaps(H, mapId, style)) {
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64,
       mapId === 'titan_gorge' ? 1.25 : Infinity);
@@ -2090,6 +2097,7 @@ export function* buildHorizonRingSteps(
     base, fog: fogC, rock: rockC, snow: snowC, forest: forestC,
     snowline, treeline: mapId === 'verdant' ? 0 : treeline, banding, rockAmp, haze, grainAmp, noise: gnoi,
     gradients, sun: [lx, ly, lz], seaOpening: H.seaOpening,
+    redrockCanyon: mapId === 'badlands' && H.redrockCanyon !== false,
   });
   yield;
 
@@ -2156,8 +2164,9 @@ export function buildHorizonRing(
   engineCtx: object | null,
   cfg: HorizonMapConfig | null | undefined,
   seed: number,
+  ground?: CanyonGround,
 ): THREE.Mesh {
-  const steps = buildHorizonRingSteps(engineCtx, cfg, seed);
+  const steps = buildHorizonRingSteps(engineCtx, cfg, seed, ground);
   let step = steps.next();
   while (!step.done) step = steps.next();
   return step.value;

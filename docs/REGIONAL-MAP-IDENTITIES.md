@@ -32,7 +32,7 @@ the fictional map reproduces a particular real-world location.
 | frontier | Farming basin with branching ridges; carry the playable watershed language into the outland. |
 | fjord | Open eastern water axis between unequal glacial walls; retain cliff-road supports. |
 | delta | Low braided floodplain, elongated levees and islands; limited distant uplands. |
-| badlands | Red sedimentary plateau remnants, embayed rims, unequal benches and side washes. |
+| badlands | Redrock canyon: a continuous north–south valley floor between unequal red-rock walls, connected side ravines and open canyon mouths. |
 | monsoon | Rain-dissected tropical ridges and coherent branching drainage, not snowless alpine peaks. |
 | alpine | Lake-aligned ranges, trough shoulders, broken spurs and oblique saddles. |
 | caldera | Off-centre, breached volcanic rim with unequal shelves and radial drainage; not red mesas recoloured black. |
@@ -55,7 +55,8 @@ the fictional map reproduces a particular real-world location.
 ## Order and acceptance
 
 Frontier and Alpine's first playable-ground changes shipped in `d948cb573`.
-Badlands is the next playable shelf pilot. Frontier woodland/material work is
+Badlands' subtle shelf pilot was rejected and is being replaced by a coordinated
+playable-ground and horizon canyon. Frontier woodland/material work is
 a separate unshipped art experiment; it is not included in that terrain release.
 
 The next bounded horizon batch should be Saltwind and Fjord: both already have

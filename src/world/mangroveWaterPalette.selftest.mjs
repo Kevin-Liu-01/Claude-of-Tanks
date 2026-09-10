@@ -166,6 +166,30 @@ function verifyHistoricalConfigs(resolve) {
     'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede', 'original non-palette Mangrove digest');
 }
 verifyHistoricalConfigs(getMapConfig);
+for (const id of ['frontier', 'alpine']) {
+  const canonical = getMapConfig(id);
+  const mutateFirst = fields => ({ ...canonical, terrain: { ...canonical.terrain,
+    landforms: canonical.terrain.landforms.map((form, index) => index === 0 ? { ...form, ...fields } : form) } });
+  for (const relief of [undefined, { ...canonical.terrain.landforms[0].relief, bendM: -999 }]) {
+    assert.throws(() => verifyHistoricalConfigs(key => key === id ? mutateFirst({ relief }) : getMapConfig(key)),
+      /current playable relief/, 'missing or changed live relief cannot hide behind historical projection');
+  }
+  assert.throws(() => verifyHistoricalConfigs(key => key === id ? mutateFirst({ height: -1 }) : getMapConfig(key)),
+    /other29 config/, 'original landform anchors remain inside the immutable digest');
+}
+const badlands = getMapConfig('badlands');
+for (const changed of [
+  { ...badlands, terrain: { ...badlands.terrain, redrockCanyon: false } },
+  { ...badlands, props: { ...badlands.props, tacticalBeats: badlands.props.tacticalBeats.map((beat, index) =>
+    index === 0 ? { ...beat, x: beat.x + 1 } : beat) } },
+]) assert.throws(() => verifyHistoricalConfigs(id => id === 'badlands' ? changed : getMapConfig(id)),
+  /current Badlands authoring/, 'current canyon authoring cannot disappear behind its historical projection');
+for (const changed of [
+  { ...badlands, splat: { ...badlands.splat, microAmp: -1 } },
+  { ...badlands, terrain: { ...badlands.terrain, village: { ...badlands.terrain.village, cx: -1 } } },
+  { ...badlands, props: { ...badlands.props, rocks: badlands.props.rocks + 1 } },
+]) assert.throws(() => verifyHistoricalConfigs(id => id === 'badlands' ? changed : getMapConfig(id)),
+  /other29 config/, 'unprojected Badlands siblings retain the immutable full-config guard');
 for (const id of ['autumn', 'delta']) {
   const original = getMapConfig(id);
   for (const cropForm of [undefined, 'wrong-crop']) {

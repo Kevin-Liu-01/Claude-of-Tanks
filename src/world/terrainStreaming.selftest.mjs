@@ -8,6 +8,7 @@ import {
 } from './terrainLodPolicy.ts';
 import { registerRetainedObject3DResources, releaseObject3DGpuResources,
   disposeObject3DResources } from '../engine/resourceLifetime.ts';
+import { historicalBadlandsInput, historicalPlayableReliefInput } from './shorelineHistoryTestOracle.mjs';
 
 // Execute the actual chunk generators, startup and live scheduler. Only the
 // unrelated canvas material/horizon builders are stubbed; real Three buffers,
@@ -334,13 +335,40 @@ function testOasisShorelineChunks(hf) {
   console.log('terrainStreaming.selftest: Oasis spring four chunks, wet/dry borders, all LOD paths and east seams passed');
 }
 
+function testCurrentAuthoredChunks(hf, config) {
+  // The three original digests below remain historical. Exercise current
+  // canyon/published relief through the SAME actual startup/live emitters,
+  // including direct-far borders, rather than replacing that old fingerprint.
+  const nearX = Math.min(256, Math.max(-512, Math.floor((config.spawns.player.x + 512) / 128) * 128 - 512));
+  const nearZ = Math.min(384, Math.max(-512, Math.floor((config.spawns.player.z + 512) / 128) * 128 - 512));
+  const pool = new Map(), chunks = [], hash = createHash('sha256');
+  try {
+    for (const [x, z] of [[nearX, nearZ], [nearX + 128, nearZ], [-512, -512], [384, 384]]) {
+      chunks.push(buildCheckedChunk(hf, x, z, pool, `current ${config.id} relief`, hash));
+    }
+    validateEastSeams(chunks[0], chunks[1], [96, 48, 24, 24]);
+    const digest = hash.digest('hex');
+    assert.notEqual(digest, GEOMETRY_GOLDENS[config.id], 'current authored relief is not accidentally the historical terrain');
+    const positions = chunks[1][3].attributes.position.array, originalY = positions[1];
+    try {
+      positions[1] = originalY + 1;
+      assert.throws(() => validateEastSeams(chunks[0], chunks[1], [96, 48, 24, 24]),
+        /shared border vertices/, 'current authored relief rejects a cracked direct-far border');
+    } finally { positions[1] = originalY; }
+    console.log(JSON.stringify({ test: 'terrainStreaming current relief', id: config.id, seed: 1337, chunks: 4,
+      hash: digest, scope: 'actual LOD emission/seams/bounds, not a replacement geometry golden or art approval' }));
+  } finally {
+    for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
+  }
+}
+
 async function testAllMapBytes() {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig, MAP_IDS } = await import('./maps/index.ts');
   assert.equal(MAP_IDS.length, 30);
   assert.deepEqual(Object.keys(GEOMETRY_GOLDENS), [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
-    const config = getMapConfig(mapId);
+    const config = historicalPlayableReliefInput(historicalBadlandsInput(getMapConfig(mapId)));
     const hf = createHeightField(1337, config);
     const hash = createHash('sha256');
     const corrupt = mapId === 'polders' ? createHash('sha256') : null;
@@ -375,6 +403,10 @@ async function testAllMapBytes() {
     }
     for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
     if (mapId === 'oasis') testOasisShorelineChunks(hf);
+    if (['frontier', 'alpine', 'badlands'].includes(mapId)) {
+      const current = getMapConfig(mapId);
+      testCurrentAuthoredChunks(createHeightField(1337, current), current);
+    }
   }
   console.log('terrainStreaming.selftest: 30 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
 }

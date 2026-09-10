@@ -1,4 +1,76 @@
+import assert from 'node:assert/strict';
+import badlands from './maps/badlands.ts';
+import frontier from './maps/frontier.ts';
+import alpine from './maps/alpine.ts';
 import { createLakeChannel } from './maps/marshChannel.ts';
+
+// Published d948cb5733 added only landforms[*].relief. Authenticated Git blobs:
+// Frontier 2ad3e2945ac1dc7edaf4b79945d8f3ba785eacb8 -> fdbd9878c5bf4bf06adc822edc4fae4258206099;
+// Alpine   6029267c78dd0e4d5eb2517d2b31e2013985f168 -> 75e6783b68fa503af689bcf4c9e77ba9f97b85c2.
+// Keep the original anchors and all siblings in historical receipts. Current
+// relief/support is independently certified by playableRelief and actual LOD
+// checks; the guard also rejects a caller replacing a canonical descriptor.
+const currentRelief = new Map([frontier, alpine].map(cfg => [cfg.id,
+  structuredClone(cfg.terrain.landforms.map(form => form.relief))]));
+export function historicalPlayableReliefInput(cfg) {
+  if (!currentRelief.has(cfg.id)) return cfg;
+  assert.deepEqual(cfg.terrain.landforms.map(form => form.relief), currentRelief.get(cfg.id),
+    `${cfg.id}: current playable relief must match canonical descriptors before historical projection`);
+  return { ...cfg, terrain: { ...cfg.terrain, landforms: cfg.terrain.landforms.map(form => {
+    const { relief: _publishedRelief, ...anchor } = form;
+    return anchor;
+  }) } };
+}
+
+// Only the canyon's intentionally replaced authoring is projected. Snapshot
+// the actual canonical input, not a duplicate current terrain prescription.
+// badlandsRelief separately certifies its current canyon/support/scope contract.
+function badlandsAuthoring(cfg) {
+  const terrain = cfg.terrain, props = cfg.props;
+  return { blurb: cfg.blurb, terrain: {
+    redrockCanyon: terrain.redrockCanyon, hillScale: terrain.hillScale,
+    microScale: terrain.microScale, rimH: terrain.rimH, dunesAmp: terrain.dunes?.amp,
+    mesas: terrain.mesas, landforms: terrain.landforms,
+    roads: [terrain.roads?.paths?.[0], terrain.roads?.paths?.[2]],
+  }, beatX: [props.tacticalBeats?.[0]?.x, props.tacticalBeats?.[2]?.x],
+  wallX: props.wallRuns?.slice(0, 4).map(row => [row[0], row[2]]) };
+}
+const currentBadlandsAuthoring = structuredClone(badlandsAuthoring(badlands));
+
+// Exact pre-canyon leaves from d948cb5733ebb41ba471458a6b410e2bbb3568cc:
+// badlands.ts SHA256 eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada.
+// These inputs preserve the callers' immutable full-config/pixel/geometry
+// goldens. Unlisted terrain, route, prop, palette and vegetation fields remain
+// live; no Git/runtime hook or replacement full-map fixture is needed.
+export function historicalBadlandsInput(cfg) {
+  if (cfg.id !== 'badlands') return cfg;
+  assert.deepEqual(badlandsAuthoring(cfg), currentBadlandsAuthoring,
+    'current Badlands authoring must match its canonical config before historical projection');
+  const { redrockCanyon: _laterCanyon, ...terrain } = cfg.terrain;
+  const roads = [
+    [[-432, -452], [-360, -292], [-330, -92], [-356, 112], [-292, 306], [-210, 470]],
+    [[344, -452], [302, -272], [326, -82], [286, 112], [320, 298], [382, 456]],
+  ];
+  const wallX = [[-302, -212], [-294, -204], [202, 298], [198, 294]];
+  return { ...cfg, blurb: 'Layered red escarpments frame a fortified desert logistics outpost',
+    terrain: { ...terrain, hillScale: .68, microScale: .74, rimH: 38,
+      dunes: { ...terrain.dunes, amp: 3 }, mesas: { amp: 24, thr0: .74, thr1: .80 },
+      roads: { ...terrain.roads, paths: terrain.roads.paths.map((path, index) =>
+        index === 0 ? roads[0] : index === 2 ? roads[1] : path) },
+      landforms: [
+        { kind: 'ridge', x: -272, z: 18, length: 330, width: 78, height: 8.4, yawDeg: 4 },
+        { kind: 'ridge', x: 276, z: 26, length: 320, width: 80, height: 8.2, yawDeg: -7 },
+        { kind: 'ridge', x: -42, z: 280, length: 250, width: 70, height: 6.8, yawDeg: 82 },
+        { kind: 'knoll', x: 132, z: -244, rx: 88, rz: 58, height: 6.6, yawDeg: 20 },
+        { kind: 'basin', x: -126, z: -218, rx: 104, rz: 66, height: -3, yawDeg: -21 },
+      ],
+    }, props: { ...cfg.props,
+      tacticalBeats: cfg.props.tacticalBeats.map((beat, index) => index === 0
+        ? { ...beat, x: -282 } : index === 2 ? { ...beat, x: 292 } : beat),
+      wallRuns: cfg.props.wallRuns.map((row, index) => index < 4
+        ? [wallX[index][0], row[1], wallX[index][1], ...row.slice(3)] : row),
+    } };
+}
 
 // The service-court authoring follows Foundry source blob
 // c3ad3042999d7241824ad9a4670fcbd73a5fb84a (d46da09ea). Preserve that
@@ -72,6 +144,8 @@ export function historicalReservoirConfig(cfg) {
 }
 
 export function historicalPaletteConfig(cfg) {
+  if (cfg.id === 'badlands') return historicalBadlandsInput(cfg);
+  if (currentRelief.has(cfg.id)) return historicalPlayableReliefInput(cfg);
   // Coastal surface-only settings postdate the original palette receipt.
   // At 42ea275dfe55 neither setting existed. Current authoring is guarded by
   // terrainSandCoverage/terrainWornDirt/villageWear; preserve every other field.

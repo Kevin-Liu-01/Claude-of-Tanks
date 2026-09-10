@@ -8,7 +8,7 @@ import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
-import { historicalShorelineConfig, historicalReservoirConfig } from './shorelineHistoryTestOracle.mjs';
+import { historicalShorelineConfig, historicalReservoirConfig, historicalBadlandsInput } from './shorelineHistoryTestOracle.mjs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 
 // Captured BEFORE adding the shore pass, from normal production imports:
@@ -238,6 +238,18 @@ function checkOasis() {
   } finally { original.dispose(); current.dispose(); }
 }
 
+function checkCurrentUnrequestedShore(id, size) {
+  const cfg = getMapConfig(id), field = createHeightField(1337, cfg);
+  assert.equal(cfg.splat.shoreDirt, undefined, `${id}: no current bank-soil opt-in`);
+  const current = bake(field, cfg), disabled = bake(field, cfg, false);
+  try {
+    checkTexture(current, size); checkTexture(disabled, size);
+    assert.deepEqual(bytes(current), bytes(disabled), `${id}: current terrain receives no unrequested bank soil`);
+    if (size === 512) assert.notEqual(hash(bytes(current)), ORIGINAL[id],
+      `${id}: current authored roads remain distinct from historical input`);
+  } finally { current.dispose(); disabled.dispose(); }
+}
+
 if (process.argv.includes('--oasis-only')) {
   checkOasis();
   console.log('shoreDirtMask.selftest: Oasis historical RGBA, current water-only footprint and mutation guards passed');
@@ -267,6 +279,7 @@ for (const id of MAP_IDS) {
   // The original Reservoir mask predates c8476fa77's intentionally moved
   // roads/assembly apron. The exact old input still reproduces ORIGINAL.
   if (id === 'reservoir') control = historicalReservoirConfig(control);
+  if (id === 'badlands') control = historicalBadlandsInput(control);
   const texture = bake(createHeightField(1337, control), control);
   try { assert.equal(hash(bytes(texture)), ORIGINAL[id], `${id}: full original RGBA byte control`); }
   finally { texture.dispose(); }
@@ -274,20 +287,14 @@ for (const id of MAP_IDS) {
 // Keep current Reservoir covered too: without an opt-in, the shore pass must
 // be byte-inert even on its new hardstand/road layout. Historical and current
 // layouts must not accidentally collapse back into the same fixture.
-{
-  const cfg = getMapConfig('reservoir'), field = createHeightField(1337, cfg);
-  const current = bake(field, cfg), disabled = bake(field, cfg, false);
-  try {
-    assert.deepEqual(bytes(current), bytes(disabled), 'current Reservoir does not receive unrequested bank soil');
-    assert.notEqual(hash(bytes(current)), ORIGINAL.reservoir, 'current authored roads remain distinct from historical input');
-  } finally { current.dispose(); disabled.dispose(); }
-}
+for (const id of ['reservoir', 'badlands']) checkCurrentUnrequestedShore(id, 512);
 checkOasis();
 for (const id of ['mangrove', 'polders']) for (const seed of [1337, 2049, 4093]) checkShoreMap(id, seed, 512);
 const savedWindow = globalThis.window;
 try {
   globalThis.window = { location: { search: '?tier=mobile' }, localStorage: { getItem: () => null } };
   resolveDeviceTier();
+  checkCurrentUnrequestedShore('badlands', 256);
   for (const id of ['mangrove', 'polders']) for (const seed of [1337, 2049, 4093]) checkShoreMap(id, seed, 256);
 } finally {
   if (savedWindow === undefined) delete globalThis.window; else globalThis.window = savedWindow;

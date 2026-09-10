@@ -85,7 +85,9 @@ function inspectWoodland(mesh, ring, seed, atlasHeight) {
 const nonVerdant = createHash('sha256'), receipts = [];
 for (const [seedIndex, seed] of seeds.entries()) {
   for (const id of MAP_IDS) {
-    const ring = sampleHorizonGeometry(getMapConfig(id), seed);
+    const actual = getMapConfig(id);
+    const config = id === 'badlands' ? { ...actual, horizon: { ...actual.horizon, redrockCanyon: false } } : actual;
+    const ring = sampleHorizonGeometry(config, seed);
     if (id !== 'verdant') {
       nonVerdant.update(id + ':' + seed);
       nonVerdant.update(Buffer.from(ring.positions.buffer));

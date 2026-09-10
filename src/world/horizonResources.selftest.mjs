@@ -338,14 +338,18 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
     }
   }
   if (config.horizon.style === 'alpine') assertFullAngleAlpineLandform(ring, config, label);
-  if (config.horizon.style === 'mesa') assertFullAngleMesaLandform(ring, config, label);
+  // Redrock is now a directional canyon, not two setback mesa ranges.
+  // redrockCanyonHorizon.selftest owns its actual shared-floor/seam/wall gates.
+  if (config.horizon.style === 'mesa' && mapId !== 'badlands') assertFullAngleMesaLandform(ring, config, label);
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
   else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
   else {
     const historicalRing = mapId === 'polders' ? sampleHorizonGeometry({ ...config,
       horizon: { ...config.horizon, amp: 0.50 } }, seed)
       : mapId === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
-        horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
+        horizon: { ...config.horizon, finiteTableCaps: false } }, seed)
+      : mapId === 'badlands' ? sampleHorizonGeometry({ ...config,
+        horizon: { ...config.horizon, redrockCanyon: false } }, seed) : ring;
     appendHorizonReceipt(unchangedGeometry.get(seed), mapId, historicalRing);
     if (seed === 1337) {
       const mutated = mapId === 'desert'
