@@ -1,5 +1,24 @@
 # Self-test release throughput — 2026-09-10
 
+## Qualified bounded pool is now the default
+
+Ordinary `npm test` now uses `min(4, os.availableParallelism())` fresh CPU
+workers instead of silently falling back to serial execution. One-, two- and
+three-CPU hosts retain that smaller width. Explicit `COT_SELFTEST_WORKERS=1`
+still selects serial debugging, and existing integer overrides 1–4 remain
+supported. The suite catalog, assertions, fail-fast/drain behavior, compilation
+cache, FIFO fairness and exclusive browser barriers do not change.
+
+This promotes the already-qualified pool described below; it does not invent
+a new scheduler or skip a release. The complete 933-entry four-worker release
+and subsequent 947-entry grouped-order release are the retained qualification.
+The small default-selection change has focused regressions for host widths,
+overrides and invalid inputs, alongside the existing real-process overlap,
+failure/signal/drain, exact catalog discovery and release-composition checks.
+No full-suite speedup percentage is claimed: queue contention and the work
+remaining in each checkpoint still affect elapsed time. The historical
+opt-in-only descriptions below record earlier stages, not current defaults.
+
 ## Group whole-fleet CPU scans before the bounded drain
 
 The 935-entry Merkava release at `99be9953c` records eleven independent
@@ -38,8 +57,8 @@ percentage. Queue contention is a material part of the delay, not a failed or
 cancelled check. Coordinate optional work and use one composed release for a
 verified batch instead of repeating the whole suite per tank.
 
-`COT_SELFTEST_WORKERS=4 npm test` now allows up to four fresh CPU children;
-integer widths 1–4 are supported and the default remains **1**. The machine
+At this opt-in checkpoint, `COT_SELFTEST_WORKERS=4 npm test` allowed up to four
+fresh CPU children; integer widths 1–4 were supported and the default was **1**. The machine
 used for this recovery has 18 physical CPU cores and 128 GiB RAM. Browser
 checks still run alone, every assertion still executes, and the 45-second
 admission window still drains live children before rejoining the shared FIFO.
