@@ -149,6 +149,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/late-fx-matrix.browser.selftest.mjs',
   'tools/articulated-shadow-batch.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
+  'tools/sourced-building-source.browser.selftest.mjs',
 ]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {
   assert.equal(Object.values(SELFTEST_SUITES).flat().filter((entry) => entry === file).length, 1);
@@ -169,7 +170,7 @@ function actualRegistryFixture(ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES) {
 }
 const registered = actualRegistryFixture();
 assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
-assert.deepEqual(registered.events, ['[selftests] actual-registry: 7 files', 'acquire', 'cpu', 'release',
+assert.deepEqual(registered.events, ['[selftests] actual-registry: 8 files', 'acquire', 'cpu', 'release',
   ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
 const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
@@ -178,6 +179,7 @@ assert.equal(oldRegistry.held, false, 'the old nested-lock failure still release
 for (const concurrency of [1, 2, 3, 4, 5, 6, 7, 8]) for (const lateFx of [
   'tools/late-fx-matrix.browser.selftest.mjs', 'tools/articulated-shadow-batch.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
+  'tools/sourced-building-source.browser.selftest.mjs',
 ]) {
   const current = actualRegistryFixture();
   assert.equal(await runSelftestSuite('late-fx-barrier', ['cpu', lateFx, cpuBrowserGuard],

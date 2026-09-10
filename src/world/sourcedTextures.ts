@@ -4,9 +4,9 @@
 // Deep-hunt integration 2026-07: the terrain splat layers and the village
 // building materials can be fed from downloaded PBR sets instead of the
 // procedural canvas painters. Any image that fails to load simply leaves the
-// procedural texture in place (the swap mutates the
-// existing THREE.CanvasTexture image in-place, so materials/uniform bindings
-// never change and the __GAME_READY screenshot contract is unaffected).
+// procedural texture in place. Swaps keep the existing THREE.CanvasTexture
+// object, so materials/uniform bindings and source-readiness ownership stay
+// unchanged. Immutable building data may share a Source, never a UV owner.
 //
 // Contract notes:
 // - terrain splat albedo packs ROUGHNESS IN ALPHA (terrain.js splat shader);
@@ -23,6 +23,7 @@ import { texSize } from '../engine/quality.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { composeAlbedoPixels, composeSurfacePixels, type SourcedComposeOptions } from './sourcedTextureComposer.ts';
 import { canComposeSourcedTextureInWorker, tryComposeSourcedTexture } from './sourcedTextureCompositionClient.ts';
+import { replaceSourcedBuildingDataImage } from './sourcedBuildingDataSource.ts';
 
 interface SourceTextureSet {
   color: string;
@@ -535,6 +536,7 @@ async function applySet(
   layer: TextureLayer,
   opts: ComposeOptions,
   application: SourcedTextureApplicationOptions = {},
+  replaceData: typeof swapTexture = swapTexture,
 ): Promise<Pick<SourcedTextureResult, 'applied' | 'failures'>> {
   if (application.signal?.aborted) return { applied: false, failures: ['Source composition canceled'] };
   const images = await loadSetImages(setKey);
@@ -546,17 +548,18 @@ async function applySet(
   if (application.signal?.aborted) return { applied: false, failures: [...images.failures, 'Source composition canceled'] };
   if (!composed) return { applied: false, failures: images.failures };
   swapTexture(layer.albedo, composed.albedo);
-  if (layer.surface && composed.surface) swapTexture(layer.surface, composed.surface);
-  swapTexture(layer.normal, composed.normal);
+  if (layer.surface && composed.surface) replaceData(layer.surface, composed.surface);
+  replaceData(layer.normal, composed.normal);
   return { applied: true, failures: images.failures };
 }
 
 async function sourceJob(
   target: string, set: keyof typeof SETS, layer: TextureLayer, opts: ComposeOptions,
   application: SourcedTextureApplicationOptions = {},
+  replaceData: typeof swapTexture = swapTexture,
 ): Promise<SourcedTextureResult> {
   try {
-    const result = await applySet(set, layer, opts, application);
+    const result = await applySet(set, layer, opts, application, replaceData);
     if (result.failures.length) console.warn(`[sourcedTextures] ${target}: ${result.failures.join('; ')}`);
     return { target, ...result };
   } catch (error) {
@@ -850,7 +853,8 @@ export function applySourcedBuildings(
     const opts: ComposeOptions = tint === null
       ? { tint: null }
       : isTint(tint) ? { tint } : tint;
-    jobs.push(sourceJob(`building ${mapId}/${bucket}`, setKey, layer, { roughInAlpha: false, ...opts }, application));
+    jobs.push(sourceJob(`building ${mapId}/${bucket}`, setKey, layer,
+      { roughInAlpha: false, ...opts }, application, replaceSourcedBuildingDataImage));
   }
   return Promise.all(jobs);
 }

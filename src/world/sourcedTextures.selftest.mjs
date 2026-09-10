@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
+import * as THREE from 'three';
 
 const contextOptions = [];
 const loadedImageUrls = [];
@@ -116,7 +117,13 @@ assert.deepEqual([...surface.pixels], [
 assert.equal(contextOptions.length, 3,
   'packed surface output reuses the one readback context and allocates one write-only canvas');
 
-const texture = () => ({ disposeCount: 0, dispose() { this.disposeCount++; } });
+const texture = () => {
+  // Match Three's Source-backed image accessor, including Source replacement.
+  const view = new THREE.Texture();
+  view.disposeCount = 0;
+  view.addEventListener('dispose', () => { view.disposeCount++; });
+  return view;
+};
 const layer = { albedo: texture(), normal: texture() };
 let terrainSettled = false;
 const terrainReady = applySourcedTerrain('verdant', { G: layer });
