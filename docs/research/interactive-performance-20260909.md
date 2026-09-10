@@ -11,9 +11,14 @@ Latest follow-up (2026-09-10): see
 and [foundation-decal pacing](foundation-decal-pacing-20260910.md), plus the
 [integrated terrain-row qualification](splat-field-row-pacing-20260910.md#integrated-release-checkpoint),
 for current qualification evidence and still-open cold-loading/Ready stalls.
-All 956 current checks have cumulative PASS coverage; types/build and native
+The 956-check baseline has cumulative PASS coverage; types/build and native
 actual-control gates pass. Strict performance acceptance remains open: the
-latest loading callback gap is 94.3 ms and the camera certificate is refused.
+local loading callback gap is 94.3 ms and the camera certificate is refused.
+The published `2e2fa5999` production flow passes functionally but reaches
+160/217.1/129.2 ms gaps; [Garage environment reuse](garage-environment-reuse-20260910.md)
+records those limits, the source-confirmed repeated environment bake, and the
+bounded-reuse follow-up with its new 957th regression check. The local numbers
+must not substitute for production timing.
 The dated checkpoints below are retained
 history, not a replacement for that newer evidence or a combined-release certificate.
 

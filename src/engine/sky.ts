@@ -21,6 +21,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 // read inside the bake functions (post-renderer), never at module eval.
 import { texSize } from './quality.ts';
 import { enforceEnvValidity } from './deviceDiag.ts';
+import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
 import {
   bakeCirrusPixels,
   bakeCumulusPixels,
@@ -601,6 +602,49 @@ function horizonColorKey(
   return `${scalars.join(',')}|${renderer.outputColorSpace}|${THREE.ColorManagement.workingColorSpace}|${THREE.ColorManagement.enabled}`;
 }
 
+function environmentKey(
+  renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3, preset: Readonly<SkyPreset>,
+): string | null {
+  const skyKey = horizonColorKey(renderer, sunDir, preset);
+  const clearColor = renderer.getClearColor(new THREE.Color());
+  const background = [clearColor.r, clearColor.g, clearColor.b, renderer.getClearAlpha()];
+  // PMREM forces NoToneMapping and disables XR; conservative output keys also
+  // cover the retained horizon contract. Never round radiance or sun inputs.
+  if (skyKey === null || !background.every(Number.isFinite)) return null;
+  return `${skyKey}|${background.join(',')}`;
+}
+
+/** Three's fromScene has no exception cleanup; restore all state it mutates. */
+function withEnvironmentRenderState<Result>(renderer: THREE.WebGLRenderer, work: () => Result): Result {
+  const target = renderer.getRenderTarget();
+  const face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
+  const xrEnabled = renderer.xr.enabled;
+  const toneMapping = renderer.toneMapping, autoClear = renderer.autoClear;
+  const restore = (): void => {
+    renderer.xr.enabled = xrEnabled;
+    renderer.toneMapping = toneMapping;
+    renderer.autoClear = autoClear;
+    renderer.setRenderTarget(target, face, mip);
+  };
+  let failed = true;
+  try {
+    const result = work();
+    failed = false;
+    return result;
+  } finally {
+    if (failed) {
+      try { restore(); } catch { /* Retain the original generation/validation error. */ }
+    } else restore();
+  }
+}
+
+function disposeEnvironmentSky(sky: Sky): void {
+  let rethrow: (() => never) | null = null;
+  try { sky.geometry.dispose(); } catch (error) { rethrow = () => { throw error; }; }
+  try { sky.material.dispose(); } catch (error) { rethrow ??= () => { throw error; }; }
+  rethrow?.();
+}
+
 function retainHorizonColor(
   renderer: THREE.WebGLRenderer, cache: HorizonColorCache | null,
   key: string | null, color: THREE.Color,
@@ -1045,7 +1089,47 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
   updateCloudDecks();
 
   let pmrem: THREE.PMREMGenerator | null = null;
-  let envTarget: THREE.WebGLRenderTarget | null = null;
+  let pmremContext: ReturnType<THREE.WebGLRenderer['getContext']> | null = null;
+  let pmremInfo: THREE.WebGLRenderer['info'] | null = null;
+  const environments = new SkyEnvironmentCache(renderer, scene);
+  const environmentGenerator = (): THREE.PMREMGenerator => {
+    const context = renderer.getContext();
+    if (pmrem && (pmremContext !== context || pmremInfo !== renderer.info || context.isContextLost())) {
+      pmrem.dispose();
+      pmrem = null;
+    }
+    if (!pmrem) {
+      pmrem = new THREE.PMREMGenerator(renderer);
+      pmremContext = context;
+      pmremInfo = renderer.info;
+    }
+    return pmrem;
+  };
+  const bakeProceduralEnvironment = (): THREE.WebGLRenderTarget => {
+    const envScene = new THREE.Scene();
+    const envSky = new Sky();
+    let result: THREE.WebGLRenderTarget | null = null;
+    try {
+      envSky.scale.setScalar(ENV_SKY_SCALE);
+      configureSkyUniforms(envSky, sunDir, preset);
+      envScene.add(envSky);
+      result = environmentGenerator().fromScene(envScene);
+      disposeEnvironmentSky(envSky);
+      return result;
+    } catch (error) {
+      // fromScene cannot expose an output allocated before it throws. Release
+      // the accessible generator scratch; never reuse an interrupted bake.
+      try { pmrem?.dispose(); } catch { /* Preserve the bake failure. */ }
+      pmrem = null;
+      try { result?.dispose(); } catch { /* Preserve the bake failure. */ }
+      // Both private resources are attempted even when construction/rendering
+      // failed. A successful cleanup above need not dispatch dispose twice.
+      if (!result) {
+        try { disposeEnvironmentSky(envSky); } catch { /* Preserve the bake failure. */ }
+      }
+      throw error;
+    }
+  };
 
   // Sourced-HDRI environment override (experiment flag; null = procedural
   // bake, the shipping configuration). Set to an equirect .hdr URL to test.
@@ -1057,13 +1141,11 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         .then(({ RGBELoader }) => new RGBELoader().loadAsync(url));
     }
     hdriPromise.then((tex) => {
-      const generator = pmrem ?? (pmrem = new THREE.PMREMGenerator(renderer));
-      const nextTarget = generator.fromEquirectangular(tex);
-      if (envTarget !== null) envTarget.dispose();
-      envTarget = nextTarget;
-      scene.environment = envTarget.texture;
-      scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
-      enforceEnvValidity(renderer, scene); // MOBILE r4: see bakeEnvironment
+      withEnvironmentRenderState(renderer, () => environments.install(
+        null, () => environmentGenerator().fromEquirectangular(tex),
+        Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR),
+        () => enforceEnvValidity(renderer, scene),
+      ));
     }).catch((error: RuntimeValue) => console.warn(
       '[sky] HDRI env failed, procedural bake kept —', errorMessage(error),
     ));
@@ -1085,12 +1167,10 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      * `scene.environment` (the IBL specular-ambient layer — the biggest single
      * AAA-ness lever per graphics-aaa.md §2). Uses a SEPARATE Sky instance
      * scaled to fit PMREMGenerator's internal far plane. Safe to call again
-     * (re-bake); the previous target is disposed.
+     * (re-bake); two exact validated day/night targets remain reusable.
      * @returns {void}
      */
     bakeEnvironment(): void {
-      if (pmrem === null) pmrem = new THREE.PMREMGenerator(renderer);
-
       // Deep-hunt IBL experiment (2026-07): sourced Poly Haven HDRI as
       // scene.environment instead of the procedural-sky bake. Judged worse —
       // the HDRI's baked-in sun cannot track the per-map sun azimuth /
@@ -1101,28 +1181,16 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         loadHdriEnvironment(HDRI_ENV_URL);
         return;
       }
-      const envScene = new THREE.Scene();
-      const envSky = new Sky();
-      envSky.scale.setScalar(ENV_SKY_SCALE);
-      configureSkyUniforms(envSky, sunDir, preset);
-      envScene.add(envSky);
-
-      const nextTarget = pmrem.fromScene(envScene);
-      if (envTarget !== null) envTarget.dispose();
-      envTarget = nextTarget;
-
-      scene.environment = envTarget.texture;
-      scene.environmentIntensity = Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR);
-
-      envSky.geometry.dispose();
-      envSky.material.dispose();
-
       // MOBILE r4: some iOS GPUs poison the PMREM bake (NaN texels) and the
       // IBL term blackens every lit material (proven on-device by the r3
       // watchdog: rescue 'environment-off'). Validate after EVERY bake — the
       // sky re-bakes per map and would reinstall the bad texture — and swap
       // to compensated ambient when invalid (deviceDiag.ts).
-      enforceEnvValidity(renderer, scene, preset.skyIntensity);
+      withEnvironmentRenderState(renderer, () => environments.install(
+        environmentKey(renderer, sunDir, preset), bakeProceduralEnvironment,
+        Math.max(preset.envIntensity, ENV_INTENSITY_FLOOR),
+        () => enforceEnvValidity(renderer, scene, preset.skyIntensity),
+      ));
     },
 
     horizonColor,
