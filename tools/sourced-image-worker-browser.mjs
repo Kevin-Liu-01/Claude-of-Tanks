@@ -259,11 +259,12 @@ function responsivenessWindows(report) {
 }
 
 export async function measureWorkerComparison({ input, policy, reuseDelayMs, imageTimeoutMs,
-  workerTimeoutMs, workerSource, validateReplySource }) {
+  workerTimeoutMs, workerSource, validateReplySource, persistent = false, legacySource = null }) {
   const now = () => performance.now();
   const report = window.__SOURCE_COMPOSITION = { caseId: input.id, policy, kind: input.kind,
     status: 'running', images: [], measurements: [], reuseDelayMs, size: 1024,
-    workerLifetime: 'fresh-one-shot-per-composition; delayed stage reuses images, not worker', errors: [] };
+    workerLifetime: persistent ? 'actual-persistent-client-per-trial; delayed stage reuses images and worker, not output cache'
+      : 'fresh-one-shot-per-composition; delayed stage reuses images, not worker', errors: [] };
   const canvases = [], pendingImages = new Set(), timers = new Set(), frameIds = new Set();
   const cancellation = new AbortController(), abortWaiters = new Set();
   let finish;
@@ -274,7 +275,7 @@ export async function measureWorkerComparison({ input, policy, reuseDelayMs, ima
     return finished;
   };
   window.__STOP_SOURCE_COMPOSITION = stop;
-  let observer;
+  let observer, client, persistentApi, transportObserver;
   const wait = (ms, callback) => {
     const timer = setTimeout(() => { timers.delete(timer); callback(); }, ms); timers.add(timer); return timer;
   };
@@ -317,11 +318,17 @@ export async function measureWorkerComparison({ input, policy, reuseDelayMs, ima
     return { role: output.role, canvas };
   });
   try {
-    const owner = await import('/src/world/sourcedTextures.ts');
+    const runtimeOwner = await import('/src/world/sourcedTextures.ts');
+    const owner = persistent ? new Function('document', 'texSize', legacySource)(document, size => size) : runtimeOwner;
+    if (persistent) {
+      client = await import('/src/world/sourcedTextureCompositionClient.ts');
+      persistentApi = await import('/tools/sourced-image-persistent-browser.mjs');
+      if (policy === 'worker') transportObserver = persistentApi.observePersistentSourceTransport();
+    }
     const quality = await import('/src/engine/quality.ts');
     quality.resolveDeviceTier(); quality.setPresetName('high');
     report.quality = { tier: quality.getDeviceTier(), preset: quality.resolvePresetName(), textureSize: quality.texSize(1024) };
-    const validateReply = new Function(`return (${validateReplySource});`)();
+    const validateReply = persistent ? null : new Function(`return (${validateReplySource});`)();
     observer = startResponsivenessObserver();
     // Establish a leading callback before image IO, without warming image/composition paths.
     await frameBoundary(); await frameBoundary();
@@ -332,6 +339,15 @@ export async function measureWorkerComparison({ input, policy, reuseDelayMs, ima
       const startedAt = now();
       const result = await observeReads(async reads => {
         if (policy === 'worker') {
+          if (persistent) {
+            const result = await persistentApi.runPersistentSourceComposition({ input,
+              images: { color: loaded.color, ao: loaded.ao, rough: loaded.rough }, signal: cancellation.signal,
+              compose: client.tryComposeSourcedTexture,
+              adopt: (pixels, size, albedo) => {
+                const canvas = runtimeOwner.adoptPixels(pixels, size, albedo); canvases.push(canvas); return canvas;
+              }, now });
+            return { ...result, mainReadbacks: reads };
+          }
           const result = await runWorkerComposition({ input, requestId: stage, workerSource, validateReply,
             signal: cancellation.signal,
             images: { color: loaded.color, ao: loaded.ao, rough: loaded.rough }, timeoutMs: workerTimeoutMs,
@@ -379,6 +395,8 @@ export async function measureWorkerComparison({ input, policy, reuseDelayMs, ima
     if (error.compositionReceipt) report.failedPipeline = error.compositionReceipt;
   }
   finally {
+    client?.disposeSourcedTextureCompositionWorker();
+    if (transportObserver) report.transport = transportObserver.stop();
     if (observer) report.responsiveness = observer.stop();
     for (const timer of timers) clearTimeout(timer);
     for (const id of frameIds) cancelAnimationFrame(id);

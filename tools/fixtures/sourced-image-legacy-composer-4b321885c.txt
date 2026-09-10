@@ -1,0 +1,107 @@
+// Frozen independent Canvas composer reference for maintained CPU/native probes.
+// Origin: src/world/sourcedTextures.ts at 4b321885c676877b83f9dd6725bcef164cab8f29.
+// Only the exact four function bodies are retained; unrelated runtime/map code is omitted.
+// The two boundary comments and unused touchLru stub preserve extraction anchors.
+let _readbackCanvas = null, _readbackCtx = null, _readbackSize = 0;
+function canvasContext(
+  canvas: HTMLCanvasElement,
+  options?: CanvasRenderingContext2DSettings,
+): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', options);
+  if (!context) throw new Error('Canvas2D is unavailable for sourced texture composition');
+  return context;
+}
+
+function readScaledPixels(
+  image: CanvasImageSource | null | undefined,
+  size: number,
+): Uint8ClampedArray | null {
+  if (!image) return null;
+  if (!_readbackCanvas) {
+    _readbackCanvas = document.createElement('canvas');
+    _readbackCtx = canvasContext(_readbackCanvas, { willReadFrequently: true });
+  }
+  if (_readbackSize !== size) {
+    _readbackCanvas.width = size;
+    _readbackCanvas.height = size;
+    _readbackSize = size;
+  }
+  if (!_readbackCtx) throw new Error('Canvas2D readback context was not initialized');
+  _readbackCtx.drawImage(image, 0, 0, size, size);
+  return _readbackCtx.getImageData(0, 0, size, size).data;
+}
+
+function touchLru() {}
+
+export function composeAlbedo(
+  color: HTMLImageElement,
+  ao: HTMLImageElement | null,
+  rough: HTMLImageElement | null,
+  {
+    roughInAlpha = false,
+    roughMul = 1,
+    tint = null,
+    desat = 0,
+    lift = 0,
+  }: ComposeOptions = {},
+): HTMLCanvasElement {
+  const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = canvasContext(c, { willReadFrequently: true });
+  ctx.drawImage(color, 0, 0, s, s);
+  const px = ctx.getImageData(0, 0, s, s);
+  const d = px.data;
+  const aod = readScaledPixels(ao, s);
+  // Only the terrain splat shader consumes roughness through albedo alpha.
+  // Building materials receive it through composeSurface(), so decoding it
+  // here as well would repeat a full 1K readback for no output change.
+  const rgd = roughInAlpha ? readScaledPixels(rough, s) : null;
+  const tr = tint ? tint[0] : 1, tg = tint ? tint[1] : 1, tb = tint ? tint[2] : 1;
+  for (let i = 0; i < d.length; i += 4) {
+    const a = aod ? aod[i] / 255 : 1;
+    let r = d[i] * a * tr, g = d[i + 1] * a * tg, b = d[i + 2] * a * tb;
+    // r5 terrain_environment: desat/lift — a multiply-only tint cannot turn
+    // saturated terracotta into frosted tile (winter roofs stayed ORANGE in
+    // a deep-snow scene, critique); mixing toward luminance then lifting can
+    if (desat > 0) {
+      const lum = r * 0.299 + g * 0.587 + b * 0.114;
+      r += (lum - r) * desat; g += (lum - g) * desat; b += (lum - b) * desat;
+    }
+    if (lift > 0) { r += lift * 255; g += lift * 255; b += lift * 255; }
+    d[i] = Math.min(255, r);
+    d[i + 1] = Math.min(255, g);
+    d[i + 2] = Math.min(255, b);
+    d[i + 3] = roughInAlpha
+      ? Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul))
+      : 255;
+  }
+  ctx.putImageData(px, 0, 0);
+  return c;
+}
+
+/** Pack AO (red) and roughness (green) into one linear building surface map. */
+export function composeSurface(
+  ao: HTMLImageElement | null,
+  rough: HTMLImageElement | null,
+  size: number,
+  roughMul = 1,
+): HTMLCanvasElement {
+  const aod = readScaledPixels(ao, size);
+  const rgd = readScaledPixels(rough, size);
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = canvasContext(c);
+  const px = ctx.createImageData(size, size);
+  const d = px.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = aod ? aod[i] : 255;
+    d[i + 1] = Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul));
+    d[i + 2] = 0;
+    d[i + 3] = 255;
+  }
+  ctx.putImageData(px, 0, 0);
+  return c;
+}
+
+// Pigment variants (remaining runtime intentionally omitted).
