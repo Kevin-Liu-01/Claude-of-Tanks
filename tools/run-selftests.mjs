@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
+import { runSelftestCpuPool } from './selftest-cpu-pool.mjs';
 
 // These real browser regressions own the shared lease inside their processes.
 // Other subprocess tests either remain CPU-only or reject browser CLI input
@@ -11,6 +12,7 @@ import { SELFTEST_SUITES } from './selftest-suites.mjs';
 export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
+  'tools/late-fx-matrix.browser.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file
@@ -21,16 +23,27 @@ export function selftestChildEnv(env = process.env) {
   return { ...env, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
 }
 
+// Opt in while the complete real-suite parity run is being qualified. This
+// controls scheduling only: no test, assertion or failure gate is omitted.
+export function selftestWorkerCount(env = process.env) {
+  const count = Number(env.COT_SELFTEST_WORKERS ?? 1);
+  if (count !== 1 && count !== 2) throw new TypeError('COT_SELFTEST_WORKERS must be 1 or 2');
+  return count;
+}
+
 export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv() } = {}) {
   return new Promise((resolveResult) => {
     const child = spawnProcess(process.execPath, [file], {
       cwd: process.cwd(), env, stdio: 'inherit',
     });
     let error, interruptedBy;
-    const interrupt = () => { interruptedBy = 'SIGINT'; child.kill('SIGINT'); };
-    const terminate = () => { interruptedBy = 'SIGTERM'; child.kill('SIGTERM'); };
-    signals.once('SIGINT', interrupt);
-    signals.once('SIGTERM', terminate);
+    const interrupt = () => { interruptedBy ??= 'SIGINT'; child.kill('SIGINT'); };
+    const terminate = () => { interruptedBy ??= 'SIGTERM'; child.kill('SIGTERM'); };
+    // Repeated signals must keep reaching surviving children while they drain.
+    // Removing a one-shot handler early could terminate the parent and release
+    // its resource lease before the last child has actually closed.
+    signals.on('SIGINT', interrupt);
+    signals.on('SIGTERM', terminate);
     child.once('error', (failure) => { error = failure; });
     child.once('close', (status, signal) => {
       signals.removeListener('SIGINT', interrupt);
@@ -53,10 +66,15 @@ export async function runSelftestSuite(suiteName, suite, {
   log = console.log,
   logError = console.error,
   onTiming = () => {},
+  concurrency = 1,
 } = {}) {
   if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
     throw new TypeError('maxLeaseBatchMs must be finite and positive');
   }
+  if (concurrency !== 1 && concurrency !== 2) throw new TypeError('concurrency must be 1 or 2');
+  if (concurrency === 2) return runSelftestCpuPool(suiteName, suite, {
+    runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
+  });
   let held = false;
   let acquiredAt = 0;
   let refresher;
@@ -116,13 +134,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exitCode = 2;
   } else {
     let completed = 0, executionMs = 0, queueMs = 0;
+    const suiteStarted = performance.now();
+    const concurrency = selftestWorkerCount();
     process.exitCode = await runSelftestSuite(suiteName, suite, {
+      concurrency,
       onTiming(row) {
         completed++; executionMs += row.runMs; queueMs += row.queueMs;
         const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
         console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
       },
     });
-    console.log(`[selftests] ${suiteName}: ${executionMs.toFixed(0)}ms total child, ${queueMs.toFixed(0)}ms runner FIFO; own-lease browser wait is included in child time`);
+    console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);
   }
 }
