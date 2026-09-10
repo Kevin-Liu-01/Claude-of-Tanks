@@ -18,6 +18,7 @@ function sourceHash() {
   for (const file of [
     './late-fx-matrix.browser.selftest.mjs', './late-fx-matrix.browser.fixture.mjs',
     '../src/engine/post.ts', '../src/engine/sceneSourcePass.ts',
+    '../src/engine/lateFxSceneView.ts',
     '../src/engine/resolvedDepthCopy.ts', '../src/fx/layers.ts', '../package-lock.json',
   ]) {
     hash.update(file); hash.update('\0');
@@ -68,6 +69,13 @@ async function runFixture(page, report) {
   assert.ok(report.fixture && typeof report.fixture === 'object', 'fixture must publish its native receipt');
   assert.equal(report.fixture.ok, true, 'all native matrix/pose/depth assertions must pass');
   assert.equal(report.fixture.cases.length, 12, 'both MSAA and AO modes require three successive frames');
+  for (const row of report.fixture.cases) {
+    assert.equal(row.referenceRenderScene, 'original', 'reference must exercise exact callback fallback');
+    assert.equal(row.candidateRenderScene, 'retained-view', 'candidate must exercise scene-state isolation');
+    assert.equal(row.referenceCallbackCalls, 1);
+    assert.equal(row.candidateCallbackCalls, 0);
+    assert.equal(row.directDrawObserverRestored, true);
+  }
 }
 
 async function captureCanvas(page, directory, report) {
@@ -89,7 +97,7 @@ async function captureCanvas(page, directory, report) {
 }
 
 const lock = createCaptureLock();
-const report = { protocol: 'late-fx-matrix-native-v1', ok: false, sourceHash: null,
+const report = { protocol: 'late-fx-matrix-and-scene-view-native-v2', ok: false, sourceHash: null,
   fixture: null, artifacts: {}, errors: [], browserClosed: false, serverClosed: false, lockReleased: false };
 let server, browser, page, refresh, outDir;
 try {
