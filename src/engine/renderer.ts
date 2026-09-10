@@ -104,6 +104,9 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     showContextLossOverlay(recovering);
   }, false);
   renderer.domElement.addEventListener('webglcontextrestored', () => {
+    // Three's earlier listener replaces shadowMap along with its GL caches.
+    // Restore proxy routing before any application recovery can render.
+    routeShadowOnlyLayer(renderer);
     const restoredGeneration = contextRecoveryGeneration;
     const handler = renderer.userData.contextRecovery?.onRestored;
     if (typeof handler !== 'function') {

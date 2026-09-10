@@ -111,5 +111,51 @@ browser/server/fixture/lock cleanup checks pass. The native fixture canvas was
 visually inspected. This is an exact exercised-image and submission result,
 not an FPS result or a native test of hardware without multi-draw support.
 
-Full-game candidate results follow after acquisition. Historical untraced
-214–319 ms stalls remain unproven.
+### Uninstrumented full-game result: draw budget passes, timing still fails
+
+`articulated-shadow-gameplay-unprofiled-r1.json`, SHA256
+`92adff7970c1169cc5006390349e164ef8bab278de44209c2b4e7c635b75e195`,
+captures the clean `5f7cbfe20` candidate and public HTML hash
+`e13c8cc769c5de382c33e5bc343407a9173f721a81f5155e9da464e522fc123d`.
+It uses the same sixty-second early-control-release Verdant protocol, pinned
+fourteen-tank roster, native Chrome151, high quality, 1280×720/DPR1/scale1/trim0,
+movement, firing and camera input as the earlier uninstrumented baseline.
+Source hashes remain unchanged. All 3,601 submitted-frame intervals retain the
+four-cascade mask15; there are no console errors.
+
+| Metric | Earlier uninstrumented baseline | Candidate |
+| --- | ---: | ---: |
+| Draw calls, median / worst | 772 / 923 | 770 / 872 |
+| Frame time, median / p95 / p99 (ms) | 16.7 / 17.8 / 24.9 | 16.7 / 18.4 / 25.3 |
+| FPS, median | 59.9 | 59.9 |
+| Scene texture estimate (MB) | 166.9 | 166.9 |
+
+The worst-draw budget now passes, but the unchanged strict timing limits still
+fail (`59.9 < 60` median FPS and `25.3 > 25` ms p99). Preserve the overall
+**FAIL** and exit1; this is not a frame-time improvement or a perfect-performance
+certificate. The exact native fixture isolates the batching mechanism; full
+battle trajectories and scheduling vary, so these single-run draw differences
+are not an isolated causal estimate. The candidate heap endpoint fell, but no
+matched pre/post-GC baseline exists to certify absence of leaks. No repeated
+acquisitions were made to search for a passing timing result.
+
+Historical untraced 214–319 ms stalls remain unproven.
+
+### Context-restoration integration
+
+Lifecycle review found an existing recovery omission: Three reconstructs its
+`shadowMap` on WebGL context restoration, discarding the wrapper that exposes
+layer29 during shadow traversal. The renderer restore listener now reinstalls
+that idempotent adapter synchronously before application recovery can draw.
+This repairs recovery for original proxies as well as their new batches.
+The actual listener regression exercises replacement owners, ordering,
+idempotence, subsequent losses and exception-safe camera-mask restoration.
+No normal-frame or shadow-cadence behavior changes.
+
+Existing covered deployment and depth-program warm renders reach the batch.
+GPU suspension deliberately preserves its control textures and copied CPU
+geometry; final disposal remains traversal-safe. The pre-existing caster
+cohort selector omits layer29, so those proxies stay enabled during warm
+cohorts rather than being bounded by that selector. This is not missing
+first-use coverage, but the current change does not claim to improve that
+separate loading-pacing behavior.
