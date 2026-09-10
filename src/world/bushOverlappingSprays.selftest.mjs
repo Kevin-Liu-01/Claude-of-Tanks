@@ -74,24 +74,57 @@ function identical(a, b) {
   }
   assert.deepEqual(a.index?.array, b.index?.array); assert.deepEqual(a.groups, b.groups); assert.deepEqual(a.drawRange, b.drawRange);
 }
-function spray(g, offset) {
-  const uv = g.attributes.uv, corners = new Map(), cross = [], areas = [];
-  for (let i = 0; i < 6; i++) {
+function sprayCorners(g, offset) {
+  const uv = g.attributes.uv, corners = new Map();
+  for (let i = 0; i < 12; i++) {
     const j = offset + i, u = uv.getX(j), v = uv.getY(j), key = `${u},${v}`, p = point(g, j);
-    assert.ok((u === 0 || u === 1) && (v === 0 || v === 1), 'complete corner UVs');
-    if (corners.has(key)) assert.deepEqual(p.toArray(), corners.get(key), 'shared triangle corners coincide');
-    else corners.set(key, p.toArray());
+    assert.ok([0, .5, 1].includes(u) && (v === 0 || v === 1), 'complete folded corner UVs');
+    if (corners.has(key)) assert.deepEqual(p.toArray(), corners.get(key).toArray(), 'shared triangle corners coincide');
+    else corners.set(key, p);
   }
-  for (const j of [offset, offset + 3]) {
+  assert.equal(corners.size, 6, 'six unique folded corners'); return corners;
+}
+function sprayTriangles(g, offset, outward) {
+  const uv = g.attributes.uv, wings = [[], []];
+  for (let j = offset; j < offset + 12; j += 3) {
     const a = point(g, j), b = point(g, j + 1), c = point(g, j + 2);
     const n = b.sub(a).cross(c.sub(a));
-    assert.ok(n.lengthSq() > 1e-12, 'nonzero triangle area'); cross.push(n.normalize());
-    areas.push((uv.getX(j + 1) - uv.getX(j)) * (uv.getY(j + 2) - uv.getY(j))
-      - (uv.getY(j + 1) - uv.getY(j)) * (uv.getX(j + 2) - uv.getX(j)));
+    assert.ok(n.lengthSq() > 1e-12, 'nonzero triangle area');
+    assert.ok(n.normalize().dot(outward) > .5, 'all geometric triangle winding points outward');
+    const area2 = (uv.getX(j + 1) - uv.getX(j)) * (uv.getY(j + 2) - uv.getY(j))
+      - (uv.getY(j + 1) - uv.getY(j)) * (uv.getX(j + 2) - uv.getX(j));
+    assert.equal(area2, .5, 'four atlas quarter-triangles preserve UV winding');
+    const us = [0, 1, 2].map(k => uv.getX(j + k));
+    assert.equal(Math.max(...us) - Math.min(...us), .5, 'triangle stays on one atlas wing');
+    wings[Math.min(...us) * 2].push([0, 1, 2].map(k => `${uv.getX(j + k)},${uv.getY(j + k)}`));
   }
-  assert.equal(corners.size, 4, 'four complete spray corners');
-  assert.ok(cross[0].dot(cross[1]) > 1 - 2e-6, 'paired triangles have consistent flat winding');
-  assert.ok(Math.abs(areas[0]) === 1 && areas[0] === areas[1], 'two triangles cover entire atlas once');
+  for (const wing of wings) {
+    assert.equal(wing.length, 2);
+    const shared = [];
+    for (const key of wing[0]) if (wing[1].includes(key)) shared.push(key.split(',').map(Number));
+    assert.equal(shared.length, 2);
+    assert.ok(shared[0][0] !== shared[1][0] && shared[0][1] !== shared[1][1], 'wing triangles share a diagonal, without overlap or atlas holes');
+  }
+}
+function spray(g, offset) {
+  const corners = sprayCorners(g, offset), left = corners.get('0,0'), right = corners.get('1,0');
+  const across = right.clone().sub(left), along = corners.get('0,1').clone().sub(left);
+  const outward = across.clone().cross(along).normalize(), width = across.length();
+  for (const v of [0, 1]) {
+    const chord = corners.get(`0,${v}`).clone().lerp(corners.get(`1,${v}`), .5);
+    const crease = corners.get(`0.5,${v}`).clone().sub(chord);
+    const depth = crease.dot(outward);
+    assert.ok(depth > width * .04 && depth < width * .35, 'convex outward fold, not flat or a concave trough');
+  }
+  sprayTriangles(g, offset, outward);
+  const values = [...corners.values()], center = values.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / 6);
+  return { center, minY: Math.min(...values.map(p => p.y)) };
+}
+function volume(g) {
+  const p = g.attributes.position, box = new THREE.Box3().setFromBufferAttribute(p), size = box.getSize(new THREE.Vector3());
+  assert.ok(size.x > .8 && size.y > .8 && size.z > .8 && size.y < 2.3, 'volumetric shrub, not a pancake');
+  assert.ok(box.min.y >= -.25 && box.min.y <= 0, 'grounded lower envelope without a deeply buried skirt');
+  for (let i = 0; i < p.count; i++) assert.ok(Math.hypot(p.getX(i), p.getZ(i)) <= 2, 'unchanged concealment radius contains foliage');
 }
 function contract(g) {
   assert.equal(g.index, null); assert.equal(g.attributes.position.count, 192);
@@ -107,7 +140,10 @@ function contract(g) {
     assert.ok(Math.abs(n.length() - 1) < 2e-6 && n.y > 0, 'positive-up unit authored normals');
     assert.equal(g.attributes.aFlex.getX(i), Math.fround(.22), 'same wind flex');
   }
-  for (let i = 0; i < 192; i += 6) spray(g, i);
+  volume(g);
+  const sprays = Array.from({ length: 16 }, (_, i) => spray(g, i * 12));
+  assert.ok(sprays.filter(s => Math.hypot(s.center.x, s.center.z) < .65).length >= 4, 'interior sprays prevent a hollow shell');
+  for (const s of sprays.slice(0, 4)) assert.ok(s.minY >= -.06 && s.minY <= -.025, 'four actual low sprays reach the authored base');
 }
 function build(module, seed, palette) {
   const next = module.mulberry32(seed), draws = [];
@@ -135,12 +171,34 @@ function negatives() {
     const g = a.geometry.clone(); try { mutate(g); assert.throws(() => contract(g), pattern); } finally { g.dispose(); }
   };
   try {
-    assert.throws(() => contract(b.geometry), /positive-up|corner UVs|entire atlas/, 'legacy bowed sheets rejected');
+    assert.throws(() => contract(b.geometry), /positive-up|corner UVs|folded corners|fold|grounded/, 'legacy bowed sheets rejected');
     reject(g => g.attributes.normal.array.fill(0), /unit authored normals/);
     reject(g => g.attributes.position.setXYZ(1, ...point(g, 0).toArray()), /shared triangle|nonzero triangle/);
-    reject(g => { for (let i = 0; i < 6; i++) g.attributes.uv.setX(i, g.attributes.uv.getX(i) * .5); }, /corner UVs/);
+    reject(g => { for (let i = 0; i < 12; i++) g.attributes.uv.setX(i, g.attributes.uv.getX(i) * .5); }, /corner UVs/);
     reject(g => { const p = point(g, 4); g.attributes.position.setXYZ(4, ...point(g, 5).toArray()); g.attributes.position.setXYZ(5, ...p.toArray()); }, /shared triangle|winding/);
+    reject(g => alterCrease(g, 0), /convex outward fold/);
+    reject(g => alterCrease(g, -1), /convex outward fold/);
+    reject(g => g.scale(1, .01, 1), /pancake/);
+    reject(hollowShell, /hollow shell|concealment radius/);
   } finally { a.geometry.dispose(); b.geometry.dispose(); }
+}
+function alterCrease(g, factor) {
+  const corners = sprayCorners(g, 0), p = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < 12; i++) {
+    if (uv.getX(i) !== .5) continue;
+    const v = uv.getY(i), chord = corners.get(`0,${v}`).clone().lerp(corners.get(`1,${v}`), .5);
+    const moved = point(g, i).sub(chord).multiplyScalar(factor).add(chord);
+    p.setXYZ(i, ...moved.toArray());
+  }
+}
+function hollowShell(g) {
+  const p = g.attributes.position;
+  for (let begin = 0; begin < p.count; begin += 12) {
+    const corners = [...sprayCorners(g, begin).values()];
+    const center = corners.reduce((sum, v) => sum.add(v), new THREE.Vector3()).multiplyScalar(1 / 6);
+    const shift = 1.05 / Math.hypot(center.x, center.z) - 1;
+    for (let i = begin; i < begin + 12; i++) p.setXYZ(i, p.getX(i) + center.x * shift, p.getY(i), p.getZ(i) + center.z * shift);
+  }
 }
 function nonBush() {
   const calls = [['buildBroadleafCards', [58, 1, {}]], ['buildPineCards', [.6, 1, {}]], ['buildPalmGeometry', [{}]],
@@ -170,4 +228,4 @@ for (const id of MAP_IDS) {
 try { negatives(); nonBush(); } catch (error) { failures.push(error); }
 console.log(JSON.stringify({ receipts, limits: '60 actual map-palette/production-seed builds, not rendered maps. Local bounds are measurements, not coverage/contact/art/performance acceptance. Constructor counts cover local THREE and merge calls, not total JS allocations.' }, null, 2));
 if (failures.length) throw new AggregateError(failures, 'bushOverlappingSprays failed');
-console.log('bushOverlappingSprays:32 complete flat sprays/64tris/192verts/9216B per owner;176 draws/tail, unit normals, topology/UV negatives and non-bush parity passed.');
+console.log('bushOverlappingSprays:16 convex folded sprays/64tris/192verts/9216B per owner;176 draws/tail, unit normals, continuous UVs, grounded envelope, malformed-fold/volume negatives and non-bush parity passed.');
