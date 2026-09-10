@@ -97,6 +97,11 @@ interface BirchVariant {
   nBr?: number;
 }
 
+interface BirchLimb {
+  x: number; y: number; z: number;
+  length: number; tilt: number; yaw: number;
+}
+
 interface VegetationDisc {
   x: number;
   z: number;
@@ -1698,26 +1703,38 @@ function buildPalmGeometry(
   return { trunk, cards: mergeParts(cardParts) };
 }
 
-// --- birch: pale banded trunk, upward branches, sparse bare-twig cards ---
-// content_breadth r3: takes the species palette — the winter map's birches
-// rendered with the hardcoded autumn-brush card tint (beige-mauve puffs, the
-// "dead autumn saplings" critique) because this was the one near builder
-// that ignored pal. cardHue/cardSat/cardL0 now apply, and pal.snow (0..1)
-// lays a top-weighted SNOW LOAD across the twig cloud: upward cards lerp
-// toward blue-white and brighten, exactly how loaded winter brush reads.
-// r5 terrain_environment: REBUILT. The r4 "crown cap" — a 2.5-3.5 m
-// flattened icosphere disc on a pole — rendered every winter birch as the
-// SAME grey umbrella/parasol, cloned ~30x at near-identical height (the
-// loudest foliage tell in the critique). Now: per-variant proportions
-// (BIRCH_VAR: young slender / classic / old broad), an UPRIGHT BRANCH
-// LATTICE of real forking limbs that carries the winter silhouette, an
-// upright-ellipsoid twig-haze card cloud (taller than wide — birch brooms,
-// not mushrooms), and small branch-riding snow lobes only. No crown cap.
+// Birch/aspen: connected, tapered limbs carry the crown rather than an
+// independent random cloud. The same topology serves bare and leafy palettes.
 const BIRCH_VAR: BirchVariant[] = [
   { h0: 4.3, hr: 0.9, crw: 1.15, nBr: 11 }, // young slender
   { h0: 6.0, hr: 1.3, crw: 1.55, nBr: 14 }, // classic
   { h0: 7.5, hr: 1.6, crw: 2.00, nBr: 17 }, // old broad
 ];
+
+function birchLimbStation(limb: BirchLimb, t: number, out: THREE.Vector3): THREE.Vector3 {
+  const reach = Math.sin(limb.tilt) * limb.length * t;
+  return out.set(limb.x - Math.cos(limb.yaw) * reach,
+    limb.y + Math.cos(limb.tilt) * limb.length * t,
+    limb.z + Math.sin(limb.yaw) * reach);
+}
+
+function addBirchLimb(
+  parts: THREE.BufferGeometry[], limb: BirchLimb,
+  tipRadius: number, baseRadius: number, sides: number, flex: number,
+): void {
+  const geometry = new THREE.CylinderGeometry(tipRadius, baseRadius, limb.length, sides, 1);
+  geometry.translate(0, limb.length / 2, 0);
+  geometry.rotateZ(limb.tilt);
+  geometry.rotateY(limb.yaw);
+  geometry.translate(limb.x, limb.y, limb.z);
+  parts.push(paintFlat(geometry, _c.clone(), flex));
+}
+
+function birchLimbLength(limb: BirchLimb, height: number, radius: number): number {
+  return Math.min(limb.length, Math.max(0.12, height - limb.y) / Math.cos(limb.tilt),
+    Math.max(0.12, radius - Math.hypot(limb.x, limb.z)) / Math.sin(limb.tilt));
+}
+
 function buildBirchGeometry(
   rng: RandomSource,
   pal: VegetationPalette = {},
@@ -1756,6 +1773,8 @@ function buildBirchGeometry(
   birchFlare.translate(0, 0.16, 0);
   trunkParts.push(paintFlat(birchFlare, birchRootColor.clone(), 0));
   addRootButtresses(trunkParts, rng, birchRootColor, 0.21, 4);
+  // Construction-local only: no extra retained geometry, attributes or frame work.
+  const leaders: BirchLimb[] = [], crownLimbs: BirchLimb[] = [];
   const addBranchLattice = (): void => {
     const leaderCount = 2 + ((rng() * 2) | 0);
     for (let leader = 0; leader < leaderCount; leader += 1) {
@@ -1763,53 +1782,39 @@ function buildBirchGeometry(
       const tilt = 0.10 + rng() * 0.14;
       const length = H * (0.42 + rng() * 0.16);
       const baseY = H * (0.50 + rng() * 0.10);
-      const branch = new THREE.CylinderGeometry(0.035, 0.075, length, 5, 1);
-      branch.translate(0, length / 2, 0);
-      branch.rotateZ(tilt);
-      branch.rotateY(yaw);
-      branch.translate(0, baseY - length * 0.12, 0);
+      const limb = {x: 0, y: baseY - length * 0.12, z: 0, length, tilt, yaw};
+      limb.length = birchLimbLength(limb, H * 0.96, crw * 0.72);
       _c.setHSL(0.08, 0.04, 0.72 + rng() * 0.10, THREE.SRGBColorSpace);
-      trunkParts.push(paintFlat(branch, _c.clone(), 0.15));
+      addBirchLimb(trunkParts, limb, 0.014, 0.075, 5, 0.15);
+      leaders.push(limb); crownLimbs.push(limb);
     }
     const branchCount = (vr.nBr ?? 14) + ((rng() * 4) | 0);
     for (let index = 0; index < branchCount; index += 1) {
       const length = 0.9 + rng() * (H * 0.22);
-      const tilt = 0.30 + rng() * 0.55;
+      const tilt = 0.72 + rng() * 0.48;
       const yaw = rng() * Math.PI * 2;
-      const baseY = H * (0.52 + rng() * 0.34);
-      const branch = new THREE.CylinderGeometry(0.012, 0.040, length, 4, 1);
-      branch.translate(0, length / 2, 0);
-      branch.rotateZ(tilt);
-      branch.rotateY(yaw);
-      const branchBaseRadius = 0.035 + rng() * 0.025;
-      const branchBaseX = -Math.cos(yaw) * branchBaseRadius;
-      const branchBaseZ = Math.sin(yaw) * branchBaseRadius;
-      branch.translate(branchBaseX, baseY, branchBaseZ);
+      const station = 0.06 + rng() * 0.70;
+      const parent = leaders[index % leaderCount];
+      birchLimbStation(parent, station, _v3);
+      const limb = {x: _v3.x, y: _v3.y, z: _v3.z, length, tilt, yaw};
+      // Reuse the former random root offset as crown reach variation, keeping
+      // the construction stream and all conditional fork/snow counts stable.
+      limb.length = birchLimbLength(limb, H * 0.96, crw * (0.82 + rng() * 0.20));
       _c.setHSL(0.06, 0.06, 0.46 + rng() * 0.12, THREE.SRGBColorSpace);
-      trunkParts.push(paintFlat(branch, _c.clone(), 0.3));
+      addBirchLimb(trunkParts, limb, 0.005, 0.040, 4, 0.3);
+      crownLimbs.push(limb);
       if (rng() >= 0.6) continue;
-      const forkLength = length * (0.45 + rng() * 0.3);
-      const fork = new THREE.CylinderGeometry(0.008, 0.020, forkLength, 3, 1);
-      fork.translate(0, forkLength / 2, 0);
-      fork.rotateZ(tilt + (rng() - 0.3) * 0.7);
-      fork.rotateY(yaw + (rng() - 0.5) * 1.1);
-      const forkReach = Math.sin(tilt) * length * 0.9;
-      fork.translate(
-        branchBaseX - Math.cos(yaw) * forkReach,
-        baseY + Math.cos(tilt) * length * 0.9,
-        branchBaseZ + Math.sin(yaw) * forkReach,
-      );
+      const forkLength = limb.length * (0.45 + rng() * 0.3);
+      const forkTilt = Math.min(1.35, tilt + (rng() - 0.3) * 0.7);
+      const forkYaw = yaw + (rng() - 0.5) * 1.1;
+      birchLimbStation(limb, 0.9, _v3);
+      const fork = {x: _v3.x, y: _v3.y, z: _v3.z, length: forkLength, tilt: forkTilt, yaw: forkYaw};
+      fork.length = birchLimbLength(fork, H * 0.99, crw * 1.10);
       _c.setHSL(0.06, 0.06, 0.50 + rng() * 0.12, THREE.SRGBColorSpace);
-      trunkParts.push(paintFlat(fork, _c.clone(), 0.4));
+      addBirchLimb(trunkParts, fork, 0.003, 0.020, 3, 0.4);
     }
   };
-  // r5: LEADER LIMBS — the trunk forks into 2-3 near-vertical leaders that
-  // run into the crown (a real birch splits low), each pale-barked
-  // upward branch lattice: thin forking limbs filling the crown ellipsoid —
-  // the bare winter structure the critique asked for ("bare branch lattice")
   addBranchLattice();
-  // twig-haze cards in an UPRIGHT ellipsoid (taller than wide): the crown
-  // reads as a broom-shaped gauze around the branch lattice
   const cardParts: THREE.BufferGeometry[] = [];
   const cy = H * 0.74;
   const snow = pal.snow ?? 0;
@@ -1825,7 +1830,11 @@ function buildBirchGeometry(
     _e.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI, 'YXZ');
     // snow load: cards on the UPPER crown hemisphere whiten + brighten
     const sk = snow * Math.max(0, dy) * (0.6 + rng() * 0.4);
-    const px = dx * rad * crw, py = cy + dy * rad * H * 0.26, pz = dz * rad * crw;
+    // Every limb receives a terminal spray before reusing its inner stations.
+    // Small scatter opens the silhouette without detaching whole crown clumps.
+    const limb = crownLimbs[i % crownLimbs.length];
+    birchLimbStation(limb, i < crownLimbs.length ? 0.94 : 0.60 + rad * 0.25, _v3);
+    const px = _v3.x + dx * 0.12, py = _v3.y + dy * 0.12, pz = _v3.z + dz * 0.12;
     cardParts.push(foliageCard(w, w * 1.05, px, py, pz,
       _e, (0.9 + rng() * 0.3) * (1 + sk * 0.35),
       hue0 + (0.585 - hue0) * sk, sat0 * (1 - sk * 0.8) + 0.02 * sk, 0.45, 0, cy, 0));
