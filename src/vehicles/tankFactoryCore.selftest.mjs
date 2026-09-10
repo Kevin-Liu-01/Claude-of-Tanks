@@ -3,6 +3,7 @@ import {
   KIT,
   configureTankFactory,
   createTank,
+  createTankSteps,
   registerCanonicalBuilders,
   registerProfiledBuilders,
   robustFloorY,
@@ -123,8 +124,51 @@ assert.throws(
   'configuration is a one-shot boot gate',
 );
 
-const tank = createTank('m4a3e8', null, { proceduralOnly: true, geometryReceipt: true });
-assert.equal(tank.root.name, 'tank_m4a3e8');
-tank.dispose();
+const priorNow = Object.getOwnPropertyDescriptor(performance, 'now');
+let diagnosticClock = 0;
+Object.defineProperty(performance, 'now', {
+  configurable: true, value: () => { diagnosticClock += 0.125; return diagnosticClock; },
+});
+try {
+  for (const staged of [false, true]) {
+    diagnosticClock = 0;
+    const options = { proceduralOnly: true, geometryReceipt: true };
+    let tank, firstCheckpointAt;
+    if (staged) {
+      const steps = createTankSteps('m4a3e8', null, options);
+      let result = steps.next();
+      firstCheckpointAt = diagnosticClock;
+      while (!result.done) { diagnosticClock += 1000; result = steps.next(); }
+      tank = result.value;
+    } else tank = createTank('m4a3e8', null, options);
+    try {
+      assert.equal(tank.root.name, 'tank_m4a3e8');
+      const timing = tank.root.userData.coreBuildTiming;
+      assert.equal(timing.startedAt, 0.125, 'actual core execution starts the exact raw clock receipt');
+      const endpoints = ['startedAt', 'materialsStartedAt', 'materialsFinishedAt',
+        'authoredStartedAt', 'authoredFinishedAt', 'bindMergeFinishedAt', 'finishedAt'];
+      assert.deepEqual(Object.keys(timing).sort(), [...endpoints, 'setupMs'].sort(),
+        'the core publishes a fixed-size receipt, not per-object or per-part rows');
+      for (let index = 1; index < endpoints.length; index++) {
+        assert.ok(timing[endpoints[index]] > timing[endpoints[index - 1]],
+          `${endpoints[index]} preserves actual source stage order`);
+      }
+      const setupMs = (timing.materialsStartedAt - timing.startedAt)
+        + (timing.authoredStartedAt - timing.materialsFinishedAt);
+      assert.equal(timing.setupMs, setupMs, 'startup/setup work is explicit, not omitted from named-stage totals');
+      const materialsMs = timing.materialsFinishedAt - timing.materialsStartedAt;
+      const authoredMs = timing.authoredFinishedAt - timing.authoredStartedAt;
+      const bindMergeMs = timing.bindMergeFinishedAt - timing.authoredFinishedAt;
+      const assemblyMs = timing.finishedAt - timing.bindMergeFinishedAt;
+      assert.equal(setupMs + materialsMs + authoredMs + bindMergeMs + assemblyMs,
+        timing.finishedAt - timing.startedAt, 'non-overlapping stages plus setup account for the complete core interval');
+      if (staged) assert.ok(timing.finishedAt <= firstCheckpointAt,
+        'decoration/finalizer waits never enter the first core-step receipt');
+    } finally { tank.dispose(); }
+  }
+} finally {
+  if (priorNow) Object.defineProperty(performance, 'now', priorNow);
+  else delete performance.now;
+}
 
-console.log('tankFactoryCore.selftest: configuration guards and core builder passed');
+console.log('tankFactoryCore.selftest: configuration guards, core builder, exact bounded stage accounting passed');

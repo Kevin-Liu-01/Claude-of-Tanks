@@ -9564,6 +9564,7 @@ function* createTankOwnedSteps(
   opts: TankFactoryOptions,
   legacyDecoration: boolean,
 ): Generator<void, TankVisual, void> {
+  const coreStartedAt = performance.now();
   const createTankAssemblyStage1 = (): void => {
     if (!factoryConfigured) {
       throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.ts');
@@ -9601,9 +9602,11 @@ function* createTankOwnedSteps(
   const armor = spec.armor;
   const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
+  const coreMaterialsStartedAt = performance.now();
   const mats: TankMaterials = usesSharedMaterialTextures
     ? createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern)
     : createNonRenderingTankMaterials(spec.visual.camoScale ?? 0.34);
+  const coreMaterialsFinishedAt = performance.now();
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
@@ -9993,7 +9996,9 @@ function* createTankOwnedSteps(
   const createTankAssemblyStage24 = (): void => {
     createTankAssemblyStage8();
   };
+  const coreAuthoredStartedAt = performance.now();
   createTankAssemblyStage24();
+  const coreAuthoredFinishedAt = performance.now();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
   // carrier-faced cassettes rather than the legacy shared brick primitive.
@@ -10461,6 +10466,7 @@ function* createTankOwnedSteps(
     createTankHullStage3();
   };
   createTankAssemblyStage29();
+  const coreBindMergeFinishedAt = performance.now();
 
   // ---- ERA bricks (t90m) ----
   let eraMesh: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null = null;
@@ -12378,6 +12384,22 @@ function* createTankOwnedSteps(
   // to the final procedural geometry in the same build.
   let visualCompleted = false;
   try {
+    const coreFinishedAt = performance.now();
+    // Bounded non-await elapsed intervals, not CPU time. Binding/merge ends
+    // after authored bucket merge; later ERA instances belong to assembly.
+    // Setup before materials and between materials/builder is explicit, so
+    // the four named stage intervals are never mistaken for the whole core.
+    root.userData.coreBuildTiming = {
+      startedAt: coreStartedAt,
+      finishedAt: coreFinishedAt,
+      materialsStartedAt: coreMaterialsStartedAt,
+      materialsFinishedAt: coreMaterialsFinishedAt,
+      authoredStartedAt: coreAuthoredStartedAt,
+      authoredFinishedAt: coreAuthoredFinishedAt,
+      bindMergeFinishedAt: coreBindMergeFinishedAt,
+      setupMs: (coreMaterialsStartedAt - coreStartedAt)
+        + (coreAuthoredStartedAt - coreMaterialsFinishedAt),
+    };
     // No earlier yield: all core resources now belong to visual.dispose().
     // The root remains private through decoration and the unchanged finalizers.
     yield;

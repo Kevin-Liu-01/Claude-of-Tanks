@@ -30,6 +30,12 @@ interface StagedBake<Entity extends BattleVisualEntity> {
   quality: string;
 }
 
+const CORE_BUILD_TIMING_FIELDS = [
+  'startedAt', 'finishedAt', 'materialsStartedAt', 'materialsFinishedAt',
+  'authoredStartedAt', 'authoredFinishedAt', 'bindMergeFinishedAt', 'setupMs',
+] as const;
+type CoreBuildTiming = Record<typeof CORE_BUILD_TIMING_FIELDS[number], number>;
+
 interface VisualLoadTiming {
   specId: string;
   quality: string;
@@ -38,6 +44,16 @@ interface VisualLoadTiming {
   buildMs?: number;
   buildYieldMs?: number;
   buildCheckpointCount?: number;
+  buildStartedAt?: number;
+  buildFinishedAt?: number;
+  /** Synchronous elapsed next() time, including completion/failure, not CPU time. */
+  firstBuildStepMs?: number;
+  maxBuildStepMs?: number;
+  /** Zero-based next() index; equal maxima retain the first occurrence. */
+  maxBuildStepIndex?: number;
+  maxBuildStepStartedAt?: number;
+  maxBuildStepFinishedAt?: number;
+  coreBuildTiming?: CoreBuildTiming;
   uploadMs?: number;
   preUploadYieldMs?: number;
   textureUploadMs?: number;
@@ -118,6 +134,64 @@ export interface BattleVisualStreamer<Entity extends BattleVisualEntity = Battle
     initiallyHidden?: boolean,
     options?: BattleVisualStageOptions,
   ): Promise<BattleVisualStageReceipt>;
+}
+
+/** Preserve for-of's cached next method, result identity, and IteratorClose. */
+function timedVisualBuildSteps(
+  steps: Generator<void, boolean, void>,
+  timing: VisualLoadTiming,
+  now: () => number,
+): Iterable<void> {
+  const iterator: Iterator<void, boolean, void> = steps[Symbol.iterator]();
+  const next = iterator.next;
+  let index = 0;
+  return {
+    [Symbol.iterator]() {
+      return {
+        next() {
+          const startedAt = now();
+          try { return next.call(iterator); }
+          finally {
+            const finishedAt = now();
+            const elapsed = finishedAt - startedAt;
+            if (index === 0) timing.firstBuildStepMs = elapsed;
+            if (timing.maxBuildStepMs === undefined || elapsed > timing.maxBuildStepMs) {
+              timing.maxBuildStepMs = elapsed;
+              timing.maxBuildStepIndex = index;
+              timing.maxBuildStepStartedAt = startedAt;
+              timing.maxBuildStepFinishedAt = finishedAt;
+            }
+            index++;
+          }
+        },
+        return() {
+          const close = iterator.return;
+          if (close === undefined || close === null) return { done: true, value: false };
+          // IteratorClose supplies no return value, even though Generator's
+          // static return signature requires its declared completion type.
+          return Reflect.apply(close, iterator, []) as IteratorResult<void, boolean>;
+        },
+      };
+    },
+  };
+}
+
+function recordCurrentCoreBuildTiming(root: BattleVisualRoot | null | undefined, timing: VisualLoadTiming): void {
+  const candidate = root?.userData.coreBuildTiming;
+  if (!candidate || typeof candidate !== 'object') return;
+  const copy: Partial<CoreBuildTiming> = {};
+  for (const field of CORE_BUILD_TIMING_FIELDS) {
+    const value: RuntimeValue = Reflect.get(candidate, field);
+    if (typeof value !== 'number' || !Number.isFinite(value)) return;
+    copy[field] = value;
+  }
+  const receipt = copy as CoreBuildTiming;
+  // A pooled visual may retain an earlier build receipt. Never attribute
+  // that older core construction to this streamer's current iterator call.
+  if (timing.buildStartedAt === undefined || timing.buildFinishedAt === undefined
+      || receipt.startedAt < timing.buildStartedAt || receipt.finishedAt > timing.buildFinishedAt
+      || receipt.finishedAt < receipt.startedAt) return;
+  timing.coreBuildTiming = receipt;
 }
 
 /**
@@ -257,17 +331,22 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       // fallback build. The generator keeps unfinished tank graphs private.
       await yieldForBudget(true);
       mark = now();
+      timing.buildStartedAt = mark;
       let buildYieldMs = 0;
       let buildCheckpointCount = 0;
-      for (const _step of ensureStagedVisualsSteps(game, 1, predicate)) {
-        const yieldAt = now();
-        await yieldForBudget();
-        buildYieldMs += now() - yieldAt;
-        buildCheckpointCount++;
-      }
+      try {
+        const steps = ensureStagedVisualsSteps(game, 1, predicate);
+        for (const _step of timedVisualBuildSteps(steps, timing, now)) {
+          const yieldAt = now();
+          await yieldForBudget();
+          buildYieldMs += now() - yieldAt;
+          buildCheckpointCount++;
+        }
+      } finally { timing.buildFinishedAt = now(); }
       timing.buildMs = Math.round(Math.max(0, now() - mark - buildYieldMs));
       timing.buildYieldMs = Math.round(buildYieldMs);
       timing.buildCheckpointCount = buildCheckpointCount;
+      recordCurrentCoreBuildTiming(next.ent.visual?.root, timing);
       mark = now();
       const stageReceipt = await stageBattleVisualReveal(
         next.ent,
