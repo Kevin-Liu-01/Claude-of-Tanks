@@ -198,9 +198,10 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     await new AsyncFunction(...Object.keys(ports), source)(...Object.values(ports));
   }
 
-  async function probeCase(phase, warmGate = false, warmReady = true) {
+  async function probeCase(phase, warmGate = false, warmReady = true, sourceGate = false, sourceReady = true) {
     const process = fakeProcess(), writes = [], navigation = deferred();
     if (warmGate) process.argv.push('--warm-readiness-gate');
+    if (sourceGate) process.argv.push('--source-readiness-gate');
     const calls = { acquired: 0, released: 0, launched: 0, page: 0, closed: 0, gate: 0 };
     let closed = false, action = '';
     const page = {
@@ -253,6 +254,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       } },
       checkGarageBattleActions: () => { calls.gate++; return []; }, checkGarageActionAudio: () => [],
       checkGarageActionWarmReadiness,
+      installSourcedTextureReadiness() {},
+      checkSourcedTextureReadiness: row => sourceReady || row.action === 'return-to-garage'
+        ? [] : [`${row.action}: source was not ready at reveal`],
       readPhaseEnvironment() {}, installGarageActionTiming() {}, summarizeGarageActionTiming: () => ({}),
       withGarageActionProfile: async (options, run) => run(),
       waitForGarageAction: async (page, options, click) => click(),
@@ -263,15 +267,22 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     equal(calls.closed, calls.launched, 'every launched browser is closed exactly once');
     equal(process.listenerCount('SIGINT') + process.listenerCount('SIGTERM'), 0, 'signal handlers are removed after cleanup');
     if (phase === 'normal') {
-      equal(report.pass, !warmGate || warmReady, 'optional warm failure cannot hide behind functional success');
-      equal(report.functionalPass, true, 'warm readiness does not reinterpret the functional receipt');
+      const accepted = (!warmGate || warmReady) && (!sourceGate || sourceReady);
+      equal(report.pass, accepted, 'either requested readiness failure defeats functional success');
+      equal(report.functionalPass, true, 'readiness gates do not reinterpret the functional receipt');
       equal(report.actions.map(row => row.action), ['battle', 'battle-again', 'return-to-garage'], 'all existing actions remain');
       if (warmGate) {
-        equal(report.passScope, 'real-control-functional-and-warm-readiness', 'requested acceptance scope is explicit');
+        equal(report.passScope, sourceGate ? 'real-control-functional-and-warm-and-source-readiness'
+          : 'real-control-functional-and-warm-readiness', 'requested acceptance scope is explicit');
         equal(report.warmReadiness.pass, warmReady, 'the explicit acceptance result is saved');
         equal(report.warmReadiness.failures.length, warmReady ? 0 : 4, 'both battle errors and late readiness survive');
-        equal(process.exitCode, warmReady ? undefined : 1, 'requested warm failure exits nonzero');
       }
+      if (sourceGate) {
+        equal(report.sourceReadiness.pass, sourceReady, 'source acceptance is separately retained');
+        equal(report.sourceReadiness.failures.length, sourceReady ? 0 : 2, 'both entry source failures survive');
+        if (!warmGate) equal(report.passScope, 'real-control-functional-and-source-readiness', 'source-only scope is explicit');
+      }
+      equal(process.exitCode, accepted ? undefined : 1, 'any requested failure exits nonzero');
     } else {
       equal(report.pass, false, 'interruption cannot report pass even when functional/audio gates return no errors');
       equal(report.interruptedBy, phase === 'active' ? 'SIGINT' : 'SIGTERM', 'signal is recorded');
@@ -285,6 +296,11 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
   await probeCase('normal', false, false);
   await probeCase('normal', true, false);
   await probeCase('normal', true, true);
+  for (const warmGate of [false, true]) for (const sourceReady of [false, true]) {
+    await probeCase('normal', warmGate, true, true, sourceReady);
+  }
+  await probeCase('normal', true, false, true, true);
+  await probeCase('normal', true, false, true, false);
 
   console.log(`garage-battle-actions-contract.selftest: ${assertions} lifecycle assertions pass`);
 }
