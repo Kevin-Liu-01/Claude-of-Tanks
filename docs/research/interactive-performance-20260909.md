@@ -2151,3 +2151,95 @@ This unprofiled run does not establish those functions' causes or a matched-rost
 speedup. Historical gameplay-stall attribution and strict smoothness remain open.
 Receipts: `schematic-production-release-r1.json` and
 `garage-actions-schematic-production-r1/` under the evidence root above.
+
+### Garage input ownership follow-up — 2026-09-10
+
+Two concrete defects were found while following the remaining cold-audio cost:
+
+- The renderer canvas also owns Garage orbit, but its battle pointer-recapture
+  listener unconditionally called `audio.resume()` on every mouse-down. The
+  live baseline records a native AudioContext constructor from **2306.8 to
+  2474.9 ms (168.1 ms)** immediately after a trusted Garage pointer-down at
+  2306.7 ms. This is unnecessary device/mixer initialization on camera input.
+  The listener now uses the existing visible-battle phase predicate before
+  resuming audio or recapturing. Battle entry/loading and touch recovery keep
+  their existing sound owners; context options and sound quality are unchanged.
+- The orbit measures a replaced pedestal root periodically. If a player drags
+  the new tank before that poll, `settleNewSubject` used to replace the newer
+  drag targets with the canonical hero targets. A real-engine regression fails
+  on the previous code while the pointer is still held. A changed subject now
+  preserves current/recent input and release momentum; explicit reset and the
+  normal two-second idle-return policy remain authoritative.
+
+The opt-in `--garage-gesture-audio-gate` uses the actual renderer canvas,
+trusted pointer input and production camera state. A transparent constructor
+Proxy preserves arguments, prototypes, subclass `newTarget`, native errors and
+options. It records bounded call timing/counts only, never device identifiers,
+test tones or replacement audio output. Battle, Rematch and Garage return must
+then retain exactly one context and pass the existing clock/owner gate, so
+disabling sound cannot satisfy the new gate. Passive held/released snapshots
+also retain movement deltas, pointer capture, framing and frame-owner state.
+
+Failure evidence is preserved. The first invocation mistakenly requested the
+nonexistent `grass` map and was stopped through its owned cleanup; it is not a
+baseline. `garage-audio-intent-production-baseline-r2/` used the intended
+`urban` map, reproduced the 168.1 ms constructor and failed the camera-movement
+gate; it also exceeded the 500 ms Rematch cover budget (560.6 ms). The audio-only
+`garage-audio-intent-candidate-r1/` passes ordinary actions and audio ownership,
+but still fails camera motion (45° to 44.995° after a 100 px drag). Neither is
+reported as an acceptance pass. The independently failing delayed-subject CPU
+receipt is `garage-late-subject-baseline-r1.log`.
+
+Native startup also has a browser boundary: in the previously profiled Chrome
+152 implementation, renderer Web Audio device creation queries output device
+parameters, and `AudioOutputDevice::GetOutputDeviceInfo()` synchronously waits
+on `did_receive_auth_`. See the version-pinned
+[renderer device implementation](https://raw.githubusercontent.com/chromium/chromium/152.0.7977.83/content/renderer/media/renderer_webaudiodevice_impl.cc)
+and [output device implementation](https://raw.githubusercontent.com/chromium/chromium/152.0.7977.83/media/audio/audio_output_device.cc).
+This supports a blocking native-startup mechanism; it does **not** apportion
+every millisecond of the recorded constructor to that wait, nor attribute the
+historical gameplay stalls. AudioContext remains a Window API. Moving game
+math to C/Rust/Zig/Wasm, changing sample rate, or silently preparing an audio
+device at boot is not an evidenced cure for this particular wait. The current
+fix removes the *unrequested Garage invocation*, not the necessary first
+battle-audio startup or all remaining loading/frame stalls.
+
+#### Matched Garage gesture acceptance
+
+The extended live baseline (`garage-audio-intent-production-baseline-r3/`)
+confirms a real input-reset defect, not lost test input: all ten trusted 10 px
+moves arrive with the correct pointer capture. Camera yaw moves from 45° to
+35.843° while held, then returns to 45° within 0.869 seconds of release, before
+the normal two-second idle return. Both Garage frame owners advance normally;
+the page stays visible/focused and the graphics context stays healthy. That
+baseline also constructs an AudioContext during Garage input (153.2 ms).
+
+The combined candidate (`garage-audio-intent-candidate-r2/`) passes the same
+frozen acquisition, SHA256
+`4be85c77e2b4a9596a9046b8b8bd6956bc44b3e3543677409654626ca119f137`.
+Garage input constructs **zero** contexts. Yaw moves from 45° to 35.572° while
+held and continues to -61.065° with release momentum, without the stale reset.
+Battle constructs exactly one context (145 ms); Rematch and Garage return keep
+that context and pass the existing audio clock/ownership gates. All ordinary
+actions pass, with no browser errors, failures or cleanup errors. Garage,
+14-tank day Battle, 14-tank night Rematch and Garage-return screenshots were
+inspected. Graphics remain high quality at 1280×720, DPR 1, render scale 1,
+SMAA-high/FSR1 and four authored shadow cascades on native Apple M5 Max ANGLE.
+These paired acquisitions used Chrome 151.0.7922.47; the earlier native-source
+investigation above used Chrome 152 and is not mislabeled as this capture.
+
+The input-preservation grace uses wall time rather than clamped simulation
+delta: the idle Garage's five-second watchdog must not extend recent-input
+ownership. Real-engine tests cover held input, release momentum, zoom, natural
+idle return, explicit reset, a sparse-frame 5.1-second boundary, and stop/start.
+Nine focused test files pass, with the final wall-clock boundary additionally
+rerun with camera tests. Typecheck and the public build pass. The four-file
+runtime metric gate finds 178 functions, zero complexity violations, and no
+`any`/`unknown`; React Doctor reports 100/100 with no issues. The 920 discovered
+suite entries are a registry count, not a claim of 920 fresh executions.
+
+This is a local functional acceptance, not yet a production deployment receipt
+and not a zero-lag claim. Candidate action callback maxima remain
+**159.2 / 150.8 / 46.9 ms** for Battle/Rematch/Garage. Random battle rosters and
+remaining native startup/Long Tasks prevent a controlled throughput comparison
+or closure of the historical 214–319 ms gameplay-stall investigation.

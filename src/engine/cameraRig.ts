@@ -1565,6 +1565,7 @@ export function createShowroomOrbit(
   let running = false;
   let sinceInputS = 999;
   let lastDragMs = 0;
+  let lastInputMs = -Infinity;
   let measureAccS = 0;
   const win = { cx: 0, cy: 0, hx: 1, hy: 1 };
   let appliedAspect = NaN;
@@ -1796,6 +1797,7 @@ export function createShowroomOrbit(
     yawVel = pitchVel = 0;
     dragging = false;
     sinceInputS = 999;
+    lastInputMs = -Infinity;
     measureAccS = 0;
     heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
     applyPose();
@@ -1824,6 +1826,13 @@ export function createShowroomOrbit(
 
   function settleNewSubject(previousSubject: THREE.Object3D | null): void {
     if (previousSubject === subject) return;
+    // The pedestal can replace its root before this periodic measurement.
+    // A drag/zoom begun since that replacement is newer user intent, not a
+    // stale pose to reset. Keep it (including release momentum); the normal
+    // idle spring and explicit reset still restore the canonical hero view.
+    // Use wall time here: the settled Garage only ticks every five seconds,
+    // with a clamped simulation delta. That must not extend this input grace.
+    if (dragging || performance.now() - lastInputMs <= SHOW_IDLE_RETURN_S * 1000) return;
     tYaw = yaw + wrapPi(heroYaw - yaw);
     tPitch = heroPitch;
     tZoom = 1;
@@ -1930,6 +1939,7 @@ export function createShowroomOrbit(
       running = false;
       dragging = false;
       yawVel = pitchVel = 0;
+      lastInputMs = -Infinity;
     },
 
     /**
@@ -1958,6 +1968,7 @@ export function createShowroomOrbit(
       if (!running || !haveBox) return;
       dragging = true;
       sinceInputS = 0;
+      lastInputMs = performance.now();
       yawVel = pitchVel = 0;
       lastDragMs = 0;
     },
@@ -1972,6 +1983,7 @@ export function createShowroomOrbit(
     drag(dxPx: number, dyPx: number): void {
       if (!dragging) return;
       sinceInputS = 0;
+      lastInputMs = performance.now();
       const y0 = tYaw, p0 = tPitch;
       // drag right → the near face sweeps right (camera orbits left).
       // garage-scene r1: yaw unclamped — drag all the way around to the rear.
@@ -1994,6 +2006,7 @@ export function createShowroomOrbit(
     endDrag(): void {
       dragging = false;
       sinceInputS = 0;
+      lastInputMs = performance.now();
     },
 
     /**
@@ -2008,6 +2021,7 @@ export function createShowroomOrbit(
       tZoom = THREE.MathUtils.clamp(tZoom * Math.pow(SHOW_ZOOM_STEP, n),
         SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
       sinceInputS = 0;
+      lastInputMs = performance.now();
     },
 
     /**

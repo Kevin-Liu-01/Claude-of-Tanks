@@ -111,6 +111,10 @@ export function createPointerLockFeedbackRuntime({
   const stopRestored = input.onLockRestored(removeToast);
 
   const onCanvasMouseDown = (): void => {
+    // The same canvas owns Garage orbit and battle recapture. A showroom
+    // drag is not sound intent: cold AudioContext construction and mixer
+    // loading must stay out of that camera-input path (and covered loading).
+    if (disposed || !isBattleStageVisible()) return;
     audioResume();
     if (!canRecapturePointer() || input.isTouchLayout()) return;
     if (!input.isLocked()) input.requestLock();

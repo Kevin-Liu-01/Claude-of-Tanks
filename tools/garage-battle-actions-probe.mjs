@@ -9,6 +9,9 @@
 // never compare those timings with an unprofiled acceptance run.
 // Optional --audio-clock-gate also requires passively observed loading-clock
 // advancement and stopped loading/ambient owners on return; no test sounds.
+// Optional --garage-gesture-audio-gate verifies a real Garage canvas drag does
+// not construct audio, then requires exactly one context through real battles
+// and the existing audio-clock gate. Native options/output are never modified.
 // Reports click→first painted opaque cover and click→ready, not steady-state FPS.
 // Roster receipts are retained; random bot composition must not be mistaken for
 // a matched-roster throughput benchmark. Queue this outside other native jobs.
@@ -21,6 +24,8 @@ import { checkGarageBattleActions, checkGarageActionAudio } from './garage-battl
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActionProfile } from './garage-action-timing.mjs';
 import { waitForGarageAction } from './garage-action-failure.mjs';
+import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
+  checkGarageAudioIntent } from './garage-audio-intent.mjs';
 
 const option = (name, fallback = '') => process.argv.slice(2)
   .find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -35,6 +40,7 @@ const timeoutMs = Number(option('timeout-ms', '90000'));
 const profileActions = process.argv.includes('--profile-actions')
   || ['1', 'true'].includes(option('profile-actions', 'false').toLowerCase());
 const audioClockGate = process.argv.includes('--audio-clock-gate');
+const garageGestureAudioGate = process.argv.includes('--garage-gesture-audio-gate');
 if (![cpuRate, coverLimitMs, timeoutMs].every(value => Number.isFinite(value) && value > 0)
   || cpuRate < 1 || timeoutMs < 1000) throw new Error('Invalid timing/CPU option');
 url.searchParams.set('debug', '1');
@@ -51,6 +57,7 @@ const report = { schemaVersion: 2, passScope: 'real-control-functional-only',
   measurementMode: profileActions ? 'cpu-profile-attribution-only' : 'unprofiled-functional',
   profileActions, profiles: [],
   audioClockGate,
+  ...(garageGestureAudioGate ? { garageGestureAudioGate: true } : {}),
   url: url.href, specId, mapId, cpuRate, coverLimitMs,
   timeoutMs, viewport: { width: 1280, height: 720, deviceScaleFactor: 1 },
   acquisitionHash: hash((await Promise.all([
@@ -59,6 +66,7 @@ const report = { schemaVersion: 2, passScope: 'real-control-functional-only',
     readFile(new URL('./phase-environment-receipt.mjs', import.meta.url)),
     readFile(new URL('./garage-action-timing.mjs', import.meta.url)),
     readFile(new URL('./garage-action-failure.mjs', import.meta.url)),
+    ...(garageGestureAudioGate ? [readFile(new URL('./garage-audio-intent.mjs', import.meta.url))] : []),
   ])).concat(retryCatalogs).join('\n')),
   startedAt: new Date().toISOString(), actions: [], errors: [], cleanupErrors: [], failures: [] };
 const lock = createCaptureLock();
@@ -110,8 +118,44 @@ async function runAction(action, selector) {
   });
   receipt.timingDiagnostic = summarizeGarageActionTiming(receipt);
   receipt.environment = await page.evaluate(readPhaseEnvironment);
+  if (garageGestureAudioGate) receipt.garageAudioIntent = await page.evaluate(readGarageAudioIntent);
   report.actions.push(receipt);
   await page.screenshot({ path: resolve(out, `${action}.png`) });
+}
+
+async function runGarageAudioGesture() {
+  assertProbeActive();
+  const before = await page.evaluate(readGarageAudioIntent);
+  report.garageAudioIntent = { before, after: null, canvasHitVerified: false };
+  const candidates = garageAudioGestureCandidates(before.stage, report.viewport);
+  const path = await page.evaluate(paths => {
+    const canvas = window.__DEBUG?.renderer?.domElement;
+    if (!canvas || canvas.getClientRects().length === 0) return null;
+    return paths.find(({ start, end }) => [0, 0.5, 1].every(fraction =>
+      document.elementFromPoint(start.x + (end.x - start.x) * fraction, start.y) === canvas)) ?? null;
+  }, candidates);
+  if (!path) throw new Error('Garage gesture: no bounded stage path hits the actual renderer canvas');
+  Object.assign(report.garageAudioIntent, { path, canvasHitVerified: true });
+  await page.screenshot({ path: resolve(out, 'garage-before-gesture.png') });
+  await page.mouse.move(path.start.x, path.start.y);
+  await page.evaluate(() => window.__GARAGE_AUDIO_INTENT.armGesture(window.__DEBUG.renderer.domElement));
+  try {
+    await page.mouse.down({ button: 'left' });
+    await page.mouse.move(path.end.x, path.end.y, { steps: 10 });
+    // Post-handler, still-held observation distinguishes native movement
+    // payload, drag ownership and production frame progress without forcing any.
+    report.garageAudioIntent.held = await page.evaluate(readGarageAudioIntent);
+  } finally {
+    await page.mouse.up({ button: 'left' });
+    report.garageAudioIntent.released = await page.evaluate(readGarageAudioIntent);
+    await page.evaluate(() => window.__GARAGE_AUDIO_INTENT.finishGesture());
+  }
+  const releasedAtMs = report.garageAudioIntent.released.atMs;
+  // Observe pending lazy imports too. No input, renderer or audio-state forcing.
+  await page.waitForFunction(start => performance.now() - start >= 1000, { timeout: timeoutMs }, releasedAtMs);
+  const after = await page.evaluate(readGarageAudioIntent);
+  Object.assign(report.garageAudioIntent, { after, releasedAtMs, observationMs: after.atMs - releasedAtMs });
+  await page.screenshot({ path: resolve(out, 'garage-after-gesture.png') });
 }
 
 async function finishFixtureBattle() {
@@ -143,6 +187,7 @@ try {
     Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
   });
   await page.evaluateOnNewDocument(installGarageActionTiming);
+  if (garageGestureAudioGate) await page.evaluateOnNewDocument(installGarageAudioIntent);
   const navigation = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
   if (!navigation?.ok()) throw new Error(`Navigation failed: ${navigation?.status()}`);
   report.buildIndexHash = hash(await navigation.text());
@@ -155,6 +200,7 @@ try {
     && window.__DEBUG.pedestalVisual?.specId === spec
     && window.__DEBUG.selectedSpecId === spec && window.__DEBUG.garage.getSelectedMap() === map,
   {}, specId, mapId);
+  if (garageGestureAudioGate) await runGarageAudioGesture();
   // Explicitly choose the ordinary Bots entry using the actual mode picker.
   await page.click('.cot-battle-mode');
   await page.click('.cot-battle-choice[data-mode="solo"]');
@@ -173,6 +219,15 @@ try {
     await page.screenshot({ path: resolve(out, 'failure.png') }).catch(() => {});
   }
 } finally {
+  if (garageGestureAudioGate && page && !page.isClosed()) {
+    try {
+      report.garageAudioObserverCleanup = await page.evaluate(() => window.__GARAGE_AUDIO_INTENT?.stop() ?? null);
+      const cleanup = report.garageAudioObserverCleanup?.cleanup;
+      if (!cleanup || cleanup.failedNames.length || cleanup.notOwnedNames.length) {
+        report.cleanupErrors.push('Garage audio constructor observer did not restore all owned wrappers');
+      }
+    } catch (error) { report.cleanupErrors.push(`Garage audio observer: ${String(error)}`); }
+  }
   if (page && !page.isClosed()) await page.evaluate(() => window.__ACTION_TRACE?.stop()).catch(() => {});
   await closeOwnedBrowser();
   clearInterval(refresher);
@@ -187,11 +242,17 @@ try {
   report.failures.push(...report.errors.map(error => `browser: ${error}`));
   report.failures.push(...report.cleanupErrors.map(error => `cleanup: ${error}`));
   const audioFailures = checkGarageActionAudio(report.actions);
-  report.audioClock = { gateRequested: audioClockGate, pass: audioFailures.length === 0,
+  report.audioClock = { gateRequested: audioClockGate || garageGestureAudioGate, pass: audioFailures.length === 0,
     failures: audioFailures,
     caveat: 'Passive existing-context clock and loading/ambient ownership only; no PCM or audible-output proof.' };
   report.functionalPass = report.failures.length === 0;
-  report.pass = report.functionalPass && (!audioClockGate || report.audioClock.pass);
+  if (garageGestureAudioGate) {
+    const failures = checkGarageAudioIntent(report.garageAudioIntent, report.actions);
+    report.garageGestureAudio = { gateRequested: true, pass: failures.length === 0, failures,
+      caveat: 'Passive native constructor timing/count and trusted Garage orbit only; no device IDs, options, PCM or audible-output proof.' };
+  }
+  report.pass = report.functionalPass && (!(audioClockGate || garageGestureAudioGate) || report.audioClock.pass)
+    && (!garageGestureAudioGate || report.garageGestureAudio.pass);
   await writeFile(resolve(out, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
   console.log(JSON.stringify(report, null, 2));
   if (!report.pass) process.exitCode = interruptedBy === 'SIGINT' ? 130 : interruptedBy === 'SIGTERM' ? 143 : 1;

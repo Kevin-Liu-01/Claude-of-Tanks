@@ -35,6 +35,8 @@ try {
   let refreshes = 0;
   let touch = false;
   let locked = false;
+  let battleStageVisible = false;
+  let canRecapture = true;
   const input = {
     isTouchLayout: () => touch,
     isLocked: () => locked,
@@ -47,12 +49,16 @@ try {
     bus,
     canvas,
     audioResume: () => { resumes += 1; },
-    isBattleStageVisible: () => true,
-    canRecapturePointer: () => true,
+    isBattleStageVisible: () => battleStageVisible,
+    canRecapturePointer: () => canRecapture,
     ensureTouchControls: async () => ({ refresh: () => { refreshes += 1; } }),
     nextFrame: () => new Promise(() => {}),
   });
 
+  canvas.dispatch('mousedown');
+  assert.equal(resumes, 0, 'Garage canvas orbit cannot initialize or resume battle audio');
+  assert.equal(lockRequests, 0, 'non-battle canvas never recaptures even if the other predicate permits it');
+  battleStageVisible = true;
   denied();
   assert.equal(appended.length, 1, 'durable denial shows one notice on the visible battle stage');
   assert.equal(appended[0].className, 'cot-lock-toast');
@@ -69,18 +75,33 @@ try {
   assert.equal(lockRequests, 1, 'an already captured canvas does not request again');
 
   locked = false;
+  battleStageVisible = false;
+  canvas.dispatch('mousedown');
+  assert.equal(resumes, 2, 'covered loading preserves the loading owner instead of unlocking from canvas clicks');
+  battleStageVisible = true;
+  canRecapture = false;
+  canvas.dispatch('mousedown');
+  assert.equal(resumes, 3, 'visible battle still retries audio when pointer recapture is unavailable');
+  assert.equal(lockRequests, 1, 'audio recovery does not bypass the recapture predicate');
+  canRecapture = true;
   bus.emit('ui:battleStart', {});
   await Promise.resolve();
   assert.equal(lockRequests, 2, 'desktop battle start requests capture in the initiating gesture');
   assert.equal(refreshes, 1, 'battle start refreshes lazily acquired touch controls');
 
   touch = true;
+  canvas.dispatch('mousedown');
+  assert.equal(resumes, 4, 'touch battle audio recovery remains available without pointer lock');
+  assert.equal(lockRequests, 2);
   bus.emit('ui:battleStart', {});
   await Promise.resolve();
   assert.equal(lockRequests, 2, 'touch battle start never requests pointer capture');
   assert.equal(refreshes, 2);
 
+  const staleMouseDown = canvas.listeners.get('mousedown');
   runtime.dispose();
+  staleMouseDown();
+  assert.equal(resumes, 4, 'a saved stale callback cannot revive disposed audio recovery');
   assert.equal(canvas.listeners.size, 0, 'dispose detaches the canvas gesture');
   assert.equal(denied, null, 'dispose detaches denial recovery');
   assert.equal(restored, null, 'dispose detaches restored recovery');
