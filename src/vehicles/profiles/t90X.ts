@@ -28,6 +28,7 @@ import { addT90SMLeftLauncherShelf, t90SMLeftCarrierRoof, t90SMLeftCarrierBreakp
 import { addT90SMRightLauncherBracket } from './t90SMXRightLauncherBracket.ts';
 import { addT90SMLeftSmokeMounts } from './t90SMXLeftSmokeMounts.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addShtoraEyes } from './shtora.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
@@ -657,20 +658,23 @@ function mFrontFixtures(P: TankBuilderPort): void {
 }
 
 function classicSensors(P: TankBuilderPort,d: Datum,mirror: number): void {
-  // Paired Shtora emitters have independent framed glass apertures, rear
-  // housings and attachment brackets, and rotate with the turret shell.
+  // Use the original fleet's round red OTShU drums, fins and cheek plates.
+  // The narrow carrier overlaps the actual fore casting and emitter stock.
+  addShtoraEyes({ mats: P.mats, turretG: P.turretG,
+    add: (slot, geometry, x, y, z) => P.addEquipment(slot, geometry, x, y, z),
+  }, { x: .82, y: d.gun[1] - .02, z: 1.65, scale: 1.3, round: true, kit: true,
+    offset: [-d.yaw[0], -d.yaw[1], -d.yaw[2]] });
   for(const side of [-1,1]) {
-    const x=side*.82,z=1.65;
-    onTurret(P,d,'turretDetail',box(.40,.27,.23),x,d.gun[1]-.02,z);
-    onTurret(P,d,'turretDark',cylZ(.133,.025,20),x,d.gun[1]-.02,z+.127);
-    onTurret(P,d,'turretGlass',markVehicleNightLens(cylZ(.108,.012,24),'shtora'),x,d.gun[1]-.02,z+.145);
-    onTurret(P,d,'turretDetail',box(.44,.028,.28),x,d.gun[1]+.132,z-.005);
-    onTurret(P,d,'turretDetail',box(.16,.14,.18),x,d.gun[1]-.15,z-.19);
+    onTurret(P,d,'turretDetail',box(.16,.14,.52),side*.82,d.gun[1]-.12,1.29);
   }
   classicBins(P,d);
   const centerTop=d===V?2.295:2.148,centerZ=d===V?.918:.847;
   onTurret(P,d,'turretDetail',box(.47,.19,.30),0,centerTop-.095,centerZ);
   onTurret(P,d,'turretDark',box(.22,.10,.015),0,centerTop-.07,centerZ+.154);
+  // The viewing optic remains a real glass aperture after the Shtora
+  // projectors move to their own red-emitter material. Seat it in the
+  // existing forward sight bezel, not in the dazzler's damage volume.
+  onTurret(P,d,'turretGlass',box(.18,.07,.012),0,centerTop-.07,centerZ+.164);
   if(d===A) {
     onTurret(P,d,'turretDetail',box(.314,.311,.359),-.760,2.282,.023);
     onTurret(P,d,'turretDark',box(.225,.14,.013),-.760,2.32,.211);

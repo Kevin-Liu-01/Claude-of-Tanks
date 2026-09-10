@@ -8,8 +8,13 @@ import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.t
 // This immutable hash is the 151 original anchor records at c26b3194200f52b,
 // not an acceptance baseline generated from the new candidate anchors.
 const newIds=new Set(SECOND_WAVE_X_IDS);
+// These seven records were added after this regression's immutable baseline.
+// Do not mistake later additions for modifications of its original 151 records.
+const laterAbramsIds=new Set(['m1a1_x','m1a1ha_x','m1a2_x','m1a2_tusk_x',
+  'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x']);
+for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: later Abrams anchor remains present`);
 const oldAnchors=Object.fromEntries(Object.entries(VEHICLE_MARKING_ANCHORS)
-  .filter(([id])=>!newIds.has(id)).sort(([a],[b])=>a.localeCompare(b)));
+  .filter(([id])=>!newIds.has(id)&&!laterAbramsIds.has(id)).sort(([a],[b])=>a.localeCompare(b)));
 assert.equal(Object.keys(oldAnchors).length,151,'all pre-second-wave anchors remain');
 assert.equal(createHash('sha256').update(JSON.stringify(oldAnchors)).digest('hex'),
   '229edfafa18e3982c097bbc48d1b3778ac2db97601bdee218b2816674cc2209f',

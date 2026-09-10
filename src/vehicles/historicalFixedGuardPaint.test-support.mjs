@@ -6,6 +6,7 @@ import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildLeclercX} from './profiles/leclercX.ts';
 import {AMX40_X_PROFILES} from './profiles/amx40X.ts';
 import {buildLeopard2A6X} from './profiles/leopardA6X.ts';
+import {buildType10X} from './profiles/type10X.ts';
 import {beforeFixedStockPaint} from './fixedStockPaintHistory.test-support.mjs';
 
 const cases = {
@@ -17,14 +18,17 @@ const cases = {
   leo2a6_x: {build:buildLeopard2A6X, source:'leopardA6X.ts',
     label:'a6-fixed-front-guard', names:['a6x_front_guard_-1','a6x_front_guard_1'],
     equipmentLabel:'a6-fixed-upper-sheet',equipmentCount:6},
+  type10_x: {build:buildType10X, source:['type10X.ts','type10XSkirts.ts'],names:[],
+    equipmentLabel:['type10-painted-folded-skirt','type10-painted-upper-fascia','type10-painted-rear-fascia'],equipmentCount:14},
 };
 const keys=['fixedPaintedPanel','materialOnlyPaintMigration','materialOnlyPaintSourceBucket'];
 
 export function withHistoricalFixedGuardPaint(id, build) {
-  const row=cases[id];assert.ok(row,'Only the three declared fixed-guard finish migrations');
+  const row=cases[id];assert.ok(row,'Only declared fixed-bodywork finish migrations');
   // Authenticate the complete source against independently committed pre-paint
   // bytes, not a newly refreshed recipe or a wildcard material-name exclusion.
-  beforeFixedStockPaint(row.source,readFileSync(new URL('./profiles/'+row.source,import.meta.url),'utf8'));
+  for(const source of [row.source].flat())
+    beforeFixedStockPaint(source,readFileSync(new URL('./profiles/'+source,import.meta.url),'utf8'));
   const names=[];let equipment=0;
   registerProfiledBuilders({[id]:P=>row.build(new Proxy(P,{get(target,key){
     if(key!=='addMudguard'&&key!=='addEquipment')return Reflect.get(target,key);
@@ -32,10 +36,11 @@ export function withHistoricalFixedGuardPaint(id, build) {
       const bucketIndex=key==='addMudguard'?1:0,geometry=args[bucketIndex+1];
       const guard=key==='addMudguard'&&row.names.includes(args[0]);
       const sheet=key==='addEquipment'&&row.equipmentLabel
-        &&geometry.userData.fixedPaintedPanel===row.equipmentLabel;
+        &&[row.equipmentLabel].flat().includes(geometry.userData.fixedPaintedPanel);
       if(guard||sheet){
         assert.equal(args[bucketIndex],'hullPaintedDetail');
-        assert.equal(geometry.userData.fixedPaintedPanel,guard?row.label:row.equipmentLabel);
+        if(guard)assert.equal(geometry.userData.fixedPaintedPanel,row.label);
+        else assert.ok([row.equipmentLabel].flat().includes(geometry.userData.fixedPaintedPanel));
         assert.equal(geometry.userData.materialOnlyPaintMigration,true);
         assert.equal(geometry.userData.materialOnlyPaintSourceBucket,'hullDetail');
         if(guard)names.push(args[0]);else equipment++;
@@ -48,6 +53,6 @@ export function withHistoricalFixedGuardPaint(id, build) {
   }}))});
   try{const result=build();
     assert.deepEqual(names,row.names,'Every declared guard exactly once, in original order');
-    assert.equal(equipment,row.equipmentCount??0,'Only the six declared A6 upper sheets');return result;}
+    assert.equal(equipment,row.equipmentCount??0,'Every declared sheet exactly once');return result;}
   finally{registerProfiledBuilders({[id]:row.build});}
 }

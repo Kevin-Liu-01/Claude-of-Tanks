@@ -8,9 +8,21 @@ export const PRE_PAINT_SHA = Object.freeze({
   "leopardA5XDetails.ts": "1403c3975cb2b0eab2e2abd8d143eb3f3b3b76050c40235e3ec8367d0bfe0e25",
   "leopardA6X.ts": "9e10be26c5e69baa4386458996f85a3933daf78d081fb3004125fc186a58feea",
   "leclercXSourceFittings.ts": "670d631586ae285ba884395694b73b7a75e0a6b19400309cb7afb67b06b3ca91",
-  "amx40XHullSkirts.ts": "d9df76151697de929b2e7ed6d915d3283a679905c722aba1cbd6ae27dca715fb"
+  "amx40XHullSkirts.ts": "d9df76151697de929b2e7ed6d915d3283a679905c722aba1cbd6ae27dca715fb",
+  // Type 10 sources are pinned to main 7351f0b4a, before the finish-only pass.
+  "type10X.ts": "b4ecf8c3d8839ceb2a019fafa5fbe0b96976aa6d86d49d5bc668845f1e20c0a2",
+  "type10XSkirts.ts": "cb2e5e980d0bb11524f7f67bed370c1a82925eb4bf7943587047e313dce6265e"
 });
 const edits = {
+  "type10X.ts": [
+    ["import {addType10Skirts} from './type10XSkirts.ts';", "import {addType10Skirts} from './type10XSkirts.ts';\nimport {markFixedPaintedPanel} from './fixedPaintedPanel.ts';"],
+    ["P.addEquipment('hullDetail',box(.030964,.4627,6.0704),side*1.559035,.99065,.5545);", "P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,6.0704),\n    'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545);"],
+    ["P.addEquipment('hullDetail',box(.030964,.4065,.9621),side*1.559035,.96097,-2.95899);", "P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4065,.9621),\n    'type10-painted-rear-fascia','hullDetail'),side*1.559035,.96097,-2.95899);"],
+  ],
+  "type10XSkirts.ts": [
+    ["import {KIT} from './kit.ts';", "import {KIT} from './kit.ts';\nimport {markFixedPaintedPanel} from './fixedPaintedPanel.ts';"],
+    ["P.addEquipment('hullDetail',sectionSolid(sections));", "P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(sectionSolid(sections),\n    'type10-painted-folded-skirt','hullDetail'));"],
+  ],
   "leopardA5XDetails.ts": [
     [
       "import * as THREE from 'three';",

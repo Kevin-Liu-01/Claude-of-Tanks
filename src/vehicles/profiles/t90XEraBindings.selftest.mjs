@@ -4,6 +4,7 @@ import { Matrix4, Triangle, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import {addT90VFrontGuard} from './t90VXFrontGuards.ts';
+import {withHistoricalClassicShtora} from '../classicShtoraHistory.test-support.mjs';
 
 // Immutable world-vertex multiset snapshots taken before the ERA wrappers.
 // Paint decals and invisible shadow proxies are excluded, not real gun rims,
@@ -177,8 +178,13 @@ for(const [id,baselines]of Object.entries(BASELINES))for(const [lod,quality]of [
     const label=`${id}/${quality}`,spec=getSpec(id);
     const baseline=id==='t90a_x'?A_NON_GUN_BASELINES[lod]
       :id==='t90a_vladimir_x'?V_NON_GUARD_BASELINES[lod]:baselines[lod];
-    assert.deepEqual(vertexFingerprint(tank.root,id==='t90a_x',id==='t90a_vladimir_x'),baseline,
-      `${label}: every world vertex outside independently source-corrected A gun / exact V guards preserved`);
+    const classic=id==='t90a_x'||id==='t90a_vladimir_x';
+    const historical=classic?withHistoricalClassicShtora(id,()=>createTank(id,null,
+      {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true})):null;
+    try{
+      assert.deepEqual(vertexFingerprint(historical?.root??tank.root,id==='t90a_x',id==='t90a_vladimir_x'),baseline,
+        `${label}: immutable world-vertex baseline with exact inverse of the independently tested Shtora repair`);
+    }finally{historical?.dispose();}
     const rows=tank.root.userData.eraVisualBindingReceipt.plates;
     assert.deepEqual(rows.map(row=>row.name).sort(),expectedZones(id),`${label}: exactly inherited gameplay zones`);
     assertDonorValues(id,[...spec.armor.hullPlates,...spec.armor.turretPlates].filter(plate=>plate.kind==='era'));

@@ -1,6 +1,6 @@
 {
  "id": "t90a_vladimir_x",
- "geoMin": 94.4,
+ "geoMin": 94.5,
  "requiredMinimum": 92,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,14 +9,14 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 94.40786589683208,
+ "rawGeoMin": 94.50520089484897,
  "rawComponents": {
-  "wholeCurves": 94.40786589683208,
+  "wholeCurves": 94.50520089484897,
   "dims": 100,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 94.4,
+  "wholeCurves": 94.5,
   "dims": 100,
   "floaters": 100
  },
@@ -836,6 +836,12 @@
    "pct": 0.024074621524723547
   }
  ],
+ "referenceDimensions": {
+  "heightM": 2.881235648299667,
+  "hullLengthM": 8.017351369181682,
+  "overallLengthM": 10.784704185532746,
+  "widthM": 3.7809100206936344
+ },
  "referenceBodyExtent": {
   "h": 2.881,
   "len": 8.017
@@ -852,7 +858,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 136816,
+     "area": 136863,
      "minX": 154,
      "minY": 323,
      "maxX": 933,
@@ -866,7 +872,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133415,
+     "area": 133459,
      "minX": 227,
      "minY": 323,
      "maxX": 987,
@@ -880,7 +886,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 131280,
+     "area": 131356,
      "minX": 227,
      "minY": 323,
      "maxX": 987,
@@ -894,7 +900,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 133089,
+     "area": 133129,
      "minX": 155,
      "minY": 323,
      "maxX": 933,
@@ -908,7 +914,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 137269,
+     "area": 137250,
      "minX": 164,
      "minY": 323,
      "maxX": 933,
