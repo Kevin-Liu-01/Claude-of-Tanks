@@ -403,6 +403,143 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
   assert.equal(timing.programsAfter, 4, 'zero new wrapper count does not mean uniform tables were initialized');
 }
 
+function visibleRootFixture() {
+  const f = firstUseFixture();
+  f.mesh.name = 'terrain';
+  f.mesh.layers.set(1);
+  const child = new THREE.Mesh(f.mesh.geometry, f.mesh.material);
+  child.layers.set(1);
+  const excludedMaterial = new THREE.MeshBasicMaterial();
+  const hidden = new THREE.Mesh(f.mesh.geometry, excludedMaterial);
+  hidden.layers.set(1);
+  hidden.visible = false;
+  hidden.add(new THREE.Mesh(f.mesh.geometry, excludedMaterial));
+  hidden.children[0].layers.set(1);
+  const otherLayer = new THREE.Mesh(f.mesh.geometry, excludedMaterial);
+  otherLayer.layers.set(3);
+  f.mesh.add(child, hidden, otherLayer);
+  const sibling = new THREE.Mesh(f.mesh.geometry, excludedMaterial);
+  sibling.layers.set(1);
+  const inactive = new THREE.Group();
+  inactive.visible = false;
+  inactive.add(new THREE.Mesh(f.mesh.geometry, excludedMaterial));
+  inactive.children[0].layers.set(1);
+  const light = new THREE.DirectionalLight();
+  light.layers.enable(1);
+  f.scene.add(sibling, inactive, light);
+  f.scene.fog = new THREE.Fog(0x123456, 1, 100);
+  f.scene.environment = new THREE.Texture();
+  const fog = f.scene.fog, environment = f.scene.environment;
+  const passes = [{ layerMask: 2, target: { name: 'terrain-scene-aa' } }];
+  const compiled = [];
+  f.renderer.compile = (root, camera, targetScene) => {
+    assert.equal(targetScene, f.scene, 'selected-root submission retains the real target scene');
+    assert.equal(targetScene.fog, fog);
+    assert.equal(targetScene.environment, environment);
+    assert.equal(f.renderer.target, passes[0].target, 'use the supplied AA destination unchanged');
+    assert.equal(camera.layers.mask, passes[0].layerMask);
+    assert.notEqual(root, f.mesh, 'native compile receives a flat selection, not the recursive terrain root');
+    const lights = [];
+    const visitLight = object => { if (object.isLight) lights.push(object); };
+    targetScene.traverseVisible(visitLight);
+    root.traverseVisible(visitLight);
+    assert.deepEqual(lights, [light], 'the selection neither duplicates nor hides real lights');
+    const objects = [];
+    root.traverse(object => objects.push(object));
+    assert.deepEqual(objects, [f.mesh, child],
+      'only visible selected-root objects on the supplied pass are submitted; no hidden descendants or siblings');
+    assert.equal(child.parent, f.mesh, 'selection never reparents original objects');
+    compiled.push(objects);
+    f.state.compile();
+    return new Set(objects.map(object => object.material));
+  };
+  return {
+    ...f, child, hidden, sibling, compiled, passes,
+    prepare: (options = {}) => f.prepare({ visibleRoot: f.mesh, strict: true, passes, ...options }),
+    finish(steps) {
+      for (let count = 0; count < 1000; count++) {
+        const step = steps.next();
+        f.assertRestored();
+        if (step.done) return step.value;
+      }
+      assert.fail('selected-root preparation must remain bounded');
+    },
+  };
+}
+
+for (const strict of [false, true]) {
+  const f = visibleRootFixture();
+  [...f.owner.compileSceneSteps({ visibleRoot: f.mesh, passes: f.passes })];
+  assert.deepEqual(f.events, [], 'submission alone leaves every retained native table unreflected');
+  const timing = {};
+  assert.deepEqual(f.finish(f.prepare({ strict, timing })), { status: 'complete', pending: 0 });
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform').map(([, name]) => name),
+    ['back', 'front', 'instanced'], 'selected visible materials include their existing unreflected variants');
+  assert.equal(timing.programsBefore, timing.programsAfter, 'no new program is needed for retained first use');
+  const repeated = {};
+  assert.deepEqual(f.finish(f.prepare({ strict, timing: repeated })), { status: 'complete', pending: 0 });
+  assert.equal(repeated.uniformCount, 0);
+  assert.equal(repeated.uniformReused, 3, 'same native handles reuse both-table reflection witnesses');
+}
+
+for (const inactive of ['root', 'ancestor', 'detached', 'foreign']) {
+  const f = visibleRootFixture();
+  if (inactive === 'root') f.mesh.visible = false;
+  if (inactive === 'ancestor') f.scene.visible = false;
+  if (inactive === 'detached') f.mesh.removeFromParent();
+  if (inactive === 'foreign') new THREE.Scene().add(f.mesh);
+  f.renderer.getContext = () => assert.fail('inactive selection must not start renderer work');
+  assert.deepEqual(f.prepare().next(), { done: true,
+    value: { status: 'incomplete', pending: null, reason: 'invalidated' } });
+  assert.equal(f.compiled.length, 0);
+}
+
+for (const boundary of ['root', 'ancestor', 'detached', 'foreign', 'abort', 'epoch', 'info', 'context']) {
+  const f = visibleRootFixture();
+  const controller = new AbortController();
+  const reason = new Error(`visible-root ${boundary}`);
+  const steps = f.prepare({ signal: controller.signal });
+  assert.equal(steps.next().done, false, 'selected submission yields before its first native query');
+  const events = f.events.length;
+  if (boundary === 'root') f.mesh.visible = false;
+  if (boundary === 'ancestor') f.scene.visible = false;
+  if (boundary === 'detached') f.mesh.removeFromParent();
+  if (boundary === 'foreign') new THREE.Scene().add(f.mesh);
+  if (boundary === 'abort') controller.abort(reason);
+  if (boundary === 'epoch') f.owner.invalidate();
+  if (boundary === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+  if (boundary === 'context') f.renderer.getContext = () => ({ ...f.gl });
+  if (boundary === 'abort') assert.throws(() => steps.next(), error => error === reason);
+  else assert.deepEqual(steps.next(), { done: true,
+    value: { status: 'incomplete', pending: null, reason: 'invalidated' } });
+  assert.equal(f.events.length, events, 'retired selection cannot query or reflect captured programs');
+  f.scene.add(f.mesh);
+  f.assertRestored();
+}
+
+{
+  const f = visibleRootFixture();
+  const failure = new Error('selected compile rejected');
+  f.state.compile = () => { throw failure; };
+  assert.throws(() => f.prepare().next(), error => error === failure);
+  f.assertRestored();
+  assert.deepEqual(f.events, [], 'failed native submission cannot reflect a guessed cohort');
+}
+
+{
+  const f = visibleRootFixture();
+  f.state.reflect = () => { throw new Error('selected reflection rejected'); };
+  const failed = f.finish(f.prepare());
+  assert.equal(failed.status, 'incomplete');
+  assert.equal(failed.reason, 'reflection');
+  assert.equal(failed.pending, 3);
+  f.state.reflect = () => {};
+  const timing = {};
+  assert.deepEqual(f.finish(f.prepare({ timing })), { status: 'complete', pending: 0 });
+  assert.equal(timing.uniformReused, 0, 'failed tables cannot publish a reusable witness');
+  assert.equal(timing.uniformCount, 3);
+}
+
 {
   const f = firstUseFixture();
   const timing = {};

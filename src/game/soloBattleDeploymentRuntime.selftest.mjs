@@ -7,11 +7,12 @@ import { createOpaqueLoadingYielder } from '../engine/frameScheduler.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
 import { primeOpeningTerrainPresentation } from './battleWarmRuntime.ts';
 import { createBattleVisualStreamer } from './battleVisualStreamer.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false,
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
-  streamedCadence = null } = {}) {
+  streamedCadence = null, terrainPrograms = '' } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -26,6 +27,11 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   const worldGroup = new THREE.Group();
   worldGroup.name = 'world';
   scene.add(worldGroup);
+  const terrain = new THREE.Group();
+  terrain.name = 'terrain';
+  if (terrainPrograms) worldGroup.add(terrain);
+  const sourceTarget = new THREE.WebGLRenderTarget(4, 4);
+  camera.layers.enable(LATE_FX_LAYER);
   const fxGroup = new THREE.Group();
   fxGroup.name = 'fx';
   scene.add(fxGroup);
@@ -126,6 +132,23 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         } finally { calls.push(['compileClosed']); }
       },
       initializeSteps: function* () {},
+      prepareSceneSteps: function* (options) {
+        assert.strictEqual(options.visibleRoot, terrain, 'only the current direct terrain root is selected');
+        assert.equal(options.strict, true);
+        assert.equal(options.sliceMs, 4);
+        assert.deepEqual(options.passes, [{ layerMask: 1, target: sourceTarget }],
+          'prepare the source AA target, excluding the separate late-FX pass');
+        calls.push(['terrainPrograms']);
+        try {
+          yield;
+          calls.push(['terrainProgramsResumed']);
+          if (terrainPrograms === 'throw') throw new Error('native reflection failed');
+          options.timing.uniformCount = 2;
+          return terrainPrograms === 'incomplete'
+            ? { status: 'incomplete', pending: 2, reason: 'query' }
+            : { status: 'complete', pending: 0 };
+        } finally { calls.push(['terrainProgramsClosed']); }
+      },
       linkerBreathingSlices: function* () {},
       invalidate: () => {},
     },
@@ -133,6 +156,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       markOpeningReady: () => calls.push(['openingReady']),
     },
     post: {
+      sceneAA: { sceneTarget: sourceTarget },
       warmFirstFrame: async (yieldBeforePass) => {
         calls.push(['postWarm']);
         await yieldBeforePass('post-pass');
@@ -209,6 +233,13 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     yieldFrame: async () => calls.push(['frame']),
     createLoadingYielder: streamedCadence?.createLoadingYielder ?? (() => async (force) => {
       const previous = calls.at(-1)?.[0];
+      if (previous === 'terrainPrograms') {
+        if (terrainPrograms === 'cancel') generation++;
+        if (terrainPrograms === 'detach') worldGroup.remove(terrain);
+        if (terrainPrograms === 'late-cancel') {
+          queueMicrotask(() => queueMicrotask(() => { generation++; }));
+        }
+      }
       if (cancelCompile && previous === 'compileSlice') generation++;
       if ((lateCancelCompile === 'slice' && previous === 'compileSlice')
         || (lateCancelCompile === 'final' && previous === 'compileClosed')
@@ -228,8 +259,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     calls,
     releaseAtmosphere,
     releaseNight, lamps, lightSignatures,
-    shadow, worldGroup, playerRoot, fxGroup,
-    disposeWarmResources() { for (const resource of warmResources) resource.dispose(); },
+    shadow, worldGroup, playerRoot, fxGroup, sourceTarget,
+    disposeWarmResources() { sourceTarget.dispose(); for (const resource of warmResources) resource.dispose(); },
     get generation() { return generation; },
     set generation(value) { generation = value; },
     get pending() { return pending; },
@@ -402,6 +433,32 @@ await shortCompile.runtime.warm(Promise.resolve());
 const shortOrder = shortCompile.calls.map(([name]) => name);
 assert.deepEqual(shortCompile.calls[shortOrder.indexOf('compileClosed') + 1], ['yield', true],
   'a short compiler with no checkpoints still separates submission from first bind');
+
+for (const terrainPrograms of ['complete', 'incomplete', 'throw', 'cancel', 'late-cancel', 'detach']) {
+  const harness = createHarness({ terrainPrograms });
+  try {
+    if (['cancel', 'late-cancel', 'detach'].includes(terrainPrograms)) {
+      await assert.rejects(harness.runtime.warm(Promise.resolve()), /superseded/);
+      assert.ok(!harness.calls.some(([name]) =>
+        ['terrainProgramsResumed', 'warmRender', 'postWarm', 'reveal'].includes(name)),
+      `${terrainPrograms}: stale root work cannot resume or reveal`);
+    } else {
+      assert.equal((await harness.runtime.warm(Promise.resolve())).revealPrimed, true);
+      const names = harness.calls.map(([name]) => name);
+      assert.ok(names.indexOf('shadowWarm') < names.indexOf('terrainPrograms'));
+      assert.ok(names.indexOf('terrainProgramsClosed') < names.indexOf('warmRender'));
+      assert.deepEqual(harness.calls[names.indexOf('terrainProgramsClosed') + 1], ['yield', true],
+        'native reflection releases its task before first covered terrain draw');
+      const receipt = globalThis.__BATTLE_COUNTDOWN_WARM.deploymentTerrainPrograms;
+      assert.equal(receipt.result.status, terrainPrograms === 'complete' ? 'complete' : 'incomplete');
+      if (terrainPrograms === 'throw') assert.match(receipt.error, /native reflection failed/);
+      if (terrainPrograms === 'incomplete') assert.deepEqual(receipt.result,
+        { status: 'incomplete', pending: 2, reason: 'query' }, 'never convert incomplete preparation into success');
+    }
+    assert.equal(harness.calls.filter(([name]) => name === 'terrainProgramsClosed').length, 1,
+      'all paths close the terrain preparation iterator exactly once');
+  } finally { harness.disposeWarmResources(); }
+}
 const staleCompile = createHarness({ cancelCompile: true });
 await assert.rejects(staleCompile.runtime.warm(Promise.resolve()), /superseded/);
 for (const restored of ['compileClosed', 'restoreFx', 'restoreArmor']) {

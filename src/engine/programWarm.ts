@@ -151,6 +151,8 @@ export interface SceneProgramCompileOptions {
   sliceMs?: number;
   /** Opt-in real scene passes; omitted retains native all-descendant selection. */
   passes?: readonly SceneProgramCompilePass[];
+  /** Opt-in visible subtree of the real scene; detached or hidden ancestry invalidates preparation. */
+  visibleRoot?: Object3D;
   /** Opt-in first use of the selected materials' cached variants, including retained variants. */
   initializeUniforms?: boolean;
   /** Interleave bounded admission and actual first use; implies initializeUniforms. */
@@ -313,6 +315,15 @@ function isForwardRenderable(object: Object3D): boolean {
   return !!(renderable.isMesh || renderable.isPoints || renderable.isLine || renderable.isSprite);
 }
 
+function visibleRootIsCurrent(scene: Scene, root: Object3D | undefined): boolean {
+  if (!root) return true;
+  for (let ancestor: Object3D | null = root; ancestor; ancestor = ancestor.parent) {
+    if (!ancestor.visible) return false;
+    if (ancestor === scene) return true;
+  }
+  return false;
+}
+
 function compileScenePassBatch(
   { renderer, scene, camera, getTarget, now }: ForwardProgramWarmOptions,
   root: Object3D,
@@ -338,23 +349,39 @@ function recordSubmissionSlice(timing: ForwardProgramCompileTiming | undefined, 
   recordCompileTiming(timing, 'submissionSlices', 1);
 }
 
+function collectScenePassObjects(
+  scene: Scene,
+  visibleRoot: Object3D | undefined,
+  pass: SceneProgramCompilePass | undefined,
+): Object3D[] {
+  const objects: Object3D[] = [];
+  const collect = (object: Object3D): void => {
+    if (isForwardRenderable(object) && (!pass || (object.layers.mask & pass.layerMask) !== 0)) {
+      objects.push(object);
+    }
+  };
+  if (visibleRoot) visibleRoot.traverseVisible(collect);
+  else scene.traverse(collect);
+  return objects;
+}
+
 /**
  * A compile-only traversal view, never inserted into the scene. Native compile
- * visits all selected descendants (including hidden variants), but gets its
+ * visits all descendants by default, or an opt-in visible subtree, but gets its
  * lights, environment and fog from the real target scene. Original objects keep
  * their parents, transforms and material identities throughout every checkpoint.
  */
 function* compileScenePassSteps(
   options: ForwardProgramWarmOptions,
   valid: () => boolean,
-  { timing, sliceMs = 8, strict }: SceneProgramCompileOptions,
+  { timing, sliceMs = 8, strict, visibleRoot }: SceneProgramCompileOptions,
   pass: SceneProgramCompilePass | undefined,
   cohort?: MaterialProgramCohort,
   afterBatch?: ProgramBatchCheckpoint,
   canSubmit: () => boolean = () => true,
 ): Generator<void, boolean, void> {
   const { scene, now = () => performance.now() } = options;
-  const objects: Object3D[] = [];
+  const objects = collectScenePassObjects(scene, visibleRoot, pass);
   const facade = new Object3D();
   let start = 0;
   let end = 0;
@@ -364,11 +391,6 @@ function* compileScenePassSteps(
   };
   const budget = Number.isFinite(sliceMs) ? Math.max(1, Math.min(16, sliceMs)) : 8;
   try {
-    scene.traverse((object) => {
-      if (isForwardRenderable(object) && (!pass || (object.layers.mask & pass.layerMask) !== 0)) {
-        objects.push(object);
-      }
-    });
     let sliceAt = diagnosticNow(now);
     let submitted = 0;
     while (start < objects.length && valid() && canSubmit()) {
@@ -413,13 +435,15 @@ function* compileSceneProgramSteps(
   afterBatch?: ProgramBatchCheckpoint,
   canSubmit?: () => boolean,
 ): Generator<void, boolean, void> {
-  const { signal, timing, passes } = compileOptions;
+  const { signal, timing, passes, visibleRoot } = compileOptions;
   signal?.throwIfAborted();
-  const { renderer } = options;
+  const { renderer, scene } = options;
+  if (!visibleRootIsCurrent(scene, visibleRoot)) return false;
   const lifetime = captureProgramWarmLifetime(renderer);
   const valid = (): boolean => {
     signal?.throwIfAborted();
-    return isCurrent() && programWarmLifetimeIsCurrent(renderer, lifetime);
+    return isCurrent() && visibleRootIsCurrent(scene, visibleRoot)
+      && programWarmLifetimeIsCurrent(renderer, lifetime);
   };
   if (!valid()) return false;
   const before = renderer.info?.programs?.length ?? 0;
@@ -1093,12 +1117,15 @@ export function createForwardProgramWarmOwner({
     options: SceneProgramCompileOptions = {},
   ): Generator<void, ProgramPreparationResult, void> {
     options.signal?.throwIfAborted();
+    const visibleRoot = options.visibleRoot;
+    if (!visibleRootIsCurrent(scene, visibleRoot)) return incompletePreparation('invalidated');
     const ownedEpoch = epoch;
     const lifetime = captureProgramWarmLifetime(renderer);
     const { gl } = lifetime;
     const valid = (): boolean => {
       options.signal?.throwIfAborted();
-      return epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
+      return epoch === ownedEpoch && visibleRootIsCurrent(scene, visibleRoot)
+        && programWarmLifetimeIsCurrent(renderer, lifetime);
     };
     if (!valid()) return incompletePreparation('invalidated');
     const existingPrograms = options.timing ? snapshotRendererPrograms(renderer) : undefined;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript-compiler-api';
 import {
@@ -429,8 +430,8 @@ async function verifyDeploymentWarmOrder(body) {
     getEntryLifecycle: () => ({ primeReveal: async () => { events.push('reveal'); } }),
   };
   // Only tracked local source (and the explicit mutations below) is evaluated.
-  const pending = runInNewContext(`(async () => { let revealPrimed = false;
-    ${body}\nreturn revealPrimed; })()`, ports);
+  const pending = runInNewContext(stripTypeScriptTypes(`(async () => { let revealPrimed = false;
+    ${body}\nreturn revealPrimed; })()`), ports);
   const settled = pending.then(value => ({ value }), error => ({ error }));
   try {
     assert.equal(events.includes('shadow'), true, 'shadow preparation is submitted');
