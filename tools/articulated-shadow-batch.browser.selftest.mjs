@@ -49,7 +49,8 @@ async function bounded(promise, timeoutMs, label) {
 function retainPixels(report, directory) {
   let number = 0;
   const owners = report.fixture.cases.flatMap(row => [row.reference, row.candidate])
-    .concat(report.fixture.negatives.map(row => row.render));
+    .concat(report.fixture.negatives.map(row => row.render))
+    .concat(report.fixture.warmPasses.flatMap(row => [row.baseline, row.warm, row.revealed]));
   for (const owner of owners) for (const image of owner.pixels) {
     const bytes = Buffer.from(image.rgbaBase64, 'base64');
     assert.equal(bytes.length, image.width * image.height * 4);
@@ -63,11 +64,12 @@ function retainPixels(report, directory) {
   report.rawOutputs = number;
 }
 
-const report = { protocol: 'articulated-shadow-batch-native-v2', ok: false, source: null,
+const report = { protocol: 'articulated-shadow-batch-native-v3', ok: false, source: null,
   fixture: null, artifacts: {}, errors: [], browserClosed: false, serverClosed: false, lockReleased: false,
   caveats: ['Gate: exact composed PCF RGBA and per-camera clear/nonclear caster coverage (clear is exactly RGBA255).',
     'Cross-arm packed-color byte differences and Three-decoded color-depth differences are retained diagnostics without a tolerance gate.',
     'Same-owner reset additionally requires exact original raw RGBA bytes, preserving deterministic same-path restoration.',
+    'Warm-only cases require zero forward draws, identical same-owner raw shadow RGBA, and exact composed reveal without regenerating shadows.',
     'Pinned Three r185 PCF samples native depth textures, not packed RGBA color; native depth bit identity is not measured.',
     'Decoded diagnostics use the pinned packing formula in JavaScript; they do not reproduce GPU arithmetic or polygon-offset depth storage.',
     'Both negative controls must change composed PCF pixels and coverage. Native-v1 packed-color byte equality is a different contract.',
@@ -141,6 +143,7 @@ try {
     } finally { await canvas.dispose(); }
   }
   assert.equal(report.fixture.cases.length, 6); assert.equal(report.fixture.negatives.length, 2);
+  assert.equal(report.fixture.warmPasses.length, 8);
   assert.equal(report.fixture.ok, true, 'exact composed PCF pixels, coverage, articulation and draw accounting must pass');
   assert.deepEqual(sourceReceipt(), report.source, 'scoped sources changed during native acquisition');
 } catch (error) { report.errors.push(String(error)); }

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createDeploymentShadowWarmOwner } from './deploymentShadowWarm.ts';
+import { installArticulatedShadowBatch } from './articulatedShadowBatch.ts';
+import { markShadowOnly, routeShadowOnlyLayer, SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
 function preparable(render) {
   return Object.assign(render, { *prepareProgramsSteps() { return { status: 'complete', pending: 0 }; } });
@@ -184,6 +186,168 @@ for (const failureStage of [null, 'upload', 'yield']) {
   } finally {
     owner.dispose(); priorOverride.dispose();
     for (const mesh of meshes) { mesh.geometry.dispose(); mesh.material.dispose(); }
+  }
+}
+
+// Exercise selection through the production layer router and the owner's real
+// offscreen camera: layer29 must join bounded cohorts, not remain enabled in all.
+for (const failureStage of [null, 'render', 'yield', 'dispose']) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  camera.layers.enable(7);
+  const geometry = new THREE.BoxGeometry();
+  geometry.clearGroups();
+  const heavyGeometry = new THREE.BufferGeometry();
+  heavyGeometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(36_000 * 3), 3));
+  const material = new THREE.MeshBasicMaterial();
+  const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+  const invisibleMaterial = new THREE.MeshBasicMaterial({ visible: false });
+  const depthMaterial = new THREE.MeshDepthMaterial();
+  function mesh(name, layer = 0, shape = geometry) {
+    const object = new THREE.Mesh(shape, material);
+    object.name = name;
+    object.castShadow = true;
+    object.layers.set(layer);
+    scene.add(object);
+    return object;
+  }
+  const ordinary = Array.from({ length: 25 }, (_, index) => mesh(`ordinary-${index}`));
+  const enabledLayer = mesh('enabled-layer', 7);
+  const shadowOnly = markShadowOnly(mesh('shadow-only'));
+  const rig = new THREE.Group();
+  scene.add(rig);
+  const sources = Array.from({ length: 3 }, (_, index) => {
+    const source = markShadowOnly(new THREE.Mesh(geometry, proxyMaterial));
+    source.name = `retained-proxy-${index}`;
+    source.castShadow = true;
+    source.customDepthMaterial = depthMaterial;
+    source.userData.authoredShadowProxy = true;
+    rig.add(source);
+    return source;
+  });
+  const articulated = installArticulatedShadowBatch(rig, sources);
+  assert.ok(articulated?.isBatchedMesh, 'use the real articulated batch and retained noncasting sources');
+  assert.ok(sources.every(source => !source.castShadow));
+  const heavy = mesh('heavy', 0, heavyGeometry);
+  const heavyShadow = markShadowOnly(mesh('heavy-shadow', 0, heavyGeometry));
+  const eligible = [...ordinary, enabledLayer, shadowOnly, articulated, heavy, heavyShadow];
+  const excludedLayer = mesh('excluded-layer', 8);
+  const noncasting = markShadowOnly(mesh('noncasting'));
+  noncasting.castShadow = false;
+  const disabled = markShadowOnly(mesh('disabled'));
+  disabled.visible = false;
+  const invisible = markShadowOnly(mesh('invisible-material'));
+  invisible.material = invisibleMaterial;
+  const hiddenRoot = new THREE.Group();
+  hiddenRoot.visible = false;
+  scene.add(hiddenRoot);
+  const hidden = markShadowOnly(mesh('hidden-ancestor'));
+  hiddenRoot.add(hidden);
+  const lod = new THREE.LOD();
+  scene.add(lod);
+  const lights = Array.from({ length: 4 }, (_, index) => {
+    const light = new THREE.DirectionalLight();
+    light.castShadow = true;
+    light.shadow.autoUpdate = index % 2 === 0;
+    light.shadow.needsUpdate = index % 2 !== 0;
+    light.shadow.camera.layers.set(index + 2);
+    scene.add(light);
+    return light;
+  });
+  const states = [];
+  scene.traverse(object => states.push({ object, castShadow: object.castShadow,
+    visible: object.visible, mask: object.layers.mask }));
+  const cameraMask = camera.layers.mask;
+  const cascadeMasks = lights.map(light => light.shadow.camera.layers.mask);
+  const shadowFlags = lights.map(light => [light.shadow.autoUpdate, light.shadow.needsUpdate]);
+  const priorTarget = { name: 'prior-target' };
+  let target = priorTarget;
+  let preserved = false;
+  const renders = [];
+  const failure = new Error(`routed caster ${failureStage}`);
+  const renderer = {
+    getDrawingBufferSize(size) { return size.set(64, 64); },
+    getRenderTarget() { return target; },
+    setRenderTarget(value) { target = value; },
+    shadowMap: {
+      render(actualLights, actualScene, actualCamera) {
+        assert.equal(actualLights, lights);
+        assert.equal(actualScene, scene);
+        assert.notEqual(actualCamera, camera, 'use the production offscreen shadow-only camera');
+        assert.equal(actualCamera.layers.mask, cameraMask | (1 << SHADOW_ONLY_LAYER));
+        const active = lights.filter(light => light.shadow.needsUpdate);
+        assert.equal(active.length, 1, 'only the requested native cascade updates');
+        const casters = [];
+        scene.traverseVisible(object => {
+          if (object.isMesh && object.castShadow && object.layers.test(actualCamera.layers)
+            && object.material.visible) casters.push(object);
+        });
+        renders.push({ light: active[0], casters });
+        if (failureStage === 'render') throw failure;
+      },
+    },
+    render(actualScene, actualCamera) {
+      assert.equal(actualCamera.layers.mask, cameraMask);
+      try { this.shadowMap.render(lights, actualScene, actualCamera); }
+      finally {
+        assert.equal(actualCamera.layers.mask, failureStage === 'render' ? cameraMask : 0,
+          'only a successful owned shadow stage suppresses the offscreen forward pass');
+      }
+    },
+  };
+  routeShadowOnlyLayer(renderer);
+  const owner = createDeploymentShadowWarmOwner({
+    renderer, scene, camera,
+    lighting: { csm: { lights }, updateFov() {}, update() {},
+      preservePrimedCascadesForNextFrame() { preserved = true; } },
+    warmRender: preparable(() => {}), getWorldGroup: () => scene,
+    noteFovPrimed() {}, simDt: 1 / 60,
+  });
+  try {
+    const prime = owner.prime(async covered => {
+      assert.equal(covered, true);
+      assert.equal(target, priorTarget, 'offscreen target restores before every yield');
+      assert.equal(camera.layers.mask, cameraMask);
+      assert.deepEqual(states.map(({ object }) => object.layers.mask), states.map(state => state.mask));
+      if (renders.length === 1) {
+        if (failureStage === 'yield') throw failure;
+        if (failureStage === 'dispose') owner.dispose();
+      }
+    });
+    if (failureStage) {
+      await assert.rejects(prime, error => failureStage === 'dispose'
+        ? error.message === 'Deployment shadow warmer was disposed' : error === failure);
+      assert.equal(renders.length, 1, 'failure or disposal cannot enter a later cohort/cascade');
+      assert.equal(preserved, false);
+      assert.deepEqual(lights.map(light => [light.shadow.autoUpdate, light.shadow.needsUpdate]), shadowFlags);
+    } else {
+      const receipt = await prime;
+      assert.equal(receipt.casterCount, eligible.length);
+      assert.equal(receipt.casterBatches, 5, 'both the 12-object and 45k-weight boundaries apply to layer29');
+      const batches = renders.slice(0, receipt.casterBatches);
+      assert.deepEqual(batches.map(batch => batch.casters.length), [12, 12, 4, 1, 1]);
+      assert.deepEqual(batches.flatMap(batch => batch.casters), eligible,
+        'every eligible caster warms exactly once, including the batch but not its original proxies');
+      assert.ok(batches.every(batch => batch.light === lights[0]));
+      const cascades = renders.slice(receipt.casterBatches);
+      assert.deepEqual(cascades.map(cascade => cascade.light), lights);
+      for (const cascade of cascades) assert.deepEqual(cascade.casters, eligible,
+        'each of the four final native cascades retains complete exact caster coverage');
+      assert.equal(preserved, true);
+      assert.ok(lights.every(light => !light.shadow.autoUpdate && !light.shadow.needsUpdate));
+    }
+    const excluded = [excludedLayer, noncasting, disabled, invisible, hidden, ...sources];
+    assert.ok(renders.every(render => excluded.every(object => !render.casters.includes(object))));
+    assert.deepEqual(states.map(({ object }) => [object.castShadow, object.visible, object.layers.mask]),
+      states.map(state => [state.castShadow, state.visible, state.mask]), 'all owned and excluded object state restores exactly');
+    assert.equal(lod.autoUpdate, true);
+    assert.equal(camera.layers.mask, cameraMask);
+    assert.deepEqual(lights.map(light => light.shadow.camera.layers.mask), cascadeMasks);
+    assert.equal(target, priorTarget);
+  } finally {
+    owner.dispose(); articulated.dispose();
+    geometry.dispose(); heavyGeometry.dispose(); material.dispose();
+    proxyMaterial.dispose(); invisibleMaterial.dispose(); depthMaterial.dispose();
   }
 }
 

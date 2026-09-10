@@ -837,6 +837,7 @@ const pedestal = createGaragePedestalRuntime({
 });
 
 const noteGarageActivity = () => {
+  if (game.phase !== 'garage') return;
   invalidateGaragePresentation();
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
@@ -2789,6 +2790,9 @@ const frameLoop = createFrameLoopScheduler({
 rearmRafAfterContext = frameLoop.restart;
 invalidateGaragePresentation = () => {
   garagePresentationDirty = true;
+  // Retained Garage producers may finish during Battle/Studio. Remember the
+  // change for return, without rebasing the active phase's animation clock.
+  if (game.phase !== 'garage') return;
   garageFramePacer.noteActivity(performance.now());
   lighting.setStaticPresentationDormant(false);
   frameLoop.restart();

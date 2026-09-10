@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { installArticulatedShadowBatch } from '../src/engine/articulatedShadowBatch.ts';
-import { markShadowOnly, routeShadowOnlyLayer, SHADOW_ONLY_LAYER } from '../src/engine/renderLayers.ts';
+import { markShadowOnly, routeShadowOnlyLayer, renderShadowOnlyWarm, SHADOW_ONLY_LAYER } from '../src/engine/renderLayers.ts';
 
 const WIDTH = 192, HEIGHT = 160, SHADOW_SIZE = 128;
 const requireThat = (condition, message) => { if (!condition) throw new Error(message); };
@@ -93,10 +93,11 @@ function pose(owner, index, hidden = false, mirrored = false) {
   owner.turret.rotation.y = yaw; owner.gun.rotation.x = pitch; owner.gun.visible = !hidden;
   owner.gun.scale.x = mirrored ? -1 : 1;
 }
-function render(owner, renderer) {
+function render(owner, renderer, { shadowOnly = false, expectShadowHooks = 4, witnesses = [] } = {}) {
   const original = renderer.renderBufferDirect, autoReset = renderer.info.autoReset;
   const cameraMask = owner.camera.layers.mask, perCamera = [0, 0, 0, 0], hooks = [];
-  let sourceDrawCalls = 0, batchDrawCalls = 0;
+  let sourceDrawCalls = 0, batchDrawCalls = 0, forwardDrawCalls = 0;
+  const witnessDrawCalls = witnesses.map(() => 0);
   const beforeRender = owner.batch?.onBeforeRender;
   const hookDescriptor = owner.batch && Object.getOwnPropertyDescriptor(owner.batch, 'onBeforeRender');
   if (owner.batch) owner.batch.onBeforeRender = function (...args) {
@@ -112,25 +113,38 @@ function render(owner, renderer) {
         const calls = renderer.info.render.calls - before; perCamera[index] += calls;
         if (owner.sources.includes(args[4])) sourceDrawCalls += calls;
         if (args[4] === owner.batch) batchDrawCalls += calls;
+      } else {
+        const calls = renderer.info.render.calls - before;
+        forwardDrawCalls += calls;
+        const witness = witnesses.indexOf(args[4]);
+        if (witness >= 0) witnessDrawCalls[witness] += calls;
       }
     }
   }
   renderer.renderBufferDirect = observed; renderer.info.autoReset = false; renderer.info.reset();
-  try { renderer.setRenderTarget(owner.target); renderer.render(owner.scene, owner.camera); }
+  try {
+    renderer.setRenderTarget(owner.target);
+    const draw = () => renderer.render(owner.scene, owner.camera);
+    if (shadowOnly) renderShadowOnlyWarm(renderer, owner.camera, draw);
+    else draw();
+  }
   finally {
-    requireThat(renderer.renderBufferDirect === observed, 'draw observer ownership changed');
-    renderer.renderBufferDirect = original; renderer.info.autoReset = autoReset;
+    // Always release unrelated owned state, including when native rendering
+    // throws. A replacement belongs to its caller and must not be overwritten.
+    if (renderer.renderBufferDirect === observed) renderer.renderBufferDirect = original;
+    renderer.info.autoReset = autoReset;
     if (owner.batch) {
       if (hookDescriptor) Object.defineProperty(owner.batch, 'onBeforeRender', hookDescriptor);
       else delete owner.batch.onBeforeRender;
     }
   }
+  requireThat(renderer.renderBufferDirect === original, 'draw observer ownership changed');
   const calls = renderer.info.render.calls;
   requireThat(owner.camera.layers.mask === cameraMask, 'shadow layer routing must restore the presentation camera');
   requireThat(new Set(owner.lights.map(light => light.shadow.camera.id)).size === 4, 'four actual shadow camera owners required');
   requireThat(new Set(owner.lights.map(light => light.shadow.camera.matrixWorld.elements.join(','))).size === 4,
     'the four native shadow camera transforms must differ');
-  if (owner.batch) requireThat(hooks.length === 4 && hooks.every((value, index) => value === index),
+  if (owner.batch) requireThat(hooks.length === expectShadowHooks && hooks.every((value, index) => value === index),
     'the pinned BatchedMesh base hook must see every actual shadow camera');
   const pixels = owner.lights.map(light => {
     requireThat(light.shadow.map?.depthTexture?.isDepthTexture, 'native PCF depth texture required');
@@ -140,13 +154,60 @@ function render(owner, renderer) {
   const color = new Uint8Array(WIDTH * HEIGHT * 4);
   renderer.readRenderTargetPixels(owner.target, 0, 0, WIDTH, HEIGHT, color); pixels.push(color);
   requireThat(renderer.getContext().getError() === renderer.getContext().NO_ERROR, 'native GL error');
-  return { calls, perCamera, hooks, sourceDrawCalls, batchDrawCalls, pixels };
+  return { calls, perCamera, hooks, sourceDrawCalls, batchDrawCalls, forwardDrawCalls, witnessDrawCalls, pixels };
 }
 function retained(result) {
   return { calls: result.calls, perCamera: result.perCamera, baseHookCameras: result.hooks,
     sourceDrawCalls: result.sourceDrawCalls, batchDrawCalls: result.batchDrawCalls,
+    forwardDrawCalls: result.forwardDrawCalls, witnessDrawCalls: result.witnessDrawCalls,
     pixels: result.pixels.map((bytes, index) => ({ role: index < 4 ? `shadow-${index}` : 'composed',
       width: index < 4 ? SHADOW_SIZE : WIDTH, height: index < 4 ? SHADOW_SIZE : HEIGHT, rgbaBase64: packed(bytes) })) };
+}
+
+function verifyShadowOnlyWarm(owner, renderer, report) {
+  // Unculled objects prove that moving a camera far away is not equivalent to
+  // a shadow-only pass. A transmissive object also exercises Three's separate
+  // transmission route. These witnesses are added after the original cases.
+  const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+  const materials = [new THREE.MeshBasicMaterial({ color: 0x735027 }),
+    new THREE.MeshPhysicalMaterial({ transmission: 0.7, roughness: 0.1, side: THREE.DoubleSide })];
+  const witnesses = materials.map((material, index) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(1000 + index, 1000, 1000); mesh.frustumCulled = false;
+    owner.scene.add(mesh); return mesh;
+  });
+  try {
+    for (const [name, index, hidden, mirrored] of [['initial', 0, false, false],
+      ['yaw-pitch', 1, false, false], ['hidden-gun', 2, true, false], ['mirrored-gun', 1, false, true]]) {
+      pose(owner, index, hidden, mirrored);
+      const baseline = render(owner, renderer, { witnesses });
+      const warm = render(owner, renderer, { shadowOnly: true, witnesses });
+      const saved = owner.lights.map(light => ({ autoUpdate: light.shadow.autoUpdate, needsUpdate: light.shadow.needsUpdate }));
+      let revealed;
+      try {
+        // The visible image must sample the maps just produced by the scoped
+        // warm, not repair them by rendering another shadow pass first.
+        for (const light of owner.lights) { light.shadow.autoUpdate = false; light.shadow.needsUpdate = false; }
+        revealed = render(owner, renderer, { expectShadowHooks: 0, witnesses });
+      } finally {
+        owner.lights.forEach((light, i) => Object.assign(light.shadow, saved[i]));
+      }
+      const shadowDifferences = baseline.pixels.slice(0, 4).map((bytes, i) => difference(bytes, warm.pixels[i]));
+      const revealedDifference = difference(baseline.pixels[4], revealed.pixels[4]);
+      const pass = warm.forwardDrawCalls === 0 && baseline.forwardDrawCalls >= 3
+        && baseline.witnessDrawCalls.every(calls => calls > 0)
+        && warm.witnessDrawCalls.every(calls => calls === 0)
+        && warm.perCamera.every((calls, i) => calls === baseline.perCamera[i])
+        && revealed.perCamera.every(calls => calls === 0)
+        && shadowDifferences.every(value => value.channels === 0) && revealedDifference.channels === 0;
+      report.warmPasses.push({ owner: owner.scene.name, name, pass, shadowDifferences, revealedDifference,
+        baseline: retained(baseline), warm: retained(warm), revealed: retained(revealed) });
+      if (!pass) report.errors.push(`${owner.scene.name}/${name}: warm-only native draws, exact shadow bytes or unrepaired reveal differ`);
+    }
+  } finally {
+    for (const mesh of witnesses) mesh.removeFromParent();
+    geometry.dispose(); materials.forEach(material => material.dispose());
+  }
 }
 
 export function installArticulatedShadowBatchFixture() {
@@ -154,7 +215,7 @@ export function installArticulatedShadowBatchFixture() {
   renderer.setSize(WIDTH, HEIGHT); renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; routeShadowOnlyLayer(renderer);
   document.body.append(renderer.domElement);
-  const owned = [], report = { ok: false, disposed: false, hardware: null, cases: [], negatives: [], errors: [] };
+  const owned = [], report = { ok: false, disposed: false, hardware: null, cases: [], negatives: [], warmPasses: [], errors: [] };
   let ran = false;
   return { report,
     run() {
@@ -212,6 +273,8 @@ export function installArticulatedShadowBatchFixture() {
             report.errors.push(`${name}: negative control failed to change composed PCF pixels and shadow coverage`);
           }
         }
+        verifyShadowOnlyWarm(reference, renderer, report);
+        verifyShadowOnlyWarm(candidate, renderer, report);
         // Reset on the same owner, then publish the real candidate ground-shadow canvas.
         pose(candidate, 0); renderer.setRenderTarget(null); renderer.render(candidate.scene, candidate.camera);
         report.ok = report.errors.length === 0;
