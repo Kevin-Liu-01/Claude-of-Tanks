@@ -409,14 +409,20 @@ function deferredWarmStep() {
 }
 
 async function verifyDeploymentWarmOrder(body) {
-  const events = [], shadow = deferredWarmStep(), post = deferredWarmStep();
+  const events = [], shadow = deferredWarmStep(), world = deferredWarmStep(), post = deferredWarmStep();
   const shadowReceipt = { cascades: 4 }, postReceipt = { passes: 3 }, trace = {};
+  const options = {};
   const yieldForBudget = async () => { events.push('yield'); };
   const ports = {
-    trace, generation: 7, scene: {}, lighting: {}, game: {},
+    trace, options, generation: 7, scene: {}, lighting: {}, game: {},
     battleLoad: { progress() {} }, requireCurrent: value => assert.equal(value, 7),
     mark() {}, getWorld: () => null, getWarmRender: () => {}, now: () => 0,
     createDeploymentForwardWarmBatches: function* () {},
+    prepareWorldPrograms: async (owner, receipt, yieldBefore, requireCurrent) => {
+      assert.strictEqual(owner, options); assert.strictEqual(receipt, trace);
+      events.push('world'); await yieldBefore(true); await world.promise;
+      requireCurrent(); events.push('worldDone');
+    },
     coveredYield: yieldForBudget, guardedCoveredYield: yieldForBudget,
     getDeploymentShadowWarm: () => ({ prime: async yieldBeforeCascade => {
       events.push('shadow'); await yieldBeforeCascade(true); await shadow.promise;
@@ -438,6 +444,11 @@ async function verifyDeploymentWarmOrder(body) {
     assert.equal(events.includes('post'), false, 'post cannot start while shadows are pending');
     assert.equal(events.includes('reveal'), false, 'pending shadows cannot reveal');
     shadow.resolve();
+    for (let step = 0; step < 30 && !events.includes('world'); step++) await Promise.resolve();
+    assert.equal(events.includes('world'), true, 'world programs follow completed shadows');
+    assert.equal(events.includes('post'), false, 'post cannot start while world programs are pending');
+    assert.equal(events.includes('reveal'), false, 'pending world programs cannot reveal');
+    world.resolve();
     for (let step = 0; step < 30 && !events.includes('post'); step++) await Promise.resolve();
     assert.equal(events.includes('post'), true, 'post preparation follows completed shadows');
     assert.equal(events.includes('reveal'), false, 'pending post passes cannot reveal');
@@ -445,11 +456,12 @@ async function verifyDeploymentWarmOrder(body) {
     const result = await settled;
     if (result.error) throw result.error;
     assert.equal(result.value, true, 'the actual owner publishes a primed reveal');
-    assert.deepEqual(events, ['shadow', 'yield', 'shadowDone', 'post', 'yield', 'postDone', 'ready', 'reveal']);
+    assert.deepEqual(events, ['shadow', 'yield', 'shadowDone', 'world', 'yield', 'worldDone',
+      'post', 'yield', 'postDone', 'ready', 'reveal']);
     assert.strictEqual(trace.deploymentShadowWarm, shadowReceipt);
     assert.strictEqual(trace.deploymentPostWarm, postReceipt);
   } finally {
-    shadow.resolve(); post.resolve(); await settled;
+    shadow.resolve(); world.resolve(); post.resolve(); await settled;
   }
 }
 
@@ -457,6 +469,8 @@ await verifyDeploymentWarmOrder(revealWarmBody);
 for (const [pattern, replacement] of [
   [/await (?=getDeploymentShadowWarm\(\)\.prime\()/, ''],
   [/await (?=post\.warmFirstFrame\()/, ''],
+  [/await (?=prepareWorldPrograms\()/, ''],
+  [/await prepareWorldPrograms\([^;]+\);/, ''],
   [/trace\.deploymentShadowWarm = await getDeploymentShadowWarm\(\)\.prime\([^;]+\);/, ''],
   [/trace\.deploymentPostWarm = await post\.warmFirstFrame\([^;]+\);/, ''],
   [/await entryLifecycle\.primeReveal\(\);/, ''],

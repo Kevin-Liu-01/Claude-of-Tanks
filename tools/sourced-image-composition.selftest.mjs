@@ -18,6 +18,9 @@ assert.ok(cases.filter(row => row.kind === 'terrain').every(row => row.options.r
 assert.ok(cases.filter(row => row.kind === 'building').every(row => row.options.roughInAlpha === false));
 assert.equal(cases.some(row => row.id.includes('roof')), false, 'Do not reintroduce removed sourced roofs');
 await assert.rejects(() => urbanCompositionCases(source.replace("R: { set: 'cobble'", "R: { set: 'rock'")));
+await assert.rejects(() => urbanCompositionCases(source.replace(
+  'application, replaceSourcedBuildingDataImage)', 'application, replaceSourcedBuildingDataImage())')),
+/Plan collection must not replace images/, 'the planning receiver cannot silently perform texture IO');
 
 const plan = compositionPlan(cases, 2);
 assert.equal(plan.length, 24);
