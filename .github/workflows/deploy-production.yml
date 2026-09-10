@@ -1,0 +1,58 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-of-tanks-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    name: Build and deploy latest main
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Check out latest main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@58.4.4
+
+      - name: Pull production configuration
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build production artifact
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt artifact
+        id: deploy
+        run: |
+          deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "### Production deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "$deployment_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Show deployment URL
+        run: echo "Production is live at ${{ steps.deploy.outputs.url }}"
