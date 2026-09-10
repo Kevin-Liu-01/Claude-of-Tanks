@@ -214,3 +214,76 @@ three sequential awaits (the intentional scheduling/ordering contract and its
 test), and two chained array assertions in the cohort test. The earlier
 partial scan was 91/100 before that test file was added to the diff. These are
 reviewed warnings, not a claim of a warning-free scan; no rule was suppressed.
+
+### Frozen native-program local qualification
+
+`6cd60f4f95c43e9fbe8b970ce5489c229cf86b52` passes a public/localized build
+and the same actual-control probe at 19:04:01–19:04:23 UTC, retained in
+`native-program-local-r1`. All functional/audio/warm/source checks pass with
+empty failures, application errors and cleanup errors. The three inspected
+screenshots preserve complete day/night battlefields and the lit Garage.
+Both terrain and vegetation preparation report complete/pending zero in both
+battles; terrain/vegetation batches contain at most four objects and the
+largest takes 7 ms. Quality remains high, 1280×720, DPR 1, scale 1, trim 0,
+SMAA-high+FSR1, on the same Chrome/M5 Max backend and acquisition fixture.
+
+| Action | Cover | Ready | Worst callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 3.2 ms | 9,362.7 ms | 132.1 ms |
+| Battle Again | 244.3 ms | 5,958.8 ms | 107.5 ms |
+| Return to Garage | 115.0 ms | 428.3 ms | 58.3 ms |
+
+Report SHA-256:
+`511ef87b6ed8ba1ab92c5c8674495a786a1d032fd03523792da7e0ca6a2fb908`.
+Served HTML SHA-256:
+`68c27895e4342d4596b9fa26f24ae3b4fef180f278b03897605712694e0d6af6`.
+The full-action gaps remain above a strict frame budget; successful bounded
+warm work must not be presented as eliminating every pause in loading or play.
+
+### Native-program production qualification
+
+The source commit landed non-force on main. Production deployment
+`dpl_BRh7RWPWCKhYDjgRKADNEjyRKRzG` became READY and the live root displayed
+`v1.0.0+g6cd60f4f9`. The first production run at 19:07:45–19:08:10 UTC
+(`native-program-production-r1`) passes all four requested functional/audio/
+readiness gates and cleanup, with no application errors. Day/night and Garage
+screenshots were inspected. Both world program receipts are complete/pending
+zero; the largest four-object terrain/vegetation batch is 8 ms. The previous
+335–408 ms terrain and 345–352 ms vegetation submissions do not recur here.
+This is one matched-fixture acquisition, not a controlled driver-cache study.
+
+| Action | Cover | Ready | Worst callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 5.4 ms | 11,491.2 ms | 179.5 ms |
+| Battle Again | 133.1 ms | 6,100.8 ms | 105.8 ms |
+| Return to Garage | 116.5 ms | 391.7 ms | 59.1 ms |
+
+Report SHA-256:
+`b77262ccb84adf5efef24c06c23c6dfe0d2a564d9099e2d3a2b6677fbe76821a`.
+Served HTML SHA-256, also verified after this run:
+`1441efaae795d2cf03bed6c7808c1df675d5bac74568c6ead9bec59c4c9222c5`.
+These remaining full-action gaps are not hidden by the successful world-warm
+fix. In the local run the 132.1 ms Battle gap includes a 65.9 ms terrain
+`Worker.onmessage` script; it precedes roster construction. The rest includes
+other scheduler continuations. Rematch's 107.5 ms local gap ends at first
+opaque cover and has no overlapping long task; attributing that one to a
+specific leaf would be speculation. Broader smoothness and historical
+gameplay-stall attribution remain open.
+
+The independent repeat (`native-program-production-r2`, 19:08:49–19:09:13
+UTC) retains the exact served HTML and acquisition hashes and passes the same
+gates with empty failures/errors/cleanup errors. Both roots again complete
+with pending zero; the largest terrain/vegetation batch is 9 ms. All three
+screenshots were inspected. Full-action gaps remain variable:
+
+| Action | Cover | Ready | Worst callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 4.3 ms | 9,588.2 ms | 190.7 ms |
+| Battle Again | 165.8 ms | 6,006.5 ms | 118.9 ms |
+| Return to Garage | 145.7 ms | 454.1 ms | 58.4 ms |
+
+Repeat report SHA-256:
+`e48126c7d105dff2d3698c99ff3e588b13fa86e2baeb2efd93c94e58cb619144`.
+The repeat confirms the targeted warm boundary, not zero loading pauses or
+stable 60 fps in sustained gameplay. Native probe browsers and the owned
+local preview server were closed; unrelated browser/vehicle work was untouched.
