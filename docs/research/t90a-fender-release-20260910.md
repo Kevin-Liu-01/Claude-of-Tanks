@@ -76,3 +76,13 @@ release. Exact-current presentation tooling metrics pass (48 functions, zero
 violations, no explicit `any`/`unknown`), and attribution passes. The four-worker
 pretest took 528,951 ms versus 1,691,762 ms summed child time; core took 678,754 ms
 versus 1,600,427 ms summed child time, including 142,768 ms FIFO wait.
+
+The factory contract correction retains all six golden hashes. Their original
+source SHA-256 `a8f314131f821dbbe878c49ffefbf1794de99ae8cdfdfe0ec75dd09fedc2625c`
+matches `56fdbe284:src/vehicles/tankFactoryCore.ts`; independent owner review
+confirmed the precise topology change in `2963f43c2`. Only the historical
+receipt build suppresses that exact-one-call shadow batching finalizer. All
+other proxy creation, materials and finalizers stay active. Current sync/staged
+receipts are compared in full without normalization, and the batched fixtures
+must actually contain the published `BatchedMesh`. Cancellation, resource and
+timing assertions remain. No runtime source or immutable hash is changed.
