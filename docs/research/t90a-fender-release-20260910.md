@@ -44,3 +44,11 @@ The release sequence rejects geometry/contact failures before full-fleet
 generation, then uses the unchanged four-worker test policy for eligible
 checkpoints. Full anatomy, selected assets and complete release results follow
 below when measured; the early checks alone are not a complete release.
+
+First complete-release attempt `fender-release-pgylkf` remains **FAIL**.
+Full anatomy update/check and selected assets passed, but the later rendered
+centering check measured 0.53 px against the unchanged 0.25 px limit. The new
+opaque fender stock changes the top-mask centroid; the presentation anchor
+must be regenerated. The full npm lifecycle had not started. All 207 unselected
+asset records remained unchanged in this attempt, and no combat calibration
+or marking-seat source changed.
