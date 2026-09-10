@@ -284,7 +284,11 @@ export function createSoloBattleDeploymentRuntime(
         requireCurrent(generation);
         mark('nightLighting');
         battleLoad.progress(0.91, 'Finishing camouflage');
-        const coveredYield = createLoadingYielder(18, 80);
+        // Keep the loader responsive through consecutive private vehicle builds.
+        // Task yields alone do not request animation callbacks: the former
+        // 80 ms paint interval let several complete tanks share a visible gap.
+        // Match foreground world preparation without changing the built roster.
+        const coveredYield = createLoadingYielder(12, 32);
         const guardedCoveredYield: WorkYielder = async (force) => {
           requireCurrent(generation);
           await coveredYield(force);

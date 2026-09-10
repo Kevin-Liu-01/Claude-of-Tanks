@@ -3,12 +3,15 @@ import * as THREE from 'three';
 import { WebGLLights } from 'three/src/renderers/webgl/WebGLLights.js';
 import { createNightLightingAccess } from '../engine/nightLightingAccess.ts';
 import { registerNightLightEmitters } from '../engine/nightLightingRuntime.ts';
+import { createOpaqueLoadingYielder } from '../engine/frameScheduler.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
 import { primeOpeningTerrainPresentation } from './battleWarmRuntime.ts';
+import { createBattleVisualStreamer } from './battleVisualStreamer.ts';
 
 function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false,
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
-  compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '' } = {}) {
+  compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
+  streamedCadence = null } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -140,7 +143,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     lighting: { csm: { lights: lateCancelWarm === 'forward' ? [{ shadow }] : [] } },
     createShell: () => {},
     getWorld: () => ({ group: worldGroup }),
-    getBattleVisuals: () => ({
+    getBattleVisuals: () => streamedCadence?.create(game, scene) ?? ({
       stream: async (predicate, _yield, onProgress, hidden) => {
         const entity = hidden ? game.tanks[1] : game.tanks[0];
         assert.equal(predicate(entity), true);
@@ -202,9 +205,9 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
     setDestructionWarmed: (value) => { destructionWarmed = value; },
-    now: () => ++clock,
+    now: streamedCadence?.now ?? (() => ++clock),
     yieldFrame: async () => calls.push(['frame']),
-    createLoadingYielder: () => async (force) => {
+    createLoadingYielder: streamedCadence?.createLoadingYielder ?? (() => async (force) => {
       const previous = calls.at(-1)?.[0];
       if (cancelCompile && previous === 'compileSlice') generation++;
       if ((lateCancelCompile === 'slice' && previous === 'compileSlice')
@@ -217,7 +220,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         queueMicrotask(() => queueMicrotask(() => { generation++; }));
       }
       calls.push(['yield', force]);
-    },
+    }),
   });
 
   return {
@@ -232,6 +235,120 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     get pending() { return pending; },
     get destructionWarmed() { return destructionWarmed; },
   };
+}
+
+// Exercise the production streamer and scheduler together, not an always-
+// yielding stand-in or a source-string assertion. Only private factory work
+// is modeled: ten deterministic 4 ms checkpoints per exact allied actor.
+// Recorded frames are scheduler requests, never physical paint acknowledgments.
+function createStreamedCadence(cancelAt = '') {
+  let clock = 0, privateEntity = null;
+  const frames = [], tasks = [], checkpoints = [], closed = [], published = [];
+  const settings = [], builderRequests = [], qualityRequests = [], timings = [];
+  const fixture = {
+    frames, tasks, checkpoints, closed, published, settings, builderRequests, qualityRequests, timings,
+    cancel() {},
+    now: () => clock,
+    createLoadingYielder(budgetMs, maxDelayMs) {
+      settings.push([budgetMs, maxDelayMs]);
+      const recordYield = (rows, kind) => async () => {
+        rows.push({ atMs: clock, privateId: privateEntity?.id ?? null });
+        if (privateEntity && cancelAt === kind) fixture.cancel();
+      };
+      return createOpaqueLoadingYielder(budgetMs, maxDelayMs, {
+        now: fixture.now,
+        yieldTask: recordYield(tasks, 'task'),
+        yieldFrame: recordYield(frames, 'frame'),
+      });
+    },
+    create(game, scene) {
+      fixture.game = game;
+      fixture.playerVisual = game.player.visual;
+      for (let index = 1; index <= 6; index++) {
+        game.tanks.push({ id: `allied-${index}`, specId: `allied-spec-${index}`, team: 'player' });
+        game.tanks.push({ id: `enemy-${index}`, specId: `enemy-spec-${index}`, team: 'enemy' });
+      }
+      fixture.roster = game.tanks.slice();
+      const select = predicate => game.tanks.find(entity => !entity.visual && predicate(entity));
+      return createBattleVisualStreamer({
+        game, scene, renderer: { initTexture() {} }, anisotropy: 4,
+        ensureTankBuilders: async ids => { builderRequests.push([...ids]); },
+        nextStagedBake(_game, predicate) {
+          const ent = select(predicate);
+          return ent ? { ent, quality: 'ai' } : null;
+        },
+        *ensureStagedVisualsSteps(_game, count, predicate) {
+          assert.equal(count, 1, 'streaming retains one complete actor per construction iterator');
+          const entity = select(predicate), root = new THREE.Group();
+          let complete = false;
+          privateEntity = entity;
+          try {
+            for (let index = 0; index < 10; index++) {
+              clock += 4;
+              checkpoints.push([entity.id, index, clock]);
+              assert.equal(entity.visual, undefined, 'every yielded graph remains private');
+              if (cancelAt === 'before' && index === 1) fixture.cancel();
+              yield;
+            }
+            entity.visual = { root, setVisible(visible) { root.visible = visible; } };
+            complete = true;
+            published.push(entity.id);
+            return true;
+          } finally {
+            closed.push([entity.id, complete]);
+            privateEntity = null;
+          }
+        },
+        getSpec: id => ({ id }),
+        async prebakeSharedTextures(spec, anisotropy, quality) {
+          qualityRequests.push([spec.id, anisotropy, quality]);
+        },
+        armorAimOverlay: { prime() {}, warm: () => () => {} },
+        forwardProgramWarm: { compile() {} },
+        recordTiming: timing => timings.push(timing), now: fixture.now,
+      });
+    },
+  };
+  return fixture;
+}
+
+{
+  const cadence = createStreamedCadence();
+  const harness = createHarness({ streamedCadence: cadence });
+  const warmed = await harness.runtime.warm(Promise.resolve());
+  assert.equal(warmed.revealPrimed, true);
+  assert.equal(cadence.tasks.find(row => row.privateId)?.atMs, 12,
+    'private allied construction releases its task at the 12 ms budget, not old 18 ms');
+  assert.deepEqual(cadence.frames.map(row => row.atMs), [32, 64, 96, 128, 160, 192, 224],
+    'streamed construction requests frames every 32 ms instead of accumulating 80 ms of work');
+  assert.deepEqual(cadence.settings, [[12, 32]], 'deployment selects the foreground covered-work policy');
+  const ids = Array.from({ length: 6 }, (_, index) => `allied-${index + 1}`);
+  assert.deepEqual(cadence.published, ids, 'cadence changes do not skip, repeat or reorder allied actors');
+  assert.deepEqual(cadence.closed, ids.map(id => [id, true]));
+  assert.deepEqual(cadence.builderRequests, [ids.map(id => id.replace('allied-', 'allied-spec-'))]);
+  assert.deepEqual(cadence.qualityRequests,
+    cadence.builderRequests[0].map(id => [id, 4, 'ai']), 'exact spec, quality and anisotropy survive streaming');
+  assert.ok(cadence.timings.every(timing => timing.buildCheckpointCount === 10 && timing.buildMs === 40));
+  assert.equal(cadence.game.tanks.length, 14);
+  assert.deepEqual(cadence.game.tanks, cadence.roster, 'the full roster retains every entity identity');
+  assert.equal(cadence.game.player.visual, cadence.playerVisual, 'the staged player is never rebuilt');
+  assert.equal(cadence.game.tanks.filter(entity => entity.team === 'player' && entity.visual).length, 7);
+  assert.ok(cadence.game.tanks.filter(entity => entity.team === 'enemy').every(entity => !entity.visual),
+    'all seven hidden opponents remain deferred, not dropped or eagerly built');
+}
+
+for (const [cancelAt, admitted] of [['before', 2], ['task', 3], ['frame', 8]]) {
+  const cadence = createStreamedCadence(cancelAt);
+  const harness = createHarness({ streamedCadence: cadence });
+  cadence.cancel = () => { harness.generation++; };
+  await assert.rejects(harness.runtime.warm(Promise.resolve()), /superseded/);
+  assert.equal(cadence.checkpoints.length, admitted,
+    `${cancelAt}: a stale generation cannot resume the next private construction checkpoint`);
+  assert.deepEqual(cadence.closed, [['allied-1', false]], 'await rejection closes the actual streamer iterator');
+  assert.deepEqual(cadence.published, [], 'cancellation never publishes an unfinished visual');
+  assert.ok(!harness.calls.some(([name]) => ['terrain', 'compile', 'shadowWarm', 'postWarm', 'reveal'].includes(name)),
+    'stale allied construction cannot advance deployment warming or reveal');
+  assert.equal(cadence.game.tanks.length, 14, 'cancellation leaves roster ownership intact');
 }
 
 const happy = createHarness();
