@@ -1,5 +1,8 @@
 # Merkava Mk4 X — independent owner-source reconstruction
 
+Current rollers: [fitted efficient checkpoint; count evidence and release limits](../../research/merkava-x-return-rollers-checkpoint.md).
+The release figures below are historical and do not qualify that new fit.
+
 Status: **release-qualified — 2026-09-06T10:49:59.926Z**.
 The final **2026-09-06T10:06:54.116Z** capture records raw fidelity
 **94.0478197190329**, minimum whole view **92.67653035592014**, and raw

@@ -16,11 +16,47 @@ const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const count=(source,part)=>source.split(part).length-1;
 const read=file=>fs.readFileSync(new URL(file,import.meta.url),'utf8');
 
+function beforeRollers(source,readHelper){
+  const imported="import { merkavaXReturnRollers, lineMerkavaXUpperBand } from './merkavaXReturnRollers.ts';\n";
+  if(!source.includes('merkavaXReturnRollers'))return source;
+  assert.equal(count(source,'merkavaXReturnRollers'),4,'One roller import path/symbol and two exact calls');
+  assert.equal(count(source,imported),1,'One exact roller helper import');
+  assert.equal(hash(readHelper('merkavaXReturnRollers.ts')),
+    '75afb5ab186d62ebb2a5ece37071b2298f855f865831f3c50891da19c0069df2','Complete reviewed roller helper');
+  assert.equal(hash(readHelper('../upperReturnBandStock.ts')),
+    '3de12aa98490a81195866eb36baf263f54fc73e7d3866e6466ee3cdce69629ea','Complete reviewed closed upper stock leaf');
+  const lining='  lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);\n';
+  assert.equal(count(source,'lineMerkavaXUpperBand'),2,'Only one import and one native lining call');
+  assert.equal(count(source,lining+'  merkava4HullDetails(P);'),1,'Lining stays at its immutable Mk4 gear seam');
+  let before=source.replace(imported,'');
+  before=before.replace(lining,'');
+  const prefix='P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{';
+  assert.equal(count(before,prefix),2,'Only the two known gear calls');
+  before=before.replaceAll(prefix,'P.gear=KIT.buildRunningGear(P,{');
+  // a6a3c8570 changes only the qualified support stations and their comments.
+  // Authenticate each complete tail before recovering the immutable old call;
+  // do not normalize arbitrary comments, geometry inputs or station drift.
+  for(const [comment,tail,suffix] of[
+    ['    // Inferred supports occupy existing axle gaps at full suspension stroke.\n',
+      '    topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true',
+      '},[-1.8821825,-.8756825,.9765675,1.8323175],1.075,.25,.0027));'],
+    ['    // Existing road axles stay fixed; supports sit between their swept wheels.\n',
+      '    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true',
+      '},[-1.6645,-.733,.27,2.017],.945,.29,.0063,true));'],
+  ]){
+    assert.equal(count(before,comment),1,'One exact support comment');
+    assert.equal(count(before,comment+tail+suffix),1,'Support comment stays at its own immutable gear seam');
+    assert.equal(count(before,suffix),1,'Exact independently tested station/seat seam');
+    before=before.replace(comment+tail+suffix,tail+'});');
+  }
+  return before;
+}
+
 export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
-  let before=source;
+  let before=beforeRollers(source,readHelper);
   const present=[];
   for(const s of MERKAVA_END_RETURN_SEAMS){
     const imported=`import { ${s.symbol} } from './${s.file}';\n`;

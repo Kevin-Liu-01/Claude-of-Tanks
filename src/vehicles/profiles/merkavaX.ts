@@ -10,6 +10,7 @@ import { merkava4RearFoldSolids } from './merkava4RearHull.ts';
 import { addMerkavaXShoulderReturns } from './merkavaXShoulderReturns.ts';
 import { addMerkava3dXFrontReturns } from './merkava3dXFrontReturn.ts';
 import { addMerkava4XEndReturns } from './merkava4XEndReturns.ts';
+import { merkavaXReturnRollers, lineMerkavaXUpperBand } from './merkavaXReturnRollers.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
@@ -314,10 +315,11 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     bodyStation(2.18,1.865,1.49,.43,MK3,1.10),bodyStation(2.69,1.865,1.44,.48,MK3,1.10,.035),
     bodyStation(3.18,1.865,1.42,.73,MK3,1.10,.035),bodyStation(3.556,1.08,1.10,.96,MK3,.99,.025),
   ]));
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.371,wheelW:.38,wheelY:.446,xc:1.532,
+  P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR:.371,wheelW:.38,wheelY:.446,xc:1.532,
     wheelZs:MERKAVA3D_X_DATUMS.wheelStations.map(z=>z-MK3.center),trackW:.637,trackTh:.068,
     sprocket:{z:3.040-MK3.center,y:.874,r:.350},idler:{z:-3.365-MK3.center,y:.844,r:.342},
-    topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true});
+    // Inferred supports occupy existing axle gaps at full suspension stroke.
+    topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true},[-1.8821825,-.8756825,.9765675,1.8323175],1.075,.25,.0027));
   merkava3HullDetails(P);
   addMerkavaXShoulderReturns(P, 'merkava3d_x');
   addMerkava3dXFrontReturns(P);
@@ -550,10 +552,12 @@ export function buildMerkava4X(P: TankBuilderPort): void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(0,MK4.y,MK4.z);
   P.gunG.position.set(0,1.9934619-MK4.y,1.93-MK4.z);
   P.add('hull',merkava4Hull());
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.3467,wheelW:.34,wheelY:.387,xc:1.444,
+  P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR:.3467,wheelW:.34,wheelY:.387,xc:1.444,
     wheelZs:[...MERKAVA4_X_DATUMS.wheelStations],trackW:.548,trackTh:.064,
     sprocket:{z:3.285,y:.761,r:.336},idler:{z:-3.020,y:.722,r:.314},
-    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true});
+    // Existing road axles stay fixed; supports sit between their swept wheels.
+    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0063,true));
+  lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);
   merkava4HullDetails(P);
   addMerkavaXShoulderReturns(P, 'merkava4_x');
   addMerkava4XEndReturns(P);
