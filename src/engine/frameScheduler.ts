@@ -3,7 +3,7 @@
  *
  * Visible work yields to animation callbacks; paint-sensitive callers also
  * leave the pre-paint microtask checkpoint. Opaque-loading work mixes task and
- * animation yields. Neither mechanism acknowledges an actually displayed frame.
+ * paint-sensitive frame yields. Neither acknowledges an actually displayed frame.
  */
 
 export type WorkYielder = (force?: boolean) => Promise<void>;
@@ -121,7 +121,10 @@ export function createFrameBudgetYielder(
 
 /**
  * Yield work hidden by an opaque loader without paying for a full animation
- * frame at every checkpoint. Periodically request an animation callback too.
+ * frame at every checkpoint. Periodic default frame waits also cross a following
+ * task so loading cannot resume in that frame's pre-paint microtask checkpoint.
+ * This is a rendering opportunity, not a displayed-frame acknowledgement;
+ * explicit frame ports retain their supplied contract.
  */
 export function createOpaqueLoadingYielder(
   budgetMs = 12,
@@ -129,7 +132,7 @@ export function createOpaqueLoadingYielder(
   options: FrameSchedulerOptions = {},
 ): WorkYielder {
   const now = options.now ?? defaultNow;
-  const yieldFrame = options.yieldFrame ?? nextFrame;
+  const yieldFrame = options.yieldFrame ?? nextPaintFrame;
   const yieldTask = options.yieldTask ?? defaultTaskYield;
   let sliceStart = now();
   let lastPaint = sliceStart;
