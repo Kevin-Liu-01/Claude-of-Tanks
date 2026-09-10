@@ -1,13 +1,65 @@
 # Self-test release throughput — 2026-09-10
 
-## Qualified bounded pool is now the default
+## Eight-worker CPU ceiling — measured extension
 
-Ordinary `npm test` now uses `min(4, os.availableParallelism())` fresh CPU
+Ordinary `npm test` now uses `min(8, os.availableParallelism())` fresh CPU
+workers. Explicit integer overrides 1–8 and serial debugging remain supported.
+The pool algorithm, 45-second admission/drain window, FIFO, exclusive browser
+barriers, suite catalog and every test assertion are unchanged. Test results
+are never cached.
+
+The fixed eight-file CPU sample on source revision
+`6cd60f4f95c43e9fbe8b970ce5489c229cf86b52`, Node 24.13.0, 18 available CPUs and
+128 GiB RAM passed at both widths. Exact file hashes and per-child results are
+in [the raw benchmark receipt](selftest-eight-worker-benchmark-20260910.json).
+
+| Workers | Elapsed | Runner FIFO wait | Elapsed minus runner FIFO |
+|---|---:|---:|---:|
+| 4 | 593.223 s | 86.417 s | 506.806 s |
+| 8 | 251.631 s | 17.326 s | 234.305 s |
+
+That is **53.77% less queue-adjusted elapsed time on this sample**, not a claim
+about the complete release or pure CPU time. This is one sequential comparison
+on a shared host; background load and warm caches can vary. All sixteen fresh
+child executions passed. The benchmark exercised the unchanged lower-level
+pool directly, so its baseline did not require changing the old CLI ceiling.
+
+Expanded regressions exercise widths 1–8: exact dispatch, actual browser
+registry barriers, earliest-failure reporting, live-child draining, FIFO
+fairness, repeated/mixed signals, fresh-process rendezvous, invalid options and
+small hosts. `run-selftests`, `selftest-cpu-pool`, exact 957-entry catalog,
+typecheck (including core-unused) and the public build pass. A redundant
+orchestration attempt named nonexistent `typecheck:core-unused`; it failed
+without running checks. The valid `typecheck` already includes that check, and
+the public build subsequently ran separately to completion. There is no fresh
+full 957-entry lifecycle claim for this tooling-only checkpoint.
+
+Reproduce the fixed sample with the production runner; each invocation keeps
+its own normal resource lease and all assertions:
+
+```sh
+node --input-type=module <<'JS'
+import {readFileSync} from 'node:fs';
+import {runSelftestSuite} from './tools/run-selftests.mjs';
+const {files}=JSON.parse(readFileSync('docs/research/selftest-eight-worker-benchmark-20260910.json'));
+for(const concurrency of [4,8]) {
+  const start=performance.now(); let queueMs=0;
+  const status=await runSelftestSuite('fixed-cpu-sample',files.map(row=>row.path),{
+    concurrency,onTiming(row){queueMs+=row.queueMs;console.log(row);},
+  });
+  console.log({concurrency,status,elapsedMs:performance.now()-start,queueMs});
+  if(status!==0){process.exitCode=status;break;}
+}
+JS
+```
+
+## Four-worker default — previous checkpoint
+
+At the previous checkpoint, ordinary `npm test` used `min(4, os.availableParallelism())` fresh CPU
 workers instead of silently falling back to serial execution. One-, two- and
-three-CPU hosts retain that smaller width. Explicit `COT_SELFTEST_WORKERS=1`
-still selects serial debugging, and existing integer overrides 1–4 remain
+three-CPU hosts retained that smaller width. Integer overrides 1–4 were
 supported. The suite catalog, assertions, fail-fast/drain behavior, compilation
-cache, FIFO fairness and exclusive browser barriers do not change.
+cache, FIFO fairness and exclusive browser barriers did not change.
 
 This promotes the already-qualified pool described below; it does not invent
 a new scheduler or skip a release. The complete 933-entry four-worker release

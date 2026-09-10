@@ -6,16 +6,16 @@ import { join } from 'node:path';
 import { runSelftestSuite, runSelftestFile, selftestWorkerCount } from './run-selftests.mjs';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
-assert.equal(selftestWorkerCount({}), Math.min(4, availableParallelism()), 'qualified pool is the CLI default');
-for(const available of [1,2,3,4,8,18,64])
-  assert.equal(selftestWorkerCount({},available),Math.min(4,available),'respect available CPUs and four-worker ceiling');
+assert.equal(selftestWorkerCount({}), Math.min(8, availableParallelism()), 'bounded pool is the CLI default');
+for(const available of [1,2,3,4,5,6,7,8,18,64])
+  assert.equal(selftestWorkerCount({},available),Math.min(8,available),'respect available CPUs and eight-worker ceiling');
 assert.equal(selftestWorkerCount({COT_SELFTEST_WORKERS:'1'},18),1,'explicit serial debugging stays supported');
 assert.equal(selftestWorkerCount({COT_SELFTEST_WORKERS:'4'},1),4,'explicit existing override remains authoritative');
 for(const available of [0,-1,2.5,NaN])
-  assert.throws(()=>selftestWorkerCount({},available),/integer from 1 to 4/);
-for(const value of [1,2,3,4])assert.equal(selftestWorkerCount({ COT_SELFTEST_WORKERS: String(value) }), value);
-for (const value of ['0', '5', '2.5', '', 'NaN', 'Infinity', '2x']) {
-  assert.throws(() => selftestWorkerCount({ COT_SELFTEST_WORKERS: value }), /integer from 1 to 4/);
+  assert.throws(()=>selftestWorkerCount({},available),/integer from 1 to 8/);
+for(const value of [1,2,3,4,5,6,7,8])assert.equal(selftestWorkerCount({ COT_SELFTEST_WORKERS: String(value) }), value);
+for (const value of ['0', '9', '2.5', '', 'NaN', 'Infinity', '2x']) {
+  assert.throws(() => selftestWorkerCount({ COT_SELFTEST_WORKERS: value }), /integer from 1 to 8/);
 }
 function fixture(concurrency=2) {
   const starts = [], pending = new Map(), active = new Set(), timings = [], errors = [];
@@ -114,13 +114,13 @@ const blocked = fixture();
 blocked.options.lock.acquire = async () => { throw new Error('busy'); };
 await assert.rejects(runSelftestSuite('blocked', ['never'], blocked.options), /busy/);
 assert.deepEqual(blocked.starts, []); assert.equal(blocked.held, false);
-for (const concurrency of [0, -1, 5, 2.5, NaN, Infinity]) {
+for (const concurrency of [0, -1, 9, 2.5, NaN, Infinity]) {
   const invalid = fixture();
-  await assert.rejects(runSelftestSuite('invalid', ['never'], { ...invalid.options, concurrency }), /integer from 1 to 4/);
+  await assert.rejects(runSelftestSuite('invalid', ['never'], { ...invalid.options, concurrency }), /integer from 1 to 8/);
   assert.equal(invalid.acquisitions, 0); assert.deepEqual(invalid.starts, []);
 }
 
-for (const concurrency of [3, 4]) {
+for (const concurrency of [3, 4, 5, 6, 7, 8]) {
   const files = Array.from({ length: concurrency }, (_, index) => `cpu-${index}`);
   const barrier = fixture(concurrency);
   const barrierRun = runSelftestSuite('wide-barrier', [...files, 'browser', 'after'], barrier.options);
@@ -164,7 +164,7 @@ for (const concurrency of [3, 4]) {
   fair.finish('after'); assert.equal(await fairRun, 0); assert.equal(fair.held, false);
 }
 
-for (const concurrency of [2, 3, 4]) for (const signal of ['SIGINT', 'SIGTERM']) {
+for (const concurrency of [2, 3, 4, 5, 6, 7, 8]) for (const signal of ['SIGINT', 'SIGTERM']) {
   const signals = new EventEmitter(), children = new Map(), kills = [];
   const state = fixture(concurrency);
   const files = Array.from({ length: concurrency }, (_, index) => `cpu-${index}`);
@@ -199,7 +199,7 @@ for (const concurrency of [2, 3, 4]) for (const signal of ['SIGINT', 'SIGTERM'])
 
 // Real fresh Node processes must overlap to satisfy this rendezvous. This is
 // a concurrency/independence proof, not a timing speedup or performance gate.
-for (const concurrency of [2, 3, 4]) {
+for (const concurrency of [2, 3, 4, 5, 6, 7, 8]) {
 const directory = mkdtempSync(join(tmpdir(), 'cot-cpu-pool-'));
 try {
   const files = Array.from({ length: concurrency }, (_, index) => join(directory, `${index}.mjs`));
@@ -219,4 +219,4 @@ while(!${JSON.stringify(peers)}.every(path=>existsSync(path))){assert.ok(Date.no
   assert.equal(real.held, false);
 } finally { rmSync(directory, { recursive: true, force: true }); }
 }
-console.log('selftest CPU pool: two to four fresh workers, exact dispatch/coverage, exclusive browser barriers, bounded FIFO batches, failure/observer/signal drain and real-process rendezvous pass');
+console.log('selftest CPU pool: two to eight fresh workers, exact dispatch/coverage, exclusive browser barriers, bounded FIFO batches, failure/observer/signal drain and real-process rendezvous pass');

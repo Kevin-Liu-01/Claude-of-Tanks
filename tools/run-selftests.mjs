@@ -24,11 +24,13 @@ export function selftestChildEnv(env = process.env) {
   return { ...env, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
 }
 
-// Complete releases qualified the bounded pool. Respect smaller hosts and
-// explicit serial/debug overrides without omitting any assertion or gate.
+// Bounded fresh CPU children; real browser regressions remain exclusive.
+// Respect smaller hosts and explicit serial/debug overrides without omitting
+// any assertion or caching a test result.
+export const MAX_SELFTEST_WORKERS = 8;
 export function selftestWorkerCount(env = process.env, availableCpus = availableParallelism()) {
-  const count = Number(env.COT_SELFTEST_WORKERS ?? Math.min(4, availableCpus));
-  if (!Number.isInteger(count) || count < 1 || count > 4) throw new TypeError('COT_SELFTEST_WORKERS must be an integer from 1 to 4');
+  const count = Number(env.COT_SELFTEST_WORKERS ?? Math.min(MAX_SELFTEST_WORKERS, availableCpus));
+  if (!Number.isInteger(count) || count < 1 || count > MAX_SELFTEST_WORKERS) throw new TypeError(`COT_SELFTEST_WORKERS must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
   return count;
 }
 
@@ -72,7 +74,7 @@ export async function runSelftestSuite(suiteName, suite, {
   if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
     throw new TypeError('maxLeaseBatchMs must be finite and positive');
   }
-  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) throw new TypeError('concurrency must be an integer from 1 to 4');
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
     concurrency, runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
   });

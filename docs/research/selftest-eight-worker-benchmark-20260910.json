@@ -1,0 +1,160 @@
+{
+  "revision": "6cd60f4f95c43e9fbe8b970ce5489c229cf86b52",
+  "node": "v24.13.0",
+  "os": "Darwin Kernel Version 25.4.0: Thu Mar 19 19:33:50 PDT 2026; root:xnu-12377.101.15~1/RELEASE_ARM64_T6050",
+  "availableCpus": 18,
+  "ramBytes": 137438953472,
+  "files": [
+    {
+      "path": "src/vehicles/profiles/machineGunAttachment.selftest.mjs",
+      "sha256": "462fcae2d1ed9bea9d567c45fc2a35ddb3d07a4593a1502b7f41a22326755676"
+    },
+    {
+      "path": "src/vehicles/wheelQuality.selftest.mjs",
+      "sha256": "3b44658dff2c0e362e9376fa3ab407267dbf238d0be2852f3c6e06bc0903193d"
+    },
+    {
+      "path": "src/vehicles/tankAssets.selftest.mjs",
+      "sha256": "d7610c6a55aeefb11703d101c63ff3b230fb7a8725b34ab71c25249c331a7f11"
+    },
+    {
+      "path": "src/vehicles/vehicleMarkings.selftest.mjs",
+      "sha256": "fffe2e28c4844ab99931cb05db977e572f3feb71e44c760d0995e39be074927f"
+    },
+    {
+      "path": "src/gallery/surfaceMarkupFleet.selftest.mjs",
+      "sha256": "04ed7ca4fa5565bc72c5b014b4f2b1480242cab05e1b0874cb0c1e18dc483402"
+    },
+    {
+      "path": "src/vehicles/fleetFloorClearance.selftest.mjs",
+      "sha256": "e64810ab2586cda00135becdda1c1232a67ec77b1ac29ce0bddc62dacb8e09a9"
+    },
+    {
+      "path": "src/vehicles/eraGameplayRegistration.selftest.mjs",
+      "sha256": "22bc3758308e0d4975daf686d9dc6472231987e2b0d63238641d4f142bf62104"
+    },
+    {
+      "path": "src/vehicles/gunArticulation.selftest.mjs",
+      "sha256": "27f4dd4f34351ee43ff9e6f4d21caee29111c18ec1c9f4c466d90da87dd721a5"
+    }
+  ],
+  "notes": "Identical assertions in fresh child processes. Shared validated compilation cache, never cached test results. Native FIFO retained; no concurrent browser tests. This is a CPU sample, not a complete release timing.",
+  "runs": [
+    {
+      "concurrency": 4,
+      "startedAt": "2026-09-10T19:14:21.404Z",
+      "tests": [
+        {
+          "file": "src/vehicles/wheelQuality.selftest.mjs",
+          "runMs": 303873.58308300003,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/vehicleMarkings.selftest.mjs",
+          "runMs": 306599.253,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/tankAssets.selftest.mjs",
+          "runMs": 306801.168958,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/profiles/machineGunAttachment.selftest.mjs",
+          "runMs": 306892.12887500005,
+          "queueMs": 0.5925839999999951,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/gunArticulation.selftest.mjs",
+          "runMs": 195213.690375,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/fleetFloorClearance.selftest.mjs",
+          "runMs": 195626.11979199998,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/gallery/surfaceMarkupFleet.selftest.mjs",
+          "runMs": 198444.40258299996,
+          "queueMs": 86416.17745799996,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/eraGameplayRegistration.selftest.mjs",
+          "runMs": 199911.444625,
+          "queueMs": 0,
+          "status": 0
+        }
+      ],
+      "status": 0,
+      "elapsedMs": 593222.813667,
+      "runnerQueueMs": 86416.77004199996,
+      "elapsedWithoutRunnerQueueMs": 506806.04362500005
+    },
+    {
+      "concurrency": 8,
+      "startedAt": "2026-09-10T19:24:14.633Z",
+      "tests": [
+        {
+          "file": "src/vehicles/gunArticulation.selftest.mjs",
+          "runMs": 228518.76449999993,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/gallery/surfaceMarkupFleet.selftest.mjs",
+          "runMs": 228947.92062500003,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/wheelQuality.selftest.mjs",
+          "runMs": 230156.029583,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/vehicleMarkings.selftest.mjs",
+          "runMs": 232147.164292,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/eraGameplayRegistration.selftest.mjs",
+          "runMs": 232689.59141700005,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/profiles/machineGunAttachment.selftest.mjs",
+          "runMs": 233685.9655830001,
+          "queueMs": 17326.18454200006,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/tankAssets.selftest.mjs",
+          "runMs": 233967.24,
+          "queueMs": 0,
+          "status": 0
+        },
+        {
+          "file": "src/vehicles/fleetFloorClearance.selftest.mjs",
+          "runMs": 234304.68470800004,
+          "queueMs": 0,
+          "status": 0
+        }
+      ],
+      "status": 0,
+      "elapsedMs": 251631.14491699997,
+      "runnerQueueMs": 17326.18454200006,
+      "elapsedWithoutRunnerQueueMs": 234304.9603749999
+    }
+  ]
+}
