@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {beforeType10SkirtOptimization,TYPE10_ROLLER_SUPPORT_LINE} from './type10SkirtHistory.test-support.mjs';
+import {beforeType10SkirtOptimization,beforeType10GearRebuild,TYPE10_ROLLER_SUPPORT_LINE} from './type10SkirtHistory.test-support.mjs';
 
 // Exact pre-paint sources at main 2933d5645. Only declared finish wrappers
 // are reversed; night lighting, geometry, low-detail counts and every other
@@ -81,6 +81,7 @@ export function beforeFixedStockPaint(name, source) {
   assert.ok(edits[name], 'undeclared paint source '+name);
   if(name==='type10XSkirts.ts')source=beforeType10SkirtOptimization(source);
   if(name==='type10X.ts') {
+    source=beforeType10GearRebuild(source);
     assert.equal(source.split(TYPE10_ROLLER_SUPPORT_LINE).length,2);
     source=source.replace(TYPE10_ROLLER_SUPPORT_LINE,'');
   }

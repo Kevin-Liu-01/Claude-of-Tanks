@@ -51,6 +51,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/suspensionArmGeometry.selftest.mjs',
     'src/vehicles/returnRollerOutset.selftest.mjs',
     'src/vehicles/efficientReturnRoller.selftest.mjs',
+    'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/returnRollerGeometry.selftest.mjs',
     'src/vehicles/profiles/merkavaXReturnRollers.selftest.mjs',
     'src/vehicles/nativeGearStockOverrides.selftest.mjs',
