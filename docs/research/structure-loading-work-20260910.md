@@ -273,3 +273,12 @@ their SHA256 values are respectively
 There are no new flagged declarations or explicit `any`/`unknown` additions.
 This inherited failed gate is retained, not waived, hidden or fixed by
 unrelated terrain refactoring. Native performance qualification is separate.
+
+The combined public build also passes (including its translation/locale and
+public-asset checks). Changed-scope React Doctor against `1bf52b745` exits 1:
+three trusted-source `no-eval` findings and three intentionally sequential
+fixture-await warnings, all in `roadLookupGrid.selftest.mjs`. No production
+runtime finding is reported. Source evaluation is Node-only, bounded to
+reviewed AST-selected declarations and the immutable constructor reconstruction;
+shared test taps require serial fixture completion. Scanner errors are retained
+and do not become a passing scanner gate.
