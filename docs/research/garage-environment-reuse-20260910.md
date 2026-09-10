@@ -103,5 +103,53 @@ The post-extraction integration (`sky-environment-integration-r2.log`) passes
 all 12 affected tests and typecheck again. Both changed runtime files pass the
 strict metrics gate: 61 functions, zero complexity violations, zero explicit
 `any` or `unknown`. The initial changed-file Doctor scan passes 100/100 over
-its two discovered tracked files; this is not a whole-repository score. Native
-qualification follows below when run.
+its two discovered tracked files; this is not a whole-repository score.
+
+After adding the new files to Git, the complete four-code-file Doctor scan
+reports 49/100 and exits 1 (`sky-environment-staged-doctor-r1.log`). Both
+findings are in `skyEnvironmentCache.selftest.mjs`, not runtime code:
+`find(...).getText(...)` asserts an expected source declaration structurally
+and fails the test if missing; `new Function` executes source extracted from
+the fixed local Sky module with a recording PMREM fixture, never user input.
+They were manually reviewed as test-harness diagnostics, not a production
+unsafe-evaluation path. No scanner rule/configuration was suppressed. The
+initial 100/100 must not replace this more complete result.
+
+### Frozen local native check
+
+Commit `ee06607b07f539ed7e82d09d517bcee51b0edad5` was clean for its successful
+public/localized rebuild and native actual-control acquisition. Chrome
+151.0.7922.47 used Apple M5 Max/Metal, high quality, 1280×720, DPR 1, resolution
+scale 1 and trim 0. `sky-environment-local-r1/report.json` passes Battle,
+day/night Battle Again, Garage return, shared boot/audio-clock ownership and
+warm/source readiness. Errors, failures and cleanup errors are empty. All
+three native screenshots were inspected: complete terrain/tanks, distinct
+day/night lighting and a lit Garage vehicle remain present.
+
+| Action | Cover | Ready | Worst callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 3.4 ms | 7,509.1 ms | 113.3 ms |
+| Battle Again | 151.9 ms | 5,792.2 ms | 111.0 ms |
+| Return to Garage | 88.6 ms | 348.1 ms | 46.3 ms |
+
+Rematch and Garage `worldServices` stages record 41 and 27 ms. These are
+inclusive stages, not isolated GPU durations or native cache-hit counts. Bot
+rosters and machine state are not matched to the production baseline, so the
+numbers are one functional acquisition, not a controlled speedup claim.
+The 111 ms rematch gap has no overlapping long task; missing attribution does
+not prove it belongs to the OS or GPU. Cold loading and strict sustained-frame
+acceptance therefore remain open.
+
+Report SHA-256:
+`a13f103f2e3b49713ebb17a327ac88fcf90fda9534cd45cf9fafd854b03b4a52`.
+Served HTML:
+`0c0580281aee7a9365cc2fc46a1c2353e1056f0c3e199581285894e2429e24c1`.
+The acquisition hash remains
+`0c1ae77bb2d11603fc11e0416a4628ab9979229d32e7be6f9d7ee9396679052c`.
+
+The post-deploy production check uses the same maintained probe and four
+readiness/audio flags, against `https://cot.kevinliu.studio/`, with its complete
+report and screenshots retained separately under
+`/private/tmp/cot-interactive-baseline.gsRCvU/sky-environment-production-r1`.
+That live result must be read independently; this local pass does not certify
+production smoothness or resolve the historical gameplay-stall attribution.
