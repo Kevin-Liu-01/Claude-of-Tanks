@@ -35,6 +35,24 @@ export function checkGarageActionAudio(rows) {
   return failures;
 }
 
+// Optional acceptance of the production warm owner's own receipt. Functional
+// rollout can succeed after a caught countdown warm error, so it is not proof
+// that required covered work completed. Never certify a stale return trace.
+export function checkGarageActionWarmReadiness(rows) {
+  const failures = [];
+  for (const action of ['battle', 'battle-again']) {
+    const warm = rows.find(row => row.action === action)?.loadingTraces?.__BATTLE_COUNTDOWN_WARM;
+    if (!warm) {
+      failures.push(`${action}: missing countdown warm receipt`);
+      continue;
+    }
+    if (warm.error) failures.push(`${action}: countdown warm error: ${String(warm.error)}`);
+    if (warm.done !== true) failures.push(`${action}: countdown warm did not finish`);
+    if (warm.doneBeforeRollout !== true) failures.push(`${action}: countdown warm was not ready before rollout`);
+  }
+  return failures;
+}
+
 export function checkGarageBattleActions(rows, { coverLimitMs = 500 } = {}) {
   const failures = [];
   if (rows.length !== GARAGE_BATTLE_ACTIONS.length) failures.push('incomplete action sequence');

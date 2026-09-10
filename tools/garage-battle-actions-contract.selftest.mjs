@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { checkGarageBattleActions, checkGarageActionAudio, GARAGE_BATTLE_ACTIONS } from './garage-battle-actions-contract.mjs';
+import { checkGarageBattleActions, checkGarageActionAudio, checkGarageActionWarmReadiness,
+  GARAGE_BATTLE_ACTIONS } from './garage-battle-actions-contract.mjs';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -17,6 +18,23 @@ const rows = GARAGE_BATTLE_ACTIONS.map((action, index) => {
       battleOrdinal: index + 1, playerSpecId: 'm1a1', mapId: 'urban', pedestalSpecId: 'm1a1' } };
 });
 assert.deepEqual(checkGarageBattleActions(rows), []);
+assert.equal(checkGarageActionWarmReadiness(rows).length, 2, 'missing warm evidence fails both battle gates');
+const warmRows = structuredClone(rows);
+for (const row of warmRows.slice(0, 2)) {
+  row.loadingTraces = { __BATTLE_COUNTDOWN_WARM: { done: true, doneBeforeRollout: true } };
+}
+// Returning can retain a prior trace; this gate examines only the two entries.
+warmRows[2].loadingTraces = { __BATTLE_COUNTDOWN_WARM: { error: 'stale return trace' } };
+assert.deepEqual(checkGarageActionWarmReadiness(warmRows), []);
+for (const index of [0, 1]) {
+  for (const [key, value] of [['error', 'ProgramUniformPreparationError: budget'],
+    ['done', false], ['done', undefined], ['doneBeforeRollout', false], ['doneBeforeRollout', undefined]]) {
+    const changed = structuredClone(warmRows);
+    changed[index].loadingTraces.__BATTLE_COUNTDOWN_WARM[key] = value;
+    assert.ok(checkGarageActionWarmReadiness(changed).length, `${changed[index].action}: rejects ${key}=${value}`);
+    assert.deepEqual(checkGarageBattleActions(changed), [], 'warm acceptance stays separate from functional handoff');
+  }
+}
 assert.ok(checkGarageActionAudio(rows).length, 'absent clock evidence does not pass the separate audio gate');
 const audioRows = structuredClone(rows);
 const loadingBefore = { atMs: 100, contextId: 1, state: 'running', currentTimeS: 1,
@@ -180,8 +198,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     await new AsyncFunction(...Object.keys(ports), source)(...Object.values(ports));
   }
 
-  async function probeCase(phase) {
+  async function probeCase(phase, warmGate = false, warmReady = true) {
     const process = fakeProcess(), writes = [], navigation = deferred();
+    if (warmGate) process.argv.push('--warm-readiness-gate');
     const calls = { acquired: 0, released: 0, launched: 0, page: 0, closed: 0, gate: 0 };
     let closed = false, action = '';
     const page = {
@@ -196,7 +215,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       async evaluate(fn, ...args) {
         const body = String(fn);
         if (body.includes('__ACTION_TRACE.arm')) action = args[0];
-        if (body.includes('__ACTION_TRACE.finish')) return { action };
+        if (body.includes('__ACTION_TRACE.finish')) return { action,
+          loadingTraces: { __BATTLE_COUNTDOWN_WARM: { done: true, doneBeforeRollout: warmReady,
+            ...(!warmReady ? { error: 'ProgramUniformPreparationError: budget' } : {}) } } };
         return {};
       },
     };
@@ -231,6 +252,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
         return browser;
       } },
       checkGarageBattleActions: () => { calls.gate++; return []; }, checkGarageActionAudio: () => [],
+      checkGarageActionWarmReadiness,
       readPhaseEnvironment() {}, installGarageActionTiming() {}, summarizeGarageActionTiming: () => ({}),
       withGarageActionProfile: async (options, run) => run(),
       waitForGarageAction: async (page, options, click) => click(),
@@ -241,8 +263,15 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     equal(calls.closed, calls.launched, 'every launched browser is closed exactly once');
     equal(process.listenerCount('SIGINT') + process.listenerCount('SIGTERM'), 0, 'signal handlers are removed after cleanup');
     if (phase === 'normal') {
-      equal(report.pass, true, 'unchanged success still passes existing gates');
+      equal(report.pass, !warmGate || warmReady, 'optional warm failure cannot hide behind functional success');
+      equal(report.functionalPass, true, 'warm readiness does not reinterpret the functional receipt');
       equal(report.actions.map(row => row.action), ['battle', 'battle-again', 'return-to-garage'], 'all existing actions remain');
+      if (warmGate) {
+        equal(report.passScope, 'real-control-functional-and-warm-readiness', 'requested acceptance scope is explicit');
+        equal(report.warmReadiness.pass, warmReady, 'the explicit acceptance result is saved');
+        equal(report.warmReadiness.failures.length, warmReady ? 0 : 4, 'both battle errors and late readiness survive');
+        equal(process.exitCode, warmReady ? undefined : 1, 'requested warm failure exits nonzero');
+      }
     } else {
       equal(report.pass, false, 'interruption cannot report pass even when functional/audio gates return no errors');
       equal(report.interruptedBy, phase === 'active' ? 'SIGINT' : 'SIGTERM', 'signal is recorded');
@@ -253,6 +282,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     if (phase === 'closing') equal(calls.gate, 1, 'late cleanup cancellation defeats an otherwise successful run');
   }
   for (const phase of ['queued', 'rejected-queue', 'launching', 'active', 'closing', 'normal']) await probeCase(phase);
+  await probeCase('normal', false, false);
+  await probeCase('normal', true, false);
+  await probeCase('normal', true, true);
 
   console.log(`garage-battle-actions-contract.selftest: ${assertions} lifecycle assertions pass`);
 }
