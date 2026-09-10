@@ -11,6 +11,9 @@ const KINDS = new Map(Object.entries({
   RunTask: 'task', 'ThreadControllerImpl::RunTask': 'task',
   'ThreadPool_RunTask': 'worker-task', FunctionCall: 'function',
   FireAnimationFrame: 'animation-frame', TimerFire: 'timer', EventDispatch: 'event',
+  EvaluateScript: 'script-evaluation', 'v8.evaluateModule': 'script-evaluation',
+  'v8.compile': 'script-compilation', 'v8.compileModule': 'script-compilation',
+  RunMicrotasks: 'microtasks', RunYieldContinuation: 'yield-continuation',
   MinorGC: 'minor-gc', MajorGC: 'major-gc', GCEvent: 'gc',
   Layout: 'layout', UpdateLayoutTree: 'style', Paint: 'paint', RasterTask: 'raster',
   DrawFrame: 'draw-frame', GPUTask: 'gpu-task', Commit: 'commit',
@@ -139,6 +142,8 @@ export function createFrameTraceCollector(options = {}) {
         dataLossOccurred: dataLossOccurred === true, rowsDropped, malformed, stackOverflow,
         openDurationEvents, openBoundaryEvents, subThresholdEvents,
         durationThresholdMs: 0.1, gcDurationThresholdMs: 0, gcDetail: 'top-level-pause-events',
+        scriptDetail: 'selected-evaluation-compilation-microtask-continuation-events',
+        durationMeaning: 'Inclusive wall time; union overlapping page-main intervals within the sample, not additive or leaf CPU time; other labels may combine threads',
         openIntervals: aligned ? open.slice(0, 256).map(row => ({ kind: row.kind,
           startOffsetMs: (row.ts - anchor.at) / 1000, thread: threadOf(row) })) : [],
         diagnosticOverhead: true, gpuMeaning: 'CPU-side events, not GPU hardware duration',
@@ -204,7 +209,9 @@ export async function startMultiplayerFrameTrace(page, options = {}, timerClock 
         // V8 DevToolsTraceEventScope emits MinorGC/MajorGC in devtools.timeline;
         // retain those pauses without collecting disabled-by-default-v8.gc phases.
         // https://chromium.googlesource.com/v8/v8/+/master/src/heap/heap.cc
-        includedCategories: ['devtools.timeline', 'blink.user_timing', 'toplevel'],
+        // Only RunMicrotasks needs v8.execute; the other selected script events
+        // already include devtools.timeline. Do not enable verbose V8 phases.
+        includedCategories: ['devtools.timeline', 'blink.user_timing', 'toplevel', 'v8.execute'],
         excludedCategories: ['*'], enableArgumentFilter: true },
     }));
     void starting.then(() => {
