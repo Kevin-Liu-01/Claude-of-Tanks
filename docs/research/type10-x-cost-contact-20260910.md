@@ -2,6 +2,7 @@
 
 Status: **candidate; final release running, not yet published**.
 Base: `85aa9224a`. Worktree: `/private/tmp/cot-japan-running-gear.PUiEBf`.
+Source checkpoint: `a57476e9a` (saved locally; not a completed release).
 
 ## Actual change
 
@@ -46,6 +47,10 @@ unchanged. Track gauge and the broader running-gear budget remain open.
 - Early strict source-shape preflight: 93.6/92. Final composed validation is
   recorded in `.qa-dev/type10-release-NwGauA/receipt.json`; do not equate the
   early shape result with full release completion.
+- The continuing official release also passed source fidelity (95.3),
+  centering, calibrated module alignment and module hits (nine modules,
+  two track sides, no failures or outside-envelope results). Full lifecycle
+  tests and builds must still finish before publication.
 - Fresh initial standard native views are byte-identical to the previously
   published Type 10 paint checkpoint's four views. The new run's final views
   are separately captured under the release directory. Source GLB SHA-256:
