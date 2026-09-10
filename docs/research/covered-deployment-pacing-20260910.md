@@ -95,6 +95,44 @@ inside its largest entry gap; rematch's worst gap was during allied preparation.
 Do not infer the latter's native cause from that label or claim this patch
 completes loading, sustained battle, or cross-device performance work.
 
+### Live upload follow-up: functional pass, cold stalls remain
+
+Commit `bcf8ae4f006f4e29659dd45b78cccd77c4f75012` reached production as
+`v1.0.0+gbcf8ae4f0` (Vercel `7iEzAVhwygoY97CgS7WFm9edgCkQ`).
+`deployment-upload-batches-production-actions-r1/` tested the actual public
+controls, with HTML SHA256
+`83d40c88512a81e567bde99f101946052e4f16c1701b4aa89804fd97857f8cc7` and
+acquisition SHA256
+`4be85c77e2b4a9596a9046b8b8bd6956bc44b3e3543677409654626ca119f137`.
+Functional, audio-clock, Garage gesture-intent and cleanup gates passed; no
+application errors were reported. Day/night battle and returned-Garage images
+were inspected. Native M5 Max ANGLE, high, 1280×720/DPR1, scale1/trim0 and both
+full 14-entity rosters were retained. This remains a functional capture, not a
+frame-budget certificate.
+
+| Action | Cover ms | Ready ms | Largest sampled callback-start gap ms | Upload batches / maximum ms |
+| --- | ---: | ---: | ---: | ---: |
+| Battle | 2.7 | 8560.6 | 229.1 | 104 / 61 |
+| Night rematch | 139.5 | 5689.4 | 67.4 | 105 / 6 |
+| Garage return | 90.1 | 340.9 | 44.7 | not run |
+
+Cold upload submissions totalled 107 ms; their first cohort took 61 ms, with
+60.5 ms inside the first 24-vertex unlit direct draw and JS programs 192→193.
+The remaining upload cohorts were at most 11 ms. Rematch uploads totalled
+11 ms; first caster batches were 15/6 ms and final cascades at most 3 ms.
+Batching has not eliminated the first-draw stall. Its native compile/link or
+driver cause is not proven by a program-count change alone.
+
+The cold 229.1 ms callback-start gap was 4486.8–4715.9 ms in page time.
+The passive native AudioContext constructor observation was
+4550.0–4709.9 ms (159.9 ms), entirely within its 164 ms long task and this gap.
+An adjacent 63 ms task also falls in the gap, but this unprofiled capture cannot
+attribute it to image processing merely because earlier profiles did so.
+Rematch's independent worst-gap witness rounds to 67.5 ms; its 53 ms task
+occurred during deployment priming. Return had no 50 ms long task. These results
+keep audio startup, first-use programs, sourced readbacks and sustained-frame
+budgets open rather than claiming that a passing functional gate closed them.
+
 ## Attribution before the change
 
 The maintained production action profiler completed Battle, Battle Again and
