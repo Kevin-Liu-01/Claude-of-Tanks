@@ -45,7 +45,9 @@ The early 3 mm-crown source check fails **79.4/92**, with whole shape **89.5**.
 Actual physical height is 4.209195 m versus source 4.121557 m: retaining axle
 positions while fitting the thicker course extends the ground envelope by
 87.638 mm. The narrower ground-space source cannot simultaneously remain exact.
-The subsequent 0.5 mm crown adjustment has not been source-regated.
+The final 2.5 mm-clearance candidate was source-regated after rebasing onto
+`9919b26b9`: the raw result remains **79.4/92**, whole shape **89.5**,
+floaters **100**, registration **PASS**. The source oracle is unchanged.
 
 On 2026-09-10 the owner explicitly selected **"Prioritize fitted thicker running
 gear"** after being told that retaining the axle centres extends the ground
@@ -54,10 +56,11 @@ design is now the fitted 90 mm course, not preservation of the source's thin
 ground envelope. This is an accepted design deviation, not a claim that the
 unchanged source score passes, and not a waiver of contact or release checks.
 
-No source transform, threshold or reference was changed. No expensive
-anatomy/assets/full-release run was started on this known source mismatch.
-Qualification must report both the raw source mismatch and the explicit
-owner-approved running-gear target.
+No source transform, threshold or reference was changed. Initial fitting
+iterations stopped before anatomy/assets/full release. After the owner chose
+the thicker target and native contact tests passed, release evidence collection
+started on `a82edb9f6`. It retains any raw source-stage failures and collects
+the remaining official stages; it does not label a failed composed gate PASS.
 
 The bounded gear-call inverse is now implemented in the historical test
 helpers. Both old whole-source hashes and both old native whole-model hashes
@@ -66,7 +69,8 @@ candidate also passes `sourceXOtherAuxArmor.selftest.mjs --ids=type10_x` at
 HIGH/LOW: 1,744 auxiliary faces, 2,320 independent held-out rays per detail,
 2,405 seams / 196 owned edges, with maximum held-out surface error 2.303 mm.
 The paired-stock primitive test is registered in the full npm lifecycle;
-the complete registry accounts for 958 checks on this candidate's base.
+the registry at that initial checkpoint accounted for 958 checks, before the
+additional finite-contact, tapered-carrier and native Type 10 regressions.
 
 ## Fitted contact follow-up
 
@@ -113,5 +117,27 @@ Final native HIGH/LOW observations on this candidate:
   the old source and native hashes are unchanged, with the new opt-in fields
   explicitly removed only inside the historical reconstruction helper.
 
-Guard/ground sweeps and native LOW close views remain, as do regenerated
-assets/anatomy and full release checks. This is not yet a release certificate.
+The final strict native track-clip sweep passes front/rear carrier, shoe and
+wrap checks with zero reported intersections. HIGH/LOW wheel-quality checks
+also pass. The in-app native close review covered full-vehicle front, side and
+rear quarters, plus isolated running gear in LOW droop/wave and HIGH
+compression. Camouflaged fixed skirts, painted stock, separate neutral
+stowage, six rollers and articulated carrier are present. Diagnostic floor
+height does not follow the artificial suspension fixtures; its clipping is
+not a terrain-contact observation. An initial preview mistakenly requested
+geometry-only receipt materials; that preview was corrected and reloaded
+before material review. These are close diagnostic views, not a substitute
+for the registered source board or an independent 14-view score.
+
+Required anatomy regeneration passes, including the full-fleet technical
+diagram refresh; only Type 10 assets/receipts differ. The first anatomy-check
+attempt stopped at a real stale presentation receipt: native/saved diagrams
+measure `centerYM: 2.017`, but the old runtime projection still says `2.0608`.
+Its preceding anatomy/marking freshness and combat/module-hit checks pass
+(181 tanks, 1,552 authored modules, 362 track sides; zero failures and 83
+pre-existing dimension warnings). That composed attempt is **FAIL**, not a
+release certificate. The selected centering generator and all ten Type 10
+assets have now been refreshed before a new complete check/release attempt.
+The generated horizontal centre also changes by 0.1 mm; no other vehicle's
+anchor or projection changes. No manual projection or generated evidence edit
+is used.
