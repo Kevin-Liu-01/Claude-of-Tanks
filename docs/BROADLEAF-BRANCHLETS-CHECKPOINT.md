@@ -55,8 +55,33 @@ Local evidence root:
 
 Runtime source SHA-256:
 `0df30028abf00c0dff4423b6018bdf569e528229034743c29aa8d6cd3e8bceaf`.
-Public build index:
+Native-reviewed public build index (dirty pre-commit revision):
 `7ddd332dcd7d4289817a3acbee51cc8baf1e9826e93c54944e07e9993b3c8a7f`.
+
+## Integration receipt
+
+The runtime checkpoint is `7e42420de`, rebased over the independent vehicle
+recovery at `e4ca00b6c` and CPU-test-pool update at `b4b1763be`. Its owned delta
+is exactly the painter, focused selftest, one suite registration and this note.
+No upstream vehicle changes were restaged as environment work.
+
+`broadleaf-integration-final.V7T9Ya` passes all seven post-rebase checks:
+broadleaf, map integration, test registry, CPU pool, full typecheck, public
+build and diff. All pinned source/tool files remained unchanged during the
+run. Its integrated build index is
+`b971eecab0d746229d149f63c3d672e9ed514e61bce99d0e073b876164696c05`.
+This integrates the upstream tank release; it is not a new visual or
+performance certification of those tanks.
+
+Two earlier integration failures remain in the evidence directory. The first
+runner omitted the existing cached `gt` CLI path; the retry used the same
+tool path as the passing full release. The second passed every test/build
+stage but rejected an index hash that included the old Git-version labels.
+`broadleaf-integration-r2.CR4CBp/verify-version-only.mjs` checks all 2,999 native
+pins: only four upstream CPU-tool files and the index differed. Substituting
+only the index's two version labels reproduces the exact native-reviewed
+SHA-256. An independent reviewer confirmed this result. The failed reports
+were not overwritten or relabeled as passing.
 
 ## Native review and limits
 
