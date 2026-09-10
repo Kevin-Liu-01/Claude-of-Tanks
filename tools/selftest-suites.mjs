@@ -789,6 +789,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/modalFocusLifecycle.selftest.mjs',
     'src/ui/transitionCover.selftest.mjs',
     'src/ui/transitionRuntime.selftest.mjs',
+    'src/ui/transitionFadeFrame.selftest.mjs',
     'tools/residency-camera-acquisition.selftest.mjs',
     'tools/map-environment-acquisition.selftest.mjs',
     'tools/world-residency-diagnostics.selftest.mjs',

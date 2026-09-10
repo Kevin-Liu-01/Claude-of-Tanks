@@ -313,6 +313,35 @@ export function installGarageActionTiming({ canvasActions = false } = {}) {
     try { return JSON.parse(JSON.stringify(value)); }
     catch (error) { return { captureError: String(error) }; }
   };
+  const copySceneWatchdogs = history => {
+    if (!history) return { available: false, rows: null };
+    try {
+      const numeric = (value, keys) => Object.fromEntries(keys.map(key => [key, finite(value?.[key])]));
+      const rows = Array.isArray(history.rows) ? history.rows : [];
+      return { available: true, rowLimit: 16, rowsDropped: finite(history.rowsDropped),
+        captureRowsDropped: Math.max(0, rows.length - 16),
+        caveat: 'Wall-clock stage timings, not GPU duration. Async wait includes task delay; sync rows are fresh fallback/rescue measurements. Match absolute timestamps to the action; retained rows can belong to earlier entries.',
+        rows: rows.slice(-16).map(value => ({
+          ...numeric(value, ['id', 'delayMs', 'queuedAtMs', 'startedAtMs', 'endedAtMs']),
+          status: text(value.status), error: text(value.error), captureError: text(value.captureError),
+          context: { phase: text(value.context?.phase), mapId: text(value.context?.mapId),
+            entryGeneration: finite(value.context?.entryGeneration) },
+          result: value.result ? { ...numeric(value.result, ['before', 'after', 'nightRadianceScale']),
+            rescued: value.result.rescued === true, failed: value.result.failed === true,
+            stage: text(value.result.stage) } : null,
+          measurementsDropped: Math.max(0, (value.measurements?.length ?? 0) - 8),
+          measurements: (Array.isArray(value.measurements) ? value.measurements : []).slice(0, 8).map(measurement => ({
+            kind: text(measurement.kind), error: text(measurement.error),
+            ...numeric(measurement, ['startTime', 'endTime', 'setupMs', 'renderMs', 'readbackMs',
+              'enqueueMs', 'waitMs', 'reduceMs', 'restoreMs', 'programsBeforeRender', 'programsAfterRender']),
+            readbackSteps: measurement.readbackSteps ? numeric(measurement.readbackSteps,
+              ['contextQuery', 'createBuffer', 'bindingQuery', 'bindBuffer', 'bufferData', 'sizeQuery',
+                'readPixels', 'fence', 'flush', 'wait', 'copy', 'release']) : null,
+          })),
+        })),
+      };
+    } catch (error) { return { available: true, rows: null, captureError: String(error).slice(0, 512) }; }
+  };
   const finish = () => {
     finishCanvas('finish'); // Restore even if unrelated diagnostic collection fails.
     collectTasks(taskObserver?.takeRecords() || []);
@@ -331,7 +360,8 @@ export function installGarageActionTiming({ canvasActions = false } = {}) {
       available: true, rescue: gl.rescue ?? null,
       // This bag includes shader failures AND diagnostic rescue notices.
       errors: Array.from(gl.errors || []).slice(0, 32).map(error => String(error).slice(0, 4096)),
-    } : { available: false, rescue: null, errors: null };
+      sceneWatchdogs: copySceneWatchdogs(gl.sceneWatchdogs),
+    } : { available: false, rescue: null, errors: null, sceneWatchdogs: { available: false, rows: null } };
     return row;
   };
   document.addEventListener('click', onClick, true);

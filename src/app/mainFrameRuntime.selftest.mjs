@@ -21,6 +21,7 @@ function createFixture({
     noteBattleFrame: () => calls.push('entry:frame'),
   };
   const presentationRestore = { covering: false };
+  const transition = { holdingSceneForFadeIn: false };
   const density = { pending: densityChanged };
   const realGaragePacer = createGarageFramePacer();
   const fx = { update: dt => { calls.push('fx'); fxFrames.push(dt); } };
@@ -96,6 +97,7 @@ function createFixture({
     },
     isBattleLoadCovering: () => false,
     isPresentationRestoreCovering: () => presentationRestore.covering,
+    isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
     cameraInput: { autoAimPoint: null },
     getMobileAutoAim: () => ({ sample: () => null }),
     rig: {
@@ -129,6 +131,7 @@ function createFixture({
     game,
     battleEntryLifecycle,
     presentationRestore,
+    transition,
     density,
   };
 }
@@ -237,6 +240,18 @@ restoring.runtime.tick(1000);
 assert.deepEqual(restoring.calls, ['schedule', 'network'],
   'covered Garage restoration skips the cold scene frame but keeps networking alive');
 
+const incomingResultVeil = createFixture({ phase: 'battle', densityChanged: true });
+incomingResultVeil.transition.holdingSceneForFadeIn = true;
+incomingResultVeil.runtime.tick(1000);
+assert.deepEqual(incomingResultVeil.calls, ['schedule', 'network'],
+  'opted-in fade-in retains the old scene frame without stopping scheduling or networking');
+assert.equal(incomingResultVeil.density.pending, true, 'fade-in cannot resize and clear the retained scene canvas');
+incomingResultVeil.transition.holdingSceneForFadeIn = false;
+incomingResultVeil.calls.length = 0;
+incomingResultVeil.runtime.tick(1016);
+assert.ok(incomingResultVeil.calls.includes('viewport:sync') && incomingResultVeil.calls.includes('post'),
+  'releasing fade-in immediately resumes the original frame path and pending viewport update');
+
 const lost = createFixture({ contextLost: true, densityChanged: true });
 lost.runtime.tick(1000);
 assert.deepEqual(lost.calls, ['schedule'], 'context loss never resizes unavailable GPU owners');
@@ -293,5 +308,7 @@ assert.ok(liveStudioAt > mainFrameAt,
   'the lazy Studio presentation replaces the inert owner after composition');
 assert.match(mainSource, /syncViewportPixelRatio: viewport\.syncPixelRatio/,
   'production composition uses the real viewport owner, not a test-only forced resize');
+assert.match(mainSource, /isTransitionHoldingSceneForFadeIn: \(\) => transition\.holdingSceneForFadeIn/,
+  'production frames consume the transition owner lease, not veil visibility through fade-out');
 
 console.log('mainFrameRuntime.selftest: retained Garage, studio, shot, and battle frames pass');

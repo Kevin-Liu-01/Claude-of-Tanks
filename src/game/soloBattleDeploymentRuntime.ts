@@ -12,6 +12,7 @@ import {
   createIsolatedForwardWarmBatches,
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
+import type { SceneWatchdogResult } from '../engine/deviceDiag.ts';
 import type { PostRuntime } from '../engine/post.ts';
 import type { ForwardProgramWarmOwner, ForwardProgramCompileTiming, ProgramPreparationResult } from '../engine/programWarm.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
@@ -104,6 +105,7 @@ interface DeploymentWarmTrace {
     totalMs: number;
   };
   deploymentPostWarm?: RuntimeValue;
+  sceneWatchdog?: SceneWatchdogResult | null;
   totalMs?: number;
   preBattleRemainingS?: number | null;
   doneBeforeRollout?: boolean;
@@ -142,6 +144,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   prepareRevealCamera(): void;
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
+  runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
   getGeneration(): number;
   advanceGeneration(): number;
   setPending(pending: boolean): void;
@@ -268,6 +271,7 @@ function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): v
         advanceGeneration: options.advanceGeneration,
         setPending: options.setPending,
         setDestructionWarmed: options.setDestructionWarmed,
+        runSceneWatchdog: options.runSceneWatchdog,
         now: options.now ?? (() => performance.now()),
         yieldFrame: options.yieldFrame ?? nextFrame,
         createLoadingYielder: options.createLoadingYielder ?? createOpaqueLoadingYielder,
@@ -276,10 +280,63 @@ function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): v
       ['getWorld', 'getBattleVisuals', 'getFx', 'getWarmRender',
         'getDeploymentShadowWarm', 'getEntryLifecycle', 'prepareRevealCamera',
         'getGeneration', 'advanceGeneration', 'setPending', 'setDestructionWarmed',
-        'now', 'yieldFrame', 'createLoadingYielder'],
+        'now', 'yieldFrame', 'createLoadingYielder', 'runSceneWatchdog'],
     );
   } catch {
     throw new TypeError('solo deployment runtime requires every warm lifecycle port');
+  }
+}
+
+async function runRequiredSceneWatchdog(
+  options: Pick<SoloBattleDeploymentRuntimeOptions, 'runSceneWatchdog'>,
+  trace: DeploymentWarmTrace,
+  assertRevealReady: () => void,
+  assertCurrent: () => void,
+  isCurrent: () => boolean,
+  mark: (name: string) => void,
+): Promise<void> {
+  trace.done = false;
+  try {
+    assertRevealReady();
+    const health = await options.runSceneWatchdog(assertCurrent);
+    assertCurrent();
+    trace.sceneWatchdog = health ?? null;
+    mark('sceneWatchdog');
+    if (health?.failed) throw new Error('Battlefield scene watchdog could not validate a healthy frame');
+  } catch (error) {
+    if (error === STALE_DEPLOYMENT || !isCurrent()) {
+      throw new Error('Solo battle deployment was superseded');
+    }
+    trace.done = true;
+    trace.doneBeforeRollout = false;
+    trace.error = String(error);
+    throw error;
+  }
+}
+
+async function primeCoveredReveal(
+  getEntryLifecycle: SoloBattleDeploymentRuntimeOptions['getEntryLifecycle'],
+  trace: DeploymentWarmTrace,
+  assertRevealReady: () => void,
+  assertCurrent: () => void,
+  isCurrent: () => boolean,
+  mark: (name: string) => void,
+): Promise<boolean> {
+  try {
+    const entryLifecycle = getEntryLifecycle();
+    assertRevealReady();
+    await entryLifecycle.primeReveal();
+    assertCurrent();
+    entryLifecycle.coverRendering();
+    mark('openingFrame');
+    return true;
+  } catch (error) {
+    if (error === STALE_DEPLOYMENT || !isCurrent()) {
+      throw new Error('Solo battle deployment was superseded');
+    }
+    // Preserve the loading owner's existing covered reveal retry.
+    trace.error = String(error);
+    return false;
   }
 }
 
@@ -334,6 +391,7 @@ export function createSoloBattleDeploymentRuntime(
       setPending(true);
       let revealPrimed = false;
       let groundCoverReady = false;
+      let optionalWarmCompleted = false;
       const assertRevealReady = (): void => {
         if (!stillCurrent(generation)) throw new Error('Solo battle deployment was superseded');
         if (!groundCoverReady) throw new Error('Opening ground cover is not ready for reveal');
@@ -527,27 +585,7 @@ export function createSoloBattleDeploymentRuntime(
         requireCurrent(generation);
         mark('postPasses');
         battleLoad.progress(0.97, 'Priming deployment view');
-        const entryLifecycle = getEntryLifecycle();
-        assertRevealReady();
-        await entryLifecycle.primeReveal();
-        requireCurrent(generation);
-        revealPrimed = true;
-        entryLifecycle.coverRendering();
-        mark('openingFrame');
-
-        battleLoad.progress(0.975, 'Combat effects ready');
-        mark('combatTextures');
-        requireCurrent(generation);
-        trace.totalMs = Math.round(now() - startedAt);
-        trace.preBattleRemainingS = Number.isFinite(game.preBattleS)
-          ? game.preBattleS ?? null
-          : null;
-        trace.doneBeforeRollout = game.phase === 'battle'
-          && typeof game.preBattleS === 'number'
-          && game.preBattleS > 0;
-        trace.done = true;
-        host.__BATTLE_COUNTDOWN_WARM = trace;
-        devTrace?.mark?.('battle:entry-warm-end', { totalMs: trace.totalMs });
+        optionalWarmCompleted = true;
       } catch (error) {
         if (error === STALE_DEPLOYMENT || !stillCurrent(generation)) {
           throw new Error('Solo battle deployment was superseded');
@@ -563,7 +601,24 @@ export function createSoloBattleDeploymentRuntime(
         // different/empty carpet via its optional-warm compatibility path.
         if (!groundCoverReady) throw error;
       }
+      // Health is required even after optional warming fails. It cannot share
+      // that catch: a known-black/unrestorable result must retain the cover.
+      await runRequiredSceneWatchdog(options, trace, assertRevealReady,
+        () => requireCurrent(generation), () => stillCurrent(generation), mark);
+      if (optionalWarmCompleted) {
+        revealPrimed = await primeCoveredReveal(getEntryLifecycle, trace, assertRevealReady,
+          () => requireCurrent(generation), () => stillCurrent(generation), mark);
+        optionalWarmCompleted = revealPrimed;
+      }
       assertRevealReady();
+      battleLoad.progress(0.975, 'Combat effects ready');
+      mark('combatTextures');
+      trace.totalMs = Math.round(now() - startedAt);
+      trace.preBattleRemainingS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
+      trace.doneBeforeRollout = optionalWarmCompleted && game.phase === 'battle'
+        && typeof game.preBattleS === 'number' && game.preBattleS > 0;
+      trace.done = true;
+      devTrace?.mark?.('battle:entry-warm-end', { totalMs: trace.totalMs });
       return { generation, revealPrimed, assertRevealReady };
     },
   };

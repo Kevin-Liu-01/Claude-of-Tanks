@@ -38,6 +38,7 @@ interface DeviceDiagResult {
 interface GlDiagnosticBag {
   errors: string[];
   rescue?: string;
+  sceneWatchdogs?: { rowLimit: number; rowsDropped: number; rows: SceneWatchdogDiagnostic[] };
   _refresh?: () => void;
   _showOverlay?: () => void;
 }
@@ -48,6 +49,7 @@ interface SceneBandProbe {
 }
 
 interface SceneBandTiming {
+  kind: 'async' | 'sync';
   startTime: number;
   endTime?: number;
   setupMs?: number;
@@ -60,7 +62,32 @@ interface SceneBandTiming {
   restoreMs?: number;
   programsBeforeRender?: number;
   programsAfterRender?: number;
+  error?: string;
 }
+
+interface SceneWatchdogContext {
+  phase: 'battle' | 'garage';
+  entryGeneration: number;
+  mapId: string | null;
+}
+
+interface SceneWatchdogDiagnostic {
+  id: number;
+  context: SceneWatchdogContext;
+  delayMs: number;
+  queuedAtMs: number;
+  startedAtMs?: number;
+  endedAtMs?: number;
+  status: 'queued' | 'running' | 'complete' | 'failed' | 'error' | 'cancelled' | 'skipped';
+  measurements: SceneBandTiming[];
+  result?: Omit<SceneWatchdogResult, 'measurements'>;
+  error?: string;
+  captureError?: string;
+}
+
+type SceneWatchdogMeasurements = (measurements: readonly SceneBandTiming[]) => void;
+const SCENE_WATCHDOG_ROWS = 16;
+let sceneWatchdogDiagnosticSerial = 0;
 
 export interface SceneWatchdogResult {
   before: number;
@@ -399,6 +426,15 @@ function finishSceneProbeTiming(timing?: SceneBandTiming): void {
   if (timing && Number.isFinite(endedAt)) timing.endTime = endedAt;
 }
 
+function recordSceneProbePrograms(timing: SceneBandTiming | undefined, renderer: THREE.WebGLRenderer,
+  field: 'programsBeforeRender' | 'programsAfterRender'): void {
+  if (!timing) return;
+  try {
+    const count = renderer.info.programs?.length;
+    if (count !== undefined && Number.isFinite(count)) timing[field] = count;
+  } catch { /* Optional program diagnostics cannot trigger a compatibility fallback. */ }
+}
+
 function timedSceneProbeStep<T>(
   timing: SceneBandTiming | undefined,
   key: 'setupMs' | 'renderMs' | 'readbackMs' | 'enqueueMs' | 'reduceMs' | 'restoreMs',
@@ -441,32 +477,118 @@ function withSceneProbeRadiance<T>(scene: THREE.Scene, scale: number, render: ()
   }
 }
 
+function copySceneBandTimings(rows: readonly SceneBandTiming[]): SceneBandTiming[] {
+  return rows.slice(0, 8).map(row => ({ ...row,
+    ...(row.readbackSteps ? { readbackSteps: { ...row.readbackSteps } } : {}) }));
+}
+
+function publishSceneWatchdogDiagnostic(receipt?: SceneWatchdogDiagnostic): void {
+  if (!receipt) return;
+  try {
+    const bag = typeof window === 'undefined' ? undefined : window.__GL_DIAG;
+    if (!bag) return;
+    const history = bag.sceneWatchdogs ??= { rowLimit: SCENE_WATCHDOG_ROWS, rowsDropped: 0, rows: [] };
+    // Never expose the owned timing rows to observers while a measurement runs.
+    const copy = { ...receipt, context: { ...receipt.context },
+      measurements: copySceneBandTimings(receipt.measurements),
+      ...(receipt.result ? { result: { ...receipt.result } } : {}) };
+    const index = history.rows.findIndex(row => row.id === receipt.id);
+    if (index >= 0) history.rows[index] = copy;
+    else {
+      if (history.rows.length >= SCENE_WATCHDOG_ROWS) { history.rows.shift(); history.rowsDropped++; }
+      history.rows.push(copy);
+    }
+  } catch { /* Optional/frozen diagnostic bags cannot change watchdog ownership. */ }
+}
+
 /** A queued diagnostic never follows its phase/world owner into another entry.
  * The non-rejecting completion joins owned async work before dependent reclaim.
+ * Optional numeric receipts observe this transaction; they never defer it.
  */
-export function scheduleSceneWatchdog({ delayMs, isCurrent, run,
+export function scheduleSceneWatchdog({ delayMs, isCurrent, run, diagnosticContext,
   onError = error => console.warn('[graphics] Scene watchdog failed:', error),
 }: {
-  delayMs: number; isCurrent(): boolean; run(): void | PromiseLike<SceneWatchdogResult | void>;
+  delayMs: number; isCurrent(): boolean;
+  run(onMeasurements?: SceneWatchdogMeasurements): void | PromiseLike<SceneWatchdogResult | void>;
+  diagnosticContext?: SceneWatchdogContext;
   onError?(error: Error): void;
 }, schedule: (callback: () => void, delayMs: number) => void = setTimeout): Promise<void> {
+  const receipt: SceneWatchdogDiagnostic | undefined = diagnosticContext ? {
+    id: ++sceneWatchdogDiagnosticSerial, context: { ...diagnosticContext }, delayMs,
+    queuedAtMs: sceneProbeClock(), status: 'queued', measurements: [],
+  } : undefined;
+  publishSceneWatchdogDiagnostic(receipt);
+  const measured: SceneWatchdogMeasurements | undefined = receipt ? measurements => {
+    receipt.measurements = measurements.slice(0, 8);
+    publishSceneWatchdogDiagnostic(receipt);
+  } : undefined;
+  const finish = (status: SceneWatchdogDiagnostic['status'], error?: Error,
+    result?: SceneWatchdogResult | void): void => {
+    if (!receipt) return;
+    try {
+      receipt.status = status;
+      receipt.endedAtMs = sceneProbeClock();
+      if (error) receipt.error = error.message.slice(0, 160);
+      if (result) {
+        const { measurements: _measurements, ...summary } = result;
+        receipt.result = summary;
+        if (status === 'complete' && summary.failed) receipt.status = 'failed';
+      }
+    } catch { receipt.captureError = 'watchdog result unavailable'; }
+    finally { publishSceneWatchdogDiagnostic(receipt); }
+  };
   return new Promise(resolve => {
     const failed = (error: Error): void => {
-      try { if (isCurrent()) onError(error); }
-      catch (_) { /* diagnostics callbacks cannot detach a rejection */ }
+      try {
+        const current = isCurrent();
+        finish(current ? 'error' : 'cancelled', error);
+        if (current) onError(error);
+      } catch (_) {
+        if (receipt?.status === 'queued' || receipt?.status === 'running') finish('error', error);
+        // Diagnostic callbacks cannot detach a rejection.
+      }
       resolve();
     };
     const start = (): void => {
       try {
-        if (!isCurrent()) { resolve(); return; }
+        if (!isCurrent()) { finish('skipped'); resolve(); return; }
+        if (receipt) { receipt.startedAtMs = sceneProbeClock(); receipt.status = 'running'; }
+        publishSceneWatchdogDiagnostic(receipt);
         // Submit synchronously beside the owner check, not in a later microtask.
-        Promise.resolve(run()).then(() => resolve(), error => failed(
+        Promise.resolve(run(measured)).then(result => {
+          try { finish('complete', undefined, result); }
+          finally { resolve(); }
+        }, error => failed(
           error instanceof Error ? error : new Error(String(error))));
       } catch (error) { failed(error instanceof Error ? error : new Error(String(error))); }
     };
     try { schedule(start, delayMs); }
     catch (error) { failed(error instanceof Error ? error : new Error(String(error))); }
   });
+}
+
+/** Covered entry joins the same diagnostic immediately, without a timer or a
+ * detached rejection. Unlike the legacy delayed observer, failure belongs to
+ * the entry transaction and must reach its recovery owner.
+ */
+export async function runSceneWatchdogNow(
+  options: Omit<Parameters<typeof scheduleSceneWatchdog>[0], 'delayMs' | 'onError'>,
+): Promise<SceneWatchdogResult | void> {
+  let result: SceneWatchdogResult | void = undefined;
+  let failure: Error | null = null;
+  await scheduleSceneWatchdog({ ...options, delayMs: 0,
+    run: async onMeasurements => {
+      try { result = await options.run(onMeasurements); return result; }
+      catch (error) {
+        failure = error instanceof Error ? error : new Error(String(error));
+        throw failure;
+      }
+    },
+    onError: error => { failure = error; },
+  }, callback => callback());
+  if (!options.isCurrent()) throw new Error('Scene watchdog owner changed');
+  if (failure) throw failure;
+  return result;
 }
 
 function createSceneBandProbe(
@@ -484,17 +606,17 @@ function createSceneBandProbe(
       const prevFace = renderer.getActiveCubeFace();
       const prevMip = renderer.getActiveMipmapLevel();
       const timing: SceneBandTiming | undefined = measurements && measurements.length < 8
-        ? { startTime: sceneProbeClock() } : undefined;
+        ? { kind: 'sync', startTime: sceneProbeClock() } : undefined;
       if (timing && measurements) measurements.push(timing);
       try {
         timedSceneProbeStep(timing, 'setupMs', () => {
           renderer.setRenderTarget(rt);
           renderer.clear();
         });
-        if (timing) timing.programsBeforeRender = renderer.info.programs?.length;
+        recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
         timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
           scene, nightRadianceScale, () => renderer.render(scene, camera)));
-        if (timing) timing.programsAfterRender = renderer.info.programs?.length;
+        recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
         timedSceneProbeStep(timing, 'readbackMs', () => {
           renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
         });
@@ -677,7 +799,7 @@ async function measureSceneBandAsync(
   measurements?: SceneBandTiming[],
   nightRadianceScale = 1,
 ): Promise<{ before: number; rendererRestored: boolean }> {
-  const timing: SceneBandTiming | undefined = measurements ? { startTime: sceneProbeClock() } : undefined;
+  const timing: SceneBandTiming | undefined = measurements ? { kind: 'async', startTime: sceneProbeClock() } : undefined;
   if (timing) measurements!.push(timing);
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const pixels = new Uint8Array(64 * 22 * 4);
@@ -693,10 +815,10 @@ async function measureSceneBandAsync(
         renderer.setRenderTarget(rt);
         renderer.clear();
       });
-      if (timing) timing.programsBeforeRender = renderer.info.programs?.length;
+      recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
       timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
         scene, nightRadianceScale, () => renderer.render(scene, camera)));
-      if (timing) timing.programsAfterRender = renderer.info.programs?.length;
+      recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
       if (timing) timing.readbackSteps = {};
       readback = timedSceneProbeStep(timing, 'enqueueMs', () => beginRgba8Readback(
         renderer.getContext() as WebGL2RenderingContext, 64, 22, pixels, { timings: timing?.readbackSteps },
@@ -727,9 +849,12 @@ async function measureSceneBandAsync(
       for (let i = 0; i < pixels.length; i += 4) sum += pixels[i] + pixels[i + 1] + pixels[i + 2];
       return sum / (pixels.length / 4) / 3;
     });
-  } catch (_) {
+  } catch (error) {
     // Unsupported/broken PBO readback is not evidence of a black scene. The
     // bounded owner is drained below before a fresh compatibility measurement.
+    if (timing) {
+      try { timing.error = String(error).slice(0, 160); } catch { /* Diagnostic only. */ }
+    }
   } finally {
     try { await readback?.catch(() => {}); }
     finally {
@@ -747,42 +872,55 @@ async function measureSceneBandAsync(
  * Rare black/error probes use the existing synchronous ladder from a fresh
  * measurement, so an old boot/reclaim callback cannot invalidate its diagnosis.
  */
+function assertSceneWatchdogOwner(signal?: AbortSignal, isCurrent?: () => boolean): void {
+  signal?.throwIfAborted();
+  if (isCurrent && !isCurrent()) throw new Error('Scene watchdog owner changed');
+}
+
 export async function runSceneBlackWatchdogAsync(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
-  { signal, isCurrent, ...options }: SceneWatchdogOptions & {
+  { signal, isCurrent, onMeasurements, ...options }: SceneWatchdogOptions & {
     signal?: AbortSignal; isCurrent?(): boolean;
+    /** Called after owned cleanup, including rejection; never changes the outcome. */
+    onMeasurements?: SceneWatchdogMeasurements;
   } = {},
 ): Promise<SceneWatchdogResult> {
-  signal?.throwIfAborted();
-  if (isCurrent && !isCurrent()) throw new Error('Scene watchdog owner changed');
-  if (FORCE === 'blackscene') {
-    const forced = runSceneBlackWatchdog(renderer, scene, camera, options);
-    if (forced.before < 6 && !forced.rescued) forced.failed = true;
-    return forced;
-  }
-  const shadow = renderer.shadowMap.enabled;
-  const environment = scene.environment;
-  const fog = scene.fog;
   const measurements: SceneBandTiming[] | undefined = options.measureTimings ? [] : undefined;
-  const { before, rendererRestored } = await measureSceneBandAsync(
-    renderer, scene, camera, signal, measurements, options.nightRadianceScale);
-  const radianceReceipt = options.nightRadianceScale === undefined ? {} : { nightRadianceScale: options.nightRadianceScale };
-  // The room may have closed and disposed its scene while the fence was pending.
-  signal?.throwIfAborted();
-  if (isCurrent && !isCurrent()) throw new Error('Scene watchdog owner changed');
-  if (!rendererRestored) return { before: 0, after: null, rescued: false, stage: null,
-    failed: true, ...radianceReceipt, ...(measurements ? { measurements } : {}) };
-  if (before >= 6 && shadow === renderer.shadowMap.enabled
-    && environment === scene.environment && fog === scene.fog) {
-    return { before, after: null, rescued: false, stage: null,
-      ...radianceReceipt, ...(measurements ? { measurements } : {}) };
+  let observedMeasurements = measurements;
+  try {
+    assertSceneWatchdogOwner(signal, isCurrent);
+    if (FORCE === 'blackscene') {
+      const forced = runSceneBlackWatchdog(renderer, scene, camera, options);
+      if (forced.before < 6 && !forced.rescued) forced.failed = true;
+      observedMeasurements = forced.measurements;
+      return forced;
+    }
+    const shadow = renderer.shadowMap.enabled;
+    const environment = scene.environment;
+    const fog = scene.fog;
+    const { before, rendererRestored } = await measureSceneBandAsync(
+      renderer, scene, camera, signal, measurements, options.nightRadianceScale);
+    const radianceReceipt = options.nightRadianceScale === undefined ? {} : { nightRadianceScale: options.nightRadianceScale };
+    // The room may have closed and disposed its scene while the fence was pending.
+    assertSceneWatchdogOwner(signal, isCurrent);
+    if (!rendererRestored) return { before: 0, after: null, rescued: false, stage: null,
+      failed: true, ...radianceReceipt, ...(measurements ? { measurements } : {}) };
+    if (before >= 6 && shadow === renderer.shadowMap.enabled
+      && environment === scene.environment && fog === scene.fog) {
+      return { before, after: null, rescued: false, stage: null,
+        ...radianceReceipt, ...(measurements ? { measurements } : {}) };
+    }
+    const result = runSceneBlackWatchdog(renderer, scene, camera, options);
+    if (result.before < 6 && !result.rescued) result.failed = true;
+    if (measurements) result.measurements = [...measurements, ...(result.measurements ?? [])].slice(0, 8);
+    observedMeasurements = result.measurements;
+    return result;
+  } finally {
+    try { onMeasurements?.(copySceneBandTimings(observedMeasurements ?? [])); }
+    catch { /* A diagnostic consumer cannot alter cleanup, rescue, or cancellation. */ }
   }
-  const result = runSceneBlackWatchdog(renderer, scene, camera, options);
-  if (result.before < 6 && !result.rescued) result.failed = true;
-  if (measurements) result.measurements = [...measurements, ...(result.measurements ?? [])].slice(0, 8);
-  return result;
 }
 
 /**

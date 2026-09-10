@@ -12,12 +12,15 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false,
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
-  streamedCadence = null, terrainPrograms = '', vegetationPrograms = '' } = {}) {
+  streamedCadence = null, terrainPrograms = '', vegetationPrograms = '', failPost = false,
+  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
   let releaseNight;
   const nightGate = new Promise((resolve) => { releaseNight = resolve; });
+  let releaseWatchdog;
+  const watchdogGate = new Promise(resolve => { releaseWatchdog = resolve; });
   let generation = 0;
   let pending = false;
   let destructionWarmed = false;
@@ -173,6 +176,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       sceneAA: { sceneTarget: sourceTarget },
       warmFirstFrame: async (yieldBeforePass) => {
         calls.push(['postWarm']);
+        if (failPost) throw new Error('optional post warm failed');
         await yieldBeforePass('post-pass');
         calls.push(['postYielded']);
         return { passes: 1 };
@@ -211,7 +215,10 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     }),
     getEntryLifecycle: () => ({
       run: async (task) => task(),
-      coverRendering: () => calls.push(['cover']),
+      coverRendering: () => {
+        calls.push(['cover']);
+        if (failRevealCover) throw new Error('reveal cover failed');
+      },
       uncoverRendering: () => {},
       noteBattleFrame: () => {},
       primeReveal: async () => {
@@ -238,6 +245,17 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       if (pauseNight) await nightGate;
       if (failNight) throw new Error('night lighting failed');
       await lamps.prepare();
+    },
+    runSceneWatchdog: async assertCurrent => {
+      assertCurrent();
+      calls.push(['watchdog']);
+      if (pauseWatchdog) await watchdogGate;
+      assertCurrent();
+      if (watchdog === 'throw') throw new Error('watchdog readback failed');
+      calls.push(['watchdogSettled']);
+      return { before: watchdog === 'black' || watchdog === 'unrestorable' ? 0 : 18,
+        after: null, rescued: false, stage: null,
+        ...(watchdog === 'black' || watchdog === 'unrestorable' ? { failed: true } : {}) };
     },
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
@@ -278,6 +296,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     runtime,
     calls,
     releaseAtmosphere,
+    releaseWatchdog,
     releaseNight, lamps, lightSignatures,
     shadow, worldGroup, playerRoot, fxGroup, sourceTarget,
     disposeWarmResources() { sourceTarget.dispose(); for (const resource of warmResources) resource.dispose(); },
@@ -404,6 +423,8 @@ for (const [cancelAt, admitted] of [['before', 2], ['task', 3], ['frame', 8]]) {
 
 const happy = createHarness();
 const result = await happy.runtime.warm(Promise.resolve());
+const happyTrace = globalThis.__BATTLE_COUNTDOWN_WARM;
+const happyOpeningWarm = globalThis.__COMBAT_OPENING_WARM;
 assert.equal(result.generation, 1);
 assert.equal(result.revealPrimed, true);
 assert.doesNotThrow(result.assertRevealReady);
@@ -423,20 +444,65 @@ for (const [before, after] of [
   ['groundCoverReady', 'shadowWarm'],
   ['shadowWarm', 'postWarm'],
   ['postWarm', 'postYielded'],
-  ['postWarm', 'reveal'],
+  ['postYielded', 'watchdog'],
+  ['watchdogSettled', 'reveal'],
   ['reveal', 'cover'],
 ]) {
   assert.ok(order.indexOf(before) >= 0 && order.indexOf(before) < order.indexOf(after),
     `${before} precedes ${after}`);
 }
+
+{
+  const h = createHarness({ failRevealCover: true });
+  assert.equal((await h.runtime.warm(Promise.resolve())).revealPrimed, false,
+    'a failed re-cover cannot certify reveal; the loading owner must retry under its existing cover');
+  assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /reveal cover failed/);
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.doneBeforeRollout, false);
+  assert.ok(h.calls.findIndex(([name]) => name === 'watchdogSettled')
+    < h.calls.findIndex(([name]) => name === 'reveal'));
+  h.disposeWarmResources();
+}
+
+for (const failPost of [false, true]) for (const watchdog of ['healthy', 'black', 'unrestorable', 'throw']) {
+  const h = createHarness({ failPost, watchdog, pauseWatchdog: true });
+  const pending = h.runtime.warm(Promise.resolve());
+  const observed = pending.then(value => ({ value }), error => ({ error }));
+  for (let index = 0; index < 100 && !h.calls.some(([name]) => name === 'watchdog'); index++) await Promise.resolve();
+  assert.equal(h.calls.filter(([name]) => name === 'watchdog').length, 1, 'exactly one required check even after optional warm failure');
+  assert.ok(!h.calls.some(([name]) => name === 'reveal'), 'pending readback retains the covered reveal barrier');
+  h.releaseWatchdog();
+  const outcome = await observed;
+  if (watchdog === 'healthy') {
+    assert.equal(outcome.error, undefined);
+    assert.equal(outcome.value.revealPrimed, !failPost, 'optional-warm failure keeps the existing covered reveal retry');
+    if (failPost) assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /optional post warm failed/);
+  } else {
+    assert.match(String(outcome.error), watchdog === 'throw' ? /watchdog readback failed/ : /could not validate/);
+    assert.ok(!h.calls.some(([name]) => name === 'reveal'), 'known unhealthy/failing check cannot use optional-warm fallback');
+    assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.doneBeforeRollout, false);
+  }
+  h.disposeWarmResources();
+}
+
+{
+  const h = createHarness({ pauseWatchdog: true });
+  const pending = h.runtime.warm(Promise.resolve());
+  const rejected = assert.rejects(pending, /superseded/);
+  for (let index = 0; index < 100 && !h.calls.some(([name]) => name === 'watchdog'); index++) await Promise.resolve();
+  h.generation++;
+  h.releaseWatchdog();
+  await rejected;
+  assert.ok(!h.calls.some(([name]) => name === 'reveal' || name === 'watchdogSettled'));
+  h.disposeWarmResources();
+}
 assert.equal(order.includes('enemies'), false,
   'hidden opponents are deferred until the visible deployment countdown');
-assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.done, true);
-assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.doneBeforeRollout, true);
-assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, true);
-assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentUniformsDeferred, true);
-assert.equal(globalThis.__COMBAT_OPENING_WARM.covered, true);
-assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentProgramSubmission.submissionSlices, 3);
+assert.equal(happyTrace.done, true);
+assert.equal(happyTrace.doneBeforeRollout, true);
+assert.equal(happyTrace.enemyVisualsDeferred, true);
+assert.equal(happyTrace.deploymentUniformsDeferred, true);
+assert.equal(happyOpeningWarm.covered, true);
+assert.equal(happyTrace.deploymentProgramSubmission.submissionSlices, 3);
 for (let index = 0; index < happy.calls.length; index++) {
   if (happy.calls[index][0] === 'compileSlice') {
     assert.deepEqual(happy.calls[index + 1], ['yield', true], 'every submission slice releases its task');

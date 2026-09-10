@@ -48,6 +48,8 @@ export interface TransitionOptions {
   readonly minShowMs?: number;
   /** Shorter veil timing for already-resident state returns. */
   readonly pace?: TransitionPace;
+  /** Retain the old scene frame only until this run's incoming veil has coverage. */
+  readonly holdSceneDuringFadeIn?: boolean;
 }
 
 export type TransitionProgress = (fraction: number, label?: string) => void;
@@ -56,6 +58,7 @@ export type TransitionWork<Result> = (progress: TransitionProgress) => Result | 
 export interface TransitionScreen {
   readonly visible: boolean;
   readonly active: boolean;
+  readonly holdingSceneForFadeIn: boolean;
   show(options?: TransitionOptions): void;
   progress(fraction: number, label?: string): void;
   hide(): Promise<void>;
@@ -170,6 +173,7 @@ export function createTransition(): TransitionScreen {
   let visible = false;
   let shownAt = 0;
   let hideToken = 0; // cancels a pending hide when show() re-enters first
+  let heldFadeToken: number | null = null;
   let warmAfterWork: string | null = null;
   let activeFadeOutMs = FADE_OUT_MS;
   const api: TransitionScreen = {
@@ -178,6 +182,7 @@ export function createTransition(): TransitionScreen {
     // the veil has actually left layout, so background builders cannot resume
     // underneath the last transition frames and turn the reveal into a stall.
     get active() { return root.classList.contains('on'); },
+    get holdingSceneForFadeIn() { return visible && heldFadeToken === hideToken; },
 
     /**
      * Stage and fade the screen in.
@@ -265,6 +270,7 @@ export function createTransition(): TransitionScreen {
       if (skipTransitions()) return work(() => {});
       api.show(o);
       const token = hideToken;
+      heldFadeToken = o.holdSceneDuringFadeIn === true ? token : null;
       const isCurrent = () => visible && hideToken === token;
       let result!: Result;
       try {
@@ -272,12 +278,17 @@ export function createTransition(): TransitionScreen {
         // especially if GPU/program work delayed the transition's first frame.
         await waitForOpaqueTransition(root, { isCurrent });
         if (!isCurrent()) throw new DOMException('Transition cover was superseded', 'AbortError');
+        // Covered work may render the destination explicitly. Never carry the
+        // old-frame hold into that work, the dwell, or the new scene's reveal.
+        if (heldFadeToken === token) heldFadeToken = null;
         result = await work((fraction, label) => { if (isCurrent()) api.progress(fraction, label); });
         if (isCurrent()) {
           api.progress(1, t('transition.stage.ready'));
           if (warmAfterWork) preloadImage(warmAfterWork, { priority: 'low' });
         }
       } finally {
+        // A failed/superseded waiter releases only its own lease.
+        if (heldFadeToken === token) heldFadeToken = null;
         if (isCurrent()) {
           const dwell = (o.minShowMs != null ? o.minShowMs : 800) -
             (performance.now() - shownAt);

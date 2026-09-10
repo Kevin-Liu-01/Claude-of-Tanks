@@ -18,6 +18,7 @@ export interface GarageReturnOptions {
 }
 
 interface GarageReturnTransitionOptions {
+  readonly holdSceneDuringFadeIn?: boolean;
   kicker: string;
   title: string;
   mapId: string;
@@ -526,6 +527,7 @@ export function createGarageReturnRuntime<Visual = object>(
       }, {
         kicker: t('transition.kicker.regrouping'),
         title: t('transition.title.nextBattle'),
+        holdSceneDuringFadeIn: true,
         mapId: world.currentMapId() || game.mapId,
         progress: false,
         minShowMs: 420,

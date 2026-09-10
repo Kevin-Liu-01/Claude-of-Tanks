@@ -123,7 +123,7 @@ try {
   const timed = runSceneBlackWatchdog(timedRenderer, scene, {}, { measureTimings: true });
   assert.deepEqual(bound, original, 'probe restores exact cube face and mip, not only target');
   assert.deepEqual(timed, { before: 18, after: null, rescued: false, stage: null,
-    measurements: [{ startTime: 0, endTime: 38, setupMs: 3, renderMs: 13, readbackMs: 21,
+    measurements: [{ kind: 'sync', startTime: 0, endTime: 38, setupMs: 3, renderMs: 13, readbackMs: 21,
       reduceMs: 0, restoreMs: 1, programsBeforeRender: 2, programsAfterRender: 3 }] });
   failReadback = true;
   const failed = runSceneBlackWatchdog(timedRenderer, scene, {}, { measureTimings: true });

@@ -19,12 +19,16 @@
 // Optional --boot-audio-gate instead exercises the real trusted splash-entry
 // gesture and requires one shared native context through both Battle actions.
 // Optional --warm-readiness-gate requires the first Battle and Rematch countdown
-// warm owners to finish without an error before rollout. It does not change work.
+// AND deferred warm owners to finish without errors/cancellation before rollout.
+// This receipt-only acceptance gate does not change work or wait for readiness.
 // Optional --source-readiness-gate requires the existing source settlement to
 // be fully applied at first uncovered battle and finish; it never delays reveal.
 // Reports click→first painted opaque cover and click→ready, not steady-state FPS.
 // Roster receipts are retained; random bot composition must not be mistaken for
 // a matched-roster throughput benchmark. Queue this outside other native jobs.
+// graphicsDiagnostics.sceneWatchdogs retains bounded phase/generation-owned
+// render/enqueue/wait and sync-fallback rows on the same performance.now clock.
+// These are attribution-only wall timings, not GPU duration or a health gate.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -338,7 +342,8 @@ try {
   if (warmReadinessGate) {
     const failures = checkGarageActionWarmReadiness(report.actions);
     report.warmReadiness = { gateRequested: true, pass: failures.length === 0, failures,
-      caveat: 'Production countdown warm completion before rollout only; no physical display or GPU-duration proof.' };
+      requiredReceipts: ['__BATTLE_COUNTDOWN_WARM', '__BATTLE_DEFERRED_WARM'],
+      caveat: 'Production countdown and deferred warm completion without error/cancellation before rollout only; no physical display or GPU-duration proof.' };
   }
   if (sourceReadinessGate) {
     const failures = report.actions.flatMap(action => checkSourcedTextureReadiness(action));

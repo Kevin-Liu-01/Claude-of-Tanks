@@ -58,7 +58,8 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog,
+  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
+  type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -535,6 +536,7 @@ let camoSweepP = Promise.resolve();
 let battleWarmPending = false;
 let battleWarmGeneration = 0;
 let sceneWatchdogEntryGeneration = 0;
+let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = null;
 
 // --- fx ----------------------------------------------------------------------
 // The complete particles/effects graph is battle-only. Parsing and building it
@@ -1029,6 +1031,7 @@ const playSurface = createPlaySurfaceRuntime({
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
+  coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
 
@@ -1783,6 +1786,18 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     prepareRevealCamera: prepareBattleRevealCamera,
     prepareAtmosphere: () => battleAtmosphere.prepare(game.battleCount, game.mapId),
     prepareNightLighting: () => nightLighting.prepare(),
+    runSceneWatchdog: async (assertCurrent: () => void) => {
+      assertCurrent();
+      const run = coveredBattleWatchdog;
+      coveredBattleWatchdog = null;
+      // Keep the established webdriver opt-out; real covered controls own
+      // exactly one request armed by startBattle, never a second delayed probe.
+      if (navigator.webdriver) return;
+      if (!run) throw new Error('Covered battle scene watchdog was not armed');
+      const result = await run();
+      assertCurrent();
+      return result;
+    },
     getGeneration: () => battleWarmGeneration,
     advanceGeneration: () => ++battleWarmGeneration,
     setPending: (pending: boolean) => { battleWarmPending = pending; },
@@ -1869,18 +1884,22 @@ const soloBattleStart = createSoloBattleStartAccess({
         return world;
       },
       setDormant: setWorldDormant,
-      scheduleBlackWatchdog: () => {
+      scheduleBlackWatchdog: (covered: boolean) => {
         const entryGeneration = ++sceneWatchdogEntryGeneration;
         const requestedWorld = currentWorld();
+        coveredBattleWatchdog = null;
         if (!navigator.webdriver) {
           const isCurrentBattleWatchdog = () => game.phase === 'battle' && !studio.active && currentWorld() === requestedWorld
             && sceneWatchdogEntryGeneration === entryGeneration;
-          scheduleSceneWatchdog({ delayMs: 1800,
+          const watchdog: Omit<Parameters<typeof scheduleSceneWatchdog>[0], 'delayMs'> = {
             isCurrent: isCurrentBattleWatchdog,
-            run: () => runSceneBlackWatchdogAsync(renderer, scene, camera, {
-              ...currentSceneWatchdogOptions(), isCurrent: isCurrentBattleWatchdog,
+            diagnosticContext: { phase: 'battle', entryGeneration, mapId: requestedWorld?.mapId ?? null },
+            run: onMeasurements => runSceneBlackWatchdogAsync(renderer, scene, camera, {
+              ...currentSceneWatchdogOptions(), isCurrent: isCurrentBattleWatchdog, measureTimings: true, onMeasurements,
             }),
-          });
+          };
+          if (covered) coveredBattleWatchdog = () => runSceneWatchdogNow(watchdog);
+          else scheduleSceneWatchdog({ ...watchdog, delayMs: 1800 });
         }
       },
     },
@@ -2400,6 +2419,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
           setNetworkSpectator: (value: boolean) => {
             sceneWatchdogEntryGeneration++;
+            coveredBattleWatchdog = null;
             networkSession.setSpectator(value);
           },
           setSelectedSpecId: selectedVehicle.set,
@@ -2514,7 +2534,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     },
   },
   warm: {
-    invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; },
+    invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; coveredBattleWatchdog = null; },
     cancel: cancelDeferredCombatWarm,
     setPending: (pending: boolean) => { battleWarmPending = pending; },
   },
@@ -2737,6 +2757,7 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
+  isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
   isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && garageReturn.current?.lastTrace?.presentationUnready === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
@@ -3177,7 +3198,10 @@ if (!navigator.webdriver || new URLSearchParams(location.search).has('diagforce'
   const isCurrentGarage = () => game.phase === 'garage' && !studio.active && !battleEntryLifecycle.pending
     && currentWorld() === garageWatchdogWorld && sceneWatchdogEntryGeneration === garageWatchdogGeneration;
   const garageWatchdogSettled = scheduleSceneWatchdog({ delayMs: 1200, isCurrent: isCurrentGarage,
-    run: () => runSceneBlackWatchdogAsync(renderer, scene, camera, { isCurrent: isCurrentGarage }),
+    diagnosticContext: { phase: 'garage', entryGeneration: garageWatchdogGeneration, mapId: garageWatchdogWorld?.mapId ?? null },
+    run: onMeasurements => runSceneBlackWatchdogAsync(renderer, scene, camera, {
+      isCurrent: isCurrentGarage, measureTimings: true, onMeasurements,
+    }),
   });
   // MOBILE r5: if the boot probe turned shadows off (one-boot false-negatives
   // happen — the owner's phone), try them back on once the live scene proves

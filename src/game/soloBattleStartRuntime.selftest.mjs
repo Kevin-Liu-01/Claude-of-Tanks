@@ -35,7 +35,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       switchMap: (id) => events.push(`world:switch:${id}`),
       getActive: () => world,
       setDormant: (value) => events.push(`world:dormant:${value}`),
-      scheduleBlackWatchdog: () => events.push('world:watchdog'),
+      scheduleBlackWatchdog: covered => events.push(`world:watchdog:${covered}`),
     },
     round: {
       getFx: () => ({
@@ -122,6 +122,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
     deferVisuals: true, preBattleHold: true, randomRoster: false,
   });
   assert.equal(harness.game.preBattleS, Infinity);
+  assert.ok(harness.events.includes('world:watchdog:true'), 'held entry arms a joined covered watchdog');
   assert.equal(harness.game.mapId, 'winter');
   assert.equal(harness.game.phase, 'battle');
   assert.deepEqual(harness.setupOptions, {
@@ -144,6 +145,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
   const harness = createHarness();
   harness.runtime.start('m1a2');
   assert.equal(harness.game.preBattleS, 0);
+  assert.ok(harness.events.includes('world:watchdog:false'), 'legacy direct entry retains delayed scheduling');
   assert.ok(harness.events.indexOf('warm:drain') < harness.events.indexOf('battle:open'));
 }
 

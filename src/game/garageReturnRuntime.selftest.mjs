@@ -253,6 +253,8 @@ assert.ok(rematch.calls.findIndex(([name]) => name === 'sleep')
   < rematch.calls.findIndex(([name]) => name === 'clearPresentation'),
   'the existing battle and report survive until the previous entry finishes');
 assert.equal(rematch.calls.find(([name]) => name === 'transitionStart')[1].minShowMs, 420);
+assert.equal(rematch.calls.find(([name]) => name === 'transitionStart')[1].holdSceneDuringFadeIn, true,
+  'only Battle Again opts into retaining the old result frame during fade-in');
 assert.equal(rematch.triggerCount, 1);
 assert.ok(rematch.calls.findIndex(([name]) => name === 'triggerBattle')
   < rematch.calls.findIndex(([name]) => name === 'transitionEnd'),

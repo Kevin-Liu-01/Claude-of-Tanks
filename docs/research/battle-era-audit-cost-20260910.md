@@ -118,3 +118,34 @@ Removing this audit does not solve the independent authored-geometry pauses
 cause of the historical 214–319 ms stalls. Native real-control checks and
 steady-state performance qualification remain distinct; a functional pass is
 not a smoothness certificate. No resource or frame gate is weakened here.
+
+## Published result and live follow-up
+
+The option-only change landed non-force as `26d556281`, rebased over
+`78640f623`. Production deployment run `34540172894` completed successfully;
+the public page identified `v1.0.0+g26d556281`. The corrected post-rebase focused
+batch and full typecheck passed. An earlier batch stopped because two test
+filenames were mistyped; its failed log remains alongside the corrected run.
+
+The subsequent pristine-profile real-control acquisition
+`.local-evidence/native-after-era/report.json` passed functional, painted-cover,
+audio-clock, boot-audio, warm-readiness and source-readiness gates. All three
+PNGs were inspected: full day battle, full night rematch and adopted Garage
+vehicle. Page, graphics and cleanup errors were empty. Production error-log
+inspection also returned no entries. Build-index SHA-256 was
+`cbbc17b8c5f07c6bf8e996489e50b4c6d7a8821a893d11b34045feb8e2f75523`.
+
+**That pass is not a performance pass.** Battle / Battle Again / Garage cover
+times were 2.0 / 138.8 / 91.3 ms, while complete action times were
+23,769.8 / 31,213.5 / 342.0 ms. Largest callback gaps were
+11,915.3 / 14,396.5 / 42.7 ms. The two large loading gaps again contain the
+scene-watchdog timer, now taking 11,882.2 and 14,360.9 ms at
+`main-CjxHYGZw.js`, character 57,720. The functional gate has no overall
+loading-gap ceiling and must not be represented as smoothness certification.
+
+The bot rosters differ between acquisitions and the graphics/native host was
+not proven pristine; this is not a matched before/after speed comparison.
+The repeated timer attribution justifies measuring its synchronous render,
+readback enqueue, asynchronous wait and compatibility fallback separately.
+It does not establish the older 214–319 ms cause or identify a GPU/linker leaf
+without those measurements. The watchdog investigation continues separately.
