@@ -6,6 +6,7 @@ import type {
 } from './soloBattleLoadingRuntime.ts';
 
 interface EntryLoadScreen {
+  showPending(): void;
   hide?(): Promise<RuntimeValue> | RuntimeValue;
 }
 
@@ -24,6 +25,7 @@ export interface SoloBattleEntryRuntimeOptions {
   battleLoad: EntryLoadScreen;
   audio: EntryAudio;
   enterGarage(): Promise<void> | void;
+  /** Leave the recovered Garage's pre-paint checkpoint before fading coverage. */
   nextFrame(): Promise<RuntimeValue>;
   isVisibleSpecId(specId: string): boolean;
   getSelectedSpecId(): string;
@@ -58,7 +60,7 @@ export function createSoloBattleEntryRuntime({
   getSelectedMapId,
   reportError = (message, error) => console.error(message, error),
 }: SoloBattleEntryRuntimeOptions): SoloBattleEntryRuntime {
-  const required = [lifecycle?.run, lifecycle?.coverRendering,
+  const required = [battleLoad?.showPending, lifecycle?.run, lifecycle?.coverRendering,
     lifecycle?.uncoverRendering, loading?.begin, audio?.loadingOn, enterGarage,
     nextFrame, isVisibleSpecId, getSelectedSpecId, getSelectedMapId, reportError];
   if (!battleLoad || required.some((entry) => typeof entry !== 'function')) {
@@ -71,6 +73,9 @@ export function createSoloBattleEntryRuntime({
     options: SoloBattleLoadingStartOptions | undefined = undefined,
   ): Promise<void> => lifecycle.run(async () => {
     try {
+      // The loading transaction itself is demand-loaded. Own its canonical
+      // surface inside the accepted entry latch before awaiting that import.
+      battleLoad.showPending();
       lifecycle.coverRendering();
       await loading.begin(specId, mapId, options);
     } catch (error) {
