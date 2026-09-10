@@ -15,8 +15,9 @@ fleet release `e4ca00b6c35ab4b1f6b5b1872765254336a05e44`. Public HTML SHA256:
 `9222174966244462ec136475112af8128026a1ae240ff1220066e824a7b38e07`.
 Evidence directory: `/private/tmp/cot-interactive-baseline.gsRCvU/`.
 Browser: Chrome 151.0.7922.47, native ANGLE Metal Apple M5 Max. Integrated
-controls use 1280×720, DPR1, high quality, scale1 and trim0. These are local
-native-browser measurements, not yet production or separate-device acceptance.
+controls use 1280×720, DPR1, high quality, scale1 and trim0. The measurements
+below are local native-browser results; publication is recorded separately.
+They are not separate-device acceptance.
 
 ## Actual controls and presentation
 
@@ -142,3 +143,53 @@ research-note updates were prepared while the run completed. Full log:
 `integrated-full-tests-r1.log`, 974,959 bytes, SHA256
 `2af78e81f586b8c8975e92e04372b50b501232cf625c88fc807ed07834cccdea`.
 No failed performance acquisition was relabeled by this regression result.
+
+## Integration and publication
+
+Rebased cleanly over `04aa80ed6` (the independent broadleaf atlas and recovery
+notes). The performance runtime files remain byte-identical to the frozen
+full-suite tree. Seven focused integration checks, full types/core-unused,
+public build, Docs Doctor and diff validation pass in 18.2 seconds on the
+rebased tree. The added upstream atlas test passes separately; this is not a
+claim that the earlier 944-file run already contained that new test.
+Log `integrated-rebase-gates-r2.log` SHA256:
+`54c29f5a398cd6c8ccb5dec4e6352afafb84f0496ddac39d8768ec4783e5b00e`.
+The empty r1 log belongs to an admission canceled before any check started;
+the short final gates were grouped into one normal FIFO turn instead.
+
+Pushed without force to `origin/main` at
+`ae5b28ec67ee313b83ebad52d74d023f363bf3b7`; independently confirmed with
+`git ls-remote`. Vercel deployment `92ZcqAumcqyVoq3nJm9rBXbU61Lq` reports
+success and the public website serves `v1.0.0+gae5b28ec6`. This publishes the
+qualified loading/render changes, not a full performance certificate.
+
+## Live actual-control followup
+
+`integrated-performance-production-actions-r1/report.json` passes all requested
+functional, audio-clock, Garage-gesture audio, warm-readiness and source-ready
+gates on the actual public website. The process exits0, with empty browser,
+failure and cleanup error arrays. The single observed AudioContext wrapper
+is restored; the owned browser is closed and capture ownership released.
+Acquisition hash matches the local actual-control fixture above. Live HTML
+SHA256 is `2561e984ea7c27d2fc90a1313bfb14c7532449e18ad0d27f5aeabc017def1e8e`.
+Chrome151 / native M5 Max, high quality, 1280×720, DPR1, scale1 and trim0 remain
+unchanged. Day battle, night rematch and returned Garage screenshots were
+visually inspected without a new render-sanity failure.
+
+| Live control | Click → cover ms | Click → activation ms | Callback-gap maximum ms |
+| --- | ---: | ---: | ---: |
+| Battle | 2.9 | 9078.0 | 159.1 |
+| Rematch | 142.5 | 5675.2 | 75.7 |
+| Garage return | 91.0 | 341.6 | 43.7 |
+
+First entry still includes a 153.7 ms native AudioContext constructor within
+a 157 ms long task. The other first-entry long tasks are 61/71/52 ms and are
+not function-attributed by this unprofiled probe. Rematch and Garage return
+have no long tasks ≥50 ms, but their callback gaps remain nonzero. Loading
+completion includes actual production downloads and normal staged readiness;
+these are not controlled throughput or sustained gameplay measurements.
+
+The production functional/readiness result does not override the separately
+failed strict gameplay certificate or resolve historical unattributed stalls.
+This live receipt is recorded by a documentation-only followup; no runtime
+code or test threshold changes were made after the verified publication.
