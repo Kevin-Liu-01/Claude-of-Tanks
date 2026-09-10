@@ -250,7 +250,7 @@ for (const [fpsTarget, seconds] of [[60, 60], [120, 20]]) {
   });
 }
 assert.match(source, /trianglesMedianMax: 6_000_000/);
-const arm = source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution })');
+const arm = source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution, schedulerTrace })');
 const enter = source.indexOf("await D.beginBattleEntry('m1a2', map)");
 assert.ok(arm > 0 && arm < enter, 'early acquisition is armed before awaiting normal player entry');
 const armBlock = source.slice(source.lastIndexOf('  if (earlyWindow) {', arm), arm);
@@ -264,7 +264,7 @@ assert.match(settleBlock, /setTimeout\(r, 1500\)/);
 assert.match(settleBlock, /window\.__GLB_STATS/);
 assert.match(source, /const heapPreGc = earlyWindow \? null : await page\.evaluate\(readPerfHeapSnapshot, true\)/,
   'early acquisition does not run the legacy pre-window GC');
-assert.match(source, /if \(!earlyWindow\) \{\s*if \(profileWindow\) await beginWindowProfile\(\);\s*await page\.evaluate\(installPerfSampler, \{ sampleMs: seconds \* 1000, waitForControl: false, profileWindow, drawAttribution \}\)/,
+assert.match(source, /if \(!earlyWindow\) \{\s*if \(profileWindow\) await beginWindowProfile\(\);\s*await page\.evaluate\(installPerfSampler, \{ sampleMs: seconds \* 1000, waitForControl: false, profileWindow, drawAttribution, schedulerTrace \}\)/,
   'the early sampler is not replaced by a later sustained sampler');
 assert.ok(source.indexOf('const heapPostGc = await page.evaluate(readPerfHeapSnapshot, true)') >
   source.indexOf("await page.waitForFunction('window.__PERF && window.__PERF.done === true'"),
@@ -288,7 +288,7 @@ assert.match(source, /readFileSync\(new URL\('\.\/perfprobe-camera-input\.mjs', 
 assert.match(source, /readFileSync\(new URL\('\.\/perfprobe-roster\.mjs', import\.meta\.url\)\)/,
   'the exact roster acquisition contract is part of the immutable tool receipt');
 const cameraStart = source.indexOf('cameraJob = runCameraInputWindow(page,');
-assert.ok(cameraStart > source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow, drawAttribution })'),
+assert.ok(cameraStart > source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow, drawAttribution, schedulerTrace })'),
   'camera preparation runs after the ordinary timed sampler, never as an extra early-window settle');
 assert.ok(cameraStart < source.indexOf("await page.waitForFunction('window.__PERF && window.__PERF.done === true'"),
   'the input observer runs alongside the timed sample');
@@ -461,10 +461,10 @@ assert.ok(edgeCapture < source.indexOf("if (sceneMode === 'battle') await page.k
   'even post-window keyboard failures cannot erase already-observed edges');
 assert.match(source, /if \(rosterProvenance && !rosterProvenance\.pass\) failed = true/);
 assert.match(source, /lines\.rosterProvenance = \{[\s\S]*?pass: rosterProvenance\.pass/);
-assert.match(source, /if \(\(rosterProvenance \|\| profileWindow\) && !report\) report = \{[\s\S]*?failure: err\.message/,
+assert.match(source, /if \(\(rosterProvenance \|\| profileWindow \|\| schedulerTrace\) && !report\) report = \{[\s\S]*?failure: err\.message/,
   'preflight/entry failure still writes the requested and actual failure evidence');
 const failureCapture = source.indexOf('await preservePerfRosterFailure(rosterProvenance,');
-assert.ok(failureCapture > diagnosticGc && failureCapture < source.indexOf('if ((rosterProvenance || profileWindow) && !report) report ='),
+assert.ok(failureCapture > diagnosticGc && failureCapture < source.indexOf('if ((rosterProvenance || profileWindow || schedulerTrace) && !report) report ='),
   'failed/incomplete sampling attempts one bounded edge capture before final report and browser cleanup');
 assert.doesNotMatch(source, /WORST_CASE_ROSTER|all multi-mesh GLB heavies|7 enemies max/);
 

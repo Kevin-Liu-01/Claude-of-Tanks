@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { installGarageAudioIntent, readGarageAudioIntent, garageAudioGestureCandidates,
-  checkGarageAudioGesture, checkGarageAudioIntent } from './garage-audio-intent.mjs';
+  checkGarageAudioGesture, checkGarageAudioIntent, checkBootAudioIntent } from './garage-audio-intent.mjs';
 
 const originals = new Map(['window', 'document', 'performance'].map(name =>
   [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
@@ -185,6 +185,22 @@ const receipt = { before: { observer: observer(0), phase: 'garage', showroomActi
 const actions = ['battle', 'battle-again', 'return-to-garage'].map(action => ({ action, garageAudioIntent: { observer: observer(1) } }));
 assert.deepEqual(checkGarageAudioGesture(receipt), []);
 assert.deepEqual(checkGarageAudioIntent(receipt, actions), []);
+const bootReceipt = { before: { observer: observer(0) }, after: { observer: observer(1) },
+  opaqueBefore: true, gateReady: true, dismissed: true, armedAtMs: 1300, finishedAtMs: 1500 };
+bootReceipt.after.observer.events[0].atMs = 1402;
+assert.deepEqual(checkBootAudioIntent(bootReceipt, actions), []);
+for (const mutate of [
+  v => { v.before.observer = observer(1); }, v => { v.after.observer = observer(0); },
+  v => { v.opaqueBefore = false; }, v => { v.gateReady = false; }, v => { v.dismissed = false; },
+  v => { v.after.observer.events[0].trusted = false; }, v => { v.after.observer.events[0].canvasTarget = false; },
+  v => { v.after.observer.eventsDropped = 1; }, v => { v.armedAtMs = 1401; },
+  v => { v.finishedAtMs = 1400; }, v => { v.after.observer.errorCount = 1; },
+  v => { v.after.observer.events[0].atMs = 1400; },
+]) {
+  const changed = structuredClone(bootReceipt); mutate(changed);
+  assert.ok(checkBootAudioIntent(changed, actions).length, `boot reject ${mutate}`);
+}
+assert.ok(checkBootAudioIntent(null, []).length);
 assert.ok(checkGarageAudioIntent(null, []).length, 'missing evidence fails closed');
 for (const mutate of [
   value => { value.before.observer = observer(1); },

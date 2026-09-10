@@ -230,3 +230,166 @@ deficit, just beyond the unchanged 1.5 ms allowance. A fitted model accounts
 for these outcomes, but actual scheduler-entry wall time was not recorded.
 Measuring that directly is the next diagnostic; changing a tolerance merely
 to pass is not a fix. Historical untraced 214–319 ms stalls remain unproven.
+
+## Direct scheduler clock observation
+
+The opt-in `--scheduler-trace` observes the actual frame owner's eight numeric
+decision fields, using bounded preallocated storage. The sampler records the
+owner sequence at callback entry, so joins no longer depend on a fitted phase
+or assumed callback ordering. Errors detach the diagnostic without changing
+gameplay; incomplete/overflowed evidence refuses qualification. This mode
+never certifies speed or appends performance trends. No RAF, renderer or
+quality override is installed.
+
+One sixty-second native early-release capture used the unchanged admission
+policy, pinned Verdant roster, movement/firing and trusted camera input:
+
+- `scheduler-owner-trace-r1.json`: SHA256
+  `cdc002c1808b1cc340fbc782dd3c9a618ecd302e083edf33e00026dad2f831a3`.
+- Raw frames: SHA256
+  `f7d209e355acf0830c16b36e2b5db80a34638f3813f1d0005778c797735f0238`.
+- Source hash `fb1642ed88c736f9748aab900403dc7181a6ecb2513742f0ae42bbf6c0ec9c9e`;
+  build HTML `407aad26891ac9e8576bd9bd873494763bcebb5630ff00de0d0d0bde15bfb18a`;
+  acquisition `53506051b32a7ba361c381537411f73055339835a87704ebb0e1a849acba5e2d`.
+- 7,074 actual scheduler decisions: 3,600 admitted, 3,474 rejected, no sampled
+  restart/reset changes; zero trace drops/errors, exact owned disposal.
+- Entry lag relative to RAF: median0.2/p951.0/p992.6/max27.2 ms. Of 300
+  rejected callbacks within2 ms of their deadline, 203 had actually entered
+  within the existing1.5 ms allowance. These are measured clocks, not inferred
+  missing CPU/GPU work.
+- No console errors or detected contention. Timing remains a diagnostic FAIL:
+  median/p5FPS59.9/40.2, framep9925.9 ms. It is not a speed comparison.
+
+Review found that the initial collector did not itself reject absent/corrupt
+sampler-boundary rows. The collector and negative tests were tightened after
+this frozen capture. The original artifact is retained unchanged; its actual
+7,074 boundary rows were separately checked for finite increasing RAF times,
+safe/nondecreasing owner sequences within the captured edges, and an exact
+terminal RAF/count match. All pass. This is explicit postvalidation, not a
+claim that the older acquisition contained the later validator. Sustained
+mode's start time is the arm clock, not an observed RAF callback; sequence
+boundaries remain authoritative for ownership.
+
+Replaying only these recorded timestamps from the **observed** first deadline
+reproduces all old decisions with zero mismatches. Using callback-entry time
+only for eligibility, with unchanged RAF-based absolute progression, produces
+the same3,600 admits and reduces modeled owner-RAF intervals>=24.9 ms from190
+to59. Observed-clock pairs<7 ms remain3. This is a counterfactual scheduling
+model—not measured performance of the changed implementation, since different
+render work can change future callback arrival times.
+
+The independent clock distinction follows the browser contract: RAF callbacks
+share their frame timestamp even when earlier callbacks have already consumed
+time; it is not identical to entry `performance.now()`.
+[MDN requestAnimationFrame](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame).
+Simulation must retain its original RAF timestamp. No cap/tolerance increase,
+graphics reduction or success-threshold change follows from this observation.
+
+### Corrected eligibility clock
+
+The scheduler now reads callback-entry time once and uses it for eligibility
+and its starvation-watchdog wall latch. It still passes the original RAF
+timestamp into simulation/render integration and advances the same absolute
+RAF-based deadline grid. Cap60 and tolerance1.5 ms are unchanged. The optional
+observer reuses this clock read; it adds no second read or ordinary-runtime
+storage. Invalid, behind-RAF or regressing injected samples fall back to RAF.
+The injected clock contract requires the same monotonic time origin; a finite
+far-ahead foreign-origin value cannot be distinguished from actual callback
+delay without an arbitrary cutoff, so none is invented.
+
+Tests cover independent clocks at30/59.94/60/75/90/119.88/120/144/165/240 Hz,
+zero-lag equivalence, bounded variable entry lag, exact deadline progression,
+tick-cost independence, invalid-clock recovery, diagnostic errors and disposal,
+idle/focus/hidden-host lifecycle. This is not a rolling minimum-spacing rule:
+genuinely late callbacks can still produce close wall-time pairs. It cannot
+remove browser/OS pauses or prove the historical stall cause.
+
+### Silent preparation at actual boot entry
+
+Only an accepted trusted Garage splash-entry key/pointer gesture may call
+`audio.prepare()` before the opaque splash dismisses. Synthetic events,
+modifiers, splash controls, Studio, automatic gate skips and programmatic
+dismissal do not prepare audio. Ready/Battle retain their retry paths. The
+optional prepare call skips muted/master-zero intent, creates no graph/tone
+and adopts the same context later. This moves native construction out of
+normal first-Battle entry, not off-thread or out of existence. No-splash users
+still exercise the original cold Battle fallback.
+
+The lazy audio facade now latches persisted/live master volume and mute before
+the full mixer arrives. A separate single output gain controls the fallback,
+including retiring fade tails, so envelope ramps cannot override exact-zero
+mute. Full-mixer setters can latch safely before its graph exists; the graph
+therefore begins at the intended gain rather than briefly sounding and fading
+down. The normal authored envelope and native context options remain intact.
+
+The existing no-splash Garage-orbit gate still requires zero constructors before
+Battle. A separate `--boot-audio-gate` requires an opaque ready splash, real
+trusted entry, exactly one constructor within that gesture and the same count
+through Battle, rematch and Garage return. These are distinct fixtures, not a
+relaxed assertion. Constructor/clock receipts are not PCM or audible-output
+proof. New DOM/actual-mixer regressions cover negative entry paths, repeated
+ready/dismissal, muted/volume-zero startup and source-start gain ordering.
+
+### Native candidate and actual-control verification
+
+The new unprofiled sixty-second candidate retains the pinned 14-tank Verdant
+roster, high 1280×720/DPR1/scale1 graphics, movement/firing, trusted camera input
+and all four shadow cascades. Chrome151/ANGLE Metal M5 Max; source remained
+unchanged throughout; no detected contention, foreign headless process or
+console error. The trace observer was disabled.
+
+- `entry-clock-candidate-r1.json`: SHA256
+  `59c870a6c7c3d60b9cb5372de78879130ce52db149b5d08c3563860340829ceb`.
+- Raw frames: SHA256
+  `25ec0f9fcfbe1fd2625e71708de2f844e45ac2550525b52a23e27eefaec5149e`.
+- Source `33bf3036930516f08d987ca37e9abead689f0efd852c3e4959d475d0bb7cc67e`;
+  build HTML `68a052c4ed2f3b049211c24ef2beb2fe2bd8b315939447fc9ce0e5c2ec010b5b`;
+  acquisition `7a615d7d0893e802349a5235bab3ed0985cc2ebbfd4a514c22ffc249b92f8f19`.
+
+| Unprofiled capture | Frames | Median / p95 / p99 frame ms | Intervals ≥25 ms | Maximum ms |
+| --- | ---: | --- | ---: | ---: |
+| Prior frame-owner candidate | 3,599 | 16.7 / 23.4 / 25.6 | 105 | 41.7 |
+| Entry-clock candidate | 3,599 | 16.7 / 17.6 / 23.1 | 17 | 34.9 |
+
+The candidate passes the unchanged p5 FPS (56.8), p99 frame-time, draw-call
+(782 median/878 maximum), triangle, memory, load, input-coverage and roster
+checks. The complete budget remains **FAIL**: median FPS is 59.9 against the
+unchanged ≥60 gate. No cap, tolerance, display-quality or reporting-threshold
+change is used to make that pass. One run is evidence of improved observed
+tails, not repeatability, a physical presentation measurement or proof of the
+historical stall cause. Acquisition hashes differ because the opt-in trace
+plumbing was added; both compared captures have tracing/profiling disabled.
+
+Two independent fresh-profile local actual-control fixtures pass functional,
+audio-clock, warm-readiness and source-readiness gates; their day battle,
+night rematch and returned Garage images were visually inspected:
+
+- Boot entry: `entry-audio-local-boot-r1/report.json`, SHA256
+  `1c99d21fe793784ea4b3f41dc97d2959127305e6907cb38d4baa107012f0a257`.
+  The one native constructor takes 142.2 ms within the trusted splash-entry
+  handler, before dismissal; counts stay one through both battles and return.
+- No splash: `entry-audio-local-nosplash-r1/report.json`, SHA256
+  `2458cd080d9074cbcbb1a14f1f57d219aa7e70bc0c4842af3ada4e4a2f3d8c84`.
+  Actual Garage dragging still constructs no audio; Battle owns the one cold
+  constructor and later actions reuse it.
+
+| Fixture / action | Click → cover | Click → ready | Maximum callback gap |
+| --- | ---: | ---: | ---: |
+| Boot / Battle | 29.4 ms | 6,374.8 ms | 121.4 ms |
+| Boot / Battle Again | 141.2 ms | 5,516.1 ms | 64.9 ms |
+| Boot / Garage | 91.3 ms | 333.6 ms | 48.6 ms |
+| No splash / Battle | 17.8 ms | 6,503.3 ms | 162.9 ms |
+| No splash / Battle Again | 142.1 ms | 5,650.2 ms | 66.4 ms |
+| No splash / Garage | 90.1 ms | 340.3 ms | 46.0 ms |
+
+These functional windows include covered preparation and countdown, with
+different runtime bot rosters; they are not matched throughput comparisons.
+They explicitly retain nonzero loading pauses. Native startup is relocated,
+not eliminated, and no-splash still exercises the cold fallback.
+
+Thirteen distinct focused selftests, typecheck/core-unused and the public production
+build pass. The registry validates 953 ordered checks; the full 953-check
+suite was not rerun for this slice. Pinned React Doctor exits successfully;
+its three new warnings are confined to intentional serial audio tests and
+repeated gain reads that assert changes after mutation. They are retained,
+not suppressed or converted into concurrent shared-global test execution.

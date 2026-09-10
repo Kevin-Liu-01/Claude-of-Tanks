@@ -46,6 +46,7 @@ import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 import { CAMERA_INPUT_PROTOCOL, runCameraInputWindow } from './perfprobe-camera-input.mjs';
 import { startPerfWindowProfile, installPerfWindowTiming } from './perfprobe-profile-window.mjs';
 import { installPerfDrawAttribution } from './perfprobe-draw-attribution.mjs';
+import { installPerfSchedulerTrace } from './perfprobe-scheduler-trace.mjs';
 import { REFERENCE_MIXED_ROSTER, createPerfRosterRequest, inspectPerfRosterEligibility,
   recordPerfRosterCheckpoint, recordPerfRosterEdges, preservePerfRosterFailure, requirePerfRoster } from './perfprobe-roster.mjs';
 
@@ -81,7 +82,7 @@ function perfBrowserArgs(nativeCadence) {
   ];
 }
 
-function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, drawAttribution = false }) {
+function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, drawAttribution = false, schedulerTrace = false }) {
   const D = window.__DEBUG;
   const R = D.renderer;
   const P = window.__PERF = {
@@ -97,6 +98,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, d
   let heapIv;
   const profile = profileWindow ? window.__PERF_WINDOW_TIMING : null;
   const draws = drawAttribution ? window.__PERF_DRAW_ATTRIBUTION : null;
+  const scheduler = schedulerTrace ? window.__PERF_SCHEDULER_TRACE : null;
   const receipt = () => ({
     ...window.__PERF_READ_ENVIRONMENT(),
     phase: D.game.phase, preBattleS: D.game.preBattleS, timeS: D.game.timeS,
@@ -105,6 +107,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, d
   });
   function start(now, pageMs) {
     P.startedAt = now;
+    scheduler?.start(now);
     profile?.start(now, pageMs ?? performance.now());
     P.environmentStart = receipt();
     // Manual reset counts all passes between RAF samples, as in legacy mode.
@@ -116,6 +119,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, d
     }, 1000);
   }
   function frame(now) {
+    scheduler?.frame(now);
     const pageMs = profile ? performance.now() : null;
     if (P.startedAt === null) {
       if (D.game.phase !== 'battle' || !(D.game.preBattleS <= 0)) {
@@ -133,6 +137,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, d
       P.trailingNoSubmissionMs = now - (P.lastSubmissionAt ?? P.startedAt);
       profile?.end(now, pageMs);
       P.drawAttribution = draws?.finish() ?? null;
+      P.schedulerTrace = scheduler?.finish(now) ?? null;
       P.info = {
         geometries: R.info.memory.geometries, textures: R.info.memory.textures,
         programs: R.info.programs.length,
@@ -276,6 +281,10 @@ const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina defaul
 const outFile = opt('out', '');
 const profileWindow = args.includes('--profile-window');
 const drawAttribution = args.includes('--draw-attribution');
+const schedulerTrace = args.includes('--scheduler-trace');
+if (schedulerTrace && (!outFile || !Number.isFinite(seconds) || seconds <= 0 || seconds > 120)) {
+  throw new Error('--scheduler-trace requires --out and a positive --seconds <=120');
+}
 if (drawAttribution && (!outFile || !Number.isFinite(seconds) || seconds <= 0 || seconds > 120)) {
   throw new Error('--draw-attribution requires --out and a positive --seconds <=120');
 }
@@ -346,6 +355,9 @@ if (sceneMode !== 'battle' && sceneMode !== 'garage') {
 const wantBreakdown = args.includes('--breakdown');
 const { production, earlyWindow, nativeCadence, windowMode, cameraInput } = perfModes(args, sceneMode, entryMode);
 if (drawAttribution && sceneMode !== 'battle') throw new Error('--draw-attribution requires --scene battle');
+if (schedulerTrace && (sceneMode !== 'battle' || !nativeCadence || profileWindow || drawAttribution)) {
+  throw new Error('--scheduler-trace requires native-cadence battle with no other attribution modes');
+}
 const distPath = resolve(opt('dist', 'dist'));
 const sha256 = content => createHash('sha256').update(content).digest('hex');
 // Preview consumes exactly this artifact. A checkout hash does not claim that
@@ -358,6 +370,7 @@ const acquisitionHash = sha256([
   readFileSync(new URL('./perfprobe-roster.mjs', import.meta.url)),
   readFileSync(new URL('./perfprobe-profile-window.mjs', import.meta.url)),
   readFileSync(new URL('./perfprobe-draw-attribution.mjs', import.meta.url)),
+  readFileSync(new URL('./perfprobe-scheduler-trace.mjs', import.meta.url)),
   readFileSync(new URL('./garage-action-timing.mjs', import.meta.url)),
 ].join('\n'));
 const source = perfSourceReceipt();
@@ -639,6 +652,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // start/end receipts execute at the sample edges, not after a CDP wait.
   await page.evaluate(`window.__PERF_READ_ENVIRONMENT = ${readPhaseEnvironment.toString()}`);
   if (drawAttribution) await page.evaluate(installPerfDrawAttribution);
+  if (schedulerTrace) await page.evaluate(installPerfSchedulerTrace);
   if (earlyWindow) {
     if (forcedMsaa !== null) {
       await page.evaluate(samples => window.__DEBUG.post.sceneAA.setSamples(samples), forcedMsaa);
@@ -646,7 +660,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     // Starting before entry includes every early control frame without adding
     // a profiler/IPC wait at control release. Raw lead-in is labeled separately.
     if (profileWindow) await beginWindowProfile();
-    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution });
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution, schedulerTrace });
   }
 
   if (sceneMode === 'battle') {
@@ -779,7 +793,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // In-page sampler: rAF deltas + per-frame renderer.info + heap once/second.
   if (!earlyWindow) {
     if (profileWindow) await beginWindowProfile();
-    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow, drawAttribution });
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow, drawAttribution, schedulerTrace });
   }
 
   // Opt-in observation starts only AFTER the timed sampler is armed/running.
@@ -801,6 +815,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   });
   if (!submissionAdmission.pass) failed = true;
   if (drawAttribution && !perf.drawAttribution?.pass) failed = true;
+  if (schedulerTrace && !perf.schedulerTrace?.pass) failed = true;
   recordPerfRosterEdges(rosterProvenance, perf);
   if (rosterProvenance && !rosterProvenance.pass) failed = true;
   if (profileWindow) await finishWindowProfile();
@@ -1122,6 +1137,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       lines: perf.lines,
       shadowMasks: perf.shadowMasks,
       nativeCallbacks: perf.nativeCallbacks,
+      schedulerTrace: perf.schedulerTrace ?? null,
       lastSubmissionAt: perf.lastSubmissionAt,
       trailingNoSubmissionMs: perf.trailingNoSubmissionMs,
       submissionAdmission,
@@ -1175,7 +1191,8 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     production,
     distPath: production ? distPath : null,
     windowMode,
-    measurementMode: drawAttribution ? 'draw-attribution-only' : profileWindow ? 'cpu-profile-attribution-only' : 'unprofiled-performance',
+    measurementMode: schedulerTrace ? 'scheduler-trace-only' : drawAttribution ? 'draw-attribution-only' : profileWindow ? 'cpu-profile-attribution-only' : 'unprofiled-performance',
+    schedulerTrace: perf.schedulerTrace ?? null,
     drawAttribution: perf.drawAttribution ?? null,
     cadence: nativeCadence ? 'native-requested' : 'unlocked-throughputput',
     buildIndexHash,
@@ -1351,6 +1368,10 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     actual: perf.drawAttribution?.pass ? 'reconciled' : 'incomplete',
     pass: perf.drawAttribution?.pass === true,
   };
+  if (schedulerTrace) lines.schedulerTrace = {
+    limit: 'complete actual scheduler decisions, sampler ordering and owned cleanup; no drops/errors',
+    actual: perf.schedulerTrace?.pass ? 'complete' : 'incomplete', pass: perf.schedulerTrace?.pass === true,
+  };
   report.budget = { pass: Object.values(lines).every((l) => l.pass), ...lines };
   // Certification validity: a contended machine cannot certify EITHER outcome.
   report.budget.certification = contended
@@ -1365,6 +1386,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   if (drawAttribution) {
     report.budget.certification = `REFUSED — draw-attribution diagnostic overhead; ${report.budget.certification}`;
   }
+  if (schedulerTrace) report.budget.certification = `REFUSED — scheduler-trace diagnostic overhead; ${report.budget.certification}`;
   if (contended) {
     console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} (mid-run max ${report.machine.load1Max}), foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores (load limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);
   }
@@ -1383,7 +1405,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // Local trend line: the load-to-ready and
   // texture-footprint regressions crept in ~15% per round without tripping any
   // gate — a series makes the creep visible at review time, not at cert time.
-  if (!noTrend && !profileWindow && !drawAttribution) {
+  if (!noTrend && !profileWindow && !drawAttribution && !schedulerTrace) {
     try {
       mkdirSync(resolve('.qa-dev/reports'), { recursive: true });
       appendFileSync(resolve('.qa-dev/reports/perf-trend.jsonl'), `${JSON.stringify({
@@ -1431,7 +1453,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     environmentStart: window.__PERF?.environmentStart,
     environmentEnd: window.__PERF?.environmentEnd,
   })));
-  if ((rosterProvenance || profileWindow) && !report) report = {
+  if ((rosterProvenance || profileWindow || schedulerTrace) && !report) report = {
     schemaVersion: 3, date: new Date().toISOString(), production,
     distPath: production ? distPath : null,
     buildIndexHash, acquisitionHash, source, windowMode, rosterProvenance,
@@ -1441,6 +1463,13 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   };
 } finally {
   cameraAbort?.abort();
+  if (schedulerTrace && page && !page.isClosed()) {
+    try {
+      const evidence = await page.evaluate(() => window.__PERF_SCHEDULER_TRACE?.finish());
+      if (report) { report.schedulerTrace = evidence; report.measurementMode = 'scheduler-trace-only'; }
+      if (!evidence?.pass) failed = true;
+    } catch (error) { failed = true; if (report) report.schedulerTraceCleanup = { error: String(error) }; }
+  }
   if (drawAttribution && page && !page.isClosed()) {
     try {
       const stopped = await page.evaluate(() => window.__PERF_DRAW_ATTRIBUTION?.stop());

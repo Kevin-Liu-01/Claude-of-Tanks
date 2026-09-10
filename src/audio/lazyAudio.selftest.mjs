@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createLazyAudio, startFallbackLoadingTone } from './lazyAudio.ts';
+import { createAudio } from './audio.ts';
 import { createBus } from '../game/stateCore.ts';
 
 const flushMicrotasks = async () => { for (let tick = 0; tick < 8; tick++) await Promise.resolve(); };
 
 class FakeParam {
-  constructor(value = 0) { this.value = value; }
-  setValueAtTime(value) { this.value = value; }
-  exponentialRampToValueAtTime(value) { this.value = value; }
-  cancelScheduledValues() {}
+  constructor(value = 0) { this.value = value; this.events = []; }
+  setValueAtTime(value, at) { this.value = value; this.events.push([value, at]); }
+  setTargetAtTime(value, at) { this.setValueAtTime(value, at); }
+  linearRampToValueAtTime(value, at) { this.setValueAtTime(value, at); }
+  exponentialRampToValueAtTime(value, at) { this.setValueAtTime(value, at); }
+  cancelScheduledValues(at) { this.events = this.events.filter(event => event[1] < at); }
 }
 
 class FakeNode {
@@ -20,7 +23,7 @@ class FakeNode {
     this.stopped = false;
     this.onended = null;
   }
-  connect() {}
+  connect(destination) { this.destination = destination; }
   disconnect() {}
   start() { this.started = true; }
   stop() { this.stopped = true; }
@@ -59,7 +62,7 @@ const prepared = createLazyAudio({
     return { createAudio({ context }) {
       preparedMixers++;
       adoptedPreparedContext = context;
-      return { resume() {}, bindBus() {}, mute() {}, loadingOn() {}, ambientOn() {} };
+      return { resume() {}, bindBus() {}, mute() {}, setMasterVolume() {}, loadingOn() {}, ambientOn() {} };
     } };
   },
 });
@@ -138,7 +141,7 @@ function loadingAudioHarness(sticky = true) {
         assert.equal(adopted, context, 'deferred startup still adopts its one real context');
         calls.push('mixer');
         return {
-          resume() { calls.push('resume'); }, bindBus() {}, mute() {},
+          resume() { calls.push('resume'); }, bindBus() {}, mute() {}, setMasterVolume() {},
           loadingOn(active) { calls.push(`loading:${active}`); }, ambientOn() {},
         };
       } };
@@ -226,7 +229,7 @@ const failedMixer = createLazyAudio({
     if (++mixerAttempts === 1) throw new Error('mixer construction failed before graph creation');
     return {
       resume() {},
-      mute() {}, loadingOn() {}, ambientOn() {},
+      mute() {}, setMasterVolume() {}, loadingOn() {}, ambientOn() {},
     };
   } }),
 });
@@ -258,9 +261,10 @@ const handoff = createLazyAudio({
         bindBus() {},
         resume() { graphReady = true; handoffCalls.push('resume'); },
         mute() {
-          assert.equal(graphReady, true, 'mute never touches an unbuilt audio graph');
+          assert.equal(graphReady, false, 'mute is latched before sources can start');
           handoffCalls.push('mute');
         },
+        setMasterVolume() { handoffCalls.push('master'); },
         loadingOn() {},
         ambientOn() {},
         playGarageSting() {},
@@ -271,8 +275,8 @@ const handoff = createLazyAudio({
 handoff.resume();
 await handoff.preload();
 await Promise.resolve();
-assert.deepEqual(handoffCalls, ['resume', 'mute'],
-  'the adopted mixer constructs its graph before applying persisted state');
+assert.deepEqual(handoffCalls, ['mute', 'master', 'resume'],
+  'the adopted mixer starts its graph with the latest mute and volume already latched');
 assert.equal(handoff.ready, true, 'the mixer handoff settles without a partial instance');
 assert.equal(mixerMapReader(), 'coastal', 'the lazy handoff retains the active map reader');
 selectedMapId = 'whiteout';
@@ -293,7 +297,7 @@ delayed.ambientOn(true);
 const deferredModule = {
   createAudio({ initialPhase }) {
     initialPhaseSeen = initialPhase;
-    return { bindBus() {}, resume() {}, mute() {}, loadingOn() {},
+    return { bindBus() {}, resume() {}, mute() {}, setMasterVolume() {}, loadingOn() {},
       ambientOn(on) { ambientSeen = on; }, playGarageSting() {} };
   },
 };
@@ -332,7 +336,7 @@ for (const abandonedDuringPreparation of [false, true]) {
         assert.equal(adopted, context); assert.equal(preparedBuffers, pack);
         calls.push(`create:${initialPhase}`);
         return {
-          resume() { calls.push('graph'); }, mute() {}, bindBus() { calls.push('bind'); },
+          resume() { calls.push('graph'); }, mute() {}, setMasterVolume() {}, bindBus() { calls.push('bind'); },
           loadingOn(active) { calls.push(`loading:${active}`); },
           ambientOn(active) { calls.push(`ambient:${active}`); },
           warmBattleEvents() { calls.push('warm'); },
@@ -383,7 +387,7 @@ for (const abandonedDuringPreparation of [false, true]) {
       },
       createAudio() {
         creates++;
-        return { resume() {}, mute() {}, loadingOn() {}, ambientOn() {}, bindBus() {}, warmBattleEvents() {} };
+        return { resume() {}, mute() {}, setMasterVolume() {}, loadingOn() {}, ambientOn() {}, bindBus() {}, warmBattleEvents() {} };
       },
     }),
   });
@@ -400,7 +404,164 @@ for (const abandonedDuringPreparation of [false, true]) {
     assert.deepEqual([prepares, creates, contexts], [2, 1, 1],
       'retry gets fresh private buffers while reusing the original borrowed device');
     assert.equal(audio.ready, true);
-  } finally { console.warn = previousWarn; }
+} finally { console.warn = previousWarn; }
+}
+
+function volumeHarness() {
+  const gains = [], oscillators = [], events = [];
+  let contexts = 0, transfers = 0, completeMixer;
+  const context = {
+    ...fakeContext, state: 'running',
+    createGain() { const gain = new FakeNode(); gains.push(gain); return gain; },
+    createOscillator() { const node = new FakeNode(); oscillators.push(node); return node; },
+  };
+  const bus = createBus();
+  const audio = createLazyAudio({
+    createContext() { contexts++; return context; },
+    loadMixer() { transfers++; return new Promise(resolve => { completeMixer = resolve; }); },
+  });
+  audio.bindBus(bus);
+  return { audio, bus, context, gains, oscillators, events,
+    get contexts() { return contexts; }, get transfers() { return transfers; },
+    async finish() {
+      completeMixer({ createAudio({ context: adopted, initialPhase }) {
+        assert.equal(adopted, context);
+        events.push(['phase', initialPhase]);
+        return {
+          bindBus() {}, mute(value) { events.push(['mute', value]); },
+          setMasterVolume(value) { events.push(['master', value]); },
+          resume() { events.push(['resume']); },
+          loadingOn(value) { events.push(['loading', value]); },
+          ambientOn(value) { events.push(['ambient', value]); },
+        };
+      } });
+      await flushMicrotasks();
+    },
+  };
+}
+
+// Read the same persisted master without a graph, then follow live bus intent
+// while the mixer is absent. Private/unavailable storage remains optional.
+{
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  try {
+    for (const saved of ['{"volMaster":0}', '{"volMaster":0.25}', 'invalid']) {
+      Object.defineProperty(globalThis, 'localStorage', { configurable: true,
+        value: { getItem: () => saved } });
+      const h = volumeHarness();
+      h.audio.prepare();
+      assert.equal(h.contexts, saved.includes(':0}') ? 0 : 1);
+      assert.equal(h.transfers, 0);
+      assert.equal(h.gains.length, 0, 'silent preparation has no output graph or sources');
+      h.audio.loadingOn(true);
+      assert.equal(h.gains[0].gain.value, saved.includes(':0}') ? 0 : saved.includes('0.25') ? 0.25 : 0.8);
+      h.audio.loadingOn(false);
+      await h.finish();
+    }
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor);
+    else delete globalThis.localStorage;
+  }
+}
+
+for (const silence of ['mute', 'master', 'bus']) {
+  const h = volumeHarness();
+  if (silence === 'mute') h.audio.mute(true);
+  else if (silence === 'master') h.audio.setMasterVolume(0);
+  else h.bus.emit('ui:volumes', { master: 0 });
+  h.audio.prepare();
+  assert.equal(h.contexts, 0, `${silence} suppresses optional device preparation`);
+  assert.equal(h.transfers, 0);
+  h.audio.loadingOn(true);
+  assert.equal(h.contexts, 1, 'explicit Battle retains its single-context fallback');
+  const output = h.gains[0], envelope = h.gains[1];
+  assert.equal(output.destination, h.context.destination);
+  assert.equal(envelope.destination, output);
+  assert.equal(output.gain.value, 0, 'output is exactly silent before any fallback source starts');
+  assert.ok(envelope.gain.events.some(([value]) => value === 0.055), 'authored envelope is unchanged');
+  assert.deepEqual(output.gain.events, [], 'envelope ramps never schedule a later master unmute');
+  h.bus.emit('phase:change', { phase: 'battle' });
+  h.audio.ambientOn(true);
+  h.bus.emit('ui:volumes', { master: 0.35 });
+  h.audio.mute(true);
+  h.audio.loadingOn(false);
+  h.bus.emit('phase:change', { phase: 'garage' });
+  await h.finish();
+  assert.deepEqual(h.events.slice(0, 4), [['phase', 'garage'], ['mute', true], ['master', 0.35], ['resume']]);
+  assert.ok(h.events.some(([kind, value]) => kind === 'loading' && value === false));
+  assert.ok(h.events.some(([kind, value]) => kind === 'ambient' && value === false));
+  assert.equal(output.gain.value, 0, 'a stopped/fading fallback remains muted through handoff');
+  h.audio.mute(false);
+  assert.equal(output.gain.value, 0.35, 'unmute restores latest volume, never a hardcoded fallback gain');
+  h.audio.setMasterVolume(0);
+  assert.equal(output.gain.value, 0, 'master zero also silences fading fallback nodes');
+  assert.equal(h.contexts, 1);
+}
+
+{
+  const h = volumeHarness();
+  const oldBus = h.bus, nextBus = createBus();
+  h.audio.bindBus(nextBus);
+  oldBus.emit('ui:volumes', { master: 0 });
+  h.audio.prepare();
+  assert.equal(h.contexts, 1, 'rebinding removes the retired bus volume listener');
+  nextBus.emit('ui:volumes', { master: 0.2 });
+  h.audio.loadingOn(true);
+  assert.equal(h.gains[0].gain.value, 0.2);
+  h.audio.setMasterVolume(2);
+  assert.equal(h.gains[0].gain.value, 1);
+  h.audio.setMasterVolume(NaN);
+  assert.equal(h.gains[0].gain.value, 1, 'invalid live levels cannot create a NaN output gain');
+  h.audio.loadingOn(false);
+  await h.finish();
+}
+
+// Execute the actual full mixer. The destination is inspected at every source
+// start, catching a briefly audible graph before a later mute smoothing ramp.
+{
+  const saved = new Map(['fetch', 'window', 'document', 'setInterval', 'clearInterval']
+    .map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  try {
+    globalThis.fetch = () => new Promise(() => {});
+    globalThis.window = undefined; globalThis.document = undefined;
+    globalThis.setInterval = () => 1; globalThis.clearInterval = () => {};
+    for (const muteFirst of [false, true]) {
+      const nodes = [];
+      const context = { currentTime: 0, sampleRate: 1000, state: 'running', destination: {} };
+      const makeNode = (kind) => {
+        const node = new FakeNode(); node.kind = kind;
+        for (const key of ['Q', 'playbackRate', 'pan', 'threshold', 'knee', 'ratio', 'attack', 'release']) node[key] = new FakeParam();
+        node.start = () => {
+          const master = nodes.find(value => value.destination === context.destination);
+          assert.equal(master?.gain.value, 0, 'the first source cannot precede exact-zero master/mute');
+          node.started = true;
+        };
+        nodes.push(node); return node;
+      };
+      for (const [method, kind] of [['createGain', 'gain'], ['createOscillator', 'oscillator'],
+        ['createBufferSource', 'buffer'], ['createBiquadFilter', 'filter'],
+        ['createDynamicsCompressor', 'compressor'], ['createWaveShaper', 'shaper'], ['createStereoPanner', 'panner']]) {
+        context[method] = () => makeNode(kind);
+      }
+      const buffer = { duration: 4 };
+      const mixer = createAudio({ context, preparedBuffers: { context, sampleRate: 1000,
+        white: buffer, wind: buffer, crackle: buffer,
+        guns: { light: buffer, medium: buffer, heavy: buffer, huge: buffer }, random: () => 0.5 } });
+      if (muteFirst) { mixer.mute(true); mixer.setMasterVolume(0.45); }
+      else mixer.setMasterVolume(0);
+      assert.equal(nodes.length, 0, 'pre-resume setters only latch, even with an adopted context');
+      mixer.resume();
+      assert.ok(nodes.some(node => node.started), 'negative witness actually exercises Garage source starts');
+      const master = nodes.find(node => node.destination === context.destination);
+      assert.equal(master.gain.value, 0);
+      if (muteFirst) { mixer.mute(false); assert.equal(master.gain.value, 0.45); }
+    }
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  }
 }
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
@@ -417,5 +578,7 @@ assert.match(mainSource, /getMapId: \(\) => game\.phase === 'battle'\s*\? game\.
   'battle ambience uses canonical game map identity instead of an inactive cached world');
 assert.match(intentSource, /const preload = \([\s\S]{0,500}ignoreFailure\(preloadAudio\)/,
   'Battle intent transfers the full mixer before the click when possible');
+assert.match(mainSource, /const entryReady = boot\.ready\(\(\) => audio\.prepare\(\)\);/,
+  'only the accepted boot gate delegates to silent, mute-aware device preparation');
 
 console.log('lazyAudio.selftest: deferred mixer and immediate loading tone passed');

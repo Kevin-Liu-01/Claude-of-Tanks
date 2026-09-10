@@ -9,6 +9,12 @@ let nightLighting = null;
 const target = {};
 const calls = [];
 const action = (...args) => { calls.push(args); return args[0] ?? null; };
+const schedulerObserverHandle = { state: { active: true }, dispose: action };
+let attachedSchedulerObserver = null;
+const observeFrameLoopScheduler = (observer) => {
+  attachedSchedulerObserver = observer;
+  return schedulerObserverHandle;
+};
 const surface = installDebugSurface({
   scene: { name: 'scene' }, camera: {}, renderer: {}, post: {}, lighting: {},
   game: { spotting: { active: true } }, rig: {}, bus: {}, input: {}, settings: {},
@@ -24,6 +30,7 @@ const surface = installDebugSurface({
   getBattleVisualPoolStats: () => ({ size: 0 }),
   getGarageFramePacerStats: () => ({ sleeping: true }),
   getFrameLoopSchedulerStats: () => ({ scheduled: false }),
+  observeFrameLoopScheduler,
   getPhaseSceneResidency: () => ({ phase: 'garage' }),
   getGarageGpuResidency: () => ({ suspended: false }),
   getLastWorldRelease: () => null,
@@ -52,6 +59,12 @@ const surface = installDebugSurface({
 }, target);
 
 assert.equal(target.__DEBUG, surface);
+assert.equal(attachedSchedulerObserver, null, 'installing diagnostics never arms the frame observer');
+assert.equal(surface.observeFrameLoopScheduler, observeFrameLoopScheduler,
+  'the explicit port preserves the actual scheduler attachment and owned cleanup');
+const decisionObserver = () => {};
+assert.equal(surface.observeFrameLoopScheduler(decisionObserver), schedulerObserverHandle);
+assert.equal(attachedSchedulerObserver, decisionObserver);
 assert.equal(surface.nightLighting, null, 'diagnostics do not acquire lighting merely by installation');
 nightLighting = { prepare: action, reset: action };
 assert.equal(surface.nightLighting, nightLighting,

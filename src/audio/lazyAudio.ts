@@ -3,7 +3,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * Boot-light audio facade.
  *
  * The full synthesized/spatial mixer is intentionally loaded only after
- * explicit sound intent. Ready may silently prepare the shared AudioContext
+ * explicit sound intent. Ready/accepted boot entry may silently prepare the shared AudioContext
  * inside its gesture. Battle gives its opaque loader a rendering opportunity
  * before device startup when sticky activation is available, then starts this module's
  * tiny oscillator-only loading bed immediately. The dynamically imported
@@ -42,7 +42,7 @@ export interface LazyAudioOptions {
 
 export interface LazyAudio {
   preload(): Promise<AudioMixerModule | null>;
-  /** Gesture-only device preparation; no mixer, tone, or dependency transfer. */
+  /** Unmuted gesture-only device preparation; no mixer, tone, or dependency transfer. */
   prepare(): void;
   resume(): void;
   /** Explicit Battle intent only; preserves legacy gesture-time unlocking. */
@@ -78,13 +78,15 @@ function stopFallback(record: FallbackLoadingTone | null, fadeS = 0.08): void {
 }
 
 /** Immediate loading sound: no fetch, decode, timer, or frame-loop work. */
-export function startFallbackLoadingTone(context: AudioContext | null): FallbackLoadingTone | null {
+export function startFallbackLoadingTone(
+  context: AudioContext | null, destination?: AudioNode,
+): FallbackLoadingTone | null {
   if (!context) return null;
   const now = context.currentTime;
   const gain = context.createGain();
   gain.gain.setValueAtTime(0.0001, now);
   gain.gain.exponentialRampToValueAtTime(0.055, now + 0.08);
-  gain.connect(context.destination);
+  gain.connect(destination ?? context.destination);
 
   const rumble = context.createOscillator();
   rumble.type = 'sine';
@@ -117,6 +119,15 @@ export function startFallbackLoadingTone(context: AudioContext | null): Fallback
   return { context, gain, nodes: [rumble, machinery, engage] };
 }
 
+function storedMasterVolume(): number {
+  try {
+    const settings = JSON.parse(localStorage.getItem('cot.settings.v1') || 'null');
+    const value = settings?.volMaster;
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.max(0, Math.min(1, value));
+  } catch { /* unavailable/invalid storage retains the mixer default */ }
+  return 0.8;
+}
+
 export function createLazyAudio({
   getMapId,
   hasStickyActivation = () => (
@@ -137,11 +148,16 @@ export function createLazyAudio({
   let realPromise: Promise<AudioMixer | null> | null = null;
   let bus: EventBus | null = null;
   let stopPhaseTracking: (() => void) | null = null;
+  let stopVolumeTracking: (() => void) | null = null;
   let latestPhase = 'garage';
   let fallback: FallbackLoadingTone | null = null;
+  // One output owner also controls fading fallback nodes after handoff. Their
+  // envelope automation can never ramp past an exact-zero master/mute gain.
+  let fallbackOutput: GainNode | null = null;
   let loadingRequested = false;
   let ambientRequested = false;
   let muted = false;
+  let masterVolume = storedMasterVolume();
   let garageStingPending = false;
   let loadingRevision = 0;
 
@@ -157,18 +173,28 @@ export function createLazyAudio({
     // cost at explicit Ready intent, not on the synchronized battle edge.
     // Preparation is optional: unavailable devices must not block readiness,
     // and a later Battle gesture still retries the normal unlock path.
+    if (muted || masterVolume <= 0) return;
     try { unlockContext(); } catch { /* optional device preparation */ }
+  };
+
+  const applyFallbackVolume = (): void => {
+    if (fallbackOutput) fallbackOutput.gain.value = muted ? 0 : masterVolume;
+  };
+
+  const latchMasterVolume = (value: number): void => {
+    if (!Number.isFinite(value)) return;
+    masterVolume = Math.max(0, Math.min(1, value));
+    applyFallbackVolume();
   };
 
   const settleReal = (created: AudioMixer): AudioMixer => {
     real = created;
     if (bus) real.bindBus(bus);
-    // createAudio may adopt an already-unlocked context. Construct its graph
-    // before invoking methods that write graph nodes (mute/applyMaster). The
-    // previous order rejected this promise and left a half-initialized mixer
-    // whose first engine update tried to connect to a null bus.
-    if (context) real.resume();
+    // These setters latch before the first graph is built. Its destination
+    // gain must start at the latest intent, not fade down after sources start.
     real.mute(muted);
+    real.setMasterVolume(masterVolume);
+    if (context) real.resume();
     if (fallback) {
       stopFallback(fallback);
       fallback = null;
@@ -232,7 +258,14 @@ export function createLazyAudio({
     }
     if (loadingRequested) {
       const unlocked = unlockContext();
-      if (unlocked && !fallback) fallback = startFallbackLoadingTone(unlocked);
+      if (unlocked && !fallback) {
+        if (!fallbackOutput) {
+          fallbackOutput = unlocked.createGain();
+          applyFallbackVolume();
+          fallbackOutput.connect(unlocked.destination);
+        }
+        fallback = startFallbackLoadingTone(unlocked, fallbackOutput);
+      }
       requestReal();
     } else if (fallback) {
       stopFallback(fallback, 0.16);
@@ -262,6 +295,12 @@ export function createLazyAudio({
     bindBus(nextBus: EventBus) {
       bus = nextBus;
       stopPhaseTracking?.();
+      stopVolumeTracking?.();
+      stopVolumeTracking = nextBus.on('ui:volumes', (event) => {
+        if (event && typeof event === 'object' && 'master' in event
+            && typeof event.master === 'number') latchMasterVolume(event.master);
+        // The bound mixer independently owns the canonical full channel event.
+      });
       // The mixer may arrive after the battle phase edge. Carry that state
       // across the deferred transfer without re-emitting a global event.
       stopPhaseTracking = nextBus.on('phase:change', (event) => {
@@ -275,10 +314,13 @@ export function createLazyAudio({
     update(dt: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]) {
       real?.update(dt, listener, tanks);
     },
-    setMasterVolume(value: number) { real?.setMasterVolume(value); },
+    setMasterVolume(value: number) {
+      latchMasterVolume(value);
+      real?.setMasterVolume(masterVolume);
+    },
     mute(on: boolean) {
       muted = !!on;
-      if (fallback) fallback.gain.gain.value = muted ? 0.0001 : 0.055;
+      applyFallbackVolume();
       real?.mute(muted);
     },
     playGarageSting() {
