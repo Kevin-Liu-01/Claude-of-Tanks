@@ -223,3 +223,53 @@ strict endpoint overlap, same-origin source metadata, finite zero timestamps,
 observer failure/unsupported handling, pending-record drains, rearm and
 idempotent cleanup. Failure in this observer does not change Long Task
 support, retained entries or overlap calculations.
+
+## Cooperative height-field preparation
+
+Source inspection found an unsliced owner between the `Surveying terrain`
+and `Building terrain meshes` callbacks: the entire height-field constructor.
+Urban alone stamps 256 road segments over a 257×257 lookup (16,908,544 distance
+tests), then prepares support/water data and scans 129×129 exact heights for
+the range. This is a real cancellation/pacing gap, not proof that it owned
+every millisecond of the observed browser callback gap.
+
+The follow-up retains one shared constructor implementation. The synchronous
+API drains it; the fine-sliced async map path awaits completed segment,
+corridor-row, support and height-range-row checkpoints. Progress counts
+completed construction units, not estimated CPU cost. Coarse callers keep
+their existing callbacks. No terrain resolution, arithmetic, RNG, road winner
+order, Float32 writes or returned query policy is intentionally changed.
+Private grids are published only when the field is complete. Rejection closes
+the iterator without replacing the original error, including rejection of
+the final fraction-1 checkpoint.
+
+The complete unsliced constructor is frozen at SHA256
+`0767b9f0a0ceeb827665c61a57ec6313a939ad875fea7e7ff2d8fb104fc8bc36`.
+The first fixture attempt failed that check due solely to an extra trailing
+newline in its reconstruction. The fixture was corrected; the original hash
+and runtime bytes were retained. That failed invocation ran no downstream
+parity or type gates. A second attempt reached the map-composition fixture
+after parity/cancellation checks, then exposed a missing spawn-layout field
+in the fixture stub. That stub alone was corrected; neither failed invocation
+is counted as a passing test.
+
+The third invocation passes all four focused selftests (`roadLookupGrid`,
+`terrainFastGrid`, `terrainStreaming`, `worldBuildCoordinator`) and native
+TypeScript/core-unused. All 30 maps preserve raw/final grid bytes, exact/fast
+height, normals, water/depth, track surface, min/max, layout and warmed-tile
+behavior. The existing 30-map × four-LOD-configuration geometry comparisons
+also pass. Cancellation tests cover early/last roads, the final corridor,
+support, the first/final scan row, held callbacks and cleanup failure;
+fine/coarse map callers preserve their respective composition contracts.
+
+The seventh check, the strict whole-file complexity gate, fails on three
+inherited declarations: `heightAt` (cyclomatic 22, cognitive 34),
+`applyHeightConstraints` (cognitive 24), and `createSplatMaterialSteps`
+(cyclomatic/cognitive 23). Each declaration is byte-identical to `3c2abead2`;
+their SHA256 values are respectively
+`af2771b9d21431b6e1d4eca90ee51798d48151f99a98904acc92d349eb8069f6`,
+`d891dadb7ed9ab2595bad0e4a427ff367f46db51d0746303163d67ce90a51599`, and
+`213438aedd2c7b89a646a858d3b676baf920c96768ccd4005ef045ae1ba3f711`.
+There are no new flagged declarations or explicit `any`/`unknown` additions.
+This inherited failed gate is retained, not waived, hidden or fixed by
+unrelated terrain refactoring. Native performance qualification is separate.

@@ -63,6 +63,31 @@ function declaration(text, name) {
 const lookup = declaration(source, 'buildRoadLookupGrid').getText();
 const segment = declaration(source, 'stampRoadLookupSegment').getText();
 const support = ['clamp', 'smoothstep', 'segDist'].map(name => declaration(source, name).getText()).join('\n');
+// Reconstruct the complete unsliced constructor at 3c2abead2 by removing only
+// scheduling. Its frozen bytes cover every formula, RNG and initialization
+// order, independently of the sync/async comparison below. No updated golden.
+const originalHeightField = declaration(source, 'heightFieldBuildSteps').getText()
+  .replace('function* heightFieldBuildSteps(', 'export function createHeightField(')
+  .replace('): Generator<number, HeightField, void> {', '): HeightField {')
+  .replace(/  \/\/ Count completed segments, corridor rows, support setup and range rows;\n  \/\/ this is construction progress, not elapsed-time or work-cost prediction\.\n  const totalHeightSlices = roads\.reduce\(\(sum, nodes\) => sum \+ Math\.max\(0, nodes\.length - 1\), 0\)\n    \+ GN \+ 1 \+ 129;\n  let completedHeightSlices = 0;\n/, '')
+  .replace('function* buildRoadLookupGrid(): Generator<number, void, void>', 'function buildRoadLookupGrid(): void')
+  .replace(/^ *yield \+\+completedHeightSlices \/ totalHeightSlices;\n/gm, '')
+  .replace('yield* buildRoadLookupGrid();', 'buildRoadLookupGrid();')
+  .replace('function* measureHeightRange(): Generator<number, [number, number], void>', 'function measureHeightRange(): [number, number]')
+  .replace(`    for (let gz = 0; gz <= 128; gz++) {
+      for (let gx = 0; gx <= 128; gx++) {
+        const h = getHeightAt(gx * 8 - HALF, gz * 8 - HALF);
+        if (h < minY) minY = h;
+        if (h > maxY) maxY = h;
+      }
+    }`, `    for (let gz = 0; gz <= 128; gz++) for (let gx = 0; gx <= 128; gx++) {
+      const h = getHeightAt(gx * 8 - HALF, gz * 8 - HALF);
+      if (h < minY) minY = h;
+      if (h > maxY) maxY = h;
+    }`)
+  .replace('const [minY, maxY] = yield* measureHeightRange();', 'const [minY, maxY] = measureHeightRange();');
+assert.equal(sha(originalHeightField + '\n'),
+  '0767b9f0a0ceeb827665c61a57ec6313a939ad875fea7e7ff2d8fb104fc8bc36');
 for (const name of ['stampRoadLookupSegment', 'buildRoadLookupGrid']) {
   function inspect(node) {
     assert.ok(!ts.isNewExpression(node) && !ts.isArrayLiteralExpression(node)
@@ -76,7 +101,11 @@ function compileLookup(body, distance = support) {
   // no CLI, downloaded, user or rendered input enters this evaluation.
   return new Function('fixture', stripTypeScriptTypes(`
     const { GN, CELL, HALF, roads, corridors, gRoadDist, gSegRoad, gSegIdx, gSegT, gCorridor } = fixture;
-    ${distance}\n${body}\nbuildRoadLookupGrid();`));
+    let completedHeightSlices = 0;
+    const totalHeightSlices = 1;
+    ${distance}\n${body}
+    const steps = buildRoadLookupGrid();
+    if (steps) for (const _ of steps) { /* execute every current-generator write */ }`));
 }
 const current = compileLookup(`${segment}\n${lookup}`);
 const previous = compileLookup(legacyLookup,
@@ -129,10 +158,12 @@ async function constructor(legacy) {
   if (legacy) {
     text = replaceOnce(text, lookup, legacyLookup);
     text = replaceOnce(text, declaration(source, 'segDist').getText(), legacyDistance);
+    text = replaceOnce(text, '  yield* buildRoadLookupGrid();', '  buildRoadLookupGrid();');
   }
   text += '\nlet __lookupTap = (_stage: string, _grids: any): void => {};\nexport function setLookupTap(fn: typeof __lookupTap): void { __lookupTap = fn; }\n';
   const tap = stage => `__lookupTap('${stage}', { gRoadDist, gRoadElev, gSegRoad, gSegIdx, gSegT, gCorridor });`;
-  text = replaceOnce(text, '  buildRoadLookupGrid();', `  buildRoadLookupGrid();\n${tap('lookup')}`);
+  const lookupCall = legacy ? '  buildRoadLookupGrid();' : '  yield* buildRoadLookupGrid();';
+  text = replaceOnce(text, lookupCall, `${lookupCall}\n${tap('lookup')}`);
   const afterRoadSupport = '  // --- lake sheet levels (pipeline without lakes/pads), then spawn pads ---';
   text = replaceOnce(text, afterRoadSupport, `${tap('final')}\n${afterRoadSupport}`);
   const url = new URL(`./terrain.ts?selftest=road-lookup-${legacy ? 'legacy' : 'current'}`, import.meta.url).href;
@@ -142,15 +173,23 @@ async function constructor(legacy) {
   try { return await import(url); } finally { hooks.deregister(); }
 }
 const modules = [await constructor(true), await constructor(false)];
-function construct(module, id) {
+function construct(module, id, cooperative = false) {
   const snapshots = [];
   module.setLookupTap((stage, grids) => snapshots.push({ stage, grids: Object.fromEntries(
     Object.entries(grids).map(([name, array]) => [name,
       { type: array.constructor.name, length: array.length, bytes: array.byteLength, sha256: sha(bytes(array)) }])) }));
-  try {
-    const field = module.createHeightField(1337, getMapConfig(id));
+  const finish = field => {
     assert.deepEqual(snapshots.map(row => row.stage), ['lookup', 'final']);
     return { field, snapshots };
+  };
+  if (cooperative) {
+    const fractions = [];
+    return module.createHeightFieldAsync(1337, getMapConfig(id), fraction => fractions.push(fraction))
+      .then(field => ({ ...finish(field), fractions }))
+      .finally(() => module.setLookupTap(() => {}));
+  }
+  try {
+    return finish(module.createHeightField(1337, getMapConfig(id)));
   } finally { module.setLookupTap(() => {}); }
 }
 function fieldSamples(field) {
@@ -158,7 +197,8 @@ function fieldSamples(field) {
   for (let z = -512; z <= 512; z += 32) for (let x = -512; x <= 512; x += 32) {
     const px = x + .375, pz = z + .625, normal = field.getNormalAt(px, pz);
     const values = [field.getHeightAt(px, pz), field.getHeightAtFast(px, pz), normal.x, normal.y, normal.z,
-      field._roadDist(px, pz), field.getWaterMaskAt(px, pz)];
+      field._roadDist(px, pz), field.getWaterMaskAt(px, pz),
+      field.getWaterDepthAt(px, pz), field.getTrackSurfaceAt(px, pz)];
     assert(values.every(Number.isFinite), 'actual field samples remain finite');
     samples.push([...values, field.getGroundType(px, pz)]);
   }
@@ -167,11 +207,142 @@ function fieldSamples(field) {
 const receipts = [];
 for (const id of MAP_IDS) {
   const before = construct(modules[0], id), after = construct(modules[1], id);
+  const paced = await construct(modules[1], id, true);
   assert.deepEqual(after.snapshots, before.snapshots, `${id}: exact raw and final grid bytes/budgets`);
   assert.deepEqual(Object.keys(after.field).sort(), Object.keys(before.field).sort(), 'same returned API');
   assert.deepEqual(after.field._layout, before.field._layout, `${id}: road layouts and placements unchanged`);
   assert.deepEqual([after.field.minY, after.field.maxY], [before.field.minY, before.field.maxY]);
   assert.deepEqual(fieldSamples(after.field), fieldSamples(before.field), `${id}: actual exact/fast/normal/water/ground output`);
-  receipts.push({ id, grids: 12, fieldSamples: 1089, exact: true });
+  assert.deepEqual(paced.snapshots, after.snapshots, `${id}: yielded raw and final grid bytes`);
+  assert.deepEqual(Object.keys(paced.field).sort(), Object.keys(after.field).sort());
+  assert.deepEqual(paced.field._layout, after.field._layout);
+  assert.deepEqual([paced.field.minY, paced.field.maxY], [after.field.minY, after.field.maxY]);
+  assert.deepEqual(fieldSamples(paced.field), fieldSamples(after.field), `${id}: yielded exact/fast/normal/water/depth/track output`);
+  const expectedSlices = after.field._layout.roads.reduce((sum, nodes) => sum + nodes.length - 1, 0) + 257 + 1 + 129;
+  assert.deepEqual(paced.fractions, Array.from({ length: expectedSlices }, (_, index) => (index + 1) / expectedSlices),
+    `${id}: completed segment, corridor/support/range progress is monotonic and exact`);
+  const warmPoints = [{ x: 0, z: 0 }, { x: 15.75, z: 16.25, radiusM: 1 }];
+  assert.deepEqual([...paced.field.warmFastTilesAround(warmPoints)], [...after.field.warmFastTilesAround(warmPoints)]);
+  assert.deepEqual([...paced.field.warmFastTilesAround(warmPoints)], [], 'completed fast tiles are not rebuilt');
+  receipts.push({ id, grids: 18, fieldSamples: 1089, checkpoints: expectedSlices, exact: true });
+}
+
+// Tap the actual private construction phases and generator close in memory.
+// An abandoned callback cannot continue a later grid/scan or publish a field.
+async function cancellationModule() {
+  const generator = declaration(source, 'heightFieldBuildSteps').getText();
+  const body = declaration(source, 'heightFieldBuildSteps').body.getText();
+  let observed = generator.replace(body, `{ try ${body} finally { __heightClosed++; } }`);
+  const stamp = '        stampRoadLookupSegment(r, s, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);';
+  observed = replaceOnce(observed, stamp, stamp + "\n        __heightEvents.push('segment');");
+  observed = replaceOnce(observed, '  buildRoadElevationGrid();',
+    "  __heightEvents.push('support');\n  buildRoadElevationGrid();");
+  observed = replaceOnce(observed, '      for (let gx = 0; gx <= 128; gx++) {',
+    "      __heightEvents.push('range');\n      for (let gx = 0; gx <= 128; gx++) {");
+  const text = source.replace(generator, observed)
+    + '\nexport let __heightClosed = 0;\nexport const __heightEvents: string[] = [];\n';
+  const url = new URL('./terrain.ts?selftest=heightfield-close', import.meta.url).href;
+  const hooks = registerHooks({ load(request, context, next) {
+    return request === url ? { format: 'module-typescript', source: text, shortCircuit: true } : next(request, context);
+  } });
+  try { return await import(url); } finally { hooks.deregister(); }
+}
+const observedHeight = await cancellationModule();
+const urban = getMapConfig('urban');
+const segments = modules[1].createLayout(urban).roads.reduce((sum, nodes) => sum + nodes.length - 1, 0);
+for (const [cancelAt, asynchronous] of [[1, false], [1, true], [segments, false],
+  [segments + 257, true], [segments + 258, false], [segments + 259, false],
+  [segments + 259, true], [segments + 387, true]]) {
+  const failure = new Error('cancel private height field'), closedBefore = observedHeight.__heightClosed;
+  observedHeight.__heightEvents.length = 0;
+  let ticks = 0, lastFraction = 0, published = false;
+  const pending = observedHeight.createHeightFieldAsync(1337, urban, fraction => {
+    lastFraction = fraction;
+    if (++ticks !== cancelAt) return;
+    if (asynchronous) return Promise.reject(failure);
+    throw failure;
+  }).then(() => { published = true; });
+  await assert.rejects(pending, error => error === failure);
+  assert.equal(published, false);
+  assert.equal(ticks, cancelAt);
+  assert.equal(lastFraction, cancelAt / (segments + 387), 'even fraction=1 remains cancellable before publication');
+  assert.equal(observedHeight.__heightClosed, closedBefore + 1, 'actual delegated construction closes once');
+  assert.deepEqual(observedHeight.__heightEvents, [
+    ...Array(Math.min(cancelAt, segments)).fill('segment'),
+    ...(cancelAt > segments + 257 ? ['support'] : []),
+    ...Array(Math.max(0, cancelAt - segments - 258)).fill('range'),
+  ], 'no later road/support/range work after rejection');
+}
+{
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  observedHeight.__heightEvents.length = 0;
+  let ticks = 0, published = false;
+  const pending = observedHeight.createHeightFieldAsync(1337, urban, () => { if (++ticks === 1) return held; })
+    .then(field => { published = true; return field; });
+  assert.deepEqual(observedHeight.__heightEvents, ['segment']);
+  await Promise.resolve();
+  assert.equal(published, false, 'a pending pacing promise cannot expose a partial field');
+  assert.equal(ticks, 1);
+  release();
+  assert.ok((await pending).getHeightAt, 'only the completed field reaches the caller');
+}
+{
+  const failure = new Error('original pacing failure');
+  let advances = 0, closes = 0;
+  const run = new Function('heightFieldBuildSteps', stripTypeScriptTypes(
+    declaration(source, 'createHeightFieldAsync').getText()).replace('export ', '')
+    + '\nreturn createHeightFieldAsync;')(() => ({
+    next() { advances++; return { done: false, value: 0.1 }; },
+    return() { closes++; throw new Error('close failed'); },
+  }));
+  await assert.rejects(run(1337, null, () => { throw failure; }), error => error === failure);
+  assert.equal(advances, 1);
+  assert.equal(closes, 1, 'failed close never masks the original callback error');
+}
+
+// Execute the actual map composition seam without geometry or source IO.
+// Fine callers pace Surveying; coarse callers retain their original callbacks.
+const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
+const mapAsync = declaration(mapSource, 'createMapAsync').getText();
+function mapFixture(fine, fail = false) {
+  const field = { _layout: { spawns: { player: { x: 0, z: 0 } } } };
+  const events = [], fractions = [], failure = new Error('cancel map surveying');
+  const dependencies = {
+    getMapConfig: () => urban, preloadPropModels: () => Promise.resolve(), prepareSourcedTerrain: () => ({}),
+    createHeightField() { assert.equal(fine, false); events.push('sync-field'); return field; },
+    async createHeightFieldAsync(_seed, _config, tick) {
+      assert.equal(fine, true); events.push('field-start');
+      await tick(0.5); await tick(1);
+      events.push('field-complete'); return field;
+    },
+    requireTerrainRoot: value => value,
+    async buildTerrainMeshesAsync(actual) { assert.equal(actual, field); events.push('terrain'); return { userData: {} }; },
+    async createVegetationAsync(actual) { assert.equal(actual, field); events.push('vegetation'); return {}; },
+    async createPropsAsync(actual) { assert.equal(actual, field); events.push('props'); return {}; },
+    assembleWorld(_engine, _config, actual) { assert.equal(actual, field); events.push('assembled'); return {}; },
+  };
+  const run = new Function(...Object.keys(dependencies), stripTypeScriptTypes(mapAsync).replace('export ', '')
+    + '\nreturn createMapAsync;')(...Object.values(dependencies));
+  const pending = run({}, { mapId: 'urban' }, (label, fraction) => {
+    fractions.push([label, fraction]);
+    if (fail && label === 'Surveying terrain' && fraction > 0) throw failure;
+  }, { fineSlices: fine });
+  return { pending, events, fractions, failure };
+}
+for (const fine of [false, true]) {
+  const h = mapFixture(fine);
+  await h.pending;
+  assert.deepEqual(h.events, [...(fine ? ['field-start', 'field-complete'] : ['sync-field']),
+    'terrain', 'vegetation', 'props', 'assembled']);
+  assert.deepEqual(h.fractions, [['Surveying terrain', 0],
+    ...(fine ? [['Surveying terrain', 0.17], ['Surveying terrain', 0.34]] : []),
+    ['Building terrain meshes', 0.34], ['Planting vegetation', 0.58],
+    ['Placing structures', 0.82], ['Sealing the battlefield', 0.96]]);
+}
+{
+  const h = mapFixture(true, true);
+  await assert.rejects(h.pending, error => error === h.failure);
+  assert.deepEqual(h.events, ['field-start'], 'cancelled surveying cannot create a terrain/GPU owner');
 }
 console.log('roadLookupGrid selftest: PASS', JSON.stringify({ fixtures: 5, maps: receipts }));

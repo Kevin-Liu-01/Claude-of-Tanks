@@ -8,6 +8,7 @@ import { createSourcedTextureState, type SourcedTextureResult, type SourcedTextu
 import * as THREE from 'three';
 import {
   createHeightField,
+  createHeightFieldAsync,
   buildTerrainMeshes,
   buildTerrainMeshesAsync,
 } from './terrain.ts';
@@ -239,7 +240,9 @@ export async function createMapAsync(
     total: number,
   ) => step(label, f0 + (f1 - f0) * Math.min(1, completed / Math.max(1, total)));
   await step('Surveying terrain', 0.0);
-  const heightField = createHeightField(seed, config);
+  const heightField = fineSlices
+    ? await createHeightFieldAsync(seed, config, fraction => step('Surveying terrain', fraction * 0.34))
+    : createHeightField(seed, config);
   await step('Building terrain meshes', 0.34);
   const terrain = requireTerrainRoot(await buildTerrainMeshesAsync(heightField, engineCtx, config,
     sub('Building terrain meshes', 0.34, 0.58), fineSlices, {
