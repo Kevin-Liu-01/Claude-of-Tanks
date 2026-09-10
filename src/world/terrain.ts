@@ -555,6 +555,41 @@ export function createHeightField(
   seed = 1337,
   cfg: TerrainMapConfig | null = null,
 ): HeightField {
+  const steps = heightFieldBuildSteps(seed, cfg);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** Same exact field, with completed construction work paced by its caller. */
+export async function createHeightFieldAsync(
+  seed = 1337,
+  cfg: TerrainMapConfig | null = null,
+  tick: ((fraction: number) => Promise<void> | void) | null = null,
+): Promise<HeightField> {
+  const steps: Iterator<number, HeightField, void> = heightFieldBuildSteps(seed, cfg);
+  let completed = false;
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      if (tick) await tick(step.value);
+      step = steps.next();
+    }
+    completed = true;
+    return step.value;
+  } finally {
+    if (!completed) {
+      // A rejected pacing callback must close delegated work without masking
+      // its error. Private CPU grids never become a partially published field.
+      try { steps.return?.(); } catch { /* preserve the original failure */ }
+    }
+  }
+}
+
+function* heightFieldBuildSteps(
+  seed = 1337,
+  cfg: TerrainMapConfig | null = null,
+): Generator<number, HeightField, void> {
   const layout = createLayout(cfg);
   const T = layout.terrain;
   const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);
@@ -592,6 +627,11 @@ export function createHeightField(
   const gCorridor = new Float32Array(GN * GN);
 
   const roads = layout.roads;
+  // Count completed segments, corridor rows, support setup and range rows;
+  // this is construction progress, not elapsed-time or work-cost prediction.
+  const totalHeightSlices = roads.reduce((sum, nodes) => sum + Math.max(0, nodes.length - 1), 0)
+    + GN + 1 + 129;
+  let completedHeightSlices = 0;
   const corridors = [_SPAWN_PLAYER, ..._SPAWN_ENEMIES].map(
     (s) => [s.x, s.z, _VILLAGE.cx, _VILLAGE.cz]
   );
@@ -619,11 +659,12 @@ export function createHeightField(
     }
   }
 
-  function buildRoadLookupGrid(): void {
+  function* buildRoadLookupGrid(): Generator<number, void, void> {
     for (let r = 0; r < roads.length; r++) {
       const nodes = roads[r];
       for (let s = 0; s < nodes.length - 1; s++) {
         stampRoadLookupSegment(r, s, nodes[s][0], nodes[s][1], nodes[s + 1][0], nodes[s + 1][1]);
+        yield ++completedHeightSlices / totalHeightSlices;
       }
     }
     // Deployment corridors do not depend on road-grid writes. Keep their
@@ -640,9 +681,10 @@ export function createHeightField(
         }
         gCorridor[i] = cw;
       }
+      yield ++completedHeightSlices / totalHeightSlices;
     }
   }
-  buildRoadLookupGrid();
+  yield* buildRoadLookupGrid();
 
   function gridSample(arr: ArrayLike<number>, x: number, z: number): number {
     const gx = clamp((x + HALF) / CELL, 0, GN - 1.0001);
@@ -1224,17 +1266,21 @@ export function createHeightField(
     return false;
   }
 
-  function measureHeightRange(): [number, number] {
+  function* measureHeightRange(): Generator<number, [number, number], void> {
     let minY = Infinity, maxY = -Infinity;
-    for (let gz = 0; gz <= 128; gz++) for (let gx = 0; gx <= 128; gx++) {
-      const h = getHeightAt(gx * 8 - HALF, gz * 8 - HALF);
-      if (h < minY) minY = h;
-      if (h > maxY) maxY = h;
+    for (let gz = 0; gz <= 128; gz++) {
+      for (let gx = 0; gx <= 128; gx++) {
+        const h = getHeightAt(gx * 8 - HALF, gz * 8 - HALF);
+        if (h < minY) minY = h;
+        if (h > maxY) maxY = h;
+      }
+      yield ++completedHeightSlices / totalHeightSlices;
     }
     return [minY, maxY];
   }
   // --- min/max over a coarse scan ---
-  const [minY, maxY] = measureHeightRange();
+  yield ++completedHeightSlices / totalHeightSlices;
+  const [minY, maxY] = yield* measureHeightRange();
 
   // r6 terrain_environment: LANDFORM weight — 1 where the MESA field (and the
   // rocky map rim) shapes the terrain, 0 on dunes/flats. The splat shader's
