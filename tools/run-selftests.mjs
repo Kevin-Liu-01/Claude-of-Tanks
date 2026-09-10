@@ -18,6 +18,13 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/sourced-building-source.browser.selftest.mjs',
 ]);
 
+// This full-fleet child has a fixed 240s functional-test watchdog. Do not
+// compete with other native fleet builders while it runs or relax its limit.
+// It still uses the runner's lease (unlike a self-leasing browser test).
+export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
+  'src/vehicles/fleetLazy.selftest.mjs',
+]);
+
 // This caches compilation, NEVER test results or module instances. Every file
 // still executes all assertions in a fresh process. Node validates source and
 // engine versions. Respect explicit cache/coverage settings and opt-outs.
@@ -65,6 +72,7 @@ export async function runSelftestSuite(suiteName, suite, {
   runFile = runSelftestFile,
   lock = createCaptureLock(),
   ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES,
+  exclusiveCpuFiles = SELFTEST_EXCLUSIVE_CPU_FILES,
   refreshMs = 30_000,
   maxLeaseBatchMs = 45_000,
   now = () => performance.now(),
@@ -78,7 +86,7 @@ export async function runSelftestSuite(suiteName, suite, {
   }
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
-    concurrency, runFile, lock, ownedLeaseFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
+    concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
   });
   let held = false;
   let acquiredAt = 0;

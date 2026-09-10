@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runSelftestSuite, runSelftestFile, selftestWorkerCount } from './run-selftests.mjs';
+import { runSelftestSuite, runSelftestFile, selftestWorkerCount, SELFTEST_EXCLUSIVE_CPU_FILES } from './run-selftests.mjs';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 assert.equal(selftestWorkerCount({}), Math.min(8, availableParallelism()), 'bounded pool is the CLI default');
@@ -67,6 +67,24 @@ assert.deepEqual(normal.timings.map(row => row.file).sort(), ['a', 'b', 'browser
 const stoppedRefreshes = normal.refreshes;
 await new Promise(resolve => setTimeout(resolve, 15));
 assert.equal(normal.refreshes, stoppedRefreshes, 'finished pool clears its heartbeat');
+
+assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES,['src/vehicles/fleetLazy.selftest.mjs']);
+for(const concurrency of [2,4,8])for(const status of [0,7]){
+  const isolated=fixture(concurrency),file=SELFTEST_EXCLUSIVE_CPU_FILES[0];
+  const run=runSelftestSuite('exclusive-cpu',['a','b',file,'after'],isolated.options);
+  await tick();assert.deepEqual(isolated.starts,['a','b']);
+  isolated.finish('a');await tick();assert.deepEqual(isolated.starts,['a','b']);
+  isolated.finish('b');await tick();assert.deepEqual(isolated.starts,['a','b',file]);
+  assert.equal(isolated.held,true,'exclusive CPU child retains the runner-owned lease');
+  assert.equal(isolated.active.size,1,'timed fleet test has no CPU peers');
+  isolated.time(46_000);isolated.finish(file,{status});await tick();
+  if(status===0){
+    assert.deepEqual(isolated.starts,['a','b',file,'after']);
+    assert.equal(isolated.acquisitions,2,'long exclusive child yields FIFO before later CPU work');
+    isolated.finish('after');
+  }else assert.deepEqual(isolated.starts,['a','b',file],'exclusive failure stops admission');
+  assert.equal(await run,status);assert.equal(isolated.held,false);
+}
 
 for (const first of ['a', 'b']) {
   const failed = fixture(), other = first === 'a' ? 'b' : 'a';

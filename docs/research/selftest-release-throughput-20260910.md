@@ -27,6 +27,19 @@ current relief and canyon checks. This is a test/tool-only checkpoint, not a
 complete npm lifecycle or tank release claim. Frozen Type 10 contact/source
 evidence is unaffected. A new official complete lifecycle follows these fixes.
 
+## Timeout-sensitive fleet loading — exclusive CPU scheduling
+
+The Type 10 release retry on `06446f5f3` timed out the unchanged 240-second
+`fleetLazy.selftest.mjs` child while competing with the other full-fleet
+builders. It was a watchdog failure, not a failing loading assertion.
+`SELFTEST_EXCLUSIVE_CPU_FILES` now schedules that single file alone under the
+runner's existing lease. Earlier children drain first; normal FIFO yielding,
+failure propagation and subsequent eight-worker execution remain intact.
+No test-result caching, omission, timeout increase or threshold change is
+introduced. Deterministic two/four/eight-worker controls cover successful and
+failed exclusive children. This scheduling correction has no measured
+end-to-end speedup claim until a fresh real lifecycle completes.
+
 ## Eight-worker CPU ceiling — measured extension
 
 Ordinary `npm test` now uses `min(8, os.availableParallelism())` fresh CPU
