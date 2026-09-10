@@ -30,6 +30,25 @@ assert.equal(packageJson.scripts.pretest, expectedScripts.pre);
 assert.equal(packageJson.scripts.test, expectedScripts.core);
 assert.equal(packageJson.scripts.posttest, expectedScripts.post);
 
+// These independent whole-fleet CPU scans are long enough to exhaust the
+// runner's 45-second admission window. Keep them together, within their
+// existing lifecycle, so four workers do useful work before draining.
+assert.deepEqual(SELFTEST_SUITES.pre.slice(0,4),[
+  'src/vehicles/fleetLazy.selftest.mjs',
+  'src/vehicles/wheelQuality.selftest.mjs',
+  'src/vehicles/profiles/machineGunAttachment.selftest.mjs',
+  'src/vehicles/eraGameplayRegistration.selftest.mjs',
+]);
+assert.deepEqual(SELFTEST_SUITES.core.slice(0,6),[
+  'src/gallery/surfaceMarkupFleet.selftest.mjs',
+  'src/vehicles/fleetFloorClearance.selftest.mjs',
+  'src/vehicles/vehicleMarkings.selftest.mjs',
+  'src/vehicles/tankAssets.selftest.mjs',
+  'src/vehicles/combatAnatomy.selftest.mjs',
+  'src/vehicles/gunArticulation.selftest.mjs',
+]);
+assert.equal(SELFTEST_SUITES.post[0],'src/vehicles/mudguardFenderSeating.selftest.mjs');
+
 let total = 0;
 const listed = [];
 for (const [name, files] of Object.entries(SELFTEST_SUITES)) {
