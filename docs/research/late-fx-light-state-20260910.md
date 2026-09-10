@@ -58,6 +58,53 @@ controls remain required. This fixture certifies pixels and ownership, not FPS.
 
 The before regression failed as expected. Both positive integrated
 `lateFxSceneView` and `lateFxColorHandoff` CPU checks passed on revision
-`be1844806` in the September 10 17-file focused batch (all passed). Exact
-integrated build and native acceptance remain pending the shared fleet-release
-window. No production performance claim or deployment is made by this note.
+`be1844806` in the September 10 17-file focused batch (all passed).
+
+## Native and integrated profile qualification
+
+The later integrated `0ca81d5c15c6a9f6a18b7ee15d18885231245c2c` build passes
+all twelve native moving-frame comparisons with exact pixel equality and all
+four negative controls detecting their intended failure. Evidence:
+`/private/tmp/cot-interactive-baseline.gsRCvU/late-fx-scene-view-native-r1/report.json`.
+Chrome 151.0.7922.47 / native ANGLE Metal Apple M5 Max; no browser/server or
+capture lease remains open. The retained source-hash receipt is
+`237928f98bc85dc054df07a963d2da23deb2930fa3fd72e664a5f52ba65b1641`.
+
+A bounded CPU-profile comparison uses conservative aligned gameplay windows
+from `rematch-pacing-gameplay-profile-r1.json` and
+`integrated-gameplay-profile-r1.json` in the same evidence directory. Both
+use Chrome151 and the same pinned fourteen-tank roster and control sequence.
+The integrated build contains other changes: this is supporting diagnostic
+evidence, not an isolated one-patch causal or FPS experiment.
+
+The aligned calculation includes only sample intervals guaranteed inside
+gameplay for every feasible profile/page alignment. Earlier page-start bounds
+are 1475.600–1517.402 ms; integrated bounds are 1429.236–1476.136 ms. Retained
+weights are 59,965.141 / 59,959.625 ms. Raw profile SHA256 values are respectively
+`25a653af072e37d34c678ada280521f3b783fc5cc745a074b55bd26405924ebd`
+and `5b2745f934047fd20a60caee7eaf7ba5cd7156480f071a1e297c1e0c4140d48c`.
+
+| Sampled self work, ms | Earlier profile | Integrated profile |
+| --- | ---: | ---: |
+| getParameters, main forward | 2261.454 | 791.074 |
+| getParameters, shadow | 450.969 | 431.105 |
+| getParameters, late effects | 5.533 | 4.519 |
+| getParameters, all | 2717.956 | 1226.698 |
+| getProgram, all | 741.139 | 353.440 |
+| Object3D.updateMatrixWorld | 660.372 | 690.678 |
+| Garbage collection | 148.700 | 116.088 |
+
+Main-forward getParameters weight is lower in all six ten-second bins. The
+new eligibility walk is not free: `canBorrowObject` has 258.571 ms self weight,
+and all identifiable selection work totals 272.099 ms (about 0.076 ms per
+submitted frame on average). These are statistical profile weights, not
+direct measured function latency or guaranteed per-frame maxima. There is no
+allocation-profile or leak proof in these samples.
+
+The new profile has no long tasks ≥50 ms during its sixty-second released
+gameplay window, but its own speed certificate is refused for profiler
+overhead and its unchanged p99 budget is missed. The unprofiled followup
+passes p99 but still fails three other budgets. See the
+[complete qualification and limits](interactive-performance-qualification-20260910.md).
+Historical untraced stalls remain unattributed; these results do not establish
+that all graphics, movement, background-host or native startup lag is resolved.
