@@ -68,5 +68,50 @@ HIGH/LOW: 1,744 auxiliary faces, 2,320 independent held-out rays per detail,
 The paired-stock primitive test is registered in the full npm lifecycle;
 the complete registry accounts for 958 checks on this candidate's base.
 
-Complete road/end wheel-to-shoe motion, guards/ground sweeps and native LOW
-close views remain, as do regenerated assets/anatomy and full release checks.
+## Fitted contact follow-up
+
+The broader native road-stock sweep found a real missing constraint: the
+original lower course cut into an end road wheel by 28.916 mm at full droop.
+Holding its end influence alone reduced that failure but still left a
+10.673 mm wave-pose intersection. The new opt-in `fitLoadedRun` solves the
+finite lower spans against the live wheel-rim envelopes. It keeps duplicated
+cross-sections welded, preserves band thickness, reuses constructor-owned
+scratch, and feeds the existing near/far moving shoes from the same course.
+The existing endpoint-ownership table was correct and is not changed.
+
+A full-width carrier also intersected the canonical sprocket teeth. Narrowing
+the entire carrier fixed the tooth intersection but failed actual visible
+roller support (48.621 mm gap). The final closed carrier is recessed only in
+the sprocket's lateral engagement lanes: 420 mm through z = −2.40 m, tapering
+back to the original 486.738 mm at z = −2.30 m. Collinear transition sections
+retain one connected course; all return-roller crowns retain full-width stock.
+
+Final native HIGH/LOW observations on this candidate:
+
+- `type10XRunningGear.selftest.mjs`: all ten road wheels, actual +0.30/−0.22 m
+  axle travel and wave terrain, 16 link phases per pose; **128 poses pass**,
+  minimum finite stock clearance **1.2585 mm**. Moving a real carrier upward
+  is rejected as a negative control. Six return rotors must actually exist.
+- The repeated roller-motion test still gives minimum **0.4852 mm** clearance;
+  visible support is **2.957 mm HIGH / 5.026 mm LOW** at 15/75/200 m, below
+  the unchanged 6 mm limit. The committed regression includes this support
+  check, not only a component-count assertion.
+- Native batched end-body/hardware edge-crossing diagnostic: zero carrier
+  crossings for all four end wheels, four spin phases and both details.
+  This is a finite crossing diagnostic, not a complete containment proof.
+- The final LOD-selected, instance-expanded census is **63,230 HIGH / 39,302
+  LOW** triangles. Published skirt/support checkpoint `8f8791244` was
+  **70,542 / 65,886**: an additional **10.37% / 40.35%** reduction. This is
+  not a GPU timing or switch-latency claim.
+- The shared-default preservation test still matches its immutable published
+  fingerprint in all twelve assemblies and 96 motion snapshots. Other
+  vehicles do not opt into the new lower-span fitting or lateral taper.
+- Primitive disposal is now observed independently: all indexed inputs,
+  flattened copies and HIGH fasteners release exactly once. Returned stock
+  retains native ownership. No geometry vertices change in this disposal fix.
+- Fresh typecheck/core-unused and source panel/ballistics/history tests pass;
+  the old source and native hashes are unchanged, with the new opt-in fields
+  explicitly removed only inside the historical reconstruction helper.
+
+Guard/ground sweeps and native LOW close views remain, as do regenerated
+assets/anatomy and full release checks. This is not yet a release certificate.

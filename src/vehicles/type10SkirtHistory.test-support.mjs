@@ -25,10 +25,14 @@ export function withHistoricalType10Supports(build) {
     assert.equal(cfg.returnRollerHullHalfWidthM,.878,'declared six spindle attachments');
     assert.equal(cfg.trackTh,.09,'declared fitted carrier');
     assert.equal(cfg.botY,.02083,'declared lowered course');
+    assert.deepEqual(cfg.trackCarrierWidthStations,[{z:-2.40,widthM:.42},{z:-2.30,widthM:.486738}],
+      'declared sprocket recess, not a new whole-course source witness');
+    assert.equal(cfg.fitLoadedRun,true,'declared live lower-course fit');
     calls++;
     const {returnRollerHullHalfWidthM,roadWheelGeometry,idlerGeometry,sprocketStockGeometry,
       returnRollerGeometry,returnRollerWidthM,returnRollerInsetM,frontArcSteps,rearArcSteps,
-      smoothRearTopTangent,dedupeLoopPoints,trackShoeBuilder,loopPoints,...old}=cfg;
+      smoothRearTopTangent,dedupeLoopPoints,trackShoeBuilder,loopPoints,
+      trackCarrierWidthStations,fitLoadedRun,...old}=cfg;
     // These fresh candidate leaves never enter the historical builder. Release
     // them here; no shared stock or actual candidate model is disposed.
     const leaves=new Set([returnRollerGeometry,...Object.values(roadWheelGeometry),
