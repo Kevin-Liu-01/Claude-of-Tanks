@@ -86,3 +86,32 @@ other proxy creation, materials and finalizers stay active. Current sync/staged
 receipts are compared in full without normalization, and the batched fixtures
 must actually contain the published `BatchedMesh`. Cancellation, resource and
 timing assertions remain. No runtime source or immutable hash is changed.
+
+## Completed release
+
+Frozen code/assets at `f20b7dd73` passed the complete twelve-stage release on
+2026-09-10 at **16:34:18 UTC**. The single uninterrupted npm lifecycle passed
+all **954 files: 302 pre, 613 core, 39 post**, including the corrected factory
+contract. Private build passed inside the release; public build passed at
+16:34:22 UTC. Local evidence is `fender-qualified-Lr04Bp/receipt.json` and its
+logs under `.qa-dev/`. Earlier failed runs remain failed evidence.
+
+The test stages took 1,225,252 ms wall time (20m25s), versus 3,515,965 ms summed
+child time (58m36s), with 38,028 ms reported FIFO wait. Four CPU workers execute
+every assertion in fresh processes; native browser stages remain exclusive.
+This is scheduling evidence, not a controlled serial-versus-parallel benchmark
+or permission to omit gates.
+
+Final live centering is 0.00 px and exported top centering 0.06 px, within the
+unchanged 0.25/0.5 px limits. The strict source geometry minimum remains 92.5/92
+and rendered source fidelity 97.6; no measured track intersections or enclosed
+continuity holes. Both colored and neutral comparison/articulation boards were
+visually inspected. Scoped native regeneration changed only the selected anchor
+and projection; all **207 unselected asset records are exactly unchanged**.
+The mandatory full anatomy update/check passed before the presentation-only
+anchor repair; the final release freshly rechecked full anatomy calibration.
+
+Publication rebases onto `d942e1284`, whose sole additional change from the
+qualified base `8850e95c7` is a performance research document. Exact runtime,
+test/tool and asset bytes must remain identical through that rebase. Source
+models, temporary QA/captures, and the failed thicker-track pilot are excluded.
