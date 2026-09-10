@@ -164,3 +164,50 @@ camera-input, and profile-window regressions passed. Typecheck (including
 core-unused), public build, and diff checks passed. Changed-scope React Doctor
 reported 92/100 and no issues. The strict native pixel gate also passed as above.
 This does not replace a full-fleet, multi-device, or long-session certification.
+
+## Landing and live functional verification
+
+The scoped change rebased cleanly onto `f84f260a9` as
+`40e60226bcbec826528eb639db489d45239a05f2`. Exact-revision focused regressions,
+typecheck/core-unused, and public build passed before the non-force push.
+Vercel deployment `6AYMXxDRLhddQB9rHTGrcDJa41yZ` and the GitHub catalog gate
+succeeded. The live application identified itself as `v1.0.0+g40e60226b`.
+
+The maintained real-control probe ran on `https://cot.kevinliu.studio` from
+07:58:06–07:58:41 UTC on 2026-09-10. Production HTML SHA256 was
+`ed5809892280a0fdd267490958bbb0ca98121d75b980cb9d14a47f8fae36b40a`.
+Garage drag, Battle, Battle Again, and Return to Garage passed; there were no
+application exceptions, contract failures, or cleanup errors. Battle and
+returned-Garage screenshots were inspected. High graphics, DPR/scale 1, trim 0,
+and SMAA-high/FSR1 remained enabled on native Apple M5 Max ANGLE.
+
+| Production action | Click→opaque cover | Click→ready | Largest callback gap during action |
+| --- | --- | --- | --- |
+| Battle | 2.4 ms | 8,535.7 ms | 184.9 ms |
+| Battle Again | 140.7 ms | 5,665.3 ms | 109.4 ms |
+| Return to Garage | 90.3 ms | 340.0 ms | 44.5 ms |
+
+These are functional transition timings, including covered loading/countdown,
+not sustained battle FPS or a zero-stall certificate. Garage drag created no
+AudioContext; the single native context was constructed on Battle intent
+(153 ms), and audio-clock ownership/cleanup passed across both battles and
+return. No audible-output claim is made. Receipt/screenshots are in
+`matrix-cadence-production-actions-r1/` under the evidence root above.
+
+The integration review additionally found that the new native test needed the
+runner's exclusive own-lease registration; without it, full posttest could
+nest its capture lease. The cooperating test-runner lane published that
+correction in `f9d94e18ef01ad44a0abfe67c5a244e4cc26eda0`, a direct child of
+`40e60226b`, with sequential/two-worker missing-registration negative controls.
+Its exact post-rebase focused checks, types, and scoped Doctor passed; the
+default runner concurrency remains one. The direct native gate and game
+runtime do not depend on this registry. This closes the discovered integration
+defect, not the outstanding full performance budget or a full-suite run.
+
+Remaining limits are explicit: the original untraced 214–319 ms stalls still
+have no proven historical attribution, the full current performance budget
+still fails, covered loading has measurable stalls, and same-machine tests do
+not prove geographically separated-device performance or overcome OS suspension
+of a browser-hosted match. The language/transport evaluations and shipped wreck/
+multiplayer fixes remain linked in the existing closeout documents; this patch
+does not reopen or reimplement them.
