@@ -16,6 +16,7 @@ import { addT90VFrontGuard } from './t90VXFrontGuards.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { addT90SMRearBasket } from './t90SMXRearBasket.ts';
 import { addT90ARearGuard } from './t90AXRearGuard.ts';
+import { addT90AXFenderClosures, addT90AXFrontGuard } from './t90AXFenderClosures.ts';
 import { addT90SMEngineDeck, smEngineDeckSupportRoof } from './t90SMXEngineDeck.ts';
 import { smHullTub } from './t90SMXHullTub.ts';
 import { addT90SMTowCable } from './t90SMXTowCable.ts';
@@ -317,15 +318,7 @@ function aFenders(P: TankBuilderPort): void {
   for(const side of [-1,1]) {
     P.add('hull',box(.595,.025,6.495),side*1.395,1.289,.053);
     P.add('hull',box(.148,.027,3.054),side*1.754,1.247,1.657);
-    const rows:readonly (readonly [number,number,number])[]=[
-      [3.180,1.278,1.827],[3.300,1.265,1.827],[3.400,1.247,1.827],
-      [3.500,1.216,1.826],[3.590,1.161,1.825],[3.685,1.071,1.825],[3.782,.857,1.698],
-    ];
-    const sections=rows.map(([z,top,outer]):SolidSection=>{
-      const profile:readonly (readonly [number,number])[]=[[1.097,top-.014],[outer,top-.014],[outer,top],[1.097,top]];
-      return {z,ring:side>0?profile:profile.map(([x,y])=>[-x,y] as const).reverse()};
-    });
-    P.addMudguard('t90a-x-bow','hull',sectionSolid(sections));
+    addT90AXFrontGuard(P,side);
     addT90ARearGuard(P,side);
     for(const z of [-2.80,-1.53,-.28,.99,2.20])P.addEquipment('hullDetail',box(.59,.022,.035),side*1.39,1.319,z);
   }
@@ -1466,6 +1459,7 @@ export function buildT90AX(P: TankBuilderPort): void {
   sourceWheelFaces(P,.351,.225,1.084);
   aFenders(P);
   classicSkirts(P,'kontakt5-source-a',1.312,-3.28,3.24);
+  addT90AXFenderClosures(P);
   engineDeck(P,1.465,-3.36,1.91);aDrums(P);
   bowGear(P,1.092,3.207,false);aGlacis(P);
   P.add('turret',turretSolid(A,[
