@@ -4,13 +4,14 @@
 //   node tools/presentation-centering.mjs --check
 //   node tools/presentation-centering.mjs --check --ids=m46_patton,m47_patton
 //   node tools/presentation-centering.mjs --update
+//   node tools/presentation-centering.mjs --update --ids=a,b  # then regenerate selected images
 //   node tools/presentation-centering.mjs --sync-assets --ids=a,b
 
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { presentationNumberSource as numberSource, presentationReceiptErrors, syncAssetProjectionSource } from './presentation-receipt.mjs';
+import { presentationNumberSource as numberSource, presentationReceiptErrors, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
@@ -31,8 +32,8 @@ function opt(name, fallback = '') {
 }
 
 const selectedIds = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
-if (update && selectedIds.length) {
-  console.error('[presentation-centering] --update always regenerates the complete fleet');
+if (args.some(arg => arg === '--ids' || arg.startsWith('--ids=')) && !selectedIds.length) {
+  console.error('[presentation-centering] an explicit --ids scope must not be empty');
   process.exit(2);
 }
 if (syncAssets && !selectedIds.length) {
@@ -42,6 +43,7 @@ if (syncAssets && !selectedIds.length) {
 
 const root = process.cwd();
 const outputPath = resolve(root, 'src/vehicles/presentationAnchors.generated.ts');
+const originalSource = readFileSync(outputPath, 'utf8');
 const cacheDir = resolve('/tmp', `cot-centering-vite-${process.pid}`);
 const MAX_RESIDUAL_PX = 0.25;
 const MAX_EXPORTED_RESIDUAL_PX = 0.5;
@@ -169,8 +171,15 @@ try {
   const maximum = ranked[0];
 
   if (update) {
-    writeFileSync(outputPath, generatedSource(rows));
+    const updated = selectedIds.length
+      ? updateSelectedPresentationSource(originalSource, ids, rows, TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS)
+      : generatedSource(rows);
+    if (pageErrors.length || readFileSync(outputPath, 'utf8') !== originalSource) {
+      throw new Error('capture errors or concurrent generated-source change; no anchor written');
+    }
+    writeFileSync(outputPath, updated);
     console.log(`[presentation-centering] wrote ${ids.length} rendered anchors -> ${outputPath}`);
+    console.log('[presentation-centering] regenerate affected assets and run --check; generation is not release qualification');
   } else {
     const receiptErrors = check ? ids.flatMap(id => presentationReceiptErrors(id,
       rows[id]?.currentAnchor, rows[id]?.capturedProjection,

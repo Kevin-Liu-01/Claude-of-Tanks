@@ -25,6 +25,48 @@ export function presentationReceiptErrors(id, anchor, projection, savedAnchor, s
   return errors;
 }
 
+function presentationSourceLine(id, fields, values) {
+  for (const field of fields) {
+    const value = values?.[field];
+    if (!Number.isFinite(value) || (field.endsWith('HalfM') && Number(presentationNumberSource(value)) <= 0)) {
+      throw new Error(`${id}: invalid native ${field}`);
+    }
+  }
+  return `  ${id}: Object.freeze({ ${fields.map(field => `${field}: ${presentationNumberSource(values[field])}`).join(', ')} }),`;
+}
+
+/** Regenerate selected native-measured anchors and their paired projections.
+ * Unlike saved-image sync, this intentionally invalidates selected images:
+ * regenerate them, then run the unchanged native/exported centering checks.
+ * Every unselected byte stays untouched; no proposed measurement is a pass.
+ */
+export function updateSelectedPresentationSource(source, ids, rows, anchors, projections) {
+  if (!Array.isArray(ids) || !ids.length || new Set(ids).size !== ids.length
+      || ids.some(id => typeof id !== 'string' || !/^[a-z0-9_]+$/.test(id))
+      || JSON.stringify(Object.keys(rows ?? {}).sort()) !== JSON.stringify([...ids].sort())) {
+    throw new Error('anchor update requires distinct IDs and exactly their native measurements');
+  }
+  let result = source;
+  for (const id of ids) {
+    const row = rows[id];
+    if (row?.error) throw new Error(`${id}: native measurement failed`);
+    const currentErrors = presentationReceiptErrors(id, row?.currentAnchor, projections[id], anchors[id], projections[id]);
+    if (currentErrors.length) throw new Error(currentErrors.join('\n'));
+    for (const [fields, previous, measured] of [
+      [['xM', 'zM'], anchors[id], row],
+      [['centerYM', 'topHalfM', 'sideHalfM'], projections[id], row?.projection],
+    ]) {
+      const old = presentationSourceLine(id, fields, previous);
+      const replacement = presentationSourceLine(id, fields, measured);
+      if (source.split('\n').filter(value => value === old).length !== 1) {
+        throw new Error(`${id}: require one source row matching the loaded runtime receipt`);
+      }
+      result = result.split('\n').map(value => value === old ? replacement : value).join('\n');
+    }
+  }
+  return result;
+}
+
 function checkedAsset(id, record, file, readAsset) {
   if (!record || record.file !== file || !/^[0-9a-f]{64}$/.test(record.sha256 || '')) {
     throw new Error(`${id}: missing or invalid saved asset ${file}`);
