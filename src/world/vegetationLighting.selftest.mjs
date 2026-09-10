@@ -16,6 +16,8 @@ for (const wrap of [0.30, 0.50]) {
     /float canopyDiffuseNL = saturate\( \( canopyRawNL \+ ([\d.]+) \) \* ([\d.]+) \) \* ([\d.]+);/,
   );
   assert.ok(expression, 'light wrap uses the current geometryNormal parameter');
+  assert.doesNotMatch(shader.fragmentShader, /canopyDiffuseNL = canopyDiffuseNL \*/,
+    'solid bark keeps its existing directional response, without leaf-volume scattering');
   assert.match(shader.fragmentShader,
     /float canopyRawNL = dot\( geometryNormal, directLight.direction \);\s+float dotNL = saturate\( canopyRawNL \);\s+vec3 irradiance = dotNL \* directLight.color;/,
     'standard irradiance retains the true clamped incidence for microfacet specular');
@@ -77,6 +79,39 @@ assert.match(matte.fragmentShader,
   'matte leaves still receive the directional, energy-normalized diffuse light');
 assert.match(matte.fragmentShader, /void RE_IndirectSpecular_Physical\(/,
   'the existing IBL and its indirect diffuse bounce remain available');
+
+// Exercise the actual installed matte expression, not a parallel test-only
+// approximation. A spherical isotropic lobe is 0.25 in this normalization.
+const volume = matte.fragmentShader.match(/canopyDiffuseNL = canopyDiffuseNL \* ([\d.]+) \+ ([\d.]+);/);
+assert.ok(volume, 'matte sprays redistribute directional diffuse into volume scattering');
+const directionalShare = Number(volume[1]);
+const isotropicShare = Number(volume[2]);
+const matteWrap = matte.fragmentShader.match(/float canopyDiffuseNL = saturate\( \( canopyRawNL \+ ([\d.]+) \) \* ([\d.]+) \) \* ([\d.]+);/);
+assert.ok(matteWrap);
+const matteResponse = (n) => directionalShare
+  * Math.max(0, Math.min(1, (n + Number(matteWrap[1])) * Number(matteWrap[2])))
+  * Number(matteWrap[3]) + isotropicShare;
+let volumeIntegral = 0;
+let previousResponse = matteResponse(-1);
+for (let sample = 0; sample < 2000; sample++) {
+  const response = matteResponse(-1 + (sample + 0.5) / 1000);
+  assert.ok(Number.isFinite(response) && response >= 0 && response <= 0.55,
+    'all incidences retain highlight headroom and finite nonnegative diffuse');
+  assert.ok(response >= previousResponse && response - previousResponse < 0.001,
+    'the lobe stays continuous and monotonic, without a grazing-angle step');
+  previousResponse = response;
+  volumeIntegral += response / 1000;
+}
+assert.ok(Math.abs(volumeIntegral - 0.5) < 0.00001,
+  'volume scattering preserves the original integrated diffuse energy');
+assert.ok(Math.abs(0.70 * 0.5 + 2 * 0.15 - 0.5) > 0.1,
+  'the fixture rejects an unnormalized additive brightness floor');
+assert.ok(matteResponse(-0.25532) > 0.15 && matteResponse(0.99147) > 0.53,
+  'measured Autumn rear incidence keeps color while sun-facing leaves remain directional');
+assert.equal(matteResponse(-1) * 0, 0, 'no incoming light means no direct diffuse emission');
+assert.match(matte.fragmentShader,
+  /float dotNL = saturate\( canopyRawNL \);\s+vec3 irradiance = dotNL \* directLight.color;/,
+  'volume scattering cannot reach the original microfacet irradiance');
 
 for (const radius of [0.25, 0.34, 0.70]) {
   const snow = new IcosahedronGeometry(radius, 0);
