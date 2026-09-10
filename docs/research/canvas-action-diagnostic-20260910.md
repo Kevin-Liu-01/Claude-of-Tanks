@@ -68,3 +68,13 @@ Report SHA256: `956f88d4b734dcccf5325a9e7a8b8e8005b92a1302199b4d9108c2adb6921e1f
 HTML SHA256: `1b02dba11b8eb706f9fb0a198b47b9c39bc010015c9f44bce86816da5c2dd98a`.
 Acquisition SHA256: `0c1ae77bb2d11603fc11e0416a4628ab9979229d32e7be6f9d7ee9396679052c`.
 Evidence is under `/private/tmp/cot-interactive-baseline.gsRCvU/`.
+
+The sampler is not the 112 ms owner in this capture. Its callback-start maximum
+is 148.1 ms; its legacy end-of-sample-to-next-start maximum is 148.0 ms. These
+maxima identify the same interval because every other retained callback gap is
+at most 77.0 ms, with no dropped gap rows. The starting sample's synchronous
+`state()` work therefore costs approximately 0.1 ms, at page-clock precision.
+That includes its `getClientRects`/computed-style observations, not other rAF or
+PerformanceObserver callbacks or subsequent browser work. LoAF's
+`scriptsFiltered=0` also confirms that the tool did not remove a browser-supplied
+script entry for this gap.
