@@ -15,6 +15,9 @@ all29 trusted inputs, but strict timing gates do NOT pass: p99=33.3ms and
 median FPS=59.9. Other interactive-browser GPU activity also refuses timing
 certification. This is a verified implementation checkpoint, not completion of
 the zero-lag investigation. Earlier rows below retain their dated evidence.
+Publication subsequently completed at `18e519d35`; production's exact-version
+day/night/Garage and audio-state smoke passed at04:37UTC. Its338ms cold-loading
+gap is retained below, not mislabeled as a smoothness pass.
 
 | Deliverable | State and evidence |
 | --- | --- |
@@ -26,7 +29,7 @@ the zero-lag investigation. Earlier rows below retain their dated evidence.
 | Camera and frame budgets | R10 full-roster 60-second battle: 29/29 trusted camera inputs respond; 1.1 ms median/2.0 ms maximum observed-dispatch-to-camera latency; 16.8 ms p99 frame interval; 897 peak draws. The unchanged median-FPS gate still fails at 59.9 vs 60, and foreign GPU activity refuses certification. |
 | Historical stall diagnosis | Several current transition costs are attributed and improved; the specific historical 214–319 ms gameplay stalls remain unproven. Native constructor/readback/upload calls can still block; covering them is not elimination. |
 | Systems-language assessment | Documented C/Go/Zig/Rust/worker tradeoffs; no native/Wasm kernel benchmark or whole-game rewrite claimed. |
-| Publication | Texture worker is remote-verified at `bbc1d77f18353c9ba767c87b113275bdcdd8a5b1`; production's version at03:10:32 UTC identifies descendant `0a644340f`. Retained HUD is subsequently pushed and remote-verified at `1beb0c780a9eadbc0cc488ff33ba520bd0d14b14`, with clean-main checks and74 normal-motion browser cases. Broader performance changes remain isolated WIP; production gameplay/performance completion is not claimed. |
+| Publication | Texture worker `bbc1d77f1`, retained HUD `1beb0c780`, and integrated runtime `889f7a6a8` are published. Production `18e519d35` (runtime plus evidence-only documentation) passed the exact-version actual-controls day/night/Garage and audio-state smoke. Strict performance acceptance remains open. |
 
 The implementation and positive tests must not be summarized as “all lag fixed.”
 A valid quiet-machine timing acquisition and remaining strict-budget work are
@@ -1950,3 +1953,34 @@ stalls have no proven causal trace; sustained/all-phase frame budgets and
 multi-device/OS-throttling guarantees are not established. Native audio-device
 startup and atomic profile/GPU operations can still block. Publication of these
 verified improvements must not be described as all lag eliminated.
+
+## Production verification — 2026-09-10 04:37 UTC
+
+Non-forced runtime publication is remote-verified at
+`18e519d35c839fa08d38064b26d6d42ddbdb7d44` (runtime889f7a6a8 plus documentation).
+Vercel deployment and GitHub catalog check both report success. Production HTML
+before/after the actual-control probe identified `v1.0.0+g18e519d35` and the
+same index SHA256
+`dda7b24d03eb81ee27e13a1e36f428d3767966e35efd296a417e2387f8acbe5b`.
+The browser loaded that exact index; this is not only an HTTP health check.
+
+The real full14 day Battle, full14 night Battle Again and empty-roster Return to
+Garage pass, with M1A1 preserved and battle ordinals1→2. Audio loading/ambient
+ownership passes. High1280x720/DPR1/scale1/trim0/SMAA-High+FSR1 are unchanged,
+native Chrome152.0.7977.83 uses ANGLE/Metal AppleM5Max. All3 screenshots were
+inspected. Error, failure and cleanup lists are empty; the owned browser closed.
+The runner waited under the ordinary shared FIFO before the acquisition.
+
+Raw Battle/Rematch/Garage cover times:200.4/149.6/138.0ms. Totals:
+12292.2/6065.9/454.7ms. Largest callback gaps:338.0/125.4/53.6ms. The functional
+gate's500ms cover deadline passed; this is NOT a frame-budget or zero-stall pass.
+The338ms cold-loading gap must remain visible in the open performance work and
+does not establish the cause of the historical214–319ms gameplay stalls.
+
+Receipts: `garage-actions-production/report.json`, its3PNG stills and
+`garage-actions-production-runner-receipt.json` under the evidence root above.
+The implementation source remaining in the original owner worktree matches the
+published nine audio/generation-boundary files exactly; unrelated/stale world
+copies are preserved there, not swept into main. The clean integration branch
+contains the released runtime. This final production note changes documentation
+only and does not require claiming a second runtime acquisition.
