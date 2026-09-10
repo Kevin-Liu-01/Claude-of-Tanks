@@ -104,8 +104,8 @@ const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8')
 const mapSource = readFileSync(new URL('./map.ts', import.meta.url), 'utf8');
 assert.match(propsSource, /const registerDestructibles = \(\): \(\(\) => void\) => registerWorldDestructibles\(/,
   'partially constructed props expose a deferred registration, not a global retained closure');
-assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*return \{\s*mapId: config\.id,\s*dispose\(\) \{\s*unregisterDestructibles\(\);\s*vegetation\.dispose\(\);/,
-  'completed assembly releases external bindings and cancels pending vegetation work on eviction');
+assert.match(mapSource, /const unregisterDestructibles = props\.registerDestructibles\(\);\s*return \{\s*mapId: config\.id,\s*dispose\(\) \{\s*terrain\.userData\.cancelSourcedTextures\?\.\(\);\s*unregisterDestructibles\(\);\s*vegetation\.dispose\(\);/,
+  'completed assembly cancels source work before releasing external bindings and vegetation on eviction');
 
 let grantBlockedLease;
 let lateLeaseReleases = 0;
