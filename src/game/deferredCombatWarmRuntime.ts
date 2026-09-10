@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import {
   createFrameBudgetYielder,
-  nextFrame,
+  nextPaintFrame,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 import {
@@ -108,8 +108,10 @@ export function createDeferredCombatWarmRuntime<
   prepareNextOpeningRoute,
   devTrace = null,
   now = () => performance.now(),
-  yieldFrame = nextFrame,
-  createYielder = createFrameBudgetYielder,
+  yieldFrame = nextPaintFrame,
+  createYielder = (budgetMs) => createFrameBudgetYielder(budgetMs, {
+    yieldFrame: nextPaintFrame,
+  }),
 }: DeferredCombatWarmRuntimeOptions<Game, Entity, World>): DeferredCombatWarmRuntime {
   const host = globalThis as DeferredWarmHost;
   let pendingPromise: Promise<void> | null = null;
@@ -131,8 +133,10 @@ export function createDeferredCombatWarmRuntime<
     const startedAt = now();
     let pending!: Promise<void>;
     pending = (async () => {
-      // The first battlefield frame and countdown numeral must reach the
-      // default framebuffer before any deferred atom starts.
+      // Leave the first battlefield frame's pre-paint microtask checkpoint
+      // before constructing hidden actors. Later batches use the same
+      // post-frame task boundary; an rAF alone would append their work to
+      // the visible render and hold up the countdown's paint.
       await yieldFrame();
       if (generation !== getGeneration() || game.phase !== 'battle') return;
 

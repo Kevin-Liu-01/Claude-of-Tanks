@@ -170,6 +170,88 @@ assert.equal(cancellationCount, 1, 'explicit revision cancellation releases rare
   assert.equal(globalThis.__BATTLE_DEFERRED_WARM.doneBeforeRollout, true);
 }
 
+// Exercise the production defaults rather than injecting a no-op yielder.
+// A real rAF callback and its microtasks are still before paint; neither the
+// first actor nor a later forced batch may resume until the following task.
+async function withPaintHost(run) {
+  const keys = ['document', 'requestAnimationFrame', 'cancelAnimationFrame',
+    'setTimeout', 'clearTimeout', 'scheduler'];
+  const prior = new Map(keys.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  const frames = [], tasks = [], timers = [], listeners = new Set();
+  const ports = {
+    document: { hidden: false,
+      addEventListener(_type, listener) { listeners.add(listener); },
+      removeEventListener(_type, listener) { listeners.delete(listener); } },
+    requestAnimationFrame(callback) { frames.push(callback); return frames.length; },
+    cancelAnimationFrame() {},
+    setTimeout(callback) { timers.push(callback); return timers.length; },
+    clearTimeout() {},
+    scheduler: { yield: () => new Promise(resolve => tasks.push(resolve)) },
+  };
+  try {
+    for (const key of keys) Object.defineProperty(globalThis, key, {
+      configurable: true, writable: true, value: ports[key],
+    });
+    await run({ frames, tasks, timers, listeners });
+  } finally {
+    for (const key of keys) {
+      if (prior.get(key)) Object.defineProperty(globalThis, key, prior.get(key));
+      else delete globalThis[key];
+    }
+  }
+}
+
+async function drainMicrotasks() {
+  for (let index = 0; index < 20; index++) await Promise.resolve();
+}
+
+for (const cancelAt of [null, 'initial', 'batch']) {
+  await withPaintHost(async ({ frames, tasks, listeners }) => {
+    let current = 40;
+    const prepared = [], released = [];
+    const runtime = createDeferredCombatWarmRuntime({
+      game, renderer, camera: { position: {} },
+      getBattleVisuals: () => ({ async stream(_predicate, yieldForBudget) {
+        prepared.push('first');
+        await yieldForBudget(true);
+        prepared.push('second');
+      } }),
+      combatWarm: { cancelRare() {}, async warmOpeningChunked() {}, async warmRareChunked() {} },
+      warmBattleTerrainTiles: async () => {}, getWorld: () => null,
+      getGeneration: () => current, setPending: value => released.push(value),
+      prepareNextOpeningRoute: () => false,
+    });
+    const pendingWarm = runtime.schedule(current);
+    assert.equal(frames.length, 1);
+    assert.deepEqual(prepared, [], 'no hidden actor work before the first animation callback');
+    frames[0]();
+    await drainMicrotasks();
+    assert.equal(tasks.length, 1);
+    assert.deepEqual(prepared, [], 'first actor cannot extend the render callback before paint');
+    if (cancelAt === 'initial') current++;
+    tasks[0]();
+    await drainMicrotasks();
+    if (cancelAt === 'initial') {
+      await pendingWarm;
+      assert.deepEqual(prepared, [], 'stale first paint wait cannot start actor work');
+    } else {
+      assert.deepEqual(prepared, ['first']);
+      assert.equal(frames.length, 2, 'forced batches use the production paint-sensitive budget yielder');
+      frames[1]();
+      await drainMicrotasks();
+      assert.equal(tasks.length, 2);
+      assert.deepEqual(prepared, ['first'], 'later actor batch cannot extend the render callback before paint');
+      if (cancelAt === 'batch') current++;
+      tasks[1]();
+      await pendingWarm;
+      assert.deepEqual(prepared, cancelAt ? ['first'] : ['first', 'second']);
+    }
+    assert.equal(runtime.isActive(), false);
+    assert.deepEqual(released, cancelAt ? [] : [false], 'only the current generation releases rollout');
+    assert.equal(listeners.size, 0, 'settled paint waits leave no visibility handlers');
+  });
+}
+
 delete globalThis.__COMBAT_RARE_WARM;
 delete globalThis.__BATTLE_DEFERRED_WARM;
 console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, and revision ownership passed');
