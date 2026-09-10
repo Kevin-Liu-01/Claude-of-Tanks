@@ -27,12 +27,14 @@ const expected = {
   autumn: [6085, 5811, 6261],
   steppe: [2234, 1950, 1392],
   railyard: [2715, 2554, 1973],
-  frontier: [7436, 7174, 7583],
+  // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
+  // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
+  frontier: [7382, 7122, 7538],
   fjord: [6377, 6218, 5597],
   delta: [7119, 6877, 8532],
   badlands: [2840, 2676, 1888],
   monsoon: [9271, 9036, 11093],
-  alpine: [8539, 8342, 7575],
+  alpine: [8423, 8246, 7477],
   caldera: [4692, 4587, 3572],
   foundry: [3952, 3797, 2939],
   ruinspires: [2823, 5139, 1159],

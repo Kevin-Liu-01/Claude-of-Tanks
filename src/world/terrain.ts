@@ -28,6 +28,7 @@ import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSu
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
+import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import {
@@ -124,6 +125,9 @@ interface LandformConfig {
   wetScale?: number;
   _c?: number;
   _s?: number;
+  /** Final authored surface; original fields still define road/water/pad support initialization. */
+  relief?: PlayableRelief;
+  _relief?: PreparedPlayableRelief;
 }
 
 interface DuneConfig {
@@ -454,6 +458,7 @@ export function createLayout(cfg: TerrainMapConfig | null = null): TerrainLayout
   const t: TerrainSettings = { ...DEFAULT_TERRAIN, ...(cfg?.terrain ?? {}) };
   t.landforms = (t.landforms || []).map((form) => {
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
+    if (form.relief) return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw), _relief: preparePlayableRelief(form.relief) };
     return { ...form, _c: Math.cos(yaw), _s: Math.sin(yaw) };
   });
   const village = { ...DEFAULT_TERRAIN.village, ...(t.village || {}) };
@@ -513,7 +518,9 @@ function segDist(
 }
 
 /** Pure analytical height contribution for an authored tactical landform. */
-export function sampleLandformHeight(form: LandformConfig, x: number, z: number): number {
+export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
+  phase: 'legacy-support' | 'authored-relief' = 'authored-relief'): number {
+  if (phase === 'authored-relief' && form._relief) return (form.height || 0) * samplePlayableRelief(form._relief, x, z);
   const dx = x - form.x, dz = z - form.z;
   const c = form._c ?? Math.cos(THREE.MathUtils.degToRad(form.yawDeg || 0));
   const s = form._s ?? Math.sin(THREE.MathUtils.degToRad(form.yawDeg || 0));
@@ -726,6 +733,7 @@ function* heightFieldBuildSteps(
   const lakeHeightResult: LakeHeightResult = { height: 0, wetness: 0 };
   let liquidIndex: Uint32Array | null = null;
   let quarryFloorY: number | null = null;
+  let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';
   const liquidIndexWords = Math.ceil(_MARSHES.length / 32);
 
   function applyMacroTerrain(
@@ -790,7 +798,7 @@ function* heightFieldBuildSteps(
       const protect = (1 - corridorWeight * (1 - corridorScale))
         * (1 - settlementWeight * (1 - settlementScale))
         * (1 - marshWeight * (1 - wetScale));
-      h += sampleLandformHeight(form, x, z) * spawnClear * protect;
+      h += sampleLandformHeight(form, x, z, landformPhase) * spawnClear * protect;
     }
     return h;
   }
@@ -1066,6 +1074,9 @@ function* heightFieldBuildSteps(
   if (cfg?.id === 'copper_mesa' && T.quarryBenches) {
     quarryFloorY = heightAt(COPPER_QUARRY.x, COPPER_QUARRY.z, true, true);
   }
+  // Explicit second phase: all legacy support targets above are frozen.
+  // Exact mesh/physics and the existing one-metre live cache share this surface.
+  landformPhase = 'authored-relief';
   const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
 
   // perf-r3b (CPU profile): every height query runs the full 9-octave simplex

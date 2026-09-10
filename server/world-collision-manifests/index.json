@@ -61,11 +61,11 @@
       "concealers": 1973
     },
     "frontier": {
-      "bytes": 1489715,
-      "sha256": "f6b74b0885baa125b741d40b048db5235334ba755bb323f88c2e71188001ce2d",
-      "obstacles": 7436,
-      "colliders": 7174,
-      "concealers": 7583
+      "bytes": 1481272,
+      "sha256": "0ee328de274d560a5a2b8d9e83f629e3801544b192aa02ef3c660b3ef6c9334b",
+      "obstacles": 7382,
+      "colliders": 7122,
+      "concealers": 7538
     },
     "fjord": {
       "bytes": 1307726,
@@ -96,11 +96,11 @@
       "concealers": 11093
     },
     "alpine": {
-      "bytes": 1666927,
-      "sha256": "0200f46b2129e9ce576f41a35df435b29ffd0d832cb19082dc1bb241c5e94f6f",
-      "obstacles": 8539,
-      "colliders": 8342,
-      "concealers": 7575
+      "bytes": 1636763,
+      "sha256": "9e3014d81eef3fe860568c4dbae947ac2768fba6b84647ddd006cf370903b2e4",
+      "obstacles": 8423,
+      "colliders": 8246,
+      "concealers": 7477
     },
     "caldera": {
       "bytes": 1118645,
