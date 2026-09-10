@@ -7,6 +7,11 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
   const cpu=(tool,...args)=>({command:node,args:[`tools/${tool}.mjs`,...args],capture:true});
   const gpu=(tool,...args)=>({...cpu(tool,...args),capture:true});
   return [
+    // Reject fitting/outline/continuity defects before full-fleet anatomy and
+    // the integrated test/build tail. Same assertions and fresh measurements;
+    // only ordering changes. This child already queues its render phases.
+    {...cpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
+    ...(gate ? [gpu('procedural-fidelity',selected,'--check','--board','--neutral-board')] : []),
     cpu('gen-combat-anatomy','--check'),
     gpu('presentation-centering','--check',selected),
     gpu('module-visual-align-probe',selected,'--gate'),
@@ -15,10 +20,6 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),
     gpu('turret-barrel-circularity',selected),
-    // Strict source release requires BOTH outline/fidelity and geometry.
-    ...(gate ? [gpu('procedural-fidelity',selected,'--check','--board','--neutral-board')] : []),
-    // This child queues its individual render phases; never nest a lock.
-    {...cpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
     {command:'npm',args:['test'],capture:false},
     {command:'npm',args:['run','build:private'],capture:true},
   ];
