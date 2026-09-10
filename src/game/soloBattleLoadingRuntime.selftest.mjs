@@ -342,6 +342,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
       if (cancel === 'deploymentReveal') generation++;
     }, coverRendering() {} }),
     prepareRevealCamera,
+    runSceneWatchdog: async assertCurrent => { assertCurrent(); events.push('watchdog'); },
     prepareAtmosphere: async () => { if (fail === 'atmosphere') throw new Error('atmosphere failed'); },
     getGeneration: () => generation, advanceGeneration: () => ++generation,
     setPending() {}, setDestructionWarmed() {},

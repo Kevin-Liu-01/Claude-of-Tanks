@@ -66,6 +66,7 @@ export interface MainFrameRuntimeOptions {
   battleFrame: BattleFrameRuntime;
   isBattleLoadCovering(): boolean;
   isPresentationRestoreCovering(): boolean;
+  isTransitionHoldingSceneForFadeIn(): boolean;
   cameraInput: CameraFrameInput;
   getMobileAutoAim(): MainMobileAutoAimRuntime | null;
   rig: CameraRig;
@@ -117,6 +118,7 @@ export function createMainFrameRuntime({
   battleFrame,
   isBattleLoadCovering,
   isPresentationRestoreCovering,
+  isTransitionHoldingSceneForFadeIn,
   cameraInput,
   getMobileAutoAim,
   rig,
@@ -143,6 +145,7 @@ export function createMainFrameRuntime({
     resolveFxSubject,
     isBattleLoadCovering,
     isPresentationRestoreCovering,
+    isTransitionHoldingSceneForFadeIn,
     getMobileAutoAim,
     veilHud,
     isGaragePresentationDirty,
@@ -305,11 +308,13 @@ export function createMainFrameRuntime({
     lastMs = nowMs;
     trace?.frame(dtR * 1000);
     if (isGraphicsContextLost()) return;
-    if (battleEntryLifecycle.renderingCovered || isPresentationRestoreCovering()) {
+    if (battleEntryLifecycle.renderingCovered || isPresentationRestoreCovering()
+      || isTransitionHoldingSceneForFadeIn()) {
       // Opaque entry and Garage-restore veils suppress expensive/incomplete
       // scene frames, not transport progress. Fresh peers still need the
       // browser network pump while worlds and presentation state warm behind
-      // those veils.
+      // those veils. An opted-in result transition also keeps its last scene
+      // frame during fade-in only; its owner releases before work/fade-out.
       networkSession.pump(dtR, nowMs);
       return;
     }

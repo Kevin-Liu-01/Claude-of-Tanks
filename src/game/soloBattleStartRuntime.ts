@@ -63,7 +63,7 @@ export interface SoloBattleStartRuntimeOptions {
     switchMap(mapId: string): void;
     getActive(): SoloBattleWorld;
     setDormant(dormant: boolean): void;
-    scheduleBlackWatchdog(): void;
+    scheduleBlackWatchdog(covered: boolean): void;
   };
   round: {
     getFx(): SoloBattleFx;
@@ -193,7 +193,7 @@ export function createSoloBattleStartRuntime({
       world.setDormant(false);
       const activeWorld = world.getActive();
       activeWorld.resetDestructibles?.();
-      world.scheduleBlackWatchdog();
+      world.scheduleBlackWatchdog(preBattleHold);
       game.mapId = activeWorld.mapId;
       round.setCamoBiome(activeWorld.mapId);
       mark('activateWorld');

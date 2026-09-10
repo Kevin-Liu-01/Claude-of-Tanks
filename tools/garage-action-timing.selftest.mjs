@@ -32,6 +32,18 @@ const browserWindow = { __DEBUG: { game, selectedSpecId: 'm1a1',
   __COMBAT_WARM: { totalMs: 999 },
   __GL_DIAG: { errors: ['example link failure'], rescue: 'example-rescue' },
 };
+const watchdogRows = Array.from({ length: 18 }, (_, id) => ({ id, delayMs: 1800,
+  queuedAtMs: 0, startedAtMs: 1900, endedAtMs: 2900, status: id === 17 ? 'cancelled' : 'complete',
+  context: { phase: 'battle', entryGeneration: id, mapId: 'urban' },
+  result: { before: 18, after: null, rescued: false, stage: null },
+  measurements: [{ kind: 'async', startTime: 1900, endTime: 2500, renderMs: 200, enqueueMs: 300,
+    waitMs: 100, readbackSteps: { readPixels: 299, wait: 100, copy: 1 } },
+  { kind: 'sync', startTime: 2500, endTime: 2900, renderMs: 200, readbackMs: 200 }],
+}));
+watchdogRows[17].measurements.push(...Array.from({ length: 8 }, () => ({ kind: 'sync', startTime: 2900, endTime: 2900 })));
+// Unexpected/cyclic data must not leak into a report or suppress valid timings.
+watchdogRows[17].renderer = watchdogRows;
+browserWindow.__GL_DIAG.sceneWatchdogs = { rowLimit: 16, rowsDropped: 4, rows: watchdogRows };
 const audioContext = { state: 'running', currentTime: 1 };
 browserWindow.__COT_AUDIO = { ctx: audioContext, loadingActive: true,
   ambientState: () => ({ active: false }) };
@@ -108,6 +120,22 @@ try {
     'a hidden/visible cycle cannot disappear because both sampled endpoints were visible');
   assert.deepEqual(row.loadingTraces.__BATTLE_LOAD, { stages: { world: 4000 } });
   assert.deepEqual(row.graphicsDiagnostics.errors, ['example link failure']);
+  const watchdogs = row.graphicsDiagnostics.sceneWatchdogs;
+  assert.equal(watchdogs.available, true);
+  assert.equal(watchdogs.rows.length, 16);
+  assert.equal(watchdogs.rowsDropped, 4);
+  assert.equal(watchdogs.captureRowsDropped, 2);
+  assert.equal(watchdogs.rows[0].id, 2);
+  assert.equal(watchdogs.rows.at(-1).status, 'cancelled');
+  assert.equal(watchdogs.rows.at(-1).measurementsDropped, 2);
+  assert.equal(watchdogs.rows.at(-1).measurements.length, 8);
+  assert.deepEqual(watchdogs.rows[0].measurements.map(value => value.kind), ['async', 'sync']);
+  assert.equal(watchdogs.rows[0].measurements[0].renderMs, 200);
+  assert.equal(watchdogs.rows[0].measurements[0].enqueueMs, 300);
+  assert.equal(watchdogs.rows[0].measurements[0].readbackSteps.readPixels, 299);
+  assert.equal(watchdogs.rows.at(-1).renderer, undefined);
+  watchdogRows[2].measurements[0].readbackSteps.readPixels = 999;
+  assert.equal(watchdogs.rows[0].measurements[0].readbackSteps.readPixels, 299, 'nested timing is copied');
   assert.deepEqual(row.loadingTraces.__BATTLE_DEFERRED_WARM, browserWindow.__BATTLE_DEFERRED_WARM);
   assert.deepEqual(row.loadingTraces.__COMBAT_RARE_WARM, browserWindow.__COMBAT_RARE_WARM);
   assert.deepEqual(row.loadingTraces.__COMBAT_WARM, browserWindow.__COMBAT_WARM);

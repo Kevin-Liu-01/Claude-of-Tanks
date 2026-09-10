@@ -18,23 +18,46 @@ const rows = GARAGE_BATTLE_ACTIONS.map((action, index) => {
       battleOrdinal: index + 1, playerSpecId: 'm1a1', mapId: 'urban', pedestalSpecId: 'm1a1' } };
 });
 assert.deepEqual(checkGarageBattleActions(rows), []);
-assert.equal(checkGarageActionWarmReadiness(rows).length, 2, 'missing warm evidence fails both battle gates');
+assert.equal(checkGarageActionWarmReadiness(rows).length, 4, 'missing evidence fails both owners for both battles');
+const warmOwners = [
+  ['countdown', '__BATTLE_COUNTDOWN_WARM'], ['deferred', '__BATTLE_DEFERRED_WARM'],
+];
 const warmRows = structuredClone(rows);
 for (const row of warmRows.slice(0, 2)) {
-  row.loadingTraces = { __BATTLE_COUNTDOWN_WARM: { done: true, doneBeforeRollout: true } };
+  row.loadingTraces = Object.fromEntries(warmOwners.map(([, receipt]) =>
+    [receipt, { done: true, doneBeforeRollout: true }]));
 }
 // Returning can retain a prior trace; this gate examines only the two entries.
-warmRows[2].loadingTraces = { __BATTLE_COUNTDOWN_WARM: { error: 'stale return trace' } };
+warmRows[2].loadingTraces = Object.fromEntries(warmOwners.map(([, receipt]) =>
+  [receipt, { error: 'stale return trace', cancelled: true }]));
 assert.deepEqual(checkGarageActionWarmReadiness(warmRows), []);
 for (const index of [0, 1]) {
-  for (const [key, value] of [['error', 'ProgramUniformPreparationError: budget'],
-    ['done', false], ['done', undefined], ['doneBeforeRollout', false], ['doneBeforeRollout', undefined]]) {
-    const changed = structuredClone(warmRows);
-    changed[index].loadingTraces.__BATTLE_COUNTDOWN_WARM[key] = value;
-    assert.ok(checkGarageActionWarmReadiness(changed).length, `${changed[index].action}: rejects ${key}=${value}`);
-    assert.deepEqual(checkGarageBattleActions(changed), [], 'warm acceptance stays separate from functional handoff');
+  for (const [owner, receipt] of warmOwners) {
+    const missing = structuredClone(warmRows);
+    delete missing[index].loadingTraces[receipt];
+    assert.deepEqual(checkGarageActionWarmReadiness(missing),
+      [`${missing[index].action}: missing ${owner} warm receipt`]);
+    for (const [key, value] of [['error', 'ProgramUniformPreparationError: budget'], ['cancelled', true],
+      ['done', false], ['done', undefined], ['doneBeforeRollout', false], ['doneBeforeRollout', undefined]]) {
+      const changed = structuredClone(warmRows);
+      changed[index].loadingTraces[receipt][key] = value;
+      const failures = checkGarageActionWarmReadiness(changed);
+      assert.equal(failures.length, 1, `${changed[index].action}: ${owner} independently rejects ${key}=${value}`);
+      assert.ok(failures[0].startsWith(`${changed[index].action}: ${owner} warm `));
+      assert.deepEqual(checkGarageBattleActions(changed), [], 'warm acceptance stays separate from functional handoff');
+    }
   }
 }
+const deferredPaintTimeout = { done: true, generation: 3,
+  error: 'Error: Visible paint frame did not arrive within 1000 ms', doneBeforeRollout: false };
+const observedDeferredFailure = structuredClone(warmRows);
+observedDeferredFailure[1].loadingTraces.__BATTLE_DEFERRED_WARM = deferredPaintTimeout;
+assert.deepEqual(checkGarageActionWarmReadiness(observedDeferredFailure), [
+  `battle-again: deferred warm error: ${deferredPaintTimeout.error}`,
+  'battle-again: deferred warm was not ready before rollout',
+], 'done:true does not hide the observed deferred paint-timeout failure');
+assert.deepEqual(checkGarageBattleActions(observedDeferredFailure), [],
+  'the observed warm failure is not reinterpreted as a failed functional handoff');
 assert.ok(checkGarageActionAudio(rows).length, 'absent clock evidence does not pass the separate audio gate');
 const audioRows = structuredClone(rows);
 const loadingBefore = { atMs: 100, contextId: 1, state: 'running', currentTimeS: 1,
@@ -198,7 +221,8 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     await new AsyncFunction(...Object.keys(ports), source)(...Object.values(ports));
   }
 
-  async function probeCase(phase, warmGate = false, warmReady = true, sourceGate = false, sourceReady = true) {
+  async function probeCase(phase, warmGate = false, warmReady = true, sourceGate = false, sourceReady = true,
+    deferredFailureAction = '') {
     const process = fakeProcess(), writes = [], navigation = deferred();
     if (warmGate) process.argv.push('--warm-readiness-gate');
     if (sourceGate) process.argv.push('--source-readiness-gate');
@@ -218,7 +242,9 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
         if (body.includes('__ACTION_TRACE.arm')) action = args[0];
         if (body.includes('__ACTION_TRACE.finish')) return { action,
           loadingTraces: { __BATTLE_COUNTDOWN_WARM: { done: true, doneBeforeRollout: warmReady,
-            ...(!warmReady ? { error: 'ProgramUniformPreparationError: budget' } : {}) } } };
+            ...(!warmReady ? { error: 'ProgramUniformPreparationError: budget' } : {}) },
+          __BATTLE_DEFERRED_WARM: action === deferredFailureAction ? deferredPaintTimeout
+            : { done: true, doneBeforeRollout: true } } };
         return {};
       },
     };
@@ -268,15 +294,25 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     equal(calls.closed, calls.launched, 'every launched browser is closed exactly once');
     equal(process.listenerCount('SIGINT') + process.listenerCount('SIGTERM'), 0, 'signal handlers are removed after cleanup');
     if (phase === 'normal') {
-      const accepted = (!warmGate || warmReady) && (!sourceGate || sourceReady);
+      const allWarmReady = warmReady && !deferredFailureAction;
+      const accepted = (!warmGate || allWarmReady) && (!sourceGate || sourceReady);
       equal(report.pass, accepted, 'either requested readiness failure defeats functional success');
       equal(report.functionalPass, true, 'readiness gates do not reinterpret the functional receipt');
       equal(report.actions.map(row => row.action), ['battle', 'battle-again', 'return-to-garage'], 'all existing actions remain');
       if (warmGate) {
         equal(report.passScope, sourceGate ? 'real-control-functional-and-warm-and-source-readiness'
           : 'real-control-functional-and-warm-readiness', 'requested acceptance scope is explicit');
-        equal(report.warmReadiness.pass, warmReady, 'the explicit acceptance result is saved');
-        equal(report.warmReadiness.failures.length, warmReady ? 0 : 4, 'both battle errors and late readiness survive');
+        equal(report.warmReadiness.pass, allWarmReady, 'acceptance requires both production warm owners');
+        equal(report.warmReadiness.requiredReceipts, warmOwners.map(([, receipt]) => receipt),
+          'saved scope distinguishes both-owner acceptance from historical countdown-only reports');
+        equal(report.warmReadiness.failures.length, (warmReady ? 0 : 4) + (deferredFailureAction ? 2 : 0),
+          'each owner error and late-readiness failure survives');
+        if (deferredFailureAction) equal(report.warmReadiness.failures.slice(-2), [
+          `${deferredFailureAction}: deferred warm error: ${deferredPaintTimeout.error}`,
+          `${deferredFailureAction}: deferred warm was not ready before rollout`,
+        ], 'the actual probe reports the observed deferred-only timeout failure');
+      } else {
+        equal(report.warmReadiness, undefined, 'default functional mode does not silently enable a warm gate');
       }
       if (sourceGate) {
         equal(report.sourceReadiness.pass, sourceReady, 'source acceptance is separately retained');
@@ -308,6 +344,10 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
   }
   await probeCase('normal', true, false, true, true);
   await probeCase('normal', true, false, true, false);
+  for (const action of ['battle', 'battle-again']) for (const warmGate of [false, true]) {
+    await probeCase('normal', warmGate, true, false, true, action);
+  }
+  await probeCase('normal', true, true, true, true, 'battle-again');
 
   console.log(`garage-battle-actions-contract.selftest: ${assertions} lifecycle assertions pass`);
 }

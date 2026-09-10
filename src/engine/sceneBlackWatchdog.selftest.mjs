@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+import { createBus } from '../game/stateCore.ts';
 
 globalThis.window = { __GL_DIAG: { errors: [] } };
-const { runSceneBlackWatchdog, scheduleSceneWatchdog } = await import('./deviceDiag.ts');
+const { runSceneBlackWatchdog, scheduleSceneWatchdog, runSceneWatchdogNow } = await import('./deviceDiag.ts');
 
 const failures = [];
 let passed = 0;
@@ -387,7 +388,7 @@ test('real intent, Garage teardown and network activation invalidate old same-wo
     main.match(/setNetworkSpectator: \(value: boolean\) => \{([\s\S]*?)\n\s+\},/)[1],
   ];
   for (const body of bodies) {
-    const invoke = new Function('value', `let sceneWatchdogEntryGeneration = 1, battleWarmGeneration = 1;
+    const invoke = new Function('value', `let sceneWatchdogEntryGeneration = 1, battleWarmGeneration = 1, coveredBattleWatchdog = () => {};
       const playSurface = { hideForBattle() {} }, networkSession = { setSpectator() {} };
       ${body}
       return sceneWatchdogEntryGeneration;`);
@@ -429,8 +430,10 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
 
 {
   const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-  assert.match(main, /run: \(\) => runSceneBlackWatchdogAsync\(renderer, scene, camera, \{\s*\.\.\.currentSceneWatchdogOptions\(\), isCurrent: isCurrentBattleWatchdog/);
-  assert.match(main, /const garageWatchdogSettled = scheduleSceneWatchdog\([\s\S]+?runSceneBlackWatchdogAsync\(renderer, scene, camera, \{ isCurrent: isCurrentGarage \}\)/);
+  assert.match(main, /diagnosticContext: \{ phase: 'battle', entryGeneration, mapId: requestedWorld\?\.mapId \?\? null \}/);
+  assert.match(main, /run: onMeasurements => runSceneBlackWatchdogAsync\(renderer, scene, camera, \{\s*\.\.\.currentSceneWatchdogOptions\(\), isCurrent: isCurrentBattleWatchdog, measureTimings: true, onMeasurements/);
+  assert.match(main, /diagnosticContext: \{ phase: 'garage', entryGeneration: garageWatchdogGeneration, mapId: garageWatchdogWorld\?\.mapId \?\? null \}/);
+  assert.match(main, /const garageWatchdogSettled = scheduleSceneWatchdog\([\s\S]+?runSceneBlackWatchdogAsync\(renderer, scene, camera, \{\s*isCurrent: isCurrentGarage, measureTimings: true, onMeasurements/);
   assert.doesNotMatch(main, /runSceneBlackWatchdog\(/, 'ordinary delayed main watchdogs cannot synchronously readPixels');
   const reclaimBody = main.match(/delayMs: 3400, isCurrent: isCurrentGarage,\s*run: async \(\) => \{([\s\S]*?)\n\s+\},/)[1];
   const runReclaim = new Function('garageWatchdogSettled', 'isCurrentGarage', 'reclaimShadows', 'renderer', 'scene', 'camera',
@@ -444,6 +447,144 @@ for (const kind of ['sync', 'async', 'schedule', 'reporter']) {
     assert.equal(reclaimed, Number(stillCurrent), 'reclaim rechecks its actual adapter owner after the drain');
   }
   passed++;
+}
+
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const armBody = main.match(/scheduleBlackWatchdog: \(covered: boolean\) => \{([\s\S]+?)\n      \},\n    \},/)[1]
+    .replace(": Omit<Parameters<typeof scheduleSceneWatchdog>[0], 'delayMs'>", '');
+  const consumeBody = main.match(/runSceneWatchdog: async \(assertCurrent: \(\) => void\) => \{([\s\S]+?)\n    \},/)[1];
+  const invalidateBody = main.match(/bus\.on\('ui:battleStart', \(\) => \{([\s\S]*?)\n\}\);/)[1];
+  const timers = [], draws = [];
+  const nav = { webdriver: false }, game = { phase: 'battle' }, world = { mapId: 'urban' };
+  const create = new Function('navigator', 'game', 'currentWorld', 'runSceneWatchdogNow',
+    'scheduleSceneWatchdog', 'runSceneBlackWatchdogAsync', `
+      let sceneWatchdogEntryGeneration = 0, coveredBattleWatchdog = null;
+      const studio = { active: false }, renderer = {}, scene = {}, camera = {}, playSurface = { hideForBattle() {} };
+      const currentSceneWatchdogOptions = () => ({});
+      return { arm: covered => { ${armBody} }, consume: async assertCurrent => { ${consumeBody} },
+        pending: () => coveredBattleWatchdog, invalidate: () => { ${invalidateBody} } };
+    `);
+  const h = create(nav, game, () => world, runSceneWatchdogNow,
+    options => timers.push(options), async (_renderer, _scene, _camera, options) => {
+      assert.equal(options.isCurrent(), true); draws.push(options);
+      return { before: 18, after: null, rescued: false, stage: null };
+    });
+  h.arm(true);
+  assert.equal(timers.length, 0, 'actual held-entry adapter never also queues the legacy timer');
+  assert.equal(draws.length, 0, 'arming never draws an incomplete deployment');
+  const obsolete = h.pending();
+  h.arm(true);
+  await assert.rejects(obsolete(), /owner changed/, 'a same-world superseded request cannot draw');
+  assert.equal(draws.length, 0);
+  await h.consume(() => {});
+  assert.equal(draws.length, 1);
+  assert.equal(draws[0].measureTimings, true);
+  assert.equal(h.pending(), null);
+  await assert.rejects(h.consume(() => {}), /was not armed/, 'covered request is consumed once');
+  h.arm(false);
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delayMs, 1800, 'legacy direct/no-cover path retains its original delay');
+  assert.equal(h.pending(), null);
+  nav.webdriver = true;
+  h.arm(true);
+  await h.consume(() => {});
+  assert.equal(draws.length, 1, 'webdriver keeps its explicit existing opt-out');
+  nav.webdriver = false;
+  const garage = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
+  const launchBody = garage.match(/function launchBattle\([\s\S]+?\): void \{([\s\S]+?)\n  \}\n\n  function battle\(/)[1];
+  const bus = createBus();
+  bus.on('ui:battleStart', h.invalidate);
+  const launch = new Function('emit', 'onBattle', `return (specId, mapId) => {
+    const emitClick = true, gameMode = 'standard'; ${launchBody}
+  };`)(bus.emit, () => h.arm(true));
+  launch('m1a1', 'urban');
+  assert.equal(typeof h.pending(), 'function', 'actual Garage launch invalidates BEFORE onBattle arms the new request');
+  await h.consume(() => {});
+  assert.equal(draws.length, 2, 'ui:battleStart cannot clear the newly armed held-entry request');
+  passed++;
+}
+
+{
+  const priorBag = window.__GL_DIAG, priorPerformance = globalThis.performance;
+  let now = 10;
+  window.__GL_DIAG = { errors: [] };
+  globalThis.performance = { now: () => now };
+  try {
+    const callbacks = [], errors = [];
+    const context = { phase: 'battle', entryGeneration: 7, mapId: 'urban' };
+    let current = true, release, measurements;
+    const completion = scheduleSceneWatchdog({ delayMs: 1800, diagnosticContext: context,
+      isCurrent: () => current, onError: error => errors.push(error),
+      run: measured => {
+        assert.equal(now, 1810, 'publication does not move synchronous submission');
+        measurements = [{ kind: 'async', startTime: now, endTime: now + 4,
+          renderMs: 13, enqueueMs: 2, readbackSteps: { readPixels: 2 } }];
+        return new Promise(resolve => { release = () => {
+          measured(measurements);
+          resolve({ before: 18, after: null, rescued: false, stage: null, measurements });
+        }; });
+      },
+    }, (callback, delay) => { assert.equal(delay, 1800); callbacks.push(callback); });
+    const history = window.__GL_DIAG.sceneWatchdogs;
+    assert.equal(history.rows[0].status, 'queued');
+    assert.equal(history.rows[0].queuedAtMs, 10);
+    context.entryGeneration = 99;
+    now = 1810; callbacks.shift()();
+    assert.equal(history.rows[0].status, 'running');
+    assert.equal(history.rows[0].startedAtMs, 1810);
+    assert.equal(history.rows[0].endedAtMs, undefined);
+    now = 1814; release(); await completion;
+    assert.equal(history.rows[0].status, 'complete');
+    assert.equal(history.rows[0].endedAtMs, 1814);
+    assert.equal(history.rows[0].context.entryGeneration, 7);
+    assert.deepEqual(history.rows[0].measurements, measurements);
+    assert.equal(history.rows[0].result.measurements, undefined, 'large rows are not duplicated');
+    measurements[0].readbackSteps.readPixels = 999;
+    assert.equal(history.rows[0].measurements[0].readbackSteps.readPixels, 2, 'publication is an owned copy');
+
+    for (const outcome of ['skipped', 'cancelled', 'error', 'failed']) {
+      current = outcome !== 'skipped';
+      const done = scheduleSceneWatchdog({ delayMs: 1, diagnosticContext: context,
+        isCurrent: () => current, onError: error => errors.push(error),
+        run: measured => {
+          assert.notEqual(outcome, 'skipped');
+          measured([{ kind: 'async', startTime: now, endTime: now, renderMs: 2 }]);
+          if (outcome === 'cancelled') current = false;
+          if (outcome === 'failed') return Promise.resolve({ before: 0, after: null, rescued: false, stage: null, failed: true });
+          return Promise.reject(new Error(outcome));
+        },
+      }, callback => callbacks.push(callback));
+      callbacks.shift()(); await done;
+      assert.equal(history.rows.at(-1).status, outcome);
+      assert.equal(history.rows.at(-1).measurements.length, outcome === 'skipped' ? 0 : 1);
+    }
+    assert.deepEqual(errors.map(error => error.message), ['error'], 'cancellation is not a graphics error');
+    for (let index = 0; index < 20; index++) {
+      await scheduleSceneWatchdog({ delayMs: 1, diagnosticContext: context, isCurrent: () => false,
+        run: () => { throw new Error('stale run'); } }, callback => callback());
+    }
+    assert.equal(history.rows.length, 16);
+    assert.equal(history.rowsDropped, 9);
+    for (const diagnosticContext of [undefined, context]) {
+      let reads = 0;
+      await scheduleSceneWatchdog({ delayMs: 1, diagnosticContext, isCurrent: () => true,
+        run: () => Promise.resolve({ get failed() { reads++; throw new Error('result getter failed'); } }),
+      }, callback => callback());
+      assert.equal(reads, diagnosticContext ? 1 : 0, 'optional result inspection cannot reject or strand completion');
+    }
+    assert.equal(history.rows.at(-1).captureError, 'watchdog result unavailable');
+    Object.freeze(window.__GL_DIAG);
+    Object.freeze(history.rows);
+    let ran = false;
+    await scheduleSceneWatchdog({ delayMs: 1, diagnosticContext: context, isCurrent: () => true,
+      run: () => { ran = true; } }, callback => callback());
+    assert.equal(ran, true, 'frozen optional publication cannot suppress an actual check');
+    passed++;
+  } finally {
+    window.__GL_DIAG = priorBag;
+    globalThis.performance = priorPerformance;
+  }
 }
 
 assert.equal(failures.length, 0,

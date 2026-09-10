@@ -35,20 +35,26 @@ export function checkGarageActionAudio(rows) {
   return failures;
 }
 
-// Optional acceptance of the production warm owner's own receipt. Functional
-// rollout can succeed after a caught countdown warm error, so it is not proof
-// that required covered work completed. Never certify a stale return trace.
+// Optional acceptance of both production warm owners' own receipts. Functional
+// rollout can succeed after caught warm errors, and deferred warm marks done
+// even on failure. Neither alone proves readiness. Ignore stale return traces.
 export function checkGarageActionWarmReadiness(rows) {
   const failures = [];
   for (const action of ['battle', 'battle-again']) {
-    const warm = rows.find(row => row.action === action)?.loadingTraces?.__BATTLE_COUNTDOWN_WARM;
-    if (!warm) {
-      failures.push(`${action}: missing countdown warm receipt`);
-      continue;
+    const traces = rows.find(row => row.action === action)?.loadingTraces;
+    for (const [owner, receipt] of [
+      ['countdown', '__BATTLE_COUNTDOWN_WARM'], ['deferred', '__BATTLE_DEFERRED_WARM'],
+    ]) {
+      const warm = traces?.[receipt];
+      if (!warm) {
+        failures.push(`${action}: missing ${owner} warm receipt`);
+        continue;
+      }
+      if (warm.error) failures.push(`${action}: ${owner} warm error: ${String(warm.error)}`);
+      if (warm.cancelled === true) failures.push(`${action}: ${owner} warm was cancelled`);
+      if (warm.done !== true) failures.push(`${action}: ${owner} warm did not finish`);
+      if (warm.doneBeforeRollout !== true) failures.push(`${action}: ${owner} warm was not ready before rollout`);
     }
-    if (warm.error) failures.push(`${action}: countdown warm error: ${String(warm.error)}`);
-    if (warm.done !== true) failures.push(`${action}: countdown warm did not finish`);
-    if (warm.doneBeforeRollout !== true) failures.push(`${action}: countdown warm was not ready before rollout`);
   }
   return failures;
 }

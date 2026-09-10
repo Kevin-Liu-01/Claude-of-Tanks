@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 globalThis.window = { __GL_DIAG: { errors: [] } };
-const { runSceneBlackWatchdogAsync } = await import('./deviceDiag.ts');
+const { runSceneBlackWatchdogAsync, runSceneWatchdogNow } = await import('./deviceDiag.ts');
 const nextTask = () => new Promise((resolve) => setImmediate(resolve));
 let passed = 0;
 
@@ -266,6 +266,32 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
 
 const healthy = (before) => ({ before, after: null, rescued: false, stage: null });
 
+for (const outcome of ['healthy', 'cancelled', 'throw', 'skipped']) {
+  await test(`covered immediate watchdog owns completion without a timer (${outcome})`, async clock => {
+    const f = fixture();
+    let current = outcome !== 'skipped';
+    const pending = runSceneWatchdogNow({ isCurrent: () => current,
+      diagnosticContext: { phase: 'battle', entryGeneration: 1, mapId: 'urban' },
+      run: onMeasurements => {
+        if (outcome === 'throw') throw new Error('covered measurement failed');
+        return f.run({ measureTimings: true, isCurrent: () => current, onMeasurements });
+      },
+    });
+    const observed = pending.then(value => ({ value }), error => ({ error }));
+    if (outcome === 'healthy' || outcome === 'cancelled') {
+      assert.ok(f.names().includes('enqueue'), 'real submission starts synchronously under the current cover');
+      assert.equal(clock.waits.length, 1);
+      assert.equal(clock.waits[0].ms, 4, 'the only timer is the existing owned PBO poll, never 1800ms');
+      if (outcome === 'cancelled') { current = false; f.obsolete(); }
+      await clock.resume();
+    }
+    const result = await observed;
+    if (outcome === 'healthy') assert.equal(result.value.before, 12);
+    else assert.match(String(result.error), outcome === 'throw' ? /covered measurement failed/ : /owner changed/);
+    f.assertReleased(outcome === 'healthy' || outcome === 'cancelled' ? 1 : 0);
+  });
+}
+
 await test('healthy submission is synchronous and restores all bindings before the poll task', async (clock) => {
   const f = fixture({ asyncSamples: [[0, 0, 18, 0]] });
   const pending = f.run();
@@ -482,11 +508,12 @@ await test('opt-in operation timing includes awaited work and bounded fallback m
   await clock.resume();
   const result = await pending;
   assert.equal(result.measurements.length, 6);
+  assert.deepEqual(result.measurements.map(row => row.kind), ['async', 'sync', 'sync', 'sync', 'sync', 'sync']);
   assert.equal(result.measurements[0].waitMs, 4);
   assert.equal(result.measurements[0].enqueueMs, 0);
   assert.equal(result.measurements[0].readbackMs, 4);
   for (const measurement of result.measurements) {
-    const { readbackSteps, ...outer } = measurement;
+    const { kind, readbackSteps, ...outer } = measurement;
     assert.ok(Object.values(outer).every((value) => Number.isFinite(value) && value >= 0));
     if (readbackSteps) {
       assert.ok(Object.values(readbackSteps).every((value) => Number.isFinite(value) && value >= 0));
@@ -499,6 +526,52 @@ await test('opt-in operation timing includes awaited work and bounded fallback m
   assert.equal(result.measurements[0].readbackSteps.copy, 0);
   assert.equal(result.measurements[0].readbackSteps.release, 0);
   f.assertReleased(2, 5);
+});
+
+for (const outcome of ['healthy', 'fallback', 'cancelled', 'observer-throws']) {
+  await test(`measurement publication follows owned cleanup (${outcome})`, async clock => {
+    const f = fixture({ failAt: outcome === 'fallback' ? 'copy' : null, syncSamples: [18] });
+    let current = true, observed, calls = 0;
+    const pending = f.run({ measureTimings: true, isCurrent: () => current,
+      onMeasurements(rows) {
+        calls++;
+        f.assertReleased(outcome === 'fallback' ? 2 : 1, outcome === 'fallback' ? 1 : 0);
+        observed = structuredClone(rows);
+        // The observer receives copies, never the returned timing rows.
+        if (rows[0]) { rows[0].renderMs = 999; rows[0].readbackSteps.copy = 999; }
+        if (outcome === 'observer-throws') throw new Error('diagnostic consumer failed');
+      },
+    });
+    assert.equal(calls, 0, 'pending PBO is not published as a completed measurement');
+    const rejection = outcome === 'cancelled' ? assert.rejects(pending, /watchdog owner changed/) : null;
+    if (outcome === 'cancelled') { current = false; f.obsolete(); }
+    await clock.resume();
+    if (rejection) await rejection;
+    else {
+      const result = await pending;
+      assert.equal(result.before, outcome === 'fallback' ? 18 : 12);
+      assert.notEqual(result.measurements[0].renderMs, 999);
+      assert.notEqual(result.measurements[0].readbackSteps.copy, 999);
+      assert.equal(result.rescued, false);
+    }
+    assert.equal(calls, 1);
+    assert.deepEqual(observed.map(row => row.kind), outcome === 'fallback' ? ['async', 'sync'] : ['async']);
+    if (outcome === 'fallback') assert.match(observed[0].error, /injected copy/);
+    assert.ok(observed.every(row => row.endTime >= row.startTime));
+  });
+}
+
+await test('unavailable optional program count cannot trigger fallback', async clock => {
+  const f = fixture();
+  Object.defineProperty(f.renderer, 'info', { get() { throw new Error('program diagnostic unavailable'); } });
+  const pending = f.run({ measureTimings: true });
+  await clock.resume();
+  const result = await pending;
+  assert.equal(result.before, 12);
+  assert.equal(result.measurements.length, 1);
+  assert.equal(result.measurements[0].programsBeforeRender, undefined);
+  assert.equal(result.measurements[0].programsAfterRender, undefined);
+  f.assertReleased(1);
 });
 
 for (const [label, faultCall] of [['after enqueue', 1], ['before restoration', 2]]) {
