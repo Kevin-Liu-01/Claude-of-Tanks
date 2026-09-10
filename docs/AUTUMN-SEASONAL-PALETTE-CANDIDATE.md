@@ -1,4 +1,4 @@
-# Autumn seasonal palette — source-checked candidate
+# Autumn seasonal palette — accepted scoped improvement
 
 Base: `c0064aaae78a248c6e1a46886788e455c6098482`, isolated branch
 `codex/autumn-seasonal-palette-20260909`. No shrub-shape or held normal changes.
@@ -58,6 +58,42 @@ CPU FIFO. Runtime source SHA is
 built index SHA is
 `18458f039330530f45c2d28e62967b0c8854f0e262fa21c08871fd6d04299018`.
 
-Authored near/far hue families do not prove the final lit transition matches;
-native review remains required. Color does not repair torn card shapes or black
-plate lighting, and this candidate is not yet accepted for release.
+## Native review and integration
+
+`autumn-seasonal-palette-native-r1.GArrgZ` compares the exact c006 baseline and
+4ae234cce candidate at fixed Autumn near/establishing cameras. Root and an
+independent reviewer inspected all four native1440x900 Metal images. Copper,
+gold and olive now break up the scarlet/orange uniformity, especially in the
+wide view. Accepted as a palette improvement only: black bush cavities,
+broken-card silhouettes, coarse distant shapes and repetitive planting remain.
+
+Both sides retain670 near /675 wide renderer geometries,211 textures and209
+programs. The attached foliage inventory stays42 geometries,11 materials,
+7 textures,42 instance owners,6,243,912 geometry/instance view bytes and
+8,865,352 observed typed backing bytes. All positions, normals, bounds, alpha,
+instances and grass/crop contracts match. Only22 crown/bush color buffers and
+four existing atlas RGB contents differ. Normal120-frame observations retain
+42 foliage submissions per frame and1,762,900 near /1,856,708 wide submitted
+triangles on both builds. These callback counts exclude shadow paths that
+bypass the callback; they are not the final postprocess counter or GPU timing.
+
+Raw near submission-wall median/p95 is2.3/2.5ms baseline versus2.4/2.6ms
+candidate; wide is3.4/6.4ms versus2.6/3.3ms. Delivered-interval medians are
+16.6/16.6ms near and16.5/16.7ms wide. These short sequential observations
+include driver/scheduling variation and do not establish a speed improvement
+or a no-regression certificate.
+
+The acquisition completes in73.902s with source/build pins stable, no recorded
+errors, browsers/previews closed and the capture lease released. Static art
+and exact observed resource budgets do not certify full-frame/mobile cost,
+idle heap behavior, palette construction time or the whole environment goal.
+
+Integration onto unrelated published HUD/vehicle-worker/test improvements at
+1beb0c780 preserves the exact palette and vegetation runtime. The isolated
+integration commit is17d999a92. `autumn-palette-integration-r1.5LUhiy` repeats
+the five focused tests, TS7, quality/Doctor and public build successfully.
+Its build index is
+`02bddabb5e3534dfe7d815925fe655890df0fd2d3b970652c11263ed4dad02d4`.
+The matched art images above precede this integration; they are not new
+screenshots of the unrelated HUD/worker changes. No held shrub, canopy-normal,
+water-tint or road prototype is included.
