@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import '../game/rosterPlanning.selftest.mjs';
 import {
   FEATURED_IMAGES,
   FEATURED_SHOTS,
@@ -183,7 +182,6 @@ assert.equal(new Set(rotation.slice(cycleSize)).size, cycleSize,
 assert.ok(TRANSITION_SHOTS.includes(featuredShotForMap('unknown-map')),
   'unknown map IDs retain the existing curated transition rotation');
 
-await import('./imagePreload.selftest.mjs');
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const mainBattleHudRuntimeSource = await readFile(
@@ -401,8 +399,8 @@ const revealFrameAt = revealWarmBody.indexOf('entryLifecycle.primeReveal()');
 assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
   'solo entry must split cascade and post warming before the first full deployment frame');
 assert.match(soloLoadingSource,
-  /ensureWorld\([\s\S]{0,500}resolved,[\s\S]{0,360}\{ precompile: false, services: false \}/,
-  'solo entry must activate a battlefield without synchronous world services');
+  /ensureWorld\([\s\S]{0,500}resolved,[\s\S]{0,360}\{ precompile: false, services: false, atmosphere: 'covered-battle' \}/,
+  'solo entry must activate the covered battle atmosphere without synchronous world services');
 assert.match(soloLoadingSource,
   /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(getWorld\(\)\)/,
   'solo entry must defer battle-only services until the real battle light set is active');

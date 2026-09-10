@@ -2,8 +2,6 @@
 
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import './contextInfo.selftest.mjs';
-import './garageDossier.selftest.mjs';
 import { EQUIPMENT_CATALOG } from '../game/equipment.ts';
 import { equipIconIds, equipIconSVG } from './equipIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';

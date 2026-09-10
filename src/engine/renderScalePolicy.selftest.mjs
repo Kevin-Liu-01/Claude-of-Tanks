@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import './resolutionPolicy.selftest.mjs';
 import {
   baseDynamicScale,
   cappedPixelRatio,

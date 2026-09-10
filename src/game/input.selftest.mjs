@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { createInput, DEFAULT_BINDINGS, migrateShiftAimCapsFreeLookBindings } from './input.ts';
-import './armorAimOverlay.selftest.mjs';
 
 assert.equal(DEFAULT_BINDINGS.sniperToggle, 'ShiftLeft',
   'left Shift toggles sniper mode');

@@ -100,4 +100,3 @@ console.log('specHelpers.selftest: shared armor and shell constructors passed');
 
 // The package test command already owns this stable entrypoint. Chain the
 // fleet-wide balance gate here so new spec packs cannot bypass it.
-await import('./fleetBalance.selftest.mjs');

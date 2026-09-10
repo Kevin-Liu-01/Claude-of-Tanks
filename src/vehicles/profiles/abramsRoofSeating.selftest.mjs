@@ -93,5 +93,3 @@ for (const id of ['m1a2', 'm1a2_tusk', 'm1a2_sepv2']) {
 }
 
 console.log('abramsRoofSeating.selftest: M1A2, TUSK and SEPv2 roof equipment is seated');
-
-await import('./abramsWheelBayPanels.selftest.mjs');

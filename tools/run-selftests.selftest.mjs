@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
+import { runSelftestFile, runSelftestSuite, selftestChildEnv, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
 
 function fixture({ failAt, errorAt, acquireError } = {}) {
   const events = [], errors = [];
@@ -105,7 +108,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   });
   assert.deepEqual(launch.slice(0, 2), [process.execPath, ['fixture.mjs']]);
   assert.equal(launch[2].cwd, process.cwd());
-  assert.equal(launch[2].env, process.env);
+  assert.deepEqual(launch[2].env, selftestChildEnv());
   assert.equal(launch[2].stdio, 'inherit');
   signals.emit(signal);
   assert.deepEqual(kills, [signal], 'forward termination only to the owned child');
@@ -176,3 +179,45 @@ assert.equal(invalid.status, 2);
 assert.match(invalid.stderr, /Unknown self-test suite/);
 assert.equal(invalid.stdout, '', 'unknown suites do not acquire resources or launch checks');
 console.log('run-selftests: bounded FIFO batches, nonnested browser ownership, refresh, exact order and failure/signal cleanup pass');
+
+const measured = fixture();
+let measuredClock = 0;
+const timings = [];
+const measuredAcquire = measured.options.lock.acquire;
+measured.options.lock.acquire = async timeout => { await measuredAcquire(timeout); measuredClock += 120; };
+measured.options.now = () => measuredClock;
+measured.options.onTiming = row => timings.push(row);
+measured.options.runFile = async file => { measuredClock += file === 'a' ? 30 : 70; return { status: file === 'a' ? 0 : 7 }; };
+assert.equal(await runSelftestSuite('measured', ['a', 'b', 'never'], measured.options), 7);
+assert.deepEqual(timings, [
+  { file: 'a', runMs: 30, queueMs: 120, status: 0, error: undefined },
+  { file: 'b', runMs: 70, queueMs: 0, status: 7, error: undefined },
+], 'execution and FIFO time stay separate, including the terminal failing file');
+
+for (const env of [{ NODE_DISABLE_COMPILE_CACHE: '1' }, { NODE_COMPILE_CACHE: '/explicit' }, { NODE_V8_COVERAGE: '/coverage' }]) {
+  assert.equal(selftestChildEnv(env), env, 'respect caller opt-out, explicit cache and coverage');
+}
+const originalEnv = { EXAMPLE: 'preserved' }, cachedEnv = selftestChildEnv(originalEnv);
+assert.equal(cachedEnv.EXAMPLE, 'preserved');
+assert.equal(originalEnv.NODE_COMPILE_CACHE, undefined, 'never mutate parent environment');
+assert.match(cachedEnv.NODE_COMPILE_CACHE, /cot-selftest-compile-/);
+
+// Real fresh processes prove that compiled code reuse does not cache test
+// results/global state and that editing the source cannot reuse a stale pass.
+const cacheFixture = mkdtempSync(join(tmpdir(), 'cot-compile-regression-'));
+try {
+  const file = join(cacheFixture, 'fixture.mjs');
+  const env = { ...process.env, NODE_COMPILE_CACHE: join(cacheFixture, 'cache') };
+  delete env.NODE_DISABLE_COMPILE_CACHE;
+  const source = `import assert from 'node:assert/strict';\nimport { getCompileCacheDir } from 'node:module';\nassert.ok(getCompileCacheDir());\nglobalThis.executions = (globalThis.executions || 0) + 1;\nassert.equal(globalThis.executions, 1);\n`;
+  writeFileSync(file, source);
+  for (let run = 0; run < 2; run++) {
+    const child = spawnSync(process.execPath, [file], { env, encoding: 'utf8' });
+    assert.equal(child.status, 0, child.stderr);
+  }
+  writeFileSync(file, source + `assert.fail('changed source still executes');\n`);
+  const changed = spawnSync(process.execPath, [file], { env, encoding: 'utf8' });
+  assert.notEqual(changed.status, 0);
+  assert.match(changed.stderr, /changed source still executes/);
+} finally { rmSync(cacheFixture, { recursive: true, force: true }); }
+console.log('run-selftests: separate execution/FIFO timings and source-invalidated fresh-process compile caching pass');

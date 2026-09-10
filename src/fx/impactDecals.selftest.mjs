@@ -3,7 +3,6 @@ import {
 } from './impactDecals.ts';
 import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.ts';
 import { readFile } from 'node:fs/promises';
-import './lazyRuntime.selftest.mjs';
 
 if (IMPACT_DECAL_CAP < 16) throw new Error('impact decal vehicle budget regressed');
 if (IMPACT_DECAL_LIFT_M <= 0 || IMPACT_DECAL_LIFT_M > 0.01) {

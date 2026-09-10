@@ -308,6 +308,5 @@ assert.match(garageSource,
 assert.match(garageSource,
   /cot-technical-viewer-figure img\{[^}]*aspect-ratio:2\/1;[^}]*object-fit:contain;/,
   'expanded schematics preserve the authored two-to-one frame instead of cropping the diagram');
-await import('./topAccentBorders.selftest.mjs');
 
 console.log('garageOrder.selftest: ordering, map default, filters and hidden horizontal rail verified');

@@ -1,14 +1,10 @@
 import assert from 'node:assert/strict';
-import './profiles/k2RunningGearSeat.selftest.mjs';
-import './profiles/abramsRoadWheelSpacing.selftest.mjs';
-import './profiles/japaneseHydropneumaticSuspension.selftest.mjs';
 import {
   SUSPENSION_PATTERN_DEFINITIONS,
   SUSPENSION_PATTERN_IDS,
   suspensionPatternFor,
 } from './suspensionPatterns.ts';
 
-await import('./profiles/k1a1Geometry.selftest.mjs');
 
 // Profile registration expands the base spec table to the complete playable
 // fleet; this test intentionally certifies that full runtime registry.

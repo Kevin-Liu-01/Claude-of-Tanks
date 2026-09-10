@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
-import './rosterPlanning.selftest.mjs';
+// Register the same complete production specs without executing roster tests.
+import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 import {
