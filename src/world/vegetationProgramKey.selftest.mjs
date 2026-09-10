@@ -59,7 +59,7 @@ function library(species, fade, environment) {
     grassDensity: 0, bushCount: 0, belts: [], authoredTrees: [] } };
   const vegetation = createVegetation(createHeightField(1337), engine, 1337, cfg);
   const { group } = vegetation;
-  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v14'));
+  const foliage = registered.filter(material => material.customProgramCacheKey().startsWith('world-tree-foliage-v15'));
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const foliageMats = Object.fromEntries(species.map((sp, index) => [sp, foliage[index]]));
   const foliageTex = Object.fromEntries(species.map(sp => [sp, foliageMats[sp].map]));

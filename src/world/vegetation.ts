@@ -382,9 +382,15 @@ export function applyCanopyDiffuseWrap(
   wrappedPhysical = _mustReplace(
     wrappedPhysical,
     'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution );',
-    `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\treflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );`,
+    `float canopyDiffuseNL = saturate( ( canopyRawNL + ${wrap.toFixed(2)} ) * ${reciprocal} ) * ${reciprocal};\n\t${matteCanopy ? 'canopyDiffuseNL = canopyDiffuseNL * 0.70 + 0.075;\n\t' : ''}reflectedLight.directDiffuse += canopyDiffuseNL * directLight.color * BRDF_Lambert( material.diffuseContribution );`,
   );
   if (matteCanopy) {
+    // A spray represents many differently oriented leaves. Mix 30% of an
+    // isotropic volume lobe into its directional wrap so entire reverse-facing
+    // sprays do not become black panels. Both lobes integrate to 0.5 over
+    // incidence [-1, 1]: 0.70 * 0.5 + 2 * 0.075 = 0.5. This redistributes
+    // actual incident light; it adds neither emission nor a night-time floor.
+    // Near cards and far crown proxies use the same response.
     // Volume-bent leaf normals intentionally do not flip toward the camera.
     // They describe a scattering crown, not a glossy microfacet surface:
     // GGX at N.V=0 produces a broad white grazing lobe across these cards.
@@ -3507,7 +3513,7 @@ function* vegetationBuildSteps(
       }`);
   };
   engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v13';
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v14';
   yield { stage: 'treePrep', fine: true };
 
   // r3 terrain_environment: SILHOUETTE variant tables. Every near/far
@@ -3686,7 +3692,7 @@ function* vegetationBuildSteps(
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
-      fm.customProgramCacheKey = () => 'world-tree-foliage-v14';
+      fm.customProgramCacheKey = () => 'world-tree-foliage-v15';
       foliageMats[sp] = fm;
       // alpha-tested shadow casting: without this every card shadows as a quad.
       // r6: palm gets a HIGHER shadow alphaTest — its frond texture covers most
