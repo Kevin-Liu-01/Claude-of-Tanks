@@ -9,9 +9,36 @@ import {assertArmorTraceBounds} from '../sim/armorOutline.test-support.mjs';
 const ids=['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x','type10_x','type90_x','amx40_x'];
 const serialize=v=>JSON.stringify(v,(key,value)=>key==='traceBounds'?undefined:value);
 const hash=v=>crypto.createHash('sha256').update(serialize(v)).digest('hex');
-assert.equal(hash(ids.map(id=>({id,armor:getSpec(id).armor}))),
+function beforeType10TrackCalibration(armor){
+  const copy=structuredClone(armor);
+  // Independently compared against 9919b26b9's generated calibration, loaded
+  // through the same spec finalizer: only these 16 scalar leaves changed.
+  // Keep the original whole-armor golden; never substitute this witness in
+  // the current-candidate trace/geometry checks below.
+  for(const side of ['trackL','trackR']){
+    const tracks=copy.modules.filter(m=>m.module===side);assert.equal(tracks.length,1);
+    const m=tracks[0];assert.equal(m.shapes.length,1);assert.equal(m.shapes[0].kind,'ellipsoid');
+    for(const [values,current,previous] of [
+      [m.min,[-.0242,-3.2563],[.063,-3.2251]],
+      [m.max,[1.2875,3.6363],[1.23,3.6056]],
+      [m.shapes[0].center,[.63165,.18999999999999995],[.6465,.19025000000000003]],
+      [m.shapes[0].radii,[.590265,3.170596],[.52515,3.142122]],
+    ]){
+      assert.deepEqual(values.slice(1),current,'only the declared fitted-track calibration may be reversed');
+      values.splice(1,2,...previous);
+    }
+  }
+  return copy;
+}
+const type10Armor=getSpec('type10_x').armor,type10Before=serialize(type10Armor);
+const invalidTrack=structuredClone(type10Armor);
+invalidTrack.modules.find(m=>m.module==='trackL').min[1]-=.001;
+assert.throws(()=>beforeType10TrackCalibration(invalidTrack));
+assert.equal(hash(ids.map(id=>({id,armor:id==='type10_x'
+  ?beforeType10TrackCalibration(getSpec(id).armor):getSpec(id).armor}))),
   'f78d1ab99291e9963524addc676fb087da802a82de3e345b692852202e95f59e',
-  'all seven complete pre-optimization armor objects remain byte-identical except optional acceleration data');
+  'all seven pre-optimization armor objects retain their golden, with the declared Type 10 track-only inverse');
+assert.equal(serialize(type10Armor),type10Before,'historical witness must not mutate the current candidate');
 
 for(const[id,donor]of[['type10_x','type10'],['leclerc_x','leclerc']]){
   const original=structuredClone(getSpec(donor)),first=structuredClone(original),second=structuredClone(original);

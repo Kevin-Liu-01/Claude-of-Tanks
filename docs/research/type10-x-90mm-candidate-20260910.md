@@ -141,3 +141,44 @@ assets have now been refreshed before a new complete check/release attempt.
 The generated horizontal centre also changes by 0.1 mm; no other vehicle's
 anchor or projection changes. No manual projection or generated evidence edit
 is used.
+
+The retry on `a7055a197` (rebased onto `dab4f986e`) passes the selected
+ten-view asset preflight and the complete `npm run tank:anatomy:check`:
+181 anatomy/marking receipts, combat-anatomy tests, module hits and all
+543 technical-diagram assets are current. Evidence is retained in
+`.qa-dev/type10-target-release-pztQzY/`. Later release stages remain pending.
+
+Fresh strict source stages retain both failures: geometric minimum
+**79.3678/92** and visual aggregate **92.4624**, with front-left **90.5540**,
+left **89.5187**, right **89.7313**, front-right **91.1222** and tracks
+**90.9967** below the per-view/component floor of 92. Registration passes;
+no reference is unavailable. The new neutral source/native comparison and
+articulation/turntable board was inspected. The intended thicker running-gear
+silhouette is visibly different; aggregate 92.5 is not a fidelity PASS.
+
+Because the forced source stage exits before its remaining physical checks,
+an additional ordinary `tank-standard-check.mjs --ids=type10_x` collected
+those unchanged checks against the fresh failed source packet: carrier/wrap
+and animated sweeps **0/0+0/0**, enclosed-hole census **0**, and **mg1**.
+Its overall status remains **FAIL solely on the source minimum**, not PASS.
+Targeted centering, module visual alignment, module hits, current selected
+assets, duplicate-track and muzzle-bore stages also pass in the release retry.
+
+Final scoped Doctor scanned 17 files: **84/100, one warning** for chained
+map/filter/sort calls in `splitCarrierSections`. This is constructor-only
+course splitting over Type 10's two width stations, not the allocation-free
+per-frame fit. No measured material cost or correctness failure was found;
+the warning is retained, not suppressed, and is not a clean-scan claim.
+
+The retry subsequently failed its integrated `npm test` pre-phase at the
+historical all-seven auxiliary-armor snapshot. Independently loading the
+`9919b26b9` Type 10 calibration through the same spec initialization proved
+that exactly 16 scalar leaves differ: the two track module bounds and their
+derived ellipsoid centres/radii. No other armor leaf differs. The historical
+comparison now reverses only those declared values on a clone, asserts the
+current values before reversal, and retains the original seven-ID golden.
+A changed-track negative control rejects undeclared coordinates, and the
+live candidate is asserted unmodified. The actual current-candidate trace
+checks remain unchanged: **15,975 full-result controls pass**, with 2,084
+conservative bounds and seven exact fallbacks. The failed composed run is
+retained; a fresh integrated test/build tail is still required.
