@@ -40,6 +40,12 @@ introduced. Deterministic two/four/eight-worker controls cover successful and
 failed exclusive children. This scheduling correction has no measured
 end-to-end speedup claim until a fresh real lifecycle completes.
 
+The first real isolated sweep on `919b68ba2` passed in **175.345 seconds**,
+including all 207 demand-owned profiles and 171 visible native builds,
+without changing its 240-second watchdog. The remainder later stopped on
+two stale Type 10 test selectors, so this is evidence for the loading
+scheduling correction, not an end-to-end lifecycle PASS or speedup claim.
+
 ## Eight-worker CPU ceiling — measured extension
 
 Ordinary `npm test` now uses `min(8, os.availableParallelism())` fresh CPU

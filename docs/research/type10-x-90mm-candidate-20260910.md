@@ -198,3 +198,20 @@ checks retain eight-worker concurrency. The fleet test's source, coverage,
 assertions and 240-second watchdog are unchanged. Scheduler controls cover
 both success and failure at two, four and eight workers. A new real complete
 run is required before any integrated-release claim.
+
+The next run (`919b68ba2`, `.qa-dev/type10-integrated-tail-ENeI1V/`)
+passed the unchanged loading sweep in **175.345 s** (207 demand-owned
+profiles, 171 visible native builds). Full-fleet wheel quality, ERA
+registration and machine-gun attachment also passed. It then stopped on two
+test-structure assumptions: the guard-paint comparator assumed a scalar
+material, and the earlier skirt-support test requested the old separate
+`gearReturnRollerDiscs` mesh. The new closed roller has a rubber/paint material
+array and is named `gearReturnRollerRotors`. The comparator now compares
+every material slot and geometry group; it does not skip these meshes.
+
+The support test now targets the actual six rotors. Its former |x|=.95 hub
+ray began inside the new hub (inner cap |x|=.94414), so the outward-facing
+cap was backface-culled. Starting at |x|=.90 outside the closed hub restores
+the same physical receiver test. The hull-lap range and exact 3 mm hub
+engagement assertions are unchanged and pass at HIGH/LOW and all three
+tested hull yaws. No production geometry changed in either test correction.
