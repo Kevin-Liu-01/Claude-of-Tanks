@@ -251,6 +251,18 @@ and remaining motion/mobile/full-frame limits. More ground and regular crop
 rows now show through; broad forest, water and settlement composition remain
 unfinished. This is not a whole-map or zero-regression certificate.
 
+### Autumn palette checkpoint — 2026-09-09
+
+Autumn's existing tree species now use distinct muted copper, gold, straw and
+olive families. Four matched native close/wide images were reviewed; the
+scarlet/orange uniformity is reduced with exact geometry, alpha, instance,
+resource-storage and observed foliage-submission counts. Focused tests, TS7,
+quality/Doctor and public builds pass, including current-main integration.
+See `AUTUMN-SEASONAL-PALETTE-CANDIDATE.md` for source/evidence and cost limits.
+This is not a bush-shape or full-scene acceptance. The separate tiered bush
+experiment is rejected: it creates repeated cactus/topiary silhouettes and
+remains local. Farm-prop relationships and shoreline planting remain open.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
