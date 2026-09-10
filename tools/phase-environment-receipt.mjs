@@ -7,6 +7,7 @@ export function readPhaseEnvironment() {
   return {
     mapId: d.world?.mapId ?? null,
     battleOrdinal: d.game.battleCount,
+    grassWork: d.world?.getGrassWorkState?.() ?? null,
     weather: d.battleAtmosphere?.current?.weather ?? null,
     nightLighting: {
       available: !!d.nightLighting,

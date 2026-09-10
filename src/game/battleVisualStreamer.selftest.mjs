@@ -39,9 +39,14 @@ const streamer = createBattleVisualStreamer({
     const entity = staged.find((candidate) => !candidate.visual && (!predicate || predicate(candidate)));
     return entity ? { ent: entity, quality: 'opening' } : null;
   },
-  ensureStagedVisuals(_game, _count, predicate) {
+  *ensureStagedVisualsSteps(_game, _count, predicate) {
     const entity = staged.find((candidate) => !candidate.visual && (!predicate || predicate(candidate)));
-    if (entity) createVisual(entity);
+    if (entity) {
+      yield;
+      yield;
+      createVisual(entity);
+    }
+    return true;
   },
   getSpec(specId) { return { id: specId }; },
   async prebakeSharedTextures(_spec, _anisotropy, _quality, tick) { await tick(); },
@@ -76,6 +81,7 @@ assert.deepEqual(registered, ['alpha', 'bravo']);
 assert.equal(restored, 2);
 assert.equal(initializedTextures.length, 2);
 assert.equal(timings.length, 2);
+assert.ok(timings.every(t => t.buildCheckpointCount === 2 && t.buildYieldMs > 0 && t.buildMs >= 0));
 assert.ok(timings.every((timing) => timing.totalMs > 0 && timing.compileMs > 0));
 assert.ok(timings.every((timing) => timing.preUploadYieldMs > 0));
 assert.ok(timings.every((timing) => timing.textureUploadMs > 0));
@@ -106,4 +112,63 @@ const repeated = await streamer.stageBattleVisualReveal(player, async () => {});
 assert.equal(repeated.totalMs, 0, 'staging remains idempotent; deployment owns the final scene compile');
 assert.equal(compiled.length, 2);
 
-console.log('battleVisualStreamer.selftest: default compile, exact uploads, hidden reveal and explicit player deferral passed');
+function constructionFixture({ bakeFails = false, factoryFails = false } = {}) {
+  const scene = new THREE.Scene(), ent = { specId: 'test' }, game = { tanks: [ent] };
+  let clock = 0, created = 0, canceled = 0;
+  const timings = [];
+  const streamer = createBattleVisualStreamer({ game, scene,
+    renderer: { initTexture() {} }, anisotropy: 1,
+    async ensureTankBuilders() {},
+    nextStagedBake() { return ent.visual ? null : { ent, quality: 'ai' }; },
+    *ensureStagedVisualsSteps() {
+      created++; let complete = false;
+      try {
+        clock += 30; yield;
+        if (factoryFails) throw Error('factory failed');
+        clock += 7; yield;
+        clock += 3;
+        ent.visual = { root: new THREE.Group(), setVisible() {}, prewarmBurn() {} };
+        scene.add(ent.visual.root);
+        complete = true;
+        return true;
+      } finally { if (!complete) canceled++; }
+    },
+    getSpec() { return {}; },
+    async prebakeSharedTextures() { if (bakeFails) throw Error('prebake failed'); },
+    armorAimOverlay: { prime() {}, warm() { return () => {}; } },
+    forwardProgramWarm: { compile() {} },
+    recordTiming(value) { timings.push(value); }, now: () => clock,
+  });
+  return { streamer, ent, scene, timings, wait() { clock += 100; },
+    get created() { return created; }, get canceled() { return canceled; } };
+}
+{
+  const f = constructionFixture();
+  assert.equal(await f.streamer.stream(null, async () => f.wait()), 1);
+  assert.equal(f.timings[0].buildMs, 40, 'build CPU receipt excludes scheduled waits');
+  assert.equal(f.timings[0].buildYieldMs, 200);
+  assert.equal(f.timings[0].buildCheckpointCount, 2);
+  assert.equal(f.canceled, 0);
+}
+for (const failAt of [2, 3]) {
+  const f = constructionFixture(); let calls = 0;
+  await assert.rejects(f.streamer.stream(null, async () => {
+    calls++; if (calls === failAt) throw Error('stale frame gate');
+  }), /stale frame gate/);
+  assert.equal(f.created, 1);
+  assert.equal(f.canceled, 1, 'await rejection closes the actual construction iterator');
+  assert.equal(f.ent.visual, undefined);
+  assert.equal(f.scene.children.length, 0);
+}
+{
+  const f = constructionFixture({ bakeFails: true });
+  await assert.rejects(f.streamer.stream(null, async () => { throw Error('stale after bake'); }), /stale after bake/);
+  assert.equal(f.created, 0, 'prebake fallback cannot begin construction past a rejected owner gate');
+}
+{
+  const f = constructionFixture({ factoryFails: true });
+  await assert.rejects(f.streamer.stream(null, async () => {}), /factory failed/);
+  assert.equal(f.canceled, 1);
+  assert.equal(f.ent.visual, undefined);
+}
+console.log('battleVisualStreamer.selftest: cooperative construction, accurate CPU/wait receipts, cancellation, default compile, exact uploads, hidden reveal and player deferral passed');

@@ -36,6 +36,8 @@ interface VisualLoadTiming {
   startedAt: number;
   prebakeMs?: number;
   buildMs?: number;
+  buildYieldMs?: number;
+  buildCheckpointCount?: number;
   uploadMs?: number;
   preUploadYieldMs?: number;
   textureUploadMs?: number;
@@ -80,11 +82,11 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
     game: TGame,
     predicate?: VisualPredicate<TGame['tanks'][number]> | null,
   ): StagedBake<TGame['tanks'][number]> | null;
-  ensureStagedVisuals(
+  ensureStagedVisualsSteps(
     game: TGame,
     count: number,
     predicate?: VisualPredicate<TGame['tanks'][number]> | null,
-  ): RuntimeValue;
+  ): Generator<void, boolean, void>;
   getSpec(specId: string): RuntimeValue;
   prebakeSharedTextures(
     spec: RuntimeValue,
@@ -130,7 +132,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   anisotropy,
   ensureTankBuilders,
   nextStagedBake,
-  ensureStagedVisuals,
+  ensureStagedVisualsSteps,
   getSpec,
   prebakeSharedTextures,
   armorAimOverlay,
@@ -251,9 +253,21 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
         );
       } catch { /* visual construction remains the fallback */ }
       timing.prebakeMs = Math.round(now() - mark);
+      // Recheck the caller's lifetime after a failed prebake before starting a
+      // fallback build. The generator keeps unfinished tank graphs private.
+      await yieldForBudget(true);
       mark = now();
-      ensureStagedVisuals(game, 1, predicate);
-      timing.buildMs = Math.round(now() - mark);
+      let buildYieldMs = 0;
+      let buildCheckpointCount = 0;
+      for (const _step of ensureStagedVisualsSteps(game, 1, predicate)) {
+        const yieldAt = now();
+        await yieldForBudget();
+        buildYieldMs += now() - yieldAt;
+        buildCheckpointCount++;
+      }
+      timing.buildMs = Math.round(Math.max(0, now() - mark - buildYieldMs));
+      timing.buildYieldMs = Math.round(buildYieldMs);
+      timing.buildCheckpointCount = buildCheckpointCount;
       mark = now();
       const stageReceipt = await stageBattleVisualReveal(
         next.ent,

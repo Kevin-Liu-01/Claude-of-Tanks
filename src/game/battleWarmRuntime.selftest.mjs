@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { getEventListeners } from 'node:events';
 import {
   BoxGeometry,
   DirectionalLight,
@@ -17,6 +18,7 @@ import {
   createCombatRareWarmSteps,
   invalidateBattleWarmRuntime,
   stageCombatFxProgramSubmission,
+  primeOpeningTerrainPresentation,
   warmBattleTerrainTiles,
   warmNetworkOpeningEffects,
   warmNetworkWrecks,
@@ -24,6 +26,7 @@ import {
 } from './battleWarmRuntime.ts';
 import { createFx } from '../fx/effects.ts';
 import { registerWorldDestructibles } from '../world/destructibles.ts';
+import { createCameraRig } from '../engine/cameraRig.ts';
 
 let warmedTerrainPoints = null;
 let terrainYieldCount = 0;
@@ -63,8 +66,157 @@ assert.deepEqual(
 );
 assert.ok(warmedTerrainPoints.some(({ x, radiusM }) => x >= 100 && radiusM === 10),
   'bot terrain warming reaches the first 120 m of its opening route');
-assert.equal(terrainYieldCount, 2, 'tile work and the presentation prime both yield cooperatively');
-assert.equal(presentationPrimeCount, 1, 'the exact opening presentation is primed behind the veil');
+assert.equal(terrainYieldCount, 1, 'terrain-only work yields without warming an invented camera');
+assert.equal(presentationPrimeCount, 0, 'presentation waits for the solved reveal camera');
+
+function carpetWarmFixture({ finishAt = 4, disposed = false, cancelAt = 0, primePresentation = true } = {}) {
+  const calls = [];
+  let updates = 0, yields = 0;
+  const world = {
+    heightField: { *warmFastTilesAround() {} },
+    update(dt, camera, forward, focus) {
+      updates++;
+      calls.push(['update', dt, ...camera.toArray(), ...forward.toArray(), ...focus.toArray()]);
+    },
+    getGrassWorkState() {
+      return { disposed, carpet: { cold: updates < finishAt, pending: updates < finishAt } };
+    },
+  };
+  return {
+    calls, get updates() { return updates; }, get yields() { return yields; },
+    run: () => primePresentation ? primeOpeningTerrainPresentation({
+      game: { tanks: [], player: { state: { pos: { x: 10, y: 2, z: 20 }, yaw: 0 } } },
+      world, camera: new PerspectiveCamera(),
+      yieldForBudget: async force => {
+        yields++;
+        calls.push(['yield', force]);
+        if (cancelAt && yields === cancelAt) throw new Error('stale deployment');
+      },
+    }) : warmBattleTerrainTiles({ game: { tanks: [] }, world, primePresentation: false }),
+  };
+}
+const coldCarpet = carpetWarmFixture();
+await coldCarpet.run();
+assert.equal(coldCarpet.updates, 4, 'cold carpet completes before returning the covered prime');
+assert.equal(coldCarpet.yields, 4, 'each bounded batch forces a visible loading-frame yield');
+assert.ok(coldCarpet.calls.filter(([name]) => name === 'update')
+  .every(call => JSON.stringify(call) === JSON.stringify(coldCarpet.calls[0])),
+'readiness uses one stable opening camera and never advances simulation time');
+assert.deepEqual(coldCarpet.calls.map(([name]) => name),
+  ['update', 'yield', 'update', 'yield', 'update', 'yield', 'update', 'yield']);
+const readyCarpet = carpetWarmFixture({ finishAt: 0 });
+await readyCarpet.run();
+assert.equal(readyCarpet.updates, 1, 'resident warm carpet adds no extra update loop');
+const noPrimeCarpet = carpetWarmFixture({ primePresentation: false });
+await noPrimeCarpet.run();
+assert.equal(noPrimeCarpet.updates, 0, 'deferred terrain-only warm cannot rebuild the camera carpet');
+const cancelledCarpet = carpetWarmFixture({ cancelAt: 2 });
+await assert.rejects(cancelledCarpet.run(), /stale deployment/);
+assert.equal(cancelledCarpet.updates, 2, 'generation cancellation stops before another world update');
+const disposedCarpet = carpetWarmFixture({ disposed: true });
+await assert.rejects(disposedCarpet.run(), /world was disposed/);
+const stuckCarpet = carpetWarmFixture({ finishAt: Infinity });
+await assert.rejects(stuckCarpet.run(), /900 bounded batches/);
+assert.equal(stuckCarpet.updates, 900, 'broken readiness cannot hang loading forever');
+
+// Cancellation may run after a yielder's own check, but before its consumer's
+// await resumes. The actual producer must stop before even reading old-world
+// readiness, rather than waiting for a second world update to notice it.
+for (const mode of ['generation', 'signal']) {
+  const expected = new Error(`late ${mode} cancellation`);
+  const controller = new AbortController();
+  let current = true, updates = 0, stateReads = 0, innerChecks = 0;
+  const requireCurrent = () => { if (!current) throw expected; };
+  await assert.rejects(primeOpeningTerrainPresentation({
+    game: { tanks: [], player: { state: { pos: new Vector3() } } },
+    camera: new PerspectiveCamera(),
+    world: {
+      update() { updates++; },
+      getGrassWorkState() {
+        stateReads++;
+        return { disposed: false, carpet: { cold: true, pending: true } };
+      },
+    },
+    ...(mode === 'signal' ? { signal: controller.signal } : { assertCurrent: requireCurrent }),
+    yieldForBudget: async () => {
+      await (async () => {
+        queueMicrotask(() => queueMicrotask(() => {
+          current = false;
+          controller.abort(expected);
+        }));
+      })();
+      requireCurrent();
+      innerChecks++;
+    },
+  }), error => error === expected);
+  assert.equal(innerChecks, 1, `${mode}: inner yielder check passed before cancellation`);
+  assert.equal(updates, 1, `${mode}: no second old-world update`);
+  assert.equal(stateReads, 0, `${mode}: no old-world readiness access after the await`);
+}
+const beforePrimeFailure = new Error('expired before terrain prime');
+await assert.rejects(primeOpeningTerrainPresentation({
+  game: { tanks: [], get player() { assert.fail('expired producer must not inspect the roster'); } },
+  world: null, camera: new PerspectiveCamera(),
+  assertCurrent() { throw beforePrimeFailure; },
+}), error => error === beforePrimeFailure);
+
+// Use the actual rig, including its pitched 13 m orbit and collision pull-in:
+// a 12 m spawn heuristic chooses the wrong 16 m carpet cell at this boundary.
+for (const [collision, observer] of [[false, false], [true, false], [false, true]]) {
+  const camera = new PerspectiveCamera();
+  const root = new Object3D();
+  root.position.set(20, 0, 12.5);
+  const player = {
+    state: { pos: root.position.clone(), yaw: 0, turretYaw: 0 },
+    input: { aimPoint: new Vector3() }, spec: { dims: { heightM: 2 } },
+    visual: { root,
+      turretTopWorld: out => out.set(0, 2, 0).applyMatrix4(root.matrixWorld),
+      gunPivotWorld: out => out.set(0, 1.7, 0.2).applyMatrix4(root.matrixWorld),
+    },
+  };
+  const rig = createCameraRig(camera, {
+    heightField: { getHeightAt: () => 0 }, getPlayer: () => player,
+    raycast: (_origin, _direction, distance) => collision && distance < 20
+      ? { point: new Vector3(20, 6, 2), normal: new Vector3(0, 0, 1), dist: 10 } : null,
+  });
+  if (observer) {
+    camera.position.set(-1500, 10, -1500);
+    rig.startSpectate(player);
+    assert.equal(rig.snapSpectateForReveal(), true);
+  } else rig.snapArcade(2, 0, -Math.PI / 18);
+  const expected = camera.position.clone();
+  const forward = camera.getWorldDirection(new Vector3());
+  if (!collision) assert.notEqual(Math.floor(expected.z / 16), Math.floor((12.5 - 12) / 16));
+  let updates = 0;
+  await primeOpeningTerrainPresentation({
+    game: {
+      tanks: observer ? [{ state: { pos: new Vector3(800, 0, 800) } }, player] : [player],
+      player: observer ? null : player,
+    }, camera, focusEntity: observer ? player : undefined,
+    world: {
+      update(dt, position, direction, focus) {
+        assert.equal(dt, 0);
+        assert.deepEqual(position.toArray(), expected.toArray());
+        assert.deepEqual(direction.toArray(), forward.toArray());
+        assert.deepEqual(focus.toArray(), [20, 1.5, 12.5], 'observer follows its selected live entity, not first roster state');
+        updates++;
+      },
+      getGrassWorkState: () => ({ disposed: false, carpet: { cold: updates < 3, pending: updates < 3 } }),
+    },
+    yieldForBudget: async () => {},
+  });
+  assert.equal(updates, 3);
+  assert.deepEqual(camera.position.toArray(), expected.toArray(), 'warming never moves the rig camera');
+}
+const coverAbort = new AbortController();
+let abortedUpdates = 0;
+await assert.rejects(primeOpeningTerrainPresentation({
+  game: { tanks: [], player: { state: { pos: new Vector3() } } },
+  camera: new PerspectiveCamera(), signal: coverAbort.signal,
+  world: { update: () => abortedUpdates++, getGrassWorkState: () => ({ disposed: false, carpet: { cold: true, pending: true } }) },
+  yieldForBudget: async () => coverAbort.abort(new Error('entry cancelled')),
+}), /entry cancelled/);
+assert.equal(abortedUpdates, 1, 'abort during a forced yield cannot advance or uncover another batch');
 
 function createFxProbe() {
   const group = new Group();
@@ -265,8 +417,14 @@ function createCanvasProbe() {
 
 const priorDocument = globalThis.document;
 const priorWindow = globalThis.window;
+// Canvas-only documents omit the browser event contract used by the real
+// covered paint scheduler. Keep its listeners real so cleanup is observable.
+const paintDocument = Object.assign(new EventTarget(), {
+  hidden: false,
+  createElement: createCanvasProbe,
+});
 try {
-  globalThis.document = { createElement: createCanvasProbe };
+  globalThis.document = paintDocument;
   globalThis.window = {};
   const camera = new PerspectiveCamera(55, 1.6, 0.5, 2000);
   camera.position.set(125, 32, -205);
@@ -382,6 +540,8 @@ try {
     'retain only the lazy vehicle scar compile; the exact compositor draw warms existing FX pools');
   assert.equal(nativeSubmissionCalls, 1);
   assert.equal(submissionValidated, true, 'real staged resources satisfy submission assertions');
+  assert.equal(getEventListeners(paintDocument, 'visibilitychange').length, 0,
+    'completed covered FX warm releases its real document listeners');
   assert.equal(fx.group.visible, false);
   assert.equal(camera.layers.mask, initialMask);
   assert.equal(fx.group.userData.softParticles.isActive(), false);
@@ -436,6 +596,8 @@ try {
         assert.equal(camera.layers.mask, initialMask);
         assert.equal(fx.group.visible, false);
         assert.equal(fx.group.userData.softParticles.isActive(), false);
+        assert.equal(getEventListeners(paintDocument, 'visibilitychange').length, 0,
+          `${failureAt} failure releases covered paint listeners`);
       }
     }
     scarRoot.visible = false;
@@ -508,6 +670,8 @@ try {
   else globalThis.document = priorDocument;
   if (priorWindow === undefined) delete globalThis.window;
   else globalThis.window = priorWindow;
+  assert.equal(getEventListeners(paintDocument, 'visibilitychange').length, 0,
+    'the real FX fixture retains no document listeners after cleanup and retry cases');
 }
 
 const scene = new Scene();

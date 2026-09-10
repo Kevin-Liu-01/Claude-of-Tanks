@@ -4,6 +4,8 @@ import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField, sampleSplatNoise } from './terrain.ts';
 import { buildGrassTuftGeometry, mulberry32 } from './vegetation.ts';
+import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts';
+import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
 import longleaf from './maps/longleaf.ts';
 import verdant from './maps/verdant.ts';
 
@@ -26,10 +28,11 @@ const stages = [
 // omitted: this is renderer-free placement evidence, not an atlas/GPU test.
 function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
-  return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry', `return (${stripTypeScriptTypes(`
+  return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry',
+    'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
       ${section('const HALF = 512;', 'function treePositionNoise(')}
-      const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation };
+      const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation }, deferFarGrass = false;
       const L = heightField._layout, noVeg = heightField._noVeg, _c = new THREE.Color();
       ${section('  const grassPerChunk =', '  const uWindTime =')}
       const grassVariants = [], grassTex = [null, null], grassFadeEnd = GRASS_FADE_END;
@@ -41,12 +44,16 @@ function compile(legacy) {
       function chunk(ix, iz) {
         const gc = { ix, iz, x0: -HALF + ix * CHUNK_SIZE, z0: -HALF + iz * CHUNK_SIZE,
           meshes: null, built: false, job: null, lod: false };
-        advanceGrassChunk(gc, grassPerChunk);
+        advanceGrassChunk(gc, true);
         return gc;
       }
-      return { chunk, carpetCell, rebuildCarpet, carpetSets, group, grassVariants, stubbleHeightScale, makeTuft };
+      // This accessor checks reuse of an already-completed production cache
+      // entry; it never performs a hidden synchronous cell generation.
+      const carpetCell = (ix, iz) => carpetCache.get(ix + ',' + iz);
+      return { chunk, carpetCell, rebuildCarpet, carpetSets, carpetWork, group, grassVariants, stubbleHeightScale, makeTuft };
     }
-  `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry);
+  `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry,
+    advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork);
 }
 const build = compile(false), buildLegacy = compile(true);
 

@@ -5,6 +5,7 @@ interface GarageDressingSchedulerOptions {
   dressing: GarageDressingAccess;
   getPhase(): string;
   isTransitionActive(): boolean;
+  isBattleEntryPending?(): boolean;
   requestIdle(callback: () => void): RuntimeValue;
   scheduleDelay(callback: () => void, delayMs: number): RuntimeValue;
   acquireBackgroundWork?: (
@@ -39,6 +40,7 @@ export function createGarageDressingScheduler({
   dressing,
   getPhase,
   isTransitionActive,
+  isBattleEntryPending = () => false,
   requestIdle,
   scheduleDelay,
   acquireBackgroundWork = async () => ({ release() {} }),
@@ -47,7 +49,7 @@ export function createGarageDressingScheduler({
   onVisualChange = () => {},
   quietMs = 900,
 }: GarageDressingSchedulerOptions): GarageDressingScheduler {
-  const required = [getPhase, isTransitionActive,
+  const required = [getPhase, isTransitionActive, isBattleEntryPending,
     requestIdle, scheduleDelay, acquireBackgroundWork, now, warn, onVisualChange];
   if (!dressing || required.some((entry) => typeof entry !== 'function')) {
     throw new TypeError('garage dressing scheduler requires every runtime port');
@@ -68,7 +70,7 @@ export function createGarageDressingScheduler({
 
     // A transition is never a garage-idle window. This specifically avoids
     // paying for an exhibit during the opaque veil's final "Ready" dwell.
-    if (isTransitionActive()) {
+    if (isTransitionActive() || isBattleEntryPending()) {
       defer(350);
       return;
     }
@@ -78,7 +80,7 @@ export function createGarageDressingScheduler({
     }
 
     const stillValid = () => getPhase() === 'garage'
-      && !isTransitionActive() && quiet() && !dressing.isBuilt();
+      && !isTransitionActive() && !isBattleEntryPending() && quiet() && !dressing.isBuilt();
     const lease = await acquireBackgroundWork('dressing', stillValid);
     if (!lease) {
       if (!dressing.isBuilt() && getPhase() === 'garage') defer(200);
@@ -86,9 +88,19 @@ export function createGarageDressingScheduler({
     }
 
     try {
+      // Acquisition also yields. Do not even start the lazy import if Battle
+      // took the Garage between the coordinator's grant and our continuation.
+      if (!stillValid()) {
+        if (getPhase() === 'garage') defer(350);
+        return;
+      }
       await dressing.preload();
       // Import/evaluation can overlap new input or a phase transition.
-      if (getPhase() !== 'garage' || isTransitionActive()) return;
+      if (getPhase() !== 'garage') return;
+      if (isTransitionActive() || isBattleEntryPending()) {
+        defer(350);
+        return;
+      }
       if (!quiet()) {
         defer(300);
         return;
@@ -97,8 +109,8 @@ export function createGarageDressingScheduler({
       // Each lease resolves at most one exact builder and adds at most one
       // complete static-preview tank or final optimization slice, keeping the
       // shared exhibits outside the visible boot and interaction paths.
-      await dressing.pump();
-      onVisualChange();
+      await dressing.pump(stillValid);
+      if (getPhase() === 'garage' && !isBattleEntryPending()) onVisualChange();
     } catch (error) {
       warn('[garageDressing] quiet build failed —', error);
     } finally {

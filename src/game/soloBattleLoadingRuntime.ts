@@ -1,6 +1,6 @@
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import type { MainFxRuntime } from '../app/mainContracts.ts';
-import type { AudioMixer } from '../audio/audio.ts';
+import type { LazyAudio } from '../audio/lazyAudio.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import { t } from '../ui/i18n.ts';
@@ -29,7 +29,7 @@ interface LoadingGame {
   player?: LoadingEntity | null;
 }
 
-type AudioPort = Pick<AudioMixer, 'resume' | 'loadingOn' | 'ambientOn' | 'warmBattleEvents'>;
+type AudioPort = Pick<LazyAudio, 'startLoadingAfterPaint' | 'loadingOn' | 'ambientOn' | 'warmBattleEvents'>;
 type FxRuntime = Pick<MainFxRuntime, 'group' | 'preloadTextures' | 'warmTextures'>;
 type BattleIntentPort = Pick<BattleIntentRuntime, 'consumeMap' | 'prepareRoster'>;
 type EntryAcquisitionPort = Pick<BattleEntryAcquisition, 'acquireSolo'>;
@@ -98,6 +98,7 @@ export interface SoloBattleLoadingRuntimeOptions {
   ensureTouchControls(): AsyncLoadResult;
   preloadSettings(): AsyncLoadResult;
   preloadArmorAim(): AsyncLoadResult;
+  preloadGarageReturn(): AsyncLoadResult;
   planRoster(specId: string, randomRoster: boolean): string[];
   planCamoOverrides(specId: string, mapId: string, randomRoster: boolean): string[];
   ensureTankBuilders(specIds: string[]): AsyncLoadResult;
@@ -194,7 +195,7 @@ function validateLoadingPorts(options: SoloBattleLoadingRuntimeOptions): void {
     checkedIntegrationPort<AudioPort>(
       options.audio ?? {},
       'solo battle loading audio',
-      ['resume', 'loadingOn', 'ambientOn', 'warmBattleEvents'],
+      ['startLoadingAfterPaint', 'loadingOn', 'ambientOn', 'warmBattleEvents'],
     );
     checkedIntegrationPort<EntryAcquisitionPort>(
       options.acquisition ?? {}, 'solo battle loading acquisition', ['acquireSolo'],
@@ -221,6 +222,7 @@ function validateLoadingPorts(options: SoloBattleLoadingRuntimeOptions): void {
         ensureTouchControls: options.ensureTouchControls,
         preloadSettings: options.preloadSettings,
         preloadArmorAim: options.preloadArmorAim,
+        preloadGarageReturn: options.preloadGarageReturn,
         planRoster: options.planRoster,
         planCamoOverrides: options.planCamoOverrides,
         ensureTankBuilders: options.ensureTankBuilders,
@@ -250,7 +252,7 @@ function validateLoadingPorts(options: SoloBattleLoadingRuntimeOptions): void {
       ['getPendingMapId', 'getMapName', 'loadMapConfig', 'getMapThumb',
         'hasCachedWorld', 'getWorld', 'ensureWorld', 'ensureBattleVisuals',
         'getBattleVisuals', 'ensureBattleHud', 'preloadMinimap',
-        'ensureTouchControls', 'preloadSettings', 'preloadArmorAim', 'planRoster',
+        'ensureTouchControls', 'preloadSettings', 'preloadArmorAim', 'preloadGarageReturn', 'planRoster',
         'planCamoOverrides', 'ensureTankBuilders', 'preloadSoloAuthority',
         'preloadBattleClient', 'preloadBattleWarm', 'preloadBattleStart',
         'ensureKillcam', 'ensureFx', 'startBattle', 'prepareBattleWorldServices',
@@ -306,6 +308,7 @@ export function createSoloBattleLoadingRuntime(
   ensureTouchControls,
   preloadSettings,
   preloadArmorAim,
+  preloadGarageReturn,
   planRoster,
   planCamoOverrides,
   ensureTankBuilders,
@@ -369,9 +372,7 @@ export function createSoloBattleLoadingRuntime(
         allies: [],
         enemies: [],
       });
-      audio.resume();
-      audio.loadingOn(true);
-      await nextFrame();
+      await audio.startLoadingAfterPaint();
       await ensureBattleVisuals();
       const battleVisuals = getBattleVisuals();
 
@@ -381,6 +382,10 @@ export function createSoloBattleLoadingRuntime(
         ensureTouchControls(),
         preloadSettings(),
         preloadArmorAim(),
+        // Return/rematch must not wait on a first chunk fetch after its button
+        // hides the report. Acquire only the owner under this painted loader;
+        // no Garage teardown, scene restore or room routing runs here.
+        preloadGarageReturn(),
       ]);
 
       battleLoad.progress(0.02, 'Loading battlefield');
@@ -493,7 +498,12 @@ export function createSoloBattleLoadingRuntime(
       const {
         generation,
         revealPrimed,
+        assertRevealReady,
       } = await deployment.warm(getCamoSweep());
+      if (typeof assertRevealReady !== 'function') {
+        throw new Error('Solo deployment did not provide required reveal readiness');
+      }
+      assertRevealReady();
       mark('warm');
       audio.loadingOn(false);
       audio.ambientOn(true);
@@ -501,15 +511,20 @@ export function createSoloBattleLoadingRuntime(
 
       const readyHoldMs = 900 - (now() - shownAt);
       if (readyHoldMs > 0) await delay(readyHoldMs);
+      assertRevealReady();
       mark('holdCountdown');
       trace.totalMs = Math.round(now() - shownAt);
       host.__BATTLE_LOAD = trace;
       if (!revealPrimed) {
         prepareRevealCamera();
+        assertRevealReady();
         await lifecycle.primeReveal();
+        assertRevealReady();
       }
       mark('primeReveal');
+      assertRevealReady();
       await battleLoad.hide();
+      assertRevealReady();
       mark('hide');
       // Reveal is now complete; start a fresh governor baseline using only
       // playable battle frames, never covered compilation or upload yields.

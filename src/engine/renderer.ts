@@ -89,7 +89,9 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   // explanation + reload path. Once main.ts has installed its recovery
   // hooks, a successful restore keeps the current battle and rebuilds at a
   // safer preset; an early-boot loss still reloads through the fallback.
+  let contextRecoveryGeneration = 0;
   renderer.domElement.addEventListener('webglcontextlost', (e) => {
+    contextRecoveryGeneration += 1;
     e.preventDefault();
     let recovering = false;
     try {
@@ -102,18 +104,26 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     showContextLossOverlay(recovering);
   }, false);
   renderer.domElement.addEventListener('webglcontextrestored', () => {
+    const restoredGeneration = contextRecoveryGeneration;
     const handler = renderer.userData.contextRecovery?.onRestored;
     if (typeof handler !== 'function') {
       try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
       return;
     }
-    Promise.resolve().then(() => handler()).then((handled) => {
+    Promise.resolve().then(() => {
+      if (restoredGeneration !== contextRecoveryGeneration) return;
+      return handler();
+    }).then((handled) => {
+      // A newer loss owns its own overlay and recovery. An older asynchronous
+      // completion (including rejection) cannot dismiss it or reload the page.
+      if (restoredGeneration !== contextRecoveryGeneration) return;
       if (handled === false) {
         try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
         return;
       }
       document.getElementById('cot-ctxlost')?.remove();
     }).catch(() => {
+      if (restoredGeneration !== contextRecoveryGeneration) return;
       try { window.location.reload(); } catch (_) { /* overlay reload remains */ }
     });
   }, false);

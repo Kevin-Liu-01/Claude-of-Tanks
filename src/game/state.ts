@@ -200,6 +200,7 @@ type SoloPooledEntity = Omit<RosterEntity,
     _modeTargetX?: number;
     _modeTargetZ?: number;
     _reloadEvent?: ReloadPresentationEvent;
+    _repairedModules?: string[];
   };
 
 type SoloEntity = Omit<SoloPooledEntity, 'state' | 'combat' | 'specialAction'> & {
@@ -2008,7 +2009,8 @@ function stepShells(game: SoloGameState, bus: EventBus, world: SoloWorld): void 
 function tickRepairs(game: SoloGameState, bus: EventBus, dt: number): void {
   for (const ent of game.tanks) {
     if (!ent.combat) continue;
-    for (const name of tickModuleRepairs(ent.combat, dt)) {
+    const repaired = ent._repairedModules || (ent._repairedModules = []);
+    for (const name of tickModuleRepairs(ent.combat, dt, repaired)) {
       // repaired:true = this yellow is a RECOVERY (red → yellow), so the HUD
       // toasts 'REPAIRED', not 'DAMAGED'. Audio infers direction on its own
       // prev-state tracker; the flag is additive for everyone else.

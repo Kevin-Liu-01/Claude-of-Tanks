@@ -4,6 +4,7 @@
 import {
   configureTankFactory,
   createTank as createTankCore,
+  createTankSteps as createTankCoreSteps,
   registerCanonicalBuilders,
   registerProfiledBuilders,
 } from './tankFactoryCore.ts';
@@ -277,6 +278,18 @@ export function createTank(
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
   return createTankCore(specId, engineCtx, opts);
+}
+
+/** Demand-ready private construction; callers must close abandoned iterators. */
+export function createTankSteps(
+  specId: string,
+  engineCtx: RuntimeValue,
+  opts: CreateTankOptions = {},
+): Generator<void, TankVisual, void> {
+  if (!isTankBuilderReady(specId)) {
+    throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
+  }
+  return createTankCoreSteps(specId, engineCtx, opts);
 }
 
 export { KIT } from './tankFactoryCore.ts';

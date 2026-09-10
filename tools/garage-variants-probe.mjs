@@ -1,9 +1,12 @@
 // Production Garage scene-pack, responsive-layout, and transition probe.
 // Usage: node tools/garage-variants-probe.mjs --url=http://127.0.0.1:4178 --cpu-rate=4
-import { mkdir } from 'node:fs/promises';
+// Optional --profile-workshop=/absolute/new.cpuprofile records ONLY initial
+// workshop streaming. Profiled timings are attribution, not acceptance results.
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { scoreGarageQuality } from '../src/ui/garageQualityRubric.ts';
+import { withGarageWorkshopProfile } from './garage-workshop-profile.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback = '') => {
@@ -15,6 +18,12 @@ const shotsDir = option('shots', '');
 const orbitShots = option('orbit-shots', '') === '1';
 const cpuRate = Math.max(1, Number(option('cpu-rate', '1')) || 1);
 const maxGapMs = Number(option('max-gap', cpuRate > 1 ? '120' : '80'));
+const workshopProfilePath = option('profile-workshop', '');
+if (workshopProfilePath && !path.isAbsolute(workshopProfilePath)) {
+  throw new Error('--profile-workshop requires an absolute fresh output path');
+}
+const measurementMode = workshopProfilePath ? 'cpu-profile-attribution-only' : 'unprofiled-functional';
+let workshopProfile = null;
 const browser = await puppeteer.launch({
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -32,10 +41,13 @@ page.on('console', (message) => {
 page.on('pageerror', (error) => errors.push(String(error)));
 
 const startFrameProbe = async (name) => page.evaluate((key) => {
-  const probe = { gaps: [], running: true, started: performance.now() };
+  const probe = { gaps: [], running: true, started: performance.now(), worstGap: null };
   let previous = performance.now();
   const frame = (now) => {
     probe.gaps.push(now - previous);
+    if (!probe.worstGap || now - previous > probe.worstGap.durationMs) {
+      probe.worstGap = { startMs: previous, endMs: now, durationMs: now - previous };
+    }
     previous = now;
     if (probe.running) requestAnimationFrame(frame);
   };
@@ -49,6 +61,9 @@ const stopFrameProbe = async (name) => page.evaluate(async (key) => {
   await new Promise((resolve) => requestAnimationFrame(resolve));
   const sorted = probe.gaps.slice().sort((a, b) => a - b);
   return {
+    startedAtMs: probe.started,
+    endedAtMs: performance.now(),
+    worstGap: probe.worstGap,
     durationMs: +(performance.now() - probe.started).toFixed(1),
     maxGapMs: +Math.max(0, ...sorted).toFixed(1),
     p95GapMs: +(sorted[Math.max(0, Math.floor(sorted.length * 0.95) - 1)] || 0).toFixed(1),
@@ -100,13 +115,35 @@ try {
   // The modern four-bay maintenance layer is demand-loaded after readiness.
   // Let the production quiet-window scheduler build it exactly as a player
   // sees it, and measure the intervening frames independently from switching.
-  await startFrameProbe('__GARAGE_DRESSING_PROBE');
-  await page.waitForFunction(() => {
-    const stats = window.__GARAGE_WORKSHOP.stats();
-    return stats.built && stats.exhibitCount === 5
-      && stats.sharedMaintenanceBayCount === 4;
-  }, { timeout: 60_000 });
-  const dressingFrames = await stopFrameProbe('__GARAGE_DRESSING_PROBE');
+  const dressingFrames = await withGarageWorkshopProfile({
+    page, cdp, enabled: !!workshopProfilePath,
+    onProfile: async (profile, capture) => {
+      workshopProfile = { ...capture, file: workshopProfilePath };
+      await writeFile(workshopProfilePath, `${JSON.stringify(profile)}\n`, { flag: 'wx' });
+      await writeFile(`${workshopProfilePath}.receipt.json`,
+        `${JSON.stringify({ measurementMode, url: baseUrl, cpuRate, ...workshopProfile }, null, 2)}\n`,
+        { flag: 'wx' });
+    },
+    onCleanupError: error => errors.push(`workshop profile cleanup: ${String(error)}`),
+  }, async () => {
+    await startFrameProbe('__GARAGE_DRESSING_PROBE');
+    let waitError = null;
+    try {
+      await page.waitForFunction(() => {
+        const stats = window.__GARAGE_WORKSHOP.stats();
+        return stats.built && stats.exhibitCount === 5
+          && stats.sharedMaintenanceBayCount === 4;
+      }, { timeout: 60_000 });
+    } catch (error) { waitError = error; }
+    let frames;
+    try { frames = await stopFrameProbe('__GARAGE_DRESSING_PROBE'); }
+    catch (error) {
+      if (!waitError) throw error;
+      errors.push(`workshop frame cleanup: ${String(error)}`);
+    }
+    if (waitError) throw waitError;
+    return frames;
+  });
 
   const results = [];
   for (const variant of variants) {
@@ -414,6 +451,8 @@ try {
   if (errors.length) failures.push(`console errors: ${errors.join(' | ')}`);
 
   console.log(JSON.stringify({
+    measurementMode,
+    workshopProfile,
     cpuRate,
     maxGapMs,
     intentRace: {
@@ -442,6 +481,11 @@ try {
     failures,
   }, null, 2));
   if (failures.length) process.exitCode = 1;
+} catch (error) {
+  // A failing initial stream still retains profiler diagnostics and its primary
+  // reason; do not wait for (or pretend to finish) the later matrix scenarios.
+  console.log(JSON.stringify({ measurementMode, workshopProfile, errors, failure: String(error) }, null, 2));
+  throw error;
 } finally {
   await browser.close();
 }

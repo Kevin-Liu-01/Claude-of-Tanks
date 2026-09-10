@@ -8,7 +8,8 @@ let routeJobs = 2;
 let terrainJobs = 2;
 const events = [];
 const game = { phase: 'battle', preBattleS: 4 };
-const renderer = { info: { programs: [] } };
+const gl = { getExtension: () => null };
+const renderer = { info: { programs: [] }, getContext: () => gl };
 
 globalThis.__COMBAT_RARE_WARM = { stages: { rarePrograms: 7 } };
 const owner = createDeferredCombatWarmRuntime({
@@ -111,6 +112,63 @@ frameResolvers[1]();
 await newRound;
 assert.equal(revisionOwner.isActive(), false);
 assert.equal(cancellationCount, 1, 'explicit revision cancellation releases rare warm work');
+
+{
+  let activeGeneration = 20;
+  let rareCancels = 0;
+  let rareWarms = 0;
+  const waiting = [];
+  const uniformEvents = [];
+  const pendingEvents = [];
+  const warmRenderer = { info: { programs: [] }, getContext: () => gl };
+  const warmOwner = createDeferredCombatWarmRuntime({
+    game, renderer: warmRenderer, camera: { position: {} },
+    getBattleVisuals: () => ({ async stream() {
+      const captured = activeGeneration;
+      warmRenderer.info.programs.push({ program: {},
+        getUniforms() { uniformEvents.push(captured); return {}; }, getAttributes: () => ({}) });
+    } }),
+    combatWarm: {
+      cancelRare() { rareCancels += 1; },
+      async warmOpeningChunked() {},
+      async warmRareChunked() { rareWarms += 1; },
+    },
+    warmBattleTerrainTiles: async () => {}, getWorld: () => null,
+    getGeneration: () => activeGeneration,
+    setPending(value) { pendingEvents.push(value); },
+    prepareNextOpeningRoute: () => false,
+    now: () => 0,
+    yieldFrame: async () => {},
+    createYielder: () => (force) => {
+      assert.equal(force, true, 'uniform readiness checkpoints actually yield');
+      return new Promise((resolve) => waiting.push(resolve));
+    },
+  });
+  const waitForUniformCheckpoint = async (count) => {
+    for (let i = 0; i < 20 && waiting.length < count; i += 1) await Promise.resolve();
+    assert.equal(waiting.length, count, 'the actual uniform drain reached its forced scheduler wait');
+  };
+  const oldWarm = warmOwner.schedule(20);
+  await waitForUniformCheckpoint(1);
+  activeGeneration = 21;
+  warmOwner.cancel();
+  const successor = warmOwner.schedule(21);
+  await waitForUniformCheckpoint(2);
+  waiting[0]();
+  await oldWarm;
+  assert.equal(warmOwner.isActive(), true, 'old uniform wait rejection cannot clear the successor promise');
+  assert.equal(warmOwner.schedule(21), successor, 'successor remains coalesced after stale catch/finally');
+  assert.equal(rareCancels, 1, 'stale rejection cannot cancel the successor rare-work owner');
+  assert.deepEqual(pendingEvents, [], 'stale rejection cannot release the successor rollout gate');
+  assert.deepEqual(uniformEvents, [], 'old generation cannot reflect after its wait resumes');
+  waiting[1]();
+  await successor;
+  assert.deepEqual(uniformEvents, [21]);
+  assert.equal(rareWarms, 1);
+  assert.deepEqual(pendingEvents, [false]);
+  assert.equal(globalThis.__BATTLE_DEFERRED_WARM.generation, 21);
+  assert.equal(globalThis.__BATTLE_DEFERRED_WARM.doneBeforeRollout, true);
+}
 
 delete globalThis.__COMBAT_RARE_WARM;
 delete globalThis.__BATTLE_DEFERRED_WARM;

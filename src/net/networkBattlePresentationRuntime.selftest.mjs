@@ -295,6 +295,15 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       nightLighting: async () => events.push('nightLighting'),
       getFx: () => ({ id: 'fx' }),
       terrain: async () => events.push('terrain'),
+      presentation: async signal => {
+        assert.strictEqual(signal, request.signal, 'ground cover receives the exact entry signal');
+        assert.equal(loaderVisible, true, 'ground cover remains behind the opaque loader');
+        assert.ok(events.includes('activate'), 'ground cover uses the final activated camera');
+        events.push('groundCover');
+        signal?.throwIfAborted();
+        if (failAt === 'groundCover') throw new Error('ground cover failed');
+        events.push('groundCoverReady');
+      },
       wrecks: async () => events.push('wrecks'),
       playerPanel: async (bridge, viewerId) => {
         panelRequests.push({ bridge, viewerId, entity: bridge.entities.get(viewerId) });
@@ -413,7 +422,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
   ]) assert.ok(harness.events.indexOf(before) >= 0
     && harness.events.indexOf(before) < harness.events.indexOf(after), `${before} precedes ${after}`);
   for (const [before, after] of [
-    ['waiting:true', 'activate'], ['activate', 'finalShadows'],
+    ['waiting:true', 'activate'], ['activate', 'groundCover'], ['groundCoverReady', 'finalShadows'],
     ['finalShadows', 'shadowsReady'], ['shadowsReady', 'blackWatchdog'],
     ['blackWatchdog', 'primeReveal'], ['primed', 'hide'],
     ['hidden', 'ready'], ['peersReady', 'waiting:false'],
@@ -443,7 +452,7 @@ function createHarness(failAt = '', pauseAt = '', timing = {}) {
       `${row.stage}: absolute intervals retain the original aggregate duration`);
   });
   assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-    ['activation', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']);
+    ['activation', 'openingGroundCover', 'finalShadows', 'blackWatchdog', 'primeReveal', 'loaderFade']);
   assert.deepEqual(harness.trace.preparationSlices.map((row) => row.stage),
     ['rosterAssets', 'panelMasks', 'compile']);
   assertAssetsReleased(harness);
@@ -755,7 +764,7 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
     assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
     assert.equal(harness.trace.stageIntervals.at(-1).endTime, undefined);
     assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-      ['activation', 'finalShadows']);
+      ['activation', 'openingGroundCover', 'finalShadows']);
     assert.equal(harness.trace.revealSlices.at(-1).endTime, undefined);
     for (const event of forbidden) {
       assert.ok(!harness.events.includes(event), `${outcome}: pending shadows cannot reach ${event}`);
@@ -782,7 +791,7 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
       assert.equal(harness.trace.status, 'failed');
       assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
       assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-        ['activation', 'finalShadows']);
+        ['activation', 'openingGroundCover', 'finalShadows']);
       assert.equal(harness.loaderVisible, true, 'the launcher retains opaque Garage recovery ownership');
       assert.strictEqual(harness.publishedBridge, harness.preparedBridge);
       assert.equal(harness.disposed, false, 'the presentation owner does not double-dispose its published bridge');
@@ -1083,7 +1092,7 @@ for (const pauseAt of ['primeReveal', 'hide']) {
   await pending;
   assert.equal(harness.trace.status, 'complete');
   assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-    ['activation', 'blackWatchdog', 'primeReveal', 'loaderFade']);
+    ['activation', 'openingGroundCover', 'blackWatchdog', 'primeReveal', 'loaderFade']);
   assert.ok(harness.events.indexOf('ready') > harness.events.indexOf('hidden'));
   assert.equal(harness.readySentAt, 2430, 'spectator READY follows its real frame and full loader fade');
   assert.equal(harness.countdownMs, 5000, 'spectators retain the full five-second authority countdown');
@@ -1211,6 +1220,36 @@ for (const [failure, slice] of [['primeReveal', 'primeReveal'], ['hide', 'loader
 }
 
 {
+  const harness = createHarness('groundCover');
+  await assert.rejects(harness.runtime.present(harness.request), /ground cover failed/);
+  assert.equal(harness.loaderVisible, true, 'incomplete cover cannot reveal partial visual density');
+  assert.equal(harness.trace.revealSlices.at(-1).stage, 'openingGroundCover');
+  assert.equal(harness.trace.revealSlices.at(-1).endTime, harness.trace.endedAt);
+  assert.ok(!harness.events.includes('primeReveal') && !harness.events.includes('ready'));
+}
+
+{
+  const controller = new AbortController();
+  const harness = createHarness();
+  harness.request.signal = controller.signal;
+  const pendingCover = deferred();
+  harness.options.warm.presentation = async signal => {
+    harness.events.push('groundCover');
+    await pendingCover.promise;
+    signal.throwIfAborted();
+  };
+  const pending = harness.runtime.present(harness.request);
+  await waitForEvent(harness.events, 'groundCover');
+  assert.equal(harness.loaderVisible, true);
+  assert.equal(harness.trace.revealSlices.at(-1).endTime, undefined);
+  controller.abort('closed while preparing cover');
+  pendingCover.resolve();
+  await assert.rejects(pending);
+  assert.equal(harness.trace.status, 'failed');
+  assert.ok(!harness.events.includes('finalShadows') && !harness.events.includes('ready'));
+}
+
+{
   const harness = createHarness();
   const original = new Error('activation failed');
   harness.options.presentation.activate = () => { throw original; };
@@ -1284,7 +1323,7 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
     assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
     assert.equal(harness.trace.stageIntervals.at(-1).endTime, undefined);
     assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-      ['activation', 'finalShadows', 'blackWatchdog']);
+      ['activation', 'openingGroundCover', 'finalShadows', 'blackWatchdog']);
     assert.ok(harness.trace.revealSlices[0].endTime > 0);
     assert.equal(harness.trace.revealSlices.at(-1).endTime, undefined);
     const forbidden = ['loading:false', 'ambient:true', 'primeReveal', 'hide', 'ready',
@@ -1324,7 +1363,7 @@ for (const outcome of ['resolve', 'reject', 'cancel-resolve', 'cancel-reject']) 
       assert.equal(harness.trace.stageIntervals.at(-1).stage, 'reveal');
       assert.equal(harness.trace.stageIntervals.at(-1).endTime, harness.trace.endedAt);
       assert.deepEqual(harness.trace.revealSlices.map((row) => row.stage),
-        ['activation', 'finalShadows', 'blackWatchdog']);
+        ['activation', 'openingGroundCover', 'finalShadows', 'blackWatchdog']);
       assert.ok(slice.endTime <= harness.trace.endedAt);
       assert.equal(harness.loaderVisible, true);
       assert.equal(harness.countdownMs, 5000, 'failed verification cannot spend the authority countdown');

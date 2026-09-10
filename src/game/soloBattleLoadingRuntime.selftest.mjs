@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
-import { Object3D } from 'three';
+import { Object3D, Scene, PerspectiveCamera, Vector3 } from 'three';
+import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
+import { primeOpeningTerrainPresentation } from './battleWarmRuntime.ts';
 import { getLocale, setLocale } from '../ui/i18n.ts';
+import { createLazyAudio } from '../audio/lazyAudio.ts';
+import { createSoloBattleEntryRuntime } from './soloBattleEntryRuntime.ts';
 import {
   createSoloBattleLoadingRuntime,
   soloBattleLoadingModeLabel,
@@ -66,7 +70,7 @@ let scheduledGeneration = null;
 let delayMs = null;
 let acquiredTasks = 0;
 
-const runtime = createSoloBattleLoadingRuntime({
+const loadingOptions = {
   game,
   post: { setAdaptiveSuspended: (value) => events.push(`adaptive:${value}`) },
   battleIntent: {
@@ -93,7 +97,10 @@ const runtime = createSoloBattleLoadingRuntime({
     hide: async () => { events.push('loader:hide'); },
   },
   audio: {
-    resume: () => events.push('audio:resume'),
+    async startLoadingAfterPaint() {
+      clock += 20; events.push('frame');
+      events.push('audio:resume', 'audio:loading:true');
+    },
     loadingOn: (value) => events.push(`audio:loading:${value}`),
     ambientOn: (value) => events.push(`audio:ambient:${value}`),
     warmBattleEvents: () => events.push('audio:warm'),
@@ -109,7 +116,7 @@ const runtime = createSoloBattleLoadingRuntime({
     async warm(camoSweep) {
       await camoSweep;
       events.push('deployment:warm');
-      return { generation: 7, revealPrimed: false };
+      return { generation: 7, revealPrimed: false, assertRevealReady() {} };
     },
   },
   lifecycle: { primeReveal: async () => { events.push('reveal:fallback'); } },
@@ -134,6 +141,7 @@ const runtime = createSoloBattleLoadingRuntime({
   ensureTouchControls: async () => events.push('touch:ready'),
   preloadSettings: async () => events.push('settings:ready'),
   preloadArmorAim: async () => events.push('armor:ready'),
+  preloadGarageReturn: async () => events.push('return:ready'),
   planRoster: () => ['m1a2', 't90m'],
   planCamoOverrides: () => ['m1a2'],
   ensureTankBuilders: async (ids) => {
@@ -184,7 +192,8 @@ const runtime = createSoloBattleLoadingRuntime({
   createLoadingYielder: () => async () => { clock += 5; },
   now: () => clock,
   delay: async (milliseconds) => { delayMs = milliseconds; clock += milliseconds; },
-});
+};
+const runtime = createSoloBattleLoadingRuntime(loadingOptions);
 
 try {
   await runtime.begin('m1a2', null, { randomRoster: false });
@@ -198,6 +207,12 @@ try {
   assert.equal(scheduledGeneration, 7);
   assert.equal(fxGroup.userData.battleTexturesStaged, true);
   assert.ok(events.indexOf('loader:show') < events.indexOf('audio:resume'));
+  assert.ok(events.indexOf('frame') < events.indexOf('audio:resume'),
+    'confirmed sticky activation lets the loading cover get its rendering opportunity before audio');
+  assert.ok(events.indexOf('frame') < events.indexOf('return:ready'),
+    'return-owner acquisition waits for the loading cover to paint');
+  assert.ok(events.indexOf('return:ready') < events.indexOf('acquisition:done'),
+    'Return/Battle Again code is acquired before play, not on the result click');
   assert.ok(events.indexOf('acquisition:done') < events.indexOf('battle:setup'));
   assert.ok(events.indexOf('deployment:warm') < events.indexOf('loader:hide'));
   assert.ok(events.indexOf('reveal:m1a2') < events.indexOf('camo:ready'),
@@ -215,5 +230,171 @@ try {
   delete globalThis.__WORLD_LOAD;
   setLocale(originalLocale);
 }
+
+// Use the real audio facade and default paint scheduler: this guards the
+// actual Solo composition, not just a mock that promises to yield itself.
+events.length = 0;
+const originalRaf = globalThis.requestAnimationFrame;
+let releaseAudioFrame;
+globalThis.requestAnimationFrame = (callback) => { releaseAudioFrame = callback; return 1; };
+const actualAudio = createLazyAudio({
+  hasStickyActivation: () => true,
+  createContext() { events.push('audio:device'); return null; },
+  loadMixer: async () => null,
+});
+try {
+  const actualLoading = createSoloBattleLoadingRuntime({ ...loadingOptions, audio: actualAudio });
+  const opening = actualLoading.begin('m1a2', null, { randomRoster: false });
+  assert.ok(events.includes('loader:show'));
+  assert.ok(!events.includes('audio:device') && !events.includes('visuals:ready'),
+    'the opaque loader is requested before device creation or scene acquisition');
+  assert.equal(typeof releaseAudioFrame, 'function');
+  releaseAudioFrame(16);
+  assert.ok(!events.includes('audio:device'), 'the animation callback alone is not the post-paint task boundary');
+  await opening;
+  assert.ok(events.indexOf('loader:show') < events.indexOf('audio:device'));
+  assert.ok(events.indexOf('audio:device') < events.indexOf('visuals:ready'));
+} finally {
+  if (originalRaf) globalThis.requestAnimationFrame = originalRaf;
+  else delete globalThis.requestAnimationFrame;
+  delete globalThis.__BATTLE_LOAD;
+  delete globalThis.__VISUAL_LOAD_TIMINGS;
+}
+
+const audioRecoveryEvents = [];
+const deniedDeviceAudio = createLazyAudio({
+  hasStickyActivation: () => true,
+  createContext() { throw new Error('audio device unavailable'); },
+});
+const deniedDeviceLoading = createSoloBattleLoadingRuntime({
+  ...loadingOptions,
+  audio: {
+    ...deniedDeviceAudio,
+    startLoadingAfterPaint: () => deniedDeviceAudio.startLoadingAfterPaint(async () => {}),
+  },
+});
+await createSoloBattleEntryRuntime({
+  lifecycle: {
+    run: (work) => work(), coverRendering() {},
+    uncoverRendering: () => audioRecoveryEvents.push('uncover'),
+  },
+  loading: deniedDeviceLoading,
+  audio: deniedDeviceAudio,
+  battleLoad: { hide: () => audioRecoveryEvents.push('hide') },
+  enterGarage: () => audioRecoveryEvents.push('restore-garage'),
+  nextFrame: async () => {},
+  isVisibleSpecId: () => true,
+  getSelectedSpecId: () => 'm1a2',
+  getSelectedMapId: () => 'verdant',
+  reportError: (_message, error) => { assert.match(error.message, /audio device unavailable/); audioRecoveryEvents.push('report'); },
+}).begin('m1a2');
+assert.deepEqual(audioRecoveryEvents, ['report', 'restore-garage', 'uncover', 'hide'],
+  'real deferred audio errors use existing covered-entry recovery instead of stranding the loader');
+assert.equal(deniedDeviceAudio.loadingActive, false);
+
+// Compose the real loading + deployment + bounded carpet readiness owners.
+// A stubbed warm-result test alone cannot catch cancelled/early-failed warm
+// taking the loading owner's optional shader fallback and uncovering anyway.
+async function runComposed({ fail = '', cancel = '' } = {}) {
+  events.length = 0;
+  clock = 0;
+  let generation = 0, coverUpdates = 0;
+  const camera = new PerspectiveCamera();
+  const scene = new Scene();
+  const requiredWorld = {
+    ...world,
+    update() {
+      coverUpdates++;
+      if (fail === 'carpet') throw new Error('carpet failed');
+    },
+    getGrassWorkState: () => ({ disposed: false, carpet: { cold: coverUpdates < 3, pending: coverUpdates < 3 } }),
+  };
+  game.tanks[0].state = { pos: new Vector3(20, 0, 12.5), yaw: 0 };
+  game.tanks[0].team = 'player';
+  game.tanks[1].team = 'enemy';
+  const prepareRevealCamera = () => { camera.position.set(20, 6, -0.3); events.push('reveal:camera'); };
+  const deployment = createSoloBattleDeploymentRuntime({
+    game, scene, camera, battleLoad: loadingOptions.battleLoad,
+    battleWarm: {
+      warmBattleTerrainTiles: async () => {},
+      primeOpeningTerrainPresentation,
+      stageCombatFxProgramSubmission: async () => {
+        if (cancel === 'fx') generation++;
+        return { staged: false, restore() { events.push('fx:restored'); } };
+      },
+    },
+    armorAimOverlay: { warm: () => () => {} },
+    forwardProgramWarm: { *compileSceneSteps() {} },
+    combatWarm: { markOpeningReady() {} },
+    post: { async warmFirstFrame() {
+      if (cancel === 'post') generation++;
+      if (fail === 'shader') throw new Error('shader failed');
+    } },
+    lighting: { csm: { lights: [] } }, createShell() {},
+    getWorld: () => requiredWorld,
+    getBattleVisuals: () => ({ async stream() { if (fail === 'allies') throw new Error('allies failed'); } }),
+    getFx: () => ({ group: fxGroup }), getWarmRender: () => () => {},
+    getDeploymentShadowWarm: () => ({ async prime() {} }),
+    getEntryLifecycle: () => ({ async primeReveal() {
+      events.push('deployment:reveal');
+      if (cancel === 'deploymentReveal') generation++;
+    }, coverRendering() {} }),
+    prepareRevealCamera,
+    prepareAtmosphere: async () => { if (fail === 'atmosphere') throw new Error('atmosphere failed'); },
+    getGeneration: () => generation, advanceGeneration: () => ++generation,
+    setPending() {}, setDestructionWarmed() {},
+    now: () => clock,
+    yieldFrame: async () => {},
+    createLoadingYielder: () => async () => {
+      if (cancel === 'carpet' && coverUpdates === 1) generation++;
+    },
+  });
+  const combined = createSoloBattleLoadingRuntime({
+    ...loadingOptions, deployment, getWorld: () => requiredWorld, prepareRevealCamera,
+    delay: async () => { if (cancel === 'hold') generation++; },
+    lifecycle: { async primeReveal() {
+      events.push('reveal:fallback');
+      assert.equal(coverUpdates, 3, 'legitimate shader fallback requires completed exact-camera geometry');
+      if (cancel === 'fallback') generation++;
+    } },
+    battleLoad: { ...loadingOptions.battleLoad, async hide() {
+      events.push('loader:hide');
+      if (cancel === 'fade') generation++;
+    } },
+  });
+  const result = combined.begin('m1a2', null, { randomRoster: false });
+  if (cancel || (fail && fail !== 'shader')) {
+    await assert.rejects(result, cancel ? /superseded/ : new RegExp(`${fail} failed`));
+    assert.ok(!events.includes('battle:open'), 'failed/cancelled entry cannot release control');
+    if (cancel !== 'fade') assert.ok(!events.includes('loader:hide'), 'required readiness fails under cover');
+    if (!cancel || cancel === 'carpet' || cancel === 'hold') {
+      assert.ok(!events.includes('reveal:fallback'), 'early failure cannot enter optional shader fallback');
+    }
+  } else {
+    await result;
+    assert.ok(events.includes('loader:hide') && events.includes('battle:open'));
+    assert.equal(events.includes('reveal:fallback'), fail === 'shader');
+  }
+  if (cancel === 'fx') assert.ok(events.includes('fx:restored'), 'cancellation still drains borrowed FX state');
+  return coverUpdates;
+}
+for (const fail of ['atmosphere', 'allies', 'carpet']) await runComposed({ fail });
+assert.equal(await runComposed({ cancel: 'carpet' }), 1, 'stale carpet cannot perform another update');
+for (const cancel of ['hold', 'fallback', 'fade']) await runComposed({ fail: 'shader', cancel });
+for (const cancel of ['fx', 'post', 'deploymentReveal']) await runComposed({ cancel });
+await runComposed({ fail: 'shader' });
+await runComposed();
+
+events.length = 0;
+const missingReceipt = createSoloBattleLoadingRuntime({
+  ...loadingOptions,
+  deployment: { async warm() { return { generation: 1, revealPrimed: false }; } },
+});
+await assert.rejects(missingReceipt.begin('m1a2', null, { randomRoster: false }), /required reveal readiness/);
+assert.ok(!events.includes('loader:hide') && !events.includes('reveal:fallback'));
+delete globalThis.__BATTLE_LOAD;
+delete globalThis.__VISUAL_LOAD_TIMINGS;
+delete globalThis.__BATTLE_COUNTDOWN_WARM;
+delete globalThis.__COMBAT_OPENING_WARM;
 
 console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm and reveal order pass');

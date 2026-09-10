@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { createLazyAudio, startFallbackLoadingTone } from './lazyAudio.ts';
 import { createBus } from '../game/stateCore.ts';
 
+const flushMicrotasks = async () => { for (let tick = 0; tick < 8; tick++) await Promise.resolve(); };
+
 class FakeParam {
   constructor(value = 0) { this.value = value; }
   setValueAtTime(value) { this.value = value; }
@@ -120,6 +122,126 @@ const pendingResume = createLazyAudio({ createContext: () => ({
 assert.equal(pendingResume.prepare(), undefined, 'Ready never waits on audio permission');
 assert.equal(pendingResume.loadingActive, false);
 
+function loadingAudioHarness(sticky = true) {
+  const calls = [];
+  const context = {
+    ...fakeContext,
+    state: 'running',
+    createOscillator() { calls.push('oscillator'); return new FakeNode(); },
+  };
+  const audio = createLazyAudio({
+    hasStickyActivation: () => sticky,
+    createContext() { calls.push('context'); return context; },
+    loadMixer: async () => {
+      calls.push('module');
+      return { createAudio({ context: adopted }) {
+        assert.equal(adopted, context, 'deferred startup still adopts its one real context');
+        calls.push('mixer');
+        return {
+          resume() { calls.push('resume'); }, bindBus() {}, mute() {},
+          loadingOn(active) { calls.push(`loading:${active}`); }, ambientOn() {},
+        };
+      } };
+    },
+  });
+  return { audio, calls, context };
+}
+
+for (const sticky of [true, false]) {
+  const { audio, calls } = loadingAudioHarness(sticky);
+  let releasePaint;
+  const startup = audio.startLoadingAfterPaint(() => new Promise((resolve) => { releasePaint = resolve; }));
+  assert.equal(calls.includes('context'), !sticky,
+    'only verified sticky activation defers startup; unknown/legacy policy keeps gesture-time unlock');
+  assert.equal(calls.includes('module'), !sticky, 'no modern mixer construction precedes the paint boundary');
+  releasePaint(); await startup;
+  await audio.preload(); await Promise.resolve();
+  assert.equal(calls.filter((call) => call === 'context').length, 1);
+  assert.equal(calls.filter((call) => call === 'oscillator').length, 3,
+    'the unchanged oscillator loading cue remains present after startup');
+  assert.equal(calls.filter((call) => call === 'mixer').length, 1);
+  assert.ok(calls.includes('loading:true'), 'the full mixer inherits loading sound intent');
+}
+
+const readyLoading = loadingAudioHarness();
+readyLoading.audio.prepare();
+await readyLoading.audio.startLoadingAfterPaint(async () => {});
+await readyLoading.audio.preload(); await Promise.resolve();
+assert.equal(readyLoading.calls.filter((call) => call === 'context').length, 1,
+  'an explicit Ready-prepared device is reused rather than reconstructed');
+
+for (const superseded of [false, true]) {
+  const { audio, calls } = loadingAudioHarness();
+  let releaseOld, releaseNew;
+  const old = audio.startLoadingAfterPaint(() => new Promise((resolve) => { releaseOld = resolve; }));
+  audio.loadingOn(false);
+  const successor = superseded
+    ? audio.startLoadingAfterPaint(() => new Promise((resolve) => { releaseNew = resolve; }))
+    : null;
+  releaseOld(); await old;
+  assert.deepEqual(calls, [], 'a cancelled/superseded painted wait creates no device, mixer, or tone');
+  if (successor) {
+    releaseNew(); await successor;
+    await audio.preload(); await Promise.resolve();
+    assert.equal(calls.filter((call) => call === 'context').length, 1, 'only the latest loading intent starts audio');
+  } else assert.equal(audio.loadingActive, false);
+}
+
+const failedPaint = loadingAudioHarness();
+await assert.rejects(failedPaint.audio.startLoadingAfterPaint(async () => { throw new Error('cover cancelled'); }),
+  /cover cancelled/);
+assert.deepEqual(failedPaint.calls, [], 'paint/cover failure is observed before deferred audio side effects');
+
+for (const pendingPermission of [true, false]) {
+  const { audio, context } = loadingAudioHarness();
+  context.state = 'suspended';
+  context.resume = () => pendingPermission
+    ? new Promise(() => {}) : Promise.reject(new Error('autoplay denied'));
+  await audio.startLoadingAfterPaint(async () => {});
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(audio.loadingActive, true, 'pending/rejected permission never leaves the loading owner awaiting audio');
+}
+
+let deferredCreationAttempts = 0;
+const failedDevice = createLazyAudio({
+  hasStickyActivation: () => true,
+  createContext() {
+    if (++deferredCreationAttempts === 1) throw new Error('device unavailable');
+    return null;
+  },
+  loadMixer: async () => null,
+});
+await assert.rejects(failedDevice.startLoadingAfterPaint(async () => {}), /device unavailable/,
+  'device failures reject the awaited owner boundary for its existing visible error recovery');
+await failedDevice.startLoadingAfterPaint(async () => {});
+assert.ok(deferredCreationAttempts >= 2, 'a failed device remains retryable');
+
+const originalWarn = console.warn;
+const mixerWarnings = [];
+let mixerAttempts = 0;
+const failedMixer = createLazyAudio({
+  hasStickyActivation: () => true,
+  createContext: () => ({ ...fakeContext, state: 'running' }),
+  loadMixer: async () => ({ createAudio() {
+    if (++mixerAttempts === 1) throw new Error('mixer construction failed before graph creation');
+    return {
+      resume() {},
+      mute() {}, loadingOn() {}, ambientOn() {},
+    };
+  } }),
+});
+try {
+  console.warn = (...args) => mixerWarnings.push(args);
+  await failedMixer.startLoadingAfterPaint(async () => {});
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(failedMixer.ready, false, 'failed pre-graph construction cannot publish a ready mixer');
+  assert.equal(failedMixer.loadingActive, true, 'the fallback loading tone survives failed pre-graph construction');
+  assert.ok(mixerWarnings.length > 0, 'fire-and-forget initialization rejection is observed');
+  failedMixer.resume();
+  await failedMixer.warmBattleEvents();
+  assert.equal(failedMixer.ready, true, 'a later explicit startup can retry the same deferred module');
+} finally { console.warn = originalWarn; }
+
 const handoffCalls = [];
 let graphReady = false;
 const handoffContext = { state: 'running' };
@@ -191,6 +313,95 @@ finishDeferred(deferredModule);
 await abandoned.preload(); await Promise.resolve();
 assert.equal(initialPhaseSeen, 'ended', 'a late mixer inherits the latest destination phase');
 assert.equal(ambientSeen, false, 'a battle that ended during transfer cannot resurrect stale ambience');
+
+for (const abandonedDuringPreparation of [false, true]) {
+  const calls = [];
+  let finishBuffers;
+  const pack = { fixture: 'private prepared buffers' };
+  const context = { ...fakeContext, state: 'running' };
+  const bus = createBus();
+  const audio = createLazyAudio({
+    createContext() { calls.push('context'); return context; },
+    loadMixer: async () => ({
+      prepareAudioBuffers(adopted) {
+        assert.equal(adopted, context);
+        calls.push('prepare');
+        return new Promise(resolve => { finishBuffers = resolve; });
+      },
+      createAudio({ context: adopted, preparedBuffers, initialPhase }) {
+        assert.equal(adopted, context); assert.equal(preparedBuffers, pack);
+        calls.push(`create:${initialPhase}`);
+        return {
+          resume() { calls.push('graph'); }, mute() {}, bindBus() { calls.push('bind'); },
+          loadingOn(active) { calls.push(`loading:${active}`); },
+          ambientOn(active) { calls.push(`ambient:${active}`); },
+          warmBattleEvents() { calls.push('warm'); },
+        };
+      },
+    }),
+  });
+  audio.bindBus(bus);
+  audio.loadingOn(true); audio.resume();
+  const warm = audio.warmBattleEvents();
+  await flushMicrotasks();
+  assert.deepEqual(calls, ['context', 'prepare'], 'concurrent facade calls join one private preparation');
+  assert.equal(audio.ready, false);
+  assert.equal(audio.loadingActive, true, 'the immediate oscillator fallback remains during preparation');
+  bus.emit('phase:change', { phase: 'battle' }); audio.ambientOn(true);
+  if (abandonedDuringPreparation) {
+    audio.loadingOn(false);
+    bus.emit('phase:change', { phase: 'garage' });
+    assert.equal(audio.loadingActive, false);
+  }
+  finishBuffers(pack); await warm;
+  assert.ok(calls.includes(`create:${abandonedDuringPreparation ? 'garage' : 'battle'}`),
+    'mixer construction takes the latest phase AFTER its yielding preparation');
+  assert.equal(calls.filter(call => call === 'graph').length, 1);
+  assert.equal(calls.filter(call => call === 'bind').length, 1);
+  assert.ok(calls.includes(`loading:${!abandonedDuringPreparation}`));
+  assert.ok(calls.includes(`ambient:${!abandonedDuringPreparation}`));
+  assert.equal(audio.loadingActive, !abandonedDuringPreparation,
+    'completed shared preparation cannot revive an abandoned cue');
+  assert.equal(audio.ready, true);
+  await audio.warmBattleEvents();
+  assert.equal(calls.filter(call => call === 'prepare').length, 1);
+}
+
+{
+  let rejectBuffers;
+  let prepares = 0, creates = 0, contexts = 0;
+  const expected = new Error('private buffer preparation cancelled');
+  const warnings = [];
+  const previousWarn = console.warn;
+  const context = { ...fakeContext, state: 'running' };
+  const audio = createLazyAudio({
+    createContext() { contexts++; return context; },
+    loadMixer: async () => ({
+      prepareAudioBuffers() {
+        if (++prepares === 1) return new Promise((_resolve, reject) => { rejectBuffers = reject; });
+        return Promise.resolve({ fixture: 'fresh complete pack' });
+      },
+      createAudio() {
+        creates++;
+        return { resume() {}, mute() {}, loadingOn() {}, ambientOn() {}, bindBus() {}, warmBattleEvents() {} };
+      },
+    }),
+  });
+  try {
+    console.warn = (...args) => warnings.push(args);
+    audio.loadingOn(true);
+    const rejected = assert.rejects(audio.warmBattleEvents(), error => error === expected);
+    await flushMicrotasks();
+    rejectBuffers(expected); await rejected; await flushMicrotasks();
+    assert.equal(creates, 0, 'rejected preparation never constructs or publishes a graph');
+    assert.equal(audio.ready, false); assert.equal(audio.loadingActive, true);
+    assert.ok(warnings.length > 0, 'fire-and-forget acquisition observes preparation rejection');
+    audio.resume(); await audio.warmBattleEvents();
+    assert.deepEqual([prepares, creates, contexts], [2, 1, 1],
+      'retry gets fresh private buffers while reusing the original borrowed device');
+    assert.equal(audio.ready, true);
+  } finally { console.warn = previousWarn; }
+}
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
 const intentSource = await readFile(

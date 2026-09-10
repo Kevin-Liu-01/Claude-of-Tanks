@@ -7,7 +7,7 @@ import {
 import {
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
-  type RendererWithPrograms,
+  type ContextProgramRenderer,
 } from '../engine/programWarm.ts';
 import type {
   BattleVisualEntity,
@@ -62,7 +62,7 @@ export interface DeferredCombatWarmRuntimeOptions<
   World extends WarmableWorld,
 > {
   game: Game;
-  renderer: RendererWithPrograms;
+  renderer: ContextProgramRenderer;
   camera: { position: RuntimeValue };
   getBattleVisuals(): BattleVisualStreamer<Entity>;
   combatWarm: CombatWarmCoordinator;
@@ -153,6 +153,7 @@ export function createDeferredCombatWarmRuntime<
       );
       trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
         renderer, enemyProgramBaseline, guardedYield, now,
+        { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
       );
       trace.stages.enemyVisuals = Math.round(now() - enemyVisualsStartedAt);
 
@@ -204,7 +205,7 @@ export function createDeferredCombatWarmRuntime<
       }
       trace.done = true;
       trace.doneBeforeRollout = false;
-      if (generation !== getGeneration()) cancel();
+      if (generation !== getGeneration() && pendingPromise === pending) cancel();
     }).finally(() => {
       if (generation === getGeneration()) setPending(false);
       const ownsSlot = pendingPromise === pending;

@@ -1993,14 +1993,21 @@ export function tickFire(
  *
  * @param {object} combat CombatState
  * @param {number} dt seconds since the last tick
+ * @param {string[]} repaired optional caller-owned scratch, cleared before use;
+ *   omitted buffers remain independent snapshots for existing consumers
  * @returns {string[]} module names that just turned yellow
  */
-export function tickModuleRepairs(combat: CombatState | null | undefined, dt: number): string[] {
-  const repaired: string[] = [];
+export function tickModuleRepairs(
+  combat: CombatState | null | undefined,
+  dt: number,
+  repaired: string[] = [],
+): string[] {
+  repaired.length = 0;
   if (!combat || combat.destroyed || !combat.modules) return repaired;
   const rate = equipMult(combat, 'repair');
-  for (const name of Object.keys(combat.modules) as ModuleId[]) {
-    const m = combat.modules[name];
+  for (const name in combat.modules) {
+    if (!Object.prototype.hasOwnProperty.call(combat.modules, name)) continue;
+    const m = combat.modules[name as ModuleId];
     if (!m) continue;
     if (m.state !== 'red') continue;
     m.repairT += dt * rate;

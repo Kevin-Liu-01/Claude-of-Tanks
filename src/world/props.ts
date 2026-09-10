@@ -7,6 +7,7 @@ import { configureWorldLampMaterial, registerWorldNightLighting } from './worldN
 import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightEmissionGeometry.ts';
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -5987,8 +5988,7 @@ ${snowCap ? `
       if (key === 'curtain') for (const geometry of buckets[key]) ensureWorldNightEmissionMask(geometry);
       if (key === 'glass') prepareWorldStaticNightFixture(buckets[key], mats[key]);
       // mergeGeometries requires uniform indexing (ExtrudeGeometry is non-indexed)
-      const merged = mergeGeometries(buckets[key].map((geometry) =>
-        (geometry.index ? geometry.toNonIndexed() : geometry)), false);
+      const merged = yield* mergePropsMaterialGeometrySteps(buckets[key], key);
       const mesh = new THREE.Mesh(merged, mats[key]);
       mesh.castShadow = true;
       mesh.receiveShadow = true;

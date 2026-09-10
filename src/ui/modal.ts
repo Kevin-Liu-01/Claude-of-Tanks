@@ -210,6 +210,7 @@ export function createModal({
   let trigger: HTMLElement | null = null;
   let disposed = false;
   let closeTimer = 0;
+  let openRevision = 0;
   const controller: ModalController = {
     root, panel, header, body, footer, closeButton,
     isOpen: () => activeModal === controller,
@@ -223,6 +224,7 @@ export function createModal({
     },
     open({ trigger: nextTrigger = null }: ModalOpenOptions = {}) {
       if (disposed) return;
+      const revision = ++openRevision;
       window.clearTimeout(closeTimer);
       if (activeModal && activeModal !== controller) activeModal.close({ restoreFocus: false, immediate: true });
       trigger = nextTrigger || (document.activeElement instanceof HTMLElement
@@ -232,6 +234,7 @@ export function createModal({
       activeModal = controller;
       lockBody();
       requestAnimationFrame(() => {
+        if (disposed || revision !== openRevision || activeModal !== controller || root.hidden) return;
         root.classList.add('is-open');
         const preferred = body.querySelector<HTMLElement>('[autofocus]') || closeButton;
         preferred.focus({ preventScroll: true });
@@ -240,6 +243,7 @@ export function createModal({
     },
     close({ restoreFocus = true, immediate = false }: ModalCloseOptions = {}) {
       if (disposed || (root.hidden && activeModal !== controller)) return;
+      openRevision++;
       window.clearTimeout(closeTimer);
       root.classList.remove('is-open');
       const wasActive = activeModal === controller;

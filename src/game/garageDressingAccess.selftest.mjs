@@ -9,6 +9,7 @@ let built = false;
 let variantId = '';
 let preparations = 0;
 const workshopFleet = { createVisual() { throw new Error('not used by access test'); } };
+let forwardedValidity;
 const engineCtx = { id: 'engine' };
 const pos = new THREE.Vector3(4, 5, 6);
 const access = createGarageDressingAccess(engineCtx, pos, {
@@ -30,7 +31,7 @@ const access = createGarageDressingAccess(engineCtx, pos, {
         assert.equal(existing.workshopFleet, workshopFleet);
         return {
           group: existing.group,
-          pump() { pumps++; built = true; return false; },
+          pump(stillValid) { forwardedValidity = stillValid; pumps++; built = true; return false; },
           ensureBuilt() { built = true; },
           isBuilt() { return built; },
           setVariant(id) { variantId = id; return id; },
@@ -54,8 +55,22 @@ assert.equal(attempts, 2);
 assert.equal(constructions, 1);
 assert.equal(preparations, 1);
 assert.equal(access.isBuilt(), false);
-assert.equal(await access.pump(), false);
+let admitted = false;
+const stillValid = () => admitted;
+assert.equal(await access.pump(stillValid), true);
+assert.equal(pumps, 0, 'an invalid entry cannot start even a loaded dressing');
+admitted = true;
+const interruptedPump = access.pump(stillValid);
+admitted = false;
+assert.equal(await interruptedPump, true);
+assert.equal(pumps, 0, 'Battle in the cached preload microtask must stop core construction');
+admitted = true;
+assert.equal(await access.pump(stillValid), false);
+assert.equal(forwardedValidity, stillValid, 'bay continuations receive the live admission predicate');
 assert.equal(pumps, 1);
+assert.equal(constructions, 1, 'resuming uses the retained workshop, not a rebuilt graph');
+assert.equal(await access.pump(), false);
+assert.equal(pumps, 2, 'legacy unguarded capture calls retain their pump behavior');
 assert.equal(access.isBuilt(), true);
 assert.equal(access.setVariant('winter_repair_bunker'), 'winter_repair_bunker');
 assert.equal(variantId, 'winter_repair_bunker');

@@ -70,12 +70,16 @@ export interface SceneWatchdogResult {
   /** Covered async entry must not reveal a known-black or unrestorable frame. */
   failed?: boolean;
   measurements?: SceneBandTiming[];
+  /** Probe-only normalization; live/night radiance is restored synchronously. */
+  nightRadianceScale?: number;
 }
 
 interface SceneWatchdogOptions {
   onRescue?: (result: SceneWatchdogResult) => void;
   /** Bounded operation timings for covered network entry, never a frame-loop probe. */
   measureTimings?: boolean;
+  /** Explicit known-night preset.skyIntensity; never infer night from dark pixels. */
+  nightRadianceScale?: number;
 }
 
 interface SceneWatchdogStage {
@@ -409,9 +413,66 @@ function timedSceneProbeStep<T>(
   }
 }
 
+/** Night has intentionally low scene radiance, unlike a broken lit shader.
+ * Normalize only existing broad lit-surface inputs for the diagnostic draw.
+ * Sky/unlit horizons, emissives and local lamps are unchanged: they cannot
+ * brighten a failed lit pipeline into a pass. No shader defines/light counts
+ * change, and no temporary radiance is retained across an async checkpoint.
+ */
+function withSceneProbeRadiance<T>(scene: THREE.Scene, scale: number, render: () => T): T {
+  if (scale === 1) return render();
+  if (!Number.isFinite(scale) || scale <= 0 || scale > 1) {
+    throw new RangeError('Night scene probe requires a finite authored radiance scale in (0, 1]');
+  }
+  const lights: [THREE.Light, number][] = [];
+  const environmentIntensity = scene.environmentIntensity;
+  try {
+    scene.traverse(object => {
+      if (!(object instanceof THREE.AmbientLight || object instanceof THREE.HemisphereLight
+        || object instanceof THREE.DirectionalLight)) return;
+      lights.push([object, object.intensity]);
+      object.intensity /= scale;
+    });
+    scene.environmentIntensity = environmentIntensity / scale;
+    return render();
+  } finally {
+    scene.environmentIntensity = environmentIntensity;
+    for (const [light, intensity] of lights) light.intensity = intensity;
+  }
+}
+
+/** A queued diagnostic never follows its phase/world owner into another entry.
+ * The non-rejecting completion joins owned async work before dependent reclaim.
+ */
+export function scheduleSceneWatchdog({ delayMs, isCurrent, run,
+  onError = error => console.warn('[graphics] Scene watchdog failed:', error),
+}: {
+  delayMs: number; isCurrent(): boolean; run(): void | PromiseLike<SceneWatchdogResult | void>;
+  onError?(error: Error): void;
+}, schedule: (callback: () => void, delayMs: number) => void = setTimeout): Promise<void> {
+  return new Promise(resolve => {
+    const failed = (error: Error): void => {
+      try { if (isCurrent()) onError(error); }
+      catch (_) { /* diagnostics callbacks cannot detach a rejection */ }
+      resolve();
+    };
+    const start = (): void => {
+      try {
+        if (!isCurrent()) { resolve(); return; }
+        // Submit synchronously beside the owner check, not in a later microtask.
+        Promise.resolve(run()).then(() => resolve(), error => failed(
+          error instanceof Error ? error : new Error(String(error))));
+      } catch (error) { failed(error instanceof Error ? error : new Error(String(error))); }
+    };
+    try { schedule(start, delayMs); }
+    catch (error) { failed(error instanceof Error ? error : new Error(String(error))); }
+  });
+}
+
 function createSceneBandProbe(
   renderer: THREE.WebGLRenderer,
   measurements?: SceneBandTiming[],
+  nightRadianceScale = 1,
 ): SceneBandProbe {
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const buf = new Uint8Array(64 * 22 * 4);
@@ -431,7 +492,8 @@ function createSceneBandProbe(
           renderer.clear();
         });
         if (timing) timing.programsBeforeRender = renderer.info.programs?.length;
-        timedSceneProbeStep(timing, 'renderMs', () => renderer.render(scene, camera));
+        timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
+          scene, nightRadianceScale, () => renderer.render(scene, camera)));
         if (timing) timing.programsAfterRender = renderer.info.programs?.length;
         timedSceneProbeStep(timing, 'readbackMs', () => {
           renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
@@ -478,6 +540,7 @@ function createWatchdogProbe(
   scene: THREE.Scene,
   camera: THREE.Camera,
   measurements?: SceneBandTiming[],
+  nightRadianceScale = 1,
 ): SceneWatchdogProbe {
   if (FORCE === 'blackscene') {
     const simulated = [0, 0, 42, 42];
@@ -489,7 +552,7 @@ function createWatchdogProbe(
       dispose() {},
     };
   }
-  const probe = createSceneBandProbe(renderer, measurements);
+  const probe = createSceneBandProbe(renderer, measurements, nightRadianceScale);
   return {
     measure: () => probe.measure(scene, camera),
     dispose: () => probe.dispose(),
@@ -612,6 +675,7 @@ async function measureSceneBandAsync(
   camera: THREE.Camera,
   signal?: AbortSignal,
   measurements?: SceneBandTiming[],
+  nightRadianceScale = 1,
 ): Promise<{ before: number; rendererRestored: boolean }> {
   const timing: SceneBandTiming | undefined = measurements ? { startTime: sceneProbeClock() } : undefined;
   if (timing) measurements!.push(timing);
@@ -630,7 +694,8 @@ async function measureSceneBandAsync(
         renderer.clear();
       });
       if (timing) timing.programsBeforeRender = renderer.info.programs?.length;
-      timedSceneProbeStep(timing, 'renderMs', () => renderer.render(scene, camera));
+      timedSceneProbeStep(timing, 'renderMs', () => withSceneProbeRadiance(
+        scene, nightRadianceScale, () => renderer.render(scene, camera)));
       if (timing) timing.programsAfterRender = renderer.info.programs?.length;
       if (timing) timing.readbackSteps = {};
       readback = timedSceneProbeStep(timing, 'enqueueMs', () => beginRgba8Readback(
@@ -686,9 +751,12 @@ export async function runSceneBlackWatchdogAsync(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
-  { signal, ...options }: SceneWatchdogOptions & { signal?: AbortSignal } = {},
+  { signal, isCurrent, ...options }: SceneWatchdogOptions & {
+    signal?: AbortSignal; isCurrent?(): boolean;
+  } = {},
 ): Promise<SceneWatchdogResult> {
   signal?.throwIfAborted();
+  if (isCurrent && !isCurrent()) throw new Error('Scene watchdog owner changed');
   if (FORCE === 'blackscene') {
     const forced = runSceneBlackWatchdog(renderer, scene, camera, options);
     if (forced.before < 6 && !forced.rescued) forced.failed = true;
@@ -698,15 +766,18 @@ export async function runSceneBlackWatchdogAsync(
   const environment = scene.environment;
   const fog = scene.fog;
   const measurements: SceneBandTiming[] | undefined = options.measureTimings ? [] : undefined;
-  const { before, rendererRestored } = await measureSceneBandAsync(renderer, scene, camera, signal, measurements);
+  const { before, rendererRestored } = await measureSceneBandAsync(
+    renderer, scene, camera, signal, measurements, options.nightRadianceScale);
+  const radianceReceipt = options.nightRadianceScale === undefined ? {} : { nightRadianceScale: options.nightRadianceScale };
   // The room may have closed and disposed its scene while the fence was pending.
   signal?.throwIfAborted();
+  if (isCurrent && !isCurrent()) throw new Error('Scene watchdog owner changed');
   if (!rendererRestored) return { before: 0, after: null, rescued: false, stage: null,
-    failed: true, ...(measurements ? { measurements } : {}) };
+    failed: true, ...radianceReceipt, ...(measurements ? { measurements } : {}) };
   if (before >= 6 && shadow === renderer.shadowMap.enabled
     && environment === scene.environment && fog === scene.fog) {
     return { before, after: null, rescued: false, stage: null,
-      ...(measurements ? { measurements } : {}) };
+      ...radianceReceipt, ...(measurements ? { measurements } : {}) };
   }
   const result = runSceneBlackWatchdog(renderer, scene, camera, options);
   if (result.before < 6 && !result.rescued) result.failed = true;
@@ -767,16 +838,17 @@ export function runSceneBlackWatchdog(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.Camera,
-  { onRescue, measureTimings = false }: SceneWatchdogOptions = {},
+  { onRescue, measureTimings = false, nightRadianceScale }: SceneWatchdogOptions = {},
 ): SceneWatchdogResult {
   const measurements: SceneBandTiming[] | undefined = measureTimings ? [] : undefined;
-  const probe = createWatchdogProbe(renderer, scene, camera, measurements);
+  const probe = createWatchdogProbe(renderer, scene, camera, measurements, nightRadianceScale);
   const stages = createWatchdogStages(renderer, scene);
   const out: SceneWatchdogResult = {
     before: 0,
     after: null,
     rescued: false,
     stage: null,
+    ...(nightRadianceScale === undefined ? {} : { nightRadianceScale }),
     ...(measurements ? { measurements } : {}),
   };
   const bag = window.__GL_DIAG;
@@ -785,8 +857,9 @@ export function runSceneBlackWatchdog(
   };
   try {
     out.before = probe.measure();
-    // darkest legitimate biome band measures far above this; a failed lit
-    // pipeline reads ~0
+    // The unchanged day threshold also judges explicitly normalized night
+    // lit-scene radiance. Authored night pixels alone may legitimately be
+    // below 6; a failed lit pipeline stays dark under diagnostic illumination.
     if (out.before >= 6) return out;
     if (tryWatchdogStages(stages, probe, out, note, onRescue)) return out;
     note(`watchdog: black scene (band ${out.before.toFixed(1)}) — no ladder stage cured it`);

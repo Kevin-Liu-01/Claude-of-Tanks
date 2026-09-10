@@ -42,6 +42,10 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     async enter(returnOptions?: GarageReturnOptions) {
       return (await owner.preload()).enter(returnOptions);
     },
+    recoverAfterContextRestore(isCurrent: () => boolean) {
+      // Pristine Garage recovery has no interrupted return and must stay lazy.
+      return owner.current?.recoverAfterContextRestore(isCurrent) ?? Promise.resolve(false);
+    },
     async leave() {
       return (await owner.preload()).leave();
     },

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripTypeScriptTypes } from 'node:module';
+import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
+import { createGrassChunkWork } from './grassChunkWork.ts';
 import winter from './maps/winter.ts';
 import { createCacheExperiment } from '../../tools/terrain-fast-cache-benchmark.mjs';
 
@@ -22,9 +25,77 @@ assert.match(liveProxy,
 assert.match(vegetation,
   /const grassAhead = grassFadeEnd \+ \(movedFromSpawn > 28 \? CHUNK_SIZE \* 0\.5 : 32\)/,
   'live grass streaming keeps a bounded half-chunk lookahead without changing its fade band');
-assert.match(vegetation,
-  /mesh\.computeBoundingSphere\(\);\s*mesh\.frustumCulled = true;/,
-  'static midfield chunks retain exact density while Three culls the rear hemisphere');
+// Bounds now scan cooperatively before publication instead of synchronously
+// calling mesh.computeBoundingSphere(). Exercise the real publication adapter
+// and compare against that original Three implementation, not its source shape.
+const publishStart = vegetation.indexOf('  function publishGrassChunk(');
+const publishEnd = vegetation.indexOf('  const spawn =', publishStart);
+assert.ok(publishStart > 0 && publishEnd > publishStart);
+const publishSource = stripTypeScriptTypes(vegetation.slice(publishStart, publishEnd));
+function assertStaticGrassBounds(source) {
+  const geometry = new THREE.BoxGeometry(0.6, 1.3, 0.2).translate(0, 0.65, 0);
+  geometry.computeBoundingSphere();
+  const material = new THREE.MeshBasicMaterial(), group = new THREE.Group();
+  const reference = new THREE.InstancedMesh(geometry, material, 3);
+  const variants = [{ geo: geometry, geoFar: geometry, matMid: material }];
+  const publish = new Function('THREE', 'group', 'grassVariants',
+    `${source}; return publishGrassChunk;`)(THREE, group, variants);
+  const chunk = { built: false, meshes: null };
+  const rows = [
+    [-2.1, 0.13, -12.4, 0.37, 0.81, 1.13, 0.2, 0.4, 0.1, 0],
+    [0.3, -0.17, -15.9, -0.71, 1.17, 0.79, 0.3, 0.5, 0.2, 0],
+    [2.7, 0.21, -19.2, 1.31, 0.93, 1.29, 0.1, 0.3, 0.2, 0],
+  ];
+  let candidate = 0;
+  const work = createGrassChunkWork({ candidateCount: rows.length,
+    random: () => 0.5, x0: 0, z0: 0, size: 1,
+    makeTuft: () => rows[candidate++], staging: [new Float64Array(30)],
+    variantSphere: () => geometry.boundingSphere,
+    publish: buffers => publish(chunk, buffers),
+  });
+  try {
+    while (!work.complete) {
+      assert.equal(group.children.length, 0, 'unfinished chunks remain off-tree');
+      work.step();
+    }
+    assert.equal(chunk.built, true);
+    assert.equal(group.children.length, 1);
+    const buffer = work.buffers[0], mesh = group.children[0];
+    reference.instanceMatrix.array.set(buffer.matrices);
+    reference.computeBoundingSphere();
+    assert.deepEqual(buffer.sphere, reference.boundingSphere,
+      'cooperative bounds equal the original ordered Float32 instance scan');
+    assert.equal(mesh.boundingSphere, buffer.sphere, 'publication adopts completed full-count bounds');
+    assert.equal(mesh.count, rows.length, 'publication retains every accepted tuft');
+    assert.equal(mesh.frustumCulled, true, 'static chunks retain Three frustum culling');
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    const projection = new THREE.Matrix4(), frustum = new THREE.Frustum();
+    for (const count of [rows.length, 1]) {
+      mesh.count = count; // Density prefixes must keep the original full sphere.
+      for (const direction of [-1, 1]) {
+        camera.lookAt(0, 0, direction); camera.updateMatrixWorld(true);
+        projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        frustum.setFromProjectionMatrix(projection);
+        assert.equal(frustum.intersectsObject(mesh), direction === -1,
+          'unchanged full bounds admit the front and reject the rear hemisphere');
+      }
+      assert.deepEqual(mesh.boundingSphere, reference.boundingSphere);
+    }
+  } finally {
+    for (const mesh of group.children) mesh.dispose();
+    reference.dispose(); geometry.dispose(); material.dispose();
+  }
+}
+assertStaticGrassBounds(publishSource);
+for (const [before, after] of [
+  ['mesh.boundingSphere = buffer.sphere;', 'mesh.boundingSphere = null;'],
+  ['mesh.frustumCulled = true;', 'mesh.frustumCulled = false;'],
+  ['mesh.count = count;', 'mesh.count = 1;'],
+]) {
+  assert.ok(publishSource.includes(before));
+  assert.throws(() => assertStaticGrassBounds(publishSource.replace(before, after)),
+    { code: 'ERR_ASSERTION' }, `bounds oracle rejects ${after}`);
+}
 
 const field = createHeightField(1337);
 

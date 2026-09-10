@@ -930,7 +930,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});
-        api.hide();
+        // The covered return transaction owns dismissal. If entry is still
+        // pending or acquisition fails, this report must remain usable.
       });
     }
     adoptEndOverlay(actions);

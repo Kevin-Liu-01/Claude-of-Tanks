@@ -44,7 +44,7 @@ import {
 // createTank (see the seam near the GLB-swap block). Procedural/metrology
 // builds skip it by default so parity boards measure bare silhouettes;
 // presentation callers may explicitly opt in with decor:true.
-import { attachTankDecorations } from './decorations.ts';
+import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttachmentArgs } from './decorations.ts';
 // effects_combat r5 ANIMATION CLOCK: the self-timed visual timelines (gun
 // recuperator, turret-pop arc, wreck char/ember cooldown) now age against
 // the shared fx clock — see src/fx/clock.ts. Live play is identical (the
@@ -9487,11 +9487,70 @@ function resolveTankPresentationSetup(
   };
 }
 
+/** Construction-only checkpoints: the completed visual is returned, never yielded. */
+export function createTankSteps(
+  specId: string,
+  engineContext: RuntimeValue,
+  opts: TankFactoryOptions = {},
+): Generator<void, TankVisual, void> {
+  return createTankOwnedSteps(specId, engineContext, opts, false);
+}
+
+/** Existing synchronous callers keep the historical decoration warning/null fallback. */
 export function createTank(
   specId: string,
   engineContext: RuntimeValue,
   opts: TankFactoryOptions = {},
 ): TankVisual {
+  const steps = createTankOwnedSteps(specId, engineContext, opts, true);
+  let result = steps.next();
+  while (!result.done) result = steps.next();
+  return result.value;
+}
+
+function* prepareTankDecorationSteps(
+  args: DecorationAttachmentArgs,
+  legacyDecoration: boolean,
+): Generator<void, void, void> {
+  const root = args.root;
+  let workMs = 0, yieldMs = 0, checkpointCount = 0;
+  if (legacyDecoration) {
+    const startedAt = performance.now();
+    attachTankDecorations(args);
+    root.userData.decorBuildMs = performance.now() - startedAt;
+    root.userData.decorYieldMs = 0;
+    root.userData.decorCheckpointCount = 0;
+    return;
+  }
+  const steps = attachTankDecorationsSteps(args);
+  let complete = false;
+  try {
+    while (!complete) {
+      const startedAt = performance.now();
+      let result: ReturnType<typeof steps.next>;
+      try { result = steps.next(); }
+      finally { workMs += performance.now() - startedAt; }
+      if (result.done) { complete = true; break; }
+      const pausedAt = performance.now();
+      try { yield; }
+      finally { yieldMs += performance.now() - pausedAt; checkpointCount++; }
+    }
+  } finally {
+    // IteratorClose owns unpublished decoration; the outer visual owns the
+    // completed core and any decoration resources already transferred to it.
+    if (!complete) steps.return(null);
+    root.userData.decorBuildMs = workMs;
+    root.userData.decorYieldMs = yieldMs;
+    root.userData.decorCheckpointCount = checkpointCount;
+  }
+}
+
+function* createTankOwnedSteps(
+  specId: string,
+  engineContext: RuntimeValue,
+  opts: TankFactoryOptions,
+  legacyDecoration: boolean,
+): Generator<void, TankVisual, void> {
   const createTankAssemblyStage1 = (): void => {
     if (!factoryConfigured) {
       throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.ts');
@@ -9939,15 +9998,19 @@ export function createTank(
     hull: new Set(buckets.hullExternalArmor || []),
     turret: new Set(buckets.turretExternalArmor || []),
   };
+  // Build-local scratch: every fan triangle is reset from current plate data.
+  const plateDistanceTriangle = new THREE.Triangle();
+  const plateDistanceClosest = new THREE.Vector3();
   const pointToPlateDistance = (point: THREE.Vector3, plate: (typeof armor.hullPlates)[number]): number => {
-    const verts = plate.verts.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+    const verts = plate.verts;
     if (verts.length < 3) return Infinity;
-    const closest = new THREE.Vector3();
     let best = Infinity;
     for (let index = 1; index + 1 < verts.length; index++) {
-      const triangle = new THREE.Triangle(verts[0], verts[index], verts[index + 1]);
-      triangle.closestPointToPoint(point, closest);
-      best = Math.min(best, closest.distanceTo(point));
+      plateDistanceTriangle.a.fromArray(verts[0]);
+      plateDistanceTriangle.b.fromArray(verts[index]);
+      plateDistanceTriangle.c.fromArray(verts[index + 1]);
+      plateDistanceTriangle.closestPointToPoint(point, plateDistanceClosest);
+      best = Math.min(best, plateDistanceClosest.distanceTo(point));
     }
     return best;
   };
@@ -12297,19 +12360,18 @@ export function createTank(
   // the movement contact scan above so the solve metadata never sees decor.
   // Every shipped tank is authored here, so decoration can attach directly
   // to the final procedural geometry in the same build.
-  const dressTank = () => attachTankDecorations({
-    root, hullG, turretG, spec, engineCtx, disposables,
-    opts: { proceduralOnly, decor: opts.decor },
-    isDestroyed: () => destroyed,
-  });
+  let visualCompleted = false;
+  try {
+    // No earlier yield: all core resources now belong to visual.dispose().
+    // The root remains private through decoration and the unchanged finalizers.
+    yield;
+    yield* prepareTankDecorationSteps({
+      root, hullG, turretG, spec, engineCtx, disposables,
+      opts: { proceduralOnly, decor: opts.decor },
+      isDestroyed: () => destroyed,
+    }, legacyDecoration);
 
-  const decorStartedAt = performance.now();
   const createTankMarkingsStage3 = (): void => {
-    dressTank();
-    // Expose this one-time procedural stage to the existing garage/battle
-    // diagnostics. Decoration seating performs real surface probes and is
-    // otherwise indistinguishable from core geometry in an outer build timer.
-    root.userData.decorBuildMs = performance.now() - decorStartedAt;
 
     // Family builders historically retinted shared/clone track materials after
     // construction. Reassert only explicit working-gear roles after every
@@ -12367,5 +12429,9 @@ export function createTank(
   };
   createTankMarkingsStage6();
 
-  return visual;
+    visualCompleted = true;
+    return visual;
+  } finally {
+    if (!visualCompleted) visual.dispose();
+  }
 }

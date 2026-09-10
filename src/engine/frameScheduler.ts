@@ -43,14 +43,64 @@ export function nextFrame(): Promise<void> {
   });
 }
 
+/** A timeout may keep a hidden document moving, but cannot certify a visible frame. */
+function waitForPaintOpportunity(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const paintDocument = typeof document === 'undefined' ? null : document;
+    const hasFrame = typeof requestAnimationFrame === 'function';
+    const visible = (): boolean => !!paintDocument && !paintDocument.hidden;
+    let done = false;
+    let frame: number | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timerRevision = 0;
+    let requiresFrame = false;
+    const cleanup = (): boolean => {
+      if (done) return false;
+      done = true;
+      if (timer !== null) clearTimeout(timer);
+      if (frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+      paintDocument?.removeEventListener('visibilitychange', visibilityChanged);
+      return true;
+    };
+    const finish = (): void => { if (cleanup()) resolve(); };
+    const deadline = (): void => {
+      if (hasFrame && visible()) {
+        if (cleanup()) reject(new Error('Visible paint frame did not arrive within 1000 ms'));
+      } else finish();
+    };
+    const armDeadline = (): void => {
+      if (timer !== null) clearTimeout(timer);
+      requiresFrame = hasFrame && visible();
+      const revision = ++timerRevision;
+      timer = setTimeout(() => {
+        if (revision === timerRevision) deadline();
+      }, requiresFrame ? 1000 : 34);
+    };
+    function visibilityChanged(): void {
+      if (done) return;
+      if (!visible()) finish();
+      // A hidden-start wait that becomes visible must not take its old 34ms
+      // fallback as a paint. It gets the same bounded real-frame requirement.
+      else if (!requiresFrame && hasFrame) armDeadline();
+    }
+    try {
+      paintDocument?.addEventListener('visibilitychange', visibilityChanged);
+      armDeadline();
+      if (hasFrame) frame = requestAnimationFrame(finish);
+    } catch (error) {
+      if (cleanup()) reject(error);
+    }
+  });
+}
+
 /**
- * Leave the animation-frame microtask checkpoint before continuing heavy work.
- * The following task gives the browser a rendering opportunity; it is not a
- * GPU-completion or displayed-frame acknowledgement. Hidden documents retain
- * nextFrame's bounded fallback when animation callbacks do not arrive.
+ * Require a genuine animation callback while visible, then leave its pre-paint
+ * microtask checkpoint. The task is a rendering opportunity, not a GPU/display
+ * acknowledgement. Hidden/no-rAF hosts retain a bounded fallback; a visible
+ * document with no arriving rAF rejects rather than pretending it painted.
  */
 export async function nextPaintFrame(): Promise<void> {
-  await nextFrame();
+  await waitForPaintOpportunity();
   await defaultTaskYield();
 }
 

@@ -2,9 +2,11 @@ import type { Camera, Object3D, Scene, WebGLRenderer } from 'three';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
+  nextPaintFrame,
   type WorkYielder,
 } from './frameScheduler.ts';
 import { warmSceneOffscreenBatched } from './offscreenWarm.ts';
+import { ProgramUniformPreparationError } from './programWarm.ts';
 import type {
   ForwardProgramWarmOwner,
   ForwardProgramWarmStats,
@@ -85,6 +87,11 @@ export interface GarageGpuRestoreReceipt {
   programCompileMs: number;
   programCompileMaxMs: number;
   programCompileObject: string | null;
+  programCohorts?: number;
+  /** Completed cohort entries, including reused/disposed entries; not unique newly reflected shaders. */
+  programsPrepared?: number;
+  programCohortMax?: number;
+  programBudgetSlices?: number;
   linkerSlices: number;
   shadowPasses: number[];
   shadowPassMax: number;
@@ -99,13 +106,14 @@ export interface GarageGpuRestoreOptions {
   scene: Scene;
   camera: Camera;
   lighting: GarageLightingRestorePort;
-  programRoot: Object3D;
   forwardPrograms: ForwardProgramRestorePort;
   post: GaragePostRenderPort;
   simDt: number;
   resourcesReleased: boolean;
   programsNeedWarm?: boolean;
   createYielder?: (budgetMs: number) => WarmYield;
+  /** GPU readiness needs frame/task progress, not a task-only polling loop. */
+  yieldProgramReadiness?: () => Promise<void>;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
 }
@@ -116,9 +124,11 @@ const GARAGE_LINKER_BREATHING_SLICES = 8;
 /**
  * Garage return is already covered by a fully painted transition. Yielding
  * back to the task queue keeps input, timers, and the transition watchdog
- * responsive without asking the saturated GPU for another animation frame
- * between every shader or shadow checkpoint. The exact post frame below is
- * still the sole reveal gate.
+ * responsive for bounded shadow/upload atoms. Shader readiness is separate:
+ * it crosses a frame AND task boundary so a high-priority task loop cannot
+ * exhaust the finite readiness guard before compositor/driver progress.
+ * Neither yield is readiness evidence; KHR completion and the exact post
+ * frame below remain the respective initialization/reveal gates.
  */
 function createGarageReturnYielder(budgetMs: number): WarmYield {
   return createOpaqueLoadingYielder(budgetMs, Number.POSITIVE_INFINITY);
@@ -126,12 +136,12 @@ function createGarageReturnYielder(budgetMs: number): WarmYield {
 
 async function drainWarmSteps(
   steps: Generator<void, void, void>,
-  yieldGpu: WarmYield,
+  yieldReadiness: () => Promise<void>,
 ): Promise<number> {
   let slices = 0;
   for (const _ of steps) {
     slices += 1;
-    await yieldGpu();
+    await yieldReadiness();
   }
   return slices;
 }
@@ -147,13 +157,13 @@ export async function restoreGarageGpuPipeline({
   scene,
   camera,
   lighting,
-  programRoot,
   forwardPrograms,
   post,
   simDt,
   resourcesReleased,
   programsNeedWarm = resourcesReleased,
   createYielder = createGarageReturnYielder,
+  yieldProgramReadiness = nextPaintFrame,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
 }: GarageGpuRestoreOptions): Promise<GarageGpuRestoreReceipt> {
@@ -170,26 +180,28 @@ export async function restoreGarageGpuPipeline({
   lighting.setStaticPresentationDormant(false);
   try {
     lighting.update(true);
-    // The Garage can adopt a newly deployed player visual even when its static
-    // environment stayed resident. Submit a changed hero against the real
-    // Garage light/target combination; subsequent returns reuse that program,
-    // while a new lighting variant links in small covered slices instead of
-    // blocking the exact settle frame.
+    // A changed hero can also change the Garage's material/light program set.
+    // Residency alone is not a readiness proof for the background, fittings or
+    // workshop vehicles. Prepare every visible draw against the real Garage
+    // target before the exact settle frame; unchanged returns keep the fast path.
     if (programsNeedWarm) {
       const programWarmAt = now();
       try {
         programWarmSlices = await drainWarmSteps(
-          forwardPrograms.initializeSteps(programRoot, programStats),
-          yieldGpu,
+          forwardPrograms.initializeSteps(scene, programStats, { requireCompletion: true }),
+          yieldProgramReadiness,
         );
         linkerSlices = await drainWarmSteps(
           forwardPrograms.linkerBreathingSlices(GARAGE_LINKER_BREATHING_SLICES),
-          yieldGpu,
+          yieldProgramReadiness,
         );
-      } catch {
+      } catch (error) {
+        // A pending/failed readiness proof is not permission to immediately
+        // force the same cold reflection in an unbounded fallback render.
+        if (error instanceof ProgramUniformPreparationError) throw error;
         // Scoped compile remains the compatibility fallback. The covered exact
         // frame below still proves every draw-time path before reveal.
-        try { forwardPrograms.compile(programRoot); } catch { /* exact frame is fallback */ }
+        try { forwardPrograms.compile(scene); } catch { /* exact frame is fallback */ }
       }
       programWarmMs = Math.round(now() - programWarmAt);
     }
@@ -205,7 +217,7 @@ export async function restoreGarageGpuPipeline({
         yieldBeforeCascade: async () => { await yieldGpu(); },
       },
     );
-    if (resourcesReleased) {
+    if (resourcesReleased || programsNeedWarm) {
       sceneUploadBatches = await warmScene(renderer, scene, camera, {
         scale: 0.0625,
         maxObjects: 24,
@@ -228,6 +240,10 @@ export async function restoreGarageGpuPipeline({
     programCompileMs: Math.round(programStats.totalCompileMs ?? 0),
     programCompileMaxMs: Math.round(programStats.maxCompileMs ?? 0),
     programCompileObject: programStats.maxCompileObject ?? null,
+    programCohorts: programStats.programCohorts ?? 0,
+    programsPrepared: programStats.programsPrepared ?? 0,
+    programCohortMax: programStats.programCohortMax ?? 0,
+    programBudgetSlices: programStats.programBudgetSlices ?? 0,
     linkerSlices,
     shadowPasses,
     shadowPassMax: Math.max(0, ...shadowPasses),

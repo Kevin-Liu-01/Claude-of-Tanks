@@ -679,6 +679,7 @@ export function createAuthoritativeMatch({
   const ramPairTime = new Map<string, number>();
   const bestRamPairs = new Map<string, PendingRam>();
   const activeBodyEntities: AuthoritativeEntity[] = [];
+  const repairedModules: string[] = [];
   const survivingTeams: Record<Team, number> = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
 
   function indexWorldObstacles(): void {
@@ -1804,7 +1805,7 @@ export function createAuthoritativeMatch({
   function advanceRepairs(dt: number): void {
     for (const entity of entities) {
       if (entity.modeActive === false) continue;
-      for (const module of tickModuleRepairs(entity.combat, dt)) {
+      for (const module of tickModuleRepairs(entity.combat, dt, repairedModules)) {
         emit('module_state', { id: entity.id, module, state: 'yellow', repaired: true });
       }
     }

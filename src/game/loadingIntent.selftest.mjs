@@ -158,9 +158,13 @@ assert.match(networkPresentation,
   'network entry should delegate modules, battlefield construction, and connection setup');
 const networkWorldAdapter = main.slice(main.indexOf('loadWorld: (mapId: string'),
   main.indexOf('publishMatch: (match) => networkSession.publishMatch(match)'));
-assert.match(networkWorldAdapter,
-  /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle' \}\)/,
-  'network acquisition must defer precompilation and use covered-battle atmosphere instead of Garage-light warming');
+const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle' \}\)/;
+assert.match(networkWorldAdapter, coveredWorldOptions,
+  'network acquisition must defer Garage-light compilation and select covered battle atmosphere');
+assert.doesNotMatch(networkWorldAdapter.replace("atmosphere: 'covered-battle'", "atmosphere: 'garage'"),
+  coveredWorldOptions, 'a Garage-atmosphere regression must fail the loading contract');
+assert.doesNotMatch(networkWorldAdapter.replace('precompile: false', 'precompile: true'),
+  coveredWorldOptions, 'an eager-compilation regression must fail the loading contract');
 assert.match(networkPresentation,
   /connect: async \(\) => \{[\s\S]{0,160}await connectMatch\(\)[\s\S]{0,240}match\.close\?\.\('network_entry_cancelled'\)/,
   'a transport resolving after room closure must be retired before publication');

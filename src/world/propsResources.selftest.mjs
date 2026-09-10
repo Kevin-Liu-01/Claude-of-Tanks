@@ -15,6 +15,11 @@ import { resolveStructureWindowStyle } from './structureInstanceAppearance.ts';
 // pixels or the whole battlefield. Empty buckets are the important case: CSM
 // registers these materials even when no child mesh will ever reference them.
 const source = await readFile(new URL('./props.ts', import.meta.url), 'utf8');
+const roofStart = source.indexOf('function makeRoofMaterial(');
+const roofEnd = source.indexOf('\nfunction buildStoneCourseEdges(', roofStart);
+assert.ok(roofStart > 0 && roofEnd > roofStart, 'execute the actual roof material dependency');
+const makeRoofMaterial = new Function('THREE',
+  `${stripTypeScriptTypes(source.slice(roofStart, roofEnd))}\nreturn makeRoofMaterial;`)(THREE);
 const start = source.indexOf('  const windowStyle = resolveStructureWindowStyle(mapId);');
 const end = source.indexOf('  const buckets: CompletePropsBuckets =', start);
 assert.ok(start > 0 && end > start, 'the production props material stage is covered');
@@ -22,7 +27,7 @@ assert.match(source, /import \{ registerRetainedObject3DResources \} from '\.\.\
   'production props imports the same ownership implementation exercised here');
 const families = ['plaster', 'plaster2', 'plaster3', 'roofT', 'stone', 'wood',
   'straw', 'structureWood', 'structureCanvas', 'structureMetal', 'vehiclePaint'];
-const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle',
+const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle', 'makeRoofMaterial',
   'registerRetainedObject3DResources', 'makeGrimeTexture', '_mustReplace',
   `return ${stripTypeScriptTypes(`function* testSurfaceSteps(group, engineCtx, mapId, P, atlases) {
     const { ${families.join(', ')} } = atlases;
@@ -30,7 +35,7 @@ const buildSurfaces = new Function('THREE', 'resolveStructureWindowStyle',
     const grimeTex = makeGrimeTexture(); // Completed before the material stage.
     ${source.slice(start, end)}
     return { mats, grimeTex, retainedSurfaceMaterials };
-  }`)};`)(THREE, resolveStructureWindowStyle, registerRetainedObject3DResources,
+  }`)};`)(THREE, resolveStructureWindowStyle, makeRoofMaterial, registerRetainedObject3DResources,
   makeTexture, (text, anchor, replacement) => {
     assert.ok(text.includes(anchor), `production shader anchor ${anchor} remains present`);
     return text.replace(anchor, replacement);
@@ -67,6 +72,12 @@ function makeFixture(mapId = 'verdant') {
   let result;
   do { result = steps.next(); } while (!result.done);
   const { mats, grimeTex, retainedSurfaceMaterials } = result.value;
+  assert.equal(mats.roof.map, atlases.roofT.albedo);
+  assert.equal(mats.roof.normalMap, atlases.roofT.normal);
+  assert.equal(mats.roof.roughnessMap, atlases.roofT.surface);
+  assert.equal(mats.roof.aoMap, atlases.roofT.surface);
+  assert.equal(mats.roof.roughness, mapId === 'foundry' ? 1.3 : 1,
+    'map-specific roof preparation retains the same owned texture identities');
   const materials = Object.values(mats);
   const textures = [...Object.values(atlases).flatMap(Object.values), grimeTex];
   const disposals = new Map();
@@ -102,7 +113,7 @@ function evict(fixture, preserveRoots = []) {
   });
 }
 
-for (const mapId of ['verdant', 'winter']) {
+for (const mapId of ['verdant', 'winter', 'foundry']) {
   const fixture = makeFixture(mapId);
   const images = fixture.textures.map(texture => texture.image);
   const hooks = fixture.materials.map(material => material.onBeforeCompile);
