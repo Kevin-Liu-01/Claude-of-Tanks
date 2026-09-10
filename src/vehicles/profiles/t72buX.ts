@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -42,7 +43,7 @@ function fender(P:TankBuilderPort,side:number):void{
   const lane=side<0?-1.755:1.742;
   for(const [a,b,low]of [[-2.85,-1.90,.736],[-1.89,-.91,.741],[-.90,.10,.745],[.11,1.09,.751],[1.10,2.1,.757],[2.11,3.18,.764]]){
     const top=1.388+(a>1.7?-.061*(a-1.7):.008*a);
-    P.addMudguard('t72bu-x-side-leaf','hullRubber',box(.011,top-low,b-a),lane,(top+low)/2,(a+b)/2);
+    P.addMudguard('t72bu-x-side-leaf','hullFixedPaintedBodywork',markFixedPaintedPanel(box(.011,top-low,b-a),'t72bu-x-side-leaf','hullRubber'),lane,(top+low)/2,(a+b)/2);
     P.addEquipment('hullDetail',box(.026,.031,b-a),lane-side*.01,top,(a+b)/2);
   }
 }
@@ -57,6 +58,8 @@ function runningGear(P:TankBuilderPort):void{
     rollers:[{z:-1.63,y:.902,r:.092},{z:.21,y:.902,r:.092},{z:1.91,y:.902,r:.092}],rollerR:.092,
     returnRollerWidthM:.25,returnRollerInsetM:.10,topY:1.011,botY:.055,arms:true,coveredTop:true,paintedEnds:true,
     wheelFaceDepthScale:.78,sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.137,
+    // Open the tire around the recessed painted steel, retaining its rolling radius.
+    wheelTireInnerRadiusM:.32690,
     trackShoeDimensions:{padHeight:.026,grouserHeight:.009,webHeight:.013,hornHeight:.042,pinRadius:.009,pinCentreY:0},
   });
 }

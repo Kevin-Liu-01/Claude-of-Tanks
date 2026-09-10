@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -51,7 +52,7 @@ function hull(P:TankBuilderPort):void {
         [[a,.492],[a+.008,.492],[b+.008,1.25229],[b,1.25229]]:
         [[a-.008,.492],[a,.492],[b,1.25229],[b-.008,1.25229]];
       const z=-1.52442+i*.284;
-      P.addMudguard('t62mv1-x-skirt','hullRubber',sectionSolid([{z,ring},{z:z+.281,ring}]));
+      P.addMudguard('t62mv1-x-skirt','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([{z,ring},{z:z+.281,ring}]),'t62mv1-x-skirt','hullRubber'));
       P.addEquipment('hullDetail',box(.075,.046,.236),side*1.55,1.230,z+.14);
     }
   }
@@ -60,6 +61,8 @@ function hull(P:TankBuilderPort):void {
 function runningGear(P:TankBuilderPort):void {
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',
     wheelR:.391615,wheelY:.459085,wheelW:.440,wheelFaceDepthScale:.83,
+    // The five painted road-wheel faces remain visible through closed rubber rings.
+    wheelTireInnerRadiusM:.33679,
     wheelZs:[-1.858795,-.805165,.24309,1.14781,2.00987],xc:1.199465,trackW:.60725,
     sprocket:{z:-2.626375,y:.632135,r:.25066,trackR:.252},
     idler:{z:2.78935,y:.698255,r:.272295,trackR:.270},

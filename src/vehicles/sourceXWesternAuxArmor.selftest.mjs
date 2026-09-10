@@ -9,6 +9,9 @@ import { assertConvexArmorOutline } from '../sim/armorOutline.test-support.mjs';
 import { c1Point } from './profiles/challenger1XSuppliedFrame.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { withHistoricalFixedGuardPaint } from './historicalFixedGuardPaint.test-support.mjs';
+import { historicalStrv122WheelConfig, withHistoricalStrv122Wheels } from './strv122WheelHistory.test-support.mjs';
+import { strv122SuppliedWheelSolids } from './profiles/strv122XSuppliedGear.ts';
+import { KIT } from './tankFactoryCore.ts';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const cases = {
@@ -39,6 +42,36 @@ function distance(point, faces) {
   return Math.min(...faces.map(face => face.closestPointToPoint(point, closest).distanceTo(point)));
 }
 
+// Reject unintended recipes and preserve geometry ownership on both branches.
+{
+  const hook = KIT.buildRunningGear;
+  let disposed = 0;
+  assert.throws(() => withHistoricalStrv122Wheels(() => ({ dispose() { disposed++; } })));
+  assert.equal(disposed, 1); assert.equal(KIT.buildRunningGear, hook);
+  assert.throws(() => withHistoricalStrv122Wheels(() => KIT.buildRunningGear({ spec: { id: 'strv122' } }, {})));
+  assert.equal(KIT.buildRunningGear, hook);
+  for (const corrupt of [false, true]) {
+    const solids = strv122SuppliedWheelSolids(48), counts = new Map();
+    for (const g of Object.values(solids)) g.addEventListener('dispose', () => counts.set(g, (counts.get(g) ?? 0) + 1));
+    const config = { wheelCoreGeometry: { disc: solids.core }, wheelZs: [1, 2],
+      wheelFaceLayers: [{ side: -1, geometry: solids.left }, { side: 1, geometry: solids.right }] };
+    if (corrupt) {
+      solids.left.attributes.position.array[0] += .001;
+      assert.throws(() => historicalStrv122WheelConfig(config));
+      assert.equal(counts.size, 0, 'failed authentication keeps caller-owned inputs');
+      Object.values(solids).forEach(g => g.dispose());
+    } else {
+      const restored = historicalStrv122WheelConfig(config);
+      assert.equal(restored.wheelCoreGeometry, config.wheelCoreGeometry);
+      assert.equal(restored.wheelZs, config.wheelZs, 'all non-target configuration stays owned and unchanged');
+      assert.equal(counts.get(solids.core), undefined);
+      assert.equal(counts.get(solids.left), 1); assert.equal(counts.get(solids.right), 1);
+      solids.core.dispose(); restored.wheelFaceLayers.forEach(layer => layer.geometry.dispose());
+    }
+    for (const g of Object.values(solids)) assert.equal(counts.get(g), 1);
+  }
+}
+
 for (const [id, expected] of Object.entries(cases)) {
   const armor = TANK_SPECS[id].armor;
   assert.equal(hash([armor.hullPlates.filter(p => p.kind !== 'spaced'), armor.turretPlates.filter(p => p.kind !== 'spaced'),
@@ -62,6 +95,12 @@ for (const [id, expected] of Object.entries(cases)) {
         finally{original.dispose();}
         assert.notEqual(geometryFingerprint(tank.root),expected.geometry[lod],
           'actual painted bucket partition is distinct from its historical grouping');
+      }else if(id==='strv122_x'){
+        const original=withHistoricalStrv122Wheels(()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}));
+        try{assert.equal(geometryFingerprint(original.root),expected.geometry[lod],
+          `${id}/${quality}: original whole model after only authenticated radial tessellation inverse`);}
+        finally{original.dispose();}
+        assert.notEqual(geometryFingerprint(tank.root),expected.geometry[lod]);
       }else assert.equal(geometryFingerprint(tank.root), expected.geometry[lod], `${id}/${quality}: every physical buffer unchanged`);
       // Physical stock/posed protection below always uses the real painted tank.
       const hull = tank.root.getObjectByName('hullExternalArmor');

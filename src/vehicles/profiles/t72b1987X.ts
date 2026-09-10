@@ -52,6 +52,10 @@ function hull(P:TankBuilderPort):void {
 function runningGear(P:TankBuilderPort):void {
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.360825,wheelY:.429605,
     wheelW:.369,wheelFaceDepthScale:.81,wheelZs:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465],
+    // A closed annular tire exposes the recessed painted pressed-steel dish.
+    // The old capped rubber cylinders masked it; retain the source axle,
+    // rolling radius and steel face, with a fitted 15 mm radial rim overlap.
+    wheelTireInnerRadiusM:.3103,
     // Supplied rear tub wall intersects its own inner band by about6 mm.
     // Shift each native lane outward12 mm for real mechanical clearance;
     // retain measured belt width, all axle Z/Y and terminal wheel radii.

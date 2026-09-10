@@ -55,6 +55,9 @@ try{
       const root=tank.root;root.updateMatrixWorld(true);
       for(const name of['gearTrackPads','gearTrackPadsSimplified']){
         const shoes=root.getObjectByName(name);checkLink(shoes.geometry);
+        const triangles=(shoes.geometry.index?.count??shoes.geometry.attributes.position.count)/3;
+        assert.ok(triangles<=(name==='gearTrackPads'?276:174),
+          `${quality}/${name}: closed pins must not restore the former 12-sided per-link cost (${triangles})`);
         assert.equal(shoes.count,162,'unchanged 81-link native course per side');
         assert.equal(hash(shoes.instanceMatrix.array),'3e1981365e4526c8d4cb6a8270fa770f317141ddbbf5ccca7b794ceeddc0f474',
           'all original shoe positions and orientations are bit-identical');
@@ -78,6 +81,20 @@ try{
           /native track-link|Native track-link/);
       assert.ok(section.connectorInnerM<section.padWidthM/2-.004,'connector overlaps the physical pad');
       assert.ok(section.connectorOuterM>.3180395-section.pinCapLengthM+.03,'connector engages both pin-cap solids');
+    }finally{tank.dispose();}
+  }
+  // Both independently authored Leclerc studies use the shared measured-pin
+  // primitive. Keep this second scope explicit instead of testing only one
+  // caller and claiming the whole optimization was verified.
+  for(const quality of['high','low']){
+    const tank=createTank('leclerc_classic_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    try{
+      for(const [name,budget]of[['gearTrackPads',276],['gearTrackPadsSimplified',174]]){
+        const shoes=tank.root.getObjectByName(name);
+        const triangles=(shoes.geometry.index?.count??shoes.geometry.attributes.position.count)/3;
+        assert.equal(shoes.count,168,'Classic retains its own 84-link course per side');
+        assert.ok(triangles<=budget,`Classic ${quality}/${name}: ${triangles} exceeds ${budget}`);
+      }
     }finally{tank.dispose();}
   }
 }finally{material.dispose();}

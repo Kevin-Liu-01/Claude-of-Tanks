@@ -69,10 +69,25 @@ function cloud(root,names){root.updateMatrixWorld(true);const rows=[],v=new T.Ve
  for(let i=0;i<n;i+=3){const corners=[];for(let k=0;k<3;k++)corners.push(v.fromBufferAttribute(p,index?index.getX(i+k):i+k)
   .applyMatrix4(o.matrixWorld).toArray().join(','));
  rows.push([0,1,2].map(k=>[corners[k],corners[(k+1)%3],corners[(k+2)%3]].join('|')).sort()[0]);}});return rows.sort();}
+function materialSlots(value){
+ const slots=Array.isArray(value)?value:[value];assert.ok(slots.length>0);
+ return slots.map(material=>{assert.equal(material?.isMaterial,true);
+  return[material.name,material.userData.appearanceRole];});
+}
 function others(root,excluded){root.updateMatrixWorld(true);const rows=[];root.traverse(o=>{
  if(!o.isMesh||excluded.has(o.name))return;rows.push([o.name,hash(o.geometry),o.matrixWorld.elements,
-  o.material.name,o.material.userData.appearanceRole,o.userData.combatHitboxRole,
+  materialSlots(o.material),o.geometry.groups,o.userData.combatHitboxRole,
   o.count??null,o.instanceMatrix?Array.from(o.instanceMatrix.array):null]);});return rows;}
+{
+ const g=new T.BoxGeometry(),a=new T.MeshBasicMaterial(),b=new T.MeshBasicMaterial(),root=new T.Group();
+ a.name='steel';b.name='rubber';root.add(new T.InstancedMesh(g,[a,b],1));
+ const snapshot=()=>JSON.stringify(others(root,new Set())),before=snapshot();
+ b.name='wrong';assert.notEqual(snapshot(),before,'every material-array slot participates');b.name='rubber';
+ const index=g.groups[0].materialIndex;g.groups[0].materialIndex=1-index;
+ assert.notEqual(snapshot(),before,'face-to-material group assignment participates');g.groups[0].materialIndex=index;
+ assert.equal(snapshot(),before);assert.throws(()=>materialSlots([]));assert.throws(()=>materialSlots([a,{}]));
+ g.dispose();a.dispose();b.dispose();
+}
 function painted(tank,id){const names=[...directNames];
  return names.map(name=>{const o=tank.root.getObjectByName(name);assert.ok(o?.isMesh);
   assert.equal(o.parent.name,'rig_hull','original direct always-visible hull owner, not a new LOD or armor mesh');

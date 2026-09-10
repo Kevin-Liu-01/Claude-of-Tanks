@@ -41,12 +41,10 @@ function sideArmor(t){
   }
   t.resetEra();
 }
-function projectorAndCases(mesh){
-  for(const x of [.8,.876,.95,-.8,-.8784,-.95])for(const y of [1.72,1.8,1.88]){
-    const h=new THREE.Raycaster(new THREE.Vector3(x,y,2.1),new THREE.Vector3(0,0,-1),0,1).intersectObject(mesh,false)[0];
-    const expected=y===1.88&&Math.abs(x)!==.876&&Math.abs(x)!==.8784?1.71626996994:1.71717000008;
-    near(h?.point.z,expected,.000002,'actual source IR face and its distinct front frame');
-  }
+// The owner requested the canonical Shtora emitter instead of the source's
+// painted rectangular face. Its actual aperture/rig are covered by shtora's
+// dedicated test; unrelated source cases/carriers retain their exact oracle.
+function cases(mesh){
   for(const[x,z,y]of [[1,-.8,2.0658302232],[1.2,-.8,2.0863284269],[1.4,-.6,2.0877798410],
     [1.5,-.55,2.0882597220],[-.9,-.85,2.0634799004],[-1.1,-.75,2.0856647460],[-1.25,-.65,2.0866237938],[-1.35,-.55,2.0584301512]]){
     const h=new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0),0,2).intersectObject(mesh,false)[0];
@@ -59,7 +57,7 @@ function projectorAndCases(mesh){
 }
 for(const quality of ['high','low']){
   const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
-  try{t.root.updateMatrixWorld(true);const mesh=t.root.getObjectByName('turretDetail');sensor(mesh);sideArmor(t);projectorAndCases(mesh);}
+  try{t.root.updateMatrixWorld(true);const mesh=t.root.getObjectByName('turretDetail');sensor(mesh);sideArmor(t);cases(mesh);}
   finally{t.dispose();}
 }
 console.log('t90AwXDetails: high/low source sensor crowns/sections/air and six exact stepped side cassettes pass');

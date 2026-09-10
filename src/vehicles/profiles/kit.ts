@@ -211,6 +211,8 @@ interface FittingOptions {
   weapon?: boolean;
   shield?: boolean | string;
   barrelBridge?: boolean;
+  /** Use the host's authored cradle instead of stacking a second pintle. */
+  mount?: 'pintle' | 'external-cradle';
   barrelLength?: number;
   machineGunFinish?: string;
   installationVariant?: string;
@@ -1368,6 +1370,8 @@ function placeMachineGunBarrelGeometry(
  *   cls      'm2' | 'heavy' | 'dshk' | 'nsvt' | 'kord' |
  *            'mag' | 'mag58'                                  (default 'm2')
  *   scale    extra uniform scale on the class                (default 1)
+ *   mount    'external-cradle': receiver underside is y=0; the host
+ *            must supply a physically connected mount (default 'pintle')
  *   tone     'two-tone' | 'pale' | 'dark'                    (default 'two-tone')
  *   elev     legacy no-op; rotate the complete station for elevation
  *   ring     AA ring around the foot: true | {r, stubs}      (default false)
@@ -1417,7 +1421,7 @@ function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext 
   const [rw, rh, rd] = cls.rec.map((v) => v * s);
   const colH = 0.16 * s;
   const colTop = 0.014 + colH;
-  const recY = colTop + 0.080 * s + rh / 2;
+  const recY = opts.mount === 'external-cradle' ? rh / 2 : colTop + 0.080 * s + rh / 2;
   const recZ = 0.06 * s;
   const trunY = recY + 0.004;
   const trunZ = recZ + rd / 2;
@@ -1448,6 +1452,7 @@ function createPintleMgBuildContext(opts: FittingOptions): PintleMgBuildContext 
 }
 
 function addPintleMgMount(context: PintleMgBuildContext): void {
+  if (context.opts.mount === 'external-cradle') return;
   const { box, cylX, cylY, torus } = KIT;
   const { colTop, parts, s, supportSlot, weaponSlot } = context;
   // Flanged bearing, spindle, bridge, fork and cross-shaft form one visible
@@ -1609,6 +1614,7 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
   const fitting = fitAssemble('pintleMG', parts, opts);
   fitting.name = `fitting_browningDerived_${classKey}`;
   fitting.userData.barrelBridge = Boolean(opts.barrelBridge);
+  if (opts.mount === 'external-cradle') fitting.userData.mount = opts.mount;
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.weaponClass = classKey;
   fitting.userData.weaponName = cls.name;

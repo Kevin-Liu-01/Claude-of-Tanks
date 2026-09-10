@@ -56,9 +56,16 @@ try{
   for(const quality of['high','low']){
     const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
-      t.root.updateMatrixWorld(true);const ms=[];let falseWeapons=0;
-      t.root.traverseVisible(m=>{if(m.userData.fitting==='pintleMG'&&m.userData.fittingRoot)falseWeapons++;if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});
-      assert.equal(falseWeapons,0,'supplied empty AA mount does not satisfy the MG census');
+      t.root.updateMatrixWorld(true);const ms=[],weapons=[];
+      t.root.traverseVisible(m=>{
+        if(m.userData.fitting==='pintleMG'&&m.userData.fittingRoot)weapons.push(m);
+        // Source stock/air is unchanged; the newly fitted complete weapon
+        // intentionally occupies some former air and has its own seat test.
+        let owner=m;while(owner&&owner.name!=='t90XMountedNsvt')owner=owner.parent;
+        if(m.isMesh&&!m.userData.shadowOnly&&!owner)ms.push(m);
+      });
+      assert.equal(weapons.length,1,'one actual complete weapon, not a falsely tagged empty stock');
+      assert.equal(weapons[0].name,'t90XMountedNsvt');
       sourceRays(ms,packet.receiver,quality);sourceRays(ms,packet.optics,quality);
       const cast=ms.find(m=>m.name==='turret'),proxy=new THREE.Mesh(cast.geometry,own.mat);proxy.matrixAutoUpdate=false;proxy.matrixWorld.copy(cast.matrixWorld);
       for(const p of [[1.15675,2.02,.41277],[-1.15,2.05,-.098]])assert.ok(inside(proxy,p)&&own.meshes.some(m=>inside(m,p)),`${quality} optical foot seats to actual permanent casting: ${p}`);
@@ -70,4 +77,4 @@ try{
     }finally{t.dispose();}
   }
 }finally{for(const m of own.meshes)m.geometry.dispose();own.mat.dispose();}
-console.log('t90AwXRemainingRoof:175 complete-source high/low rays, real air, closed stock/glazing, source fork/casting seats, yaw and honest empty-mount census pass');
+console.log('t90AwXRemainingRoof:175 historical source-stock high/low rays, retained air, closed stock/glazing, fork/casting seats, yaw and separate complete-weapon census pass');

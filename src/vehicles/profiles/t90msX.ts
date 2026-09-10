@@ -58,6 +58,8 @@ function runningGear(P:TankBuilderPort):void{
     rollers:[{z:-1.5043,y:1.07865,r:.12335},{z:.1704,y:1.07865,r:.12335},{z:1.8357,y:1.07865,r:.12335}],rollerR:.12335,
     returnRollerWidthM:.0982,returnRollerInsetM:.103,topY:1.214,botY:.039,arms:true,coveredTop:true,paintedEnds:true,
     wheelFaceDepthScale:.87,sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.138,
+    // Keep the recessed painted dish visible inside closed neutral tire stock.
+    wheelTireInnerRadiusM:.33402,
     trackShoeDimensions:{padHeight:.029,grouserHeight:.010,webHeight:.014,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }

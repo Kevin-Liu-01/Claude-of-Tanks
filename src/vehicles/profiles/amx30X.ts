@@ -318,6 +318,11 @@ export function buildAmx30X(P: TankBuilderPort): void {
     // Native decorative hubs otherwise protrude96mm past the independently
     // measured400.5mm road-wheel envelope. Keep the rubber and axle fixed.
     wheelFaceDepthScale: .6751,
+    // A finite tire ring exposes the recessed painted dish. A capped rubber
+    // cylinder covers it completely after the measured face-depth correction.
+    // The 314 mm opening overlaps the 328.9 mm steel rim without changing
+    // the axle, rolling radius or dish position.
+    wheelTireInnerRadiusM: .314,
     wheelZs: [...AMX30_X_DATUMS.wheelStations], xc: 1.2548, trackW: .5715, trackTh: .010,
     // Object_6/8 has a 75 mm lower shell, intersecting the measured wheel
     // bottoms by 25 mm. The seated 43 mm outer shoe plus 4 mm projecting

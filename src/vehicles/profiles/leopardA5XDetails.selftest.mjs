@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { withA5ReturnRollerHistory } from './leopardReturnRollersHistory.mjs';
 
 const near = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
   && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected} ±${tolerance}`);
@@ -169,7 +170,15 @@ for (const quality of ['high','low']) {
     tank.root.updateMatrixWorld(true);
     const get=name=>tank.root.getObjectByName(name);
     const fixture=name=>get(`leo2a5_xSourceFixture_${name}`);
-    assert.deepEqual(retainedFingerprint(tank.root),retained[quality],`${quality}: every non-target original assembly stays fixed`);
+    withA5ReturnRollerHistory(tank,quality,history=>{
+      assert.deepEqual(retainedFingerprint(history),retained[quality],`${quality}: original literal survives the exact return-gear inverse`);
+      const p=get('hull').geometry.attributes.position,old=p.getX(0);
+      try {
+        p.setX(0,old+.125);
+        assert.notDeepEqual(retainedFingerprint(history),retained[quality],
+          'Negative control: actual current armor remains in the fingerprint, not a whole-old-tank substitution');
+      } finally { p.setX(0,old); }
+    });
     basketChecks(get('turretDetail'),quality);
     roofChecks(tank,quality);
     for (const name of [...roofNames,'ServiceCoverRight','ServiceCoverLeft']) {

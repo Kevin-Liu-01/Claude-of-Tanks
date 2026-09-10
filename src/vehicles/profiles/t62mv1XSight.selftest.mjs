@@ -5,6 +5,8 @@ import {createTank} from '../tankFactory.ts';
 import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {buildT62MV1X} from './t62mv1X.ts';
 import {addT62MV1Sight} from './t62mv1XSight.ts';
+import {withHistoricalClosedWheelFaces} from '../sourceXWheelFaceHistory.test-support.mjs';
+import {withHistoricalFixedSkirtFinish} from '../fixedSourceSkirtPaint.test-support.mjs';
 
 const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // Captured before this additive correction, independently by the integration
@@ -70,10 +72,10 @@ function sceneHash(root){
   m.visible=false;assert.notEqual(measure(),legacy,'visibility remains guarded');m.visible=true;
   assert.equal(measure(),legacy);g.dispose();m.material.dispose();
 }
-function build(quality,omit){
+function build(quality,omit,historical=false){
   const hash=createHash('sha256');let count=0;
   const hooks=['add','addEquipment','addExternalArmor','addCupola','addMudguard','addModuleVisual'];
-  registerProfiledBuilders({t62mv1_x:p=>buildT62MV1X(new Proxy(p,{get(target,key){
+  const observe=builder=>p=>builder(new Proxy(p,{get(target,key){
     if(!hooks.includes(key))return Reflect.get(target,key);
     return(...args)=>{
       const g=args.find(a=>a?.isBufferGeometry),marker=g?.userData.t62mv1Sight;
@@ -87,9 +89,13 @@ function build(quality,omit){
       }
       return target[key](...args);
     };
-  }}))});
+  }}));
   try{
-    const tank=createTank('t62mv1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+    const native=()=>createTank('t62mv1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+    let tank;
+    if(historical) tank=withHistoricalClosedWheelFaces('t62mv1_x',()=>
+      withHistoricalFixedSkirtFinish('t62mv1_x',native,observe));
+    else{registerProfiledBuilders({t62mv1_x:observe(buildT62MV1X)});tank=native();}
     tank.root.updateMatrixWorld(true);return{tank,count,emissionHash:hash.digest('hex')};
   }finally{registerProfiledBuilders({t62mv1_x:buildT62MV1X});}
 }
@@ -154,7 +160,12 @@ try{
     const before=build(quality,true),after=build(quality,false);
     try{
       assert.equal(before.count,2);assert.equal(after.count,2);
-      assert.equal(sceneHash(before.tank.root),BEFORE[quality],'entire original rendered scene matches immutable pre-addition capture');
+      const historical=build(quality,true,true);
+      try{
+        assert.equal(historical.count,2);
+        assert.equal(sceneHash(historical.tank.root),BEFORE[quality],
+          'entire original scene after only declared wheel-opening/fixed-finish inverses matches immutable pre-addition capture');
+      }finally{historical.tank.dispose();}
       assert.equal(after.emissionHash,before.emissionHash,'every old primitive and exact emit call remains unchanged');
       sourceSurfaces(physical(after.tank.root));attachment(after.tank,own);semantics(after.tank);ownership(after.tank);
       console.log(`t62mv1XSight: ${quality} source planes/contact/air/yaw, two optics parts and complete original additive preservation PASS`);

@@ -1723,7 +1723,8 @@ function installProceduralShadowProxies(
   const find = (owner: THREE.Object3D, names: readonly string[]) =>
     names.map((name) => owner.getObjectByName(name)).filter((item): item is THREE.Object3D => !!item);
   const hullGeo = authoredShadowHull(hullG, find(hullG,
-    ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber']), PROC_SHADOW_BODY_INSET_M);
+    ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber',
+      'hullFixedPaintedBodywork']), PROC_SHADOW_BODY_INSET_M);
   const turretGeo = authoredShadowHull(turretG, find(turretG, ['turret']), PROC_SHADOW_BODY_INSET_M);
   // Mantlet + barrel share gun pitch. Merge their authored support points in
   // gunG coordinates; recoil travel is deliberately omitted from the shadow
@@ -2968,8 +2969,12 @@ function appendTrackShoePins(
       pinY + section.connectorCentreYDeltaM);
     for (const z of [-halfSpacing, halfSpacing]) {
       parts.push(xform(
+        // Measured Leclerc connectors expose an inward crescent, so retain
+        // both physical caps. Eight sides preserve the cardinal envelope and
+        // remove 64 triangles per shoe versus four 12-sided cylinders, at
+        // both near and far levels. Legacy uncross-sectioned shoes are exact.
         section ? xform(new THREE.CylinderGeometry(pattern.pinRadius, pattern.pinRadius,
-          capLength, 12), 0, 0, 0, 0, 0, Math.PI / 2)
+          capLength, 8), 0, 0, 0, 0, 0, Math.PI / 2)
           : oneCappedCylinderX(pattern.pinRadius, capLength, 6, side),
         side * capX, pinY, z,
       ));
@@ -7979,6 +7984,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
   // Fixed painted hull fittings retain their detail LOD and non-armor role.
   hullPaintedDetail: ['hullG', 'hull'],
+  // Fixed painted fender skins retain silhouette coverage, not detail LOD.
+  hullFixedPaintedBodywork: ['hullG', 'hull'],
   // Open slat-armor bars and their stand-off frames are equipment, not
   // continuous body skin. Separate buckets preserve ordinary material,
   // disposal, LOD, attachment and track-clearance ownership while allowing
@@ -8045,6 +8052,7 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
 };
 const CAMO_BUCKETS = new Set([
   'hullPaintedDetail',
+  'hullFixedPaintedBodywork',
   'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
@@ -8054,6 +8062,7 @@ const CAMO_BUCKETS = new Set([
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set([
   'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR',
+  'hullFixedPaintedBodywork',
   'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
   'gunMountCanvasSkin',
 ]);
@@ -10383,6 +10392,7 @@ function* createTankOwnedSteps(
   const tagMergedBucket = (bucket: string, mesh: THREE.Mesh): void => {
     mesh.name = bucket;
     mesh.userData.combatHitboxRole = combatHitboxRoleForBucket(bucket);
+    if (bucket === 'hullFixedPaintedBodywork') mesh.userData.appearanceRole = 'armorPaint';
     if (bucket === 'hullCupola' || bucket === 'turretCupola'
         || bucket === 'hullHatch' || bucket === 'turretHatch') {
       mesh.userData.combatHitboxPart = bucket.endsWith('Hatch') ? 'hatch' : 'cupola';

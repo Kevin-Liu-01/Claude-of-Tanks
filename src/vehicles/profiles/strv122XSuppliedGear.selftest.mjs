@@ -135,9 +135,17 @@ function suspension(port){
   }
  }finally{material.side=previous;}
 }
+const faceTriangles=new Map();
 for(const high of[true,false]){
- const f=fixture(high);try{axes(f.port);surfaces(f.port);endpoints(f.port);suspension(f.port);groundPhases(f.port);animation(f.port);}finally{f.dispose();}
+ const f=fixture(high);try{
+  const faces=['strv122SuppliedWheelFacesLeft','strv122SuppliedWheelFacesRight']
+   .map(name=>f.port.hullG.getObjectByName(name));
+  faceTriangles.set(high,faces.reduce((sum,m)=>sum+(m.geometry.index?.count??m.geometry.attributes.position.count)/3*m.count,0));
+  axes(f.port);surfaces(f.port);endpoints(f.port);suspension(f.port);groundPhases(f.port);animation(f.port);
+ }finally{f.dispose();}
 }
+for(const high of [true,false]) assert.equal(faceTriangles.get(high),21504,
+ 'actual steel faces remove one third of the former 32256 triangles without relaxing source rays');
 const solids=strv122SuppliedWheelSolids();for(const g of Object.values(solids)){
  assert.ok(g.attributes.position.count>48);for(const v of g.attributes.position.array)assert.ok(Number.isFinite(v));g.dispose();
 }

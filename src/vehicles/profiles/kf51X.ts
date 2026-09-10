@@ -6,6 +6,7 @@ import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { leopardReturnRollers } from './leopardReturnRollers.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
 const cylY = (radius: number, height: number, segments: number): THREE.BufferGeometry =>
@@ -309,12 +310,14 @@ export function buildKF51X(P: TankBuilderPort): void {
     hullRing(2.447,1.61,1.420,.47),hullRing(3.005,1.61,1.366,.52),
     hullRing(3.745,1.61,1.234,1.06),hullRing(3.85,.95,1.225,1.16),
   ]));
-  P.gear=KIT.buildRunningGear(P,{
+  P.gear=KIT.buildRunningGear(P,leopardReturnRollers(P,{
     style:'rubber',wheelR:.3280,wheelW:.36,wheelY:.4323,xc:1.2770,
     wheelZs:[...KF51_X_DATUMS.wheelStations],trackW:.5770,trackTh:.070,
     sprocket:{z:-2.9275,y:.7982,r:.318},idler:{z:3.1721,y:.7422,r:.293},
     topY:1.154,botY:.097,paintedEnds:true,arms:true,coveredTop:true,
-  });
+  // Four fitted supports occupy actual road-axle pair gaps. The previous
+  // aesthetic stations collided with the unchanged wheels at full stroke.
+  },[-1.81915,-.25325,1.21905,1.9664],0,.90));
   pantherSkirts(P);
   for(const x of[-.53,.53]){
     P.addEquipment('hullDark',box(.88,.024,1.07),x,1.843,-2.86);

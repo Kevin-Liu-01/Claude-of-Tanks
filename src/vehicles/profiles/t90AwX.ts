@@ -5,7 +5,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
-import {addT90AWAAReceiver} from './t90AwXAAReceiver.ts';
+import {addT90AWAAReceiver,addT90AWRoofMachineGun} from './t90AwXAAReceiver.ts';
 import {addT90AWOpticalHeads} from './t90AwXOpticalHeads.ts';
 import {addT90AWSmallOptics} from './t90AwXSmallOptics.ts';
 import {addT90AWCastUnderside} from './t90AwXCastUnderside.ts';
@@ -50,6 +50,8 @@ function runningGear(P:TankBuilderPort):void{
     rollers:[{z:-1.5033,y:1.07865,r:.12335},{z:.1714,y:1.07865,r:.12335},{z:1.8367,y:1.07865,r:.12335}],rollerR:.12335,
     returnRollerWidthM:.0982,returnRollerInsetM:.1086,topY:1.221,botY:.045,arms:true,coveredTop:true,paintedEnds:true,
     wheelFaceDepthScale:.86,sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.138,
+    // Keep the recessed painted dish visible inside closed neutral tire stock.
+    wheelTireInnerRadiusM:.33888,
     trackShoeDimensions:{padHeight:.029,grouserHeight:.010,webHeight:.014,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }
@@ -161,6 +163,7 @@ function smokeAndAA(P:TankBuilderPort):void{
   for(const x of [-.67135,-.50105])top(P,'turretDetail',box(.0155,.2163,.263),x,2.59843,.10137);
   addT90AWAAContainers(P);
   addT90AWAAReceiver(P);
+  addT90AWRoofMachineGun(P);
 }
 function mainGun(P:TankBuilderPort):void{
   const tip=T90_AW_X_DATUMS.muzzleZ,floor=T90_AW_X_DATUMS.boreFloorZ;

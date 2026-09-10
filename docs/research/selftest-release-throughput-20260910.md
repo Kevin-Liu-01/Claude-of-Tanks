@@ -2,6 +2,22 @@
 
 ## Four-worker extension (opt-in, no gate removals)
 
+The fourteen-tank frozen-tree release now supplies full real qualification:
+all **933 entries passed** in one uninterrupted four-worker npm lifecycle,
+followed by private/public builds and type checks. See
+[`fourteen-tank-recovery-release-20260910.md`](fourteen-tank-recovery-release-20260910.md)
+for the exact candidate and retained receipts. Earlier focused-only and failed
+qualification statements below are historical, not the latest release status.
+
+Measured runner totals were 2,076.064 s elapsed (34m36s), 3,424.949 s summed
+child execution, and 658.201 s explicitly measured runner FIFO wait (10m58s).
+Child times overlap; browser-owned waiting remains inside those child times.
+The complete twelve-stage tank release took 42m15s. There is no matched full
+sequential run on this exact tree, so these numbers do not establish a speedup
+percentage. Queue contention is a material part of the delay, not a failed or
+cancelled check. Coordinate optional work and use one composed release for a
+verified batch instead of repeating the whole suite per tank.
+
 `COT_SELFTEST_WORKERS=4 npm test` now allows up to four fresh CPU children;
 integer widths 1–4 are supported and the default remains **1**. The machine
 used for this recovery has 18 physical CPU cores and 128 GiB RAM. Browser
@@ -23,8 +39,8 @@ it is not randomized and source compilation/OS caches are unspecified.
 Receipt: `.qa-dev/throughput-Jo4TmQ/receipt.json` (local, not shipped).
 Both runner modules pass strict metrics: 23 functions, zero complexity or
 explicit-type violations. Typecheck/core-unused and scoped Doctor pass;
-Doctor reports zero new findings. Complete four-worker qualification remains
-the separate fourteen-tank composed release, not this focused tooling check.
+Doctor reports zero new findings. The focused tooling check itself does not
+certify the complete suite; the subsequent composed release above does.
 
 The sections below retain the original two-worker/sequential evidence.
 
