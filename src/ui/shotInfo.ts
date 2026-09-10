@@ -23,6 +23,7 @@ import {
 } from './hitEventFormat.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
+import { schematicUrl as prepareSchematicUrl } from './shotSchematicClient.ts';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.ts';
 import {
   createShotDiagramProjection,
@@ -225,11 +226,6 @@ function registryLabel(registry: Readonly<Record<string, string>>, id: string): 
   return registry[id] || id;
 }
 
-function requireCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) throw new Error('[shot-info] Canvas2D context unavailable');
-  return context;
-}
 
 const COL = {
   green: '#7ee87e',
@@ -612,134 +608,13 @@ const fmtTime = (s: number): string => {
 // in. Cached per id/view; async — callers show the raw icon under the CSS
 // fallback filter and swap in the bake when it lands (same-origin PNG, so
 // canvas readback is always allowed; any failure keeps the fallback).
-const schemCache = new Map<string, Promise<string | null>>();
 // Card box sizes (shared with warmSchematics so the pre-warm hits the exact
 // cache keys the live cards request).
 const CARD_TOP_S = 96;
 const CARD_SIDE_W = 184, CARD_SIDE_H = 92;
 
-function normalizeSchematicSource(img: HTMLImageElement): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const context = requireCanvasContext(canvas);
-  context.drawImage(img, 0, 0);
-  const image = context.getImageData(0, 0, canvas.width, canvas.height);
-  const pixels = image.data;
-  let sum = 0;
-  let count = 0;
-  for (let index = 0; index < pixels.length; index += 4) {
-    if (pixels[index + 3] < 16) continue;
-    sum += pixels[index] * 0.2126 + pixels[index + 1] * 0.7152 + pixels[index + 2] * 0.0722;
-    count += 1;
-  }
-  const mean = count ? sum / count : 128;
-  for (let index = 0; index < pixels.length; index += 4) {
-    if (pixels[index + 3] === 0) continue;
-    const luminance = pixels[index] * 0.2126
-      + pixels[index + 1] * 0.7152
-      + pixels[index + 2] * 0.0722;
-    const value = Math.max(24, Math.min(250, 178 + (luminance - mean) * 2.1));
-    pixels[index] = pixels[index + 1] = pixels[index + 2] = value;
-  }
-  context.putImageData(image, 0, 0);
-  return canvas;
-}
-
-function sharpenSchematic(
-  pixels: Uint8ClampedArray,
-  source: Uint8ClampedArray,
-  width: number,
-  height: number,
-): void {
-  const amount = 0.55;
-  for (let y = 1; y < height - 1; y += 1) {
-    for (let x = 1; x < width - 1; x += 1) {
-      const index = (y * width + x) * 4;
-      if (source[index + 3] < 8) continue;
-      for (let channel = 0; channel < 3; channel += 1) {
-        const center = source[index + channel];
-        const neighbor = (offset: number): number => (
-          source[index + offset + 3] >= 8 ? source[index + offset + channel] : center
-        );
-        pixels[index + channel] = center * (1 + 4 * amount)
-          - amount * (
-            neighbor(-4) + neighbor(4)
-            + neighbor(-width * 4) + neighbor(width * 4)
-          );
-      }
-    }
-  }
-}
-
-function outlineSchematic(
-  pixels: Uint8ClampedArray,
-  source: Uint8ClampedArray,
-  width: number,
-  height: number,
-): void {
-  const outlineRadius = 2;
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const index = (y * width + x) * 4;
-      if (source[index + 3] < 8) continue;
-      let edge = false;
-      for (let dy = -outlineRadius; dy <= outlineRadius && !edge; dy += 1) {
-        for (let dx = -outlineRadius; dx <= outlineRadius && !edge; dx += 1) {
-          const neighborX = x + dx;
-          const neighborY = y + dy;
-          edge = neighborX < 0 || neighborY < 0 || neighborX >= width || neighborY >= height
-            || source[(neighborY * width + neighborX) * 4 + 3] < 8;
-        }
-      }
-      if (!edge) continue;
-      pixels[index] = pixels[index + 1] = pixels[index + 2] = 36;
-      pixels[index + 3] = Math.max(pixels[index + 3], 216);
-    }
-  }
-}
-
-function bakeSchematic(img: HTMLImageElement, outW: number, outH: number): string {
-  const sourceCanvas = normalizeSchematicSource(img);
-  const target = document.createElement('canvas');
-  target.width = outW;
-  target.height = outH;
-  const context = requireCanvasContext(target);
-  const fit = Math.min(outW / sourceCanvas.width, outH / sourceCanvas.height);
-  const width = sourceCanvas.width * fit;
-  const height = sourceCanvas.height * fit;
-  context.imageSmoothingQuality = 'high';
-  context.drawImage(sourceCanvas, (outW - width) / 2, (outH - height) / 2, width, height);
-  const image = context.getImageData(0, 0, outW, outH);
-  const source = new Uint8ClampedArray(image.data);
-  sharpenSchematic(image.data, source, outW, outH);
-  outlineSchematic(image.data, source, outW, outH);
-  context.putImageData(image, 0, 0);
-  return target.toDataURL();
-}
-
-function schematicUrl(
-  id: string,
-  view: string,
-  outW: number,
-  outH: number,
-): Promise<string | null> {
-  const key = `${id}|${view}|${outW}x${outH}`;
-  let p = schemCache.get(key);
-  if (!p) {
-    p = new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          resolve(bakeSchematic(img, outW, outH));
-        } catch (_) { resolve(null); }
-      };
-      img.onerror = () => resolve(null);
-      img.src = iconUrl(id, view);
-    });
-    schemCache.set(key, p);
-  }
-  return p;
+function schematicUrl(id: string, view: string, width: number, height: number): Promise<string | null> {
+  return prepareSchematicUrl(`${id}|${view}|${width}x${height}`, { url: iconUrl(id, view), width, height });
 }
 
 /** Plan-form layer: raw icon + CSS fallback now, baked schematic on arrival. */
@@ -998,6 +873,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
   let playerId: EntityId | null = null;
   let logOpen = false;
+  let schematicWarmRevision = 0;
+  let schematicWarmFrame: number | null = null;
+  const cancelSchematicWarm = (): void => {
+    schematicWarmRevision += 1;
+    if (schematicWarmFrame !== null) cancelAnimationFrame(schematicWarmFrame);
+    schematicWarmFrame = null;
+  };
   const shotLog: ShotEntry[] = [];      // last 6 outgoing summaries {ev, cls}
   const allShots: ShotEntry[] = [];     // EVERY outgoing hit this battle {ev, cls} — the
                            // report's expandable per-enemy exchange ledger (r4)
@@ -1723,30 +1605,24 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
   const api: ShotInfoRuntime = {
     /**
-     * PERF (perf-r2): pre-bake the plan-form schematics for a roster while
-     * the battle loading screen holds the frame. The bake is a synchronous
-     * double getImageData + unsharp over a 512² icon — the V8 profile billed
-     * ~0.28 s of it to the battle window because the FIRST shot card per
-     * enemy type paid the bake on the exact frame the player landed a hit.
-     * schematicUrl caches per id/view/size, so warming here makes every
-     * in-battle card a cache hit. Fire-and-forget; failures keep the CSS
-     * fallback path exactly as before.
+     * Queue exact roster schematics in the shared serial preparation owner.
+     * Decode, full-resolution processing and PNG encoding run in its worker;
+     * unsupported hosts use bounded cooperative work and asynchronous encode.
+     * Cards always retain their immediate raw-image fallback while pending.
      * @param {string[]} specIds fielded roster (both teams)
      */
     warmSchematics(specIds: readonly string[]): void {
-      // perf-r3 (play-session probe): a 14-tank roster kicked 28 decodes at
-      // once and their onload bakes (two full-image getImageData passes each)
-      // landed as one burst of small tasks in the same window — measured as
-      // 56 readbacks inside the rematch entry. Kick ONE tank per frame: the
-      // warm still finishes far inside the loading screen, spread thin.
+      cancelSchematicWarm();
+      const revision = schematicWarmRevision;
       const ids = (specIds || []).filter(Boolean);
       let i = 0;
       const kick = () => {
-        if (i >= ids.length) return;
+        schematicWarmFrame = null;
+        if (revision !== schematicWarmRevision || i >= ids.length) return;
         const id = ids[i++];
         schematicUrl(id, 'top', CARD_TOP_S * 2, CARD_TOP_S * 2);
         schematicUrl(id, 'side', CARD_SIDE_W * 2, CARD_SIDE_H * 2);
-        requestAnimationFrame(kick);
+        if (i < ids.length) schematicWarmFrame = requestAnimationFrame(kick);
       };
       kick();
     },
@@ -1767,6 +1643,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */
     reset() {
+      cancelSchematicWarm();
       clearReportBuffer();
       while (cardHost.firstChild) cardHost.firstChild.remove();
       while (toastHost.firstChild) toastHost.firstChild.remove();
