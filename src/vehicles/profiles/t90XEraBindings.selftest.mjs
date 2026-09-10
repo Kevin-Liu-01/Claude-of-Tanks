@@ -4,6 +4,7 @@ import { Matrix4, Triangle, Vector3 } from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import {addT90VFrontGuard} from './t90VXFrontGuards.ts';
+import {addT90AXFenderClosures} from './t90AXFenderClosures.ts';
 import {withHistoricalClassicShtora} from '../classicShtoraHistory.test-support.mjs';
 
 // Immutable world-vertex multiset snapshots taken before the ERA wrappers.
@@ -68,6 +69,18 @@ function currentVGuardVertices(){
   return points;
 }
 
+function currentAFenderVertices(){
+  const points=[],identity=new Matrix4();
+  addT90AXFenderClosures({addMudguard(label,bucket,original){
+    assert.equal(bucket,'hullFixedPaintedBodywork');
+    const geometry=original.index?original.toNonIndexed():original;
+    appendVertices({geometry},identity,points);
+    geometry.dispose();if(geometry!==original)original.dispose();
+  }});
+  assert.equal(points.length,432,'only the four independently attachment-tested 144-triangle skins');
+  return points;
+}
+
 function subtractExactVertices(points,removed){
   const counts=new Map();
   for(const key of removed)counts.set(key,(counts.get(key)||0)+1);
@@ -77,11 +90,11 @@ function subtractExactVertices(points,removed){
     counts.set(key,remaining-1);return false;
   });
   assert.ok(Array.from(counts.values()).every(count=>count===0),
-    'every excluded V source guard vertex is present in the actual built tank with exact multiplicity');
+    'every independently tested guard vertex is present in the actual built tank with exact multiplicity');
   return kept;
 }
 
-function vertexFingerprint(root,excludeGun=false,removeVGuards=false) {
+function vertexFingerprint(root,excludeGun=false,removeVGuards=false,removeAFenders=false) {
   root.updateMatrixWorld(true);
   const points=[],instance=new Matrix4(),world=new Matrix4();
   root.traverse(mesh=>{
@@ -93,7 +106,8 @@ function vertexFingerprint(root,excludeGun=false,removeVGuards=false) {
       appendVertices(mesh,world,points);
     }
   });
-  const retained=removeVGuards?subtractExactVertices(points,currentVGuardVertices()):points;
+  const retained=removeVGuards?subtractExactVertices(points,currentVGuardVertices())
+    :removeAFenders?subtractExactVertices(points,currentAFenderVertices()):points;
   return [retained.length,createHash('sha256').update(retained.sort().join('\n')).digest('hex')];
 }
 
@@ -182,8 +196,8 @@ for(const [id,baselines]of Object.entries(BASELINES))for(const [lod,quality]of [
     const historical=classic?withHistoricalClassicShtora(id,()=>createTank(id,null,
       {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true})):null;
     try{
-      assert.deepEqual(vertexFingerprint(historical?.root??tank.root,id==='t90a_x',id==='t90a_vladimir_x'),baseline,
-        `${label}: immutable world-vertex baseline with exact inverse of the independently tested Shtora repair`);
+      assert.deepEqual(vertexFingerprint(historical?.root??tank.root,id==='t90a_x',id==='t90a_vladimir_x',id==='t90a_x'),baseline,
+        `${label}: immutable world-vertex baseline with exact inverses of independently tested Shtora and fender repairs; running gear unchanged`);
     }finally{historical?.dispose();}
     const rows=tank.root.userData.eraVisualBindingReceipt.plates;
     assert.deepEqual(rows.map(row=>row.name).sort(),expectedZones(id),`${label}: exactly inherited gameplay zones`);
