@@ -688,13 +688,78 @@ export function makeGrassCardTexture(
   return texture;
 }
 
-// Broadleaf foliage card: dozens of small leaf-ellipse clumps, centre-heavy so
-// card silhouettes stay ragged; brighter toward the top (sun side).
-// r6 terrain_environment: 256 -> 512 atlas with ~2.3x BIGGER individual
-// leaves, a dark under-canopy pass beneath every clump and per-leaf tip
-// highlights — the old texel-scale leaf mush averaged into "flat acrylic
-// noise" on every card by 15 m (the diorama-prop critique). Distinct readable
-// leaf shapes are what survive minification as foliage.
+function broadleafBladePath(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+  ctx.beginPath();
+  ctx.moveTo(-width, 0);
+  ctx.quadraticCurveTo(-width * 0.12, -height * 2.2, width, 0);
+  ctx.quadraticCurveTo(width * 0.28, height * 2.0, -width, 0);
+  ctx.closePath();
+}
+
+function paintBroadleafBlade(
+  ctx: CanvasRenderingContext2D, rng: RandomSource,
+  width: number, height: number, hue: number, sat: number, lightness: number,
+  sun: number, pixelScale: number,
+): void {
+  const value = lightness * (0.74 + rng() * 0.60);
+  ctx.fillStyle = css(hue + (rng() - 0.5) * 0.022, sat, value);
+  broadleafBladePath(ctx, width, height);
+  ctx.fill();
+  if (rng() < 0.6) {
+    ctx.fillStyle = css(hue - 0.008, sat * 0.95, Math.min(0.42, value + 0.045 + sun * 0.025));
+    ctx.beginPath();
+    ctx.moveTo(-width * 0.78, 0);
+    ctx.quadraticCurveTo(-width * 0.10, -height * 1.65, width * 0.84, 0);
+    ctx.quadraticCurveTo(width * 0.15, -height * 0.16, -width * 0.78, 0);
+    ctx.fill();
+  }
+  if (rng() < 0.55) {
+    ctx.strokeStyle = css(hue + 0.01, sat * 0.9, value * 0.55);
+    ctx.lineWidth = 0.45 * pixelScale;
+    ctx.beginPath();
+    ctx.moveTo(-width, 0);
+    ctx.lineTo(width * 0.82, 0);
+    ctx.stroke();
+  }
+}
+
+// Each existing clump becomes one short leaf-bearing branchlet. Keep the
+// full radial canopy footprint: long whole-card fans left near trees hollow.
+function paintBroadleafBranchlet(
+  ctx: CanvasRenderingContext2D, rng: RandomSource,
+  x: number, y: number, direction: number, size: number,
+  hue: number, sat: number, lightness: number, sun: number, pixelScale: number,
+): void {
+  const reach = (9 + rng() * 8) * pixelScale * size;
+  const count = 6 + (rng() * 7) | 0;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(direction);
+  ctx.strokeStyle = css(hue + 0.02, sat * 0.65, lightness * 0.70);
+  ctx.lineWidth = 0.65 * pixelScale;
+  ctx.beginPath();
+  ctx.moveTo(-reach, 0);
+  ctx.lineTo(reach, 0);
+  ctx.stroke();
+  for (let leaf = 0; leaf < count; leaf++) {
+    const alongJitter = rng() - 0.5, angleJitter = rng() - 0.5;
+    const width = (3.6 + rng() * 5.2) * size * pixelScale * 0.72;
+    const height = (2.2 + rng() * 3.1) * size * pixelScale * 0.72;
+    const side = leaf % 2 ? 1 : -1;
+    const angle = side * (0.68 + rng() * 0.68) + angleJitter * 0.22;
+    const station = (leaf / (count - 1) - 0.5) * reach * 1.65 + alongJitter * pixelScale * 2;
+    ctx.save();
+    ctx.translate(station, 0);
+    ctx.rotate(angle);
+    ctx.translate(width, 0); // The pointed base attaches to the actual twig.
+    paintBroadleafBlade(ctx, rng, width, height, hue, sat, lightness, sun, pixelScale);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// Same species-owned atlas and 115-clump distribution, but negative space
+// comes from pointed leaves on short twigs, not shaded discs with punched holes.
 export function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | null = null): THREE.Texture {
   // MOBILE r1: tier-scaled atlas (painter is K-relative)
   const s = texSize(512), K = s / 256;
@@ -729,65 +794,8 @@ export function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | n
       l = 0.12 + sun * 0.10 + rng() * 0.07;
     }
     const sizeMul = 0.7 + rng() * 0.9; // per-clump leaf scale spread
-    // shadow understorey blob under the clump: leaves read as lit shapes ON
-    // a dark interior instead of paint daubs on transparency
-    {
-      const ur = (9 + rng() * 8) * K * sizeMul;
-      const gr = ctx.createRadialGradient(x, y + 3 * K, 0, x, y + 3 * K, ur);
-      gr.addColorStop(0, css(hue + 0.02, sat * 0.8, l * 0.42));
-      gr.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = gr;
-      ctx.beginPath();
-      ctx.arc(x, y + 3 * K, ur, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    const nl = 6 + (rng() * 7) | 0;
-    for (let j = 0; j < nl; j++) {
-      const lx = x + (rng() - 0.5) * 15 * K, ly = y + (rng() - 0.5) * 15 * K;
-      // r6: leaves ~2.3x bigger in atlas space — bold readable shapes
-      const lw = (3.6 + rng() * 5.2) * sizeMul * K, lh = (2.2 + rng() * 3.1) * sizeMul * K;
-      const rot = rng() * Math.PI;
-      // r2: PER-LEAF value/hue spread (was one flat fill per clump — the
-      // "acrylic paint daub" tell) + a lit sliver on the upper edge of ~half
-      // the leaves so crowns carry leaf-scale speckle and specular breakup
-      const ll = l * (0.74 + rng() * 0.60);
-      ctx.save();
-      ctx.translate(lx, ly);
-      ctx.rotate(rot);
-      // leaf: pointed-ellipse body with a faint dark keel line
-      ctx.fillStyle = css(hue + (rng() - 0.5) * 0.022, sat, ll);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI * 2);
-      ctx.fill();
-      if (rng() < 0.6) {
-        ctx.fillStyle = css(hue - 0.008, sat * 0.95, Math.min(0.42, ll + 0.045 + sun * 0.025));
-        ctx.beginPath();
-        ctx.ellipse(-lw * 0.18, -lh * 0.30, lw * 0.55, lh * 0.42, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (rng() < 0.55) { // central vein keel — leaf-scale structure at 512px
-        ctx.strokeStyle = css(hue + 0.01, sat * 0.9, ll * 0.55);
-        ctx.lineWidth = 0.9 * K * 0.5;
-        ctx.beginPath();
-        ctx.moveTo(-lw * 0.8, 0);
-        ctx.lineTo(lw * 0.8, 0);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+    paintBroadleafBranchlet(ctx, rng, x, y, a, sizeMul, hue, sat, l, sun, K);
   }
-  // r2: punch small sky-holes through the foliage mass — solid card interiors
-  // were the flat-splat giveaway; alpha gaps let light break through crowns
-  ctx.globalCompositeOperation = 'destination-out';
-  for (let hle = 0; hle < 70; hle++) {
-    const a = rng() * Math.PI * 2;
-    const rr = Math.pow(rng(), 0.7) * 0.42 * s;
-    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
-    ctx.beginPath();
-    ctx.arc(x, y, (1.5 + rng() * 3.6) * K, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalCompositeOperation = 'source-over';
   return finishAlphaTexture(c, ctx, 70, 78, 40, true, tone);
 }
 

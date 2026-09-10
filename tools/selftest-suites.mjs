@@ -816,6 +816,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/bushOverlappingSprays.selftest.mjs',
     'src/world/shrubGrowthPlacement.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
+    'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
     'src/world/environmentSurfaceColor.selftest.mjs',
     'src/world/cropLighting.selftest.mjs',
