@@ -4,7 +4,7 @@ import { installGarageActionTiming, summarizeGarageActionTiming, withGarageActio
   withGarageActionTrace } from './garage-action-timing.mjs';
 
 const names = ['window', 'document', 'performance', 'PerformanceObserver',
-  'requestAnimationFrame', 'cancelAnimationFrame', 'getComputedStyle', 'Element'];
+  'requestAnimationFrame', 'cancelAnimationFrame', 'getComputedStyle', 'Element', 'CanvasRenderingContext2D'];
 const saved = new Map(names.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
 let now = 0, nextFrame = 0, observer;
 const observers = [];
@@ -313,6 +313,138 @@ try {
     assert.equal(summarizeGarageActionTiming(brokenRow).overlappingLongTaskMs, 5);
     assert.equal(summarizeGarageActionTiming(brokenRow).unattributedGapMs, 5);
   }
+
+  function canvasFixture({ enabled = true, available = true, denied = false, click = true,
+    trusted = true } = {}) {
+    browserWindow.__ACTION_TRACE?.stop(); frames.clear(); elements.clear(); now = 100;
+    TaskObserver.supportedEntryTypes = ['longtask'];
+    Object.assign(game, { phase: 'garage', battleCount: 0, preBattleS: 0, result: null });
+    const result = new Proxy({}, { get() { throw new Error('result must not be inspected'); } });
+    const calls = [], failure = { active: false, value: undefined };
+    class NativeCanvas {}
+    const prototype = NativeCanvas.prototype, descriptors = {};
+    for (const method of ['getImageData', 'putImageData', 'drawImage']) {
+      descriptors[method] = { configurable: !(denied && method === 'getImageData'), enumerable: false,
+        writable: false, value: function (...args) {
+          calls.push({ receiver: this, args, method }); now += 3;
+          if (failure.active) throw failure.value;
+          return result;
+        } };
+      Object.defineProperty(prototype, method, descriptors[method]);
+    }
+    Object.defineProperty(globalThis, 'CanvasRenderingContext2D', { configurable: true,
+      writable: true, value: available ? NativeCanvas : undefined });
+    installGarageActionTiming({ canvasActions: enabled });
+    const api = browserWindow.__ACTION_TRACE;
+    api.arm('battle', '.battle');
+    if (click) dispatch('click', { target: new Target(), isTrusted: trusted });
+    return { api, prototype, descriptors, result, calls, failure, task: observer,
+      complete() {
+        Object.assign(game, { phase: 'battle', battleCount: 1 }); tick(now + 20);
+        return api.finish();
+      } };
+  }
+  const nativeArgs = [new Proxy({}, { get() { throw new Error('argument must not be inspected'); } }), 0, -1, 4, 5];
+  const receiver = Object.freeze({ identity: 'exact native receiver' });
+  const defaultCanvas = canvasFixture({ enabled: false });
+  for (const method of Object.keys(defaultCanvas.descriptors)) {
+    assert.equal(defaultCanvas.prototype[method], defaultCanvas.descriptors[method].value);
+  }
+  assert.equal(defaultCanvas.complete().canvasActions, undefined, 'absent flag adds no Canvas observer');
+  for (const method of ['getImageData', 'putImageData', 'drawImage']) {
+    const f = canvasFixture();
+    assert.equal(Reflect.apply(f.prototype[method], receiver, nativeArgs), f.result);
+    assert.equal(f.calls[0].receiver, receiver);
+    assert.deepEqual(f.calls[0].args, nativeArgs);
+    const receipt = f.complete().canvasActions;
+    assert.equal(receipt.available, true);
+    assert.equal(receipt.completeCoverage, true);
+    assert.deepEqual(receipt.rows, [{ method, startMs: 100, endMs: 103, durationMs: 3, threw: false }]);
+    assert.deepEqual(receipt.methods[method], { available: true, calls: 1, nativeErrors: 0, totalMs: 3, maxMs: 3 });
+    for (const name of Object.keys(f.descriptors)) {
+      assert.deepEqual(Object.getOwnPropertyDescriptor(f.prototype, name), f.descriptors[name]);
+    }
+    assert.equal(f.api.finish().canvasActions, receipt, 'finish is idempotent');
+  }
+  for (const value of [null, undefined, 0, false, '', new Error('native failure')]) {
+    const f = canvasFixture(); Object.assign(f.failure, { active: true, value });
+    let caught = false;
+    try { Reflect.apply(f.prototype.getImageData, receiver, nativeArgs); }
+    catch (error) { caught = true; assert.equal(error, value); }
+    assert.equal(caught, true);
+    const receipt = f.complete().canvasActions;
+    assert.equal(receipt.rows[0].threw, true);
+    assert.equal(receipt.methods.getImageData.nativeErrors, 1);
+    assert.equal(receipt.completeCoverage, true, 'an observed native exception is not missing coverage');
+    assert.ok(!JSON.stringify(receipt).includes('native failure'), 'no error objects or messages are retained');
+  }
+  for (const value of [false, true]) {
+    const f = canvasFixture(); Object.assign(f.failure, { active: value, value: null });
+    performance.now = () => { throw new Error('logging clock failed'); };
+    try {
+      if (value) {
+        let caught = false;
+        try { f.prototype.drawImage(); } catch (error) { caught = true; assert.equal(error, null); }
+        assert.equal(caught, true);
+      } else assert.equal(f.prototype.drawImage(), f.result);
+    } finally { performance.now = () => now; }
+    const receipt = f.complete().canvasActions;
+    assert.equal(receipt.observationErrors, 2);
+    assert.equal(receipt.invalid, 1);
+    assert.equal(receipt.methods.drawImage.calls, 1);
+    assert.equal(receipt.completeCoverage, false);
+  }
+  const failedLog = canvasFixture(), push = Array.prototype.push;
+  let clockCalls = 0;
+  performance.now = () => {
+    if (++clockCalls === 2) Array.prototype.push = () => { throw new Error('log append failed'); };
+    return now;
+  };
+  try { assert.equal(failedLog.prototype.putImageData(), failedLog.result); }
+  finally { Array.prototype.push = push; performance.now = () => now; }
+  assert.equal(failedLog.complete().canvasActions.observationErrors, 1);
+  const invalidCanvas = canvasFixture();
+  performance.now = () => NaN;
+  try { assert.equal(invalidCanvas.prototype.getImageData(), invalidCanvas.result); }
+  finally { performance.now = () => now; }
+  assert.equal(invalidCanvas.complete().canvasActions.invalid, 1);
+  const cappedCanvas = canvasFixture();
+  for (let index = 0; index < 1026; index++) cappedCanvas.prototype.getImageData();
+  const cap = cappedCanvas.complete().canvasActions;
+  assert.equal(cap.rows.length, 1024); assert.equal(cap.rowsDropped, 2);
+  assert.equal(cap.methods.getImageData.calls, 1026); assert.equal(cap.completeCoverage, false);
+  for (const options of [{ click: false }, { trusted: false }]) {
+    const f = canvasFixture(options); f.prototype.drawImage();
+    assert.equal(f.api.finish().canvasActions.rows.length, 0, 'only the actual trusted click opens the window');
+  }
+  const rearmCanvas = canvasFixture(), oldWrapper = rearmCanvas.prototype.getImageData;
+  oldWrapper(); rearmCanvas.api.arm('battle', '.battle');
+  assert.notEqual(rearmCanvas.prototype.getImageData, oldWrapper);
+  dispatch('click', { target: new Target(), isTrusted: true });
+  oldWrapper(); rearmCanvas.prototype.getImageData();
+  assert.equal(rearmCanvas.complete().canvasActions.methods.getImageData.calls, 1, 'abandoned wrappers cannot enter a new window');
+  const stoppedCanvas = canvasFixture(); stoppedCanvas.prototype.getImageData(); stoppedCanvas.api.stop();
+  const stoppedReceipt = stoppedCanvas.api.finish().canvasActions;
+  assert.equal(stoppedReceipt.stopReason, 'stopped'); assert.equal(stoppedReceipt.completeCoverage, false);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(stoppedCanvas.prototype, 'getImageData'), stoppedCanvas.descriptors.getImageData);
+  const brokenFinish = canvasFixture(); brokenFinish.task.failDrain = true;
+  assert.throws(() => brokenFinish.api.finish(), /drain failed/);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(brokenFinish.prototype, 'getImageData'), brokenFinish.descriptors.getImageData,
+    'unrelated action diagnostic failure cannot bypass Canvas restoration');
+  const foreign = canvasFixture(), replacement = () => 'foreign';
+  Object.defineProperty(foreign.prototype, 'getImageData', { value: replacement });
+  const foreignReceipt = foreign.complete().canvasActions;
+  assert.equal(foreign.prototype.getImageData, replacement);
+  assert.deepEqual(foreignReceipt.cleanup.notOwned, ['getImageData']); assert.equal(foreignReceipt.completeCoverage, false);
+  const deniedCanvas = canvasFixture({ denied: true });
+  assert.equal(deniedCanvas.prototype.getImageData, deniedCanvas.descriptors.getImageData.value);
+  assert.equal(deniedCanvas.complete().canvasActions.available, false);
+  const unavailableCanvas = canvasFixture({ available: false }).complete().canvasActions;
+  assert.equal(unavailableCanvas.available, false); assert.equal(unavailableCanvas.rows, null);
+  const lockedCanvas = canvasFixture();
+  Object.defineProperty(lockedCanvas.prototype, 'getImageData', { configurable: false });
+  const locked = lockedCanvas.complete().canvasActions;
+  assert.deepEqual(locked.cleanup.failed, ['getImageData']); assert.equal(locked.completeCoverage, false);
 } finally {
   browserWindow.__ACTION_TRACE?.stop();
   for (const name of names) {
@@ -481,7 +613,10 @@ assert.ok(probeSource.indexOf('if (traceActions && profileActions)') < probeSour
 assert.match(probeSource, /traceActions \? \[readFile\(new URL\('\.\/multiplayer-frame-trace\.mjs'/,
   'only requested timeline acquisitions hash the collector');
 assert.match(probeSource, /traceActions \? \(await import\('\.\/multiplayer-frame-trace\.mjs'\)\)/);
-assert.match(probeSource, /measurementMode: traceActions \? 'timeline-trace-attribution-only'/);
+assert.match(probeSource, /traceActions \? 'timeline-trace-attribution-only'/);
+assert.match(probeSource, /canvasActions && \(traceActions \|\| profileActions\)/);
+assert.match(probeSource, /measurementMode: canvasActions \? 'canvas-api-attribution-only'/);
+assert.match(probeSource, /evaluateOnNewDocument\(installGarageActionTiming, \{ canvasActions \}\)/);
 assert.match(probeSource, /const file = `\$\{action\}\.trace\.json`;[\s\S]*?flag: 'wx'/);
 assert.match(probeSource, /activeActionTrace\?\.stop\('interrupted'\)[\s\S]*?finally\(closeOwnedBrowser\)/);
 assert.match(probeSource, /if \(activeActionTrace\) \{[\s\S]*?await activeActionTrace\.stop/);

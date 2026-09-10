@@ -1,13 +1,88 @@
 // Serialized into the owned probe page. Keep this function self-contained.
-export function installGarageActionTiming() {
+export function installGarageActionTiming({ canvasActions = false } = {}) {
   const LIMIT = 512;
   let row = null, selector = '', lastFrame = 0, lastCallback = 0, lastContext = null, raf = 0;
+  let canvasOwner = null;
   let taskObserver = null;
   let taskSupport = false;
   let taskObservationError = null;
   let animationObserver = null, animationSupport = false, animationError = null, animationStopped = false;
   const finite = value => Number.isFinite(value) ? value : null;
   const text = value => typeof value === 'string' ? value.slice(0, 512) : null;
+  const finishCanvas = reason => {
+    const owner = canvasOwner;
+    if (!owner) return;
+    canvasOwner = null;
+    owner.recording = false;
+    const receipt = owner.receipt;
+    for (const { prototype, method, descriptor, wrapper } of owner.wrappers) {
+      try {
+        if (Object.getOwnPropertyDescriptor(prototype, method)?.value !== wrapper) {
+          receipt.cleanup.notOwned.push(method);
+        } else {
+          Object.defineProperty(prototype, method, descriptor);
+          receipt.cleanup.restored.push(method);
+        }
+      } catch { receipt.cleanup.failed.push(method); }
+    }
+    receipt.observationErrors = owner.errors;
+    receipt.endMs = row?.totalMs == null ? null : row.clickedAt + row.totalMs;
+    receipt.closed = true;
+    receipt.stopReason = reason;
+    receipt.completeCoverage = reason === 'finish' && row.trusted && receipt.endMs != null
+      && receipt.available && !receipt.rowsDropped && !receipt.invalid && !owner.errors
+      && !receipt.cleanup.notOwned.length && !receipt.cleanup.failed.length;
+  };
+  const armCanvas = () => {
+    if (!canvasActions) return;
+    const receipt = { protocol: 'garage-canvas-actions-v1', scope: 'main-page-canvas2d-prototype',
+      available: false, completeCoverage: false, closed: false, startMs: null, endMs: null,
+      rowLimit: 1024, rows: [], rowsDropped: 0, invalid: 0, observationErrors: 0,
+      methods: {}, cleanup: { restored: [], notOwned: [], failed: [] } };
+    row.canvasActions = receipt;
+    const owner = canvasOwner = { receipt, wrappers: [], recording: false, errors: 0 };
+    for (const method of ['getImageData', 'putImageData', 'drawImage']) {
+      const stats = receipt.methods[method] = { available: false, calls: 0, nativeErrors: 0,
+        totalMs: 0, maxMs: null };
+      try {
+        const prototype = globalThis.CanvasRenderingContext2D?.prototype;
+        const descriptor = prototype && Object.getOwnPropertyDescriptor(prototype, method);
+        if (typeof descriptor?.value !== 'function') continue;
+        const original = descriptor.value;
+        const wrapper = function (...args) {
+          if (!owner.recording) return Reflect.apply(original, this, args);
+          let startMs = null, threw = true;
+          try { startMs = performance.now(); } catch { owner.errors++; }
+          try {
+            const result = Reflect.apply(original, this, args);
+            threw = false;
+            return result;
+          } finally {
+            // Logging must never replace a result or any thrown JS value.
+            let endMs = null;
+            try { endMs = performance.now(); } catch { owner.errors++; }
+            try {
+              stats.calls++;
+              if (threw) stats.nativeErrors++;
+              if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+                const durationMs = endMs - startMs;
+                stats.totalMs += durationMs;
+                stats.maxMs = Math.max(stats.maxMs ?? 0, durationMs);
+                if (receipt.rows.length < receipt.rowLimit) {
+                  receipt.rows.push({ method, startMs, endMs, durationMs, threw });
+                } else receipt.rowsDropped++;
+              } else receipt.invalid++;
+            } catch { owner.errors++; }
+          }
+        };
+        Object.defineProperty(prototype, method, { ...descriptor, value: wrapper });
+        owner.wrappers.push({ prototype, method, descriptor, wrapper });
+        stats.available = true;
+      } catch { owner.errors++; }
+    }
+    receipt.available = Object.values(receipt.methods).every(stats => stats.available);
+    if (!owner.wrappers.length) receipt.rows = null;
+  };
   const failAnimation = error => {
     animationSupport = false;
     animationError = String(error).slice(0, 512);
@@ -200,6 +275,7 @@ export function installGarageActionTiming() {
         && d.game.battleCount === row.before.battleOrdinal + 1;
     if (ready && uncovered) {
       row.totalMs = now - row.clickedAt;
+      if (canvasOwner) canvasOwner.recording = false;
       row.after = snapshot();
       finishAudio();
     }
@@ -216,6 +292,10 @@ export function installGarageActionTiming() {
       || !event.target.closest(selector)) return;
     row.clickedAt = performance.now();
     row.trusted = event.isTrusted;
+    if (canvasOwner) {
+      canvasOwner.recording = event.isTrusted === true;
+      canvasOwner.receipt.startMs = row.clickedAt;
+    }
     row.before = snapshot();
     lastCallback = lastFrame = row.clickedAt;
     lastContext = context(document.querySelector('.cot-trans.on'),
@@ -234,6 +314,7 @@ export function installGarageActionTiming() {
     catch (error) { return { captureError: String(error) }; }
   };
   const finish = () => {
+    finishCanvas('finish'); // Restore even if unrelated diagnostic collection fails.
     collectTasks(taskObserver?.takeRecords() || []);
     drainAnimations();
     if (!row) return null;
@@ -258,6 +339,7 @@ export function installGarageActionTiming() {
   raf = requestAnimationFrame(tick);
   window.__ACTION_TRACE = {
     arm(action, target) {
+      finishCanvas('rearmed');
       drainAnimations(); // Pending old-window records must not follow a rearm.
       selector = target;
       window.__SOURCE_READINESS?.arm(action);
@@ -270,10 +352,12 @@ export function installGarageActionTiming() {
         longAnimationFrames: animationSupport ? [] : null,
         longAnimationFramesDropped: 0, longAnimationFramesInvalid: 0,
         longTasks: [], longTasksDropped: 0, visibilityEvents: [], visibilityEventsDropped: 0 };
+      armCanvas();
     },
     done: () => row?.totalMs != null,
     finish,
     stop() {
+      finishCanvas('stopped');
       cancelAnimationFrame(raf);
       window.__SOURCE_READINESS?.stop();
       taskObserver?.disconnect();

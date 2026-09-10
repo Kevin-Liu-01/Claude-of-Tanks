@@ -9,6 +9,8 @@
 // never compare those timings with an unprofiled acceptance run.
 // Optional --trace-actions writes sanitized per-action .trace.json timelines.
 // Diagnostic-only, capped at 30 seconds/action; incompatible with --profile-actions.
+// Optional --canvas-actions records bounded main-page Canvas2D API timings only.
+// Diagnostic-only, metadata/no pixels; incompatible with profiling or tracing.
 // Optional --audio-clock-gate also requires passively observed loading-clock
 // advancement and stopped loading/ambient owners on return; no test sounds.
 // Optional --garage-gesture-audio-gate verifies a real Garage canvas drag does
@@ -51,7 +53,10 @@ const profileActions = process.argv.includes('--profile-actions')
   || ['1', 'true'].includes(option('profile-actions', 'false').toLowerCase());
 const traceActions = process.argv.includes('--trace-actions')
   || ['1', 'true'].includes(option('trace-actions', 'false').toLowerCase());
+const canvasActions = process.argv.includes('--canvas-actions')
+  || ['1', 'true'].includes(option('canvas-actions', 'false').toLowerCase());
 if (traceActions && profileActions) throw new Error('--trace-actions and --profile-actions are separate diagnostic acquisitions');
+if (canvasActions && (traceActions || profileActions)) throw new Error('--canvas-actions requires a separate diagnostic acquisition');
 const audioClockGate = process.argv.includes('--audio-clock-gate');
 const garageGestureAudioGate = process.argv.includes('--garage-gesture-audio-gate');
 const bootAudioGate = process.argv.includes('--boot-audio-gate');
@@ -75,10 +80,11 @@ const report = { schemaVersion: 2,
   passScope: warmReadinessGate && sourceReadinessGate ? 'real-control-functional-and-warm-and-source-readiness'
     : warmReadinessGate ? 'real-control-functional-and-warm-readiness'
       : sourceReadinessGate ? 'real-control-functional-and-source-readiness' : 'real-control-functional-only',
-  measurementMode: traceActions ? 'timeline-trace-attribution-only'
+  measurementMode: canvasActions ? 'canvas-api-attribution-only' : traceActions ? 'timeline-trace-attribution-only'
     : profileActions ? 'cpu-profile-attribution-only' : 'unprofiled-functional',
   profileActions, profiles: [],
   ...(traceActions ? { traceActions: true, traces: [] } : {}),
+  ...(canvasActions ? { canvasActions: true } : {}),
   audioClockGate,
   bootAudioGate,
   ...(garageGestureAudioGate ? { garageGestureAudioGate: true } : {}),
@@ -227,7 +233,7 @@ try {
     // Match player fades. No quality, simulation, renderer or readiness overrides.
     Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false });
   });
-  await page.evaluateOnNewDocument(installGarageActionTiming);
+  await page.evaluateOnNewDocument(installGarageActionTiming, { canvasActions });
   if (sourceReadinessGate) await page.evaluateOnNewDocument(installSourcedTextureReadiness);
   if (garageGestureAudioGate || bootAudioGate) await page.evaluateOnNewDocument(installGarageAudioIntent);
   if (bootAudioGate) await page.evaluateOnNewDocument(() => { window.__COT_FORCE_SPLASH = true; });
@@ -314,6 +320,10 @@ try {
   if (traceActions) report.traceDiagnostics = {
     complete: report.traces.length === 3 && report.traces.every(trace => trace.completeForAction),
     caveat: 'Diagnostic overhead; 30-second action trace deadline can censor a longer action. Functional/readiness gates are unchanged. Sanitized timeline event categories are not JS hot-function or GPU hardware-duration attribution.',
+  };
+  if (canvasActions) report.canvasDiagnostics = {
+    complete: report.actions.length === 3 && report.actions.every(action => action.canvasActions?.completeCoverage),
+    caveat: 'Diagnostic overhead; synchronous main-page getImageData/putImageData/drawImage boundary time only. No pixels, worker realms, source ownership or GPU-duration attribution. Overlapping calls require interval unions; unavailable, dropped or invalid observations cannot establish absence. Functional/readiness gates are unchanged.',
   };
   if (bootAudioGate) {
     const failures = checkBootAudioIntent(report.bootAudioIntent, report.actions);
