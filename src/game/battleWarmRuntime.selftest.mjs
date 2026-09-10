@@ -27,6 +27,7 @@ import {
 import { createFx } from '../fx/effects.ts';
 import { registerWorldDestructibles } from '../world/destructibles.ts';
 import { createCameraRig } from '../engine/cameraRig.ts';
+import { createCombatWarmCoordinator } from './combatWarmCoordinator.ts';
 
 let warmedTerrainPoints = null;
 let terrainYieldCount = 0;
@@ -877,6 +878,187 @@ assert.deepEqual(await wreckLifetimeProbe('abort', 3), { renders: 1, queries: 1,
   'the final post-render wait must not swallow cancellation');
 assert.deepEqual(await wreckLifetimeProbe('query-failure'), { renders: 1, queries: 1, uniforms: 0 },
   'failed readiness never permits speculative reflection, and the real fallback draw remains');
+
+function hiddenProgramFixture({ pendingQueries = 1, extension = true } = {}) {
+  const priorWindow = globalThis.window;
+  globalThis.window = {};
+  const root = new Group(), world = new Group();
+  const geometry = new BoxGeometry(), material = new MeshBasicMaterial();
+  const actor = new Mesh(geometry, material), terrain = new Mesh(geometry, material);
+  root.add(actor); world.add(terrain);
+  root.visible = actor.visible = terrain.visible = false;
+  const events = [], state = { queries: 0, reflections: 0, cold: 0, forced: 0, renders: 0, lost: false };
+  const gl = {
+    isContextLost: () => state.lost,
+    getExtension: () => extension ? { COMPLETION_STATUS_KHR: 0x91B1 } : null,
+    getProgramParameter() {
+      state.queries++;
+      state.onQuery?.();
+      return state.queries > pendingQueries;
+    },
+  };
+  const retained = { program: {}, getUniforms() { assert.fail('retained unrelated program must not be reflected'); } };
+  const program = { program: {}, getUniforms() {
+    state.reflections++;
+    if (extension && state.queries <= pendingQueries) state.cold++;
+    events.push('uniform');
+    return {};
+  }, getAttributes: () => ({}) };
+  const renderer = { info: { programs: [retained] }, getContext: () => gl, initTexture() {} };
+  const context = {
+    game: { tanks: [{ visual: { root } }] }, renderer, camera: new PerspectiveCamera(),
+    world: () => ({ group: world }), fx: { group: new Group() },
+    isOpeningReady: () => true, isRareReady: () => owner.isRareReady(),
+    markRareReady: () => owner.markRareReady(), isDestructionWarmed: () => true,
+    warmWreckTextures() {}, deploymentShadowWarm: { *warmDepthProgramSteps() {} },
+    forwardProgramWarm: {
+      compile(object) {
+        assert.equal(object.visible, true);
+        events.push(object === actor ? 'actor' : 'terrain');
+        if (!renderer.info.programs.includes(program)) renderer.info.programs.push(program);
+      },
+      *linkerBreathingSlices() {},
+    },
+    lighting: { updateFrustums() {} }, warmRender() { state.renders++; },
+  };
+  const owner = createCombatWarmCoordinator({
+    createOpening: function* () {},
+    createRare: execution => createCombatRareWarmSteps(context, execution),
+  });
+  owner.markOpeningReady();
+  return { root, actor, terrain, renderer, gl, program, events, state, context, owner,
+    assertRestored() { assert.equal(root.visible, false); assert.equal(actor.visible, false); assert.equal(terrain.visible, false); },
+    dispose() {
+      geometry.dispose(); material.dispose();
+      if (priorWindow === undefined) delete globalThis.window;
+      else globalThis.window = priorWindow;
+    },
+  };
+}
+
+{
+  const fixture = hiddenProgramFixture();
+  try {
+    await fixture.owner.warmRareChunked(6, async force => {
+      fixture.assertRestored();
+      if (force) fixture.state.forced++;
+    });
+    assert.equal(fixture.state.cold, 0, 'cooperative hidden programs must witness readiness before reflection');
+    assert.ok(fixture.state.forced >= 2, 'submission and pending-link checkpoints must force real scheduler waits');
+    assert.equal(fixture.state.reflections, 1, 'the second object reuses the already prepared program');
+    assert.equal(fixture.state.renders, 3, 'base and both scope variants still render');
+    assert.equal(fixture.owner.isRareReady(), true);
+    assert.deepEqual(fixture.events.filter(event => event !== 'uniform'), ['actor', 'terrain']);
+    const detail = globalThis.window.__COMBAT_RARE_WARM.hiddenDetail;
+    assert.ok(Number.isFinite(detail.startedAt) && detail.finishedAt >= detail.startedAt,
+      'exact stage timestamps support direct overlap with callback-gap receipts');
+    assert.equal(detail.compileCount, 2);
+    assert.ok(detail.compileMs >= detail.maxCompileMs);
+    assert.equal(detail.programs.queryCount, 2);
+    assert.equal(detail.programs.uniformCount, 1);
+    assert.equal(detail.programs.uniformFailures, 0);
+    assert.ok(detail.programs.maxQueryMs >= 0 && detail.programs.maxUniformMs >= 0,
+      'bounded diagnostics distinguish submission, native queries, and reflection');
+  } finally { fixture.dispose(); }
+}
+
+for (const change of ['cancel', 'epoch', 'info', 'context', 'lost', 'query-info', 'query-context', 'query-lost']) {
+  const fixture = hiddenProgramFixture({ pendingQueries: 0 });
+  const invalidate = () => {
+    if (change.endsWith('info')) fixture.renderer.info = { programs: [...fixture.renderer.info.programs] };
+    if (change.endsWith('context')) fixture.renderer.getContext = () => ({ ...fixture.gl });
+    if (change.endsWith('lost')) fixture.state.lost = true;
+    if (change === 'epoch') invalidateBattleWarmRuntime();
+  };
+  if (change.startsWith('query-')) fixture.state.onQuery = invalidate;
+  try {
+    const pending = fixture.owner.warmRareChunked(6, async force => {
+      fixture.assertRestored();
+      if (!force || ++fixture.state.forced !== 1) return;
+      if (change === 'cancel') fixture.owner.cancelRare();
+      else if (!change.startsWith('query-')) invalidate();
+    });
+    if (change === 'cancel') await pending;
+    else await assert.rejects(pending, error => error.preparation?.reason === 'invalidated'
+      && error.preparation.pending === null);
+    fixture.assertRestored();
+    assert.equal(fixture.state.reflections, 0, `${change}: stale programs cannot be reflected`);
+    assert.equal(fixture.state.renders, 0, `${change}: stale jobs cannot render fallback variants`);
+    assert.equal(fixture.owner.isRareReady(), false, `${change}: stale work cannot publish rare readiness`);
+  } finally { fixture.dispose(); }
+}
+
+for (const change of ['later-program', 'removed', 'replaced', 'query-failure', 'unsupported-extension']) {
+  const fixture = hiddenProgramFixture({ pendingQueries: 0, extension: change !== 'unsupported-extension' });
+  if (change === 'query-failure') fixture.state.onQuery = () => { throw new Error('native query failed'); };
+  try {
+    await fixture.owner.warmRareChunked(6, async force => {
+      fixture.assertRestored();
+      if (!force || ++fixture.state.forced !== 1) return;
+      if (change === 'later-program') fixture.renderer.info.programs.push({ program: {},
+        getUniforms() { assert.fail('a later unrelated program cannot enter the captured cohort'); } });
+      if (change === 'removed') fixture.renderer.info.programs = fixture.renderer.info.programs.filter(p => p !== fixture.program);
+      if (change === 'replaced') fixture.program.program = {};
+    });
+    assert.equal(fixture.state.cold, 0);
+    assert.equal(fixture.state.reflections, ['replaced', 'query-failure'].includes(change) ? 0 : 1,
+      `${change}: reflect only current submitted pairs, preserving the unsupported-extension fallback`);
+    assert.equal(fixture.state.renders, 3);
+    fixture.assertRestored();
+  } finally { fixture.dispose(); }
+}
+
+{
+  const fixture = hiddenProgramFixture();
+  try {
+    fixture.owner.drain();
+    assert.equal(fixture.state.queries, 0, 'fresh synchronous drain retains direct reflection, not a polling loop');
+    assert.equal(fixture.state.reflections, 1);
+    assert.equal(fixture.state.renders, 3);
+    assert.equal(fixture.owner.isRareReady(), true);
+    fixture.assertRestored();
+  } finally { fixture.dispose(); }
+}
+
+for (const checkpoint of [1, 2]) {
+  const fixture = hiddenProgramFixture({ pendingQueries: Infinity });
+  let resume;
+  try {
+    const pending = fixture.owner.warmRareChunked(6, force => {
+      fixture.assertRestored();
+      if (force && ++fixture.state.forced === checkpoint) return new Promise(resolve => { resume = resolve; });
+      return Promise.resolve();
+    });
+    for (let index = 0; index < 40 && !resume; index++) await Promise.resolve();
+    assert.equal(typeof resume, 'function');
+    fixture.renderer.info.programs.push({ program: {}, getUniforms() {
+      assert.fail('synchronous takeover must not reflect later renderer additions');
+    } });
+    const beforeQueries = fixture.state.queries;
+    fixture.owner.drain();
+    assert.equal(fixture.state.queries, beforeQueries, 'in-flight drain closes the poller before another native query');
+    assert.equal(fixture.state.reflections, 1, 'in-flight drain eagerly reflects its finite captured pair');
+    assert.equal(fixture.state.renders, 3);
+    assert.equal(fixture.owner.isRareReady(), true);
+    fixture.assertRestored();
+    resume();
+    await pending;
+    assert.equal(fixture.state.reflections, 1, 'old asynchronous settlement cannot restart the drained generator');
+  } finally { fixture.dispose(); }
+}
+
+{
+  const fixture = hiddenProgramFixture({ pendingQueries: 0 });
+  const fov = fixture.context.camera.fov;
+  const projection = fixture.context.camera.projectionMatrix.clone();
+  fixture.context.warmRender = () => { throw new Error('warm render failed'); };
+  try {
+    await fixture.owner.warmRareChunked(6, async () => {});
+    assert.equal(fixture.context.camera.fov, fov, 'failed scope warm restores the original field of view');
+    assert.deepEqual(fixture.context.camera.projectionMatrix.elements, projection.elements);
+    fixture.assertRestored();
+  } finally { fixture.dispose(); }
+}
 
 {
   const events = [];

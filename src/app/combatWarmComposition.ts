@@ -160,7 +160,7 @@ export function createCombatWarmComposition({
 
   combatWarm = createCombatWarmCoordinator({
     createOpening: () => battleWarm.requireRuntime().createCombatOpeningWarmSteps(createContext()),
-    createRare: () => battleWarm.requireRuntime().createCombatRareWarmSteps(createContext()),
+    createRare: (execution) => battleWarm.requireRuntime().createCombatRareWarmSteps(createContext(), execution),
   });
 
   const deferred: DeferredCombatWarmRuntime = createDeferredCombatWarmRuntime({
