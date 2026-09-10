@@ -6,7 +6,7 @@ The complete release passed at `f33618e066d63236d658c735751ccccec7ba4b44`
 on base `77639501dbb87399e3796f76b50edcf81c0c471e`. The local commits
 `0a7543223`, `57bb259a1` and `f33618e06` contain the recovered fitting,
 bounded test-order change and selected generated assets. Final-main integration
-and publication are recorded separately below; this is not permission to replay
+is recorded separately below; this is not permission to replay
 the older mixed K2/T-14 branch wholesale.
 
 The fitting is recovered from `154ddf0cd` / `1b17c1eef` / `e81a12f16`, with a
@@ -76,6 +76,22 @@ a matched speedup percentage. No test, assertion or gate was removed.
 
 ## Final-main integration
 
-Pending after the frozen release; the newer renderer checkpoint is integrated
-with separately identified focused checks, without claiming those checks form
-another complete npm lifecycle.
+The checkpoint was rebased onto published renderer/production evidence
+`5bfcc3b502d78e4adce65b16ad669dcb46c200cd`. Rebasing produces `a681223d4`
+(fitting), `5683152fa` (scheduling), `8d442e7b1` (assets) and `b32f0bf1e`
+(frozen qualification). The sole catalog conflict retained the new articulated
+shadow integration test and removed only the two old positions of tests now
+grouped at the core head. All four upstream registrations remain.
+
+`.qa-dev/t14-main-integration-9CwQXe/receipt.json` passes at `b32f0bf1e`:
+sixteen focused tests, including the native four-cascade shadow fixture, then
+fresh T-14 centering/assets, types and public build. Tests include actual
+factory shadow batching, context restoration, FIFO/browser barriers, catalog
+exact-once coverage, T-14 high/low full-stroke rollers/ERA/negative space and
+Shtora. Qualified profile, anatomy, projection and image files remain
+byte-identical to the frozen release. The expanded final catalog has **951
+entries** (301 / 611 / 39); this focused integration is **not** a claim that all
+951 ran as another uninterrupted npm lifecycle. No failed result is relabeled.
+
+This checkpoint changes no strict frame-time requirement. The independently
+published renderer optimization retains its documented timing failure.
