@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createDeploymentShadowWarmOwner } from './deploymentShadowWarm.ts';
 
+function preparable(render) {
+  return Object.assign(render, { *prepareProgramsSteps() { return { status: 'complete', pending: 0 }; } });
+}
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2_000);
 const world = new THREE.Group();
@@ -61,13 +65,13 @@ const owner = createDeploymentShadowWarmOwner({
   scene,
   camera,
   lighting,
-  warmRender() {
+  warmRender: preparable(() => {
     forwardRenders += 1;
     if (forwardRenders === 1) {
       assert.equal(scene.overrideMaterial?.name, 'DeploymentBufferUpload',
         'geometry upload uses the one shared unlit material');
     }
-  },
+  }),
   getWorldGroup: () => world,
   noteFovPrimed(fov) { primedFov = fov; },
   simDt: 1 / 60,
@@ -85,7 +89,8 @@ assert.equal(updateFovCalls, 1);
 assert.equal(updateCalls, 1);
 assert.equal(preserveCalls, 1);
 assert.equal(primedFov, camera.fov);
-assert.deepEqual(yieldFlags, [true, true, true, true, true]);
+assert.deepEqual(yieldFlags, [true, true, true, true, true, true]);
+assert.equal(receipt.uploadProgramPreparation.variants, 1);
 assert.equal(receipt.geometryUploadBatchMs.length, 1);
 assert.equal(receipt.geometryUploadMs, receipt.geometryUploadBatchMs[0]);
 assert.ok([world, actors, ...world.children].every((object) => object.visible));
@@ -141,13 +146,13 @@ for (const failureStage of [null, 'upload', 'yield']) {
     renderer: {}, scene, camera,
     lighting: { csm: { lights: [light] }, updateFov() {}, update() {},
       preservePrimedCascadesForNextFrame() { preserved = true; } },
-    warmRender() {
+    warmRender: preparable(() => {
       assert.equal(scene.overrideMaterial.name, 'DeploymentBufferUpload');
       const selected = meshes.filter(mesh => mesh.layers.test(camera.layers));
       assert.ok(selected.length > 0 && selected.length <= 12);
       seen.push(...selected);
       if (++batches === 1 && failureStage === 'upload') throw failure;
-    },
+    }),
     shadowOnlyWarmRender() { shadowCalls++; },
     getWorldGroup: () => scene, noteFovPrimed() {}, simDt: 1 / 60,
   });
@@ -266,7 +271,7 @@ function observationFixture({ inherited = false, locked = false, fail = '',
   const warm = createDeploymentShadowWarmOwner({
     renderer, scene, camera,
     lighting: { csm: { lights: [light] }, updateFov() {}, update() {}, preservePrimedCascadesForNextFrame() {} },
-    warmRender() { renderer.render(scene, camera); },
+    warmRender: preparable(() => { renderer.render(scene, camera); }),
     getWorldGroup: () => scene, noteFovPrimed() {}, simDt: 1 / 60, now: () => clock,
   });
   const assertRestored = () => {
@@ -282,7 +287,7 @@ function observationFixture({ inherited = false, locked = false, fail = '',
       assert.equal(covered, true);
       assertRestored();
       yields++;
-      if (fail === 'yield' && yields === 3) throw failure;
+      if (fail === 'yield' && yields === 4) throw failure;
     }),
     dispose() { warm.dispose(); geometry.dispose(); material.dispose(); depth.dispose(); },
   };
