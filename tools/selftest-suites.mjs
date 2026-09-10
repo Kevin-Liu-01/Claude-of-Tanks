@@ -319,6 +319,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/production-room-abandonment.selftest.mjs',
     'tools/selftest-suites.selftest.mjs',
     'tools/run-selftests.selftest.mjs',
+    'tools/selftest-cpu-pool.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
     'tools/capture-command.selftest.mjs',

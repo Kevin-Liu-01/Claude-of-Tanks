@@ -581,6 +581,12 @@ the canonical return recovery correction rather than releasing a known freeze.
 
 ### R5 measured rejection and verification follow-up
 
+The retained reproduction tool is `tools/height-canvas-readback-probe.mjs`.
+Run `node tools/height-canvas-readback-probe.mjs --out=/absolute/fresh-directory`
+for the isolated painter/normal-generator A/B; it does not load the game or
+measure end-to-end frame time. Keep the rejected candidate reproducible without
+enabling its context hint in production.
+
 The standalone native height-canvas A/B completed with Chrome 152 / native Apple
 M5 Max at 1024 pixels, matched seed/finish, one warmup and three alternating
 pairs (`height-readback-r5-ab/report.json`). **Reject the context-hint candidate**:
