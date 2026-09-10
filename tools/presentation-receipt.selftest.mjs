@@ -178,7 +178,7 @@ assert.match(centering,/updateSelectedPresentationSource\(originalSource, ids, r
 assert.match(centering,/readFileSync\(outputPath, 'utf8'\) !== originalSource/);
 for(const args of [['--update','--ids='],['--update','--ids']]){
   const rejected=spawnSync(process.execPath,[new URL('./presentation-centering.mjs',import.meta.url).pathname,...args],{encoding:'utf8'});
-  assert.equal(rejected.status,2,'empty explicit scope cannot become a full-fleet rewrite');
+  assert.equal(rejected.status,2,`empty explicit scope cannot become a full-fleet rewrite: ${rejected.stderr}`);
   assert.match(rejected.stderr,/explicit --ids scope must not be empty/);
   assert.equal(rejected.stdout,'','invalid CLI scope exits before browser launch');
 }

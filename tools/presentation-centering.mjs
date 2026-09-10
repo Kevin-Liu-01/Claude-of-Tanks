@@ -28,7 +28,7 @@ function opt(name, fallback = '') {
   const inline = args.find((arg) => arg.startsWith(prefix));
   if (inline) return inline.slice(prefix.length);
   const index = args.indexOf(`--${name}`);
-  return index >= 0 ? args[index + 1] : fallback;
+  return index >= 0 ? (args[index + 1] ?? fallback) : fallback;
 }
 
 const selectedIds = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
