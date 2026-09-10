@@ -175,3 +175,35 @@ positive**: its code string comes solely from the fixed sibling tracked
 network or environment-selected source. The change adds a dependency argument
 to that existing harness. No scanner configuration, suppression or production
 evaluation path was introduced; the raw diagnostic remains retained.
+
+## Published and checked on the public website
+
+The scoped renderer/tooling changes reached `origin/main` without force at
+`dfa97c9550b724063b1113ce7753f378e8fc7ded`; `git ls-remote` confirmed the ref.
+Vercel deployment `7EGrgDAVe2m3QCdvEnQBw4iDJng3` succeeded and the public site
+served `v1.0.0+gdfa97c955` before the production probe started.
+
+`articulated-shadow-production-actions-r1/report.json`, SHA256
+`9f59c1545b1d30298434c24716ad13788044ce01cfe80dc14bc03515364d7782`,
+passes the maintained real-control functional, audio-clock, Garage-gesture,
+warm-readiness and source-readiness checks against `https://cot.kevinliu.studio`.
+Public HTML hash:
+`282e4e57d79be21deff4eedf898012f61034d14e250d52436eca72c7cefcae04`.
+All error, failure and cleanup arrays are empty. Day battle, night rematch and
+returned Garage screenshots were visually inspected; all owned probe resources
+closed normally.
+
+| Actual control | Click → opaque cover (ms) | Click → ready (ms) | Maximum callback gap (ms) |
+| --- | ---: | ---: | ---: |
+| Battle | 3.7 | 8,420.1 | 163.8 |
+| Battle Again | 157.7 | 7,232.5 | 64.4 |
+| Return to Garage | 99.9 | 350.3 | 45.9 |
+
+These are complete staged transitions, including readiness and countdown—not
+steady-state FPS. The single cold native `AudioContext` construction took
+154.9 ms inside the first battle's overlapping 159 ms long task. This known
+startup cost remains; the change does not pretend to remove it. Rematch and
+Garage's worst gaps have no overlapping ≥50 ms long task, which does not prove
+their source or eliminate them. This successful live functional/readiness check
+does **not** supersede the separate failed strict frame-time certificate or
+establish a cause for the untraced historical 214–319 ms stalls.
