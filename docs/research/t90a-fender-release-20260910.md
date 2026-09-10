@@ -111,7 +111,9 @@ and projection; all **207 unselected asset records are exactly unchanged**.
 The mandatory full anatomy update/check passed before the presentation-only
 anchor repair; the final release freshly rechecked full anatomy calibration.
 
-Publication rebases onto `d942e1284`, whose sole additional change from the
+Publication rebased onto `d942e1284`, whose sole additional change from the
 qualified base `8850e95c7` is a performance research document. Exact runtime,
-test/tool and asset bytes must remain identical through that rebase. Source
+test/tool and asset bytes remained identical through that rebase, verified by
+Git against the frozen run. A fresh final typecheck and core-unused check passed.
+Source
 models, temporary QA/captures, and the failed thicker-track pilot are excluded.
