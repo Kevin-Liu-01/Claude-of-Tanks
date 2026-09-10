@@ -1984,3 +1984,131 @@ published nine audio/generation-boundary files exactly; unrelated/stale world
 copies are preserved there, not swept into main. The clean integration branch
 contains the released runtime. This final production note changes documentation
 only and does not require claiming a second runtime acquisition.
+
+## Fresh production stall attribution — 2026-09-10
+
+The existing actual-controls probe ran with `--profile-actions --audio-clock-gate`
+against production `aa03ceb90`, index SHA256
+`ecd1cfa27499687c23001f86f2ceaf10c9ece4c3167165e89858666a5f695b7e`.
+The ordinary FIFO lease covered the acquisition. Full 14-tank day Battle, full 14-tank
+night Battle Again and Return to Garage passed their functional/audio gates;
+all 3 saved stills were inspected and page/failure/cleanup lists are empty.
+CPU profiling adds diagnostic overhead: these timings are attribution evidence,
+not an unprofiled speedup or smoothness certificate.
+
+Cold Battle reproduced a 229.8 ms callback gap at page 3398.8–3628.6 ms and a
+219 ms self Long Task at 3405.6–3624.6 ms. Its dominant sampled stack is
+`startLoadingAfterPaint → resume → unlockContext → createContext`.
+The exact published `main-0MGPh61Z.js:2182:174601` function constructs
+`new AudioContext({latencyHint:'interactive'})`. Intersecting CDP start/stop
+page-clock brackets leaves 30.878 ms alignment uncertainty. Even the conservative
+per-sample lower overlap bound attributes 192.790 ms of that callback gap to this
+constructor wrapper (midpoint 208.229 ms, conservative upper 212.931 ms). This
+identifies the dominant work in this reproduced **cold loading** stall. It does
+not retroactively establish the cause of unprofiled historical 214–319 ms
+**gameplay** stalls or the exact earlier 334 ms loading task.
+
+The [Web Audio specification](https://webaudio.github.io/web-audio-api/#AudioContext)
+exposes AudioContext on Window and distinguishes its control thread from the
+audio rendering thread. Moving DSP into AudioWorklet, or compiling application
+code to Wasm, does not relocate this page-side constructor. The
+[constructor's device options](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext)
+also make clear that a `none` sink suppresses device playback; that is not an
+equivalent performance fix. We keep the real output device, native sample rate,
+interactive latency, gesture policy and existing post-cover startup boundary.
+No native/browser-device limitation is being reported as eliminated.
+
+Rematch's 122.8 ms callback gap contains sampled synchronous hit-card schematic
+work: 14.834 ms in `bakeSchematic`, 13.695 ms in its full-image `getImageData`, and
+5.141 ms in `toDataURL` at the midpoint alignment. Their conservative lower bounds
+are 8.139/8.754/2.515 ms, with 21.342 ms clock uncertainty. The exact published
+`hud-BmTL4PlN.js:535` resolves to the normal full-resolution luminance,
+high-quality resize, sharpen and outline pipeline in `src/ui/shotInfo.ts`.
+This is a concrete worker/cooperative-preparation candidate, not evidence that
+it explains the entire gap. Native pixel-output parity and unprofiled validation
+are required before claiming that a replacement improves the shipped path.
+
+Garage's 50.9 ms callback gap includes 6.276 ms sampled `scrollIntoView`, 5.026 ms
+program-parameter queries during environment baking, and 3.772 ms shader disposal.
+Its 9.923 ms clock uncertainty and unaccounted work preclude a single-cause claim.
+
+Raw evidence under `/private/tmp/cot-interactive-baseline.gsRCvU`:
+`garage-actions-production-profile-r1/report.json`, the three `.cpuprofile`
+files/PNGs, and `production-action-profile-r1-attribution.json`. The local
+`analyze-production-action-profile-r1.mjs` records input hashes, page-clock
+intersection, sampled stacks and conservative alignment bounds. It never edits
+the captured receipts. Live gameplay still needs same-window raw callback,
+Long Task and CPU-profile evidence; this loading acquisition does not replace it.
+
+### Same-window gameplay evidence, not retrospective certainty
+
+`early-camera-profile-baseline-r1.json` captured 60.014 seconds from first control
+release on the preserved published `889f7a6a8` build, with the same pinned 14-tank
+Verdant roster, native cadence, full high-quality graphics and four shadow
+cascades. The raw CPU profile is retained with SHA256
+`7b13c103558554bec3bcecad39c2a887b57d024b7770094e027c7f02c541723c`.
+The existing sampler also recorded actual callback gaps and Long Tasks; no
+second animation loop or gameplay mutation was introduced for those records.
+
+The largest callback gap was 65.7 ms. Three self Long Tasks lasted 50, 56 and
+51 ms. The historical 214–319 ms gameplay event did not recur. Clock-bracket
+intersection leaves 63.605 ms uncertainty. In the 56 ms task, one 88.406 ms
+sampling interval points to Three's `setValueV3f` through uniform upload,
+`SceneAAPass.render`, postprocessing and the main render owner. Its conservative
+overlap is 38.27–56 ms, but that sparse interval is not a measurement of active
+CPU time inside the setter and does not identify a particular uniform or prove
+a driver fault. The worst callback and 51 ms task mostly overlap an `(idle)`
+sample. Input, obstacle avoidance and matrix-update samples elsewhere have zero
+guaranteed overlap. None warrants changing input, AI, matrices or visual quality.
+No schematic-processing stack was identified in these selected gameplay events.
+
+This acquisition is explicitly **not a performance pass**: profiling overhead,
+47.3% foreign interactive-browser GPU-process CPU, 28/29 camera inputs (one
+properly dropped when its full response window no longer fit), and failed frame/
+draw gates are retained. Median/p95/p99 frame intervals were 16.7/33.3/33.4 ms;
+worst-frame draws reached 936. No thresholds, input spacing or roster were relaxed.
+`early-camera-profile-baseline-r1-attribution.json` preserves the sampled bounds,
+exact frozen bundle contexts and hashes. After acquisition and source mapping,
+the old `dist` was preserved at `published-runtime889-dist` under the evidence
+root before building the new UI candidate.
+
+### Hit-card preparation fix and verification — 2026-09-10
+
+The identified synchronous schematic preparation has been replaced with one
+bounded worker queue. The full-resolution normalization, high-quality resize,
+sharpening and outline recipe is unchanged. Unsupported or failed workers use
+the same recipe in cooperative main-thread slices and asynchronous PNG encoding;
+the original image remains available while preparation is pending. Queue bounds,
+active-job deadlines, stale replies, retries, cancellation, image/canvas cleanup
+and idle worker termination are covered. This does not change gameplay, audio,
+graphics quality, or vehicle assets.
+
+The final native Chromium regression (`shot-schematic-native-parity-r3/receipt.json`)
+passes all seven independent legacy-reference comparisons: M1A2/T-90 top and side,
+transparent edges, tiny output, and a single pixel. Worker and forced-fallback
+outputs differ by **zero RGBA bytes** in every case. The production client
+validator accepted seven actual worker replies, with zero fallback substitutions
+in the worker leg. Browser errors, failed HTTP responses and cleanup errors are
+empty; before/after source hashes match. Earlier failed fixture-route/favicon
+runs remain preserved rather than being relabeled as passes.
+
+Focused verification passes: 89 schematic assertions; hit-event formatting,
+diagram projection, battle HUD and mobile layout; profiler-window and camera/
+action timing tests; native-probe lifecycle and suite registration checks.
+Typecheck and the public production build pass. The four runtime files have no
+complexity-threshold violations or `any`/`unknown` uses. Pinned React Doctor
+reported one unchanged small event-list iteration warning in `shotInfo.ts`;
+it is not new per-frame work. Suite discovery reports 918 checks on this candidate;
+that is **not** a claim that the whole 918-file suite was executed for this slice.
+
+The unprofiled actual-controls candidate acquisition also passes full 14-tank
+day Battle, full 14-tank night Rematch and Return to Garage, with all three
+screenshots inspected and no page/failure/cleanup errors. Existing audio clock/
+ownership checks pass. Its worst action callback gaps are still
+**210.9 / 123.8 / 51.7 ms**, respectively. The cold gap overlaps a 208 ms Long Task;
+the rematch and Garage gaps have no overlapping Long Task. Different randomly
+selected rosters and these remaining gaps preclude a before/after speedup or
+zero-stall claim. Evidence is retained in `garage-actions-schematic-candidate-r1/`
+and the `loading-followup-*` logs under the evidence root. This ships a verified
+removal of identified synchronous UI work, not a resolution of every historical
+or browser/device scheduling stall.
