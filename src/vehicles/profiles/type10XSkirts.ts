@@ -1,6 +1,7 @@
 // Original thin folded-sheet primitives. Scalar bend/rake/thickness evidence
 // comes from the unchanged local Type 10 oracle; no source contour is copied.
 import {KIT} from './kit.ts';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -48,7 +49,8 @@ function addSheet(P:TankBuilderPort,panel:number,side:number):void {
   // Regular authoring subdivisions approximate the analytic bend functions,
   // rather than repeating source vertices or its triangulation.
   const sections=Array.from({length:49},(_,i)=>sheetSection(panel,side,a+(b-a)*i/48));
-  P.addEquipment('hullDetail',sectionSolid(sections));
+  P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(sectionSolid(sections),
+    'type10-painted-folded-skirt','hullDetail'));
 }
 
 function addHinges(P:TankBuilderPort,side:number):void {

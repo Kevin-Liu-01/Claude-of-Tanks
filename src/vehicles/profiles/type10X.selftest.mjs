@@ -60,9 +60,10 @@ function sourceRearAndCourses(tank,quality) {
     near(hit(rubber,v(side*1.1953,y,-3.60),v(0,0,1))?.point.z,z,.002,
       `${quality}: actual source rear flexible sheet, not whole-model aft datum`);
   const detail=tank.root.getObjectByName('hullDetail');
-  near(hit(detail,v(2,1.0,0),v(-1,0,0))?.point.x,1.57453,.0002,
+  const painted=tank.root.getObjectByName('hullPaintedDetail');
+  near(hit(painted,v(2,1.0,0),v(-1,0,0))?.point.x,1.57453,.0002,
     `${quality}: independent source thin upper skirt fascia`);
-  assert.ok(!hit(detail,v(1.62142,.91,-1.0),v(0,0,1),.05),
+  assert.ok(!hit(painted,v(1.62142,.91,-1.0),v(0,0,1),.05),
     `${quality}: source lower modules do not falsely extend through upper course`);
   assert.ok(!hit(tank.root,v(0,1.20,-3.90),v(0,0,1),.23),
     `${quality}: actual source rear tray is open, not a solid exhaust box`);

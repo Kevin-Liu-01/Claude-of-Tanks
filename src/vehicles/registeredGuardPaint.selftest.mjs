@@ -7,6 +7,7 @@ import {TANK_SPECS} from './specs.ts';
 import {registerProfiledBuilders} from './tankFactoryCore.ts';
 import {buildLeopard2A6X} from './profiles/leopardA6X.ts';
 import {buildLeclercX} from './profiles/leclercX.ts';
+import {buildType10X} from './profiles/type10X.ts';
 import {AMX40_X_PROFILES} from './profiles/amx40X.ts';
 import {GUARD_PRE_PAINT_SHA,beforeRegisteredGuardPaint} from './registeredGuardPaint.test-support.mjs';
 import {installCanvasFixture} from './canvasFixture.test-support.mjs';
@@ -17,6 +18,7 @@ const cases=[
  {id:'leo2a6_x',build:buildLeopard2A6X,label:['a6-fixed-front-guard','a6-fixed-upper-sheet'],count:8},
  {id:'leclerc_x',build:buildLeclercX,label:'leclerc-fixed-bow-guard',count:2},
  {id:'amx40_x',build:AMX40_X_PROFILES.amx40_x.build,label:'amx40-fixed-folded-skirt',count:4},
+ {id:'type10_x',build:buildType10X,label:['type10-painted-folded-skirt','type10-painted-upper-fascia','type10-painted-rear-fascia'],count:14},
 ];
 const changed=new Set(['hullDetail','hullPaintedDetail']),keys=['fixedPaintedPanel','materialOnlyPaintMigration','materialOnlyPaintSourceBucket'];
 const methods=new Set(['add','addEquipment','addMudguard','addHatch','addCupola','addExternalArmor','addModuleVisual']);

@@ -21,7 +21,7 @@ import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
-import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicleNightLighting.ts';
+import { addShtoraEyes } from './shtora.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -3166,51 +3166,10 @@ export function eraRuCheeks(P: RussiaEraPort, p: EraCheekOptions, kind: EraKind)
 // plane forward of the dome skin (t72bu: ref plan front 1.89-1.92 at
 // |x| 0.4..0.65); the caller adds a bracket back to the skin.
 export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void {
-  const { box } = KIT;
-  const r = ringSkin(p.rings, y);
-  const es = p.eyeScale ?? 1;
-  const A = r, B = r * p.sz, x = p.eyeX ?? 0.52;
-  const zSkin = B * Math.sqrt(Math.max(0.1, 1 - (x / A) ** 2));
-  const zc = p.eyeZ ?? (zSkin + 0.06);
-  // eyeRound (§4.999991 russia fix-round, opt-in): the OTShU-1-7 dazzlers
-  // are ROUND RED emitters, not blue rectangles — round dark drum + red
-  // lens disc INSIDE the old glass pane's own extents (inscribed-drum
-  // class: front plane byte-equal at zc+0.130, x-span inside the housing
-  // box). Lens material = rehooked dark clone with a deep red-amber
-  // emissive floor (SHADOW-TONE mechanics) shared by both eyes; direct
-  // meshes under rig_turret so they yaw with the casting (§B5).
-  if (p.eyeRound && !P._shtoraRed) P._shtoraRed = rehookClone(P.mats.dark, 0x54180e, 0x7c2410);
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.24 * es, 0.27 * es, 0.22 * es), s * x, y, zc);
-    if (p.eyeRound) {
-      P.add('turretDark', KIT.cylZ(0.100 * es, 0.055 * es, 16), s * x, y, zc + 0.0975 * es);
-      P.add('turretDetail', KIT.cylZ(0.106 * es, 0.016 * es, 16), s * x, y, zc + 0.092 * es);
-      const geometry = markVehicleNightLens(KIT.cylZ(0.072 * es, 0.014 * es, 16), 'shtora');
-      prepareVehicleNightLensParts([geometry]);
-      const lens = new THREE.Mesh(geometry, P._shtoraRed);
-      lens.position.set(s * x, y, zc + 0.123 * es);
-      lens.castShadow = lens.receiveShadow = true;
-      P.turretG.add(lens);
-      registerVehicleNightLensMesh(lens, [geometry]);
-    } else {
-      P.add('turretGlass', markVehicleNightLens(box(0.17, 0.18, 0.03), 'shtora'), s * x, y, zc + 0.115);
-    }
-    P.add('turretDetail', box(0.27 * es, 0.04 * es, 0.24 * es), s * x, y + 0.155 * es, zc + 0.01 * es);
-    // eyeKit (§B3.1 prism sweep 2026-08-06, opt-in): the OTShU-1-7 emitter
-    // grammar — horizontal vent fins over the emitter window, side cheek
-    // plates and an under-bracket back to the skin, all inside the eye
-    // box's own envelope (+<=8 mm face relief; under §C thresholds; gate
-    // HOLD proven on vladimir 71.4 exact pre-revert). Defaults
-    // byte-identical for every legacy caller.
-    if (p.eyeKit) {
-      for (let fi = 0; fi < 3; fi++) {
-        P.add('turretDark', box(0.19 * es, 0.024 * es, 0.014 * es), s * x, y + (-0.056 + fi * 0.056) * es, zc + 0.118 * es);
-      }
-      P.add('turretDetail', box(0.014 * es, 0.21 * es, 0.19 * es), s * (x + 0.122 * es), y, zc - 0.005 * es);
-      P.add('turretDetail', box(0.014 * es, 0.21 * es, 0.19 * es), s * (x - 0.122 * es), y, zc - 0.005 * es);
-      P.add('turretDark', box(0.18 * es, 0.045 * es, 0.16 * es), s * x, y - 0.155 * es, zc - 0.045 * es);
-    }
-  }
+  const r = ringSkin(p.rings, y), x = p.eyeX ?? 0.52;
+  const zSkin = r * p.sz * Math.sqrt(Math.max(0.1, 1 - (x / r) ** 2));
+  addShtoraEyes(P, { x, y, z: p.eyeZ ?? (zSkin + 0.06),
+    scale: p.eyeScale ?? 1, round: !!p.eyeRound, kit: !!p.eyeKit });
 }
 // ---------------------------------------------------------------------------
 // Profiles. Dimensions are width-normalized oracle measurements (packets);

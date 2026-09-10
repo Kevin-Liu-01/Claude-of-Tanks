@@ -2,7 +2,7 @@
 
 > Generated from `TANK_SPECS` by `npm run tank:roster`. Do not maintain a second hand-written roster.
 
-Claude of Tanks currently retains **203 saved vehicle records**: **164 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
+Claude of Tanks currently retains **210 saved vehicle records**: **171 production-visible**, **37 local development models**, and **2 non-playable reference placeholders**. Production carousels, matchmaking, the Tank Gallery, and Scene Studio use the production projection.
 
 To inspect every playable saved model locally, copy `.env.example` to `.env.local` and run the Vite development server. The `VITE_COT_DEV_FLEET_KEY` switch is accepted only when Vite reports `DEV=true`; it is ignored by production builds. Development-only entries display a blue `DEV` tag in vehicle pickers. `REF` records remain report-only because they are generic community placeholders, not first-party playable models.
 
@@ -211,6 +211,13 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 201 | PROD | `t90_x` | T-90 X | USSR/Russia | X | Modern | Production |
 | 202 | PROD | `t90a_burlak_x` | T-90A Burlak X | USSR/Russia | X | Modern | Production |
 | 203 | PROD | `t90ms_x` | T-90MS Tagil X | USSR/Russia | X | Modern | Production |
+| 204 | PROD | `m1a1_x` | M1A1 Abrams X | USA | IX | Cold War | Production |
+| 205 | PROD | `m1a1ha_x` | M1A1 Abrams HA X | USA | IX | Cold War | Production |
+| 206 | PROD | `m1a2_x` | M1A2 Abrams X | USA | X | Modern | Production |
+| 207 | PROD | `m1a2_tusk_x` | M1A2 Abrams TUSK X | USA | X | Modern | Production |
+| 208 | PROD | `m1a2_sepv2_x` | M1A2 Abrams SEPv2 X | USA | X | Modern | Production |
+| 209 | PROD | `m1a2_sepv3_x` | M1A2 Abrams SEPv3 X | USA | X | Modern | Production |
+| 210 | PROD | `ua_m1a1_x` | M1A1 Abrams UA X | Ukraine | IX | Modern | Production |
 
 ## Policy ownership
 

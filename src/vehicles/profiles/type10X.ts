@@ -9,6 +9,7 @@ import {sourceMachineGun} from './sourceMachineGun.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
 import {addType10BowLinks} from './type10XBow.ts';
 import {addType10Skirts} from './type10XSkirts.ts';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {addType10XRoofPanels} from './type10XRoofPanels.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -77,8 +78,10 @@ function hull(P:TankBuilderPort):void {
 
 function sideArmor(P:TankBuilderPort,side:number):void {
   addType10Skirts(P,side);
-  P.addEquipment('hullDetail',box(.030964,.4627,6.0704),side*1.559035,.99065,.5545);
-  P.addEquipment('hullDetail',box(.030964,.4065,.9621),side*1.559035,.96097,-2.95899);
+  P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4627,6.0704),
+    'type10-painted-upper-fascia','hullDetail'),side*1.559035,.99065,.5545);
+  P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(box(.030964,.4065,.9621),
+    'type10-painted-rear-fascia','hullDetail'),side*1.559035,.96097,-2.95899);
 }
 
 function mudguards(P:TankBuilderPort,side:number):void {

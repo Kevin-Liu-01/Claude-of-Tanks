@@ -19,7 +19,7 @@ function sheetFaces(root,quality) {
   ]) {
     const outer=hit(root,v(side*2,y,z),v(-side,0,0));
     near(side*outer?.point.x,x,.006,`${quality}: source folded sheet ${side}/${y}/${z}`);
-    assert.equal(outer.object.name,'hullDetail',`${quality}: actual wired physical sheet`);
+    assert.equal(outer.object.name,'hullPaintedDetail',`${quality}: actual wired painted physical sheet`);
     const inner=hit(root,v(side*1.55,y,z),v(side,0,0));
     near(side*inner?.point.x,back,.006,`${quality}: independent source inner skin`);
     // Source lateral thickness is 6.34–8.23 mm here, because the fold changes
@@ -32,7 +32,7 @@ function sheetFaces(root,quality) {
 }
 
 function airAndSupport(tank,quality) {
-  const root=tank.root,detail=root.getObjectByName('hullDetail');
+  const root=tank.root,detail=root.getObjectByName('hullPaintedDetail');
   for(const side of [-1,1]) {
     for(const z of [-2.82,-1.10,.40,1.95,3.37])
       assert.ok(!hit(root,v(side*1.66,1.8,z),v(0,-1,0),.80),

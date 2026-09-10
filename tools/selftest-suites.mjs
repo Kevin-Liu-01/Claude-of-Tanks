@@ -61,6 +61,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/upperReturnBandStock.selftest.mjs',
     'src/vehicles/suspensionClearance.selftest.mjs',
     'src/vehicles/profiles/t90AwXDetails.selftest.mjs',
+    'src/vehicles/profiles/shtora.selftest.mjs',
     'src/vehicles/profiles/t90AwXHullEnds.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXRear.selftest.mjs',
     'src/vehicles/profiles/t90BurlakXSkirtMounts.selftest.mjs',

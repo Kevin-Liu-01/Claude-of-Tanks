@@ -211,7 +211,7 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
       tank.root.updateMatrixWorld(true);
-      if(id==='leclerc_x'||id==='amx40_x'){
+      if(id==='leclerc_x'||id==='amx40_x'||id==='type10_x'){
         const original=withHistoricalFixedGuardPaint(id,()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242}));
         try{
           original.root.updateMatrixWorld(true);
