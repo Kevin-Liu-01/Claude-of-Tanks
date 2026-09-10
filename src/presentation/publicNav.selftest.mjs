@@ -46,8 +46,8 @@ assert.equal(repositoryStatsEndpointAvailable({ hostname: '127.0.0.1', protocol:
 assert.equal(repositoryStatsEndpointAvailable({ hostname: 'localhost', protocol: 'https:' }), false);
 assert.equal(repositoryStatsEndpointAvailable({ hostname: 'cot.kevinliu.studio', protocol: 'https:' }), true);
 
-// A fresh surface performs no optional network work. Explicit GitHub-link
-// intent refreshes through the same-origin cached endpoint.
+// A fresh surface immediately starts one non-blocking same-origin refresh.
+// Explicit GitHub-link intent joins that request and remains a retry path.
 const githubIntentHandlers = {};
 const githubControlAttributes = new Map();
 const githubControlProbe = {
@@ -77,18 +77,17 @@ const githubMount = mountGitHubStars({
   matches: () => false,
   querySelectorAll: () => [githubStarProbe],
 });
-assert.equal(githubFetches, 0, 'mounting star counts performs no optional network request');
-assert.equal(githubStarProbe.dataset.githubStarsState, 'unavailable');
+assert.equal(githubFetches, 1, 'first mount starts the live star request without hover intent');
+assert.equal(githubStarProbe.dataset.githubStarsState, 'loading');
 assert.equal(githubStarProbe.textContent, '');
-await githubMount;
-assert.equal(githubStarAttributes.has('aria-busy'), false);
-assert.equal(githubStarAttributes.get('aria-label'), 'GitHub star count unavailable');
+assert.equal(githubStarAttributes.get('aria-busy'), 'true');
+assert.equal(githubStarAttributes.get('aria-label'), 'Loading GitHub star count');
 assert.equal(typeof githubIntentHandlers.pointerenter, 'function');
 assert.equal(typeof githubIntentHandlers.focus, 'function');
 const githubIntent = githubIntentHandlers.pointerenter();
-assert.equal(githubFetches, 1, 'GitHub intent reuses the fresh verified count');
+assert.equal(githubFetches, 1, 'GitHub intent joins the active first-load request');
 resolveGitHubFetch();
-await githubIntent;
+await Promise.all([githubMount, githubIntent]);
 assert.equal(githubStarProbe.dataset.githubStarsState, 'ready');
 assert.equal(githubStarProbe.textContent, '321');
 assert.equal(githubStarAttributes.get('aria-label'), '321 GitHub stars');
