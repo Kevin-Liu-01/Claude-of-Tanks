@@ -2331,3 +2331,28 @@ visible UI under a held request, not physical display scanout or zero lag.
 
 These are pre-publication receipts. The historical 214–319 ms gameplay stalls
 and remaining native cold-start costs are not closed by this loading fix.
+
+#### Published cold-entry cover — 2026-09-10 07:07 UTC
+
+The complete narrow checkpoint was pushed without force as
+`1104b991686ffdb8c016f360c3812ab83bb61933`; exact-head typecheck/public build
+and the six focused checks above pass. Vercel deployment
+`AMDseyJ6R2spU5eb6Sz6vRpgu7mk` and Localization CI report success. Production
+serves `v1.0.0+g1104b9916`, with HTML SHA256
+`a4043f3cfc3c582f6622a4eec44e8f169d739b138d043e4fab7b2515cd648cc1`
+before, during and after the final acquisition.
+
+`solo-cold-cover-production-actions-r1/` passes the unchanged frozen ordinary
+Garage/Battle/Rematch/return/input/audio acquisition. First Battle cover is
+observed after **2.1 ms**. Rematch/return cover observations are 147.6/89.2 ms;
+all three transitions complete. Garage gestures construct zero audio contexts;
+the first Battle constructs one native context (155.0 ms), retained thereafter.
+Browser errors, failures, and cleanup errors are empty. Four final screenshots
+were inspected with native high-quality rendering unchanged. All owned preview
+servers and the native probe exited; no unrelated process was stopped.
+
+Action callback maxima remain **159.4 / 112.8 / 46.3 ms**. This confirms immediate
+cold-entry feedback and preserved transition/input behavior, not elimination of
+native startup cost, an audible-output certificate, or a universal frame-budget
+guarantee. The delayed-import negative/positive proof above was local; this
+production run exercises ordinary downloads and real UI controls.
