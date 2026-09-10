@@ -103,7 +103,7 @@ function compile(input = text, mode = 'current') {
       const receipt = streams.map(({seed, calls, next}) => ({seed, calls, tail: [next(), next(), next(), next()]}));
       streams.length = 0; return receipt;
     }
-    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n${code}
+    const BIRCH_VAR = ${variable('BIRCH_VAR')};\n${get('makeBirchFoliageTexture')}\n${code}
     function library(seed, input) {
       const cfg = { vegetation: input }, veg = ${variable('veg')};
       ${input.slice(start, end)}
