@@ -1,5 +1,16 @@
 # Self-test release throughput — 2026-09-10
 
+## Covered scene-health integration follow-up
+
+`991940cd6` moves reveal priming into its own helper and requires scene health
+before reveal. The loading-screen test now extracts those actual helpers and
+the successful warm/mandatory tails, rather than searching for the removed
+`revealPrimed = true` assignment. Independently deferred shadow, world, post,
+scene-health and reveal stages prove ordering. Deleted, unawaited or premature
+steps still fail; new controls cover the scene-health and reveal helper calls.
+The runtime's independent cancellation/fallback tests also pass. No runtime
+code, timeout or assertion limit changed in this test integration.
+
 ## Repair published integration-fixture drift before retrying the fleet
 
 The Type 10 recovery diagnostic on `503d8e957` executed every previously

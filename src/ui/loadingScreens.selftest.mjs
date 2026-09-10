@@ -386,21 +386,32 @@ assert.ok(deferredEnemyAt >= 0
 assert.match(combatWarmCompositionSource,
   /warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/,
   'the composition adapter must retain non-presenting terrain warm semantics');
-const coveredFxBody = soloDeploymentSource.slice(
-  soloDeploymentSource.indexOf(
-    'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
-  ),
-  soloDeploymentSource.indexOf('await entryLifecycle.primeReveal()'),
+const coveredFxStart = soloDeploymentSource.indexOf(
+  'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
 );
+const coveredFxBody = soloDeploymentSource.slice(coveredFxStart,
+  soloDeploymentSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')", coveredFxStart));
 assert.match(coveredFxBody,
   /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*setDestructionWarmed\(true\);/,
   'a successful covered FX bind must prevent duplicate countdown staging');
 // Execute the actual owner block: callback names may change when lifetime
-// guards are added, but shadow/post completion must still precede reveal.
+// guards are added, but shadow/world/post/scene-health completion must still
+// precede reveal. The runtime's separate test covers optional-warm failures;
+// this oracle executes its actual successful warm tail and mandatory helpers.
 const revealStart = soloDeploymentSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')");
-const revealEnd = soloDeploymentSource.indexOf('revealPrimed = true;', revealStart);
-assert.ok(revealStart >= 0 && revealEnd > revealStart, 'the actual deployment reveal block is present');
-const revealWarmBody = soloDeploymentSource.slice(revealStart, revealEnd + 'revealPrimed = true;'.length);
+const warmEnd = soloDeploymentSource.indexOf('optionalWarmCompleted = true;', revealStart);
+const healthStart = soloDeploymentSource.indexOf('await runRequiredSceneWatchdog(', warmEnd);
+const revealEnd = soloDeploymentSource.indexOf("battleLoad.progress(0.975, 'Combat effects ready')", healthStart);
+assert.ok(revealStart >= 0 && warmEnd > revealStart && healthStart > warmEnd && revealEnd > healthStart,
+  'the actual deployment warm and mandatory reveal blocks are present');
+const deploymentAst = ts.createSourceFile('deployment.ts', soloDeploymentSource, ts.ScriptTarget.Latest, true);
+const revealHelpers = ['runRequiredSceneWatchdog', 'primeCoveredReveal'].map(name => {
+  const declarations = deploymentAst.statements.filter(node => ts.isFunctionDeclaration(node) && node.name?.text === name);
+  assert.equal(declarations.length, 1, `one actual ${name} helper`);
+  return declarations[0].getText(deploymentAst);
+}).join('\n');
+const revealWarmBody = `${revealHelpers}\n${soloDeploymentSource.slice(revealStart,
+  warmEnd + 'optionalWarmCompleted = true;'.length)}\n${soloDeploymentSource.slice(healthStart, revealEnd)}`;
 
 function deferredWarmStep() {
   let resolve;
@@ -410,11 +421,16 @@ function deferredWarmStep() {
 
 async function verifyDeploymentWarmOrder(body) {
   const events = [], shadow = deferredWarmStep(), world = deferredWarmStep(), post = deferredWarmStep();
+  const health = deferredWarmStep(), reveal = deferredWarmStep();
   const shadowReceipt = { cascades: 4 }, postReceipt = { passes: 3 }, trace = {};
-  const options = {};
+  const options = { runSceneWatchdog: async assertCurrent => {
+    events.push('health'); await health.promise; assertCurrent();
+    events.push('healthDone'); return { failed: false };
+  } };
   const yieldForBudget = async () => { events.push('yield'); };
   const ports = {
     trace, options, generation: 7, scene: {}, lighting: {}, game: {},
+    STALE_DEPLOYMENT: Symbol('stale'), stillCurrent: value => value === 7,
     battleLoad: { progress() {} }, requireCurrent: value => assert.equal(value, 7),
     mark() {}, getWorld: () => null, getWarmRender: () => {}, now: () => 0,
     createDeploymentForwardWarmBatches: function* () {},
@@ -433,10 +449,13 @@ async function verifyDeploymentWarmOrder(body) {
       events.push('postDone'); return postReceipt;
     } },
     assertRevealReady: () => events.push('ready'),
-    getEntryLifecycle: () => ({ primeReveal: async () => { events.push('reveal'); } }),
+    getEntryLifecycle: () => ({
+      primeReveal: async () => { events.push('reveal'); await reveal.promise; events.push('revealDone'); },
+      coverRendering: () => events.push('cover'),
+    }),
   };
   // Only tracked local source (and the explicit mutations below) is evaluated.
-  const pending = runInNewContext(stripTypeScriptTypes(`(async () => { let revealPrimed = false;
+  const pending = runInNewContext(stripTypeScriptTypes(`(async () => { let revealPrimed = false, optionalWarmCompleted = false;
     ${body}\nreturn revealPrimed; })()`), ports);
   const settled = pending.then(value => ({ value }), error => ({ error }));
   try {
@@ -453,15 +472,24 @@ async function verifyDeploymentWarmOrder(body) {
     assert.equal(events.includes('post'), true, 'post preparation follows completed shadows');
     assert.equal(events.includes('reveal'), false, 'pending post passes cannot reveal');
     post.resolve();
+    for (let step = 0; step < 30 && !events.includes('health'); step++) await Promise.resolve();
+    assert.equal(events.includes('health'), true, 'scene health follows completed post passes');
+    assert.equal(events.includes('reveal'), false, 'pending scene health cannot reveal');
+    health.resolve();
+    for (let step = 0; step < 30 && !events.includes('reveal'); step++) await Promise.resolve();
+    assert.equal(events.includes('reveal'), true, 'a healthy scene may prime reveal');
+    assert.equal(events.includes('cover'), false, 'reveal priming must complete before covered rendering');
+    reveal.resolve();
     const result = await settled;
     if (result.error) throw result.error;
     assert.equal(result.value, true, 'the actual owner publishes a primed reveal');
     assert.deepEqual(events, ['shadow', 'yield', 'shadowDone', 'world', 'yield', 'worldDone',
-      'post', 'yield', 'postDone', 'ready', 'reveal']);
+      'post', 'yield', 'postDone', 'ready', 'health', 'healthDone', 'ready', 'reveal',
+      'revealDone', 'cover', 'ready']);
     assert.strictEqual(trace.deploymentShadowWarm, shadowReceipt);
     assert.strictEqual(trace.deploymentPostWarm, postReceipt);
   } finally {
-    shadow.resolve(); world.resolve(); post.resolve(); await settled;
+    shadow.resolve(); world.resolve(); post.resolve(); health.resolve(); reveal.resolve(); await settled;
   }
 }
 
@@ -474,6 +502,10 @@ for (const [pattern, replacement] of [
   [/trace\.deploymentShadowWarm = await getDeploymentShadowWarm\(\)\.prime\([^;]+\);/, ''],
   [/trace\.deploymentPostWarm = await post\.warmFirstFrame\([^;]+\);/, ''],
   [/await entryLifecycle\.primeReveal\(\);/, ''],
+  [/await (?=entryLifecycle\.primeReveal\()/, ''],
+  [/await (?=runRequiredSceneWatchdog\()/, ''],
+  [/await (?=primeCoveredReveal\()/, ''],
+  [/await runRequiredSceneWatchdog\([^;]+\);/, ''],
   [/trace\.deploymentPostWarm =/, 'await getEntryLifecycle().primeReveal();\ntrace.deploymentPostWarm ='],
 ]) {
   const mutant = revealWarmBody.replace(pattern, replacement);

@@ -1,8 +1,9 @@
-# Type 10 X: fitted 90 mm candidate — not released
+# Type 10 X: fitted 90 mm running gear — owner-approved checkpoint
 
 Base: published `8f879124415f2734e8020de07b69a03afac4d96c`.
-This is a separately preserved candidate, not the already-pushed skirt/support
-checkpoint. Do not publish it as qualified or replace its failed source row.
+This follows the earlier skirt/support checkpoint. Publication uses the two
+explicit owner decisions below; it is not an all-gates-qualified release.
+Do not replace its failed source row or claim a complete npm lifecycle PASS.
 
 ## Persistent checkout recovery
 
@@ -75,6 +76,18 @@ failure and the proposed targeted release. This permits publishing this
 checkpoint after refreshed data and affected checks pass, while the full
 suite runs separately. It does not turn the failed lifecycle into a PASS,
 waive physical fit checks, or apply automatically to other candidates.
+
+After integrating `991940cd6`, all 12 affected checks pass in
+`affected-checks.log`: the actual deployment-order oracle and runtime,
+generated garage freshness and both garage consumers, closed paired stock,
+finite loaded-track contact, tapered carriers, native Type 10 HIGH/LOW moving
+running gear, skirt/support attachments, fleet progress watchdog and CPU
+scheduler. The garage timing retry retains the original 100 ms limit.
+The loading oracle follows the upstream helper refactor and adds deferred
+scene-health/reveal checks plus negative controls; no deployment runtime
+was changed. Fresh typecheck/core-unused and private/public builds also pass
+after integration (`integrated-builds.log`, terminal exit 0). A fresh complete
+lifecycle remains separately outstanding.
 
 Publication is limited to Kevin's explicit Type 10 fitting decision quoted
 below, together with his standing instruction to push completed checkpoints

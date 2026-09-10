@@ -83,8 +83,17 @@ not a current release queue. Do not repeat it without checking ancestry.
   and attaches its existing six rollers using shared spindle primitives.
   It is tracked separately in
   [the Type 10 cost/contact checkpoint](../research/type10-x-cost-contact-20260910.md).
-  Its 35 mm carrier is still not matched to the original Type 10's 90 mm
-  carrier; this checkpoint must not close FSP-04 or the whole 59-ID program.
+  That checkpoint retained a 35 mm carrier. The subsequent
+  [owner-approved 90 mm follow-up](../research/type10-x-90mm-candidate-20260910.md)
+  now matches the original Type 10's stock thickness, keeps the axles fixed,
+  uses closed paired-wheel primitives and six fitted return rotors, and passes
+  HIGH/LOW moving-contact and skirt/support checks. It reduces selected,
+  instance-expanded triangles to 63,230 HIGH / 39,302 LOW. The owner accepted
+  its 87.638 mm ground-envelope extension and separately authorized publication
+  after affected checks, with the full suite continuing separately. Its raw
+  source score remains **79.4/92 FAIL**; no full-suite or all-gates PASS is
+  claimed. This addresses Type 10's thickness target, not fleet-wide FSP-04
+  or the whole 59-ID program.
 
 The following older measurements remain useful baselines, not unpublished-
 work counts or assertions about the latest published build:
