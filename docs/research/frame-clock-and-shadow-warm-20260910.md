@@ -393,3 +393,34 @@ suite was not rerun for this slice. Pinned React Doctor exits successfully;
 its three new warnings are confined to intentional serial audio tests and
 repeated gain reads that assert changes after mutation. They are retained,
 not suppressed or converted into concurrent shared-global test execution.
+
+### Published entry-clock/audio slice
+
+`8850e95c7cd944de733c66731b132030e25c3ce5` was pushed non-force and verified
+on `origin/main`. Vercel deployment `ADwPaYEXhekeBny2RsHtSMdT3zb8` succeeded;
+the live site served `v1.0.0+g8850e95c7` before the public actual-control run.
+
+`entry-audio-production-boot-r1/report.json`, SHA256
+`8a92e2e2e4961b1c2d8dae44e55081c9a8fd607a23564eee83b493f8b4b91b2c`,
+passes functional, trusted boot-audio, audio-clock, warm and source readiness.
+Public HTML hash:
+`45559ca4b8951fbb6cc1ccce9a5c3a7632edcac025f31ad1ae46e6c4770bfc8e`.
+One constructor completed during splash entry (144.6 ms), before Battle;
+the same context served both battles and Garage return. No errors or cleanup
+failures. All three result screenshots were visually inspected.
+
+| Public action | Click → cover | Click → ready | Maximum callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 3.6 ms | 9,029.5 ms | 190.8 ms |
+| Battle Again | 141.7 ms | 5,525.1 ms | 65.6 ms |
+| Garage | 84.1 ms | 317.9 ms | 47.2 ms |
+
+The native frame improvement above was measured against the local production
+build, not this public functional window. The live first-Battle loading gap
+remains: callback-start diagnostic 5,068.7–5,259.6 ms (190.9 ms), covered and
+visible during “Placing structures.” Its one overlapping Long Task accounts
+for 76 ms; 114.9 ms remains unattributed. Audio construction ended at 2,775.2 ms,
+before the Battle click at 3,565.7 ms, and its clock advances during this gap.
+Thus moving audio startup did not eliminate all loading pauses. The recorded
+props slice maxima lack absolute timestamps and cannot be assigned to this
+gap; a targeted action profile is required before attributing the remainder.
