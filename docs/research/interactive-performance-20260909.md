@@ -2130,3 +2130,24 @@ after rebasing onto `c4b3c14ac`. The first combined runner then stopped on a
 mistyped camera-test filename (not an assertion failure); its log is retained,
 and the actual `perfprobe-camera-input.selftest.mjs` plus suite registration
 are run separately before typecheck/build. No whole-suite pass is inferred.
+
+### Published schematic fix — 2026-09-10 05:52 UTC
+
+Runtime `b03285286b0bb3f5c8b50930efd432bb99bbc0cd` is pushed to main and deployed.
+The final camera/registry checks, typecheck and public build pass after rebase;
+the combined registry contains 919 discovered checks, not 919 newly executed ones.
+Vercel and GitHub's catalog gate report success. Production HTML before, during
+and after the actual-controls test has version `v1.0.0+gb03285286` and SHA256
+`dfb7f85d2e93fe408dea550932886def3db972f85455585821861eb0d2eba8e8`.
+The served schematic worker also matches the built worker byte-for-byte.
+
+Full 14-tank day Battle, 14-tank night Rematch and Return to Garage pass, as do
+the existing audio-clock/ownership gates. All three screenshots were inspected;
+browser errors, failures and cleanup errors are empty, and owned processes exited.
+No graphics settings were reduced. This is a **functional pass only**: worst
+action callback gaps remain **276.0 / 102.2 / 51.4 ms**. Cold entry overlaps
+263.9 ms of Long Tasks; the other two worst gaps do not overlap a Long Task.
+This unprofiled run does not establish those functions' causes or a matched-roster
+speedup. Historical gameplay-stall attribution and strict smoothness remain open.
+Receipts: `schematic-production-release-r1.json` and
+`garage-actions-schematic-production-r1/` under the evidence root above.
