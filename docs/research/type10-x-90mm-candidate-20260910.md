@@ -57,6 +57,16 @@ unchanged source score passes, and not a waiver of contact or release checks.
 No source transform, threshold or reference was changed. No expensive
 anatomy/assets/full-release run was started on this known source mismatch.
 Qualification must report both the raw source mismatch and the explicit
-owner-approved running-gear target. Historical pre-paint source inverses still need the bounded
-gear-call inverse; do not refresh their old literal hashes. Complete road/end
-wheel-to-shoe motion, guards/ground sweeps and native LOW close views remain.
+owner-approved running-gear target.
+
+The bounded gear-call inverse is now implemented in the historical test
+helpers. Both old whole-source hashes and both old native whole-model hashes
+pass unchanged. An undeclared source edit is still rejected. The actual
+candidate also passes `sourceXOtherAuxArmor.selftest.mjs --ids=type10_x` at
+HIGH/LOW: 1,744 auxiliary faces, 2,320 independent held-out rays per detail,
+2,405 seams / 196 owned edges, with maximum held-out surface error 2.303 mm.
+The paired-stock primitive test is registered in the full npm lifecycle;
+the complete registry accounts for 958 checks on this candidate's base.
+
+Complete road/end wheel-to-shoe motion, guards/ground sweeps and native LOW
+close views remain, as do regenerated assets/anatomy and full release checks.
