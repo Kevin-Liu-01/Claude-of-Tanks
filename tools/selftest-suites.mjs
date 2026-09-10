@@ -751,6 +751,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/perfprobe-camera-input.selftest.mjs',
     'tools/garage-battle-actions-contract.selftest.mjs',
     'tools/garage-action-timing.selftest.mjs',
+    'tools/garage-audio-intent.selftest.mjs',
     'src/ui/garageReturnFailure.selftest.mjs',
     'src/ui/modalFocusLifecycle.selftest.mjs',
     'src/ui/transitionCover.selftest.mjs',
