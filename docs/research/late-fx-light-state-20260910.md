@@ -56,6 +56,8 @@ adding a callback that would disable the optimization. Exact pixel parity and
 all existing hidden-FX, missing-depth, stale-geometry, and stale-camera negative
 controls remain required. This fixture certifies pixels and ownership, not FPS.
 
-At this checkpoint, the before regression has failed as expected, but positive
-integrated CPU/build/native acceptance is pending the shared fleet-release
+The before regression failed as expected. Both positive integrated
+`lateFxSceneView` and `lateFxColorHandoff` CPU checks passed on revision
+`be1844806` in the September 10 17-file focused batch (all passed). Exact
+integrated build and native acceptance remain pending the shared fleet-release
 window. No production performance claim or deployment is made by this note.

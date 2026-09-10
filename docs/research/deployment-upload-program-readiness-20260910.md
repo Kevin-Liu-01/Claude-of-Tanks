@@ -59,10 +59,13 @@ have zero complexity violations and zero `any`/`unknown`. Docs Doctor reports
 4 pass / 0 fail / 0 warn. Changed-code React Doctor reports no issues across
 six files (score and supply-chain scan disabled; no score claim).
 
-Two checks remain pending for the owner's final integration batch:
+The owner's final focused integration batch also passed:
 `src/app/combatWarmComposition.selftest.mjs` and
-`tools/garage-battle-actions-contract.selftest.mjs`. The initial combined runner
+`tools/garage-battle-actions-contract.selftest.mjs` (181 lifecycle assertions,
+including combined warm/source gates). The initial combined runner
 stopped after the five passing engine checks because its command mistakenly
 used `src/engine/combatWarmComposition.selftest.mjs`. The corrective two-test
 admission was canceled before execution to preserve the higher-priority fleet
-release window. No native scheduling-followup run has been performed.
+release window, then completed in the explicitly admitted 17-file CPU batch
+on integrated revision `be1844806` on September 10. All 17 passed; the longest
+child took 1032 ms. No native scheduling-followup run has been performed.
