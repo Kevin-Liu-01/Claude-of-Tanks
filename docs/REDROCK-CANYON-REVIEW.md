@@ -47,5 +47,18 @@ correct, but its walls remained too rounded and the pale distant floor read as
 a retaining wall. R2 sharpens the central faces and changes only the low,
 gentle outland's baked colour. No extra meshes or shader variants were added.
 
-R2 native art acceptance and derived-output refresh are pending. Do not publish
-terrain with stale Badlands collision data or map pictures.
+R2 completed on native Chrome/Apple Metal: three 1440×900 daylight originals,
+clean GL/program/error checks and complete browser/preview cleanup. Its overhead
+view visibly resolves the central layered cliffs and is accepted as the scoped
+canyon checkpoint. The two axis-aligned low cameras sit inside tree groves;
+they do not certify canyon framing. Clear road-level views accompany the
+derived-data refresh. Distant colour/texture uniformity remains a broader
+beautification item, not a claim of finished environment art.
+
+Historical shore-mask, Mangrove-palette, village-wear and all-map terrain-LOD
+checks pass without changing old goldens. Previously published Frontier/Alpine
+relief is projected only for historical fixtures and independently checked at
+the same current coordinates, alongside Redrock.
+
+Derived-output refresh is pending. Do not publish terrain with stale Badlands
+collision data or map pictures.
