@@ -7,12 +7,13 @@ not a zero-lag or release certificate.
 ## Current acceptance summary
 
 Latest follow-up (2026-09-10): see
-[covered deployment pacing and retained terrain programs](covered-deployment-pacing-20260910.md)
-for the current publication, native action results, rejected image-decoding
-experiment, and still-open cold-loading/Ready stalls. The dated checkpoints
-below are retained history, not a replacement for that newer evidence.
+[the opaque-loading paint boundary](opaque-loading-paint-boundary-20260910.md)
+and [foundation-decal pacing](foundation-decal-pacing-20260910.md) for current
+qualification evidence and still-open cold-loading/Ready stalls. Terrain-row
+qualification remains in progress. The dated checkpoints below are retained
+history, not a replacement for that newer evidence or a combined-release certificate.
 
-Latest UI checkpoint (2026-09-10): hit-card preparation now uses an exact-output
+Earlier UI checkpoint (2026-09-10): hit-card preparation uses an exact-output
 worker with cooperative fallback. Native seven-case pixel parity, focused tests,
 typecheck, public build and actual-controls day/night/Garage checks pass; see
 the final sections for receipts and the still-open frame gaps. A final review
@@ -32,7 +33,9 @@ Publication subsequently completed at `18e519d35`; production's exact-version
 day/night/Garage and audio-state smoke passed at04:37UTC. Its338ms cold-loading
 gap is retained below, not mislabeled as a smoothness pass.
 
-| Deliverable | State and evidence |
+The following table summarizes historical checkpoints, not current combined-release acceptance.
+
+| Deliverable | Historical state and evidence |
 | --- | --- |
 | Runtime improvements | Implemented: HUD no-op filtering/ammo caching, allocation reuse, cooperative grass and exact private vehicle staging, responsive covered transitions, audio startup ordering, Garage/context recovery, full-scene GPU warm, batched program cohorts, exact sky-horizon caching, bounded prop conversion. R10 gates competing Garage work and stages shader submission; R11 coalesces overlapping Garage drains; R14 moves fixed and ordinary mutable base painting to a bounded worker with exact main-side roughness correction. |
 | Type/build/static checks | R14 ten focused checks, full typecheck/public build, independent scoped review and metrics pass. The isolated checkpoint passed eight integration checks, fresh Doctor with zero findings, typecheck and build after rebasing onto main's test-runner update. A fresh unchanged-budget full-fleet check passes in 158.0 seconds (164 demand-loaded vehicles / 200 profiles); the initial timeout remains recorded with cause unproven. |
