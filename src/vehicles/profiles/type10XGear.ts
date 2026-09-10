@@ -18,6 +18,10 @@ export function buildType10XGear(P:TankBuilderPort,base:RunningGearConfig) {
   // standalone leaf's optional shaft. Release it immediately, before upload.
   roller.spindle.dispose();
   const cfg:RunningGearConfig={...base,trackTh:.09,botY:.02083,
+    // Recess only the sprocket engagement lanes. The rest of the closed
+    // carrier stays full-width underneath the actual return-roller crowns.
+    trackCarrierWidthStations:[{z:-2.40,widthM:.42},{z:-2.30,widthM:base.trackW}],
+    fitLoadedRun:true,
     idler:{...base.idler,trackR:base.idler.r+.004},
     sprocket:{...base.sprocket,trackR:base.sprocket.r+.004},
     roadWheelGeometry:stock(base.wheelR),

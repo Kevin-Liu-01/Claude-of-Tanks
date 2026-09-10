@@ -8,6 +8,8 @@
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
+import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
 import { continuousShoeFloor, shoeConformanceAlpha, assertShoeFloorFrame } from './continuousShoeFloor.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
@@ -407,6 +409,11 @@ export interface RunningGearConfig {
   /** Physical continuous shoe web, when narrower than its pin/grouser span.
    * Does not resize shoes, wheels, axles or course; defaults to full trackW. */
   trackCarrierWidthM?: number;
+  /** Fitted lateral engagement recesses; retain full support width elsewhere. */
+  trackCarrierWidthStations?: readonly TrackCarrierWidthStation[];
+  /** Fit finite lower spans to the live wheel rims while retaining welded
+   * carrier cross-sections. Opt-in; other families remain unchanged. */
+  fitLoadedRun?: boolean;
   topY: number;
   botY?: number;
   paintedEnds?: boolean;
@@ -1763,10 +1770,10 @@ function trackBandGeo(
   width: number,
   th: number,
   linkM: number,
+  widthStations?: readonly TrackCarrierWidthStation[],
 ): THREE.BufferGeometry {
   const n = points.length;
   const P: number[] = [], UV: number[] = [];
-  const hw = width / 2;
   // cumulative arc length
   const dist = [0];
   for (let i = 1; i <= n; i++) {
@@ -1796,18 +1803,20 @@ function trackBandGeo(
   };
   for (let i = 0; i < n; i++) {
     const f0 = frame(i), f1 = frame(i + 1);
+    const hw0=(widthStations?carrierWidthAt(f0.z,widthStations):width)/2;
+    const hw1=(widthStations?carrierWidthAt(f1.z,widthStations):width)/2;
     const v0 = dist[i] / linkM, v1 = dist[i + 1] / linkM;
     const oz0 = f0.z + f0.nz * th / 2, oy0 = f0.y + f0.ny * th / 2;
     const iz0 = f0.z - f0.nz * th / 2, iy0 = f0.y - f0.ny * th / 2;
     const oz1 = f1.z + f1.nz * th / 2, oy1 = f1.y + f1.ny * th / 2;
     const iz1 = f1.z - f1.nz * th / 2, iy1 = f1.y - f1.ny * th / 2;
     // outer face
-    quad([-hw, oy1, oz1], [hw, oy1, oz1], [hw, oy0, oz0], [-hw, oy0, oz0], 0, v1, 1, v0);
+    quad([-hw1, oy1, oz1], [hw1, oy1, oz1], [hw0, oy0, oz0], [-hw0, oy0, oz0], 0, v1, 1, v0);
     // inner face
-    quad([-hw, iy0, iz0], [hw, iy0, iz0], [hw, iy1, iz1], [-hw, iy1, iz1], 0, v0, 1, v1);
+    quad([-hw0, iy0, iz0], [hw0, iy0, iz0], [hw1, iy1, iz1], [-hw1, iy1, iz1], 0, v0, 1, v1);
     // sides
-    quad([hw, oy0, oz0], [hw, oy1, oz1], [hw, iy1, iz1], [hw, iy0, iz0], 0, v0, 0.08, v1);
-    quad([-hw, oy0, oz0], [-hw, iy0, iz0], [-hw, iy1, iz1], [-hw, oy1, oz1], 0, v0, 0.08, v1);
+    quad([hw0, oy0, oz0], [hw1, oy1, oz1], [hw1, iy1, iz1], [hw0, iy0, iz0], 0, v0, 0.08, v1);
+    quad([-hw0, oy0, oz0], [-hw0, iy0, iz0], [-hw1, iy1, iz1], [-hw1, oy1, oz1], 0, v0, 0.08, v1);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
@@ -3224,6 +3233,10 @@ function buildTrackCourse({
   // Add articulation vertices to the loaded run at every road-wheel station
   // and at the tension-fade shoulders.
   insertLoadedRunStations(pts, wheelZs, botY);
+  if(cfg.trackCarrierWidthStations) {
+    validateCarrierSections(cfg.trackCarrierWidthStations,cfg.trackW);
+    splitCarrierSections(pts,cfg.trackCarrierWidthStations);
+  }
 
   const { segments, loopLengthM } = trackCourseSegments(pts);
   const shoeCount = Math.max(24, Math.round(loopLengthM / (cfg.linkPitchM ?? 0.165)));
@@ -3529,6 +3542,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         trackW,
         trackTh,
         ...(cfg.trackCarrierWidthM!==undefined?{trackCarrierWidthM:cfg.trackCarrierWidthM}:{}),
+        ...(cfg.trackCarrierWidthStations?{trackCarrierWidthStations:cfg.trackCarrierWidthStations.map(row=>({...row}))}:{}),
+        ...(cfg.fitLoadedRun!==undefined?{fitLoadedRun:cfg.fitLoadedRun}:{}),
         botY,
         topY,
         loopPoints: pts.map((point) => [...point]),
@@ -4305,7 +4320,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // The course above is the sole geometry/animation source. Its texture
   // repeat is exactly four measured shoes, including profile-specific pitch.
   const carrierWidth=sourceTrackCarrierWidth(cfg);
-  const tg = trackBandGeo(pts, carrierWidth, trackTh, trackTextureRepeatM);
+  const tg = trackBandGeo(pts, carrierWidth, trackTh, trackTextureRepeatM,cfg.trackCarrierWidthStations);
   const buildRunningGearAssemblyStage12 = (): void => {
     disposables.push(tg);
   };
@@ -4968,6 +4983,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     0, 1, 1, 0, 1, 0,  // +X edge
     0, 0, 1, 0, 1, 1,  // -X edge
   ];
+  const loadedContact = cfg.fitLoadedRun ? loadedContactScratch(nP) : null;
   function buildBandInfluence(ws: WheelEntry[]) {
     const vertices: number[] = [];
     const wheelA: number[] = [];
@@ -5035,6 +5051,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       throw new TypeError('Track deformation requires a mutable position buffer');
     }
     const arr = attr.array;
+    if (loadedContact) arr.set(bandBasePos);
     const inf = bandInfluence[side];
     for (let k = 0; k < inf.vertices.length; k++) {
       const vi = inf.vertices[k];
@@ -5043,13 +5060,14 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         (b >= 0 ? (ws[b].voff || 0) * inf.weightB[k] : 0);
       arr[vi * 3 + 1] = bandBasePos[vi * 3 + 1] + off;
     }
+    if (loadedContact) fitLoadedTrackContact(arr,bandBasePos,ws,trackTh/2,loadedContact);
     attr.needsUpdate = true;
     // Terrain flex changes the lower run's face direction. Keeping the rest-
     // pose normals made the bent belt shade like a flat plank even though its
     // silhouette moved. These bands are tiny (tens of vertices), so updating
     // their normals on the existing gear cadence is inexpensive and makes
     // each tensioned span read as actual articulated steel.
-    recomputeTrackNormals(geo, inf.triangles);
+    recomputeTrackNormals(geo, loadedContact ? undefined : inf.triangles);
   }
 
   // Cheap phase lane used on frames where distant terrain conformance is

@@ -21,6 +21,32 @@ function closed(g) {
   assert.ok(volume>0,'Outward material, not inside-out geometry');
 }
 const options={radiusM:.33617,axialWidthM:.358099,guideGapM:.1,high:true};
+// Observe actual indexed-to-flat conversions, not a self-reported receipt.
+// Both caller-owned indexed stock and temporary flat copies must be released;
+// the three returned buffers remain live until the native owner disposes them.
+for(const high of [true,false]) {
+  const original=T.BufferGeometry.prototype.toNonIndexed,originalDispose=T.BufferGeometry.prototype.dispose;
+  const inputs=[],copies=[],disposed=new Map();
+  let stock;
+  T.BufferGeometry.prototype.toNonIndexed=function(...args) {
+    const row={geometry:this,disposed:0};this.addEventListener('dispose',()=>row.disposed++);inputs.push(row);
+    const geometry=original.apply(this,args),copy={geometry,disposed:0};
+    geometry.addEventListener('dispose',()=>copy.disposed++);copies.push(copy);return geometry;
+  };
+  T.BufferGeometry.prototype.dispose=function(...args) {
+    disposed.set(this,(disposed.get(this)??0)+1);return originalDispose.apply(this,args);
+  };
+  try {stock=pairedRunningGearStock({...options,high});}
+  finally {T.BufferGeometry.prototype.toNonIndexed=original;T.BufferGeometry.prototype.dispose=originalDispose;}
+  assert.equal(inputs.length,6,'Six actual turned primitives entered merging');
+  assert.equal(disposed.size,high?36:12,'Six indexed originals/copies plus HIGH fasteners are released');
+  for(const count of disposed.values())assert.equal(count,1,'No intermediate is released twice');
+  for(const row of [...inputs,...copies])assert.equal(row.disposed,1,'Every temporary buffer disposed exactly once');
+  for(const geometry of Object.values(stock).filter(Boolean)) {
+    assert.ok(!inputs.some(row=>row.geometry===geometry)&&!copies.some(row=>row.geometry===geometry));
+    geometry.dispose();
+  }
+}
 let builds=0,negativeControls=0;
 for(const high of [true,false])for(const steel of [true,false])for(const radiusM of [.33617,.303707]) {
   const stock=pairedRunningGearStock({...options,high,steel,radiusM});

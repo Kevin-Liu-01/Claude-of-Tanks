@@ -10,6 +10,13 @@ export interface PairedRunningGearStockOptions {
   steel?: boolean;
 }
 
+function mergeOwnedStock(parts: readonly BufferGeometry[]): BufferGeometry {
+  // mergeAll owns its non-indexed intermediates. Its indexed inputs remain
+  // caller-owned; these new leaf primitives never retain or share them.
+  try { return mergeAll(parts); }
+  finally { for (const part of parts) if (part.index) part.dispose(); }
+}
+
 /** Two closed turned wheel halves, a recessed hub and an actual guide channel.
  * No source buffers or independent static overlays. Local X is the spin axle;
  * returned fresh buffers transfer to the canonical running-gear owner. */
@@ -38,5 +45,5 @@ export function pairedRunningGearStock(options: PairedRunningGearStockOptions): 
     [r*.27,-w*.58],[r*.27,w*.58],[r*.14,w*.74],[0,w*.74],[0,-w*.74]],high?10:8));
   dark.push(turnedGearStock([[r*.27,-w*.637],[r*.32,-w*.637],
     [r*.32,w*.637],[r*.27,w*.637],[r*.27,-w*.637]],high?8:6));
-  return {disc:mergeAll(paint),dark:mergeAll(dark),tire:tire.length?mergeAll(tire):null};
+  return {disc:mergeOwnedStock(paint),dark:mergeOwnedStock(dark),tire:tire.length?mergeOwnedStock(tire):null};
 }
