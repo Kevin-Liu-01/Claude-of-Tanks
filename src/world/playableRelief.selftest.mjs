@@ -30,6 +30,20 @@ assert.equal(MAP_IDS.length-selected.size,28,'Exactly two playable-relief pilots
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
 
+// This remains the historical Frontier/Alpine acceptance oracle. Badlands'
+// later three-row pilot is tested against actual current config separately.
+const badlandsBase='d948cb5733ebb41ba471458a6b410e2bbb3568cc';
+const badlandsSource=execFileSync('git',['show',`${badlandsBase}:src/world/maps/badlands.ts`],{cwd:root,encoding:'utf8'});
+assert.equal(createHash('sha256').update(badlandsSource).digest('hex'),
+  'eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada','Exact full pre-Badlands-pilot module');
+const badlandsURL=new URL('./maps/badlands.ts?relief-historical',import.meta.url).href;
+ports.set(badlandsURL,stripTypeScriptTypes(badlandsSource));
+const historicalBadlands=(await import(badlandsURL)).default;
+const actualBadlands=getMapConfig('badlands');
+const serialize=value=>JSON.stringify(value,(_key,item)=>typeof item==='function'?item.toString():item);
+assert.equal(serialize({...actualBadlands,terrain:{...actualBadlands.terrain,landforms:actualBadlands.terrain.landforms.map(stripRelief)}}),
+  serialize(historicalBadlands),'Historical projection may remove only the new Badlands relief descriptors');
+
 // Literal predecessor map modules certify that no authoring fields besides the
 // selected forms' opt-in descriptors changed; functions retain their own source.
 for(const [id,file]of selected){
@@ -86,7 +100,7 @@ for(const kind of ['spur','glacial','terrace']){
 }
 
 for(const id of MAP_IDS){
-  const cfg=getMapConfig(id),layout=createLayout(cfg);
+  const cfg=id==='badlands'?historicalBadlands:getMapConfig(id),layout=createLayout(cfg);
   if(!selected.has(id))assert.ok(layout.terrain.landforms.every(f=>!f.relief&&!f._relief));
   else{
     assert.equal(layout.terrain.landforms.length,5);
@@ -125,4 +139,4 @@ for(const id of MAP_IDS){
     receipts.push({id,seed,changedSamples:changed,maxDelta,fastPoints,profileCount:layout.terrain.landforms.filter(f=>f._relief).length});
   }
 }
-console.log(JSON.stringify({passed:true,receipts,limits:'CPU shape/support/cache proof only. Actual objective access, native collision/props/vegetation, authoritative height/collision data and minimap regeneration remain required before publication.'},null,2));
+console.log(JSON.stringify({passed:true,receipts,historicalBadlandsBase:badlandsBase,limits:'CPU shape/support/cache proof only. Badlands uses its authenticated pre-pilot config here; badlandsRelief.selftest exercises its actual current config. Actual objective access, native collision/props/vegetation, authoritative height/collision data and minimap regeneration remain required before publication.'},null,2));

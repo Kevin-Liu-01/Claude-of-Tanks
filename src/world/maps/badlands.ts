@@ -22,9 +22,19 @@ export default {
     ] },
     village: { x0: -176, x1: 190, z0: -166, z1: 196, cx: 8, cz: 22, feather: 48, flatten: 0.76, relief: 0.16 },
     landforms: [
-      { kind: 'ridge', x: -272, z: 18, length: 330, width: 78, height: 8.4, yawDeg: 4 },
-      { kind: 'ridge', x: 276, z: 26, length: 320, width: 80, height: 8.2, yawDeg: -7 },
-      { kind: 'ridge', x: -42, z: 280, length: 250, width: 70, height: 6.8, yawDeg: 82 },
+      // Unequal shelf remnants, not a continuous canyon wall. The original
+      // rows still initialize road/pad support; only their final relief changes.
+      // Broad risers and southern side washes leave the northern service beats
+      // on the uncut shoulders. The northern remnant drains toward its west.
+      { kind: 'ridge', x: -272, z: 18, length: 330, width: 78, height: 8.4, yawDeg: 4,
+        relief: { kind: 'terrace', startX: -436, startZ: 7, endX: -108, endZ: 29,
+          leftWidthM: 112, rightWidthM: 136, bendM: -12, branchSide: -1, notchAtFraction: 0.40 } },
+      { kind: 'ridge', x: 276, z: 26, length: 320, width: 80, height: 8.2, yawDeg: -7,
+        relief: { kind: 'terrace', startX: 117, startZ: 46, endX: 435, endZ: 6,
+          leftWidthM: 120, rightWidthM: 144, bendM: 15, branchSide: -1, notchAtFraction: 0.45 } },
+      { kind: 'ridge', x: -42, z: 280, length: 250, width: 70, height: 6.8, yawDeg: 82,
+        relief: { kind: 'terrace', startX: -59, startZ: 156, endX: -25, endZ: 404,
+          leftWidthM: 98, rightWidthM: 122, bendM: -10, branchSide: 1, notchAtFraction: 0.40 } },
       { kind: 'knoll', x: 132, z: -244, rx: 88, rz: 58, height: 6.6, yawDeg: 20 },
       { kind: 'basin', x: -126, z: -218, rx: 104, rz: 66, height: -3.0, yawDeg: -21 },
     ],

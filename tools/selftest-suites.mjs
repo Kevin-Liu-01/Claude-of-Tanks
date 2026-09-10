@@ -855,6 +855,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonDetailAtlas.selftest.mjs',
     'src/world/copperQuarrySurface.selftest.mjs',
     'src/world/playableRelief.selftest.mjs',
+    'src/world/badlandsRelief.selftest.mjs',
     'src/world/mapRoadCoverage.selftest.mjs',
     'src/world/maps/environmentExpansion.selftest.mjs',
     'src/world/maps/authoredChannels.selftest.mjs',
