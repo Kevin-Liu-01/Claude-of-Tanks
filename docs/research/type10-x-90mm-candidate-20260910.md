@@ -182,3 +182,19 @@ live candidate is asserted unmodified. The actual current-candidate trace
 checks remain unchanged: **15,975 full-result controls pass**, with 2,084
 conservative bounds and seven exact fallbacks. The failed composed run is
 retained; a fresh integrated test/build tail is still required.
+
+That fresh tail on `06446f5f3` stopped before the corrected armor comparison:
+`fleetLazy.selftest.mjs` hit its unchanged 240-second child watchdog while
+competing with other full-fleet CPU checks. No loading assertion failed.
+The failed attempt is retained at `.qa-dev/type10-integrated-tail-Jd7aQu/`;
+after observing the timeout, the owning runner was terminated to stop its
+remaining children and release the queue. This is an interrupted failed
+attempt, not a successful fleet sweep or a complete npm lifecycle.
+
+The scheduler now runs that one timeout-sensitive CPU file exclusively under
+the runner-owned lease. It drains earlier CPU work, keeps the lease while the
+file runs, and yields the normal FIFO after a long exclusive file. Later CPU
+checks retain eight-worker concurrency. The fleet test's source, coverage,
+assertions and 240-second watchdog are unchanged. Scheduler controls cover
+both success and failure at two, four and eight workers. A new real complete
+run is required before any integrated-release claim.
