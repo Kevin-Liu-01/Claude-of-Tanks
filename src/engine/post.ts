@@ -1524,6 +1524,7 @@ export class LateFxPass extends Pass {
   readonly copyMaterial: THREE.ShaderMaterial;
   readonly copyQuad: FullScreenQuad;
   directColorSource: SceneAerialPass | null = null;
+  sceneMatrixSource: SceneAAPass | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -1596,6 +1597,7 @@ export class LateFxPass extends Pass {
     readBuffer: THREE.WebGLRenderTarget,
   ): void {
     const directColor = this.directColorSource?.consumeDirectColor(this.target, readBuffer) === true;
+    const reuseMatrices = this.sceneMatrixSource?.consumeMatrixFrame(renderer, this.scene, this.camera) === true;
     const softState = this.softState;
     if (!softState || !softState.isActive()) {
       this.needsSwap = false;
@@ -1637,12 +1639,17 @@ export class LateFxPass extends Pass {
       softState.uCameraFar.value = this.camera.far;
 
       const oldBackground = this.scene.background;
+      const oldMatrixWorldAutoUpdate = this.scene.matrixWorldAutoUpdate;
       this.scene.background = null;
       try {
         this.camera.layers.set(LATE_FX_LAYER);
         renderer.setRenderTarget(this.target);
+        // The source draw has already updated every layer this frame. Avoid a
+        // second full graph traversal, without freezing transforms next frame.
+        if (reuseMatrices) this.scene.matrixWorldAutoUpdate = false;
         renderer.render(this.scene, this.camera);
       } finally {
+        this.scene.matrixWorldAutoUpdate = oldMatrixWorldAutoUpdate;
         this.scene.background = oldBackground;
       }
 
@@ -1733,6 +1740,7 @@ export function createPost(
   const aerial = new SceneAerialPass(AerialShader, sceneTarget);
   sceneAA.directColorConsumer = aerial;
   lateFx.directColorSource = aerial;
+  lateFx.sceneMatrixSource = sceneAA;
   aerial.uniforms.tDepth.value = sceneDepth;
   composer.addPass(aerial);
 
@@ -2453,14 +2461,17 @@ export function createPost(
     // Only this complete frame transaction can bypass LateFX's input copy.
     // Individual warm/debug renders deliberately keep the original path.
     const passes = composer.passes;
-    const directColor = passes[0] === sceneAA && passes[1] === aerial
+    const canonicalPrefix = passes[0] === sceneAA && passes[1] === aerial
       && passes[2] === gtao && passes[3] === lateFx
-      && sceneAA.enabled && aerial.enabled && !gtao.enabled && lateFx.enabled
-      && lateFx.softState?.isActive();
+      && sceneAA.enabled && aerial.enabled && lateFx.enabled;
+    const directColor = canonicalPrefix && !gtao.enabled && lateFx.softState?.isActive();
+    if (canonicalPrefix) sceneAA.beginMatrixFrame(renderer);
+    else sceneAA.endMatrixFrame();
     aerial.beginDirectColorFrame(directColor ? lateTarget : null);
     try {
       composer.render(dt);
     } finally {
+      sceneAA.endMatrixFrame();
       aerial.endDirectColorFrame();
     }
   }
