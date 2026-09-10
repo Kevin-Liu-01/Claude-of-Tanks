@@ -12,14 +12,17 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 // equivalence. The production closure's narrow wiring is checked separately.
 const source = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 assert.match(source, /lateFx\.directColorSource = aerial/);
+assert.match(source, /lateFx\.sceneMatrixSource = sceneAA/);
 const frameStart = source.indexOf('function renderFrame(dt: number, frameWallDtSeconds = dt): void');
 const frameEnd = source.indexOf('// Live preset switching', frameStart);
 assert.ok(frameStart >= 0 && frameEnd > frameStart);
 const frameSource = source.slice(frameStart, frameEnd);
 assert.match(frameSource, /dynGovern\(adaptiveFrameSeconds\(dt, frameWallDtSeconds\)\)[\s\S]*passes\[0\] === sceneAA && passes\[1\] === aerial[\s\S]*passes\[2\] === gtao && passes\[3\] === lateFx/);
-assert.match(frameSource, /sceneAA\.enabled && aerial\.enabled && !gtao\.enabled && lateFx\.enabled[\s\S]*lateFx\.softState\?\.isActive\(\)/);
-assert.match(frameSource, /aerial\.beginDirectColorFrame\(directColor \? lateTarget : null\);\s*try \{\s*composer\.render\(dt\);\s*\} finally \{\s*aerial\.endDirectColorFrame\(\);/);
+assert.match(frameSource, /sceneAA\.enabled && aerial\.enabled && lateFx\.enabled[\s\S]*canonicalPrefix && !gtao\.enabled && lateFx\.softState\?\.isActive\(\)/);
+assert.match(frameSource, /if \(canonicalPrefix\) sceneAA\.beginMatrixFrame\(renderer\);\s*else sceneAA\.endMatrixFrame\(\);/);
+assert.match(frameSource, /aerial\.beginDirectColorFrame\(directColor \? lateTarget : null\);\s*try \{\s*composer\.render\(dt\);\s*\} finally \{\s*sceneAA\.endMatrixFrame\(\);\s*aerial\.endDirectColorFrame\(\);/);
 assert.equal(source.match(/beginDirectColorFrame\(/g)?.length, 1, 'warm and standalone paths cannot arm the handoff');
+assert.equal(source.match(/beginMatrixFrame\(/g)?.length, 1, 'warm and standalone paths cannot arm matrix reuse');
 
 function fixture(autoClear = true) {
   const scene = new THREE.Scene();
@@ -47,6 +50,8 @@ function fixture(autoClear = true) {
   let active = true;
   let failure = null;
   let afterAerial = null;
+  let afterWorld = null;
+  let observeSceneDraw = null;
   const renderer = {
     autoClear, autoClearColor: true, autoClearDepth: true, autoClearStencil: false,
     getPixelRatio: () => 1, getSize: v => v.set(320, 180),
@@ -68,7 +73,10 @@ function fixture(autoClear = true) {
     },
     render: (object, view) => {
       const isScene = object === scene;
+      // Mirror pinned WebGLRenderer: update every layer before filtering it.
+      if (isScene && scene.matrixWorldAutoUpdate) scene.updateMatrixWorld();
       const fx = isScene && current === lateTarget;
+      if (isScene) observeSceneDraw?.(fx);
       const kind = isScene ? (fx ? 'fx' : 'world') : object.material.name;
       const material = object.material;
       const input = material?.uniforms.tDiffuse?.value;
@@ -93,6 +101,7 @@ function fixture(autoClear = true) {
           assert.equal(camera.layers.mask, layerMask & ~(1 << LATE_FX_LAYER));
           lineage.set(sceneTarget.texture, `world-${++frame}`);
           lineage.set(sceneTarget.depthTexture, `depth-${frame}`);
+          afterWorld?.();
         }
       } else {
         assert.notEqual(input, current?.texture, 'no color attachment feedback');
@@ -121,17 +130,23 @@ function fixture(autoClear = true) {
   const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
   sceneAA.directColorConsumer = aerial;
   lateFx.directColorSource = aerial;
+  lateFx.sceneMatrixSource = sceneAA;
   const output = new ShaderPass({ ...CopyShader, name: 'OutputHandoffProbe' });
   const composer = new EffectComposer(renderer, ping);
   for (const pass of [sceneAA, aerial, ao, lateFx, output]) composer.addPass(pass);
   function render(direct = true) {
     const passes = composer.passes;
-    const canDirect = direct && passes[0] === sceneAA && passes[1] === aerial
+    const canonical = passes[0] === sceneAA && passes[1] === aerial
       && passes[2] === ao && passes[3] === lateFx
-      && sceneAA.enabled && aerial.enabled && !ao.enabled && lateFx.enabled
-      && lateFx.softState?.isActive();
+      && sceneAA.enabled && aerial.enabled && lateFx.enabled;
+    const canDirect = direct && canonical && !ao.enabled && lateFx.softState?.isActive();
+    if (canonical) sceneAA.beginMatrixFrame(renderer);
+    else sceneAA.endMatrixFrame();
     aerial.beginDirectColorFrame(canDirect ? lateTarget : null);
-    try { composer.render(1 / 60); } finally { aerial.endDirectColorFrame(); }
+    try { composer.render(1 / 60); } finally {
+      sceneAA.endMatrixFrame();
+      aerial.endDirectColorFrame();
+    }
   }
   function restored() {
     assert.equal(renderer.autoClear, autoClear);
@@ -140,6 +155,7 @@ function fixture(autoClear = true) {
     assert.equal(aerial.material.depthTest, true);
     assert.equal(aerial.material.depthWrite, true);
     assert.equal(aerial.consumeDirectColor(lateTarget, composer.readBuffer), false);
+    assert.equal(sceneAA.consumeMatrixFrame(renderer, scene, camera), false);
   }
   function result() {
     const hazed = aerial.enabled ? `haze(world-${frame})` : `world-${frame}`;
@@ -153,7 +169,88 @@ function fixture(autoClear = true) {
   return { scene, camera, sceneTarget, lateTarget, renderer, lineage, events, softState,
     sceneAA, aerial, ao, lateFx, output, composer, render, restored, checkOutput, copies,
     setActive: value => { active = value; }, setFailure: value => { failure = value; },
-    setAfterAerial: value => { afterAerial = value; } };
+    setAfterAerial: value => { afterAerial = value; },
+    setAfterWorld: value => { afterWorld = value; },
+    setSceneDrawObserver: value => { observeSceneDraw = value; } };
+}
+
+// Transform reuse is frame-local and independent of AO/color-copy eligibility.
+// Count actual graph traversals, including a moving child excluded by source layers.
+for (const aoEnabled of [false, true]) {
+  const f = fixture();
+  f.ao.enabled = aoEnabled;
+  const parent = new THREE.Group();
+  const fxChild = new THREE.Object3D();
+  fxChild.layers.set(LATE_FX_LAYER);
+  parent.add(fxChild);
+  f.scene.add(parent);
+  let traversals = 0;
+  const update = f.scene.updateMatrixWorld;
+  f.scene.updateMatrixWorld = function (...args) { traversals++; return update.apply(this, args); };
+  for (let i = 1; i <= 3; i++) {
+    parent.position.x = i * 3;
+    fxChild.position.y = i;
+    const draws = [];
+    f.setSceneDrawObserver(fx => {
+      assert.equal(fxChild.matrixWorld.elements[12], i * 3, 'fresh in both source and FX draws');
+      assert.equal(fxChild.matrixWorld.elements[13], i);
+      draws.push([fx, f.scene.matrixWorldAutoUpdate]);
+    });
+    f.render();
+    assert.deepEqual(draws, [[false, true], [true, false]], 'only the source traverses');
+    assert.equal(traversals, i);
+    assert.equal(fxChild.matrixWorld.elements[12], i * 3);
+    assert.equal(fxChild.matrixWorld.elements[13], i);
+    assert.equal(f.scene.matrixWorldAutoUpdate, true);
+    f.checkOutput();
+    f.restored();
+  }
+  // Direct/standalone composer calls retain ordinary updates, including new poses.
+  f.setSceneDrawObserver(null);
+  parent.position.x = 20;
+  f.composer.render(1 / 60);
+  assert.equal(traversals, 5);
+  assert.equal(fxChild.matrixWorld.elements[12], 20);
+  f.scene.matrixWorldAutoUpdate = false;
+  f.render();
+  assert.equal(traversals, 5);
+  assert.equal(f.scene.matrixWorldAutoUpdate, false, 'caller-owned disabled updates survive');
+}
+
+{
+  const f = fixture();
+  f.sceneAA.beginMatrixFrame(f.renderer);
+  f.setFailure('world');
+  assert.throws(() => f.sceneAA.render(f.renderer, f.composer.writeBuffer, f.composer.readBuffer), /owned world failure/);
+  assert.equal(f.sceneAA.consumeMatrixFrame(f.renderer, f.scene, f.camera), false,
+    'failed source draw cannot publish even before outer frame cleanup');
+}
+
+for (const mismatch of ['renderer', 'scene', 'camera', 'consumed', 'rearm', 'flag']) {
+  const f = fixture();
+  f.setAfterAerial(() => {
+    if (mismatch === 'rearm') { f.sceneAA.beginMatrixFrame(f.renderer); return; }
+    if (mismatch === 'flag') f.scene.matrixWorldAutoUpdate = false;
+    const accepted = f.sceneAA.consumeMatrixFrame(
+      mismatch === 'renderer' ? {} : f.renderer,
+      mismatch === 'scene' ? new THREE.Scene() : f.scene,
+      mismatch === 'camera' ? new THREE.PerspectiveCamera() : f.camera,
+    );
+    assert.equal(accepted, mismatch === 'consumed');
+    assert.equal(f.sceneAA.consumeMatrixFrame(f.renderer, f.scene, f.camera), false);
+    f.scene.matrixWorldAutoUpdate = true;
+  });
+  f.render();
+  f.restored();
+}
+
+// A nested/restarted transaction cannot publish completion into a different frame.
+{
+  const f = fixture();
+  f.setAfterWorld(() => f.sceneAA.beginMatrixFrame(f.renderer));
+  f.setAfterAerial(() => assert.equal(f.sceneAA.consumeMatrixFrame(f.renderer, f.scene, f.camera), false));
+  f.render();
+  f.restored();
 }
 
 // Repeated live/empty and AO toggles, terminal/offscreen output and both composer
@@ -332,6 +429,7 @@ for (const failure of ['world', 'AerialHandoffProbe', 'depth', 'fx', 'output-cop
   f.setFailure(failure);
   assert.throws(() => f.render(), /owned .* failure/);
   f.restored();
+  assert.equal(f.scene.matrixWorldAutoUpdate, true, `${failure} restores matrix update ownership`);
   f.setFailure(null);
   f.events.length = 0;
   f.render();

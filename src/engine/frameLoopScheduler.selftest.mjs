@@ -301,8 +301,8 @@ function createHarness(background = {}) {
 // Feed actual scheduler deliveries into the actual quality policy. A 60 Hz
 // deadline grid may catch up at 8.3 ms after a late 25 ms callback; p10 is not
 // permission for the governor to demand 120 Hz from this capped producer.
-function deliveredTicks(timestamps) {
-  const harness = createHarness();
+function deliveredTicks(timestamps, options = {}) {
+  const harness = createHarness(options);
   harness.scheduler.schedule();
   for (const timestamp of timestamps) {
     const id = harness.frames.keys().next().value;
@@ -337,6 +337,71 @@ assert.equal(presentationFrameBudgetMs(100), 34, 'Starvation cannot redefine a l
 const paced60 = cadenceEvidence(deliveredTicks(Array.from({ length: 720 }, (_, i) => i * 1000 / 120)));
 assert.ok(Math.abs(paced60.window.achievedFps - 60) < 0.01);
 assert.equal(new AdaptiveQualityPolicy(1).evaluate(paced60.window), 'none');
+
+// Offline timestamp counterfactual, not measured native gameplay improvement.
+// A 120 Hz callback 1.1 ms early misses the former 0.75 ms deadline tolerance,
+// creating a 25 -> 8.3 ms catch-up pair. The next absolute deadline must remain
+// on its original grid, including through many repeated jitter cycles.
+function previousToleranceTicks(timestamps) {
+  const interval = 1000 / 60;
+  const ticks = [];
+  let deadline = -Infinity;
+  for (const at of timestamps) {
+    if (at + 0.75 < deadline) continue;
+    if (!Number.isFinite(deadline)) deadline = at + interval;
+    else {
+      const late = at - deadline;
+      deadline += (late >= 0 ? Math.floor(late / interval) + 1 : 1) * interval;
+    }
+    ticks.push(at);
+  }
+  return ticks;
+}
+function shortLongPairs(ticks) {
+  let pairs = 0;
+  for (let index = 2; index < ticks.length; index++) {
+    const previous = ticks[index - 1] - ticks[index - 2];
+    const current = ticks[index] - ticks[index - 1];
+    if (previous > 22 && previous < 30 && current < 12) pairs++;
+  }
+  return pairs;
+}
+const earlyJitterTimestamps = Array.from({ length: 120 * 60 }, (_, index) =>
+  index * 1000 / 120 - (index % 4 === 2 ? 1.1 : 0));
+const previousTolerance = previousToleranceTicks(earlyJitterTimestamps);
+const boundedTolerance = deliveredTicks(earlyJitterTimestamps);
+assert.ok(shortLongPairs(previousTolerance) > 1700, 'negative control must reproduce repeated short/long pairs');
+assert.equal(shortLongPairs(boundedTolerance), 0, 'bounded early admission removes this injected jitter pattern');
+assert.equal(boundedTolerance.length, previousTolerance.length, 'smoother delivery does not buy extra ticks');
+assert.equal(boundedTolerance.length, 3600);
+assert.equal(new AdaptiveQualityPolicy(1).evaluate(cadenceEvidence(boundedTolerance).window), 'none');
+
+// Long perfect callback streams cover both integer and fractional refresh
+// ratios. Resetting each deadline from the accepted timestamp would drop
+// 90 Hz to 45 fps and 144 Hz to 48 fps; retain the absolute 60 Hz admission grid.
+for (const refreshHz of [30, 59.94, 60, 75, 90, 119.88, 120, 144, 165, 240]) {
+  const timestamps = Array.from({ length: Math.ceil(refreshHz * 120) }, (_, index) => index * 1000 / refreshHz);
+  const ticks = deliveredTicks(timestamps);
+  const expectedRate = Math.min(refreshHz, PRESENTATION_MAX_FRAME_RATE);
+  const rate = (ticks.length - 1) * 1000 / (ticks.at(-1) - ticks[0]);
+  assert.ok(Math.abs(rate - expectedRate) < 0.02, `${refreshHz} Hz must retain its expected capped admission rate: ${rate}`);
+  const callbacks = new Set(timestamps);
+  for (let index = 0; index < ticks.length; index++) {
+    assert.ok(callbacks.has(ticks[index]), 'admission cannot invent a callback or rewrite its timestamp');
+    assert.ok(ticks[index] + 1.5 + 1e-6 >= ticks[0] + index * 1000 / 60,
+      `${refreshHz} Hz must never admit beyond the original 60 Hz deadline budget`);
+    if (index > 0) assert.ok(ticks[index] > ticks[index - 1], 'one callback cannot tick twice');
+  }
+}
+
+// The 1.5 ms ceiling and 10%-of-interval bound are both active. A callback
+// outside either allowance must wait, without rebasing the following deadline.
+for (const [maximumFrameRate, earlyMs] of [[30, 1.6], [60, 1.6], [120, 0.9], [240, 0.5]]) {
+  const interval = 1000 / maximumFrameRate;
+  const ticks = deliveredTicks([0, interval - earlyMs, interval, interval * 2], { maximumFrameRate });
+  assert.deepEqual(ticks, [0, interval, interval * 2], `${maximumFrameRate} Hz keeps bounded early admission`);
+}
+
 const jittered = cadenceEvidence(deliveredTicks(Array.from({ length: 120 }, (_, i) =>
   [i * 1000 / 30, i * 1000 / 30 + 1000 / 120, i * 1000 / 30 + 25]).flat()));
 assert.ok(jittered.p10 < 8.5, 'Actual capped scheduler still produces short catch-up intervals');

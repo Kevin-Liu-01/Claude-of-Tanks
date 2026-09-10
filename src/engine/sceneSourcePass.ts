@@ -15,6 +15,12 @@ export class SceneAAPass extends RenderPass {
   readonly copyMaterial: THREE.ShaderMaterial;
   readonly copyQuad: FullScreenQuad;
   directColorConsumer: SceneAerialPass | null = null;
+  private matrixFrameOpen = false;
+  private matrixFrameReady = false;
+  private matrixFrameEpoch = 0;
+  private matrixFrameRenderer: THREE.WebGLRenderer | null = null;
+  private matrixFrameScene: THREE.Scene | null = null;
+  private matrixFrameCamera: THREE.Camera | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -40,7 +46,37 @@ export class SceneAAPass extends RenderPass {
   }
 
   setSize(width: number, height: number): void {
+    this.endMatrixFrame();
     this.sceneTarget.setSize(width, height);
+  }
+
+  /** Only the complete synchronous composer transaction may share transforms. */
+  beginMatrixFrame(renderer: THREE.WebGLRenderer): void {
+    this.matrixFrameEpoch++;
+    this.matrixFrameOpen = true;
+    this.matrixFrameReady = false;
+    this.matrixFrameRenderer = renderer;
+    this.matrixFrameScene = this.scene;
+    this.matrixFrameCamera = this.camera;
+  }
+
+  endMatrixFrame(): void {
+    this.matrixFrameEpoch++;
+    this.matrixFrameOpen = false;
+    this.matrixFrameReady = false;
+    this.matrixFrameRenderer = null;
+    this.matrixFrameScene = null;
+    this.matrixFrameCamera = null;
+  }
+
+  /** One consumer, same scene/camera, and never a previous or failed frame. */
+  consumeMatrixFrame(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera): boolean {
+    const ready = this.matrixFrameReady && renderer === this.matrixFrameRenderer
+      && scene === this.matrixFrameScene && camera === this.matrixFrameCamera
+      && scene === this.scene && camera === this.camera
+      && scene.matrixWorldAutoUpdate;
+    this.endMatrixFrame();
+    return ready;
   }
 
   setSamples(samples: number): void {
@@ -58,12 +94,20 @@ export class SceneAAPass extends RenderPass {
   ): void {
     const oldAutoClear = renderer.autoClear;
     const oldLayerMask = this.camera.layers.mask;
+    const matrixEpoch = this.matrixFrameEpoch;
+    const updatesMatrices = this.scene.matrixWorldAutoUpdate;
+    this.matrixFrameReady = false;
     renderer.autoClear = false;
     try {
       this.camera.layers.disable(LATE_FX_LAYER);
       renderer.setRenderTarget(this.sceneTarget);
       renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
       renderer.render(this.scene, this.camera);
+      // Three updates the entire graph before layer filtering, including FX.
+      // Aerial and GTAO do not mutate application transforms between draws.
+      this.matrixFrameReady = this.matrixFrameOpen && matrixEpoch === this.matrixFrameEpoch
+        && renderer === this.matrixFrameRenderer && this.scene === this.matrixFrameScene
+        && this.camera === this.matrixFrameCamera && updatesMatrices && this.scene.matrixWorldAutoUpdate;
       // WebGLRenderer resolves its multisampled target after the scene draw.
       // No composer buffer is a source until SceneAerialPass has written it.
       // Isolated warming/debugging can disable Aerial. Preserve the old

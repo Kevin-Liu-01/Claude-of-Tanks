@@ -12,7 +12,10 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // loads the game headless, measures load-to-__GAME_READY, enters
 // battle through the real player loading/warm-up path by default, simulates
 // combat (drive via synthetic keys + forceFire debug flag) for N seconds while
-// sampling rAF deltas, renderer.info, and JS heap. Prints a JSON report to stdout
+// sampling inter-submission rAF observations, renderer.info, and JS heap.
+// Browser callbacks without draw submissions remain separate diagnostics.
+// Neither observation acknowledges GPU completion or display presentation.
+// Prints a JSON report to stdout
 // (and --out file if given), and
 // appends a one-line summary to .qa-dev/reports/perf-trend.jsonl so local creep
 // (load-to-ready, texture MB, triangles) is visible as a series.
@@ -80,12 +83,15 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
   const D = window.__DEBUG;
   const R = D.renderer;
   const P = window.__PERF = {
+    protocol: 'perfprobe-submission-v3',
     deltas: [], times: [], calls: [], tris: [], points: [], lines: [],
     shadowMasks: [], heap: [], done: false, startedAt: null,
+    nativeCallbacks: { times: [], deltas: [], calls: [], skipped: 0 },
+    lastSubmissionAt: null, trailingNoSubmissionMs: null,
     windowMode: waitForControl ? 'early-control-release' : 'sustained',
     armedAt: performance.now(), timeOrigin: performance.timeOrigin,
   };
-  let last = -1;
+  let last = -1, lastCallback = -1;
   let heapIv;
   const profile = profileWindow ? window.__PERF_WINDOW_TIMING : null;
   const receipt = () => ({
@@ -120,6 +126,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
     if (now - P.startedAt > sampleMs) {
       clearInterval(heapIv);
       P.endedAt = now;
+      P.trailingNoSubmissionMs = now - (P.lastSubmissionAt ?? P.startedAt);
       profile?.end(now, pageMs);
       P.info = {
         geometries: R.info.memory.geometries, textures: R.info.memory.textures,
@@ -130,7 +137,17 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
       P.done = true;
       return;
     }
-    if (last >= 0) {
+    if (lastCallback >= 0) {
+      P.nativeCallbacks.deltas.push(now - lastCallback);
+      P.nativeCallbacks.times.push(now - P.startedAt);
+      P.nativeCallbacks.calls.push(R.info.render.calls);
+      if (!(R.info.render.calls > 0)) P.nativeCallbacks.skipped++;
+    }
+    // A high-refresh browser can deliver two callbacks per capped runtime
+    // frame. Only positive renderer submissions advance this interval anchor;
+    // skipped callbacks must remain inside the next inter-submission interval.
+    // The first callback anchors the window and discards pre-window counters.
+    if (last >= 0 && R.info.render.calls > 0) {
       P.deltas.push(now - last);
       P.times.push(now - P.startedAt);
       P.calls.push(R.info.render.calls);
@@ -138,13 +155,45 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
       P.points.push(R.info.render.points);
       P.lines.push(R.info.render.lines);
       P.shadowMasks.push(D.lighting.scheduledMask | 0);
+      last = now;
+      P.lastSubmissionAt = now;
     }
     R.info.reset();
-    last = now;
+    if (last < 0) last = now;
+    lastCallback = now;
     requestAnimationFrame(frame);
   }
   if (!waitForControl) start(performance.now());
   requestAnimationFrame(frame);
+}
+
+function inspectPerfSubmissionWindow(perf, { scene, sampleMs, frameMsP99Max }) {
+  // The uncompleted terminal interval cannot enter a completed-frame quantile.
+  // Conservatively require it to fit the EXISTING frame-time ceiling instead;
+  // never invent a render at the deadline or add a looser stall tolerance.
+  const terminalNoSubmissionLimitMs = frameMsP99Max;
+  const reasons = [];
+  if (scene !== 'battle') reasons.push('Dormant Garage submission cadence is not battle FPS certification');
+  const complete = perf.done === true && Number.isFinite(perf.startedAt)
+    && Number.isFinite(perf.endedAt) && perf.endedAt - perf.startedAt >= sampleMs;
+  if (!complete) reasons.push('Incomplete or invalid timed submission window');
+  if (perf.deltas.length < 2) reasons.push('Require at least two positive submission intervals');
+  if (perf.deltas.some(value => !Number.isFinite(value) || value <= 0)
+      || perf.calls.length !== perf.deltas.length
+      || perf.calls.some(value => !Number.isFinite(value) || value <= 0)) {
+    reasons.push('Invalid submission intervals or draw counters');
+  }
+  const terminalNoSubmissionMs = Number.isFinite(perf.lastSubmissionAt)
+    ? perf.endedAt - perf.lastSubmissionAt : null;
+  if (terminalNoSubmissionMs === null || !Number.isFinite(terminalNoSubmissionMs)
+      || terminalNoSubmissionMs < 0 || terminalNoSubmissionMs > terminalNoSubmissionLimitMs) {
+    reasons.push('Unobserved terminal submission interval exceeds the existing frame-time ceiling');
+  }
+  return {
+    protocol: 'perfprobe-submission-admission-v1', pass: reasons.length === 0, reasons,
+    scene, submissionIntervals: perf.deltas.length, terminalNoSubmissionMs,
+    terminalNoSubmissionLimitMs, terminalLimitSource: 'BUDGET.frameMsP99Max; conservative right-censored admission, not a completed-frame sample',
+  };
 }
 
 function perfSourceReceipt() {
@@ -731,6 +780,10 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // erase the actual workload which produced these frames.
   const perf = await page.evaluate(() => window.__PERF);
   sampledPerf = perf;
+  const submissionAdmission = inspectPerfSubmissionWindow(perf, {
+    scene: sceneMode, sampleMs: seconds * 1000, frameMsP99Max: BUDGET.frameMsP99Max,
+  });
+  if (!submissionAdmission.pass) failed = true;
   recordPerfRosterEdges(rosterProvenance, perf);
   if (rosterProvenance && !rosterProvenance.pass) failed = true;
   if (profileWindow) await finishWindowProfile();
@@ -1032,6 +1085,8 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   });
   if (dumpFile) {
     writeFileSync(resolve(dumpFile), JSON.stringify({
+      schemaVersion: 3,
+      protocol: perf.protocol,
       windowMode,
       production,
       distPath: production ? distPath : null,
@@ -1049,6 +1104,10 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       points: perf.points,
       lines: perf.lines,
       shadowMasks: perf.shadowMasks,
+      nativeCallbacks: perf.nativeCallbacks,
+      lastSubmissionAt: perf.lastSubmissionAt,
+      trailingNoSubmissionMs: perf.trailingNoSubmissionMs,
+      submissionAdmission,
       environment: { start: perf.environmentStart, end: perf.environmentEnd },
       rosterProvenance,
     }));
@@ -1056,7 +1115,9 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   }
   const deltas = perf.deltas.slice().sort((a, b) => a - b);
   const fpsList = perf.deltas.map((d) => 1000 / d).sort((a, b) => a - b);
-  const q = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(arr.length * p))];
+  // Empty submission windows keep explicit null JSON metrics and an admission
+  // failure, rather than throwing before their structured failure is written.
+  const q = (arr, p) => arr.length ? arr[Math.min(arr.length - 1, Math.floor(arr.length * p))] : NaN;
   const heap = perf.heap;
   const heapGrowthMBs = heap.length > 2
     ? ((heap[heap.length - 1] - heap[0]) / (heap.length - 1)) / (1024 * 1024)
@@ -1092,7 +1153,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   }).sort((a, b) => a.mask - b.mask);
 
   report = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     date: new Date().toISOString(),
     production,
     distPath: production ? distPath : null,
@@ -1107,7 +1168,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     },
     browser: { version: browserVersion, executable: puppeteer.executablePath(), args: launchArgs, pid: ownBrowserPid },
     acquisition: {
-      protocol: 'perfprobe-raf-v2',
+      protocol: perf.protocol,
       url,
       navigationAttempts,
       windowMode,
@@ -1120,6 +1181,13 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       preWindowForcedGC: heapPreGc?.forcedGC ?? false,
       drive: sceneMode === 'battle' ? 'hold W; alternating A/D steering; forceFire' : 'none',
       cameraInput: cameraInput ? CAMERA_INPUT_PROTOCOL : 'none',
+      frameMetric: 'RAF-observed positive renderer submissions; includes intervening skipped callbacks; not GPU/display duration',
+      firstIntervalAnchor: 'first in-window callback; preceding render counters discarded',
+      nativeCallbackCount: perf.nativeCallbacks.deltas.length,
+      skippedCallbackCount: perf.nativeCallbacks.skipped,
+      lastSubmissionAt: perf.lastSubmissionAt,
+      trailingNoSubmissionMs: perf.trailingNoSubmissionMs,
+      submissionAdmission,
     },
     environment: { start: perf.environmentStart, end: perf.environmentEnd },
     cameraInput: cameraInputReport,
@@ -1221,6 +1289,11 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   };
   // Budget evaluation (see BUDGET above) — machine-checkable pass/fail lines.
   const lines = {
+    submissionAdmission: {
+      limit: 'usable battle submission window; terminal interval <= existing frameMsP99Max',
+      actual: submissionAdmission.pass ? 'admitted' : submissionAdmission.reasons.join('; '),
+      pass: submissionAdmission.pass,
+    },
     fpsMedian: { limit: `>=${BUDGET.fpsMedianMin}`, actual: report.fps.median, pass: report.fps.median >= BUDGET.fpsMedianMin },
     fpsP5: { limit: `>=${BUDGET.fpsP5Min}`, actual: report.fps.p5, pass: report.fps.p5 >= BUDGET.fpsP5Min },
     frameMsP99: { limit: `<=${BUDGET.frameMsP99Max}`, actual: report.frameMs.p99, pass: report.frameMs.p99 <= BUDGET.frameMsP99Max },
@@ -1260,6 +1333,9 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   report.budget.certification = contended
     ? `REFUSED — machine contended (load1 ${report.machine.load1Start}->${report.machine.load1End}, mid-run max ${report.machine.load1Max}, foreign headless-GPU procs ${foreignHeadlessMax}, interactive-browser GPU cpu ${foreignGpuCpuMax}% (limit ${GPU_CONTENDER_CPU_LIMIT}), on ${CORES} cores, load limit ${CONTENTION_LOAD_LIMIT}); re-run quiet`
     : (report.budget.pass ? 'PASS' : 'FAIL');
+  if (!submissionAdmission.pass) {
+    report.budget.certification = `REFUSED — unusable submission window: ${submissionAdmission.reasons.join('; ')}; ${report.budget.certification}`;
+  }
   if (profileWindow) {
     report.budget.certification = `REFUSED — CPU-profile diagnostic overhead; ${report.budget.certification}`;
   }
@@ -1267,8 +1343,9 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} (mid-run max ${report.machine.load1Max}), foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores (load limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);
   }
   if (!report.budget.pass) {
-    const failed = Object.entries(lines).filter(([, l]) => l && l.pass === false).map(([k, l]) => `${k}=${l.actual} (want ${l.limit})`);
-    console.error(`[perf] BUDGET FAIL: ${failed.join(', ')}`);
+    failed = true;
+    const failedLines = Object.entries(lines).filter(([, l]) => l && l.pass === false).map(([k, l]) => `${k}=${l.actual} (want ${l.limit})`);
+    console.error(`[perf] BUDGET FAIL: ${failedLines.join(', ')}`);
   }
   // Ratchet warnings (frozen-gate creep visibility — see RATCHET above).
   report.ratchet = {
@@ -1295,6 +1372,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
         cameraInputStatus: report.cameraInput?.status ?? 'not-requested',
         buildIndexHash,
         acquisitionHash,
+        acquisitionProtocol: report.acquisition.protocol,
         rosterProvenance,
         // PERF r7: garage rows must never read as battle regressions
         ...(sceneMode !== 'battle' ? { scene: sceneMode } : {}),
@@ -1328,9 +1406,10 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     environmentEnd: window.__PERF?.environmentEnd,
   })));
   if ((rosterProvenance || profileWindow) && !report) report = {
-    schemaVersion: 2, date: new Date().toISOString(), production,
+    schemaVersion: 3, date: new Date().toISOString(), production,
     distPath: production ? distPath : null,
     buildIndexHash, acquisitionHash, source, windowMode, rosterProvenance,
+    acquisition: { protocol: 'perfprobe-submission-v3' },
     failure: err.message,
     budget: { pass: false, certification: 'REFUSED — incomplete acquisition; see failure and roster provenance' },
   };

@@ -122,12 +122,14 @@ export function createFrameLoopScheduler({
   const animationIntervalMs = Number.isFinite(maximumFrameRate) && maximumFrameRate > 0
     ? 1000 / Math.min(240, maximumFrameRate)
     : 0;
-  // Browser rAF timestamps can land fractionally before the nominal display
-  // boundary. This tolerance keeps a 59.94/60 Hz panel from being mistaken
-  // for a 30 Hz target while still rejecting the intermediate callback on a
-  // 120 Hz / ProMotion display.
+  // Browser rAF timestamps can land just before the nominal deadline. Admit
+  // bounded early jitter instead of missing that display slot and then
+  // catching up on the next one. Keep the absolute deadline grid below: a
+  // timestamp-relative reset would under-deliver on 75/90/144 Hz displays.
+  // At 60 Hz, 1.5 ms still rejects the intermediate 120 Hz callback; the
+  // proportional bound keeps other configured caps equally conservative.
   const animationToleranceMs = animationIntervalMs > 0
-    ? Math.min(0.75, animationIntervalMs * 0.08)
+    ? Math.min(1.5, animationIntervalMs * 0.1)
     : 0;
   const stats = {
     animationTicks: 0,

@@ -18,6 +18,27 @@ load, frame, network-presentation, and diagnostic contracts.
 These are architectural goals, not a promise that every device renders every
 scene at a fixed frame rate.
 
+### Presentation measurements
+
+Battle presentation currently admits at most 60 frames per second on an
+absolute deadline grid; the deterministic simulation remains 60 Hz. A bounded
+early-callback allowance (1.5 ms at this cap) avoids unnecessarily missing a
+display slot. It does not rebase the grid or increase the cap.
+
+`tools/perfprobe.mjs` acquisition `perfprobe-submission-v3` measures intervals
+between positive renderer-submission observations. Browser callbacks skipped by
+the presentation scheduler remain in separate `nativeCallbacks` arrays. The
+older `perfprobe-raf-v2` results counted those callbacks as frames and must not
+be compared with v3 as one FPS series. Neither protocol measures GPU completion
+or display scanout. The terminal unfinished interval is recorded explicitly;
+incomplete or invalid samples refuse certification, and any failed budget exits
+nonzero. Idle, event-driven Garage output is not a 60 FPS benchmark: use the
+Garage action/transition probes for responsiveness instead.
+
+The [matrix reuse and cadence follow-up](research/frame-matrix-reuse-20260910.md)
+records native pixel parity, measured battle intervals, unsuccessful acquisitions,
+and limitations without attributing untraced historical stalls to a guessed cause.
+
 The 2026-09-07 [urgent fleet construction/style pass](tank-generation/fleet-style-performance-priority.md)
 tracks the owner's report of slower tank selection and suspected excessive
 triangle counts in new X/Revolution and older Challenger builds. It requires
