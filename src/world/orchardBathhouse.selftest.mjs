@@ -417,6 +417,7 @@ const makePlacement = new Function(...Object.keys(dependencies), `return ${strip
   const rng = mulberry32(seed), detailUvRng = mulberry32(seed + 990);
   const buckets = Object.fromEntries(${JSON.stringify(names)}.map(name => [name, []]));
   const obstacles = [], colliders = [], buildingFeatures = [];
+  ${section('  const foundryDonors:', '\n')}
   const _mat4 = new THREE.Matrix4(), _quat = new THREE.Quaternion(), _posv = new THREE.Vector3();
   const _upAxis = new THREE.Vector3(0,1,0), _one = new THREE.Vector3(1,1,1);
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
