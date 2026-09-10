@@ -2130,7 +2130,9 @@ export function createGarageDressing(
     );
     abramsServiceFloorRoot.name = 'garage_abrams_welding_service_floor';
     abramsServiceFloorRoot.userData.floorAssetsMoveWithBay = true;
-    group.add(abramsServiceFloorRoot);
+    // Build the outline and stain off-scene. The complete Abrams bay owns its
+    // first visible attachment after the async vehicle transfer finishes, so
+    // the floor cannot flash at these raw authored coordinates and then jump.
     addBayOutline(abramsServiceFloorRoot, 15.3, 16.2, -2.03, 9.6, 7.4,
       'verdant_abrams_welding_bay_outline');
     for (const [sx, sz, ss] of [[17.2, -13.2, 3.2], [15.6, 15.8, 3.6], [21.3, -6.4, 2.0], [11.6, 19.2, 1.7], [-14.2, 19.8, 2.2], [3.4, -20.7, 1.9]]) {
