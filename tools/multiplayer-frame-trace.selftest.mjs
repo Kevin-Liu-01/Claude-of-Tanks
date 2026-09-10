@@ -25,6 +25,82 @@ assert.equal(report.baselinePageTimeMs, 500);
 assert.equal(report.captureEndPageTimeMs, 800);
 assert.equal(report.clockDriftMs, 0);
 assert.equal(report.diagnosticOverhead, true);
+
+const scriptEvents = [
+  ['EvaluateScript', 'script-evaluation'], ['v8.evaluateModule', 'script-evaluation'],
+  ['v8.compile', 'script-compilation'], ['v8.compileModule', 'script-compilation'],
+  ['RunMicrotasks', 'microtasks'], ['RunYieldContinuation', 'yield-continuation'],
+];
+for (const [name, kind] of scriptEvents) {
+  const scripts = createFrameTraceCollector();
+  scripts.add([marker, event(name, 1_001_000, 99), event(name, 1_002_000, 100),
+    event(name, 1_003_000, undefined, { ph: 'B' }),
+    event('PRIVATE_CHILD', 1_003_100, undefined, { ph: 'B' }),
+    event('', 1_003_200, undefined, { ph: 'E' }),
+    event('', 1_004_000, undefined, { ph: 'E' }), endMarker]);
+  const result = scripts.finish(500, false, 800);
+  assert.equal(result.complete, true, name);
+  assert.equal(result.subThresholdEvents, 1, `${name}: ordinary duration threshold remains unchanged`);
+  assert.deepEqual(result.rows, [
+    { kind, startOffsetMs: 2, durationMs: 0.1, thread: 'page-main' },
+    { kind, startOffsetMs: 3, durationMs: 1, thread: 'page-main' },
+  ], `${name}: complete and begin/end durations normalize without raw event data`);
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE|args|pid|tid|url/i);
+
+  const dropped = createFrameTraceCollector({ maxRows: 1 });
+  dropped.add([marker, event(name, 1_001_000, 1000), event(name, 1_002_000, 1000), endMarker]);
+  const lost = dropped.finish(500, false, 800);
+  assert.equal(lost.complete, false, `${name}: row loss remains fail-closed`);
+  assert.equal(lost.rowsDropped, 1);
+  assert.equal(lost.rows.length, 1);
+  assert.equal(lost.scriptDetail, 'selected-evaluation-compilation-microtask-continuation-events',
+    'configured detail never promises that every script event survived');
+
+  const open = createFrameTraceCollector();
+  open.add([marker, event(name, 1_001_000, undefined, { ph: 'B' }), endMarker]);
+  const unfinishedScript = open.finish(500, false, 800);
+  assert.equal(unfinishedScript.complete, false, `${name}: open selected script interval is incomplete`);
+  assert.equal(unfinishedScript.openDurationEvents, 1);
+  assert.deepEqual(unfinishedScript.openIntervals, [{ kind, startOffsetMs: 1, thread: 'page-main' }]);
+  assert.doesNotMatch(JSON.stringify(unfinishedScript), /PRIVATE|args|pid|tid|url/i);
+
+  for (const invalid of [event(name, NaN, 500), event(name, 1_001_000, -1),
+    event(name, 1_001_000, undefined), event(name, 1_001_000, 60_000_001),
+    event(name, 1_001_000, 500, { tid: 'PRIVATE_THREAD' })]) {
+    const malformedScript = createFrameTraceCollector();
+    malformedScript.add([marker, invalid, endMarker]);
+    const rejected = malformedScript.finish(500, false, 800);
+    assert.equal(rejected.complete, false, name);
+    assert.equal(rejected.malformed, 1);
+    assert.deepEqual(rejected.rows, []);
+    assert.doesNotMatch(JSON.stringify(rejected), /PRIVATE|args|pid|tid|url/i);
+  }
+}
+
+const nestedScripts = createFrameTraceCollector();
+nestedScripts.add([marker,
+  event('RunMicrotasks', 1_001_000, undefined, { ph: 'B' }),
+  event('EvaluateScript', 1_002_000, 6000),
+  event('v8.compileModule', 1_003_000, undefined, { ph: 'B' }),
+  event('', 1_005_000, undefined, { ph: 'E' }),
+  event('RunYieldContinuation', 1_006_000, 1000),
+  event('', 1_009_000, undefined, { ph: 'E' }),
+  event('V8.CompileModule', 1_010_000, 1000), event('V8.StackGuard', 1_011_000, 1000), endMarker]);
+const nestedScriptReport = nestedScripts.finish(500, false, 800);
+assert.equal(nestedScriptReport.complete, true);
+assert.deepEqual(nestedScriptReport.rows.map(row => [row.kind, row.startOffsetMs, row.durationMs]),
+  [['microtasks', 1, 8], ['script-evaluation', 2, 6], ['script-compilation', 3, 2],
+    ['yield-continuation', 6, 1]], 'inclusive nested intervals survive; no broad V8-name matching');
+assert.equal(nestedScriptReport.durationMeaning,
+  'Inclusive wall time; union overlapping page-main intervals within the sample, not additive or leaf CPU time; other labels may combine threads');
+assert.equal(nestedScriptReport.scriptDetail, 'selected-evaluation-compilation-microtask-continuation-events');
+assert.equal(nestedScriptReport.rows.reduce((sum, row) => sum + row.durationMs, 0), 17,
+  'nested fixture has 17 ms of additive durations but only 8 ms of covered wall time');
+assert.equal(Math.max(...nestedScriptReport.rows.map(row => row.startOffsetMs + row.durationMs)) -
+  Math.min(...nestedScriptReport.rows.map(row => row.startOffsetMs)), 8,
+  'these fully nested same-thread intervals occupy one 8 ms union, not 17 ms of CPU');
+assert.doesNotMatch(JSON.stringify(nestedScriptReport), /PRIVATE|args|pid|tid|url/i);
+
 const shortEvents = createFrameTraceCollector();
 shortEvents.add([marker, event('RunTask', 1_001_000, 90),
   event('MinorGC', 1_002_000, 90, { cat: 'devtools.timeline,v8' }),
@@ -136,8 +212,10 @@ assert.equal(start.transferMode, 'ReportEvents');
 assert.equal(start.traceConfig.traceBufferSizeInKb, 32768);
 assert.equal(start.traceConfig.recordMode, 'recordUntilFull');
 assert.deepEqual(start.traceConfig.includedCategories,
-  ['devtools.timeline', 'blink.user_timing', 'toplevel'],
-  'top-level GC pauses do not require verbose V8 internal phase collection');
+  ['devtools.timeline', 'blink.user_timing', 'toplevel', 'v8.execute'],
+  'only microtask execution adds a category; no verbose GPU, GC or compilation phases');
+assert.deepEqual(start.traceConfig.excludedCategories, ['*']);
+assert.equal(start.traceConfig.enableArgumentFilter, true);
 assert.equal(live.gcDetail, 'top-level-pause-events');
 assert.equal(limited.finish(100, false).gcDetail, 'top-level-pause-events',
   'detail describes the configured evidence scope, not completeness');
