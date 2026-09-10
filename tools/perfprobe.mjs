@@ -7,7 +7,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //        [--tier desktop|mobile] [--mobile-preset mobile-low|mobile|mobile-high]
 //        [--fps-target 60|120] [--msaa 0|2|4] [--entry player|sync]
 //        [--production] [--dist=/path/to/existing/build] [--early-window] [--native-cadence]
-//        [--camera-input]
+//        [--camera-input] [--profile-window --out=/absolute/report.json]
 // Starts Vite (or previews an EXISTING dist with --production; never builds),
 // loads the game headless, measures load-to-__GAME_READY, enters
 // battle through the real player loading/warm-up path by default, simulates
@@ -28,6 +28,8 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // this requests ordinary cadence, not proof of a physical display's refresh.
 // --camera-input adds trusted horizontal mouse pulses during the same timed
 // battle and reports input-to-camera/RAF observations, never display latency.
+// --profile-window adds a raw CPU profile around the same gameplay sample.
+// Diagnostic only: unchanged budgets are reported, never speed certification.
 
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
@@ -38,6 +40,7 @@ import os from 'node:os';
 import { execSync, execFileSync } from 'node:child_process';
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 import { CAMERA_INPUT_PROTOCOL, runCameraInputWindow } from './perfprobe-camera-input.mjs';
+import { startPerfWindowProfile, installPerfWindowTiming } from './perfprobe-profile-window.mjs';
 import { REFERENCE_MIXED_ROSTER, createPerfRosterRequest, inspectPerfRosterEligibility,
   recordPerfRosterCheckpoint, recordPerfRosterEdges, preservePerfRosterFailure, requirePerfRoster } from './perfprobe-roster.mjs';
 
@@ -73,7 +76,7 @@ function perfBrowserArgs(nativeCadence) {
   ];
 }
 
-function installPerfSampler({ sampleMs, waitForControl }) {
+function installPerfSampler({ sampleMs, waitForControl, profileWindow = false }) {
   const D = window.__DEBUG;
   const R = D.renderer;
   const P = window.__PERF = {
@@ -84,14 +87,16 @@ function installPerfSampler({ sampleMs, waitForControl }) {
   };
   let last = -1;
   let heapIv;
+  const profile = profileWindow ? window.__PERF_WINDOW_TIMING : null;
   const receipt = () => ({
     ...window.__PERF_READ_ENVIRONMENT(),
     phase: D.game.phase, preBattleS: D.game.preBattleS, timeS: D.game.timeS,
     playerSpecId: D.game.player?.specId ?? null,
     roster: D.game.tanks.map(entity => ({ id: entity.id, specId: entity.specId, team: entity.team })),
   });
-  function start(now) {
+  function start(now, pageMs) {
     P.startedAt = now;
+    profile?.start(now, pageMs ?? performance.now());
     P.environmentStart = receipt();
     // Manual reset counts all passes between RAF samples, as in legacy mode.
     R.info.autoReset = false;
@@ -101,6 +106,7 @@ function installPerfSampler({ sampleMs, waitForControl }) {
     }, 1000);
   }
   function frame(now) {
+    const pageMs = profile ? performance.now() : null;
     if (P.startedAt === null) {
       if (D.game.phase !== 'battle' || !(D.game.preBattleS <= 0)) {
         requestAnimationFrame(frame);
@@ -108,11 +114,13 @@ function installPerfSampler({ sampleMs, waitForControl }) {
       }
       // This RAF observes the runtime-owned countdown edge; no CDP polling
       // round trip, settling, or collection can postpone opening the window.
-      start(now);
+      start(now, pageMs);
     }
+    profile?.frame(now, pageMs);
     if (now - P.startedAt > sampleMs) {
       clearInterval(heapIv);
       P.endedAt = now;
+      profile?.end(now, pageMs);
       P.info = {
         geometries: R.info.memory.geometries, textures: R.info.memory.textures,
         programs: R.info.programs.length,
@@ -208,6 +216,10 @@ const width = parseInt(opt('width', '1920'), 10);
 const height = parseInt(opt('height', '1080'), 10);
 const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina default
 const outFile = opt('out', '');
+const profileWindow = args.includes('--profile-window');
+if (profileWindow && (!outFile || !Number.isFinite(seconds) || seconds <= 0 || seconds > 120)) {
+  throw new Error('--profile-window requires --out and a positive --seconds <=120; no sample truncation');
+}
 const noTrend = args.includes('--no-trend'); // skip the perf-trend.jsonl append
 // A/B tooling: --preset forces a quality tier (writes localStorage before
 // load, exactly what the settings UI persists); --dump writes the raw
@@ -281,6 +293,8 @@ const acquisitionHash = sha256([
   readFileSync(new URL('./phase-environment-receipt.mjs', import.meta.url)),
   readFileSync(new URL('./perfprobe-camera-input.mjs', import.meta.url)),
   readFileSync(new URL('./perfprobe-roster.mjs', import.meta.url)),
+  readFileSync(new URL('./perfprobe-profile-window.mjs', import.meta.url)),
+  readFileSync(new URL('./garage-action-timing.mjs', import.meta.url)),
 ].join('\n'));
 const source = perfSourceReceipt();
 
@@ -442,6 +456,37 @@ let cameraJob;
 let failed = false;
 let report = null;
 let rosterProvenance = null;
+let windowProfile = null;
+let windowProfileError = null;
+let windowTiming = null;
+let sampledPerf = null;
+let profileFinished = false;
+async function beginWindowProfile() {
+  await page.evaluate(installPerfWindowTiming);
+  windowProfile = await startPerfWindowProfile(page, {
+    timeoutMs: (seconds + (earlyWindow ? 180 : 30)) * 1000,
+    writeProfile: async profile => {
+      const path = resolve(`${outFile}.cpuprofile`);
+      const bytes = JSON.stringify(profile);
+      writeFileSync(path, `${bytes}\n`, { flag: 'wx' });
+      return { path, sha256: sha256(`${bytes}\n`), bytes: Buffer.byteLength(`${bytes}\n`) };
+    },
+  });
+}
+async function finishWindowProfile(failure = null) {
+  if (!windowProfile || profileFinished) return;
+  profileFinished = true;
+  try { windowTiming = await windowProfile.readPage(() => window.__PERF_WINDOW_TIMING?.finish()); }
+  catch (error) { windowProfileError ??= String(error); }
+  const receipt = await windowProfile.stop(sampledPerf ? {
+    startedAt: sampledPerf.startedAt, endedAt: sampledPerf.endedAt, timeOrigin: sampledPerf.timeOrigin,
+    done: sampledPerf.done, environmentStart: sampledPerf.environmentStart, environmentEnd: sampledPerf.environmentEnd,
+  } : null, failure ?? windowProfileError);
+  if (receipt.status !== 'complete') {
+    failed = true;
+    windowProfileError ??= receipt.error ?? 'Gameplay profile cleanup failed';
+  }
+}
 try {
 // hmr:false (content r4, same fix as tools/screenshot.mjs): concurrent
 // sessions editing src/ mid-probe trigger a vite full reload that destroys
@@ -533,7 +578,10 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     if (forcedMsaa !== null) {
       await page.evaluate(samples => window.__DEBUG.post.sceneAA.setSamples(samples), forcedMsaa);
     }
-    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true });
+    // Starting before entry includes every early control frame without adding
+    // a profiler/IPC wait at control release. Raw lead-in is labeled separately.
+    if (profileWindow) await beginWindowProfile();
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow });
   }
 
   if (sceneMode === 'battle') {
@@ -665,7 +713,8 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
 
   // In-page sampler: rAF deltas + per-frame renderer.info + heap once/second.
   if (!earlyWindow) {
-    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false });
+    if (profileWindow) await beginWindowProfile();
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow });
   }
 
   // Opt-in observation starts only AFTER the timed sampler is armed/running.
@@ -681,8 +730,10 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // subsequent keyboard, heap, GPU inventory or diagnostic failure must not
   // erase the actual workload which produced these frames.
   const perf = await page.evaluate(() => window.__PERF);
+  sampledPerf = perf;
   recordPerfRosterEdges(rosterProvenance, perf);
   if (rosterProvenance && !rosterProvenance.pass) failed = true;
+  if (profileWindow) await finishWindowProfile();
   if (sceneMode === 'battle') await page.keyboard.up('KeyW');
   await steerTimer;
   const cameraInputReport = cameraJob ? await cameraJob : null;
@@ -1046,6 +1097,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     production,
     distPath: production ? distPath : null,
     windowMode,
+    measurementMode: profileWindow ? 'cpu-profile-attribution-only' : 'unprofiled-performance',
     cadence: nativeCadence ? 'native-requested' : 'unlocked-throughputput',
     buildIndexHash,
     acquisitionHash,
@@ -1208,6 +1260,9 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   report.budget.certification = contended
     ? `REFUSED — machine contended (load1 ${report.machine.load1Start}->${report.machine.load1End}, mid-run max ${report.machine.load1Max}, foreign headless-GPU procs ${foreignHeadlessMax}, interactive-browser GPU cpu ${foreignGpuCpuMax}% (limit ${GPU_CONTENDER_CPU_LIMIT}), on ${CORES} cores, load limit ${CONTENTION_LOAD_LIMIT}); re-run quiet`
     : (report.budget.pass ? 'PASS' : 'FAIL');
+  if (profileWindow) {
+    report.budget.certification = `REFUSED — CPU-profile diagnostic overhead; ${report.budget.certification}`;
+  }
   if (contended) {
     console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} (mid-run max ${report.machine.load1Max}), foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores (load limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);
   }
@@ -1225,7 +1280,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // Local trend line: the load-to-ready and
   // texture-footprint regressions crept in ~15% per round without tripping any
   // gate — a series makes the creep visible at review time, not at cert time.
-  if (!noTrend) {
+  if (!noTrend && !profileWindow) {
     try {
       mkdirSync(resolve('.qa-dev/reports'), { recursive: true });
       appendFileSync(resolve('.qa-dev/reports/perf-trend.jsonl'), `${JSON.stringify({
@@ -1266,12 +1321,13 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   }
 } catch (err) {
   failed = true;
+  if (profileWindow) windowProfileError ??= String(err);
   console.error(`[perf] FAILED: ${err.message}`);
   await preservePerfRosterFailure(rosterProvenance, () => page.evaluate(() => ({
     environmentStart: window.__PERF?.environmentStart,
     environmentEnd: window.__PERF?.environmentEnd,
   })));
-  if (rosterProvenance && !report) report = {
+  if ((rosterProvenance || profileWindow) && !report) report = {
     schemaVersion: 2, date: new Date().toISOString(), production,
     distPath: production ? distPath : null,
     buildIndexHash, acquisitionHash, source, windowMode, rosterProvenance,
@@ -1280,6 +1336,14 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   };
 } finally {
   cameraAbort?.abort();
+  if (profileWindow) {
+    try {
+      if (windowProfile && !profileFinished) {
+        sampledPerf ??= await windowProfile.readPage(() => window.__PERF).catch(() => null);
+      }
+      await finishWindowProfile(windowProfileError ?? (sampledPerf?.done ? null : 'Incomplete gameplay sample'));
+    } catch (error) { failed = true; windowProfileError ??= String(error); }
+  }
   clearInterval(loadSampler);
   clearInterval(foreignSampler);
   clearInterval(lockRefresher);
@@ -1296,6 +1360,12 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
 }
 
 if (report) {
+  if (profileWindow) {
+    report.measurementMode = 'cpu-profile-attribution-only';
+    report.profileWindow = { requested: true, ...windowProfile?.receipt, error: windowProfileError,
+      timing: windowTiming, diagnosticOverhead: true, speedCertification: false,
+      envelope: earlyWindow ? 'before entry through sample-edge capture; use exact gameplay edges' : 'before sampler arm through sample-edge capture' };
+  }
   const json = JSON.stringify(report, null, 2);
   console.log(json);
   if (outFile) writeFileSync(resolve(outFile), json);
