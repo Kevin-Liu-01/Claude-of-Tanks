@@ -2,6 +2,7 @@
 // Tooling only; never builds or boots the game. See report.caveats before using timings.
 // node tools/sourced-image-composition-probe.mjs --out=/absolute/new-directory
 //   --dependency-root=/absolute/existing-install [--pairs=2] [--reuse-delay-ms=1000]
+//   [--mode=decode|worker] (worker: six source cases plus three optional-image fixtures)
 // Native runs require ordinary capture FIFO admission. No discarded warmups.
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -14,6 +15,8 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { createCaptureLock } from './capture-lock.mjs';
 import { SOURCE_COMPOSITION_PROTOCOL, urbanCompositionCases, compositionPlan,
   compareRgba, validateCompositionTrial, measureSourceComposition } from './sourced-image-composition.mjs';
+import { SOURCE_WORKER_PROTOCOL, extractWorkerComposer, validateWorkerReply } from './sourced-image-worker.mjs';
+import { workerCompositionCases, validateWorkerTrial } from './sourced-image-worker-browser.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = '4b321885c676877b83f9dd6725bcef164cab8f29';
@@ -22,17 +25,20 @@ const git = (...args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8'
 
 export function parseCompositionOptions(args) {
   const value = (name, fallback = '') => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-  assert.ok(args.every(arg => /^--(out|dependency-root|pairs|reuse-delay-ms|timeout-ms)=/.test(arg)), 'Unknown option');
+  assert.ok(args.every(arg => /^--(out|dependency-root|pairs|reuse-delay-ms|timeout-ms|mode)=/.test(arg)), 'Unknown option');
   assert.equal(new Set(args.map(arg => arg.split('=')[0])).size, args.length, 'Duplicate option');
   const out = value('out'), dependencyRoot = value('dependency-root');
   assert.ok(isAbsolute(out) && isAbsolute(dependencyRoot), 'Absolute --out and --dependency-root required');
   assert.ok(relative(ROOT, out).startsWith('../'), 'Output must be outside the source worktree');
   const pairs = Number(value('pairs', '2')), reuseDelayMs = Number(value('reuse-delay-ms', '1000'));
-  const timeoutMs = Number(value('timeout-ms', '180000'));
+  const mode = value('mode', 'decode');
+  assert.ok(['decode', 'worker'].includes(mode), 'Unknown comparison mode');
+  const timeoutMs = Number(value('timeout-ms', mode === 'worker' ? '300000' : '180000'));
   compositionPlan([], pairs);
   assert.ok(Number.isInteger(reuseDelayMs) && reuseDelayMs >= 100 && reuseDelayMs <= 5000);
   assert.ok(Number.isInteger(timeoutMs) && timeoutMs >= 10000 && timeoutMs <= 600000);
-  return { out, dependencyRoot, pairs, reuseDelayMs, timeoutMs, imageTimeoutMs: 10000, trialTimeoutMs: 30000 };
+  return { out, dependencyRoot, pairs, reuseDelayMs, timeoutMs, mode,
+    imageTimeoutMs: 10000, workerTimeoutMs: 10000, trialTimeoutMs: 30000 };
 }
 
 export async function bounded(operation, ms, label) {
@@ -44,7 +50,8 @@ export async function bounded(operation, ms, label) {
 
 async function snapshot() {
   const paths = ['src/world/sourcedTextures.ts', 'src/engine/quality.ts', 'package.json', 'package-lock.json',
-    'tools/sourced-image-composition-probe.mjs', 'tools/sourced-image-composition.mjs', 'tools/capture-lock.mjs'];
+    'tools/sourced-image-composition-probe.mjs', 'tools/sourced-image-composition.mjs', 'tools/capture-lock.mjs',
+    'tools/sourced-image-worker.mjs', 'tools/sourced-image-worker-browser.mjs'];
   return { revision: git('rev-parse', 'HEAD'), sourceTree: git('rev-parse', 'HEAD:src'),
     base: BASE, runtimeDiff: git('diff', '--name-only', BASE, '--', 'src', 'package.json', 'package-lock.json'),
     dirtyPaths: git('status', '--short').split('\n').filter(Boolean),
@@ -85,12 +92,13 @@ async function compareTrials(settings, trials) {
     assert.equal(hash(bytesA), a.sha256); assert.equal(hash(bytesB), b.sha256);
     comparisons.push({ ...identity, ...compareRgba(bytesA, bytesB) });
   };
-  for (const before of trials.filter(row => row.policy === 'onload')) {
-    const after = trials.find(row => row.round === before.round && row.caseId === before.caseId && row.policy === 'decode');
+  const policies = settings.mode === 'worker' ? ['main', 'worker'] : ['onload', 'decode'];
+  for (const before of trials.filter(row => row.policy === policies[0])) {
+    const after = trials.find(row => row.round === before.round && row.caseId === before.caseId && row.policy === policies[1]);
     assert.ok(after && before.status === 'complete' && after.status === 'complete', 'Incomplete A/B pair');
     for (const measure of before.measurements) for (const output of measure.outputs) {
       const counterpart = after.measurements.find(row => row.stage === measure.stage)?.outputs.find(row => row.role === output.role);
-      await compare(output, counterpart, { kind: 'onload-vs-decode', round: before.round,
+      await compare(output, counterpart, { kind: policies.join('-vs-'), round: before.round,
         caseId: before.caseId, stage: measure.stage, role: output.role });
     }
   }
@@ -123,21 +131,32 @@ export async function closeOwnedBrowser(browser, errors, { closeMs = 5000, exitM
   return childExited(child);
 }
 
-async function runTrial(browser, url, input, plan, settings, report) {
+async function stopWorkerAcquisition(page) {
+  if (page) await bounded(() => page.evaluate(() => window.__STOP_SOURCE_COMPOSITION?.()), 1500, 'Worker acquisition stop');
+}
+
+async function runTrial(browser, url, input, plan, settings, report, workerSource, workerOwner) {
   let context, page;
   const errors = [];
   let row = { ...plan, status: 'failed' };
   try {
     context = await bounded(() => browser.createBrowserContext(), 5000, 'Fresh context');
     page = await bounded(() => context.newPage(), 5000, 'Fresh page');
+    if (settings.mode === 'worker') workerOwner.page = page;
     await page.setViewport({ width: 640, height: 480, deviceScaleFactor: 1 });
     await page.setCacheEnabled(false);
     page.on('pageerror', error => errors.push(String(error)));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     await page.goto(`${url}/__sourced-image-probe?tier=desktop`, { waitUntil: 'load', timeout: 10000 });
-    row = { ...plan, ...await bounded(() => page.evaluate(measureSourceComposition,
-      { input, policy: plan.policy, reuseDelayMs: settings.reuseDelayMs, imageTimeoutMs: settings.imageTimeoutMs }),
-    settings.trialTimeoutMs, 'Composition trial') };
+    const parameters = { input, policy: plan.policy, reuseDelayMs: settings.reuseDelayMs,
+      imageTimeoutMs: settings.imageTimeoutMs, workerTimeoutMs: settings.workerTimeoutMs };
+    const execute = settings.mode === 'worker'
+      ? () => page.evaluate(async args => {
+        const { measureWorkerComparison } = await import('/tools/sourced-image-worker-browser.mjs');
+        return measureWorkerComparison(args);
+      }, { ...parameters, workerSource, validateReplySource: validateWorkerReply.toString() })
+      : () => page.evaluate(measureSourceComposition, parameters);
+    row = { ...plan, ...await bounded(execute, settings.trialTimeoutMs, 'Composition trial') };
     // GPU identity and output retention are strictly outside both timed phases.
     row.graphics = await bounded(() => nativeGraphics(page), 5000, 'Graphics receipt');
   } catch (error) {
@@ -147,6 +166,10 @@ async function runTrial(browser, url, input, plan, settings, report) {
     }
     row.status = 'failed'; row.error = String(error);
   } finally {
+    if (settings.mode === 'worker') {
+      await stopWorkerAcquisition(page).catch(error => report.cleanupErrors.push(String(error)));
+      if (workerOwner.page === page) workerOwner.page = null;
+    }
     // A late unresolved context creation is owned by whole-browser teardown.
     if (!context) row.cleanupFailed = true;
     if (context) await bounded(() => context.close(), 5000, 'Context close').catch(error => {
@@ -163,16 +186,21 @@ export async function runCompositionProbe(args) {
   assert.equal(before.sourceTree, git('rev-parse', `${BASE}:src`), 'This experiment requires the exact approved source tree');
   assert.equal(before.runtimeDiff, '', 'Approved source/dependency manifests must not have working-tree changes');
   const source = await readFile(join(ROOT, 'src/world/sourcedTextures.ts'), 'utf8');
-  const cases = await urbanCompositionCases(source), plan = compositionPlan(cases, settings.pairs);
+  const originalCases = await urbanCompositionCases(source);
+  const cases = settings.mode === 'worker' ? workerCompositionCases(originalCases) : originalCases;
+  const plan = compositionPlan(cases, settings.pairs).map(item => settings.mode === 'worker'
+    ? { ...item, policy: item.policy === 'onload' ? 'main' : 'worker' } : item);
+  const workerSource = settings.mode === 'worker' ? extractWorkerComposer(source) : null;
   const assets = new Map();
-  for (const url of new Set(cases.flatMap(row => Object.values(row.images)))) {
+  for (const url of new Set(cases.flatMap(row => Object.values(row.images).filter(Boolean)))) {
     const bytes = await readFile(join(ROOT, 'public', url.slice(1)));
     const approved = execFileSync('git', ['show', `${BASE}:public${url}`], { cwd: ROOT, maxBuffer: 16 * 1024 * 1024 });
     assert.equal(hash(bytes), hash(approved), `Input differs from approved base: ${url}`);
     assets.set(url, bytes);
   }
   await mkdir(settings.out);
-  const report = { protocol: SOURCE_COMPOSITION_PROTOCOL, settings, before, cases, plan,
+  const report = { protocol: settings.mode === 'worker' ? SOURCE_WORKER_PROTOCOL : SOURCE_COMPOSITION_PROTOCOL,
+    settings, before, cases, plan, workerSourceSha256: workerSource ? hash(workerSource) : null,
     inputs: [...assets].map(([url, bytes]) => ({ url, sha256: hash(bytes), bytes: bytes.length })),
     startedAt: new Date().toISOString(), trials: [], errors: [], cleanupErrors: [], comparisons: [], pass: false,
     caveats: [
@@ -188,12 +216,32 @@ export async function runCompositionProbe(args) {
       'The observed hardware renderer is a browser eligibility receipt, not proof that a Canvas2D readback ran on the GPU.',
       'Queued termination uses ordinary OS signals; dead FIFO tickets are reaped on the next shared scan, not immediately.',
     ] };
+  if (settings.mode === 'worker') report.caveats = [
+    'Isolated fidelity/event-loop experiment, not game FPS or a production worker integration.',
+    'Six approved urban source cases plus three explicitly labeled missing-optional-image fixtures; no changed normal image scope.',
+    'Fresh context and disabled HTTP cache per arm; browser/driver/OS caches remain shared. AB then BA, no discarded warmups.',
+    'Worker bootstrap and async createImageBitmap from the same loaded HTML images are inside end-to-end timing.',
+    'Every composition creates a fresh one-shot worker. Delayed reuse reuses images, not a warm worker pool.',
+    'Required worker output RGBA readback/transfer preparation and main putImageData adoption are inside the pipeline.',
+    'Pipeline end is canvas adoption. Subsequent main termination/revoke cleanup is separately timestamped, not included in pipelineMs.',
+    'Parity readbacks/base64 encoding and hardware identity occur after both timed pipelines and responsiveness observation.',
+    'RAF callback gaps/LongTasks measure main event-loop availability, not rendered FPS or physical GPU completion.',
+    'Main uses a prototype readback observer; worker wraps its owned contexts. Both retain instrumentation overhead, not assumed identical.',
+    'Two leading/trailing observation frame boundaries surround image IO and pipelines without warming composition.',
+    'Native ImageBitmap conversion and Canvas adoption parity are admission questions, not assumed equivalent backends.',
+    'Exact source/input bytes remain pinned to the approved base; missing Worker/bitmap/LongTask capability fails closed.',
+    'Queued interruption retains the ordinary FIFO dead-ticket boundary; only the owned lease is released.',
+  ];
   await writeFile(join(settings.out, 'admission.json'), JSON.stringify({ before, settings, startedAt: report.startedAt }), { flag: 'wx' });
   const lock = createCaptureLock();
+  const workerOwner = { page: null };
   let browser, server, refresher, deadline, closing, interrupted, admitted = false;
   const closeBrowser = () => {
     if (!browser) return Promise.resolve();
-    return closing ??= closeOwnedBrowser(browser, report.cleanupErrors)
+    return closing ??= (async () => {
+      if (settings.mode === 'worker') await stopWorkerAcquisition(workerOwner.page).catch(error => report.cleanupErrors.push(String(error)));
+      return closeOwnedBrowser(browser, report.cleanupErrors);
+    })()
       .then(closed => { report.browserExitConfirmed = closed; })
       .catch(error => { report.cleanupErrors.push(String(error)); report.browserExitConfirmed = false; });
   };
@@ -245,10 +293,14 @@ export async function runCompositionProbe(args) {
     report.browserVersion = await browser.version();
     for (const [index, item] of plan.entries()) {
       if (interrupted) throw new Error(interrupted);
-      const row = await runTrial(browser, url, cases.find(value => value.id === item.caseId), item, settings, report);
+      const input = cases.find(value => value.id === item.caseId);
+      const row = await runTrial(browser, url, input, item, settings, report, workerSource, workerOwner);
       report.trials.push(row);
       await retainPixels(settings, row, index).catch(error => { row.retentionError = String(error); report.errors.push(String(error)); });
-      try { validateCompositionTrial(row); assert.equal(row.errors.length, 0); }
+      try {
+        if (settings.mode === 'worker') validateWorkerTrial(row, input); else validateCompositionTrial(row);
+        assert.equal(row.errors.length, 0);
+      }
       catch (error) { row.admissionError = String(error); }
       await writeFile(join(settings.out, `trial-${String(index).padStart(3, '0')}.json`), JSON.stringify(row, null, 2), { flag: 'wx' });
       assert.ok(!row.cleanupFailed, 'Context cleanup failed; refusing another native trial');
