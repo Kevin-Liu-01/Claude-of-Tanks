@@ -87,3 +87,14 @@ Report SHA256: `702c187ac0f2f91338eec325c8f5eedba1042f6640521f7ed9317aac67343fd1
 HTML SHA256: `1b02dba11b8eb706f9fb0a198b47b9c39bc010015c9f44bce86816da5c2dd98a`.
 Acquisition SHA256: `ca9af05238ca4f5c0fb1d2941892f9f19519f95cfa3196038d91f36d469262a4`.
 Evidence remains under `/private/tmp/cot-interactive-baseline.gsRCvU/`.
+
+The three native screenshots were visually reviewed: day Battle, night rematch
+and Garage retain their vehicles, lighting, environment and UI. This is a visual
+sanity check, not pixel-difference or sustained-performance certification.
+
+The required post-change React Doctor scan completed with three `await-in-loop`
+warnings in `frameScheduler.selftest.mjs` (two) and `propsScheduling.selftest.mjs`
+(one), and no runtime finding. These loops intentionally serialize fake global
+browser clocks and cancellation fixtures. Parallelizing them would mix fixture
+ownership; they are retained without disabling a rule or changing the score.
+The scan's 49/100 result is not a clean-code or performance certificate.

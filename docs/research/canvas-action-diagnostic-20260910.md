@@ -40,3 +40,31 @@ probe/helper/selftest, the existing `garage-action-timing.selftest.mjs` includin
 the new fake-native lifecycle/exception cases, and strict metrics on all three
 changed JavaScript files (186 functions; zero complexity/type violations).
 Native acquisition remains pending and requires a separate approved capture.
+
+## Native acquisition on the opaque-loading candidate
+
+`opaque-paint-canvas-local-r1` subsequently exercised the unchanged public
+`e7735a2ff` runtime on native Chrome 151 / ANGLE Metal Apple M5 Max. All actual
+Battle, rematch and Garage controls, audio, warm/source readiness and cleanup
+checks pass. All three Canvas observation windows are complete, without drops,
+invalid timing, observation/native errors or failed descriptor restoration.
+The acquisition is diagnostic-only and does not supersede the unprofiled gate.
+
+The largest first-Battle callback interval is 2655.7–2803.8 ms (148.1 ms), with
+a 112 ms Long Task at 2655.6–2767.6 ms and a 117 ms LoAF with no script rows.
+No observed Canvas call intersects that callback interval. Its first-action
+52 `getImageData` calls total 142.4 ms across the entire action, with maximum
+18.6 ms; those aggregate costs cannot explain this separate 112 ms task.
+The rematch's 66.7 ms worst callback also overlaps no observed Canvas call.
+The Garage's 48.7 ms worst callback overlaps only 0.3 ms of `drawImage` calls.
+
+This rules out these intercepted API calls as the overlapping owner in this
+capture, not all rasterization, WebGL, worker or browser work. No source owner or
+cause is assigned to the historical 214–319 ms stalls. The previously rejected
+readback-hint experiment stays rejected; no pixel arithmetic, context option,
+graphics setting or quality threshold has changed.
+
+Report SHA256: `956f88d4b734dcccf5325a9e7a8b8e8005b92a1302199b4d9108c2adb6921e1f`.
+HTML SHA256: `1b02dba11b8eb706f9fb0a198b47b9c39bc010015c9f44bce86816da5c2dd98a`.
+Acquisition SHA256: `0c1ae77bb2d11603fc11e0416a4628ab9979229d32e7be6f9d7ee9396679052c`.
+Evidence is under `/private/tmp/cot-interactive-baseline.gsRCvU/`.
