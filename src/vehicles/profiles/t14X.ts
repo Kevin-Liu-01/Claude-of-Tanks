@@ -7,6 +7,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { addT14CornerJunction, sourceCornerZ } from './t14XCorner.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
+import { t14XReturnRollers } from './t14XReturnRollers.ts';
 
 const { box, cylY, cylZ, torus } = KIT;
 const RING_Y = 1.69;
@@ -46,7 +47,7 @@ function addHull(P: TankBuilderPort): void {
     tubSection(4.17, 1.10, 1.03, .88),
     tubSection(4.30, 1.03, 1.00, .93),
   ]));
-  P.gear = KIT.buildRunningGear(P, {
+  P.gear = KIT.buildRunningGear(P, t14XReturnRollers(P, {
     wheelR: .3385, wheelW: .5455, wheelY: .4166, xc: 1.343,
     wheelZs: [-2.1577, -1.3711, -.5740, .2150, 1.0117, 1.8668, 2.7725],
     // Source flat-course islands are .542 m wide and .0683 m radially deep.
@@ -60,7 +61,7 @@ function addHull(P: TankBuilderPort): void {
     sprocket: { z: -2.9680, y: .8107, r: .3075, trackR: .19 },
     idler: { z: 3.5280, y: .8503, r: .2753, trackR: .185 },
     style: 'rubber', arms: true, paintedEnds: true, coveredTop: true,
-  });
+  }));
   addHullSides(P);
   addHullDeck(P);
   addSternFittings(P);
