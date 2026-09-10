@@ -27,8 +27,37 @@ builds. The fresh complete anatomy check also passes: 181 receipts across
 57 groups, all 181 marking-seat receipts, 1,552 authored modules and 362
 track sides with no failed/outside-envelope hits, and 543 current technical
 diagram files. Its 83 pre-existing dimension warnings remain visible.
-The new complete npm lifecycle is still running; none of its successful
-prefixes is a complete test pass.
+These passes did not establish a complete npm lifecycle result.
+
+That lifecycle subsequently **failed** in the core phase at
+`src/world/terrainStreaming.selftest.mjs`: the Frontier authored-geometry
+digest was `3410c303…`, while its historical snapshot expected `7923000c…`.
+All 306 pre-tests passed; the core runner completed 224 checks, including
+that failure, before draining. Post-tests were not run. The full npm
+lifecycle therefore did not pass. This run's runtime was frozen at
+`fe571abbe`; the later local recovery commit changed documentation only.
+
+A fresh fetch found the historical/current terrain distinction already fixed
+upstream in `3dc009b93`, alongside the Redrock release and battle ERA-audit
+optimization, then the Redrock material refinement. The actual recovered
+candidate ancestry is based on `503d8e957` (which includes `26d556281`). No terrain
+golden was changed locally. Before another full qualification, a diagnostic
+runs all previously unpassed or newly registered checks, retaining each
+actual child result and continuing after failures to expose them together.
+It is not a full npm release certificate and cannot turn the failed prefix
+into one. Outputs are in `.qa-dev/durable-post-rebase-20260910/`.
+
+That diagnostic completed all 441 remaining/new checks: 436 passed and five
+failed in the sourced-image plan harness, road-lookup historical source hash,
+winter-shoreline historical input and loading-order harness. All five now pass
+after bounded test/tool-only repairs; seven focused checks also retain the
+independent current-relief/canyon proofs. No tank or terrain runtime changed.
+The fixes were separately pushed as `88e48ff85` to `origin/main`, excluding
+this unreleased candidate. See `selftest-release-throughput-20260910.md`.
+
+A fresh complete official npm lifecycle and typecheck/private/public builds
+are running on frozen runtime/test commit `996df6b06` in
+`.qa-dev/durable-final-20260910/`. Their final outcomes are not yet claimed.
 
 Publication is limited to Kevin's explicit Type 10 fitting decision quoted
 below, together with his standing instruction to push completed checkpoints
