@@ -13,14 +13,26 @@ Type 10 X's painted fixed skirts and T-90A X/Vladimir X's canonical Shtora
 were already published in `4aa008627`. The optional four-worker runner is
 published in `b4b1763be`; all assertions and browser/FIFO ownership remain.
 Do **not** repeat the historical "27 unpublished updates" statement as current
-status: fifteen of those original update scopes are now published. T-90A X's
+status: seventeen of those original update scopes are now published. T-90A X's
 separate failed running-gear pilot is not certified by its Shtora release.
 
-The two Merkava roller candidates are next in isolated qualification.
+The two Merkava roller updates ship in `8ff6d7cf6`, after the full twelve-stage
+935-test release and focused final-main integration. See
+[their qualification record](merkava-roller-release-20260910.md). Four concealed
+stations per side remain a documented fit inference, not a certified historical
+count. The broader country-wide track-gauge requirement remains open.
 Centurion/Strv 81, Challenger 3/3X, K2/T-14, T-80U X, T-90A X gear and T-72B3M
 remain preserved with unresolved gates. No old branch must be replayed wholesale
 just because its commit is not an ancestor of the squash publication. The
 broader 59-vehicle style/performance acceptance contract remains OPEN.
+
+Centurion III/V's recovered private references now pass visual fidelity after
+proved rigid-only assembly, and their fitted rollers pass physical checks.
+Their fresh strict geometry minima still fail (78.8/90 and 76.3/90), so they
+are not included. Original full-fit history and the failed packets remain in
+the five-roller worktree; local checkpoint `ee93fce42` records the boundary.
+The loading/rendering checkpoint through `b2aaac31b` is also published, with
+explicit remaining strict performance failures rather than a fleet-wide claim.
 
 ## Historical fourteen-tank candidate boundary
 

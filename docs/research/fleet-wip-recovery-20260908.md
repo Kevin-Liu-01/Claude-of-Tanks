@@ -5,7 +5,9 @@ certificate.** The owner requested continuation of all unfinished Abrams,
 fleet-material, running-gear and performance work, with more frequent commits
 and pushes to preserve verified progress.
 
-Latest publication: `e4ca00b6c` released fourteen recovered tank updates after
+Latest publication: `8ff6d7cf6` adds the two Merkava X fitted-roller updates
+after the complete twelve-stage/935-test release and current-main integration.
+The previous `e4ca00b6c` released fourteen recovered tank updates after
 the complete twelve-stage/933-test qualification; Type 10 X and the two
 T-90A X Shtora corrections were already released in `4aa008627`.
 Use [the current recovery boundary](tank-work-object-store-followup-20260909.md)

@@ -4,6 +4,9 @@ Current publication supersedes the old local-only classifications below:
 `e4ca00b6c` shipped fourteen recovered tank updates after all twelve release
 stages and 933 uninterrupted tests passed; `4aa008627` previously shipped
 Type 10 X's painted skirts and the T-90A X/Vladimir X Shtora corrections.
+The two Merkava X roller updates follow in `8ff6d7cf6`, with a complete
+twelve-stage/935-test release and focused current-main integration; see
+[their qualification record](merkava-roller-release-20260910.md).
 Read [the current recovery boundary](tank-work-object-store-followup-20260909.md)
 and [the fourteen-tank certificate](fourteen-tank-recovery-release-20260910.md)
 before describing these as uncommitted or unpublished. The retained tables are
