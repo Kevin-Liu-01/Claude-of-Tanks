@@ -119,26 +119,35 @@ export default {
     grassTexTone: (h: number, s: number, l: number) => [clamp01(h * 0.72), clamp01(s * 0.85), clamp01(l * 1.0 + 0.03)],
     tuftTone: (h: number, s: number, l: number) => [0.125, 0.30, clamp01(l * 0.95 + 0.05)],
     palettes: {
-      // the fall canopy: oak remapped to the orange-red band; the WIDE
-      // default hue jitter (kept near full) swings individuals between
-      // scarlet, pumpkin and residual olive — the mixed-stand fall read
+      // Autumn families use the existing species atlases. Muted card tints
+      // avoid multiplying orange saturation twice; the atlas keeps its
+      // clump-to-clump hue spread. cardL0 is wind flex, not color lightness.
       oak: {
-        texTone: (h: number, s: number, l: number) => [clamp01(0.055 + (h - 0.22) * 0.25), clamp01(s * 1.02 + 0.10), clamp01(l * 1.02)],
-        cardHue: 0.058, cardSat: 0.52, cardL0: 0.30,
-        // r2: far-canopy sat 0.50 -> 0.42, l1 0.42 -> 0.39 — the 300 m+
-        // stands read salmon-pink candy against the hazed rim
-        canopy: { hue: 0.060, sat: 0.42, l0: 0.27, l1: 0.39 },
+        texTone: (h: number, s: number, l: number) => [clamp01(0.075 + (h - 0.22) * 0.60), clamp01(s * 0.80 + 0.02), clamp01(l * 1.02)],
+        cardHue: 0.065, cardSat: 0.24, cardL0: 0.30,
+        canopy: { hue: 0.070, sat: 0.28, l0: 0.27, l1: 0.39 },
         jitterHue: 0.85,
       },
-      // birches go clear gold (twig texture warmed hard + gold cards)
+      // Birch keeps gold; aspen is paler straw, not a second identical gold.
       birch: {
-        texTone: (h: number, s: number, l: number) => [0.105, clamp01(s * 0.55 + 0.22), clamp01(l * 0.92 + 0.10)],
-        cardHue: 0.105, cardSat: 0.55, cardL0: 0.42,
-        canopy: { hue: 0.11, sat: 0.50, l0: 0.36, l1: 0.52 },
+        texTone: (h: number, s: number, l: number) => [clamp01(0.115 + (h - 0.10) * 0.12), clamp01(s * 0.55 + 0.12), clamp01(l * 0.92 + 0.10)],
+        cardHue: 0.115, cardSat: 0.28, cardL0: 0.42,
+        canopy: { hue: 0.115, sat: 0.34, l0: 0.36, l1: 0.52 },
         jitterHue: 0.6,
       },
-      // pines keep their green — the evergreen counterpoint that makes the
-      // gold read as SEASON, not as a tinted screenshot
+      aspen: {
+        texTone: (h: number, s: number, l: number) => [clamp01(0.135 + (h - 0.10) * 0.10), clamp01(s * 0.40 + 0.08), clamp01(l * 0.92 + 0.10)],
+        cardHue: 0.135, cardSat: 0.16, cardL0: 0.42,
+        canopy: { hue: 0.135, sat: 0.24, l0: 0.36, l1: 0.52 },
+        jitterHue: 0.6,
+      },
+      // Existing poplars supply ochre/olive variation without adding conifers.
+      poplar: {
+        texTone: (h: number, s: number, l: number) => [clamp01(0.145 + (h - 0.22) * 0.60), clamp01(s * 0.80 + 0.02), clamp01(l * 1.02)],
+        cardHue: 0.150, cardSat: 0.26, cardL0: 0.30,
+        canopy: { hue: 0.150, sat: 0.32, l0: 0.27, l1: 0.39 },
+        jitterHue: 0.85,
+      },
     },
   },
 
