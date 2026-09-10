@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inspectGarageActionOutcome, waitForGarageAction } from './garage-action-failure.mjs';
-import { withGarageActionProfile } from './garage-action-timing.mjs';
+import { withGarageActionProfile, withGarageActionTrace } from './garage-action-timing.mjs';
 
 const rows = GARAGE_BATTLE_ACTIONS.map((action, index) => {
   const returning = action === 'return-to-garage';
@@ -258,6 +258,7 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
       checkSourcedTextureReadiness: row => sourceReady || row.action === 'return-to-garage'
         ? [] : [`${row.action}: source was not ready at reveal`],
       readPhaseEnvironment() {}, installGarageActionTiming() {}, summarizeGarageActionTiming: () => ({}),
+      withGarageActionTrace,
       withGarageActionProfile: async (options, run) => run(),
       waitForGarageAction: async (page, options, click) => click(),
     });
@@ -290,7 +291,13 @@ console.log('garage-battle-actions-contract.selftest: real-click, cover, route a
     }
     if (phase === 'queued' || phase === 'rejected-queue') equal(calls.launched, 0, 'queued canceled owner aborts before launch');
     if (phase === 'launching') equal(calls.page, 0, 'late launched browser is closed before page/actions');
-    if (phase === 'closing') equal(calls.gate, 1, 'late cleanup cancellation defeats an otherwise successful run');
+    if (phase === 'closing') {
+      equal(calls.gate, 1, 'late cleanup cancellation defeats an otherwise successful run');
+      equal(report.actions.map(row => row.action), ['battle', 'battle-again', 'return-to-garage'],
+        'the real disabled trace wrapper permits every action before cleanup cancellation');
+      equal(report.failures, ['Probe interrupted by SIGTERM'],
+        'cleanup cancellation must not hide an earlier missing fixture port or action failure');
+    }
   }
   for (const phase of ['queued', 'rejected-queue', 'launching', 'active', 'closing', 'normal']) await probeCase(phase);
   await probeCase('normal', false, false);
