@@ -867,6 +867,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mangroveFisheryWharf.selftest.mjs',
     'src/world/structureConnectivity.selftest.mjs',
     'src/world/structureCollision.selftest.mjs',
+    'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
     'src/world/structureCollisionMergeKeys.selftest.mjs',
     'src/world/structureCollisionRaster.selftest.mjs',

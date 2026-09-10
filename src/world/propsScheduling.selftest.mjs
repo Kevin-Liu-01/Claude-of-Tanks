@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { box, jitterUV } from './propGeometry.ts';
 
 // Execute the actual public scheduling wrapper with an owned generator fixture.
 // Geometry/output equivalence is separately checked by the whole-world profile;
@@ -320,12 +324,144 @@ const seededRandom = new Function(stripTypeScriptTypes(source.slice(rngStart, rn
   assert.equal(f.state.randomCalls, 16, 'fallback consumes one selection draw and one pose draw');
 }
 
+// Execute the entire unchanged decal owner, including conformed geometry,
+// seeded scars and churn alpha processing. Canvas commands use deterministic
+// spies, not native rasterization; no WebGL, image loading or timers are needed.
+const groundStart = source.indexOf('  function* placeGroundBlendDecals()');
+const groundEnd = source.indexOf('\n  yield* placeGroundBlendDecals();', groundStart);
+assert.ok(groundStart > 0 && groundEnd > groundStart);
+const groundCandidate = source.slice(groundStart, groundEnd);
+const groundOriginal = groundCandidate
+  .replace('function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void>',
+    'function placeGroundBlendDecals(): void')
+  .replace(/\n    \/\/ Yield only after a complete family transfers its meshes to the props\n    \/\/ group\. Keep temporary geometry assembly and its exact RNG order atomic\./, '')
+  .replace(/\n    yield \{ fine: true, progress: false, stage: 'ground-(foundations|scars)' \};/g, '');
+// Frozen pre-change body: reconstructing the synchronous control above must
+// remove only scheduling, never silently share a changed formula with control.
+assert.equal(createHash('sha256').update(groundOriginal).digest('hex'),
+  '5f9a3ac81e2135e1204c95e3cf62bab5dd3d4a884530b245bda2072ff2f0791e');
+const mathStart = source.indexOf('function clamp('), mathEnd = source.indexOf('\n// ---', mathStart);
+const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.indexOf('\n  function addRubblePile(', rubbleStart);
+assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
+const groundHelpers = source.slice(mathStart, mathEnd) + source.slice(rubbleStart, rubbleEnd);
+
+function groundFixture(code = groundCandidate, streetRows = true, foundry = false) {
+  const group = new THREE.Group(), buckets = { stone: [] }, commands = [], randoms = [], textures = [];
+  const buildingFeatures = [{ x: 38, z: 40, w: 6, d: 9, rot: 0.35 }];
+  const random = seededRandom(2002);
+  const canvas = {};
+  const ctx = {
+    clearRect(...args) { commands.push(['clear', ...args]); },
+    createLinearGradient(...args) {
+      const gradient = { stops: [], addColorStop(...stop) { this.stops.push(stop); } };
+      commands.push(['gradient', ...args, gradient.stops]); return gradient;
+    },
+    fillRect(...args) { commands.push(['fill', typeof this.fillStyle === 'string' ? this.fillStyle : this.fillStyle.stops, ...args]); },
+    getImageData(_x, _y, width, height) {
+      return { data: Uint8ClampedArray.from({ length: width * height * 4 }, (_, index) => index % 251) };
+    },
+    putImageData(image) { canvas.pixels = image.data; },
+  };
+  const dependencies = {
+    THREE, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
+    rng() { const value = random(); randoms.push(value); return value; },
+    mulberry32: seededRandom, seed: 2002, aniso: 4, noi: { noise: (x, y) => Math.sin(x + y) * 0.5 },
+    document: { createElement(tag) { assert.equal(tag, 'canvas'); return canvas; } },
+    canvas2d() { return ctx; },
+    engineCtx: { setupShadowMaterial() {} },
+    makeGroundDecalTexture(_noise, anisotropy, kind) {
+      const texture = new THREE.Texture(); texture.name = kind; texture.anisotropy = anisotropy;
+      textures.push(texture); commands.push(['texture', kind]); return texture;
+    },
+    P: { streetRows, townCraters: true, craters: 8 },
+    L: { spawns: { player: { x: -100, z: -100 }, enemies: [{ x: 100, z: 100 }] } },
+    v: { cx: 10, cz: 40, x0: -65, x1: 65, z0: -65, z1: 65 },
+    heightField: { getHeightAt: (x, z) => x * 0.001 + z * 0.002,
+      _roadDist: () => 10, getGroundType: () => 'hard', getNormalAt: () => ({ y: 1 }) },
+    noVeg: () => false, placedB: [], crushables: [{ x: 12, z: 18 }],
+    stackSpots: [{ x: 8, z: 16, r: 2 }], wreckScorch: [[-20, 50]],
+    foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
+  };
+  const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
+    groundHelpers + '\nlet reconformFoundryFoundations = null;\n' + code)
+    + '\nreturn { run: placeGroundBlendDecals, reconform: () => reconformFoundryFoundations?.() };')(...Object.values(dependencies));
+  const geometry = geo => ({ index: geo.index ? Array.from(geo.index.array) : null,
+    attributes: Object.fromEntries(Object.entries(geo.attributes).map(([name, attr]) => [name, Array.from(attr.array)])) });
+  return { ...api, group, buckets, randoms, commands, buildingFeatures,
+    kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
+    snapshot: () => ({ randoms, commands, pixels: canvas.pixels, clods: buckets.stone.map(geometry),
+      meshes: group.children.map(mesh => ({ geometry: geometry(mesh.geometry), data: mesh.userData,
+        receiveShadow: mesh.receiveShadow, castShadow: mesh.castShadow, order: mesh.renderOrder,
+        map: mesh.material.map.name, transparent: mesh.material.transparent, depthWrite: mesh.material.depthWrite })) }),
+    dispose() {
+      for (const mesh of group.children) {
+        mesh.geometry.dispose(); textures.push(mesh.material.map); mesh.material.dispose();
+      }
+      for (const geo of buckets.stone) geo.dispose();
+      for (const texture of new Set(textures)) texture.dispose();
+    },
+  };
+}
+
+for (const [streetRows, foundry] of [[true, false], [false, true]]) {
+  const before = groundFixture(groundOriginal, streetRows, foundry);
+  const after = groundFixture(groundCandidate, streetRows, foundry);
+  try {
+    before.run();
+    const iterator = after.run();
+    assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-foundations' } });
+    assert.deepEqual(after.kinds(), streetRows ? ['ground-contact', 'apron'] : ['ground-contact']);
+    assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
+    assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
+    assert.ok(after.kinds().includes('crater') && after.kinds().includes('scorch'));
+    assert.equal(after.commands.some(command => command[0] === 'clear'), false, 'churn painter has not started');
+    assert.equal(iterator.next().done, true);
+    assert.ok(after.kinds().includes('churn') && after.buckets.stone.length > 0 && after.randoms.length > 0);
+    assert.deepEqual(after.snapshot(), before.snapshot(), 'exact geometry, RNG, material policy and canvas command/alpha parity');
+    if (foundry) {
+      before.buildingFeatures[0].x += 4; after.buildingFeatures[0].x += 4;
+      before.reconform(); after.reconform();
+      assert.deepEqual(after.snapshot(), before.snapshot(), 'foundry retains the same merged foundation geometry and vertex windows');
+    }
+  } finally { before.dispose(); after.dispose(); }
+}
+
+// Real async wrapper must pace both new boundaries without advancing coarse
+// progress. Rejection closes the delegated iterator before another family runs.
+for (const cancelAt of [0, 1, null]) {
+  const h = groundFixture(), iterator = h.run(), failure = new Error('cancel decal family'), ticks = [];
+  const steps = (function* () { yield* iterator; yield { fine: true, stage: 'ground-decals' }; })();
+  const f = fixture(steps);
+  try {
+    const pending = f.run({}, {}, 2002, { props: { wrecks: 0 } }, (done, total) => {
+      ticks.push([done, total]);
+      if (ticks.length - 1 === cancelAt) throw failure;
+    }, true);
+    if (cancelAt === null) {
+      await pending;
+      assert.deepEqual(ticks, [[0, 180], [0, 180], [1, 180]]);
+      assert.ok(h.kinds().includes('churn'));
+    } else {
+      await assert.rejects(pending, error => error === failure);
+      assert.equal(iterator.next().done, true);
+      assert.equal(h.kinds().includes('crater'), cancelAt === 1);
+      assert.equal(h.kinds().includes('churn'), false);
+      assert.equal(h.commands.some(command => command[0] === 'clear'), false);
+      assert.equal(f.runtime._buildDetail, undefined, 'cancelled props cannot publish a runtime');
+      assert.equal(f.args[0][6].signal.aborted, true);
+    }
+    assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
+  } finally { h.dispose(); }
+}
+
 // Each checkpoint follows completed work, before the next expensive owner;
 // no geometry formula, RNG draw or source-acquisition order is rewritten.
 for (const [operation, stage, next] of [
   ['yield* placeTankWrecks();', 'wrecks-finalized', 'function beginWaterworksRubbleCapture'],
-  ['placeCentralMonument();', 'street-details', 'function placeGroundBlendDecals'],
-  ['placeGroundBlendDecals();', 'ground-decals', 'let poleIM:'],
+  ['placeCentralMonument();', 'street-details', 'function* placeGroundBlendDecals'],
+  ['placeFoundationDecals();', 'ground-foundations', 'placeBattleScars(corridors);'],
+  ['placeBattleScars(corridors);', 'ground-scars', 'placeTrackTears(corridors);'],
+  ['yield* placeGroundBlendDecals();', 'ground-decals', 'let poleIM:'],
   ['  dressMapExtras({', 'map-extras', 'function composeAuthoredLoggingYard'],
 ]) {
   const op = source.indexOf(operation), checkpoint = source.indexOf("stage: '" + stage + "'", op);

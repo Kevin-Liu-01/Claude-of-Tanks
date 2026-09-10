@@ -5525,7 +5525,7 @@ ${snowCap ? `
   yield { fine: true, stage: 'street-details' };
 
   // --- ground-blend decals: dirt/AO ring under buildings + shell craters ---
-  function placeGroundBlendDecals(): void {
+  function* placeGroundBlendDecals(): Generator<PropsBuildSlice, void, void> {
     // r5 terrain_environment: TRACK-TEAR strip texture — churned dark earth
     // with two ragged tread lanes running along V; laid as conformed strips
     // on the AI drive corridors so the approaches read fought-over.
@@ -5925,10 +5925,14 @@ ${snowCap ? `
     const corridors: DriveCorridor[] = [L.spawns.player, ...L.spawns.enemies]
       .map((spawn) => [spawn.x, spawn.z, v.cx ?? 10, v.cz ?? 40]);
     placeFoundationDecals();
+    // Yield only after a complete family transfers its meshes to the props
+    // group. Keep temporary geometry assembly and its exact RNG order atomic.
+    yield { fine: true, progress: false, stage: 'ground-foundations' };
     placeBattleScars(corridors);
+    yield { fine: true, progress: false, stage: 'ground-scars' };
     placeTrackTears(corridors);
   }
-  placeGroundBlendDecals();
+  yield* placeGroundBlendDecals();
   yield { fine: true, stage: 'ground-decals' };
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---
