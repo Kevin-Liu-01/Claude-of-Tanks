@@ -40,9 +40,8 @@ across the entire playable fleet, reporting unmodified legacy defects separately
 ### Exact required review manifest — 2026-09-08
 
 This is an acceptance manifest, not runtime opt-in or a release receipt. It
-matches the 59-ID review policy in the unfinished integrated fleet worktree.
-The seven Abrams X builds are still WIP and must not be substituted with
-original Abrams models when a clean-main registry does not contain them.
+matches the 59-ID review policy. The seven Abrams X builds have since been
+published; audit their actual X IDs, not substituted original Abrams models.
 
 | Group | Count | Required IDs |
 |---|---:|---|
@@ -58,6 +57,29 @@ The 53 new/rebuilt targets do not include the six older Challengers. A 53-ID
 roller, paint or triangle receipt therefore cannot close their review.
 
 ### Current evidence boundaries and immediate work
+
+Publication reconciliation, 2026-09-10 (verified against `origin/main`
+`85aa9224a`): the older **27 unpublished tanks** inventory is historical,
+not a current release queue. Do not repeat it without checking ancestry.
+
+- `4aa008627` publishes Type 10 X's fourteen camouflaged fixed skirt/fascia
+  panels and the canonical Shtora pass. `e4ca00b6c` publishes the recovered
+  fourteen-tank wheel/roller/paint batch, including T-90 X Shtora. See
+  [the complete release scope](../research/fourteen-tank-recovery-release-20260910.md).
+  These are qualified bounded changes, not full track-gauge completion.
+- T-90A X's upper fender closure, selected assets and final verification are
+  published through `c1142f59b`. The thicker-track/structural-wheel pilot is
+  separate and remains local: retained-axle source score 74.6; raised-axle
+  alternative 90.7, both below the strict 92 release floor. No pass waiver.
+- Type 10 X's current follow-up reduces redundant folded-sheet tessellation
+  and attaches its existing six rollers using shared spindle primitives.
+  It is tracked separately in
+  [the Type 10 cost/contact checkpoint](../research/type10-x-cost-contact-20260910.md).
+  Its 35 mm carrier is still not matched to the original Type 10's 90 mm
+  carrier; this checkpoint must not close FSP-04 or the whole 59-ID program.
+
+The following older measurements remain useful baselines, not unpublished-
+work counts or assertions about the latest published build:
 
 - All 59 IDs have been built at HIGH and LOW in the expanded material
   observation census. Its 118 rows establish coverage, **not material
@@ -296,6 +318,26 @@ requested Abrams/fleet material, running-gear and performance work with its
 necessary tests/docs; exclude unrelated experiments, private source models and
 temporary QA. This is not an as-is publication waiver or authority to weaken
 existing quality gates.
+
+### Avoid duplicate validation work
+
+- Start from current `origin/main` and reconcile the relevant candidate's
+  ancestry once. Do not repeat a full worktree/recovery scan at each checkpoint.
+- During iteration, run the changed profile's contact/material/shape tests.
+  Do not add `wheelQuality.selftest.mjs` as a single-tank preflight: it builds
+  the entire fleet and runs again in the mandatory release. Use the existing
+  `auditTankWheelQuality` function on the selected actual model for iteration.
+- Check types and strict selected source geometry before expensive asset and
+  full-fleet regeneration. Freeze the composed source once those checks pass.
+- Group compatible verified IDs into one checkpoint and one complete release,
+  not one full npm lifecycle per ID. Use `COT_SELFTEST_WORKERS=4` on this host;
+  preserve fresh child processes, complete suite coverage and exclusive native
+  browser stages. Never wrap the full release or npm lifecycle in an outer
+  capture lease.
+- Publish a passing checkpoint immediately. A different tank's failed pilot
+  stays saved locally with its precise remaining defect; it does not hold up
+  the verified group. Queue waiting, summed worker CPU time and elapsed time
+  are different measurements and must be reported separately.
 
 The owner's coverage choice is to close upper shoulder/skirt gaps while keeping
 lower road wheels visible. When thick tracks conflict with old link shapes,

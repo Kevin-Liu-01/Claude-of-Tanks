@@ -12,6 +12,7 @@ import {withHistoricalFixedGuardPaint} from './historicalFixedGuardPaint.test-su
 import {withHistoricalClosedWheelFaces} from './sourceXWheelFaceHistory.test-support.mjs';
 import {historicalLeclercShoe,withHistoricalLeclercGear} from './leclercGearHistory.test-support.mjs';
 import {KIT} from './tankFactoryCore.ts';
+import {withHistoricalType10Supports} from './type10SkirtHistory.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
 const BEFORE={
  'k1a1_x/high':'be2113456e6aae39d798f2472f42744aa994fcf87156932491651fa4da917bbf',
@@ -263,7 +264,8 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
         const native=()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
         const finish=()=>paintedId?withHistoricalFixedGuardPaint(id,native):native();
         const original=id==='amx30_x'?withHistoricalClosedWheelFaces(id,finish)
-          :id.startsWith('leclerc')?withHistoricalLeclercGear(id,finish):finish();
+          :id.startsWith('leclerc')?withHistoricalLeclercGear(id,finish)
+          :id==='type10_x'?withHistoricalType10Supports(finish):finish();
         try{
           original.root.updateMatrixWorld(true);
           assert.equal(shapeHash(original.root),BEFORE[`${id}/${quality}`],
