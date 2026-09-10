@@ -183,7 +183,14 @@ for (const normalizer of [controlNormalize, candidateNormalize]) {
   assert.equal(normalizer.profiler.operations['after-error'].calls, 1);
 }
 for (const [path, kind] of [['../src/vehicles/tankFactoryCore.ts', 'factory'], ['../src/vehicles/profiles/t90.ts', 'profile']]) {
-  const observed = transformConstructor(readFileSync(new URL(path, import.meta.url), 'utf8'), kind);
+  const source = readFileSync(new URL(path, import.meta.url), 'utf8');
+  const observed = transformConstructor(source, kind);
   assert.ok(Object.values(observed.stages).every(stage => Number.isInteger(stage.line) && stage.line > 0));
+  if (kind === 'factory') {
+    assert.ok(Object.values(observed.stages).filter(stage => /^createTank\w*Stage\d+$/.test(stage.expression)).length >= 20,
+      'owned construction body keeps its stage-level timing coverage');
+    assert.throws(() => transformConstructor(source.replace('function* createTankOwnedSteps(', 'function* unrecognizedOwner('), kind),
+      /Expected constructor attribution coverage/, 'missing the actual generator owner must not silently profile only wrappers');
+  }
 }
 console.log('wreck-build-profile.selftest: repeated cancellation ownership, source hooks and tiny exact normalization variants pass; no tank/world/browser built');

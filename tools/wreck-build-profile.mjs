@@ -138,7 +138,10 @@ export function transformConstructor(source, kind) {
       const name = node.expression.getText(file);
       let enclosing = node.parent;
       while (enclosing && !ts.isFunctionLike(enclosing)) enclosing = enclosing.parent;
-      const topStage = /^createTank\w*Stage\d+$/.test(name) && ts.isFunctionDeclaration(enclosing) && enclosing.name?.text === 'createTank';
+      // Both public entrypoints now drain the same owned generator. Attribute
+      // the stage calls when its body executes, not when an iterator is made.
+      const topStage = /^createTank\w*Stage\d+$/.test(name) && ts.isFunctionDeclaration(enclosing)
+        && ['createTank', 'createTankOwnedSteps'].includes(enclosing.name?.text);
       const explicit = ['finalizeVehicleMarkingSeats', 'applyVerifiedVehicleMarkingSeats', 'installProceduralShadowProxies',
         'normalizeTankAppearance', 'finalizeVehicleNightLighting', 'attachTankDecorations'].includes(name);
       if (topStage || explicit) instrument(node, name);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { stripTypeScriptTypes } from 'node:module';
+import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { makeSeaLayer } from './terrain.ts';
 import { mulberry32 } from './props.ts';
@@ -53,8 +53,20 @@ const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  function createCropTexture(');
 const end = source.indexOf('  function cropPlotAvoidsSpawns(', start);
 assert.ok(start > 0 && end > start);
-const makeCrop = new Function('THREE', 'document', 'canvas2d', '_col', 'aniso',
-  `${stripTypeScriptTypes(source.slice(start, end))}\nreturn createCropTexture;`);
+// This fixture exercises unchanged legacy wheat. The published biome painter
+// now closes over P; opt-in Autumn/Delta forms are covered by cropBiomeIdentity.
+// Bind the real no-opt-in configuration, without rewriting the painter body.
+const fixtureUrl = new URL('./props.ts?environment-surface-color-fixture', import.meta.url).href;
+const fixtureHook = registerHooks({ load(url, context, next) {
+  if (url !== fixtureUrl) return next(url, context);
+  // Only the fixed local owner declaration enters this source-owned module;
+  // there is no CLI input, Function constructor or persistent runtime hook.
+  return { format: 'module', shortCircuit: true, source: stripTypeScriptTypes(
+    `export function makeCrop(THREE, document, canvas2d, _col, aniso, P) {\n${source.slice(start, end)}\nreturn createCropTexture;\n}`) };
+} });
+let makeCrop;
+try { ({ makeCrop } = await import(fixtureUrl)); }
+finally { fixtureHook.deregister(); }
 
 function recordCrop(seed) {
   const stemStyles = [], headStyles = [];
@@ -75,7 +87,7 @@ function recordCrop(seed) {
   };
   const rng = mulberry32(seed);
   const texture = makeCrop(THREE, { createElement: () => canvas }, () => context,
-    new THREE.Color(), 4)(() => { draws++; return rng(); });
+    new THREE.Color(), 4, Object.freeze({}))(() => { draws++; return rng(); });
   return { texture, stems: stemStyles, heads: headStyles, strokes, headCount: heads, draws };
 }
 for (const seed of [1337, 2049]) {
