@@ -105,7 +105,8 @@ function rollerSupports(tank,quality) {
   const stock=[];rig.traverse(o=>{if(o.name==='gearReturnRollerSpindles')stock.push(o);});
   assert.equal(stock.length,2,'one instanced support mesh per side');
   assert.ok(stock.every(o=>o.isInstancedMesh&&o.count===3),'all six real roller stations have supports');
-  const hull=rig.getObjectByName('hull'),rotor=rig.getObjectByName('gearReturnRollerDiscs');
+  const hull=rig.getObjectByName('hull'),rotor=rig.getObjectByName('gearReturnRollerRotors');
+  assert.ok(rotor?.isInstancedMesh,'fitted rubber/painted rotor stock exists');
   assert.equal(rotor.count,6);
   const cast=(objects,x,y,z,side)=>new THREE.Raycaster(
     rig.localToWorld(v(x,y,z)),v(side,0,0).transformDirection(rig.matrixWorld),0,.7)
@@ -117,7 +118,9 @@ function rollerSupports(tank,quality) {
       const foot=cast(stock,side*.85,1.10,z,side);
       const wall=cast([hull],side*1.0,1.10,z,-side);
       const tip=cast(stock,side*1.3,1.10,z,-side);
-      const hub=cast([rotor],side*.95,1.10,z,side);
+      // The new fitted hub starts at |x|=.94414: the old .95 origin was
+      // inside its closed volume and therefore missed the front-facing cap.
+      const hub=cast([rotor],side*.90,1.10,z,side);
       assert.ok(foot&&wall&&tip&&hub,`${quality}: both solid receivers exist`);
       const hullLap=side*(localX(wall)-localX(foot)),hubLap=side*(localX(tip)-localX(hub));
       assert.ok(hullLap>.0005&&hullLap<.004,`${quality}: real spindle foot enters hull ${hullLap}`);

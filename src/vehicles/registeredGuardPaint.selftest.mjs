@@ -54,7 +54,10 @@ function cloud(root){const rows=[],v=new T.Vector3();root.updateMatrixWorld(true
  for(let i=0;i<(ix?.count??p.count);i+=3){const c=[];for(let j=0;j<3;j++)c.push(v.fromBufferAttribute(p,ix?ix.getX(i+j):i+j).applyMatrix4(o.matrixWorld).toArray().join(','));
   rows.push([0,1,2].map(j=>[c[j],c[(j+1)%3],c[(j+2)%3]].join('|')).sort()[0]);}});return rows.sort();}
 function other(root){const rows=[];root.updateMatrixWorld(true);root.traverse(o=>{if(!o.isMesh||changed.has(o.name))return;
- rows.push([o.name,hash(o.geometry),o.matrixWorld.elements,o.material.name,o.material.userData.appearanceRole,
+ const materials=Array.isArray(o.material)?o.material:[o.material];
+ assert.ok(materials.length&&materials.every(m=>m?.isMaterial&&m.userData),'all stock material slots exist');
+ rows.push([o.name,hash(o.geometry),o.matrixWorld.elements,
+  materials.map(m=>[m.name,m.userData.appearanceRole]),o.geometry.groups,
   o.userData.combatHitboxRole,o.count??null,o.instanceMatrix?Array.from(o.instanceMatrix.array):null]);});return rows;}
 function paint(tank,prior){const o=tank.root.getObjectByName('hullPaintedDetail');assert.ok(o?.isMesh);
  assert.equal(o.material.name,'cot:armor-paint');assert.equal(o.material.map,tank.root.getObjectByName('hull').material.map);assert.ok(o.material.map?.isTexture);
