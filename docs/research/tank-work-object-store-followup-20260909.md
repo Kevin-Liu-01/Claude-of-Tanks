@@ -9,11 +9,11 @@ Burlak X and MS X. All twelve release stages and one uninterrupted 933-check
 npm lifecycle passed. Source, selected assets and final receipts are included.
 See [the frozen release certificate](fourteen-tank-recovery-release-20260910.md).
 
-Type 10 X's painted fixed skirts and T-90A X/Vladimir X's canonical Shtora
+Type 10 X's painted fixed skirts and T-90 X/A X/Vladimir X's canonical Shtora
 were already published in `4aa008627`. The optional four-worker runner is
 published in `b4b1763be`; all assertions and browser/FIFO ownership remain.
 Do **not** repeat the historical "27 unpublished updates" statement as current
-status: seventeen of those original update scopes are now published. T-90A X's
+status: eighteen of those original update scopes are now published. T-90A X's
 separate failed running-gear pilot is not certified by its Shtora release.
 
 The two Merkava roller updates ship in `8ff6d7cf6`, after the full twelve-stage
@@ -21,7 +21,12 @@ The two Merkava roller updates ship in `8ff6d7cf6`, after the full twelve-stage
 [their qualification record](merkava-roller-release-20260910.md). Four concealed
 stations per side remain a documented fit inference, not a certified historical
 count. The broader country-wide track-gauge requirement remains open.
-Centurion/Strv 81, Challenger 3/3X, K2/T-14, T-80U X, T-90A X gear and T-72B3M
+T-14 X's fitted efficient rollers and selected assets ship through `a681223d4`
+and `8d442e7b1`, with the qualified test grouping in `5683152fa`. The complete
+twelve-stage/947-test frozen release and sixteen-test final-main integration
+pass; see [the T-14 qualification](t14-roller-release-20260910.md). Track gauge
+is explicitly unchanged; this does not complete all T-14 style requirements.
+Centurion/Strv 81, Challenger 3/3X, K2, T-80U X, T-90A X gear and T-72B3M
 remain preserved with unresolved gates. No old branch must be replayed wholesale
 just because its commit is not an ancestor of the squash publication. The
 broader 59-vehicle style/performance acceptance contract remains OPEN.

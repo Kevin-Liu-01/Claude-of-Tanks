@@ -3,10 +3,14 @@
 Current publication supersedes the old local-only classifications below:
 `e4ca00b6c` shipped fourteen recovered tank updates after all twelve release
 stages and 933 uninterrupted tests passed; `4aa008627` previously shipped
-Type 10 X's painted skirts and the T-90A X/Vladimir X Shtora corrections.
+Type 10 X's painted skirts and the T-90 X/A X/Vladimir X Shtora corrections.
 The two Merkava X roller updates follow in `8ff6d7cf6`, with a complete
 twelve-stage/935-test release and focused current-main integration; see
 [their qualification record](merkava-roller-release-20260910.md).
+T-14 X's recovered rollers/assets follow in `a681223d4` / `8d442e7b1`, with a
+complete twelve-stage/947-test frozen release and sixteen-test final-main
+integration. See [the exact scope](t14-roller-release-20260910.md); K2 remains
+separately held, and country-matched T-14 track thickness remains open.
 Read [the current recovery boundary](tank-work-object-store-followup-20260909.md)
 and [the fourteen-tank certificate](fourteen-tank-recovery-release-20260910.md)
 before describing these as uncommitted or unpublished. The retained tables are
