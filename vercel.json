@@ -1,4 +1,8 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": false
+  },
   "regions": ["sfo1"],
   "functions": {
     "api/signal.ts": { "maxDuration": 300 },
