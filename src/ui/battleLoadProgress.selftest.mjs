@@ -51,8 +51,18 @@ Object.defineProperty(globalThis, 'setTimeout', { configurable: true, value: cal
 } });
 try {
   const screen = createBattleLoadScreen();
-  const info = { mapName: 'Verdant', allies: [], enemies: [] };
+  const info = { mapName: 'Verdant', mode: 'Prior battle mode', thumb: '/verdant.webp', allies: [], enemies: [] };
+  screen.showPending();
+  assert.equal(screen.visible, true, 'pending cold acquisition shows the canonical loader immediately');
+  assert.equal(screen.covering, true);
+  assert.equal(screen.root.classList.contains('on'), true);
+  assert.equal(selectors.get('.mapname').textContent, t('battleLoad.fallbackMapName'));
+  assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'));
+  const pendingRoot = screen.root;
   screen.show(info);
+  assert.equal(screen.root, pendingRoot, 'the loaded transaction enriches the same already-opaque surface');
+  assert.equal(screen.root.classList.contains('leaving'), false);
+  assert.equal(selectors.get('.mapname').textContent, 'Verdant');
   const fill = selectors.get('.ffill');
   const pct = selectors.get('.fpct');
   const progress = selectors.get('.fbar');
@@ -86,10 +96,13 @@ try {
   const leaving = screen.hide();
   assert.equal(screen.visible, false);
   assert.equal(screen.covering, true, 'entry remains covered throughout the exit fade');
-  screen.show(info);
+  screen.showPending();
   timers.shift()();
   await leaving;
   assert.equal(screen.covering, true, 'an old fade cannot uncover a newly restaged load');
+  assert.equal(screen.root.classList.contains('on'), true);
+  assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'), 'pending entry clears a prior mode label');
+  assert.equal(selectors.get('.art').style.backgroundImage, '', 'pending entry clears prior battlefield artwork');
   assert.equal(fill.style.transform, 'scaleX(0.000)', 'a new load resets the previous completed fill');
   const hidden = screen.hide();
   timers.shift()();

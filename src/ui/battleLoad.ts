@@ -206,6 +206,7 @@ export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
   readonly covering: boolean;
+  showPending(): void;
   show(info: BattleLoadInfo): void;
   rosters(
     allies: readonly BattleLoadRosterRow[],
@@ -309,6 +310,16 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     root,
     get visible() { return visible; },
     get covering() { return covering; },
+
+    /** Own the existing opaque surface before a cold loading-owner import. */
+    showPending() {
+      api.show({
+        mapName: '',
+        mode: t('battleLoad.kicker'),
+        allies: [],
+        enemies: [],
+      });
+    },
 
     /**
      * Stage and show the screen.

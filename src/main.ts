@@ -2602,7 +2602,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   battleLoad,
   audio,
   enterGarage,
-  nextFrame,
+  nextFrame: nextPaintFrame,
   isVisibleSpecId: (specId: string) => VISIBLE_TANK_IDS.includes(specId),
   getSelectedSpecId: () => garage.getSelected(),
   getSelectedMapId: () => garage.getSelectedMap(),

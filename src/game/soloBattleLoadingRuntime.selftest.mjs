@@ -280,7 +280,7 @@ await createSoloBattleEntryRuntime({
   },
   loading: deniedDeviceLoading,
   audio: deniedDeviceAudio,
-  battleLoad: { hide: () => audioRecoveryEvents.push('hide') },
+  battleLoad: { showPending() {}, hide: () => audioRecoveryEvents.push('hide') },
   enterGarage: () => audioRecoveryEvents.push('restore-garage'),
   nextFrame: async () => {},
   isVisibleSpecId: () => true,
