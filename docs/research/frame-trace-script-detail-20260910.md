@@ -71,3 +71,37 @@ and begin/end form, inclusive nesting, exact threshold boundaries, row loss,
 malformed/open intervals, normalized redaction and the exact four-category list.
 Existing timeout, error and cleanup regressions remain intact. No native capture,
 build, full suite or runtime change is part of this isolated slice.
+
+## Subsequent root acquisition
+
+`opaque-paint-script-trace-local-r1` exercised the same public `e7735a2ff`
+runtime as the preceding unprofiled and Canvas runs. Functional/audio/source/
+warm-readiness checks pass, with no page or cleanup errors. The first two traces
+are globally incomplete because of open tail tasks on other threads; Garage is
+complete. There are no row drops, buffer loss, malformed rows or stack overflow.
+The incomplete receipts are retained as failures of diagnostic completeness,
+not relabeled as complete or used to certify absent work.
+
+The first 105.2 ms action callback interval (3512.0–3617.2 ms, terrain meshes)
+contains a retained 55.859 ms page-main microtask drain beginning at 3535.025 ms.
+The overlapping LoAF independently attributes a 55.9 ms scheduler continuation.
+Rematch's 69.4 ms callback interval similarly contains a 51.005 ms drain during
+deployment priming. These positive observations fill part of the former script
+coverage gap but do not name the nested hot function, establish JIT/Canvas/GPU
+cost, or reproduce the prior 98/112 ms terrain-setup task. No timing improvement
+is claimed from tracing.
+
+A retained 529.55 ms timer/function envelope spans 2698.38–3227.93 ms, entirely
+before the trusted Battle click at 3248.8 ms. Action callback recording is not
+active there; its absence from action gaps is expected, not evidence of a B/E
+pairing bug or proof of an in-action 529 ms stall. This envelope's owner remains
+unattributed. Capture setup and pre-click activity are not click-to-ready work.
+
+HTML SHA256: `1b02dba11b8eb706f9fb0a198b47b9c39bc010015c9f44bce86816da5c2dd98a`.
+Acquisition SHA256: `d4ca7a3428eed92d81dc1818cc2b0d5860300e42dc584fa27e555ed2309d610f`.
+Report SHA256: `3c41c82f97cb7dccd34009f9680e3b62915d8e11352f43eb0f4fdcb076f0f120`.
+Battle / rematch / Garage trace SHA256:
+`e55b420eb24e958a51e21ee27142e30b044c4d84afd7eac32afeee547d8948ad`,
+`0f852267e7f2cf11165612566db466d42aebbe322fa5d48e4ea0256a1fc2a725`,
+`06451951ac0f71a404ef949df33a453a46716c23fa5887bdb425276483a9a1fb`.
+Evidence remains under `/private/tmp/cot-interactive-baseline.gsRCvU/`.
