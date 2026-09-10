@@ -52,3 +52,11 @@ opaque fender stock changes the top-mask centroid; the presentation anchor
 must be regenerated. The full npm lifecycle had not started. All 207 unselected
 asset records remained unchanged in this attempt, and no combat calibration
 or marking-seat source changed.
+
+The second attempt `fender-final-vrClGk` also remains **FAIL**. The regenerated
+anchor passed the strict live and saved-image centering checks, but the full
+npm pretest stopped at a newly added malformed-CLI control: trailing `--ids`
+returned `undefined` from the option parser and exited 1 instead of the intended
+explicit rejection (2). The parser now falls back for a missing argument, and
+both negative cases pass directly and under the real selftest child environment.
+No geometry, thresholds, or test assertions were removed to address this failure.
