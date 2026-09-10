@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import './overlays.selftest.mjs';
 
 const css = readFileSync(new URL('./gallery.css', import.meta.url), 'utf8');
 

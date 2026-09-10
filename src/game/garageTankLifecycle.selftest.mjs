@@ -135,5 +135,3 @@ assert.ok(adapterAt >= 0 && preserveAt > adapterAt && poolAt > preserveAt,
   'battle teardown preserves only the adopted hero and hands bot visuals to the bounded pool');
 
 console.log('garageTankLifecycle.selftest: FX and tank state end at the garage boundary');
-
-await import('./garageDressingLifecycle.selftest.mjs');

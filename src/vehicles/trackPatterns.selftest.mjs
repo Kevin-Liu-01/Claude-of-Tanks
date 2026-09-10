@@ -3,7 +3,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-await import('./profiles/t72TrackFinish.selftest.mjs');
 await import('./tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('./specs.ts');
 const {

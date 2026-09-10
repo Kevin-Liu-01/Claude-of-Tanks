@@ -114,6 +114,5 @@ assert.match(factorySource,
   );
 }
 
-await import('./factoryCamo.selftest.mjs');
 
 console.log('materialQuality.selftest: low, AI, preview, and hero texture tiers passed');

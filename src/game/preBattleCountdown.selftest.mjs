@@ -24,4 +24,3 @@ console.log('preBattleCountdown.selftest: warm hold, loader credit, and rollout 
 
 // Keep the player-entry countdown and the intent-loading policy in the same
 // normal npm-test gate: both determine what work may happen before rollout.
-await import('./loadingIntent.selftest.mjs');

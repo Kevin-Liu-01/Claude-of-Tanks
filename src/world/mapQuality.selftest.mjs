@@ -11,7 +11,6 @@ import {
 import { UTILITY_POLE_PAIR_MAX_RELIEF, planUtilityPoleStation } from './propPlacement.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isPublicWreckDonor, WRECK_ROSTER_POOLS } from './wreckRoster.ts';
-import './treeGrounding.selftest.mjs';
 
 // Match the world's metadata-registration boundary, without acquiring any
 // vehicle geometry. Bare specs also retain incomplete/hidden donor records.
@@ -365,4 +364,3 @@ for (const mapId of ['winter', 'fjord', 'monsoon', 'alpine']) {
 }
 
 console.log('mapQuality.selftest: 30 complete maps; extreme terrain/atmosphere and legacy backport passed');
-await import('./sourcedTextures.selftest.mjs');

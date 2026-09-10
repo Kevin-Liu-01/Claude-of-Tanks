@@ -296,4 +296,3 @@ console.log('mbt70Fidelity.selftest: source proportions, procedural ownership, a
 
 // Keep the donor-family roller and turret-seat regressions on the existing
 // MBT-70 pretest route without widening package.json's generated command line.
-await import('./abramsRoadWheelSpacing.selftest.mjs');

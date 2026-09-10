@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import '../vehicles/camoPolicy.selftest.mjs';
 import {
   MESSAGE_TYPES,
   MAX_ROOM_CHAT_LENGTH,

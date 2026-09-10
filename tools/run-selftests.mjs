@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { constants } from 'node:os';
-import { resolve } from 'node:path';
+import { constants, tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
@@ -13,10 +13,18 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/resolved-depth-copy.browser.selftest.mjs',
 ]);
 
-export function runSelftestFile(file, { spawnProcess = spawn, signals = process } = {}) {
+// This caches compilation, NEVER test results or module instances. Every file
+// still executes all assertions in a fresh process. Node validates source and
+// engine versions. Respect explicit cache/coverage settings and opt-outs.
+export function selftestChildEnv(env = process.env) {
+  if (env.NODE_COMPILE_CACHE || env.NODE_DISABLE_COMPILE_CACHE || env.NODE_V8_COVERAGE) return env;
+  return { ...env, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
+}
+
+export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv() } = {}) {
   return new Promise((resolveResult) => {
     const child = spawnProcess(process.execPath, [file], {
-      cwd: process.cwd(), env: process.env, stdio: 'inherit',
+      cwd: process.cwd(), env, stdio: 'inherit',
     });
     let error, interruptedBy;
     const interrupt = () => { interruptedBy = 'SIGINT'; child.kill('SIGINT'); };
@@ -44,6 +52,7 @@ export async function runSelftestSuite(suiteName, suite, {
   now = () => performance.now(),
   log = console.log,
   logError = console.error,
+  onTiming = () => {},
 } = {}) {
   if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
     throw new TypeError('maxLeaseBatchMs must be finite and positive');
@@ -61,13 +70,16 @@ export async function runSelftestSuite(suiteName, suite, {
   log('[selftests] ' + suiteName + ': ' + suite.length + ' files');
   try {
     for (const file of suite) {
+      let queueMs = 0;
       // Complete every child before yielding. Long full-fleet suites must
       // rejoin the FIFO between bounded batches, rather than starving native
       // geometry/visual verification for the entire npm lifecycle.
       if (held && now() - acquiredAt >= maxLeaseBatchMs) release();
       if (ownedLeaseFiles.includes(file)) release();
       else if (!held) {
+        const queuedAt = now();
         await lock.acquire(45 * 60 * 1000);
+        queueMs = now() - queuedAt;
         held = true;
         acquiredAt = now();
         refresher = setInterval(() => lock.refresh(), refreshMs);
@@ -75,7 +87,13 @@ export async function runSelftestSuite(suiteName, suite, {
       }
       // Awaiting the child keeps the lease heartbeat responsive throughout
       // full-fleet CPU tests; spawnSync could let a healthy lease go stale.
-      const result = await runFile(file);
+      const startedAt = now();
+      let result;
+      try { result = await runFile(file); }
+      finally {
+        onTiming({ file, runMs: now() - startedAt, queueMs,
+          status: result?.status ?? null, error: result?.error });
+      }
       if (result.error) throw result.error;
       if (result.status !== 0) {
         logError('[selftests] FAIL ' + file);
@@ -96,5 +114,15 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (!suite) {
     console.error('Unknown self-test suite "' + (suiteName || '') + '". Expected: ' + Object.keys(SELFTEST_SUITES).join(', '));
     process.exitCode = 2;
-  } else process.exitCode = await runSelftestSuite(suiteName, suite);
+  } else {
+    let completed = 0, executionMs = 0, queueMs = 0;
+    process.exitCode = await runSelftestSuite(suiteName, suite, {
+      onTiming(row) {
+        completed++; executionMs += row.runMs; queueMs += row.queueMs;
+        const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
+        console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
+      },
+    });
+    console.log(`[selftests] ${suiteName}: ${executionMs.toFixed(0)}ms total child, ${queueMs.toFixed(0)}ms runner FIFO; own-lease browser wait is included in child time`);
+  }
 }
