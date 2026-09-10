@@ -18,8 +18,8 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/sourced-building-source.browser.selftest.mjs',
 ]);
 
-// This full-fleet child has a fixed 240s functional-test watchdog. Do not
-// compete with other native fleet builders while it runs or relax its limit.
+// This full-fleet child has a 240s no-progress functional-test watchdog. Do
+// not compete with other native fleet builders while it runs.
 // It still uses the runner's lease (unlike a self-leasing browser test).
 export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   'src/vehicles/fleetLazy.selftest.mjs',
