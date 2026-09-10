@@ -324,7 +324,9 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
       },
     },
     armorAimOverlay: { warm: () => () => {} },
-    forwardProgramWarm: { *compileSceneSteps() {} },
+    forwardProgramWarm: { *compileSceneSteps() {}, *prepareSceneSteps() {
+      throw new Error('this loading fixture has no visible terrain root');
+    } },
     combatWarm: { markOpeningReady() {} },
     post: { async warmFirstFrame() {
       if (cancel === 'post') generation++;

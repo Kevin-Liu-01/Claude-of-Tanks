@@ -107,3 +107,194 @@ startup, remaining terrain/loading/return pauses, heavy-scene tails and physical
 multi-device/network validation remain open. Browser/OS suspension limits are
 unchanged. Language and transport evaluations are already documented separately;
 this patch does not claim a C/Go/Zig/Rust rewrite or new transport deployment.
+
+## Post-push production result: overall smoothness still fails
+
+Pacing commit `4b321885c676877b83f9dd6725bcef164cab8f29` was pushed without
+force and deployed by Vercel deployment `81MAPcpCMbgMCC6rWrrdGidKjmtK`.
+The live site reported `v1.0.0+g4b321885c`, entry `main-CjD6qsvN.js`, HTML
+SHA256 `1a3d40965731aaac45132d4eb6c2f6352f12a48eccf34002f13395e66bafeec8`.
+
+`rematch-pacing-production-actions-r1/` completed the actual three controls,
+audio intent/clock checks and cleanup without application errors. Native M5
+Max, 1280×720, scale 1, trim 0, high graphics and full 14-actor roster were
+retained. However its callback-start gaps **failed the smoothness objective**:
+
+| Action | Click → opaque cover | Click → ready | Largest callback-start gap |
+| --- | ---: | ---: | ---: |
+| Battle | 2.6 ms | 9219.3 ms | 235.0 ms |
+| Battle Again | 139.0 ms | 7263.7 ms | 209.3 ms |
+| Return to Garage | 90.8 ms | 341.4 ms | 46.4 ms |
+
+Allied-only gaps peaked at 73.5/67.6 ms. Separate deployment/reveal pauses
+remain. Battle's 235 ms gap occurred at page time 11273.2–11508.2, with a
+234 ms long task starting at 11274.1. Its preceding 213.7 ms gap was
+11024.1–11237.8. Rematch's 209.3 ms gap was 17998.5–18207.8, preceded by
+188.4 ms at 17777.1–17965.5. The `Ready` and shadow-stage labels do not
+attribute those pauses by themselves.
+
+The actual deployment owner recorded its **66-object terrain forward batch
+at 211 ms on Battle and 166 ms on rematch**. Other forward batches were
+at most 3 ms on Battle. Shadow-stage labels span some forward preparation;
+they are not evidence that CSM rendering itself consumed the entire gap.
+The reveal barrier recorded only 15/8 ms, so it does not explain the later
+235/209 ms `Ready` gaps either.
+
+An immediate maintained CPU-profile retry, `reveal-pause-production-profile-r1/`,
+used the identical live HTML hash but **did not reproduce** the >200 ms
+pauses. Battle peaked at 153.5 ms, rematch at 77.4 ms and return at 46.9 ms;
+no terrain forward batch exceeded 20 ms. Both runs are retained. A driver or
+shader-cache effect is plausible but unproven; a profiled repeat must not be
+substituted for the failed unprofiled first-use observation.
+
+### Follow-up preparation coverage correction
+
+Source review found a distinct, testable coverage gap: `initializeSteps(root)`
+admits only wrappers newly created by its own compile. A retained terrain
+wrapper submitted by the preceding whole-scene compile can still be unreflected.
+Zero new programs is not proof of completed uniform/attribute preparation.
+
+The follow-up adds opt-in `visibleRoot` selection to the existing strict scene
+preparation path. Default selection is unchanged. The selected root must remain
+attached beneath the real scene through visible ancestors. A flat compile
+facade preserves original object/material identity and real lights/fog/environment,
+while excluding hidden descendants and unrelated roots. Existing selected-material
+program caches, not only newly submitted wrappers, participate in the established
+context/epoch/native-handle readiness and both-table reflection witness rules.
+
+Solo deployment uses that path only for the active world's direct terrain
+child, after opening terrain and shadow preparation. It selects the actual
+source-pass AA target and excludes the separate late-FX layer. Each iterator
+checkpoint and final preparation boundary releases covered work; generation and
+world/root ownership are rechecked before resuming. Incomplete/failed preparation
+remains explicit in `deploymentTerrainPrograms`, with the unchanged covered draw
+as compatibility fallback. Hidden effects, other worlds, shaders, texture
+resolution, full roster, AA and lighting are not reduced.
+
+This closes an actual preparation-coverage hole. It does **not** prove that
+native reflection caused the recorded 211/166 ms draws, nor that a native call
+can be preempted by the cooperative 4 ms budget. The native candidate verification
+below is separate from the failed production observations above; those remain
+the latest unprofiled live evidence until a replacement production run completes.
+
+`terrain-program-preparation-candidate-actions-r1/` then exercised the follow-up
+through the same maintained native controls and acquisition hash. HTML SHA256:
+`4b26bbc7fa8e2d080fbb880c48ecc9806d85c5500cfa3521fe30be1eb67f45fa`.
+All control/audio/cleanup checks passed; day battle, night rematch and returned
+Garage screenshots were inspected at high graphics, scale 1/trim 0. Terrain
+preparation explicitly completed with zero pending programs: three previously
+submitted wrappers were reflected on Battle despite unchanged program count,
+and rematch reused three witnesses while reflecting three night variants.
+The terrain forward draw measured 6/0 ms (integer-rounded diagnostic values).
+
+Battle/rematch/return maximum callback-start gaps were 159.6/79.1/46.2 ms;
+click-to-cover was 2.1/141.5/90.9 ms and click-to-ready 6506.7/5615.7/341.2 ms.
+These observations prove the intended preparation path actually ran, not a
+repeatable cold-driver speedup. Cold entry and allied preparation still missed
+frame budgets. The later source-only label correction reuses an already
+localized loading stage rather than introducing an untranslated English string;
+it does not change this shader or render behavior.
+
+Focused program/scene/deployment/loading/scheduler tests, strict complexity
+metrics (zero violations), typecheck/core-unused and public build passed.
+The first metric run rejected cognitive complexity 23 in the expanded compiler;
+extracting its selection helper restored the strict gate without changing
+selection. Logs: `terrain-program-preparation-checks-r{1,2}.log`. Changed-scope
+Doctor reported 90/100 with three performance warnings, no errors: an existing
+chained test assertion and two sequential awaits. One await is the new runtime
+preparation iterator's required order/lifetime boundary, not parallelizable
+independent work; the other is an existing sequential test. Neither was
+suppressed or changed to concurrent native renderer operations.
+The first full-suite launch was interrupted before any test executed because
+the outer capture wrapper duplicated the suite's own resource lease. Its log
+is retained; the corrected invocation lets the maintained suite own its lease.
+
+The corrected full run (`terrain-program-preparation-full-checks-r2.log`)
+passed all 296 pre-tests and 537 core files, then stopped on an unrelated
+Orchard fixture dependency: its extracted production placement stage referenced
+`foundryDonors` without copying the production initializer. A one-line test-only
+repair copies that initializer through the fixture's existing TypeScript
+stripper. All frozen geometry hashes, RNG tails and capacity assertions remain
+unchanged; its focused check passed (`orchard-fixture-dependency-check-r1.log`).
+The resumed maintained runner then exposed a loading-screen ordering oracle
+that evaluated the newly typed receipt as plain JavaScript. That oracle now
+strips the actual source's types before evaluation, retaining all six negative
+controls rather than excluding the new preparation block.
+
+The continuation uses the maintained `runSelftestSuite` scheduler and complete
+suite catalog, excluding only files with explicit PASS records in the retained
+preceding logs. It reruns every failed file and executes every unexecuted file,
+with the same two-worker CPU limit and exclusive browser barriers. Logs
+`terrain-program-preparation-full-checks-r3-resume.log` and `r4-resume.log`
+are **resumed verification**, not an uninterrupted `npm test` pass or a cached
+test result. Runtime source stayed frozen throughout those checks.
+
+That continuation finished successfully: the union of explicit PASS records
+exactly matches all **929 catalog files: 296 pre, 595 core and 38 post**.
+Both prior failures are retained above; no failed or unexecuted file was omitted.
+The final continuation exited zero. The final public build also passed
+(`terrain-program-preparation-final-build-r1.log`). These are candidate-tree
+receipts; any subsequent integration and production capture are recorded
+separately, not retroactively attributed to this test run.
+
+### Rejected image-decoding hypothesis and observer audit
+
+An isolated, committed maintained probe (`832bc50913fd850bcdaae20f35477f433ddaecdb`,
+tools only, no runtime changes or push) compared image `onload` with explicit
+`await image.decode()` before the actual sourced `composeAlbedo`/`composeSurface`
+functions. Receipt: `sourced-image-composition-native-r1/report.json`.
+Six real urban source families were tested in both AB and BA orders, using 24
+fresh contexts, high-quality 1K composition and an intentional one-second delayed
+reuse. Actual source blobs and the pinned tool/runtime dependencies were recorded.
+All 48 requested decodes fulfilled and all 72 exact RGBA comparisons passed.
+There were no application or cleanup errors; the owned browser/server stopped.
+
+Decode did **not** remove first Canvas readback cost. Its paired first-readback
+delta ranged from -1.6 to +0.1 ms, while request-to-first-result time was worse
+in all twelve pairs by **19.2–47.4 ms**. Reuse had no consistent improvement.
+Shared browser-process/OS caches prevent treating fresh contexts as physically
+cold machines. The experiment rejects this proposed runtime change rather than
+presenting an isolated microbenchmark as a game speedup. No image resolution,
+composition pixels, sampler or material behavior was changed.
+
+A separate source/receipt audit of the exact production acquisition hash ruled
+out the observer's deep trace copy and screenshots as causes of the Ready gaps:
+copies start at 13687.9/21253.2 ms, well after the respective gaps. Callback-start
+gaps of 235.0/209.3 ms differ from end-of-observer gaps of 234.9/209.2 ms by only
+approximately 0.1 ms; the preceding observer's synchronous layout/audio reads
+therefore did not consume those pauses. Battle's long task starts approximately
+0.8 ms after that observer returned. The active modal poll and PerformanceObserver
+callbacks lack individual duration stamps, so indirect layout/GC effects are
+not ruled out, but neither has positive attribution. No observer or reveal
+timing change was justified. The successful reveal path re-covers while Ready
+finishes; `post.render` returning is not proof of physical GPU completion.
+
+The retained gameplay profile was also checked separately. Its profile/page
+alignment range (1475.600–1517.402 ms) is wider than the 35.3 ms callback gap,
+so it cannot reliably assign that interval to an application function. The
+18.2/25.0 ms p95/p99 values are submission intervals, not CPU task durations.
+The 944-draw maximum is not opening warm-up: it occurs over nine consecutive
+late-window frames at 58.916–59.048 seconds. Counts of at least 900 occur 133
+times, including a 121-frame consecutive run. Ten-second medians rise from
+558 to 893, so the late workload still needs investigation. No quality reduction
+or budget relaxation was made to hide it.
+
+### Isolated sourced-image worker result — not adopted
+
+The tools-only follow-up `27592e18fa3e8915a097c5c28f7d2f24cd72bf55`
+compared the actual main-thread composers with their exact formulas in fresh,
+one-shot OffscreenCanvas workers. Receipt:
+`sourced-image-worker-native-r1/report.json`. All 36 trials and 104 strict RGBA
+comparisons passed with zero changed channels, including the three explicitly
+labeled missing-optional-image fixtures. All 92 input bitmaps transferred and
+closed; browser exit, owned lease release and unchanged runtime source were
+confirmed with no application or cleanup errors.
+
+First-composition main callback gaps improved in all 18 pairs by 14.9–27.8 ms,
+but image-ready-to-adopted-result time worsened in every pair by 4.3–12.3 ms.
+Delayed-reuse completion worsened by 19.0–45.8 ms, with worse callback gaps in
+13 of 18 pairs. Bootstrap, bitmap conversion, required worker RGBA export and
+main canvas adoption are included; termination/revoke are separately timestamped.
+The result demonstrates a first-use responsiveness tradeoff, not an overall
+game speedup. No worker integration, quality reduction, or additional native
+variant was shipped on this evidence.

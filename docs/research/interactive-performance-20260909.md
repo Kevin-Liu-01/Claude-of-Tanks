@@ -6,6 +6,12 @@ not a zero-lag or release certificate.
 
 ## Current acceptance summary
 
+Latest follow-up (2026-09-10): see
+[covered deployment pacing and retained terrain programs](covered-deployment-pacing-20260910.md)
+for the current publication, native action results, rejected image-decoding
+experiment, and still-open cold-loading/Ready stalls. The dated checkpoints
+below are retained history, not a replacement for that newer evidence.
+
 Latest UI checkpoint (2026-09-10): hit-card preparation now uses an exact-output
 worker with cooperative fallback. Native seven-case pixel parity, focused tests,
 typecheck, public build and actual-controls day/night/Garage checks pass; see

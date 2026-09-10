@@ -12,7 +12,8 @@ import {
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
 import type { PostRuntime } from '../engine/post.ts';
-import type { ForwardProgramWarmOwner, ForwardProgramCompileTiming } from '../engine/programWarm.ts';
+import type { ForwardProgramWarmOwner, ForwardProgramCompileTiming, ProgramPreparationResult } from '../engine/programWarm.ts';
+import { LATE_FX_LAYER } from '../fx/layers.ts';
 import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import type {
   CombatFxSubmission,
@@ -58,7 +59,9 @@ interface BattleWarmPort {
 }
 
 type PostWarmPort = Pick<PostRuntime, 'warmFirstFrame'> &
-  CombatFxSubmissionOptions['post'];
+  CombatFxSubmissionOptions['post'] & {
+    sceneAA: Pick<PostRuntime['sceneAA'], 'sceneTarget'>;
+  };
 
 type DeploymentCsmLights = Parameters<
   typeof createDeploymentForwardWarmBatches
@@ -70,6 +73,12 @@ interface LightingPort {
 
 interface TraceSink {
   mark?(event: string, payload: Record<string, RuntimeValue>): void;
+}
+
+interface TerrainProgramReceipt {
+  result: ProgramPreparationResult;
+  timing: ForwardProgramCompileTiming;
+  error?: string;
 }
 
 interface DeploymentWarmTrace {
@@ -85,6 +94,7 @@ interface DeploymentWarmTrace {
     totalMs: number;
   };
   deploymentUniformsDeferred?: boolean;
+  deploymentTerrainPrograms?: TerrainProgramReceipt;
   deploymentShadowWarm?: RuntimeValue;
   deploymentForwardWarm?: {
     batches: RuntimeValue[];
@@ -151,6 +161,46 @@ export interface SoloBattleDeploymentRuntime {
   warm(camoSweep: PromiseLike<RuntimeValue> | RuntimeValue): Promise<SoloBattleDeploymentWarmResult>;
 }
 
+async function prepareTerrainPrograms(
+  terrain: Object3D,
+  options: Pick<SoloBattleDeploymentRuntimeOptions, 'getWorld' | 'camera' | 'post' | 'forwardProgramWarm'>,
+  receipt: TerrainProgramReceipt,
+  yieldCovered: WorkYielder,
+  assertCurrent: () => void,
+): Promise<void> {
+  const worldGroup = terrain.parent;
+  const assertTerrainCurrent = (): void => {
+    assertCurrent();
+    if (options.getWorld()?.group !== worldGroup || terrain.parent !== worldGroup) throw STALE_DEPLOYMENT;
+  };
+  assertTerrainCurrent();
+  const steps = options.forwardProgramWarm.prepareSceneSteps({
+    visibleRoot: terrain, strict: true, sliceMs: 4, timing: receipt.timing,
+    passes: [{
+      layerMask: options.camera.layers.mask & ~(1 << LATE_FX_LAYER),
+      target: options.post.sceneAA.sceneTarget,
+    }],
+  });
+  try {
+    for (;;) {
+      assertTerrainCurrent();
+      const step = steps.next();
+      if (step.done) { receipt.result = step.value; break; }
+      await yieldCovered(true);
+    }
+  } catch (error) {
+    assertTerrainCurrent();
+    receipt.error = String(error);
+    receipt.result = { status: 'incomplete', pending: null, reason: 'reflection' };
+    // The unchanged covered draw is the compatibility fallback, not proof
+    // that failed/unsupported preparation completed successfully.
+  } finally {
+    steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' });
+  }
+  await yieldCovered(true);
+  assertTerrainCurrent();
+}
+
 function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): void {
   try {
     checkedIntegrationPort<BattleLoadPort>(
@@ -165,7 +215,7 @@ function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): v
       options.armorAimOverlay ?? {}, 'solo deployment armor overlay', ['warm'],
     );
     checkedIntegrationPort(
-      options.forwardProgramWarm ?? {}, 'solo deployment program warm', ['compileSceneSteps'],
+      options.forwardProgramWarm ?? {}, 'solo deployment program warm', ['compileSceneSteps', 'prepareSceneSteps'],
     );
     checkedIntegrationPort(
       options.combatWarm ?? {}, 'solo deployment combat warm', ['markOpeningReady'],
@@ -412,6 +462,22 @@ export function createSoloBattleDeploymentRuntime(
         trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(guardedCoveredYield);
         requireCurrent(generation);
         mark('shadowMaps');
+
+        // Whole-scene submission does not reflect retained native programs.
+        // Prepare only the active terrain's visible source-pass materials;
+        // hidden FX/LOD objects and inactive worlds must stay out of this job.
+        const worldGroup = getWorld()?.group;
+        const terrain = worldGroup?.children.find(child => child.name === 'terrain' && child.visible);
+        if (terrain) {
+          const receipt: TerrainProgramReceipt = {
+            result: { status: 'incomplete', pending: null, reason: 'not-requested' }, timing: {},
+          };
+          trace.deploymentTerrainPrograms = receipt;
+          battleLoad.progress(0.9695, 'Priming deployment view');
+          await prepareTerrainPrograms(terrain, options, receipt, guardedCoveredYield,
+            () => requireCurrent(generation));
+        }
+        mark('terrainPrograms');
 
         const forwardBatches = [];
         for (const batch of createDeploymentForwardWarmBatches({
