@@ -67,6 +67,13 @@ not a current release queue. Do not repeat it without checking ancestry.
   fourteen-tank wheel/roller/paint batch, including T-90 X Shtora. See
   [the complete release scope](../research/fourteen-tank-recovery-release-20260910.md).
   These are qualified bounded changes, not full track-gauge completion.
+- Merkava Mk3D X/Mk4 X fitted rollers are published in `8ff6d7cf6`, and
+  T-14 X rollers are published through `ff0f639d9` (geometry `a681223d4`).
+  Their release records are
+  [Merkava](../research/merkava-roller-release-20260910.md) and
+  [T-14](../research/t14-roller-release-20260910.md). Do not recover the old
+  mixed K2/T-14 branch wholesale: K2 X was excluded for its 90.8137 source
+  score, below 92. These publications do not complete their track-gauge work.
 - T-90A X's upper fender closure, selected assets and final verification are
   published through `c1142f59b`. The thicker-track/structural-wheel pilot is
   separate and remains local: retained-axle source score 74.6; raised-axle
