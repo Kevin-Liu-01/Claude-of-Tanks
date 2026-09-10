@@ -159,3 +159,19 @@ cohort selector omits layer29, so those proxies stay enabled during warm
 cohorts rather than being bounded by that selector. This is not missing
 first-use coverage, but the current change does not claim to improve that
 separate loading-pacing behavior.
+
+Final context-fix checks on `de8e54eae`: renderer recovery, layer routing,
+articulated batching and real-factory integration selftests pass; full typecheck
+and public production build pass. The full-game acquisition above predates this
+restore-listener-only fix; its normal-frame behavior is unchanged. Both
+acquisitions follow the same maintained protocol, but their harness hashes are
+not identical and their later camera trajectories differ.
+
+Pinned React Doctor0.9.13 scans r1/r2 reported no issues. The final two-file scan
+(`articulated-shadow-doctor-r3`) exits1 for `no-eval` on the existing
+`new Function` test harness. Reviewed as a high-confidence **test-only false
+positive**: its code string comes solely from the fixed sibling tracked
+`renderer.ts` file, executes only in the Node selftest, and accepts no user,
+network or environment-selected source. The change adds a dependency argument
+to that existing harness. No scanner configuration, suppression or production
+evaluation path was introduced; the raw diagnostic remains retained.
