@@ -85,7 +85,11 @@ for (const [index, seed] of seeds.entries()) {
   const other28 = createHash('sha256'), unrelatedMutation = createHash('sha256');
   for (const id of MAP_IDS) {
     if (id === 'titan_gorge' || id === 'verdant') continue;
-    const cfg = getMapConfig(id), ring = sampleHorizonGeometry(cfg, seed);
+    const actual = getMapConfig(id);
+    // Preserve this historical aggregate; the current canyon is independently
+    // exercised by redrockCanyonHorizon.selftest, including the exact opt-out.
+    const cfg = id === 'badlands' ? { ...actual, horizon: { ...actual.horizon, redrockCanyon: false } } : actual;
+    const ring = sampleHorizonGeometry(cfg, seed);
     appendReceipt(other28, id, ring);
     const mutated = id === 'desert' ? { ...ring, positions: ring.positions.slice() } : ring;
     if (id === 'desert') mutated.positions[0] += 0.125;

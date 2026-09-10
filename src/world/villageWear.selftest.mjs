@@ -4,7 +4,8 @@ import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMa
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { historicalPaletteConfig, historicalFoundryServiceInput } from './shorelineHistoryTestOracle.mjs';
+import { historicalPaletteConfig, historicalFoundryServiceInput, historicalBadlandsInput,
+  historicalPlayableReliefInput } from './shorelineHistoryTestOracle.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
@@ -70,6 +71,8 @@ function historicalAutumnPaletteInput(config) {
 }
 
 function originalConfig(cfg) {
+  if (cfg.id === 'badlands') return historicalBadlandsInput(cfg);
+  if (cfg.id === 'frontier' || cfg.id === 'alpine') return historicalPlayableReliefInput(cfg);
   if (pilots.includes(cfg.id)) {
     const { villageWear: _mode, workedGround: _patches, ...terrain } = cfg.terrain;
     return { ...cfg, terrain };
@@ -235,14 +238,49 @@ function checkOtherMaps(tier) {
   const results = [];
   for (const id of MAP_IDS) {
     if (pilots.includes(id)) continue;
-    const built = bake(historicalFoundryServiceInput(getMapConfig(id)), 1337);
+    const built = bake(historicalBadlandsInput(historicalFoundryServiceInput(getMapConfig(id))), 1337);
     assert.equal(built.size, tier === 'desktop' ? 512 : 256, 'actual tier-scaled raster, not a relabeled desktop bake');
     results.push([id, hash(built.pixels)]); built.texture.dispose();
   }
   assert.equal(hash(JSON.stringify(results)), FROZEN.other28[tier], `all28 ${tier} full RGBA outputs retain the authenticated parent receipt`);
 }
 
+function checkCurrentBadlands(tier) {
+  const cfg = getMapConfig('badlands');
+  assert.equal(cfg.terrain.villageWear, undefined, 'current canyon retains original village-soil policy');
+  assert.equal(cfg.terrain.workedGround, undefined, 'no unrequested canyon activity stamps');
+  const current = bake(cfg, 1337);
+  const disabled = bake({ ...cfg, terrain: { ...cfg.terrain, workedGround: [], villageWear: undefined } }, 1337);
+  try {
+    assert.equal(current.size, tier === 'desktop' ? 512 : 256);
+    compareTexture(disabled.texture, current.texture);
+    assert.deepEqual(current.pixels, disabled.pixels, 'current Badlands full RGBA is exact with activity wear disabled');
+    assert.equal(current.draws, disabled.draws);
+    assert.deepEqual(current.rngTail, disabled.rngTail);
+    compareFields(disabled.field, current.field);
+    return { id: 'badlands', size: current.size, bytes: current.pixels.byteLength, hash: hash(current.pixels) };
+  } finally { current.texture.dispose(); disabled.texture.dispose(); }
+}
+
 checkScope(getMapConfig);
+for (const id of ['frontier', 'alpine']) {
+  const canonical = getMapConfig(id);
+  for (const [fields, failure] of [[{ relief: undefined }, /current playable relief/],
+    [{ width: -1 }, /only the two visual terrain properties/]]) {
+    const changed = { ...canonical, terrain: { ...canonical.terrain,
+      landforms: canonical.terrain.landforms.map((form, index) => index === 0 ? { ...form, ...fields } : form) } };
+    assert.throws(() => checkScope(key => key === id ? changed : getMapConfig(key)), failure,
+      'live relief and original anchor fields have independent guards');
+  }
+}
+const badlands = getMapConfig('badlands');
+assert.throws(() => checkScope(id => id === 'badlands'
+  ? { ...badlands, terrain: { ...badlands.terrain, hillScale: -1 } } : getMapConfig(id)),
+  /current Badlands authoring/, 'historical input cannot hide a changed current canyon');
+assert.throws(() => checkScope(id => id === 'badlands'
+  ? { ...badlands, props: { ...badlands.props, wallRuns: badlands.props.wallRuns.map((row, index) =>
+    index === 0 ? [...row.slice(0, 4), row[4] + 1] : row) } } : getMapConfig(id)),
+  /only the two visual terrain properties/, 'unprojected wall policy still fails the original config digest');
 const autumn = getMapConfig('autumn');
 for(const species of ['birch','aspen'])for(const birchLeaves of [undefined,false,'enabled']){
   const changed={...autumn,vegetation:{...autumn.vegetation,palettes:{...autumn.vegetation.palettes,
@@ -298,6 +336,7 @@ try {
     if (tier === 'mobile') assert.equal(resolveDeviceTier(), 'mobile');
     assert.equal(getDeviceTier(), tier);
     checkOtherMaps(tier);
+    receipts.push(checkCurrentBadlands(tier));
     for (const id of activityMaps) for (const seed of [1337,2025,7719]) receipts.push(checkPilot(id,seed));
   }
 } finally {

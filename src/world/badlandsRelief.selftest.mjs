@@ -5,132 +5,178 @@ import { createHash } from 'node:crypto';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
-import { createLayout, sampleLandformHeight } from './terrain.ts';
-import { samplePlayableRelief } from './playableRelief.ts';
+import { createLayout } from './terrain.ts';
+import { sampleRedrockCanyon, redrockCanyonCenter, redrockCanyonFloorHalfWidth } from './redrockCanyon.ts';
 
-const base = 'd948cb5733ebb41ba471458a6b410e2bbb3568cc';
-const root = fileURLToPath(new URL('../../', import.meta.url));
-const read = path => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
-const old = path => execFileSync('git', ['show', `${base}:${path}`], { cwd: root, encoding: 'utf8' });
+const base = '57fe26ac9c13525338178de28bfb52f9f19e2e90', root = fileURLToPath(new URL('../../', import.meta.url));
+const read = name => readFileSync(new URL('../../' + name, import.meta.url), 'utf8');
+const old = name => execFileSync('git', ['show', `${base}:${name}`], { cwd: root, encoding: 'utf8' });
 const sha = data => createHash('sha256').update(data).digest('hex');
-const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? item.toString() : item);
-const stripRelief = ({ relief, _relief, ...form }) => form;
-const originalMap = old('src/world/maps/badlands.ts');
-assert.equal(sha(originalMap), 'eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada');
-assert.equal(sha(old('src/world/terrain.ts')), '57e9b38e18ace87b078b4f9a9237f1556b15ffc1ca92930bc3b5f87b45c8324a',
-  'authenticate historical terrain evidence; current-kernel behavior is checked below, not frozen as whole-file bytes');
-assert.equal(sha(read('src/world/playableRelief.ts')), 'd7aa326df0d9880fd0b238cd8380cb11a7e4da32e3d20eee6e9ef579f16387dc',
-  'reuse the existing allocation/noise-free scalar sampler; no new profile implementation');
+const serialize = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? item.toString() : item);
+const oldMap = old('src/world/maps/badlands.ts'), oldTerrain = old('src/world/terrain.ts');
+assert.equal(sha(oldMap), 'eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada');
+assert.equal(sha(oldTerrain), 'cecde431b664736c5fd68f57f593ce9499e9bf792816a66376a454a031376e6d');
 const registry = read('src/world/maps/index.ts');
 assert.equal(registry, old('src/world/maps/index.ts'));
 const mapFiles = [...registry.matchAll(/import \w+ from '\.\/(\w+\.ts)';/g)].map(match => match[1]);
 assert.equal(mapFiles.length, MAP_IDS.length);
 for (const file of mapFiles) if (file !== 'badlands.ts') {
-  assert.equal(read('src/world/maps/' + file), old('src/world/maps/' + file), `${file}: exact shipped authoring`);
+  assert.equal(read('src/world/maps/' + file), old('src/world/maps/' + file), `${file}: unchanged authoring`);
 }
 
-const mapURL = new URL('./maps/badlands.ts?badlands-predecessor', import.meta.url).href;
-const terrainURL = new URL('./terrain.ts?badlands-support', import.meta.url).href;
+const ports = new Map(), terrainURL = new URL('./terrain.ts', import.meta.url).href;
 const anchor = '  const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);';
-let source = read('src/world/terrain.ts');
-assert.equal(source.split(anchor).length, 2);
-source = source.replace(anchor, anchor + '\n  __supports = {road:gRoadElev,dist:gRoadDist,corridor:gCorridor,pads:padYs,lakes:lakeLevels,liquidSurfaces,liquidLakeBanks};');
-source += '\nlet __supports; export function constructObserved(seed,cfg){const field=createHeightField(seed,cfg);return {field,supports:__supports};}\n';
-const ports = new Map([[mapURL, stripTypeScriptTypes(originalMap)], [terrainURL, stripTypeScriptTypes(source)]]);
+for (const [side, text] of [['current', read('src/world/terrain.ts')], ['old', oldTerrain]]) {
+  assert.equal(text.split(anchor).length, 2, 'actual completed support checkpoint');
+  const observed = text.replace(anchor, anchor + '\n  __supports = {road:gRoadElev,dist:gRoadDist,corridor:gCorridor,pads:padYs,lakes:lakeLevels};')
+    + '\nlet __supports; export function constructObserved(seed,cfg){const field=createHeightField(seed,cfg);return {field,supports:__supports};}\n';
+  ports.set(`${terrainURL}?redrock-${side}`, stripTypeScriptTypes(observed));
+}
+const oldURL = new URL('./maps/badlands.ts?redrock-old', import.meta.url).href;
+ports.set(oldURL, stripTypeScriptTypes(oldMap));
 const hook = registerHooks({ load(url, context, next) {
   return ports.has(url) ? { format: 'module', source: ports.get(url), shortCircuit: true } : next(url, context);
 } });
-let original, constructObserved;
-try { original = (await import(mapURL)).default; ({ constructObserved } = await import(terrainURL)); }
-finally { hook.deregister(); }
+let current, previous, original;
+try {
+  current = await import(`${terrainURL}?redrock-current`);
+  previous = await import(`${terrainURL}?redrock-old`);
+  original = (await import(oldURL)).default;
+} finally { hook.deregister(); }
 const config = getMapConfig('badlands'), layout = createLayout(config);
-assert.equal(stringify({ ...config, terrain: { ...config.terrain, landforms: config.terrain.landforms.map(stripRelief) } }),
-  stringify(original), 'only three relief opt-ins may differ from the authenticated full predecessor config');
-assert.deepEqual(layout.terrain.landforms.map(form => Boolean(form._relief)), [true, true, true, false, false]);
-assert.deepEqual(config.terrain.landforms.slice(3), original.terrain.landforms.slice(3), 'knoll and signed basin stay exact');
+assert.equal(config.terrain.redrockCanyon, true);
+assert.equal(config.terrain.mesas, null, 'blanket random mesas no longer define this canyon');
+assert.equal(config.terrain.rimH, 0, 'no closed square wall across the two canyon mouths');
+assert.deepEqual(config.terrain.landforms, [], 'rejected scattered shelf pilot is not layered underneath');
+assert.deepEqual(config.spawns, original.spawns, 'existing deployment anchors retained');
+assert.deepEqual(config.terrain.village, original.terrain.village, 'outpost stays on its original floor footprint');
+assert.deepEqual(config.terrain.marshes, original.terrain.marshes);
+assert.equal(config.terrain.roads.paths.length, 5);
+for (const index of [1, 3, 4]) assert.deepEqual(config.terrain.roads.paths[index], original.terrain.roads.paths[index]);
+for (const index of [0, 2]) {
+  assert.deepEqual(config.terrain.roads.paths[index][0], original.terrain.roads.paths[index][0]);
+  assert.deepEqual(config.terrain.roads.paths[index].at(-1), original.terrain.roads.paths[index].at(-1));
+}
+assert.equal(serialize({ ...config, blurb: original.blurb, terrain: original.terrain,
+  props: { ...config.props, tacticalBeats: original.props.tacticalBeats, wallRuns: original.props.wallRuns } }),
+serialize(original), 'only scoped terrain, blurb and floor-reseated tactical/wall records change');
 
-function point(form, along, across) {
-  const lateral = across + form.bendM * 4 * along * (1 - along);
-  return [form.startX + form.axisX * along * form.lengthM - form.axisZ * lateral,
-    form.startZ + form.axisZ * along * form.lengthM + form.axisX * lateral];
-}
-function shelfContract(form) {
-  const shape = form._relief, sample = (u, v) => samplePlayableRelief(shape, ...point(shape, u, v));
-  const uncutWidth = shape.branchSide > 0 ? shape.leftWidthM : shape.rightWidthM;
-  const washWidth = shape.branchSide > 0 ? shape.rightWidthM : shape.leftWidthM;
-  const uncut = -shape.branchSide;
-  assert.ok(sample(.5, 0) > .9, 'retained upper shelf');
-  const tread = sample(.5, uncut * uncutWidth * .42);
-  assert.ok(tread > .3 && tread < .5, 'real lower shelf, not a flat-height plateau');
-  assert.ok(Math.abs(tread - sample(.5, uncut * uncutWidth * .54)) < 1e-12, 'finite broad tread');
-  const cross = shape.branchSide * washWidth * .6;
-  const washAlong = shape.notchAtFraction + Math.abs(cross) * .85 / shape.lengthM;
-  assert.ok(sample(washAlong, cross) < sample(washAlong, uncut * uncutWidth * .6) * .6,
-    'oblique wash interrupts only one side of the shelf');
-  for (const u of [0, 1]) for (const v of [-30, 0, 30]) assert.ok(Math.abs(sample(u, v)) < 1e-12, 'finite axial feet');
-  for (const v of [-shape.leftWidthM, shape.rightWidthM]) {
-    assert.ok(Math.abs(sample(.5, v)) < 1e-12, 'finite lateral feet');
-  }
-}
-function measureShape(form, prior) {
-  let maxDifference = 0, maxSlope = 0, changed = 0;
-  const shape = form._relief;
-  for (let along = 1; along < 20; along++) for (let cross = -18; cross <= 18; cross++) {
-    const [x, z] = point(shape, along / 20, cross * 8);
-    const h = sampleLandformHeight(form, x, z), before = sampleLandformHeight(prior, x, z);
-    assert.ok(Number.isFinite(h) && h >= 0 && h <= form.height, 'original positive amplitude budget');
-    const delta = Math.abs(h - before); maxDifference = Math.max(maxDifference, delta);
-    if (delta > .5) changed++;
-    const dx = (sampleLandformHeight(form, x + .1, z) - sampleLandformHeight(form, x - .1, z)) / .2;
-    const dz = (sampleLandformHeight(form, x, z + .1) - sampleLandformHeight(form, x, z - .1)) / .2;
-    maxSlope = Math.max(maxSlope, Math.hypot(dx, dz));
-  }
-  assert.ok(maxDifference > form.height * .2 && changed > 30, 'substantial actual shape change, not metadata');
-  assert.ok(maxSlope < .65, 'isolated low shelf cannot introduce a cliff; final composed slope is reported separately');
-  return { maxDifference, changed, maxSlope };
-}
-const shapes = layout.terrain.landforms.slice(0, 3).map((form, index) => {
-  shelfContract(form); return measureShape(form, original.terrain.landforms[index]);
-});
-assert.throws(() => measureShape(layout.terrain.landforms[0], layout.terrain.landforms[0]), { code: 'ERR_ASSERTION' },
-  'an unchanged current shape cannot satisfy the predecessor difference contract');
-assert.throws(() => shelfContract({ ...layout.terrain.landforms[0], _relief: { ...layout.terrain.landforms[0]._relief, kind: 'spur' } }),
-  { code: 'ERR_ASSERTION' }, 'smooth unstepped replacement fails the measured shelf/wash contract');
-const supportHashes = supports => Object.fromEntries(Object.entries(supports).map(([key, value]) =>
-  [key, value ? { type: value.constructor.name, bytes: value.byteLength,
-    sha: sha(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)) } : null]));
-function finalGround(current, previous) {
-  let changed = 0, maxDelta = 0, maxSlope = 0, oldMaxSlope = 0, fastPoints = 0;
-  for (let z = -480; z <= 480; z += 20) for (let x = -480; x <= 480; x += 20) {
-    const h = current.getHeightAt(x, z), before = previous.getHeightAt(x, z), delta = Math.abs(h - before);
-    assert.ok(Number.isFinite(h)); maxDelta = Math.max(maxDelta, delta);
-    if (delta > .25) changed++;
-    assert.equal(current._roadDist(x, z), previous._roadDist(x, z));
-    assert.equal(current.getWaterMaskAt(x, z), previous.getWaterMaskAt(x, z));
-    if (delta > .25 && x % 80 === 0 && z % 80 === 0) {
-      assert.ok(Math.abs(current.getHeightAtFast(x, z) - Math.fround(h)) < 1e-7); fastPoints++;
+function canyonContract(sample) {
+  for (const z of [-80, 0, 70]) {
+    const center = redrockCanyonCenter(z), floor = sample(center, z);
+    const west = sample(center - 400, z) - floor, east = sample(center + 400, z) - floor;
+    assert.ok(west > 55 && east > 65 && east - west > 8, 'two tall unequal flanks above a real low floor');
+    assert.ok(Math.abs(sample(center - 160, z) - floor) < 6 && Math.abs(sample(center + 160, z) - floor) < 6,
+      'wide connected floor, not the crown of a ridge or several random mesas');
+    for (const side of [-1, 1]) {
+      let steepest = 0, benchRun = 0, longestBench = 0;
+      for (let distance = 211; distance < 400; distance++) {
+        const height = sample(center + side * distance, z) - floor;
+        const slope = Math.abs(sample(center + side * (distance + 1), z)
+          - sample(center + side * distance, z));
+        // Measure the bench across one 4m terrain-support cell. One-metre
+        // soil ripples must not split an otherwise continuous rock terrace.
+        const benchSlope = Math.abs(sample(center + side * (distance + 2), z)
+          - sample(center + side * (distance - 2), z)) / 4;
+        steepest = Math.max(steepest, slope);
+        benchRun = height > 15 && height < 40 && benchSlope < .2 ? benchRun + 1 : 0;
+        longestBench = Math.max(longestBench, benchRun);
+      }
+      assert.ok(steepest > 2.2, 'central walls contain steep rock faces, not smooth hillside ramps');
+      assert.ok(longestBench >= 22, `continuous rock benches separate the steep faces: z=${z}, side=${side}, length=${longestBench}, steepest=${steepest}`);
     }
-    const normal = current.getNormalAt(x, z), oldNormal = previous.getNormalAt(x, z);
-    maxSlope = Math.max(maxSlope, Math.hypot(normal.x, normal.z) / normal.y);
-    oldMaxSlope = Math.max(oldMaxSlope, Math.hypot(oldNormal.x, oldNormal.z) / oldNormal.y);
   }
-  assert.ok(changed > 12 && fastPoints > 0, 'authored shelves reach the conditioned playable surface and live cache');
-  assert.ok(maxDelta <= 8.4 + 8.2 + 6.8, 'no height outside the three original amplitude budgets');
-  return { changed, maxDelta, maxSlope, oldMaxSlope, fastPoints };
 }
-function deploymentSupport(current, previous) {
-  for (const spawn of [layout.spawns.player, ...layout.spawns.enemies]) {
+canyonContract(sampleRedrockCanyon);
+assert.throws(() => canyonContract(() => 4), { code: 'ERR_ASSERTION' }, 'flat former-floor substitute fails tall canyon');
+assert.throws(() => canyonContract((x, z) => sampleRedrockCanyon(x, z) * .1), { code: 'ERR_ASSERTION' },
+  'tiny shelf-height substitution cannot satisfy a canyon');
+for (const z of [-6000, -600, -430, 430, 600, 6000]) {
+  assert.equal(redrockCanyonFloorHalfWidth(z), 330, 'mouth stops widening before the boundary');
+  const center = redrockCanyonCenter(z);
+  assert.equal(sampleRedrockCanyon(center + 300, z), sampleRedrockCanyon(center - 300, z));
+}
+for (const across of [-400, 400]) {
+  for (const z of [-207 + across * .035, 110 + Math.abs(across) * .24]) {
+    const x = redrockCanyonCenter(z) + across;
+    assert.equal(sampleRedrockCanyon(x, z), sampleRedrockCanyon(redrockCanyonCenter(z), z),
+      'road-aligned side ravines connect all the way through each wall');
+  }
+}
+assert.doesNotMatch(read('src/world/redrockCanyon.ts'), /\bnew\s+|Math\.random|\.noise\(|new (?:Float|Int|Uint)/,
+  'shared analytic region adds no query allocation, noise or grid');
+
+const bufferReceipt = values => Object.fromEntries(Object.entries(values).map(([key, value]) => [key,
+  { type: value.constructor.name, bytes: value.byteLength, sha: sha(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)) }]));
+function roadGrades(field) {
+  return layout.roads.map((road, index) => {
+    let maxGrade = 0, maxStep = 0, samples = 0;
+    for (let i = 1; i < road.length; i++) {
+      const a = road[i - 1], b = road[i], length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const steps = Math.ceil(length / 2), step = length / steps;
+      let prior = field.getHeightAt(...a);
+      for (let j = 1; j <= steps; j++) {
+        const t = j / steps, h = field.getHeightAt(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t);
+        maxStep = Math.max(maxStep, Math.abs(h - prior)); maxGrade = Math.max(maxGrade, Math.abs(h - prior) / step);
+        prior = h; samples++;
+      }
+    }
+    return { index, maxGrade, maxStep, samples };
+  });
+}
+function supportFootprints(field) {
+  const points = [...layout.spawns.enemies, layout.spawns.player, ...config.props.tacticalBeats];
+  return points.map(point => {
+    let lo = Infinity, hi = -Infinity, minNormalY = 1;
     for (const dx of [-8, 0, 8]) for (const dz of [-8, 0, 8]) {
-      assert.equal(current.getHeightAt(spawn.x + dx, spawn.z + dz), previous.getHeightAt(spawn.x + dx, spawn.z + dz));
+      const x = point.x + dx, z = point.z + dz, h = field.getHeightAt(x, z);
+      lo = Math.min(lo, h); hi = Math.max(hi, h); minNormalY = Math.min(minNormalY, field.getNormalAt(x, z).y);
     }
-  }
+    return { x: point.x, z: point.z, relief: hi - lo, minNormalY };
+  });
 }
 const receipts = [];
 for (const seed of [1337, 7719]) {
-  const current = constructObserved(seed, config), previous = constructObserved(seed, original);
-  assert.deepEqual(supportHashes(current.supports), supportHashes(previous.supports), 'actual old/current support bytes and storage');
-  deploymentSupport(current.field, previous.field);
-  receipts.push({ seed, ...finalGround(current.field, previous.field) });
+  const a = current.constructObserved(seed, config), b = previous.constructObserved(seed, original);
+  const support = bufferReceipt(a.supports), oldSupport = bufferReceipt(b.supports);
+  for (const key of Object.keys(support)) {
+    assert.equal(support[key].type, oldSupport[key].type); assert.equal(support[key].bytes, oldSupport[key].bytes);
+  }
+  assert.notEqual(support.road.sha, oldSupport.road.sha, 'new roads are seated in the canyon, not held mesa elevations');
+  assert.notEqual(support.pads.sha, oldSupport.pads.sha, 'deployment targets are recomputed on the new floor');
+  canyonContract((x, z) => a.field.getHeightAt(x, z));
+  let changed = 0, maxDelta = 0, fastSamples = 0;
+  for (let z = -480; z <= 480; z += 40) for (let x = -480; x <= 480; x += 40) {
+    const h = a.field.getHeightAt(x, z), delta = Math.abs(h - b.field.getHeightAt(x, z));
+    assert.ok(Number.isFinite(h)); maxDelta = Math.max(maxDelta, delta); if (delta > 8) changed++;
+    assert.equal(a.field.getWaterMaskAt(x, z), 0);
+    if (x % 80 === 0 && z % 80 === 0) {
+      assert.equal(a.field.getHeightAtFast(x, z), Math.fround(h)); fastSamples++;
+    }
+  }
+  assert.ok(changed > 80 && maxDelta > 40, 'region-scale canyon, not another low-impact shelf adjustment');
+  receipts.push({ seed, changed, maxDelta, fastSamples, support, roads: roadGrades(a.field), footprints: supportFootprints(a.field) });
 }
-console.log(JSON.stringify({ test: 'badlandsRelief', base, unchangedMapSources: 29, shapes, receipts,
-  limits: 'Actual CPU scalar/final-ground/support/cache checks; other29 source parity is paired with the existing historical multi-seed suite. No native art, final prop seating, objective access, collision refresh, CPU throughput, heap or FPS clearance.' }, null, 2));
+// Current opt-in disabled on another actual map ID is exactly inert, not a global policy switch.
+const gated = { ...config, id: 'frontier' }, disabled = { ...gated, terrain: { ...gated.terrain, redrockCanyon: false } };
+const gatedA = current.constructObserved(1337, gated), gatedB = current.constructObserved(1337, disabled);
+assert.deepEqual(bufferReceipt(gatedA.supports), bufferReceipt(gatedB.supports));
+for (let z = -400; z <= 400; z += 80) for (let x = -400; x <= 400; x += 80) {
+  assert.equal(gatedA.field.getHeightAt(x, z), gatedB.field.getHeightAt(x, z));
+}
+for (const id of MAP_IDS) if (id !== 'badlands') {
+  const cfg = getMapConfig(id), a = current.constructObserved(1337, cfg), b = previous.constructObserved(1337, cfg);
+  assert.deepEqual(bufferReceipt(a.supports), bufferReceipt(b.supports), `${id}: unchanged support arrays`);
+  for (let z = -480; z <= 480; z += 80) for (let x = -480; x <= 480; x += 80) {
+    assert.equal(a.field.getHeightAt(x, z), b.field.getHeightAt(x, z), `${id}: exact original height`);
+    assert.deepEqual(a.field.getNormalAt(x, z).toArray(), b.field.getNormalAt(x, z).toArray());
+  }
+}
+console.log(JSON.stringify({ test: 'badlandsRelief', base, unchangedMaps: 29, receipts,
+  limits: 'Actual conditioned CPU ground/support/cache and road/footprint measurements. Full-mode current-terrain access, actual native prop contact, refreshed collision/minimap and visual acceptance remain separate gates; no GPU or memory-performance clearance.' }, null, 2));
+for (const receipt of receipts) {
+  for (const road of receipt.roads) assert.ok(road.maxGrade <= .30, `road${road.index}/${receipt.seed}: continuous drivable grade`);
+  for (const point of receipt.footprints) {
+    assert.ok(point.relief <= 2 && point.minNormalY >= .94, `${receipt.seed}/${point.x},${point.z}: seated deployment/tactical footprint`);
+  }
+}

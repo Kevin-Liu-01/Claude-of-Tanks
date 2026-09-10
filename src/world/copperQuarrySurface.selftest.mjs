@@ -136,7 +136,9 @@ for (const [index, seed] of seeds.entries()) {
       const historicalRing = id === 'polders' ? sampleHorizonGeometry({ ...config,
         horizon: { ...config.horizon, amp: 0.50 } }, seed)
         : id === 'titan_gorge' ? sampleHorizonGeometry({ ...config,
-          horizon: { ...config.horizon, finiteTableCaps: false } }, seed) : ring;
+          horizon: { ...config.horizon, finiteTableCaps: false } }, seed)
+        : id === 'badlands' ? sampleHorizonGeometry({ ...config,
+          horizon: { ...config.horizon, redrockCanyon: false } }, seed) : ring;
       appendHorizonReceipt(hash, id, historicalRing);
       const mutated = id === 'desert'
         ? { ...historicalRing, positions: historicalRing.positions.slice() } : historicalRing;

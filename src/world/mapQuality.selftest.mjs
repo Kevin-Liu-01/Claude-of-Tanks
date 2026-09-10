@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { createHeightField } from './terrain.ts';
+import { redrockCanyonCenter } from './redrockCanyon.ts';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,
   HORIZON_TREELINE_MAX_LAYERS,
@@ -35,6 +36,37 @@ const mobileWrecks = new Set();
 const extraWreckBudget = { urban: 6, railyard: 6, frontier: 6, delta: 6,
   badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
   ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8 };
+
+function assertAuthoredMacroTerrain(config, hf) {
+  if (config.id !== 'badlands') {
+    assert.ok(config.terrain.landforms?.length >= 5,
+      `${config.id}: authored macro terrain breaks the field into tactical lanes`);
+    return;
+  }
+  assert.equal(config.terrain.redrockCanyon, true, 'Badlands explicitly owns the regional canyon');
+  assert.equal(config.terrain.mesas, null, 'blanket random mesas cannot substitute for canyon walls');
+  assert.equal(config.terrain.rimH, 0, 'canyon mouths are not closed by a square rim');
+  assert.deepEqual(config.terrain.landforms, [], 'held low shelf rows are not the regional terrain');
+  // Check the actual completed heightfield, not just a new configuration label.
+  // The dedicated badlandsRelief suite additionally covers two seeds, roads,
+  // deployment/tactical footprints, support construction and live-cache parity.
+  for (const z of [-80, 0, 70]) {
+    const x = redrockCanyonCenter(z), floor = hf.getHeightAt(x, z);
+    const west = hf.getHeightAt(x - 400, z) - floor, east = hf.getHeightAt(x + 400, z) - floor;
+    assert.ok(west > 55 && east > 65 && east - west > 8, 'Badlands has tall unequal flanks above its floor');
+    assert.ok(Math.abs(hf.getHeightAt(x - 160, z) - floor) < 6
+      && Math.abs(hf.getHeightAt(x + 160, z) - floor) < 6, 'Badlands retains a broad low canyon floor');
+  }
+}
+
+{
+  const canyon = getMapConfig('badlands'), flat = { getHeightAt: () => 4 };
+  assert.throws(() => assertAuthoredMacroTerrain(canyon, flat), { code: 'ERR_ASSERTION' }, 'metadata alone is not macro terrain');
+  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, terrain: { ...canyon.terrain, redrockCanyon: false } }, flat),
+    { code: 'ERR_ASSERTION' }, 'missing explicit canyon owner is rejected');
+  assert.throws(() => assertAuthoredMacroTerrain({ ...canyon, id: 'frontier' }, flat),
+    { code: 'ERR_ASSERTION' }, 'the other29 maps keep the original five-landform requirement');
+}
 
 assert.equal(MAP_IDS.length, 30, 'the battlefield roster contains thirty maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
@@ -77,8 +109,6 @@ for (const mapId of MAP_IDS) {
   }
   assert.equal(config.shot.pos.length, 3, `${mapId}: establishing camera position`);
   assert.equal(config.shot.look.length, 3, `${mapId}: establishing camera target`);
-  assert.ok(config.terrain.landforms?.length >= 5,
-    `${mapId}: authored macro terrain breaks the field into tactical lanes`);
   const beats = config.props.tacticalBeats || [];
   assert.equal(beats.length, 3, `${mapId}: three deliberate lane strongpoints`);
   assert.deepEqual([...new Set(beats.map((beat) => beat.role))].sort(),
@@ -87,6 +117,7 @@ for (const mapId of MAP_IDS) {
     `${mapId}: memorable strongpoint identities are unique`);
   const structureFamilies = new Set(config.props.destructibleBuildings);
   const hf = createHeightField(1337, config);
+  assertAuthoredMacroTerrain(config, hf);
   if (config.props.telegraph) {
     const stations = [];
     const nodes = hf._layout.roads[0];
@@ -197,8 +228,6 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   assert.ok(config.props.inhabit.modernClutter >= 18,
     `${mapId}: modern roadside and checkpoint clutter budget`);
   assert.ok(config.props.craters >= 48, `${mapId}: battlefield scarring budget`);
-  assert.ok(config.terrain.landforms?.length >= 5,
-    `${mapId}: authored macro terrain breaks the field into tactical lanes`);
   assert.ok(config.props.wallRuns?.length >= 6,
     `${mapId}: breached hard-cover lines divide open approaches`);
   assert.ok(config.sky.fogDensity <= 0.0009,
@@ -207,6 +236,7 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
     `${mapId}: fog tint cannot flatten the horizon into a solid card`);
 
   const hf = createHeightField(1337, config);
+  assertAuthoredMacroTerrain(config, hf);
   const routes = hf._layout.roads;
   assert.ok(routes.length >= 4, `${mapId}: at least four authored movement routes`);
   assert.ok(routes.every((route) => route.length >= 6), `${mapId}: routes span meaningful map distance`);

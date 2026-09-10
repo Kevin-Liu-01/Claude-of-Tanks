@@ -1,43 +1,26 @@
-// badlands.js — large red-rock tablelands surrounding a modern logistics
-// town; long fire lanes are broken by dry washes, compounds and escarpments.
+// Redrock — a north/south canyon with a sheltered logistics outpost on its
+// traversable floor, unequal layered flanks and road-connected side ravines.
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export default {
   id: 'badlands',
   name: 'Redrock Divide',
-  blurb: 'Layered red escarpments frame a fortified desert logistics outpost',
+  blurb: 'An eroded red-rock canyon shelters a fortified desert logistics outpost',
   terrain: {
-    // The skyline carries the massive mesa identity; playable shelves stay
-    // traversable so bots and players do not spend whole matches partitioned
-    // by random 40 m walls.
-    hillScale: 0.68, microScale: 0.74, rimH: 38,
-    dunes: { amp: 3.0 }, mesas: { amp: 24, thr0: 0.74, thr1: 0.80 }, marshes: [],
+    // One regional drainage system defines the playable silhouette. Original
+    // seeded detail is subordinate; random mesas and a closed square rim are off.
+    redrockCanyon: true, hillScale: 0.24, microScale: 0.40, rimH: 0,
+    dunes: { amp: 0.7 }, mesas: null, marshes: [],
     roads: { paths: [
-      [[-432, -452], [-360, -292], [-330, -92], [-356, 112], [-292, 306], [-210, 470]],
+      [[-432, -452], [-254, -292], [-206, -92], [-182, 112], [-190, 306], [-210, 470]],
       [[-188, -466], [-104, -306], [-28, -150], [54, 8], [126, 174], [204, 344], [286, 466]],
-      [[344, -452], [302, -272], [326, -82], [286, 112], [320, 298], [382, 456]],
+      [[344, -452], [186, -272], [196, -82], [220, 112], [270, 298], [382, 456]],
       [[-362, 182], [-210, 128], [-52, 102], [108, 126], [272, 194]],
       [[-286, -214], [-132, -232], [18, -202], [166, -244], [304, -198]],
     ] },
     village: { x0: -176, x1: 190, z0: -166, z1: 196, cx: 8, cz: 22, feather: 48, flatten: 0.76, relief: 0.16 },
-    landforms: [
-      // Unequal shelf remnants, not a continuous canyon wall. The original
-      // rows still initialize road/pad support; only their final relief changes.
-      // Broad risers and southern side washes leave the northern service beats
-      // on the uncut shoulders. The northern remnant drains toward its west.
-      { kind: 'ridge', x: -272, z: 18, length: 330, width: 78, height: 8.4, yawDeg: 4,
-        relief: { kind: 'terrace', startX: -436, startZ: 7, endX: -108, endZ: 29,
-          leftWidthM: 112, rightWidthM: 136, bendM: -12, branchSide: -1, notchAtFraction: 0.40 } },
-      { kind: 'ridge', x: 276, z: 26, length: 320, width: 80, height: 8.2, yawDeg: -7,
-        relief: { kind: 'terrace', startX: 117, startZ: 46, endX: 435, endZ: 6,
-          leftWidthM: 120, rightWidthM: 144, bendM: 15, branchSide: -1, notchAtFraction: 0.45 } },
-      { kind: 'ridge', x: -42, z: 280, length: 250, width: 70, height: 6.8, yawDeg: 82,
-        relief: { kind: 'terrace', startX: -59, startZ: 156, endX: -25, endZ: 404,
-          leftWidthM: 98, rightWidthM: 122, bendM: -10, branchSide: 1, notchAtFraction: 0.40 } },
-      { kind: 'knoll', x: 132, z: -244, rx: 88, rz: 58, height: 6.6, yawDeg: 20 },
-      { kind: 'basin', x: -126, z: -218, rx: 104, rz: 66, height: -3.0, yawDeg: -21 },
-    ],
+    landforms: [],
   },
   spawns: {
     player: { x: -318, z: -380 },
@@ -67,18 +50,18 @@ export default {
       'compound', 'watertower', 'warehouse', 'gantry'],
     destructibleBuildings: ['deserttent', 'motorpool', 'quonsethut', 'checkpointhut'],
     tacticalBeats: [
-      { id: 'northwest-mesa-notch', role: 'brawl', x: -282, z: 112, yawDeg: 4,
+      { id: 'northwest-mesa-notch', role: 'brawl', x: -162, z: 112, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 8, radius: 12, scaleMax: 3.5 }, wreck: true, wreckOffsetX: -16 },
       { id: 'wash-recon-camp', role: 'scout', x: 42, z: -206, yawDeg: 24,
         structure: 'deserttent', outcrop: { count: 5, radius: 9, scaleMax: 2.8 } },
-      { id: 'eastern-pipeline-stop', role: 'support', x: 292, z: 98, yawDeg: -8,
+      { id: 'eastern-pipeline-stop', role: 'support', x: 182, z: 98, yawDeg: -8,
         structure: 'checkpointhut', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: 15 },
     ],
     blockFill: true,
     wallStyle: 'adobe', wallStoneChance: 0.12, buildingLat: [11, 6], sideSkip: 0.1,
     wallRuns: [
-      [-302, -142, -212, -104, 2], [-294, 128, -204, 162, 3],
-      [202, -144, 298, -106, 3], [198, 132, 294, 166, 2],
+      [-198, -142, -108, -104, 2], [-194, 128, -104, 162, 3],
+      [116, -144, 202, -106, 3], [116, 132, 202, 166, 2],
       [-142, 250, -44, 278, 3], [70, -270, 164, -238, 2],
     ],
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,

@@ -29,6 +29,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
+import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
 import {
@@ -163,6 +164,8 @@ interface TerrainSettings {
   /** Use authored activity footprints instead of blanket settlement wear. */
   villageWear?: 'activity-patches';
   quarryBenches?: boolean;
+  /** Authored Redrock regional ground participates in initial road/pad seating. */
+  redrockCanyon?: boolean;
 }
 
 interface SplatConfig {
@@ -600,6 +603,7 @@ function* heightFieldBuildSteps(
 ): Generator<number, HeightField, void> {
   const layout = createLayout(cfg);
   const T = layout.terrain;
+  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;
   const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);
   const _VILLAGE = layout.village;
   const _MARSHES = layout.marshes;
@@ -746,6 +750,10 @@ function* heightFieldBuildSteps(
     marshWeight: number,
   ): number {
     let spawnClear = 1;
+    // Unlike the held decorative relief pilot, these are the actual support
+    // heights from the first construction sample onward. Roads and pads below
+    // therefore conform to the canyon instead of retaining obsolete mesa levels.
+    if (redrockCanyon) h += sampleRedrockCanyon(x, z);
     if (T.dunes || T.mesas || T.landforms.length) {
       for (let p = 0; p < padPts.length; p++) {
         const dx = x - padPts[p].x, dz = z - padPts[p].z;
@@ -3551,7 +3559,7 @@ function* terrainBuildSteps(
 ): Generator<TerrainBuildProgress, THREE.Group, void> {
   const group = new THREE.Group();
   group.name = 'terrain';
-  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337);
+  const horizonSteps = buildHorizonRingSteps(engineCtx, cfg, 1337, heightField);
   let horizonStep = horizonSteps.next();
   while (!horizonStep.done) {
     yield [0, CHUNKS * CHUNKS + 2, false];

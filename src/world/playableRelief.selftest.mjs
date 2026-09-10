@@ -31,7 +31,8 @@ const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
 
 // This remains the historical Frontier/Alpine acceptance oracle. Badlands'
-// later three-row pilot is tested against actual current config separately.
+// later canyon layout is tested against actual current config separately in
+// badlandsRelief.selftest.mjs; it is not part of this older two-map pilot.
 const badlandsBase='d948cb5733ebb41ba471458a6b410e2bbb3568cc';
 const badlandsSource=execFileSync('git',['show',`${badlandsBase}:src/world/maps/badlands.ts`],{cwd:root,encoding:'utf8'});
 assert.equal(createHash('sha256').update(badlandsSource).digest('hex'),
@@ -39,10 +40,6 @@ assert.equal(createHash('sha256').update(badlandsSource).digest('hex'),
 const badlandsURL=new URL('./maps/badlands.ts?relief-historical',import.meta.url).href;
 ports.set(badlandsURL,stripTypeScriptTypes(badlandsSource));
 const historicalBadlands=(await import(badlandsURL)).default;
-const actualBadlands=getMapConfig('badlands');
-const serialize=value=>JSON.stringify(value,(_key,item)=>typeof item==='function'?item.toString():item);
-assert.equal(serialize({...actualBadlands,terrain:{...actualBadlands.terrain,landforms:actualBadlands.terrain.landforms.map(stripRelief)}}),
-  serialize(historicalBadlands),'Historical projection may remove only the new Badlands relief descriptors');
 
 // Literal predecessor map modules certify that no authoring fields besides the
 // selected forms' opt-in descriptors changed; functions retain their own source.
