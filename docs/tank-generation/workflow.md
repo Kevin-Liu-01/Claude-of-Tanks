@@ -181,6 +181,15 @@ lazy profile ownership and browser factory dispatch. Add focused tests to the
 current selftest suite. Make both high/low variants work. Do not add a private
 source loader or eager full-fleet dependency to the player boot path.
 
+Before that expensive generation sequence, run the selected tanks' strict
+standard and fidelity checks on the authored candidate. Stop on a bad fit or
+sub-floor component, preserving its experiment separately from passing tanks.
+The composed release now runs these failure-prone checks first too, with no
+omitted assertions, result caching, altered floors or skipped full test/build
+tail. This avoids discovering a basic geometry failure only after another
+full-fleet measurement. Generation still invalidates/requires the normal final
+fresh checks; preflight success is not itself a release receipt.
+
 Run anatomy update/check; regenerate only the changed tanks' presentation
 assets plus the required complete-fleet technical cards. Check generated
 receipts through their existing typed registry/loaders. Preserve unrelated
