@@ -1372,6 +1372,15 @@ let _splatFields: SplatFields | null = null; // { a, b: Float32Array } — see s
 const SPLAT_FIELD_S = 256;
 function splatFields(): SplatFields {
   if (_splatFields) return _splatFields;
+  const steps = splatFieldSteps();
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+/** Private rows until complete; a synchronous consumer may win between slices. */
+function* splatFieldSteps(): Generator<void, SplatFields, void> {
+  if (_splatFields) return _splatFields;
   const s = SPLAT_FIELD_S;
   const noi = new SimplexNoise({ random: mulberry32(3011) });
   const a = new Float32Array(s * s);
@@ -1382,6 +1391,10 @@ function splatFields(): SplatFields {
       a[j] = torusNoise(noi, u, v, 4, 4, 3) * 0.6 + torusNoise(noi, u, v, 9, 9, 27) * 0.4;
       b[j] = torusNoise(noi, u, v, 2, 2, 55) * 0.7 + torusNoise(noi, u, v, 5, 5, 91) * 0.3;
     }
+    yield;
+    // Reuse the exact published identity without finishing a redundant bake.
+    // In particular, cancellation after the final row must not publish ours.
+    if (_splatFields) return _splatFields;
   }
   _splatFields = { a, b };
   return _splatFields;
@@ -3076,6 +3089,14 @@ export function selectTerrainLandformMask(
   return splat?.seaLake || splat?.iceLake ? null : landform;
 }
 
+function createWetSplatLayer(S: SplatConfig, aniso: number): TerrainTextureLayer {
+  return S.iceLake
+    ? makeIceLayer(3003, aniso)
+    : S.seaLake // maps r1 (ADDITIVE): open-water sheet (coastal sea / rivers)
+      ? makeSeaLayer(3003, aniso, S.mudTone || null)
+      : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1);
+}
+
 function* createSplatMaterialSteps(
   engineCtx: TerrainEngineContext,
   layout: TerrainLayout,
@@ -3113,11 +3134,7 @@ function* createSplatMaterialSteps(
     ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
     : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null));
   yield;
-  const wet = S.iceLake
-    ? makeIceLayer(3003, aniso)
-    : S.seaLake // maps r1 (ADDITIVE): open-water sheet (coastal sea / rivers)
-      ? makeSeaLayer(3003, aniso, S.mudTone || null)
-      : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1);
+  const wet = createWetSplatLayer(S, aniso);
   yield;
   const layers = { G: grass, D: dirt, R: rock, M: wet };
   // Deep-hunt 2026-07: sourced CC0 PBR sets (ambientCG/Poly Haven, see
@@ -3130,6 +3147,7 @@ function* createSplatMaterialSteps(
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
     S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null);
   yield;
+  if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
   yield;
   const tintA = S.tintA || [1.16, 1.08, 0.76];
@@ -3480,13 +3498,23 @@ export async function buildTerrainMeshesAsync(
   streamOpts: TerrainStreamOptions | null = null,
   sourcePreparation = prepareSourcedTerrain(cfg?.id || 'verdant', cfg?.splat || {}),
 ): Promise<THREE.Group> {
-  const g = terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
-  let r = g.next();
-  while (!r.done) {
-    if (tick && (fineSlices || r.value[2])) await tick(r.value[0], r.value[1]);
-    r = g.next();
+  const g: Iterator<TerrainBuildProgress, THREE.Group, void> =
+    terrainBuildSteps(heightField, engineCtx, cfg, streamOpts, sourcePreparation);
+  let completed = false;
+  try {
+    let r = g.next();
+    while (!r.done) {
+      if (tick && (fineSlices || r.value[2])) await tick(r.value[0], r.value[1]);
+      r = g.next();
+    }
+    completed = true;
+    return r.value;
+  } finally {
+    if (!completed) {
+      // Close private CPU continuations; this is not partial asset disposal.
+      try { g.return?.(); } catch { /* preserve the original pacing failure */ }
+    }
   }
-  return r.value;
 }
 
 function* terrainBuildSteps(
@@ -3516,9 +3544,16 @@ function* terrainBuildSteps(
     sourcePreparation,
   );
   let materialStep = materialSteps.next();
-  while (!materialStep.done) {
-    yield [1, CHUNKS * CHUNKS + 2, false];
-    materialStep = materialSteps.next();
+  try {
+    while (!materialStep.done) {
+      yield [1, CHUNKS * CHUNKS + 2, false];
+      materialStep = materialSteps.next();
+    }
+  } finally {
+    if (!materialStep.done) {
+      const pending: Iterator<void, object, void> = materialSteps;
+      try { pending.return?.(); } catch { /* preserve the original pacing failure */ }
+    }
   }
   const { material: mat, textures: splatTextures } = materialStep.value;
   const chunks: TerrainChunk[] = [];
