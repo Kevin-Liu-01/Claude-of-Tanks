@@ -94,6 +94,11 @@ tests, TS7 and the public build. Its extra full-file minimap Doctor scan flags
 the existing trusted-source test harness's `new Function`; that unchanged
 code is present in `aa03ceb90`. Changed-scope Doctor across all seven edited
 code/test files passes with no new diagnostics. No suppression was added.
-Final 440×440 asset/build verification is recorded in
-`autumn-headland-release-final-r2.zC6b98`; consult its terminal receipt rather
-than interpreting this document as a blanket performance approval.
+Final asset/source verification is recorded in
+`autumn-headland-release-final-r2.zC6b98/static-check.json`. The additional
+asset-only rebuild was cancelled while still queued: R1 already built the
+identical game source, and the only later game-package change is the separately
+decoded native 440×440 WebP. Its R2 `run.mjs` is not a passing build receipt.
+The intervening `1c0ad3146` main update changes only three tank-release tooling/
+workflow files; it is preserved unchanged. Do not interpret these scoped
+checks as a blanket performance approval.
