@@ -63,10 +63,33 @@ function declaration(text, name) {
 const lookup = declaration(source, 'buildRoadLookupGrid').getText();
 const segment = declaration(source, 'stampRoadLookupSegment').getText();
 const support = ['clamp', 'smoothstep', 'segDist'].map(name => declaration(source, name).getText()).join('\n');
-// Reconstruct the complete unsliced constructor at 3c2abead2 by removing only
-// scheduling. Its frozen bytes cover every formula, RNG and initialization
-// order, independently of the sync/async comparison below. No updated golden.
-const originalHeightField = declaration(source, 'heightFieldBuildSteps').getText()
+// Reconstruct the complete unsliced constructor at 3c2abead2. The later
+// d948cb573 relief phase and d23529c05 Redrock contribution are explicitly
+// projected out of this HISTORICAL source hash only. The actual current
+// optimized/legacy lookup comparisons below retain both terrain additions.
+// Their own playableRelief/badlandsRelief checks certify the changed terrain.
+// No old golden or arbitrary source region is replaced.
+function historicalHeightFieldSource(text) {
+  for (const [current, historical] of [
+    ["  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n", ''],
+    ["  let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';\n", ''],
+    [`    // Unlike the held decorative relief pilot, these are the actual support
+    // heights from the first construction sample onward. Roads and pads below
+    // therefore conform to the canyon instead of retaining obsolete mesa levels.
+    if (redrockCanyon) h += sampleRedrockCanyon(x, z);
+`, ''],
+    ['sampleLandformHeight(form, x, z, landformPhase)', 'sampleLandformHeight(form, x, z)'],
+    [`  // Explicit second phase: all legacy support targets above are frozen.
+  // Exact mesh/physics and the existing one-metre live cache share this surface.
+  landformPhase = 'authored-relief';
+`, ''],
+  ]) {
+    assert.equal(text.split(current).length, 2, 'each declared historical delta occurs exactly once');
+    text = text.replace(current, historical);
+  }
+  return text;
+}
+const originalHeightField = historicalHeightFieldSource(declaration(source, 'heightFieldBuildSteps').getText())
   .replace('function* heightFieldBuildSteps(', 'export function createHeightField(')
   .replace('): Generator<number, HeightField, void> {', '): HeightField {')
   .replace(/  \/\/ Count completed segments, corridor rows, support setup and range rows;\n  \/\/ this is construction progress, not elapsed-time or work-cost prediction\.\n  const totalHeightSlices = roads\.reduce\(\(sum, nodes\) => sum \+ Math\.max\(0, nodes\.length - 1\), 0\)\n    \+ GN \+ 1 \+ 129;\n  let completedHeightSlices = 0;\n/, '')
@@ -88,6 +111,9 @@ const originalHeightField = declaration(source, 'heightFieldBuildSteps').getText
   .replace('const [minY, maxY] = yield* measureHeightRange();', 'const [minY, maxY] = measureHeightRange();');
 assert.equal(sha(originalHeightField + '\n'),
   '0767b9f0a0ceeb827665c61a57ec6313a939ad875fea7e7ff2d8fb104fc8bc36');
+assert.throws(() => historicalHeightFieldSource(declaration(source, 'heightFieldBuildSteps').getText()
+  .replace('sampleRedrockCanyon(x, z)', 'sampleRedrockCanyon(x, z) * 2')),
+'an undeclared terrain contribution cannot disappear in historical projection');
 for (const name of ['stampRoadLookupSegment', 'buildRoadLookupGrid']) {
   function inspect(node) {
     assert.ok(!ts.isNewExpression(node) && !ts.isArrayLiteralExpression(node)

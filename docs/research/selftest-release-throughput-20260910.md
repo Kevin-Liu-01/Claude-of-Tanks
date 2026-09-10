@@ -1,5 +1,32 @@
 # Self-test release throughput — 2026-09-10
 
+## Repair published integration-fixture drift before retrying the fleet
+
+The Type 10 recovery diagnostic on `503d8e957` executed every previously
+unpassed/new check without treating traversal as success. It found five
+failures (two shared one harness cause), now repaired without runtime edits:
+
+- Source-image plan extraction stripped the imported building image receiver
+  but still passed its identifier to the intercepted job. The evaluator now
+  supplies a fail-on-execution receiver: collecting the plan must never perform
+  image replacement. Both composition and worker controls pass.
+- The deployment-order test omitted the published world-program preparation
+  port. It now blocks that real stage independently, checks exact ordering,
+  and rejects deleted/unawaited preparation in addition to its old controls.
+- The road-lookup source hash now explicitly reverses only the authenticated
+  `d948cb573` and `d23529c05` terrain additions for the historical comparison.
+  The original hash remains unchanged; unexpected contribution edits fail.
+  Current optimized/legacy lookup and all 30 actual terrain cases still run.
+- Winter shoreline byte receipts now use the existing guarded historical
+  terrain-input projection. All old hashes remain unchanged. Actual current
+  Alpine berm, ice and reed contact plus exact population/storage budgets are
+  also checked across three seeds, not replaced by historical-only coverage.
+
+All seven focused harness/terrain checks pass, including the independent
+current relief and canyon checks. This is a test/tool-only checkpoint, not a
+complete npm lifecycle or tank release claim. Frozen Type 10 contact/source
+evidence is unaffected. A new official complete lifecycle follows these fixes.
+
 ## Eight-worker CPU ceiling — measured extension
 
 Ordinary `npm test` now uses `min(8, os.availableParallelism())` fresh CPU

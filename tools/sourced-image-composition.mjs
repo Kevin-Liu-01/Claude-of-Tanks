@@ -20,7 +20,12 @@ export async function urbanCompositionCases(source) {
     return cases;
   `;
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  const rows = await new AsyncFunction('THREE', 'texSize', script)({}, size => size);
+  // Imports are deliberately removed from this plan-only evaluator. Keep the
+  // newly imported data-image receiver resolvable when sourceJob receives it,
+  // but fail if planning accidentally starts mutating textures.
+  const noImageReplacement = () => { throw new Error('Plan collection must not replace images'); };
+  const rows = await new AsyncFunction('THREE', 'texSize', 'replaceSourcedBuildingDataImage', script)(
+    {}, size => size, noImageReplacement);
   assert.deepEqual(rows.map(row => row.set), ['grass', 'dirt', 'cobble', 'plaster', 'wood', 'brick'],
     'Unsupported urban source plan; review the experiment corpus explicitly');
   for (const row of rows) {

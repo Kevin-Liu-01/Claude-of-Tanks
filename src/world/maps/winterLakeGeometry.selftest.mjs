@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createHeightField, mulberry32 } from '../terrain.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
 import { dressMapExtras } from './mapKits.ts';
+import { historicalBadlandsInput, historicalPlayableReliefInput } from '../shorelineHistoryTestOracle.mjs';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood',
   'dark', 'glass', 'curtain', 'straw', 'baked'];
@@ -12,7 +13,8 @@ assert.deepEqual(MAP_IDS.filter(mapId => (getMapConfig(mapId).props.extraKits
   'every current production winterLake consumer has geometry/support coverage');
 // These are fixed prepatch *inputs* to the shared-kit identity comparison, not
 // a restriction on future map authoring (e.g. adding Saltwind's fishing piers).
-// Winter-family cases below still use their actual current production config.
+// Historical byte receipts use the pre-relief terrain inputs. Actual current
+// Alpine support is exercised separately below; no geometry golden is updated.
 const nonWinterInputs = {
   fjord: { extraKits: ['coastal'] }, delta: { extraKits: ['river'] },
   caldera: { extraKits: ['rail'] }, foundry: { extraKits: ['rail'] },
@@ -104,8 +106,10 @@ const otherHashes = {
   7719: '1b3742e177bcd069cc8d82721f23a33d1cba80f5336a7367de924d53cf7b68ff',
 };
 
-function build(mapId, seed) {
-  const config = getMapConfig(mapId), field = createHeightField(seed, config);
+function build(mapId, seed, historical = true) {
+  const current = getMapConfig(mapId);
+  const config = historical ? historicalPlayableReliefInput(historicalBadlandsInput(current)) : current;
+  const field = createHeightField(seed, config);
   const props = winterMaps.includes(mapId) ? config.props : nonWinterInputs[mapId] || {};
   const buckets = Object.fromEntries(names.map(name => [name, []]));
   const random = mulberry32(seed ^ 0x5a17);
@@ -491,3 +495,25 @@ for (const getHeightAt of supportFunctions) {
   }
 }
 console.log('winterLakeGeometry.selftest: flat, sloped, rippled and curved underside support fixtures also pass');
+
+// The published Alpine relief deliberately changes support heights, so an
+// immutable old mesh hash is not an oracle for its current elevation. Keep
+// the same physical/contact assertions on the actual current terrain too.
+for (const seed of [1337, 2049, 7719]) {
+  const built = build('alpine', seed, false), stats = inventory(built.buckets);
+  try {
+    assert.equal(built.calls, before[`alpine:${seed}`][0]);
+    assert.equal(built.next, before[`alpine:${seed}`][1]);
+    assert.notEqual(stats.later, before[`alpine:${seed}`][7], 'current relief is not the historical support fixture');
+    for (const geometry of built.buckets.plaster) {
+      if (geometry.name === 'winter-pressure-berm') auditBerm(geometry, built.field);
+      if (geometry.name === 'winter-ice-wedge') auditIce(geometry, built.field);
+    }
+    auditReeds(built.buckets.straw, built.field);
+    assert.deepEqual([stats.vertices, stats.indices, stats.bytes, stats.geometries],
+      fragmentBefore[`alpine:${seed}`].slice(0, 4), 'current relief retains the complete geometry population and budget');
+  } finally {
+    for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) geometry.dispose();
+  }
+}
+console.log('winterLakeGeometry.selftest: actual current Alpine relief physical support passes across three seeds');
