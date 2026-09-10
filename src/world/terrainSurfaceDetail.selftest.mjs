@@ -23,7 +23,7 @@ assert.deepEqual(source.match(/texSize\(\d+\)/g), [
 ], 'terrain detail does not increase any procedural texture or mask dimensions');
 for (const detail of [
   /n\.xy \+= dn\.xy \* ([\d.]+) \* openNear \* \(1\.0 - fMs\)/,
-  /n\.xy \+= dn2\.xy \* ([\d.]+) \* openNear2 \* \(1\.0 - fMs\)/,
+  /n\.xy \+= dn2\.xy \* ([\d.]+) \* nearG/,
   /n\.xy \+= gnF\.xy \* farG \* ([\d.]+)/,
 ]) {
   const gain = source.match(detail);
@@ -40,9 +40,11 @@ assert.match(source,
 assert.match(source,
   /float bedW = [^;]+\(1\.0 - fMs\) \* sandCoverage;/,
   'coastal water cannot inherit the neighboring sand dune bedforms');
+assert.match(source, /float nearG = openNear2 \* meadowG \* \(1\.0 - fR\);/,
+  'near turf relief uses existing dirt/projected/liquid coverage plus rock exclusion');
 assert.match(source,
-  /float farG = [^;]+\(1\.0 - fMs\)/,
-  'distant turf relief uses actual liquid coverage rather than its wider shore ramp');
+  /float farG = farM \* \(1\.0 - fR\) \* meadowG \* \(1\.0 - roadCore\);/,
+  'distant turf relief inherits actual liquid coverage through meadowG and excludes other material owners');
 assert.match(source,
   /mb \+ mix\(0\.85, 1\.6, min\(mb \* 0\.5, 1\.0\)\)/,
   'resolved midrange grains retain detail with the same distant anti-shimmer limit');

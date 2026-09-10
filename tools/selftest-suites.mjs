@@ -767,6 +767,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/liquidMarshSurface.selftest.mjs',
     'src/world/hardstandSurface.selftest.mjs',
     'src/world/terrainSurfaceDetail.selftest.mjs',
+    'src/world/terrainMaterialOwnership.selftest.mjs',
     'src/world/terrainProjection.selftest.mjs',
     'src/world/terrainSandCoverage.selftest.mjs',
     'src/world/terrainWornDirt.selftest.mjs',

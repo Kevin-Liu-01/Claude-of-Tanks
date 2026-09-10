@@ -38,13 +38,22 @@ const EXPECTED_PATCHES=[
   {boundary:[[94,-126],[105,-126],[108,-143],[110,-160],[99,-162],[95,-146]],feather:4,strength:1},
   {boundary:[[116,-96],[136,-98],[158,-111],[175,-110],[176,-100],[155,-100],[136,-88],[118,-87]],feather:4,strength:1},
 ];
+// The additive court mask at f84f predates the localization/town-strength
+// change. Keep that original append-only test, not a new alpha golden.
+// villageWear independently checks actual current masks and both new inputs.
+function preLocalizationConfig(config) {
+  const {villageWear:_laterCoverage,...terrain}=config.terrain;
+  const {townWear:_laterStrength,...splat}=config.splat;
+  return {...config,terrain,splat};
+}
 function checkConfig(config) {
   assert.deepEqual(config.props.foundryServiceCourt.sites.map(s=>[s.planIndex,s.kind,s.x,s.z,s.yawDeg]),EXPECTED_SITES);
   assert.deepEqual(config.terrain.workedGround,EXPECTED_PATCHES);
-  const {workedGround:_patches,...terrain}=config.terrain;
-  const {foundryServiceCourt:_court,...props}=config.props;
-  const prior={...config,terrain,props};
-  assert.deepEqual(historicalFoundryServiceInput(config),prior,'history projection removes only the two independently guarded fields');
+  const court=preLocalizationConfig(config);
+  const {workedGround:_patches,...terrain}=court.terrain;
+  const {foundryServiceCourt:_court,...props}=court.props;
+  const prior={...court,terrain,props};
+  assert.deepEqual(historicalFoundryServiceInput(config),prior,'history projection removes only independently guarded court/material fields');
   const altered={...config,terrain:{...config.terrain,hillScale:-123},props:{...config.props,sourcedPalette:'negative-control'}};
   assert.equal(historicalFoundryServiceInput(altered).terrain.hillScale,-123);
   assert.equal(historicalFoundryServiceInput(altered).props.sourcedPalette,'negative-control');
@@ -396,10 +405,12 @@ try {
   for(const property of ['plans','planGeometry','beforeComposition','rng','totalBudget','donorBudget','inventory','disposal']) {
     assert.deepEqual(results[1][property],results[0][property],`${property}: exact enabled/opt-out full producer contract`);
   }
-  const masks=verifyMasks(config);
+  const masks=verifyMasks(preLocalizationConfig(config));
   console.log(JSON.stringify({test:'foundryServiceCourt',plans:42,donors:6,budget:results[1].donorBudget,masks,
     constructionMs:results[1].constructionMs,
-    owners:results[1].disposal,placement:results[1].receipt,scope:'headless geometry/placement, not native art or performance'}));
+    owners:results[1].disposal,placement:results[1].receipt,
+    maskScope:'historical pre-localization additive court; actual current coverage owned by villageWear',
+    scope:'headless geometry/placement, not native art or performance'}));
 } finally {
   if(currentProps)disposeObject3DResources(currentProps.group);
   if(currentVegetation){currentVegetation.dispose();disposeObject3DResources(currentVegetation.group);}

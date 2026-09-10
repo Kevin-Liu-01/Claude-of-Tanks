@@ -63,7 +63,7 @@ assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
 for (const mapId of MAP_IDS) {
   const revision = mapId === 'oasis' ? 'north-up-v7-oasis-shoreline-v2'
     : mapId === 'autumn' ? 'north-up-v7-autumn-headlands'
-      : mapId === 'foundry' ? 'north-up-v7-foundry-service-court' : 'north-up-v7';
+      : mapId === 'foundry' ? 'north-up-v7-foundry-localized-soil' : 'north-up-v7';
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
     'only explicitly refreshed rasters invalidate their previous browser cache entries');
   assert.equal(minimapAssetUrl(mapId, '/game/'), `/game/minimaps/${mapId}.webp?v=${revision}`);
