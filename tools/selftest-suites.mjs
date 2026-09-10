@@ -759,6 +759,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/garage-battle-actions-contract.selftest.mjs',
     'tools/garage-action-timing.selftest.mjs',
     'tools/garage-audio-intent.selftest.mjs',
+    'tools/audio-default-sink.selftest.mjs',
     'tools/solo-cold-import-cover.selftest.mjs',
     'src/ui/garageReturnFailure.selftest.mjs',
     'src/ui/modalFocusLifecycle.selftest.mjs',
