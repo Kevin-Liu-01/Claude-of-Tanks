@@ -46,7 +46,9 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
   () => { throw new Error('worker path must not load a main-thread donor'); }, () => {}, client);
   const ticks = [];
   await f.run({}, {}, 2002, null, value => ticks.push(value), true);
-  assert.equal(f.args[0].at(-1), true, 'browser wrapper selects remote generator seam');
+  assert.equal(f.args[0][5], true, 'browser wrapper selects remote generator seam');
+  assert.equal(f.args[0][6].worker, true);
+  assert.equal(f.args[0][6].signal.aborted, false, 'successful build retains pending source settlement');
   assert.equal(request.result, baked);
   assert.deepEqual(ticks, [1, 1, 1, 1], 'worker waits check ownership without fake progress');
   assert.deepEqual(calls, [['t90m', request.options], 'disposed']);
@@ -60,13 +62,36 @@ function fixture(steps, acquire = async () => {}, close = () => {}, workerClient
   await assert.rejects(f.run({}, {}, 2002, null, null, true), error => error === failure);
   assert.equal(disposed, 1);
   assert.deepEqual(f.events.map(([event]) => event), ['work', 'closed']);
+  assert.equal(f.args[0][6].signal.aborted, true, 'failed worker await cancels this build source consumer');
 }
 for (const props of [{ wrecks: 0 }, { tankWrecks: { count: 0 } }]) {
   const client = { prepare() { assert.fail('empty wreck cast must not start a worker'); },
     dispose() { assert.fail('no worker owner was admitted'); } };
   const f = fixture([], undefined, undefined, client);
   await f.run({}, {}, 2002, { props });
-  assert.equal(f.args[0].at(-1), false);
+  assert.equal(f.args[0][5], false);
+}
+
+for (const failureAt of ['tick', 'import', 'generator']) {
+  const failure = new Error(`cancel ${failureAt}`);
+  const steps = failureAt === 'generator' ? {
+    *[Symbol.iterator]() { yield undefined; throw failure; },
+  } : [failureAt === 'import' ? { tankBuilder: 'k2', fine: true } : undefined];
+  const f = fixture(steps, async () => { throw failure; });
+  await assert.rejects(f.run({}, {}, 2002, null,
+    failureAt === 'tick' ? () => { throw failure; } : null, true), error => error === failure);
+  assert.equal(f.args[0][6].signal.aborted, true, `${failureAt}: cancel only the failed build source lease`);
+}
+{
+  const failure = new Error('first generator advance failed');
+  let disposed = 0;
+  const client = { prepare() { assert.fail('first advance never completed'); }, dispose() { disposed++; } };
+  const steps = { *[Symbol.iterator]() { throw failure; } };
+  const f = fixture(steps, undefined, undefined, client);
+  await assert.rejects(f.run({}, {}, 2002, null, null, true), error => error === failure);
+  assert.equal(f.args[0][6].signal.aborted, true, 'first advance failure cancels newly launched source work');
+  assert.equal(disposed, 1, 'first advance failure releases the admitted wreck worker');
+  assert.deepEqual(f.events, [['closed']]);
 }
 
 // Execute the real remote bake/cache seam and close it at the transfer/tick
@@ -102,7 +127,9 @@ for (const props of [{ wrecks: 0 }, { tankWrecks: { count: 0 } }]) {
   const result = await f.run(height, engine, 82, config,
     (done, total) => ticks.push([done, total]), true, vegetation);
   assert.equal(result, f.runtime);
-  assert.deepEqual(f.args, [[height, engine, 82, config, vegetation, false]]);
+  assert.deepEqual(f.args, [[height, engine, 82, config, vegetation, false, f.args[0][6]]]);
+  assert.equal(f.args[0][6].worker, true);
+  assert.equal(f.args[0][6].signal.aborted, false);
   assert.deepEqual(ticks, [[1, 180], [2, 180], [3, 180]]);
   assert.equal(result._buildDetail.sliceCount, 4);
   assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);

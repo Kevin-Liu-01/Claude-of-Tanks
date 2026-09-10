@@ -213,14 +213,20 @@ async function checkWrapperOwnership(wrapperSource) {
     const forwarded = defaults ? [height, engine, 2002, null, null] : [...explicit, vegetation];
     // Node keeps the synchronous bake path; only the async wrapper forwards
     // its explicit worker-mode flag to the same texture-owning producer.
-    assertPublicOwner(owner, result, async ? [...forwarded, false] : forwarded);
+    const sourceApplication = async ? owner.calls[0][6] : null;
+    if (async) {
+      assert.equal(sourceApplication.worker, true, 'only the async wrapper requests source composition');
+      assert.ok(sourceApplication.signal instanceof AbortSignal);
+      assert.equal(sourceApplication.signal.aborted, false, 'completed build keeps its source settlement owner');
+    }
+    assertPublicOwner(owner, result, async ? [...forwarded, false, sourceApplication] : forwarded);
     assert.equal(result.textures, textures, 'the published texture owner is not replaced');
   }
 }
 await checkWrapperOwnership(wrappers);
 for (const [before, after] of [
   ['seed, cfg, vegetation);', 'seed + 1, cfg, vegetation);'],
-  ['wreckWorker !== null);', 'true);'],
+  ['wreckWorker !== null,', 'true,'],
   ['while (!r.done) r = g.next();', 'if (!r.done) r = g.next();'],
   ['return r.value;', 'return { ...r.value };'],
   ['return runtime;', 'return { ...runtime };'],
@@ -398,7 +404,8 @@ try {
       assert.deepEqual(owner.events, [], 'the producer stays open while a row tick is awaited');
       await new Promise(resolve => setImmediate(resolve));
     }, true, vegetation);
-    assertPublicOwner(owner, result, [...args, false]);
+    assertPublicOwner(owner, result, [...args, false, owner.calls[0][6]]);
+    assert.equal(owner.calls[0][6].signal.aborted, false);
     assert.equal(ticks, pending.steps, 'every real row/tone checkpoint reaches the async scheduler');
     assert.equal(result._buildDetail.sliceCount, pending.steps + 1);
   }));

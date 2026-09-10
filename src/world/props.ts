@@ -19,7 +19,7 @@ import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
-import { applySourcedBuildings, type BuildingPaletteId } from './sourcedTextures.ts';
+import { applySourcedBuildings, type BuildingPaletteId, type SourcedTextureApplicationOptions } from './sourcedTextures.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import { dressMapExtras } from './maps/mapKits.ts'; // content_breadth r2
@@ -2451,18 +2451,19 @@ export async function createPropsAsync(
   // IteratorClose must reach delegated builders when an awaited import/tick
   // rejects. Use the standard iterator return() contract: no final runtime is
   // published on cancellation, and nested builders release partial owners.
-  const wreckCount = cfg?.props?.tankWrecks
-    ? (cfg.props.tankWrecks.count ?? 3) : (cfg?.props?.wrecks ?? 4);
-  const wreckWorker = typeof Worker === 'undefined' || wreckCount <= 0 ? null : createWreckBakeClient();
+  const wreckWorker = createPropsWreckWorker(cfg);
+  const sourceAbort = new AbortController();
   const g: Iterator<PropsBuildSlice | undefined, PropsRuntime, void> =
-    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null);
+    propsBuildSteps(heightField, engineCtx, seed, cfg, vegetation, wreckWorker !== null,
+      { worker: true, signal: sourceAbort.signal });
   const slices: Array<{ stage: string; ms: number }> = [];
   let synchronousMs = 0;
   let nextStartedAt = performance.now();
-  let r = g.next();
+  let r: IteratorResult<PropsBuildSlice | undefined, PropsRuntime> | null = null;
   let i = 0;
   const total = fineSlices ? 180 : 9;
   try {
+    r = g.next();
     wreckWorker?.prepare();
     while (!r.done) {
       const sliceMs = performance.now() - nextStartedAt;
@@ -2495,12 +2496,28 @@ export async function createPropsAsync(
     };
     return runtime;
   } finally {
-    if (!r.done) {
-      // Cleanup must not replace the failed import/tick/build outcome.
-      try { g.return?.(); } catch (_) { /* retain the original failure */ }
-    }
+    closeIncompletePropsBuild(!!r?.done, g, sourceAbort);
     wreckWorker?.dispose();
   }
+}
+
+function createPropsWreckWorker(cfg: PropsMapConfig | null): ReturnType<typeof createWreckBakeClient> | null {
+  const wreckCount = cfg?.props?.tankWrecks
+    ? (cfg.props.tankWrecks.count ?? 3) : (cfg?.props?.wrecks ?? 4);
+  return typeof Worker === 'undefined' || wreckCount <= 0 ? null : createWreckBakeClient();
+}
+
+function closeIncompletePropsBuild(
+  completed: boolean,
+  iterator: Iterator<PropsBuildSlice | undefined, PropsRuntime, void>,
+  sourceAbort: AbortController,
+): void {
+  if (completed) return;
+  // Cancel this build's consumer only. Successful runtimes retain their
+  // intentionally nonblocking sourcedTexturesReady owner after return.
+  sourceAbort.abort();
+  // IteratorClose cleanup must not replace the failed import/tick/build.
+  try { iterator.return?.(); } catch (_) { /* retain the original failure */ }
 }
 
 function* propsBuildSteps(
@@ -2510,6 +2527,7 @@ function* propsBuildSteps(
   cfg: PropsMapConfig | null,
   vegetation: FisheryVegetation | null,
   workerWrecks = false,
+  sourceApplication: SourcedTextureApplicationOptions = {},
 ): Generator<PropsBuildSlice | undefined, PropsRuntime, void> {
   const P: PropsSettings = {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
@@ -2594,7 +2612,9 @@ function* propsBuildSteps(
   // Deep-hunt 2026-07: sourced CC0 PBR building sets (ambientCG, see
   // docs/ATTRIBUTION.md) swap into plaster/roof/wood (and stone -> brick on
   // urban) in place when they load; procedural stays the fallback of record.
-  const sourcedTexturesReady = applySourcedBuildings({ plaster, roof: roofT, wood, stone }, mapId, P);
+  const sourcedTexturesReady = applySourcedBuildings(
+    { plaster, roof: roofT, wood, stone }, mapId, P, sourceApplication,
+  );
 
   const windowStyle = resolveStructureWindowStyle(mapId);
   const mats: Record<string, THREE.MeshStandardMaterial> = {

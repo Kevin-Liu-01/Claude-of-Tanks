@@ -21,6 +21,8 @@ import * as THREE from 'three';
 // 1024² albedo+normal canvases ≈ 40-70 MB). Desktop sizes are unchanged.
 import { texSize } from '../engine/quality.ts';
 import type { SourcedTextureResult } from './sourcedTextureReceipt.ts';
+import { composeAlbedoPixels, composeSurfacePixels, type SourcedComposeOptions } from './sourcedTextureComposer.ts';
+import { canComposeSourcedTextureInWorker, tryComposeSourcedTexture } from './sourcedTextureCompositionClient.ts';
 
 interface SourceTextureSet {
   color: string;
@@ -33,14 +35,7 @@ type LayerKey = 'G' | 'D' | 'R' | 'M';
 type BuildingBucket = 'plaster' | 'roof' | 'wood' | 'stone';
 type Tint = readonly [number, number, number];
 
-interface ComposeOptions {
-  roughInAlpha?: boolean;
-  separateSurface?: boolean;
-  roughMul?: number;
-  tint?: Tint | null;
-  desat?: number;
-  lift?: number;
-}
+type ComposeOptions = SourcedComposeOptions;
 
 interface TerrainPlanOptions extends ComposeOptions {
   set: keyof typeof SETS;
@@ -340,13 +335,7 @@ export function composeAlbedo(
   color: HTMLImageElement,
   ao: HTMLImageElement | null,
   rough: HTMLImageElement | null,
-  {
-    roughInAlpha = false,
-    roughMul = 1,
-    tint = null,
-    desat = 0,
-    lift = 0,
-  }: ComposeOptions = {},
+  opts: ComposeOptions = {},
 ): HTMLCanvasElement {
   const s = Math.min(color.width, texSize(1024)); // MOBILE r1: tier-scaled compose
   const c = document.createElement('canvas');
@@ -354,31 +343,12 @@ export function composeAlbedo(
   const ctx = canvasContext(c, { willReadFrequently: true });
   ctx.drawImage(color, 0, 0, s, s);
   const px = ctx.getImageData(0, 0, s, s);
-  const d = px.data;
   const aod = readScaledPixels(ao, s);
   // Only the terrain splat shader consumes roughness through albedo alpha.
   // Building materials receive it through composeSurface(), so decoding it
   // here as well would repeat a full 1K readback for no output change.
-  const rgd = roughInAlpha ? readScaledPixels(rough, s) : null;
-  const tr = tint ? tint[0] : 1, tg = tint ? tint[1] : 1, tb = tint ? tint[2] : 1;
-  for (let i = 0; i < d.length; i += 4) {
-    const a = aod ? aod[i] / 255 : 1;
-    let r = d[i] * a * tr, g = d[i + 1] * a * tg, b = d[i + 2] * a * tb;
-    // r5 terrain_environment: desat/lift — a multiply-only tint cannot turn
-    // saturated terracotta into frosted tile (winter roofs stayed ORANGE in
-    // a deep-snow scene, critique); mixing toward luminance then lifting can
-    if (desat > 0) {
-      const lum = r * 0.299 + g * 0.587 + b * 0.114;
-      r += (lum - r) * desat; g += (lum - g) * desat; b += (lum - b) * desat;
-    }
-    if (lift > 0) { r += lift * 255; g += lift * 255; b += lift * 255; }
-    d[i] = Math.min(255, r);
-    d[i + 1] = Math.min(255, g);
-    d[i + 2] = Math.min(255, b);
-    d[i + 3] = roughInAlpha
-      ? Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul))
-      : 255;
-  }
+  const rgd = opts.roughInAlpha ? readScaledPixels(rough, s) : null;
+  composeAlbedoPixels(px.data, aod, rgd, opts);
   ctx.putImageData(px, 0, 0);
   return c;
 }
@@ -396,19 +366,25 @@ export function composeSurface(
   c.width = c.height = size;
   const ctx = canvasContext(c);
   const px = ctx.createImageData(size, size);
-  const d = px.data;
-  for (let i = 0; i < d.length; i += 4) {
-    d[i] = aod ? aod[i] : 255;
-    d[i + 1] = Math.max(8, Math.min(255, (rgd ? rgd[i] : 230) * roughMul));
-    d[i + 2] = 0;
-    d[i + 3] = 255;
-  }
+  composeSurfacePixels(px.data, aod, rgd, roughMul);
   ctx.putImageData(px, 0, 0);
   return c;
 }
 
 // Pigment variants share immutable AO/roughness pixels. Reuse only surfaces
 // still owned by the bounded composite LRU; there is no second retention cache.
+function findCachedSurface(
+  setKey: keyof typeof SETS,
+  size: number,
+  roughMul: number,
+): HTMLCanvasElement | null {
+  for (const entry of _compositeCache.values()) {
+    if (entry.surface && entry.setKey === setKey && entry.size === size
+        && entry.roughMul === roughMul) return entry.surface;
+  }
+  return null;
+}
+
 function cachedSurface(
   setKey: keyof typeof SETS,
   ao: HTMLImageElement | null,
@@ -416,11 +392,7 @@ function cachedSurface(
   size: number,
   roughMul: number,
 ): HTMLCanvasElement {
-  for (const entry of _compositeCache.values()) {
-    if (entry.surface && entry.setKey === setKey && entry.size === size
-        && entry.roughMul === roughMul) return entry.surface;
-  }
-  return composeSurface(ao, rough, size, roughMul);
+  return findCachedSurface(setKey, size, roughMul) ?? composeSurface(ao, rough, size, roughMul);
 }
 
 function normalCanvas(img: HTMLImageElement): HTMLCanvasElement {
@@ -498,13 +470,80 @@ function composeSet(
   return { albedo: composite.canvas, normal: normalEntry.canvas, surface: composite.surface };
 }
 
+/** Async production builds opt in. Authoring and cache-hit composition retain
+ * their synchronous path; cancellation is explicit, never inferred from a
+ * Texture.dispose() event (which also represents temporary GPU suspension). */
+export interface SourcedTextureApplicationOptions {
+  worker?: boolean;
+  signal?: AbortSignal;
+}
+
+export function adoptPixels(pixels: Uint8ClampedArray<ArrayBuffer>, size: number, albedo: boolean): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvasContext(canvas, albedo ? { willReadFrequently: true } : undefined);
+  ctx.putImageData(new ImageData(pixels, size, size), 0, 0);
+  return canvas;
+}
+
+async function composeSetAsync(
+  setKey: keyof typeof SETS,
+  images: LoadedTextureSet,
+  opts: ComposeOptions,
+  signal?: AbortSignal,
+): Promise<ReturnType<typeof composeSet>> {
+  const { color, normal, ao, rough } = images;
+  if (signal?.aborted || !color || !normal) return null;
+  const size = Math.min(color.width, texSize(1024));
+  const tint: Tint | null = opts.tint ? [opts.tint[0], opts.tint[1], opts.tint[2]] : null;
+  const snapshot = { ...opts, tint };
+  const key = compositeKey(setKey, snapshot);
+  if (_compositeCache.get(key)?.size === size || !canComposeSourcedTextureInWorker()) {
+    return composeSet(setKey, images, snapshot);
+  }
+  const roughMul = snapshot.roughMul ?? 1;
+  const surface = snapshot.separateSurface ? findCachedSurface(setKey, size, roughMul) : null;
+  try {
+    const result = await tryComposeSourcedTexture({
+      key: setKey, size, options: snapshot, includeSurface: !!snapshot.separateSurface && !surface,
+      images: { color, ao, rough },
+    }, signal);
+    if (signal?.aborted) return null;
+    // A synchronous consumer or a joined async consumer may have filled this
+    // cache during the await. Never allocate a second canvas for that result.
+    // Tier changes also must not publish an obsolete-size composition.
+    if (_compositeCache.get(key)?.size === size || size !== Math.min(color.width, texSize(1024))) {
+      return composeSet(setKey, images, snapshot);
+    }
+    if (result) {
+      const canvas = adoptPixels(result.albedo, size, true);
+      const surfaceCanvas = surface ?? (result.surface ? adoptPixels(result.surface, size, false) : null);
+      touchLru(_compositeCache, key, {
+        setKey, roughMul, size, canvas, surface: surfaceCanvas,
+      }, COMPOSITE_CACHE_MAX);
+    }
+  } catch {
+    // Unsupported/denied workers, bitmap conversion, protocol failures, and
+    // adoption failures preserve the original composer, not a reduced asset.
+  }
+  if (signal?.aborted) return null;
+  return composeSet(setKey, images, snapshot);
+}
+
 async function applySet(
   setKey: keyof typeof SETS,
   layer: TextureLayer,
   opts: ComposeOptions,
+  application: SourcedTextureApplicationOptions = {},
 ): Promise<Pick<SourcedTextureResult, 'applied' | 'failures'>> {
+  if (application.signal?.aborted) return { applied: false, failures: ['Source composition canceled'] };
   const images = await loadSetImages(setKey);
-  const composed = composeSet(setKey, images, { ...opts, separateSurface: !!layer.surface });
+  if (application.signal?.aborted) return { applied: false, failures: [...images.failures, 'Source composition canceled'] };
+  const options = { ...opts, separateSurface: !!layer.surface };
+  const composed = application.worker
+    ? await composeSetAsync(setKey, images, options, application.signal)
+    : composeSet(setKey, images, options);
+  if (application.signal?.aborted) return { applied: false, failures: [...images.failures, 'Source composition canceled'] };
   if (!composed) return { applied: false, failures: images.failures };
   swapTexture(layer.albedo, composed.albedo);
   if (layer.surface && composed.surface) swapTexture(layer.surface, composed.surface);
@@ -514,9 +553,10 @@ async function applySet(
 
 async function sourceJob(
   target: string, set: keyof typeof SETS, layer: TextureLayer, opts: ComposeOptions,
+  application: SourcedTextureApplicationOptions = {},
 ): Promise<SourcedTextureResult> {
   try {
-    const result = await applySet(set, layer, opts);
+    const result = await applySet(set, layer, opts, application);
     if (result.failures.length) console.warn(`[sourcedTextures] ${target}: ${result.failures.join('; ')}`);
     return { target, ...result };
   } catch (error) {
@@ -539,6 +579,7 @@ export function applySourcedTerrain(
   mapId: string,
   layers: Partial<Record<LayerKey, TextureLayer>>,
   S: SourcedTerrainSettings = {},
+  application: SourcedTextureApplicationOptions = {},
 ): Promise<SourcedTextureResult[]> {
   const plan: TerrainPlan = TERRAIN_PLAN[resolveSourcedTerrainPalette(mapId, S)];
   const jobs: Array<Promise<SourcedTextureResult>> = [];
@@ -553,7 +594,7 @@ export function applySourcedTerrain(
     jobs.push(sourceJob(`terrain ${mapId}/${key}`, entry.set, layer, {
       roughInAlpha: true, roughMul, tint: entry.tint || null,
       desat: entry.desat ?? 0, lift: entry.lift ?? 0,
-    }));
+    }, application));
   }
   return Promise.all(jobs);
 }
@@ -758,6 +799,7 @@ export function applySourcedBuildings(
   sets: Partial<Record<BuildingBucket, TextureLayer>>,
   mapId: string,
   settings: SourcedBuildingSettings = {},
+  application: SourcedTextureApplicationOptions = {},
 ): Promise<SourcedTextureResult[]> {
   // Inherit color policy only. The actual map keeps its existing sourced
   // buckets, texture dimensions, and procedural-roof exceptions.
@@ -783,7 +825,7 @@ export function applySourcedBuildings(
     const opts: ComposeOptions = tint === null
       ? { tint: null }
       : isTint(tint) ? { tint } : tint;
-    jobs.push(sourceJob(`building ${mapId}/${bucket}`, setKey, layer, { roughInAlpha: false, ...opts }));
+    jobs.push(sourceJob(`building ${mapId}/${bucket}`, setKey, layer, { roughInAlpha: false, ...opts }, application));
   }
   return Promise.all(jobs);
 }
