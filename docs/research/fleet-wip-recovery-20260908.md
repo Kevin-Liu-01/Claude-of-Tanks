@@ -5,6 +5,13 @@ certificate.** The owner requested continuation of all unfinished Abrams,
 fleet-material, running-gear and performance work, with more frequent commits
 and pushes to preserve verified progress.
 
+Latest publication: `e4ca00b6c` released fourteen recovered tank updates after
+the complete twelve-stage/933-test qualification; Type 10 X and the two
+T-90A X Shtora corrections were already released in `4aa008627`.
+Use [the current recovery boundary](tank-work-object-store-followup-20260909.md)
+for present disposition. The interrupted-run counts below remain historical
+evidence and must not be presented as the status of those shipped updates.
+
 ## Authority and scope
 
 On 2026-09-08 the owner confirmed: **“Yes—push verified checkpoints as they
