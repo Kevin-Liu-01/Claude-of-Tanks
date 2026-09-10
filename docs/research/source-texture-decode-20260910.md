@@ -209,6 +209,40 @@ failed/refused broader gates recorded above.
 
 ## Remaining acceptance scope
 
+### Live production verification
+
+The scoped runtime fix (`24310523d`) and qualification note (`6410962de`)
+landed on `origin/main` without force. Git integration deployed the latter as
+Vercel production deployment `dpl_8M8VCAXHoGQnGDic4J65KKSnJdiR`, Ready at
+`https://cot.kevinliu.studio`. The live root reports `v1.0.0+g6410962de`.
+
+The unprofiled actual-controls run on that live version,
+`texture-preparation-production-controls-r1`, ran from
+2026-09-10T20:03:24.920Z to 20:03:46.187Z in Chrome 151.0.7922.47.
+Functional, boot-audio ownership, audio-clock, warm-readiness and source-readiness
+gates pass; errors, cleanup errors and failures are empty. Battle, Battle Again
+and Return to Garage screenshots were inspected and show complete day/night
+battles and the returned Garage. This is browser-side observation, not a
+deployment-wide runtime-log audit or audible-output proof.
+
+| Live action | Opaque cover | Ready | Maximum callback gap |
+| --- | ---: | ---: | ---: |
+| Battle | 2.6 ms | 9,169.3 ms | 221.7 ms |
+| Battle Again | 138.7 ms | 5,780.4 ms | 97.6 ms |
+| Return to Garage | 86.1 ms | 386.4 ms | 57.0 ms |
+
+The 221.7 ms gap occurs under the opaque `Building terrain meshes` loader;
+its long-frame record includes a 142.6 ms scheduler continuation. The Again gap
+occurs during the visible countdown while deferred warming is incomplete.
+These are remaining responsiveness issues, not passing performance results.
+Do not equate this new observed loading pause with the historical gameplay
+stalls without a matching causal trace.
+
+Report SHA-256:
+`9f279cadbb4dfff0bef4a610fd5e18a60fe2de6e7902c409e06c1c727d1df39d`.
+Live served HTML SHA-256:
+`bef0f7828cd00461e36577569f1b25a0a5ec0b9655cb76f2eed12cbdaffe75b6`.
+
 After the candidate is qualified, use the existing unprofiled actual-controls
 probe, 60-second native-cadence camera-input battle probe, and phase-resource
 gate. Do not replace them with microbenchmarks or relax their budgets.
