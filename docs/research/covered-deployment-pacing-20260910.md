@@ -298,3 +298,44 @@ main canvas adoption are included; termination/revoke are separately timestamped
 The result demonstrates a first-use responsiveness tradeoff, not an overall
 game speedup. No worker integration, quality reduction, or additional native
 variant was shipped on this evidence.
+
+### Publication and fresh live check
+
+The loading fix landed on `origin/main` as
+`f3b03c8d83e288b541b1a8af03c76650e06c9c9b`, after the separate Orchard
+fixture repair `74bd201de` and upstream canopy-lighting `cd62def6e`.
+The rebased ten focused tests, strict metrics (zero violations/any/unknown),
+typecheck/core-unused and public build passed:
+`terrain-program-preparation-rebased-checks-r1.log`. Vercel deployment
+`FAt58uN9QvmUBuZvc4Vhk1zuVZ72` completed successfully; the live HTML displayed
+`v1.0.0+gf3b03c8d8` before capture.
+
+Fresh unprofiled actual-control receipt:
+`terrain-program-preparation-production-actions-r1/report.json`, completed
+2026-09-10T09:53:40.913Z. Live HTML SHA256:
+`f3f197770aeb28f2a1d55ea989c7ec7a937ead52fe70f8f6c4ee1ce220bbd458`;
+acquisition SHA256 remains
+`4be85c77e2b4a9596a9046b8b8bd6956bc44b3e3543677409654626ca119f137`.
+Real Battle, Battle Again and Return to Garage passed functional, audio-intent,
+audio-clock and cleanup checks with no application errors. All three screenshots
+were inspected: day battle, night rematch and restored Garage, full14 roster,
+native M5 Max, 1280×720, high graphics, scale1/trim0 and unchanged AA.
+
+| Action | Click to cover | Click to ready | Maximum callback-start gap |
+| --- | ---: | ---: | ---: |
+| Battle | 3.2 ms | 8969.4 ms | 234.8 ms |
+| Rematch | 132.0 ms | 5673.5 ms | 228.5 ms |
+| Garage return | 90.4 ms | 341.2 ms | 45.3 ms |
+
+This is **functional acceptance, not smoothness acceptance**. Terrain readiness
+completed with zero pending programs and three reflected retained wrappers per
+entry; rematch additionally reused three witnesses. Terrain forward draw was
+6/0 ms. The largest measured remaining work is now explicitly inside shadow
+preparation: first caster batch233/213 ms, twelfth batch91/87 ms, geometry
+upload106/15 ms. Final cascade draws themselves were at most4/3 ms.
+Battle's234 ms LongTask overlaps the first shadow batch; rematch's212 ms task
+occurs in its228.5 ms callback interval. The batch owner is identified, but
+the responsible native draw/compile/upload operation still needs finer
+attribution. These measurements do not retroactively identify the historical
+untraced214–319 ms stalls or prove that the upstream canopy change caused this
+run's shadow cost. Quality and acceptance budgets remain unchanged.
