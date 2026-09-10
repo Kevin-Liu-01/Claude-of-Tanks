@@ -60,3 +60,19 @@ returned `undefined` from the option parser and exited 1 instead of the intended
 explicit rejection (2). The parser now falls back for a missing argument, and
 both negative cases pass directly and under the real selftest child environment.
 No geometry, thresholds, or test assertions were removed to address this failure.
+
+Third composed attempt `fender-qualified-TtdjNw` remains **FAIL**. All 302
+pretests and 613 core tests passed; posttest `tankFactoryStaging.selftest.mjs`
+rejected its pre-batching M1A1 snapshot with `batchStatic + battleDetailLod`.
+The first three unbatched fixtures passed. Published commit `2963f43c2`
+introduced the new articulated shadow batch; none of this checkpoint's T-90A
+changes touches M1A1. That ownership contract must be reconciled without
+blindly replacing the original fingerprints.
+
+The remaining nine posttests subsequently passed in diagnostic-only run
+`fender-tail-kAXwMQ`, including four real native GPU tests. Private and public
+builds passed there too. These are not substituted for an uninterrupted passing
+release. Exact-current presentation tooling metrics pass (48 functions, zero
+violations, no explicit `any`/`unknown`), and attribution passes. The four-worker
+pretest took 528,951 ms versus 1,691,762 ms summed child time; core took 678,754 ms
+versus 1,600,427 ms summed child time, including 142,768 ms FIFO wait.
