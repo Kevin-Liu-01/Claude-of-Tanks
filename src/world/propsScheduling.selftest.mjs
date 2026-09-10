@@ -454,10 +454,85 @@ for (const cancelAt of [0, 1, null]) {
   } finally { h.dispose(); }
 }
 
+// Freeze the entire original street block, not a second implementation of its
+// geometry: only two completed-family yields may differ from base 03748e0b0.
+const streetStart = source.indexOf('  function beginWaterworksRubbleCapture()');
+const streetLast = "  yield { fine: true, stage: 'street-details' };\n";
+const streetEnd = source.indexOf(streetLast, streetStart);
+assert.ok(streetStart > 0 && streetEnd > streetStart);
+const streetCandidate = source.slice(streetStart, streetEnd + streetLast.length);
+const streetOriginal = streetCandidate.replace(
+  /\n  yield \{ fine: true, progress: false, stage: 'street-(rubble|curbs)' \};/g, '');
+assert.equal(createHash('sha256').update(streetOriginal).digest('hex'),
+  '5f879376acf5557e58bf385034ca03d3e1d7666cc21e25c05fd77a43c34374b7');
+
+function streetFixture(code = streetCandidate) {
+  const completed = [], randoms = [], packets = [], random = seededRandom(2002);
+  const complete = family => { completed.push(family); randoms.push(random()); };
+  const operations = {
+    beginWaterworksRubbleCapture() { return packets; },
+    placeStreetRubble() { complete('rubble'); },
+    placeStreetCurbs() { complete('curbs'); },
+    placeCentralMonument() { complete('monument'); },
+  };
+  // The bodies above are hash-frozen. Replace only those declarations with
+  // completed-operation spies; retain the actual caller/yield scheduling text.
+  for (const name of Object.keys(operations)) {
+    const declaration = new RegExp(`^  function ${name}\\([^\\n]*\\n[\\s\\S]*?^  }\\n`, 'm');
+    assert.ok(declaration.test(code), name);
+    code = code.replace(declaration, '');
+  }
+  const run = new Function(...Object.keys(operations),
+    `return function* () {\n${code}\n};`)(...Object.values(operations));
+  return { iterator: run(), completed, randoms };
+}
+
+const streetControl = streetFixture(streetOriginal);
+assert.deepEqual([...streetControl.iterator], [{ fine: true, stage: 'street-details' }]);
+for (const cancelAt of [0, 1, null]) {
+  const h = streetFixture(), f = fixture(h.iterator), ticks = [];
+  const failure = new Error('cancel street family');
+  const pending = f.run({}, {}, 2002, { props: { wrecks: 0 } }, (done, total) => {
+    ticks.push([done, total]);
+    assert.deepEqual(h.completed, ['rubble', 'curbs', 'monument'].slice(0, ticks.length),
+      'each checkpoint follows only its completed family');
+    if (ticks.length - 1 === cancelAt) throw failure;
+  }, true);
+  if (cancelAt === null) {
+    await pending;
+    assert.deepEqual(ticks, [[0, 180], [0, 180], [1, 180]]);
+    assert.deepEqual(h.completed, streetControl.completed);
+    assert.deepEqual(h.randoms, streetControl.randoms, 'new waits preserve deterministic operation order');
+    assert.deepEqual(f.events.filter(([event]) => event === 'work').map(([, step]) => step), [
+      { fine: true, progress: false, stage: 'street-rubble' },
+      { fine: true, progress: false, stage: 'street-curbs' },
+      { fine: true, stage: 'street-details' },
+    ]);
+  } else {
+    await assert.rejects(pending, error => error === failure);
+    assert.deepEqual(ticks, Array.from({ length: cancelAt + 1 }, () => [0, 180]));
+    assert.deepEqual(h.completed, streetControl.completed.slice(0, cancelAt + 1));
+    assert.deepEqual(h.randoms, streetControl.randoms.slice(0, cancelAt + 1));
+    assert.equal(h.iterator.next().done, true, 'IteratorClose prevents every later family');
+    assert.equal(f.runtime._buildDetail, undefined, 'cancelled street work cannot publish a runtime');
+    assert.equal(f.args[0][6].signal.aborted, true);
+  }
+  assert.equal(f.events.filter(([event]) => event === 'closed').length, 1);
+}
+{
+  const h = streetFixture(), f = fixture(h.iterator), ticks = [];
+  await f.run({}, {}, 2002, null, (...tick) => ticks.push(tick), false);
+  assert.deepEqual(ticks, [], 'legacy coarse callers do not gain a new paint boundary');
+  assert.deepEqual(h.completed, streetControl.completed);
+  assert.deepEqual(h.randoms, streetControl.randoms);
+}
+
 // Each checkpoint follows completed work, before the next expensive owner;
 // no geometry formula, RNG draw or source-acquisition order is rewritten.
 for (const [operation, stage, next] of [
   ['yield* placeTankWrecks();', 'wrecks-finalized', 'function beginWaterworksRubbleCapture'],
+  ['placeStreetRubble();', 'street-rubble', 'function placeStreetCurbs'],
+  ['placeStreetCurbs();', 'street-curbs', 'function placeCentralMonument'],
   ['placeCentralMonument();', 'street-details', 'function* placeGroundBlendDecals'],
   ['placeFoundationDecals();', 'ground-foundations', 'placeBattleScars(corridors);'],
   ['placeBattleScars(corridors);', 'ground-scars', 'placeTrackTears(corridors);'],

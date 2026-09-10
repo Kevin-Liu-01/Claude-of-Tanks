@@ -33,9 +33,24 @@ statistical samples, not one uninterrupted 484 ms call; inclusive and child
 self times must not be added together.
 
 The profile did not reproduce the 190.9 ms props gap. Its largest callback gap
-was 96.8 ms during terrain work. Profile-start alignment has a 248.2 ms bracket,
-so it cannot precisely assign a short callback gap to a sampled function. Its
-timings are attribution-only, not a speed comparison. Independent props
+was 96.8 ms during terrain work. The start bracket alone spans 248.2 ms. Under
+the existing constant-offset clock model, intersecting it with the stop bracket
+minus the 7,061.717 ms profile duration narrows the page-clock start to
+`[3252.783, 3280.083]` ms, a 27.3 ms bracket. The callback gap
+`[3898.900, 3995.700]` ms then guarantees overlap with profile-relative sample
+timestamps `[646.117, 715.617]` ms. Both negative sample deltas are preserved
+when reconstructing and sorting the paired sample timestamps.
+
+That interior contains nine terrain samples (noise, height constraints,
+fine-grid generation and macro/core terrain) and 38 `(program)` samples with
+no attributable stack. Fully interior prior-sample intervals contribute
+10.531 ms of terrain and 56.818 ms of `(program)` statistical weights, not
+exact function durations. The overlapping 79 ms Long Task contains the same
+nine terrain samples. Nearby `getImageData` samples are only possibly
+overlapping, not guaranteed. This establishes terrain work inside the gap but
+does not identify most blocking time, a native/GPU/Canvas/audio cause, or the
+historical 214–319 ms cause. The profile is attribution-only, not a speed
+comparison. Independent props
 receipts record an atomic ground-decal slice of 37.8 ms (38.3 ms in the earlier
 unprofiled live action), without absolute slice timestamps.
 
@@ -94,8 +109,8 @@ props scheduling/materials/textures/resource ownership, world coordination and
 the 954-entry registry. Typecheck/core-unused and the public build pass. This
 is not a claim to have rerun the entire 954-check lifecycle.
 
-Changed-scope React Doctor 0.9.13 reports a new test-only `no-eval` error for
-the actual-function fixture and a serial-await warning. Its exit status is 1,
+Changed-scope React Doctor 0.9.13 initially reports a new test-only `no-eval`
+error for the actual-function fixture and a serial-await warning. Its exit status is 1,
 not a passing scanner gate. The evaluated text is local reviewed source with
 the synchronous control hash-pinned, not user/network input; the fixture is
 Node-only and never shipped to the client. Serial cancellation cases must
@@ -139,3 +154,48 @@ unattributed. No claim that collision/decal changes solve this different phase.
 The action includes covered loading/countdown and is not a steady-state FPS
 measurement. Historical stalls and universal frame-budget guarantees remain
 open, as in the preceding release record.
+
+## Follow-up: completed street families
+
+The measured `street-details` interval includes all work since
+`wrecks-finalized`: rubble, curbs/sidewalks, then the monument. Two further
+`fine: true, progress: false` checkpoints now follow completed rubble and
+curbs. The original final checkpoint follows the monument. This does not
+assume which subcall dominated the combined 38.4 ms observation or promise
+that each individual family fits a frame.
+
+The scheduling regression freezes the complete pre-change street block at
+SHA256 `5f879376acf5557e58bf385034ca03d3e1d7666cc21e25c05fd77a43c34374b7`.
+After removing only the two new yields, all original function bodies and calls
+must match. The actual call/yield sequence then runs with completed-operation
+spies through the real async wrapper: exact operation order, coarse progress
+0/0/1, both cancellation boundaries, preserved error/source-abort/IteratorClose
+and unchanged coarse callers. This is source-and-scheduling parity, not a
+second geometry implementation or a native speed certificate. The native
+local capture above predates these two additional checkpoints.
+
+Five focused scheduling/material/resource/coordinator/registry tests,
+typecheck/core-unused and the public build pass again. Docs Doctor reports
+four passes, no warnings or failures. The final unprofiled local capture,
+`structure-load-local-r2/report.json`, SHA256
+`d86345073a05040a27df8f02ddacdc94ca4abd33a93d15a5a3436a4c7ba1bd47`,
+passes all the same functional/audio/warm/source checks with empty error and
+cleanup arrays; all three screenshots were inspected. HTML SHA256:
+`2ec32342d6ae284fc61b45d4e444fc1bae5b55877a218957172eb6eb24b0f62a`.
+Acquisition and graphics settings match r1.
+
+The split street tasks are observed at 22.0 ms (rubble) and 17.7 ms (curbs).
+The largest props task is now foundations at 25.0 ms; total synchronous props
+work is 1,658.3 ms. Thus the formerly combined 38.4 ms street task is separated,
+not magically made free. Battle/rematch/Garage callback maxima remain
+115.3/70.4/49.4 ms; click-to-ready is 6,416.3/5,533.5/324.7 ms. The first gap
+is again early terrain preparation, with no overlapping ≥50 ms Long Task,
+so its 115.3 ms remains unattributed. This is not a zero-hitch certificate.
+
+The final changed-scope React Doctor run against exact base
+`d942e1284a1130061387b4a4ac2e34c765b8f121` scans all five changed JS/TS files.
+It exits 1 with two test-only `no-eval` errors, two serial-await warnings and
+one four-item fixture `.filter().map()` warning in `propsScheduling.selftest.mjs`.
+The same trusted-source/cancellation rationale applies; none are production
+runtime findings or suppressed. An intervening invocation using a caret ref
+was rejected by CLI validation and was not a completed scan.

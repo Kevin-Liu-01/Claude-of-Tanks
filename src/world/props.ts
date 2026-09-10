@@ -5445,6 +5445,7 @@ ${snowCap ? `
     }
   }
   placeStreetRubble();
+  yield { fine: true, progress: false, stage: 'street-rubble' };
 
   // --- street curbs (town maps): raised stone kerb lines along both sides of
   // every street inside the town rect, broken at crossings ---
@@ -5501,6 +5502,7 @@ ${snowCap ? `
     }
   }
   placeStreetCurbs();
+  yield { fine: true, progress: false, stage: 'street-curbs' };
 
   // --- central-square monument (town maps): stepped stone obelisk ---
   function placeCentralMonument(): void {
