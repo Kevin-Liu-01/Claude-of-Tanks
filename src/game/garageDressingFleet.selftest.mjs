@@ -135,6 +135,8 @@ assert.match(dressing, /serviceLandmark = 'east-flammable-canisters'/,
 assert.match(dressing,
   /garage_abrams_welding_service_floor[\s\S]*floorAssetsMoveWithBay = true/,
   'the Abrams painted square and floor assets must have one explicit movable owner');
+assert.doesNotMatch(dressing, /group\.add\(abramsServiceFloorRoot\)/,
+  'the Abrams floor must remain off-scene until its final bay transform is ready');
 assert.match(dressing,
   /legacyVerdantRoot\.add\(abramsServiceFloorRoot\);[\s\S]*halfTurnAuthoredServiceBay\(firstBayChildIndex, 'abrams_welding', 'm1a2'\)/,
   'the complete Abrams floor station must enter the same half-turn owner as the vehicle');
