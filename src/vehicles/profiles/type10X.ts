@@ -9,6 +9,7 @@ import {sourceMachineGun} from './sourceMachineGun.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
 import {addType10BowLinks} from './type10XBow.ts';
 import {addType10Skirts} from './type10XSkirts.ts';
+import {buildType10XGear} from './type10XGear.ts';
 import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {addType10XRoofPanels} from './type10XRoofPanels.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -463,7 +464,7 @@ export function buildType10X(P:TankBuilderPort):void {
   P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
   hull(P);
-  P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.33617,wheelW:.358099,wheelY:.405,
+  P.gear=buildType10XGear(P,{style:'rubber',wheelR:.33617,wheelW:.358099,wheelY:.405,
     wheelZs:[...TYPE10_X_DATUMS.wheelStations],xc:1.27414,trackW:.486738,trackTh:.035,
     idler:{z:3.2069,y:.8113,r:.33617},sprocket:{z:-2.8495,y:.7480,r:.3131},
     rollerR:.095,rollers:[{z:-1.78,y:1.10,r:.095},{z:.20,y:1.10,r:.095},{z:2.06,y:1.10,r:.095}],
