@@ -4,6 +4,40 @@ Base: published `8f879124415f2734e8020de07b69a03afac4d96c`.
 This is a separately preserved candidate, not the already-pushed skirt/support
 checkpoint. Do not publish it as qualified or replace its failed source row.
 
+## Persistent checkout recovery
+
+On 2026-09-10, the temporary checkout
+`/private/tmp/cot-japan-running-gear.PUiEBf` and its running test handle were
+no longer present. Git still contained all nine unpublished commits through
+`fe571abbe226738a06a6acfaa1033c9e9d603a2a`. They were restored unchanged to
+`/Users/kevinliu/.codex/worktrees/cot-type10-durable-release-20260910` on
+`codex/type10-durable-release-20260910`; the shared dirty checkout was not
+modified. A fresh fetch confirmed base `f32fbd387` was still `origin/main`.
+
+The temporary `.qa-dev/` paths cited below are historical evidence locations,
+not currently available artifacts. In particular the final outcome of
+`type10-integrated-tail-OCe2Vs` cannot be recovered from that checkout and
+must not be described as passing. Committed source receipts remain available.
+A fresh complete npm lifecycle, typecheck and private/public builds are now
+recorded in this persistent checkout's `.qa-dev/durable-release-20260910/`.
+These are verification outputs, excluded from source control.
+
+The recovered runtime passes typecheck/core-unused and both private/public
+builds. The fresh complete anatomy check also passes: 181 receipts across
+57 groups, all 181 marking-seat receipts, 1,552 authored modules and 362
+track sides with no failed/outside-envelope hits, and 543 current technical
+diagram files. Its 83 pre-existing dimension warnings remain visible.
+The new complete npm lifecycle is still running; none of its successful
+prefixes is a complete test pass.
+
+Publication is limited to Kevin's explicit Type 10 fitting decision quoted
+below, together with his standing instruction to push completed checkpoints
+to `origin/main`. The question named the frozen source-shape failure and the
+roughly 9 cm ground-envelope change; the answer selected the fitted running
+gear. Retain the raw geometric and silhouette failures caused by that chosen
+target. This exception does not extend to other tanks, physical intersections,
+missing coverage, failing integration tests, or unfinished release checks.
+
 ## Implemented
 
 - A reusable closed paired-wheel primitive, metal dishes/hub/fasteners and
