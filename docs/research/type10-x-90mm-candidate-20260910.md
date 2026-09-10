@@ -37,7 +37,7 @@ Native HIGH angle/front/side/top frames were captured and inspected in
 `.qa-dev/type10-90mm-native`, alongside original Type 10 controls. They are
 diagnostic views, not an official full-view independent visual certification.
 
-## Blocking target conflict
+## Explicit owner target decision
 
 The frozen source is unchanged (SHA-256
 `fb6c2aa30119ac45b49fdfb7393a13760109ce4c9cc3f6244e579eb4944879fe`).
@@ -47,9 +47,16 @@ positions while fitting the thicker course extends the ground envelope by
 87.638 mm. The narrower ground-space source cannot simultaneously remain exact.
 The subsequent 0.5 mm crown adjustment has not been source-regated.
 
-An owner preference question is outstanding: fitted thicker gear versus the
-supplied ground envelope. No source transform, threshold or reference was
-changed. No expensive anatomy/assets/full-release run was started on this
-known failure. Historical pre-paint source inverses still need the bounded
+On 2026-09-10 the owner explicitly selected **"Prioritize fitted thicker running
+gear"** after being told that retaining the axle centres extends the ground
+envelope by roughly 9 cm and fails the frozen source-shape check. The intended
+design is now the fitted 90 mm course, not preservation of the source's thin
+ground envelope. This is an accepted design deviation, not a claim that the
+unchanged source score passes, and not a waiver of contact or release checks.
+
+No source transform, threshold or reference was changed. No expensive
+anatomy/assets/full-release run was started on this known source mismatch.
+Qualification must report both the raw source mismatch and the explicit
+owner-approved running-gear target. Historical pre-paint source inverses still need the bounded
 gear-call inverse; do not refresh their old literal hashes. Complete road/end
 wheel-to-shoe motion, guards/ground sweeps and native LOW close views remain.
