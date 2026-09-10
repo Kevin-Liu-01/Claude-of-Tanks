@@ -72,18 +72,130 @@ function paletteReceiptInput(config) {
   const { ids: _donorIds, ...tankWrecks } = config.props.tankWrecks;
   return { ...config, props: { ...config.props, tankWrecks } };
 }
+function historicalFoundryPaletteInput(config) {
+  if (config.id !== 'foundry') return config;
+  // Published 0823acd74e7bcf573e717f96f28ef5f1551dbef7 added only
+  // sourcedPalette to Foundry (74cbf547936cfce0c60ad5883acdecec35331211
+  // -> c3ad3042999d7241824ad9a4670fcbd73a5fb84a). The older palette receipt's
+  // f4854d513/2b2d14b39 input (a991dc69e0b3f46cd23f0ab445e3acd2aa43e51f)
+  // also had no such field. Its existing donor projection remains untouched.
+  // Only the historical digest uses this view; the current value is guarded
+  // separately, and all sibling properties survive in the original hash.
+  const { sourcedPalette: _laterPalette, ...props } = config.props;
+  return { ...config, props };
+}
+function historicalCropPaletteInput(config) {
+  if (config.id !== 'autumn' && config.id !== 'delta') return config;
+  // Published 3bfd72f9080cb3f0215ae8440edd040e163bf121 added only cropForm:
+  // Autumn aaf7b14ca -> f05d9e1bd; Delta 3e9fbab55 -> 410c62153.
+  // Guard today's values separately; omit only these later prop leaves from
+  // the historical water receipt, preserving cropFields and every sibling.
+  const { cropForm: _laterCrop, ...props } = config.props;
+  return { ...config, props };
+}
+// Authenticated independently from Autumn Git blobs at 1beb0c780 / 17d999:
+// f05d9e1bd16f4b1ccde15756189c5fc7ee2e3dc5 -> 4aacb9c5f4ab059da2662cde186bcaede19a99f2.
+// Those complete configs differ only in vegetation.palettes. This static
+// historical digest view retains native Node TypeScript-stripped function
+// serialization, including parameter spacing; these strings are never executed.
+// Runtime inputs and the original other29 golden remain unchanged.
+const historicalAutumnPalettes = {
+  "oak": {
+    "texTone": "(h        , s        , l        ) => [clamp01(0.055 + (h - 0.22) * 0.25), clamp01(s * 1.02 + 0.10), clamp01(l * 1.02)]",
+    "cardHue": 0.058,
+    "cardSat": 0.52,
+    "cardL0": 0.3,
+    "canopy": {
+      "hue": 0.06,
+      "sat": 0.42,
+      "l0": 0.27,
+      "l1": 0.39
+    },
+    "jitterHue": 0.85
+  },
+  "birch": {
+    "texTone": "(h        , s        , l        ) => [0.105, clamp01(s * 0.55 + 0.22), clamp01(l * 0.92 + 0.10)]",
+    "cardHue": 0.105,
+    "cardSat": 0.55,
+    "cardL0": 0.42,
+    "canopy": {
+      "hue": 0.11,
+      "sat": 0.5,
+      "l0": 0.36,
+      "l1": 0.52
+    },
+    "jitterHue": 0.6
+  }
+};
+assert.equal(hash(stringify(historicalAutumnPalettes)),
+  '31bdbf450402c2c0e54f8cbb8c45a14619c35bddb9d56acd10e2ef7d3e06973e',
+  'authenticated predecessor Autumn palette serialization remains exact');
+function verifyCurrentAutumnPalette(config) {
+  assert.equal(hash(stringify(config.vegetation?.palettes ?? null)),
+    'abb772abb6b3f67077b2a86d2cd7930a121b796fd6a6b2af9678f5dacdeb53b3',
+    'current Autumn palette remains the exact published seasonal selection');
+}
+function historicalAutumnPaletteInput(config) {
+  if (config.id !== 'autumn') return config;
+  return { ...config, vegetation: { ...config.vegetation, palettes: historicalAutumnPalettes } };
+}
 function verifyHistoricalConfigs(resolve) {
+  verifyCurrentAutumnPalette(resolve('autumn'));
+  assert.equal(resolve('autumn').props.cropForm, 'harvest', 'current Autumn crop identity remains exact');
+  assert.equal(resolve('delta').props.cropForm, 'wet-upright', 'current Delta crop identity remains exact');
+  assert.equal(resolve('foundry').props.sourcedPalette, 'ironworks',
+    'current Foundry palette remains the published ironworks selection');
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
-    if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historicalPaletteConfig(resolve(id))))]);
+    const historical = historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(resolve(id)))));
+    if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
   assert.equal(hash(JSON.stringify(unchangedMaps)),
-    '99347e4fcf9a54d89ee07e150aa8583e154b26e454cad2120f1cd745edb68750', 'other29 config digest excluding wreck donor IDs only');
+    '99347e4fcf9a54d89ee07e150aa8583e154b26e454cad2120f1cd745edb68750',
+    'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
   const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),
     'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede', 'original non-palette Mangrove digest');
 }
 verifyHistoricalConfigs(getMapConfig);
+for (const id of ['autumn', 'delta']) {
+  const original = getMapConfig(id);
+  for (const cropForm of [undefined, 'wrong-crop']) {
+    assert.throws(() => verifyHistoricalConfigs(key => key === id
+      ? { ...original, props: { ...original.props, cropForm } } : getMapConfig(key)),
+    /current .* crop identity/, 'missing or changed crop identity cannot hide behind historical projection');
+  }
+  assert.throws(() => verifyHistoricalConfigs(key => key === id
+    ? { ...original, props: { ...original.props, cropFields: original.props.cropFields + 1 } } : getMapConfig(key)),
+  /other29 config/, 'crop count remains protected by the original immutable digest');
+}
+const autumn = getMapConfig('autumn');
+const changedAutumnPalettes = { ...autumn.vegetation.palettes,
+  oak: { ...autumn.vegetation.palettes.oak, cardSat: 0.9 } };
+assert.equal(stringify(historicalAutumnPaletteInput({ ...autumn,
+  vegetation: { ...autumn.vegetation, palettes: changedAutumnPalettes } })),
+stringify(historicalAutumnPaletteInput(autumn)),
+'negative control demonstrates the historical view alone would conceal current Autumn palette corruption');
+for (const palettes of [undefined, changedAutumnPalettes, {
+  ...autumn.vegetation.palettes,
+  oak: { ...autumn.vegetation.palettes.oak, texTone: () => [0, 0, 0] },
+}]) assert.throws(() => verifyHistoricalConfigs(id => id === 'autumn'
+  ? { ...autumn, vegetation: { ...autumn.vegetation, palettes } } : getMapConfig(id)),
+/current Autumn palette/, 'missing, numeric and functional palette changes cannot hide behind historical projection');
+for (const changed of [
+  { ...autumn, vegetation: { ...autumn.vegetation, grassTexTone: () => [0, 0, 0] } },
+  { ...autumn, terrain: { ...autumn.terrain, hillScale: -1 } },
+]) assert.throws(() => verifyHistoricalConfigs(id => id === 'autumn' ? changed : getMapConfig(id)),
+/other29 config/, 'non-palette Autumn siblings remain inside the original immutable digest');
+const foundry = getMapConfig('foundry');
+for (const sourcedPalette of [undefined, 'wrong-palette']) {
+  assert.throws(() => verifyHistoricalConfigs(id => id === 'foundry'
+    ? { ...foundry, props: { ...foundry.props, sourcedPalette } } : getMapConfig(id)),
+  /current Foundry palette/, 'historical projection cannot hide a missing or changed current palette');
+}
+assert.throws(() => verifyHistoricalConfigs(id => id === 'foundry'
+  ? { ...foundry, props: { ...foundry.props, plan: foundry.props.plan.slice(1) } } : getMapConfig(id)),
+/other29 config/, 'unrelated Foundry plan changes still fail the immutable digest');
 verifyUnmutatedInputs(MAP_IDS.map(id => stringify(getMapConfig(id))));
 assert.throws(() => verifyHistoricalConfigs(id => id === 'verdant'
   ? { ...getMapConfig(id), terrain: { ...getMapConfig(id).terrain, hillScale: -1 } } : getMapConfig(id)), /other29 config/);
@@ -246,7 +358,7 @@ try {
   assert.equal(resolveDeviceTier(), 'mobile');
   for (const seed of [3003, 1337, 2002]) checkLayer(seed, 128);
   verifyUnmutatedInputs(MAP_IDS.map(id => stringify(getMapConfig(id))));
-  console.log(`mangroveWaterPalette.selftest: PASS six native sea bakes (${packageInfo.name}@${packageInfo.version}), exact alpha/normals/physics/resources, other29 configs excluding only separately owned wreck donor IDs`);
+  console.log(`mangroveWaterPalette.selftest: PASS six native sea bakes (${packageInfo.name}@${packageInfo.version}), exact alpha/normals/physics/resources, original other29 donor policy and independently guarded historical Foundry/Autumn inputs`);
 } finally {
   for (const [key, value] of originals) {
     if (value === undefined) delete globalThis[key]; else globalThis[key] = value;

@@ -23,6 +23,38 @@ const FROZEN = {
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
+// Authenticated Autumn blobs at 1beb0c780 / published 17d999a92:
+// f05d9e1bd16f4b1ccde15756189c5fc7ee2e3dc5 -> 4aacb9c5f4ab059da2662cde186bcaede19a99f2.
+// Only vegetation.palettes changed. This independent static fixture preserves
+// native Node TypeScript-stripped function spacing; its strings are never run.
+// Substitute it ONLY in the historical config digest, never in mask inputs.
+const historicalAutumnPalettes = {
+  oak: {
+    texTone: '(h        , s        , l        ) => [clamp01(0.055 + (h - 0.22) * 0.25), clamp01(s * 1.02 + 0.10), clamp01(l * 1.02)]',
+    cardHue: 0.058, cardSat: 0.52, cardL0: 0.3,
+    canopy: { hue: 0.06, sat: 0.42, l0: 0.27, l1: 0.39 },
+    jitterHue: 0.85,
+  },
+  birch: {
+    texTone: '(h        , s        , l        ) => [0.105, clamp01(s * 0.55 + 0.22), clamp01(l * 0.92 + 0.10)]',
+    cardHue: 0.105, cardSat: 0.55, cardL0: 0.42,
+    canopy: { hue: 0.11, sat: 0.5, l0: 0.36, l1: 0.52 },
+    jitterHue: 0.6,
+  },
+};
+assert.equal(hash(stringify(historicalAutumnPalettes)),
+  '31bdbf450402c2c0e54f8cbb8c45a14619c35bddb9d56acd10e2ef7d3e06973e',
+  'authenticated predecessor Autumn palette serialization remains exact');
+function verifyCurrentAutumnPalette(config) {
+  assert.equal(hash(stringify(config.vegetation?.palettes ?? null)),
+    'abb772abb6b3f67077b2a86d2cd7930a121b796fd6a6b2af9678f5dacdeb53b3',
+    'current Autumn palette remains the exact published seasonal selection');
+}
+function historicalAutumnPaletteInput(config) {
+  if (config.id !== 'autumn') return config;
+  return { ...config, vegetation: { ...config.vegetation, palettes: historicalAutumnPalettes } };
+}
+
 function originalConfig(cfg) {
   if (pilots.includes(cfg.id)) {
     const { villageWear: _mode, workedGround: _patches, ...terrain } = cfg.terrain;
@@ -43,6 +75,7 @@ function originalConfig(cfg) {
   return cfg;
 }
 function checkScope(resolve) {
+  verifyCurrentAutumnPalette(resolve('autumn'));
   assert.equal(resolve('foundry').props.sourcedPalette, 'ironworks');
   assert.equal(resolve('autumn').props.cropForm, 'harvest');
   assert.equal(resolve('delta').props.cropForm, 'wet-upright');
@@ -51,7 +84,7 @@ function checkScope(resolve) {
     assert.equal(resolve(id).terrain.villageWear, 'activity-patches');
     assert.equal(resolve(id).terrain.workedGround.length, 4);
   }
-  assert.equal(hash(stringify(MAP_IDS.map(id => originalConfig(resolve(id))))), FROZEN.configs,
+  assert.equal(hash(stringify(MAP_IDS.map(id => historicalAutumnPaletteInput(originalConfig(resolve(id)))))), FROZEN.configs,
     'only the two visual terrain properties differ from the exact parent inputs');
 }
 
@@ -165,6 +198,24 @@ function checkOtherMaps(tier) {
 }
 
 checkScope(getMapConfig);
+const autumn = getMapConfig('autumn');
+const changedAutumnPalettes = { ...autumn.vegetation.palettes,
+  oak: { ...autumn.vegetation.palettes.oak, cardSat: 0.9 } };
+assert.equal(stringify(historicalAutumnPaletteInput({ ...autumn,
+  vegetation: { ...autumn.vegetation, palettes: changedAutumnPalettes } })),
+stringify(historicalAutumnPaletteInput(autumn)),
+'negative control proves historical projection alone would conceal current Autumn palette corruption');
+for (const palettes of [undefined, changedAutumnPalettes, {
+  ...autumn.vegetation.palettes,
+  oak: { ...autumn.vegetation.palettes.oak, texTone: () => [0, 0, 0] },
+}]) assert.throws(() => checkScope(id => id === 'autumn'
+  ? { ...autumn, vegetation: { ...autumn.vegetation, palettes } } : getMapConfig(id)),
+/current Autumn palette/, 'missing, numeric and functional palette changes remain independently guarded');
+for (const changed of [
+  { ...autumn, vegetation: { ...autumn.vegetation, grassTexTone: () => [0, 0, 0] } },
+  { ...autumn, terrain: { ...autumn.terrain, hillScale: -1 } },
+]) assert.throws(() => checkScope(id => id === 'autumn' ? changed : getMapConfig(id)),
+/only the two visual terrain properties/, 'unrelated Autumn siblings remain inside the immutable config digest');
 for (const [id, key] of [['foundry', 'sourcedPalette'], ['autumn', 'cropForm'], ['delta', 'cropForm']]) {
   assert.throws(() => checkScope(current => current === id
     ? { ...getMapConfig(current), props: { ...getMapConfig(current).props, [key]: 'invalid' } } : getMapConfig(current)),
