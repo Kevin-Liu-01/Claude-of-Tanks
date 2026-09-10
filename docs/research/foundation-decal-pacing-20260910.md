@@ -68,3 +68,31 @@ marker gives SHA256
 `1df8bed38a5edf09ef8ad593025043b554c918edc07946ffa3626ce7b453a85a`
 for both versions. This baseline evidence does not turn the failed whole-file
 gate into a pass. Native qualification and full-suite acceptance remain separate.
+
+## Root integration and native functional check
+
+Root cherry-picked the patch as `0a8a6267a` above the tools-only `d1585389e`.
+`foundation-integration-gates-r1.log` passes the five focused props tests above,
+action timing, native TypeScript, core-unused and the public production build.
+The real-control native run `foundation-yield-local-r1` uses that public build,
+Chrome 151 / ANGLE Metal Apple M5 Max, Urban, 14 vehicles, high quality, 1280×720
+DPR 1, scale 1 and trim 0. Functional, trusted-entry audio, clock ownership,
+warm-readiness and source-readiness gates pass, with no console/cleanup errors.
+Day/night/Garage screenshots were inspected. These are functional gates, not a
+strict frame-budget certificate.
+
+Battle / rematch / Garage cover observations are 3.7 / 149.9 / 101.0 ms;
+ready times are 8807.8 / 5790.3 / 375.7 ms; worst callback gaps remain
+158.9 / 121.8 / 56.8 ms. The foundation family no longer appears among the eight
+slowest props slices (the eighth is 16.7 ms), but that does not establish its
+exact maximum or a whole-transition speedup. Remaining slowest props slices
+include initial setup 29.5 ms and stone-tone 29.0 ms. The first 158.9 ms gap
+contains a separate 108 ms Long Task; its nested owner is not classified by this
+unprofiled run. Rematch's 121.8 ms gap has no overlapping ≥50 ms Long Task and a
+97.3 ms LoAF with no attributed script. Do not assign either gap to this patch
+or to GC/GPU activity from those observations alone.
+
+Report SHA256: `2bdf81ee751e62702207dd012d187690191ce2bf7bc15511c24cfe3619367928`.
+HTML SHA256: `e185cca9758f0dbd1bbb43ffbe3af5b526e57a932f5eb6432a20e5bda3a47201`.
+Acquisition SHA256: `ca9af05238ca4f5c0fb1d2941892f9f19519f95cfa3196038d91f36d469262a4`.
+Evidence lives under `/private/tmp/cot-interactive-baseline.gsRCvU/`.

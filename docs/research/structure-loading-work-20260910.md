@@ -378,3 +378,35 @@ and preservation of falsy JavaScript exceptions. Strict metrics pass on all
 three changed tool files: 167 functions, no violations or any/unknown. The
 first draft's new cyclomatic-26 closure failed metrics; pure metadata extraction
 removed that violation before the passing run. No gate was weakened.
+
+### Completed production timeline acquisition
+
+`heightfield-yield-production-trace-r1` exercised the same live `85aa9224a`
+runtime with `--trace-actions`. All three functional, audio, warm/source-readiness
+checks pass; all three traces cover their actions, without dropped rows, data
+loss, malformed rows or unclosed in-window intervals. Endpoint clock differences
+are +0.038 / -0.107 / -0.007 ms. Day battle, night rematch and Garage screenshots
+were inspected without a new visual defect. This is attribution-only acquisition,
+not an unprofiled performance comparison.
+
+The prior 121.1/161.8 ms terrain gap did not reproduce. Worst callback gaps were
+77.9 / 79.7 / 48.6 ms. Clipped interval **unions** for Battle's 7040.5–7118.4 ms
+gap contain 3.003 ms GC, 0.112 ms style/layout and 0.138 ms paint; rematch's
+12861.9–12941.6 ms gap contains 2.098 ms GC and 0.102 ms style/layout. Categories
+overlap and must not be added. Neither GC nor layout/paint dominates these gaps.
+
+The retained timeline whitelist does **not** expose all `Scheduler.yield.then`
+continuations as task/function rows. Battle has only 7.888 ms of retained task
+union but 75.300 ms of LoAF script intervals, including 22.1 and 47.0 ms yield
+continuations. Rematch likewise has 13.552 ms retained tasks but 61.000 ms of
+LoAF script intervals. Sparse task coverage is not evidence of idle time or a
+GPU wait. The largest terrain gap is 76.8 ms (3629.8–3706.6), containing a 55 ms
+Long Task and a 54 ms rAF-resumed script; GC is only 0.324 ms there. These sources
+locate execution boundaries, not the expensive nested JS/native operation.
+Historical 214–319 ms attribution remains unresolved.
+
+Report SHA256: `4c30b2d4ed750c519c899ed320c4c82cf375eafe82c80d36cfc53d809510210c`.
+Battle trace: `73c986096b2c8e4a126ff03e9ff893b40163c08a41c402bc45d70df75b477417`;
+rematch: `94ccee28608e55b4036845acc9b8e086df848bcfa60229922cc93c999794855e`;
+Garage: `0850dd644f6b1c9fd4362924d28cb0656ccc3650f452f2647f6aa0fee97a2f78`.
+Acquisition: `e556f2fe60a319b86783d4383e398347a1927fd5a6b25d72f0815b9d26845edd`.
