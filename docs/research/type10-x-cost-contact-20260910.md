@@ -2,8 +2,8 @@
 
 Status: **release PASS; wider-track redesign remains open**.
 Base: `85aa9224a`. Worktree: `/private/tmp/cot-japan-running-gear.PUiEBf`.
-Original source checkpoint: `a57476e9a`; rebased source: `1146c8bf1`.
-Rebased selected assets: `8d58a9032`; integration base: `2e2fa5999`.
+Original source checkpoint: `a57476e9a`; rebased source: `4d0ab00b1`.
+Rebased selected assets: `cf1454da0`; integration base: `d06a0ef56`.
 
 ## Actual change
 
@@ -78,16 +78,18 @@ filenames; its failed result remains separate from the complete corrected run.
 
 ## Integration verification
 
-The 15 upstream commits through `2e2fa5999` changed no vehicle source or assets.
+The 17 upstream commits through `d06a0ef56` changed no vehicle source or assets.
 After rebase, all seven frozen Type 10 source/test SHA-256 values still match
-the complete release receipt. Eleven focused checks cover the changed frame
-scheduler, bridge, world scheduling, terrain fields, action timing, frame trace
-and test/release scheduling. All eleven passed, followed by fresh typecheck,
+the complete release receipt. Twelve focused checks cover the changed frame
+scheduler, sky cache, bridge, world scheduling, terrain fields, action timing,
+frame trace and test/release scheduling. All twelve passed, followed by fresh typecheck,
 selected Type 10 asset validation, private build and public build.
 The complete original release is `.qa-dev/type10-release-NwGauA/receipt.json`;
-the integration receipt is `.qa-dev/type10-integration-OoT81Q/receipt.json`.
-The rebased tree has 956 registered tests; this record does not claim a second
-uninterrupted 956-test invocation. Native geometry, armor/ballistics checks,
+the final integration receipt is `.qa-dev/type10-integration-dm4PlG/receipt.json`.
+The first push safely refused a concurrent main advance; the final integration
+additionally verifies its sky-cache change. The rebased tree has 957 registered
+tests; this record does not claim a second uninterrupted 957-test invocation.
+Native geometry, armor/ballistics checks,
 full anatomy and the original uninterrupted 955-test release remain tied to
 their unchanged frozen inputs.
 
