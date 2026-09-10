@@ -32,10 +32,12 @@ export default {
   splat: {
     grassTone: (h: number, s: number, l: number) => [0.075, 0.39, clamp01(0.19 + l * 0.78)],
     dirtTone: (h: number, s: number, l: number) => [0.055, 0.43, clamp01(0.24 + l * 0.48)],
-    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.47 + (l - 0.5) * 0.72)],
+    // Broad weathered beds, not high-contrast repeated marker stripes.
+    sandstone: true, rockTone: (h: number, s: number, l: number) => [0.045, clamp01(s * 0.62), clamp01(0.43 + (l - 0.5) * 0.34)],
     tintA: [1.10, 0.88, 0.69], tintB: [0.71, 0.54, 0.45], tintC: [1.06, 0.84, 0.67],
-    roadTint: [0.78, 0.61, 0.51], strata: 0.14, sandMacro: 0.9,
-    rippleAmp: 0.28, midRelief: 0.65, midReliefFar: 780,
+    roadTint: [0.78, 0.61, 0.51], strata: 0.035, sandMacro: 0.9,
+    // An alluvial wash has faint wind-scoured patches, not floor-wide dunes.
+    rippleAmp: 0.045, midRelief: 0.65, midReliefFar: 780,
   },
   vegetation: {
     species: ['acacia', 'cedar', 'oak', 'palm'], clusterMix: [['acacia', 0.48], ['oak', 0.30], ['cedar', 0.17], ['palm', 0.05]],
@@ -76,7 +78,7 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0.06,
+    baseHex: 0x7a4936, amp: 1.36, style: 'mesa', treeline: 0.06, banding: 0.045,
     forestHex: 0x58402f, rockHex: 0x96533b, haze: 0.92, grain: 0.58,
   },
   sky: {

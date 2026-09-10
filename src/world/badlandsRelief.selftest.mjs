@@ -57,9 +57,11 @@ for (const index of [0, 2]) {
   assert.deepEqual(config.terrain.roads.paths[index][0], original.terrain.roads.paths[index][0]);
   assert.deepEqual(config.terrain.roads.paths[index].at(-1), original.terrain.roads.paths[index].at(-1));
 }
+// Later material-only refinement is independently bounded by redrockMaterial.
 assert.equal(serialize({ ...config, blurb: original.blurb, terrain: original.terrain,
+  splat: original.splat, horizon: original.horizon,
   props: { ...config.props, tacticalBeats: original.props.tacticalBeats, wallRuns: original.props.wallRuns } }),
-serialize(original), 'only scoped terrain, blurb and floor-reseated tactical/wall records change');
+serialize(original), 'only scoped terrain, blurb, materials and floor-reseated tactical/wall records change');
 
 function canyonContract(sample) {
   for (const z of [-80, 0, 70]) {
