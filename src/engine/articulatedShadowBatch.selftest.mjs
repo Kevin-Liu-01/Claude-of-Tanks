@@ -429,6 +429,8 @@ for (const reflected of ['source', 'owner']) {
   const broad = cameraAt(0, 10), presentation = cameraAt(100);
   shadow(batch, broad);
   const mirror = f.sources[1];
+  const packedRange = batch.getGeometryRangeAt(batch.getGeometryIdAt(1));
+  const expectedGroup = { start: packedRange.start, count: packedRange.count, materialIndex: 0 };
   const before = f.sources.map(snapshot);
   let matrixWrites = 0;
   const setMatrixAt = batch.setMatrixAt;
@@ -448,8 +450,10 @@ for (const reflected of ['source', 'owner']) {
     assert.equal(directCalls.length, index + 1, 'one reflected-source native draw per eligible cascade');
     const call = directCalls[index];
     assert.equal(call.receiver, renderer, 'renderBufferDirect retains its renderer receiver');
-    assert.deepEqual(call.args, [camera, null, mirror.geometry, suppliedDepth, mirror, null],
-      'fallback uses the current supplied depth material and original mesh/geometry');
+    assert.deepEqual(call.args, [camera, null, batch.geometry, suppliedDepth, mirror, expectedGroup],
+      'fallback uses the uploaded exact packed range, current depth material and original object winding');
+    if (index > 0) assert.equal(call.args[5], directCalls[0].args[5],
+      'all cascades reuse the cold-precomputed geometry group');
     expectedModelView.multiplyMatrices(camera.matrixWorldInverse, mirror.matrixWorld);
     sameMatrix(mirror.modelViewMatrix, expectedModelView, 'native fallback current cascade model-view');
     assert.equal(batch.getVisibleAt(1), false, 'reflected source is absent from the normal batch');
