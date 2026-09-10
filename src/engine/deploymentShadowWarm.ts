@@ -10,6 +10,7 @@ import type {
 } from 'three';
 import { createOffscreenSceneWarmer, warmSceneOffscreenBatched, type OffscreenSceneWarmer } from './offscreenWarm.ts';
 import { prepareDeploymentUploadPrograms, type DeploymentUploadProgramReceipt } from './deploymentUploadPrograms.ts';
+import { nextPaintFrame } from './frameScheduler.ts';
 
 type BudgetYield = (covered?: boolean) => Promise<void>;
 type WarmRender = (() => void) & { dispose?: () => void };
@@ -112,6 +113,7 @@ export interface DeploymentShadowWarmOptions {
   noteFovPrimed(fov: number): void;
   simDt: number;
   now?: () => number;
+  yieldProgramFrame?: () => Promise<void>;
   shadowOnlyWarmRender?: WarmRender;
 }
 
@@ -344,6 +346,7 @@ export function createDeploymentShadowWarmOwner({
   noteFovPrimed,
   simDt,
   now = () => performance.now(),
+  yieldProgramFrame = nextPaintFrame,
   shadowOnlyWarmRender: injectedShadowWarm,
 }: DeploymentShadowWarmOptions): DeploymentShadowWarmOwner {
   const shadowOnlyCamera = new THREE.PerspectiveCamera(1, 1, 0.5, 2);
@@ -486,7 +489,7 @@ export function createDeploymentShadowWarmOwner({
       maxWeight: 45_000,
       async prepareObjects(objects) {
         preparation = await prepareDeploymentUploadPrograms(objects, uploadMaterial,
-          warmRender, () => yieldCovered(yieldForBudget), now);
+          warmRender, () => yieldCovered(yieldForBudget), now, yieldProgramFrame);
       },
       yieldBeforeBatch: () => yieldCovered(yieldForBudget),
       renderBatch() {

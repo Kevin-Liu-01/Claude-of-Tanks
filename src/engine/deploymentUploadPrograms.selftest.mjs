@@ -4,6 +4,7 @@ import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
 import { createOffscreenSceneWarmer } from './offscreenWarm.ts';
 import { createDeploymentShadowWarmOwner } from './deploymentShadowWarm.ts';
 import { deploymentUploadVariantKey } from './deploymentUploadPrograms.ts';
+import { createOpaqueLoadingYielder } from './frameScheduler.ts';
 
 const uploadMaterial = new THREE.MeshBasicMaterial({ color: 0, colorWrite: false,
   depthWrite: false, depthTest: false, fog: false, toneMapped: false });
@@ -84,11 +85,20 @@ function fixture(mode) {
   let active = { caller: true }, face = 3, mip = 2, lost = false, cancelled = false;
   const priorTarget = active;
   let uploads = 0, compiles = 0, queries = 0, closed = 0;
+  let programFrames = 0, tasks = 0, revoked = false, queriesAtFrame = 0;
   const failure = new Error('guarded covered yield cancelled');
+  const coveredYield = createOpaqueLoadingYielder(12, 32, {
+    now: () => 0,
+    yieldTask: async () => { tasks++; },
+    yieldFrame: async () => { assert.fail('the task-only loading slice has not reached its paint deadline'); },
+  });
   const gl = {
     isContextLost: () => lost,
     getExtension: () => ({ COMPLETION_STATUS_KHR: 123 }),
-    getProgramParameter() { queries++; return mode !== 'pending'; },
+    getProgramParameter() {
+      queries++;
+      return mode !== 'pending' && (mode !== 'frame-ready' || programFrames >= 2);
+    },
   };
   const renderer = {
     info: { programs: [] }, shadowMap: { enabled: true, type: THREE.PCFShadowMap },
@@ -144,6 +154,18 @@ function fixture(mode) {
   const owner = createDeploymentShadowWarmOwner({ renderer, scene, camera, warmRender,
     lighting: { csm: { lights: [light] }, updateFov() {}, update() {}, preservePrimedCascadesForNextFrame() {} },
     getWorldGroup: () => scene, noteFovPrimed() {}, simDt: 1 / 60, shadowOnlyWarmRender() {},
+    async yieldProgramFrame() {
+      assertRestored();
+      await Promise.resolve();
+      programFrames++;
+      queriesAtFrame = queries;
+      if (mode === 'frame-throws') throw failure;
+      if (mode === 'frame-cancel') revoked = true;
+      if (mode === 'frame-context-loss') lost = true;
+      if (mode === 'frame-dispose') owner.dispose();
+      if (mode === 'frame-target-dispose') warmRender.dispose();
+      assertRestored();
+    },
   });
   const assertRestored = (checkLod = true) => {
     assert.equal(active, priorTarget); assert.equal(face, 3); assert.equal(mip, 2);
@@ -161,9 +183,12 @@ function fixture(mode) {
     failure, assertRestored,
     get uploads() { return uploads; }, get compiles() { return compiles; },
     get queries() { return queries; }, get closed() { return closed; },
+    get programFrames() { return programFrames; }, get tasks() { return tasks; },
+    get queriesAtFrame() { return queriesAtFrame; },
     prime: () => owner.prime(async () => {
       assertRestored(uploads === 0); // Later caster warming owns its pre-existing LOD freeze.
-      await Promise.resolve();
+      await coveredYield(true);
+      if (revoked) throw failure;
       if (!compiles || cancelled) return;
       cancelled = true;
       if (mode === 'cancel') throw failure;
@@ -181,24 +206,33 @@ function fixture(mode) {
   };
 }
 
-for (const mode of ['success', 'cancel', 'context-loss', 'dispose', 'target-dispose', 'pending',
+for (const mode of ['success', 'frame-ready', 'frame-throws', 'frame-cancel', 'frame-context-loss',
+  'frame-dispose', 'frame-target-dispose', 'cancel', 'context-loss', 'dispose', 'target-dispose', 'pending',
   'compile-throws', 'missing-cache', 'missing-return', 'detach', 'hide']) {
   const f = fixture(mode);
   try {
-    if (mode === 'success') {
+    if (['success', 'frame-ready'].includes(mode)) {
       const receipt = await f.prime();
       assert.equal(receipt.uploadProgramPreparation.variants, 3);
       assert.equal(receipt.uploadProgramPreparation.timing.uniformCount, 3);
       assert.ok(receipt.uploadProgramPreparation.maxStepMs >= 0);
       assert.ok(receipt.uploadProgramPreparation.totalMs >= receipt.uploadProgramPreparation.syncMs);
       assert.ok(f.uploads > 0);
+      if (mode === 'frame-ready') {
+        assert.equal(f.programFrames, 2, 'readiness gets real frames; geometry batches do not request them');
+        assert.ok(f.tasks > f.programFrames, 'ordinary covered loading still uses task-only yields');
+        assert.ok(f.queries < 20, 'a frame-ready native compiler cannot burn the strict poll budget in task churn');
+      }
     } else {
-      await assert.rejects(f.prime(), error => ['cancel', 'compile-throws'].includes(mode) ? error === f.failure
-        : mode === 'dispose' ? /disposed/.test(error.message)
+      await assert.rejects(f.prime(), error => ['cancel', 'compile-throws', 'frame-cancel', 'frame-throws'].includes(mode) ? error === f.failure
+        : ['dispose', 'frame-dispose'].includes(mode) ? /disposed/.test(error.message)
           : mode === 'missing-cache' ? /program cache unavailable/.test(error.message)
             : mode === 'missing-return' ? error instanceof TypeError
           : error.code === 'program_uniform_warm_incomplete');
       assert.equal(f.uploads, 0, `${mode} cannot enter the upload render`);
+      if (mode === 'cancel') assert.equal(f.programFrames, 0, 'the covered guard runs before the frame wait');
+      if (mode.startsWith('frame-')) assert.equal(f.queries, f.queriesAtFrame,
+        'a failed or invalidated frame wait cannot perform another native readiness query');
       if (mode === 'pending') assert.ok(f.queries > 0 && f.queries <= 3 * 1024, 'pending readiness has a finite shared budget');
     }
     f.assertRestored();

@@ -53,6 +53,7 @@ export async function prepareDeploymentUploadPrograms(
   warmRender: Pick<OffscreenSceneWarmer, 'prepareProgramsSteps'>,
   yieldCovered: () => Promise<void>,
   now: () => number,
+  yieldProgramFrame: () => Promise<void>,
 ): Promise<DeploymentUploadProgramReceipt> {
   const startedAt = now();
   const representatives = new Map<string, UploadObject>();
@@ -65,8 +66,8 @@ export async function prepareDeploymentUploadPrograms(
   const stepMs: number[] = [];
   const steps = warmRender.prepareProgramsSteps(selected, timing);
   try {
+    await yieldCovered();
     while (true) {
-      await yieldCovered();
       const prior = selected.map(object => ({ object, material: object.material }));
       const stepAt = now();
       let step: ReturnType<typeof steps.next>;
@@ -83,6 +84,13 @@ export async function prepareDeploymentUploadPrograms(
         if (step.value.status !== 'complete') throw new ProgramUniformPreparationError(step.value);
         break;
       }
+      // Forced opaque-loader yields may only advance tasks. Give native
+      // readiness a rendering opportunity between strict steps, with the
+      // caller's generation/context guard on both sides of the frame wait.
+      // All temporary materials and renderer state are already restored.
+      await yieldCovered();
+      await yieldProgramFrame();
+      await yieldCovered();
     }
   } finally { steps.return({ status: 'incomplete', pending: null, reason: 'invalidated' }); }
   return { variants: selected.length, stepMs, maxStepMs: Math.max(0, ...stepMs),
