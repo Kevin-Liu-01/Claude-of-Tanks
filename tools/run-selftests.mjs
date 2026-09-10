@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { constants, tmpdir } from 'node:os';
+import { availableParallelism, constants, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
@@ -24,10 +24,10 @@ export function selftestChildEnv(env = process.env) {
   return { ...env, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
 }
 
-// Opt in while the complete real-suite parity run is being qualified. This
-// controls scheduling only: no test, assertion or failure gate is omitted.
-export function selftestWorkerCount(env = process.env) {
-  const count = Number(env.COT_SELFTEST_WORKERS ?? 1);
+// Complete releases qualified the bounded pool. Respect smaller hosts and
+// explicit serial/debug overrides without omitting any assertion or gate.
+export function selftestWorkerCount(env = process.env, availableCpus = availableParallelism()) {
+  const count = Number(env.COT_SELFTEST_WORKERS ?? Math.min(4, availableCpus));
   if (!Number.isInteger(count) || count < 1 || count > 4) throw new TypeError('COT_SELFTEST_WORKERS must be an integer from 1 to 4');
   return count;
 }

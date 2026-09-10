@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runSelftestSuite, runSelftestFile, selftestWorkerCount } from './run-selftests.mjs';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
-assert.equal(selftestWorkerCount({}), 1, 'parallel scheduling is initially opt-in');
+assert.equal(selftestWorkerCount({}), Math.min(4, availableParallelism()), 'qualified pool is the CLI default');
+for(const available of [1,2,3,4,8,18,64])
+  assert.equal(selftestWorkerCount({},available),Math.min(4,available),'respect available CPUs and four-worker ceiling');
+assert.equal(selftestWorkerCount({COT_SELFTEST_WORKERS:'1'},18),1,'explicit serial debugging stays supported');
+assert.equal(selftestWorkerCount({COT_SELFTEST_WORKERS:'4'},1),4,'explicit existing override remains authoritative');
+for(const available of [0,-1,2.5,NaN])
+  assert.throws(()=>selftestWorkerCount({},available),/integer from 1 to 4/);
 for(const value of [1,2,3,4])assert.equal(selftestWorkerCount({ COT_SELFTEST_WORKERS: String(value) }), value);
 for (const value of ['0', '5', '2.5', '', 'NaN', 'Infinity', '2x']) {
   assert.throws(() => selftestWorkerCount({ COT_SELFTEST_WORKERS: value }), /integer from 1 to 4/);
