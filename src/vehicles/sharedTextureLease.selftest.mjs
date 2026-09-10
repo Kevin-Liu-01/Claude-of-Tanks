@@ -65,6 +65,62 @@ try {
   assert.equal(canvases, beforeInvalid, 'invalid leases allocate nothing');
 
   {
+    // Actual material factory: independent scrolling views need not duplicate
+    // the immutable track image's Source. This is a CPU ownership contract;
+    // native WebGL allocation/refcount and rendered parity need their own gate.
+    const s = spec('track-source-sharing'), v = visual(s, 'low', null);
+    const left = v.trackTexL, right = v.trackTexR, image = left.image;
+    const imageDigest = () => createHash('sha256').update(image.getContext('2d')
+      .getImageData(0, 0, image.width, image.height).data).digest('hex');
+    const pixels = imageDigest(), source = left.source;
+    try {
+      assert.notEqual(left, right, 'each side retains its own texture view');
+      assert.equal(right.source, source, 'L/R share exact immutable pixel storage');
+      assert.equal(right.image, image);
+      for (const key of ['mapping', 'channel', 'wrapS', 'wrapT', 'magFilter', 'minFilter',
+        'anisotropy', 'format', 'internalFormat', 'type', 'normalized', 'generateMipmaps',
+        'premultiplyAlpha', 'flipY', 'unpackAlignment', 'colorSpace', 'matrixAutoUpdate']) {
+        assert.equal(right[key], left[key], `track sampler preserves ${key}`);
+      }
+      for (const key of ['offset', 'repeat', 'center', 'matrix']) {
+        assert.notEqual(left[key], right[key], `${key} remains per-side state`);
+        assert.deepEqual(left[key].toArray(), right[key].toArray());
+      }
+      assert.equal(v.trackL.map, left); assert.equal(v.trackL.bumpMap, left);
+      assert.equal(v.trackR.map, right); assert.equal(v.trackR.bumpMap, right);
+      left.offset.set(0.125, -0.375); left.updateMatrix();
+      assert.deepEqual(right.offset.toArray(), [0, 0]);
+      const leftMatrix = left.matrix.toArray();
+      right.offset.set(-0.25, 0.625); right.repeat.set(2, 3); right.updateMatrix();
+      assert.deepEqual(left.matrix.toArray(), leftMatrix, 'right scrolling cannot change left UVs');
+      assert.notDeepEqual(right.matrix.toArray(), leftMatrix);
+      const uv = new THREE.Vector2(0.3, 0.4);
+      assert.notDeepEqual(left.transformUv(uv.clone()).toArray(), right.transformUv(uv.clone()).toArray());
+
+      // Live shared-camo promotion/repaint touches the paint atlases, not the
+      // repeating track canvas or the independent UV state.
+      await prebakeSharedTextures(s, 4, 'ai');
+      setCamoOverride(s.id, 'winter');
+      await applyCamoPatternsChunked({ onlySpecIds: [s.id] });
+      assert.equal(v.hull.map.image.width, 512, 'actual live texture promotion ran');
+      assert.equal(left.source, source); assert.equal(right.source, source);
+      assert.equal(left.image, image); assert.equal(right.image, image);
+      assert.equal(imageDigest(), pixels, 'promotion/repaint preserves every track pixel');
+      assert.deepEqual(left.matrix.toArray(), leftMatrix);
+      assert.deepEqual(right.offset.toArray(), [-0.25, 0.625]);
+
+      left.dispose();
+      assert.equal(disposed(right), 0, 'one view disposal emits no sibling disposal');
+      assert.equal(right.image, image); assert.equal(imageDigest(), pixels);
+      v.dispose();
+      assert.equal(disposed(left), 2, 'final owner still disposes the previously suspended view');
+      assert.equal(disposed(right), 1, 'final owner disposes the sibling exactly once');
+      v.dispose();
+      assert.equal(disposed(right), 1, 'fixture owner cleanup is idempotent');
+    } finally { setCamoOverride(s.id, null); v.dispose(); }
+  }
+
+  {
     const s = spec('lease-two-owners');
     await prebakeSharedTextures(s, 4, 'low', null, 'factory');
     const control = visual(s), pixels = digest(control);

@@ -2618,9 +2618,10 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   };
   burnt.customProgramCacheKey = () => 'burnt-triplanar-r6';
 
-  // Independent L/R track textures so each side scrolls on its own offset.
+  // Independent L/R UV transforms share the immutable image Source, so Three
+  // can retain one GPU texture without coupling either side's scrolling.
   const trackTexL = track(canvasTex(shared.trackCanvas, { aniso, repeat: true }));
-  const trackTexR = track(canvasTex(shared.trackCanvas, { aniso, repeat: true }));
+  const trackTexR = track(trackTexL.clone());
   // r10: metalness 0.3 + full env fired the blue-sky mirror off the band's
   // grazing faces (anodized-purple wrap critique) — dusty steel instead.
   const trackMatOpts = { roughness: 0.92, metalness: 0.1, envMapIntensity: 0.1 };
