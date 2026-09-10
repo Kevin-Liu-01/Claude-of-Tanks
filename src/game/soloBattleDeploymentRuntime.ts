@@ -94,6 +94,9 @@ interface DeploymentWarmTrace {
     batches: number;
     maxMs: number;
     totalMs: number;
+    completed: boolean;
+    error?: string;
+    cleanupError?: string;
   };
   deploymentUniformsDeferred?: boolean;
   deploymentTerrainPrograms?: TerrainProgramReceipt;
@@ -340,6 +343,20 @@ async function primeCoveredReveal(
   }
 }
 
+function restoreDeploymentWarmState(
+  submission: CombatFxSubmission | null,
+  restoreArmor: (() => void) | undefined,
+  receipt: NonNullable<DeploymentWarmTrace['deploymentFxForwardWarm']>,
+): void {
+  try {
+    try { submission?.restore(); }
+    finally { restoreArmor?.(); }
+  } catch (error) {
+    receipt.cleanupError = String(error).slice(0, 320);
+    throw error;
+  }
+}
+
 /**
  * Own the covered solo deployment warm from final camouflage through the
  * first production-quality battlefield frame. Callers know only the warm
@@ -402,6 +419,7 @@ export function createSoloBattleDeploymentRuntime(
         stages: {},
       };
       host.__BATTLE_COUNTDOWN_WARM = trace;
+      delete host.__COMBAT_OPENING_WARM;
       devTrace?.mark?.('battle:entry-warm-start', {});
       const startedAt = now();
       let markedAt = startedAt;
@@ -476,17 +494,19 @@ export function createSoloBattleDeploymentRuntime(
         mark('openingGroundCover');
 
         const deploymentCompileStartedAt = now();
-        const restoreArmorWarmVisibility = armorAimOverlay.warm();
-        const fx = getFx();
-        const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
-          game,
-          fx,
-          post,
-          camera,
-          createShell,
-        });
-        const fxForwardWarmBatches = [];
+        const fxReceipt: NonNullable<DeploymentWarmTrace['deploymentFxForwardWarm']> = {
+          batches: 0, maxMs: 0, totalMs: 0, completed: false,
+        };
+        trace.deploymentFxForwardWarm = fxReceipt;
+        let restoreArmorWarmVisibility: (() => void) | undefined;
+        let combatFxSubmission: CombatFxSubmission | null = null;
+        let fxCohortsCompleted = false;
         try {
+          restoreArmorWarmVisibility = armorAimOverlay.warm();
+          const fx = getFx();
+          combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
+            game, fx, post, camera, createShell,
+          });
           requireCurrent(generation);
           // The complete scene submission and its first FX bind previously
           // shared one >100 ms task. Use the existing exact-scene compiler's
@@ -512,33 +532,38 @@ export function createSoloBattleDeploymentRuntime(
             cohortSize: 1,
             now,
           })) {
-            fxForwardWarmBatches.push(batch);
+            fxReceipt.batches++;
+            fxReceipt.maxMs = Math.max(fxReceipt.maxMs, batch.ms);
+            fxReceipt.totalMs += batch.ms;
             await guardedCoveredYield(true);
             requireCurrent(generation);
           }
-        } catch {
-          // The first covered production frame remains the compatibility path.
+          fxCohortsCompleted = true;
+        } catch (error) {
+          fxReceipt.error = String(error).slice(0, 320);
+          // Preserve covered-frame compatibility, but leave unsuccessful FX
+          // eligible for deferred retry. Acquisition failures retain their
+          // existing outer fallback after borrowed armor state is restored.
+          if (!combatFxSubmission) throw error;
         } finally {
-          combatFxSubmission.restore();
-          restoreArmorWarmVisibility();
+          try {
+            restoreDeploymentWarmState(combatFxSubmission, restoreArmorWarmVisibility, fxReceipt);
+          } finally {
+            trace.deploymentCompileMs = Math.round(now() - deploymentCompileStartedAt);
+          }
         }
         requireCurrent(generation);
 
-        if (combatFxSubmission.staged) {
+        fxReceipt.completed = fxCohortsCompleted && combatFxSubmission?.staged === true;
+        if (fxReceipt.completed) {
           combatWarm.markOpeningReady();
           setDestructionWarmed(true);
           host.__COMBAT_OPENING_WARM = {
             covered: true,
-            batches: fxForwardWarmBatches.length,
+            batches: fxReceipt.batches,
             totalMs: Math.round(now() - deploymentCompileStartedAt),
           };
         }
-        trace.deploymentCompileMs = Math.round(now() - deploymentCompileStartedAt);
-        trace.deploymentFxForwardWarm = {
-          batches: fxForwardWarmBatches.length,
-          maxMs: Math.max(0, ...fxForwardWarmBatches.map((batch) => batch.ms)),
-          totalMs: fxForwardWarmBatches.reduce((sum, batch) => sum + batch.ms, 0),
-        };
 
         await yieldFrame();
         requireCurrent(generation);
@@ -590,16 +615,18 @@ export function createSoloBattleDeploymentRuntime(
         if (error === STALE_DEPLOYMENT || !stillCurrent(generation)) {
           throw new Error('Solo battle deployment was superseded');
         }
-        if (stillCurrent(generation)) {
-          trace.done = true;
-          trace.doneBeforeRollout = false;
-          trace.error = String(error);
-          host.__BATTLE_COUNTDOWN_WARM = trace;
-        }
+        // The stale-owner branch above exits synchronously; this receipt
+        // still belongs to the active deployment until the next await.
+        trace.done = true;
+        trace.doneBeforeRollout = false;
+        trace.error = String(error);
+        host.__BATTLE_COUNTDOWN_WARM = trace;
         // Optional shader warming may fall back to a real covered render.
         // Incomplete geometry cannot: loading must recover, not reveal a
         // different/empty carpet via its optional-warm compatibility path.
-        if (!groundCoverReady) throw error;
+        // Failed restoration can leave staged effects alive. A healthy frame
+        // cannot certify their cleanup; use the covered entry recovery owner.
+        if (!groundCoverReady || trace.deploymentFxForwardWarm?.cleanupError !== undefined) throw error;
       }
       // Health is required even after optional warming fails. It cannot share
       // that catch: a known-black/unrestorable result must retain the cover.
