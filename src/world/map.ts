@@ -121,6 +121,8 @@ export interface WorldRuntime {
   mapId: string;
   /** Release external callbacks at final eviction, not temporary dormancy. */
   dispose(): void;
+  /** Readiness snapshot only; never performs streaming work. */
+  getGrassWorkState: VegetationRuntime['getGrassWorkState'];
   config: BattlefieldMapConfig;
   heightField: WorldHeightField;
   minimapTextureState: SourcedTextureState;
@@ -435,10 +437,15 @@ function assembleWorld(
   const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
-    dispose: unregisterDestructibles,
+    dispose() {
+      unregisterDestructibles();
+      vegetation.dispose();
+    },
     config,
     heightField,
     minimapTextureState,
+    // Checkpoint-only diagnostics; never force streaming or alter readiness.
+    getGrassWorkState: () => vegetation.getGrassWorkState(),
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,

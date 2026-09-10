@@ -68,6 +68,7 @@ interface DecorOptions {
 }
 
 interface ShadowEngineContext {
+  releaseShadowMaterial?: (material: THREE.Material) => boolean;
   setupShadowMaterial?: (
     material: THREE.Material,
     extraHook?: typeof vehicleAmbientFloorHook,
@@ -218,7 +219,7 @@ interface DecorManifestRow {
 
 type DecorManifestBuilder = (spec: FleetTankSpec, rng: Rng) => DecorManifestRow[];
 
-interface DecorationAttachmentArgs {
+export interface DecorationAttachmentArgs {
   root: THREE.Object3D;
   hullG: THREE.Group;
   turretG: THREE.Group;
@@ -674,16 +675,20 @@ function gridTex() {
 // ---------------------------------------------------------------------------
 
 const CTX_PROBED = new WeakMap<ShadowEngineContext, boolean>(); // engineCtx -> boolean (real CSM ctx)
+function releaseDecorationMaterial(engineCtx: ShadowEngineContext | null | undefined, material: THREE.Material): void {
+  try { engineCtx?.releaseShadowMaterial?.(material); }
+  finally { material.dispose(); }
+}
 function isRealShadowCtx(engineCtx: ShadowEngineContext | null | undefined): boolean {
   if (!engineCtx || typeof engineCtx.setupShadowMaterial !== 'function') return false;
   if (CTX_PROBED.has(engineCtx)) return CTX_PROBED.get(engineCtx) ?? false;
   let real = false;
+  const probe = new THREE.MeshStandardMaterial();
   try {
-    const probe = new THREE.MeshStandardMaterial();
     engineCtx.setupShadowMaterial(probe);
     real = !!(probe.defines && probe.defines.USE_CSM);
-    probe.dispose();
   } catch (e) { real = false; }
+  finally { releaseDecorationMaterial(engineCtx, probe); }
   CTX_PROBED.set(engineCtx, real);
   return real;
 }
@@ -902,8 +907,10 @@ function buildDecorMaterials(
       if (!made[key]) {
         const def = { ...defs[key]() };
         if (!def.map) delete def.map; // node safety (no canvas available)
-        made[key] = setup(new THREE.MeshStandardMaterial(def));
-        made[key]!.name = `Decor_${key}`;
+        const material = new THREE.MeshStandardMaterial(def);
+        made[key] = material;
+        setup(material);
+        material.name = `Decor_${key}`;
       }
       return made[key]!;
     },
@@ -2633,11 +2640,12 @@ function collectSurfaceRecords(
   return { records, bounds, triangleTotal };
 }
 
-function indexSurfaceTriangles(
+function* indexSurfaceTrianglesSteps(
   records: SurfaceRecord[],
   bounds: THREE.Box3,
   triangleTotal: number,
-): AxisProjectedGrids | null {
+  work: DecorationWorkOptions,
+): Generator<DecorationWorkSlice, AxisProjectedGrids | null, void> {
   const size = Math.max(AXIS_GRID_MIN, Math.min(AXIS_GRID_MAX,
     Math.ceil(Math.sqrt(triangleTotal / 24))));
   const xz = projectedGrid(bounds.min.x, bounds.max.x, bounds.min.z, bounds.max.z, size);
@@ -2646,6 +2654,8 @@ function indexSurfaceTriangles(
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
   const c = new THREE.Vector3();
+  const now = work.now || decorationWorkNow;
+  let sliceStartedAt = now(), sliceTriangles = 0, completed = 0;
   for (let targetIndex = 0; targetIndex < records.length; targetIndex++) {
     const record = records[targetIndex];
     if (record.triangleCount >= 0x100000) return null;
@@ -2667,22 +2677,31 @@ function indexSurfaceTriangles(
       addProjectedTriangle(xy,
         Math.min(a.x, b.x, c.x), Math.max(a.x, b.x, c.x),
         Math.min(a.y, b.y, c.y), Math.max(a.y, b.y, c.y), encoded);
+      completed++;
+      sliceTriangles++;
+      if (sliceTriangles >= DECORATION_INDEX_BATCH_LIMIT
+        || (sliceTriangles % 16 === 0 && now() - sliceStartedAt >= DECORATION_WORK_BUDGET_MS)) {
+        yield { stage: 'surface-index', completed, total: triangleTotal };
+        sliceStartedAt = now();
+        sliceTriangles = 0;
+      }
     }
   }
   return { xz, yz, xy };
 }
 
-function buildAxisSurfaceIndex(
+function* buildAxisSurfaceIndexSteps(
   group: THREE.Group,
   targets: SurfaceMesh[],
-): AxisSurfaceIndex | null {
+  work: DecorationWorkOptions,
+): Generator<DecorationWorkSlice, AxisSurfaceIndex | null, void> {
   if (!targets.length || targets.length >= 2048) return null;
   group.updateWorldMatrix(true, false);
   const groupInverse = new THREE.Matrix4().copy(group.matrixWorld).invert();
   const prepared = collectSurfaceRecords(group, targets, groupInverse);
   if (!prepared) return null;
   const { records, bounds, triangleTotal } = prepared;
-  const grids = indexSurfaceTriangles(records, bounds, triangleTotal);
+  const grids = yield* indexSurfaceTrianglesSteps(records, bounds, triangleTotal, work);
   if (!grids) return null;
   const { xz, yz, xy } = grids;
 
@@ -2784,8 +2803,11 @@ function buildAxisSurfaceIndex(
   };
 }
 
-function makeProber(group: THREE.Group, targets: SurfaceMesh[]): SurfaceProber {
-  const axisIndex = buildAxisSurfaceIndex(group, targets);
+function makeProber(
+  group: THREE.Group,
+  targets: SurfaceMesh[],
+  axisIndex: AxisSurfaceIndex | null,
+): SurfaceProber {
   const ray = new THREE.Raycaster();
   ray.far = 80;
   const orig = new THREE.Vector3();
@@ -2901,10 +2923,6 @@ function clonePartList(parts: DecorPartList): DecorPartList {
   if (parts.metaCx !== undefined) clone.metaCx = parts.metaCx;
   return clone;
 }
-function disposePartList(parts: DecorPartList): void {
-  for (const p of parts) p.geo.dispose();
-}
-
 /**
  * Attach the decoration kit to a built tank visual.
  *
@@ -2924,8 +2942,89 @@ function disposePartList(parts: DecorPartList): void {
  * @param {() => boolean} [a.isDestroyed] live-wreck guard (never dress a wreck)
  * @returns {?object} summary { pieces, tris, drawCalls, skipped } or null
  */
+export const DECORATION_INDEX_BATCH_LIMIT = 256;
+export const DECORATION_WORK_BUDGET_MS = 2;
+export interface DecorationWorkSlice {
+  stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'material-bucket' | 'publish';
+  completed: number;
+  total: number;
+}
+export interface DecorationWorkOptions { now?: () => number; }
+const decorationWorkNow = (): number => performance.now();
+
+/** Only newly authored decoration resources enter this per-job owner. */
+function createDecorationResourceOwner(
+  root: THREE.Object3D,
+  disposables: Array<THREE.BufferGeometry | THREE.Material | THREE.Texture>,
+  engineCtx: ShadowEngineContext | null | undefined,
+) {
+  const pending = new Set<THREE.BufferGeometry>();
+  const released = new WeakSet<THREE.BufferGeometry>();
+  const completed: THREE.BufferGeometry[] = [];
+  const groups: Array<{ parent: THREE.Group; group: THREE.Group }> = [];
+  let published = false;
+  function releaseGeometry(geometry: THREE.BufferGeometry): void {
+    pending.delete(geometry);
+    if (released.has(geometry)) return;
+    released.add(geometry);
+    geometry.dispose();
+  }
+  return {
+    ownGeometry(geometry: THREE.BufferGeometry): void { pending.add(geometry); },
+    releaseGeometry,
+    completeGeometry(geometry: THREE.BufferGeometry): void { completed.push(geometry); },
+    addGroup(parent: THREE.Group, group: THREE.Group): void { groups.push({ parent, group }); },
+    groupCount: (): number => groups.length,
+    publish(summary: DecorSummary, materials: DecorMaterials): void {
+      for (const { parent, group } of groups) parent.add(group);
+      for (const geometry of completed) disposables.push(geometry);
+      for (const material of Object.values(materials.all())) if (material) disposables.push(material);
+      root.userData.__decorSummary = summary;
+      published = true;
+      pending.clear();
+    },
+    cancel(materials: DecorMaterials | null): void {
+      if (published) return;
+      for (const { group } of groups) group.removeFromParent();
+      for (const geometry of pending) releaseGeometry(geometry);
+      for (const material of Object.values(materials?.all() || {})) {
+        if (material) releaseDecorationMaterial(engineCtx, material);
+      }
+      delete root.userData.__decorApplied;
+    },
+  };
+}
+
+/** Synchronous callers retain the existing fully dressed return contract. */
 export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary | null {
+  try {
+    const steps = attachTankDecorationsSteps(a);
+    let result = steps.next();
+    while (!result.done) result = steps.next();
+    return result.value;
+  } catch (error) {
+    try { console.warn(`[decorations] ${a.spec.id}: attach failed —`, errorMessage(error)); } catch (_) { /* noop */ }
+    return null;
+  }
+}
+
+/**
+ * The caller owns the core visual privately until this iterator finishes.
+ * Each row consumes both RNG draws and its complete placement before yielding;
+ * no draft decoration group is attached until all owner/material buckets exist.
+ * A single kit, native merge, and final publication remain synchronous units.
+ */
+export function* attachTankDecorationsSteps(
+  a: DecorationAttachmentArgs,
+  work: DecorationWorkOptions = {},
+): Generator<DecorationWorkSlice, DecorSummary | null, void> {
   const { root, hullG, turretG, spec, engineCtx, disposables = [], opts = {} } = a;
+  const resources = createDecorationResourceOwner(root, disposables, engineCtx);
+  let mats: DecorMaterials | null = null;
+  let claimed = false;
+  function disposePartList(parts: DecorPartList): void {
+    for (const part of parts) resources.releaseGeometry(part.geo);
+  }
   try {
     function shouldSkipAttachment(): boolean {
       if (!root || root.userData.__decorApplied) return true;
@@ -2934,10 +3033,12 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     }
     if (shouldSkipAttachment()) return null;
     root.userData.__decorApplied = true;
+    claimed = true;
 
     const decorId = decorIdentityFor(spec.id);
     const rng = mulberry32(fnv1a(`decor:${decorId}`));
-    const mats = buildDecorMaterials(spec, engineCtx);
+    const materials = buildDecorMaterials(spec, engineCtx);
+    mats = materials;
     const dims = spec.dims;
     const armor = spec.armor;
     const W = dims.widthM, H = dims.heightM;
@@ -2949,8 +3050,14 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
     const hullTargets = probeTargets(hullG);
     const turretTargets = probeTargets(turretG);
     if (!hullTargets.length && !turretTargets.length) return null;
-    const hullP = makeProber(hullG, hullTargets.length ? hullTargets : turretTargets);
-    const turP = makeProber(turretG, turretTargets.length ? turretTargets : hullTargets);
+    const hullProbeTargets = hullTargets.length ? hullTargets : turretTargets;
+    const turretProbeTargets = turretTargets.length ? turretTargets : hullTargets;
+    const hullIndex = yield* buildAxisSurfaceIndexSteps(hullG, hullProbeTargets, work);
+    const hullP = makeProber(hullG, hullProbeTargets, hullIndex);
+    yield { stage: 'surface-ready', completed: 1, total: 2 };
+    const turretIndex = yield* buildAxisSurfaceIndexSteps(turretG, turretProbeTargets, work);
+    const turP = makeProber(turretG, turretProbeTargets, turretIndex);
+    yield { stage: 'surface-ready', completed: 2, total: 2 };
 
     // --- guard precomputation ---------------------------------------------
     // Turret swept annulus + PER-RADIAL-BAND lowest turret surface: the
@@ -3321,6 +3428,7 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
         p.geo.applyMatrix4(m);
         if (!map.has(p.mat)) map.set(p.mat, []);
         map.get(p.mat)!.push(p.geo);
+        resources.ownGeometry(p.geo);
       }
       const piece: DecorPieceSummary = { kit: name, frame, tris };
       if (receipt) piece.attachment = receipt;
@@ -3799,43 +3907,52 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
       }
     }
 
-    function attachManifestRows(): void {
+    function* attachManifestRows(): Generator<DecorationWorkSlice, void, void> {
       const manifest = decorManifestFor(spec, rng);
-      for (const row of manifest) {
+      for (let index = 0; index < manifest.length; index++) {
+        const row = manifest[index];
         // Deterministic dice: every row draws its roll and jitter seed before
         // eligibility checks, so one failed placement cannot reshuffle later
         // equipment.
         const roll = rng();
         const jitterSeed = (rng() * 0x7fffffff) | 0;
-        if (roll > (row.p ?? 1)) continue;
-        const kitFn = DECOR_KITS[row.kit];
-        const slotFn = SLOTS[row.slot[0]];
-        if (!kitFn || !slotFn) continue;
-        const parts = createManifestParts(row, kitFn, jitterSeed);
-        if (!parts) continue;
-        placeManifestParts(row, slotFn, parts);
+        if (!(roll > (row.p ?? 1))) {
+          const kitFn = DECOR_KITS[row.kit];
+          const slotFn = SLOTS[row.slot[0]];
+          if (kitFn && slotFn) {
+            const parts = createManifestParts(row, kitFn, jitterSeed);
+            if (parts) placeManifestParts(row, slotFn, parts);
+          }
+        }
+        yield { stage: 'manifest-row', completed: index + 1, total: manifest.length };
       }
     }
-    attachManifestRows();
+    yield* attachManifestRows();
 
     // ---- merge per family per frame + attach --------------------------------
-    function mergeDecorationBucket(
+    function* mergeDecorationBucket(
       frame: DecorFrame,
       map: Map<DecorMaterialKey, THREE.BufferGeometry[]>,
-    ): number {
+    ): Generator<DecorationWorkSlice, number, void> {
       if (!map.size) return 0;
       const parent = frame === 'hull' ? hullG : turretG;
       const g = new THREE.Group();
       g.name = frame === 'hull' ? 'rig_decor_hull' : 'rig_decor_turret';
       let drawCalls = 0;
       for (const [matKey, geos] of map) {
-        const nonIndexed = geos.map((x) => (x.index ? x.toNonIndexed() : x));
+        const nonIndexed = geos.map((geometry) => {
+          if (!geometry.index) return geometry;
+          const converted = geometry.toNonIndexed();
+          resources.ownGeometry(converted);
+          return converted;
+        });
         const merged = mergeGeometries(nonIndexed, false);
-        for (const x of nonIndexed) x.dispose();
-        for (const x of geos) if (!x.attributes || x !== merged) x.dispose();
+        if (merged) resources.ownGeometry(merged);
+        for (const geometry of nonIndexed) resources.releaseGeometry(geometry);
+        for (const geometry of geos) resources.releaseGeometry(geometry);
         if (!merged) continue;
-        disposables.push(merged);
-        const mesh = new THREE.Mesh(merged, mats.get(matKey));
+        resources.completeGeometry(merged);
+        const mesh = new THREE.Mesh(merged, materials.get(matKey));
         mesh.name = `decor_${frame}_${matKey}`;
         // PERF: the fleet's shadow story is proxy-based (procedural proxies /
         // GLB buildShadowProxy) with per-mesh casters swept off — decor
@@ -3850,29 +3967,24 @@ export function attachTankDecorations(a: DecorationAttachmentArgs): DecorSummary
         lod.addLevel(new THREE.Object3D(), DECOR_LOD_DIST, 0.1);
         g.add(lod);
         drawCalls++;
+        yield { stage: 'material-bucket', completed: drawCalls, total: map.size };
       }
-      parent.add(g);
+      resources.addGroup(parent, g);
       g.userData.combatHitboxRole = 'equipment';
       return drawCalls;
     }
 
-    function mergeDecorationBuckets(): number {
-      let drawCalls = 0;
-      for (const [frame, map] of Object.entries(buckets)) {
-        drawCalls += mergeDecorationBucket(frame as DecorFrame, map);
-      }
-      return drawCalls;
+    let drawCalls = 0;
+    for (const [frame, map] of Object.entries(buckets)) {
+      drawCalls += yield* mergeDecorationBucket(frame as DecorFrame, map);
     }
-    const drawCalls = mergeDecorationBuckets();
-    for (const m of Object.values(mats.all())) if (m) disposables.push(m);
-
+    yield { stage: 'publish', completed: resources.groupCount(), total: resources.groupCount() };
     summary.tris = budget.tris;
     summary.drawCalls = drawCalls;
-    root.userData.__decorSummary = summary;
+    resources.publish(summary, materials);
     return summary;
-  } catch (e) {
-    try { console.warn(`[decorations] ${spec.id}: attach failed —`, errorMessage(e)); } catch (_) { /* noop */ }
-    return null;
+  } finally {
+    if (claimed) resources.cancel(mats);
   }
 }
 

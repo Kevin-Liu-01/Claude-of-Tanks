@@ -199,6 +199,7 @@ export interface CameraRig {
   startCinematic(durationS?: number): void;
   startDeathCam(): void;
   startSpectate(entity: CameraEntity): void;
+  snapSpectateForReveal(): boolean;
   setSpectateTarget(entity: CameraEntity): void;
   spectateLook(dxPx: number, dyPx: number): void;
   spectateZoom(notches: number): void;
@@ -1049,6 +1050,17 @@ export function createCameraRig(
       };
       rig.mode = 'ARCADE';
       applyPlayerVisibility(getPlayer(), true);
+    },
+
+    /** Covered initial observer entry only; ordinary visible handovers blend. */
+    snapSpectateForReveal(): boolean {
+      if (!spec?.ent?.state) return false;
+      spec.ent.visual?.root.updateWorldMatrix(true, true);
+      spec.pivot = null;
+      spec.blendT = spec.blendDur;
+      solveSpectate(0);
+      camera.updateMatrixWorld(true);
+      return true;
     },
 
     /**

@@ -143,12 +143,13 @@ const loadModulesBody = networkBattleAdapters.match(
 assert.ok(loadModulesBody, 'network entry retains its explicit module acquisition barrier');
 const acquireNetworkModules = new Function(
   'preloadNetworkBattleModules', 'preloadBattleClientRuntime', 'ensureBattleHud',
-  'ensureTouchControls', 'armorAimOverlay', 'ensureFxRuntime', 'ensureKillcamRuntime',
+  'ensureTouchControls', 'garageReturn', 'armorAimOverlay', 'ensureFxRuntime', 'ensureKillcamRuntime',
   'battleWarm', 'audio', `return ${loadModulesBody};`,
 );
-const acquireWithFx = (ensureFx) => acquireNetworkModules(
+const acquireWithFx = (ensureFx, preloadGarageReturn = () => Promise.resolve()) => acquireNetworkModules(
   () => Promise.resolve('network-modules'), () => Promise.resolve(),
   () => Promise.resolve(), () => Promise.resolve(),
+  { preload: preloadGarageReturn },
   { preload: () => Promise.resolve() }, ensureFx, () => Promise.resolve(),
   { preload: () => Promise.resolve() }, { warmBattleEvents: () => Promise.resolve() },
 );
@@ -183,6 +184,45 @@ for (const preloadResult of ['pending', 'throw', 'reject', 'ready']) {
   releaseWorld('world');
   assert.equal((await entry).modules, 'network-modules');
   releaseDownload();
+}
+// The demand-loaded return owner is essential, unlike optional image work.
+// Exercise the actual callback's new port instead of omitting it from the
+// source-evaluated fixture and failing before FX acquisition ever begins.
+for (const returnResult of ['pending', 'reject', 'throw']) {
+  const failure = new Error('return owner unavailable');
+  let releaseReturn;
+  const pendingReturn = new Promise((resolve) => { releaseReturn = resolve; });
+  const events = [];
+  let modulesReady = false;
+  const acquire = () => acquireWithFx(() => {
+    events.push('fx-runtime-start');
+    return Promise.resolve({ preloadTextures() {
+      events.push('texture-download-start');
+      return Promise.resolve();
+    } });
+  }, () => {
+    events.push('return-owner-start');
+    if (returnResult === 'throw') throw failure;
+    return returnResult === 'reject' ? Promise.reject(failure) : pendingReturn;
+  });
+  if (returnResult === 'throw') {
+    assert.throws(acquire, (error) => error === failure,
+      'synchronous return acquisition failure cannot become successful modules');
+    assert.deepEqual(events, ['return-owner-start'],
+      'array evaluation stops at an essential synchronous acquisition failure');
+    continue;
+  }
+  const modules = acquire().then((value) => { modulesReady = true; return value; });
+  if (returnResult === 'reject') await assert.rejects(modules, (error) => error === failure);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['return-owner-start', 'fx-runtime-start', 'texture-download-start'],
+    `${returnResult} return acquisition still overlaps independent FX download`);
+  assert.equal(modulesReady, false, `${returnResult} return owner must not release the essential barrier`);
+  if (returnResult === 'pending') {
+    releaseReturn();
+    assert.equal(await modules, 'network-modules');
+    assert.equal(modulesReady, true, 'return readiness releases the original module result');
+  }
 }
 await assert.rejects(acquireWithFx(() => Promise.reject(new Error('FX construction failed'))),
   /FX construction failed/, 'essential FX construction still fails the entry barrier');

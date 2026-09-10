@@ -2,6 +2,7 @@
 //
 // Usage:
 //   node tools/phase-resource-probe.mjs [--production] [--seconds 8]
+//     [--dist /path/to/frozen/public-build]
 //     [--garage-settle 16] [--gate] [--out /tmp/cot-phase-resources.json]
 //     [--cpu-profile-out /tmp/cot-battle.cpuprofile]
 //
@@ -35,8 +36,9 @@ const garageSettleSeconds = Math.max(
   Math.min(60, Number(option('garage-settle', '16')) || 16),
 );
 const outputPath = option('out', '');
+const distPath = resolve(option('dist', 'dist'));
 const sha256 = content => createHash('sha256').update(content).digest('hex');
-const buildIndexHash = production ? sha256(readFileSync(resolve('dist/index.html'))) : null;
+const buildIndexHash = production ? sha256(readFileSync(resolve(distPath, 'index.html'))) : null;
 const acquisitionHash = sha256([
   readFileSync(fileURLToPath(import.meta.url)),
   readFileSync(new URL('./phase-environment-receipt.mjs', import.meta.url)),
@@ -143,6 +145,7 @@ const server = production
   ? await preview({
     root: process.cwd(),
     logLevel: 'error',
+    build: { outDir: distPath },
     preview: { host: '127.0.0.1', port: 5840, strictPort: false },
   })
   : await createServer({
@@ -859,12 +862,13 @@ try {
 
   const phases = [garageIdle, battleActive, garageReturned];
   const budgets = evaluateBudgets(phases);
-  if (production && sha256(readFileSync(resolve('dist/index.html'))) !== buildIndexHash) {
+  if (production && sha256(readFileSync(resolve(distPath, 'index.html'))) !== buildIndexHash) {
     throw new Error('Production build changed during the phase-resource probe');
   }
   report = {
     schemaVersion: 2,
     buildIndexHash,
+    distPath: production ? distPath : null,
     acquisitionHash,
     browserVersion: await browser.version(),
     ok: pageErrors.length === 0 && (!gate || budgets.pass),

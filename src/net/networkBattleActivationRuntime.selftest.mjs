@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createNetworkBattleActivationRuntime } from './networkBattleActivationRuntime.ts';
 
-function createHarness({ spectator = false, observerReady = true } = {}) {
+function createHarness({ spectator = false, observerReady = true, cameraReady = true } = {}) {
   const calls = [];
   let constructing = true;
   const world = { resetDestructibles: () => calls.push(['resetWorld']) };
@@ -49,6 +49,7 @@ function createHarness({ spectator = false, observerReady = true } = {}) {
     rig: {
       release: () => calls.push(['release']),
       snapArcade: (...args) => calls.push(['arcade', ...args]),
+      snapSpectateForReveal: () => { calls.push(['observerCamera']); return cameraReady; },
     },
     presentation: {
       setShotMode: (value) => calls.push(['shotMode', value]),
@@ -95,15 +96,20 @@ for (const expected of [
   ['equipment', true], ['phase', 'battle'], ['arcade', 2, 1.2, -0.5],
 ]) assert.deepEqual(player.calls.find((call) => call[0] === expected[0]), expected);
 assert.equal(player.calls.some(([name]) => name === 'observer'), false);
+assert.equal(player.calls.some(([name]) => name === 'observerCamera'), false);
 
 const observer = createHarness({ spectator: true });
 assert.equal(observer.calls.some(([name]) => name === 'select'), false);
 assert.equal(observer.calls.some(([name]) => name === 'tank'), false);
 assert.deepEqual(observer.calls.find(([name]) => name === 'perspective'), ['perspective', 'ally-2']);
+const observerOrder = observer.calls.map(([name]) => name);
+assert.ok(observerOrder.indexOf('observer') < observerOrder.indexOf('observerCamera'));
+assert.ok(observerOrder.indexOf('observerCamera') < observerOrder.indexOf('showroom'));
 
 assert.throws(
   () => createHarness({ spectator: true, observerReady: false }),
   /No live vehicle is available to spectate/,
 );
+assert.throws(() => createHarness({ spectator: true, cameraReady: false }), /observer camera could not be prepared/);
 
 console.log('networkBattleActivationRuntime.selftest: player, spectator, and activation order pass');

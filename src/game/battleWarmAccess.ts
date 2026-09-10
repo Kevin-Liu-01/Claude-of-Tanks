@@ -8,6 +8,9 @@ export interface BattleWarmAccess {
   warmBattleTerrainTiles(
     options: Parameters<RuntimeModule['warmBattleTerrainTiles']>[0],
   ): ReturnType<RuntimeModule['warmBattleTerrainTiles']>;
+  primeOpeningTerrainPresentation(
+    options: Parameters<RuntimeModule['primeOpeningTerrainPresentation']>[0],
+  ): ReturnType<RuntimeModule['primeOpeningTerrainPresentation']>;
   warmNetworkWrecks(
     options: Parameters<RuntimeModule['warmNetworkWrecks']>[0],
   ): ReturnType<RuntimeModule['warmNetworkWrecks']>;
@@ -54,6 +57,8 @@ export function createBattleWarmAccess(
     },
     warmBattleTerrainTiles: async (options) =>
       (await preload()).warmBattleTerrainTiles(options),
+    primeOpeningTerrainPresentation: async (options) =>
+      (await preload()).primeOpeningTerrainPresentation(options),
     warmNetworkWrecks: async (options) =>
       (await preload()).warmNetworkWrecks(options),
     warmNetworkOpeningEffects: async (options) =>

@@ -18,6 +18,15 @@ const debug = {
 const context = vm.createContext({ window: { __DEBUG: debug } });
 const read = () => JSON.parse(vm.runInContext(`JSON.stringify((${readPhaseEnvironment.toString()})())`, context));
 const oldBuild = read();
+assert.equal(oldBuild.grassWork, null, 'preserved builds without streaming telemetry remain readable');
+let grassReads = 0;
+const grassState = { built: 12, total: 64, visiblePending: 2, disposed: false };
+debug.world.getGrassWorkState = () => { grassReads++; return grassState; };
+const streaming = read();
+assert.equal(grassReads, 1, 'a checkpoint only reads progress once, without draining work');
+assert.deepEqual(streaming.grassWork, grassState);
+grassState.built++;
+assert.equal(streaming.grassWork.built, 12, 'receipt does not retain mutable progress state');
 assert.equal(oldBuild.nightLighting.available, false);
 assert.equal(oldBuild.nightLighting.attached, false);
 assert.deepEqual(oldBuild.graphics.canvas, [1280, 577]);

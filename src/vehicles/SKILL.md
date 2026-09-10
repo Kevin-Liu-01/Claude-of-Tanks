@@ -45,8 +45,15 @@ operation explicit, its variable loft/scale adapters narrow, and its runtime
 registration idempotent.
 `decorations.ts` owns deterministic cosmetic-kit construction and exact
 surface seating. Keep decoration geometry merged by material and owner frame,
-retain the 3,000-triangle budget and 150 m LOD, and preserve the typed
+retain the existing 4,200-triangle budget and 150 m LOD, and preserve the typed
 projected-ray index plus gun, turret-sweep, width, and overlap guards.
+Covered battle loading consumes `createTankSteps` through `fleetFactory.ts`;
+the original `createTank` remains synchronous for authoring and Gallery callers.
+Construction checkpoints expose no partial visual. Decoration work keeps its
+exact RNG/order and stages unpublished groups privately; closing the iterator
+must dispose its private geometry and release owning-context shadow-material
+registrations. Never yield inside a family builder's temporary spec mutation or
+change authored detail to satisfy the loading budget.
 `profiles/ukraine.ts` owns the strict Ukrainian T-64BV, T-80BV, T-80U Kursk,
 Oplot-M, and field-caged M1A1 builds. Keep its surface-seated ERA, cast-dome
 profiles, welded-face probes, cage stations, and mutable donor-id handoff behind

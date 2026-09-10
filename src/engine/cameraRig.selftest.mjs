@@ -30,6 +30,42 @@ const idle = {
   shiftPressed: false,
 };
 
+// Lobby observer entry must not reveal a Garage-to-battle flyover. Reuse the
+// same spectator solver, but keep death/target-switch handovers unchanged.
+{
+  const observerCamera = new PerspectiveCamera();
+  observerCamera.position.set(-1500, 10, -1500);
+  const observerRoot = new Object3D();
+  observerRoot.position.set(-1500, 0, -1500);
+  observerRoot.updateMatrixWorld(true);
+  observerRoot.position.set(20, 0, 12.5); // deliberately stale matrix
+  const observed = {
+    state: { pos: observerRoot.position.clone(), yaw: 0, turretYaw: 0 },
+    input: { aimPoint: new Vector3() },
+    visual: {
+      root: observerRoot,
+      turretTopWorld: out => out.set(0, 2, 0).applyMatrix4(observerRoot.matrixWorld),
+      gunPivotWorld: out => out.set(0, 1.7, 0.2).applyMatrix4(observerRoot.matrixWorld),
+    },
+  };
+  const observerRig = createCameraRig(observerCamera, {
+    heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => null,
+  });
+  assert.equal(observerRig.snapSpectateForReveal(), false, 'no target cannot certify observer readiness');
+  const garagePose = observerCamera.position.clone();
+  observerRig.startSpectate(observed);
+  assert.deepEqual(observerCamera.position.toArray(), garagePose.toArray(), 'ordinary start retains its visible blend');
+  assert.equal(observerRig.snapSpectateForReveal(), true);
+  assert.equal(observerCamera.position.x, 20, 'covered snap refreshes the moved target matrix');
+  assert.ok(observerCamera.position.distanceTo(observed.state.pos) < 20);
+  const revealed = observerCamera.position.clone();
+  observerRig.update(1 / 60, idle);
+  assert.ok(observerCamera.position.distanceTo(revealed) < 1e-9, 'first live frame cannot resume the old Garage blend');
+  observerRig.stopSpectate();
+  observerRig.startSpectate(observed);
+  assert.deepEqual(observerCamera.position.toArray(), revealed.toArray(), 'later visible entry does not invoke the covered snap');
+}
+
 visualRoot.position.set(-1500, 0, -1500);
 visualRoot.updateMatrixWorld(true);
 visualRoot.position.set(40, 0, -400);

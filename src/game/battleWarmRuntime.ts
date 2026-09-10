@@ -80,6 +80,10 @@ interface TerrainWarmPoint {
 }
 
 interface BattleWarmWorld {
+  getGrassWorkState?(): {
+    disposed: boolean;
+    carpet?: { cold: boolean; pending: boolean };
+  };
   heightField?: {
     warmFastTilesAround(points: TerrainWarmPoint[]): Iterable<number>;
   };
@@ -96,6 +100,23 @@ export interface TerrainWarmOptions {
   world: BattleWarmWorld | null;
   yieldForBudget?: WorkYielder | null;
   primePresentation?: boolean;
+  presentationCamera?: Camera;
+}
+
+export interface OpeningTerrainPresentationOptions {
+  game: BattleWarmGame;
+  world: BattleWarmWorld | null;
+  camera: Camera;
+  yieldForBudget?: WorkYielder | null;
+  signal?: AbortSignal;
+  /** Recheck the caller's generation at this producer's own resume boundary. */
+  assertCurrent?: () => void;
+  /** Same selected entity as live world-frame presentation (observer included). */
+  focusEntity?: {
+    state?: BattleWarmState | null;
+    visual?: { root?: Object3D } | null;
+    spec?: { dims?: { heightM?: number } };
+  } | null;
 }
 
 const PLAYER_OPENING_CORRIDOR_M = [80, 112, 144] as const;
@@ -153,28 +174,40 @@ function collectOpeningTerrainWarmPoints(game: BattleWarmGame): TerrainWarmPoint
   return points;
 }
 
-async function primeOpeningTerrainPresentation(
-  game: BattleWarmGame,
-  world: BattleWarmWorld | null,
-  yieldForBudget: WorkYielder | null,
-  enabled: boolean,
-): Promise<void> {
-  const focus = game.player || game.tanks.find((entity) => entity.state);
-  if (!enabled || !focus?.state || typeof world?.update !== 'function') return;
-  const yaw = focus.state.yaw || 0;
-  const warmCamera = new Vector3(
-    focus.state.pos.x - Math.sin(yaw) * 12,
-    focus.state.pos.y + 5,
-    focus.state.pos.z - Math.cos(yaw) * 12,
-  );
-  const warmForward = new Vector3(Math.sin(yaw), -0.16, Math.cos(yaw)).normalize();
-  const warmFocus = new Vector3(
-    focus.state.pos.x,
-    focus.state.pos.y,
-    focus.state.pos.z,
-  );
-  world.update(0, warmCamera, warmForward, warmFocus);
-  if (yieldForBudget) await yieldForBudget(true);
+export async function primeOpeningTerrainPresentation({
+  game, world, camera, yieldForBudget = null, signal, assertCurrent, focusEntity,
+}: OpeningTerrainPresentationOptions): Promise<void> {
+  const requireCurrent = (): void => {
+    signal?.throwIfAborted();
+    assertCurrent?.();
+  };
+  requireCurrent();
+  const focus = focusEntity === undefined
+    ? game.player || game.tanks.find((entity) => entity.state) : focusEntity;
+  if (!focus?.state || typeof world?.update !== 'function') return;
+  // Snapshot the existing rig's solved reveal pose, including its distance,
+  // pitch, articulation and collision pull-in. Even a sub-metre heuristic error
+  // can select another 16 m carpet cell. Never move the camera during this job.
+  const warmCamera = camera.position.clone();
+  const warmForward = camera.getWorldDirection(new Vector3());
+  const warmFocus = new Vector3().copy(focus.state.pos);
+  focus.visual?.root?.getWorldPosition(warmFocus);
+  warmFocus.y += (focus.spec?.dims?.heightM ?? 0) * 0.75;
+  // The live scheduler no longer builds the near carpet in one blocking call.
+  // Finish that same camera's first carpet behind the existing veil, yielding
+  // between bounded updates. Account this in openingGroundCover, not an invisible
+  // pre-probe settle; the countdown must not reveal an empty cold carpet.
+  for (let batch = 0; batch < 900; batch++) {
+    requireCurrent();
+    world.update(0, warmCamera, warmForward, warmFocus);
+    if (yieldForBudget) await yieldForBudget(true);
+    requireCurrent();
+    const grass = world.getGrassWorkState?.();
+    if (grass?.disposed) throw new Error('Opening ground cover world was disposed');
+    if (!grass?.carpet || (!grass.carpet.cold && !grass.carpet.pending)) return;
+    if (!yieldForBudget) await nextPaintFrame();
+  }
+  throw new Error('Opening ground cover did not complete within 900 bounded batches');
 }
 
 /** Prepare exact opening terrain and vegetation caches behind the battle veil. */
@@ -183,6 +216,7 @@ export async function warmBattleTerrainTiles({
   world,
   yieldForBudget = null,
   primePresentation = true,
+  presentationCamera,
 }: TerrainWarmOptions): Promise<void> {
   const heightField = world?.heightField;
   const warmer = heightField?.warmFastTilesAround;
@@ -191,7 +225,11 @@ export async function warmBattleTerrainTiles({
   for (const _tile of warmer.call(heightField, points)) {
     if (yieldForBudget) await yieldForBudget();
   }
-  await primeOpeningTerrainPresentation(game, world, yieldForBudget, primePresentation);
+  // Callers without a solved reveal camera warm terrain only. They explicitly
+  // prime presentation after their existing camera owner performs activation.
+  if (primePresentation && presentationCamera) {
+    await primeOpeningTerrainPresentation({ game, world, camera: presentationCamera, yieldForBudget });
+  }
 }
 
 type BurnStepFactory = (

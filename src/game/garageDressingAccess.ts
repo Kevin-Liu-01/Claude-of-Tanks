@@ -23,7 +23,7 @@ interface GarageDressingLoaders {
 export interface GarageDressingAccess {
   readonly group: THREE.Group;
   preload(): Promise<GarageDressingRuntime>;
-  pump(): Promise<boolean>;
+  pump(stillValid?: () => boolean): Promise<boolean>;
   ensureBuilt(): Promise<void>;
   isBuilt(): boolean;
   setVariant(variantId: string): string;
@@ -84,7 +84,14 @@ export function createGarageDressingAccess(
   return {
     group,
     preload,
-    async pump() { return await (await preload()).pump(); },
+    async pump(stillValid = () => true) {
+      if (!stillValid()) return !current?.isBuilt();
+      const dressing = await preload();
+      // Even an already-loaded facade yields here. Battle may take ownership
+      // in that microtask, while game.phase still says Garage.
+      if (!stillValid()) return !dressing.isBuilt();
+      return await dressing.pump(stillValid);
+    },
     async ensureBuilt() { await (await preload()).ensureBuilt(); },
     isBuilt() { return current?.isBuilt() ?? false; },
     setVariant(nextVariantId: string) {

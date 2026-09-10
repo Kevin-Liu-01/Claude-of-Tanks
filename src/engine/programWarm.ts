@@ -1,4 +1,5 @@
 import { Object3D } from 'three';
+import { nextFrame } from './frameScheduler.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
   Camera,
@@ -9,7 +10,7 @@ import type {
   WebGLRenderTarget,
 } from 'three';
 
-type WarmYield = () => Promise<void>;
+type WarmYield = (force?: boolean) => Promise<void>;
 
 type LinkedProgram = Pick<ThreeWebGLProgram, 'getUniforms' | 'program'>
   & Partial<Pick<ThreeWebGLProgram, 'getAttributes' | 'id'>>;
@@ -77,6 +78,11 @@ export interface ForwardProgramWarmStats {
   totalCompileMs?: number;
   maxCompileMs?: number;
   maxCompileObject?: string;
+  programCohorts?: number;
+  /** Entries in completed cohorts, including reused witnesses and disposed entries; not fresh reflection calls. */
+  programsPrepared?: number;
+  programCohortMax?: number;
+  programBudgetSlices?: number;
 }
 
 /** Opt-in numeric receipts; durations and counts accumulate without naming scene objects. */
@@ -126,6 +132,7 @@ export interface ForwardProgramWarmOwner {
   initializeSteps(
     root?: Object3D,
     stats?: ForwardProgramWarmStats | null,
+    options?: { requireCompletion?: boolean },
   ): Generator<void, void, void>;
   linkerBreathingSlices(maxSlices: number, timing?: ForwardProgramCompileTiming,
     signal?: AbortSignal, existingPrograms?: ReadonlySet<LinkedProgram>): Generator<void, void, void>;
@@ -168,7 +175,7 @@ interface ProgramWarmLifetime {
   parallelCompile?: ParallelShaderCompileExtension | null;
 }
 
-type ContextProgramRenderer = Pick<ForwardWarmRenderer, 'info' | 'getContext'>;
+export type ContextProgramRenderer = Pick<ForwardWarmRenderer, 'info' | 'getContext'>;
 
 // A retained wrapper keeps its native handle anyway. Neither renderer nor
 // wrapper is strongly retained by this shared, renderer-lifetime-only proof.
@@ -222,6 +229,21 @@ export interface ProgramUniformWarmReceipt {
   totalMs: number;
   maxMs: number;
   failures: number;
+}
+
+export class ProgramUniformPreparationError extends Error {
+  readonly code = 'program_uniform_warm_incomplete';
+  readonly preparation: Extract<ProgramPreparationResult, { status: 'incomplete' }>;
+  readonly receipt?: ProgramUniformWarmReceipt;
+  constructor(
+    preparation: Extract<ProgramPreparationResult, { status: 'incomplete' }>,
+    receipt?: ProgramUniformWarmReceipt,
+  ) {
+    super(`Program uniform preparation incomplete: ${preparation.reason}`);
+    this.name = 'ProgramUniformPreparationError';
+    this.preparation = preparation;
+    this.receipt = receipt;
+  }
 }
 
 export interface TargetCompileOptions {
@@ -695,7 +717,7 @@ function createProgramPreparationBudget(now: () => number, rounds: number): Prog
 function incompletePreparation(
   reason: Extract<ProgramPreparationResult, { status: 'incomplete' }>['reason'],
   pending: number | null = null,
-): ProgramPreparationResult {
+): Extract<ProgramPreparationResult, { status: 'incomplete' }> {
   return { status: 'incomplete', pending, reason };
 }
 
@@ -903,45 +925,74 @@ export function captureNewProgramUniformSteps(
   })();
 }
 
+function* prepareNewUniformCohort(
+  context: FirstUseWarmContext,
+  cohort: MaterialProgramCohort,
+): Generator<void, ProgramPreparationResult, void> {
+  if (!context.valid()) return incompletePreparation('invalidated');
+  if (!cohort.size) return { status: 'complete', pending: 0 };
+  yield; // Release submission before querying even the first cold program.
+  if (!context.valid()) return incompletePreparation('invalidated');
+  try { acquirePreparationExtension(context); }
+  catch { return incompletePreparation('query', cohort.size); }
+  if (!context.valid()) return incompletePreparation('invalidated');
+  return yield* initializeMaterialProgramSteps(context, cohort,
+    context.lifetime.parallelCompile ?? null, 4, createProgramPreparationBudget(context.now, 1024));
+}
+
+function newUniformReceipt(timing: ForwardProgramCompileTiming, elapsed: number): ProgramUniformWarmReceipt {
+  return {
+    programs: timing.uniformCount ?? 0,
+    totalMs: Math.round(elapsed),
+    // Caller waits are excluded, but any indivisible native query is honestly
+    // included: KHR queries can themselves flush an ANGLE driver queue.
+    maxMs: Math.round(Math.max(timing.extensionMs ?? 0, timing.maxQueryMs ?? 0, timing.maxUniformMs ?? 0)),
+    failures: timing.uniformFailures ?? 0,
+  };
+}
+
 /**
- * Consume Three's lazy uniform-table initialization for newly linked programs.
- *
- * `WebGLRenderer.compile()` creates the programs but deliberately leaves
- * `WebGLProgram.getUniforms()` until first render. On ANGLE that can turn the
- * first complete scene pass into one large queue flush. Draining only the
- * programs added by the scoped compile, with a cooperative yield after each
- * one, preserves the exact programs while keeping the loading UI responsive.
+ * Drain a finite new-program cohort using the same lifetime, readiness and
+ * reflection proofs as covered first-use preparation. Yielding AFTER a cold
+ * getUniforms call cannot prevent that call from synchronously waiting on its
+ * link; observe KHR completion first. Without KHR, actual guarded reflection
+ * remains the deliberate compatibility fallback, not a guessed delay.
  */
 export async function warmNewRendererProgramUniforms(
-  renderer: RendererWithPrograms,
+  renderer: ContextProgramRenderer,
   baseline: ReadonlySet<LinkedProgram>,
   yieldForBudget?: WarmYield | null,
   now: () => number = () => performance.now(),
+  { signal, isCurrent = () => true }: Pick<NewProgramUniformWarmOptions, 'signal' | 'isCurrent'> = {},
 ): Promise<ProgramUniformWarmReceipt> {
-  const receipt: ProgramUniformWarmReceipt = {
-    programs: 0,
-    totalMs: 0,
-    maxMs: 0,
-    failures: 0,
-  };
+  signal?.throwIfAborted();
   const startedAt = now();
-  for (const program of renderer.info?.programs ?? []) {
-    if (baseline.has(program) || typeof program.getUniforms !== 'function') continue;
-    const programAt = now();
-    try {
-      program.getUniforms();
-    } catch {
-      // The following real render remains the compatibility fallback.
-      receipt.failures += 1;
+  const timing: ForwardProgramCompileTiming = {};
+  const lifetime = captureProgramWarmLifetime(renderer);
+  const valid = (): boolean => {
+    signal?.throwIfAborted();
+    return isCurrent() && programWarmLifetimeIsCurrent(renderer, lifetime);
+  };
+  const cohort = captureNewProgramCohort(renderer, baseline, true);
+  const steps = prepareNewUniformCohort({ renderer, gl: lifetime.gl, lifetime, valid,
+    now, timing, strict: true }, cohort);
+  try {
+    let step = steps.next();
+    while (!step.done) {
+      // A budget-only no-op promise is not a rendering opportunity. Force the
+      // caller's real checkpoint, including while all links remain pending.
+      await (yieldForBudget ?? nextFrame)(true);
+      step = steps.next();
     }
-    const programMs = now() - programAt;
-    receipt.programs += 1;
-    receipt.maxMs = Math.max(receipt.maxMs, programMs);
-    if (yieldForBudget) await yieldForBudget();
+    const receipt = newUniformReceipt(timing, now() - startedAt);
+    if (step.value.status !== 'complete') {
+      throw new ProgramUniformPreparationError(step.value, receipt);
+    }
+    return receipt;
+  } finally {
+    steps.return(incompletePreparation('invalidated'));
+    cohort.clear();
   }
-  receipt.totalMs = Math.round(now() - startedAt);
-  receipt.maxMs = Math.round(receipt.maxMs);
-  return receipt;
 }
 
 function recordForwardCompileStats(
@@ -960,20 +1011,58 @@ function recordForwardCompileStats(
 function* initializeSubmittedProgramSteps(
   context: FirstUseWarmContext,
   programs: MaterialProgramCohort,
+  stats: ForwardProgramWarmStats | null,
 ): Generator<void, boolean, void> {
-  let yielded = false;
+  if (!programs.size) return false;
+  if (stats) {
+    stats.programCohorts = (stats.programCohorts ?? 0) + 1;
+    stats.programCohortMax = Math.max(stats.programCohortMax ?? 0, programs.size);
+  }
   try {
-    for (const entry of programs.values()) {
-      if (!context.valid()) return yielded;
-      if (!capturedProgramIsLive(context.renderer, entry)) continue;
-      if (!reuseReflectedProgram(context, entry)) reflectCapturedProgram(context, entry);
-      if (!context.valid()) return yielded;
-      yielded = true;
-      yield;
-      if (!context.valid()) return yielded;
+    const result = yield* prepareNewUniformCohort(context, programs);
+    if (result.status !== 'complete' && context.valid()) {
+      throw new ProgramUniformPreparationError(result);
     }
-    return yielded;
+    if (stats && result.status === 'complete') {
+      stats.programsPrepared = (stats.programsPrepared ?? 0) + programs.size;
+    }
+    return programs.size > 0;
   } finally { programs.clear(); }
+}
+
+function appendSubmittedPrograms(
+  renderer: RendererWithPrograms,
+  baseline: ReadonlySet<LinkedProgram>,
+  pending: MaterialProgramCohort,
+): void {
+  for (const [wrapper, captured] of captureNewProgramCohort(renderer, baseline, true)) {
+    const previous = pending.get(wrapper);
+    if (previous && previous.handle !== captured.handle) {
+      throw new ProgramUniformPreparationError(incompletePreparation('invalidated'));
+    }
+    if (!previous) pending.set(wrapper, captured);
+  }
+}
+
+function* initializeProgramCheckpoint(
+  context: FirstUseWarmContext,
+  programs: MaterialProgramCohort,
+  stats: ForwardProgramWarmStats | null,
+): Generator<void, void, void> {
+  if (programs.size) {
+    yield* initializeSubmittedProgramSteps(context, programs, stats);
+    return;
+  }
+  if (stats) stats.programBudgetSlices = (stats.programBudgetSlices ?? 0) + 1;
+  yield;
+}
+
+function initializationLifetime(renderer: ContextProgramRenderer, requireCompletion: boolean): ProgramWarmLifetime {
+  try { return captureProgramWarmLifetime(renderer); }
+  catch (error) {
+    if (requireCompletion) throw new ProgramUniformPreparationError(incompletePreparation('invalidated'));
+    throw error;
+  }
 }
 
 /**
@@ -1057,14 +1146,24 @@ export function createForwardProgramWarmOwner({
   const initializeSteps = function* (
     root: Object3D = scene,
     stats: ForwardProgramWarmStats | null = null,
+    { requireCompletion = false }: { requireCompletion?: boolean } = {},
   ): Generator<void, void, void> {
     const ownedEpoch = epoch;
-    const lifetime = captureProgramWarmLifetime(renderer);
-    const valid = (): boolean => epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime);
-    const context = { renderer, gl: lifetime.gl, valid, now, lifetime };
+    const lifetime = initializationLifetime(renderer, requireCompletion);
+    const valid = (): boolean => {
+      let current = false;
+      try { current = epoch === ownedEpoch && programWarmLifetimeIsCurrent(renderer, lifetime); }
+      catch (error) { if (!requireCompletion) throw error; }
+      if (!current && requireCompletion) {
+        throw new ProgramUniformPreparationError(incompletePreparation('invalidated'));
+      }
+      return current;
+    };
+    const context = { renderer, gl: lifetime.gl, valid, now, lifetime, strict: true };
     if (!valid()) return;
     let sliceAt = now();
     const objects: Object3D[] = [];
+    const programs: MaterialProgramCohort = new Map();
     root.traverseVisible((object) => {
       const renderable = object as ForwardWarmObject;
       if (renderable.isMesh || renderable.isPoints || renderable.isLine || renderable.isSprite) {
@@ -1079,17 +1178,21 @@ export function createForwardProgramWarmOwner({
         try { compile(object); } catch { /* the real render remains the fallback */ }
         if (!valid()) return;
         if (stats) recordForwardCompileStats(stats, object, now() - compileAt);
-        // Freeze identities; disposal can swap-pop the live array at a yield.
-        const programs = captureNewProgramCohort(renderer, before);
-        if (yield* initializeSubmittedProgramSteps(context, programs)) sliceAt = now();
-        if (!valid()) return;
-        if (now() - sliceAt >= 8) {
-          yield;
+        // Preserve every native compile/object variant, but admit a bounded
+        // cohort before waiting for the GPU. Serial one-program frame waits
+        // needlessly turn many short submissions into seconds of covered idle.
+        appendSubmittedPrograms(renderer, before, programs);
+        if (programs.size >= 32 || now() - sliceAt >= 8) {
+          yield* initializeProgramCheckpoint(context, programs, stats);
           if (!valid()) return;
           sliceAt = now();
         }
       }
-    } finally { objects.length = 0; }
+      // The final partial cohort is just as mandatory as a full admission
+      // batch; it retains the same readiness, uniform and attribute proofs.
+      yield* initializeSubmittedProgramSteps(context, programs, stats);
+      if (!valid()) return;
+    } finally { objects.length = 0; programs.clear(); }
   };
 
   const linkerBreathingSlices = function* (

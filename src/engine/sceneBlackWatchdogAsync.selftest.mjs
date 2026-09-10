@@ -68,6 +68,7 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
   let syncReads = 0;
   let failUsed = false;
   let restoreFailed = false;
+  let renderedAsyncSample;
   const initial = {
     shadows,
     environment: environment ? new THREE.Texture() : null,
@@ -156,7 +157,7 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
       assert.ok(targets.some((owned) => owned.target === target));
       event('enqueue', target);
       assert.ok(buffers.length <= asyncSamples.length, 'each async transaction consumes its own sample');
-      paint(pack.data, asyncSamples[buffers.length - 1]);
+      paint(pack.data, renderedAsyncSample);
     },
     fenceSync(condition, flags) {
       assert.deepEqual([condition, flags], [gl.SYNC_GPU_COMMANDS_COMPLETE, 0]);
@@ -218,6 +219,8 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
       assert.equal(renderScene, scene);
       assert.equal(renderCamera, camera);
       event('render', { ...compatibility });
+      const sample = asyncSamples[buffers.length];
+      renderedAsyncSample = typeof sample === 'function' ? sample(scene) : sample;
     },
     readRenderTargetPixels(readTarget, x, y, width, height, pixels) {
       assert.equal(readTarget, target);
@@ -528,6 +531,74 @@ for (const [label, faultCall] of [['after enqueue', 1], ['before restoration', 2
     assert.equal(measurements.length, 1);
     assert.ok(f.names().indexOf('deleteBuffer') < f.names().indexOf('disposeTarget'));
     f.assertReleased(1);
+  });
+}
+
+await test('obsolete delayed phase owner cannot read any scene state before submission', async () => {
+  const f = fixture();
+  f.obsolete();
+  await assert.rejects(f.run({ isCurrent: () => false }), /watchdog owner changed/);
+  assert.equal(f.names().length, 0);
+  f.assertReleased(0);
+});
+
+for (const sample of [18, 0]) await test(`delayed owner invalidated during PBO band ${sample} drains before source access or repair`, async clock => {
+  let current = true;
+  const f = fixture({ asyncSamples: [sample] });
+  const pending = f.run({ isCurrent: () => current });
+  assert.ok(f.names().includes('enqueue'));
+  current = false;
+  f.obsolete();
+  const rejection = assert.rejects(pending, /watchdog owner changed/);
+  await clock.resume();
+  await rejection;
+  assert.ok(!f.names().includes('syncRead'), 'obsolete black pixels cannot start a synchronous rescue on the next phase');
+  f.assertReleased(1);
+});
+
+for (const outcome of ['healthy', 'abort', 'context-lost', 'black']) {
+  await test(`night ${outcome} restores radiance before PBO wait and retains real-black protection`, async clock => {
+    const controller = new AbortController();
+    let ambient, sun, renderedIntensity = null;
+    const f = fixture({ asyncSamples: [scene => {
+      renderedIntensity = ambient.intensity;
+      assert.equal(ambient.intensity, .46 / .05);
+      assert.equal(sun.intensity, .42 / .05);
+      assert.equal(scene.environmentIntensity, .85 / .05);
+      // Sample depends on illumination at renderer.render, not restored state
+      // at later PBO copy. A normalization no-op must fail this healthy case.
+      return outcome === 'black' ? 0 : ambient.intensity > 1 ? 18 : 3;
+    }], syncSamples: outcome === 'black' || outcome === 'context-lost' ? [0, 0, 0, 0] : [] });
+    ambient = new THREE.AmbientLight(0x778899, .46);
+    sun = new THREE.DirectionalLight(0xa6bce8, .42);
+    f.scene.add(ambient, sun);
+    f.scene.environmentIntensity = .85;
+    const pending = f.run({ signal: controller.signal, nightRadianceScale: .05 });
+    assert.equal(renderedIntensity, .46 / .05);
+    const restored = () => {
+      assert.deepEqual([ambient.intensity, sun.intensity, f.scene.environmentIntensity], [.46, .42, .85]);
+      f.assertRestored();
+    };
+    restored();
+    if (outcome === 'abort') controller.abort(new Error('night entry cancelled'));
+    if (outcome === 'context-lost') f.gl.contextLost = true;
+    const observed = pending.then(value => ({ value }), error => ({ error }));
+    await clock.resume();
+    const result = await observed;
+    restored();
+    if (outcome === 'abort') {
+      assert.match(result.error.message, /night entry cancelled/);
+      assert.ok(!f.names().includes('syncRead'));
+      f.assertReleased(1);
+    } else if (outcome === 'healthy') {
+      assert.deepEqual(result.value, { ...healthy(18), nightRadianceScale: .05 });
+      assert.ok(!f.names().includes('syncRead'), 'valid night never takes synchronous compatibility fallback');
+      f.assertReleased(1);
+    } else {
+      assert.equal(result.value.failed, true, 'night metadata cannot certify a truly black or context-lost scene');
+      assert.equal(result.value.rescued, false);
+      f.assertReleased(2, 4);
+    }
   });
 }
 

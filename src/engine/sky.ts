@@ -563,19 +563,80 @@ function makeCirrusTexture(prebaked: CloudBakePixels | null = null): THREE.Canva
   return cloudTextureFromPixels(pixels, width, width);
 }
 
+interface HorizonColorCache {
+  context: WebGLRenderingContext | WebGL2RenderingContext;
+  rendererInfo: THREE.WebGLRenderer['info'];
+  colors: Map<string, THREE.Color>;
+}
+
+// Keep only CPU colors, never off-tree GPU probes requiring another lifetime
+// owner. Four entries cover common Garage/day/night returns without turning
+// a long map-browsing session into unbounded retained presentation state.
+const HORIZON_COLOR_CACHE_LIMIT = 4;
+const horizonColorCaches = new WeakMap<THREE.WebGLRenderer, HorizonColorCache>();
+
+function horizonColorCache(renderer: THREE.WebGLRenderer): HorizonColorCache | null {
+  const context = renderer.getContext();
+  if (context.isContextLost()) {
+    horizonColorCaches.delete(renderer);
+    return null;
+  }
+  let cache = horizonColorCaches.get(renderer);
+  // Three replaces renderer.info while reinitializing a restored context,
+  // including when the browser retains the same native context object.
+  if (!cache || cache.context !== context || cache.rendererInfo !== renderer.info) {
+    cache = { context, rendererInfo: renderer.info, colors: new Map() };
+    horizonColorCaches.set(renderer, cache);
+  }
+  return cache;
+}
+
+function horizonColorKey(
+  renderer: THREE.WebGLRenderer, sunDir: THREE.Vector3, preset: Readonly<SkyPreset>,
+): string | null {
+  const scalars = [sunDir.x, sunDir.y, sunDir.z, preset.skyIntensity,
+    preset.turbidity, preset.rayleigh, preset.mieCoefficient, preset.mieDirectionalG,
+    renderer.toneMapping, renderer.toneMappingExposure];
+  if (!scalars.every(Number.isFinite) || renderer.xr.isPresenting) return null;
+  return `${scalars.join(',')}|${renderer.outputColorSpace}|${THREE.ColorManagement.workingColorSpace}|${THREE.ColorManagement.enabled}`;
+}
+
+function retainHorizonColor(
+  renderer: THREE.WebGLRenderer, cache: HorizonColorCache | null,
+  key: string | null, color: THREE.Color,
+): void {
+  if (!cache || key === null || cache.context.isContextLost()
+    || renderer.getContext() !== cache.context || renderer.info !== cache.rendererInfo) return;
+  cache.colors.set(key, color.clone());
+  if (cache.colors.size > HORIZON_COLOR_CACHE_LIMIT) {
+    const oldest = cache.colors.keys().next();
+    if (!oldest.done) cache.colors.delete(oldest.value);
+  }
+}
+
 /**
- * Render a throwaway sky to a 16×16 target with a horizon-level camera facing
- * away from the sun, average the middle pixel row, and return the linear color.
+ * Return an exact retained CPU sample or render a throwaway sky to a 16×16
+ * target with a horizon-level camera facing away from the sun, average the
+ * middle pixel row, and return the linear color. Misses preserve the original
+ * probe; failed/black reads never become a cached atmosphere result.
  *
  * @param {THREE.WebGLRenderer} renderer
  * @param {THREE.Vector3} sunDir - unit toward-sun vector
  * @returns {THREE.Color} linear-space horizon color
  */
-function sampleHorizonColor(
+export function sampleHorizonColor(
   renderer: THREE.WebGLRenderer,
   sunDir: THREE.Vector3,
   preset: Readonly<SkyPreset> = DEFAULT_PRESET,
 ): THREE.Color {
+  const cache = horizonColorCache(renderer);
+  const key = horizonColorKey(renderer, sunDir, preset);
+  const previousColor = key === null ? null : cache?.colors.get(key);
+  if (previousColor && cache && key !== null) {
+    cache.colors.delete(key);
+    cache.colors.set(key, previousColor);
+    return previousColor.clone();
+  }
   const rt = new THREE.WebGLRenderTarget(HORIZON_RT_SIZE, HORIZON_RT_SIZE, {
     depthBuffer: false,
     stencilBuffer: false,
@@ -593,6 +654,8 @@ function sampleHorizonColor(
   cam.updateMatrixWorld();
 
   const prevTarget = renderer.getRenderTarget();
+  const prevFace = renderer.getActiveCubeFace();
+  const prevMip = renderer.getActiveMipmapLevel();
   const row = new Uint8Array(HORIZON_RT_SIZE * 4);
   let targetRestored = false;
   let r = 0;
@@ -601,7 +664,7 @@ function sampleHorizonColor(
   try {
     renderer.setRenderTarget(rt);
     renderer.render(sampleScene, cam);
-    renderer.setRenderTarget(prevTarget);
+    renderer.setRenderTarget(prevTarget, prevFace, prevMip);
     targetRestored = true;
     renderer.readRenderTargetPixels(rt, 0, HORIZON_RT_SIZE >> 1, HORIZON_RT_SIZE, 1, row);
 
@@ -615,10 +678,13 @@ function sampleHorizonColor(
     g *= inv;
     b *= inv;
   } finally {
-    if (!targetRestored) renderer.setRenderTarget(prevTarget);
-    rt.dispose();
-    sampleSky.geometry.dispose();
-    sampleSky.material.dispose();
+    try {
+      if (!targetRestored) renderer.setRenderTarget(prevTarget, prevFace, prevMip);
+    } finally {
+      rt.dispose();
+      sampleSky.geometry.dispose();
+      sampleSky.material.dispose();
+    }
   }
 
   // Guard the degenerate case (context hiccup → black readback): fall back to
@@ -629,8 +695,10 @@ function sampleHorizonColor(
   // pole) inherits its luminance — cap it below diffuse-white so no amount
   // of fog/scatter stacking can pull large screen regions to a clipped
   // white-out (the desert/winter far-field wash). Hue is preserved.
-  return capColorLuminance(
+  const color = capColorLuminance(
     new THREE.Color().setRGB(r, g, b, THREE.LinearSRGBColorSpace), HORIZON_LUM_CAP);
+  retainHorizonColor(renderer, cache, key, color);
+  return color;
 }
 
 // Linear-luminance ceiling for the horizon sample (see sampleHorizonColor).

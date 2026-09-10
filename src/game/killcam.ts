@@ -586,6 +586,8 @@ interface KillcamDeps {
   heightField: { getHeightAt(x: number, z: number): number };
   getPlayer(): KillcamEntity | null;
   getGame?(): KillcamGame | null;
+  /** Loading ownership only; the revealed countdown remains interactive. */
+  isBattleEntryCovered?(): boolean;
   getEntity?(id: string): KillcamEntity | null;
   getWorld?(): KillcamWorld | null;
   getFx?(): FxRuntime | null;
@@ -1286,6 +1288,7 @@ export function createKillCam(deps: KillcamDeps) {
   const S = sharedMats();
   const getGame = deps.getGame
     || (() => debugSurface()?.game || null);
+  const isBattleEntryCovered = deps.isBattleEntryCovered || (() => false);
   const getEntity = deps.getEntity
     || ((id: string) => debugSurface()?.game?.tankById.get(id) || null);
   // World access for the flight LOS solve (r6 major): terrain/prop raycast +
@@ -5828,7 +5831,7 @@ export function createKillCam(deps: KillcamDeps) {
       announce(first ? 'begin' : 'change', ent, list);
     }
     function cycle(dir = 1): void {
-      if (!on) return;
+      if (!on || isBattleEntryCovered()) return;
       const list = livingAllies();
       if (!list.length) { stop(true); return; }
       let i = list.findIndex((t) => t.id === curId);
@@ -5851,6 +5854,12 @@ export function createKillCam(deps: KillcamDeps) {
     // client-delta fallback covers browsers without movement fields.
     function onMove(e: MouseEvent): void {
       if (!on) return;
+      // The exact reveal camera has already been solved for covered warming.
+      // Discard covered motion, including its fallback cursor delta history.
+      if (isBattleEntryCovered()) {
+        lastX = lastY = null;
+        return;
+      }
       // never orbit behind an open settings panel (read-only introspection —
       // the same seam this controller already reads battle state through)
       try {
@@ -5873,7 +5882,7 @@ export function createKillCam(deps: KillcamDeps) {
     }
     // wheel zooms the orbit (chase-cam grammar; the rig clamps + eases)
     function onWheel(e: WheelEvent): void {
-      if (!on || !e.deltaY || !rig.spectateZoom) return;
+      if (!on || isBattleEntryCovered() || !e.deltaY || !rig.spectateZoom) return;
       rig.spectateZoom(e.deltaY > 0 ? 1 : -1);
     }
     function watchTarget(): void {

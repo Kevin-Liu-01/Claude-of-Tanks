@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { applyBurnHook, makeBurnUniforms } from '../vehicles/materials.ts';
 import { createSoloBattleStartRuntime } from './soloBattleStartRuntime.ts';
 
-function createHarness({ playerCreated = true } = {}) {
+function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMaskStart = () => {} } = {}) {
   const events = [];
   let clock = 0;
   let trace = null;
@@ -14,7 +16,7 @@ function createHarness({ playerCreated = true } = {}) {
   };
   const player = {
     id: 'player-1', specId: 'm1a2', spec: { id: 'm1a2' },
-    state: { yaw: 1.25 }, visual: { id: 'visual' }, equip: ['rammer'],
+    state: { yaw: 1.25 }, visual, equip: ['rammer'],
   };
   const game = { preBattleS: 0, mapId: '', phase: 'garage', player: null, tanks: [] };
   const runtime = createSoloBattleStartRuntime({
@@ -84,7 +86,11 @@ function createHarness({ playerCreated = true } = {}) {
         resetConsumables: () => events.push('actions:consumables'),
       },
       damagePanel: {
-        setTank: () => events.push('damage:tank'),
+        setTank: (_spec, borrowedVisual) => {
+          assert.strictEqual(borrowedVisual, player.visual, 'mask borrows the actual player visual');
+          onMaskStart(borrowedVisual);
+          events.push('damage:tank');
+        },
         setEquipment: () => events.push('damage:equipment'),
       },
       hideGarage: () => events.push('garage:hide'),
@@ -145,6 +151,57 @@ function createHarness({ playerCreated = true } = {}) {
   const harness = createHarness({ playerCreated: false });
   assert.throws(() => harness.runtime.start('m1a2'), /did not create a player/);
   assert.ok(!harness.events.includes('phase:battle'));
+}
+
+
+for (const deferVisuals of [false, true]) {
+  // Exercise actual activation plus the production in-place shader hook. The
+  // panel starts its borrowed-material job synchronously, then later staging
+  // repeats the idempotent hook while that job is awaiting native completion.
+  const material = new THREE.MeshStandardMaterial();
+  const burn = makeBurnUniforms(4242);
+  const initialVersion = material.version;
+  let hookCalls = 0;
+  let submittedRevision = null;
+  let finishMask;
+  const maskDone = new Promise((resolve) => { finishMask = resolve; });
+  const visual = {
+    material,
+    prewarmBurn() {
+      hookCalls++;
+      assert.equal(applyBurnHook(material, burn), true);
+    },
+  };
+  const harness = createHarness({
+    visual,
+    onMaskStart(borrowed) {
+      assert.strictEqual(borrowed.material, material);
+      assert.equal(hookCalls, 1, 'install the disarmed hook before requesting masks');
+      assert.match(material.customProgramCacheKey(), /\|burn-r6$/);
+      submittedRevision = { version: material.version, key: material.customProgramCacheKey() };
+    },
+  });
+  try {
+    harness.runtime.start('m1a2', 'winter', { deferVisuals, preBattleHold: deferVisuals });
+    await Promise.resolve(); // the mask compile is now waiting on native readiness
+    visual.prewarmBurn(); // later battle-visual streamer/combat warm
+    finishMask();
+    await maskDone;
+    assert.equal(hookCalls, 2);
+    assert.equal(material.version, initialVersion + 1, 'later warm must not invalidate the compiled cohort');
+    assert.deepEqual({ version: material.version, key: material.customProgramCacheKey() }, submittedRevision);
+    assert.equal(burn.uBurnT.value, -1, 'preparation does not activate wreck shading');
+    assert.equal(burn.uBurnGlow.value, 0);
+    assert.strictEqual(material.userData.__burnU, burn, 'material identity and burn ownership are preserved');
+  } finally {
+    material.dispose();
+  }
+}
+
+{
+  const harness = createHarness({ visual: null });
+  harness.runtime.start('m1a2', 'winter', { deferVisuals: true, preBattleHold: true });
+  assert.equal(harness.game.phase, 'battle', 'deferred missing visuals retain the existing mask fallback');
 }
 
 assert.throws(

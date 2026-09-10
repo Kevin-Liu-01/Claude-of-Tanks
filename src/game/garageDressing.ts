@@ -85,7 +85,7 @@ export interface GarageDressingExisting {
 
 export interface GarageDressingRuntime {
   readonly group: THREE.Group;
-  pump(): Promise<boolean>;
+  pump(stillValid?: () => boolean): Promise<boolean>;
   ensureBuilt(): Promise<void>;
   isBuilt(): boolean;
   setVariant(variantId: string): string;
@@ -228,6 +228,9 @@ export function createGarageDressing(
   const workshopVisuals: GarageWorkshopVisual[] = [];
   const workshopFleet = existing.workshopFleet;
   const preparedVehicleIds = new Set<string>();
+  let disposed = false;
+  const pausedWork = Symbol('garage dressing paused');
+  let preparedVisual: { specId: string; visual: GarageWorkshopVisual } | null = null;
   let pendingTankReveal: THREE.Object3D | null = null;
   let abramsServiceFloorRoot: THREE.Group | null = null;
   const hidePendingTankReveal = (): void => {
@@ -738,11 +741,21 @@ export function createGarageDressing(
     specId: 't90a_burlak' | 'm1a2' | 'leo2a5_a5nl' | 't90m' | 'k2',
     camoSeed: number,
   ): Promise<GarageWorkshopVisual> {
+    if (preparedVisual?.specId === specId) return preparedVisual.visual;
     if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
     const visual = await workshopFleet.createVisual(specId, {
       camoSeed,
       ...WORKSHOP_PRESENTATION_OPTIONS,
     });
+    if (disposed) {
+      visual.dispose();
+      throw pausedWork;
+    }
+    // A completed transfer remains privately owned if Battle starts while it
+    // is in flight. The same next chunk reuses it after return; no bay assembly
+    // or reveal runs during covered Battle loading.
+    preparedVisual = { specId, visual };
+    workshopVisuals.push(visual);
     (group.userData.workshopTransferTimings ||= []).push({
       specId,
       ...visual.root.userData.workshopTransferTimings,
@@ -752,9 +765,11 @@ export function createGarageDressing(
       payload: visual.root.userData.workshopTransferPayload,
     });
     visual.resetForGaragePresentation?.();
-    pendingTankReveal = visual.root;
-    workshopVisuals.push(visual);
     return visual;
+  }
+
+  function requireGarageWork(stillValid: () => boolean): void {
+    if (disposed || !stillValid()) throw pausedWork;
   }
 
   function placeGunRig(
@@ -1204,7 +1219,7 @@ export function createGarageDressing(
       0.35, 0.16, 1.02, 0.35, 0, Math.PI / 2, 1, rack);
   }
 
-  const chunks: Array<() => void | Promise<void>> = [];
+  const chunks: Array<(stillValid: () => boolean) => void | Promise<void>> = [];
 
   // ==========================================================================
   // CHUNK 1 — static workshop clutter on every wall + floor decals
@@ -2175,9 +2190,10 @@ export function createGarageDressing(
   // CHUNK 2 — ORIGINAL VERDANT BAY A: T-90A Burlak on jack stands with its
   // turret lifted under the gantry. Positions are the pre-overhaul coordinates.
   // ==========================================================================
-  chunks.push(async function buildOriginalVerdantBurlakBay() {
+  chunks.push(async function buildOriginalVerdantBurlakBay(stillValid) {
     const firstBayChildIndex = legacyVerdantRoot.children.length;
     const visual = await createLegacyVisual('t90a_burlak', 777);
+    requireGarageWork(stillValid);
     const tank = markModernPart(visual.root, 't90a_burlak', 'gantry_repair_vehicle');
     tank.name = 'dressing_tank_a';
     tank.rotation.y = -0.55;
@@ -2332,9 +2348,10 @@ export function createGarageDressing(
   // CHUNK 3 — shared M1A2 bay with its side skirts pulled, tools, creeper and
   // welding cable.
   // ==========================================================================
-  chunks.push(async function buildAbramsAndOriginalVerdantBay() {
+  chunks.push(async function buildAbramsAndOriginalVerdantBay(stillValid) {
     const firstBayChildIndex = legacyVerdantRoot.children.length;
     const visual = await createLegacyVisual('m1a2', 1440);
+    requireGarageWork(stillValid);
     const tank = markModernPart(visual.root, 'm1a2', 'skirt_repair_vehicle');
     tank.name = 'dressing_tank_b';
     tank.rotation.y = -2.03;
@@ -2455,8 +2472,9 @@ export function createGarageDressing(
   // This is its own worker slice so the bay uses the actual Leopard family
   // instead of cloning the neighboring Abrams graph.
   // ==========================================================================
-  chunks.push(async function buildLeopardA5NlMobilityTeardown() {
+  chunks.push(async function buildLeopardA5NlMobilityTeardown(stillValid) {
     const visual = await createLegacyVisual('leo2a5_a5nl', 1475);
+    requireGarageWork(stillValid);
     const mobilityTeardownTank = markModernPart(
       visual.root, 'leo2a5_a5nl', 'mobility_teardown_vehicle',
     );
@@ -2607,8 +2625,9 @@ export function createGarageDressing(
   // CHUNK 5 — shared T-90M turret, exact gun rig, timber cradle and Relikt
   // service rack.
   // ==========================================================================
-  chunks.push(async function buildT90AndOriginalVerdantComponents() {
+  chunks.push(async function buildT90AndOriginalVerdantComponents(stillValid) {
     const visual = await createLegacyVisual('t90m', 1540);
+    requireGarageWork(stillValid);
     const tank = markModernPart(visual.root, 't90m', 'turret_cradle');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
@@ -2694,9 +2713,10 @@ export function createGarageDressing(
   // CHUNK 6 — ORIGINAL VERDANT K2 teardown: rolled source hull, its exact
   // road wheels and shoes, connected steel cradle, and M2/DShK service table.
   // ==========================================================================
-  chunks.push(async function buildOriginalVerdantK2Teardown() {
+  chunks.push(async function buildOriginalVerdantK2Teardown(stillValid) {
     const firstBayChildIndex = legacyVerdantRoot.children.length;
     const visual = await createLegacyVisual('k2', 172);
+    requireGarageWork(stillValid);
     const tank = markModernPart(visual.root, 'k2', 'side_hull');
     const hull = tank.getObjectByName('rig_hull');
     const turret = tank.getObjectByName('rig_turret');
@@ -2843,71 +2863,99 @@ export function createGarageDressing(
   }
 
   let next = 0;
+  let pendingPump: Promise<boolean> | null = null;
+
+  async function pumpNext(stillValid: () => boolean): Promise<boolean> {
+    if (disposed) return false;
+    if (!stillValid()) return pendingTankReveal !== null || next < chunks.length;
+    if (pendingTankReveal) {
+      const reveal = pendingTankReveal;
+      pendingTankReveal = null;
+      reveal.visible = true;
+      reveal.updateMatrixWorld(true);
+      (group.userData.buildTimings ||= []).push({
+        chunk: 'reveal-tank',
+        ms: 0,
+        at: Math.round(performance.now()),
+      });
+      return next < chunks.length;
+    }
+    if (next >= chunks.length) return false;
+    const requiredVehicleId = WORKSHOP_CHUNK_VEHICLE_IDS[next];
+    if (requiredVehicleId && !preparedVehicleIds.has(requiredVehicleId)) {
+      // Module parse/evaluation and geometry construction get independent
+      // quiet leases. Combining them made a single background display cost
+      // both jobs inside one visible frame on constrained browsers.
+      if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
+      const prepareStartedAt = performance.now();
+      await workshopFleet.ensureVisualBuilder(requiredVehicleId);
+      if (disposed) return false;
+      preparedVehicleIds.add(requiredVehicleId);
+      (group.userData.buildTimings ||= []).push({
+        chunk: `prepare:${requiredVehicleId}`,
+        ms: Math.round(performance.now() - prepareStartedAt),
+        at: Math.round(performance.now()),
+      });
+      return true;
+    }
+    const fn = chunks[next];
+    const label = WORKSHOP_CHUNK_LABELS[next] || fn.name || `chunk-${next}`;
+    const startedAt = performance.now();
+    try {
+      await fn(stillValid);
+      if (disposed) return false;
+      // Building and first drawing a new static tank in the same frame
+      // combines CPU geometry work with shader/program submission. Finish
+      // all seating/teardown edits first, then hide the completed object
+      // until the following quiet lease so those costs cannot stack.
+      if (preparedVisual) {
+        pendingTankReveal = preparedVisual.visual.root;
+        preparedVisual = null;
+      }
+      hidePendingTankReveal();
+      next++;
+      group.userData.lastBuildError = null;
+      (group.userData.buildTimings ||= []).push({
+        chunk: label,
+        ms: Math.round(performance.now() - startedAt),
+        at: Math.round(performance.now()),
+      });
+    } catch (error) {
+      if (error === pausedWork) return !disposed;
+      const message = error instanceof Error ? error.message : String(error);
+      group.userData.lastBuildError = { chunk: label, message };
+      console.warn(`[garageDressing] chunk '${label}' failed —`, message);
+      throw error;
+    }
+    return pendingTankReveal !== null || next < chunks.length;
+  }
+
+  /** One owned step, shared by idle scheduling and deterministic capture drains. */
+  function pump(stillValid = () => true): Promise<boolean> {
+    if (pendingPump) return pendingPump;
+    // Publish ownership before invoking a builder or validity port. Even a
+    // synchronous reentrant capture must join this step, not start it twice.
+    const pending = Promise.resolve().then(() => pumpNext(stillValid));
+    pendingPump = pending;
+    const release = (): void => {
+      if (pendingPump === pending) pendingPump = null;
+    };
+    void pending.then(release, release);
+    return pending;
+  }
+
   return {
     group,
-    /** Build the next chunk. @returns {Promise<boolean>} true while more chunks remain */
-    async pump() {
-      if (pendingTankReveal) {
-        const reveal = pendingTankReveal;
-        pendingTankReveal = null;
-        reveal.visible = true;
-        reveal.updateMatrixWorld(true);
-        (group.userData.buildTimings ||= []).push({
-          chunk: 'reveal-tank',
-          ms: 0,
-          at: Math.round(performance.now()),
-        });
-        return next < chunks.length;
-      }
-      if (next >= chunks.length) return false;
-      const requiredVehicleId = WORKSHOP_CHUNK_VEHICLE_IDS[next];
-      if (requiredVehicleId && !preparedVehicleIds.has(requiredVehicleId)) {
-        // Module parse/evaluation and geometry construction get independent
-        // quiet leases. Combining them made a single background display cost
-        // both jobs inside one visible frame on constrained browsers.
-        if (!workshopFleet) throw new Error('garage workshop fleet was not prepared');
-        const prepareStartedAt = performance.now();
-        await workshopFleet.ensureVisualBuilder(requiredVehicleId);
-        preparedVehicleIds.add(requiredVehicleId);
-        (group.userData.buildTimings ||= []).push({
-          chunk: `prepare:${requiredVehicleId}`,
-          ms: Math.round(performance.now() - prepareStartedAt),
-          at: Math.round(performance.now()),
-        });
-        return true;
-      }
-      const fn = chunks[next];
-      const label = WORKSHOP_CHUNK_LABELS[next] || fn.name || `chunk-${next}`;
-      const startedAt = performance.now();
-      try {
-        await fn();
-        // Building and first drawing a new static tank in the same frame
-        // combines CPU geometry work with shader/program submission. Finish
-        // all seating/teardown edits first, then hide the completed object
-        // until the following quiet lease so those costs cannot stack.
-        hidePendingTankReveal();
-        next++;
-        group.userData.lastBuildError = null;
-        (group.userData.buildTimings ||= []).push({
-          chunk: label,
-          ms: Math.round(performance.now() - startedAt),
-          at: Math.round(performance.now()),
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        group.userData.lastBuildError = { chunk: label, message };
-        console.warn(`[garageDressing] chunk '${label}' failed —`, message);
-        throw error;
-      }
-      return pendingTankReveal !== null || next < chunks.length;
-    },
+    pump,
     /** Force-finish every chunk (deterministic __SHOTS garage capture). */
     async ensureBuilt() {
-      while (await this.pump()) { /* drain */ }
+      while (await pump()) { /* join the current owner, then drain */ }
     },
     isBuilt() { return next >= chunks.length && pendingTankReveal === null; },
     setVariant,
     dispose() {
+      if (disposed) return;
+      disposed = true;
       if (group.parent) group.parent.remove(group);
       battleScreenGeneration++;
       if (battleScreenTimer !== null) window.clearTimeout(battleScreenTimer);
@@ -2936,6 +2984,8 @@ export function createGarageDressing(
       battleScreenSecondaryMaterial = null;
       for (const visual of workshopVisuals) visual.dispose();
       workshopVisuals.length = 0;
+      preparedVisual = null;
+      pendingTankReveal = null;
       workshopFleet?.dispose?.();
       for (const o of group.userData.optimizationDisposables || []) o.dispose?.();
       group.userData.optimizationDisposables = [];

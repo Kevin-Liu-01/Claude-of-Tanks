@@ -27,6 +27,10 @@ import type { PropsMapConfig } from './props.ts';
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import { advanceGrassChunkWork, createGrassChunkWork,
+  type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
+import { createGrassCarpetWork, advanceGrassCarpetWork,
+  type GrassCarpetWorkState } from './grassCarpetWork.ts';
 
 type RandomSource = () => number;
 type ToneFunction = (
@@ -38,7 +42,6 @@ type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 type MaterialShaderHook = (shader: MaterialShader) => void;
 type Species = TreeSpecies;
 type TreeMesh = THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>;
-type MutableNumberArray = Float32Array | Float64Array | number[];
 
 interface EngineContext {
   setupShadowMaterial(material: THREE.Material, hook?: MaterialShaderHook | null): void;
@@ -205,8 +208,23 @@ interface ConcealmentDisc extends VegetationDisc {
   add: number;
 }
 
+export interface VegetationGrassWorkState {
+  total: number;
+  built: number;
+  pendingVisible: number;
+  pendingAhead: number;
+  cameraUnknown: number;
+  active: (GrassChunkWorkState & { chunkX: number; chunkZ: number }) | null;
+  carpet: GrassCarpetWorkState;
+  disposed: boolean;
+}
+
 export interface VegetationRuntime {
   group: THREE.Group;
+  /** Cancel CPU-only streaming before the world resource owner evicts meshes. */
+  dispose(): void;
+  /** Checkpoint-only accounting; never force-drains unfinished visible grass. */
+  getGrassWorkState(): VegetationGrassWorkState;
   setGroundCoverClearance(blocked: GroundCoverBlocked): void;
   update(
     deltaSeconds: number,
@@ -2858,31 +2876,6 @@ function* vegetationBuildSteps(
     return t;
   }
 
-  // write a tuft stored at offset o of an indexable array (flat-packed cells)
-  function writeTuftAt(
-    mesh: THREE.InstancedMesh,
-    i: number,
-    t: MutableNumberArray,
-    o: number,
-  ): void {
-    // This is a yaw-only transform. Writing its column-major matrix/color
-    // directly avoids Quaternion/Vector/Matrix method traffic for every one
-    // of the hundreds of thousands of grass instances while producing the
-    // same transform as Matrix4.compose(position, yawQuaternion, scale).
-    const yaw = t[o + 3], sn = Math.sin(yaw), cs = Math.cos(yaw);
-    const sxz = t[o + 4], sy = t[o + 5];
-    const ma = mesh.instanceMatrix.array, mi = i * 16;
-    ma[mi] = cs * sxz; ma[mi + 1] = 0; ma[mi + 2] = -sn * sxz; ma[mi + 3] = 0;
-    ma[mi + 4] = 0; ma[mi + 5] = sy; ma[mi + 6] = 0; ma[mi + 7] = 0;
-    ma[mi + 8] = sn * sxz; ma[mi + 9] = 0; ma[mi + 10] = cs * sxz; ma[mi + 11] = 0;
-    ma[mi + 12] = t[o]; ma[mi + 13] = t[o + 1]; ma[mi + 14] = t[o + 2]; ma[mi + 15] = 1;
-    if (!mesh.instanceColor) {
-      mesh.instanceColor = new THREE.InstancedBufferAttribute(
-        new Float32Array(mesh.instanceMatrix.count * 3), 3);
-    }
-    const ca = mesh.instanceColor.array, ci = i * 3;
-    ca[ci] = t[o + 6]; ca[ci + 1] = t[o + 7]; ca[ci + 2] = t[o + 8];
-  }
   yield { stage: 'grassPrep' }; // perf-r3: yield before scatter
   // ---- midfield grass scatter (map-wide chunks, unchanged system) ----
   interface GrassChunkMesh {
@@ -2890,11 +2883,6 @@ function* vegetationBuildSteps(
     total: number;
     geoNear: THREE.BufferGeometry;
     geoFar: THREE.BufferGeometry;
-  }
-  interface GrassBuildState {
-    crng: RandomSource;
-    candidate: number;
-    counts: [number, number];
   }
   interface GrassChunk {
     ix: number;
@@ -2905,7 +2893,7 @@ function* vegetationBuildSteps(
     cz: number;
     meshes: GrassChunkMesh[] | null;
     built: boolean;
-    job: GrassBuildState | null;
+    job: GrassChunkWork | null;
     lod: boolean;
     cameraDist?: number;
   }
@@ -2921,66 +2909,81 @@ function* vegetationBuildSteps(
     new Float64Array(grassPerChunk * 10),
   ];
   let grassBuildJob: GrassChunk | null = null;
+  let disposed = false;
   function beginGrassChunk(gc: GrassChunk): void {
+    if (grassBuildJob) throw new Error('Grass staging already belongs to an active chunk');
     grassBuildJob = gc;
-    gc.job = {
-      crng: mulberry32((seed ^ (gc.ix * 73856093) ^ (gc.iz * 19349663)) >>> 0),
-      candidate: 0,
-      counts: [0, 0],
-    };
+    gc.job = createGrassChunkWork({
+      random: mulberry32((seed ^ (gc.ix * 73856093) ^ (gc.iz * 19349663)) >>> 0),
+      candidateCount: grassPerChunk, x0: gc.x0, z0: gc.z0, size: CHUNK_SIZE,
+      makeTuft: (x, z, crng) => makeTuft(x, z, crng, false),
+      staging: midTuftScratch,
+      variantSphere(vv) {
+        const geometry = grassVariants[vv].geo;
+        if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+        return geometry.boundingSphere!;
+      },
+      publish: buffers => publishGrassChunk(gc, buffers),
+    });
   }
-  function advanceGrassChunk(gc: GrassChunk, candidateBudget: number): boolean {
+  function advanceGrassChunk(gc: GrassChunk, eager = false): boolean {
     if (!gc.job) beginGrassChunk(gc);
     const job = gc.job!;
-    const end = Math.min(grassPerChunk, job.candidate + candidateBudget);
-    for (; job.candidate < end; job.candidate++) {
-      const t = makeTuft(
-        gc.x0 + job.crng() * CHUNK_SIZE,
-        gc.z0 + job.crng() * CHUNK_SIZE,
-        job.crng, false);
-      if (t) {
-        const vv = t[9];
-        midTuftScratch[vv].set(t, job.counts[vv] * 10);
-        job.counts[vv]++;
-      }
+    try {
+      if (eager) while (!job.complete) job.step();
+      else advanceGrassChunkWork(job, 250, 1.5);
+    } catch (error) {
+      job.cancel();
+      gc.job = null;
+      if (grassBuildJob === gc) grassBuildJob = null;
+      throw error;
     }
-    if (job.candidate < grassPerChunk) return false;
-
-    const chunkMeshes: GrassChunkMesh[] = [];
-    for (let vv = 0; vv < 2; vv++) {
-      const count = job.counts[vv];
-      if (count === 0) continue;
-      const mesh = new THREE.InstancedMesh(
-        grassVariants[vv].geo, grassVariants[vv].matMid, count);
-      for (let i = 0; i < count; i++) {
-        writeTuftAt(mesh, i, midTuftScratch[vv], i * 10);
-      }
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      // The instances in this mesh never move and belong to one 128 m map
-      // chunk. Preserve the radial density/LOD policy in update(), but also
-      // let Three reject complete chunks behind the camera. The old global
-      // opt-out submitted every in-range chunk, including the rear
-      // hemisphere, which could double midfield grass triangles without
-      // contributing a pixel. Compute the conservative full-count sphere
-      // once; later prefix-count density changes remain safely inside it.
-      mesh.computeBoundingSphere();
-      mesh.frustumCulled = true;
-      mesh.visible = false;
-      mesh.matrixAutoUpdate = false;
-      mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
-      group.add(mesh);
-      chunkMeshes.push({
-        mesh, total: count,
-        geoNear: grassVariants[vv].geo,
-        geoFar: grassVariants[vv].geoFar,
-      });
-    }
-    gc.meshes = chunkMeshes;
-    gc.built = true;
+    if (!job.complete) return false;
     gc.job = null;
     if (grassBuildJob === gc) grassBuildJob = null;
     return true;
+  }
+  function publishGrassChunk(gc: GrassChunk, buffers: readonly GrassChunkBuffer[]): void {
+    // Publication is a final state-machine step, not an uncharged tail after
+    // the deadline. The two variant containers are constant work; their arrays
+    // and full-count bounds have already been prepared in resumable steps.
+    const chunkMeshes: GrassChunkMesh[] = [];
+    try {
+      for (const buffer of buffers) {
+        const vv = buffer.variant, count = buffer.count;
+        // Avoid InstancedMesh's eager count-sized identity initialization. All
+        // matrix/color writes and exact bounds are already complete off-tree.
+        const mesh = new THREE.InstancedMesh(
+          grassVariants[vv].geo, grassVariants[vv].matMid, 0);
+        chunkMeshes.push({
+          mesh, total: count,
+          geoNear: grassVariants[vv].geo,
+          geoFar: grassVariants[vv].geoFar,
+        });
+        mesh.instanceMatrix = new THREE.InstancedBufferAttribute(buffer.matrices, 16);
+        mesh.instanceColor = new THREE.InstancedBufferAttribute(buffer.colors, 3);
+        mesh.count = count;
+        mesh.castShadow = false;
+        mesh.receiveShadow = true;
+        // The instances never move. Preserve the radial density/LOD policy,
+        // with the exact full-count sphere computed by the sliced scan above;
+        // later prefix-count density changes remain safely inside it.
+        mesh.boundingSphere = buffer.sphere;
+        mesh.frustumCulled = true;
+        mesh.visible = false;
+        mesh.matrixAutoUpdate = false;
+        mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
+      }
+      for (const entry of chunkMeshes) group.add(entry.mesh);
+    } catch (error) {
+      for (const entry of chunkMeshes) {
+        entry.mesh.removeFromParent();
+        entry.mesh.dispose(); // shared geometry/material remain world-owned
+      }
+      throw error;
+    }
+    gc.meshes = chunkMeshes;
+    gc.built = true;
   }
   const spawn = L.spawns.player;
   const initialGrassRadius = grassFadeEnd + CHUNK_SIZE * 0.71 + 32;
@@ -3000,7 +3003,7 @@ function* vegetationBuildSteps(
         // placement changes, only when invisible distant chunks are generated.
         if (!deferFarGrass || Math.hypot(spawn.x - gc.cx, spawn.z - gc.cz) < initialGrassRadius) {
           beginGrassChunk(gc);
-          advanceGrassChunk(gc, grassPerChunk);
+          advanceGrassChunk(gc, true);
         }
         yield { stage: 'grassScatter', fine: true, rowEnd: cx === CHUNKS - 1 };
       }
@@ -3056,52 +3059,31 @@ function* vegetationBuildSteps(
   // the top per-frame allocation source in the heap profile.
   const carpetCache = new Map<string, Float32Array>(); // "ix,iz" -> Float32Array (len = 10 * count)
   const _cellScratch = new Float32Array(1024 * 10); // packs one cell before sizing
-  function carpetCell(ix: number, iz: number): Float32Array {
-    const key = ix + ',' + iz;
-    let cell = carpetCache.get(key);
-    if (cell) return cell;
-    const crng = mulberry32((seed ^ 0x51ab ^ (ix * 374761393) ^ (iz * 668265263)) >>> 0);
-    const x0 = ix * CARPET_CELL, z0 = iz * CARPET_CELL;
-    let n = 0;
-    for (let i = 0; i < carpetPerCell; i++) {
-      const t = makeTuft(x0 + crng() * CARPET_CELL, z0 + crng() * CARPET_CELL, crng, true);
-      if (t && (n + 1) * 10 <= _cellScratch.length) {
-        t[4] *= 0.96; t[5] *= 1.04; // r7: near carpet no longer shrunk — it is the hero grass
-        _cellScratch.set(t, n * 10);
-        n++;
-      }
-    }
-    cell = _cellScratch.slice(0, n * 10);
-    carpetCache.set(key, cell);
-    if (carpetCache.size > 420) {
-      const oldestKey = carpetCache.keys().next().value;
-      if (oldestKey !== undefined) carpetCache.delete(oldestKey);
-    }
-    return cell;
+  function inactiveCarpetBuffers(variant: number) {
+    const set = carpetSets[variant], mesh = set.meshes[1 - set.active];
+    return { matrices: mesh.instanceMatrix.array as Float32Array,
+      colors: mesh.instanceColor!.array as Float32Array };
   }
+  const carpetWork = createGrassCarpetWork({
+    seed, cellSize: CARPET_CELL, ring: CARPET_RING, candidatesPerCell: carpetPerCell,
+    capacity: CARPET_CAP, cache: carpetCache, cacheCapacity: 420, scratch: _cellScratch,
+    random: mulberry32, makeTuft: (x, z, crng) => makeTuft(x, z, crng, true),
+    targets: () => [inactiveCarpetBuffers(0), inactiveCarpetBuffers(1)],
+    publish: publishCarpet,
+  });
   let _carpetCellX = 0x7fffffff;
   let _carpetCellZ = 0x7fffffff;
-  function rebuildCarpet(camPos: THREE.Vector3): void {
-    const cix = Math.floor(camPos.x / CARPET_CELL), ciz = Math.floor(camPos.z / CARPET_CELL);
-    const counts = [0, 0];
-    // write into the inactive half of each variant's A/B pair (see above)
-    const targets = [
-      carpetSets[0].meshes[1 - carpetSets[0].active],
-      carpetSets[1].meshes[1 - carpetSets[1].active],
-    ];
-    for (let dz = -CARPET_RING; dz <= CARPET_RING; dz++) {
-      for (let dx = -CARPET_RING; dx <= CARPET_RING; dx++) {
-        const cell = carpetCell(cix + dx, ciz + dz);
-        for (let o = 0; o < cell.length; o += 10) {
-          const vv = cell[o + 9];
-          if (counts[vv] >= CARPET_CAP) continue;
-          writeTuftAt(targets[vv], counts[vv]++, cell, o);
-        }
-      }
-    }
+  function rebuildCarpet(camPos: THREE.Vector3, eager = !deferFarGrass): void {
+    carpetWork.request(Math.floor(camPos.x / CARPET_CELL), Math.floor(camPos.z / CARPET_CELL));
+    // Authoring/capture builds retain synchronous completion, while actual
+    // entry/driving shares the exact generator with a cooperative deadline.
+    if (eager) while (!carpetWork.complete) carpetWork.step();
+    else advanceGrassCarpetWork(carpetWork, 4096, 1.5);
+  }
+  function publishCarpet(counts: readonly [number, number]): void {
     for (let vv = 0; vv < 2; vv++) {
       const set = carpetSets[vv];
-      const fresh = targets[vv];
+      const fresh = set.meshes[1 - set.active];
       const stale = set.meshes[set.active];
       fresh.count = counts[vv];
       fresh.visible = counts[vv] > 0;
@@ -3129,7 +3111,9 @@ function* vegetationBuildSteps(
   // before the world renders, then reuse the same admission rule for streaming.
   function setGroundCoverClearance(blocked: GroundCoverBlocked): void {
     if (groundCoverBlocked) throw new Error('Ground-cover clearance is already sealed');
-    if (carpetCache.size || grassBuildJob) throw new Error('Seal ground-cover clearance before streaming starts');
+    if (carpetCache.size || grassBuildJob || carpetWork.getState().requestedGeneration > 0) {
+      throw new Error('Seal ground-cover clearance before streaming starts');
+    }
     groundCoverBlocked = blocked;
     let rejected = 0;
     for (const chunk of grassChunks) for (const entry of chunk.meshes ?? []) {
@@ -4922,6 +4906,7 @@ function* vegetationBuildSteps(
     ahead: GrassChunk | null;
     aheadDistance: number;
   } = { urgent: null, ahead: null, aheadDistance: Infinity };
+  let grassAheadDistance = grassFadeEnd + 32;
 
   function selectGrassBuild(camPos: THREE.Vector3): void {
     grassSelection.urgent = null;
@@ -4929,6 +4914,7 @@ function* vegetationBuildSteps(
     grassSelection.aheadDistance = Infinity;
     const movedFromSpawn = Math.hypot(camPos.x - spawn.x, camPos.z - spawn.z);
     const grassAhead = grassFadeEnd + (movedFromSpawn > 28 ? CHUNK_SIZE * 0.5 : 32);
+    grassAheadDistance = grassAhead;
     for (const chunk of grassChunks) {
       const distance = Math.max(0,
         Math.hypot(camPos.x - chunk.cx, camPos.z - chunk.cz) - CHUNK_SIZE * 0.71);
@@ -4944,18 +4930,15 @@ function* vegetationBuildSteps(
   }
 
   function advanceDeferredGrass(): void {
-    if (!deferFarGrass) return;
-    const urgent = grassSelection.urgent;
-    if (urgent) {
-      if (grassBuildJob && grassBuildJob !== urgent) advanceGrassChunk(grassBuildJob, grassPerChunk);
-      if (!urgent.built) {
-        beginGrassChunk(urgent);
-        advanceGrassChunk(urgent, grassPerChunk);
-      }
-      return;
+    if (!deferFarGrass || disposed) return;
+    // A single job owns both staging buffers until it finishes. Urgency
+    // selects the next job; it must never drain/reset the existing owner or
+    // turn two complete chunks into one unbounded visible-frame task.
+    if (!grassBuildJob) {
+      const next = grassSelection.urgent ?? grassSelection.ahead;
+      if (next) beginGrassChunk(next);
     }
-    if (!grassBuildJob && grassSelection.ahead) beginGrassChunk(grassSelection.ahead);
-    if (grassBuildJob) advanceGrassChunk(grassBuildJob, 250);
+    if (grassBuildJob) advanceGrassChunk(grassBuildJob);
   }
 
   function updateGrassVisibility(): void {
@@ -4985,10 +4968,16 @@ function* vegetationBuildSteps(
       rebuildCarpet(camPos);
       return;
     }
-    if (_lastCam.distanceToSquared(camPos) <= 36 && !scopeRepartitionPending) return;
-    scopeRepartitionPending = false;
-    _lastCam.copy(camPos);
-    repartitionTrees(camPos);
+    if (_lastCam.distanceToSquared(camPos) > 36 || scopeRepartitionPending) {
+      scopeRepartitionPending = false;
+      _lastCam.copy(camPos);
+      repartitionTrees(camPos);
+      return;
+    }
+    // Stagger a tree repartition against carpet construction/publication, but
+    // keep advancing a stationary camera's unfinished first carpet. Changing
+    // cells coalesces to the newest target without discarding completed cells.
+    if (!carpetWork.complete) rebuildCarpet(camPos);
   }
 
   function update(
@@ -4997,6 +4986,7 @@ function* vegetationBuildSteps(
     camFwd: THREE.Vector3 | null = null,
     focusPos: THREE.Vector3 | null = null,
   ): void {
+    if (disposed) return;
     uWindTime.value += dt;
     if (treeCrushAnims.length) updateTreeCrush(dt); // gameplay_feel r6 topples
     uCamPos.value.copy(camPos);
@@ -5006,8 +4996,9 @@ function* vegetationBuildSteps(
     // Do not spend the opening/countdown frames filling an invisible outer
     // ring while the tank is parked. Once the camera has travelled roughly
     // two hull lengths, stream half a chunk ahead of the fade band. A grass
-    // chunk finishes in under one second at the bounded 250-candidate/frame
-    // rate, while 64 m is more than three seconds of lookahead at 72 km/h.
+    // job is limited to 250 small steps or a 1.5 ms cooperative deadline.
+    // Instance writes, bounds and publication share candidate evaluation's budget.
+    // No wall-clock completion promise applies on a loaded device.
     // The former full-chunk margin started several wholly invisible 12k-tuft
     // jobs during the first live drive and needlessly kept terrain/noise work
     // resident on the main thread; the rendered fade band is unchanged.
@@ -5058,6 +5049,33 @@ function* vegetationBuildSteps(
     if (Math.abs(scopeZoomR - wasR) > 1) scopeRepartitionPending = true;
   }
 
-  return { group, update, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    grassBuildJob?.job?.cancel();
+    carpetWork.cancel();
+    if (grassBuildJob) grassBuildJob.job = null;
+    grassBuildJob = null;
+    midTuftScratch[0] = new Float64Array(0);
+    midTuftScratch[1] = new Float64Array(0);
+    carpetCache.clear();
+  }
+
+  function getGrassWorkState(): VegetationGrassWorkState {
+    let built = 0, pendingVisible = 0, pendingAhead = 0, cameraUnknown = 0;
+    for (const chunk of grassChunks) {
+      if (chunk.built) built++;
+      if (chunk.cameraDist == null) { cameraUnknown++; continue; }
+      if (chunk.built) continue;
+      if (chunk.cameraDist < grassFadeEnd) pendingVisible++;
+      else if (chunk.cameraDist < grassAheadDistance) pendingAhead++;
+    }
+    const active = grassBuildJob?.job
+      ? { ...grassBuildJob.job.getState(), chunkX: grassBuildJob.ix, chunkZ: grassBuildJob.iz } : null;
+    return { total: grassChunks.length, built, pendingVisible, pendingAhead, cameraUnknown, active,
+      carpet: carpetWork.getState(), disposed };
+  }
+
+  return { group, update, dispose, getGrassWorkState, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, _clusters: clusters };
 }

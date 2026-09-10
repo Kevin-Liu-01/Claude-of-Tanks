@@ -58,7 +58,7 @@ import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
 import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
-  mountDiagOverlay, runSceneBlackWatchdog, runSceneBlackWatchdogAsync, reclaimShadows,
+  mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -142,6 +142,7 @@ import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
+import { createBattleAgainAction } from './game/battleAgainAction.ts';
 import { createGaragePhasePresentationRuntime } from './game/garagePhasePresentationRuntime.ts';
 import { createGarageWorkshopDiagnostics } from './game/garageWorkshopDiagnostics.ts';
 import { createBattleIntentRuntime } from './game/battleIntentRuntime.ts';
@@ -200,7 +201,7 @@ import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
 import {
-  spawnTanks, ensureStagedVisuals, nextStagedBake, planBattleParticipantIds,
+  spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { createBus, createGameState } from './game/stateCore.ts';
@@ -533,6 +534,7 @@ spawnTanks(game, engineCtx);
 let camoSweepP = Promise.resolve();
 let battleWarmPending = false;
 let battleWarmGeneration = 0;
+let sceneWatchdogEntryGeneration = 0;
 
 // --- fx ----------------------------------------------------------------------
 // The complete particles/effects graph is battle-only. Parsing and building it
@@ -701,7 +703,6 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       scene,
       camera,
       lighting,
-      programRoot,
       forwardPrograms: forwardProgramWarm,
       post,
       simDt: SIM_DT,
@@ -753,6 +754,8 @@ const garageDressingScheduler = createGarageDressingScheduler({
   dressing: garageDressing,
   getPhase: () => game.phase,
   isTransitionActive: () => transition.active,
+  isBattleEntryPending: () => battleEntryLifecycle.pending
+    || battleEntryLifecycle.renderingCovered || battleLoad.covering,
   requestIdle: (callback) => requestQuietIdle(callback),
   scheduleDelay: (callback, delayMs) => setTimeout(callback, delayMs),
   acquireBackgroundWork: (kind, stillValid) =>
@@ -1024,6 +1027,7 @@ const playSurface = createPlaySurfaceRuntime({
 // path emits this event, so first matches, retained-room rematches,
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
+  sceneWatchdogEntryGeneration++;
   playSurface.hideForBattle();
 });
 
@@ -1372,11 +1376,12 @@ const killcamAccess = createKillcamAccess({
     const live = createKillCam(checkedIntegrationPort<KillcamDependencies>({
       scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
       getGame: () => game,
+      isBattleEntryCovered: () => battleEntryLifecycle.renderingCovered || battleLoad.covering,
       getEntity: (id: string) => game.tankById.get(id),
       getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
-    }, 'killcam', ['getPlayer', 'getGame', 'getEntity', 'getWorld', 'getFx']));
+    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -1421,16 +1426,22 @@ sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
+let battleWatchdogRadianceScale = 1;
 const battleAtmosphere = createBattleAtmosphereAccess(() => ({
   getWorldRoot: () => currentWorld()?.group ?? null,
   getAuthoredPreset: () => currentWorld()?.config.sky ?? {},
   applyPreset: (preset) => {
     sky.applyPreset(preset, scene);
     lighting.setSun(sky.sunDir, preset);
+    battleWatchdogRadianceScale = preset.skyIntensity ?? 1;
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
     worldRuntime.markEnvironmentPrepared(currentWorld());
   },
 }));
+function currentSceneWatchdogOptions() {
+  return game.phase === 'battle' && battleAtmosphere.current?.weather?.timeOfDay === 'night'
+    ? { nightRadianceScale: battleWatchdogRadianceScale } : {};
+}
 const nightLighting = createNightLightingAccess({
   scene,
   getWorldRoot: () => currentWorld()?.group ?? null,
@@ -1511,6 +1522,8 @@ renderer.userData.contextRecovery = {
     post.setAdaptiveSuspended(true);
   },
   async onRestored() {
+    const restoredInfo = renderer.info;
+    const isCurrentRestoration = () => renderer.info === restoredInfo && !renderer.getContext().isContextLost();
     // A restored WebGL context has no linked programs or uploaded buffers,
     // even though the JavaScript-side warm receipts survive. Invalidate every
     // renderer-lifetime combat latch so the next covered transition rebuilds
@@ -1522,13 +1535,20 @@ renderer.userData.contextRecovery = {
       worldRuntime.enforceCacheBudget();
     }
     await nextFrame();
+    if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     viewport.apply();
     post.resetAdaptiveResolution();
     lighting.update(true);
     if (game.phase === 'garage') {
-      await garagePhasePresentation.restoreGpu();
-      garagePresentationDirty = false;
+      const recoveredReturn = await garageReturn.recoverAfterContextRestore(isCurrentRestoration);
+      if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
+      if (game.phase === 'garage') {
+        if (!recoveredReturn) await garagePhasePresentation.restoreGpu();
+        if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
+        garagePresentationDirty = false;
+      }
     }
+    if (!isCurrentRestoration()) throw new Error('Graphics recovery was superseded by another context loss.');
     graphicsContextLost = false;
     post.setAdaptiveSuspended(false);
     // Some mobile browsers discard the outstanding rAF when the WebGL device
@@ -1603,7 +1623,7 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   anisotropy: engineCtx.anisotropy ?? 4,
   ensureTankBuilders,
   nextStagedBake,
-  ensureStagedVisuals,
+  ensureStagedVisualsSteps,
   getSpec,
   prebakeSharedTextures,
   armorAimOverlay,
@@ -1849,8 +1869,17 @@ const soloBattleStart = createSoloBattleStartAccess({
       },
       setDormant: setWorldDormant,
       scheduleBlackWatchdog: () => {
+        const entryGeneration = ++sceneWatchdogEntryGeneration;
+        const requestedWorld = currentWorld();
         if (!navigator.webdriver) {
-          setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1800);
+          const isCurrentBattleWatchdog = () => game.phase === 'battle' && !studio.active && currentWorld() === requestedWorld
+            && sceneWatchdogEntryGeneration === entryGeneration;
+          scheduleSceneWatchdog({ delayMs: 1800,
+            isCurrent: isCurrentBattleWatchdog,
+            run: () => runSceneBlackWatchdogAsync(renderer, scene, camera, {
+              ...currentSceneWatchdogOptions(), isCurrent: isCurrentBattleWatchdog,
+            }),
+          });
         }
       },
     },
@@ -1933,6 +1962,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     ensureTouchControls,
     preloadSettings: () => settings.preload(),
     preloadArmorAim: () => armorAimOverlay.preload(),
+    preloadGarageReturn: () => garageReturn.preload(),
     planRoster: (specId: string, randomRoster: boolean) =>
       planBattleParticipantIds(game, specId, randomRoster),
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean) =>
@@ -2086,6 +2116,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             preloadBattleClientRuntime(),
             ensureBattleHud(),
             ensureTouchControls(),
+            // Acquire the return owner under the private-room loading cover,
+            // never on the first result/exit click or during pristine boot.
+            garageReturn.preload(),
             armorAimOverlay.preload().catch((error) => {
               console.warn('[loading] Optional armor overlay unavailable:', error);
               return null;
@@ -2162,6 +2195,11 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
               game, world, yieldForBudget: createFrameBudgetYielder(16),
             });
           },
+          presentation: (signal) => battleWarm.primeOpeningTerrainPresentation({
+            game, world: currentWorld(), camera, signal,
+            focusEntity: rig.spectateTargetEnt ?? game.player,
+            yieldForBudget: createFrameBudgetYielder(16),
+          }),
           wrecks: (bridge, signal) => battleWarm.warmNetworkWrecks({
             entities: bridge.entities.values(),
             signal,
@@ -2285,7 +2323,7 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             setGarageSunTrim(active);
           },
           runBlackWatchdog: (signal?: AbortSignal) => runSceneBlackWatchdogAsync(
-            renderer, scene, camera, { signal, measureTimings: true },
+            renderer, scene, camera, { signal, measureTimings: true, ...currentSceneWatchdogOptions() },
           ),
         },
       },
@@ -2359,7 +2397,10 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
         presentation: {
           setShotMode: (value: boolean) => { shotMode = value; },
           setCaptureHidden: (value: boolean) => perfHud.setCaptureHidden(value),
-          setNetworkSpectator: (value: boolean) => networkSession.setSpectator(value),
+          setNetworkSpectator: (value: boolean) => {
+            sceneWatchdogEntryGeneration++;
+            networkSession.setSpectator(value);
+          },
           setSelectedSpecId: selectedVehicle.set,
           rememberSpecId: selectedVehicle.remember,
           setWorldDormant,
@@ -2472,7 +2513,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     },
   },
   warm: {
-    invalidate: () => { battleWarmGeneration += 1; },
+    invalidate: () => { battleWarmGeneration += 1; sceneWatchdogEntryGeneration++; },
     cancel: cancelDeferredCombatWarm,
     setPending: (pending: boolean) => { battleWarmPending = pending; },
   },
@@ -2512,7 +2553,12 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     showGarage: (specId: string) => garage.show(specId),
     poseGarageCamera: garageEnvironmentPresentation.poseCamera,
     startShowroom: () => showroom.start(),
-    triggerBattle: () => document.querySelector<HTMLElement>('.cot-battle')?.click(),
+    triggerBattle: () => {
+      const button = document.querySelector<HTMLButtonElement>('.cot-battle');
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    },
   },
   audio,
   transition,
@@ -2520,6 +2566,18 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     const receipt = await garagePhasePresentation.restoreGpu();
     garagePresentationDirty = false;
     return receipt;
+  },
+  createEntryScheduler: () => {
+    const entryInfo = renderer.info;
+    const entryContext = renderer.getContext();
+    const yieldEntry = createOpaqueLoadingYielder(8, 32, { yieldFrame: nextPaintFrame });
+    return {
+      isCurrent: () => renderer.info === entryInfo
+        && renderer.getContext() === entryContext && !entryContext.isContextLost(),
+      // The owner already checked its 8 ms work budget. This call must provide
+      // an actual task/paint opportunity, including hidden-document fallback.
+      yieldControl: () => yieldEntry(true),
+    };
   },
   isBattleEntryPending: () => battleEntryLifecycle.pending,
   isBattleEntryCovering: () => battleLoad.covering,
@@ -2550,7 +2608,19 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   getSelectedMapId: () => garage.getSelectedMap(),
 });
 
-bus.on('ui:battleAgain', garageReturn.battleAgain);
+const battleAgainAction = createBattleAgainAction({
+  action: () => garageReturn.battleAgain(),
+  loadFailure: () => import('./ui/garageReturnFailure.ts'),
+  getPhase: () => game.phase,
+  getEntryGeneration: () => sceneWatchdogEntryGeneration,
+  getRoom: () => networkSession.match,
+  reportError: (message, error) => console.error(message, error),
+});
+bus.on('ui:battleAgain', () => { void battleAgainAction.run(); });
+bus.on('ui:battleStart', battleAgainAction.invalidate);
+bus.on('phase:change', battleAgainAction.invalidate);
+bus.on('ui:roomOpen', battleAgainAction.invalidate);
+bus.on('network:roomState', battleAgainAction.onRoomState);
 
 bus.on('ui:roomOpen', async () => {
   await playSurface.showCurrentRoom();
@@ -2666,7 +2736,7 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
-  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu,
+  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && garageReturn.current?.lastTrace?.presentationUnready === true),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
@@ -3097,9 +3167,20 @@ if (STUDIO_BOOT_INTENT) {
 // rescue + recompile (deviceDiag.ts). Skipped under webdriver so harness
 // captures stay deterministic; a second check runs at battle start.
 if (!navigator.webdriver || new URLSearchParams(location.search).has('diagforce')) {
-  setTimeout(() => runSceneBlackWatchdog(renderer, scene, camera), 1200);
+  const garageWatchdogGeneration = sceneWatchdogEntryGeneration;
+  const garageWatchdogWorld = currentWorld();
+  const isCurrentGarage = () => game.phase === 'garage' && !studio.active && !battleEntryLifecycle.pending
+    && currentWorld() === garageWatchdogWorld && sceneWatchdogEntryGeneration === garageWatchdogGeneration;
+  const garageWatchdogSettled = scheduleSceneWatchdog({ delayMs: 1200, isCurrent: isCurrentGarage,
+    run: () => runSceneBlackWatchdogAsync(renderer, scene, camera, { isCurrent: isCurrentGarage }),
+  });
   // MOBILE r5: if the boot probe turned shadows off (one-boot false-negatives
   // happen — the owner's phone), try them back on once the live scene proves
   // healthy; keep only if the measured frame stays healthy (deviceDiag.ts).
-  setTimeout(() => reclaimShadows(renderer, scene, camera), 3400);
+  scheduleSceneWatchdog({ delayMs: 3400, isCurrent: isCurrentGarage,
+    run: async () => {
+      await garageWatchdogSettled;
+      if (isCurrentGarage()) reclaimShadows(renderer, scene, camera);
+    },
+  });
 }

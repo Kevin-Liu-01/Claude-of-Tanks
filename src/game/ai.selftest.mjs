@@ -249,6 +249,57 @@ ok(JSON.stringify(alliedSupport) === JSON.stringify([
     'autoloaders do not discard a partial magazine during an exposed duel');
 }
 {
+  // Exercise finishStep's retained support context through two real owners,
+  // not just the exported policy with hand-written context flags. Keep poses
+  // fixed and let 18 ordinary ticks exceed the bounded LOS refresh interval;
+  // both contacts are danger-close, so deployment policy cannot hide them.
+  const loader = entity('context-loader', 'pl01_105', 'player', 0, 0);
+  loader.combat.magazine = { rounds: 2, capacity: 4 };
+  loader.combat.gunReload = { t: 0, totalS: 0, kind: 'ready' };
+  const loaderTarget = entity('context-loader-target', 'm4a3e8', 'enemy', 0, 70);
+  const loaderEnemies = [];
+  const loaderCtl = controller(loader, loaderEnemies, [], 109);
+  const suspension = entity('context-suspension', 'strv103', 'enemy', 0, 0);
+  suspension.specialAction = { kind: 'hydropneumatic_aim', active: false };
+  const suspensionTarget = entity('context-suspension-target', 'm4a3e8', 'player', 0, 70);
+  const suspensionCtl = controller(suspension, [suspensionTarget], [], 113);
+  let loaderTime = 0, suspensionTime = 0;
+  function advanceLoader() {
+    for (let i = 0; i < 18; i++) loaderCtl.update(SIM_DT, loaderTime += SIM_DT);
+  }
+  function advanceSuspension(steps = 18) {
+    for (let i = 0; i < steps; i++) suspensionCtl.update(SIM_DT, suspensionTime += SIM_DT);
+  }
+
+  advanceLoader();
+  ok(loaderCtl.targetId === null && loader.input.actionBits === PLAYER_ACTION_BITS.RELOAD_MAGAZINE,
+    'controller A enables magazine refill without contact');
+  advanceSuspension();
+  ok(suspensionCtl.targetId === suspensionTarget.id && Math.abs(suspension.input.throttle) < 0.2
+      && suspension.input.actionBits === PLAYER_ACTION_BITS.SPECIAL_ACTION,
+    'controller B independently requests suspension aim while holding a visible contact');
+
+  loaderEnemies.push(loaderTarget);
+  advanceLoader();
+  ok(loaderCtl.targetId === loaderTarget.id && loaderCtl.state === 'engage'
+      && loader.input.actionBits === 0,
+    'controller A refreshes safe-reload true to false after B runs and contact arrives');
+  suspension.state.speed = 3;
+  advanceSuspension(1);
+  ok(suspensionCtl.targetId === suspensionTarget.id && suspension.input.actionBits === 0,
+    'controller B refreshes suspension-aim true to false when its own speed rises');
+
+  loaderTarget.combat.destroyed = true;
+  advanceLoader();
+  ok(loaderCtl.targetId === null && loader.input.actionBits === PLAYER_ACTION_BITS.RELOAD_MAGAZINE,
+    'controller A restores safe-reload false to true after its contact is destroyed');
+  suspension.state.speed = 0;
+  advanceSuspension(1);
+  ok(suspensionCtl.targetId === suspensionTarget.id && Math.abs(suspension.input.throttle) < 0.2
+      && suspension.input.actionBits === PLAYER_ACTION_BITS.SPECIAL_ACTION,
+    'controller B restores suspension aim from its own live state after A runs again');
+}
+{
   const allied = survival('player', 'enemy');
   const hostile = survival('enemy', 'player');
   ok(allied.fallingBack && hostile.fallingBack,

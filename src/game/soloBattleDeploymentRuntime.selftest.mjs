@@ -4,9 +4,11 @@ import { WebGLLights } from 'three/src/renderers/webgl/WebGLLights.js';
 import { createNightLightingAccess } from '../engine/nightLightingAccess.ts';
 import { registerNightLightEmitters } from '../engine/nightLightingRuntime.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
+import { primeOpeningTerrainPresentation } from './battleWarmRuntime.ts';
 
 function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosphere = false,
-  night = false, failNight = false, pauseNight = false } = {}) {
+  night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
+  compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '' } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -17,12 +19,21 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   let destructionWarmed = false;
   let clock = 0;
   const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
   const worldGroup = new THREE.Group();
   worldGroup.name = 'world';
   scene.add(worldGroup);
   const fxGroup = new THREE.Group();
   fxGroup.name = 'fx';
   scene.add(fxGroup);
+  const warmResources = [];
+  if (lateCancelWarm === 'fx') {
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial();
+    warmResources.push(geometry, material);
+    fxGroup.add(new THREE.Mesh(geometry, material), new THREE.Mesh(geometry, material));
+  }
+  const shadow = { autoUpdate: true, needsUpdate: true };
   const playerRoot = new THREE.Group();
   const game = {
     phase: 'battle',
@@ -56,12 +67,36 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   const runtime = createSoloBattleDeploymentRuntime({
     game,
     scene,
-    camera: new THREE.PerspectiveCamera(),
+    camera,
     battleLoad: {
       progress: (fraction, label) => calls.push(['progress', fraction, label]),
     },
     battleWarm: {
-      warmBattleTerrainTiles: async () => calls.push(['terrain']),
+      warmBattleTerrainTiles: async options => {
+        assert.equal(options.primePresentation, false, 'terrain warm cannot guess the reveal camera');
+        calls.push(['terrain']);
+      },
+      primeOpeningTerrainPresentation: async options => {
+        assert.strictEqual(options.camera, camera);
+        assert.equal(typeof options.assertCurrent, 'function', 'solo supplies its generation owner to terrain');
+        assert.deepEqual(camera.position.toArray(), [20, 6, -0.3], 'ground cover consumes the snapped pose');
+        calls.push(['groundCover']);
+        if (lateCancelWarm === 'cover') return primeOpeningTerrainPresentation({
+          ...options,
+          game: { tanks: [], player: { state: { pos: new THREE.Vector3() } } },
+          world: {
+            update() { calls.push(['groundCoverUpdate']); },
+            getGrassWorkState() {
+              calls.push(['groundCoverState']);
+              return { disposed: false, carpet: { cold: true, pending: true } };
+            },
+          },
+        });
+        if (cancelCover) generation++;
+        await options.yieldForBudget(true);
+        if (failCover) throw new Error('ground cover failed');
+        calls.push(['groundCoverReady']);
+      },
       stageCombatFxProgramSubmission: async () => ({
         staged: true,
         restore: () => calls.push(['restoreFx']),
@@ -74,7 +109,19 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       },
     },
     forwardProgramWarm: {
-      compile,
+      compile: () => { throw new Error('deployment must not submit the whole scene atomically'); },
+      compileSceneSteps: function* (options) {
+        assert.equal(options.sliceMs, 8);
+        compile();
+        try {
+          for (let index = 0; index < compileSlices; index++) {
+            calls.push(['compileSlice', index]);
+            yield;
+          }
+          options.timing.submissionSlices = compileSlices + 1;
+          calls.push(['compileComplete']);
+        } finally { calls.push(['compileClosed']); }
+      },
       initializeSteps: function* () {},
       linkerBreathingSlices: function* () {},
       invalidate: () => {},
@@ -90,7 +137,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         return { passes: 1 };
       },
     },
-    lighting: { csm: { lights: [] } },
+    lighting: { csm: { lights: lateCancelWarm === 'forward' ? [{ shadow }] : [] } },
     createShell: () => {},
     getWorld: () => ({ group: worldGroup }),
     getBattleVisuals: () => ({
@@ -134,7 +181,10 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       pending: false,
       renderingCovered: false,
     }),
-    prepareRevealCamera: () => calls.push(['camera']),
+    prepareRevealCamera: () => {
+      camera.position.set(20, 6, -0.3);
+      calls.push(['camera']);
+    },
     prepareAtmosphere: async () => {
       calls.push(['atmosphere']);
       if (pauseAtmosphere) await atmosphereGate;
@@ -154,7 +204,20 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     setDestructionWarmed: (value) => { destructionWarmed = value; },
     now: () => ++clock,
     yieldFrame: async () => calls.push(['frame']),
-    createLoadingYielder: () => async () => calls.push(['yield']),
+    createLoadingYielder: () => async (force) => {
+      const previous = calls.at(-1)?.[0];
+      if (cancelCompile && previous === 'compileSlice') generation++;
+      if ((lateCancelCompile === 'slice' && previous === 'compileSlice')
+        || (lateCancelCompile === 'final' && previous === 'compileClosed')
+        || (lateCancelWarm === 'cover' && previous === 'groundCoverUpdate')
+        || (lateCancelWarm === 'fx' && previous === 'warmRender')
+        || (lateCancelWarm === 'forward' && previous === 'warmRender')) {
+        // The nested microtask runs after guardedCoveredYield's internal
+        // post-check but before the outer warm continuation resumes.
+        queueMicrotask(() => queueMicrotask(() => { generation++; }));
+      }
+      calls.push(['yield', force]);
+    },
   });
 
   return {
@@ -162,6 +225,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     calls,
     releaseAtmosphere,
     releaseNight, lamps, lightSignatures,
+    shadow, worldGroup, playerRoot, fxGroup,
+    disposeWarmResources() { for (const resource of warmResources) resource.dispose(); },
     get generation() { return generation; },
     set generation(value) { generation = value; },
     get pending() { return pending; },
@@ -171,7 +236,9 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
 
 const happy = createHarness();
 const result = await happy.runtime.warm(Promise.resolve());
-assert.deepEqual(result, { generation: 1, revealPrimed: true });
+assert.equal(result.generation, 1);
+assert.equal(result.revealPrimed, true);
+assert.doesNotThrow(result.assertRevealReady);
 assert.equal(happy.pending, true, 'deferred warm owns the pending latch after entry warm');
 assert.equal(happy.destructionWarmed, true);
 const order = happy.calls.map(([name]) => name);
@@ -184,7 +251,8 @@ for (const [before, after] of [
   ['nightLighting', 'terrain'],
   ['nightLighting', 'compile'],
   ['terrain', 'camera'],
-  ['camera', 'shadowWarm'],
+  ['camera', 'groundCover'],
+  ['groundCoverReady', 'shadowWarm'],
   ['shadowWarm', 'postWarm'],
   ['postWarm', 'postYielded'],
   ['postWarm', 'reveal'],
@@ -200,8 +268,76 @@ assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.doneBeforeRollout, true);
 assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, true);
 assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentUniformsDeferred, true);
 assert.equal(globalThis.__COMBAT_OPENING_WARM.covered, true);
+assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentProgramSubmission.submissionSlices, 3);
+for (let index = 0; index < happy.calls.length; index++) {
+  if (happy.calls[index][0] === 'compileSlice') {
+    assert.deepEqual(happy.calls[index + 1], ['yield', true], 'every submission slice releases its task');
+  }
+}
+assert.ok(order.indexOf('compileClosed') < order.indexOf('warmRender'));
+assert.deepEqual(happy.calls[order.indexOf('compileClosed') + 1], ['yield', true],
+  'final submission releases its task before the first native forward bind');
 assert.deepEqual(happy.lightSignatures, [[0, 0], [0, 0]], 'day constructs no night light pool');
 assert.equal(happy.lamps.current, null);
+
+const shortCompile = createHarness({ compileSlices: 0 });
+await shortCompile.runtime.warm(Promise.resolve());
+const shortOrder = shortCompile.calls.map(([name]) => name);
+assert.deepEqual(shortCompile.calls[shortOrder.indexOf('compileClosed') + 1], ['yield', true],
+  'a short compiler with no checkpoints still separates submission from first bind');
+const staleCompile = createHarness({ cancelCompile: true });
+await assert.rejects(staleCompile.runtime.warm(Promise.resolve()), /superseded/);
+for (const restored of ['compileClosed', 'restoreFx', 'restoreArmor']) {
+  assert.equal(staleCompile.calls.filter(([name]) => name === restored).length, 1,
+    `cancellation closes ${restored} exactly once`);
+}
+assert.ok(!staleCompile.calls.some(([name]) => ['compileComplete', 'warmRender', 'shadowWarm', 'reveal'].includes(name)),
+  'a stale compile cannot bind, shadow-warm, or reveal');
+for (const lateCancelCompile of ['slice', 'final']) {
+  const late = createHarness({ lateCancelCompile });
+  await assert.rejects(late.runtime.warm(Promise.resolve()), /superseded/);
+  assert.ok(!late.calls.some(([name]) => ['warmRender', 'shadowWarm', 'reveal'].includes(name)),
+    `late ${lateCancelCompile} cancellation cannot bind or reveal`);
+  assert.equal(late.calls.filter(([name]) => name === 'compileClosed').length, 1);
+  assert.equal(late.calls.filter(([name]) => name === 'restoreFx').length, 1);
+  assert.equal(late.calls.filter(([name]) => name === 'restoreArmor').length, 1);
+  if (lateCancelCompile === 'slice') {
+    assert.equal(late.calls.filter(([name]) => name === 'compileSlice').length, 1,
+      'late cancellation cannot admit another compiler batch');
+  }
+}
+
+for (const option of ['cancelCover', 'failCover']) {
+  const harness = createHarness({ [option]: true });
+  await assert.rejects(harness.runtime.warm(Promise.resolve()),
+    option === 'failCover' ? /ground cover failed/ : /superseded/);
+  assert.ok(!harness.calls.some(([name]) => name === 'reveal' || name === 'shadowWarm'));
+}
+
+for (const lateCancelWarm of ['cover', 'fx', 'forward']) {
+  const harness = createHarness({ lateCancelWarm });
+  try {
+    await assert.rejects(harness.runtime.warm(Promise.resolve()), /superseded/);
+    const count = name => harness.calls.filter(([event]) => event === name).length;
+    assert.equal(count('reveal'), 0, `${lateCancelWarm}: stale work cannot reveal`);
+    assert.equal(count('postWarm'), 0, `${lateCancelWarm}: stale work cannot enter post warm`);
+    if (lateCancelWarm === 'cover') {
+      assert.equal(count('groundCoverUpdate'), 1, 'actual terrain producer stops at its outer generation boundary');
+      assert.equal(count('groundCoverState'), 0, 'no readiness read after supersession');
+      assert.equal(count('armorWarm'), 0, 'incomplete terrain never enters optional shader fallback');
+    } else {
+      assert.equal(count('warmRender'), 1, `${lateCancelWarm}: IteratorClose prevents another cohort render`);
+      assert.equal(count('restoreFx'), 1);
+      assert.equal(count('restoreArmor'), 1);
+      assert.equal(harness.worldGroup.visible, true, 'world visibility restored');
+      assert.equal(harness.playerRoot.visible, true, 'player visibility restored');
+      assert.equal(harness.fxGroup.visible, false, 'private FX visibility restored');
+      assert.ok(harness.fxGroup.children.every(child => child.visible), 'hidden cohort siblings restored');
+      assert.deepEqual(harness.shadow, { autoUpdate: true, needsUpdate: true }, 'iterator finalizer restores CSM flags');
+      if (lateCancelWarm === 'fx') assert.equal(count('shadowWarm'), 0, 'cancelled FX cannot advance to shadows');
+    }
+  } finally { harness.disposeWarmResources(); }
+}
 
 const nocturnal = createHarness({ night: true });
 assert.equal((await nocturnal.runtime.warm(Promise.resolve())).revealPrimed, true);
@@ -216,7 +352,7 @@ assert.ok(nocturnal.lamps.current.lights.every(light => light.castShadow === fal
 nocturnal.lamps.dispose();
 
 const failedNight = createHarness({ night: true, failNight: true });
-assert.equal((await failedNight.runtime.warm(Promise.resolve())).revealPrimed, false);
+await assert.rejects(failedNight.runtime.warm(Promise.resolve()), /night lighting failed/);
 assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /night lighting failed/);
 assert.equal(failedNight.calls.some(([name]) => ['allies', 'compile', 'reveal'].includes(name)), false,
   'failed night setup cannot compile the day signature or reveal the battle');
@@ -228,7 +364,7 @@ for (let i = 0; i < 20 && !cancelledNight.calls.some(([name]) => name === 'night
 }
 assert.ok(cancelledNight.calls.some(([name]) => name === 'nightLighting'));
 cancelledNight.generation = 2; cancelledNight.releaseNight();
-assert.equal((await pendingNight).revealPrimed, false);
+await assert.rejects(pendingNight, /superseded/);
 assert.equal(cancelledNight.calls.some(([name]) => ['allies', 'compile', 'reveal'].includes(name)), false);
 cancelledNight.lamps.dispose();
 
@@ -238,7 +374,7 @@ const camo = new Promise((resolve) => { releaseCamo = resolve; });
 const cancelledWarm = cancelled.runtime.warm(camo);
 cancelled.generation = 2;
 releaseCamo();
-assert.deepEqual(await cancelledWarm, { generation: 1, revealPrimed: false });
+await assert.rejects(cancelledWarm, /superseded/);
 assert.equal(cancelled.calls.some(([name]) => name === 'allies'), false,
   'a stale generation performs no visual work');
 assert.equal(cancelled.calls.some(([name]) => name === 'atmosphere'), false,
@@ -254,22 +390,21 @@ assert.equal(cancelledAtmosphere.calls.some(([name]) => name === 'compile'), fal
   'first compile waits for atmosphere acquisition');
 cancelledAtmosphere.generation = 2;
 cancelledAtmosphere.releaseAtmosphere();
-assert.deepEqual(await pendingAtmosphere, { generation: 1, revealPrimed: false });
+await assert.rejects(pendingAtmosphere, /superseded/);
 assert.equal(cancelledAtmosphere.calls.some(([name]) => ['allies', 'compile', 'reveal'].includes(name)), false,
   'cancellation during atmosphere cannot compile or reveal an obsolete battle');
 
 const failedAtmosphere = createHarness({ failAtmosphere: true });
-assert.deepEqual(await failedAtmosphere.runtime.warm(Promise.resolve()), { generation: 1, revealPrimed: false });
+await assert.rejects(failedAtmosphere.runtime.warm(Promise.resolve()), /atmosphere failed/);
 assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /atmosphere failed/);
 assert.equal(failedAtmosphere.calls.some(([name]) => ['compile', 'reveal'].includes(name)), false,
   'failed atmosphere preparation cannot be reported as a primed deployment');
 
 const failed = createHarness({ failAllies: true });
-assert.deepEqual(await failed.runtime.warm(Promise.resolve()), {
-  generation: 1,
-  revealPrimed: false,
-});
+await assert.rejects(failed.runtime.warm(Promise.resolve()), /allied warm failed/);
 assert.match(globalThis.__BATTLE_COUNTDOWN_WARM.error, /allied warm failed/);
+happy.generation++;
+assert.throws(result.assertRevealReady, /superseded/, 'a returned receipt cannot outlive its generation');
 
 delete globalThis.__BATTLE_COUNTDOWN_WARM;
 delete globalThis.__COMBAT_OPENING_WARM;

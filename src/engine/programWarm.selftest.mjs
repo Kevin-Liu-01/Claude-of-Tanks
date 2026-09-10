@@ -4,33 +4,10 @@ import {
   captureNewProgramUniformSteps,
   compileForRenderTarget,
   createForwardProgramWarmOwner,
+  ProgramUniformPreparationError,
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
 } from './programWarm.ts';
-
-const calls = [];
-const oldProgram = { getUniforms: () => calls.push('old') };
-const firstNew = { getUniforms: () => calls.push('first') };
-const brokenNew = { getUniforms: () => { calls.push('broken'); throw new Error('driver'); } };
-const renderer = { info: { programs: [oldProgram] } };
-const baseline = snapshotRendererPrograms(renderer);
-renderer.info.programs.push(firstNew, brokenNew, {});
-
-let ticks = 0;
-let clock = 0;
-const receipt = await warmNewRendererProgramUniforms(
-  renderer,
-  baseline,
-  async () => { ticks += 1; },
-  () => { clock += 3; return clock; },
-);
-
-assert.deepEqual(calls, ['first', 'broken'], 'only newly linked uniform tables are consumed');
-assert.equal(ticks, 2, 'each eligible program gives the scheduler a checkpoint');
-assert.equal(receipt.programs, 2);
-assert.equal(receipt.failures, 1, 'a driver-specific failure keeps the real-render fallback');
-assert.equal(receipt.maxMs, 3);
-assert.equal(receipt.totalMs, 15);
 
 const targetCalls = [];
 const targetRenderer = {
@@ -68,9 +45,11 @@ let warmClock = 0;
 const warmPrograms = [];
 const pendingProgram = {
   program: {},
-  getUniforms() { initialized.push('uniforms'); },
+  getUniforms() { initialized.push('uniforms'); return {}; },
+  getAttributes() { return {}; },
 };
 const forwardGl = {
+  pending: false,
   getExtension(name) {
     assert.equal(name, 'KHR_parallel_shader_compile');
     return { COMPLETION_STATUS_KHR: 0x91B1 };
@@ -78,7 +57,7 @@ const forwardGl = {
   getProgramParameter(program, token) {
     assert.equal(program, pendingProgram.program);
     assert.equal(token, 0x91B1);
-    return false;
+    return !this.pending;
   },
 };
 const forwardRenderer = {
@@ -102,9 +81,11 @@ const forwardOwner = createForwardProgramWarmOwner({
   getTarget: () => 'composer-hdr',
   now: () => { warmClock += 5; return warmClock; },
 });
-assert.equal([...forwardOwner.initializeSteps()].length, 1,
-  'newly submitted programs yield after uniform discovery');
+assert.equal([...forwardOwner.initializeSteps()].length, 2,
+  'newly submitted programs yield before readiness and after budgeted reflection');
 assert.deepEqual(initialized, ['uniforms']);
+forwardOwner.invalidate(); // Remove the successful shared reflection witness for the pending-query test.
+forwardGl.pending = true;
 assert.equal([...forwardOwner.linkerBreathingSlices(3)].length, 3,
   'pending ANGLE links receive a bounded number of scheduler slices');
 forwardOwner.invalidate();
@@ -391,6 +372,7 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
     now() { if (clockFailure) throw new Error('clock unavailable'); return clockFrozen ? 0 : clock; },
   });
   return { owner, renderer, gl, scene, mesh, events, programs, unrelated, materialProperties, state, assertRestored,
+    now: () => clockFrozen ? 0 : clock,
     advance(ms) { clock += ms; },
     prepare(options = {}) { return owner.prepareSceneSteps({ initializeUniforms: true, ...options }); },
     drain(steps) {
@@ -1049,7 +1031,8 @@ for (const boundary of ['epoch', 'context']) {
   if (boundary === 'epoch') f.owner.invalidate();
   else f.renderer.getContext = () => ({ ...f.gl });
   assert.equal(steps.next().done, true, `${boundary}: legacy initialization also owns its renderer lifetime`);
-  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 1);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 0,
+    'the submission checkpoint precedes all native readiness/reflection work');
 }
 
 for (const operation of ['getUniforms', 'getAttributes']) {
@@ -1500,4 +1483,348 @@ for (const change of ['epoch', 'info', 'context', 'loss', 'handle', 'disposed', 
   f.assertRestored();
 }
 
-console.log('programWarm.selftest: target compile, forward owner, and strict uniform draining passed');
+function asyncUniformFixture(options = {}) {
+  const f = firstUseFixture(options);
+  const saved = f.renderer.info.programs;
+  f.renderer.info.programs = [f.unrelated];
+  const baseline = snapshotRendererPrograms(f.renderer);
+  f.renderer.info.programs = saved;
+  return { ...f, baseline,
+    warm: (yieldWork, options) => warmNewRendererProgramUniforms(f.renderer, baseline, yieldWork, f.now, options) };
+}
+
+{
+  const f = asyncUniformFixture({ names: ['first', 'second'] });
+  let yields = 0;
+  f.state.query = () => yields >= 3;
+  const receipt = await f.warm(async (force) => {
+    assert.equal(force, true, 'pending shaders cannot spin through budget-only no-op promises');
+    yields += 1;
+    if (yields <= 3) assert.equal(f.events.some(([kind]) => kind === 'uniform'), false);
+    f.advance(100);
+    if (yields === 1) f.renderer.info.programs.push({ program: {},
+      getUniforms() { assert.fail('later unrelated submissions are outside the captured cohort'); } });
+  });
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform'), [['uniform', 'first'], ['uniform', 'second']]);
+  assert.equal(receipt.programs, 2);
+  assert.equal(receipt.failures, 0);
+  assert.equal(receipt.maxMs, 7, 'scheduler wait time is not attributed as native reflection cost');
+  assert.ok(receipt.totalMs >= 300);
+  f.renderer.info.programs.pop();
+  f.events.length = 0;
+  const reused = await f.warm(async () => {});
+  assert.equal(reused.programs, 0, 'successful exact wrapper/handle proofs are shared with later warm owners');
+  assert.deepEqual(f.events, [], 'reused native reflection witnesses need no new query or reflection');
+}
+
+for (const boundary of ['current', 'epoch', 'info', 'context', 'loss', 'handle', 'removed']) {
+  const f = asyncUniformFixture({ names: ['stale'] });
+  let current = true;
+  await assert.rejects(f.warm(async () => {
+    if (boundary === 'current') current = false;
+    if (boundary === 'epoch') f.owner.invalidate();
+    if (boundary === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+    if (boundary === 'context') f.renderer.getContext = () => ({ ...f.gl });
+    if (boundary === 'loss') f.gl.lost = true;
+    if (boundary === 'handle') f.programs[0].program = {};
+    if (boundary === 'removed') f.renderer.info.programs = [f.unrelated];
+  }, { isCurrent: () => current }), (error) => error instanceof ProgramUniformPreparationError
+    && error.preparation.reason === 'invalidated', boundary);
+  assert.equal(f.events.some(([kind]) => kind === 'uniform'), false, `${boundary}: never reflect a stale native handle`);
+}
+
+for (const boundary of ['before', 'pending', 'after-first']) {
+  const f = asyncUniformFixture({ names: ['first', 'second'] });
+  const controller = new AbortController();
+  const reason = new Error(`uniform cancellation ${boundary}`);
+  if (boundary === 'before') controller.abort(reason);
+  let yields = 0;
+  await assert.rejects(f.warm(async () => {
+    yields += 1;
+    if (boundary === 'pending' || yields === 2) controller.abort(reason);
+  }, { signal: controller.signal }), (error) => error === reason);
+  assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, boundary === 'after-first' ? 1 : 0);
+}
+
+for (const failure of ['extension', 'query', 'uniform', 'attributes']) {
+  const f = asyncUniformFixture({ names: ['failed'] });
+  const fail = () => { throw new Error(failure); };
+  if (failure === 'extension') f.gl.getExtension = fail;
+  if (failure === 'query') f.state.query = fail;
+  if (failure === 'uniform') f.state.reflect = fail;
+  if (failure === 'attributes') f.programs[0].getAttributes = fail;
+  await assert.rejects(f.warm(async () => {}), (error) => error instanceof ProgramUniformPreparationError
+    && error.preparation.reason === (['extension', 'query'].includes(failure) ? 'query' : 'reflection'));
+  if (failure === 'extension' || failure === 'query') {
+    assert.equal(f.events.some(([kind]) => kind === 'uniform'), false, 'failed readiness is not unsupported KHR');
+  }
+}
+
+{
+  const f = asyncUniformFixture({ names: ['fallback'], extension: false });
+  f.state.uniformMs = 306;
+  const receipt = await f.warm(async () => {});
+  assert.equal(receipt.programs, 1, 'unsupported KHR still performs actual first-use initialization');
+  assert.equal(receipt.maxMs, 306, 'indivisible compatibility-fallback stalls remain honestly measured');
+  assert.equal(f.events.some(([kind]) => kind === 'query'), false);
+}
+
+for (const frozen of [false, true]) {
+  const f = asyncUniformFixture({ names: ['pending'], clockFrozen: frozen });
+  f.state.query = () => false;
+  let yields = 0;
+  await assert.rejects(f.warm(async () => { yields += 1; f.advance(1000); }),
+    (error) => error instanceof ProgramUniformPreparationError && error.preparation.reason === 'budget');
+  assert.ok(yields <= 1025, 'a broken clock cannot spin an unbounded preparation job');
+  assert.equal(f.events.some(([kind]) => kind === 'uniform'), false, 'deadline is never permission for cold reflection');
+}
+
+{
+  const f = asyncUniformFixture({ names: ['unstarted'] });
+  const error = new Error('scheduler failure');
+  await assert.rejects(f.warm(async () => { throw error; }), (caught) => caught === error);
+  assert.deepEqual(f.events, [], 'a failed initial checkpoint performs no native work');
+}
+
+{
+  const f = firstUseFixture({ names: ['garage-pending'] });
+  f.renderer.info.programs = [f.unrelated];
+  f.state.compile = () => f.renderer.info.programs.push(...f.programs);
+  let ready = false;
+  f.state.query = () => ready;
+  const steps = f.owner.initializeSteps();
+  assert.equal(steps.next().done, false, 'Garage submission releases before the first readiness check');
+  assert.equal(steps.next().done, false, 'pending Garage program releases without reflection');
+  assert.equal(f.events.some(([kind]) => kind === 'uniform'), false);
+  ready = true;
+  f.drain(steps);
+  assert.deepEqual(f.events.filter(([kind]) => kind === 'uniform'), [['uniform', 'garage-pending']]);
+}
+
+function garageCohortFixture({ count = 65, compileMs = 0, shared = false } = {}) {
+  const scene = new THREE.Scene();
+  const material = new THREE.MeshStandardMaterial();
+  const geometry = new THREE.BoxGeometry();
+  const camera = new THREE.PerspectiveCamera();
+  for (let i = 0; i < count; i += 1) {
+    const object = new THREE.Mesh(geometry, material);
+    object.name = `object-${i}`;
+    object.userData.variant = shared ? 0 : i;
+    scene.add(object);
+  }
+  const programs = new Map();
+  const events = [];
+  const state = { clock: 0, ready: true, lost: false, query: null, reflect: null, compileFailure: false };
+  const gl = {
+    isContextLost: () => state.lost,
+    getExtension: () => ({ COMPLETION_STATUS_KHR: 0x91b1 }),
+    getProgramParameter(handle) {
+      events.push(['query', handle.variant]);
+      return state.query ? state.query(handle) : state.ready;
+    },
+  };
+  const renderer = {
+    info: { programs: [] }, getContext: () => gl,
+    getRenderTarget: () => null, setRenderTarget() {},
+    compile(root, activeCamera, activeScene) {
+      assert.equal(activeScene, scene);
+      assert.equal(activeCamera, camera);
+      events.push(['compile', root.name]);
+      state.clock += compileMs;
+      const materials = new Set();
+      // Pinned Three's per-object compile still traverses that object's entire
+      // subtree, including hidden nested variants. This contract is unchanged.
+      root.traverse((object) => {
+        if (!object.isMesh) return;
+        materials.add(object.material);
+        const variant = object.userData.variant;
+        if (programs.has(variant)) return;
+        const wrapper = { id: variant, program: { variant },
+          getUniforms() {
+            events.push(['uniform', variant]);
+            state.reflect?.(variant);
+            return {};
+          },
+          getAttributes() { events.push(['attribute', variant]); return {}; },
+        };
+        programs.set(variant, wrapper);
+        renderer.info.programs.push(wrapper);
+      });
+      if (state.compileFailure) throw new Error('legacy compile failure after partial submission');
+      return materials;
+    },
+  };
+  const owner = createForwardProgramWarmOwner({ renderer, scene, camera, getTarget: () => null, now: () => state.clock });
+  const stats = {};
+  return { owner, scene, renderer, programs, events, state, gl, stats,
+    steps: () => owner.initializeSteps(scene, stats, { requireCompletion: true }),
+    dispose() { geometry.dispose(); material.dispose(); } };
+}
+
+{
+  const f = garageCohortFixture();
+  try {
+    const steps = f.steps();
+    let yields = 0;
+    for (let step = steps.next(); !step.done; step = steps.next()) {
+      yields += 1;
+      const reflected = f.events.filter(([kind]) => kind === 'attribute').length;
+      assert.ok(f.programs.size - reflected <= 32, 'no further native submissions beyond the32-program admission watermark');
+      if (yields === 1) {
+        assert.equal(f.events.filter(([kind]) => kind === 'compile').length, 32);
+        assert.equal(f.events.some(([kind]) => kind === 'query' || kind === 'uniform'), false,
+          'batched submission must still release a real checkpoint before any cold query');
+      }
+    }
+    assert.equal(yields, 5, '65 one-program objects need three cohort waits plus two32-entry reflection budget waits, not65 serial frames');
+    assert.equal(f.events.filter(([kind]) => kind === 'compile').length, 65, 'every original object is submitted');
+    assert.equal(f.events.filter(([kind]) => kind === 'uniform').length, 65);
+    assert.equal(f.events.filter(([kind]) => kind === 'attribute').length, 65);
+    assert.deepEqual({ cohorts: f.stats.programCohorts, prepared: f.stats.programsPrepared, max: f.stats.programCohortMax },
+      { cohorts: 3, prepared: 65, max: 32 }, 'the final one-program cohort is included in the completion receipt');
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture({ count: 5 });
+  const hidden = new THREE.Mesh(f.scene.children[0].geometry, f.scene.children[0].material);
+  hidden.userData.variant = 100;
+  hidden.visible = false;
+  f.scene.children[0].add(hidden);
+  try {
+    [...f.steps()];
+    assert.equal(f.events.filter(([kind]) => kind === 'compile').length, 5);
+    assert.ok(f.events.some(([kind, variant]) => kind === 'attribute' && variant === 100),
+      'batching does not replace native traversal or omit nested hidden variants');
+    assert.equal(f.stats.programsPrepared, 6,
+      'shared material identity cannot erase distinct object/native shader variants');
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture({ count: 10, compileMs: 5, shared: true });
+  try {
+    let compiled = 0;
+    for (const _ of f.steps()) {
+      const current = f.events.filter(([kind]) => kind === 'compile').length;
+      assert.ok(current - compiled <= 2, '8ms admission boundary remains even with no new shader variants');
+      compiled = current;
+    }
+    assert.equal(compiled, 10);
+    assert.equal(f.stats.programsPrepared, 1, 'the exact shared wrapper is reflected once');
+    assert.equal(f.stats.programBudgetSlices, 4, 'CPU-only checkpoints remain distinguishable from the one cohort wait');
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture();
+  f.state.ready = false;
+  try {
+    const steps = f.steps();
+    steps.next(); steps.next(); steps.next();
+    assert.equal(f.programs.size, 32, 'pending first cohort prevents admitting more cold programs');
+    assert.equal(f.events.some(([kind]) => kind === 'uniform'), false, 'pending is never treated as ready');
+    f.state.ready = true;
+    [...steps];
+    assert.equal(f.stats.programsPrepared, 65);
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture();
+  f.state.query = (handle) => handle.variant !== 64;
+  try {
+    assert.throws(() => [...f.steps()], (error) => error instanceof ProgramUniformPreparationError
+      && error.preparation.reason === 'budget');
+    assert.equal(f.events.filter(([kind]) => kind === 'attribute').length, 64,
+      'a pending final partial cohort cannot be silently omitted from success');
+    assert.equal(f.stats.programsPrepared, 64);
+  } finally { f.dispose(); }
+}
+
+for (const boundary of ['epoch', 'info', 'context', 'loss', 'handle', 'dispose', 'return']) {
+  const f = garageCohortFixture();
+  try {
+    const steps = f.steps();
+    steps.next();
+    if (boundary === 'epoch') f.owner.invalidate();
+    if (boundary === 'info') f.renderer.info = { programs: [...f.renderer.info.programs] };
+    if (boundary === 'context') f.renderer.getContext = () => ({ ...f.gl });
+    if (boundary === 'loss') f.state.lost = true;
+    if (boundary === 'handle') f.programs.get(31).program = { variant: 'replacement' };
+    if (boundary === 'dispose') f.renderer.info.programs.pop();
+    if (boundary === 'return') {
+      steps.return();
+      assert.equal(steps.next().done, true);
+      assert.equal(f.events.some(([kind]) => kind === 'uniform'), false);
+    } else {
+      assert.throws(() => [...steps], (error) => error instanceof ProgramUniformPreparationError
+        && error.preparation.reason === 'invalidated', boundary);
+      assert.equal(f.events.some(([kind, variant]) => kind === 'uniform' && variant === 31), false,
+        `${boundary}: stale wrapper/native generation is not reflected`);
+    }
+    assert.equal(f.events.filter(([kind]) => kind === 'compile').length, 32,
+      `${boundary}: aborted first cohort admits no later object`);
+  } finally { f.dispose(); }
+}
+
+for (const failure of ['query', 'attribute']) {
+  const f = garageCohortFixture({ count: 3 });
+  try {
+    const steps = f.steps();
+    steps.next();
+    if (failure === 'query') f.state.query = () => { throw new Error('native query failed'); };
+    else f.programs.get(2).getAttributes = () => { throw new Error('attribute table unavailable'); };
+    assert.throws(() => [...steps], (error) => error instanceof ProgramUniformPreparationError
+      && error.preparation.reason === (failure === 'query' ? 'query' : 'reflection'));
+    assert.equal(f.stats.programsPrepared, undefined, 'failed batch cannot contribute a complete-cohort receipt');
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture({ count: 3 });
+  f.state.compileFailure = true;
+  try {
+    [...f.steps()];
+    assert.equal(f.events.filter(([kind]) => kind === 'compile').length, 3,
+      'batching retains the existing per-object compile-error compatibility policy');
+    assert.equal(f.stats.programsPrepared, 3,
+      'partially submitted variants still require complete readiness/reflection before the legacy real-render fallback');
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture({ count: 2 });
+  for (let i = 0; i < 35; i += 1) {
+    const child = new THREE.Mesh(f.scene.children[0].geometry, f.scene.children[0].material);
+    child.userData.variant = 100 + i;
+    child.visible = false;
+    f.scene.children[0].add(child);
+  }
+  try {
+    const steps = f.steps();
+    steps.next();
+    assert.equal(f.events.filter(([kind]) => kind === 'compile').length, 1,
+      'one indivisible native compile may cross32, but no subsequent object is admitted before its drain');
+    assert.equal(f.programs.size, 36);
+    [...steps];
+    assert.equal(f.stats.programCohortMax, 36, '32 is an admission watermark, not a lossy capture cap');
+    assert.equal(f.stats.programsPrepared, 37);
+  } finally { f.dispose(); }
+}
+
+{
+  const f = garageCohortFixture({ count: 3 });
+  f.state.reflect = () => { f.state.clock += 6; };
+  try {
+    let reflected = 0;
+    for (const _ of f.steps()) {
+      const current = f.events.filter(([kind]) => kind === 'attribute').length;
+      assert.ok(current - reflected <= 1, 'native reflection cost retains its own4ms cooperative work budget');
+      reflected = current;
+    }
+    assert.equal(reflected, 3);
+  } finally { f.dispose(); }
+}
+
+console.log('programWarm.selftest: target compile, bounded cohort readiness, cancellation and complete uniform/attribute drains passed');

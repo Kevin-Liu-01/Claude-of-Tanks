@@ -12,12 +12,13 @@ import {
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
 import type { PostRuntime } from '../engine/post.ts';
-import type { ForwardProgramWarmOwner } from '../engine/programWarm.ts';
+import type { ForwardProgramWarmOwner, ForwardProgramCompileTiming } from '../engine/programWarm.ts';
 import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import type {
   CombatFxSubmission,
   CombatFxSubmissionOptions,
   TerrainWarmOptions,
+  OpeningTerrainPresentationOptions,
 } from './battleWarmRuntime.ts';
 import type { BattleVisualEntity, BattleVisualStreamer } from './battleVisualStreamer.ts';
 import type { CombatWarmCoordinator } from './combatWarmCoordinator.ts';
@@ -50,6 +51,7 @@ interface ArmorWarmPort {
 
 interface BattleWarmPort {
   warmBattleTerrainTiles(options: TerrainWarmOptions): Promise<RuntimeValue>;
+  primeOpeningTerrainPresentation(options: OpeningTerrainPresentationOptions): Promise<RuntimeValue>;
   stageCombatFxProgramSubmission(
     options: CombatFxSubmissionOptions,
   ): Promise<CombatFxSubmission> | CombatFxSubmission;
@@ -76,6 +78,7 @@ interface DeploymentWarmTrace {
   stages: Record<string, number>;
   enemyVisualsDeferred?: boolean;
   deploymentCompileMs?: number;
+  deploymentProgramSubmission?: ForwardProgramCompileTiming;
   deploymentFxForwardWarm?: {
     batches: number;
     maxMs: number;
@@ -140,6 +143,8 @@ export interface SoloBattleDeploymentRuntimeOptions {
 export interface SoloBattleDeploymentWarmResult {
   generation: number;
   revealPrimed: boolean;
+  /** Revalidate this generation after every loading/fallback await. */
+  assertRevealReady(): void;
 }
 
 export interface SoloBattleDeploymentRuntime {
@@ -154,13 +159,13 @@ function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): v
     checkedIntegrationPort<BattleWarmPort>(
       options.battleWarm ?? {},
       'solo deployment battle warm',
-      ['warmBattleTerrainTiles', 'stageCombatFxProgramSubmission'],
+      ['warmBattleTerrainTiles', 'primeOpeningTerrainPresentation', 'stageCombatFxProgramSubmission'],
     );
     checkedIntegrationPort<ArmorWarmPort>(
       options.armorAimOverlay ?? {}, 'solo deployment armor overlay', ['warm'],
     );
     checkedIntegrationPort(
-      options.forwardProgramWarm ?? {}, 'solo deployment program warm', ['compile'],
+      options.forwardProgramWarm ?? {}, 'solo deployment program warm', ['compileSceneSteps'],
     );
     checkedIntegrationPort(
       options.combatWarm ?? {}, 'solo deployment combat warm', ['markOpeningReady'],
@@ -246,6 +251,11 @@ export function createSoloBattleDeploymentRuntime(
       const generation = advanceGeneration();
       setPending(true);
       let revealPrimed = false;
+      let groundCoverReady = false;
+      const assertRevealReady = (): void => {
+        if (!stillCurrent(generation)) throw new Error('Solo battle deployment was superseded');
+        if (!groundCoverReady) throw new Error('Opening ground cover is not ready for reveal');
+      };
       const trace: DeploymentWarmTrace = {
         done: false,
         phase: 'transition',
@@ -275,11 +285,16 @@ export function createSoloBattleDeploymentRuntime(
         mark('nightLighting');
         battleLoad.progress(0.91, 'Finishing camouflage');
         const coveredYield = createLoadingYielder(18, 80);
+        const guardedCoveredYield: WorkYielder = async (force) => {
+          requireCurrent(generation);
+          await coveredYield(force);
+          requireCurrent(generation);
+        };
         const battleVisuals = getBattleVisuals();
 
         await battleVisuals.stream(
           (entity) => (entity as DeploymentEntity).team === 'player',
-          coveredYield,
+          guardedCoveredYield,
           (fraction) => battleLoad.progress(
             0.91 + fraction * 0.02,
             'Preparing allied vehicles',
@@ -299,7 +314,8 @@ export function createSoloBattleDeploymentRuntime(
         await battleWarm.warmBattleTerrainTiles({
           game,
           world: getWorld(),
-          yieldForBudget: coveredYield,
+          yieldForBudget: guardedCoveredYield,
+          primePresentation: false,
         });
         requireCurrent(generation);
         mark('terrainGrid');
@@ -307,6 +323,13 @@ export function createSoloBattleDeploymentRuntime(
         battleLoad.progress(0.968, 'Priming deployment view');
         prepareRevealCamera();
         mark('revealCamera');
+        await battleWarm.primeOpeningTerrainPresentation({
+          game, world: getWorld(), camera, yieldForBudget: guardedCoveredYield,
+          assertCurrent: () => requireCurrent(generation),
+        });
+        requireCurrent(generation);
+        groundCoverReady = true;
+        mark('openingGroundCover');
 
         const deploymentCompileStartedAt = now();
         const restoreArmorWarmVisibility = armorAimOverlay.warm();
@@ -320,7 +343,23 @@ export function createSoloBattleDeploymentRuntime(
         });
         const fxForwardWarmBatches = [];
         try {
-          forwardProgramWarm.compile(scene);
+          requireCurrent(generation);
+          // The complete scene submission and its first FX bind previously
+          // shared one >100 ms task. Use the existing exact-scene compiler's
+          // bounded traversal; every checkpoint restores renderer state.
+          const submissionTiming: ForwardProgramCompileTiming = {};
+          trace.deploymentProgramSubmission = submissionTiming;
+          for (const _ of forwardProgramWarm.compileSceneSteps({
+            sliceMs: 8,
+            timing: submissionTiming,
+          })) {
+            await guardedCoveredYield(true);
+            requireCurrent(generation);
+          }
+          // Also separate the final compile batch from native uniform lookup
+          // in the first bind. A completed short compile may yield no slices.
+          await guardedCoveredYield(true);
+          requireCurrent(generation);
           fx.group.visible = false;
           for (const batch of createIsolatedForwardWarmBatches({
             scene,
@@ -330,7 +369,8 @@ export function createSoloBattleDeploymentRuntime(
             now,
           })) {
             fxForwardWarmBatches.push(batch);
-            await coveredYield(true);
+            await guardedCoveredYield(true);
+            requireCurrent(generation);
           }
         } catch {
           // The first covered production frame remains the compatibility path.
@@ -338,6 +378,7 @@ export function createSoloBattleDeploymentRuntime(
           combatFxSubmission.restore();
           restoreArmorWarmVisibility();
         }
+        requireCurrent(generation);
 
         if (combatFxSubmission.staged) {
           combatWarm.markOpeningReady();
@@ -356,13 +397,16 @@ export function createSoloBattleDeploymentRuntime(
         };
 
         await yieldFrame();
+        requireCurrent(generation);
         await yieldFrame();
+        requireCurrent(generation);
         // Those newly submitted programs belong to hidden combat effects.
         // Reflecting every private ANGLE uniform table here can block for more
         // than a second even though none is rendered by the reveal frame.
         trace.deploymentUniformsDeferred = true;
         battleLoad.progress(0.969, 'Priming deployment shadows');
-        trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(coveredYield);
+        trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(guardedCoveredYield);
+        requireCurrent(generation);
         mark('shadowMaps');
 
         const forwardBatches = [];
@@ -375,7 +419,8 @@ export function createSoloBattleDeploymentRuntime(
           now,
         })) {
           forwardBatches.push(batch);
-          await coveredYield(true);
+          await guardedCoveredYield(true);
+          requireCurrent(generation);
         }
         const forwardBatchMs = forwardBatches.map((batch) => batch.ms);
         trace.deploymentForwardWarm = {
@@ -385,14 +430,16 @@ export function createSoloBattleDeploymentRuntime(
         };
         mark('forwardPrograms');
 
-        trace.deploymentPostWarm = await post.warmFirstFrame(() => coveredYield(true));
+        trace.deploymentPostWarm = await post.warmFirstFrame(() => guardedCoveredYield(true));
+        requireCurrent(generation);
         mark('postPasses');
         battleLoad.progress(0.97, 'Priming deployment view');
         const entryLifecycle = getEntryLifecycle();
+        assertRevealReady();
         await entryLifecycle.primeReveal();
+        requireCurrent(generation);
         revealPrimed = true;
         entryLifecycle.coverRendering();
-        requireCurrent(generation);
         mark('openingFrame');
 
         battleLoad.progress(0.975, 'Combat effects ready');
@@ -409,15 +456,22 @@ export function createSoloBattleDeploymentRuntime(
         host.__BATTLE_COUNTDOWN_WARM = trace;
         devTrace?.mark?.('battle:entry-warm-end', { totalMs: trace.totalMs });
       } catch (error) {
-        if (error === STALE_DEPLOYMENT) return { generation, revealPrimed };
+        if (error === STALE_DEPLOYMENT || !stillCurrent(generation)) {
+          throw new Error('Solo battle deployment was superseded');
+        }
         if (stillCurrent(generation)) {
           trace.done = true;
           trace.doneBeforeRollout = false;
           trace.error = String(error);
           host.__BATTLE_COUNTDOWN_WARM = trace;
         }
+        // Optional shader warming may fall back to a real covered render.
+        // Incomplete geometry cannot: loading must recover, not reveal a
+        // different/empty carpet via its optional-warm compatibility path.
+        if (!groundCoverReady) throw error;
       }
-      return { generation, revealPrimed };
+      assertRevealReady();
+      return { generation, revealPrimed, assertRevealReady };
     },
   };
 }

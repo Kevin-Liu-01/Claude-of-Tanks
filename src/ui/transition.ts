@@ -29,6 +29,7 @@ import {
 } from './featuredShots.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { t } from './i18n.ts';
+import { waitForOpaqueTransition } from './transitionCover.ts';
 
 const FADE_IN_MS = 190;
 const FADE_OUT_MS = 140;
@@ -121,10 +122,9 @@ function skipTransitions() {
   return typeof navigator !== 'undefined' && !!navigator.webdriver;
 }
 
-// Timers, never requestAnimationFrame: rAF does not fire in a hidden tab,
-// and a transition that gates the actual state swap must keep sequencing
-// even when the document is backgrounded mid-swap (the game loop has its
-// own hidden-document fallback; this must be at least as robust).
+// Dwell/fade-out timers still progress in hidden documents. Visible fade-in
+// additionally checks real opacity and yields a rendering opportunity; its
+// owner explicitly permits hidden-document continuation without waiting on rAF.
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -228,7 +228,7 @@ export function createTransition(): TransitionScreen {
       root.classList.add('on');
       // let the display flip commit before opacity animates (timer, not rAF —
       // see the sleep() note; in a hidden tab the fade simply skips)
-      setTimeout(() => { if (visible) root.classList.add('lit'); }, 30);
+      setTimeout(() => { if (visible && hideToken === token) root.classList.add('lit'); }, 30);
     },
 
     /** Real progress. @param {number} f 0..1 @param {string} [label] */
@@ -264,20 +264,26 @@ export function createTransition(): TransitionScreen {
     async run<Result>(work: TransitionWork<Result>, o: TransitionOptions = {}): Promise<Result> {
       if (skipTransitions()) return work(() => {});
       api.show(o);
-      const fadeInSettleMs = o.pace === 'quick'
-        ? QUICK_FADE_IN_MS + 40
-        : FADE_IN_MS + 60;
-      await sleep(fadeInSettleMs); // land fully lit before heavy work stalls paint
+      const token = hideToken;
+      const isCurrent = () => visible && hideToken === token;
       let result!: Result;
       try {
-        result = await work(api.progress);
-        api.progress(1, t('transition.stage.ready'));
-        if (warmAfterWork) preloadImage(warmAfterWork, { priority: 'low' });
+        // A nominal timer can expire before CSS has painted its final frame,
+        // especially if GPU/program work delayed the transition's first frame.
+        await waitForOpaqueTransition(root, { isCurrent });
+        if (!isCurrent()) throw new DOMException('Transition cover was superseded', 'AbortError');
+        result = await work((fraction, label) => { if (isCurrent()) api.progress(fraction, label); });
+        if (isCurrent()) {
+          api.progress(1, t('transition.stage.ready'));
+          if (warmAfterWork) preloadImage(warmAfterWork, { priority: 'low' });
+        }
       } finally {
-        const dwell = (o.minShowMs != null ? o.minShowMs : 800) -
-          (performance.now() - shownAt);
-        if (dwell > 0) await sleep(dwell);
-        await api.hide();
+        if (isCurrent()) {
+          const dwell = (o.minShowMs != null ? o.minShowMs : 800) -
+            (performance.now() - shownAt);
+          if (dwell > 0) await sleep(dwell);
+          if (isCurrent()) await api.hide();
+        }
       }
       return result;
     },

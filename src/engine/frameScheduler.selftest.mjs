@@ -6,22 +6,40 @@ import {
   nextPaintFrame,
 } from './frameScheduler.ts';
 
-async function withFrameHost({ animationFrame = true, taskScheduler = false } = {}, run) {
-  const keys = ['requestAnimationFrame', 'setTimeout', 'scheduler'];
+async function withFrameHost({ animationFrame = true, taskScheduler = false,
+  hidden = false, documentAvailable = true, frameError = null } = {}, run) {
+  const keys = ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout',
+    'clearTimeout', 'scheduler', 'document'];
   const prior = new Map(keys.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   const frames = [];
   const timers = [];
   const tasks = [];
+  const cancelledFrames = [];
+  const listeners = new Set();
+  const paintDocument = {
+    hidden,
+    addEventListener(type, callback) { assert.equal(type, 'visibilitychange'); listeners.add(callback); },
+    removeEventListener(type, callback) { assert.equal(type, 'visibilitychange'); listeners.delete(callback); },
+  };
   const host = {
-    requestAnimationFrame: animationFrame ? (callback) => { frames.push(callback); return frames.length; } : undefined,
+    document: documentAvailable ? paintDocument : undefined,
+    requestAnimationFrame: animationFrame ? (callback) => {
+      if (frameError) throw frameError;
+      frames.push(callback); return frames.length;
+    } : undefined,
+    cancelAnimationFrame(id) { cancelledFrames.push(id); },
     setTimeout(callback, delay) { timers.push({ callback, delay }); return timers.length; },
-    scheduler: taskScheduler ? { yield: () => new Promise((resolve) => tasks.push(resolve)) } : undefined,
+    clearTimeout(id) { timers[id - 1].cancelled = true; },
+    scheduler: taskScheduler ? { yield: () => new Promise((resolve, reject) => {
+      tasks.push(Object.assign(resolve, { reject }));
+    }) } : undefined,
   };
   try {
     for (const key of keys) Object.defineProperty(globalThis, key, {
       configurable: true, writable: true, value: host[key],
     });
-    await run({ frames, timers, tasks });
+    await run({ frames, timers, tasks, cancelledFrames, listeners,
+      setHidden(value) { paintDocument.hidden = value; for (const callback of [...listeners]) callback(); } });
   } finally {
     for (const key of keys) {
       const descriptor = prior.get(key);
@@ -39,7 +57,7 @@ await withFrameHost({}, async ({ frames, timers }) => {
     'the existing nextFrame remains an animation checkpoint without a new task delay');
 });
 
-await withFrameHost({}, async ({ frames, timers }) => {
+await withFrameHost({}, async ({ frames, timers, cancelledFrames, listeners }) => {
   const events = [];
   let completions = 0;
   const pending = nextPaintFrame().then(() => {
@@ -47,35 +65,43 @@ await withFrameHost({}, async ({ frames, timers }) => {
     events.push('continuation');
   });
   assert.equal(frames.length, 1);
-  assert.deepEqual(timers.map(({ delay }) => delay), [34]);
+  assert.deepEqual(timers.map(({ delay }) => delay), [1000],
+    'a visible paint wait has no 34ms success fallback');
   events.push('animation callback');
   frames[0]();
   await Promise.resolve();
   assert.equal(completions, 0, 'rAF and its microtasks cannot resume paint-sensitive work');
-  assert.deepEqual(timers.map(({ delay }) => delay), [34, 0]);
+  assert.deepEqual(timers.map(({ delay }) => delay), [1000, 0]);
+  assert.equal(timers[0].cancelled, true);
+  assert.deepEqual(cancelledFrames, [1]);
+  assert.equal(listeners.size, 0, 'the real frame releases every owned wait resource');
   events.push('rendering opportunity');
   timers.find(({ delay }) => delay === 0).callback();
   await pending;
   assert.deepEqual(events, ['animation callback', 'rendering opportunity', 'continuation']);
-  timers.find(({ delay }) => delay === 34).callback();
+  timers.find(({ delay }) => delay === 1000).callback();
   frames[0]();
   await Promise.resolve();
   assert.equal(completions, 1, 'late frame/fallback callbacks cannot settle twice');
   assert.equal(timers.length, 2, 'late callbacks cannot queue another post-frame task');
 });
 
-for (const animationFrame of [false, true]) {
-  await withFrameHost({ animationFrame }, async ({ frames, timers }) => {
+for (const options of [
+  { animationFrame: false }, { hidden: true }, { documentAvailable: false },
+]) {
+  await withFrameHost(options, async ({ frames, timers, listeners }) => {
     let completed = false;
     const pending = nextPaintFrame().then(() => { completed = true; });
     assert.deepEqual(timers.map(({ delay }) => delay), [34],
-      'missing or throttled animation frames retain the bounded fallback');
+      'only hidden, no-document or no-rAF hosts retain the bounded fallback');
     timers[0].callback();
     await Promise.resolve();
     assert.equal(completed, false, 'fallback still crosses a task boundary before continuation');
     timers.find(({ delay }) => delay === 0).callback();
     await pending;
     assert.equal(completed, true, 'hidden documents do not wait indefinitely for rAF');
+    assert.equal(timers[0].cancelled, true);
+    assert.equal(listeners.size, 0);
     frames[0]?.();
     await Promise.resolve();
     assert.equal(timers.length, 2, 'a late hidden-frame callback cannot schedule extra work');
@@ -89,11 +115,76 @@ await withFrameHost({ taskScheduler: true }, async ({ frames, timers, tasks }) =
   await Promise.resolve();
   assert.equal(completed, false);
   assert.equal(tasks.length, 1, 'the native task scheduler supplies the post-frame boundary when available');
-  assert.deepEqual(timers.map(({ delay }) => delay), [34], 'no redundant timer task is scheduled');
+  assert.deepEqual(timers.map(({ delay }) => delay), [1000], 'no redundant timer task is scheduled');
   tasks[0]();
   await pending;
   assert.equal(completed, true);
 });
+
+await withFrameHost({}, async ({ frames, timers, cancelledFrames, listeners }) => {
+  const pending = nextPaintFrame();
+  const rejected = assert.rejects(pending, /Visible paint frame did not arrive within 1000 ms/);
+  timers[0].callback();
+  await rejected;
+  assert.equal(timers[0].cancelled, true);
+  assert.deepEqual(cancelledFrames, [1]);
+  assert.equal(listeners.size, 0);
+  frames[0](); timers[0].callback();
+  await Promise.resolve();
+  assert.equal(timers.length, 1, 'a failed or late visible frame cannot schedule heavy continuation');
+});
+
+await withFrameHost({}, async ({ frames, timers, cancelledFrames, listeners, setHidden }) => {
+  let complete = false;
+  const pending = nextPaintFrame().then(() => { complete = true; });
+  setHidden(true);
+  await Promise.resolve();
+  assert.equal(complete, false, 'hidden transition still leaves the current task before continuing');
+  assert.equal(listeners.size, 0);
+  assert.deepEqual(cancelledFrames, [1]);
+  assert.equal(timers[0].cancelled, true);
+  assert.deepEqual(timers.map(({ delay }) => delay), [1000, 0]);
+  timers[1].callback(); await pending;
+  frames[0](); timers[0].callback();
+  await Promise.resolve();
+  assert.equal(timers.length, 2, 'late visibility/frame/deadline work cannot revive a settled wait');
+});
+
+await withFrameHost({ hidden: true }, async ({ frames, timers, setHidden, listeners }) => {
+  const pending = nextPaintFrame();
+  assert.equal(timers[0].delay, 34);
+  setHidden(false);
+  assert.equal(timers[0].cancelled, true);
+  assert.equal(timers[1].delay, 1000, 'becoming visible replaces the hidden-only fallback');
+  timers[0].callback(); await Promise.resolve();
+  assert.equal(listeners.size, 1, 'an obsolete hidden timer cannot reject the new visible wait');
+  setHidden(false);
+  assert.equal(timers.length, 2, 'duplicate visibility events cannot extend the visible deadline');
+  frames[0](); await Promise.resolve();
+  assert.equal(timers[1].cancelled, true);
+  assert.equal(listeners.size, 0);
+  timers[2].callback(); await pending;
+});
+
+await withFrameHost({ taskScheduler: true }, async ({ frames, tasks, timers, listeners }) => {
+  const expected = new Error('task owner aborted');
+  const pending = nextPaintFrame();
+  const rejected = assert.rejects(pending, error => error === expected);
+  frames[0](); await Promise.resolve();
+  tasks[0].reject(expected); await rejected;
+  assert.equal(timers[0].cancelled, true);
+  assert.equal(listeners.size, 0, 'task failure cannot leak the completed frame wait');
+});
+
+{
+  const expected = new Error('rAF unavailable');
+  await withFrameHost({ frameError: expected }, async ({ timers, listeners }) => {
+    await assert.rejects(nextPaintFrame(), error => error === expected);
+    assert.equal(timers[0].cancelled, true);
+    assert.equal(listeners.size, 0, 'a native setup error also releases partial ownership');
+    assert.equal(timers.length, 1, 'setup failure cannot enter the task continuation');
+  });
+}
 
 let now = 0;
 let frameYields = 0;

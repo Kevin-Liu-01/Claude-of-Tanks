@@ -6,7 +6,10 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //        [--map verdant|desert|winter|urban] [--scene battle|garage] [--breakdown]
 //        [--tier desktop|mobile] [--mobile-preset mobile-low|mobile|mobile-high]
 //        [--fps-target 60|120] [--msaa 0|2|4] [--entry player|sync]
-// Starts vite, loads the game headless, measures load-to-__GAME_READY, enters
+//        [--production] [--dist=/path/to/existing/build] [--early-window] [--native-cadence]
+//        [--camera-input]
+// Starts Vite (or previews an EXISTING dist with --production; never builds),
+// loads the game headless, measures load-to-__GAME_READY, enters
 // battle through the real player loading/warm-up path by default, simulates
 // combat (drive via synthetic keys + forceFire debug flag) for N seconds while
 // sampling rAF deltas, renderer.info, and JS heap. Prints a JSON report to stdout
@@ -19,13 +22,151 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // accumulate: a 20 s slice measured p95 ~10 ms on the same build where the
 // 40-60 s window hit p99 30+ ms. Short runs (--seconds 20) are fine for quick
 // iteration but are NOT evidence the budget holds.
+// Default: settled/sustained throughput, including pre-window forced GC.
+// --early-window: first observed normal player-control-release RAF onward,
+// without settling/GLB waits/pre-GC. --native-cadence retains browser vsync;
+// this requests ordinary cadence, not proof of a physical display's refresh.
+// --camera-input adds trusted horizontal mouse pulses during the same timed
+// battle and reports input-to-camera/RAF observations, never display latency.
 
-import { createServer } from 'vite';
+import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
-import { writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
+import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
+import { CAMERA_INPUT_PROTOCOL, runCameraInputWindow } from './perfprobe-camera-input.mjs';
+import { REFERENCE_MIXED_ROSTER, createPerfRosterRequest, inspectPerfRosterEligibility,
+  recordPerfRosterCheckpoint, recordPerfRosterEdges, preservePerfRosterFailure, requirePerfRoster } from './perfprobe-roster.mjs';
+
+// Standalone functions are also exercised in the browser-free focused test.
+function perfModes(args, scene, entry) {
+  const earlyWindow = args.includes('--early-window');
+  const cameraInput = args.includes('--camera-input');
+  if (earlyWindow && (scene !== 'battle' || entry !== 'player')) {
+    throw new Error('--early-window requires --scene battle --entry player');
+  }
+  if (cameraInput && (scene !== 'battle' || entry !== 'player')) {
+    throw new Error('--camera-input requires --scene battle --entry player');
+  }
+  return {
+    production: args.includes('--production'),
+    earlyWindow,
+    cameraInput,
+    nativeCadence: args.includes('--native-cadence'),
+    windowMode: earlyWindow ? 'early-control-release' : 'sustained',
+  };
+}
+
+function perfBrowserArgs(nativeCadence) {
+  return [
+    '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
+    '--enable-precise-memory-info',
+    ...(nativeCadence ? [] : ['--disable-frame-rate-limit', '--disable-gpu-vsync']),
+    // Foreground player timers must not inherit headless-hidden throttling.
+    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    // Early mode uses this only AFTER its timed sample.
+    '--js-flags=--expose-gc',
+  ];
+}
+
+function installPerfSampler({ sampleMs, waitForControl }) {
+  const D = window.__DEBUG;
+  const R = D.renderer;
+  const P = window.__PERF = {
+    deltas: [], times: [], calls: [], tris: [], points: [], lines: [],
+    shadowMasks: [], heap: [], done: false, startedAt: null,
+    windowMode: waitForControl ? 'early-control-release' : 'sustained',
+    armedAt: performance.now(), timeOrigin: performance.timeOrigin,
+  };
+  let last = -1;
+  let heapIv;
+  const receipt = () => ({
+    ...window.__PERF_READ_ENVIRONMENT(),
+    phase: D.game.phase, preBattleS: D.game.preBattleS, timeS: D.game.timeS,
+    playerSpecId: D.game.player?.specId ?? null,
+    roster: D.game.tanks.map(entity => ({ id: entity.id, specId: entity.specId, team: entity.team })),
+  });
+  function start(now) {
+    P.startedAt = now;
+    P.environmentStart = receipt();
+    // Manual reset counts all passes between RAF samples, as in legacy mode.
+    R.info.autoReset = false;
+    if (performance.memory) P.heap.push(performance.memory.usedJSHeapSize);
+    heapIv = setInterval(() => {
+      if (performance.memory) P.heap.push(performance.memory.usedJSHeapSize);
+    }, 1000);
+  }
+  function frame(now) {
+    if (P.startedAt === null) {
+      if (D.game.phase !== 'battle' || !(D.game.preBattleS <= 0)) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      // This RAF observes the runtime-owned countdown edge; no CDP polling
+      // round trip, settling, or collection can postpone opening the window.
+      start(now);
+    }
+    if (now - P.startedAt > sampleMs) {
+      clearInterval(heapIv);
+      P.endedAt = now;
+      P.info = {
+        geometries: R.info.memory.geometries, textures: R.info.memory.textures,
+        programs: R.info.programs.length,
+      };
+      R.info.autoReset = true;
+      P.environmentEnd = receipt();
+      P.done = true;
+      return;
+    }
+    if (last >= 0) {
+      P.deltas.push(now - last);
+      P.times.push(now - P.startedAt);
+      P.calls.push(R.info.render.calls);
+      P.tris.push(R.info.render.triangles);
+      P.points.push(R.info.render.points);
+      P.lines.push(R.info.render.lines);
+      P.shadowMasks.push(D.lighting.scheduledMask | 0);
+    }
+    R.info.reset();
+    last = now;
+    requestAnimationFrame(frame);
+  }
+  if (!waitForControl) start(performance.now());
+  requestAnimationFrame(frame);
+}
+
+function perfSourceReceipt() {
+  const git = args => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }).trim();
+  const digest = createHash('sha256');
+  const files = git(['ls-files', '-co', '--exclude-standard', '--', 'src'])
+    .split('\n').filter(Boolean);
+  for (const file of [...new Set(files)].sort()) {
+    digest.update(file); digest.update(readFileSync(file));
+  }
+  return {
+    revision: git(['rev-parse', 'HEAD']),
+    dirtyPaths: git(['status', '--short']).split('\n').filter(Boolean),
+    sourceHash: digest.digest('hex'),
+    sourceHashScope: 'sorted tracked and non-ignored untracked src paths and bytes',
+  };
+}
+
+function readPerfHeapSnapshot(forceGC) {
+  const forcedGC = forceGC && typeof window.gc === 'function';
+  if (forcedGC) { window.gc(); window.gc(); }
+  return { bytes: performance.memory ? performance.memory.usedJSHeapSize : -1, forcedGC };
+}
+
+async function closePerfServer(server) {
+  if (typeof server.close === 'function') await server.close();
+  else await new Promise((resolveClose, rejectClose) => {
+    server.httpServer.close(error => error ? rejectClose(error) : resolveClose());
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Harness serialization (performance_budget r2, critic minor #8): this machine
@@ -57,6 +198,8 @@ lockRefresher.unref();
 
 const args = process.argv.slice(2);
 function opt(name, fallback) {
+  const inline = args.find(arg => arg.startsWith(`--${name}=`));
+  if (inline) return inline.slice(name.length + 3);
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : fallback;
 }
@@ -97,18 +240,14 @@ const forcedMsaaRaw = opt('msaa', '');
 const forcedMsaa = forcedMsaaRaw === '' ? null : Math.max(0, parseInt(forcedMsaaRaw, 10) || 0);
 const dumpFile = opt('dump', '');
 const trendNote = opt('note', '');
-// PERF r3 (draw-call worst-frame gate): certification measures a PINNED
-// worst-case roster — all multi-mesh GLB heavies — instead of whatever the
-// seeded shuffle draws for the current content pool. The round-2 critic
-// measured 1095 worst-frame calls on one random roster and 470 on another on
-// the IDENTICAL build; a budget that depends on the draw is not a gate.
-// Requires the state.ts flags.forceRoster hook (performance_budget-r3.md §4)
-// — on trees without it the flag is simply ignored and the seeded draw runs.
-// `--roster random` restores the legacy seeded draw (for trend comparisons);
-// `--roster a,b,c` pins any explicit lineup (7 enemies max).
-const WORST_CASE_ROSTER = 'kv2,jagdtiger,tiger2,object279,is7,t30,t95';
-const rosterOpt = opt('roster', WORST_CASE_ROSTER);
-const forceRoster = rosterOpt === 'random' ? null : rosterOpt.split(',').map((s) => s.trim()).filter(Boolean);
+// A repeatable mixed 13-opponent workload, not a claim of the fleet's worst
+// case. Validate against the served build before entry and compare actual
+// entity/spec order at entry and both sample edges. Invalid/retired IDs must
+// not silently become the game's ordinary seeded top-up roster.
+// `--roster random` measures a separately labeled seeded draw; custom pinned
+// runs require exactly 13 distinct eligible opponents (the full 14-tank battle).
+const rosterRequest = createPerfRosterRequest(opt('roster', REFERENCE_MIXED_ROSTER.join(',')));
+const forceRoster = rosterRequest.requestedOpponents;
 // PERF r4: --map makes the triangle-ratchet flip criterion executable
 // (carryover-from-r3 §7: flip RATCHET.trianglesMedianMax into BUDGET only
 // after it holds across desert/winter/urban probes, not just verdant).
@@ -131,6 +270,19 @@ if (sceneMode !== 'battle' && sceneMode !== 'garage') {
 // with subsets of the scene hidden (battle world off, staged tanks off, ...) so
 // draw calls / triangles are ATTRIBUTED to a subsystem instead of guessed.
 const wantBreakdown = args.includes('--breakdown');
+const { production, earlyWindow, nativeCadence, windowMode, cameraInput } = perfModes(args, sceneMode, entryMode);
+const distPath = resolve(opt('dist', 'dist'));
+const sha256 = content => createHash('sha256').update(content).digest('hex');
+// Preview consumes exactly this artifact. A checkout hash does not claim that
+// this artifact was built from the current (possibly dirty) source snapshot.
+const buildIndexHash = production ? sha256(readFileSync(resolve(distPath, 'index.html'))) : null;
+const acquisitionHash = sha256([
+  readFileSync(new URL('./perfprobe.mjs', import.meta.url)),
+  readFileSync(new URL('./phase-environment-receipt.mjs', import.meta.url)),
+  readFileSync(new URL('./perfprobe-camera-input.mjs', import.meta.url)),
+  readFileSync(new URL('./perfprobe-roster.mjs', import.meta.url)),
+].join('\n'));
+const source = perfSourceReceipt();
 
 // Tracked performance budget (docs/PERFORMANCE.md). Every line is
 // evaluated in the report's `budget` block so regressions surface in the
@@ -281,40 +433,43 @@ function foreignGpuProcessCpu(ownBrowserPid) {
 }
 
 const port = 5900 + Math.floor(Math.random() * 90);
+let server;
+let browser;
+let page;
+let foreignSampler;
+let cameraAbort;
+let cameraJob;
+let failed = false;
+let report = null;
+let rosterProvenance = null;
+try {
 // hmr:false (content r4, same fix as tools/screenshot.mjs): concurrent
 // sessions editing src/ mid-probe trigger a vite full reload that destroys
 // the puppeteer execution context.
-const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false, hmr: false } });
-await server.listen();
-const url = `http://localhost:${server.config.server.port}/?tier=${deviceTier}`;
-console.error(`[perf] vite up at ${url}`);
+server = production
+  ? await preview({ root: process.cwd(), logLevel: 'error', build: { outDir: distPath }, preview: { port, strictPort: false } })
+  : await createServer({ root: process.cwd(), logLevel: 'error', server: { port, strictPort: false, hmr: false } });
+if (!production) await server.listen();
+const address = server.httpServer.address();
+if (!address || typeof address === 'string') throw new Error('Vite did not expose a listening port');
+const url = `http://localhost:${address.port}/?tier=${deviceTier}`;
+console.error(`[perf] ${production ? 'production preview' : 'vite dev'} up at ${url}; ${windowMode}; ${nativeCadence ? 'native cadence' : 'unlocked throughput'}`);
 
-const browser = await puppeteer.launch({
+const launchArgs = perfBrowserArgs(nativeCadence);
+browser = await puppeteer.launch({
   headless: 'new',
-  args: [
-    '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
-    '--enable-precise-memory-info',
-    // unlock rAF from vsync so we measure true render throughput
-    '--disable-frame-rate-limit', '--disable-gpu-vsync',
-    // headless-hidden pages SUSPEND setTimeout (intensive throttling) — the
-    // battle-entry pipeline paces its drain/countdown on real timers and
-    // reads as a hang without these. A visible browser (what the budget
-    // certifies) never throttles a foreground game tab.
-    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows',
-    '--disable-renderer-backgrounding',
-    // expose window.gc for the pre-sample warmup collection (see below)
-    '--js-flags=--expose-gc',
-  ],
+  args: launchArgs,
 });
+const browserVersion = await browser.version();
 const ownBrowserPid = browser.process() ? browser.process().pid : -1;
 let foreignHeadlessMax = countForeignHeadless(ownBrowserPid);
 let foreignGpuCpuMax = foreignGpuProcessCpu(ownBrowserPid);
-const foreignSampler = setInterval(() => {
+foreignSampler = setInterval(() => {
   foreignHeadlessMax = Math.max(foreignHeadlessMax, countForeignHeadless(ownBrowserPid));
   foreignGpuCpuMax = Math.max(foreignGpuCpuMax, foreignGpuProcessCpu(ownBrowserPid));
 }, 10000);
 
-const page = await browser.newPage();
+page = await browser.newPage();
 await page.setViewport({ width, height, deviceScaleFactor: dsf });
 
 const consoleErrors = [];
@@ -328,9 +483,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   } catch (_) { /* storage can be blocked in hardened browser contexts */ }
 }, deviceTier, forcePreset, mobilePreset);
 
-let failed = false;
-let report = null;
-try {
+  const navigationAttempts = [];
   // PERF r3 (harness parity): one retry on navigation/ready timeout with the
   // screenshot harness's 90 s budget — cold vite transforms under machine
   // load blew the old 30 s goto and killed certification attempts before a
@@ -341,8 +494,10 @@ try {
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
       await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      navigationAttempts.push({ attempt: attempt + 1, ready: true });
       break;
     } catch (err) {
+      navigationAttempts.push({ attempt: attempt + 1, ready: false, error: err.message });
       if (attempt >= 1) throw err;
       console.error(`[perf] load attempt ${attempt + 1} failed (${err.message}) — retrying`);
       consoleErrors.length = 0;
@@ -359,36 +514,70 @@ try {
   });
 
   if (sceneMode === 'battle') {
-    // Enter battle deterministically (pinned worst-case roster by default —
-    // see WORST_CASE_ROSTER above). The default exercises the same loading,
+    const available = await page.evaluate(() => Array.from(window.__DEBUG.game.tankById.values(),
+      entity => ({ id: entity.id, specId: entity.specId })));
+    rosterProvenance = inspectPerfRosterEligibility(rosterRequest, available);
+    requirePerfRoster(rosterProvenance.eligibility);
+    await page.evaluate(roster => {
+      const flags = window.__DEBUG.flags;
+      delete flags.forceRoster;
+      delete flags.rosterExact;
+      if (roster) flags.forceRoster = roster;
+    }, forceRoster);
+  }
+
+  // Install the maintained read-only checkpoint helper before arming. Early
+  // start/end receipts execute at the sample edges, not after a CDP wait.
+  await page.evaluate(`window.__PERF_READ_ENVIRONMENT = ${readPhaseEnvironment.toString()}`);
+  if (earlyWindow) {
+    if (forcedMsaa !== null) {
+      await page.evaluate(samples => window.__DEBUG.post.sceneAA.setSamples(samples), forcedMsaa);
+    }
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true });
+  }
+
+  if (sceneMode === 'battle') {
+    // Enter battle with the preflight-validated reference mixed roster by
+    // default. This exercises the same loading,
     // vehicle painting, shader warm-up and countdown path as the BATTLE button.
     // --entry sync is a deliberate cold-path diagnostic only.
     if (entryMode === 'player') {
-      await page.evaluate(async (roster, map) => {
+      await page.evaluate(async (map) => {
         const D = window.__DEBUG;
-        if (roster) D.flags.forceRoster = roster;
         D.flags.forceFire = true; // fire whenever reloaded after release
         await D.beginBattleEntry('m1a2', map);
-      }, forceRoster, mapId);
+      }, mapId);
+    } else {
+      await page.evaluate(async (map) => {
+        const D = window.__DEBUG;
+        await D.startBattle('m1a2', map);
+        D.flags.forceFire = true;
+      }, mapId);
+    }
+    const actualEntry = await page.evaluate(() => ({
+      phase: window.__DEBUG.game.phase, preBattleS: window.__DEBUG.game.preBattleS,
+      playerSpecId: window.__DEBUG.game.player?.specId ?? null,
+      roster: window.__DEBUG.game.tanks.map(entity => ({ id: entity.id, specId: entity.specId, team: entity.team })),
+    }));
+    requirePerfRoster(recordPerfRosterCheckpoint(rosterProvenance, 'entry', actualEntry));
+    if (entryMode === 'player') {
+      // Entry has finished its mandatory reveal/warm path, but the ordinary
+      // visible countdown still owns control release. Hold W before that edge.
+      if (earlyWindow) await page.keyboard.down('KeyW');
       await page.waitForFunction(
         'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
         { timeout: 120000 },
       );
-    } else {
-      await page.evaluate(async (roster, map) => {
-        const D = window.__DEBUG;
-        if (roster) D.flags.forceRoster = roster;
-        await D.startBattle('m1a2', map);
-        D.flags.forceFire = true;
-      }, forceRoster, mapId);
     }
   } else if (mapId !== 'verdant') {
     // garage on a non-default battlefield: switch the staged world only
     await page.evaluate((map) => window.__DEBUG.switchMap(map), mapId);
   }
-  if (forcedMsaa !== null) {
+  if (!earlyWindow && forcedMsaa !== null) {
     await page.evaluate((samples) => window.__DEBUG.post.sceneAA.setSamples(samples), forcedMsaa);
   }
+  if (!earlyWindow) {
+  // Legacy sustained protocol, deliberately absent from the early window.
   // small settle so shaders/instances for battle HUD compile
   await new Promise((r) => setTimeout(r, 1500));
   // r2: certify the SUSTAINED battle regime — wait (bounded) for the roster's
@@ -428,6 +617,7 @@ try {
     ).catch(() => console.error('[perf] staged visuals did not finish within 30 s — window opens anyway'));
     await new Promise((r) => setTimeout(r, 1000));
   }
+  }
   // Warmup collection before the measured window (standard bench hygiene, NOT
   // a masking trick): the boot bake creates ~300 MB of one-shot large-object
   // garbage (getImageData buffers of the 2048² vehicle canvases). V8 reclaims
@@ -438,12 +628,11 @@ try {
   // Sustained-combat allocation behavior is untouched — the heap gate still
   // watches the full 60 s window, and a warmup GC makes its floor baseline
   // STRICTER (starts post-collection, so any battle growth is real).
-  const heapRetainedStart = await page.evaluate(() => {
-    if (window.gc) { window.gc(); window.gc(); }
-    return performance.memory ? performance.memory.usedJSHeapSize : -1;
-  });
+  const heapPreGc = earlyWindow ? null : await page.evaluate(readPerfHeapSnapshot, true);
+  const heapRetainedStart = heapPreGc?.bytes ?? null;
 
-  // Drive: hold W, wiggle steering + camera so combat is representative.
+  // Default drive: hold W and alternate A/D steering, with forceFire unchanged.
+  // Only --camera-input adds real mouse pulses; default runs send no camera input.
   // Garage mode has no drive script — the garage screen IS a hold pose; the
   // whole point is to measure what an idle garage dwell costs.
   let steerTimer = Promise.resolve();
@@ -475,53 +664,34 @@ try {
   }
 
   // In-page sampler: rAF deltas + per-frame renderer.info + heap once/second.
-  await page.evaluate((sampleMs) => {
-    const R = window.__DEBUG.renderer;
-    // renderer.info auto-resets after every internal render pass; take manual
-    // control so each rAF sample sees the FULL frame (shadow + composer passes).
-    R.info.autoReset = false;
-    window.__PERF = {
-      deltas: [], times: [], calls: [], tris: [], points: [], lines: [],
-      shadowMasks: [], heap: [], done: false,
-    };
-    const P = window.__PERF;
-    let last = -1;
-    const t0 = performance.now();
-    if (performance.memory) P.heap.push(performance.memory.usedJSHeapSize);
-    const heapIv = setInterval(() => {
-      if (performance.memory) P.heap.push(performance.memory.usedJSHeapSize);
-    }, 1000);
-    function frame(now) {
-      if (now - t0 > sampleMs) {
-        clearInterval(heapIv);
-        P.info = {
-          geometries: R.info.memory.geometries, textures: R.info.memory.textures,
-          programs: R.info.programs.length,
-        };
-        R.info.autoReset = true;
-        P.done = true;
-        return;
-      }
-      if (last >= 0) {
-        P.deltas.push(now - last);
-        P.times.push(now - t0);
-        // counters accumulated since our reset at the previous rAF = one frame
-        P.calls.push(R.info.render.calls);
-        P.tris.push(R.info.render.triangles);
-        P.points.push(R.info.render.points);
-        P.lines.push(R.info.render.lines);
-        P.shadowMasks.push(window.__DEBUG.lighting.scheduledMask | 0);
-      }
-      R.info.reset();
-      last = now;
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  }, seconds * 1000);
+  if (!earlyWindow) {
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false });
+  }
+
+  // Opt-in observation starts only AFTER the timed sampler is armed/running.
+  // It must never add settling, collection, or input overrides before early control.
+  if (cameraInput) {
+    cameraAbort = new AbortController();
+    cameraJob = runCameraInputWindow(page, { sampleMs: seconds * 1000, signal: cameraAbort.signal })
+      .catch(error => ({ requested: true, status: 'failed', coveragePass: false, errors: [String(error)] }));
+  }
 
   await page.waitForFunction('window.__PERF && window.__PERF.done === true', { timeout: (seconds + 30) * 1000 });
+  // Copy and validate the sampler's already-recorded edges immediately. A
+  // subsequent keyboard, heap, GPU inventory or diagnostic failure must not
+  // erase the actual workload which produced these frames.
+  const perf = await page.evaluate(() => window.__PERF);
+  recordPerfRosterEdges(rosterProvenance, perf);
+  if (rosterProvenance && !rosterProvenance.pass) failed = true;
   if (sceneMode === 'battle') await page.keyboard.up('KeyW');
   await steerTimer;
+  const cameraInputReport = cameraJob ? await cameraJob : null;
+  if (cameraInputReport && !cameraInputReport.coveragePass) {
+    // This is an explicit opt-in evidence failure, not a changed FPS budget.
+    // Keep all frame and input rows even when lock/input support is unavailable.
+    failed = true;
+    console.error(`[perf] camera input ${cameraInputReport.status}: ${cameraInputReport.reason || 'incomplete response coverage'}`);
+  }
 
   // RETAINED-SET heap measure (performance_budget r2): force a full major GC
   // at both window boundaries and difference the true retained set. The
@@ -537,10 +707,10 @@ try {
   // floorGrowth 1.49-1.99 across probe runs. A REAL leak still fails this
   // metric — leaked objects survive the forced majors by definition — so the
   // 1.0 MB/s gate value is unchanged; it now gates a phase-noise-free number.
-  const heapRetainedEnd = await page.evaluate(() => {
-    if (window.gc) { window.gc(); window.gc(); }
-    return performance.memory ? performance.memory.usedJSHeapSize : -1;
-  });
+  const heapPostGc = await page.evaluate(readPerfHeapSnapshot, true);
+  const heapRetainedEnd = heapPostGc.bytes;
+  // Early mode has no post-GC starting baseline. Never label a raw-to-post-GC
+  // difference as retained growth; the unchanged gate uses its raw/floor fallback.
   const heapRetainedMBs = (heapRetainedStart > 0 && heapRetainedEnd > 0)
     ? ((heapRetainedEnd - heapRetainedStart) / seconds) / 1048576
     : null;
@@ -793,7 +963,10 @@ try {
     }, 30);
   }
 
-  const perf = await page.evaluate(() => window.__PERF);
+  const sourceEnd = perfSourceReceipt();
+  if (production && sha256(readFileSync(resolve(distPath, 'index.html'))) !== buildIndexHash) {
+    throw new Error('Production build changed during the performance probe');
+  }
   const adaptive = await page.evaluate(() => {
     const canvas = window.__DEBUG.renderer.domElement;
     const quality = window.__DEBUG.telemetry().quality;
@@ -808,6 +981,16 @@ try {
   });
   if (dumpFile) {
     writeFileSync(resolve(dumpFile), JSON.stringify({
+      windowMode,
+      production,
+      distPath: production ? distPath : null,
+      nativeCadence,
+      cameraInput: cameraInputReport,
+      buildIndexHash,
+      acquisitionHash,
+      browserVersion,
+      startedAt: perf.startedAt,
+      timeOrigin: perf.timeOrigin,
       times: perf.times,
       deltas: perf.deltas,
       calls: perf.calls,
@@ -815,6 +998,8 @@ try {
       points: perf.points,
       lines: perf.lines,
       shadowMasks: perf.shadowMasks,
+      environment: { start: perf.environmentStart, end: perf.environmentEnd },
+      rosterProvenance,
     }));
     console.error(`[perf] raw frame series dumped to ${dumpFile}`);
   }
@@ -856,7 +1041,36 @@ try {
   }).sort((a, b) => a.mask - b.mask);
 
   report = {
+    schemaVersion: 2,
     date: new Date().toISOString(),
+    production,
+    distPath: production ? distPath : null,
+    windowMode,
+    cadence: nativeCadence ? 'native-requested' : 'unlocked-throughputput',
+    buildIndexHash,
+    acquisitionHash,
+    source: {
+      ...source, end: sourceEnd, unchanged: source.sourceHash === sourceEnd.sourceHash,
+      buildAssociation: production ? 'checkout observed separately; build source not inferred' : 'Vite serves this checkout',
+    },
+    browser: { version: browserVersion, executable: puppeteer.executablePath(), args: launchArgs, pid: ownBrowserPid },
+    acquisition: {
+      protocol: 'perfprobe-raf-v2',
+      url,
+      navigationAttempts,
+      windowMode,
+      startCondition: earlyWindow ? 'first RAF observing battle && preBattleS<=0' : 'after legacy settle and pre-GC',
+      armedAt: perf.armedAt,
+      startedAt: perf.startedAt,
+      endedAt: perf.endedAt,
+      observedWindowMs: perf.endedAt - perf.startedAt,
+      timeOrigin: perf.timeOrigin,
+      preWindowForcedGC: heapPreGc?.forcedGC ?? false,
+      drive: sceneMode === 'battle' ? 'hold W; alternating A/D steering; forceFire' : 'none',
+      cameraInput: cameraInput ? CAMERA_INPUT_PROTOCOL : 'none',
+    },
+    environment: { start: perf.environmentStart, end: perf.environmentEnd },
+    cameraInput: cameraInputReport,
     ...(forcePreset ? { forcedPreset: forcePreset } : {}),
     ...(forcedMsaa !== null ? { forcedMsaa } : {}),
     deviceTier,
@@ -865,7 +1079,8 @@ try {
     entry: sceneMode === 'battle' ? entryMode : null,
     scene: sceneMode,
     map: mapId,
-    roster: forceRoster ? `pinned:${forceRoster.join(',')}` : 'random-seeded',
+    roster: sceneMode === 'battle' ? rosterRequest.label : 'not-applicable',
+    rosterProvenance,
     viewport: { width, height, deviceScaleFactor: dsf },
     sampleSeconds: seconds,
     frames: perf.deltas.length,
@@ -906,6 +1121,12 @@ try {
       retainedStartMB: heapRetainedStart > 0 ? +(heapRetainedStart / 1048576).toFixed(1) : null,
       retainedEndMB: heapRetainedEnd > 0 ? +(heapRetainedEnd / 1048576).toFixed(1) : null,
       retainedGrowthMBperS: heapRetainedMBs === null ? null : +heapRetainedMBs.toFixed(2),
+      preWindowForcedGC: heapPreGc?.forcedGC ?? false,
+      postWindowGc: {
+        forcedGC: heapPostGc.forcedGC,
+        heapMB: heapRetainedEnd > 0 ? +(heapRetainedEnd / 1048576).toFixed(1) : null,
+      },
+      gateMetric: heapRetainedMBs === null ? 'min(raw,floor)' : 'retained-growth',
     },
     gpuTextureEstimate: {
       sceneTextureMB: +(texEstimate.textureBytes / 1048576).toFixed(1),
@@ -978,6 +1199,10 @@ try {
     },
     consoleErrors: { limit: '=0', actual: consoleErrors.length, pass: consoleErrors.length === 0 },
   };
+  if (rosterProvenance) lines.rosterProvenance = {
+    limit: 'battle/released sample edges; eligible full 7:7 roster; exact pinned or stable seeded identities/teams',
+    actual: rosterProvenance.pass ? 'matched' : 'mismatch', pass: rosterProvenance.pass,
+  };
   report.budget = { pass: Object.values(lines).every((l) => l.pass), ...lines };
   // Certification validity: a contended machine cannot certify EITHER outcome.
   report.budget.certification = contended
@@ -1007,6 +1232,15 @@ try {
         date: report.date,
         dsf,
         seconds,
+        windowMode,
+        production,
+        distPath: report.distPath,
+        cadence: report.cadence,
+        cameraInput,
+        cameraInputStatus: report.cameraInput?.status ?? 'not-requested',
+        buildIndexHash,
+        acquisitionHash,
+        rosterProvenance,
         // PERF r7: garage rows must never read as battle regressions
         ...(sceneMode !== 'battle' ? { scene: sceneMode } : {}),
         loadToReadyMs: report.loadToReadyMs,
@@ -1033,12 +1267,31 @@ try {
 } catch (err) {
   failed = true;
   console.error(`[perf] FAILED: ${err.message}`);
+  await preservePerfRosterFailure(rosterProvenance, () => page.evaluate(() => ({
+    environmentStart: window.__PERF?.environmentStart,
+    environmentEnd: window.__PERF?.environmentEnd,
+  })));
+  if (rosterProvenance && !report) report = {
+    schemaVersion: 2, date: new Date().toISOString(), production,
+    distPath: production ? distPath : null,
+    buildIndexHash, acquisitionHash, source, windowMode, rosterProvenance,
+    failure: err.message,
+    budget: { pass: false, certification: 'REFUSED — incomplete acquisition; see failure and roster provenance' },
+  };
 } finally {
+  cameraAbort?.abort();
   clearInterval(loadSampler);
   clearInterval(foreignSampler);
   clearInterval(lockRefresher);
-  await browser.close();
-  await server.close();
+  // A preview owns an HTTP server, not the dev server's close API. Always
+  // attempt both releases, including partial acquisition/cleanup failures.
+  for (const close of [() => browser?.close(), () => server && closePerfServer(server)]) {
+    try { await close(); }
+    catch (error) { failed = true; console.error(`[perf] cleanup FAILED: ${error.message}`); }
+  }
+  // Browser closure wakes any in-flight CDP dispatch; join the owned input job
+  // before releasing the shared capture lease, including sampler failures.
+  if (cameraJob) await cameraJob;
   releaseLock();
 }
 

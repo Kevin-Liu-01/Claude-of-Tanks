@@ -161,6 +161,13 @@ through `soloBattleAccess.ts` on Battle or capture intent. Multiplayer work
 must move visual creation out of authority rather than importing more UI into
 `state.ts`.
 
+`battleVisualStreamer.ts` consumes `ensureStagedVisualsSteps` for covered
+construction and uses the caller's existing frame-budget/lifetime guard between
+private checkpoints. `ensureTankVisualSteps` rejects stale roster, round,
+renderer, actor or ground-sampler ownership before publishing. Preserve the
+original synchronous helpers, visual-pool behavior and player/bot quality policy.
+Report scheduling waits separately from non-await elapsed work, not as CPU time.
+
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Trace callers in `src/main.ts`, run the nearest selftest, and preserve existing

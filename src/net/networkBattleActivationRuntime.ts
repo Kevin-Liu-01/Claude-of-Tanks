@@ -53,6 +53,7 @@ interface DamagePanelPort {
 interface CameraRigPort {
   release(): void;
   snapArcade(distance: number, yaw: number, pitch: number): void;
+  snapSpectateForReveal(): boolean;
 }
 
 interface NetworkBridgePort {
@@ -126,7 +127,7 @@ export function createNetworkBattleActivationRuntime({
   const required = [settings?.isOpen, settings?.close, killcam?.cancel,
     killcam?.spectate?.startObserver, driveTest?.resetAim,
     getHud, playerActions?.setTank, playerActions?.resetConsumables,
-    getDamagePanel, rig?.release, rig?.snapArcade,
+    getDamagePanel, rig?.release, rig?.snapArcade, rig?.snapSpectateForReveal,
     presentation?.setShotMode, presentation?.setCaptureHidden,
     presentation?.setNetworkSpectator, presentation?.setSelectedSpecId,
     presentation?.rememberSpecId, presentation?.setWorldDormant,
@@ -195,6 +196,12 @@ export function createNetworkBattleActivationRuntime({
           throw new Error('No live vehicle is available to spectate.');
         }
         bridge.setPerspective(killcam.spectate.targetId);
+        // Initial room entry is still opaque. Do not reveal a blend from the
+        // Garage or warm its distant carpet; later visible target changes keep
+        // the ordinary spectator blend in the rig/killcam owners.
+        if (!rig.snapSpectateForReveal()) {
+          throw new Error('The observer camera could not be prepared.');
+        }
       } else {
         rig.snapArcade(
           arcadeDistance,

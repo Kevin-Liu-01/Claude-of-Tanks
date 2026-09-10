@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript-compiler-api';
 import {
   FEATURED_IMAGES,
   FEATURED_SHOTS,
@@ -319,8 +321,13 @@ const coveredSubmissionBody = soloDeploymentSource.slice(
   soloDeploymentSource.indexOf('trace.deploymentCompileMs'),
 );
 assert.match(coveredSubmissionBody,
-  /forwardProgramWarm\.compile\(scene\)[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
-  'player battle entry must submit and bind exact FX against the gameplay target');
+  /forwardProgramWarm\.compileSceneSteps\(\{[\s\S]*sliceMs: 8,[\s\S]*await guardedCoveredYield\(true\);[\s\S]*requireCurrent\(generation\);[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
+  'player battle entry must stage exact scene programs before binding FX against the gameplay target');
+assert.doesNotMatch(coveredSubmissionBody, /forwardProgramWarm\.compile\(scene\)/,
+  'covered entry must not restore one atomic whole-scene program submission');
+assert.match(coveredSubmissionBody.replace(/\/\/.*$/gm, ''),
+  /\}\s*await guardedCoveredYield\(true\);\s*requireCurrent\(generation\);\s*fx\.group\.visible = false;/,
+  'the final compiler batch must yield and revalidate before first FX binding');
 const worldReadyAt = soloLoadingSource.indexOf("battleLoad.progress(0.555, 'Battlefield ready')");
 const rosterAssemblyAt = soloLoadingSource.indexOf(
   "battleLoad.progress(0.56, 'Assembling rosters')", worldReadyAt,
@@ -387,20 +394,108 @@ const coveredFxBody = soloDeploymentSource.slice(
 assert.match(coveredFxBody,
   /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*setDestructionWarmed\(true\);/,
   'a successful covered FX bind must prevent duplicate countdown staging');
-const revealWarmBody = soloDeploymentSource.slice(
-  soloDeploymentSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')"),
-  soloDeploymentSource.indexOf('revealPrimed = true'),
-);
-const shadowWarmAt = revealWarmBody.indexOf('getDeploymentShadowWarm().prime(coveredYield)');
-const postWarmAt = revealWarmBody.indexOf(
-  'post.warmFirstFrame(() => coveredYield(true))',
-);
-const revealFrameAt = revealWarmBody.indexOf('entryLifecycle.primeReveal()');
-assert.ok(shadowWarmAt >= 0 && postWarmAt > shadowWarmAt && revealFrameAt > postWarmAt,
-  'solo entry must split cascade and post warming before the first full deployment frame');
-assert.match(soloLoadingSource,
-  /ensureWorld\([\s\S]{0,500}resolved,[\s\S]{0,360}\{ precompile: false, services: false, atmosphere: 'covered-battle' \}/,
-  'solo entry must activate the covered battle atmosphere without synchronous world services');
+// Execute the actual owner block: callback names may change when lifetime
+// guards are added, but shadow/post completion must still precede reveal.
+const revealStart = soloDeploymentSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')");
+const revealEnd = soloDeploymentSource.indexOf('revealPrimed = true;', revealStart);
+assert.ok(revealStart >= 0 && revealEnd > revealStart, 'the actual deployment reveal block is present');
+const revealWarmBody = soloDeploymentSource.slice(revealStart, revealEnd + 'revealPrimed = true;'.length);
+
+function deferredWarmStep() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+async function verifyDeploymentWarmOrder(body) {
+  const events = [], shadow = deferredWarmStep(), post = deferredWarmStep();
+  const shadowReceipt = { cascades: 4 }, postReceipt = { passes: 3 }, trace = {};
+  const yieldForBudget = async () => { events.push('yield'); };
+  const ports = {
+    trace, generation: 7, scene: {}, lighting: {}, game: {},
+    battleLoad: { progress() {} }, requireCurrent: value => assert.equal(value, 7),
+    mark() {}, getWorld: () => null, getWarmRender: () => {}, now: () => 0,
+    createDeploymentForwardWarmBatches: function* () {},
+    coveredYield: yieldForBudget, guardedCoveredYield: yieldForBudget,
+    getDeploymentShadowWarm: () => ({ prime: async yieldBeforeCascade => {
+      events.push('shadow'); await yieldBeforeCascade(true); await shadow.promise;
+      events.push('shadowDone'); return shadowReceipt;
+    } }),
+    post: { warmFirstFrame: async yieldBeforePass => {
+      events.push('post'); await yieldBeforePass(true); await post.promise;
+      events.push('postDone'); return postReceipt;
+    } },
+    assertRevealReady: () => events.push('ready'),
+    getEntryLifecycle: () => ({ primeReveal: async () => { events.push('reveal'); } }),
+  };
+  // Only tracked local source (and the explicit mutations below) is evaluated.
+  const pending = runInNewContext(`(async () => { let revealPrimed = false;
+    ${body}\nreturn revealPrimed; })()`, ports);
+  const settled = pending.then(value => ({ value }), error => ({ error }));
+  try {
+    assert.equal(events.includes('shadow'), true, 'shadow preparation is submitted');
+    assert.equal(events.includes('post'), false, 'post cannot start while shadows are pending');
+    assert.equal(events.includes('reveal'), false, 'pending shadows cannot reveal');
+    shadow.resolve();
+    for (let step = 0; step < 30 && !events.includes('post'); step++) await Promise.resolve();
+    assert.equal(events.includes('post'), true, 'post preparation follows completed shadows');
+    assert.equal(events.includes('reveal'), false, 'pending post passes cannot reveal');
+    post.resolve();
+    const result = await settled;
+    if (result.error) throw result.error;
+    assert.equal(result.value, true, 'the actual owner publishes a primed reveal');
+    assert.deepEqual(events, ['shadow', 'yield', 'shadowDone', 'post', 'yield', 'postDone', 'ready', 'reveal']);
+    assert.strictEqual(trace.deploymentShadowWarm, shadowReceipt);
+    assert.strictEqual(trace.deploymentPostWarm, postReceipt);
+  } finally {
+    shadow.resolve(); post.resolve(); await settled;
+  }
+}
+
+await verifyDeploymentWarmOrder(revealWarmBody);
+for (const [pattern, replacement] of [
+  [/await (?=getDeploymentShadowWarm\(\)\.prime\()/, ''],
+  [/await (?=post\.warmFirstFrame\()/, ''],
+  [/trace\.deploymentShadowWarm = await getDeploymentShadowWarm\(\)\.prime\([^;]+\);/, ''],
+  [/trace\.deploymentPostWarm = await post\.warmFirstFrame\([^;]+\);/, ''],
+  [/await entryLifecycle\.primeReveal\(\);/, ''],
+  [/trace\.deploymentPostWarm =/, 'await getEntryLifecycle().primeReveal();\ntrace.deploymentPostWarm ='],
+]) {
+  const mutant = revealWarmBody.replace(pattern, replacement);
+  assert.notEqual(mutant, revealWarmBody, 'each negative control changes the actual owner block');
+  await assert.rejects(verifyDeploymentWarmOrder(mutant),
+    'missing, unawaited, or premature warm/reveal steps must fail the ordering oracle');
+}
+function verifyCoveredWorldOptions(source) {
+  const parsed = ts.createSourceFile('soloLoading.ts', source, ts.ScriptTarget.Latest, true);
+  const calls = [];
+  function visit(node) {
+    if (ts.isCallExpression(node) && node.expression.getText(parsed) === 'ensureWorld') calls.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(parsed);
+  assert.equal(calls.length, 1, 'one canonical covered world acquisition');
+  let captured;
+  runInNewContext(calls[0].getText(parsed), {
+    resolved: 'chosen-map', battleLoad: { progress() {} },
+    ensureWorld(mapId, _progress, options) { captured = { mapId, ...options }; },
+  });
+  assert.equal(captured.mapId, 'chosen-map');
+  assert.equal(captured.precompile, false, 'world acquisition defers program compilation');
+  assert.equal(captured.services, false, 'world acquisition defers synchronous battle services');
+  assert.equal(captured.atmosphere, 'covered-battle', 'covered battle owns its final lighting');
+  return calls[0].getText(parsed);
+}
+const coveredWorldCall = verifyCoveredWorldOptions(soloLoadingSource);
+for (const [from, to] of [
+  ['precompile: false', 'precompile: true'],
+  ['services: false', 'services: true'],
+  ["atmosphere: 'covered-battle'", "atmosphere: 'garage'"],
+]) {
+  const mutant = coveredWorldCall.replace(from, to);
+  assert.notEqual(mutant, coveredWorldCall, 'mutate the executed call, not an earlier TypeScript port declaration');
+  assert.throws(() => verifyCoveredWorldOptions(mutant));
+}
 assert.match(soloLoadingSource,
   /startBattle\(specId, resolved,[\s\S]{0,500}prepareBattleWorldServices\(getWorld\(\)\)/,
   'solo entry must defer battle-only services until the real battle light set is active');
@@ -449,18 +544,19 @@ assert.match(mainSource,
 const soloLoaderBody = soloLoadingSource.slice(soloLoadingSource.indexOf('async begin(specId'));
 const loaderShowAt = soloLoaderBody.indexOf('battleLoad.show({');
 const visualStreamerAwaitAt = soloLoaderBody.indexOf('await ensureBattleVisuals();');
-const audioResumeAt = soloLoaderBody.indexOf('audio.resume();', loaderShowAt);
-const loadingSoundAt = soloLoaderBody.indexOf('audio.loadingOn(true);', audioResumeAt);
-const firstYieldAt = soloLoaderBody.indexOf('await nextFrame();', loaderShowAt);
+const loadingSoundAt = soloLoaderBody.indexOf('await audio.startLoadingAfterPaint();', loaderShowAt);
+const firstYieldAt = loadingSoundAt;
 const loadingStopAt = soloLoaderBody.indexOf('audio.loadingOn(false);', loadingSoundAt);
 const ambienceAt = soloLoaderBody.indexOf('audio.ambientOn(true);', loadingStopAt);
-assert.ok(loaderShowAt >= 0 && audioResumeAt > loaderShowAt && loadingSoundAt > audioResumeAt &&
-  firstYieldAt > loadingSoundAt,
-  'solo battle loading audio must unlock and start inside the Battle gesture before the first yield');
+assert.ok(loaderShowAt >= 0 && loadingSoundAt > loaderShowAt,
+  'solo loading must show its cover before awaiting the gesture-aware audio owner');
 assert.ok(visualStreamerAwaitAt > firstYieldAt,
   'solo battle entry must show and paint its boot-critical veil before a lazy presentation import');
 assert.ok(loadingStopAt > loadingSoundAt && ambienceAt > loadingStopAt,
   'loader audio must crossfade into battlefield ambience before reveal');
+// The independently registered soloBattleLoadingRuntime suite exercises the
+// real loading/audio composition: sticky activation, deferred acquisition,
+// cancellation, and recovery. Do not nest registered self-tests here.
 const cameraPrepareAt = soloLoaderBody.indexOf('prepareRevealCamera();');
 const revealPrimeAt = soloLoaderBody.indexOf('await lifecycle.primeReveal();');
 const loaderFadeAt = soloLoaderBody.indexOf('await battleLoad.hide();', revealPrimeAt);

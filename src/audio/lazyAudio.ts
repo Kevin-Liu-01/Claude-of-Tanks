@@ -4,8 +4,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  *
  * The full synthesized/spatial mixer is intentionally loaded only after
  * explicit sound intent. Ready may silently prepare the shared AudioContext
- * inside its gesture. A Battle click still creates/resumes it when needed,
- * then starts this module's
+ * inside its gesture. Battle gives its opaque loader a rendering opportunity
+ * before device startup when sticky activation is available, then starts this module's
  * tiny oscillator-only loading bed immediately. The dynamically imported
  * mixer adopts that exact context and replaces the fallback without an
  * autoplay-policy gap.
@@ -13,7 +13,9 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { AudioMixer } from './audio.ts';
+import type { PreparedAudioBuffers } from './audioBuffers.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import { nextPaintFrame } from '../engine/frameScheduler.ts';
 
 interface FallbackLoadingTone {
   context: AudioContext;
@@ -22,8 +24,10 @@ interface FallbackLoadingTone {
 }
 
 interface AudioMixerModule {
+  prepareAudioBuffers?(context: AudioContext): Promise<PreparedAudioBuffers>;
   createAudio(options: {
     context: AudioContext | null;
+    preparedBuffers?: PreparedAudioBuffers | null;
     getMapId?: () => string | null;
     initialPhase?: string;
   }): AudioMixer;
@@ -33,6 +37,7 @@ export interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
   createContext?(): AudioContext | null;
   getMapId?(): string | null;
+  hasStickyActivation?(): boolean;
 }
 
 export interface LazyAudio {
@@ -40,6 +45,8 @@ export interface LazyAudio {
   /** Gesture-only device preparation; no mixer, tone, or dependency transfer. */
   prepare(): void;
   resume(): void;
+  /** Explicit Battle intent only; preserves legacy gesture-time unlocking. */
+  startLoadingAfterPaint(yieldForPaint?: () => Promise<void>): Promise<void>;
   bindBus(bus: EventBus): void;
   update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly RuntimeValue[]): void;
   setMasterVolume(value: number): void;
@@ -112,6 +119,9 @@ export function startFallbackLoadingTone(context: AudioContext | null): Fallback
 
 export function createLazyAudio({
   getMapId,
+  hasStickyActivation = () => (
+    typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true
+  ),
   loadMixer = () => import('./audio.ts'),
   createContext = () => {
     const scope = globalThis as typeof globalThis & {
@@ -133,6 +143,7 @@ export function createLazyAudio({
   let ambientRequested = false;
   let muted = false;
   let garageStingPending = false;
+  let loadingRevision = 0;
 
   const unlockContext = (): AudioContext | null => {
     if (!context) context = createContext();
@@ -185,22 +196,35 @@ export function createLazyAudio({
   const ensureReal = (): Promise<AudioMixer | null> => {
     if (real) return Promise.resolve(real);
     if (!realPromise) {
-      realPromise = preload().then((module) => (
-        module ? settleReal(module.createAudio({ context, getMapId, initialPhase: latestPhase })) : null
-      )).finally(() => {
+      realPromise = preload().then(async (module) => {
+        if (!module) return null;
+        // Keep the full graph, bus subscriptions and shared sound RNG private
+        // while its exact buffers are synthesized. The oscillator-only loading
+        // cue remains active, and phase/intent are read again at handoff.
+        const preparedBuffers = context && module.prepareAudioBuffers
+          ? await module.prepareAudioBuffers(context) : null;
+        return settleReal(module.createAudio({ context, preparedBuffers, getMapId, initialPhase: latestPhase }));
+      }).finally(() => {
         if (!real) realPromise = null;
       });
     }
     return realPromise;
   };
 
+  const requestReal = (): void => {
+    void ensureReal().catch((error) => {
+      console.warn('[audio] deferred mixer initialization failed:', error);
+    });
+  };
+
   const resume = (): void => {
     unlockContext();
     if (real) real.resume();
-    else void ensureReal();
+    else requestReal();
   };
 
   const loadingOn = (on: boolean): void => {
+    loadingRevision++;
     loadingRequested = !!on;
     if (real) {
       real.loadingOn(loadingRequested);
@@ -209,17 +233,32 @@ export function createLazyAudio({
     if (loadingRequested) {
       const unlocked = unlockContext();
       if (unlocked && !fallback) fallback = startFallbackLoadingTone(unlocked);
-      void ensureReal();
+      requestReal();
     } else if (fallback) {
       stopFallback(fallback, 0.16);
       fallback = null;
     }
   };
 
+  const startLoadingAfterPaint = async (
+    yieldForPaint = nextPaintFrame,
+  ): Promise<void> => {
+    const revision = ++loadingRevision;
+    // Web Audio uses sticky activation in current browsers. Without that
+    // positive signal keep the original in-gesture unlock for older engines;
+    // neither branch initializes a device merely from preload/hover/boot.
+    const afterPaint = hasStickyActivation();
+    if (!afterPaint) { resume(); loadingOn(true); }
+    await yieldForPaint();
+    // Leaving/cancelling loading during the paint wait must not revive audio.
+    if (afterPaint && revision === loadingRevision) { resume(); loadingOn(true); }
+  };
+
   return {
     preload,
     prepare,
     resume,
+    startLoadingAfterPaint,
     bindBus(nextBus: EventBus) {
       bus = nextBus;
       stopPhaseTracking?.();
@@ -244,7 +283,7 @@ export function createLazyAudio({
     },
     playGarageSting() {
       if (real) real.playGarageSting();
-      else { garageStingPending = true; void ensureReal(); }
+      else { garageStingPending = true; requestReal(); }
     },
     loadingOn,
     warmBattleEvents() {

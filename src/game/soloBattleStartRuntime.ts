@@ -19,7 +19,7 @@ interface SoloBattlePlayer {
   specId: string;
   spec: DamagePanelSpec;
   state: { yaw: number } | null;
-  visual: DamagePanelVisual;
+  visual: (DamagePanelVisual & { prewarmBurn?(): void }) | null | undefined;
   equip?: EquipmentSelection;
 }
 
@@ -228,6 +228,9 @@ export function createSoloBattleStartRuntime({
       fx.resetAll();
       mark('resetEffects');
       ui.playerActions.setTank(player.spec);
+      // The panel borrows these materials immediately. Install the disarmed
+      // destruction hook before its asynchronous mask compile can begin.
+      player.visual?.prewarmBurn?.();
       ui.damagePanel.setTank(player.spec, player.visual);
       ui.damagePanel.setEquipment(player.equip ?? null);
       ui.hideGarage();

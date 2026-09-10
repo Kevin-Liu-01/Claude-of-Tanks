@@ -6,7 +6,7 @@
  */
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
-import { createTank } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
@@ -186,12 +186,28 @@ export function ensureStagedVisuals<Entity extends RosterEntity>(
   game: RosterGameState<Entity>,
   limit = Infinity,
   predicate: RosterPredicate<Entity> | null = null,
-) {
+): boolean {
   let built = 0;
   for (const ent of game.tanks) {
     if (ent.visual || (predicate && !predicate(ent))) continue;
     if (built >= limit) return false;
     ensureTankVisual(game, ent);
+    built++;
+  }
+  return true;
+}
+
+/** Same roster order and construction policy, with private build checkpoints. */
+export function* ensureStagedVisualsSteps<Entity extends RosterEntity>(
+  game: RosterGameState<Entity>,
+  limit = Infinity,
+  predicate: RosterPredicate<Entity> | null = null,
+): Generator<void, boolean, void> {
+  let built = 0;
+  for (const ent of game.tanks) {
+    if (ent.visual || (predicate && !predicate(ent))) continue;
+    if (built >= limit) return false;
+    yield* ensureTankVisualSteps(game, ent);
     built++;
   }
   return true;
@@ -215,7 +231,7 @@ export function nextStagedBake<Entity extends RosterEntity>(
 export function battleGeometryQuality(
   playerActor: boolean,
   deviceTier: string = getDeviceTier(),
-) {
+): NonNullable<CreateTankOptions['geometryQuality']> {
   return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
 }
 
@@ -227,77 +243,111 @@ export function battleGeometryQuality(
  * @param {object} ent TankEntity from game.allTanks
  * @returns {object} the entity's TankVisual
  */
-export function ensureTankVisual(game: RosterGameState, ent: RosterEntity) {
+export function ensureTankVisual(game: RosterGameState, ent: RosterEntity): BattleVisual {
+  const steps = buildRosterVisual(game, ent, false);
+  let result = steps.next();
+  while (!result.done) result = steps.next();
+  return result.value;
+}
+
+/**
+ * A suspended build owns a private graph. A new round, renderer, roster or
+ * competing visual invalidates it; iterator cancellation releases it before
+ * anything is assigned to the entity or attached to the live scene.
+ */
+export function* ensureTankVisualSteps(
+  game: RosterGameState,
+  ent: RosterEntity,
+): Generator<void, BattleVisual, void> {
+  return yield* buildRosterVisual(game, ent, true);
+}
+
+function* buildRosterVisual(
+  game: RosterGameState,
+  ent: RosterEntity,
+  cooperative: boolean,
+): Generator<void, BattleVisual, void> {
   if (ent.visual) return ent.visual;
   const engineCtx = game._engineCtx;
   if (!engineCtx) throw new Error('battle roster engine context is unavailable');
-  // PERF (performance_budget r3): texture-quality tier. Hero-grade 2048²
-  // bakes go to vehicles the camera can inspect at arm's length — the
-  // player's pick and the closeup screenshot-contract specs (the garage
-  // pedestal acquires 'high' itself and upgrades a cached 'ai' entry in
-  // place). AI roster fills bake at a compact tier: 5-7 full hero sets per battle
-  // measured 666-685 MB scene textures vs the FROZEN 512 MB gate, and each
-  // 2048² bake costs 250-350 ms of main-thread canvas work.
-  const textureQuality = textureQualityFor(game, ent);
-  const playerActor = ent.isPlayer || ent === game.tanks[0];
+  const roster = game.tanks;
+  const battleCount = game.battleCount;
+  const specId = ent.specId;
+  const camoSeed = ent._camoSeed;
+  const state = ent.state;
+  const groundSampler = game._groundSampler;
+  const isPlayer = ent.isPlayer;
+  const firstParticipant = roster[0];
+  const assertCurrent = () => {
+    if (game._engineCtx !== engineCtx || game.tanks !== roster ||
+        game.battleCount !== battleCount || !roster.includes(ent) ||
+        ent.specId !== specId || ent._camoSeed !== camoSeed ||
+        ent.state !== state || ent.isPlayer !== isPlayer ||
+        roster[0] !== firstParticipant || game._groundSampler !== groundSampler || ent.visual) {
+      throw new Error('battle visual construction was superseded');
+    }
+  };
+  assertCurrent();
+  const playerActor = ent.isPlayer || ent === roster[0];
   const deviceTier = getDeviceTier();
   const mobileBot = !playerActor && deviceTier === 'mobile';
   const battleBot = !playerActor;
-  // A pooled graph has no entity, combat or damage owner. Bind it to this
-  // roster slot now; setupBattle will create fresh state before revealing or
-  // simulating it. Player actors continue to use the dedicated garage-lending
-  // path and its higher texture/detail contract.
-  if (battleBot) {
-    const pooled = game._battleVisualPool?.take(ent.specId) || null;
-    if (pooled) {
-      ent.visual = pooled;
-      engineCtx.scene.add(pooled.root);
-      if (game._groundSampler && pooled.setGroundSampler) {
-        pooled.setGroundSampler(game._groundSampler);
+  let visual: BattleVisual | null = battleBot
+    ? game._battleVisualPool?.take(specId) || null : null;
+  let published = false;
+  // for-of supplies IteratorClose on cancellation, including when a caller's
+  // awaited frame gate rejects. The factory still owns its unfinished graph;
+  // only its completed return transfers that ownership to this transaction.
+  const construct = function* (): Generator<void, void, void> {
+    // Exact existing battle policy: preview player paint, authored bot detail,
+    // articulation-local static batches. No quality tier is reduced here.
+    const options: CreateTankOptions = {
+      camoSeed,
+      quality: textureQualityFor(game, ent),
+      geometryQuality: battleGeometryQuality(playerActor, deviceTier),
+      batchStatic: true,
+      battleDetailLod: battleBot && !mobileBot,
+    };
+    visual = cooperative
+      ? yield* createTankSteps(specId, engineCtx, options)
+      : createTank(specId, engineCtx, options);
+  };
+  try {
+    if (!visual) {
+      for (const step of construct()) {
+        assertCurrent();
+        yield step;
+        assertCurrent();
       }
-      if (ent.state && pooled.syncFromState) {
-        pooled.syncFromState(ent.state);
-        pooled.setVisible(true);
-      }
-      return pooled;
+    }
+    if (!visual) throw new Error('battle visual construction returned no visual');
+    assertCurrent();
+    // Preserve the established synchronous binding order after completion.
+    ent.visual = visual;
+    engineCtx.scene.add(visual.root);
+    if (game._groundSampler && visual.setGroundSampler) {
+      visual.setGroundSampler(game._groundSampler);
+    }
+    if (ent.state && visual.syncFromState) {
+      visual.syncFromState(ent.state);
+      visual.setVisible(true);
+    }
+    published = true;
+    return visual;
+  } finally {
+    if (visual && !published) {
+      if (ent.visual === visual) ent.visual = null;
+      visual.root.removeFromParent();
+      visual.dispose();
     }
   }
-  ent.visual = createTank(ent.specId, engineCtx, {
-    camoSeed: ent._camoSeed,
-    quality: textureQuality,
-    // The low-detail branches are authored per vehicle profile and preserve
-    // armor silhouettes. Battle bots use them on every tier, and mobile also
-    // uses them for the player's battle-only copy: the full-fidelity garage
-    // hero remains untouched while avoiding a desktop-grade build and GPU
-    // footprint for a subject mostly framed below the HUD. Desktop players,
-    // garage, Studio, and authored close-up paths remain full fidelity.
-    geometryQuality: battleGeometryQuality(playerActor, deviceTier),
-    // Every battle actor keeps its exact authored geometry while anonymous
-    // same-material fittings are transform-baked into articulation-local
-    // batches. AI additionally detaches purely cosmetic detail at range. The
-    // separate garage/studio constructors remain untouched, and close combat
-    // or a killcam restores every retained bot detail automatically.
-    batchStatic: true,
-    battleDetailLod: battleBot && !mobileBot,
-  });
-  engineCtx.scene.add(ent.visual.root);
-  if (game._groundSampler && ent.visual.setGroundSampler) {
-    ent.visual.setGroundSampler(game._groundSampler);
-  }
-  // PERF r3: a deferred staged visual streams in AFTER setupBattle posed the
-  // entity — pose it now so it never renders a frame at the origin.
-  if (ent.state && ent.visual.syncFromState) {
-    ent.visual.syncFromState(ent.state);
-    ent.visual.setVisible(true);
-  }
-  return ent.visual;
 }
 
 // PERF r3: specs whose closeup contract shots (tank_closeup_*) frame the
 // vehicle at 3-6 m — always hero texture tier regardless of roster role.
 const HERO_TEX_SPECS = new Set(['m1a2', 'tiger1', 't34_85', 't90m', 'leo2a7']);
 
-function textureQualityFor(game: RosterGameState, ent: RosterEntity) {
+function textureQualityFor(game: RosterGameState, ent: RosterEntity): NonNullable<CreateTankOptions['quality']> {
   // The first participant is the player before setupBattle stamps isPlayer.
   // Mobile keeps that close camera subject at hero resolution, but distant
   // bots use the AI tier. Garage selection still upgrades its shared entry.

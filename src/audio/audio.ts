@@ -55,6 +55,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  */
 
 import { createVoiceRadio } from './voices.ts';
+import { buildAudioBuffers, type PreparedAudioBuffers } from './audioBuffers.ts';
+export { prepareAudioBuffers } from './audioBuffers.ts';
 import type { AudioListenerPose } from './listenerPoseRuntime.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
@@ -101,6 +103,7 @@ type ModuleCondition = 'ok' | 'yellow' | 'red';
 
 interface AudioMixerOptions {
   context?: AudioContext | null;
+  preparedBuffers?: PreparedAudioBuffers | null;
   getMapId?(): string | null;
   initialPhase?: string;
 }
@@ -398,9 +401,14 @@ export {
 /** @param {{ context?: AudioContext | null }} [options] */
 export function createAudio({
   context: initialContext = null,
+  preparedBuffers = null,
   getMapId,
   initialPhase = 'garage',
 }: AudioMixerOptions = {}): AudioMixer {
+  if (preparedBuffers && (preparedBuffers.context !== initialContext
+      || preparedBuffers.sampleRate !== initialContext?.sampleRate)) {
+    throw new Error('Prepared audio buffers belong to a different context or sample rate');
+  }
   let ctx: AudioContext | null = initialContext;
   let graphReady = false;
   let battleEventsWarmed = false;
@@ -488,7 +496,7 @@ export function createAudio({
     set(voiceBus, 1.0 * chanVol.voice);
   }
 
-  const rng = mulberry32(9001);
+  const rng = preparedBuffers?.random ?? mulberry32(9001);
   const radio = createVoiceRadio(mulberry32(0xC0FFEE));
 
   // Listener pose (world space), refreshed each update().
@@ -630,97 +638,11 @@ export function createAudio({
   }
 
   function buildBuffers(): void {
-    const sr = ctx!.sampleRate;
-
-    // White noise (2 s), seeded.
-    whiteBuf = ctx!.createBuffer(1, (sr * 2) | 0, sr);
-    {
-      const d = whiteBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = rng() * 2 - 1;
-    }
-
-    // Pink-ish noise for wind (Paul Kellet economy filter over seeded white).
-    windBuf = ctx!.createBuffer(1, (sr * 4) | 0, sr);
-    {
-      const d = windBuf.getChannelData(0);
-      let b0 = 0, b1 = 0, b2 = 0;
-      for (let i = 0; i < d.length; i++) {
-        const w = rng() * 2 - 1;
-        b0 = 0.99765 * b0 + w * 0.0990460;
-        b1 = 0.96300 * b1 + w * 0.2965164;
-        b2 = 0.57000 * b2 + w * 1.0526913;
-        d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.18;
-      }
-    }
-
-    // Crackle: sparse decaying impulses (fire crackle, debris patter).
-    crackleBuf = ctx!.createBuffer(1, (sr * 2) | 0, sr);
-    {
-      const d = crackleBuf.getChannelData(0);
-      for (let e = 0; e < 160; e++) {
-        const at = (rng() * d.length) | 0;
-        const amp = 0.25 + rng() * 0.75;
-        const len = 12 + ((rng() * 80) | 0);
-        const sign = rng() < 0.5 ? -1 : 1;
-        for (let i = 0; i < len && at + i < d.length; i++) {
-          d[at + i] += sign * amp * Math.exp(-i / (len * 0.3)) * (rng() * 2 - 1);
-        }
-      }
-    }
-
-    // Render the layered gun timbres into PCM beds once (SOUND overhaul: four
-    // caliber classes, each with a sharper crack, a resonant mid "bark" and a
-    // longer sub/rumble tail than the old three-class beds — the live shot
-    // still schedules just one source + one distance filter, plus a cheap
-    // 2-node crack overlay for nearby shots).
-    //   light ≤76 mm | medium ≤105 mm | heavy ≤130 mm | huge >130 mm (152/380)
-    const makeGunBed = (kind: 'light' | 'medium' | 'heavy' | 'huge'): AudioBuffer => {
-      const P = {
-        light:  { dur: 0.55, crackT: 0.030, bodyT: 0.10, rumT: 0.20, f0: 62, f1: 46, subT: 0.16, bark: 195, barkT: 0.045, out: 0.78 },
-        medium: { dur: 1.00, crackT: 0.040, bodyT: 0.17, rumT: 0.42, f0: 54, f1: 34, subT: 0.32, bark: 150, barkT: 0.060, out: 0.86 },
-        heavy:  { dur: 1.70, crackT: 0.055, bodyT: 0.25, rumT: 0.80, f0: 46, f1: 27, subT: 0.50, bark: 120, barkT: 0.080, out: 0.92 },
-        huge:   { dur: 2.60, crackT: 0.070, bodyT: 0.34, rumT: 1.25, f0: 40, f1: 22, subT: 0.75, bark: 96,  barkT: 0.110, out: 0.97 },
-      }[kind];
-      const out = ctx!.createBuffer(1, Math.ceil(sr * P.dur), sr);
-      const d = out.getChannelData(0);
-      const grng = mulberry32(0x6a09e667 ^ (P.bark | 0));
-      let low = 0, prevNoise = 0, phaseAcc = 0;
-      const barkW1 = Math.PI * 2 * P.bark / sr;
-      const barkW2 = Math.PI * 2 * P.bark * 1.53 / sr;
-      let bp1 = 0, bp2 = 0;
-      for (let i = 0; i < d.length; i++) {
-        const t = i / sr;
-        const n = grng() * 2 - 1;
-        low += (n - low) * (kind === 'huge' ? 0.02 : kind === 'heavy' ? 0.025 : kind === 'medium' ? 0.05 : 0.09);
-        const high = n - prevNoise;
-        prevNoise = n;
-        const sweepT = Math.min(1, t / (P.subT * 0.9));
-        phaseAcc += Math.PI * 2 * (P.f0 + (P.f1 - P.f0) * sweepT) / sr;
-        bp1 += barkW1; bp2 += barkW2;
-        const crack = high * Math.exp(-t / P.crackT);
-        const body = n * Math.exp(-t / P.bodyT);
-        const rumble = low * Math.exp(-t / P.rumT);
-        const sub = Math.sin(phaseAcc) * Math.exp(-t / P.subT);
-        // Resonant muzzle "bark": slightly inharmonic damped partial pair —
-        // this is the mid-range punch the flat noise beds were missing.
-        const bark = (Math.sin(bp1) + 0.45 * Math.sin(bp2)) * Math.exp(-t / P.barkT);
-        const attack = Math.min(1, t / 0.003);
-        const v = attack * (crack * 0.34 + body * 0.40 + rumble * 0.68 + sub * 0.60 + bark * 0.30);
-        d[i] = v;
-      }
-      // Normalize the bed to a consistent peak so caliber classes mix predictably.
-      let peak = 0;
-      for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-      const k = peak > 0 ? P.out / peak : 1;
-      for (let i = 0; i < d.length; i++) d[i] *= k;
-      return out;
-    };
-    gunBufs = {
-      light: makeGunBed('light'),
-      medium: makeGunBed('medium'),
-      heavy: makeGunBed('heavy'),
-      huge: makeGunBed('huge'),
-    };
+    const buffers = preparedBuffers ?? buildAudioBuffers(ctx!, rng);
+    whiteBuf = buffers.white;
+    windBuf = buffers.wind;
+    crackleBuf = buffers.crackle;
+    gunBufs = buffers.guns;
   }
 
   function applyMaster(): void {

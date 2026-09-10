@@ -151,7 +151,10 @@ function supportActionReady(entity: AiEntity, slot: number, timeS: number): bool
 
 function needsModuleRepair(combat: CombatState): boolean {
   let damagedModules = 0;
-  for (const [name, module] of Object.entries(combat.modules || {})) {
+  const modules = combat.modules;
+  for (const name in modules) {
+    if (!Object.prototype.hasOwnProperty.call(modules, name)) continue;
+    const module = modules[name as keyof typeof modules];
     if (!module || module.state === 'ok') continue;
     damagedModules++;
     if (module.state === 'red' && CRITICAL_REPAIR_MODULES.has(name)) return true;
@@ -160,7 +163,11 @@ function needsModuleRepair(combat: CombatState): boolean {
 }
 
 function hasInjuredCrew(combat: CombatState): boolean {
-  return Object.values(combat.crew || {}).some((alive) => alive === false);
+  const crew = combat.crew;
+  for (const name in crew) {
+    if (Object.prototype.hasOwnProperty.call(crew, name) && crew[name] === false) return true;
+  }
+  return false;
 }
 
 function wantsSpecialAction(entity: AiEntity, context: AiSupportContext): boolean {
@@ -718,6 +725,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const deps = opts.deps;
   const tier = selectDifficultyTier(opts.difficulty);
   const rng = selectRandomSource(opts.rng);
+  const supportContext: AiSupportContext = {
+    safeToReloadMagazine: false,
+    wantsSuspensionAim: false,
+  };
   // perf-r3b: AI terrain probes (cover eval, hull-down checks, LOS eyelines)
   // are pure reads that never seat geometry — serve them from the baked 1 m
   // grid when the heightfield provides one (headless fixtures don't).
@@ -3622,12 +3633,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         routeTimer = Math.min(routeTimer,0.1);
       }
     }
-    input.actionBits = chooseAiSupportActionBits(entity, timeS, {
-      safeToReloadMagazine: !target || !losClear || mode === 'seekCover',
-      wantsSuspensionAim: !!target && losClear
-        && Math.abs(entity.state.speed) < 1.5
-        && Math.abs(input.throttle) < 0.2,
-    });
+    supportContext.safeToReloadMagazine = !target || !losClear || mode === 'seekCover';
+    supportContext.wantsSuspensionAim = !!target && losClear
+      && Math.abs(entity.state.speed) < 1.5
+      && Math.abs(input.throttle) < 0.2;
+    input.actionBits = chooseAiSupportActionBits(entity, timeS, supportContext);
     aimAndFire(input, dt, timeS);
     controller.state = mode;
   }
