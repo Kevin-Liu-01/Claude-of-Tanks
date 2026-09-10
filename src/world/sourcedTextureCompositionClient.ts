@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { nextPaintFrame } from '../engine/frameScheduler.ts';
 import type { SourcedComposeOptions } from './sourcedTextureComposer.ts';
 import {
   SOURCED_TEXTURE_COMPOSITION_PROTOCOL,
@@ -34,6 +35,8 @@ export interface SourcedCompositionWorkerPort {
 export interface SourcedCompositionClientPorts {
   createWorker(): SourcedCompositionWorkerPort | null;
   createBitmap(image: HTMLImageElement): Promise<ImageBitmap>;
+  /** Separate native image conversions from replies and from one another. */
+  yieldPreparation?(): Promise<void>;
   schedule(callback: () => void, delay: number): () => void;
 }
 
@@ -189,15 +192,31 @@ export function createSourcedCompositionClient(
     } catch { return null; }
   }
 
+  function ownsPreparation(job: CompositionJob): boolean {
+    if (job.finished || active !== job) return false;
+    if (job.consumers.size) return true;
+    finishActive(job, null);
+    return false;
+  }
+
   async function prepare(job: CompositionJob): Promise<void> {
     job.preparing = true;
     const images = usedImages(job.input);
-    // Await all native conversions, including failures, before starting another
-    // job. Late conversions after a deadline/dispose close in makeBitmap().
-    const [color, ao, rough] = await Promise.all([
-      makeBitmap(job, images.color), makeBitmap(job, images.ao), makeBitmap(job, images.rough),
-    ]);
+    const bitmaps: Record<keyof SourcedCompositionImages, ImageBitmap | null> = {
+      color: null, ao: null, rough: null,
+    };
+    for (const role of ['color', 'ao', 'rough'] as const) {
+      if (!images[role]) continue;
+      if (!ownsPreparation(job)) return;
+      // createImageBitmap returns a promise, but its native front half can
+      // block. Reserve this job before yielding and submit only one image per
+      // opportunity; never batch all inputs inside a worker reply callback.
+      await ports.yieldPreparation?.();
+      if (!ownsPreparation(job)) return;
+      bitmaps[role] = await makeBitmap(job, images[role]);
+    }
     if (job.finished || active !== job) return;
+    const { color, ao, rough } = bitmaps;
     if (!color || (images.ao && !ao) || (images.rough && !rough) || !job.consumers.size) {
       finishActive(job, null);
       return;
@@ -334,6 +353,7 @@ export function tryComposeSourcedTexture(
   sharedClient ??= createSourcedCompositionClient({
     createWorker: browserWorker,
     createBitmap: image => createImageBitmap(image),
+    yieldPreparation: nextPaintFrame,
     schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
   });
   return sharedClient.compose(input, signal);
