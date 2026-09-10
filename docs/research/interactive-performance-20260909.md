@@ -6,6 +6,16 @@ not a zero-lag or release certificate.
 
 ## Current acceptance summary
 
+Latest checkpoint (2026-09-10 04:29 UTC): the integrated runtime is verified at
+`889f7a6a80af90b1615c539c187b4e92fe6b1d45`; see the final integration evidence
+below. All79 distinct planned affected/preservation checks have cumulative PASS
+coverage, current typecheck/public build pass, and real-control day/night/Garage
+plus audio ownership pass. The60-second full-roster camera probe responds to
+all29 trusted inputs, but strict timing gates do NOT pass: p99=33.3ms and
+median FPS=59.9. Other interactive-browser GPU activity also refuses timing
+certification. This is a verified implementation checkpoint, not completion of
+the zero-lag investigation. Earlier rows below retain their dated evidence.
+
 | Deliverable | State and evidence |
 | --- | --- |
 | Runtime improvements | Implemented: HUD no-op filtering/ammo caching, allocation reuse, cooperative grass and exact private vehicle staging, responsive covered transitions, audio startup ordering, Garage/context recovery, full-scene GPU warm, batched program cohorts, exact sky-horizon caching, bounded prop conversion. R10 gates competing Garage work and stages shader submission; R11 coalesces overlapping Garage drains; R14 moves fixed and ordinary mutable base painting to a bounded worker with exact main-side roughness correction. |
@@ -1868,3 +1878,75 @@ day Battle → night Battle Again → Garage smoke. This section describes the
 implementation and required gates; it does not predeclare pending gates passed.
 Historical 214–319 ms stalls, long-session frame budgets, and all-phase
 responsiveness are not yet certified.
+
+## Final integrated runtime validation — 2026-09-10
+
+Runtime checkpoint: `889f7a6a80af90b1615c539c187b4e92fe6b1d45`, based on
+published `57b05f0c0e2374c103f4285ff63d84871967894c`. The shared dirty checkout
+and unrelated vehicle geometry were untouched. Current main's overlapping bush
+sprays and all original world palettes/masks remain intact. Tests and artifacts
+ran with unchanged budgets, visual quality and ordinary FIFO leases.
+
+The separate test-only `57b05f0c0` checkpoint preserves the immutable original
+Mangrove/village digests across independently authenticated Foundry palette,
+Autumn foliage and Autumn/Delta crop additions. Exact current values and mutation
+negative controls are checked before reconstructing only historical input views.
+No map, runtime geometry, raster output or golden hash was changed. Mangrove's
+six native water bakes, current Autumn construction and village's desktop/mobile
+mask cases passed before that narrow checkpoint was pushed.
+
+CPU evidence is cumulative and explicitly preserves failures: r1 passed13 then
+stopped at a minimal fake-document fixture; r2 passed15 then stopped at the stale
+historical map receipt. The corrected fixtures use EventTarget cleanup and exact
+historical inputs rather than weakening runtime behavior. Final r3 passed all52
+remaining/current-main checks, including the164-vehicle/200-profile lazy-fleet
+check in136seconds under its original240-second budget. The union of passing
+results covers all79 distinct planned files; this is NOT a new full `npm test`
+run or a claim that all914 discoverable checks ran on this checkpoint.
+
+Pinned Doctor0.9.13 raw output remains exit1. Its offsets are UTF-8 bytes, not
+JavaScript UTF-16 indexes: the corrected artifact classifier establishes34
+inherited findings and7 intentional ordered cooperative waits, with no newly
+actionable finding. The raw diagnostics are retained. Current-head association
+proves46 scanned runtime files byte-identical and vegetation equal to the prior
+candidate plus the exact already-published bush replacement. No rescan, zero-raw-
+warning claim, runtime suppression or concurrent advancement of shared generators
+is implied. Full current typecheck and public build pass; owned children drained.
+
+Build index: `0c4c7ad6efd25c4b3ff3ad23308ed16790f536117602fd3a11a8a50aa179e682`.
+The unchanged native actual-controls probe passed full14 day Battle, full14 night
+Battle Again and empty-roster Return to Garage, including audio-clock/loading
+ownership. All3 stills were inspected; no page, graphics, rescue or cleanup errors.
+High1280x720/DPR1/scale1/trim0/SMAA-High+FSR1 remain unchanged. Battle/Rematch/
+Garage cover times were49.3/139.9/105.7ms, total times6850.1/5556.4/339.9ms and
+largest callback gaps162.3/204.9/48.5ms. These are raw loading/transition timings,
+not causal A/B speedups or proof that preparation no longer stalls.
+
+The normal60-second Verdant battle used the exact reference14 roster,
+High1280x577/DPR1/native cadence and the first control-release window, without
+pre-window settling or forced GC. All29 planned trusted camera inputs responded;
+roster, texture, draw-call, heap and console gates passed. Across3549frames,
+median/p95/p99 intervals were16.7/16.8/33.3ms, median FPS59.9, peak draws837,
+texture estimate156.1MB and raw heap growth-0.34MB/s. The unchanged median-FPS
+and p99 gates FAIL. Certification was separately REFUSED because other
+interactive-browser GPU CPU reached46.1% (limit15%); foreign headless GPU count
+was0. No threshold was rounded/waived and no foreign process was stopped.
+
+Raw local evidence under `/private/tmp/cot-interactive-baseline.gsRCvU`:
+
+- `palette-oracle-main-checkpoint-r3-receipt.json` (three-test published checkpoint).
+- `clean-performance-integration-focused-r3-receipt.json` (52/52 final continuation;
+  r1/r2 failures and source cutovers remain alongside it).
+- `clean-performance-doctor-review.json` and the unchanged raw scanner receipt.
+- `clean-performance-current-build-99PIeb/receipt.json` (current source bridge,
+  typecheck, build, index and process/lease cleanup).
+- `garage-actions-integration/report.json`, three PNGs and runner receipt
+  (functional PASS; full immutable dist witnessed before/after).
+- `early-camera-integration.json` and runner receipt (input coverage PASS;
+  strict frame gates FAIL and contended timing certification REFUSED).
+
+Remaining acceptance is explicit: the specific historical214–319ms gameplay
+stalls have no proven causal trace; sustained/all-phase frame budgets and
+multi-device/OS-throttling guarantees are not established. Native audio-device
+startup and atomic profile/GPU operations can still block. Publication of these
+verified improvements must not be described as all lag eliminated.
