@@ -61,9 +61,10 @@ assert.match(worldActivationSource, /minimapAssetUrl\(mapId, baseUrl, options\.m
 assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
 for (const mapId of MAP_IDS) {
-  const revision = mapId === 'oasis' ? 'north-up-v7-oasis-shoreline-v2' : 'north-up-v7';
+  const revision = mapId === 'oasis' ? 'north-up-v7-oasis-shoreline-v2'
+    : mapId === 'autumn' ? 'north-up-v7-autumn-headlands' : 'north-up-v7';
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
-    'only the refreshed Oasis raster invalidates its previous browser cache entry');
+    'only explicitly refreshed rasters invalidate their previous browser cache entries');
   assert.equal(minimapAssetUrl(mapId, '/game/'), `/game/minimaps/${mapId}.webp?v=${revision}`);
   assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
     `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
