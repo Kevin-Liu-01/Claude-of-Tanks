@@ -282,3 +282,47 @@ runtime finding is reported. Source evaluation is Node-only, bounded to
 reviewed AST-selected declarations and the immutable constructor reconstruction;
 shared test taps require serial fixture completion. Scanner errors are retained
 and do not become a passing scanner gate.
+
+## Native terrain follow-up and integration
+
+`heightfield-yield-local-r1/report.json` passes the actual trusted boot,
+Battle, Rematch and Garage controls, audio-clock ownership, warm readiness
+and sourced-art readiness. Errors, failures and cleanup arrays are empty;
+all three screenshots were inspected, and the owned browser/preview closed.
+This captures the public runtime built from `875262468`, before the unrelated
+T-90A release integration. Report SHA256:
+`d1da90e9a8e6c02596d99958f285ec13aaccbceed1d95ea4689b847662067d07`.
+HTML SHA256:
+`ecb8e92dcef30c12fa943ae5c64a54127a9d9f753906c72c61445a61384e6a26`.
+Acquisition SHA256:
+`794c3214dc4614bfb2a50f140bcd586139837c7c155f26e8c1f51487e1b36558`.
+Chrome151, native M5 Max, Urban, fourteen tanks, 1280×720/DPR1,
+high/scale1/trim0 remain unchanged. Bot draws are retained, not a pinned-roster
+throughput comparison. The added LoAF observer changes acquisition from r2.
+
+| Control | Cover ms | Ready ms | Callback-gap maximum ms |
+| --- | ---: | ---: | ---: |
+| Battle | 4.3 | 6412.3 | 121.1 |
+| Rematch | 139.1 | 5547.4 | 66.1 |
+| Garage | 83.4 | 317.2 | 45.9 |
+
+The first gap, 2714.4–2835.5 ms, overlaps 110 ms of a Long Task and one
+115.7 ms LoAF. That frame exposes a 13.8 ms `frameScheduler` rAF entry point,
+but does not account for all remaining time. Both sampled UI labels say
+`Building terrain meshes`; the world record starts at 2703.9 ms and reports
+222 ms of height-field work, so UI text alone is not an exact nested-stage
+attribution. The worst gap is not fixed or assigned to Canvas/GPU/OS by this
+receipt. Rematch's worst gap overlaps two LoAFs with scheduler continuation
+records, despite no overlapping ≥50 ms Long Task. No observation was dropped
+for these overlap summaries. Foundations/rubble/curbs completed-family costs
+are 24.5/19.7/16.1 ms; their internal loops remain atomic.
+
+Independent runtime review found no partial publication, cancellation or
+progress-regression blocker in the new height-field seam. After the other
+task released its verified main boundary, the five owned commits rebased
+cleanly onto `c1142f59b970e293b0c6892b60c181084e471625`. World runtime and
+the action-timing helper/tests remain byte-identical to `e895d715a`.
+Six focused integration selftests, native TypeScript/core-unused and the
+public build pass on rebased `8c1b4c2c2`. The registry now contains 955 files;
+this is not a fresh full 955-file test-run claim. The upstream 954-file full
+run does not already include this follow-up's new cache test or runtime.
