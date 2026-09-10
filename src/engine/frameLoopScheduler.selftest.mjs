@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE,
   MAX_CALIBRATED_FRAME_BUDGET_MS, presentationFrameBudgetMs } from './frameLoopScheduler.ts';
@@ -433,6 +434,89 @@ assert.equal(slowDisplay.evaluate({ ...paced30.window, clockSeconds: 14 }), 'res
 // old literal at either composition seam must not silently bypass this owner.
 const postSource = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
 const mainSource = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+// Execute the actual composition callbacks and listener registration against
+// the real scheduler. Source extraction keeps these tiny inline owners honest
+// without booting DOM/WebGL or introducing another runtime phase policy.
+function mainBlock(start, end) {
+  const begin = mainSource.indexOf(start), finish = mainSource.indexOf(end, begin);
+  assert.ok(begin >= 0 && finish > begin, `main source block missing: ${start}`);
+  return mainSource.slice(begin, finish + end.length);
+}
+const garageBoot = mainBlock('let garagePresentationDirty = true;',
+  'let invalidateGaragePresentation = () => { garagePresentationDirty = true; };');
+const garageInvalidate = mainBlock('\ninvalidateGaragePresentation = () => {', '\n};');
+const garageActivity = mainBlock('const noteGarageActivity = () => {', '\n};');
+const garageListeners = mainBlock("for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) {", '\n}');
+assert.equal(runInNewContext(`${garageBoot}\ngaragePresentationDirty = false;
+  invalidateGaragePresentation(); garagePresentationDirty;`), true,
+'the early boot callback only marks dirty, without reading later live owners');
+
+function garageActivityFixture(harness, phase, legacy = false) {
+  const game = { phase }, effects = [], listeners = new Map();
+  const callbacks = `${garageInvalidate}\n${garageActivity}`;
+  const body = legacy ? callbacks.replaceAll("  if (game.phase !== 'garage') return;\n", '') : callbacks;
+  const api = runInNewContext(`${garageBoot}\n${body}\n${garageListeners}
+    ({ invalidate: () => invalidateGaragePresentation(),
+       isDirty: () => garagePresentationDirty, clearDirty: () => { garagePresentationDirty = false; } });`, {
+    game, frameLoop: harness.scheduler, performance: { now: () => 1234 },
+    garageFramePacer: { noteActivity: at => effects.push(['pacer', at]) },
+    lighting: { setStaticPresentationDormant: value => effects.push(['lighting', value]) },
+    garageDressingScheduler: { noteActivity: () => effects.push(['dressing']) },
+    pedestal: { invalidatePreload: () => effects.push(['preload']) },
+    window: { addEventListener(type, listener, options) {
+      assert.equal(options.capture, true); assert.equal(options.passive, true);
+      listeners.set(type, listener);
+    } },
+  });
+  api.clearDirty();
+  return { ...api, game, effects, listeners };
+}
+
+for (const phase of ['battle', 'studio']) {
+  const harness = createHarness(), activity = garageActivityFixture(harness, phase);
+  harness.setBoot(true); harness.scheduler.schedule();
+  const queued = [...harness.frames.keys()];
+  for (const listener of activity.listeners.values()) listener();
+  assert.deepEqual(activity.effects, [], `${phase} input cannot touch Garage owners`);
+  assert.equal(activity.isDirty(), false, `${phase} input is not Garage presentation activity`);
+  activity.invalidate(); // A retained asynchronous Garage producer, not input.
+  assert.equal(activity.isDirty(), true, 'late visual completion remains dirty for eventual Garage return');
+  assert.deepEqual(activity.effects, [], 'late Garage completion cannot touch the active phase');
+  assert.deepEqual([...harness.frames.keys()], queued, 'including resize, no foreign phase cancels or requeues its RAF');
+  assert.equal(harness.cancelled.length, 0);
+  activity.game.phase = 'garage'; harness.setIdle(true);
+  harness.scheduler.restart(); harness.fireFrame(harness.frames.keys().next().value, 0); harness.scheduler.schedule();
+  assert.ok(harness.delayed);
+  activity.listeners.get('keydown')();
+  assert.equal(harness.delayed, null, 'Garage input still wakes the sleeping presentation clock');
+  assert.equal(harness.frames.size, 1);
+  assert.deepEqual(activity.effects, [['pacer', 1234], ['lighting', false], ['dressing'], ['preload']]);
+  harness.scheduler.dispose();
+}
+
+function battleInputTicks(legacy) {
+  const harness = createHarness(), activity = garageActivityFixture(harness, 'battle', legacy);
+  harness.setBoot(true); harness.scheduler.schedule();
+  for (let index = 0; index < 720; index++) {
+    const at = index * 1000 / 120;
+    harness.setNow(at);
+    if (index % 240 === 1) { // Repeated A/D keydown at the intervening display slot.
+      activity.listeners.get('keydown')();
+      harness.listeners.get('keydown')();
+    }
+    harness.fireFrame(harness.frames.keys().next().value, at);
+    harness.scheduler.schedule();
+  }
+  const result = { ticks: harness.ticks, cancellations: harness.cancelled.length };
+  harness.scheduler.dispose();
+  return result;
+}
+const uninterrupted = deliveredTicks(Array.from({ length: 720 }, (_, index) => index * 1000 / 120));
+const guardedInputs = battleInputTicks(false), legacyInputs = battleInputTicks(true);
+assert.deepEqual(guardedInputs.ticks, uninterrupted, 'battle keydown preserves the exact native 60 Hz deadline grid');
+assert.equal(guardedInputs.cancellations, 0);
+assert.notDeepEqual(legacyInputs.ticks, uninterrupted, 'negative control reproduces the former input-driven clock rebasing');
+assert.equal(legacyInputs.cancellations, 3, 'each old global Garage callback cancelled the active battle RAF');
 assert.match(postSource, /const DYN_TARGET_MS = presentationFrameBudgetMs\(0\)/);
 assert.match(postSource, /dynBudgetMs = presentationFrameBudgetMs\(dynBestCadenceMs\)/);
 assert.match(mainSource, /maximumFrameRate: PRESENTATION_MAX_FRAME_RATE/);

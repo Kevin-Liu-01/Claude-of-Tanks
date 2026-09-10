@@ -11,6 +11,7 @@ import type {
 import { createOffscreenSceneWarmer, warmSceneOffscreenBatched, type OffscreenSceneWarmer } from './offscreenWarm.ts';
 import { prepareDeploymentUploadPrograms, type DeploymentUploadProgramReceipt } from './deploymentUploadPrograms.ts';
 import { nextPaintFrame } from './frameScheduler.ts';
+import { renderShadowOnlyWarm, SHADOW_ONLY_LAYER } from './renderLayers.ts';
 
 type BudgetYield = (covered?: boolean) => Promise<void>;
 type WarmRender = (() => void) & { dispose?: () => void };
@@ -282,6 +283,9 @@ function visibleContentRoots(scene: Scene): Object3D[] {
 function createCasterBatches(scene: Scene, camera: Camera): CasterState {
   const casters: CasterState['casters'] = [];
   const lods: CasterState['lods'] = [];
+  // Match routeShadowOnlyLayer without exposing proxies to forward renders.
+  // Otherwise omitted layer29 casters stay enabled in every warm cohort.
+  const shadowLayerMask = camera.layers.mask | (1 << SHADOW_ONLY_LAYER);
   scene.traverseVisible((object) => {
     const candidate = object as Object3D & {
       isLOD?: boolean;
@@ -303,7 +307,7 @@ function createCasterBatches(scene: Scene, camera: Camera): CasterState {
     }
     if (!(candidate.isMesh || candidate.isLine || candidate.isPoints)
       || !candidate.castShadow
-      || !candidate.layers.test(camera.layers)) return;
+      || (candidate.layers.mask & shadowLayerMask) === 0) return;
     const materials = Array.isArray(candidate.material)
       ? candidate.material : [candidate.material];
     if (!materials.some((material) => material?.visible !== false)) return;
@@ -353,8 +357,12 @@ export function createDeploymentShadowWarmOwner({
   shadowOnlyCamera.position.set(100_000, 100_000, 100_000);
   shadowOnlyCamera.lookAt(100_000, 100_000, 100_001);
   shadowOnlyCamera.updateMatrixWorld(true);
-  const shadowOnlyWarm = injectedShadowWarm
+  const nativeShadowWarm = injectedShadowWarm
     ?? createOffscreenSceneWarmer(renderer, scene, shadowOnlyCamera, 0.0625);
+  const shadowOnlyWarm = injectedShadowWarm ?? Object.assign(
+    () => renderShadowOnlyWarm(renderer, shadowOnlyCamera, nativeShadowWarm),
+    { dispose: () => nativeShadowWarm.dispose?.() },
+  );
   const uploadMaterial = new THREE.MeshBasicMaterial({
     color: 0x000000,
     colorWrite: false,
