@@ -6,7 +6,14 @@ not a zero-lag or release certificate.
 
 ## Current acceptance summary
 
-Latest checkpoint (2026-09-10 04:29 UTC): the integrated runtime is verified at
+Latest UI checkpoint (2026-09-10): hit-card preparation now uses an exact-output
+worker with cooperative fallback. Native seven-case pixel parity, focused tests,
+typecheck, public build and actual-controls day/night/Garage checks pass; see
+the final sections for receipts and the still-open frame gaps. A final review
+also preserves roster preparation across the ordinary network battle UI reset;
+new roster preparation still supersedes older queued work.
+
+Earlier integrated checkpoint (2026-09-10 04:29 UTC): the runtime is verified at
 `889f7a6a80af90b1615c539c187b4e92fe6b1d45`; see the final integration evidence
 below. All79 distinct planned affected/preservation checks have cumulative PASS
 coverage, current typecheck/public build pass, and real-control day/night/Garage
@@ -2092,7 +2099,7 @@ in the worker leg. Browser errors, failed HTTP responses and cleanup errors are
 empty; before/after source hashes match. Earlier failed fixture-route/favicon
 runs remain preserved rather than being relabeled as passes.
 
-Focused verification passes: 89 schematic assertions; hit-event formatting,
+Initial focused verification passes: 89 schematic assertions; hit-event formatting,
 diagram projection, battle HUD and mobile layout; profiler-window and camera/
 action timing tests; native-probe lifecycle and suite registration checks.
 Typecheck and the public production build pass. The four runtime files have no
@@ -2112,3 +2119,14 @@ zero-stall claim. Evidence is retained in `garage-actions-schematic-candidate-r1
 and the `loading-followup-*` logs under the evidence root. This ships a verified
 removal of identified synchronous UI work, not a resolution of every historical
 or browser/device scheduling stall.
+
+Final review found and repaired an activation ordering edge: multiplayer warms
+the roster immediately before the HUD's hidden-to-battle reset. That reset now
+clears presentation state without cancelling immutable spec-keyed preparation.
+New roster warming still cancels/supersedes old scheduled work. The executed
+warm → reset → remaining-frames and stale-callback regressions bring schematic
+coverage to **94 passing assertions**. The nine affected UI/profiler checks pass
+after rebasing onto `c4b3c14ac`. The first combined runner then stopped on a
+mistyped camera-test filename (not an assertion failure); its log is retained,
+and the actual `perfprobe-camera-input.selftest.mjs` plus suite registration
+are run separately before typecheck/build. No whole-suite pass is inferred.

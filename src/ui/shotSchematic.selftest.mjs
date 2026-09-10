@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import { normalizeSchematicPixels, finishSchematicPixels, bakeSchematicSteps, validSchematicSize } from './shotSchematic.ts';
 import { legacySchematic } from './shotSchematicReference.test.ts';
 import { createSchematicClient, prepareSchematicFallback } from './shotSchematicClient.ts';
@@ -10,6 +12,63 @@ const check = (condition, label) => { assert.ok(condition, label); checks++; };
 const equal = (actual, expected, label) => { assert.deepEqual(actual, expected, label); checks++; };
 const drain = steps => { let next = steps.next(); while (!next.done) next = steps.next(); return next.value; };
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+
+// Run the actual nested presentation methods: network entry warms its roster
+// immediately before hidden -> battle activation resets the shot-card UI.
+{
+  const source = readFileSync(new URL('./shotInfo.ts', import.meta.url), 'utf8');
+  const section = (startMarker, endMarker) => {
+    const start = source.indexOf(startMarker), end = source.indexOf(endMarker, start);
+    assert.ok(start >= 0 && end > start, 'shot-info lifecycle implementation remains discoverable');
+    return source.slice(start, end);
+  };
+  const state = section('  let schematicWarmRevision =', '  const shotLog:');
+  const warm = section('    warmSchematics(specIds:', '    root,');
+  const reset = section('    reset() {', '  };\n  return api;');
+  const frames = new Map(), requests = [], cancelled = [];
+  let nextFrame = 1, resets = 0;
+  const surface = { classList: { remove() {} } };
+  const bindings = {
+    requestAnimationFrame(callback) { const id = nextFrame++; frames.set(id, callback); return id; },
+    cancelAnimationFrame(id) { cancelled.push(id); frames.delete(id); },
+    schematicUrl(...request) { requests.push(request); return Promise.resolve(null); },
+    CARD_TOP_S: 96, CARD_SIDE_W: 184, CARD_SIDE_H: 92,
+    clearReportBuffer() { resets++; }, cardHost: { firstChild: null }, toastHost: { firstChild: null },
+    shotLog: [], allShots: [], receivedLog: [], combatants: new Map(), tg: new Map(),
+    endRoster: null, endInfo: null, spotWindow: new Map(), spottedSet: new Set(), spotAttributed: false,
+    stats: {}, newStats: () => ({}), logOpen: false, logPanel: surface,
+    endScreen: { hide() {} }, statsRoot: surface, document: { body: surface },
+  };
+  const javascript = stripTypeScriptTypes(`${state}\nconst api = {\n${warm}\n${reset}\n};`);
+  const api = new Function(...Object.keys(bindings), `${javascript}\nreturn api;`)(...Object.values(bindings));
+  const drainFrames = () => {
+    let steps = 0;
+    while (frames.size) {
+      assert.ok(++steps <= 16, 'roster warm has a bounded frame queue');
+      const [id, callback] = frames.entries().next().value;
+      frames.delete(id); callback();
+    }
+  };
+  const expected = ids => ids.flatMap(id => [[id, 'top', 192, 192], [id, 'side', 368, 184]]);
+
+  api.warmSchematics(['first', 'second', 'third']);
+  equal(requests, expected(['first']), 'only first tank starts before the next frame');
+  api.reset();
+  check(resets === 1, 'actual presentation reset executes');
+  drainFrames();
+  equal(requests, expected(['first', 'second', 'third']), 'activation reset preserves every queued roster schematic');
+
+  requests.length = 0;
+  api.warmSchematics(['old-first', 'old-second']);
+  const [oldFrame, staleKick] = frames.entries().next().value;
+  api.warmSchematics(['new-first', 'new-second', 'new-third']);
+  check(cancelled.includes(oldFrame) && !frames.has(oldFrame), 'new roster cancels prior scheduled warm');
+  staleKick();
+  drainFrames();
+  equal(requests, expected(['old-first', 'new-first', 'new-second', 'new-third']),
+    'superseded callback cannot submit old roster after new warm starts');
+}
+
 // napi's zero-size setters reset to 350x150, unlike browser canvas. Observe
 // the actual native setter contract instead of interpreting its getter as DOM.
 // Pixel rendering still uses the real native canvas, never a geometry stub.

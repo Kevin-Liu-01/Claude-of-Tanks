@@ -1643,7 +1643,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
     /** Fresh battle: clear cards, toasts, logs and session stats. */
     reset() {
-      cancelSchematicWarm();
+      // Activation may reset immediately after warming this roster. Immutable
+      // spec-keyed preparation survives UI reset; a new warm supersedes it.
       clearReportBuffer();
       while (cardHost.firstChild) cardHost.firstChild.remove();
       while (toastHost.firstChild) toastHost.firstChild.remove();
