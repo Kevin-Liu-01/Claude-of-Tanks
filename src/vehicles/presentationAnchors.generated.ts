@@ -374,7 +374,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   strv81: Object.freeze({ centerYM: 1.9143, topHalfM: 6.5851, sideHalfM: 3.2926 }),
   sturmtiger: Object.freeze({ centerYM: 2.034, topHalfM: 3.7241, sideHalfM: 2.2507 }),
   t14: Object.freeze({ centerYM: 1.8852, topHalfM: 6.1255, sideHalfM: 3.0628 }),
-  t14_x: Object.freeze({ centerYM: 1.8864, topHalfM: 5.8985, sideHalfM: 2.9493 }),
+  t14_x: Object.freeze({ centerYM: 1.8885, topHalfM: 5.8985, sideHalfM: 2.9493 }),
   t30: Object.freeze({ centerYM: 2.2307, topHalfM: 7.5725, sideHalfM: 3.7863 }),
   t34_85: Object.freeze({ centerYM: 1.7881, topHalfM: 5.4351, sideHalfM: 2.7176 }),
   t34_85_cad: Object.freeze({ centerYM: 1.7272, topHalfM: 5.5741, sideHalfM: 2.7871 }),

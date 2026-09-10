@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-10T11:40:13.539Z",
+ "generatedAt": "2026-09-10T13:12:08.071Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 68,
  "total": 161,
@@ -1972,12 +1972,12 @@
   },
   {
    "id": "t14_x",
-   "geoMin": 94.6,
+   "geoMin": 94.9,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 94.6,
+    "wholeCurves": 94.9,
     "dims": 95.8,
     "floaters": 100
    },
