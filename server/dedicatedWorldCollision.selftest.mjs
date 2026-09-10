@@ -32,7 +32,9 @@ const expected = {
   frontier: [7382, 7122, 7538],
   fjord: [6377, 6218, 5597],
   delta: [7119, 6877, 8532],
-  badlands: [2840, 2676, 1888],
+  // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
+  // terrain-aware placement rules reject different props/trees on steep walls.
+  badlands: [2643, 2475, 1698],
   monsoon: [9271, 9036, 11093],
   alpine: [8423, 8246, 7477],
   caldera: [4692, 4587, 3572],

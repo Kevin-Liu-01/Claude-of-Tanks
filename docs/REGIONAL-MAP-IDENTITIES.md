@@ -55,8 +55,9 @@ the fictional map reproduces a particular real-world location.
 ## Order and acceptance
 
 Frontier and Alpine's first playable-ground changes shipped in `d948cb573`.
-Badlands' subtle shelf pilot was rejected and is being replaced by a coordinated
-playable-ground and horizon canyon. Frontier woodland/material work is
+Badlands' subtle shelf pilot was rejected and replaced by a coordinated
+playable-ground and horizon canyon with refreshed collision, minimap and map
+art (see `REDROCK-CANYON-REVIEW.md`). Frontier woodland/material work is
 a separate unshipped art experiment; it is not included in that terrain release.
 
 The next bounded horizon batch should be Saltwind and Fjord: both already have

@@ -60,5 +60,61 @@ checks pass without changing old goldens. Previously published Frontier/Alpine
 relief is projected only for historical fixtures and independently checked at
 the same current coordinates, alongside Redrock.
 
-Derived-output refresh is pending. Do not publish terrain with stale Badlands
-collision data or map pictures.
+## Derived-data release
+
+`redrock-derived-refresh-r1.p545nm` completed on native Chrome/Apple Metal with
+unchanged source/build pins, clean GL/program/error checks and complete owned
+browser/preview/FIFO cleanup. Receipt SHA256:
+`83d4c9f90d393e5ee416c493563c22465dc8bc98653fe35b30fa6382e0259663`.
+
+Both clear road-eye originals at 1440×900 show the unequal tiered walls, open
+valley and grounded near roads/props. The canonical hero was captured at actual
+3840×2160/DPR1, then encoded with the maintained 512×288 thumbnail recipe. The
+minimap is an actual 440×440 textured scene capture. Both reviewers accepted
+these as the scoped canyon checkpoint. Large empty stretches, repeated rock
+strata and uniform distant silhouettes remain on the environment-art backlog.
+
+Only Badlands' collision shard, its index entry and three image assets changed.
+The other 29 index entries/shards and 87 image assets remain byte-exact. The
+shared minimap URL owner invalidates only Badlands' old raster cache.
+
+| Badlands collision output | Before | Canyon |
+| --- | ---: | ---: |
+| Encoded bytes | 814,657 | 780,524 |
+| Movement obstacles | 2,840 | 2,643 |
+| Shell colliders | 2,676 | 2,475 |
+| Concealers | 1,888 | 1,698 |
+
+Unchanged seeded placement rules accept different props/trees on the changed
+terrain. The exact census is regenerated, not tolerance-relaxed. Existing
+per-map and total collision-storage ceilings are unchanged. Construction/frame
+timing and constrained-device performance were not certified by the artwork
+capture; unchanged mesh/texture budgets are not a substitute for those tests.
+
+Final release checks completed on September 10 in
+`redrock-final-release-20260910.UclbtW`: collision codec, lazy loader, exact
+dedicated-world census, all-map/all-mode placement, minimap orientation/runtime,
+map-art guards and signaling all passed. TypeScript, the direct public Vite
+build and asset stripping passed. Built index SHA256:
+`3b4d70d78fafe264d5d32d76b881c64c9cc9bca634064b3aab6f62ab5e3805e5`.
+The build contains byte-identical copies of all three installed Badlands images
+and the `north-up-v7-redrock-canyon-v1` minimap URL revision. Build warnings
+about existing large chunks remain; no complete npm lifecycle or physical-device
+performance certification is implied.
+
+## Next material refinement
+
+Independent inspection of the native hero and clear road-eye view identifies
+two conspicuous repetitions, not a need for more geometry. The terrain shader's
+roughly 26m dune-bed sine applies albedo and normal variation across the whole
+flat floor and never fades out. Badlands currently enables it through
+`rippleAmp: 0.28`, although this valley is an alluvial canyon floor rather than
+an erg. Cliff bands combine the small repeated sandstone tile with another
+world-height sine/caprock layer. The horizon has its own mesa banding.
+
+The next matched-view experiment should reduce those existing map-local
+strengths and retain irregular gravel/scour variation. Do not add another
+noise layer, texture or frame update to conceal the repetition. If the baked
+cliff relief still dominates, adjust its existing tile painter with an explicit
+map-local profile at unchanged texture dimensions. These are diagnosed causes
+and a next experiment, not a claim that material polish has shipped.
