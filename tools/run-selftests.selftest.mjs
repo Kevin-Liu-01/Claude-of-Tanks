@@ -147,6 +147,7 @@ assert.deepEqual(SELFTEST_OWNED_LEASE_FILES, [
   'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
+  'tools/articulated-shadow-batch.browser.selftest.mjs',
 ]);
 for (const file of SELFTEST_OWNED_LEASE_FILES) {
   assert.equal(Object.values(SELFTEST_SUITES).flat().filter((entry) => entry === file).length, 1);
@@ -167,17 +168,18 @@ function actualRegistryFixture(ownedLeaseFiles = SELFTEST_OWNED_LEASE_FILES) {
 }
 const registered = actualRegistryFixture();
 assert.equal(await runSelftestSuite('actual-registry', ['cpu', ...SELFTEST_OWNED_LEASE_FILES, cpuBrowserGuard], registered.options), 0);
-assert.deepEqual(registered.events, ['[selftests] actual-registry: 5 files', 'acquire', 'cpu', 'release',
+assert.deepEqual(registered.events, ['[selftests] actual-registry: 6 files', 'acquire', 'cpu', 'release',
   ...SELFTEST_OWNED_LEASE_FILES, 'acquire', cpuBrowserGuard, '[selftests] PASS actual-registry', 'release']);
 const oldRegistry = actualRegistryFixture(['tools/source-dimension-frame.browser.selftest.mjs']);
 await assert.rejects(runSelftestSuite('old-nested-registry', ['cpu', 'tools/resolved-depth-copy.browser.selftest.mjs'], oldRegistry.options),
   /runner must release/);
 assert.equal(oldRegistry.held, false, 'the old nested-lock failure still releases owned runner resources');
-for (const concurrency of [1, 2, 3, 4]) {
-  const lateFx = 'tools/late-fx-matrix.browser.selftest.mjs';
+for (const concurrency of [1, 2, 3, 4]) for (const lateFx of [
+  'tools/late-fx-matrix.browser.selftest.mjs', 'tools/articulated-shadow-batch.browser.selftest.mjs',
+]) {
   const current = actualRegistryFixture();
   assert.equal(await runSelftestSuite('late-fx-barrier', ['cpu', lateFx, cpuBrowserGuard],
-    { ...current.options, concurrency }), 0, 'real late-FX registry entry is an exclusive browser barrier');
+    { ...current.options, concurrency }), 0, `${lateFx}: real native registry entry is an exclusive browser barrier`);
   const missing = actualRegistryFixture(SELFTEST_OWNED_LEASE_FILES.filter(file => file !== lateFx));
   await assert.rejects(runSelftestSuite('missing-late-fx', ['cpu', lateFx],
     { ...missing.options, concurrency }), /runner must release/);

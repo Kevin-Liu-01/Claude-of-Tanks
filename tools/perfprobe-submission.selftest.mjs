@@ -18,11 +18,12 @@ const admit = (perf, scene = 'battle', sampleMs = 100) => inspectAdmission(perf,
   scene, sampleMs, frameMsP99Max: 25,
 });
 
-function fixture({ waitForControl = true, sampleMs = 100 } = {}) {
+function fixture({ waitForControl = true, sampleMs = 100, drawAttribution = false } = {}) {
   let now = 0, nextId = 0;
   const frames = new Map(), intervals = new Map();
   const game = { phase: 'garage', preBattleS: 1, timeS: 0, tanks: [], player: null };
   const timing = [];
+  const drawEvents = [];
   const info = {
     autoReset: true, render: { calls: 999, triangles: 999, points: 999, lines: 999 },
     memory: { geometries: 2, textures: 3 }, programs: [{}],
@@ -31,6 +32,11 @@ function fixture({ waitForControl = true, sampleMs = 100 } = {}) {
   const window = {
     __DEBUG: { renderer: { info }, game, lighting: { scheduledMask: 15 } },
     __PERF_READ_ENVIRONMENT: () => ({ at: now }),
+    __PERF_DRAW_ATTRIBUTION: {
+      start: () => drawEvents.push(['start']),
+      frame: (...args) => drawEvents.push(['frame', ...args]),
+      finish: () => { drawEvents.push(['finish']); return { pass: true, frozen: true }; },
+    },
     __PERF_WINDOW_TIMING: {
       start: (...args) => timing.push(['start', ...args]),
       frame: (...args) => timing.push(['frame', ...args]),
@@ -44,10 +50,10 @@ function fixture({ waitForControl = true, sampleMs = 100 } = {}) {
     clearInterval(id) { intervals.delete(id); },
   };
   runInNewContext(`${declaration}\ninstallPerfSampler`, context)({
-    sampleMs, waitForControl, profileWindow: true,
+    sampleMs, waitForControl, profileWindow: true, drawAttribution,
   });
   return {
-    game, info, frames, intervals, timing,
+    game, info, frames, intervals, timing, drawEvents,
     get perf() { return window.__PERF; },
     step(at, calls = 0) {
       now = at;
@@ -88,6 +94,25 @@ function fixture({ waitForControl = true, sampleMs = 100 } = {}) {
   assert.equal(f.intervals.size, 0);
   assert.equal(admit(f.perf).pass, true, 'complete healthy sampling has usable terminal coverage');
 }
+
+for (const waitForControl of [true, false]) {
+  const f = fixture({ sampleMs: 32, waitForControl, drawAttribution: true });
+  f.release();
+  f.step(8, 0);
+  f.step(16, 21);
+  f.step(24, 0);
+  f.step(32, 24);
+  f.step(40, 999);
+  assert.deepEqual(f.drawEvents.filter(row => row[0] === 'frame'), [
+    ['frame', 8, 0], ['frame', 16, 21], ['frame', 24, 0], ['frame', 32, 24],
+  ], 'draw identities use exactly admitted counters, never pre-window or terminal submissions');
+  assert.equal(f.drawEvents.at(-1)[0], 'finish');
+  assert.deepEqual(f.perf.drawAttribution, { pass: true, frozen: true });
+}
+assert.deepEqual(fixture().drawEvents, [], 'normal performance sampling does not install draw observation');
+assert.match(source, /REFUSED — draw-attribution diagnostic overhead/);
+assert.match(source, /!noTrend && !profileWindow && !drawAttribution/,
+  'diagnostics must not enter the unprofiled performance trend');
 
 {
   const f = fixture({ sampleMs: 160 });

@@ -8,6 +8,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 //        [--fps-target 60|120] [--msaa 0|2|4] [--entry player|sync]
 //        [--production] [--dist=/path/to/existing/build] [--early-window] [--native-cadence]
 //        [--camera-input] [--profile-window --out=/absolute/report.json]
+//        [--draw-attribution --out=/absolute/report.json]
 // Starts Vite (or previews an EXISTING dist with --production; never builds),
 // loads the game headless, measures load-to-__GAME_READY, enters
 // battle through the real player loading/warm-up path by default, simulates
@@ -44,6 +45,7 @@ import { execSync, execFileSync } from 'node:child_process';
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
 import { CAMERA_INPUT_PROTOCOL, runCameraInputWindow } from './perfprobe-camera-input.mjs';
 import { startPerfWindowProfile, installPerfWindowTiming } from './perfprobe-profile-window.mjs';
+import { installPerfDrawAttribution } from './perfprobe-draw-attribution.mjs';
 import { REFERENCE_MIXED_ROSTER, createPerfRosterRequest, inspectPerfRosterEligibility,
   recordPerfRosterCheckpoint, recordPerfRosterEdges, preservePerfRosterFailure, requirePerfRoster } from './perfprobe-roster.mjs';
 
@@ -79,7 +81,7 @@ function perfBrowserArgs(nativeCadence) {
   ];
 }
 
-function installPerfSampler({ sampleMs, waitForControl, profileWindow = false }) {
+function installPerfSampler({ sampleMs, waitForControl, profileWindow = false, drawAttribution = false }) {
   const D = window.__DEBUG;
   const R = D.renderer;
   const P = window.__PERF = {
@@ -94,6 +96,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
   let last = -1, lastCallback = -1;
   let heapIv;
   const profile = profileWindow ? window.__PERF_WINDOW_TIMING : null;
+  const draws = drawAttribution ? window.__PERF_DRAW_ATTRIBUTION : null;
   const receipt = () => ({
     ...window.__PERF_READ_ENVIRONMENT(),
     phase: D.game.phase, preBattleS: D.game.preBattleS, timeS: D.game.timeS,
@@ -106,6 +109,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
     P.environmentStart = receipt();
     // Manual reset counts all passes between RAF samples, as in legacy mode.
     R.info.autoReset = false;
+    draws?.start();
     if (performance.memory) P.heap.push(performance.memory.usedJSHeapSize);
     heapIv = setInterval(() => {
       if (performance.memory) P.heap.push(performance.memory.usedJSHeapSize);
@@ -128,6 +132,7 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
       P.endedAt = now;
       P.trailingNoSubmissionMs = now - (P.lastSubmissionAt ?? P.startedAt);
       profile?.end(now, pageMs);
+      P.drawAttribution = draws?.finish() ?? null;
       P.info = {
         geometries: R.info.memory.geometries, textures: R.info.memory.textures,
         programs: R.info.programs.length,
@@ -158,6 +163,10 @@ function installPerfSampler({ sampleMs, waitForControl, profileWindow = false })
       last = now;
       P.lastSubmissionAt = now;
     }
+    // Same admitted callback cohort as the counters; discard the initial and
+    // right-censored terminal frames instead of attributing outside the window.
+    if (last >= 0) draws?.frame(now, R.info.render.calls);
+    else draws?.start();
     R.info.reset();
     if (last < 0) last = now;
     lastCallback = now;
@@ -266,6 +275,10 @@ const height = parseInt(opt('height', '1080'), 10);
 const dsf = parseFloat(opt('dsf', '1')); // deviceScaleFactor: 2 = retina default
 const outFile = opt('out', '');
 const profileWindow = args.includes('--profile-window');
+const drawAttribution = args.includes('--draw-attribution');
+if (drawAttribution && (!outFile || !Number.isFinite(seconds) || seconds <= 0 || seconds > 120)) {
+  throw new Error('--draw-attribution requires --out and a positive --seconds <=120');
+}
 if (profileWindow && (!outFile || !Number.isFinite(seconds) || seconds <= 0 || seconds > 120)) {
   throw new Error('--profile-window requires --out and a positive --seconds <=120; no sample truncation');
 }
@@ -332,6 +345,7 @@ if (sceneMode !== 'battle' && sceneMode !== 'garage') {
 // draw calls / triangles are ATTRIBUTED to a subsystem instead of guessed.
 const wantBreakdown = args.includes('--breakdown');
 const { production, earlyWindow, nativeCadence, windowMode, cameraInput } = perfModes(args, sceneMode, entryMode);
+if (drawAttribution && sceneMode !== 'battle') throw new Error('--draw-attribution requires --scene battle');
 const distPath = resolve(opt('dist', 'dist'));
 const sha256 = content => createHash('sha256').update(content).digest('hex');
 // Preview consumes exactly this artifact. A checkout hash does not claim that
@@ -343,6 +357,7 @@ const acquisitionHash = sha256([
   readFileSync(new URL('./perfprobe-camera-input.mjs', import.meta.url)),
   readFileSync(new URL('./perfprobe-roster.mjs', import.meta.url)),
   readFileSync(new URL('./perfprobe-profile-window.mjs', import.meta.url)),
+  readFileSync(new URL('./perfprobe-draw-attribution.mjs', import.meta.url)),
   readFileSync(new URL('./garage-action-timing.mjs', import.meta.url)),
 ].join('\n'));
 const source = perfSourceReceipt();
@@ -623,6 +638,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // Install the maintained read-only checkpoint helper before arming. Early
   // start/end receipts execute at the sample edges, not after a CDP wait.
   await page.evaluate(`window.__PERF_READ_ENVIRONMENT = ${readPhaseEnvironment.toString()}`);
+  if (drawAttribution) await page.evaluate(installPerfDrawAttribution);
   if (earlyWindow) {
     if (forcedMsaa !== null) {
       await page.evaluate(samples => window.__DEBUG.post.sceneAA.setSamples(samples), forcedMsaa);
@@ -630,7 +646,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     // Starting before entry includes every early control frame without adding
     // a profiler/IPC wait at control release. Raw lead-in is labeled separately.
     if (profileWindow) await beginWindowProfile();
-    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow });
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution });
   }
 
   if (sceneMode === 'battle') {
@@ -763,7 +779,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // In-page sampler: rAF deltas + per-frame renderer.info + heap once/second.
   if (!earlyWindow) {
     if (profileWindow) await beginWindowProfile();
-    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow });
+    await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow, drawAttribution });
   }
 
   // Opt-in observation starts only AFTER the timed sampler is armed/running.
@@ -784,6 +800,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     scene: sceneMode, sampleMs: seconds * 1000, frameMsP99Max: BUDGET.frameMsP99Max,
   });
   if (!submissionAdmission.pass) failed = true;
+  if (drawAttribution && !perf.drawAttribution?.pass) failed = true;
   recordPerfRosterEdges(rosterProvenance, perf);
   if (rosterProvenance && !rosterProvenance.pass) failed = true;
   if (profileWindow) await finishWindowProfile();
@@ -1158,7 +1175,8 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     production,
     distPath: production ? distPath : null,
     windowMode,
-    measurementMode: profileWindow ? 'cpu-profile-attribution-only' : 'unprofiled-performance',
+    measurementMode: drawAttribution ? 'draw-attribution-only' : profileWindow ? 'cpu-profile-attribution-only' : 'unprofiled-performance',
+    drawAttribution: perf.drawAttribution ?? null,
     cadence: nativeCadence ? 'native-requested' : 'unlocked-throughputput',
     buildIndexHash,
     acquisitionHash,
@@ -1328,6 +1346,11 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
     limit: 'battle/released sample edges; eligible full 7:7 roster; exact pinned or stable seeded identities/teams',
     actual: rosterProvenance.pass ? 'matched' : 'mismatch', pass: rosterProvenance.pass,
   };
+  if (drawAttribution) lines.drawAttribution = {
+    limit: 'complete per-submission accounting without truncation or observer errors',
+    actual: perf.drawAttribution?.pass ? 'reconciled' : 'incomplete',
+    pass: perf.drawAttribution?.pass === true,
+  };
   report.budget = { pass: Object.values(lines).every((l) => l.pass), ...lines };
   // Certification validity: a contended machine cannot certify EITHER outcome.
   report.budget.certification = contended
@@ -1338,6 +1361,9 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   }
   if (profileWindow) {
     report.budget.certification = `REFUSED — CPU-profile diagnostic overhead; ${report.budget.certification}`;
+  }
+  if (drawAttribution) {
+    report.budget.certification = `REFUSED — draw-attribution diagnostic overhead; ${report.budget.certification}`;
   }
   if (contended) {
     console.error(`[perf] CONTENDED MACHINE: load1 ${report.machine.load1Start} -> ${report.machine.load1End} (mid-run max ${report.machine.load1Max}), foreign headless-GPU procs ${foreignHeadlessMax}, on ${CORES} cores (load limit ${CONTENTION_LOAD_LIMIT}). Numbers are for iteration only — certification refused.`);
@@ -1357,7 +1383,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   // Local trend line: the load-to-ready and
   // texture-footprint regressions crept in ~15% per round without tripping any
   // gate — a series makes the creep visible at review time, not at cert time.
-  if (!noTrend && !profileWindow) {
+  if (!noTrend && !profileWindow && !drawAttribution) {
     try {
       mkdirSync(resolve('.qa-dev/reports'), { recursive: true });
       appendFileSync(resolve('.qa-dev/reports/perf-trend.jsonl'), `${JSON.stringify({
@@ -1415,6 +1441,13 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
   };
 } finally {
   cameraAbort?.abort();
+  if (drawAttribution && page && !page.isClosed()) {
+    try {
+      const stopped = await page.evaluate(() => window.__PERF_DRAW_ATTRIBUTION?.stop());
+      if (report) report.drawAttributionCleanup = stopped;
+      if (!stopped?.restored) failed = true;
+    } catch (error) { failed = true; if (report) report.drawAttributionCleanup = { error: String(error) }; }
+  }
   if (profileWindow) {
     try {
       if (windowProfile && !profileFinished) {

@@ -250,7 +250,7 @@ for (const [fpsTarget, seconds] of [[60, 60], [120, 20]]) {
   });
 }
 assert.match(source, /trianglesMedianMax: 6_000_000/);
-const arm = source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow })');
+const arm = source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: true, profileWindow, drawAttribution })');
 const enter = source.indexOf("await D.beginBattleEntry('m1a2', map)");
 assert.ok(arm > 0 && arm < enter, 'early acquisition is armed before awaiting normal player entry');
 const armBlock = source.slice(source.lastIndexOf('  if (earlyWindow) {', arm), arm);
@@ -264,7 +264,7 @@ assert.match(settleBlock, /setTimeout\(r, 1500\)/);
 assert.match(settleBlock, /window\.__GLB_STATS/);
 assert.match(source, /const heapPreGc = earlyWindow \? null : await page\.evaluate\(readPerfHeapSnapshot, true\)/,
   'early acquisition does not run the legacy pre-window GC');
-assert.match(source, /if \(!earlyWindow\) \{\s*if \(profileWindow\) await beginWindowProfile\(\);\s*await page\.evaluate\(installPerfSampler, \{ sampleMs: seconds \* 1000, waitForControl: false, profileWindow \}\)/,
+assert.match(source, /if \(!earlyWindow\) \{\s*if \(profileWindow\) await beginWindowProfile\(\);\s*await page\.evaluate\(installPerfSampler, \{ sampleMs: seconds \* 1000, waitForControl: false, profileWindow, drawAttribution \}\)/,
   'the early sampler is not replaced by a later sustained sampler');
 assert.ok(source.indexOf('const heapPostGc = await page.evaluate(readPerfHeapSnapshot, true)') >
   source.indexOf("await page.waitForFunction('window.__PERF && window.__PERF.done === true'"),
@@ -288,7 +288,7 @@ assert.match(source, /readFileSync\(new URL\('\.\/perfprobe-camera-input\.mjs', 
 assert.match(source, /readFileSync\(new URL\('\.\/perfprobe-roster\.mjs', import\.meta\.url\)\)/,
   'the exact roster acquisition contract is part of the immutable tool receipt');
 const cameraStart = source.indexOf('cameraJob = runCameraInputWindow(page,');
-assert.ok(cameraStart > source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow })'),
+assert.ok(cameraStart > source.indexOf('await page.evaluate(installPerfSampler, { sampleMs: seconds * 1000, waitForControl: false, profileWindow, drawAttribution })'),
   'camera preparation runs after the ordinary timed sampler, never as an extra early-window settle');
 assert.ok(cameraStart < source.indexOf("await page.waitForFunction('window.__PERF && window.__PERF.done === true'"),
   'the input observer runs alongside the timed sample');
