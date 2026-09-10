@@ -36,6 +36,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
     'src/vehicles/eraBindingReceipt.selftest.mjs',
+    'src/vehicles/battleEraReceipt.selftest.mjs',
     'src/world/wreckEraReceipt.selftest.mjs',
     'tools/section-slab-bounds.selftest.mjs',
     'tools/board-camera.selftest.mjs',

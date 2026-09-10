@@ -66,7 +66,8 @@ for (const player of [true, false]) for (const mobile of [true, false]) for (con
   const expectedBuild = poolHit ? [] : [{
     id: 'merkava1b', options: { camoSeed: 4242, quality: player ? 'preview' : 'ai',
       geometryQuality: player && !mobile ? 'high' : 'low',
-      batchStatic: true, battleDetailLod: !player && !mobile },
+      batchStatic: true, battleDetailLod: !player && !mobile,
+      eraVisualBindingReceipt: false },
   }];
   for (const staged of [false, true]) {
     const f = fixture({ player, mobile, pooled });
