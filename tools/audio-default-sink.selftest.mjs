@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { audioSinkOrder, audioSinkOptions, audioSinkReadiness, runAudioSinkAttempt,
-  summarizeAudioSinkExperiment } from './audio-default-sink.fixture.mjs';
-import { audioProbeOptions, audioProbeLaunchOptions } from './audio-default-sink-probe.mjs';
+  summarizeAudioSinkExperiment, deadline } from './audio-default-sink.fixture.mjs';
+import { audioProbeOptions, audioProbeLaunchOptions, runAudioBrowserGroups,
+  verifyAudioProbeVersion } from './audio-default-sink-probe.mjs';
 
 function fixture(failure = '') {
-  let now = 1000, context, created = 0;
+  let now = 1000, context, created = 0, resumes = 0;
   const calls = [];
   const env = { performance: { now: () => now, timeOrigin: 1234 }, navigator: { userActivation: { isActive: true } },
     requestAnimationFrame(callback) { queueMicrotask(() => { now += 16; callback(now); }); } };
@@ -23,11 +24,27 @@ function fixture(failure = '') {
     get currentTime() { return failure === 'clock' ? 0 : (now - this.epoch) / 1000; }
     getOutputTimestamp() { return { contextTime: failure === 'output' ? 0 : this.currentTime,
       performanceTime: failure === 'output' ? 0 : now }; }
-    resume() { calls.push(['resume']); this.state = 'running'; return Promise.resolve(); }
+    resume() {
+      calls.push(['resume']); resumes++;
+      if (resumes === 1) { this.state = 'running'; return Promise.resolve(); }
+      if (failure === 'post-resume-throw') throw new Error('post-resume throw');
+      if (failure === 'post-resume-reject') return Promise.reject(new Error('post-resume rejection'));
+      if (failure === 'post-resume-timeout') return new Promise(() => {});
+      now += 3;
+      return Promise.resolve().then(() => {
+        now += 9;
+        if (failure !== 'post-resume-still-suspended') this.state = 'running';
+      });
+    }
     setSinkId(value) {
       calls.push(['setSinkId', value]);
       if (failure === 'switch') return Promise.reject(new Error('switch rejection'));
-      return Promise.resolve().then(() => { now += 10; this.sinkId = ''; calls.push(['route-settled']); });
+      return Promise.resolve().then(() => {
+        now += 10; this.sinkId = ''; calls.push(['route-settled']);
+        if (failure === 'suspend-after-switch' || failure.startsWith('post-resume-')) {
+          this.state = 'suspended'; env.navigator.userActivation.isActive = false;
+        }
+      });
     }
     addEventListener() {}
     removeEventListener() {}
@@ -41,7 +58,12 @@ function fixture(failure = '') {
       return { fftSize: 256, connect() {}, disconnect() {},
         getFloatTimeDomainData(data) { data.fill(failure === 'silence' ? 0 : 0.007); } };
     }
-    close() { calls.push(['close']); this.state = 'closed'; return Promise.resolve(); }
+    close() {
+      calls.push(['close']);
+      if (failure === 'close-reject') return Promise.reject(new Error('close rejection'));
+      if (failure === 'close-timeout') return new Promise(() => {});
+      this.state = 'closed'; return Promise.resolve();
+    }
   }
   env.AudioContext = FakeContext;
   return { env, calls, get created() { return created; }, get context() { return context; } };
@@ -62,6 +84,36 @@ assert.throws(() => audioProbeOptions(['--out=/absolute/out']));
 assert.throws(() => audioProbeOptions(['--allow-native-audio', '--out=relative']));
 assert.throws(() => audioProbeOptions(['--allow-native-audio', '--out=/absolute/out', '--headless']));
 assert.equal(audioProbeOptions(['--allow-native-audio', '--out=/absolute/out']).blocks, 3);
+const freshArgs = ['--allow-native-audio', '--out=/absolute/out', '--fresh-browser-per-arm',
+  '--executable-path=/absolute/chrome', '--expected-browser-version=Chrome/152.0.7977.83'];
+assert.equal(audioProbeOptions(freshArgs).blocks, 1);
+assert.equal(audioProbeOptions(freshArgs).freshBrowserPerArm, true);
+assert.throws(() => audioProbeOptions(freshArgs.concat('--blocks=2')));
+assert.throws(() => audioProbeOptions(freshArgs.filter(value => !value.startsWith('--expected-browser-version='))));
+assert.throws(() => audioProbeOptions(freshArgs.filter(value => !value.startsWith('--executable-path='))));
+assert.throws(() => verifyAudioProbeVersion('Chrome/151.0.7922.47', 'Chrome/152.0.7977.83'));
+assert.throws(() => verifyAudioProbeVersion('Chrome/152.0.7977.83', undefined, 'Chrome/151.0.7922.47'));
+assert.equal(verifyAudioProbeVersion('Chrome/152.0.7977.83', 'Chrome/152.0.7977.83'), 'Chrome/152.0.7977.83');
+
+{
+  const order = []; let live = false;
+  await runAudioBrowserGroups({ blocks: 1, freshBrowserPerArm: true }, async (scenarios, index) => {
+    assert.equal(live, false, 'previous browser must finish cleanup before another arm is admitted');
+    live = true; assert.equal(scenarios.length, 1); order.push(['launch', index, scenarios[0].mode]);
+    await new Promise(resolve => setImmediate(resolve));
+    order.push(['closed', index]); live = false;
+  });
+  assert.deepEqual(order.map(row => row[0]), ['launch', 'closed', 'launch', 'closed', 'launch', 'closed', 'launch', 'closed']);
+  assert.deepEqual(order.filter(row => row[0] === 'launch').map(row => row[2]), audioSinkOrder(1).map(row => row.mode));
+  let admitted = 0;
+  await assert.rejects(runAudioBrowserGroups({ blocks: 1, freshBrowserPerArm: true }, async () => {
+    admitted++; if (admitted === 2) throw new Error('cleanup failed');
+  }), /cleanup failed/);
+  assert.equal(admitted, 2, 'a cleanup failure cannot admit another browser');
+  await runAudioBrowserGroups({ blocks: 3, freshBrowserPerArm: false }, async scenarios => {
+    assert.equal(scenarios.length, 12, 'legacy shared-browser diagnostic remains explicit');
+  });
+}
 
 const good = [];
 for (const scenario of audioSinkOrder(1)) {
@@ -81,7 +133,36 @@ for (const scenario of audioSinkOrder(1)) {
   if (row.setSink) assert.equal(row.setSink.settledMs - row.setSink.returnedMs, 10);
   good.push({ ...row, longTasksSupported: true, maxCallbackGapMs: scenario.mode === 'default' ? 128 : 17 });
 }
-assert.equal(summarizeAudioSinkExperiment(good).verdict, 'promising-microprobe-only');
+assert.equal(summarizeAudioSinkExperiment(good, true).verdict, 'promising-microprobe-only');
+assert.equal(summarizeAudioSinkExperiment(good).verdict, 'inconclusive', 'shared audio-service cache cannot certify cold B');
+
+const shortDeadline = (promise, _limit, label) => deadline(promise, 5, label);
+{
+  const f = fixture('suspend-after-switch');
+  const row = await runAudioSinkAttempt({ isTrusted: true }, 'silent-then-default', f.env);
+  assert.equal(row.ok, true, JSON.stringify(row));
+  assert.equal(row.routeAtSettlement.sink, 'default'); assert.equal(row.routeAtSettlement.state, 'suspended');
+  assert.equal(row.route.state, 'running'); assert.equal(row.postSinkResumeActivation, false);
+  assert.equal(row.postSinkResume.returnedMs - row.postSinkResume.startMs, 3);
+  assert.equal(row.postSinkResume.settledMs - row.postSinkResume.returnedMs, 9);
+  assert.equal(row.readiness.ok, true); assert.equal(row.closed, true);
+  assert.equal(f.created, 1, 'recovery resumes the same context, never constructs another');
+  assert.deepEqual(f.calls.slice(1, 6).map(row => row[0]), ['resume', 'setSinkId', 'route-settled', 'resume', 'graph']);
+}
+for (const failure of ['post-resume-throw', 'post-resume-reject', 'post-resume-timeout', 'post-resume-still-suspended']) {
+  const f = fixture(failure);
+  const row = await runAudioSinkAttempt({ isTrusted: true }, 'silent-then-default', f.env, () => {}, shortDeadline);
+  assert.equal(row.ok, false, failure); assert.equal(row.closed, true, failure);
+  assert.equal(row.routeAtSettlement.state, 'suspended', 'intermediate failure receipt is retained');
+  assert.equal(row.fallbackRequired, true); assert.equal(f.created, 1);
+  assert.equal(f.context.state, 'closed');
+  assert.ok(!f.calls.some(([call]) => call === 'graph'), 'recovery failure cannot start the audible graph');
+}
+for (const failure of ['close-reject', 'close-timeout']) {
+  const f = fixture(failure);
+  const row = await runAudioSinkAttempt({ isTrusted: true }, 'default', f.env, () => {}, shortDeadline);
+  assert.equal(row.ok, false); assert.equal(row.closed, false); assert.equal(row.cleanupErrors.length, 1);
+}
 
 for (const failure of ['constructor', 'unsupported', 'ignored', 'switch', 'clock', 'output', 'silence']) {
   const f = fixture(failure);
