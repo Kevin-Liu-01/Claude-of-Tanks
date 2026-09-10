@@ -56,3 +56,34 @@ behavior, timeout and task-error propagation, retry without falsely serviced
 deadlines, and hidden-transition cleanup. Existing helper tests retain timer
 fallback, visibility-return, stale callback and setup-error coverage. No build,
 full-suite, browser or native acquisition was run for this isolated commit.
+
+## Root integration and native acquisition
+
+Root integrated the correction as `e7735a2ff`. The integration log
+`opaque-paint-integration-gates-r1.log` passes scheduler, solo-deployment,
+Garage-return and world-coordinator selftests, native TypeScript, core-unused
+and the public production build. The `opaque-paint-local-r1` native action probe
+uses Chrome 151 / ANGLE Metal Apple M5 Max, high quality, Urban, 14 vehicles,
+1280×720 DPR 1, scale 1 and trim 0. Its actual controls, audio ownership, complete
+warm/source readiness and cleanup gates pass. This is an unprofiled functional
+capture, not a sustained strict performance certificate.
+
+Battle / rematch / Garage: cover 3.1 / 133.2 / 90.9 ms; ready
+6684.3 / 5516.3 / 333.3 ms; maximum callback gaps 111.8 / 116.1 / 47.2 ms.
+The prior foundation-only acquisition and this run retain equal first/rematch
+rosters and the same quality settings. One sequential comparison is insufficient
+to attribute all variation to the scheduler change. No speedup percentage or
+maximum-lag guarantee is claimed.
+
+The first 111.8 ms gap (2731.6–2843.4) remains under `Surveying terrain` and
+contains a 98 ms Long Task starting at 2745.7. LoAF attributes only the preceding
+12.6 ms scheduler continuation, not that task's nested owner. The rematch gap
+(10292.7–10408.8) contains no overlapping ≥50 ms Long Task, and has a 93.6 ms
+LoAF without script attribution. Atomic work outside the corrected frame
+checkpoint and unclassified browser work remain open. Props maximum atomic
+slice is 22.3 ms; the foundation family is absent from the eight slowest slices.
+
+Report SHA256: `702c187ac0f2f91338eec325c8f5eedba1042f6640521f7ed9317aac67343fd1`.
+HTML SHA256: `1b02dba11b8eb706f9fb0a198b47b9c39bc010015c9f44bce86816da5c2dd98a`.
+Acquisition SHA256: `ca9af05238ca4f5c0fb1d2941892f9f19519f95cfa3196038d91f36d469262a4`.
+Evidence remains under `/private/tmp/cot-interactive-baseline.gsRCvU/`.
