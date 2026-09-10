@@ -8,7 +8,8 @@ import type {
   Scene,
   WebGLRenderer,
 } from 'three';
-import { createOffscreenSceneWarmer, warmSceneOffscreenBatched } from './offscreenWarm.ts';
+import { createOffscreenSceneWarmer, warmSceneOffscreenBatched, type OffscreenSceneWarmer } from './offscreenWarm.ts';
+import { prepareDeploymentUploadPrograms, type DeploymentUploadProgramReceipt } from './deploymentUploadPrograms.ts';
 
 type BudgetYield = (covered?: boolean) => Promise<void>;
 type WarmRender = (() => void) & { dispose?: () => void };
@@ -89,6 +90,7 @@ export interface DeploymentShadowWarmReceipt {
   geometryUploadMs?: number;
   geometryUploadBatchMs?: number[];
   geometryUploadBatchMaxMs?: number;
+  uploadProgramPreparation?: DeploymentUploadProgramReceipt;
   /** Warm-only CPU submission observations, never GPU duration or shader-cause proof. */
   drawAttribution?: ShadowDrawAttribution;
   totalMs: number;
@@ -105,7 +107,7 @@ export interface DeploymentShadowWarmOptions {
   scene: Scene;
   camera: Camera;
   lighting: DeploymentLighting;
-  warmRender: () => void;
+  warmRender: (() => void) & Pick<OffscreenSceneWarmer, 'prepareProgramsSteps'>;
   getWorldGroup(): Object3D | null;
   noteFovPrimed(fov: number): void;
   simDt: number;
@@ -359,6 +361,8 @@ export function createDeploymentShadowWarmOwner({
     toneMapped: false,
   });
   uploadMaterial.name = 'DeploymentBufferUpload';
+  let disposed = false;
+  const disposedError = new Error('Deployment shadow warmer was disposed');
 
   const warmDepthProgramSteps = function* (): Generator<void, void, void> {
     const lights = lighting.csm?.lights ?? [];
@@ -453,7 +457,9 @@ export function createDeploymentShadowWarmOwner({
   };
 
   async function yieldCovered(yieldForBudget: BudgetYield | null): Promise<void> {
+    if (disposed) throw disposedError;
     if (yieldForBudget) await yieldForBudget(true);
+    if (disposed) throw disposedError;
   }
 
   function primeLighting(lights: readonly DirectionalLight[]): void {
@@ -469,14 +475,19 @@ export function createDeploymentShadowWarmOwner({
 
   async function uploadDeploymentGeometry(
     observeRender: ObserveShadowWarm, light: DirectionalLight, yieldForBudget: BudgetYield | null,
-  ): Promise<number[]> {
+  ): Promise<{ batchMs: number[]; preparation: DeploymentUploadProgramReceipt }> {
     let index = 0;
+    let preparation!: DeploymentUploadProgramReceipt;
     // Use the existing production-object batch selector: layers isolate a draw
     // without pruning nested meshes, and are restored before yielding. A single
     // buffer upload is still atomic; this bounds cohorts, not native GL latency.
-    return warmSceneOffscreenBatched(renderer, scene, camera, {
+    const batchMs = await warmSceneOffscreenBatched(renderer, scene, camera, {
       maxObjects: 12,
       maxWeight: 45_000,
+      async prepareObjects(objects) {
+        preparation = await prepareDeploymentUploadPrograms(objects, uploadMaterial,
+          warmRender, () => yieldCovered(yieldForBudget), now);
+      },
       yieldBeforeBatch: () => yieldCovered(yieldForBudget),
       renderBatch() {
         const priorOverrideMaterial = scene.overrideMaterial;
@@ -488,6 +499,7 @@ export function createDeploymentShadowWarmOwner({
         }
       },
     });
+    return { batchMs, preparation };
   }
 
   async function warmCasterBatches(
@@ -578,6 +590,7 @@ export function createDeploymentShadowWarmOwner({
     }));
     const startedAt = now();
     let geometryUploadBatchMs: number[] = [];
+    let uploadProgramPreparation: DeploymentUploadProgramReceipt | undefined;
     let primed = false;
     let casterState: CasterState | null = null;
     let cascadeMs: number[] = [];
@@ -602,7 +615,9 @@ export function createDeploymentShadowWarmOwner({
     };
     try {
       primeLighting(lights);
-      geometryUploadBatchMs = await uploadDeploymentGeometry(observeRender, lights[0], yieldForBudget);
+      const upload = await uploadDeploymentGeometry(observeRender, lights[0], yieldForBudget);
+      geometryUploadBatchMs = upload.batchMs;
+      uploadProgramPreparation = upload.preparation;
       await yieldCovered(yieldForBudget);
       casterState = createCasterBatches(scene, camera);
       casterBatchMs = await warmCasterBatches(casterState, lights[0], yieldForBudget, observeRender);
@@ -614,13 +629,16 @@ export function createDeploymentShadowWarmOwner({
       if (casterState) restoreCasterState(casterState);
       if (!primed) restoreShadowState(prior);
     }
-    return warmReceipt(startedAt, cascadeMs, casterBatchMs, casterState, geometryUploadBatchMs, drawAttribution);
+    return { ...warmReceipt(startedAt, cascadeMs, casterBatchMs, casterState, geometryUploadBatchMs, drawAttribution),
+      uploadProgramPreparation };
   };
 
   return {
     warmDepthProgramSteps,
     prime,
     dispose() {
+      if (disposed) return;
+      disposed = true;
       shadowOnlyWarm.dispose?.();
       uploadMaterial.dispose();
     },

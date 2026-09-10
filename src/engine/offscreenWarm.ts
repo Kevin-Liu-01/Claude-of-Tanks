@@ -1,4 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming,
+  type ForwardProgramWarmOwner, type ProgramPreparationResult } from './programWarm.ts';
 /**
  * offscreenWarm.ts — real scene renders for shader/texture warm-up without
  * ever presenting the warm frame on the game canvas.
@@ -38,6 +40,7 @@ interface WarmRenderable extends Object3D {
 export interface OffscreenSceneWarmer {
   (): void;
   compileAsync(compileScene?: Object3D, targetScene?: Scene | null): Promise<void>;
+  prepareProgramsSteps(objects: readonly Object3D[], timing?: ForwardProgramCompileTiming): Generator<void, ProgramPreparationResult, void>;
   dispose(): void;
 }
 
@@ -46,13 +49,15 @@ export interface OffscreenWarmBatchOptions {
   maxObjects?: number;
   maxWeight?: number;
   yieldBeforeBatch?: ((index: number) => void | Promise<void>) | null;
+  /** Prepare the selected production objects before any upload or layer isolation. */
+  prepareObjects?: ((objects: readonly Object3D[]) => Promise<void>) | null;
   /** Synchronous, caller-owned offscreen render; never disposed by this helper. */
   renderBatch?: (() => void) | null;
 }
 
 interface WarmBatchSelection {
   renderables: Array<{ object: WarmRenderable; weight: number }>;
-  lods: Array<{ object: WarmRenderable; autoUpdate: boolean | undefined }>;
+  lods: WarmRenderable[];
 }
 
 /**
@@ -111,6 +116,12 @@ export function createOffscreenSceneWarmer(
     }
   } as OffscreenSceneWarmer;
 
+  let programWarm: ForwardProgramWarmOwner | undefined;
+  warmSceneOffscreen.prepareProgramsSteps = (objects, timing) => {
+    programWarm ??= createForwardProgramWarmOwner({ renderer, scene, camera, getTarget: ensureTarget });
+    return programWarm.prepareSceneSteps({ objects, timing, strict: true });
+  };
+
   warmSceneOffscreen.compileAsync = async (
     compileScene: Object3D = scene,
     targetScene: Scene | null = scene,
@@ -134,6 +145,8 @@ export function createOffscreenSceneWarmer(
   };
 
   warmSceneOffscreen.dispose = () => {
+    programWarm?.invalidate();
+    programWarm = undefined;
     if (target) target.dispose();
     target = null;
   };
@@ -161,6 +174,7 @@ export async function warmSceneOffscreenBatched(
   maxObjects = 24,
   maxWeight = 90_000,
   yieldBeforeBatch = null,
+  prepareObjects = null,
   renderBatch = null,
   }: OffscreenWarmBatchOptions = {},
 ): Promise<number[]> {
@@ -170,14 +184,14 @@ export async function warmSceneOffscreenBatched(
   const batches = splitWarmBatches(renderables, maxObjects, maxWeight);
   const timings: number[] = [];
   try {
+    if (prepareObjects) await prepareObjects(renderables.map(({ object }) => object));
     for (let index = 0; index < batches.length; index++) {
       if (yieldBeforeBatch) await yieldBeforeBatch(index);
       const startedAt = performance.now();
-      renderSelectedWarmBatch(renderables, batches[index]!, warmer);
+      renderSelectedWarmBatch(renderables, batches[index]!, lods, warmer);
       timings.push(Math.round(performance.now() - startedAt));
     }
   } finally {
-    for (const state of lods) state.object.autoUpdate = state.autoUpdate;
     ownedWarmer?.dispose();
   }
   return timings;
@@ -190,8 +204,7 @@ function collectWarmBatchSelection(scene: Scene, camera: Camera): WarmBatchSelec
     const renderable = object as WarmRenderable;
     if (renderable.isLOD) {
       try { renderable.update?.(camera); } catch (_) { /* warm the current selection */ }
-      lods.push({ object: renderable, autoUpdate: renderable.autoUpdate });
-      renderable.autoUpdate = false;
+      lods.push(renderable);
     }
     if (!(renderable.isMesh || renderable.isLine
       || renderable.isPoints || renderable.isSprite)) return;
@@ -228,17 +241,21 @@ function splitWarmBatches(
 }
 
 function renderSelectedWarmBatch(
-  renderables: WarmBatchSelection['renderables'], batch: WarmRenderable[], render: () => void,
+  renderables: WarmBatchSelection['renderables'], batch: WarmRenderable[],
+  lods: WarmBatchSelection['lods'], render: () => void,
 ): void {
   // Layers gate a renderable without pruning its descendants. Toggling
   // `visible` would accidentally hide a child batch whenever a renderable
   // parent (rare, but legal in Three.js) belonged to another batch.
   const layerMasks = renderables.map(({ object }) => ({ object, mask: object.layers.mask }));
   const selected = new Set(batch);
+  const lodStates = lods.map(object => ({ object, autoUpdate: object.autoUpdate }));
   try {
+    for (const { object } of lodStates) object.autoUpdate = false;
     for (const { object } of layerMasks) if (!selected.has(object)) object.layers.mask = 0;
     render();
   } finally {
+    for (const { object, autoUpdate } of lodStates) object.autoUpdate = autoUpdate;
     for (const state of layerMasks) state.object.layers.mask = state.mask;
   }
 }

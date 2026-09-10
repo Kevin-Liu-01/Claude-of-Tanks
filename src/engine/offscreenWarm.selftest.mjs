@@ -125,6 +125,7 @@ for (const failure of [null, 'render', 'yield']) {
     maxWeight: Infinity,
     yieldBeforeBatch: () => {
       assert.deepEqual(all.map((object) => object.layers.mask), masks);
+      assert.equal(lod.autoUpdate, true, 'temporary LOD policy never survives a yield');
       if (++yields === 2 && failure === 'yield') throw originalFailure;
     },
     renderBatch: () => {
@@ -146,6 +147,34 @@ for (const failure of [null, 'render', 'yield']) {
   assert.equal(hidden.visible, false);
   assert.equal(invisibleMaterial.material.visible, false);
   for (const object of all) { object.geometry.dispose(); object.material.dispose(); }
+}
+
+{
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const lod = new THREE.LOD();
+  lod.addLevel(mesh, 0); scene.add(lod);
+  const mask = mesh.layers.mask;
+  let prepared = false;
+  let rendered = false;
+  const failure = new Error('preparation cancelled');
+  await assert.rejects(warmSceneOffscreenBatched({}, scene, camera, {
+    async prepareObjects(objects) {
+      assert.deepEqual(objects, [mesh]);
+      assert.equal(lod.autoUpdate, true);
+      assert.equal(mesh.layers.mask, mask);
+      await Promise.resolve();
+      prepared = true;
+      throw failure;
+    },
+    renderBatch() { rendered = true; },
+  }), error => error === failure);
+  assert.equal(prepared, true);
+  assert.equal(rendered, false, 'failed preparation cannot submit any upload');
+  assert.equal(lod.autoUpdate, true);
+  assert.equal(mesh.layers.mask, mask);
+  mesh.geometry.dispose(); mesh.material.dispose();
 }
 
 console.log('offscreenWarm self-test passed');

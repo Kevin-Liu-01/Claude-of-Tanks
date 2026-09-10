@@ -153,6 +153,8 @@ export interface SceneProgramCompileOptions {
   passes?: readonly SceneProgramCompilePass[];
   /** Opt-in visible subtree of the real scene; detached or hidden ancestry invalidates preparation. */
   visibleRoot?: Object3D;
+  /** Exact selected production objects; compile no unrelated descendants. */
+  objects?: readonly Object3D[];
   /** Opt-in first use of the selected materials' cached variants, including retained variants. */
   initializeUniforms?: boolean;
   /** Interleave bounded admission and actual first use; implies initializeUniforms. */
@@ -353,6 +355,7 @@ function collectScenePassObjects(
   scene: Scene,
   visibleRoot: Object3D | undefined,
   pass: SceneProgramCompilePass | undefined,
+  selectedObjects?: readonly Object3D[],
 ): Object3D[] {
   const objects: Object3D[] = [];
   const collect = (object: Object3D): void => {
@@ -360,9 +363,15 @@ function collectScenePassObjects(
       objects.push(object);
     }
   };
-  if (visibleRoot) visibleRoot.traverseVisible(collect);
+  if (selectedObjects) selectedObjects.forEach(collect);
+  else if (visibleRoot) visibleRoot.traverseVisible(collect);
   else scene.traverse(collect);
   return objects;
+}
+
+function compileSelectionIsCurrent(scene: Scene, options: SceneProgramCompileOptions): boolean {
+  return visibleRootIsCurrent(scene, options.visibleRoot)
+    && (options.objects?.every(object => visibleRootIsCurrent(scene, object)) ?? true);
 }
 
 /**
@@ -374,14 +383,14 @@ function collectScenePassObjects(
 function* compileScenePassSteps(
   options: ForwardProgramWarmOptions,
   valid: () => boolean,
-  { timing, sliceMs = 8, strict, visibleRoot }: SceneProgramCompileOptions,
+  { timing, sliceMs = 8, strict, visibleRoot, objects: selectedObjects }: SceneProgramCompileOptions,
   pass: SceneProgramCompilePass | undefined,
   cohort?: MaterialProgramCohort,
   afterBatch?: ProgramBatchCheckpoint,
   canSubmit: () => boolean = () => true,
 ): Generator<void, boolean, void> {
   const { scene, now = () => performance.now() } = options;
-  const objects = collectScenePassObjects(scene, visibleRoot, pass);
+  const objects = collectScenePassObjects(scene, visibleRoot, pass, selectedObjects);
   const facade = new Object3D();
   let start = 0;
   let end = 0;
@@ -435,14 +444,14 @@ function* compileSceneProgramSteps(
   afterBatch?: ProgramBatchCheckpoint,
   canSubmit?: () => boolean,
 ): Generator<void, boolean, void> {
-  const { signal, timing, passes, visibleRoot } = compileOptions;
+  const { signal, timing, passes } = compileOptions;
   signal?.throwIfAborted();
   const { renderer, scene } = options;
-  if (!visibleRootIsCurrent(scene, visibleRoot)) return false;
+  if (!compileSelectionIsCurrent(scene, compileOptions)) return false;
   const lifetime = captureProgramWarmLifetime(renderer);
   const valid = (): boolean => {
     signal?.throwIfAborted();
-    return isCurrent() && visibleRootIsCurrent(scene, visibleRoot)
+    return isCurrent() && compileSelectionIsCurrent(scene, compileOptions)
       && programWarmLifetimeIsCurrent(renderer, lifetime);
   };
   if (!valid()) return false;
@@ -1117,14 +1126,13 @@ export function createForwardProgramWarmOwner({
     options: SceneProgramCompileOptions = {},
   ): Generator<void, ProgramPreparationResult, void> {
     options.signal?.throwIfAborted();
-    const visibleRoot = options.visibleRoot;
-    if (!visibleRootIsCurrent(scene, visibleRoot)) return incompletePreparation('invalidated');
+    if (!compileSelectionIsCurrent(scene, options)) return incompletePreparation('invalidated');
     const ownedEpoch = epoch;
     const lifetime = captureProgramWarmLifetime(renderer);
     const { gl } = lifetime;
     const valid = (): boolean => {
       options.signal?.throwIfAborted();
-      return epoch === ownedEpoch && visibleRootIsCurrent(scene, visibleRoot)
+      return epoch === ownedEpoch && compileSelectionIsCurrent(scene, options)
         && programWarmLifetimeIsCurrent(renderer, lifetime);
     };
     if (!valid()) return incompletePreparation('invalidated');
