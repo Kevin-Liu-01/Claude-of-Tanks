@@ -4,6 +4,7 @@ import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import {
   createOpaqueLoadingYielder,
   nextFrame,
+  nextPaintFrame,
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 import {
@@ -95,6 +96,7 @@ interface DeploymentWarmTrace {
   };
   deploymentUniformsDeferred?: boolean;
   deploymentTerrainPrograms?: TerrainProgramReceipt;
+  deploymentVegetationPrograms?: TerrainProgramReceipt;
   deploymentShadowWarm?: RuntimeValue;
   deploymentForwardWarm?: {
     batches: RuntimeValue[];
@@ -147,6 +149,8 @@ export interface SoloBattleDeploymentRuntimeOptions {
   devTrace?: TraceSink | null;
   now?: () => number;
   yieldFrame?: () => Promise<RuntimeValue>;
+  /** Native link polling needs a frame-plus-task opportunity, not only a task yield. */
+  yieldProgramFrame?: () => Promise<void>;
   createLoadingYielder?: (budgetMs: number, maxDelayMs: number) => WorkYielder;
 }
 
@@ -161,9 +165,10 @@ export interface SoloBattleDeploymentRuntime {
   warm(camoSweep: PromiseLike<RuntimeValue> | RuntimeValue): Promise<SoloBattleDeploymentWarmResult>;
 }
 
-async function prepareTerrainPrograms(
+async function prepareWorldRootPrograms(
   terrain: Object3D,
-  options: Pick<SoloBattleDeploymentRuntimeOptions, 'getWorld' | 'camera' | 'post' | 'forwardProgramWarm'>,
+  options: Pick<SoloBattleDeploymentRuntimeOptions,
+    'getWorld' | 'camera' | 'post' | 'forwardProgramWarm' | 'yieldProgramFrame'>,
   receipt: TerrainProgramReceipt,
   yieldCovered: WorkYielder,
   assertCurrent: () => void,
@@ -186,7 +191,10 @@ async function prepareTerrainPrograms(
       assertTerrainCurrent();
       const step = steps.next();
       if (step.done) { receipt.result = step.value; break; }
-      await yieldCovered(true);
+      // Rapid scheduler tasks can consume the finite native polling budget
+      // before the browser gets even one rendering opportunity. Give pending
+      // links a real frame boundary; retain the compiler's deadline/cap.
+      await (options.yieldProgramFrame ?? nextPaintFrame)();
     }
   } catch (error) {
     assertTerrainCurrent();
@@ -199,6 +207,30 @@ async function prepareTerrainPrograms(
   }
   await yieldCovered(true);
   assertTerrainCurrent();
+}
+
+async function prepareWorldPrograms(
+  options: SoloBattleDeploymentRuntimeOptions,
+  trace: DeploymentWarmTrace,
+  yieldCovered: WorkYielder,
+  assertCurrent: () => void,
+  mark: (name: string) => void,
+): Promise<void> {
+  for (const name of ['terrain', 'vegetation'] as const) {
+    assertCurrent();
+    const root = options.getWorld()?.group?.children.find(child => child.name === name && child.visible);
+    if (root) {
+      const receipt: TerrainProgramReceipt = {
+        result: { status: 'incomplete', pending: null, reason: 'not-requested' }, timing: {},
+      };
+      if (name === 'terrain') trace.deploymentTerrainPrograms = receipt;
+      else trace.deploymentVegetationPrograms = receipt;
+      options.battleLoad.progress(0.9695, 'Priming deployment view');
+      await prepareWorldRootPrograms(root, options, receipt, yieldCovered, assertCurrent);
+    }
+    mark(`${name}Programs`);
+  }
+  assertCurrent();
 }
 
 function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): void {
@@ -464,20 +496,11 @@ export function createSoloBattleDeploymentRuntime(
         mark('shadowMaps');
 
         // Whole-scene submission does not reflect retained native programs.
-        // Prepare only the active terrain's visible source-pass materials;
+        // Prepare the active terrain and vegetation source-pass materials;
         // hidden FX/LOD objects and inactive worlds must stay out of this job.
-        const worldGroup = getWorld()?.group;
-        const terrain = worldGroup?.children.find(child => child.name === 'terrain' && child.visible);
-        if (terrain) {
-          const receipt: TerrainProgramReceipt = {
-            result: { status: 'incomplete', pending: null, reason: 'not-requested' }, timing: {},
-          };
-          trace.deploymentTerrainPrograms = receipt;
-          battleLoad.progress(0.9695, 'Priming deployment view');
-          await prepareTerrainPrograms(terrain, options, receipt, guardedCoveredYield,
-            () => requireCurrent(generation));
-        }
-        mark('terrainPrograms');
+        await prepareWorldPrograms(options, trace, guardedCoveredYield,
+          () => requireCurrent(generation), mark);
+        requireCurrent(generation);
 
         const forwardBatches = [];
         for (const batch of createDeploymentForwardWarmBatches({
