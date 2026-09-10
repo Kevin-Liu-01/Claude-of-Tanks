@@ -1,4 +1,4 @@
-# Deployment upload program readiness: rejected first native candidate
+# Deployment upload program readiness: rejection and qualified followup
 
 The preserved native actual-control run is
 `/private/tmp/cot-interactive-baseline.gsRCvU/deployment-upload-programs-candidate-actions-r1/report.json`.
@@ -37,7 +37,8 @@ Geometry batches, generic loader policy, shader poll/deadline budgets, graphics
 quality, roster content, and final scene state are unchanged. CPU regression
 coverage uses the actual task-only loading yielder and a fake compiler that
 becomes ready only after frame opportunities. Native acceptance of this
-scheduling followup is still pending; the r1 failure evidence is immutable.
+scheduling followup was pending at this checkpoint; the r1 failure evidence
+is immutable. The later integrated qualification below does not replace it.
 
 The separate acquisition followup adds opt-in `--warm-readiness-gate`. It
 requires both Battle and Rematch countdown traces to have `done: true`,
@@ -68,4 +69,29 @@ used `src/engine/combatWarmComposition.selftest.mjs`. The corrective two-test
 admission was canceled before execution to preserve the higher-priority fleet
 release window, then completed in the explicitly admitted 17-file CPU batch
 on integrated revision `be1844806` on September 10. All 17 passed; the longest
-child took 1032 ms. No native scheduling-followup run has been performed.
+child took 1032 ms.
+
+## Integrated native followup
+
+`integrated-performance-actions-r1/report.json` under the same evidence root
+exercised revision `0ca81d5c15c6a9f6a18b7ee15d18885231245c2c`, public HTML SHA256
+`9222174966244462ec136475112af8128026a1ae240ff1220066e824a7b38e07`,
+on Chrome 151.0.7922.47 / native ANGLE Metal Apple M5 Max. Both Battle and
+Rematch pass the now-combined functional, audio, covered-warm and source-ready
+gates. Required work completes before rollout; no error or missing trace is
+accepted as success. Garage return also passes its separate lifecycle checks.
+
+First entry prepares five upload variants in eight steps, with six frame
+yields and eleven readiness queries: 73.5 ms covered elapsed, 2.3 ms summed
+synchronous work, maximum step 1.6 ms. Its 104 geometry batches total 35 ms,
+maximum 13 ms. Rematch prepares five variants in three steps: 15.7 ms covered
+elapsed, 1.5 ms synchronous work, maximum 1.3 ms; its 105 batches total 2 ms,
+maximum 1 ms. These are instrumented CPU/submission receipts, not GPU timing.
+
+First click-to-activation remains 6616.0 ms including normal staged readiness;
+the first callback gap peaks at 180.8 ms. A 154.6 ms native AudioContext
+constructor lies inside that interval. Rematch peaks at 84.1 ms and includes
+an unassigned 60 ms long task. Required warm readiness is fixed; neither cold
+audio startup nor every transition stall is resolved. See
+[integrated qualification](interactive-performance-qualification-20260910.md)
+for the complete passing and failing acceptance results.
