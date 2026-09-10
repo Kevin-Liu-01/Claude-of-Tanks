@@ -159,7 +159,9 @@ export function refreshGitHubStars(): Promise<number | null> {
   }
 
   if (!activeRequest) {
-    renderGitHubStarLoading();
+    // Keep a verified stale value visible while its background refresh runs.
+    // Fresh surfaces already render the stable-width loading state below.
+    if (!cached) renderGitHubStarLoading();
     activeRequest = fetchGitHubStars().finally(() => { activeRequest = null; });
   }
   return activeRequest;
@@ -177,9 +179,9 @@ function bindIntentRetry(nodes: Element[]): void {
 }
 
 /**
- * Register repository star nodes and render only locally cached data during
- * startup. A live same-origin refresh begins on explicit GitHub-link intent,
- * keeping an optional social counter off the game and menu critical paths.
+ * Register repository star nodes and start one coalesced, non-blocking
+ * same-origin refresh on first mount. Pointer/focus intent remains a retry
+ * path, while the optional social counter never gates startup or presentation.
  */
 export function mountGitHubStars(root: Document | Element = document): Promise<number | null> {
   const mountedNodes: Element[] = [];
@@ -190,7 +192,7 @@ export function mountGitHubStars(root: Document | Element = document): Promise<n
 
   const cached = readCachedStars();
   if (cached) renderGitHubStarCount(cached.count);
-  else for (const node of mountedNodes) setGitHubStarState(node, 'unavailable');
+  else renderGitHubStarLoading(mountedNodes);
   bindIntentRetry(mountedNodes);
-  return Promise.resolve(cached?.count ?? null);
+  return refreshGitHubStars();
 }
