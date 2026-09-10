@@ -348,6 +348,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/sceneSourcePass.selftest.mjs',
     'src/engine/lateFxColorHandoff.selftest.mjs',
+    'src/engine/lateFxSceneView.selftest.mjs',
     'src/engine/resolvedDepthCopy.selftest.mjs',
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
