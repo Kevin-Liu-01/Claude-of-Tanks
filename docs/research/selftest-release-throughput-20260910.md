@@ -31,3 +31,16 @@ in `villageWear.selftest.mjs`'s unrelated frozen parent-config assertion. This
 checkpoint neither deletes that check nor turns that failure into a pass.
 Reducing full-suite repetition per tank remains a separate release-cadence
 decision; these optimizations do not implement a skip-tests path.
+
+## Separate repair of the observed terrain release blocker
+
+The frozen village-wear config digest predates three published prop fields:
+Ironworks' palette (`0823acd74`) and Autumn/Delta crop identity (`3bfd72f90`).
+Removing exactly those fields from the historical comparison reproduces the
+original digest byte-for-byte. The test now also checks their current values,
+including adversarial mutations, so the historical projection cannot hide
+future changes. No production maps, frozen digests or pixel expectations were
+changed. The complete village-wear test passed: all 28 non-pilot masks at both
+resolutions, both pilots across three seeds, protected channels, activity
+coverage, field equivalence and existing negative controls. This fixes that
+specific blocker; it does not certify the rest of the interrupted release.

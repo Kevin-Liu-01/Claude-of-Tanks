@@ -24,11 +24,28 @@ const FROZEN = {
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
 function originalConfig(cfg) {
-  if (!pilots.includes(cfg.id)) return cfg;
-  const { villageWear: _mode, workedGround: _patches, ...terrain } = cfg.terrain;
-  return { ...cfg, terrain };
+  if (pilots.includes(cfg.id)) {
+    const { villageWear: _mode, workedGround: _patches, ...terrain } = cfg.terrain;
+    return { ...cfg, terrain };
+  }
+  // Published prop-only inputs postdate this immutable terrain receipt:
+  // 0823acd74 (Ironworks palette), 3bfd72f90 (two crop identities). Their
+  // exact current values are independently guarded below. Preserve the old
+  // digest and EVERY other field instead of refreshing it to today's output.
+  if (cfg.id === 'foundry') {
+    const { sourcedPalette: _laterPalette, ...props } = cfg.props;
+    return { ...cfg, props };
+  }
+  if (cfg.id === 'autumn' || cfg.id === 'delta') {
+    const { cropForm: _laterCrop, ...props } = cfg.props;
+    return { ...cfg, props };
+  }
+  return cfg;
 }
 function checkScope(resolve) {
+  assert.equal(resolve('foundry').props.sourcedPalette, 'ironworks');
+  assert.equal(resolve('autumn').props.cropForm, 'harvest');
+  assert.equal(resolve('delta').props.cropForm, 'wet-upright');
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).terrain.villageWear !== undefined), pilots);
   for (const id of pilots) {
     assert.equal(resolve(id).terrain.villageWear, 'activity-patches');
@@ -148,6 +165,11 @@ function checkOtherMaps(tier) {
 }
 
 checkScope(getMapConfig);
+for (const [id, key] of [['foundry', 'sourcedPalette'], ['autumn', 'cropForm'], ['delta', 'cropForm']]) {
+  assert.throws(() => checkScope(current => current === id
+    ? { ...getMapConfig(current), props: { ...getMapConfig(current).props, [key]: 'invalid' } } : getMapConfig(current)),
+  'historical projection must not hide a changed current prop input');
+}
 assert.throws(() => checkScope(id => id === 'desert'
   ? { ...getMapConfig(id), terrain: { ...getMapConfig(id).terrain, villageWear: 'activity-patches' } } : getMapConfig(id)));
 const coastal = getMapConfig('coastal');
