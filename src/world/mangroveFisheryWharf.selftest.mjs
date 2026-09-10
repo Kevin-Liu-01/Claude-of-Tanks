@@ -19,8 +19,28 @@ const releaseStart = propsSource.indexOf('  composeAuthoredFisheryWharf();');
 const releaseEnd = propsSource.indexOf('  // Delta uses', releaseStart);
 assert.ok(releaseStart > 0 && releaseEnd > releaseStart);
 const releaseBlock = propsSource.slice(releaseStart, releaseEnd);
-assert.match(releaseBlock, /composeAuthoredFisheryWharf\(\);\s+vegetation = null;/,
-  'construction input is cleared unconditionally before material merging and returned runtime closures');
+// Published 9b21e0a31b consumes vegetation for Autumn dressing between these
+// operations. Allow exactly that block, not arbitrary code or a conditional
+// release. The production hook below still observes the actual released input.
+const autumnConsumer = `  if (autumnCropRows && autumnFieldContext) {
+    composeAutumnHeadlandDressing(destructibleContext, autumnFieldContext,
+      autumnCropRows, placedB, autumnFieldStart, autumnFieldEnd, vegetation?.treeObstacles ?? []);
+    autumnCropRows.length = 0;
+    autumnFieldContext = null;
+  }\n`;
+function assertConstructionRelease(block) {
+  assert.equal(block.split(autumnConsumer).length, 2, 'exact published Autumn consumer occurs once');
+  assert.ok(block.indexOf(autumnConsumer) > block.indexOf('composeAuthoredFisheryWharf();')
+    && block.indexOf(autumnConsumer) < block.indexOf('vegetation = null;'),
+  'the consumer executes after wharf construction and before release');
+  assert.match(block.replace(autumnConsumer, ''), /^\s*composeAuthoredFisheryWharf\(\);\s+vegetation = null;\s*$/,
+    'construction input is cleared unconditionally after consumers and before runtime closures');
+}
+assertConstructionRelease(releaseBlock);
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '  if (autumnCropRows) vegetation = null;')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation = null;', '  vegetation = oldVegetation;')));
+assert.throws(() => assertConstructionRelease(releaseBlock.replace(autumnConsumer, '') + autumnConsumer));
 
 const seed = Number(process.argv.find(a => a.startsWith('--seed='))?.slice(7));
 // V29 actual world-space bytes, captured before the two inner-pile change.

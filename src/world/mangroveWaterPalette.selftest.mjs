@@ -131,7 +131,15 @@ assert.equal(hash(stringify(historicalAutumnPalettes)),
   '31bdbf450402c2c0e54f8cbb8c45a14619c35bddb9d56acd10e2ef7d3e06973e',
   'authenticated predecessor Autumn palette serialization remains exact');
 function verifyCurrentAutumnPalette(config) {
-  assert.equal(hash(stringify(config.vegetation?.palettes ?? null)),
+  const palettes=config.vegetation?.palettes;
+  // Published 99ea0b24f adds only these two atlas selections to Autumn blob
+  // 4aacb9c5f -> 537e8c57d. Guard them separately, preserving every original
+  // color/function field and the immutable seasonal palette fingerprint.
+  assert.equal(palettes?.birch?.birchLeaves,true,'current Autumn palette keeps the published birch leaf atlas');
+  assert.equal(palettes?.aspen?.birchLeaves,true,'current Autumn palette keeps the published aspen leaf atlas');
+  const {birchLeaves:_birchAtlas,...birch}=palettes.birch;
+  const {birchLeaves:_aspenAtlas,...aspen}=palettes.aspen;
+  assert.equal(hash(stringify({...palettes,birch,aspen})),
     'abb772abb6b3f67077b2a86d2cd7930a121b796fd6a6b2af9678f5dacdeb53b3',
     'current Autumn palette remains the exact published seasonal selection');
 }
@@ -170,6 +178,12 @@ for (const id of ['autumn', 'delta']) {
   /other29 config/, 'crop count remains protected by the original immutable digest');
 }
 const autumn = getMapConfig('autumn');
+for(const species of ['birch','aspen'])for(const birchLeaves of [undefined,false,'enabled']){
+  const changed={...autumn,vegetation:{...autumn.vegetation,palettes:{...autumn.vegetation.palettes,
+    [species]:{...autumn.vegetation.palettes[species],birchLeaves}}}};
+  assert.throws(()=>verifyHistoricalConfigs(id=>id==='autumn'?changed:getMapConfig(id)),/current Autumn palette/,
+    'historical color projection cannot hide missing or corrupt current atlas selections');
+}
 const changedAutumnPalettes = { ...autumn.vegetation.palettes,
   oak: { ...autumn.vegetation.palettes.oak, cardSat: 0.9 } };
 assert.equal(stringify(historicalAutumnPaletteInput({ ...autumn,
