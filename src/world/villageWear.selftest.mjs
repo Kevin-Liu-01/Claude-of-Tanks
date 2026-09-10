@@ -4,7 +4,7 @@ import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMa
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
-import { historicalPaletteConfig } from './shorelineHistoryTestOracle.mjs';
+import { historicalPaletteConfig, historicalFoundryServiceInput } from './shorelineHistoryTestOracle.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
@@ -73,8 +73,9 @@ function originalConfig(cfg) {
   // exact current values are independently guarded below. Preserve the old
   // digest and EVERY other field instead of refreshing it to today's output.
   if (cfg.id === 'foundry') {
-    const { sourcedPalette: _laterPalette, ...props } = cfg.props;
-    return { ...cfg, props };
+    const prior = historicalFoundryServiceInput(cfg);
+    const { sourcedPalette: _laterPalette, ...props } = prior.props;
+    return { ...prior, props };
   }
   if (cfg.id === 'autumn' || cfg.id === 'delta') {
     const { cropForm: _laterCrop, ...props } = cfg.props;
@@ -198,7 +199,7 @@ function checkOtherMaps(tier) {
   const results = [];
   for (const id of MAP_IDS) {
     if (pilots.includes(id)) continue;
-    const built = bake(getMapConfig(id), 1337);
+    const built = bake(historicalFoundryServiceInput(getMapConfig(id)), 1337);
     assert.equal(built.size, tier === 'desktop' ? 512 : 256, 'actual tier-scaled raster, not a relabeled desktop bake');
     results.push([id, hash(built.pixels)]); built.texture.dispose();
   }

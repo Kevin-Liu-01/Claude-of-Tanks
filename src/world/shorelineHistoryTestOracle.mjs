@@ -1,5 +1,16 @@
 import { createLakeChannel } from './maps/marshChannel.ts';
 
+// The service-court authoring follows Foundry source blob
+// c3ad3042999d7241824ad9a4670fcbd73a5fb84a (d46da09ea). Preserve that
+// historical input without refreshing older pixel/config goldens. Current
+// court authoring and output are independently checked by foundryServiceCourt.
+export function historicalFoundryServiceInput(cfg) {
+  if (cfg.id !== 'foundry') return cfg;
+  const { workedGround: _laterCourtWear, ...terrain } = cfg.terrain;
+  const { foundryServiceCourt: _laterCourt, ...props } = cfg.props;
+  return { ...cfg, terrain, props };
+}
+
 // Test-only reconstruction of the three subsequently edited inputs at
 // 2b2d14b39ce3ef8cdf567ed35c3cf2d1c79c16ea. Verified against the Git blobs:
 // polders.ts  1ce81f35630258159be6c9e64076bdf74e4c446f
@@ -9,6 +20,7 @@ import { createLakeChannel } from './maps/marshChannel.ts';
 // full-config / pixel digests in the callers still reject unrelated drift.
 // No Git checkout, runtime loader hook or production dependency on this file.
 export function historicalShorelineConfig(cfg) {
+  if (cfg.id === 'foundry') return historicalFoundryServiceInput(cfg);
   if (cfg.id === 'oasis') return { ...cfg, terrain: { ...cfg.terrain, lakes: [
     { x: -138, z: -16, r: 52, depth: 0.75, level: -1.2 },
     { x: -182, z: 32, r: 57, depth: 0.75, level: -1.2 },

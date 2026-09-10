@@ -37,6 +37,7 @@ import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
 import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } from './loggingYard.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
+import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
 import {
   captureAutumnCropRow, autumnHeadlandSite, autumnHeadlandClearsRows,
   type AutumnCropRow, type AutumnHeadlandSite,
@@ -235,6 +236,7 @@ interface PropsSettings {
   bathhouseStyle?: 'timber';
   loggingYard?: LoggingYardConfig;
   reservoirWaterworks?: ReservoirWaterworksConfig;
+  foundryServiceCourt?: FoundryServiceCourtConfig;
   plan: string[];
   tones: Record<string, ToneFunction | null | undefined>;
   rockTone: ToneFunction | null;
@@ -2916,6 +2918,8 @@ ${snowCap ? `
 
   const buildingFeatures: PlacedBuilding[] = [];
   let wharfFishery: FisheryPacket | null = null;
+  const foundryDonors: FoundryDonor[] | null = mapId === 'foundry' && P.foundryServiceCourt ? [] : null;
+  let reconformFoundryFoundations: (() => void) | null = null;
   const tacticalBeatFeatures: TacticalBeatFeature[] = [];
   // sourced-model instancing: name -> { geo, list: [Matrix4, ...] }
   const bakedInstances = new Map<string, BakedInstanceGroup>();
@@ -2946,7 +2950,7 @@ ${snowCap ? `
 
   function addStructureCollision(
     id: string, tmp: PropsBuckets, x: number, baseY: number, z: number, yaw: number,
-  ): void {
+  ) {
     let profile;
     try {
       profile = deriveRuntimeStructureCollisionProfile(tmp);
@@ -2957,6 +2961,7 @@ ${snowCap ? `
     for (const band of profile.shell) {
       appendStructureCollisionBand(colliders, band, x, baseY, z, yaw).kind = 'structure';
     }
+    return profile;
   }
 
   yield { stage: 'yard-clutter' };
@@ -3104,7 +3109,7 @@ ${snowCap ? `
     if (fit.spread > P.maxSpread) return false;
     jitterBuildingUvs(tmp);
     const obstacleStart = obstacles.length, colliderStart = colliders.length;
-    addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
+    const profile = addStructureCollision(structureId, tmp, px, fit.y + 0.05, pz, rot);
     _quat.setFromAxisAngle(_upAxis, rot);
     _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
     mergeInto(buckets, tmp, _mat4);
@@ -3115,6 +3120,12 @@ ${snowCap ? `
         feature: buildingFeatures[buildingFeatures.length - 1] };
     }
     placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
+    if (foundryDonors && P.foundryServiceCourt?.sites.some(site => site.planIndex === bi && site.kind === structureId)) {
+      foundryDonors.push({ planIndex: bi, kind: structureId, buckets: tmp, profile,
+        source: { x: px, y: fit.y + 0.05, z: pz, yaw: rot },
+        records: [...obstacles.slice(obstacleStart), ...colliders.slice(colliderStart)],
+        feature: buildingFeatures[buildingFeatures.length - 1], placement: placedB[placedB.length - 1] });
+    }
     bi++;
     return true;
   }
@@ -5662,8 +5673,8 @@ ${snowCap ? `
       receiveShadow?: boolean;
       groundContact?: boolean;
       decalKind?: string;
-    } = {}): void {
-      if (geos.length === 0) return;
+    } = {}) {
+      if (geos.length === 0) return null;
       const mat = new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         roughness: 0.97, metalness: 0,
@@ -5685,6 +5696,7 @@ ${snowCap ? `
       mesh.userData.terrainDecalKind = decalKind;
       mesh.userData.decalParts = geos.length;
       group.add(mesh);
+      return mesh.geometry;
     }
     function collectFoundationDecals(
       dirtDiscs: THREE.BufferGeometry[],
@@ -5730,11 +5742,35 @@ ${snowCap ? `
       const apronGeos: THREE.BufferGeometry[] = [];
       collectFoundationDecals(dirtDiscs, apronGeos);
       collectCourtyardDecals(apronGeos);
-      addDecalMesh(dirtDiscs, makeGroundDecalTexture(noi, aniso, 'dirt'), {
+      const contactGeometry = addDecalMesh(dirtDiscs, makeGroundDecalTexture(noi, aniso, 'dirt'), {
         receiveShadow: false,
         groundContact: true,
         decalKind: 'ground-contact',
       });
+      if (foundryDonors && !P.streetRows && contactGeometry) {
+        // Keep the same merged decal and vertex windows. Only the six moved
+        // foundations are resampled against their new terrain after dressing.
+        const windows = foundryDonors.map(donor => {
+          const index = buildingFeatures.indexOf(donor.feature);
+          let offset = 0;
+          for (let i = 0; i < index; i++) offset += dirtDiscs[i].attributes.position.count;
+          return { feature: donor.feature, offset };
+        });
+        reconformFoundryFoundations = () => {
+          for (const { feature, offset } of windows) {
+            const replacement = conformedDisc(feature.x, feature.z,
+              Math.max(feature.w, feature.d) * 1.2, [0.05, 0.05, 0.05, 0.04]);
+            for (const name of ['position', 'normal']) {
+              const from = replacement.getAttribute(name), to = contactGeometry.getAttribute(name);
+              for (let i = 0; i < from.count; i++) to.setXYZ(offset + i, from.getX(i), from.getY(i), from.getZ(i));
+              to.needsUpdate = true;
+            }
+            replacement.dispose();
+          }
+          contactGeometry.computeBoundingBox();
+          contactGeometry.computeBoundingSphere();
+        };
+      }
       addDecalMesh(apronGeos, makeGroundDecalTexture(noi, aniso, 'apron'), {
         decalKind: 'apron',
       });
@@ -6081,6 +6117,16 @@ ${snowCap ? `
     wharfFishery = null;
   }
   composeAuthoredFisheryWharf();
+  function composeAuthoredFoundryCourt(): void {
+    if (!foundryDonors) return;
+    const receipt = composeFoundryServiceCourt(mapId, P.foundryServiceCourt, heightField,
+      foundryDonors, [...obstacles, ...colliders], vegetation);
+    group.userData.foundryServiceCourt = receipt;
+    if (receipt?.status === 'placed') reconformFoundryFoundations?.();
+    foundryDonors.length = 0;
+    reconformFoundryFoundations = null;
+  }
+  composeAuthoredFoundryCourt();
   if (autumnCropRows && autumnFieldContext) {
     composeAutumnHeadlandDressing(destructibleContext, autumnFieldContext,
       autumnCropRows, placedB, autumnFieldStart, autumnFieldEnd, vegetation?.treeObstacles ?? []);

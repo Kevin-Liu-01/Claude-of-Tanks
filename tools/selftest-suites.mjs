@@ -781,6 +781,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/loggingYard.selftest.mjs',
+    'src/world/foundryServiceCourt.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
     'src/world/loggingYardGrass.selftest.mjs',
     'src/world/grassChunkWork.selftest.mjs',

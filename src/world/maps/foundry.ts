@@ -18,6 +18,16 @@ export default {
       ],
     },
     marshes: [],
+    // A compact loading court and its southern access, not a new flattened
+    // terrain pad. Existing mask alpha supplies broken soil/wheel wear.
+    workedGround: [
+      { boundary: [[83, -116], [92, -129], [115, -128], [127, -115],
+        [122, -98], [109, -90], [90, -93], [82, -104]], feather: 5, strength: 1 },
+      { boundary: [[94, -126], [105, -126], [108, -143], [110, -160],
+        [99, -162], [95, -146]], feather: 4, strength: 1 },
+      { boundary: [[116, -96], [136, -98], [158, -111], [175, -110],
+        [176, -100], [155, -100], [136, -88], [118, -87]], feather: 4, strength: 1 },
+    ],
     village: { x0: -286, x1: 286, z0: -288, z1: 288, cx: 0, cz: 0, feather: 38, flatten: 0.9, relief: 0.1 },
     landforms: [
       { kind: 'ridge', x: -302, z: 8, length: 360, width: 78, height: 8.4, yawDeg: 3, settlementScale: 0.86 },
@@ -48,6 +58,14 @@ export default {
   },
   props: {
     sourcedPalette: 'ironworks',
+    foundryServiceCourt: { sites: [
+      { planIndex: 2, kind: 'containerRow', x: 163, z: -106, yawDeg: 0 },
+      { planIndex: 3, kind: 'gantry', x: 71.5, z: -96, yawDeg: 0 },
+      { planIndex: 4, kind: 'stack', x: 133, z: -110, yawDeg: 0 },
+      { planIndex: 5, kind: 'shed', x: 117, z: -123, yawDeg: -90 },
+      { planIndex: 7, kind: 'factory', x: 117, z: -105, yawDeg: -90 },
+      { planIndex: 9, kind: 'warehouse', x: 94, z: -70, yawDeg: 180 },
+    ] },
     plan: ['firestation', 'foundryoffice', 'containerRow', 'gantry', 'stack', 'shed',
       'watertower', 'factory', 'depot', 'warehouse', 'containerRow', 'cornershop',
       'rowhouse', 'factory', 'ruin', 'stack', 'depot', 'gantry',
