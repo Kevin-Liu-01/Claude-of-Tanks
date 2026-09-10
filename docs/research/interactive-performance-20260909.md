@@ -2177,7 +2177,9 @@ Proxy preserves arguments, prototypes, subclass `newTarget`, native errors and
 options. It records bounded call timing/counts only, never device identifiers,
 test tones or replacement audio output. Battle, Rematch and Garage return must
 then retain exactly one context and pass the existing clock/owner gate, so
-disabling sound cannot satisfy the new gate. Passive held/released snapshots
+skipping context creation or loading-owner activation cannot satisfy the gate.
+Audible output is not certified: muted or silent output can still pass those
+state checks. Passive held/released snapshots
 also retain movement deltas, pointer capture, framing and frame-owner state.
 
 Failure evidence is preserved. The first invocation mistakenly requested the
@@ -2209,7 +2211,8 @@ battle-audio startup or all remaining loading/frame stalls.
 The extended live baseline (`garage-audio-intent-production-baseline-r3/`)
 confirms a real input-reset defect, not lost test input: all ten trusted 10 px
 moves arrive with the correct pointer capture. Camera yaw moves from 45° to
-35.843° while held, then returns to 45° within 0.869 seconds of release, before
+35.843° while held, then is back at 45° by the 1.008-second wall-clock
+post-release observation (0.869 seconds of clamped showroom update time), before
 the normal two-second idle return. Both Garage frame owners advance normally;
 the page stays visible/focused and the graphics context stays healthy. That
 baseline also constructs an AudioContext during Garage input (153.2 ms).
