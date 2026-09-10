@@ -98,3 +98,21 @@ warnings in `frameScheduler.selftest.mjs` (two) and `propsScheduling.selftest.mj
 browser clocks and cancellation fixtures. Parallelizing them would mix fixture
 ownership; they are retained without disabling a rule or changing the score.
 The scan's 49/100 result is not a clean-code or performance certificate.
+
+## Full-suite clock-fixture regression
+
+The first complete-suite attempt (`opaque-paint-full-suite-r1.log`) passed all
+302 pre checks, then stopped with 317 core passes and one failure out of 318
+executed core entries. `browserBattleBridge.selftest.mjs` exited 13 with an
+unsettled top-level await. Its hidden-document fake host ran the 34 ms fallback
+but did not service the following task now required by the default paint port.
+This was not an assertion waiver or a passing full-suite result.
+
+The corrected fixture holds and explicitly resolves `scheduler.yield()`, proving
+that the fallback alone cannot complete roster preparation. It checks frame and
+timer release, late-callback idempotence and all five global descriptor restores.
+The actual bridge/default scheduler remain under test; no runtime fallback or
+injected `yieldFrame` bypass was added. Cleanup restores the real host before
+awaiting any later work. The focused run passes in
+`opaque-paint-bridge-fixture-r1.log`; an independent read-only review found no
+blocker. This covers hidden-host completion, not visible-paint certification.

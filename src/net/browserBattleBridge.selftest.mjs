@@ -552,7 +552,10 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
   let completions = 0;
   const frames = [];
   const timers = [];
-  const keys = ['requestAnimationFrame', 'setTimeout'];
+  const tasks = [];
+  const cancelledFrames = [];
+  const clearedTimers = [];
+  const keys = ['requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout', 'scheduler'];
   const prior = new Map(keys.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   const fixture = rosterSchedulingFixture({
     rosterScheduling: { now: () => clock, yieldTask: async () => {} },
@@ -568,6 +571,16 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
       configurable: true, writable: true,
       value(callback, delay) { timers.push({ callback, delay }); return timers.length; },
     });
+    Object.defineProperty(globalThis, 'cancelAnimationFrame', {
+      configurable: true, writable: true, value(id) { cancelledFrames.push(id); },
+    });
+    Object.defineProperty(globalThis, 'clearTimeout', {
+      configurable: true, writable: true, value(id) { clearedTimers.push(id); },
+    });
+    Object.defineProperty(globalThis, 'scheduler', {
+      configurable: true, writable: true,
+      value: { yield: () => new Promise(resolve => tasks.push(resolve)) },
+    });
     pending = fixture.bridge.prepareRoster(fullCachedRoster.slice(0, 1)).then(() => { completions++; });
     for (let turn = 0; turn < 32 && frames.length === 0; turn++) await Promise.resolve();
     assert.equal(frames.length, 1, 'an exhausted paint interval requests one animation callback');
@@ -575,6 +588,12 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
       'roster preparation uses the bounded fallback when animation callbacks never fire');
     assert.equal(completions, 0);
     timers[0].callback();
+    for (let turn = 0; turn < 32 && tasks.length === 0; turn++) await Promise.resolve();
+    assert.equal(tasks.length, 1, 'the default paint fallback still leaves its resolving microtask');
+    assert.equal(completions, 0, 'roster preparation waits for the following task, not just the timer');
+    assert.deepEqual(clearedTimers, [1]);
+    assert.deepEqual(cancelledFrames, [1], 'the fallback releases its outstanding frame owner');
+    tasks[0]();
     await pending;
     assert.equal(completions, 1, 'the fallback completes hidden-document roster preparation');
     frames[0]();
@@ -585,17 +604,18 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
     assert.equal(fixture.visuals[0].visual.visible, false);
     assert.equal(timers.length, 1);
   } finally {
-    // Drain the sole held entity checkpoint even when a regression assertion fails.
+    // Drain the frame/fallback and its following task even when an assertion
+    // fails. Restore the host before awaiting any later real fallback.
     for (const callback of frames) callback();
     for (const timer of timers) timer.callback();
-    try { await pending; } finally {
-      for (const key of keys) {
-        const descriptor = prior.get(key);
-        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-        else delete globalThis[key];
-      }
-      fixture.bridge.dispose();
+    await Promise.resolve();
+    for (const task of tasks) task();
+    for (const key of keys) {
+      const descriptor = prior.get(key);
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
     }
+    try { await pending; } finally { fixture.bridge.dispose(); }
   }
 }
 
