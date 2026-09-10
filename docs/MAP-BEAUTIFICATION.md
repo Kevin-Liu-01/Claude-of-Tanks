@@ -237,6 +237,20 @@ unchanged. Focused integration tests, TS7 and public build pass. See
 `CROP-BIOME-IDENTITY-CHECKPOINT.md` for source pins, earlier failures, exact
 resource contracts and the remaining full-frame/mobile performance limits.
 
+### Grass and palm shape checkpoint — 2026-09-09
+
+`902d9882f` narrows the existing grass blades and aligns near/far palm segments
+with their full authored lean. Root and an independent reviewer viewed all
+eight matched native Autumn/Delta images: grass is finer, and the obvious
+stepped palm joints become continuous stems. Grass geometry, instances,
+allocated buffers, materials and measured draw submissions stay exact.
+Eleven focused tests, TS7, scoped quality/Doctor and public build pass.
+The failed first native acquisition and its source-bound readiness correction
+are preserved in `GRASS-PALM-SHAPE-CHECKPOINT.md`, together with raw CPU timing
+and remaining motion/mobile/full-frame limits. More ground and regular crop
+rows now show through; broad forest, water and settlement composition remain
+unfinished. This is not a whole-map or zero-regression certificate.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance
