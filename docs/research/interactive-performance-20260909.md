@@ -2246,3 +2246,27 @@ and not a zero-lag claim. Candidate action callback maxima remain
 **159.2 / 150.8 / 46.9 ms** for Battle/Rematch/Garage. Random battle rosters and
 remaining native startup/Long Tasks prevent a controlled throughput comparison
 or closure of the historical 214–319 ms gameplay-stall investigation.
+
+#### Published Garage input fix — 2026-09-10 06:40 UTC
+
+Runtime `08c0cb1f2` and its clarified documentation were pushed without force;
+the deployed main boundary is `43321e687120b203c97facecce82a315fed5d752`.
+Six focused checks, typecheck and public build pass on the combined tree above
+the independent birch/aspen change. Production serves `v1.0.0+g43321e687` with
+HTML SHA256 `346520787e80a2740a4aacd028f85e5409cc65fa57499205d621e8f8c212850a`
+before, during and after the acquisition.
+
+The unchanged frozen Garage acquisition passes on production in
+`garage-audio-intent-production-r1/`: camera yaw 45° → 33.190° held → -60.971°
+with release momentum, **zero** Garage audio constructors, then exactly one
+context through Battle/Rematch/return. Existing loading-clock and owner gates
+pass; audible output is not certified by those passive checks. All ordinary
+actions pass, browser/failure/cleanup arrays are empty, and four final screenshots
+were visually inspected with unchanged high-quality rendering. The owned native
+browser and local preview exited; no foreign process was stopped.
+
+The scope remains functional. First battle still spends **173.9 ms** in the
+native AudioContext constructor. Action callback maxima are
+**182.2 / 111.8 / 38.5 ms**, and first opaque-cover observations occur after
+**132.2 / 139.6 / 91.2 ms**. Those are not a claim of steady-state gameplay
+throughput, a matched-roster speedup, or resolution of all historical stalls.
