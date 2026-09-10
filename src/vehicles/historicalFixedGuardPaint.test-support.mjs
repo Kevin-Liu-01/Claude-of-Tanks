@@ -8,6 +8,7 @@ import {AMX40_X_PROFILES} from './profiles/amx40X.ts';
 import {buildLeopard2A6X} from './profiles/leopardA6X.ts';
 import {buildType10X} from './profiles/type10X.ts';
 import {beforeFixedStockPaint} from './fixedStockPaintHistory.test-support.mjs';
+import {historicalType10Skirt} from './type10SkirtHistory.test-support.mjs';
 
 const cases = {
   leclerc_x: {build:buildLeclercX, source:'leclercXSourceFittings.ts',
@@ -29,11 +30,12 @@ export function withHistoricalFixedGuardPaint(id, build) {
   // bytes, not a newly refreshed recipe or a wildcard material-name exclusion.
   for(const source of [row.source].flat())
     beforeFixedStockPaint(source,readFileSync(new URL('./profiles/'+source,import.meta.url),'utf8'));
-  const names=[];let equipment=0;
+  const names=[];let equipment=0,foldedSkirts=0;
   registerProfiledBuilders({[id]:P=>row.build(new Proxy(P,{get(target,key){
     if(key!=='addMudguard'&&key!=='addEquipment')return Reflect.get(target,key);
     return(...args)=>{
-      const bucketIndex=key==='addMudguard'?1:0,geometry=args[bucketIndex+1];
+      const bucketIndex=key==='addMudguard'?1:0;
+      let geometry=args[bucketIndex+1];
       const guard=key==='addMudguard'&&row.names.includes(args[0]);
       const sheet=key==='addEquipment'&&row.equipmentLabel
         &&[row.equipmentLabel].flat().includes(geometry.userData.fixedPaintedPanel);
@@ -43,6 +45,10 @@ export function withHistoricalFixedGuardPaint(id, build) {
         else assert.ok([row.equipmentLabel].flat().includes(geometry.userData.fixedPaintedPanel));
         assert.equal(geometry.userData.materialOnlyPaintMigration,true);
         assert.equal(geometry.userData.materialOnlyPaintSourceBucket,'hullDetail');
+        if(id==='type10_x'&&geometry.userData.fixedPaintedPanel==='type10-painted-folded-skirt') {
+          geometry=historicalType10Skirt(geometry,foldedSkirts++);
+          args[bucketIndex+1]=geometry;
+        }
         if(guard)names.push(args[0]);else equipment++;
         args[bucketIndex]='hullDetail';
         geometry.userData={...geometry.userData};
@@ -53,6 +59,7 @@ export function withHistoricalFixedGuardPaint(id, build) {
   }}))});
   try{const result=build();
     assert.deepEqual(names,row.names,'Every declared guard exactly once, in original order');
+    assert.equal(foldedSkirts,id==='type10_x'?10:0,'Only the ten Type 10 folded skirts restore historical stations');
     assert.equal(equipment,row.equipmentCount??0,'Every declared sheet exactly once');return result;}
   finally{registerProfiledBuilders({[id]:row.build});}
 }

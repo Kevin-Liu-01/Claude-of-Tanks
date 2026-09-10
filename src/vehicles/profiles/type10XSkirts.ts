@@ -35,7 +35,7 @@ function sheetFloor(panel:number,z:number):number {
   return floor;
 }
 
-function sheetSection(panel:number,side:number,z:number):SolidSection {
+export function type10SkirtSection(panel:number,side:number,z:number):SolidSection {
   const floor=sheetFloor(panel,z),top=.783621+.0100435*z;
   const outside=[0,.25,.5,.75,1].map(t=>
     [sheetX(panel,z,t),floor+(top-floor)*t] as [number,number]);
@@ -44,11 +44,34 @@ function sheetSection(panel:number,side:number,z:number):SolidSection {
   return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
 }
 
-function addSheet(P:TankBuilderPort,panel:number,side:number):void {
+// Breaks of the authored ramps, tents and clipped lower edge, not source
+// vertices. Between these stations each longitudinal rail is straight.
+const BENDS=[
+  [-2.355,-2.23,-1.75,-1.70,(-.5886852-.390227)/(.0100435+.438727)],
+  [-1.36,-.43,-.350],[-.063,.823,.83],[1.22,2.105,2.12],
+  [2.48,2.9,2.92,(.390227-.4254067+.554724*2.9)/(.554724-.0100435)],
+] as const;
+
+export function type10SkirtStations(panel:number):number[] {
   const [a,b]=SPANS[panel];
-  // Regular authoring subdivisions approximate the analytic bend functions,
-  // rather than repeating source vertices or its triangulation.
-  const sections=Array.from({length:49},(_,i)=>sheetSection(panel,side,a+(b-a)*i/48));
+  const knots=[a,...BENDS[panel].filter(z=>z>a&&z<b),b].sort((x,y)=>x-y);
+  const stations:number[]=[a];
+  for(let k=1;k<knots.length;k++) {
+    const from=type10SkirtSection(panel,1,knots[k-1]).ring;
+    const to=type10SkirtSection(panel,1,knots[k]).ring;
+    let twist=0;
+    for(let i=0;i<4;i++)twist=Math.max(twist,
+      Math.abs((to[i+1][0]-to[i][0])-(from[i+1][0]-from[i][0])));
+    // Retain enough triangles through a changing bend to bound the ruled
+    // surface's diagonal error. Flat spans need no uniform tessellation.
+    const count=Math.max(1,Math.ceil(twist/.0032));
+    for(let i=1;i<=count;i++)stations.push(knots[k-1]+(knots[k]-knots[k-1])*i/count);
+  }
+  return stations;
+}
+
+function addSheet(P:TankBuilderPort,panel:number,side:number):void {
+  const sections=type10SkirtStations(panel).map(z=>type10SkirtSection(panel,side,z));
   P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(sectionSolid(sections),
     'type10-painted-folded-skirt','hullDetail'));
 }

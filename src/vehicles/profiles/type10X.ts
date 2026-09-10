@@ -467,6 +467,7 @@ export function buildType10X(P:TankBuilderPort):void {
     wheelZs:[...TYPE10_X_DATUMS.wheelStations],xc:1.27414,trackW:.486738,trackTh:.035,
     idler:{z:3.2069,y:.8113,r:.33617},sprocket:{z:-2.8495,y:.7480,r:.3131},
     rollerR:.095,rollers:[{z:-1.78,y:1.10,r:.095},{z:.20,y:1.10,r:.095},{z:2.06,y:1.10,r:.095}],
+    returnRollerHullHalfWidthM:.878,
     topY:1.249,botY:.0805,paintedEnds:true,coveredTop:true,arms:true,
   });
   turretArmor(P);rearRack(P);roofEquipment(P);mainGun(P);
