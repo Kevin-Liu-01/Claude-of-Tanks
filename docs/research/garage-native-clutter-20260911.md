@@ -30,3 +30,12 @@ normal arithmetic; no pixel tolerance was introduced. Focused buffer,
 frustum, failure restoration and idempotent resource-disposal tests pass;
 type checking and public build pass. Phase budgets and live control flow
 remain separate required checks before publication.
+
+The final CSM lifecycle correction registers the private baked material with
+the live shadow owner before wrapping its compile hook, and unregisters it
+on disposal. The actual Three.js CSM regression proves that both original
+and private material receive independent frustum-uniform updates and that
+private disposal preserves the original registration. Independent review
+found the prior ownership defect resolved. Typecheck/public build and all
+five exact native RGBA pairs pass again in
+`.qa-dev/launch/garage-native-clutter-parity-r4/report.json`.

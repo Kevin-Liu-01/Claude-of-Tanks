@@ -2845,6 +2845,10 @@ export function createGarageDressing(
     optimizeGarageDressing(group, {
       staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
+      bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
+        setup: material => engineCtx.setupShadowMaterial!(material),
+        release: material => { engineCtx.releaseShadowMaterial!(material); },
+      } : undefined,
     });
     const optimizedTriangles = countWorkshopTriangles(legacyVerdantRoot);
     group.userData.optimizedWorkshopTriangleCount = optimizedTriangles;
