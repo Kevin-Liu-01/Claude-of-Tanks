@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { installStaticDrawRange, type StaticDrawRun } from '../engine/staticDrawRange.ts';
 
 export interface GarageDressingOptimizationOptions {
   /**
@@ -279,8 +280,10 @@ function mergeStaticWorkshopProps(root: THREE.Object3D): {
         return geometry;
       });
       const geometry = mergeGeometries(transformed, false);
-      for (const clone of transformed) clone.dispose();
-      if (!geometry) continue;
+      if (!geometry) {
+        for (const clone of transformed) clone.dispose();
+        continue;
+      }
       geometry.computeBoundingBox();
       geometry.computeBoundingSphere();
       const merged = new THREE.Mesh(geometry, batch.material);
@@ -293,6 +296,8 @@ function mergeStaticWorkshopProps(root: THREE.Object3D): {
       merged.userData.workshopStaticMerge = true;
       merged.updateMatrix();
       merged.matrixAutoUpdate = false;
+      retainStaticDrawRuns(merged, root, batch.meshes, transformed);
+      for (const clone of transformed) clone.dispose();
       for (const mesh of batch.meshes) {
         mergedSources.add(mesh.geometry);
         mesh.removeFromParent();
@@ -351,6 +356,41 @@ function displayBatchElementCount(batch: StaticMergeBatch): number {
       || 0), 0);
 }
 
+function staticSection(mesh: THREE.Mesh, owner: THREE.Object3D): THREE.Object3D {
+  let section: THREE.Object3D = mesh;
+  while (section.parent && section.parent !== owner) section = section.parent;
+  return section;
+}
+
+/** Preserve merge order; adjacent source sections become exact bounded runs. */
+function retainStaticDrawRuns(
+  merged: THREE.Mesh, owner: THREE.Object3D,
+  sources: readonly THREE.Mesh[], transformed: readonly THREE.BufferGeometry[],
+): void {
+  if (merged.castShadow || !merged.frustumCulled) return;
+  const runs: StaticDrawRun[] = [];
+  let previous: THREE.Object3D | null = null, offset = 0;
+  for (let index = 0; index < sources.length; index++) {
+    const section = staticSection(sources[index], owner);
+    const geometry = transformed[index];
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const count = geometry.index?.count ?? geometry.getAttribute('position').count;
+    const bounds = geometry.boundingBox;
+    if (!bounds || count % 3 !== 0) return;
+    const last = runs[runs.length - 1];
+    if (last && section === previous) {
+      last.count += count;
+      last.bounds.union(bounds);
+    } else {
+      runs.push({ start: offset, count, bounds: bounds.clone() });
+    }
+    previous = section;
+    offset += count;
+  }
+  // Fixed-size CPU metadata only. Highly fragmented batches keep full draws.
+  if (runs.length <= 64) installStaticDrawRange(merged, runs);
+}
+
 interface MergedDisplayBatch {
   geometry: THREE.BufferGeometry;
   sourceGeometries: THREE.BufferGeometry[];
@@ -378,8 +418,10 @@ function mergeStaticDisplayBatch(
     return geometry;
   });
   const geometry = mergeGeometries(transformed, false);
-  for (const clone of transformed) clone.dispose();
-  if (!geometry) return null;
+  if (!geometry) {
+    for (const clone of transformed) clone.dispose();
+    return null;
+  }
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   const merged = new THREE.Mesh(geometry, batch.material);
@@ -392,6 +434,8 @@ function mergeStaticDisplayBatch(
   merged.userData.workshopStaticDisplayMerge = true;
   merged.updateMatrix();
   merged.matrixAutoUpdate = false;
+  retainStaticDrawRuns(merged, owner, batch.meshes, transformed);
+  for (const clone of transformed) clone.dispose();
   const sourceGeometries = batch.meshes.map((mesh) => mesh.geometry);
   for (const mesh of batch.meshes) mesh.removeFromParent();
   owner.add(merged);
