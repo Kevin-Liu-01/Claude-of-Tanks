@@ -972,3 +972,20 @@ all-map art gates remain open without a waiver.
    exact waterworks, census, codec and loader checks pass.
 6. Current-main integration is checkpointed for owner-requested incremental
    publication; final whole-pass verification remains pending.
+
+## Targeted terrain and vegetation diagnostics
+
+The following maintained probes complement the full map audit. They retain
+actual source/scene measurements and use the shared capture queue. Keep their
+outputs in fresh ignored QA directories; none replaces the complete map gates.
+
+- `node tools/far-tree-trunk-audit.mjs --out=.qa-dev/far-tree-trunks-review`
+  captures the native far-tree trunk/base silhouettes used to check biome LOD
+  transitions after root or canopy changes.
+- `node tools/road-exit-native-audit.mjs --url=http://127.0.0.1:4180 --out=.qa-dev/road-exits-review`
+  captures approach and overhead views of authored road endpoints on an
+  existing development server after texture readiness.
+- `node tools/road-corridor-sections.mjs --receipt=.qa-dev/road-pilot.json --out=.qa-dev/road-sections.json`
+  reconstructs cross-sections from a failed pilot's exact source hashes and
+  recorded sample orientation. It requires the original failed pilot receipt
+  and rejects changed terrain, corridor or endpoint sources.

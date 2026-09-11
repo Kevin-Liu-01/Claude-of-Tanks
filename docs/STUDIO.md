@@ -332,3 +332,13 @@ entries with the same renderer settings. Generated scenes still require native
 framing review: an authored spawn is not proof that every camera avoids terrain
 or buildings. Preserve failed acquisitions and use a new output directory for
 comparison renders.
+
+## Checking actor ground contact
+
+`node tools/studio-ground-contact-probe.mjs --out=.qa-dev/studio-ground-review`
+opens the canonical Winter duel through the real Studio path and captures
+track/road-wheel vertices against its active terrain at several forward and
+reverse seek times. The probe owns an isolated browser and the shared capture
+queue. Read both penetration and separation across each sampled footprint; a
+small minimum gap or a ground shadow alone does not establish full contact.
+Outputs are diagnostic QA artifacts, not a fleet qualification receipt.

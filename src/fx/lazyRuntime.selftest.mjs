@@ -368,7 +368,8 @@ if (!(enemyAt >= 0 && openingAt > enemyAt && navigationAt > openingAt
     && terrainAt > navigationAt && rareAt > terrainAt)) {
   throw new Error('hidden enemy receipts and fallback opening/rare work must retain countdown order');
 }
-if (!/const fxTexture = ensureFx\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1100}\(\) => fxTexture/.test(soloLoading)
+if (!/const fxTexture = ensureFx\(\)\.then[\s\S]{0,420}live\.preloadTextures[\s\S]{0,120}live\.warmTextures[\s\S]{0,220}battleVisuals\.stageRootTextureUploads\(live\.group, fxUploadYield\)[\s\S]{0,1100}\(\) => fxTexture/.test(soloLoading)
+    || !/const fxUploadYield = async[\s\S]{0,100}assertFxPreparationCurrent\(\);[\s\S]{0,80}await loadYield\(\);[\s\S]{0,80}assertFxPreparationCurrent\(\)/.test(soloLoading)
     || !/ensureFx:\s*ensureFxRuntime/.test(main)) {
   throw new Error('solo entry must overlap exact FX atlas decode/install/upload with world construction');
 }

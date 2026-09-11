@@ -27,7 +27,9 @@ function replaceOnce(source, search, replacement) {
 
 function cacheSource(mode) {
   let source = mode === 'tile' ? baselineCache
-    : between(terrainSource, '  const FGN = MAP_SIZE + 1;', '  const _scratchN =');
+    // Placement-only construction now creates the normal scratch vector before
+    // the gameplay cache. Extract through the cache's own final helper instead.
+    : between(terrainSource, '  const FGN = MAP_SIZE + 1;', '  function getNormalAt(');
   source = replaceOnce(source, 'fBaked[tz * FTN + tx] = 1;',
     'fBaked[tz * FTN + tx] = 1; stats.completedTiles++;');
   assert.ok(mode === 'tile' || mode === 'vertex');
