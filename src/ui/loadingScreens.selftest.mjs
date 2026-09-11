@@ -316,7 +316,7 @@ assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(
 assert.match(openingWarmBody, /createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
   'fallback opening warm must still bind FX through real isolated renders');
 const coveredSubmissionStart = soloDeploymentSource.indexOf(
-  'let combatFxSubmission: CombatFxSubmission | null = null;',
+  'async function warmDeploymentFx(',
 );
 const coveredSubmissionEnd = soloDeploymentSource.indexOf(
   'trace.deploymentCompileMs', coveredSubmissionStart,
@@ -327,13 +327,13 @@ const coveredSubmissionBody = soloDeploymentSource.slice(
   coveredSubmissionStart, coveredSubmissionEnd,
 );
 assert.match(coveredSubmissionBody,
-  /forwardProgramWarm\.compileSceneSteps\(\{[\s\S]*sliceMs: 8,[\s\S]*await guardedCoveredYield\(true\);[\s\S]*requireCurrent\(generation\);[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
+  /const fx = options\.getFx\(\), root = fx\.group, warmRender = options\.getWarmRender\(\);[\s\S]*await options\.battleWarm\.stageCombatFxProgramSubmission\([\s\S]*options\.forwardProgramWarm\.compileSceneSteps\(\{\s*sliceMs: 8,[\s\S]*await yieldCovered\(true\);\s*assertFxCurrent\(\);[\s\S]*createIsolatedForwardWarmBatches\(\{\s*scene: options\.scene, root, warmRender,/,
   'player battle entry must stage exact scene programs before binding FX against the gameplay target');
 assert.doesNotMatch(coveredSubmissionBody, /forwardProgramWarm\.compile\(scene\)/,
   'covered entry must not restore one atomic whole-scene program submission');
 assert.match(coveredSubmissionBody.replace(/\/\/.*$/gm, ''),
-  /\}\s*await guardedCoveredYield\(true\);\s*requireCurrent\(generation\);\s*fx\.group\.visible = false;/,
-  'the final compiler batch must yield and revalidate before first FX binding');
+  /\}\s*await yieldCovered\(true\);\s*assertFxCurrent\(\);\s*programAndDrawStartedAt = now\(\);\s*trace\.deploymentFxPrograms = await prepareDeploymentFxPrograms\(\{\s*root, camera: options\.camera, warmRender, assertCurrent: assertFxCurrent,[\s\S]*?\}\);\s*assertFxCurrent\(\);\s*root\.visible = false;/,
+  'the final compiler batch must yield and revalidate, then prepare visible FX with the same warmer and revalidate before first binding');
 const worldReadyAt = soloLoadingSource.indexOf("battleLoad.progress(0.555, 'Battlefield ready')");
 const rosterAssemblyAt = soloLoadingSource.indexOf(
   "battleLoad.progress(0.56, 'Assembling rosters')", worldReadyAt,
@@ -391,26 +391,40 @@ assert.ok(deferredEnemyAt >= 0
 assert.match(combatWarmCompositionSource,
   /warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/,
   'the composition adapter must retain non-presenting terrain warm semantics');
-const coveredFxEnd = soloDeploymentSource.indexOf(
-  "battleLoad.progress(0.969, 'Priming deployment shadows')", coveredSubmissionStart,
+const coveredHelperEnd = soloDeploymentSource.indexOf(
+  'export function createSoloBattleDeploymentRuntime(', coveredSubmissionEnd,
 );
-assert.ok(coveredFxEnd > coveredSubmissionStart, 'covered FX block ends before shadow priming');
-const coveredFxBody = soloDeploymentSource.slice(coveredSubmissionStart, coveredFxEnd);
-function assertCompletedFxRetirement(source) {
-  assert.match(source,
-    /fxReceipt\.completed = fxCohortsCompleted && combatFxSubmission\?\.staged === true;/,
+const coveredFxStart = soloDeploymentSource.indexOf(
+  'const fxWarm = await warmDeploymentFx(', coveredHelperEnd,
+);
+const coveredFxEnd = soloDeploymentSource.indexOf(
+  "battleLoad.progress(0.969, 'Priming deployment shadows')", coveredFxStart,
+);
+assert.ok(coveredHelperEnd > coveredSubmissionEnd && coveredFxStart > coveredHelperEnd
+  && coveredFxEnd > coveredFxStart, 'covered FX helper and caller precede shadow priming');
+const coveredHelperBody = soloDeploymentSource.slice(coveredSubmissionStart, coveredHelperEnd);
+const coveredFxBody = soloDeploymentSource.slice(coveredFxStart, coveredFxEnd);
+function assertCompletedFxRetirement(helper, caller) {
+  assert.match(helper,
+    /return \{ receipt, completed: cohortsCompleted && submission\?\.staged === true,\s*assertCurrent: assertFxCurrent \};/,
     'all covered FX cohorts and staged submission must complete before retirement');
-  assert.match(source,
+  assert.match(caller,
+    /await warmDeploymentFx\(options, trace, guardedCoveredYield,\s*\(\) => requireCurrent\(generation\), now\);[\s\S]*fxWarm\.assertCurrent\(\);\s*const fxReceipt = fxWarm\.receipt;\s*fxReceipt\.completed = fxWarm\.completed;/,
+    'the caller must revalidate the full FX lease after the async handoff before publishing completion');
+  assert.match(caller,
     /if \(fxReceipt\.completed\) \{\s*combatWarm\.markOpeningReady\(\);\s*setDestructionWarmed\(true\);/,
     'only successful covered FX binding may prevent duplicate countdown staging');
 }
-assertCompletedFxRetirement(coveredFxBody);
-assert.throws(() => assertCompletedFxRetirement(coveredFxBody.replace(
-  'fxCohortsCompleted && combatFxSubmission?.staged === true', 'true',
-)), assert.AssertionError, 'unconditional completion must fail');
-assert.throws(() => assertCompletedFxRetirement(coveredFxBody.replace(
+assertCompletedFxRetirement(coveredHelperBody, coveredFxBody);
+assert.throws(() => assertCompletedFxRetirement(coveredHelperBody.replace(
+  'cohortsCompleted && submission?.staged === true', 'true',
+), coveredFxBody), assert.AssertionError, 'unconditional completion must fail');
+assert.throws(() => assertCompletedFxRetirement(coveredHelperBody, coveredFxBody.replace(
   'if (fxReceipt.completed)', 'if (true)',
 )), assert.AssertionError, 'unconditional retirement must fail');
+assert.throws(() => assertCompletedFxRetirement(coveredHelperBody, coveredFxBody.replace(
+  'fxWarm.assertCurrent();', '',
+)), assert.AssertionError, 'omitting the post-await FX lease assertion must fail');
 // Execute the actual owner block: callback names may change when lifetime
 // guards are added, but shadow/world/post/scene-health completion must still
 // precede reveal. The runtime's separate test covers optional-warm failures;

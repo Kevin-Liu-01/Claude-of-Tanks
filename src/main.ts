@@ -1765,6 +1765,7 @@ const battlePresentation = createBattlePresentationRuntime({
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
     game,
+    renderer,
     scene,
     camera,
     battleLoad,

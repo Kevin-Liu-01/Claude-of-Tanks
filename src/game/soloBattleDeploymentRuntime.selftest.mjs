@@ -43,6 +43,15 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   const fxGroup = new THREE.Group();
   fxGroup.name = 'fx';
   scene.add(fxGroup);
+  const fx = { group: fxGroup };
+  const gl = { isContextLost: () => false };
+  const renderer = { info: {}, getContext: () => gl };
+  const warmRender = Object.assign(() => calls.push(['warmRender']), {
+    *prepareProgramsSteps() {
+      // This lifecycle fixture has no native program-cache evidence.
+      return { status: 'incomplete', pending: null, reason: 'not-requested' };
+    },
+  });
   const warmResources = [];
   if (lateCancelWarm === 'fx') {
     const geometry = new THREE.BoxGeometry();
@@ -83,6 +92,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
 
   const runtime = createSoloBattleDeploymentRuntime({
     game,
+    renderer,
     scene,
     camera,
     battleLoad: {
@@ -203,8 +213,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       stageRootTextureUploads: async () => ({ textures: 0, totalMs: 0 }),
       stageBattleVisualReveal: async () => {},
     }),
-    getFx: () => ({ group: fxGroup }),
-    getWarmRender: () => () => calls.push(['warmRender']),
+    getFx: () => fx,
+    getWarmRender: () => warmRender,
     getDeploymentShadowWarm: () => ({
       warmDepthProgramSteps: function* () {},
       prime: async () => {

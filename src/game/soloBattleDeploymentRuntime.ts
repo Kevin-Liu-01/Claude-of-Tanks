@@ -14,7 +14,8 @@ import {
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
 import type { SceneWatchdogResult } from '../engine/deviceDiag.ts';
 import type { PostRuntime } from '../engine/post.ts';
-import type { ForwardProgramWarmOwner, ForwardProgramCompileTiming, ProgramPreparationResult } from '../engine/programWarm.ts';
+import type { OffscreenSceneWarmer } from '../engine/offscreenWarm.ts';
+import type { ContextProgramRenderer, ForwardProgramWarmOwner, ForwardProgramCompileTiming, ProgramPreparationResult } from '../engine/programWarm.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import type { BattleEntryLifecycle } from './battleEntryLifecycle.ts';
 import type {
@@ -25,6 +26,7 @@ import type {
 } from './battleWarmRuntime.ts';
 import type { BattleVisualEntity, BattleVisualStreamer } from './battleVisualStreamer.ts';
 import type { CombatWarmCoordinator } from './combatWarmCoordinator.ts';
+import { prepareDeploymentFxPrograms, type DeploymentFxProgramReceipt } from './deploymentFxPrograms.ts';
 
 type BattleWarmEntity = TerrainWarmOptions['game']['tanks'][number];
 
@@ -90,10 +92,15 @@ interface DeploymentWarmTrace {
   enemyVisualsDeferred?: boolean;
   deploymentCompileMs?: number;
   deploymentProgramSubmission?: ForwardProgramCompileTiming;
+  deploymentFxPrograms?: DeploymentFxProgramReceipt;
   deploymentFxForwardWarm?: {
     batches: number;
     maxMs: number;
     totalMs: number;
+    /** Preparation plus isolated draws; elapsed includes waits, sync excludes them. */
+    programAndDrawTotalMs?: number;
+    programAndDrawSyncMs?: number;
+    programAndDrawMaxMs?: number;
     completed: boolean;
     error?: string;
     cleanupError?: string;
@@ -130,6 +137,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   game: DeploymentGame;
   scene: Scene;
   camera: Camera;
+  renderer: ContextProgramRenderer;
   battleLoad: BattleLoadPort;
   battleWarm: BattleWarmPort;
   armorAimOverlay: ArmorWarmPort;
@@ -141,7 +149,7 @@ export interface SoloBattleDeploymentRuntimeOptions {
   getWorld(): DeploymentWorld | null;
   getBattleVisuals(): BattleVisualStreamer;
   getFx(): CombatFxSubmissionOptions['fx'];
-  getWarmRender(): () => void;
+  getWarmRender(): OffscreenSceneWarmer;
   getDeploymentShadowWarm(): DeploymentShadowWarmOwner;
   getEntryLifecycle(): BattleEntryLifecycle;
   prepareRevealCamera(): void;
@@ -241,6 +249,7 @@ async function prepareWorldPrograms(
 
 function validateDeploymentPorts(options: SoloBattleDeploymentRuntimeOptions): void {
   try {
+    checkedIntegrationPort(options.renderer ?? {}, 'solo deployment renderer', ['getContext']);
     checkedIntegrationPort<BattleLoadPort>(
       options.battleLoad ?? {}, 'solo deployment load screen', ['progress'],
     );
@@ -357,6 +366,121 @@ function restoreDeploymentWarmState(
   }
 }
 
+function createDeploymentFxLease(
+  options: SoloBattleDeploymentRuntimeOptions,
+  fx: CombatFxSubmissionOptions['fx'],
+  warmRender: OffscreenSceneWarmer,
+  assertCurrent: () => void,
+): () => void {
+  const root = fx.group, parent = root.parent;
+  const phase = options.game.phase;
+  const info = options.renderer.info, context = options.renderer.getContext();
+  return (): void => {
+    assertCurrent();
+    if (options.game.phase !== phase || options.getFx() !== fx || fx.group !== root || root.parent !== parent
+      || options.getWarmRender() !== warmRender || options.renderer.info !== info
+      || options.renderer.getContext() !== context || !info || context.isContextLost()) throw STALE_DEPLOYMENT;
+    let ancestor: Object3D | null = root;
+    while (ancestor && ancestor !== options.scene) ancestor = ancestor.parent;
+    if (!ancestor) throw STALE_DEPLOYMENT;
+  };
+}
+
+/** The staged FX lease spans preparation and actual draws; native render state
+ * belongs only to synchronous engine checkpoints, never to an awaited slice.
+ */
+async function warmDeploymentFx(
+  options: SoloBattleDeploymentRuntimeOptions,
+  trace: DeploymentWarmTrace,
+  yieldCovered: WorkYielder,
+  assertCurrent: () => void,
+  now: () => number,
+): Promise<{
+  receipt: NonNullable<DeploymentWarmTrace['deploymentFxForwardWarm']>;
+  completed: boolean;
+  assertCurrent(): void;
+}> {
+  const startedAt = now();
+  const receipt: NonNullable<DeploymentWarmTrace['deploymentFxForwardWarm']> = {
+    batches: 0, maxMs: 0, totalMs: 0, completed: false,
+  };
+  trace.deploymentFxForwardWarm = receipt;
+  const fx = options.getFx(), root = fx.group, warmRender = options.getWarmRender();
+  const assertFxCurrent = createDeploymentFxLease(options, fx, warmRender, assertCurrent);
+  let restoreArmor: (() => void) | undefined;
+  let submission: CombatFxSubmission | null = null;
+  let cohortsCompleted = false;
+  let programAndDrawStartedAt: number | undefined;
+  let drawSyncMs = 0, maxDrawStepMs = 0;
+  try {
+    assertFxCurrent();
+    restoreArmor = options.armorAimOverlay.warm();
+    submission = await options.battleWarm.stageCombatFxProgramSubmission({
+      game: options.game, fx, post: options.post, camera: options.camera, createShell: options.createShell,
+    });
+    assertFxCurrent();
+    const timing: ForwardProgramCompileTiming = {};
+    trace.deploymentProgramSubmission = timing;
+    for (const _ of options.forwardProgramWarm.compileSceneSteps({ sliceMs: 8, timing })) {
+      await yieldCovered(true);
+      assertFxCurrent();
+    }
+    await yieldCovered(true);
+    assertFxCurrent();
+    programAndDrawStartedAt = now();
+    // Selection must precede hiding the staged root. Both this preparation and
+    // the draws consume the same retained warmer and exact private HDR target.
+    trace.deploymentFxPrograms = await prepareDeploymentFxPrograms({
+      root, camera: options.camera, warmRender, assertCurrent: assertFxCurrent,
+      yieldProgramFrame: options.yieldProgramFrame, now,
+      onReceipt: value => { trace.deploymentFxPrograms = value; },
+    });
+    assertFxCurrent();
+    root.visible = false;
+    const batches = createIsolatedForwardWarmBatches({
+      scene: options.scene, root, warmRender, cohortSize: 1, now,
+    });
+    try {
+      for (;;) {
+        const stepAt = now();
+        let step: ReturnType<typeof batches.next>;
+        try { step = batches.next(); }
+        finally {
+          const elapsed = Math.max(0, now() - stepAt);
+          drawSyncMs += elapsed;
+          maxDrawStepMs = Math.max(maxDrawStepMs, elapsed);
+        }
+        if (step.done) break;
+        receipt.batches++;
+        receipt.maxMs = Math.max(receipt.maxMs, step.value.ms);
+        receipt.totalMs += step.value.ms;
+        await yieldCovered(true);
+        assertFxCurrent();
+      }
+    } finally {
+      batches.return(undefined);
+    }
+    cohortsCompleted = true;
+  } catch (error) {
+    receipt.error = String(error).slice(0, 320);
+    if (!submission) throw error;
+  } finally {
+    try {
+      restoreDeploymentWarmState(submission, restoreArmor, receipt);
+    } finally {
+      trace.deploymentCompileMs = Math.round(now() - startedAt);
+      if (programAndDrawStartedAt !== undefined) {
+        receipt.programAndDrawTotalMs = Math.max(0, now() - programAndDrawStartedAt);
+        receipt.programAndDrawSyncMs = (trace.deploymentFxPrograms?.syncMs ?? 0) + drawSyncMs;
+        receipt.programAndDrawMaxMs = Math.max(trace.deploymentFxPrograms?.maxStepMs ?? 0, maxDrawStepMs);
+      }
+    }
+  }
+  assertFxCurrent();
+  return { receipt, completed: cohortsCompleted && submission?.staged === true,
+    assertCurrent: assertFxCurrent };
+}
+
 /**
  * Own the covered solo deployment warm from final camouflage through the
  * first production-quality battlefield frame. Callers know only the warm
@@ -373,15 +497,11 @@ export function createSoloBattleDeploymentRuntime(
   camera,
   battleLoad,
   battleWarm,
-  armorAimOverlay,
-  forwardProgramWarm,
   combatWarm,
   post,
   lighting,
-  createShell,
   getWorld,
   getBattleVisuals,
-  getFx,
   getWarmRender,
   getDeploymentShadowWarm,
   getEntryLifecycle,
@@ -493,75 +613,21 @@ export function createSoloBattleDeploymentRuntime(
         groundCoverReady = true;
         mark('openingGroundCover');
 
-        const deploymentCompileStartedAt = now();
-        const fxReceipt: NonNullable<DeploymentWarmTrace['deploymentFxForwardWarm']> = {
-          batches: 0, maxMs: 0, totalMs: 0, completed: false,
-        };
-        trace.deploymentFxForwardWarm = fxReceipt;
-        let restoreArmorWarmVisibility: (() => void) | undefined;
-        let combatFxSubmission: CombatFxSubmission | null = null;
-        let fxCohortsCompleted = false;
-        try {
-          restoreArmorWarmVisibility = armorAimOverlay.warm();
-          const fx = getFx();
-          combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({
-            game, fx, post, camera, createShell,
-          });
-          requireCurrent(generation);
-          // The complete scene submission and its first FX bind previously
-          // shared one >100 ms task. Use the existing exact-scene compiler's
-          // bounded traversal; every checkpoint restores renderer state.
-          const submissionTiming: ForwardProgramCompileTiming = {};
-          trace.deploymentProgramSubmission = submissionTiming;
-          for (const _ of forwardProgramWarm.compileSceneSteps({
-            sliceMs: 8,
-            timing: submissionTiming,
-          })) {
-            await guardedCoveredYield(true);
-            requireCurrent(generation);
-          }
-          // Also separate the final compile batch from native uniform lookup
-          // in the first bind. A completed short compile may yield no slices.
-          await guardedCoveredYield(true);
-          requireCurrent(generation);
-          fx.group.visible = false;
-          for (const batch of createIsolatedForwardWarmBatches({
-            scene,
-            root: fx.group,
-            warmRender: getWarmRender(),
-            cohortSize: 1,
-            now,
-          })) {
-            fxReceipt.batches++;
-            fxReceipt.maxMs = Math.max(fxReceipt.maxMs, batch.ms);
-            fxReceipt.totalMs += batch.ms;
-            await guardedCoveredYield(true);
-            requireCurrent(generation);
-          }
-          fxCohortsCompleted = true;
-        } catch (error) {
-          fxReceipt.error = String(error).slice(0, 320);
-          // Preserve covered-frame compatibility, but leave unsuccessful FX
-          // eligible for deferred retry. Acquisition failures retain their
-          // existing outer fallback after borrowed armor state is restored.
-          if (!combatFxSubmission) throw error;
-        } finally {
-          try {
-            restoreDeploymentWarmState(combatFxSubmission, restoreArmorWarmVisibility, fxReceipt);
-          } finally {
-            trace.deploymentCompileMs = Math.round(now() - deploymentCompileStartedAt);
-          }
-        }
-        requireCurrent(generation);
+        const fxWarm = await warmDeploymentFx(options, trace, guardedCoveredYield,
+          () => requireCurrent(generation), now);
+        // The helper's returned Promise is another handoff: cleanup can queue
+        // an owner change before this continuation is allowed to publish ready.
+        fxWarm.assertCurrent();
+        const fxReceipt = fxWarm.receipt;
+        fxReceipt.completed = fxWarm.completed;
 
-        fxReceipt.completed = fxCohortsCompleted && combatFxSubmission?.staged === true;
         if (fxReceipt.completed) {
           combatWarm.markOpeningReady();
           setDestructionWarmed(true);
           host.__COMBAT_OPENING_WARM = {
             covered: true,
             batches: fxReceipt.batches,
-            totalMs: Math.round(now() - deploymentCompileStartedAt),
+            totalMs: trace.deploymentCompileMs ?? 0,
           };
         }
 
@@ -569,9 +635,9 @@ export function createSoloBattleDeploymentRuntime(
         requireCurrent(generation);
         await yieldFrame();
         requireCurrent(generation);
-        // Those newly submitted programs belong to hidden combat effects.
-        // Reflecting every private ANGLE uniform table here can block for more
-        // than a second even though none is rendered by the reveal frame.
+        // The selected FX private-target cache was prepared above. A separate
+        // renderer-wide reflection sweep remains deferred: unrelated retained
+        // programs do not belong to this covered first-frame preparation.
         trace.deploymentUniformsDeferred = true;
         battleLoad.progress(0.969, 'Priming deployment shadows');
         trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(guardedCoveredYield);

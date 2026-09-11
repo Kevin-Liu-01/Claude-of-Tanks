@@ -81,8 +81,15 @@ function createFixture(failure) {
       throw new Error(`injected ${failure} renderer failure`);
     }
   };
+  warmRender.prepareProgramsSteps = function* () {
+    // Readiness in this fixture comes only from actual isolated draws below,
+    // never a fabricated native reflection witness.
+    return { status: 'incomplete', pending: null, reason: 'not-requested' };
+  };
+  const gl = { isContextLost: () => false };
   const runtime = createSoloBattleDeploymentRuntime({
     game, scene, camera,
+    renderer: { info: {}, getContext: () => gl },
     battleLoad: { progress() {} },
     battleWarm: {
       warmBattleTerrainTiles: async () => {},
