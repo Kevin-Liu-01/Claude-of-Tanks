@@ -403,7 +403,12 @@ export function createNavigationReachability(navigation: BotNavigationGrid, spec
 
 export function navigationReachabilityContains(navigation: BotNavigationGrid, mask: Uint8Array,
   point: Position2, connectorClear: (from: Position2, to: Position2) => boolean): boolean {
-  return connectedNavigationCells(navigation, point, connectorClear, index => mask[index] === 1);
+  // Objectives must also support departure from the cell used by dry routing.
+  // A reachable neighbour alone can accept a flag that has no return route.
+  if (!Number.isFinite(point.x + point.z) || Math.max(Math.abs(point.x), Math.abs(point.z)) > WORLD_MAX) return false;
+  const ix = worldCell(point.x), iz = worldCell(point.z), index = cellIndex(ix, iz);
+  return !navigation.blocked[index] && mask[index] === 1
+    && connectorClear(point, { x: worldCoord(ix), z: worldCoord(iz) });
 }
 
 function nearestOpen(blocked: Uint8Array, ix: number, iz: number): [number, number] {

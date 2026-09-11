@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
-import { createHeightField } from './terrain.ts';
+import { createHeightField, createLayout } from './terrain.ts';
+import { roadNetworkComponentCount } from './maps/roadEndpoints.ts';
+import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { redrockCanyonCenter } from './redrockCanyon.ts';
 import {
   HORIZON_TREELINE_ATLAS_VARIANTS,
@@ -36,6 +38,44 @@ const mobileWrecks = new Set();
 const extraWreckBudget = { urban: 6, railyard: 6, frontier: 6, delta: 6,
   badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
   ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8 };
+
+function auditUtilityPoleStations(hf, mapId) {
+  const stations = [];
+  const nodes = hf._layout.roads[0];
+  const noPlacement = hf._noVeg || (() => false);
+  for (let i = 8; i < authoredRoadStationCount(hf._layout, 0) - 1; i++) {
+    const at = authoredRoadStationIndex(hf._layout, 0, i);
+    if (at < 0) continue;
+    const [ax, az] = nodes[at], [bx, bz] = nodes[at + 1];
+    const length = Math.hypot(bx - ax, bz - az) || 1;
+    const tx = (bx - ax) / length, tz = (bz - az) / length;
+    const x = ax - tz * 6.9, z = az + tx * 6.9;
+    if (Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M || noPlacement(x, z)) continue;
+    const partnerX = x + tx * 6.5, partnerZ = z + tz * 6.5;
+    const allowPair = Math.max(Math.abs(partnerX), Math.abs(partnerZ)) <= PLAYABLE_HALF_EXTENT_M
+      && !noPlacement(partnerX, partnerZ);
+    const station = planUtilityPoleStation(hf, x, z, tx, tz, { allowPair });
+    stations.push(station);
+    assert.ok(station.primary.y <= station.primary.support.min - 0.0349,
+      `${mapId}: every primary utility post is planted into its terrain support`);
+    if (station.partner) {
+      assert.ok(station.partner.y <= station.partner.support.min - 0.0349,
+        `${mapId}: every paired utility post has its own terrain support`);
+      assert.ok(station.pairRelief <= UTILITY_POLE_PAIR_MAX_RELIEF + 1e-9,
+        `${mapId}: paired utility stations only survive on flat ground`);
+    }
+  }
+  assert.ok(stations.length >= 20, `${mapId}: complete utility line audited`);
+  const policy = { pairs: 0, singles: 0, maxRejectedRelief: 0 };
+  for (const station of stations) {
+    if (station.paired) policy.pairs++;
+    else {
+      policy.singles++;
+      policy.maxRejectedRelief = Math.max(policy.maxRejectedRelief, station.pairRelief);
+    }
+  }
+  return policy;
+}
 
 function assertAuthoredMacroTerrain(config, hf) {
   if (config.id !== 'badlands') {
@@ -79,6 +119,8 @@ assert.equal(resolveHorizonTreelineLayers({ treelineLayers: -4 }), 1,
 
 for (const mapId of MAP_IDS) {
   const config = getMapConfig(mapId);
+  assert.equal(roadNetworkComponentCount(createLayout(config).roads), 1,
+    `${mapId}: all routes connect through actual segment intersections, not merely wide bounding spans`);
   assert.equal(config.id, mapId, `${mapId}: config id matches registry`);
   assert.equal('sub' in config, false, `${mapId}: deprecated map tags stay out of metadata`);
   assert.ok(config.name && config.blurb, `${mapId}: player-facing copy exists`);
@@ -119,38 +161,7 @@ for (const mapId of MAP_IDS) {
   const hf = createHeightField(1337, config);
   assertAuthoredMacroTerrain(config, hf);
   if (config.props.telegraph) {
-    const stations = [];
-    const nodes = hf._layout.roads[0];
-    const noPlacement = hf._noVeg || (() => false);
-    for (let i = 8; i < nodes.length - 1; i++) {
-      const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
-      const length = Math.hypot(bx - ax, bz - az) || 1;
-      const tx = (bx - ax) / length, tz = (bz - az) / length;
-      const x = ax - tz * 6.9, z = az + tx * 6.9;
-      if (Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M || noPlacement(x, z)) continue;
-      const partnerX = x + tx * 6.5, partnerZ = z + tz * 6.5;
-      const allowPair = Math.max(Math.abs(partnerX), Math.abs(partnerZ)) <= PLAYABLE_HALF_EXTENT_M
-        && !noPlacement(partnerX, partnerZ);
-      const station = planUtilityPoleStation(hf, x, z, tx, tz, { allowPair });
-      stations.push(station);
-      assert.ok(station.primary.y <= station.primary.support.min - 0.0349,
-        `${mapId}: every primary utility post is planted into its terrain support`);
-      if (station.partner) {
-        assert.ok(station.partner.y <= station.partner.support.min - 0.0349,
-          `${mapId}: every paired utility post has its own terrain support`);
-        assert.ok(station.pairRelief <= UTILITY_POLE_PAIR_MAX_RELIEF + 1e-9,
-          `${mapId}: paired utility stations only survive on flat ground`);
-      }
-    }
-    assert.ok(stations.length >= 20, `${mapId}: complete utility line audited`);
-    const policy = { pairs: 0, singles: 0, maxRejectedRelief: 0 };
-    for (const station of stations) {
-      if (station.paired) policy.pairs++;
-      else {
-        policy.singles++;
-        policy.maxRejectedRelief = Math.max(policy.maxRejectedRelief, station.pairRelief);
-      }
-    }
+    const policy = auditUtilityPoleStations(hf, mapId);
     polePolicyByMap.set(mapId, policy);
   } else {
     polePolicyByMap.set(mapId, { pairs: 0, singles: 0, maxRejectedRelief: 0 });
@@ -214,8 +225,14 @@ assert.ok(polePolicyByMap.get('verdant').pairs > 0 && polePolicyByMap.get('verda
 assert.ok(polePolicyByMap.get('titan_gorge').singles >= 20
   && polePolicyByMap.get('titan_gorge').singles > polePolicyByMap.get('titan_gorge').pairs * 3,
   'Titan Gorge uses single posts throughout its steep utility corridor');
-assert.ok(polePolicyByMap.get('titan_gorge').maxRejectedRelief > 2,
-  'Titan Gorge audit covers the cliff shelves that previously suspended a second post');
+// The original b0e014818 regression covered a shelf in the pre-completion
+// road field. New road grading may remove that hazard, not pole protection.
+// Titan has no id-dependent quarry/terrain policy: omit only road dispatch,
+// retaining its actual authored paths, seed, landforms and placement rules.
+const historicalTitanPolicy = auditUtilityPoleStations(createHeightField(1337,
+  { ...getMapConfig('titan_gorge'), id: undefined }), 'historical Titan Gorge');
+assert.ok(historicalTitanPolicy.maxRejectedRelief > 2,
+  'historical Titan Gorge audit covers the cliff shelves that previously suspended a second post');
 assert.deepEqual(polePolicyByMap.get('delta'), { pairs: 0, singles: 0, maxRejectedRelief: 0 },
   'Mekong Delta intentionally has no utility-pole line to audit');
 
@@ -245,7 +262,7 @@ for (const mapId of [...EXPANSION, ...EXTREME]) {
   assert.ok(Math.max(...routeX) - Math.min(...routeX) >= 580,
     `${mapId}: road network serves both lateral flanks`);
   assert.ok(Math.max(...routeZ) - Math.min(...routeZ) >= 820,
-    `${mapId}: road network connects both deployment regions`);
+    `${mapId}: connected road network spans both deployment regions`);
 
   const beats = config.props.tacticalBeats || [];
   assert.equal(beats.length, 3, `${mapId}: three deliberate lane strongpoints`);

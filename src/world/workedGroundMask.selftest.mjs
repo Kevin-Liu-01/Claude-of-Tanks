@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 import { stampWorkedGroundMask } from './workedGroundMask.ts';
-import { createHeightField, makeMaskTexture, mulberry32 } from './terrain.ts';
+import { createHeightField, createLayout, makeMaskTexture, mulberry32 } from './terrain.ts';
 import { historicalMaskTexture } from './roadRutHistoryTestOracle.mjs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
@@ -97,7 +97,7 @@ function checkProduction(seed, size) {
       assert.equal(after[key], before[key], `no texture policy change: ${key}`);
     }
     if (seed === 1337 && size === 512) {
-      const historical = historicalMaskTexture(noise(), beforeField._layout);
+      const historical = historicalMaskTexture(noise(), createLayout({ ...control, id: undefined }));
       try { assert.equal(hash(historical.image.data), originalLongleaf, 'independently preserved pre-change full RGBA'); }
       finally { historical.dispose(); }
     }

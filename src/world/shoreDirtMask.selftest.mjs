@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { registerHooks } from 'node:module';
 import { ClampToEdgeWrapping, LinearMipmapLinearFilter, NoColorSpace } from 'three';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { createHeightField, mulberry32, selectTerrainLandformMask } from './terrain.ts';
@@ -11,6 +12,60 @@ import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { planRiverLanding } from './maps/riverLandings.ts';
 import { historicalShorelineConfig, historicalReservoirConfig, historicalBadlandsInput } from './shorelineHistoryTestOracle.mjs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
+
+import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
+
+// Copper Mesa's quarry is selected by id inside the actual heightfield. Do
+// not erase it to recover old roads. This private import substitutes only
+// endpoint completion; ordinary terrain imports and all quarry logic survive.
+const copperTerrainUrl = new URL('./terrain.ts?selftest=shore-original-copper-roads', import.meta.url).href;
+const endpointsUrl = new URL('./maps/roadEndpoints.ts', import.meta.url).href;
+const originalEndpointsUrl = `data:text/javascript,${encodeURIComponent(
+  `export * from ${JSON.stringify(endpointsUrl)};
+   export function completeRoadEndpoints(_id, roads) { return roads; }`)}`;
+const originalBorderUrl = `data:text/javascript,${encodeURIComponent(
+  `export * from ${JSON.stringify(new URL('./maps/roadBorderCorridor.ts', import.meta.url).href)};
+   export function alignCopperNorthernRoadGrades() {}`)}`;
+const hooks = registerHooks({ resolve(specifier, context, next) {
+  if (context.parentURL === copperTerrainUrl && specifier === './maps/roadEndpoints.ts') {
+    return { url: originalEndpointsUrl, shortCircuit: true };
+  }
+  if (context.parentURL === copperTerrainUrl && specifier === './maps/roadBorderCorridor.ts') {
+    return { url: originalBorderUrl, shortCircuit: true };
+  }
+  return next(specifier, context);
+} });
+let originalCopperHeightField;
+try { ({ createHeightField: originalCopperHeightField } = await import(copperTerrainUrl)); }
+finally { hooks.deregister(); }
+
+// Explicit last sampled stations in the original32m grid loop. Coastal's
+// authored hi262 was sampled only through256; it must not acquire the new
+// terminal262 merely because completion is disabled. Other grids end at512.
+const ORIGINAL_GRID_LAST = {
+  urban: { xs: 512, zs: 512 }, coastal: { xs: 512, zs: 256 },
+  railyard: { xs: 512, zs: 512 }, foundry: { xs: 512, zs: 512 },
+  ruinspires: { xs: 512, zs: 512 },
+};
+function originalRoadField(cfg) {
+  let control = cfg.id === 'alpine' ? originalExitConfig(cfg) : cfg;
+  const grid = control.terrain.roads?.grid;
+  if (grid) {
+    const last = ORIGINAL_GRID_LAST[cfg.id];
+    assert.ok(last, `${cfg.id}: historical grid requires explicit last stations`);
+    const oldAxis = axis => grid[axis].map(entry => {
+      const row = typeof entry === 'number' ? { at: entry } : entry;
+      assert.equal(row.lo ?? -512, -512, 'historical grid starts at-512');
+      assert.equal(row.hi ?? 512, cfg.id === 'coastal' && axis === 'zs' ? 262 : 512,
+        'current authored bounds remain independently explicit');
+      return { ...row, hi: last[axis] };
+    });
+    control = { ...control, terrain: { ...control.terrain, roads: { ...control.terrain.roads,
+      grid: { ...grid, xs: oldAxis('xs'), zs: oldAxis('zs') } } } };
+  }
+  return cfg.id === 'copper_mesa' ? originalCopperHeightField(1337, control)
+    : createHeightField(1337, { ...control, id: undefined });
+}
 
 // Captured BEFORE adding the shore pass, from normal production imports:
 // createHeightField(1337) -> makeMaskTexture(noise seed3010), desktop512.
@@ -200,7 +255,11 @@ function checkShoreMap(id, seed, size) {
   try {
     checkTexture(current, size); checkTexture(old, size);
     verifyPreserved(bytes(old), bytes(current));
-    if (id === 'mangrove' && seed === 1337 && size === 512) assert.equal(hash(bytes(old)), ORIGINAL.mangrove);
+    if (id === 'mangrove' && seed === 1337 && size === 512) {
+      const historical = bake(originalRoadField(controlCfg), controlCfg);
+      try { assert.equal(hash(bytes(historical)), ORIGINAL.mangrove, 'immutable pre-completion Mangrove RGBA'); }
+      finally { historical.dispose(); }
+    }
     checkProtected(field, control, current, old, cfg);
     const dryAreaM2 = checkRealMaskOracle(bytes(old), bytes(current), size);
     assert.throws(() => checkRealMaskOracle(bytes(old), bytes(old), size), /materially wider/,
@@ -224,8 +283,8 @@ function verifyOasisChannels(before, after) {
 
 function checkOasis() {
   const cfg = getMapConfig('oasis'), historical = historicalOasis(cfg);
-  const original = bake(createHeightField(1337, historical), historical);
-  const current = bake(createHeightField(1337, cfg), cfg);
+  const original = bake(originalRoadField(historical), historical);
+  const current = bake(originalRoadField(cfg), cfg);
   try {
     checkTexture(current, 512);
     assert.equal(hash(bytes(original)), ORIGINAL.oasis, 'preserve the original three-cell RGBA oracle');
@@ -237,6 +296,13 @@ function checkOasis() {
     const waterMutation = bytes(current).slice(); waterMutation[2] ^= 1;
     assert.throws(() => verifyOasisChannels(bytes(original), waterMutation), /water footprint/);
   } finally { original.dispose(); current.dispose(); }
+  // The immutable contour hashes above predate completed roads. Exercise the
+  // real current road network separately, retaining the same water-only
+  // coverage count and protected-channel assertions, not a refreshed golden.
+  const liveOriginal = bake(createHeightField(1337, historical), historical);
+  const liveCurrent = bake(createHeightField(1337, cfg), cfg);
+  try { verifyOasisChannels(bytes(liveOriginal), bytes(liveCurrent)); }
+  finally { liveOriginal.dispose(); liveCurrent.dispose(); }
 }
 
 function checkCurrentUnrequestedShore(id, size) {
@@ -281,7 +347,7 @@ for (const id of MAP_IDS) {
   // roads/assembly apron. The exact old input still reproduces ORIGINAL.
   if (id === 'reservoir') control = historicalReservoirConfig(control);
   if (id === 'badlands') control = historicalBadlandsInput(control);
-  const texture = bake(createHeightField(1337, control), control);
+  const texture = bake(originalRoadField(control), control);
   try { assert.equal(hash(bytes(texture)), ORIGINAL[id], `${id}: full original RGBA byte control`); }
   finally { texture.dispose(); }
 }

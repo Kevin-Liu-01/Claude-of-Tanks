@@ -51,7 +51,9 @@ for (const args of [['--maps'], ['--maps='], ['--maps=invalid'], ['--maps=whiteo
   ['--maps=whiteout', '--maps=polders'], ['owned-session', 'unexpected'], ['--unknown']]) {
   assert.throws(() => collisionCaptureOptions(args), /map|argument/);
 }
-assert.equal(packed.encoding, 'primitive-dict-v1');
+assert.equal(packed.encoding, 'primitive-kind-dict-v2');
+assert.deepEqual(packed.kinds, ['crate']);
+assert.equal(packed.obstacles[0].k, 0, 'kind reference zero is valid');
 assert.deepEqual(packed.shapes, [shape], 'only repeated exact primitives are interned');
 assert.equal(packed.obstacles[0].s, 0, 'reference zero is valid');
 assert.equal(packed.obstacles[1].s[1], 0, 'compound children use the same primitive table');
@@ -61,6 +63,35 @@ assert.strictEqual(restored.obstacles[0].s, restored.colliders[0].s);
 assert.ok(Object.isFrozen(restored.obstacles[0].s), 'shared primitive tuples are immutable');
 assert.throws(() => { restored.obstacles[0].s[1] = 999; }, TypeError);
 assert.deepEqual(decodeCollisionManifest(manifest), manifest, 'unencoded in-memory fixtures remain supported');
+const legacy = encodeCollisionManifest(manifest, 'primitive-dict-v1');
+assert.equal(legacy.encoding, 'primitive-dict-v1');
+assert.equal(Object.hasOwn(legacy, 'kinds'), false, 'explicit v1 encoding has no new format fields');
+assert.equal(legacy.obstacles[0].k, 'crate', 'v1 retains inline string metadata');
+assert.deepEqual(decodeCollisionManifest(legacy), manifest, 'existing v1 shards remain readable');
+assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(legacy), legacy.encoding), legacy,
+  'explicit v1 re-encoding remains byte-stable');
+assert.throws(() => encodeCollisionManifest(manifest, 'unknown'), /encoding is invalid/);
+
+const metadataFixture = {
+  obstacles: [
+    { b: record.b, k: 'first', q: false, m: null, e: null, t: null, p: null },
+    { b: record.b, s: shape, k: '', q: 0, m: 0, e: 0, t: 0, p: 0 },
+    { b: record.b, k: null, q: true, m: -0.1234, e: 0.5678 },
+    { b: record.b },
+    { b: record.b, k: 'frequent' },
+    { b: record.b, k: 'frequent' },
+  ],
+  colliders: [{ b: record.b, k: 'second' }],
+};
+const metadataEncoded = encodeCollisionManifest(metadataFixture);
+assert.deepEqual(metadataEncoded.kinds, ['frequent', 'first', '', 'second'],
+  'frequent kinds receive short IDs and equal-count ties retain first-seen order');
+for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2']) {
+  const encoded = encodeCollisionManifest(metadataFixture, encoding);
+  assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(encoded))),
+    { ...metadataFixture, concealers: undefined },
+    `${encoding} preserves missing/null/empty kinds, shapeless records and every metadata value`);
+}
 
 // No terrain bake is needed to prove mutable match inflation is independent.
 const heightField = { getHeightAt: () => 0 };
@@ -88,6 +119,19 @@ for (const invalid of [['m'], ['m', -1], ['m', ['m', shape]], ['m', ...Array(65)
   const value = fresh(); value.obstacles[0].s = invalid;
   assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject invalid compound/ref nesting');
 }
+for (const invalid of [-1, 1, 0.5, NaN, Infinity, {}, [], true]) {
+  const value = fresh(); value.obstacles[0].k = invalid;
+  assert.throws(() => decodeCollisionManifest(value), /invalid/, `reject invalid kind reference ${String(invalid)}`);
+}
+for (const invalid of [undefined, null, {}, [null], [0], [true], [[]], new Array(1), new Array(1025)]) {
+  const value = fresh(); value.kinds = invalid;
+  assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject invalid/missing kind table');
+}
+const missingKinds = fresh(); delete missingKinds.kinds;
+assert.throws(() => decodeCollisionManifest(missingKinds), /kind dictionary is invalid/);
+const legacyKindReference = structuredClone(legacy); legacyKindReference.obstacles[0].k = 0;
+assert.throws(() => decodeCollisionManifest(legacyKindReference), /kind reference is invalid/,
+  'v1 cannot resolve new-format kind references');
 for (const encoding of [undefined, 'primitive-dict-v2', 1, null]) {
   const value = fresh(); value.encoding = encoding;
   assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject unknown/missing codec marker');
@@ -151,12 +195,21 @@ for (const id of MAP_IDS) {
   assert.ok(bytes.length <= previousShardBytes[id], `${id} published shard must not exceed its prior byte budget`);
   publishedBytes += bytes.length;
   assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256, `${id} checksum receipt`);
-  const original = decodeCollisionManifest(JSON.parse(bytes.toString('utf8')));
+  const published = JSON.parse(bytes.toString('utf8'));
+  const original = decodeCollisionManifest(published);
   validateCollisionManifestCounts(original, entry);
-  const encoded = encodeCollisionManifest(original);
+  // Canonical bytes are version-specific: a partial native capture must not
+  // rewrite untouched v1 siblings merely because the newest writer is v2.
+  const encoded = encodeCollisionManifest(original, published.encoding);
   const decoded = decodeCollisionManifest(JSON.parse(JSON.stringify(encoded)));
   assert.deepEqual(decoded, original, `${id} exact all-record primitive round trip`);
-  assert.deepEqual(encodeCollisionManifest(decoded), encoded, `${id} deterministic dictionary order`);
+  assert.deepEqual(encodeCollisionManifest(decoded, published.encoding), encoded, `${id} deterministic dictionary order`);
+  assert.equal(JSON.stringify(encoded), bytes.toString('utf8'), `${id} version-specific canonical bytes`);
+  const latest = encodeCollisionManifest(original);
+  assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(latest))), original,
+    `${id} newest format preserves all geometry, metadata and record order`);
+  assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(latest)), latest,
+    `${id} newest kind and primitive dictionaries are deterministic`);
   assert.deepEqual(collisionManifestCounts(decoded), collisionManifestCounts(original), `${id} exact census`);
   rawBytes += Buffer.byteLength(JSON.stringify(original));
   encodedBytes += Buffer.byteLength(JSON.stringify(encoded));

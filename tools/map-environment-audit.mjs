@@ -391,6 +391,14 @@ async function collectMap(mapId, frames) {
         map: {
           roads: minimap.roads.length,
           landforms: (terrain.landforms || []).length,
+          canyonSections: id === 'badlands' && terrain.redrockCanyon === true
+            ? [-80, 0, 70].map(z => {
+              const x = 8 + .16*z;
+              const sample = offset => world.heightField.getHeightAt(x+offset,z);
+              const floor = sample(0);
+              return { z, westRelief:sample(-400)-floor, eastRelief:sample(400)-floor,
+                westFloorDelta:sample(-160)-floor, eastFloorDelta:sample(160)-floor };
+            }) : null,
           tacticalBeats: minimap.tacticalBeats.length,
           wallRuns: (props.wallRuns || []).length,
         },
@@ -439,12 +447,23 @@ async function captureEvidenceShot(mapId, name, matchSavedPose = true) {
       D.camera.fov = saved.fov;
       D.camera.updateProjectionMatrix();
       D.camera.updateMatrixWorld(true);
-      D.world.update(0, D.camera.position);
-      D.lighting.updateFrustums();
-      D.lighting.update(true);
     }, pose);
-    await new Promise((resolve) => setTimeout(resolve, 350));
   }
+  // Both fresh and saved poses use the same actual grass readiness barrier.
+  // A saved-pose-only extra delay previously compared different streaming states.
+  await page.evaluate(() => {
+    const D = window.__DEBUG;
+    D.world.update(0, D.camera.position);
+    D.lighting.updateFrustums();
+    D.lighting.update(true);
+  });
+  await page.waitForFunction(() => {
+    const D = window.__DEBUG;
+    D.world.update(0, D.camera.position);
+    const state = D.world.getGrassWorkState();
+    return state.pendingVisible === 0 && !state.carpet.pending;
+  }, { timeout: 30000, polling: 'raf' });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const pose = await page.evaluate(() => {
     const D = window.__DEBUG;
     const hf = D.world.heightField;
@@ -455,6 +474,7 @@ async function captureEvidenceShot(mapId, name, matchSavedPose = true) {
       scoped: D.camera.userData.scoped === true, rigMode: D.rig.mode, rigZoom: D.rig.zoom,
       terrainClearance: p.y - terrainY,
       nearGroundWarning: p.y - terrainY < 0.5,
+      grassWork: D.world.getGrassWorkState(),
     };
   });
   fs.writeFileSync(path.join(dir, `${name}.pose.json`), `${JSON.stringify(pose, null, 2)}\n`);

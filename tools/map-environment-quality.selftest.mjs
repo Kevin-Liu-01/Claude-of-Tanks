@@ -30,6 +30,19 @@ const quality = {
   water: { features: 2, liquid: true },
 };
 assert.ok(evaluateQuality({ quality }).pass, 'a fully authored small body count passes');
+const canyonQuality=structuredClone(quality);
+canyonQuality.map.landforms=0;
+canyonQuality.map.canyonSections=[-80,0,70].map(z=>({z,westRelief:64,eastRelief:86,
+  westFloorDelta:1,eastFloorDelta:-1}));
+assert.ok(evaluateQuality({id:'badlands',quality:canyonQuality}).checks.mapAuthorship);
+assert.equal(evaluateQuality({id:'frontier',quality:canyonQuality}).checks.mapAuthorship,false);
+for(const patch of [{westRelief:0},{eastRelief:0},{eastFloorDelta:20},{z:999}]) {
+  const bad=structuredClone(canyonQuality);Object.assign(bad.map.canyonSections[1],patch);
+  assert.equal(evaluateQuality({id:'badlands',quality:bad}).checks.mapAuthorship,false);
+}
+delete canyonQuality.map.canyonSections;
+assert.equal(evaluateQuality({id:'badlands',quality:canyonQuality}).checks.mapAuthorship,false,
+  'name and metadata alone cannot certify regional relief');
 for (const [section, property, value, check] of [
   ['decorations', 'destructibles', 349, 'decorationQuality'],
   ['decorations', 'destructibleKinds', 31, 'decorationQuality'],

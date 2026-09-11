@@ -10,8 +10,15 @@ export function loosePlacementPasses(receipt) {
 
 export function evaluateQuality(row) {
   const q = row.quality;
+  // Redrock owns one regional canyon instead of a pile of generic landforms.
+  // Require actual completed-heightfield relief, matching mapQuality's probes;
+  // a configuration flag or the map name alone cannot satisfy this check.
+  const sections=q.map.canyonSections;
+  const canyon = row.id === 'badlands' && Array.isArray(sections) && sections.length===3
+    && sections.every((s,i)=>s.z===[-80,0,70][i] && s.westRelief>55 && s.eastRelief>65
+      && s.eastRelief-s.westRelief>8 && Math.abs(s.westFloorDelta)<6 && Math.abs(s.eastFloorDelta)<6);
   const checks = {
-    mapAuthorship: q.map.landforms >= 5 && q.map.tacticalBeats === 3
+    mapAuthorship: (q.map.landforms >= 5 || canyon) && q.map.tacticalBeats === 3
       && q.map.roads >= 2 && q.map.wallRuns >= 6,
     buildingQuality: q.buildings.placed >= 15 && q.buildings.familyCount >= 11
       && q.buildings.destructibleFamilies >= 4,

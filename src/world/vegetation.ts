@@ -6,8 +6,9 @@
 // Contract: docs/ARCHITECTURE.md §3.2; visuals per docs/research/graphics-aaa.md §8.
 
 import * as THREE from 'three';
+import { shapeFarTreeBase } from './farTreeBase.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { sampleSplatNoise, applyTone, type HeightField } from './terrain.ts';
+import { sampleSplatNoise, applyTone, type HeightField, type TerrainPlacementSampler } from './terrain.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { setCircleShape, type CollisionRecord } from './collision.ts';
 import { treeRootDecalAreaM2, treeRootDecalRadius } from './treeGrounding.ts';
@@ -17,7 +18,7 @@ import {
   type TreeSpecies,
 } from './treeSpecies.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation } from './vegetationClearance.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
@@ -2036,6 +2037,7 @@ function buildOakFarGeometry(
   // r6: thicker far trunk (0.20/0.36 -> 0.32/0.55) — sub-pixel trunks at
   // 400 m+ vanished and rim-forest crowns read as floating saucers
   const trunk = new THREE.CylinderGeometry(0.32, 0.55, trunkH, 5, 1);
+  shapeFarTreeBase(trunk, 0.7 + fvi * 1.3);
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.23, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
@@ -2088,6 +2090,7 @@ function buildPineFarGeometry(
   const hue = cp.hue ?? 0.315, sat = cp.sat ?? 0.26, l0 = cp.l0 ?? 0.215, l1 = cp.l1 ?? 0.33;
   const trunkParts: THREE.BufferGeometry[] = [], canopyParts: THREE.BufferGeometry[] = [];
   const trunk = new THREE.CylinderGeometry(0.22, 0.40, 2.2, 5, 1); // r6: see oak far trunk
+  shapeFarTreeBase(trunk, 1.9);
   trunk.translate(0, 1.1, 0);
   _c.setHSL(0.06, 0.28, 0.19, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
@@ -2155,6 +2158,7 @@ function buildPalmFarGeometry(
     const segLen = Math.hypot(H / NSEG, x1 - x0, z1 - z0) * 1.04;
     const seg = new THREE.CylinderGeometry(
       (0.13 + (1 - t1) * 0.11) * rfMul, (0.15 + (1 - t0) * 0.11) * rfMul, segLen, 5, 1);
+    if (i === 0) shapeFarTreeBase(seg, leanA);
     seg.rotateZ(-Math.atan2(Math.hypot(x1 - x0, z1 - z0), H / NSEG));
     seg.rotateY(-leanA);
     seg.translate((x0 + x1) / 2, (t0 + t1) * 0.5 * H, (z0 + z1) / 2);
@@ -2232,6 +2236,7 @@ function buildBirchFarGeometry(
   const trunkParts: THREE.BufferGeometry[] = [], canopyParts: THREE.BufferGeometry[] = [];
   const H = 5.4;
   const trunk = new THREE.CylinderGeometry(0.06, 0.16, H, 5, 1);
+  shapeFarTreeBase(trunk, 2.8);
   trunk.translate(0, H / 2, 0);
   _c.setHSL(0.09, 0.04, 0.82, THREE.SRGBColorSpace);
   trunkParts.push(paintFlat(trunk, _c, 0));
@@ -2640,8 +2645,11 @@ export async function createVegetationAsync(
   // the generator completes.
   const total = fineSlices ? 160 : 16;
   while (!r.done) {
-    const shouldTick = fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
-    if (tick && shouldTick) await tick(++i, total);
+    const admissionStep = r.value?.stage === 'placementTerrain';
+    const shouldTick = admissionStep || fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
+    // Admission preparation yields even in coarse builds; its extra sampler
+    // rows must not consume the planting progress denominator.
+    if (tick && shouldTick) await tick(admissionStep ? i : ++i, total);
     stepStarted = performance.now();
     r = g.next();
     recordStep(r);
@@ -3769,6 +3777,22 @@ function* vegetationBuildSteps(
   }
   yield* createSpeciesGeometry();
 
+  // Keep the authored random admission sequence when road exits are extended.
+  // This sampler has no gameplay fast cache and is released after planting.
+  let placementAdmission: TerrainPlacementSampler | null = null;
+  if (heightField._createRoadPlacementSampler) {
+    const steps=heightField._createRoadPlacementSampler();
+    let result=steps.next();
+    while (!result.done) {yield {stage:'placementTerrain',fine:true};result=steps.next();}
+    placementAdmission=result.value;
+  }
+  const admission=():TerrainPlacementSampler=>placementAdmission??heightField;
+  function newlyUnsafeRoadSite(x:number,z:number,roadMargin:number,normalY:number):boolean {
+    if (!placementAdmission) return false;
+    return (heightField._roadDist(x,z)<roadMargin && placementAdmission._roadDist(x,z)>=roadMargin)
+      || (heightField.getNormalAt(x,z).y<normalY && placementAdmission.getNormalAt(x,z).y>=normalY);
+  }
+
   // weighted species pick from a [ [species, weight], ... ] mix
   function pickSpecies(mix: SpeciesMix, roll: number): Species {
     let tot = 0;
@@ -3831,8 +3855,8 @@ function* vegetationBuildSteps(
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z)) return false;
     if (x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
-    if (heightField._roadDist(x, z) < 9 + margin) return false;
-    if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
+    if (admission()._roadDist(x, z) < 9 + margin) return false;
+    if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
     if (veg.parks) { // town maps: trees only inside the park belts
       let inPark = false;
       for (const p of veg.parks) {
@@ -3841,7 +3865,7 @@ function* vegetationBuildSteps(
       if (!inPark) return false;
     }
     if (!isClearOfSpawns(x, z, protectedSpawns, 26)) return false;
-    return heightField.getNormalAt(x, z).y > 0.82;
+    return admission().getNormalAt(x, z).y > 0.82;
   }
   function pushTree(
     x: number,
@@ -4172,6 +4196,12 @@ function* vegetationBuildSteps(
     authoredTreeDonors?.clear();
   }
   placeTidalTrees();
+  let rootDecalOrdinals: Map<TreeRecord,number> | null = null;
+  if (placementAdmission) {
+    rootDecalOrdinals=new Map(trees.map((tree,index)=>[tree,index]));
+    group.userData.roadPlacementClearance={rejectedTrees:excludeVegetation(
+      trees,treeObstacles,concealers,tree=>newlyUnsafeRoadSite(tree.x,tree.z,9,.82))};
+  }
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
@@ -4328,7 +4358,11 @@ function* vegetationBuildSteps(
     let vb = 0;
     let projectedAreaM2 = 0;
     let maxRadiusM = 0;
+    let originalOrdinal=0;
     for (const t of trees) {
+      const ordinal=rootDecalOrdinals?.get(t)??originalOrdinal;
+      while(originalOrdinal<ordinal){for(let k=0;k<=segs;k++)drng();originalOrdinal++;}
+      originalOrdinal++;
       const r = treeRootDecalRadius(t.dr);
       if (r <= 0) {
         // Preserve every later dry decal's angle/radius stream when an
@@ -4377,6 +4411,7 @@ function* vegetationBuildSteps(
     group.add(dmesh);
   }
   createTreeRootDecals();
+  rootDecalOrdinals=null;
 
   // r3 (gameplay_feel): per-instance bush fade registry — bushes within
   // ~1.5 hull radii of the player join the dither set (see updateOcclusionFade).
@@ -4395,13 +4430,14 @@ function* vegetationBuildSteps(
     const bushPal = palOf(bushSpecies);
     const bushGeos = [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
+    const bushKeep: [boolean[],boolean[]]=[[],[]];
     function addBush(x: number, z: number): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z)) return;
       if (rng() > veg.bushCount) return; // per-map density scale
-      if (heightField._roadDist(x, z) < 6) return;
-      if (heightField.getGroundType(x, z) === 'soft' || noVeg(x, z)) return;
-      if (heightField.getNormalAt(x, z).y < 0.78) return;
+      if (admission()._roadDist(x, z) < 6) return;
+      if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return;
+      if (admission().getNormalAt(x, z).y < 0.78) return;
       let clump = 1;
       if (veg.bushCount < 1) {
         // r6 two-scale clustering (matches makeTuft): biome moisture belts x
@@ -4420,8 +4456,9 @@ function* vegetationBuildSteps(
       const sc = (1.6 + rng() * 1.6) * (0.7 + clump * 0.45);
       _q.setFromAxisAngle(_up, rng() * Math.PI * 2);
       _m4.compose(_pv.set(x, y - 0.05, z), _q, _sv.set(sc, sc * (1.05 + rng() * 0.35), sc));
-      bushPlacements[(rng() * 2) | 0].push(_m4.clone());
-      concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
+      const variant=(rng()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
+      bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
+      if(keep)concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
     }
     function placeBushFringes(): void {
       // fringe bushes around each tree cluster. r3 terrain_environment: maps
@@ -4442,7 +4479,7 @@ function* vegetationBuildSteps(
     function placeFieldBushes(): void {
       for (let i = 0; i < 470; i++) { // scattered field bushes, mild roadside bias
         const x = (rng() * 2 - 1) * 455, z = (rng() * 2 - 1) * 455;
-        const rd = heightField._roadDist(x, z);
+        const rd = admission()._roadDist(x, z);
         if (rd > 26 && rng() > 0.55) continue;
         addBush(x, z);
       }
@@ -4472,20 +4509,21 @@ function* vegetationBuildSteps(
         bushGeos[bv].setAttribute('aLodF',
           new THREE.InstancedBufferAttribute(new Float32Array(bushPlacements[bv].length), 1));
         const bAttr = attribute(bushGeos[bv], 'aFadeI');
-        for (let i = 0; i < bushPlacements[bv].length; i++) {
-          const e = bushPlacements[bv][i].elements;
-          bushFadeReg.push({ attr: bAttr, slot: i, x: e[12], z: e[14], fade: 0 });
-        }
         const m = new THREE.InstancedMesh(bushGeos[bv], foliageMats[bushSpecies], bushPlacements[bv].length);
+        let kept=0;
         for (let i = 0; i < bushPlacements[bv].length; i++) {
-          m.setMatrixAt(i, bushPlacements[bv][i]);
           // darker, near-neutral multipliers: the old 0.8-1.1 range let lit
           // bushes glow saturated pure green against the graded terrain and
           // read as pasted-in — sit them INTO the field tone instead
           const bj = 0.52 + rng() * 0.34;
           _c.setRGB(bj * (0.94 + rng() * 0.14), bj * (0.98 + rng() * 0.14), bj * (0.90 + rng() * 0.16));
-          m.setColorAt(i, _c);
+          if(!bushKeep[bv][i])continue;
+          const placement=bushPlacements[bv][i],e=placement.elements;
+          m.setMatrixAt(kept,placement);m.setColorAt(kept,_c);
+          bushFadeReg.push({attr:bAttr,slot:kept,x:e[12],z:e[14],fade:0});
+          kept++;
         }
+        m.count=kept;
         m.castShadow = true;
         m.receiveShadow = false; // baked card AO, no per-card CSM self-shadow
         m.matrixAutoUpdate = false;
@@ -4501,6 +4539,7 @@ function* vegetationBuildSteps(
     createBushMeshes();
   }
   createBushes();
+  placementAdmission=null;
 
   yield { stage: 'bushes' };
   // ---- chase-camera foliage occlusion fade -------------------------------

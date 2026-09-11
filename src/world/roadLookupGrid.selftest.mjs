@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { beforeRoadCompletionConstructor } from '../../tools/road-constructor-history-fixture.mjs';
 
 // Exact private declarations from origin/main at 5b322420483210485dc802bf3f40af0f250ca59e.
 // Only the construction lookup algorithm is replaced; every map, elevation,
@@ -70,6 +71,7 @@ const support = ['clamp', 'smoothstep', 'segDist'].map(name => declaration(sourc
 // Their own playableRelief/badlandsRelief checks certify the changed terrain.
 // No old golden or arbitrary source region is replaced.
 function historicalHeightFieldSource(text) {
+  text = beforeRoadCompletionConstructor(text);
   for (const [current, historical] of [
     ["  const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;\n", ''],
     ["  let landformPhase: 'legacy-support' | 'authored-relief' = 'legacy-support';\n", ''],
@@ -190,7 +192,7 @@ async function constructor(legacy) {
   const tap = stage => `__lookupTap('${stage}', { gRoadDist, gRoadElev, gSegRoad, gSegIdx, gSegT, gCorridor });`;
   const lookupCall = legacy ? '  buildRoadLookupGrid();' : '  yield* buildRoadLookupGrid();';
   text = replaceOnce(text, lookupCall, `${lookupCall}\n${tap('lookup')}`);
-  const afterRoadSupport = '  // --- lake sheet levels (pipeline without lakes/pads), then spawn pads ---';
+  const afterRoadSupport = '  gSegRoad = null; gSegIdx = null; gSegT = null;';
   text = replaceOnce(text, afterRoadSupport, `${tap('final')}\n${afterRoadSupport}`);
   const url = new URL(`./terrain.ts?selftest=road-lookup-${legacy ? 'legacy' : 'current'}`, import.meta.url).href;
   const hooks = registerHooks({ load(request, context, next) {

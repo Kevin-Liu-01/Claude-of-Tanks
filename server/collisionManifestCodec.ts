@@ -6,16 +6,23 @@ import {
   isPackedCollisionMetadata, isSimpleShape, readCollisionConcealers, readCollisionManifest,
 } from './collisionManifestFormat.ts';
 
-const ENCODING = 'primitive-dict-v1';
+const LEGACY_ENCODING = 'primitive-dict-v1';
+const ENCODING = 'primitive-kind-dict-v2';
 const MAX_PRIMITIVES = 131_072;
+const MAX_KINDS = 1024;
+export type CollisionManifestEncoding = typeof LEGACY_ENCODING | typeof ENCODING;
 type Shape = NonNullable<PackedCollisionRecord['s']>;
 type EncodedSimple = PackedSimpleShape | number;
 type EncodedShape = EncodedSimple | readonly ['m', ...EncodedSimple[]];
-type EncodedRecord = Omit<PackedCollisionRecord, 's'> & { s?: EncodedShape };
+type EncodedRecord = Omit<PackedCollisionRecord, 's' | 'k'> & {
+  s?: EncodedShape;
+  k?: PackedCollisionRecord['k'] | number;
+};
 
 interface EncodedManifest {
-  encoding: typeof ENCODING;
+  encoding: CollisionManifestEncoding;
   shapes: PackedSimpleShape[];
+  kinds?: string[];
   obstacles: EncodedRecord[];
   colliders: EncodedRecord[];
   concealers?: CollisionManifest['concealers'];
@@ -35,7 +42,12 @@ function eachPrimitive(manifest: CollisionManifest, visit: (shape: PackedSimpleS
 }
 
 /** Exact numeric tuples only: never quantize, simplify, or transform geometry. */
-export function encodeCollisionManifest(manifest: CollisionManifest): EncodedManifest {
+export function encodeCollisionManifest(
+  manifest: CollisionManifest, encoding: CollisionManifestEncoding = ENCODING,
+): EncodedManifest {
+  if (encoding !== LEGACY_ENCODING && encoding !== ENCODING) {
+    throw new TypeError('collision manifest encoding is invalid');
+  }
   const counts = new Map<string, number>();
   eachPrimitive(manifest, (shape) => {
     const key = JSON.stringify(shape);
@@ -52,11 +64,27 @@ export function encodeCollisionManifest(manifest: CollisionManifest): EncodedMan
   const encode = (shape: Shape): EncodedShape => shape[0] === 'm'
     ? ['m', ...shape.slice(1).map((part) => simple(part as PackedSimpleShape))]
     : simple(shape);
-  const record = (value: PackedCollisionRecord): EncodedRecord => value.s
-    ? { ...value, s: encode(value.s) } : value;
+  const kindCounts = new Map<string, number>();
+  if (encoding === ENCODING) {
+    for (const records of [manifest.obstacles, manifest.colliders]) {
+      for (const { k } of records) {
+        if (typeof k === 'string') kindCounts.set(k, (kindCounts.get(k) ?? 0) + 1);
+      }
+    }
+  }
+  // Stable sort keeps first-seen ties; frequent kinds receive shorter JSON IDs.
+  const kinds = Array.from(kindCounts).sort((a, b) => b[1] - a[1]).map(([kind]) => kind);
+  if (kinds.length > MAX_KINDS) throw new TypeError('collision kind dictionary is too large');
+  const kindIds = new Map(kinds.map((kind, id) => [kind, id]));
+  const record = (value: PackedCollisionRecord): EncodedRecord => {
+    const result: EncodedRecord = { ...value };
+    if (value.s) result.s = encode(value.s);
+    if (encoding === ENCODING && typeof value.k === 'string') result.k = kindIds.get(value.k)!;
+    return result;
+  };
   if (shapes.length > MAX_PRIMITIVES) throw new TypeError('collision primitive dictionary is too large');
   return {
-    encoding: ENCODING, shapes,
+    encoding, shapes, ...(encoding === ENCODING ? { kinds } : {}),
     obstacles: manifest.obstacles.map(record), colliders: manifest.colliders.map(record),
     concealers: manifest.concealers,
   };
@@ -90,14 +118,39 @@ function resolveShape(value: RuntimeValue, shapes: readonly PackedSimpleShape[])
   return ['m', ...Array.from(value.slice(1), (part) => resolveSimple(part, shapes))];
 }
 
-function resolveRecords(value: RuntimeValue, shapes: readonly PackedSimpleShape[]): PackedCollisionRecord[] {
+function kindDictionary(value: RuntimeValue): readonly string[] {
+  if (!Array.isArray(value) || value.length > MAX_KINDS) {
+    throw new TypeError('collision kind dictionary is invalid');
+  }
+  const kinds = Array.from(value);
+  if (!kinds.every((kind) => typeof kind === 'string')) {
+    throw new TypeError('collision kind dictionary is invalid');
+  }
+  return kinds;
+}
+
+function resolveKind(value: number, kinds: readonly string[] | undefined): string {
+  if (!kinds || !Number.isSafeInteger(value) || value < 0 || value >= kinds.length) {
+    throw new TypeError('collision kind reference is invalid');
+  }
+  return kinds[value];
+}
+
+function resolveRecords(
+  value: RuntimeValue, shapes: readonly PackedSimpleShape[], kinds: readonly string[] | undefined,
+): PackedCollisionRecord[] {
   if (!Array.isArray(value)) throw new TypeError('collision records are invalid');
   return Array.from(value, (record) => {
-    if (!isPackedCollisionMetadata(record)) {
+    if (!isRecord(record)) throw new TypeError('collision record is invalid');
+    // One record copy resolves both fields; dictionaries are not retained by the
+    // manifest, and kinds are immutable strings shared by all decoded records.
+    const resolved = { ...record };
+    if (typeof resolved.k === 'number') resolved.k = resolveKind(resolved.k, kinds);
+    if (!isPackedCollisionMetadata(resolved)) {
       throw new TypeError('collision record is invalid');
     }
-    return record.s === undefined ? record as PackedCollisionRecord
-      : { ...record, s: resolveShape(record.s, shapes) };
+    if (resolved.s !== undefined) resolved.s = resolveShape(resolved.s, shapes);
+    return resolved as PackedCollisionRecord;
   });
 }
 
@@ -107,12 +160,15 @@ export function decodeCollisionManifest(value: RuntimeValue): CollisionManifest 
     throw new TypeError('collision manifest is invalid');
   }
   if (value.encoding === undefined && value.shapes === undefined) return readCollisionManifest(value);
-  if (value.encoding !== ENCODING) throw new TypeError('collision manifest encoding is invalid');
+  if (value.encoding !== LEGACY_ENCODING && value.encoding !== ENCODING) {
+    throw new TypeError('collision manifest encoding is invalid');
+  }
   const shapes = dictionary(value.shapes);
+  const kinds = value.encoding === ENCODING ? kindDictionary(value.kinds) : undefined;
   // Metadata and each inline primitive are validated during this one pass;
   // dictionary primitives were validated once above, before any ref resolves.
   return {
-    obstacles: resolveRecords(value.obstacles, shapes),
-    colliders: resolveRecords(value.colliders, shapes), concealers: readCollisionConcealers(value.concealers),
+    obstacles: resolveRecords(value.obstacles, shapes, kinds),
+    colliders: resolveRecords(value.colliders, shapes, kinds), concealers: readCollisionConcealers(value.concealers),
   };
 }
