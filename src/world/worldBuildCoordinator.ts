@@ -270,9 +270,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         created.stageMark = sampleNow;
       };
       const yieldForeground = dependencies.foregroundYielder?.()
-        // Keep covered construction responsive: 80 ms permits five display
-        // intervals between frame requests even before a slow slice overruns.
-        ?? createOpaqueLoadingYielder(12, 32);
+        // Request covered paints sooner instead of accumulating several task
+        // slices; individual construction checkpoints can still overrun either budget.
+        ?? createOpaqueLoadingYielder(6, 16);
       const yieldBackground = dependencies.backgroundYielder?.()
         ?? createFrameBudgetYielder(4);
 

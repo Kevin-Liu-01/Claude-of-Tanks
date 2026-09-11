@@ -666,4 +666,97 @@ async function unchangedProgressStillCancelsAndReturnsLeases() {
 await unchangedProgressStillSchedulesEveryCheckpoint();
 await unchangedProgressStillCancelsAndReturnsLeases();
 
-console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing, progress dedup and cancellation ownership passed');
+async function defaultForegroundUsesShortPaintBudget() {
+  let clock = 0, settled = false;
+  const tasks = [], frames = [], timers = [], admitted = [], notifications = [];
+  const listeners = new Set();
+  // Exercise the coordinator's DEFAULT policy, not an injected yielder with
+  // the expected constants. Only browser delivery and its clock are controlled.
+  const host = {
+    performance: { now: () => clock },
+    scheduler: { yield: () => new Promise(resolve => tasks.push({ at: clock, resolve })) },
+    requestAnimationFrame(callback) { frames.push({ at: clock, callback, delivered: false }); return frames.length; },
+    cancelAnimationFrame() {},
+    setTimeout(callback, delay) { timers.push({ callback, delay, cancelled: false }); return timers.length; },
+    clearTimeout(id) { timers[id - 1].cancelled = true; },
+    document: { hidden: false,
+      addEventListener(type, callback) { assert.equal(type, 'visibilitychange'); listeners.add(callback); },
+      removeEventListener(type, callback) { assert.equal(type, 'visibilitychange'); listeners.delete(callback); },
+    },
+  };
+  const prior = new Map(Object.keys(host).map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  const frame = (index, at) => {
+    clock = at; frames[index].delivered = true; frames[index].callback();
+  };
+  let pending;
+  try {
+    for (const [key, value] of Object.entries(host)) Object.defineProperty(globalThis, key,
+      { configurable: true, writable: true, value });
+    const f = cancellationFixture({
+      now: () => clock,
+      foregroundYielder: undefined,
+      loadModule: async () => ({ async createMapAsync(_engine, _options, progress, slicing) {
+        assert.equal(slicing.fineSlices, true);
+        for (const cost of [5, 1, 5, 1, 3, 1, 5, 1, 9, 1]) {
+          clock += cost;
+          const checkpoint = clock;
+          await progress('Building terrain meshes', 0.5);
+          admitted.push(checkpoint);
+        }
+        return { group: new THREE.Group() };
+      } }),
+    });
+    pending = f.coordinator.beginBuild('default-foreground-policy',
+      (fraction, label) => notifications.push([fraction, label])).promise;
+    pending.then(() => { settled = true; }, () => { settled = true; });
+    await nextTurn();
+    assert.deepEqual(admitted, [5], 'default policy stops at 6 ms, not the old 12 ms task budget');
+    assert.deepEqual(tasks.map(row => row.at), [6]);
+    tasks[0].resolve(); await nextTurn();
+    assert.deepEqual(admitted, [5, 6, 11]);
+    assert.deepEqual(tasks.map(row => row.at), [6, 12]);
+    tasks[1].resolve(); await nextTurn();
+    assert.deepEqual(admitted, [5, 6, 11, 12, 15]);
+    assert.deepEqual(frames.map(row => row.at), [16], 'paint deadline wins over a fresh four-millisecond slice');
+    assert.deepEqual(timers.map(row => row.delay), [1000], 'existing visible-frame timeout is unchanged');
+    frame(0, 20); await nextTurn();
+    assert.deepEqual(admitted, [5, 6, 11, 12, 15], 'rAF cannot admit work before the following task');
+    assert.equal(tasks[2].at, 20);
+    assert.equal(timers[0].cancelled, true);
+    assert.equal(listeners.size, 0);
+    clock = 22; tasks[2].resolve(); await nextTurn();
+    assert.deepEqual(admitted, [5, 6, 11, 12, 15, 16, 27]);
+    assert.equal(tasks[3].at, 28, 'six-millisecond task budget restarts after post-frame task completion');
+    tasks[3].resolve(); await nextTurn();
+    assert.equal(tasks[4].at, 37, 'overrunning work still yields only at its actual checkpoint');
+    tasks[4].resolve(); await nextTurn();
+    assert.deepEqual(frames.map(row => row.at), [16, 38], '16 ms since completed paint wins over a one-millisecond slice');
+    frame(1, 38); await nextTurn();
+    tasks[5].resolve();
+    const world = await pending;
+    assert.equal(world.group.visible, false);
+    assert.deepEqual(admitted, [5, 6, 11, 12, 15, 16, 27, 28, 37, 38]);
+    assert.deepEqual(notifications, [[0, 'Surveying terrain'], [0.5, 'Building terrain meshes']],
+      'initial state and one changed UI progress value survive every pacing checkpoint');
+    assert.ok(timers.every(row => row.cancelled));
+    assert.equal(listeners.size, 0);
+  } finally {
+    // Keep a failed assertion from leaving an owned fixture build suspended.
+    try {
+      for (let attempt = 0; pending && !settled && attempt < 16; attempt++) {
+        frames.forEach((row, index) => { if (!row.delivered) frame(index, clock); });
+        tasks.forEach(row => row.resolve());
+        await nextTurn();
+      }
+      if (pending) assert.equal(settled, true, 'controlled default-policy build settles during cleanup');
+    } finally {
+      for (const [key, descriptor] of prior) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+      }
+    }
+  }
+}
+
+await defaultForegroundUsesShortPaintBudget();
+
+console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing, progress dedup, cancellation and default foreground 6/16 policy passed');
