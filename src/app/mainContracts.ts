@@ -35,7 +35,7 @@ export interface MainFxRuntime extends Omit<
   ): void;
 }
 
-export type MainFxModule = Pick<typeof import('../fx/effects.ts'), 'createFx'>;
+export type MainFxModule = Pick<typeof import('../fx/effects.ts'), 'createFxChunked'>;
 
 export interface MainEntity extends Omit<
   RosterEntity,

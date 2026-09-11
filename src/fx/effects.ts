@@ -15,7 +15,7 @@ import type { TrackSurface } from '../world/trackSurface.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.ts';
-import { createImpactDecals } from './impactDecals.ts';
+import { createImpactDecalsSteps } from './impactDecals.ts';
 import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
@@ -788,8 +788,47 @@ const _jetO: JetScratch = { pos: [0, 0, 0], axis: [0, 0, 1], life: 0.1, width: 0
 export function createFx(
   engineCtx: FxEngineContext,
   heightField: FxHeightField,
-  { seed = 5000, resolveEntity }: FxOptions = {},
+  options: FxOptions = {},
 ): FxRuntime {
+  const steps = createFxSteps(engineCtx, heightField, options);
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  return next.value;
+}
+
+/** Covered entry shares the synchronous recipe, yielding only private atlas pixels. */
+export async function createFxChunked(
+  engineCtx: FxEngineContext,
+  heightField: FxHeightField,
+  options: FxOptions,
+  yieldForBudget: () => Promise<void>,
+): Promise<FxRuntime> {
+  const steps = createFxSteps(engineCtx, heightField, options);
+  try {
+    let next = steps.next();
+    while (!next.done) {
+      await yieldForBudget();
+      next = steps.next();
+    }
+    return next.value;
+  } catch (error) {
+    // Throw through the suspended delegate to close its private pixel painter.
+    steps.throw(error);
+    throw error;
+  }
+}
+
+function* createFxSteps(
+  engineCtx: FxEngineContext,
+  heightField: FxHeightField,
+  { seed = 5000, resolveEntity }: FxOptions = {},
+): Generator<void, FxRuntime, void> {
+  // Atlas RNG is independent. Prepare it before particles/clock providers so
+  // no consumer can observe a half-created runtime across a painted frame.
+  const impactDecals = yield* createImpactDecalsSteps({
+    anisotropy: engineCtx && engineCtx.anisotropy,
+    seed: (seed ^ 0x51f7a3) >>> 0,
+  });
   const particles = createParticleSystem(engineCtx, { seed });
   // r5: tank-visual animation timelines (recoil, turret pop, char, embers)
   // age against THIS clock — see src/fx/clock.ts. Live play is unchanged
@@ -1240,10 +1279,6 @@ export function createFx(
   // cleared when the vehicle wrecks — see the tank:destroyed handler and
   // spawnDestruction, which clear BEFORE setDestroyed's material traverse
   // can ever see a decal mesh.
-  const impactDecals = createImpactDecals({
-    anisotropy: engineCtx && engineCtx.anisotropy,
-    seed: (seed ^ 0x51f7a3) >>> 0,
-  });
   function isDecalEntity(value: object | null | undefined): value is FxEntity {
     if (!value) return false;
     const entity = value as Partial<FxEntity>;
