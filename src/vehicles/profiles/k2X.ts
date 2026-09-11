@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { efficientReturnRoller } from '../efficientReturnRoller.ts';
+import type { RunningGearConfig, TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylZ, torus } = KIT;
 const cylY = (radius: number, height: number, segments: number): THREE.BufferGeometry =>
@@ -404,6 +405,37 @@ function addGunOptic(P: TankBuilderPort): void {
   P.addEquipment('gunMountGlass',box(.2534,.1152,.004),.2112,2.43173-GUN_Y,2.121-GUN_Z);
 }
 
+function buildMeasuredGun(P: TankBuilderPort): void {
+  // Source Object_19 dimensions: the thermal jacket continues to Z6.699,
+  // followed by the tapered muzzle. A generic short sleeve left most of this
+  // visible tube too thin. These are authored radial sections, not source faces.
+  const segments = P.q ? 28 : 12;
+  const radialSection = (z: number, radius: number, lift = 0): SolidSection => ({
+    z: z - GUN_Z,
+    ring: Array.from({length: segments}, (_, index) => {
+      const angle = index * Math.PI * 2 / segments;
+      return [Math.cos(angle) * radius, lift + Math.sin(angle) * radius];
+    }),
+  });
+  P.add('gun', sectionSolid([
+    radialSection(1.36815,.15), radialSection(2.540,.15,.0104),
+    radialSection(2.591,.148,.0104), radialSection(2.616,.134,.0104),
+    radialSection(3.078,.1422,.009), radialSection(3.688,.1422,.009),
+    radialSection(3.756,.1223), radialSection(3.767,.1145),
+    radialSection(3.857,.1145), radialSection(3.864,.1089),
+    // As in buildGun, reserve the final 20 mm for the factory's seated
+    // bore lip. The muzzle/FX datum remains the measured Z6.91805.
+    radialSection(6.699,.1089), radialSection(6.89805,.0878),
+  ]));
+  // Raised, bevel-ended evacuator and the small muzzle-reference housing.
+  P.add('gun', sectionSolid([
+    radialSection(3.078,.1422,.009), radialSection(3.222,.1735,.055),
+    radialSection(3.544,.1735,.055), radialSection(3.688,.1422,.009),
+  ]));
+  P.add('gun', box(.0926,.092,.133), 0, 2.11013-GUN_Y, 6.7775-GUN_Z);
+  P.muzzleZ = K2_X_DATUMS.muzzleZ-GUN_Z;
+}
+
 export function buildK2X(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(0, YAW_Y, YAW_Z);
@@ -414,14 +446,36 @@ export function buildK2X(P: TankBuilderPort): void {
     tub(1.544, 1.728, 1.573, .426), tub(2.885, 1.728, 1.389, .48),
     tub(3.29, 1.728, 1.380, .67), tub(3.75, 1.080, 1.125, .83),
   ]));
-  P.gear = KIT.buildRunningGear(P, {
+  // Object_30 in the owner's original source has three narrow return wheels
+  // per side. Fit their measured crowns and axes with shared closed stock;
+  // the receiver-aware running gear supplies shafts into the existing tub.
+  const returnStock = efficientReturnRoller({quality:P.q?'high':'low',
+    radiusM:.095175,axialWidthM:.0826,spindleRadiusM:.025,spindleLengthM:.1282});
+  returnStock.spindle.dispose();
+  const gearConfig: RunningGearConfig = {
     style: 'rubber', wheelR: .3225, wheelW: .387, wheelY: .405 + GROUND,
     wheelZs: K2_X_DATUMS.wheelStations.map(z => z - CENTER_Z),
     xc: 1.407, trackW: .619, trackTh: .066,
+    rollers: [-1.77835,.013,1.8319].map(z=>({z,y:1.005725,r:.095175})),
+    rollerR:.095175,returnRollerInsetM:.1905,returnRollerWidthM:.0826,
+    dedupeLoopPoints:true,
+    returnRollerHullHalfWidthM:1.05,returnRollerGeometry:returnStock.rotor,
     sprocket: { z: -2.675 - CENTER_Z, y: .822 + GROUND, r: .351 },
     idler: { z: 3.316 - CENTER_Z, y: .813 + GROUND, r: .300 },
     topY: 1.175 + GROUND, botY: .095, paintedEnds: true, arms: true, coveredTop: true,
+  };
+  // The finite inner carrier at the sloping crown needs 0.2 mm of clearance.
+  // Keep the measured roller, road and end axes; lift only the three upper
+  // support samples. The native lower course and articulation stay intact.
+  gearConfig.loopPoints = KIT.trackLoopPoints({
+    sprocket:{...gearConfig.sprocket},idler:{...gearConfig.idler},
+    botY:.095,topY:gearConfig.topY,sag:.022,
+    supports:gearConfig.rollers!.map(roller=>({z:roller.z,
+      y:roller.y+.095175+.066/2+.0002})),
+    contact:{zF:Math.max(...gearConfig.wheelZs)+gearConfig.wheelR*.5,
+      zR:Math.min(...gearConfig.wheelZs)-gearConfig.wheelR*.5},
   });
+  P.gear = KIT.buildRunningGear(P,gearConfig);
   hullFurniture(P);
   P.add('turret', sectionSolid([
     turret(-1.941,.982,.96,1.753,2.363),
@@ -436,7 +490,7 @@ export function buildK2X(P: TankBuilderPort): void {
   armorModules(P);
   roofFurniture(P);
   addGunMantlet(P);
-  KIT.buildGun(P, { len: K2_X_DATUMS.muzzleZ - GUN_Z, r: .0878, baseR: .15, sleeve: true, evac: .39, evacR: 1.90, collar: true });
+  buildMeasuredGun(P);
   P.muzzleZ = K2_X_DATUMS.muzzleZ - GUN_Z;
   P.topY = 3.05 - YAW_Y;
   P.hullG.userData.xRebuild = { candidate: 'k2_x', independent: true, datumVersion: 1, sourceLocalOnly: true };

@@ -1551,7 +1551,7 @@ export function buildT90SMX(P: TankBuilderPort): void {
     [3.05,1.030,1.045,.603],[3.43,1.006,.891,.881],
   ];
   P.add('hull',smHullTub(hullRows.map(([z,w,y,k]): Station => [z,w,smEngineDeckSupportRoof(z,y),k])));
-  P.gear=KIT.buildRunningGear(P,{style:'dished',wheelPattern:'pressed-six',wheelR:.3981,wheelW:.40954,wheelFaceDepthScale:.69595,
+  P.gear=KIT.buildRunningGear(P,{style:'dished',wheelPattern:'pressed-six',wheelR:.3981,wheelW:.40954,wheelFaceDepthScale:.69595,wheelTireInnerRadiusM:.342366,
     wheelZs:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061],wheelY:.45513,wheelZScale:1.05575,
     wheelYs:[.47202,.45513,.45513,.45513,.45513,.51461],roadWheelOutsetM:.015135,
     xc:1.40647,xcLeft:1.40818,xcRight:1.404765,trackW:.48891,trackTh:.020,
