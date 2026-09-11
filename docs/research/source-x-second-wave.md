@@ -370,3 +370,8 @@ The Node regression is in`npm test`. The supplementary real GPU regression,
 camera/raster invariance cases under candidate scaling and translation, verifies
 that the old combined-frame negative control changes the source pixels, and
 checks source self-match plus physical-envelope rejection of hidden excess.
+
+
+### K1A1 X target decision, 2026-09-11
+
+Owner now explicitly retains the armed K1A1 X and selects its documented DVIDS3912303 photo for roof-gun qualification. The supplied unarmed file remains authoritative for the rest of the vehicle. This resolves the prior target question, not the pending tests or visual review; historical full-model source failures remain retained. See `docs/references/tanks/k1a1_x.md` for the precise split and unchanged thresholds.
