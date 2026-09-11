@@ -185,7 +185,7 @@ export interface StudioPanelApi {
   keyActor(actor: StudioActor): RuntimeValue;
   setRailVisible(visible: boolean): RuntimeValue;
   clearActorTrack(actor: StudioActor): RuntimeValue;
-  directDuel(): RuntimeValue;
+  directDuel(options?: { variant?: number }): RuntimeValue;
   setCamera(config: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
   stopRecording(): RuntimeValue;
@@ -1029,11 +1029,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   railRow.append(railBtn, clearTrackBtn);
   secTime.appendChild(railRow);
   const duelBtn = el('button', 'prime', t('studio.directDuel'));
+  let duelVariant = 0;
   duelBtn.style.marginTop = '6px';
   duelBtn.title = t('studio.directDuelTitle');
   duelBtn.addEventListener('click', () => {
     try {
-      S.directDuel();
+      S.directDuel({ variant: duelVariant });
+      duelVariant = (duelVariant + 1) % 4;
       flashBusy(t('studio.duelReady'));
     } catch (error) {
       flashBusy(errorMessage(error));
@@ -1474,7 +1476,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       card.appendChild(copy);
       const transition = document.createElement('select');
       transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: shot.label }));
-      for (const id of ['smooth', 'linear', 'cut']) {
+      for (const id of ['smooth', 'linear', 'cut', 'bezier']) {
         const option = document.createElement('option');
         option.value = id;
         option.textContent = id.toUpperCase();
