@@ -24,6 +24,10 @@ assert.throws(()=>sourceDimensionRows({...dims,widthM:NaN},dims,ref,ref));
 assert.throws(()=>sourceDimensionCamera(new THREE.Box3(),new THREE.Vector3(1,0,0)));
 const certified={passed:true,mode:'canonical-source-world'};
 assert.equal(usesSourceDimensionFrame('t72b3_x',certified),true);
+assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',certified),true,
+  'direct supplied SEP v2 comparison uses its certified source ruler, not the unrelated published roof height');
+assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',{...certified,passed:false}),false);
+assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',{...certified,mode:'legacy'}),false);
 assert.equal(usesSourceDimensionFrame('leclerc_classic_x',certified),true,
   'older supplied Leclerc uses the same source-only ruler and physical guards');
 assert.equal(usesSourceDimensionFrame('leclerc_classic_x',{...certified,passed:false}),false);
