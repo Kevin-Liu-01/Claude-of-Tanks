@@ -7,15 +7,18 @@ import {createCaptureLock} from './capture-lock.mjs';
 import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-browser-launch.mjs';
 import {settleMapTextures,captureTimingBackend} from './map-environment-acquisition.mjs';
 import {settleResidencyTerrain} from './world-residency-acquisition.mjs';
+import {selectBattleWeather} from '../src/engine/battleWeatherPolicy.ts';
 const option=name=>process.argv.find(a=>a.startsWith(`--${name}=`))?.slice(name.length+3);
 const url=option('url'),map=option('map'),poses=option('poses'),out=option('out');
+const tier=option('tier')??'desktop',night=process.argv.includes('--night');
+if(!['desktop','mobile'].includes(tier))throw Error('Expected desktop or emulated mobile tier');
 if(!url||!map||!poses||!out)throw Error('Required --url --map --poses --out=fresh-directory');
 const candidate={color:Number(option('color')),opacity:Number(option('opacity')),roughness:Number(option('roughness'))};
 if(!Number.isInteger(candidate.color)||candidate.color<0||candidate.color>0xffffff
  ||![candidate.opacity,candidate.roughness].every(v=>Number.isFinite(v)&&v>0&&v<1))throw Error('Invalid material values');
 const views=JSON.parse(await readFile(poses,'utf8')).filter(v=>!v.unresolved);
 const dir=resolve(out);await mkdir(dir,{recursive:false});
-const lock=createCaptureLock(),report={map,candidate,views:[],errors:[]};let browser,refresh;
+const lock=createCaptureLock(),report={map,tier,night,candidate,views:[],errors:[]};let browser,refresh;
 try{
  await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
  browser=await puppeteer.launch(nativeBrowserLaunchOptions({headless:'new',protocolTimeout:240000,
@@ -23,12 +26,31 @@ try{
  report.nativeLaunch=verifyNativeBrowserLaunch(browser);
  const page=await browser.newPage();await page.setViewport({width:1440,height:900,deviceScaleFactor:1});
  page.on('pageerror',e=>report.errors.push(String(e)));
- await page.goto(new URL('/?debug=1&nosplash=1&tier=desktop&gfxreset=1',url).href,{waitUntil:'domcontentloaded',timeout:180000});
+ await page.goto(new URL(`/?debug=1&nosplash=1&tier=${tier}&gfxreset=1`,url).href,{waitUntil:'domcontentloaded',timeout:180000});
  await page.waitForFunction(()=>window.__GAME_READY&&window.__DEBUG&&window.__SHOTS,{timeout:180000});
  report.backend=await page.evaluate(captureTimingBackend);
  if(report.backend.contextLost||/swiftshader|llvmpipe|software/i.test(report.backend.renderer))
   throw Error('Material experiment requires a live hardware WebGL context');
- await page.evaluate(name=>window.__SHOTS.set(`battlefield_${name}`),map);
+ if(night){
+  await page.evaluate(async mapId=>{
+   const D=window.__DEBUG;D.shotMode=false;D.game.battleCount=0;
+   await D.beginSoloBattle({specId:'m1a1',mapId,randomRoster:false});
+   if(D.game.phase!=='battle'||!D.game.player)throw Error('Night water probe failed to enter battle');
+  },map);
+  await page.waitForFunction(()=>{const D=window.__DEBUG;return D.game.phase==='battle'
+   &&D.game.player?.visual&&D.game.preBattleS<=0&&D.game.tanks.every(t=>t.visual);},{timeout:180000});
+  // The day/night hash is biome-independent; the actual map preparation
+  // retains its own authored biome, which is recorded and verified below.
+  let seed=1;while(selectBattleWeather(seed,'temperate').timeOfDay!=='night')seed++;
+  report.atmosphere=await page.evaluate(async ({seed,mapId})=>{
+   const D=window.__DEBUG;D.shotMode=true;D.post.setAdaptiveSuspended(true);
+   await D.battleAtmosphere.prepare(seed,mapId);await D.nightLighting.prepare();
+   const weather=D.battleAtmosphere.current?.weather;
+   if(weather?.timeOfDay!=='night'||D.world.mapId!==mapId)throw Error('Night/map preparation mismatch');
+   return {weather,mapId:D.world.mapId,phase:D.game.phase,preset:D.quality.resolvePresetName()};
+  },{seed,mapId:map});
+ }else await page.evaluate(name=>window.__SHOTS.set(`battlefield_${name}`),map);
+ report.preset=await page.evaluate(()=>window.__DEBUG.quality.resolvePresetName());
  report.readiness=await page.evaluate(settleMapTextures,{mapId:map});
  for(const view of views){
   await page.evaluate(view=>{

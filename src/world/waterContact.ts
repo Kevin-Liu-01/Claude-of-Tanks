@@ -18,11 +18,11 @@ const LAKE: Readonly<WaterContactProfile> = Object.freeze({
   flowX: 0.004, flowZ: 0.003,
 });
 const RIVER: Readonly<WaterContactProfile> = Object.freeze({
-  kind: 'river', depthM: 0.64, color: 0x777e62, opacity: 0.48, roughness: 0.34,
+  kind: 'river', depthM: 0.64, color: 0x46665f, opacity: 0.55, roughness: 0.30,
   flowX: 0.016, flowZ: 0.005,
 });
 const MARSH: Readonly<WaterContactProfile> = Object.freeze({
-  kind: 'marsh', depthM: 0.43, color: 0x77714f, opacity: 0.58, roughness: 0.40,
+  kind: 'marsh', depthM: 0.43, color: 0x46665f, opacity: 0.55, roughness: 0.30,
   flowX: 0.002, flowZ: 0.003,
 });
 // Polder drainage lakes retain shallow muddy-bed physics, but their surface

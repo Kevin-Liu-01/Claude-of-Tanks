@@ -212,7 +212,9 @@ const TERRAIN_PLAN = {
   monsoon: {
     G: { set: 'grass', tint: [0.57, 0.82, 0.58], roughMul: 1.22 },
     D: { set: 'dirt', tint: [0.59, 0.55, 0.44], roughMul: 1.3 },
-    R: { set: 'rock', tint: [0.76, 0.84, 0.76], roughMul: 1.15 }, M: null,
+    // Exposed washed-out banks need granular earth rather than Rock058's
+    // directional veins, which comb into long streaks on these cut slopes.
+    R: { set: 'dirt', tint: [0.62, 0.63, 0.54], desat: 0.65, roughMul: 1.3 }, M: null,
   },
   alpine: {
     G: { set: 'snow', roughMul: 1.15 },
