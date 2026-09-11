@@ -784,6 +784,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapQuality.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
     'tools/environment-shot-camera.selftest.mjs',
+    'tools/water-shore-camera.selftest.mjs',
     'tools/environment-motion-probe.selftest.mjs',
     'tools/horizon-construction-bench.selftest.mjs',
     'tools/map-art-guards.selftest.mjs',
