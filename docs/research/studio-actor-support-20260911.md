@@ -26,3 +26,9 @@ Studio authoring guides and are not marketing outputs.
 Independent review found the canonical reset and explicit hydraulic fix sound;
 no new support-code blocker was identified. Full combined launch testing and
 performance ceilings remain separate requirements.
+
+## Encoder startup correction
+
+The promo capture exposed a cold-encoder deadlock: after one dirty opening frame, paused Studio rendering stopped while playback waited for captured bytes. The live tick now keeps submitting the held zero-time composition until the first nonempty chunk. It preserves the10second timeout and routes a later requestFrame failure through the same owning-session cleanup as initial startup failures.
+
+The actual recording and tick test covers a recorder that needs five frames, cancellation, timeout, later priming failure, stale events and retry. Latest typecheck and public build pass. Native promo UI r3 records Studio successfully and completes Garage/battle/Gallery/Docs capture at `.qa-dev/launch/promo-current/ui-r3`; optional local-preview analytics failures remain separately recorded. The HUD capture does not establish a target kill.
