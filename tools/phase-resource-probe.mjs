@@ -17,6 +17,8 @@ import { resolve } from 'node:path';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
+import { installPhaseResourceFrameAccounting, beginPhaseResourceFrameSample,
+  hasFreshPhaseResourceFrame } from './phase-resource-frame-accounting.mjs';
 
 const argv = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -42,6 +44,7 @@ const buildIndexHash = production ? sha256(readFileSync(resolve(distPath, 'index
 const acquisitionHash = sha256([
   readFileSync(fileURLToPath(import.meta.url)),
   readFileSync(new URL('./phase-environment-receipt.mjs', import.meta.url)),
+  readFileSync(new URL('./phase-resource-frame-accounting.mjs', import.meta.url)),
 ].join('\n'));
 const viewport = {
   width: Math.max(640, Number(option('width', '1280')) || 1280),
@@ -207,7 +210,7 @@ const delta = (after, before, name) => (after.get(name) || 0) - (before.get(name
 const sampleResources = () => page.evaluate(() => {
   const debug = window.__DEBUG;
   const renderer = debug.renderer;
-  const completeFrame = window.__PHASE_RESOURCE_LAST_RENDER || renderer.info.render;
+  const completeFrame = window.__PHASE_RESOURCE_LAST_RENDER;
   const geometries = new Set();
   const materials = new Set();
   const textures = new Set();
@@ -381,6 +384,7 @@ const sampleResources = () => page.evaluate(() => {
   const programSummary = summarizePrograms();
   return {
     phase: debug.game.phase,
+    frameReceipt: completeFrame,
     roster: (debug.game?.tanks || []).map((entity) => ({
       specId: entity.specId,
       team: entity.team,
@@ -406,10 +410,10 @@ const sampleResources = () => page.evaluate(() => {
     sceneBreakdown,
     topVisibleMeshes: visibleMeshWork.slice(0, 24),
     renderer: {
-      calls: completeFrame.calls,
-      triangles: completeFrame.triangles,
-      lines: completeFrame.lines,
-      points: completeFrame.points,
+      calls: completeFrame?.calls,
+      triangles: completeFrame?.triangles,
+      lines: completeFrame?.lines,
+      points: completeFrame?.points,
       programs: (renderer.info.programs || []).length,
       programUse: programSummary.programUse,
       singletonProgramNames: programSummary.singletonProgramNames,
@@ -440,7 +444,8 @@ const sampleResources = () => page.evaluate(() => {
 const measurePhase = async (name) => {
   try { await cdp.send('HeapProfiler.collectGarbage'); } catch (_) { /* optional */ }
   await sleep(500);
-  await page.evaluate(() => { window.__PHASE_RESOURCE_FRAMES = []; });
+  const frameSample = await page.evaluate(beginPhaseResourceFrameSample,
+    name === 'battle-active' ? 'battle' : 'garage');
   const environmentBefore = await page.evaluate(readPhaseEnvironment);
   const resourcesBefore = await sampleResources();
   const metricsBefore = await metricMap();
@@ -498,6 +503,7 @@ const measurePhase = async (name) => {
   const frameLoopAfter = resourcesAfter.caches.frameLoopScheduler || {};
   return {
     name,
+    frameSample,
     environmentBefore,
     environmentAfter,
     wallSeconds: +wallSeconds.toFixed(3),
@@ -749,6 +755,13 @@ const evaluateBudgets = (phases) => {
     checks.push({ name, pass: Boolean(pass), actual, limit });
   };
 
+  for (const phase of phases) {
+    check(`${phase.name} fresh completed-frame receipt`,
+      hasFreshPhaseResourceFrame(phase.frameSample, phase.resources.frameReceipt, phase.resources.phase),
+      { sample: phase.frameSample, receipt: phase.resources.frameReceipt },
+      'successful complete render in this sample and expected phase');
+  }
+
   checkGarageIdleBudgets(check, idle, returned);
   checkBattleBudgets(check, battle);
   checkReturnedGarageBudgets(check, returned);
@@ -768,58 +781,7 @@ try {
   await page.waitForFunction('window.__GAME_READY === true && window.__DEBUG?.renderer', {
     timeout: 360_000,
   });
-  await page.evaluate(() => {
-    const post = window.__DEBUG.post;
-    const renderer = window.__DEBUG.renderer;
-    const originalRender = post.render.bind(post);
-    const originalShadowRender = renderer.shadowMap.render.bind(renderer.shadowMap);
-    window.__PHASE_RESOURCE_RENDER_COUNT = 0;
-    window.__PHASE_RESOURCE_LAST_RENDER = null;
-    window.__PHASE_RESOURCE_FRAMES = [];
-    let measuringFrame = null;
-    renderer.shadowMap.render = (...args) => {
-      const before = renderer.info.render;
-      const calls = before.calls;
-      const triangles = before.triangles;
-      const result = originalShadowRender(...args);
-      if (measuringFrame) {
-        measuringFrame.shadowCalls += renderer.info.render.calls - calls;
-        measuringFrame.shadowTriangles += renderer.info.render.triangles - triangles;
-      }
-      return result;
-    };
-    post.render = (...args) => {
-      window.__PHASE_RESOURCE_RENDER_COUNT += 1;
-      // EffectComposer normally resets renderer.info for each pass, leaving
-      // diagnostics with only the final fullscreen triangle. Accumulate the
-      // complete application frame in this probe-only wrapper so calls and
-      // primitives include the scene, shadows, and every post-process pass.
-      const previousAutoReset = renderer.info.autoReset;
-      renderer.info.autoReset = false;
-      renderer.info.reset();
-      measuringFrame = { shadowCalls: 0, shadowTriangles: 0 };
-      try {
-        return originalRender(...args);
-      } finally {
-        const frame = renderer.info.render;
-        const receipt = {
-          calls: frame.calls,
-          triangles: frame.triangles,
-          lines: frame.lines,
-          points: frame.points,
-          shadowCalls: measuringFrame.shadowCalls,
-          shadowTriangles: measuringFrame.shadowTriangles,
-          shadowMask: window.__DEBUG.lighting?.scheduledMask ?? 0,
-        };
-        window.__PHASE_RESOURCE_LAST_RENDER = receipt;
-        const history = window.__PHASE_RESOURCE_FRAMES;
-        history.push(receipt);
-        if (history.length > 2400) history.splice(0, history.length - 2400);
-        measuringFrame = null;
-        renderer.info.autoReset = previousAutoReset;
-      }
-    };
-  });
+  await page.evaluate(installPhaseResourceFrameAccounting);
 
   await sleep(garageSettleSeconds * 1000);
   const garageIdle = await measurePhase('garage-idle');

@@ -81,6 +81,7 @@ import {
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
+import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -131,6 +132,7 @@ export interface PostWarmTiming {
 }
 
 export interface PostRuntime {
+  readonly lastCompletedFrame: CompletedPostFrame | null;
   composer: EffectComposer;
   bloom: UnrealBloomPass;
   gtao: GTAOPass;
@@ -2479,6 +2481,8 @@ export function createPost(
     }
   }
 
+  const frameAccounting = createPostFrameAccounting(renderer, renderFrame);
+
   // Live preset switching (settings UI writes quality.setPresetName): retarget
   // every buffer without rebuilding the chain.
   onPresetChange((p) => {
@@ -2494,6 +2498,11 @@ export function createPost(
 
   return {
     composer,
+
+    /** Last successful complete transaction; retained across skipped frames.
+     * Individual warm/debug pass renders do not replace this receipt.
+     */
+    get lastCompletedFrame() { return frameAccounting.lastCompletedFrame; },
 
     /**
      * Compile and allocate the active post chain one pass per browser frame.
@@ -2545,7 +2554,7 @@ export function createPost(
      * @param {number} frameWallDtSeconds - raw main-loop gap for quality sampling
      * @returns {void}
      */
-    render: renderFrame,
+    render: frameAccounting.render,
 
     /**
      * Resize the whole chain. Pass CSS-pixel dimensions; the composer applies
