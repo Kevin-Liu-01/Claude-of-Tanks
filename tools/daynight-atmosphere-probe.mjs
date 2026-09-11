@@ -286,8 +286,10 @@ async function stage(mapId, specId = 'm1a1') {
     if (d.game.phase !== 'garage') await d.enterGarage();
     d.game.battleCount = 0;
     await d.beginSoloBattle({ specId, mapId, randomRoster: false });
+    if(d.game.phase !== 'battle' || !d.game.player)
+      throw new Error(`Battle entry ${mapId}/${specId} returned in ${d.game.phase} without an active player; inspect the recorded battle-entry error`);
   }, { mapId, specId }, 180_000, `Battle entry ${mapId}/${specId}`);
-  await page.waitForFunction('window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.tanks.every(x => x.visual)', { timeout: 180_000 });
+  await page.waitForFunction('window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.player?.visual && window.__DEBUG.game.preBattleS <= 0 && window.__DEBUG.game.tanks.every(x => x.visual)', { timeout: 180_000 });
   await evaluateWithin(() => {
     const d = window.__DEBUG;
     d.shotMode = true;

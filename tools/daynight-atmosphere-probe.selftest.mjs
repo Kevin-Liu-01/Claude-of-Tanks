@@ -23,6 +23,20 @@ function load(name, bindings = {}) {
   return compileFunction(`return (${nodes[0].getText(tree)});`, Object.keys(bindings))(...Object.values(bindings));
 }
 
+// A swallowed battle-entry failure leaves Garage with an empty roster. That
+// empty array must never satisfy the staged battle's readiness barrier.
+{
+  const game = {phase: 'garage', player: null, tanks: [], preBattleS: 0};
+  const window = {__DEBUG: {game, beginSoloBattle: async () => {}}};
+  let waits = 0;
+  const stage = load('stage', {window,
+    evaluateWithin: async (fn, argument) => fn(argument),
+    page: {waitForFunction: async () => {waits++;}},
+  });
+  await assert.rejects(stage('winter'), /returned in garage without an active player/);
+  assert.equal(waits, 0, 'failed entry is rejected before a visual readiness wait');
+}
+
 function observerFixture() {
   let now = 0, nextTimer = 0;
   const timers = new Map(), window = {}, calls = [];
