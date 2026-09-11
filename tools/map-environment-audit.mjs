@@ -49,6 +49,7 @@ import {
   stageHorizonScopeCapture, restoreHorizonArcadeCapture,
 } from './environment-shot-camera.mjs';
 import { evaluateQuality } from './map-environment-quality.mjs';
+import { selectWaterShoreViews } from './water-shore-camera.mjs';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 
 const args = process.argv.slice(2);
@@ -101,7 +102,8 @@ const poseRoot = poseRootArg ? path.resolve(ROOT, poseRootArg)
 const harnessHash = createHash('sha256');
 for (const file of ['map-environment-audit.mjs', 'map-environment-acquisition.mjs',
   'pinned-scene-acquisition.mjs', 'world-residency-acquisition.mjs',
-  'render-frame-sampler.mjs', 'map-environment-quality.mjs', 'environment-shot-camera.mjs']) {
+  'render-frame-sampler.mjs', 'map-environment-quality.mjs', 'environment-shot-camera.mjs',
+  'water-shore-camera.mjs']) {
   harnessHash.update(file).update(fs.readFileSync(new URL(file, import.meta.url)));
 }
 const acquisition = {
@@ -756,9 +758,22 @@ async function captureMapShots(mapId) {
     await captureEvidenceShot(mapId, 'water-current', false);
     await captureEvidenceShot(mapId, 'water');
 
-    // Exercise the same allocation-free track-contact path used by moving
-    // vehicles. This verifies that liquid replaces dry dust with spray and
-    // wake marks without adding a water-only renderer family.
+    // Fresh per-body shoreline evidence supplements the archived camera.
+    // Numeric mask/sightline checks do not certify prop occlusion or art quality.
+    const shoreViews = await page.evaluate(selectWaterShoreViews);
+    fs.writeFileSync(path.join(dir, 'water-shores.contract.json'), `${JSON.stringify(shoreViews, null, 2)}\n`);
+    for (const view of shoreViews) {
+      if (view.unresolved) continue;
+      await page.evaluate(view => {
+        const D = window.__DEBUG;
+        D.camera.position.fromArray(view.position); D.camera.fov = view.fov;
+        D.camera.lookAt(...view.target); D.camera.updateProjectionMatrix(); D.camera.updateMatrixWorld(true);
+      }, view);
+      await captureEvidenceShot(mapId, `water-shore-${view.body}`, false);
+    }
+
+    // Synthetic FX-port exercise only. It does not prove moving vehicle contact,
+    // entry detection, flotation, or a tank's wake; those need a real battle run.
     await page.evaluate(() => {
       const D = window.__DEBUG;
       const world = D.world;

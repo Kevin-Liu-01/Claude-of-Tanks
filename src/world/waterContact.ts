@@ -25,11 +25,17 @@ const MARSH: Readonly<WaterContactProfile> = Object.freeze({
   kind: 'marsh', depthM: 0.43, color: 0x77714f, opacity: 0.58, roughness: 0.40,
   flowX: 0.002, flowZ: 0.003,
 });
+// Polder drainage lakes retain shallow muddy-bed physics, but their surface
+// needs a cooler reflection tint to remain distinct from the warm farm soil.
+const POLDER: Readonly<WaterContactProfile> = Object.freeze({
+  ...MARSH, color: 0x3d625b, opacity: 0.62, roughness: 0.30,
+});
 
 export function waterContactProfile(mapId: string): Readonly<WaterContactProfile> {
   switch (mapId) {
     case 'coastal': case 'saltwind': case 'fjord': return COAST;
-    case 'mangrove': case 'polders': return MARSH;
+    case 'mangrove': return MARSH;
+    case 'polders': return POLDER;
     case 'delta': case 'monsoon': case 'autumn': return RIVER;
     default: return LAKE;
   }

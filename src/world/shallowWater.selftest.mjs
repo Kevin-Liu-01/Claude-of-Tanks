@@ -32,7 +32,7 @@ function assertTriangleInteriors(surface, heightAt = surface.heightAt) {
   }
 }
 
-for (const [mapId, kind] of [['coastal', 'coast'], ['reservoir', 'lake'], ['delta', 'river'], ['mangrove', 'marsh']]) {
+for (const [mapId, kind] of [['coastal', 'coast'], ['reservoir', 'lake'], ['delta', 'river'], ['mangrove', 'marsh'], ['polders', 'marsh']]) {
   const profile = waterContactProfile(mapId);
   assert.equal(profile.kind, kind);
   assert.ok(profile.depthM >= 0.4 && profile.depthM <= 0.8, 'bounded wheel-depth wading, no hidden drowning rule');
