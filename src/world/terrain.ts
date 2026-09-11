@@ -2176,7 +2176,7 @@ float gSeaFoam; // maps r1: foam coverage this fragment (mattes the water gloss)
 // its U axis from the interpolated normal — on undulating cliff walls that
 // frame rotated per-fragment, dragging the sample coordinate back and forth
 // across the face (the melted-taffy smear on the desert mesas).
-vec2 gWallUVx; vec2 gWallUVz; float gWallW;
+vec2 gWallUVx; vec2 gWallUVz; vec2 gWallSigns; float gWallW;
 float gTileMix; // r8 anti-tiling: stochastic rotation-blend weight (set in splatCompute)
 float gCliffJ;  // r8: per-cliff jitter field (set with the wall basis)
 vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
@@ -2236,7 +2236,24 @@ vec4 groundNrm(sampler2D t, vec2 uv, float df, float mb) {
   vec4 sB = splatSamp(t, TILEROT * uv * 1.16 + vec2(0.37, 0.61), df, mb);
   vec2 nB = sB.xy * 2.0 - 1.0;
   sB.xy = vec2(0.7431 * nB.x + 0.6691 * nB.y, -0.6691 * nB.x + 0.7431 * nB.y) * 0.5 + 0.5;
+  // Packed detail uses world X,Z,Y, not the normal texture's unused blue.
+  // A horizontal projection has no vertical perturbation.
+  sA.z = 0.5; sB.z = 0.5;
   return mix(sA, sB, gTileMix);
+}
+// Each wall projection has a different horizontal tangent, but both V axes
+// point down world Y. Transform before blending: mixing encoded texture
+// normals first incorrectly sends vertical wall relief along world Z.
+vec3 wallNormalDelta(vec2 xNormal, vec2 zNormal) {
+  vec2 nx = xNormal * 2.0 - 1.0;
+  vec2 nz = zNormal * 2.0 - 1.0;
+  return vec3(-gWallSigns.y * nz.x * gWallW,
+    gWallSigns.x * nx.x * (1.0 - gWallW), -mix(nx.y, nz.y, gWallW));
+}
+vec4 wallNrm(sampler2D t, float sc, float df, float mb) {
+  vec4 sx = splatSamp(t, gWallUVx * sc, df, mb);
+  vec4 sz = splatSamp(t, gWallUVz * sc, df, mb);
+  return vec4(wallNormalDelta(sx.xy, sz.xy) * 0.5 + 0.5, mix(sx.a, sz.a, gWallW));
 }
 vec4 wallSamp(sampler2D t, float sc, float df, float mb) {
   return mix(splatSamp(t, gWallUVx * sc, df, mb), splatSamp(t, gWallUVz * sc, df, mb), gWallW);
@@ -2389,6 +2406,7 @@ void splatCompute() {
     float wSx = pow(abs(wn.x) + 1e-5, 6.0);
     float wSz = pow(abs(wn.z) + 1e-5, 6.0);
     gWallW = wSz / (wSx + wSz);
+    gWallSigns = sign(wn.xz);
     gWallUVx = vec2(wp.z * sign(wn.x), -wp.y);
     gWallUVz = vec2(-wp.x * sign(wn.z), -wp.y);
     // r8 per-cliff bed de-sync: the sandstone layer's bed sequence repeats
@@ -2432,7 +2450,7 @@ void splatCompute() {
   }
   if (triW > 0.003) {
     a = mix(a, wallSamp(uAlbG, 0.240, df, mipB), triW);
-    n = mix(n, wallSamp(uNrmG, 0.240, df, mipB), triW);
+    n = mix(n, wallNrm(uNrmG, 0.240, df, mipB), triW);
   }
   // dirt patches are an XZ-projected field — on slopes they compressed into
   // downslope smears ("dirt/grime streaks" critique); steep faces run clean
@@ -2450,7 +2468,7 @@ void splatCompute() {
     vec4 nR = groundNrm(uNrmR, uv * 0.155, df, mipB);
     if (triW > 0.003) {
       aR = mix(aR, wallSamp(uAlbR, 0.155, df, mipB), triW);
-      nR = mix(nR, wallSamp(uNrmR, 0.155, df, mipB), triW);
+      nR = mix(nR, wallNrm(uNrmR, 0.155, df, mipB), triW);
     }
     a = mix(a, aR, fR); n = mix(n, nR, fR);
   }
@@ -2459,7 +2477,7 @@ void splatCompute() {
   float n2Wall = wallNoiseG(0.0031, vec2(0.41, 0.13));
   if (steepW > 0.001) {
     vec4 aS = wallSamp(uAlbR, 0.155, df, mipB);
-    vec4 nS = wallSamp(uNrmR, 0.155, df, mipB);
+    vec4 nS = wallNrm(uNrmR, 0.155, df, mipB);
     a = mix(a, aS, steepW);
     n = mix(n, nS, steepW);
   }
@@ -2532,10 +2550,11 @@ void splatCompute() {
     // wall-plane sample takes over on steep faces (r5). Mix the SAMPLES, not
     // the coordinates: coordinate blending smeared diagonal fur across every
     // partially-steep slope.
-    vec3 dnRa = texture2D(uNrmR, uv * 0.041).xyz;
-    vec3 dnRb = wallTex(uNrmR, 0.041);
-    vec3 dnR = mix(dnRa, dnRb, steepW) * 2.0 - 1.0;
-    n.xy += dnR.xy * fR * 0.24 * dMid * (1.0 - fMs);
+    vec3 dnRa = vec3(texture2D(uNrmR, uv * 0.041).xy * 2.0 - 1.0, 0.0);
+    vec3 dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
+                              texture2D(uNrmR, gWallUVz * 0.041).xy);
+    vec3 dnR = mix(dnRa, dnRb, steepW);
+    n.xyz += dnR * fR * 0.24 * dMid * (1.0 - fMs);
   }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   // r4 terrain_environment: band start 0.24 -> 0.36 slope (~31 deg -> ~40 deg)
@@ -2587,10 +2606,13 @@ void splatCompute() {
       // maroon; value-only variation keeps the crag without the color drift
       float rrL = dot(rr.rgb, vec3(0.36, 0.42, 0.22));
       a.rgb = mix(a.rgb, a.rgb * (0.80 + rrL * 0.40), farRock * 0.45);
-      vec3 rn = mix(texture2D(uNrmR, uv * 0.019).xyz, wallTex(uNrmR, 0.019), steepW) * 2.0 - 1.0;
+      vec3 rnGround = vec3(texture2D(uNrmR, uv * 0.019).xy * 2.0 - 1.0, 0.0);
+      vec3 rnWall = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.019).xy,
+                                    texture2D(uNrmR, gWallUVz * 0.019).xy);
+      vec3 rn = mix(rnGround, rnWall, steepW);
       // 0.55 (r5, was 0.9): under a low sun the full-strength coarse normals
       // rendered far flanks as glittery fur instead of crag
-      n.xy += rn.xy * farRock * 0.22;
+      n.xyz += rn * farRock * 0.22;
     }
   }
   // wind-aligned sand ripples: anisotropic normal waves instead of dot noise.
@@ -2643,11 +2665,11 @@ void splatCompute() {
     if (sandFaceW > 0.01) {
       vec3 wg1 = texture2D(uNrmG, gWallUVx * 0.55).xyz;
       vec3 wg2 = texture2D(uNrmG, gWallUVz * 0.55).xyz;
-      vec3 wgn = mix(wg1, wg2, gWallW) * 2.0 - 1.0;
+      vec3 wgn = wallNormalDelta(wg1.xy, wg2.xy);
       // r7: fade 320 -> 560 m — the 300-500 m dune flanks lost every detail
       // pass at once and any residual shading isoline printed bare (part of
       // the "terracing" read); the wall-plane grain now carries those faces
-      n.xy += wgn.xy * 0.65 * sandFaceW * (1.0 - smoothstep(160.0, 560.0, effDist));
+      n.xyz += wgn * 0.65 * sandFaceW * (1.0 - smoothstep(160.0, 560.0, effDist));
       // slope-aligned ripple detail on the same faces: anisotropic waves in
       // the wall frame (V = world height, so crests run along the contour —
       // real wind ripples on a slip face) mask any residual banding
@@ -2784,6 +2806,7 @@ void splatCompute() {
       float paveCore = smoothstep(0.15, 0.24, mk.r + (n1hs - 0.5) * 0.025) * uRoadTex;
       vec4 pav = splatSamp(uAlbR, uv * 0.31, df, mipB);
       vec4 pnn = splatSamp(uNrmR, uv * 0.31, df, mipB);
+      pnn.z = 0.5;
       float pvar = texture2D(uNoise, uv * 0.037 + vec2(0.77, 0.19)).r; // NB: "patch" is a reserved word in GLSL ES
       // r6: 0.86+0.26 -> 0.72+0.22 — the near-white sett sheet under a blue
       // sky ambient read as a frozen canal; darker worn stone keeps the
@@ -3038,6 +3061,7 @@ void splatCompute() {
       vec2 uvG = groundChartUv(wp.xz);
       vec4 aG = splatSamp(uAlbG, uvG * 0.240, df, 0.0);
       vec4 nG = splatSamp(uNrmG, uvG * 0.240, df, 0.0);
+      nG.z = 0.5;
       nG.xy = groundChartNormalXZ(nG.xy) * 0.5 + 0.5;
       // Pigment breakup shares the same stationary chart.
       float n1G = texture2D(uNoise, uvG * 0.0117).r;
@@ -3118,7 +3142,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
   float dk = 0.9 * (1.0 - max(gSplatFar * 0.68, gSplatSteepAtt));
-  vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02), gN.z + dN.y * dk));
+  vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02) + dN.z * dk, gN.z + dN.y * dk));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
 `;
