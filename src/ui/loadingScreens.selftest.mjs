@@ -315,11 +315,16 @@ assert.doesNotMatch(openingWarmCode, /(?:\.getUniforms|getProgramParameter)\s*\(
   'opening combat warm must not force ANGLE program-completion queries');
 assert.match(openingWarmBody, /createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
   'fallback opening warm must still bind FX through real isolated renders');
+const coveredSubmissionStart = soloDeploymentSource.indexOf(
+  'let combatFxSubmission: CombatFxSubmission | null = null;',
+);
+const coveredSubmissionEnd = soloDeploymentSource.indexOf(
+  'trace.deploymentCompileMs', coveredSubmissionStart,
+);
+assert.ok(coveredSubmissionStart >= 0 && coveredSubmissionEnd > coveredSubmissionStart,
+  'covered submission source boundaries must exist in execution order');
 const coveredSubmissionBody = soloDeploymentSource.slice(
-  soloDeploymentSource.indexOf(
-    'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
-  ),
-  soloDeploymentSource.indexOf('trace.deploymentCompileMs'),
+  coveredSubmissionStart, coveredSubmissionEnd,
 );
 assert.match(coveredSubmissionBody,
   /forwardProgramWarm\.compileSceneSteps\(\{[\s\S]*sliceMs: 8,[\s\S]*await guardedCoveredYield\(true\);[\s\S]*requireCurrent\(generation\);[\s\S]*createIsolatedForwardWarmBatches\(\{[\s\S]*root: fx\.group/,
@@ -386,14 +391,26 @@ assert.ok(deferredEnemyAt >= 0
 assert.match(combatWarmCompositionSource,
   /warmBattleTerrainTiles:\s*\(yieldForBudget\)\s*=>\s*battleWarm\.warmBattleTerrainTiles\(\{[\s\S]{0,220}primePresentation:\s*false/,
   'the composition adapter must retain non-presenting terrain warm semantics');
-const coveredFxStart = soloDeploymentSource.indexOf(
-  'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
+const coveredFxEnd = soloDeploymentSource.indexOf(
+  "battleLoad.progress(0.969, 'Priming deployment shadows')", coveredSubmissionStart,
 );
-const coveredFxBody = soloDeploymentSource.slice(coveredFxStart,
-  soloDeploymentSource.indexOf("battleLoad.progress(0.969, 'Priming deployment shadows')", coveredFxStart));
-assert.match(coveredFxBody,
-  /combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*setDestructionWarmed\(true\);/,
-  'a successful covered FX bind must prevent duplicate countdown staging');
+assert.ok(coveredFxEnd > coveredSubmissionStart, 'covered FX block ends before shadow priming');
+const coveredFxBody = soloDeploymentSource.slice(coveredSubmissionStart, coveredFxEnd);
+function assertCompletedFxRetirement(source) {
+  assert.match(source,
+    /fxReceipt\.completed = fxCohortsCompleted && combatFxSubmission\?\.staged === true;/,
+    'all covered FX cohorts and staged submission must complete before retirement');
+  assert.match(source,
+    /if \(fxReceipt\.completed\) \{\s*combatWarm\.markOpeningReady\(\);\s*setDestructionWarmed\(true\);/,
+    'only successful covered FX binding may prevent duplicate countdown staging');
+}
+assertCompletedFxRetirement(coveredFxBody);
+assert.throws(() => assertCompletedFxRetirement(coveredFxBody.replace(
+  'fxCohortsCompleted && combatFxSubmission?.staged === true', 'true',
+)), assert.AssertionError, 'unconditional completion must fail');
+assert.throws(() => assertCompletedFxRetirement(coveredFxBody.replace(
+  'if (fxReceipt.completed)', 'if (true)',
+)), assert.AssertionError, 'unconditional retirement must fail');
 // Execute the actual owner block: callback names may change when lifetime
 // guards are added, but shadow/world/post/scene-health completion must still
 // precede reveal. The runtime's separate test covers optional-warm failures;

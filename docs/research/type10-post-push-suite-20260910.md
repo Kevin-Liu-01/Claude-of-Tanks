@@ -30,3 +30,29 @@ exclusive full-fleet geometry/render lease. Running them directly completed
 in approximately 0.53 seconds; no foreign job or queue artifact was removed.
 The repair is a separate verified checkpoint; it does not certify
 the unfinished complete suite or the separate Challenger geometry draft.
+
+## Remaining-phase result at `1a28487e6`
+
+The separately started `core && post` continuation exited 1. The runner
+reported core progress through 621/627 and identified
+`src/ui/loadingScreens.selftest.mjs` as failed; post did not execute.
+This was remaining-phase coverage on a newer revision, not an all-phase
+pass on the original Type 10 commit. The terminal output was truncated;
+do not infer a precise total of passing checks from the progress counter.
+
+A direct 0.13-second reproduction confirmed the failure at line 324:
+the source slice for covered battle-entry program/FX staging is empty after
+the readiness refactor. Evidence is saved in
+`.qa-dev/durable-final-20260910/loading-screens-failure.log`.
+The repaired test now locates the nullable submission declaration and validates
+both source boundaries before slicing. Compiler batching and yield-order
+assertions remain intact. A second stale slice now requires completed cohorts
+AND staged submission, followed by retirement only inside the completed guard;
+two negative controls reject unconditional completion or retirement.
+
+The repaired loading-screen test passes in under one second, alongside
+soloBattleFxReadiness (five behavior scenarios), soloBattleDeploymentRuntime
+and lazyRuntime. Evidence: `loading-screens-retry.log` in the same scratch
+directory plus the adjacent tests' terminal results. No production UI or tank
+geometry changed. The suite remains non-green until outstanding checks and
+post complete; this targeted repair is not a fresh full-suite pass.
