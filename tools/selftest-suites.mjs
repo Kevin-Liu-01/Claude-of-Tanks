@@ -756,6 +756,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/challenger2Geometry.selftest.mjs',
     'src/vehicles/profiles/challenger2Family.selftest.mjs',
     'src/vehicles/profiles/challenger3HullClosure.selftest.mjs',
+    'src/vehicles/profiles/challenger3XRearTurret.selftest.mjs',
     'src/vehicles/battleDetailLod.selftest.mjs',
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
     'src/vehicles/recoilRig.selftest.mjs',

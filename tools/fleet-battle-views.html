@@ -36,11 +36,11 @@ scene.add(fill);
 const camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 800);
 const target = new THREE.Vector3(0, 1.1, 0);
 
-window.__RENDER_BATTLE_VIEW = async (id, distanceM) => {
+window.__RENDER_BATTLE_VIEW = async (id, distanceM, options = {}) => {
   const visual = createTank(id, { renderer, scene }, {
     camoSeed: 4242,
-    quality: 'ai',
-    geometryQuality: 'low',
+    quality: options.geometryQuality === 'high' ? 'high' : 'ai',
+    geometryQuality: options.geometryQuality || 'low',
     batchStatic: true,
     battleDetailLod: true,
     decor: true,
@@ -50,6 +50,10 @@ window.__RENDER_BATTLE_VIEW = async (id, distanceM) => {
   visual.syncFromState(state, 0, distanceM);
   scene.add(visual.root);
   camera.position.set(-distanceM * 0.16, Math.min(5.5, 2.8 + distanceM * 0.018), -distanceM);
+  if (options.camera) camera.position.fromArray(options.camera);
+  target.fromArray(options.target || [0, 1.1, 0]);
+  camera.fov = options.fov || 50;
+  camera.updateProjectionMatrix();
   camera.lookAt(target);
   camera.updateMatrixWorld(true);
   renderer.render(scene, camera);
