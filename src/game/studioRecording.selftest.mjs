@@ -34,12 +34,12 @@ function fixture() {
     const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}});
     ${functions}
     ${tickFunction}
-    return {recordVideo,stopRecording,frame:()=>tick(1/60),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;}};
+    return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;}};
   `);
   const api=make({MediaRecorder:Recorder,renderer:{domElement:{captureStream(){const t=track();return {getTracks:()=>[t],getVideoTracks:()=>[t]};}}},
     performance:{now:()=>now},setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},
     document:{createElement(){return {click(){downloads++;}}}},post:{render(){if(throwAt==='render')throw Error('render');}}});
-  return {...api,encoders,tracks,timers,throwAt:x=>{throwAt=x;},tick:()=>{for(const fn of [...timers.values()])fn();},
+  return {...api,frame:(dt=1/60,wall=dt)=>{now+=wall*1000;api.frame(dt,wall);},encoders,tracks,timers,throwAt:x=>{throwAt=x;},tick:()=>{for(const fn of [...timers.values()])fn();},
     now:x=>{now=x;},downloads:()=>downloads,chunkAfter:n=>{chunkAfter=n;},submitted:()=>submitted};
 }
 for(const stage of ['constructor','start','render','requestFrame']) {
@@ -83,4 +83,13 @@ for(const stage of ['constructor','start','render','requestFrame']) {
   f.throwAt('');const retry=f.recordVideo({download:false}),recorder=f.encoders.at(-1);
   recorder.chunk();f.clock(15000);f.stopRecording();recorder.emit('stop');await retry;
 }
-console.log('studioRecording.selftest: cold multi-frame startup, mid-priming failure, retry, timeout, late events, ownership and cancellation pass');
+{
+  const f=fixture(),promise=f.recordVideo({download:false}),recorder=f.encoders[0];
+  f.now(800);recorder.chunk(); // Encoder lead-in is not authored playback.
+  f.frame(.1,.8);assert.equal(f.clockValue(),800,'slow frame must retain actual encoded time');
+  f.frame(.1,.35);assert.equal(f.clockValue(),1150,'capped interactive delta cannot slow the movie');
+  f.frame(.1,20);assert.equal(f.clockValue(),15000,'catch-up remains bounded by the authored end');
+  recorder.emit('stop');const result=await promise;
+  assert.equal(result.durationMs,15000);assert.equal(result.leadInMs,800);
+}
+console.log('studioRecording.selftest: cold startup, recorded wall clock, failure, retry, timeout, late events, ownership and cancellation pass');

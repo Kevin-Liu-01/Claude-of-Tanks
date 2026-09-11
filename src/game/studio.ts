@@ -3201,7 +3201,17 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const wdt = animating ? dt : 0;
     camera.getWorldDirection(_fwd);
     if (w) w.update(wdt, camera.position, _fwd, null);
-    if (animating) advanceTimeline(dt * playbackScale * 1000);
+    if (animating) {
+      // MediaRecorder timestamps follow elapsed wall time. The interactive
+      // frame delta is capped at 100 ms, so using it here stretches recordings
+      // whenever a costly frame exceeds that cap. Replay the bounded timeline
+      // through the elapsed recording instant, retaining its fixed support steps.
+      const advanceMs = recording && !recording.awaitingFirstChunk
+        ? Math.max(0, Math.min(storyboard.durationMs - clockMs,
+          performance.now() - recording.startedAt - recording.leadInMs - clockMs))
+        : dt * playbackScale * 1000;
+      advanceTimeline(advanceMs);
+    }
     else stepFx(0);
     if (camera.fov !== lastFov) {
       lighting.updateFrustums();

@@ -32,3 +32,18 @@ performance ceilings remain separate requirements.
 The promo capture exposed a cold-encoder deadlock: after one dirty opening frame, paused Studio rendering stopped while playback waited for captured bytes. The live tick now keeps submitting the held zero-time composition until the first nonempty chunk. It preserves the10second timeout and routes a later requestFrame failure through the same owning-session cleanup as initial startup failures.
 
 The actual recording and tick test covers a recorder that needs five frames, cancellation, timeout, later priming failure, stale events and retry. Latest typecheck and public build pass. Native promo UI r3 records Studio successfully and completes Garage/battle/Gallery/Docs capture at `.qa-dev/launch/promo-current/ui-r3`; optional local-preview analytics failures remain separately recorded. The HUD capture does not establish a target kill.
+
+## Recorder time after stalled frames
+
+The20-scene native run exposed a15.838s file for the15s scene12 timeline.
+The interactive delta cap discarded elapsed time while MediaRecorder kept
+wall-clock timestamps. During recording only, timeline advancement now catches
+up to the elapsed recording instant, excluding the measured encoder lead-in
+and bounded at the storyboard end. Existing ordered effects and60Hz actor
+support steps are retained. Normal interactive playback remains unchanged.
+
+Actual-method recording/access tests pass, including800ms encoder startup,
+slow frames, endpoint clamping, cancellation and retry. Independent source
+review passes. Native scene12 rerun passes the original duration gate in
+`.qa-dev/launch/studio-wall-clock-native-r1.log`. The full20-scene rerun remains
+separate. Correct duration cannot recover frames lost to a browser stall.
