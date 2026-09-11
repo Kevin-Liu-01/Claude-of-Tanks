@@ -10,6 +10,7 @@ import {
   clearActorTrack,
   sampleCameraRail,
   sampleActorTrack,
+  sampleCameraCues,
 } from './studioTimeline.ts';
 
 assert.equal(clampStudioDuration(-4), STUDIO_MIN_DURATION_MS);
@@ -93,4 +94,43 @@ assert.equal(cameraFrame.x, 0);
 sampleCameraRail(cutRail, 4_000, cameraFrame);
 assert.equal(cameraFrame.x, 20);
 
-console.log('studioTimeline.selftest: duration, normalization, rails, cuts, and actor tracks passed');
+const cinematic = normalizeStoryboard({
+  version: 2, durationMs: 3000,
+  shots: [
+    { tMs: 0, pos: [0, 0, 0], handleOut: [0, 6, 0] },
+    { tMs: 3000, pos: [6, 0, 0], handleIn: [6, 6, 0], transition: 'bezier' },
+  ],
+  cameraCues: [{ tMs: 500, durationMs: 1000, amplitudeM: 0.5,
+    rollDeg: 3, fovKickDeg: 4, frequencyHz: 12, seed: 42 }],
+  actorTracks: [{ actor: 'turn', keys: [
+    { tMs: 0, pos: [0, 0], facingDeg: 0, turretDeg: 90 },
+    { tMs: 3000, pos: [6, 6], facingDeg: 90, turretDeg: 0, transition: 'drive' },
+  ] }],
+});
+assert.deepEqual(normalizeStoryboard(JSON.parse(JSON.stringify(cinematic))), cinematic,
+  'v2 round trips handles, cues and drive transitions');
+assert.equal(normalizeStoryboard({ version: 1 }).version, 2, 'legacy boards migrate without losing old behavior');
+sampleCameraRail(cinematic.shots, 1500, cameraFrame);
+assert.deepEqual([cameraFrame.x, cameraFrame.y, cameraFrame.z], [3, 4.5, 0],
+  'Bezier control handles bend the path away from its straight chord');
+const turning = cinematic.actorTracks[0].keys;
+for (const t of [150, 750, 1500, 2250, 2850]) {
+  const before = {}, after = {}, current = {};
+  sampleActorTrack(turning, t - 0.1, before);
+  sampleActorTrack(turning, t + 0.1, after);
+  sampleActorTrack(turning, t, current);
+  const travel = Math.atan2(after.x - before.x, after.z - before.z) * 180 / Math.PI;
+  assert(Math.abs(travel - current.facingDeg) < 0.001, 'hull follows actual curved travel without side slip');
+  assert(Math.abs(current.facingDeg + current.turretDeg - 90) < 1e-8,
+    'turret holds its world bearing while the hull turns');
+}
+const cueFrame = {}, repeat = {};
+assert.equal(sampleCameraCues(cinematic.cameraCues, 400, cueFrame), false);
+sampleCameraCues(cinematic.cameraCues, 750, cueFrame);
+sampleCameraCues(cinematic.cameraCues, 1200, repeat);
+sampleCameraCues(cinematic.cameraCues, 750, repeat);
+assert.deepEqual(repeat, cueFrame, 'scrubbing back yields the same deterministic cue');
+assert.equal(cueFrame.fovKickDeg, 2.25);
+assert.equal(sampleCameraCues(cinematic.cameraCues, 1600, cueFrame), false);
+assert(Object.values(cueFrame).every((v) => v === 0), 'finished cues reset all reused scratch values');
+console.log('studioTimeline.selftest: legacy rails/cuts, v2 round trips, Bezier rails, tangent-aligned drive and deterministic cues passed');
