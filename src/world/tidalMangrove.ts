@@ -20,6 +20,8 @@ interface TidalReceipt {
   unsafe: number;
   noDonor: number;
   treeIndices: number[];
+  /** Stable pre-clearance donor identity, when road filtering compacts trees. */
+  sourceTreeIndices?: number[];
 }
 
 /** Reshape the existing closed six-sided/two-segment cone, never add a part. */

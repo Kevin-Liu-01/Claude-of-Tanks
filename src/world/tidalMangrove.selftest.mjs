@@ -35,10 +35,14 @@ registerHooks({ load(href, context, next) {
   let source = result.source.toString().replace('export function mulberry32(a: number): RandomSource',
     'function originalMulberry32(a: number): RandomSource');
   assert.notEqual(source, result.source.toString(), 'observe actual seeded RNG owner');
+  assert.equal(source.split('  placeTidalTrees();').length, 2);
+  source = source.replace('  placeTidalTrees();', `  placeTidalTrees();
+  const preRoad = { trees: trees.length, obstacles: treeObstacles.length,
+    donorIndices: group.userData.tidalMangroves?.flatMap(r => [...r.treeIndices]) };`);
   const marker = '  const _whiteScratch = new THREE.Color(1, 1, 1);';
   assert.ok(source.includes(marker));
   source = source.replace(marker,
-    `globalThis.__tidalCapture({ trees, treeGeo, treeGeoFar, treeObstacles, concealers, group });\n${marker}`);
+    `globalThis.__tidalCapture({ preRoad, trees, treeGeo, treeGeoFar, treeObstacles, concealers, group });\n${marker}`);
   source += `\nexport function mulberry32(seed: number): RandomSource {
     const next = originalMulberry32(seed), row = { seed, count: 0, next };
     globalThis.__tidalRng.push(row); return () => { row.count++; return next(); };
@@ -534,9 +538,10 @@ for (const seed of [1337, 2025, 7719]) {
   const before = build(field, control), after = build(field, mangrove);
   console.log(seed, JSON.stringify(after.group.userData.tidalMangroves.map(({ treeIndices, ...r }) => r)));
   assert.equal(after.trees.length, before.trees.length);
-  assert.equal(after.trees.length, 4649);
+  assert.equal(after.preRoad.trees, 4649, 'original admission before road clearance');
+  assert.equal(after.trees.length, after.preRoad.trees - after.group.userData.roadPlacementClearance.rejectedTrees);
   assert.equal(after.treeObstacles.length, before.treeObstacles.length);
-  assert.equal(after.treeObstacles.length, 4364);
+  assert.equal(after.preRoad.obstacles, 4364, 'original obstacle admission before road clearance');
   assert.equal(after.concealers.length, before.concealers.length);
   assert.deepEqual(after.rng, before.rng, 'actual entire production RNG call counts and tails unchanged');
   assert.deepEqual(after.geometry.map(r => [r.id, r.budget]), before.geometry.map(r => [r.id, r.budget]));
@@ -545,7 +550,7 @@ for (const seed of [1337, 2025, 7719]) {
   });
   const receipts = after.group.userData.tidalMangroves;
   assert.equal(receipts.reduce((n, r) => n + r.accepted, 0), 128, 'all 128 explicitly authored tidal sites must actually place');
-  assert.equal(createHash('sha256').update(JSON.stringify(receipts.flatMap(r => r.treeIndices))).digest('hex'),
+  assert.equal(createHash('sha256').update(JSON.stringify(after.preRoad.donorIndices)).digest('hex'),
     'bf92040dbd968a0b49401e37bdf8a07826f7dd06aba60dd86bf9b7c58b2b8c94',
     'reuse the exact V31 donor identities/order; thicket composition does not take another set of dry trees');
   for (const r of receipts) { assert.equal(r.unsafe, 0); assert.equal(r.noDonor, 0); }

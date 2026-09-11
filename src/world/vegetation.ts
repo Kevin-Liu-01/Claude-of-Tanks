@@ -4219,7 +4219,7 @@ function* vegetationBuildSteps(
     rootDecalOrdinals=new Map(trees.map((tree,index)=>[tree,index]));
     group.userData.roadPlacementClearance={rejectedTrees:excludeVegetation(
       trees,treeObstacles,concealers,tree=>roadBlockedRimTrees.has(tree)
-        || newlyUnsafeRoadSite(tree.x,tree.z,9,.82))};
+        || newlyUnsafeRoadSite(tree.x,tree.z,9,.82),group.userData.tidalMangroves)};
   }
   roadBlockedRimTrees.clear();
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing

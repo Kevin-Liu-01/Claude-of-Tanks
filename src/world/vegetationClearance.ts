@@ -63,9 +63,17 @@ export function excludeStructureVegetation<T extends { x: number; z: number },
     tree=>overlapsStructureClearance(sites,tree.x,tree.z,radiusOf(tree)));
 }
 
+interface TreeIndexReceipt {
+  treeIndices: number[];
+  sourceTreeIndices?: number[];
+  accepted: number;
+  unsafe: number;
+}
+
 /** Keep record ordering and collision/concealment pairing after authored filters. */
 export function excludeVegetation<T,O extends {treeIdx:number},C>(
   trees:T[],obstacles:O[],concealers:C[],reject:(tree:T)=>boolean,
+  receipts?: TreeIndexReceipt[],
 ): number {
   if (obstacles.length !== concealers.length) {
     throw new Error('Tree clearance must run before non-tree concealment is added');
@@ -93,5 +101,16 @@ export function excludeVegetation<T,O extends {treeIdx:number},C>(
     concealers[keptObstacles++] = concealers[i];
   }
   obstacles.length = concealers.length = keptObstacles;
+  for (const receipt of receipts ?? []) {
+    receipt.sourceTreeIndices ??= receipt.treeIndices.slice();
+    let count = 0;
+    for (const previous of receipt.treeIndices) {
+      const current = remap[previous];
+      if (current >= 0) receipt.treeIndices[count++] = current;
+    }
+    receipt.unsafe += receipt.treeIndices.length - count;
+    receipt.accepted = count;
+    receipt.treeIndices.length = count;
+  }
   return originalCount - kept;
 }
