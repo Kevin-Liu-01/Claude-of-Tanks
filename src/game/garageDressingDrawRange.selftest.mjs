@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
+import {CSM} from 'three/examples/jsm/csm/CSM.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
@@ -247,10 +248,27 @@ for (const [caster, fragmented] of [[true, false], [false, true]]) {
     const mesh=new THREE.Mesh(geometry.clone(),material);mesh.position.set(i*4,0,-10);owner.add(mesh);
     mesh.updateMatrix();reference.push(geometry.clone().applyMatrix4(mesh.matrix));
   }
-  optimizeGarageDressing(root,{staticDisplayOwners:[owner]});
+  const camera=new THREE.PerspectiveCamera(40,1,.1,400);
+  const csm=new CSM({camera,parent:new THREE.Scene(),cascades:3,maxFar:1000});
+  csm.setupMaterial(material);
+  const originalShader={uniforms:{},vertexShader:'void main() {}'};
+  material.onBeforeCompile(originalShader,null);
+  optimizeGarageDressing(root,{staticDisplayOwners:[owner],bakedMaterialLifecycle:{
+    setup:m=>csm.setupMaterial(m),release:m=>{csm.shaders.delete(m);},
+  }});
   const batch=owner.getObjectByName('workshop_display_merge_1');
   assert.ok(batch.isBatchedMesh && batch.perObjectFrustumCulled);
   assert.equal(batch.sortObjects,false,'original palette piece order retained');
+  const privateShader={uniforms:{},vertexShader:'void main() {}'};
+  batch.material.onBeforeCompile(privateShader,null);
+  assert.equal(csm.shaders.size,2);
+  assert.strictEqual(csm.shaders.get(material),originalShader);
+  assert.strictEqual(csm.shaders.get(batch.material),privateShader);
+  camera.far=180;camera.near=.2;csm.updateFrustums();
+  for(const shader of [originalShader,privateShader]) {
+    assert.equal(shader.uniforms.shadowFar.value,180);
+    assert.equal(shader.uniforms.cameraNear.value,.2);
+  }
   let offset=0;
   for(const source of reference) {
     const actual=batch.geometry.getAttribute('position').array;
@@ -263,6 +281,7 @@ for (const [caster, fragmented] of [[true, false], [false, true]]) {
   resources.forEach((resource,i)=>resource.addEventListener('dispose',()=>counts[i]++));
   for(let repeat=0;repeat<2;repeat++)for(const resource of root.userData.optimizationDisposables)resource.dispose();
   assert.deepEqual(counts,[1,1,1,1],'geometry, native control textures and private baked material release exactly once');
-  material.dispose();
+  assert.equal(csm.shaders.size,1);assert.strictEqual(csm.shaders.get(material),originalShader);
+  csm.dispose();csm.remove();geometry.dispose();material.dispose();
 }
 console.log('garageDressingDrawRange.selftest: exact buffers, camera/owner/edge parity, native counts, instance-prefix, native clutter ownership and production-finally restoration pass');

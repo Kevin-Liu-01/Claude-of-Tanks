@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { installStaticDrawRange, installStaticInstanceRange, type StaticDrawRun } from '../engine/staticDrawRange.ts';
 
+interface BakedMaterialLifecycle {
+  setup(material: THREE.Material): void;
+  release(material: THREE.Material): void;
+}
+
 export interface GarageDressingOptimizationOptions {
   /**
    * World-space bounding-sphere radius below which a static fitting no longer
@@ -14,6 +19,8 @@ export interface GarageDressingOptimizationOptions {
   staticDisplayOwners?: readonly THREE.Object3D[];
   /** Detached alternate layouts that still own shared geometry resources. */
   additionalResourceRoots?: readonly THREE.Object3D[];
+  /** Register private baked materials with the live shadow owner. */
+  bakedMaterialLifecycle?: BakedMaterialLifecycle;
 }
 
 export interface GarageDressingOptimizationReceipt {
@@ -398,6 +405,7 @@ function mergeStaticDisplayBatch(
   owner: THREE.Object3D,
   batch: StaticMergeBatch,
   mergeIndex: number,
+  materialLifecycle?: BakedMaterialLifecycle,
 ): MergedDisplayBatch | null {
   if (batch.meshes.length < 2) return null;
   const elementsMerged = displayBatchElementCount(batch);
@@ -412,7 +420,7 @@ function mergeStaticDisplayBatch(
   // A widely scattered clutter palette needs independent culling of its
   // pieces. Keep the same baked vertex arithmetic and original draw order;
   // a single first-to-last range cannot omit gaps between visible pieces.
-  const nativeClutterBatch = owner.name === 'garage_verdant_interior_clutter'
+  const nativeClutterBatch = !!materialLifecycle && owner.name === 'garage_verdant_interior_clutter'
     && !batch.castShadow && batch.frustumCulled && elementsMerged >= 100_000
     && batch.material.type === 'MeshStandardMaterial';
   let batched: THREE.BatchedMesh | null = null;
@@ -423,12 +431,14 @@ function mergeStaticDisplayBatch(
     // identity batch-matrix operations: their extra normal arithmetic can
     // change the last framebuffer bit even with an identity matrix.
     const bakedMaterial=batch.material.clone();
-    const beforeCompile=batch.material.onBeforeCompile;
+    materialLifecycle!.setup(bakedMaterial);
+    const beforeCompile=bakedMaterial.onBeforeCompile;
+    const programKey=bakedMaterial.customProgramCacheKey();
     bakedMaterial.onBeforeCompile=(shader,renderer)=>{
       beforeCompile.call(bakedMaterial,shader,renderer);
       shader.vertexShader='#undef USE_BATCHING\n'+shader.vertexShader;
     };
-    bakedMaterial.customProgramCacheKey=()=>batch.material.customProgramCacheKey()+':immutable-baked-batch-r1';
+    bakedMaterial.customProgramCacheKey=()=>programKey+':immutable-baked-batch-r1';
     batched=new THREE.BatchedMesh(transformed.length,vertices,elementsMerged,bakedMaterial);
     batched.sortObjects=false;
     batched.perObjectFrustumCulled=true;
@@ -465,6 +475,7 @@ function mergeStaticDisplayBatch(
       if(disposed)return;
       disposed=true;
       ownedBatch.dispose();
+      materialLifecycle!.release(ownedBatch.material as THREE.Material);
       (ownedBatch.material as THREE.Material).dispose();
     }}} : {}),
     sourceGeometries,
@@ -476,6 +487,7 @@ function mergeStaticDisplayBatch(
 function mergeStaticDisplayOwner(
   owner: THREE.Object3D,
   firstMergeIndex: number,
+  materialLifecycle?: BakedMaterialLifecycle,
 ): MergedDisplayOwner {
   const byMaterial = collectStaticDisplayBatches(owner);
   const sourceGeometries = new Set<THREE.BufferGeometry>();
@@ -490,6 +502,7 @@ function mergeStaticDisplayOwner(
         owner,
         batch,
         firstMergeIndex + mergeBatches,
+        materialLifecycle,
       );
       if (!merged) continue;
       for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
@@ -529,6 +542,7 @@ function pruneEmptyDisplayGroups(owner: THREE.Object3D): void {
 function mergeStaticDisplayOwners(
   owners: readonly THREE.Object3D[],
   generated: TrackedGeometry[],
+  materialLifecycle?: BakedMaterialLifecycle,
 ): StaticMergeResult {
   let meshesMerged = 0;
   let mergeBatches = 0;
@@ -536,7 +550,7 @@ function mergeStaticDisplayOwners(
   const sourceGeometries = new Set<THREE.BufferGeometry>();
 
   for (const owner of new Set(owners)) {
-    const merged = mergeStaticDisplayOwner(owner, mergeBatches + 1);
+    const merged = mergeStaticDisplayOwner(owner, mergeBatches + 1, materialLifecycle);
     for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
     generated.push(...merged.generatedGeometries);
     meshesMerged += merged.meshesMerged;
@@ -599,6 +613,7 @@ export function optimizeGarageDressing(
     minimumShadowRadiusM = 0.4,
     staticDisplayOwners = [],
     additionalResourceRoots = [],
+    bakedMaterialLifecycle,
   }: GarageDressingOptimizationOptions = {},
 ): GarageDressingOptimizationReceipt {
   const cutoff = Math.max(0, minimumShadowRadiusM);
@@ -630,7 +645,7 @@ export function optimizeGarageDressing(
   const instancing = instanceStaticWorkshopProps(root);
   const merging = mergeStaticWorkshopProps(root);
   const generated = root.userData.optimizationDisposables ||= [];
-  const displayMerging = mergeStaticDisplayOwners(staticDisplayOwners, generated);
+  const displayMerging = mergeStaticDisplayOwners(staticDisplayOwners, generated, bakedMaterialLifecycle);
   for (const owner of staticDisplayOwners) owner.traverse(object => {
     if (object instanceof THREE.InstancedMesh) installStaticInstanceRange(object);
   });
