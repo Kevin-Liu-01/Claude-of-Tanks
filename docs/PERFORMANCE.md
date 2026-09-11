@@ -46,6 +46,25 @@ per-ID cost attribution, reusable quality-aware primitives and real cold/warm/
 rapid-switch measurements. That backlog is open; it is not an assertion that
 triangles alone explain the latency or that fleet optimization has passed.
 
+## Build-local procedural plaster relief
+
+The second and third procedural plaster palettes retain independent albedo
+textures and materials, but share their identical 256² normal and packed
+AO/roughness textures within one props build. The primary plaster remains
+exclusive because sourced building images replace its backing textures in
+place. No cache survives its world owner, and retained-material disposal
+deduplicates the shared pair even when one palette has no geometry.
+
+`node src/world/plasterSurfaceSharing.selftest.mjs` requires the pinned native
+Canvas rasterizer and compares exact pixels and material/shader state with a
+frozen pre-sharing painter across seeds, tones and anisotropy settings. It also
+checks replacement isolation, empty-bucket ownership and repeated GPU
+suspension/final eviction. Construction removes two textures and 131,072 pixels
+(524,288 base RGBA bytes) per props build without changing geometry or palette
+variety. Scene/native residency savings depend on both palettes being attached
+and uploaded; this allocation proof is not a browser timing or resource-gate
+pass, and does not resolve the other recorded resource-budget excesses.
+
 ## Boot and route isolation
 
 The game entry, public home page, and public docs are separate Vite entries.

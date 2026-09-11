@@ -68,6 +68,8 @@ function recordProps(props) {
   return {
     materials: materials.size, textures: textures.size,
     facadeKeys: facades.map(mesh => mesh.material.customProgramCacheKey()),
+    facadeTextures: Object.fromEntries(['map', 'normalMap', 'roughnessMap'].map(slot =>
+      [slot, new Set(facades.map(mesh => mesh.material[slot])).size])),
     facadeAttributes, facadeVertexColors: facades.map(mesh => mesh.material.vertexColors),
     otherMeshes: meshes.filter(mesh => !facades.includes(mesh)).map(recordGeometry),
     physical: Object.fromEntries(physicalKeys.map(key => [key, hash(JSON.stringify(props[key]))])),
@@ -144,6 +146,10 @@ if (process.argv[2] === '--fixture') {
   assert.ok(control.rng.length > 5 && control.rng.some(row => row.count > 1000));
   assert.deepEqual(folded.rng, control.rng, 'every production RNG stream and subsequent draws are unchanged');
   assert.equal(control.materials, 21); assert.equal(folded.materials, 20);
-  assert.equal(control.textures, 35); assert.equal(folded.textures, 32);
+  // The two procedural variants now share identical relief. Folding Delta's
+  // third pigment removes only its albedo; the shared normal/surface stay live.
+  assert.deepEqual(control.facadeTextures, { map: 2, normalMap: 1, roughnessMap: 1 });
+  assert.deepEqual(folded.facadeTextures, { map: 1, normalMap: 1, roughnessMap: 1 });
+  assert.equal(control.textures, 33); assert.equal(folded.textures, 32);
   console.log('deltaPlasterPalette.selftest: actual production arrays/physics/RNG preserved; Delta reuses two plaster families; other29 maps unchanged');
 }
