@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { revealMenuSelectOption } from './menuSelectScroll.ts';
 /**
  * Battle-mode picker and private/LAN lobby presentation.
  *
@@ -467,8 +468,7 @@ function bindMenuSelect(
     trigger.setAttribute('aria-expanded', 'true');
     positionList();
     const option = options[Math.max(0, Math.min(options.length - 1, index))];
-    option?.focus({ preventScroll: true });
-    option?.scrollIntoView({ block: 'nearest' });
+    if (option) revealMenuSelectOption(list, option);
   }
 
   Object.defineProperty(control, 'value', {
@@ -526,7 +526,7 @@ function bindMenuSelect(
         return;
       } else return;
       event.preventDefault();
-      options[nextIndex].focus();
+      revealMenuSelectOption(list, options[nextIndex]);
     });
   });
 
