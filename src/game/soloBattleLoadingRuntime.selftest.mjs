@@ -301,6 +301,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
   let generation = 0, coverUpdates = 0;
   const camera = new PerspectiveCamera();
   const scene = new Scene();
+  scene.add(fxGroup);
   const requiredWorld = {
     ...world,
     update() {
@@ -313,12 +314,20 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
   game.tanks[0].team = 'player';
   game.tanks[1].team = 'enemy';
   const prepareRevealCamera = () => { camera.position.set(20, 6, -0.3); events.push('reveal:camera'); };
+  const fx = { group: fxGroup };
+  const gl = { isContextLost: () => false };
+  const warmRender = Object.assign(() => {}, { *prepareProgramsSteps() {
+    return { status: 'incomplete', pending: null, reason: 'not-requested' };
+  } });
   const deployment = createSoloBattleDeploymentRuntime({
     game, scene, camera, battleLoad: loadingOptions.battleLoad,
+    renderer: { info: {}, getContext: () => gl },
     battleWarm: {
       warmBattleTerrainTiles: async () => {},
       primeOpeningTerrainPresentation,
       stageCombatFxProgramSubmission: async () => {
+        assert.equal(fxGroup.parent, scene, 'the composed loading fixture owns its staged root');
+        events.push('fx:staged');
         if (cancel === 'fx') generation++;
         return { staged: false, restore() { events.push('fx:restored'); } };
       },
@@ -335,7 +344,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
     lighting: { csm: { lights: [] } }, createShell() {},
     getWorld: () => requiredWorld,
     getBattleVisuals: () => ({ async stream() { if (fail === 'allies') throw new Error('allies failed'); } }),
-    getFx: () => ({ group: fxGroup }), getWarmRender: () => () => {},
+    getFx: () => fx, getWarmRender: () => warmRender,
     getDeploymentShadowWarm: () => ({ async prime() {} }),
     getEntryLifecycle: () => ({ async primeReveal() {
       events.push('deployment:reveal');
@@ -378,7 +387,10 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
     assert.ok(events.includes('loader:hide') && events.includes('battle:open'));
     assert.equal(events.includes('reveal:fallback'), fail === 'shader');
   }
-  if (cancel === 'fx') assert.ok(events.includes('fx:restored'), 'cancellation still drains borrowed FX state');
+    if (cancel === 'fx') {
+      assert.ok(events.includes('fx:staged'), 'positive control: cancellation actually enters FX staging');
+      assert.ok(events.includes('fx:restored'), 'cancellation still drains borrowed FX state');
+    }
   return coverUpdates;
 }
 for (const fail of ['atmosphere', 'allies', 'carpet']) await runComposed({ fail });

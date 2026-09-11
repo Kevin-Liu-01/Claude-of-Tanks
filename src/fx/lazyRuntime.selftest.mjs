@@ -251,20 +251,29 @@ if (!/openBattle\(visiblePreBattleSeconds\);\s*scheduleDeferredWarm\(generation\
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
 function assertCoveredFxRetirement(source) {
-  const start = source.indexOf('let combatFxSubmission: CombatFxSubmission | null = null;');
+  const helperStart = source.indexOf('async function warmDeploymentFx(');
+  const helperEnd = source.indexOf('export function createSoloBattleDeploymentRuntime(', helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, 'covered FX retains its production helper');
+  assert.match(source.slice(helperStart, helperEnd),
+    /completed: cohortsCompleted && submission\?\.staged === true,\s*assertCurrent: assertFxCurrent/,
+    'readiness requires every cohort and a staged submission');
+  const start = source.indexOf('const fxWarm = await warmDeploymentFx(');
   const end = source.indexOf('revealPrimed = await primeCoveredReveal(', start);
   assert.ok(start >= 0 && end > start, 'covered FX interval precedes the production reveal helper');
   const coveredWarm = source.slice(start, end);
-  assert.match(coveredWarm, /fxReceipt\.completed = fxCohortsCompleted && combatFxSubmission\?\.staged === true;/,
-    'readiness requires every cohort and a staged submission');
+  assert.match(coveredWarm,
+    /fxWarm\.assertCurrent\(\);\s*const fxReceipt = fxWarm\.receipt;\s*fxReceipt\.completed = fxWarm\.completed;/,
+    'the actual caller rechecks the full FX lease after the async helper handoff');
   assert.match(coveredWarm, /if \(fxReceipt\.completed\) \{\s*combatWarm\.markOpeningReady\(\);\s*setDestructionWarmed\(true\);/,
     'only successful covered FX retires duplicate opening/destruction work');
 }
 assertCoveredFxRetirement(soloDeployment);
 assert.throws(() => assertCoveredFxRetirement(soloDeployment.replace(
-  'fxCohortsCompleted && combatFxSubmission?.staged === true', 'true')));
+  'cohortsCompleted && submission?.staged === true', 'true')));
 assert.throws(() => assertCoveredFxRetirement(soloDeployment.replace(
   'if (fxReceipt.completed) {', 'if (true) {')));
+assert.throws(() => assertCoveredFxRetirement(soloDeployment.replace(
+  'fxWarm.assertCurrent();', '')));
 // The adjacent soloBattleFxReadiness regression executes the real production
 // coordinator/staging path for success, partial cohorts, failures and retry.
 if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
