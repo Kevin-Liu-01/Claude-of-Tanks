@@ -8,6 +8,7 @@
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
 import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
 import { continuousShoeFloor, shoeConformanceAlpha, assertShoeFloorFrame } from './continuousShoeFloor.ts';
@@ -12483,6 +12484,7 @@ function* createTankOwnedSteps(
     // Only battle builds combine their submissions; no silhouette, cascade
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
+    if (batchStatic) detachEmptyLodSentinels(root);
   };
   const createTankMarkingsStage6 = (): void => {
     createTankMarkingsStage3();

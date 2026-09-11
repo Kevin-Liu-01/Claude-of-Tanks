@@ -551,6 +551,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/perfDiagnosticsAccess.selftest.mjs',
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
+    'src/engine/lodEmptySentinels.selftest.mjs',
     'src/engine/battleWeatherPolicy.selftest.mjs',
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
