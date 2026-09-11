@@ -18,7 +18,7 @@ export default {
     roads: { paths: [
       // Western deployment enters one fork, not one of several full-height
       // parallel lanes. The southern road uses the existing substation saddle.
-      [[-424, -72], [-364, -72], [-340, -88], [-238, -174], [-78, -212],
+      [[-480, -72], [-424, -72], [-364, -72], [-340, -88], [-238, -174], [-78, -212],
         [42, -244], [172, -224], [294, -190], [392, -100]],
       // A longer, screened bank route passes above all three lake lobes and
       // ends at the northern assembly junction. Only the eastern spine owns
@@ -37,8 +37,11 @@ export default {
       // so each route pair has one real junction rather than overlapping grades.
       // The first northern tank stages on the open apron east of this bend;
       // it must not straddle the road's final-priority graded shoulder.
-      [[370, -328], [436, -288], [420, -208], [392, -100], [416, 0],
-        [388, 160], [448, 226], [372, 282], [440, 354]],
+      // Stay east of the basin: extrapolating the first interior tangent
+      // previously sent this service road 355m southwest to the wrong gate.
+      // The intermediate bend spreads the turn before the southern spawn.
+      [[420, -480], [420, -448], [370, -400], [370, -328], [436, -288], [420, -208], [392, -100], [416, 0],
+        [388, 160], [448, 226], [372, 282], [440, 354], [448, 400], [480, 400]],
     ] },
     // Three unequal lobes form an irregular upland retention basin. Their
     // shared shoulder stays open water around a dry northern promontory;

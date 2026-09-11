@@ -10,6 +10,7 @@ import { scaleUV } from './propGeometry.ts';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG } from './maps/inhabitKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { pickCivilianVehicleKind } from './maps/civilianVehicleKit.ts';
+import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand } from './structureCollision.ts';
 import { attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
@@ -31,7 +32,8 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   DESTRUCTIBLE_BUILDING_TYPES, FENCE_SEG, WALL_SEG, pickCivilianVehicleKind,
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
-  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive };
+  GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive,
+  authoredRoadStationCount, authoredRoadStationIndex };
 // Real source stages, not a replacement placement algorithm. The log stream
 // starts at an explicit test checkpoint; this does not claim a full-world
 // source census. Heavy traffic has its actual dedicated production RNG seed.

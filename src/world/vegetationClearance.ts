@@ -59,6 +59,14 @@ export function excludeStructureVegetation<T extends { x: number; z: number },
   sites: readonly StructureClearance[], radiusOf: (tree: T) => number,
 ): number {
   if (!sites.length) return 0;
+  return excludeVegetation(trees,obstacles,concealers,
+    tree=>overlapsStructureClearance(sites,tree.x,tree.z,radiusOf(tree)));
+}
+
+/** Keep record ordering and collision/concealment pairing after authored filters. */
+export function excludeVegetation<T,O extends {treeIdx:number},C>(
+  trees:T[],obstacles:O[],concealers:C[],reject:(tree:T)=>boolean,
+): number {
   if (obstacles.length !== concealers.length) {
     throw new Error('Tree clearance must run before non-tree concealment is added');
   }
@@ -67,7 +75,7 @@ export function excludeStructureVegetation<T extends { x: number; z: number },
   let kept = 0;
   for (let i = 0; i < originalCount; i++) {
     const tree = trees[i];
-    if (overlapsStructureClearance(sites, tree.x, tree.z, radiusOf(tree))) {
+    if (reject(tree)) {
       remap[i] = -1;
     } else {
       remap[i] = kept;

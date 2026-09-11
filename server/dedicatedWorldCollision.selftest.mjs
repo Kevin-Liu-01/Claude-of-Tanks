@@ -11,13 +11,20 @@ import { pushHullFromObstacle, rayCollisionRecord, shellPassesThroughCollisionRe
 import { decodeCollisionManifest, encodeCollisionManifest } from './collisionManifestCodec.ts';
 
 const authoredWorlds = new Map();
-const coalCensus = { railyard: 7, caldera: 7, foundry: 6, skybridge: 4 };
+// Fresh completed-road placement retains coalSiteIsClear's exact obstacle,
+// slope and road rejection. The native capture has five clear piles on each
+// of Foundry and Skybridge; movement/shell pairs and contact tests below remain.
+const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
 
 // Public-fleet wreck recapture: different hulk footprints change accepted
 // placements on six maps. These exact counts preserve every non-wreck record
 // and concealment list; terrain rejection and placement budgets are unchanged.
 // The scoped coal capture adds 24 movement/shell pairs on four rail maps;
 // its exact native-control attribution is in RAIL-COAL-STOCKPILES-CHECKPOINT.md.
+// 2026-09-11: fresh all-map road-completion capture. The original planting
+// sampler preserves seeded vegetation; only newly unsafe road/slope sites
+// are excluded. Props use the completed physical roads. Exact census deltas
+// are retained in docs/research/launch-collision-refresh-20260911.md.
 const expected = {
   verdant: [6501, 6250, 6763],
   desert: [2381, 2337, 1823],
@@ -29,41 +36,41 @@ const expected = {
   railyard: [2715, 2554, 1973],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
-  frontier: [7382, 7122, 7538],
-  fjord: [6377, 6218, 5597],
-  delta: [7119, 6877, 8532],
+  frontier: [7381, 7120, 7538],
+  fjord: [6346, 6187, 5572],
+  delta: [7085, 6844, 8491],
   // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
   // terrain-aware placement rules reject different props/trees on steep walls.
-  badlands: [2643, 2475, 1698],
-  monsoon: [9271, 9036, 11093],
-  alpine: [8423, 8246, 7477],
-  caldera: [4692, 4587, 3572],
-  foundry: [3952, 3797, 2939],
+  badlands: [2668, 2493, 1698],
+  monsoon: [9273, 9031, 11088],
+  alpine: [8406, 8219, 7465],
+  caldera: [4673, 4568, 3568],
+  foundry: [3947, 3786, 2938],
   ruinspires: [2823, 5139, 1159],
-  blackglass: [3516, 4372, 2270],
-  titan_gorge: [2471, 2283, 1144],
-  skybridge: [3112, 3165, 1892],
+  blackglass: [3491, 4374, 2251],
+  titan_gorge: [2468, 2282, 1139],
+  skybridge: [3114, 3169, 1886],
   // Native 3c06d3352 capture: authored drainage contours change seeded
   // vegetation/prop acceptance. Keep the exact census, not a tolerance.
-  polders: [3955, 3734, 3407],
+  polders: [3957, 3736, 3406],
   // V23 native receipt (9fdbc49b): quarry-only producer A/B reproduces
   // every captured record. Existing slope/RNG rules yield +2 surface-rock
   // cover, -5 outcrop cover and -1 slope-rejected sapling; named prop counts
   // and 79 bush concealers are unchanged. No census tolerance is introduced.
-  copper_mesa: [2556, 2375, 1811],
+  copper_mesa: [2550, 2369, 1809],
   // The shared terrain exclusion now follows the actual hardstand rectangle
   // plus its shoulder; the airfield configuration itself is unchanged.
-  airfield: [3160, 3135, 2739],
+  airfield: [3163, 3138, 2739],
   // Native19e03d36b: the authored spring contour changes terrain-aware
   // vegetation/prop acceptance; this is the exact captured census.
-  oasis: [2489, 2278, 1889],
-  whiteout: [1449, 1267, 805],
-  orchard: [4403, 4163, 4454],
-  longleaf: [5631, 5421, 6154],
-  mangrove: [4918, 4740, 5666],
-  saltwind: [3349, 3158, 2723],
+  oasis: [2486, 2270, 1888],
+  whiteout: [1446, 1262, 805],
+  orchard: [4399, 4154, 4454],
+  longleaf: [5634, 5422, 6154],
+  mangrove: [4919, 4741, 5666],
+  saltwind: [3347, 3156, 2723],
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
-  reservoir: [6142, 5939, 6673],
+  reservoir: [6095, 5890, 6620],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
@@ -254,10 +261,11 @@ function assertIntakeHood(record) {
 function assertLoggingYard(mapWorld, independentWorld) {
   const flatbeds = mapWorld.getObstacles().filter(record => record.kind === 'truckflatbed');
   const colliders = mapWorld.getColliders().filter(record => record.kind === 'truckflatbed');
-  // These are the original native 1337/2002 donor identities and heights from
-  // the pre-yard fixture (23b82f0bc), not newly assigned IDs at the destinations.
-  const donors = [{ propIdx: 268, height: 1.8867, old: [310.07125, 360.43725] },
-    { propIdx: 280, height: 2.0051, old: [49.2173, 228.37325] }];
+  // Completed-road placement adds four earlier accepted props. Both original
+  // donor heights and authored destinations remain exact; native IDs shift +4.
+  // The original sites below still detect phantom copies after relocation.
+  const donors = [{ propIdx: 272, height: 1.8867, old: [310.07125, 360.43725] },
+    { propIdx: 284, height: 2.0051, old: [49.2173, 228.37325] }];
   assert.deepEqual(flatbeds.map(record => record.propIdx), donors.map(record => record.propIdx));
   assert.deepEqual(colliders.map(record => record.propIdx), donors.map(record => record.propIdx));
   const sites = getMapConfig('longleaf').props.loggingYard.flatbeds;

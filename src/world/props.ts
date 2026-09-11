@@ -15,6 +15,7 @@ import {
   tileableTorusNoise as torusN,
 } from './proceduralTexture.ts';
 import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
+import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -2001,14 +2002,20 @@ function findRoadsideSpot(
 ): [number, number, number] | null {
   const { rng, roads } = context;
   for (let attempt = 0; attempt < tries; attempt++) {
-    const nodes = roads[(rng() * roads.length) | 0];
-    if (!nodes || nodes.length < 4) continue;
-    const index = 2 + ((rng() * (nodes.length - 3)) | 0);
-    const [startX, startZ] = nodes[index];
-    const [endX, endZ] = nodes[index + 1] || nodes[index - 1];
-    const tangentLength = Math.hypot(endX - startX, endZ - startZ) || 1;
+    const road = (rng() * roads.length) | 0, nodes = roads[road];
+    if (!nodes) continue;
+    const layout = context.heightField._layout;
+    const count = authoredRoadStationCount(layout, road);
+    if (count < 4) continue;
+    const original = 2 + ((rng() * (count - 3)) | 0);
     const side = rng() < 0.5 ? -1 : 1;
     const offset = offMin + rng() * (offMax - offMin);
+    // A trimmed selection still consumes the same four proposal draws. It
+    // never snaps onto an inserted endpoint or rerolls a different ordinal.
+    const index = authoredRoadStationIndex(layout, road, original);
+    if (index < 0) continue;
+    const [startX, startZ] = nodes[index], [endX, endZ] = nodes[index + 1];
+    const tangentLength = Math.hypot(endX - startX, endZ - startZ) || 1;
     const x = startX - ((endZ - startZ) / tangentLength) * offset * side;
     const z = startZ + ((endX - startX) / tangentLength) * offset * side;
     if (!isRoadsideSpotClear(context, x, z)) continue;
@@ -3445,11 +3452,13 @@ ${snowCap ? `
     // asphalt ribbons between facades.
     function placeStreetFurniture(): void {
       const frng = mulberry32(seed + 606);
-      const placeStreetLamps = (): void => {
+      function placeStreetLamps(): void {
         for (let ri = 0; ri < roads.length; ri++) {
-          const pts = roads[ri];
-          for (let i = 1; i < pts.length - 1; i += 1) { // r5: every node (~32 m spacing)
-          const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+          const pts = roads[ri], count = authoredRoadStationCount(L, ri);
+          for (let i = 1; i < count - 1; i += 1) { // r5: every original node (~32 m spacing)
+          const at = authoredRoadStationIndex(L, ri, i);
+          if (at < 0) continue;
+          const [ax, az] = pts[at], [bx, bz] = pts[at + 1];
           const tl = Math.hypot(bx - ax, bz - az) || 1;
           const txn = (bx - ax) / tl, tzn = (bz - az) / tl;
           const side = (i % 2) ? 1 : -1; // alternate pavements
@@ -3473,7 +3482,7 @@ ${snowCap ? `
           addDestructible('lamp', lx, ly - 0.02, lz, yawL, 0.95 + frng() * 0.1);
           }
         }
-      };
+      }
       // kerb-line battle litter: masonry chips + slate shards along frontages
       const placeStreetLitter = (): void => {
         for (let i = 0, placed = 0; i < 900 && placed < 150; i++) {
@@ -4286,13 +4295,16 @@ ${snowCap ? `
     const roadsL = L.roads;
     const roadFence = (P.inhabit && P.inhabit.roadFence) || 'fenceplank';
     function fenceRun(
-      nodes: Array<readonly [number, number]>,
+      road: number,
       i0: number,
       i1: number,
       side: number,
     ): void {
-      for (let i = i0; i < i1 && i < nodes.length - 1; i++) {
-        const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+      const nodes = roadsL[road], count = authoredRoadStationCount(L, road);
+      for (let i = i0; i < i1 && i < count - 1; i++) {
+        const at = authoredRoadStationIndex(L, road, i);
+        if (at < 0) continue;
+        const [ax, az] = nodes[at], [bx, bz] = nodes[at + 1];
         const dx = bx - ax, dz = bz - az;
         const len = Math.hypot(dx, dz);
         const tx = dx / len, tz = dz / len;
@@ -4302,10 +4314,10 @@ ${snowCap ? `
     }
     function placeRoadFenceLines(): void {
       if (!P.fences || roadsL.length < 2) return;
-      fenceRun(roadsL[0], 11, 14, -1); // village approach, west side
-      fenceRun(roadsL[0], 20, 23, 1);  // north exit, east side
-      fenceRun(roadsL[1], 9, 12, -1);  // west field edge
-      fenceRun(roadsL[1], 20, 23, 1);  // east field edge
+      fenceRun(0, 11, 14, -1); // village approach, west side
+      fenceRun(0, 20, 23, 1);  // north exit, east side
+      fenceRun(1, 9, 12, -1);  // west field edge
+      fenceRun(1, 20, 23, 1);  // east field edge
     }
     placeRoadFenceLines();
     // telegraph poles marching along road A — tapered round poles with twin
@@ -4383,8 +4395,10 @@ ${snowCap ? `
     // (critique). Short spans follow the carriageway; the wires read as
     // roadside infrastructure instead of a graphical artifact.
     function placeUtilityPoles(): void {
-    for (let i = 8; P.telegraph && i < roadsL[0].length - 1; i += 1) {
-      const [ax, az] = roadsL[0][i], [bx, bz] = roadsL[0][i + 1];
+    for (let i = 8; P.telegraph && i < authoredRoadStationCount(L, 0) - 1; i += 1) {
+      const at = authoredRoadStationIndex(L, 0, i);
+      if (at < 0) continue;
+      const [ax, az] = roadsL[0][at], [bx, bz] = roadsL[0][at + 1];
       const tl = Math.hypot(bx - ax, bz - az);
       const tx = (bx - ax) / tl, tz = (bz - az) / tl;
       const px = ax - tz * 6.9, pz = az + tx * 6.9;
@@ -5064,7 +5078,9 @@ ${snowCap ? `
     let lampCount = 0;
     const placeLampAtRoadNode = (roadIndex: number, nodeIndex: number): boolean => {
       const nodes = L.roads[roadIndex];
-      const [ax, az] = nodes[nodeIndex], [bx, bz] = nodes[nodeIndex + 1];
+      const at = authoredRoadStationIndex(L, roadIndex, nodeIndex);
+      if (at < 0) return false;
+      const [ax, az] = nodes[at], [bx, bz] = nodes[at + 1];
       const tl = Math.hypot(bx - ax, bz - az) || 1;
       const side = ((nodeIndex >> 1) % 2) ? 1 : -1;
       const lx = ax - ((bz - az) / tl) * 6.3 * side;
@@ -5082,8 +5098,8 @@ ${snowCap ? `
       return true;
     };
     for (let ri = 0; ri < L.roads.length && lampCount < 44; ri++) {
-      const nodes = L.roads[ri];
-      for (let i = 2; i < nodes.length - 1 && lampCount < 44; i += 2) {
+      const count = authoredRoadStationCount(L, ri);
+      for (let i = 2; i < count - 1 && lampCount < 44; i += 2) {
         if (placeLampAtRoadNode(ri, i)) lampCount++;
       }
     }
@@ -5146,8 +5162,10 @@ ${snowCap ? `
   function placeRoadCarts(): void {
     const cartCap = (P.inhabit && P.inhabit.carts) ?? 2;
     let carts = 0;
-    for (let i = 4; P.carts && L.roads.length >= 2 && i < L.roads[1].length - 1 && carts < cartCap; i += 5) {
-      const [ax, az] = L.roads[1][i];
+    for (let i = 4; P.carts && L.roads.length >= 2 && i < authoredRoadStationCount(L, 1) - 1 && carts < cartCap; i += 5) {
+      const at = authoredRoadStationIndex(L, 1, i);
+      if (at < 0) continue;
+      const [ax, az] = L.roads[1][at];
       const cxp = ax + 8.5, czp = az + 6.5;
       if (Math.max(Math.abs(cxp), Math.abs(czp)) > 440) continue;
       if (heightField._roadDist(cxp, czp) < 6) continue;
@@ -5175,7 +5193,9 @@ ${snowCap ? `
     const sandbagCap = P.sandbagLines ?? 9;
     const roadA = L.roads[0];
     const placeSandbagAtRoadNode = (nodeIndex: number): boolean => {
-      const [ax, az] = roadA[nodeIndex], [bx, bz] = roadA[nodeIndex + 1];
+      const at = authoredRoadStationIndex(L, 0, nodeIndex);
+      if (at < 0) return false;
+      const [ax, az] = roadA[at], [bx, bz] = roadA[at + 1];
       if (Math.abs(az) > 330) return false;
       const tl = Math.hypot(bx - ax, bz - az);
       const side = (nodeIndex % 2) ? 1 : -1;
@@ -5194,7 +5214,7 @@ ${snowCap ? `
       if (srng() < 0.3) scatterDestructibles('crate', sx, sz, 1, 1.8, 3.0);
       return true;
     };
-    for (let i = 6; i < roadA.length - 2 && placedS < sandbagCap; i += 3) {
+    for (let i = 6; i < authoredRoadStationCount(L, 0) - 2 && placedS < sandbagCap; i += 3) {
       if (placeSandbagAtRoadNode(i)) placedS++;
     }
     // plaza corner nest by the well
@@ -5395,13 +5415,16 @@ ${snowCap ? `
         }
       }
       function* tryPlaceRoadWreck(
-        nodes: Array<[number, number]>,
+        roadIndex: number,
         nodeIndex: number,
       ): Generator<PropsBuildSlice, void, void> {
-        const [ax, az] = nodes[nodeIndex], [bx, bz] = nodes[nodeIndex + 1];
-        const length = Math.hypot(bx - ax, bz - az) || 1;
         const side = wrng() < 0.5 ? -1 : 1;
         const offset = 6.5 + wrng() * 4.5;
+        const at = authoredRoadStationIndex(L, roadIndex, nodeIndex);
+        if (at < 0) return;
+        const nodes = roads[roadIndex];
+        const [ax, az] = nodes[at], [bx, bz] = nodes[at + 1];
+        const length = Math.hypot(bx - ax, bz - az) || 1;
         const px = ax - ((bz - az) / length) * offset * side;
         const pz = az + ((bx - ax) / length) * offset * side;
         if (!wreckSpotIsClear(px, pz)) return;
@@ -5413,11 +5436,11 @@ ${snowCap ? `
       }
       function* placeRoadWrecks(): Generator<PropsBuildSlice, void, void> {
         for (let ri = 0; ri < roads.length && placedW < wreckCount; ri++) {
-          const nodes = roads[ri];
-          for (let i = 5; i < nodes.length - 1 && placedW < wreckCount;
+          const count = authoredRoadStationCount(L, ri);
+          for (let i = 5; i < count - 1 && placedW < wreckCount;
             i += 3 + ((wrng() * 2) | 0)) {
             if (bakedTris > 260000) break;
-            yield* tryPlaceRoadWreck(nodes, i);
+            yield* tryPlaceRoadWreck(ri, i);
           }
         }
       }

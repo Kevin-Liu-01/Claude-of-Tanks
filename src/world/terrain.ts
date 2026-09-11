@@ -25,6 +25,12 @@ import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetnes
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
 import { roadCoreMask, roadRutInverseWidth, roadRutMask } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
+import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
+  usesInheritedRoadGrades, remapInheritedRoadElevations, alignAddedRoadJunctionGrades,
+  originalRoadPlacementConfig } from './maps/roadEndpoints.ts';
+import { alignFjordNorthernRoadGrades, alignCopperNorthernRoadGrades,
+  stampRoadBorderCorridors, usesBoundedRoadShoulders } from './maps/roadBorderCorridor.ts';
+import { buildRoadStationOrigins, type RoadStationOrigin } from './maps/roadStations.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
@@ -220,6 +226,7 @@ export interface TerrainLayout {
   lakes: LakeConfig[];
   spawns: SpawnConfig;
   roads: RoadLine[];
+  roadStations?: (RoadStationOrigin | null)[];
   terrain: TerrainSettings;
 }
 
@@ -252,7 +259,12 @@ export interface HeightField {
   _layout: TerrainLayout;
   _mesaW: ((x: number, z: number) => number) | null;
   _waterWetnessAt?: (x: number, z: number) => number;
+  /** Construction-only seed admission; never used for gameplay or seating. */
+  _createRoadPlacementSampler?: () => Generator<number, TerrainPlacementSampler, void>;
 }
+
+export type TerrainPlacementSampler = Pick<HeightField,
+  'getHeightAt' | 'getNormalAt' | 'getGroundType' | '_roadDist'>;
 
 interface TerrainEngineContext {
   anisotropy?: number;
@@ -351,6 +363,42 @@ function smoothstep(a: number, b: number, x: number): number {
 }
 function clamp(x: number, a: number, b: number): number { return x < a ? a : x > b ? b : x; }
 
+function sampleHeightGridCell(arr: ArrayLike<number>, stride: number, i: number, fx: number, fz: number): number {
+  const a = arr[i] + (arr[i + 1] - arr[i]) * fx;
+  const b = arr[i + stride] + (arr[i + stride + 1] - arr[i + stride]) * fx;
+  return a + (b - a) * fz;
+}
+
+// Road support is sampled once per query, including pre-road construction
+// where an inward cutting needs distance but the pavement is not enabled.
+function sampleRoadSupportDistance(roadsOn: boolean, bounded: boolean,
+  grid: ArrayLike<number>, stride: number, index: number, fx: number, fz: number): number {
+  return roadsOn || bounded ? sampleHeightGridCell(grid, stride, index, fx, fz) : Infinity;
+}
+
+function roadCorridorDistanceWeight(bounded: boolean, corridorWeight: number, distance: number): number {
+  return bounded && corridorWeight > 0 ? 1 - smoothstep(18, 64, distance) : 1;
+}
+
+function roadRimWeight(start: number | null, roadsOn: boolean, bounded: boolean,
+  corridorWeight: number, distanceWeight: number): number {
+  // Final inward queries grade the road plane once below. Pre-road node
+  // authoring instead opens the rim here before any road elevations exist.
+  return start === null || (roadsOn && bounded) ? 1 : 1 - corridorWeight * distanceWeight;
+}
+
+function roadShoulderWeight(start: number | null, mapId: string | undefined, roadsOn: boolean,
+  radius: number, corridorWeight: number, distanceWeight: number): number {
+  if (start === null || corridorWeight <= 0) return 0;
+  const admission = smoothstep(start, start + 32, radius);
+  // These steep exit banks intersect recovery gradients with the same zero set.
+  // This is C0, not a global C1 or arbitrary terrain-slope guarantee.
+  const intersect = mapId === 'alpine' || mapId === 'blackglass'
+    || mapId === 'titan_gorge' || mapId === 'skybridge' || mapId === 'badlands';
+  return intersect && roadsOn ? Math.min(admission, corridorWeight, distanceWeight)
+    : admission * corridorWeight * distanceWeight;
+}
+
 // ---------------------------------------------------------------------------
 // Map layout — seed-independent composition (roads, village, spawns, marshes,
 // lakes, drivable corridors), built from a map config (src/world/maps/*).
@@ -373,7 +421,7 @@ function buildCountryRoads(): RoadLine[] {
 // maps r1 (ADDITIVE): an entry may be an OBJECT {at, lo?, hi?} clipping the
 // line's along-axis extent (coastal roads must END at the shore, not pave
 // across the bay). Plain numbers keep the classic full-map span.
-function buildGridRoads(grid: GridRoadConfig): RoadLine[] {
+function buildGridRoads(grid: GridRoadConfig, originalCounts: number[], completeRoads = true): RoadLine[] {
   const roads: RoadLine[] = [];
   const jit = grid.jitter ?? 2.5;
   const parse = (e: number | RoadBound): Required<RoadBound> => (typeof e === 'number'
@@ -385,6 +433,10 @@ function buildGridRoads(grid: GridRoadConfig): RoadLine[] {
     for (let z = lo; z <= hi; z += 32) {
       line.push([gx + Math.sin(z * 0.011 + gi * 2.3) * jit, z]);
     }
+    originalCounts.push(line.length);
+    if (completeRoads && line.length && line[line.length - 1][1] < hi) {
+      line.push([gx + Math.sin(hi * 0.011 + gi * 2.3) * jit, hi]);
+    }
     roads.push(line);
   }
   for (let gi = 0; gi < grid.zs.length; gi++) {
@@ -392,6 +444,10 @@ function buildGridRoads(grid: GridRoadConfig): RoadLine[] {
     const line: RoadLine = [];
     for (let x = lo; x <= hi; x += 32) {
       line.push([x, gz + Math.sin(x * 0.011 + gi * 1.7) * jit]);
+    }
+    originalCounts.push(line.length);
+    if (completeRoads && line.length && line[line.length - 1][0] < hi) {
+      line.push([hi, gz + Math.sin(hi * 0.011 + gi * 1.7) * jit]);
     }
     roads.push(line);
   }
@@ -458,7 +514,7 @@ const DEFAULT_SPAWNS: SpawnConfig = {
  * @param {?object} cfg map config (src/world/maps/*) or null for defaults
  * @returns {{village:object,marshes:Array,lakes:Array,spawns:object,roads:Array}}
  */
-export function createLayout(cfg: TerrainMapConfig | null = null): TerrainLayout {
+export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads = true): TerrainLayout {
   const t: TerrainSettings = { ...DEFAULT_TERRAIN, ...(cfg?.terrain ?? {}) };
   t.landforms = (t.landforms || []).map((form) => {
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
@@ -483,14 +539,17 @@ export function createLayout(cfg: TerrainMapConfig | null = null): TerrainLayout
     enemy.yaw = Math.atan2(player.x - enemy.x, player.z - enemy.z);
   }
   let roads: RoadLine[];
+  const originalCounts: number[] = [];
   if (t.roads === 'country' || !t.roads) {
     roads = buildCountryRoads();
   } else {
     roads = [];
-    if (t.roads.grid) roads.push(...buildGridRoads(t.roads.grid));
+    if (t.roads.grid) roads.push(...buildGridRoads(t.roads.grid, originalCounts, completeRoads));
     if (t.roads.paths) roads.push(...buildPathRoads(t.roads.paths));
-    if (roads.length === 0) roads = buildCountryRoads();
   }
+  if (roads.length === 0) roads = buildCountryRoads();
+  const completed = completeRoads ? completeRoadEndpoints(cfg?.id, roads) : roads;
+  const roadStations = buildRoadStationOrigins(roads, completed, originalCounts);
   return {
     village,
     // maps r1 (ADDITIVE): per-marsh carve depth `dip` (m). Default 2.6 = the
@@ -499,9 +558,23 @@ export function createLayout(cfg: TerrainMapConfig | null = null): TerrainLayout
     marshes: (t.marshes || []).map((m) => Object.assign({ dip: 2.6 }, m) as MarshConfig),
     lakes: (t.lakes || []).map((l) => ({ ...l })),
     spawns: { player, enemies },
-    roads,
+    roads: completed,
+    ...(roadStations ? { roadStations } : {}),
     terrain: t,
   };
+}
+
+// Only the selected construction path temporarily keeps the original lines.
+// Reuse the lines already authored above, including trimmed smoothing neighbors;
+// they never become an extra retained layout field or a second road grid.
+function completeInheritedRoadLayout(layout: TerrainLayout, mapId: string | undefined): RoadLine[] | null {
+  if (!usesInheritedRoadGrades(mapId)) return null;
+  const original = layout.roads, completed = completeRoadEndpoints(mapId, original);
+  if (completed === original) return null; // historical no-completion control
+  layout.roads = completed;
+  const stations = buildRoadStationOrigins(original, completed);
+  if (stations) layout.roadStations = stations;
+  return original;
 }
 
 // squared point-to-segment distance, returning t of the projection
@@ -569,6 +642,7 @@ export function createHeightField(
   const steps = heightFieldBuildSteps(seed, cfg);
   let step = steps.next();
   while (!step.done) step = steps.next();
+  if (!('size' in step.value)) throw new Error('Incomplete live terrain field');
   return step.value;
 }
 
@@ -578,7 +652,7 @@ export async function createHeightFieldAsync(
   cfg: TerrainMapConfig | null = null,
   tick: ((fraction: number) => Promise<void> | void) | null = null,
 ): Promise<HeightField> {
-  const steps: Iterator<number, HeightField, void> = heightFieldBuildSteps(seed, cfg);
+  const steps: Iterator<number, HeightField | TerrainPlacementSampler, void> = heightFieldBuildSteps(seed, cfg);
   let completed = false;
   try {
     let step = steps.next();
@@ -587,6 +661,7 @@ export async function createHeightFieldAsync(
       step = steps.next();
     }
     completed = true;
+    if (!('size' in step.value)) throw new Error('Incomplete live terrain field');
     return step.value;
   } finally {
     if (!completed) {
@@ -600,8 +675,10 @@ export async function createHeightFieldAsync(
 function* heightFieldBuildSteps(
   seed = 1337,
   cfg: TerrainMapConfig | null = null,
-): Generator<number, HeightField, void> {
-  const layout = createLayout(cfg);
+  placementOnly = false,
+): Generator<number, HeightField | TerrainPlacementSampler, void> {
+  const layout = createLayout(cfg, !placementOnly && !usesInheritedRoadGrades(cfg?.id));
+  let inheritedRoads = placementOnly ? null : completeInheritedRoadLayout(layout, cfg?.id);
   const T = layout.terrain;
   const redrockCanyon = cfg?.id === 'badlands' && T.redrockCanyon === true;
   const hardstandNoVeg = createHardstandVegetationExclusion(T.hardstands);
@@ -633,9 +710,9 @@ function* heightFieldBuildSteps(
   const GN = 257, CELL = MAP_SIZE / (GN - 1); // 4 m cells
   const gRoadDist = new Float32Array(GN * GN).fill(1e9);
   const gRoadElev = new Float32Array(GN * GN);
-  const gSegRoad = new Int16Array(GN * GN);
-  const gSegIdx = new Int16Array(GN * GN);
-  const gSegT = new Float32Array(GN * GN);
+  let gSegRoad: Int16Array | null = new Int16Array(GN * GN);
+  let gSegIdx: Int16Array | null = new Int16Array(GN * GN);
+  let gSegT: Float32Array | null = new Float32Array(GN * GN);
   const gCorridor = new Float32Array(GN * GN);
 
   const roads = layout.roads;
@@ -665,7 +742,7 @@ function* heightFieldBuildSteps(
         const ex = ax + dx * t - x, ez = az + dz * t - z;
         const d = Math.sqrt(ex * ex + ez * ez);
         if (d < gRoadDist[i]) {
-          gRoadDist[i] = d; gSegRoad[i] = route; gSegIdx[i] = segment; gSegT[i] = t;
+          gRoadDist[i] = d; gSegRoad![i] = route; gSegIdx![i] = segment; gSegT![i] = t;
         }
       }
     }
@@ -697,6 +774,17 @@ function* heightFieldBuildSteps(
     }
   }
   yield* buildRoadLookupGrid();
+  function buildRoadBorderCorridors(): number | null {
+    if (placementOnly || T.roads === 'country' || !T.roads.paths) return null;
+    return stampRoadBorderCorridors(cfg?.id, roads, T.roads.paths,
+      T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0,
+      T.rimH, gCorridor, GN, MAP_SIZE);
+  }
+  let borderCorridorStart = inheritedRoads ? null : buildRoadBorderCorridors();
+  // Ownership is authored, not inferred from how far an exit used to detour.
+  let boundedRoadCorridor = borderCorridorStart !== null
+    && usesBoundedRoadShoulders(cfg?.id);
+
 
   function gridSample(arr: ArrayLike<number>, x: number, z: number): number {
     const gx = clamp((x + HALF) / CELL, 0, GN - 1.0001);
@@ -821,7 +909,21 @@ function* heightFieldBuildSteps(
     lakesOn: boolean,
     padsOn: boolean,
     roadsOn: boolean,
+    gridIndex: number,
+    gridFx: number,
+    gridFz: number,
+    borderShoulderWeight: number,
+    rd: number,
   ): number {
+    let roadElevation = 0, elevationSampled = false;
+    // Earthworks share the existing road plane, not the pavement footprint.
+    // Apply before lakes/pads so their established support remains final;
+    // marsh cores were already composed above and must not be lifted here.
+    if (roadsOn && borderShoulderWeight > 0 && marshWeight < 1) {
+      roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
+      elevationSampled = true;
+      h += (roadElevation - h) * borderShoulderWeight * (1 - marshWeight);
+    }
     let lakeWetness = 0;
     if (lakesOn) {
       composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
@@ -841,8 +943,15 @@ function* heightFieldBuildSteps(
       }
     }
     if (!roadsOn) return h;
-    const rd = gridSample(gRoadDist, x, z);
-    if (rd < 14) h += (gridSample(gRoadElev, x, z) - h) * (1 - smoothstep(3.8, 14, rd));
+    if (rd < 14) {
+      if (!elevationSampled) roadElevation = sampleHeightGridCell(gRoadElev, GN, gridIndex, gridFx, gridFz);
+      h += (roadElevation - h) * (1 - smoothstep(3.8, 14, rd));
+    }
+    return applyRoadShoulderDetail(x, z, h, rd, settlementWeight, marshWeight, lakeWetness, padWetness);
+  }
+
+  function applyRoadShoulderDetail(x: number, z: number, h: number, rd: number,
+    settlementWeight: number, marshWeight: number, lakeWetness: number, padWetness: number): number {
     if (rd > 4 && rd < 22) {
       // Road detail is dry-ground relief, not a ripple generator for a lake
       // flattened above. Reuse contour/pad work and the same protected water
@@ -867,7 +976,17 @@ function* heightFieldBuildSteps(
     lakesOn = true,
   ): number {
     x = clamp(x, -HALF, HALF); z = clamp(z, -HALF, HALF);
-    const cw = gridSample(gCorridor, x, z);
+    // These three grids share a position and cell. Keep the original clamp and
+    // interpolation order; portal-plane samples have independent coordinates.
+    const gx = clamp((x + HALF) / CELL, 0, GN - 1.0001);
+    const gz = clamp((z + HALF) / CELL, 0, GN - 1.0001);
+    const x0 = gx | 0, z0 = gz | 0, fx = gx - x0, fz = gz - z0;
+    const gridIndex = z0 * GN + x0;
+    const cw = sampleHeightGridCell(gCorridor, GN, gridIndex, fx, fz);
+    // Reuse this single distance sample for rim/shoulder support and the
+    // final road constraints. Inward pilots also need it when constructing
+    // pre-road node heights; no new distance grid or live geometric query.
+    const rd = sampleRoadSupportDistance(roadsOn, boundedRoadCorridor, gRoadDist, GN, gridIndex, fx, fz);
     const vm = villageMask(x, z);
     const surfaces = lakesOn ? liquidSurfaces : null;
     const index = surfaces ? liquidIndex : null;
@@ -914,7 +1033,8 @@ function* heightFieldBuildSteps(
       // All base/micro/macro relief is overwritten by a fully flat core.
       // Keep the canonical lake, pad and road constraints, without spending
       // thirteen simplex evaluations on a value that cannot reach the mesh.
-      return applyHeightConstraints(x, z, waterCoreSum / waterCoreCount, 1, vm, lakesOn, padsOn, roadsOn);
+      return applyHeightConstraints(x, z, waterCoreSum / waterCoreCount, 1, vm,
+        lakesOn, padsOn, roadsOn, gridIndex, fx, fz, 0, rd);
     }
     if (surfaces) h = baseTerrainHeight(x, z, cw, vm) - liquidDip;
     // map-specific macro forms: long ridged sand dunes / flat-topped mesas —
@@ -948,8 +1068,15 @@ function* heightFieldBuildSteps(
       const m2 = noi.noise(x * 0.317 - 260, z * 0.317 + 33);
       h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - marshW * 0.7) * T.microScale;
     }
-    const rim = smoothstep(430, HALF, Math.max(Math.abs(x), Math.abs(z)));
-    h += rim * rim * T.rimH;
+    const borderRadius = Math.max(Math.abs(x), Math.abs(z));
+    const rim = smoothstep(430, HALF, borderRadius);
+    // CW also contains old deployment lanes. Only the two inward pilots
+    // limit the new earthwork to actual road shoulders, with a smooth join.
+    const roadCorridorWeight = roadCorridorDistanceWeight(boundedRoadCorridor, cw, rd);
+    // Keep the pilot's exact pre-road opening when authoring node heights.
+    // Final inward-pilot queries retain the rim here: the road-plane blend
+    // below already grades it once. Other maps retain the R3 composition.
+    h += rim * rim * T.rimH * roadRimWeight(borderCorridorStart, roadsOn, boundedRoadCorridor, cw, roadCorridorWeight);
     if (waterWeight > 0) {
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
@@ -961,7 +1088,10 @@ function* heightFieldBuildSteps(
     // lake level tracks the lowest shore, so on the uphill side the raw
     // terrain can sit 10+ m above the sheet — graded over ~35 m that is a
     // snowy bank; over the old few-meter band it was a sheer quarry wall.
-    h = applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn);
+    const borderShoulderWeight = roadShoulderWeight(borderCorridorStart, cfg?.id,
+      roadsOn, borderRadius, cw, roadCorridorWeight);
+    h = applyHeightConstraints(x, z, h, marshW, vm, lakesOn, padsOn, roadsOn, gridIndex, fx, fz,
+      borderShoulderWeight, rd);
     if (quarryFloorY !== null && insideCopperQuarry(x, z)) {
       h = sampleCopperQuarrySurface(x, z, h, quarryFloorY, gridSample(gRoadDist, x, z));
     }
@@ -988,10 +1118,10 @@ function* heightFieldBuildSteps(
     }
   }
   const _junctionScratch = [0, 0, 1e9];
-  function findRoadJunction(ra: number, rb: number): number[] {
+  function findRoadJunction(ra: number, rb: number, gradeRoads: RoadLine[] = roads): number[] {
     let jA = 0, jB = 0, best = 1e9;
-    for (let a = 0; a < roads[ra].length; a++) for (let b = 0; b < roads[rb].length; b++) {
-      const dd = Math.hypot(roads[ra][a][0] - roads[rb][b][0], roads[ra][a][1] - roads[rb][b][1]);
+    for (let a = 0; a < gradeRoads[ra].length; a++) for (let b = 0; b < gradeRoads[rb].length; b++) {
+      const dd = Math.hypot(gradeRoads[ra][a][0] - gradeRoads[rb][b][0], gradeRoads[ra][a][1] - gradeRoads[rb][b][1]);
       if (dd < best) { best = dd; jA = a; jB = b; }
     }
     _junctionScratch[0] = jA;
@@ -999,10 +1129,10 @@ function* heightFieldBuildSteps(
     _junctionScratch[2] = best;
     return _junctionScratch;
   }
-  function blendRoadJunctions(nodeElev: number[][]): void {
+  function blendRoadJunctions(nodeElev: number[][], gradeRoads: RoadLine[] = roads): void {
     // Blend every road pair to a common elevation at their crossing.
-    for (let ra = 0; ra < roads.length; ra++) for (let rb = ra + 1; rb < roads.length; rb++) {
-      const [jA, jB, best] = findRoadJunction(ra, rb);
+    for (let ra = 0; ra < gradeRoads.length; ra++) for (let rb = ra + 1; rb < gradeRoads.length; rb++) {
+      const [jA, jB, best] = findRoadJunction(ra, rb, gradeRoads);
       if (best > 40) continue; // roads never actually cross
       const jElev = (nodeElev[ra][jA] + nodeElev[rb][jB]) * 0.5;
       for (let k = -3; k <= 3; k++) {
@@ -1013,21 +1143,55 @@ function* heightFieldBuildSteps(
     }
   }
   function buildRoadElevationGrid(): void {
-    const nodeElev = roads.map((nodes) => nodes.map(([nx, nz]) => heightAt(nx, nz, false, false)));
+    const authoringRoads = inheritedRoads ?? roads;
+    const nodeElev = authoringRoads.map((nodes) => nodes.map(([nx, nz]) => heightAt(nx, nz, false, false)));
+    if (!placementOnly && !inheritedRoads && T.roads !== 'country' && T.roads.paths) {
+      const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
+      gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
+    }
     smoothRoadElevations(nodeElev);
-    blendRoadJunctions(nodeElev);
+    blendRoadJunctions(nodeElev, authoringRoads);
+    if (inheritedRoads) {
+      borderCorridorStart = buildRoadBorderCorridors();
+      boundedRoadCorridor = borderCorridorStart !== null && usesBoundedRoadShoulders(cfg?.id);
+      remapInheritedRoadElevations(inheritedRoads, roads, nodeElev);
+      if (T.roads !== 'country' && T.roads.paths) {
+        const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
+        gradeRoadPortals(cfg?.id, roads, nodeElev, T.roads.paths, offset);
+      }
+      alignAddedRoadJunctionGrades(cfg?.id, inheritedRoads, roads, nodeElev);
+    }
+    if (!placementOnly) {
+      alignFjordNorthernRoadGrades(cfg?.id, roads, nodeElev);
+      alignCopperNorthernRoadGrades(cfg?.id, roads, nodeElev);
+    }
     for (let i = 0; i < GN * GN; i++) {
-      const e = nodeElev[gSegRoad[i]];
-      const s = gSegIdx[i];
-      gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT[i];
+      const e = nodeElev[gSegRoad![i]];
+      const s = gSegIdx![i];
+      gRoadElev[i] = e[s] + (e[s + 1] - e[s]) * gSegT![i];
     }
   }
   // --- road node elevations: pre-road height sampled + smoothed + junction blend ---
   buildRoadElevationGrid();
-  if (T.hardstands?.length) {
+  inheritedRoads = null;
+  function alignRoadHardstands(): void {
+    if (!T.hardstands?.length) return;
     stampHardstandRoadGrids(T.hardstands, gRoadDist, gRoadElev, GN, MAP_SIZE,
       (x, z) => gridSample(gRoadElev, x, z));
+    if (!placementOnly && T.roads !== 'country' && T.roads.paths && hardstandNoVeg) {
+      const offset = T.roads.grid ? T.roads.grid.xs.length + T.roads.grid.zs.length : 0;
+      alignHardstandRoadPortals(cfg?.id, roads, T.roads.paths, offset, {
+        size: GN, mapSize: MAP_SIZE, route: gSegRoad!, segment: gSegIdx!,
+        elevation: gRoadElev, sample: (x, z) => gridSample(gRoadElev, x, z),
+      }, hardstandNoVeg);
+    }
   }
+  alignRoadHardstands();
+
+  // Allocation-site WeakRef/GC proof shows these construction-only arrays
+  // otherwise stay in the live heightAt closure context (528392 bytes).
+  // Their last consumer is final-priority hardstand/portal alignment above.
+  gSegRoad = null; gSegIdx = null; gSegT = null;
 
   // --- lake sheet levels (pipeline without lakes/pads), then spawn pads ---
   function initializeLakeLevels(): void {
@@ -1087,6 +1251,12 @@ function* heightFieldBuildSteps(
   // Exact mesh/physics and the existing one-metre live cache share this surface.
   landformPhase = 'authored-relief';
   const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);
+  const _scratchN = new THREE.Vector3();
+  const NEPS = 1.2;
+  // Stop before allocating the gameplay fast cache or scanning render bounds.
+  // The original Float32 road grids and analytic query arithmetic are retained.
+  if (placementOnly) return {getHeightAt,getNormalAt,getGroundType,
+    _roadDist:(x,z)=>gridSample(gRoadDist,x,z)};
 
   // perf-r3b (CPU profile): every height query runs the full 9-octave simplex
   // stack — a live battle makes ~3.9 k queries per FRAME (LOS ray marches, AI
@@ -1185,8 +1355,6 @@ function* heightFieldBuildSteps(
     return Number.isFinite(value) ? value : 0;
   }
 
-  const _scratchN = new THREE.Vector3();
-  const NEPS = 1.2;
   function getNormalAt(x: number, z: number): THREE.Vector3 {
     const hl = getHeightAt(x - NEPS, z), hr = getHeightAt(x + NEPS, z);
     const hd = getHeightAt(x, z - NEPS), hu = getHeightAt(x, z + NEPS);
@@ -1335,6 +1503,9 @@ function* heightFieldBuildSteps(
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
     _layout: layout,
+    ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {
+      return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
+    }} : {}),
     _mesaW: mesaWeight,
     ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),
   };

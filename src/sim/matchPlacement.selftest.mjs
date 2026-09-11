@@ -137,6 +137,13 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
   blocked[center + 1] = 0; blocked[center + 41] = 0;
   const open = createNavigationReachability(isolated, getSpec('m1a2'), [{ x: 0, z: 0 }], local);
   assert.equal(open[center + 42], 1, 'opening both orthogonal cells permits the diagonal');
+  blocked[center] = 1;
+  assert.equal(navigationReachabilityContains(isolated, open, { x: 5, z: 5 }, () => true), false,
+    'a flag beside a connected cell is invalid if its rounded return-route start is blocked');
+  blocked[center] = 0;
+  assert.equal(navigationReachabilityContains(isolated, open, { x: 5, z: 5 }, () => false), false,
+    'a reachable rounded cell still needs an actual clear connector to the objective');
+  assert.equal(navigationReachabilityContains(isolated, open, { x: 5, z: 5 }, () => true), true);
   isolated.heights[center + 42] = 300;
   const cliff = createNavigationReachability(isolated, getSpec('m1a2'), [{ x: 0, z: 0 }], local);
   assert.equal(cliff[center + 42], 0, 'impassable signed ascent is not included in the component');
