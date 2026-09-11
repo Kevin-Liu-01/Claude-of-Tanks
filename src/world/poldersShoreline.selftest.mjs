@@ -4,6 +4,7 @@ import { buildLiquidLakeBanks } from './liquidMarshSurface.ts';
 import { minimumShorelineRadius, shorelineRadiusAt, shorelineDistance, SHORELINE_SEGMENTS } from './shoreline.ts';
 import { createLakeChannel } from './maps/marshChannel.ts';
 import polders from './maps/polders.ts';
+import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 
 // The actual previous compartments, not five discs masquerading as a baseline.
 const originalLakes = [
@@ -195,9 +196,9 @@ for (const seed of [1337, 2049, 7719]) {
   receipts.push({ seed, roads, banks });
 }
 assert.ok(receipts.every(receipt => receipt.roads.padFailures.length === 0), 'complete deployment footprints stay stable for every seed');
-assert.ok(Math.abs(receipts.find(receipt => receipt.seed === 2049).roads.oldShoulderNormal - 0.8706010374956304) < 1e-12,
+assert.ok(Math.abs(historicalRoadHeightField(2049, original).getNormalAt(-178, 426).y - 0.8706010374956304) < 1e-12,
   'preserve evidence of the original seed-2049 causeway-shoulder deployment defect');
-assert.ok(Math.abs(receipts.find(receipt => receipt.seed === 7719).roads.oldPlayerShoulderNormal - 0.8667011164167123) < 1e-12,
+assert.ok(Math.abs(historicalRoadHeightField(7719, original).getNormalAt(-116, -384).y - 0.8667011164167123) < 1e-12,
   'preserve the seed-7719 player shoulder defect missed by nine-point pad checks');
 assert.ok(receipts.every(receipt => receipt.banks.maximumBankGrade < 0.75), 'same 75% physical bank-grade ceiling through the complete apron');
 console.log('Polders shoreline: five substantial asymmetric basins; exact road support, dry stable deployment footprints, level cores, dry coves and graded banks PASS; native visuals/performance unverified');

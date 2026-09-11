@@ -10,6 +10,9 @@ import { registerRetainedObject3DResources, releaseObject3DGpuResources,
   disposeObject3DResources } from '../engine/resourceLifetime.ts';
 import { historicalBadlandsInput, historicalPlayableReliefInput } from './shorelineHistoryTestOracle.mjs';
 
+import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
+import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
+
 // Execute the actual chunk generators, startup and live scheduler. Only the
 // unrelated canvas material/horizon builders are stubbed; real Three buffers,
 // shared topology, bounds and retained-resource ownership remain in use.
@@ -336,8 +339,8 @@ function testOasisShorelineChunks(hf) {
 }
 
 function testCurrentAuthoredChunks(hf, config, historicalField) {
-  // The three original digests below remain historical. Exercise current
-  // canyon/published relief through the SAME actual startup/live emitters,
+  // Original digests remain historical. Exercise every current map, including
+  // completed roads and published relief, through the SAME startup/live emitters,
   // including direct-far borders, rather than replacing that old fingerprint.
   // Alpine's historical spawn/corner chunks are outside the changed trough.
   // Seat its CURRENT adjacent pair on an actual authored relief midpoint;
@@ -358,8 +361,10 @@ function testCurrentAuthoredChunks(hf, config, historicalField) {
     }
     validateEastSeams(chunks[0], chunks[1], [96, 48, 24, 24]);
     const digest = hash.digest('hex'), historicalDigest = historicalHash.digest('hex');
-    assert.notEqual(digest, historicalDigest,
-      'current authored relief differs from the historical field at the SAME sampling coordinates');
+    if (['frontier', 'alpine', 'badlands'].includes(config.id)) {
+      assert.notEqual(digest, historicalDigest,
+        'current authored relief differs from the historical field at the SAME sampling coordinates');
+    }
     const positions = chunks[1][3].attributes.position.array, originalY = positions[1];
     try {
       positions[1] = originalY + 1;
@@ -380,8 +385,8 @@ async function testAllMapBytes() {
   assert.equal(MAP_IDS.length, 30);
   assert.deepEqual(Object.keys(GEOMETRY_GOLDENS), [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
-    const config = historicalPlayableReliefInput(historicalBadlandsInput(getMapConfig(mapId)));
-    const hf = createHeightField(1337, config);
+    const config = historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(getMapConfig(mapId))));
+    const hf = historicalRoadHeightField(1337, config);
     const hash = createHash('sha256');
     const corrupt = mapId === 'polders' ? createHash('sha256') : null;
     let streams = 0;
@@ -414,11 +419,9 @@ async function testAllMapBytes() {
         { code: 'ERR_ASSERTION' }, 'neither superseded published landform may replace the current golden');
     }
     for (const geometries of chunks) for (const geometry of geometries) geometry.dispose();
-    if (mapId === 'oasis') testOasisShorelineChunks(hf);
-    if (['frontier', 'alpine', 'badlands'].includes(mapId)) {
-      const current = getMapConfig(mapId);
-      testCurrentAuthoredChunks(createHeightField(1337, current), current, hf);
-    }
+    if (mapId === 'oasis') testOasisShorelineChunks(createHeightField(1337, getMapConfig(mapId)));
+    const current = getMapConfig(mapId);
+    testCurrentAuthoredChunks(createHeightField(1337, current), current, hf);
   }
   console.log('terrainStreaming.selftest: 30 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
 }
