@@ -250,15 +250,23 @@ if (!/image\.onload = async[\s\S]{0,260}image\.decode/.test(particles)) {
 if (!/openBattle\(visiblePreBattleSeconds\);\s*scheduleDeferredWarm\(generation\)/.test(soloLoading)) {
   throw new Error('rare combat variants must start only after the first battle reveal');
 }
-const coveredWarm = soloDeployment.slice(
-  soloDeployment.indexOf(
-    'const combatFxSubmission = await battleWarm.stageCombatFxProgramSubmission({',
-  ),
-  soloDeployment.indexOf('await entryLifecycle.primeReveal()'),
-);
-if (!/combatFxSubmission\.staged[\s\S]*combatWarm\.markOpeningReady\(\);[\s\S]*setDestructionWarmed\(true\);/.test(coveredWarm)) {
-  throw new Error('the exact covered FX bind must retire duplicate opening/destruction countdown work');
+function assertCoveredFxRetirement(source) {
+  const start = source.indexOf('let combatFxSubmission: CombatFxSubmission | null = null;');
+  const end = source.indexOf('revealPrimed = await primeCoveredReveal(', start);
+  assert.ok(start >= 0 && end > start, 'covered FX interval precedes the production reveal helper');
+  const coveredWarm = source.slice(start, end);
+  assert.match(coveredWarm, /fxReceipt\.completed = fxCohortsCompleted && combatFxSubmission\?\.staged === true;/,
+    'readiness requires every cohort and a staged submission');
+  assert.match(coveredWarm, /if \(fxReceipt\.completed\) \{\s*combatWarm\.markOpeningReady\(\);\s*setDestructionWarmed\(true\);/,
+    'only successful covered FX retires duplicate opening/destruction work');
 }
+assertCoveredFxRetirement(soloDeployment);
+assert.throws(() => assertCoveredFxRetirement(soloDeployment.replace(
+  'fxCohortsCompleted && combatFxSubmission?.staged === true', 'true')));
+assert.throws(() => assertCoveredFxRetirement(soloDeployment.replace(
+  'if (fxReceipt.completed) {', 'if (true) {')));
+// The adjacent soloBattleFxReadiness regression executes the real production
+// coordinator/staging path for success, partial cohorts, failures and retry.
 if (!/export function stageCombatFxProgramSubmission\([\s\S]*fx\.warmOpeningEffects[\s\S]*fx\.impact[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush[\s\S]*createShell/.test(battleWarm)) {
   throw new Error('the typed battle warm owner must retain every covered FX family and tracer');
 }
