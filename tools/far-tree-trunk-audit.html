@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Far tree stems</title>
+<style>body{margin:0;background:#172832}canvas{display:block}</style></head><body><script type="module">
+import * as T from 'three';
+import {buildFarTreeTrunkAuditGeometry} from '/src/world/vegetation.ts';
+const renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(1280,720);renderer.outputColorSpace=T.SRGBColorSpace;document.body.append(renderer.domElement);
+const scene=new T.Scene();scene.background=new T.Color(0x172832);
+scene.add(new T.HemisphereLight(0xc9deea,0x302820,2));
+const sun=new T.DirectionalLight(0xffddb1,3);sun.position.set(5,10,7);scene.add(sun);
+const camera=new T.PerspectiveCamera(34,1280/720,.01,100);
+let mesh;
+window.__FAR_TREE_AUDIT={render(family,view){
+ if(mesh){scene.remove(mesh);mesh.geometry.dispose();mesh.material.dispose();}
+ const geometry=buildFarTreeTrunkAuditGeometry(family);geometry.computeBoundingBox();
+ mesh=new T.Mesh(geometry,new T.MeshStandardMaterial({vertexColors:true,roughness:.96}));scene.add(mesh);
+ const box=geometry.boundingBox.clone();
+ if(view==='base')box.max.y=Math.min(box.max.y,.8);
+ const sphere=box.getBoundingSphere(new T.Sphere());
+ const direction=new T.Vector3(2,.9,3).normalize(),distance=sphere.radius/Math.sin(camera.fov*Math.PI/360)*1.2;
+ camera.position.copy(sphere.center).addScaledVector(direction,distance);camera.lookAt(sphere.center);camera.updateMatrixWorld();
+ renderer.render(scene,camera);
+ return {family,view,triangles:(geometry.index?.count??geometry.attributes.position.count)/3,
+   min:geometry.boundingBox.min.toArray(),max:geometry.boundingBox.max.toArray(),image:renderer.domElement.toDataURL('image/png')};
+}};
+</script></body></html>

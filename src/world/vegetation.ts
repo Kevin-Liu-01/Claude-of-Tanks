@@ -2458,6 +2458,17 @@ function buildDetailedGarageTree(
   return { trunk: pair.trunk, foliage: pair.cards, foliageTexture };
 }
 
+/** Native far-stem inspection only: calls the same four constructors used by
+ * battlefield far LODs. Species scaling and placement are audited separately. */
+export function buildFarTreeTrunkAuditGeometry(family: 'oak'|'pine'|'palm'|'birch', seed=2001): THREE.BufferGeometry {
+  const rng=mulberry32(seed);
+  const pair=family==='pine'?buildPineFarGeometry(rng)
+    :family==='palm'?buildPalmFarGeometry(rng)
+    :family==='birch'?buildBirchFarGeometry(rng):buildOakFarGeometry(rng);
+  pair.canopy.dispose();
+  return pair.trunk;
+}
+
 function buildFallbackGarageTree(
   species: Species,
   seed: number,
@@ -3813,6 +3824,10 @@ function* vegetationBuildSteps(
   const sapRng = mulberry32((seed ^ 0x5a9) >>> 0);
   const clusters: VegetationDisc[] = [];
   const trees: TreeRecord[] = []; // { x,z,species,variant, mat: Matrix4, tint: Color, near: bool }
+  // Rim trees intentionally bypass interior site admission, but a through
+  // road still needs the same nine-metre trunk clearance at its exit.
+  // Defer rejection until all placement RNG has been consumed.
+  const roadBlockedRimTrees = new Set<TreeRecord>();
   const authoredTreeDonors = veg.authoredTrees || veg.tidalTrees ? new Set<TreeRecord>() : null;
   const treeObstacles: TreeObstacle[] = [];
   const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
@@ -3936,6 +3951,9 @@ function* vegetationBuildSteps(
       fallH: archetype.fallHeightM * sy,
       fallR: archetype.fallRadiusM * Math.max(sx, sz),
     });
+    if (!withObstacle && heightField._roadDist(x, z) < 9) {
+      roadBlockedRimTrees.add(trees[trees.length - 1]);
+    }
     // Every tree reachable inside the playable square uses the same physical
     // trunk record. Outer-rim trees beyond the wall remain horizon dressing.
     if (withObstacle || Math.max(Math.abs(x), Math.abs(z)) <= PLAYABLE_HALF_EXTENT_M) {
@@ -4197,11 +4215,13 @@ function* vegetationBuildSteps(
   }
   placeTidalTrees();
   let rootDecalOrdinals: Map<TreeRecord,number> | null = null;
-  if (placementAdmission) {
+  if (placementAdmission || roadBlockedRimTrees.size) {
     rootDecalOrdinals=new Map(trees.map((tree,index)=>[tree,index]));
     group.userData.roadPlacementClearance={rejectedTrees:excludeVegetation(
-      trees,treeObstacles,concealers,tree=>newlyUnsafeRoadSite(tree.x,tree.z,9,.82))};
+      trees,treeObstacles,concealers,tree=>roadBlockedRimTrees.has(tree)
+        || newlyUnsafeRoadSite(tree.x,tree.z,9,.82))};
   }
+  roadBlockedRimTrees.clear();
   // Each LOD is a trunk mesh (opaque bark) + a card mesh (alpha foliage) sharing
   // the same instance matrices.
   const _whiteScratch = new THREE.Color(1, 1, 1);
