@@ -333,6 +333,7 @@ interface VideoResult {
   size: number;
   mimeType: string;
   durationMs: number;
+  leadInMs: number;
 }
 
 interface RecordingSession {
@@ -349,6 +350,10 @@ interface RecordingSession {
   durationMs: number;
   elapsedMs: number;
   stopping: boolean;
+  awaitingFirstChunk: boolean;
+  leadInMs: number;
+  failed: boolean;
+  startupTimer: ReturnType<typeof setTimeout> | null;
 }
 
 interface StudioSceneInput {
@@ -2248,7 +2253,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return Math.atan2(toX - fromX, toZ - fromZ) / DEG;
   }
 
-  /** Build an immediately recordable 12-second battle from the first two actors. */
+  /** Build an immediately recordable 15-second battle from the first two actors. */
   function directDuel(opts: { variant?: number } = {}) {
     if (recording) throw new Error('Stop recording before replacing the storyboard');
     if (actors.length < 2) throw new Error('Direct Duel needs at least two staged tanks');
@@ -2347,7 +2352,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         { id: 'duel-track', label: reverseLead ? 'Head-on compression' : 'Track-level pursuit', tMs: 2850,
           pos: cameraAt(leadMoveX - leadFx * trackBack + leadPx * side * trackSide,
             leadMoveZ - leadFz * trackBack + leadPz * side * trackSide, trackHeight),
-          lookAt: cameraAt(leadMoveX + leadFx * 8, leadMoveZ + leadFz * 8, 1.25),
+          lookAt: cameraAt(leadMoveX, leadMoveZ, 1.8),
           fov: trackFov, rollDeg: -side * [8, 3, 12, 6][style],
           transition: 'bezier',
           handleIn: cameraAt(leadMoveX - leadFx * (trackBack + 3) + leadPx * side * (trackSide * 0.65),
@@ -2358,23 +2363,23 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
               + px * side * [4.6, 8, 3, 10][style],
             a1z + uz * [0.5, -3, 5, 1][style]
               + pz * side * [4.6, 8, 3, 10][style], [3, 1.4, 5.2, 2.3][style]),
-          lookAt: cameraAt(midX + ux * 8, midZ + uz * 8, 2.0),
+          lookAt: cameraAt(b1x, b1z, 1.9),
           fov: [30, 23, 47, 34][style], rollDeg: side * [5, 12, -4, 17][style],
           transition: 'cut',
           handleOut: cameraAt(a1x + ux * 8 + px * side * 5, a1z + uz * 8 + pz * side * 5, 2.5) },
         { id: 'duel-shell-flyby', label: 'Projectile flyby', tMs: 4100,
           pos: cameraAt(midX - ux * [8, 2, 13, 5][style] - px * side * [2, 7, 0.8, 11][style],
             midZ - uz * [8, 2, 13, 5][style] - pz * side * [2, 7, 0.8, 11][style],
-            [1.35, 3.2, 0.75, 5.5][style]),
-          lookAt: cameraAt(midX + ux * 15, midZ + uz * 15, 1.7),
+            [3.0, 4.0, 2.5, 5.5][style]),
+          lookAt: cameraAt(b1x, b1z, 1.9),
           fov: [24, 58, 18, 42][style], rollDeg: -side * [10, 16, 5, 20][style],
           transition: 'cut' },
         { id: 'duel-blast-pass', label: 'Muzzle-blast pass', tMs: 4650,
-          pos: cameraAt(midX - ux * 3 + px * side * 8, midZ - uz * 3 + pz * side * 8, 2.0),
-          lookAt: cameraAt(midX + ux * 10, midZ + uz * 10, 1.8),
+          pos: cameraAt(midX - ux * 3 + px * side * 8, midZ - uz * 3 + pz * side * 8, 3.5),
+          lookAt: cameraAt(b1x, b1z, 1.9),
           fov: [40, 52, 33, 61][style], rollDeg: side * [12, -8, 18, 6][style],
           transition: 'bezier',
-          handleIn: cameraAt(midX - ux * 8 + px * side * 5, midZ - uz * 8 + pz * side * 5, 1.55) },
+          handleIn: cameraAt(midX - ux * 8 + px * side * 5, midZ - uz * 8 + pz * side * 5, 3.0) },
         { id: 'duel-overhead', label: 'Tactical overhead', tMs: 5300,
           pos: cameraAt(midX - px * side * [4, 12, 1, 18][style],
             midZ - pz * side * [4, 12, 1, 18][style], overheadHeight),
@@ -2385,7 +2390,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           pos: cameraAt(b1x + ux * [7, 2, 11, 5][style] - px * side * [4.2, 10, 2, 13][style],
             b1z + uz * [7, 2, 11, 5][style] - pz * side * [4.2, 10, 2, 13][style],
             [2.45, 4.8, 1.1, 3.2][style]),
-          lookAt: cameraAt(midX - ux * 7, midZ - uz * 7, 1.9),
+          lookAt: cameraAt(a1x, a1z, 1.9),
           fov: [29, 51, 22, 37][style], rollDeg: -side * [7, 14, 3, 19][style],
           transition: 'cut',
           handleOut: cameraAt(b1x + ux * 2 - px * side * 9, b1z + uz * 2 - pz * side * 9, 3.1) },
@@ -2440,13 +2445,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           handleIn: cameraAt(midX - ux * 2 + px * side * 17, midZ - uz * 2 + pz * side * 17, 4.4),
           handleOut: cameraAt(midX + ux * 8 + px * side * 31, midZ + uz * 8 + pz * side * 31, 8) },
         { id: 'duel-end', label: 'Hero pullout', tMs: 15000,
-          pos: cameraAt(midX + ux * [12, -18, 22, 5][style] - px * side * [35, 48, 29, 57][style],
-            midZ + uz * [12, -18, 22, 5][style] - pz * side * [35, 48, 29, 57][style],
+          // Continue outward on the aftermath side. Crossing the centerline
+          // here swept the lens over empty ground between the two vehicles.
+          pos: cameraAt(midX + ux * [12, -18, 22, 5][style] + px * side * [35, 48, 29, 57][style],
+            midZ + uz * [12, -18, 22, 5][style] + pz * side * [35, 48, 29, 57][style],
             [16, 25, 11, 33][style]),
-          lookAt: [midX, midY, midZ], fov: [47, 35, 58, 30][style],
+          lookAt: cameraAt(b2x, b2z, 2.0), fov: [47, 35, 58, 30][style],
           rollDeg: -side * [5, 11, 2, 15][style],
           transition: 'bezier',
-          handleIn: cameraAt(midX + ux * 14 - px * side * 27, midZ + uz * 14 - pz * side * 27, 12) },
+          handleIn: cameraAt(midX + ux * 14 + px * side * 27, midZ + uz * 14 + pz * side * 27, 12) },
       ],
       cameraCues: [
         { id: 'duel-cue-rumble', label: 'Distant blast', tMs: 2550, durationMs: 750,
@@ -2643,22 +2650,65 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       durationMs: storyboard.durationMs,
       elapsedMs: 0,
       stopping: false,
+      awaitingFirstChunk: true,
+      leadInMs: 0,
+      failed: false,
+      startupTimer: null,
     };
     recording = session;
+    const clearStartupTimer = () => {
+      if (session.startupTimer !== null) clearTimeout(session.startupTimer);
+      session.startupTimer = null;
+    };
+    const releaseRecording = () => {
+      clearStartupTimer();
+      for (const track of stream.getTracks()) track.stop();
+      if (recording !== session) return;
+      recording = null;
+      timeScale = 0;
+      rail.updateVisibility();
+      panel.refreshStoryboard();
+      panel.refreshTime();
+      invalidate();
+    };
+    const failRecording = (error: RuntimeValue) => {
+      if (session.failed) return;
+      session.failed = true;
+      session.stopping = true;
+      session.reject(error);
+      try { if (mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
+      catch { /* release every stream even when the recorder cannot stop */ }
+      releaseRecording();
+    };
     mediaRecorder.addEventListener('dataavailable', (event) => {
-      if (event.data && event.data.size) chunks.push(event.data);
+      if (event.data && event.data.size) {
+        chunks.push(event.data);
+        // A cold encoder can take several hundred ms to produce its first
+        // frame. Hold the opening pose until it confirms captured bytes so
+        // actor movement and the first camera cut cannot disappear.
+        if (session.awaitingFirstChunk && recording === session && !session.stopping && !session.failed) {
+          clearStartupTimer();
+          session.awaitingFirstChunk = false;
+          session.leadInMs = performance.now()-session.startedAt;
+          timeScale = 1;
+          invalidate();
+        }
+      }
     });
     mediaRecorder.addEventListener('error', (event: Event) => {
       const error = 'error' in event ? event.error : null;
-      session.reject(error || new Error('Studio video recording failed'));
+      failRecording(error || new Error('Studio video recording failed'));
     });
     mediaRecorder.addEventListener('stop', () => {
+      clearStartupTimer();
+      if (session.failed) return;
       const blob = new Blob(chunks, { type: session.mimeType });
       const result = {
         blob,
         size: blob.size,
         mimeType: session.mimeType,
-        durationMs: session.elapsedMs || session.durationMs,
+        durationMs: session.elapsedMs,
+        leadInMs: session.leadInMs,
       };
       if (session.download && blob.size) {
         const url = URL.createObjectURL(blob);
@@ -2670,26 +2720,36 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 10000);
       }
-      for (const track of stream.getTracks()) track.stop();
-      if (recording === session) recording = null;
-      timeScale = 0;
-      rail.updateVisibility();
-      panel.refreshStoryboard();
-      panel.refreshTime();
-      invalidate();
+      releaseRecording();
       session.resolve(result);
     }, { once: true });
 
-    seekTimeline(0, { recording: true });
-    rail.updateVisibility();
-    lighting.update(true);
-    stepFx(0);
-    post.render(0);
-    mediaRecorder.start(250);
-    timeScale = 1;
-    panel.refreshStoryboard();
-    panel.refreshTime();
-    invalidate();
+    try {
+      seekTimeline(0, { recording: true });
+      rail.updateVisibility();
+      lighting.update(true);
+      stepFx(0);
+      post.render(0);
+      session.startedAt=performance.now();
+      mediaRecorder.start(50);
+      session.startupTimer = setTimeout(() => {
+        if (session.awaitingFirstChunk && recording === session) {
+          failRecording(new Error('Studio video encoder did not start. Please try recording again.'));
+        }
+      }, 10000);
+      // The preflight render precedes MediaRecorder.start and may never become
+      // an encoded frame. Submit the zero-time composition after recording owns
+      // the stream as well, before advancing the playhead.
+      post.render(0);
+      const videoTrack = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack | undefined;
+      videoTrack?.requestFrame?.();
+      timeScale = 0;
+      panel.refreshStoryboard();
+      panel.refreshTime();
+      invalidate();
+    } catch (error) {
+      failRecording(error);
+    }
     return promise;
   }
 
