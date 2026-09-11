@@ -10,7 +10,7 @@ import { WebGLInfo } from 'three/src/renderers/webgl/WebGLInfo.js';
 import { WebGLIndexedBufferRenderer } from 'three/src/renderers/webgl/WebGLIndexedBufferRenderer.js';
 import { WebGLBufferRenderer } from 'three/src/renderers/webgl/WebGLBufferRenderer.js';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
-import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from '../engine/staticDrawRange.ts';
+import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame, installStaticInstanceRange } from '../engine/staticDrawRange.ts';
 import { createPostFrameAccounting } from '../engine/postFrameAccounting.ts';
 
 // Actual optimizer, composer, post finally, native draw-range arithmetic and
@@ -198,9 +198,71 @@ for (const [caster, fragmented] of [[true, false], [false, true]]) {
   const excluded = fixture(caster, fragmented);
   try {
     const result = excluded.render();
-    assert.equal(result.selected.count, excluded.mesh.geometry.index.count,
-      caster ? 'shadow casters retain full range' : 'over 64 section runs retain full range');
+    if (caster) assert.equal(result.selected.count, excluded.mesh.geometry.index.count,
+      'shadow casters retain full range');
+    else {
+      assert.ok(excluded.mesh.userData.staticDrawRangeRuns <= 64, 'fragmented displays retain bounded metadata');
+      assert.ok(result.selected.count < excluded.mesh.geometry.index.count, 'fragmented displays still trim offscreen ends');
+      assert.deepEqual(potentialTriangles(excluded, result.selected), potentialTriangles(excluded),
+        'bounded partitions preserve every potentially visible source triangle');
+    }
     excluded.assertRestored();
   } finally { excluded.dispose(); }
 }
-console.log('garageDressingDrawRange.selftest: exact buffers, camera/owner/edge parity, native counts and production-finally restoration pass');
+// Instance trimming changes only the draw count after attributes are uploaded.
+// Keep every original matrix/color and the entire prefix through the last
+// intersecting instance, including an invisible gap before a visible instance.
+{
+  const geometry = new THREE.BoxGeometry(1,1,1), material = new THREE.MeshBasicMaterial();
+  const mesh = new THREE.InstancedMesh(geometry,material,4), matrix = new THREE.Matrix4();
+  for (const [i,x] of [0,50,1,100].entries()) {
+    mesh.setMatrixAt(i,matrix.makeTranslation(x,0,0));
+    mesh.setColorAt(i,new THREE.Color(i/4,.25,.75));
+  }
+  const matrices = mesh.instanceMatrix.array.slice(), colors = mesh.instanceColor.array.slice();
+  installStaticInstanceRange(mesh);
+  const camera = new THREE.OrthographicCamera(-2,2,2,-2,.1,20);
+  camera.position.z=10;camera.updateMatrixWorld();mesh.updateMatrixWorld();
+  const marker=beginStaticDrawRangeFrame();
+  mesh.onBeforeRender(null,null,camera);
+  assert.equal(mesh.count,3,'invisible interior instance remains in the authored prefix');
+  assert.deepEqual(mesh.instanceMatrix.array,matrices);assert.deepEqual(mesh.instanceColor.array,colors);
+  endStaticDrawRangeFrame(marker);
+  assert.equal(mesh.count,4,'production finally restores instance count even without after-render');
+  mesh.onBeforeRender(null,null,camera);
+  assert.equal(mesh.count,4,'standalone captures/warm draws retain every instance');
+  const moved=beginStaticDrawRangeFrame();
+  mesh.instanceMatrix.needsUpdate=true;
+  mesh.onBeforeRender(null,null,camera);
+  assert.equal(mesh.count,4,'unexpected instance mutation fails closed');
+  endStaticDrawRangeFrame(moved);
+  mesh.dispose();geometry.dispose();material.dispose();
+}
+{
+  const root=new THREE.Group(),owner=new THREE.Group();
+  owner.name='garage_verdant_interior_clutter';owner.userData.sourceVehicleId='static_clutter_fixture';root.add(owner);
+  const geometry=new THREE.SphereGeometry(.3,16,12),material=new THREE.MeshStandardMaterial();
+  const reference=[];
+  for(let i=0;i<100;i++) {
+    const mesh=new THREE.Mesh(geometry.clone(),material);mesh.position.set(i*4,0,-10);owner.add(mesh);
+    mesh.updateMatrix();reference.push(geometry.clone().applyMatrix4(mesh.matrix));
+  }
+  optimizeGarageDressing(root,{staticDisplayOwners:[owner]});
+  const batch=owner.getObjectByName('workshop_display_merge_1');
+  assert.ok(batch.isBatchedMesh && batch.perObjectFrustumCulled);
+  assert.equal(batch.sortObjects,false,'original palette piece order retained');
+  let offset=0;
+  for(const source of reference) {
+    const actual=batch.geometry.getAttribute('position').array;
+    assert.deepEqual(actual.slice(offset,offset+source.attributes.position.array.length),source.attributes.position.array,
+      'native batch retains exact previously baked positions');
+    offset+=source.attributes.position.array.length;source.dispose();
+  }
+  const resources=[batch.geometry,batch._matricesTexture,batch._indirectTexture,batch.material];
+  const counts=resources.map(()=>0);
+  resources.forEach((resource,i)=>resource.addEventListener('dispose',()=>counts[i]++));
+  for(let repeat=0;repeat<2;repeat++)for(const resource of root.userData.optimizationDisposables)resource.dispose();
+  assert.deepEqual(counts,[1,1,1,1],'geometry, native control textures and private baked material release exactly once');
+  material.dispose();
+}
+console.log('garageDressingDrawRange.selftest: exact buffers, camera/owner/edge parity, native counts, instance-prefix, native clutter ownership and production-finally restoration pass');

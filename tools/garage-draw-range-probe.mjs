@@ -50,10 +50,11 @@ function capturePair({ name, angle, baseCamera }) {
   const gl = renderer.getContext(), result = { name, angle, glErrors: [], images: {}, draws: { a: [], b: [], negative: [] } };
   const savedCamera = camera.clone(), callbacks = [], clockCallbacks = [];
   garageDressing.group.traverse(mesh => {
-    if (!mesh.isMesh || mesh.castShadow || !(mesh.userData.staticDrawRangeRuns >= 2)
+    if (!mesh.isMesh || mesh.castShadow || !(mesh.userData.staticDrawRangeRuns >= 2 || mesh.userData.workshopNativeClutterBatch)
       || !(mesh.userData.workshopStaticDisplayMerge || mesh.userData.workshopStaticMerge)) return;
     callbacks.push({ mesh, before: mesh.onBeforeRender, after: mesh.onAfterRender,
-      start: mesh.geometry.drawRange.start, count: mesh.geometry.drawRange.count });
+      start: mesh.geometry.drawRange.start, count: mesh.geometry.drawRange.count,
+      nativeBatch:mesh.userData.workshopNativeClutterBatch===true });
   });
   const eligible = new Set(callbacks.map(entry => entry.mesh));
   const savedTarget = renderer.getRenderTarget(), savedFace = renderer.getActiveCubeFace();
@@ -147,18 +148,30 @@ function capturePair({ name, angle, baseCamera }) {
         if (record) {
           record.calls = renderer.info.render.calls - record.calls;
           record.triangles = renderer.info.render.triangles - record.triangles;
+          if (mesh.userData.workshopNativeClutterBatch) record.count=record.triangles*3;
           (result.draws[mode] ||= []).push(record);
         }
       }
     };
-    for (const entry of callbacks) { entry.mesh.onBeforeRender = () => {}; entry.mesh.onAfterRender = () => {}; }
+    // Warm the native batched shader and its plain-mesh control before any
+    // residency comparison. Both draw the exact same baked buffers; toggling
+    // the native marker lets the control submit them as the previous merge.
+    for (let i = 0; i < 8; i++) post.render(0);
+    for (const entry of callbacks) {
+      entry.mesh.onBeforeRender = () => {}; entry.mesh.onAfterRender = () => {};
+      if(entry.nativeBatch)entry.mesh.isBatchedMesh=false;
+    }
     renderer.setRenderTarget(null);
     for (let i = 0; i < 8; i++) post.render(0);
     const control = render('control'), a = render('a');
-    for (const entry of callbacks) { entry.mesh.onBeforeRender = entry.before; entry.mesh.onAfterRender = entry.after; }
+    for (const entry of callbacks) {
+      entry.mesh.onBeforeRender = entry.before; entry.mesh.onAfterRender = entry.after;
+      if(entry.nativeBatch)entry.mesh.isBatchedMesh=true;
+    }
     const b = render('b');
     result.controlDiffBytes = diff(control, a); result.diffBytes = diff(a, b);
     for (const entry of callbacks) {
+      if(entry.nativeBatch)entry.mesh.isBatchedMesh=false;
       entry.mesh.onBeforeRender = () => { entry.mesh.geometry.setDrawRange(0, 0); };
       entry.mesh.onAfterRender = () => { entry.mesh.geometry.setDrawRange(entry.start, entry.count); };
     }
@@ -169,6 +182,7 @@ function capturePair({ name, angle, baseCamera }) {
       renderer.renderBufferDirect = savedDirect;
       for (const entry of callbacks) {
         entry.mesh.onBeforeRender = entry.before; entry.mesh.onAfterRender = entry.after;
+        if(entry.nativeBatch)entry.mesh.isBatchedMesh=true;
         entry.mesh.geometry.setDrawRange(entry.start, entry.count);
       }
       for (const entry of clockCallbacks) {
