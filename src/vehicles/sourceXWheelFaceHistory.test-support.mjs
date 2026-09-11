@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import {KIT} from './tankFactoryCore.ts';
 
-// Exact inverse of the ten owner-requested annular-tire opt-ins. This is
+// Exact inverse of the nine owner-requested annular-tire opt-ins. This is
 // only for retaining pre-repair whole-model goldens; the actual candidate
 // still runs physical armor, air, projectile and visible-wheel tests.
 const OPENINGS=Object.freeze({amx30_x:.314,t72b_1987_x:.3103,t72b3_x:.30685,
   t72bu_x:.32690,t90a_burlak_x:.33888,t90_x:.33888,
-  t90ms_x:.33402,t62mv1_x:.33679,t72b3m_x:.33692,t90sm_x:.342366});
+  t90ms_x:.33402,t62mv1_x:.33679,t90sm_x:.342366});
 
 export function withHistoricalClosedWheelFaces(id,build) {
   assert.ok(Object.hasOwn(OPENINGS,id),'only the explicitly repaired wheel IDs have an inverse');

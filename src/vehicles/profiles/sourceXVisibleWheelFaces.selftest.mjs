@@ -5,9 +5,6 @@ import {createTank} from '../tankFactory.ts';
 // Source axle/radius witnesses are independent of the runtime receipt. The
 // opening is an intentional fitted-style repair, not a new source measurement.
 const CASES = {
-  t72b3m_x: {radius:.391766, opening:.33692, width:.45254, y:.4728865,
-    xLeft:1.4713, xRight:1.4713,
-    zs:[-1.822412,-.953673,-.089323,.858392,1.722743,2.591482]},
   t90sm_x: {radius:.3981, opening:.342366, width:.40954, zScale:1.05575,
     ys:[.47202,.45513,.45513,.45513,.45513,.51461],
     xLeft:1.423315, xRight:1.4199, faceName:'gearRoadWheelSourcePressedFaces',
