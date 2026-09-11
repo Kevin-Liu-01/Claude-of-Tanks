@@ -802,6 +802,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/garage-battle-actions-contract.selftest.mjs',
     'tools/garage-action-timing.selftest.mjs',
     'tools/phase-resource-frame-accounting.selftest.mjs',
+    'tools/phase-resource-probe.selftest.mjs',
     'tools/sourced-texture-readiness.selftest.mjs',
     'tools/sourced-image-composition.selftest.mjs',
     'tools/sourced-image-worker.selftest.mjs',
