@@ -38,11 +38,19 @@ function seamChordError(a: SeamPoint, b: SeamPoint, ground: CanyonGround): numbe
  * Every angular station stays inside its original half-cell, preserving order
  * and the outer/buried rings. Three bounded construction passes add no mesh,
  * index, retained buffer, texture or per-frame work. */
-function refineCanyonSeam(ring: CanyonRing, columns: number, ground: CanyonGround): void {
+function refineCanyonSeam(ring: CanyonRing, columns: number, ground: CanyonGround, pinSquareCorners = false): void {
   const step = Math.PI * 2 / columns;
   const points = Array.from({ length: columns }, (_, column) => seamPoint(column * step, ground));
+  const corners = new Set<number>();
+  if (pinSquareCorners) for (let corner = 0; corner < 4; corner++) {
+    const angle = Math.PI / 4 + corner * Math.PI / 2;
+    const column = Math.round(angle / step);
+    points[column] = seamPoint(angle, ground);
+    corners.add(column);
+  }
   for (let pass = 0; pass < 3; pass++) {
     for (let column = 0; column < columns; column++) {
+      if (corners.has(column)) continue;
       const previous = points[(column + columns - 1) % columns];
       const next = points[(column + 1) % columns];
       const a = column === 0 ? { ...previous, angle: previous.angle - Math.PI * 2 } : previous;
@@ -65,6 +73,15 @@ function refineCanyonSeam(ring: CanyonRing, columns: number, ground: CanyonGroun
     const height = ground.getHeightAt(ring.positions[offset], ring.positions[offset + 2]);
     ring.positions[offset + 1] = height; ring.heights[index] = height;
   }
+}
+
+/** Seat only the existing first positive row on the conditioned playable rim.
+ * The buried closing anchor and every farther landform remain byte exact. */
+export function seatHorizonTerrainSeam(ring: CanyonRing, ground: CanyonGround): void {
+  // Four existing stations lie within .375 of a cell of the square corners.
+  // Pin those stations so a long outside chord cannot bridge a corner ridge.
+  refineCanyonSeam(ring, ring.heights.length / ring.rows.length, ground, true);
+  ring.maxHeight = Math.max(1, ...ring.heights);
 }
 
 /** Construction only. Keep winding, row and buffer budgets.

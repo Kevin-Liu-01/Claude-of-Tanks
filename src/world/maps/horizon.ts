@@ -1,3 +1,4 @@
+import { prepareAutumnHorizonGround } from '../horizonAutumnGround.ts';
 // src/world/maps/horizon.ts — per-map horizon mountain ring.
 //
 // Replaces the old shared low-poly backdrop (one silhouette recolored per
@@ -32,7 +33,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 import { texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
-import { shapeRedrockOutland, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
+import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 import { shapeVerdantOutland, mapVerdantOutlandUv, sampleVerdantWoodland, verdantGroundChannel,
   paintVerdantCanopy, createVerdantWoodland, VERDANT_OUTLAND_SIZE, VERDANT_HORIZON_FRAGMENT } from '../horizonVerdant.ts';
 
@@ -1225,6 +1226,7 @@ export function sampleHorizonGeometry(
   const ring = subdivideHorizonGeometry(source, style, noise);
   if (mapId === 'verdant') shapeVerdantOutland(ring, seed, horizon.amp ?? 1);
   if (mapId === 'badlands' && horizon.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
+  if (mapId === 'autumn' && ground) seatHorizonTerrainSeam(ring, ground);
   if (usesFiniteTableCaps(horizon, mapId, style)) {
     // Titan's tall ranges need a slightly lower erosion stratum to expose
     // broad summit surfaces without steepening their supported approaches.
@@ -2058,6 +2060,7 @@ export function* buildHorizonRingSteps(
   const ring = subdivideHorizonGeometry(initialRing, style, noi);
   if (mapId === 'verdant') shapeVerdantOutland(ring, seed, amp);
   if (mapId === 'badlands' && H.redrockCanyon !== false) shapeRedrockOutland(ring, ground);
+  if (mapId === 'autumn' && ground) seatHorizonTerrainSeam(ring, ground);
   if (usesFiniteTableCaps(H, mapId, style)) {
     reshapeFiniteTableCaps(ring, amp, mapId === 'titan_gorge' ? 0.60 : 0.64,
       mapId === 'titan_gorge' ? 1.25 : Infinity);
@@ -2143,6 +2146,7 @@ export function* buildHorizonRingSteps(
   // silhouettes — exclude the backdrop like the other flat-lit world layers
   mesh.userData.aoExclude = true;
   registerRetainedObject3DResources(mesh, { textures: retainedTextures });
+  if (mapId === 'autumn') prepareAutumnHorizonGround(mesh, retainedTextures);
 
   // --- distant skyline impostor (vegetated styles only) ---------------------
   // One alpha-tested canopy ribbon follows whichever authored ridge actually
