@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { installStaticDrawRange, installStaticInstanceRange, type StaticDrawRun } from '../engine/staticDrawRange.ts';
 
 interface BakedMaterialLifecycle {
+  canClone?(material: THREE.Material): boolean;
   setup(material: THREE.Material): void;
   release(material: THREE.Material): void;
 }
@@ -422,7 +423,8 @@ function mergeStaticDisplayBatch(
   // a single first-to-last range cannot omit gaps between visible pieces.
   const nativeClutterBatch = !!materialLifecycle && owner.name === 'garage_verdant_interior_clutter'
     && !batch.castShadow && batch.frustumCulled && elementsMerged >= 100_000
-    && batch.material.type === 'MeshStandardMaterial';
+    && batch.material.type === 'MeshStandardMaterial'
+    && materialLifecycle.canClone?.(batch.material) !== false;
   let batched: THREE.BatchedMesh | null = null;
   let geometry: THREE.BufferGeometry | null;
   if (nativeClutterBatch) {

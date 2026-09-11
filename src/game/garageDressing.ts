@@ -2846,6 +2846,8 @@ export function createGarageDressing(
       staticDisplayOwners: [legacyVerdantRoot, verdantInteriorRoot],
       additionalResourceRoots: [legacyVerdantRoot, verdantInteriorRoot],
       bakedMaterialLifecycle: engineCtx?.setupShadowMaterial && engineCtx.releaseShadowMaterial ? {
+        // Variant accents stay on the shared mutable palette.
+        canClone: (material) => material !== mat.safety,
         setup: material => engineCtx.setupShadowMaterial!(material),
         release: material => { engineCtx.releaseShadowMaterial!(material); },
       } : undefined,

@@ -284,4 +284,17 @@ for (const [caster, fragmented] of [[true, false], [false, true]]) {
   assert.equal(csm.shaders.size,1);assert.strictEqual(csm.shaders.get(material),originalShader);
   csm.dispose();csm.remove();geometry.dispose();material.dispose();
 }
+{
+  const root=new THREE.Group(),owner=new THREE.Group();owner.name='garage_verdant_interior_clutter';
+  owner.userData.sourceVehicleId='mutable-accent-control';root.add(owner);
+  const material=new THREE.MeshStandardMaterial({color:0x8a7420});
+  for(let i=0;i<100;i++)owner.add(new THREE.Mesh(new THREE.SphereGeometry(.3,16,12),material));
+  optimizeGarageDressing(root,{staticDisplayOwners:[owner],bakedMaterialLifecycle:{
+    canClone:m=>m!==material,setup:()=>assert.fail('mutable material cannot be cloned'),release:()=>{},
+  }});
+  const batch=owner.getObjectByName('workshop_display_merge_1');
+  assert.ok(batch&&!batch.isBatchedMesh);assert.strictEqual(batch.material,material);
+  material.color.setHex(0xff9900);assert.equal(batch.material.color.getHex(),0xff9900);
+  for(const resource of root.userData.optimizationDisposables)resource.dispose();material.dispose();
+}
 console.log('garageDressingDrawRange.selftest: exact buffers, camera/owner/edge parity, native counts, instance-prefix, native clutter ownership and production-finally restoration pass');
