@@ -1,8 +1,10 @@
-// Test-only inverse of the qualified 72 -> 48 radial-side reduction. Every
-// original whole-model golden remains fixed; no wheel or track is omitted.
+// Test-only inverse of the 72 -> 48 radial-side reduction and shared-link
+// substitution. Every original whole-model golden remains fixed; no wheel
+// or track is omitted. Current physical links are tested by the gear suite.
 import assert from 'node:assert/strict';
 import { KIT } from './tankFactoryCore.ts';
 import { strv122SuppliedWheelSolids } from './profiles/strv122XSuppliedGear.ts';
+import { buildFleetTrackShoe } from './profiles/abramsSourceXTrackShoe.ts';
 
 function equalGeometry(actual, expected) {
   assert.deepEqual(Object.keys(actual.attributes), Object.keys(expected.attributes));
@@ -18,6 +20,8 @@ export function historicalStrv122WheelConfig(config) {
   const current = strv122SuppliedWheelSolids(48), prior = strv122SuppliedWheelSolids(72);
   let transferred = false;
   try {
+    assert.equal(config.trackShoeBuilder, buildFleetTrackShoe,
+      'only the exact shared-link adapter may be inverted to the historical default');
     assert.equal(config.wheelCoreGeometry.dark, undefined);
     equalGeometry(config.wheelCoreGeometry.disc, current.core);
     assert.equal(config.wheelFaceLayers.length, 2);
@@ -28,7 +32,7 @@ export function historicalStrv122WheelConfig(config) {
     });
     config.wheelFaceLayers.forEach(layer => layer.geometry.dispose());
     transferred = true;
-    return { ...config, wheelFaceLayers: config.wheelFaceLayers.map((layer, index) =>
+    return { ...config, trackShoeBuilder: undefined, wheelFaceLayers: config.wheelFaceLayers.map((layer, index) =>
       ({ ...layer, geometry: replacements[index] })) };
   } finally {
     Object.values(current).forEach(geometry => geometry.dispose());

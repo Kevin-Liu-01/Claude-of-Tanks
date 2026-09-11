@@ -3,6 +3,7 @@
 // nodes. Hidden axle backs/return supports are explicit mechanical inferences.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 export const STRV122_SUPPLIED_GEAR = Object.freeze({
@@ -75,6 +76,10 @@ export function addStrv122XSuppliedGear(P:TankBuilderPort):void{
     trackW:d.trackWidth,trackCarrierWidthM:.540,trackTh:.022,botY:.054,topY:1.155,
     sprocket:d.rear,idler:d.front,rollers,returnRollerWidthM:.19,returnRollerInsetM:.17,
     loopPoints:loop,linkPitchM:.143,rigidLinkChords:true,
+    // Keep the fitted course, national tread recipe and physical dimensions;
+    // share quality-aware link stock instead of repeating full-detail links
+    // at LOW detail as well as HIGH.
+    trackShoeBuilder:buildFleetTrackShoe,
     trackShoeDimensions:{padHeight:.030,grouserHeight:.010,webHeight:.025,hornHeight:.070,pinRadius:.009,pinCentreY:0},
     arms:true,coveredTop:true,paintedEnds:true,
     // Concealed inferred arms must clear the independently seated left wheel

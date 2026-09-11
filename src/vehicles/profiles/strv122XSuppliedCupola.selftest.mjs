@@ -205,7 +205,8 @@ try{unchangedEquipmentEmissions();for(const quality of ['high','low']){
     sourceSurfaces(all);sourceAir(all);contacts(parts,all.find(m=>m.name==='turret'));
     actualWiring(parts,all);
     // Keep every immutable pre-cupola byte, inverting only the independently
-    // authenticated later wheel tessellation. Physical checks above use t.
+    // authenticated later wheel tessellation/link substitution. Physical
+    // checks above use the actual current t, not the historical reconstruction.
     const historical=withHistoricalStrv122Wheels(()=>createTank('strv122_x',null,
       {quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242}));
     try{historical.root.updateMatrixWorld(true);nonTarget(historical,quality);}

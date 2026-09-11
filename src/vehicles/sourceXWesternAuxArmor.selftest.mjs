@@ -11,6 +11,7 @@ import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.t
 import { withHistoricalFixedGuardPaint } from './historicalFixedGuardPaint.test-support.mjs';
 import { historicalStrv122WheelConfig, withHistoricalStrv122Wheels } from './strv122WheelHistory.test-support.mjs';
 import { strv122SuppliedWheelSolids } from './profiles/strv122XSuppliedGear.ts';
+import { buildFleetTrackShoe } from './profiles/abramsSourceXTrackShoe.ts';
 import { KIT } from './tankFactoryCore.ts';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -53,7 +54,7 @@ function distance(point, faces) {
   for (const corrupt of [false, true]) {
     const solids = strv122SuppliedWheelSolids(48), counts = new Map();
     for (const g of Object.values(solids)) g.addEventListener('dispose', () => counts.set(g, (counts.get(g) ?? 0) + 1));
-    const config = { wheelCoreGeometry: { disc: solids.core }, wheelZs: [1, 2],
+    const config = { trackShoeBuilder: buildFleetTrackShoe, wheelCoreGeometry: { disc: solids.core }, wheelZs: [1, 2],
       wheelFaceLayers: [{ side: -1, geometry: solids.left }, { side: 1, geometry: solids.right }] };
     if (corrupt) {
       solids.left.attributes.position.array[0] += .001;
@@ -61,7 +62,11 @@ function distance(point, faces) {
       assert.equal(counts.size, 0, 'failed authentication keeps caller-owned inputs');
       Object.values(solids).forEach(g => g.dispose());
     } else {
+      assert.throws(() => historicalStrv122WheelConfig({...config,trackShoeBuilder:()=>{}}),
+        'an unrecognized link recipe cannot be hidden by the historical inverse');
+      assert.equal(counts.size,0,'failed link authentication keeps input ownership');
       const restored = historicalStrv122WheelConfig(config);
+      assert.equal(restored.trackShoeBuilder,undefined,'historical links use the unchanged original native builder');
       assert.equal(restored.wheelCoreGeometry, config.wheelCoreGeometry);
       assert.equal(restored.wheelZs, config.wheelZs, 'all non-target configuration stays owned and unchanged');
       assert.equal(counts.get(solids.core), undefined);
@@ -98,7 +103,7 @@ for (const [id, expected] of Object.entries(cases)) {
       }else if(id==='strv122_x'){
         const original=withHistoricalStrv122Wheels(()=>createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242}));
         try{assert.equal(geometryFingerprint(original.root),expected.geometry[lod],
-          `${id}/${quality}: original whole model after only authenticated radial tessellation inverse`);}
+          `${id}/${quality}: original whole model after authenticated wheel/link inverses`);}
         finally{original.dispose();}
         assert.notEqual(geometryFingerprint(tank.root),expected.geometry[lod]);
       }else assert.equal(geometryFingerprint(tank.root), expected.geometry[lod], `${id}/${quality}: every physical buffer unchanged`);
