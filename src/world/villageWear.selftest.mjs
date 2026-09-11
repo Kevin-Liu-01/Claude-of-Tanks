@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMask } from './terrain.ts';
+import { createHeightField, mulberry32, selectTerrainLandformMask } from './terrain.ts';
+import { historicalMaskTexture as makeMaskTexture } from './roadRutHistoryTestOracle.mjs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';

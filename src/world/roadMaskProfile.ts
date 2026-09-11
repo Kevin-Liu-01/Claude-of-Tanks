@@ -13,3 +13,17 @@ export function roadCoreMask(distanceM: number, wobbleM: number, widthM: number,
   const seam = 1 - smooth(0.25, 0.95, distanceM + wobbleM * 0.12);
   return core * (1 - 0.66 * Math.min(1, 0.6 / texelM) * seam);
 }
+
+/** Compute once per mask bake. Sub-metre ruts cannot resolve in 2–4m texels. */
+export function roadRutInverseWidth(texelM: number): number {
+  return 1 / Math.hypot(0.55, texelM * 0.8);
+}
+
+/** Footprint-filtered twin lanes; preserve integrated wear as they merge at range. */
+export function roadRutMask(distanceM: number, inverseWidthM: number): number {
+  const left = (distanceM - 1.55) * inverseWidthM;
+  const right = (distanceM + 1.55) * inverseWidthM;
+  // Sum both signed lanes. Widening abs(distance)-offset alone introduces a
+  // centre cusp and another false lighting ridge when the lanes overlap.
+  return 0.55 * inverseWidthM * (Math.exp(-left * left) + Math.exp(-right * right));
+}

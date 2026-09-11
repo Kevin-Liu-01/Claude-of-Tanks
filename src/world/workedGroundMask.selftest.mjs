@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { assertTerrainMaskShaderContract } from './terrainMaskShaderTestOracle.mjs';
 import { stampWorkedGroundMask } from './workedGroundMask.ts';
 import { createHeightField, makeMaskTexture, mulberry32 } from './terrain.ts';
+import { historicalMaskTexture } from './roadRutHistoryTestOracle.mjs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import longleaf from './maps/longleaf.ts';
@@ -95,7 +96,11 @@ function checkProduction(seed, size) {
     for (const key of ['format','type','colorSpace','flipY','wrapS','wrapT','minFilter','magFilter','generateMipmaps','anisotropy']) {
       assert.equal(after[key], before[key], `no texture policy change: ${key}`);
     }
-    if (seed === 1337 && size === 512) assert.equal(hash(before.image.data), originalLongleaf, 'independently preserved pre-change full RGBA');
+    if (seed === 1337 && size === 512) {
+      const historical = historicalMaskTexture(noise(), beforeField._layout);
+      try { assert.equal(hash(historical.image.data), originalLongleaf, 'independently preserved pre-change full RGBA'); }
+      finally { historical.dispose(); }
+    }
     const changed = invariantChannels(before.image.data, after.image.data), area = changed * (1024 / size) ** 2;
     assert.ok(area > 4000 && area < 45000, 'meaningful localized harvest, not blanket biome recoloring');
     for (let z = -496; z <= 496; z += 32) for (let x = -496; x <= 496; x += 32) {

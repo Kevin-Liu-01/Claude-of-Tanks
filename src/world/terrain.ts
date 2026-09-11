@@ -23,7 +23,7 @@ import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, 
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
-import { roadCoreMask } from './roadMaskProfile.ts';
+import { roadCoreMask, roadRutInverseWidth, roadRutMask } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, type WorkedGroundPatch } from './workedGroundMask.ts';
@@ -1986,6 +1986,7 @@ export function makeMaskTexture(
   // texel per 2 m, still finer than the rendered terrain grid (~2.7 m).
   // The former 2048² bake spent 16x the pixels on sub-grid information.
   const s = texSize(512), T = s / MAP_SIZE;
+  const rutInverseWidth = roadRutInverseWidth(1 / T);
   // r6 terrain_environment: landform (mesa/rim) weight pre-sampled on a
   // coarse grid (the field is ~700 m wavelength; 4 m texels bilerped) so the
   // 2048^2 mask bake stays cheap — B channel carries it on landformW maps.
@@ -2040,10 +2041,14 @@ export function makeMaskTexture(
     const wid = seedNoi.noise(x * 0.011 + 41, z * 0.011 - 17) * 1.5;
     const core = roadCoreMask(d, wob, wid, 1 / T);
     px[j] = core * 255;
-    // twin compacted wheel ruts, gaussian profile at +-1.55 m; amplitude
-    // wanders along the road so the striping never repeats identically
+    // The fresh G byte is already zero; pure rut noise cannot affect a zero
+    // core. Return only from road painting so B/A and later stamps still run.
+    if (core === 0) return;
+    // Filter twin compacted lanes to this texture's physical footprint before
+    // Uint8 storage. Point-sampled 0.55m ruts alias into transverse bands at
+    // 2–4m/texel; the existing shader gradient then embosses those false bands.
     const rutAmp = 0.55 + 0.45 * (seedNoi.noise(x * 0.019 - 3, z * 0.019 + 8) * 0.5 + 0.5);
-    const rut = Math.exp(-Math.pow((d - 1.55) / 0.55, 2));
+    const rut = roadRutMask(d, rutInverseWidth);
     px[j + 1] = rut * core * 245 * rutAmp;
   }
   function sampleMarshMask(x: number, z: number): number {
