@@ -357,6 +357,7 @@ interface RecordingSession {
   elapsedMs: number;
   stopping: boolean;
   awaitingFirstChunk: boolean;
+  fail: (error: RuntimeValue) => void;
   leadInMs: number;
   failed: boolean;
   startupTimer: ReturnType<typeof setTimeout> | null;
@@ -2673,6 +2674,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       elapsedMs: 0,
       stopping: false,
       awaitingFirstChunk: true,
+      fail: error => failRecording(error),
       leadInMs: 0,
       failed: false,
       startupTimer: null,
@@ -3188,7 +3190,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     panel.tick(dt);
     const playbackScale = timeScale;
     const animating = playbackScale > 0;
-    if (!animating && !cameraMoved && !frameDirty) {
+    // Canvas encoders may need several frame timestamps before yielding their
+    // first chunk. Keep submitting the held opening pose until that happens.
+    const primingEncoder = !!recording?.awaitingFirstChunk && !recording.stopping && !recording.failed;
+    if (!animating && !primingEncoder && !cameraMoved && !frameDirty) {
       perf.skippedFrames++;
       return;
     }
@@ -3204,6 +3209,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     lighting.update();
     post.render(dt, frameWallDtSeconds);
+    if (primingEncoder && recording) {
+      const session = recording;
+      try {
+        const track = session.stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack | undefined;
+        track?.requestFrame?.();
+      } catch (error) {
+        session.fail(error);
+      }
+    }
     perf.renderedFrames++;
     frameDirty = false;
     if (recording && !recording.stopping && clockMs >= storyboard.durationMs) {
