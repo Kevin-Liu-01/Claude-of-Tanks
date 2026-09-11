@@ -6,6 +6,13 @@ not a zero-lag or release certificate.
 
 ## Current acceptance summary
 
+Latest deployed checkpoint: [loading recovery and complete-frame diagnostics](loading-production-checkpoint-20260910.md)
+records production `3e6ff4978`, passing real-control day/night/Garage and warm/
+source/audio readiness checks. The ordinary run still reached 99.0 / 104.7 /
+40.8 ms frame gaps. Those limits remain failures of the smoothness objective;
+the functional pass is not a zero-lag certificate. Earlier first-player draw
+stalls did not reproduce in the new ordinary or separate profiling acquisition.
+
 Latest follow-up (2026-09-10): see
 [the opaque-loading paint boundary](opaque-loading-paint-boundary-20260910.md)
 and [foundation-decal pacing](foundation-decal-pacing-20260910.md), plus the
