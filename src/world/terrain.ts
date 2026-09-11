@@ -1920,6 +1920,19 @@ function makeGroundLayer(
   tone: ToneFunction | null = null,
   roughMul = 1,
 ): TerrainTextureLayer {
+  const steps = makeGroundLayerSteps(seed, kind, anisotropy, tone, roughMul);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
+function* makeGroundLayerSteps(
+  seed: number,
+  kind: 'rock' | 'mud',
+  anisotropy: number,
+  tone: ToneFunction | null = null,
+  roughMul = 1,
+): Generator<void, TerrainTextureLayer, void> {
   const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const px = new Uint8ClampedArray(s * s * 4);
@@ -1959,6 +1972,10 @@ function makeGroundLayer(
       // GGX lobe blew the whole sun-facing midground to white sparkle (flyby)
       px[j + 3] = clamp(rough * roughMul, 0.45, 1) * 255; // roughness packed in albedo alpha
     }
+    // Preserve the exact pixel/noise order while letting covered terrain work
+    // reach its existing pacing/cancellation owner every eight painted rows.
+    // No texture or partially completed layer is published across these yields.
+    if ((y & 7) === 7) yield;
   }
   applyTone(px, tone);
   return {
@@ -3122,6 +3139,14 @@ function createWetSplatLayer(S: SplatConfig, aniso: number): TerrainTextureLayer
       : makeGroundLayer(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1);
 }
 
+function* createWetSplatLayerSteps(
+  S: SplatConfig,
+  aniso: number,
+): Generator<void, TerrainTextureLayer, void> {
+  if (S.iceLake || S.seaLake) return createWetSplatLayer(S, aniso);
+  return yield* makeGroundLayerSteps(3003, 'mud', aniso, S.mudTone || null, S.mudRough ?? 1);
+}
+
 function* createSplatMaterialSteps(
   engineCtx: TerrainEngineContext,
   layout: TerrainLayout,
@@ -3165,7 +3190,7 @@ function* createSplatMaterialSteps(
     ? makeSandstoneLayer(3002, aniso, S.rockTone || null)
     : makeGroundLayer(3002, 'rock', aniso, S.rockTone || null));
   yield;
-  const wet = createWetSplatLayer(S, aniso);
+  const wet = yield* createWetSplatLayerSteps(S, aniso);
   yield;
   const layers = { G: grass, D: dirt, R: rock, M: wet };
   // Deep-hunt 2026-07: sourced CC0 PBR sets (ambientCG/Poly Haven, see
