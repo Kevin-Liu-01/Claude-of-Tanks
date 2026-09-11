@@ -144,3 +144,68 @@ These are not full npm-lifecycle or constrained-device FPS/retained-memory gates
 Remaining art work is explicit: the road still has regular corrugation, the
 floor has sparse empty stretches, and broad cliff surfaces remain too uniform.
 This is a scoped improvement, not completion of the environment beautification.
+
+## Shared road-wear correction — September 10
+
+Native original → G-only-zero → exact-restored captures isolated the road humps
+to the mask's wheel-rut channel. Both restored Redrock images repeat the original
+PNG hashes. This diagnostic removes the effect only to establish causality;
+zero wear is not the shipped treatment.
+
+The replacement filters both signed wheel lanes to the mask's actual 2m/4m
+footprint before byte quantization. It retains compacted wear while avoiding
+the old sub-metre Gaussian's false transverse normal/albedo bands. Width and
+normalization are computed once per bake; exact-zero road cores skip pure rut
+noise and Gaussian work. Road-R, landform/wetness-B, settlement-A, shader code,
+terrain heights, roads, collision support and texture policies are unchanged.
+This applies to all 30 maps, with no additional frame work or texture allocation.
+
+Nine focused selftests, native TypeScript 7, direct public Vite build and asset
+stripping pass in `road-rut-filter-build-r2.r08FU8`. The new regression covers
+36 bearings, four raster phases, five cross-road positions, two amplitudes and
+both resolutions, including the shader's finite-difference normal calculation.
+It rejects the old aliased and flat-zero controls. All 120 map/seed/tier cases
+compare exact protected channels and full optimized/unoptimized RGBA; original
+historical golden hashes remain unchanged. Texture settings and one-texture
+allocation counts match. Acquisition build index SHA256:
+`5ea25a7fde6327993d3174837b939dd616bb22016e0cadd6c32779258828b337`.
+
+### Visual review and its limits
+
+All five actual 1440×900/DPR1/High images in
+`road-rut-native-candidate-r3.sOERUu` were captured and inspected against the
+immutable baseline: both Redrock road directions, Verdant, Winter and Foundry.
+They show quieter road surfaces with grain, shoulders and compacted variation
+retained. Clean GL/program/page checks, fixed camera/light/quality contracts,
+source pins and complete owned browser/server/lock cleanup pass. Four views
+also match every retained terrain geometry/material/texture record exactly
+after canonicalizing allocation order. All five match rendered mesh ownership,
+bound geometry, materials, mask R/B/A and non-mask texture content.
+
+The acquisition's aggregate `complete` remains **false**, not rewritten into a
+pass: South retains one additional, unbound 2,593-vertex cached LOD geometry
+(62,232 position/normal bytes; its index buffer is shared). Its 64 rendered mesh
+records remain exact. Earlier packets also expose nondeterministic whole-scene
+GPU totals for byte-identical baseline PNGs. The exact detached texture owner
+was not established. Neither those totals nor South's retained-cache parity is
+certified here; these observations are not erased by the scoped visual approval.
+Native packet SHA256:
+`0a2bf33d2d60d076403cd21aff3cd2472f4829eeb80a480db2e5d0338f8c7f59`.
+
+### Construction cost
+
+`road-rut-mask-cpu-r2.JbI8ur` runs six alternating pairs on all 30 real masks
+per tier. Sum-of-map-median factory time changes by −2.02% desktop / −0.91%
+mobile texture tier; full typed-buffer/texture allocation budgets remain exact.
+Earlier noisy results are retained. A six-case fresh-process diagnostic,
+`road-rut-mask-targeted-cpu-r3.hNjMtS`, uses ten warmups and twenty pairs without
+constructor instrumentation. Delta's suspected 9–12% overhead does not persist:
+median paired main-thread change is +0.022ms, with 10/20 slower pairs and a sign
+reversal by invocation order. The other five paired main-thread medians improve.
+No repeatable material factory slowdown is established; this is not a claim of
+literally zero timing difference, cold-start parity, whole-environment FPS,
+retained-heap parity or physical mobile testing.
+
+The canyon geometry/collision/image release remains the preceding checkpoint.
+This road-only correction does not regenerate that corpus. Sparse floor dressing,
+uniform broad cliff surfaces and the wider environment-art goal remain open.

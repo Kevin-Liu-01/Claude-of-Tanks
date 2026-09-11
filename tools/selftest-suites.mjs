@@ -813,6 +813,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mangroveWaterPalette.selftest.mjs',
     'src/world/shallowWater.selftest.mjs',
     'src/world/roadMaskProfile.selftest.mjs',
+    'src/world/roadRutMask.selftest.mjs',
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/terrainResources.selftest.mjs',
     'src/world/propsResources.selftest.mjs',
