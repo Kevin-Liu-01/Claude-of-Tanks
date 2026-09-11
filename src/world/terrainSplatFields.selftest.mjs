@@ -90,7 +90,7 @@ function fixture({ original = false, closeThrows = false } = {}) {
     declaration('mulberry32'), original ? originalFields : declaration('splatFields'),
     ...(original ? [] : [declaration('splatFieldSteps')]),
     ...['fieldSample', 'wrapUnit', 'sampleSplatNoise', 'makeShaderNoiseTexture',
-      'selectTerrainLandformMask', 'createWetSplatLayer'].map(declaration),
+      'selectTerrainLandformMask', 'createWetSplatLayer', 'createWetSplatLayerSteps'].map(declaration),
     original ? material.replace(extraColdWork, '') : material,
     ...['buildTerrainMeshes', 'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(declaration),
   ].join('\n').replace(/^export /gm, '');
@@ -108,6 +108,9 @@ function fixture({ original = false, closeThrows = false } = {}) {
     const makeGrassLayer = () => layer('grass'), makeDirtLayer = () => layer('dirt');
     const makeSandstoneLayer = () => layer('sandstone');
     const makeGroundLayer = (_seed, kind) => layer(kind);
+    // This fixture isolates the splat-field scheduler, not ground painting.
+    // terrainWetLayer.selftest exercises the real ground iterator separately.
+    function* makeGroundLayerSteps(...args) { return makeGroundLayer(...args); }
     const makeIceLayer = () => layer('ice'), makeSeaLayer = () => layer('sea');
     const makeMaskTexture = () => own(new THREE.Texture());
     ${functions}
