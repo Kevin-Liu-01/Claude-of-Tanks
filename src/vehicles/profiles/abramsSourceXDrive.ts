@@ -117,7 +117,7 @@ function joinLoops(out: number[], a: Space[], b: Space[], hole = false): void {
   }
 }
 
-function geometry(positions: number[]): THREE.BufferGeometry {
+function geometry(positions: readonly number[]): THREE.BufferGeometry {
   const result = new THREE.BufferGeometry();
   result.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   const uv: number[] = [];
@@ -127,7 +127,14 @@ function geometry(positions: number[]): THREE.BufferGeometry {
   return result;
 }
 
+// These two authored surfaces depend only on quality. Keep numeric templates,
+// never BufferGeometry/attributes: every tank still owns fresh mutable stock.
+const dishedWebPositions: [readonly number[] | undefined, readonly number[] | undefined] = [undefined, undefined];
+
 function dishedWeb(high = true): THREE.BufferGeometry {
+  const slot = high ? 1 : 0;
+  const cached = dishedWebPositions[slot];
+  if (cached) return geometry(cached);
   const innerFacets = high ? FACETS : 20, lipSegments = high ? 16 : 10;
   const out: number[] = [], front = Array.from({ length: 4 }, (_, i) => opening(i, false, lipSegments));
   const back = Array.from({ length: 4 }, (_, i) => opening(i, true, lipSegments));
@@ -139,6 +146,7 @@ function dishedWeb(high = true): THREE.BufferGeometry {
     const b = polygon(outer ? BACK.outerR : BACK.innerR, facets).map<Space>(p => [outer ? BACK.outerX : BACK.innerX, ...p]);
     joinLoops(out, f, b, !outer);
   }
+  dishedWebPositions[slot] = Object.freeze(out);
   return geometry(out);
 }
 
@@ -273,4 +281,3 @@ export function buildAbramsSourceXDriveGeometry(high: boolean,legacy=false): { b
   }
   return { body: KIT.mergeAll(body), dark: KIT.mergeAll(dark) };
 }
-
