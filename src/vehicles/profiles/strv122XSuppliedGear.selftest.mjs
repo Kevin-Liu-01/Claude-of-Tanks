@@ -136,14 +136,28 @@ function suspension(port){
  }finally{material.side=previous;}
 }
 const faceTriangles=new Map();
+const shoeTriangles=new Map();
 for(const high of[true,false]){
  const f=fixture(high);try{
   const faces=['strv122SuppliedWheelFacesLeft','strv122SuppliedWheelFacesRight']
    .map(name=>f.port.hullG.getObjectByName(name));
   faceTriangles.set(high,faces.reduce((sum,m)=>sum+(m.geometry.index?.count??m.geometry.attributes.position.count)/3*m.count,0));
+  let shoeCost=0;
+  const camera=new T.PerspectiveCamera();camera.position.set(0,3,-10);camera.updateMatrixWorld(true);
+  f.port.hullG.traverse(node=>{if(node.isLOD)node.update(camera);});
+  f.port.hullG.traverseVisible(mesh=>{
+   if(isTrackShoeMesh(mesh))shoeCost+=(mesh.geometry.index?.count??mesh.geometry.attributes.position.count)/3*mesh.count;
+  });
+  shoeTriangles.set(high,shoeCost);
+  // Regression against shipped 37,944-triangle links, not a release score.
+  // The separate 25k HIGH stretch target remains unmet and documented.
+  assert.ok(shoeCost>0&&shoeCost<=37944*(high?.70:.43),
+   `shared ${high?'HIGH':'LOW'} shoes reduce shipped stock by at least 30%/57%: ${shoeCost}`);
   axes(f.port);surfaces(f.port);endpoints(f.port);suspension(f.port);groundPhases(f.port);animation(f.port);
  }finally{f.dispose();}
 }
+assert.ok(shoeTriangles.get(false)<shoeTriangles.get(true)*.70,'LOW shoes must materially simplify HIGH stock');
+console.log('strv122XSuppliedGear shoe triangles HIGH/LOW:',shoeTriangles.get(true),shoeTriangles.get(false));
 for(const high of [true,false]) assert.equal(faceTriangles.get(high),21504,
  'actual steel faces remove one third of the former 32256 triangles without relaxing source rays');
 const solids=strv122SuppliedWheelSolids();for(const g of Object.values(solids)){
