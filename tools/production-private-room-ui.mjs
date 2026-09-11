@@ -383,13 +383,18 @@ function measurementCode(value) {
 }
 
 function productionOperationFailure(error) {
-  const classified = browserOperationFailure(error);
-  if (classified !== 'unknown') return classified;
-  // Some Puppeteer releases retain Error.prototype.name on their subclasses.
-  // Inspect only exact known class names; never publish messages or stacks.
-  const name = error?.constructor?.name;
-  return ['TimeoutError', 'ProtocolError', 'TargetCloseError'].includes(name)
-    ? browserOperationFailure({ name, message: error.message }) : classified;
+  // Puppeteer selector queries wrap a provider rejection in Error.cause.
+  // Only bounded enum classification crosses this receipt boundary.
+  const seen = new Set();
+  for (let depth = 0; error && depth < 8 && !seen.has(error); depth++, error = error.cause) {
+    seen.add(error);
+    const classified = browserOperationFailure(error);
+    if (classified !== 'unknown') return classified;
+    const name = error.constructor?.name;
+    if (['TimeoutError', 'ProtocolError', 'TargetCloseError'].includes(name))
+      return browserOperationFailure({ name, message: error.message });
+  }
+  return 'unknown';
 }
 
 /** No arbitrary strings or raw nested errors cross the public receipt boundary. */
@@ -733,6 +738,58 @@ export function readUiState() {
     hasRoomUrl: new URL(location.href).searchParams.has('room') };
 }
 
+/** Fixed booleans/counts only, safe even while an invitation is displayed. */
+export function readProductionReadyControls() {
+  const map=document.querySelector('.cot-play [data-control="map"]');
+  const trigger=map?.querySelector('[data-select-trigger]');
+  const option=map?.querySelector('[role="option"][data-value="winter"]');
+  const ready=document.querySelector('.cot-play [data-action="ready"]');
+  const start=document.querySelector('.cot-play [data-action="start"]');
+  return {mapPresent:!!map,mapOpen:map?.classList.contains('open')===true,
+    mapDisabled:trigger?.disabled===true,mapIsWinter:map?.dataset.value==='winter',
+    winterPresent:!!option,winterHasRect:!!option?.getClientRects().length,
+    winterVisible:!!option&&getComputedStyle(option).visibility!=='hidden',
+    readyDisabled:ready?.disabled===true,startDisabled:start?.disabled!==false,
+    documentHidden:document.hidden===true,documentFocused:document.hasFocus()};
+}
+
+/** Owned test page only: fixed event labels, no text, attributes or URLs. */
+export function observeProductionMapInteraction() {
+  const map=document.querySelector('.cot-play [data-control="map"]');
+  const panel=document.querySelector('.cot-play .panel');
+  const trigger=map?.querySelector('[data-select-trigger]');
+  const rows=[]; const started=performance.now();
+  const record=(event)=>{
+    if(rows.length>=40)return;
+    const target=event.target;
+    const regions=[['perf-hud','#cot-perfhud'],['map','.cot-play [data-control="map"]'],['vehicle','.cot-play [data-control="vehicle"]'],
+      ['ready','.cot-play [data-action="ready"]'],['start','.cot-play [data-action="start"]'],
+      ['rules','.cot-play .rules'],['players','.cot-play .players'],['lobby','.cot-play .lobby'],
+      ['panel','.cot-play .panel'],['play','.cot-play'],['garage','.cot-garage']];
+    const area=target instanceof Element ? regions.find(([,selector])=>target.closest(selector))?.[0]??'other':'other';
+    const rect=trigger?.getBoundingClientRect();
+    const centerHit=rect&&document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
+    rows.push({type:event.type,area,trusted:event.isTrusted===true,
+      atMs:performance.now()-started,open:map?.classList.contains('open')===true,
+      panelScrollTop:panel?.scrollTop??0,
+      point:Number.isFinite(event.clientX)?[event.clientX,event.clientY]:null,
+      rect:rect?[rect.x,rect.y,rect.width,rect.height]:null,
+      triggerTarget:!!trigger?.contains(target),centerHitsTrigger:!!trigger?.contains(centerHit),
+      targetTag:target instanceof Element&&['BUTTON','DIV','CANVAS','INPUT','SPAN','BODY','A'].includes(target.tagName)?target.tagName:'other'});
+  };
+  const types=['pointerdown','pointerup','click','scroll','focusin'];
+  for(const type of types)document.addEventListener(type,record,true);
+  window.addEventListener('resize',record);
+  const observer=new MutationObserver(()=>record({type:'map-class',target:map}));
+  if(map)observer.observe(map,{attributes:true,attributeFilter:['class']});
+  window.__cotMapInteractionReceipt=()=>{
+    for(const type of types)document.removeEventListener(type,record,true);
+    window.removeEventListener('resize',record);observer.disconnect();
+    delete window.__cotMapInteractionReceipt;
+    return rows;
+  };
+}
+
 /** Fail closed rather than photograph an invitation, settings, login, or stale lobby. */
 export function battleScreenshotAllowed() {
   const shown = (selector) => Array.from(document.querySelectorAll(selector)).some((element) =>
@@ -963,6 +1020,8 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
   let browserLaunch = null;
   let signalingTransport = null;
   let pageErrors = 0;
+  const readyControls = [];
+  const recordReady = async label => readyControls.push({label,atMs:performance.now()-started,peers:await Promise.all(owners.pages.map(page=>bounded(page.evaluate(readProductionReadyControls),1000,'ready_controls').catch(()=>null)))});
   const reserveMs = cleanupReserveMs(measurePerformance, options.renderWorkload) + (entryProfile ? 12_000 : 0);
   const left = () => Math.max(1, timeoutMs - reserveMs - (performance.now() - started));
   const run = (next, action) => {
@@ -1015,11 +1074,21 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
         { timeout: left() });
     });
     await run('ready_and_launch', async () => {
-      await selectMenuOption(host, '.cot-play [data-control="map"]', 'winter', left());
-      await nativeClick(guest, '.cot-play [data-action="ready"]', left());
-      await nativeClick(host, '.cot-play [data-action="ready"]', left());
-      await host.waitForFunction(() => document.querySelector('.cot-play [data-action="start"]')?.disabled === false,
-        { timeout: left() });
+      // Hide only the probe's diagnostic dashboard through its capture API.
+      // Collection remains active; normal lobby controls still require native
+      // pointer input. Repeat after invite navigation creates a fresh document.
+      if(measurePerformance||entryProfile)await Promise.all(owners.pages.map(page=>
+        page.evaluate(()=>window.__PERF_HUD?.setCaptureHidden(true))));
+      await host.evaluate(observeProductionMapInteraction);
+      await run('ready_map_trigger', () => nativeClick(host, '.cot-play [data-control="map"] [data-select-trigger]', left()));
+      await recordReady('map-trigger-complete');
+      await run('ready_map_winter_visible', () => host.waitForSelector('.cot-play [data-control="map"] [role="option"][data-value="winter"]', {visible:true,timeout:left()}));
+      await run('ready_map_winter_click', () => host.click('.cot-play [data-control="map"] [role="option"][data-value="winter"]'));
+      await recordReady('map-winter-complete');
+      await run('ready_guest_click', () => nativeClick(guest, '.cot-play [data-action="ready"]', left()));
+      await run('ready_host_click', () => nativeClick(host, '.cot-play [data-action="ready"]', left()));
+      await run('ready_start_enabled', () => host.waitForFunction(() => document.querySelector('.cot-play [data-action="start"]')?.disabled === false,
+        { timeout: left() }));
     });
     await completeProductionRoomEntry(owners.pages, options, {
       run, left, isCancelled: () => owners.cancelled,
@@ -1101,15 +1170,17 @@ export async function verifyProductionPrivateRoomUi({ url, timeoutMs = 300_000,
       bounded(page.evaluate(readUiState), 1_000, 'last_state').catch(() => null)));
   }
   // Stop before owned teardown: these events describe the test, not browser.close().
+  const mapInteraction=await bounded(owners.pages[0]?.evaluate(()=>window.__cotMapInteractionReceipt?.()??[]),1000,'map_interaction').catch(()=>[]);
+  readyControls.push({label:'map-interaction',events:mapInteraction});
   const browserHealth = owners.health.stop();
-  if (problem) retainFailureEvidence(problem, { ...productionFailureEvidence(problem), browserHealth });
+  if (problem) retainFailureEvidence(problem, { ...productionFailureEvidence(problem), browserHealth, lastStates: problem.lastStates, readyControls });
   const cleanup = await cleanupProductionUi(owners);
   if (problem) throw Object.assign(problem, { cleanup });
   if (!cleanup.browserClosed || !cleanup.roomCleanupVerified) throw retainFailureEvidence(
     Object.assign(failure('cleanup'), { cleanup }), { performance: completedPerformance, partialRelay: null,
       signalingTransport, browserHealth,
       ...entryReceiptFields(completedEntry, waitingRoomMap) });
-  return { ...result, browserHealth, cleanup };
+  return { ...result, browserHealth, cleanup, readyControls };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
