@@ -12,7 +12,7 @@ assert.ok(restorePort, 'the capture context exposes the suspended-only Garage re
 // Execute the real composition-root adapter, not a test duplicate of its gate.
 const restoreFor = new Function('garagePhasePresentation', `return (${restorePort[1]});`);
 
-function createFixture(releaseOnBattle = false) {
+function createFixture(releaseTextures = false) {
   const scene = new Scene(), stage = new Group(), dressing = new Group();
   const geometry = new BoxGeometry(), stageMesh = new Mesh(geometry, new MeshBasicMaterial());
   stage.add(stageMesh);
@@ -33,7 +33,7 @@ function createFixture(releaseOnBattle = false) {
     getSkyConfig: () => sky,
     getGarageSkyConfig: () => sky, getBattleSkyConfig: () => world ? sky : null,
     getGroundHeight: () => 0, getPhase: () => game.phase,
-    shouldReleaseGpuOnBattle: () => releaseOnBattle,
+    shouldReleaseGpuOnBattle: () => releaseTextures,
     posePedestal: noop, poseCamera: noop,
     restorePresentationGpu: async ({ resourcesReleased }) => {
       restoreCount++;
@@ -61,8 +61,8 @@ function createFixture(releaseOnBattle = false) {
     assert.equal(world.group.parent === scene, !isGarage, `${target}: world ownership`);
     assert.equal(scene.children.filter(object => object.isSpotLight && object.visible).length,
       isGarage ? 2 : 0, `${target}: only Garage owns the two spotlight shader inputs`);
-    if (!releaseOnBattle) assert.equal(phase.diagnostics().gpu.suspended, false,
-      'desktop capture detaches owners without discarding their resident GPU resources');
+    if (!isGarage) assert.equal(phase.diagnostics().gpu.suspended, true,
+      'battle captures detach Garage owners and release their renewable buffers');
   };
   const recordRecipe = () => { assertOwned(); events.push('recipe'); };
   const camera = new PerspectiveCamera();
@@ -171,59 +171,62 @@ assert.equal(complete.phase.diagnostics().scene.garageMounted, true);
 assert.equal(complete.phase.diagnostics().scene.worldMounted, false);
 assert.equal(complete.world.group.visible, false);
 assert.equal(complete.dressing.visible, true);
-assert.equal(complete.restoreCount, 0, 'resident desktop captures do not add GPU warm frames');
-assert.equal(complete.disposeCount, 0, 'desktop capture resources remain resident');
+assert.equal(complete.restoreCount, 1, 'desktop return renews the released Garage buffers once');
+assert.equal(complete.disposeCount, 1, 'cached battle captures do not repeatedly release Garage buffers');
+assert.equal(complete.phase.diagnostics().gpu.suspended, false);
 
 // Use the real phase GPU owner and real geometry disposal events. Captures on
-// constrained devices must renew the suspended phase before reporting ready,
+// both device policies must renew the suspended phase before reporting ready,
 // otherwise a later battle entry mistakes reuploaded resources for suspended.
-const constrained = createFixture(true);
-const positions = constrained.geometry.attributes.position.array;
-const positionBytes = positions.slice();
-async function capture(name) {
-  constrained.setTarget(name);
-  await setShotView(name, constrained.context);
-  constrained.assertOwned();
-}
-await capture('garage');
-assert.equal(constrained.restoreCount, 0, 'cold resident Garage needs no restore');
-await capture('battlefield');
-assert.equal(constrained.disposeCount, 1);
-assert.equal(constrained.phase.diagnostics().gpu.suspended, true);
-let beganRestore, finishRestore;
-const restoreStarted = new Promise(resolve => { beganRestore = resolve; });
-const restorePending = new Promise(resolve => { finishRestore = resolve; });
-constrained.setRestoreHook(async () => { beganRestore(); await restorePending; });
-let captureComplete = false;
-const returning = capture('garage').then(() => { captureComplete = true; });
-await restoreStarted;
-assert.equal(captureComplete, false, 'shot readiness awaits actual GPU restoration');
-assert.equal(constrained.phase.diagnostics().gpu.suspended, true);
-assert.equal(constrained.phase.restoringGpu, true);
-finishRestore();
-await returning;
-assert.equal(constrained.phase.diagnostics().gpu.suspended, false);
-assert.equal(constrained.phase.diagnostics().gpu.resumes, 1);
-await capture('battlefield');
-assert.equal(constrained.disposeCount, 2, 'Garage → battle → Garage → battle reclaims twice');
-assert.equal(constrained.phase.diagnostics().gpu.releases, 2);
-assert.equal(constrained.phase.diagnostics().gpu.suspended, true);
-const restoreFailure = new Error('fixture GPU upload failed');
-constrained.setRestoreHook(async () => { throw restoreFailure; });
-await assert.rejects(capture('garage'), error => error === restoreFailure);
-assert.equal(constrained.phase.diagnostics().gpu.suspended, true, 'failed restoration cannot clear suspension');
-assert.equal(constrained.phase.diagnostics().gpu.resumeFailures, 1);
-assert.equal(constrained.phase.diagnostics().gpu.resumes, 1);
-assert.equal(constrained.phase.restoringGpu, false, 'failed upload releases the in-flight presentation cover');
-constrained.setRestoreHook(async () => {});
-await capture('garage');
-assert.equal(constrained.phase.diagnostics().gpu.suspended, false, 'a later capture retries the failed return');
-assert.equal(constrained.phase.diagnostics().gpu.resumes, 2);
-assert.equal(constrained.restoreCount, 3, 'two successful returns plus one failed attempt');
-await capture('garage');
-assert.equal(constrained.restoreCount, 3, 'same resident Garage does not add another warm frame');
-assert.equal(constrained.stageMesh.geometry, constrained.geometry);
-assert.equal(constrained.geometry.attributes.position.array, positions);
-assert.deepEqual(positions, positionBytes, 'GPU release/restore preserves authored CPU geometry bytes');
+for (const releaseTextures of [false, true]) {
+  const constrained = createFixture(releaseTextures);
+  const positions = constrained.geometry.attributes.position.array;
+  const positionBytes = positions.slice();
+  async function capture(name) {
+    constrained.setTarget(name);
+    await setShotView(name, constrained.context);
+    constrained.assertOwned();
+  }
+  await capture('garage');
+  assert.equal(constrained.restoreCount, 0, 'cold resident Garage needs no restore');
+  await capture('battlefield');
+  assert.equal(constrained.disposeCount, 1);
+  assert.equal(constrained.phase.diagnostics().gpu.suspended, true);
+  let beganRestore, finishRestore;
+  const restoreStarted = new Promise(resolve => { beganRestore = resolve; });
+  const restorePending = new Promise(resolve => { finishRestore = resolve; });
+  constrained.setRestoreHook(async () => { beganRestore(); await restorePending; });
+  let captureComplete = false;
+  const returning = capture('garage').then(() => { captureComplete = true; });
+  await restoreStarted;
+  assert.equal(captureComplete, false, 'shot readiness awaits actual GPU restoration');
+  assert.equal(constrained.phase.diagnostics().gpu.suspended, true);
+  assert.equal(constrained.phase.restoringGpu, true);
+  finishRestore();
+  await returning;
+  assert.equal(constrained.phase.diagnostics().gpu.suspended, false);
+  assert.equal(constrained.phase.diagnostics().gpu.resumes, 1);
+  await capture('battlefield');
+  assert.equal(constrained.disposeCount, 2, 'Garage → battle → Garage → battle reclaims twice');
+  assert.equal(constrained.phase.diagnostics().gpu.releases, 2);
+  assert.equal(constrained.phase.diagnostics().gpu.suspended, true);
+  const restoreFailure = new Error('fixture GPU upload failed');
+  constrained.setRestoreHook(async () => { throw restoreFailure; });
+  await assert.rejects(capture('garage'), error => error === restoreFailure);
+  assert.equal(constrained.phase.diagnostics().gpu.suspended, true, 'failed restoration cannot clear suspension');
+  assert.equal(constrained.phase.diagnostics().gpu.resumeFailures, 1);
+  assert.equal(constrained.phase.diagnostics().gpu.resumes, 1);
+  assert.equal(constrained.phase.restoringGpu, false, 'failed upload releases the in-flight presentation cover');
+  constrained.setRestoreHook(async () => {});
+  await capture('garage');
+  assert.equal(constrained.phase.diagnostics().gpu.suspended, false, 'a later capture retries the failed return');
+  assert.equal(constrained.phase.diagnostics().gpu.resumes, 2);
+  assert.equal(constrained.restoreCount, 3, 'two successful returns plus one failed attempt');
+  await capture('garage');
+  assert.equal(constrained.restoreCount, 3, 'same resident Garage does not add another warm frame');
+  assert.equal(constrained.stageMesh.geometry, constrained.geometry);
+  assert.equal(constrained.geometry.attributes.position.array, positions);
+  assert.deepEqual(positions, positionBytes, 'GPU release/restore preserves authored CPU geometry bytes');
 
-console.log(`shotRuntime: ${SHOT_VIEWS.length} phase owners; desktop no-warm and constrained disposal/awaited restore/failure/retry passed`);
+}
+console.log(`shotRuntime: ${SHOT_VIEWS.length} phase owners; desktop and constrained disposal/awaited restore/failure/retry passed`);
