@@ -688,9 +688,9 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   getBattleSkyConfig: () => currentWorld()?.config.sky ?? null,
   getGroundHeight: () => 0,
   getPhase: () => game.phase,
-  // Detached Garage roots have no render cost. Retain their uploaded programs
-  // on normal desktops for an immediate battle exit; constrained/mobile
-  // devices still reclaim them to protect the browser's smaller GPU budget.
+  // Desktop releases detached stage/workshop geometry while retaining textures
+  // and programs. Constrained devices retain their stage-only release policy.
+  // The existing covered return restores every evicted allocation.
   shouldReleaseGpuOnBattle: shouldReleaseInactivePhaseGpu,
   posePedestal: () => pedestal.poseCurrent(),
   poseCamera: () => {

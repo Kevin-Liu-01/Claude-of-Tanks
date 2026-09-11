@@ -143,6 +143,7 @@ export function createGaragePhasePresentationRuntime({
   };
   const gpuResidency = createRetainedPhaseGpuResidency({
     root: stageRoot,
+    additionalRoots: [dressingRoot],
     preserveRoots: [scene],
     restoreGpu: async () => {
       await restorePresentation(true);
@@ -153,7 +154,15 @@ export function createGaragePhasePresentationRuntime({
     if (spotA.visible === active) return;
     if (!active) lighting.setFarCascadeDormant(false);
     sceneResidency.setGarageActive(active);
-    if (!active && shouldReleaseGpuOnBattle()) gpuResidency.suspend();
+    if (!active) {
+      const releaseTextures = shouldReleaseGpuOnBattle();
+      // Preserve the constrained device's existing stage-only policy: reuploading
+      // the full workshop adds return stalls. Desktop can renew its buffers
+      // while retaining the textures and programs it will use on return.
+      gpuResidency.suspend({ releaseTextures,
+        ...(releaseTextures ? { additionalRoots: [] } : {}),
+      });
+    }
   };
 
   const setSunTrim = (active: boolean): void => {

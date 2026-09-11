@@ -8,6 +8,13 @@ import { createGaragePhasePresentationRuntime } from './garagePhasePresentationR
 const scene = new THREE.Scene();
 const stageRoot = new THREE.Group();
 const dressingRoot = new THREE.Group();
+const stageGeometry = new THREE.BoxGeometry();
+const dressingGeometry = new THREE.SphereGeometry();
+stageRoot.add(new THREE.Mesh(stageGeometry));
+dressingRoot.add(new THREE.Mesh(dressingGeometry));
+let stageDisposals = 0, dressingDisposals = 0, policyReads = 0;
+stageGeometry.addEventListener('dispose', () => stageDisposals++);
+dressingGeometry.addEventListener('dispose', () => dressingDisposals++);
 scene.add(stageRoot, dressingRoot);
 const garagePosition = new THREE.Vector3(-1500, 0, -1500);
 const sunDirection = new THREE.Vector3(0.3, 0.8, -0.4);
@@ -37,7 +44,7 @@ const runtime = createGaragePhasePresentationRuntime({
   getBattleSkyConfig: () => battleSky,
   getGroundHeight: (x, z) => (x + z) / -1000,
   getPhase: () => phase,
-  shouldReleaseGpuOnBattle: () => releaseOnBattle,
+  shouldReleaseGpuOnBattle: () => { policyReads++; return releaseOnBattle; },
   posePedestal: () => { pedestalPoseCount += 1; },
   poseCamera: () => { cameraPoseCount += 1; },
   restorePresentationGpu: async ({ resourcesReleased }) => {
@@ -109,6 +116,9 @@ assert.equal(dressingRoot.parent, null);
 assert.deepEqual(calls.find(([name]) => name === 'farDormant'), ['farDormant', false]);
 assert.equal(runtime.diagnostics().scene.garageMounted, false);
 assert.equal(runtime.diagnostics().gpu.suspended, true);
+assert.equal(stageDisposals, 1);
+assert.equal(dressingDisposals, 0, 'mobile preserves its existing stage-only eviction');
+assert.equal(policyReads, 1, 'one policy snapshot controls texture and root selection');
 runtime.setActive(false);
 assert.equal(calls.filter(([name]) => name === 'farDormant').length, 1,
   'idempotent phase requests must not repeat lighting work');
@@ -143,11 +153,14 @@ assert.equal(residentRestore.sceneUploadMax, 0,
 
 releaseOnBattle = false;
 runtime.setActive(false);
-assert.equal(runtime.diagnostics().gpu.suspended, false,
-  'desktop policy keeps the bounded static Garage stage resident during battle');
+assert.equal(stageDisposals, 2);
+assert.equal(dressingDisposals, 1, 'desktop also releases detached workshop geometry');
+assert.equal(policyReads, 2);
+assert.equal(runtime.diagnostics().gpu.suspended, true,
+  'desktop releases detached buffers while preserving textures/programs');
 runtime.setActive(true);
 const retainedReturn = await runtime.restoreGpu();
-assert.equal(retainedReturn.resourcesReleased, false);
+assert.equal(retainedReturn.resourcesReleased, true);
 assert.equal(warmCount, 3);
 
 assert.equal(runtime.invalidateGpu(), true);

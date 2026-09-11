@@ -217,18 +217,30 @@ export function releaseObject3DGpuResources(
   {
     preserveRoots = [],
     releaseMaterials = true,
+    releaseTextures = true,
+    additionalRoots = [],
     onDispose = null,
-  }: ResourceDisposalOptions = {},
+  }: ResourceDisposalOptions & { releaseTextures?: boolean; additionalRoots?: Object3D[] } = {},
 ): ResourceDisposalReceipt {
   const keep = createResourceBag();
   for (const preserveRoot of preserveRoots) collectTreeResources(preserveRoot, keep);
 
   const owned = createResourceBag();
-  const objects = collectOwnedTreeResources(root, owned, false);
+  let objects = collectOwnedTreeResources(root, owned, false);
+  for (const additionalRoot of additionalRoots) objects += collectOwnedTreeResources(additionalRoot, owned, false);
 
+  // Three keys native buffers by BufferAttribute identity (or the shared
+  // InterleavedBuffer). A different geometry may still borrow an active buffer.
+  const attributes = (geometry: BufferGeometry): object[] => [
+    ...Object.values(geometry.attributes),
+    ...(geometry.index ? [geometry.index] : []),
+    ...Object.values(geometry.morphAttributes).flat(),
+  ].map(attribute => 'isInterleavedBufferAttribute' in attribute ? attribute.data : attribute);
+  const keepAttributes = new Set<object>();
+  for (const geometry of keep.geometries) for (const attribute of attributes(geometry)) keepAttributes.add(attribute);
   const receipt = { objects, geometries: 0, materials: 0, textures: 0 };
   for (const geometry of owned.geometries) {
-    if (keep.geometries.has(geometry)) continue;
+    if (keep.geometries.has(geometry) || attributes(geometry).some(attribute => keepAttributes.has(attribute))) continue;
     onDispose?.('geometry', geometry);
     geometry.dispose?.();
     receipt.geometries += 1;
@@ -241,7 +253,7 @@ export function releaseObject3DGpuResources(
       receipt.materials += 1;
     }
   }
-  for (const texture of owned.textures) {
+  if (releaseTextures) for (const texture of owned.textures) {
     if (keep.textures.has(texture)) continue;
     onDispose?.('texture', texture);
     texture.dispose?.();
