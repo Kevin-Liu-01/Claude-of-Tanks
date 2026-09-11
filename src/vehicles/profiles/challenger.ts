@@ -11,6 +11,7 @@
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
+import { buildChallenger3XRearTurretClosure } from './challenger3XRearTurret.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
@@ -2744,6 +2745,10 @@ function buildChallenger3XBustle(
 }
 
 function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
+  // Owner surface-1 (2026-09-10): the rear centerline-to-roof face was
+  // exposed inside a V-shaped cavity. Close the volume under the existing
+  // bustle crown; retain the standard Challenger 3 and all exterior datums.
+  P.add('turret', buildChallenger3XRearTurretClosure());
   const receipt: Challenger3XReceipt = {
     variant: 'challenger_3x',
     enhancedSkirtPanels: 0,
