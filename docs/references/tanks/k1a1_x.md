@@ -1,6 +1,6 @@
 # K1A1 X — independent source-measured rebuild
 
-2026-09-06. **Photo-led roof-weapon addition rejects unarmed-file shape gates; owner choice pending. Final release pending.** Existing `k1a1` is
+2026-09-06. **Photo-led roof weapon retained by owner decision on 2026-09-11; partitioned body/photo qualification and final release pending. Historical unarmed-file failures retained.** Existing `k1a1` is
 unchanged. Runtime authoring is in `src/vehicles/profiles/k1a1X.ts` and
 `k1a1XRoof.ts`; it does not call an old family builder. The source is a
 local-only comparison oracle, not playable geometry or a redistributable asset.
@@ -151,7 +151,7 @@ The immutable `.qa-dev/reports/k1a1-photo-weapon-fidelity.json`, generated
 2026-09-06T20:56:50.399Z, also fails: turret.right90.26863207711244 and
 turret.left90.79449883607457 are below92 despite aggregate96.56142136310707.
 The photo-led roof weapon conflicts with the unchanged, unarmed supplied
-source. That owner decision remains unresolved; no current source-shape or
+source. That owner decision was resolved on 2026-09-11 in favor of the armed/photo target below; no current source-shape or
 complete release pass is claimed.
 
 Pre-wheel-refinement frozen profile SHA-256 was

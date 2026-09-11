@@ -60,7 +60,7 @@ authoring additions. Registration is not a release or visual-quality approval.
 | chieftain5_x | Chieftain Mk.5 X | Supplied-file source-closure proof passes raw96.9866/geometry94.1810, dimensions100, strict0/continuity0; absent roof weapon remains standard blocker |
 | chieftain_mk10_x | Chieftain Mk.10 X | Final Mk5-foundation release comparison raw97.134546/geometry93.153760 passes; Mk5 preservation,174/174 exact-stock contacts, real air,41 focused tests,12 generated integration phases and actual gallery inspection pass; one source-real opening still rejects strict release (ymwZhS), without waiver |
 | leo2a6_x | Leopard 2A6 X | Supplied GLB; independent A6 geometry, not A6M X reskin |
-| k1a1_x | K1A1 X | Photo-led roof gun conflicts with unarmed source: turret views90.2686/90.7945 and geometry78.0374 fail; owner choice pending |
+| k1a1_x | K1A1 X | Photo-led roof gun conflicts with unarmed source: turret views90.2686/90.7945 and geometry78.0374 historically fail; owner retains armed/photo target Sep11, qualification pending |
 | strv122_x | Stridsvagn 122 X | Frozen supplied-cupola proof raw97.19449129124958/min-view95.96447231684961 and raw geometry minimum95.96447231684961 pass; strict0/continuity0/MG1; wheel-bowl/suspension clearance repaired and tested at both LODs; final integration pending |
 | t62mv1_x | T-62MV-1 X | Supplied ERA-equipped MV source, not the later owner-modified obr.1975 donor |
 | t72b_1987_x | T-72B obr.1987 X | Supplied folder |
@@ -216,7 +216,7 @@ Burlak's complete-source whole-model gates
 pass. K1A1's source-measured wheel-dish correction passed fresh shape gates,
 but its subsequent photo-referenced roof gun fails comparison against the
 unarmed file: turret right90.26863/left90.79450 and geometry78.03745. That
-difference is pending an explicit owner choice, not a silhouette waiver.
+difference was pending owner choice at that checkpoint. The Sep11 armed/photo target decision below resolves that choice; it does not waive silhouettes.
 Burlak's fused source ownership is not fabricated into component scores.
 Type 10's measured roof-cover/lifting-rail revision now passes fresh fidelity
 and geometry93.6; T-80U's source-dished wheels pass fresh fidelity and
