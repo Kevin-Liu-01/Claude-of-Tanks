@@ -12,6 +12,32 @@ import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-
 
 const backgroundOverrides = ['--disable-background-timer-throttling',
   '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
+
+// Diagnostic hit receipts never export DOM text/attributes, and their bounded
+// observer must release every listener before the owned page is torn down.
+{
+  const handlers=new Map();let disconnected=0,now=0;
+  class ElementFixture {
+    tagName='BUTTON';textContent='PRIVATE_ROOM_CODE';
+    closest(){return null;}
+  }
+  const target=new ElementFixture();
+  const trigger={getBoundingClientRect:()=>({x:10,y:20,width:80,height:40}),contains:node=>node===trigger};
+  const map={querySelector:()=>trigger,classList:{contains:()=>false}};
+  const panel={scrollTop:0};
+  const host={addEventListener:(type,fn)=>handlers.set(type,fn),removeEventListener:type=>handlers.delete(type)};
+  const context={Element:ElementFixture,performance:{now:()=>++now},window:{...host},
+    document:{...host,querySelector:s=>s.endsWith('.panel')?panel:map,elementFromPoint:()=>target},
+    MutationObserver:class{observe(){}disconnect(){disconnected++;}}};
+  runInNewContext(`(${relayProbe.observeProductionMapInteraction.toString()})()`,context);
+  for(let i=0;i<50;i++)handlers.get('click')({type:'click',target,isTrusted:true,clientX:50,clientY:40});
+  const rows=context.window.__cotMapInteractionReceipt();
+  assert.equal(rows.length,40);assert.equal(rows[0].triggerTarget,false);
+  assert.equal(rows[0].centerHitsTrigger,false);assert.equal(rows[0].area,'other');
+  assert.doesNotMatch(JSON.stringify(rows),/PRIVATE|ROOM_CODE/);
+  assert.equal(handlers.size,0);assert.equal(disconnected,1);
+  assert.equal(context.window.__cotMapInteractionReceipt,undefined);
+}
 const requestedLaunch = { headless: true, args: ['--enable-webgl'],
   ignoreDefaultArgs: ['--some-existing-default', backgroundOverrides[0]] };
 const savedLaunch = structuredClone(requestedLaunch);
@@ -1118,6 +1144,17 @@ for (const [error, expected] of [
   assert.equal(projected.operationFailure, expected);
   assert.doesNotMatch(JSON.stringify(projected), /PRIVATE|Page\.navigate|Navigation timeout|stack/);
 }
+for (const cause of [new ProtocolError('PRIVATE timed out'), new TimeoutError('PRIVATE')]) {
+  const nested = new Error('PRIVATE selector wrapper', { cause: new Error('PRIVATE nested', { cause }) });
+  const projected = relayProbe.productionDiagnosticDetails(nested);
+  assert.equal(projected.operationFailure, cause instanceof ProtocolError ? 'protocol-timeout' : 'wait-timeout');
+  assert.doesNotMatch(JSON.stringify(projected), /PRIVATE|cause|stack/);
+}
+const cyclic = new Error('PRIVATE cycle'); cyclic.cause = cyclic;
+assert.equal(relayProbe.productionDiagnosticDetails(cyclic).operationFailure, 'unknown');
+let deep = new ProtocolError('PRIVATE timed out');
+for (let i=0;i<9;i++) deep = new Error('PRIVATE', {cause: deep});
+assert.equal(relayProbe.productionDiagnosticDetails(deep).operationFailure, 'unknown');
 for (const failedStage of ['guest_invite_navigation', 'guest_invite_membership', 'host_invite_membership']) {
   const stages = [];
   let pageCount = 0, browserCloses = 0;
