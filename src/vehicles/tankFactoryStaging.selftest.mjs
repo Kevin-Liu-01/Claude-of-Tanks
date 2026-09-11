@@ -21,6 +21,8 @@ const facadeCoreUrl = coreUrl + '?factory-staging-facade-test';
 const candidateFacadeUrl = facadeUrl + '?factory-staging-test';
 const candidateCore = readFileSync(new URL(coreUrl), 'utf8');
 const shadowBatchCall = '    if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);';
+const sentinelCall = '    if (batchStatic) detachEmptyLodSentinels(root);';
+assert.equal(candidateCore.split(sentinelCall).length, 2, 'one runtime-only empty sentinel finalizer');
 assert.equal(candidateCore.split(shadowBatchCall).length, 2,
   'historical projection requires exactly the published shadow finalizer call');
 const goldenSourceSha256 = 'a8f314131f821dbbe878c49ffefbf1794de99ae8cdfdfe0ec75dd09fedc2625c';
@@ -115,6 +117,8 @@ const hook = registerHooks({
       "    if (globalThis.__factoryStagingFailFinalize) throw new Error('injected finalizer failure');\n    finalizeVehicleNightLighting(root);");
     source = source.replace(shadowBatchCall,
       '    if (batchStatic && !globalThis.__factoryStagingHistoricalShadow) installArticulatedShadowBatch(root, proceduralShadowSources);');
+    source = source.replace(sentinelCall,
+      '    if (batchStatic && !globalThis.__factoryStagingHistoricalShadow) detachEmptyLodSentinels(root);');
     return { ...result, source };
   },
 });
