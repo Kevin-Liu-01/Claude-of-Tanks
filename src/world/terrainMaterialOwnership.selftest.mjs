@@ -1,3 +1,4 @@
+import { assertTerrainFetchExpressionCensus } from './terrainMaskShaderTestOracle.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -86,7 +87,7 @@ function checkSourceContract(text) {
   assert.equal(compact(scalar(text, 'fD')),
     'clamp(max(worn*uWornDirtStrength,max(shoulder,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
     'authored dirt/road/town blend policy unchanged');
-  assert.equal((text.match(/texture2D\(/g) ?? []).length, 78, 'unchanged fetch-expression census, not GPU timing');
+  assertTerrainFetchExpressionCensus(text);
   assert.deepEqual(text.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
   const declarations = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   const uniforms = [...declarations.matchAll(/\buniform\s+\w+\s+([^;]+);/g)]

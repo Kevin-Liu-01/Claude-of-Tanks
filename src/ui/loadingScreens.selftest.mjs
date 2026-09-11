@@ -352,7 +352,7 @@ assert.match(preRosterBattleLoad,
   /const plannedRoster = planRoster[\s\S]{0,1200}const rosterTexture = battleIntent\.prepareRoster\(\{[\s\S]{0,300}rosterIds: plannedRoster[\s\S]{0,3000}acquisition\.acquireSolo\(\[[\s\S]{0,900}\(\) => rosterTexture/,
   'exact cold roster camouflage and texture preparation must overlap battlefield construction');
 assert.match(preRosterBattleLoad,
-  /const fxTexture = ensureFx\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,260}battleVisuals\.stageRootTextureUploads\(live\.group, loadYield\)[\s\S]{0,1200}\(\) => fxTexture/,
+  /const fxTexture = ensureFx\(\)\.then[\s\S]{0,500}live\.preloadTextures[\s\S]{0,180}live\.warmTextures[\s\S]{0,260}battleVisuals\.stageRootTextureUploads\(live\.group, fxUploadYield\)[\s\S]{0,1200}\(\) => fxTexture/,
   'exact combat atlases must install and upload alongside the independent world build');
 const stageRevealBody = battleVisualStreamerSource;
 assert.match(stageRevealBody, /forwardProgramWarm\.compile\(root\)[\s\S]{0,1400}await yieldForBudget\(true\)/,

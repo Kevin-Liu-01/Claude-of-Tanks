@@ -1,5 +1,6 @@
 // Explicit test/acquisition fixture, never imported by shipping terrain.
 import assert from 'node:assert/strict';
+import ts from 'typescript-compiler-api';
 
 export const AUTHORED_EXIT_FIXTURE = {
   alpine: [
@@ -84,4 +85,21 @@ function measuredSegment(config, road, end, segment, a, b, kind) {
   return { road, end, segment, kind, a, b, length,
     ux: (b[0] - a[0]) / length, uz: (b[1] - a[1]) / length,
     width: Math.max(32, 6 + Math.abs(config.terrain.rimH) * 2.4) };
+}
+
+/** Reverse only the authenticated authored endpoint additions in a source receipt. */
+export function historicalAuthoredExitSource(current, previous, id) {
+  if (!AUTHORED_EXIT_FIXTURE[id]) return current;
+  function roadsNode(text) {
+    const ast = ts.createSourceFile('map.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let root = ast.statements.find(ts.isExportAssignment).expression;
+    while (ts.isSatisfiesExpression(root) || ts.isAsExpression(root) || ts.isParenthesizedExpression(root)) root = root.expression;
+    const property = (node, key) => node.properties.find(row => row.name?.getText(ast) === key).initializer;
+    const roads = property(property(root, 'terrain'), 'roads');
+    return { source: roads.getText(ast), value: new Function('return (' + roads.getText(ast) + ')')() };
+  }
+  const actual = roadsNode(current), before = roadsNode(previous);
+  assertAuthoredExitConfig({ id, terrain: { roads: before.value } }, { id, terrain: { roads: actual.value } });
+  assert.equal(current.split(actual.source).length, 2);
+  return current.replace(actual.source, before.source);
 }

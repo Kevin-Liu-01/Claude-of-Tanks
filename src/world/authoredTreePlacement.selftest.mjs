@@ -22,7 +22,7 @@ import orchard from './maps/orchard.ts';
 // records and real terrain. Skip unrelated canvas texture and grass work, not
 // tree logic. This pattern is also used by vegetationResources.selftest.
 const source = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
-const start = source.indexOf('  // weighted species pick');
+const start = source.indexOf('  // Keep the authored random admission sequence');
 const end = source.indexOf('  // near/far instanced meshes', start);
 const noiseStart = source.indexOf('function treePositionNoise(');
 const noiseEnd = source.indexOf('function _mustReplace(', noiseStart);
@@ -77,6 +77,8 @@ const decalStart = source.indexOf('  function createTreeRootDecals(');
 const decalEnd = source.indexOf('  createTreeRootDecals();', decalStart);
 const decals = new Function('THREE', 'mulberry32', 'treeRootDecalRadius', 'treeRootDecalAreaM2',
   `return ${stripTypeScriptTypes(`function roots(trees, heightField) {
+    // This authored-placement checkpoint precedes tidal/road compaction.
+    const rootDecalOrdinals = null;
     const seed = 2001, group = new THREE.Group();
     const document = { createElement: () => ({ width: 0, height: 0 }) };
     const context2d = () => ({ createRadialGradient: () => ({ addColorStop() {} }), fillRect() {} });

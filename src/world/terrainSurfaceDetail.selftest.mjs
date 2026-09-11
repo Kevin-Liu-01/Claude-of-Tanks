@@ -1,3 +1,4 @@
+import { assertTerrainFetchExpressionCensus } from './terrainMaskShaderTestOracle.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { selectTerrainLandformMask } from './terrain.ts';
@@ -16,8 +17,7 @@ assert.equal(selectTerrainLandformMask({}, null), null);
 assert.match(source, /makeMaskTexture\(maskNoi, layout, rockMask, waterWetnessAt,/);
 assert.match(source, /uRockGate = \{ value: rockMask \? 1 : 0 \}/,
   'mask bake and shader agree about the single blue-channel owner');
-assert.equal((source.match(/texture2D\(/g) || []).length, 78,
-  'the surface pass preserves the existing texture fetch expression budget');
+assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [
   ...Array(6).fill('texSize(256)'), 'texSize(512)',
 ], 'terrain detail does not increase any procedural texture or mask dimensions');

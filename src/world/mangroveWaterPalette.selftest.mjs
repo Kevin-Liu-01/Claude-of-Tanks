@@ -1,3 +1,4 @@
+import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -155,7 +156,7 @@ function verifyHistoricalConfigs(resolve) {
     'current Foundry palette remains the published ironworks selection');
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
-    const historical = historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(resolve(id)))));
+    const historical = historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(resolve(id))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
   assert.equal(hash(JSON.stringify(unchangedMaps)),

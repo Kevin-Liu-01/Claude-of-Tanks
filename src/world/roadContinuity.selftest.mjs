@@ -224,7 +224,10 @@ for (const mapId of MAP_IDS) {
     source.map(road => road.map(() => 0))), /Fjord northern grade ownership changed/,
   'the actual production alignment still rejects incomplete historical termini');
   const field = withoutCompletion(mapId, () => referenceHeightField(1337, control)), after = createHeightField(1337, config);
-  assert.deepEqual(Object.keys(after), Object.keys(field), 'no extra retained field/resource descriptors');
+  if (after._createRoadPlacementSampler) assert.equal(typeof after._createRoadPlacementSampler, 'function');
+  assert.deepEqual(Object.keys(after).filter(key => key !== '_createRoadPlacementSampler'),
+    Object.keys(field).filter(key => key !== '_createRoadPlacementSampler'),
+    'only the separately tested construction-only admission factory extends field ownership');
   assertInteriorExclusion(mapId, config, roads, after);
   assertCurrentCorridorSeam(mapId, config, roads, after);
   const supportBoundaryJump = portalBoundaryJump(mapId, config, roads, after);

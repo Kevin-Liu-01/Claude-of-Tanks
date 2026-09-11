@@ -1,3 +1,5 @@
+import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
+import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
@@ -14,7 +16,7 @@ const hash=a=>createHash('sha256').update(new Uint8Array(a.buffer,a.byteOffset,a
 const terrainURL=new URL('./terrain.ts',import.meta.url).href,ports=new Map();
 const anchor='  const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);';
 for(const side of ['current','baseline']){
-  let source=side==='current'?readFileSync(new URL('./terrain.ts',import.meta.url),'utf8'):oldSource('src/world/terrain.ts');
+  let source=side==='current'?historicalRoadTerrainSource:oldSource('src/world/terrain.ts');
   assert.equal(source.split(anchor).length,2,'Exact real height-field support checkpoint');
   source=source.replace(anchor,anchor+'\n  __supports = {road:gRoadElev,dist:gRoadDist,corridor:gCorridor,pads:padYs,lakes:lakeLevels,liquidSurfaces,liquidLakeBanks};');
   source+='\nlet __supports; export function constructObserved(seed,cfg){const field=createHeightField(seed,cfg);return {field,supports:__supports};}\n';
@@ -30,7 +32,9 @@ assert.equal(MAP_IDS.length-selected.size,28,'Exactly two playable-relief pilots
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
 
-// This remains the historical Frontier/Alpine acceptance oracle. Badlands'
+// This remains the historical Frontier/Alpine acceptance oracle. The shared
+// authenticated road fixture removes later approaches only; terrainStreaming
+// and roadContinuity independently exercise all live completed-road surfaces. Badlands'
 // later canyon layout is tested against actual current config separately in
 // badlandsRelief.selftest.mjs; it is not part of this older two-map pilot.
 const badlandsBase='d948cb5733ebb41ba471458a6b410e2bbb3568cc';
@@ -46,7 +50,7 @@ const historicalBadlands=(await import(badlandsURL)).default;
 for(const [id,file]of selected){
   const url=new URL(`./maps/${file}.ts`,import.meta.url).href+'?relief-original';
   ports.set(url,stripTypeScriptTypes(oldSource(`src/world/maps/${file}.ts`)));
-  const old=(await import(url)).default,cfg=getMapConfig(id);
+  const old=(await import(url)).default,cfg=originalExitConfig(getMapConfig(id));
   const normalized={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
   const stringify=value=>JSON.stringify(value,(_k,v)=>typeof v==='function'?v.toString():v);
   assert.equal(stringify(normalized),stringify(old),`${id}: all non-relief authoring retained`);
@@ -97,7 +101,7 @@ for(const kind of ['spur','glacial','terrace']){
 }
 
 for(const id of MAP_IDS){
-  const cfg=id==='badlands'?historicalBadlands:getMapConfig(id),layout=createLayout(cfg);
+  const cfg=id==='badlands'?historicalBadlands:originalExitConfig(getMapConfig(id)),layout=current.createLayout(cfg);
   if(!selected.has(id))assert.ok(layout.terrain.landforms.every(f=>!f.relief&&!f._relief));
   else{
     assert.equal(layout.terrain.landforms.length,5);

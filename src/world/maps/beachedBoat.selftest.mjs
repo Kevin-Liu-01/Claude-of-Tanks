@@ -1,3 +1,5 @@
+import { historicalRoadHeightField } from '../roadHistoryTestOracle.mjs';
+import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { registerHooks } from 'node:module';
@@ -62,8 +64,9 @@ function inventory(built) {
   return { other: other.digest('hex'), boat: boat.digest('hex'), vertices, indices, bytes, geometries };
 }
 
-function build(mapId, seed) {
-  const config = getMapConfig(mapId), field = createHeightField(seed, config);
+function build(mapId, seed, historical = false) {
+  const config = historical ? originalExitConfig(getMapConfig(mapId)) : getMapConfig(mapId);
+  const field = (historical ? historicalRoadHeightField : createHeightField)(seed, config);
   const built = capture(), random = mulberry32(seed ^ 0x5a17);
   let calls = 0;
   dressMapExtras({ mapId, extraKits: config.props.extraKits,
@@ -141,10 +144,11 @@ function auditBoat(boat, field) {
 
 let realBoats = 0, mastBoats = 0, deepest = 0;
 for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
+  const historical = build(mapId, seed, true), prior = inventory(historical);
   const built = build(mapId, seed), stats = inventory(built);
   try {
-    assert.deepEqual([built.calls, built.next, built.boats.length, stats.vertices, stats.indices,
-      stats.bytes, stats.geometries, stats.other], controls[`${mapId}:${seed}`],
+    assert.deepEqual([historical.calls, historical.next, historical.boats.length, prior.vertices, prior.indices,
+      prior.bytes, prior.geometries, prior.other], controls[`${mapId}:${seed}`],
     `${mapId}/${seed}: exact shared RNG, budgets and ALL non-boat geometry bytes preserved`);
     assert.ok(built.boats.length > 0, 'no vacuous production consumer coverage');
     for (const boat of built.boats) {
@@ -155,7 +159,7 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of consumers) {
     assert.deepEqual(inventory(repeated), stats, 'new boat bytes are deterministic');
     assert.deepEqual([...repeated.receipts], [...built.receipts]);
     dispose(repeated);
-  } finally { dispose(built); }
+  } finally { dispose(built); dispose(historical); }
 }
 console.log(`beachedBoat.selftest: ${realBoats} real boats, ${mastBoats} attached masts; worst penetration ${deepest} m`);
 

@@ -87,8 +87,9 @@ for (const seed of seeds) {
 
 // The opt-in alone cannot alter another map. This exercises the production
 // guard on the same terrain instead of trusting a source-text assertion.
-const gated = createHeightField(1337, { ...copper, id: 'verdant' });
-const uncut = createHeightField(1337, legacy);
+const otherMap = getMapConfig('verdant');
+const gated = createHeightField(1337, { ...otherMap, terrain: { ...otherMap.terrain, quarryBenches: true } });
+const uncut = createHeightField(1337, { ...otherMap, terrain: { ...otherMap.terrain, quarryBenches: false } });
 for (let z = -180; z < 220; z += 16) for (let x = -240; x < 40; x += 16) {
   equalSurface(gated, uncut, x, z, 'Other map IDs ignore quarry opt-in');
 }
