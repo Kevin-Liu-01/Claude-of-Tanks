@@ -20,7 +20,7 @@ const frameSource = source.slice(frameStart, frameEnd);
 assert.match(frameSource, /dynGovern\(adaptiveFrameSeconds\(dt, frameWallDtSeconds\)\)[\s\S]*passes\[0\] === sceneAA && passes\[1\] === aerial[\s\S]*passes\[2\] === gtao && passes\[3\] === lateFx/);
 assert.match(frameSource, /sceneAA\.enabled && aerial\.enabled && lateFx\.enabled[\s\S]*canonicalPrefix && !gtao\.enabled && lateFx\.softState\?\.isActive\(\)/);
 assert.match(frameSource, /if \(canonicalPrefix\) sceneAA\.beginMatrixFrame\(renderer\);\s*else sceneAA\.endMatrixFrame\(\);/);
-assert.match(frameSource, /aerial\.beginDirectColorFrame\(directColor \? lateTarget : null\);\s*try \{\s*composer\.render\(dt\);\s*\} finally \{\s*sceneAA\.endMatrixFrame\(\);\s*aerial\.endDirectColorFrame\(\);/);
+assert.match(frameSource, /aerial\.beginDirectColorFrame\(directColor \? lateTarget : null\);\s*const rangeMarker = beginStaticDrawRangeFrame\(\);\s*try \{\s*composer\.render\(dt\);\s*\} finally \{\s*endStaticDrawRangeFrame\(rangeMarker\);\s*sceneAA\.endMatrixFrame\(\);\s*aerial\.endDirectColorFrame\(\);/);
 assert.equal(source.match(/beginDirectColorFrame\(/g)?.length, 1, 'warm and standalone paths cannot arm the handoff');
 assert.equal(source.match(/beginMatrixFrame\(/g)?.length, 1, 'warm and standalone paths cannot arm matrix reuse');
 

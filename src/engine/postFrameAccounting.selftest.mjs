@@ -8,6 +8,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { createPostFrameAccounting } from './postFrameAccounting.ts';
+import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 
 // Execute the real application frame boundary, real composer/fullscreen passes,
 // real geometry counts and pinned Three info owner. The GPU submission port is
@@ -21,7 +22,7 @@ const binding = postSource.match(/render: frameAccounting\.render,/)?.[0];
 assert.ok(getter && binding, 'public post owner must expose the accounted transaction');
 const instantiate = new Function('ports', stripTypeScriptTypes(`
   const { renderer, composer, sceneAA, aerial, gtao, lateFx, scene,
-    grade, createPostFrameAccounting } = ports;
+    grade, createPostFrameAccounting, beginStaticDrawRangeFrame, endStaticDrawRangeFrame } = ports;
   const dynGovern = () => {}, adaptiveFrameSeconds = dt => dt;
   const updateAerialZoom = () => {}, updateScopeGrade = () => {};
   const updateAerialFogColors = () => {}, updateAerialCameraBasis = () => {};
@@ -84,7 +85,8 @@ function fixture(autoReset = true) {
   lateFx.softState = { isActive: () => false };
   for (const pass of [sceneAA, aerial, gtao, lateFx, final]) composer.addPass(pass);
   const post = instantiate({ renderer, composer, sceneAA, aerial, gtao, lateFx, scene,
-    grade: { uniforms: { uExposure: { value: 1 } } }, createPostFrameAccounting });
+    grade: { uniforms: { uExposure: { value: 1 } } }, createPostFrameAccounting,
+    beginStaticDrawRangeFrame, endStaticDrawRangeFrame });
   return {
     renderer, composer, post, final,
     assertReleased() { assert.equal(matrixOpen, false); assert.equal(directOpen, false); },

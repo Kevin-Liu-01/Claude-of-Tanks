@@ -82,6 +82,7 @@ import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
+import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 
 interface ReconstructionTelemetry {
   mode: ReconstructionMode;
@@ -2473,9 +2474,11 @@ export function createPost(
     if (canonicalPrefix) sceneAA.beginMatrixFrame(renderer);
     else sceneAA.endMatrixFrame();
     aerial.beginDirectColorFrame(directColor ? lateTarget : null);
+    const rangeMarker = beginStaticDrawRangeFrame();
     try {
       composer.render(dt);
     } finally {
+      endStaticDrawRangeFrame(rangeMarker);
       sceneAA.endMatrixFrame();
       aerial.endDirectColorFrame();
     }
