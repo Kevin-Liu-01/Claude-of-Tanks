@@ -884,6 +884,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/cropLighting.selftest.mjs',
     'src/world/cropBiomeIdentity.selftest.mjs',
     'src/world/horizonResources.selftest.mjs',
+  'src/world/horizonAutumnGround.selftest.mjs',
+  'src/world/autumnHorizonSeam.selftest.mjs',
     'src/world/horizonVerdant.selftest.mjs',
     'src/world/horizonMesaTexture.selftest.mjs',
     'src/world/horizonNoiseSampling.selftest.mjs',

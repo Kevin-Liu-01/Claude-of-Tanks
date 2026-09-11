@@ -1,3 +1,4 @@
+import { bindAutumnHorizonGround } from './horizonAutumnGround.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
 // procedural PBR ground material. Pure part (createHeightField) is node-runnable.
@@ -3814,6 +3815,8 @@ function* terrainBuildSteps(
     }
   }
   const { material: mat, textures: splatTextures } = materialStep.value;
+  if (cfg?.id === 'autumn') bindAutumnHorizonGround(
+    horizonStep.value, mat, splatTextures);
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();
   // Alternative LOD geometries are retained in `chunks` even when another
