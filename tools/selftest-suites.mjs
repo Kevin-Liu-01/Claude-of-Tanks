@@ -823,6 +823,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/terrainResources.selftest.mjs',
     'src/world/propsResources.selftest.mjs',
+    'src/world/plasterSurfaceSharing.selftest.mjs',
     'src/world/propsScheduling.selftest.mjs',
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/propsTextureRows.selftest.mjs',

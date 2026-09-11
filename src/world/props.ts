@@ -614,6 +614,7 @@ function makePlaster(
   noi: SimplexNoise,
   anisotropy: number,
   tone: ToneFunction | null = null,
+  sharedSurface: Pick<GeneratedSurfaceTextures, 'normal' | 'surface'> | null = null,
 ): GeneratedSurfaceTextures {
   const s = 256, px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s);
   for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
@@ -631,8 +632,9 @@ function makePlaster(
   applyTone(px, tone);
   return {
     albedo: toTexture(px, s, { srgb: true, anisotropy }),
-    normal: normalFromHeight(hgt, s, 1.2, anisotropy),
-    surface: surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
+    normal: sharedSurface?.normal ?? normalFromHeight(hgt, s, 1.2, anisotropy),
+    surface: sharedSurface?.surface
+      ?? surfaceFromHeight(hgt, s, anisotropy, { roughMin: 0.84, roughMax: 0.98, aoMin: 0.80 }),
   };
 }
 
@@ -2651,7 +2653,11 @@ function* propsBuildSteps(
   };
   const plaster2 = makePlaster(noi, aniso, T.plaster2 || _tShift(T.plaster, +0.022, 1.1, 0.90));
   yield { fine: true };
-  const plaster3 = makePlaster(noi, aniso, T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84));
+  // These two procedural variants differ only in albedo tone. Share their
+  // immutable relief within this props owner; retained materials deduplicate
+  // final disposal. Primary plaster stays exclusive for sourced image swaps.
+  const plaster3 = makePlaster(noi, aniso,
+    T.plaster3 || _tShift(T.plaster, -0.035, 0.72, 0.84), plaster2);
   yield { fine: true };
   const roofT = makeRoofTiles(noi, aniso, T.roof || null);
   yield { fine: true };
