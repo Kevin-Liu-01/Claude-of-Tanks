@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { installStaticDrawRange, type StaticDrawRun } from '../engine/staticDrawRange.ts';
+import { installStaticDrawRange, installStaticInstanceRange, type StaticDrawRun } from '../engine/staticDrawRange.ts';
 
 export interface GarageDressingOptimizationOptions {
   /**
@@ -296,7 +296,7 @@ function mergeStaticWorkshopProps(root: THREE.Object3D): {
       merged.userData.workshopStaticMerge = true;
       merged.updateMatrix();
       merged.matrixAutoUpdate = false;
-      retainStaticDrawRuns(merged, root, batch.meshes, transformed);
+      retainStaticDrawRuns(merged, transformed);
       for (const clone of transformed) clone.dispose();
       for (const mesh of batch.meshes) {
         mergedSources.add(mesh.geometry);
@@ -356,50 +356,42 @@ function displayBatchElementCount(batch: StaticMergeBatch): number {
       || 0), 0);
 }
 
-function staticSection(mesh: THREE.Mesh, owner: THREE.Object3D): THREE.Object3D {
-  let section: THREE.Object3D = mesh;
-  while (section.parent && section.parent !== owner) section = section.parent;
-  return section;
-}
-
-/** Preserve merge order; adjacent source sections become exact bounded runs. */
+/** Preserve merge order and at most 64 conservative source-buffer bounds. */
 function retainStaticDrawRuns(
-  merged: THREE.Mesh, owner: THREE.Object3D,
-  sources: readonly THREE.Mesh[], transformed: readonly THREE.BufferGeometry[],
+  merged: THREE.Mesh, transformed: readonly THREE.BufferGeometry[],
 ): void {
   if (merged.castShadow || !merged.frustumCulled) return;
   const runs: StaticDrawRun[] = [];
-  let previous: THREE.Object3D | null = null, offset = 0;
-  for (let index = 0; index < sources.length; index++) {
-    const section = staticSection(sources[index], owner);
+  const partitionSize = Math.max(1, Math.ceil(transformed.length / 64));
+  let offset = 0;
+  for (let index = 0; index < transformed.length; index++) {
     const geometry = transformed[index];
     if (!geometry.boundingBox) geometry.computeBoundingBox();
     const count = geometry.index?.count ?? geometry.getAttribute('position').count;
     const bounds = geometry.boundingBox;
     if (!bounds || count % 3 !== 0) return;
     const last = runs[runs.length - 1];
-    if (last && section === previous) {
+    if (last && index % partitionSize !== 0) {
       last.count += count;
       last.bounds.union(bounds);
     } else {
       runs.push({ start: offset, count, bounds: bounds.clone() });
     }
-    previous = section;
     offset += count;
   }
-  // Fixed-size CPU metadata only. Highly fragmented batches keep full draws.
-  if (runs.length <= 64) installStaticDrawRange(merged, runs);
+  installStaticDrawRange(merged, runs);
 }
 
 interface MergedDisplayBatch {
   geometry: THREE.BufferGeometry;
+  disposable?: { dispose(): void };
   sourceGeometries: THREE.BufferGeometry[];
   meshesMerged: number;
   elementsMerged: number;
 }
 
 interface MergedDisplayOwner extends StaticMergeResult {
-  generatedGeometries: THREE.BufferGeometry[];
+  generatedGeometries: TrackedGeometry[];
 }
 
 function mergeStaticDisplayBatch(
@@ -417,14 +409,39 @@ function mergeStaticDisplayBatch(
     geometry.applyMatrix4(_instanceMatrix);
     return geometry;
   });
-  const geometry = mergeGeometries(transformed, false);
+  // A widely scattered clutter palette needs independent culling of its
+  // pieces. Keep the same baked vertex arithmetic and original draw order;
+  // a single first-to-last range cannot omit gaps between visible pieces.
+  const nativeClutterBatch = owner.name === 'garage_verdant_interior_clutter'
+    && !batch.castShadow && batch.frustumCulled && elementsMerged >= 100_000
+    && batch.material.type === 'MeshStandardMaterial';
+  let batched: THREE.BatchedMesh | null = null;
+  let geometry: THREE.BufferGeometry | null;
+  if (nativeClutterBatch) {
+    const vertices=transformed.reduce((sum,g)=>sum+g.getAttribute('position').count,0);
+    // These vertices already contain every per-piece transform. Avoid the
+    // identity batch-matrix operations: their extra normal arithmetic can
+    // change the last framebuffer bit even with an identity matrix.
+    const bakedMaterial=batch.material.clone();
+    const beforeCompile=batch.material.onBeforeCompile;
+    bakedMaterial.onBeforeCompile=(shader,renderer)=>{
+      beforeCompile.call(bakedMaterial,shader,renderer);
+      shader.vertexShader='#undef USE_BATCHING\n'+shader.vertexShader;
+    };
+    bakedMaterial.customProgramCacheKey=()=>batch.material.customProgramCacheKey()+':immutable-baked-batch-r1';
+    batched=new THREE.BatchedMesh(transformed.length,vertices,elementsMerged,bakedMaterial);
+    batched.sortObjects=false;
+    batched.perObjectFrustumCulled=true;
+    for (const part of transformed) batched.addInstance(batched.addGeometry(part));
+    geometry=batched.geometry;
+  } else geometry = mergeGeometries(transformed, false);
   if (!geometry) {
     for (const clone of transformed) clone.dispose();
     return null;
   }
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  const merged = new THREE.Mesh(geometry, batch.material);
+  const merged = batched ?? new THREE.Mesh(geometry, batch.material);
   merged.name = `workshop_display_merge_${mergeIndex}`;
   merged.castShadow = batch.castShadow;
   merged.receiveShadow = batch.receiveShadow;
@@ -434,13 +451,22 @@ function mergeStaticDisplayBatch(
   merged.userData.workshopStaticDisplayMerge = true;
   merged.updateMatrix();
   merged.matrixAutoUpdate = false;
-  retainStaticDrawRuns(merged, owner, batch.meshes, transformed);
+  if (batched) merged.userData.workshopNativeClutterBatch=true;
+  else retainStaticDrawRuns(merged, transformed);
   for (const clone of transformed) clone.dispose();
   const sourceGeometries = batch.meshes.map((mesh) => mesh.geometry);
   for (const mesh of batch.meshes) mesh.removeFromParent();
   owner.add(merged);
+  const ownedBatch=batched;
+  let disposed=false;
   return {
     geometry,
+    ...(ownedBatch ? {disposable:{dispose() {
+      if(disposed)return;
+      disposed=true;
+      ownedBatch.dispose();
+      (ownedBatch.material as THREE.Material).dispose();
+    }}} : {}),
     sourceGeometries,
     meshesMerged: batch.meshes.length,
     elementsMerged,
@@ -453,7 +479,7 @@ function mergeStaticDisplayOwner(
 ): MergedDisplayOwner {
   const byMaterial = collectStaticDisplayBatches(owner);
   const sourceGeometries = new Set<THREE.BufferGeometry>();
-  const generatedGeometries: THREE.BufferGeometry[] = [];
+  const generatedGeometries: TrackedGeometry[] = [];
   let meshesMerged = 0;
   let mergeBatches = 0;
   let elementsMerged = 0;
@@ -467,7 +493,7 @@ function mergeStaticDisplayOwner(
       );
       if (!merged) continue;
       for (const geometry of merged.sourceGeometries) sourceGeometries.add(geometry);
-      generatedGeometries.push(merged.geometry);
+      generatedGeometries.push(merged.disposable ?? merged.geometry);
       meshesMerged += merged.meshesMerged;
       mergeBatches += 1;
       elementsMerged += merged.elementsMerged;
@@ -528,7 +554,7 @@ function mergeStaticDisplayOwners(
   };
 }
 
-type TrackedGeometry = THREE.BufferGeometry & { dispose(): void };
+type TrackedGeometry = { dispose(): void };
 
 function releaseUnreferencedGeometries(
   candidates: ReadonlySet<THREE.BufferGeometry>,
@@ -605,6 +631,9 @@ export function optimizeGarageDressing(
   const merging = mergeStaticWorkshopProps(root);
   const generated = root.userData.optimizationDisposables ||= [];
   const displayMerging = mergeStaticDisplayOwners(staticDisplayOwners, generated);
+  for (const owner of staticDisplayOwners) owner.traverse(object => {
+    if (object instanceof THREE.InstancedMesh) installStaticInstanceRange(object);
+  });
   const releaseCandidates = new Set([
     ...merging.sourceGeometries,
     ...displayMerging.sourceGeometries,
