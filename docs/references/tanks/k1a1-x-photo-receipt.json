@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tankId": "k1a1_x",
+  "quality": "high",
+  "arrangementAccepted": true,
+  "reference": "https://www.dvidshub.net/image/3912303/1-5cav-and-roka-combined-training-exercise",
+  "referencePhotoSha256": "6f399ae910990b14a488e1643b07473fc50672831665a92e57ef37f2622340f5",
+  "geometryPoseSha256": "d9428e69eaf560e51da8382a4586fba1b746fb527bdf5915ba89b99dca14d85e",
+  "reviewer": "low_stock_critic",
+  "reviewScope": "Independent original-image review of owner-approved photo-led roof-gun arrangement; no whole-vehicle or survey-dimensional qualification",
+  "findings": [
+    "Long barrel, perforated rear jacket and receiver form a straight, connected line in both front quarters and overhead. No bend or detached sleeve is visible.",
+    "Gun sits on the retained canted arm and bearing/yoke assembly; side ammunition box remains adjacent to the receiver. Rear view shows the grips and supported receiver, not an empty cradle presented as an operating weapon.",
+    "Both quarter views and overhead show jacket apertures. Native front quarters show the muzzle opening. Pixel inspection cannot replace the existing physical open-hole/bore-depth and yoke-engagement tests.",
+    "The photograph supports this broad arrangement; it shows an elevated gun while the native capture is level. Authored dimensions, exact elevation and unseen components are not photo measurements.",
+    "The photographic feed box/tray and small barrel fittings have more detail than the procedural fitting. Bounded acceptance does not claim an exact photographic replica or complete accessory reconstruction."
+  ],
+  "reviewedOriginals": {
+    "frontRight.png": "3be5b93e22da2f82ca1c33389a155ffbe287bf9da4dcb273113d69101c8869e4",
+    "roof.png": "cb192009a8214d522749fcabf94a41bb227ba4bf4340175e5357dad064868394",
+    "rear.png": "f0099010e1671f673f9bf38642443d9102ada1dc908eb21174d53c2958d36b96",
+    "frontLeft.png": "067497bf127c8af98a49c64d1f34a6fc8e0291d8bdda48034ade33d06db235fc"
+  },
+  "captureReport": ".qa-dev/launch/k1-armed-gun-native-r6/report.json",
+  "captureReportSha256": "9f18d2ed3b943b729a9331bc14c4c0de01f0e7abe6d4f3566019aa3a07706169",
+  "reviewTransfer": "All four R6 originals are byte-identical to independently reviewed R2 originals; R6 authenticates actual runner and all tracked runtime sources before/after, with zero errors and complete cleanup.",
+  "numericPhotoFidelity": null,
+  "surveyDimensionsQualified": false,
+  "fullVehicleQualification": false
+}

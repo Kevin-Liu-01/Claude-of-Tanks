@@ -29,6 +29,9 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { K1_PHOTO_TARGET } from '/tools/k1-photo-target.mjs';
+import { verifySupplement } from '/tools/reference-supplement.mjs';
+import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
@@ -732,6 +735,24 @@ const procedural = createTank(id, engineCtx, { camoSeed:4242, quality:'high', pr
 window.__FIDELITY_REFERENCE = reference;
 window.__FIDELITY_PROCEDURAL = procedural;
 scene.add(reference.root, procedural.root);
+// Owner-approved split target: the supplied file is unarmed. Numeric metrics
+// apply to its body; the separate weapon must still exactly match the accepted
+// photographed assembly. No missing/changed supplement can enable exclusion.
+let photoSupplement=null,photoGroup=null;
+if(id==='k1a1_x' && params.get('comparison')!=='raw-source'){
+  try{photoSupplement=await verifySupplement(procedural.root,K1_PHOTO_TARGET,k1PhotoReceipt);}
+  catch(error){failFidelity(String(error.message));}
+  photoGroup=procedural.root.getObjectByName(K1_PHOTO_TARGET.group);
+  photoGroup.visible=false;
+}
+if(photoSupplement)document.querySelector('#summary').textContent += ' · body metrics; roof gun checked against approved photo arrangement';
+const comparisonScope=photoSupplement?{
+  numericScope:'Supplied-model body excluding the separately reviewed photo weapon',
+  ownerDecision:K1_PHOTO_TARGET.ownerDecision,decisionDate:K1_PHOTO_TARGET.decisionDate,
+  photoSupplement,rawSourceComparison:'?comparison=raw-source',
+  fullVehicleQualification:false,
+}:null;
+
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const isBelow = (node, ancestor) => { for (let p=node; p; p=p.parent) if (p === ancestor) return true; return false; };
@@ -1329,7 +1350,8 @@ for (const [name,value] of Object.entries(scores)) {
 
 window.__FIDELITY_REPORT={
   id,name:spec.name,sourcePath:source.glb.path,
-  comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
+  comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
+  ...(comparisonScope ? {comparisonScope} : {}),
   ...(preservation ? { preservationBaseline:preservation } : {}),
   // variantOf is combat lineage, not evidence of visual-builder delegation.
   fallback:spec.publicVisualFallback || spec.visualBase || id,
@@ -1412,6 +1434,11 @@ window.__FIDELITY_REPORT={
 // pair, articulation strip, procedural turntable. Rendered strictly AFTER
 // scoring so pose/visibility mutations can never contaminate the masks.
 if (params.get('board')) {
+  // Shaded evidence always shows the complete armed playable. Restore the
+  // measurement scope afterwards so board mode cannot change geometry scores.
+  const photoNodes=[];
+  if(photoGroup){photoGroup.visible=true;photoGroup.traverse(o=>{if(isRenderNode(o)){photoNodes.push(o);baseVisible.set(o,true);o.visible=true;}});}
+
   // This equal-clay diagnostic is deliberately applied only after masks and
   // scores are finalized. Albedo, texture detail and instanced tread tints
   // cannot disguise mismatched physical planes in this optional board.
@@ -1516,6 +1543,7 @@ if (params.get('board')) {
     procedural.root.updateMatrixWorld(true);
     addBoard('procedural turntable — 24 × 15°', cv);
   }
+  if(photoGroup){photoGroup.visible=false;for(const o of photoNodes){baseVisible.set(o,false);o.visible=false;}}
 }
 
 // ---- &profiles=1: measure the REFERENCE model into authoring data --------
@@ -2109,7 +2137,8 @@ if (params.get('geo')) {
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), requiredMinimum: requiredFidelity,
     registration:sourceWorldRegistration || {mode:'legacy-hull-translation'},
-    comparisonPurpose:preservation ? 'preservation' : 'source-fidelity',
+    comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
+  ...(comparisonScope ? {comparisonScope} : {}),
     dimensionTarget:dimensionFrame ? 'hash-pinned source: fixed ruler plus full physical envelope'
       : preservation ? 'hash-pinned historical first-party baseline' : 'published specification',
     ...(dimensionFrame ? {dimensionFrame} : {}),
