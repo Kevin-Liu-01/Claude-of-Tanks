@@ -88,12 +88,22 @@ const registryUrl = `http://localhost:${server.config.server.port}/tools/procedu
   }
   for (const id of ids) {
     try {
+      let rawSourceComparison=null;
+      if(id==='k1a1_x'){
+        await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded'});
+        await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{polling:60});
+        const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
+        const raw=await page.evaluate('window.__GEO_REPORT');if(!raw)throw new Error('raw source comparison unavailable');
+        const file=`${id}.raw-source.json`;fs.writeFileSync(path.join(OUT,file),`${JSON.stringify(raw,null,1)}\n`);
+        rawSourceComparison={file,gatePassed:raw.gatePassed,rawGeoMin:raw.rawGeoMin,scope:'Full armed vehicle against unchanged unarmed source; retained diagnostic, not owner-selected composite target'};
+      }
       await page.goto(urlFor(id), { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"', { polling: 60 });
       const runtimeError = await page.evaluate('window.__FIDELITY_ERROR');
       if (runtimeError) throw new Error(runtimeError);
       const report = await page.evaluate('window.__GEO_REPORT');
       if (!report) throw new Error('no __GEO_REPORT');
+      if(rawSourceComparison)report.rawSourceComparison=rawSourceComparison;
       fs.writeFileSync(path.join(OUT, `${id}.json`), `${JSON.stringify(report, null, 1)}\n`);
       rows.push(report);
       const c = report.components;
@@ -119,6 +129,7 @@ for (const r of rows) byId.set(r.id, {
   id: r.id, geoMin: r.geoMin, requiredMinimum: r.requiredMinimum ?? 90,
   qualityBar: r.qualityBar || 'fleet', gatePassed: r.gatePassed, components: r.components,
   ...(r.comparisonPurpose ? { comparisonPurpose:r.comparisonPurpose } : {}),
+  ...(r.comparisonScope ? {comparisonScope:r.comparisonScope,rawSourceComparison:r.rawSourceComparison} : {}),
   ...(r.preservationBaseline ? { preservationBaseline:r.preservationBaseline } : {}),
 });
 const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);

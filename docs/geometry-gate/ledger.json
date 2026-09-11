@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-11T09:58:40.427Z",
+ "generatedAt": "2026-09-11T21:42:40.456Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 67,
+ "passed": 68,
  "total": 161,
  "rows": [
   {
@@ -853,22 +853,6 @@
     "dims": 100,
     "floaters": 100
    }
-  },
-  {
-   "id": "k1a1_x",
-   "geoMin": 78,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 96,
-    "stations": 93.5,
-    "turretCurves": 80.4,
-    "wholeCurves": 85.1,
-    "dims": 78,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "type10_x",
@@ -1726,6 +1710,43 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "k1a1_x",
+   "geoMin": 93,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 96,
+    "stations": 99.1,
+    "turretCurves": 96.3,
+    "wholeCurves": 93,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-body-and-photo-arrangement",
+   "comparisonScope": {
+    "numericScope": "Supplied-model body excluding the separately reviewed photo weapon",
+    "ownerDecision": "Keep the armed version; compare the gun against its documented photo reference",
+    "decisionDate": "2026-09-11",
+    "photoSupplement": {
+     "reference": "https://www.dvidshub.net/image/3912303/1-5cav-and-roka-combined-training-exercise",
+     "group": "k1a1XPhotoRoofMachineGun",
+     "geometryPoseSha256": "d9428e69eaf560e51da8382a4586fba1b746fb527bdf5915ba89b99dca14d85e",
+     "arrangementAccepted": true,
+     "numericPhotoFidelity": null,
+     "scope": "Previously reviewed assembly geometry, pose and material invariance; not photo survey dimensions"
+    },
+    "rawSourceComparison": "?comparison=raw-source",
+    "fullVehicleQualification": false
+   },
+   "rawSourceComparison": {
+    "file": "k1a1_x.raw-source.json",
+    "gatePassed": false,
+    "rawGeoMin": 78.03745318352055,
+    "scope": "Full armed vehicle against unchanged unarmed source; retained diagnostic, not owner-selected composite target"
+   }
+  },
+  {
    "id": "amx30_x",
    "geoMin": 93,
    "requiredMinimum": 92,
@@ -1737,19 +1758,6 @@
     "turretCurves": 96.2,
     "wholeCurves": 94.2,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "k2_x",
-   "geoMin": 93.4,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 93.4,
-    "dims": 95.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1808,6 +1816,19 @@
    "components": {
     "wholeCurves": 93.3,
     "dims": 99.4,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "k2_x",
+   "geoMin": 93.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.4,
+    "dims": 95.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

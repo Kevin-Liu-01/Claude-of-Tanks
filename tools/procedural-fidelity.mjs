@@ -73,7 +73,17 @@ try {
   for (let index=0; index<ids.length; index++) {
     const id = ids[index];
     const errorStart = browserErrors.length;
+    let rawSourceComparison=null;
     try {
+      if(id==='k1a1_x'){
+        await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
+        await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
+        const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);
+        rawSourceComparison=await page.evaluate('window.__FIDELITY_REPORT');
+        if(!rawSourceComparison)throw new Error('raw source comparison unavailable');
+        fs.mkdirSync(REPORT_DIR,{recursive:true});
+        fs.writeFileSync(path.join(REPORT_DIR,`${id}.raw-source-fidelity.json`),`${JSON.stringify(rawSourceComparison,null,2)}\n`);
+      }
       await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
       await page.waitForFunction(
         'window.__FIDELITY_SOURCE_PATH !== undefined || typeof window.__FIDELITY_ERROR === "string"',
@@ -91,6 +101,7 @@ try {
       const runtimeError = await page.evaluate('window.__FIDELITY_ERROR');
       if (runtimeError) throw new Error(runtimeError);
       const row = await page.evaluate('window.__FIDELITY_REPORT');
+      if(rawSourceComparison)row.rawSourceComparison=rawSourceComparison;
       const errors = browserErrors.slice(errorStart);
       if (errors.length) { row.errors = errors; row.gatePassed = false; }
       rows.push(row);
@@ -115,6 +126,7 @@ try {
         id, name:id, score:unavailable ? null : 0,
         scores:{ overall:null,hull:null,turret:null,gun:null,tracks:null },
         error:message, unavailable,
+        ...(rawSourceComparison?{rawSourceComparison}:{}),
       };
       rows.push(row);
       console.error(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id}: ${error.message}`);

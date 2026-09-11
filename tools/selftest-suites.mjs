@@ -26,6 +26,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/typescriptToolchain.selftest.mjs',
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
+    'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
     'tools/procedural-fidelity-lifecycle.selftest.mjs',

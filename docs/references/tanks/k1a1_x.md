@@ -1,6 +1,6 @@
 # K1A1 X — independent source-measured rebuild
 
-2026-09-06. **Photo-led roof weapon retained by owner decision on 2026-09-11; partitioned body/photo qualification and final release pending. Historical unarmed-file failures retained.** Existing `k1a1` is
+2026-09-06. **Photo-led roof weapon retained by owner decision on 2026-09-11; body/photo comparison passed; composed physical standard and final release pending. Historical unarmed-file failures retained.** Existing `k1a1` is
 unchanged. Runtime authoring is in `src/vehicles/profiles/k1a1X.ts` and
 `k1a1XRoof.ts`; it does not call an old family builder. The source is a
 local-only comparison oracle, not playable geometry or a redistributable asset.
@@ -142,7 +142,8 @@ stations99.13004080339716, dimensions100 and floaters100. Ordinary fidelity
 also passed at that checkpoint. These are not the results of the current
 `docs/geometry-gate/k1a1_x.json`; earlier development results remain preserved.
 
-Current photo-weapon revision: `docs/geometry-gate/k1a1_x.json` fails at raw
+Raw armed-versus-unarmed diagnostic, now retained at
+`docs/geometry-gate/k1a1_x.raw-source.json`, fails at raw
 minimum78.03745318352055 (hull96.0256288109756, turret80.4228811782873,
 whole85.10929572248108, stations93.48154552617346,
 dimensions78.03745318352055, floaters100). Its fixed-ruler height is
@@ -229,3 +230,76 @@ Fresh full-source silhouette/geometry/standard evidence is queued, not assumed.
 The owner explicitly selected: “Keep the armed version; compare the gun against its documented photo reference.” Retain the current fitted roof weapon. The supplied unarmed model remains the body/gear/armor source; DVIDS3912303 is the arrangement reference for the separately owned `k1a1XPhotoRoofMachineGun`. Photo-derived dimensions remain authored estimates, not source survey measurements.
 
 The original full armed-versus-unarmed failure remains preserved. A private scoped body preflight excludes only that exact separately owned photo weapon from comparison against the unarmed file. It cannot certify the whole vehicle; the gun still requires the existing HIGH/LOW physical attachment, straight bore, jacket-air and turret-yaw checks plus independent original-image review against the photograph. No numeric threshold, source geometry, runtime geometry or published asset is changed by this target decision.
+
+## 2026-09-11 approved body/photo target qualification
+
+The owner explicitly selected: “Keep the armed version; compare the gun against
+its documented photo reference.” The immutable source remains unarmed. Numeric
+source metrics apply to the supplied-model body; the separately owned photo
+assembly has an independent arrangement review and physical tests. This is not
+a numeric photogrammetric score for the complete armed vehicle.
+
+Clean native body preflight R3 passes raw fidelity97.55436315086448, minimum
+whole view96.49212902590202, and geometry93.04986661585366. Every applicable
+registered floor remains92. Geometry components are hull96.0256288109756,
+turret96.31984180450912, whole93.04986661585366,
+stations99.13005235635056, dimensions100, floaters100. The scoped preflight
+hid only the validated `k1a1XPhotoRoofMachineGun` subtree. All1945 recorded
+source/tool/oracle hashes remained exact; no browser errors; browser/server
+closed. Evidence: `.qa-dev/launch/k1-armed-body-preflight-r3/report.json`.
+
+Independent critic `low_stock_critic` inspected the original DVIDS3912303
+photograph and all four actual procedural gun closeups. The straight receiver,
+barrel, perforated jacket, feed box, and supported yoke arrangement was accepted.
+The photograph shows more tray/small-fitting detail and an elevated gun;
+acceptance does not turn inferred dimensions or hidden details into measurements.
+The HIGH/LOW physical gun, source-body, and wheel tests passed independently.
+
+Native gun R5 has zero errors, Apple M5 Max hardware rendering, repeat-exact
+images, complete cleanup, and unchanged actual runner/full tracked runtime
+hashes. All four originals are byte-identical to independently reviewed R2
+images. R2's favicon error and incomplete tool manifest remain in the raw receipt;
+R3/R5 supply the clean acquisition rather than rewriting that history. R4's
+initial supplement serializer correctly rejected unaccounted material textures;
+R5 includes actual texture pixels and sampling state. The accepted HIGH assembly
+fingerprint is `52ef3a5053972f5bcb269ed00e3db8953317face98a2dcaa9002f571f39d1b6b`.
+
+The draft composite measuring path authenticates the unique assembly and all
+of its stock/pose/material texture data before any body-only exclusion. Shaded
+boards restore the complete armed vehicle. It preserves a fresh raw full-vehicle
+comparison against the unarmed file alongside the selected target result.
+Missing or changed photo stock fails closed. The numeric component remains
+body-only; full vehicle qualification, independent whole-vehicle boards and
+composed release still require their own passing evidence. The canonical
+composite path is under verification and has not been published.
+
+The revised rigid-assembly contract passed independent code review after adding
+material visibility, render layers and unique direct turret ownership to the
+authentication. Tests reproduce and reject the three earlier blind spots. R6
+recaptured the unchanged four originals with zero errors and frozen inputs; its
+current accepted fingerprint is
+`d9428e69eaf560e51da8382a4586fba1b746fb527bdf5915ba89b99dca14d85e`.
+The earlier fingerprint above is superseded. The canonical R2 geometry path
+passes the same body minimum93.04986661585366 and retains the fresh raw
+full-versus-unarmed78.03745318352055 failure. Fidelity/board and composed
+physical-standard stages were still pending at this checkpoint.
+
+Canonical composite R2 completed both geometry and fidelity successfully, with
+fresh raw full-versus-unarmed sidecars retained. Fidelity is97.55436315086448;
+every applicable body metric/view clears92. The neutral comparison, articulation
+and24-frame turntable board is at
+`shots/procedural-fidelity/boards/k1a1_x-neutral.png`; root visually confirmed
+that the photo weapon is restored in the complete procedural board, including
+yawed poses. This neutral-board inspection does not substitute for native
+material review or full composed release. The physical-standard run remains
+pending in `.qa-dev/launch/k1-composite-standard-r1.log`.
+
+
+The composed physical-standard run completed successfully: source-body geometry
+minimum 93.04986661585366 against the unchanged 92 floor, zero flat/rig/sweep
+track clipping, zero continuity holes, and one registered roof machine gun.
+The run uses the authenticated R6 photo arrangement and retains the separate
+full-armed-versus-unarmed source failure. Evidence:
+`.qa-dev/launch/k1-composite-standard-r1.log`. This closes these machine-checkable
+standard gates; it does not claim all-angle native material approval, a numeric
+photo survey score, or full fleet release/performance qualification.
