@@ -18,7 +18,7 @@ export interface PhaseGpuResidencyStats {
 }
 
 export interface RetainedPhaseGpuResidency {
-  suspend(): GpuReleaseReceipt | null;
+  suspend(options?: { releaseTextures?: boolean; additionalRoots?: Object3D[] }): GpuReleaseReceipt | null;
   invalidate(): boolean;
   resume(): Promise<boolean>;
   diagnostics(): PhaseGpuResidencyStats;
@@ -27,6 +27,7 @@ export interface RetainedPhaseGpuResidency {
 interface RetainedPhaseGpuResidencyOptions {
   root: Object3D;
   preserveRoots: Object3D[];
+  additionalRoots?: Object3D[];
   restoreGpu(): Promise<void>;
   releaseMaterials?: boolean;
 }
@@ -40,6 +41,7 @@ interface RetainedPhaseGpuResidencyOptions {
 export function createRetainedPhaseGpuResidency({
   root,
   preserveRoots,
+  additionalRoots = [],
   restoreGpu,
   releaseMaterials = false,
 }: RetainedPhaseGpuResidencyOptions): RetainedPhaseGpuResidency {
@@ -58,11 +60,13 @@ export function createRetainedPhaseGpuResidency({
   };
 
   return {
-    suspend() {
+    suspend({ releaseTextures = true, additionalRoots: releaseRoots = additionalRoots } = {}) {
       if (stats.suspended) return null;
       stats.lastRelease = releaseObject3DGpuResources(root, {
         preserveRoots,
+        additionalRoots: releaseRoots,
         releaseMaterials,
+        releaseTextures,
       });
       stats.suspended = true;
       stats.releases += 1;

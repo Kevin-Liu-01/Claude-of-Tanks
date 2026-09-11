@@ -78,3 +78,49 @@ assert.equal(await retryable.resume(), true,
   'context-invalidated resources follow the complete covered renewal path');
 
 console.log('phaseGpuResidency.selftest: exclusive resources release, retry, and restore pass');
+
+{
+ const active=new THREE.Group(),stage=new THREE.Group(),dressing=new THREE.Group();
+ const borrowed=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,1,0,0,0,1,0],3));
+ borrowed.setIndex([0,1,2]);active.add(new THREE.Mesh(borrowed));
+ const positionAlias=new THREE.BufferGeometry().setAttribute('position',borrowed.attributes.position);
+ const indexAlias=new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute([0,0,1,1,0,1,0,1,1],3)).setIndex(borrowed.index);
+ const data=new THREE.InterleavedBuffer(new Float32Array([0,0,0,1,0,0,0,1,0]),3);
+ const interleavedA=new THREE.BufferGeometry().setAttribute('position',new THREE.InterleavedBufferAttribute(data,3,0));
+ const interleavedB=new THREE.BufferGeometry().setAttribute('position',new THREE.InterleavedBufferAttribute(data,3,0));
+ active.add(new THREE.Mesh(interleavedA));
+ const owned=new THREE.BoxGeometry(),texture=new THREE.Texture(),material=new THREE.MeshBasicMaterial({map:texture});
+ for(const geometry of [positionAlias,indexAlias,interleavedB,owned])dressing.add(new THREE.Mesh(geometry,material));
+ stage.add(new THREE.Mesh(owned,material));
+ let geometryDisposals=0,textureDisposals=0,materialDisposals=0;
+ for(const geometry of [positionAlias,indexAlias,interleavedB])geometry.addEventListener('dispose',()=>assert.fail('active native attribute borrower disposed'));
+ owned.addEventListener('dispose',()=>geometryDisposals++);texture.addEventListener('dispose',()=>textureDisposals++);material.addEventListener('dispose',()=>materialDisposals++);
+ const owner=createRetainedPhaseGpuResidency({root:stage,additionalRoots:[dressing],preserveRoots:[active],restoreGpu:async()=>{}});
+ const receipt=owner.suspend({releaseTextures:false});assert.equal(receipt.geometries,1);assert.equal(receipt.textures,0);
+ assert.equal(geometryDisposals,1,'one shared detached geometry releases once across both roots');assert.equal(textureDisposals,0);assert.equal(materialDisposals,0);
+ assert.equal(stage.children.length,1);assert.equal(dressing.children.length,4,'CPU ownership survives suspension');
+ await owner.resume();owner.suspend();assert.equal(textureDisposals,1,'constrained mode releases textures across both roots');assert.equal(materialDisposals,0);
+ assert.equal(geometryDisposals,2);await owner.resume();
+}
+console.log('phaseGpuResidency: both roots, geometry-only release, active attribute/index/interleaved borrowers and texture modes PASS');
+
+{
+ const stage=new THREE.Group(),workshop=new THREE.Group();
+ const stageGeometry=new THREE.BoxGeometry(),workshopGeometry=new THREE.SphereGeometry();
+ const stageTexture=new THREE.Texture(),workshopTexture=new THREE.Texture();
+ stage.add(new THREE.Mesh(stageGeometry,new THREE.MeshBasicMaterial({map:stageTexture})));
+ workshop.add(new THREE.Mesh(workshopGeometry,new THREE.MeshBasicMaterial({map:workshopTexture})));
+ let stageDisposals=0,workshopDisposals=0,workshopTextureDisposals=0;
+ stageGeometry.addEventListener('dispose',()=>stageDisposals++);
+ workshopGeometry.addEventListener('dispose',()=>workshopDisposals++);
+ workshopTexture.addEventListener('dispose',()=>workshopTextureDisposals++);
+ const owner=createRetainedPhaseGpuResidency({root:stage,additionalRoots:[workshop],preserveRoots:[],restoreGpu:async()=>{}});
+ const mobile=owner.suspend({releaseTextures:true,additionalRoots:[]});
+ assert.equal(mobile.geometries,1);assert.equal(mobile.textures,1);
+ assert.equal(stageDisposals,1);assert.equal(workshopDisposals,0);assert.equal(workshopTextureDisposals,0);
+ await owner.resume();
+ const desktop=owner.suspend({releaseTextures:false});
+ assert.equal(desktop.geometries,2);assert.equal(desktop.textures,0);
+ assert.equal(stageDisposals,2);assert.equal(workshopDisposals,1);assert.equal(workshopTextureDisposals,0);
+}
+console.log('phaseGpuResidency: explicit empty override preserves stage-only release and does not mutate desktop defaults');
