@@ -184,7 +184,9 @@ for (const id of selected) {
   }
   assert.ok(retained > 0);
   if (id !== 'blackglass') assert.ok(removed > 0, `${id}: real trimmed-neighbor control is exercised`);
-  assert.deepEqual(candidate.keys, control.keys, 'no new returned field descriptor');
+  assert.deepEqual(candidate.keys.filter(key => key !== '_createRoadPlacementSampler'),
+    control.keys.filter(key => key !== '_createRoadPlacementSampler'),
+    'only the separately tested construction-only admission factory extends field ownership');
   assert.deepEqual(candidate.layoutKeys.filter(key => key !== 'roadStations'), control.layoutKeys,
     'only existing station metadata may be returned, not original polylines');
   receipts.push({ id, retained, removed, rawExact: true, originalBakeExact: true });

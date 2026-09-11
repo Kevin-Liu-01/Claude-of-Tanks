@@ -1,3 +1,4 @@
+import { assertTerrainFetchExpressionCensus } from './terrainMaskShaderTestOracle.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
@@ -95,7 +96,7 @@ for (const statement of [
   'a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), driftW * 0.85);',
   'vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 7.0).rgb;',
 ]) assert.ok(compact(source).includes(compact(statement)), 'beach, shoal and road detail paths remain unchanged');
-assert.equal((source.match(/texture2D\(/g) ?? []).length, 78, 'no extra texture fetch expressions');
+assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
 assert.match(source, /uniform float [^;]*\buWornDirtStrength\b[^;]*;/, 'exactly one new scalar uniform, not a sampler');
 assert.equal((source.match(/shader\.uniforms\.uWornDirtStrength\s*=/g) ?? []).length, 1);

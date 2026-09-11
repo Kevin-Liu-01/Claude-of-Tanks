@@ -59,3 +59,14 @@ export function assertTerrainMaskShaderContract(source) {
     assert.throws(() => verifyConsumer(mutant), `reject changed consumer even when old code survives in comments: ${from}`);
   }
 }
+
+// The wall-normal repair inlines two samples at each of two former wallTex
+// callsites. Four more lexical expressions do not add executed texture reads.
+export function assertTerrainFetchExpressionCensus(source) {
+  for (const scale of ['0.041', '0.019']) for (const axis of ['x', 'z']) {
+    const expression = `texture2D(uNrmR, gWallUV${axis} * ${scale})`;
+    assert.equal(source.split(expression).length, 2, 'one exact projected wall-normal sample');
+  }
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4,
+    'historical78 plus four inlined wall samples; lexical census only');
+}

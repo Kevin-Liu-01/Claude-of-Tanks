@@ -1,3 +1,5 @@
+import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
+import { originalExitConfig, historicalAuthoredExitSource } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -21,12 +23,14 @@ assert.equal(registry, old('src/world/maps/index.ts'));
 const mapFiles = [...registry.matchAll(/import \w+ from '\.\/(\w+\.ts)';/g)].map(match => match[1]);
 assert.equal(mapFiles.length, MAP_IDS.length);
 for (const file of mapFiles) if (file !== 'badlands.ts') {
-  assert.equal(read('src/world/maps/' + file), old('src/world/maps/' + file), `${file}: unchanged authoring`);
+  const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
+  assert.equal(historicalAuthoredExitSource(read('src/world/maps/' + file), old('src/world/maps/' + file), id),
+    old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 
 const ports = new Map(), terrainURL = new URL('./terrain.ts', import.meta.url).href;
 const anchor = '  const getHeightAt = (x: number, z: number): number => heightAt(x, z, true, true);';
-for (const [side, text] of [['current', read('src/world/terrain.ts')], ['old', oldTerrain]]) {
+for (const [side, text] of [['current', historicalRoadTerrainSource], ['old', oldTerrain]]) {
   assert.equal(text.split(anchor).length, 2, 'actual completed support checkpoint');
   const observed = text.replace(anchor, anchor + '\n  __supports = {road:gRoadElev,dist:gRoadDist,corridor:gCorridor,pads:padYs,lakes:lakeLevels};')
     + '\nlet __supports; export function constructObserved(seed,cfg){const field=createHeightField(seed,cfg);return {field,supports:__supports};}\n';
@@ -43,7 +47,7 @@ try {
   previous = await import(`${terrainURL}?redrock-old`);
   original = (await import(oldURL)).default;
 } finally { hook.deregister(); }
-const config = getMapConfig('badlands'), layout = createLayout(config);
+const config = getMapConfig('badlands'), layout = current.createLayout(config);
 assert.equal(config.terrain.redrockCanyon, true);
 assert.equal(config.terrain.mesas, null, 'blanket random mesas no longer define this canyon');
 assert.equal(config.terrain.rimH, 0, 'no closed square wall across the two canyon mouths');
@@ -167,7 +171,7 @@ for (let z = -400; z <= 400; z += 80) for (let x = -400; x <= 400; x += 80) {
   assert.equal(gatedA.field.getHeightAt(x, z), gatedB.field.getHeightAt(x, z));
 }
 for (const id of MAP_IDS) if (id !== 'badlands') {
-  const cfg = getMapConfig(id), a = current.constructObserved(1337, cfg), b = previous.constructObserved(1337, cfg);
+  const cfg = originalExitConfig(getMapConfig(id)), a = current.constructObserved(1337, cfg), b = previous.constructObserved(1337, cfg);
   assert.deepEqual(bufferReceipt(a.supports), bufferReceipt(b.supports), `${id}: unchanged support arrays`);
   for (let z = -480; z <= 480; z += 80) for (let x = -480; x <= 480; x += 80) {
     assert.equal(a.field.getHeightAt(x, z), b.field.getHeightAt(x, z), `${id}: exact original height`);

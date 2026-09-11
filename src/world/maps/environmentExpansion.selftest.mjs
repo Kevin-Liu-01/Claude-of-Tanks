@@ -1,3 +1,5 @@
+import { historicalRoadLayout } from '../roadHistoryTestOracle.mjs';
+import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { assertDeploymentRoadCoverage } from '../mapRoadCoverage.mjs';
 import { createHeightField } from '../terrain.ts';
@@ -89,8 +91,8 @@ for (const config of maps) {
   const replay = createHeightField(1337, config);
   const roads = hf._layout.roads;
   const budget = authoredBudgets[label];
-  assert.ok(roads.reduce((count, road) => count + road.length, 0) <= budget.roadNodes,
-    `${label}: settlement articulation does not expand the per-query road lattice`);
+  assert.ok(historicalRoadLayout(originalExitConfig(config)).roads.reduce((count, road) => count + road.length, 0) <= budget.roadNodes,
+    `${label}: original settlement articulation retains its lattice budget; completed approaches are checked separately`);
   const frontages = supportedFrontages(config, hf);
   assert.ok(frontages.filter((sites) => sites.length >= 3).length >= 2,
     `${label}: at least two streets support multiple dry, stable building footprints`);

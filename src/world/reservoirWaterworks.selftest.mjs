@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
+import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 import { MAP_IDS } from './maps/index.ts';
 import reservoir from './maps/reservoir.ts';
 import { slabBox } from './propGeometry.ts';
@@ -280,7 +281,7 @@ async function wholeWorld(seed, revision) {
   installFixtureCanvas();
   async function build() {
     globalThis.__waterworksRng = [];
-    const props = createProps(createHeightField(seed, config), { anisotropy: 4, setupShadowMaterial() {} }, 2002, config);
+    const props = createProps((legacy ? historicalRoadHeightField : createHeightField)(seed, config), { anisotropy: 4, setupShadowMaterial() {} }, 2002, config);
     await props.sourcedTexturesReady;
     const rng = globalThis.__waterworksRng.map(row => ({ seed: row.seed, count: row.count, tail: [row.next(), row.next(), row.next()] }));
     return { props, rng, seam, meshes: recordMeshes(props) };

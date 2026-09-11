@@ -196,11 +196,21 @@ const preLayoutTraffic = [
 ];
 const currentTraffic = canonical.filter(ob => ob.kind === 'truckflatbed');
 assert.equal(currentTraffic.length, 2, 'canonical Longleaf genuinely preserves two donors');
-assert.deepEqual(currentTraffic.map(ob => ob.propIdx), preLayoutTraffic.map(row => row.propIdx),
-  'saved pre-layout inputs identify the same two current physical records');
+// propIdx is an ordinal in a particular collision corpus: newly admitted road
+// props shift it. Match the two preserved donors by their distinct physical
+// scales, then check their current authored destinations independently.
+const matchedTraffic = new Set();
 const savedTraffic = preLayoutTraffic.map(({ bounds: b }, index) => {
   const sc = (b[4] - b[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h;
-  const current = currentTraffic[index];
+  const matches = currentTraffic.filter(ob => Math.abs(
+    (ob.max[1] - ob.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h - sc) < 1e-10);
+  assert.equal(matches.length, 1, 'each historical donor has one unique current physical scale');
+  const current = matches[0];
+  assert.ok(!matchedTraffic.has(current)); matchedTraffic.add(current);
+  const target = longleaf.props.loggingYard.flatbeds[index];
+  assert.ok(Math.hypot((current.min[0]+current.max[0])/2-target.x,
+    (current.min[2]+current.max[2])/2-target.z) < .1,
+    'matched current donor occupies its authored loading bay');
   assert.ok(Math.abs((current.max[1] - current.min[1]) / DESTRUCTIBLE_TYPES.truckflatbed.h - sc) < 1e-10,
     'composition preserves each captured donor scale');
   const x = (b[0] + b[3]) / 2, z = (b[2] + b[5]) / 2;

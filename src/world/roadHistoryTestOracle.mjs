@@ -25,3 +25,4 @@ let original;
 try { original = await import(url); } finally { hooks.deregister(); }
 export const historicalRoadHeightField = original.createHeightField;
 export const historicalRoadLayout = original.createLayout;
+export const historicalRoadTerrainSource = referenceSource;

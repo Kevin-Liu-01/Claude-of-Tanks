@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField, makeMaskTexture, mulberry32, selectTerrainLandformMask } from './terrain.ts';
+import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { getDeviceTier, resolveDeviceTier } from '../engine/quality.ts';
 import { historicalFoundryServiceInput } from './shorelineHistoryTestOracle.mjs';
@@ -380,11 +381,13 @@ try {
   await Promise.all([preloadPropModels(),
     ...resolveWreckRoster(config.props.tankWrecks.era,config.props.tankWrecks.ids).map(id=>ensureTankBuilder(id)),
   ]);
-  const results=[];
+  let results;
+  for(const historical of [true,false]) {
+  results=[];
   for(const active of [false,true]){
     assert.equal(getDeviceTier(),'desktop','full producers precede the final mobile mask check');
     enabled=active;state={plans:[],planGeometry:[],mergedMeshes:new Set()};globalThis.__courtRng=[];
-    const field=createHeightField(1337,config);
+    const field=(historical ? historicalRoadHeightField : createHeightField)(1337,config);
     currentVegetation=createVegetation(field,{setupShadowMaterial(){}},2001,config);
     currentProps=createProps(field,{anisotropy:4,setupShadowMaterial(){}},2002,config,currentVegetation);
     await currentProps.sourcedTexturesReady;
@@ -393,7 +396,7 @@ try {
     // Immutable observed d46da09ea complete-producer receipt, terrain1337 /
     // vegetation2001 / props2002. Includes every original pose/dimension/budget,
     // NOT a whole-source lock. No runtime Git or external receipt dependency.
-    assert.equal(hash(JSON.stringify(state.plans)),'2803d222b811ca729d136bf7c3f58f2ceb0fd9328d7f3ba6ecb5049f89d03ec4',
+    if (historical) assert.equal(hash(JSON.stringify(state.plans)),'2803d222b811ca729d136bf7c3f58f2ceb0fd9328d7f3ba6ecb5049f89d03ec4',
       'all42 planned-building admissions, original poses/dimensions/storage preserved');
     state.rng=globalThis.__courtRng.map(r=>({seed:r.seed,count:r.count,tail:[r.next(),r.next()]}));
     state.inventory=sceneInventory(currentProps.group);
@@ -404,6 +407,7 @@ try {
   }
   for(const property of ['plans','planGeometry','beforeComposition','rng','totalBudget','donorBudget','inventory','disposal']) {
     assert.deepEqual(results[1][property],results[0][property],`${property}: exact enabled/opt-out full producer contract`);
+  }
   }
   const masks=verifyMasks(preLocalizationConfig(config));
   console.log(JSON.stringify({test:'foundryServiceCourt',plans:42,donors:6,budget:results[1].donorBudget,masks,

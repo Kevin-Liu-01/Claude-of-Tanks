@@ -1,3 +1,4 @@
+import { shapeFarTreeBase } from './farTreeBase.ts';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -111,7 +112,7 @@ function compile(input = text, mode = 'current') {
     ({library, mulberry32, randomCore, rngReceipt, buildBushCards, buildBroadleafCards, buildPalmGeometry, sphereNormals,
       jitterShell: typeof jitterFarShell === 'function' ? jitterFarShell : jitterRadial,
       ${farNames.join(',')}});`), {
-    THREE, mergeGeometries, Float32Array, TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, bendMangroveRoot, shapeMangroveFarStem,
+    THREE, mergeGeometries, Float32Array, TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, bendMangroveRoot, shapeMangroveFarStem, shapeFarTreeBase,
     _c: new THREE.Color(), _v3: new THREE.Vector3(), _e: new THREE.Euler(),
     _qq: new THREE.Quaternion(), _m: new THREE.Matrix4(), _scale: new THREE.Vector3(1, 1, 1),
   });

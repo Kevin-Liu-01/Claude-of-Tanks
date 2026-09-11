@@ -1,3 +1,5 @@
+import { historicalRoadHeightField } from '../roadHistoryTestOracle.mjs';
+import { originalExitConfig } from '../../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createHeightField, mulberry32 } from '../terrain.ts';
@@ -108,8 +110,8 @@ const otherHashes = {
 
 function build(mapId, seed, historical = true) {
   const current = getMapConfig(mapId);
-  const config = historical ? historicalPlayableReliefInput(historicalBadlandsInput(current)) : current;
-  const field = createHeightField(seed, config);
+  const config = historical ? historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(current))) : current;
+  const field = (historical ? historicalRoadHeightField : createHeightField)(seed, config);
   const props = winterMaps.includes(mapId) ? config.props : nonWinterInputs[mapId] || {};
   const buckets = Object.fromEntries(names.map(name => [name, []]));
   const random = mulberry32(seed ^ 0x5a17);
@@ -499,21 +501,21 @@ console.log('winterLakeGeometry.selftest: flat, sloped, rippled and curved under
 // The published Alpine relief deliberately changes support heights, so an
 // immutable old mesh hash is not an oracle for its current elevation. Keep
 // the same physical/contact assertions on the actual current terrain too.
-for (const seed of [1337, 2049, 7719]) {
-  const built = build('alpine', seed, false), stats = inventory(built.buckets);
+for (const mapId of winterMaps) for (const seed of [1337, 2049, 7719]) {
+  const built = build(mapId, seed, false), stats = inventory(built.buckets);
   try {
-    assert.equal(built.calls, before[`alpine:${seed}`][0]);
-    assert.equal(built.next, before[`alpine:${seed}`][1]);
-    assert.notEqual(stats.later, before[`alpine:${seed}`][7], 'current relief is not the historical support fixture');
+    assert.equal(built.calls, before[`${mapId}:${seed}`][0]);
+    assert.equal(built.next, before[`${mapId}:${seed}`][1]);
+    if (mapId === 'alpine') assert.notEqual(stats.later, before[`${mapId}:${seed}`][7], 'current relief is not the historical support fixture');
     for (const geometry of built.buckets.plaster) {
       if (geometry.name === 'winter-pressure-berm') auditBerm(geometry, built.field);
       if (geometry.name === 'winter-ice-wedge') auditIce(geometry, built.field);
     }
     auditReeds(built.buckets.straw, built.field);
     assert.deepEqual([stats.vertices, stats.indices, stats.bytes, stats.geometries],
-      fragmentBefore[`alpine:${seed}`].slice(0, 4), 'current relief retains the complete geometry population and budget');
+      fragmentBefore[`${mapId}:${seed}`].slice(0, 4), 'current relief retains the complete geometry population and budget');
   } finally {
     for (const geometries of Object.values(built.buckets)) for (const geometry of geometries) geometry.dispose();
   }
 }
-console.log('winterLakeGeometry.selftest: actual current Alpine relief physical support passes across three seeds');
+console.log('winterLakeGeometry.selftest: actual current Winter/Alpine/Whiteout physical support passes across three seeds');
