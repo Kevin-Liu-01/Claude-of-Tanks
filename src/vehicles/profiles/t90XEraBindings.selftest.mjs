@@ -6,6 +6,7 @@ import { getSpec } from '../specs.ts';
 import {addT90VFrontGuard} from './t90VXFrontGuards.ts';
 import {addT90AXFenderClosures} from './t90AXFenderClosures.ts';
 import {withHistoricalClassicShtora} from '../classicShtoraHistory.test-support.mjs';
+import {withHistoricalClosedWheelFaces} from '../sourceXWheelFaceHistory.test-support.mjs';
 
 // Immutable world-vertex multiset snapshots taken before the ERA wrappers.
 // Paint decals and invisible shadow proxies are excluded, not real gun rims,
@@ -194,10 +195,12 @@ for(const [id,baselines]of Object.entries(BASELINES))for(const [lod,quality]of [
       :id==='t90a_vladimir_x'?V_NON_GUARD_BASELINES[lod]:baselines[lod];
     const classic=id==='t90a_x'||id==='t90a_vladimir_x';
     const historical=classic?withHistoricalClassicShtora(id,()=>createTank(id,null,
-      {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true})):null;
+      {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true}))
+      : id==='t90sm_x'?withHistoricalClosedWheelFaces(id,()=>createTank(id,null,
+        {quality,geometryReceipt:true,proceduralOnly:true,staticPreview:true})):null;
     try{
       assert.deepEqual(vertexFingerprint(historical?.root??tank.root,id==='t90a_x',id==='t90a_vladimir_x',id==='t90a_x'),baseline,
-        `${label}: immutable world-vertex baseline with exact inverses of independently tested Shtora and fender repairs; running gear unchanged`);
+        `${label}: immutable world-vertex baseline with exact inverses of independently tested Shtora, fender and SM tire-face repairs; all frozen baseline vertices retained`);
     }finally{historical?.dispose();}
     const rows=tank.root.userData.eraVisualBindingReceipt.plates;
     assert.deepEqual(rows.map(row=>row.name).sort(),expectedZones(id),`${label}: exactly inherited gameplay zones`);

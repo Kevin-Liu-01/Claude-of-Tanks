@@ -24,6 +24,7 @@ const BOARD = args.includes('--board'); // per-id shaded + articulation boards
 const NEUTRAL_BOARD = args.includes('--neutral-board'); // equal clay shading, no camouflage
 const COMPONENTS = args.includes('--components'); // expanded hull/turret mask diagnostics
 const CHECK = args.includes('--check');
+const MASK_OUT = option('mask-out'); // native diagnostic canvases, scoring unchanged
 const PASS = 90;
 const VIEW_FLOOR = 90;
 const EXEMPLAR_PASS = 92;
@@ -93,6 +94,17 @@ try {
       const errors = browserErrors.slice(errorStart);
       if (errors.length) { row.errors = errors; row.gatePassed = false; }
       rows.push(row);
+      if (MASK_OUT) {
+        const directory = path.resolve(ROOT, MASK_OUT, id);
+        fs.mkdirSync(directory, {recursive:true});
+        const masks = await page.evaluate(() => [...document.querySelectorAll('#grid figure')].map(figure => ({
+          name: figure.querySelector('figcaption span')?.textContent,
+          image: figure.querySelector('canvas')?.toDataURL('image/png'),
+        })));
+        for (const mask of masks) if (mask.name && mask.image) fs.writeFileSync(
+          path.join(directory, `${mask.name.replace(/[^a-z0-9]+/gi,'-')}.png`),
+          Buffer.from(mask.image.split(',')[1], 'base64'));
+      }
       console.log(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id.padEnd(22)} ` +
         `${row.score.toFixed(1)}  H${metric(row.scores.hull)} T${metric(row.scores.turret)} ` +
         `G${metric(row.scores.gun)} R${metric(row.scores.tracks)}`);

@@ -160,7 +160,7 @@ function addRunningGearSide(P: LightTigerBuilderPort, side: number): void {
       const stagger = row * 0.010 * (index % 2 ? -1 : 1);
       P.addExternalArmor('hull', KIT.box(0.070, moduleH * 0.42, 0.64),
         side * 1.895, y, z + stagger, 0, 0, roll - row * side * 0.008);
-      P.add('hullDark', KIT.box(0.012, moduleH * 0.30, 0.55),
+      P.add('hull', KIT.box(0.012, moduleH * 0.30, 0.55),
         side * 1.934, y, z + stagger);
     }
     P.add('hullDark', KIT.box(0.014, moduleH - 0.15, 0.027),

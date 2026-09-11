@@ -5,6 +5,13 @@ import {createTank} from '../tankFactory.ts';
 // Source axle/radius witnesses are independent of the runtime receipt. The
 // opening is an intentional fitted-style repair, not a new source measurement.
 const CASES = {
+  t72b3m_x: {radius:.391766, opening:.33692, width:.45254, y:.4728865,
+    xLeft:1.4713, xRight:1.4713,
+    zs:[-1.822412,-.953673,-.089323,.858392,1.722743,2.591482]},
+  t90sm_x: {radius:.3981, opening:.342366, width:.40954, zScale:1.05575,
+    ys:[.47202,.45513,.45513,.45513,.45513,.51461],
+    xLeft:1.423315, xRight:1.4199, faceName:'gearRoadWheelSourcePressedFaces',
+    zs:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061]},
   t72b_1987_x: {radius:.360825, opening:.3103, width:.369, y:.429605,
     xLeft:1.375065, xRight:1.359965,
     zs:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465]},
@@ -36,7 +43,7 @@ function closedRing(geometry, fixture, quality) {
   const count=index?.count ?? p.count;
   assert.equal(count/3,8*(quality==='high'?26:12),
     'four closed ring walls cost no more triangles than the two former capped cylinders');
-  const radii=Array.from({length:p.count},(_,i)=>Math.hypot(p.getY(i),p.getZ(i)));
+  const radii=Array.from({length:p.count},(_,i)=>Math.hypot(p.getY(i),p.getZ(i)/(fixture.zScale??1)));
   near(Math.min(...radii),fixture.opening,'actual inner rubber radius');
   near(Math.max(...radii),fixture.radius,'source rolling radius');
   geometry.computeBoundingBox();
@@ -59,6 +66,9 @@ function check(id,fixture,quality) {
     tank.root.updateMatrixWorld(true);
     const tires=tank.root.getObjectByName('gearRoadWheelTires');
     const discs=tank.root.getObjectByName('gearRoadWheelDiscs');
+    const detailFace=fixture.faceName?tank.root.getObjectByName(fixture.faceName):null;
+    if(fixture.faceName)assert.ok(detailFace,'the source pressed face remains present');
+    const visibleFaces=detailFace?[discs,detailFace]:[discs];
     assert.equal(tires.count,(fixture.zs??fixture.zsLeft).length*2,'source axle count');
     assert.equal(discs.count,tires.count,'painted cores belong to the complete wheel assembly');
     assert.equal(tires.userData.appearanceRole,'wheelTire');
@@ -76,17 +86,18 @@ function check(id,fixture,quality) {
       point.setFromMatrixPosition(matrix);
       const side=Math.sign(point.x);
       near(Math.abs(point.x),side<0?fixture.xLeft:fixture.xRight,'unchanged lateral axle');
-      near(point.y,fixture.y,'unchanged axle height');
       const zs=fixture.zs??(side<0?fixture.zsLeft:fixture.zsRight);
-      assert.ok(zs.some(z=>Math.abs(z-point.z)<1e-6),'unchanged longitudinal axle');
+      const station=zs.findIndex(z=>Math.abs(z-point.z)<1e-6);
+      assert.ok(station>=0,'unchanged longitudinal axle');
+      near(point.y,fixture.ys?.[station]??fixture.y,'unchanged axle height');
       direction.set(-side,0,0).transformDirection(tires.matrixWorld);
       // Lower exposed steel, clear of hubs and skirts, inside LOW's polygonal
       // aperture. Cast against the complete visible scene: hidden paint fails.
       for(const fraction of [.74,.78,.82]) for(const angle of [.35,1.10,2.10,2.90]) {
         const r=fixture.radius*fraction;
-        point.set(side*.85,-Math.sin(angle)*r,Math.cos(angle)*r).applyMatrix4(matrix);
+        point.set(side*.85,-Math.sin(angle)*r,Math.cos(angle)*r*(fixture.zScale??1)).applyMatrix4(matrix);
         const hit=new THREE.Raycaster(point,direction,0,1.2).intersectObjects(visible,false)[0];
-        assert.equal(hit?.object,discs,
+        assert.ok(visibleFaces.includes(hit?.object),
           `${id}/${quality}/wheel ${i} at ${fraction}/${angle}: painted steel must be first, not ${hit?.object.name??'air'}`);
         witnesses++;
       }

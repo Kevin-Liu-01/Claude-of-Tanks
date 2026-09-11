@@ -229,42 +229,42 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "insignia",
-        "parent": "turret",
+        "parent": "hull",
         "size": 0.24,
         "pos": [
-          -0.9112876,
-          0.3329209,
-          -0.2651131
+          -1.689,
+          1.053,
+          -1.01178
         ],
         "quaternion": [
-          -0.184128,
-          -0.6919927,
-          -0.1794885,
-          0.6745568
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hull",
         "anchorProfile": "cv90",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0009586
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
-        "parent": "turret",
+        "parent": "hull",
         "size": 0.24,
         "pos": [
-          -0.8161896,
-          0.5154409,
-          0.0556469
+          -1.689,
+          1.053,
+          -0.2970001
         ],
         "quaternion": [
-          -0.184128,
-          -0.6919927,
-          -0.1794885,
-          0.6745568
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hull",
         "anchorProfile": "cv90",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
@@ -330,9 +330,9 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          -1.014,
-          0.60768,
-          -1.05804
+          -1.8852001,
+          1.11456,
+          -1.13868
         ],
         "quaternion": [
           0,
@@ -343,31 +343,31 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "surfaceMesh": "hull",
         "anchorProfile": "cv90_mkiv",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.7022145
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.23,
         "pos": [
-          1.014,
-          0.60768,
-          -1.05804
+          -1.8852001,
+          1.11456,
+          -0.40311
         ],
         "quaternion": [
           0,
-          0.7071068,
+          -0.7071068,
           0,
           0.7071068
         ],
         "surfaceMesh": "hull",
         "anchorProfile": "cv90_mkiv",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 6,
-        "visibilityRatio": 0.6666667,
-        "maximumSurfaceErrorM": 0.7022145
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
       }
     ]
   }

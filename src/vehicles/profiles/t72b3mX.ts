@@ -61,7 +61,7 @@ function runningGear(P:TankBuilderPort):void {
     sprocket:{z:-2.5973,y:.79690,r:.36720,trackR:.327},idler:{z:3.2184,y:.87328,r:.2823,trackR:.270},
     rollers:[{z:-1.78,y:1.16,r:.12},{z:.05,y:1.16,r:.12},{z:1.85,y:1.16,r:.12}],rollerR:.12,
     returnRollerWidthM:.30,returnRollerInsetM:.16,topY:1.325,botY:.055,arms:true,coveredTop:true,paintedEnds:true,
-    wheelFaceDepthScale:.83,sprocketDepthScale:.86,idlerDepthScale:.86,linkPitchM:.14,
+    wheelFaceDepthScale:.83,wheelTireInnerRadiusM:.33692,sprocketDepthScale:.86,idlerDepthScale:.86,linkPitchM:.14,
     trackShoeDimensions:{padHeight:.029,grouserHeight:.011,webHeight:.015,hornHeight:.045,pinRadius:.010,pinCentreY:0},
   });
 }

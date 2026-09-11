@@ -199,7 +199,7 @@ function buildCv90RunningGear(P: CvBuilderPort): void {
       // behind them, so the skirt read as separate floating plates.
       P.addExternalArmor('hull', KIT.box(0.085, 0.70, 0.79),
         side * 1.81, 1.14, z, 0, 0, side * (index % 2 ? 0.010 : -0.010));
-      P.add('hullDark', KIT.box(0.018, 0.60, 0.70), side * 1.861, 1.14, z);
+      P.add('hull', KIT.box(0.018, 0.60, 0.70), side * 1.861, 1.14, z);
       P.add('hullDetail', KIT.cylX(0.018, 0.11, 8), side * 1.875, 1.12, z);
     }
     // A tapered rear corner closes the carrier into the troop-ramp surround.
@@ -478,7 +478,7 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
       const z = 2.02 - index * 0.80;
       P.addExternalArmor('hull', KIT.box(0.18, 0.86, 0.81),
         side * 1.97, 1.30, z, 0, 0, side * (index % 2 ? 0.012 : -0.012));
-      P.add('hullDark', KIT.box(0.026, 0.75, 0.72), side * 2.075, 1.30, z);
+      P.add('hull', KIT.box(0.026, 0.75, 0.72), side * 2.075, 1.30, z);
       for (const y of [1.08, 1.52]) P.add('hullDetail', KIT.cylX(0.019, 0.20, 8), side * 2.09, y, z);
     }
     P.add('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.87, -0.70);
