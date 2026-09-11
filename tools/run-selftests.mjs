@@ -27,6 +27,9 @@ export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   // Its unchanged 100 ms construction gate measures host time. Running beside
   // seven complete fleet builders tests CPU contention instead of this owner.
   'src/ui/garageArchitecture.selftest.mjs',
+  // Heap/ArrayBuffer plateau measurements run without concurrent fleet/map
+  // constructors. Preserve every GC and memory ceiling in the child.
+  'server/dedicatedWorldCollisionMemory.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file
