@@ -1,3 +1,4 @@
+import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
@@ -101,3 +102,19 @@ assert.match(garage, /roomReady\.disabled = !status\?\.canSetReady/);
 assert.match(garageCss, /\.cot-room-reminder,\.cot-room-ready\{min-height:44px/,
   'both room actions keep full mobile touch targets');
 console.log('playMenu.selftest: supported mode boundary, safe persistent alert/actions, and stale request presentation guards');
+
+// A selected option must not scroll the surrounding room panel and dismiss
+// its own popup. Cover upper/lower/visible options and a scrolled popup.
+for (const [optionTop, optionBottom, initialScroll, expected] of [
+  [40,80,100,39],[260,300,0,39],[125,165,75,75],[101,261,0,0],
+]) {
+  let panelScroll=57,focused=false;
+  const list={clientTop:1,clientHeight:160,scrollTop:initialScroll,getBoundingClientRect:()=>({top:100})};
+  const option={getBoundingClientRect:()=>({top:optionTop,bottom:optionBottom}),
+    focus(options){assert.deepEqual(options,{preventScroll:true});focused=true;},
+    scrollIntoView(){panelScroll++;throw new Error('Ancestor-scrolling option reveal');}};
+  revealMenuSelectOption(list,option);
+  assert.equal(focused,true);assert.equal(panelScroll,57);assert.equal(list.scrollTop,expected);
+}
+assert.equal((source.match(/revealMenuSelectOption\(list, /g)||[]).length,2,
+  'opening and keyboard navigation share the same list-only reveal');
