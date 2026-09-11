@@ -18,8 +18,9 @@ K2 X and T90SM X: fresh source geometry floors93.4/92 and92.4/92, strict carrier
 and shoe overlap0, open-cell census0, MG1 each. Fidelity and native muzzle
 bores pass. K2 roller tests cover actual hull attachment, continuous shoe
 clearance, full suspension travel, and visible support at near/far LODs.
-Their complete targeted release is still running in
-`.qa-dev/launch/k2-t90-final-release-r1.log`; this commit alone is not its result.
+Their complete targeted release exited zero on 2026-09-11, including the
+full test lifecycle and private build. The retained receipt is
+`.qa-dev/launch/k2-t90-final-release-r1.log` (`[tank-release] PASS k2_x,t90sm_x`).
 
 T72B3M X retains the preexisting268-cell source-air conflict described in
 `t72b3m-x-side-mounts.md`. No source-air waiver or altered gate is introduced.
