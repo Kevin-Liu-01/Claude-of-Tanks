@@ -68,9 +68,9 @@ const stoppedRefreshes = normal.refreshes;
 await new Promise(resolve => setTimeout(resolve, 15));
 assert.equal(normal.refreshes, stoppedRefreshes, 'finished pool clears its heartbeat');
 
-assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES,['src/vehicles/fleetLazy.selftest.mjs']);
-for(const concurrency of [2,4,8])for(const status of [0,7]){
-  const isolated=fixture(concurrency),file=SELFTEST_EXCLUSIVE_CPU_FILES[0];
+assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES,['src/vehicles/fleetLazy.selftest.mjs','src/ui/garageArchitecture.selftest.mjs']);
+for(const file of SELFTEST_EXCLUSIVE_CPU_FILES)for(const concurrency of [2,4,8])for(const status of [0,7]){
+  const isolated=fixture(concurrency);
   const run=runSelftestSuite('exclusive-cpu',['a','b',file,'after'],isolated.options);
   await tick();assert.deepEqual(isolated.starts,['a','b']);
   isolated.finish('a');await tick();assert.deepEqual(isolated.starts,['a','b']);

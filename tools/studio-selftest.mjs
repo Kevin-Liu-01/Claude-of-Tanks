@@ -412,29 +412,30 @@ try {
       railObjectVisible: window.__STUDIO._internal.railObjectVisible,
     };
   });
-  if (duel.board.durationMs !== 12000 || duel.board.shots.length !== 5
-    || duel.board.actorTracks.length !== 2 || duel.effects.length !== 6) {
+  if (duel.board.durationMs !== 15000 || duel.board.shots.length !== 16
+    || duel.board.cameraCues.length !== 8
+    || duel.board.actorTracks.length !== 2 || duel.effects.length !== 16) {
     throw new Error(`direct duel storyboard is incomplete: ${JSON.stringify(duel)}`);
   }
-  if (duel.shotCards !== 5 || duel.cameraMarkers !== 5
-    || duel.actorMarkers !== 6 || duel.effectMarkers !== 6
+  if (duel.shotCards !== 16 || duel.cameraMarkers !== 16
+    || duel.actorMarkers !== 10 || duel.effectMarkers !== 16
     || !duel.railVisible || !duel.railObjectVisible) {
     throw new Error(`cinematic timeline UI does not match its model: ${JSON.stringify(duel)}`);
   }
   const scrubbed = await page.evaluate(() => {
-    window.__STUDIO.seek(9000);
+    window.__STUDIO.seek(11000);
     return {
       time: window.__STUDIO.fxTimeMs,
       actors: window.__STUDIO.listActors(),
       camera: window.__STUDIO.getCamera(),
     };
   });
-  if (scrubbed.time !== 9000 || scrubbed.actors[1]?.state !== 'turret-popped') {
-    throw new Error(`9 s storyboard scrub missed the authored knockout: ${JSON.stringify(scrubbed)}`);
+  if (scrubbed.time !== 11000 || scrubbed.actors[1]?.state !== 'turret-popped') {
+    throw new Error(`11 s storyboard scrub missed the authored knockout: ${JSON.stringify(scrubbed)}`);
   }
-  const movedKey = duel.board.actorTracks[0].keys[1].pos;
+  const movedKey = duel.board.actorTracks[0].keys[3].pos;
   if (Math.hypot(scrubbed.actors[0].pos[0] - movedKey[0], scrubbed.actors[0].pos[1] - movedKey[1]) > 0.1) {
-    throw new Error(`9 s storyboard scrub did not move the tank to its keyed pose: ${JSON.stringify(scrubbed.actors[0])}`);
+    throw new Error(`11 s storyboard scrub did not move the tank to its keyed pose: ${JSON.stringify(scrubbed.actors[0])}`);
   }
   const firstCamera = duel.board.shots[0].pos;
   if (Math.hypot(
@@ -442,14 +443,14 @@ try {
     scrubbed.camera.pos[1] - firstCamera[1],
     scrubbed.camera.pos[2] - firstCamera[2],
   ) < 1) {
-    throw new Error('camera rail stayed on its establishing shot at 9 seconds');
+    throw new Error('camera rail stayed on its establishing shot at 11 seconds');
   }
   await page.evaluate(() => {
     window.__STUDIO.seek(0);
     window.__STUDIO.setTimeScale(4);
   });
   await page.waitForFunction(
-    'window.__STUDIO.fxTimeMs >= 9000 && window.__STUDIO.listActors()[1]?.state === "turret-popped"',
+    'window.__STUDIO.fxTimeMs >= 11000 && window.__STUDIO.listActors()[1]?.state === "turret-popped"',
     { timeout: 5000 },
   );
   await page.evaluate(() => window.__STUDIO.pause());
@@ -467,10 +468,33 @@ try {
     };
   });
   if (JSON.stringify(duelRoundTrip.before) !== JSON.stringify(duelRoundTrip.after)
-    || duelRoundTrip.effects !== 6 || duelRoundTrip.actors[1]?.state !== 'turret-popped') {
+    || duelRoundTrip.effects !== 16 || duelRoundTrip.actors[1]?.state !== 'turret-popped') {
     throw new Error(`duel storyboard did not round-trip: ${JSON.stringify(duelRoundTrip)}`);
   }
-  console.log('[studio-selftest] 12 s duel rail, tank motion, scrub, and automatic FX playback passed');
+  writeCapture('duel_knockout.png', await page.evaluate(() => window.__STUDIO.capture({ width: 2560 })));
+  const variants = await page.evaluate(() => {
+    const S = window.__STUDIO, rails = [];
+    for (let variant = 0; variant < 4; variant++) {
+      S.seek(0);
+      const board = S.directDuel({ variant });
+      if (board.shots.length !== 16 || board.cameraCues.length !== 8
+        || !board.shots.some(shot => shot.transition === 'bezier')) {
+        throw new Error(`variant ${variant} lost its curved camera rail or motion cues`);
+      }
+      S.seek(6300);
+      const first = S.getCamera();
+      S.seek(1000); S.seek(6300);
+      if (JSON.stringify(first) !== JSON.stringify(S.getCamera())) {
+        throw new Error(`variant ${variant} camera cue changed when scrubbed backward`);
+      }
+      rails.push(board.shots.map(shot => shot.pos));
+    }
+    return rails;
+  });
+  if (new Set(variants.map(rail => JSON.stringify(rail))).size !== 4) {
+    throw new Error('the four directed duel styles must have distinct camera paths');
+  }
+  console.log('[studio-selftest] 15 s duel, four Bezier rails, deterministic motion cues, tank motion and FX playback passed');
 
   // 10. Browser video path: a one-second storyboard records the actual
   // postprocessed canvas to a non-empty MediaRecorder blob. Downloads stay

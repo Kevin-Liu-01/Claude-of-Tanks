@@ -136,3 +136,42 @@ and all three stills. No failed acquisition or earlier observation was erased.
 Remaining acceptance work includes terrain/loading pauses, actual-control
 sustained battle smoothness and the existing resource ceilings. The broader
 investigation stays open.
+
+## Published production checkpoint
+
+The qualified change was pushed without force as
+`465a68f7c43cd9ed1cc23ce62853ab9d1c6e0b43` and deployed by
+[production workflow 34549215758](https://github.com/Kevin-Liu-01/Claude-of-Tanks/actions/runs/34549215758).
+The completed workflow is successful; the public page reports
+`v1.0.0+g465a68f7c`. A fresh actual-control production acquisition passes the
+functional, warm-readiness, source-readiness, boot-audio and audio-clock gates.
+Page errors, cleanup errors and failures are empty. All three day/night/Garage
+stills were inspected; the authored presentation and night lighting remain.
+
+| Production action | Cover response | Total action | Largest frame gap |
+| --- | ---: | ---: | ---: |
+| Day battle | 3.6 ms | 10248.2 ms | 85.0 ms |
+| Night rematch | 116.7 ms | 6079.7 ms | 74.6 ms |
+| Garage return | 87.2 ms | 346.8 ms | 55.5 ms |
+
+Preparation plus first-draw work reaches **6.2 ms day / 9.8 ms night** maximum
+synchronous steps, with 21.7 / 28.6 ms total synchronous work and 24.0 / 32.2 ms
+elapsed. Both preparations complete with pending 0, 20 objects, 14 cached
+programs, zero newly added programs, and all 20 isolated draws completed.
+Preparation alone reaches 0.9 / 1.0 ms maximum steps. The returned Garage
+retains the previous night receipt; it did not perform a new effects warm.
+
+This production smoke confirms the narrow fix is live, **not** a zero-lag
+certificate: the larger frame gaps above remain failures of the objective.
+Cold action time includes transfer, readiness and the intended countdown.
+Production's retained night program count differs from the local matched
+comparison, so this is not a production A/B causal measurement. The historical
+214–319 ms gameplay stalls remain unattributed.
+
+Raw evidence: `.local-evidence/production-fx-preparation/report.json` and its
+three PNGs in the owner worktree. Acquisition SHA-256 remains
+`782d10ba63581e161cad61ed9c3930f7199cef71c356886cc2ed467a9af3d9f2`;
+public index SHA-256 is
+`b8663b7428602835421171b128730187d50fdc5bb6447b12d73b99708d37f2a4`.
+The ten-minute post-deploy Vercel error-log query returned no entries; it is
+not an all-time production-error audit.

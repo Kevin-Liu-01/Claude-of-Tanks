@@ -267,8 +267,8 @@ export function createGaragePedestalRuntime({
     }
   };
 
-  const park = (visual: GaragePedestalVisual | null) => {
-    if (!visual || visual === current || fielded(visual)) return;
+  const park = (visual: GaragePedestalVisual | null, leavingGarage = false) => {
+    if (!visual || (visual === current && !leavingGarage) || fielded(visual)) return;
     if (visual.root.parent !== scene) return;
     // Never strip the last visible cover while a replacement is compiling.
     if (isOnStage(visual) && !isOnStage(current)) {
@@ -534,6 +534,16 @@ export function createGaragePedestalRuntime({
     if (disposed) return false;
     const visual = current;
     const entity = getBattleEntity(specId);
+    if (visual && visual.specId !== specId) {
+      // Direct entry/rematch can request a different tank from the hero still
+      // on the podium. Keep its warm cache, but remove its off-map scene graph
+      // before battle and invalidate any unfinished Garage selection.
+      pollToken += 1;
+      shownToken = pollToken;
+      preloader.invalidate();
+      park(visual, true);
+      return false;
+    }
     if (!visual || visual.specId !== specId || !entity) return false;
     if (visual.__pedestalCompiling || (entity.visual && entity.visual !== visual)) {
       return false;
@@ -574,7 +584,9 @@ export function createGaragePedestalRuntime({
     trim,
     hasCached: (specId) => cache.has(specId),
     isOnStage,
-    poseCurrent: () => { if (current) pose(current); },
+    // Environment activation precedes reveal/adoption on Garage return. Keep
+    // a parked root's owned sentinel intact until that reveal reattaches it.
+    poseCurrent: () => { if (current && !parked.has(current)) pose(current); },
     adoptBattlePlayer,
     lendToBattle,
     dispose: () => {

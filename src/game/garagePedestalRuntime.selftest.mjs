@@ -488,4 +488,36 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.runtime.dispose();
 }
 
-console.log('garagePedestalRuntime.selftest: detached warm LRU, exact resource preservation, invalidation/disposal, battle handoff and async convergence passed');
+{
+  const h = createHarness();
+  await h.runtime.prepareInitial('alpha', {
+    builderReady: Promise.resolve(), yieldForBudget: async () => undefined,
+  });
+  const hero = h.runtime.current, built = h.visuals.length;
+  const geometry = hero.root.children[0].geometry;
+  h.entities.set('bravo', {});
+  assert.equal(h.runtime.lendToBattle('bravo'), false);
+  assert.equal(hero.root.parent, null, 'a different battle selection detaches the unborrowed podium hero');
+  assert.equal(hero.root.visible, false);
+  assert.equal(h.runtime.current, hero, 'detachment retains the cache identity for return');
+  assert.deepEqual(h.releasedResources, [], 'scene detachment preserves the warm GPU lease');
+  h.setPhase('battle');
+  assert.deepEqual(h.scene.children, [], 'the unborrowed hero contributes no battle scene resources');
+  h.setPhase('garage');
+  const parkedY = hero.root.position.y;
+  h.runtime.poseCurrent();
+  assert.equal(hero.root.position.y, parkedY, 'environment activation preserves the parked ownership sentinel');
+  await h.runtime.set('alpha');
+  assert.equal(h.runtime.current, hero);
+  assert.equal(hero.root.parent, h.scene);
+  assert.equal(hero.root.visible, true);
+  assert.equal(hero.root.children[0].geometry, geometry);
+  assert.equal(h.visuals.length, built, 'return reuses the exact cached geometry without rebuilding');
+  h.entities.set('alpha', {});
+  assert.equal(h.runtime.lendToBattle('alpha'), true);
+  assert.equal(h.entities.get('alpha').visual, hero, 'matching handoff still lends the visible actor');
+  assert.equal(hero.root.parent, h.scene);
+  h.runtime.dispose();
+}
+
+console.log('garagePedestalRuntime.selftest: detached warm LRU, exact resource preservation, invalidation/disposal, matching and mismatched battle handoff and async convergence passed');
