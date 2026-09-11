@@ -8,6 +8,7 @@
 // independent (see docs/SYSTEMS.md).
 
 import * as THREE from 'three';
+import { shareBattleGeometry } from './battleGeometrySharing.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
 import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
@@ -11548,6 +11549,7 @@ function* createTankOwnedSteps(
     applyPop();
   }
 
+  let releaseBattleGeometry: (() => void) | undefined;
   const visual: TankVisual = {
     root,
     specId,
@@ -12359,6 +12361,8 @@ function* createTankOwnedSteps(
 
     dispose() {
       equipmentDamage.dispose();
+      releaseBattleGeometry?.();
+      releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.
       // Reattach before resource disposal so no retained mesh is skipped.
       setBattleDetailsAttached(true);
@@ -12485,6 +12489,7 @@ function* createTankOwnedSteps(
     // cadence or Studio/Gallery selection geometry changes here.
     if (batchStatic) installArticulatedShadowBatch(root, proceduralShadowSources);
     if (batchStatic) detachEmptyLodSentinels(root);
+    if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
   };
   const createTankMarkingsStage6 = (): void => {
     createTankMarkingsStage3();
