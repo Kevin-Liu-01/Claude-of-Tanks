@@ -6,12 +6,12 @@ import { ensureStyle } from './dom.ts';
 import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t as tr } from './i18n.ts';
+import type { CompletedPostFrame } from '../engine/postFrameAccounting.ts';
 
 export { debugModeRequested } from '../dev/debugIntent.ts';
 
 interface RendererDiagnostics {
   info: {
-    render: { calls: number; triangles: number };
     programs?: object[] | null;
     memory: { geometries: number; textures: number };
   };
@@ -102,8 +102,10 @@ interface FrameStats {
   p95: number;
   p99: number;
   worstStall: number;
-  calls: number;
-  tris: number;
+  renderScope: 'last-completed-post-frame';
+  renderFrameSerial: number | null;
+  calls: number | null;
+  tris: number | null;
   programs: number;
   geometries: number;
   textures: number;
@@ -218,7 +220,9 @@ function frameStatsText(stats: FrameStats): string {
 }
 
 function renderStatsText(stats: FrameStats): string {
-  return `${stats.calls} calls   ${fmtCount(stats.tris)} tri\n` +
+  const draws = stats.renderFrameSerial === null ? 'No completed post frame' :
+    `Last frame #${stats.renderFrameSerial} (all passes)\n${stats.calls} calls   ${fmtCount(stats.tris)} tri`;
+  return `${draws}\n` +
     `${stats.programs} programs\n${stats.geometries} geo   ${stats.textures} tex`;
 }
 
@@ -271,10 +275,12 @@ export function createPerfHud({
   renderer,
   game,
   trace = null,
+  readRenderFrame,
 }: {
   renderer: RendererDiagnostics;
   game: DebugGameState;
   trace?: PerfTracePort | null;
+  readRenderFrame?: () => CompletedPostFrame | null;
 }) {
   ensureStyle('cot-perfhud-style', PERF_HUD_CSS);
   const el = document.createElement('aside');
@@ -417,6 +423,7 @@ export function createPerfHud({
     const avg = sum / n;
     const at = (p: number): number => view[Math.min(n - 1, Math.floor((n - 1) * p))];
     const memory = (performance as PerformanceWithMemory).memory;
+    const renderFrame = readRenderFrame?.() ?? null;
     return {
       fps: avg > 0 ? 1000 / avg : 0,
       onePctLow: at(0.99) > 0 ? 1000 / at(0.99) : 0,
@@ -424,8 +431,10 @@ export function createPerfHud({
       p95: at(0.95),
       p99: at(0.99),
       worstStall: stalls.reduce((a, stall) => Math.max(a, stall.d), 0),
-      calls: renderer.info.render.calls,
-      tris: renderer.info.render.triangles,
+      renderScope: 'last-completed-post-frame',
+      renderFrameSerial: renderFrame?.serial ?? null,
+      calls: renderFrame?.calls ?? null,
+      tris: renderFrame?.triangles ?? null,
       programs: (renderer.info.programs || []).length,
       geometries: renderer.info.memory.geometries,
       textures: renderer.info.memory.textures,

@@ -657,7 +657,8 @@ const perfHud = createPerfDiagnosticsAccess(async () => {
     resolvePresetName,
     getDeviceTier,
   });
-  const hudRuntime = createPerfHud({ renderer, game, trace: devTrace });
+  const hudRuntime = createPerfHud({ renderer, game, trace: devTrace,
+    readRenderFrame: () => post.lastCompletedFrame });
   hudRuntime.setTelemetryProvider(telemetry.collect);
   devTrace?.configure({ getTelemetry: telemetry.collect });
   return { hud: hudRuntime, telemetry };
