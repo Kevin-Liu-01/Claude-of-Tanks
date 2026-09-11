@@ -22,6 +22,21 @@ const outDir = resolve(option('out', '.qa-device/fleet-battle-views'));
 const selectedIds = option('ids').split(',').map((id) => id.trim()).filter(Boolean);
 const distances = option('distances', '40,60,90,180').split(',')
   .map(Number).filter((distance) => Number.isFinite(distance) && distance > 0);
+const vectorOption = (name) => {
+  const raw = option(name);
+  if (!raw) return undefined;
+  const values = raw.split(',').map(Number);
+  if (values.length !== 3 || !values.every(Number.isFinite)) throw new Error(`Invalid --${name}`);
+  return values;
+};
+const renderOptions = {
+  geometryQuality: option('quality', 'low'),
+  camera: vectorOption('camera'),
+  target: vectorOption('target'),
+  fov: Number(option('fov', '50')),
+};
+if (!['high', 'low'].includes(renderOptions.geometryQuality)
+    || !(renderOptions.fov > 0 && renderOptions.fov < 180)) throw new Error('Invalid render options');
 const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(6, requestedWorkers)) : 4;
@@ -66,9 +81,10 @@ try {
     while (nextJob < jobs.length) {
       const { id, distance } = jobs[nextJob++];
       const rendered = await page.evaluate(
-        (tankId, distanceM) => window.__RENDER_BATTLE_VIEW(tankId, distanceM),
+        (tankId, distanceM, options) => window.__RENDER_BATTLE_VIEW(tankId, distanceM, options),
         id,
         distance,
+        renderOptions,
       );
       const view = `battle${distance}`;
       const file = `views/${id}-${view}.png`;
@@ -96,7 +112,8 @@ try {
 const manifest = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
-  method: 'procedural low-geometry battle render; deterministic camo seed 4242',
+  method: `procedural ${renderOptions.geometryQuality}-geometry render; deterministic camo seed 4242`,
+  renderOptions,
   distancesM: distances,
   tanks: assets,
 };
