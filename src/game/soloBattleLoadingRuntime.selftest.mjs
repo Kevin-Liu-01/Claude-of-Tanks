@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { Object3D, Scene, PerspectiveCamera, Vector3 } from 'three';
+import { Object3D, Scene, PerspectiveCamera, Vector3, Texture, Mesh, BoxGeometry, MeshBasicMaterial } from 'three';
+import { createBattleEntryAcquisition } from './battleEntryAcquisition.ts';
+import { createBattleVisualStreamer } from './battleVisualStreamer.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
 import { primeOpeningTerrainPresentation } from './battleWarmRuntime.ts';
 import { getLocale, setLocale } from '../ui/i18n.ts';
@@ -412,4 +414,69 @@ delete globalThis.__VISUAL_LOAD_TIMINGS;
 delete globalThis.__BATTLE_COUNTDOWN_WARM;
 delete globalThis.__COMBAT_OPENING_WARM;
 
-console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm and reveal order pass');
+// A rejected sibling must recover immediately even when FX construction or
+// native image decode is held. Its old continuation cannot submit GPU work.
+for (const heldStage of ['constructor', 'preload', 'upload']) {
+  const ready = Promise.withResolvers(), release = Promise.withResolvers();
+  const root = new Object3D(), textures = [new Texture(), new Texture(), new Texture()];
+  const geometry = new BoxGeometry();
+  const materials = textures.map(map => new MeshBasicMaterial({ map }));
+  for (const material of materials) root.add(new Mesh(geometry, material));
+  let firstEntry = true, fxPending, uploads = 0, preloads = 0, warms = 0;
+  const hold = async (stage) => {
+    if (firstEntry && stage === heldStage) {
+      ready.resolve();
+      await release.promise;
+    }
+  };
+  const realUploads = createBattleVisualStreamer({
+    game, scene: new Scene(), renderer: { initTexture() { uploads++; } },
+    anisotropy: 4, ensureTankBuilders: async () => {}, nextStagedBake: () => null,
+    *ensureStagedVisualsSteps() { return true; }, getSpec: () => ({}),
+    prebakeSharedTextures: async () => {}, armorAimOverlay: { prime() {}, warm: () => () => {} },
+    forwardProgramWarm: { compile() {} },
+  });
+  const live = {
+    group: root,
+    async preloadTextures() { preloads++; await hold('preload'); },
+    warmTextures() { warms++; },
+  };
+  const acquisition = createBattleEntryAcquisition();
+  const failure = new Error(`sibling failed during ${heldStage}`);
+  const entry = createSoloBattleLoadingRuntime({
+    ...loadingOptions,
+    acquisition: { acquireSolo(tasks) {
+      return acquisition.acquireSolo(tasks.map((task, index) => () => {
+        const result = task();
+        if (index === 9) fxPending = result;
+        return result;
+      }));
+    } },
+    async ensureFx() { await hold('constructor'); return live; },
+    async ensureWorld(...args) {
+      if (firstEntry) { await ready.promise; throw failure; }
+      return loadingOptions.ensureWorld(...args);
+    },
+    getBattleVisuals: () => ({ ...battleVisuals,
+      stageRootTextureUploads: realUploads.stageRootTextureUploads }),
+    createLoadingYielder: () => () => hold('upload'),
+  });
+  await assert.rejects(entry.begin('m1a2', null, { randomRoster: false }), error => error === failure);
+  const stopped = { uploads, preloads, warms };
+  assert.equal(uploads, heldStage === 'upload' ? 1 : 0,
+    'positive control reaches exactly the selected asynchronous boundary');
+  assert.equal(root.userData.battleTexturesStaged, undefined);
+  firstEntry = false;
+  release.resolve();
+  await assert.rejects(fxPending, /FX preparation superseded/);
+  assert.deepEqual({ uploads, preloads, warms }, stopped,
+    'the old entry performs no further preload, warm or actual texture uploads after recovery');
+  await entry.begin('m1a2', null, { randomRoster: false });
+  assert.equal(root.userData.battleTexturesStaged, true);
+  assert.equal(uploads, stopped.uploads + 3, 'fresh entry stages the same retained runtime completely');
+  geometry.dispose(); materials.forEach(material => material.dispose());
+  textures.forEach(texture => texture.dispose());
+}
+delete globalThis.__BATTLE_LOAD;
+delete globalThis.__VISUAL_LOAD_TIMINGS;
+console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm, reveal and abandoned FX upload order pass');

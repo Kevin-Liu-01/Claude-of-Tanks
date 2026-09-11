@@ -90,4 +90,28 @@ const deferred = () => {
   assert.equal(initializations, 2);
 }
 
-console.log('fxRuntimeAccess.selftest: preload, singleton, and retry ownership passed');
+for (const resumeBeforeReady of [false, true]) {
+  const gate = deferred();
+  let activations = 0, suspensions = 0, initializations = 0;
+  const live = {};
+  const access = createFxRuntimeAccess({
+    loadModule: () => ({}),
+    initialize: async () => { initializations++; await gate.promise; return live; },
+    activate: () => { activations++; },
+    suspend: () => { suspensions++; },
+  });
+  const pending = access.ensureRuntime();
+  assert.equal(access.suspendRuntime(), true, 'entry failure cancels pending activation');
+  assert.equal(access.suspendRuntime(), false, 'pending suspension is idempotent');
+  if (resumeBeforeReady) assert.equal(access.ensureRuntime(), pending, 're-entry still coalesces construction');
+  gate.resolve();
+  assert.equal(await pending, live);
+  assert.equal(access.active, resumeBeforeReady, 'completion honors the most recent phase intent');
+  assert.equal(activations, resumeBeforeReady ? 1 : 0);
+  assert.equal(suspensions, resumeBeforeReady ? 0 : 1, 'unused completed resources are suspended');
+  assert.equal(await access.ensureRuntime(), live);
+  assert.equal(initializations, 1, 'later re-entry reuses the completed singleton');
+  assert.equal(activations, 1);
+}
+
+console.log('fxRuntimeAccess.selftest: preload, singleton, retry and suspend during initialization passed');

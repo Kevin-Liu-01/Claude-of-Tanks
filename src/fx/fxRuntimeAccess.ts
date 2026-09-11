@@ -36,6 +36,7 @@ export function createFxRuntimeAccess<TModule, TRuntime extends object>({
 
   let runtime: TRuntime | null = null;
   let active = false;
+  let activationRequested = false;
   let modulePromise: Promise<TModule> | null = null;
   let runtimePromise: Promise<TRuntime> | null = null;
 
@@ -50,6 +51,7 @@ export function createFxRuntimeAccess<TModule, TRuntime extends object>({
   };
 
   const ensureRuntime = (): Promise<TRuntime> => {
+    activationRequested = true;
     if (runtime) {
       if (!active) {
         activate(runtime);
@@ -64,9 +66,13 @@ export function createFxRuntimeAccess<TModule, TRuntime extends object>({
         if (!live || typeof live !== 'object') {
           throw new TypeError('FX initializer did not return a runtime');
         }
-        activate(live);
+        // A sibling entry operation can fail while construction yields. Keep
+        // the reusable singleton, but honor Garage recovery's later suspend
+        // instead of publishing a battle graph after the owner has exited.
+        if (activationRequested) activate(live);
+        else suspend(live);
         runtime = live;
-        active = true;
+        active = activationRequested;
         return live;
       });
     runtimePromise = request;
@@ -77,7 +83,9 @@ export function createFxRuntimeAccess<TModule, TRuntime extends object>({
   };
 
   const suspendRuntime = (): boolean => {
-    if (!runtime || !active) return false;
+    const cancelledActivation = activationRequested && runtimePromise !== null;
+    activationRequested = false;
+    if (!runtime || !active) return cancelledActivation;
     suspend(runtime);
     active = false;
     return true;

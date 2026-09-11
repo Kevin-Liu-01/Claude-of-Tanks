@@ -548,14 +548,14 @@ let coveredBattleWatchdog: (() => Promise<SceneWatchdogResult | void>) | null = 
 // without a page refresh.
 const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
   loadModule: () => import('./fx/effects.ts'),
-  initialize: ({ createFx }) => {
-    const live = createFx(engineCtx, hfProxy, {
+  initialize: async ({ createFxChunked }) => {
+    const live = await createFxChunked(engineCtx, hfProxy, {
       seed: 5000,
       // Decals must resolve every live struck entity in production. The old
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
       // were not installed, including incoming hits on the player's tank.
       resolveEntity: (targetId) => resolveFxSubject(String(targetId)),
-    });
+    }, createOpaqueLoadingYielder(6, 16, { yieldFrame: nextPaintFrame }));
     live.bindBus(bus);
     // createPost runs during garage boot, before this demand-loaded graph
     // exists. Hand its late-composite activity/depth state to the existing

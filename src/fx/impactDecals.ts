@@ -549,7 +549,7 @@ function drawScuff(ctx: CanvasRenderingContext2D, rng: Rng): void {
 }
 
 /** Bake the full atlas. @returns {THREE.CanvasTexture} */
-function bakeAtlas(rng: Rng, anisotropy: number): THREE.CanvasTexture {
+function* bakeAtlasSteps(rng: Rng, anisotropy: number): Generator<void, THREE.CanvasTexture, void> {
   const cv = document.createElement('canvas');
   cv.width = cv.height = ATLAS;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
@@ -562,11 +562,14 @@ function bakeAtlas(rng: Rng, anisotropy: number): THREE.CanvasTexture {
     ctx.restore();
     erodeCell(ctx, fbm, ox, oy, erode, freq);
   };
-  for (const i of FAMILY_CELLS.pen) bake(i, () => drawPen(ctx, rng, false), 0.30, 3.4);
-  for (const i of FAMILY_CELLS.crit) bake(i, () => drawPen(ctx, rng, true), 0.30, 3.4);
-  for (const i of FAMILY_CELLS.scuff) bake(i, () => drawScuff(ctx, rng), 0.34, 4.0);
-  for (const i of FAMILY_CELLS.gouge) bake(i, () => drawGouge(ctx, rng), 0.26, 5.2);
-  for (const i of FAMILY_CELLS.scorch) bake(i, () => drawScorch(ctx, rng), 0.62, 2.6);
+  // Yield only after a complete cell, with the canvas state restored. Until
+  // the final resume this iterator owns CPU pixels only, so closing it cannot
+  // leave a partial texture, material, scene attachment or clock registration.
+  for (const i of FAMILY_CELLS.pen) { bake(i, () => drawPen(ctx, rng, false), 0.30, 3.4); yield; }
+  for (const i of FAMILY_CELLS.crit) { bake(i, () => drawPen(ctx, rng, true), 0.30, 3.4); yield; }
+  for (const i of FAMILY_CELLS.scuff) { bake(i, () => drawScuff(ctx, rng), 0.34, 4.0); yield; }
+  for (const i of FAMILY_CELLS.gouge) { bake(i, () => drawGouge(ctx, rng), 0.26, 5.2); yield; }
+  for (const i of FAMILY_CELLS.scorch) { bake(i, () => drawScorch(ctx, rng), 0.62, 2.6); yield; }
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -711,12 +714,21 @@ function cellUV(idx: number): CellUv {
  * @param {{ anisotropy?: number, seed?: number }} [opts]
  */
 export function createImpactDecals(
-  { anisotropy = 4, seed = 0x51f7a3 }: ImpactDecalOptions = {},
+  options: ImpactDecalOptions = {},
 ): ImpactDecalRuntime {
+  const steps = createImpactDecalsSteps(options);
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  return next.value;
+}
+
+export function* createImpactDecalsSteps(
+  { anisotropy = 4, seed = 0x51f7a3 }: ImpactDecalOptions = {},
+): Generator<void, ImpactDecalRuntime, void> {
   const rng: Rng = mulberry32(seed >>> 0);
   // Field-painted identifiers and ballistic scars share the same deterministic
   // surface-marking seed vocabulary and millimetre-scale lift contract.
-  const atlas = bakeAtlas(mulberry32((seed ^ SURFACE_MARKING_STYLE.wearSeedSalt) >>> 0), anisotropy);
+  const atlas = yield* bakeAtlasSteps(mulberry32((seed ^ SURFACE_MARKING_STYLE.wearSeedSalt) >>> 0), anisotropy);
   const material = new THREE.MeshBasicMaterial({
     map: atlas,
     transparent: true,

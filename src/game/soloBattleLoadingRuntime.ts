@@ -398,16 +398,29 @@ export function createSoloBattleLoadingRuntime(
         autoCamoIds: plannedAutoCamoIds,
         yieldForBudget: loadYield,
       });
+      let fxPreparationCurrent = true;
+      const assertFxPreparationCurrent = (): void => {
+        if (!fxPreparationCurrent) throw new Error('FX preparation superseded by failed battle entry');
+      };
+      const fxUploadYield = async (): Promise<void> => {
+        assertFxPreparationCurrent();
+        await loadYield();
+        assertFxPreparationCurrent();
+      };
       const fxTexture = ensureFx().then(async (live) => {
+        assertFxPreparationCurrent();
         await live.preloadTextures?.();
+        assertFxPreparationCurrent();
         live.warmTextures?.();
-        const receipt = await battleVisuals.stageRootTextureUploads(live.group, loadYield);
+        const receipt = await battleVisuals.stageRootTextureUploads(live.group, fxUploadYield);
+        assertFxPreparationCurrent();
         live.group.userData.battleTexturesStaged = true;
         trace.fxTextureUpload = receipt;
         return receipt;
       });
 
-      await acquisition.acquireSolo([
+      try {
+        await acquisition.acquireSolo([
         () => battleInterface,
         () => preloadMinimap(resolved),
         () => ensureWorld(
@@ -427,7 +440,14 @@ export function createSoloBattleLoadingRuntime(
         () => fxTexture,
         () => ensureKillcam(),
         () => rosterTexture,
-      ]);
+        ]);
+      } catch (error) {
+        // A sibling may fail while FX construction, image decode or an upload
+        // yield is pending. Its observed continuation must not resume GPU work
+        // after the entry owner has restored Garage.
+        fxPreparationCurrent = false;
+        throw error;
+      }
 
       trace.world = host.__WORLD_LOAD || null;
       battleLoad.progress(0.55, 'Uploading battlefield textures');
