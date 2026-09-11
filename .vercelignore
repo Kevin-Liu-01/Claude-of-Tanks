@@ -5,6 +5,7 @@ node_modules
 **/node_modules
 **/.wrangler
 .qa-*
+shots
 .env
 .env.*
 !.env.example
