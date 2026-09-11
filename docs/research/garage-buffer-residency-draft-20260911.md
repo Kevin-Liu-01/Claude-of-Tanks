@@ -69,3 +69,29 @@ At source head `35b9ea84f57911e7a5a9bb48d99581af40ba9177`, all 1006 registered u
 R1 exposed a stale test expectation that desktop Garage resources remain resident. The updated test exercises actual desktop and constrained-device disposal, restoration, uploads, failure/retry and CPU ownership. R2 failed the unchanged 4 MB dedicated collision memory plateau assertion. Its partial unrecorded results receive no coverage credit. The unchanged memory assertions subsequently pass both alone and within R3; that memory-sensitive file now receives exclusive test scheduling with barrier and failure-path coverage. No memory ceiling was changed and contention is not asserted as the proven cause of the earlier failure.
 
 The changes after hosted runtime `50db6ccf3` affect tests and documentation only. The accepted native image/action evidence, successful private/public builds, full test coverage and bounded resource saving support publishing the desktop ownership fix. The earlier failed or inadmissible timing reports, remaining Garage triangle and battle material limits, and unfinished fleet/map work remain open.
+
+
+## Published and live controls verified
+
+The bounded Garage change was promoted to `https://cot.kevinliu.studio/` via
+deployment `dpl_7phLdUP36KRHUfcQRh1DyEg8ihDr`. The public response is HTTP 200,
+version `v1.0.0+g50db6ccf3`, and index SHA-256
+`621141425af140be841b8034d44c5c86e11416eb8712dce291ec249d734a8edb`, exactly matching
+the authenticated hosted artifact. Source and verification documentation were
+pushed normally through `974c30d2d`.
+
+Fresh native two-context production controls pass: room creation, invitation
+join and both memberships, Winter map selection, both Ready controls, Start,
+both live battles and advancing battle feedback, then actual Exit and room
+closure. There are zero page errors; both room cleanups and browser closure
+are verified. Evidence: `.qa-dev/launch/garage-live-native-r2.log` and
+`garage-public-verification-r1.json`. R1 is retained as a configuration failure
+before browser acquisition: screenshots were requested without the required
+performance mode and absolute output path. R2 uses the ordinary functional
+verification contract, with no performance or screenshot claim.
+
+The subsequently integrated K1 photo-target work changes QA tools and reference
+packets only. Its new supplement test, existing fidelity lifecycle test and
+1007-file registry discovery pass in the integration tree. The production game
+runtime remains exactly the Garage deployment above; K1's source-body/photo
+standard qualification does not imply the unfinished full fleet has passed.
