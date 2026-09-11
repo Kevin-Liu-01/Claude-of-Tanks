@@ -222,3 +222,10 @@ real yoke engagement, adjacent tray air, open jacket holes, straight stock/bore
 and yaw ownership. The former empty central cross-pin witness is intentionally
 occupied by the new physical pin; the retained tray still has air beneath it.
 Fresh full-source silhouette/geometry/standard evidence is queued, not assumed.
+
+
+## Owner-approved armed comparison target — 2026-09-11
+
+The owner explicitly selected: “Keep the armed version; compare the gun against its documented photo reference.” Retain the current fitted roof weapon. The supplied unarmed model remains the body/gear/armor source; DVIDS3912303 is the arrangement reference for the separately owned `k1a1XPhotoRoofMachineGun`. Photo-derived dimensions remain authored estimates, not source survey measurements.
+
+The original full armed-versus-unarmed failure remains preserved. A private scoped body preflight excludes only that exact separately owned photo weapon from comparison against the unarmed file. It cannot certify the whole vehicle; the gun still requires the existing HIGH/LOW physical attachment, straight bore, jacket-air and turret-yaw checks plus independent original-image review against the photograph. No numeric threshold, source geometry, runtime geometry or published asset is changed by this target decision.
