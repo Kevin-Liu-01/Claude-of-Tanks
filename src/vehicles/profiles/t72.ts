@@ -2418,6 +2418,7 @@ function buildT72B3M(P: T72BuilderPort): void {
       // standoff so the proud face survives AA at critic scale.
       const g = KIT.lathe([[1.512, 0.048], [1.500, 0.125]], P.q ? 30 : 16, 0.733);
       const band = new THREE.Mesh(g, rehookClone(P.mats.dark, 0x0c0e0a, 0x020302));
+      P.disposables.push(g, band.material);
       band.name = 'turretRingGapShadowBand';
       band.position.set(0, 0, -0.20);
       band.castShadow = false;
@@ -4393,6 +4394,7 @@ function buildT72B3M(P: T72BuilderPort): void {
       P.gunG.traverse((ob) => {
         if (isT72MeshObject(ob) && ob.isMesh && ob.material === P.mats.dark) {
           ob.material = ob.material.clone();
+          P.disposables.push(ob.material);
           ob.material.color.setHex(0x262a20);
           if (ob.material.emissive) ob.material.emissive.setHex(0x11140b);
         }

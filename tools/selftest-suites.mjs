@@ -405,6 +405,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/amx30Mantlet.selftest.mjs',
     'src/vehicles/profiles/t72CamoCoverage.selftest.mjs',
     'src/vehicles/profiles/t72TrackFinish.selftest.mjs',
+    'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
     'src/vehicles/profiles/t72B3MFrontAttachment.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
