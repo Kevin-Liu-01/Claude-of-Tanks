@@ -302,21 +302,33 @@ Puppeteer to enter `?studio=1&map=desert`. It loads a three-tank scene with
 firing, destruction, wreck, dust, and engine-smoke states. The test verifies
 the dedicated Studio boot path, confirms that battle simulation is disabled,
 checks the frozen `fxTime`, captures PNG files at 2560 pixels or wider on two
-maps, and verifies scene JSON round-trip behavior. It also creates the 12-second
-duel, checks camera, vehicle, and effect tracks, seeks to the knockout event,
+maps, and verifies scene JSON round-trip behavior. It also creates the 15-second
+duel, checks four curved camera variants, deterministic motion cues, vehicle
+and effect tracks, and seeks to the knockout event. It
 verifies scheduled playback, and records a non-empty one-second WebM file.
 `src/game/studioTimeline.selftest.mjs` separately covers duration clamps,
 normalization, rails, cuts, and actor interpolation. Output:
 `shots/studio-selftest/*.png`.
 
-Render the pinned 20-video modern-MBT example set with:
+Render the current 30-map duel collection with:
 
 ```bash
-npm run studio:examples -- --out shots/studio-modern-examples
+npm run studio:examples -- --out shots/studio-map-examples
 ```
 
-The batch tool validates both actors as `modern`/`mbt`, records the current
-canvas path at 1280×720, and writes WebM files plus `manifest.json` under the
-gitignored output directory. Use `--only 3,7,11` to render selected pinned
-scenario numbers. The pinned set avoids the urban center because its buildings
-can occlude a generic two-tank camera rail.
+The batch validates both registered vehicle IDs, stages them at authored spawn
+points, applies each map's biome camouflage, and cycles four camera variants.
+The default canvas is1920×1080 at30fps. Use `--fps 60` or `--width 2560
+--height 1440` explicitly when needed. Every duel has a15-second storyboard,
+16 camera shots and8 motion cues. The recorder holds the opening pose until
+the encoder returns its first data, then starts timeline playback.
+
+WebM files and `manifest.json` go to the ignored output directory. The manifest
+records timeline and actual container duration, opening lead-in, file bytes,
+actors, map, stage, and camera variant. Container validation rejects truncated
+playback; the measured encoder lead-in is accounted for separately. Use
+`--only 3,7,11` to replace selected scenario numbers while preserving other
+entries with the same renderer settings. Generated scenes still require native
+framing review: an authored spawn is not proof that every camera avoids terrain
+or buildings. Preserve failed acquisitions and use a new output directory for
+comparison renders.

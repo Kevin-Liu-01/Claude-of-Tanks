@@ -1,5 +1,5 @@
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
-// Render a pinned set of modern-MBT Studio duel videos.
+// Render the current 30-map Studio duel collection.
 // Usage:
 //   npm run studio:examples -- --out shots/studio-modern-examples
 //   node tools/studio-example-videos.mjs --count 2 --fps 30 --out /tmp/duels
@@ -9,37 +9,11 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import {spawnSync} from 'node:child_process';
 import { resolve, join } from 'node:path';
 
-const SCENARIOS = [
-  ['desert', 'm1a2_sepv3', 't90m'],
-  ['winter', 'strv122', 'k2'],
-  ['desert', 'challenger_3', 'leo2a7v'],
-  ['verdant', 'type10b', 'ztz99a2'],
-  ['desert', 'leclerc_xlr', 't14'],
-  ['winter', 'kf51b', 'abramsx'],
-  ['desert', 'm1a2_tusk', 't90sm'],
-  ['verdant', 'ua_t84_oplot_m', 'pt91_twardy'],
-  ['desert', 'pl01_105', 'k2b'],
-  ['winter', 'merkava4b', 'ariete_c2'],
-  ['desert', 'm1a2_sepv2', 'type99a'],
-  ['verdant', 'leo2_revolution', 't72b3m'],
-  ['desert', 'challenger2', 'leclerc'],
-  ['winter', 'type10', 'k1a1'],
-  ['desert', 'm1a1ha', 't80u'],
-  ['verdant', 'ua_m1a1', 'ua_t64bv'],
-  ['desert', 'leo2a6m', 't90ms'],
-  ['winter', 'merkava3d', 'amx40'],
-  ['desert', 'type90a', 'pt91m'],
-  ['verdant', 'm1a2', 'ua_t80u_kursk'],
-].map(([map, alpha, bravo], index) => ({
-  index: index + 1,
-  map,
-  alpha,
-  bravo,
-  seed: 24001 + index * 137,
-}));
+import {DUEL_SCENARIOS as SCENARIOS} from './studio-example-scenarios.mjs';
 
 const FEATURE_SCENE_FILES = [
   '61_action_desert_duel_leclerc_kill.json',
@@ -194,16 +168,26 @@ const port = 7800 + Math.floor(Math.random() * 400);
 let server = null;
 let browser = null;
 const consoleErrors = [];
+const manifestPath=join(outDir,'manifest.json');
+let existingVideos=[];
+if(only.size && existsSync(manifestPath)) {
+  const existing=JSON.parse(readFileSync(manifestPath,'utf8'));
+  if(existing.version!==2 || existing.collection!==collection
+    || JSON.stringify(existing.renderer)!==JSON.stringify({width,height,fps,videoBitsPerSecond}))
+    throw new Error('Selective rendering requires a matching collection and renderer manifest');
+  existingVideos=existing.videos.filter(video=>!only.has(video.index));
+}
 const manifest = {
-  version: 1,
+  version: 2,
   generatedAt: new Date().toISOString(),
   collection,
   renderer: { width, height, fps, videoBitsPerSecond },
-  videos: [],
+  videos: existingVideos,
 };
 
 function writeManifest() {
-  writeFileSync(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  manifest.videos.sort((a,b)=>a.index-b.index);
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 try {
@@ -261,11 +245,9 @@ try {
     );
     const result = await page.evaluate(async (job) => {
       const S = window.__STUDIO;
-      const validateModernVehicles = (infos) => {
+      const validateVehicles = (infos) => {
         for (const info of infos) {
-          if (info.era !== 'modern') {
-            throw new Error(`${info.id} is ${info.era}, expected a modern-era vehicle`);
-          }
+          if (!info.id || !info.name) throw new Error('Cinematic actor is missing its registered tank identity');
         }
       };
       const buildActorTracks = (actors, travel, durationMs) => actors.map((actor, actorIndex) => {
@@ -343,7 +325,7 @@ try {
       });
       const alphaInfo = S.getSpecInfo(job.alpha);
       const bravoInfo = S.getSpecInfo(job.bravo);
-      validateModernVehicles([alphaInfo, bravoInfo]);
+      validateVehicles([alphaInfo, bravoInfo]);
       let board;
       let minimumLeadSeparationM = null;
       if (job.scene) {
@@ -372,22 +354,24 @@ try {
         S.setRailVisible(false);
         S.seek(0);
       } else {
-        const camo = job.map === 'winter' ? 'winter' : (job.map === 'desert' ? 'desert' : 'summer');
+        const camo = job.camo;
+        const facing = Math.atan2(job.stage.bravo[0]-job.stage.alpha[0],job.stage.bravo[1]-job.stage.alpha[1])*180/Math.PI;
         await S.load({
           map: job.map,
           seed: job.seed,
           actors: [
-            { id: job.alpha, name: 'alpha', pos: [-26, -8], facingDeg: 72, camo },
-            { id: job.bravo, name: 'bravo', pos: [26, 10], facingDeg: 252, camo },
+            { id: job.alpha, name: 'alpha', pos: job.stage.alpha, facingDeg: facing, camo },
+            { id: job.bravo, name: 'bravo', pos: job.stage.bravo, facingDeg: facing+180, camo },
           ],
           fxTime: 0,
           timeScale: 0,
         });
-        board = S.directDuel();
+        board = S.directDuel({variant:job.variant});
       }
       if (board.durationMs > 20_000 || board.actorTracks.length < 2) {
         throw new Error('Studio did not build a bounded multi-tank storyboard');
       }
+      const recordingStartedAt = performance.now();
       const recording = await S.recordVideo({
         fps: job.fps,
         videoBitsPerSecond: job.videoBitsPerSecond,
@@ -398,11 +382,14 @@ try {
         alpha: alphaInfo,
         bravo: bravoInfo,
         durationMs: recording.durationMs,
+        recordingWallMs: performance.now()-recordingStartedAt,
+        leadInMs: recording.leadInMs || 0,
         mimeType: recording.mimeType,
         size: recording.size,
         base64: String(dataUrl).split(',')[1],
         shots: board.shots.length,
         effects: S.listEffects().length,
+        cameraCues:board.cameraCues?.length??0,
         minimumLeadSeparationM,
       };
     }, { ...scenario, fps, videoBitsPerSecond });
@@ -419,6 +406,21 @@ try {
       throw new Error(`${file}: browser reported ${result.size} bytes, transferred ${bytes.length}`);
     }
     writeFileSync(join(outDir, file), bytes);
+    // MediaRecorder WebM often omits the container duration. Stream-copy to
+    // a complete container, then verify it against the authored timeline.
+    const ffmpeg=process.env.FFMPEG||'/opt/homebrew/bin/ffmpeg';
+    const ffprobe=process.env.FFPROBE||'/opt/homebrew/bin/ffprobe';
+    const videoPath=join(outDir,file), remuxPath=join(outDir,`${number}.remux.${extension}`);
+    const remux=spawnSync(ffmpeg,['-v','error','-y','-i',videoPath,'-map','0','-c','copy',remuxPath],{encoding:'utf8'});
+    if(remux.status!==0)throw new Error(`Video remux failed: ${remux.stderr||remux.error}`);
+    const probe=spawnSync(ffprobe,['-v','error','-show_entries','format=duration','-of','json',remuxPath],{encoding:'utf8'});
+    if(probe.status!==0)throw new Error(`Video duration probe failed: ${probe.stderr||probe.error}`);
+    const containerDurationMs=Number(JSON.parse(probe.stdout).format?.duration)*1000;
+    const frameToleranceMs=Math.max(250,2000/fps);
+    if(!Number.isFinite(containerDurationMs) || containerDurationMs<result.durationMs-frameToleranceMs
+      || containerDurationMs>result.durationMs+result.leadInMs+frameToleranceMs)
+      throw new Error(`${file}: container duration ${containerDurationMs} disagrees with timeline ${result.durationMs} (record wall ${result.recordingWallMs} ms)`);
+    renameSync(remuxPath,videoPath);
     manifest.videos.push({
       index: scenario.index,
       file,
@@ -428,9 +430,16 @@ try {
       bravo: { id: scenario.bravo, name: result.bravo.name },
       durationMs: result.durationMs,
       mimeType: result.mimeType,
-      bytes: result.size,
+      bytes:statSync(videoPath).size,
+      recordedBytes:result.size,
+      containerDurationMs,
+      recordingWallMs: result.recordingWallMs,
+      leadInMs: result.leadInMs,
       cameraShots: result.shots,
       effects: result.effects,
+      cameraCues:result.cameraCues,
+      variant:scenario.variant??null,
+      stage:scenario.stage??null,
       rail: !!scenario.rail,
       minimumLeadSeparationM: result.minimumLeadSeparationM,
     });

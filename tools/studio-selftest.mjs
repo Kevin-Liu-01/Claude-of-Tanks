@@ -178,17 +178,19 @@ try {
   console.log('[studio-selftest] phase=studio, map=desert, battle pool unbuilt + hidden');
 
   const panelLayout = await page.evaluate(() => {
-    const mapButton = document.querySelector('.mapBtn');
+    const panel = document.querySelector('.cot-studio');
+    if (!panel) throw new Error('Studio panel is absent');
+    const mapButton = panel.querySelector('.mapBtn');
     mapButton?.click();
     const result = {
-      tabs: document.querySelectorAll('[role="tab"]').length,
-      groups: [...document.querySelectorAll('.pgroup')].map((node) => node.dataset.group),
-      hiddenSections: [...document.querySelectorAll('.pgroup .sec')]
+      tabs: panel.querySelectorAll('[role="tab"]').length,
+      groups: [...panel.querySelectorAll('.pgroup')].map((node) => node.dataset.group),
+      hiddenSections: [...panel.querySelectorAll('.pgroup .sec')]
         .filter((node) => getComputedStyle(node).display === 'none').length,
-      mapCards: document.querySelectorAll('.mapCard').length,
-      selectedMap: document.querySelector('.mapCard[aria-selected="true"]')?.dataset.mapId,
-      hero: document.querySelector('.mapBtn .mhero')?.getAttribute('src'),
-      previewsHydrated: [...document.querySelectorAll('.mapCard img')]
+      mapCards: panel.querySelectorAll('.mapCard').length,
+      selectedMap: panel.querySelector('.mapCard[aria-selected="true"]')?.dataset.mapId,
+      hero: panel.querySelector('.mapBtn .mhero')?.getAttribute('src'),
+      previewsHydrated: [...panel.querySelectorAll('.mapCard img')]
         .filter((image) => image.getAttribute('src')).length,
     };
     mapButton?.click();
@@ -452,7 +454,14 @@ try {
   await page.waitForFunction(
     'window.__STUDIO.fxTimeMs >= 11000 && window.__STUDIO.listActors()[1]?.state === "turret-popped"',
     { timeout: 5000 },
-  );
+  ).catch(async error => {
+    console.error('[studio-selftest] playback failure state', JSON.stringify(await page.evaluate(() => ({
+      time: window.__STUDIO.fxTimeMs, scale: window.__STUDIO.timeScale,
+      actors: window.__STUDIO.listActors(), phase: window.__DEBUG.game.phase,
+      hidden: document.hidden,
+    }))));
+    throw error;
+  });
   await page.evaluate(() => window.__STUDIO.pause());
   const duelRoundTrip = await page.evaluate(async () => {
     const S = window.__STUDIO;
@@ -481,6 +490,17 @@ try {
         || !board.shots.some(shot => shot.transition === 'bezier')) {
         throw new Error(`variant ${variant} lost its curved camera rail or motion cues`);
       }
+      const aftermath=board.shots.find(shot=>shot.id==='duel-aftermath');
+      const end=board.shots.find(shot=>shot.id==='duel-end');
+      const ray=point=>[point[0]-aftermath.lookAt[0],point[2]-aftermath.lookAt[2]];
+      const outward=ray(aftermath.pos);
+      for(const point of [end.pos,end.handleIn,aftermath.handleOut]) {
+        const direction=ray(point);
+        if(direction[0]*outward[0]+direction[1]*outward[1]<=0)
+          throw new Error(`variant ${variant} hero pullout crosses through its subject`);
+      }
+      if(JSON.stringify(end.lookAt)!==JSON.stringify(aftermath.lookAt))
+        throw new Error(`variant ${variant} hero pullout loses its surviving subject target`);
       S.seek(6300);
       const first = S.getCamera();
       S.seek(1000); S.seek(6300);
@@ -540,6 +560,9 @@ try {
   await new Promise((resolveScroll) => setTimeout(resolveScroll, 100));
   await page.screenshot({ path: join(outDir, 'cinematic_storyboard_panel.png') });
   await page.setViewport({ width: 640, height: 400, deviceScaleFactor: 1 });
+  // Responsive layout writes its logical viewport on the next animation
+  // frame. Inspect after that real resize transaction has painted.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const mobileLayout = await page.evaluate(() => {
     document.querySelector('.pgroup[data-group="global"]')?.scrollIntoView({ block: 'start' });
     const dock = document.querySelector('.cot-studio .dock');
@@ -564,10 +587,12 @@ try {
   console.log(`[studio-selftest] video recorded ${video.size} bytes as ${video.type}`);
 
   // 11. exit hands back to the garage
-  const after = await page.evaluate(() => {
-    window.__STUDIO.exit();
-    return { phase: window.__DEBUG.game.phase, active: window.__STUDIO.active };
-  });
+  await page.evaluate(() => window.__STUDIO.exit());
+  await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage'
+    && !window.__STUDIO.active, { timeout: 15000 });
+  const after = await page.evaluate(() => ({
+    phase: window.__DEBUG.game.phase, active: window.__STUDIO.active,
+  }));
   if (after.phase !== 'garage' || after.active) {
     throw new Error(`exit() left phase='${after.phase}' active=${after.active}`);
   }
