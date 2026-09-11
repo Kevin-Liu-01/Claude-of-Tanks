@@ -69,3 +69,28 @@ matched full-resolution pairs accepts scoped biome identity and placement.
 Far-root closeups and road-exit native evidence remain incomplete. Public
 build passes. This checkpoint preserves source and collision work for review;
 it is not a launch or performance certificate.
+
+## Rim-road clearance follow-up
+
+The18 native approach/overhead captures initially exposed rooted border trees in Alpine and Reservoir roads despite settled terrain. Border trees intentionally bypass interior planting admission. The corrected placement defers removal of rim candidates within the existing9m road margin until every RNG draw has been consumed, then compacts visuals, obstacles and concealment together. Other candidates retain object order and transforms.
+
+All18 refreshed captures pass the independent scoped road-clearance/terrain-continuity review. Alpine road1/end1's approach camera is obscured by bank foliage; its paired overhead confirms an open road. Evidence: `.qa-dev/launch/road-exit-native-r2`. All30 collision shards were recaptured; each map's obstacle, collider and concealer reductions match (1–197 trunks permap). Wider30-map render review and refreshed navigation/collision checks remain pending; no timing-regression waiver is implied.
+
+All30 current shards pass the exact frozen89784835d record comparison in
+`.qa-dev/launch/rim-road-preservation-r1.json`: every non-tree movement/shell
+record is unchanged; retained trees and concealment retain exact positions,
+dimensions, metadata and order, allowing only tree-index compaction. Every
+removed trunk lies within the actual9m road margin and has exactly one removed
+concealer. The fixed census test retains its previous table and explicit
+per-map removal counts. No tolerance or acceptance gate changes. Independent
+review of all30 matched establishing pairs passes, with one-view/map limits;
+all18 native views of the9 authored exits also pass rooted-road clearance.
+Timing qualification remains open.
+
+Final scoped revalidation passes: all30 exact server manifest censuses,
+all30 maps ×5 game modes with2100 spawn placements and480 route validations,
+map quality, and90 oriented vegetation exclusion fixtures. Current source
+public build/typecheck also pass. Receipt logs: `rim-road-validation-r2.log`
+(server census PASS, then harness-only wrong import path),
+`rim-road-validation-r3.log` (remaining checks PASS), and
+`rim-road-clearance-build-r1.log`. Full launch/performance is not certified.

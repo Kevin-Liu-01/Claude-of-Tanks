@@ -25,7 +25,7 @@ const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
 // sampler preserves seeded vegetation; only newly unsafe road/slope sites
 // are excluded. Props use the completed physical roads. Exact census deltas
 // are retained in docs/research/launch-collision-refresh-20260911.md.
-const expected = {
+const roadCompletionCensus = {
   verdant: [6501, 6250, 6763],
   desert: [2381, 2337, 1823],
   winter: [5085, 4870, 4281],
@@ -72,6 +72,43 @@ const expected = {
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
   reservoir: [6095, 5890, 6620],
 };
+// Native rim-road repair removes only rooted trees inside the 9 m road margin.
+// Frozen 89784835d comparison proves every other movement/shell/concealment
+// record is unchanged. Keep both fixed censuses explicit, with no tolerance.
+const rimRoadRemovals = {
+  verdant: 34,
+  desert: 1,
+  winter: 33,
+  urban: 155,
+  coastal: 36,
+  autumn: 37,
+  steppe: 12,
+  railyard: 152,
+  frontier: 101,
+  fjord: 118,
+  delta: 183,
+  badlands: 6,
+  monsoon: 127,
+  alpine: 118,
+  caldera: 46,
+  foundry: 156,
+  ruinspires: 197,
+  blackglass: 70,
+  titan_gorge: 10,
+  skybridge: 1,
+  polders: 65,
+  copper_mesa: 67,
+  airfield: 61,
+  oasis: 31,
+  whiteout: 14,
+  orchard: 73,
+  longleaf: 84,
+  mangrove: 41,
+  saltwind: 74,
+  reservoir: 92
+};
+const expected = Object.fromEntries(Object.entries(roadCompletionCensus).map(([id, counts]) =>
+  [id, counts.map(count => count - rimRoadRemovals[id])]));
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(expected), MAP_IDS, 'every registered map has a fixed census expectation');
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');
