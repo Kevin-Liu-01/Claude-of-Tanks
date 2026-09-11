@@ -3,7 +3,7 @@
 // historical-preservation policy are deliberately not changed.
 import * as THREE from 'three';
 
-const IDS=new Set(['leo2a6_x','k1a1_x','amx30_x','t62mv1_x','t72b_1987_x','t80u_x',
+const IDS=new Set(['m1a2_sepv2_x','leo2a6_x','k1a1_x','amx30_x','t62mv1_x','t72b_1987_x','t80u_x',
   'leclerc_x','leclerc_classic_x','chieftain_mk10_x','t72b3_x','jpz_e100_x','type10_x','type90_x',
   'amx40_x','t72b3m_x','t72bu_x','t90_x','t90a_burlak_x','t90ms_x',
   'ariete_c1_x','challenger1_x','chieftain5_x','strv122_x']);

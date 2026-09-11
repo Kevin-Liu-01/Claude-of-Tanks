@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-11T21:42:40.456Z",
+ "generatedAt": "2026-09-11T22:11:08.182Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 68,
- "total": 161,
+ "total": 162,
  "rows": [
   {
    "id": "recon_tank",
@@ -1085,6 +1085,22 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "m1a2_sepv2_x",
+   "geoMin": 87.6,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 87.6,
+    "stations": 95.2,
+    "turretCurves": 95.4,
+    "wholeCurves": 90.5,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "type99a",
