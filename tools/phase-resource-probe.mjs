@@ -17,6 +17,7 @@ import { resolve } from 'node:path';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
 import { readPhaseEnvironment } from './phase-environment-receipt.mjs';
+import {resourceOwnershipInventory} from './resource-ownership-inventory.mjs';
 import { installPhaseResourceFrameAccounting, beginPhaseResourceFrameSample,
   hasFreshPhaseResourceFrame } from './phase-resource-frame-accounting.mjs';
 
@@ -501,6 +502,7 @@ const measurePhase = async (name) => {
     0, resourcesAfter.renderCount - resourcesBefore.renderCount);
   const frameLoopBefore = resourcesBefore.caches.frameLoopScheduler || {};
   const frameLoopAfter = resourcesAfter.caches.frameLoopScheduler || {};
+  if (has('inventory')) resourcesAfter.inventory = await page.evaluate(resourceOwnershipInventory);
   return {
     name,
     frameSample,

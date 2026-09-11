@@ -37,6 +37,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
+import {nativeBrowserLaunchOptions,verifyNativeBrowserLaunch} from './native-browser-launch.mjs';
 import { readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -74,9 +75,10 @@ function perfBrowserArgs(nativeCadence) {
     '--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage',
     '--enable-precise-memory-info',
     ...(nativeCadence ? [] : ['--disable-frame-rate-limit', '--disable-gpu-vsync']),
-    // Foreground player timers must not inherit headless-hidden throttling.
-    '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows',
-    '--disable-renderer-backgrounding',
+    // Throughput mode is diagnostic. Native cadence preserves the browser's
+    // real scheduling policy, including occlusion/background decisions.
+    ...(nativeCadence ? [] : ['--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding']),
     // Early mode uses this only AFTER its timed sample.
     '--js-flags=--expose-gc',
   ];
@@ -578,10 +580,9 @@ const url = `http://localhost:${address.port}/?tier=${deviceTier}`;
 console.error(`[perf] ${production ? 'production preview' : 'vite dev'} up at ${url}; ${windowMode}; ${nativeCadence ? 'native cadence' : 'unlocked throughput'}`);
 
 const launchArgs = perfBrowserArgs(nativeCadence);
-browser = await puppeteer.launch({
-  headless: 'new',
-  args: launchArgs,
-});
+const launchOptions={headless:'new',args:launchArgs};
+browser = await puppeteer.launch(nativeCadence ? nativeBrowserLaunchOptions(launchOptions) : launchOptions);
+const nativeLaunch=nativeCadence ? verifyNativeBrowserLaunch(browser) : null;
 const browserVersion = await browser.version();
 const ownBrowserPid = browser.process() ? browser.process().pid : -1;
 let foreignHeadlessMax = countForeignHeadless(ownBrowserPid);
@@ -1127,6 +1128,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       buildIndexHash,
       acquisitionHash,
       browserVersion,
+      nativeLaunch,
       startedAt: perf.startedAt,
       timeOrigin: perf.timeOrigin,
       times: perf.times,
@@ -1201,7 +1203,7 @@ await page.evaluateOnNewDocument((tier, desktopPreset, phonePreset) => {
       ...source, end: sourceEnd, unchanged: source.sourceHash === sourceEnd.sourceHash,
       buildAssociation: production ? 'checkout observed separately; build source not inferred' : 'Vite serves this checkout',
     },
-    browser: { version: browserVersion, executable: puppeteer.executablePath(), args: launchArgs, pid: ownBrowserPid },
+    browser: { version: browserVersion, nativeLaunch, executable: puppeteer.executablePath(), args: launchArgs, pid: ownBrowserPid },
     acquisition: {
       protocol: perf.protocol,
       url,

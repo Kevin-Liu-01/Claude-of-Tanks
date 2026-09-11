@@ -58,8 +58,9 @@ const legacyArgs = [
 ];
 assert.deepEqual(plain(browserArgs(false)), legacyArgs, 'default Chromium switches remain exactly unchanged');
 assert.deepEqual(plain(browserArgs(true)), legacyArgs.filter(flag =>
-  !['--disable-frame-rate-limit', '--disable-gpu-vsync'].includes(flag)),
-'native cadence removes only the two explicit throughput bypasses');
+  !['--disable-frame-rate-limit', '--disable-gpu-vsync', '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'].includes(flag)),
+'native cadence retains normal frame and background scheduling');
 
 function fixture({ memory = true, phase = 'garage' } = {}) {
   let now = 100, serial = 0, heapBytes = 1000;
