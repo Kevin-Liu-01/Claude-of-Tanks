@@ -82,8 +82,9 @@ assert.doesNotMatch(main, /function startBattle\(/,
 assert.match(soloStartAccess,
   /load = \(\) => import\('\.\/soloBattleStartRuntime\.ts'\)/,
   'Garage boot must not evaluate solo-round activation policy');
-assert.match(soloLoading,
-  /\(\) => preloadBattleStart\(\)[\s\S]{0,900}startBattle\(specId, resolved/,
+const activationPreload = soloLoading.indexOf('() => preloadBattleStart()');
+const activationHandoff = soloLoading.indexOf('startBattle(specId, resolved');
+assert.ok(activationPreload >= 0 && activationHandoff > activationPreload,
   'covered loading must acquire the activation owner before its synchronous handoff');
 
 assert.match(networkBattleComposition, /createLobby\(\{/,

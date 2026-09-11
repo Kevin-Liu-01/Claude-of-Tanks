@@ -303,6 +303,10 @@ await withFixture(async f => {
       makeGrassLayer = (...args) => _paint('grass', args);
       makeDirtLayer = (...args) => _paint('dirt', args);
       makeGroundLayer = (...args) => _paint('ground', args);
+      // Wet ground now uses the same painter through its staged entry point.
+      // Keep this fixture's cheap painter seam on both paths; the actual
+      // staged pixel/cancellation contract is exercised separately.
+      makeGroundLayerSteps = function* (...args) { return _paint('ground', args); };
       makeSandstoneLayer = (...args) => _paint('sandstone', args);
       export { createSplatMaterialSteps as _createSplatMaterialSteps, terrainBuildSteps as _terrainBuildSteps };
     ` } : result;
