@@ -71,4 +71,60 @@ corrected before the complete retry.
 
 Frozen public `dist/index.html` SHA-256:
 `ad8bd5105a20ed669c4c9ac57db1e3dc3b2a560179dd380b854b2782d814c5be`.
-No browser, commit, push or deployment was performed.
+No browser, commit, push or deployment was performed for that isolated receipt.
+
+## Integrated native checkpoint
+
+The wet-layer change and build-local plaster relief sharing are integrated at
+`3f66a459e` (before publication). Fourteen focused terrain/props/lifetime/
+scheduler/registry checks, full typecheck/unused checks and public build pass.
+The frozen public index SHA-256 is
+`3254a75de246986cf2e5a5a857af65ff2b2a01125acb14d8e5ea3105afc14ca4`.
+
+Actual Battle, night Battle Again and Garage controls pass functional,
+warm-readiness, source-readiness, boot-audio and audio-clock gates. Root inspected
+all three stills; the authored terrain, buildings, night lighting and Garage
+remain present. Page/cleanup/failure lists are empty. Total action times are
+6353.0 / 5533.7 / 324.1 ms, with largest callback gaps **101.8 / 53.8 / 42.7 ms**.
+The largest cold gap crosses “Surveying terrain” to “Building terrain meshes”; it
+does not establish the wet painter as its cause. These are single-run functional
+results, not proof that overall loading is smooth or that pacing is faster.
+
+The unchanged fixed-roster phase-resource acquisition confirms battle scene
+textures **132→130**, scene pixels **28,914,944→28,783,872**, and renderer
+textures **304→302**, versus the preceding FX candidate. All three phases retain
+the same object/geometry/material/program counts. Battle mean main-thread work
+is 6.276 ms/render; Garage remains idle rather than continuously animating.
+There are no page, console or HTTP failures. The **same eight resource gates
+still fail**: Garage triangle counts, and battle object, geometry, material,
+texture and texture-pixel ceilings. No threshold or visual quality was reduced.
+
+Raw evidence in the owning battle-era worktree's `.local-evidence/`:
+`terrain-plaster-combined-validation.log`, `terrain-plaster-actions/report.json`
+and its three PNGs, and `terrain-plaster-resources.json`. Acquisition hashes
+remain `782d10ba63581e161cad61ed9c3930f7199cef71c356886cc2ed467a9af3d9f2`
+(actions) and `bd40b57d430b7134f6ee0a3ba58e57c451f762b93585515a2bcbed7e31e52edb`
+(resources). Both use native Apple M5 Max ANGLE Metal, High, DPR 1, scale 1,
+trim 0; action viewport is 1280×720, resource viewport 1280×577. This checkpoint
+does not resolve the historical 214–319 ms gameplay stalls.
+
+## Foreground scheduling follow-up
+
+The foreground world-build owner now requests a task yield after 6 ms and a
+paint/post-paint yield after 16 ms, previously 12/32. Background scheduling,
+shared scheduler defaults, cancellation, progress notifications, timeouts and
+visual quality are unchanged. Cooperative checkpoints cannot preempt an atomic
+operation and this is not a 16 ms frame guarantee.
+
+The production trace contains 54.1–61.0 ms terrain/structure frames composed of
+multiple 6.7–15.7 ms script slices before a paint. A task yield alone does not
+promise a rendered frame; the shorter paint deadline addresses that case.
+The largest observed frame also contains a 63.1 ms atomic continuation, which
+this policy cannot fix. Extra yields can lengthen total loading; actual native
+timing remains a separate acceptance check.
+
+The coordinator test exercises its actual default policy with controlled browser
+delivery: 6/12 ms task waits, the 16 ms paint deadline, a required post-rAF task,
+deadline reset, cancellation-safe fixture cleanup and unchanged deduplicated
+progress. Coordinator, scheduler and all 24 native wet-layer cases pass in
+`cot-terrain-wet-layer-20260910/.local-evidence/foreground-policy-6-16-r2/checks.log`.

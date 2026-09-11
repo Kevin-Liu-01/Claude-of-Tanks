@@ -23,6 +23,9 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
 // It still uses the runner's lease (unlike a self-leasing browser test).
 export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   'src/vehicles/fleetLazy.selftest.mjs',
+  // Its unchanged 100 ms construction gate measures host time. Running beside
+  // seven complete fleet builders tests CPU contention instead of this owner.
+  'src/ui/garageArchitecture.selftest.mjs',
 ]);
 
 // This caches compilation, NEVER test results or module instances. Every file

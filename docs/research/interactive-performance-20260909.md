@@ -6,14 +6,20 @@ not a zero-lag or release certificate.
 
 ## Current acceptance summary
 
-Latest qualified local change: [staged FX private-target preparation](fx-program-preparation-ab-20260910.md).
+Latest published change: [staged FX private-target preparation](fx-program-preparation-ab-20260910.md#published-production-checkpoint)
+is verified live at `465a68f7c`. Its production preparation/first-draw steps
+stay below 10 ms and all actual-control readiness/audio/source gates pass.
+Whole-action frame gaps remain 85.0 / 74.6 / 55.5 ms (day/night/Garage), so
+the overall smoothness objective is still open.
+
+The matched local comparison for that change:
 Three candidate runs keep preparation plus first-draw steps under 10 ms;
 matched baselines reproduce 65–89 ms night FX steps. All six real-control
 flows pass readiness/audio/source checks. Other frame gaps remain (candidate
 55.7–118.8 ms battle/rematch and one slower overall B2 acquisition), so neither
 the whole-game objective nor the historical 214–319 ms cause is resolved.
 
-Latest deployed checkpoint: [loading recovery and complete-frame diagnostics](loading-production-checkpoint-20260910.md)
+Earlier deployed checkpoint: [loading recovery and complete-frame diagnostics](loading-production-checkpoint-20260910.md)
 records production `3e6ff4978`, passing real-control day/night/Garage and warm/
 source/audio readiness checks. The ordinary run still reached 99.0 / 104.7 /
 40.8 ms frame gaps. Those limits remain failures of the smoothness objective;

@@ -1,5 +1,6 @@
-// Native diagnostic, not timing: actual completed Garage; eight baseline warm
-// frames per pose, then synchronous control/A/B/negative framebuffer captures.
+// Native diagnostic, not timing: actual completed Garage; pin only the two
+// wall-clock CRT animation uniforms, then eight baseline warm frames per pose
+// and synchronous control/A/B/negative framebuffer captures.
 // Owns the shared FIFO lease; do not wrap in another capture-command lease.
 // node tools/garage-draw-range-probe.mjs --url=http://127.0.0.1:4178 --out=/absolute/fresh-directory
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -47,7 +48,7 @@ export function checkGarageDrawRangeReport(report) {
 function capturePair({ name, angle, baseCamera }) {
   const { scene, camera, renderer, post, garageDressing, showroom } = window.__DEBUG;
   const gl = renderer.getContext(), result = { name, angle, glErrors: [], images: {}, draws: { a: [], b: [], negative: [] } };
-  const savedCamera = camera.clone(), callbacks = [];
+  const savedCamera = camera.clone(), callbacks = [], clockCallbacks = [];
   garageDressing.group.traverse(mesh => {
     if (!mesh.isMesh || mesh.castShadow || !(mesh.userData.staticDrawRangeRuns >= 2)
       || !(mesh.userData.workshopStaticDisplayMerge || mesh.userData.workshopStaticMerge)) return;
@@ -105,6 +106,17 @@ function capturePair({ name, angle, baseCamera }) {
   try {
     if (!callbacks.length) throw new Error('no candidate static merged meshes found');
     if (window.__DEBUG.game.phase !== 'garage') throw new Error('expected actual Garage');
+    // CRT onBeforeRender samples performance.now(), even for render(0). Keep
+    // its original scheduling side effects but compare one identical visible
+    // animation phase, without hiding screens or disabling any post pass.
+    for (const name of ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary']) {
+      const mesh = garageDressing.group.getObjectByName(name), uniform = mesh?.material?.uniforms?.uTime;
+      if (!mesh || !uniform || typeof uniform.value !== 'number') throw new Error(`missing animated CRT: ${name}`);
+      const before = mesh.onBeforeRender, time = uniform.value;
+      clockCallbacks.push({ mesh, before, uniform, time });
+      mesh.onBeforeRender = function (...args) { before.apply(this, args); uniform.value = time; };
+    }
+    result.pinnedAnimationClocks = clockCallbacks.map(({ mesh, time }) => ({ name: mesh.name, time }));
     result.eligibleMeshes = callbacks.map(({ mesh }) => ({ name: mesh.name, id: mesh.uuid,
       runs: mesh.userData.staticDrawRangeRuns, elements: mesh.geometry.index?.count ?? mesh.geometry.attributes.position.count }));
     camera.position.fromArray(baseCamera.position); camera.quaternion.fromArray(baseCamera.quaternion);
@@ -158,6 +170,9 @@ function capturePair({ name, angle, baseCamera }) {
       for (const entry of callbacks) {
         entry.mesh.onBeforeRender = entry.before; entry.mesh.onAfterRender = entry.after;
         entry.mesh.geometry.setDrawRange(entry.start, entry.count);
+      }
+      for (const entry of clockCallbacks) {
+        entry.mesh.onBeforeRender = entry.before; entry.uniform.value = entry.time;
       }
       camera.copy(savedCamera); camera.updateMatrixWorld(true);
       renderer.setRenderTarget(null); post.render(0);
