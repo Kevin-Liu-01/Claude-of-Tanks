@@ -101,9 +101,9 @@ const RESOURCE_BUDGETS = Object.freeze({
     heapMB: 315,
     objects: 1150,
     programs: 230,
-    // Desktop intentionally retains the detached Garage's immutable GPU
-    // allocations so return-to-Garage never has to re-upload the workshop.
-    // Keep aggregate renderer ceilings close enough to catch real growth.
+    // Desktop releases detached Garage geometry buffers while retaining its
+    // textures and programs for covered restoration. Keep the existing
+    // aggregate renderer ceiling to catch real growth.
     // The pinned scene owns 668 visible geometries; the renderer necessarily
     // retains those plus its tiny warm-only probe set. Keep the aggregate cap
     // aligned with the stricter visible-scene ceiling below.
@@ -656,11 +656,17 @@ const checkBattleResidencyBudgets = (check, battle) => {
       && battle?.resources.caches.phaseSceneResidency?.worldMounted === true,
     battle?.resources.caches.phaseSceneResidency || null,
     'Garage detached; world mounted');
-  check('active battle retains detached desktop Garage GPU residency',
-    battle?.resources.caches.garageGpuResidency?.suspended === false
-      && (battle?.resources.caches.garageGpuResidency?.releases || 0) === 0,
-    battle?.resources.caches.garageGpuResidency || null,
-    'detached but resident, with no release/re-upload cycle');
+  const garageGpu = battle?.resources.caches.garageGpuResidency;
+  check('active battle releases only detached desktop Garage geometry buffers',
+    garageGpu?.suspended === true && garageGpu.releases === 1
+      && garageGpu.resumes === 0 && garageGpu.resumeFailures === 0
+      && garageGpu.invalidations === 0
+      && Number.isSafeInteger(garageGpu.lastRelease?.geometries)
+      && garageGpu.lastRelease.geometries > 0
+      && garageGpu.lastRelease.materials === 0
+      && garageGpu.lastRelease.textures === 0,
+    garageGpu || null,
+    'one geometry-only suspension; no material/texture disposal, resume or failure');
   checkResourceLimits(check, 'active battle renderer', battle?.resources.renderer,
     RESOURCE_BUDGETS.battleActive, ['programs', 'geometries', 'textures']);
   const terrainIndexPool = battle?.resources?.caches?.terrainIndexPool;
@@ -718,11 +724,17 @@ const checkReturnedGarageResidency = (check, returned) => {
     !returned?.resources.sceneBreakdown?.effects,
     returned?.resources.sceneBreakdown?.effects || null,
     'no attached effects scene or pooled battle GPU graph');
-  check('returned Garage reuses retained desktop scene-pack GPU resources',
-    returned?.resources.caches.garageGpuResidency?.suspended === false
-      && (returned?.resources.caches.garageGpuResidency?.resumes || 0) === 0,
-    returned?.resources.caches.garageGpuResidency || null,
-    'scene pack remains resident without a restore upload');
+  const garageGpu = returned?.resources.caches.garageGpuResidency;
+  check('returned Garage completes desktop geometry-buffer restoration',
+    garageGpu?.suspended === false && garageGpu.releases === 1
+      && garageGpu.resumes === 1 && garageGpu.resumeFailures === 0
+      && garageGpu.invalidations === 0
+      && Number.isSafeInteger(garageGpu.lastRelease?.geometries)
+      && garageGpu.lastRelease.geometries > 0
+      && garageGpu.lastRelease.materials === 0
+      && garageGpu.lastRelease.textures === 0,
+    garageGpu || null,
+    'one successful restore after geometry-only suspension; no failure or invalidation');
   checkResourceLimits(check, 'returned Garage renderer', returned?.resources.renderer,
     RESOURCE_BUDGETS.garageReturned, ['programs', 'geometries', 'textures']);
   checkResourceLimits(check, 'returned Garage visible', returned?.resources,
