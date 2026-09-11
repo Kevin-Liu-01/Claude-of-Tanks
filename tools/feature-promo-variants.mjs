@@ -480,8 +480,8 @@ function renderVariant(variant) {
   const audioIndex = variant.timeline.length;
   filters.push(
     `[${audioIndex}:a]atrim=duration=${DURATION},asetpts=PTS-STARTPTS,` +
-      'aformat=channel_layouts=stereo,loudnorm=I=-14:LRA=9:TP=-1.0,' +
-      'alimiter=limit=.94:level=false,volume=-1.5dB[outa]',
+      'aformat=channel_layouts=stereo,loudnorm=I=-14:LRA=9:TP=-2.0,aresample=48000,' +
+      'alimiter=limit=.7:level=false:latency=true,volume=-3dB[outa]',
   );
   ffmpeg([
     ...inputs, '-filter_complex', filters.join(';'),

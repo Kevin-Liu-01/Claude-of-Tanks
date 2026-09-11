@@ -11,8 +11,8 @@ captureLeaseRefresh.unref();
 //   2. identical footage with promotional typography removed
 //
 // All action reels preserve source speed. Variable-cadence browser captures
-// are converted to CFR 60 with simple temporal frame blending, not optical
-// flow, so missing frames are filled without bending tracks, foliage, or guns.
+// are converted to CFR 60 by repeating original frames. Blending consecutive
+// views can create doubled wheels and gun barrels, so it is not used.
 // Front- and rear-facing tank compositions are intentionally interleaved.
 
 // Usage:
@@ -228,11 +228,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-se
 }
 
 const smooth60 = [
-  // Browser WebM timestamps are bursty even when the captured frame sequence
-  // is healthy. Reclock the decoded frames first, then blend only the cadence
-  // gap up to 60; this removes timestamp judder without optical-flow warping.
+  // Preserve real captured silhouettes while normalizing delivery cadence.
   'setpts=PTS-STARTPTS',
-  `framerate=fps=${FPS}:interp_start=15:interp_end=240:scene=12`,
+  `fps=${FPS}`,
 ].join(',');
 const grade = [
   `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase:flags=lanczos`,
@@ -455,7 +453,7 @@ const chapters = [
         { index: 3, start: 9.3, duration: 0.6, angle: 'explosion montage', safeRange: [9.25, 13.5] },
         { index: 4, start: 9.35, duration: 0.6, angle: 'explosion montage', safeRange: [9.3, 13.5] },
         { index: 6, start: 9.3, duration: 0.6, angle: 'explosion montage', safeRange: [9.25, 13.5] },
-        { index: 12, start: 9.35, duration: 0.6, angle: 'explosion montage', safeRange: [9.3, 13.2] },
+        { index: 12, start: 9.85, duration: 0.6, angle: 'explosion montage', safeRange: [9.85, 10.63] },
         { index: 1, start: 9.3, duration: 0.6, angle: 'explosion montage', safeRange: [9.25, 13.5] },
         { index: 16, start: 9.35, duration: 0.6, angle: 'explosion montage', safeRange: [9.3, 13.5] },
         { index: 19, start: 9.35, duration: 0.6, angle: 'explosion montage', safeRange: [9.3, 13.5] },
@@ -582,7 +580,7 @@ const manifest = {
   audioPolicy: 'continuous Armor/Ballistics score mastered to -10 LUFS with the AAC stream marked default',
   sourceRepeatPolicy: 'cinematic source windows cannot overlap across reels',
   scorePolicy: 'one continuous Armor/Ballistics action-score family; no separate sound effects',
-  cadencePolicy: 'source-speed shots converted to CFR-60 with non-optical temporal frame blending',
+  cadencePolicy: 'source-speed shots converted to CFR-60 by repeating real frames; no temporal blending or optical flow',
   anglePolicy: 'tank reels mix wide reveals, front/rear three-quarters, side profiles, firing lines, tracked turns, impacts, and pullbacks',
   cameraShakePolicy: 'shake appears only in source windows containing visible blast or impact events',
   documentationIncluded: false,
