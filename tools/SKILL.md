@@ -15,6 +15,12 @@ external model files.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
+`water-palette-probe.mjs` compares a proposed water color, opacity and roughness
+against the live material from fixed supplied poses. Its required `--url`,
+`--map`, `--poses`, `--out`, `--color`, `--opacity` and `--roughness` arguments
+produce native before/after/restore images and resource receipts. It owns the
+capture lease; do not wrap it in another lease or treat images as timing proof.
+
 Performance probes drive the browser and record JSON; fleet/geometry tools audit
 authored tanks; screenshot/visual tools stage canonical views; strip/release
 tools enforce public asset boundaries. `local-import-integrity.selftest.mjs`
