@@ -36,6 +36,7 @@ import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
 } from '../sim/movement.ts';
 import { createShell, stepShell } from '../sim/ballistics.ts';
+import { conformStudioActor, resetStudioActorSupport } from './studioActorSupport.ts';
 import { createBus } from './stateCore.ts';
 import {
   CAMO_CATALOG_PATTERN_IDS, setCamoOverride, applyCamoPatterns,
@@ -222,11 +223,16 @@ interface StudioActor extends MovementEntity, StudioPanelActor {
   authoredSmoking: boolean;
   authoredBurning: boolean;
   authoredRecoilAgeS: number | null;
+  authoredSuspensionAimPitch: number | null;
   smoking: boolean;
   burning: boolean;
   timelineX: number;
   timelineZ: number;
   timelineYaw: number;
+  supportStep: number;
+  supportX: number;
+  supportZ: number;
+  supportYaw: number;
   timelineTrack: ActorTrack | null;
 }
 
@@ -756,7 +762,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       st.pos.z + Math.cos(az) * Math.cos(el) * 400,
     );
     a.rigidGear = false;
-    for (let i = 0; i < steps; i++) updateTank(a, hfProxy, SIM_DT);
+    const aimLocked = a.input.aimLocked;
+    if (a.authoredSuspensionAimPitch !== null) a.input.aimLocked = true;
+    try {
+      for (let i = 0; i < steps; i++) updateTank(a, hfProxy, SIM_DT);
+    } finally { a.input.aimLocked = aimLocked; }
     // pin the authored pose exactly (updateTank slews at spec rates; slope
     // slide may creep pos) — staging is authoritative, sim only shapes
     // pitch/roll/wheel conform
@@ -822,6 +832,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       st.speed = 0;
       st.yawRate = 0;
     }
+    a.authoredSuspensionAimPitch = st.suspensionAimPitch;
     // Running-gear conformance is visually damped. Advance it independently
     // after the simulation settles so wheels and track bands reach the same
     // final ground course before a still or recording begins.
@@ -960,11 +971,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       authoredSmoking: authored.smoking,
       authoredBurning: authored.burning,
       authoredRecoilAgeS: authored.recoilAgeS,
+      authoredSuspensionAimPitch: null,
       smoking: false,
       burning: false,
       timelineX: x,
       timelineZ: z,
       timelineYaw: (cfg.facingDeg || 0) * DEG,
+      supportStep: 0, supportX: x, supportZ: z, supportYaw: (cfg.facingDeg || 0) * DEG,
       timelineTrack: null,
     };
   }
@@ -1883,10 +1896,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const savedScale = timeScale;
     resetFxRuntime(sceneMeta.seed || 5000);
     for (const a of actors) {
-      settleActor(a);
-      restoreAuthoredActor(a);
+      a.visual.resetDestroyed();
+      resetStudioActorSupport(a, a.authoredSuspensionAimPitch);
+      if (!actorTrackFor(a)) settleActor(a);
     }
-    applyStoryboardActors(0, 0);
+    applyStoryboardActors(0, 0, true);
+    for (const a of actors) restoreAuthoredActor(a);
     const ordered = effectLog
       .map((effect, index) => ({ effect, index }))
       .sort((a, b) => a.effect.tMs - b.effect.tMs || a.index - b.index);
@@ -2056,15 +2071,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
-  function applyStoryboardActors(timeMs: number, dt = 0): void {
-    for (const a of actors) {
-      const track = actorTrackFor(a);
-      if (!track || !sampleActorTrack(track.keys, timeMs, _actorSample)) continue;
+  function applyStoryboardActorSample(a: StudioActor, timeMs: number, dt: number, support: boolean): void {
+    const track = actorTrackFor(a);
+    if (!track || !sampleActorTrack(track.keys, timeMs, _actorSample)) return;
       const st = a.state;
       const yaw = _actorSample.facingDeg * DEG;
-      const dx = _actorSample.x - a.timelineX;
-      const dz = _actorSample.z - a.timelineZ;
-      const dyaw = Math.atan2(Math.sin(yaw - a.timelineYaw), Math.cos(yaw - a.timelineYaw));
+      const dx = _actorSample.x - a.supportX;
+      const dz = _actorSample.z - a.supportZ;
+      const dyaw = Math.atan2(Math.sin(yaw - a.supportYaw), Math.cos(yaw - a.supportYaw));
       if (dt > 0) {
         const forwardX = Math.sin(yaw);
         const forwardZ = Math.cos(yaw);
@@ -2073,9 +2087,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         st.yawRate = dyaw / dt;
         st.trackScroll.l += signedDist + dyaw * 1.5;
         st.trackScroll.r += signedDist - dyaw * 1.5;
-      } else {
+      } else if (support) {
         st.speed = 0;
         st.yawRate = 0;
+      }
+      if (support) {
+        a.supportX = _actorSample.x; a.supportZ = _actorSample.z; a.supportYaw = yaw;
       }
       a.timelineX = _actorSample.x;
       a.timelineZ = _actorSample.z;
@@ -2083,31 +2100,36 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       actorRootPosition(a, _actorSample.x, _actorSample.z, yaw, _v3);
       st.pos.x = _v3.x;
       st.pos.z = _v3.z;
-      resetTankVerticalState(st, hfProxy.getHeightAt(_actorSample.x, _actorSample.z));
       st.yaw = yaw;
       st.turretYaw = _actorSample.turretDeg * DEG;
       st.gunPitch = clampGunDeg(a.spec, _actorSample.gunDeg) * DEG;
 
-      // Four cheap height samples keep cinematic tracks seated on rolling
-      // terrain without invoking the full authoritative movement solver on
-      // every rendered frame.
-      const halfL = Math.max(1, (a.spec.dims.hullLengthM || 6) * 0.38);
-      const halfW = Math.max(0.7, (a.spec.dims.widthM || 3) * 0.4);
-      const fx = Math.sin(yaw);
-      const fz = Math.cos(yaw);
-      const rx = Math.cos(yaw);
-      const rz = -Math.sin(yaw);
-      const frontH = hfProxy.getHeightAt(st.pos.x + fx * halfL, st.pos.z + fz * halfL);
-      const rearH = hfProxy.getHeightAt(st.pos.x - fx * halfL, st.pos.z - fz * halfL);
-      const rightH = hfProxy.getHeightAt(st.pos.x + rx * halfW, st.pos.z + rz * halfW);
-      const leftH = hfProxy.getHeightAt(st.pos.x - rx * halfW, st.pos.z - rz * halfW);
-      st.visualPitch = Math.atan2(frontH - rearH, halfL * 2);
-      st.visualRoll = Math.atan2(rightH - leftH, halfW * 2);
+    if (support) conformStudioActor(a, hfProxy, dt, a.visual.isDestroyed());
+  }
+
+  function applyStoryboardActors(timeMs: number, dt = 0, settle = false): void {
+    const stepMs = SIM_DT * 1000;
+    for (const a of actors) {
+      if (!actorTrackFor(a)) continue;
+      if (settle) {
+        a.supportStep = 0;
+        applyStoryboardActorSample(a, 0, 0, true);
+        a.visual.syncFromState(a.state, 0);
+      } else if (dt > 0) {
+        // Support is anchored to the timeline, independent of display cadence
+        // and the partial intervals surrounding authored FX cues.
+        const finalStep = Math.floor((timeMs + 1e-7) / stepMs);
+        while (a.supportStep < finalStep) {
+          a.supportStep++;
+          applyStoryboardActorSample(a, a.supportStep * stepMs, SIM_DT, true);
+        }
+      }
+      applyStoryboardActorSample(a, timeMs, 0, false);
     }
   }
 
-  function applyStoryboardFrame(timeMs: number, dt = 0): void {
-    applyStoryboardActors(timeMs, dt);
+  function applyStoryboardFrame(timeMs: number, dt = 0, settle = false): void {
+    applyStoryboardActors(timeMs, dt, settle);
     applyStoryboardCamera(timeMs);
     rail.updateVisibility();
     invalidate();
@@ -3313,7 +3335,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     updateEffect,
     clearEffects: () => {
       if (recording) return false;
-      resetFx(); applyStoryboardFrame(0, 0); panel.refreshAll();
+      resetFx(); rebuildEffects(0); panel.refreshAll();
       return true;
     },
     advanceFx: (ms: number) => seekTimeline(clockMs + ms),

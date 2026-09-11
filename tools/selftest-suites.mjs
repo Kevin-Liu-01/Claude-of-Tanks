@@ -101,6 +101,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/autoloader.selftest.mjs',
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioRecording.selftest.mjs',
+    'src/game/studioActorSupport.selftest.mjs',
     'tools/studio-example-scenarios.selftest.mjs',
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
