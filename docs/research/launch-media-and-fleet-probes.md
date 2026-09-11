@@ -65,3 +65,19 @@ selection covered 63 vehicles and 146 selection/revisit records without errors.
 The stock census still found 46 of 63 LOW models reducing triangles by at most
 ten percent. These receipts do not close that remaining optimization work or
 the launch's performance limits.
+
+The final eleven-export review records file hashes, containers, eight sampled
+frames per file and decoded audio signals. Short cuts repeat real frames to
+avoid doubled wheels/barrels; the forest finale uses the clear9.85s source
+window. Alternate scores resample to48kHz before their final limiter. All eight
+revised AAC streams peak below0dB, with their video packet hashes unchanged;
+all eleven container/audio checks pass. This is not a perceptual soundtrack
+audition or a sustained60fps rendering claim.
+
+Native all-shoe rays for scenes07,09 and11 resolve the apparent large rear
+track gap as an upswept terminal rather than whole-tank hover. Keep the smaller
+measured discrepancies explicit: selected loaded points range down to−58.4mm
+(Frontier scene09) and up to45.5mm (Delta scene11) against rendered terrain.
+A global minimum or a filter selecting only already-grounded shoes cannot
+certify every loaded station. These measurements do not close fleet-wide
+track stock, contact, source qualification or LOW-detail work.
