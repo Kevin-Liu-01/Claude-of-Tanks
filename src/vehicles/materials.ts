@@ -357,6 +357,41 @@ function canvasTex(canvas: HTMLCanvasElement, { srgb = true, aniso = 4, repeat =
   return t;
 }
 
+interface SootTextureEntry { texture: THREE.CanvasTexture; refs: number; }
+interface SootTextureLease extends SharedTextureLease { texture: THREE.CanvasTexture; }
+
+// The fixed soot painter has no vehicle/seed/text inputs. Share only its
+// immutable texture; per-visual materials still own their own burn uniforms.
+// Entries exist only while leased, never before a visual requests this decal.
+const SOOT_TEXTURES = new WeakMap<ShadowEngineContext, Map<number, SootTextureEntry>>();
+function acquireSootTexture(
+  engineCtx: ShadowEngineContext,
+  aniso: number,
+  create: () => THREE.CanvasTexture,
+): SootTextureLease {
+  const entries = SOOT_TEXTURES.get(engineCtx) ?? new Map<number, SootTextureEntry>();
+  let entry = entries.get(aniso);
+  if (!entry) {
+    entry = { texture: create(), refs: 0 };
+    entries.set(aniso, entry);
+    SOOT_TEXTURES.set(engineCtx, entries);
+  }
+  const owned = entry;
+  owned.refs++;
+  let held = true;
+  return {
+    texture: owned.texture,
+    release() {
+      if (!held) return;
+      held = false;
+      if (--owned.refs > 0) return;
+      entries.delete(aniso);
+      if (entries.size === 0) SOOT_TEXTURES.delete(engineCtx);
+      owned.texture.dispose();
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Per-spec texture cache: painting 2048px canvases + the Sobel pass is the
 // expensive part, and every instance of a tank type can share the results.
@@ -2632,10 +2667,15 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
 
   const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();
+  const decalTextureLeases: SootTextureLease[] = [];
   const decal = (kind: string, text?: string | null): THREE.MeshStandardMaterial => {
     const key = `${marking.markingCode}:${kind}:${text || ''}`;
     if (!decalCache.has(key)) {
-      const t = track(canvasTex(paintDecal(kind, text, marking), { aniso }));
+      const lease = kind === 'soot' && engineCtx
+        ? acquireSootTexture(engineCtx, aniso, () => canvasTex(paintDecal(kind, text, marking), { aniso }))
+        : null;
+      if (lease) decalTextureLeases.push(lease);
+      const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
       // number decals re-bake on fonts.ready (paintDecal registered first, so
       // its redraw runs before this) — push the fresh canvas to the GPU.
       if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
@@ -2705,6 +2745,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
         }
         resource.dispose();
       }
+      for (const lease of decalTextureLeases) lease.release();
       releaseSharedTextures(shared);
     },
   };

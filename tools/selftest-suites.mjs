@@ -736,6 +736,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/materialQuality.selftest.mjs',
     'src/vehicles/materialPainterWorker.selftest.mjs',
     'src/vehicles/sharedTextureLease.selftest.mjs',
+    'src/vehicles/sootTextureSharing.selftest.mjs',
     'src/vehicles/sharedTextureWorkerLease.selftest.mjs',
     'src/vehicles/appearanceAudit.selftest.mjs',
     'src/vehicles/ghillieSuit.selftest.mjs',
