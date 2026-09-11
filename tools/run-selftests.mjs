@@ -14,6 +14,7 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/resolved-depth-copy.browser.selftest.mjs',
   'tools/late-fx-matrix.browser.selftest.mjs',
   'tools/articulated-shadow-batch.browser.selftest.mjs',
+  'tools/battle-geometry-sharing.browser.selftest.mjs',
   'tools/track-texture-source.browser.selftest.mjs',
   'tools/sourced-building-source.browser.selftest.mjs',
 ]);
