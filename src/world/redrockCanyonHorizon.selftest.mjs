@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { Color } from 'three';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { sampleHorizonGeometry } from './maps/horizon.ts';
 import { createHeightField } from './terrain.ts';
@@ -34,9 +36,10 @@ function triangleHeight(p, a, b, c, x, z) {
   return Math.min(wa, wb, wc) >= -1e-6 ? wa * p[a * 3 + 1] + wb * p[b * 3 + 1] + wc * p[c * 3 + 1] : null;
 }
 function surface(ring, x, z) {
-  const angle = (Math.atan2(z, x) + Math.PI * 2) % (Math.PI * 2);
-  const column = Math.floor(angle / (Math.PI * 2) * columns), next = (column + 1) % columns;
-  for (let row = 0; row < ring.rows.length - 1; row++) {
+  // The conditioned seam reuses the same vertices at nonuniform angles.
+  // Intersect actual triangles instead of inferring a uniform angular wedge.
+  for (let row = 0; row < ring.rows.length - 1; row++) for (let column = 0; column < columns; column++) {
+    const next = (column + 1) % columns;
     const a = row * columns + column, b = (row + 1) * columns + column;
     const c = row * columns + next, d = (row + 1) * columns + next;
     const h = triangleHeight(ring.positions, a, b, c, x, z)
@@ -60,6 +63,18 @@ function assertOpenCanyon(ring) {
   }
 }
 
+// Compile only the actual shaping owner with refinement disabled. This keeps
+// the current road surface and all pre-existing seating logic in the witness.
+const ownerSource = readFileSync(new URL('./horizonRedrock.ts', import.meta.url), 'utf8');
+const refinementCall = 'if (ground) refineCanyonSeam(ring, columns, ground);';
+assert.equal(ownerSource.split(refinementCall).length, 2);
+const unrefinedShape = new Function('sampleRedrockCanyon', stripTypeScriptTypes(
+  ownerSource.replace(refinementCall, '').replace(/^import .*;$/gm, '').replace(/export /g, ''),
+  {mode:'transform'}) + '\nreturn shapeRedrockOutland;')(sampleRedrockCanyon);
+function signedArea(p,a,b,c) {
+  return (p[b*3]-p[a*3])*(p[c*3+2]-p[a*3+2])
+    -(p[b*3+2]-p[a*3+2])*(p[c*3]-p[a*3]);
+}
 const receipts = [];
 const cliffColor = new Color(.2, .1, .05);
 for (const [height, slope] of [[-22, 0], [42, 0], [90, .2], [4, .6]]) {
@@ -85,7 +100,33 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
   const seedIndex = seeds.indexOf(ringSeed);
   const previous = sampleHorizonGeometry({ ...config, horizon: { ...config.horizon, redrockCanyon: false } }, ringSeed);
   assert.equal(digest(previous), historicalHashes[seedIndex], 'Historical opt-out is the exact original geometry');
-  const field = createHeightField(groundSeed, config), ring = sampleHorizonGeometry(config, ringSeed, field);
+  const field = createHeightField(groundSeed, config);
+  let constructionQueries=0;
+  const constructionStart=performance.now();
+  const ring=sampleHorizonGeometry(config,ringSeed,{getHeightAt(x,z){constructionQueries++;return field.getHeightAt(x,z);}});
+  const constructionMs=performance.now()-constructionStart;
+  const unrefined=structuredClone(previous); unrefinedShape(unrefined,field);
+  if(ringSeed===1337 && groundSeed===1337) {
+    const error=Math.abs(surface(unrefined,456,-512)-field.getHeightAt(456,-512));
+    assert.ok(error>3,'unrefined current-road seam must fail the unchanged 3m limit');
+  }
+  const step=2*Math.PI/columns;
+  let lastAngle=-Infinity;
+  for(let column=0;column<columns;column++) {
+    const o=(columns+column)*3, nominal=column*step;
+    let angle=Math.atan2(ring.positions[o+2],ring.positions[o]);
+    angle+=Math.round((nominal-angle)/(2*Math.PI))*2*Math.PI;
+    assert.ok(Math.abs(angle-nominal)<=.40001*step && angle>lastAngle,'bounded ordered seam angles');
+    lastAngle=angle;
+    const next=(column+1)%columns;
+    for(let row=0;row<2;row++) {
+      const a=row*columns+column,b=(row+1)*columns+column,c=row*columns+next,d=(row+1)*columns+next;
+      for(const ids of [[a,b,c],[c,b,d]]) {
+        const before=signedArea(unrefined.positions,...ids),after=signedArea(ring.positions,...ids);
+        assert.ok(Math.abs(after)>1e-6 && before*after>0,'changed seam triangles preserve nonzero baseline winding');
+      }
+    }
+  }
   assert.equal(ring.positions.length, 8610); assert.equal(ring.heights.length, 2870);
   assert.deepEqual(ring.rows, previous.rows); assert.equal(ring.rows.length, 10);
   assert.equal(ring.maxHeight, Math.max(...ring.heights));
@@ -123,7 +164,7 @@ for (const [ringSeed, groundSeed] of [[1337,1337],[2049,2049],[7719,7719],[1337,
   shapeRedrockOutland(previous, field);
   assert.equal(previous.positions, p); assert.equal(previous.heights, h); assert.equal(previous.rows, rows);
   assert.deepEqual(previous.positions, ring.positions);
-  receipts.push({ ringSeed, groundSeed, maximumSeamError, maximumHeight: ring.maxHeight });
+  receipts.push({ ringSeed, groundSeed, constructionQueries, constructionMs, maximumSeamError, maximumHeight: ring.maxHeight });
 }
 for (const id of MAP_IDS) if (id !== 'badlands') {
   const actual = getMapConfig(id);

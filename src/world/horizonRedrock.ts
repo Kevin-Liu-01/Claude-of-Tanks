@@ -14,11 +14,65 @@ export interface CanyonGround {
   getHeightAt(x: number, z: number): number;
 }
 
+interface SeamPoint { angle: number; x: number; z: number; height: number }
+
+function seamPoint(angle: number, ground: CanyonGround): SeamPoint {
+  const cosine = Math.cos(angle), sine = Math.sin(angle);
+  const scale = 511.5 / Math.max(Math.abs(cosine), Math.abs(sine));
+  const x = cosine * scale, z = sine * scale;
+  return { angle, x, z, height: ground.getHeightAt(x, z) };
+}
+
+function seamChordError(a: SeamPoint, b: SeamPoint, ground: CanyonGround): number {
+  let error = 0;
+  for (let sample = 1; sample < 8; sample++) {
+    const t = sample / 8, point = seamPoint(a.angle + (b.angle - a.angle) * t, ground);
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const along = ((point.x - a.x) * dx + (point.z - a.z) * dz) / (dx * dx + dz * dz);
+    error = Math.max(error, Math.abs(point.height - (a.height + (b.height - a.height) * along)));
+  }
+  return error;
+}
+
+/** Reuse the same seam vertices at the conditioned road shoulder's bends.
+ * Every angular station stays inside its original half-cell, preserving order
+ * and the outer/buried rings. Three bounded construction passes add no mesh,
+ * index, retained buffer, texture or per-frame work. */
+function refineCanyonSeam(ring: CanyonRing, columns: number, ground: CanyonGround): void {
+  const step = Math.PI * 2 / columns;
+  const points = Array.from({ length: columns }, (_, column) => seamPoint(column * step, ground));
+  for (let pass = 0; pass < 3; pass++) {
+    for (let column = 0; column < columns; column++) {
+      const previous = points[(column + columns - 1) % columns];
+      const next = points[(column + 1) % columns];
+      const a = column === 0 ? { ...previous, angle: previous.angle - Math.PI * 2 } : previous;
+      const b = column === columns - 1 ? { ...next, angle: next.angle + Math.PI * 2 } : next;
+      let selected = points[column];
+      let best = Math.max(seamChordError(a, selected, ground), seamChordError(selected, b, ground));
+      if (best <= 2) continue;
+      for (let offset = -4; offset <= 4; offset++) {
+        const candidate = seamPoint((column + offset * .1) * step, ground);
+        const error = Math.max(seamChordError(a, candidate, ground), seamChordError(candidate, b, ground));
+        if (error < best - .000001) { best = error; selected = candidate; }
+      }
+      points[column] = selected;
+    }
+  }
+  for (let column = 0; column < columns; column++) {
+    const index = columns + column, offset = index * 3, point = points[column];
+    ring.positions[offset] = point.x; ring.positions[offset + 2] = point.z;
+    // Seat the stored Float32 location, rather than its unrounded proposal.
+    const height = ground.getHeightAt(ring.positions[offset], ring.positions[offset + 2]);
+    ring.positions[offset + 1] = height; ring.heights[index] = height;
+  }
+}
+
 /** Construction only. Keep winding, row and buffer budgets.
  * The buried first row stays exact; every other row keeps the canyon mouths
  * open. Lowering only a skyline row would leave another mountain in the way. */
 export function shapeRedrockOutland(ring: CanyonRing, ground?: CanyonGround): void {
   const columns = ring.heights.length / ring.rows.length;
+  if (ground) refineCanyonSeam(ring, columns, ground);
   ring.maxHeight = 1;
   for (let index = columns; index < ring.heights.length; index++) {
     const offset = index * 3;
