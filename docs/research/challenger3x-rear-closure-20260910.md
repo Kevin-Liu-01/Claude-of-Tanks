@@ -35,6 +35,13 @@ Receipts are under `.qa-dev/launch/owner-rear-before`,
 and correctly failed native merging; r2 supplies the required UV attribute.
 Full-fleet anatomy update/check passed: 181 tanks and 543 technical cards,
 zero module failures. All ten Challenger 3 X asset views were regenerated.
-The unified release check is still running; its comparison stage correctly
-recognizes this as an unregistered first-party model. This does not create a
-source-fidelity certificate. Release completion is tracked in the launch ledger.
+The forced unified source-comparison gate failed because this first-party model
+has no registered comparison oracle. That failure is retained in
+`.qa-dev/launch/challenger3x-release.log`; it is not a qualification pass.
+All remaining release checks, the complete test suite (307 pre, 630 core,
+41 post), type checking, and public/private builds passed in
+`.qa-dev/launch/challenger3x-release-remainder.log`. The existing 100 ms Garage
+timing check runs under its own CPU lease to keep concurrent fleet construction
+from contaminating its measurement; its limit is unchanged.
+This checkpoint fixes only the owner's marked cavity in the existing playable
+model. It makes no source-fidelity or complete-fleet launch certification claim.
