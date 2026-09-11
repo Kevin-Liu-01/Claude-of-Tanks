@@ -1,8 +1,8 @@
 # Fleet launch corrections, 2026-09-11
 
 CV90, CV90 Mk IV and Type89 Light Tiger now use armor paint on broad structural
-panels; narrow dark seams and material-specific equipment remain. T72B3M X and
-T90SM X retain visible neutral rubber annuli around their painted wheel faces.
+panels; narrow dark seams and material-specific equipment remain. T90SM X
+retains a visible neutral rubber annulus around its painted wheel faces.
 K2 X gains six measured rotating return rollers with receiving shafts, a
 deduplicated physical carrier loop, and measured cannon sections. Its muzzle
 stock accounts for the factory lip without shifting the firing datum.
@@ -22,9 +22,17 @@ Their complete targeted release exited zero on 2026-09-11, including the
 full test lifecycle and private build. The retained receipt is
 `.qa-dev/launch/k2-t90-final-release-r1.log` (`[tank-release] PASS k2_x,t90sm_x`).
 
+T72B3M X wheel-paint changes are held outside this publication checkpoint. Its
+profile, source-mounted regression and selected assets retain the prior shipped
+configuration. The draft and its comparison receipts remain preserved separately.
 T72B3M X retains the preexisting268-cell source-air conflict described in
 `t72b3m-x-side-mounts.md`. No source-air waiver or altered gate is introduced.
 The three first-party paint targets have no registered external comparison
 oracle; the source checks above apply only to K2/T90SM. The wider fleet and
 launch-performance program remain open. No third-party geometry is added to
 the playable loading path.
+
+Strv 122 X complete composed release passes on 2026-09-11: source, fidelity,
+physical contact, anatomy, selected assets, 311 pre/648 core/41 post checks and
+private build. The publication checkpoint additionally excludes the unresolved
+T72B3M X change above and runs its own focused and combined verification.

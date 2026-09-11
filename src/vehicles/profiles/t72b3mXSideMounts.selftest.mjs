@@ -4,7 +4,6 @@ import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {addT72B3MSideMounts} from './t72b3mXSideMounts.ts';
-import {withHistoricalClosedWheelFaces} from '../sourceXWheelFaceHistory.test-support.mjs';
 
 const PRESERVED=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t72b3m_x.side-mount-preservation.json',import.meta.url),'utf8'));
 function legacyAttributeNames(g){
@@ -105,7 +104,7 @@ function verifiedPaintMeshes(tank){
   return paint;
 }
 
-function preserveNonTarget(tank,quality,historical){
+function preserveNonTarget(tank,quality){
   // Batch names restart under each articulation parent. The new verified
   // hull-paint batch precedes the old gun-mouth batch in traversal; it is not
   // a change to that physical batch. Validate every paint vertex first, then
@@ -115,15 +114,7 @@ function preserveNonTarget(tank,quality,historical){
     const n=seen[m.name]??0;seen[m.name]=n+1;meshes.set(`${m.name}#${n}`,m);});
   for(const [name,expected]of Object.entries(PRESERVED[quality])){
     const m=meshes.get(name);assert.ok(m?.isMesh);
-    if(name==='gearRoadWheelTires#0'){
-      // This audit predates the separately verified annular-tire correction.
-      // Authenticate its exact inverse against the unchanged frozen buffer;
-      // keep actual axle frames and animation matrices under the same gate.
-      const prior=historical.root.getObjectByName('gearRoadWheelTires');
-      assert.deepEqual(m.matrix.elements,prior.matrix.elements);
-      assert.deepEqual(m.instanceMatrix.array,prior.instanceMatrix.array);
-      assert.equal(geometryHash(prior),expected);
-    }else assert.equal(geometryHash(m),expected,`unchanged pre-mount ${quality} ${name} geometry, ownership frame and native instance course`);
+    assert.equal(geometryHash(m),expected,`unchanged pre-mount ${quality} ${name} geometry, ownership frame and native instance course`);
   }
   if(quality==='low')preservationNegativeControls(meshes.get('mobileStaticBatch_0#0'));
 }
@@ -217,15 +208,12 @@ function attachment(tank,all){
 
 for(const quality of ['high','low']){
   const tank=createTank('t72b3m_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
-  const historical=withHistoricalClosedWheelFaces('t72b3m_x',()=>createTank('t72b3m_x',null,
-    {quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242}));
   try{
-    tank.root.updateMatrixWorld(true);historical.root.updateMatrixWorld(true);
-    const all=physicalMeshes(tank.root),detail=tank.root.getObjectByName('hullDetail');
-    sourceSurfaces(all);sourceAir(all);actualWiring(detail);preserveNonTarget(tank,quality,historical);
+    tank.root.updateMatrixWorld(true);const all=physicalMeshes(tank.root),detail=tank.root.getObjectByName('hullDetail');
+    sourceSurfaces(all);sourceAir(all);actualWiring(detail);preserveNonTarget(tank,quality);
     for(const plate of tank.root.userData.eraVisualBindingReceipt.plates)tank.stripEra(plate.name);
     attachment(tank,all);sourceAir(all);
     assert.equal(tank.resetEra(),true);sourceSurfaces(all);
-  }finally{tank.dispose();historical.dispose();}
+  }finally{tank.dispose();}
 }
 console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, true shoulder/clamp air PASS; continuity conflicts remain explicit');
