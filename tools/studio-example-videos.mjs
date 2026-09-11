@@ -9,6 +9,7 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import {nativeBrowserLaunchOptions} from './native-browser-launch.mjs';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import { resolve, join } from 'node:path';
@@ -210,10 +211,10 @@ try {
   const url = `http://localhost:${server.config.server.port}/`;
   console.log(`[studio-examples] vite up at ${url}`);
 
-  browser = await puppeteer.launch({
+  browser = await puppeteer.launch(nativeBrowserLaunchOptions({
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-  });
+  }));
   const page = await browser.newPage();
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   page.on('console', (message) => {
