@@ -37,8 +37,9 @@ silhouette or performance threshold is accepted by this draft.
   argument position and entered the canvas path. Both failures are retained.
   R4 uses the actual `null` engine context and third-argument options.
 - All 28 affected family/gear tests pass, including source guide, end-wheel,
-  wheel-quality and source-X construction checks. The private build is queued.
-  Browser selection observations are pending; no browser speedup is claimed.
+  wheel-quality and source-X construction checks. Private build passes, version
+  `v1.0.0+g4c9841436`, index SHA256
+  `39b198a665921ad3f385139f61ea39332e6af220967b5342a200ec0e581c5a87`.
 - R5 repeats the attribution profile on the candidate. The dominant balancing
   samples fall to 27 of 325, with seven in `balancedTriangles`; later calls
   spend their work constructing fresh attributes and remaining stock instead.
@@ -56,3 +57,31 @@ The initial browser wrapper stopped before acquisition on the incorrect
 
 Source models, temporary probes, build outputs and QA captures remain outside
 the publication set. Nothing from this draft has been published.
+
+## Native selection and independent review
+
+Baseline and candidate R2 each pass all 42 real Garage/Gallery selections,
+with zero browser/request errors, native Apple M5 Max Metal, DPR1 and unchanged
+compiled artifact/tool manifests. The protocol uses desktop/default-reset
+settings; the final Garage screenshots show HIGH, scale1 and 1440x900 buffers.
+Root inspected all four final images. The Gallery PNG is byte-identical
+(`d0fc30dd34505fd26f114243cf21ef4e538fb88e89689888a13066a2a1024203`).
+The Garage images have matching tank presentation but different diagnostics
+and asynchronous resident inventories; they are not an exact resource-state
+comparison and do not establish GPU memory savings.
+
+Observed first-pass readiness p50/p95: Garage261.2/517.0ms baseline and
+219.5/420.0ms candidate; Gallery279.4/689.5ms baseline and296.6/763.8ms candidate.
+Warm-alternation p50 is55.4/55.1ms Garage and223.0/223.0ms Gallery. Revisit
+readiness is mixed as well. Long tasks and frame gaps remain in both runs.
+Raw per-action cache state, phase timings and long tasks are preserved in
+`.qa-dev/launch/abrams-selection-{baseline,candidate}-r2/report.json`, with
+summary `abrams-selection-comparison-r2.json`. No paired/counterbalanced clean
+host run or physical presentation measurement is claimed, and these results
+do not close the fleet smooth-switching or FPS requirements.
+
+An independent code review confirmed complete two-quality cache keys,
+independent mutable output buffers, unchanged geometry/material allocation
+order and legacy HIGH-path semantics. Combined with exact output comparisons,
+the affected checks and native functional results, this supports the narrow
+construction cleanup without representing a geometry/source qualification.
