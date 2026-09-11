@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  createStructureClearances, excludeStructureVegetation, overlapsStructureClearance,
+  createStructureClearances, excludeStructureVegetation, overlapsStructureClearance, excludeVegetation,
 } from './vegetationClearance.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
@@ -62,3 +62,15 @@ assert.ok(finalPlacement < filter && filter < pools && filter < decals,
 assert.match(source, /tree\.cr \+ Math\.sin\(TREE_ARCHETYPES\[tree\.species\]\.leanMaxRad\) \* \(tree\.fallH \?\? 0\)/,
   'clearance includes canopy width and maximum trunk lean, not just trunk collision radius');
 console.log(`vegetationClearance.selftest: ${checked} oriented structure envelopes; collision/spotting/index compaction passes`);
+
+// Authored donor metadata must keep physical identity through later filtering.
+const donorTrees = [{id:'removed-first'}, {id:'donor-a'}, {id:'removed-donor'}, {id:'donor-b'}];
+const donorA = donorTrees[1], donorB = donorTrees[3];
+const donorReceipts = [{treeIndices:[1,2,3], accepted:3, unsafe:0}];
+assert.equal(excludeVegetation(donorTrees, [], [], tree=>tree.id.startsWith('removed'), donorReceipts),2);
+assert.deepEqual(donorReceipts,[{treeIndices:[0,1], sourceTreeIndices:[1,2,3], accepted:2, unsafe:1}]);
+assert.equal(donorTrees[donorReceipts[0].treeIndices[0]], donorA);
+assert.equal(donorTrees[donorReceipts[0].treeIndices[1]], donorB);
+assert.equal(excludeVegetation(donorTrees, [], [], ()=>false, donorReceipts),0);
+assert.deepEqual(donorReceipts[0].sourceTreeIndices,[1,2,3]);
+assert.equal(donorReceipts[0].unsafe,1,'repeat filtering cannot count the same removed donor twice');
