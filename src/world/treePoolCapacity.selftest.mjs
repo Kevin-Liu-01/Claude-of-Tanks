@@ -9,7 +9,7 @@ import { TREE_ARCHETYPES, treeTrunkCollisionRadiusM } from './treeSpecies.ts';
 import { setCircleShape } from './collision.ts';
 import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { isClearOfSpawns } from './spawnClearance.ts';
-import { createStructureClearances, excludeStructureVegetation } from './vegetationClearance.ts';
+import { createStructureClearances, excludeStructureVegetation, excludeVegetation } from './vegetationClearance.ts';
 import { redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { relocateTidalMangroves } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -29,7 +29,7 @@ const poolCode = section('  function makeTreeMesh(', "  yield { stage: 'treeRimA
 const capacityLine = 'const capacity = Math.min(trees.length, Math.max(1, speciesCounts.get(sp) ?? 0));';
 assert.equal(poolCode.split(capacityLine).length, 2, 'one construction-only species capacity owner');
 const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
-  PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
+  PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation, excludeVegetation,
   redistributeAuthoredTrees, relocateTidalMangroves, DESTRUCTIBLE_BUILDING_TYPES, applyLodShadowFadeDepth };
 
 function compile(legacy) {
@@ -55,6 +55,7 @@ function compile(legacy) {
         foliageDepthMats[sp] = new THREE.MeshDepthMaterial();
       }
       ${section('function treePositionNoise(', 'function _mustReplace(')}
+      ${section('  // Keep the authored random admission sequence', '  // weighted species pick')}
       ${section('  // weighted species pick', '  // Each LOD is a trunk mesh')}
       if (overrideTrees) { trees.length = 0; trees.push(...overrideTrees); }
       const _whiteScratch = new THREE.Color(1, 1, 1);
