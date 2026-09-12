@@ -695,6 +695,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    'src/sim/shellSurface.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
     'src/sim/navigationLiquidSafety.selftest.mjs',

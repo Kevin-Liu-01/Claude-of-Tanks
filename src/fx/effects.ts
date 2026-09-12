@@ -278,6 +278,8 @@ interface ShellExpiredEvent {
   normal?: WireVec3;
   hitKind?: string;
   hitTerrain?: boolean;
+  /** water pass 2026-09-12: the sim classified the ground point as open water */
+  hitWater?: boolean;
   caliberMm?: number;
 }
 
@@ -2330,6 +2332,90 @@ function* createFxSteps(
     // of dark ejecta sampled along the same drag trajectory the debris shader
     // integrates (k = 0.12, g = -21.6) — the WoT "soil fountain" signature
     emitDirtClods(pos, s, big, birthOffset, gy, baseY);
+  }
+
+  /** Open water under a world point: past the shore feather of the map's shallow-water mask. */
+  function shellPointOnWater(p: THREE.Vector3): boolean {
+    return (heightField?.getWaterMaskAt?.(p.x, p.z) ?? 0) > 0.5;
+  }
+
+  /**
+   * water pass 2026-09-12 (owner: "make water more interactive"): a shell
+   * ending in open water. White column with a dark wet heart, a flat foam
+   * ring that runs out across the surface, glinting spray droplets, a short
+   * drifting mist, and one wake print on the disturbed patch. Same pools as
+   * the dirt plume, so no new material, texture or draw enters the frame.
+   */
+  function waterSplash(
+    pos: THREE.Vector3,
+    caliberMm: number,
+    big: boolean,
+    birthOffset = 0,
+  ): void {
+    const s = calScale(caliberMm) * (big ? 1.6 : 1.1);
+    const surfaceY = heightField?.getWaterSurfaceHeightAt?.(pos.x, pos.z)
+      ?? groundY(pos.x, pos.z) + (heightField?.getWaterDepthAt?.(pos.x, pos.z) ?? 0);
+    const baseY = surfaceY + 0.25;
+    // wet heart: the dark water thrown up with the column
+    for (let i = 0; i < (big ? 5 : 3); i++) {
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.4 * s;
+      _puffO.pos[1] = baseY + rng() * 0.3;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.4 * s;
+      _puffO.vel[0] = (rng() - 0.5) * 1.4; _puffO.vel[1] = (11 + rng() * 6) * s; _puffO.vel[2] = (rng() - 0.5) * 1.4;
+      _puffO.life = 0.7 + rng() * 0.4;
+      _puffO.size0 = 0.45 * s; _puffO.size1 = (1.5 + rng() * 0.6) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+      col3(0x3d5a62, _puffO.col0); col3(0x6d8a90, _puffO.col1);
+      _puffO.alpha = 0.85; _puffO.grav = -11; _puffO.birthOffset = birthOffset;
+      particles.emit('smoke', _puffO);
+    }
+    // white column: fast, tall, short-lived, collapses under gravity
+    const colN = big ? 14 : 9;
+    for (let i = 0; i < colN; i++) {
+      _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.6 * s;
+      _puffO.pos[1] = baseY + rng() * 0.5;
+      _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.6 * s;
+      _puffO.vel[0] = (rng() - 0.5) * 2.2; _puffO.vel[1] = (9 + rng() * 9) * s; _puffO.vel[2] = (rng() - 0.5) * 2.2;
+      _puffO.life = 0.9 + rng() * 0.6;
+      _puffO.size0 = 0.6 * s; _puffO.size1 = (2.2 + rng() * 1.0) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 2;
+      col3(0xdfe9ea, _puffO.col0); col3(0xb9cbd0, _puffO.col1);
+      _puffO.alpha = 0.9; _puffO.grav = -10; _puffO.birthOffset = birthOffset;
+      particles.emit('smoke', _puffO);
+    }
+    // foam ring: low, flat, running out across the surface
+    const ringN = big ? 14 : 9;
+    for (let i = 0; i < ringN; i++) {
+      const a = (i / ringN) * Math.PI * 2 + rng() * 0.4;
+      _puffO.pos[0] = pos.x + Math.cos(a) * 0.6 * s; _puffO.pos[1] = surfaceY + 0.12; _puffO.pos[2] = pos.z + Math.sin(a) * 0.6 * s;
+      _puffO.vel[0] = Math.cos(a) * (6 + rng() * 3) * s;
+      _puffO.vel[1] = 0.6 + rng() * 0.8;
+      _puffO.vel[2] = Math.sin(a) * (6 + rng() * 3) * s;
+      _puffO.life = 1.2 + rng() * 0.8;
+      _puffO.size0 = 0.5 * s; _puffO.size1 = 2.6 * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
+      col3(0xe8f0f0, _puffO.col0); col3(0xc3d2d5, _puffO.col1);
+      _puffO.alpha = 0.55; _puffO.grav = -1.2; _puffO.birthOffset = birthOffset;
+      particles.emit('dust', _puffO);
+    }
+    // drifting mist after the column falls back
+    for (let i = 0; i < (big ? 8 : 5); i++) {
+      const a = rng() * Math.PI * 2;
+      const d = rng() * 1.6 * s;
+      _puffO.pos[0] = pos.x + Math.cos(a) * d; _puffO.pos[1] = surfaceY + 0.6; _puffO.pos[2] = pos.z + Math.sin(a) * d;
+      _puffO.vel[0] = Math.cos(a) * (0.6 + rng() * 0.6) + 0.3; _puffO.vel[1] = 0.5 + rng() * 0.5; _puffO.vel[2] = Math.sin(a) * (0.6 + rng() * 0.6);
+      _puffO.life = 1.8 + rng() * 1.2;
+      _puffO.size0 = 0.9 * s; _puffO.size1 = (3.2 + rng() * 1.2) * s;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5);
+      col3(0xd6e2e6, _puffO.col0); col3(0xc0cfd4, _puffO.col1);
+      _puffO.alpha = 0.22 + rng() * 0.08; _puffO.grav = -0.15; _puffO.birthOffset = birthOffset + rng() * 0.4;
+      particles.emit('dust', _puffO);
+    }
+    // spray: glinting droplets thrown up and out
+    sparkFan(pos, _UP, big ? 26 : 16, 13 * s, 0.9, 0xeaf4f8, 0.55, 0.03, 0.05, birthOffset);
+    // the disturbed patch keeps a wake print on the surface
+    _v4.set(rng() - 0.5, 0, rng() - 0.5).normalize();
+    stampTrackPrint(pos, _v4, true);
   }
 
   /** HE detonation fireball (scaled by caliber) — flash + fire + black smoke. */
@@ -4497,7 +4583,10 @@ function* createFxSteps(
           fx.impact('structure', _v3, _v4, e.caliberMm || 90);
           return;
         }
-        if (e.hitTerrain) dirtPlume(_v3, e.caliberMm || 76, false);
+        if (e.hitTerrain) {
+          if (e.hitWater || shellPointOnWater(_v3)) waterSplash(_v3, e.caliberMm || 76, false);
+          else dirtPlume(_v3, e.caliberMm || 76, false);
+        }
       });
       onFxEvent(bus, 'tank:destroyed', (e) => {
         // Transition from a moving live-tank emitter to one world-fixed wreck
@@ -4814,7 +4903,10 @@ function* createFxSteps(
         }
         case 'he_splash':
           heFireball(pos, caliberMm);
-          if (pos.y - groundY(pos.x, pos.z) < 2.5) dirtPlume(pos, caliberMm, true);
+          if (pos.y - groundY(pos.x, pos.z) < 2.5) {
+            if (shellPointOnWater(pos)) waterSplash(pos, caliberMm, true);
+            else dirtPlume(pos, caliberMm, true);
+          }
           break;
         case 'structure': {
           // World colliders are real shell targets. Give walls, buildings and
@@ -4844,7 +4936,8 @@ function* createFxSteps(
           break;
         }
         case 'terrain':
-          dirtPlume(pos, caliberMm, caliberMm >= 105);
+          if (shellPointOnWater(pos)) waterSplash(pos, caliberMm, caliberMm >= 105);
+          else dirtPlume(pos, caliberMm, caliberMm >= 105);
           break;
         default:
           sparkFan(pos, normal, 10, 12 * s, 1.0, 0xffd884, 0.5, 0.025, 0.022);

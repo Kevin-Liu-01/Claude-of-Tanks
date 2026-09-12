@@ -313,6 +313,8 @@ interface ShellExpiredEvent {
   shellId?: number;
   hitTerrain?: boolean;
   hitKind?: string;
+  surfaceKind?: string;
+  caliberMm?: number;
   pos?: Vec3Tuple;
 }
 
@@ -1651,6 +1653,36 @@ export function createAudio({
     synthDirtImpact(x, y, z);
   }
 
+  /** Shell ending in open water: no baked sample exists, the splash is always synthesized. */
+  function waterImpact(x: number, y: number, z: number, big: boolean): void {
+    synthWaterImpact(x, y, z, big);
+  }
+
+  /**
+   * Water splash: a soft low slap as the column lifts, a bright hiss of
+   * spray, and a short bubbling tail; heavier calibres read lower and
+   * longer. Distance keeps the same lowpass and travel delay as dirt.
+   */
+  function synthWaterImpact(x: number, y: number, z: number, big: boolean): void {
+    const s = spat(x, y, z);
+    if (s.gain < 0.003) return;
+    const when = ctx!.currentTime + 0.005 + travelDelay(s.dist);
+    const k = big ? 1.35 : 1.0;
+    const v = spawnVoice(when, 0.9 * k, s.gain * 0.72, s.pan, sfxBus);
+    const lp = distLowpass(s.dist + 40);
+    lp.connect(v.in);
+    // slap: short lowpassed noise with a soft attack
+    wire(v, nsrc(v, when, 0.16 * k), flt('lowpass', 620 / k, 0.8), env(when, 0.006, 0.8, 0.14 * k), lp);
+    // body: sine drop as the water column collapses
+    const body = osrc(v, 'sine', 150 / k, when, 0.26 * k);
+    body.frequency.exponentialRampToValueAtTime(52 / k, when + 0.22 * k);
+    wire(v, body, env(when, 0.008, 0.55, 0.2 * k), lp);
+    // spray: bright hiss rising in slightly after the slap
+    wire(v, nsrc(v, when + 0.03, 0.42 * k), flt('bandpass', 3400, 0.9), env(when + 0.03, 0.03, 0.34, 0.32 * k), lp);
+    // bubbling tail
+    wire(v, nsrc(v, when + 0.12, 0.5 * k, 1, crackleBuf), flt('bandpass', 900, 1.6), env(when + 0.12, 0.02, 0.18, 0.36 * k), lp);
+  }
+
   /** (Pre-COMBAT-SFX-r2 fallback.) Shell landing in dirt with no target. */
   function synthDirtImpact(x: number, y: number, z: number): void {
     const s = spat(x, y, z);
@@ -2958,9 +2990,11 @@ export function createAudio({
     // SOUND overhaul — fx already keyed off this event, audio now does too.
     on<ShellExpiredEvent>('shell:expired', (event) => {
       if (ctx && event && (event.hitTerrain || event.hitKind === 'prop') && event.pos) {
-        dirtImpact(event.pos[0], event.pos[1], event.pos[2]);
+        // water pass 2026-09-12: a shell ending in open water splashes instead of thudding.
+        if (event.surfaceKind === 'water') waterImpact(event.pos[0], event.pos[1], event.pos[2], (event.caliberMm || 76) >= 105);
+        else dirtImpact(event.pos[0], event.pos[1], event.pos[2]);
         logSound('shell:expired', {
-          id: event.shellId, hitKind: event.hitKind || 'terrain',
+          id: event.shellId, hitKind: event.surfaceKind === 'water' ? 'water' : (event.hitKind || 'terrain'),
         });
       }
     });

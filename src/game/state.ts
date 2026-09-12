@@ -89,6 +89,7 @@ import {
 } from './equipment.ts';
 import { mulberry32 } from './stateCore.ts';
 import { createMatchModeController, normalizeGameMode } from '../sim/matchModes.ts';
+import { classifyShellSurface, shellHitsWater } from '../sim/shellSurface.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../net/protocol.ts';
@@ -272,6 +273,7 @@ interface VillageBounds {
 
 interface SoloHeightField extends MovementHeightField {
   getNormalAt?(x: number, z: number): { y: number };
+  getWaterMaskAt?(x: number, z: number): number;
   _layout?: { village?: VillageBounds | null };
 }
 
@@ -1937,7 +1939,9 @@ function resolveWorldShellImpact(
     pos: [hit.point.x, hit.point.y, hit.point.z],
     hitTerrain: hit.kind === 'terrain',
     hitKind: hit.kind,
-    surfaceKind: hit.record?.kind || hit.kind,
+    // water pass 2026-09-12: open water under a terrain hit reads 'water' for FX and audio
+    surfaceKind: classifyShellSurface(world, hit),
+    hitWater: shellHitsWater(world, hit),
     normal: hit.normal ? [hit.normal.x, hit.normal.y, hit.normal.z] : null,
     shellType: shell.spec.type,
     caliberMm: shell.spec.caliberMm,
