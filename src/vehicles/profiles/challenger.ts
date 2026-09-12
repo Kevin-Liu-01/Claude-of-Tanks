@@ -4425,7 +4425,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
   const { rng } = P;
 
   // ---- running gear (§B6 trapezoid; print seats): 6 Hydrogas wheels on
-  // the print's -2.0..+2.55 run, HIGH-TUCKED idler/sprocket (approach
+  // the print's longitudinal run, HIGH-TUCKED idler/sprocket (approach
   // ramp 3.0->3.8, departure -2.2..-3.2 — both read below the skirt cut).
   // Track outer 1.60 + skirt inner 1.725 (§B4 lane law with margin).
   // uk round (2026-08-07, ch1-base port): SHOE-ENVELOPE IN-WINDOW fix — the
@@ -4453,8 +4453,12 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // Seat the tire bottoms on the inner face of the loaded track run.
       // wheelY=.46 put them 90 mm through the .09 m track band; .56 leaves
       // 10 mm running clearance while keeping the upper course distinct.
+      // Move the complete six-wheel train 0.20 m forward: the former -2.00 m
+      // rear station intersected the rising shoe course by about 0.10 m.
+      // The revised end stations clear the full linked-shoe bounds at both
+      // ramps while preserving the measured 0.91 m Hydrogas cadence.
       style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.56, dishR: 0.71, xc: 1.2825,
-      wheelZs: [2.55, 1.64, 0.73, -0.18, -1.09, -2.00],
+      wheelZs: [2.75, 1.84, 0.93, 0.02, -0.89, -1.80],
       // The final drive is rear-owned but must remain below the sponson floor.
       // y=1.27 put the linked-shoe crown physically through the 1.475 floor;
       // the source-correct compact transition remains readable at y=.98 and

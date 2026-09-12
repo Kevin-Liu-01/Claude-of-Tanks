@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
 const IDS = ['challenger_3', 'challenger_3x'];
-const EXPECTED_WHEEL_ZS = [2.55, 1.64, 0.73, -0.18, -1.09, -2.00];
+const EXPECTED_WHEEL_ZS = [2.75, 1.84, 0.93, 0.02, -0.89, -1.80];
 const EPSILON = 1e-6;
 
 function uniqueInstanceAxis(mesh, axis) {
@@ -16,6 +16,59 @@ function uniqueInstanceAxis(mesh, axis) {
     values.add(Number(position[axis].toFixed(4)));
   }
   return [...values].sort((a, b) => b - a);
+}
+
+function shoeClearance(trackPads, receipt, wheelZ, includesShoe) {
+  trackPads.geometry.computeBoundingBox();
+  const bounds = trackPads.geometry.boundingBox;
+  const matrix = new THREE.Matrix4();
+  const inverse = new THREE.Matrix4();
+  const shoeCenter = new THREE.Vector3();
+  const wheelInShoe = new THREE.Vector3();
+  let minimum = Infinity;
+
+  // The first half of the instances is one complete track lane. Measuring
+  // the wheel circle against each oriented shoe's conservative Y/Z bounds
+  // catches the diagonal overlap visible from the side without confusing it
+  // with the intended tire contact on the flat loaded run.
+  for (let index = 0; index < trackPads.count / 2; index += 1) {
+    trackPads.getMatrixAt(index, matrix);
+    shoeCenter.setFromMatrixPosition(matrix);
+    if (!includesShoe(matrix, shoeCenter)) continue;
+
+    inverse.copy(matrix).invert();
+    wheelInShoe.set(-receipt.xcLeft, receipt.wheelY, wheelZ).applyMatrix4(inverse);
+    const dy = Math.max(
+      bounds.min.y - wheelInShoe.y,
+      0,
+      wheelInShoe.y - bounds.max.y,
+    );
+    const dz = Math.max(
+      bounds.min.z - wheelInShoe.z,
+      0,
+      wheelInShoe.z - bounds.max.z,
+    );
+    minimum = Math.min(minimum, Math.hypot(dy, dz) - receipt.wheelR);
+  }
+  return minimum;
+}
+
+function rampShoeClearance(trackPads, receipt, wheelZ, end) {
+  const flatRun = receipt.loopPoints.filter(([, y]) => Math.abs(y - receipt.botY) <= EPSILON);
+  const contactZ = end === 'rear'
+    ? Math.min(...flatRun.map(([z]) => z))
+    : Math.max(...flatRun.map(([z]) => z));
+  return shoeClearance(trackPads, receipt, wheelZ, (matrix, center) => {
+    const isRamp = Math.abs(matrix.elements[6]) > 0.15;
+    const beyondContact = end === 'rear' ? center.z < contactZ : center.z > contactZ;
+    return isRamp && beyondContact;
+  });
+}
+
+function upperShoeClearance(trackPads, receipt, wheelZ) {
+  return shoeClearance(trackPads, receipt, wheelZ, (_matrix, center) => (
+    center.y > receipt.wheelY
+  ));
 }
 
 for (const id of IDS) {
@@ -45,19 +98,26 @@ for (const id of IDS) {
       `${id}: every road wheel is reseated at the corrected axle height`);
     assert.equal(roadWheels.count, 12, `${id}: retains six road wheels per side`);
 
+    const rearRampClearance = rampShoeClearance(
+      trackPads, receipt, EXPECTED_WHEEL_ZS.at(-1), 'rear');
+    const frontRampClearance = rampShoeClearance(
+      trackPads, receipt, EXPECTED_WHEEL_ZS[0], 'front');
+    assert.ok(rearRampClearance >= 0.03 - EPSILON,
+      `${id}: rear road wheel clears the rising linked-shoe course`);
+    assert.ok(frontRampClearance >= 0.015 - EPSILON,
+      `${id}: forward shift preserves clearance at the front linked-shoe course`);
+
     const loadedTrackInnerY = receipt.botY + receipt.trackTh / 2;
     const tireBottomY = receipt.wheelY - receipt.wheelR;
     const loadedClearance = tireBottomY - loadedTrackInnerY;
     assert.ok(loadedClearance >= -EPSILON && loadedClearance <= 0.015 + EPSILON,
       `${id}: tire bottoms rest on the loaded track inner face without passing through it`);
 
-    const tireCrownY = receipt.wheelY + receipt.wheelR;
-    const upperCourseBottomY = Math.min(...receipt.loopPoints
-      .filter(([z, y]) => z >= EXPECTED_WHEEL_ZS.at(-1) && z <= EXPECTED_WHEEL_ZS[0]
-        && y > tireCrownY)
-      .map(([, y]) => y - receipt.trackTh / 2));
-    assert.ok(upperCourseBottomY - tireCrownY >= 0.12 - EPSILON,
-      `${id}: wheel crowns remain clear of the return track course`);
+    const upperCourseClearance = Math.min(...EXPECTED_WHEEL_ZS.map((wheelZ) => (
+      upperShoeClearance(trackPads, receipt, wheelZ)
+    )));
+    assert.ok(upperCourseClearance >= 0.05 - EPSILON,
+      `${id}: every wheel crown clears the complete return shoe geometry`);
 
     const wheelLayers = [roadWheels, wheelDiscs, wheelInsets];
     for (const layer of wheelLayers) layer.geometry.computeBoundingBox();
