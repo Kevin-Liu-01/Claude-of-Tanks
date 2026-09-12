@@ -568,11 +568,14 @@ try {
     const indices = treeline.geometry.index;
     const receipt = treeline.userData.horizonTreeline;
     assert.equal(receipt.layers, layers, `${mapId}: the receipt records the authored skyline ranks`);
-    assert.ok(receipt.faceBelts >= 1 && receipt.faceBelts <= receipt.faceBeltRows
-      && receipt.faceBeltRows <= HORIZON_TREELINE_MAX_BELTS,
+    // 2026-09-12: face belts are opt-in (config.horizon.faceBelts); without
+    // the opt-in a map uploads no belt ribbon at all and keeps only its ranks.
+    const faceBeltsAuthored = config.horizon.faceBelts === true;
+    assert.ok((faceBeltsAuthored ? receipt.faceBelts >= 1 : receipt.faceBelts === 0)
+      && receipt.faceBelts <= receipt.faceBeltRows && receipt.faceBeltRows <= HORIZON_TREELINE_MAX_BELTS,
     `${mapId}: face belts are bounded by the deterministic row selection (${receipt.faceBelts}/${receipt.faceBeltRows})`);
-    assert.equal(selectHorizonFaceBeltRows(sampleHorizonGeometry(config, 1337).rows).length, receipt.faceBeltRows,
-      `${mapId}: belt rows derive from the same ring rows the mesh uploads`);
+    assert.equal(faceBeltsAuthored ? selectHorizonFaceBeltRows(sampleHorizonGeometry(config, 1337).rows).length : 0,
+      receipt.faceBeltRows, `${mapId}: belt rows derive from the same ring rows the mesh uploads`);
     const ribbons = layers + receipt.faceBelts;
     assert.equal(position.count, columns * 2 * ribbons, `${mapId}: treeline vertex budget is exactly one strip per rank and belt`);
     assert.equal(indices.count, (columns - 1) * 6 * ribbons, `${mapId}: treeline index budget is exactly one quad row per rank and belt`);

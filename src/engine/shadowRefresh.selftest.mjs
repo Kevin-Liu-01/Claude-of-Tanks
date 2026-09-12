@@ -4,6 +4,7 @@ import {
   SHADOW_REFRESH_INTERVAL_S,
   canDormantShadowCascades,
   createShadowRefreshScheduler,
+  OUTER_CASCADE_FRAME_DIVISOR,
   resolveShadowPrimeCount,
 } from './shadowRefresh.ts';
 
@@ -61,14 +62,28 @@ function sample(hz, seconds = 2, cascades = 4) {
   return { hits, maxPerFrame };
 }
 
+// Shadow redesign 2026-09-12: cascades 0..2 refresh on every presented frame;
+// the outermost cascade renders on alternate frames with a frozen pose
+// (OUTER_CASCADE_FRAME_DIVISOR) — half the far-caster work at any refresh rate.
 for (const hz of [60, 100, 120, 144]) {
   const r = sample(hz);
-  for (let cascade = 0; cascade < 4; cascade++) {
+  for (let cascade = 0; cascade < 3; cascade++) {
     assert.equal(r.hits[cascade], hz * 2,
       `${hz} Hz cascade ${cascade} must refresh on every presented frame`);
   }
+  assert.equal(r.hits[3], hz * 2 / OUTER_CASCADE_FRAME_DIVISOR,
+    `${hz} Hz outer cascade refreshes on alternate presented frames`);
   assert.equal(r.maxPerFrame, 4,
-    `${hz} Hz must render one coherent four-cascade shadow pass`);
+    `${hz} Hz must still render one coherent four-cascade pass on its full frames`);
+}
+{
+  // Three-cascade (mobile) rigs have no rate-limited outer cascade.
+  const r = sample(60, 1, 3);
+  assert.deepEqual(r.hits, [60, 60, 60], 'three-cascade rigs refresh every cascade every frame');
+  const explicit = createShadowRefreshScheduler(4, 1);
+  let full = 0;
+  for (let i = 0; i < 10; i++) if (explicit.step(1 / 60) === 0b1111) full++;
+  assert.equal(full, 10, 'a divisor of one restores the full-frame schedule');
 }
 
 {
@@ -78,7 +93,8 @@ for (const hz of [60, 100, 120, 144]) {
   assert.equal(first, 0b1111,
     'post-force frames keep the complete cascade set current');
   const second = scheduler.step(SHADOW_REFRESH_INTERVAL_S / 2);
-  assert.equal(second, 0b1111, 'every active frame remains a complete shadow pass');
+  assert.equal(second, 0b0111, 'the following frame rests the outer cascade on its frozen pose');
+  assert.equal(scheduler.step(SHADOW_REFRESH_INTERVAL_S / 2), 0b1111, 'and the outer cascade returns on the next');
   assert.equal(scheduler.step(0), 0, 'non-presented frames schedule no shadow work');
 }
 

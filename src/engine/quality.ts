@@ -199,10 +199,18 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
     dynMin: 0.75,
-    aoScale: 0,
+    // 2026-09-12 shadow redesign: the flat 2K/520 m table left towns
+    // shadowless past mid-range and every crevice unshaded. Ultra runs 4K hero
+    // cascades (the two far cascades stay 2K: their texels are already
+    // sub-pixel at range) to 700 m with full-res GTAO; High 2K cascades to
+    // 700 m with half-res GTAO; Medium the shared 2K/1K layout to 600 m; Low
+    // keeps its near-field 380 m range. The outermost cascade renders on
+    // alternate frames (shadowRefresh.ts) and tree crowns cast through the
+    // shadow-only layer (vegetation.ts), which is where the budget went.
+    aoScale: 1.0,
     bloomScale: 1.0,
-    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
-    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
+    shadowMapSizes: [4096, 4096, 2048, 2048],
+    shadowMaxFar: 700,
   },
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
   // reaches SMAA before the smaller native-canvas upscale instead of being
@@ -222,10 +230,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
-    aoScale: 0,
+    aoScale: 0.5,
     bloomScale: 0.6,
-    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
-    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
+    shadowMapSizes: [2048, 2048, 2048, 1024],
+    shadowMaxFar: 700,
   },
   medium: {
     label: 'Medium',
@@ -235,10 +243,10 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // fallback by another hidden 0.75 dynamic scale: desktop readability
     // remains at least one internal sample per CSS pixel.
     dynMin: 1.0,
-    aoScale: 0,
+    aoScale: 0.5,
     bloomScale: 0.5,
     shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
-    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
+    shadowMaxFar: 600,
   },
   low: {
     label: 'Low',

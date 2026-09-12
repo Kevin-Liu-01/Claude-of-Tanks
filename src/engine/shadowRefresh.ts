@@ -68,15 +68,30 @@ export interface ShadowRefreshScheduler {
   readonly lastMask: number;
 }
 
+/**
+ * Shadow redesign 2026-09-12: the outermost cascade (300–700 m on desktop)
+ * carries the most casters and the fewest visible texels, so it renders on
+ * alternate frames. lighting.ts freezes its light pose between renders
+ * (applyStableCascadePoses only moves scheduled cascades), so receivers always
+ * sample a map that matches the pose they project with; only moving casters
+ * at range arrive one frame late. Cascades 0..n-2 stay per-frame.
+ */
+export const OUTER_CASCADE_FRAME_DIVISOR = 2;
+
 export function createShadowRefreshScheduler(
   cascadeCount: number,
+  outerDivisor: number = OUTER_CASCADE_FRAME_DIVISOR,
 ): ShadowRefreshScheduler {
   const count = Math.max(0, Math.min(30, cascadeCount | 0));
   const fullMask = count > 0 ? (2 ** count) - 1 : 0;
+  const outerMask = count >= 4 ? 1 << (count - 1) : 0;
+  const divisor = Math.max(1, outerDivisor | 0);
   let lastMask = 0;
+  let frame = 0;
 
   function reset(_resetCadence = false): void {
     lastMask = 0;
+    frame = 0;
   }
 
   /** Reset phase and return a mask that refreshes every cascade now. */
@@ -96,7 +111,11 @@ export function createShadowRefreshScheduler(
       lastMask = 0;
       return 0;
     }
+    // The first presented frame after a reset or force is always complete, so
+    // a re-armed rig never shows a stale outer cascade against fresh inner ones.
+    frame++;
     lastMask = fullMask;
+    if (outerMask && divisor > 1 && (frame - 1) % divisor !== 0) lastMask &= ~outerMask;
     return lastMask;
   }
 

@@ -27,6 +27,7 @@ import type { PropsMapConfig } from './props.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
+import { markShadowOnly } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -4338,15 +4339,49 @@ function* vegetationBuildSteps(
   }
   const nearMeshes = {} as Record<Species, TreeMesh[][]>;
   const farMeshes = {} as Record<Species, TreeMesh[][]>;
-  // PERF NOTE (performance_budget r5): a cascade shadow-proxy LOD for the
-  // near-tree canopy cards was prototyped here and MEASURED NET-NEGATIVE:
-  // the cards' whole cascade share is only ~0.29 M tris/frame, while a
-  // colorWrite-off proxy (three r185 has no shadow-only flag — an invisible
-  // material skips the shadow pass too, verified) re-renders its geometry
-  // into the main pass AND every cascade for +0.9 M (far-LOD lobes) or ~±0
-  // (low-poly blobs, with a visible dappled->solid shadow change). The real
-  // shadow-triangle mass is props/buildings (-0.66 M measured with props
-  // castShadow off) — see docs/PERFORMANCE.md.
+  // Shadow redesign 2026-09-12: the crown shadow proxies that the r5 budget
+  // note measured as net-negative were rendered in the forward passes with
+  // colorWrite off. They now sit on the shadow-only render layer that the
+  // tank shadow batches already use (renderLayers.ts routes it into every
+  // cascade pass and nowhere else), so a near tree casts its far-LOD lobe hull
+  // (~150 tris) and a far tree a 20-tri ellipsoid, and neither costs a forward
+  // draw. This is what returns the solid crown shadows of the 1049e4e
+  // presentation under every tree, near and far. Mobile keeps trunk-only
+  // shadows.
+  // The proxy material is never compiled for color: proxies sit on the
+  // shadow-only layer and only the cascade depth passes rasterize them.
+  const canopyShadowProxyMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+  function canopyShadowProxyGeometry(canopy: THREE.BufferGeometry): THREE.BufferGeometry {
+    // A private copy of the far-LOD lobe hull: instance attributes must stay
+    // per pool, and the shadow pass needs positions only.
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', (canopy.getAttribute('position') as THREE.BufferAttribute).clone());
+    if (canopy.index) geometry.setIndex(canopy.index.clone());
+    geometry.computeBoundingSphere();
+    return geometry;
+  }
+  function farCanopyShadowProxyGeometry(canopy: THREE.BufferGeometry): THREE.BufferGeometry {
+    canopy.computeBoundingBox();
+    const box = canopy.boundingBox!;
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const geometry = new THREE.IcosahedronGeometry(0.5, 0);
+    geometry.scale(Math.max(0.5, size.x * 0.92), Math.max(0.5, size.y * 0.9), Math.max(0.5, size.z * 0.92));
+    geometry.translate(center.x, center.y, center.z);
+    geometry.computeBoundingSphere();
+    return geometry;
+  }
+  function makeCanopyShadowProxy(geometry: THREE.BufferGeometry, sp: Species, capacity: number, name: string): TreeMesh {
+    const proxy = makeTreeMesh(geometry, canopyShadowProxyMat, sp, false, capacity);
+    markShadowOnly(proxy);
+    proxy.castShadow = true;
+    proxy.receiveShadow = false;
+    applyLodShadowFadeDepth(proxy);
+    proxy.userData.treeCanopyShadowProxy = true;
+    proxy.name = name;
+    return proxy;
+  }
+  const canopyShadowProxies = !mobileTier;
   function createTreeMeshPools(): void {
     // Species never changes during promotion, cross-fade, toppling or reset.
     // Each LOD can therefore hold at most this species' final population,
@@ -4361,7 +4396,7 @@ function* vegetationBuildSteps(
       // one inert color slot for the same vertex-color shader setup; count=0.
       // A completely empty population retains the original zero-byte pools.
       const capacity = Math.min(trees.length, Math.max(1, speciesCounts.get(sp) ?? 0));
-      nearMeshes[sp] = treeGeo[sp].map((g) => {
+      nearMeshes[sp] = treeGeo[sp].map((g, variant) => {
         const trunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
         // shadow-stability r2: The opaque canopy proxy is deliberately coarse
         // and stable on broad ground receivers, but projecting that same mask
@@ -4380,22 +4415,32 @@ function* vegetationBuildSteps(
         // Keep the stable trunk shadow and the bounded root contact decal;
         // the foliage's authored vertex shading supplies crown volume.
         foliage.castShadow = false;
-        return [trunk, foliage];
+        const pool: TreeMesh[] = [trunk, foliage];
+        if (canopyShadowProxies) {
+          pool.push(makeCanopyShadowProxy(
+            canopyShadowProxyGeometry(treeGeoFar[sp][variant % treeGeoFar[sp].length].canopy),
+            sp, capacity, `treeCanopyShadow_${sp}_${variant}`));
+        }
+        return pool;
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
-      farMeshes[sp] = treeGeoFar[sp].map((g) => {
+      farMeshes[sp] = treeGeoFar[sp].map((g, fv) => {
         const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false, capacity);
         farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
         const farTrunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
         farTrunk.receiveShadow = false;
         farTrunk.userData.treeTrunk = true;
-        const pair = [farTrunk, farCanopy];
+        const pair: TreeMesh[] = [farTrunk, farCanopy];
         // PERF (perf-budget r3): far-partition trees (beyond ~260 m) do NOT cast
         // shadows — a tree shadow out there is subpixel at 1080p (see lighting.ts
         // far-cascade rationale) yet every lobe/trunk was re-rasterized by the
         // CSM cascade passes; with the density boost this alone was millions of
         // tris/frame of invisible shadow work.
         for (const m of pair) m.castShadow = false;
+        if (canopyShadowProxies) {
+          pair.push(makeCanopyShadowProxy(farCanopyShadowProxyGeometry(g.canopy), sp, capacity,
+            `treeCanopyShadowFar_${sp}_${fv}`));
+        }
         return pair;
       });
     }

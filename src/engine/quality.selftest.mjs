@@ -41,22 +41,25 @@ assert.equal(desktop.resolvePresetName(), 'high');
 assert.equal(desktop.shouldReleaseInactivePhaseGpu(), false,
   'normal desktops retain detached Garage resources for fast battle exits');
 assert.equal(desktop.PRESETS.high.maxPixelRatio, 1.5);
-for (const name of ['medium', 'high', 'ultra']) {
-  assert.deepEqual(desktop.PRESETS[name].shadowMapSizes,
-    desktop.DESKTOP_SHADOW_MAP_SIZES,
-    `${name} uses the stable desktop shadow-map layout`);
-  assert.equal(desktop.PRESETS[name].shadowMaxFar,
-    desktop.DESKTOP_SHADOW_MAX_FAR,
-    `${name} keeps cascade splits stable during live quality switches`);
-}
+// 2026-09-12 visual restoration: the 1049e4e preset table is back. Ultra runs
+// 4K hero cascades to 700 m with full-res GTAO, High 2K cascades to 700 m with
+// half-res GTAO, Medium the stable 2K/1K layout at 520 m with half-res GTAO;
+// Low keeps the near-field 380 m range and no AO.
+assert.deepEqual(desktop.PRESETS.ultra.shadowMapSizes, [4096, 4096, 2048, 2048], 'Ultra hero cascades, 2K far');
+assert.equal(desktop.PRESETS.ultra.shadowMaxFar, 700, 'Ultra shadow range covers whole towns');
+assert.equal(desktop.PRESETS.ultra.aoScale, 1.0, 'Ultra full-resolution GTAO');
+assert.deepEqual(desktop.PRESETS.high.shadowMapSizes, [2048, 2048, 2048, 1024], 'High 2K cascades');
+assert.equal(desktop.PRESETS.high.shadowMaxFar, 700, 'High shadow range covers whole towns');
+assert.equal(desktop.PRESETS.high.aoScale, 0.5, 'High half-resolution GTAO');
+assert.deepEqual(desktop.PRESETS.medium.shadowMapSizes, desktop.DESKTOP_SHADOW_MAP_SIZES,
+  'Medium keeps the stable desktop shadow-map layout');
+assert.equal(desktop.PRESETS.medium.shadowMaxFar, 600, 'Medium mid range');
+assert.equal(desktop.PRESETS.medium.aoScale, 0.5, 'Medium half-resolution GTAO');
 assert.deepEqual(desktop.PRESETS.low.shadowMapSizes, desktop.DESKTOP_SHADOW_MAP_SIZES,
   'Low keeps the stable desktop shadow-map allocation');
 assert.equal(desktop.PRESETS.low.shadowMaxFar, 380,
   'Low concentrates the same shadow maps into the legacy near-field range');
-for (const name of desktop.PRESET_ORDER) {
-  assert.equal(desktop.PRESETS[name].aoScale, 0,
-    `${name} cannot re-enable the grainy temporal GTAO path`);
-}
+assert.equal(desktop.PRESETS.low.aoScale, 0, 'Low stays AO-free');
 
 let notified = null;
 const unsubscribe = desktop.onPresetChange((preset) => { notified = preset.label; });

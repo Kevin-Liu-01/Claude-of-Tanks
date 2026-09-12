@@ -60,6 +60,13 @@ export interface HorizonConfig {
   haze?: number;
   grain?: number;
   seaOpening?: HorizonSeaOpening;
+  /**
+   * Terrain-following canopy belts across the visible mountain faces. Off by
+   * default since 2026-09-12: read from the battlefield they drew as dark
+   * contour strokes across every range, which the owner rejected against the
+   * 1049e4e presentation. The skyline ranks (treelineLayers) stay.
+   */
+  faceBelts?: boolean;
 }
 
 export interface MapSkyConfig extends Partial<SkyPreset> {
@@ -1833,6 +1840,8 @@ interface HorizonTreelineContext {
   seaOpening?: HorizonSeaOpening;
   base: THREE.Color;
   forest: THREE.Color;
+  /** Authored opt-in for terrain-following face belts (default off). */
+  faceBelts: boolean;
 }
 
 export const HORIZON_TREELINE_MAX_BELTS = 20;
@@ -1873,7 +1882,7 @@ export function selectHorizonFaceBeltRows(rows: readonly HorizonRingRow[]): numb
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
   maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpening,
-  base, forest,
+  base, forest, faceBelts,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
   if (treeline < 0.14) return;
@@ -1988,7 +1997,7 @@ function addHorizonTreeline({
     // against the higher terrain behind them. Back slopes, cliff faces, snow
     // and sea apertures receive no trees. All belts share the skyline atlas,
     // material and draw call.
-    const beltRows = selectHorizonFaceBeltRows(rows);
+    const beltRows = faceBelts ? selectHorizonFaceBeltRows(rows) : [];
     const [sunX, sunY, sunZ] = sun;
     // Belt crowns take the same tone as the baked forest cover beneath them
     // (face = vertex color x material gain x 0.62 texture mean; atlas mean is
@@ -2351,6 +2360,7 @@ export function* buildHorizonRingSteps(
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
     style, sun: [lx, ly, lz], forestCover, seaOpening: H.seaOpening,
     base, forest: forestC,
+    faceBelts: H.faceBelts === true,
   });
   return mesh;
 }

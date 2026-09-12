@@ -161,8 +161,10 @@ function checkIndependentEviction(world, other, species) {
   });
   const result = release(world);
   // Full production construction adds four grass materials and their two
-  // textures plus the bark albedo/normal pair to the former foliage-only seam.
-  assert.equal(result.materials, 6 + species.length * 2);
+  // textures plus the bark albedo/normal pair to the former foliage-only seam;
+  // the 2026-09-12 shadow redesign adds the one shared crown shadow-proxy
+  // material (shadow-only layer, never compiled for color).
+  assert.equal(result.materials, 7 + species.length * 2);
   assert.equal(result.textures, 5 + species.length);
   assert.equal(world.csm.shaders.size, 0);
   assert.equal(other.csm.shaders.size, 6 + species.length);
