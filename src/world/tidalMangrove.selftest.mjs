@@ -117,7 +117,7 @@ function checkFarAttachment(legacy, actual, canopy) {
   const p = legacy.attributes.position, q = actual.attributes.position, normal = actual.attributes.normal;
   const height = Math.max(...Array.from({ length: p.count }, (_, i) => p.getY(i)));
   const cap = Array.from({ length: p.count }, (_, i) => i).filter(i => p.getY(i) === height);
-  assert.equal(cap.length, 30, 'the pre-existing top ring/cap owns exactly 30 packed vertices');
+  assert.equal(cap.length, 36, 'the pre-existing top ring/cap owns exactly 36 packed vertices (2026-09-12: six-sided flared far stem)');
   assert.equal(new Set(Array.from({ length: p.count }, (_, i) => p.getY(i))).size, 2);
   const offset = new THREE.Vector3().fromBufferAttribute(q, cap[0]).sub(new THREE.Vector3().fromBufferAttribute(p, cap[0]));
   const center = cap.reduce((v, i) => v.add(new THREE.Vector3().fromBufferAttribute(p, i)), new THREE.Vector3()).multiplyScalar(1 / cap.length);
@@ -393,8 +393,9 @@ function checkWholePools(before, after) {
     matrix: m.instanceMatrix.array.byteLength, color: m.instanceColor?.array.byteLength ?? 0,
     capacity: m.instanceMatrix.count, geometry: budget(m.geometry),
   }));
-  // Near willow trunk pools carry the reviewed cone stilt roots (+60 expanded
-  // vertices over the ridge control, 2026-09-11); every other pool is exact.
+  // Near willow trunk pools carry the reviewed two-ring collar and cone stilt
+  // roots (594 expanded vertices lighter than the fluted-collar/swept-root
+  // control, 2026-09-12); every other pool is exact.
   const tidalTrunkGeometry = new Set(after.treeGeo.willow.map(v => v.trunk));
   const pools = group => group.children.filter(m => m.isInstancedMesh);
   const afterPools = pools(after.group), beforePools = pools(before.group);
@@ -403,7 +404,7 @@ function checkWholePools(before, after) {
   afterPools.forEach((m, i) => {
     if (!tidalTrunkGeometry.has(m.geometry)) return;
     tidalPoolRows.push(i);
-    assert.equal(m.geometry.attributes.position.count - beforePools[i].geometry.attributes.position.count, 60, 'stilt trunk pool over ridge control');
+    assert.equal(m.geometry.attributes.position.count - beforePools[i].geometry.attributes.position.count, -594, 'stilt trunk pool against the swept-root control');
   });
   assert.equal(tidalPoolRows.length, 3, 'exactly the three near willow trunk pools differ');
   assert.deepEqual(rows(after.group).filter((_, i) => !tidalPoolRows.includes(i)),
@@ -416,21 +417,28 @@ function checkWholePools(before, after) {
       if (name === 'aFadeI' || name === 'aLodF') continue;
       const size = attribute.itemSize;
       assert.deepEqual(b.attributes[name].array.slice(0, 360 * size), attribute.array.slice(0, 360 * size));
-      // The ordinary control carries five 60-vertex ridge roots (576..876);
-      // the tidal trunk keeps its five 72-vertex cone stilt roots (576..936).
-      assert.deepEqual(b.attributes[name].array.slice(936 * size), attribute.array.slice(876 * size),
+      // 2026-09-12: the ordinary control carries the fluted collar (360..810,
+      // 450 expanded vertices) and five 144-vertex swept roots (810..1530);
+      // the tidal trunk keeps the reviewed two-ring collar (360..576) and its
+      // five 72-vertex cone stilt roots (576..936).
+      assert.deepEqual(b.attributes[name].array.slice(936 * size), attribute.array.slice(1530 * size),
         'all main-stem/branch attributes outside the approved flare/five roots remain byte exact');
     }
     const pa = a.attributes.position, pb = b.attributes.position;
     for (let i = 360; i < 576; i++) {
-      // 2026-09-11 eased collar (buildRootFlare): 0.66 m tall, seated at
-      // 0.318 m, radius eased by (1 - t)^1.75 from 0.30 to 0.40 (ordinary) or
-      // 0.34 (tidal); the shared flute cancels in the ratio.
-      const y = pa.getY(i), t = Math.min(1, Math.max(0, (y + .012) / .66)), eased = Math.pow(1 - t, 1.75);
-      const ratio = (.30 + (.34 - .30) * eased) / (.30 + (.40 - .30) * eased);
-      assert.equal(pb.getY(i), y, 'flare height/center/ground overlap unchanged');
-      assert.ok(Math.abs(pb.getX(i) - pa.getX(i) * ratio) < 2e-6 && Math.abs(pb.getZ(i) - pa.getZ(i) * ratio) < 2e-6,
-        'only approved lower flare taper narrows; existing radial rib deformation retained');
+      // Reviewed two-ring eased collar (buildRootFlare, lobes 0): 0.66 m tall,
+      // seated at -0.012 m, radius eased by (1 - t)^1.75 from 0.30 to 0.34
+      // with the +-4.5 % radial rib; the tidal trunk keeps it byte-for-byte.
+      const y = pb.getY(i), r = Math.hypot(pb.getX(i), pb.getZ(i));
+      assert.ok(y >= -0.0121 && y <= 0.6481, 'tidal collar height/center/ground overlap unchanged');
+      if (r < 1e-5) continue; // cap centres
+      assert.ok(r >= 0.30 * (1 - 0.045) - 1e-6 && r <= 0.34 * 1.045 + 1e-6, 'tidal collar keeps the reviewed 0.30-0.34 eased flare');
+    }
+    for (let i = 360; i < 810; i++) {
+      const y = pa.getY(i), r = Math.hypot(pa.getX(i), pa.getZ(i));
+      assert.ok(y >= -0.0121 && y <= 0.6481, 'ordinary collar shares the flare height and seat');
+      if (r < 1e-5) continue; // cap centres
+      assert.ok(r >= 0.30 * (1 - 0.03) - 1e-6 && r <= 0.40 * 1.61 + 1e-6, 'ordinary collar is the fluted flare (0.30 to at most 0.40 x 1.61)');
     }
   }
   checkFarStems(before, after);
@@ -524,11 +532,13 @@ const shapes = [
 ];
 // Reviewed woody-root orientation/seating only; old→new provenance is retained
 // in docs/WOODY-ROOT-ORIENTATION-CANDIDATE.md (ridge successor 2026-09-11).
-// Tidal geometry remains current.
+// Tree bases 2026-09-12: the shared fluted root collar and swept surface
+// roots replace the ridge successor under every ordinary trunk; the ordinary
+// woody digests are repinned from that build. Tidal geometry remains current.
 const ordinaryWoody = [
-  '8512b36537903564fed4eb587ca2d680e5a1cc2e839bb92810706aceb3fa5b09',
-  'd3bd284034c8132b1fdbff7190b4a66b43c9207a78654abca72e39748b9d2973',
-  'ab1efa67f1aa4605494876522e5bca85b043dedf308c20e96ae322c112a4001b',
+  '49327a9d629c4be9872e6bc6ce3c3c65f703b619b8039f8fa2f2d846fca49319',
+  '61d22116dfde89d745227882c60068b181dbe462ec9d160b33acc97b6c84fcae',
+  'dca12897abeb3887326c7c0e6486e554efb2fed7d3073284b4a6edcf7c72b3ee',
 ];
 // Tidal stilt trunks keep their reviewed bent-cone budget (2026-09-11).
 const TIDAL_BUDGET = [
@@ -575,17 +585,20 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(after.preRoad.obstacles, 4364, 'original obstacle admission before road clearance');
   assert.equal(after.concealers.length, before.concealers.length);
   assert.deepEqual(after.rng, before.rng, 'actual entire production RNG call counts and tails unchanged');
-  // 2026-09-11: ordinary trunks carry ten-quad ridge roots while tidal stilt
-  // trunks keep their reviewed cones, so each near willow trunk costs exactly
-  // five roots x (72 - 60) expanded vertices more than its non-tidal control.
+  // 2026-09-12: ordinary trunks carry the fluted collar (fifteen sides, four
+  // height segments: 450 expanded vertices against the reviewed two-ring
+  // collar's 216) and five swept roots (144 expanded vertices each) while
+  // tidal stilt trunks keep the reviewed collar and five 72-vertex cones, so
+  // each near willow tidal trunk is exactly 234 + 5 x (144 - 72) = 594
+  // expanded vertices lighter than its non-tidal control.
   const tidalTrunk = r => r.id.startsWith('near/willow/') && r.id.endsWith('/trunk');
   assert.deepEqual(after.geometry.filter(r => !tidalTrunk(r)).map(r => [r.id, r.budget]),
     before.geometry.filter(r => !tidalTrunk(r)).map(r => [r.id, r.budget]));
   after.geometry.forEach((r, i) => {
     assert.equal(r.id, before.geometry[i].id);
     if (tidalTrunk(r)) {
-      assert.equal(r.budget.vertices - before.geometry[i].budget.vertices, 60, r.id + ': reviewed cone stilt roots over ridge control');
-      assert.equal(r.budget.bytes - before.geometry[i].budget.bytes, 60 * 48, r.id + ': same per-vertex layout');
+      assert.equal(r.budget.vertices - before.geometry[i].budget.vertices, -594, r.id + ': reviewed cone stilt roots and collar against the swept-root control');
+      assert.equal(r.budget.bytes - before.geometry[i].budget.bytes, -594 * 48, r.id + ': same per-vertex layout');
       assert.equal(r.budget.indices, before.geometry[i].budget.indices);
     } else if (!r.id.includes('/willow/') || !r.id.endsWith('/trunk')) assert.equal(r.hash, before.geometry[i].hash);
   });

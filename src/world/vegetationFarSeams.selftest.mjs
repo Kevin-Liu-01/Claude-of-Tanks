@@ -202,7 +202,7 @@ function attachmentDelta(actual, old, label) {
     else assert.deepEqual([q.getX(i), q.getY(i), q.getZ(i)], [p.getX(i), p.getY(i), p.getZ(i)],
       label + ': exact ground ring; only the pre-existing cap may move to its changed crown');
   }
-  assert.equal(cap, 30);
+  assert.equal(cap, 36); // 2026-09-12: the far trunk is a six-sided flared stem, no longer a five-sided cone
   for (const [name, attr] of Object.entries(actual.attributes)) {
     assert.ok(attr.array.every(Number.isFinite));
     if (name !== 'position' && name !== 'normal') assert.ok(bytes(attr.array).equals(bytes(old.attributes[name].array)), label + '/' + name);

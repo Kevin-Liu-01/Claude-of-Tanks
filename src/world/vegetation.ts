@@ -785,9 +785,10 @@ export function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | n
     if (famRoll < 0.30) {        // sun-bleached tips
       // lighting_post r2: cap the bleached family — 0.48 HSL-lightness
       // clipped to lime-white under the 4.5 sun key; ~0.41 rolls off inside
-      // the grade shoulder.
-      hue = 0.205 + rng() * 0.035; sat = 0.27 + rng() * 0.07;
-      l = 0.18 + sun * 0.10 + rng() * 0.06;
+      // the grade shoulder. Leaves 2026-09-12: the warm yellow-green hue of
+      // the 1049e4e atlas returns (0.185-0.22) at the capped lightness.
+      hue = 0.185 + rng() * 0.035; sat = 0.25 + rng() * 0.07;
+      l = 0.20 + sun * 0.11 + rng() * 0.06;
     } else if (famRoll < 0.78) { // mid olive body
       hue = 0.215 + rng() * 0.045; sat = 0.29 + rng() * 0.09;
       l = 0.17 + sun * 0.15 + rng() * 0.10;
@@ -796,6 +797,21 @@ export function makeLeafClusterTexture(rng: RandomSource, tone: ToneFunction | n
       l = 0.12 + sun * 0.10 + rng() * 0.07;
     }
     const sizeMul = 0.7 + rng() * 0.9;
+    // Leaves 2026-09-12: the shaded understorey under each clump returns from
+    // the 1049e4e atlas — leaves read as lit shapes on a dark interior instead
+    // of paint on transparency, which is what gave the reference crowns their
+    // depth. The branchlet's twig negative space stays.
+    {
+      const ur = (9 + rng() * 8) * K * sizeMul;
+      const gr = ctx.createRadialGradient(x, y + 3 * K, 0, x, y + 3 * K, ur);
+      gr.addColorStop(0, css(hue + 0.02, sat * 0.8, l * 0.42));
+      gr.addColorStop(0.55, css(hue + 0.02, sat * 0.8, l * 0.42).replace('rgb(', 'rgba(').replace(')', ',0.55)'));
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.arc(x, y + 3 * K, ur, 0, Math.PI * 2);
+      ctx.fill();
+    }
     paintBroadleafBranchlet(ctx, rng, x, y, a, sizeMul, hue, sat, l, sun, K);
   }
   return finishAlphaTexture(c, ctx, 70, 78, 40, true, tone);
@@ -1211,17 +1227,23 @@ function organicizeTrunk(
 // pedestal from the chase camera, especially once its broad bottom catches a
 // single flat highlight.  Ease the radius into the stem and keep the lower
 // outline only modestly wider; the root ridges below provide the real spread.
+// Tree bases 2026-09-12: the eased pedestal read as a cone sitting under the
+// trunk. The collar is now a fluted root flare: its ground ring swells into
+// `lobes` buttress starts (soft cos^1.5 flutes that vanish two thirds of the
+// way up), so the roots below grow out of the trunk instead of a skirt.
 function buildRootFlare(
   topRadius: number,
   bottomRadius: number,
   height: number,
   sides: number,
   phase: number,
+  lobes = 5,
 ): THREE.BufferGeometry {
-  // Three rings are enough for the eased flare; the old pedestal used two.
-  // Keeping the merged bark draw at or below its former triangle budget
-  // matters because every tree instance multiplies it.
-  const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, sides, 2);
+  // lobes = 0 keeps the reviewed two-ring eased flare byte-exact (tidal
+  // mangrove stilt trunks); every ordinary trunk takes the fluted collar.
+  const fluted = lobes > 0;
+  const ringSides = fluted ? Math.max(sides, lobes * 3) : sides;
+  const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, ringSides, fluted ? 4 : 2);
   const position = attribute(geometry, 'position');
   for (let index = 0; index < position.count; index++) {
     const x = position.getX(index), y = position.getY(index), z = position.getZ(index);
@@ -1229,9 +1251,17 @@ function buildRootFlare(
     if (sourceRadius <= 1e-5) continue;
     const t = clamp(y / height + 0.5, 0, 1);
     const angle = Math.atan2(z, x);
-    const eased = Math.pow(1 - t, 1.75);
-    const flute = 1 + Math.sin(angle * 5 + phase) * 0.045 * (1 - t);
-    const radius = (topRadius + (bottomRadius - topRadius) * eased) * flute;
+    let radius: number;
+    if (fluted) {
+      const eased = Math.pow(1 - t, 2.2);
+      const lobe = Math.pow(Math.max(0, Math.cos(angle * lobes + phase)), 1.5);
+      const swell = 1 + lobe * 0.58 * Math.pow(1 - t, 2.0) + Math.sin(angle * 7 - phase) * 0.03 * (1 - t);
+      radius = (topRadius + (bottomRadius - topRadius) * eased) * swell;
+    } else {
+      const eased = Math.pow(1 - t, 1.75);
+      const flute = 1 + Math.sin(angle * 5 + phase) * 0.045 * (1 - t);
+      radius = (topRadius + (bottomRadius - topRadius) * eased) * flute;
+    }
     position.setXYZ(index, Math.cos(angle) * radius, y, Math.sin(angle) * radius);
   }
   geometry.computeVertexNormals();
@@ -1239,37 +1269,47 @@ function buildRootFlare(
   return geometry;
 }
 
-// Low closed ridge running out from the trunk.  The curved height falloff and
-// narrowing footprint read as a root disappearing into soil rather than a
-// cone lying on its side. BoxGeometry supplies compatible UVs before all trunk
-// parts are merged into the existing single instanced bark draw.
-function buildRootRidge(
+// A surface root: a half-ellipse section swept outward from inside the
+// collar's ground ring. Its crown is highest at the trunk, tapers and sinks
+// into the soil over its reach (six sections across so a crest vertex sits on
+// the trunk axis, four along: 35 vertices and 48 triangles), and the buried
+// underside never shows.
+function buildRootTongue(
   innerRadius: number,
   reach: number,
   width: number,
   height: number,
   angle: number,
 ): THREE.BufferGeometry {
-  // Two segments along the reach carry the curved falloff; the buried
-  // underside and inner end never show. Ten quads per root keeps four roots
-  // plus the collar under the old cone-pedestal budget (152 vs 168 tris).
-  const geometry = new THREE.BoxGeometry(reach, height, width, 2, 1, 1);
-  const position = attribute(geometry, 'position');
-  for (let index = 0; index < position.count; index++) {
-    const sx = position.getX(index), sy = position.getY(index), sz = position.getZ(index);
-    const u = clamp(sx / reach + 0.5, 0, 1);
-    const taper = Math.pow(1 - u, 0.72);
-    const halfWidth = Math.max(width * 0.08, width * 0.5 * taper);
-    const zNorm = clamp(Math.abs(sz) / Math.max(width * 0.5, 1e-5), 0, 1);
-    const crown = height * Math.pow(1 - u, 1.38);
-    const top = 0.012 + crown * (1 - zNorm * 0.48);
-    position.setXYZ(
-      index,
-      innerRadius + u * reach,
-      sy > 0 ? top : 0.006,
-      Math.sign(sz || 1) * halfWidth * zNorm,
-    );
+  const across = 6, along = 4;
+  const start = innerRadius - width * 0.35;
+  const span = reach + width * 0.35;
+  const positions = new Float32Array((across + 1) * (along + 1) * 3);
+  const uvs = new Float32Array((across + 1) * (along + 1) * 2);
+  const indices: number[] = [];
+  for (let j = 0; j <= along; j++) {
+    const u = j / along;
+    const crown = height * Math.pow(1 - u, 0.55) * (0.35 + 0.65 * (1 - u));
+    const halfWidth = width * 0.5 * (1 - u * 0.62);
+    const seat = 0.008 - u * 0.02;
+    for (let i = 0; i <= across; i++) {
+      const theta = (i / across) * Math.PI;
+      const vertex = j * (across + 1) + i;
+      positions[vertex * 3] = start + u * span;
+      positions[vertex * 3 + 1] = Math.sin(theta) * crown + seat;
+      positions[vertex * 3 + 2] = Math.cos(theta) * halfWidth;
+      uvs[vertex * 2] = u;
+      uvs[vertex * 2 + 1] = i / across;
+      if (i < across && j < along) {
+        const a = vertex, b = vertex + 1, c = vertex + across + 1, d = vertex + across + 2;
+        indices.push(a, c, b, b, c, d);
+      }
+    }
   }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
   geometry.computeVertexNormals();
   geometry.rotateY(-angle);
   return geometry;
@@ -1295,10 +1335,10 @@ function addRootButtresses(
       bendMangroveRoot(root, angle, length, 0.10 + tiltRoll);
       parts.push(paintFlat(root, color.clone().multiplyScalar(0.90 + rng() * 0.10), 0));
     } else {
-      const length = radius * (1.35 + rng() * 0.50);
-      const width = radius * (0.46 + rng() * 0.12);
+      const length = radius * (1.55 + rng() * 0.60);
+      const width = radius * (0.62 + rng() * 0.16);
       const tiltRoll = rng() * 0.06;
-      const root = buildRootRidge(radius * 0.50, length, width, radius * 0.82 + tiltRoll, angle);
+      const root = buildRootTongue(radius * 0.62, length, width, radius * 0.50 + tiltRoll, angle);
       parts.push(paintFlat(root, color.clone().multiplyScalar(0.90 + rng() * 0.10), 0));
     }
   }
@@ -1343,7 +1383,7 @@ function buildBroadleafTrunk(
   // Narrow eased root collar; low radial ridges and the root decal carry the
   // spread/contact, avoiding the old wide cone pedestal.
   {
-    const flare = buildRootFlare(0.30, tidalMangrove ? 0.34 : 0.40, 0.66, 12, trunkPhase);
+    const flare = buildRootFlare(0.30, tidalMangrove ? 0.34 : 0.40, 0.66, 12, trunkPhase, tidalMangrove ? 0 : 5);
     _c.setHSL(0.07, 0.25, 0.20 + rng() * 0.05, THREE.SRGBColorSpace);
     parts.push(paintFlat(flare, _c.clone(), 0));
   }
@@ -2095,7 +2135,7 @@ function buildOakFarGeometry(
   const trunkH = fvi === 1 ? 3.6 : 2.9;
   // r6: thicker far trunk (0.20/0.36 -> 0.32/0.55) — sub-pixel trunks at
   // 400 m+ vanished and rim-forest crowns read as floating saucers
-  const trunk = new THREE.CylinderGeometry(0.32, 0.55, trunkH, 5, 1);
+  const trunk = new THREE.CylinderGeometry(0.30, 0.44, trunkH, 6, 1);
   shapeFarTreeBase(trunk, 0.7 + fvi * 1.3);
   trunk.translate(0, trunkH / 2, 0);
   _c.setHSL(0.07, 0.26, 0.23, THREE.SRGBColorSpace);
@@ -3472,7 +3512,8 @@ function* vegetationBuildSteps(
     applyCanopyDiffuseWrap(shader, wrap, matteCanopy);
   };
   const treeWindHook = makeTreeWindHook(1.5, 4.2, 0.30);          // trunks/bark
-  const canopyWindHook = makeTreeWindHook(2.5, 8.0, 0.50, true, true); // matte canopy sheets + cards
+  // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
+  const canopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true); // matte canopy sheets + cards
   const foliageWindHook = (shader: MaterialShader): void => {
     canopyWindHook(shader);
     useAttributeNormal(shader);

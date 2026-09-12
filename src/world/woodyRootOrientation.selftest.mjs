@@ -32,8 +32,10 @@ function visit(node) {
 }
 visit(rootFn);
 assert.equal(branches.length, 1, 'one actual woody branch, not a comment match');
-assert.match(branches[0].getText(source), /buildRootRidge\(radius \* 0\.50, length, width, radius \* 0\.82 \+ tiltRoll, angle\)/,
-  'the woody branch emits the low ridge from the shared collar radius');
+// Tree bases 2026-09-12: the woody branch now emits a rounded surface root
+// (half-ellipsoid tongue) from the fluted collar's ground ring.
+assert.match(branches[0].getText(source), /buildRootTongue\(radius \* 0\.62, length, width, radius \* 0\.50 \+ tiltRoll, angle\)/,
+  'the woody branch emits the surface root from the fluted collar radius');
 const randomFn = source.statements.find(n => ts.isFunctionDeclaration(n) && n.name.text === 'mulberry32');
 const renamedRandom = randomFn.getText(source).replace('export function mulberry32(', 'function rootTestRandomCore(');
 assert.notEqual(renamedRandom, randomFn.getText(source));
@@ -87,14 +89,15 @@ function roots(module, seed, radius, count, tidal = false) {
   return { parts, rng };
 }
 
-// Physical guard for one ordinary root ridge: a closed ten-quad box whose
-// crest starts at the collar radius, falls to the soil along its reach and
-// keeps a narrow, single-bearing footprint. Old cones (34 vertices) and any
-// inward or hovering ridge fail here.
+// Physical guard for one ordinary surface root: a swept half-ellipse (six
+// sections across, four along) whose crown starts inside the collar's ground
+// ring, falls to the soil along its reach and keeps a single outward bearing.
+// Old cones (34 vertices), the retired box ridges (32 vertices, 60 indices)
+// and any inward or hovering root fail here.
 function rootShape(geometry, radius) {
   const p = geometry.attributes.position;
-  assert.equal(p.count, 32, 'ridge box keeps its two reach segments'); assert.equal(geometry.index.count, 60);
-  const inner = radius * 0.50;
+  assert.equal(p.count, 35, 'root tongue keeps its six-by-four sweep'); assert.equal(geometry.index.count, 144);
+  const inner = radius * 0.62;
   // Recover the ridge bearing from the vertices themselves, then measure in
   // that local frame: the box has no centreline vertices, only its two edges.
   let sx = 0, sz = 0;
@@ -112,16 +115,19 @@ function rootShape(geometry, radius) {
   }
   const innerTop = Math.max(...ys.filter((_, i) => along[i] < minAlong + 1e-4));
   const outerTop = Math.max(...ys.filter((_, i) => along[i] > maxAlong - 1e-4));
-  assert.ok(Math.abs(minAlong - inner) < 1e-4, 'ridge starts inside the eased collar');
-  assert.ok(maxAlong >= inner + radius * 1.35 - 1e-6 && maxAlong <= inner + radius * 1.85 + 1e-6, 'reach stays within the authored 1.35-1.85 trunk radii');
-  // The box has no centreline vertices: its two crest edges sit at 52% of the
-  // authored height (zNorm 1), so the edge crest is what the inner ring shows.
-  assert.ok(innerTop >= 0.012 + radius * 0.82 * 0.52 - 1e-6 && innerTop <= 0.012 + (radius * 0.82 + 0.06) * 0.52 + 1e-6,
-    'crest rises to the authored collar height');
-  assert.ok(outerTop <= 0.0121, 'crest reaches the soil at the far end: taper points outward and downward');
-  assert.ok(Math.abs(minY - 0.006) < 1e-6, 'underside sits just below the placement plane, not hovering');
-  assert.ok(maxAcross <= radius * 0.29 + 1e-6 && spread < 0.62, 'single outward bearing; the ridge is not a ring or a lateral tab');
-  assert.ok(geometry.attributes.uv, 'BoxGeometry UVs survive for the shared bark draw');
+  // The tongue starts 35 % of its width inside the collar radius (width is
+  // 0.62-0.78 trunk radii) and reaches 1.55-2.15 radii beyond the collar.
+  assert.ok(minAlong >= inner - radius * 0.78 * 0.35 - 1e-6 && minAlong <= inner - radius * 0.62 * 0.35 + 1e-6,
+    'root starts inside the fluted collar');
+  assert.ok(maxAlong >= inner + radius * 1.55 - 1e-6 && maxAlong <= inner + radius * 2.15 + 1e-6, 'reach stays within the authored 1.55-2.15 trunk radii');
+  // The inner crown carries the authored height (0.50 r plus up to 0.06 tilt)
+  // above the 8 mm seat; the far tip sinks 12 mm into the soil.
+  assert.ok(innerTop >= 0.008 + radius * 0.50 - 1e-6 && innerTop <= 0.008 + radius * 0.50 + 0.06 + 1e-6,
+    'crown rises to the authored collar height at the trunk');
+  assert.ok(outerTop <= -0.012 + 1e-6, 'crown reaches the soil at the far end: taper points outward and downward');
+  assert.ok(minY >= -0.0121 && minY <= 0.0081, 'underside sits on or just below the placement plane, not hovering');
+  assert.ok(maxAcross <= radius * 0.39 + 1e-6 && spread < 1.0, 'single outward bearing; the root is not a ring or a lateral tab');
+  assert.ok(geometry.attributes.uv, 'sweep UVs exist for the shared bark draw');
   return maxY;
 }
 
@@ -132,8 +138,8 @@ for (const seed of [0, 0x71ee, 0x8b3d, 0xc041, 0xffffffff]) {
     assert.deepEqual(a.rng, b.rng, 'ridges draw the same random stream as the published outward cones');
     for (let i = 0; i < a.parts.length; i++) {
       rootShape(a.parts[i], radius);
-      assert.throws(() => rootShape(b.parts[i], radius), /two reach segments/, 'the published cone witness fails the ridge guard');
-      assert.equal(a.parts[i].attributes.color.count, 32, 'flat root colour is written per box vertex');
+      assert.throws(() => rootShape(b.parts[i], radius), /six-by-four sweep/, 'the published cone witness fails the root guard');
+      assert.equal(a.parts[i].attributes.color.count, 35, 'flat root colour is written per root vertex');
       a.parts[i].dispose(); b.parts[i].dispose(); rootCases++;
     }
     const tidalA = roots(current, seed, radius, 5, true), tidalB = roots(before, seed, radius, 5, true);
@@ -146,7 +152,7 @@ const key = (x, y, z) => `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.r
 function upperMultiset(geometry) {
   const p = geometry.attributes.position, map = new Map();
   for (let i = 0; i < p.count; i++) {
-    if (p.getY(i) <= .4) continue;
+    if (p.getY(i) <= .7) continue; // above the 0.66 m fluted collar
     const k = key(p.getX(i), p.getY(i), p.getZ(i)); map.set(k, (map.get(k) || 0) + 1);
   }
   return map;
@@ -158,7 +164,11 @@ for (const species of TREE_SPECIES) {
     const a = current.buildTreeTrunkAuditGeometry(species, seed), b = before.buildTreeTrunkAuditGeometry(species, seed);
     assert.deepEqual(current.rootTestRngReceipt(), before.rootTestRngReceipt(), species + ' full-builder RNG');
     assert.deepEqual(Object.keys(a.attributes), Object.keys(b.attributes));
-    assert.ok(a.attributes.position.count <= b.attributes.position.count, species + ' ridges never exceed the cone budget');
+    // The audit geometry is unindexed: a swept root (144 indices) replaces a
+    // published cone (72) under the same fluted collar, so four or five roots
+    // add at most 360 vertices to the cone witness.
+    assert.ok(a.attributes.position.count <= b.attributes.position.count + 380,
+      `${species} root system stays within the authored base budget (${a.attributes.position.count} vs ${b.attributes.position.count})`);
     assert.ok(a.attributes.position.array.every(Number.isFinite));
     a.computeBoundingBox();
     assert.ok(a.boundingBox.min.y >= -.16 && a.boundingBox.min.y <= .02, species + ' existing full-builder ground tolerance');
@@ -168,4 +178,4 @@ for (const species of TREE_SPECIES) {
     a.dispose(); b.dispose(); repeated.dispose(); fullCases++;
   }
 }
-console.log(`woodyRootOrientation.selftest: ${rootCases} real root ridges; ${fullCases} complete near trunks; exact tidal branch/RNG/storage; published outward-cone negative PASS`);
+console.log(`woodyRootOrientation.selftest: ${rootCases} real surface roots; ${fullCases} complete near trunks; exact tidal branch/RNG/storage; published outward-cone negative PASS`);

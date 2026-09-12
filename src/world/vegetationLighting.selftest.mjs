@@ -213,9 +213,10 @@ try {
       'Canvas-encoded needle colors are decoded exactly once by the material');
     assert.equal(kit.foliageMaterial.map.image.width, 256);
     assert.equal(kit.foliageMaterial.map.image.height, 256);
-    // 2026-09-11 root collar/ridge trim (two-ring flares, single-segment
-    // ridges) keeps the reviewed root silhouette at 768 trunk vertices.
-    assert.equal(kit.trunk.getAttribute('position').count, 768);
+    // Tree bases 2026-09-12: the fluted root collar (fifteen sides, five
+    // rings) and four swept surface roots (35 vertices each) replace the
+    // cone-era pedestal at 1356 trunk vertices.
+    assert.equal(kit.trunk.getAttribute('position').count, 1356);
     assert.equal(kit.foliage.getAttribute('position').count, 300,
       'the lighting repair does not add foliage cards or vertices');
     kit.dispose();
