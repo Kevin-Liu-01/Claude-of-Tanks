@@ -251,3 +251,17 @@ accept KF51 X as it stands, and deploy manually (the GitHub workflow is gone).
 - **KF51 X**: accepted as authored (owner).
 - **Deploy**: `.github/workflows/deploy-production.yml` removed; production
   goes out with the Vercel CLI from a verified tree.
+
+### (i) AMX-40 X contact fix (2026-09-12, evening)
+
+The post-push release gate for the track batch failed one receipt the batch
+suite list had not covered: `roundedTrackContact` — the .024 band on the
+unchanged botY .048 course left a rigid shoe corner 2 mm under the floor.
+botY .050 (course and running gear) grounds all 48 opposing scroll phases
+with fixed source axles. Regen chain rerun for amx40_x (anchors, anatomy,
+icons, manifest); presentation-centering PASS 208, anatomy check PASS,
+tank-assets-check PASS. Fast gates after the fix: standard check 92.3/92 (hull 92.3, whole 95.5,
+turret 95.3, stations 99.1, dims 100, floaters 100, holes 0, clip 0, mg1),
+procedural fidelity 96.3, module-visual-align 0 failing, module-hit 0 FAIL,
+track-duplicate PASS. The full release check runs again before the deploy.
+
