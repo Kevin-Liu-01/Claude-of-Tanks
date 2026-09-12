@@ -9,8 +9,8 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 
-assert.ok(SHADOW_OPACITY >= 0.45 && SHADOW_OPACITY <= 0.65,
-  'daylight shadows preserve receiver detail without losing readable silhouettes');
+assert.ok(SHADOW_OPACITY >= 0.9 && SHADOW_OPACITY <= 1.0,
+  'daylight cast shadows keep the full-strength 1049e4e body; receiver detail comes from the hemisphere/fill lights and the ambient shadow dim, not from leaking key light');
 
 const cascadeSpans = [82.5, 176.25, 391.5, 806.75];
 

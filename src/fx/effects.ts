@@ -1308,6 +1308,7 @@ function* createFxSteps(
   // dynamic buffer; the shader fades each print against the fx clock.
   const MAX_PRINTS = 96;
   const PRINT_DUR = 12;
+  const WATER_WAKE_DUR = 6.2;
   const printTex = (() => {
     const prng = mulberry32((seed ^ 0x77d1e5) >>> 0);
     const s = 64, h = 128;
@@ -1379,7 +1380,7 @@ function* createFxSteps(
         vWater = aSurface == 1.0 ? 1.0 : 0.0;
         vSurface = aSurface;
         float age = uTime - aBirth;
-        float duration = mix(${PRINT_DUR.toFixed(1)}, 4.6, vWater);
+        float duration = mix(${PRINT_DUR.toFixed(1)}, ${WATER_WAKE_DUR.toFixed(1)}, vWater);
         vFade = ( age >= 0.0 && age < duration )
           ? 1.0 - age / duration : 0.0;
         gl_Position = vFade <= 0.0 ? vec4( 0.0, 0.0, 2.0, 1.0 )
@@ -1392,13 +1393,13 @@ function* createFxSteps(
       varying float vWater;
       varying float vSurface;
       void main() {
-        float strength = mix(0.34, 0.52, vWater);
+        float strength = mix(0.34, 0.60, vWater);
         float coverage;
         if (vWater > 0.5) {
           vec2 p = vUv * 2.0 - 1.0;
           float radius = length(p);
-          float ring = 0.35 + (1.0 - vFade) * 0.58;
-          coverage = (1.0 - smoothstep(0.06, 0.18, abs(radius - ring)))
+          float ring = 0.28 + (1.0 - vFade) * 0.66;
+          coverage = (1.0 - smoothstep(0.07, 0.21, abs(radius - ring)))
             * (1.0 - smoothstep(0.80, 1.0, radius));
         } else {
           coverage = texture2D(uMap, vUv).a;
@@ -1433,7 +1434,7 @@ function* createFxSteps(
   ): void {
     for (let i = 0; i < MAX_PRINTS; i++) {
       const age = particles.getTime() - printBirth.array[i * 4];
-      if (age >= (printSurface.array[i * 4] === 1 ? 4.6 : PRINT_DUR)) continue;
+      if (age >= (printSurface.array[i * 4] === 1 ? WATER_WAKE_DUR : PRINT_DUR)) continue;
       const dx = pos.x - printCenters[i * 2], dz = pos.z - printCenters[i * 2 + 1];
       if (dx * dx + dz * dz < 0.85) return; // a print already covers this spot
     }
@@ -1444,8 +1445,8 @@ function* createFxSteps(
     const fl = Math.hypot(fx2, fz2) || 1;
     fx2 /= fl; fz2 /= fl;
     const rx = fz2, rz = -fx2;
-    const hw = water ? 0.38 : 0.30;
-    const hl = water ? 0.78 : 0.62;
+    const hw = water ? 0.52 : 0.30;
+    const hl = water ? 1.10 : 0.62;
     const arr = printPos.array;
     const v = i * 4 * 3;
     for (let k = 0; k < 4; k++) {

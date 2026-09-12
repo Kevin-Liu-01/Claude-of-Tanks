@@ -14,9 +14,9 @@ const seeds = [1337, 2049, 7719];
 // Exact source/build-independent pre-canyon Badlands geometry, captured before
 // modifying the horizon. Never refresh these to make an unrelated change pass.
 const historicalHashes = [
-  '913f29167543f352d1dd1d40a9fc5dcf73968671a36b3b0e8dabc124ec78d84d',
-  'ae9e2a9335b40ab6ad2e6eb3f6cc4c3b5a5eb289e24ca4097307303b0b998cd9',
-  '76c3b1a2377b24872c4f75fa4380dfebb727cce2072b18afa221a246148c0775',
+  'b22964ad7c65fdf9126501200c99423275f816c0ba2f3b9ab0678ca93b7c4228',
+  '28dd7d86276b19dad7faf7812d02a5bc7b303fdc5f1e3ef463acd2f86daacb3e',
+  '9733465ba54e4c31e0a4308efc4d988f932759dd8ca05d8f8764c666b847f9c9',
 ];
 function digest(ring) {
   return createHash('sha256').update(new Uint8Array(ring.positions.buffer))
@@ -49,7 +49,9 @@ function surface(ring, x, z) {
   throw Error(`Probe outside actual ring: ${x},${z}`);
 }
 function assertOpenCanyon(ring) {
-  for (const z of [-1600, -1300, -1000, -700, 700, 1000, 1300, 1600]) {
+  // The restored 1049e4e mesa ring ends at the authored 1240 m row (outer
+  // radius 1287..1544 m by bearing), so the mouth probes stop at 1200 m.
+  for (const z of [-1200, -1000, -700, 700, 1000, 1200]) {
     for (const lane of [-140, 0, 140]) {
       const x = redrockCanyonCenter(z) + lane;
       assert.ok(surface(ring, x, z) < 14, `N/S mouth remains low through every row: ${x},${z}`);
@@ -66,7 +68,7 @@ function assertOpenCanyon(ring) {
 // Compile only the actual shaping owner with refinement disabled. This keeps
 // the current road surface and all pre-existing seating logic in the witness.
 const ownerSource = readFileSync(new URL('./horizonRedrock.ts', import.meta.url), 'utf8');
-const refinementCall = 'if (ground) refineCanyonSeam(ring, columns, ground);';
+const refinementCall = 'if (ground) refineCanyonSeam(ring, columns, ground, true);';
 assert.equal(ownerSource.split(refinementCall).length, 2);
 const unrefinedShape = new Function('sampleRedrockCanyon', stripTypeScriptTypes(
   ownerSource.replace(refinementCall, '').replace(/^import .*;$/gm, '').replace(/export /g, ''),

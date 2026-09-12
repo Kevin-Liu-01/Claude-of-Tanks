@@ -22,9 +22,18 @@ const registry = read('src/world/maps/index.ts');
 assert.equal(registry, old('src/world/maps/index.ts'));
 const mapFiles = [...registry.matchAll(/import \w+ from '\.\/(\w+\.ts)';/g)].map(match => match[1]);
 assert.equal(mapFiles.length, MAP_IDS.length);
+// 2026-09-11 restored the 1049e4e Alpine horizon bands (treeline 0.64 -> 0.80,
+// snowline 0.42 -> 0.72). Horizon bands never feed relief; authenticate the
+// exact current leaves, then project only them back for the byte receipt.
+function historicalAlpineHorizonSource(source, file) {
+  if (file !== 'alpine.ts') return source;
+  const restored = "style: 'alpine', treeline: 0.80, snowline: 0.72,";
+  assert.equal(source.split(restored).length, 2, 'alpine.ts: one exact restored horizon band line');
+  return source.replace(restored, "style: 'alpine', treeline: 0.64, snowline: 0.42,");
+}
 for (const file of mapFiles) if (file !== 'badlands.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
-  assert.equal(historicalAuthoredExitSource(read('src/world/maps/' + file), old('src/world/maps/' + file), id),
+  assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(read('src/world/maps/' + file), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

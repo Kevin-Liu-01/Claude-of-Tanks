@@ -70,3 +70,21 @@ additional cost acquisition was performed.
 Root reviewed the native pair and published the scoped orientation correction
 as `f363fbd5e` on `origin/main`. This accepts the small visible root-seating fix,
 not the unresolved tidal far-model issue or a full woodland/art/performance pass.
+
+## Ridge successor (2026-09-11)
+
+The launch restore pass finished the pending root draft on top of the
+published outward-cone correction. Ordinary trunks now meet the ground through
+an eased, fluted collar (`buildRootFlare`, three rings, radius 0.30 → 0.40 over
+0.66 m) and five low closed ridges (`buildRootRidge`, a ten-quad box whose crest
+falls from 52% of `0.82 r` at the collar to the soil over 1.35–1.85 trunk
+radii). The old wide cone pedestal read as a lampshade beside the grass; the
+ridges read as roots disappearing into soil from the chase camera. Budget per
+broadleaf trunk falls from 1428 to 1368 vertices (152 vs 168 root/collar
+triangles); RNG draws per root (5) and tails are unchanged, so every seeded
+placement, card and branch above 0.4 m is byte-identical to the published
+build. The tidal-Mangrove stilt branch keeps its reviewed bent cones exactly,
+now pinned on its own budget in `tidalMangrove.selftest.mjs`.
+`woodyRootOrientation.selftest.mjs` measures the ridge in its own bearing
+frame (collar start, reach, crest fall, buried underside, single bearing) and
+keeps the published cone as its negative witness.

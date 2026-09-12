@@ -2372,7 +2372,7 @@ vec4 splatSamp(sampler2D t, vec2 uv, float df, float mb) {
   // repeated on the 18 m tile grid as a visible mottled-blotch print across
   // the 50-150 m midground (critique); softer far contrast + the uncorrelated
   // octave in splatCompute carry that band instead
-  farS = mix(farS, texture2D(t, uv * 0.2317 + vec2(0.5), 6.0), min(0.30 + mb * 0.33, 0.74));
+  farS = mix(farS, texture2D(t, uv * 0.2317 + vec2(0.5), 6.0), min(0.24 + mb * 0.30, 0.64));
   return mix(nearS, farS, df);
 }
 // r8 anti-tiling ground samplers: every ground layer tiles at ONE fixed world
@@ -2912,7 +2912,7 @@ void splatCompute() {
     float openNear = dNear * (1.0 - roadCore);
     n.xy += dn.xy * 0.22 * openNear * (1.0 - fMs);
     float micro = texture2D(uNoise, uv * 0.171).r;
-    a.rgb *= 1.0 + (micro - 0.5) * 0.30 * openNear * uMicroAmp * (1.0 - fMs);
+    a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs);
     // sub-10 m second octave: clod/blade relief right under the camera
     // r6 terrain_environment: band widened (5-15 -> 6-26 m) and the octave
     // now carries ALBEDO as well as normal — the 5-20 m meadow read as one
@@ -2932,7 +2932,7 @@ void splatCompute() {
       // modulation is exposure-neutral on every map palette (sand vs turf)
       float gl2 = dot(texture2D(uAlbG, uv * 2.71).rgb, vec3(0.36, 0.42, 0.22));
       float glM = dot(texture2D(uAlbG, uv * 2.71, 6.0).rgb, vec3(0.36, 0.42, 0.22));
-      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.5, -0.22, 0.26) * nearG;
+      a.rgb *= 1.0 + clamp((gl2 - glM) * 1.9, -0.28, 0.32) * nearG;
     }
   }
   {
@@ -3208,8 +3208,8 @@ void splatCompute() {
   float motG = farM * (1.0 - projW);
   // r8: darkening 0.20 -> 0.13 with a wider, later ramp — at 0.20 the term
   // stamped muddy cloud-shadow blotches across mid-distance sand/meadow
-  a.rgb *= 1.0 - motG * 0.13 * smoothstep(0.55, 0.95, mot);
-  a.rgb *= 1.0 + motG * 0.13 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
+  a.rgb *= 1.0 - motG * 0.17 * smoothstep(0.55, 0.95, mot);
+  a.rgb *= 1.0 + motG * 0.17 * smoothstep(0.55, 0.85, n1) * (1.0 - smoothstep(0.48, 0.82, mot));
   // >>> grazing-view meadow detail. -----------------------------------------
   // The activation/LOD weights remain view-dependent; the sampled chart does
   // not. This fixed world-XZ chart is intended for heightfield meadow, not a
@@ -3313,7 +3313,7 @@ const SPLAT_NORMAL_FRAG = /* glsl */`
   // steep faces under a low sun it rendered as high-contrast bright/dark
   // strand noise ("furry" mesa flanks); the geometric normal carries the
   // far shading instead.
-  float dk = 0.9 * (1.0 - max(gSplatFar * 0.68, gSplatSteepAtt));
+  float dk = 1.0 * (1.0 - max(gSplatFar * 0.62, gSplatSteepAtt));
   vec3 wN = normalize(vec3(gN.x + dN.x * dk, max(gN.y, 0.02) + dN.z * dk, gN.z + dN.y * dk));
   normal = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
 }
@@ -3481,7 +3481,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v28';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v29';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

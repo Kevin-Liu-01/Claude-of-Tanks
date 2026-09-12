@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { buildHorizonRing, sampleHorizonGeometry } from './maps/horizon.ts';
+import {
+  buildHorizonRing, sampleHorizonGeometry, selectHorizonFaceBeltRows,
+  HORIZON_TREELINE_MAX_BELTS, HORIZON_TREELINE_MAX_LAYERS,
+} from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
@@ -65,113 +68,83 @@ function assertBoundedSubdivisionRelief(position, style, label) {
 
 function assertLayeredMountainBounds(position, style, label) {
   let maxRadius = 0;
-  let foothillPeak = -Infinity;
-  let nearBackslopes = 0;
-  let middleBackslopes = 0;
   for (let column = 0; column < columns - 1; column++) {
     assert.ok(Math.max(Math.abs(position.getX(column)), Math.abs(position.getZ(column))) < 512,
       `${label}: the buried inner row stays inside the true square terrain rim`);
     assert.ok(position.getY(column) < 0, `${label}: the seam anchor stays underground`);
-    foothillPeak = Math.max(foothillPeak, position.getY((style === 'alpine' ? 4 : 2) * columns + column));
-    if (style === 'alpine') {
-      if (position.getY(9 * columns + column) > position.getY(14 * columns + column) + 5) nearBackslopes++;
-      if (position.getY(19 * columns + column) > position.getY(24 * columns + column) + 5) middleBackslopes++;
-    }
   }
   for (let index = 0; index < position.count; index++) maxRadius = Math.max(maxRadius, radiusAt(position, index));
-  assert.ok(maxRadius < 2400, `${label}: inland geometry stays comfortably inside the existing far clip`);
-  if (style === 'alpine') {
-    assert.ok(maxRadius > 2100, `${label}: distant summits recede beyond the near foothills`);
-    assert.ok(foothillPeak < 100, `${label}: near foothills cannot return to the towering rim wall`);
-    assert.ok(nearBackslopes > columns * 0.6 && middleBackslopes > columns * 0.6,
-      `${label}: intervening saddles break the continuous uphill curtain into separate ranges`);
-  }
+  // The restored 1049e4e composition keeps every inland range inside 1.6 km:
+  // the outermost authored crest sits at 1240-1330 m and the near foothills
+  // begin 585-600 m out, so the ring reads as layered hills and ranges rather
+  // than a distant curtain. Only a sea aperture apron may extend farther.
+  assert.ok(maxRadius < 1600, `${label}: the classic layered ranges stay inside 1.6 km (${maxRadius.toFixed(0)} m)`);
+  assert.ok(maxRadius > 1200, `${label}: the outer range is retained (${maxRadius.toFixed(0)} m)`);
 }
 
-function assertFullAngleAlpineLandform(ring, config, label) {
+// Restored 1049e4e composition. Every style shares a buried anchor row and a
+// low set-back skirt, then authored ranges rise in successive layers. This
+// contract is deliberately about safety plus the accepted art direction:
+// low banks, ranges that meander in depth, real passes, and several ranges
+// sharing the skyline. It is not a byte oracle; those digests live below.
+function classicRangeStats(ring) {
   const n = 287, p = ring.positions;
   const y = (row, column) => p[(row * n + column) * 3 + 1];
   const radius = (row, column) => Math.hypot(p[(row * n + column) * 3], p[(row * n + column) * 3 + 2]);
-  const crests = [9, 19, 29], visible = [0, 0, 0];
+  const authored = [];
+  ring.rows.forEach((row, index) => { if (!row.skirt && !row.interpolated) authored.push(index); });
+  const skyline = new Array(authored.length).fill(0);
+  let skirtMax = -Infinity, skirtSetback = Infinity, folds = 0;
   for (let column = 0; column < n; column++) {
-    const gap = radius(1, column) - radius(0, column);
-    assert.ok((y(1, column) - y(0, column)) / gap < 0.5,
-      `${label}: the seam skirt is a low bank, not Fjord's old 70 m curtain`);
-    assert.ok(y(1, column) <= 12 * config.horizon.amp + 0.001,
-      `${label}: positive skirt height stays below the foothills`);
-    assert.ok(Math.max(Math.abs(p[(n + column) * 3]), Math.abs(p[(n + column) * 3 + 2])) > 565,
-      `${label}: above-ground skirt is set back from every square-map side and corner`);
+    skirtMax = Math.max(skirtMax, y(1, column));
+    skirtSetback = Math.min(skirtSetback, Math.max(Math.abs(p[(n + column) * 3]), Math.abs(p[(n + column) * 3 + 2])));
+    for (let row = 1; row < ring.rows.length; row++) {
+      if (radius(row, column) - radius(row - 1, column) <= 1) folds++;
+    }
     let best = -Infinity, winner = 0;
-    for (let rank = 0; rank < crests.length; rank++) {
-      const rise = (y(crests[rank], column) - 24) / radius(crests[rank], column);
+    authored.forEach((row, rank) => {
+      const rise = (y(row, column) - 24) / radius(row, column);
       if (rise > best) { best = rise; winner = rank; }
-    }
-    visible[winner]++;
-    assert.ok((y(29, column) - y(24, column)) / (radius(29, column) - radius(24, column)) < 0.68,
-      `${label}: far-crest meander cannot compress a tall rise into the old outer curtain`);
-    for (let row = 25; row <= 29; row++) {
-      assert.ok((y(row, column) - y(row - 1, column))
-        / (radius(row, column) - radius(row - 1, column)) < 1.25,
-      `${label}: the actual outer shoulder segments remain slopes, not vertical cliff sheets`);
-    }
+    });
+    skyline[winner]++;
   }
-  for (const row of crests) {
+  const crests = authored.map(row => {
     let low = Infinity, high = -Infinity, minR = Infinity, maxR = -Infinity;
     for (let column = 0; column < n; column++) {
       low = Math.min(low, y(row, column)); high = Math.max(high, y(row, column));
       minR = Math.min(minR, radius(row, column)); maxR = Math.max(maxR, radius(row, column));
     }
-    assert.ok(low < high * 0.4, `${label}: each range tapers into real low passes, including its base`);
-    assert.ok(maxR - minR > 100, `${label}: crests meander in depth instead of tracing parallel circles`);
-  }
-  assert.ok(visible.every(count => count >= 8),
-    `${label}: each separate range reaches the skyline in a sustained angular sector`);
+    return { row, low, high, meander: maxR - minR, meanRadius: ring.rows[row].r };
+  });
+  return { authored, skyline, skirtMax, skirtSetback, folds, crests };
 }
 
-function assertFullAngleMesaLandform(ring, config, label) {
-  const n = 287, p = ring.positions, amp = config.horizon.amp;
-  const y = (row, column) => p[(row * n + column) * 3 + 1];
-  const radius = (row, column) => Math.hypot(p[(row * n + column) * 3], p[(row * n + column) * 3 + 2]);
-  let backslopes = 0;
-  for (let column = 0; column < n; column++) {
-    assert.ok(y(1, column) < 11 * amp + 0.001,
-      `${label}: mesa skirt is a low bank, not the former 53–79 m Skybridge wall`);
-    assert.ok(Math.max(Math.abs(p[(n + column) * 3]), Math.abs(p[(n + column) * 3 + 2])) > 565,
-      `${label}: the positive bank is set back from every playable side and corner`);
-    assert.ok(y(2, column) < 47 * amp,
-      `${label}: low attached foothills separate the battlefield from the first table`);
-    assert.ok(radius(5, column) > 1035,
-      `${label}: substantial mesa cliffs begin beyond a kilometre, not at the terrain rim`);
-    for (let row = 1; row < ring.rows.length; row++) {
-      assert.ok((y(row, column) - y(row - 1, column))
-        / (radius(row, column) - radius(row - 1, column)) < 1.4,
-      `${label}: uploaded radial slopes cannot become near-vertical pink sheets`);
-    }
-    if (y(5, column) > y(7, column) + 20 * amp) backslopes++;
+function assertClassicLayeredRanges(ring, config, label) {
+  const style = config.horizon.style ?? 'rolling';
+  const amp = config.horizon.amp ?? 1;
+  const stats = classicRangeStats(ring);
+  assert.equal(stats.folds, 0, `${label}: no angle folds a radial face`);
+  assert.equal(stats.authored.length, style === 'alpine' ? 7 : 4,
+    `${label}: the restored ${style} table authors ${style === 'alpine' ? 'seven' : 'four'} ranges beyond the two skirt rows`);
+  // 1049e4e skirt: base 22-26 m, amplitude 12-14 m, before the map amplitude.
+  assert.ok(stats.skirtMax <= 40 * amp + 0.1,
+    `${label}: the positive skirt stays a low bank (${stats.skirtMax.toFixed(1)} m for amp ${amp})`);
+  assert.ok(stats.skirtSetback > 508,
+    `${label}: the above-ground skirt sits outside the 470 m ring beyond every square-map side`);
+  const expectedOuter = style === 'rolling' || style === 'escarpment' ? 1330 : 1240;
+  assert.equal(stats.crests[stats.crests.length - 1].meanRadius, expectedOuter,
+    `${label}: the outermost authored range keeps its classic ${expectedOuter} m radius`);
+  assert.equal(stats.crests[0].meanRadius, style === 'alpine' || style === 'mesa' ? 585 : 600,
+    `${label}: the first range begins where the 1049e4e foothills began`);
+  for (const crest of stats.crests) {
+    assert.ok(crest.meander > 100,
+      `${label}: range ${crest.row} meanders in depth (${crest.meander.toFixed(0)} m) instead of tracing a circle`);
+    assert.ok(crest.low < crest.high * 0.72,
+      `${label}: range ${crest.row} tapers into real low passes (${crest.low.toFixed(1)} / ${crest.high.toFixed(1)} m)`);
   }
-  assert.ok(backslopes > n * 0.6,
-    `${label}: a real intervening basin separates the two setback table ranges`);
-  for (const row of [5, 9]) {
-    const values = Array.from({ length: n }, (_, column) => y(row, column));
-    const minimum = Math.min(...values), maximum = Math.max(...values);
-    assert.ok(maximum - minimum > 70 * amp,
-      `${label}: erosion leaves distinct raised tables and low passes, not a flat enclosing lid`);
-    assert.ok(values.filter(value => value > minimum + (maximum - minimum) * 0.65).length >= 40,
-      `${label}: high ground has substantial angular extent instead of isolated narrow spires`);
-    for (let column = 0; column < n; column++) {
-      const before = values[(column + n - 1) % n], after = values[(column + 1) % n];
-      assert.ok(Math.abs(values[column] - before) < 14 * amp,
-        `${label}: adjacent cap samples cannot create a one-column terrace spike`);
-      if (values[column] > before && values[column] > after) {
-        const shoulder = values[column] - 20 * amp;
-        let left = 0, right = 0;
-        while (left < n && values[(column - left + n) % n] > shoulder) left++;
-        while (right < n && values[(column + right) % n] > shoulder) right++;
-        assert.ok(left + right - 1 >= 3,
-          `${label}: prominent buttes retain attached shoulders at least three columns wide`);
-      }
-    }
-  }
+  const sharing = stats.skyline.filter(count => count >= 8).length;
+  assert.ok(sharing >= (style === 'alpine' ? 3 : 2),
+    `${label}: at least ${style === 'alpine' ? 'three' : 'two'} separate ranges each hold a sustained skyline sector (${stats.skyline.join(',')})`);
 }
 
 function assertSkybridgeTableCaps(ring, label) {
@@ -205,8 +178,10 @@ function assertSkybridgeTableCaps(ring, label) {
       assert.ok(Math.abs(twiceArea) > 2000, `${label}: cap quads have substantial finite width`);
       area += Math.abs(twiceArea) * 0.5;
     }
-    assert.ok(capQuads >= 35 && longestRun >= 8 && area > 150000,
-      `${label}: range ${top} has broad attached table tops, not single-column apexes`);
+    // The restored 1049e4e tables sit at 760/1240 m instead of 1140/1810 m, so
+    // the same cap coverage subtends proportionally less plan area.
+    assert.ok(capQuads >= 35 && longestRun >= 8 && area > 70000,
+      `${label}: range ${top} has broad attached table tops, not single-column apexes (${capQuads} quads, ${Math.round(area)} m2)`);
     const values = Array.from({ length: n }, (_, c) => y(top, c));
     assert.ok(values.filter(value => value < Math.max(...values) - 100).length >= 30,
       `${label}: truncation preserves low passes instead of creating a flat enclosing lid`);
@@ -298,32 +273,34 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Titan's subsequent finite-cap restoration has an explicit false authoring
 // override; titanGorgeHorizon.selftest guards its current shape and every byte.
 const currentPoldersReceipts = new Map([
-  [1337, 'a0426c3d4076df1019c84c6ecc857ef0429053013648f520b7ea0ffb8e8a3cde'],
-  [2049, '567fb227b17a2c6425e0a516ecabffd99584d9f0a5aabffa23e9e76ec6117161'],
-  [7719, '23ec6c333415a6d27b7265618e2316385b29bd9b4ef35f2fe3f4f3be5ece4d42'],
+  [1337, '6b53931225d4ffda70b8593d98fbb03b920eafdf8ca95b0f2fa6b517815d4a5c'],
+  [2049, '5fe5af61f4e7ee72a73474838fa7c10e17d9ab821883a4817c20ff417de99d97'],
+  [7719, '806e0773fbb3594a5be0598ae27e04bb0ce52f7226d5e991be3d69d90730e0cb'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
   assert.equal(ring.positions.length, 8610);
   assert.equal(ring.heights.length, 2870);
-  assert.ok(Math.max(...ring.heights) > 30 && Math.max(...ring.heights) < 40,
+  // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m
+  // across the three seeds; the rejected wall stood well above 40 m.
+  assert.ok(Math.max(...ring.heights) > 24 && Math.max(...ring.heights) < 40,
     'Polders stays a low distant ridge rather than returning to a mountain wall');
   assert.equal(appendHorizonReceipt(createHash('sha256'), 'polders', ring).digest('hex'),
     currentPoldersReceipts.get(seed), 'Current Polders position/heights/rows/maxHeight remain exact');
 }
 
-// Pre-restoration 28d5fd378 executable, excluding intentionally restored
-// Verdant (horizonVerdant.selftest owns its pastoral geometry/woodland oracle).
-// Historical Polders/Titan inputs remain unchanged for this aggregate.
+// Restored 1049e4e ring tables and silhouette profiles on top of the current
+// subdivision, seam, sea-opening and finite-cap code (the owner's accepted
+// visual direction, 2026-09-11). Verdant now shares the classic rolling path.
+// Historical Polders/Titan/Badlands inputs remain declared for this aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unrelatedMutation = createHash('sha256');
 const unchangedReceipts = [
-  '69b4089c96843d2ca4e624150d7abb99aa833d80fe4c8c66d87dd98ea6cd49b6',
-  'bd7e9ef2fc597965a78ed60d0fa9538268573f203c07a42b71bd070aa34a7023',
-  '220c565ad6ef56f2fd6477d0544de2dfb6dee4854e24dddd4bb0b8cf5c1d053b',
+  '87bcb8e1122745695b8c2181d0fc3af7d8d07253a7c2f98adca4d031a0b2d41c',
+  'c927b3889b97d2cf5634ba390e17af24a4a500cd3b2a0450e24bbc36d0fc91a8',
+  'ecb37f3e3e526e8e2e2d982e1e2d691be4d4b7412a40e85e5d5f568959e22ffe',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
-  if (mapId === 'verdant') continue;
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
   const p = ring.positions, n = 287, label = `${mapId}/${seed}`;
   assert.equal(ring.rows.length, config.horizon.style === 'alpine' ? 33 : 10);
@@ -337,10 +314,9 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
         `${label}: no angle folds a radial face`);
     }
   }
-  if (config.horizon.style === 'alpine') assertFullAngleAlpineLandform(ring, config, label);
-  // Redrock is now a directional canyon, not two setback mesa ranges.
-  // redrockCanyonHorizon.selftest owns its actual shared-floor/seam/wall gates.
-  if (config.horizon.style === 'mesa' && mapId !== 'badlands') assertFullAngleMesaLandform(ring, config, label);
+  // Redrock is a directional canyon; redrockCanyonHorizon.selftest owns its
+  // shared-floor/seam/wall gates, so only the shared safety terms apply here.
+  if (mapId !== 'badlands') assertClassicLayeredRanges(ring, config, label);
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
   else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
   else {
@@ -372,7 +348,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   }
 }
 assert.deepEqual(Array.from(unchangedGeometry.values(), hash => hash.digest('hex')), unchangedReceipts,
-  'non-Verdant receipts remain exact with only declared historical Polders/Titan inputs');
+  'restored classic receipts remain exact with only declared historical Polders/Titan/Badlands inputs');
 assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), unchangedReceipts[0]),
   { code: 'ERR_ASSERTION' }, 'Historical-input attribution does not hide unrelated map geometry changes');
 
@@ -590,8 +566,18 @@ try {
     const layers = config.horizon.treelineLayers ?? 1;
     const position = treeline.geometry.attributes.position;
     const indices = treeline.geometry.index;
-    assert.equal(position.count, columns * 2 * layers, `${mapId}: treeline vertex budget is unchanged`);
-    assert.equal(indices.count, (columns - 1) * 6 * layers, `${mapId}: treeline index budget is unchanged`);
+    const receipt = treeline.userData.horizonTreeline;
+    assert.equal(receipt.layers, layers, `${mapId}: the receipt records the authored skyline ranks`);
+    assert.ok(receipt.faceBelts >= 1 && receipt.faceBelts <= receipt.faceBeltRows
+      && receipt.faceBeltRows <= HORIZON_TREELINE_MAX_BELTS,
+    `${mapId}: face belts are bounded by the deterministic row selection (${receipt.faceBelts}/${receipt.faceBeltRows})`);
+    assert.equal(selectHorizonFaceBeltRows(sampleHorizonGeometry(config, 1337).rows).length, receipt.faceBeltRows,
+      `${mapId}: belt rows derive from the same ring rows the mesh uploads`);
+    const ribbons = layers + receipt.faceBelts;
+    assert.equal(position.count, columns * 2 * ribbons, `${mapId}: treeline vertex budget is exactly one strip per rank and belt`);
+    assert.equal(indices.count, (columns - 1) * 6 * ribbons, `${mapId}: treeline index budget is exactly one quad row per rank and belt`);
+    assert.ok(position.count <= columns * 2 * (HORIZON_TREELINE_MAX_LAYERS + HORIZON_TREELINE_MAX_BELTS),
+      `${mapId}: the merged treeline stays inside its fixed ceiling`);
     assert.equal(treeline.material.map.image.width, 768, `${mapId}: treeline atlas width is unchanged`);
     assert.equal(treeline.material.map.image.height, 128, `${mapId}: treeline atlas height is unchanged`);
     let severed = 0, connected = 0, run = 0, longestRun = 0;
@@ -604,11 +590,11 @@ try {
       }
       connected++;
       longestRun = Math.max(longestRun, ++run);
-      assert.ok(Math.abs(radiusAt(position, first) - radiusAt(position, second)) < 80,
+      assert.ok(Math.abs(radiusAt(position, first) - radiusAt(position, second)) < 120,
         `${mapId}: no canopy quad bridges different radial mountain ranges`);
       assert.ok(Math.hypot(position.getX(first) - position.getX(second),
-        position.getY(first) - position.getY(second), position.getZ(first) - position.getZ(second)) < 80,
-      `${mapId}: connected crowns follow one continuous local ridge`);
+        position.getY(first) - position.getY(second), position.getZ(first) - position.getZ(second)) < 120,
+      `${mapId}: connected crowns follow one continuous local ridge or face`);
     }
     assert.ok(severed > 0, `${mapId}: real skyline row changes split the treeline topology`);
     assert.ok(connected > (columns - 1) * layers * 0.75 && longestRun >= 12,

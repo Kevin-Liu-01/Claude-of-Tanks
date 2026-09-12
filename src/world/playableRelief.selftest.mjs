@@ -52,6 +52,15 @@ for(const [id,file]of selected){
   ports.set(url,stripTypeScriptTypes(oldSource(`src/world/maps/${file}.ts`)));
   const old=(await import(url)).default,cfg=originalExitConfig(getMapConfig(id));
   const normalized={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
+  if(id==='alpine'){
+    // 2026-09-11 restored the 1049e4e Alpine horizon bands (owner direction).
+    // Horizon bands never feed relief; guard the live values, then project
+    // only these two leaves back so every other authoring field stays exact.
+    assert.equal(cfg.horizon.treeline,0.80,'alpine: restored 1049e4e treeline band');
+    assert.equal(cfg.horizon.snowline,0.72,'alpine: restored 1049e4e snowline band');
+    assert.equal(old.horizon.treeline,0.64);assert.equal(old.horizon.snowline,0.42);
+    normalized.horizon={...cfg.horizon,treeline:0.64,snowline:0.42};
+  }
   const stringify=value=>JSON.stringify(value,(_k,v)=>typeof v==='function'?v.toString():v);
   assert.equal(stringify(normalized),stringify(old),`${id}: all non-relief authoring retained`);
 }

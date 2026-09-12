@@ -36,7 +36,8 @@ for (const [mapId, kind] of [['coastal', 'coast'], ['reservoir', 'lake'], ['delt
   const profile = waterContactProfile(mapId);
   assert.equal(profile.kind, kind);
   assert.ok(profile.depthM >= 0.4 && profile.depthM <= 0.8, 'bounded wheel-depth wading, no hidden drowning rule');
-  assert.ok(profile.opacity >= 0.3 && profile.opacity < 0.65);
+  assert.ok(profile.opacity >= 0.68 && profile.opacity <= 0.78);
+  assert.ok(profile.waveScale > 0 && profile.waveStrength > 0);
   assert.equal(shallowWaterDepth(0, profile.depthM), 0);
   assert.equal(shallowWaterDepth(1, profile.depthM), profile.depthM);
   let previous = 0;
@@ -46,6 +47,9 @@ for (const [mapId, kind] of [['coastal', 'coast'], ['reservoir', 'lake'], ['delt
     previous = depth;
   }
 }
+assert.equal(new Set(['coastal', 'fjord', 'saltwind', 'reservoir', 'oasis', 'delta',
+  'monsoon', 'autumn', 'mangrove', 'polders'].map(id => waterContactProfile(id).color)).size, 10,
+  'each authored water climate has its own restrained body color');
 
 const field = {
   size: 64,
@@ -125,16 +129,29 @@ const mask = new Texture(), waves = new Texture();
 const water = createShallowWaterSurface(surface.geometry, mask, waves, field.size, 'coastal', [0.4, 0.78]);
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);
-assert.equal(water.mesh.material.envMapIntensity, 0.25, 'surface keeps a bounded sky reflection');
+assert.equal(water.mesh.material.envMapIntensity, 0.28, 'surface keeps a bounded sky reflection');
 assert.equal(water.mesh.material.forceSinglePass, true, 'one draw, not the two-pass transparent default');
 const shader = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
 water.mesh.material.onBeforeCompile(shader);
 assert.equal(shader.uniforms.uWaterMask.value, mask);
 assert.equal(shader.uniforms.uWaterWave.value, waves, 'shares already-owned terrain textures');
 assert.match(shader.fragmentShader, /if \(wet < 0\.015\) discard/);
-assert.match(shader.fragmentShader, /mix\(opacity, 0\.78, grazing\)/);
-assert.match(shader.fragmentShader, /material\.specularColor \*= 0\.10/, 'sun glints cannot wash the full sheet white');
-assert.match(shader.fragmentShader, /totalSpecular - vec3\(0\.16\)/, 'liquid highlight energy stays below bloom-white');
+assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(opacity, 0\.86, grazing\)/,
+  'shallows reach full body quickly instead of showing bright sand through a pale cyan film');
+assert.match(shader.fragmentShader, /material\.specularF90 = 0\.35/,
+  'grazing sky reflection is bounded so distant water stays dark rather than washing to the horizon tint');
+assert.match(shader.fragmentShader, /mix\(0\.90, 0\.70, waterDeep\)/,
+  'deep water remains darker than its bank, and the bank no longer brightens above the base tint');
+assert.equal((shader.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).length, 2,
+  'surface colour breakup reuses the two normal-map wave fetches instead of adding its own');
+assert.match(shader.fragmentShader, /broadWave.*fineWave/s,
+  'two moving scales break up the body color instead of sliding one flat normal');
+assert.match(shader.fragmentShader, /mix\(diffuseColor\.rgb, uWaterShore, waterBank \* \(0\.24 \+ broadWave \* 0\.12\)\)/,
+  'shoreline receives a body-specific sediment tint');
+assert.match(shader.fragmentShader, /uWaterWaveStrength/,
+  'body-specific wave energy reaches the actual normal path');
+assert.match(shader.fragmentShader, /material\.specularColor \*= 0\.16/, 'sun glints remain bounded but readable');
+assert.match(shader.fragmentShader, /totalSpecular - vec3\(0\.18\)/, 'liquid highlight energy stays below bloom-white');
 water.update(0.016); assert.equal(shader.uniforms.uWaterTime.value, 0.016);
 water.update(0); water.update(-1); water.update(NaN);
 assert.equal(shader.uniforms.uWaterTime.value, 0.016);
@@ -178,6 +195,6 @@ assert.match(kits, /const waterline = heightField\.getWaterSurfaceHeightAt\?\.\(
 assert.match(kits, /buoy\.translate\(x, waterline \+ 0\.16, z\)/);
 assert.match(fx, /const surfaceY = water\s*\? heightField\?\.getWaterSurfaceHeightAt\?\.\(x, z\)/);
 assert.match(fx, /surfaceY \+ \(water \? 0\.065 : 0\.035\)/);
-assert.match(fx, /float ring = 0\.35 \+ \(1\.0 - vFade\) \* 0\.58/);
+assert.match(fx, /float ring = 0\.28 \+ \(1\.0 - vFade\) \* 0\.66/);
 assert.match(fx, /printCenters\.fill\(1e9\)/, 'rematch reset clears wake admission');
 console.log('shallowWater: bounded surface, four profiles, animated shared textures, frozen/dry isolation, cleanup and contact pass');

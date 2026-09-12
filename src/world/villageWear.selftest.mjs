@@ -73,9 +73,18 @@ function historicalAutumnPaletteInput(config) {
   return { ...config, vegetation: { ...config.vegetation, palettes: historicalAutumnPalettes } };
 }
 
+function historicalAlpineHorizonInput(cfg) {
+  if (cfg.id !== 'alpine') return cfg;
+  // 2026-09-11 restored the 1049e4e Alpine horizon bands (treeline 0.64 ->
+  // 0.80, snowline 0.42 -> 0.72). Horizon bands never feed terrain wear; the
+  // live values are guarded in checkScope and only these two leaves are
+  // projected back for the immutable parent receipt.
+  return { ...cfg, horizon: { ...cfg.horizon, treeline: 0.64, snowline: 0.42 } };
+}
 function originalConfig(cfg) {
   if (cfg.id === 'badlands') return historicalBadlandsInput(cfg);
-  if (cfg.id === 'frontier' || cfg.id === 'alpine') return historicalPlayableReliefInput(cfg);
+  if (cfg.id === 'alpine') return historicalAlpineHorizonInput(historicalPlayableReliefInput(cfg));
+  if (cfg.id === 'frontier') return historicalPlayableReliefInput(cfg);
   if (pilots.includes(cfg.id)) {
     const { villageWear: _mode, workedGround: _patches, ...terrain } = cfg.terrain;
     return { ...cfg, terrain };
@@ -96,6 +105,8 @@ function originalConfig(cfg) {
   return cfg;
 }
 function checkScope(resolve) {
+  assert.equal(resolve('alpine').horizon.treeline, 0.80, 'current Alpine treeline band is the restored 1049e4e value');
+  assert.equal(resolve('alpine').horizon.snowline, 0.72, 'current Alpine snowline band is the restored 1049e4e value');
   verifyCurrentAutumnPalette(resolve('autumn'));
   assert.equal(resolve('foundry').props.sourcedPalette, 'ironworks');
   assert.equal(resolve('autumn').props.cropForm, 'harvest');

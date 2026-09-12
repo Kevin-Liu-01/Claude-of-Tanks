@@ -112,7 +112,7 @@ export function createShallowWaterSurface(
   const clock = { value: 0 };
   const material = new THREE.MeshStandardMaterial({
     color: profile.color, roughness: profile.roughness, metalness: 0,
-    envMapIntensity: 0.25,
+    envMapIntensity: 0.28,
     transparent: true, opacity: profile.opacity, depthWrite: false,
     side: THREE.DoubleSide,
   });
@@ -124,6 +124,9 @@ export function createShallowWaterSurface(
       uWaterSize: { value: size }, uWaterTime: clock,
       uWaterRamp: { value: new THREE.Vector2(...ramp) },
       uWaterFlow: { value: new THREE.Vector2(profile.flowX, profile.flowZ) },
+      uWaterShore: { value: new THREE.Color(profile.shoreColor) },
+      uWaterWaveScale: { value: profile.waveScale },
+      uWaterWaveStrength: { value: profile.waveStrength },
     });
     shader.vertexShader = shader.vertexShader.replace('#include <common>',
       '#include <common>\nvarying vec3 vWaterWorld;');
@@ -137,6 +140,11 @@ export function createShallowWaterSurface(
       uniform float uWaterTime;
       uniform vec2 uWaterRamp;
       uniform vec2 uWaterFlow;
+      uniform vec3 uWaterShore;
+      uniform float uWaterWaveScale;
+      uniform float uWaterWaveStrength;
+      float waterDeep;
+      float waterBank;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
       vec2 waterUV = (vWaterWorld.xz + uWaterSize * 0.5) / uWaterSize;
@@ -144,25 +152,39 @@ export function createShallowWaterSurface(
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
-      diffuseColor.a = wet * mix(opacity, 0.78, grazing);
+      waterDeep = smoothstep(0.18, 0.86, wet);
+      waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
+      diffuseColor.rgb *= mix(0.90, 0.70, waterDeep);
+      diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(opacity, 0.86, grazing);
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
-      vec2 waveUV = vWaterWorld.xz * 0.07;
+      vec2 waveUV = vWaterWorld.xz * uWaterWaveScale;
       vec2 drift = uWaterFlow * uWaterTime;
-      vec2 wave = texture2D(uWaterWave, waveUV + drift).xy * 2.0 - 1.0;
-      wave += (texture2D(uWaterWave, waveUV * 0.61 - drift * 0.7).xy * 2.0 - 1.0) * 0.55;
-      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * 0.85, 1.0, wave.y * 0.85)), 0.0)).xyz);
+      vec4 waveNear = texture2D(uWaterWave, waveUV + drift);
+      vec4 waveBroad = texture2D(uWaterWave, waveUV * 0.61 - drift * 0.7);
+      vec2 wave = waveNear.xy * 2.0 - 1.0;
+      wave += (waveBroad.xy * 2.0 - 1.0) * 0.55;
+      normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength, 1.0, wave.y * uWaterWaveStrength)), 0.0)).xyz);
       normal *= faceDirection;
+      // Surface colour breakup reuses the same two wave fetches: moving
+      // two-scale value variation, a shore tint band and sparse crests.
+      // diffuseColor is consumed by the lighting pass after this point.
+      float broadWave = waveBroad.x;
+      float fineWave = waveNear.y;
+      diffuseColor.rgb *= 0.96 + (broadWave - 0.5) * 0.14 + (fineWave - 0.5) * 0.06;
+      diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShore, waterBank * (0.24 + broadWave * 0.12));
+      diffuseColor.rgb += vec3(0.018, 0.026, 0.028)
+        * smoothstep(0.66, 0.90, broadWave) * (0.35 + fineWave * 0.65) * waterDeep;
     `);
     // The game's strong sun/bloom exposure turns a broad default dielectric
     // highlight into a white sheet. Keep the directional glint, at a bounded
     // energy, without changing world lighting or adding a reflection pass.
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_fragment>',
-      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.10;');
+      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.16;\nmaterial.specularF90 = 0.35;');
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(0.16));\n#include <opaque_fragment>');
+      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(0.18));\n#include <opaque_fragment>');
   };
-  material.customProgramCacheKey = () => 'shallow-water-v3';
+  material.customProgramCacheKey = () => 'shallow-water-v7';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;

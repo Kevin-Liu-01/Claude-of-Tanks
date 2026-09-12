@@ -41,13 +41,19 @@ assert.equal(desktop.resolvePresetName(), 'high');
 assert.equal(desktop.shouldReleaseInactivePhaseGpu(), false,
   'normal desktops retain detached Garage resources for fast battle exits');
 assert.equal(desktop.PRESETS.high.maxPixelRatio, 1.5);
-for (const name of desktop.PRESET_ORDER) {
+for (const name of ['medium', 'high', 'ultra']) {
   assert.deepEqual(desktop.PRESETS[name].shadowMapSizes,
     desktop.DESKTOP_SHADOW_MAP_SIZES,
     `${name} uses the stable desktop shadow-map layout`);
   assert.equal(desktop.PRESETS[name].shadowMaxFar,
     desktop.DESKTOP_SHADOW_MAX_FAR,
     `${name} keeps cascade splits stable during live quality switches`);
+}
+assert.deepEqual(desktop.PRESETS.low.shadowMapSizes, desktop.DESKTOP_SHADOW_MAP_SIZES,
+  'Low keeps the stable desktop shadow-map allocation');
+assert.equal(desktop.PRESETS.low.shadowMaxFar, 380,
+  'Low concentrates the same shadow maps into the legacy near-field range');
+for (const name of desktop.PRESET_ORDER) {
   assert.equal(desktop.PRESETS[name].aoScale, 0,
     `${name} cannot re-enable the grainy temporal GTAO path`);
 }

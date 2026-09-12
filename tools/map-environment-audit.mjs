@@ -13,6 +13,7 @@
 //   node tools/map-environment-audit.mjs --maps=coastal --shots --horizon-only --horizon-scopes --horizon-view=es --horizon-scope-ndc=0.4,-0.2
 //   node tools/map-environment-audit.mjs --shots --establishing-only
 //   node tools/map-environment-audit.mjs --tier=mobile --width=1024 --height=768 --shots
+//   node tools/map-environment-audit.mjs --tier=desktop --preset=low --shots --establishing-only
 // --establishing-only captures one canonical wide shot per map, requires --shots,
 // and rejects --horizon-only, --horizon-scopes, or --horizon-quadrants.
 // --horizon-view=en|es|wn|ws narrows horizon views only and requires --shots.
@@ -85,6 +86,10 @@ const syncGpu = flagArg('sync-gpu');
 const production = flagArg('production');
 const tier = valueArg('tier', 'auto');
 if (!['auto', 'desktop', 'mobile'].includes(tier)) throw new Error('tier must be auto, desktop or mobile');
+const preset = valueArg('preset', '');
+if (preset && !['low', 'medium', 'high', 'ultra'].includes(preset)) {
+  throw new Error('preset must be low, medium, high or ultra');
+}
 const width = Number.parseInt(valueArg('width', '1440'), 10);
 const height = Number.parseInt(valueArg('height', '900'), 10);
 const sampleCount = Math.max(30, Number.parseInt(valueArg('samples', '75'), 10));
@@ -109,7 +114,7 @@ for (const file of ['map-environment-audit.mjs', 'map-environment-acquisition.mj
 const acquisition = {
   protocol: ACQUISITION_PROTOCOL, harnessHash: harnessHash.digest('hex'),
   viewport: { width, height, dpr: 1 },
-  sampleCount, repeats, settleMs, syncGpu, tier, captureShots, production, garageArchiveTarget, maps: requested,
+  sampleCount, repeats, settleMs, syncGpu, tier, preset, captureShots, production, garageArchiveTarget, maps: requested,
   ...horizonFocus,
 };
 if (baseline) requireComparableRun(baseline, acquisition);
@@ -126,7 +131,7 @@ const report = {
   revision: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(),
   dirtyPaths: execFileSync('git', ['status', '--short'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean),
   viewport: { width, height, dpr: 1 },
-  sampleCount, repeats, syncGpu, tier, establishingOnly, horizonOnly, horizonScopes, ...horizonFocus,
+  sampleCount, repeats, syncGpu, tier, preset, establishingOnly, horizonOnly, horizonScopes, ...horizonFocus,
   acquisition,
   buildIndexHash: readBuildIndexHash(),
   captureLock: 'cot-shots',
@@ -850,6 +855,11 @@ try {
   page = await browser.newPage();
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   await page.evaluateOnNewDocument(primePinnedSceneStorage, PINNED_SCENE);
+  if (preset) {
+    await page.evaluateOnNewDocument((qualityPreset, selectedTier) => {
+      localStorage.setItem(selectedTier === 'mobile' ? 'cot.gfxMobilePreset' : 'cot.gfxPreset', qualityPreset);
+    }, preset, tier);
+  }
   page.setDefaultTimeout(180000);
   page.on('pageerror', error => pageErrors.push(String(error)));
   page.on('console', message => {

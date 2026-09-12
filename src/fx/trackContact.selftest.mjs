@@ -105,7 +105,8 @@ assert.throws(() => verifyPowder(oldDust), assert.AssertionError, 'old large ear
 function verifyPrints() {
   const attr = size => new THREE.Float32BufferAttribute(new Float32Array(size), 1);
   let time = 7;
-  const bindings = { MAX_PRINTS: 96, PRINT_DUR: 12, printCenters: new Float32Array(192).fill(1e9),
+  const bindings = { MAX_PRINTS: 96, PRINT_DUR: 12, WATER_WAKE_DUR: 6.2,
+    printCenters: new Float32Array(192).fill(1e9),
     printPos: attr(1152), printBirth: attr(384), printSurface: attr(384),
     groundY: (x, z) => x * .01 + z * .02, particles: { getTime: () => time },
     heightField: { getWaterDepthAt: () => .58 } };
@@ -134,10 +135,10 @@ function verifyPrints() {
   assert.equal(bindings.printBirth.version, dryVersion + 1, 'expired dry contact can be stamped again');
   repeat.x += 3; stamp(repeat, dir, true);
   const wetVersion = bindings.printBirth.version;
-  time = 23.1; stamp(repeat, dir, true);
+  time = 24.7; stamp(repeat, dir, true);
   assert.equal(bindings.printBirth.version, wetVersion);
-  time = 24; stamp(repeat, dir, true);
-  assert.equal(bindings.printBirth.version, wetVersion + 1, 'water alone expires at 4.6 seconds');
+  time = 26; stamp(repeat, dir, true);
+  assert.equal(bindings.printBirth.version, wetVersion + 1, 'water alone expires at 6.2 seconds');
   bindings.heightField.getWaterSurfaceHeightAt = (x, z) => bindings.groundY(x, z) + .23;
   repeat.x = 710; stamp(repeat, dir, true);
   const visibleSlot = bindings.printCenters.findIndex((x, i) => i % 2 === 0 && x === 710) / 2;
@@ -156,7 +157,9 @@ const waterAssignment = source.match(/vWater = ([^;]+);/)[1];
 const waterFlag = new Function('aSurface', `return ${waterAssignment};`);
 assert.deepEqual([0, 1, 2, 3].map(waterFlag), [0, 1, 0, 0], 'powder never inherits water duration/strength');
 assert.throws(() => assert.deepEqual([0, 1, 2, 3], [0, 1, 0, 0]), assert.AssertionError);
-assert.match(source, /float duration = mix\(\$\{PRINT_DUR.toFixed\(1\)\}, 4\.6, vWater\)/);
+assert.match(source, /float duration = mix\(\$\{PRINT_DUR.toFixed\(1\)\}, \$\{WATER_WAKE_DUR.toFixed\(1\)\}, vWater\)/);
+assert.match(source, /const hw = water \? 0\.52 : 0\.30;/);
+assert.match(source, /const hl = water \? 1\.10 : 0\.62;/);
 assert.match(source, /if \(vSurface > 1\.5\) color = vSurface > 2\.5/);
 assert.match(source, /const MAX_PRINTS = 96;/);
 const particles = readFileSync(new URL('./particles.ts', import.meta.url), 'utf8');

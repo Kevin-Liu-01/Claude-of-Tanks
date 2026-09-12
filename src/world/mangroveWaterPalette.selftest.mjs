@@ -148,7 +148,20 @@ function historicalAutumnPaletteInput(config) {
   if (config.id !== 'autumn') return config;
   return { ...config, vegetation: { ...config.vegetation, palettes: historicalAutumnPalettes } };
 }
+function verifyCurrentAlpineHorizon(config) {
+  assert.equal(config.horizon.treeline, 0.80, 'current Alpine horizon treeline is the restored 1049e4e band (owner direction 2026-09-11)');
+  assert.equal(config.horizon.snowline, 0.72, 'current Alpine horizon snowline is the restored 1049e4e band (owner direction 2026-09-11)');
+}
+function historicalAlpineHorizonInput(config) {
+  if (config.id !== 'alpine') return config;
+  // 2026-09-11 restored the 1049e4e Alpine horizon bands (treeline 0.64 ->
+  // 0.80, snowline 0.42 -> 0.72) for the mountain-face treeline direction.
+  // Guard today's values separately; project only these two horizon leaves
+  // back for the historical water receipt. Every sibling property survives.
+  return { ...config, horizon: { ...config.horizon, treeline: 0.64, snowline: 0.42 } };
+}
 function verifyHistoricalConfigs(resolve) {
+  verifyCurrentAlpineHorizon(resolve('alpine'));
   verifyCurrentAutumnPalette(resolve('autumn'));
   assert.equal(resolve('autumn').props.cropForm, 'harvest', 'current Autumn crop identity remains exact');
   assert.equal(resolve('delta').props.cropForm, 'wet-upright', 'current Delta crop identity remains exact');
@@ -156,7 +169,7 @@ function verifyHistoricalConfigs(resolve) {
     'current Foundry palette remains the published ironworks selection');
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
-    const historical = historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(resolve(id))))));
+    const historical = historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(resolve(id)))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
   assert.equal(hash(JSON.stringify(unchangedMaps)),

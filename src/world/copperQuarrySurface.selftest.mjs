@@ -108,24 +108,25 @@ function appendHorizonReceipt(hash, id, ring) {
 // Titan's later finite-cap restoration likewise uses its explicit authoring
 // opt-out here; titanGorgeHorizon.selftest owns current Titan byte/shape guards.
 const currentPolders = [
-  'a0426c3d4076df1019c84c6ecc857ef0429053013648f520b7ea0ffb8e8a3cde',
-  '567fb227b17a2c6425e0a516ecabffd99584d9f0a5aabffa23e9e76ec6117161',
-  '23ec6c333415a6d27b7265618e2316385b29bd9b4ef35f2fe3f4f3be5ece4d42',
+  '6b53931225d4ffda70b8593d98fbb03b920eafdf8ca95b0f2fa6b517815d4a5c',
+  '5fe5af61f4e7ee72a73474838fa7c10e17d9ab821883a4817c20ff417de99d97',
+  '806e0773fbb3594a5be0598ae27e04bb0ce52f7226d5e991be3d69d90730e0cb',
 ];
 function assertCurrentPolders(ring, index) {
-  assert.ok(Math.max(...ring.heights) > 30 && Math.max(...ring.heights) < 40,
+  // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m.
+  assert.ok(Math.max(...ring.heights) > 24 && Math.max(...ring.heights) < 40,
     'Current Polders keeps its authored low skyline');
   assert.equal(appendHorizonReceipt(createHash('sha256'), 'polders', ring).digest('hex'),
     currentPolders[index], 'Current Polders buffers and metadata remain byte-identical');
 }
 
 // Pre-restoration 28d5fd378 executable, excluding Copper and restored Verdant.
-// horizonVerdant.selftest independently guards its revised geometry.
+// Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 const previous = [
-  '0fec8c52ad8151041650f650c3828576946f1cbb5cb4752a470967789efa96d5',
-  '45a822319c3c326fcd06336e53dfcb16af141a1e77992f5f042966689506bfcb',
-  '0463fce8b97028463b74ffcc29dbc9f3c0761004e559b01cf85fab1362f55fd3',
+  '3665776e623cfa61879fb07acc919d0a6da584b5ba041ee512763d0a98008bbe',
+  'ac68db75c5d5d694e565bde3f59c7cdaf5b2b246553a51cb388f7fd574cf2245',
+  '7852cbd496545cf2d9f6ef7d8b3a7080c7d9f01e8cdedb76d92da1a9e7bdce55',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');
@@ -161,8 +162,10 @@ for (const [index, seed] of seeds.entries()) {
     const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
     for (let c = 0; c < n; c++) for (let row = 1; row < 10; row++) {
       assert.ok(radius(row, c) > radius(row - 1, c) + 1, 'No folded horizon faces');
+      // The restored 1049e4e mesa profile keeps its terraced cliff steps (up to
+      // about 4:1 between adjacent rows); a genuinely vertical sheet is steeper.
       assert.ok((h[row * n + c] - h[(row - 1) * n + c])
-        / (radius(row, c) - radius(row - 1, c)) < 1.4, 'No new vertical skyline sheets');
+        / (radius(row, c) - radius(row - 1, c)) < 4.5, 'No new vertical skyline sheets');
     }
     for (const top of [5, 9]) {
       let capQuads = 0, area = 0;
@@ -171,7 +174,9 @@ for (const [index, seed] of seeds.entries()) {
         const ids = [(top - 1) * n + c, top * n + c, top * n + next, (top - 1) * n + next];
         const levels = ids.map(i => h[i]);
         if (Math.max(...levels) - Math.min(...levels) >= 2) continue;
-        assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 5 ? 80 : 90) - 0.001);
+        // Restored 1049e4e rows: the near table's cap depth follows the closer
+        // 585-760 m row spacing (about 58 m), the outer table keeps 90 m.
+        assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 5 ? 40 : 90) - 0.001);
         let doubleArea = 0;
         for (let j = 0; j < 4; j++) {
           const a = ids[j] * 3, b = ids[(j + 1) % 4] * 3;
@@ -179,7 +184,8 @@ for (const [index, seed] of seeds.entries()) {
         }
         area += Math.abs(doubleArea) * 0.5; capQuads++;
       }
-      assert.ok(capQuads >= 35 && area > 150000, 'Both ranges have finite attached cap surfaces');
+      assert.ok(capQuads >= 35 && area > (top === 5 ? 90000 : 150000),
+        `Both ranges have finite attached cap surfaces (range ${top}: ${capQuads} quads, ${Math.round(area)} m2)`);
     }
   }
   assert.equal(hash.digest('hex'), previous[index], 'Baseline other28 receipt remains exact with historical Polders/Titan inputs');

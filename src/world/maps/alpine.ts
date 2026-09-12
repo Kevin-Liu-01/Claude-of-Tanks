@@ -103,7 +103,7 @@ export default {
     },
   },
   horizon: {
-    baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.64, snowline: 0.42,
+    baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.80, snowline: 0.72,
     forestHex: 0x29434a, rockHex: 0x88929d, haze: 0.91, grain: 0.52,
   },
   sky: {

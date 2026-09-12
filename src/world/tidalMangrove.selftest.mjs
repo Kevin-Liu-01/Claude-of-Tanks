@@ -393,20 +393,41 @@ function checkWholePools(before, after) {
     matrix: m.instanceMatrix.array.byteLength, color: m.instanceColor?.array.byteLength ?? 0,
     capacity: m.instanceMatrix.count, geometry: budget(m.geometry),
   }));
-  assert.deepEqual(rows(after.group), rows(before.group), 'all actual tree, grass and bush pool allocations are unchanged');
+  // Near willow trunk pools carry the reviewed cone stilt roots (+60 expanded
+  // vertices over the ridge control, 2026-09-11); every other pool is exact.
+  const tidalTrunkGeometry = new Set(after.treeGeo.willow.map(v => v.trunk));
+  const pools = group => group.children.filter(m => m.isInstancedMesh);
+  const afterPools = pools(after.group), beforePools = pools(before.group);
+  assert.equal(afterPools.length, beforePools.length);
+  const tidalPoolRows = [];
+  afterPools.forEach((m, i) => {
+    if (!tidalTrunkGeometry.has(m.geometry)) return;
+    tidalPoolRows.push(i);
+    assert.equal(m.geometry.attributes.position.count - beforePools[i].geometry.attributes.position.count, 60, 'stilt trunk pool over ridge control');
+  });
+  assert.equal(tidalPoolRows.length, 3, 'exactly the three near willow trunk pools differ');
+  assert.deepEqual(rows(after.group).filter((_, i) => !tidalPoolRows.includes(i)),
+    rows(before.group).filter((_, i) => !tidalPoolRows.includes(i)), 'all actual tree, grass and bush pool allocations are unchanged');
+  assert.deepEqual(rows(after.group).map(r => ({ ...r, geometry: null })), rows(before.group).map(r => ({ ...r, geometry: null })),
+    'pool capacities and instance buffers are unchanged');
   for (let k = 0; k < 3; k++) {
     const a = before.treeGeo.willow[k].trunk, b = after.treeGeo.willow[k].trunk;
     for (const [name, attribute] of Object.entries(a.attributes)) {
       if (name === 'aFadeI' || name === 'aLodF') continue;
       const size = attribute.itemSize;
       assert.deepEqual(b.attributes[name].array.slice(0, 360 * size), attribute.array.slice(0, 360 * size));
-      assert.deepEqual(b.attributes[name].array.slice(936 * size), attribute.array.slice(936 * size),
+      // The ordinary control carries five 60-vertex ridge roots (576..876);
+      // the tidal trunk keeps its five 72-vertex cone stilt roots (576..936).
+      assert.deepEqual(b.attributes[name].array.slice(936 * size), attribute.array.slice(876 * size),
         'all main-stem/branch attributes outside the approved flare/five roots remain byte exact');
     }
     const pa = a.attributes.position, pb = b.attributes.position;
     for (let i = 360; i < 576; i++) {
-      const y = pa.getY(i), t = (y + .035) / .55;
-      const ratio = (.34 + (.30 - .34) * t) / (.55 + (.30 - .55) * t);
+      // 2026-09-11 eased collar (buildRootFlare): 0.66 m tall, seated at
+      // 0.318 m, radius eased by (1 - t)^1.75 from 0.30 to 0.40 (ordinary) or
+      // 0.34 (tidal); the shared flute cancels in the ratio.
+      const y = pa.getY(i), t = Math.min(1, Math.max(0, (y + .012) / .66)), eased = Math.pow(1 - t, 1.75);
+      const ratio = (.30 + (.34 - .30) * eased) / (.30 + (.40 - .30) * eased);
       assert.equal(pb.getY(i), y, 'flare height/center/ground overlap unchanged');
       assert.ok(Math.abs(pb.getX(i) - pa.getX(i) * ratio) < 2e-6 && Math.abs(pb.getZ(i) - pa.getZ(i) * ratio) < 2e-6,
         'only approved lower flare taper narrows; existing radial rib deformation retained');
@@ -502,18 +523,28 @@ const shapes = [
   { cy: 3.30, rx: 3.85, ry: 1.15, rz: 3.45, trunkH: 2.2, n: 76 },
 ];
 // Reviewed woody-root orientation/seating only; old→new provenance is retained
-// in docs/WOODY-ROOT-ORIENTATION-CANDIDATE.md. Tidal geometry remains current.
+// in docs/WOODY-ROOT-ORIENTATION-CANDIDATE.md (ridge successor 2026-09-11).
+// Tidal geometry remains current.
 const ordinaryWoody = [
-  '0fc02117cfbf74e33ddd3d04e223abc726440f353e06afeab574525cac5cdd08',
-  '7eb7c8a96e48d99d0936f55e6c9bed80a06b70519be21034fcd3fdf56b6554a2',
-  'c18bf2827f158293076fceabfa77025c3ee299c9273c1d384e39ced0d0b4ff7f',
+  '8512b36537903564fed4eb587ca2d680e5a1cc2e839bb92810706aceb3fa5b09',
+  'd3bd284034c8132b1fdbff7190b4a66b43c9207a78654abca72e39748b9d2973',
+  'ab1efa67f1aa4605494876522e5bca85b043dedf308c20e96ae322c112a4001b',
+];
+// Tidal stilt trunks keep their reviewed bent-cone budget (2026-09-11).
+const TIDAL_BUDGET = [
+  { vertices: 1368, indices: 0, bytes: 65664 },
+  { vertices: 1428, indices: 0, bytes: 68544 },
+  { vertices: 1488, indices: 0, bytes: 71424 },
 ];
 globalThis.__tidalRng = [];
 for (let k = 0; k < 3; k++) {
   const oldRng = mulberry32(2242 + k * 7), newRng = mulberry32(2242 + k * 7);
   const old = buildBroadleafTrunk(oldRng, shapes[k]), actual = buildBroadleafTrunk(newRng, shapes[k], true);
   assert.equal(hash(old), ordinaryWoody[k], 'ordinary trunks retain reviewed outward/downward woody-root geometry');
-  assert.deepEqual(budget(actual), budget(old));
+  // 2026-09-11: ordinary trunks moved to low ridge roots under an eased collar
+  // (32 vertices per root); tidal stilt roots keep their reviewed bent cones,
+  // so the tidal budget is pinned on its own instead of mirroring ordinary.
+  assert.deepEqual(budget(actual), TIDAL_BUDGET[k], 'tidal stilt trunk budget unchanged');
   assert.equal(newRng(), oldRng(), 'five existing roots consume exactly the same seeded stream');
   for (const a of Object.values(actual.attributes)) assert.ok(a.array.every(Number.isFinite));
   checkRootGeometry(actual);
@@ -544,9 +575,19 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(after.preRoad.obstacles, 4364, 'original obstacle admission before road clearance');
   assert.equal(after.concealers.length, before.concealers.length);
   assert.deepEqual(after.rng, before.rng, 'actual entire production RNG call counts and tails unchanged');
-  assert.deepEqual(after.geometry.map(r => [r.id, r.budget]), before.geometry.map(r => [r.id, r.budget]));
+  // 2026-09-11: ordinary trunks carry ten-quad ridge roots while tidal stilt
+  // trunks keep their reviewed cones, so each near willow trunk costs exactly
+  // five roots x (72 - 60) expanded vertices more than its non-tidal control.
+  const tidalTrunk = r => r.id.startsWith('near/willow/') && r.id.endsWith('/trunk');
+  assert.deepEqual(after.geometry.filter(r => !tidalTrunk(r)).map(r => [r.id, r.budget]),
+    before.geometry.filter(r => !tidalTrunk(r)).map(r => [r.id, r.budget]));
   after.geometry.forEach((r, i) => {
-    if (!r.id.includes('/willow/') || !r.id.endsWith('/trunk')) assert.equal(r.hash, before.geometry[i].hash);
+    assert.equal(r.id, before.geometry[i].id);
+    if (tidalTrunk(r)) {
+      assert.equal(r.budget.vertices - before.geometry[i].budget.vertices, 60, r.id + ': reviewed cone stilt roots over ridge control');
+      assert.equal(r.budget.bytes - before.geometry[i].budget.bytes, 60 * 48, r.id + ': same per-vertex layout');
+      assert.equal(r.budget.indices, before.geometry[i].budget.indices);
+    } else if (!r.id.includes('/willow/') || !r.id.endsWith('/trunk')) assert.equal(r.hash, before.geometry[i].hash);
   });
   const receipts = after.group.userData.tidalMangroves;
   assert.equal(receipts.reduce((n, r) => n + r.accepted, 0), 128, 'all 128 explicitly authored tidal sites must actually place');

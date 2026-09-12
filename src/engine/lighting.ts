@@ -184,12 +184,11 @@ const SHADOW_BIAS = -0.0002;
 // clear step against lit road after ACES. Cascade 1 follows (2.6 → 2.3) to
 // keep the softness ladder monotonic without a band-to-band jump.
 const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
-// Neutral values retain the CSM fade-visibility instrumentation used by the
-// shader compatibility checks without applying the old custom ambient crush.
-// Shadowed road/foliage pixels now keep Three's standard hemisphere and IBL
-// contribution instead of collapsing into near-black patches.
-const SHADOW_AMBIENT_DIM = [1.0, 1.0, 1.0];
-const SHADOW_AMBIENT_SPEC_DIM = 1.0;
+// Sun occlusion also removes part of the open-sky and bounce contribution.
+// Keep that older cool shadow response: it grounds tanks, trees and buildings
+// at gameplay distance without lowering the scene's ambient light globally.
+const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
+const SHADOW_AMBIENT_SPEC_DIM = 0.55;
 // r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
 // as far as 14 texels. Five samples cannot cover that disk, so wide shadows
 // resolved as a visible hatch/cross pattern and crawled because its rotation

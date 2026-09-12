@@ -247,8 +247,11 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     dynMin: 1.0,
     aoScale: 0,
     bloomScale: 0.5,
-    shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
-    shadowMaxFar: DESKTOP_SHADOW_MAX_FAR,
+    // Concentrate the same shadow texels into the older Low range. This keeps
+    // nearby vehicles, trees and buildings crisp while the higher tiers retain
+    // the current 520 m coverage.
+    shadowMapSizes: [2048, 2048, 1024, 1024],
+    shadowMaxFar: 380,
   },
   // Mobile quick-switch levels keep the constrained texture budget fixed —
   // live switching cannot (and should not) rebuild the world's texture

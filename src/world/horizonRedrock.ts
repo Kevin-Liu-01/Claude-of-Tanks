@@ -89,7 +89,11 @@ export function seatHorizonTerrainSeam(ring: CanyonRing, ground: CanyonGround): 
  * open. Lowering only a skyline row would leave another mountain in the way. */
 export function shapeRedrockOutland(ring: CanyonRing, ground?: CanyonGround): void {
   const columns = ring.heights.length / ring.rows.length;
-  if (ground) refineCanyonSeam(ring, columns, ground);
+  // The restored 1049e4e mesa rows start their first landform only ~70 m
+  // outside the playable rim, so the four square corners must be seam
+  // stations themselves; a chord across a corner otherwise climbs 3 m above
+  // the conditioned ground before the next row is reached.
+  if (ground) refineCanyonSeam(ring, columns, ground, true);
   ring.maxHeight = 1;
   for (let index = columns; index < ring.heights.length; index++) {
     const offset = index * 3;
