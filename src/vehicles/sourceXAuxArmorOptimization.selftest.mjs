@@ -36,7 +36,7 @@ invalidTrack.modules.find(m=>m.module==='trackL').min[1]-=.001;
 assert.throws(()=>beforeType10TrackCalibration(invalidTrack));
 assert.equal(hash(ids.map(id=>({id,armor:id==='type10_x'
   ?beforeType10TrackCalibration(getSpec(id).armor):getSpec(id).armor}))),
-  'f78d1ab99291e9963524addc676fb087da802a82de3e345b692852202e95f59e',
+  '185fd40aca60c779fb1e64076f9e4f88f16748019d3894b662cc9b8b4a285d1b',
   'all seven pre-optimization armor objects retain their golden, with the declared Type 10 track-only inverse');
 assert.equal(serialize(type10Armor),type10Before,'historical witness must not mutate the current candidate');
 

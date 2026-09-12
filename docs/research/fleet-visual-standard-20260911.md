@@ -102,3 +102,13 @@ stowage on modern hulls, and open or thin machine-gun and mast stock.
   `arieteXSuppliedEquipment.ts`), and the Leopard 2A6 X / AMX-40 X references
   show bare hatches. No guns are invented; the remaining tank items are the
   K1A1 X tire split, KF51 proportions and Merkava louvers.
+
+## Addendum 2026-09-12 (c) — casemate polygon outliers
+
+- **ISU-152 / ISU-122S.** Both casemates drew 156–165k triangles against a
+  fleet HIGH median of 82k. Two-thirds of the excess was the painted wheel
+  cover disc: a 44-segment hemisphere flattened to 5 mm, repeated on twelve
+  wheels. At 24 segments the stamped-disc paint classes (hub valley, pressed
+  ring, six-spoke shading, rim crescent) still resolve and the discs read the
+  same on the contact sheet; isu152 165k → 149k, isu122s 156k → 140k. The
+  ISU-122S mantlet "pot" keeps its certified 96×48 lattice (r10 terrace fix).

@@ -2645,7 +2645,10 @@ function buildISU152(P: CasemateBuilderPort): void {
           P.add('hullCloth', paintFlat(cylX(0.285, 0.024, 26), 0.935, 0.018), s * 1.253, 0.36, wz); // cover disc (buries spokes)
           {
             const ph6 = 6 * (wz * 2.1 + 0.52);
-            const dg = KIT.sph(0.278, 44, Math.PI / 2);
+            // Polygon budget 2026-09-12: 24 segments keep the stamped-disc paint
+            // legible (radial crescent/ring classes) at a third of the 44-segment
+            // cost; twelve discs made the ISU casemates the fleet's outliers.
+            const dg = KIT.sph(0.278, 24, Math.PI / 2);
             dg.scale(1, 0.005 / 0.278, 1);
             dg.computeVertexNormals();
             // (amplitudes halved vs the first cut: the ref wheel face is a
@@ -5843,7 +5846,8 @@ function buildISU122S(P: CasemateBuilderPort): void {
         // dressing inside the track band x-extent like the cover it rides.
         {
           const ph6 = 6 * (wz * 2.1 + 0.52);
-          const dg = KIT.sph(0.281, 44, Math.PI / 2);
+          // Polygon budget 2026-09-12: 24 segments (see the ISU-152 cover disc).
+          const dg = KIT.sph(0.281, 24, Math.PI / 2);
           dg.scale(1, 0.005 / 0.281, 1);
           dg.computeVertexNormals();
           paintVerts(dg, (xl, yl, zl) => {
