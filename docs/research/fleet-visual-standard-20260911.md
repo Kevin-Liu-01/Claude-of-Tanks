@@ -170,3 +170,27 @@ classes scores 35/41 (fleet-wide 67/162). The six misses:
   95.7, plan 99.1 / 99.0, front 97.8 / 96.3, turret 95.2 / 94.4 — every
   row above the exemplar bar. No proportion change is made; the low, far-
   back turret is what the reference carries.
+
+## Addendum 2026-09-12 (g) — fleet release gate for the record
+
+`tank-standard-check --gate` over the 37 registered X classes plus fv510_milan,
+isu152 and isu122s (fresh oracles linked): the geometry gate passes 36/36
+registered rows this run (fleet ledger 68/162), worst merkava4_x at 92/92;
+30/37 pass every machine-checkable gate. The seven misses are identical on
+the pre-batch tree (23eaeba24, same cells, same clip counts), so none is a
+regression of this pass:
+
+| class | miss | standing |
+|---|---|---|
+| t72b3m_x | 268 top-scan hole cells at x ±1.86 (shoulder channel) | receipt-protected source decision: `t72b3mXSideMounts.selftest` asserts the shoulder channel stays open air ("continuity conflicts remain explicit"). Closing it is an owner call: sealed-hull scan vs source-faithful open channel. |
+| ariete_c1_x | 3 hole cells at (−0.01, −3.44); mg0 | empty port-hatch fork is the recorded source decision (`arieteXSuppliedEquipment.ts`); the census counts KIT.fittings markers only |
+| chieftain5_x | mg0 | the roof gun is hand-authored (`chieftain5XPhotoDraft.ts` sourceMachineGun), so the fittings census reads zero; migrate to KIT.fittings or carry a packet justification |
+| chieftain_mk10_x | 1 hole cell at (1.86, −0.20) | pre-existing, below any visible size |
+| fv510_milan | procedural-only; clip 379/626 + sweep 1142/617 | pre-existing (fv510 base registration also scores 0) |
+| isu152 / isu122s | clip 158/0 + 2029/585 and 0/0 + 2004/2859; mg0 | pre-existing casemate clip; no MG is authored (a DShK would be historical on late ISU-152s — owner call) |
+
+The release check itself stops at step 1 when any `--gate` row misses, so the
+full pipeline (fidelity boards, anatomy, module probes, `npm test`,
+`build:private`) was run and passed today for k1a1_x, merkava4_x and
+merkava3d_x on the final tree; every other class kept the release run of the
+batch that last changed it.
