@@ -53,8 +53,10 @@ export default {
   vegetation: {
     species: ['spruce', 'fir', 'birch'], clusterMix: [['spruce', 0.58], ['fir', 0.32], ['birch', 0.10]],
     loneMix: [['spruce', 0.50], ['fir', 0.30], ['birch', 0.20]], rimMix: [['spruce', 0.66], ['fir', 0.29], ['birch', 0.05]],
-    clusterCount: 86, loneCount: 124, rimCount: 132, grassDensity: 0.78,
-    bushCount: 0.8, bushSpecies: 'spruce',
+    // map pass 2026-09-12: the harbour terraces read as smooth lawn; dwarf
+    // spruce scrub and more coastal rock give the slopes a fjord texture.
+    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.78,
+    bushCount: 1.15, bushSpecies: 'spruce',
   },
   props: {
     plan: ['lighthouse', 'fishery', 'netyard', 'depot', 'logcabin', 'alpine',
@@ -79,7 +81,7 @@ export default {
     ],
     buildingLat: [11, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
     well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
-    rocks: 245, outcrops: 42, craters: 54, rubblePiles: 18, hedgehogs: 14,
+    rocks: 330, outcrops: 60, craters: 54, rubblePiles: 18, hedgehogs: 14,
     sandbagLines: 16, tankWrecks: { era: 'modern', count: 5, debris: true,
       ids: ['leo2a7v', 't90a', 'cv90', 'strv122', 'marder1a3'] },
     inhabit: {

@@ -109,11 +109,14 @@ export default {
     clusterMix: [['pine', 0.48], ['cedar', 0.32], ['oak', 0.20]],
     loneMix: [['pine', 0.30], ['cedar', 0.25], ['oak', 0.25], ['palm', 0.20]],
     rimMix: [['cedar', 0.48], ['pine', 0.37], ['oak', 0.15]],
-    clusterCount: 34,
-    loneCount: 88,
+    // map pass 2026-09-12: the pasture between the strand and the crofts read
+    // as an empty lawn from the establishing shot; gorse/marram scrub, more
+    // windswept lone trees and grey shore boulders close the foreground.
+    clusterCount: 42,
+    loneCount: 116,
     rimCount: 70,
     grassDensity: 0.85,
-    bushCount: 0.9,
+    bushCount: 1.25,
     bushSpecies: 'oak',
     grassTexTone: (h: number, s: number, l: number) => [0.155, clamp01(s * 0.8), clamp01(l * 1.02 + 0.04)],
     tuftTone: (h: number, s: number, l: number) => [0.145, 0.26, clamp01(l * 0.92 + 0.08)],
@@ -175,7 +178,7 @@ export default {
       [-320, -20, -258, -20, 2],
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    haystacks: 8, rocks: 200, outcrops: 22, craters: 30, rubblePiles: 0,
+    haystacks: 14, rocks: 262, outcrops: 30, craters: 30, rubblePiles: 0,
     // DESTRUCTIBLES r1: modern hulks on the shore road (baked roster tanks)
     // + landing-defense dressing (hedgehog obstacles, sandbag lines)
     tankWrecks: {
@@ -205,7 +208,7 @@ export default {
     // soft coastal uplands ringing the bay, heavily hazed so the wall melts
     // toward the bright maritime sky instead of boxing the sea in
     baseHex: 0x5b6a50, amp: 0.75, style: 'rolling', treeline: 0.90, treelineLayers: 2,
-    forestHex: 0x3d5539, rockHex: 0x757a6c, haze: 1.25, grain: 0.8,
+    forestHex: 0x3d5539, rockHex: 0x757a6c, haze: 1.08, grain: 0.8,
     seaOpening: { azimuthDeg: 90, widthDeg: 118, level: -4.0, colorHex: 0x8b9795 },
   },
 

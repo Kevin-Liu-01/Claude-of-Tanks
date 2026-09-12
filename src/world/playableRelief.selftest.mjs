@@ -9,6 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {getMapConfig,MAP_IDS} from './maps/index.ts';
 import {createLayout,sampleLandformHeight} from './terrain.ts';
 import {preparePlayableRelief,samplePlayableRelief} from './playableRelief.ts';
+import {historicalMapPassDressingInput} from './mapPassDressing.test-support.mjs';
 
 const base='6c3aaaf31567b0f6703c0b83c4e67ef04db7390b',root=fileURLToPath(new URL('../../',import.meta.url));
 const oldSource=p=>execFileSync('git',['show',`${base}:${p}`],{cwd:root,encoding:'utf8'});
@@ -50,7 +51,7 @@ const historicalBadlands=(await import(badlandsURL)).default;
 for(const [id,file]of selected){
   const url=new URL(`./maps/${file}.ts`,import.meta.url).href+'?relief-original';
   ports.set(url,stripTypeScriptTypes(oldSource(`src/world/maps/${file}.ts`)));
-  const old=(await import(url)).default,cfg=originalExitConfig(getMapConfig(id));
+  const old=(await import(url)).default,cfg=historicalMapPassDressingInput(originalExitConfig(getMapConfig(id)),assert);
   const normalized={...cfg,terrain:{...cfg.terrain,landforms:cfg.terrain.landforms.map(stripRelief)}};
   if(id==='alpine'){
     // 2026-09-11 restored the 1049e4e Alpine horizon bands (owner direction).

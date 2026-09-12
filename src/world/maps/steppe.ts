@@ -75,7 +75,7 @@ export default {
     loneCount: 30,
     rimCount: 34,
     grassDensity: 1.1,
-    bushCount: 0.55,
+    bushCount: 0.72,
     bushSpecies: 'oak',
     // planted WINDBREAK LINES (vegetation.ts belts, maps r1): field-boundary
     // rows that read as the steppe's signature man-made geometry and serve
@@ -137,7 +137,7 @@ export default {
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // the steppe's dressing IS hay + stone: bale silhouettes on every fold
-    haystacks: 34, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
+    haystacks: 44, rocks: 230, outcrops: 34, craters: 42, rubblePiles: 0,
     // Legacy-map quality backport: modern hulks scattered on the open
     // plain (baked roster tanks, paired duel beats), tank-trap lines
     tankWrecks: {
@@ -166,7 +166,7 @@ export default {
     // low, endless: the ring must whisper, not wall — smallest amp in the
     // roster + heavy dust haze so the plain reads as if it continues forever
     baseHex: 0x77704a, amp: 0.65, style: 'rolling', treeline: 0.82,
-    forestHex: 0x565232, rockHex: 0x7d7663, haze: 1.25, grain: 0.6,
+    forestHex: 0x565232, rockHex: 0x7d7663, haze: 1.08, grain: 0.6,
   },
 
   sky: {

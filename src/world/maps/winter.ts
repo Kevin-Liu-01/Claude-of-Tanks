@@ -115,7 +115,7 @@ export default {
     grassDensity: 0.07,
     grassTexTone: (h: number, s: number, l: number) => [0.105, 0.10, clamp01(l * 1.0 + 0.36)], // rimed straw
     tuftTone: (h: number, s: number, l: number) => [0.11, 0.07, clamp01(l * 0.9 + 0.40)],
-    bushCount: 0.15,
+    bushCount: 0.28, // map pass 2026-09-12: bare birch scrub breaks the empty snowfield
     // pine scrub, not birch twig-balls: the dark leafless bush scatter read
     // as speckle noise against the snow in establishing shots
     bushSpecies: 'spruce',
@@ -227,7 +227,7 @@ export default {
     // the establishing camera picks up drifted rocks/stack silhouettes too
     // r5 terrain_environment: craters 22 -> 36 — battle scarring reads
     // LOUDEST on snow (dark pits on white); the map carried almost none
-    haystacks: 12, rocks: 190, outcrops: 19, craters: 36, rubblePiles: 0,
+    haystacks: 12, rocks: 232, outcrops: 24, craters: 36, rubblePiles: 0,
     // Legacy-map quality backport: snow-bound modern hulks (the
     // snow-cap shader dusts them like every prop), frozen supply columns
     tankWrecks: {

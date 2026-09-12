@@ -175,7 +175,7 @@ export default {
     // r7: 0.9 -> 0.78 — thins the isolated mid-field scrub dots (each casts a
     // hard shadow speck at establishing distance) while the clump-gated wadi
     // thickets keep their density
-    bushCount: 0.92, // r4: more wadi scrub — mid-map emptiness critique
+    bushCount: 1.1, // r4: more wadi scrub — mid-map emptiness critique (map pass 2026-09-12: denser)
     bushSpecies: 'acacia',
     palettes: {
       oak: { // r7: sun-bleached sage scrub — the r6 olive still bottomed out
@@ -270,7 +270,7 @@ export default {
     // r4: rocks 210 -> 275, outcrops 24 -> 36, craters 30 -> 48, wrecks 5 ->
     // 7 — the critique's "hundreds of meters of empty sand" needs mid-scale
     // props, not just the new sandMacro albedo fields
-    haystacks: 0, rocks: 275, outcrops: 36, craters: 48,
+    haystacks: 0, rocks: 320, outcrops: 44, craters: 48,
     // r6 terrain_environment: rubble around the adobe village — the
     // settlement read as "~10 bare boxes on empty sand" (critique); collapsed
     // mud-brick piles knit the compounds into a lived-in, fought-over block

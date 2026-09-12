@@ -64,7 +64,7 @@ export default {
     species: ['spruce', 'fir', 'pine'], clusterMix: [['spruce', 0.62], ['fir', 0.28], ['pine', 0.10]],
     loneMix: [['spruce', 0.52], ['fir', 0.30], ['pine', 0.18]], rimMix: [['spruce', 0.70], ['fir', 0.25], ['pine', 0.05]],
     clusterCount: 92, loneCount: 146, rimCount: 152, grassDensity: 0.36,
-    bushCount: 0.48, bushSpecies: 'spruce',
+    bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields
   },
   props: {
     plan: ['rangerlodge', 'logcabin', 'chapel', 'alpine', 'depot', 'onionchurch',

@@ -25,25 +25,33 @@ const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
 // sampler preserves seeded vegetation; only newly unsafe road/slope sites
 // are excluded. Props use the completed physical roads. Exact census deltas
 // are retained in docs/research/launch-collision-refresh-20260911.md.
+// 2026-09-12 map pass (native recapture of nine redressed maps, dev server +
+// agent-browser session, saltwind re-captured after a page reload with an
+// identical shard): bush/rock/outcrop/lone-tree/haystack counts rose on
+// coastal, fjord, urban, saltwind, steppe, alpine, winter, airfield and
+// desert. Seeded placement streams shift, so obstacle/collider counts move in
+// both directions; concealers grow where bush pools were not already
+// saturated (steppe keeps its 30 lone trees: 40 planted a grove on the
+// establishing-shot pose). Exact census, no tolerance.
 const roadCompletionCensus = {
   verdant: [6501, 6250, 6763],
-  desert: [2381, 2337, 1823],
-  winter: [5085, 4870, 4281],
-  urban: [3590, 5302, 2399],
-  coastal: [3308, 3103, 2648],
+  desert: [2449, 2405, 2639],
+  winter: [5143, 4928, 4295],
+  urban: [3966, 5678, 3409],
+  coastal: [3954, 3743, 3863],
   autumn: [6085, 5811, 6261],
-  steppe: [2234, 1950, 1392],
+  steppe: [2244, 1950, 1415],
   railyard: [2715, 2554, 1973],
   // playable-relief-collision-r1.8y4kRZ: native two-map terrain recapture;
   // unchanged seeded rejection rules alter accepted trees/props, not tolerances.
   frontier: [7381, 7120, 7538],
-  fjord: [6346, 6187, 5572],
+  fjord: [6438, 6279, 6367],
   delta: [7085, 6844, 8491],
   // redrock-derived-refresh-r1.p545nm: native canyon recapture. Unchanged
   // terrain-aware placement rules reject different props/trees on steep walls.
   badlands: [2668, 2493, 1698],
   monsoon: [9273, 9031, 11088],
-  alpine: [8406, 8219, 7465],
+  alpine: [8406, 8219, 7481],
   caldera: [4673, 4568, 3568],
   foundry: [3947, 3786, 2938],
   ruinspires: [2823, 5139, 1159],
@@ -60,7 +68,7 @@ const roadCompletionCensus = {
   copper_mesa: [2550, 2369, 1809],
   // The shared terrain exclusion now follows the actual hardstand rectangle
   // plus its shoulder; the airfield configuration itself is unchanged.
-  airfield: [3163, 3138, 2739],
+  airfield: [3163, 3138, 2764],
   // Native19e03d36b: the authored spring contour changes terrain-aware
   // vegetation/prop acceptance; this is the exact captured census.
   oasis: [2486, 2270, 1888],
@@ -68,7 +76,7 @@ const roadCompletionCensus = {
   orchard: [4399, 4154, 4454],
   longleaf: [5634, 5422, 6154],
   mangrove: [4919, 4741, 5666],
-  saltwind: [3347, 3156, 2723],
+  saltwind: [3347, 3156, 3582],
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
   reservoir: [6095, 5890, 6620],
 };

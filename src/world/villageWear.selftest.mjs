@@ -1,6 +1,7 @@
 import { historicalRoadHeightField } from './roadHistoryTestOracle.mjs';
 import { originalExitConfig } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
+import { historicalMapPassDressingInput } from './mapPassDressing.test-support.mjs';
 import { createHash } from 'node:crypto';
 import { createHeightField, mulberry32, selectTerrainLandformMask } from './terrain.ts';
 import { historicalMaskTexture as makeMaskTexture } from './roadRutHistoryTestOracle.mjs';
@@ -82,6 +83,8 @@ function historicalAlpineHorizonInput(cfg) {
   return { ...cfg, horizon: { ...cfg.horizon, treeline: 0.64, snowline: 0.42 } };
 }
 function originalConfig(cfg) {
+  // 2026-09-12 map pass: dressing/haze leaves never feed terrain wear.
+  cfg = historicalMapPassDressingInput(cfg, assert);
   if (cfg.id === 'badlands') return historicalBadlandsInput(cfg);
   if (cfg.id === 'alpine') return historicalAlpineHorizonInput(historicalPlayableReliefInput(cfg));
   if (cfg.id === 'frontier') return historicalPlayableReliefInput(cfg);

@@ -1,4 +1,5 @@
 import { historicalRoadTerrainSource } from './roadHistoryTestOracle.mjs';
+import { historicalMapPassDressingSource } from './mapPassDressing.test-support.mjs';
 import { originalExitConfig, historicalAuthoredExitSource } from '../../tools/road-authored-exit-fixture.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -33,7 +34,8 @@ function historicalAlpineHorizonSource(source, file) {
 }
 for (const file of mapFiles) if (file !== 'badlands.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
-  assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(read('src/world/maps/' + file), file), old('src/world/maps/' + file), id),
+  assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
+    historicalMapPassDressingSource(read('src/world/maps/' + file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

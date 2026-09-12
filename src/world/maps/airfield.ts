@@ -38,7 +38,7 @@ export default {
   vegetation: {
     species: ['pine', 'birch', 'poplar'], clusterMix: [['pine', 0.6], ['birch', 0.25], ['poplar', 0.15]],
     loneMix: [['birch', 0.4], ['pine', 0.4], ['poplar', 0.2]], rimMix: [['pine', 0.65], ['birch', 0.2], ['poplar', 0.15]],
-    clusterCount: 26, loneCount: 42, rimCount: 80, grassDensity: 0.72, bushCount: 0.6, bushSpecies: 'birch',
+    clusterCount: 26, loneCount: 42, rimCount: 80, grassDensity: 0.72, bushCount: 0.82, bushSpecies: 'birch', // map pass 2026-09-12: perimeter scrub (tree/rock counts at the first-pass ceilings)
     avoid: [{ x: 0, z: -300, r: 92 }, { x: 0, z: -150, r: 92 }, { x: 0, z: 0, r: 92 }, { x: 0, z: 150, r: 92 }, { x: 0, z: 300, r: 92 }],
   },
   props: {

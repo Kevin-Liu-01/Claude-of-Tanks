@@ -165,7 +165,7 @@ export default {
   horizon: {
     // industrial hinterland: low escarpment under smoke-grey haze
     baseHex: 0x4f554a, amp: 0.8, style: 'escarpment', treeline: 0.90,
-    forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.25, grain: 0.8,
+    forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.06, grain: 0.8,
   },
 
   sky: {

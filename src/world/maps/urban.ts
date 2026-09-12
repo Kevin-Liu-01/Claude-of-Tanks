@@ -100,12 +100,14 @@ export default {
     clusterMix: [['poplar', 0.42], ['oak', 0.38], ['cypress', 0.20]],
     loneMix: [['poplar', 0.48], ['oak', 0.35], ['cypress', 0.17]],
     rimMix: [['poplar', 0.38], ['cypress', 0.34], ['oak', 0.28]],
-    clusterCount: 14,
-    loneCount: 40,
+    // map pass 2026-09-12: allotment and lane-edge trees so the town does not
+    // sit on a bare lawn (establishing shot); hedges thicken below.
+    clusterCount: 22,
+    loneCount: 68,
     rimCount: 72, // r7: fuller rim forest under the serrated backdrop tree line
     grassDensity: 0.5,
     tuftTone: (h: number, s: number, l: number) => [0.185, clamp01(s * 0.7), clamp01(l * 0.92)],
-    bushCount: 0.85, // r6: garden hedges/shrubs in the yards and block edges
+    bushCount: 1.2, // r6: garden hedges/shrubs in the yards and block edges (map pass 2026-09-12: denser)
     bushSpecies: 'oak',
     parks: [ // the hill-park belts where town trees are allowed
       { x: -255, z: -170, r: 95 }, { x: 260, z: -190, r: 85 },
@@ -220,7 +222,7 @@ export default {
     // r7: treeline 0.5 -> 0.92 — kills the bald-ramp band above the forest
     // cutoff (see verdant.js note)
     baseHex: 0x525c50, amp: 0.85, style: 'escarpment', treeline: 0.92,
-    forestHex: 0x323f30, haze: 1.15,
+    forestHex: 0x323f30, haze: 1.0,
   },
 
   sky: {

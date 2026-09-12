@@ -11,6 +11,7 @@ import { createHeightField, makeSeaLayer } from './terrain.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { resolveDeviceTier } from '../engine/quality.ts';
 import { historicalShorelineConfig, historicalPaletteConfig } from './shorelineHistoryTestOracle.mjs';
+import { historicalMapPassDressingInput } from './mapPassDressing.test-support.mjs';
 
 // Real production imports and native Canvas2D only. This tests the returned
 // packed pixels, including premultiplied backing-store quantization; it does
@@ -169,7 +170,7 @@ function verifyHistoricalConfigs(resolve) {
     'current Foundry palette remains the published ironworks selection');
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
-    const historical = historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(resolve(id)))))));
+    const historical = historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(resolve(id), assert)))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
   assert.equal(hash(JSON.stringify(unchangedMaps)),

@@ -50,7 +50,10 @@ export default {
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
-    clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 0.86, bushSpecies: 'acacia', clusterScrub: 1.5,
+    // map pass 2026-09-12: limestone-terrace identity — scrub, pale rock and
+    // outcrops instead of a green pasture (establishing shot read as generic);
+    // tree and rock counts stay at the environmentExpansion first-pass ceilings.
+    clusterCount: 34, loneCount: 52, rimCount: 62, grassDensity: 0.68, bushCount: 1.3, bushSpecies: 'acacia', clusterScrub: 1.9,
   },
   props: {
     sourcedPalette: 'coastal',
