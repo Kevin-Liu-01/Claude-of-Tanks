@@ -26,6 +26,10 @@ export const MAP_PASS_DRESSING_LEAVES = {
   ],
   "coastal.ts": [
     [
+      "    wornDirtStrength: 0.32, // inland wear stays muted turf, not broad beach-sand islands (map pass 2026-09-12: back toward the reference breakup)",
+      "    wornDirtStrength: 0.22, // inland wear stays muted turf, not broad beach-sand islands"
+    ],
+    [
       "    // map pass 2026-09-12: the pasture between the strand and the crofts read\n    // as an empty lawn from the establishing shot; gorse/marram scrub, more\n    // windswept lone trees and grey shore boulders close the foreground.\n    clusterCount: 42,\n    loneCount: 116,",
       "    clusterCount: 34,\n    loneCount: 88,"
     ],
@@ -132,6 +136,7 @@ export const MAP_PASS_DRESSING_VALUES = {
     [['vegetation', 'clusterCount'], 42, 34], [['vegetation', 'loneCount'], 116, 88],
     [['vegetation', 'bushCount'], 1.25, 0.9], [['props', 'haystacks'], 14, 8],
     [['props', 'rocks'], 262, 200], [['props', 'outcrops'], 30, 22], [['horizon', 'haze'], 1.08, 1.25],
+    [['splat', 'wornDirtStrength'], 0.32, 0.22],
   ],
   fjord: [
     [['vegetation', 'loneCount'], 146, 124], [['vegetation', 'bushCount'], 1.15, 0.8],
@@ -141,7 +146,8 @@ export const MAP_PASS_DRESSING_VALUES = {
     [['vegetation', 'clusterCount'], 22, 14], [['vegetation', 'loneCount'], 68, 40],
     [['vegetation', 'bushCount'], 1.2, 0.85], [['horizon', 'haze'], 1.0, 1.15],
   ],
-  saltwind: [[['vegetation', 'bushCount'], 1.3, 0.86], [['vegetation', 'clusterScrub'], 1.9, 1.5]],
+  saltwind: [[['vegetation', 'bushCount'], 1.3, 0.86], [['vegetation', 'clusterScrub'], 1.9, 1.5],
+    [['splat', 'wornDirtStrength'], 0.32, 0.22]], // inherited from the coastal splat
   steppe: [
     [['vegetation', 'bushCount'], 0.72, 0.55],
     [['props', 'haystacks'], 44, 34], [['horizon', 'haze'], 1.08, 1.25],

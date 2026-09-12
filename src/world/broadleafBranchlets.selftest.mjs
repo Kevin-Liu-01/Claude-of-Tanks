@@ -117,8 +117,10 @@ const oldPainter = `export function makeLeafClusterTexture(rng: RandomSource, to
   ctx.globalCompositeOperation = 'source-over';
   return finishAlphaTexture(c, ctx, 70, 78, 40, true, tone);
 }`;
+// 2026-09-12 ground cover: makeGrassCardTexture blades widened to 70 % of the
+// original (see grassBladeShape.selftest); its frozen hash is repinned.
 const frozen = {
-  "makeGrassCardTexture": "653f9d9d287846f261f40a2e157d874fe0983474e2b660aa9ebb6a6e013a3cf0",
+  "makeGrassCardTexture": "ab93916a405c667c1741abe1f4e2346d54986e23b3807f9245375f80cbf47a19",
   "makeNeedleSprayTexture": "68cdefe51f646fe42a46ea2c858a07f1bfa0c56985d0c3b61fb39632788a7357",
   "makePalmFrondTexture": "36a339129927f9fef1e474625ce845aad7ab5ee74b1f3cd124a8a41ccbca1be1",
   "makeBirchLeafTexture": "da3c3add2eaf15d8ed13ac3b5441ad4b1caedb358d93a6c976d4281aa85c9a9b",

@@ -159,8 +159,11 @@ const TERRAIN_PLAN = {
   // maps r1 (ADDITIVE — new battlefields only; M stays procedural everywhere,
   // it carries the authored water/ice gloss response):
   coastal: {
-    // maritime meadow: grass pulled toward wind-cured dune sward
-    G: { set: 'grass', tint: [1.04, 0.99, 0.84], roughMul: 1.25 },
+    // maritime meadow: grass pulled toward wind-cured dune sward.
+    // 2026-09-12 visual restoration: the pale straw tint left the whole
+    // pasture reading as a bare yellow sheet against the 1049e4e shot; the
+    // sward is greener and darker again, still warmer than Verdant.
+    G: { set: 'grass', tint: [0.90, 0.92, 0.76], roughMul: 1.25 },
     // D doubles as the BEACH layer (the uSea shore apron + shoals sample it):
     // pale dry strand sand
     D: { set: 'sand', tint: [0.92, 0.87, 0.76], roughMul: 1.25 },

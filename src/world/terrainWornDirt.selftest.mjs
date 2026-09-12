@@ -88,7 +88,9 @@ function checkMapScope(resolve) {
     'map pass 2026-09-12: only Glacier Pass authors a snowy road shoulder');
   assert.equal(resolve('alpine').splat.shoulderDirt, .3);
   for (const id of MAP_IDS) {
-    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .22 : .84);
+    // map pass 2026-09-12: the coastal wear breakup returns toward the reference (.32,
+    // short of the .45 that opened beach-sand islands); Saltwind inherits the coastal splat.
+    assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .32 : .84);
   }
 }
 checkMapScope(getMapConfig);
