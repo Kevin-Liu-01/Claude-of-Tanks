@@ -112,3 +112,15 @@ stowage on modern hulls, and open or thin machine-gun and mast stock.
   ring, six-spoke shading, rim crescent) still resolve and the discs read the
   same on the contact sheet; isu152 165k → 149k, isu122s 156k → 140k. The
   ISU-122S mantlet "pot" keeps its certified 96×48 lattice (r10 terrace fix).
+
+## Release gate note (2026-09-12)
+
+`tank:release:check --gate` needs the registered comparison oracles on disk:
+the 61 community candidates under the shared checkout's
+`public/models/community-candidates/` plus the 30 X-fleet `*_x_source.glb`
+files, which live only in the `cot-fleet-bodywork-final-integration-20260908`
+worktree. Neither set is tracked (`.gitignore`), so a fresh worktree must link
+both into `public/models/community-candidates/` (per-file symlinks) before the
+geometry gate can score the exemplar bar; without them every X class reports
+"registered exemplar comparison oracle unavailable" and the gate fails at step
+one.

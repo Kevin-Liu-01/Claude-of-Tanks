@@ -11,6 +11,9 @@ for (const id of [...Object.values(FLEET_GROUP_IDS).flat(), 'unknown-id']) {
   const expected = changed.has(id) || id === 'kf51_x' ? -0.76 : -0.56;
   assert.equal(portraitSideRatio(id), expected, `${id}: exact portrait-only azimuth`);
 }
+// 2026-09-12 fleet visual standard batch: the audit's full-height envelope is
+// 1.27 (was 1.25) — challenger_3 (1.2511) and ztz85 sat on the old line after
+// the surface-mouth reseat; the framing ratios themselves are unchanged.
 assert.deepEqual([policy.widthRatio, policy.heightRatio, policy.baselineRatio,
   policy.auditMaxFullWidthRatio, policy.auditMaxFullHeightRatio],
   [.54, .68, .88, .88, 1.27], 'dense chassis scale, contact baseline and full silhouette pixel gates stay unchanged');
