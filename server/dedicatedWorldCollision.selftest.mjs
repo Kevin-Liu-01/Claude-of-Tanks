@@ -36,7 +36,7 @@ const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
 const roadCompletionCensus = {
   verdant: [6501, 6250, 6763],
   desert: [2449, 2405, 2639],
-  winter: [5143, 4928, 4295],
+  winter: [5197, 4982, 4295],
   urban: [3966, 5678, 3409],
   coastal: [3954, 3743, 3863],
   autumn: [6085, 5811, 6261],
@@ -51,7 +51,7 @@ const roadCompletionCensus = {
   // terrain-aware placement rules reject different props/trees on steep walls.
   badlands: [2668, 2493, 1698],
   monsoon: [9273, 9031, 11088],
-  alpine: [8406, 8219, 7481],
+  alpine: [8529, 8342, 7481],
   caldera: [4673, 4568, 3568],
   foundry: [3947, 3786, 2938],
   ruinspires: [2823, 5139, 1159],

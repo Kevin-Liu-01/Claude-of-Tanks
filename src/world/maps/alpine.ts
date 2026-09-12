@@ -88,7 +88,7 @@ export default {
     ],
     buildingLat: [11, 6], sideSkip: 0.12, maxSpread: 3.2,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
-    rocks: 275, outcrops: 54, craters: 66, rubblePiles: 20,
+    rocks: 330, outcrops: 72, craters: 66, rubblePiles: 20, // map pass 2026-09-12: exposed windward stone on the snowfields
     sandbagLines: 20, hedgehogs: 18,
     tankWrecks: { era: 'modern', count: 6, debris: true,
       ids: ['kf51', 'ariete', 'leo2a7v', 'cv90', 'strv122', 'leclerc_xlr'] },

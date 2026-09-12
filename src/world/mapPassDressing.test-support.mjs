@@ -14,6 +14,10 @@ export const MAP_PASS_DRESSING_LEAVES = {
     [
       "    bushCount: 0.62, bushSpecies: 'spruce', // map pass 2026-09-12: exposed stone/scrub on the snowfields",
       "    bushCount: 0.48, bushSpecies: 'spruce',"
+    ],
+    [
+      "    rocks: 330, outcrops: 72, craters: 66, rubblePiles: 20, // map pass 2026-09-12: exposed windward stone on the snowfields",
+      "    rocks: 275, outcrops: 54, craters: 66, rubblePiles: 20,"
     ]
   ],
   "coastal.ts": [
@@ -100,7 +104,7 @@ export const MAP_PASS_DRESSING_LEAVES = {
       "    bushCount: 0.15,"
     ],
     [
-      "    haystacks: 12, rocks: 232, outcrops: 24, craters: 36, rubblePiles: 0,",
+      "    haystacks: 12, rocks: 270, outcrops: 32, craters: 36, rubblePiles: 0,",
       "    haystacks: 12, rocks: 190, outcrops: 19, craters: 36, rubblePiles: 0,"
     ]
   ]
@@ -139,8 +143,8 @@ export const MAP_PASS_DRESSING_VALUES = {
     [['props', 'haystacks'], 44, 34], [['horizon', 'haze'], 1.08, 1.25],
   ],
   railyard: [[['horizon', 'haze'], 1.06, 1.25]],
-  alpine: [[['vegetation', 'bushCount'], 0.62, 0.48]],
-  winter: [[['vegetation', 'bushCount'], 0.28, 0.15], [['props', 'rocks'], 232, 190], [['props', 'outcrops'], 24, 19]],
+  alpine: [[['vegetation', 'bushCount'], 0.62, 0.48], [['props', 'rocks'], 330, 275], [['props', 'outcrops'], 72, 54]],
+  winter: [[['vegetation', 'bushCount'], 0.28, 0.15], [['props', 'rocks'], 270, 190], [['props', 'outcrops'], 32, 19]],
   airfield: [[['vegetation', 'bushCount'], 0.82, 0.6]],
   desert: [[['vegetation', 'bushCount'], 1.1, 0.92], [['props', 'rocks'], 320, 275], [['props', 'outcrops'], 44, 36]],
 };

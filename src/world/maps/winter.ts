@@ -227,7 +227,7 @@ export default {
     // the establishing camera picks up drifted rocks/stack silhouettes too
     // r5 terrain_environment: craters 22 -> 36 — battle scarring reads
     // LOUDEST on snow (dark pits on white); the map carried almost none
-    haystacks: 12, rocks: 232, outcrops: 24, craters: 36, rubblePiles: 0,
+    haystacks: 12, rocks: 270, outcrops: 32, craters: 36, rubblePiles: 0,
     // Legacy-map quality backport: snow-bound modern hulks (the
     // snow-cap shader dusts them like every prop), frozen supply columns
     tankWrecks: {
