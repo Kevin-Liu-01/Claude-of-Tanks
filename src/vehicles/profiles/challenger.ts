@@ -4474,8 +4474,11 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // leading road wheel before it rises to the existing front idler. The
       // rear contact returns to the source's -2.2 m departure station so the
       // gently reseated last wheel clears the rising shoes without moving the
-      // complete train toward the idler again.
+      // complete train toward the idler again. Fit every finite lower span to
+      // the live Hydrogas rims as well, so the belt and linked shoes stay
+      // seated when individual wheels compress or droop over terrain.
       trackW: 0.555, topY: 1.26, contactZF: 3.02, contactZR: -2.21,
+      fitLoadedRun: true,
       shoeRadialScale: 0.55,
       // The canonical family shoe keeps connector relief inside the one wrap.
       // §B8.1 NATIVE-TONE wheel countability (acceptance-flagged "wheels

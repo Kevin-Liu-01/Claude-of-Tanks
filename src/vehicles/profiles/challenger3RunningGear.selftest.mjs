@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { KIT } from '../tankFactoryCore.ts';
+import { rollerSuspensionFixtures } from '../returnRollerPhysicsTest.mjs';
 
 const IDS = ['challenger_3', 'challenger_3x'];
 const EXPECTED_WHEEL_ZS = [2.65, 1.74, 0.83, -0.08, -0.99, -1.90];
@@ -78,13 +80,64 @@ function upperShoeClearance(trackPads, receipt, wheelZ) {
   ));
 }
 
+function roadWheelCenters(roadWheels, side) {
+  const matrix = new THREE.Matrix4();
+  const center = new THREE.Vector3();
+  const result = [];
+  for (let index = 0; index < roadWheels.count; index += 1) {
+    roadWheels.getMatrixAt(index, matrix);
+    center.setFromMatrixPosition(matrix);
+    if (Math.sign(center.x) === side) result.push(center.clone());
+  }
+  return result;
+}
+
+function minimumLoadedCarrierClearance(band, wheels, receipt) {
+  const positions = band.geometry.getAttribute('position');
+  const radius = receipt.wheelR + receipt.trackTh / 2 + 0.001;
+  let minimum = Infinity;
+  for (let cell = 0; cell < receipt.loopPoints.length; cell += 1) {
+    const base = cell * 24;
+    const y0 = (positions.getY(base + 2) + positions.getY(base + 6)) / 2;
+    const z0 = (positions.getZ(base + 2) + positions.getZ(base + 6)) / 2;
+    const y1 = (positions.getY(base) + positions.getY(base + 8)) / 2;
+    const z1 = (positions.getZ(base) + positions.getZ(base + 8)) / 2;
+    for (const wheel of wheels) {
+      if (y0 >= wheel.y && y1 >= wheel.y) continue;
+      for (let step = 0; step <= 128; step += 1) {
+        const t = step / 128;
+        const z = z0 + (z1 - z0) * t;
+        const dz = z - wheel.z;
+        if (Math.abs(dz) >= radius) continue;
+        const y = y0 + (y1 - y0) * t;
+        const underside = wheel.y - Math.sqrt(radius * radius - dz * dz);
+        minimum = Math.min(minimum, underside - y);
+      }
+    }
+  }
+  return minimum;
+}
+
 for (const id of IDS) {
-  const tank = createTank(id, null, {
-    proceduralOnly: true,
-    quality: 'high',
-    camoSeed: 4242,
-    geometryReceipt: true,
-  });
+  const originalBuildRunningGear = KIT.buildRunningGear;
+  let runningGear;
+  KIT.buildRunningGear = (port, cfg) => {
+    const gear = originalBuildRunningGear(port, cfg);
+    runningGear = { port, cfg, gear };
+    return gear;
+  };
+  let tank;
+  try {
+    tank = createTank(id, null, {
+      proceduralOnly: true,
+      quality: 'high',
+      camoSeed: 4242,
+      geometryReceipt: true,
+      batchStatic: false,
+    });
+  } finally {
+    KIT.buildRunningGear = originalBuildRunningGear;
+  }
 
   try {
     const hull = tank.root.getObjectByName('rig_hull');
@@ -99,6 +152,8 @@ for (const id of IDS) {
       `${id}: exposes the shared animated wheel and track layers`);
     assert.deepEqual(receipt.wheelZs, EXPECTED_WHEEL_ZS,
       `${id}: retains the reviewed six-station Hydrogas cadence`);
+    assert.equal(receipt.fitLoadedRun, true,
+      `${id}: loaded track spans remain fitted to the live Hydrogas rims`);
     assert.deepEqual(uniqueInstanceAxis(roadWheels, 'z'), EXPECTED_WHEEL_ZS,
       `${id}: rendered road wheels use the reviewed stations`);
     assert.deepEqual(uniqueInstanceAxis(roadWheels, 'y'), [0.56],
@@ -146,6 +201,24 @@ for (const id of IDS) {
     );
     assert.ok(shoeHalfWidth - wheelHalfDepth >= 0.04 - EPSILON,
       `${id}: wheel faces remain seated inboard of the track shoes`);
+
+    for (const { name, sample } of rollerSuspensionFixtures(runningGear)) {
+      runningGear.gear.resetPose();
+      for (let tick = 0; tick < 180; tick += 1) {
+        runningGear.gear.conform({
+          pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0,
+        }, sample, 0, 0, 1 / 60);
+      }
+      runningGear.gear.update(0, 0, 1 / 60);
+      const leftClearance = minimumLoadedCarrierClearance(
+        hull.getObjectByName('gearTrackBandL'), roadWheelCenters(roadWheels, -1), receipt);
+      const rightClearance = minimumLoadedCarrierClearance(
+        hull.getObjectByName('gearTrackBandR'), roadWheelCenters(roadWheels, 1), receipt);
+      assert.ok(Number.isFinite(leftClearance) && Number.isFinite(rightClearance)
+        && Math.min(leftClearance, rightClearance) >= -2e-5,
+        `${id}: ${name} loaded carrier stays below every moving road-wheel rim`);
+    }
+    runningGear.gear.resetPose();
   } finally {
     tank.dispose();
   }
