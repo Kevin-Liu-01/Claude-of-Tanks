@@ -738,10 +738,14 @@ function makeTreeLineTexture(profileSeed: number): THREE.CanvasTexture {
     ctx.lineTo(w, base);
     ctx.lineTo(0, base);
     ctx.closePath();
+    // r9 (2026-09-12): a flatter crown gradient. The old pale top band
+    // (166,181,122) lit every distant grove from above and read as pale
+    // cut-outs standing on the ridges; the mean tone is unchanged so belt
+    // light and the flood colour below still match the face.
     const canopy = ctx.createLinearGradient(0, bandTop + 2, 0, base);
-    canopy.addColorStop(0, 'rgb(166,181,122)');
-    canopy.addColorStop(0.52, 'rgb(143,160,103)');
-    canopy.addColorStop(1, 'rgb(103,122,78)');
+    canopy.addColorStop(0, 'rgb(148,164,110)');
+    canopy.addColorStop(0.52, 'rgb(139,156,100)');
+    canopy.addColorStop(1, 'rgb(112,130,84)');
     ctx.fillStyle = canopy;
     ctx.fill();
     ctx.clip();

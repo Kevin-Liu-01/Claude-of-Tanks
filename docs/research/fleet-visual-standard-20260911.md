@@ -94,8 +94,11 @@ stowage on modern hulls, and open or thin machine-gun and mast stock.
   connectors. leclerc_x drawn triangles 141k → 121k; the gear-history witness
   authenticates the authored builder (near output byte-identical to the native
   link).
-- **Machine-gun review (open).** The X-fleet contact sheets show roof MGs
-  authored under family-specific names, so the QA camera misses several; a
-  fleet MG standard (one pintle/RWS kit per nation, camouflaged mounts) is the
-  next tank item, together with the K1A1 X tire split, KF51 proportions and
-  Merkava louvers.
+- **Machine-gun review (resolved as authored).** The X-fleet contact sheets
+  show roof MGs authored under family-specific names, so the QA camera misses
+  several; on inspection Challenger 1 X, Chieftain 5 X/Mk10 X, AMX-30 X and
+  KF51 X (MAG at the rear station) carry authored guns, the supplied Ariete
+  deliberately keeps its empty port-hatch fork (source decision recorded in
+  `arieteXSuppliedEquipment.ts`), and the Leopard 2A6 X / AMX-40 X references
+  show bare hatches. No guns are invented; the remaining tank items are the
+  K1A1 X tire split, KF51 proportions and Merkava louvers.
