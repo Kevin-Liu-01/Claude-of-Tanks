@@ -1,6 +1,6 @@
 {
  "id": "merkava4_x",
- "geoMin": 92.9,
+ "geoMin": 92,
  "requiredMinimum": 92,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,14 +9,14 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 92.8952591155254,
+ "rawGeoMin": 92.00354496062238,
  "rawComponents": {
-  "wholeCurves": 92.8952591155254,
+  "wholeCurves": 92.00354496062238,
   "dims": 100,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 92.9,
+  "wholeCurves": 92,
   "dims": 100,
   "floaters": 100
  },
@@ -858,7 +858,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 213581,
+     "area": 213534,
      "minX": 120,
      "minY": 229,
      "maxX": 970,
@@ -872,7 +872,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 212790,
+     "area": 212748,
      "minX": 120,
      "minY": 229,
      "maxX": 976,
@@ -886,7 +886,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 212958,
+     "area": 212928,
      "minX": 120,
      "minY": 229,
      "maxX": 976,
@@ -900,7 +900,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 213287,
+     "area": 213240,
      "minX": 120,
      "minY": 229,
      "maxX": 970,
@@ -914,7 +914,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 213856,
+     "area": 213809,
      "minX": 120,
      "minY": 229,
      "maxX": 970,

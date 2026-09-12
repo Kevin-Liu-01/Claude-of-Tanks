@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-12T12:56:32.177Z",
+ "generatedAt": "2026-09-12T14:26:51.230Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 68,
  "total": 162,
@@ -1577,6 +1577,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "merkava4_x",
+   "geoMin": 92,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "leo2a7v_x",
    "geoMin": 92.2,
    "requiredMinimum": 92,
@@ -1723,19 +1736,6 @@
     "dims": 99.1,
     "floaters": 100
    }
-  },
-  {
-   "id": "merkava4_x",
-   "geoMin": 92.9,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92.9,
-    "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "leo2a4m_x",

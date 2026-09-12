@@ -22,11 +22,24 @@ function unchanged(root){
 function meshes(root){const all=[];root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)all.push(m);});return all;}
 const sourceRows=[[.025,1.50723296],[.05,1.50031671],[.065,1.48656667],[.08,1.43735175],
  [.10,1.39538119],[.15,1.39702179],[.20,1.40047140],[.25,1.40598663],[.275,1.49047161],[.29,1.50920727]];
+// 2026-09-12 fleet visual standard: the rubber tire runs in to .2700 (the
+// source opening was .2971), so the two rolled-rim rows now sit under the
+// tire. The source dish is still built unchanged beneath the rubber: those
+// rows are witnessed through the tire and the rubber must be the first surface.
+const TIRE_INNER_R=.2700;
 function sourceWitnesses(root){
  const all=meshes(root);
  // Held-out whole-source first surfaces at the third axle, independently
  // measured on both mirrored source nodes. Not rings fed into the builder.
  for(const side of [-1,1])for(const[r,x]of sourceRows){const origin=new T.Vector3(side*1.6376,.3978-r,-.4408),direction=new T.Vector3(-side,0,0);
+  const face=root.getObjectByName(names[side<0?0:1]);
+  if(r>TIRE_INNER_R){
+   const first=new T.Raycaster(origin,direction,0,.8).intersectObjects(all,false)[0];
+   assert.equal(first?.object.name,'gearRoadWheelTires','fleet-standard rubber is the first surface over the rolled rim');
+   const dish=new T.Raycaster(origin,direction,0,.8).intersectObject(face,false)[0];
+   near(Math.abs(dish.point.x),x,.0006,'source-held-out rolled-rim surface is retained beneath the rubber');
+   continue;
+  }
   const hit=new T.Raycaster(origin,direction,0,.8).intersectObjects(all,false)[0];
   assert.equal(hit?.object.name,names[side<0?0:1],'literal steel dish is exposed before all other scene surfaces');
   near(Math.abs(hit.point.x),x,.0006,'source-held-out hub/bowl/rolled-rim surface');

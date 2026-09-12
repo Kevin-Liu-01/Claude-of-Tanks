@@ -81,12 +81,13 @@ function handrail(P: TankBuilderPort, frame: Frame, x: number, rear: number, fro
   for(const z of[rear,front])topPart(P,frame,'turretOpenLattice',box(.025,.17,.025),x,y-.082,z);
 }
 
-function cageBar(P: TankBuilderPort, frame: Frame, a: [number,number,number], b: [number,number,number], width = .025): void {
+type LatticeSlot='turretOpenLattice'|'turretOpenLatticeDark';
+function cageBar(P: TankBuilderPort, frame: Frame, a: [number,number,number], b: [number,number,number], width = .025, slot: LatticeSlot = 'turretOpenLattice'): void {
   const start=new THREE.Vector3(...a),end=new THREE.Vector3(...b),delta=end.clone().sub(start);
   const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.clone().normalize());
   const g=box(width,delta.length(),width).applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(rotation));
   const mid=start.add(end).multiplyScalar(.5);
-  topPart(P,frame,'turretOpenLattice',g,mid.x,mid.y,mid.z);
+  topPart(P,frame,slot,g,mid.x,mid.y,mid.z);
 }
 
 function chainCurtain(P: TankBuilderPort, frame: Frame, rear: number, half: number, railY: number, drop = .25): void {
@@ -95,7 +96,9 @@ function chainCurtain(P: TankBuilderPort, frame: Frame, rear: number, half: numb
   for(let i=0;i<23;i++){
     const x=-half+.06+i*(half*2-.12)/22;
     topPart(P,frame,'turretOpenLatticeDark',cylY(.009,drop,6),x,railY-drop/2-.015,rear);
-    topPart(P,frame,'turretOpenLattice',new THREE.SphereGeometry(.030,8,6),x,railY-drop-.033,rear);
+    // 2026-09-12: the balls are bare steel like their chains; painted spheres
+    // read as a white picket fence under the bustle on every study.
+    topPart(P,frame,'turretOpenLatticeDark',new THREE.SphereGeometry(.030,8,6),x,railY-drop-.033,rear);
   }
 }
 
@@ -459,21 +462,39 @@ function merkava4Basket(P: TankBuilderPort): void {
   const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number)=>topPart(P,MK4,slot,g,x,y,z);
   const backAt=(y:number)=>-3.626-(y-1.826)*.23;
   put('turretPaintedDetail',markFixedPaintedPanel(box(1.882,.009,.601),'merkava4-x-basket-floor','turretDetail'),.022,1.8225,-3.3205);
-  for(const y of[1.826,1.93,2.034,2.138,2.242,2.348]){
-    put('turretOpenLattice',box(1.86,.024,.024),.022,y,backAt(y));
+  // 2026-09-12 fleet visual standard: the real basket is a painted frame
+  // closed with dark welded mesh; six identical painted rails read as louvres
+  // on every study. The frame (floor and top rails, corner and door posts)
+  // stays painted at .024; the four intermediate courses are thin dark mesh
+  // strands and dark verticals close each panel about every 0.31 m. Every
+  // rail height, corner station and the basket floor are unchanged.
+  const Y0=1.826,Y1=2.348,MESH=.011,DARK:LatticeSlot='turretOpenLatticeDark';
+  for(const y of[Y0,1.93,2.034,2.138,2.242,Y1]){
+    const frame=y===Y0||y===Y1,slot:LatticeSlot=frame?'turretOpenLattice':DARK,w=frame?.024:MESH;
+    put(slot,box(1.86,w,w),.022,y,backAt(y));
     for(const side of[-1,1]){
-      cageBar(P,MK4,[side*.930+.022,y,backAt(y)],[side*1.167+.022,y,-3.015]);
-      cageBar(P,MK4,[side*1.167+.022,y,-3.015],[side*1.58+.022,y,-1.98]);
+      cageBar(P,MK4,[side*.930+.022,y,backAt(y)],[side*1.167+.022,y,-3.015],w,slot);
+      cageBar(P,MK4,[side*1.167+.022,y,-3.015],[side*1.58+.022,y,-1.98],w,slot);
     }
   }
+  for(const x of[-.62,-.31,0,.31,.62])
+    cageBar(P,MK4,[x+.022,Y0,backAt(Y0)],[x+.022,Y1,backAt(Y1)],MESH,DARK);
   for(const side of[-1,1]){
-    cageBar(P,MK4,[side*.930+.022,1.826,backAt(1.826)],[side*.930+.022,2.348,backAt(2.348)]);
+    cageBar(P,MK4,[side*.930+.022,Y0,backAt(Y0)],[side*.930+.022,Y1,backAt(Y1)]);
     for(const [x,z]of[[1.167,-3.015],[1.40,-2.43],[1.58,-1.98]])
-      cageBar(P,MK4,[side*x+.022,1.826,z],[side*x+.022,2.348,z]);
+      cageBar(P,MK4,[side*x+.022,Y0,z],[side*x+.022,Y1,z]);
+    // Mesh verticals on the two slanted side panels: the front panel between
+    // the corner post and the door post, and the long panel to the shoulder.
+    for(const t of[.5])cageBar(P,MK4,
+      [side*(.930+t*(1.167-.930))+.022,Y0,backAt(Y0)+t*(-3.015-backAt(Y0))],
+      [side*(.930+t*(1.167-.930))+.022,Y1,backAt(Y1)+t*(-3.015-backAt(Y1))],MESH,DARK);
+    for(const t of[.25,.5,.75])cageBar(P,MK4,
+      [side*(1.167+t*(1.58-1.167))+.022,Y0,-3.015+t*(-1.98+3.015)],
+      [side*(1.167+t*(1.58-1.167))+.022,Y1,-3.015+t*(-1.98+3.015)],MESH,DARK);
     for(let i=0;i<19;i++){
       const z=-3.61+i*.086,x=.944+(z+3.645)*.365;
       put('turretOpenLatticeDark',cylY(.009,.145,6),side*x+.022,1.735,z);
-      put('turretOpenLattice',new THREE.SphereGeometry(.030,8,6),side*x+.022,1.647,z);
+      put('turretOpenLatticeDark',new THREE.SphereGeometry(.030,8,6),side*x+.022,1.647,z);
     }
   }
   chainCurtain(P,MK4,backAt(1.826),.930,1.826,.146);

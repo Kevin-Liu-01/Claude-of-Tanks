@@ -70,11 +70,88 @@ function beforePaintedBasketFloor(source,readHelper){
   return source.replace(imported,'').replace(painted,original);
 }
 
+function beforeMeshBasket(source){
+  // 2026-09-12 fleet visual standard: the Mk4 basket is a painted frame closed
+  // with dark mesh strands and the chain-curtain balls are bare steel. Three
+  // exact authored blocks are authenticated (the slot-aware cageBar, the dark
+  // ball line and the mesh basket) and each is recovered to its immutable
+  // original text; no station, geometry or other drift is normalized.
+  const newCage="type LatticeSlot='turretOpenLattice'|'turretOpenLatticeDark';\nfunction cageBar(P: TankBuilderPort, frame: Frame, a: [number,number,number], b: [number,number,number], width = .025, slot: LatticeSlot = 'turretOpenLattice'): void {\n";
+  const oldCage="function cageBar(P: TankBuilderPort, frame: Frame, a: [number,number,number], b: [number,number,number], width = .025): void {\n";
+  const newCageEmit="  topPart(P,frame,slot,g,mid.x,mid.y,mid.z);\n}\n\nfunction chainCurtain(";
+  const oldCageEmit="  topPart(P,frame,'turretOpenLattice',g,mid.x,mid.y,mid.z);\n}\n\nfunction chainCurtain(";
+  const newBall="    // 2026-09-12: the balls are bare steel like their chains; painted spheres\n    // read as a white picket fence under the bustle on every study.\n    topPart(P,frame,'turretOpenLatticeDark',new THREE.SphereGeometry(.030,8,6),x,railY-drop-.033,rear);\n";
+  const oldBall="    topPart(P,frame,'turretOpenLattice',new THREE.SphereGeometry(.030,8,6),x,railY-drop-.033,rear);\n";
+  const newBasket=`  // 2026-09-12 fleet visual standard: the real basket is a painted frame
+  // closed with dark welded mesh; six identical painted rails read as louvres
+  // on every study. The frame (floor and top rails, corner and door posts)
+  // stays painted at .024; the four intermediate courses are thin dark mesh
+  // strands and dark verticals close each panel about every 0.31 m. Every
+  // rail height, corner station and the basket floor are unchanged.
+  const Y0=1.826,Y1=2.348,MESH=.011,DARK:LatticeSlot='turretOpenLatticeDark';
+  for(const y of[Y0,1.93,2.034,2.138,2.242,Y1]){
+    const frame=y===Y0||y===Y1,slot:LatticeSlot=frame?'turretOpenLattice':DARK,w=frame?.024:MESH;
+    put(slot,box(1.86,w,w),.022,y,backAt(y));
+    for(const side of[-1,1]){
+      cageBar(P,MK4,[side*.930+.022,y,backAt(y)],[side*1.167+.022,y,-3.015],w,slot);
+      cageBar(P,MK4,[side*1.167+.022,y,-3.015],[side*1.58+.022,y,-1.98],w,slot);
+    }
+  }
+  for(const x of[-.62,-.31,0,.31,.62])
+    cageBar(P,MK4,[x+.022,Y0,backAt(Y0)],[x+.022,Y1,backAt(Y1)],MESH,DARK);
+  for(const side of[-1,1]){
+    cageBar(P,MK4,[side*.930+.022,Y0,backAt(Y0)],[side*.930+.022,Y1,backAt(Y1)]);
+    for(const [x,z]of[[1.167,-3.015],[1.40,-2.43],[1.58,-1.98]])
+      cageBar(P,MK4,[side*x+.022,Y0,z],[side*x+.022,Y1,z]);
+    // Mesh verticals on the two slanted side panels: the front panel between
+    // the corner post and the door post, and the long panel to the shoulder.
+    for(const t of[.5])cageBar(P,MK4,
+      [side*(.930+t*(1.167-.930))+.022,Y0,backAt(Y0)+t*(-3.015-backAt(Y0))],
+      [side*(.930+t*(1.167-.930))+.022,Y1,backAt(Y1)+t*(-3.015-backAt(Y1))],MESH,DARK);
+    for(const t of[.25,.5,.75])cageBar(P,MK4,
+      [side*(1.167+t*(1.58-1.167))+.022,Y0,-3.015+t*(-1.98+3.015)],
+      [side*(1.167+t*(1.58-1.167))+.022,Y1,-3.015+t*(-1.98+3.015)],MESH,DARK);
+    for(let i=0;i<19;i++){
+      const z=-3.61+i*.086,x=.944+(z+3.645)*.365;
+      put('turretOpenLatticeDark',cylY(.009,.145,6),side*x+.022,1.735,z);
+      put('turretOpenLatticeDark',new THREE.SphereGeometry(.030,8,6),side*x+.022,1.647,z);
+    }
+  }
+`;
+  const oldBasket=`  for(const y of[1.826,1.93,2.034,2.138,2.242,2.348]){
+    put('turretOpenLattice',box(1.86,.024,.024),.022,y,backAt(y));
+    for(const side of[-1,1]){
+      cageBar(P,MK4,[side*.930+.022,y,backAt(y)],[side*1.167+.022,y,-3.015]);
+      cageBar(P,MK4,[side*1.167+.022,y,-3.015],[side*1.58+.022,y,-1.98]);
+    }
+  }
+  for(const side of[-1,1]){
+    cageBar(P,MK4,[side*.930+.022,1.826,backAt(1.826)],[side*.930+.022,2.348,backAt(2.348)]);
+    for(const [x,z]of[[1.167,-3.015],[1.40,-2.43],[1.58,-1.98]])
+      cageBar(P,MK4,[side*x+.022,1.826,z],[side*x+.022,2.348,z]);
+    for(let i=0;i<19;i++){
+      const z=-3.61+i*.086,x=.944+(z+3.645)*.365;
+      put('turretOpenLatticeDark',cylY(.009,.145,6),side*x+.022,1.735,z);
+      put('turretOpenLattice',new THREE.SphereGeometry(.030,8,6),side*x+.022,1.647,z);
+    }
+  }
+`;
+  if(!source.includes(newCage))return source;
+  for(const [part,label] of[[newCage,'slot-aware cageBar'],[newCageEmit,'slot-aware cageBar emit'],
+    [newBall,'dark chain balls'],[newBasket,'mesh basket']])
+    assert.equal(count(source,part),1,`Exactly one authored ${label} block`);
+  for(const [part,label] of[[oldCage,'cageBar'],[oldBall,'chain ball'],[oldBasket,'basket']])
+    assert.equal(count(source,part),0,`The original ${label} text is not duplicated`);
+  assert.equal(count(source,'LatticeSlot'),4,'The lattice slot type has exactly its four authored uses');
+  return source.replace(newCage,oldCage).replace(newCageEmit,oldCageEmit)
+    .replace(newBall,oldBall).replace(newBasket,oldBasket);
+}
+
 export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
-  let before=beforeRollers(beforePaintedBasketFloor(source,readHelper),readHelper);
+  let before=beforeRollers(beforePaintedBasketFloor(beforeMeshBasket(source),readHelper),readHelper);
   const present=[];
   for(const s of MERKAVA_END_RETURN_SEAMS){
     const imported=`import { ${s.symbol} } from './${s.file}';\n`;

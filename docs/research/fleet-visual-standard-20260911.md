@@ -145,3 +145,28 @@ classes scores 35/41 (fleet-wide 67/162). The six misses:
 - The track standard was rolled back to measured values on `amx40_x` (92.3 →
   91.9 with the thicker band) and the T-90M block; the Soviet source-X hulls
   that took the standard all score ≥ 92 with it.
+
+## Addendum 2026-09-12 (f) — K1A1 X tire, Merkava 4 X basket, KF51 proportions
+
+- **K1A1 X tire.** The source tire opening (.2971 on a .3313 wheel, a 34 mm
+  band) left the dish's rolled rim and shoulder showing as a pale groove
+  between rubber and dish; the study read it as a split tire. The rubber now
+  runs in to .2700 (61 mm, 18 % of the radius — the M1-style broad tire the
+  K1 wears); the outer radius, every axle datum and the source dish under
+  the rubber are unchanged, so the silhouette gate is unaffected. The wheel
+  witness receipt reads the two rolled-rim rows through the tire and
+  requires the rubber to be the first surface there; the k1a1_x native
+  fingerprints are repinned from that build.
+- **Merkava 4 X basket (the "louvers").** Six identical painted rails at
+  0.10 m pitch, plus painted chain-curtain balls, read as venetian blinds
+  over a white picket fence on every rear study. The basket is now a
+  painted frame (floor and top rails, corner and door posts, all at their
+  former stations) closed with thin dark mesh strands (four intermediate
+  courses at .011 plus dark verticals about every 0.31 m), and every
+  chain-curtain ball is bare steel like its chain (Mk3 and Mk4). The
+  shared-profile history receipt authenticates the three exact authored
+  blocks and recovers the original text before its byte compare.
+- **KF51 X proportions.** Re-measured against its reference: side 93.7 /
+  95.7, plan 99.1 / 99.0, front 97.8 / 96.3, turret 95.2 / 94.4 — every
+  row above the exemplar bar. No proportion change is made; the low, far-
+  back turret is what the reference carries.

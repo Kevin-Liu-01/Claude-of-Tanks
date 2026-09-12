@@ -14,9 +14,12 @@ import {historicalLeclercShoe,withHistoricalLeclercGear} from './leclercGearHist
 import {KIT} from './tankFactoryCore.ts';
 import {withHistoricalType10Supports} from './type10SkirtHistory.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
+// 2026-09-12 fleet visual standard: k1a1_x's rubber tire runs in to .2700
+// (was the source opening .2971) so the dish's rolled rim no longer shows as
+// a pale groove; its complete native fingerprints are repinned from that build.
 const BEFORE={
- 'k1a1_x/high':'366c093c1bc8e92df08402bebb9415e761805ad3af66e9eb22d484e1b5f8d752',
- 'k1a1_x/low':'8e43bd9d618259119b2f3eee05cf651d7c9093d8655d535fbd7f341f3ddf1fd4',
+ 'k1a1_x/high':'b6f73eec3a7f098fe890b6d34ff8c504fd67ce43e2208694eda2932bf8ae5991',
+ 'k1a1_x/low':'9005a169357c4ce4124fd1f34e521d385a863411a5af2010dde6fdcbf655d8ae',
  'amx30_x/high':'cec440e7cefb570e9df58a9bb5377edf750d247af60d984601585fd7f2034954',
  'amx30_x/low':'8de097f1c450efad42f930f18283d6cdfe9cde0caa7ba57e0119df9ea3a101a9',
  'leclerc_x/high':'42c280e95dcc0ce0e5ef8360dbdc573da5f9eaf5fd298d9158e8c4c89409bdfc',

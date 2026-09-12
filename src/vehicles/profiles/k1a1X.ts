@@ -547,7 +547,13 @@ export function buildK1A1X(P: TankBuilderPort): void {
   const wheels=k1a1XWheelSolids();
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',wheelR:.3313,wheelW:.3701,wheelY:.3978,
-    wheelTireInnerRadiusM:.2971,wheelCoreGeometry:{disc:wheels.core},
+    // 2026-09-12 fleet visual standard: the source tire opening (.2971) left
+    // the dish's rolled rim and shoulder showing as a pale groove between the
+    // rubber and the dish, which read as a split tire on every study. The
+    // rubber now runs in to .2700 (61 mm band, 18% of the radius, the M1-style
+    // broad tire the K1 actually wears); the outer radius and every axle datum
+    // are unchanged, so the silhouette gate is unaffected.
+    wheelTireInnerRadiusM:.2700,wheelCoreGeometry:{disc:wheels.core},
     wheelFaceLayers:[
       {geometry:wheels.left,material:P.mats.wheels,side:-1,name:'k1SourceWheelFacesL'},
       {geometry:wheels.right,material:P.mats.wheels,side:1,name:'k1SourceWheelFacesR'},
