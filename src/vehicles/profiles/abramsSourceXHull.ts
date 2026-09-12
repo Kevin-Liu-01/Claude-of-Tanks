@@ -183,7 +183,7 @@ function* runningGearCooperativeSteps(P: TankBuilderPort, cooperative = false): 
     sprocketStockGeometry,
     wheelZs: [...ABRAMS_SOURCE_X_ROAD_Z], wheelY: .373782,
     xc: 1.425808, xcLeft: 1.425205, xcRight: 1.426410, roadWheelOutsetM: -.00388,
-    trackW: .563165, trackTh: .018, trackPattern: 'nato-double-pin',
+    trackW: .563165, trackTh: .024, trackPattern: 'nato-double-pin', // fleet track standard 2026-09-12: band >= 24 mm
     // The supplied tooth rings physically cross its upper band. Preserve
     // the actual hub and radial tooth envelope, but route this native rear
     // wrap 30 mm outside the crown (21 mm nominal band-inner clearance).
@@ -202,7 +202,7 @@ function* runningGearCooperativeSteps(P: TankBuilderPort, cooperative = false): 
     // The former .89 draft depth compressed the thin source outboard tooth
     // ring inboard by about34 mm. Keep its complete native axial casting.
     linkPitchM: .155,
-    trackShoeDimensions: { padHeight: .026, grouserHeight: .009,
+    trackShoeDimensions: { padHeight: .030, grouserHeight: .009,
       webHeight: .012, hornHeight: .050, pinRadius: .010, pinCentreY: -.002 },
     trackGuideProfile: ABRAMS_SOURCE_X_GUIDE_PROFILE,
     // All seven configurations retain independent closed-stock/continuous

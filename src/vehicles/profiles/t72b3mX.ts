@@ -57,12 +57,12 @@ function runningGear(P:TankBuilderPort):void {
   // Source axle staggering is averaged across sides (maximum11.2mm). All six
   // wheels, end drums and return rollers remain the native animated assembly.
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.391766,wheelY:.4728865,wheelW:.45254,
-    wheelZs:[-1.822412,-.953673,-.089323,.858392,1.722743,2.591482],xc:1.4713,trackW:.554,trackTh:.018,
+    wheelZs:[-1.822412,-.953673,-.089323,.858392,1.722743,2.591482],xc:1.4713,trackW:.554,trackTh:.024,
     sprocket:{z:-2.5973,y:.79690,r:.36720,trackR:.327},idler:{z:3.2184,y:.87328,r:.2823,trackR:.270},
     rollers:[{z:-1.78,y:1.16,r:.12},{z:.05,y:1.16,r:.12},{z:1.85,y:1.16,r:.12}],rollerR:.12,
     returnRollerWidthM:.30,returnRollerInsetM:.16,topY:1.325,botY:.055,arms:true,coveredTop:true,paintedEnds:true,
     wheelFaceDepthScale:.83,sprocketDepthScale:.86,idlerDepthScale:.86,linkPitchM:.14,
-    trackShoeDimensions:{padHeight:.029,grouserHeight:.011,webHeight:.015,hornHeight:.045,pinRadius:.010,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.030,grouserHeight:.011,webHeight:.015,hornHeight:.045,pinRadius:.010,pinCentreY:0},
   });
 }
 

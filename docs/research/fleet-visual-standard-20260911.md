@@ -78,3 +78,24 @@ stowage on modern hulls, and open or thin machine-gun and mast stock.
   hider nose and collar are painted steel with one dark slot ring, and the
   elevating gun group is counter-scaled (`gunG.scale.y = 1/0.84`, the
   challenger.ts convention) so the tube stays round.
+
+## Addendum 2026-09-12 (b) — track standard and Leclerc far course
+
+- **Fleet track standard.** Thin source-X gear blocks (band 10–20 mm, pads
+  16–29 mm) read as ribbons beside the classic fleet's 40–90 mm bands. The
+  floor is now band ≥ 24 mm, pad ≥ 30 mm, web ≥ 14 mm on T-72B3 X, T-72B3M X,
+  T-72BU X, the T-90 X family (AW, Burlak, MS), Challenger 1 X, the Abrams
+  source-X hulls and AMX-40 X. AMX-30 X, Chieftain 5 X and the T-90M block keep
+  their measured courses: their receipts pin grounded contact to the source
+  datums, so thicker pads need a datum-level re-seat (follow-up).
+- **Leclerc X / classic X polygon budget.** The far course uses the fleet shoe
+  with the measured cross-section (48 triangles per link instead of the
+  174-triangle native far link); the near link keeps its measured pins and
+  connectors. leclerc_x drawn triangles 141k → 121k; the gear-history witness
+  authenticates the authored builder (near output byte-identical to the native
+  link).
+- **Machine-gun review (open).** The X-fleet contact sheets show roof MGs
+  authored under family-specific names, so the QA camera misses several; a
+  fleet MG standard (one pintle/RWS kit per nation, camouflaged mounts) is the
+  next tank item, together with the K1A1 X tire split, KF51 proportions and
+  Merkava louvers.

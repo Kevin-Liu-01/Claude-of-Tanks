@@ -73,13 +73,13 @@ function runningGear(P:TankBuilderPort):void {
     // Fitted annular rubber exposes the existing recessed six-rib steel face;
     // it does not move the dish or enlarge the original rolling envelope.
     wheelTireInnerRadiusM:.30685,
-    xc:1.4491,xcLeft:1.4518,xcRight:1.4464,trackW:.5564,trackTh:.018,
+    xc:1.4491,xcLeft:1.4518,xcRight:1.4464,trackW:.5564,trackTh:.024, // fleet track standard 2026-09-12
     sprocket:{z:-2.55065,y:.7365,r:.3305,trackR:.291},idler:{z:2.96555,y:.78960,r:.2844,trackR:.270},
     rollers:[{z:-1.51910,y:.98965,r:.10905},{z:.34900,y:.98965,r:.10905},{z:1.94500,y:.98965,r:.10905}],
     rollerR:.10905,returnRollerWidthM:.312,returnRollerInsetM:.190,
     topY:1.117,botY:.055,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.137,
     sprocketDepthScale:.80,idlerDepthScale:.80,
-    trackShoeDimensions:{padHeight:.026,grouserHeight:.009,webHeight:.014,hornHeight:.052,pinRadius:.010,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.030,grouserHeight:.009,webHeight:.014,hornHeight:.052,pinRadius:.010,pinCentreY:0},
   });
 }
 

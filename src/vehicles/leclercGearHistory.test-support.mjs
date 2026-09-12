@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { KIT } from './tankFactoryCore.ts';
 import { leclercWheelSolids } from './profiles/leclercXWheels.ts';
+import { trackPatternFor } from './trackPatterns.ts';
 
 function equalGeometry(actual, expected, label) {
   assert.deepEqual(Object.keys(actual.attributes), Object.keys(expected.attributes), label);
@@ -98,7 +99,23 @@ export function withHistoricalLeclercGear(id, build) {
   let calls = 0, shoes = 0;
   KIT.buildRunningGear = (P, config) => {
     assert.equal(P.spec.id, id, 'historical witness cannot affect another tank');
-    assert.equal(config.trackShoeBuilder, undefined, 'no authored custom shoe may be replaced');
+    // Polygon budget 2026-09-12: the recipes author one builder that keeps the
+    // native near link and uses the fleet shoe for the far course. Authenticate
+    // that exact authored function (near output byte-identical to the native
+    // builder) before the historical witness replaces it.
+    assert.equal(typeof config.trackShoeBuilder, 'function', 'the authored custom shoe (far-course) builder is present');
+    {
+      const probe = { trackW: config.trackW, pitch: config.linkPitchM ?? .15, pattern: trackPatternFor({ id }),
+        pinCapOuter: config.pinCapOuter ?? null, radialScale: 1, widthScale: 1,
+        section: config.trackLinkCrossSection, far: false, high: true };
+      const authored = config.trackShoeBuilder(probe);
+      assert.ok(authored?.attributes?.position, 'an authored custom shoe must return link geometry');
+      const native = KIT.trackShoeGeometry(probe.trackW, probe.pitch, probe.pattern, probe.pinCapOuter, 1, 1, probe.section);
+      try {
+        assert.deepEqual([...authored.attributes.position.array], [...native.attributes.position.array],
+          'authored custom shoe near course is the native measured link');
+      } finally { authored.dispose(); native.dispose(); }
+    }
     calls++;
     const prior = id === 'leclerc_x' && !P.q ? historicalLowWheels(config) : config;
     return original(P, { ...prior, trackShoeBuilder: parameters => {

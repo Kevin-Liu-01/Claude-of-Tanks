@@ -4,6 +4,8 @@ import { KIT } from './kit.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
+import type { TrackShoeBuildParameters } from '../tankFactoryCore.ts';
 
 type Radial = readonly [axial: number, radius: number];
 function turned(rows: readonly Radial[], segments: number): THREE.BufferGeometry {
@@ -65,6 +67,11 @@ export function addLeclercClassicXGear(P: TankBuilderPort): void {
     // Independent old-file ground islands: .040081m round cap, .051749m
     // planar connector and .102729m longitudinal stock. The <.1° source
     // ground pitch and .68mm pad lateral asymmetry are bounded estimates.
+    // Polygon budget 2026-09-12: the near link keeps its measured pins and
+    // connectors (276 triangles); the far course uses the fleet shoe with the
+    // same measured cross-section instead of the 174-triangle native link.
+    trackShoeBuilder: (p: TrackShoeBuildParameters) => p.far ? buildFleetTrackShoe(p)
+      : KIT.trackShoeGeometry(p.trackW, p.pitch, p.pattern, p.pinCapOuter, p.radialScale, p.widthScale, p.section),
     trackLinkCrossSection: { padWidthM: .521112, pinCapLengthM: .040081,
       pinHalfSpacingM: .040487, connectorInnerM: .255445, connectorOuterM: .307194,
       connectorHeightM: .037258, connectorDepthM: .102729, connectorCentreYDeltaM: -.000692 },

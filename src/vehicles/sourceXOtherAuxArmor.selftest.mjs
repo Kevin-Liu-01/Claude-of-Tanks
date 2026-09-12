@@ -27,8 +27,8 @@ const BEFORE={
  'type10_x/low':'a6a69b8381f26abcc7ee4b4c3ac708f1210b4c712fcd7fb7afc752e6580b84e8',
  'type90_x/high':'dfcf6d62a432414a6b1183000d5375d4f75ea182a2bc05c77a925ab0027a3804',
  'type90_x/low':'2064861efdbe19a297516b29906f11442fbdcb381170ff52eb407403084e1533',
- 'amx40_x/high':'f83df3babefe53eb8026be6c61b76828d4922f3513dd033523d2031758a338ba',
- 'amx40_x/low':'c636ff7169e90914acfc98012fb01e8586fc55fec443a44d7179acaced08da3e',
+ 'amx40_x/high':'13b67ac7c9b42ca00040c1c34e33054b3277b8bbd43d7a0e617ea9fa5e93f022',
+ 'amx40_x/low':'b189209467727eaeaad2b692ad03d070bc63db6db1441b57b56457657ee28b76',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

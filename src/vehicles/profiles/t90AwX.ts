@@ -45,14 +45,14 @@ function fenders(P:TankBuilderPort,side:number):void{
 }
 function runningGear(P:TankBuilderPort):void{
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.39405,wheelY:.44845,wheelW:.4106,
-    wheelZs:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996],xc:1.4426,trackW:.4942,trackTh:.014,
+    wheelZs:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996],xc:1.4426,trackW:.4942,trackTh:.024,
     idler:{z:3.1508,y:.8773,r:.2617,trackR:.251},sprocket:{z:-2.49665,y:.8285,r:.385,trackR:.347},
     rollers:[{z:-1.5033,y:1.07865,r:.12335},{z:.1714,y:1.07865,r:.12335},{z:1.8367,y:1.07865,r:.12335}],rollerR:.12335,
     returnRollerWidthM:.0982,returnRollerInsetM:.1086,topY:1.221,botY:.045,arms:true,coveredTop:true,paintedEnds:true,
     wheelFaceDepthScale:.86,sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.138,
     // Keep the recessed painted dish visible inside closed neutral tire stock.
     wheelTireInnerRadiusM:.33888,
-    trackShoeDimensions:{padHeight:.029,grouserHeight:.010,webHeight:.014,hornHeight:.040,pinRadius:.009,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.030,grouserHeight:.010,webHeight:.014,hornHeight:.040,pinRadius:.009,pinCentreY:0},
   });
 }
 function hullEra(P:TankBuilderPort):void{

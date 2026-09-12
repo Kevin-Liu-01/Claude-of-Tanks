@@ -1322,7 +1322,7 @@ function applyHorizonSurfaceBands(
     ) * 0.5 + 0.5;
     const forestWeight = (1 - smoothstep(context.treeline * 0.55, context.treeline, altitude))
       * (1 - slope * 0.4) * (0.5 + 0.5 * forestNoise);
-    color.lerp(context.forest, clamp(forestWeight, 0, 1) * 0.6);
+    color.lerp(context.forest, clamp(forestWeight, 0, 1) * (context.style === 'alpine' ? 0.32 : 0.6));
     // Forest stands: broad masses opened by clearings, denser on the lower
     // faces, thinning toward the treeline, shed from cliffs and stopped by
     // snow. The same stand field gates the canopy belts, so their crowns
@@ -1337,7 +1337,8 @@ function applyHorizonSurfaceBands(
         * (1 - smoothstep(context.treeline * 0.80, context.treeline * 1.02, altitude))
         * (1 - smoothstep(0.55, 0.85, slope)) * snowFade;
       if (context.forestCover) context.forestCover[index] = cover;
-      color.lerp(context.forest, cover * (context.style === 'alpine' ? 0.88 : 0.45));
+      // r9: alpine keeps a softened bake; the fragment treeline owns the edges.
+      color.lerp(context.forest, cover * (context.style === 'alpine' ? 0.40 : 0.45));
     }
   }
   if (context.banding > 0.001) {
@@ -1354,7 +1355,10 @@ function applyHorizonSurfaceBands(
     const hold = 1 - smoothstep(0.38, 0.78, slope);
     const crest = smoothstep(0.52, 0.80, altitude);
     const effectiveHold = Math.min(1, hold + crest * 0.9);
-    const coverage = clamp(band * 0.95 + (1 - band) * 0.38, 0, 1) * effectiveHold;
+    // r9: alpine keeps a flatter bake (0.38-0.62); the fragment crest snow
+    // carries the band edge so it no longer interpolates across wall triangles.
+    const bandTop = context.style === 'alpine' ? 0.62 : 0.95;
+    const coverage = clamp(band * bandTop + (1 - band) * 0.38, 0, 1) * effectiveHold;
     color.lerp(context.snow, coverage);
   }
 }
@@ -1546,6 +1550,9 @@ interface HorizonMaterialContext {
   sun: readonly [number, number, number];
   maxHeight: number;
   retainedTextures: THREE.Texture[];
+  base: THREE.Color;
+  forest: THREE.Color;
+  snow: THREE.Color;
 }
 
 // One biome-tint lookup plus the same nine triplanar samples already used by
@@ -1580,6 +1587,19 @@ float horizonWaterVariation = 0.0;
   // Broken patches, not constant-altitude bars across successive ranges.
   rockCol *= 1.0 + nC * 0.16 + nD * 0.20;
   diffuseColor.rgb = mix(diffuseColor.rgb, rockCol, rockW * 0.85);
+  // Per-fragment forest stands below the treeline: broad stand masses from the
+  // 600 m field, opened by the 140 m field, thinning toward the treeline and
+  // shed from steep rock, exactly the vertex bake's rules at fragment scale.
+  // Per-fragment crest snow above the snowline: noise-broken band edge, held
+  // off steep faces, always on the crests; the vertex bake keeps the flat ramp.
+  float snowBand = smoothstep(uSnowline, uSnowline + 0.16, hT + nD * 0.07 + nC * 0.05);
+  float snowHold = min(1.0, (1.0 - smoothstep(0.38, 0.78, slopeF)) + smoothstep(0.52, 0.80, hT) * 0.9);
+  float snowW = snowBand * snowHold * (1.0 - rockW * 0.6) * uSnowFrag;
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * uSnowTint, snowW);
+  float standF = smoothstep(0.12 + hT * 0.42, 0.26 + hT * 0.42, 0.5 + nB * 1.1 + nC * 0.7);
+  float treeF = 1.0 - smoothstep(uTreeline * 0.80, uTreeline * 1.02, hT + nD * 0.06);
+  float forestW = standF * treeF * (1.0 - smoothstep(0.55, 0.85, slopeF)) * (1.0 - rockW * 0.85) * (1.0 - snowW) * uForestFrag;
+  diffuseColor.rgb *= mix(vec3(1.0), uForestTint * (0.92 + nD * 0.24), forestW);
   float ndl = dot(hn, uSunDirW);
   float rel = uFragRel * farAtt;
   diffuseColor.rgb *= 1.0 - rel * 0.85 + rel * 1.6 * max(ndl, 0.0);
@@ -1589,7 +1609,7 @@ float horizonWaterVariation = 0.0;
 
 function* buildHorizonMaterialSteps({
   noise: gnoi, banding, snowline, treeline, grainAmp, style, seed, mapId,
-  sun, maxHeight: maxH, retainedTextures,
+  sun, maxHeight: maxH, retainedTextures, base, forest, snow,
 }: HorizonMaterialContext): Generator<void, THREE.MeshBasicMaterial, void> {
   const [lx, ly, lz] = sun;
   const gullyAmp = style === 'alpine' ? 0.06 : style === 'mesa' ? 0.14 : 0.0;
@@ -1646,7 +1666,33 @@ function* buildHorizonMaterialSteps({
     // texture at any view angle, exactly like the terrain-side triplanar.
     const wallFix = style === 'alpine' ? 1.0 : 0.0;
     const capFix = style === 'mesa' ? 1.0 : 0.0;
+    // r9 (2026-09-12): PER-FRAGMENT TREELINE on the alpine styles. The forest
+    // stands used to be baked per vertex only, so on 250 m row spacing every
+    // treeline edge interpolated across whole wall triangles ("pale cardboard
+    // quads" on Fjord/Glacier Pass). The vertex bake keeps a softened stand
+    // field for the canopy belts and distant tone; the fragment pass carries
+    // the noise-broken stand edges against the same map treeline. The tint is
+    // the authored forest/base ratio, so the palette stays the map's own.
+    const forestTint = new THREE.Vector3(
+      THREE.MathUtils.clamp(forest.r / Math.max(base.r, 1e-3), 0.25, 1.2),
+      THREE.MathUtils.clamp(forest.g / Math.max(base.g, 1e-3), 0.25, 1.2),
+      THREE.MathUtils.clamp(forest.b / Math.max(base.b, 1e-3), 0.25, 1.2));
+    const forestFrag = style === 'alpine' && treeline > 0 && treeline < 1.5 ? 0.62 : 0.0;
+    // The snow band moves with it: the vertex bake keeps a flatter 0.38-0.62
+    // coverage ramp and the fragment adds the crest snow with noise-broken
+    // edges, again as the authored snow/base ratio.
+    const snowTint = new THREE.Vector3(
+      THREE.MathUtils.clamp(snow.r / Math.max(base.r, 1e-3), 1.0, 2.2),
+      THREE.MathUtils.clamp(snow.g / Math.max(base.g, 1e-3), 1.0, 2.2),
+      THREE.MathUtils.clamp(snow.b / Math.max(base.b, 1e-3), 1.0, 2.2));
+    const snowFrag = style === 'alpine' && snowline <= 1 ? 0.55 : 0.0;
     mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTreeline = { value: treeline };
+      shader.uniforms.uForestTint = { value: forestTint };
+      shader.uniforms.uForestFrag = { value: forestFrag };
+      shader.uniforms.uSnowline = { value: snowline };
+      shader.uniforms.uSnowTint = { value: snowTint };
+      shader.uniforms.uSnowFrag = { value: snowFrag };
       shader.uniforms.uDetail2 = { value: detail2 };
       shader.uniforms.uSunDirW = { value: new THREE.Vector3(lx, ly, lz) };
       shader.uniforms.uFragRel = { value: fragRel };
@@ -1662,6 +1708,8 @@ function* buildHorizonMaterialSteps({
       // onBeforeCompile uniforms are NOT auto-declared in the GLSL —
       // declared at global scope ahead of the injected block.
       shader.fragmentShader = 'uniform sampler2D uDetail2;\n'
+        + 'uniform float uTreeline;\nuniform vec3 uForestTint;\nuniform float uForestFrag;\n'
+        + 'uniform float uSnowline;\nuniform vec3 uSnowTint;\nuniform float uSnowFrag;\n'
         + 'uniform vec3 uSunDirW;\nuniform float uFragRel;\n'
         + 'uniform float uSlopeSplat;\nuniform float uMaxH;\n'
         + 'uniform float uWallFix;\nuniform float uCapFix;\n'
@@ -1779,6 +1827,8 @@ interface HorizonTreelineContext {
   sun: readonly [number, number, number];
   forestCover: Float32Array;
   seaOpening?: HorizonSeaOpening;
+  base: THREE.Color;
+  forest: THREE.Color;
 }
 
 export const HORIZON_TREELINE_MAX_BELTS = 20;
@@ -1819,6 +1869,7 @@ export function selectHorizonFaceBeltRows(rows: readonly HorizonRingRow[]): numb
 function addHorizonTreeline({
   mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
   maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers, style, sun, forestCover, seaOpening,
+  base, forest,
 }: HorizonTreelineContext): void {
   const N = HORIZON_SEGMENTS;
   if (treeline < 0.14) return;
@@ -1940,7 +1991,16 @@ function addHorizonTreeline({
     // about 0.5). Inside a stand the belt merges with the mass; only its
     // broken top edge shows against the paler slope or sky above. A darker
     // belt read as a contour line drawn across the face.
-    const beltLight = style === 'alpine' ? 1.42 : 1.84;
+    const beltLight = style === 'alpine' ? 1.22 : 1.84;
+    // r9 (2026-09-12): the alpine face now carries its forest stands per
+    // fragment, so its baked vertex colour is paler than the forest it shows.
+    // Crowns are conifer mass, not face: tint the belt by the authored
+    // forest/base ratio (the same tint the fragment pass applies at full
+    // stand) so groves read darker than the slope instead of as pale cutouts.
+    const crownTint = style === 'alpine'
+      ? [forest.r / Math.max(base.r, 1e-3), forest.g / Math.max(base.g, 1e-3), forest.b / Math.max(base.b, 1e-3)]
+        .map((ratio) => 1 - 0.85 + 0.85 * Math.min(1.2, Math.max(0.25, ratio)))
+      : [1, 1, 1];
     // Construction-local scratch for one belt row: span, wandered position,
     // and the face's sun response. A row whose every column resolves to a
     // zero span (above the treeline, snowbound, a back slope) is skipped so
@@ -2021,9 +2081,9 @@ function addHorizonTreeline({
         // Canopy tone: the face's own baked color, darker and greener, then
         // the row's aerial perspective so successive belts separate in depth.
         const light = beltShade[k];
-        let cr = Math.min(1.9, col[i * 3] * light * 0.96);
-        let cg = Math.min(1.9, col[i * 3 + 1] * light * 1.04);
-        let cb = Math.min(1.9, col[i * 3 + 2] * light * 0.90);
+        let cr = Math.min(1.9, col[i * 3] * light * 0.96 * crownTint[0]);
+        let cg = Math.min(1.9, col[i * 3 + 1] * light * 1.04 * crownTint[1]);
+        let cb = Math.min(1.9, col[i * 3 + 2] * light * 0.90 * crownTint[2]);
         cr += (fogC.r - cr) * hz;
         cg += (fogC.g - cg) * hz;
         cb += (fogC.b - cb) * hz;
@@ -2091,7 +2151,10 @@ function resolveHorizonSettings(
   style: HorizonStyle,
 ): HorizonResolvedSettings {
   const defaultTreeline = style === 'rolling' ? 0.90 : style === 'escarpment' ? 0.88 : 0;
-  const rockAmp = style === 'rolling' ? 0.22 : style === 'escarpment' ? 0.3 : 0.78;
+  // r9 (2026-09-12): the alpine styles bake rock at 0.30 instead of 0.78 —
+  // their per-fragment rock pass (uSlopeSplat) owns the slope-keyed exposure,
+  // so the pale steep-vertex triangles stop interpolating across whole walls.
+  const rockAmp = style === 'rolling' ? 0.22 : style === 'escarpment' ? 0.3 : style === 'alpine' ? 0.30 : 0.78;
   return {
     amp: horizon.amp ?? 1,
     haze: horizon.haze ?? 1,
@@ -2259,6 +2322,7 @@ export function* buildHorizonRingSteps(
     noise: gnoi, banding, snowline, treeline, grainAmp, style, seed,
     mapId,
     sun: [lx, ly, lz], maxHeight: maxH, retainedTextures,
+    base, forest: forestC, snow: snowC,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.name = 'horizon-ring';
@@ -2282,6 +2346,7 @@ export function* buildHorizonRingSteps(
     mesh, treeline, seed, mapId, noise: gnoi, rows, positions: pos,
     maxHeight: maxH, snowline, fog: fogC, colors: col, layers: treelineLayers,
     style, sun: [lx, ly, lz], forestCover, seaOpening: H.seaOpening,
+    base, forest: forestC,
   });
   return mesh;
 }

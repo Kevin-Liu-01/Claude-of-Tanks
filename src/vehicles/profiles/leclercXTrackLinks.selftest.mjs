@@ -54,16 +54,26 @@ try{
     try{
       const root=tank.root;root.updateMatrixWorld(true);
       for(const name of['gearTrackPads','gearTrackPadsSimplified']){
-        const shoes=root.getObjectByName(name);checkLink(shoes.geometry);
+        const shoes=root.getObjectByName(name);
         const triangles=(shoes.geometry.index?.count??shoes.geometry.attributes.position.count)/3;
-        assert.ok(triangles<=(name==='gearTrackPads'?276:174),
-          `${quality}/${name}: closed pins must not restore the former 12-sided per-link cost (${triangles})`);
+        if(name==='gearTrackPads'){
+          checkLink(shoes.geometry);
+          assert.ok(triangles<=276,
+            `${quality}/${name}: closed pins must not restore the former 12-sided per-link cost (${triangles})`);
+        }else{
+          // Polygon budget 2026-09-12: the far course is the fleet shoe carrying the
+          // same measured pad and rectangular connector forging (outer .3099674)
+          // without the round pin caps, at 48 triangles instead of 174.
+          shoes.geometry.computeBoundingBox();
+          near(shoes.geometry.boundingBox.max.x-shoes.geometry.boundingBox.min.x,2*.3099674,1e-6,'far course keeps the measured connector envelope');
+          assert.ok(triangles<=48,`${quality}/${name}: far fleet course stays within its 48-triangle budget (${triangles})`);
+        }
         assert.equal(shoes.count,162,'unchanged 81-link native course per side');
         assert.equal(hash(shoes.instanceMatrix.array),'3e1981365e4526c8d4cb6a8270fa770f317141ddbbf5ccca7b794ceeddc0f474',
           'all original shoe positions and orientations are bit-identical');
         const m=new THREE.Matrix4();shoes.getMatrixAt(144,m);m.premultiply(shoes.matrixWorld);
         const pin=new THREE.Vector3(.3180395,-.0051314,.0388075).applyMatrix4(m);
-        near(pin.x,1.5908368,1e-6,'complete-source outer cap X');
+        near(pin.x,1.5908368,1e-6,'complete-source outer cap X (shoe frame, both courses)');
         near(pin.y,.0316314,1e-6,'complete-source ground cap Y solved in live shoe frame');
       }
       if(quality==='high'){

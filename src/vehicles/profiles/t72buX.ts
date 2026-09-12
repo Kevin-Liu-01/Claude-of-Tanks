@@ -53,14 +53,14 @@ function runningGear(P:TankBuilderPort):void{
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.380115,wheelY:.451075,wheelW:.38270,
     // Source band-to-tub clearance is only2–10mm. The whole native animated
     // lane is placed12mm farther outboard for positive mechanical clearance.
-    wheelZs:[-1.58720,-.72760,.14085,1.00566,1.85831,2.72517],xc:1.371,roadWheelOutsetM:.053,trackW:.56169,trackTh:.014,
+    wheelZs:[-1.58720,-.72760,.14085,1.00566,1.85831,2.72517],xc:1.371,roadWheelOutsetM:.053,trackW:.56169,trackTh:.024, // fleet track standard 2026-09-12
     idler:{z:3.32755,y:.72631,r:.23219,trackR:.228},sprocket:{z:-2.45990,y:.642,r:.28250,trackR:.268},
     rollers:[{z:-1.63,y:.902,r:.092},{z:.21,y:.902,r:.092},{z:1.91,y:.902,r:.092}],rollerR:.092,
     returnRollerWidthM:.25,returnRollerInsetM:.10,topY:1.011,botY:.055,arms:true,coveredTop:true,paintedEnds:true,
     wheelFaceDepthScale:.78,sprocketDepthScale:.82,idlerDepthScale:.82,linkPitchM:.137,
     // Open the tire around the recessed painted steel, retaining its rolling radius.
     wheelTireInnerRadiusM:.32690,
-    trackShoeDimensions:{padHeight:.026,grouserHeight:.009,webHeight:.013,hornHeight:.042,pinRadius:.009,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.030,grouserHeight:.009,webHeight:.014,hornHeight:.042,pinRadius:.009,pinCentreY:0},
   });
 }
 function reactiveHull(P:TankBuilderPort):void{

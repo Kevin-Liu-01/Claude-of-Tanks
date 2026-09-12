@@ -15,6 +15,8 @@ import { addLeclercXFrontGuards, addLeclercXAntennaStocks } from './leclercXSour
 import { addLeclercXPortRoof, leclercXWellRoofPoints } from './leclercXPortRoof.ts';
 import { addLeclercXRearTerrace, leclercXRearShoulderRing } from './leclercXRearShoulders.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
+import type { TrackShoeBuildParameters } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ } = KIT;
 type Point = readonly [number, number, number];
@@ -103,6 +105,11 @@ function runningGear(P: TankBuilderPort): void {
     // Separate measured pad, rectangular connector forging and round cap.
     // Source connector's tiny .224° pitch is bounded here by a level forging
     // (<.2 mm end-face difference), not by filling its surrounding link air.
+    // Polygon budget 2026-09-12: the near link keeps its measured pins and
+    // connectors (276 triangles); the far course uses the fleet shoe with the
+    // same measured cross-section instead of the 174-triangle native link.
+    trackShoeBuilder: (p: TrackShoeBuildParameters) => p.far ? buildFleetTrackShoe(p)
+      : KIT.trackShoeGeometry(p.trackW, p.pitch, p.pattern, p.pinCapOuter, p.radialScale, p.widthScale, p.section),
     trackLinkCrossSection: { padWidthM: .5253277, pinCapLengthM: .0404054,
       pinHalfSpacingM: .0388075, connectorInnerM: .2577995, connectorOuterM: .3099674,
       connectorHeightM: .035629, connectorDepthM: .0985811, connectorCentreYDeltaM: -.0005601 },

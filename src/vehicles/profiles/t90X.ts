@@ -1517,7 +1517,7 @@ export function buildT90MX(P: TankBuilderPort): void {
   ]));
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.36455,wheelW:.438,wheelFaceDepthScale:.695,
     wheelZs:[-1.814,-.9455,-.0512,.8188,1.6715,2.5242],wheelY:.38544,wheelZScale:1.04465,
-    xc:1.412,trackW:.608,trackTh:.018,sprocket:{z:-2.570,y:.737,r:.3305,trackR:.2605},idler:{z:3.148,y:.767,r:.2512},
+    xc:1.412,trackW:.608,trackTh:.024,sprocket:{z:-2.570,y:.737,r:.3305,trackR:.2605},idler:{z:3.148,y:.767,r:.2512},
     // Hidden support circles are inferred below the independently measured
     // source return-course height; source M omits their separate meshes.
     rollers:[-1.65,.37,2.096].map(z=>({z,y:.9354,r:.101})),rollerR:.101,

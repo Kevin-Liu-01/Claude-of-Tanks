@@ -21,10 +21,10 @@ export function addChallenger1SuppliedGear(P:TankBuilderPort):void{
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',wheelPattern:'pressed-six',wheelR:m(15.9448815),wheelY:p(0,18.9370075,0)[1],
     wheelW:m(20.629921),wheelTireInnerRadiusM:m(12.05),wheelCoreGeometry:{disc:wheelCore()},
-    wheelZs,xc:m(51.535433),roadWheelOutsetM:m(.1574805),trackW:m(24.803150),trackTh:.011,
+    wheelZs,xc:m(51.535433),roadWheelOutsetM:m(.1574805),trackW:m(24.803150),trackTh:.024, // fleet track standard 2026-09-12: band >= 24 mm
     sprocket:rear,idler:front,rollers,returnRollerWidthM:m(8.543308),returnRollerOutsetM:m(3.759842),
     topY:p(0,42.25,0)[1],botY:.0325,linkPitchM:m(4.0),
-    trackShoeDimensions:{padHeight:.020,grouserHeight:.008,webHeight:.012,hornHeight:.045,pinRadius:.007,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.030,grouserHeight:.008,webHeight:.014,hornHeight:.045,pinRadius:.007,pinCentreY:0},
     loopPoints:KIT.trackLoopPoints({sprocket:rear,idler:front,
       contact:{zF:p(0,0,58)[2],zR:p(0,0,-135)[2]},botY:.0325,topY:p(0,42.25,0)[1],sag:.011,
       supports:rollers.map(r=>({z:r.z,y:r.y+r.r+.018}))}),
