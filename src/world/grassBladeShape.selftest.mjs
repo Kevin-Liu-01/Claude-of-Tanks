@@ -34,12 +34,15 @@ const pinned = {
   css: '8e2c6ed12c7aa05d6a8306b02c7a5eded849d18069e4d7e809b0418250daff4a',
   finishAlphaPixels: '5558eea18ee914912e6574671e4e48c32d61c789c256123d13d6610ad9ad80f6',
   buildGrassTuftGeometry: 'dcfd5a07b21f99ccf2e89e2fca0be7d64a5eb282f26580ff8ca9c92f4c2d1ff8',
-  makeGrassMaterial: '87fb06acf435f3e218afa1c273af517a0554521083627788421156a61da7e845',
+  makeGrassMaterial: '7a7b18d0d6c39d941fdf66109462018a32572450f5a1c07e4bc3088f9a717bef',
   mipAlphaGuard: '52c2a3521a17e3619f41932bb22bb58414bcce792df22fa64a17d29b1789ae65',
 };
+// 2026-09-12 ground cover: makeGrassMaterial gained an alphaTest parameter (mid/far
+// tufts cut at 0.34, the near carpet keeps 0.44); its contract hash is repinned.
 for (const [name, hash] of Object.entries(pinned)) assert.equal(tokenHash(declaration(name)), hash, `${name}: unchanged grass contract`);
-const painter = declaration('makeGrassCardTexture'), width = 'const bw = 1.35 + rng() * 1.8;';
-assert.equal(painter.split(width).length, 2, 'one actual45%-width expression');
+// Ground cover 2026-09-12: blades run at 70 % of the original width (were 45 %).
+const painter = declaration('makeGrassCardTexture'), width = 'const bw = 2.1 + rng() * 2.8;';
+assert.equal(painter.split(width).length, 2, 'one actual 70%-width expression');
 const originalPainter = painter.replace(width, 'const bw = 3 + rng() * 4;');
 assert.equal(tokenHash(originalPainter), 'b0fe6c001600cd100a1680bbff09e3680771cd76c4d03c8889e2b0ba98295031',
   'all original blade counts/RNG/roots/tips/curves/pigment/padding retained except width');

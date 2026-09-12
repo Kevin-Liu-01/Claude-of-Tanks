@@ -112,7 +112,9 @@ export function createShallowWaterSurface(
   const clock = { value: 0 };
   const material = new THREE.MeshStandardMaterial({
     color: profile.color, roughness: profile.roughness, metalness: 0,
-    envMapIntensity: 0.28,
+    // Water 2026-09-12: 0.28 -> 0.55 — the surface mirrors more sky at grazing
+    // angles (the 1049e4e bay carried visible sky and sun glints).
+    envMapIntensity: 0.55,
     transparent: true, opacity: profile.opacity, depthWrite: false,
     side: THREE.DoubleSide,
   });
@@ -125,6 +127,8 @@ export function createShallowWaterSurface(
       uWaterRamp: { value: new THREE.Vector2(...ramp) },
       uWaterFlow: { value: new THREE.Vector2(profile.flowX, profile.flowZ) },
       uWaterShore: { value: new THREE.Color(profile.shoreColor) },
+      uWaterShallow: { value: new THREE.Color(profile.shallowColor) },
+      uWaterFoam: { value: profile.foam },
       uWaterWaveScale: { value: profile.waveScale },
       uWaterWaveStrength: { value: profile.waveStrength },
     });
@@ -141,6 +145,8 @@ export function createShallowWaterSurface(
       uniform vec2 uWaterRamp;
       uniform vec2 uWaterFlow;
       uniform vec3 uWaterShore;
+      uniform vec3 uWaterShallow;
+      uniform float uWaterFoam;
       uniform float uWaterWaveScale;
       uniform float uWaterWaveStrength;
       float waterDeep;
@@ -154,6 +160,9 @@ export function createShallowWaterSurface(
       float grazing = pow(1.0 - abs(eye.y), 3.0);
       waterDeep = smoothstep(0.18, 0.86, wet);
       waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
+      // Water 2026-09-12: the bed shows through the shallows — the deep colour
+      // rises out of a sunlit bank tint instead of one flat sheet.
+      diffuseColor.rgb = mix(uWaterShallow, diffuseColor.rgb, smoothstep(0.05, 0.75, waterDeep));
       diffuseColor.rgb *= mix(0.90, 0.70, waterDeep);
       diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(opacity, 0.86, grazing);
     `);
@@ -175,6 +184,11 @@ export function createShallowWaterSurface(
       diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShore, waterBank * (0.24 + broadWave * 0.12));
       diffuseColor.rgb += vec3(0.018, 0.026, 0.028)
         * smoothstep(0.66, 0.90, broadWave) * (0.35 + fineWave * 0.65) * waterDeep;
+      // Water 2026-09-12: shoreline foam — broken wave crests pile up on the
+      // bank band and a few sparse crests whiten open water on the sea maps.
+      float foamBank = smoothstep(0.52, 0.86, broadWave * 0.7 + fineWave * 0.5) * waterBank;
+      float foamCrest = smoothstep(0.80, 0.96, broadWave) * smoothstep(0.55, 0.9, fineWave) * waterDeep * 0.6;
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.80, 0.85, 0.84), (foamBank * 0.55 + foamCrest * 0.45) * uWaterFoam);
     `);
     // The game's strong sun/bloom exposure turns a broad default dielectric
     // highlight into a white sheet. Keep the directional glint, at a bounded

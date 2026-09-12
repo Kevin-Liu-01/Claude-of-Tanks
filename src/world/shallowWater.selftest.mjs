@@ -129,7 +129,7 @@ const mask = new Texture(), waves = new Texture();
 const water = createShallowWaterSurface(surface.geometry, mask, waves, field.size, 'coastal', [0.4, 0.78]);
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);
-assert.equal(water.mesh.material.envMapIntensity, 0.28, 'surface keeps a bounded sky reflection');
+assert.equal(water.mesh.material.envMapIntensity, 0.55, 'surface keeps a bounded sky reflection (0.55 since the 2026-09-12 water pass)');
 assert.equal(water.mesh.material.forceSinglePass, true, 'one draw, not the two-pass transparent default');
 const shader = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
 water.mesh.material.onBeforeCompile(shader);
@@ -142,6 +142,14 @@ assert.match(shader.fragmentShader, /material\.specularF90 = 0\.35/,
   'grazing sky reflection is bounded so distant water stays dark rather than washing to the horizon tint');
 assert.match(shader.fragmentShader, /mix\(0\.90, 0\.70, waterDeep\)/,
   'deep water remains darker than its bank, and the bank no longer brightens above the base tint');
+// Water pass 2026-09-12: the bank-side hue rises out of the authored shallow
+// tint (colour only — the alpha ramp above is unchanged, so no pale film over
+// sand) and broken crests whiten the bank band at the authored foam strength.
+assert.match(shader.fragmentShader, /mix\(uWaterShallow, diffuseColor\.rgb, smoothstep\(0\.05, 0\.75, waterDeep\)\)/,
+  'the shallow tint is a depth-mixed hue, never an opacity change');
+assert.match(shader.fragmentShader, /foamBank \* 0\.55 \+ foamCrest \* 0\.45\) \* uWaterFoam/, 'shoreline and crest foam scale with the authored profile');
+assert.equal(shader.uniforms.uWaterFoam.value, 0.85, 'coastal foam strength');
+assert.ok(shader.uniforms.uWaterShallow.value.isColor, 'shallow tint uniform is a colour');
 assert.equal((shader.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).length, 2,
   'surface colour breakup reuses the two normal-map wave fetches instead of adding its own');
 assert.match(shader.fragmentShader, /broadWave.*fineWave/s,

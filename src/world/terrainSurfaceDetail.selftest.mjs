@@ -28,7 +28,10 @@ for (const detail of [
 ]) {
   const gain = source.match(detail);
   assert.ok(gain, 'soil normals remain independently wetness-gated or ground-only');
-  assert.ok(Number(gain[1]) <= 0.25,
+  // 2026-09-12 visual restoration: the far coarse-turf octave (gnF) may run to
+  // 0.45 (the 1049e4e meadow ran 1.5); the near soil octaves stay at or under
+  // 0.25 so no per-texel clod is ever decoded at full depth.
+  assert.ok(Number(gain[1]) <= (detail.source.includes('gnF') ? 0.45 : 0.25),
     'signed normals added before x2 decode remain shallow, not giant terrain clods');
 }
 assert.match(source,

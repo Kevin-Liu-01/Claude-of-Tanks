@@ -54,7 +54,7 @@ function checkEndpoints(sample) {
       assert.equal(actual.nearG, distance);
       assert.equal(actual.farG, distance);
       assert.equal(actual.nearN, signal * .18 * distance);
-      assert.equal(actual.farN, signal * distance * .24);
+      assert.equal(actual.farN, signal * distance * .45); // 2026-09-12: far turf relief 0.24 -> 0.45
       // Near albedo octave strengthened with the 1049e4e presentation restore
       // (2026-09-11): gain 1.5 -> 1.9, clip -0.22..0.26 -> -0.28..0.32.
       assert.equal(actual.nearA, 1 + Math.max(-.28, Math.min(.32, (signal - p.glM) * 1.9)) * distance);

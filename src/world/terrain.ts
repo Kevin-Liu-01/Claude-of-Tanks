@@ -3199,7 +3199,11 @@ void splatCompute() {
       // Coarse turf is low relief, not another giant clod normal. Albedo
       // retains the source detail while the actual hills own broad shading.
       vec3 gnF = texture2D(uNrmG, uv * 0.021).xyz * 2.0 - 1.0;
-      n.xy += gnF.xy * farG * 0.24;
+      // 2026-09-12 visual restoration: 0.24 -> 0.45. The 1049e4e meadow ran
+      // this coarse relief at 1.5 and read as turf to the horizon; 0.24 left
+      // every far field a flat sheet. 0.45 keeps the relief without the
+      // clod-normal shimmer the cut was made for.
+      n.xy += gnF.xy * farG * 0.45;
       float gLum = dot(texture2D(uAlbG, uv * 0.0137).rgb, vec3(0.36, 0.42, 0.22));
       a.rgb *= mix(1.0, 0.86 + gLum * 0.30, farG * 0.55);
     }

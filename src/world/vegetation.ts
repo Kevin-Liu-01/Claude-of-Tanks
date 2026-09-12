@@ -632,10 +632,11 @@ export function makeGrassCardTexture(
     const dry = rng() < dryChance;
     const bx = 4 + rng() * (s - 8);
     // Each metre-wide card holds a sward, not a cluster of broad spear leaves.
-    // Narrow the existing curved silhouettes to 45% of their former width;
-    // retain their roots, tips, colors and random stream. No additional cards,
-    // texture storage, shader work or construction-time painting operations.
-    const bw = 1.35 + rng() * 1.8;
+    // Ground cover 2026-09-12: 70 % of the 1049e4e blade width (2.1-4.9 px on
+    // the 128 px card, was 1.35-3.15). The 45 % blades were too thin to
+    // survive their own mips: past 60 m the tufts alpha-tested away and every
+    // pasture read as a bare sheet where the reference showed dark turf.
+    const bw = 2.1 + rng() * 2.8;
     const tall = rng();
     const tipX = bx + (rng() - 0.5) * (variant === 0 ? 45 : 65);
     const tipY = s - (0.35 + 0.62 * tall) * s;
@@ -2894,11 +2895,12 @@ function* vegetationBuildSteps(
     tex: THREE.Texture,
     farDist: number,
     cacheKey: string,
+    alphaTest = 0.44,
   ): THREE.MeshLambertMaterial {
     // Lambert is materially cheaper for a rough, non-metallic alpha card and
     // preserves the lighting/shadow response that is actually visible here.
     const mat = new THREE.MeshLambertMaterial({
-      map: tex, alphaTest: 0.44, alphaToCoverage: true, side: THREE.DoubleSide,
+      map: tex, alphaTest, alphaToCoverage: true, side: THREE.DoubleSide,
     });
     engineCtx.setupShadowMaterial(mat, grassWindHook(farDist));
     mat.customProgramCacheKey = () => cacheKey;
@@ -2923,7 +2925,11 @@ function* vegetationBuildSteps(
         height: h - 0.03, radius: w * 0.75 + 0.2,
         geo: buildGrassTuftGeometry(w, h),
         geoFar: makeTuftFarGeometry(w, h), // performance_budget r5 (see builder)
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v6'),
+        // Ground cover 2026-09-12: the streamed mid/far tufts cut at 0.34 so the
+        // thin blades survive their deep mips and the far fields keep the dark
+        // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
+        // keeps the crisp 0.44 edge beside the tracks.
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v7', 0.34),
         matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v6'),
       });
       yield { stage: 'grassPrep', fine: true };

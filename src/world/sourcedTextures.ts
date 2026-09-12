@@ -112,7 +112,11 @@ const SETS = {
 // packed roughness floor so sourced sets never reintroduce specular sheen.
 const TERRAIN_PLAN = {
   verdant: {
-    G: { set: 'grass', roughMul: 1.25 },
+    // 2026-09-12 visual restoration: the untinted photo grass rendered the
+    // Verdant fields ~20 % brighter and yellower than the 1049e4e meadow
+    // (field pixels 124 vs 101); a cool, slightly darker tint returns the
+    // deeper green the reference carried under the same sky.
+    G: { set: 'grass', tint: [0.86, 0.91, 0.80], roughMul: 1.25 },
     D: { set: 'dirt', tint: [0.82, 0.80, 0.76], roughMul: 1.3 },
     R: 'rock', M: null,
   },
