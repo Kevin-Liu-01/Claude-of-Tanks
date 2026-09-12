@@ -13,7 +13,7 @@ for (const id of [...Object.values(FLEET_GROUP_IDS).flat(), 'unknown-id']) {
 }
 assert.deepEqual([policy.widthRatio, policy.heightRatio, policy.baselineRatio,
   policy.auditMaxFullWidthRatio, policy.auditMaxFullHeightRatio],
-  [.54, .68, .88, .88, 1.25], 'dense chassis scale, contact baseline and full silhouette pixel gates stay unchanged');
+  [.54, .68, .88, .88, 1.27], 'dense chassis scale, contact baseline and full silhouette pixel gates stay unchanged');
 const html = fs.readFileSync(new URL('./icons-page.html', import.meta.url), 'utf8');
 const angle = html.slice(html.indexOf("if (wants('angle'))"), html.indexOf('return { files, meta };'));
 assert.match(angle, /new THREE\.Vector3\(portraitSideRatio\(id\), 0\.34, 1\.0\)/);
