@@ -16,6 +16,10 @@ export const MAP_PASS_DRESSING_LEAVES = {
       "    bushCount: 0.48, bushSpecies: 'spruce',"
     ],
     [
+      "    roadTint: [1.30, 1.46, 1.70], shoulderDirt: 0.30, midRelief: 0.58, // map pass 2026-09-12: packed-snow pass roads, not black mud slashes",
+      "    roadTint: [0.65, 0.69, 0.72], midRelief: 0.58,"
+    ],
+    [
       "    rocks: 330, outcrops: 72, craters: 66, rubblePiles: 20, // map pass 2026-09-12: exposed windward stone on the snowfields",
       "    rocks: 275, outcrops: 54, craters: 66, rubblePiles: 20,"
     ]
@@ -143,7 +147,8 @@ export const MAP_PASS_DRESSING_VALUES = {
     [['props', 'haystacks'], 44, 34], [['horizon', 'haze'], 1.08, 1.25],
   ],
   railyard: [[['horizon', 'haze'], 1.06, 1.25]],
-  alpine: [[['vegetation', 'bushCount'], 0.62, 0.48], [['props', 'rocks'], 330, 275], [['props', 'outcrops'], 72, 54]],
+  alpine: [[['vegetation', 'bushCount'], 0.62, 0.48], [['props', 'rocks'], 330, 275], [['props', 'outcrops'], 72, 54],
+    [['splat', 'roadTint'], [1.30, 1.46, 1.70], [0.65, 0.69, 0.72]], [['splat', 'shoulderDirt'], 0.30, undefined]],
   winter: [[['vegetation', 'bushCount'], 0.28, 0.15], [['props', 'rocks'], 270, 190], [['props', 'outcrops'], 32, 19]],
   airfield: [[['vegetation', 'bushCount'], 0.82, 0.6]],
   desert: [[['vegetation', 'bushCount'], 1.1, 0.92], [['props', 'rocks'], 320, 275], [['props', 'outcrops'], 44, 36]],
@@ -154,8 +159,9 @@ export function historicalMapPassDressingInput(config, assert) {
   if (!rows) return config;
   const out = { ...config };
   for (const [[group, key], current, historical] of rows) {
-    assert.equal(config[group]?.[key], current, `${config.id}.${group}.${key}: authored map-pass dressing value`);
+    assert.deepEqual(config[group]?.[key], current, `${config.id}.${group}.${key}: authored map-pass dressing value`);
     out[group] = { ...out[group], [key]: historical };
+    if (historical === undefined) delete out[group][key]; // the leaf did not exist before the pass
   }
   return out;
 }

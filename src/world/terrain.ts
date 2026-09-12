@@ -211,6 +211,8 @@ interface SplatConfig {
   rippleShoreOnly?: boolean;
   /** Noise-driven dirt blend only; authored road/town/shore coverage is separate. */
   wornDirtStrength?: number;
+  /** Scale of the bare-dirt road shoulder (1 = full). Snow passes keep their verges white with a low value. */
+  shoulderDirt?: number;
 }
 
 export interface TerrainMapConfig extends HorizonMapConfig {
@@ -2332,7 +2334,7 @@ uniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;
 uniform sampler2D uMask, uNoise;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
-uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uIceDrift, uMidRelief, uFieldPatch;
+uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
@@ -2511,7 +2513,9 @@ void splatCompute() {
   float worn = smoothstep(0.55, 0.80, n2w + (n1w - 0.5) * 0.45);
   // Coastal D doubles as pale beach sand: inland worn turf uses less of it.
   // Keep road/town coverage independent and raw worn aligned with grass scatter.
-  float fD = clamp(max(worn * uWornDirtStrength, max(shoulder, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
+  // map pass 2026-09-12: uShoulderDirt scales the bare shoulder so snow passes
+  // keep white verges beside a packed road instead of a 10 m mud slash.
+  float fD = clamp(max(worn * uWornDirtStrength, max(shoulder * uShoulderDirt, mk.a * uTownWear * (0.35 + 0.65 * n1))), 0.0, 1.0);
   float fM = mkB;
   // marsh/ice sheets only live on near-flat ground: without this the graded
   // banks around a frozen lake inherit the sheet's glossy blue ice response
@@ -3437,6 +3441,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uRoadTex = { value: S.pavedRoads ? 1 : clamp(S.roadTexMix ?? 0, 0, 1) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
+    shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
     shader.uniforms.uIceDrift = { value: (S.iceLake || S.seaLake) ? (S.iceDrift ?? 0.85) : 0 };
   }
   function assignSplatBiomeUniforms(shader: MaterialShader): void {

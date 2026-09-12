@@ -86,8 +86,11 @@ function checkFractional(sample) {
 }
 function checkSourceContract(text) {
   assert.equal(compact(scalar(text, 'meadowG')), '(1.0-fD)*(1.0-projW)*(1.0-fMs)', 'existing meadow ownership unchanged');
+  // map pass 2026-09-12: the bare road shoulder gained its own authored scale
+  // (uShoulderDirt, default 1) so snow passes keep white verges; the max()
+  // competition between ambient wear, shoulder and town wear is unchanged.
   assert.equal(compact(scalar(text, 'fD')),
-    'clamp(max(worn*uWornDirtStrength,max(shoulder,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
+    'clamp(max(worn*uWornDirtStrength,max(shoulder*uShoulderDirt,mk.a*uTownWear*(0.35+0.65*n1))),0.0,1.0)',
     'authored dirt/road/town blend policy unchanged');
   assertTerrainFetchExpressionCensus(text);
   assert.deepEqual(text.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
@@ -97,7 +100,9 @@ function checkSourceContract(text) {
   const expected = ['uAlbG','uAlbD','uAlbR','uAlbM','uNrmG','uNrmD','uNrmR','uNrmM','uMask','uNoise',
     'uTintA','uTintB','uTintC','uRoadTint','uMarshGloss','uMicroAmp','uStrata','uRoadTex','uTownWear',
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
-    'uMidFar','uRockGate','uSea','uSeaFoam','uSeaRamp'].sort();
+    'uMidFar','uRockGate','uSea','uSeaFoam','uSeaRamp',
+    'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
+  ].sort();
   assert.deepEqual(uniforms, expected, 'no new shader uniform or sampler');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
   assert.ok(compact(text).includes(compact(`textures: [

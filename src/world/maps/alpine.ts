@@ -58,7 +58,7 @@ export default {
     iceLake: true, iceDrift: 0.16, marshGloss: 1.0, mudRough: 0.18,
     iceSky: [0.72, 0.82, 0.94],
     tintA: [1.02, 1.08, 1.16], tintB: [0.74, 0.84, 0.96], tintC: [1.12, 1.14, 1.18],
-    roadTint: [0.65, 0.69, 0.72], midRelief: 0.58,
+    roadTint: [1.30, 1.46, 1.70], shoulderDirt: 0.30, midRelief: 0.58, // map pass 2026-09-12: packed-snow pass roads, not black mud slashes
   },
   vegetation: {
     species: ['spruce', 'fir', 'pine'], clusterMix: [['spruce', 0.62], ['fir', 0.28], ['pine', 0.10]],

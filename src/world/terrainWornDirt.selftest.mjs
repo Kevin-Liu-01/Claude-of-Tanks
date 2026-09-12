@@ -22,12 +22,19 @@ function compileCoverage(text) {
   const uniform = text.match(/shader\.uniforms\.uWornDirtStrength = \{ value: ([^}]+) \};/);
   assert.ok(uniform, 'authored setting must reach the shader uniform');
   const strength = new Function('S', 'clamp', `return ${uniform[1]};`);
-  const blend = new Function('worn', 'shoulder', 'mk', 'uTownWear', 'n1', 'uWornDirtStrength', 'clamp', 'max',
+  // map pass 2026-09-12: the bare road shoulder carries its own authored
+  // scale (uShoulderDirt, default 1) so snow passes keep white verges; every
+  // legacy case below still executes with that scale at its default.
+  const shoulderUniform = text.match(/shader\.uniforms\.uShoulderDirt = \{ value: ([^}]+) \};/);
+  assert.ok(shoulderUniform, 'authored shoulder scale must reach the shader uniform');
+  const shoulderScale = new Function('S', 'clamp', `return ${shoulderUniform[1]};`);
+  const blend = new Function('worn', 'shoulder', 'mk', 'uTownWear', 'n1', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max',
     `return ${scalar(text, 'fD')};`);
   return {
     strength: settings => strength(settings, clamp),
+    shoulderScale: settings => shoulderScale(settings, clamp),
     blend: (settings, worn, shoulder, town, wear, noise) =>
-      blend(worn, shoulder, { a: town }, wear, noise, strength(settings, clamp), clamp, Math.max),
+      blend(worn, shoulder, { a: town }, wear, noise, strength(settings, clamp), shoulderScale(settings, clamp), clamp, Math.max),
   };
 }
 
@@ -44,10 +51,17 @@ function checkCoverageCase(actual, worn, shoulder, town, wear, noise) {
   assert.ok(current >= protectedWear, 'road/town weight is never scaled with ambient wear');
   assert.ok(current <= previous && current >= 0 && current <= 1);
   if (protectedWear >= worn * .84) assert.equal(current, previous, 'authored dominant coverage remains exact');
+  // Snow-pass shoulders: only the shoulder term scales; ambient wear and town wear are untouched.
+  const snowy = actual.blend({ shoulderDirt: .3 }, worn, shoulder, town, wear, noise);
+  assert.equal(snowy, clamp(Math.max(worn * .84, Math.max(shoulder * .3, town * wear * (.35 + .65 * noise))), 0, 1),
+    'the shoulder scale multiplies the shoulder term alone');
+  assert.equal(actual.blend({ shoulderDirt: 1 }, worn, shoulder, town, wear, noise), previous, 'a full shoulder is the legacy policy');
 }
 function checkCoverage(text) {
   const actual = compileCoverage(text);
   assert.equal(actual.strength({}), .84, 'all unauthored maps retain the exact legacy default');
+  assert.equal(actual.shoulderScale({}), 1, 'all unauthored maps keep their full bare shoulder');
+  assert.equal(actual.shoulderScale({ shoulderDirt: 1.7 }), 1, 'the shoulder scale is clamped to a full shoulder');
   assert.equal(actual.strength({ wornDirtStrength: 0 }), 0, 'explicit zero is not a missing setting');
   assert.equal(actual.strength({ wornDirtStrength: -1 }), 0);
   assert.equal(actual.strength({ wornDirtStrength: 2 }), 1);
@@ -70,6 +84,9 @@ assert.throws(() => checkCoverage(source.replace(scalar(source, 'fD'),
 
 function checkMapScope(resolve) {
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.wornDirtStrength !== undefined), ['coastal', 'saltwind']);
+  assert.deepEqual(MAP_IDS.filter(id => resolve(id).splat?.shoulderDirt !== undefined), ['alpine'],
+    'map pass 2026-09-12: only Glacier Pass authors a snowy road shoulder');
+  assert.equal(resolve('alpine').splat.shoulderDirt, .3);
   for (const id of MAP_IDS) {
     assert.equal(actual.strength(resolve(id).splat ?? {}), id === 'coastal' || id === 'saltwind' ? .22 : .84);
   }

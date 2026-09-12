@@ -18,13 +18,14 @@ function compileConsumer(source) {
   const mask = {}, noiseTex = {};
   assert.equal(new Function('mask', 'noiseTex', `return ${binding};`)(mask, noiseTex), mask);
   const expression = unique(code, /float\s+fD\s*=\s*([^;]+);/g, 'worked-soil coverage')[1];
-  const coverage = new Function('mk', 'uTownWear', 'n1', 'worn', 'shoulder', 'uWornDirtStrength', 'clamp', 'max', `return ${expression};`);
+  // map pass 2026-09-12: the shoulder term carries an authored scale (uShoulderDirt, default 1).
+  const coverage = new Function('mk', 'uTownWear', 'n1', 'worn', 'shoulder', 'uWornDirtStrength', 'uShoulderDirt', 'clamp', 'max', `return ${expression};`);
   const albedo = unique(code, /\ba\s*=\s*mix\(a,\s*groundSamp\(uAlbD,[^;]+,\s*fD\s*\);/g, 'D albedo consumer')[0];
   const normal = unique(code, /\bn\s*=\s*mix\(n,\s*groundNrm\(uNrmD,[^;]+,\s*fD\s*\);/g, 'D normal consumer')[0];
   const output = new Function('a', 'n', 'uv', 'df', 'mipB', 'uAlbD', 'uNrmD', 'fD', 'groundSamp', 'groundNrm', 'mix',
     `${albedo}\n${normal}\nreturn [a,n];`);
   return {
-    coverage: (mk, town, noise) => coverage(mk, town, noise, 0, 0, .84, clamp, Math.max),
+    coverage: (mk, town, noise) => coverage(mk, town, noise, 0, 0, .84, 1, clamp, Math.max),
     output: weight => output(.2, .4, 3, .5, 1, 'albedo-D', 'normal-D', weight,
       layer => { assert.equal(layer, 'albedo-D'); return .8; },
       layer => { assert.equal(layer, 'normal-D'); return .9; }, mix),
