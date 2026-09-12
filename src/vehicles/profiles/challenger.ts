@@ -11,7 +11,7 @@
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
-import { buildChallenger3XRearTurretClosure } from './challenger3XRearTurret.ts';
+import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
@@ -2745,10 +2745,6 @@ function buildChallenger3XBustle(
 }
 
 function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
-  // Owner surface-1 (2026-09-10): the rear centerline-to-roof face was
-  // exposed inside a V-shaped cavity. Close the volume under the existing
-  // bustle crown; retain the standard Challenger 3 and all exterior datums.
-  P.add('turret', buildChallenger3XRearTurretClosure());
   const receipt: Challenger3XReceipt = {
     variant: 'challenger_3x',
     enhancedSkirtPanels: 0,
@@ -4454,7 +4450,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // a 1.07 m disc on a .91 m station pitch (16 cm physical overlap) and
       // rendered 39-44 px vs the source's ~28 px.  Six non-overlapping .90 m
       // Hydrogas discs are the measured final; retain the new tire/rim tones.
-      style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.46, dishR: 0.71, xc: 1.2825,
+      // Seat the tire bottoms on the inner face of the loaded track run.
+      // wheelY=.46 put them 90 mm through the .09 m track band; .56 leaves
+      // 10 mm running clearance while keeping the upper course distinct.
+      style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.56, dishR: 0.71, xc: 1.2825,
       wheelZs: [2.55, 1.64, 0.73, -0.18, -1.09, -2.00],
       // The final drive is rear-owned but must remain below the sponson floor.
       // y=1.27 put the linked-shoe crown physically through the 1.475 floor;
@@ -4762,6 +4761,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       shoulderXF: 1.28, shoulderXR: 1.35, shoulderYF: 0.58, shoulderYR: 0.50,
       roofXF: 1.05, roofXR: 1.05, roofYF: 0.66, roofYR: 0.52,
     });
+    // Owner surface-1 (2026-09-10 X, 2026-09-11 base): the original rear
+    // centerline face opened into a V-shaped cavity on both Challenger 3
+    // variants. Close that shared shell beneath its existing bustle roof.
+    P.add('turret', buildChallenger3RearTurretClosure());
     c3ShellSegment(-1.33, -2.55, {
       bottomF: 0.02, bottomR: 0.10, outerF: 1.36, outerR: 1.34,
       shoulderXF: 1.31, shoulderXR: 1.28, shoulderYF: 0.60, shoulderYR: 0.58,
