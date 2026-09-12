@@ -9,9 +9,9 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 93.35192721467457,
+ "rawGeoMin": 93.35441490115792,
  "rawComponents": {
-  "wholeCurves": 93.35192721467457,
+  "wholeCurves": 93.35441490115792,
   "dims": 95.28348132112129,
   "floaters": 100
  },
@@ -852,7 +852,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 155101,
+     "area": 155097,
      "minX": 153,
      "minY": 283,
      "maxX": 965,
@@ -894,7 +894,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 151602,
+     "area": 151598,
      "minX": 158,
      "minY": 283,
      "maxX": 965,
@@ -908,7 +908,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 157715,
+     "area": 157713,
      "minX": 174,
      "minY": 283,
      "maxX": 965,

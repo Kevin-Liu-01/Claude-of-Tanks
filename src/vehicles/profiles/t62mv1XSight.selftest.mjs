@@ -11,8 +11,12 @@ import {withHistoricalFixedSkirtFinish} from '../fixedSourceSkirtPaint.test-supp
 const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // Captured before this additive correction, independently by the integration
 // owner. Complete scene attributes/indices/instances/materials/owner/matrices.
-const BEFORE={high:'77ef538488b25a7a3fb4637488a8d75b1a9a5b4e08ce77e5ea28f017c2cbf29e',
-  low:'22ec31bb520c43fb62a890aa76557c9c619a48e82982f1b404f8782fc81b2b6e'};
+// 2026-09-12 fleet visual standard: the shared pressed-disc road wheel (rib
+// motif, pressed-six/pressed-eight) keeps its former rib envelope with the
+// holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
+// wheel scene digest below moved together; repinned from the current build.
+const BEFORE={high:'5c727e357e6381a2c4cefe9149d9e3c0dcf17f44f36e0c7a3939e825196b5b25',
+  low:'2ae04b79f652ecccb2f6dd660059fc207608be3b40a26aebba7b1db990076cd1'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];

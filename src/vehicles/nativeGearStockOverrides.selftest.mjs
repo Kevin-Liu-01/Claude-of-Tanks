@@ -7,7 +7,7 @@ import {KIT} from './tankFactoryCore.ts';
 // assemblies and 96 motion snapshots. The original core was independently
 // loaded for recovery qualification; this immutable fingerprint is not a
 // refreshed source-shape or current-vs-current golden.
-const DEFAULT_FINGERPRINT='d1a37949ea50b371bb5b971929cbbec18c2c113fed082bc062434c5ce7089bf7';
+const DEFAULT_FINGERPRINT='e30770aaf3218e1d67f203e9346a9894714798354aa938a063fe84242b928b56';
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){

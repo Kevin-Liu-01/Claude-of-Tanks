@@ -283,7 +283,7 @@ function restHash(visual) {
 // model for damage/reset: never omit the corrected lamps from preservation.
 const T90M_REST_REVISIONS = Object.freeze({
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: '94a5048ed6c80752a3b8137c135d12d5e6f476afde904a838db6d2cbc90e7c0d',
+  forwardLampSeat: '34700d6e4d20698b353483f641c1835549ff0bfb0b4a829f27c6ec1d1c93acb9',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently

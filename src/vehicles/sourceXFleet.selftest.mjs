@@ -14,7 +14,7 @@ import {withHistoricalT90MLamps,assertCurrentT90MLampSeats} from './historicalT9
 const original = {
   leo2a7v:'279ca80a', leo2a6m:'d870b601', leo2a4m:'63b8661e', leo2a5:'e0fd3d59',
   merkava4:'e068d72b', merkava3d:'7e6d399e', k2:'b5fcbf2b', kf51:'c000d8bc',
-  t90a:'240b5795', t90a_vladimir:'b8e50e90', t90m:'459c9292', t90sm:'2ecfaf6d', t14:'61ce3db7',
+  t90a:'2cbbd9a3', t90a_vladimir:'fa7a4a33', t90m:'8cbee6a8', t90sm:'fa814222', t14:'61ce3db7',
 };
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {

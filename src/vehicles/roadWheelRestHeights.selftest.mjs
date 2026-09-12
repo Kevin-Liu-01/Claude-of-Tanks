@@ -62,11 +62,15 @@ function gearFingerprint(root) {
 
 // Captured before introducing either optional road-station API. These cover
 // real wheel, suspension, drum, band and shoe buffers AND instance matrices.
+// 2026-09-12 fleet visual standard: the shared pressed-disc road wheel (rib
+// motif, pressed-six/pressed-eight) keeps its former rib envelope with the
+// holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
+// wheel scene digest below moved together; repinned from the current build.
 const ORIGINALS = {
-  t90sm: ['34b2ebe686e96f1a0906d6d7702c1a15de231d0b3da200631e0008d891f9be64',
-    '4829abde5789b92e6e5458bc944c3bb0c1e37a4f66287fe42a880290c4eda08c'],
-  t90m: ['8b2c403655ba1913d0f184a3841c741957d0ca2e02d2f04e9b73116c08c4be3a',
-    '00f4cae94dd2b1bfa96e6319dc6293cbbce6d52ef9f7154bb70c4387f8286271'],
+  t90sm: ['deaac99b93d6485fc4b2e9e5d4bb631d982fde6c314c43e6fb7771e1f0b223c4',
+    'c5432a0cee8c49ad32602790c662094ee16046349673572731793072756639e6'],
+  t90m: ['d384685fc45b5c0f7345f5b95c18a3d58c8e260c16dd5d68d888b51b8c5694a5',
+    'a0cdbe2c13f453148cb3b9e089ef3437aa80118fe762dc4b46ba4cfc2d0cd044'],
   m1a2: ['cbb19f45efdbab97356bd7fc5f87235b6948e0696427ed845cdebdee1e55be99',
     '3868961745dac2ffef364704dd0f12eb5e78ceb379bece156a61dcc6be602016'],
   leo2a5: ['08efd1106a79835d3b0ad6c4ffe8a502faea5212ee785c1f84b790d331d8846f',

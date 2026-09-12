@@ -10,14 +10,18 @@ import { tankTier } from './tier.ts';
 // Independent pre-work geometry receipts from origin/main c26b3194200f52be,
 // measured before any second-wave authored builder or registry change.
 // Includes all 22 requested originals, not merely the completed draft subset.
+// 2026-09-12 fleet visual standard: the shared pressed-disc road wheel (rib
+// motif, pressed-six/pressed-eight) keeps its former rib envelope with the
+// holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
+// wheel scene digest below moved together; repinned from the current build.
 const original = {
-  ariete_c1:'a4e3e6b0', challenger1:'c75fb1c8', leclerc:'3860cb3a',
-  chieftain5:'cd8e8f61', chieftain_mk10:'6bf3180a', leo2a6:'4b34bc1d',
-  k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'28da883d',
-  t72b_1987:'f26b00cd', t72b3:'1aef42bd', t72b3m:'c985f173',
-  t72bu:'0bac6b5f', t80u:'de5a9043', type10:'4618e37b', type90:'711ec4b5',
+  ariete_c1:'a4e3e6b0', challenger1:'2937a90d', leclerc:'3860cb3a',
+  chieftain5:'c8de963f', chieftain_mk10:'acf04779', leo2a6:'4b34bc1d',
+  k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'3379305f',
+  t72b_1987:'9f7859c1', t72b3:'b67dd1c6', t72b3m:'58da02f1',
+  t72bu:'30cc85ca', t80u:'4381d127', type10:'4618e37b', type90:'711ec4b5',
   jpz_e100:'b93d7759', amx30:'be31d256', amx40:'c9d493c6',
-  t90:'7320f027', t90a_burlak:'59e16e7e', t90ms:'4c9068b5',
+  t90:'25985a56', t90a_burlak:'4ff12e80', t90ms:'71b92ade',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {

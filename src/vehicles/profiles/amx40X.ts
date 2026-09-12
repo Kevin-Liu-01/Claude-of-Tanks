@@ -243,10 +243,10 @@ function buildAmx40X(P:TankBuilderPort):void {
   hull(P);turretCasting(P);turretRoof(P);cannon(P);
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',wheelR:.3401,wheelW:.3211,wheelY:.41530,
-    wheelZs:[...AMX40_X_DATUMS.wheelZs],xc:1.2738,trackW:.587,trackTh:.024, // fleet track standard 2026-09-12
+    wheelZs:[...AMX40_X_DATUMS.wheelZs],xc:1.2738,trackW:.587,trackTh:.020,
     roadWheelOutsetM:.02335,wheelFaceDepthScale:.70,wheelTireInnerRadiusM:.282,
     wheelFaceLayers:[{geometry:wheelFaces(),material:P.mats.wheels,name:'amx40WheelPressedFaces'}],
-    trackShoeDimensions:{webHeight:.035,padHeight:.030,grouserHeight:.012,hornHeight:.055,pinRadius:.010,pinCentreY:0},
+    trackShoeDimensions:{webHeight:.035,padHeight:.028,grouserHeight:.012,hornHeight:.055,pinRadius:.010,pinCentreY:0},
     sprocket:{z:-2.8357,y:.78885,r:.3506,trackR:.322,toothTipRadiusM:.3506,
       axleOutsetM:.0166,axialScaleLeft:.85,axialScaleRight:.85},
     idler:{z:2.77110,y:.8976,r:.3042,trackR:.274,axleOutsetM:.02895,

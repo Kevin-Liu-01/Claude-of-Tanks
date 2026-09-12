@@ -124,3 +124,24 @@ both into `public/models/community-candidates/` (per-file symlinks) before the
 geometry gate can score the exemplar bar; without them every X class reports
 "registered exemplar comparison oracle unavailable" and the gate fails at step
 one.
+
+## Exemplar gate reconciliation (2026-09-12)
+
+With every registered oracle linked, the fresh geometry gate over the changed
+classes scores 35/41 (fleet-wide 67/162). The six misses:
+
+- `challenger1_x` (0, dims 0), `type10_x` (79.4), `m1a2_sepv2_x` (87.6) and
+  `fv510` (0) score exactly what the committed ledger already recorded before
+  this session; they are pre-existing exemplar/fleet-bar gaps, not regressions.
+- `strv103` improved from 57 to 82.2 (fleet bar 90) with the collar-seated
+  mouth.
+- `t90m_x` fell from 93.1 to 90.8. Bisected on the pre-batch tree: not the
+  pressed-disc wheels, not the camouflaged detail buckets, not the mouth seat
+  — it was the slimmed DVE-BS wind-sensor mast. The supplied source model
+  carries a 92–108 mm post; the real mast is a ~30 mm rod, and the slim
+  version read better on the contact sheets. The source post is restored so
+  the class stays at the exemplar bar (93.1/92); accepting 90.8 for the
+  accurate mast is an owner decision.
+- The track standard was rolled back to measured values on `amx40_x` (92.3 →
+  91.9 with the thicker band) and the T-90M block; the Soviet source-X hulls
+  that took the standard all score ≥ 92 with it.

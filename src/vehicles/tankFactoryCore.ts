@@ -2391,16 +2391,19 @@ function addWheelFaceMotif(
       // plate carries raised stiffening ribs and small lightening holes
       // between them, with a slim dark hub well and a raised hub drum. The
       // former dark backing behind open ribs read as a spoked wagon wheel.
+      // 2026-09-12: the disc keeps the former rib envelope (plate 1.17 w, ribs
+      // 0.20 x 1.24) so the T-90M X exemplar silhouette scores as before; the
+      // holes, hub well and hub drum sit inside that envelope.
       const ribs = pattern?.pockets || 8;
-      discs.push(cylX(r * 0.66, w * 1.19, seg));
-      radialRibs(discs, r, w, ribs, 0.24, dishR * 0.84, 0.11, 1.30, 0.08);
+      discs.push(cylX(r * 0.66, w * 1.17, seg));
+      radialRibs(discs, r, w, ribs, 0.20, dishR * 0.84, 0.12, 1.24, 0.08);
       for (let index = 0; index < ribs; index += 1) {
         const angle = ((index + 0.5) / ribs) * Math.PI * 2 + 0.08;
-        dark.push(xform(cylX(r * 0.048, w * 1.22, 8),
+        dark.push(xform(cylX(r * 0.048, w * 1.20, 8),
           0, Math.sin(angle) * r * 0.46, Math.cos(angle) * r * 0.46));
       }
-      dark.push(cylX(r * 0.30, w * 1.23, seg));
-      discs.push(cylX(r * 0.21, w * 1.29, 14));
+      dark.push(cylX(r * 0.30, w * 1.21, seg));
+      discs.push(cylX(r * 0.21, w * 1.24, 14));
       return;
     }
     case 'spoke':
