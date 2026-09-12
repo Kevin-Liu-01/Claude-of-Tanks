@@ -194,3 +194,10 @@ full pipeline (fidelity boards, anatomy, module probes, `npm test`,
 `build:private`) was run and passed today for k1a1_x, merkava4_x and
 merkava3d_x on the final tree; every other class kept the release run of the
 batch that last changed it.
+
+Final record (2026-09-12 09:55, tree fec25d8a4): `npm run tank:release:check
+-- --ids=<30 machine-clean X classes> --gate` PASS end to end (geometry gate
+30/30, fidelity boards, anatomy, marking seats, module probes, track and
+muzzle audits, barrel circularity, full `npm test`, `build:private`);
+`npm run build:public` also completes (chunk-size warning only). Excluded
+from that run: the seven pre-existing misses tabled above.
