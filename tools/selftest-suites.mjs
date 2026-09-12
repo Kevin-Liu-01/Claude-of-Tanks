@@ -60,6 +60,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/merkavaXReturnRollers.selftest.mjs',
     'src/vehicles/nativeGearStockOverrides.selftest.mjs',
     'src/vehicles/abramsSourceXGeometry.selftest.mjs',
+    'src/vehicles/profiles/abramsSourceXDrive.selftest.mjs',
     'src/vehicles/profiles/abramsSourceXCover.selftest.mjs',
     'src/vehicles/abramsSourceXSpecs.selftest.mjs',
     'src/vehicles/abramsSourceXRecovery.selftest.mjs',
