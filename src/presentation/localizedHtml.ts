@@ -1,10 +1,11 @@
-import { catalogText } from '../ui/i18nCatalog.ts';
+import { catalogText, CATALOG } from '../ui/i18nCatalog.ts';
 import {
   DEFAULT_LOCALE,
   hrefForLocale,
   type PublicRouteRecord,
   type SupportedLocale,
 } from '../ui/localeRouting.ts';
+import { renderProductStats } from '../productStats.ts';
 import { SITE_ORIGIN } from './siteMetadata.ts';
 
 function escapeAttribute(value: string): string {
@@ -36,6 +37,11 @@ function translation(locale: SupportedLocale, key: string): string {
   return catalogText(locale, key);
 }
 
+/** True when a catalog key actually exists (catalogText falls back to the literal key). */
+function localizedHas(key: string): boolean {
+  return key in CATALOG['en-US'];
+}
+
 function addLocaleLinks(html: string, route: PublicRouteRecord): string {
   if (!route.indexable) return html;
   const english = `${SITE_ORIGIN}${route.pathname}`;
@@ -59,6 +65,31 @@ function localizeStructuredData(
 ): string {
   const englishCanonical = `${SITE_ORIGIN}${route.pathname}`;
   const localizedCanonical = `${SITE_ORIGIN}${hrefForLocale(route.pathname, locale)}`;
+
+  // Discovery copy inside JSON-LD (TechArticle headline/description and the
+  // BreadcrumbList names) is authored in English per source HTML; when
+  // materializing a `/cn` document, localize those visible fields so the
+  // structured data agrees with the page's declared language. Headlines and
+  // descriptions only exist for the documentation routes; render product-stat
+  // tokens (`{{COT_*}}`) so descriptions match the built English source.
+  const headlineKey = `metadata.${route.id}.headline`;
+  const descriptionKey = `metadata.${route.id}.structuredDescription`;
+  const hasHeadline = localizedHas(headlineKey);
+  const hasDescription = localizedHas(descriptionKey);
+  const localizedHeadline = locale !== DEFAULT_LOCALE && hasHeadline
+    ? translation(locale, headlineKey)
+    : null;
+  const englishHeadline = hasHeadline ? translation('en-US', headlineKey) : null;
+  const localizedDescription = locale !== DEFAULT_LOCALE && hasDescription
+    ? renderProductStats(translation(locale, descriptionKey))
+    : null;
+  const englishDescription = hasDescription
+    ? renderProductStats(translation('en-US', descriptionKey))
+    : null;
+  const localizedCrumb = locale !== DEFAULT_LOCALE
+    ? translation(locale, 'metadata.docs.crumb')
+    : null;
+
   return html.replace(
     /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi,
     (block, source: string) => {
@@ -72,11 +103,21 @@ function localizeStructuredData(
           }
           const record = node as Record<string, unknown>;
           for (const [key, child] of Object.entries(record)) {
-            if (key === 'inLanguage') record[key] = locale;
-            else if (typeof child === 'string' &&
+            if (key === 'inLanguage') {
+              record[key] = locale;
+            } else if (localizedHeadline && key === 'headline' && child === englishHeadline) {
+              record[key] = localizedHeadline;
+            } else if (localizedDescription && key === 'description' && child === englishDescription) {
+              record[key] = localizedDescription;
+            } else if (localizedHeadline && key === 'name' && typeof child === 'string') {
+              if (child === englishHeadline) record[key] = localizedHeadline;
+              else if (localizedCrumb && child === 'Documentation') record[key] = localizedCrumb;
+            } else if (typeof child === 'string' &&
               (child === englishCanonical || child.startsWith(`${englishCanonical}#`))) {
               record[key] = `${localizedCanonical}${child.slice(englishCanonical.length)}`;
-            } else visit(child);
+            } else {
+              visit(child);
+            }
           }
         };
         visit(value);
