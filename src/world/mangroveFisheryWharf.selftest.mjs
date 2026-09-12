@@ -66,9 +66,12 @@ const seed = Number(process.argv.find(a => a.startsWith('--seed='))?.slice(7));
 // V29 actual world-space bytes, captured before the two inner-pile change.
 // All 55 other parts include the seated annex, both outer piles and full dock.
 const v29Stable = {
-  1337: '543960fc8a15c2f555cd11e84c9e066217eef18ba3ffb948852316f8a52b05ae',
-  2025: '3d5d81bc3b24818705ca53fcd446d272b463e180827e44771625ccc7013e9ce8',
-  7719: '069236f822110946aea72a28242640a4a839a0edbc22633b7c149cf85d33a347',
+  // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
+  1337: '2aa0465ae6a7f1c9163289c0ce6b3804be665f537ce92832680a961c9d31f0dc',
+  // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
+  2025: '8174d9b51be909a47e65343288ce0cbb8dbdfb267df13ddbd3d1c59e615cd08d',
+  // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
+  7719: 'd838f6dbca34b41b9154c0eaeee3ac65ff075b07386db7d4e26ab995d89fe770',
 };
 if (!seed) {
   for (const value of [1337, 2025, 7719]) {
@@ -320,7 +323,8 @@ function actualBudgetAndSupport() {
   const connection = certifyGroundedStructureParts('mangrove-wharf', all, {
     groundMinY: result.annexBottom - .01, groundMaxY: result.annexBottom + .01,
   });
-  assert.equal(connection.connected, 57, 'roof, hoist, façade and dock retain connected structural support');
+  // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's four bare panes.
+  assert.equal(connection.connected, 73, 'roof, hoist, façade, dock and window joinery retain connected structural support');
   const landing = planRiverLanding(field, field._layout.lakes, mangrove.props.riverLandings[0]);
   const deck = dressing.find(g => {
     g.computeBoundingBox(); const center = g.boundingBox.getCenter(new THREE.Vector3());

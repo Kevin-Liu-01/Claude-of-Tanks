@@ -621,10 +621,120 @@ export function addConnectedExterior(
   if (envelope.timberBathhouseEntry && (!parts.wood || !parts.curtain)) {
     throw new TypeError('Timber bathhouse requires its existing wood and curtain material buckets');
   }
+  // Builder-authored window panes, read BEFORE this pass adds its own framed
+  // apertures (those arrive complete and must not be framed twice).
+  const panes = collectWindowPanes(parts, envelope);
   const author = detailAuthor(parts, envelope);
   addPrimaryExterior(author, envelope, variant);
   addSecondaryExterior(author, envelope, variant);
+  addWindowJoinery(author, panes, envelope.profile, variant);
   return appendExteriorReceipt(parts, author.receipt());
+}
+
+interface WindowPane {
+  /** Wall axis the pane is thin along: 'x' for the ±w/2 faces, 'z' for ±d/2. */
+  axis: 'x' | 'z';
+  side: number;
+  center: THREE.Vector3;
+  size: THREE.Vector3;
+}
+
+const MAX_JOINERY_PANES = 12;
+
+/**
+ * Window openings a builder authored as bare panes on the centred wall
+ * envelope: thin dark/glass/curtain boxes at a wall face, inside the wall
+ * height, with no enclosing frame piece of their own. Attic/gable panes above
+ * the wall and recessed wing panes are left alone (no wall support there).
+ */
+function collectWindowPanes(
+  parts: GeometryBuckets,
+  { w, d, wallH }: ExteriorEnvelope,
+): WindowPane[] {
+  const framed: THREE.Box3[] = [];
+  for (const name of ['wood', 'stone', 'plaster', 'plaster2', 'plaster3']) {
+    for (const geo of parts[name] || []) framed.push(boundsOf(geo));
+  }
+  const panes: WindowPane[] = [];
+  const frameSize = new THREE.Vector3();
+  for (const name of ['dark', 'glass', 'curtain']) {
+    for (const geo of parts[name] || []) {
+      const bounds = boundsOf(geo);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      const thinX = size.x <= 0.12 && size.z >= 0.35 && size.z <= 2.6;
+      const thinZ = size.z <= 0.12 && size.x >= 0.35 && size.x <= 2.6;
+      if (!(thinX || thinZ) || size.y < 0.45 || size.y > 2.4) continue;
+      if (bounds.min.y < 0.5 || bounds.max.y > wallH - 0.05) continue;
+      const axis: 'x' | 'z' = thinX ? 'x' : 'z';
+      const face = axis === 'x' ? w / 2 : d / 2;
+      const along = axis === 'x' ? center.x : center.z;
+      if (Math.abs(Math.abs(along) - face) > 0.25) continue;
+      const alreadyFramed = framed.some((frame) => {
+        frame.getSize(frameSize);
+        const thinFrame = axis === 'x' ? frameSize.x <= 0.3 : frameSize.z <= 0.3;
+        if (!thinFrame) return false;
+        const frameAlong = axis === 'x' ? (frame.min.x + frame.max.x) * 0.5 : (frame.min.z + frame.max.z) * 0.5;
+        if (Math.abs(frameAlong - along) > 0.2) return false;
+        const enclosesY = frame.min.y <= bounds.min.y + 0.02 && frame.max.y >= bounds.max.y - 0.02;
+        const enclosesAcross = axis === 'x'
+          ? frame.min.z <= bounds.min.z + 0.02 && frame.max.z >= bounds.max.z - 0.02
+          : frame.min.x <= bounds.min.x + 0.02 && frame.max.x >= bounds.max.x - 0.02;
+        return enclosesY && enclosesAcross;
+      });
+      if (alreadyFramed) continue;
+      panes.push({ axis, side: Math.sign(along) || 1, center, size });
+    }
+  }
+  return panes.slice(0, MAX_JOINERY_PANES);
+}
+
+/**
+ * settlement pass 2026-09-12 (owner: "everything looks so undetailed"):
+ * jambs, head and sill around every bare authored window, plus hung shutters
+ * on alternate rural/timber buildings. Every piece is proud of the wall face
+ * and embedded 1 cm into the wall envelope so it carries a real area joint.
+ */
+function addWindowJoinery(
+  author: ExteriorAuthor,
+  panes: readonly WindowPane[],
+  profile: string,
+  variant: number,
+): void {
+  if (profile === 'canvas' || profile === 'open') return;
+  const timber = profile === 'timber' || profile === 'rural';
+  const material = timber ? 'wood' : 'stone';
+  const shutters = timber && variant % 2 === 1;
+  const t = 0.09, depth = 0.11;
+  panes.forEach(({ axis, side, center, size }, index) => {
+    const openW = axis === 'x' ? size.z : size.x;
+    const faceAlong = axis === 'x' ? Math.abs(center.x) : Math.abs(center.z);
+    // Wall face from the pane: builders seat panes 1-2 cm proud of the face.
+    const face = Math.max(0.5, faceAlong - size[axis] * 0.5 - 0.015);
+    const place = (geo: THREE.BufferGeometry, across: number, y: number, out: number): THREE.BufferGeometry => (
+      axis === 'x'
+        ? geo.translate(side * out, y, center.z + across)
+        : geo.translate(center.x + across, y, side * out)
+    );
+    const piece = (width: number, height: number, thick: number): THREE.BufferGeometry => (
+      axis === 'x' ? box(thick, height, width) : box(width, height, thick)
+    );
+    const frameOut = face - 0.01 + depth * 0.5;
+    for (const sign of [-1, 1]) {
+      author.add(`window-${index}-jamb-${sign}`, material,
+        place(piece(t, size.y + 2 * t, depth), sign * (openW * 0.5 + t * 0.5), center.y, frameOut));
+    }
+    author.add(`window-${index}-head`, material,
+      place(piece(openW + 2 * t, t, depth), 0, center.y + size.y * 0.5 + t * 0.5, frameOut));
+    author.add(`window-${index}-sill`, material,
+      place(piece(openW + 0.30, 0.09, 0.20), 0, center.y - size.y * 0.5 - 0.045, face - 0.01 + 0.10));
+    if (shutters && index % 3 !== 2) {
+      for (const sign of [-1, 1]) {
+        author.add(`window-${index}-shutter-${sign}`, 'wood',
+          place(piece(0.30, size.y * 0.94, 0.05), sign * (openW * 0.5 + t + 0.17), center.y, face - 0.005 + 0.025));
+      }
+    }
+  });
 }
 
 function validateExteriorEnvelope(

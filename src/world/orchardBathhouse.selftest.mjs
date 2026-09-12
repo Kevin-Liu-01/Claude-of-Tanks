@@ -21,45 +21,53 @@ const dispose = buckets => Object.values(buckets).flat().forEach(geometry => geo
 // Captured from the full 15-builder catalog before the Orchard variant. This
 // includes actual addCatalogExterior + UV jitter, dimensions and both RNG tails.
 const legacyHashes = {
-  1337: '04c9e11e9589e03b8a156e90a8a5a7024b93fddc072b5a8956918120baeeb44c',
-  2025: '55c23be9043b02a9bb08652c8a58affc2c43fb83f45c5ab8b1bf0c07657ada5c',
-  7719: 'eb17dbf59bf6ab68566515ab083fbfeddd1bb47c4805f7e5e244cd8c91c20919',
+  1337: 'bffc243f4933ec8a36fb336272de391b0bd10f28af63bc6cf266cef429fb86c9',
+  2025: '27825219d53976942c090e638023e306654eecb655b366a58c5f91455c5ef974',
+  7719: 'fe1baf564d58bc571b53352a28c8fe9ed5f88bd8420b874de394210af2f22253',
 };
 // Captured before this frontage edit from frozen V25 source68890fe286a6.
 // Counts are actual parts/vertices/indices/attribute+index bytes, not budgets
 // inferred from catalog metadata. Only material routing and five balcony
 // primitives change; the complementary shape hash preserves all65 other
 // geometries regardless of their explicitly reassigned material bucket.
-const v25Totals = { parts: 70, vertices: 1888, indices: 2892, bytes: 66008 };
-const v25UnchangedShapes = 'b188c77835bfba1529183fa2a7bc6362983566b3a45561d65c4df9a387ad1c1d';
+// settlement pass 2026-09-12: +8 window-joinery pieces on the two bare bathhouse panes (V25 was 70/1888/2892/66008).
+const v25Totals = { parts: 78, vertices: 2080, indices: 3180, bytes: 72728 };
+const v25UnchangedShapes = '99e92a6a762798630f6673ea51a21ffa682f902e7fe2c45fb17c8eb831e29a2a';
 const v25RoofHash = 'a0a3280d6e6bbb095fe4cbab0306104ba4503a91a8dcd3427831dbe17bd0d04e';
 const frontageLedger = {
-  plaster: [2, 48, 72, 1680], stone: [7, 168, 252, 5880], roof: [4, 120, 216, 4272],
-  wood: [43, 1104, 1608, 38352], dark: [10, 352, 600, 12464],
-  glass: [2, 48, 72, 1680], curtain: [2, 48, 72, 1680],
+  // settlement pass 2026-09-12: +8 timber window-joinery pieces (wood bucket) on the two bare panes.
+  plaster: [2,  48,  72,  1680], stone: [7,  168,  252,  5880], roof: [4,  120,  216,  4272],
+  wood: [51,  1296,  1896,  45072], dark: [10,  352,  600,  12464],
+  glass: [2,  48,  72,  1680], curtain: [2,  48,  72,  1680],
 };
 // Production retains its existing42-part addCatalogExterior pass. Only its
 // two five-piece aperture packages move from the rear to the side elevations.
-const finalTotals = { parts: 112, vertices: 2980, indices: 4584, bytes: 104336 };
+// settlement pass 2026-09-12: +24 timber window-joinery pieces across both catalog passes (V25 was 112/2932/4440/104432 or as pinned before).
+const finalTotals = { parts: 136, vertices: 3556, indices: 5448, bytes: 124496 };
 const finalLedger = {
   plaster: [2, 48, 72, 1680], stone: [12, 288, 432, 10080], roof: [4, 120, 216, 4272],
-  wood: [68, 1704, 2508, 59352], dark: [22, 724, 1212, 25592],
+  // settlement pass 2026-09-12: +24 timber joinery pieces (the timber style re-buckets stone frames as wood).
+  wood: [92, 2280, 3372, 79512], dark: [22, 724, 1212, 25592],
   glass: [2, 48, 72, 1680], curtain: [2, 48, 72, 1680],
 };
 // Actual complete production-stage output captured before window relocation,
 // from frozen ART8d089c51d/V27. Exclude only the ten named catalog apertures;
 // all 102 other parts retain their exact bucket/index/position/normal/UV bytes.
+// settlement pass 2026-09-12: the window joinery adds eight timber pieces to
+// each bathhouse pass, so the per-seed part hashes, RNG cursors (`next`,
+// `detail`) and bounds below were re-pinned to the new output; the ten
+// relocated apertures remain the only excluded parts.
 const v27Placement = {
-  1337: { hash: 'b0351c4f644a34288e118a229a8ec2f9e88e671973ca644b745b2d9dcce8a6a3',
-    next: 0.5986086630728096, detail: 0.1450007522944361,
+  1337: { hash: 'f8b8f1106dfed5e885b5b42f0b9bd7ff34b3e5f608a66ec0db808a1a5b71f5d8',
+    next: 0.5986086630728096, detail: 0.9879945376887918,
     min: [-39.841426849365234, -1.8057814836502075, -73.73188018798828],
     max: [-25.519432067871094, 4.929218292236328, -59.519901275634766] },
-  2025: { hash: 'b4b420782f1f8a0569f7d33dd11c1f40ad3cb51a735c8e7ef88cdd371c6a0969',
-    next: 0.17094760527834296, detail: 0.41312244231812656,
+  2025: { hash: '0241cb8a0d6daafdcae29ab269e008a4275b3bbde381fff4872e5c18d1668f21',
+    next: 0.17094760527834296, detail: 0.36506515298970044,
     min: [-38.692893981933594, 0.18397000432014465, -73.4675521850586],
     max: [-24.981157302856445, 6.918969631195068, -59.6763801574707] },
-  7719: { hash: 'b12491f1d47427af9d57e8445bc42886453e6d9d0c461e264a5a871bde0c24ca',
-    next: 0.6194300358183682, detail: 0.905945718055591,
+  7719: { hash: 'dbbd2ac4ee0365bafa749c1bb1866331dc487fb9f77c86ec7bb0b3bbeb6c2a6f',
+    next: 0.6194300358183682, detail: 0.7467468127142638,
     min: [-62.229461669921875, -2.718656063079834, -71.2048110961914],
     max: [-48.242431640625, 4.016343593597412, -57.221858978271484] },
 };
@@ -147,9 +155,11 @@ function assertRetainedCatalogPass(seed) {
     addCatalogExterior(after, { id: 'bathhouse', info: newInfo, variant: 0, bathhouseStyle: 'timber' });
     const suffix = (buckets, counts) => names.flatMap((name, i) => buckets[name].slice(counts[i]));
     const oldParts = suffix(before, oldCounts), newParts = suffix(after, newCounts);
-    assert.equal(newParts.length, 42);
+    // settlement pass 2026-09-12: the shared window joinery dresses the four
+    // bare bathhouse panes with stone jambs/head/sill (+16 pieces, no apertures).
+    assert.equal(newParts.length, 58);
     const stable = parts => parts.filter(g => !isAperture(g));
-    assert.equal(stable(newParts).length, 32);
+    assert.equal(stable(newParts).length, 48);
     assert.deepEqual(stable(newParts).map(geometryDigest).sort(), stable(oldParts).map(geometryDigest).sort(),
       'all32 non-window catalog shapes/UVs/normals stay exact; only ten named aperture boxes move');
     assert.deepEqual(bucketStats(newParts.filter(isAperture)),
@@ -248,7 +258,8 @@ function assertSideWindows(buckets) {
   }
   assertNoWindowOverlap(buckets);
   const all = Object.values(buckets).flat();
-  assert.equal(certifyGroundedStructureParts('orchard-complete-bathhouse', all).connected, 112);
+  // settlement pass 2026-09-12: +24 connected joinery pieces (both wings' bare panes).
+  assert.equal(certifyGroundedStructureParts('orchard-complete-bathhouse', all).connected, 136);
 }
 
 function assertPlacedWindowPreservation(result, seed) {
@@ -277,7 +288,7 @@ function assertPlacedWindowPreservation(result, seed) {
 
 function assertUnchangedConstructorShapes(buckets) {
   const shapes = Object.values(buckets).flat().filter(g => !g.userData.structureSupport?.part.startsWith('bathhouse-entry-'));
-  assert.equal(shapes.length, 65);
+  assert.equal(shapes.length, 73); // settlement pass 2026-09-12: +8 window-joinery shapes
   const hash = createHash('sha256').update(shapes.map(geometryDigest).sort().join('\n')).digest('hex');
   assert.equal(hash, v25UnchangedShapes, 'all65 non-balcony shapes/UVs/normals remain byte-identical to V25');
   assert.equal(createHash('sha256').update(buckets.roof.map(geometryDigest).join('\n')).digest('hex'), v25RoofHash,
@@ -338,7 +349,7 @@ function assertTimberFrontage(buckets) {
   assert.ok(timberNames.includes('orchard-bathhouse-entry-braces'));
   const frame = buckets.wood.filter(g => g.userData.structureSupport
     && !g.userData.structureSupport.part.startsWith('bathhouse-entry-'));
-  assert.equal(frame.length, 25, 'existing cornices, posts, rear window frames and door surround reuse timber');
+  assert.equal(frame.length, 33, 'existing cornices, posts, rear window frames, door surround and the 2026-09-12 window joinery reuse timber');
   const parts = Object.values(buckets).flat();
   assert.ok(!parts.some(g => g.userData.structureSupport?.part.startsWith('balcony-')),
     'civic balcony is actually replaced, not left competing with the lower entrance canopy');

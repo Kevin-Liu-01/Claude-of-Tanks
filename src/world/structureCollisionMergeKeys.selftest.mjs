@@ -180,7 +180,8 @@ try {
   addCatalogExterior(buckets, { id: 'onionchurch', info, variant: 0 });
   const geometries = Object.values(buckets).flat();
   for (const part of geometries) ownedGeometry.add(part);
-  assert.equal(geometries.length, 75, 'the real placed onionchurch, including authored exterior');
+  // settlement pass 2026-09-12: +24 stone window-joinery pieces on the church's six bare panes.
+  assert.equal(geometries.length, 99, 'the real placed onionchurch, including authored exterior and window joinery');
   const geometryBefore = geometryFingerprint(buckets), draws = random.draws();
   for (const api of ['deriveRuntimeStructureCollisionProfile', 'deriveRuntimeStructureCollisionWithSolids', 'deriveStructureCollisionProfile']) {
     const result = compare(api, buckets, `75-geometry onionchurch ${api}`);
