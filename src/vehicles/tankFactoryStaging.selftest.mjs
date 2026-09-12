@@ -90,7 +90,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "53deb8307380c2ee2d34455271d9d908c5eddb9874b2c32c71adf2cd73310db5"
+    "sha256": "c0ec091833ca4315ddf8f6568e4f8053554290db82657a480c7a3ed2ab2a63d0"
   },
   {
     "id": "m1a1",

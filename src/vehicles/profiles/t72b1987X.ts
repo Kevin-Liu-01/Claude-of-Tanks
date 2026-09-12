@@ -65,14 +65,14 @@ function runningGear(P:TankBuilderPort):void {
     // Supplied rear tub wall intersects its own inner band by about6 mm.
     // Shift each native lane outward12 mm for real mechanical clearance;
     // retain measured belt width, all axle Z/Y and terminal wheel radii.
-    xc:1.3629,xcLeft:1.375065,xcRight:1.359965,trackW:.60311,trackTh:.024,
+    xc:1.3629,xcLeft:1.375065,xcRight:1.359965,trackW:.60311,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     sprocket:{z:-2.581595,y:.684305,r:.24317,trackR:.252},
     idler:{z:2.88586,y:.762015,r:.254875,trackR:.250},
     rollers:[{z:-1.30,y:.941,r:.095},{z:.37,y:.949,r:.095},{z:1.74,y:.951,r:.095}],
     rollerR:.095,returnRollerWidthM:.18,returnRollerInsetM:.10,
     topY:1.037,botY:.0813,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.143,
     sprocketDepthScale:.78,idlerDepthScale:.80,
-    trackShoeDimensions:{padHeight:.031,grouserHeight:.012,webHeight:.016,hornHeight:.072,pinRadius:.011,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.012,webHeight:.018,hornHeight:.072,pinRadius:.011,pinCentreY:0},
   });
 }
 

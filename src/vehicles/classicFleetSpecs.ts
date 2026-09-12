@@ -82,12 +82,16 @@ function m60a3Armor(): ArmorEnvelope {
 
 const SPECS: FleetTankSpec[] = [
   make('is3', 'is3_bergman', 'IS-3 (Bergman)', 'USSR', { visual: { number: '703' } }),
+  // 2026-09-12 (owner decision): both ISU casemates carry a 12.7 mm DShK on the
+  // roof as fleet fittings. The published 2.48 m is to the roof, so the
+  // silhouette height records the standing gun as authored, like the other
+  // classes that publish a roof-weapon silhouette.
   make('sturmtiger', 'isu152', 'ISU-152', 'USSR',
     { hp: 1450, weightTons: 47.3, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 152, reloadS: 15.5 },
-      dims: { hullLengthM: 6.77, overallLengthM: 9.05, widthM: 3.07, heightM: 2.48 } }),
+      dims: { hullLengthM: 6.77, overallLengthM: 9.05, widthM: 3.07, heightM: 2.48, silhouetteHeightM: 2.77 } }),
   make('jagdtiger', 'isu122s', 'ISU-122S', 'USSR',
     { hp: 1400, weightTons: 46, topSpeedKmh: 37, reverseSpeedKmh: 14, gun: { caliberMm: 122, reloadS: 9.5 },
-      dims: { hullLengthM: 6.77, overallLengthM: 9.85, widthM: 3.07, heightM: 2.48 } }),
+      dims: { hullLengthM: 6.77, overallLengthM: 9.85, widthM: 3.07, heightM: 2.48, silhouetteHeightM: 2.54 } }),
   make('chieftain_mk10', 'centurion3', 'Centurion Mk.3', 'UK',
     { hp: 1500, weightTons: 51, topSpeedKmh: 35, gun: { caliberMm: 84, reloadS: 7.0 },
       dims: { hullLengthM: 7.56, overallLengthM: 9.83, widthM: 3.38, heightM: 2.94 } }),

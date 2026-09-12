@@ -15,8 +15,12 @@ const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // motif, pressed-six/pressed-eight) keeps its former rib envelope with the
 // holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
 // wheel scene digest below moved together; repinned from the current build.
-const BEFORE={high:'5c727e357e6381a2c4cefe9149d9e3c0dcf17f44f36e0c7a3939e825196b5b25',
-  low:'2ae04b79f652ecccb2f6dd660059fc207608be3b40a26aebba7b1db990076cd1'};
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
+const BEFORE={high:'7975857ab44cbdc09ddb9491db0e20051445c0426c2ae2b27db9119ec6f532fa',
+  low:'1612e6af815a6d8bf031c0bb79210ce9cda23ea58878b8204ba5e8b9a1a28c05'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];

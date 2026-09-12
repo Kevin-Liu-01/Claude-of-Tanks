@@ -7,7 +7,11 @@ import {KIT} from './tankFactoryCore.ts';
 // assemblies and 96 motion snapshots. The original core was independently
 // loaded for recovery qualification; this immutable fingerprint is not a
 // refreshed source-shape or current-vs-current golden.
-const DEFAULT_FINGERPRINT='e30770aaf3218e1d67f203e9346a9894714798354aa938a063fe84242b928b56';
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
+const DEFAULT_FINGERPRINT='ae5f7acec7327a77f0b7ab32d2cb25fd4dcbf12b45dee0e3fd38ea7777865674';
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){

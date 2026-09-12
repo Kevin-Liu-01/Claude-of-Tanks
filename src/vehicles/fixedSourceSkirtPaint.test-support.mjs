@@ -28,9 +28,14 @@ export function verifyHistoricalFixedSkirtSource(id){
   // Fleet track standard 2026-09-12 (band >= 24 mm, pad >= 30 mm, web >= 14 mm):
   // literal gear leaves projected back so the pre-finish source stays exact.
   if(id==='t72bu_x')source=source
-    .replace("trackW:.56169,trackTh:.024, // fleet track standard 2026-09-12","trackW:.56169,trackTh:.014,")
-    .replace("trackShoeDimensions:{padHeight:.030,grouserHeight:.009,webHeight:.014,hornHeight:.042,","trackShoeDimensions:{padHeight:.026,grouserHeight:.009,webHeight:.013,hornHeight:.042,");
+    // Russian X track standard 2026-09-12 (band .030, pad .036, web .018) projected back to the .014/.026/.013 source leaf.
+    .replace("trackW:.56169,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018","trackW:.56169,trackTh:.014,")
+    .replace("trackShoeDimensions:{padHeight:.036,grouserHeight:.009,webHeight:.018,hornHeight:.042,","trackShoeDimensions:{padHeight:.026,grouserHeight:.009,webHeight:.013,hornHeight:.042,");
   if(id==='t62mv1_x')source=source.replace("'hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([{z,ring},{z:z+.281,ring}]),'t62mv1-x-skirt','hullRubber')", "'hullRubber',sectionSolid([{z,ring},{z:z+.281,ring}])");
+  // Russian X track standard 2026-09-12 (band .030, pad .036, web .018) projected back to the .024/.031/.016 source leaf.
+  if(id==='t62mv1_x')source=source
+    .replace("topY:.891,botY:.073,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018","topY:.891,botY:.073,trackTh:.024,")
+    .replace("trackShoeDimensions:{padHeight:.036,grouserHeight:.012,webHeight:.018,hornHeight:.073,","trackShoeDimensions:{padHeight:.031,grouserHeight:.012,webHeight:.016,hornHeight:.073,");
   assert.equal(createHash('sha256').update(source).digest('hex'),row.sha,`${id}: complete authenticated pre-finish source remains unchanged`);
 }
 

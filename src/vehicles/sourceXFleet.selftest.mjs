@@ -12,9 +12,13 @@ import {withHistoricalT90MLamps,assertCurrentT90MLampSeats} from './historicalT9
 // pre-X commit 2c22d203d8726cfceefbe427f3930a000524da32 at seed4242.
 // Hashes include instanced wheel/track transforms; no supplied model involved.
 const original = {
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
   leo2a7v:'279ca80a', leo2a6m:'d870b601', leo2a4m:'63b8661e', leo2a5:'e0fd3d59',
   merkava4:'e068d72b', merkava3d:'7e6d399e', k2:'b5fcbf2b', kf51:'c000d8bc',
-  t90a:'2cbbd9a3', t90a_vladimir:'fa7a4a33', t90m:'8cbee6a8', t90sm:'fa814222', t14:'61ce3db7',
+  t90a:'451e1ad2', t90a_vladimir:'fe9d9d29', t90m:'897411ff', t90sm:'fcdc5b96', t14:'61ce3db7',
 };
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {

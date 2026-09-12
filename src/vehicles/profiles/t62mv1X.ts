@@ -66,9 +66,9 @@ function runningGear(P:TankBuilderPort):void {
     wheelZs:[-1.858795,-.805165,.24309,1.14781,2.00987],xc:1.199465,trackW:.60725,
     sprocket:{z:-2.626375,y:.632135,r:.25066,trackR:.252},
     idler:{z:2.78935,y:.698255,r:.272295,trackR:.270},
-    sprocketDepthScale:.91,idlerDepthScale:.86,topY:.891,botY:.073,trackTh:.024,
+    sprocketDepthScale:.91,idlerDepthScale:.86,topY:.891,botY:.073,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     paintedEnds:true,arms:true,coveredTop:false,linkPitchM:.135,
-    trackShoeDimensions:{padHeight:.031,grouserHeight:.012,webHeight:.016,hornHeight:.073,pinRadius:.011,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.012,webHeight:.018,hornHeight:.073,pinRadius:.011,pinCentreY:0},
   });
 }
 

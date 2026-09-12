@@ -24,8 +24,10 @@ function checkRunningGear(tank,quality) {
   close(pads.geometry.boundingBox.max.x-pads.geometry.boundingBox.min.x,.51772,.0015,'source outer tread width');
   const outer=[];
   for(let i=0;i<a.count;i++)if(Math.abs(a.getX(i))>.09)outer.push(a.getY(i));
-  close(Math.max(...outer)-Math.min(...outer),.047,1e-6,'seated outer pad/web radial envelope');
-  close(pads.geometry.boundingBox.min.y,-.1045,1e-6,'separate 85 mm guide above the web');
+  // Fleet track standard 2026-09-12: the web is .014 (was .008), so the seated
+  // outer pad/web envelope is .053 (was .047); the pad and guide are unchanged.
+  close(Math.max(...outer)-Math.min(...outer),.053,1e-6,'seated outer pad/web radial envelope');
+  close(pads.geometry.boundingBox.min.y,-.1105,1e-6,'separate 85 mm guide above the web (-.1105 with the .014 web)');
   let lowest=Infinity,flatIndex=-1;
   for(let i=0;i<pads.count;i++) {
     pads.getMatrixAt(i,matrix);position.setFromMatrixPosition(matrix);

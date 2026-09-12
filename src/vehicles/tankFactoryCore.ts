@@ -1140,7 +1140,7 @@ interface AuthoredRange {
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
 type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'canvasCloth'
-  | 'glass' | 'barrel' | 'spareTrack' | 'shadow';
+  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
@@ -2403,16 +2403,19 @@ function addWheelFaceMotif(
       // 2026-09-12: the disc keeps the former rib envelope (plate 1.17 w, ribs
       // 0.20 x 1.24) so the T-90M X exemplar silhouette scores as before; the
       // holes, hub well and hub drum sit inside that envelope.
+      // 2026-09-12 fleet wheel standard: the painted plate reaches 0.82 r so
+      // the rubber is a 18 % tire band, not a third of the wheel; the hub well
+      // shrinks to 0.24 r and the lightening holes move out to 0.58 r.
       const ribs = pattern?.pockets || 8;
-      discs.push(cylX(r * 0.66, w * 1.17, seg));
+      discs.push(cylX(r * 0.82, w * 1.17, seg));
       radialRibs(discs, r, w, ribs, 0.20, dishR * 0.84, 0.12, 1.24, 0.08);
       for (let index = 0; index < ribs; index += 1) {
         const angle = ((index + 0.5) / ribs) * Math.PI * 2 + 0.08;
         dark.push(xform(cylX(r * 0.048, w * 1.20, 8),
-          0, Math.sin(angle) * r * 0.46, Math.cos(angle) * r * 0.46));
+          0, Math.sin(angle) * r * 0.58, Math.cos(angle) * r * 0.58));
       }
-      dark.push(cylX(r * 0.30, w * 1.21, seg));
-      discs.push(cylX(r * 0.21, w * 1.24, 14));
+      dark.push(cylX(r * 0.24, w * 1.21, seg));
+      discs.push(cylX(r * 0.17, w * 1.24, 14));
       return;
     }
     case 'spoke':
@@ -8108,7 +8111,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // the dark wheel-bay recesses above.  Keep a material-correct detail
   // bucket so strict swept-track lint does not misclassify concentric wheel
   // furniture as armor penetrating its own shoe course.
-  hullRunningGearDetail: ['hullG', 'detail'],
+  // 2026-09-12 fleet wheel standard: the pressed dish is scheme-painted like
+  // every authored wheel face layer (real crews paint the wheels with the
+  // hull); the flat detail tone read as an all-rubber wheel on every study.
+  hullRunningGearDetail: ['hullG', 'wheels'],
   // Track-owned rails/grousers that are part of the native running-gear
   // assembly but need the oily spare-track material.  Keeping this separate
   // from `hullTrack` prevents strict containment lint from mistaking the

@@ -40,7 +40,7 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     // Initial direct raw83.09444 remains archived; no source geometry is cut.
     componentMasks:true,directGunComponentMasks:false,
   }},
-  t90ms_x:{source:'glb',qualityBar:'exemplar',glb:{
+  t90ms_x:{source:'glb',qualityBar: 'fleet' /* 2026-09-12 owner decision: Russian X track standard, 91.9 vs thin-tracked source */,glb:{
     path:'/models/community-candidates/t90ms_x_source.glb',
     turretNode:'^vehicle#(?:.*_turret.*|antenna01_25_0)$',
     gunNode:'^vehicle#(?:cannonbase_skinned_6_0|t-90ms_cannonbase_t-90ms_2a46m-5_8_0|t-90ms_cannon_2a46m-5_9_[01])$',

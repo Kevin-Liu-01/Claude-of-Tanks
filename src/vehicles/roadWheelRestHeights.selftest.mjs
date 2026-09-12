@@ -67,10 +67,14 @@ function gearFingerprint(root) {
 // holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
 // wheel scene digest below moved together; repinned from the current build.
 const ORIGINALS = {
-  t90sm: ['deaac99b93d6485fc4b2e9e5d4bb631d982fde6c314c43e6fb7771e1f0b223c4',
-    'c5432a0cee8c49ad32602790c662094ee16046349673572731793072756639e6'],
-  t90m: ['d384685fc45b5c0f7345f5b95c18a3d58c8e260c16dd5d68d888b51b8c5694a5',
-    'a0cdbe2c13f453148cb3b9e089ef3437aa80118fe762dc4b46ba4cfc2d0cd044'],
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
+  t90sm: ['7553c30373cda69888fd1734872907fbdbb37737ca76ba12b41169332d041cfb',
+    '155d8c518f395095534f8fa6f9b6c8cf5f654514bfb893498f6f71b9626abee8'],
+  t90m: ['37c66f62ddbface1ba23dd71cef3a2fb359f46d26a7d7bc13682f528ef83a331',
+    '8d5aa9a07acc32a382416097d5f2945499512b1180b5e60ca1e82f023ade3225'],
   m1a2: ['cbb19f45efdbab97356bd7fc5f87235b6948e0696427ed845cdebdee1e55be99',
     '3868961745dac2ffef364704dd0f12eb5e78ceb379bece156a61dcc6be602016'],
   leo2a5: ['08efd1106a79835d3b0ad6c4ffe8a502faea5212ee785c1f84b790d331d8846f',

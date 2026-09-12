@@ -4138,6 +4138,16 @@ function buildISU152(P: CasemateBuilderPort): void {
     P.muzzleZ = 2.81;
   };
   buildISU152HullStage8();
+  // 2026-09-12 fleet visual standard (owner decision): late ISU-152s carried a
+  // 12.7 mm DShK on the commander's (right, forward) cupola ring; the fleet HMG
+  // fitting sits on that ring so the machine-gun census counts a real weapon.
+  {
+    const dshk = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', tone: 'two-tone', scale: 0.84, ammo: true, shield: false, ring: true, seed: 15275 });
+    dshk.name = 'isu152CommanderDshk';
+    dshk.position.set(0.78, 2.45, 1.30);
+    dshk.rotation.y = 0.10;
+    P.hullG.add(dshk);
+  }
 }
 
 function buildISU122S(P: CasemateBuilderPort): void {
@@ -4970,44 +4980,15 @@ function buildISU122S(P: CasemateBuilderPort): void {
     // (2.229) clears the roof plate (2.155) by 0.074 m = 4.1 px of sky at the
     // 55 px/m pane scale.
     {
-      // (r10 round 3: MGY 2.245 -> 2.252 — with the pod/clamps relocated the
-      // sky window under the tube is z 1.545..1.79; at 2.252 the tube bottom
-      // clears the roof plate by 0.0795 m = 4.4 px, safely over the >= 4 px
-      // law even through AA.)
-      const MGX = 0.615, MGY = 2.252;
-      // AA ring on the cupola collar + three stanchion stubs
-      P.add('hullCloth', paintFlat(KIT.torus(0.200, 0.011, 26), 0.84), 0.68, 2.256, 0.95);
-      for (const a of [0.6, 2.7, 4.6]) {
-        P.add('hullCloth', paintFlat(box(0.024, 0.032, 0.024), 0.80), 0.68 + Math.cos(a) * 0.196, 2.244, 0.95 + Math.sin(a) * 0.196);
-      }
-      // pintle: swing arm off the ring's aft quadrant -> post -> roof foot
-      P.add('hullCloth', paintFlat(box(0.026, 0.020, 0.19), 0.82), 0.6425, 2.248, 1.175, 0, -0.35, 0);
-      P.add('hullCloth', paintFlat(cylY(0.030, 0.038, 0.014, 12), 0.80), MGX, 2.162, 1.24);
-      P.add('hullCloth', paintFlat(cylY(0.016, 0.019, 0.096, 12), 0.82), MGX, 2.208, 1.24);
-      P.add('hullCloth', paintFlat(box(0.056, 0.040, 0.088), 0.86), MGX, 2.238, 1.245);  // cradle/trunnion
-      // receiver: ribbed MASS, not a stick — block + three rib plates + top
-      // cover ridge + spade grips (top 2.266 <= the cupola's 2.268 front line)
-      P.add('hullCloth', paintFlat(box(0.100, 0.082, 0.27), 0.94, 0.05), MGX, 2.213, 1.305);
-      P.add('hullCloth', paintFlat(box(0.052, 0.016, 0.24), 0.90), MGX, 2.258, 1.30);
-      for (const rz of [1.225, 1.285, 1.345]) {
-        P.add('hullCloth', paintFlat(box(0.114, 0.052, 0.018), 0.88), MGX, 2.212, rz);
-      }
-      P.add('hullCloth', paintFlat(box(0.014, 0.048, 0.050), 0.88), MGX - 0.028, 2.198, 1.158);
-      P.add('hullCloth', paintFlat(box(0.014, 0.048, 0.050), 0.88), MGX + 0.028, 2.198, 1.158);
-      P.add('hullCloth', paintFlat(box(0.055, 0.070, 0.170), 0.90, 0.04), 0.6925, 2.216, 1.33); // ammo can
-      P.add('hullDark', box(0.045, 0.006, 0.150), 0.6925, 2.2545, 1.33);                        // can lid seam
-      // barrel group: ribbed cooling sleeve at the root (still inside the
-      // stalk bins), thin tube, muzzle step, dark bore dot
-      for (let k = 0; k < 5; k++) {
-        P.add('hullCloth', paintFlat(cylZ(0.0225, 0.020, 14), 0.97), MGX, MGY, 1.452 + k * 0.026);
-      }
-      P.add('hullCloth', paintFlat(cylZ(0.0185, 0.120, 12), 0.95), MGX, MGY, 1.505);            // sleeve core
-      // (r10 round 2: muzzle pulled 1.844 -> 1.818 — its step was topping the
-      // bin that samples the ref's 2.13 forward-roof dip, the worst new MG
-      // column of round 1.)
-      P.add('hullCloth', paintFlat(cylZ(0.0155, 0.190, 12), 1.00), MGX, MGY, 1.651);            // tube -> 1.746
-      P.add('hullCloth', paintFlat(cylZ(0.017, 0.046, 12), 0.98), MGX, MGY, 1.769);             // muzzle step -> 1.792
-      P.add('hullDark', cylZ(0.0085, 0.008, 8), MGX, MGY, 1.794);                               // bore dot
+      // 2026-09-12 fleet visual standard (owner decision): the roof DShK is a
+      // fleet HMG fitting at the r10 station so the machine-gun census counts
+      // it; the ring, cradle, receiver, can and finned sleeve are the fitting's.
+      const MGX = 0.615, MGY = 2.226;
+      const dshk = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', tone: 'two-tone', scale: 0.84, ammo: true, shield: false, ring: true, seed: 12275 });
+      dshk.name = 'isu122sRoofDshk';
+      dshk.position.set(MGX, MGY, 1.30);
+      dshk.rotation.y = -0.06;
+      P.hullG.add(dshk);
     }
   };
   buildISU122SHullStage6();

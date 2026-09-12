@@ -21,10 +21,10 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // scene attributes, indices, instances, hierarchy and local/world transforms;
 // no marking, batch, gear, material-bucket or spatial-envelope exclusion.
 const MK5_BEFORE = {
-  high: ['d54625af36a1ef0aa0dcc1f6a417899f1ecf9cf9ab2d1e031c06b40a8bc6fd95', 74, 42],
-  low: ['655202167ceeb85a560e33b348f89c045c85114d775504a8a95ef772167ea02b', 72, 40],
+  high: ['414edfab27361c3d291bc6db9f4438a81dd5d6fd2cb38ce48c139dda655f5ae4', 77, 44],
+  low: ['20ef64b965b239531b6f8244877009ed0e9677771adffe515a93af9d0ed48294', 75, 42],
 };
-const MK5_SPEC = '3ba476c4946bb886b64575719c3b9102748c93301a11154b86545db9ee41d949';
+const MK5_SPEC = 'e2a0bbcccd61f47446fba78b2f6aa8ccca7a822847c4e8cd6f9d50c01440538f';
 const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d471a30';
 // Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
 // hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,
@@ -454,6 +454,8 @@ function posedEquipment(root) {
 
 sharedWiring();
 const coldMk5Spec = stable(getSpec('chieftain5_x'));
+  // 2026-09-12 fleet track standard: the shared Mk5 gear foundation carries a
+  // .024 band, .030 pad and a .054 course datum; the cold metadata is repinned.
 assert.equal(semantic(coldMk5Spec), MK5_SPEC, 'complete immutable cold Mk5 metadata, before any factory runs');
 const currentPaintMatrices = [];
 let warmedMk5Hash;

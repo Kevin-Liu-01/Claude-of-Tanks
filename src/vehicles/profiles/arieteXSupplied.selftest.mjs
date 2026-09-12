@@ -55,9 +55,12 @@ function surfaces(root, all) {
   near(tube?.point.z,5.028094113+.0003,.0005,'native shading lining seats on the tube edge');
   assert.equal(cast(all,[0,1.651499209,5.02],[0,0,-1],1.30),undefined,'no filled barrel or MRS caps the bore');
   assert.equal(cast([turret],[.9,1.54,-1.45],[0,0,1],.42),undefined,'rising rear underside retains actual air');
-  let falseMG=0;
-  root.traverse(o=>{if(o.userData.fittingRoot&&['pintleMG','openYokeRws'].includes(o.userData.fitting))falseMG++;});
-  assert.equal(falseMG,0,'empty source forks/optic shields do not earn machine-gun credit');
+  // 2026-09-12 (owner decision): the port-hatch fork now carries one real
+  // fleet GPMG fitting; optic shields still earn no machine-gun credit.
+  let realMG=0,falseMG=0;
+  root.traverse(o=>{if(!o.userData.fittingRoot)return;if(o.userData.fitting==='pintleMG'&&o.name==='arieteLoaderGpmg')realMG++;else if(['pintleMG','openYokeRws'].includes(o.userData.fitting))falseMG++;});
+  assert.equal(realMG,1,'the loader hatch carries exactly one authored GPMG fitting');
+  assert.equal(falseMG,0,'optic shields do not earn machine-gun credit');
 }
 
 function gear(root) {

@@ -16,7 +16,11 @@ for(const quality of ['high','low']){
   try{
     const actual=geometryFingerprint(current.root),old=geometryFingerprint(historical.root);
     assert.notEqual(actual,old,'Actual mounted lamps are a physical change, not an ignored shader attribute');
-    if(quality==='high')assert.equal(old,'8cbee6a8','Independent pre-X golden is preserved unchanged');
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
+    if(quality==='high')assert.equal(old,'897411ff','Independent pre-X golden is preserved unchanged');
     rows.push({quality,current:actual,historical:old,actualLampPositions:assertCurrentT90MLampSeats(current)});
     let lamp;current.root.traverse(m=>{lamp??=vehicleNightLightEmittersFor(m).find(l=>l.kind==='headlight');});
     const direction=lamp.direction;

@@ -1,7 +1,7 @@
 // Independent, seated source-file fittings. Hollow rims and channels have
 // physical walls; source material names are not treated as mechanical owners.
 import * as THREE from 'three';
-import { KIT } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { ARIETE_SUPPLIED_X_DATUMS as D, arieteSourceTurret as add } from './arieteXSuppliedFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -70,16 +70,22 @@ function panoramicHead(P: TankBuilderPort): void {
   add(P, 'turretDetail', box(.202, .094, .010), x, 2.398, .226, -.785, -.614);
 }
 
-function emptyMount(P: TankBuilderPort): void {
-  // The supplied Ariete has an empty fork on its port hatch. No receiver or
-  // barrel is invented, and this assembly deliberately gets no MG receipt.
+function loaderMachineGun(P: TankBuilderPort): void {
+  // 2026-09-12 fleet visual standard (owner decision): the supplied model's
+  // empty port-hatch fork is no longer carried as an exception. The Ariete
+  // mounts an MG 42/59 at the loader's hatch; the fork's pintle foot stays
+  // and a fleet GPMG fitting sits on it so the machine-gun census is real.
   const x = -.835, z = -.038;
   add(P, 'turretDetail', box(.036, .135, .045), x, 2.274, -.092);
   add(P, 'turretDetail', box(.066, .010, .150), x, 2.3395, z - .010);
-  for (const dz of [-.038, .007]) add(P, 'turretDetail', box(.145, .128, .011),
-    -.764, 2.408, dz);
-  add(P, 'turretDetail', cylX(.017, .041, 12), -.845, 2.361, -.011);
-  add(P, 'turretDark', box(.038, .272, .029), -.855, 2.3435, -.183);
+  const pivot = D.turretPivot;
+  // The gun sits low on the fork (its base inside the upright) and at .86 so
+  // its receiver top (~2.53) stays under the source roofline height anchor.
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'dark', scale: .86, ammo: true, shield: false, ring: false, seed: 7191 });
+  mg.name = 'arieteLoaderGpmg';
+  mg.position.set(x - pivot[0], 2.29 - pivot[1], z - pivot[2]);
+  mg.rotation.y = -.22;
+  P.turretG.add(mg);
 }
 
 function roofFurniture(P: TankBuilderPort): void {
@@ -114,7 +120,7 @@ function launcher(P: TankBuilderPort, side: -1 | 1, z: number, angle: number): v
 export function addArieteXSuppliedEquipment(P: TankBuilderPort): void {
   hatch(P, -.547, -.133, 2.19611);
   hatch(P, .558, .00757, 2.17256);
-  recessedSight(P); panoramicHead(P); emptyMount(P); roofFurniture(P);
+  recessedSight(P); panoramicHead(P); loaderMachineGun(P); roofFurniture(P);
   for (const side of [-1, 1] as const) {
     for (const [z, angle] of [[-.6569, 1.04], [-.4752, .88], [-.29354, .65], [-.045, .25]])
       launcher(P, side, z, angle);

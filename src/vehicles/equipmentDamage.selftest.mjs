@@ -282,8 +282,12 @@ function restHash(visual) {
 // remain exact. Keep the historical fixture, but hash the COMPLETE current
 // model for damage/reset: never omit the corrected lamps from preservation.
 const T90M_REST_REVISIONS = Object.freeze({
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: '34700d6e4d20698b353483f641c1835549ff0bfb0b4a829f27c6ec1d1c93acb9',
+  forwardLampSeat: 'd112460ae8246ffafb32e49ab13fbc8dbfd7b3cf3ef13634c01339b53c4f054d',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently

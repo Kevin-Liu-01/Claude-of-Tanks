@@ -15,13 +15,17 @@ import { tankTier } from './tier.ts';
 // holes, hub well and drum inside it (tankFactoryCore 'rib'), so every rib-
 // wheel scene digest below moved together; repinned from the current build.
 const original = {
-  ariete_c1:'a4e3e6b0', challenger1:'2937a90d', leclerc:'3860cb3a',
-  chieftain5:'c8de963f', chieftain_mk10:'acf04779', leo2a6:'4b34bc1d',
-  k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'3379305f',
-  t72b_1987:'9f7859c1', t72b3:'b67dd1c6', t72b3m:'58da02f1',
-  t72bu:'30cc85ca', t80u:'4381d127', type10:'4618e37b', type90:'711ec4b5',
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
+  ariete_c1:'a4e3e6b0', challenger1:'2c4e0562', leclerc:'3860cb3a',
+  chieftain5:'faacb05a', chieftain_mk10:'01af2dc1', leo2a6:'4b34bc1d',
+  k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'cc29ff1e',
+  t72b_1987:'b42a4c54', t72b3:'9cd2f28d', t72b3m:'bf9db036',
+  t72bu:'3d54532a', t80u:'f91b1049', type10:'4618e37b', type90:'711ec4b5',
   jpz_e100:'b93d7759', amx30:'be31d256', amx40:'c9d493c6',
-  t90:'25985a56', t90a_burlak:'4ff12e80', t90ms:'71b92ade',
+  t90:'30511d46', t90a_burlak:'8952afa9', t90ms:'054b5f2e',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {

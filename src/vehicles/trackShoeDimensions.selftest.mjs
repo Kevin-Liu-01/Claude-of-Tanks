@@ -7,8 +7,11 @@ import { createTankState } from '../sim/movement.ts';
 import { KIT, trackPatternWithDimensions } from './tankFactoryCore.ts';
 import { TRACK_PATTERN_IDS, trackPatternFor } from './trackPatterns.ts';
 
+// Russian X track standard 2026-09-12 (owner decision, applied to t90m_x too):
+// the measured T-90M shoe carries the .036 pad and .018 web; horn, grouser,
+// pin radius and pin centre are the source values.
 const dimensions=Object.freeze({
-  padHeight:.018,grouserHeight:.008,webHeight:.012,
+  padHeight:.036,grouserHeight:.008,webHeight:.018,
   hornHeight:.054,pinRadius:.012,pinCentreY:0,
 });
 
@@ -47,14 +50,18 @@ function fingerprint(geometry) {
 // Frozen immediately before the optional core API was introduced. These
 // compare actual native geometry buffers, including normals/UVs/indices.
 const DEFAULT_SHOE_HASHES={
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
   t90m:'bda8b3949d239432af860ed0d00214b95803ecbaedbd5e62c0bf002b81c325f4',
   t90a:'870d3a3ba9415f3c7736d7ec183e27f9ad6af7b0d5ef623daa615236ae0bb0ee',
   m1a2:'c9d6ce76343d78e88d2e69de32e81ab32c33fcb74b982c164765618b4fd7f75d',
   leo2a5:'9770319bbc269e88d024b36ae390d7a27bad6b9a38b43972725d6bd6b3d854ca',
 };
 const DEFAULT_WHEEL_HASHES={
-  t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','e481616a1be3b75abe7d2411630586946145c67595fbb449f9a897c8268111f8','f711aec70bdb8d39702b5179661dfc0340d57830f87d3c8ecc4883b93ed124b4'],
-  t90a:['a54a43055f2861026b4ceab5d270317974edceb01e6dda725ca0d03b44339e73','d453083bd50f044c437fa244e1481bdf6e597a5f8102330f04592ad6dc970f71','73653741147ed37c913e5c5bc8c8545e43759f181dbfd39f56ad9cb5285d49d9'],
+  t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','e3b982d7a499de8fded2a44f15abf4b96762345253426f1d686c28f128317972','8f57825275092ceafca41ca5a1cdb5567ed4046e1a3ae446010103066c0e76f3'],
+  t90a:['a54a43055f2861026b4ceab5d270317974edceb01e6dda725ca0d03b44339e73','76972345146480d49776fcfbca7f66ea6aeb9b4ac58855cc3b7bd7d3cc32892f','e6dc3ca5d731290a64e2f3467f6596c5d12dc1c016491b79ad3a359f49327fa6'],
   m1a2:['34257b15bdc31935cf0a4c2cb11261cca2a674690780f252477f3976fb44d949','87ed9df0bee59ae4b0b2467990a7e41586b9ce1142462d28e2fc65405bed2518','daf1e8d6766d235176312214a8791c5162fe252d0683265e1c604f1c2c387d5f'],
   leo2a5:['2a635e4bdc9b37093cf67f7f9aa5fac83aded77cb19094ea2a01143e5f8e30b8','c0836b759e64859f643819cc270d52dd0d3e3bc20f2016360f5f2206fa893635','5447ad96a8234a3e656dc9ca7d003dca1216b2bdd22a958e8210c955f3e61a8b'],
 };
@@ -97,13 +104,15 @@ try {
   geometry.computeBoundingBox();
   const bounds=geometry.boundingBox;
   // Canonical owner source: complete radial shoe/guide span .087072 m;
-  // outer shoe only .03338 m. Independent native grammar retains both.
-  assert.ok(Math.abs(bounds.max.y-bounds.min.y-.087072)<.005);
+  // outer shoe only .03338 m. Russian X track standard 2026-09-12 (owner
+  // decision: applied to t90m_x too): the .036 pad and .018 web raise the
+  // complete span to .110 m while the guide horn and shoe width are unchanged.
+  assert.ok(Math.abs(bounds.max.y-bounds.min.y-.110)<.005);
   assert.ok(Math.abs(bounds.max.x-bounds.min.x-.58976)<.002);
   const vertices=geometry.getAttribute('position');
   const outer=[];
   for(let i=0;i<vertices.count;i++)if(Math.abs(vertices.getX(i))>.13)outer.push(vertices.getY(i));
-  assert.ok(Math.abs(Math.max(...outer)-Math.min(...outer)-.03338)<.005);
+  assert.ok(Math.abs(Math.max(...outer)-Math.min(...outer)-.058)<.005); // outer shoe .058 under the .036 pad / .018 web standard
   assert.ok(bounds.min.y<Math.min(...outer)-.045,'a real projecting central guide remains');
   // Face-depth tuning leaves native tire depth/radius and the single shoe
   // untouched. The resulting hub remains inside the measured shoe face.
@@ -169,9 +178,11 @@ for(const [id,sourceFaceX] of [['t90a_x',1.7089],['t90m_x',1.66133],['t90sm_x',1
 }
 // Independent straight-run source witnesses include the central guide, not
 // just the outer pad skin. Optional casting dimensions do not rescale tires.
+// Russian X track standard 2026-09-12: outer casting = pad .036 + web .018
+// plus each class's grouser; the full span keeps each source guide horn.
 for(const [id,outerSpan,fullSpan] of [
-  ['t90a_x',.0601,.1575],['t90a_vladimir_x',.0743,.1974],
-  ['t90m_x',.03338,.087072],['t90sm_x',.0555,.1388],
+  ['t90a_x',.0630,.1610],['t90a_vladimir_x',.0650,.1880],
+  ['t90m_x',.0580,.1100],['t90sm_x',.0635,.1468],
 ]) {
   const visual=createTank(id,null,{proceduralOnly:true,quality:'high',geometryReceipt:true});
   try {

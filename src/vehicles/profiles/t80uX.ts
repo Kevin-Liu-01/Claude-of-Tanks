@@ -82,14 +82,14 @@ function runningGear(P:TankBuilderPort):void {
       {geometry:wheels.right,material:P.mats.wheels,side:1,name:'t80uXWheelShellR',appearanceRole:'wheelDish'},
       {geometry:wheels.shoulder,material:P.mats.rubber,name:'t80uXWheelRubberShoulders',appearanceRole:'wheelTire'},
     ],
-    xc:1.35185,trackW:.55684,trackTh:.024,
+    xc:1.35185,trackW:.55684,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     sprocket:{z:-2.676505,y:.917215,r:.292985,trackR:.286},
     idler:{z:2.83887,y:.917215,r:.292985,trackR:.286},
     rollers:[{z:-1.38,y:1.073,r:.10},{z:.20,y:1.073,r:.10},{z:1.78,y:1.073,r:.10}],
     rollerR:.10,returnRollerWidthM:.18,returnRollerInsetM:.10,
     topY:1.173,botY:.082,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.143,
     sprocketDepthScale:.83,idlerDepthScale:.83,
-    trackShoeDimensions:{padHeight:.031,grouserHeight:.012,webHeight:.016,hornHeight:.070,pinRadius:.011,pinCentreY:0},
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.012,webHeight:.018,hornHeight:.070,pinRadius:.011,pinCentreY:0},
   });
 }
 

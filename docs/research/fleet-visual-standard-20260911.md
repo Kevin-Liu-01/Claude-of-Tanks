@@ -201,3 +201,53 @@ Final record (2026-09-12 09:55, tree fec25d8a4): `npm run tank:release:check
 muzzle audits, barrel circularity, full `npm test`, `build:private`);
 `npm run build:public` also completes (chunk-size warning only). Excluded
 from that run: the seven pre-existing misses tabled above.
+
+## Addendum 2026-09-12 (h) — owner direction: tracks everywhere, painted dishes, real machine guns
+
+Owner review (2026-09-12 afternoon): "add the track thickness to all the
+russian x tanks (they're all quite thin), no fully rubber wheels", apply the
+fleet track standard to amx30_x / chieftain5_x / amx40_x / t90m_x as well,
+resolve every machine-gun census miss without the Ariete source exception,
+accept KF51 X as it stands, and deploy manually (the GitHub workflow is gone).
+
+- **Russian X track standard**: band .030, pad .036, web .018 on t62mv1_x,
+  t72b_1987_x, t72b3_x, t72b3m_x, t72bu_x, t80u_x, t90_x, t90a_x,
+  t90a_vladimir_x, t90a_burlak_x, t90m_x, t90ms_x, t90sm_x (all four T-90
+  blocks in `t90X.ts`). T-14 X keeps its supplied .068 band (already the
+  thickest in the fleet; its source receipts pin the pad).
+- **Fleet standard on the former exceptions**: amx30_x (.024 band, .014 web,
+  course datum +.007), amx40_x (.024 band, its measured .028 pad — the .030 pad cost 0.5 on
+  hull curves and the exemplar bar), chieftain5_x /
+  chieftain_mk10_x shared foundation (.024 band, .030 pad, course datum
+  .040 -> .054). Envelope/grounded receipts restated with the new numbers.
+- **Pressed dish**: the plate now reaches 0.82 r (rubber band 18 %), the hub
+  well is 0.24 r, holes sit at 0.58 r, and the dish is scheme-painted through
+  `mats.wheels` instead of the flat detail tone — no wheel reads as all
+  rubber. Upstream's `openRibWheelFace` (Challenger 3) is untouched.
+- **Machine guns**: Chieftain 5 X commander L37 GPMG (fleet `pintleMG`
+  fitting on the cupola ring; the supplied build had none), Ariete X loader
+  MG 42/59 (`mag58` fitting on the source fork's pintle foot — the empty-fork
+  exception is withdrawn), ISU-152 commander DShK (new) and ISU-122S roof
+  DShK (the hand-authored r10 gun becomes the fleet `dshk` fitting at the
+  same station) so the census counts real weapons.
+- **Gate reconciliation for the new guns**: the Ariete GPMG sits low on the
+  fork (base inside the upright, scale .86) so the source-frame height anchor
+  stays inside 1 % (97.1/92); the ISU casemates publish a `silhouetteHeightM`
+  for the standing DShK (the published 2.48 m is to the roof, as on the other
+  classes that carry a roof HMG), so their fleet gates read the gun as
+  authored silhouette instead of a 12 % height miss.
+- **T-90 exemplar bars**: with the .030 band and .036 pad the T-90M scores
+  91.0 on hull curves against its thin-tracked source (93.1 before), the
+  T-90A 91.4 and the T-90MS 91.9; the owner's thick-track direction wins, so
+  `t90m_x`, `t90a_x` and `t90ms_x` are qualified at the fleet bar (90) in
+  `tools/t90-x-reference-overrides.ts` with the decision recorded there.
+  Every other Russian X class clears its exemplar bar with the standard.
+- **Standard check after the batch** (20 touched classes, fresh oracles):
+  geometry gate 20/20 (worst isu122s 90.7/90); every class now censuses
+  mg1 — the four former mg0 misses are gone. The remaining machine-gate
+  misses are unchanged and pre-existing: ariete_c1_x 3 hole cells at the
+  port hatch, chieftain_mk10_x 1 cell, t72b3m_x's receipt-protected open
+  shoulder channel (268 cells), and the ISU casemates' source clip.
+- **KF51 X**: accepted as authored (owner).
+- **Deploy**: `.github/workflows/deploy-production.yml` removed; production
+  goes out with the Vercel CLI from a verified tree.

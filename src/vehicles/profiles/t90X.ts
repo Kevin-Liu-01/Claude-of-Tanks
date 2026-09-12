@@ -1454,12 +1454,12 @@ export function buildT90AX(P: TankBuilderPort): void {
   ]));
   P.gear=KIT.buildRunningGear(P,{style:'dished',wheelPattern:'pressed-six',wheelR:.351,wheelW:.438,wheelFaceDepthScale:.695,
     wheelZs:[-1.848,-1.002,-.147,.728,1.590,2.464],wheelY:.401,wheelZScale:1.084,
-    xc:1.473,xcLeft:1.45825,xcRight:1.48365,trackW:.56712,trackTh:.024,
+    xc:1.473,xcLeft:1.45825,xcRight:1.48365,trackW:.56712,trackTh:.030, // Russian X track standard 2026-09-12: band .030, pad .036, web .018
     sprocket:{z:-2.765,y:.748,r:.336,trackR:.280},idler:{z:3.200,y:.801,r:.289,trackR:.260},sprocketDepthScale:.715,idlerDepthScale:.855,
     rollers:[-1.6497,.3703,2.0961].map(z=>({z,y:1.00456,r:.110695})),rollerR:.110695,
     returnRollerWidthM:.1878,returnRollerInsetM:.14,
     topY:1.108,botY:.0535,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.15,
-    trackShoeDimensions:{padHeight:.033,grouserHeight:.013,webHeight:.017,hornHeight:.100,pinRadius:.013,pinCentreY:0}});
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.013,webHeight:.018,hornHeight:.100,pinRadius:.013,pinCentreY:0}});
   sourceWheelFaces(P,.351,.225,1.084);
   aFenders(P);
   classicSkirts(P,'kontakt5-source-a',1.312,-3.28,3.24);
@@ -1489,12 +1489,12 @@ export function buildT90AVladimirX(P: TankBuilderPort): void {
   ]));
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.368365,wheelW:.424,
     wheelZs:[-1.828225,-.94808,-.067935,.812205,1.69235,2.572495],wheelY:.439685,wheelZScale:1.03568,
-    xc:1.449,trackW:.603,trackTh:.026,
+    xc:1.449,trackW:.603,trackTh:.030,
     sprocket:{z:-2.70245,y:.80394,r:.36432,trackR:.290},idler:{z:3.31047,y:.87096,r:.23765,trackR:.223},
     rollers:[-1.55863,.39502,2.39302].map(z=>({z,y:.98969,r:.11452})),rollerR:.11452,
     returnRollerWidthM:.1172,returnRollerInsetM:.0983,
     topY:1.115,botY:.0605,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.155,
-    trackShoeDimensions:{padHeight:.041,grouserHeight:.015,webHeight:.022,hornHeight:.125,pinRadius:.018,pinCentreY:-.003}});
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.015,webHeight:.018,hornHeight:.125,pinRadius:.018,pinCentreY:-.003}});
   fenders(P,'t90a-vladimir-x',1.825,1.344);addT90VRearGuards(P);
   classicSkirts(P,'kontakt5-vladimir',1.344,-3.20,3.14);
   engineDeck(P,1.547,-3.39,2.00);fuelDrums(P,-4.1899,1.517,.366,.83,.59);
@@ -1518,7 +1518,7 @@ export function buildT90MX(P: TankBuilderPort): void {
   ]));
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelPattern:'pressed-six',wheelR:.36455,wheelW:.438,wheelFaceDepthScale:.695,
     wheelZs:[-1.814,-.9455,-.0512,.8188,1.6715,2.5242],wheelY:.38544,wheelZScale:1.04465,
-    xc:1.412,trackW:.608,trackTh:.018,sprocket:{z:-2.570,y:.737,r:.3305,trackR:.2605},idler:{z:3.148,y:.767,r:.2512},
+    xc:1.412,trackW:.608,trackTh:.030,sprocket:{z:-2.570,y:.737,r:.3305,trackR:.2605},idler:{z:3.148,y:.767,r:.2512},
     // Hidden support circles are inferred below the independently measured
     // source return-course height; source M omits their separate meshes.
     rollers:[-1.65,.37,2.096].map(z=>({z,y:.9354,r:.101})),rollerR:.101,
@@ -1526,7 +1526,7 @@ export function buildT90MX(P: TankBuilderPort): void {
     topY:1.0454,botY:.038,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.157,
     // Owner source: outer shoe0.0334 m; complete central guide0.0871 m.
     // These are independent native casting dimensions, not a radial squash.
-    trackShoeDimensions:{padHeight:.018,grouserHeight:.008,webHeight:.012,hornHeight:.054,pinRadius:.012,pinCentreY:0}});
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.008,webHeight:.018,hornHeight:.054,pinRadius:.012,pinCentreY:0}});
   sourceWheelFaces(P,.36455,.225,1.04465);
   addT90MFenders(P);
   modernSkirts(P,1.335);
@@ -1558,7 +1558,7 @@ export function buildT90SMX(P: TankBuilderPort): void {
   P.gear=KIT.buildRunningGear(P,{style:'dished',wheelPattern:'pressed-six',wheelR:.3981,wheelW:.40954,wheelFaceDepthScale:.69595,wheelTireInnerRadiusM:.342366,
     wheelZs:[-1.93988,-.98038,-.02818,.87757,1.77558,2.70061],wheelY:.45513,wheelZScale:1.05575,
     wheelYs:[.47202,.45513,.45513,.45513,.45513,.51461],roadWheelOutsetM:.015135,
-    xc:1.40647,xcLeft:1.40818,xcRight:1.404765,trackW:.48891,trackTh:.020,
+    xc:1.40647,xcLeft:1.40818,xcRight:1.404765,trackW:.48891,trackTh:.030,
     sprocket:{z:-2.695,y:.8472,r:.37294,trackR:.3362,axialScaleLeft:.998011,axialScaleRight:1.026922},idler:{z:3.389,y:.8739,r:.2704,trackR:.2316},
     rollers:[-1.65,.37,2.096].map(z=>({z,y:1.055,r:.11})),rollerR:.11,
     returnRollerWidthM:.188,returnRollerInsetM:.14,
@@ -1568,7 +1568,7 @@ export function buildT90SMX(P: TankBuilderPort): void {
       anchorBossWidthM:.38471,anchorBossRadiusM:.066385,anchorBossCenterAbsXM:.92639,
       axleBossWidthM:.19207,axleBossRadiusM:.047265,axleBossCenterAbsXM:1.26208,anchorLiftM:.16946},
     topY:1.19,botY:.051,paintedEnds:true,arms:true,coveredTop:true,linkPitchM:.159,
-    trackShoeDimensions:{padHeight:.031,grouserHeight:.0135,webHeight:.015,hornHeight:.0853,pinRadius:.012,pinCentreY:-.004}});
+    trackShoeDimensions:{padHeight:.036,grouserHeight:.0135,webHeight:.018,hornHeight:.0853,pinRadius:.012,pinCentreY:-.004}});
   sourceWheelFaces(P,.3981,.179,1.05575);
   smFendersAndSkirts(P);
   addT90SMEngineDeck(P);bowGear(P,1.068,3.46,true,1.54,1.81,false,false);addT90SMFrontEra(P);

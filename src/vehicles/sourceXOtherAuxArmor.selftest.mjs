@@ -18,10 +18,14 @@ const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_
 // (was the source opening .2971) so the dish's rolled rim no longer shows as
 // a pale groove; its complete native fingerprints are repinned from that build.
 const BEFORE={
+// 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
+// the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
+// and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
+// values below are repinned from the current build.
  'k1a1_x/high':'b6f73eec3a7f098fe890b6d34ff8c504fd67ce43e2208694eda2932bf8ae5991',
  'k1a1_x/low':'9005a169357c4ce4124fd1f34e521d385a863411a5af2010dde6fdcbf655d8ae',
- 'amx30_x/high':'cec440e7cefb570e9df58a9bb5377edf750d247af60d984601585fd7f2034954',
- 'amx30_x/low':'8de097f1c450efad42f930f18283d6cdfe9cde0caa7ba57e0119df9ea3a101a9',
+ 'amx30_x/high':'ad1014d513da8a3c6983015efb63d70c8d5dc3862ac234866a5c1d164f4a6b20',
+ 'amx30_x/low':'30f2edd99b605e169048c29db000249a2e7adbfc04320199c1825ceb599ec278',
  'leclerc_x/high':'42c280e95dcc0ce0e5ef8360dbdc573da5f9eaf5fd298d9158e8c4c89409bdfc',
  'leclerc_x/low':'33abc7e3c7a5a5fb886b9171e49fac1f28b2fb1c88ce6e486f1a46f4f0857182',
  'leclerc_classic_x/high':'236a179b5c15954ff1eab74761d337fc706c95cf124e56cc6ab1070852c6a13d',
@@ -30,8 +34,8 @@ const BEFORE={
  'type10_x/low':'a6a69b8381f26abcc7ee4b4c3ac708f1210b4c712fcd7fb7afc752e6580b84e8',
  'type90_x/high':'dfcf6d62a432414a6b1183000d5375d4f75ea182a2bc05c77a925ab0027a3804',
  'type90_x/low':'2064861efdbe19a297516b29906f11442fbdcb381170ff52eb407403084e1533',
- 'amx40_x/high':'f83df3babefe53eb8026be6c61b76828d4922f3513dd033523d2031758a338ba',
- 'amx40_x/low':'c636ff7169e90914acfc98012fb01e8586fc55fec443a44d7179acaced08da3e',
+ 'amx40_x/high':'38e77aa0a00fb7684013596f3bfc2b56ebeceee7dfcfc77f7433f0dd17cab6c1',
+ 'amx40_x/low':'9ec056595f999fcea05011df520cf475c37a1937b13cdcb43815f4af25c5a36c',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

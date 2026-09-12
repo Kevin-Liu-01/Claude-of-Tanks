@@ -2,7 +2,7 @@
 // Small warped latches and cloth relief are simplified; open basket cells and
 // recessed optical faces are geometric space, not dark-painted closed boxes.
 import * as THREE from 'three';
-import { KIT } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { chieftain5SourceClothRoll } from './chieftain5XSourceClosure.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -163,4 +163,21 @@ export function addChieftain5XSourceTurretEquipment(P: TankBuilderPort, pivot: P
   projector(add);
   sightsAndHatch(add);
   antennae(add);
+  commanderMachineGun(P, pivot);
+}
+
+// 2026-09-12 fleet visual standard (owner decision): the supplied Chieftain
+// carries no roof weapon, and the photo draft's hand-authored L37 lived only
+// on the fallback build, so the source build read mg0 in the census. The
+// commander's L37 GPMG sits on the cupola ring as a fleet fitting.
+function commanderMachineGun(P: TankBuilderPort, pivot: Point): void {
+  // Receipt collectors stub the port with bucket adders only; the fitting
+  // needs the family materials and the turret group of a real build.
+  if (!P.mats || !P.turretG) return;
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: .96, ammo: true, shield: false, ring: false, seed: 5179 });
+  mg.name = 'chieftain5CommanderGpmg';
+  const x = -.476844 + .372, y = 2.4680245 + .052, z = -.45533 + .118;
+  mg.position.set(x - pivot[0], y - pivot[1], z - pivot[2]);
+  mg.rotation.y = -.42;
+  P.turretG.add(mg);
 }
