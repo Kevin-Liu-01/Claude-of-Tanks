@@ -188,7 +188,7 @@ function clearCorrection(correction: PredictionCorrection): void {
 }
 
 function acknowledgeInputs(history: InputHistoryFrame[], ackInputSeq: number | null): void {
-  // Stryker disable next-line ConditionalExpression: invalid acknowledgements are ignored here and by sequence arithmetic, so forcing either defensive clause false is behaviorally equivalent.
+  // Invalid acknowledgements are ignored here and by sequence arithmetic, so forcing either defensive clause false is behaviorally equivalent.
   if (ackInputSeq == null || !Number.isSafeInteger(ackInputSeq) || ackInputSeq < 0) return;
   let writeIndex = 0;
   for (const frame of history) {
@@ -553,7 +553,7 @@ export class LocalTankPredictor {
     if (!input || this.terminalDestroyed || !Number.isSafeInteger(inputSeq) || inputSeq < 0) {
       return false;
     }
-    // Stryker disable next-line ConditionalExpression: on the first input the guarded body can only clear an already-empty history, making a forced-true guard equivalent.
+    // On the first input the guarded body can only clear an already-empty history, making a forced-true guard equivalent.
     if (this.lastRecordedSeq != null) {
       if (inputSeq === this.lastRecordedSeq) return false;
       if (!isSequenceNewer(inputSeq, this.lastRecordedSeq)) {

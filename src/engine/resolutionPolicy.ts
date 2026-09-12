@@ -73,7 +73,7 @@ export function outputResolution(
     bufferWidth,
     bufferHeight,
     outputPixels: bufferWidth * bufferHeight,
-    // Stryker disable next-line EqualityOperator: near native-scale values,
+    // Near native-scale values,
     // IEEE-754 spacing cannot make a subtraction equal the non-dyadic 0.001
     // literal exactly, so < and <= have no observable input distinction.
     native: Math.abs(pixelRatio - devicePixelRatio) < 0.001,

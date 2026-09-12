@@ -80,7 +80,7 @@ function nextBaselineFps(
   if (load.fpsDeclined) return current + (achieved - current) * 0.15;
   if (load.overloaded) return current;
   if (current === 0) return achieved;
-  // Stryker disable next-line EqualityOperator: when achieved === current the
+  // When achieved === current the
   // delta is zero, so either learning rate produces the identical baseline.
   const learningRate = achieved > current ? 0.3 : 0.05;
   return current + (achieved - current) * learningRate;
@@ -178,10 +178,10 @@ export class AdaptiveQualityPolicy {
   }
 
   private resetResolutionBackoffAfterStableMinute(clockSeconds: number): void {
-    // Stryker disable next-line ConditionalExpression,EqualityOperator: when
+    // When
     // the backoff equals its base, assigning the base again is a no-op.
     const elevated = this.resolutionUpBackoffSeconds > RESOLUTION_UP_BACKOFF_SECONDS;
-    // Stryker disable next-line EqualityOperator: at exactly 60 s every legal
+    // At exactly 60 s every legal
     // backoff (max 20 s) has already elapsed, so > versus >= is equivalent.
     const stable = clockSeconds - this.lastResolutionDownAt > RESOLUTION_BACKOFF_RESET_SECONDS;
     if (elevated && stable) this.resolutionUpBackoffSeconds = RESOLUTION_UP_BACKOFF_SECONDS;

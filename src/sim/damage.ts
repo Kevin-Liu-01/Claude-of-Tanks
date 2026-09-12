@@ -150,7 +150,7 @@ export function mainWeaponModuleState(
   let state: ModuleStateName = 'ok';
   for (const moduleName of ['gun', 'gunMount'] as const) {
     const candidate = combat?.modules?.[moduleName]?.state;
-    // Stryker disable next-line EqualityOperator: accepting an equal-rank state
+    // Accepting an equal-rank state
     // only reassigns the same string and is therefore behaviorally identical.
     if (candidate && MODULE_STATE_RANK[candidate] > MODULE_STATE_RANK[state]) {
       state = candidate;
@@ -990,7 +990,7 @@ function resolveScreenPlate(
     const gapM = heatGapAfter(resolution.hits, hit);
     resolution.pen *= Math.max(0, 1 - HEAT_GAP_LOSS_PER_M * gapM);
   }
-  // Stryker disable next-line ConditionalExpression: a missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
+  // A missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
   if (plate.moduleLink) {
     mergeModuleOutcome(resolution.event, rollModuleDamage(resolution, plate.moduleLink));
   }
@@ -1093,7 +1093,7 @@ function applySeamInternalDamage(
       mergeModuleOutcome(event, rollModuleDamage(resolution, hit.module));
       continue;
     }
-    // Stryker disable next-line ConditionalExpression: other module hits have no crew key and are the same no-op in rollCrewHit.
+    // Other module hits have no crew key and are the same no-op in rollCrewHit.
     if (hit.kind === 'crew') {
       rollCrewHit(resolution, hit.crew, false);
     }
@@ -1269,7 +1269,7 @@ export function resolveShellHit(
     entryPoint: null,
     decided: false,
     limitM: postPenetrationLimitM(spec.caliberMm),
-    // Stryker disable next-line ArrayDeclaration: the injected string has no hit kind and is an identical no-op when deferred intersections flush.
+    // The injected string has no hit kind and is an identical no-op when deferred intersections flush.
     straddlers: [],
   };
   if (walkLiveShellTrace(resolution)) return event;
@@ -1385,7 +1385,7 @@ function sweepHeBlast(
   skipModule: ModuleId | null | undefined,
 ): void {
   const armor = target.spec.armor;
-  // Stryker disable next-line ArrayDeclaration: the empty seed contains no real ModuleId and cannot affect deduplication.
+  // The empty seed contains no real ModuleId and cannot affect deduplication.
   const rolled = new Set(skipModule ? [skipModule] : []);
   const useBoxes = !!(armor && (armor.modules?.length || armor.crew?.length));
   if (useBoxes) sweepAuthoredHeBlast(ctx, event, target, center, radiusM, rolled);
@@ -1464,10 +1464,10 @@ function walkWreckTrace(
       pen = remainingPen;
       continue;
     }
-    // Stryker disable next-line ConditionalExpression: crew intersections have no barrel flag, so either form immediately continues.
+    // Crew intersections have no barrel flag, so either form immediately continues.
     if (hit.kind !== 'module' || !hit.barrel) continue;
     pen -= barrelScreenMm(hit);
-    // Stryker disable next-line EqualityOperator: exact-zero penetration is terminal on this inert obstacle either way.
+    // Exact-zero penetration is terminal on this inert obstacle either way.
     if (pen <= 0) {
       event.kind = 'nonpen';
       event.pos = [hit.point.x, hit.point.y, hit.point.z];
@@ -1568,7 +1568,7 @@ function findHeBurstPlate(
     }
     if (!coincidentEraSurface(hits, index, hit)) eraArmorMm += hit.plate.physicalMm;
   }
-  // Stryker disable next-line ObjectLiteral: an ERA-only trace is deliberately discarded by resolveDirectHeTarget after ERA activation is recorded.
+  // An ERA-only trace is deliberately discarded by resolveDirectHeTarget after ERA activation is recorded.
   return { plateHit: null, eraArmorMm };
 }
 
@@ -1596,7 +1596,7 @@ function applyHePenetration(
       mergeModuleOutcome(event, rollModuleDamage(ctx, hit.module));
       continue;
     }
-    // Stryker disable next-line ConditionalExpression: the only remaining hit variant is a plate, whose absent crew key is an identical no-op in rollCrewHit.
+    // The only remaining hit variant is a plate, whose absent crew key is an identical no-op in rollCrewHit.
     if (hit.kind === 'crew') rollCrewHit(ctx, hit.crew, false);
   }
 }
@@ -1625,7 +1625,7 @@ function applyHeSurfaceBurst(
   stampShotInfo(event, plateHit, shell.spec, target, shell.vel);
   event.damage = dmg;
   target.combat.hp -= dmg;
-  // Stryker disable next-line ConditionalExpression: a missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
+  // A missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
   if (plate.moduleLink) {
     mergeModuleOutcome(event, rollModuleDamage(ctx, plate.moduleLink));
   }
@@ -1696,7 +1696,7 @@ function expandArmorAabb(aabb: ArmorAabb | null, vertex: readonly number[]): Arm
 }
 
 function hullAabbOf(armor: DamageArmorModel): ArmorAabb | null {
-  // Stryker disable next-line ConditionalExpression: cache reuse changes allocation/work only; the returned geometry is intentionally identical.
+  // Cache reuse changes allocation/work only; the returned geometry is intentionally identical.
   if (armor.__hullAabb !== undefined) return armor.__hullAabb;
   let aabb: ArmorAabb | null = null;
   if (Array.isArray(armor.hullPlates)) {
@@ -1744,7 +1744,7 @@ function nearestPointTrace(
   for (let a = 0; a < 3; a++) {
     let lo = aabb.min[a] + HE_NEAREST_INSET_M;
     let hi = aabb.max[a] - HE_NEAREST_INSET_M;
-    // Stryker disable next-line ConditionalExpression,EqualityOperator: a sub-inset axis falls back to the same center trace; equality assigns the identical midpoint.
+    // A sub-inset axis falls back to the same center trace; equality assigns the identical midpoint.
     if (lo > hi) lo = hi = (aabb.min[a] + aabb.max[a]) * 0.5;
     const c = _heLocal.getComponent(a);
     const clamped = Math.min(hi, Math.max(lo, c));
@@ -1754,7 +1754,7 @@ function nearestPointTrace(
   _heNearest.applyMatrix4(_heMat);
   _heTo.subVectors(_heNearest, burstPoint);
   const dLen = _heTo.length();
-  // Stryker disable next-line ConditionalExpression,EqualityOperator: a zero-length nearest vector otherwise produces a NaN trace that also returns no hit.
+  // A zero-length nearest vector otherwise produces a NaN trace that also returns no hit.
   if (dLen < 1e-6) return null;
   // Extend 1 m past the nearest surface point so the segment fully crosses
   // the plate it lands on.
@@ -1823,10 +1823,10 @@ function traceHeSplashPlate(
   const armor = tank.spec.armor;
   _center.copy(tank.state.pos);
   _center.y += armor.turretPivot ? armor.turretPivot[1] : 1.2;
-  // Stryker disable next-line ConditionalExpression,EqualityOperator: this broadphase only skips exact tracing; removing it preserves results, and exact contact proceeds to the strict surface gate.
+  // This broadphase only skips exact tracing; removing it preserves results, and exact contact proceeds to the strict surface gate.
   if (_center.distanceTo(burstPoint) - (armor.boundingRadiusM ?? 4) > radiusM) return null;
   const pose = tankPoseFromState(tank.state);
-  // Stryker disable next-line ArrayDeclaration: the empty seed is overwritten by the center fallback before any result can be emitted.
+  // The empty seed is overwritten by the center fallback before any result can be emitted.
   let hits = nearestPointTrace(burstPoint, tank, pose) ?? [];
   let plateHit = hits.find((hit): hit is PlateHit =>
     hit.kind === 'plate' && hit.plate.kind !== 'era') ?? null;
@@ -1843,7 +1843,7 @@ function traceHeSplashPlate(
   }
   if (!plateHit) return null;
   const surfaceDistM = plateHit.point.distanceTo(burstPoint);
-  // Stryker disable next-line EqualityOperator: exact-radius contact has zero falloff and is rejected as no-effect by the caller.
+  // Exact-radius contact has zero falloff and is rejected as no-effect by the caller.
   return surfaceDistM < radiusM ? { hits, plateHit, surfaceDistM } : null;
 }
 
@@ -1881,7 +1881,7 @@ function resolveHeSplashTarget(
   stampShotInfo(event, plateHit, shell.spec, tank, _siDir);
   event.damage = dmg;
   tank.combat.hp -= dmg;
-  // Stryker disable next-line ConditionalExpression: a missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
+  // A missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
   if (plateHit.plate.moduleLink) {
     ctx.chanceScale = 1;
     ctx.dmgScale = 1;
@@ -2370,7 +2370,7 @@ function estimateLayeredPenRatio(
       const gapM = nextSolidLayerGapM(layers, i);
       pen *= Math.max(0, 1 - HEAT_GAP_LOSS_PER_M * gapM);
     }
-    // Stryker disable next-line EqualityOperator: exact-zero and negative residual penetration both map to the same zero ratio.
+    // Exact-zero and negative residual penetration both map to the same zero ratio.
     if (pen <= 0) return 0;
   }
 

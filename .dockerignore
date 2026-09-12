@@ -5,7 +5,6 @@ dist
 shots
 .qa-*
 .quality-reports
-.stryker-tmp
 coverage
 .env
 .env.*
