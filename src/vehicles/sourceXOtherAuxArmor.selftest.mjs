@@ -15,20 +15,20 @@ import {KIT} from './tankFactoryCore.ts';
 import {withHistoricalType10Supports} from './type10SkirtHistory.test-support.mjs';
 const DONORS={k1a1_x:'k1a1',amx30_x:'amx30',leclerc_x:'leclerc',leclerc_classic_x:'leclerc',type10_x:'type10',type90_x:'type90',amx40_x:'amx40'};
 const BEFORE={
- 'k1a1_x/high':'be2113456e6aae39d798f2472f42744aa994fcf87156932491651fa4da917bbf',
- 'k1a1_x/low':'19c981976425ff196112edd08de6736a1dbb6c5323dc7c18f8737ab9412e08ef',
- 'amx30_x/high':'c3b90b3e930f00bb6a933583cedf80828e37cebb77e8fe32340af3801b735895',
- 'amx30_x/low':'ab1798bd3ea5846c906edb287062fb424f79902aa9cdf4502992f467d6061b65',
- 'leclerc_x/high':'82f04b0d9896b7543ce376425a5a28b86502b562ef5da5315a5d01feba71eb5e',
- 'leclerc_x/low':'e03680375359c068c7bc61c2c492a5a55045e1159f79133c935e91f1c7c7fd9d',
- 'leclerc_classic_x/high':'98ff78eca688644db0dcce0851fe8c8a05a06ca978b8ffac0d8bb431f07143a3',
- 'leclerc_classic_x/low':'e6f0990cf8612063a88000be5c3ea72b540188415bd18f15664765e80a691270',
- 'type10_x/high':'3af69b263ea42f143b8643ed97f3ee6a665d494deb64ffcf37734b53902614a3',
- 'type10_x/low':'a8e5ec042503d3343e441179afd442da2094227d179b507da978e27466794315',
- 'type90_x/high':'d31cee50d324910ef257ba49dee77ea1f8360c970f0481a8567eb2d0a7a9c351',
- 'type90_x/low':'f344b4f2070401eadd551c3d535fa55e206444ded1467dbaf290c5a05dcdeeb8',
- 'amx40_x/high':'00e772df4e2d40dd4996992d9a04dec7d653ddcd56b7a80b1528e8dc913b8b9a',
- 'amx40_x/low':'188bf2c8803380cde65d2dc23c72007517d399283f1b133a674d24b351f3673c',
+ 'k1a1_x/high':'366c093c1bc8e92df08402bebb9415e761805ad3af66e9eb22d484e1b5f8d752',
+ 'k1a1_x/low':'8e43bd9d618259119b2f3eee05cf651d7c9093d8655d535fbd7f341f3ddf1fd4',
+ 'amx30_x/high':'cec440e7cefb570e9df58a9bb5377edf750d247af60d984601585fd7f2034954',
+ 'amx30_x/low':'8de097f1c450efad42f930f18283d6cdfe9cde0caa7ba57e0119df9ea3a101a9',
+ 'leclerc_x/high':'42c280e95dcc0ce0e5ef8360dbdc573da5f9eaf5fd298d9158e8c4c89409bdfc',
+ 'leclerc_x/low':'33abc7e3c7a5a5fb886b9171e49fac1f28b2fb1c88ce6e486f1a46f4f0857182',
+ 'leclerc_classic_x/high':'236a179b5c15954ff1eab74761d337fc706c95cf124e56cc6ab1070852c6a13d',
+ 'leclerc_classic_x/low':'bc3b2dba936676ed5ae212a563bd210775b362e25d86932c23ed7965a9f3ec45',
+ 'type10_x/high':'058fc1efb87f39594a33c837cb19851c4e705c5819c90b14cc8e7b2f6ad2a18d',
+ 'type10_x/low':'a6a69b8381f26abcc7ee4b4c3ac708f1210b4c712fcd7fb7afc752e6580b84e8',
+ 'type90_x/high':'dfcf6d62a432414a6b1183000d5375d4f75ea182a2bc05c77a925ab0027a3804',
+ 'type90_x/low':'2064861efdbe19a297516b29906f11442fbdcb381170ff52eb407403084e1533',
+ 'amx40_x/high':'f83df3babefe53eb8026be6c61b76828d4922f3513dd033523d2031758a338ba',
+ 'amx40_x/low':'c636ff7169e90914acfc98012fb01e8586fc55fec443a44d7179acaced08da3e',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

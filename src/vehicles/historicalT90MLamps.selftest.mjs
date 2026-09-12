@@ -16,7 +16,7 @@ for(const quality of ['high','low']){
   try{
     const actual=geometryFingerprint(current.root),old=geometryFingerprint(historical.root);
     assert.notEqual(actual,old,'Actual mounted lamps are a physical change, not an ignored shader attribute');
-    if(quality==='high')assert.equal(old,'ffbd40d4','Independent pre-X golden is preserved unchanged');
+    if(quality==='high')assert.equal(old,'459c9292','Independent pre-X golden is preserved unchanged');
     rows.push({quality,current:actual,historical:old,actualLampPositions:assertCurrentT90MLampSeats(current)});
     let lamp;current.root.traverse(m=>{lamp??=vehicleNightLightEmittersFor(m).find(l=>l.kind==='headlight');});
     const direction=lamp.direction;

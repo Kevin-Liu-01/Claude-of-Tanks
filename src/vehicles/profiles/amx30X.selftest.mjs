@@ -104,10 +104,17 @@ for(const quality of ['high','low']) {
     // Fixed independent witness coordinates, not copied from the builder.
     // Every ray tests the complete actual tank, so hidden stock cannot fill
     // the opening behind a decorative painted hole.
+    // Fleet mouth standard (2026-09-11): the visible lining seats 0.3 mm ahead
+    // of the tube edge; the blind 105 mm floor stays real metal behind it.
+    const metal=[];tank.root.traverse(o=>{if(o.isMesh&&!/muzzleBoreShadowFallback/.test(o.name))metal.push(o);});
+    const rayMetal=(origin,direction,far=12)=>new THREE.Raycaster(new THREE.Vector3(...origin),new THREE.Vector3(...direction),0,far).intersectObjects(metal,false)[0];
     for(const [dx,dy] of [[0,0],[.030,0],[-.030,0],[0,.030],[0,-.030]]) {
-      const hit=ray([-.011+dx,1.87565+dy,6.15],[0,0,-1]);
+      const mouth=ray([-.011+dx,1.87565+dy,6.15],[0,0,-1]);
+      assert.equal(mouth?.object.name,'muzzleBoreShadowFallbackDisc','visible mouth is the fleet lining');
+      close(mouth?.point.z,5.99439+.0003,.0005,'lining seats on the tube edge');
+      const hit=rayMetal([-.011+dx,1.87565+dy,6.15],[0,0,-1]);
       close(hit?.point.z,5.680,.003,'continuous blind 105mm bore floor');
-      assert.equal(ray([-.011+dx,1.87565+dy,6.15],[0,0,-1],.45),undefined,'muzzle contains real air');
+      assert.equal(rayMetal([-.011+dx,1.87565+dy,6.15],[0,0,-1],.45),undefined,'muzzle contains real air');
     }
     for(const [x,y,front,glass] of [[1.078,2.062,1.782,1.680],[-.89409,2.86170,.560235,.428235]]) {
       const hit=ray([x,y,front+.10],[0,0,-1]);

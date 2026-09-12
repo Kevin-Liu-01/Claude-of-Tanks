@@ -57,7 +57,9 @@ for (const quality of ['high', 'low']) {
     tank.root.updateMatrixWorld(true);
     const all = [];
     tank.root.traverse(m => {if (m.isMesh && !m.name.startsWith('procShadow_') && !m.userData.vehicleMarking) all.push(m);});
-    const detail = tank.root.getObjectByName('turretDetail'), turret = tank.root.getObjectByName('turret');
+    // The rack floor and closed box carry camouflage through the material-only
+    // painted-detail bucket (2026-09-11); the open hoops stay unpainted lattice.
+    const detail = tank.root.getObjectByName('turretPaintedDetail'), turret = tank.root.getObjectByName('turret');
     const lattice = tank.root.getObjectByName('turretOpenLattice');
     assert.equal(lattice?.userData.continuityRole, 'open-lattice', 'only actual separated rods have open-frame semantics');
     assert.notEqual(detail.userData.continuityRole, 'open-lattice', 'floor and closed box remain ordinary permanent solid equipment');

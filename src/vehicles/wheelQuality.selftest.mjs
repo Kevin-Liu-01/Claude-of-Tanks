@@ -45,7 +45,7 @@ assert(patternUse.size >= 10, 'fleet exposes at least ten distinct mechanical wh
 assert.equal(wheelPatternFor(getSpec('m1a2')).id, 'split-rim-ten', 'Abrams split-rim identity');
 assert.equal(wheelPatternFor(getSpec('t90m')).id, 'pressed-six', 'T-90 pressed-wheel identity');
 assert.equal(wheelPatternFor(getSpec('merkava4b')).id, 'deep-dish-eight', 'Merkava deep-dish identity');
-assert.equal(wheelPatternFor(getSpec('kf51b')).id, 'radial-eight', 'KF51 radial-wheel identity');
+assert.equal(wheelPatternFor(getSpec('kf51b')).id, 'plain-dish-twelve', 'Leopard-hull family uses the plain dished disc');
 assert.equal(wheelPatternFor(getSpec('m60a1')).id, 'cast-five-spoke', 'Patton cast-wheel identity');
 
 const uniqueGeometry = new Set();

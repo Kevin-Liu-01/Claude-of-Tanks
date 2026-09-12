@@ -103,7 +103,7 @@ const boundary=fixture({returnRollerOutsetM:.5});try{axes(boundary,0,.5);}finall
 // are original vehicles, not new builders or self-derived expected hashes.
 const ORIGINALS={
   m1a2:['cbb19f45efdbab97356bd7fc5f87235b6948e0696427ed845cdebdee1e55be99','3868961745dac2ffef364704dd0f12eb5e78ceb379bece156a61dcc6be602016'],
-  leo2a5:['b79db24450e465bd0d110ea05938d3b7c83dcdc23ed4a4f427f7af40e98e55b1','06ee2e4b13dd3efbe94eb3bc7d0a518eda520a6142c8170932ea909a09b01c79'],
+  leo2a5:['08efd1106a79835d3b0ad6c4ffe8a502faea5212ee785c1f84b790d331d8846f','011e249a2d5f6d555a8b8fada08e53c7a92cc7aed15035782bb6110c7b057f6c'],
 };
 for(const[id,hashes]of Object.entries(ORIGINALS))for(const[index,quality]of['high','low'].entries()){
   const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});

@@ -2036,7 +2036,9 @@ function appendDefaultTurretedManifest(
   if (era !== 'ww2') {
     manifest.push({ kit: 'smoke', p: 0.75, v: { v: rng() < 0.4 ? '4' : '6' }, slot: ['turretCheekPair', {}] });
     manifest.push({ kit: 'aamg', p: era === 'cold-war' ? 0.75 : 0.5, v: { v: soviet ? 'dshk' : 'm2', shield: rng() < 0.4, ring: !soviet && rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
-    manifest.push({ kit: 'light', p: 0.35, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] });
+    // Modern fleets carry thermal sights, not a bolt-on IR searchlight drum;
+    // the generic drum read as an odd blue-lensed can on every X study.
+    if (era !== 'modern') manifest.push({ kit: 'light', p: 0.35, v: { v: 'ir_small' }, slot: ['turretRoof', { rear: false, side: 1 }] });
   } else {
     manifest.push({ kit: 'aamg', p: american ? 0.65 : 0.2, v: { v: soviet ? 'dshk' : 'm2', shield: rng() < 0.3 }, slot: ['turretRoof', { rear: true, side: -1 }] });
     manifest.push({ kit: 'hatch', p: 0.4, v: { v: rng() < 0.6 ? 'round' : 'rect' }, slot: ['turretRoof', { rear: false, side: -1 }] });
@@ -2082,7 +2084,9 @@ function appendDefaultHullManifest(
   manifest.push({ kit: 'jerry', p: era === 'ww2' ? 0.6 : 0.45, v: { n: 2 + (rng() < 0.4 ? 1 : 0) }, slot: ['rearDeck', { corner: 1 }] });
   manifest.push({ kit: 'tarp', p: 0.7, v: { v: 'fat', len: Math.min(1.2, spec.dims.widthM * 0.35) }, slot: ['rearDeck', { corner: -1 }] });
   manifest.push({ kit: 'shackles', p: 0.9, v: { v: rng() < 0.5 ? 'hook' : 'shackle' }, slot: ['bowPair', {}] });
-  manifest.push({ kit: 'tracks', p: era === 'ww2' ? 0.6 : 0.4, v: { n: 5, linkW: Math.min(0.5, spec.dims.widthM * 0.14) }, slot: ['glacis', {}] });
+  // Spare links belong on WW2 and Cold War glacis plates. On a modern
+  // composite glacis the centred five-link rack read as a louvered grille.
+  if (era !== 'modern') manifest.push({ kit: 'tracks', p: era === 'ww2' ? 0.6 : 0.4, v: { n: 5, linkW: Math.min(0.5, spec.dims.widthM * 0.14) }, slot: ['glacis', {}] });
   if (soviet && era !== 'modern') {
     manifest.push({ kit: 'drums', p: 0.75, v: { v: rng() < 0.6 ? 'twin' : 'single' }, slot: ['hullRear', {}] });
     manifest.push({ kit: 'log', p: 0.6, v: { len: Math.min(2.8, spec.dims.widthM * 0.82) }, slot: ['hullRearLow', {}] });
@@ -2411,6 +2415,12 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       ]
       : aftRoutes(seatSide, xOffset)
   );
+  // Hull-only service routes keep the rear rack as the preferred station and
+  // never climb onto the turret.
+  const hullServiceRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => {
+    const routes = aftRoutes(seatSide, xOffset).filter(([slot]) => !slot.startsWith('turret'));
+    return [...routes.filter(([slot]) => slot === 'hullRearRack'), ...routes.filter(([slot]) => slot !== 'hullRearRack')];
+  };
   const strvRoofRoutes = (x: number, z: number): Array<[string, DecorSlotArgs]> => [
     ['hullRoof', { x, z }],
   ];
@@ -2442,6 +2452,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   }
 
   const base = curated ? curated(spec, rng) : defaultManifest(spec, rng);
+  const serviceItem = choose(serviceGear, 'fender-service');
   const cargo: DecorManifestRow[] = [
     {
       kit: 'cargo', p: 1,
@@ -2457,9 +2468,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     },
     {
       kit: 'cargo', p: 1,
-      v: cargoVariant(choose(serviceGear, 'fender-service')),
+      v: cargoVariant(serviceItem),
+      // A fire extinguisher lies in a hull rack or on the deck; laid across
+      // the turret roof it read as a red drum with a blue lens.
       slot: ['fleetCargo', { routes: spec.id === 'strv103'
-        ? strvRoofRoutes(-1.05, -1.30) : aftRoutes(-side, 0.22) }],
+        ? strvRoofRoutes(-1.05, -1.30)
+        : serviceItem === 'fire-extinguisher' && decorEra(spec) === VEHICLE_ERAS.MODERN
+          ? hullServiceRoutes(-side, 0.22)
+          : aftRoutes(-side, 0.22) }],
     },
     {
       kit: 'cargo', p: 1,

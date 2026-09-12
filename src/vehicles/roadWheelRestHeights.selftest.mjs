@@ -63,14 +63,14 @@ function gearFingerprint(root) {
 // Captured before introducing either optional road-station API. These cover
 // real wheel, suspension, drum, band and shoe buffers AND instance matrices.
 const ORIGINALS = {
-  t90sm: ['16b07f4300c48d92cac8b85878ea10a67283ea03a79d86b1c481633ecd83dcdd',
-    'd68a12e7b3cfcca7e2dae30f43038c3b8eff88675860722926e30f4cdcdd646f'],
-  t90m: ['b876f7f80fc4a2de7a5d05358e861cc489343a25a80dc531a0dc3a1a0a73de78',
-    '009065b7d3a36660ff4dee6cfa63cfa384ce7fdda16a07ffac06ef8422cd7f6d'],
+  t90sm: ['34b2ebe686e96f1a0906d6d7702c1a15de231d0b3da200631e0008d891f9be64',
+    '4829abde5789b92e6e5458bc944c3bb0c1e37a4f66287fe42a880290c4eda08c'],
+  t90m: ['8b2c403655ba1913d0f184a3841c741957d0ca2e02d2f04e9b73116c08c4be3a',
+    '00f4cae94dd2b1bfa96e6319dc6293cbbce6d52ef9f7154bb70c4387f8286271'],
   m1a2: ['cbb19f45efdbab97356bd7fc5f87235b6948e0696427ed845cdebdee1e55be99',
     '3868961745dac2ffef364704dd0f12eb5e78ceb379bece156a61dcc6be602016'],
-  leo2a5: ['b79db24450e465bd0d110ea05938d3b7c83dcdc23ed4a4f427f7af40e98e55b1',
-    '06ee2e4b13dd3efbe94eb3bc7d0a518eda520a6142c8170932ea909a09b01c79'],
+  leo2a5: ['08efd1106a79835d3b0ad6c4ffe8a502faea5212ee785c1f84b790d331d8846f',
+    '011e249a2d5f6d555a8b8fada08e53c7a92cc7aed15035782bb6110c7b057f6c'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {

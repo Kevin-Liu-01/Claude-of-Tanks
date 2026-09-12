@@ -118,10 +118,24 @@ for(const id of ABRAMS_SOURCE_X_IDS)for(const quality of['high','low']){
     const expected=new Map([[5.56,1.754925667],[5.58,1.759132796],[5.60,1.764745668],[5.61,1.771855644]]).get(z);
     near(h.point.clone().applyMatrix4(inverse).y,expected,.00025,`${label} measured collar radius`);
    }
-   for(const x of[-.020003,-.073,.033])assert.equal(hit([x,1.849085,5.82],[0,0,-1],.85).length,0,`${label} actual open bore`);
+   // The source tube is genuinely open, but the visible mouth now carries the
+   // fleet bore disc/rim at the tube edge instead of a dark hole 20 cm or
+   // more inside the barrel (owner direction 2026-09-11). Center rays meet the
+   // disc within a few millimetres of the metal edge; the source annulus face
+   // behind it stays untouched geometry.
+   // `actual` deliberately excludes the shadow-named bore furniture; the
+   // mouth check needs it, so cast the axis ray against every visible mesh.
+   const everything=[];tank.root.traverse(o=>{if(!o.isMesh)return;for(let p=o;p;p=p.parent)if(!p.visible)return;everything.push(o);});
+   const hitAll=(p,d,far)=>cast(everything,new T.Vector3(...p).applyMatrix4(transform).toArray(),new T.Vector3(...d).transformDirection(transform).toArray(),far);
+   const mouth=hitAll([-.020003,1.849085,5.85],[0,0,-1],.85)[0];assert.ok(mouth,`${label} mouth disc present`);
+   near(mouth.point.clone().applyMatrix4(inverse).z,5.8106,.002,`${label} mouth disc seats at the tube edge, not a deep floor`);
+   for(const x of[-.073,.033])assert.equal(hit([x,1.849085,5.82],[0,0,-1],.85).length,0,`${label} actual open bore`);
    for(const r of[.061,.064,.070,.076]){
     const h=hit([-.020003+r,1.849085,5.85],[0,0,-1],.10)[0];assert.ok(h,label);
-    near(h.point.clone().applyMatrix4(inverse).z,5.809424877,.000002,`${label} complete-scene source annulus`);
+    const z=h.point.clone().applyMatrix4(inverse).z;
+    // High keeps the source annulus face itself (5.8094); Low batches the
+    // fleet rim in front of it (up to 5.8275). Both are the tube edge.
+    assert.ok(z>=5.809424877-.000002&&z<=5.8296,`${label} mouth face lies between the source annulus and the tube edge (${z})`);
    }
    assert.equal(hit([-.13,1.896,5.8],[0,0,-1],.3).length,0,`${label} source outer clamp air`);
    for(const[dx,dy,z]of mrsWitnesses){const h=hit(mrsOrigin(dx,dy),axis,.13)[0];assert.ok(h,label);near(h.point.clone().applyMatrix4(inverse).z,z,.002,`${label} source hollow MRS mouth`);}

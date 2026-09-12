@@ -32,9 +32,13 @@ export const WHEEL_PATTERN_DEFINITIONS = Object.freeze({
     label: 'ten-fastener split rim', motif: 'split-rim', fasteners: 10,
     pockets: 0, idlerHoles: 10, endFasteners: 10, rollerHub: 0.52,
   }),
-  'radial-eight': Object.freeze({
-    label: 'eight-rib radial wheel', motif: 'rib', fasteners: 12,
-    pockets: 8, idlerHoles: 8, endFasteners: 12, rollerHub: 0.48,
+  // Leopard 2 family: a plain dished steel disc with a bolt ring and a proud
+  // hub, no spokes or pockets. The former eight-rib 'radial-eight' motif read
+  // as a spoked perforated wheel on every Leopard-hull study and no longer
+  // has a fleet owner, so it left the authored vocabulary (2026-09-11).
+  'plain-dish-twelve': Object.freeze({
+    label: 'twelve-fastener plain dished wheel', motif: 'plain-dish', fasteners: 12,
+    pockets: 0, idlerHoles: 8, endFasteners: 12, rollerHub: 0.50,
   }),
   'scalloped-six': Object.freeze({
     label: 'six-pocket scalloped wheel', motif: 'scalloped', fasteners: 6,
@@ -78,7 +82,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.fr
   [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-dish'],
   [/(?:m26_pershing|m45_patton|m46_patton|m47_patton|m48|m60a1|m60a2|m60a3)/, 'cast-five-spoke'],
   [/(?:mbt70|m1a1|m1a2|m1a3|abramsx|ua_m1a1)/, 'split-rim-ten'],
-  [/(?:leo1a5|leopard2|leo2|kf51|strv122|pl01)/, 'radial-eight'],
+  [/(?:leo1a5|leopard2|leo2|kf51|strv122|pl01)/, 'plain-dish-twelve'],
   [/(?:merkava)/, 'deep-dish-eight'],
   [/(?:leclerc|amx30|amx40|amx56|carro45t)/, 'scalloped-six'],
   [/(?:ariete)/, 'split-rim-ten'],
@@ -94,15 +98,15 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.fr
 const NATION_FALLBACKS: Readonly<Record<string, readonly WheelPatternId[]>> = Object.freeze({
   china: ['pressed-six', 'christie-six'],
   france: ['scalloped-six', 'deep-dish-eight'],
-  germany: ['radial-eight', 'interleaved-dish'],
+  germany: ['plain-dish-twelve', 'interleaved-dish'],
   israel: ['deep-dish-eight'],
   italy: ['split-rim-ten', 'scalloped-six'],
   japan: ['flanged-twelve'],
   poland: ['pressed-six', 'armored-hub-six'],
   russia: ['pressed-six', 'pressed-eight'],
   'south korea': ['flanged-twelve', 'armored-hub-six'],
-  sweden: ['scalloped-six', 'radial-eight'],
-  uk: ['pressed-eight', 'radial-eight'],
+  sweden: ['scalloped-six'],
+  uk: ['pressed-eight'],
   usa: ['split-rim-ten', 'cast-five-spoke'],
   ussr: ['christie-six', 'pressed-six'],
   'ussr/russia': ['pressed-six'],
@@ -150,7 +154,7 @@ export function wheelPatternFor(
   }
 
   const nation = String(spec?.nation || '').toLowerCase();
-  const palette = NATION_FALLBACKS[nation] || ['pressed-eight', 'split-rim-ten', 'radial-eight'];
+  const palette = NATION_FALLBACKS[nation] || ['pressed-eight', 'split-rim-ten'];
   const patternId = palette[stableIndex(id || nation, palette.length)];
   return Object.freeze({ id: patternId, ...WHEEL_PATTERN_DEFINITIONS[patternId] });
 }

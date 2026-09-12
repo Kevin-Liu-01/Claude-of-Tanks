@@ -441,12 +441,11 @@ function weapons(P: TankBuilderPort): void {
   const muzzle = new THREE.CylinderGeometry(.10160, .10160, D.muzzleZ - 6.88, 32, 1, true);
   muzzle.rotateX(Math.PI / 2);
   P.add('gun', muzzle, 0, 0, (6.88 + D.muzzleZ) / 2 - gz);
-  const bore = new THREE.CylinderGeometry(.060, .060, .25, 32, 1, true);
-  bore.rotateX(Math.PI / 2);
-  P.add('gunDark', bore, 0, 0, P.muzzleZ - .125);
-  const rim = new THREE.RingGeometry(.060, .10160, 32);
+  // Fleet mouth standard (2026-09-11): the shared edge-seated lining draws
+  // the dark bore and its lip; the source's 250 mm open throat and floor are
+  // gone. The tube's own end face closes the open jacket outside that lip.
+  const rim = new THREE.RingGeometry(.080, .10160, 32);
   P.add('gun', rim, 0, 0, P.muzzleZ);
-  P.add('gunDark', cylZ(.060, .007, 32), 0, 0, P.muzzleZ - .251);
   muzzleReference(P);
   movingMantlet(P);
   const mg = sourceMachineGun(P, D.turretPivot);

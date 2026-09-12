@@ -49,7 +49,10 @@ function surfaces(root, all) {
   const tube = cast(all,[0,1.651499209,5.10],[0,0,-1]);
   near(cast([root.getObjectByName('gunDark')],[0,1.651499209,5.10],[0,0,-1])?.point.z,
     3.683820288,.00001,'actual authored metal lies at source deep blind floor');
-  near(tube?.point.z,3.683820288,.0013,'native shading decal remains within 1.3 mm of recessed stock');
+  // Fleet mouth standard (2026-09-11): the shading lining seats 0.3 mm ahead
+  // of the tube edge instead of down at the source's deep blind floor.
+  assert.equal(tube?.object.name,'muzzleBoreShadowFallbackDisc','visible mouth is the fleet lining');
+  near(tube?.point.z,5.028094113+.0003,.0005,'native shading lining seats on the tube edge');
   assert.equal(cast(all,[0,1.651499209,5.02],[0,0,-1],1.30),undefined,'no filled barrel or MRS caps the bore');
   assert.equal(cast([turret],[.9,1.54,-1.45],[0,0,1],.42),undefined,'rising rear underside retains actual air');
   let falseMG=0;

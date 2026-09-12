@@ -33,12 +33,17 @@ function worldBounds(meshes) {
 }
 
 function framesAndEnvelope(tank, all) {
-  const bounds = worldBounds(all);
+  // Fleet mouth standard (2026-09-12, terminal-surface-fit-r2): the flush
+  // lining sits 0.3-0.9 mm proud of the terminal face as a shading device; the
+  // source envelope receipt measures authored stock only.
+  const bounds = worldBounds(all.filter((mesh) => !/^muzzleBoreShadowFallback/.test(mesh.name)));
   near(bounds.min.x, -1.8, .0001, 'source forward guard left extreme');
   near(bounds.max.x, 1.8, .0001, 'source forward guard right extreme');
   near(bounds.min.y, 0, .0001, 'actual source ground plane');
   near(bounds.min.z, -3.71963792937, .00001, 'real fuel-carry aft bracket');
-  near(bounds.max.z, D.muzzleZ, .0001, 'actual older-file terminal tube');
+  // Low quality folds the flush lining into the static batch, so the stock
+  // envelope may carry the lining's 0.3-0.9 mm crown past the terminal face.
+  near(bounds.max.z, D.muzzleZ, .001, 'actual older-file terminal tube (flush lining crown allowed)');
   near(bounds.max.y, 3.19835755241, .00001, 'source tapered stock maximum');
   const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
   for (const [index, axis] of ['x', 'y', 'z'].entries()) {
@@ -186,10 +191,24 @@ function boreAndOwnership(tank, all) {
     near(ray(gunParts, [1, D.trunnion[1], z], [-1, 0, 0])?.point.x,
       D.trunnion[0] + .1400485, .00002, 'independent equal source horizontal radius');
   }
-  near(ray(all, [D.trunnion[0], D.trunnion[1], 6.6], [0, 0, -1])?.point.z,
+  // Fleet mouth standard (2026-09-12, terminal-surface-fit-r2): the outer
+  // course of the lathe reaches the muzzle marker, so the mouth-face scan seats
+  // the flush lining 0.3 mm proud of that face; the source's deep 120 mm
+  // backing stays behind it as metal. Low quality folds the lining into the
+  // static batch; the metal witness excludes that batch too (the lathe and its
+  // dark floor are never batched).
+  const metal = all.filter(m => !/muzzleBoreShadowFallback|mobileStaticBatch/.test(m.name));
+  const lining = ray(all, [D.trunnion[0], D.trunnion[1], 6.6], [0, 0, -1]);
+  assert.equal(lining?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining, not a lit throat');
+  near(lining?.point.z, D.muzzleZ + .0003, .0005, 'mouth lining sits flush on the terminal face at the muzzle marker');
+  near(ray(metal, [D.trunnion[0], D.trunnion[1], 6.6], [0, 0, -1])?.point.z,
     4.60643577576, .0013, 'source deep backing plus existing 1.2mm inner liner');
-  assert.equal(ray(all, [D.trunnion[0], D.trunnion[1], 6.31], [0, 0, -1], 1.5), undefined,
+  assert.equal(ray(metal, [D.trunnion[0], D.trunnion[1], 6.31], [0, 0, -1], 1.5), undefined,
     'front bore stays physically open for its actual deep source interval');
+  for (const [dx, dy] of [[.045, 0], [-.045, 0], [0, .045], [0, -.045]]) {
+    const wall = ray(metal, [D.trunnion[0] + dx, D.trunnion[1] + dy, 6.6], [0, 0, -1]);
+    near(wall?.point.z, 4.60643577576, .0013, 'real 120 mm calibre: off-axis rays reach the same backing');
+  }
   const gun = tank.root.getObjectByName('gun');
   assert.ok(gun.parent.name === 'rig_recoil' || gun.parent.parent?.name === 'rig_recoil',
     'tube and attached MRS share the real recoil owner');

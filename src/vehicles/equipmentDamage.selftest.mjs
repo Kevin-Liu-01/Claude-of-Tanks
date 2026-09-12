@@ -283,17 +283,17 @@ function restHash(visual) {
 // model for damage/reset: never omit the corrected lamps from preservation.
 const T90M_REST_REVISIONS = Object.freeze({
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: '777b006368c4a4022dee803e11a5b461885ca148bf48d0af6221d71ec0bac1fc',
+  forwardLampSeat: '94a5048ed6c80752a3b8137c135d12d5e6f476afde904a838db6d2cbc90e7c0d',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently
 // verified intentional lamp-seat revision above versions a physical rest row.
 for (const [id, rest, armor] of [
-  ['leo2a6', '1e43e9490747a8f27765216bf7d67135c2b1f1c9d9e31221e901832e7b6633d2',
+  ['leo2a6', 'd99c4911867c659fb8ec7b8d5036890fd83136c33c1512d4196fe302d71ea95c',
     'f029abdac12ed1a9891ac7f48e7d6ada06190ffe8b0615a7d12e00aa7d8c1566'],
   ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
     '050d079304b3b60b62cea6f714d2fadbdcf7cfe79fa7e8796826f121dc382e65'],
-  ['m1a2', '4bb6afa27dc3889d689291e7ee1cba45ed7f7804fae3941ed28762f9a2014af4',
+  ['m1a2', 'd1bd1f77a5fcd9f87b0897414f7e57579a6cf6356c364bffcf2b16b2a74fcd8b',
     '47159a9590d264887e9883ab2e4fa8dc31634a4ed184e176be7fcb05a8909036'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });

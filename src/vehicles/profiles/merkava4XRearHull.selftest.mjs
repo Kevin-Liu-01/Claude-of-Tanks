@@ -95,7 +95,8 @@ function sourceAndAir(tank,quality) {
     `${quality}: real right channel upper air`);
   assert.ok(hit(hull,-1.3,-3.65).point.y-hit(hull,1.5,-3.65).point.y>.08,
     `${quality}: left cover is not incorrectly mirrored from the recess`);
-  const basket=tank.root.getObjectByName('turretDetail');
+  // The basket floor carries camouflage through the painted-detail bucket (2026-09-11).
+  const basket=tank.root.getObjectByName('turretPaintedDetail');
   near(hit(basket,0,-3.50,1.9)?.point.y,1.82628,.001,`${quality}: aligned basket floor stays fixed`);
   assert.equal(new THREE.Raycaster(new THREE.Vector3(0,1.7,-3.55),new THREE.Vector3(0,0,1),0,.10)
     .intersectObject(hull,false).length,0,`${quality}: genuine space below basket remains air`);

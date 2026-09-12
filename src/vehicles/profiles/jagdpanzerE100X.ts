@@ -1,6 +1,7 @@
 // Original first-party reconstruction of the supplied fictional vehicle.
 // The private comparison GLB is never a playable asset or vertex source.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -108,8 +109,9 @@ function casemate(P:TankBuilderPort):void {
       place(P,'hullDetail',beamBetween([side*tip,y+.137,z],[side*(tip-.027),y+.137,z],.012),0,0,0);
     }
   }
-  P.add('hullDetail',jagdpanzerFixedCollar());
-  P.add('hullDetail',jagdpanzerBearingDome());
+  // The fixed collar and bearing dome are painted hull structure.
+  P.add('hullPaintedDetail',markFixedPaintedPanel(jagdpanzerFixedCollar(),'jpz-e100-x-collar','hullDetail'));
+  P.add('hullPaintedDetail',markFixedPaintedPanel(jagdpanzerBearingDome(),'jpz-e100-x-bearing-dome','hullDetail'));
   for(let i=0;i<14;i++) {
     const a=i*Math.PI*2/14,y=2.402+Math.cos(a)*.544;
     const z=(1.212762-.506720064*y)/.862110652;

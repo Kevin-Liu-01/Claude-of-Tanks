@@ -1,6 +1,7 @@
 // First-party T-80U solids, authored from scalar studies of the supplied fused
 // two-object model. No donor builder or external source topology is imported.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -58,11 +59,17 @@ function skirt(P:TankBuilderPort,side:number):void {
       [[outer-offset,bottom],[outer,bottom],[inner,top],[inner-offset,top]];
     return points;
   };
-  P.addMudguard('t80u-x-side-apron','hullRubber',sectionSolid([
+  // Forward armored sections under the Kontakt-5 bank carry paint; the rear
+  // rubber-fabric apron is painted in the vehicle scheme too (fleet paint
+  // standard 2026-09-11), so only the bow apron and mud flaps stay black.
+  P.addMudguard('t80u-x-side-apron-rear','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
     {z:-2.882,ring:ring(.886,1.414)},{z:-2.45,ring:ring(.815,1.458)},
+    {z:-1.22,ring:ring(.782,1.504)},
+  ]),'t80u-x-side-apron-rear','hullRubber'));
+  P.addMudguard('t80u-x-side-apron','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
     {z:-1.22,ring:ring(.782,1.504)},{z:1.75,ring:ring(.762,1.449)},
     {z:2.886,ring:ring(.782,1.418)},
-  ]));
+  ]),'t80u-x-side-apron','hullRubber'));
 }
 
 function runningGear(P:TankBuilderPort):void {

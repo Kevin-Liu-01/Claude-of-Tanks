@@ -52,7 +52,9 @@ function checkFrames(tank,id,source){
     // The existing shared opaque lining is seated 1.2mm proud of the real
     // metal floor. Pin it separately, without excluding it from the ray.
     assert.equal(complete?.object.name,'muzzleBoreShadowFallbackDisc');
-    near(complete?.point.z,source.boreFloor+.0012,.00002,`${id}: complete visible bore has only its seated floor lining ${dx}/${dy}`);
+    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
+    // the physical source bore depth is asserted separately above.
+    near(complete?.point.z,source.muzzle+.0003,.00002,`${id}: complete visible bore seats its mouth lining at the tube edge ${dx}/${dy}`);
   }
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
   for(const yaw of [-1.3,.8])for(const pitch of [-.08,.18]){

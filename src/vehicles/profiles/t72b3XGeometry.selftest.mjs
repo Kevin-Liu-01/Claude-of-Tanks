@@ -44,7 +44,11 @@ function checkBore(tank){
     near(ray.intersectObject(cannon,false)[0]?.point.z,SOURCE.floor,.00002,'real1.293m-deep physical bore');
     const first=ray.intersectObjects(all,false)[0];
     assert.equal(first?.object.name,'muzzleBoreShadowFallbackDisc');
-    near(first?.point.z,SOURCE.floor+.0012,.00002,'complete opaque bore keeps shared1.2mm floor lining only');
+    // The physical bore stays the source's 1.293 m tube (asserted above), but
+    // the visible mouth disc now seats at the tube edge instead of the floor:
+    // the owner rejected hollow throats whose dark hole sat far inside the
+    // barrel (2026-09-11). The disc leads the metal tip by the fleet 1.2 mm.
+    near(first?.point.z,SOURCE.muzzle+.0003,.00002,'opaque mouth disc seats at the tube edge, not the deep floor');
   }
   const result=measureTurretBarrelCircularity(tank,{requireMeasurement:true});
   assert.ok(result.pass,'source stock spans with physically circular centered125mm bore');

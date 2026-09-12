@@ -1,0 +1,80 @@
+# Fleet visual standard pass — 2026-09-11
+
+Owner direction (2026-09-11): the new X tanks must follow one visual language.
+The complaints were flat "un-camouflaged" areas in the plain base tone, rubber
+in places that are painted steel on the real vehicles, guns whose visible hole
+sits far down a hollow throat, spoked "rubber" Leopard wheels, generic glacis
+stowage on modern hulls, and open or thin machine-gun and mast stock.
+
+## What changed
+
+- **Painted steel carries the camouflage.** `hullDetail`, `turretDetail` and
+  the per-side track detail buckets draw with the vehicle camouflage material
+  (`CAMO_BUCKETS`, box-projected UVs, baked dirt) instead of the flat
+  fitting tone that read as bare primer beside every camouflaged plate. The
+  buckets keep their detail LOD, non-armor hit role and disposal ownership; the
+  garage material transfer follows the material role, so the workshop shows
+  the same finish. Earlier per-panel `markFixedPaintedPanel` migrations
+  (skirts, stowage, rear racks, basket floors, collars) remain as explicit
+  provenance for fixed bodywork that also needs silhouette LOD.
+- **Rubber only where rubber belongs.** The rear rubber-fabric skirt courses of
+  T-72B (1987) X, T-72B3 X and T-80U X are painted in the vehicle scheme like
+  the rest of the skirt; mud flaps, the T-80U bow apron and lower curtains stay
+  black. Type 90 X and the T-90 AW family had already moved their skirts to
+  painted bodywork.
+- **Mouths sit on the surface.** The fleet muzzle lining seats on the tube edge
+  (`MUZZLE_COUNTERBORE_MAX_M` 0.03; edge scan over the primary surface), the
+  bore probe fails any mouth deeper than 50 mm, and the authored throats that
+  fought it were corrected: Leopard 2A6 X drops its 250 mm open throat in
+  favour of the shared lining, Leclerc classic X narrows its lit 169 mm inner
+  wall to the 120 mm calibre, and the Strv 103 collar reaches its ballistic
+  muzzle marker. `node tools/muzzle-bore-probe.mjs --all` passes all 208
+  muzzle classes.
+- **Wheels.** The Leopard 2 family (Leo 2A4–A7V, Strv 122, KF51, PL-01, Leo 1A5)
+  uses a plain dished twelve-fastener disc with a proud hub; the spoked
+  `radial-eight` motif no longer has a fleet owner and left the vocabulary.
+  The German nation fallback follows.
+- **Decorations.** Modern hulls no longer receive the generic headlight and
+  glacis spare-track kits; fire extinguishers on modern vehicles route to hull
+  service positions instead of turret slots.
+- **T-90M X mast** stock uses thicker, closed radii.
+
+## Evidence
+
+- Provenance census of flat-tone and rubber emitters per call site
+  (`.qa-dev/x-provenance-census.mjs`, QA only) drove the migration list; the
+  per-mesh world-space diff against origin/main confirms every vehicle test
+  repin in this pass is one of: moved muzzle lining, detail buckets gaining
+  camouflage UV/colour, or authored fittings moving to a painted bucket.
+- Contact sheets before/after for the X fleet (`.qa-dev/qa-views.mjs`, QA
+  only) and the straight-on bore proofs under `/private/tmp/cot-muzzle-bore-proof`.
+- Combat anatomy, marking seats, presentation anchors and every icon view are
+  regenerated with the batch; the release gate sequence
+  (`tank:anatomy:update` → `tank:anatomy:check` → `tank:release:check --gate`)
+  is recorded in the commit that lands this note.
+
+## Addendum 2026-09-12 — muzzle seat r2, Warrior, probe alignment
+
+- **Three-seat mouth rule (`terminal-surface-fit-r2`).** The visible mouth
+  ends at the ballistic marker. A tube whose true mouth face already reaches
+  the marker keeps the lip 0.9 mm proud with the annulus/disc 0.6/0.3 mm ahead
+  of the face (flush seat); a tube authored short by up to the classic lip
+  reach keeps the published r1 lip (rear 0.04 R ahead of the tube end, front no
+  further than 0.9 mm past the marker, lining 1.2 mm inside); a tube that stops
+  further short is completed by an open-ended dark throat sleeve so the lip and
+  lining still finish at the marker. No vehicle grows past its authored tube.
+- **Mouth-face scan.** `axisGeometryMouthEdgeProfile` seats on the most
+  forward vertex between the bore lip course and the outer course, so a
+  chamfered muzzle (Challenger 1 X, supplied) seats on its terminal face
+  instead of burying the lip inside the outer course.
+- **Probe alignment.** `tools/muzzle-bore-probe.mjs` accepts a lip front up to
+  1 mm past the marker (the factory's 0.9 mm crown); the earlier 0.5 mm bound
+  rejected 56 correctly seated classes. Fleet result after the change:
+  `PASS 208 muzzle classes` (`--all`).
+- **FV510 Warrior (both classes).** The RARDEN mouth was buried inside a dark
+  hider nose behind a solid dark cap, and the whole turret group is scaled to
+  84 % height, so the tube and mouth rendered as a flattened ellipse. The bore
+  now sits on a steel tip collar at the tube tip (`muzzleBore z 1.872`), the
+  hider nose and collar are painted steel with one dark slot ring, and the
+  elevating gun group is counter-scaled (`gunG.scale.y = 1/0.84`, the
+  challenger.ts convention) so the tube stays round.

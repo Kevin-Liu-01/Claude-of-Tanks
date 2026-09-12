@@ -54,6 +54,13 @@ const edits = {
     [
       "P.addEquipment('hullDetail', sectionSolid([{ z: back, ring: mirrored }, { z: front, ring: mirrored }]));",
       "P.addEquipment('hullPaintedDetail', markFixedPaintedPanel(\n      sectionSolid([{ z: back, ring: mirrored }, { z: front, ring: mirrored }]),\n      'a6-fixed-upper-sheet', 'hullDetail'));"
+    ],
+    // 2026-09-11 fleet mouth standard: the hand-authored 250 mm open throat and
+    // floor gave way to the shared edge-seated lining; only the tube's end face
+    // ring (inner radius widened past the lip) remains. Exact, reversible.
+    [
+      "  const bore = new THREE.CylinderGeometry(.060, .060, .25, 32, 1, true);\n  bore.rotateX(Math.PI / 2);\n  P.add('gunDark', bore, 0, 0, P.muzzleZ - .125);\n  const rim = new THREE.RingGeometry(.060, .10160, 32);\n  P.add('gun', rim, 0, 0, P.muzzleZ);\n  P.add('gunDark', cylZ(.060, .007, 32), 0, 0, P.muzzleZ - .251);",
+      "  // Fleet mouth standard (2026-09-11): the shared edge-seated lining draws\n  // the dark bore and its lip; the source's 250 mm open throat and floor are\n  // gone. The tube's own end face closes the open jacket outside that lip.\n  const rim = new THREE.RingGeometry(.080, .10160, 32);\n  P.add('gun', rim, 0, 0, P.muzzleZ);"
     ]
   ],
   "leclercXSourceFittings.ts": [

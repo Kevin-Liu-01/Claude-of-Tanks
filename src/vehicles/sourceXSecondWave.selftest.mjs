@@ -11,13 +11,13 @@ import { tankTier } from './tier.ts';
 // measured before any second-wave authored builder or registry change.
 // Includes all 22 requested originals, not merely the completed draft subset.
 const original = {
-  ariete_c1:'97251390', challenger1:'ed7cdac2', leclerc:'7a811037',
-  chieftain5:'11e3c807', chieftain_mk10:'92e67621', leo2a6:'8d0ea8ec',
-  k1a1:'0950361c', strv122:'41f744a6', t62mv1:'63809f27',
-  t72b_1987:'4842e5a1', t72b3:'1aa57e0a', t72b3m:'7ea695fb',
-  t72bu:'bbcead95', t80u:'14647ad6', type10:'cf3fcd26', type90:'711ec4b5',
-  jpz_e100:'6f2fb18f', amx30:'6c814365', amx40:'c9d493c6',
-  t90:'10422bf8', t90a_burlak:'160e0fb6', t90ms:'90d4108f',
+  ariete_c1:'a4e3e6b0', challenger1:'c75fb1c8', leclerc:'3860cb3a',
+  chieftain5:'cd8e8f61', chieftain_mk10:'6bf3180a', leo2a6:'4b34bc1d',
+  k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'28da883d',
+  t72b_1987:'f26b00cd', t72b3:'1aef42bd', t72b3m:'c985f173',
+  t72bu:'0bac6b5f', t80u:'de5a9043', type10:'4618e37b', type90:'711ec4b5',
+  jpz_e100:'b93d7759', amx30:'be31d256', amx40:'c9d493c6',
+  t90:'7320f027', t90a_burlak:'59e16e7e', t90ms:'4c9068b5',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {

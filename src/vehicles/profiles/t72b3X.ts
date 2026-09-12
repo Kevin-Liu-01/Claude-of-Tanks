@@ -1,6 +1,7 @@
 // Independently authored T-72B3 X. Only measured dimensions/planes inform these
 // mathematical solids; no source mesh, rig, texture or donor builder is used.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -48,9 +49,15 @@ function fender(P:TankBuilderPort,side:number):void {
     [3.51805,left,right,.838, .838],
   ],.020));
   const x=side<0?-1.769:1.781;
-  P.addMudguard('t72b3-x-lower-skirt','hullRubber',sectionSolid([
-    [-3.023,.851,1.238],[-2.84,.721,1.128],[2.90,.719,1.128],[3.459,.782,1.123],
-  ].map(([z,low,top])=>({z,ring:[[x-.010,low],[x+.010,low],[x+.010,top],[x-.010,top]]}))));
+  // Forward sections behind the soft-ERA bank are rigid painted panels; the
+  // rear rubber-fabric run is painted in the vehicle scheme like the rest of
+  // the skirt (fleet paint standard 2026-09-11), so only mud flaps stay black.
+  P.addMudguard('t72b3-x-lower-skirt-rear','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
+    [-3.023,.851,1.238],[-2.84,.721,1.128],[-1.40,.7205,1.128],
+  ].map(([z,low,top])=>({z,ring:[[x-.010,low],[x+.010,low],[x+.010,top],[x-.010,top]]}))),'t72b3-x-lower-skirt-rear','hullRubber'));
+  P.addMudguard('t72b3-x-lower-skirt','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
+    [-1.40,.7205,1.128],[2.90,.719,1.128],[3.459,.782,1.123],
+  ].map(([z,low,top])=>({z,ring:[[x-.010,low],[x+.010,low],[x+.010,top],[x-.010,top]]}))),'t72b3-x-lower-skirt','hullRubber'));
   const upper=side<0?-1.66:1.674;
   P.addMudguard('t72b3-x-inner-apron','hullRubber',box(.018,.200,5.62),upper,1.340,-.209);
   for(const z of [-2.12,-.587,.805,2.222,3.178])P.addEquipment('hullDetail',box(.019,.26,.022),x+side*.012,1.02,z);

@@ -2,6 +2,7 @@
 // Visual X follows the supplied uniformly registered source. Published
 // 9.80×3.40×2.30m dimensions remain separately documented, never oracle warps.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
@@ -74,13 +75,16 @@ function shoulder(P:TankBuilderPort,side:number):void {
 }
 
 function skirts(P:TankBuilderPort,side:number):void {
-  P.addEquipment('hullDetail',sectionSolid([[-3.50,1.103646],[-3.0,1.103646],[-2.54,.694]].map(([z,bottom])=>{
+  // Type 90 side skirts are painted steel panels, not rubber curtains. The
+  // former full-height rubber buckets rendered the whole side as one black
+  // uncamouflaged slab that hid the running gear.
+  P.addEquipment('hullPaintedDetail',markFixedPaintedPanel(sectionSolid([[-3.50,1.103646],[-3.0,1.103646],[-2.54,.694]].map(([z,bottom])=>{
     const ring:[number,number][]=[[1.694,bottom],[1.786824,bottom],[1.786824,1.377],[1.694,1.377]];
     return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
-  })));
+  })),'type90-x-skirt-rear-course','hullDetail'));
   for(const [a,b,bottom]of[[-2.54,-1.60,.694],[-1.60,-.56,.694],[-.56,.49,.694],
     [.49,1.55,.694],[1.55,2.57,.694],[2.57,3.40,.8456]]) {
-    P.addEquipment('hullRubber',box(.024,1.377-bottom,b-a-.014),side*1.774824,(1.377+bottom)/2,(a+b)/2);
+    P.addEquipment('hullFixedPaintedBodywork',markFixedPaintedPanel(box(.024,1.377-bottom,b-a-.014),'type90-x-side-skirt','hullRubber'),side*1.774824,(1.377+bottom)/2,(a+b)/2);
     P.addEquipment('hullDetail',box(.032,.030,.10),side*1.770,1.381,(a+b)/2);
   }
 }

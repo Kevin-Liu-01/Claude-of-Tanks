@@ -88,6 +88,15 @@ only for the source-hash comparison, then requires the complete099 hash.
 Actual runtime faces, transforms, lighting metadata and light semantics are
 not modified, excluded or rolled back.
 
+A second source-only annotation (2026-09-11, fleet paint standard) is
+accounted for the same way: `chieftain10XStowage.ts` imports
+`markFixedPaintedPanel` and emits its welded cases through the material-only
+`turretPaintedDetail` bucket so they carry the turret camouflage instead of
+the flat detail tone. The helper authenticates that entire current file,
+recovers exactly the import and the single `part()` emission line for the
+source-hash comparison, then requires the complete099 hash. No geometry,
+station or vertex receipt is rolled back.
+
 The existing `chieftain10XMk5Foundation.selftest.mjs` is unchanged. Its
 668-emission, original unaffected-mesh, complete Mk5, source casting, variant
 air and ownership contracts continue to apply independently. No older

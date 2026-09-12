@@ -28,10 +28,17 @@ for(const quality of['high','low']) {
       close(hit([side*.77,y,1],[0,0,-1])?.point.z,
         (1.212762-.506720064*y)/.862110652,.002,'source oblique fixed collar plane');
     }
+    // Fleet mouth standard (2026-09-11): the visible lining seats 0.3 mm ahead
+    // of the tube edge; the deep 170 mm bore stays real air down to its floor.
+    const metal=[];tank.root.traverse(o=>{if(o.isMesh&&!/muzzleBoreShadowFallback/.test(o.name))metal.push(o);});
+    const hitMetal=(p,d,far=20)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(metal,false)[0];
     for(const[dx,dy]of[[0,0],[.05,0],[-.05,0],[0,.05],[0,-.05]]) {
       const p=[-.0007+dx,2.33805+dy,7.25];
-      assert.ok(!hit(p,[0,0,-1],1.5),'deep continuous170mm bore is actual air');
-      close(hit(p,[0,0,-1])?.point.z,5.7062,.00004,'physical blind floor with1.2mm seated dark lining');
+      const mouth=hit(p,[0,0,-1]);
+      assert.equal(mouth?.object.name,'muzzleBoreShadowFallbackDisc','visible mouth is the fleet lining');
+      close(mouth?.point.z,7.04687214+.0003,.0005,'lining seats on the tube edge');
+      assert.ok(!hitMetal(p,[0,0,-1],1.5),'deep continuous170mm bore is actual air');
+      close(hitMetal(p,[0,0,-1])?.point.z,5.7050,.0003,'physical blind floor behind the lining');
     }
     for(const x of[-.8012,.8007]) {
       const p=[x,3.216,-4.03];

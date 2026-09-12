@@ -108,10 +108,13 @@ for (const quality of ['high', 'low']) {
     near(muzzle.getWorldPosition(new THREE.Vector3()).z, 7.365, 1e-6, 'physical muzzle marker');
     near(ray([get('gunDark')], [0, 2.10, 7.6], [0, 0, -1])?.point.z, 7.0555, .00002,
       'authored main-gun bore has recessed metal backing');
-    // The shared core places its opaque bore-floor lining exactly 1.2 mm ahead
-    // of that authored floor. It must not close the 308 mm front cavity.
-    near(ray(meshes, [0, 2.10, 7.6], [0, 0, -1])?.point.z, 7.0567, .00002,
-      'complete bore retains only its seated core floor lining');
+    // Fleet mouth standard (2026-09-11): the shared lining seats 0.3 mm ahead
+    // of the tube edge; the authored 308 mm cavity stays real metal behind it.
+    const mouth = ray(meshes, [0, 2.10, 7.6], [0, 0, -1]);
+    assert.equal(mouth?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining');
+    near(mouth?.point.z, 7.3653, .0005, 'complete bore shows the lining seated on the tube edge');
+    near(ray(meshes.filter(mesh => !/muzzleBoreShadowFallback/.test(mesh.name)), [0, 2.10, 7.6], [0, 0, -1])?.point.z, 7.0555, .00002,
+      'metal behind the lining is the authored recessed floor');
     assert.equal(ray(meshes, [0, 1.72, 2.65], [0, 0, -1], .34), undefined,
       'driver approaches through the lower channel, not a full-width glacis fill');
     near(ray(meshes, [.37, 1.72, 2.65], [0, 0, -1])?.point.z, 2.0948, .005,

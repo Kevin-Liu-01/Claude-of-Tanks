@@ -25,12 +25,31 @@
   "successor": {
     "high": {
       "count": 318516,
-      "sha256": "e927370c12f00c11a34427869aead2258efaf86dd0ddbcac31ce47b665cbf4bf"
+      "sha256": "c83fa1d589a234388d3ffb88e9fb4b4a6662f864f81432bd4f137fb79da72437"
     },
     "low": {
       "count": 292116,
-      "sha256": "29edd3bbcd982846879d481ca9f66a28c9ed884f5f807a8c63847750a0bacac2"
+      "sha256": "7bc8bc1603ea8a60909c028dc9ea44a7e67eaf9e0de805c40234cd7f9a8a30fb"
     }
+  },
+  "successorHistory": [
+    {
+      "commit": "099edfa49603bc473548f6986c8598267a24a4db",
+      "high": {
+        "count": 318516,
+        "sha256": "e927370c12f00c11a34427869aead2258efaf86dd0ddbcac31ce47b665cbf4bf"
+      },
+      "low": {
+        "count": 292116,
+        "sha256": "29edd3bbcd982846879d481ca9f66a28c9ed884f5f807a8c63847750a0bacac2"
+      },
+      "status": "published099 physical multiset before the owner-directed muzzle mouth seat; retained as history, not an active claim"
+    }
+  ],
+  "laterMuzzleSeat": {
+    "branch": "codex/restore-1049-visuals-20260911",
+    "capturedAt": "2026-09-11",
+    "scope": "Owner direction: the visible muzzle mouth sits at the tube edge instead of 0.2 m down a hollow throat. Only the three muzzleBoreShadowFallback{Disc,Annulus,Rim} meshes moved (+0.320 m along the tube axis, 702 draw vertices per quality); the per-mesh world-space multiset diff against origin/main 010faabc2 shows every other physical vertex exactly preserved, including the welded stowage cases that now draw through turretPaintedDetail with identical positions. Vertex counts are unchanged."
   },
   "originalPublishedTest": {
     "sourceSha256": "473b4a8e5aebed17330df280207dd61a44fe587a0fbabcd76424183a7fe38ae2",
@@ -70,6 +89,13 @@
     "currentSourceSha256": "0b46fc5827cd703aa887ec32cfbf46e65d5d79cdfaa9519656ca312536a29cfe",
     "scope": "Exact import and markVehicleNightLens(front,headlight) wrapper only; authenticate complete source before/after. No geometry or current metadata rollback."
   },
+  "laterPaintAnnotation": {
+    "file": "src/vehicles/profiles/chieftain10XStowage.ts",
+    "branch": "codex/restore-1049-visuals-20260911",
+    "capturedAt": "2026-09-11",
+    "currentSourceSha256": "dbb284dad1717206d494287d83ce50b7441b711035a2c38a9fe56c5133d38763",
+    "scope": "Exact fixedPaintedPanel import and the material-only turretPaintedDetail migration of part() only (fleet paint standard); authenticate complete source before/after. No geometry, station or receipt rollback."
+  },
   "dependencies": {
     "three": "0.185.1",
     "typescript": "7.0.2"
@@ -100,5 +126,22 @@
     "lockfileSha256": "6ef8d14f6fc4304d732f86aa163df6be2fc13ad40b7691bcfbe34314930ff69f",
     "equalToPublishedBothQualities": true,
     "scope": "Diagnostic equality only; baseline values derive solely from immutable099."
+  },
+  "laterMuzzleSeatR2": {
+    "branch": "codex/restore-1049-visuals-20260911",
+    "capturedAt": "2026-09-12",
+    "scope": "terminal-surface-fit-r2: the visible mouth finishes at the ballistic marker (flush 0.9 mm crown on full-length tubes, classic lip on tubes up to one lip reach short, open throat sleeve beyond). Only the muzzleBoreShadowFallback{Rim,Annulus,Disc,Throat} seats move; the vertex count is unchanged (318516 high / 292116 low) and every physical Mk10 vertex is preserved.",
+    "supersededR1": {
+      "capturedAt": "2026-09-11",
+      "high": {
+        "count": 318516,
+        "sha256": "00eeb28ad67b4b7820e6bffad11b5608ad4c520ac8446b8e70453373921ab960"
+      },
+      "low": {
+        "count": 292116,
+        "sha256": "e7e2a12c233876c2d511ba02b349713c1e1e9de6c08b77126c13cfa0386f1844"
+      },
+      "status": "terminal-surface-fit-r1 successor values (lip 0.28 R, lining 1.2 mm inside), superseded by the r2 rule; the published099 history entry above stays the single archived predecessor"
+    }
   }
 }

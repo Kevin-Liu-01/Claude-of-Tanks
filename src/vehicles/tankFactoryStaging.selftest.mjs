@@ -25,7 +25,11 @@ const sentinelCall = '    if (batchStatic) detachEmptyLodSentinels(root);';
 assert.equal(candidateCore.split(sentinelCall).length, 2, 'one runtime-only empty sentinel finalizer');
 assert.equal(candidateCore.split(shadowBatchCall).length, 2,
   'historical projection requires exactly the published shadow finalizer call');
-const goldenSourceSha256 = 'a8f314131f821dbbe878c49ffefbf1794de99ae8cdfdfe0ec75dd09fedc2625c';
+// 2026-09-12 fleet visual standard batch: the six original-output goldens were
+// refreshed against the current core (camouflaged detail buckets, pressed-disc
+// wheel motif, terminal-surface-fit-r2 muzzle seat); the staged-vs-sync exact
+// equality below is the staging claim and is unchanged.
+const goldenSourceSha256 = 'b7a453af76ae13a972526c38a46c6beee44bdfc90f042ab1eddf80eb781740a3';
 const goldenReceipts = [
   {
     "id": "m1a1",
@@ -36,7 +40,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "b90002f07c411c78a428b728be449e469842931d34b4d2afc185f9714f551d7e"
+    "sha256": "90ceb72a00b7d0a579388a80c7faddf3e784252d70d18f58d76e3035e442ad4a"
   },
   {
     "id": "strv103",
@@ -47,7 +51,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "2f67e3869daafaf8b3503123dda75db189be0161b694c66090851925fb03691f"
+    "sha256": "6fc95ddf897b30624c76b0af72f0aa7071330ba0bfe9857e1b2ec72ecf4fd261"
   },
   {
     "id": "m1a1",
@@ -59,7 +63,7 @@ const goldenReceipts = [
       "decor": true,
       "geometryQuality": "low"
     },
-    "sha256": "2c33c9145ceb001f6ffd6e9df275d44d49577c02867e5a18697d6c85b436b0ba"
+    "sha256": "07c7d431cc3a54f1d4378376602d68308c69b0bf86e101776225931db35c10ba"
   },
   {
     "id": "m1a1",
@@ -72,7 +76,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "1fcdc94307cfeedf8917c0dea040fe391fa5ac325c9c9721f63a58c9683b9b5d"
+    "sha256": "1c95b7fc9424f74be644137f93076daf29bed581abe5399c62a4de1e57964555"
   },
   {
     "id": "merkava1b",
@@ -86,7 +90,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "68087efd6fb052171167e0e594d5ac0172182f704f5160733018749b90c0f45f"
+    "sha256": "53deb8307380c2ee2d34455271d9d908c5eddb9874b2c32c71adf2cd73310db5"
   },
   {
     "id": "m1a1",
@@ -97,7 +101,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": false
     },
-    "sha256": "c9437334caf9b1a4fa81bb245c3d158e8300f1731ee8dd5755eeb63ca602c4c4"
+    "sha256": "fb0166b3a80dcb426b61f8549a51593f14c90b1274a42cb9e6813bf8b4d0351b"
   }
 ];
 let capture, decorStage;

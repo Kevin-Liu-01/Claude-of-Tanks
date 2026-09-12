@@ -1390,16 +1390,19 @@ function modernMasts(P: TankBuilderPort,d: Datum,sm: boolean): void {
     onTurret(P,d,'turretDetail',warningCap,-.95161,0,-.20063);
     return;
   }
-  onTurret(P,d,'turretDetail',cylY(.046,.482,12),x,2.260,z);
-  onTurret(P,d,'turretDetail',cylY(.046,.092,12),x,2.541,z);
-  onTurret(P,d,'turretDetail',cylY(.05396,.042,20).scale(1,1,1.364),.20521,2.608,z);
-  onTurret(P,d,'turretDetail',cylY(.03771,.106,20).scale(1,1,1.502),.20521,2.682,z);
+  // DVE-BS wind sensor: a slender ~30 mm mast under a ~60 mm head. The former
+  // 92-108 mm post and conical bulb read as a standing rocket from the front.
+  // Every height datum is unchanged; only the radii are corrected.
+  onTurret(P,d,'turretDetail',cylY(.020,.482,12),x,2.260,z);
+  onTurret(P,d,'turretDetail',cylY(.022,.092,12),x,2.541,z);
+  onTurret(P,d,'turretDetail',cylY(.030,.042,20).scale(1,1,1.364),.20521,2.608,z);
+  onTurret(P,d,'turretDetail',cylY(.021,.106,20).scale(1,1,1.502),.20521,2.682,z);
   const windHead=new THREE.LatheGeometry([
-    new THREE.Vector2(.026,2.735),new THREE.Vector2(.04617,2.800),
-    new THREE.Vector2(.03636,2.850),new THREE.Vector2(.02291,2.900),new THREE.Vector2(.02291,2.9352),
+    new THREE.Vector2(.0143,2.735),new THREE.Vector2(.0254,2.800),
+    new THREE.Vector2(.0200,2.850),new THREE.Vector2(.0126,2.900),new THREE.Vector2(.0126,2.9352),
   ],24).scale(1,1,1.045);
   onTurret(P,d,'turretDetail',windHead,.20521,0,-.87908);
-  onTurret(P,d,'turretDark',cylY(.01913,.0387,14).scale(1,1,1.376),.20530,2.9545,-.87972);
+  onTurret(P,d,'turretDark',cylY(.0105,.0387,14).scale(1,1,1.376),.20530,2.9545,-.87972);
   onTurret(P,d,'turretDetail',cylY(.063,.126,14),.348,2.380,z);
   onTurret(P,d,'turretDetail',cylX(.018,.143,12),.2765,2.380,z);
 }

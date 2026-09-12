@@ -26,9 +26,11 @@ const coverWitnesses = [
 // checked by independent floor/band/wall witnesses below. Every other old
 // rendered mesh, including hull, shell, barrel and all instanced gear, stays
 // pinned; newly named local fittings are the only additional meshes.
+// 2026-09-11 fleet wheel standard: the Leopard 2 family draws plain dished
+// twelve-fastener discs, so the retained gear rows carry that stock.
 const retained = {
-  high: [244010,'9d3f4c42760ca8b28ef878362195f1921396da4bdd7e586104799a5212eb3baf'],
-  low: [231298,'da95e29da39d55c67c2d46c4dbc1124e7dcd0a4217c84f743fd2535270effb66'],
+  high: [246122,'6564f9fff7b9253938d4f258baf9af777ea1c07ef9fbeb9ab24c442f84b48968'],
+  low: [231058,'bfeb30e58c453194fb3325e924aee9b7c921d64e4fe0f5a4c734953fe219e96b'],
 };
 function retainedFingerprint(root) {
   const rows=[];

@@ -12,9 +12,9 @@ import {withHistoricalT90MLamps,assertCurrentT90MLampSeats} from './historicalT9
 // pre-X commit 2c22d203d8726cfceefbe427f3930a000524da32 at seed4242.
 // Hashes include instanced wheel/track transforms; no supplied model involved.
 const original = {
-  leo2a7v:'0408e8a9', leo2a6m:'ff243603', leo2a4m:'4d18c11e', leo2a5:'b933c5f8',
-  merkava4:'e068d72b', merkava3d:'6edda570', k2:'d578727f', kf51:'97f0ccbb',
-  t90a:'09387506', t90a_vladimir:'16077e28', t90m:'ffbd40d4', t90sm:'6b86f1e1', t14:'61ce3db7',
+  leo2a7v:'279ca80a', leo2a6m:'d870b601', leo2a4m:'63b8661e', leo2a5:'e0fd3d59',
+  merkava4:'e068d72b', merkava3d:'7e6d399e', k2:'b5fcbf2b', kf51:'c000d8bc',
+  t90a:'240b5795', t90a_vladimir:'b8e50e90', t90m:'459c9292', t90sm:'2ecfaf6d', t14:'61ce3db7',
 };
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {

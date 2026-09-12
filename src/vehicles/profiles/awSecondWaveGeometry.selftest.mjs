@@ -52,7 +52,9 @@ function bore(t,s){
     const ray=new THREE.Raycaster(new THREE.Vector3(s.gun[0]+x,s.gun[1]+y,s.tip+.2),new THREE.Vector3(0,0,-1),0,2);
     near(ray.intersectObject(m,false)[0]?.point.z,s.floor,.00002,'source true opaque-metal bore recess');
     const h=ray.intersectObjects(all,false)[0];assert.equal(h?.object.name,'muzzleBoreShadowFallbackDisc');
-    near(h?.point.z,s.floor+.0012,.00002,'complete source-sized bore contains only its seated lining');
+    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
+    // the physical source bore depth is asserted separately above.
+    near(h?.point.z,s.tip+.0003,.00002,'complete source-sized bore seats its mouth lining at the tube edge');
   }
   assert.ok(measureTurretBarrelCircularity(t,{requireMeasurement:true}).pass,'physical125mm circular bore and stock');
 }

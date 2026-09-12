@@ -1,13 +1,15 @@
 // Independent closed sheet/can primitives from source scalar planes. The
 // left rear carrier is open furniture, not a solid rectangular armor block.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const YAW=[-.03904,1.56289,.16819] as const;
 const {box,cylY}=KIT;
 function put(P:TankBuilderPort,g:THREE.BufferGeometry,x=0,y=0,z=0):void {
-  P.addEquipment('turretDetail',g,x-YAW[0],y-YAW[1],z-YAW[2]);
+  // Rear stowage cans are painted with the turret, not bare steel-blue.
+  P.addEquipment('turretPaintedDetail',markFixedPaintedPanel(g,'amx40-x-rear-stowage','turretDetail'),x-YAW[0],y-YAW[1],z-YAW[2]);
 }
 
 function canBody(P:TankBuilderPort,x:number):void {

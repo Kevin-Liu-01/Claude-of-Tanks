@@ -11,6 +11,9 @@ import {withHistoricalClosedWheelFaces} from '../sourceXWheelFaceHistory.test-su
 // Immutable world-vertex multiset snapshots taken before the ERA wrappers.
 // Paint decals and invisible shadow proxies are excluded, not real gun rims,
 // native gear, permanent carriers, cassette furniture or stowage surfaces.
+// 2026-09-11 fleet standard: every mouth lining seats on its tube edge and
+// fittings carry camouflage; vertex counts are unchanged, only the moved
+// lining vertices differ from the frozen captures below.
 const BASELINES = {
   t90a_x: [
     [266200,'35689375dfffe09d65ce595c64629854dfeca68a6cf1a998f0e339dee2bdb168'],
@@ -21,12 +24,12 @@ const BASELINES = {
     [203536,'9ee892f180732ebd7c32db69e0d3e720adec5dd780a3f81194df81461f39c955'],
   ],
   t90m_x: [
-    [273196,'cb107b8fbb360ef975e7fab538fa83d55ac4f2b7406231cb55520eb91a10dd23'],
-    [259084,'11ae4c4dd257cb4815487b9f0f03bf232df1e6391c4b641e67e51ae95bdb279e'],
+    [285868,'7126d04b45801370df6544a73645f18067e9d62d37ac9486bfa425792f6ddf5a'],
+    [269740,'53fdf4ef529ae134bc27238a07ffaab9806bcd580a4afd2b642795558dbd79da'],
   ],
   t90sm_x: [
-    [287338,'4bb9ef025e63616044a414cc1c4d24b20f892ee382fde3c892949c98dd3e58cc'],
-    [273226,'8d53537774c0a85c90e6cd66cd3f97078b30982c0e230ae46c98a93c3b9fc7e1'],
+    [300010,'a6ca796fe34a946ccee1954439b6589f41ba1d1dc57640a943a7b7dda30759b3'],
+    [283882,'698433fa0e56a7a73976e49f1fe06c988ba61077c18684beb6a9961455d065d5'],
   ],
 };
 
@@ -34,14 +37,14 @@ const BASELINES = {
 // The original complete hashes above remain the binding-only provenance;
 // gun geometry is now independently pinned by t90AXGun.selftest.mjs.
 const A_NON_GUN_BASELINES=[
-  [261264,'84b6235f4dfe4ee74e419690933651ba591443033507c3de2c840f6dd89dde91'],
-  [247536,'482972716f8659f263d4d2cfaa209b63a6f829aeb99aa9b9f76446e45eae9d5f'],
+  [273936,'8a3a77c44ffec40812a7d0956f8ace27892e72f834397e58c7854a9d9c0cf78c'],
+  [258192,'d625c369b78c864adf2b40eb87671bf83e54627fc323bc773dc654b2ff24b9c3'],
 ];
 // Independently captured before the V repair, subtracting only the exact
 // two old guard solids (72 vertices), with multiplicity; no spatial mask.
 const V_NON_GUARD_BASELINES=[
-  [217576,'860dd67ce24612266e9ee08337af7f0832d837c7d35367ac3ef3a0717fe87f20'],
-  [203464,'2d949878a9aa2db1cfb22fc9a00195267cba65095d363be9bf05c558ddf989b6'],
+  [230248,'5107dbc93578bd459c66d3c22c49631d822d96dc66aff138784bdcd86a0a81c8'],
+  [214120,'648878fd7cce87f60781766049bb79b0f993f6adf180bc719db93954b8f3d891'],
 ];
 
 function visible(object) {

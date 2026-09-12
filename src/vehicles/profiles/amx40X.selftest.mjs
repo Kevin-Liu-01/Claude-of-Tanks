@@ -39,8 +39,13 @@ for(const quality of ['high','low']) {
       'real space under the thin apron and above the pitching mantlet');
     for(const[dx,dy]of[[0,0],[.035,0],[-.035,0],[0,.035],[0,-.035]]) {
       const p=[-.00005+dx,1.94827+dy,6.70];
-      close(ray(p,[0,0,-1])?.point.z,5.3677,.00002,'source bore floor with the native 1.2mm seated dark lining');
-      assert.ok(!ray(p,[0,0,-1],1.30),'source 1.2363m bore recess has continuous physical air');
+      // The visible mouth disc seats at the tube edge (owner direction
+      // 2026-09-11, no hollow throats); the physical source recess behind it
+      // still runs its full 1.2363 m to the floor.
+      close(ray(p,[0,0,-1])?.point.z,6.6031,.00002,'mouth disc seats 0.3 mm ahead of the tube edge');
+      const physical=new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(0,0,-1),0,12).intersectObject(tank.root,true)
+        .filter(h=>!/muzzleBoreShadowFallback/.test(h.object.name))[0];
+      close(physical?.point.z,5.3665,.00002,'source 1.2363m bore recess keeps its physical floor behind the mouth');
     }
     for(const[z,x]of[[3.20,.12370],[4.20,.11370],[5.20,.10650],[5.60,.10150],
       [6.20,.10370],[6.53,.07475],[6.60,.07445]]) {

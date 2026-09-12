@@ -1,6 +1,7 @@
 // Independent first-party Merkava X constructions. Source archives are local
 // comparison inputs only; neither builder calls an earlier Merkava profile.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
@@ -457,7 +458,7 @@ function merkava4Roof(P: TankBuilderPort): void {
 function merkava4Basket(P: TankBuilderPort): void {
   const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number)=>topPart(P,MK4,slot,g,x,y,z);
   const backAt=(y:number)=>-3.626-(y-1.826)*.23;
-  put('turretDetail',box(1.882,.009,.601),.022,1.8225,-3.3205);
+  put('turretPaintedDetail',markFixedPaintedPanel(box(1.882,.009,.601),'merkava4-x-basket-floor','turretDetail'),.022,1.8225,-3.3205);
   for(const y of[1.826,1.93,2.034,2.138,2.242,2.348]){
     put('turretOpenLattice',box(1.86,.024,.024),.022,y,backAt(y));
     for(const side of[-1,1]){

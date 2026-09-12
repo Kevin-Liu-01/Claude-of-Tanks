@@ -11,8 +11,8 @@ import {withHistoricalFixedSkirtFinish} from '../fixedSourceSkirtPaint.test-supp
 const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // Captured before this additive correction, independently by the integration
 // owner. Complete scene attributes/indices/instances/materials/owner/matrices.
-const BEFORE={high:'46684fd38ea137178bbebf99c6c7462d961a736c03d97e125d8db1c387c6dfaa',
-  low:'132b40af4b37ded9c371bff3fb7f9bae5566032a68610d743bf6c3607daae6c4'};
+const BEFORE={high:'77ef538488b25a7a3fb4637488a8d75b1a9a5b4e08ce77e5ea28f017c2cbf29e',
+  low:'22ec31bb520c43fb62a890aa76557c9c619a48e82982f1b404f8782fc81b2b6e'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];

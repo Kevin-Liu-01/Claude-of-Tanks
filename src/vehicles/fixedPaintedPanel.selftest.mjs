@@ -17,8 +17,13 @@ try{
     const old=g.userData[field];delete g.userData[field];
     assert.equal(materialOnlyPaintSourceBucket([g]),undefined);g.userData[field]=old;
   }
+  // Painted turret fittings (stowage cases, carriers, basket floors) share
+  // the same explicit provenance contract as hull sheets (2026-09-11).
   g.userData.materialOnlyPaintSourceBucket='turretDetail';
-  assert.equal(materialOnlyPaintSourceBucket([g]),undefined,'hull-only checkpoint has no turret sweep dependency');
+  assert.equal(materialOnlyPaintSourceBucket([g]),'turretDetail','turret detail provenance is accepted when every sheet declares it');
+  g.userData.materialOnlyPaintSourceBucket='turretDark';
+  assert.equal(materialOnlyPaintSourceBucket([g]),undefined,'unlisted provenance buckets keep their defaults');
+  g.userData.materialOnlyPaintSourceBucket='hullDetail';
   assert.throws(()=>markFixedPaintedPanel(plain,'','hullDetail'));
 }finally{g.dispose();plain.dispose();second.dispose();}
 console.log('fixedPaintedPanel: exact buffers, explicit hull provenance, mixed/unmarked/empty negative controls PASS');

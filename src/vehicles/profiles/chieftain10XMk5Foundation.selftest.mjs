@@ -21,18 +21,20 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // scene attributes, indices, instances, hierarchy and local/world transforms;
 // no marking, batch, gear, material-bucket or spatial-envelope exclusion.
 const MK5_BEFORE = {
-  high: ['03e1d603add977c5ad36503bf1bda6684cf6d4216517d140e538ecb6a4305992', 74, 42],
-  low: ['9494b8fda2c7d22ca0dcb011a8e334b5b9f9f58af456afe70fc77446ef9cc858', 72, 40],
+  high: ['d54625af36a1ef0aa0dcc1f6a417899f1ecf9cf9ab2d1e031c06b40a8bc6fd95', 74, 42],
+  low: ['655202167ceeb85a560e33b348f89c045c85114d775504a8a95ef772167ea02b', 72, 40],
 };
 const MK5_SPEC = '3ba476c4946bb886b64575719c3b9102748c93301a11154b86545db9ee41d949';
 const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d471a30';
 // Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
 // hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,
 // 16 launcher mouths, other equipment, gun or gear cannot silently pass.
-const MK10_EMISSIONS = '4f4676f78403825782a79192f5a57f3f11b6dd1dfad3f0ade1a15f7ad3997712';
+const MK10_EMISSIONS = '9718ffa9e0b4fab65b7f9cd9ccfa3e95a153e86f481965a175662d4f3f6c52c8';
+// 2026-09-11: the detail buckets now carry camouflage, so one more merged
+// mesh per quality is a paint-transformed bucket (36/34 -> 37/35).
 const MK10_OTHER = {
-  high: ['8dd2af5b7756918a81ad4e61d411953885d036e2b66e1347a1839461d1b7454f', 36],
-  low: ['1c39adb7a7afa8f220d59b173af90c00a69ccba9db3b456733c951144fdf07d5', 34],
+  high: ['4d980c7d16701140c04038cbc4524402871320bc051cd46183d6611fd2923022', 37],
+  low: ['c31e65acfded79ab7a042830a4289d0b91227d2f5b7209d58d79e63bdadeb113', 35],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated
@@ -138,10 +140,15 @@ function geometryHash(g) {
 // keep measuring it through the unchanged full-attribute path below, then
 // separately prove that the optimized consumer differs ONLY in those paints.
 // This is the exact published CAMO_BUCKETS set, not a spatial/mesh exclusion.
+// 2026-09-11 fleet paint standard: painted fittings, lattices, fixed bodywork
+// and the detail buckets carry camouflage too, so they omit the same bakes.
 const PAINT_BAKED_BUCKETS = new Set([
   'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
   'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'turretCupola', 'turretHatch',
   'turretExternalArmor', 'turretEquipment', 'gun', 'gunMount',
+  'hullDetail', 'turretDetail', 'hullTrackDetailL', 'hullTrackDetailR',
+  'hullPaintedDetail', 'turretPaintedDetail', 'hullOpenLattice', 'turretOpenLattice',
+  'hullFixedPaintedBodywork',
 ]);
 function geometryOnlyParity(renderedRows, optimizedRows) {
   const rows = structuredClone(optimizedRows), changed = [];

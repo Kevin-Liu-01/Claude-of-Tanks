@@ -137,7 +137,12 @@ for (const quality of ['high', 'low']) {
     });
     assert.equal(ray(turretOnly, [1.42, 1.85, -3], [0, 0, 1], .70), undefined,
       'photo-supported rear bustle undercut remains open');
-    near(ray(all, [0, 2.08, 6], [0, 0, -1])?.point.z, 5.5955, .002,
+    // Fleet mouth standard (2026-09-11): the lining seats 0.3 mm ahead of the
+    // tube edge; the bored backing stays behind it as metal.
+    const mouth = ray(all, [0, 2.08, 6], [0, 0, -1]);
+    assert.equal(mouth?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining');
+    near(mouth?.point.z, 5.8753, .001, 'lining seats on the tube edge');
+    near(ray(all.filter(mesh => !/muzzleBoreShadowFallback/.test(mesh.name)), [0, 2.08, 6], [0, 0, -1])?.point.z, 5.5955, .002,
       'bored main muzzle reaches recessed inner backing, not a flush solid cap');
     const census = all.map(mesh => [mesh, mesh.geometry.attributes.position.count]);
     const detail = get('turretDetail');

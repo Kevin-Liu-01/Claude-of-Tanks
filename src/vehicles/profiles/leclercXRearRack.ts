@@ -1,6 +1,7 @@
 // First-party closed rods, floor and canted box from independent scalar
 // planes of the complete source. No source mesh or connectivity is reused.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
@@ -8,7 +9,9 @@ type Point = readonly [number, number, number];
 const YAW: Point = [-.00215336, 1.40294995, .72122934];
 
 function add(P: TankBuilderPort, geometry: THREE.BufferGeometry, lattice = false): void {
-  P.addEquipment(lattice ? 'turretOpenLattice' : 'turretDetail', geometry, -YAW[0], -YAW[1], -YAW[2]);
+  // The rear rack's bins carry camouflage; its open frame is painted lattice.
+  P.addEquipment(lattice ? 'turretOpenLattice' : 'turretPaintedDetail',
+    lattice ? geometry : markFixedPaintedPanel(geometry, 'leclerc-x-rear-rack', 'turretDetail'), -YAW[0], -YAW[1], -YAW[2]);
 }
 
 function rod(P: TankBuilderPort, a: Point, b: Point, radius = .014): void {

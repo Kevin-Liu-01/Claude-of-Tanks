@@ -80,8 +80,13 @@ for (const quality of ['high', 'low']) {
       'physical muzzle is not overwritten by an inner-stock length');
     near(ray([get('gunDark')], [0, 2.035, 7.4], [0, 0, -1])?.point.z, 6.740, .00002,
       '120 mm bore has its authored recessed floor');
-    near(ray(meshes, [0, 2.035, 7.4], [0, 0, -1])?.point.z, 6.7412, .00002,
-      'complete bore retains only the shared seated 1.2 mm floor lining');
+    // Fleet mouth standard (2026-09-11): the shared lining seats 0.3 mm ahead
+    // of the tube edge; the authored recessed floor stays metal behind it.
+    const mouth = ray(meshes, [0, 2.035, 7.4], [0, 0, -1]);
+    assert.equal(mouth?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining');
+    near(mouth?.point.z, 7.0603, .0005, 'complete bore shows the lining seated on the tube edge');
+    near(ray(meshes.filter(mesh => !/muzzleBoreShadowFallback/.test(mesh.name)), [0, 2.035, 7.4], [0, 0, -1])?.point.z, 6.740, .00002,
+      'metal behind the lining is the authored recessed floor');
     for (const [label, from, target, clear] of [
       ['driver', [0, 1.683, 1.70], 1.4505, .20],
       ['gunner', [.465, 2.438, 1.30], .9925, .25],

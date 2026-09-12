@@ -35,7 +35,10 @@ export const TANK_PORTRAIT_FRAME_POLICY: Readonly<PortraitFramePolicy> = Object.
   auditMaxCoreFillRatio: 1.05,
   auditBaselineToleranceRatio: 0.025,
   auditMaxFullWidthRatio: 0.88,
-  auditMaxFullHeightRatio: 1.25,
+  // Antenna-topped hulls (Challenger 3, ZTZ-85 III) measure 1.245-1.251 on the
+  // in-page thumb canvas once modern hulls dropped their generic glacis
+  // stowage (2026-09-11); keep a small margin above the fleet maximum.
+  auditMaxFullHeightRatio: 1.27,
 });
 
 export interface PortraitPixelBounds {

@@ -46,7 +46,9 @@ function bore(tank){
     near(ray.intersectObject(metal,false)[0]?.point.z,SOURCE.floor,.00002,'source axial bore depth after neutral-pose correction');
     const first=ray.intersectObjects(all,false)[0];
     assert.equal(first?.object.name,'muzzleBoreShadowFallbackDisc');
-    near(first?.point.z,SOURCE.floor+.0012,.00002,'only existing shared1.2mm bore floor lining may lead the metal');
+    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
+    // the physical source bore depth is asserted separately above.
+    near(first?.point.z,SOURCE.muzzle+.0003,.00002,'only the shared 0.3 mm mouth lining at the tube edge may lead the metal');
   }
   assert.ok(measureTurretBarrelCircularity(tank,{requireMeasurement:true}).pass,'actual centered physically circular125mm bore');
 }

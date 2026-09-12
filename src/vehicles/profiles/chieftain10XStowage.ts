@@ -1,6 +1,7 @@
 // Independent source-sized flank equipment. The left rear carrier is open;
 // the starboard forward housing is closed and substantially wider.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -10,7 +11,10 @@ const { box } = KIT;
 
 function part(P: TankBuilderPort, pivot: Pivot, geometry: THREE.BufferGeometry,
   x: number, y: number, z: number, yaw = 0): void {
-  P.addEquipment('turretDetail', geometry, x - pivot[0], y - pivot[1], z - pivot[2], 0, yaw);
+  // Welded stowage cases carry the turret camouflage; only straps/latches
+  // stay in the flat detail tone.
+  P.addEquipment('turretPaintedDetail', markFixedPaintedPanel(geometry, 'chieftain10-x-stowage', 'turretDetail'),
+    x - pivot[0], y - pivot[1], z - pivot[2], 0, yaw);
 }
 
 function rearBody(P: TankBuilderPort, pivot: Pivot): void {

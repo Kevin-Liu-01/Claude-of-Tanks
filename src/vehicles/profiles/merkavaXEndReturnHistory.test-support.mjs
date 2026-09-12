@@ -52,11 +52,29 @@ function beforeRollers(source,readHelper){
   return before;
 }
 
+function beforePaintedBasketFloor(source,readHelper){
+  // 2026-09-11 fleet paint standard: the Mk4 basket floor carries camouflage
+  // through the material-only painted-detail bucket. Authenticate the exact
+  // helper import and the single migrated put() call, then recover the
+  // immutable original line; no geometry, station or other drift is normalized.
+  const imported="import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';\n";
+  if(!source.includes('markFixedPaintedPanel'))return source;
+  assert.equal(count(source,'markFixedPaintedPanel'),2,'One painted-panel import and one exact floor call');
+  assert.equal(count(source,imported),1,'One exact painted-panel helper import');
+  assert.equal(hash(readHelper('fixedPaintedPanel.ts')),
+    'd9a7bbdc298b5ae6833078d422bc64535830e5675687dadb8beb5e39bdc8492f','Complete reviewed painted-panel helper');
+  const painted="  put('turretPaintedDetail',markFixedPaintedPanel(box(1.882,.009,.601),'merkava4-x-basket-floor','turretDetail'),.022,1.8225,-3.3205);\n";
+  const original="  put('turretDetail',box(1.882,.009,.601),.022,1.8225,-3.3205);\n";
+  assert.equal(count(source,painted),1,'Only the one known basket-floor put() is migrated');
+  assert.equal(count(source,original),0,'The original floor line is not duplicated');
+  return source.replace(imported,'').replace(painted,original);
+}
+
 export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
-  let before=beforeRollers(source,readHelper);
+  let before=beforeRollers(beforePaintedBasketFloor(source,readHelper),readHelper);
   const present=[];
   for(const s of MERKAVA_END_RETURN_SEAMS){
     const imported=`import { ${s.symbol} } from './${s.file}';\n`;

@@ -3959,7 +3959,11 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // muzzle never clears the +3.17 nose, so overhang masks stay empty) =====
     P.addGunExtra(cylZ(0.075, 0.30, 12, 0.092), 0, 0, 0.26);
     buildGun(P, { len: 1.84, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
-    muzzleBore(P, { len: 1.84, r: 0.030 });                     // §B3.1 (shadow-named, 3fca39b)
+    // Fleet visual standard (2026-09-12): the mouth sits ON the tip face at
+    // 1.872 (the former seat at 1.84 was buried inside the dark hider nose
+    // and hidden behind a solid dark cap, so the Warrior showed a black blob
+    // instead of a gun hole; muzzle-bore-probe: rim occluded by gunDark).
+    muzzleBore(P, { z: 1.872, r: 0.030 });                      // §B3.1 (shadow-named, 3fca39b)
     // RARDEN 30 mm: autocannon-scale disc (law: smaller disc)
     // These pieces are tube furniture and therefore belong to the recoil
     // bucket. The former gunMount ownership left a stationary solid cap in
@@ -3967,11 +3971,13 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.add('gun', cylZ(0.041, 0.60, 10, 0.046), 0, 0, 0.82);
     P.add('gun', cylZ(0.0335, 0.55, 10), 0, 0, 1.42);
     // perforated flash hider (photo-parity r2 gap #4: the vent read — four
-    // deep dark rings + slotted cap; muzzle tip 3.152 < the +3.17 nose)
+    // deep dark rings, a steel nose and a slotted steel tip collar carrying
+    // the bore; muzzle tip 3.152 < the +3.17 nose)
     P.add('gun', cylZ(0.048, 0.30, 12), 0, 0, 1.68);
     for (const zr of [1.575, 1.655, 1.735, 1.815]) P.add('gunDark', cylZ(0.0495, 0.018, 12), 0, 0, zr);
-    P.add('gunDark', cylZ(0.037, 0.05, 10), 0, 0, 1.84);
-    P.add('gunDark', cylZ(0.028, 0.012, 10), 0, 0, 1.866);
+    P.add('gun', cylZ(0.037, 0.05, 12), 0, 0, 1.84);            // hider nose 1.815..1.865
+    P.add('gunDark', cylZ(0.0375, 0.006, 12), 0, 0, 1.858);     // slot read behind the tip
+    P.add('gun', cylZ(0.030, 0.012, 12), 0, 0, 1.866);          // tip collar 1.860..1.872 (bore face)
     // coax 7.62 chain gun port left of the main gun (dark ring + stub)
     P.add('turretDark', cylZ(0.032, 0.02, 10), -0.42, 0.30, 0.52);
     P.add('turretDark', cylZ(0.014, 0.16, 8), -0.42, 0.30, 0.58);
@@ -3995,6 +4001,11 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // its sights, basket, smoke banks and gun cradle.
     P.turretG.position.y = 1.74;
     P.turretG.scale.y = 0.84;
+    // Fleet visual standard (2026-09-12): the RARDEN rides inside that
+    // squashed assembly, so counter-scale the elevating gun group (the
+    // challenger.ts convention) and the tube, flash hider and mouth stay
+    // round instead of reading as a 16 % flattened ellipse.
+    P.gunG.scale.y = 1 / 0.84;
     P.topY = 0.79;
   };
   fv510PhotoBuildMarkingsStage1();

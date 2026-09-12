@@ -32,7 +32,9 @@ function bore(t){
     const ray=new THREE.Raycaster(new THREE.Vector3(SOURCE.gun[0]+x,SOURCE.gun[1]+y,SOURCE.muzzle+.2),new THREE.Vector3(0,0,-1),0,.5);
     near(ray.intersectObject(gun,false)[0]?.point.z,SOURCE.floor,.00002,'true metal bore floor has source depth');
     const hit=ray.intersectObjects(all,false)[0];assert.equal(hit?.object.name,'muzzleBoreShadowFallbackDisc');
-    near(hit?.point.z,SOURCE.floor+.0012,.00002,'complete opaque gun has only seated shared lining');
+    // Visible mouth disc seats at the tube edge (owner direction 2026-09-11);
+    // the physical source bore depth is asserted separately above.
+    near(hit?.point.z,SOURCE.muzzle+.0003,.00002,'complete opaque gun seats its shared mouth lining at the tube edge');
   }assert.ok(measureTurretBarrelCircularity(t,{requireMeasurement:true}).pass,'physically circular125mm stock');
 }
 function sourceForms(t){

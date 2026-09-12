@@ -123,7 +123,12 @@ for (const quality of ['high', 'low']) {
     near(ray([hull], [0, 0, -3.18], [0, 1, 0])?.point.y, .48, .002,
       'FMV rear clearance, not an AI underside');
     near(muzzle.getWorldPosition(new THREE.Vector3()).z, 6.12, 1e-6, 'physical muzzle marker');
-    near(ray(meshes, [0, 2.055, 6.4], [0, 0, -1])?.point.z, 5.8305, .002,
+    // Fleet mouth standard (2026-09-11): the lining seats 0.3 mm ahead of the
+    // tube edge; the true 120 mm bore keeps its recessed backing behind it.
+    const mouth = ray(meshes, [0, 2.055, 6.4], [0, 0, -1]);
+    assert.equal(mouth?.object.name, 'muzzleBoreShadowFallbackDisc', 'visible mouth is the fleet lining');
+    near(mouth?.point.z, 6.1203, .0005, 'lining seats on the tube edge');
+    near(ray(meshes.filter(mesh => !/muzzleBoreShadowFallback/.test(mesh.name)), [0, 2.055, 6.4], [0, 0, -1])?.point.z, 5.8305, .002,
       'true 120 mm bore reaches its recessed inner backing');
     const sight = ray(meshes, [.77, 2.64, 1.4], [0, 0, -1]);
     assert.equal(sight?.object.name, 'turretGlass', 'gunner sight reaches glass inside real cavity');

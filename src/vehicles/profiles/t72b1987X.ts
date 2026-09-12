@@ -1,6 +1,7 @@
 // Independent T-72B obr.1987 source study. The supplied two-object model is
 // fused; only geometric scalar measurements inform these original solids.
 import * as THREE from 'three';
+import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
@@ -41,10 +42,15 @@ function hull(P:TankBuilderPort):void {
       [3.27,a,b,1.065,1.065],[3.36854,a,b,.930,.930],
     ],.052));
     const left=side<0?-1.7185:1.7065,right=left+.012;
-    P.addMudguard('t72b1987-x-skirt','hullRubber',sectionSolid([
-      [-3.36854,.992,1.112],[-3.05,.904,1.229],[-2.80,.848,1.229],
+    // The forward run under the Kontakt-1 bank is rigid painted steel; the
+    // rear rubber-fabric sections are painted in the vehicle scheme as well
+    // (fleet paint standard 2026-09-11), so only mud flaps stay black.
+    P.addMudguard('t72b1987-x-skirt-rear','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
+      [-3.36854,.992,1.112],[-3.05,.904,1.229],[-2.80,.848,1.229],[-1.38,.655,1.231],
+    ].map(([z,low,top])=>({z,ring:[[left,low],[right,low],[right,top],[left,top]]}))),'t72b1987-x-skirt-rear','hullRubber'));
+    P.addMudguard('t72b1987-x-skirt','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
       [-1.38,.655,1.231],[2.55,.655,1.216],[3.01,.874,1.195],[3.36,.899,.946],
-    ].map(([z,low,top])=>({z,ring:[[left,low],[right,low],[right,top],[left,top]]}))));
+    ].map(([z,low,top])=>({z,ring:[[left,low],[right,low],[right,top],[left,top]]}))),'t72b1987-x-skirt','hullRubber'));
     P.addEquipment('hullDetail',box(.026,.030,5.61),side*1.626,1.439,-.325);
   }
 }

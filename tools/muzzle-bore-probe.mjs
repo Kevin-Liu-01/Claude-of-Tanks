@@ -121,16 +121,25 @@ try {
       && receipt.outerRadiusM >= 0.005
       && receipt.radialRatio >= 0.35
       && receipt.radialRatio <= 1.001);
+    // A visible mouth belongs at the tube edge. Source-study sleeves with an
+    // inner bore tube used to seat the fleet mouth at a floor disc 25-32 cm
+    // back, so the player looked down a hollow throat.
+    const counterboreDepthM = Number.isFinite(shot.boreDebug.capOffsetM) ? -shot.boreDebug.capOffsetM : 0;
+    const counterboreOk = counterboreDepthM <= 0.05;
     const seatAxialFit = seatReceipts.every((receipt) =>
       Number.isFinite(receipt.lipAdvanceM)
       && Number.isFinite(receipt.annulusForwardM)
       && Number.isFinite(receipt.discForwardM)
-      && receipt.lipAdvanceM >= 0.0034
-      && receipt.lipAdvanceM <= 0.0161
+      // terminal-surface-fit-r2: the lip front sits at most 1 mm proud of the
+      // tube edge, with the annulus and disc a fraction of a millimetre ahead
+      // of the seat, so no vehicle length grows past its authored tube.
+      && receipt.revision === 'terminal-surface-fit-r2'
+      && Number.isFinite(receipt.lipFrontM) && Number.isFinite(receipt.markerGapM)
+      && receipt.lipFrontM > 0
+      && receipt.lipFrontM <= receipt.markerGapM + 0.001
       && receipt.annulusForwardM > receipt.discForwardM
-      && receipt.annulusForwardM < receipt.lipAdvanceM
-      && receipt.discForwardM >= 0.0009
-      && receipt.discForwardM < receipt.lipAdvanceM);
+      && receipt.annulusForwardM <= receipt.lipFrontM
+      && receipt.discForwardM >= 0.0002);
     const pass = shot.muzzleBore.tagged === expectedBores
       && shot.muzzleBore.rims === expectedBores
       && shot.muzzleBore.discs === expectedBores
@@ -164,6 +173,7 @@ try {
     if (!seatSupportMeasured) failures.push(`${id}: muzzle fallback still uses unmeasured nominal support ${JSON.stringify(seatReceipts)}`);
     if (!seatRadialFit) failures.push(`${id}: muzzle lip overhangs or undersizes its terminal support ${JSON.stringify(seatReceipts)}`);
     if (!seatAxialFit) failures.push(`${id}: muzzle face is axially detached from its terminal support ${JSON.stringify(seatReceipts)}`);
+    if (!counterboreOk) failures.push(`${id}: visible muzzle mouth sits ${(counterboreDepthM * 100).toFixed(1)} cm behind the tube edge (hollow throat)`);
   }
 } finally {
   if (browser) await browser.close();

@@ -42,13 +42,22 @@ const assertMaterialHierarchy = (id) => {
     if (!object && id === 't72b3m' && label === 'hull canvas') continue;
     if (!object && id === 'bmpt_terminator2') continue;
     assert.ok(object, `${id}: ${label} mesh exists`);
+    if (label === 'fittings') {
+      // Fleet paint standard (2026-09-11): welded fittings share the armor's
+      // world-scaled camouflage through the same box projection, never a
+      // primitive-local repeat of the atlas.
+      assert.strictEqual(object.material, armor.material, `${id}: fittings share the structural armor camouflage material`);
+      assert.equal(object.material.userData.camoProjection, 'vehicle-scale-box-uv',
+        `${id}: fittings carry the vehicle-scale box projection, not primitive-local UVs`);
+      assert.ok(object.geometry.getAttribute('uv') && object.geometry.getAttribute('color'),
+        `${id}: fittings carry projected UVs and baked dirt like the plates they are welded to`);
+      continue;
+    }
     assert.equal(object.material.map, null,
       `${id}: ${label} never repeats the full camouflage atlas on primitive-local UVs`);
   }
-  assert.equal(fittings.material.normalMap, null,
-    `${id}: small fittings do not inherit armor-scale normal noise`);
-  assert.equal(fittings.material.roughnessMap, null,
-    `${id}: small fittings keep a stable matte response`);
+  // Fittings now share the armor material (above), so they carry exactly the
+  // armor's normal/roughness response instead of a separate flat tone.
   if (hullCanvas) {
     assert.equal(hullCanvas.material.bumpMap, null,
       `${id}: canvas is shaped by geometry instead of armor roughness detail`);

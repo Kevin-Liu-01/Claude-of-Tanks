@@ -709,9 +709,12 @@ export function buildStrv103(P: CasemateBuilderPort): void {
   // ---- fixed 105 mm L74 in the glacis (hull bucket, fixedMount topology).
   // Bore axis 1.65; muzzle at published overall: tail -3.52 -> muzzle +5.47.
   // §B3.1 MUZZLE BORE (shadow-named, 3fca39b; hull-frame gun -> hullG)
-  muzzleBore(P, { z: 5.19, r: 0.085, y: 1.56, parent: 'hullG' });
+  // The collar reaches the ballistic muzzle marker (hull 5.26) so the fleet
+  // mouth lining seats on the tube edge instead of 70 mm down a hollow
+  // throat (bore probe 2026-09-11).
+  muzzleBore(P, { z: 5.26, r: 0.085, y: 1.56, parent: 'hullG' });
   hullGun(P, 1.56, [
-    { z0: 5.19, z1: 5.10, r: 0.110 },                                          // muzzle collar
+    { z0: 5.26, z1: 5.10, r: 0.110 },                                          // muzzle collar
     { z0: 5.10, z1: 3.30, r: 0.085 },                                          // fore tube
     { z0: 3.30, z1: 2.20, r: 0.092 },                                          // mid step
     { z0: 2.20, z1: 1.05, r: 0.098, r2: 0.108 },                               // rear taper into the glacis
