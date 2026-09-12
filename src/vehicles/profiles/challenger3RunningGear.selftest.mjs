@@ -3,8 +3,15 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
 const IDS = ['challenger_3', 'challenger_3x'];
-const EXPECTED_WHEEL_ZS = [2.75, 1.84, 0.93, 0.02, -0.89, -1.80];
+const EXPECTED_WHEEL_ZS = [2.65, 1.74, 0.83, -0.08, -0.99, -1.90];
 const EPSILON = 1e-6;
+
+function terminalClearance(receipt, wheelZ, terminal) {
+  return Math.hypot(
+    wheelZ - terminal.z,
+    receipt.wheelY - terminal.y,
+  ) - receipt.wheelR - terminal.r;
+}
 
 function uniqueInstanceAxis(mesh, axis) {
   const matrix = new THREE.Matrix4();
@@ -97,6 +104,13 @@ for (const id of IDS) {
     assert.deepEqual(uniqueInstanceAxis(roadWheels, 'y'), [0.56],
       `${id}: every road wheel is reseated at the corrected axle height`);
     assert.equal(roadWheels.count, 12, `${id}: retains six road wheels per side`);
+    assert.equal(hull.userData.wheelPatternReceipts?.[0]?.faceProfile, 'open-rib',
+      `${id}: retains the source-readable open eight-rib wheel face`);
+
+    assert.ok(terminalClearance(receipt, EXPECTED_WHEEL_ZS[0], receipt.idler) >= 0.01,
+      `${id}: leading road wheel remains visibly separate from the front idler`);
+    assert.ok(terminalClearance(receipt, EXPECTED_WHEEL_ZS.at(-1), receipt.sprocket) >= 0.08,
+      `${id}: trailing road wheel remains separate from the rear final drive`);
 
     const rearRampClearance = rampShoeClearance(
       trackPads, receipt, EXPECTED_WHEEL_ZS.at(-1), 'rear');

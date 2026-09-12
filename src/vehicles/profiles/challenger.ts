@@ -4453,12 +4453,17 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // Seat the tire bottoms on the inner face of the loaded track run.
       // wheelY=.46 put them 90 mm through the .09 m track band; .56 leaves
       // 10 mm running clearance while keeping the upper course distinct.
-      // Move the complete six-wheel train 0.20 m forward: the former -2.00 m
-      // rear station intersected the rising shoe course by about 0.10 m.
-      // The revised end stations clear the full linked-shoe bounds at both
-      // ramps while preserving the measured 0.91 m Hydrogas cadence.
-      style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.56, dishR: 0.71, xc: 1.2825,
-      wheelZs: [2.75, 1.84, 0.93, 0.02, -0.89, -1.80],
+      // Move the complete six-wheel train 0.10 m forward: the former -2.00 m
+      // rear station intersected the rising shoe course, while the earlier
+      // 0.20 m correction crowded the leading wheel into the front idler.
+      // The half-step reseat preserves the measured 0.91 m Hydrogas cadence
+      // and leaves both terminal transitions visibly separate.
+      // Retain the source-readable open eight-rib face. The fleet's newer
+      // filled pressed-disc treatment made these wheels read as dotted flat
+      // plates and erased the characteristic Hydrogas face depth.
+      style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.56, dishR: 0.71,
+      openRibWheelFace: true, xc: 1.2825,
+      wheelZs: [2.65, 1.74, 0.83, -0.08, -0.99, -1.90],
       // The final drive is rear-owned but must remain below the sponson floor.
       // y=1.27 put the linked-shoe crown physically through the 1.475 floor;
       // the source-correct compact transition remains readable at y=.98 and
@@ -4466,8 +4471,11 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       sprocket: { z: -2.60, y: 0.98, r: 0.28 }, idler: { z: 3.35, y: 0.81, r: 0.28 },
       rollers: [1.95, 0.55, -0.85, -1.75].map((z) => ({ z, y: 1.10, r: 0.08 })),
       // Track-only correction: keep the loaded run beneath the complete
-      // leading road wheel before it rises to the existing front idler.
-      trackW: 0.555, topY: 1.26, contactZF: 3.02, contactZR: -2.10,
+      // leading road wheel before it rises to the existing front idler. The
+      // rear contact returns to the source's -2.2 m departure station so the
+      // gently reseated last wheel clears the rising shoes without moving the
+      // complete train toward the idler again.
+      trackW: 0.555, topY: 1.26, contactZF: 3.02, contactZR: -2.21,
       shoeRadialScale: 0.55,
       // The canonical family shoe keeps connector relief inside the one wrap.
       // §B8.1 NATIVE-TONE wheel countability (acceptance-flagged "wheels

@@ -374,6 +374,8 @@ export interface RunningGearConfig {
   wheelZScale?: number;
   /** Source-measured axial dish/hub depth only; tires and axle stations stay fixed. */
   wheelFaceDepthScale?: number;
+  /** Keep a source-authored pressed wheel's ribs open over its recessed hub plate. */
+  openRibWheelFace?: boolean;
   /** Measured rubber-ring opening for a recessed steel dish. Undefined keeps
    * historical capped tire geometry; the articulated tire radius stays fixed. */
   wheelTireInnerRadiusM?: number;
@@ -2379,6 +2381,7 @@ function addWheelFaceMotif(
   seg: number,
   dishR: number,
   pattern: WheelPattern | null,
+  openRibWheelFace = false,
 ): void {
   switch (motif) {
     case 'split-rim':
@@ -2387,6 +2390,12 @@ function addWheelFaceMotif(
       dark.push(cylX(r * 0.32, w * 1.27, 12));
       return;
     case 'rib': {
+      if (openRibWheelFace) {
+        dark.push(cylX(r * 0.67, w * 1.17, seg));
+        radialRibs(discs, r, w, pattern?.pockets || 8, 0.20, dishR * 0.84,
+          0.12, 1.24, 0.08);
+        return;
+      }
       // Pressed steel disc (fleet wheel standard 2026-09-11): a painted dish
       // plate carries raised stiffening ribs and small lightening holes
       // between them, with a slim dark hub well and a raised hub drum. The
@@ -2461,6 +2470,7 @@ function standardWheelGeometry(
   dishR: number,
   pattern: WheelPattern | null,
   patternFasteners: number,
+  openRibWheelFace = false,
 ): WheelGeometrySet {
   // Rubber band + a dark hub-well ring: the well sits between dish and hub so
   // the hub reads against shadow (r5: wheels merged into one flat plate).
@@ -2481,7 +2491,8 @@ function standardWheelGeometry(
   // discs with no rubber/hub separation").
   const discs: THREE.BufferGeometry[] = [cylX(r * dishR, w * 1.12, seg)];
   const dark: THREE.BufferGeometry[] = [];
-  addWheelFaceMotif(pattern?.motif || 'split-rim', discs, dark, r, w, seg, dishR, pattern);
+  addWheelFaceMotif(pattern?.motif || 'split-rim', discs, dark, r, w, seg, dishR, pattern,
+    openRibWheelFace);
   discs.push(cylX(r * 0.24, w * 1.34, 12));
   discs.push(cylX(r * 0.14, w * 1.48, 10));
   for (let index = 0; index < patternFasteners; index += 1) {
@@ -2500,6 +2511,7 @@ function wheelGeo(
   dishR = 0.90,
   pattern: WheelPattern | null = null,
   customFace = false,
+  openRibWheelFace = false,
 ): WheelGeometrySet {
   const patternFasteners = pattern?.fasteners ?? 8;
   if (style === 'steel') {
@@ -2518,7 +2530,7 @@ function wheelGeo(
   if (customFace) {
     return customFaceWheelGeometry(r, w, seg, dishR);
   }
-  return standardWheelGeometry(r, w, seg, dishR, pattern, patternFasteners);
+  return standardWheelGeometry(r, w, seg, dishR, pattern, patternFasteners, openRibWheelFace);
 }
 
 // Idler (r9 rework — judged-shot hard fail): the r8 stack buried its dished
@@ -3347,7 +3359,7 @@ function sourceTrackCarrierWidth(cfg:RunningGearConfig):number {
 
 function sourceWheelSolids(cfg:RunningGearConfig,segments:number,pattern:WheelPattern) {
   const originals=wheelGeo(cfg.style??'rubber',cfg.wheelR,cfg.wheelW,segments,
-    cfg.dishR??.90,pattern,(cfg.wheelFaceLayers||[]).length>0);
+    cfg.dishR??.90,pattern,(cfg.wheelFaceLayers||[]).length>0,cfg.openRibWheelFace??false);
   return replaceMeasuredWheelSolids(originals,cfg,cfg.wheelR,cfg.wheelW,segments);
 }
 
@@ -3616,6 +3628,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     style,
     stations: wheelZs.length,
     wheelFaceLayers: (cfg.wheelFaceLayers || []).length,
+    ...(cfg.openRibWheelFace ? { faceProfile: 'open-rib' } : {}),
   };
   const wheelReceipts = hullG.userData.wheelPatternReceipts
     || (hullG.userData.wheelPatternReceipts = []);
