@@ -109,6 +109,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
+    'src/vehicles/profiles/bradleyRunningGear.selftest.mjs',
     'src/vehicles/profiles/t90RoadWheelSpacing.selftest.mjs',
     'src/vehicles/profiles/t90RearCageEraFit.selftest.mjs',
     'src/vehicles/profiles/t90BurlakFenderClosure.selftest.mjs',

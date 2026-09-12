@@ -3247,28 +3247,9 @@ export function buildBradley(P: Modern3BuilderPort) {
       // 0.60 puts the wrap arc at 0.265@2.55 / 0.296@2.69, and the 2.14-patch
       // tangent then tracks the ref's own 0.13@2.33..0.16@2.40 ramp line.)
     });
-    // (r3e band 0.98..1.32: the ref's RIGHT tread does NOT ground the x 0.92-
-    // 0.96 columns — the 0.96 inner edge lit them via AA; the outer 1.32
-    // stays clear of the ±1.35 col starts)
-    // static shoe rows for the print's ASYMMETRIC tread bands (r2-r4 + r3
-    // instrument: right 0.96..1.46, left 0.82..1.30; track bucket so the §B4
-    // audit measures them as track): right OUTER row carries the right's
-    // extra width; left INNER row grounds the ref's x 0.83..0.95 columns.
-    {
-      // r4: pad rows TRIMMED to the contact patch (k 2..21, z -2.106..2.112 —
-      // the r2 rows ran to ±2.55 and GROUNDED the approach/departure ramp
-      // zones where the ref's tread reads a clear climbing band 0.13..0.45:
-      // 4-5 side cols each end paid 0.10-0.16 bottoms, and §B6's trapezoid
-      // read was flattened by grounded pads past the patch).
-      const pads = [];
-      for (let k = 2; k < 21; k++) pads.push([-2.55 + k * 0.222, 0]);            // (r2: k<21 — the 2.112 pad poked
-      for (const [pz] of pads) {                                                  //   past the new 2.06 patch end and
-        P.add('hullRunningGearTrack', box(0.15, 0.075, 0.16), 1.385, 0.075, pz);  //   grounded the approach ramp; y
-        P.add('hullRunningGearTrack', box(0.16, 0.075, 0.16), -0.90, 0.075, pz);  //   0.092 -> 0.075: the ref treads
-      }                                                                           //   ground to 0 on the 1.35-1.46
-                                                                                  //   front cols, mine read 0.055)
-      P.add('hullRunningGearTrack', box(0.15, 0.05, 4.4), 1.385, 0.60, -0.25);   // return-run cover strip
-    }
+    // The canonical smart-track course above is the complete Bradley track.
+    // Do not add static pad rows or cover strips beside it: those duplicate
+    // the lower/return runs and cannot follow the per-wheel suspension solve.
     // ---- turret cluster (ring plane 1.895 at the print's z -0.45 seat) ------
     // core box (print: bottom 1.89 over world -1.44..+0.36, roof 2.76-2.80)
     P.add('turret', cylY(0.60, 0.66, 0.09, 22), 0, 0.055, -0.10);                 // base ring collar (90-ladder y
