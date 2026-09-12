@@ -24,11 +24,16 @@ const foundryPatches = [
 // is identical to this candidate's requested parent c97e20fd2. The external
 // frozen-mask-receipt records all60 individual mask hashes and source hashes.
 // No external worktree or Git history is needed to execute this committed gate.
+// road pass 2026-09-12: the mask G byte is now the road centreline distance
+// field (terrain.ts paintRoadMask), so every full-RGBA golden below was
+// re-pinned to the new bytes. R/B/A are produced by unchanged code; the
+// channel-masked comparison against the previous painter is recorded in
+// docs/research/map-pass-20260912.md (road pass section).
 const FROZEN = {
-  other28: { desktop: '8a736042aace42ae3ae8392269e61f2bd767092fe883bf8f4951ad1a7a885a2d', mobile: '769d9ff90c901a177bf621437509bd3834be6f5a8b97453b4996a2a10efed473' },
+  other28: { desktop: '7cfb2658c945d2d1772cbbaa58df805247805d50986abc4bc599ab04fcd3b9e1', mobile: '3a4e0bf7cb55dc90d241adffdf75000e48bc58f1c60189c9bb3398d0b8687f71' },
   pilotMasks: {
-    coastal: { 512: 'bb9240a06aa476e52d3b3076d0d6593831e3f17dd7b705597061432cf63658db', 256: 'fc52e42dc005b16377c6a97d25c5692e3cdb0fe09e5c0a26fd58c6302e392a8f' },
-    saltwind: { 512: 'f7bc39468c8e06f07a6d876f30d5f509313756aee895260df11dfec0590cd779', 256: '9ef3a3753953ca4308331126c7c2915a7e8b5e08f1a2771614db2258058209ae' },
+    coastal: { 512: '1cd1ec0f2649e5f67e7c5a820c52953594cca026a6abae22bb30ca0bdf86bd6c', 256: '734eecb8ca9cbe6fc0bc62c94642b91825c11d640769b8a352842b2fb672c278' },
+    saltwind: { 512: '4630bb971fabf8fa1f355247994de5dc388e0ebf61c6e4668f7b1062032eee43', 256: 'fb8684923e0993f50e3cb4862b3a8ebabdc23566e3af7bcc7adaae9cd6e4898f' },
   },
   configs: '1e2782ff93df30c67766053893fbef56fdd676912b43a0e386aad102eaa820f1',
 };

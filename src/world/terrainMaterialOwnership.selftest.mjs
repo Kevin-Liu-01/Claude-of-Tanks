@@ -53,7 +53,7 @@ function checkEndpoints(sample) {
       // exclusion is zero. Original gains, clipping and texture ports remain.
       assert.equal(actual.nearG, distance);
       assert.equal(actual.farG, distance);
-      assert.equal(actual.nearN, signal * .18 * distance);
+      assert.equal(actual.nearN, signal * .60 * distance); // 2026-09-12 owner verdict: clod relief back toward the 1049e4e 0.75
       assert.equal(actual.farN, signal * distance * .45); // 2026-09-12: far turf relief 0.24 -> 0.45
       // Near albedo octave strengthened with the 1049e4e presentation restore
       // (2026-09-11): gain 1.5 -> 1.9, clip -0.22..0.26 -> -0.28..0.32.
@@ -102,6 +102,7 @@ function checkSourceContract(text) {
     'uWornDirtStrength','uIceDrift','uMidRelief','uFieldPatch','uRipple','uSandMacro','uIceSky',
     'uMidFar','uRockGate','uSea','uSeaFoam','uSeaRamp',
     'uShoulderDirt', // map pass 2026-09-12: authored road-shoulder scale (scalar, no sampler)
+    'uLaneK', // road pass 2026-09-12: mask-resolution-aware wheel-lane sharpness (scalar, no sampler)
   ].sort();
   assert.deepEqual(uniforms, expected, 'no new shader uniform or sampler');
   assert.deepEqual([...text.matchAll(/shader\.uniforms\.(\w+)\s*=/g)].map(m => m[1]).sort(), expected);
@@ -109,7 +110,7 @@ function checkSourceContract(text) {
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
   ]`)), 'the same ten shader-only texture owners remain registered');
-  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v29';/);
+  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v30';/);
 }
 function replaceOnce(text, from, to) {
   assert.equal(text.split(from).length, 2, `unique mutation seam: ${from}`);
@@ -128,10 +129,10 @@ checkFractional(sample);
 await rejects(replaceOnce(source, scalar(source, 'nearG'), 'openNear2 * (1.0 - fMs)'), 'old near reinjection');
 await rejects(replaceOnce(source, scalar(source, 'farG'), 'farM * (1.0 - fR) * (1.0 - fMs) * (1.0 - projW)'), 'old far reinjection');
 await rejects(replaceOnce(source, scalar(source, 'meadowG'), '(1.0 - projW) * (1.0 - fMs)'), 'missing dirt ownership');
-await rejects(replaceOnce(source, normalTerm(source, 'dn2'), 'dn2.xy * 0.18 * openNear2 * (1.0 - fMs)'), 'near normal bypass');
+await rejects(replaceOnce(source, normalTerm(source, 'dn2'), 'dn2.xy * 0.60 * openNear2 * (1.0 - fMs)'), 'near normal bypass');
 await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace('* nearG', '* openNear2')), 'near albedo bypass');
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v29', 'world-terrain-splat-v28')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v30', 'world-terrain-splat-v29')));
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');

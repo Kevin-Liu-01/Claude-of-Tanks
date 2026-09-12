@@ -203,13 +203,13 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     // shadowless past mid-range and every crevice unshaded. Ultra runs 4K hero
     // cascades (the two far cascades stay 2K: their texels are already
     // sub-pixel at range) to 700 m with full-res GTAO; High 2K cascades to
-    // 700 m with half-res GTAO; Medium the shared 2K/1K layout to 600 m; Low
+    // 700 m with half-res GTAO; Medium the shared 2K/1K layout to 520 m; Low
     // keeps its near-field 380 m range. The outermost cascade renders on
     // alternate frames (shadowRefresh.ts) and tree crowns cast through the
     // shadow-only layer (vegetation.ts), which is where the budget went.
     aoScale: 1.0,
     bloomScale: 1.0,
-    shadowMapSizes: [4096, 4096, 2048, 2048],
+    shadowMapSizes: [4096, 4096, 4096, 2048], // 2026-09-12: the 1049e4e 4K mid cascade is back (2K read soft at 100-330 m)
     shadowMaxFar: 700,
   },
   // High now starts at the full 1.5 ratio on Retina panels. Fine geometry
@@ -246,7 +246,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
     aoScale: 0.5,
     bloomScale: 0.5,
     shadowMapSizes: DESKTOP_SHADOW_MAP_SIZES,
-    shadowMaxFar: 600,
+    shadowMaxFar: 520, // 2026-09-12: reference texel density; 600 m spread the same 2K/1K maps thinner
   },
   low: {
     label: 'Low',

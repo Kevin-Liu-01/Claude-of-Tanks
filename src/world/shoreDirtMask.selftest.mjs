@@ -70,37 +70,42 @@ function originalRoadField(cfg) {
 // Captured BEFORE adding the shore pass, from normal production imports:
 // createHeightField(1337) -> makeMaskTexture(noise seed3010), desktop512.
 // These are immutable full RGBA controls, not a second copy of the new helper.
+// road pass 2026-09-12: the mask G byte is now the road centreline distance
+// field (terrain.ts paintRoadMask), so every full-RGBA golden below was
+// re-pinned to the new bytes. R/B/A are produced by unchanged code; the
+// channel-masked comparison against the previous painter is recorded in
+// docs/research/map-pass-20260912.md (road pass section).
 const ORIGINAL = {
-  verdant: '98c2b40339eb887868ed95b826cc828ad600e9e2639282984a9570d711a21d02',
-  desert: '065ed1a1c9ef2e4fbe0ba2cafa3115d717bd0a5c0a2f741f2edc4e8bb2f4bb7d',
-  winter: '3835d073c99b38594acf66bd15ecae58479122ec9f892854cc37ed771aa2972b',
-  urban: '32f8689f8eb21873d6b0f89349fe2805c476e934e140815515741ea45d0eaa72',
-  coastal: 'bb9240a06aa476e52d3b3076d0d6593831e3f17dd7b705597061432cf63658db',
-  autumn: '5ef6a685fa62d87de081b5e71024e771a38fde4d6a403c8033bd2ca5c67da7fd',
-  steppe: '02cccd4fb80741b3055a2b3dc65baa2aea37cc3b2ae7a231167d896bd3688a37',
-  railyard: 'dab943ee202bb49503c3582803804904c42bedba4bfe5b69df3024464a4ef77d',
-  frontier: '99ab5d4bf6ff084a658348e622d10540cf3eb11f15e6c0d910a0e047d50a8e3c',
-  fjord: '6555483e9c6b693b29307e82b923d2f26e3a4d0177aefe7c26c5e7b8134fb973',
-  delta: '85b74af8f43dda5d4150be9b0e1672799f4b516b9145727ac990205535a47818',
-  badlands: '2114a2b786d6c388a40fa6e1ea675e685a3f9222b16bfc1774d9958f71261f38',
-  monsoon: 'ea9aaf3b3b7e39bfdcc73f68a6112137ff6e39c6e6a5d72708cd6367e5519118',
-  alpine: '6af1e1df28ac3b3e3bd2b025ba1cc9d17da0ea8b4052a164940a6ffdc3aa7ce4',
-  caldera: '3e8b3a423c374ac8589252be35766741b660bdb1def632da8dacae3499962f41',
-  foundry: 'fc4f0faa9adb3e1a0c3b8eacb3a79d9716925f128f989f73cdcac13569d13f54',
-  ruinspires: '5a567d02679868082c1b30dd62fc54062dd95132f30a72e2ff15dbfc873caa87',
-  blackglass: '230b74c4cb3e4effd164c8ba71bf0f3cfb673089896ce1fb88346bcbe0e87265',
-  titan_gorge: 'fd5d6d7ade8d26e046ebfad3d57badc69fd0c3855739c715aadcdbeab9883f4b',
-  skybridge: '61841918b4e6106b14150d85e526d3c034ecb90b22834fa19d6ed97301f72dcc',
-  polders: '5bd72c0d36d445fa7eceb8422f7ab3d4c469be21437673d57c4c1dcc87f627f2',
-  copper_mesa: '1acbbb0fc5591845668e4edf104c98648d3f5931d0dfd874333c9aae49e685f8',
-  airfield: '59115f66aca0f81e9d6671f300571a66aeb4064545610b0e0324fb61b701d7f1',
-  oasis: '6427b922d377475a6a63408a3fb818c854b2cd3694e4386e95e3a04725ee311b',
-  whiteout: 'd8e2fea48fe2290ea64cc30e67d65999dd7edadd36c1e6cd1a409ca1a0dd5c99',
-  orchard: '1805ab06bae8e05559ae6338bbe4f1e5e54bfd77af2f6a8cc6b72d7c120d66ff',
-  longleaf: '6a9160c1524c81c58d138e94963e6c3dc16773cf3c1febfc423db087ff839ca0',
-  mangrove: '67c7cb5a06f127fc0663613a7ca61c91f75576a1f6ce85ce1e43cf12c2c42826',
-  saltwind: 'f7bc39468c8e06f07a6d876f30d5f509313756aee895260df11dfec0590cd779',
-  reservoir: '949dbe854e6c28fc28155f947ddd464f3aa28edf6194408cc06bc6c0509cabe1',
+  verdant: '3235ff56f2be109633eb3ad158e180c0e4f3a2cf4bb13c77cdc5ece4265a7293',
+  desert: '9e6191d3ca532db0f5c58ffc86aa2e0da2460c6779ac86db0214f659b94208c1',
+  winter: 'b874c34c02101b2557b789959a2b9363a8c918f59dddec216ebd6d9f147f0c29',
+  urban: '7431bfb3ca249b8dff2b2022d654885873c69e732e4cd2b4e103e0700722efa8',
+  coastal: '1cd1ec0f2649e5f67e7c5a820c52953594cca026a6abae22bb30ca0bdf86bd6c',
+  autumn: '063494a5fff47230181559a3a98a5c3123f00ae6efef2b18789cb66c47bf95dc',
+  steppe: '9cc012f13bf23c5218bab47e4fdc5937bb61a91e0e9ea9d19e5e6109166a8875',
+  railyard: '60cb1c0dbc01a732dff4b897e94572dbb24b9928720d7a68e58893940916896d',
+  frontier: '5d86908440f744973fed63679a66741188912f532b0dcda3fa59a2c06b482247',
+  fjord: 'a2017b2cfcc446747219ab500a49b403a67e956755a271d828102de778a3af61',
+  delta: 'da0742d0e4e66613d8b0e99965ff00bc21a8e6d13d8e638baef1fb61b1dfb5ef',
+  badlands: 'd4423fa2c84421cb418f3e368158eaf27ae1dfa98da788dd8d6662556279cc3d',
+  monsoon: 'dd9ca278ae49175974e9e2098dd5ff0f2d56b498a8ea805ced8c6b206651ddcb',
+  alpine: '2ad1864aeb938980f156e7c6557f34492ea660a4b8ade93269b248e76db65b57',
+  caldera: '7c93501edef3e6b59dc06e84fd2edccc6d7ff6c326eeb1d51bd6495f6f5092c2',
+  foundry: '18dda33915db1badaab18f6f7bf4bbb2cacc30682c66649318ec057c9c13c78e',
+  ruinspires: 'b905641ccca89131a9ebf525603cde8045978aadfb6a5d894aa7d02a00022db6',
+  blackglass: '3e82e4f1834bfafd3d818b345891f0a2da97bbbe1d899e47215259c8580b8ef0',
+  titan_gorge: '9c3761889c33218fa78258b934f6f79570206c2cdb452667a226334ebd0b903b',
+  skybridge: 'f56449b84de370980180ff372f713ccbeb51954ddd0db5464a4e9ec2d2644e3e',
+  polders: 'fbf89f52cc5b15f56f8b23c593ebd9a9f52924f4f12a926f6b614833af9c50a4',
+  copper_mesa: 'e310e4754b8e96b4ae728fda1b6d343d12aea3d986f095d95a5671c45ad99014',
+  airfield: 'c5027e71cdd600c072279c85e90e0fffb6255d8faa8f0030f56c4e1588828203',
+  oasis: '79934a72f7b2e1c5a9e83af63b262bf9a2a35a95fcf1e943b7f6e2c95e4c4a17',
+  whiteout: 'cb18b8d9cc2c711b2f53602665f1d14a9581e464f5b4fefab64fe2d9e01802b3',
+  orchard: '50ac061fe6ebabaa6c45139d8a90624b0f53c70636f1d857eac9f298dc4b5a9b',
+  longleaf: '35eb308242df93c194fe2fa2764054e5880f581893de7eecf451b5b92670e699',
+  mangrove: '9bcef3866a3c254b53208d69e8ba9a0db0665f07053dce6ba832fc35e7d8153c',
+  saltwind: '4630bb971fabf8fa1f355247994de5dc388e0ebf61c6e4668f7b1062032eee43',
+  reservoir: 'ce8e361f5beb374d60e58d96bdec2611f2249b18f55877142f34e2919ece69ca',
 };
 const hash = data => createHash('sha256').update(data).digest('hex');
 const bytes = texture => texture.image.data;
@@ -288,7 +293,7 @@ function checkOasis() {
   try {
     checkTexture(current, 512);
     assert.equal(hash(bytes(original)), ORIGINAL.oasis, 'preserve the original three-cell RGBA oracle');
-    assert.equal(hash(bytes(current)), 'f288a45dd5ab44336039e28307f9c33d6aefbf0deef7e124eaa11f660b97d8c6',
+    assert.equal(hash(bytes(current)), 'eb79944edf401cc18052d161578f887aa65ff700f682d76ff161f94d477633fb',
       'reviewed authored asymmetric Oasis contour, not a replacement historical baseline');
     verifyOasisChannels(bytes(original), bytes(current));
     const roadMutation = bytes(current).slice(); roadMutation[0] ^= 1;

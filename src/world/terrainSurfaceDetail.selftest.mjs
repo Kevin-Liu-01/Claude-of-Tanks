@@ -29,10 +29,14 @@ for (const detail of [
   const gain = source.match(detail);
   assert.ok(gain, 'soil normals remain independently wetness-gated or ground-only');
   // 2026-09-12 visual restoration: the far coarse-turf octave (gnF) may run to
-  // 0.45 (the 1049e4e meadow ran 1.5); the near soil octaves stay at or under
-  // 0.25 so no per-texel clod is ever decoded at full depth.
-  assert.ok(Number(gain[1]) <= (detail.source.includes('gnF') ? 0.45 : 0.25),
-    'signed normals added before x2 decode remain shallow, not giant terrain clods');
+  // 0.45 (the 1049e4e meadow ran 1.5). Owner verdict later that day ("every
+  // texture looks flat"): the near soil octaves return toward the 1049e4e
+  // strengths (0.85/0.75 there): first octave <= 0.70, clod octave <= 0.60.
+  // Both stay off the carriageway (openNear/nearG), which keeps the road's
+  // shallow packed-earth response as the only near normal on a road.
+  const cap = detail.source.includes('gnF') ? 0.45 : detail.source.includes('dn2') ? 0.60 : 0.70;
+  assert.ok(Number(gain[1]) <= cap,
+    'signed normals added before x2 decode remain bounded, not giant terrain clods');
 }
 assert.match(source,
   /n\.xy -= \(ga \* 0\.40 \+ gb \* 0\.58\)[^;]+\(1\.0 - fMs\);/,

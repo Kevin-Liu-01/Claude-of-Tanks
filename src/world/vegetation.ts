@@ -4407,17 +4407,6 @@ function* vegetationBuildSteps(
     geometry.computeBoundingSphere();
     return geometry;
   }
-  function farCanopyShadowProxyGeometry(canopy: THREE.BufferGeometry): THREE.BufferGeometry {
-    canopy.computeBoundingBox();
-    const box = canopy.boundingBox!;
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const geometry = new THREE.IcosahedronGeometry(0.5, 0);
-    geometry.scale(Math.max(0.5, size.x * 0.92), Math.max(0.5, size.y * 0.9), Math.max(0.5, size.z * 0.92));
-    geometry.translate(center.x, center.y, center.z);
-    geometry.computeBoundingSphere();
-    return geometry;
-  }
   function makeCanopyShadowProxy(geometry: THREE.BufferGeometry, sp: Species, capacity: number, name: string): TreeMesh {
     const proxy = makeTreeMesh(geometry, canopyShadowProxyMat, sp, false, capacity);
     markShadowOnly(proxy);
@@ -4471,7 +4460,7 @@ function* vegetationBuildSteps(
         return pool;
       });
       // r7: far LOD is now a 2-variant array (silhouette variety at range)
-      farMeshes[sp] = treeGeoFar[sp].map((g, fv) => {
+      farMeshes[sp] = treeGeoFar[sp].map((g) => {
         const farCanopy = makeTreeMesh(g.canopy, canopyFarMat, sp, false, capacity);
         farCanopy.receiveShadow = false; // CSM self-shadow at range = black crowns
         const farTrunk = makeTreeMesh(g.trunk, barkMat, sp, false, capacity);
@@ -4484,10 +4473,10 @@ function* vegetationBuildSteps(
         // CSM cascade passes; with the density boost this alone was millions of
         // tris/frame of invisible shadow work.
         for (const m of pair) m.castShadow = false;
-        if (canopyShadowProxies) {
-          pair.push(makeCanopyShadowProxy(farCanopyShadowProxyGeometry(g.canopy), sp, capacity,
-            `treeCanopyShadowFar_${sp}_${fv}`));
-        }
+        // 2026-09-12 owner review ("fuzzy shadows"): the ellipsoid stand-ins
+        // that briefly shadowed this partition read as soft blobs under every
+        // distant crown. As in 1049e4e the far partition casts nothing; the
+        // near partition's canopy proxies carry the real crown silhouettes.
         return pair;
       });
     }

@@ -113,12 +113,12 @@ for (const statement of [
   'a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), seaSand);',
   'n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), seaSand);',
   'a = mix(a, groundSamp(uAlbD, uv * 0.210, df, mipB), driftW * 0.85);',
-  'vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 7.0).rgb;',
+  'vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 4.0).rgb;', // road pass 2026-09-12: smoothed, not deep
 ]) assert.ok(compact(source).includes(compact(statement)), 'beach, shoal and road detail paths remain unchanged');
 assertTerrainFetchExpressionCensus(source);
 assert.deepEqual(source.match(/texSize\(\d+\)/g), [...Array(6).fill('texSize(256)'), 'texSize(512)']);
 assert.match(source, /uniform float [^;]*\buWornDirtStrength\b[^;]*;/, 'exactly one new scalar uniform, not a sampler');
 assert.equal((source.match(/shader\.uniforms\.uWornDirtStrength\s*=/g) ?? []).length, 1);
-assert.match(source, /world-terrain-splat-v29/, 'material-owned detail advances the fragment program key');
+assert.match(source, /world-terrain-splat-v30/, 'material-owned detail advances the fragment program key');
 assert.deepEqual(MAP_IDS.map(id => stringify(getMapConfig(id))), before, 'projections and controls never mutate live authoring');
 console.log('terrainWornDirt: coastal-only authored blend, 810 scalar combinations, legacy dry response, protected coverage and mutation/resource gates PASS');

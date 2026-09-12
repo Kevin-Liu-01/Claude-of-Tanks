@@ -24,7 +24,7 @@ import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, 
 import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
-import { roadCoreMask, roadRutInverseWidth, roadRutMask } from './roadMaskProfile.ts';
+import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
   usesInheritedRoadGrades, remapInheritedRoadElevations, alignAddedRoadJunctionGrades,
@@ -2177,7 +2177,6 @@ export function makeMaskTexture(
   // texel per 2 m, still finer than the rendered terrain grid (~2.7 m).
   // The former 2048² bake spent 16x the pixels on sub-grid information.
   const s = texSize(512), T = s / MAP_SIZE;
-  const rutInverseWidth = roadRutInverseWidth(1 / T);
   // r6 terrain_environment: landform (mesa/rim) weight pre-sampled on a
   // coarse grid (the field is ~700 m wavelength; 4 m texels bilerped) so the
   // 2048^2 mask bake stays cheap — B channel carries it on landformW maps.
@@ -2232,15 +2231,13 @@ export function makeMaskTexture(
     const wid = seedNoi.noise(x * 0.011 + 41, z * 0.011 - 17) * 1.5;
     const core = roadCoreMask(d, wob, wid, 1 / T);
     px[j] = core * 255;
-    // The fresh G byte is already zero; pure rut noise cannot affect a zero
-    // core. Return only from road painting so B/A and later stamps still run.
-    if (core === 0) return;
-    // Filter twin compacted lanes to this texture's physical footprint before
-    // Uint8 storage. Point-sampled 0.55m ruts alias into transverse bands at
-    // 2–4m/texel; the existing shader gradient then embosses those false bands.
-    const rutAmp = 0.55 + 0.45 * (seedNoi.noise(x * 0.019 - 3, z * 0.019 + 8) * 0.5 + 0.5);
-    const rut = roadRutMask(d, rutInverseWidth);
-    px[j + 1] = rut * core * 245 * rutAmp;
+    // road pass 2026-09-12 (owner: "the roads are so flat"): G is the
+    // centreline DISTANCE field (12 m -> byte 0, 0 m -> 255). Bilinear
+    // filtering of a distance ramp is exact away from the centre kink, so the
+    // shader evaluates the carriageway edge, the twin wheel lanes and the
+    // crown analytically per pixel. The former Gaussian lane bytes could not
+    // survive 2 m texels: they read as beads along every straight road.
+    px[j + 1] = Math.max(0, 1 - d / 12) * 255;
   }
   function sampleMarshMask(x: number, z: number): number {
     return waterWetnessAt ? waterWetnessAt(x, z)
@@ -2334,7 +2331,7 @@ uniform sampler2D uNrmG, uNrmD, uNrmR, uNrmM;
 uniform sampler2D uMask, uNoise;
 uniform vec3 uTintA, uTintB, uTintC, uRoadTint;
 uniform float uMarshGloss;
-uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uIceDrift, uMidRelief, uFieldPatch;
+uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
 uniform vec4 uRipple; // xy = wind dir, z = ripple amplitude, w = shore-only
 uniform float uSandMacro; // r3: desert macro variation (gravel basins / scour sheets)
 uniform vec3 uIceSky;     // r3: fresnel sky tint reflected by clear lake ice
@@ -2490,9 +2487,21 @@ void splatCompute() {
   // at 50-100 m
   float n1hs = mix(n1h, 0.5, farM * 0.85);
   // road masks: crisp noise-broken compacted core + wider soft dirt shoulder
-  float roadCore = smoothstep(0.38, 0.70, mk.r + (n1hs - 0.5) * 0.30);
+  // road pass 2026-09-12: G decodes to metres from the road centreline. The
+  // compacted core ends on an analytic, noise-wobbled gauge; the twin wheel
+  // lanes sit 1.55 m either side of the centre; the crown is the dusty strip
+  // between them. Everything below that used to read the 2 m-texel Gaussian
+  // lane bytes now reads these continuous profiles instead.
+  float dRoad = (1.0 - mk.g) * 12.0;
+  float roadHalf = 3.85 + (n1hs - 0.5) * 1.1 + (n2 - 0.5) * 1.5;
+  float roadCore = 1.0 - smoothstep(roadHalf - 0.55, roadHalf + 0.55, dRoad);
   float shoulder = smoothstep(0.04, 0.60, mk.r + (n1hs - 0.5) * 0.20);
-  float rut = mk.g * (0.62 + 0.38 * n1hs);
+  float laneD = (dRoad - 1.55) * uLaneK;
+  // uLaneK == 0 marks a coarse (4 m) mask: one bead-free compaction plateau.
+  float lane = uLaneK > 0.0 ? exp(-laneD * laneD) : 1.0 - smoothstep(2.6, 3.6, dRoad);
+  float rutAmp = (0.62 + 0.38 * n1hs) * (0.62 + 0.38 * n1);
+  float rut = lane * roadCore * rutAmp;
+  float crown = (1.0 - smoothstep(0.0, 1.25, dRoad)) * roadCore;
   // r7: the road mask is an XZ projection — where a road runs along a mesa
   // rim it painted its compacted-earth tint DOWN the cliff face below as a
   // vertical light streak; no road holds on a >30-deg face
@@ -2714,7 +2723,7 @@ void splatCompute() {
     // GTAO, tree shadows, and decals all disabled.
     // r5 terrain_environment: planar-noise dapple gated off slopes — its
     // gradient is meaningless down a face and printed streaks (corduroy kin)
-    float dapG = (1.0 - triW * 0.85) * (1.0 - roadCore);
+    float dapG = (1.0 - triW * 0.85) * (1.0 - roadCore * 0.5); // 2026-09-12: half the landform dapple stays on the carriageway
     // These signed gradients are added before the final normal decode (x2).
     // Large gains made shallow turf look like crumpled metal. Soil relief
     // must also stop at the waterline: water owns its own wave normals.
@@ -2914,9 +2923,19 @@ void splatCompute() {
     // Keep every near-detail octave off the carriageway; the dedicated road
     // pass below supplies its own shallow, continuous surface response.
     float openNear = dNear * (1.0 - roadCore);
-    n.xy += dn.xy * 0.22 * openNear * (1.0 - fMs);
+    // 2026-09-12 owner verdict ("everything looks flat"): open ground runs the
+    // 1049e4e clod relief again (0.85 there, 0.70 here); the carriageway keeps
+    // its own shallow packed-earth response below, so no source cavity is ever
+    // decoded as a pothole on a road.
+    n.xy += dn.xy * 0.70 * openNear * (1.0 - fMs);
     float micro = texture2D(uNoise, uv * 0.171).r;
     a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs);
+    // Compacted gravel grain on the carriageway: a CLAMPED zero-mean luminance
+    // high-pass of the rock tile, so grit resolves under the hull while the
+    // tile's dark cavities cannot return as repeated black marks.
+    float gvL = dot(texture2D(uAlbR, uv * 0.83).rgb, vec3(0.34, 0.45, 0.21));
+    float gvM = dot(texture2D(uAlbR, uv * 0.83, 6.0).rgb, vec3(0.34, 0.45, 0.21));
+    a.rgb *= 1.0 + clamp((gvL - gvM) * 1.4, -0.16, 0.20) * roadCore * dNear * (1.0 - uRoadTex);
     // sub-10 m second octave: clod/blade relief right under the camera
     // r6 terrain_environment: band widened (5-15 -> 6-26 m) and the octave
     // now carries ALBEDO as well as normal — the 5-20 m meadow read as one
@@ -2931,7 +2950,7 @@ void splatCompute() {
       // the dirt/rock blend made worked yards inherit the meadow's grain.
       // The same coverage also keeps base snow/sand off exposed soil/rock.
       float nearG = openNear2 * meadowG * (1.0 - fR);
-      n.xy += dn2.xy * 0.18 * nearG;
+      n.xy += dn2.xy * 0.60 * nearG; // 2026-09-12: blade/clod relief back toward the 1049e4e 0.75
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
       float gl2 = dot(texture2D(uAlbG, uv * 2.71).rgb, vec3(0.36, 0.42, 0.22));
@@ -2952,9 +2971,9 @@ void splatCompute() {
     // A deep mip provides the dirt palette without preserving any individual
     // source clod. Very-low-frequency noise restores gentle soil variation
     // without stamping round marks repeatedly down the road.
-    vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 7.0).rgb;
+    vec3 packedRoad = groundSamp(uAlbD, uv * 0.210, df, mipB + 4.0).rgb;
     packedRoad *= 0.985 + (n2w - 0.5) * 0.035;
-    vec3 roadCol = mix(packedRoad, a.rgb, 0.25) * uRoadTint
+    vec3 roadCol = mix(packedRoad, a.rgb, 0.30) * uRoadTint
       + vec3(0.014, 0.010, 0.006);
     roadCol = mix(roadCol, vec3(dot(roadCol, vec3(0.34, 0.45, 0.21))), 0.26);
     a.rgb = mix(a.rgb, roadCol, dW);
@@ -2963,15 +2982,21 @@ void splatCompute() {
     // alternating chain of black ovals visible in Verdant. Use a strongly
     // mip-smoothed, shallow packed-earth normal for the road core; the mask
     // gradient below adds the authored wheel-rut relief afterwards.
-    vec2 packedRoadN = groundNrm(uNrmD, uv * 0.210, df, mipB + 7.0).xy;
-    packedRoadN = mix(vec2(0.5), packedRoadN, 0.10);
+    vec2 packedRoadN = groundNrm(uNrmD, uv * 0.210, df, mipB + 4.0).xy;
+    packedRoadN = mix(vec2(0.5), packedRoadN, 0.30);
     n.xy = mix(n.xy, packedRoadN, dW);
     // Keep compacted wheel lanes legible without painting near-black marks
     // into the road albedo. The previous 55% dirt-road multiplier turned the
     // low-resolution rut mask into a repeating chain of oval stains on every
     // country-road map. Dirt now relies primarily on shallow normal relief;
     // paved roads retain a little more tonal wear.
-    a.rgb *= 1.0 - min(rut * (1.0 + farM * 0.45), 1.0) * mix(0.10, 0.22, uRoadTex);
+    // road pass 2026-09-12: the two-track read is back (1049e4e ran 0.55/0.30)
+    // now that the lanes are analytic and continuous: dark damp compacted
+    // lanes that run slightly less rough, a paler dusty crown between them,
+    // and the far boost that keeps the lanes legible once the tiles mip away.
+    a.rgb *= 1.0 - min(rut * (1.0 + farM * 0.9), 1.0) * mix(0.34, 0.26, uRoadTex);
+    a.a = mix(a.a, a.a * 0.86, rut * (1.0 - uRoadTex));
+    a.rgb *= 1.0 + crown * 0.05 * (1.0 - uRoadTex);
     if (uRoadTex > 0.01) {
       // r5: HARDER pavement edge (0.10-0.26 with less noise wobble) — paved
       // town streets end at a kerb line, they do not alpha-fade into lawn.
@@ -3015,15 +3040,20 @@ void splatCompute() {
       a.rgb = mix(a.rgb, gravE.rgb * vec3(1.02, 0.97, 0.88), gravSpill * 0.5);
     }
   }
-  // rut relief from the mask G gradient (visible well past the near ring)
-  {
-    float texel = 1.4 / 1024.0;
-    vec2 rutG;
-    rutG.x = texture2D(uMask, mUV + vec2(texel, 0.0)).g - texture2D(uMask, mUV - vec2(texel, 0.0)).g;
-    rutG.y = texture2D(uMask, mUV + vec2(0.0, texel)).g - texture2D(uMask, mUV - vec2(0.0, texel)).g;
-    // Shallow relief reads as compressed earth instead of a row of deep
-    // potholes, and remains stable as the detail textures change mip level.
-    n.xy += rutG * 0.30 * (1.0 - df * 0.72);
+  // wheel-lane relief and tyre streaks from the distance field: its gradient
+  // is the across-road direction and the lane profile's analytic slope shapes
+  // two smooth grooves, so a straight road carries no per-texel bumps.
+  if (roadCore > 0.002) {
+    float texel = 1.0 / 1024.0;
+    vec2 gradD;
+    gradD.x = texture2D(uMask, mUV - vec2(texel, 0.0)).g - texture2D(uMask, mUV + vec2(texel, 0.0)).g;
+    gradD.y = texture2D(uMask, mUV - vec2(0.0, texel)).g - texture2D(uMask, mUV + vec2(0.0, texel)).g;
+    gradD *= 6.0; // byte ramp over a 2 m baseline -> metres per metre, ~unit across the road
+    float laneSlope = -2.0 * laneD * uLaneK * lane;
+    n.xy += gradD * laneSlope * 0.14 * roadCore * rutAmp * (1.0 - df * 0.72);
+    vec2 along = vec2(-gradD.y, gradD.x);
+    float streak = texture2D(uNoise, vec2(dot(uv, along) * 0.31, dot(uv, gradD) * 2.7)).r;
+    a.rgb *= 1.0 + (streak - 0.5) * 0.16 * max(lane, 0.35 * crown) * roadCore * (1.0 - df);
   }
   // wind-blown snow drifts across the ice sheet + snowbank shoreline blend
   // (maps r1: the whole sheet block reads fMs — identical to fM everywhere
@@ -3446,6 +3476,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uWornDirtStrength = { value: clamp(S.wornDirtStrength ?? 0.84, 0, 1) };
     shader.uniforms.uShoulderDirt = { value: clamp(S.shoulderDirt ?? 1, 0, 1) };
+    shader.uniforms.uLaneK = { value: roadLaneSharpness(mask.image.width) }; // road pass 2026-09-12
     shader.uniforms.uIceDrift = { value: (S.iceLake || S.seaLake) ? (S.iceDrift ?? 0.85) : 0 };
   }
   function assignSplatBiomeUniforms(shader: MaterialShader): void {
@@ -3490,7 +3521,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v29';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v30';
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

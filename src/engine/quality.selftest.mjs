@@ -42,10 +42,12 @@ assert.equal(desktop.shouldReleaseInactivePhaseGpu(), false,
   'normal desktops retain detached Garage resources for fast battle exits');
 assert.equal(desktop.PRESETS.high.maxPixelRatio, 1.5);
 // 2026-09-12 visual restoration: the 1049e4e preset table is back. Ultra runs
-// 4K hero cascades to 700 m with full-res GTAO, High 2K cascades to 700 m with
-// half-res GTAO, Medium the stable 2K/1K layout at 520 m with half-res GTAO;
-// Low keeps the near-field 380 m range and no AO.
-assert.deepEqual(desktop.PRESETS.ultra.shadowMapSizes, [4096, 4096, 2048, 2048], 'Ultra hero cascades, 2K far');
+// 4K cascades (near, hero and mid) to 700 m with full-res GTAO, High 2K
+// cascades to 700 m with half-res GTAO, Medium the stable 2K/1K layout at
+// 520 m with half-res GTAO; Low keeps the near-field 380 m range and no AO.
+// (Owner review the same afternoon: the interim 2K mid cascade / 600 m Medium
+// range read as fuzzy shadows; both are back at the reference values.)
+assert.deepEqual(desktop.PRESETS.ultra.shadowMapSizes, [4096, 4096, 4096, 2048], 'Ultra 4K near/hero/mid cascades, 2K far');
 assert.equal(desktop.PRESETS.ultra.shadowMaxFar, 700, 'Ultra shadow range covers whole towns');
 assert.equal(desktop.PRESETS.ultra.aoScale, 1.0, 'Ultra full-resolution GTAO');
 assert.deepEqual(desktop.PRESETS.high.shadowMapSizes, [2048, 2048, 2048, 1024], 'High 2K cascades');
@@ -53,7 +55,7 @@ assert.equal(desktop.PRESETS.high.shadowMaxFar, 700, 'High shadow range covers w
 assert.equal(desktop.PRESETS.high.aoScale, 0.5, 'High half-resolution GTAO');
 assert.deepEqual(desktop.PRESETS.medium.shadowMapSizes, desktop.DESKTOP_SHADOW_MAP_SIZES,
   'Medium keeps the stable desktop shadow-map layout');
-assert.equal(desktop.PRESETS.medium.shadowMaxFar, 600, 'Medium mid range');
+assert.equal(desktop.PRESETS.medium.shadowMaxFar, 520, 'Medium reference range');
 assert.equal(desktop.PRESETS.medium.aoScale, 0.5, 'Medium half-resolution GTAO');
 assert.deepEqual(desktop.PRESETS.low.shadowMapSizes, desktop.DESKTOP_SHADOW_MAP_SIZES,
   'Low keeps the stable desktop shadow-map allocation');

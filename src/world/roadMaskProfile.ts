@@ -15,15 +15,17 @@ export function roadCoreMask(distanceM: number, wobbleM: number, widthM: number,
 }
 
 /** Compute once per mask bake. Sub-metre ruts cannot resolve in 2–4m texels. */
-export function roadRutInverseWidth(texelM: number): number {
-  return 1 / Math.hypot(0.55, texelM * 0.8);
-}
 
-/** Footprint-filtered twin lanes; preserve integrated wear as they merge at range. */
-export function roadRutMask(distanceM: number, inverseWidthM: number): number {
-  const left = (distanceM - 1.55) * inverseWidthM;
-  const right = (distanceM + 1.55) * inverseWidthM;
-  // Sum both signed lanes. Widening abs(distance)-offset alone introduces a
-  // centre cusp and another false lighting ridge when the lanes overlap.
-  return 0.55 * inverseWidthM * (Math.exp(-left * left) + Math.exp(-right * right));
+/**
+ * Sharpness (1/sigma, per metre) of the twin wheel-lane profile the shader
+ * evaluates from the mask's distance field, or 0 for a coarse mask. Bilinear
+ * filtering overestimates the field within half a texel of the road centre:
+ * the desktop 2 m mask keeps the 1.55 m lanes outside that zone (0.42 m
+ * sigma), while a 4 m mobile mask would bead any lane inside it, so the shader
+ * falls back to one compaction plateau over the centre 2 m (flat across the
+ * whole error zone, hence bead-free) there.
+ */
+export function roadLaneSharpness(maskSize: number, mapSizeM = 1024): number {
+  const texelM = mapSizeM / Math.max(1, maskSize);
+  return texelM <= 2.5 ? 2.4 : 0;
 }

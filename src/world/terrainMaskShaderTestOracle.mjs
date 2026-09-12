@@ -68,6 +68,8 @@ export function assertTerrainFetchExpressionCensus(source) {
     const expression = `texture2D(uNrmR, gWallUV${axis} * ${scale})`;
     assert.equal(source.split(expression).length, 2, 'one exact projected wall-normal sample');
   }
-  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4,
-    'historical78 plus four inlined wall samples; lexical census only');
+  // road pass 2026-09-12: +3 — the clamped zero-mean gravel grain (two rock
+  // luminance taps) and the along-lane tyre streak (one noise tap).
+  assert.equal((source.match(/texture2D\(/g) ?? []).length, 78 + 4 + 3,
+    'historical78 plus four inlined wall samples plus three road-pass taps; lexical census only');
 }
