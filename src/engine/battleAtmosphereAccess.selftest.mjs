@@ -197,18 +197,22 @@ assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atm
   assert.deepEqual(effects, [['bake', preset]], 'a failed bake must leave deferred recovery pending');
 }
 const nightLighting = { reset() { calls.push('night-reset'); } };
+// frontline atmosphere 2026-09-12: main resets and prepares the front owner
+// next to the weather owner; its calls are recorded on their own log.
+const frontlinePrepares = [];
+const frontline = { reset() { calls.push('frontline-reset'); }, prepare: (...args) => { frontlinePrepares.push(args); } };
 const garagePhasePresentation = {
   setActive: (active) => calls.push(['active', active]),
   setSunTrim: (active) => calls.push(['trim', active]),
 };
-const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, garagePhasePresentation });
+const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, frontline, garagePhasePresentation });
 const setGarageSunTrim = mainCallback('setGarageSunTrim', { battleAtmosphere: weather, garagePhasePresentation });
 setGarageSpots(false); setGarageSunTrim(false);
 assert.deepEqual(calls, [['active', false]], 'network activation does not overwrite the prepared night preset');
 calls.length = 0;
 setGarageSpots(true); setGarageSunTrim(true);
-assert.deepEqual(calls, ['reset', 'night-reset', ['active', true], ['trim', true]],
-  'Garage clears battle atmosphere and lamp owners before reinstalling its own active lighting');
+assert.deepEqual(calls, ['reset', 'night-reset', 'frontline-reset', ['active', true], ['trim', true]],
+  'Garage clears battle atmosphere, lamp and frontline owners before reinstalling its own active lighting');
 calls.length = 0;
 setGarageSunTrim(false);
 assert.deepEqual(calls, [['trim', false]], 'authored no-weather entry still untrims Garage lighting');
@@ -216,15 +220,17 @@ assert.deepEqual(calls, [['trim', false]], 'authored no-weather entry still untr
 calls.length = 0;
 let currentMap = 'winter';
 const prepareNetwork = mainCallback('atmosphere', {
-  battleAtmosphere: weather, currentWorld: () => ({ mapId: currentMap }),
+  battleAtmosphere: weather, frontline, currentWorld: () => ({ mapId: currentMap }),
   game: { mapId: 'desert' },
 });
-prepareNetwork({ meta: { weatherSeed: 0 } });
+await prepareNetwork({ meta: { weatherSeed: 0 } });
 currentMap = 'monsoon';
-prepareNetwork({ meta: { weatherSeed: 1337 } });
-prepareNetwork({ meta: {} });
+await prepareNetwork({ meta: { weatherSeed: 1337 } });
+await prepareNetwork({ meta: {} });
 assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
   'actual network warm uses current acquired map, preserves seed0, and does not randomize a legacy snapshot');
+assert.deepEqual(frontlinePrepares, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon']],
+  'the frontline owner is prepared with the same seed and acquired map, after the weather owner');
 
 // Actual Garage activation precedes its setGarageSpots call on return. A late
 // atmosphere reset must not overwrite the newly selected Garage sky/fog.
@@ -236,12 +242,14 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
     const phase = { setActive() {}, setSunTrim() {} };
     let nightResets = 0;
     const lamps = { reset() { nightResets++; } };
-    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, garagePhasePresentation: phase };
+    let frontlineResets = 0;
+    const frontOwner = { reset() { frontlineResets++; } };
+    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, garagePhasePresentation: phase };
     const spots = mainCallback('setGarageSpots', bindings);
     const trim = mainCallback('setGarageSunTrim', bindings);
     let skyInvalidations = 0;
     const skyOwner = mainCallback('applySkyPreset', {
-      battleAtmosphere: h.access, nightLighting: lamps, selectedGarageVariantId: 'verdant',
+      battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, selectedGarageVariantId: 'verdant',
       getGarageVariant: () => ({ mapId: 'verdant' }), getGarageSkyPreset: () => garagePreset,
       worldRuntime: { invalidateSkyPresentation() { skyInvalidations++; } },
       sky: { applyPresentationPreset(preset) {
@@ -263,6 +271,7 @@ assert.deepEqual(calls, [[0, 'winter'], [1337, 'monsoon'], [undefined, 'monsoon'
       'Garage presentation invalidates the retained world sky for a same-map rematch');
     assert.equal(nightResets, 2,
       'actual Garage sky activation and late phase-light return both reset the battle lamp owner');
+    assert.equal(frontlineResets, 2, 'the frontline owner is reset on the same two Garage beats');
     assert.equal(h.access.current.weather, null); assert.equal(h.scene.children.length, 0);
   } finally { h.dispose(); }
 }
