@@ -18,6 +18,7 @@ export const GAME_MODE_IDS = Object.freeze([
   'zone_control',
   'turbo_ball',
   'endless_horde',
+  'frontline_assault',
 ] as const);
 
 export type GameModeId = typeof GAME_MODE_IDS[number];
@@ -58,6 +59,14 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
       description: 'Survive escalating waves and hunt floating repair or ammunition caches.',
       respawns: false,
     }),
+    // campaign slice 1 (2026-09-12): the front comes to the battlefield. Three
+    // trench sectors along the axis to the enemy; each one taken brings the
+    // next counter-attack wave and pushes the frontline atmosphere closer.
+    frontline_assault: Object.freeze({
+      id: 'frontline_assault', label: 'Frontline Assault', shortLabel: 'FRONT', icon: 'modeZones',
+      description: 'Break the enemy line: take three trench sectors in turn against escalating counter-attacks, then hold the last one.',
+      respawns: false,
+    }),
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);
@@ -77,6 +86,9 @@ const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
 const HORDE_INITIAL_ACTIVE = 3;
+const ASSAULT_LINE_FRACTIONS = [0.25, 0.55, 0.85] as const;
+const ASSAULT_HOLD_S = 20;
+const ASSAULT_INITIAL_ACTIVE = 3;
 const PICKUP_RADIUS_M = 7;
 
 interface Vec3Like { x: number; y: number; z: number }
@@ -192,6 +204,8 @@ export interface MatchModePresentationState {
     nextWaveInS: number;
     healChance: number;
   } | null;
+  /** frontline_assault: sectors taken so far, the sector count and the final hold countdown. */
+  line: { index: number; total: number; holdS: number } | null;
   pickups: PickupState[];
   playerAmmo: number | null;
   playerAmmoCapacity: number | null;
@@ -359,7 +373,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         x, y: terrainHeight(x, z) + 0.12, z,
         control: 0, owner: null, contested: false,
       };
-    }) : [];
+    }) : id === 'frontline_assault'
+      ? ASSAULT_LINE_FRACTIONS.map((fraction, index) => {
+        const x = centers.alpha.x + axisX * axisLength * fraction;
+        const z = centers.alpha.z + axisZ * axisLength * fraction;
+        return {
+          id: `line-${index + 1}`,
+          x, y: terrainHeight(x, z) + 0.12, z,
+          control: 0, owner: null, contested: false,
+        };
+      }) : [];
   const ball: BallState | null = id === 'turbo_ball' ? {
     x: midX, y: terrainHeight(midX, midZ) + BALL_RADIUS_M, z: midZ,
     vx: 0, vy: 0, vz: 0, lastTouchId: null,
@@ -390,9 +413,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     zones,
     ball,
     goals,
-    horde: id === 'endless_horde' ? {
+    horde: id === 'endless_horde' || id === 'frontline_assault' ? {
       wave, alive: 0, total: 0, nextWaveInS: 0, healChance: 0,
     } : null,
+    line: id === 'frontline_assault' ? { index: 0, total: ASSAULT_LINE_FRACTIONS.length, holdS: 0 } : null,
     pickups,
     playerAmmo: null,
     playerAmmoCapacity: null,
@@ -415,14 +439,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       entities.filter(other => other !== entity && !other.combat.destroyed && other.modeActive !== false)
         .map(other => ({ x: other.state.pos.x, z: other.state.pos.z, radius: 4.5 }))) : spawn;
     if (!safeSpawn) {
-      if (id === 'endless_horde') deactivate(entity);
+      if (id === 'endless_horde' || id === 'frontline_assault') deactivate(entity);
       respawnAt.set(entity.id, { atS: placementTimeS + 1, healthScale });
       return; // keep pending, but never retry a bounded search at 60 Hz
     }
     revive(entity, safeSpawn, healthScale);
     entity.modeActive = true;
     entity.modeSpeedMultiplier = id === 'turbo_ball' ? 1.85
-      : id === 'endless_horde' && teamOf(entity) === 'bravo'
+      : (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
         ? 1 + Math.min(0.55, (wave - 1) * 0.045) : 1;
     destroyed.set(entity.id, false);
     respawnAt.delete(entity.id);
@@ -506,6 +530,77 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   if (id === 'endless_horde') startHordeWave();
+
+  // ----------------------------------------------------- frontline assault ---
+  let lineIndex = 0;
+  let holdUntilS: number | null = null;
+  const liveLine = (): ZoneState | null => zones[Math.min(lineIndex, zones.length - 1)] ?? null;
+
+  const startAssaultWave = (): void => {
+    const activeCount = Math.min(hordeEnemies.length, ASSAULT_INITIAL_ACTIVE + lineIndex);
+    const healthScale = 1 + lineIndex * 0.16;
+    for (let index = 0; index < hordeEnemies.length; index++) {
+      const entity = hordeEnemies[index];
+      if (index < activeCount) reviveAtSpawn(entity, healthScale);
+      else deactivate(entity);
+    }
+    for (const ally of teams.alpha) {
+      if (ally.combat.destroyed && ally.bot) reviveAtSpawn(ally, 1);
+    }
+    if (state.horde) {
+      state.horde.wave = wave;
+      state.horde.total = activeCount;
+      state.horde.nextWaveInS = 0;
+      state.horde.healChance = 0;
+    }
+    emit('mode_wave_started', { wave, enemies: activeCount, healthScale });
+  };
+  if (id === 'frontline_assault') startAssaultWave();
+
+  const stepAssault = (dt: number, timeS: number): MatchModeResult | null => {
+    const humansAlive = teams.alpha.some((entity) => entity.modeActive !== false &&
+      !entity.combat.destroyed && !entity.bot);
+    if (!humansAlive) return finish('bravo', 'assault_overrun');
+    const zone = liveLine();
+    if (!zone) return null;
+    const occupancy = zoneOccupancy(zone);
+    advanceZoneControl(zone, Math.floor(occupancy / 16), occupancy % 16, dt);
+    if (state.horde) state.horde.alive = livingHordeEnemyCount();
+    if (lineIndex < zones.length - 1) {
+      if (zone.owner === 'alpha') {
+        lineIndex++;
+        wave++;
+        if (state.line) state.line.index = lineIndex;
+        emit('mode_line_advanced', { line: lineIndex, total: zones.length });
+        startAssaultWave();
+      }
+      return null;
+    }
+    // Final sector: hold it against the last counter-attack.
+    if (zone.owner === 'alpha') {
+      if (holdUntilS == null) holdUntilS = timeS + ASSAULT_HOLD_S;
+      if (state.line) state.line.holdS = Math.max(0, holdUntilS - timeS);
+      if (timeS >= holdUntilS) {
+        if (state.line) state.line.index = zones.length;
+        return finish('alpha', 'line_held');
+      }
+    } else {
+      holdUntilS = null;
+      if (state.line) state.line.holdS = 0;
+    }
+    return null;
+  };
+
+  const assaultBotTarget = (entity: Entity, team: ObjectiveTeam): ObjectivePoint | null => {
+    const zone = liveLine();
+    if (!zone) return null;
+    if (team === 'bravo') {
+      // Defenders hold the live sector unless an attacker is closer than it.
+      const nearest = hordeBotTarget(entity, team);
+      if (nearest && squaredDistance(entity, nearest.x, nearest.z) < squaredDistance(entity, zone.x, zone.z)) return nearest;
+    }
+    return { x: zone.x, z: zone.z };
+  };
 
   const finish = (winner: ObjectiveTeam | 'draw', reason: string): MatchModeResult => {
     if (!result) {
@@ -834,6 +929,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       ball: ball ? { ...ball } : null,
       goals: goals.map((goal) => ({ ...goal })),
       horde: state.horde ? { ...state.horde } : null,
+      line: state.line ? { ...state.line } : null,
       pickups: pickups.filter((pickup) => pickup.active).map((pickup) => ({ ...pickup })),
       playerAmmo: viewer ? totalAmmunition(viewer.combat) : null,
       playerAmmoCapacity: viewer ? totalAmmunitionCapacity(viewer.combat) : null,
@@ -883,6 +979,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (id === 'zone_control') return zoneBotTarget(entity, team);
     if (id === 'turbo_ball' && ball) return { x: ball.x, z: ball.z };
     if (id === 'endless_horde') return hordeBotTarget(entity, team);
+    if (id === 'frontline_assault') return assaultBotTarget(entity, team);
     return null;
   };
 
@@ -899,6 +996,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (id === 'zone_control') return stepZones(dt);
       if (id === 'turbo_ball') return stepBall(dt, timeS);
       if (id === 'endless_horde') return stepHorde(timeS);
+      if (id === 'frontline_assault') return stepAssault(dt, timeS);
       return null;
     },
     tryHitBall(shell) {

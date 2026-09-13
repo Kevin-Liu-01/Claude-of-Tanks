@@ -196,6 +196,7 @@ export interface HudMatchModeState {
   playerAmmo?: number;
   playerAmmoCapacity?: number;
   horde?: { wave?: number; alive?: number; nextWaveInS?: number } | null;
+  line?: { index?: number; total?: number; holdS?: number } | null;
 }
 
 export interface HudFrame {
@@ -2739,6 +2740,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeId === 'capture_the_flag') return 'Capture 3';
     if (modeId === 'zone_control') return 'First 1000';
     if (modeId === 'turbo_ball') return 'First 5';
+    if (modeId === 'frontline_assault') return 'Take the line';
     return 'Survive';
   }
 
@@ -2755,6 +2757,13 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeState.id === 'turbo_ball') {
       return t('hud.modeStatus.goals', { own: String(ownScore), target: String(modeState.target || 5) });
     }
+    if (modeState.id === 'frontline_assault') {
+      const line = modeState.line;
+      return t('hud.modeStatus.assault', {
+        line: String(Math.min((line?.index ?? 0) + 1, line?.total ?? 3)), total: String(line?.total ?? 3),
+        wave: String(modeState.horde?.wave || 1), alive: String(modeState.horde?.alive || 0),
+      });
+    }
     const horde = modeState.horde;
     return t('hud.modeStatus.horde', {
       wave: String(horde?.wave || 1),
@@ -2766,7 +2775,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function modeStatusIconName(modeId: string): string {
     if (modeId === 'capture_the_flag') return 'modeFlag';
-    if (modeId === 'zone_control') return 'modeZones';
+    if (modeId === 'zone_control' || modeId === 'frontline_assault') return 'modeZones';
     if (modeId === 'turbo_ball') return 'modeTurbo';
     return 'modeHorde';
   }

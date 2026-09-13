@@ -181,4 +181,55 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.equal(snapshot.playerAmmoCapacity, 46);
 }
 
-console.log('matchModes.selftest: standard, flags, zones, turbo ball, horde, respawns, and loot passed');
+// campaign slice 1 (2026-09-12): Frontline Assault — three sectors on the axis
+// to the enemy, a counter-attack wave per sector, hold the last one to win.
+{
+  assert.equal(GAME_MODE_DEFINITIONS.frontline_assault.respawns, false);
+  const player = entity('player', 'alpha', 0, -150);
+  const ally = entity('ally', 'alpha', 10, -150, { bot: true });
+  const enemies = Array.from({ length: 6 }, (_, index) =>
+    entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  const { match, events } = controller('frontline_assault', [player, ally, ...enemies], 6000);
+  assert.equal(match.usesElimination, false);
+  assert.deepEqual(match.state.line, { index: 0, total: 3, holdS: 0 });
+  assert.deepEqual(match.state.zones.map((zone) => Math.round(zone.z)), [-75, 15, 105],
+    'sectors sit at 25/55/85 % of the way from the alpha centre to the bravo centre');
+  assert.equal(match.state.horde.wave, 1);
+  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 3, 'wave 1 fields three defenders');
+  assert.deepEqual(match.botTarget(ally), { x: match.state.zones[0].x, z: match.state.zones[0].z },
+    'attackers push for the live sector');
+  assert.deepEqual(match.botTarget(enemies[0]), { x: match.state.zones[0].x, z: match.state.zones[0].z },
+    'defenders fall back on the live sector when no attacker is closer');
+  let timeS = 0;
+  const hold = (seconds) => {
+    let result = null;
+    for (let i = 0; i < Math.round(seconds * 60) && !result; i++) { timeS += 1 / 60; result = match.step(1 / 60, timeS); }
+    return result;
+  };
+  for (const [index, expectedWave, expectedDefenders] of [[0, 2, 4], [1, 3, 5]]) {
+    player.state.pos.x = match.state.zones[index].x; player.state.pos.z = match.state.zones[index].z;
+    assert.equal(hold(9), null);
+    assert.equal(match.state.line.index, index + 1, `sector ${index + 1} taken advances the line`);
+    assert.equal(match.state.horde.wave, expectedWave);
+    assert.equal(enemies.filter((target) => target.modeActive !== false).length, expectedDefenders,
+      'each sector taken brings a larger counter-attack');
+  }
+  assert.equal(events.filter((event) => event.type === 'mode_line_advanced').length, 2);
+  player.state.pos.x = match.state.zones[2].x; player.state.pos.z = match.state.zones[2].z;
+  assert.equal(hold(9), null);
+  assert.equal(match.state.zones[2].owner, 'alpha');
+  assert.ok(match.state.line.holdS > 15 && match.state.line.holdS <= 20, 'the final sector starts its hold countdown');
+  assert.deepEqual(hold(21), { result: 'alpha', reason: 'line_held' });
+  assert.equal(match.serialize('player').line.index, 3);
+}
+{
+  const player = entity('player', 'alpha', 0, -150);
+  const enemies = Array.from({ length: 3 }, (_, index) =>
+    entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  const { match } = controller('frontline_assault', [player, ...enemies], 7);
+  player.combat.destroyed = true;
+  assert.deepEqual(match.step(1 / 60, 1), { result: 'bravo', reason: 'assault_overrun' },
+    'the human attacker falling ends the assault');
+}
+
+console.log('matchModes.selftest: standard, flags, zones, turbo ball, horde, assault, respawns, and loot passed');

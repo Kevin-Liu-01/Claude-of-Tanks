@@ -254,7 +254,7 @@ export function createMatchModeWorldPresentation(
     root.visible = true;
     hideAll();
     if (state.id === 'capture_the_flag') updateFlags(state, timeS);
-    else if (state.id === 'zone_control') updateZones(state);
+    else if (state.id === 'zone_control' || state.id === 'frontline_assault') updateZones(state);
     else if (state.id === 'turbo_ball') updateTurboBall(state, timeS);
     else updatePickups(state, timeS);
   };

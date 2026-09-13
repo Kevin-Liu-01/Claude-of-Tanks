@@ -232,7 +232,7 @@ for (const mapId of MAP_IDS) {
     navigationWaterPolicy: 'avoid-liquid', getHeightAt: (x, z) => field.getHeightAt(x, z),
     getGroundType: (x, z) => field.getGroundType(x, z), getWaterMaskAt: (x, z) => field.getWaterMaskAt(x, z),
   }, queryObstacles: world.queryObstacles, getObstacles: world.getObstacles });
-  for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde']) {
+  for (const mode of ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault']) {
     let heightReads = 0, normalReads = 0, obstacleQueries = 0;
     const measuredField = { size: field.size, navigationWaterPolicy: field.navigationWaterPolicy,
       getHeightAt(x, z) { heightReads++; return field.getHeightAt(x, z); },

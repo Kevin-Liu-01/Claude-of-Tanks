@@ -2719,7 +2719,12 @@ const baseWorldFramePresentation = createWorldFramePresentationRuntime({
 const worldFramePresentation = {
   update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
     baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
-    if (inBattle && !worldRuntime.dormant && !pauseInfo.paused) frontline.update(dtSeconds);
+    if (inBattle && !worldRuntime.dormant && !pauseInfo.paused) {
+      // Frontline Assault brings the front closer with every sector taken.
+      const line = game.matchModeState?.line;
+      frontline.current?.setScale(line ? 0.8 + 0.35 * (line.index ?? 0) : 1);
+      frontline.update(dtSeconds);
+    }
   },
 };
 // Pause transitions, input sampling, network cadence, pre-battle hold,

@@ -625,6 +625,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="endless_horde" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeHorde')}</span><small>${t('garage.battle.waves')}</small></button>` +
+    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="frontline_assault" aria-checked="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
+    `<span class="choice-name">${t('garage.battle.modeFront')}</span><small>${t('garage.battle.sectors')}</small></button>` +
     `</div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
@@ -2655,6 +2658,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     zone_control: { short: '1000', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
     turbo_ball: { short: 'BALL', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
     endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
+    frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     battleMenu.classList.remove('open');
