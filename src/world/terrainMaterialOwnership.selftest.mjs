@@ -53,8 +53,8 @@ function checkEndpoints(sample) {
       // exclusion is zero. Original gains, clipping and texture ports remain.
       assert.equal(actual.nearG, distance);
       assert.equal(actual.farG, distance);
-      assert.equal(actual.nearN, signal * .60 * distance); // 2026-09-12 owner verdict: clod relief back toward the 1049e4e 0.75
-      assert.equal(actual.farN, signal * distance * .45); // 2026-09-12: far turf relief 0.24 -> 0.45
+      assert.equal(actual.nearN, signal * .75 * distance); // relief pass 2 (2026-09-12): the full 1049e4e clod relief (was .60)
+      assert.equal(actual.farN, signal * distance * .9); // relief pass 2 (2026-09-12): far turf relief .45 -> .9 (1049e4e ran 1.5)
       // Near albedo octave strengthened with the 1049e4e presentation restore
       // (2026-09-11): gain 1.5 -> 1.9, clip -0.22..0.26 -> -0.28..0.32.
       assert.equal(actual.nearA, 1 + Math.max(-.28, Math.min(.32, (signal - p.glM) * 1.9)) * distance);
@@ -110,7 +110,7 @@ function checkSourceContract(text) {
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
   ]`)), 'the same ten shader-only texture owners remain registered');
-  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v30';/);
+  assert.match(text, /mat\.customProgramCacheKey = \(\) => 'world-terrain-splat-v31';/); // relief pass 2 (2026-09-12)
 }
 function replaceOnce(text, from, to) {
   assert.equal(text.split(from).length, 2, `unique mutation seam: ${from}`);
@@ -134,5 +134,5 @@ await rejects(replaceOnce(source, nearAlbedo(source), nearAlbedo(source).replace
 await rejects(replaceOnce(source, normalTerm(source, 'gnF'), 'gnF.xy * farM * 0.24'), 'far normal bypass');
 await rejects(replaceOnce(source, farAlbedo(source), farAlbedo(source).replace('farG *', 'farM *')), 'far albedo bypass');
 assert.throws(() => checkSourceContract(source.replace('uniform float uSea;', 'uniform float uNewDetail; uniform float uSea;')));
-assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v30', 'world-terrain-splat-v29')));
+assert.throws(() => checkSourceContract(source.replace('world-terrain-splat-v31', 'world-terrain-splat-v30')));
 console.log('terrainMaterialOwnership: actual scalar/consumer endpoints, pure-G legacy response, 2048 fractional cases, continuity and nine mutation controls PASS; no GPU/art/performance claim');

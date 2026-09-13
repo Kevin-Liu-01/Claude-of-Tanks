@@ -34,12 +34,17 @@ for (const detail of [
   // strengths (0.85/0.75 there): first octave <= 0.70, clod octave <= 0.60.
   // Both stay off the carriageway (openNear/nearG), which keeps the road's
   // shallow packed-earth response as the only near normal on a road.
-  const cap = detail.source.includes('gnF') ? 0.45 : detail.source.includes('dn2') ? 0.60 : 0.70;
+  // Relief pass 2 (2026-09-12, late; owner: "flat, undetailed, less textured
+  // than 1049e4e"): the near octaves run the full reference strengths
+  // (0.85 / 0.75) and the far turf half way back (0.9 of the reference 1.5);
+  // the carriageway and waterline gates stay, so a road or a bay never gets
+  // a giant clod normal.
+  const cap = detail.source.includes('gnF') ? 0.9 : detail.source.includes('dn2') ? 0.75 : 0.85;
   assert.ok(Number(gain[1]) <= cap,
     'signed normals added before x2 decode remain bounded, not giant terrain clods');
 }
 assert.match(source,
-  /n\.xy -= \(ga \* 0\.40 \+ gb \* 0\.58\)[^;]+\(1\.0 - fMs\);/,
+  /n\.xy -= \(ga \* 1\.1 \+ gb \* 1\.55\)[^;]+\(1\.0 - fMs\);/, // relief pass 2 (2026-09-12): ~80 % of the 1049e4e 1.4 / 2.0, still waterline-gated
   'mid-distance soil relief is bounded and cannot hammer the water surface');
 assert.match(source,
   /float meadowG = [^;]+\(1\.0 - fMs\);/,

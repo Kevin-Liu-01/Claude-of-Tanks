@@ -2727,7 +2727,12 @@ void splatCompute() {
     // These signed gradients are added before the final normal decode (x2).
     // Large gains made shallow turf look like crumpled metal. Soil relief
     // must also stop at the waterline: water owns its own wave normals.
-    n.xy -= (ga * 0.40 + gb * 0.58) * dMid * uMidRelief * dapG * (1.0 - fMs);
+    // terrain relief pass 2 (2026-09-12, owner: "flat, undetailed, less
+    // textured than 1049e4e"): the 1049e4e midground ran this landform dapple
+    // at 1.4 / 2.0; the later cut to 0.40 / 0.58 is what flattened the
+    // 25-450 m band. Back to ~80 % of the reference, keeping the slope and
+    // carriageway gates and the waterline stop the reference did not have.
+    n.xy -= (ga * 1.1 + gb * 1.55) * dMid * uMidRelief * dapG * (1.0 - fMs);
     float midN2 = texture2D(uNoise, uv * 0.0089 + vec2(0.71, 0.23)).g;
     a.rgb *= 1.0 + ((ha - 0.5) * 0.09 * dMid
                  + (midN2 - 0.5) * 0.12 * smoothstep(30.0, 90.0, camDist)) * uMidRelief * dapG * (1.0 - fMs);
@@ -2739,7 +2744,7 @@ void splatCompute() {
     vec3 dnRb = wallNormalDelta(texture2D(uNrmR, gWallUVx * 0.041).xy,
                               texture2D(uNrmR, gWallUVz * 0.041).xy);
     vec3 dnR = mix(dnRa, dnRb, steepW);
-    n.xyz += dnR * fR * 0.24 * dMid * (1.0 - fMs);
+    n.xyz += dnR * fR * 0.6 * dMid * (1.0 - fMs); // relief pass 2: 0.24 -> 0.6 (1049e4e ran 0.9), craggy rock at range
   }
   // horizontal strata banding on steep faces (mesa cliff walls), world-Y driven
   // r4 terrain_environment: band start 0.24 -> 0.36 slope (~31 deg -> ~40 deg)
@@ -2927,7 +2932,7 @@ void splatCompute() {
     // 1049e4e clod relief again (0.85 there, 0.70 here); the carriageway keeps
     // its own shallow packed-earth response below, so no source cavity is ever
     // decoded as a pothole on a road.
-    n.xy += dn.xy * 0.70 * openNear * (1.0 - fMs);
+    n.xy += dn.xy * 0.85 * openNear * (1.0 - fMs); // relief pass 2 (2026-09-12): the full 1049e4e clod relief
     float micro = texture2D(uNoise, uv * 0.171).r;
     a.rgb *= 1.0 + (micro - 0.5) * 0.40 * openNear * uMicroAmp * (1.0 - fMs);
     // Compacted gravel grain on the carriageway: a CLAMPED zero-mean luminance
@@ -2950,7 +2955,7 @@ void splatCompute() {
       // the dirt/rock blend made worked yards inherit the meadow's grain.
       // The same coverage also keeps base snow/sand off exposed soil/rock.
       float nearG = openNear2 * meadowG * (1.0 - fR);
-      n.xy += dn2.xy * 0.60 * nearG; // 2026-09-12: blade/clod relief back toward the 1049e4e 0.75
+      n.xy += dn2.xy * 0.75 * nearG; // relief pass 2 (2026-09-12): the full 1049e4e blade/clod relief
       // zero-mean albedo octave: deep-mip sample = local tile mean, so the
       // modulation is exposure-neutral on every map palette (sand vs turf)
       float gl2 = dot(texture2D(uAlbG, uv * 2.71).rgb, vec3(0.36, 0.42, 0.22));
@@ -3233,7 +3238,9 @@ void splatCompute() {
       // this coarse relief at 1.5 and read as turf to the horizon; 0.24 left
       // every far field a flat sheet. 0.45 keeps the relief without the
       // clod-normal shimmer the cut was made for.
-      n.xy += gnF.xy * farG * 0.45;
+      // relief pass 2 (2026-09-12): 0.45 -> 0.9 — halfway back to the
+      // reference; the far fields still read as felt at 0.45.
+      n.xy += gnF.xy * farG * 0.9;
       float gLum = dot(texture2D(uAlbG, uv * 0.0137).rgb, vec3(0.36, 0.42, 0.22));
       a.rgb *= mix(1.0, 0.86 + gLum * 0.30, farG * 0.55);
     }
@@ -3295,7 +3302,7 @@ void splatCompute() {
     if (faceW > 0.004) {
       vec2 uvFace = groundChartUv(wp.xz);
       vec2 dnF = groundChartNormalXZ(texture2D(uNrmD, uvFace * 1.07).xy);
-      n.xy += dnF * 0.22 * faceW;
+      n.xy += dnF * 0.5 * faceW; // relief pass 2 (2026-09-12): 0.22 -> 0.5 (1049e4e ran 0.85 on climb faces)
     }
   }
   // <<< gameplay_feel r4 -----------------------------------------------------
@@ -3521,7 +3528,7 @@ function* createSplatMaterialSteps(
       SPLAT_NORMAL_FRAG);
   };
   engineCtx.setupShadowMaterial(mat, splatHook);
-  mat.customProgramCacheKey = () => 'world-terrain-splat-v30';
+  mat.customProgramCacheKey = () => 'world-terrain-splat-v31'; // relief pass 2 (2026-09-12)
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   // onBeforeCompile closures are invisible to scene resource traversal.
   // Sourced images replace these Texture objects' backing image in place,

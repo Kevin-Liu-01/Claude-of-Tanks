@@ -62,7 +62,7 @@ assert.match(source, /vec2 uvG = groundChartUv\(wp\.xz\);/);
 assert.match(source, /vec2 uvFace = groundChartUv\(wp\.xz\);/);
 assert.match(source, /nG\.xy = groundChartNormalXZ\(nG\.xy\) \* 0\.5 \+ 0\.5;/);
 assert.match(source, /vec2 dnF = groundChartNormalXZ\(texture2D\(uNrmD, uvFace \* 1\.07\)\.xy\);/);
-assert.match(source, /n\.xy \+= dnF \* 0\.22 \* faceW;/);
+assert.match(source, /n\.xy \+= dnF \* 0\.5 \* faceW;/); // relief pass 2 (2026-09-12): 0.22 -> 0.5
 
 function assertGradientFrame(candidate) {
   // Independent chain-rule oracle: differentiate an analytic height function
@@ -158,7 +158,7 @@ function assertProjectionContract(text) {
     'a = mix(a, aG, gMix);', 'n = mix(n, nG, gMix);',
   ]) assert.ok(graze.includes(compact(expression)), `retained projection contract: ${expression}`);
   assert.ok(face.includes(compact('texture2D(uNrmD, uvFace * 1.07).xy')));
-  assert.ok(face.includes(compact('n.xy += dnF * 0.22 * faceW;')));
+  assert.ok(face.includes(compact('n.xy += dnF * 0.5 * faceW;'))); // relief pass 2 (2026-09-12): 0.22 -> 0.5
   // At most 8 grazing fetches (2 splat calls × 3 reads + 2 noise reads),
   // plus 1 near-face read. This scopes the budget to the changed paths.
   const calls = body => body.match(/\b(?:texture2D|\w*Samp|wallTex|groundNrm)\(/g) ?? [];
