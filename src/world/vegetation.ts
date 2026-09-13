@@ -2856,6 +2856,7 @@ function* vegetationBuildSteps(
       '#include <common>\nuniform float uWindTime;\nuniform vec3 uCamPos;\nuniform float uGrassFar;\nuniform float uSniperFade;\nuniform vec3 uCamFwd;');
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <begin_vertex>', /* glsl */`
       #include <begin_vertex>
+      vec3 cotGrassRoot;
       {
         vec4 giw = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
         float dCam = distance(giw.xyz, uCamPos);
@@ -2875,11 +2876,33 @@ function* vegetationBuildSteps(
         float rayBand = 1.0 - (1.0 - smoothstep(2.6, 6.0, dRay)) * (1.0 - smoothstep(90.0, 130.0, dCam));
         gfade *= mix(1.0, nearBand * rayBand, uSniperFade);
         transformed *= gfade;
+        // ground footprint of this vertex BEFORE the wind sway (instance space)
+        cotGrassRoot = vec3(transformed.x, 0.0, transformed.z);
         float sway = uv.y * uv.y;
         float phase = giw.x * 0.35 + giw.z * 0.28;
         transformed.x += sway * (0.12 * sin(uWindTime * 1.6 + phase) + 0.05 * sin(uWindTime * 3.7 + phase * 2.3));
         transformed.z += sway * 0.08 * cos(uWindTime * 1.3 + phase);
       }`);
+    // shadow-stability 2026-09-13 ("flashing shadows from trees when the
+    // camera moves"): a blade used to sample the cascade shadow at its swaying
+    // fragment position, so every tip crossing a tree-shadow edge flipped
+    // between lit and dark, frame after frame, and the chase camera's sub-pixel
+    // motion re-dealt those flips across the whole shadow edge. Sample the sun
+    // shadow at the blade's ground footprint instead: one blade keeps one
+    // shadow state while it moves in the wind, and the shadow edge on grass
+    // follows the ground exactly like the terrain under it. Only the shadow
+    // lookup moves — lighting, fog and the blade's own position are untouched.
+    shader.vertexShader = _mustReplace(shader.vertexShader, '#include <shadowmap_vertex>', /* glsl */`
+      #if defined( USE_SHADOWMAP )
+      {
+        vec4 cotGrassShadowWorld = vec4(cotGrassRoot, 1.0);
+        #ifdef USE_INSTANCING
+          cotGrassShadowWorld = instanceMatrix * cotGrassShadowWorld;
+        #endif
+        worldPosition = modelMatrix * cotGrassShadowWorld;
+      }
+      #endif
+      #include <shadowmap_vertex>`);
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
@@ -2932,8 +2955,8 @@ function* vegetationBuildSteps(
         // thin blades survive their deep mips and the far fields keep the dark
         // tuft cover the 1049e4e pastures showed to ~300 m; the near carpet
         // keeps the crisp 0.44 edge beside the tracks.
-        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v7', 0.34),
-        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v6'),
+        matMid: makeGrassMaterial(grassTex[gv], grassFadeEnd, 'world-grass-wind-v8', 0.34), // v8: root-anchored shadow lookup
+        matNear: makeGrassMaterial(grassTex[gv], CARPET_FAR, 'world-grass-carpet-v7'), // v7: root-anchored shadow lookup
       });
       yield { stage: 'grassPrep', fine: true };
     }

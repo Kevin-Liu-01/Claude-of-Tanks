@@ -15,7 +15,13 @@ import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js'
 // internal resolution — cheaper than a single extra shadow cascade.
 
 export const TAA_HISTORY_WEIGHT = 0.9;
-export const TAA_HISTORY_WEIGHT_MOVING = 0.82;
+// shadow-stability 2026-09-13: camera motion used to drop the history share to
+// 0.82, which nearly doubled the per-frame sparkle exactly while the player
+// swings the camera — the moment tree shadows on grass were reported to
+// "flash". The history is reprojected through the previous view-projection,
+// so static scenery lands on its own pixels; the variance clip box (not a
+// lower weight) is what keeps moving tanks and smoke from ghosting.
+export const TAA_HISTORY_WEIGHT_MOVING = 0.9;
 /** Max view-projection element change per frame above which the camera counts as fast. */
 export const TAA_MOVING_DELTA = 0.02;
 export const TAA_JITTER_LENGTH = 8;

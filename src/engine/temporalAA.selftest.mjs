@@ -37,7 +37,7 @@ assert.equal(resolveTaaHistoryWeight(0, true), 0);
 assert.equal(resolveTaaHistoryWeight(0.001, false), TAA_HISTORY_WEIGHT);
 assert.equal(resolveTaaHistoryWeight(TAA_MOVING_DELTA * 2, false), TAA_HISTORY_WEIGHT_MOVING);
 assert.equal(resolveTaaHistoryWeight(Number.NaN, false), 0);
-assert.ok(TAA_HISTORY_WEIGHT > TAA_HISTORY_WEIGHT_MOVING && TAA_HISTORY_WEIGHT_MOVING >= 0.75, 'history dominates, moving less so');
+assert.ok(TAA_HISTORY_WEIGHT >= TAA_HISTORY_WEIGHT_MOVING && TAA_HISTORY_WEIGHT_MOVING >= 0.88, 'history dominates; camera motion is reprojected, so it keeps (nearly) the full share');
 
 // resolve shader contract: reprojection through depth, variance clipping, depth rejection, luminance weighting
 assert.match(TAA_RESOLVE_FRAGMENT, /uInvViewProj \* vec4\(vUv \* 2\.0 - 1\.0, depth \* 2\.0 - 1\.0, 1\.0\)/, 'world position from depth');
