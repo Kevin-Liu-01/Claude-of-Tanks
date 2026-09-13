@@ -44,6 +44,7 @@ const goldenReceipts = [
   },
   {
     "id": "strv103",
+    "_repin_2026_09_13": "sealed-hull pass: canvasCloth is DoubleSide now (tarps/aprons seen from both sides), which moves this material-inclusive digest; geometry untouched",
     "options": {
       "proceduralOnly": true,
       "geometryReceipt": true,
@@ -51,7 +52,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "6fc95ddf897b30624c76b0af72f0aa7071330ba0bfe9857e1b2ec72ecf4fd261"
+    "sha256": "66a9ed1198698bd15efe9677d658a25cc8060af4fd6ea104c9d6ce617eb749dc"
   },
   {
     "id": "m1a1",
