@@ -315,7 +315,11 @@ assert.equal(pickupMarkers[0].visible, true,
 {
   const frontScene = new Scene();
   const ground = (x, z) => 2 + x * 0.05 - z * 0.02;
-  const front = createMatchModeWorldPresentation(frontScene, { groundHeight: ground });
+  const setUp = [];
+  const released = [];
+  const front = createMatchModeWorldPresentation(frontScene, {
+    groundHeight: ground, setupMaterial: (m) => setUp.push(m), releaseMaterial: (m) => released.push(m),
+  });
   const lines = [-60, 0, 60].map((x, index) => ({
     id: `line-${index + 1}`, x, y: ground(x, 0) + 0.12, z: 0, control: 0, owner: null, contested: false,
   }));
@@ -403,7 +407,12 @@ assert.equal(pickupMarkers[0].visible, true,
   assert.equal(planLineWorks([]).bags.length, 0);
   // the plan is deterministic
   assert.deepEqual(planLineWorks(lines, ground), plan);
+  // every lit works material joined the cascaded-shadow setup (two builds: three sectors, then two)
+  assert.equal(setUp.length, 8, `lit works materials are set up per build (${setUp.length})`);
+  assert.ok(setUp.every((m) => m.isMeshStandardMaterial));
+  assert.equal(released.length, 4, 'the first build released its materials when the pools were resized');
   front.dispose();
+  assert.equal(released.length, 8, 'dispose releases the live works materials too');
   assert.equal(frontScene.children.length, 0, 'dispose removes the works with the root');
 }
 

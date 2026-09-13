@@ -26,6 +26,13 @@ export interface MatchModeWorldPresentation {
 /** campaign slice 3 (2026-09-12): ground fit for dressing that spreads beyond an objective centre. */
 export interface MatchModeWorldPresentationOptions {
   groundHeight?: (x: number, z: number) => number;
+  /**
+   * Engine hook folding a lit material into the cascaded-shadow setup; a lit
+   * material outside it is struck by every cascade light at once and blows
+   * out. Objective markers stay unlit and never need it.
+   */
+  setupMaterial?: (material: THREE.Material) => void;
+  releaseMaterial?: (material: THREE.Material) => void;
 }
 
 export interface WorksPlacement { x: number; y: number; z: number; yaw: number }
@@ -332,8 +339,11 @@ export function createMatchModeWorldPresentation(
     wire: THREE.LineSegments;
   }
   let lineWorks: LineWorks | null = null;
-  const lit = (color: number, roughness: number, metalness = 0): THREE.MeshStandardMaterial =>
-    new THREE.MeshStandardMaterial({ color, roughness, metalness });
+  const lit = (color: number, roughness: number, metalness = 0): THREE.MeshStandardMaterial => {
+    const material = new THREE.MeshStandardMaterial({ color, roughness, metalness });
+    options.setupMaterial?.(material);
+    return material;
+  };
 
   const buildLineWorks = (lines: number): LineWorks => {
     const group = new THREE.Group();
@@ -426,7 +436,10 @@ export function createMatchModeWorldPresentation(
       if (mesh.material && !Array.isArray(mesh.material)) materials.add(mesh.material);
     });
     for (const geometry of geometries) geometry.dispose();
-    for (const material of materials) material.dispose();
+    for (const material of materials) {
+      if ((material as THREE.MeshStandardMaterial).isMeshStandardMaterial) options.releaseMaterial?.(material);
+      material.dispose();
+    }
     lineWorks.group.removeFromParent();
     lineWorks = null;
   };
@@ -543,6 +556,7 @@ export function createMatchModeWorldPresentation(
   };
 
   const dispose = (): void => {
+    disposeLineWorks();
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     root.traverse((object) => {

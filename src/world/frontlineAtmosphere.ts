@@ -33,6 +33,9 @@ export interface FrontlineAtmosphereOptions {
   bus?: FrontlineEventBus | null;
   getHeightField?: () => FrontlineHeightField | null;
   getSpawns?: () => FrontlineSpawns | null;
+  /** Engine hook folding lit materials (the AA guns) into the cascaded-shadow setup. */
+  setupMaterial?: (material: THREE.Material) => void;
+  releaseMaterial?: (material: THREE.Material) => void;
 }
 
 export interface FrontlineEvent {
@@ -435,6 +438,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0.55, 0.0, -0.2),
   ]);
   const aaMaterial = new THREE.MeshStandardMaterial({ color: 0x4a4f44, roughness: 0.82, metalness: 0.18 });
+  options.setupMaterial?.(aaMaterial); // outside the cascade setup every cascade light strikes it at once
   const aaCap = FRONTLINE_LIMITS.aaGuns[1];
   const aaBases = new THREE.InstancedMesh(aaBaseGeometry, aaMaterial, aaCap);
   aaBases.name = 'frontline-aa-bases'; aaBases.count = 0; aaBases.castShadow = true; aaBases.receiveShadow = true;
@@ -734,6 +738,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     flashes.mesh.geometry.dispose(); flak.mesh.geometry.dispose();
     aircraftGeometry.dispose(); aaBaseGeometry.dispose(); aaHeadGeometry.dispose(); tracerGeometry.dispose();
     columnMaterial.dispose(); flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();
+    options.releaseMaterial?.(aaMaterial);
     aaMaterial.dispose(); tracerMaterial.dispose();
     columnTexture.dispose(); puffTexture.dispose();
   }

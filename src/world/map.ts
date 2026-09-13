@@ -24,6 +24,7 @@ import {
   preloadPropModels,
 } from './props.ts';
 import { createHearthSmoke } from './hearthSmoke.ts';
+import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
 import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
 import { createGroundCoverClearance } from './groundCoverClearance.ts';
@@ -39,6 +40,8 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   Parameters<typeof createVegetation>[1] &
   Parameters<typeof createProps>[1] & {
   scene: THREE.Scene;
+  /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
+  releaseShadowMaterial?(material: THREE.Material): void;
 };
 
 interface WorldOptions {
@@ -343,6 +346,21 @@ function assembleWorld(
   const groundCoverSealStarted = performance.now();
   vegetation.setGroundCoverClearance(createGroundCoverClearance(queryObstacles));
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
+  // environment density pass (2026-09-12): the ground litter tier streams
+  // stones, clods and splinters under the camera, kept out of the same sealed
+  // footprints as the grass carpet.
+  const litter = createGroundLitter(heightField, {
+    seed: 2005,
+    // the per-map profile table lives with the tier; a map's optional
+    // `vegetation.litter` (typed per module) overrides it
+    config: (config.vegetation as { litter?: GroundLitterConfig | null } | undefined)?.litter
+      ?? groundLitterProfile(config.id),
+    blocked: createGroundCoverClearance(queryObstacles),
+    // every lit world material joins the cascaded-shadow setup (see terrain/vegetation)
+    setupMaterial: (material, hook) => engineCtx.setupShadowMaterial(material, hook),
+    releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+  });
+  group.add(litter.group);
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;
@@ -467,6 +485,7 @@ function assembleWorld(
       unregisterDestructibles();
       vegetation.dispose();
       hearths.dispose();
+      litter.dispose();
     },
     config,
     heightField,
@@ -577,6 +596,7 @@ function assembleWorld(
       terrain.userData.updateWater?.(dt);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
       hearths.advance(dt);
+      litter.update(cameraPos);
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
     /**

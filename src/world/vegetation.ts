@@ -20,6 +20,7 @@ import {
 import { isClearOfSpawns } from './spawnClearance.ts';
 import { createStructureClearances, excludeStructureVegetation, excludeVegetation } from './vegetationClearance.ts';
 import { compactGroundCoverInstances, type GroundCoverBlocked } from './groundCoverClearance.ts';
+import type { GroundLitterConfig } from './groundLitter.ts';
 import { redistributeAuthoredTrees, type AuthoredTreeFeature } from './authoredTreePlacement.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -141,6 +142,8 @@ interface VegetationConfig {
   loneCount: number;
   rimCount: number;
   grassDensity: number;
+  /** environment density pass (2026-09-12): stones, clods and splinters under the camera. */
+  litter?: GroundLitterConfig | null;
   bushCount: number;
   bushSpecies: Species;
   grassTexTone: ToneFunction | null;
