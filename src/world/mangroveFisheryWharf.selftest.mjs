@@ -65,13 +65,15 @@ assert.throws(() => assertConstructionRelease(releaseBlock.replace('  vegetation
 const seed = Number(process.argv.find(a => a.startsWith('--seed='))?.slice(7));
 // V29 actual world-space bytes, captured before the two inner-pile change.
 // All 55 other parts include the seated annex, both outer piles and full dock.
+// settlement pass 3 (2026-09-12): the door lantern (bracket, cage, cap, glass) joins the shared
+// exterior pass, so the three V29 byte hashes and the connected count moved again.
 const v29Stable = {
   // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
-  1337: '2aa0465ae6a7f1c9163289c0ce6b3804be665f537ce92832680a961c9d31f0dc',
+  1337: '9ad0ac0638cf54490c49f01b869f5af6a41baef172859199473667ee442a61b1',
   // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
-  2025: '8174d9b51be909a47e65343288ce0cbb8dbdfb267df13ddbd3d1c59e615cd08d',
+  2025: 'cb9a6658ecebe007cb8be64c83de5a240fd5483a9aa61356075f2f996342f148',
   // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's bare panes; V29 byte hash re-pinned.
-  7719: 'd838f6dbca34b41b9154c0eaeee3ac65ff075b07386db7d4e26ab995d89fe770',
+  7719: '0bd8af3b4b6182d61ca969f772dee6e210cea668c8cb2bc3cd74092c81b26907',
 };
 if (!seed) {
   for (const value of [1337, 2025, 7719]) {
@@ -324,7 +326,8 @@ function actualBudgetAndSupport() {
     groundMinY: result.annexBottom - .01, groundMaxY: result.annexBottom + .01,
   });
   // settlement pass 2026-09-12: +16 stone window-joinery pieces on the fishery's four bare panes.
-  assert.equal(connection.connected, 73, 'roof, hoist, façade, dock and window joinery retain connected structural support');
+  // settlement pass 3 (2026-09-12): +4 connected door-lantern pieces.
+  assert.equal(connection.connected, 77, 'roof, hoist, façade, dock and window joinery retain connected structural support');
   const landing = planRiverLanding(field, field._layout.lakes, mangrove.props.riverLandings[0]);
   const deck = dressing.find(g => {
     g.computeBoundingBox(); const center = g.boundingBox.getCenter(new THREE.Vector3());

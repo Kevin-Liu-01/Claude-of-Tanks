@@ -396,9 +396,10 @@ try {
     // Immutable observed d46da09ea complete-producer receipt, terrain1337 /
     // vegetation2001 / props2002. Includes every original pose/dimension/budget,
     // NOT a whole-source lock. No runtime Git or external receipt dependency.
-    // settlement pass 2026-09-12: the shared window joinery changed every planned
-    // building's merged geometry (plans keep their poses/dimensions); re-pinned.
-    if (historical) assert.equal(hash(JSON.stringify(state.plans)),'24f67525bdb0fbdc83c0e2e4721901d26a757c0e9b921775112de9aed25fb0f5',
+    // settlement passes 2026-09-12: the shared window joinery, then door lanterns
+    // and corner quoins, changed every planned building's merged geometry (plans
+    // keep their poses/dimensions); re-pinned after each pass.
+    if (historical) assert.equal(hash(JSON.stringify(state.plans)),'a23c9ebc4c5fe68b884f1482ae1e96361a91b7bd6a675838562e15dfb0e9e32a',
       'all42 planned-building admissions, original poses/dimensions/storage preserved');
     state.rng=globalThis.__courtRng.map(r=>({seed:r.seed,count:r.count,tail:[r.next(),r.next()]}));
     state.inventory=sceneInventory(currentProps.group);

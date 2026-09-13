@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { pitchSkillionRoof } from '../propGeometry.ts';
 import { measureBoundsJoint } from '../structureConnectivity.ts';
-import { ensureWorldNightEmissionMask } from '../worldNightEmissionGeometry.ts';
+import { ensureWorldNightEmissionMask, markWorldLantern } from '../worldNightEmissionGeometry.ts';
 
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
@@ -84,6 +84,8 @@ interface ExteriorAuthor {
     geometry: THREE.BufferGeometry,
     supportId?: string,
   ): THREE.BufferGeometry;
+  /** Whether the building already owns this material bucket (fixtures may omit some). */
+  has(bucket: string): boolean;
   receipt(): ExteriorReceipt;
 }
 
@@ -181,6 +183,7 @@ function detailAuthor(parts: GeometryBuckets, {
 
   return {
     add,
+    has: (bucket: string) => Array.isArray(parts[bucket]),
     receipt: () => ({ id, profile, added: records.length,
       maxSupportGap: Math.max(0, ...records.map((record) => record.gap)), records, chimneys: [] }),
   };
@@ -461,6 +464,39 @@ function addEntryAssembly(
       brace.rotateX(-0.58);
       author.add(`entry-hood-brace-${side}`, 'dark',
         brace.translate(x + side * doorW * 0.40, doorH + 0.28, d / 2 + 0.23));
+    }
+  }
+  // settlement pass 3 (2026-09-12): a wall lantern beside every entrance — a
+  // short bracket into the wall, a dark cage and cap, and lantern glass on the
+  // night-emissive glass material (the lighthouse lantern's path) so the
+  // village doorways glow after dark. Fixtures without a glass bucket keep
+  // the bracket and cage only.
+  {
+    const lx = x + (doorW / 2 + 0.42) * (variant % 2 === 0 ? 1 : -1);
+    const ly = doorH + 0.12;
+    author.add('entry-lantern-bracket', 'dark',
+      box(0.06, 0.06, 0.30).translate(lx, ly + 0.14, d / 2 + 0.14));
+    author.add('entry-lantern-cage', 'dark',
+      box(0.22, 0.30, 0.22).translate(lx, ly - 0.02, d / 2 + 0.26), 'entry-lantern-bracket');
+    if (author.has('glass')) {
+      author.add('entry-lantern-glass', 'glass',
+        markWorldLantern(box(0.16, 0.20, 0.16)).translate(lx, ly - 0.02, d / 2 + 0.26), 'entry-lantern-cage');
+    }
+    author.add('entry-lantern-cap', 'dark',
+      box(0.26, 0.05, 0.26).translate(lx, ly + 0.16, d / 2 + 0.26), 'entry-lantern-cage');
+  }
+}
+
+/** settlement pass 3 (2026-09-12): dressed corner stones on masonry houses, long and short alternating. */
+function addQuoins(author: ExteriorAuthor, w: number, d: number, wallH: number): void {
+  const courses = Math.max(3, Math.min(8, Math.floor((wallH - 0.6) / 0.42)));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    for (let course = 0; course < courses; course++) {
+      const y = 0.55 + course * 0.42;
+      const long = course % 2 === 0;
+      author.add(`quoin-${sx}-${sz}-${course}`, 'stone',
+        box(long ? 0.46 : 0.28, 0.24, long ? 0.28 : 0.46)
+          .translate(sx * (w / 2 + 0.03 - (long ? 0.23 : 0.14)), y, sz * (d / 2 + 0.03 - (long ? 0.14 : 0.23))));
     }
   }
 }
@@ -822,6 +858,7 @@ function addSecondaryExterior(
     addCornerPiers(author, w, d, wallH, profile === 'industrial' ? 'dark' : 'stone');
   }
   if (profile !== 'canvas' && profile !== 'open') addRainwater(author, w, d, wallH);
+  if ((profile === 'rural' || profile === 'civic') && variant % 2 === 1) addQuoins(author, w, d, wallH);
   if (profile === 'industrial' || (profile === 'urban' && fullUrbanFixture)
       || (profile === 'rural' && variant % 3 === 1)) {
     addServiceCluster(author, w, d, wallH, profile === 'industrial');

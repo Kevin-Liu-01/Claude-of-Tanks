@@ -29,7 +29,13 @@ for (const [profile, minimum] of [
     `${profile}: fixture ids are unique within one building`);
   assert.ok(receipt.records.some(({ part }) => part === 'entry-door'),
     `${profile}: the shared facade pass includes a framed entrance`);
-  assert.ok(receipt.added <= 128, // settlement pass 2026-09-12: up to 12 framed panes (6 pieces each) join the fixture set
+  // settlement pass 3 (2026-09-12): a bracketed wall lantern beside every entrance
+  assert.ok(receipt.records.some(({ part }) => part === 'entry-lantern-cage') &&
+    receipt.records.some(({ part }) => part === 'entry-lantern-bracket'),
+    `${profile}: every entrance carries a wall lantern`);
+  assert.ok(!receipt.records.some(({ part }) => part === 'entry-lantern-glass'),
+    `${profile}: fixtures without a glass bucket get the cage only`);
+  assert.ok(receipt.added <= 160, // settlement passes 2026-09-12: framed panes (<= 72), lantern (4) and quoins (<= 32) join the fixture set
     `${profile}: exterior variety remains bounded before material merging`);
   const pitched = [];
   for (const geo of authored) {
@@ -57,6 +63,35 @@ for (const [profile, minimum] of [
     assert.ok(partIds.has('facade-bay-1--1') && partIds.has('aperture-sill-1'),
       `${profile}: desert elevations carry connected bays and recessed openings`);
   }
+}
+
+// settlement pass 3 (2026-09-12): with a glass bucket the lantern gets emissive
+// glass marked as a lantern (side faces only); rural/civic odd variants carry
+// alternating corner quoins, even variants and other profiles do not.
+{
+  const parts = { ...makeParts(), glass: [] };
+  parts.plaster.push(new THREE.BoxGeometry(8, 3.4, 10).translate(0, 1.7, 0));
+  const receipt = addConnectedExterior(parts, { id: 'lit-rural', w: 8, d: 10, wallH: 3.4, profile: 'rural', variant: 1 });
+  const glass = parts.glass.find((geo) => geo.userData.structureSupport?.part === 'entry-lantern-glass');
+  assert.ok(glass, 'lantern glass lands in the glass bucket');
+  const mask = glass.getAttribute('nightEmission') ?? glass.getAttribute(Object.keys(glass.attributes).find((k) => /emission/i.test(k)));
+  assert.ok(mask, 'lantern glass carries the night emission mask');
+  const normals = glass.getAttribute('normal');
+  for (let i = 0; i < mask.count; i++) {
+    assert.equal(mask.getX(i), Math.abs(normals.getY(i)) < 0.25 ? 1 : 0, 'only the lantern sides emit, never its cap or floor');
+  }
+  const quoins = receipt.records.filter(({ part }) => part.startsWith('quoin-'));
+  assert.ok(quoins.length >= 12 && quoins.length % 4 === 0, `odd rural variants dress all four corners (${quoins.length})`);
+  assert.ok(receipt.records.filter(({ part }) => part.startsWith('quoin-')).every(({ contactAxes, gap }) => contactAxes >= 2 && gap <= exteriorSupportEpsilon()),
+    'quoins carry area joints with the wall');
+  const even = makeParts();
+  even.plaster.push(new THREE.BoxGeometry(8, 3.4, 10).translate(0, 1.7, 0));
+  const evenReceipt = addConnectedExterior(even, { id: 'plain-rural', w: 8, d: 10, wallH: 3.4, profile: 'rural', variant: 0 });
+  assert.ok(!evenReceipt.records.some(({ part }) => part.startsWith('quoin-')), 'even variants keep plain corners');
+  const timber = makeParts();
+  timber.wood.push(new THREE.BoxGeometry(8, 3.4, 10).translate(0, 1.7, 0));
+  const timberReceipt = addConnectedExterior(timber, { id: 'timber-house', w: 8, d: 10, wallH: 3.4, profile: 'timber', variant: 1 });
+  assert.ok(!timberReceipt.records.some(({ part }) => part.startsWith('quoin-')), 'timber walls take no masonry quoins');
 }
 
 // settlement pass 2026-09-12: bare authored window panes receive jambs, a
