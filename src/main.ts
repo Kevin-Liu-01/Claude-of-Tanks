@@ -329,7 +329,10 @@ installShaderErrorCollector(renderer);
 const _diag = runDeviceDiag(renderer);
 const _diagRescue = applyDiagRescue(renderer, _diag);
 const scene = new THREE.Scene();
-const matchModeWorld = createMatchModeWorldPresentation(scene);
+// campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
+const matchModeWorld = createMatchModeWorldPresentation(scene, {
+  groundHeight: (x, z) => groundSampler(x, z),
+});
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world
 // and vehicle descendant, defeating the static-world matrix freeze below.

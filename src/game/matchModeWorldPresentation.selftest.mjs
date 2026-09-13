@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { DoubleSide, Object3D, Scene, Vector3 } from 'three';
+import { DoubleSide, Matrix4, Object3D, Scene, Vector3 } from 'three';
 
-import { createMatchModeWorldPresentation } from './matchModeWorldPresentation.ts';
+import { createMatchModeWorldPresentation, LINE_WORKS, planLineWorks } from './matchModeWorldPresentation.ts';
 
 const ALLY = 0x6fe887;
 const ENEMY = 0xf26a62;
@@ -306,6 +306,106 @@ view.update({
 }, 3.75);
 assert.equal(pickupMarkers[0].visible, true,
   'the retained pickup pool tolerates optional icon groups');
+
+
+// campaign slice 3 (2026-09-12): Frontline Assault sectors are dressed as trench
+// lines — sandbag parapet, timber revetment on posts, crates in the lee and a
+// picket-and-wire belt out front — lit, instanced, ground-fitted, planned once
+// per sector layout and hidden for every other mode.
+{
+  const frontScene = new Scene();
+  const ground = (x, z) => 2 + x * 0.05 - z * 0.02;
+  const front = createMatchModeWorldPresentation(frontScene, { groundHeight: ground });
+  const lines = [-60, 0, 60].map((x, index) => ({
+    id: `line-${index + 1}`, x, y: ground(x, 0) + 0.12, z: 0, control: 0, owner: null, contested: false,
+  }));
+  const frontState = {
+    ...base, id: 'frontline_assault', label: 'Frontline Assault', zones: lines,
+    horde: { wave: 1, alive: 3, total: 3, nextWaveInS: 0, healChance: 0 },
+    line: { index: 0, total: 3, holdS: 0 },
+  };
+  front.update(frontState, 1);
+  const works = front.root.getObjectByName('line-works');
+  assert.ok(works && works.visible, 'frontline sectors carry trench works');
+  assert.equal(front.root.getObjectByName('capture-zone-1').visible, true, 'sector rings stay');
+  const plan = planLineWorks(lines, ground);
+  assert.equal(plan.lines, 3);
+  assert.equal(plan.bags.length, 3 * 2 * LINE_WORKS.bagCourses * LINE_WORKS.bagsPerWing);
+  assert.equal(plan.planks.length, 3 * LINE_WORKS.planksPerLine);
+  assert.equal(plan.posts.length, 3 * LINE_WORKS.postsPerLine);
+  assert.equal(plan.pickets.length, 3 * LINE_WORKS.picketsPerLine);
+  assert.equal(plan.crates.length, 3 * LINE_WORKS.cratesPerLine);
+  assert.equal(plan.wire.length, 3 * LINE_WORKS.wireSegmentsPerLine * 6);
+  for (const name of ['bags', 'planks', 'posts', 'pickets', 'crates']) {
+    const mesh = works.getObjectByName(`line-works-${name}`);
+    assert.equal(mesh.isInstancedMesh, true, `${name} are instanced`); // three r185: InstancedMesh.type reads 'Mesh'
+    assert.equal(mesh.count, plan[name].length, `${name} pool matches the plan`);
+    assert.equal(mesh.castShadow && mesh.receiveShadow, true, `${name} are lit dressing that casts shadow`);
+    assert.equal(mesh.material.type, 'MeshStandardMaterial', `${name} are lit`);
+  }
+  assert.equal(works.getObjectByName('line-works-wire').type, 'LineSegments');
+  // the parapet stands ahead of each sector toward the attackers (-x here), the
+  // wire belt further out, the crates in the lee; every piece follows the ground
+  for (const [index, zone] of lines.entries()) {
+    const bags = plan.bags.slice(index * 60, (index + 1) * 60);
+    // apex 4 m ahead of the ring centre, wing tips sweeping back to ~1.7 m ahead
+    assert.ok(bags.every((bag) => bag.x < zone.x - 1.0 && bag.x > zone.x - 4.6 && Math.abs(bag.z - zone.z) < 7),
+      `sector ${index + 1} parapet stands ahead of the ring`);
+    assert.ok(bags[0].x < bags[9].x, `sector ${index + 1} wings sweep back from the apex`);
+    const pickets = plan.pickets.slice(index * 7, (index + 1) * 7);
+    assert.ok(pickets.every((picket) => picket.x < zone.x - 10 && picket.x > zone.x - 12),
+      `sector ${index + 1} wire belt is out front`);
+    const crates = plan.crates.slice(index * 4, (index + 1) * 4);
+    assert.ok(crates.every((crate) => crate.x > zone.x + 0.5), `sector ${index + 1} crates sit in the lee`);
+  }
+  for (const bag of plan.bags) {
+    const g = ground(bag.x, bag.z);
+    assert.ok(bag.y >= g + 0.08 && bag.y <= g + 0.55, 'bags sit on the sampled ground');
+  }
+  for (const picket of plan.pickets) close(picket.y, ground(picket.x, picket.z) + 0.62, 'pickets stand on the ground');
+  const courses = new Set(plan.bags.slice(0, 60).map((bag) => Math.round((bag.y - ground(bag.x, bag.z)) * 100)));
+  assert.equal(courses.size, 3, 'three sandbag courses');
+  const bagsMesh = works.getObjectByName('line-works-bags');
+  assert.ok(bagsMesh.instanceColor && bagsMesh.instanceColor.count >= 180, 'sacks carry per-piece weathering tones');
+  assert.equal(bagsMesh.geometry.type, 'CapsuleGeometry', 'sacks are flattened capsules, not bricks');
+  const matrix = new Matrix4();
+  bagsMesh.getMatrixAt(0, matrix);
+  const firstBag = new Vector3().setFromMatrixPosition(matrix);
+  const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-4,
+    `${message}: expected ${expected}, received ${actual}`); // Float32 instance buffers
+  near(firstBag.x, plan.bags[0].x, 'first bag x');
+  near(firstBag.y, plan.bags[0].y, 'first bag y');
+  near(firstBag.z, plan.bags[0].z, 'first bag z');
+  const wirePositions = works.getObjectByName('line-works-wire').geometry.getAttribute('position');
+  assert.equal(wirePositions.count, 3 * LINE_WORKS.wireSegmentsPerLine * 2);
+  near(wirePositions.getY(0), ground(plan.pickets[0].x, plan.pickets[0].z) + 0.35, 'lowest strand height');
+  // identical sectors keep their matrices; new sectors refill the same pools
+  const version = bagsMesh.instanceMatrix.version;
+  front.update(frontState, 2);
+  assert.equal(bagsMesh.instanceMatrix.version, version, 'unchanged sectors keep their matrices');
+  front.update({ ...frontState, zones: lines.map((zone) => ({ ...zone, z: zone.z + 20 })) }, 3);
+  assert.ok(bagsMesh.instanceMatrix.version > version, 'moved sectors refill the works');
+  assert.equal(front.root.getObjectByName('line-works'), works, 'the works group is retained across layouts');
+  assert.equal(front.root.getObjectByName('line-works-bags'), bagsMesh, 'the bag pool is retained');
+  // fewer sectors rebuild the pools to size
+  front.update({ ...frontState, zones: lines.slice(0, 2) }, 3.5);
+  const rebuilt = front.root.getObjectByName('line-works-bags');
+  assert.notEqual(rebuilt, bagsMesh);
+  assert.equal(rebuilt.count, 2 * 60, 'two sectors, two sectors of bags');
+  // other modes hide the works
+  front.update({ ...base, id: 'zone_control', label: 'Zone Control', zones: lines }, 4);
+  assert.equal(front.root.getObjectByName('line-works').visible, false, 'trench works belong to Frontline Assault only');
+  front.update(null, 5);
+  // without a sampler the sector's own height grounds the works
+  const plain = planLineWorks([{ x: 0, y: 5.12, z: 0 }]);
+  assert.equal(plain.lines, 1);
+  assert.ok(plain.bags.every((bag) => bag.y >= 5.08 && bag.y <= 5.55), 'fallback ground is the sector height');
+  assert.equal(planLineWorks([]).bags.length, 0);
+  // the plan is deterministic
+  assert.deepEqual(planLineWorks(lines, ground), plan);
+  front.dispose();
+  assert.equal(frontScene.children.length, 0, 'dispose removes the works with the root');
+}
 
 view.update(null, 4);
 assert.equal(view.root.visible, false);
