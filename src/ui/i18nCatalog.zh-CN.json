@@ -1594,6 +1594,8 @@
   "playMenu.matchMode.frontline_assault.label": "前线突击",
   "playMenu.matchMode.frontline_assault.short": "前线",
   "playMenu.matchMode.frontline_assault.desc": "突破敌军防线：依次夺取三段战壕阵地，抵御不断升级的反击，并守住最后一段。",
+  "playMenu.matchMode.frontline_assault.progress": "最佳推进：第 {best}/{total} 段阵地 · 守住防线 {held} 次",
+  "playMenu.matchMode.frontline_assault.progressNone": "尚未出击",
   "playMenu.identity.note": "已为你准备好一个唯一的呼号。需要时再修改。",
   "playMenu.ready": "已准备",
   "playMenu.notReady": "未准备",

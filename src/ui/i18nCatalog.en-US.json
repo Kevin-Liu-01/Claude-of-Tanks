@@ -1594,6 +1594,8 @@
   "playMenu.matchMode.frontline_assault.label": "Frontline Assault",
   "playMenu.matchMode.frontline_assault.short": "FRONT",
   "playMenu.matchMode.frontline_assault.desc": "Break the enemy line: take three trench sectors in turn against escalating counter-attacks, then hold the last one.",
+  "playMenu.matchMode.frontline_assault.progress": "Best push: sector {best}/{total} · lines held {held}",
+  "playMenu.matchMode.frontline_assault.progressNone": "No sorties yet",
   "playMenu.identity.note": "A unique callsign is ready automatically. Edit it only if you want to.",
   "playMenu.ready": "READY",
   "playMenu.notReady": "NOT READY",

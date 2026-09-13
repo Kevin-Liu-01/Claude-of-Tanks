@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
+import { frontlineSummary } from '../game/campaignProgress.ts';
 /**
  * Battle-mode picker and private/LAN lobby presentation.
  *
@@ -181,6 +182,7 @@ const CSS = `
 .cot-play .rule svg{display:block}.cot-play .rule-copy{display:grid;min-width:0;gap:2px}.cot-play .rule-copy b{overflow:hidden;
   color:inherit;font:900 9px ${FONT_COND};letter-spacing:.08em;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
 .cot-play .rule-copy small{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
+.cot-play .rule-copy .rule-progress{color:#e2b56a;text-transform:none;letter-spacing:.04em}
 .cot-play .rule:disabled{transform:none;cursor:not-allowed}.cot-play.lobby-active .rule-heading{margin-top:10px}
 .cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 .cot-play .room{display:none;margin-top:18px;padding-top:18px;
@@ -574,9 +576,17 @@ export function createPlayMenu({
   ensureStyle(STYLE_ID, CSS);
   const root = document.createElement('div');
   root.className = 'cot-play';
+  // campaign slice 4 (2026-09-12): the Frontline Assault card shows the campaign push
+  const frontlineProgressLabel = (): string => {
+    const summary = frontlineSummary();
+    return summary.attempts
+      ? t('playMenu.matchMode.frontline_assault.progress', { best: summary.bestLine, total: summary.total, held: summary.held })
+      : t('playMenu.matchMode.frontline_assault.progressNone');
+  };
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
     `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
-      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small></span></button>`).join('');
+      ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
+        rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
   root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2>${t('playMenu.title')}</h2>
     <p class="lead">${t('playMenu.lead')}</p>
@@ -1511,6 +1521,7 @@ export function createPlayMenu({
     initialMode: PlayMode | null = null,
     invite: PlayMenuInvite | null = null,
   ): void {
+    { const badge = root.querySelector<HTMLElement>('[data-rule-progress]'); if (badge) badge.textContent = frontlineProgressLabel(); }
     if (showCurrentRoom()) return;
     revealMenu();
     if (initialMode) selectMode(normalizePlayMode(initialMode));

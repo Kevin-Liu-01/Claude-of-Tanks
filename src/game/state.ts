@@ -2428,6 +2428,9 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     reason: game.resultReason,
     timeS: game.timeS,
     map: game.mapId,
+    // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
+    gameMode: game.gameMode,
+    line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
     roster: game.tanks.map((entity) => ({
       id: entity.id,
       specId: entity.specId,

@@ -123,6 +123,7 @@ import './ui/responsiveSurfaces.css';
 import './ui/garage.css';
 import { createGarage } from './ui/garage.ts';
 import { installBattleRecords } from './game/profile.ts';
+import { installCampaignProgress } from './game/campaignProgress.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
 } from './ui/garageStage.ts';
@@ -508,6 +509,7 @@ const devTrace = traceRequested
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 installBattleRecords(bus);
+installCampaignProgress(bus); // campaign slice 4 (2026-09-12): Frontline Assault sorties persist locally
 const game: MainGameState = createGameState<
   MainEntity,
   NonNullable<MainGameState['spotting']>,
