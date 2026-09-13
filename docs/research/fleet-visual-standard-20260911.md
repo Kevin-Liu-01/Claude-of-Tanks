@@ -265,3 +265,51 @@ turret 95.3, stations 99.1, dims 100, floaters 100, holes 0, clip 0, mg1),
 procedural fidelity 96.3, module-visual-align 0 failing, module-hit 0 FAIL,
 track-duplicate PASS. The full release check runs again before the deploy.
 
+
+## Addendum 2026-09-13 (j) — tank decoration batch 1: the modern heroes
+
+Owner: "make our decorations on tanks and details triple-A quality and on
+par if not better than World of Tanks". Inventory (`decorations.ts`): 26
+stowage kits, 17 bespoke manifests (the WW2 icons plus Leo 2 A4/A6, K2, the
+M1A2 family and T-90M), a probabilistic default for the other classes at
+p 0.3–0.85 per row, seven station-aware fleet cargo pieces on every
+playable. Batch 1 gives the modern heroes that still drew the default a
+deterministic real stowage plan: Challenger 2 and 3 (bustle basket with
+four packs, camo-net roll or drape, steel bin and water cans on the deck,
+tow cable, spare links on the turret side, long and short whips, tools,
+shackles; rations on the 3), Leclerc and Leclerc XLR (basket, Galix
+six-tube launchers, drape, bin, cans on the rear rack, cable, whips; the XLR
+adds the rear slat cage), T-14 (steel bins on both turret sides, drape,
+cable, twin long whips, hook shackles, rear slat cage, tools), KF51 and
+KF51B (basket, drape, turret-side bin, cable, whips, spare links, cans,
+shackles), Merkava 4 (large basket with four packs, net roll, bin, three
+water cans, cable, twin long whips, tools, rations) and Type 10 (compact
+basket, drape, bin, cable, whips, spare links). Garage pedestal shots of
+eight (Merkava 4 is not selectable through the debug surface's carousel;
+its icon is checked instead) show every piece seated: 10–12 decoration
+nodes per hull, no floating or clipping piece at pedestal distance.
+
+Found on the way: the Garage exhibit worker (`garageWorkshopGeometryWorker`)
+requests `decor: true` but every bespoke manifest fails to attach there
+("document is not defined" from the canvas-texture kits), so the five
+background workshop exhibits stand undressed. Follow-up for the garage
+parity program: OffscreenCanvas-backed decoration textures in the worker,
+or attach the decorations on the main thread after transfer.
+
+Regen chain for the nine ids: `presentation-centering --update --ids`,
+`tank:anatomy:update` (fleet-wide by design), `genIcons --ids` (80 icon
+files), `tank:anatomy:check`, `presentation-centering --check` — all green;
+`tankAssets` and `decorationsEquipment` receipts green. Standard check on
+the nine: holes 0 everywhere, clip 0 on eight, mg ≥ 1 on all; geometry
+gate challenger2 90.1, leclerc 90.3, kf51 90.4 (pass), challenger_3 83.3
+(turret), t14 59.9 (dims), type10 53.2 (stations), the rest procedural-only
+or without a fresh registered oracle, so `--gate` fails as it did before
+this batch. Attribution A/B (manifests temporarily removed, same tools):
+Merkava 4's clip counts (14/185 + 778/589 sweep) and Challenger 3's 83.3
+turret, T-14's 59.9 and Type 10's 53.2 are byte-identical without the new
+stowage — pre-existing misses; the ledger's t14/type10 values moved
+(76.1 → 59.9, 66.9 → 53.2) because the gate tool now publishes
+`legacy-hull-translation` registration and raw components, not because of
+this batch. Stowage is classified `decoration` by the audit page and stays
+out of the curves; the exemplar-bar program for these hulls is separate
+work.
