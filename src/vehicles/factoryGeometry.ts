@@ -363,11 +363,36 @@ export function polyMultiLoft(
       (ringCenters[index][1] + ringCenters[index + 1][1]) * 0.5,
     ]);
   }
-  pushOrderedFan(positions, resolved[0], ringCenters[0], false, rings[0].centerHeight);
+  // sealed check 2026-09-13: the caps used to inherit the plan's winding, so a
+  // counter-clockwise plan (the T-14 roof) produced an inside-out lid whose top
+  // face was culled and let the camera look into the turret. Both caps are now
+  // oriented from their own geometry — outward regardless of plan order.
+  pushOrientedFan(positions, resolved[0], ringCenters[0], false, rings[0].centerHeight);
   const finalIndex = resolved.length - 1;
-  pushOrderedFan(positions, resolved[finalIndex], ringCenters[finalIndex], true,
+  pushOrientedFan(positions, resolved[finalIndex], ringCenters[finalIndex], true,
     rings[finalIndex].centerHeight);
   return geometryFromTriangles(positions);
+}
+
+/** Cap fan whose normal points up (top) or down (bottom) whatever the ring's winding. */
+function pushOrientedFan(
+  positions: number[],
+  ring: readonly Point3[],
+  center: Point2,
+  top: boolean,
+  centerHeight?: number,
+): void {
+  const [centerX, centerZ] = center;
+  const y = centerHeight ?? ring.reduce((sum, point) => sum + point[1], 0) / ring.length;
+  const centerPoint: Point3 = [centerX, y, centerZ];
+  for (let index = 0; index < ring.length; index++) {
+    const next = (index + 1) % ring.length;
+    const normalY = (ring[next][2] - ring[index][2]) * (centerX - ring[index][0])
+      - (ring[next][0] - ring[index][0]) * (centerZ - ring[index][2]);
+    const upward = normalY > 0;
+    if (upward === top) positions.push(...ring[index], ...ring[next], ...centerPoint);
+    else positions.push(...ring[next], ...ring[index], ...centerPoint);
+  }
 }
 
 export function straightRidgeGunMask({

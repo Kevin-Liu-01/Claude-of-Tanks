@@ -8,6 +8,7 @@
 // reference renders and real vehicle dimensions. They intentionally do not
 // contain, decode, or reproduce source mesh topology.
 import * as THREE from 'three';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from '../tankFactoryCore.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh, type VehicleLampKind } from '../vehicleNightLighting.ts';
@@ -975,6 +976,26 @@ export function orientedSlab(
   return outward >= 3
     ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
+}
+
+// sealed check 2026-09-13: a hexahedron whose two rings twist against each
+// other (the CV90 and Type 89 bow shoulders) is not a convex slab — some of
+// its six quads face inward whichever ring order is chosen, so orientedSlab's
+// mixed-ring rule leaves them and the camera looks into the shoulder. The
+// convex hull of the same eight corners is closed and outward by construction
+// (it fills the twist with a real edge instead of a warped quad).
+export function convexSlab(
+  ...points: readonly (readonly number[])[]
+): THREE.BufferGeometry {
+  if (points.length !== 8 || points.some((point) => point.length < 3)) {
+    throw new TypeError('convexSlab requires eight 3D corner points');
+  }
+  const geometry = new ConvexGeometry(points.map((p) => new THREE.Vector3(p[0], p[1], p[2])));
+  const position = geometry.getAttribute('position');
+  const uv: number[] = [];
+  for (let i = 0; i < position.count; i++) uv.push(position.getX(i), position.getZ(i));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  return geometry;
 }
 
 // MG-scale companion (§B3.1: "M2/NSVT get pinhole-class dark tips, not

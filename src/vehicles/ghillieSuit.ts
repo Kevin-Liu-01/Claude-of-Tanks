@@ -368,6 +368,10 @@ function makeCloth(
   mat.roughness = 1;
   mat.metalness = 0;
   mat.envMapIntensity = 0.08;
+  // sealed check 2026-09-13: the cloth strips are single quads; culled from
+  // behind they vanished as the camera orbited and exposed the hull through
+  // the suit. Cloth is seen from both sides.
+  mat.side = THREE.DoubleSide;
   mat.onBeforeCompile = vehicleAmbientFloorHook;
   mat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   return mat;

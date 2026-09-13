@@ -18,6 +18,15 @@ import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
 const SAMPLE_INTERVAL_MS = 110;
 const SAMPLE_BATCH_SIZE = 48;
 const SURFACE_LIFT_M = 0.022;
+// 2026-09-13 owner review ("the highlights are sometimes behind tank
+// surfaces — make them a little bigger than the tank"): the armour cells sit
+// on the structural plate, while skirts, stowage, ERA blocks and fittings
+// stand a few centimetres proud of it, so a coplanar highlight lost the depth
+// test against them. Every cell is now inflated about its own centroid by a
+// fixed radial distance before the per-face lift, which keeps neighbouring
+// faces of a cell connected (a per-face lift alone opens seams at the
+// edges) and puts the whole highlight shell just outside the visible hull.
+const CELL_INFLATE_M = 0.05;
 const MAX_QUERY_M = 820;
 
 const LOW = new THREE.Color(0xe53d35);
@@ -119,16 +128,24 @@ function buildFrameGeometry(cells: readonly ArmorOverlayCell[] | undefined): {
   const colors: number[] = [];
   const samples: ArmorOverlaySample[] = [];
   for (const cell of cells || []) {
+    const vertices = cell.vertices || [];
+    let cx = 0, cy = 0, cz = 0;
+    for (const point of vertices) { cx += point[0]; cy += point[1]; cz += point[2]; }
+    const inv = vertices.length ? 1 / vertices.length : 0;
+    cx *= inv; cy *= inv; cz *= inv;
     for (const face of cell.faces || []) {
       if (face.internal) continue;
       const offset = positions.length / 3;
       for (const index of face.indices) {
-        const point = cell.vertices[index];
+        const point = vertices[index];
         if (!point) continue;
+        const rx = point[0] - cx, ry = point[1] - cy, rz = point[2] - cz;
+        const radius = Math.hypot(rx, ry, rz);
+        const grow = radius > 1e-6 ? CELL_INFLATE_M / radius : 0;
         positions.push(
-          point[0] + face.normal[0] * SURFACE_LIFT_M,
-          point[1] + face.normal[1] * SURFACE_LIFT_M,
-          point[2] + face.normal[2] * SURFACE_LIFT_M,
+          point[0] + rx * grow + face.normal[0] * SURFACE_LIFT_M,
+          point[1] + ry * grow + face.normal[1] * SURFACE_LIFT_M,
+          point[2] + rz * grow + face.normal[2] * SURFACE_LIFT_M,
         );
         colors.push(NEUTRAL.r, NEUTRAL.g, NEUTRAL.b);
       }

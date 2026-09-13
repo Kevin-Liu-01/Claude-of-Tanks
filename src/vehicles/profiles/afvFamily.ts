@@ -7,7 +7,7 @@
 
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore, muzzleTipDot } from './kit.ts';
 import {
   BRADLEY_UPPER_GLACIS_SURFACE,
   buildBradley,
@@ -1144,9 +1144,12 @@ function buildBMP3(P: AfvBuilderPort): void {
                                                                                 //   run-2 side worst -3.38/-3.28;
                                                                                 //   §B4 keeps x>1.05 clear of the
                                                                                 //   wrap below y 1.26)
-  P.add('hull', frustum(1.28, -3.44, -3.30, 1.31, -3.57, -3.46, 1.65, 1.73));  // stern deck step to 1.73
+  // sealed check 2026-09-13: front/rear z were given rear-first, which winds the
+  // rings the wrong way and turns both stern pieces inside-out (culled faces let
+  // the camera look into the hull from behind). Same shapes, outward faces.
+  P.add('hull', frustum(1.28, -3.30, -3.44, 1.31, -3.46, -3.57, 1.65, 1.73));  // stern deck step to 1.73
   P.add('hull', box(2.56, 0.09, 0.55), 0, 1.60, -3.02);                        // engine deck shoulder band
-  P.add('hull', frustum(1.02, -3.18, -3.06, 1.02, -3.53, -3.43, 0.35, 0.66));  // stern underside rise — capped
+  P.add('hull', frustum(1.02, -3.06, -3.18, 1.02, -3.43, -3.53, 0.35, 0.66));  // stern underside rise — capped
                                                                                 //   BETWEEN the tracks (§B4: the
                                                                                 //   1.28 rear taper sat in the
                                                                                 //   sprocket wrap, 35 vox)
@@ -1365,7 +1368,7 @@ function buildUpior(P: AfvBuilderPort): void {
     [-0.70, 0.92, 2.555], [0.70, 0.92, 2.555], [0.70, 1.02, 2.38], [-0.70, 1.02, 2.38])); // the body read; x +-0.70
                                                                                 //   clears the wrap lanes (SS-B4)
   for (const s of [-1, 1]) {
-    P.add('hull', orientedSlab(                                                 // bow corner facets
+    P.add('hull', convexSlab(                                                   // bow corner facets (sealed check 2026-09-13: twisted rings → convex hull)
       [s * 1.46, 0.45, 1.85], [s * 1.155, 0.45, 2.42], [s * 1.155, 0.45, 2.22], [s * 1.46, 0.45, 2.06],
       [s * 1.46, 1.43, 1.85], [s * 1.155, 1.40, 2.34], [s * 1.155, 1.40, 2.18], [s * 1.46, 1.43, 2.04]));
     P.add('hullDark', box(0.10, 0.16, 0.05), s * 0.62, 0.82, 2.545);           // tow shackle plates ON the beam
@@ -1385,7 +1388,7 @@ function buildUpior(P: AfvBuilderPort): void {
   P.add('hull', frustum(0.70, -2.42, -2.52, 0.72, -2.10, -2.20, 0.25, 0.45));  //   tracks + underside rise (§B4:
                                                                                 //   the sprocket wrap lanes)
   for (const s of [-1, 1]) {
-    P.add('hull', orientedSlab(                                                 // stern corner facets
+    P.add('hull', convexSlab(                                                   // stern corner facets (sealed check 2026-09-13: twisted rings → convex hull)
       [s * 1.155, 0.45, -2.42], [s * 1.46, 0.45, -1.85], [s * 1.46, 0.45, -2.06], [s * 1.155, 0.45, -2.22],
       [s * 1.155, 1.47, -2.48], [s * 1.46, 1.43, -1.85], [s * 1.46, 1.43, -2.04], [s * 1.155, 1.47, -2.26]));
     // twin door leaves ON the stern plates (§5.269 relief law, flat seat)

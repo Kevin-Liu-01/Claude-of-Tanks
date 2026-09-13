@@ -2523,27 +2523,19 @@ export function buildBradley(P: Modern3BuilderPort) {
   };
   buildBradleyHullStage1();                         // tub y 0.45..1.05, clear of the shoe inner faces
   const buildBradleyHullStage2 = (): void => {
-    for (const s of [-1, 1]) {                                                    // flare slabs over the tracks
-      P.add('hull', slab(                                                          // 90-ladder: bottom edge 1.13 ->
-        [s < 0 ? -1.05 : 1.02, 1.25, 2.55], [s < 0 ? -1.02 : 1.05, 1.25, 2.55],    // 1.25 — the idler re-seat (y 0.81)
-        [s < 0 ? -1.02 : 1.05, 1.25, -3.20], [s < 0 ? -1.05 : 1.02, 1.25, -3.20],  // puts the band apex at 1.219;
-                                                                                   // edge is side/front-interior. LEFT
-                                                                                   // flare ends at the print's -1.51
-        [s < 0 ? -1.49 : 1.55, 1.62, 2.30], [s < 0 ? -1.42 : 1.62, 1.62, 2.30],    // (r2 front read)
-        [s < 0 ? -1.42 : 1.55, 1.62, s < 0 ? -2.94 : -2.96],                       // (r4: LEFT top-rear pulled -3.24
-        [s < 0 ? -1.49 : 1.55, 1.62, s < 0 ? -2.94 : -2.96]));                     //   -> -2.94 — the ref left flank
-                                                                                   //   (r3: right REAR-top x 1.62 ->
-                                                                                   //   1.55 — the ref st1 flank reads
-                                                                                   //   1.55; its 1.64 line is st2+)
-                                                                                   //   (r2: RIGHT top-rear -3.24 ->
-                                                                                   //   -2.96 too: the 1.62 edge lit the
-                                                                                   //   plan 1.595 col to -3.24 where
-                                                                                   //   the ref flank ends -2.97)
-                                                                                   //   plan band ends -2.95; the -1.44
-                                                                                   //   col read my flare to -3.25.
-                                                                                   //   Stern corner caps + bumperette
-                                                                                   //   own the rear-left top-down
-                                                                                   //   corner like the ref's)
+    // Owner review 2026-09-13 (gallery surface markup on the right flank):
+    // the sponson used to be one long angled "flare" slab from the tub side
+    // up to the hull edge, cut on the diagonal at the stern — a slanted band
+    // in permanent shade with open triangles at its ends. The real M2 sponson
+    // is a shelf: a flat floor over the tracks and a vertical outer wall up
+    // to the roof edge. Two axis-aligned plates per side, full length, both
+    // ends closed. The outer edges keep the flank datums the skirts, camber
+    // slabs and appliqué were lined up against (1.55/1.62 right, 1.42/1.49
+    // left).
+    for (const s of [-1, 1]) {
+      const outer = s < 0 ? 1.49 : 1.62, wall = s < 0 ? 1.42 : 1.55, inner = 1.02;
+      P.add('hull', box(outer - inner, 0.05, 5.75), s * (inner + outer) / 2, 1.245, -0.325);   // sponson floor y 1.22..1.27
+      P.add('hull', box(outer - wall, 0.42, 5.75), s * (wall + outer) / 2, 1.43, -0.325);      // outer wall y 1.22..1.64
     }
   };
   buildBradleyHullStage2();
@@ -2638,6 +2630,15 @@ export function buildBradley(P: Modern3BuilderPort) {
                                                                                   //   toe 3.02 -> 2.95 — the same
                                                                                   //   -0.46 ref plane continues)
     P.add('hull', box(1.30, 0.12, 0.24), 0, 1.30, 3.05);                          // nose shelf center -> 3.17
+    // sealed check 2026-09-13: the lower-glacis toe (z 2.80..2.85) and the nose
+    // shelf (z 2.93..) left an 8 cm slot across the bow that looked straight
+    // down onto the tub. A flush filler under the toe closes it.
+    P.add('hull', box(1.42, 0.06, 0.18), 0, 1.27, 2.88);
+    // sealed check 2026-09-13: below the nose shelf the bow was open between
+    // the tub's front face (z 2.375) and the shelf — a low front view looked
+    // into the tub. A raked lower bow plate closes it, tub-wide so it stays
+    // clear of the idler lanes.
+    P.add('hull', frustum(0.86, 2.40, 2.30, 0.86, 3.10, 2.98, 0.45, 1.24));
     // 90-ladder corner-slab re-cut (fresh registered plan cols): the ref bow
     // runs center ~3.18 -> corners 3.26 with the RIGHT corner band out to
     // x 1.52+ (plan 1.447/1.521 cols front 3.258) while the LEFT corner stays

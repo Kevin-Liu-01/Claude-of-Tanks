@@ -954,9 +954,11 @@ function buildUAT64BV(P: UkraineBuilderPort): void {
   // TKN blocks; low right gunner hatch keeps the low right roof.
   P.add('turret', box(0.46, 0.20, 0.78), -0.66, 0.68, 0.00, 0, 0, -0.03);
   P.add('turret', box(0.42, 0.16, 0.62), -0.66, 0.83, -0.03, 0, 0, -0.03);
+  // sealed check 2026-09-13: same counter-clockwise roof wedge as the T-64BV1
+  // donor — inside-out, its top face culled. Same corners, clockwise.
   P.add('turret', slab(
-    [-0.20, 0.64, 0.27], [-0.45, 0.64, 0.29], [-0.45, 0.64, -0.39], [-0.20, 0.64, -0.37],
-    [-0.20, 0.72, 0.27], [-0.45, 0.87, 0.29], [-0.45, 0.87, -0.39], [-0.20, 0.72, -0.37]));
+    [-0.20, 0.64, 0.27], [-0.20, 0.64, -0.37], [-0.45, 0.64, -0.39], [-0.45, 0.64, 0.29],
+    [-0.20, 0.72, 0.27], [-0.20, 0.72, -0.37], [-0.45, 0.87, -0.39], [-0.45, 0.87, 0.29]));
   P.add('turret', cylY(0.250, 0.268, 0.070, 18), -0.67, 0.825, -0.05);
   P.add('turretDark', cylY(0.212, 0.212, 0.024, 18), -0.67, 0.852, -0.05);
   for (const [gx, gz, gry] of [[-0.50, 0.23, 0.35], [-0.67, 0.27, 0], [-0.84, 0.23, -0.35]]) {

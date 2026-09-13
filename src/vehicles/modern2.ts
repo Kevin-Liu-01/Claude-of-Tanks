@@ -2784,7 +2784,10 @@ function buildT14HullBody(P: Modern2BuilderPort) {
   // old 4.335 tip 2 mm past the 4.313 window edge — a whole ONLY-PROC err-9
   // bow column on both side rows; the ref's own mask ends 4.318. Front body
   // col is now 4.252-centered, hullLengthM ~8.62 = -0.9% inside grace.)
-  P.add('hull', frustum(1.06, 3.58, 3.62, 1.06, 3.92, 4.24, 0.43, 0.82));       // raked lower bow, center lane
+  // sealed check 2026-09-13: front/rear z were swapped, which wound both rings
+  // the wrong way and turned the raked bow inside-out (its face was culled and
+  // the camera looked into the hull from the front). Same shape, outward faces.
+  P.add('hull', frustum(1.06, 3.62, 3.58, 1.06, 4.24, 3.92, 0.43, 0.82));       // raked lower bow, center lane
   for (const s of [-1, 1]) P.add('hullDetail', box(1.0, 0.05, 0.085), s * 0.52, 1.545, 2.52, -0.154, s * 0.45, 0); // splash V on the plane
   for (const s of [-1, 1]) {
     P.add('hullShadow', new THREE.BoxGeometry(0.50, 0.026, 7.6), s * 1.58, 1.655, -0.35);
@@ -3004,12 +3007,15 @@ function buildT14TurretShell(P: Modern2BuilderPort): T14TurretStage {
   // heights was TRIED and measured turret 76.1 (flat), whole 77.5 -> 77.2,
   // stations 84.6 -> 83.8: the ref's 2.474 read is a NARROW shroud-edge
   // feature, not a 0.84-wide plate. Reverted; the flat chin stands.
+  // sealed check 2026-09-13: both chin slabs were wound counter-clockwise in
+  // plan (rear edge first), which turns slab() inside-out — their top faces
+  // were culled and read as a dark sunken trough. Same corners, clockwise.
   P.add('turret', slab(
-    [-0.66, AH, 1.242], [0.66, AH, 1.242], [0.42, 0.525, 1.678], [-0.42, 0.525, 1.678],
-    [-0.66, AH + 0.005, 1.273], [0.66, AH + 0.005, 1.273], [0.42, 0.585, 1.694], [-0.42, 0.585, 1.694]));
+    [-0.66, AH, 1.242], [-0.42, 0.525, 1.678], [0.42, 0.525, 1.678], [0.66, AH, 1.242],
+    [-0.66, AH + 0.005, 1.273], [-0.42, 0.585, 1.694], [0.42, 0.585, 1.694], [0.66, AH + 0.005, 1.273]));
   P.add('turret', slab(                                                          // flat apex tip over the trough
-    [-0.42, 0.525, 1.678], [0.42, 0.525, 1.678], [0.30, 0.525, 1.911], [-0.30, 0.525, 1.911],
-    [-0.42, 0.585, 1.694], [0.42, 0.585, 1.694], [0.30, 0.585, 1.896], [-0.30, 0.585, 1.896]));
+    [-0.42, 0.525, 1.678], [-0.30, 0.525, 1.911], [0.30, 0.525, 1.911], [0.42, 0.525, 1.678],
+    [-0.42, 0.585, 1.694], [-0.30, 0.585, 1.896], [0.30, 0.585, 1.896], [0.42, 0.585, 1.694]));
   // One shallow connected crown follows the actual cheek perimeter. The old
   // 1.90 x 1.91 rectangle bridged straight across the diagonal shoulders and
   // made the roof read as a square lid. This ten-station cap instead narrows

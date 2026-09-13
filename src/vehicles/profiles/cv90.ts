@@ -7,7 +7,7 @@
 // or configured derivative of the other.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, muzzleBore, muzzleTipDot, orientedSlab, convexSlab } from './kit.ts';
 import {
   ADVANCED_IFV_SCALE,
   applyAdvancedIfvScale,
@@ -179,7 +179,7 @@ function buildCv90RunningGear(P: CvBuilderPort): void {
     // One closed shoulder cell replaces the two detached bow panels. Its
     // inner upper edge shares the upper-glacis/roof break and its aft edge
     // shares the skirt carrier nose, producing one continuous Swedish bow.
-    P.addExternalArmor('hull', orientedSlab(
+    P.addExternalArmor('hull', convexSlab(                                    // sealed check 2026-09-13: twisted rings → convex hull
       [side * 1.02, 1.25, 3.28], [side * 1.49, 1.78, 1.76],
       [side * 1.71, 1.42, 2.28], [side * 1.70, 1.25, 3.28],
       [side * 1.12, 1.27, 3.28], [side * 1.73, 1.81, 1.76],
@@ -465,7 +465,7 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
   for (const side of [-1, 1]) {
     // A single deep shoulder replaces the detached upper and lower panels.
     // It shares vertices with the upper glacis, deck cell, fender and skirt.
-    P.addExternalArmor('hull', orientedSlab(
+    P.addExternalArmor('hull', convexSlab(                                    // sealed check 2026-09-13: twisted rings → convex hull
       [side * 1.07, 1.30, 3.49], [side * 1.61, 1.91, 1.72],
       [side * 1.85, 1.43, 2.44], [side * 1.82, 1.30, 3.49],
       [side * 1.16, 1.32, 3.49], [side * 1.88, 1.95, 1.72],

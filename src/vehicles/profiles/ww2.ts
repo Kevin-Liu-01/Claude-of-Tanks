@@ -2195,6 +2195,14 @@ function buildTigerI(P: Ww2BuilderPort): void {
   P.addGunExtra(box(2.48, 0.78, 0.14), 0, 0, 0.12);                          // sealing backplate
   P.addGunExtra(xform2(cylY(0.37, 0.37, 2.46, msg, false, -1.25, 2.5),
     0, 0, 0, 0, 0, Math.PI / 2), 0, 0, 0.13);                                // curved shield
+  // sealed check 2026-09-13: a partial cylinder has no faces on its two arc
+  // cuts, so the shield was open along its top and bottom edges and the
+  // camera looked into it from above. Two thin plates close the cuts, each
+  // running from the trunnion axis to the arc end (theta ±1.25 rad).
+  for (const s of [-1, 1]) {
+    P.addGunExtra(xform2(box(2.46, 0.37, 0.02), 0, 0, 0, s * 0.3204, 0, 0),
+      0, s * 0.1756, 0.188);                                                 // arc-cut closing plate
+  }
   [-1, 1].forEach((s) => {
     P.addGunExtra(xform2(cylX(0.16, 0.18, 12), 0, 0, 0), s * 1.15, 0, 0.30); // trunnion bosses
   });

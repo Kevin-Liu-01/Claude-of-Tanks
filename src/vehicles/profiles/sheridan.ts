@@ -165,7 +165,15 @@ function measuredRingLoft(rings: readonly MeasuredRing[]): THREE.BufferGeometry 
     ];
     for (let i = 0; i < count; i++) {
       const j = (i + 1) % count;
-      if (top) tri(loop[i], loop[j], center);
+      // sealed check 2026-09-13: orient each fan triangle from its own
+      // geometry so the cap faces outward whatever the ring's winding — the
+      // measured rings run clockwise in plan and the old order-based cap put
+      // the turret roof inside-out (culled from above, the crew compartment
+      // showed through the roof).
+      const normalY = (loop[j][2] - loop[i][2]) * (center[0] - loop[i][0])
+        - (loop[j][0] - loop[i][0]) * (center[2] - loop[i][2]);
+      const upward = normalY > 0;
+      if (upward === top) tri(loop[i], loop[j], center);
       else tri(loop[j], loop[i], center);
     }
   };

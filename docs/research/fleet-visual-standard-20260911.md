@@ -328,3 +328,69 @@ transferred geometry anyway — and every piece seats. Receipt: the staging
 receipt attaches a full default manifest with `document` removed, counts
 pieces and asserts no texture was created. Garage shot: the background
 exhibits carry baskets, cables, cans and antennas like the pedestal tank.
+
+## Addendum 2026-09-13 (l) — "you can't look into tanks": the sealed-hull check
+
+Owner review: the Abrams X could be seen through at the front and back, the
+M2A2 Bradley carried an angled flank piece "causing weirdness", and the armour
+highlights sometimes hid behind tank surfaces. Rather than fix three tanks by
+eye, the fleet now has a machine check.
+
+**Tool.** `tools/tank-sealed-check.mjs` builds every playable tank first-party
+in node (the canvas shim gives painted materials their shipped `side`,
+`alphaTest` and `transparent`) and software-rasterises it from 33 exterior
+directions (cube faces, edges and corners plus 12° and 30° chase rings). For
+each pixel the nearest opaque triangle decides: a front face is sealed; a back
+face with no front face within 8 cm behind it is an **opening** (the camera
+looks into the hull); a back face with a front face just behind is an
+**inside-out** thin part (its visible face is culled, its edges leak); pixels
+covered only by transparent or alpha-cut surfaces are **see-through** (glass,
+nets, mesh — reported, never gated). Mirrored placements flip the facing test
+exactly as the GPU does, coincident seams between adjacent plane-bounded
+solids are tolerated to 4 mm, decals are not surfaces, and BatchedMesh
+running gear is read per instance. `--column`/`--ray` list every triangle a
+ray crosses with FRONT/back and owning mesh; `--clusters` prints world-space
+cluster centres; `--images` writes per-view PNGs.
+
+**Census.** Before any fix: 143 of 181 tanks sealed, 63 079 opening pixels and
+205 747 inside-out pixels across the fleet. After this pass: 155 sealed, 8 088
+opening pixels (−87 %), 116 125 inside-out. Every remaining open tank is under
+550 pixels (the Bradley family's track lanes seen end-on from directly behind,
+small bow-corner slivers) except the UA T-64BV (755 px, hull only after its roof wedge fix).
+
+**What was actually wrong** (each pattern recurred across builders):
+
+- Cap fans that inherited the plan's winding: `polyMultiLoft` (T-14 roof,
+  ZTZ99A2 / prototype / VT-4 shoulders) and the Sheridan `measuredRingLoft`
+  (M551 / M551A1 TTS roof) put their lids inside-out — culled from above, the
+  crew compartment showed through the roof. Both fans now orient from geometry.
+- `frustum()` given rear-first z wound both rings the wrong way: the T-14
+  raked bow and both BMP-3 stern pieces were inside-out.
+- `slab()` corners listed counter-clockwise in plan: the T-14 chin slabs and
+  the T-64BV roof wedge.
+- The Abrams X commander lid lathe profile ran the wrong way (all faces
+  inward); the SEP v3 X / TUSK X / SEP v2 X hatch openings came from it.
+- The Tiger I mantlet is a partial cylinder — its two arc cuts had no faces,
+  so the shield was open along its top edge.
+- Twisted eight-corner shoulders (CV90, CV90 MkIV, Type 89 Light Tiger skirt
+  and shoulder, Upiór bow and stern facets) defeat `orientedSlab`'s
+  mixed-ring rule; `KIT.convexSlab` builds the convex hull of the same corners.
+- `canvasCloth` was single-sided: ghillie strips, tarps and aprons vanished
+  from behind. Cloth is now DoubleSide.
+- Bradley (owner markup): the angled full-length "flare" slab, cut on the
+  diagonal at the stern, is now a flat sponson floor plus a vertical outer
+  wall (same flank datums); the 8 cm slot between the lower-glacis toe and
+  the nose shelf and the open lower bow are closed.
+
+**Gate.** `docs/geometry-gate/sealed.json` holds each tank's opening and
+inside-out pixel totals. `tools/tank-release-plan.mjs` runs
+`tank-sealed-check --ledger … --gate` per id right after the standard check: a
+sealed tank must stay sealed and no tank may add more than max(12 px, 10 %)
+of openings. `tools/tank-sealed-check.selftest.mjs` (pre group) proves the
+rasteriser on a closed, an inside-out and a mirrored box, and holds the M1A2
+and Abrams X to the ledger.
+
+**Armour highlights.** `armorAimOverlay` inflates every collision cell about
+its centroid by 5 cm before the 2.2 cm face lift, so the green/red highlight
+shell sits just outside skirts, stowage and fittings instead of losing the
+depth test to them (owner: "make them a little bigger than the tank").

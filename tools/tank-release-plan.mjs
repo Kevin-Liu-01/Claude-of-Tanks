@@ -11,6 +11,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     // the integrated test/build tail. Same assertions and fresh measurements;
     // only ordering changes. This child already queues its render phases.
     {...cpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
+    // Sealed hull (2026-09-13): no view may look into the tank through a culled
+    // or missing face; each id is held to docs/geometry-gate/sealed.json.
+    cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
     ...(gate ? [gpu('procedural-fidelity',selected,'--check','--board','--neutral-board')] : []),
     cpu('gen-combat-anatomy','--check'),
     gpu('presentation-centering','--check',selected),

@@ -2166,9 +2166,12 @@ function buildT64BV1(P: RussiaBuilderPort): void {
   P.add('turret', box(0.46, 0.30, 0.78), -0.66, 0.63, 0.03, 0, 0, -0.03);
   P.add('turret', box(0.42, 0.18, 0.26), -0.64, 0.60, -0.49, 0, 0, -0.03);
   P.add('turret', box(0.42, 0.16, 0.62), -0.66, 0.83, 0.00, 0, 0, -0.03);
+  // sealed check 2026-09-13: this roof wedge was wound counter-clockwise in plan
+  // and came out inside-out (its top face culled, the camera looked into the
+  // turret through the left roof). Same corners, clockwise.
   P.add('turret', slab(
-    [-0.20, 0.64, 0.30], [-0.45, 0.64, 0.32], [-0.45, 0.64, -0.36], [-0.20, 0.64, -0.34],
-    [-0.20, 0.72, 0.30], [-0.45, 0.895, 0.32], [-0.45, 0.895, -0.36], [-0.20, 0.72, -0.34]));
+    [-0.20, 0.64, 0.30], [-0.20, 0.64, -0.34], [-0.45, 0.64, -0.36], [-0.45, 0.64, 0.32],
+    [-0.20, 0.72, 0.30], [-0.20, 0.72, -0.34], [-0.45, 0.895, -0.36], [-0.45, 0.895, 0.32]));
   P.add('turret', cylY(0.250, 0.268, 0.085, 18), -0.67, 0.945, -0.02);
   P.add('turretDark', cylY(0.212, 0.212, 0.028, 18), -0.67, 0.975, -0.02);
   P.add('turretDetail', box(0.09, 0.05, 0.06), -0.67, 0.955, 0.24);

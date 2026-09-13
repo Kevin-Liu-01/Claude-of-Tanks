@@ -6,7 +6,7 @@
 // from the repository's procedural primitives.
 
 import * as THREE from 'three';
-import { KIT, FITTINGS, muzzleBore, muzzleTipDot, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, muzzleBore, muzzleTipDot, orientedSlab, convexSlab } from './kit.ts';
 import {
   applyAdvancedIfvScale,
   type AdvancedIfvScalePort,
@@ -129,13 +129,17 @@ function addHull(P: LightTigerBuilderPort): void {
 function addRunningGearSide(P: LightTigerBuilderPort, side: number): void {
   // The layered skirt begins at the real track envelope and folds into the
   // upper-glacis shoulder, keeping the side profile sealed without shoe clips.
-  P.addExternalArmor('hull', orientedSlab(
+  // sealed check 2026-09-13: these rings were listed in bow-tie order (both
+  // z=2.42 corners, then both z=3.27 corners), so the slab's quads crossed
+  // themselves and its faces pointed both ways; the convex hull of the same
+  // corners is the intended folded plate, closed and outward.
+  P.addExternalArmor('hull', convexSlab(
     [side * 1.71, 0.91, 2.42], [side * 1.87, 0.91, 2.42],
     [side * 1.69, 0.45, 3.27], [side * 1.85, 0.45, 3.27],
     [side * 1.71, 1.82, 2.42], [side * 1.87, 1.82, 2.42],
     [side * 1.69, 1.27, 3.27], [side * 1.85, 1.27, 3.27],
   ));
-  P.addExternalArmor('hull', orientedSlab(
+  P.addExternalArmor('hull', convexSlab(                                      // sealed check 2026-09-13: twisted rings → convex hull
     // One continuous planar shoulder replaces the detached triangular cap.
     // Its inner rail overlaps the upper-glacis edge, its outer rail keys
     // into the folded skirt, and both rails share the same descending bow

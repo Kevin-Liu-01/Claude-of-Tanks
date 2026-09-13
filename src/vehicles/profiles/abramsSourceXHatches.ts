@@ -8,7 +8,10 @@ export function abramsCommanderLid(high: boolean): THREE.BufferGeometry {
   const profile = [[0, 2.612065], [.259735, 2.612065], [.264525, 2.607615],
     [.264525, 2.559225], [.254550, 2.554775], [.220, 2.570175],
     [.130, 2.589425], [.072, 2.606215], [0, 2.606215], [0, 2.612065]];
-  return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), high ? 48 : 32)
+  // sealed check 2026-09-13: traced top-to-rim-to-centre this profile lathes
+  // inside-out (its lid face was culled and the camera saw the dished
+  // underside); the reversed run gives outward normals with the same shape.
+  return new THREE.LatheGeometry(profile.reverse().map(([r, y]) => new THREE.Vector2(r, y)), high ? 48 : 32)
     .scale(1, 1, .242795 / .264525).translate(-.5084, 0, -.322517);
 }
 

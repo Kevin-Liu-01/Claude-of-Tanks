@@ -2554,6 +2554,10 @@ export function createTankMaterials(
       : 0x42452f,
     roughness: 0.97, metalness: 0.0,
     bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    // sealed check 2026-09-13: cloth is thin and seen from both sides —
+    // single-sided ghillie strips, tarps and aprons vanished from behind and
+    // exposed the hull through the suit as the camera orbited.
+    side: THREE.DoubleSide,
   })));
   // The T-72B3M family uses broad modeled canvas aprons and bustle packs.
   // Keep those surfaces map-free (the profile owns that rule), but tint the
