@@ -318,6 +318,21 @@ interface ShellExpiredEvent {
   pos?: Vec3Tuple;
 }
 
+/** frontline atmosphere 2026-09-12: the distant front's events, positions in world metres. */
+interface AtmosphereArtilleryEvent { pos?: Vec3Tuple; size?: number; }
+interface AtmosphereFlakEvent { pos?: Vec3Tuple; delayS?: number; }
+interface AtmosphereFlyoverEvent { p0?: Vec3Tuple; v?: Vec3Tuple; durationS?: number; }
+
+interface FlyoverDrone {
+  voice: OneShotVoice;
+  oscillators: OscillatorNode[];
+  baseHz: number[];
+  p0: Vec3Tuple;
+  v: Vec3Tuple;
+  t0: number;
+  endAt: number;
+}
+
 interface TankFireEvent { id: string; burning?: boolean }
 interface TankSpottedEvent { id: string; team?: string; spotterId?: string | null }
 interface ConsumableEvent { slot?: number }
@@ -1651,6 +1666,80 @@ export function createAudio({
   function dirtImpact(x: number, y: number, z: number): void {
     if (sfxReady) { bakedDirtImpact(x, y, z); return; }
     synthDirtImpact(x, y, z);
+  }
+
+  // ------------------------------------------------ frontline atmosphere ---
+  // These read from 600-1300 m, far past the combat distance law, so they
+  // carry their own long-range gain floors; travel delay and the distance
+  // lowpass are the same physics every other world sound uses.
+
+  /** Distant gun: a delayed low rumble with a soft crack in front of it. */
+  function distantGunRumble(x: number, y: number, z: number, size: number): void {
+    const s = spat(x, y, z);
+    const k = Math.min(1.4, Math.max(0.3, size));
+    const gain = Math.min(0.30, Math.max(0.05, 0.26 * k * (650 / Math.max(s.dist, 350))));
+    const when = ctx!.currentTime + 0.01 + travelDelay(s.dist);
+    const v = spawnVoice(when, 2.4 * k, gain, s.pan * 0.9, ambientBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    wire(v, nsrc(v, when, 0.10), flt('bandpass', 620, 0.9), env(when, 0.004, 0.35, 0.09), lp);
+    wire(v, nsrc(v, when + 0.02, 1.9 * k), flt('lowpass', 170, 0.7), env(when + 0.02, 0.03, 1.0, 1.5 * k), lp);
+    const sub = osrc(v, 'sine', 46 / Math.sqrt(k), when + 0.02, 1.6 * k);
+    sub.frequency.exponentialRampToValueAtTime(27, when + 1.2 * k);
+    wire(v, sub, env(when + 0.02, 0.02, 0.6, 1.3 * k), lp);
+  }
+
+  /** Flak burst: a short high crack and a small thump, staggered per burst. */
+  function flakCrack(x: number, y: number, z: number, delayS: number): void {
+    const s = spat(x, y, z);
+    const gain = Math.min(0.20, Math.max(0.03, 0.18 * (420 / Math.max(s.dist, 220))));
+    const when = ctx!.currentTime + 0.01 + Math.max(0, delayS) + travelDelay(s.dist);
+    const v = spawnVoice(when, 0.5, gain, s.pan, ambientBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    wire(v, nsrc(v, when, 0.07), flt('bandpass', 1650, 1.1), env(when, 0.002, 1.0, 0.06), lp);
+    const thump = osrc(v, 'sine', 118, when + 0.01, 0.16);
+    thump.frequency.exponentialRampToValueAtTime(64, when + 0.14);
+    wire(v, thump, env(when + 0.01, 0.004, 0.45, 0.13), lp);
+  }
+
+  const flyoverDrones: FlyoverDrone[] = [];
+  const FLYOVER_DRONE_CAP = 2;
+
+  /** Aircraft pass: two detuned saw voices under a lowpass, moved and Doppler-shifted per frame. */
+  function startFlyoverDrone(p0: Vec3Tuple, vel: Vec3Tuple, durationS: number): void {
+    if (flyoverDrones.length >= FLYOVER_DRONE_CAP) return;
+    const now = ctx!.currentTime;
+    const dur = Math.min(60, Math.max(4, durationS)) + 2.5;
+    const v = spawnVoice(now, dur, 0.02, 0, ambientBus);
+    const lp = flt('lowpass', 740, 0.9);
+    lp.connect(v.in);
+    const baseHz = [61, 63.5, 122];
+    const oscillators = baseHz.map((hz, i) => {
+      const osc = osrc(v, i === 2 ? 'triangle' : 'sawtooth', hz, now, dur);
+      wire(v, osc, env(now, 1.4, i === 2 ? 0.28 : 0.55, dur - 1.4), lp);
+      return osc;
+    });
+    flyoverDrones.push({ voice: v, oscillators, baseHz, p0, v: vel, t0: now, endAt: now + dur });
+  }
+
+  function updateFlyoverDrones(now: number): void {
+    for (let i = flyoverDrones.length - 1; i >= 0; i--) {
+      const d = flyoverDrones[i];
+      if (now >= d.endAt || d.voice.dead) { flyoverDrones.splice(i, 1); continue; }
+      const t = now - d.t0;
+      const px = d.p0[0] + d.v[0] * t, py = d.p0[1] + d.v[1] * t, pz = d.p0[2] + d.v[2] * t;
+      const s = spat(px, py, pz);
+      const dx = px - lx, dy = py - ly, dz = pz - lz;
+      const radial = (d.v[0] * dx + d.v[1] * dy + d.v[2] * dz) / Math.max(s.dist, 1);
+      const ratio = Math.min(1.3, Math.max(0.74, SPEED_OF_SOUND_MPS / (SPEED_OF_SOUND_MPS + radial)));
+      const gain = Math.min(0.34, Math.max(0.015, 0.30 * (360 / Math.max(s.dist, 140))));
+      d.voice.in.gain.setTargetAtTime(gain, now, 0.18);
+      d.voice.pan.pan.setTargetAtTime(s.pan, now, 0.18);
+      for (let k = 0; k < d.oscillators.length; k++) {
+        d.oscillators[k].frequency.setTargetAtTime(d.baseHz[k] * ratio, now, 0.12);
+      }
+    }
   }
 
   /** Shell ending in open water: no baked sample exists, the splash is always synthesized. */
@@ -2998,6 +3087,16 @@ export function createAudio({
         });
       }
     });
+    // frontline atmosphere 2026-09-12: the war beyond the map edge.
+    on<AtmosphereArtilleryEvent>('atmosphere:artillery', (event) => {
+      if (ctx && event?.pos) distantGunRumble(event.pos[0], event.pos[1], event.pos[2], event.size ?? 0.6);
+    });
+    on<AtmosphereFlakEvent>('atmosphere:flak', (event) => {
+      if (ctx && event?.pos) flakCrack(event.pos[0], event.pos[1], event.pos[2], event.delayS ?? 0);
+    });
+    on<AtmosphereFlyoverEvent>('atmosphere:flyover', (event) => {
+      if (ctx && event?.p0 && event.v) startFlyoverDrone(event.p0, event.v, event.durationS ?? 20);
+    });
     on<ReloadEvent>('player:reload', onReload);
     on<TankDestroyedEvent>('tank:destroyed', (event) => {
       if (ctx) onTankDestroyed(event);
@@ -3370,6 +3469,7 @@ export function createAudio({
     updateListenerPose(listener);
     const now = ctx!.currentTime;
     pruneFinishedVoices(now);
+    updateFlyoverDrones(now);
     radio.update();
     if (!tanks) return;
     indexTankAudioState(tanks);

@@ -1,0 +1,120 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
+import {
+  createFrontlineAtmosphere, FRONTLINE_INTENSITY, FRONTLINE_LIMITS, resolveFrontBearingDeg,
+} from './frontlineAtmosphere.ts';
+import { MAP_IDS } from './maps/catalog.ts';
+
+// Every map has an authored front (0 = silent) and nothing leaves [0, 1].
+assert.deepEqual(Object.keys(FRONTLINE_INTENSITY).sort(), [...MAP_IDS].sort(), 'one intensity per map, no strays');
+for (const id of MAP_IDS) {
+  const k = FRONTLINE_INTENSITY[id];
+  assert.ok(k >= 0 && k <= 1, `${id}: intensity ${k} inside [0, 1]`);
+}
+assert.ok(FRONTLINE_INTENSITY.frontier > FRONTLINE_INTENSITY.verdant && FRONTLINE_INTENSITY.verdant > FRONTLINE_INTENSITY.whiteout,
+  'front is loudest where the map is a front');
+
+// Bearing: from the player spawn toward the enemy centroid, fallback otherwise.
+assert.equal(resolveFrontBearingDeg({ player: { pos: [0, 0, 0] }, enemies: [{ pos: [0, 0, 100] }] }, 7), 0);
+assert.equal(Math.round(resolveFrontBearingDeg({ player: { pos: [0, 0, 0] }, enemies: [{ pos: [100, 0, 0] }] }, 7)), 90);
+assert.equal(resolveFrontBearingDeg({ player: { pos: [0, 0, 0] }, enemies: [] }, 7), 7);
+assert.equal(resolveFrontBearingDeg(null, 33), 33);
+
+function make(seedBus) {
+  const parent = new THREE.Group();
+  const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.5, 4000);
+  camera.position.set(0, 30, -200);
+  const events = [];
+  const bus = { emit: (event, payload) => { events.push([event, payload]); seedBus?.(event, payload); } };
+  const runtime = createFrontlineAtmosphere({
+    parent, camera, bus,
+    getHeightField: () => ({ getHeightAt: (x, z) => Math.sin(x * 0.01) * 4 + Math.cos(z * 0.013) * 3 }),
+    getSpawns: () => ({ player: { pos: [0, 0, -300] }, enemies: [{ pos: [80, 0, 320] }, { pos: [-60, 0, 300] }] }),
+  });
+  return { parent, camera, runtime, events };
+}
+
+function run(runtime, seconds, dt = 1 / 60) {
+  for (let t = 0; t < seconds; t += dt) runtime.update(dt);
+}
+
+// Determinism: the same seed and map replay the same event log; another seed differs.
+const a = make(), b = make(), c = make();
+a.runtime.prepare(1337, 'frontier'); b.runtime.prepare(1337, 'frontier'); c.runtime.prepare(2025, 'frontier');
+run(a.runtime, 180); run(b.runtime, 180); run(c.runtime, 180);
+assert.ok(a.runtime.log.length > 0, 'events fired within three minutes');
+assert.deepEqual(a.runtime.log, b.runtime.log, 'seed + map replay byte-identical event logs');
+assert.notDeepEqual(a.runtime.log.map((e) => e.timeS), c.runtime.log.map((e) => e.timeS), 'another seed schedules differently');
+assert.equal(a.events.length, a.runtime.log.length, 'every logged event reached the bus');
+for (const [name, payload] of a.events) {
+  assert.ok(['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover'].includes(name));
+  const pos = payload.pos || payload.p0;
+  assert.ok(pos.every(Number.isFinite), `${name}: finite position`);
+}
+
+// Cadence follows intensity: the front (0.9) fires more than an orchard (0.3).
+const quiet = make(); quiet.runtime.prepare(1337, 'orchard'); run(quiet.runtime, 180);
+const artillery = (log) => log.filter((e) => e.kind === 'artillery').length;
+assert.ok(artillery(a.runtime.log) > artillery(quiet.runtime.log) * 1.5, `front ${artillery(a.runtime.log)} vs orchard ${artillery(quiet.runtime.log)}`);
+const gapsWithin = (log, kind, range) => {
+  const times = log.filter((e) => e.kind === kind).map((e) => e.timeS);
+  for (let i = 1; i < times.length; i++) {
+    const gap = times[i] - times[i - 1];
+    assert.ok(gap >= range[0] * 0.98 && gap <= range[1] / 0.15 + 0.2, `${kind} gap ${gap.toFixed(2)} within the authored interval law`);
+  }
+};
+gapsWithin(a.runtime.log, 'artillery', FRONTLINE_LIMITS.artilleryIntervalS);
+gapsWithin(a.runtime.log, 'flyover', FRONTLINE_LIMITS.flyoverIntervalS);
+
+// Geometry envelope: columns beyond the playable half-map and below the horizon ring; aircraft inside the sky.
+const columns = a.parent.getObjectByName('frontline-smoke-columns');
+assert.ok(columns.count >= FRONTLINE_LIMITS.columns[0] && columns.count <= FRONTLINE_LIMITS.columns[1]);
+const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+for (let i = 0; i < columns.count; i++) {
+  columns.getMatrixAt(i, m); m.decompose(p, q, s);
+  const r = Math.hypot(p.x, p.z);
+  assert.ok(r >= FRONTLINE_LIMITS.columnRangeM[0] - 1 && r <= FRONTLINE_LIMITS.columnRangeM[1] + 1, `column ${i} at ${r.toFixed(0)} m`);
+  assert.ok(s.y >= FRONTLINE_LIMITS.columnHeightM[0] && s.y <= FRONTLINE_LIMITS.columnHeightM[1]);
+  // the front lies ahead of the player (toward the enemy centroid, bearing ~0 here) within its 130-degree fan
+  const bearing = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z));
+  assert.ok(Math.abs(((bearing - a.runtime.bearingDeg + 540) % 360) - 180) <= 66, `column ${i} inside the front fan`);
+}
+for (const e of a.runtime.log) {
+  if (e.kind === 'flyover') {
+    const alt = e.pos[1];
+    assert.ok(alt > FRONTLINE_LIMITS.aircraftAltitudeM[0] - 20 && alt < FRONTLINE_LIMITS.aircraftAltitudeM[1] + 20, `aircraft altitude ${alt.toFixed(0)}`);
+  }
+}
+const flyover = a.events.find(([name]) => name === 'atmosphere:flyover');
+assert.ok(flyover, 'a flyover happened in three minutes on the front');
+const speed = Math.hypot(...flyover[1].v);
+assert.ok(speed >= FRONTLINE_LIMITS.aircraftSpeedMps[0] && speed <= FRONTLINE_LIMITS.aircraftSpeedMps[1]);
+assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exists');
+
+// Sprite pools never exceed their cap and reset/dispose leave nothing behind.
+const flashes = a.parent.getObjectByName('frontline-artillery-flashes');
+assert.equal(flashes.count, FRONTLINE_LIMITS.spriteCap);
+assert.equal(a.parent.children.length, 1, 'one group under the parent');
+a.runtime.reset();
+assert.equal(a.runtime.log.length, 0);
+assert.equal(a.parent.getObjectByName('frontline-atmosphere').visible, false);
+a.runtime.dispose();
+assert.equal(a.parent.children.length, 0, 'dispose removes the group');
+
+// Silent maps stay silent; scale can mute the layer for a quality tier.
+const silent = make(); silent.runtime.setScale(0); silent.runtime.prepare(1337, 'urban'); run(silent.runtime, 60);
+assert.equal(silent.runtime.log.length, 0, 'scale 0 fires nothing');
+assert.equal(silent.parent.getObjectByName('frontline-atmosphere').visible, false);
+
+// The runtime is wired behind the covered battle entry and ticks with the world.
+const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+assert.match(main, /createFrontlineAtmosphereAccess\(/, 'main owns the frontline access');
+assert.match(main, /frontline\.prepare\(/, 'prepared with the battle atmosphere');
+assert.match(main, /frontline\.reset\(\)/, 'reset with the garage presentation');
+assert.match(main, /frontline\.update\(/, 'ticked from the battle frame');
+const audio = readFileSync(new URL('../audio/audio.ts', import.meta.url), 'utf8');
+for (const name of ['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover']) {
+  assert.ok(audio.includes(`'${name}'`), `audio subscribes to ${name}`);
+}
+console.log(`frontlineAtmosphere.selftest: ${MAP_IDS.length} map intensities, deterministic ${a.events.length}-event replay, cadence, envelope, caps, reset/dispose and wiring PASS`);

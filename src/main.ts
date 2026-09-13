@@ -68,6 +68,7 @@ import {
 } from './engine/quality.ts';
 import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
+import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
@@ -717,7 +718,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
 });
 const setGarageSpots = (active: boolean): void => {
-  if (active) { battleAtmosphere.reset(); nightLighting.reset(); }
+  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); }
   garagePhasePresentation.setActive(active);
 };
 const setGarageSunTrim = (active: boolean): void => {
@@ -734,6 +735,7 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
   applySkyPreset: () => {
     battleAtmosphere.reset();
     nightLighting.reset();
+    frontline.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
     sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
     worldRuntime.invalidateSkyPresentation();
@@ -1443,6 +1445,16 @@ const battleAtmosphere = createBattleAtmosphereAccess(() => ({
     worldRuntime.markEnvironmentPrepared(currentWorld());
   },
 }));
+// frontline atmosphere 2026-09-12: the distant front behind the enemy side
+// (smoke columns, artillery flashes + rumble, flak, flyovers). Lazy like the
+// weather owner; prepared behind the covered entry, reset with the Garage.
+const frontline = createFrontlineAtmosphereAccess(() => ({
+  parent: scene,
+  camera,
+  bus,
+  getHeightField: () => currentWorld()?.heightField ?? null,
+  getSpawns: () => currentWorld()?.spawnPoints ?? null,
+}));
 function currentSceneWatchdogOptions() {
   return game.phase === 'battle' && battleAtmosphere.current?.weather?.timeOfDay === 'night'
     ? { nightRadianceScale: battleWatchdogRadianceScale } : {};
@@ -1786,7 +1798,10 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     getDeploymentShadowWarm: () => deploymentShadowWarm,
     getEntryLifecycle: () => battleEntryLifecycle,
     prepareRevealCamera: prepareBattleRevealCamera,
-    prepareAtmosphere: () => battleAtmosphere.prepare(game.battleCount, game.mapId),
+    prepareAtmosphere: async () => {
+      await battleAtmosphere.prepare(game.battleCount, game.mapId);
+      await frontline.prepare(game.battleCount, game.mapId);
+    },
     prepareNightLighting: () => nightLighting.prepare(),
     runSceneWatchdog: async (assertCurrent: () => void) => {
       assertCurrent();
@@ -2205,10 +2220,12 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
         },
         warm: {
           nightLighting: () => nightLighting.prepare(),
-          atmosphere: (initial) => battleAtmosphere.prepare(
-            typeof initial.meta?.weatherSeed === 'number' ? initial.meta.weatherSeed : undefined,
-            currentWorld()?.mapId ?? game.mapId,
-          ),
+          atmosphere: async (initial) => {
+            const seed = typeof initial.meta?.weatherSeed === 'number' ? initial.meta.weatherSeed : undefined;
+            const mapId = currentWorld()?.mapId ?? game.mapId;
+            await battleAtmosphere.prepare(seed, mapId);
+            await frontline.prepare(seed, mapId);
+          },
           getFx: requireFxRuntime,
           terrain: () => {
             const world = currentWorld();
@@ -2689,7 +2706,7 @@ const refreshSpotFrame = battleHudFrame.refreshSpotting;
 // mutable camera-input record consumed by the existing rig.
 const camInput = playerFrameInput.camera;
 const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
-const worldFramePresentation = createWorldFramePresentationRuntime({
+const baseWorldFramePresentation = createWorldFramePresentationRuntime({
   camera,
   rig,
   getWorld: currentWorld,
@@ -2697,6 +2714,14 @@ const worldFramePresentation = createWorldFramePresentationRuntime({
   getCameraFocus: () => game.player ||
     (networkSession.spectator ? rig.spectateTargetEnt : null),
 });
+// The frontline ticks with the world presentation: live battle frames only,
+// never the Garage, a paused battle, or a dormant world.
+const worldFramePresentation = {
+  update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
+    baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
+    if (inBattle && !worldRuntime.dormant && !pauseInfo.paused) frontline.update(dtSeconds);
+  },
+};
 // Pause transitions, input sampling, network cadence, pre-battle hold,
 // fixed-step debt, result progression, and presentation interpolation are one
 // typed state machine. The render loop consumes only its stable receipt.
