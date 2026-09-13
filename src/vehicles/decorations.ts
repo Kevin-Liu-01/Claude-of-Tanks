@@ -853,30 +853,41 @@ function buildDecorMaterials(
     };
 
   const made: Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>> = {};
+  // garage parity (2026-09-13): the Garage exhibit worker builds the workshop
+  // tanks with `decor: true` and no DOM, so every canvas-backed kit texture
+  // threw "document is not defined" and the exhibits stood undressed. Without
+  // a document the kits take flat colours (the workshop palette repaints the
+  // transferred geometry anyway); with one nothing changes.
+  const canPaint = typeof document !== 'undefined';
+  const painted = <T extends THREE.MeshStandardMaterialParameters>(params: T): T => {
+    if (canPaint) return params;
+    const { map: _map, roughnessMap: _rough, ...flat } = params as T & { map?: unknown; roughnessMap?: unknown };
+    return flat as T;
+  };
   const defs: Record<DecorMaterialKey, () => THREE.MeshStandardMaterialParameters> = {
     // scheme-painted steel kit: the shared per-spec kit-paint canvas keeps
     // bolt-on hardware in the ACTIVE camo pattern's tonal family and live-
     // repaints with garage pattern switches (same texture the ARAT/stowage
     // add-on path uses — crews spray hard kit, never soft kit).
-    kit: () => ({
+    kit: () => (canPaint ? {
       map: getKitPaintTexture(spec), roughnessMap: getSharedRoughnessTexture(spec),
       roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35,
-    }),
+    } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
-    steel: () => ({
+    steel: () => painted({
       color: equipmentPalette.steel, roughness: 0.62, metalness: 0.35,
-      roughnessMap: getSharedRoughnessTexture(spec),
+      roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
       vertexColors: true, envMapIntensity: 0.35,
     }),
-    wood: () => ({
+    wood: () => painted({
       map: woodTex(), color: 0x97815f, roughness: 0.9, metalness: 0.02,
       vertexColors: true, envMapIntensity: 0.15,
     }),
-    canvas: () => ({
+    canvas: () => painted({
       map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.12,
     }),
-    burlap: () => ({
+    burlap: () => painted({
       map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.1,
     }),
@@ -884,16 +895,16 @@ function buildDecorMaterials(
       color: 0x232425, roughness: 0.94, metalness: 0.04,
       vertexColors: true, envMapIntensity: 0.12,
     }),
-    cans: () => ({ // authored-color hardware (jerrycans): tint baked per piece
+    cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
-      roughnessMap: getSharedRoughnessTexture(spec),
+      roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
       vertexColors: true, envMapIntensity: 0.2,
     }),
-    net: () => ({
+    net: () => painted({
       map: netTex(), color: equipmentPalette.net, roughness: 0.95, metalness: 0.0,
       alphaTest: 0.35, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.1,
     }),
-    mesh: () => ({ // wire-grid panels (baskets, cages)
+    mesh: () => painted({ // wire-grid panels (baskets, cages)
       map: gridTex(), color: equipmentPalette.mesh, roughness: 0.7, metalness: 0.35,
       alphaTest: 0.3, side: THREE.DoubleSide, vertexColors: true, envMapIntensity: 0.25,
     }),

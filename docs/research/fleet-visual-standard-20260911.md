@@ -313,3 +313,18 @@ stowage — pre-existing misses; the ledger's t14/type10 values moved
 this batch. Stowage is classified `decoration` by the audit page and stays
 out of the curves; the exemplar-bar program for these hulls is separate
 work.
+
+## Addendum 2026-09-13 (k) — the Garage exhibits get their stowage
+
+The five background workshop exhibits are built by
+`garageWorkshopGeometryWorker` with `decor: true`, but every canvas-backed
+kit texture (`getKitPaintTexture`, `weaveTex`, `woodTex`, `netTex`,
+`gridTex`, `fieldHardwareTex`) reached `document.createElement` inside the
+worker and threw "document is not defined"; `attachTankDecorations` caught
+it and returned null, so the exhibits stood undressed while the pedestal
+tank (main thread) carried its stowage. `buildDecorMaterials` now takes
+flat colours when there is no document — the workshop palette repaints the
+transferred geometry anyway — and every piece seats. Receipt: the staging
+receipt attaches a full default manifest with `document` removed, counts
+pieces and asserts no texture was created. Garage shot: the background
+exhibits carry baskets, cables, cans and antennas like the pedestal tank.

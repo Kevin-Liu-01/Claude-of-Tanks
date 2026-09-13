@@ -252,4 +252,28 @@ try {
     previous.set(slice.total, slice.completed);
   });
 } finally { bounded.dispose(); }
+// garage parity (2026-09-13): the Garage exhibit worker attaches decorations with
+// no DOM at all; the canvas-backed kit textures used to throw there and every
+// workshop exhibit stood undressed. Without a document the kits take flat
+// colours and every piece still seats.
+{
+  const savedDocument = globalThis.document;
+  delete globalThis.document;
+  const domless = fixture('m1a1');
+  try {
+    const summary = candidate.attachTankDecorations(domless.args);
+    check(summary !== null, 'decorations attach without a document (worker exhibits)');
+    check((summary?.pieces?.length ?? 0) > 0, `pieces seat without a document (${summary?.pieces?.length ?? 0})`);
+    let textured = 0;
+    domless.root.traverse((object) => {
+      const material = object.material;
+      if (material && !Array.isArray(material) && (material.map || material.roughnessMap)) textured++;
+    });
+    equal(textured, 0, 'no canvas texture is created without a document');
+  } finally {
+    globalThis.document = savedDocument;
+    domless.dispose();
+  }
+}
+
 console.log(`decor-staging: PASS ${checks} assertions; sync/stepped consistency, atomic publish, exact RNG, cancellation and bounded index work`);
