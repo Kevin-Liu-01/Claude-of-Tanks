@@ -48,7 +48,7 @@ assert.deepEqual(a.runtime.log, b.runtime.log, 'seed + map replay byte-identical
 assert.notDeepEqual(a.runtime.log.map((e) => e.timeS), c.runtime.log.map((e) => e.timeS), 'another seed schedules differently');
 assert.equal(a.events.length, a.runtime.log.length, 'every logged event reached the bus');
 for (const [name, payload] of a.events) {
-  assert.ok(['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover'].includes(name));
+  assert.ok(['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover', 'atmosphere:aa'].includes(name));
   const pos = payload.pos || payload.p0;
   assert.ok(pos.every(Number.isFinite), `${name}: finite position`);
 }
@@ -92,6 +92,34 @@ const speed = Math.hypot(...flyover[1].v);
 assert.ok(speed >= FRONTLINE_LIMITS.aircraftSpeedMps[0] && speed <= FRONTLINE_LIMITS.aircraftSpeedMps[1]);
 assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exists');
 
+// campaign slice 2: anti-air guns sit behind the player's spawn, away from the
+// front, and only fire tracer bursts while an aircraft is up and in range.
+{
+  const bases = a.parent.getObjectByName('frontline-aa-bases');
+  const heads = a.parent.getObjectByName('frontline-aa-heads');
+  assert.ok(bases.count >= FRONTLINE_LIMITS.aaGuns[0] && bases.count <= FRONTLINE_LIMITS.aaGuns[1], `${bases.count} guns`);
+  assert.equal(heads.count, bases.count, 'every gun has a traversing head');
+  const front = THREE.MathUtils.degToRad(a.runtime.bearingDeg);
+  for (let i = 0; i < bases.count; i++) {
+    bases.getMatrixAt(i, m); m.decompose(p, q, s);
+    // behind the player spawn (0, -300) relative to the front direction
+    const along = (p.x - 0) * Math.sin(front) + (p.z + 300) * Math.cos(front);
+    assert.ok(along <= -FRONTLINE_LIMITS.aaBehindM[0] + 1 && along >= -FRONTLINE_LIMITS.aaBehindM[1] - 1, `gun ${i} ${along.toFixed(0)} m behind the line`);
+  }
+  const firstFlyover = a.runtime.log.find((e) => e.kind === 'flyover');
+  const firstAa = a.runtime.log.find((e) => e.kind === 'aa');
+  assert.ok(firstAa, 'the guns opened fire during three minutes on the front');
+  assert.ok(firstAa.timeS >= firstFlyover.timeS, 'no anti-air fire before the first aircraft');
+  const aaBursts = a.runtime.log.filter((e) => e.kind === 'aa');
+  for (let i = 1; i < aaBursts.length; i++) {
+    if (aaBursts[i].pos.join() === aaBursts[i - 1].pos.join()) {
+      assert.ok(aaBursts[i].timeS - aaBursts[i - 1].timeS >= FRONTLINE_LIMITS.aaBurstIntervalS[0] * 0.98, 'one gun keeps its burst interval');
+    }
+  }
+  const tracers = a.parent.getObjectByName('frontline-aa-tracers');
+  assert.equal(tracers.count, FRONTLINE_LIMITS.tracerCap, 'tracer pool is capped');
+}
+
 // Sprite pools never exceed their cap and reset/dispose leave nothing behind.
 const flashes = a.parent.getObjectByName('frontline-artillery-flashes');
 assert.equal(flashes.count, FRONTLINE_LIMITS.spriteCap);
@@ -114,7 +142,7 @@ assert.match(main, /frontline\.prepare\(/, 'prepared with the battle atmosphere'
 assert.match(main, /frontline\.reset\(\)/, 'reset with the garage presentation');
 assert.match(main, /frontline\.update\(/, 'ticked from the battle frame');
 const audio = readFileSync(new URL('../audio/audio.ts', import.meta.url), 'utf8');
-for (const name of ['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover']) {
+for (const name of ['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyover', 'atmosphere:aa']) {
   assert.ok(audio.includes(`'${name}'`), `audio subscribes to ${name}`);
 }
 console.log(`frontlineAtmosphere.selftest: ${MAP_IDS.length} map intensities, deterministic ${a.events.length}-event replay, cadence, envelope, caps, reset/dispose and wiring PASS`);

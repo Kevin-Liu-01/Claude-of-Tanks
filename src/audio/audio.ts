@@ -322,6 +322,7 @@ interface ShellExpiredEvent {
 interface AtmosphereArtilleryEvent { pos?: Vec3Tuple; size?: number; }
 interface AtmosphereFlakEvent { pos?: Vec3Tuple; delayS?: number; }
 interface AtmosphereFlyoverEvent { p0?: Vec3Tuple; v?: Vec3Tuple; durationS?: number; }
+interface AtmosphereAaEvent { pos?: Vec3Tuple; shots?: number; gapS?: number; }
 
 interface FlyoverDrone {
   voice: OneShotVoice;
@@ -1701,6 +1702,24 @@ export function createAudio({
     const thump = osrc(v, 'sine', 118, when + 0.01, 0.16);
     thump.frequency.exponentialRampToValueAtTime(64, when + 0.14);
     wire(v, thump, env(when + 0.01, 0.004, 0.45, 0.13), lp);
+  }
+
+  /** Anti-air burst: a run of sharp barks with a hollow thump under each, spaced like the tracers. */
+  function aaBurst(x: number, y: number, z: number, shots: number, gapS: number): void {
+    const s = spat(x, y, z);
+    if (s.gain < 0.004) return;
+    const n = Math.max(1, Math.min(5, shots | 0));
+    const when = ctx!.currentTime + 0.01 + travelDelay(s.dist);
+    const v = spawnVoice(when, gapS * n + 0.5, s.gain * 0.9, s.pan, ambientBus);
+    const lp = distLowpass(s.dist);
+    lp.connect(v.in);
+    for (let i = 0; i < n; i++) {
+      const at = when + i * gapS;
+      wire(v, nsrc(v, at, 0.05), flt('bandpass', 1250, 1.0), env(at, 0.002, 1.0, 0.045), lp);
+      const thump = osrc(v, 'sine', 150, at, 0.14);
+      thump.frequency.exponentialRampToValueAtTime(58, at + 0.12);
+      wire(v, thump, env(at, 0.003, 0.7, 0.12), lp);
+    }
   }
 
   const flyoverDrones: FlyoverDrone[] = [];
@@ -3096,6 +3115,9 @@ export function createAudio({
     });
     on<AtmosphereFlyoverEvent>('atmosphere:flyover', (event) => {
       if (ctx && event?.p0 && event.v) startFlyoverDrone(event.p0, event.v, event.durationS ?? 20);
+    });
+    on<AtmosphereAaEvent>('atmosphere:aa', (event) => {
+      if (ctx && event?.pos) aaBurst(event.pos[0], event.pos[1], event.pos[2], event.shots ?? 3, event.gapS ?? 0.13);
     });
     on<ReloadEvent>('player:reload', onReload);
     on<TankDestroyedEvent>('tank:destroyed', (event) => {

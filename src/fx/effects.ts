@@ -3726,6 +3726,29 @@ function* createFxSteps(
     _puffO.grav = -0.85;
     _puffO.birthOffset = 0;
     particles.emit('dust', _puffO);
+    // water pass 2 (2026-09-12): fording at speed throws a bow sheet ahead of
+    // each track — a pale, fast, short-lived curtain that reads as the hull
+    // pushing water, only once the tank is properly in it and moving.
+    if (waterMask > 0.35 && intensity > 0.45 && rng() < 0.7) {
+      const push = 2.6 + intensity * 3.4;
+      _puffO.pos[0] = pos.x + dir.x * 1.3 + (rng() - 0.5) * 0.5;
+      _puffO.pos[1] = gy + 0.12;
+      _puffO.pos[2] = pos.z + dir.z * 1.3 + (rng() - 0.5) * 0.5;
+      _puffO.vel[0] = dir.x * push + (rng() - 0.5) * 1.4;
+      _puffO.vel[1] = 2.3 + intensity * 1.6 + rng() * 0.8;
+      _puffO.vel[2] = dir.z * push + (rng() - 0.5) * 1.4;
+      _puffO.life = 0.42 + rng() * 0.26;
+      _puffO.size0 = 0.35 + intensity * 0.25;
+      _puffO.size1 = 1.3 + intensity * 0.9;
+      _puffO.rot = rng() * Math.PI * 2;
+      _puffO.rotVel = (rng() - 0.5) * 1.6;
+      col3(0xe6eeec, _puffO.col0);
+      col3(0xa9c1c2, _puffO.col1);
+      _puffO.alpha = 0.26 + intensity * 0.18;
+      _puffO.grav = -6.5;
+      _puffO.birthOffset = 0;
+      particles.emit('dust', _puffO);
+    }
     if (rng() >= 0.82) return;
     _strkO.pos[0] = pos.x + (rng() - 0.5) * 0.35;
     _strkO.pos[1] = Math.max(pos.y, gy) + 0.22;

@@ -36,7 +36,7 @@ export interface FrontlineAtmosphereOptions {
 }
 
 export interface FrontlineEvent {
-  kind: 'artillery' | 'flak' | 'flyover';
+  kind: 'artillery' | 'flak' | 'flyover' | 'aa';
   timeS: number;
   pos: [number, number, number];
 }
@@ -78,6 +78,17 @@ export const FRONTLINE_LIMITS = Object.freeze({
   flakIntervalS: [12, 40] as const,
   flyoverIntervalS: [60, 120] as const,
   logCap: 256,
+  // campaign slice 2 (2026-09-12): anti-air guns behind the player's line
+  aaGuns: [2, 3] as const,
+  aaBehindM: [60, 140] as const,
+  aaLateralM: [40, 130] as const,
+  aaRangeM: 950,
+  aaBurstIntervalS: [0.9, 1.7] as const,
+  aaShotsPerBurst: 3,
+  aaShotGapS: 0.13,
+  tracerCap: 48,
+  tracerSpeedMps: 420,
+  tracerLifeS: 2.2,
 });
 
 function mulberry32(a: number): () => number {
@@ -267,6 +278,49 @@ void main() {
   #include <fog_fragment>
 }`;
 
+const TRACER_VERT = /* glsl */`
+attribute vec4 aTracer; // birth, life, length, seed
+varying float vAge;
+varying vec2 vUv;
+uniform float uTime;
+uniform float uSpeed;
+#include <common>
+#include <fog_pars_vertex>
+void main() {
+  vUv = uv;
+  float age = (uTime - aTracer.x) / max(aTracer.y, 1e-3);
+  vAge = age;
+  vec4 base = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  vec3 dir = normalize(vec3(instanceMatrix[2].xyz));
+  float travelled = max(0.0, uTime - aTracer.x) * uSpeed;
+  vec3 head = base.xyz + dir * travelled;
+  vec3 toCam = normalize(cameraPosition - head);
+  vec3 side = normalize(cross(dir, toCam) + vec3(1e-4));
+  float alive = (aTracer.x < 0.0 || age < 0.0 || age > 1.0) ? 0.0 : 1.0;
+  float len = aTracer.z * alive;
+  float width = 0.22 * alive;
+  vec3 world = head - dir * (uv.y * len) + side * (position.x * width);
+  vec4 mvPosition = viewMatrix * vec4(world, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
+}`;
+
+const TRACER_FRAG = /* glsl */`
+varying float vAge;
+varying vec2 vUv;
+#include <common>
+#include <fog_pars_fragment>
+void main() {
+  if (vAge < 0.0 || vAge > 1.0) discard;
+  float core = 1.0 - abs(vUv.x - 0.5) * 2.0;
+  float tail = 1.0 - vUv.y;
+  vec3 col = mix(vec3(1.0, 0.45, 0.12), vec3(1.0, 0.9, 0.6), core * tail);
+  float a = pow(core, 1.6) * tail * (1.0 - smoothstep(0.7, 1.0, vAge));
+  if (a < 0.02) discard;
+  gl_FragColor = vec4(col * 1.6, a);
+  #include <fog_fragment>
+}`;
+
 // ---------------------------------------------------------------- factory ----
 
 interface Aircraft {
@@ -366,6 +420,52 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     aircraft.push({ root, p0: new THREE.Vector3(), v: new THREE.Vector3(), t0: 0, durationS: 0, active: false });
   }
 
+  // ---- anti-air guns (campaign slice 2) -----------------------------------
+  const aaBaseGeometry = mergeBoxGeometries([
+    new THREE.BoxGeometry(1.6, 0.35, 1.6).translate(0, 0.17, 0),
+    new THREE.BoxGeometry(0.7, 0.9, 0.7).translate(0, 0.8, 0),
+    new THREE.BoxGeometry(0.5, 0.25, 2.2).translate(0, 0.3, 0),
+    new THREE.BoxGeometry(2.2, 0.25, 0.5).translate(0, 0.3, 0),
+  ]);
+  const aaHeadGeometry = mergeBoxGeometries([
+    new THREE.BoxGeometry(0.9, 0.5, 0.9),
+    new THREE.BoxGeometry(1.7, 1.1, 0.08).translate(0, 0.25, 0.35),
+    new THREE.BoxGeometry(0.12, 0.12, 2.7).translate(-0.22, 0.1, 1.6),
+    new THREE.BoxGeometry(0.12, 0.12, 2.7).translate(0.22, 0.1, 1.6),
+    new THREE.BoxGeometry(0.4, 0.3, 0.6).translate(0.55, 0.0, -0.2),
+  ]);
+  const aaMaterial = new THREE.MeshStandardMaterial({ color: 0x4a4f44, roughness: 0.82, metalness: 0.18 });
+  const aaCap = FRONTLINE_LIMITS.aaGuns[1];
+  const aaBases = new THREE.InstancedMesh(aaBaseGeometry, aaMaterial, aaCap);
+  aaBases.name = 'frontline-aa-bases'; aaBases.count = 0; aaBases.castShadow = true; aaBases.receiveShadow = true;
+  const aaHeads = new THREE.InstancedMesh(aaHeadGeometry, aaMaterial, aaCap);
+  aaHeads.name = 'frontline-aa-heads'; aaHeads.count = 0; aaHeads.castShadow = true;
+  aaHeads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  group.add(aaBases, aaHeads);
+  interface AaGun { pos: THREE.Vector3; yaw: number; pitch: number; nextBurstAt: number; shotsLeft: number; nextShotAt: number; }
+  const aaGuns: AaGun[] = [];
+  const tracerGeometry = quad.clone();
+  const tracerAttr = new THREE.InstancedBufferAttribute(new Float32Array(FRONTLINE_LIMITS.tracerCap * 4).fill(-1), 4);
+  tracerAttr.setUsage(THREE.DynamicDrawUsage);
+  tracerGeometry.setAttribute('aTracer', tracerAttr);
+  const tracerMaterial = new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 }, uSpeed: { value: FRONTLINE_LIMITS.tracerSpeedMps } }]),
+    vertexShader: TRACER_VERT, fragmentShader: TRACER_FRAG,
+    transparent: true, depthWrite: false, fog: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  const tracers = new THREE.InstancedMesh(tracerGeometry, tracerMaterial, FRONTLINE_LIMITS.tracerCap);
+  tracers.name = 'frontline-aa-tracers'; tracers.frustumCulled = false; tracers.renderOrder = 6;
+  tracers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  {
+    const identity = new THREE.Matrix4();
+    for (let i = 0; i < FRONTLINE_LIMITS.tracerCap; i++) tracers.setMatrixAt(i, identity);
+  }
+  group.add(tracers);
+  let tracerCursor = 0;
+  const _aim = new THREE.Vector3(), _muzzle = new THREE.Vector3(), _lead = new THREE.Vector3();
+  const _headQ = new THREE.Quaternion(), _e = new THREE.Euler(), _one = new THREE.Vector3(1, 1, 1);
+  const _origin = new THREE.Vector3(0, 0, 0);
+
   const log: FrontlineEvent[] = [];
   let intensity = 0, bearingDeg = 0, scale = 1, mapIntensity = 0;
   let rng = mulberry32(1);
@@ -374,6 +474,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   let prepared = false;
   const columnAnchors: THREE.Vector3[] = [];
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
+  const _up = new THREE.Vector3(0, 1, 0);
 
   const groundY = (x: number, z: number): number => {
     const hf = getHeightField?.();
@@ -489,6 +590,99 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     }
   }
 
+  /** Guns sit behind the player's spawn, away from the front, spread sideways. */
+  function layoutAaGuns(): void {
+    aaGuns.length = 0;
+    const spawns = getSpawns?.();
+    const player = spawns?.player?.pos;
+    const count = Math.round(lerp(FRONTLINE_LIMITS.aaGuns[0], FRONTLINE_LIMITS.aaGuns[1], effective()));
+    const bearing = THREE.MathUtils.degToRad(bearingDeg);
+    const fx = Math.sin(bearing), fz = Math.cos(bearing);
+    const px = player ? player[0] : -fx * 300, pz = player ? player[2] : -fz * 300;
+    for (let i = 0; i < count; i++) {
+      const behind = lerp(FRONTLINE_LIMITS.aaBehindM[0], FRONTLINE_LIMITS.aaBehindM[1], rng());
+      const lateral = lerp(FRONTLINE_LIMITS.aaLateralM[0], FRONTLINE_LIMITS.aaLateralM[1], rng()) * (i % 2 === 0 ? 1 : -1);
+      const x = THREE.MathUtils.clamp(px - fx * behind + fz * lateral, -470, 470);
+      const z = THREE.MathUtils.clamp(pz - fz * behind - fx * lateral, -470, 470);
+      const pos = new THREE.Vector3(x, groundY(x, z), z);
+      aaGuns.push({ pos, yaw: bearing, pitch: 0.35, nextBurstAt: 0, shotsLeft: 0, nextShotAt: 0 });
+      _m.compose(pos, _q.setFromAxisAngle(_up, bearing + (rng() - 0.5) * 0.4), _one);
+      aaBases.setMatrixAt(i, _m);
+    }
+    aaBases.count = count; aaHeads.count = count;
+    aaBases.instanceMatrix.needsUpdate = true;
+    writeAaHeads();
+  }
+
+  function writeAaHeads(): void {
+    for (let i = 0; i < aaGuns.length; i++) {
+      const gun = aaGuns[i];
+      _e.set(-gun.pitch, gun.yaw, 0, 'YXZ');
+      _headQ.setFromEuler(_e);
+      _m.compose(_p.copy(gun.pos).setY(gun.pos.y + 1.45), _headQ, _one);
+      aaHeads.setMatrixAt(i, _m);
+    }
+    aaHeads.instanceMatrix.needsUpdate = true;
+  }
+
+  function fireTracer(gun: AaGun): void {
+    _muzzle.set(0, 0.1, 2.9).applyQuaternion(_headQ.setFromEuler(_e.set(-gun.pitch, gun.yaw, 0, 'YXZ')));
+    _muzzle.add(gun.pos).y += 1.45;
+    _aim.set(0, 0, 1).applyQuaternion(_headQ);
+    // small dispersion so bursts fan out around the lead point
+    _aim.x += (rng() - 0.5) * 0.03; _aim.y += (rng() - 0.5) * 0.03; _aim.z += (rng() - 0.5) * 0.03;
+    _aim.normalize();
+    const i = tracerCursor; tracerCursor = (tracerCursor + 1) % FRONTLINE_LIMITS.tracerCap;
+    _m.lookAt(_aim, _origin, _up); // Matrix4.lookAt: local +z = eye - target = the shot direction
+    _m.setPosition(_muzzle);
+    tracers.setMatrixAt(i, _m);
+    tracers.instanceMatrix.needsUpdate = true;
+    tracerAttr.setXYZW(i, time, FRONTLINE_LIMITS.tracerLifeS, 9 + rng() * 5, rng());
+    tracerAttr.needsUpdate = true;
+    spawnSprite(flashes, _muzzle, 0.07, 2.4 + rng() * 1.2, 0);
+  }
+
+  function stepAaGuns(dt: number): void {
+    if (!aaGuns.length) return;
+    const plane = aircraft.find((a) => a.active);
+    let moved = false;
+    for (const gun of aaGuns) {
+      if (plane) {
+        // lead the aircraft by the tracer flight time
+        _lead.copy(plane.p0).addScaledVector(plane.v, time - plane.t0);
+        const dist = _lead.distanceTo(gun.pos);
+        if (dist < FRONTLINE_LIMITS.aaRangeM) {
+          _lead.addScaledVector(plane.v, dist / FRONTLINE_LIMITS.tracerSpeedMps);
+          const dx = _lead.x - gun.pos.x, dz = _lead.z - gun.pos.z, dy = _lead.y - (gun.pos.y + 1.45);
+          const wantYaw = Math.atan2(dx, dz);
+          const wantPitch = Math.atan2(dy, Math.hypot(dx, dz));
+          let dYaw = wantYaw - gun.yaw; dYaw = Math.atan2(Math.sin(dYaw), Math.cos(dYaw));
+          gun.yaw += THREE.MathUtils.clamp(dYaw, -2.2 * dt, 2.2 * dt);
+          gun.pitch += THREE.MathUtils.clamp(wantPitch - gun.pitch, -1.4 * dt, 1.4 * dt);
+          moved = true;
+          if (time >= gun.nextBurstAt && gun.shotsLeft === 0) {
+            gun.shotsLeft = FRONTLINE_LIMITS.aaShotsPerBurst;
+            gun.nextShotAt = time;
+            gun.nextBurstAt = time + lerp(FRONTLINE_LIMITS.aaBurstIntervalS[0], FRONTLINE_LIMITS.aaBurstIntervalS[1], rng());
+            const event = record('aa', gun.pos);
+            bus?.emit('atmosphere:aa', { pos: event.pos, shots: FRONTLINE_LIMITS.aaShotsPerBurst, gapS: FRONTLINE_LIMITS.aaShotGapS });
+          }
+        }
+      } else {
+        // idle: settle to a raised watch over the front
+        const restPitch = 0.35;
+        gun.pitch += THREE.MathUtils.clamp(restPitch - gun.pitch, -0.5 * dt, 0.5 * dt);
+        moved = moved || Math.abs(restPitch - gun.pitch) > 1e-3;
+      }
+      while (gun.shotsLeft > 0 && time >= gun.nextShotAt) {
+        fireTracer(gun);
+        gun.shotsLeft--;
+        gun.nextShotAt += FRONTLINE_LIMITS.aaShotGapS;
+      }
+    }
+    if (moved) writeAaHeads();
+  }
+
   function prepare(seed: number | undefined, mapId: string): void {
     reset();
     mapIntensity = isMapId(mapId) ? FRONTLINE_INTENSITY[mapId] : 0.45;
@@ -496,6 +690,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     rng = mulberry32(((seed ?? 0) * 7919 + hashId(mapId)) | 0);
     bearingDeg = resolveFrontBearingDeg(getSpawns?.(), rng() * 360);
     layoutColumns();
+    layoutAaGuns();
     nextArtillery = 2 + rng() * 4;
     nextFlak = 6 + rng() * 10;
     nextFlyover = 20 + rng() * 40;
@@ -510,10 +705,12 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     columnUniforms.uTime.value = time;
     flashMaterial.uniforms.uTime.value = time;
     flakMaterial.uniforms.uTime.value = time;
+    tracerMaterial.uniforms.uTime.value = time;
     if (time >= nextArtillery) { fireArtillery(); nextArtillery = time + interval(FRONTLINE_LIMITS.artilleryIntervalS); }
     if (time >= nextFlak) { burstFlak(); nextFlak = time + interval(FRONTLINE_LIMITS.flakIntervalS); }
     if (time >= nextFlyover) { launchAircraft(); nextFlyover = time + interval(FRONTLINE_LIMITS.flyoverIntervalS); }
     stepAircraft();
+    stepAaGuns(dt);
   }
 
   function reset(): void {
@@ -526,6 +723,8 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
       pool.events.array.fill(-1); pool.events.needsUpdate = true; pool.cursor = 0;
     }
     for (const plane of aircraft) { plane.active = false; plane.root.visible = false; }
+    aaGuns.length = 0; aaBases.count = 0; aaHeads.count = 0;
+    tracerAttr.array.fill(-1); tracerAttr.needsUpdate = true; tracerCursor = 0;
   }
 
   function dispose(): void {
@@ -533,8 +732,9 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     parent.remove(group);
     columnGeometry.dispose(); quad.dispose();
     flashes.mesh.geometry.dispose(); flak.mesh.geometry.dispose();
-    aircraftGeometry.dispose();
+    aircraftGeometry.dispose(); aaBaseGeometry.dispose(); aaHeadGeometry.dispose(); tracerGeometry.dispose();
     columnMaterial.dispose(); flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();
+    aaMaterial.dispose(); tracerMaterial.dispose();
     columnTexture.dispose(); puffTexture.dispose();
   }
 
