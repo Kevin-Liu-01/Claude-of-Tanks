@@ -34,8 +34,9 @@ const BEFORE={
  'type10_x/low':'a6a69b8381f26abcc7ee4b4c3ac708f1210b4c712fcd7fb7afc752e6580b84e8',
  'type90_x/high':'dfcf6d62a432414a6b1183000d5375d4f75ea182a2bc05c77a925ab0027a3804',
  'type90_x/low':'2064861efdbe19a297516b29906f11442fbdcb381170ff52eb407403084e1533',
- 'amx40_x/high':'38e77aa0a00fb7684013596f3bfc2b56ebeceee7dfcfc77f7433f0dd17cab6c1',
- 'amx40_x/low':'9ec056595f999fcea05011df520cf475c37a1937b13cdcb43815f4af25c5a36c',
+ // 2026-09-12 (evening): AMX-40 X .024 band + botY .050 contact fix; native fingerprints repinned.
+ 'amx40_x/high':'c109747fd2866bd4543b7c864ed59ff88c54a6ae52dc6976f2b660965d32991a',
+ 'amx40_x/low':'24bb77c1316801fe5cbad0eadb1c41279b3ca60b878c185b8451fc825ba42551',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

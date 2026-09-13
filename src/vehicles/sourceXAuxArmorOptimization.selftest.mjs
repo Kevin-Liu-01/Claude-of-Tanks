@@ -36,13 +36,15 @@ invalidTrack.modules.find(m=>m.module==='trackL').min[1]-=.001;
 assert.throws(()=>beforeType10TrackCalibration(invalidTrack));
 // 2026-09-12: amx40_x returned to its measured track band/pads (.020/.028) and
 // its combat anatomy was regenerated, so the seven-object golden is repinned.
+// 2026-09-12 (evening): the fleet track standard (.024 band) and the botY .050
+// contact fix regenerated the AMX-40 X anatomy again; golden repinned once more.
 assert.equal(hash(ids.map(id=>({id,armor:id==='type10_x'
   ?beforeType10TrackCalibration(getSpec(id).armor):getSpec(id).armor}))),
 // 2026-09-12 fleet track/wheel standard: Russian X bands .030 (pads .036, webs .018),
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  'ced4c8f011a5b909011c0f1d7d1e1f2cace343a05ea92ac7dea55089d1e8a999',
+  '1ae1208f2f46c657245b8981c30812871a41d646c7acee354b919a61500cf6e1',
   'all seven pre-optimization armor objects retain their golden, with the declared Type 10 track-only inverse');
 assert.equal(serialize(type10Armor),type10Before,'historical witness must not mutate the current candidate');
 
