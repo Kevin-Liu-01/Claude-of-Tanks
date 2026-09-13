@@ -46,6 +46,8 @@ function createSizing(ports) {
   const maxSamples = 4;
   ${samplesForPreset}
   let msaaSamples = samplesForPreset(preset);
+  // temporal AA (2026-09-12): the preset handler gates the pass; this sizing receipt keeps it stubbed
+  const taa = { enabled: false, resetHistory() {} }; let taaEnabled = false;
   let resetTemporalAoHistory = (): void => {};
   ${aoHistory}
   { ${aoSize} }

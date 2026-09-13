@@ -80,6 +80,7 @@ import {
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
+import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
 import { createPostFrameAccounting, type CompletedPostFrame } from './postFrameAccounting.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
@@ -137,6 +138,9 @@ export interface PostRuntime {
   composer: EffectComposer;
   bloom: UnrealBloomPass;
   gtao: GTAOPass;
+  /** Temporal anti-aliasing (2026-09-12); enabled per quality preset. */
+  taa: TemporalAAPass;
+  readonly taaEnabled: boolean;
   upscaler: FsrUpscalePass;
   sceneAA: SceneAAPass;
   lateFx: LateFxPass;
@@ -1732,9 +1736,10 @@ export function createPost(
   );
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
+  let taaEnabled = !!preset.taa;
   const publishAAState = (): void => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
-    renderer.domElement.dataset.postAa = 'smaa-high+fsr1';
+    renderer.domElement.dataset.postAa = `${taaEnabled ? 'taa+' : ''}smaa-high+fsr1`;
   };
   publishAAState();
   composer.addPass(sceneAA); // 1. multisampled scene + single resolve
@@ -2035,6 +2040,16 @@ export function createPost(
   // Otherwise aerial/GTAO use the mountain or hull BEHIND smoke and stamp
   // that background depth across the foreground card (the reported glitch).
   composer.addPass(lateFx);
+
+  // Temporal AA (2026-09-12): after every scene-space pass and before bloom,
+  // so the accumulated HDR frame is what bloom and the grade see. The camera
+  // projection is jittered by a sub-pixel Halton offset for the scene render
+  // (renderFrame) and restored afterwards, so gameplay math, the shadow fit
+  // cache and the next frame's culling never see the jitter.
+  const taa = new TemporalAAPass(camera, sceneDepth, size.x, size.y);
+  taa.enabled = taaEnabled;
+  composer.addPass(taa);
+  let taaFrame = 0;
 
   const bloom = new UnrealBloomPass(size.clone(), BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
   {
@@ -2471,6 +2486,12 @@ export function createPost(
       && passes[2] === gtao && passes[3] === lateFx
       && sceneAA.enabled && aerial.enabled && lateFx.enabled;
     const directColor = canonicalPrefix && !gtao.enabled && lateFx.softState?.isActive();
+    const jittered = taa.enabled;
+    if (jittered) {
+      const [jx, jy] = taaJitterOffset(taaFrame++);
+      applyProjectionJitter(camera.projectionMatrix, jx, jy, sceneTarget.width, sceneTarget.height);
+      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+    }
     if (canonicalPrefix) sceneAA.beginMatrixFrame(renderer);
     else sceneAA.endMatrixFrame();
     aerial.beginDirectColorFrame(directColor ? lateTarget : null);
@@ -2481,6 +2502,7 @@ export function createPost(
       endStaticDrawRangeFrame(rangeMarker);
       sceneAA.endMatrixFrame();
       aerial.endDirectColorFrame();
+      if (jittered) camera.updateProjectionMatrix(); // the unjittered projection for everything after the render
     }
   }
 
@@ -2493,6 +2515,9 @@ export function createPost(
     applyAoSampling(preset);
     msaaSamples = samplesForPreset(preset);
     sceneAA.setSamples(msaaSamples);
+    taaEnabled = !!preset.taa;
+    taa.enabled = taaEnabled;
+    taa.resetHistory();
     publishAAState();
     // perf-governor r1: a preset switch is a new baseline — release every
     // session trim (the new tier's own levers take over) and recompute AO.
@@ -2599,6 +2624,8 @@ export function createPost(
 
     /** Scene-only hardware AA. Display-space SMAA + FSR1 follow it. */
     get msaaSamples() { return msaaSamples; },
+    taa,
+    get taaEnabled() { return taaEnabled; },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
      * settings-UI observability for the governor above; read-only. */

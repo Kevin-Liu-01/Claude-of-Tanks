@@ -51,6 +51,13 @@ export type PresetChoice = 'auto' | DesktopPresetName;
 export interface QualityPreset {
   readonly label: string;
   readonly msaaSamples: number;
+  /**
+   * Temporal anti-aliasing (2026-09-12): sub-pixel jitter + reprojected history
+   * on the HDR scene buffer. Settles foliage, ground relief and shadow dapple
+   * that MSAA/SMAA cannot; one resolve + one copy at internal resolution.
+   * Absent means off (mobile presets, Low).
+   */
+  readonly taa?: boolean;
   readonly maxPixelRatio: number;
   readonly adaptiveBasePixelRatio?: number;
   readonly dynMin: number;
@@ -195,6 +202,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   ultra: {
     label: 'Ultra',
     msaaSamples: 4,
+    taa: true,
     maxPixelRatio: 2.0,
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
@@ -227,6 +235,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   high: {
     label: 'High',
     msaaSamples: 0,
+    taa: true,
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
@@ -238,6 +247,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   medium: {
     label: 'Medium',
     msaaSamples: 0,
+    taa: true,
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
     // fallback by another hidden 0.75 dynamic scale: desktop readability

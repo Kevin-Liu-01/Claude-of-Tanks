@@ -371,6 +371,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/articulatedShadowBatch.selftest.mjs',
     'src/engine/lodShadowFade.selftest.mjs',
     'src/engine/quality.selftest.mjs',
+    'src/engine/temporalAA.selftest.mjs',
     'src/engine/adaptiveQualityPolicy.selftest.mjs',
     'src/engine/postViewportScale.selftest.mjs',
     'src/engine/postFrameAccounting.selftest.mjs',
