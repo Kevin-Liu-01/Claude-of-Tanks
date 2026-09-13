@@ -742,6 +742,20 @@ function collectWindowPanes(
       const face = axis === 'x' ? w / 2 : d / 2;
       const along = axis === 'x' ? center.x : center.z;
       if (Math.abs(Math.abs(along) - face) > 0.25) continue;
+      // settlement pass 4 (2026-09-13): the pane must sit on the envelope wall
+      // itself — inner face within 4 cm of it — or the jambs, embedded 1 cm
+      // into that assumed wall, float in front of the bay, oriel or shopfront
+      // relief that really carries the pane. A Ruinspires rowhouse pane 15 cm
+      // proud tripped the floating-part guard and failed the whole world build.
+      const innerFace = Math.abs(along) - size[axis] * 0.5;
+      if (Math.abs(innerFace - face) > 0.04) continue;
+      // ...and the frame must stay on the wall laterally: a pane in the end bay
+      // of a rowhouse puts a jamb past the corner, where nothing supports it
+      // (the gap the guard reports is measured in three dimensions).
+      const acrossHalf = axis === 'x' ? d / 2 : w / 2;
+      const acrossCenter = axis === 'x' ? center.z : center.x;
+      const openW = axis === 'x' ? size.z : size.x;
+      if (Math.abs(acrossCenter) + openW * 0.5 + 0.09 + 0.02 > acrossHalf) continue;
       const alreadyFramed = framed.some((frame) => {
         frame.getSize(frameSize);
         const thinFrame = axis === 'x' ? frameSize.x <= 0.3 : frameSize.z <= 0.3;

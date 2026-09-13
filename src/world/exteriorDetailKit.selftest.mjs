@@ -94,6 +94,23 @@ for (const [profile, minimum] of [
   assert.ok(!timberReceipt.records.some(({ part }) => part.startsWith('quoin-')), 'timber walls take no masonry quoins');
 }
 
+// settlement pass 4 (2026-09-13): panes seated on a relief block proud of the
+// wall (bay, oriel, shopfront) and panes whose frame would pass the building
+// corner get no joinery and never throw; a wall pane clear of the corner still
+// does. Ruinspires' rowhouse window 11 tripped the floating-part guard.
+{
+  const parts = { ...makeParts(), glass: [] };
+  parts.plaster.push(new THREE.BoxGeometry(8, 3.4, 10).translate(0, 1.7, 0));
+  parts.plaster.push(new THREE.BoxGeometry(2.4, 1.6, 0.30).translate(1.5, 1.7, 5.15)); // oriel relief block
+  parts.glass.push(new THREE.BoxGeometry(1.6, 1.1, 0.06).translate(1.5, 1.7, 5.33));     // pane on the oriel, 15 cm proud
+  parts.glass.push(new THREE.BoxGeometry(1.0, 1.1, 0.06).translate(-2.0, 1.7, 5.04));    // pane on the wall, 1 cm proud
+  parts.glass.push(new THREE.BoxGeometry(0.9, 1.1, 0.06).translate(3.7, 1.7, 5.04));     // wall pane in the end bay: a jamb would pass the corner
+  const receipt = addConnectedExterior(parts, { id: 'oriel-house', w: 8, d: 10, wallH: 3.4, profile: 'urban', variant: 0 });
+  const jambs = receipt.records.filter(({ part }) => /^window-\d+-jamb-/.test(part));
+  assert.equal(jambs.length, 2, `only the wall pane clear of the corner is framed (${jambs.length} jambs)`);
+  assert.ok(jambs.every(({ gap }) => gap <= exteriorSupportEpsilon()), 'the framed pane has its jambs seated in the wall');
+}
+
 // settlement pass 2026-09-12: bare authored window panes receive jambs, a
 // head and a sill (shutters on alternate rural/timber buildings); panes a
 // builder already framed, attic panes above the wall and recessed wing panes
