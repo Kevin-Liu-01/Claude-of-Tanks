@@ -100,6 +100,17 @@ export interface ShallowWaterSurface {
   setTime(timeSeconds: number): void;
 }
 
+type ShallowWaterShader = Parameters<NonNullable<THREE.MeshStandardMaterial['onBeforeCompile']>>[0];
+/**
+ * Water pass 3 (2026-09-12): the engine hook that folds the surface into the
+ * cascaded-shadow setup. Until now the water material set `onBeforeCompile`
+ * on its own and never joined it, so all four cascade directional lights
+ * struck the sheet at once — four suns on every bay, which every earlier
+ * water tuning (roughness floors, opacity, sky reflection) was fighting.
+ */
+export type ShallowWaterMaterialSetup =
+  (material: THREE.MeshStandardMaterial, hook: (shader: ShallowWaterShader) => void) => void;
+
 export function createShallowWaterSurface(
   geometry: THREE.BufferGeometry,
   mask: THREE.Texture,
@@ -107,6 +118,7 @@ export function createShallowWaterSurface(
   size: number,
   mapId: string,
   ramp: readonly [number, number],
+  setup: ShallowWaterMaterialSetup | null = null,
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
@@ -114,13 +126,15 @@ export function createShallowWaterSurface(
     color: profile.color, roughness: profile.roughness, metalness: 0,
     // Water 2026-09-12: 0.28 -> 0.55 — the surface mirrors more sky at grazing
     // angles (the 1049e4e bay carried visible sky and sun glints).
-    envMapIntensity: 0.55,
+    // Water pass 3 (2026-09-12): 0.55 -> 0.9 now that the sheet is lit once
+    // (cascade setup) instead of by four suns.
+    envMapIntensity: 0.9,
     transparent: true, opacity: profile.opacity, depthWrite: false,
     side: THREE.DoubleSide,
   });
   material.forceSinglePass = true;
   material.name = `water:${profile.kind}`;
-  material.onBeforeCompile = shader => {
+  const hook = (shader: ShallowWaterShader): void => {
     Object.assign(shader.uniforms, {
       uWaterMask: { value: mask }, uWaterWave: { value: waveNormal },
       uWaterSize: { value: size }, uWaterTime: clock,
@@ -172,7 +186,9 @@ export function createShallowWaterSurface(
       vec4 waveNear = texture2D(uWaterWave, waveUV + drift);
       vec4 waveBroad = texture2D(uWaterWave, waveUV * 0.61 - drift * 0.7);
       vec2 wave = waveNear.xy * 2.0 - 1.0;
-      wave += (waveBroad.xy * 2.0 - 1.0) * 0.55;
+      // water pass 3 (2026-09-12): the broad swell carries more of the relief so
+      // the open sea keeps the 1049e4e bay's long wave bands, not just fine chop
+      wave += (waveBroad.xy * 2.0 - 1.0) * 0.9;
       normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength, 1.0, wave.y * uWaterWaveStrength)), 0.0)).xyz);
       normal *= faceDirection;
       // Surface colour breakup reuses the same two wave fetches: moving
@@ -180,7 +196,7 @@ export function createShallowWaterSurface(
       // diffuseColor is consumed by the lighting pass after this point.
       float broadWave = waveBroad.x;
       float fineWave = waveNear.y;
-      diffuseColor.rgb *= 0.96 + (broadWave - 0.5) * 0.14 + (fineWave - 0.5) * 0.06;
+      diffuseColor.rgb *= 0.96 + (broadWave - 0.5) * 0.22 + (fineWave - 0.5) * 0.06;
       diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShore, waterBank * (0.24 + broadWave * 0.12));
       diffuseColor.rgb += vec3(0.018, 0.026, 0.028)
         * smoothstep(0.66, 0.90, broadWave) * (0.35 + fineWave * 0.65) * waterDeep;
@@ -193,12 +209,17 @@ export function createShallowWaterSurface(
     // The game's strong sun/bloom exposure turns a broad default dielectric
     // highlight into a white sheet. Keep the directional glint, at a bounded
     // energy, without changing world lighting or adding a reflection pass.
+    // Water pass 3 (2026-09-12): the old 0.16 / 0.35 / 0.18 clamps were
+    // fighting four cascade suns; lit once, the sheet needs most of its
+    // dielectric glint back or the waves read as one flat sheet.
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_fragment>',
-      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.16;\nmaterial.specularF90 = 0.35;');
+      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.6;\nmaterial.specularF90 = 0.75;');
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(0.18));\n#include <opaque_fragment>');
+      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(0.55));\n#include <opaque_fragment>');
   };
-  material.customProgramCacheKey = () => 'shallow-water-v7';
+  if (setup) setup(material, hook);
+  else material.onBeforeCompile = hook;
+  material.customProgramCacheKey = () => 'shallow-water-v8';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;

@@ -127,9 +127,28 @@ curvedSurface.geometry.dispose();
 
 const mask = new Texture(), waves = new Texture();
 const water = createShallowWaterSurface(surface.geometry, mask, waves, field.size, 'coastal', [0.4, 0.78]);
+// water pass 3 (2026-09-12): with the engine hook the material is handed over
+// (cascaded-shadow setup) together with the water shader patch; without it the
+// patch installs directly, as below.
+{
+  const handed = [];
+  const routed = createShallowWaterSurface(surface.geometry, mask, waves, field.size, 'coastal', [0.4, 0.78],
+    (material, hook) => handed.push({ material, hook }));
+  assert.equal(handed.length, 1, 'one material joins the cascade setup');
+  assert.equal(handed[0].material, routed.mesh.material);
+  assert.equal(routed.mesh.material.onBeforeCompile.toString().includes('uWaterMask'), false,
+    'the module leaves onBeforeCompile to the engine when a setup hook is given');
+  const probe = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
+  handed[0].hook(probe);
+  assert.equal(probe.uniforms.uWaterMask.value, mask, 'the handed hook is the water shader patch');
+  routed.mesh.material.dispose();
+  const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  assert.match(terrain, /\(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\)\);/,
+    'the terrain builder routes the sheet through the engine hook');
+}
 assert.equal(water.mesh.material.transparent, true);
 assert.equal(water.mesh.material.depthWrite, false);
-assert.equal(water.mesh.material.envMapIntensity, 0.55, 'surface keeps a bounded sky reflection (0.55 since the 2026-09-12 water pass)');
+assert.equal(water.mesh.material.envMapIntensity, 0.9, 'surface keeps a bounded sky reflection (0.55 since the 2026-09-12 water pass; 0.9 since water pass 3 lit the sheet once)');
 assert.equal(water.mesh.material.forceSinglePass, true, 'one draw, not the two-pass transparent default');
 const shader = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
 water.mesh.material.onBeforeCompile(shader);
@@ -138,7 +157,7 @@ assert.equal(shader.uniforms.uWaterWave.value, waves, 'shares already-owned terr
 assert.match(shader.fragmentShader, /if \(wet < 0\.015\) discard/);
 assert.match(shader.fragmentShader, /smoothstep\(0\.0, 0\.55, wet\) \* mix\(opacity, 0\.86, grazing\)/,
   'shallows reach full body quickly instead of showing bright sand through a pale cyan film');
-assert.match(shader.fragmentShader, /material\.specularF90 = 0\.35/,
+assert.match(shader.fragmentShader, /material\.specularF90 = 0\.75/,
   'grazing sky reflection is bounded so distant water stays dark rather than washing to the horizon tint');
 assert.match(shader.fragmentShader, /mix\(0\.90, 0\.70, waterDeep\)/,
   'deep water remains darker than its bank, and the bank no longer brightens above the base tint');
@@ -158,8 +177,8 @@ assert.match(shader.fragmentShader, /mix\(diffuseColor\.rgb, uWaterShore, waterB
   'shoreline receives a body-specific sediment tint');
 assert.match(shader.fragmentShader, /uWaterWaveStrength/,
   'body-specific wave energy reaches the actual normal path');
-assert.match(shader.fragmentShader, /material\.specularColor \*= 0\.16/, 'sun glints remain bounded but readable');
-assert.match(shader.fragmentShader, /totalSpecular - vec3\(0\.18\)/, 'liquid highlight energy stays below bloom-white');
+assert.match(shader.fragmentShader, /material\.specularColor \*= 0\.6/, 'sun glints remain bounded but readable (water pass 3: 0.16 -> 0.6 once the sheet joined the cascade setup)');
+assert.match(shader.fragmentShader, /totalSpecular - vec3\(0\.55\)/, 'liquid highlight energy stays below bloom-white (water pass 3: 0.18 -> 0.55)');
 water.update(0.016); assert.equal(shader.uniforms.uWaterTime.value, 0.016);
 water.update(0); water.update(-1); water.update(NaN);
 assert.equal(shader.uniforms.uWaterTime.value, 0.016);

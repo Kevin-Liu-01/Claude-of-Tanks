@@ -136,7 +136,7 @@ assert.match(map, /groundLitterProfile\(config\.id\)/, 'the world reads the prof
   csm.dispose();
   assert.deepEqual(released, [calls[0].material], 'dispose releases the material from the shadow setup');
 }
-assert.match(map, /setupMaterial: \(material, hook\) => engineCtx\.setupShadowMaterial\(material, hook\)/, 'the world folds the litter material into the cascaded-shadow setup');
+assert.match(map, /setupMaterial: \(material, hook\) => engineCtx\.setupShadowMaterial\?\.\(material, hook\)/, 'the world folds the litter material into the cascaded-shadow setup');
 assert.match(map, /releaseMaterial: \(material\) => engineCtx\.releaseShadowMaterial\?\.\(material\)/, 'and releases it with the world');
 
 // fade shader and program key

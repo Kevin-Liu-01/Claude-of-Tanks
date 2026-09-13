@@ -3927,7 +3927,9 @@ function* terrainBuildSteps(
       heightField.getWaterSurfaceHeightAt = step.value.heightAt;
       const water = createShallowWaterSurface(step.value.geometry,
         materialStep.value.waterMask, materialStep.value.waterNormal,
-        heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78]);
+        heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78],
+        // water pass 3 (2026-09-12): the sheet joins the cascaded-shadow setup like every lit world material
+        (material, hook) => engineCtx.setupShadowMaterial(material, hook));
       group.add(water.mesh);
       group.userData.updateWater = water.update;
       group.userData.setWaterTime = water.setTime;
