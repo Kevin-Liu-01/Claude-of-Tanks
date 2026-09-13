@@ -234,6 +234,21 @@ interface TankWreckSettings {
 
 type WallRun = readonly [number, number, number, number, number?];
 
+// environment density pass 2 (2026-09-12): per-map dressing caps that used to be
+// hard-coded (26 logs + stumps, 5 dressed yards everywhere). Kept here rather
+// than in the map modules, whose authoring the relief receipts pin; a map's own
+// props.logCount / props.hayCrateSites still wins.
+export const FIELD_LOG_COUNTS: Readonly<Record<string, number>> = Object.freeze({
+  autumn: 60, longleaf: 60, monsoon: 60, orchard: 56, verdant: 56, frontier: 56, fjord: 56, reservoir: 56,
+  alpine: 52, delta: 52, coastal: 52, mangrove: 48, saltwind: 48, steppe: 44,
+  polders: 40, skybridge: 40, railyard: 40, winter: 36, whiteout: 30, caldera: 30,
+});
+export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
+  verdant: 9, autumn: 9, steppe: 9, orchard: 9,
+  polders: 8, coastal: 8, frontier: 8, delta: 8, longleaf: 8, reservoir: 8,
+  saltwind: 7, alpine: 7, monsoon: 7, mangrove: 7,
+});
+
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
   bathhouseStyle?: 'timber';
@@ -255,6 +270,10 @@ interface PropsSettings {
   telegraph: boolean;
   carts: boolean;
   logs: boolean;
+  /** environment density pass 2 (2026-09-12): fallen logs + stumps per map (was a fixed 26). */
+  logCount?: number;
+  /** environment density pass 2 (2026-09-12): buildings that get bales and crates around them (was a fixed 5). */
+  hayCrateSites?: number;
   haystacks: number;
   rocks: number;
   outcrops: number;
@@ -2617,7 +2636,7 @@ function* propsBuildSteps(
     tones: {}, rockTone: null, wallStoneChance: 0.25,
     buildingLat: [10, 4], sideSkip: 0.25, maxSpread: 1.7, spacingPad: 9,
     wallRuns: null, well: true, hayCrates: true, fences: true,
-    telegraph: true, carts: true, logs: true,
+    telegraph: true, carts: true, logs: true, logCount: 26, hayCrateSites: 5,
     haystacks: 15, rocks: 170, outcrops: 16, craters: 30, rubblePiles: 0,
     wrecks: 4, // r7: burned-out vehicle hulks along the roads (contested read)
     // r6 terrain_environment dressing passes (per-biome, see map configs):
@@ -4276,7 +4295,10 @@ ${snowCap ? `
   // --- hay bales + crates near buildings (world-dressing r1: instanced
   // DESTRUCTIBLES — a hull crushes them, shells burst them, hay puffs) ---
   function placeHayAndCrates(): void {
-    for (let i = 0; P.hayCrates && i < Math.min(5, placedB.length); i++) {
+    // environment density pass 2 (2026-09-12): farm maps dress more yards
+    // (a map's own props.hayCrateSites overrides the table)
+    const hayCrateSites = Math.max(0, Math.round(P.hayCrateSites ?? HAY_CRATE_SITES[mapId] ?? 5));
+    for (let i = 0; P.hayCrates && i < Math.min(hayCrateSites, placedB.length); i++) {
       const pb = placedB[i];
       const n = 1 + ((rng() * 3) | 0);
       for (let k = 0; k < n; k++) {
@@ -4744,7 +4766,14 @@ ${snowCap ? `
   }
   const fieldTimber = beginFieldTimberCapture();
   function placeFieldLogsAndStumps(): void {
-  for (let i = 0, placed = 0; P.logs && i < 260 && placed < 26; i++) {
+  // environment density pass 2 (2026-09-12): the cap is per map (forest and
+  // farm maps carry 44-60, snow and volcanic ground 30-36; a map's own
+  // props.logCount overrides the table), attempts scale with it
+  const logCap = Math.max(0, Math.round(P.logCount ?? FIELD_LOG_COUNTS[mapId] ?? 26));
+  // the authored logging yard keeps its original donor budget (composeLoggingYard's
+  // bounded allocation of 26 pieces); every log and stump past it stays in the field
+  const yardDonors = 26;
+  for (let i = 0, placed = 0; P.logs && i < logCap * 10 && placed < logCap; i++) {
     const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
     if (x > v.x0 - 6 && x < v.x1 + 6 && z > v.z0 - 6 && z < v.z1 + 6) continue;
     if (heightField._roadDist(x, z) < 7) continue;
@@ -4766,7 +4795,7 @@ ${snowCap ? `
         relief: pose.relief, baseClearance: -r * 0.1,
         start: pose.start, end: pose.end,
       });
-      fieldTimber?.push({ geometry: log, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: len, height: 0, yaw });
+      if (fieldTimber && fieldTimber.length < yardDonors) fieldTimber.push({ geometry: log, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: len, height: 0, yaw });
     } else { // stump
       const r = 0.22 + rng() * 0.15, h = 0.35 + rng() * 0.3;
       const support = sampleDiscGround(heightField, x, z, r, 0.06);
@@ -4780,7 +4809,7 @@ ${snowCap ? `
         kind: 'stump', x, y: support.y, z, relief: support.spread, baseClearance: -0.06,
         supportMin: support.min, supportMax: support.max,
       });
-      fieldTimber?.push({ geometry: st, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: 0, height: h, yaw });
+      if (fieldTimber && fieldTimber.length < yardDonors) fieldTimber.push({ geometry: st, grounding: decorationGroundingReceipts.at(-1)!, radius: r, length: 0, height: h, yaw });
     }
     placed++;
   }

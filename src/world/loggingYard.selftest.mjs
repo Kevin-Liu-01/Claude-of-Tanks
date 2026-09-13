@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { mulberry32 } from './props.ts';
+import { mulberry32, FIELD_LOG_COUNTS, HAY_CRATE_SITES } from './props.ts'; // density pass 2 (2026-09-12): the projected stages read the per-map caps
 import { cloneCollisionRecord, pushHullFromObstacle, setCircleShape, setObbShape } from './collision.ts';
 import { sampleDiscGround, sampleObbGround, planGroundedSegment } from './propPlacement.ts';
 import { scaleUV } from './propGeometry.ts';
@@ -33,7 +33,7 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
   GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive,
-  authoredRoadStationCount, authoredRoadStationIndex };
+  authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES };
 // Real source stages, not a replacement placement algorithm. The log stream
 // starts at an explicit test checkpoint; this does not claim a full-world
 // source census. Heavy traffic has its actual dedicated production RNG seed.
