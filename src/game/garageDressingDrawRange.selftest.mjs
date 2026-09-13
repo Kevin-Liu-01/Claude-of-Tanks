@@ -36,6 +36,12 @@ const instantiate = new Function('ports', stripTypeScriptTypes(`
   const updateAerialZoom = () => {}, updateScopeGrade = () => {};
   const updateAerialFogColors = () => {}, updateAerialCameraBasis = () => {};
   const CLOUD_SHADE_DEFAULT = 0, lateTarget = null;
+  // temporal AA (2026-09-12): the frame boundary jitters the projection when the pass is on; this
+  // WebGL-I/O receipt keeps it off and stubs the camera/target ports it would touch
+  const taa = { enabled: false }; let taaFrame = 0;
+  const taaJitterOffset = () => [0, 0], applyProjectionJitter = () => {};
+  const sceneTarget = { width: 1, height: 1 };
+  const camera = ports.camera ?? { updateProjectionMatrix() {} };
   ${postSource.slice(frameStart, frameEnd)}
 `) + '\nreturn frameAccounting;');
 
