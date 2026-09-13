@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeBathhouse, makeTimberBathhouse } from './maps/structureKit.ts';
-import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
+import { addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops } from './maps/exteriorDetailKit.ts';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { jitterUV } from './propGeometry.ts';
 import { mulberry32 } from './props.ts';
@@ -419,7 +419,9 @@ function section(start, end) {
   assert.ok(a >= 0 && b > a, `actual production stage found: ${start}`);
   return source.slice(a, b);
 }
-const dependencies = { THREE, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse,
+const dependencies = {
+  // settlement pass 2 (2026-09-12): mergeInto carries chimney tops through the exterior kit helper.
+  carryExteriorChimneyTops, THREE, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse,
   addCatalogExterior, jitterUV, mulberry32, sampleObbGround, deriveRuntimeStructureCollisionProfile,
   appendStructureCollisionBand };
 const makePlacement = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* build(config, heightField, seed) {

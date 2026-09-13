@@ -28,6 +28,8 @@ export interface ExteriorReceipt {
   added: number;
   maxSupportGap: number;
   records: ExteriorSupportRecord[];
+  /** settlement pass 2 (2026-09-12): tops of the builder's authored chimney stacks, building-local. */
+  chimneys: Array<[number, number, number]>;
 }
 
 export interface GeometryBuckets {
@@ -180,7 +182,7 @@ function detailAuthor(parts: GeometryBuckets, {
   return {
     add,
     receipt: () => ({ id, profile, added: records.length,
-      maxSupportGap: Math.max(0, ...records.map((record) => record.gap)), records }),
+      maxSupportGap: Math.max(0, ...records.map((record) => record.gap)), records, chimneys: [] }),
   };
 }
 
@@ -624,11 +626,45 @@ export function addConnectedExterior(
   // Builder-authored window panes, read BEFORE this pass adds its own framed
   // apertures (those arrive complete and must not be framed twice).
   const panes = collectWindowPanes(parts, envelope);
+  const chimneys = collectChimneyTops(parts, envelope);
   const author = detailAuthor(parts, envelope);
   addPrimaryExterior(author, envelope, variant);
   addSecondaryExterior(author, envelope, variant);
   addWindowJoinery(author, panes, envelope.profile, variant);
-  return appendExteriorReceipt(parts, author.receipt());
+  return appendExteriorReceipt(parts, { ...author.receipt(), chimneys });
+}
+
+const MAX_CHIMNEYS = 4;
+
+/**
+ * Chimney stacks a builder authored as masonry: a near-square column no wider
+ * than 0.9 m, at least 0.8 m tall, whose top clears the wall envelope by
+ * 0.6 m. Cap slabs (too flat) and porch posts (too thin) never qualify; two
+ * pieces of one stack collapse to the higher top. Positions are building-local
+ * so the placement site can carry them into the world with the building.
+ */
+function collectChimneyTops(
+  parts: GeometryBuckets,
+  { w, d, wallH }: ExteriorEnvelope,
+): Array<[number, number, number]> {
+  const tops: Array<[number, number, number]> = [];
+  const size = new THREE.Vector3();
+  for (const name of ['stone', 'baked', 'plaster', 'plaster2', 'plaster3', 'wood']) {
+    for (const geo of parts[name] || []) {
+      const bounds = boundsOf(geo);
+      bounds.getSize(size);
+      if (size.y < 0.8 || Math.max(size.x, size.z) > 0.9 || Math.min(size.x, size.z) < 0.3) continue;
+      if (Math.abs(size.x - size.z) > 0.22) continue;
+      if (bounds.max.y < wallH + 0.6) continue;
+      const x = (bounds.min.x + bounds.max.x) * 0.5, z = (bounds.min.z + bounds.max.z) * 0.5;
+      if (Math.abs(x) > w * 0.62 + 0.4 || Math.abs(z) > d * 0.62 + 0.4) continue;
+      const near = tops.find((top) => Math.hypot(top[0] - x, top[2] - z) < 0.6);
+      if (near) { near[1] = Math.max(near[1], bounds.max.y); continue; }
+      tops.push([x, bounds.max.y, z]);
+    }
+  }
+  tops.sort((a, b) => b[1] - a[1]);
+  return tops.slice(0, MAX_CHIMNEYS);
 }
 
 interface WindowPane {
@@ -851,7 +887,8 @@ export function addCatalogExterior(
     bathhouseStyle,
   }: { id?: string; info?: BuildingInfo; variant?: number; bathhouseStyle?: 'timber' } = {},
 ): ExteriorReceipt | null {
-  if (parts[EXTERIOR_RECEIPTS]?.length) return parts[EXTERIOR_RECEIPTS][0];
+  const own = parts[EXTERIOR_RECEIPTS]?.find((receipt) => receipt.profile !== 'carried');
+  if (own) return own;
   const profile = id ? CATALOG_PROFILES[id] : undefined;
   if (!profile) return null;
   const envelope = inferCenteredWallEnvelope(parts, info || {});
@@ -860,3 +897,34 @@ export function addCatalogExterior(
 }
 
 export function exteriorSupportEpsilon(): number { return SUPPORT_EPSILON; }
+
+/** Chimney tops recorded on a bucket set by its exterior pass (building-local). */
+export function exteriorChimneyTops(parts: GeometryBuckets): ReadonlyArray<[number, number, number]> {
+  const receipts = parts[EXTERIOR_RECEIPTS];
+  if (!receipts?.length) return [];
+  const tops: Array<[number, number, number]> = [];
+  for (const receipt of receipts) for (const top of receipt.chimneys) tops.push(top);
+  return tops;
+}
+
+/**
+ * Carry chimney tops from a merged sub-assembly onto the receiving bucket set
+ * (optionally through the sub-assembly's placement matrix), so a building
+ * assembled from several exterior-dressed parts reports every stack once.
+ */
+export function carryExteriorChimneyTops(
+  target: GeometryBuckets,
+  source: GeometryBuckets,
+  matrix: THREE.Matrix4 | null = null,
+): void {
+  const tops = exteriorChimneyTops(source);
+  if (!tops.length) return;
+  const carried = tops.map(([x, y, z]) => {
+    if (!matrix) return [x, y, z] as [number, number, number];
+    const v = new THREE.Vector3(x, y, z).applyMatrix4(matrix);
+    return [v.x, v.y, v.z] as [number, number, number];
+  });
+  appendExteriorReceipt(target, {
+    id: 'carried-chimneys', profile: 'carried', added: 0, maxSupportGap: 0, records: [], chimneys: carried,
+  });
+}

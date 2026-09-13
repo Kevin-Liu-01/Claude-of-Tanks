@@ -46,7 +46,9 @@ import {
 import {
   DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
 } from './maps/structureKit.ts';
-import { addCatalogExterior, addConnectedExterior } from './maps/exteriorDetailKit.ts';
+import {
+  addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
+} from './maps/exteriorDetailKit.ts';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
 import { createUtilityNetwork } from './utilityNetwork.ts';
@@ -563,6 +565,8 @@ export interface PropsRuntime {
   features: {
     buildings: PlacedBuilding[];
     tacticalBeats: TacticalBeatFeature[];
+    /** World-space chimney tops of every placed building (hearth smoke anchors). */
+    hearths: Array<[number, number, number]>;
   };
   _buildDetail?: PropsBuildDetail;
 }
@@ -1854,6 +1858,9 @@ function mergeInto(
       buckets[key].push(g);
     }
   }
+  // settlement pass 2 (2026-09-12): chimney tops ride along with the geometry
+  // so the finished bucket set knows every stack in world space (hearth smoke).
+  carryExteriorChimneyTops(buckets, parts, transform);
 }
 
 type GroundDecalKind = 'dirt' | 'apron' | 'crater' | 'scorch';
@@ -6476,6 +6483,8 @@ ${snowCap ? `
   // runtime destruction closures must not retain the placement graph.
   wallSpans.clear();
   // spatial hash over destructible records for the shell paths (8 m cells)
+  // settlement pass 2 (2026-09-12): every placed building's chimney tops, world space (hearth smoke).
+  const hearthAnchors = exteriorChimneyTops(buckets).map(([x, y, z]) => [x, y, z] as [number, number, number]);
   const D_CELL = 8;
   const dHash = new Map<string, number[]>();
   function indexDestructibleRecords(): void {
@@ -7112,5 +7121,5 @@ ${snowCap ? `
     utilityPolePlacements, decorationGroundingReceipts,
     sourcedTexturesReady, registerDestructibles,
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
-    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures } };
+    features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors } };
 }

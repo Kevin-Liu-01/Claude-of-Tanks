@@ -840,6 +840,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadMaskProfile.selftest.mjs',
     'src/world/roadDistanceField.selftest.mjs',
     'src/world/frontlineAtmosphere.selftest.mjs',
+    'src/world/hearthSmoke.selftest.mjs',
     'src/world/roadLookupGrid.selftest.mjs',
     'src/world/roadAuthoredExits.selftest.mjs',
     'src/world/roadBankComposition.selftest.mjs',
