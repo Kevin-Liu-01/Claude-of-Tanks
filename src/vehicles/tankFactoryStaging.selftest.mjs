@@ -40,7 +40,8 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "90ceb72a00b7d0a579388a80c7faddf3e784252d70d18f58d76e3035e442ad4a"
+    "sha256": "bccd40e27794f37ac0c15f3fb3b0c88ee7ae2f5a59eee6e7f62828eeab9e8c4a",
+    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel (hollowRoadWheelStock.ts), lost the gear_wheelBayVoidDress blocks and carries generated interior fills; material-inclusive digest repinned from the current build"
   },
   {
     "id": "strv103",
@@ -64,7 +65,8 @@ const goldenReceipts = [
       "decor": true,
       "geometryQuality": "low"
     },
-    "sha256": "07c7d431cc3a54f1d4378376602d68308c69b0bf86e101776225931db35c10ba"
+    "sha256": "32225d432bee78be0bffda7847eb377e493ca1f2c80e560a34e885ef336b46f9",
+    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
     "id": "m1a1",
@@ -77,7 +79,8 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "1c95b7fc9424f74be644137f93076daf29bed581abe5399c62a4de1e57964555"
+    "sha256": "a2e4a76d8c5f41dcf0d5ed378e95a531f528423c37c302f361b6b8b12403c725",
+    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
     "id": "merkava1b",
@@ -102,7 +105,8 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": false
     },
-    "sha256": "fb0166b3a80dcb426b61f8549a51593f14c90b1274a42cb9e6813bf8b4d0351b"
+    "sha256": "d1fe3c9e8506aac928da7a7a87d8e592cb4cba89976f859d2da8a43d0f95d3f0",
+    "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   }
 ];
 let capture, decorStage;

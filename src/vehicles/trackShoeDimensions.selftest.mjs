@@ -62,7 +62,10 @@ const DEFAULT_SHOE_HASHES={
 const DEFAULT_WHEEL_HASHES={
   t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','e3b982d7a499de8fded2a44f15abf4b96762345253426f1d686c28f128317972','8f57825275092ceafca41ca5a1cdb5567ed4046e1a3ae446010103066c0e76f3'],
   t90a:['a54a43055f2861026b4ceab5d270317974edceb01e6dda725ca0d03b44339e73','76972345146480d49776fcfbca7f66ea6aeb9b4ac58855cc3b7bd7d3cc32892f','e6dc3ca5d731290a64e2f3467f6596c5d12dc1c016491b79ad3a359f49327fa6'],
-  m1a2:['34257b15bdc31935cf0a4c2cb11261cca2a674690780f252477f3976fb44d949','87ed9df0bee59ae4b0b2467990a7e41586b9ce1142462d28e2fc65405bed2518','daf1e8d6766d235176312214a8791c5162fe252d0683265e1c604f1c2c387d5f'],
+// 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts — two
+// turned halves on a narrow axle, no separate inset ring), so tires/discs are repinned from the
+// current build and the inset entry is null (the construction emits no gearRoadWheelInsets).
+  m1a2:['c37665c53d90b9b8cdaa198bb2c710de51fae568191c9dfc57a74b044d81009f','8eca4e85ac692ef6d4544a395d15191ed33e2a31e72f79c0448cce5d713ce934',null],
   leo2a5:['2a635e4bdc9b37093cf67f7f9aa5fac83aded77cb19094ea2a01143e5f8e30b8','c0836b759e64859f643819cc270d52dd0d3e3bc20f2016360f5f2206fa893635','5447ad96a8234a3e656dc9ca7d003dca1216b2bdd22a958e8210c955f3e61a8b'],
 };
 for(const [id,expected] of Object.entries(DEFAULT_SHOE_HASHES)) {
@@ -70,7 +73,9 @@ for(const [id,expected] of Object.entries(DEFAULT_SHOE_HASHES)) {
   try {
     assert.equal(fingerprint(tank.root.getObjectByName('gearTrackPads').geometry),expected,id);
     for(const [i,name] of ['gearRoadWheelTires','gearRoadWheelDiscs','gearRoadWheelInsets'].entries()) {
-      assert.equal(fingerprint(tank.root.getObjectByName(name).geometry),DEFAULT_WHEEL_HASHES[id][i],`${id}/${name}`);
+      const mesh=tank.root.getObjectByName(name);
+      if(DEFAULT_WHEEL_HASHES[id][i]===null) { assert.equal(mesh,undefined,`${id}/${name}: this wheel construction emits no such stock`); continue; }
+      assert.equal(fingerprint(mesh.geometry),DEFAULT_WHEEL_HASHES[id][i],`${id}/${name}`);
     }
   }
   finally {tank.dispose();}

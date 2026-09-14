@@ -297,7 +297,9 @@ for (const [id, rest, armor] of [
     'f029abdac12ed1a9891ac7f48e7d6ada06190ffe8b0615a7d12e00aa7d8c1566'],
   ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
     '050d079304b3b60b62cea6f714d2fadbdcf7cfe79fa7e8796826f121dc382e65'],
-  ['m1a2', 'd1bd1f77a5fcd9f87b0897414f7e57579a6cf6356c364bffcf2b16b2a74fcd8b',
+  // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
+  // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
+  ['m1a2', '7af8f6616247b687a11f6798a4bb6aacd0b71435082d96504e1ad5f2fe4dc9ab',
     '47159a9590d264887e9883ab2e4fa8dc31634a4ed184e176be7fcb05a8909036'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
