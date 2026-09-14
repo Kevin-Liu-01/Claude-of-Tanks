@@ -154,3 +154,14 @@ fills, so the bakes gained triangles). garageArchitecture's 100 ms build
 budget fails under that load and passes quiet. The MBT-70 and AbramsX
 configs spread the Tejas hull config and briefly inherited the hollow wheel;
 both now pin `hollowRoadWheels: false` and were regenerated.
+
+## Deploy 13 (2026-09-14 00:46 PDT, 24418ce08)
+
+Gate 21 on 24418ce08: pre 315/315, core 661/661, post 42/42, build green.
+Pushed 6b2cd6c9f … 24418ce08 to origin/main (countdown, water pass 5, interior
+fills, the wheel/bodywork review, the receipt repins). Manual Vercel deploy
+from the gate checkout; bundle `main-CqOcRcpE.js` → `main-BRGBR8Ne.js`.
+Production verification: render-truth cull parity 0, determinism 0 (shadow
+pixels 54,854); garage renders of m1a2, challenger2, leo2a5_x, k2_x,
+leo2_revolution and t80u load on production with their lazy interior-fill
+chunks; the reservoir shows the pass-5 sediment field.

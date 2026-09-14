@@ -122,3 +122,7 @@ Fjord is a dark cold teal (right for the map); coastal's near-water pose
 framed the tree line instead of the bay. Candidate pass 5: wider shallow
 ramp per map, a low-frequency turbidity/colour-variation term, and a wet
 shoreline band — after the sharpness/lighting deploy.
+
+Deploy 13 (2026-09-14, 24418ce08, bundle `main-BRGBR8Ne.js`) carried the
+countdown rework, water pass 5 and the tank primitive review on top of this
+batch; see `tank-primitive-review-20260913.md`.
