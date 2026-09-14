@@ -1858,7 +1858,7 @@ input.onAction('perfHud', () => {
 
 // WoT-style player-path countdown after the opaque deployment transition.
 const PRE_BATTLE_HOLD_S = 5;
-const MIN_VISIBLE_PRE_BATTLE_S = 2;
+const MIN_VISIBLE_PRE_BATTLE_S = 3; // countdown 2026-09-13: always a whole 3-2-1 after the loader (was 2)
 const battleRollout = createBattleRolloutRuntime({
   game,
   bus,
