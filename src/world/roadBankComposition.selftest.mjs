@@ -49,6 +49,10 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       _MARSHES, _LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
       lakeHeightResult, composeLakeHeight, padPts, padYs, waterRampStart,
       waterRampEnd, quarryFloorY } = fixture;
+    // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
+    // standard field (this fixture) has no plan, so the carve contributes nothing here.
+    const trenchPlan = fixture.trenchPlan ?? (() => null);
+    const assaultTrenchCarveDepth = fixture.assaultTrenchCarveDepth ?? (() => 0);
     ${stripTypeScriptTypes(helpers)}
     ${stripTypeScriptTypes(constraintBody)}
     ${stripTypeScriptTypes(body)}

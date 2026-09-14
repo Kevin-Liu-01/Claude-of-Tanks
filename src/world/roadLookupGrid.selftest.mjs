@@ -85,6 +85,42 @@ function historicalHeightFieldSource(text) {
   // Exact mesh/physics and the existing one-metre live cache share this surface.
   landformPhase = 'authored-relief';
 `, ''],
+    // Frontline Assault 2026-09-13 (546a5f5e5): the assault-trenches world variant adds a
+    // lazily resolved trench plan, a carve after the height constraints, and the plan on
+    // the returned field. All three are construction-only additions projected out of this
+    // HISTORICAL hash; assaultTrenchTerrain.selftest certifies the carve itself and that the
+    // standard field stays byte-identical.
+    [`  // Frontline Assault 2026-09-13: the assault-trenches world variant carves
+  // three fire trenches and a communication trench along the alpha→bravo
+  // axis into the height field itself, so terrain, collision, grass and
+  // props all follow the cut. The standard field is byte-identical.
+  // Resolved on first height query (every construction constant exists by
+  // then): a fire trench whose centre falls inside the settlement is dropped
+  // rather than half-carved under the houses; the sector marker still stands.
+  let _trenchPlan: AssaultTrenchPlan | null | undefined;
+  const trenchPlan = (): AssaultTrenchPlan | null => {
+    if (_trenchPlan !== undefined) return _trenchPlan;
+    if (!cfg?.assaultTrenches) return (_trenchPlan = null);
+    const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
+      _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
+    const planned = planAssaultTrenchLines(alpha, bravo);
+    const lines = planned.lines.filter((line) => villageMask(line.x, line.z) < 0.4);
+    _trenchPlan = lines.length ? { lines, connector: planned.connector } : null;
+    return _trenchPlan;
+  };
+`, ''],
+    [`    // Frontline Assault trenches: carved after every road, pad and lake
+    // constraint so the cut survives road grading (a road meets a real ditch),
+    // never into water or under the settlement.
+    const trenches = trenchPlan();
+    if (trenches) {
+      const carve = assaultTrenchCarveDepth(x, z, trenches);
+      if (carve > 0) h -= carve * (1 - vm) * (1 - marshW);
+    }
+`, ''],
+    [`    // Frontline Assault trenches (assault-trenches variant), null on the standard field.
+    assaultTrenchLines: trenchPlan(),
+`, ''],
   ]) {
     assert.equal(text.split(current).length, 2, 'each declared historical delta occurs exactly once');
     text = text.replace(current, historical);
