@@ -898,7 +898,13 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     P.add('hull', box(1.88, 0.929, 5.05), 0, 0.7455, -0.075);                    // tub z -2.60..2.45 (belly 0.281)
     // sponson band ends z 1.95 — past that its 1.49 top pokes ABOVE the raked
     // glacis surface and re-flattens the bow line (this round's 1.499 shelf)
-    P.add('hull', frustum(1.70, 1.95, -3.24, 1.68, 1.93, -3.22, 1.38, 1.49));
+    // Watertight pass 2026-09-13 ("pour water into the hull and it must not
+    // spill out"): the band was an 11 cm plate floating 17 cm above the tub, so
+    // from low side angles the hull read hollow between tub and deck over the
+    // whole length (893 L of open interior). It now fills down to the tub top;
+    // the front shoulder already carries full width at 1.12, so no track run
+    // is touched.
+    P.add('hull', frustum(1.70, 1.95, -3.24, 1.68, 1.93, -3.22, 1.22, 1.49));
     P.add('hull', frustum(1.68, 2.98, 1.92, 1.68, 2.95, 1.90, 1.12, 1.26));      // full-width shoulder ends before the native idler sweep
     P.add('hull', box(2.48, 0.05, 4.40), 0, 1.52, -1.10);                        // center deck (top 1.545)
     // deck-edge planes: stepped per the measured side line; the -0.58..-0.30
@@ -963,6 +969,13 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // deck plates / rear plate / step filler / wedges. Rear face -3.25 stays
     // clear of the -3.352 hullLengthM anchor column window (razor-anchor law).
     P.add('hull', box(1.88, 0.50, 0.60), 0, 1.30, -2.95);
+    // Watertight pass 2026-09-13: the bow between the tub's front end (2.45)
+    // and the raked glacis was hollow under the plate (413 L) and the tub/
+    // lower-glacis seam left a slot at the belly line (42 L). Both buried
+    // fills sit inside the tub width under existing surfaces.
+    P.add('hull', box(1.88, 0.35, 1.35), 0, 1.225, 1.85);                        // bow fill under the glacis plate
+    P.add('hull', box(3.30, 0.12, 1.00), 0, 1.33, 2.12);                         // full-width underfill of the raked glacis
+    P.add('hull', box(1.88, 0.62, 0.22), 0, 0.90, 2.50);                         // tub-to-lower-glacis seam fill
     P.add('hullDetail', box(2.88, 0.05, 0.08), 0, 1.43, 2.24, -0.20, 0, 0);      // splash ridge on the plane
     // Long outer fender rails (x 1.70..1.785 — clear of the 1.66 pad plane):
     // raked 1.445 @ z1.30 -> 1.235 @ 3.32 so the falling glacis owns the side
@@ -1398,7 +1411,25 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       P.add('turret', slab(
         [s * 1.00, 0.30, 0.97], [s * 1.40, 0.30, 0.93], [s * 1.40, 0.30, 0.86], [s * 1.00, 0.30, 0.90],
         [s * 1.00, 0.555, 0.97], [s * 1.40, 0.295, 0.93], [s * 1.40, 0.295, 0.86], [s * 1.00, 0.555, 0.90]));
+      // Watertight pass 2026-09-13: the same wedge void ran under the whole
+      // chamfer sheet (z 0.02..0.90, 53 / 49 L per side), open at its front
+      // mouth. The bulkhead's profile now fills the full length beneath the
+      // sheet, 5 mm below it, over the cheek core.
+      P.add('turret', slab(
+        [s * 1.00, 0.30, 0.90], [s * 1.40, 0.30, 0.86], [s * 1.40, 0.30, 0.04], [s * 1.00, 0.30, 0.08],
+        [s * 1.00, 0.555, 0.90], [s * 1.40, 0.295, 0.86], [s * 1.40, 0.295, 0.04], [s * 1.00, 0.555, 0.08]));
     }
+    // Watertight pass 2026-09-13 ("pour water into the turret and it must not
+    // spill out"): the cheek cores stop at 0.44 while the mid roof sits at
+    // 0.585 and the high-roof caps at 0.69, so a 14-30 cm void ran under both
+    // roofs on each side (146 / 117 L) and the commander's hatch well opened
+    // into it. Buried cores under the mid roof (the left one split around the
+    // hatch well's z 0.42..0.76 footprint) and under the forward high-roof caps
+    // make the turret a closed body without touching any exterior datum.
+    P.add('turret', box(0.69, 0.145, 0.86), 0.655, 0.5125, 0.50);                // right core under the mid roof
+    P.add('turret', box(0.69, 0.145, 0.33), -0.655, 0.5125, 0.245);              // left core, ahead of the hatch well
+    P.add('turret', box(0.69, 0.145, 0.15), -0.655, 0.5125, 0.855);              // left core, behind the hatch well
+    for (const s of [-1, 1]) P.add('turret', box(0.66, 0.30, 0.54), s * 0.67, 0.55, -0.33); // cores under the forward high-roof caps
     for (const s of [-1, 1]) {
       P.add('turret', box(0.66, 0.06, 0.54), s * 0.67, 0.722, -0.33);            // HIGH ROOF forward caps x 0.34..1.00 per side, top LH (2.352w), z_l -0.06..-0.60 — the CENTER stays at the channel line (ref front center cols 2.248-2.278: a full-width cap read +0.046..0.055 on six cols, loop 1)
       P.add('turret', box(0.66, 0.10, 0.10), s * 0.67, 0.646, -0.55);             // aft roof-cap return: overlaps the 0.60 autoloader roof and the cap underside, closing the former hovering rear edge

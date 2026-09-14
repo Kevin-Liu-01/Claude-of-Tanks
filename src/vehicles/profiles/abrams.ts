@@ -1165,6 +1165,19 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const abramsHullHullStage1 = (): void => {
     P.add(g.beltCoreTop ? 'hullDark' : 'hull', box(innerW * 2, coreTop - g.belly, (bowZ - sternZ) + 0.5),
       0, (coreTop + g.belly) / 2, (bowZ + sternZ) / 2);
+    // Watertight pass 2026-09-13 ("pour water into the hull and it must not
+    // spill out"): capping the core at beltCoreTop opened the wheel bays as
+    // ordered, but it also emptied the tub between the inner track faces from
+    // the belly pan up to the belt — a 55 cm tunnel under the hull that read
+    // straight through from bow and stern (abramsx: 3,577 L of open interior).
+    // The real hull floor is the belly pan; refill the tub between the tracks
+    // only, so the under-sponson wheel-bay daylight the §5.27 order asked for
+    // stays exactly as it was.
+    if (g.beltCoreTop !== undefined && g.beltTop > g.beltCoreTop) {
+      const tubHalfW = g.trackXc - g.trackW / 2 - 0.02;
+      P.add('hull', box(tubHalfW * 2, g.beltTop - g.beltCoreTop, (bowZ - sternZ) + 0.5),
+        0, (g.beltTop + g.beltCoreTop) / 2, (bowZ + sternZ) / 2);
+    }
   };
   abramsHullHullStage1();
 
@@ -8539,6 +8552,20 @@ function buildAbramsX(P: AbramsBuilderPort): void {
   };
   const buildAbramsXHullStage1 = (): void => {
     abramsHull(P, g);
+    // Watertight pass 2026-09-13 (owner's AbramsX roof-block markup): both turret
+    // cheeks are hollow shells (walls at |x| 0.49..1.03, y_w 2.23..2.45,
+    // z_w 0.56..0.92) and the left one opened at its junction with the roof
+    // block, so the cheek interior read through the seam. Buried fillers make
+    // the cheeks solid; they stay 2 cm inside every wall and change nothing seen.
+    // (Authored here, in the stage that always runs; the receipt tail below is
+    // variant-gated.)
+    // (This stage's turret adds land 0.35 m aft and ~15 % shorter in y/z than
+    // authored — the layout's turretForwardShiftM and the kit inset — so the
+    // filler is authored at z 1.13 / y 0.35 to sit at local z 0.60..0.96,
+    // y 0.235..0.465: inside the cheek floor (0.217) and the walls.)
+    for (const side of [-1, 1]) {
+      P.add('turret', box(0.48, 0.27, 0.41), side * 0.76, 0.35, 1.13);
+    }
     // Track-corridor roof closures. Widening the lane for the exact guide-horn
     // envelope exposes a narrow top-down slot at its inboard shoulder; these
     // real sponson shelves follow the measured deck line, sit 12+ cm above the
@@ -10905,6 +10932,7 @@ function publishM1A3DesignReceipt(P: AbramsBuilderPort, layout: M1A3BuildLayout)
   P.hullG.userData.m1a3DesignReceipt = receipt;
   P.turretG.userData.m1a3DesignReceipt = receipt;
   publishAmericanArmorFinish(P);
+
 }
 
 function buildM1A3(P: AbramsBuilderPort): void {

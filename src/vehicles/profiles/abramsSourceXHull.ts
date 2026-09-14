@@ -120,6 +120,48 @@ function bearingDeck(): THREE.BufferGeometry {
   return geometry;
 }
 
+/** Turret race cover: solid stock filling the bearing deck's 1.308 m aperture and
+ * rising through the slit to the turret floor (1.649). Owner review 2026-09-13
+ * ("pour water into the turret and it must not spill out"): the open well below
+ * the aperture was reachable from outside through the ring slit, so the whole
+ * hull read see-through from under the bustle. The cover reads as the race ring
+ * in the slit; everything above it is inside the turret. */
+function turretRaceCover(): THREE.BufferGeometry {
+  return new THREE.CylinderGeometry(1.312, 1.312, .30, 64)
+    .translate(-.000209, 1.60, .392931);
+}
+
+/** Engine-bay rear bulkhead: the source stock keeps the engine mouth open (no
+ * floor or cap above Y1.0094), so the whole U-well was reachable from behind
+ * the rear grilles — a see-through hull from the stern (owner review
+ * 2026-09-13). A solid wall just inside the grille screens closes the well; it
+ * reads as the dark radiator wall behind the slats, exactly as the real
+ * vehicle does, and changes no silhouette. */
+function engineBayBulkhead(): THREE.BufferGeometry {
+  return new THREE.BoxGeometry(2 * 1.067035, 1.694155 - .648044, .045)
+    .translate(0, (1.694155 + .648044) / 2, -3.47);
+}
+
+/** Sponson fills: the U-section's hollow sponson tubes (inner wall 1.032,
+ * outer skin 1.759, shoulder to roof) pinch to a sliver where the bow narrows,
+ * and that sliver let the exterior flood into the whole well from the front
+ * (watertight probe 2026-09-13: 3 cm slits at x ±1.1, y 1.41). Solid stock in
+ * the constant-section run makes the tubes closed bodies; nothing shows. */
+function sponsonFills(): THREE.BufferGeometry[] {
+  return [-1, 1].map((side) => new THREE.BoxGeometry(.66, .13, 3.05)
+    .translate(side * 1.38, 1.41, .475));
+}
+
+/** Well fill: solid stock under the bearing deck, inside the inner walls, from
+ * the well floor to just below the deck. The open well is a modelling
+ * convenience that nothing can see once the deck, race cover and bulkhead are
+ * in place; making it solid means a pinhole anywhere no longer floods the
+ * whole hull, which is what "watertight" has to mean for a closed vehicle. */
+function wellFill(): THREE.BufferGeometry {
+  return new THREE.BoxGeometry(2.0, 1.44 - .47, 1.90 + 3.40)
+    .translate(0, (1.44 + .47) / 2, (1.90 - 3.40) / 2);
+}
+
 function bellyAddon(P: TankBuilderPort): void {
   // Source group5/ex_armor_10 is real separate stock below the main tub.
   // Its physical underbody role is inferred; no protection rating is inferred.
@@ -162,6 +204,10 @@ function mainStock(P: TankBuilderPort): void {
   P.add('hull', bearingDeck());
   P.add('hull', frontDeck());
   P.add('hull', bearing());
+  P.add('hull', turretRaceCover());
+  P.add('hull', engineBayBulkhead());
+  for (const fill of sponsonFills()) P.add('hull', fill);
+  P.add('hull', wellFill());
 }
 
 function* runningGearCooperativeSteps(P: TankBuilderPort, cooperative = false): TankProfileBuild {
