@@ -126,6 +126,7 @@
     "typecheck:cloudflare": "npm --prefix cloudflare/signaling run typecheck",
     "deploy:net:cloudflare": "npm --prefix cloudflare/signaling run deploy",
     "test:net:render": "node tools/multiplayer-render-perf.mjs",
+    "shadow:truth": "node tools/shadow-render-truth.mjs --gate",
     "typecheck": "node node_modules/@typescript/native/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs"
   },
   "keywords": [
