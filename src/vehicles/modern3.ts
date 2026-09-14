@@ -2422,16 +2422,13 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
     const roofHalfWidthM = side < 0
       ? flankRoofHalfWidthsM.left
       : flankRoofHalfWidthsM.right;
-    P.add('hull', orientedSlab(
-      [m(flankInnerHalfWidthM), centralFloorY, flankFrontZ],
-      [m(flankWideFloorHalfWidthM), flankWideFloorY, flankFrontZ],
-      [m(flankWideFloorHalfWidthM), flankWideFloorY, flankRearZ],
-      [m(flankInnerHalfWidthM), centralFloorY, flankRearZ],
-      [m(flankInnerHalfWidthM), flankRoofY, flankFrontZ],
-      [m(roofHalfWidthM), flankRoofY, flankFrontZ],
-      [m(roofHalfWidthM), flankRoofY, flankRearZ],
-      [m(flankInnerHalfWidthM), flankRoofY, flankRearZ],
-    ));
+    // Owner review 2026-09-13 (second markup, same flank): the closure wedge's
+    // sloped outer face still read as a diagonal band through the open sponson
+    // ends. The closure is now a flat shelf block — floor at the sponson floor,
+    // vertical outer face — and the sponson ends are capped below, so the
+    // flank reads as one flat side skirt from every angle.
+    P.add('hull', box(roofHalfWidthM - flankInnerHalfWidthM, flankRoofY - flankWideFloorY, flankFrontZ - flankRearZ),
+      m((flankInnerHalfWidthM + roofHalfWidthM) / 2), (flankWideFloorY + flankRoofY) / 2, (flankFrontZ + flankRearZ) / 2);
   }
 
   const glacisFloorHalfWidthM = 0.86;
@@ -2536,6 +2533,9 @@ export function buildBradley(P: Modern3BuilderPort) {
       const outer = s < 0 ? 1.49 : 1.62, wall = s < 0 ? 1.42 : 1.55, inner = 1.02;
       P.add('hull', box(outer - inner, 0.05, 5.75), s * (inner + outer) / 2, 1.245, -0.325);   // sponson floor y 1.22..1.27
       P.add('hull', box(outer - wall, 0.42, 5.75), s * (wall + outer) / 2, 1.43, -0.325);      // outer wall y 1.22..1.64
+      for (const zEnd of [2.525, -3.175]) {                                                    // capped ends (front 2.50..2.55, rear -3.20..-3.15)
+        P.add('hull', box(outer - inner, 0.42, 0.05), s * (inner + outer) / 2, 1.43, zEnd);
+      }
     }
   };
   buildBradleyHullStage2();
