@@ -22,6 +22,7 @@ import {
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
+import { markShadowOnly } from './renderLayers.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 
 interface ShadowDebugOptions {
@@ -417,84 +418,71 @@ function buildCoverageMipmaps(tex: THREE.Texture, cutoff: number): void {
   tex.needsUpdate = true;
 }
 
-// --- r7 CASCADE SHADOW INSTANCE CULLING (perf: the frozen 7.0M triangle gate
-// breach; the "cascade shadow-proxy LOD" cut the r6 handoff named as the real
-// path back toward the 6.0M ratchet) ---------------------------------------
-// MEASURED (tools/tmp-pb-r7-diag2.mjs on 66722fb, pinned cert roster, verdant):
-// every shadow-casting InstancedMesh renders its FULL instance set into EVERY
-// cascade — the vegetation casters are built frustumCulled=false with
-// map-spanning instance sets, so even the ~25 m cascade-0 box rasterizes all
-// 373 K vegetation caster tris plus the 150 K merged-facade props mesh. The
-// coherent scheduler now refreshes all four modest maps together, making
-// per-instance culling essential to keep that stable pass bounded.
-// Mesh-level frustum culling can never help
-// (a map-spanning merged bounding sphere intersects every cascade box); the
-// correct cut is per-INSTANCE cascade culling:
-//  - onBeforeShadow: test each instance's world bounding sphere against the
-//    CURRENT shadow camera's frustum (built from the same matrices
-//    WebGLShadowMap uses for whole-mesh culling) and compact the survivors to
-//    the buffer PREFIX; the draw then runs with count=K. ALL per-instance
-//    attributes (instanceMatrix, instanceColor, geometry-level instanced
-//    attrs like the canopy fade) are compacted TOGETHER so slot i of the
-//    depth draw stays coherent across attributes.
-//  - onAfterShadow: restore the exact snapshot bytes + the full count, so the
-//    main pass and any game-code reader always see the owner's data — outside
-//    the shadow draw the buffers are bit-identical to owner state, and order
-//    is never changed.
-// Zero visual change BY CONSTRUCTION: an instance whose bounding sphere
-// misses a cascade's frustum was rasterized fully off that cascade's map and
-// contributed nothing; the test is conservative (per-instance sphere from the
-// geometry bounding sphere x instance scale + SHADOW_CULL_MARGIN covering
-// vertex wind sway and normal cascade-fit movement).
-// Static-ness is DETECTED, not assumed: a mesh qualifies only after its
-// instanceMatrix version sat unchanged across 3 consecutive shadow draws, and
-// any foreign write (vegetation chunk rebuild, map switch, live count change)
-// or a shared-geometry claim invalidates the snapshot and re-arms the gate —
-// per-frame-rewritten fx pools never qualify. Buffer traffic is prefix-only
-// via addUpdateRange (worst case ~0.5 MB/frame of bufferSubData, vs the 4096²
-// shadow map's 64 MB/frame of raster writes this deletes). Allocation-free
-// after snapshot build (module-scope scratch only) per the hot-loop rule.
-const SHADOW_CULL_MIN_TRIS = 24000; // instances*trisPerInstance below this: not worth the hook
-const SHADOW_CULL_MARGIN = 4.0; // meters: wind sway + far-cascade rr staleness
-interface PendingCullRecord {
-  pending: true;
-  version: number;
-  stable: number;
-  count: number;
-}
+// --- r8 CASCADE CASTER PROXIES (correctness: replaces the r7 in-place instance
+// compaction; shadow-flash root cause 2026-09-13) ----------------------------
+// r7 compacted each heavy InstancedMesh's instance prefix inside onBeforeShadow
+// and drew count=K. Three r185's shadow pass, however, runs objects.update() —
+// the ONLY place instance buffers upload — BEFORE onBeforeShadow, gated to once
+// per render call (WebGLShadowMap.renderObject: objects.update → onBeforeShadow
+// → renderBufferDirect). The compacted bytes therefore never reached the GPU
+// before the draw: every cascade rendered the FIRST K instances in owner order,
+// not the K visible ones. Casters past index K lost their shadow, and since K
+// changes with every camera move, WHICH casters were missing changed too — the
+// "tree / bush / pole shadows flash while driving" report. Proven with a
+// still-camera A/B (.qa-dev/cull-still-ab.mjs, temporal passes off): cull on vs
+// off differed by 3.9k px of missing shadow, on vs on by 0 px; 63 % of the
+// cascade-0-visible trunks and 81 % of the visible bushes sat past the prefix.
+// Now every heavy static owner gets one SHADOW-ONLY PROXY per near cascade: a
+// child of the owner on SHADOW_ONLY_LAYER that shares the owner's vertex and
+// index buffers and owns its instance buffers. lighting.update() compacts each
+// scheduled proxy to its cascade's frustum BEFORE renderer.render(), so the
+// shadow pass's own objects.update() uploads exactly the bytes the draw uses.
+// Owner buffers are never written. The owner casts only into the last cascade
+// (that box spans the map, so culling there saves nothing); a proxy draws
+// solely in its own cascade (count=0 elsewhere — three skips zero-instance
+// draws). Culling stays conservative: per-instance world spheres (geometry
+// sphere x instance scale + SHADOW_CULL_MARGIN for wind sway) against the
+// cascade frustum. __SHADOW_DEBUG.noCull (probes) makes owners draw everything.
+// Nothing here listens on geometries or holds strong owner references, so a
+// discarded world (or a shared library geometry outliving it) never pins a
+// mesh; proxies die with their owner and the browser frees their GL buffers.
+const SHADOW_CULL_MIN_TRIS = 24000; // capacity*trisPerInstance below this: not worth proxies
+const SHADOW_CULL_MARGIN = 4.0; // meters: wind sway + normal cascade-fit movement
 
-interface CullAttributeRecord {
-  attr: THREE.InstancedBufferAttribute;
-  size: number;
-  snap: NumericAttributeArray;
-  version: number;
-}
-
-interface ActiveCullRecord {
-  pending: false;
+interface CasterProxyRecord {
+  readonly owner: THREE.InstancedMesh;
+  /** Owner geometry the proxies mirror; a swap rebuilds the record. */
+  readonly geometry: THREE.BufferGeometry;
+  readonly capacity: number;
+  readonly proxies: THREE.InstancedMesh[];
+  /** Per proxy: [instanceMatrix, ...geometry instanced attributes], aligned with ownerAttrs. */
+  readonly proxyAttrs: THREE.InstancedBufferAttribute[][];
+  readonly ownerAttrs: THREE.InstancedBufferAttribute[];
+  /** Visible instance count compacted into each proxy. */
+  readonly counts: Int32Array;
+  /** Per-instance world bounding spheres of the owner's current instances. */
+  readonly centers: Float32Array;
+  readonly radii: Float32Array;
   n: number;
-  attrs: CullAttributeRecord[];
-  centers: Float32Array;
-  radii: Float32Array;
-  k: number;
-  compacted: boolean;
+  matrixVersion: number;
+  /** Set once the proxies hold a compaction; until then the owner casts everywhere. */
+  ready: boolean;
+  /** Owner count saved across one cascade draw by the before/after hooks. */
+  savedCount: number;
 }
 
-type CullRecord = PendingCullRecord | ActiveCullRecord;
-
-const _cullState = new WeakMap<THREE.InstancedMesh, CullRecord | null>();
-// Shared library geometry can outlive every world that used it. Its claim
-// must not retain a mesh (and that mesh's whole scene through parent links).
-// null permanently marks sharing; a collected sole owner may be replaced.
-const _geomClaims = new WeakMap<THREE.BufferGeometry, WeakRef<THREE.InstancedMesh> | null>();
-const _cullFrustum = new THREE.Frustum();
-const _cullProj = new THREE.Matrix4();
+const _casterRecords = new WeakMap<THREE.InstancedMesh, CasterProxyRecord | null>();
+/** Weak owner list for the per-frame compaction; dead entries are pruned as met. */
+const _casterOwners: WeakRef<THREE.InstancedMesh>[] = [];
+const _proxyOf = new WeakMap<THREE.InstancedMesh, { rec: CasterProxyRecord; cascade: number }>();
+const _cascadeIndexByCamera = new WeakMap<THREE.Camera, number>();
+/** Near cascades that receive proxies (every registered cascade but the last). */
+let _casterProxyCascades = 0;
 const _cullSphere = new THREE.Sphere();
 const _cullVec = new THREE.Vector3();
 const _cullMat = new THREE.Matrix4();
-let _cullFrusCam: THREE.Camera | null = null;
-let _cullFrusStamp = -1;
-let _cullTick = 0; // bumped only when a cascade light-camera fit changes
+const _cullFrusta: (THREE.Frustum | null)[] = [];
+const noopRaycast = (): void => {};
 
 function geometryTris(geo: THREE.BufferGeometry): number {
   const idx = geo.index;
@@ -502,217 +490,262 @@ function geometryTris(geo: THREE.BufferGeometry): number {
   return (((idx ? idx.count : (pos ? pos.count : 0)) / 3) | 0);
 }
 
-/** Fresh stability-gate record (also used to invalidate after foreign writes). */
-function cullPending(mesh: THREE.InstancedMesh): PendingCullRecord {
-  const rec: PendingCullRecord = {
-    pending: true,
-    version: mesh.instanceMatrix.version,
-    stable: 0,
-    count: mesh.count,
-  };
-  _cullState.set(mesh, rec);
-  return rec;
-}
-
-/** Snapshot a stability-proven static instanced caster for per-cascade culling. */
-function buildCullRec(mesh: THREE.InstancedMesh): ActiveCullRecord | null {
-  const geo = mesh.geometry;
-  const claim = _geomClaims.get(geo);
-  if (claim === null) { _cullState.set(mesh, null); return null; }
-  const claimed = claim?.deref();
-  if (claimed && claimed !== mesh) {
-    // two meshes share one geometry's instanced attrs — compacting for one
-    // would corrupt the other's draw; permanently skip both.
-    _cullState.set(mesh, null);
-    _cullState.set(claimed, null);
-    _geomClaims.set(geo, null);
-    return null;
-  }
-  if (!claimed) _geomClaims.set(geo, new WeakRef(mesh));
-  if (!geo.boundingSphere) geo.computeBoundingSphere();
-  const bs = geo.boundingSphere;
-  if (!bs || !isFinite(bs.radius) || bs.radius <= 0) { _cullState.set(mesh, null); return null; }
-  const n = mesh.count;
-  // every attribute indexed per instance in the depth draw
-  const attributeInputs: Array<{ attr: THREE.InstancedBufferAttribute; size: number }> = [
-    { attr: mesh.instanceMatrix, size: 16 },
-  ];
-  if (mesh.instanceColor) {
-    attributeInputs.push({ attr: mesh.instanceColor, size: mesh.instanceColor.itemSize });
-  }
-  const ga = geo.attributes;
-  for (const key of Object.keys(ga)) {
-    const a = ga[key];
-    if (a instanceof THREE.InstancedBufferAttribute) {
-      attributeInputs.push({ attr: a, size: a.itemSize });
-    }
-  }
-  const attrs: CullAttributeRecord[] = [];
-  for (const entry of attributeInputs) {
-    if (!entry.attr.array || entry.attr.array.length < n * entry.size) {
-      _cullState.set(mesh, null);
-      return null;
-    }
-    attrs.push({
-      attr: entry.attr,
-      size: entry.size,
-      snap: entry.attr.array.slice(0, n * entry.size) as NumericAttributeArray,
-      version: entry.attr.version,
-    });
-  }
-  // per-instance world bounding spheres (static — guaranteed by the gate)
-  const centers = new Float32Array(n * 3);
-  const radii = new Float32Array(n);
-  const snapMat = attrs[0].snap;
-  for (let i = 0; i < n; i++) {
-    _cullMat.fromArray(snapMat, i * 16).premultiply(mesh.matrixWorld);
-    _cullVec.copy(bs.center).applyMatrix4(_cullMat);
-    centers[i * 3] = _cullVec.x;
-    centers[i * 3 + 1] = _cullVec.y;
-    centers[i * 3 + 2] = _cullVec.z;
-    radii[i] = bs.radius * _cullMat.getMaxScaleOnAxis() + SHADOW_CULL_MARGIN;
-  }
-  const rec: ActiveCullRecord = {
-    pending: false,
-    n,
-    attrs,
-    centers,
-    radii,
-    k: 0,
-    compacted: false,
-  };
-  _cullState.set(mesh, rec);
-  return rec;
-}
-
 function shadowCullDebugDisabled(): boolean {
   return typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.noCull;
 }
 
-function advancePendingCull(
-  mesh: THREE.InstancedMesh,
-  record: PendingCullRecord,
-): ActiveCullRecord | null {
-  if (mesh.instanceMatrix.version !== record.version || mesh.count !== record.count) {
-    record.version = mesh.instanceMatrix.version;
-    record.count = mesh.count;
-    record.stable = 0;
-    return null;
-  }
-  record.stable++;
-  return record.stable >= 3 ? buildCullRec(mesh) : null;
+/** Tell the shadow hooks which cascade each shadow camera belongs to. */
+function registerCasterCascades(lights: readonly THREE.DirectionalLight[]): void {
+  for (let i = 0; i < lights.length; i++) _cascadeIndexByCamera.set(lights[i].shadow.camera, i);
+  _casterProxyCascades = Math.max(_casterProxyCascades, lights.length - 1);
 }
 
-function activeCullWasInvalidated(mesh: THREE.InstancedMesh, record: ActiveCullRecord): boolean {
-  if (mesh.count !== record.n) return true;
-  for (const entry of record.attrs) {
-    if (entry.attr.version !== entry.version) return true;
+function cloneInstancedAttribute(source: THREE.InstancedBufferAttribute): THREE.InstancedBufferAttribute {
+  const Ctor = source.array.constructor as unknown as new (length: number) => NumericAttributeArray;
+  const clone = new THREE.InstancedBufferAttribute(
+    new Ctor(source.array.length), source.itemSize, source.normalized, source.meshPerAttribute);
+  clone.setUsage(THREE.DynamicDrawUsage);
+  return clone;
+}
+
+function isAttachedTo(object: THREE.Object3D, root: THREE.Object3D): boolean {
+  let node: THREE.Object3D | null = object;
+  while (node) {
+    if (node === root) return true;
+    node = node.parent;
   }
   return false;
 }
 
-function resolveActiveCull(mesh: THREE.InstancedMesh): ActiveCullRecord | null {
-  const record = _cullState.get(mesh);
-  if (record === null) return null;
-  if (record === undefined) {
-    if (geometryTris(mesh.geometry) * mesh.count < SHADOW_CULL_MIN_TRIS) {
-      _cullState.set(mesh, null);
-    } else {
-      cullPending(mesh);
-    }
+/** Drop a record's proxies; the owner is re-classified by its next shadow draw when `forget`. */
+function disposeCasterRecord(rec: CasterProxyRecord, forget: boolean): void {
+  for (const proxy of rec.proxies) {
+    rec.owner.remove(proxy);
+    _proxyOf.delete(proxy);
+  }
+  rec.proxies.length = 0;
+  if (forget) _casterRecords.delete(rec.owner);
+  else _casterRecords.set(rec.owner, null);
+}
+
+/** Build the proxies for a heavy owner; null when the owner cannot be mirrored. */
+function buildCasterRecord(owner: THREE.InstancedMesh): CasterProxyRecord | null {
+  const geo = owner.geometry;
+  if (!geo.boundingSphere) geo.computeBoundingSphere();
+  const bs = geo.boundingSphere;
+  const capacity = owner.instanceMatrix.count;
+  if (!bs || !isFinite(bs.radius) || bs.radius <= 0 || capacity <= 0 || _casterProxyCascades <= 0) {
+    _casterRecords.set(owner, null);
     return null;
   }
-  if (record.pending) return advancePendingCull(mesh, record);
-  if (!activeCullWasInvalidated(mesh, record)) return record;
-  cullPending(mesh);
-  return null;
-}
-
-function prepareCullFrustum(shadowCamera: THREE.Camera): void {
-  if (_cullFrusCam === shadowCamera && _cullFrusStamp === _cullTick) return;
-  _cullProj.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
-  _cullFrustum.setFromProjectionMatrix(_cullProj);
-  _cullFrusCam = shadowCamera;
-  _cullFrusStamp = _cullTick;
-}
-
-function copyCullInstance(record: ActiveCullRecord, sourceIndex: number, targetIndex: number): void {
-  for (const entry of record.attrs) {
-    const sourceOffset = sourceIndex * entry.size;
-    const targetOffset = targetIndex * entry.size;
-    for (let component = 0; component < entry.size; component++) {
-      entry.attr.array[targetOffset + component] = entry.snap[sourceOffset + component];
+  const ownerAttrs: THREE.InstancedBufferAttribute[] = [owner.instanceMatrix];
+  for (const key of Object.keys(geo.attributes)) {
+    const attr = geo.attributes[key];
+    if (!(attr instanceof THREE.InstancedBufferAttribute)) continue;
+    if (attr.count < capacity) {
+      _casterRecords.set(owner, null);
+      return null;
     }
+    ownerAttrs.push(attr);
+  }
+  const proxies: THREE.InstancedMesh[] = [];
+  const proxyAttrs: THREE.InstancedBufferAttribute[][] = [];
+  const rec: CasterProxyRecord = {
+    owner, geometry: geo, capacity, proxies, proxyAttrs, ownerAttrs,
+    counts: new Int32Array(_casterProxyCascades),
+    centers: new Float32Array(capacity * 3),
+    radii: new Float32Array(capacity),
+    n: 0, matrixVersion: -1, ready: false, savedCount: owner.count,
+  };
+  for (let i = 0; i < _casterProxyCascades; i++) {
+    const proxyGeometry = new THREE.BufferGeometry();
+    if (geo.index) proxyGeometry.setIndex(geo.index);
+    const attrs: THREE.InstancedBufferAttribute[] = [];
+    for (const key of Object.keys(geo.attributes)) {
+      const attr = geo.attributes[key];
+      if (attr instanceof THREE.InstancedBufferAttribute) {
+        const clone = cloneInstancedAttribute(attr);
+        proxyGeometry.setAttribute(key, clone);
+        attrs.push(clone);
+      } else {
+        proxyGeometry.setAttribute(key, attr); // shared vertex buffer, uploaded once
+      }
+    }
+    proxyGeometry.groups = geo.groups;
+    proxyGeometry.drawRange = geo.drawRange;
+    proxyGeometry.boundingSphere = bs;
+    proxyGeometry.boundingBox = geo.boundingBox;
+    const proxy = new THREE.InstancedMesh(proxyGeometry, owner.material, capacity);
+    proxy.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    if (owner.instanceColor) {
+      // keep the owner's depth-program variant (USE_INSTANCING_COLOR); the depth pass never reads it
+      proxy.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
+      proxy.instanceColor.setUsage(THREE.DynamicDrawUsage);
+    }
+    proxy.customDepthMaterial = owner.customDepthMaterial;
+    proxy.customDistanceMaterial = owner.customDistanceMaterial;
+    proxy.castShadow = true;
+    proxy.receiveShadow = false;
+    proxy.frustumCulled = false;
+    proxy.matrixAutoUpdate = false;
+    proxy.matrixWorldAutoUpdate = false;
+    proxy.matrixWorld.copy(owner.matrixWorld);
+    proxy.count = 0;
+    proxy.raycast = noopRaycast; // aim/pick rays never see shadow geometry
+    proxy.name = `${owner.name || 'caster'}-shadow-c${i}`;
+    proxy.userData.cotCasterProxy = true;
+    proxy.userData.aoExclude = true;
+    markShadowOnly(proxy);
+    owner.add(proxy);
+    proxies.push(proxy);
+    proxyAttrs.push([proxy.instanceMatrix, ...attrs]);
+    _proxyOf.set(proxy, { rec, cascade: i });
+  }
+  _casterRecords.set(owner, rec);
+  _casterOwners.push(new WeakRef(owner));
+  return rec;
+}
+
+function resolveCasterRecord(owner: THREE.InstancedMesh): CasterProxyRecord | null {
+  const record = _casterRecords.get(owner);
+  if (record !== undefined) return record;
+  if (_proxyOf.has(owner) || geometryTris(owner.geometry) * owner.instanceMatrix.count < SHADOW_CULL_MIN_TRIS) {
+    _casterRecords.set(owner, null);
+    return null;
+  }
+  return buildCasterRecord(owner);
+}
+
+/** Re-derive per-instance world spheres when the owner's instances changed. */
+function refreshCasterSpheres(rec: CasterProxyRecord): void {
+  const owner = rec.owner;
+  const n = Math.min(owner.count, rec.capacity);
+  if (rec.matrixVersion === owner.instanceMatrix.version && rec.n === n) return;
+  const bs = rec.geometry.boundingSphere as THREE.Sphere;
+  const matrices = owner.instanceMatrix.array;
+  for (let i = 0; i < n; i++) {
+    _cullMat.fromArray(matrices, i * 16).premultiply(owner.matrixWorld);
+    _cullVec.copy(bs.center).applyMatrix4(_cullMat);
+    rec.centers[i * 3] = _cullVec.x;
+    rec.centers[i * 3 + 1] = _cullVec.y;
+    rec.centers[i * 3 + 2] = _cullVec.z;
+    rec.radii[i] = bs.radius * _cullMat.getMaxScaleOnAxis() + SHADOW_CULL_MARGIN;
+  }
+  rec.n = n;
+  rec.matrixVersion = owner.instanceMatrix.version;
+}
+
+/** Copy the owner instances inside `frustum` into proxy `cascade`'s prefix and mark it for upload. */
+function compactCasterProxy(rec: CasterProxyRecord, cascade: number, frustum: THREE.Frustum): void {
+  const n = rec.n;
+  const centers = rec.centers;
+  const radii = rec.radii;
+  const sources = rec.ownerAttrs;
+  const targets = rec.proxyAttrs[cascade];
+  let k = 0;
+  for (let j = 0; j < n; j++) {
+    _cullSphere.center.set(centers[j * 3], centers[j * 3 + 1], centers[j * 3 + 2]);
+    _cullSphere.radius = radii[j];
+    if (!frustum.intersectsSphere(_cullSphere)) continue;
+    for (let a = 0; a < sources.length; a++) {
+      const size = sources[a].itemSize;
+      const src = sources[a].array;
+      const dst = targets[a].array;
+      const from = j * size;
+      const to = k * size;
+      for (let c = 0; c < size; c++) dst[to + c] = src[from + c];
+    }
+    k++;
+  }
+  rec.counts[cascade] = k;
+  if (k === 0) return;
+  for (let a = 0; a < targets.length; a++) {
+    const attr = targets[a];
+    attr.clearUpdateRanges();
+    attr.addUpdateRange(0, k * attr.itemSize);
+    attr.needsUpdate = true;
   }
 }
 
-function compactCullRecord(record: ActiveCullRecord): number {
-  let visibleCount = 0;
-  for (let index = 0; index < record.n; index++) {
-    _cullSphere.center.set(
-      record.centers[index * 3],
-      record.centers[index * 3 + 1],
-      record.centers[index * 3 + 2],
-    );
-    _cullSphere.radius = record.radii[index];
-    if (!_cullFrustum.intersectsSphere(_cullSphere)) continue;
-    if (visibleCount !== index) copyCullInstance(record, index, visibleCount);
-    visibleCount++;
+/**
+ * Before renderer.render(): compact every registered owner's proxies for the
+ * cascades that draw this frame (`all` for shadow priming), using the poses
+ * applyStableCascadePoses just wrote so the frusta match the maps.
+ */
+function updateCasterProxies(
+  lights: readonly THREE.DirectionalLight[],
+  root: THREE.Object3D,
+  all: boolean,
+): void {
+  if (_casterOwners.length === 0 || shadowCullDebugDisabled()) return;
+  const proxyCascades = Math.min(_casterProxyCascades, lights.length);
+  let scheduled = 0;
+  for (let i = 0; i < proxyCascades; i++) {
+    _cullFrusta[i] = null;
+    const light = lights[i];
+    if (!all && !light.shadow.needsUpdate) continue;
+    light.updateMatrixWorld();
+    light.target.updateMatrixWorld();
+    light.shadow.updateMatrices(light);
+    _cullFrusta[i] = light.shadow.getFrustum();
+    scheduled |= 1 << i;
   }
-  return visibleCount;
-}
-
-function markCompactedAttributes(record: ActiveCullRecord, visibleCount: number): void {
-  if (visibleCount <= 0) return;
-  for (const entry of record.attrs) {
-    entry.attr.addUpdateRange(0, visibleCount * entry.size);
-    entry.attr.needsUpdate = true;
-    entry.version = entry.attr.version;
+  if (!scheduled) return;
+  for (let r = _casterOwners.length - 1; r >= 0; r--) {
+    const owner = _casterOwners[r].deref();
+    const rec = owner ? _casterRecords.get(owner) : null;
+    if (!owner || !rec) {
+      _casterOwners.splice(r, 1);
+      continue;
+    }
+    if (!isAttachedTo(owner, root)) continue;
+    if (owner.geometry !== rec.geometry || owner.instanceMatrix.count !== rec.capacity) {
+      disposeCasterRecord(rec, true);
+      _casterOwners.splice(r, 1);
+      continue;
+    }
+    refreshCasterSpheres(rec);
+    for (let i = 0; i < rec.proxies.length; i++) {
+      const proxy = rec.proxies[i];
+      proxy.matrixWorld.copy(owner.matrixWorld);
+      proxy.castShadow = owner.castShadow;
+      if (proxy.material !== owner.material) proxy.material = owner.material;
+      if (proxy.customDepthMaterial !== owner.customDepthMaterial) proxy.customDepthMaterial = owner.customDepthMaterial;
+      const frustum = _cullFrusta[i];
+      if (frustum) compactCasterProxy(rec, i, frustum);
+    }
+    rec.ready = true;
   }
 }
 
-/** onBeforeShadow half: compact the instance prefix to this cascade's frustum. */
-function shadowCullBefore(object: THREE.Object3D, shadowCamera: THREE.Camera): void {
-  // shadow-flicker bisect hook (probes): __SHADOW_DEBUG.noCull skips the
-  // instance compaction entirely; harmless in production (never set).
-  if (shadowCullDebugDisabled()) return;
-  if (!(object instanceof THREE.InstancedMesh) || object.count === 0) return;
-  const rec = resolveActiveCull(object);
-  if (!rec) return;
-  // one frustum build per cascade render (cascades draw their objects
-  // back-to-back, so a single {camera, tick} memo covers the whole pass)
-  // (shadow-flash forensics 2026-08-08: an earlier suspicion pinned driving
-  // flicker on this compaction and inflated the cull box 20% — same-corridor
-  // freezeMask/noCull A/Bs then showed the compaction contributes ZERO
-  // measurable flicker (the flash was GTAO boil, see post.ts ao-boil r1/r2),
-  // so the box is exact again. SHADOW_CULL_MARGIN already absorbs sway and
-  // the complete active shadow fit.)
-  prepareCullFrustum(shadowCamera);
-  const visibleCount = compactCullRecord(rec);
-  if (visibleCount === rec.n) return; // nothing culled — buffers untouched, draw as-is
-  object.count = visibleCount;
-  rec.k = visibleCount;
-  rec.compacted = true;
-  markCompactedAttributes(rec, visibleCount);
-}
-
-/** onAfterShadow half: restore owner bytes + full count before anyone reads. */
-function shadowCullAfter(object: THREE.Object3D): void {
+/** onBeforeShadow half: a proxy draws only in its cascade, an owner only where no proxy covers. */
+function casterProxyBeforeShadow(object: THREE.Object3D, shadowCamera: THREE.Camera): void {
   if (!(object instanceof THREE.InstancedMesh)) return;
-  const rec = _cullState.get(object);
-  if (!rec || rec.pending || !rec.compacted) return;
-  rec.compacted = false;
-  object.count = rec.n;
-  const k = rec.k;
-  rec.k = 0;
-  if (k === 0) return; // count=0 draw wrote nothing — buffers still pristine
-  for (let a = 0; a < rec.attrs.length; a++) {
-    const e = rec.attrs[a];
-    e.attr.array.set(e.snap); // memcpy restore; only the dirty prefix uploads
-    e.attr.addUpdateRange(0, k * e.size);
-    e.attr.needsUpdate = true;
-    e.version = e.attr.version;
+  const noCull = shadowCullDebugDisabled();
+  const asProxy = _proxyOf.get(object);
+  if (asProxy) {
+    object.count = !noCull && _cascadeIndexByCamera.get(shadowCamera) === asProxy.cascade
+      ? asProxy.rec.counts[asProxy.cascade]
+      : 0;
+    return;
   }
+  const rec = resolveCasterRecord(object);
+  if (!rec) return;
+  rec.savedCount = object.count;
+  if (noCull || !rec.ready) return;
+  const cascade = _cascadeIndexByCamera.get(shadowCamera);
+  if (cascade !== undefined && cascade < rec.proxies.length) object.count = 0;
+}
+
+/** onAfterShadow half: owners get their count back, proxies return to zero, before anyone reads them. */
+function casterProxyAfterShadow(object: THREE.Object3D): void {
+  if (!(object instanceof THREE.InstancedMesh)) return;
+  if (_proxyOf.has(object)) {
+    object.count = 0;
+    return;
+  }
+  const rec = _casterRecords.get(object);
+  if (rec) object.count = rec.savedCount;
 }
 
 // --- r6 SHADOW-CASTER RESCUE (critical: "shadow draw distance ~120m — every
@@ -752,11 +785,11 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
-    // r7 cascade shadow instance culling (see the _cullState block above)
-    shadowCullBefore(object, shadowCamera);
+    // r8 cascade caster proxies (see the block above)
+    casterProxyBeforeShadow(object, shadowCamera);
   };
   const afterHook: THREE.Mesh['onAfterShadow'] = function (_renderer, object) {
-    shadowCullAfter(object);
+    casterProxyAfterShadow(object);
   };
   THREE.Mesh.prototype.onBeforeShadow = hook;
   THREE.SkinnedMesh.prototype.onBeforeShadow = hook;
@@ -919,8 +952,11 @@ export function createLighting(
   }) as ExtendedCsm;
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
+  registerCasterCascades(csm.lights);
   const shadowFitCache = createShadowFitCache();
   const fitLightDirection = [0, 0, 0];
+  /** Per-cascade shadow box size held across small fov lerps (see updateFov). */
+  const heldCascadeBoxSizes: number[] = [];
 
   const prepareCurrentCascadeFits = (force = false): number => {
     csm.lightDirection.toArray(fitLightDirection);
@@ -930,7 +966,6 @@ export function createLighting(
       lightDirection: fitLightDirection,
     }, force);
     if (!fitChanged) return 0;
-    _cullTick++; // a new light-camera fit invalidates the culling frustum memo
     return prepareStableCascades(csm);
   };
 
@@ -1203,6 +1238,7 @@ export function createLighting(
     const step = Math.max(0, Math.min(0.05, Number(dt) || 0));
     scheduleCascadeFrame(force, step, transitionCascade);
     applyFarCascadeDormancy();
+    updateCasterProxies(csm.lights, scene, false);
   }
 
   return {
@@ -1276,6 +1312,7 @@ export function createLighting(
       const info = renderer2.info;
       const shadowMap = renderer2.shadowMap;
       const gl = renderer2.getContext();
+      updateCasterProxies(csm.lights, scene2, true); // the primed maps must see the same caster sets
       const timings = await primeShadowCascades({
         renderer: renderer2, scene: scene2, camera: camera2,
         lights: csm.lights, count: primeCount, yieldBeforeCascade, signal, isCurrent, casterWarmup,
@@ -1375,12 +1412,38 @@ export function createLighting(
     updateFov(): void {
       csm._initCascades();
       csm._updateShadowBounds();
+      // Shadow-stability 2026-09-13 (owner: "tree shadows flash when the camera
+      // moves and stuff"): every fov lerp — the per-shot recoil kick, aim and
+      // scope transitions — re-sized all four cascade boxes, which re-gridded
+      // every shadow map to a new texel size and shimmered every shadow edge
+      // for the whole lerp. The box size now holds its last value until the
+      // fov moves it by more than 8 % (a real zoom), and a real change forces
+      // a complete cascade refresh so no stale map smears.
+      let regridded = false;
+      for (let i = 0; i < csm.lights.length; i++) {
+        const shadowCam = csm.lights[i].shadow.camera;
+        const size = shadowCam.right - shadowCam.left;
+        const held = heldCascadeBoxSizes[i];
+        if (held > 0 && Math.abs(size - held) / held < 0.08) {
+          shadowCam.left = -held / 2; shadowCam.right = held / 2;
+          shadowCam.top = held / 2; shadowCam.bottom = -held / 2;
+          shadowCam.updateProjectionMatrix();
+        } else {
+          heldCascadeBoxSizes[i] = size;
+          regridded = true;
+        }
+      }
       shadowFitCache.invalidate();
       applyShadowNormalBiases();
+      if (regridded) forceAllCascades();
     },
 
     updateFrustums(): void {
       csm.updateFrustums();
+      for (let i = 0; i < csm.lights.length; i++) {
+        const shadowCam = csm.lights[i].shadow.camera;
+        heldCascadeBoxSizes[i] = shadowCam.right - shadowCam.left;
+      }
       shadowFitCache.invalidate();
       applyShadowNormalBiases();
       forceAllCascades(); // cascade boxes jumped — stale maps would smear
