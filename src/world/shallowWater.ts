@@ -145,7 +145,10 @@ export function createShallowWaterSurface(
       uWaterFoam: { value: profile.foam },
       uWaterWaveScale: { value: profile.waveScale },
       uWaterWaveStrength: { value: profile.waveStrength },
+      // QA only: 1 paints the turbidity field as greyscale so a headless shot can prove the plumbing
+      uWaterDebug: { value: 0 },
     });
+    material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>',
       '#include <common>\nvarying vec3 vWaterWorld;');
     shader.vertexShader = shader.vertexShader.replace('#include <worldpos_vertex>',
@@ -163,9 +166,21 @@ export function createShallowWaterSurface(
       uniform float uWaterFoam;
       uniform float uWaterWaveScale;
       uniform float uWaterWaveStrength;
+      uniform float uWaterDebug;
+      float waterHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float waterValueNoise(vec2 p) {
+        vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(waterHash(i), waterHash(i + vec2(1.0, 0.0)), u.x), mix(waterHash(i + vec2(0.0, 1.0)), waterHash(i + vec2(1.0, 1.0)), u.x), u.y);
+      }
+      /** Water pass 5: sediment / weed-bed field, 0..1, ~45 m and ~17 m octaves. */
+      float waterTurbidityField(vec2 world) {
+        float n = waterValueNoise(world / 45.0) * 0.65 + waterValueNoise(world / 17.0 + vec2(3.7, 9.1)) * 0.35;
+        return smoothstep(0.25, 0.85, n);
+      }
       float waterDeep;
       float waterBank;
       float waterGrazing;
+      float waterTurbidity;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
       vec2 waterUV = (vWaterWorld.xz + uWaterSize * 0.5) / uWaterSize;
@@ -178,7 +193,9 @@ export function createShallowWaterSurface(
       waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
-      diffuseColor.rgb = mix(uWaterShallow, diffuseColor.rgb, smoothstep(0.05, 0.75, waterDeep));
+      // Water pass 5 (2026-09-13): the bank colour reaches further into the body
+      // (0.05..0.75 -> 0.02..0.90) so a lake is not one saturated sheet 20 m out.
+      diffuseColor.rgb = mix(uWaterShallow, diffuseColor.rgb, smoothstep(0.02, 0.90, waterDeep));
       // Water pass 4 (2026-09-13, owner: "significantly better, more varied,
       // more like real life"): the deep body darkens harder and the surface
       // leans on what the SKY does — mirror-like at grazing angles, bed and
@@ -208,6 +225,17 @@ export function createShallowWaterSurface(
       float broadWave = waveBroad.x;
       float fineWave = waveNear.y;
       diffuseColor.rgb *= 0.96 + (broadWave - 0.5) * 0.22 + (fineWave - 0.5) * 0.06;
+      // Water pass 5 (2026-09-13, owner: "more varied colours, more like real
+      // life"): a very large-scale drift of the same wave texture stands in for
+      // suspended sediment and weed beds — the body brightens and dulls in
+      // 40-60 m patches (0.42 x the wave scale) and leans toward the bank colour
+      // where it is thick.
+      // (a normal-map fetch read as one flat sheet at this scale — a normal map
+      // hugs 0.5 — so the field is two octaves of value noise on world position)
+      float turbidity = waterTurbidityField(vWaterWorld.xz + drift * 6.0);
+      waterTurbidity = turbidity;
+      diffuseColor.rgb *= 0.80 + turbidity * 0.40;
+      diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShallow * 0.80, smoothstep(0.45, 0.90, turbidity) * 0.38 * waterDeep);
       diffuseColor.rgb = mix(diffuseColor.rgb, uWaterShore, waterBank * (0.24 + broadWave * 0.12));
       diffuseColor.rgb += vec3(0.018, 0.026, 0.028)
         * smoothstep(0.66, 0.90, broadWave) * (0.35 + fineWave * 0.65) * waterDeep;
@@ -230,9 +258,11 @@ export function createShallowWaterSurface(
     // glitter keeps most of its energy (the old 0.55 clamp deleted the glints;
     // bloom now carries them as sparkle, not a white sheet).
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
-      '#include <lights_fragment_maps>\nradiance *= mix(0.45, 1.75, waterGrazing);');
+      // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
+      // sheet reads as water of varying depth and colour instead of one reflection.
+      '#include <lights_fragment_maps>\nradiance *= mix(0.45, 1.75, waterGrazing);\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));\n#include <opaque_fragment>');
+      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));\nif (uWaterDebug > 0.5) { outgoingLight = vec3(waterTurbidity); diffuseColor.a = 1.0; }\n#include <opaque_fragment>');
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;

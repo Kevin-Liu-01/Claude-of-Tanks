@@ -176,15 +176,22 @@ assert.match(shader.fragmentShader, /1\.0 - 0\.35 \* grazing/,
 // Water pass 2026-09-12: the bank-side hue rises out of the authored shallow
 // tint (colour only — the alpha ramp above is unchanged, so no pale film over
 // sand) and broken crests whiten the bank band at the authored foam strength.
-assert.match(shader.fragmentShader, /mix\(uWaterShallow, diffuseColor\.rgb, smoothstep\(0\.05, 0\.75, waterDeep\)\)/,
+// Water pass 5 (2026-09-13): the bank colour rises further into the body (0.02..0.90).
+assert.match(shader.fragmentShader, /mix\(uWaterShallow, diffuseColor\.rgb, smoothstep\(0\.02, 0\.90, waterDeep\)\)/,
   'the shallow tint is a depth-mixed hue, never an opacity change');
 assert.match(shader.fragmentShader, /foamBank \* 0\.55 \+ foamCrest \* 0\.45\) \* uWaterFoam/, 'shoreline and crest foam scale with the authored profile');
 assert.equal(shader.uniforms.uWaterFoam.value, 0.85, 'coastal foam strength');
 assert.ok(shader.uniforms.uWaterShallow.value.isColor, 'shallow tint uniform is a colour');
 // Water pass 4 (2026-09-13): a third, finer ripple fetch feeds the normal only
 // (sun sparkle); the colour breakup still reuses the two original fetches.
+// Water pass 5 (2026-09-13): one more, very large-scale fetch of the same texture
+// carries the turbidity/sediment colour variation of the body.
 assert.equal((shader.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).length, 3,
-  'two-scale waves plus one fine ripple layer; colour breakup adds no fetch of its own');
+  'two-scale waves plus one fine ripple layer; the pass-5 turbidity field is procedural noise, not a fetch');
+assert.match(shader.fragmentShader, /float turbidity = waterTurbidityField\(vWaterWorld\.xz \+ drift \* 6\.0\);/,
+  'the turbidity field is world-position value noise (a normal-map fetch hugs 0.5 and read as one flat sheet)');
+assert.match(shader.fragmentShader, /float waterTurbidityField\(vec2 world\)/, 'two-octave value-noise helper');
+assert.match(shader.fragmentShader, /radiance \*= 1\.15 - 0\.55 \* smoothstep\(0\.35, 0\.85, waterTurbidity\);/, 'turbid patches mirror less sky');
 assert.match(shader.fragmentShader, /waveFine\.xy \* 2\.0 - 1\.0\) \* 0\.35/, 'the fine layer is a weak normal perturbation');
 assert.match(shader.fragmentShader, /broadWave.*fineWave/s,
   'two moving scales break up the body color instead of sliding one flat normal');
