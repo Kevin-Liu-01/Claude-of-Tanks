@@ -34,3 +34,4 @@ quickest proof that the live site is the gate build.
 | 14 | 2026-09-14 01:26 | 26afcb04a | temporal AA off by default on the desktop tiers | main-mc8IgTrh.js | — |
 | 15 | 2026-09-14 02:03 | 1ebbfc3d1 | water pass 6: vehicles push wake rings and churn into the water | main-Crs4rLYy.js | — |
 | 16 | 2026-09-14 03:51 | fe9d98125 | environment richness and campaign flavour pass, foliage shade back to 1049e4e | main-B7lqtmGI.js | claude-of-tanks-dfun8lmuy |
+| 17 | 2026-09-14 13:10 | 88f235a41 | owner rulings batch: Challenger paired wheels, T-72B3M X closure, fills to zero, night, horizon smoke, campaign ladder | main-BHi1e83C.js | claude-of-tanks-amws1rzf5 |

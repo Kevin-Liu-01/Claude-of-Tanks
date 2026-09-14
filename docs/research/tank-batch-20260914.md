@@ -47,7 +47,27 @@ rule card with a progress line; it now reads as a campaign:
 
 ## Verification
 
-Receipts adjusted: `t72b3mXSideMounts` (closed shoulder, rail backing, structural paint pair),
-`challenger3RunningGear` (paired wheel, axle 0.51, 0.44 m axial, UK pattern),
-`battleAtmosphereRuntime` (night values), `mapIntegration` unchanged. Gate and deploy details are
-appended below once the batch ships.
+Receipts adjusted: `t72b3mXSideMounts` (closed shoulder, rail backing, structural paint set on
+hull or turret), `challenger3RunningGear` (paired wheel, axle 0.51, 0.44 m axial, UK pattern, no
+face layers), `battleAtmosphereRuntime` and `worldActivationRuntime` (night values),
+`battleAtmosphereAccess` (mission-brief binding), `roadLookupGrid` (trench-plan history delta),
+`sourceXSecondWaveMarkings` (T-72B3M X follows the sided-anchor rule; anchor moved to
+`turret`/right, designation aft), and the whole-model / native-buffer / wreck-bake hashes
+(`sourceXWesternAuxArmor`, `sourceXSovietAuxArmor`, `strv122XSuppliedCupola`, `wrecks`) repinned
+from the build. `mobileLayout` forbids width media queries in UI modules; the new campaign CSS uses
+fluid grids and `clamp()` instead.
+
+Regen chain for the batch ids (`t72b3m_x`, `challenger_3`, `challenger_3x`, `challenger2`,
+`challenger2e`, `fv4034`, `ua_challenger2`, `challenger1_x`, `strv122_x`, `t90a_burlak_x`):
+presentation anchors, combat anatomy, marking seats and icons regenerated; anatomy check 181/181,
+centering 208 tanks at 0.00 px residual, sealed ledger holds for all ten (T-72B3M X now reads
+SEALED with 0 open px). Two no-fail-fast sweeps: 977 receipts, 9 failures repinned, then 977/0.
+
+Gate 25 (commit `88f235a41`): all-map world-build smoke exit 0 (30 maps), pre 315/315, core
+662/662 — no garage-architecture flake now that the dev server restarts after the receipts —
+post 42/42, private build. Deploy 17 via `deploy-prod.sh 17 "…"`: production serves
+`main-BHi1e83C.js`; live smoke enters battle on verdant, frontier and urban with no errors; the
+production night on verdant measures median luminance 30 / dark 87.6 % (deploy 16: 14 / 95.8 %);
+the play-menu ladder renders six operations with Operation First Light ready; a frontier sortie
+places its three sectors at distinct points (−30,−191), (−16,37), (−2,266); garage renders of
+Challenger 3, Challenger 2 and T-72B3M X match the local build.
