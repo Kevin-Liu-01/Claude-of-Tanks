@@ -113,7 +113,22 @@ regex'd wiring, never a rendered shadow.
    temporally rotated kernel now that TAA is stable; caster LOD stays as is.
 3. Foliage anti-aliasing: alpha-to-coverage is inert at High (0 MSAA);
    replace with temporally dithered alpha test under TAA so leaf and grass
-   edges stop sparkling.
+   edges stop sparkling. First measurement (2026-09-13 19:35, dev server,
+   look-mode pan, pinned 200×120 window over the densest tree shadow; tree
+   foliage and bush cards switched from `alphaTest 0.38 + alphaToCoverage` to
+   three's `alphaHash`, shadow depth materials unchanged):
+
+   | metric | alphaTest (today) | alphaHash |
+   | --- | --- | --- |
+   | one-frame blips, whole frame | 0.576 % | 0.392 % |
+   | blips inside shadow | 1.155 % | 0.811 % |
+   | blips in the open | 0.539 % | 0.355 % |
+   | blips in the pinned window | 12,920 | 3,346 |
+
+   Reverted after the measurement; landing it needs the visual A/B (hash noise
+   where TAA history is rejected: fast pans, disocclusions, moving tanks), the
+   grass carpet/detail materials, the sight-capsule dissolve interplay, and a
+   gate.
 4. Ambient: sky-derived hemisphere / SH term so shadow interiors read as
    lit-by-sky, with GTAO tuned to that.
 5. Quality system: presets defined by measured budgets with a governor that
