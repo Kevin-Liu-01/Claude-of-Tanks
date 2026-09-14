@@ -123,6 +123,29 @@ regex'd wiring, never a rendered shadow.
    keep one in-game diagnostics overlay (`?diag=1`) for cascade texels,
    scheduled mask, TAA weight and caster counts.
 
+## Deploy 11 (2026-09-13 19:29 PDT) — the fix in production
+
+967523860 → deployment claude-of-tanks-92bnrq8sr, bundle `main-Dn3sjcid.js`,
+after gate 14 (pre 315 green on 2c1fe6661) and gate 15 (core 661 / post 45 /
+build green on 967523860; the two commits between them touch receipts only).
+Commits: 034de9bc9 caster proxies, 546a5f5e5 Frontline trench variant +
+destructible AA guns, 417d80eae + 03182e413 render-truth tool and script,
+4cf718d21 Bradley flat sponson shelf (+ regen), d40d3f2e9 / 967523860 receipt
+declarations, 2c1fe6661 geometry-gate refresh (Bradley source-fidelity misses
+are pre-existing: 49.1 / 0 / 81.9 at the pre-batch worktree → 53.4 / 0 / 82.4).
+
+`tools/shadow-render-truth.mjs --url=https://cot.kevinliu.studio/?tier=desktop`:
+
+| | before deploy 11 | after |
+| --- | --- | --- |
+| cull parity (px differing, hook on vs off) | 3,900 (3,865 missing with cull) | 0 |
+| determinism (same state twice) | 0 | 0 |
+| caster classes casting | – | trunks, canopies, bushes, props, structures, tank |
+
+The drive-mode flash probe against production ran at 17 fps under machine
+load, which doubles per-frame screen motion and inflates the sweep residue
+(section 2); it is not comparable with the dev runs and is not a verdict.
+
 ## Tooling
 
 - `tools/shadow-render-truth.mjs [--url --map --gate --strict]` — the checked-in
