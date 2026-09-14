@@ -165,6 +165,7 @@ export function createShallowWaterSurface(
       uniform float uWaterWaveStrength;
       float waterDeep;
       float waterBank;
+      float waterGrazing;
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
       vec2 waterUV = (vWaterWorld.xz + uWaterSize * 0.5) / uWaterSize;
@@ -172,12 +173,18 @@ export function createShallowWaterSurface(
       if (wet < 0.015) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
+      waterGrazing = grazing;
       waterDeep = smoothstep(0.18, 0.86, wet);
       waterBank = smoothstep(0.015, 0.20, wet) * (1.0 - smoothstep(0.32, 0.74, wet));
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
       diffuseColor.rgb = mix(uWaterShallow, diffuseColor.rgb, smoothstep(0.05, 0.75, waterDeep));
-      diffuseColor.rgb *= mix(0.90, 0.70, waterDeep);
+      // Water pass 4 (2026-09-13, owner: "significantly better, more varied,
+      // more like real life"): the deep body darkens harder and the surface
+      // leans on what the SKY does — mirror-like at grazing angles, bed and
+      // body colour when looked into — instead of one saturated sheet.
+      diffuseColor.rgb *= mix(0.90, 0.58, waterDeep);
+      diffuseColor.rgb *= 1.0 - 0.35 * grazing;
       diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(opacity, 0.86, grazing);
     `);
     shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
@@ -189,6 +196,10 @@ export function createShallowWaterSurface(
       // water pass 3 (2026-09-12): the broad swell carries more of the relief so
       // the open sea keeps the 1049e4e bay's long wave bands, not just fine chop
       wave += (waveBroad.xy * 2.0 - 1.0) * 0.9;
+      // Water pass 4: a fine, faster ripple layer breaks the two-scale pattern
+      // into sun sparkle instead of a printed texture.
+      vec4 waveFine = texture2D(uWaterWave, waveUV * 2.7 + drift * 1.9 + vec2(0.37, 0.11));
+      wave += (waveFine.xy * 2.0 - 1.0) * 0.35;
       normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength, 1.0, wave.y * uWaterWaveStrength)), 0.0)).xyz);
       normal *= faceDirection;
       // Surface colour breakup reuses the same two wave fetches: moving
@@ -213,13 +224,19 @@ export function createShallowWaterSurface(
     // fighting four cascade suns; lit once, the sheet needs most of its
     // dielectric glint back or the waves read as one flat sheet.
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_fragment>',
-      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.6;\nmaterial.specularF90 = 0.75;');
+      '#include <lights_physical_fragment>\nmaterial.specularColor *= 0.85;\nmaterial.specularF90 = 0.9;');
+    // Water pass 4: the sky reflection follows the water's own fresnel — a mirror
+    // toward the horizon, a window into the shallows underfoot — and the sun
+    // glitter keeps most of its energy (the old 0.55 clamp deleted the glints;
+    // bloom now carries them as sparkle, not a white sheet).
+    shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
+      '#include <lights_fragment_maps>\nradiance *= mix(0.45, 1.75, waterGrazing);');
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(0.55));\n#include <opaque_fragment>');
+      'outgoingLight -= max(vec3(0.0), totalSpecular - vec3(1.15));\n#include <opaque_fragment>');
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => 'shallow-water-v8';
+  material.customProgramCacheKey = () => 'shallow-water-v9';
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.matrixAutoUpdate = false;
