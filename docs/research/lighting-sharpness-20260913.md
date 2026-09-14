@@ -140,3 +140,13 @@ remaining benefit is a 22 % lower per-pixel blip rate while driving (2.57 vs
 Every desktop tier now ships with `taa: false`; the pass, its jitter, the
 RCAS floor and the receipts stay wired, and a preset re-enables it with one
 flag.
+
+## Deploy 14 (2026-09-14 01:27 PDT, 26afcb04a)
+
+Gate 22 on 26afcb04a: pre 315/315, core 661/661, post 42/42, build green.
+Manual Vercel deploy from the gate checkout; bundle `main-BRGBR8Ne.js` →
+`main-mc8IgTrh.js`. Production against the 1049e4e reference at identical
+poses: sky bands identical (verdant 202.4 / 202.2, alpine 179.7 / 179.4);
+ground gradient verdant 20.8 / 17.6 and 32.2 / 28.4, alpine 10.1 / 8.6 and
+23.6 / 21.6 (deploy 13 sat at 13.3 / 19.8 and 7.7 / 17.1). Render-truth cull
+parity 0, determinism 0.

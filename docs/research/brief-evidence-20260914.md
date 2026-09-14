@@ -69,10 +69,11 @@ Reference dev server at 1049e4e vs deploy 13, `.qa-dev/ref-ab-shot.mjs`,
 | fjord | 165.9 / 165.6 (identical) | 19.5 / 15.4 and 25.0 / 13.4 |
 
 Sky and horizon are at parity. Ground micro-contrast rose 13–24 % with
-deploy 12 (RCAS floor 0.5 under TAA, brighter keys) but still sits below the
-reference's un-antialiased frame; the remaining gap is the temporal AA box
-filter, and the next lever is a higher RCAS floor (sweep in progress) or a
-sharper current-frame reconstruction in the TAA resolve. Trees, tree bases
+deploy 12 (RCAS floor 0.5 under TAA, brighter keys); the rest of the gap was
+the temporal AA box filter, and deploy 14 (26afcb04a, `main-mc8IgTrh.js`)
+ships every desktop tier with the pass off: production now reads verdant
+17.6 / 28.4 and alpine 8.6 / 21.6 against the reference's 20.8 / 32.2 and
+10.1 / 23.6 at the same poses (within 10–15 %), with cull parity 0. Trees, tree bases
 and leaves were reworked in ecfde6264 (trunk flares, roots, leaf atlases);
 the rim forests came back with the 20 m spawn clearance; water passes 3–5
 and the fleet primitive review are documented in the sibling notes.
