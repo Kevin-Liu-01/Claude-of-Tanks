@@ -342,7 +342,7 @@ function coveredAtmosphereHarness(load) {
 const coveredOptions = { precompile: false, services: false, atmosphere: 'covered-battle' };
 function assertSingleSelectedBake(h, seed) {
   assert.equal(h.bakes().length, 1, 'covered entry requests exactly one final selected IBL');
-  if (seed === 3) assert.equal(h.bakes()[0][1].skyIntensity, .05, 'that one request is moonlight, not intermediate daylight');
+  if (seed === 3) assert.equal(h.bakes()[0][1].skyIntensity, .08, 'that one request is moonlight, not intermediate daylight (2026-09-14 night lift: .05 -> .08)');
   else assert.deepEqual(h.bakes()[0][1], h.instance.current.config.sky, 'day/legacy authority keeps the exact authored preset');
 }
 

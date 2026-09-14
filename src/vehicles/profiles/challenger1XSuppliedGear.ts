@@ -19,7 +19,8 @@ export function addChallenger1SuppliedGear(P:TankBuilderPort):void{
   const rear={z:p(0,0,-158.090546)[2],y:p(0,29.507875,0)[1],r:m(13.484252),trackR:m(14.20)};
   const front={z:p(0,0,87.992126)[2],y:p(0,29.488188,0)[1],r:m(11.653542),trackR:m(13.5)};
   P.gear=KIT.buildRunningGear(P,{
-    style:'rubber',wheelPattern:'pressed-six',wheelR:m(15.9448815),wheelY:p(0,18.9370075,0)[1],
+    style:'rubber',wheelR:m(15.9448815), // 2026-09-14 owner: nation pattern (UK pressed-eight), no per-tank override
+wheelY:p(0,18.9370075,0)[1],
     wheelW:m(20.629921),wheelTireInnerRadiusM:m(12.05),wheelCoreGeometry:{disc:wheelCore()},
     wheelZs,xc:m(51.535433),roadWheelOutsetM:m(.1574805),trackW:m(24.803150),trackTh:.024, // fleet track standard 2026-09-12: band >= 24 mm
     sprocket:rear,idler:front,rollers,returnRollerWidthM:m(8.543308),returnRollerOutsetM:m(3.759842),

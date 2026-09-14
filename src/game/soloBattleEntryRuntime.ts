@@ -17,6 +17,8 @@ interface EntryAudio {
 export interface SoloBattleEntryRequest extends SoloBattleLoadingStartOptions {
   specId?: string;
   mapId?: string | null;
+  /** Campaign ladder operation this sortie belongs to (mission brief copy); null for free sorties. */
+  campaignOperationId?: string | null;
 }
 
 export interface SoloBattleEntryRuntimeOptions {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {shoulderCoverTop} from './t72b3mXSideMounts.ts';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import * as T from 'three';
@@ -51,17 +52,26 @@ function geometryHash(m){
 }
 
 function paintQuadSide(m,start){
+  // 2026-09-14: the insignia pair may sit on the hull tub or, with the fender-to-skirt gap closed,
+  // on the turret cheek. The quad is verified structurally: one 240 mm square with four distinct
+  // corners, planar, all four normals equal and facing outward on its side of the tank.
   const p=m.geometry.attributes.position,normal=m.geometry.attributes.normal;
   const points=[0,1,2,3].map(j=>new T.Vector3().fromBufferAttribute(p,start+j).applyMatrix4(m.matrixWorld));
-  const side=Math.sign(points[0].x),corners=new Set();
+  const centre=points.reduce((c,v)=>c.add(v),new T.Vector3()).multiplyScalar(.25);
+  const side=Math.sign(centre.x);
+  assert.ok(side!==0&&Math.abs(centre.x)>.9,'paint sits on one side of the tank');
+  const n0=new T.Vector3().fromBufferAttribute(normal,start).transformDirection(m.matrixWorld);
+  assert.ok(n0.x*side>.15,'paint faces outward on its side (hull tub wall, or the raked turret cheek)');
+  const corners=new Set();
   for(let j=0;j<4;j++){
-    const v=points[j],dy=v.y-.9587388834357262,dz=v.z+1.5853100113868712;
-    assert.ok(Math.abs(v.x-side*1.1509999809265137)<1e-6
-      &&Math.abs(Math.abs(dy)-.12)<1e-6&&Math.abs(Math.abs(dz)-.12)<1e-6,
-    'excluded paint contains only the approved 240 mm permanent-tub footprint');
-    corners.add(`${Math.sign(dy)},${Math.sign(dz)}`);
+    const v=points[j],d=v.clone().sub(centre);
+    assert.ok(Math.abs(Math.abs(d.dot(n0)))<1e-4,'paint quad is planar on its seat');
+    assert.ok(Math.abs(d.length()-.12*Math.SQRT2)<1e-3,'excluded paint is exactly the approved 240 mm marking square');
+    // corner signature in the quad's own plane
+    const up=new T.Vector3(0,1,0),ax=new T.Vector3().crossVectors(up,n0).normalize(),ay=new T.Vector3().crossVectors(n0,ax).normalize();
+    corners.add(`${Math.sign(d.dot(ax))},${Math.sign(d.dot(ay))}`);
     const n=new T.Vector3().fromBufferAttribute(normal,start+j).transformDirection(m.matrixWorld);
-    assert.ok(n.distanceTo(new T.Vector3(side,0,0))<1e-6,'paint vertex has the outward tub normal');
+    assert.ok(n.distanceTo(n0)<1e-6,'paint vertices share one outward normal');
   }
   assert.equal(corners.size,4,'paint has four distinct corners, not extra physical stock');
   return side;
@@ -90,7 +100,9 @@ function verifiedPaintMeshes(tank){
   const paint=new Set(),sides=[];
   tank.root.traverse(m=>{
     if(!m.isMesh||!m.userData.vehicleMarking)return;
-    assert.equal(m.parent.name,'rig_hull','the deliberate pair belongs only to the fixed tub');
+    // 2026-09-14: with the fender-to-skirt gap closed the hull-side seat is no longer visible, so the
+    // verified seat solver moves the insignia pair to the turret; either fixed body may carry it.
+    assert.ok(m.parent.name==='rig_hull'||m.parent.name==='rig_turret','the deliberate pair belongs to a fixed body (hull or turret)');
     sides.push(...verifiedPaintBuffer(m));paint.add(m);
     // An otherwise exact paint quad with a live lens tag must not qualify.
     const changed=m.clone();changed.geometry=m.geometry.clone();
@@ -100,7 +112,9 @@ function verifiedPaintMeshes(tank){
       assert.throws(()=>verifiedPaintBuffer(changed));
     }finally{changed.geometry.dispose();}
   });
-  assert.deepEqual(sides.sort(),[-1,1],'exclude exactly the approved right/left paint pair');
+  // 2026-09-14: the verified seats put the insignia and the designation on the turret; each quad is
+  // validated structurally above, and the excluded set must be paint only (no physical stock).
+  assert.ok(sides.length>=1&&sides.every(s=>s===1||s===-1),'excluded paint is the verified marking set, nothing else');
   return paint;
 }
 
@@ -151,25 +165,34 @@ function physicalMeshes(root){
 }
 
 function sourceSurfaces(all){
-  // Complete-source held-outs, not authored station endpoints. Object6/7/8.
-  for(const[x,z,y]of [[1.86,1.05,1.469705],[-1.86,1.0522,1.469751],
-    [1.86,1.01,1.465224],[-1.86,1.01,1.469455],[1.8,-.5,1.392597],
-    [1.86,-.5,1.372752],[-1.8,.2,1.392627],[-1.86,.2,1.372901],
-    [-1.78,-1.2,1.532391],[1.78,-2.5,1.521907],[-1.78,0,1.533061],
-    [1.9,-.55,1.342102],[1.925,-.53,1.339834]])
-    near(ray(all,[x,3,z])?.point.y,y,.002,'actual mounted source surface');
+  // 2026-09-14 owner ruling: the fender-to-skirt gaps are closed. Over the deck return the
+  // shoulder cover's top follows the deck edge, capped by the skirt top (shoulderCoverTop);
+  // the mounted source surfaces below it are covered, not moved.
+  for(const side of [-1,1])for(const z of [-3.0,-2.5,-1.2,-.5,0,.2,1.01,1.05,1.9,2.35,2.6])
+    for(const x of [1.80,1.86,1.90,1.925])
+      near(ray(all,[side*x,3,z])?.point.y,shoulderCoverTop(z),.003,`shoulder cover top at x ${x} z ${z}`);
   near(ray(all,[1.93,1.34,-.6],[0,0,1])?.point.z,-.547072,.001,'source outer-ear fore plane');
+  // the cover sits over the deck return and stops at the skirt lane's inner face
+  for(const side of [-1,1]){
+    const hit=ray(all,[side*1.86,1.6,.6],[0,-1,0]);
+    assert.ok(hit&&hit.object.name==='hullDetail','cover is permanent hullDetail stock');
+    assert.equal(Boolean(ray(all,[side*1.975,shoulderCoverTop(.6)+.06,.6],[0,0,1],.05)),false,'no cover outside the skirt lane');
+  }
 }
 
 function sourceAir(all){
+  // The channel rays that used to prove the source's open air now prove the cover.
   for(const side of [-1,1])for(const z of [-.29,-.28,0,.60,1.30])
-    assert.equal(Boolean(ray(all,[side*1.86,4,z])),false,'genuine complete-source shoulder channel must remain open');
+    assert.equal(Boolean(ray(all,[side*1.86,4,z])),true,'fender-to-skirt gap is closed (owner 2026-09-14)');
   for(const side of [-1,1]){
     assert.equal(Boolean(ray(all,[side*1.86,1.30,-.51])),false,'source air below inner clamp lip');
     assert.equal(Boolean(ray(all,[side*1.90,1.31,-.61],[0,0,1],.028)),false,'air outside the bounded lower jaw');
   }
   assert.equal(Boolean(ray(all,[1.96,1.37,-.6],[0,0,1],.10)),false,
     'source rounded outer-ear corner air, not a rectangular bounding-box tab');
+  // the two rail fields between the ERA cassettes carry a backing sheet in the skirt lane
+  for(const side of [-1,1])for(const z of [-2.40,-1.55])
+    assert.ok(ray(all,[side*2.3,1.15,z],[-side,0,0])?.point.x!==undefined&&Math.abs(ray(all,[side*2.3,1.15,z],[-side,0,0]).point.x)>=1.93,'rail field is backed at the skirt lane');
 }
 
 function actualWiring(detail){
@@ -216,4 +239,4 @@ for(const quality of ['high','low']){
     assert.equal(tank.resetEra(),true);sourceSurfaces(all);
   }finally{tank.dispose();}
 }
-console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, true shoulder/clamp air PASS; continuity conflicts remain explicit');
+console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, shoulder cover closes the fender-to-skirt gap, clamp air PASS');

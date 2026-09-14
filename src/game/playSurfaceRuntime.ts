@@ -17,6 +17,7 @@ export interface PlaySurfaceRequest {
   specId?: string;
   mapId?: string;
   gameMode?: GameModeId;
+  campaignOperationId?: string;
   startSolo?: () => MaybePromise<RuntimeValue>;
 }
 
@@ -34,6 +35,7 @@ interface PlaySurfaceRuntimeOptions {
     specId: string;
     mapId: string;
     gameMode?: GameModeId;
+    campaignOperationId?: string;
   }): MaybePromise<RuntimeValue>;
   showActiveRoom(): MaybePromise<boolean>;
   preloadCommon: Array<() => MaybePromise<RuntimeValue>>;
@@ -104,14 +106,16 @@ export function createPlaySurfaceRuntime({
       }
       const menu = module.createPlayMenu({
         ...createMenuOptions(),
-        onSolo: (request: { gameMode?: GameModeId } = {}) => {
+        onSolo: (request: { gameMode?: GameModeId; mapId?: string; campaignOperationId?: string } = {}) => {
           const requested = pendingSoloStart;
           pendingSoloStart = null;
           if (requested) runSolo(requested);
           else runSolo(() => startSolo({
             specId: getSelectedSpecId(),
-            mapId: getSelectedMapId(),
+            // a campaign operation names its own map; every other solo start keeps the garage pick
+            mapId: request.mapId ?? getSelectedMapId(),
             ...(request.gameMode == null ? {} : { gameMode: request.gameMode }),
+            ...(request.campaignOperationId == null ? {} : { campaignOperationId: request.campaignOperationId }),
           }));
         },
       });

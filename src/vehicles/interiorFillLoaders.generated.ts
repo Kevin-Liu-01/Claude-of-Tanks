@@ -17,7 +17,6 @@ export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<
   "challenger1X": () => import('./interiorFillGroups/challenger1X.generated.ts'),
   "chieftain10X": () => import('./interiorFillGroups/chieftain10X.generated.ts'),
   "chieftain5X": () => import('./interiorFillGroups/chieftain5X.generated.ts'),
-  "core": () => import('./interiorFillGroups/core.generated.ts'),
   "franceCore": () => import('./interiorFillGroups/franceCore.generated.ts'),
   "germany": () => import('./interiorFillGroups/germany.generated.ts'),
   "italy": () => import('./interiorFillGroups/italy.generated.ts'),

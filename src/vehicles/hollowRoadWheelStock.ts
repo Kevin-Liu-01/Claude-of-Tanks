@@ -20,6 +20,10 @@ export interface HollowPairedRoadWheelOptions {
   readonly high: boolean;
   /** Hub fasteners per half on the high tier (0 disables). */
   readonly fasteners?: number;
+  /** Full axial width to fit; the paired construction is scaled along the axle (2026-09-14, Challenger families). */
+  readonly axialWidthM?: number;
+  /** Emit the hub fasteners as the inset layer (contrast-picked material) instead of dish steel (2026-09-14). */
+  readonly fastenersAsInsets?: boolean;
 }
 
 /** Full axial width of the paired wheel at a given radius. */
@@ -27,8 +31,8 @@ export function hollowPairedRoadWheelWidth(radiusM: number): number {
   return 2 * OUTER_HALF * radiusM / REF_RADIUS;
 }
 
-export function buildHollowPairedRoadWheel({ radiusM, high, fasteners = 10 }: HollowPairedRoadWheelOptions): {
-  tire: THREE.BufferGeometry; disc: THREE.BufferGeometry; dark: null;
+export function buildHollowPairedRoadWheel({ radiusM, high, fasteners = 10, axialWidthM, fastenersAsInsets = false }: HollowPairedRoadWheelOptions): {
+  tire: THREE.BufferGeometry; disc: THREE.BufferGeometry; dark: THREE.BufferGeometry | null;
 } {
   const k = radiusM / REF_RADIUS;
   const segments = runningGearRadialSegments(high);
@@ -49,17 +53,24 @@ export function buildHollowPairedRoadWheel({ radiusM, high, fasteners = 10 }: Ho
       ? [[.080, .085], [.060, .1378], [.050, .1492], [.028, .142], [.022, .13774], [0, .13774], [0, GAP_HALF]] as const
       : [[.060, .1492], [0, .13774], [0, GAP_HALF]] as const),
   ]);
-  const tires: THREE.BufferGeometry[] = [], steel: THREE.BufferGeometry[] = [];
+  const tires: THREE.BufferGeometry[] = [], steel: THREE.BufferGeometry[] = [], insets: THREE.BufferGeometry[] = [];
   for (const side of [-1, 1]) {
     tires.push(turnedGearStock(tire, segments, side));
     steel.push(turnedGearStock(web, segments, side));
     for (let i = 0; i < (high ? fasteners : 0); i++) {
       const angle = i * Math.PI * 2 / fasteners;
-      steel.push(KIT.xform(gearFastener(.008 * k, .013 * k, high), side * .040 * k,
+      (fastenersAsInsets ? insets : steel).push(KIT.xform(gearFastener(.008 * k, .013 * k, high), side * .040 * k,
         Math.sin(angle) * .140 * k, Math.cos(angle) * .140 * k));
     }
   }
   // A narrow functional axle joins the paired webs; it never fills the guide gap.
   steel.push(KIT.cylX(.070 * k, (GAP_HALF * 2 + .012) * k, high ? 12 : 4));
-  return { tire: KIT.mergeAll(tires), disc: KIT.mergeAll(steel), dark: null };
+  const tireStock = KIT.mergeAll(tires), steelStock = KIT.mergeAll(steel);
+  const insetStock = insets.length ? KIT.mergeAll(insets) : null;
+  if (axialWidthM !== undefined) {
+    if (!(axialWidthM > 0)) throw new RangeError('Paired road wheel axial width must be positive');
+    const sx = axialWidthM / hollowPairedRoadWheelWidth(radiusM);
+    tireStock.scale(sx, 1, 1); steelStock.scale(sx, 1, 1); insetStock?.scale(sx, 1, 1);
+  }
+  return { tire: tireStock, disc: steelStock, dark: insetStock };
 }

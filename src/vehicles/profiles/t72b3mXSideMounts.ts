@@ -1,5 +1,8 @@
 // First-party closed stock from scalar source sections. The source's open
-// channel between deck and side armor is intentional; there is no broad shelf.
+// channel between deck and side armor was kept open until 2026-09-14; the
+// owner then ruled the fender-to-skirt gaps closed, so a shoulder cover now
+// bridges deck edge and skirt lane (shoulderCover) and the two open rail
+// fields between the ERA cassettes carry a backing sheet (railFieldBacking).
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
@@ -136,6 +139,42 @@ function lowerLinks(P:TankBuilderPort,side:number):void {
   }
 }
 
+/** Skirt-lane inner face (the ERA backing sheet's inboard side) per side. */
+const SKIRT_INNER_X=1.9395;
+/** Cover top per station: the deck edge top, capped by the skirt top at that station. */
+export function shoulderCoverTop(z:number):number {
+  const rows=LEFT_RETURN;
+  if(z<=rows[0][0])return Math.min(rows[0][4],skirtTopAt(z));
+  for(let i=1;i<rows.length;i++){
+    if(z<=rows[i][0]){const [z0,,,,t0]=rows[i-1],[z1,,,,t1]=rows[i];const f=(z-z0)/(z1-z0);return Math.min(t0+(t1-t0)*f,skirtTopAt(z));}
+  }
+  return Math.min(rows[rows.length-1][4],skirtTopAt(z));
+}
+/** Skirt top per station (t72b3mX.ts skirt ERA spans). */
+function skirtTopAt(z:number):number { return z>2.242?1.47615:z>1.637?1.52077:1.53164; }
+export const SHOULDER_COVER_Z:readonly[number,number]=[-3.153,2.702];
+const SHOULDER_COVER_THICKNESS=.024;
+
+function shoulderCover(P:TankBuilderPort,side:number):void {
+  // Deck-edge stations plus the skirt-top steps, so the cover follows both edges.
+  const stations=[...new Set([SHOULDER_COVER_Z[0],...LEFT_RETURN.map(r=>r[0]),1.637,2.242,SHOULDER_COVER_Z[1]])]
+    .filter(z=>z>=SHOULDER_COVER_Z[0]&&z<=SHOULDER_COVER_Z[1]).sort((a,b)=>a-b);
+  const inner=1.786; // over the folded deck return, inboard of every channel ray
+  const g=sectionSolid(stations.map(z=>{const top=shoulderCoverTop(z);
+    return {z,ring:mirroredRing(side,[[inner,top-SHOULDER_COVER_THICKNESS],[SKIRT_INNER_X,top-SHOULDER_COVER_THICKNESS],[SKIRT_INNER_X,top],[inner,top]])};}));
+  P.addEquipment('hullDetail',g);g.name='t72b3mShoulderCover';
+}
+
+function railFieldBacking(P:TankBuilderPort,side:number):void {
+  // The two open rail fields between the ERA cassettes: a backing sheet at the
+  // skirt lane closes the side view (the five source strips stay in front of it).
+  for(const [a,b]of [[-2.559,-2.217],[-1.730,-1.389]]){
+    const low=.79919,top=1.53164;
+    const g=KIT.box(.009,top-low,b-a+.010);g.name='t72b3mRailFieldBacking';
+    P.addEquipment('hullDetail',g,side*(SKIRT_INNER_X+.0045),(low+top)/2,(a+b)/2);
+  }
+}
+
 export function addT72B3MSideMounts(P:TankBuilderPort):void {
-  for(const side of [-1,1]){receivingEdges(P,side);upperLinks(P,side);lowerLinks(P,side);}
+  for(const side of [-1,1]){receivingEdges(P,side);upperLinks(P,side);lowerLinks(P,side);shoulderCover(P,side);railFieldBacking(P,side);}
 }

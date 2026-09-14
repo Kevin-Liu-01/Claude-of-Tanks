@@ -205,13 +205,15 @@ const garagePhasePresentation = {
   setActive: (active) => calls.push(['active', active]),
   setSunTrim: (active) => calls.push(['trim', active]),
 };
-const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, frontline, garagePhasePresentation });
+// campaign slice 5 (2026-09-14): main also dismisses the mission brief when the Garage returns
+const missionBrief = { hide() { calls.push('brief-hide'); } };
+const setGarageSpots = mainCallback('setGarageSpots', { battleAtmosphere: weather, nightLighting, frontline, garagePhasePresentation, missionBrief });
 const setGarageSunTrim = mainCallback('setGarageSunTrim', { battleAtmosphere: weather, garagePhasePresentation });
 setGarageSpots(false); setGarageSunTrim(false);
 assert.deepEqual(calls, [['active', false]], 'network activation does not overwrite the prepared night preset');
 calls.length = 0;
 setGarageSpots(true); setGarageSunTrim(true);
-assert.deepEqual(calls, ['reset', 'night-reset', 'frontline-reset', ['active', true], ['trim', true]],
+assert.deepEqual(calls, ['reset', 'night-reset', 'frontline-reset', 'brief-hide', ['active', true], ['trim', true]],
   'Garage clears battle atmosphere, lamp and frontline owners before reinstalling its own active lighting');
 calls.length = 0;
 setGarageSunTrim(false);
@@ -244,7 +246,7 @@ assert.deepEqual(frontlinePrepares, [[0, 'winter'], [1337, 'monsoon'], [undefine
     const lamps = { reset() { nightResets++; } };
     let frontlineResets = 0;
     const frontOwner = { reset() { frontlineResets++; } };
-    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, garagePhasePresentation: phase };
+    const bindings = { battleAtmosphere: h.access, nightLighting: lamps, frontline: frontOwner, garagePhasePresentation: phase, missionBrief: { hide() {} } };
     const spots = mainCallback('setGarageSpots', bindings);
     const trim = mainCallback('setGarageSunTrim', bindings);
     let skyInvalidations = 0;

@@ -19,10 +19,15 @@ export interface InteriorFillRecord {
   readonly o: readonly [number, number, number];
   /** Turret pivot in the tank frame at build pose (metadata; boxes stay in the tank frame). */
   readonly t: readonly [number, number, number];
+  /** Gun pivot in the tank frame at build pose (metadata, 2026-09-14: pockets the gun and mantlet enclose ride with the gun). */
+  readonly g?: readonly [number, number, number];
   /** Base64 little-endian Uint16 sextets [x0, y0, z0, x1, y1, z1] (inclusive voxel spans). */
   readonly hull?: string;
   readonly turret?: string;
+  readonly gun?: string;
 }
+
+export type InteriorFillComponent = 'hull' | 'turret' | 'gun';
 
 export type InteriorFillBox = readonly [cx: number, cy: number, cz: number, sx: number, sy: number, sz: number];
 
@@ -81,7 +86,7 @@ function decodeSextets(encoded: string): Uint16Array {
 }
 
 /** Decode one component's boxes into [centre, size] metres in the TANK frame (build pose). */
-export function interiorFillBoxes(record: InteriorFillRecord, component: 'hull' | 'turret'): InteriorFillBox[] {
+export function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
   const encoded = record[component];
   if (!encoded) return [];
   const spans = decodeSextets(encoded);
@@ -132,17 +137,21 @@ export interface ApplyInteriorFillsOptions {
   readonly specId: string;
   readonly hullG: THREE.Object3D;
   readonly turretG: THREE.Object3D;
+  /** Gun rig (elevation frame); gun-frame fills are skipped when absent. */
+  readonly gunG?: THREE.Object3D | null;
   readonly material: THREE.Material;
   readonly disposables: { push(resource: { dispose(): void }): unknown };
 }
 
 /** Add the registered fills for a tank to its hull and turret rigs. Returns box counts (0 when none are registered). */
-export function applyInteriorFills({ specId, hullG, turretG, material, disposables }: ApplyInteriorFillsOptions): { hull: number; turret: number } {
+export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number } {
   const record = registry.get(specId);
-  const counts = { hull: 0, turret: 0 };
+  const counts = { hull: 0, turret: 0, gun: 0 };
   if (!record) return counts;
   const inverse = new THREE.Matrix4();
-  for (const [component, parent] of [['hull', hullG], ['turret', turretG]] as const) {
+  const targets: Array<readonly [InteriorFillComponent, THREE.Object3D]> = [['hull', hullG], ['turret', turretG]];
+  if (gunG) targets.push(['gun', gunG]);
+  for (const [component, parent] of targets) {
     const boxes = interiorFillBoxes(record, component);
     const geometry = interiorFillGeometry(boxes);
     if (!geometry) continue;

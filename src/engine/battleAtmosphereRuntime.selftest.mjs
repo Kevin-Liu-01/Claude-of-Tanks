@@ -48,12 +48,12 @@ try {
   runtime.prepare(3, 'winter');
   const night = applied.at(-1);
   assert.equal(runtime.weather.condition, 'clear'); assert.equal(runtime.weather.timeOfDay, 'night');
-  assert.equal(getVehicleReadabilityScale(), .24, 'night retains readable plates below the daylight floor');
-  assert.equal(night.skyIntensity, .05); assert.equal(night.sunElevationDeg, 20);
-  assert.equal(night.sunIntensity, .42); assert.equal(night.sunColorHex, 0xa6bce8);
-  assert.equal(night.hemiIntensity, .46); assert.equal(night.fillIntensity, .20); assert.equal(night.envIntensity, .85);
-  assert.equal(night.cloudTintHex, 0x33455e); assert.equal(night.fogTintHex, 0x34455a);
-  assert.equal(night.fogMix, .7); assert.equal(night.postExposure, .95);
+  assert.equal(getVehicleReadabilityScale(), .34, 'night retains readable plates below the daylight floor (2026-09-14: lifted from .24 with the brighter moon)');
+  assert.equal(night.skyIntensity, .08); assert.equal(night.sunElevationDeg, 24);
+  assert.equal(night.sunIntensity, .60); assert.equal(night.sunColorHex, 0xafc3ec);
+  assert.equal(night.hemiIntensity, .60); assert.equal(night.fillIntensity, .30); assert.equal(night.envIntensity, 1.0);
+  assert.equal(night.cloudTintHex, 0x3a4d68); assert.equal(night.fogTintHex, 0x3a4b62);
+  assert.equal(night.fogMix, .66); assert.equal(night.postExposure, .95);
   assert.equal(night.cloudOpacity, base.cloudOpacity); assert.equal(night.cloudOpacity2, base.cloudOpacity2);
   assert.equal(night.fogDensity, base.fogDensity, 'night retains authored fog density');
   assert.equal(scene.children.length, 0, 'old snow seed allocates no particles or lights');
@@ -80,7 +80,7 @@ try {
   runtime.reset();
   assert.equal(applied.length, afterReset, 'reset restores exactly once; no frame entry can wake');
   runtime.prepare(3, 'winter');
-  assert.equal(getVehicleReadabilityScale(), .24);
+  assert.equal(getVehicleReadabilityScale(), .34);
   assert.equal(scene.children.length, 0);
   for (const mapId of MAP_IDS) {
     runtime.reset();
@@ -142,7 +142,7 @@ try {
   horizonRuntime.prepare(3, 'winter');
   for (const [material, identity, initial, version] of first.snapshots.slice(0, 2)) {
     assert.strictEqual(material.color, identity);
-    assert.deepEqual(material.color.toArray(), [initial.r * .12, initial.g * .12, initial.b * .12],
+    assert.deepEqual(material.color.toArray(), [initial.r * .20, initial.g * .20, initial.b * .20],
       'old named meshes and new horizon-detail dim together; shared material gets exactly one multiplier');
     assert.equal(material.version, version, 'night detail tint does not recompile its material');
   }

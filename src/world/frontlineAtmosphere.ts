@@ -127,29 +127,55 @@ export function resolveFrontBearingDeg(spawns: FrontlineSpawns | null | undefine
 
 // ---------------------------------------------------------------- textures ---
 
-/** Procedural column sheet: dense at the foot, thinning and tattering upward. */
+/** Value noise / fBm for the plume sheet (deterministic, no allocation per sample). */
+function valueNoise2(x: number, y: number, seed: number): number {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const h = (i: number, j: number): number => {
+    let n = (i * 374761393 + j * 668265263 + seed * 1274126177) | 0;
+    n = (n ^ (n >>> 13)) * 1274126177; n = (n ^ (n >>> 16)) >>> 0;
+    return n / 4294967296;
+  };
+  const sx = xf * xf * (3 - 2 * xf), sy = yf * yf * (3 - 2 * yf);
+  const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
+function fbm2(x: number, y: number, seed: number, octaves = 5): number {
+  let amp = 0.5, sum = 0, norm = 0, fx = x, fy = y;
+  for (let o = 0; o < octaves; o++) { sum += valueNoise2(fx, fy, seed + o * 17) * amp; norm += amp; amp *= 0.5; fx *= 2.03; fy *= 2.03; }
+  return sum / norm;
+}
+
+/**
+ * Procedural column sheet (2026-09-14 owner: "make the horizon smoke look a lot better"): a
+ * billowing plume built from domain-warped fBm — dense, rolling lobes at the foot that tatter
+ * into rags toward the top, a dark core with lighter lobe edges, and an alpha that never reads
+ * as a flat grey smear. RGB carries the self-shading; the shader adds tint, sun side and drift.
+ */
 function makeColumnTexture(): THREE.DataTexture {
-  const w = 64, h = 256, data = new Uint8Array(w * h * 4);
-  const rng = mulberry32(0x5eed);
-  const blobs: Array<[number, number, number]> = [];
-  for (let i = 0; i < 90; i++) blobs.push([rng(), rng(), 0.05 + rng() * 0.12]);
+  const w = 96, h = 384, data = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
     const v = y / (h - 1); // 0 foot .. 1 top
     for (let x = 0; x < w; x++) {
       const u = x / (w - 1);
-      let d = 0;
-      for (const [bx, by, br] of blobs) {
-        const ddx = (u - bx), ddy = (v - by) * 0.5;
-        const r2 = ddx * ddx + ddy * ddy;
-        d += Math.max(0, 1 - r2 / (br * br)) * 0.45;
-      }
-      const centre = 1 - Math.min(1, Math.abs(u - 0.5) * 2.6);
-      const rise = 1 - Math.pow(v, 1.6);
-      const alpha = Math.min(1, Math.max(0, (d * 0.7 + 0.35) * centre * rise));
-      const shade = 0.35 + 0.45 * v + (d - 0.5) * 0.1;
+      // domain warp: the plume leans and rolls
+      const wx = fbm2(u * 3.1 + 7.3, v * 9.7 + 1.9, 11, 3) - 0.5;
+      const wy = fbm2(u * 2.7 - 3.1, v * 8.3 + 5.2, 23, 3) - 0.5;
+      const px = u + wx * 0.22, py = v + wy * 0.10;
+      // lobes: mid-frequency billows, finer rags toward the top
+      const billow = fbm2(px * 4.2, py * 14.0, 41, 5);
+      const rag = fbm2(px * 9.0, py * 30.0, 57, 4);
+      const density = billow * (1 - v * 0.45) + rag * (0.25 + v * 0.55);
+      // profile: a narrow root that flares upward, ragged edge from the noise
+      const halfWidth = 0.16 + 0.34 * Math.pow(v, 0.8);
+      const edge = 1 - Math.min(1, Math.abs(u - 0.5) / halfWidth);
+      const rise = 1 - Math.pow(v, 2.2) * 0.85;
+      const alpha = Math.min(1, Math.max(0, (density * 1.35 - 0.38 + edge * 0.55) * edge * rise));
+      // self shading: dark core low, brighter lobe crests, lighter toward the top
+      const crest = Math.max(0, billow - 0.45) * 1.6;
+      const shade = 0.26 + 0.40 * v + crest * 0.30 - (1 - edge) * 0.08;
       const i = (y * w + x) * 4;
-      data[i] = Math.round(255 * Math.min(1, shade * 0.95));
-      data[i + 1] = Math.round(255 * Math.min(1, shade * 0.93));
+      data[i] = Math.round(255 * Math.min(1, shade * 0.98));
+      data[i + 1] = Math.round(255 * Math.min(1, shade * 0.95));
       data[i + 2] = Math.round(255 * Math.min(1, shade * 0.92));
       data[i + 3] = Math.round(255 * alpha);
     }
@@ -158,6 +184,7 @@ function makeColumnTexture(): THREE.DataTexture {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping; texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.generateMipmaps = true;
   texture.needsUpdate = true;
   return texture;
@@ -191,7 +218,9 @@ const COLUMN_VERT = /* glsl */`
 attribute float aSeed;
 varying vec2 vUv;
 varying float vSeed;
+varying float vLit;
 uniform float uTime;
+uniform vec3 uSunDir;
 #include <common>
 #include <fog_pars_vertex>
 void main() {
@@ -202,10 +231,16 @@ void main() {
   vec3 toCam = cameraPosition - base.xyz; toCam.y = 0.0;
   vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), normalize(toCam + vec3(1e-4, 0.0, 0.0))));
   float rise = uv.y;
+  // which side of the sheet faces the sun (billboard right vs sun azimuth): the fragment
+  // brightens that edge so the plume reads as a lit volume, not a flat cut-out
+  vLit = dot(right, normalize(vec3(uSunDir.x, 0.0, uSunDir.z) + vec3(1e-4, 0.0, 0.0)));
   float sway = sin(uTime * 0.23 + aSeed * 6.2831 + rise * 2.4) * rise * rise * 0.16 * w
              + sin(uTime * 0.07 + aSeed * 3.1) * rise * 0.10 * w;
+  // wind lean: every plume drifts the same way, more the higher it goes; each column bends a
+  // different amount so the skyline is not a row of parallel strokes
+  float lean = rise * rise * 0.30 * w * (0.35 + 0.95 * aSeed);
   float widen = 1.0 + rise * 2.2;
-  vec3 world = base.xyz + right * (position.x * w * widen + sway) + vec3(0.0, position.y * h, 0.0);
+  vec3 world = base.xyz + right * (position.x * w * widen + sway + lean) + vec3(0.0, position.y * h, 0.0);
   vec4 mvPosition = viewMatrix * vec4(world, 1.0);
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
@@ -215,17 +250,31 @@ const COLUMN_FRAG = /* glsl */`
 uniform sampler2D uMap;
 uniform vec3 uTintFoot;
 uniform vec3 uTintTop;
+uniform vec3 uEmber;
 uniform float uOpacity;
 uniform float uTime;
 varying vec2 vUv;
 varying float vSeed;
+varying float vLit;
 #include <common>
 #include <fog_pars_fragment>
 void main() {
-  vec2 uv = vUv;
-  uv.x += sin(uTime * 0.05 + vSeed * 9.0 + uv.y * 5.0) * 0.03 * uv.y;
-  vec4 s = texture2D(uMap, uv);
-  vec3 col = mix(uTintFoot, uTintTop, smoothstep(0.0, 0.9, uv.y)) * s.rgb;
+  // the sheet rises slowly and rolls: two taps at different speeds, blended, so the plume
+  // churns instead of sliding as one picture
+  float roll = uTime * 0.018 * (0.8 + 0.4 * vSeed);
+  vec2 uvA = vUv; uvA.y = clamp(vUv.y - roll, 0.0, 1.0);
+  uvA.x += sin(uTime * 0.05 + vSeed * 9.0 + vUv.y * 5.0) * 0.03 * vUv.y;
+  vec2 uvB = vUv; uvB.y = clamp(vUv.y - roll * 1.7 - 0.13, 0.0, 1.0);
+  uvB.x += sin(uTime * 0.041 + vSeed * 4.0 + vUv.y * 7.0) * 0.025 * vUv.y;
+  vec4 sA = texture2D(uMap, uvA), sB = texture2D(uMap, uvB);
+  vec4 s = mix(sA, sB, 0.35);
+  // sun side: the lit edge of the plume is lighter, the lee side deeper
+  float side = (vUv.x - 0.5) * 2.0 * vLit;
+  float lit = 0.72 + 0.55 * smoothstep(-0.7, 0.7, side) * (0.5 + 0.5 * s.r);
+  vec3 col = mix(uTintFoot, uTintTop, smoothstep(0.0, 0.85, vUv.y)) * s.rgb * lit;
+  // ember glow at the root of a fresh column: the fire it stands on
+  float ember = (1.0 - smoothstep(0.0, 0.16, vUv.y)) * (0.5 + 0.5 * sin(uTime * 2.1 + vSeed * 12.0)) * 0.55;
+  col += uEmber * ember * s.a;
   float a = s.a * uOpacity;
   if (a < 0.01) discard;
   gl_FragColor = vec4(col, a);
@@ -354,7 +403,8 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   const puffTexture = makePuffTexture();
   const columnUniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
     uMap: { value: null }, uTime: { value: 0 }, uOpacity: { value: 0.58 },
-    uTintFoot: { value: new THREE.Color(0x3a3531) }, uTintTop: { value: new THREE.Color(0xb8b4ae) },
+    uTintFoot: { value: new THREE.Color(0x35302c) }, uTintTop: { value: new THREE.Color(0xcfcac3) },
+    uEmber: { value: new THREE.Color(0xff6a1a) }, uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.3) },
   }]);
   columnUniforms.uMap.value = columnTexture;
   const columnMaterial = new THREE.ShaderMaterial({

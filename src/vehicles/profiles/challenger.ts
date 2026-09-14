@@ -30,6 +30,7 @@ import {
 } from './uk.ts';
 import type { UKBuilderPort } from './uk.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import { buildHollowPairedRoadWheel } from '../hollowRoadWheelStock.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -2803,8 +2804,12 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
   // the raised idler reaches the +4.0 bow shoulder.
   const buildChallenger2RunningGearStage1 = (): void => {
     buildRunningGear(P, {
-      style: 'dished', wheelR: 0.38, wheelW: 0.22, wheelY: 0.40, xc: 1.33,
-      dishR: 0.76,
+      // 2026-09-14 owner: new Challenger wheels. Real CR2 stations carry paired rubber-tyred
+      // halves with a guide channel between them; the fleet's hollow paired primitive draws
+      // that at 0.38 m, fitted inboard of the 0.42 m track (0.34 m axial). The former 'dished' bowls,
+      // rim tori and hub drums read as one goofy pale plate and are gone.
+      style: 'rubber', wheelR: 0.38, wheelW: 0.34, wheelY: 0.40, xc: 1.33,
+      roadWheelGeometry: buildHollowPairedRoadWheel({ radiusM: 0.38, high: Boolean(P.q), fasteners: 8, fastenersAsInsets: true, axialWidthM: 0.34 }),
       wheelZs: [2.50, 1.60, 0.70, -0.20, -1.10, -2.00],
       sprocket: { z: -2.85, y: 0.95, r: 0.22 },
       idler: { z: 3.35, y: 0.70, r: 0.25 },
@@ -2815,60 +2820,8 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       paintedEnds: true, coveredTop: 1.05,
       tireHex: '#33372f', padHex: 0x31332b, chainHex: 0x282b25, // wheel review 2026-09-13: rubber was '#545a50' (bright grey)
     });
-    // wheel review 2026-09-13: the layers were authored as absoluteX - 1.33 with faces out to
-    // 1.506 while the tire face sits at 1.44; the whole set moves 62 mm inboard (- 1.392) so the
-    // dressing reads as part of the wheel (hub bolts 2 cm proud, bowl faces inside the tire span)
-    // instead of floating beside it. (challenger2's sealed-ledger row was already open before this
-    // change — 97 px in 3 views, unchanged by the dressing seat.)
-    // Hydrogas face anatomy belongs to the same moving wheel instances as the
-    // tire/dish train. Closed torus and hub layers preserve the recessed,
-    // perforated read without leaving fixed rings behind over terrain.
-    P.gear.addRoadWheelLayer(new THREE.TorusGeometry(0.373, 0.026,
-      P.q ? 8 : 6, P.q ? 28 : 18).rotateY(Math.PI / 2), P.mats.dark,
-    { outset: 1.501 - 1.392, name: 'gearRoadWheelOuterRims' });
-    P.gear.addRoadWheelLayer(new THREE.TorusGeometry(0.238, 0.014,
-      P.q ? 8 : 6, P.q ? 24 : 16).rotateY(Math.PI / 2), P.mats.dark,
-    { outset: 1.485 - 1.392, name: 'gearRoadWheelBowlRims' });
-    P.gear.addRoadWheelLayer(cylX(0.210, 0.014, P.q ? 24 : 16), P.mats.dark,
-      { outset: 1.425 - 1.392, name: 'gearRoadWheelBowlFaces' });
-    P.gear.addRoadWheelLayer(cylX(0.080, 0.028, P.q ? 20 : 14), P.mats.detail,
-      { outset: 1.460 - 1.392, name: 'gearRoadWheelHubCaps' });
-    P.gear.addRoadWheelLayer(cylX(0.042, 0.032, P.q ? 18 : 12), P.mats.detail,
-      { outset: 1.475 - 1.392, name: 'gearRoadWheelHubCenters' });
   };
   buildChallenger2RunningGearStage1();
-  const hubRim = new THREE.TorusGeometry(0.125, 0.018,
-    P.q ? 8 : 6, P.q ? 22 : 14).rotateY(Math.PI / 2);
-  const buildChallenger2AssemblyStage1 = (): void => {
-    P.gear.addRoadWheelLayer(hubRim, P.mats.dark,
-      { outset: 1.499 - 1.392, name: 'gearRoadWheelHubRims' });
-    P.gear.addRoadWheelLayer(cylX(0.058, 0.024, P.q ? 16 : 10), P.mats.dark,
-      { outset: 1.500 - 1.392, name: 'gearRoadWheelHubDrums' });
-    P.gear.addRoadWheelLayer(cylX(0.030, 0.030, P.q ? 14 : 10), P.mats.dark,
-      { outset: 1.503 - 1.392, name: 'gearRoadWheelHubPlugs' });
-    if (P.q) {
-      const radialSet = (
-        count: number,
-        radius: number,
-        geometry: THREE.BufferGeometry,
-        phase = 0,
-      ): THREE.BufferGeometry => KIT.mergeAll(
-        Array.from({ length: count }, (_, k) => {
-          const a = phase + k * Math.PI * 2 / count;
-          return KIT.xform(k === 0 ? geometry : geometry.clone(),
-            0, Math.sin(a) * radius, Math.cos(a) * radius);
-        }));
-      P.gear.addRoadWheelLayer(radialSet(8, 0.145, cylX(0.012, 0.036, 8)), P.mats.dark,
-        { outset: 1.506 - 1.392, name: 'gearRoadWheelInnerBolts' });
-      P.gear.addRoadWheelLayer(radialSet(8, 0.255, cylX(0.014, 0.018, 8)), P.mats.dark,
-        { outset: 1.461 - 1.392, name: 'gearRoadWheelOuterBolts' });
-      P.gear.addRoadWheelLayer(radialSet(10, 0.255, cylX(0.030, 0.020, 10), Math.PI / 10), P.mats.dark,
-        { outset: 1.497 - 1.392, name: 'gearRoadWheelOuterApertures' });
-      P.gear.addRoadWheelLayer(radialSet(6, 0.105, cylX(0.012, 0.026, 8)), P.mats.detail,
-        { outset: 1.499 - 1.392, name: 'gearRoadWheelInnerFasteners' });
-    }
-  };
-  buildChallenger2AssemblyStage1();
   const addChallengerEndFace = (
     side: number,
     z: number,
@@ -4468,8 +4421,12 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // Retain the source-readable open eight-rib face. The fleet's newer
       // filled pressed-disc treatment made these wheels read as dotted flat
       // plates and erased the characteristic Hydrogas face depth.
-      style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.56, dishR: 0.71,
-      openRibWheelFace: true, xc: 1.2825,
+      // 2026-09-14 owner: the 0.90 m open-rib discs read goofy and too large. Real Challenger
+      // wheels are ~0.80 m paired rubber-tyred halves; the hollow paired primitive draws them
+      // at 0.40 m, seated inboard of the 0.555 m track shoes (0.44 m axial); the axle drops 50 mm so the
+      // tire bottoms keep their seat on the loaded run.
+      style: 'rubber', wheelR: 0.40, wheelW: 0.44, wheelY: 0.51, xc: 1.2825,
+      roadWheelGeometry: buildHollowPairedRoadWheel({ radiusM: 0.40, high: Boolean(P.q), fasteners: 8, fastenersAsInsets: true, axialWidthM: 0.44 }),
       wheelZs: [2.65, 1.74, 0.83, -0.08, -0.99, -1.90],
       // The final drive is rear-owned but must remain below the sponson floor.
       // y=1.27 put the linked-shoe crown physically through the 1.475 floor;

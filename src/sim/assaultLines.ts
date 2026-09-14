@@ -27,6 +27,12 @@ export interface AssaultTrenchPlan {
   lines: readonly AssaultTrenchLine[];
   /** Communication trench along the axis from the first to the last line. */
   connector: { x0: number; z0: number; x1: number; z1: number } | null;
+  /**
+   * One entry per ASSAULT_LINE_FRACTIONS sector, in order: the carved line's centre, or null
+   * when that sector's trench was dropped (settlement) and the mode must fall back to its
+   * axis fraction. Index-aligned so sectors never inherit a neighbour's position (2026-09-14).
+   */
+  sectors?: readonly (AssaultPoint | null)[];
 }
 
 /** Cross-section and reach of the carved trenches (metres). */

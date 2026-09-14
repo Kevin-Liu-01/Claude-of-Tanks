@@ -957,6 +957,22 @@ function isRunningGearConfig(value: object): value is RunningGearConfig {
     && 'trackW' in value && 'topY' in value;
 }
 
+/** Linear luminance of a material's base colour (0 for unpainted/mapped materials without a colour). */
+export function wheelDishLuminance(material: THREE.Material): number {
+  const color = (material as { color?: THREE.Color }).color;
+  if (!color) return 0;
+  return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+}
+/** Dish paint below this linear luminance counts as a dark dish (fleet wheel paint 0x545b48 sits at ~0.10). */
+export const DARK_WHEEL_DISH_LUMINANCE = 0.065;
+/** Inset (hub well, bolts, holes) material chosen for contrast against the dish paint (2026-09-14). */
+export function wheelInsetMaterialFor(
+  dishMaterial: THREE.Material,
+  mats: { rubber: THREE.Material; wheels: THREE.Material },
+): THREE.Material {
+  return wheelDishLuminance(dishMaterial) < DARK_WHEEL_DISH_LUMINANCE ? mats.wheels : mats.rubber;
+}
+
 function buildRunningGearPublic(builder: object, options: object): RunningGearUnit {
   if (!isRunningGearBuilderPort(builder) || !isRunningGearConfig(options)) {
     throw new TypeError('Invalid procedural running-gear contract');
@@ -3862,7 +3878,12 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     if (recList.length) mkInst(disc, mats.wheelsRecessed || dishMat, recList,
       'wheelDish', 'gearRoadWheelDiscsRecessed');
     // dark inserts (stamped lightening holes on the Christie 'holes' style)
-    if (dark) mkInst(dark, mats.rubber, entries, 'wheelInset', 'gearRoadWheelInsets');
+    // 2026-09-14 owner: "details blend in — some road wheels read flat". Hub wells, bolts and
+    // lightening holes were always near-black rubber; on a dark-painted dish (T-80U, T-80BV,
+    // Challenger 3 wheelHex) that is black on near-black and the face reads as one flat disc.
+    // Pick the inset tone against the dish: dark dishes get the fleet's dusty wheel paint for
+    // their details, light dishes keep the rubber-black insets.
+    if (dark) mkInst(dark, wheelInsetMaterialFor(dishMat, mats), entries, 'wheelInset', 'gearRoadWheelInsets');
   };
   const buildRunningGearRunningGearStage12 = (): void => {
     buildRunningGearAssemblyStage5();
@@ -12572,7 +12593,7 @@ function* createTankOwnedSteps(
   const createTankMarkingsStage3 = (): void => {
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
-    applyInteriorFills({ specId, hullG, turretG, material: mats.dark, disposables });
+    applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
 
     // Family builders historically retinted shared/clone track materials after
     // construction. Reassert only explicit working-gear roles after every

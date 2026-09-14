@@ -88,7 +88,9 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.fr
   [/(?:ariete)/, 'split-rim-ten'],
   [/(?:stb1|type74|type89|type90|type10)/, 'flanged-twelve'],
   [/(?:k1a1|k2|bmp3_rok)/, 'flanged-twelve'],
-  [/(?:chieftain|challenger|centurion|vickers|strv81)/, 'pressed-eight'],
+  // fv4034 is the Challenger 2 hull family; without this rule its 'dished' builder style resolved to
+  // deep-dish-eight instead of the UK pressed-eight (2026-09-14 owner: nation patterns, no overrides).
+  [/(?:chieftain|challenger|fv4034|centurion|vickers|strv81)/, 'pressed-eight'],
   [/(?:strv103|udes03)/, 'scalloped-six'],
   [/(?:m2a2_bradley|m3a3_bradley|ua_m2a3_bradley|spz_puma|marder1a3|fv510|bwp1|upior|bmp3|cv90)/, 'armored-hub-six'],
   [/(?:t14)/, 'armored-hub-six'],

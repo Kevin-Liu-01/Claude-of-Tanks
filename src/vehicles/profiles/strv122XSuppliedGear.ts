@@ -64,7 +64,8 @@ export function addStrv122XSuppliedGear(P:TankBuilderPort):void{
     botY:.054,topY:1.155,sag:.012,contact:{zR:-2.47,zF:2.69},
     supports:rollers.map(r=>({z:r.z,y:r.y+r.r+.017}))});
   P.gear=KIT.buildRunningGear(P,{
-    style:'rubber',wheelPattern:'pressed-six',wheelR:d.roadRadius,wheelY:d.roadY,
+    style:'rubber',wheelR:d.roadRadius, // 2026-09-14 owner: nation/family pattern (Leopard 2 plain-dish-twelve), no per-tank override
+wheelY:d.roadY,
     wheelW:.370,wheelTireInnerRadiusM:.314,wheelCoreGeometry:{disc:wheel.core},
     wheelFaceLayers:[{geometry:wheel.left,material:P.mats.wheels,side:-1,
       name:'strv122SuppliedWheelFacesLeft',appearanceRole:'wheelDish'},

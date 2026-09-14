@@ -156,11 +156,20 @@ for (const id of IDS) {
       `${id}: loaded track spans remain fitted to the live Hydrogas rims`);
     assert.deepEqual(uniqueInstanceAxis(roadWheels, 'z'), EXPECTED_WHEEL_ZS,
       `${id}: rendered road wheels use the reviewed stations`);
-    assert.deepEqual(uniqueInstanceAxis(roadWheels, 'y'), [0.56],
-      `${id}: every road wheel is reseated at the corrected axle height`);
+    assert.deepEqual(uniqueInstanceAxis(roadWheels, 'y'), [0.51],
+      `${id}: every road wheel is reseated at the corrected axle height (2026-09-14: 0.40 m paired wheels, axle 50 mm lower)`);
     assert.equal(roadWheels.count, 12, `${id}: retains six road wheels per side`);
-    assert.equal(hull.userData.wheelPatternReceipts?.[0]?.faceProfile, 'open-rib',
-      `${id}: retains the source-readable open eight-rib wheel face`);
+    // 2026-09-14 owner: paired hollow road wheels replace the open eight-rib discs. The nation
+    // pattern (UK pressed-eight) is recorded, no shared face layers are stacked on the custom
+    // stock, and the paired construction fills the fitted 0.47 m axial width.
+    const patternReceipt = hull.userData.wheelPatternReceipts?.[0];
+    assert.equal(patternReceipt?.id, 'pressed-eight', `${id}: UK nation wheel pattern, no per-tank override`);
+    assert.equal(patternReceipt?.faceProfile, undefined, `${id}: custom paired stock carries no shared face motif`);
+    assert.equal(patternReceipt?.wheelFaceLayers, 0, `${id}: no dressing layers float beside the paired wheel`);
+    roadWheels.geometry.computeBoundingBox();
+    assert.ok(Math.abs(roadWheels.geometry.boundingBox.max.x - 0.22) < 0.006
+      && Math.abs(roadWheels.geometry.boundingBox.min.x + 0.22) < 0.006,
+      `${id}: paired road wheel spans the fitted 0.44 m axial width`);
 
     assert.ok(terminalClearance(receipt, EXPECTED_WHEEL_ZS[0], receipt.idler) >= 0.01,
       `${id}: leading road wheel remains visibly separate from the front idler`);

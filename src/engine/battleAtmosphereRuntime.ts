@@ -36,9 +36,12 @@ function weatherPreset(authored: MapSkyConfig, weather: BattleWeather | null): M
     Object.assign(preset, {
       // Moonlit, not pitch black: preserve plate/ground readability away from
       // the small headlamp pool without adding a render pass or scene light.
-      skyIntensity: .05, sunElevationDeg: 20, sunIntensity: .42,
-      sunColorHex: 0xa6bce8, hemiIntensity: .46, fillIntensity: .20, envIntensity: .85,
-      cloudTintHex: 0x33455e, fogTintHex: 0x34455a, fogMix: .7,
+      // 2026-09-14 owner: "really really dark, make night a little more visible" — a brighter
+      // moon (0.42 -> 0.60), more sky bounce (0.46 -> 0.60) and fill (0.20 -> 0.30), a fuller
+      // environment (0.85 -> 1.0) and a slightly lifted night sky; still clearly night.
+      skyIntensity: .08, sunElevationDeg: 24, sunIntensity: .60,
+      sunColorHex: 0xafc3ec, hemiIntensity: .60, fillIntensity: .30, envIntensity: 1.0,
+      cloudTintHex: 0x3a4d68, fogTintHex: 0x3a4b62, fogMix: .66,
     });
   }
   return preset;
@@ -70,7 +73,7 @@ function dimHorizon(root: THREE.Object3D | null, saved: Map<THREE.MeshBasicMater
   for (const material of eligible) {
     if (blocked.has(material)) continue;
     saved.set(material, material.color.clone());
-    material.color.multiplyScalar(.12);
+    material.color.multiplyScalar(.20); // 2026-09-14: horizon dims to a fifth (was .12) so the skyline still reads at night
   }
 }
 
@@ -103,7 +106,7 @@ export function createBattleAtmosphereRuntime(options: BattleAtmosphereRuntimeOp
     }
     const nextAuthored = { ...options.getAuthoredPreset() };
     options.applyPreset(weatherPreset(nextAuthored, next));
-    setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .24 : 1);
+    setVehicleReadabilityScale(next?.timeOfDay === 'night' ? .34 : 1); // 2026-09-14: was .24, night readability lifted with the moon
     restoreHorizon();
     if (next?.timeOfDay === 'night') dimHorizon(root, horizonColors);
     authored = nextAuthored;

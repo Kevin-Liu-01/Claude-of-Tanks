@@ -28,8 +28,12 @@ const CELL = Math.max(1, Math.round(Number(opt('cell', '2'))));
 const MIN_FINE = Math.max(0, Number(opt('min-fine', '12')));
 const MOVING = /^(gun|gunMount|mantlet)/i;
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
-const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'abramsx').split(',').filter(Boolean);
+// --all covers the whole registered fleet (fleetManifest), not the 27 legacy specs ids (2026-09-14 fix:
+// 80 tanks had never received fills because --all read ALL_TANK_IDS).
+const ids = flag('all') ? Object.keys(FLEET_GROUP_BY_ID).sort() : opt('ids', 'abramsx').split(',').filter(Boolean);
+// chase-to-zero (owner 2026-09-14): repeat the fill until the residual stops shrinking — boxes create new
+// enclosures between themselves and sloped plates, which the next round closes.
+const ROUNDS = Math.max(1, Number(opt('rounds', '4')));
 
 /** Per-voxel component (1 hull, 2 turret, 0 none) from the deep-interior column spans. */
 function componentAt(grid, x, y, z) {
@@ -38,6 +42,31 @@ function componentAt(grid, x, y, z) {
   const inTurret = spans.minY[2][k] < y && y < spans.maxY[2][k];
   if (inHull && inTurret) return y > spans.maxY[1][k] - 4 ? 2 : 1;
   return inHull ? 1 : inTurret ? 2 : 0;
+}
+
+/** Column span of the turret proper (shell groups named turret*, never gun/mantlet): a voxel inside it is
+ * enclosed by the turret body itself, so a fill there stays hidden whatever the gun does. */
+function turretProperSpans(grid) {
+  const { shell, nx, ny, nz, groups } = grid;
+  const proper = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) proper[g + 1] = /^turret/i.test(groups[g]) ? 1 : 0;
+  const minY = new Int16Array(nx * nz).fill(32767), maxY = new Int16Array(nx * nz).fill(-1);
+  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+    const g = shell[(z * ny + y) * nx + x]; if (!g || !proper[g]) continue;
+    const k = z * nx + x; if (y < minY[k]) minY[k] = y; if (y > maxY[k]) maxY[k] = y;
+  }
+  return { minY, maxY };
+}
+function insideTurretProper(spans, grid, x, y, z) { const k = z * grid.nx + x; return spans.minY[k] < y && y < spans.maxY[k]; }
+/** Column span of the moving gun group (gun, gun mount, mantlet): a pocket enclosed by it rides with the gun. */
+function movingSpans(grid) {
+  const { shell, nx, ny, nz, groups } = grid;
+  const moving = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) moving[g + 1] = MOVING.test(groups[g]) ? 1 : 0;
+  const minY = new Int16Array(nx * nz).fill(32767), maxY = new Int16Array(nx * nz).fill(-1);
+  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+    const g = shell[(z * ny + y) * nx + x]; if (!g || !moving[g]) continue;
+    const k = z * nx + x; if (y < minY[k]) minY[k] = y; if (y > maxY[k]) maxY[k] = y;
+  }
+  return { minY, maxY };
 }
 
 /** True when the first shell above or below the voxel belongs to a part that moves relative to the turret body. */
@@ -83,19 +112,41 @@ for (const id of ids) {
   const ext = floodExterior(grid); const deep = deepInterior(grid);
   const { shell, nx, ny, nz, origin } = grid;
   // leak voxels with component; moving-part columns skipped
+  const proper = turretProperSpans(grid), moving = movingSpans(grid);
   const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0;
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const i = (z * ny + y) * nx + x; if (!(ext[i] && deep[i])) continue; leakVox++;
-    const c = componentAt(grid, x, y, z); if (!c) continue;
-    if (underMovingPart(grid, x, y, z)) { skipped++; continue; }
-    vox[i] = c;
-  }
+  const collectLeaks = (extNow, deepNow, first) => {
+    let found = 0;
+    for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      const i = (z * ny + y) * nx + x; if (!(extNow[i] && deepNow[i]) || vox[i] || claimed[i]) continue;
+      if (first) leakVox++;
+      const c = componentAt(grid, x, y, z); if (!c) continue;
+      // a pocket closed by the gun or mantlet: filled as turret stock when the turret body itself encloses
+      // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
+      // skipped only when neither does
+      if (underMovingPart(grid, x, y, z) && !insideTurretProper(proper, grid, x, y, z)) {
+        // whatever the gun closes rides with the gun: inside a casemate the recess is the gun's own
+        // travel space, so gun-frame stock there stays hidden through elevation (chase-to-zero)
+        vox[i] = 3; found++; if (first) skipped++; continue;
+      }
+      vox[i] = c; found++;
+    }
+    return found;
+  };
+  const claimed = new Uint8Array(vox.length);
+  collectLeaks(ext, deep, true);
   // Hierarchical fill: coarse cells first (every voxel of the cell leaks with the same component), then the
   // leftover leak voxels at full resolution. Coarse boxes carry the bulk cheaply; the fine pass closes the thin
   // layers along sloped and stepped plates that a coarse grid cannot reach.
   const turretOrigin = nodeWorldPosition(tank.root, ['rig_turret', 'turret']);
-  const entry = { hull: [], turret: [] }; let boxesTotal = 0, filledVox = 0; // fine-voxel inclusive spans [x0,y0,z0,x1,y1,z1]
-  const claimed = new Uint8Array(vox.length);
+  const gunOrigin = nodeWorldPosition(tank.root, ['rig_gun', 'gun', 'rig_turret', 'turret']);
+  const entry = { hull: [], turret: [], gun: [] }; let boxesTotal = 0, filledVox = 0; // fine-voxel inclusive spans [x0,y0,z0,x1,y1,z1]
+  const compOf = new Uint8Array(shell.length); // component of every claimed voxel, for the final global remesh
+  for (let round = 0; round < ROUNDS; round++) {
+  if (round > 0) {
+    // re-measure with the fills in place; anything still reached from outside becomes the next round's input
+    const extR = floodExterior(grid), deepR = deepInterior(grid);
+    if (!collectLeaks(extR, deepR, false)) break;
+  }
   for (const step of [CELL, 1]) {
     if (step === 1 && CELL === 1) break;
     const cnx = Math.floor(nx / step), cny = Math.floor(ny / step), cnz = Math.floor(nz / step);
@@ -108,7 +159,7 @@ for (const id of ids) {
       }
       if (ok && comp) cell[(cz * cny + cy) * cnx + cx] = comp;
     }
-        for (const [comp, key] of [[1, 'hull'], [2, 'turret']]) {
+        for (const [comp, key] of [[1, 'hull'], [2, 'turret'], [3, 'gun']]) {
       let boxes = greedyBoxes(cell, cnx, cny, cnz, comp); if (!boxes.length) continue;
       if (step === 1 && MIN_FINE > 0) {
         const kept = boxes.filter(([x, y, z, x1, y1, z1]) => (x1 - x + 1) * (y1 - y + 1) * (z1 - z + 1) >= MIN_FINE);
@@ -125,17 +176,25 @@ for (const id of ids) {
     // claim the filled voxels (and mark them shell for the residual test)
     for (let cz = 0; cz < cnz; cz++) for (let cy = 0; cy < cny; cy++) for (let cx = 0; cx < cnx; cx++) {
       const c = cell[(cz * cny + cy) * cnx + cx]; if (!c) continue;
-      for (let dz = 0; dz < step; dz++) for (let dy = 0; dy < step; dy++) for (let dx = 0; dx < step; dx++) { const i = ((cz * step + dz) * ny + (cy * step + dy)) * nx + (cx * step + dx); claimed[i] = 1; shell[i] = 1; }
+      for (let dz = 0; dz < step; dz++) for (let dy = 0; dy < step; dy++) for (let dx = 0; dx < step; dx++) { const i = ((cz * step + dz) * ny + (cy * step + dy)) * nx + (cx * step + dx); compOf[i] = c; vox[i] = 0; claimed[i] = 1; shell[i] = 1; }
     }
   }
-  if (!entry.hull.length) delete entry.hull; if (!entry.turret.length) delete entry.turret;
+  }
+  // Global remesh: the rounds and the coarse/fine passes each meshed their own voxels; one greedy pass over the
+  // union of every claimed voxel per component yields far fewer boxes for the same solid.
+  for (const [comp, key] of [[1, 'hull'], [2, 'turret'], [3, 'gun']]) {
+    const boxes = greedyBoxes(compOf, nx, ny, nz, comp);
+    entry[key] = []; for (const [x, y, z, x1, y1, z1] of boxes) entry[key].push(x, y, z, x1, y1, z1);
+  }
+  boxesTotal = (entry.hull.length + entry.turret.length + entry.gun.length) / 6;
+  if (!entry.hull.length) delete entry.hull; if (!entry.turret.length) delete entry.turret; if (!entry.gun.length) delete entry.gun;
   const ext2 = floodExterior(grid); const deep2 = deepInterior(grid); let residual = 0;
   for (let i = 0; i < shell.length; i++) if (ext2[i] && deep2[i]) residual++;
   const L = (n) => +(n * VOXEL ** 3 * 1000).toFixed(1);
-  out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(4)), t: turretOrigin.map((v) => +v.toFixed(4)), ...entry };
+  out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(4)), t: turretOrigin.map((v) => +v.toFixed(4)), g: gunOrigin.map((v) => +v.toFixed(4)), ...entry };
   const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
   stats.push(row);
-  console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, skipped under moving parts ${row.skippedL} L (${row.ms} ms)`);
+  console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, gun-frame under moving parts ${row.skippedL} L (${row.ms} ms)`);
   tank.dispose?.();
 }
 if (!flag('stats')) {
@@ -150,13 +209,14 @@ if (!flag('stats')) {
   for (const group of groupNames) {
     const lines = ['// Generated by tools/gen-interior-fills.mjs. Do not hand-edit.',
       '// Interior fill boxes per tank (base64 little-endian Uint16 sextets of inclusive fine-voxel spans, hull frame /',
-      '// turret frame): buried solids that make the body watertight. Regenerate after any playable geometry change.',
+      '// turret frame / gun frame): buried solids that make the body watertight. Regenerate after any playable geometry change.',
       "import type { InteriorFillRecord } from '../interiorFills.ts';", '',
       'export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({'];
     for (const [id, record] of byGroup.get(group).sort((a, b) => a[0].localeCompare(b[0]))) {
-      const parts = [`v: ${record.v}`, `o: [${record.o.join(', ')}]`, `t: [${record.t.join(', ')}]`];
+      const parts = [`v: ${record.v}`, `o: [${record.o.join(', ')}]`, `t: [${record.t.join(', ')}]`, `g: [${record.g.join(', ')}]`];
       if (record.hull) parts.push(`hull: ${JSON.stringify(encode(record.hull))}`);
       if (record.turret) parts.push(`turret: ${JSON.stringify(encode(record.turret))}`);
+      if (record.gun) parts.push(`gun: ${JSON.stringify(encode(record.gun))}`);
       lines.push(`  ${JSON.stringify(id)}: { ${parts.join(', ')} },`);
     }
     lines.push('});', '');

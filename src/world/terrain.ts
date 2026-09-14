@@ -711,8 +711,12 @@ function* heightFieldBuildSteps(
     const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
       _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
     const planned = planAssaultTrenchLines(alpha, bravo);
-    const lines = planned.lines.filter((line) => villageMask(line.x, line.z) < 0.4);
-    _trenchPlan = lines.length ? { lines, connector: planned.connector } : null;
+    const kept = planned.lines.map((line) => villageMask(line.x, line.z) < 0.4);
+    const lines = planned.lines.filter((_line, index) => kept[index]);
+    // Sector list stays index-aligned with the fractions: a dropped (settlement) sector reads
+    // null so the mode falls back to its own axis fraction instead of the next line's centre.
+    const sectors = planned.lines.map((line, index) => (kept[index] ? { x: line.x, z: line.z } : null));
+    _trenchPlan = lines.length ? { lines, connector: planned.connector, sectors } : null;
     return _trenchPlan;
   };
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });

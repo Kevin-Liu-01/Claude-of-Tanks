@@ -712,6 +712,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.selftest.mjs',
     'src/game/profile.selftest.mjs',
     'src/game/campaignProgress.selftest.mjs',
+    'src/game/campaignOperations.selftest.mjs',
     'src/game/battleModuleAccess.selftest.mjs',
     'src/game/playSurfaceRuntime.selftest.mjs',
     'src/game/equipment.selftest.mjs',

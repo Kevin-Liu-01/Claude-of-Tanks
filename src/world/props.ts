@@ -107,6 +107,7 @@ import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import type { GeometryBuckets, StructureDimensions } from './maps/exteriorDetailKit.ts';
+import { ASSAULT_TRENCH } from '../sim/assaultLines.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -5278,6 +5279,48 @@ ${snowCap ? `
     }
   }
   placeSandbagEmplacements();
+
+  // --- campaign slice 5 (2026-09-14, owner: "I still don't see campaign gameplay"): trench works.
+  // The assault-trenches variant carves the three fire trenches into the height field; this
+  // dresses their lips so they read as dug-in positions — a sandbag parapet on the enemy-facing
+  // lip, ammunition and crates on the friendly lip, a drum or barrier at each end. Every piece is
+  // an existing destructible (no collider), so a hull can still cross the works. Standard fields
+  // carry no trench plan and place nothing.
+  function placeTrenchWorks(): void {
+    const plan = heightField.assaultTrenchLines;
+    if (!plan || !plan.lines.length || !SOURCED.sandbags) return;
+    const trng = mulberry32(seed + 7301);
+    const lip = ASSAULT_TRENCH.floorHalfWidthM + ASSAULT_TRENCH.wallRunM + 0.45;
+    let placed = 0;
+    for (const line of plan.lines) {
+      const yaw = Math.atan2(line.lx, line.lz);
+      const reach = line.halfLengthM - 6;
+      for (let along = -reach; along <= reach; along += 5.2 + trng() * 1.6) {
+        // enemy-facing parapet
+        const px = line.x + line.lx * along + line.ax * lip, pz = line.z + line.lz * along + line.az * lip;
+        if (Math.max(Math.abs(px), Math.abs(pz)) > 455 || heightField._roadDist(px, pz) < 5) continue;
+        if (heightField.getGroundType(px, pz) === 'soft' || noVeg(px, pz)) continue;
+        const roll = trng();
+        const kind = roll < 0.5 ? 'sandbagwall' : roll < 0.8 ? 'sandbagbig' : 'sandbagsmall';
+        addDestructible(kind, px, heightField.getHeightAt(px, pz) - 0.04, pz, yaw + (trng() - 0.5) * 0.12, 1.15 + trng() * 0.25);
+        placed++;
+        // friendly lip: ammunition and crates every third station
+        if (placed % 3 === 0) {
+          const fx = line.x + line.lx * along - line.ax * (lip + 0.6), fz = line.z + line.lz * along - line.az * (lip + 0.6);
+          if (Math.max(Math.abs(fx), Math.abs(fz)) <= 455 && heightField._roadDist(fx, fz) >= 5 && !noVeg(fx, fz)) {
+            addDestructible(trng() < 0.6 ? 'ammobox' : 'crate', fx, heightField.getHeightAt(fx, fz) - 0.03, fz, yaw + (trng() - 0.5) * 0.9, 0.95 + trng() * 0.15);
+          }
+        }
+      }
+      // a drum or barrier closes each end of the works
+      for (const end of [-1, 1]) {
+        const ex = line.x + line.lx * end * (line.halfLengthM - 2), ez = line.z + line.lz * end * (line.halfLengthM - 2);
+        if (Math.max(Math.abs(ex), Math.abs(ez)) > 455 || heightField._roadDist(ex, ez) < 5 || noVeg(ex, ez)) continue;
+        addDestructible(trng() < 0.5 ? 'drum' : 'barrier', ex, heightField.getHeightAt(ex, ez) - 0.03, ez, yaw + Math.PI / 2, 1);
+      }
+    }
+  }
+  placeTrenchWorks();
 
   // --- knocked-out TANK WRECKS: real roster vehicles, baked static ----------
   yield;

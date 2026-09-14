@@ -25,7 +25,7 @@ interface PlacementWorld {
   obstacles: readonly CollisionRecord[];
   queryObstacles?: ObstacleQuery | null;
 }
-interface PlacementOptions extends PlacementWorld { anchors: PlacementAnchors; mode: string; mapId?: string; assaultLines?: readonly PlacementPoint[] | null }
+interface PlacementOptions extends PlacementWorld { anchors: PlacementAnchors; mode: string; mapId?: string; assaultLines?: readonly (PlacementPoint | null)[] | null }
 interface Footprint { radius: number; relief: number; normalY: number; solidOnly?: boolean; halfExtent?: number }
 const SPAWN_NORMAL_Y = .90;
 const OBJECTIVE_NORMAL_Y = .94;
@@ -120,7 +120,7 @@ export interface MatchPlacement {
   readonly middle: PlacementPoint;
   readonly zones: readonly PlacementPoint[];
   /** Frontline Assault lines carved into the terrain (assault-trenches worlds), else null. */
-  readonly assaultLines: readonly PlacementPoint[] | null;
+  readonly assaultLines: readonly (PlacementPoint | null)[] | null;
   spawn(point: PlacementSpawn, key: string, radius?: number, explicit?: boolean,
     occupied?: readonly OccupiedPlacement[]): PlacementSpawn;
   respawn(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null;

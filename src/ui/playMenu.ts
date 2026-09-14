@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
+import { campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 /**
  * Battle-mode picker and private/LAN lobby presentation.
  *
@@ -87,7 +88,7 @@ export interface PlayMenuOptions {
   vehicles?: PlayMenuVehicle[];
   getSelection(): PlayMenuSelection;
   getVehicleLoadout?(specId: string): Pick<PlayMenuSelection, 'equipment' | 'camo'>;
-  onSolo?(request?: { gameMode?: GameModeId }): RuntimeValue;
+  onSolo?(request?: { gameMode?: GameModeId; mapId?: string; campaignOperationId?: string }): RuntimeValue;
   /** Accepted native Ready gesture, never auto-join or replicated room state. */
   onReadyIntent?(): void;
   onNetworkStart?(request: {
@@ -183,6 +184,26 @@ const CSS = `
   color:inherit;font:900 9px ${FONT_COND};letter-spacing:.08em;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
 .cot-play .rule-copy small{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
 .cot-play .rule-copy .rule-progress{color:#e2b56a;text-transform:none;letter-spacing:.04em}
+.cot-play .campaign{margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
+.cot-play .campaign-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 4px}
+.cot-play .campaign-heading b{font:900 10px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase;color:#d9e3e9}
+.cot-play .campaign-heading span{color:#e2b56a;font:700 9px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase}
+.cot-play .campaign-sub{margin:0 0 8px;color:#7e909d;font-size:9.5px;line-height:1.4}
+.cot-play .ops{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:7px}
+.cot-play .op{display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:50px;padding:7px 9px;
+  border:1px solid rgba(255,255,255,.1);border-radius:3px;background:rgba(255,255,255,.03);color:#c8d3db}
+.cot-play .op.ready{border-color:rgba(230,154,54,.55)}.cot-play .op.cleared{border-color:rgba(120,200,140,.45)}
+.cot-play .op.locked{opacity:.55}
+.cot-play .op-index{font:900 15px ${FONT_COND};color:#e69a36;letter-spacing:.04em}.cot-play .op.cleared .op-index{color:#8fd4a2}
+.cot-play .op-copy{display:grid;min-width:0;gap:1px}.cot-play .op-copy b{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  font:900 11px ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;color:#f1e7d6}
+.cot-play .op-copy small{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
+.cot-play .op-copy .op-best{color:#a9b8c3;text-transform:none;letter-spacing:.03em}
+.cot-play .op-launch{font:900 9px ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#1a1208;background:#e69a36;
+  border:0;border-radius:2px;padding:7px 10px;cursor:pointer}.cot-play .op-launch:hover{background:#f2ad4e}
+.cot-play .op.cleared .op-launch{background:transparent;color:#e2b56a;border:1px solid rgba(230,154,54,.6)}
+.cot-play .op-hint{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;text-align:right;max-width:74px}
+
 .cot-play .rule:disabled{transform:none;cursor:not-allowed}.cot-play.lobby-active .rule-heading{margin-top:10px}
 .cot-play.lobby-active .rules{grid-template-columns:repeat(5,minmax(110px,1fr))}
 .cot-play .room{display:none;margin-top:18px;padding-top:18px;
@@ -583,6 +604,27 @@ export function createPlayMenu({
       ? t('playMenu.matchMode.frontline_assault.progress', { best: summary.bestLine, total: summary.total, held: summary.held })
       : t('playMenu.matchMode.frontline_assault.progressNone');
   };
+  // campaign slice 5 (2026-09-14): the six-operation ladder under the rules — status per
+  // operation from the Frontline record, a Launch/Replay button on every open one.
+  const campaignMarkup = (): string => {
+    const ladder = campaignLadder();
+    const summary = campaignSummary();
+    const cards = ladder.map(({ operation, status, progress }) => {
+      const best = progress
+        ? t('campaign.best', { best: progress.bestLine, total: progress.total })
+        : t('campaign.noSortie');
+      const action = status === 'locked'
+        ? `<small class="op-hint">${t('campaign.lockedHint', { index: operation.index - 1 })}</small>`
+        : `<button class="op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
+          t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
+      return `<article class="op ${status}" data-campaign-op="${operation.id}" aria-label="${t(`campaign.op.${operation.id}.title`)}">
+        <span class="op-index">${String(operation.index).padStart(2, '0')}</span>
+        <span class="op-copy"><b>${t(`campaign.op.${operation.id}.title`)}</b><small>${t(`map.${operation.mapId}`)} · ${t(`campaign.status.${status}`)}</small><small class="op-best">${best}</small></span>
+        ${action}</article>`;
+    }).join('');
+    return `<div class="campaign-heading"><b>${t('campaign.heading')}</b><span>${t('campaign.progress', { cleared: summary.cleared, total: summary.total })}</span></div>
+      <p class="campaign-sub">${t('campaign.sub')}</p><div class="ops" role="list">${cards}</div>`;
+  };
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
     `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
@@ -597,6 +639,7 @@ export function createPlayMenu({
     </div>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
+    <section class="campaign" data-campaign>${campaignMarkup()}</section>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
         <span class="identity-note">${t('playMenu.identity.note')}</span></div>
@@ -1382,6 +1425,18 @@ export function createPlayMenu({
     }
   }
 
+  // campaign ladder: launching an operation is a solo Frontline Assault sortie on its map
+  root.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement | null;
+    const launch = target?.closest<HTMLButtonElement>('[data-campaign-launch]');
+    if (!launch) return;
+    event.preventDefault();
+    closeMenuSelects();
+    hide();
+    showSelectedGameMode('frontline_assault');
+    if (onSolo) onSolo({ gameMode: 'frontline_assault', mapId: launch.dataset.mapId, campaignOperationId: launch.dataset.campaignLaunch });
+  });
+
   function selectMode(nextMode: PlayMode): void {
     const button = root.querySelector<HTMLButtonElement>(`.mode[data-mode="${nextMode}"]`);
     if (!button) return;
@@ -1522,6 +1577,7 @@ export function createPlayMenu({
     invite: PlayMenuInvite | null = null,
   ): void {
     { const badge = root.querySelector<HTMLElement>('[data-rule-progress]'); if (badge) badge.textContent = frontlineProgressLabel(); }
+    { const campaign = root.querySelector<HTMLElement>('[data-campaign]'); if (campaign) campaign.innerHTML = campaignMarkup(); }
     if (showCurrentRoom()) return;
     revealMenu();
     if (initialMode) selectMode(normalizePlayMode(initialMode));

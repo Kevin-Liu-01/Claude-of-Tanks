@@ -91,16 +91,10 @@ function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
     assert.equal(mark.owner,intended,`${id}/${phase}: explicit intended articulation owner, not other-owner fallback`);
     const local=tank.root.getObjectByName(`rig_${mark.owner}`).worldToLocal(mark.center.clone());
     const side=VEHICLE_MARKING_ANCHORS[id].side==='left'?-1:1;
-    if(id==='t72b3m_x') {
-      // Source skirt gap -1.73..-1.389 exposes one fixed tub face on each
-      // side. Two same-side readable planes do not fit; pin the intentional
-      // pair instead of permitting arbitrary other-side/other-owner fallback.
-      assert.ok(Math.abs(Math.abs(local.x)-1.1509999809265137)<1e-6
-        &&Math.abs(local.y-.9587388834357262)<1e-6
-        &&Math.abs(local.z+1.5853100113868712)<1e-6,
-      `${id}/${phase}: exact permanent-tub exposed-gap centers`);
-      sides.push(Math.sign(local.x));
-    }else assert.ok(local.x*side>.10,`${id}/${phase}: both marks stay on their explicitly chosen side`);
+    // 2026-09-14: the T-72B3M X skirt gap is closed (owner ruling); its marks now sit on the
+    // turret's right cheek like every other explicitly sided anchor.
+    assert.ok(local.x*side>.10,`${id}/${phase}: both marks stay on their explicitly chosen side`);
+    sides.push(Math.sign(local.x));
     for(const u of [-.28,0,.28])for(const v of [-.28,0,.28]) {
       const point=mark.center.clone().addScaledVector(mark.u,u).addScaledVector(mark.v,v);
       const ray=new THREE.Raycaster(point.clone().addScaledVector(mark.normal,.03),
@@ -122,7 +116,7 @@ function assertActualFootprints(tank,id,phase,checkExternalVisibility=true) {
       `${id}/${phase}: no equipment obscures paint (${u},${v}); offset=${offset}; hit=${outside.object.name}`);
     }
   }
-  if(id==='t72b3m_x')assert.deepEqual(sides.sort(),[-1,1],`${id}: one real footprint on each required side`);
+  assert.equal(sides.length,2,`${id}: two real footprints`);
   return{footprints,supportNames:[...supportNames].sort()};
 }
 
@@ -136,8 +130,7 @@ function assertHighMetadata(tank,id) {
     assert.equal(mark.userData.visibilityClearSamples,9,`${id}: all nine footprint rays clear`);
     assert.ok(mark.userData.maximumSurfaceErrorM<=SURFACE_MARKING_STYLE.visibilityToleranceM,
       `${id}: no decal bridge across missing or sharply bent armor`);
-    if(id==='t72b3m_x')assert.equal(Math.sign(mark.position.x),mark.userData.markingKind==='insignia'?1:-1,
-      `${id}: deliberate right insignia and left designation, never swapped`);
+
   }
 }
 

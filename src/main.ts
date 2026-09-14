@@ -70,6 +70,7 @@ import { createSky } from './engine/sky.ts';
 import { createBattleAtmosphereAccess } from './engine/battleAtmosphereAccess.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
+import { createMissionBrief } from './ui/missionBrief.ts';
 import { createLighting } from './engine/lighting.ts';
 import { createPost } from './engine/post.ts';
 import {
@@ -724,8 +725,11 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
     return receipt;
   },
 });
+// campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
+const missionBrief = createMissionBrief();
+let pendingCampaignOperationId: string | null = null;
 const setGarageSpots = (active: boolean): void => {
-  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); }
+  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); missionBrief.hide(); }
   garagePhasePresentation.setActive(active);
 };
 const setGarageSunTrim = (active: boolean): void => {
@@ -2377,6 +2381,10 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             const hud = currentHud();
             hud?.setPreBattleWaiting(waiting);
             if (!waiting) hud?.preBattleCountdown(game.preBattleS);
+            // campaign slice 5: the brief opens with the countdown and fades a few seconds into play
+            if (!waiting && game.gameMode === 'frontline_assault') {
+              missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });
+            }
           },
           setGarageLighting: (active: boolean) => {
             setGarageSpots(active);
@@ -2502,8 +2510,11 @@ async function beginSoloBattle({
   mapId,
   randomRoster = true,
   gameMode = 'standard',
+  campaignOperationId = null,
 }: SoloBattleEntryRequest = {}) {
   pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
+  pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
   return soloBattleEntry.beginSelected({ specId, mapId, randomRoster, gameMode });
 }
 
@@ -2787,7 +2798,13 @@ const battleFrame = createBattleFrameRuntime({
   countdown: {
     isWarmPending: () => battleWarmPending,
     advance: advancePreBattleCountdown,
-    show: (seconds: number) => currentHud()?.preBattleCountdown(seconds),
+    show: (seconds: number) => {
+      currentHud()?.preBattleCountdown(seconds);
+      // campaign slice 5: the solo countdown opens the mission brief once per sortie
+      if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
+        missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
+      }
+    },
     rollout: () => bus.emit('battle:rollout', {}),
   },
   presentation: {
