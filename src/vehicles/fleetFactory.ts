@@ -15,6 +15,7 @@ import {
   ensureVehicleMarkingSeatsForIds,
   isVehicleMarkingSeatsReady,
 } from './vehicleMarkingSeatLoader.ts';
+import { ensureAllInteriorFills, ensureInteriorFills } from './interiorFills.ts';
 import {
   ensureAllCombatAnatomyGroups,
   ensureCombatAnatomyCalibration,
@@ -231,6 +232,7 @@ export function ensureTankBuilder(specId: string): Promise<void> {
     ensureGroup(FLEET_GROUP_BY_ID[specId]),
     ensureVehicleMarkingSeats(specId),
     ensureCombatAnatomyCalibration(specId),
+    ensureInteriorFills([specId]),
   ]).then(() => {
     finalizeCombatAnatomy(tankSpecs[specId]);
   });
@@ -246,6 +248,7 @@ export function ensureTankBuilders(specIds: readonly string[]): Promise<void> {
     ...[...groups].map(ensureGroup),
     ensureVehicleMarkingSeatsForIds(specIds),
     ensureCombatAnatomyCalibrations(specIds),
+    ensureInteriorFills(specIds),
   ]).then(() => {
     for (const id of specIds || []) finalizeCombatAnatomy(tankSpecs[id]);
   });
@@ -256,6 +259,7 @@ export function ensureFullFleet(): Promise<void> {
     ...(Object.keys(GROUP_LOADERS) as FleetGroup[]).map(ensureGroup),
     ensureAllVehicleMarkingSeatGroups(),
     ensureAllCombatAnatomyGroups(),
+    ensureAllInteriorFills(),
   ]).then(() => {
     for (const id of SAVED_TANK_IDS) finalizeCombatAnatomy(tankSpecs[id]);
   });

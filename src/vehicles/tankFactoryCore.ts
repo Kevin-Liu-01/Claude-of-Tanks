@@ -23,6 +23,7 @@ import {
 } from './factoryGeometry.ts';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
+import { applyInteriorFills } from './interiorFills.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
 import {
   markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
@@ -1240,7 +1241,7 @@ const _stabilizedEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 // same-material siblings under their existing articulation parent is exact.
 // Running end wheels, live track bands, ERA, armor and gameplay-query parts
 // deliberately stay outside this allowlist.
-const BATTLE_STATIC_BATCH_NAME = /^(?:crowsBarrelShadowRun|gearAirShadowBacker|gear_(?:endWheelDress_(?:dark|detail|hull)|wheelBay(?:AO|VoidDress)|wrapPads[LR])|muzzleBoreShadowFallback(?:Rim|Annulus|Throat).*|vehicleMarking_.*)$/;
+const BATTLE_STATIC_BATCH_NAME = /^(?:crowsBarrelShadowRun|gearAirShadowBacker|gear_(?:endWheelDress_(?:dark|detail|hull)|wheelBayAO|wrapPads[LR])|muzzleBoreShadowFallback(?:Rim|Annulus|Throat).*|vehicleMarking_.*)$/;
 
 type BatchableStaticMesh = VehicleMesh & { material: THREE.Material };
 
@@ -12569,6 +12570,9 @@ function* createTankOwnedSteps(
     }, legacyDecoration);
 
   const createTankMarkingsStage3 = (): void => {
+    // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
+    // generated buried solids for this tank, if its fleet group is resident.
+    applyInteriorFills({ specId, hullG, turretG, material: mats.dark, disposables });
 
     // Family builders historically retinted shared/clone track materials after
     // construction. Reassert only explicit working-gear roles after every

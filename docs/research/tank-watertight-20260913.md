@@ -83,3 +83,12 @@ None of these touch a silhouette; all are buried inside existing surfaces.
 Openings that face inward (the ring slit under a bustle, a grille recess, a
 seam at a sponson pinch) are small from every outside view, but water finds
 them. The flood fill is the owner's test made literal.
+
+## Fleet scan and generated fills (later the same day)
+
+The fleet-wide scan (181 ids) leaked everywhere — see
+`tank-primitive-review-20260913.md` §1. The systematic fix is
+`tools/gen-interior-fills.mjs`: generated buried solids per hull and turret,
+loaded lazily per fleet group and applied by the factory, excluded from the
+authored-geometry fingerprints. `tank-watertight-check.mjs` now measures the
+shipped tank with its fills; `--no-fills` measures the authored shells alone.

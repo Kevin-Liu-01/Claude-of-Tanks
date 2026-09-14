@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Watertight check for tank bodies: "pour water into the turret or hull and it must not spill out".
 //
-//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose]
+//   node tools/tank-watertight-check.mjs --ids=abramsx,leclerc [--voxel=0.025] [--exclude=<regex>] [--json=path] [--gate] [--verbose] [--no-fills]
 //
 // The built tank's body triangles (running gear, decals, shadow proxies, wires and soft goods excluded) are
 // voxelised conservatively; the exterior is flood-filled from the grid border; a voxel counts as DEEP INTERIOR
@@ -13,6 +13,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { collectTriangles } from './tank-surface-collect.mjs';
+import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -24,111 +25,9 @@ const MAX_LEAK_L = Number(opt('max-leak-l', '0.05'));
 const EXCLUDE = new RegExp(opt('exclude', '^(gear|track|procShadow|vehicleMarking|utility|antenna|aerial|wire|cable|cloth|canvas|tarp|net|ghillie|mesh)|wheel|hub|sprocket|idler|roller|shoe|EndWheel|Skirt|skirt|Fender|fender|Mudguard|mudguard|ExternalArmor'), 'i');
 const verbose = flag('verbose');
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
+// Interior fills 2026-09-13: the shipped tank carries its generated fills; --no-fills measures the authored shells alone.
+if (!flag('no-fills')) { const { ensureAllInteriorFills } = await import('../src/vehicles/interiorFills.ts'); await ensureAllInteriorFills(); }
 const ids = opt('ids', 'abramsx').split(',').filter(Boolean);
-
-/** Conservative voxelisation: every voxel a triangle passes through becomes shell (owner = first writer). */
-function voxelise(tris, meshes) {
-  let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-  const groups = []; const groupIndex = new Map();
-  const body = [];
-  for (const t of tris) {
-    const name = meshes[t.mesh] || 'mesh';
-    if (EXCLUDE.test(name)) continue;
-    body.push(t);
-    for (const [x, y, z] of [[t.ax, t.ay, t.az], [t.bx, t.by, t.bz], [t.cx, t.cy, t.cz]]) {
-      if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
-    }
-  }
-  const pad = 3;
-  const origin = [minX - pad * VOXEL, minY - pad * VOXEL, minZ - pad * VOXEL];
-  const nx = Math.ceil((maxX - minX) / VOXEL) + 2 * pad, ny = Math.ceil((maxY - minY) / VOXEL) + 2 * pad, nz = Math.ceil((maxZ - minZ) / VOXEL) + 2 * pad;
-  const shell = new Uint16Array(nx * ny * nz); // 0 = empty, else group id + 1
-  const idx = (x, y, z) => (z * ny + y) * nx + x;
-  const mark = (x, y, z, g) => {
-    const ix = Math.floor((x - origin[0]) / VOXEL), iy = Math.floor((y - origin[1]) / VOXEL), iz = Math.floor((z - origin[2]) / VOXEL);
-    if (ix < 0 || iy < 0 || iz < 0 || ix >= nx || iy >= ny || iz >= nz) return;
-    const i = idx(ix, iy, iz); if (!shell[i]) shell[i] = g + 1;
-  };
-  for (const t of body) {
-    const name = meshes[t.mesh] || 'mesh';
-    let g = groupIndex.get(name); if (g === undefined) { g = groups.length; groups.push(name); groupIndex.set(name, g); }
-    // sample the triangle densely enough that no voxel it crosses is skipped (step = half a voxel along both barycentric axes)
-    const e1 = Math.hypot(t.bx - t.ax, t.by - t.ay, t.bz - t.az), e2 = Math.hypot(t.cx - t.ax, t.cy - t.ay, t.cz - t.az), e3 = Math.hypot(t.cx - t.bx, t.cy - t.by, t.cz - t.bz);
-    const n = Math.max(1, Math.ceil(Math.max(e1, e2, e3) / (VOXEL * 0.5)));
-    for (let i = 0; i <= n; i++) {
-      const u = i / n;
-      for (let j = 0; j <= n - i; j++) {
-        const v = j / n, w = 1 - u - v;
-        mark(t.ax * w + t.bx * u + t.cx * v, t.ay * w + t.by * u + t.cy * v, t.az * w + t.bz * u + t.cz * v, g);
-      }
-    }
-  }
-  return { shell, nx, ny, nz, origin, groups, bodyTris: body.length };
-}
-
-/** Exterior flood fill (6-connected) from the grid border through empty voxels. */
-function floodExterior(grid) {
-  const { shell, nx, ny, nz } = grid; const N = shell.length;
-  const ext = new Uint8Array(N); const queue = new Int32Array(N); let head = 0, tail = 0;
-  const push = (i) => { if (!shell[i] && !ext[i]) { ext[i] = 1; queue[tail++] = i; } };
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    if (x === 0 || y === 0 || z === 0 || x === nx - 1 || y === ny - 1 || z === nz - 1) push((z * ny + y) * nx + x);
-  }
-  while (head < tail) {
-    const i = queue[head++]; const x = i % nx, y = ((i / nx) | 0) % ny, z = (i / (nx * ny)) | 0;
-    if (x > 0) push(i - 1); if (x < nx - 1) push(i + 1);
-    if (y > 0) push(i - nx); if (y < ny - 1) push(i + nx);
-    if (z > 0) push(i - nx * ny); if (z < nz - 1) push(i + nx * ny);
-  }
-  return ext;
-}
-
-/** Body component of a shell group: hull-family, turret-family (gun mount/mantlet ride with the turret) or other. */
-function componentOf(name) {
-  if (/^turret|^gunMount|^mantlet|^gun\b|^gunDark/i.test(name)) return 2;
-  if (/^hull/i.test(name)) return 1;
-  return 0;
-}
-
-/**
- * Deep interior: a body shell exists in every axis direction from the voxel AND the voxel lies inside the
- * vertical shell span of one body component (hull or turret) at its own column. The second test drops exterior
- * pockets that distant shells enclose in every direction — the slit under a turret bustle, the space between
- * sponson and belly — which are outside both bodies: water poured into a body never reaches them.
- */
-function deepInterior(grid) {
-  const { shell, nx, ny, nz, groups } = grid; const N = shell.length;
-  const comp = new Uint8Array(groups.length + 1); for (let g = 0; g < groups.length; g++) comp[g + 1] = componentOf(groups[g]);
-  // per column (x,z) and component: lowest / highest shell voxel
-  const minY = [null, new Int16Array(nx * nz).fill(32767), new Int16Array(nx * nz).fill(32767)];
-  const maxY = [null, new Int16Array(nx * nz).fill(-1), new Int16Array(nx * nz).fill(-1)];
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const g = shell[(z * ny + y) * nx + x]; if (!g) continue; const c = comp[g]; if (!c) continue;
-    const k = z * nx + x; if (y < minY[c][k]) minY[c][k] = y; if (y > maxY[c][k]) maxY[c][k] = y;
-  }
-  const deep = new Uint8Array(N).fill(1); // cleared when any direction is open
-  const scan = (count, stride, lineStarts) => {
-    for (const start of lineStarts) {
-      // forward: shell seen so far along the line
-      let seen = 0;
-      for (let k = 0, i = start; k < count; k++, i += stride) { if (shell[i]) seen = 1; else if (!seen) deep[i] = 0; }
-      seen = 0;
-      for (let k = count - 1, i = start + (count - 1) * stride; k >= 0; k--, i -= stride) { if (shell[i]) seen = 1; else if (!seen) deep[i] = 0; }
-    }
-  };
-  const xs = [], ys = [], zs = [];
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) xs.push((z * ny + y) * nx);
-  for (let z = 0; z < nz; z++) for (let x = 0; x < nx; x++) ys.push(z * ny * nx + x);
-  for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) zs.push(y * nx + x);
-  scan(nx, 1, xs); scan(ny, nx, ys); scan(nz, nx * ny, zs);
-  for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
-    const i = (z * ny + y) * nx + x; if (shell[i]) { deep[i] = 0; continue; } if (!deep[i]) continue;
-    const k = z * nx + x;
-    const inHull = minY[1][k] < y && y < maxY[1][k], inTurret = minY[2][k] < y && y < maxY[2][k];
-    if (!inHull && !inTurret) deep[i] = 0;
-  }
-  return deep;
-}
 
 /** 26-connected clusters of leak voxels with centroid, extent, mouth and surrounding shell groups. */
 function clusterLeaks(grid, ext, deep) {
@@ -212,7 +111,7 @@ for (const id of ids) {
   let tank;
   try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const { tris, meshes } = collectTriangles(tank.root);
-  const grid = voxelise(tris, meshes);
+  const grid = voxelise(tris, meshes, { voxel: VOXEL, exclude: EXCLUDE });
   const ext = floodExterior(grid);
   const deep = deepInterior(grid);
   const { leakCount, clusters, enclosedL, deepL } = clusterLeaks(grid, ext, deep);

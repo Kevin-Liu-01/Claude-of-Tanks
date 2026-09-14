@@ -242,6 +242,8 @@ export function geometryFingerprint(root: GeometryRootLike): string {
   const instance = new Float32Array(16);
   root.traverse((object) => {
     if (!(object.isMesh || object.isInstancedMesh) || !object.geometry || !object.geometry.getAttribute) return;
+    // generated interior fills (interiorFills.ts) are not authored geometry: the original-model receipts ignore them
+    if ((object as { userData?: { interiorFill?: boolean } }).userData?.interiorFill) return;
     const position = object.geometry.getAttribute && object.geometry.getAttribute('position');
     if (!position || !position.array) return;
     let hash = fnvBytes(0x811c9dc5, new Uint8Array(position.array.buffer, position.array.byteOffset, position.array.byteLength));
