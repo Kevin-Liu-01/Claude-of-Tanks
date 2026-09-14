@@ -658,6 +658,8 @@ class FsrUpscalePass extends Pass {
   readonly inputSize: THREE.Vector2;
   mode: ReconstructionMode;
   inputScale: number;
+  /** Temporal AA has settled the sub-pixel sparkle: RCAS may lift to its temporal floor (2026-09-13). */
+  temporalAccumulation = false;
   readonly intermediate: THREE.WebGLRenderTarget;
   readonly easuMaterial: THREE.ShaderMaterial;
   readonly rcasMaterial: THREE.ShaderMaterial;
@@ -770,7 +772,7 @@ class FsrUpscalePass extends Pass {
       1 / sourceWidth,
       1 / sourceHeight,
     );
-    this.rcasMaterial.uniforms.uSharpness.value = reconstructionSharpness(inputScale);
+    this.rcasMaterial.uniforms.uSharpness.value = reconstructionSharpness(inputScale, this.temporalAccumulation);
     this.quad.material = this.rcasMaterial;
     this.setFinalTarget(renderer, writeBuffer);
     this.quad.render(renderer);
@@ -2110,6 +2112,7 @@ export function createPost(
   // final pass owns the exact display backing store; the browser never has to
   // stretch a smaller canvas a second time.
   const upscaler = new FsrUpscalePass();
+  upscaler.temporalAccumulation = taaEnabled;
   composer.addPass(upscaler);
 
   // --- Quality-aware sizing --------------------------------------------------
@@ -2518,6 +2521,7 @@ export function createPost(
     taaEnabled = !!preset.taa;
     taa.enabled = taaEnabled;
     taa.resetHistory();
+    upscaler.temporalAccumulation = taaEnabled;
     publishAAState();
     // perf-governor r1: a preset switch is a new baseline — release every
     // session trim (the new tier's own levers take over) and recompute AO.

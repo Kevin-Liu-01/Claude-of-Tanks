@@ -78,10 +78,26 @@ export function overloadReliefLever(
   return 'tier';
 }
 
+/**
+ * RCAS floor under temporal accumulation (2026-09-13). A converged TAA frame
+ * is the scene box-filtered over the pixel footprint: the sub-pixel sparkle
+ * that sharpening would amplify is already settled, and the fine ground and
+ * foliage contrast the 1049e4e reference kept is what went missing (measured
+ * at identical still poses: the local luminance gradient of the ground bands
+ * halved with TAA at RCAS 0.12; 0.35–0.60 recovered it without halos, 0.60
+ * began to grain snow, so the floor sits at 0.50). Enlargement still owns the
+ * range above the floor.
+ */
+export const TEMPORAL_RECONSTRUCTION_SHARPNESS = 0.5;
+
 /** RCAS recovery grows with enlargement, capped before halos become dominant. */
-export function reconstructionSharpness(inputToOutputScale: number): number {
+export function reconstructionSharpness(
+  inputToOutputScale: number,
+  temporalAccumulation = false,
+): number {
   const scale = Math.min(1, Math.max(0, Number(inputToOutputScale) || 0));
-  return Math.min(0.4, Math.max(0.12, 0.12 + (1 - scale) * 0.64));
+  const spatial = Math.min(0.4, Math.max(0.12, 0.12 + (1 - scale) * 0.64));
+  return temporalAccumulation ? Math.max(TEMPORAL_RECONSTRUCTION_SHARPNESS, spatial) : spatial;
 }
 
 /**

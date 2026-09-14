@@ -103,7 +103,7 @@ export default {
     cloudOpacity: 1.28, cloudOpacity2: 1.04, cloudTintHex: 0xc4b7aa,
     // Preserve the smoky low-key grade while keeping direct/ambient
     // separation strong enough for reliable terrain and structure shadows.
-    sunIntensity: 3.5, sunColorHex: 0xffb985, hemiIntensity: 0.64, postExposure: 0.95,
+    sunIntensity: 4.0, sunColorHex: 0xffc9a0, hemiIntensity: 0.42, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb985 / 0.64); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],

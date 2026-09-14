@@ -56,7 +56,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     turbidity: 7.8, rayleigh: 2.05, mieCoefficient: 0.012, mieDirectionalG: 0.88,
     fogDensity: 0.00088, fogTintHex: 0x708c86, fogMix: 0.66, envIntensity: 0.27,
     cloudOpacity: 1.35, cloudOpacity2: 1.18, cloudTintHex: 0xbecac8,
-    sunIntensity: 2.9, sunColorHex: 0xffdfc0, hemiIntensity: 0.54,
+    sunIntensity: 3.6, sunColorHex: 0xfae8d0, hemiIntensity: 0.46, // lighting 2026-09-13: mirrors monsoon.sky
     postExposure: 0.96,
   }),
   alpine: Object.freeze({
@@ -64,7 +64,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     turbidity: 4.2, rayleigh: 2.0, mieCoefficient: 0.0052, mieDirectionalG: 0.78,
     fogDensity: 0.00076, fogTintHex: 0x9eb1c3, fogMix: 0.64, envIntensity: 0.31,
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
-    sunIntensity: 2.85, sunColorHex: 0xffddbe, hemiIntensity: 0.54,
+    sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, // lighting 2026-09-13: mirrors alpine.sky
     postExposure: 0.95,
   }),
   badlands: Object.freeze({
@@ -80,7 +80,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     turbidity: 7.8, rayleigh: 1.35, mieCoefficient: 0.012, mieDirectionalG: 0.88,
     fogDensity: 0.00074, fogTintHex: 0x788286, fogMix: 0.64, envIntensity: 0.22,
     cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
-    sunIntensity: 3.8, sunColorHex: 0xffd6ad, hemiIntensity: 0.48,
+    sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, // lighting 2026-09-13: mirrors foundry.sky
     postExposure: 0.96,
   }),
 });

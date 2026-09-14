@@ -7,6 +7,7 @@ import {
   overloadReliefLever,
   reconstructionMode,
   reconstructionSharpness,
+  TEMPORAL_RECONSTRUCTION_SHARPNESS,
 } from './renderScalePolicy.ts';
 import { PRESETS } from './quality.ts';
 
@@ -86,6 +87,16 @@ assert.equal(reconstructionSharpness(0.5), 0.4,
 assert.equal(reconstructionSharpness(-1), 0.4);
 assert.equal(reconstructionSharpness(Number.NaN), 0.4);
 assert.equal(reconstructionSharpness(2), 0.12);
+// 2026-09-13: under temporal AA the converged frame has no sparkle left to amplify and
+// the reference's ground/foliage contrast needs recovering — RCAS lifts to a floor.
+assert.equal(TEMPORAL_RECONSTRUCTION_SHARPNESS, 0.5);
+assert.equal(reconstructionSharpness(1, true), TEMPORAL_RECONSTRUCTION_SHARPNESS,
+  'native output under temporal accumulation sharpens at the temporal floor');
+assert.equal(reconstructionSharpness(0.75, true), TEMPORAL_RECONSTRUCTION_SHARPNESS,
+  'moderate enlargement under TAA keeps the floor (0.28 spatial sits below it)');
+assert.equal(reconstructionSharpness(0.5, true), TEMPORAL_RECONSTRUCTION_SHARPNESS,
+  'the temporal floor sits just above the spatial cap');
+assert.equal(reconstructionSharpness(1, false), 0.12, 'without temporal AA the spatial policy is unchanged');
 assert.equal(reconstructionMode(0.75), 'easu+rcas');
 assert.equal(reconstructionMode(0.467), 'easu');
 assert.equal(reconstructionMode(0.333), 'linear',

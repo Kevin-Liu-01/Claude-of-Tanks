@@ -101,7 +101,7 @@ export default {
     mieCoefficient: 0.012, mieDirectionalG: 0.88, fogDensity: 0.00088,
     fogTintHex: 0x708c86, fogMix: 0.66, envIntensity: 0.27,
     cloudOpacity: 1.35, cloudOpacity2: 1.18, cloudTintHex: 0xbecac8,
-    sunIntensity: 2.9, sunColorHex: 0xffdfc0, hemiIntensity: 0.54, postExposure: 0.96,
+    sunIntensity: 3.6, sunColorHex: 0xfae8d0, hemiIntensity: 0.46, postExposure: 0.96, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 2.9 / 0xffdfc0 / 0.54); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
   },
   minimap: {
     base: [51, 84, 59], hard: [82, 82, 70], soft: [37, 65, 55],
