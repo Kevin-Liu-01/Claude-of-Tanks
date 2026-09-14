@@ -579,10 +579,13 @@ for (const seed of [1337, 2025, 7719]) {
   const before = build(field, control), after = build(field, mangrove);
   console.log(seed, JSON.stringify(after.group.userData.tidalMangroves.map(({ treeIndices, ...r }) => r)));
   assert.equal(after.trees.length, before.trees.length);
-  assert.equal(after.preRoad.trees, 4649, 'original admission before road clearance');
+  // 2026-09-13: the rim forest / saddle tree spawn clearance returned to 20 m (was 36 m
+  // since ef689c9fb), so the spawn-side stands admit 143 more trees before road clearance;
+  // repinned from the current build (4649 -> 4792).
+  assert.equal(after.preRoad.trees, 4792, 'original admission before road clearance');
   assert.equal(after.trees.length, after.preRoad.trees - after.group.userData.roadPlacementClearance.rejectedTrees);
   assert.equal(after.treeObstacles.length, before.treeObstacles.length);
-  assert.equal(after.preRoad.obstacles, 4364, 'original obstacle admission before road clearance');
+  assert.equal(after.preRoad.obstacles, 4520, 'original obstacle admission before road clearance'); // 2026-09-13: 20 m rim clearance, was 4364
   assert.equal(after.concealers.length, before.concealers.length);
   assert.deepEqual(after.rng, before.rng, 'actual entire production RNG call counts and tails unchanged');
   // 2026-09-12: ordinary trunks carry the fluted collar (fifteen sides, four

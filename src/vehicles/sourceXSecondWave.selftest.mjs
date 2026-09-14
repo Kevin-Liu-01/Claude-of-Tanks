@@ -19,7 +19,10 @@ const original = {
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  ariete_c1:'a4e3e6b0', challenger1:'2c4e0562', leclerc:'3860cb3a',
+// 2026-09-13 watertight bodies (owner's pour-water test): buildLeclerc gained buried
+// solids (sponson band to the tub, bow/glacis underfill, turret cores) inside its
+// existing surfaces; the leclerc digest is repinned from the current build.
+  ariete_c1:'a4e3e6b0', challenger1:'2c4e0562', leclerc:'2b79cfc4',
   chieftain5:'faacb05a', chieftain_mk10:'01af2dc1', leo2a6:'4b34bc1d',
   k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'cc29ff1e',
   t72b_1987:'b42a4c54', t72b3:'9cd2f28d', t72b3m:'bf9db036',
