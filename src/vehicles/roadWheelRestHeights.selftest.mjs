@@ -75,8 +75,10 @@ const ORIGINALS = {
     '155d8c518f395095534f8fa6f9b6c8cf5f654514bfb893498f6f71b9626abee8'],
   t90m: ['37c66f62ddbface1ba23dd71cef3a2fb359f46d26a7d7bc13682f528ef83a331',
     '8d5aa9a07acc32a382416097d5f2945499512b1180b5e60ca1e82f023ade3225'],
-  m1a2: ['cbb19f45efdbab97356bd7fc5f87235b6948e0696427ed845cdebdee1e55be99',
-    '3868961745dac2ffef364704dd0f12eb5e78ceb379bece156a61dcc6be602016'],
+  // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
+  // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
+  m1a2: ['b0a1f2adf4433f9dac54ec7293e57ad829d20b7127ec1d79b6b9faca24faa7ae',
+    'a5555424d6aee0afe80c30f4dfe690b7c7a5ff3663564b42b8f5ed77c066914c'],
   leo2a5: ['08efd1106a79835d3b0ad6c4ffe8a502faea5212ee785c1f84b790d331d8846f',
     '011e249a2d5f6d555a8b8fada08e53c7a92cc7aed15035782bb6110c7b057f6c'],
 };

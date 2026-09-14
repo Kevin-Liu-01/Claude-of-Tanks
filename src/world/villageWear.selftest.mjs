@@ -35,7 +35,9 @@ const FROZEN = {
     coastal: { 512: '1cd1ec0f2649e5f67e7c5a820c52953594cca026a6abae22bb30ca0bdf86bd6c', 256: '734eecb8ca9cbe6fc0bc62c94642b91825c11d640769b8a352842b2fb672c278' },
     saltwind: { 512: '4630bb971fabf8fa1f355247994de5dc388e0ebf61c6e4668f7b1062032eee43', 256: 'fb8684923e0993f50e3cb4862b3a8ebabdc23566e3af7bcc7adaae9cd6e4898f' },
   },
-  configs: '1e2782ff93df30c67766053893fbef56fdd676912b43a0e386aad102eaa820f1',
+  // 2026-09-13 lighting: alpine/fjord/caldera/monsoon/delta/blackglass/foundry/mangrove sky presets
+  // moved toward the 1049e4e key/fill ratio (graphics commit 471c7b709); repinned from the current build.
+  configs: '00099b33c6dc4663e1754e80de7212463cd5147190b11ee588619b71673892d4',
 };
 const beforeConfigs = stringify(MAP_IDS.map(getMapConfig));
 
