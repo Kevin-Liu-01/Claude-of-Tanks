@@ -3963,6 +3963,8 @@ function* vegetationBuildSteps(
   const authoredTreeDonors = veg.authoredTrees || veg.tidalTrees ? new Set<TreeRecord>() : null;
   const treeObstacles: TreeObstacle[] = [];
   const protectedSpawns = [L.spawns.player, ...L.spawns.enemies];
+  /** Rim-forest clearance around every spawn: tank + chase camera, not a meadow (was 36 m, see placeRimForest). */
+  const RIM_SPAWN_CLEARANCE_M = 20;
   // SPOTTING WIRING: concealment discs {x,z,r,add} sampled by the spotting
   // sim (src/sim/spotting.ts) — bushes conceal strongly, tree canopies mildly.
   const concealers: ConcealmentDisc[] = [];
@@ -4231,10 +4233,13 @@ function* vegetationBuildSteps(
         // east rim) — no forest wading in the sea. noVeg is false along every
         // pre-existing map's rim, so this is a no-op for them.
         if (noVeg(x, z)) continue;
-        // Boundary spawns can sit inside the horizon ring. Preserve a larger
-        // chase-camera corridor here because rim trees intentionally bypass the
-        // ordinary playable-area site policy.
-        if (!isClearOfSpawns(x, z, protectedSpawns, 36)) continue;
+        // Boundary spawns can sit inside the horizon ring. Keep a chase-camera
+        // corridor here because rim trees intentionally bypass the ordinary
+        // playable-area site policy. Owner review 2026-09-13: the 36 m disc
+        // cleared the whole forest the reference build (1049e4e) had around the
+        // Fjord and Alpine spawns; 20 m still clears the tank and the camera
+        // (which sits ~12 m behind the spawn) and keeps the stand in view.
+        if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
         pushTree(x, z, rng() < 0.85 ? species : pickSpecies(veg.rimMix, rng()), 1.35, 2.2, false);
       }
       for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
@@ -4250,7 +4255,7 @@ function* vegetationBuildSteps(
       const z = Math.sin(a) * rad + (rng() - 0.5) * 18;
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
-      if (!isClearOfSpawns(x, z, protectedSpawns, 36)) continue;
+      if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) continue;
       pushTree(x, z, pickSpecies(veg.rimMix, rng()), 1.2, 1.9, false);
     }
   }
