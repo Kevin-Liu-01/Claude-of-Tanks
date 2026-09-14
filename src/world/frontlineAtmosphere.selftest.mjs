@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+import { notifyShellImpact, notifyShellSweep } from './destructibles.ts';
 import {
   createFrontlineAtmosphere, FRONTLINE_INTENSITY, FRONTLINE_LIMITS, resolveFrontBearingDeg,
 } from './frontlineAtmosphere.ts';
@@ -146,3 +147,38 @@ for (const name of ['atmosphere:artillery', 'atmosphere:flak', 'atmosphere:flyov
   assert.ok(audio.includes(`'${name}'`), `audio subscribes to ${name}`);
 }
 console.log(`frontlineAtmosphere.selftest: ${MAP_IDS.length} map intensities, deterministic ${a.events.length}-event replay, cadence, envelope, caps, reset/dispose and wiring PASS`);
+
+
+// AA guns are destructible (2026-09-13): an HE impact or a shell sweep through a
+// gun's capsule knocks it out — it stops firing, logs 'aa-destroyed', tells the
+// bus, and the standing guns keep working.
+{
+  const d = make();
+  d.runtime.prepare(1337, 'frontier');
+  run(d.runtime, 4);
+  const guns = d.runtime.aaGuns;
+  const gunCount = guns.length;
+  assert.ok(gunCount >= FRONTLINE_LIMITS.aaGuns[0], `guns laid out (${gunCount})`);
+  const g0 = guns[0], g1 = guns[1];
+  notifyShellImpact(g0.pos.x + 0.8, g0.pos.y + 1.0, g0.pos.z, { r: 2.5, he: true });
+  assert.equal(g0.destroyed, true, 'an HE impact beside the mount destroys it');
+  assert.equal(g1.destroyed, false, 'the neighbour is untouched');
+  notifyShellSweep(g1.pos.x - 8, g1.pos.y + 1.2, g1.pos.z, g1.pos.x + 8, g1.pos.y + 1.2, g1.pos.z);
+  assert.equal(g1.destroyed, true, 'a shell sweeping through the capsule destroys it');
+  notifyShellSweep(g1.pos.x - 8, g1.pos.y + 6, g1.pos.z, g1.pos.x + 8, g1.pos.y + 6, g1.pos.z);
+  const destroyedEvents = d.runtime.log.filter((e) => e.kind === 'aa-destroyed');
+  assert.equal(destroyedEvents.length, 2, 'one aa-destroyed event per kill');
+  assert.equal(d.events.filter(([name]) => name === 'atmosphere:aa-destroyed').length, 2, 'the bus hears both kills');
+  const before = d.runtime.log.length;
+  run(d.runtime, 90);
+  const laterBursts = d.runtime.log.slice(before).filter((e) => e.kind === 'aa');
+  for (const burst of laterBursts) {
+    for (const gun of [g0, g1]) {
+      assert.ok(Math.hypot(burst.pos[0] - gun.pos.x, burst.pos[2] - gun.pos.z) > 0.5, 'a destroyed gun never bursts again');
+    }
+  }
+  d.runtime.reset();
+  notifyShellImpact(g0.pos.x, g0.pos.y + 1, g0.pos.z, { r: 3, he: true }); // unregistered after reset: no throw, no event
+  assert.equal(d.runtime.log.length, 0, 'reset clears the log and unregisters the guns');
+  console.log(`frontlineAtmosphere AA destructibles: ${gunCount} guns, impact + sweep kills, silence after, reset unregisters PASS`);
+}

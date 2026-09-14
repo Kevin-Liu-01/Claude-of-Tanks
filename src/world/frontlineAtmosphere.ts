@@ -12,6 +12,7 @@
 // mixer applies the travel delay and a long-range law of its own.
 import * as THREE from 'three';
 import { isMapId, type MapId } from './maps/catalog.ts';
+import { emitBreakFx, emitDestroyed, registerWorldDestructibles } from './destructibles.ts';
 
 export interface FrontlineEventBus {
   emit(event: string, payload: unknown): void;
@@ -39,7 +40,7 @@ export interface FrontlineAtmosphereOptions {
 }
 
 export interface FrontlineEvent {
-  kind: 'artillery' | 'flak' | 'flyover' | 'aa';
+  kind: 'artillery' | 'flak' | 'flyover' | 'aa' | 'aa-destroyed';
   timeS: number;
   pos: [number, number, number];
 }
@@ -56,6 +57,8 @@ export interface FrontlineAtmosphere {
   dispose(): void;
   /** Events emitted so far this match (bounded; receipts and probes). */
   readonly log: readonly FrontlineEvent[];
+  /** The anti-air guns behind the player's line; destroyed guns fall silent (campaign objectives, receipts). */
+  readonly aaGuns: readonly { readonly pos: THREE.Vector3; readonly destroyed: boolean }[];
 }
 
 /** Per-map front intensity 0..1 (0 = silent). Authored here, not in map configs. */
@@ -89,6 +92,9 @@ export const FRONTLINE_LIMITS = Object.freeze({
   aaBurstIntervalS: [0.9, 1.7] as const,
   aaShotsPerBurst: 3,
   aaShotGapS: 0.13,
+  /** Shell hit volume of one gun: a vertical capsule over its base. */
+  aaHitRadiusM: 1.9,
+  aaHitHeightM: 2.6,
   tracerCap: 48,
   tracerSpeedMps: 420,
   tracerLifeS: 2.2,
@@ -371,7 +377,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
 
   const quad = new THREE.PlaneGeometry(1, 1);
   const columnGeometry = quad.clone().translate(0, 0.5, 0);
-  const columnCap = FRONTLINE_LIMITS.columns[1];
+  const columnCap = FRONTLINE_LIMITS.columns[1] + FRONTLINE_LIMITS.aaGuns[1]; // + one wreck plume per destroyed gun
   const columnSeeds = new THREE.InstancedBufferAttribute(new Float32Array(columnCap), 1);
   columnGeometry.setAttribute('aSeed', columnSeeds);
   const columns = new THREE.InstancedMesh(columnGeometry, columnMaterial, columnCap);
@@ -446,7 +452,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   aaHeads.name = 'frontline-aa-heads'; aaHeads.count = 0; aaHeads.castShadow = true;
   aaHeads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   group.add(aaBases, aaHeads);
-  interface AaGun { pos: THREE.Vector3; yaw: number; pitch: number; nextBurstAt: number; shotsLeft: number; nextShotAt: number; }
+  interface AaGun { pos: THREE.Vector3; yaw: number; pitch: number; nextBurstAt: number; shotsLeft: number; nextShotAt: number; destroyed: boolean; }
   const aaGuns: AaGun[] = [];
   const tracerGeometry = quad.clone();
   const tracerAttr = new THREE.InstancedBufferAttribute(new Float32Array(FRONTLINE_LIMITS.tracerCap * 4).fill(-1), 4);
@@ -609,7 +615,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
       const x = THREE.MathUtils.clamp(px - fx * behind + fz * lateral, -470, 470);
       const z = THREE.MathUtils.clamp(pz - fz * behind - fx * lateral, -470, 470);
       const pos = new THREE.Vector3(x, groundY(x, z), z);
-      aaGuns.push({ pos, yaw: bearing, pitch: 0.35, nextBurstAt: 0, shotsLeft: 0, nextShotAt: 0 });
+      aaGuns.push({ pos, yaw: bearing, pitch: 0.35, nextBurstAt: 0, shotsLeft: 0, nextShotAt: 0, destroyed: false });
       _m.compose(pos, _q.setFromAxisAngle(_up, bearing + (rng() - 0.5) * 0.4), _one);
       aaBases.setMatrixAt(i, _m);
     }
@@ -651,6 +657,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     const plane = aircraft.find((a) => a.active);
     let moved = false;
     for (const gun of aaGuns) {
+      if (gun.destroyed) continue; // a knocked-out mount neither tracks nor fires
       if (plane) {
         // lead the aircraft by the tracer flight time
         _lead.copy(plane.p0).addScaledVector(plane.v, time - plane.t0);
@@ -687,6 +694,93 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     if (moved) writeAaHeads();
   }
 
+  // ---- AA guns are destructible (owner brief: "anti air guns going off in
+  // back" that the player can silence). Shell sweeps and HE impacts test each
+  // live gun's capsule; a hit drops the mount, lights a wreck plume, stops the
+  // bursts and publishes 'aa-destroyed' for audio, HUD and campaign scoring.
+  let unregisterAa: (() => void) | null = null;
+  const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), _sc = new THREE.Vector3(), _sd = new THREE.Vector3();
+  /** Squared distance between segments p1→q1 and p2→q2 (Ericson 5.1.9). */
+  function segmentDistanceSq(p1: THREE.Vector3, q1: THREE.Vector3, p2: THREE.Vector3, q2: THREE.Vector3): number {
+    const d1 = _sa.subVectors(q1, p1), d2 = _sb.subVectors(q2, p2), r = _sc.subVectors(p1, p2);
+    const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r);
+    let s = 0, t = 0;
+    if (a <= 1e-9 && e <= 1e-9) return r.lengthSq();
+    if (a <= 1e-9) t = THREE.MathUtils.clamp(f / e, 0, 1);
+    else {
+      const c = d1.dot(r);
+      if (e <= 1e-9) s = THREE.MathUtils.clamp(-c / a, 0, 1);
+      else {
+        const b = d1.dot(d2), denom = a * e - b * b;
+        s = denom !== 0 ? THREE.MathUtils.clamp((b * f - c * e) / denom, 0, 1) : 0;
+        t = (b * s + f) / e;
+        if (t < 0) { t = 0; s = THREE.MathUtils.clamp(-c / a, 0, 1); }
+        else if (t > 1) { t = 1; s = THREE.MathUtils.clamp((b - c) / a, 0, 1); }
+      }
+    }
+    _sd.copy(p1).addScaledVector(d1, s).sub(_sc.copy(p2).addScaledVector(d2, t));
+    return _sd.lengthSq();
+  }
+  function destroyGun(index: number, dirX: number, dirZ: number, cause: 'shell' | 'blast'): void {
+    const gun = aaGuns[index];
+    if (!gun || gun.destroyed) return;
+    gun.destroyed = true;
+    gun.shotsLeft = 0;
+    gun.pitch = -0.55;                       // barrel dropped onto the mount
+    gun.yaw += (rng() - 0.5) * 0.9;
+    // the base slumps toward the hit
+    const lean = Math.atan2(dirX, dirZ);
+    _m.compose(gun.pos, _q.setFromEuler(_e.set(0.32, lean, 0.18, 'YXZ')), _one);
+    aaBases.setMatrixAt(index, _m);
+    aaBases.instanceMatrix.needsUpdate = true;
+    writeAaHeads();
+    // a wreck plume: a short smoke column of its own on the burning mount
+    const slot = columns.count;
+    if (slot < columnCap) {
+      _p.copy(gun.pos); _p.y -= 2;
+      _m.compose(_p, _q.identity(), _s.set(8, 24, 1));
+      columns.setMatrixAt(slot, _m);
+      columnSeeds.setX(slot, rng());
+      columns.count = slot + 1;
+      columns.instanceMatrix.needsUpdate = true;
+      columnSeeds.needsUpdate = true;
+    }
+    emitBreakFx('drumblast', gun.pos.x, gun.pos.y + 0.9, gun.pos.z, dirX, dirZ, 2.4);
+    emitDestroyed({ kind: 'aaGun', pos: [gun.pos.x, gun.pos.y, gun.pos.z], cause });
+    const event = record('aa-destroyed', gun.pos);
+    bus?.emit('atmosphere:aa-destroyed', { pos: event.pos, cause });
+  }
+  function aaSweep(ax: number, ay: number, az: number, bx: number, by: number, bz: number): void {
+    const r2 = FRONTLINE_LIMITS.aaHitRadiusM * FRONTLINE_LIMITS.aaHitRadiusM;
+    for (let i = 0; i < aaGuns.length; i++) {
+      const gun = aaGuns[i];
+      if (gun.destroyed) continue;
+      _muzzle.set(ax, ay, az); _aim.set(bx, by, bz);
+      _lead.copy(gun.pos); _lead.y += FRONTLINE_LIMITS.aaHitHeightM;
+      if (segmentDistanceSq(_muzzle, _aim, gun.pos, _lead) <= r2) destroyGun(i, bx - ax, bz - az, 'shell');
+    }
+  }
+  function aaImpact(x: number, y: number, z: number, options: { r: number; he: boolean }): void {
+    const reach = options.r + FRONTLINE_LIMITS.aaHitRadiusM;
+    for (let i = 0; i < aaGuns.length; i++) {
+      const gun = aaGuns[i];
+      if (gun.destroyed) continue;
+      const dx = x - gun.pos.x, dz = z - gun.pos.z;
+      if (dx * dx + dz * dz > reach * reach) continue;
+      if (y < gun.pos.y - options.r || y > gun.pos.y + FRONTLINE_LIMITS.aaHitHeightM + options.r) continue;
+      destroyGun(i, -dx, -dz, options.he ? 'blast' : 'shell');
+    }
+  }
+  function registerAaDestructibles(mapId: string): void {
+    unregisterAa?.();
+    unregisterAa = registerWorldDestructibles({
+      key: `frontline-aa:${mapId}`,
+      isActive: () => prepared && group.visible && !!group.parent,
+      sweep: aaSweep,
+      impact: aaImpact,
+    });
+  }
+
   function prepare(seed: number | undefined, mapId: string): void {
     reset();
     mapIntensity = isMapId(mapId) ? FRONTLINE_INTENSITY[mapId] : 0.45;
@@ -695,6 +789,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     bearingDeg = resolveFrontBearingDeg(getSpawns?.(), rng() * 360);
     layoutColumns();
     layoutAaGuns();
+    registerAaDestructibles(mapId);
     nextArtillery = 2 + rng() * 4;
     nextFlak = 6 + rng() * 10;
     nextFlyover = 20 + rng() * 40;
@@ -729,6 +824,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     for (const plane of aircraft) { plane.active = false; plane.root.visible = false; }
     aaGuns.length = 0; aaBases.count = 0; aaHeads.count = 0;
     tracerAttr.array.fill(-1); tracerAttr.needsUpdate = true; tracerCursor = 0;
+    unregisterAa?.(); unregisterAa = null;
   }
 
   function dispose(): void {
@@ -745,6 +841,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
 
   return {
     get intensity() { return intensity; },
+    get aaGuns() { return aaGuns; },
     get bearingDeg() { return bearingDeg; },
     group,
     prepare,

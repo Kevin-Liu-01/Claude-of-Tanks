@@ -361,7 +361,11 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         }
         const { createMapAsync } = await loadModule();
         throwIfCancelled();
-        return createMapAsync(dependencies.engineContext, { mapId, seed: 1337 },
+        // 'mapId#assault-trenches' builds the Frontline Assault variant of the map;
+        // the cache and build records keep the full key, the world keeps mapId.
+        const [baseMapId, terrainVariant] = mapId.split('#');
+        return createMapAsync(dependencies.engineContext,
+          { mapId: baseMapId, seed: 1337, ...(terrainVariant ? { terrainVariant: terrainVariant as 'assault-trenches' } : {}) },
           handleProgress, { fineSlices: true });
       };
 

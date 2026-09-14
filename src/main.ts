@@ -898,12 +898,24 @@ function switchMap(mapId: string) {
   return worldRuntime.switchMap(mapId);
 }
 
+// Frontline Assault (2026-09-13): the selected mode decides the terrain build.
+// A frontline battle carves its trench system into the height field, so the
+// battle world is the map's 'assault-trenches' variant (its own cache entry);
+// only covered battle loads take it (never the garage staging area, Studio or
+// minimap captures), and the flag clears when the battle returns to the garage.
+let pendingTerrainVariant: 'assault-trenches' | null = null;
 function ensureWorld(
   mapId?: string | null,
   onProgress?: ((fraction: number, label: string) => void) | null,
   opts?: WorldActivationOptions | null,
 ) {
-  return worldRuntime.ensure(mapId, onProgress, opts);
+  // Every battle-context ensure (covered entry, then the battle owner's own
+  // re-ensure) builds the variant; Studio and minimap captures (services off,
+  // no covered atmosphere) and the garage staging area (switchMap) keep the
+  // standard map.
+  const battleContext = opts?.atmosphere === 'covered-battle' || opts?.services !== false;
+  const terrainVariant = pendingTerrainVariant && battleContext ? pendingTerrainVariant : null;
+  return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { ...(opts ?? {}), terrainVariant } : opts);
 }
 
 /**
@@ -2491,6 +2503,7 @@ async function beginSoloBattle({
   randomRoster = true,
   gameMode = 'standard',
 }: SoloBattleEntryRequest = {}) {
+  pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
   return soloBattleEntry.beginSelected({ specId, mapId, randomRoster, gameMode });
 }
 
@@ -2859,7 +2872,10 @@ invalidateGaragePresentation = () => {
   lighting.setStaticPresentationDormant(false);
   frameLoop.restart();
 };
-bus.on('phase:change', () => frameLoop.restart());
+bus.on('phase:change', () => {
+  if (game.phase === 'garage') pendingTerrainVariant = null;
+  frameLoop.restart();
+});
 
 // Deterministic engineering captures keep a synchronous discovery facade for
 // screenshot tooling, while the orchestration and recipes stay out of every

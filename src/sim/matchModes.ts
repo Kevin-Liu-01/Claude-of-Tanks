@@ -10,6 +10,7 @@ import {
   totalAmmunitionCapacity,
 } from './ammunition.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
+import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
@@ -86,7 +87,6 @@ const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
 const HORDE_INITIAL_ACTIVE = 3;
-const ASSAULT_LINE_FRACTIONS = [0.25, 0.55, 0.85] as const;
 const ASSAULT_HOLD_S = 20;
 const ASSAULT_INITIAL_ACTIVE = 3;
 const PICKUP_RADIUS_M = 7;
@@ -375,8 +375,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       };
     }) : id === 'frontline_assault'
       ? ASSAULT_LINE_FRACTIONS.map((fraction, index) => {
-        const x = centers.alpha.x + axisX * axisLength * fraction;
-        const z = centers.alpha.z + axisZ * axisLength * fraction;
+        // Frontline Assault 2026-09-13: when the world was built with real
+        // trenches, the sectors sit exactly on the carved lines.
+        const carved = placement?.assaultLines?.[index] ?? null;
+        const x = carved ? carved.x : centers.alpha.x + axisX * axisLength * fraction;
+        const z = carved ? carved.z : centers.alpha.z + axisZ * axisLength * fraction;
         return {
           id: `line-${index + 1}`,
           x, y: terrainHeight(x, z) + 0.12, z,

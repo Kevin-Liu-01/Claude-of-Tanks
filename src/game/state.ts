@@ -272,6 +272,8 @@ interface VillageBounds {
 }
 
 interface SoloHeightField extends MovementHeightField {
+  /** Frontline Assault trench lines carved into an assault-trenches world. */
+  assaultTrenchLines?: { lines: readonly { x: number; z: number }[] } | null;
   getNormalAt?(x: number, z: number): { y: number };
   getWaterMaskAt?(x: number, z: number): number;
   _layout?: { village?: VillageBounds | null };
@@ -1082,6 +1084,7 @@ export function setupBattle(
       player: { x: sp.player.pos[0], z: sp.player.pos[2], yaw: sp.player.yaw },
       enemies: sp.enemies.map(point => ({ x: point.pos[0], z: point.pos[2], yaw: point.yaw })),
     }), mode: game.gameMode,
+    assaultLines: world.heightField.assaultTrenchLines?.lines ?? null,
   });
   const botNavigation = placement.navigation ?? createBotNavigationGrid({
     heightField: world.heightField,

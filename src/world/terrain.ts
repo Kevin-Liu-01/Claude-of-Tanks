@@ -1,4 +1,5 @@
 import { bindAutumnHorizonGround } from './horizonAutumnGround.ts';
+import { planAssaultTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
 // procedural PBR ground material. Pure part (createHeightField) is node-runnable.
@@ -173,6 +174,8 @@ interface TerrainSettings {
   quarryBenches?: boolean;
   /** Authored Redrock regional ground participates in initial road/pad seating. */
   redrockCanyon?: boolean;
+  /** Runtime-only (assault-trenches world variant): carve the Frontline Assault trench system. */
+  assaultTrenches?: boolean;
 }
 
 interface SplatConfig {
@@ -216,6 +219,8 @@ interface SplatConfig {
 }
 
 export interface TerrainMapConfig extends HorizonMapConfig {
+  /** Runtime-only (assault-trenches world variant): carve the Frontline Assault trench system. */
+  assaultTrenches?: boolean;
   /** Opt-in bot route preference. Omission preserves existing wading semantics. */
   navigationWaterPolicy?: NavigationWaterPolicy;
   terrain?: Partial<TerrainSettings>;
@@ -260,6 +265,8 @@ export interface HeightField {
   _villageMask(x: number, z: number): number;
   _noVeg(x: number, z: number): boolean;
   _layout: TerrainLayout;
+  /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
+  assaultTrenchLines?: AssaultTrenchPlan | null;
   _mesaW: ((x: number, z: number) => number) | null;
   _waterWetnessAt?: (x: number, z: number) => number;
   /** Construction-only seed admission; never used for gameplay or seating. */
@@ -690,6 +697,24 @@ function* heightFieldBuildSteps(
   const _LAKES = layout.lakes;
   const _SPAWN_PLAYER = layout.spawns.player;
   const _SPAWN_ENEMIES = layout.spawns.enemies;
+  // Frontline Assault 2026-09-13: the assault-trenches world variant carves
+  // three fire trenches and a communication trench along the alpha→bravo
+  // axis into the height field itself, so terrain, collision, grass and
+  // props all follow the cut. The standard field is byte-identical.
+  // Resolved on first height query (every construction constant exists by
+  // then): a fire trench whose centre falls inside the settlement is dropped
+  // rather than half-carved under the houses; the sector marker still stands.
+  let _trenchPlan: AssaultTrenchPlan | null | undefined;
+  const trenchPlan = (): AssaultTrenchPlan | null => {
+    if (_trenchPlan !== undefined) return _trenchPlan;
+    if (!cfg?.assaultTrenches) return (_trenchPlan = null);
+    const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
+      _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
+    const planned = planAssaultTrenchLines(alpha, bravo);
+    const lines = planned.lines.filter((line) => villageMask(line.x, line.z) < 0.4);
+    _trenchPlan = lines.length ? { lines, connector: planned.connector } : null;
+    return _trenchPlan;
+  };
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
@@ -1097,6 +1122,14 @@ function* heightFieldBuildSteps(
       borderShoulderWeight, rd);
     if (quarryFloorY !== null && insideCopperQuarry(x, z)) {
       h = sampleCopperQuarrySurface(x, z, h, quarryFloorY, gridSample(gRoadDist, x, z));
+    }
+    // Frontline Assault trenches: carved after every road, pad and lake
+    // constraint so the cut survives road grading (a road meets a real ditch),
+    // never into water or under the settlement.
+    const trenches = trenchPlan();
+    if (trenches) {
+      const carve = assaultTrenchCarveDepth(x, z, trenches);
+      if (carve > 0) h -= carve * (1 - vm) * (1 - marshW);
     }
     return h;
   }
@@ -1506,6 +1539,7 @@ function* heightFieldBuildSteps(
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
     _layout: layout,
+    assaultTrenchLines: trenchPlan(),
     ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),

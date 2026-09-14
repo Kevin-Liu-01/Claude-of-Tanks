@@ -23,6 +23,7 @@ export interface WorldRaycastHit {
 
 export interface ActiveWorld<SkyConfig extends object = object> {
   mapId: string;
+  terrainVariant?: 'assault-trenches' | null;
   group: THREE.Object3D;
   config: { sky?: SkyConfig };
   raycast(
@@ -66,6 +67,8 @@ export interface WorldActivationOptions {
   services?: boolean;
   /** Covered solo/network entry prepares its selected atmosphere before warm. */
   atmosphere?: 'covered-battle';
+  /** Frontline Assault: build the map with its trench system carved into the terrain. */
+  terrainVariant?: 'assault-trenches';
 }
 
 type WorldSceneActivationOptions = Pick<WorldActivationOptions, 'services' | 'atmosphere'>;
@@ -423,7 +426,8 @@ export function createWorldActivationRuntime<
       && (activationOptions.precompile !== false || activationOptions.compilePrograms === true)) {
       throw new TypeError('Covered battle atmosphere must precede combat program warming');
     }
-    const id = mapId || pendingMapId;
+    const baseId = mapId || pendingMapId;
+    const id = activationOptions?.terrainVariant ? `${baseId}#${activationOptions.terrainVariant}` : baseId;
     coordinator.cancelBackgroundExcept(id);
     const cached = cache.get(id) ?? null;
     const startedAt = now();
@@ -498,6 +502,9 @@ export function createWorldActivationRuntime<
     prepareBattleServices,
     activate,
     switchMap(mapId) {
+      // A Frontline Assault variant of the same map satisfies the request: the
+      // battle owner re-selects its map a few seconds in, and the garage staging
+      // area may keep the trench build until the next standard battle loads.
       if (current?.mapId === mapId) return current;
       const cached = cache.get(mapId);
       return cached ? activate(cached) : ensure(mapId);

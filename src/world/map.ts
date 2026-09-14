@@ -44,9 +44,14 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   releaseShadowMaterial?(material: THREE.Material): void;
 };
 
+/** The catalog config plus the runtime-only assault-trenches flag. */
+type BuildMapConfig = BattlefieldMapConfig & { assaultTrenches?: boolean };
+
 interface WorldOptions {
   mapId?: string;
   seed?: number;
+  /** Frontline Assault builds carve the trench system into the terrain. */
+  terrainVariant?: 'assault-trenches';
 }
 
 interface WorldSlicingOptions {
@@ -125,6 +130,8 @@ export interface WorldRayHit {
 
 export interface WorldRuntime {
   mapId: string;
+  /** Non-null for the assault-trenches build of this map; never reused for standard battles. */
+  terrainVariant: 'assault-trenches' | null;
   /** Release external callbacks at final eviction, not temporary dormancy. */
   dispose(): void;
   /** Readiness snapshot only; never performs streaming work. */
@@ -193,10 +200,12 @@ const _bisA = new THREE.Vector3();
  */
 export function createMap(
   engineContext: RuntimeValue,
-  { mapId = 'verdant', seed = 1337 }: WorldOptions = {},
+  { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
 ): WorldRuntime {
   const engineCtx = engineContext as EngineContext;
-  const config = getMapConfig(mapId);
+  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
+    ? { ...getMapConfig(mapId), assaultTrenches: true }
+    : getMapConfig(mapId);
   const heightField = createHeightField(seed, config);
   const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
@@ -219,12 +228,14 @@ export function createMap(
  */
 export async function createMapAsync(
   engineContext: RuntimeValue,
-  { mapId = 'verdant', seed = 1337 }: WorldOptions = {},
+  { mapId = 'verdant', seed = 1337, terrainVariant }: WorldOptions = {},
   onStep: WorldBuildProgress | null = null,
   { fineSlices = false }: WorldSlicingOptions = {},
 ): Promise<WorldRuntime> {
   const engineCtx = engineContext as EngineContext;
-  const config = getMapConfig(mapId);
+  const config: BuildMapConfig = terrainVariant === 'assault-trenches'
+    ? { ...getMapConfig(mapId), assaultTrenches: true }
+    : getMapConfig(mapId);
   // Transfer/decompress the exact authored sandbag and utility-pole streams
   // while terrain and vegetation occupy the main thread. Previously their
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
@@ -300,7 +311,7 @@ export async function createMapAsync(
  */
 function assembleWorld(
   engineCtx: EngineContext,
-  config: BattlefieldMapConfig,
+  config: BuildMapConfig,
   heightField: WorldHeightField,
   terrain: TerrainRoot,
   vegetation: VegetationRuntime,
@@ -481,6 +492,7 @@ function assembleWorld(
   const unregisterDestructibles = props.registerDestructibles();
   return {
     mapId: config.id,
+    terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
     dispose() {
       terrain.userData.cancelSourcedTextures?.();
       unregisterDestructibles();
