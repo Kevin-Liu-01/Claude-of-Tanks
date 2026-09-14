@@ -1536,10 +1536,11 @@ function* heightFieldBuildSteps(
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,
+    // Frontline Assault trenches (assault-trenches variant), null on the standard field.
+    assaultTrenchLines: trenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
     _layout: layout,
-    assaultTrenchLines: trenchPlan(),
     ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),

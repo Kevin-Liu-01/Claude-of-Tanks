@@ -81,8 +81,13 @@ for (const id of IDS) {
       receipt.centralCore.rearZ,
     ], 0.025),
       `${id}: merged hull contains the central closure core`);
-    assert.ok(hasVertex([1.39, 1.61, 1.65]) && hasVertex([-1.375, 1.61, 1.65]),
-      `${id}: merged hull contains both buried flank wedges`);
+    // Owner review 2026-09-13 (second flank markup, faces 2222/2223): the buried
+    // flank wedges are now flat shelf blocks — floor at the sponson floor, vertical
+    // outer face — so the flank reads as one side skirt. Box parts carry the kit's
+    // 1 cm inset, hence the same 2.5 cm tolerance as the central core above.
+    assert.ok(hasVertex([1.39, 1.61, 1.65], 0.025) && hasVertex([-1.375, 1.61, 1.65], 0.025)
+      && hasVertex([1.39, 1.23, -3.16], 0.025) && hasVertex([-1.375, 1.23, -3.16], 0.025),
+    `${id}: merged hull contains both flat flank shelf blocks (roof-front and floor-rear corners)`);
     assert.ok(hasVertex([1.40, 1.50, 2.39]) && hasVertex([-1.18, 1.88, 1.62]),
       `${id}: merged hull contains the sloped upper-glacis backer`);
 
