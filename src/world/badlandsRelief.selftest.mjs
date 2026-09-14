@@ -32,10 +32,35 @@ function historicalAlpineHorizonSource(source, file) {
   assert.equal(source.split(restored).length, 2, 'alpine.ts: one exact restored horizon band line');
   return source.replace(restored, "style: 'alpine', treeline: 0.64, snowline: 0.42,");
 }
+// 2026-09-13 lighting: eight sky presets moved toward the 1049e4e key/fill ratio (graphics
+// commit 471c7b709). Sky presets never feed relief; authenticate the exact current line, then
+// project it back to the historical line for the byte receipt.
+const HISTORICAL_LIGHTING_LINES = {
+  'alpine.ts': ['sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, postExposure: 0.95,', 'sunIntensity: 2.85, sunColorHex: 0xffddbe, hemiIntensity: 0.54, postExposure: 0.95,'],
+  'fjord.ts': ['sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36,', 'sunIntensity: 3.35, sunColorHex: 0xffdfbe, hemiIntensity: 0.52,'],
+  'caldera.ts': ['sunIntensity: 4.0, sunColorHex: 0xffc9a0, hemiIntensity: 0.42, postExposure: 0.95,', 'sunIntensity: 3.5, sunColorHex: 0xffb985, hemiIntensity: 0.64, postExposure: 0.95,'],
+  'monsoon.ts': ['sunIntensity: 3.6, sunColorHex: 0xfae8d0, hemiIntensity: 0.46, postExposure: 0.96,', 'sunIntensity: 2.9, sunColorHex: 0xffdfc0, hemiIntensity: 0.54, postExposure: 0.96,'],
+  'delta.ts': ['sunIntensity: 4.1, sunColorHex: 0xfbeed6, hemiIntensity: 0.34, postExposure: 0.95,', 'sunIntensity: 3.55, sunColorHex: 0xffe7c5, hemiIntensity: 0.42, postExposure: 0.95,'],
+  'blackglass.ts': ['sunIntensity: 3.9, sunColorHex: 0xffc697, hemiIntensity: 0.32, postExposure: 0.91,', 'sunIntensity: 3.5, sunColorHex: 0xffb77e, hemiIntensity: 0.38, postExposure: 0.91,'],
+  'foundry.ts': ['sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, postExposure: 0.96,', 'sunIntensity: 3.8, sunColorHex: 0xffd6ad, hemiIntensity: 0.48, postExposure: 0.96,'],
+};
+function historicalLightingSource(source, file) {
+  if (file === 'mangrove.ts') {
+    const current = 'sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ ';
+    assert.equal(source.split(current).length, 2, 'mangrove.ts: one exact 2026-09-13 key line');
+    return source.replace(current, 'sunIntensity: 3.7, ');
+  }
+  const pair = HISTORICAL_LIGHTING_LINES[file];
+  if (!pair) return source;
+  const [current, historical] = pair;
+  const pattern = new RegExp('^(\\s*)' + current.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' // lighting 2026-09-13:[^\\n]*$', 'm');
+  assert.equal(source.match(pattern)?.length, 2, `${file}: one exact 2026-09-13 lighting line`);
+  return source.replace(pattern, '$1' + historical);
+}
 for (const file of mapFiles) if (file !== 'badlands.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
-    historicalMapPassDressingSource(read('src/world/maps/' + file), file, assert), file), old('src/world/maps/' + file), id),
+    historicalMapPassDressingSource(historicalLightingSource(read('src/world/maps/' + file), file), file, assert), file), old('src/world/maps/' + file), id),
     old('src/world/maps/' + file), `${file}: unchanged authoring apart from authenticated road approaches`);
 }
 

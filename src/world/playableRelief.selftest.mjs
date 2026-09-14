@@ -61,6 +61,12 @@ for(const [id,file]of selected){
     assert.equal(cfg.horizon.snowline,0.72,'alpine: restored 1049e4e snowline band');
     assert.equal(old.horizon.treeline,0.64);assert.equal(old.horizon.snowline,0.42);
     normalized.horizon={...cfg.horizon,treeline:0.64,snowline:0.42};
+    // 2026-09-13 lighting: the alpine key/fill moved toward the 1049e4e ratio (sun 2.85 -> 4.2,
+    // colour 0xffddbe -> 0xf8eedb, hemisphere 0.54 -> 0.34). Sky presets never feed relief; guard
+    // the live leaves, then project only them back so every other authoring field stays exact.
+    assert.equal(cfg.sky.sunIntensity,4.2,'alpine: 2026-09-13 key');assert.equal(cfg.sky.sunColorHex,0xf8eedb);assert.equal(cfg.sky.hemiIntensity,0.34);
+    assert.equal(old.sky.sunIntensity,2.85);assert.equal(old.sky.sunColorHex,0xffddbe);assert.equal(old.sky.hemiIntensity,0.54);
+    normalized.sky={...cfg.sky,sunIntensity:2.85,sunColorHex:0xffddbe,hemiIntensity:0.54};
   }
   const stringify=value=>JSON.stringify(value,(_k,v)=>typeof v==='function'?v.toString():v);
   assert.equal(stringify(normalized),stringify(old),`${id}: all non-relief authoring retained`);

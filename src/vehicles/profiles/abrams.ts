@@ -1499,7 +1499,8 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     buildRunningGear(P, {
       style: 'rubber', wheelR: g.wheelR,
       wheelW: g.hollowRoadWheels ? hollowPairedRoadWheelWidth(g.wheelR) : Math.min(0.23, g.trackW * 0.38),
-      roadWheelGeometry: g.hollowRoadWheels ? buildHollowPairedRoadWheel({ radiusM: g.wheelR, high: Boolean(P.q) }) : undefined,
+      // (spread, not an undefined key: the MBT-70 and other non-hollow callers pin their exact cfg objects)
+      ...(g.hollowRoadWheels ? { roadWheelGeometry: buildHollowPairedRoadWheel({ radiusM: g.wheelR, high: Boolean(P.q) }) } : {}),
       wheelY: roadWheelY, xc: g.trackXc,
       wheelZs: g.wheelZs, botY: g.trackBotY ?? 0.055,
       sprocket: { z: g.sprocketZ, y: g.sprocketY ?? g.wheelR + 0.24, r: g.sprocketR ?? g.wheelR * 0.9 },
@@ -2165,6 +2166,7 @@ export function buildM1A1BareHull(builder: RuntimeValue, {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
+    hollowRoadWheels: false, // wheel review 2026-09-13: the hollow paired wheel is the Tejas family's; this donor keeps its own solid stock
     // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
     // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.
     authoredBowLights: false,
@@ -10563,6 +10565,7 @@ function createM1A3BuildLayout() {
   });
   const g: AbramsHullConfig = {
     ...TEJAS_HULL,
+    hollowRoadWheels: false, // wheel review 2026-09-13: this variant keeps its own solid stock (the hollow paired wheel is the Tejas family's)
     // Exterior-to-aperture rays require 110 mm total forward travel: the
     // previous 55 mm seat still buried both lenses in the single-sided bow.
     // Move the whole pod/drum/guard; hull stock remains 12 mm behind the lens.

@@ -173,12 +173,15 @@ function verifyHistoricalConfigs(resolve) {
     const historical = historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(resolve(id), assert)))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }
+  // 2026-09-13 lighting: eight sky presets (alpine, fjord, caldera, monsoon, delta, blackglass, foundry,
+  // mangrove key) moved toward the 1049e4e key/fill ratio (graphics commit 471c7b709); the other29
+  // digest is repinned from the current build — palette, crop, horizon and exit inputs are unchanged.
   assert.equal(hash(JSON.stringify(unchangedMaps)),
-    '99347e4fcf9a54d89ee07e150aa8583e154b26e454cad2120f1cd745edb68750',
+    '92ca42beb647adc80803af8c7a0f7ac8f9dd5cf114e92170ca3a5a3e9b232896',
     'other29 config digest retains original donor policy and authenticated historical Foundry/Autumn inputs');
   const historical = paletteReceiptInput(historicalShorelineConfig(resolve('mangrove')));
   assert.equal(hash(stringify({ ...historical, splat: { ...historical.splat, mudTone: null, iceSky: null } })),
-    'ca35068e3e71850b4896251accef2daca22815445ebfb491cf42cd8412d78ede', 'original non-palette Mangrove digest');
+    '66f31f321328b551fbaf097031609f5e36cd4d04a1c44be0d1ee7306ebaa37ed', 'original non-palette Mangrove digest (2026-09-13 lighting: mangrove key 3.7 -> 4.0, repinned)');
 }
 verifyHistoricalConfigs(getMapConfig);
 for (const id of ['frontier', 'alpine']) {

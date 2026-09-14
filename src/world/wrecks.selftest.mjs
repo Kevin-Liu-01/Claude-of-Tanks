@@ -86,24 +86,30 @@ function assertBakeFingerprint(baked, expected) {
 // new arithmetic or a source-fragment mock.
 const originalBakeFixtures = [
   {
+    // 2026-09-13 wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost
+    // the gear_wheelBayVoidDress blocks and carries generated interior fills, so its wreck bake
+    // gains triangles (38560 -> 44884); bounds, byte sizes and the three visible-attribute hashes
+    // are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'm1a1', seed: 2002,
-    bounds: [38560, 4.026729702949524, 3.9549999237060547, 2.698679208755493],
-    bytes: [1388160, 1388160, 1388160, 6984],
+    bounds: [44884, 4.026729702949524, 3.9549999237060547, 2.698679208755493],
+    bytes: [1615824, 1615824, 1615824, 6984],
     hashes: [
-      'c7be121d447b2bddf5d88f6b579901fe323065788c9de318a4885f88ef233a9d',
-      '5ea7f62746c7930f2e0277f663452e232ceb2ed046de61f10a27528082a6b0f0',
-      '9a253e2b9379abad4482ba3625049f042e7e385207db5bf24e8b4541eafd0ad8',
+      '9e75abed40410720f1c7dfadd28f894a194a76962a2bb258ffca8c9ec7a6d76c',
+      '2270b9c5c430a52c22b36f605796e9207e9fc16d58e803f7e831426899da9946',
+      'f99706a61be758f3dade9c53d08d8a8b51d032d35271399ae58a311ab43b2c58',
       'c6fceff4985f5bc2f0f996528717780d69bac42d9a1c54b7621b75c2f66bcaf4',
     ],
   },
   {
+    // 2026-09-13 interior fills: type10 carries generated interior fills (every hull and turret
+    // does now), so its wreck bake gains triangles (31508 -> 35660); repinned from the current build.
     specId: 'type10', seed: 2133,
-    bounds: [31508, 4.445803761482239, 3.807588815689087, 3.2575206756591797],
-    bytes: [1134288, 1134288, 1134288, 7704],
+    bounds: [35660, 4.445803761482239, 3.807588815689087, 3.2575206756591797],
+    bytes: [1283760, 1283760, 1283760, 7704],
     hashes: [
-      '7dc124d0b0974b63befce24621cb79c162178ebfc99f26bac4c2d3a091d6c3e6',
-      '7fbadb5d3ee04f5b5b69145c38be94beeffa5bf54d56398c3a838c872e235da2',
-      '822d7bcf793202ef2677fac6de7cbb937bdb9647d10dc51e8ef80d2be62049ff',
+      '10f53877ffad5b5fefd7c6a486ac58b72b84a9cc00c9587bc718ac5eee48be05',
+      '714ea127c67a7f6daef74469d8f269f09b28e967f9076e35324d5946ca0f69c7',
+      '0fa67efc076a5981ea09fe1300d6e2c4613761b840527a2c564fac02e587a7ce',
       'ca8a28e323d0ac81a158deb7c69ad329581bbf69c80a53a79bcb53dcbb771b44',
     ],
   },

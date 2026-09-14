@@ -137,3 +137,20 @@ sample with fills (table above). Release gate: `leo2a5_x` 92.4/92 and `k2_x`
 comparison oracle unavailable") and the legacy ids (M1s, Challengers) have no
 registered oracle rows at all — an untouched control (`t72b3`) fails the same
 way — so the receipts and the sealed ledger are the gate for those.
+
+## Receipts: the fail-fast trap
+
+`tools/run-selftests.mjs` stops a group soon after its first failure (gate 18
+ran 60 of 315 pre receipts, gate 19 64, gate 20 133), so each gate exposed
+only the next pinned digest this batch had moved (trackShoeDimensions,
+roadWheelRestHeights, returnRollerOutset, mbt70UpperFenders, equipmentDamage,
+tankFactoryStaging, villageWear, mangroveWaterPalette …). A no-fail-fast
+sweep of all 976 pre + core receipts (scratch runner, six at a time, 20 min)
+surfaced the remaining three at once: playableRelief and badlandsRelief (map
+authoring receipts that now project the 2026-09-13 sky lines back to their
+historical text, the way they already projected the restored Alpine horizon)
+and wrecks (m1a1 / type10 bake fixtures: every tank now carries interior
+fills, so the bakes gained triangles). garageArchitecture's 100 ms build
+budget fails under that load and passes quiet. The MBT-70 and AbramsX
+configs spread the Tejas hull config and briefly inherited the hollow wheel;
+both now pin `hollowRoadWheels: false` and were regenerated.
