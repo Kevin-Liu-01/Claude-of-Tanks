@@ -108,18 +108,19 @@ try {
     [0.2, 2.229, 1.537], [0.9, 2.170, 1.537], [1.6, 2.082, 1.617],
     [1.9, 2.042, 1.675],
   ];
-  // The owner's large EMES window is recessed nearly a metre, not a dark
-  // sticker. Rays through its mouth must hit the rear bulkhead; the floor
-  // and outer reveal still close the structural armor around that void.
-  const pocketBack = new THREE.Raycaster(new THREE.Vector3(0.65, 1.95, 3),
+  // Turret symmetry 2026-09-13 (owner: face-on, the left cheek is the template
+  // and the right was "a lil blunter"): the metre-deep EMES pocket is gone, both
+  // cheeks share the .39 inner start, and the sight is a flush window on the
+  // right cheek's leading face. Rays that used to find the pocket floor and
+  // bulkhead now find the same solid cheek face on both sides.
+  const cheekFace = new THREE.Raycaster(new THREE.Vector3(0.65, 1.95, 3),
     new THREE.Vector3(0, 0, -1), 0, 3).intersectObject(shell, false)[0];
-  assert.ok(pocketBack, 'EMES pocket has a solid rear bulkhead');
-  near(pocketBack.point.z, 1.10, 0.025, 'EMES negative-space depth');
-  near(shellRay(0.65, 1.75), 1.71, 0.03, 'EMES low floor instead of filled cheek');
-  const pocketWall = new THREE.Raycaster(new THREE.Vector3(0.65, 1.95, 1.75),
-    new THREE.Vector3(1, 0, 0), 0, 1).intersectObject(shell, false)[0];
-  assert.ok(pocketWall && pocketWall.point.x > 0.92 && pocketWall.point.x < 0.98,
-    'EMES opening is enclosed by its full-height outer armor reveal');
+  assert.ok(cheekFace, 'right cheek has a solid leading face');
+  near(cheekFace.point.z, 2.096, 0.05, 'right cheek leading face sits where the left one does (tank frame; the cheek slab is authored at 2.096 turret-local + YAW_Z)');
+  for (const z of [1.2, 1.5, 1.75]) {
+    near(shellRay(0.65, z), shellRay(-0.65, z), 0.02, `cheek roof symmetric at z=${z}`);
+    near(shellRay(0.65, z, true), shellRay(-0.65, z, true), 0.02, `cheek chin symmetric at z=${z}`);
+  }
   for (const x of [-0.95, 0.95]) {
     for (const [z, roof, chin] of sourceSections) {
       near(shellRay(x, z), roof, 0.065, `closed roof at x=${x}, z=${z}`);

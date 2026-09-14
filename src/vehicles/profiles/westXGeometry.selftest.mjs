@@ -66,7 +66,8 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
     }
     if (id === 'k2_x') {
       for (const side of [-1, 1]) {
-        near(verticalHit(hull, side * 1.75, 1.44), 1.3404, .012, `${id}: continuous inner skirt skin`);
+        // 2026-09-13 fender-to-skirt closure: the inner skin rises to the sponson shelf (1.380 here)
+        near(verticalHit(hull, side * 1.75, 1.44), 1.380, .012, `${id}: continuous inner skirt skin closes onto the shelf`);
         near(verticalHit(hull, side * 1.80, 1.44), 1.34064, .012, `${id}: separate outer skirt plate`);
       }
     } else if (id === 'kf51_x') {

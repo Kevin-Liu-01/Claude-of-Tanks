@@ -81,6 +81,24 @@ function hullFurniture(P: TankBuilderPort): void {
       // relieved 5.5 mm inboard for the native animated band's real width.
       P.add('hull',box(.0481,.014,front-rear),side*1.75145,1.3334,(rear+front)/2-CENTER_Z);
     }
+    // Fender-to-skirt closure 2026-09-13 (owner: "a huge gap between the top
+    // fender area and the sideskirts"): the inner skirt skin crowns at 1.3404
+    // for its whole run while the sponson shelf undersides at 1.5235 aft of
+    // raw z -1.98 and 1.3975 through the centre, so an 18 cm slot showed the
+    // bare hull wall behind the skirt. The skin now rises to the shelf in
+    // each run (conservative tops where the shelf slopes, so nothing pokes
+    // above the sponson).
+    for (const [rear,front,top] of [
+      [-3.3926,-1.8926,1.505],[-1.8906,-1.02,1.3975],[-1.02,-.4092,1.3975],
+      [-.4077,.8604,1.3975],[.8618,2.123,1.380],[2.125,3.5703,1.358],
+    ]) {
+      P.add('hull',box(.0424,top-1.3404,front-rear),side*1.7542,(top+1.3404)/2,(rear+front)/2-CENTER_Z);
+    }
+    // the sloped shelf between raw z -1.8906 and -1.02: a wedge from 1.505 down to 1.3975
+    P.add('hull',orientedSlab(
+      [side*1.7330,1.3975,-1.8906-CENTER_Z],[side*1.7754,1.3975,-1.8906-CENTER_Z],[side*1.7754,1.3975,-1.02-CENTER_Z],[side*1.7330,1.3975,-1.02-CENTER_Z],
+      [side*1.7330,1.505,-1.8906-CENTER_Z],[side*1.7754,1.505,-1.8906-CENTER_Z],[side*1.7754,1.3975,-1.02-CENTER_Z],[side*1.7330,1.3975,-1.02-CENTER_Z],
+    ));
     for (const [rear,front] of [[-.4054,.222],[.224,.8486],[.8681,1.4907],[1.4927,2.1163],[2.1327,2.5563],[2.5582,2.9848]]) {
       P.add('hull',box(.1255, .6021,front-rear),side*1.79675,1.03958,(rear+front)/2-CENTER_Z);
       P.addEquipment('hullDetail',box(.025,.024,.070),side*1.7565,1.352,(rear+front)/2-CENTER_Z);

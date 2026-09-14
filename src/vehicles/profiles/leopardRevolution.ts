@@ -205,7 +205,10 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     // AMAP cheek chine: distinctly angular in plan and side elevation, with
     // a full-thickness leading face instead of a hollow triangular visor.
-    const inner = side > 0 ? 0.94 : 0.39;
+    // Turret symmetry 2026-09-13 (owner: face-on, the LEFT cheek is the template
+    // and the right one "a lil blunter"): both cheeks now start at .39 like the
+    // -X side did; the right cheek's EMES pocket became a flush sight window.
+    const inner = 0.39;
     P.add('turret', orientedSlab(
       [side * inner, 0.014, 1.08 - YAW_Z], [side * 1.615, 0.014, 1.08 - YAW_Z],
       [side * 1.13, 0.140, 2.096 - YAW_Z], [side * inner, 0.140, 2.096 - YAW_Z],
@@ -222,16 +225,12 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
       P.addEquipment('turretDetail', box(0.025, 0.075, 0.13), side * 1.615, 0.335, z - YAW_Z);
     }
   }
-  // The large EMES opening is actual negative space, almost one metre deep:
-  // a low shelf, one full-height outer cheek, and a rear bulkhead/window.
-  // Do not bridge its mouth with a roof polygon or paste glass onto armor.
-  P.add('turret', orientedSlab(
-    [.385,.014,1.08-YAW_Z],[.945,.014,1.08-YAW_Z],[.945,.140,2.096-YAW_Z],[.385,.140,2.096-YAW_Z],
-    [.385,.175,1.08-YAW_Z],[.945,.175,1.08-YAW_Z],[.945,.170,2.096-YAW_Z],[.385,.170,2.096-YAW_Z],
-  ));
-  P.addEquipment('turretDark', box(0.53, 0.415, 0.12), 0.665, 0.409, 1.13 - YAW_Z);
-  P.addEquipment('turretGlass', box(0.44, 0.338, 0.012), 0.665, 0.419, 1.198 - YAW_Z);
-  P.addEquipment('turretDetail', box(0.56, 0.034, 0.22), 0.665, 0.635, 1.13 - YAW_Z);
+  // EMES sight window (turret symmetry 2026-09-13): the metre-deep pocket that
+  // blunted the right cheek is gone; the sight reads as a flush armoured
+  // window on the mirrored cheek's leading face with a brow above it.
+  P.addEquipment('turretDark', box(0.50, 0.30, 0.04), 0.71, 0.312, 2.096 - YAW_Z + 0.012);
+  P.addEquipment('turretGlass', box(0.42, 0.22, 0.012), 0.71, 0.312, 2.096 - YAW_Z + 0.036);
+  P.addEquipment('turretDetail', box(0.56, 0.034, 0.16), 0.71, 0.49, 2.096 - YAW_Z + 0.05);
 
   const equip = (bucket: string, g: THREE.BufferGeometry, x: number, y: number, z: number, ...r: number[]) =>
     P.addEquipment(bucket, g, x, y - ROOF_BASE, z - YAW_Z, ...r);

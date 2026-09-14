@@ -88,3 +88,37 @@ Two causes, both measurable:
 - `.qa-dev/motion-ab.mjs` — the same while strafing the external camera.
 - `.qa-dev/band-stats.mjs`, `.qa-dev/clip-stats.mjs`, `.qa-dev/crop.mjs`,
   `.qa-dev/pair.mjs` — band statistics, clipping share, 2× crops, side-by-side.
+
+## Deploy 12 (2026-09-13 21:48 PDT, 471c7b709)
+
+Manual Vercel deploy from the gate checkout; bundle `main-Dn3sjcid.js` →
+`main-CqOcRcpE.js`. Production verification: render-truth cull parity 0 and
+determinism 0 (shadow pixels 54,865); identical-pose ground gradient
+alpine 6.23 → 7.73 / 14.78 → 16.87, verdant 11.50 → 13.37 / 16.88 → 19.77
+against deploy 11. Gate 17 on 471c7b709: pre, post and build green; core's
+one failure was the garageArchitecture 100 ms headless build budget under the
+eight parallel workers (433 ms), which passes 3/3 on a quiet machine.
+
+## Prop census attribution (same poses)
+
+The earlier "unnamed instanced −14…−21 %" reading was a restructure, not a
+thinner world. With the census keyed by vertex count and capacity:
+
+- verdant: the 360-vertex per-tree class at 1049e4e (1,011 = one per tree)
+  is today's named `canopyProxy` (907); bushes (`v324`) rose 1,276 → 1,470;
+  ground litter (stones, clods, splinters: 1,273 visible) is new; trees at the
+  pose 1,011 → 907.
+- fjord: vegetation alpha cards 58,993 → 54,162 visible (−8 %); a 360-vertex
+  solid vegetation class with a 60,740-instance pool at 1049e4e (1,597 visible)
+  has no production counterpart — the one census line still worth a look;
+  trunks 6,074 → 5,766, props +30…39 %, litter new.
+
+## Water bodies on deploy 11 (near-water poses, production)
+
+Reservoir and oasis read as one saturated, uniform sheet at mid distance:
+the depth ramp to the map's shallow colour is narrow, there is little
+low-frequency colour variation, and the far shore reflects as a thin band.
+Fjord is a dark cold teal (right for the map); coastal's near-water pose
+framed the tree line instead of the bay. Candidate pass 5: wider shallow
+ramp per map, a low-frequency turbidity/colour-variation term, and a wet
+shoreline band — after the sharpness/lighting deploy.

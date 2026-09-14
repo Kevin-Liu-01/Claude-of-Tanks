@@ -507,6 +507,14 @@ function a5Skirts(P: TankBuilderPort): void {
       for(const z of [rear[i]+.10,rear[i+1]-.10]) P.addEquipment('hullDetail',box(.012,.033,.09),side*1.729,1.28,z);
     }
     P.add('hull',box(.12,.10,5.21),side*1.66,1.515,-.94);
+    // Fender-to-skirt closure 2026-09-13 (owner: "a huge gap between the top
+    // fender area and the sideskirts"): the rear six panels crown at 1.308
+    // while the sponson shelf undersides at 1.480, leaving a 17 cm slot that
+    // showed the bare hull wall. A flush continuation of the skirt skin
+    // (hull wall x 1.704 -> skirt face x 1.737) rises to the shelf, and the
+    // 1.50..1.672 slot ahead of the rear run closes against the first hanger.
+    P.add('hull',box(.033,1.480-1.308,1.50-(-3.49)),side*1.7205,(1.480+1.308)/2,(1.50+(-3.49))/2);
+    P.add('hull',box(.041,1.480-1.344,1.672-1.493),side*1.7585,(1.480+1.344)/2,(1.672+1.493)/2);
     a5FrontGuard(P,side);
     P.addMudguard('a5-x-rear-flap','hullRubber',box(.60,.45,.045),side*1.371,.85,-3.53);
     a5BowTowEye(P,side);

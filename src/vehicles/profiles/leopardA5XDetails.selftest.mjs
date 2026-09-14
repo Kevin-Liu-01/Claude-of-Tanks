@@ -28,9 +28,11 @@ const coverWitnesses = [
 // pinned; newly named local fittings are the only additional meshes.
 // 2026-09-11 fleet wheel standard: the Leopard 2 family draws plain dished
 // twelve-fastener discs, so the retained gear rows carry that stock.
+// 2026-09-13 fender-to-skirt closure: the rear skirt skin continues up to the
+// sponson shelf (1.308 -> 1.480) and the 1.50..1.672 slot closes; repinned.
 const retained = {
-  high: [246122,'6564f9fff7b9253938d4f258baf9af777ea1c07ef9fbeb9ab24c442f84b48968'],
-  low: [231058,'bfeb30e58c453194fb3325e924aee9b7c921d64e4fe0f5a4c734953fe219e96b'],
+  high: [246266,'416679e0e260bc030373cb755515ba94f9cc06d3f77bae14919aaf2d43a0dedf'],
+  low: [231202,'78d7ede7cd7ecf01c82ee248ec5db19d77b1390ce9acb7c5af3ed03e5d2c5ea4'],
 };
 function retainedFingerprint(root) {
   const rows=[];

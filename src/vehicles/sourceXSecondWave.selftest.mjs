@@ -22,7 +22,9 @@ const original = {
 // 2026-09-13 watertight bodies (owner's pour-water test): buildLeclerc gained buried
 // solids (sponson band to the tub, bow/glacis underfill, turret cores) inside its
 // existing surfaces; the leclerc digest is repinned from the current build.
-  ariete_c1:'a4e3e6b0', challenger1:'2c4e0562', leclerc:'2b79cfc4',
+// 2026-09-13 wheel review: challenger1's fixed wheel dressing (face disc / hub) re-seated from
+// 7 cm outboard of the tire to the tire plane; repinned from the current build.
+  ariete_c1:'a4e3e6b0', challenger1:'1c1e5533', leclerc:'2b79cfc4',
   chieftain5:'faacb05a', chieftain_mk10:'01af2dc1', leo2a6:'4b34bc1d',
   k1a1:'2ba8ac9a', strv122:'2041c193', t62mv1:'cc29ff1e',
   t72b_1987:'b42a4c54', t72b3:'9cd2f28d', t72b3m:'bf9db036',

@@ -19,6 +19,7 @@ import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { buildHollowPairedRoadWheel, hollowPairedRoadWheelWidth } from '../hollowRoadWheelStock.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 
@@ -90,6 +91,8 @@ interface AbramsBuilderPort {
 
 interface AbramsHullConfig {
   readonly s?: number;
+  /** Wheel review 2026-09-13: draw the hollow paired road wheel (the M1 X read) instead of the solid split-rim disc. */
+  readonly hollowRoadWheels?: boolean;
   readonly bodyHalfW: number;
   readonly nose: number;
   readonly deck: readonly Vec2Tuple[];
@@ -1494,7 +1497,9 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   // undefined on every other family caller, cfg defaults byte-identical.)
   const abramsHullRunningGearStage1 = (): void => {
     buildRunningGear(P, {
-      style: 'rubber', wheelR: g.wheelR, wheelW: Math.min(0.23, g.trackW * 0.38),
+      style: 'rubber', wheelR: g.wheelR,
+      wheelW: g.hollowRoadWheels ? hollowPairedRoadWheelWidth(g.wheelR) : Math.min(0.23, g.trackW * 0.38),
+      roadWheelGeometry: g.hollowRoadWheels ? buildHollowPairedRoadWheel({ radiusM: g.wheelR, high: Boolean(P.q) }) : undefined,
       wheelY: roadWheelY, xc: g.trackXc,
       wheelZs: g.wheelZs, botY: g.trackBotY ?? 0.055,
       sprocket: { z: g.sprocketZ, y: g.sprocketY ?? g.wheelR + 0.24, r: g.sprocketR ?? g.wheelR * 0.9 },
@@ -2052,6 +2057,7 @@ const TEJAS_HULL: AbramsHullConfig = {
   // Lowering the axle by the same radius delta preserves the 0.11 m tire-bottom
   // datum, so the wheels remain loaded into the existing ground run.
   trackXc: 1.425, trackW: 0.58, wheelR: 0.31, wheelY: 0.42,
+  hollowRoadWheels: true, // wheel review 2026-09-13: the hollow paired wheel the M1 X family draws (owner: give the old Abrams this hollow)
   wheelZs: [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19],
   // Pin the previously certified flat-run departure points.  Reseating the
   // road wheels must not pull either tangent ramp inward or disturb the raised
@@ -3779,7 +3785,6 @@ function tejasEndWheelAndBayKit(P: AbramsBuilderPort, g: AbramsHullConfig): void
 // now owns the complete ground run and both arcs.
 function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const skx = g.skirt.x;                        // 1.812 — skirt face plane
-  const bayGeos = [];
   for (const side of [-1, 1]) {
     // -- 1. hem shadow segmentation (panel z-centers from the 7-panel table)
     for (const [hz, hw, hh, hy] of [
@@ -3794,17 +3799,10 @@ function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     for (const jz of [1.493, -0.593]) {         // joint deepeners near the hem
       P.add('hullDetail', box(0.016, 0.16, 0.05), side * (skx - 0.0065), 0.78, jz);
     }
-    // -- 2. inter-wheel void blocks (x 1.20..1.44: overlap the 1.09..1.22 AO
-    // wall, stay 7.5 cm behind the 1.515 wheel faces; tops hide behind the
-    // 0.687 hem from the side, bottoms above the wheel-circle bottoms)
-    // (hullDark, not hullShadow: the shadow bucket keeps the fleet floor and
-    // sampled ~49/255 in the gaps — the scaled dark bucket is the only
-    // channel that renders the ref's true void down here)
-    for (const zm of [1.80, 1.11, 0.35, -0.41, -1.17, -1.825]) {
-      bayGeos.push(xform(box(0.24, 0.55, 0.20), side * 1.32, 0.47, zm));
-    }
-    bayGeos.push(xform(box(0.24, 0.45, 0.26), side * 1.32, 0.52, 2.53));
-    bayGeos.push(xform(box(0.24, 0.50, 0.32), side * 1.32, 0.55, -2.56));
+    // -- 2. (removed 2026-09-13, owner: "remove them from between the tracks
+    // and put proper wheel connectors") the near-black inter-wheel void blocks
+    // (gear_wheelBayVoidDress) read as a weird solid slab between the road
+    // wheels; the torsion arms buildRunningGear emits are the real connectors.
     // -- 2b. skirt-hull gap cap: from the top the warm band run + pin caps
     // showed in the 1.74..1.81 slot as rust-toned dashes (r4 item 6's
     // top-view read) — a cap floors the slot. Top 1.328 stays under every
@@ -3814,12 +3812,6 @@ function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     // top-view slot L21 vs our 16); the mid tier is the ref's own read.
     P.add('hullDetail', box(0.075, 0.02, 6.9), side * 1.7765, 1.318, -0.05);
   }
-  const bayMesh = new THREE.Mesh(mergeAll(bayGeos), P.mats.dark);
-  bayMesh.name = 'gear_wheelBayVoidDress';
-  bayMesh.userData.runningGear = true;
-  bayMesh.castShadow = bayMesh.receiveShadow = true;
-  P.hullG.add(bayMesh);
-  P.disposables.push(bayMesh.geometry);
 }
 
 // Rear-plate kit (visual r2 item 3, leo2a6 tilted-slat law): the shared
