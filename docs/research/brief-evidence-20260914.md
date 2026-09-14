@@ -75,5 +75,7 @@ ships every desktop tier with the pass off: production now reads verdant
 17.6 / 28.4 and alpine 8.6 / 21.6 against the reference's 20.8 / 32.2 and
 10.1 / 23.6 at the same poses (within 10–15 %), with cull parity 0. Trees, tree bases
 and leaves were reworked in ecfde6264 (trunk flares, roots, leaf atlases);
-the rim forests came back with the 20 m spawn clearance; water passes 3–5
-and the fleet primitive review are documented in the sibling notes.
+the rim forests came back with the 20 m spawn clearance; water passes 3–6
+(pass 6 = interactive wakes: every vehicle in the water pushes rings and
+churn, deploy 15) and the fleet primitive review are documented in the
+sibling notes.
