@@ -126,3 +126,17 @@ shoreline band — after the sharpness/lighting deploy.
 Deploy 13 (2026-09-14, 24418ce08, bundle `main-BRGBR8Ne.js`) carried the
 countdown rework, water pass 5 and the tank primitive review on top of this
 batch; see `tank-primitive-review-20260913.md`.
+
+## Temporal AA off by default (2026-09-14)
+
+The RCAS floor recovered part of the gap but sharpening is bounded by its
+neighbourhood clamp: at the reference poses RCAS 0.65 added 5–8 % ground
+gradient and 0.80 8–17 %, while turning the temporal pass off recovered
+53–75 % and lands within 10–15 % of the reference frame (verdant 17.6 / 28.4
+vs 20.8 / 32.2; alpine 8.6 / 21.4 vs 10.1 / 23.6). The flicker the pass was
+added for was the shadow-cull upload bug (fixed at the root in r8); its
+remaining benefit is a 22 % lower per-pixel blip rate while driving (2.57 vs
+3.29 per frame on production), which is the reference's own foliage shimmer.
+Every desktop tier now ships with `taa: false`; the pass, its jitter, the
+RCAS floor and the receipts stay wired, and a preset re-enables it with one
+flag.

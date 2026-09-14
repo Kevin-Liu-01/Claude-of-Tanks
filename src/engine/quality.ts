@@ -202,7 +202,13 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   ultra: {
     label: 'Ultra',
     msaaSamples: 4,
-    taa: true,
+    // 2026-09-14 (owner: 1049e4e "looks a lot better … on low graphics too"): temporal AA is off by
+    // default on every desktop tier. The tree-shadow flashing it was added for (2026-09-12) was the
+    // shadow-cull upload bug, fixed at the root in r8; what TAA leaves behind is a pixel-footprint
+    // box filter that halves ground and foliage micro-contrast against the reference at identical
+    // poses (verdant gradient 13.3 with TAA vs 21.7 without, reference 20.8). Drive-mode flicker (production, 110 frames): per-pixel blip rate 2.57 with TAA, 3.29 without — the reference's own foliage shimmer, no shadow flashing (r8).
+    // The pass, its RCAS floor and receipts stay in place: set taa: true on a preset to re-enable it.
+    taa: false,
     maxPixelRatio: 2.0,
     // Native DPR-2 is the explicit Ultra promise. Under sustained overload it
     // may fall to 1.5 — still the complete High raster, never below it.
@@ -235,7 +241,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   high: {
     label: 'High',
     msaaSamples: 0,
-    taa: true,
+    taa: false, // 2026-09-14: off by default, see the Ultra note
     maxPixelRatio: 1.5,
     adaptiveBasePixelRatio: 1.5,
     dynMin: 0.9,
@@ -247,7 +253,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   medium: {
     label: 'Medium',
     msaaSamples: 0,
-    taa: true,
+    taa: false, // 2026-09-14: off by default, see the Ultra note
     maxPixelRatio: 1.0,
     // Medium/Low already shed AA, AO and shadow cost. Do not multiply that
     // fallback by another hidden 0.75 dynamic scale: desktop readability

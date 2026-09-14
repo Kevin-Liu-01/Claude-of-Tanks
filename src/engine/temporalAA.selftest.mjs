@@ -84,9 +84,14 @@ assert.ok(post.indexOf('const jittered = taa.enabled;') < post.indexOf('if (cano
 assert.match(post, /taaEnabled = !!preset\.taa;\n\s*taa\.enabled = taaEnabled;\n\s*taa\.resetHistory\(\);/, 'preset changes gate the pass and reseed the history');
 assert.match(post, /dataset\.postAa = `\$\{taaEnabled \? 'taa\+' : ''\}smaa-high\+fsr1`/, 'the published AA state names temporal AA');
 const quality = readFileSync(new URL('./quality.ts', import.meta.url), 'utf8');
+// 2026-09-14: temporal AA is OFF by default on every desktop tier (owner: the 1049e4e frame "looks a
+// lot better … on low graphics too"; the shadow flashing it answered was the shadow-cull upload bug,
+// fixed at the root). The pass, jitter and RCAS floor stay wired (pins above) — a preset re-enables
+// it with `taa: true`. Comment lines may sit between msaaSamples and the flag.
 for (const label of ['Ultra', 'High', 'Medium']) {
-  assert.match(quality, new RegExp(`label: '${label}',\\n\\s*msaaSamples: \\d,\\n\\s*taa: true,`), `${label} runs temporal AA`);
+  assert.match(quality, new RegExp(`label: '${label}',\\n\\s*msaaSamples: \\d,\\n(\\s*//[^\\n]*\\n)*\\s*taa: false,`), `${label}: temporal AA off by default`);
 }
-assert.doesNotMatch(quality, /label: 'Low',\n\s*msaaSamples: \d,\n\s*taa: true,/, 'Low stays without it');
-assert.equal((quality.match(/taa: true,/g) ?? []).length, 3, 'three desktop presets, no mobile preset');
+assert.doesNotMatch(quality, /label: 'Low',\n\s*msaaSamples: \d,\n\s*taa: (true|false),/, 'Low never carried the flag');
+assert.equal((quality.match(/taa: true,/g) ?? []).length, 0, 'no preset enables temporal AA by default');
+assert.equal((quality.match(/taa: false,/g) ?? []).length, 3, 'the three desktop presets carry the explicit off flag; mobile presets have none');
 console.log('temporalAA.selftest: jitter sequence, projection jitter, blend policy, resolve contract, lifecycle, wiring and preset gating PASS');
