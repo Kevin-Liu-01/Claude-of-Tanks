@@ -73,15 +73,30 @@ block with real three meshes and lights: gate, per-cascade compaction in owner
 order, upload ranges, draw hooks (owner / proxy / `noCull`), instance
 rewrites, detached worlds, geometry swaps and GC.
 
-## 2. Remaining one-frame shadow-edge jumps (in progress)
+## 2. What the flash meter still reports after the fix — and why it is not a fault
 
 With the proxies in place the blob-level flash meter (`--rank=flash`) still
-finds one-frame excursions while driving. The largest are a pole's shadow
-band on the road jumping ~20–30 px for exactly one frame and returning; the
-ground texture under it does not move. Tank shadow off does not remove it;
-props off does. Candidates under test with the deterministic `track` camera
-(same poses every run): temporal-AA history reprojection at high-contrast
-edges, versus a shadow-map pose/matrix mismatch. Results are appended below.
+finds one-frame excursions while driving. The largest looked like a pole's
+shadow band on the road jumping for exactly one frame and returning. Measured
+on the saved full frames (verify1-dev-fixed, frames 92/93/94): the band's
+darkest row moves 667 → 694 → 713, monotonically, ~27 px per frame, while the
+band is ~30 px wide. Each road pixel is therefore dark for exactly one frame
+as the shadow sweeps past — the detector's "changed at t, changed back at
+t+1" signature — with nothing jumping back. The other top events are the
+telephone-pole crossarms and insulators sweeping past the camera at close
+range (geometry parallax). Tank shadow off, props off, TAA off and shadows
+off all leave a similar residue, and the deterministic `track` camera
+reproduces the same events at the same frames.
+
+Lesson for the meter: at the probe's 25–30 fps, screen-space motion is about
+twice what a 60 fps player sees, so thin shadows and thin geometry move
+faster than their own width per frame. A stationary-camera or per-frame
+shadow-mask analysis is needed to attribute one-frame changes to shadows;
+until then treat `flashPx` as a screening number, not a verdict.
+
+The still-camera hook A/B (section 1) remains the decisive shadow check; the
+per-pixel sparkle metric is unchanged by the proxy fix (it measures foliage
+and grass aliasing, tracked separately).
 
 ## 3. Rework plan (owner direction: "much better and resilient")
 
@@ -109,6 +124,13 @@ regex'd wiring, never a rendered shadow.
    scheduled mask, TAA weight and caster counts.
 
 ## Tooling
+
+- `tools/shadow-render-truth.mjs [--url --map --gate --strict]` — the checked-in
+  render-truth check: still camera, temporal passes off; asserts determinism
+  (same state twice → 0 px), cull parity (culling on/off → 0 px) and that every
+  caster class present casts. First run on the fixed dev build: 57,401 shadow
+  px, determinism 0, parity 0, classes trunks/canopies/bushes/props/
+  structures/tank all casting, 93 proxies.
 
 - `.qa-dev/cull-still-ab.mjs` — the still-camera hook A/B above.
 - `.qa-dev/tree-shadow-flash.mjs --rank=flash` — records consecutive frames,
