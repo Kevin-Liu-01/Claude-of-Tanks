@@ -2738,10 +2738,31 @@ const baseWorldFramePresentation = createWorldFramePresentationRuntime({
 });
 // The frontline ticks with the world presentation: live battle frames only,
 // never the Garage, a paused battle, or a dormant world.
+const wakeSources: { x: number; z: number; strength: number }[] = [];
 const worldFramePresentation = {
   update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
     baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
     if (inBattle && !worldRuntime.dormant && !pauseInfo.paused) {
+      // Water pass 6 (2026-09-14): vehicles standing or driving in water push
+      // wake rings and churn into the surface — the water reacts to the battle.
+      const wakeWorld = currentWorld();
+      if (wakeWorld) {
+        const field = wakeWorld.heightField as { getWaterMaskAt?: (x: number, z: number) => number };
+        wakeSources.length = 0;
+        if (field.getWaterMaskAt) {
+          const entities = networkSession.bridge ? game.tankById.values() : game.tanks;
+          for (const ent of entities) {
+            const st = ent?.state; const p = st?.pos;
+            if (!p || wakeSources.length >= 8) continue;
+            const mask = field.getWaterMaskAt(p.x, p.z);
+            if (!(mask > 0.05)) continue;
+            const speed = Math.abs(st.speed ?? 0);
+            // a standing hull still laps the water around it (0.6); a moving one throws a full wake
+            wakeSources.push({ x: p.x, z: p.z, strength: Math.min(1, mask * (0.6 + speed / 6)) });
+          }
+        }
+        wakeWorld.setWaterDisturbances(wakeSources);
+      }
       // Frontline Assault brings the front closer with every sector taken.
       const line = game.matchModeState?.line;
       frontline.current?.setScale(line ? 0.8 + 0.35 * (line.index ?? 0) : 1);

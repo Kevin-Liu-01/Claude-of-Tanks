@@ -3975,6 +3975,7 @@ function* terrainBuildSteps(
       group.add(water.mesh);
       group.userData.updateWater = water.update;
       group.userData.setWaterTime = water.setTime;
+      group.userData.setWaterDisturbances = water.setDisturbances; // water pass 6: vehicle wakes
     }
   }
   const streamStats: TerrainStreamingStats = {

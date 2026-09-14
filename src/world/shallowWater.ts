@@ -94,10 +94,16 @@ export function* shallowWaterGeometrySteps(
   return { geometry, heightAt: waterHeightSampler(wet, admitted, field, segments) };
 }
 
+/** Water pass 6 (2026-09-14): a vehicle in the water — rings and churn spread from it. */
+export interface WaterDisturbance { readonly x: number; readonly z: number; readonly strength: number; }
+export const WATER_DISTURBANCE_CAP = 8;
+
 export interface ShallowWaterSurface {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   update(deltaSeconds: number): void;
   setTime(timeSeconds: number): void;
+  /** Publish the vehicles in the water this frame (at most WATER_DISTURBANCE_CAP; strength 0..1). */
+  setDisturbances(sources: readonly WaterDisturbance[]): void;
 }
 
 type ShallowWaterShader = Parameters<NonNullable<THREE.MeshStandardMaterial['onBeforeCompile']>>[0];
@@ -122,6 +128,9 @@ export function createShallowWaterSurface(
 ): ShallowWaterSurface {
   const profile = waterContactProfile(mapId);
   const clock = { value: 0 };
+  // Water pass 6: vehicle wakes. Each slot is (x, z, strength, phase) in the tank frame of the map.
+  const ripples = Array.from({ length: WATER_DISTURBANCE_CAP }, () => new THREE.Vector4(0, 0, 0, 0));
+  const rippleCount = { value: 0 };
   const material = new THREE.MeshStandardMaterial({
     color: profile.color, roughness: profile.roughness, metalness: 0,
     // Water 2026-09-12: 0.28 -> 0.55 — the surface mirrors more sky at grazing
@@ -147,6 +156,8 @@ export function createShallowWaterSurface(
       uWaterWaveStrength: { value: profile.waveStrength },
       // QA only: 1 paints the turbidity field as greyscale so a headless shot can prove the plumbing
       uWaterDebug: { value: 0 },
+      uWaterRipples: { value: ripples },
+      uWaterRippleCount: rippleCount,
     });
     material.userData.waterShader = shader;
     shader.vertexShader = shader.vertexShader.replace('#include <common>',
@@ -167,6 +178,8 @@ export function createShallowWaterSurface(
       uniform float uWaterWaveScale;
       uniform float uWaterWaveStrength;
       uniform float uWaterDebug;
+      uniform vec4 uWaterRipples[8];
+      uniform int uWaterRippleCount;
       float waterHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float waterValueNoise(vec2 p) {
         vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -217,6 +230,20 @@ export function createShallowWaterSurface(
       // into sun sparkle instead of a printed texture.
       vec4 waveFine = texture2D(uWaterWave, waveUV * 2.7 + drift * 1.9 + vec2(0.37, 0.11));
       wave += (waveFine.xy * 2.0 - 1.0) * 0.35;
+      // Water pass 6 (2026-09-14, owner: "more interactive"): every vehicle in the
+      // water pushes concentric rings outward and churns the surface white around
+      // its hull; the rings ride on the normal so the sun and sky read them.
+      float wakeFoam = 0.0;
+      for (int i = 0; i < 8; i++) {
+        if (i >= uWaterRippleCount) break;
+        vec4 rp = uWaterRipples[i];
+        vec2 dv = vWaterWorld.xz - rp.xy;
+        float d = length(dv) + 1e-3;
+        float env = exp(-d * 0.22) * rp.z;
+        float ring = sin(d * 4.2 - uWaterTime * 6.5 + rp.w) * env;
+        wave += (dv / d) * ring * 3.0;
+        wakeFoam += smoothstep(0.2, 1.0, rp.z) * exp(-d * 0.42) * (0.55 + 0.45 * sin(d * 7.0 - uWaterTime * 10.0 + rp.w));
+      }
       normal = normalize((viewMatrix * vec4(normalize(vec3(wave.x * uWaterWaveStrength, 1.0, wave.y * uWaterWaveStrength)), 0.0)).xyz);
       normal *= faceDirection;
       // Surface colour breakup reuses the same two wave fetches: moving
@@ -244,6 +271,8 @@ export function createShallowWaterSurface(
       float foamBank = smoothstep(0.52, 0.86, broadWave * 0.7 + fineWave * 0.5) * waterBank;
       float foamCrest = smoothstep(0.80, 0.96, broadWave) * smoothstep(0.55, 0.9, fineWave) * waterDeep * 0.6;
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.80, 0.85, 0.84), (foamBank * 0.55 + foamCrest * 0.45) * uWaterFoam);
+      // Water pass 6: churned water around a vehicle whitens regardless of the map's foam profile.
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.90, 0.90), clamp(wakeFoam, 0.0, 0.85) * 0.85);
     `);
     // The game's strong sun/bloom exposure turns a broad default dielectric
     // highlight into a white sheet. Keep the directional glint, at a bounded
@@ -277,5 +306,13 @@ export function createShallowWaterSurface(
     mesh,
     update(dt) { if (Number.isFinite(dt) && dt > 0) clock.value += Math.min(dt, 0.1); },
     setTime(t) { if (Number.isFinite(t)) clock.value = Math.max(0, t); },
+    setDisturbances(sources) {
+      const n = Math.min(WATER_DISTURBANCE_CAP, sources.length);
+      for (let i = 0; i < n; i++) {
+        const s = sources[i];
+        ripples[i].set(s.x, s.z, Math.min(1, Math.max(0, s.strength)), i * 1.7);
+      }
+      rippleCount.value = n;
+    },
   };
 }

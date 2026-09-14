@@ -191,6 +191,21 @@ assert.equal((shader.fragmentShader.match(/texture2D\(uWaterWave/g) ?? []).lengt
 assert.match(shader.fragmentShader, /float turbidity = waterTurbidityField\(vWaterWorld\.xz \+ drift \* 6\.0\);/,
   'the turbidity field is world-position value noise (a normal-map fetch hugs 0.5 and read as one flat sheet)');
 assert.match(shader.fragmentShader, /float waterTurbidityField\(vec2 world\)/, 'two-octave value-noise helper');
+// Water pass 6 (2026-09-14, owner: "more interactive"): vehicles in the water push wake rings
+// and churn; eight slots (x, z, strength, phase) ride on the normal and whiten the surface.
+assert.match(shader.fragmentShader, /uniform vec4 uWaterRipples\[8\];\n\s*uniform int uWaterRippleCount;/, 'eight wake slots');
+assert.match(shader.fragmentShader, /if \(i >= uWaterRippleCount\) break;/, 'only the published slots are evaluated');
+assert.match(shader.fragmentShader, /wave \+= \(dv \/ d\) \* ring \* 3\.0;/, 'wake rings perturb the normal radially');
+assert.match(shader.fragmentShader, /clamp\(wakeFoam, 0\.0, 0\.85\) \* 0\.85/, 'churn whitens the surface around a hull');
+assert.equal(shader.uniforms.uWaterRippleCount.value, 0, 'no vehicles published: no slots evaluated');
+water.setDisturbances([{ x: 12, z: -3, strength: 2 }, { x: 1, z: 1, strength: 0.4 }]);
+assert.equal(shader.uniforms.uWaterRippleCount.value, 2);
+assert.deepEqual(shader.uniforms.uWaterRipples.value[0].toArray().slice(0, 3), [12, -3, 1], 'strength clamps to 1');
+assert.equal(shader.uniforms.uWaterRipples.value[1].z, 0.4);
+water.setDisturbances(Array.from({ length: 12 }, (_, i) => ({ x: i, z: 0, strength: 1 })));
+assert.equal(shader.uniforms.uWaterRippleCount.value, 8, 'the cap holds at eight slots');
+water.setDisturbances([]);
+assert.equal(shader.uniforms.uWaterRippleCount.value, 0);
 assert.match(shader.fragmentShader, /radiance \*= 1\.15 - 0\.55 \* smoothstep\(0\.35, 0\.85, waterTurbidity\);/, 'turbid patches mirror less sky');
 assert.match(shader.fragmentShader, /waveFine\.xy \* 2\.0 - 1\.0\) \* 0\.35/, 'the fine layer is a weak normal perturbation');
 assert.match(shader.fragmentShader, /broadWave.*fineWave/s,

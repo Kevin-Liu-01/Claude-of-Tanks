@@ -82,6 +82,7 @@ interface TerrainUserData {
   updateLOD(cameraPosition: THREE.Vector3): void;
   updateWater?(deltaSeconds: number): void;
   setWaterTime?(timeSeconds: number): void;
+  setWaterDisturbances?(sources: readonly { readonly x: number; readonly z: number; readonly strength: number }[]): void;
   warmStreaming?(cameraPosition: THREE.Vector3, maxJobs: number): number;
   [key: string]: RuntimeValue;
 }
@@ -179,6 +180,8 @@ export interface WorldRuntime {
   ): void;
   warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
   setWindTime(timeSeconds: number): void;
+  /** Water pass 6: the vehicles in the water this frame (wake rings + churn). No-op on maps without water. */
+  setWaterDisturbances(sources: readonly { readonly x: number; readonly z: number; readonly strength: number }[]): void;
   setSniperFade(
     fraction: number,
     immediate?: boolean,
@@ -622,6 +625,7 @@ function assembleWorld(
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
     setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); hearths.setTime(t); },
+    setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1
