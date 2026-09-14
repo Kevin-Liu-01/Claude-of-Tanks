@@ -120,3 +120,38 @@ bursts pooled, 64 tracers pooled, 14 sandbag nests in view of the census, a bake
 approach road, tread-torn approaches and crater decals along the AI corridors. Standard battles
 carry the same front at 1.15 (verdant 11 columns, urban 13, alpine 10, desert 11 at the spawn
 pose). The 1049e4e reference has no frontline layer at all (0 columns / 0 tracers in every census).
+
+## Fleet-wide world-build smoke (gate 24)
+
+`tools/map-environment-audit.mjs --shots --establishing-only --tier=desktop` built all 30 maps
+(exit 0, no entry failures; medians 12–22 ms on the shared Mac, which is pacing noise, not a
+signal). Against the 2026-09-12 audit report (`010faabc`, the pre-restoration build):
+
+| total over 30 maps | 2026-09-12 | gate 24 |
+| --- | --- | --- |
+| scene instances | 1,376,364 | 1,455,921 (+5.8 %) |
+| destructible props | 18,918 | 20,310 (+7.4 %) |
+| concealers (bushes + canopies) | 116,402 | 135,460 (+16.4 %) |
+
+Per map the destructible count rises 5–12 % (verdant 629 → 676, urban 649 → 688, foundry
+940 → 1,024, caldera 677 → 756) and concealers 8–80 % (desert 1,822 → 3,291, saltwind
+2,649 → 4,075, coastal 2,612 → 4,274). Reservoir's instance total falls (79,422 → 74,089) for
+reasons outside this pass: the 2026-09-12 baseline predates two days of map work, so the table
+is a fleet-wide richness indicator, not an isolated measurement of these edits (the isolated
+before/after is the spawn-pose census above).
+
+## Gate 24 and deploy 16
+
+Commit `fe9d98125` (gate checkout at the same head). Gate 24: all-map world-build smoke exit 0
+(30 maps, no entry failures), pre 315/315, post 42/42, private build green. The fail-fast core
+group stopped at 95/661 on `garageArchitecture.selftest.mjs` (the 100 ms headless geometry budget,
+124 ms under the six-way receipt load; it passes quiet) and was rerun as a whole: 661/661. The
+no-fail-fast sweep before the commit ran 976 pre + core receipts with the same single timing
+flake. Pushed fast-forward to origin main, then deployed manually from the gate checkout
+(`vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`, scope kl01s-projects).
+
+Production (`https://cot.kevinliu.studio`, bundle `main-B7lqtmGI.js`, identical to the gate
+build): `.qa-dev/prod-map-smoke.mjs` enters battle on verdant, urban and mangrove with zero page
+errors (6.6–9.1 s to battle); the production spawn-pose census on verdant equals the local
+"after" census exactly (6,286 trunk parts, 809 canopy proxies, 1,800 litter pieces, 11 smoke
+columns, 3 AA bases, 64 tracers, 676 destructibles).
