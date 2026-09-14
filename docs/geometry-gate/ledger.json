@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-09-14T01:27:57.258Z",
+ "generatedAt": "2026-09-14T06:02:51.489Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 65,
+ "passed": 64,
  "total": 163,
  "rows": [
   {
@@ -136,14 +136,11 @@
   {
    "id": "challenger1",
    "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 43.6,
-    "wholeCurves": 19.1,
-    "turretCurves": 0,
-    "stations": 34.6,
-    "dims": 99.6,
-    "floaters": 100
+    "oracleAvailability": 0
    }
   },
   {
@@ -298,15 +295,18 @@
   {
    "id": "ua_t80bv",
    "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
-    "hullCurves": 57.1,
-    "stations": 9,
-    "turretCurves": 0,
-    "wholeCurves": 0,
-    "dims": 97.4,
+    "hullCurves": 49.8,
+    "stations": 21.7,
+    "turretCurves": 9.3,
+    "wholeCurves": 5.4,
+    "dims": 0,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "upior",
@@ -389,6 +389,29 @@
    "geoMin": 0,
    "requiredMinimum": 90,
    "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
+  },
+  {
+   "id": "ua_t80u_kursk",
+   "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 85.3,
+    "dims": 0,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "leo2_revolution",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
    "gatePassed": false,
    "components": {
     "oracleAvailability": 0
@@ -931,16 +954,6 @@
     "wholeCurves": 81,
     "turretCurves": 85.5,
     "stations": 89.8,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "ua_t80u_kursk",
-   "geoMin": 81.7,
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 81.7,
     "dims": 100,
     "floaters": 100
    }
@@ -1620,19 +1633,6 @@
     "turretCurves": 96,
     "wholeCurves": 92.3,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "leo2_revolution",
-   "geoMin": 92,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92,
-    "dims": 97.9,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
