@@ -21,7 +21,7 @@ function visit(node) {
 visit(ast);
 const names = ['placeFenceRun', 'scatterDestructibles', 'fenceRun', 'placeRoadFenceLines',
   'placeRoadCarts', 'placeSandbagEmplacements', 'placeUtilityPoles', 'placeTownLampposts', 'placeStreetLamps',
-  'isRoadsideSpotClear', 'findRoadsideSpot', 'tryPlaceRoadWreck', 'placeRoadWrecks'];
+  'isRoadsideSpotClear', 'findRoadsideSpot', 'tryPlaceRoadWreck', 'placeRoadWrecks', 'richCount'];
 const definitions = names.map(name => {
   assert.ok(functions.has(name), `execute the actual production ${name}`);
   return functions.get(name);
@@ -31,6 +31,9 @@ const factory = new Function('deps', `
     authoredRoadStationCount, authoredRoadStationIndex, FENCE_SEG, planUtilityPoleStation,
     utilityPolePlacements, addUtilityPole, wreckRecords, fenceRuns, fixtureSeed, fixtureRoadFence,
     buckets, box, distToOtherRoads } = deps;
+  // The extracted production richCount reads the tier multiplier through this hook; the station
+  // parity checked here runs at the authored counts (the mobile tier's production value).
+  const environmentRichness = () => 1;
   const roads = L.roads, roadsL = roads, roadFence = fixtureRoadFence;
   const noVeg = heightField._noVeg, v = L.village, placedB = [], seed = fixtureSeed;
   const frng = mulberry32(seed + 606);

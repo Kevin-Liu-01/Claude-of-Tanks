@@ -1523,10 +1523,11 @@ function buildBroadleafCards(
     // bounce in the skirt. Hue jitter widened ±0.025 -> ±0.045: with one
     // shared leaf atlas, per-card hue/value spread is what breaks the
     // "single repeated leaf texture" read.
-    // Avoid multiplying three independent near-black floors (atlas, core,
-    // skirt). Light-driven wrap supplies form; baked AO keeps the core legible.
-    const shade = (0.61 + 0.33 * clamp(distC, 0, 1)) // dark core, lit shell
-      * (0.82 + 0.24 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.90 + rng() * 0.14);
+    // 2026-09-14: back to the 1049e4e shade range. The flatter 0.61/0.33 - 0.82/0.24 - 0.90/0.14
+    // range shipped in the restoration draft read as "flat, untextured" crowns (owner); the
+    // reference's deeper core and skirt gradients are what give the canopy its baked-AO form.
+    const shade = (0.58 + 0.42 * clamp(distC, 0, 1)) // dark core, lit shell
+      * (0.80 + 0.34 * clamp((py - cy) / ry * 0.5 + 0.5, 0, 1)) * (0.92 + rng() * 0.16);
     // r6: upBias 1.55 -> 1.0 — the near-vertical bent normals lit the whole
     // crown one flat tone; a stronger lateral component gives the sun-side /
     // shade-side gradient a real crown shows (light-driven wrap keeps the
@@ -1640,7 +1641,9 @@ function buildPineCards(
       // across every card was the "model railroad pine" tell at 30-80 m
       // r7: base 0.50 -> 0.42 — lower tiers shade toward the ground plane
       // r8: 0.42 -> 0.48 — bottom tiers went to black paint in chase shadow
-      const shade = 0.60 + t * 0.28 + rng() * 0.18;
+      // 2026-09-14: back to the 1049e4e tier gradient (0.48 + 0.40 t + 0.26 jitter); the
+      // 0.60/0.28/0.18 draft range flattened the conifer skirts (owner: "flat, untextured").
+      const shade = 0.48 + t * 0.40 + rng() * 0.26;
       // content_breadth r3: pal.snow lays a SNOW LOAD on the tier tops —
       // upper tiers whiten/brighten most (a loaded spruce is white above,
       // green in the skirt), per-card jitter keeps the load clumpy
@@ -2707,6 +2710,12 @@ export function buildGrassTuftGeometry(
  * @returns {{group:THREE.Group, update:function(number,THREE.Vector3):void,
  *   setWindTime:function(number):void, treeObstacles:Array<{min:number[],max:number[]}>}}
  */
+// 2026-09-14 environment richness: desktop tiers place 10 % more tree clusters and lone trees
+// than the authored per-map counts, restoring the density the road, structure and spawn
+// clearances trimmed since 1049e4e (verdant 899 -> 812 trees at the spawn pose). Mobile keeps
+// the authored counts. Read at build time, after the device tier is resolved.
+export function treeRichness(): number { return getDeviceTier() === 'mobile' ? 1 : 1.1; }
+
 export function createVegetation(
   heightField: HeightField,
   engineCtx: EngineContext,
@@ -4128,7 +4137,8 @@ function* vegetationBuildSteps(
   }
   function placeTreeClusters(): void {
     let attempts = 0;
-    while (clusters.length < veg.clusterCount && attempts++ < 2200) {
+    const clusterTarget = Math.round(veg.clusterCount * treeRichness());
+    while (clusters.length < clusterTarget && attempts++ < 2600) {
       const x = (rng() * 2 - 1) * 430, z = (rng() * 2 - 1) * 430;
       if (!siteOk(x, z, 6)) continue;
       if (!isSeparatedTreeCluster(x, z)) continue;
@@ -4159,7 +4169,7 @@ function* vegetationBuildSteps(
   placeTreeClusters();
   yield { stage: 'treeClusters' };
   function placeLoneTrees(): void {
-    for (let i = 0, placed = 0; i < 700 && placed < veg.loneCount; i++) { // lone trees + pairs
+    for (let i = 0, placed = 0, loneTarget = Math.round(veg.loneCount * treeRichness()); i < 800 && placed < loneTarget; i++) { // lone trees + pairs
       const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
       if (addTree(x, z, pickSpecies(veg.loneMix, rng()))) {
         placed++;
@@ -4650,12 +4660,16 @@ function* vegetationBuildSteps(
       bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
       if(keep)concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
     }
+    // 2026-09-14 environment richness: desktop tiers seed 30 % more field bushes, clumps and
+    // cluster fringe scrub than the authored counts (mobile keeps them). Read at build time,
+    // after the device tier is resolved. Per-map veg.bushCount still gates what survives.
+    const bushRichness = getDeviceTier() === 'mobile' ? 1 : 1.3;
     function placeBushFringes(): void {
       // fringe bushes around each tree cluster. r3 terrain_environment: maps
       // can raise veg.clusterScrub (desert oases) — extra shrubs land INSIDE
       // the cluster as understory at the trunk bases, grounding the palm
       // clusters that used to stand as bare sticks on clean sand.
-      const scrubMul = veg.clusterScrub ?? 1;
+      const scrubMul = (veg.clusterScrub ?? 1) * bushRichness;
       for (const c of clusters) {
         const n = Math.round((5 + (rng() * 6) | 0) * scrubMul);
         for (let i = 0; i < n; i++) {
@@ -4667,7 +4681,7 @@ function* vegetationBuildSteps(
       }
     }
     function placeFieldBushes(): void {
-      for (let i = 0; i < 470; i++) { // scattered field bushes, mild roadside bias
+      for (let i = 0, cap = Math.round(470 * bushRichness); i < cap; i++) { // scattered field bushes, mild roadside bias
         const x = (rng() * 2 - 1) * 455, z = (rng() * 2 - 1) * 455;
         const rd = admission()._roadDist(x, z);
         if (rd > 26 && rng() > 0.55) continue;
@@ -4677,7 +4691,7 @@ function* vegetationBuildSteps(
     function placeBushClumps(): void {
       // midfield concealment clumps: 4-6 bushes over a ~10-12 m spread so a
       // parked tank is at least half-occluded from ground level
-      for (let c = 0; c < 58; c++) {
+      for (let c = 0, cap = Math.round(58 * bushRichness); c < cap; c++) {
         const x = (rng() * 2 - 1) * 420, z = (rng() * 2 - 1) * 420;
         const n = 4 + (rng() * 3) | 0;
         for (let i = 0; i < n; i++) {

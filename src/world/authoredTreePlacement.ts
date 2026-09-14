@@ -40,6 +40,8 @@ export interface AuthoredTreeReceipt {
   accepted: number;
   unsafe: number;
   noDonor: number;
+  /** Accepted stations whose procedural squatter was moved onto the donor's old ground (2026-09-14). */
+  displaced?: number;
 }
 
 /** Equal arc-length stations keep bent bank ribbons and farm rows readable. */
@@ -135,6 +137,32 @@ function relocate(tree: AuthoredTreeRecord, obstacle: CollisionRecord, concealer
   concealer.x = x; concealer.z = z;
 }
 
+/**
+ * A procedural tree of another species stands on an authored station. The nearest eligible donor
+ * takes the station and the squatter takes the donor's old ground, provided that ground clears the
+ * same structure / wall / root-support rules a station must (2026-09-14: the desktop tree richness
+ * put more squatters on the mangrove banks; pure relocation had to give those stations up).
+ */
+function displaceSquatter<T extends AuthoredTreeRecord>(
+  trees: T[], obstacles: Array<CollisionRecord & { treeIdx: number }>, concealers: Array<{ x: number; z: number }>,
+  donors: ReadonlySet<T>, used: Set<T>, interactions: ReadonlyMap<number, number>, species: TreeSpecies,
+  point: { x: number; z: number }, occupied: number, terrain: PlacementTerrain,
+  structures: readonly StructureClearance[], walls: readonly AuthoredWallRun[],
+): boolean {
+  const squatter = trees[occupied];
+  const squatterInteraction = interactions.get(occupied);
+  if (used.has(squatter) || squatterInteraction === undefined) return false;
+  const { chosen } = nearestDonor(trees, donors, used, interactions, species, point, -1, terrain, structures, walls);
+  if (chosen < 0 || chosen === occupied) return false;
+  const donor = trees[chosen], donorInteraction = interactions.get(chosen)!;
+  const groundX = donor.x, groundZ = donor.z;
+  if (!targetClear(squatter, groundX, groundZ, terrain, structures, walls)) return false;
+  relocate(donor, obstacles[donorInteraction], concealers[donorInteraction], point.x, point.z, terrain.getHeightAt(point.x, point.z));
+  relocate(squatter, obstacles[squatterInteraction], concealers[squatterInteraction], groundX, groundZ, terrain.getHeightAt(groundX, groundZ));
+  used.add(donor); used.add(squatter);
+  return true;
+}
+
 export function redistributeAuthoredTrees<T extends AuthoredTreeRecord>(
   trees: T[], obstacles: Array<CollisionRecord & { treeIdx: number }>, concealers: Array<{ x: number; z: number }>,
   donors: ReadonlySet<T>, features: readonly AuthoredTreeFeature[], terrain: PlacementTerrain,
@@ -146,7 +174,7 @@ export function redistributeAuthoredTrees<T extends AuthoredTreeRecord>(
   obstacles.forEach((obstacle, index) => interactions.set(obstacle.treeIdx, index));
   const used = new Set<T>();
   return features.map(feature => {
-    const receipt = { id: feature.id, attempted: feature.count, accepted: 0, unsafe: 0, noDonor: 0 };
+    const receipt = { id: feature.id, attempted: feature.count, accepted: 0, unsafe: 0, noDonor: 0, displaced: 0 };
     for (const point of authoredTreeStations(feature)) {
       if (!siteOk(point.x, point.z, 0)) { receipt.unsafe++; continue; }
       // Once per station, not a quadratic scan for every possible donor.
@@ -154,7 +182,11 @@ export function redistributeAuthoredTrees<T extends AuthoredTreeRecord>(
       if (occupied === -2) { receipt.unsafe++; continue; }
       const { chosen, available } = nearestDonor(trees, donors, used, interactions,
         feature.species, point, occupied, terrain, structures, walls);
-      if (chosen < 0) { if (available) receipt.unsafe++; else receipt.noDonor++; continue; }
+      if (chosen < 0) {
+        if (occupied >= 0 && displaceSquatter(trees, obstacles, concealers, donors, used, interactions,
+          feature.species, point, occupied, terrain, structures, walls)) { receipt.accepted++; receipt.displaced++; continue; }
+        if (available) receipt.unsafe++; else receipt.noDonor++; continue;
+      }
       const tree = trees[chosen], interaction = interactions.get(chosen)!;
       relocate(tree, obstacles[interaction], concealers[interaction], point.x, point.z, terrain.getHeightAt(point.x, point.z));
       used.add(tree); receipt.accepted++;

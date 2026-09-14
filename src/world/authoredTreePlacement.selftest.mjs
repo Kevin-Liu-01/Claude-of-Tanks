@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
-import { mulberry32 } from './vegetation.ts';
+import { mulberry32, treeRichness } from './vegetation.ts';
 import { TREE_ARCHETYPES, treeTrunkCollisionRadiusM } from './treeSpecies.ts';
 import { treeRootDecalRadius, treeRootDecalAreaM2 } from './treeGrounding.ts';
 import { setToppleAxis, settledToppleAngle } from './topple.ts';
@@ -27,7 +27,7 @@ const end = source.indexOf('  // near/far instanced meshes', start);
 const noiseStart = source.indexOf('function treePositionNoise(');
 const noiseEnd = source.indexOf('function _mustReplace(', noiseStart);
 assert.ok(start > 0 && end > start && noiseEnd > noiseStart);
-const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
+const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTrunkCollisionRadiusM, setCircleShape,
   PLAYABLE_HALF_EXTENT_M, isClearOfSpawns, createStructureClearances, excludeStructureVegetation,
   DESTRUCTIBLE_BUILDING_TYPES, redistributeAuthoredTrees };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
@@ -198,8 +198,8 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
     }
   }
   const receipts = after.group.userData.authoredTrees;
-  assert.equal(receipts.reduce((n, row) => n + row.accepted, 0), moved);
-  assert.ok(moved >= receipts.reduce((n, row) => n + row.attempted, 0) * 0.85, 'at least 85% of authored sites actually placed');
+  assert.equal(receipts.reduce((n, row) => n + row.accepted + (row.displaced ?? 0), 0), moved, 'every moved tree is an accepted station or its displaced squatter');
+  assert.ok(moved >= receipts.reduce((n, row) => n + row.attempted, 0) * 0.85, `at least 85% of authored sites actually placed: ${JSON.stringify(receipts)}`);
   for (const row of receipts) {
     assert.equal(row.accepted + row.unsafe + row.noDonor, row.attempted);
     assert.ok(row.accepted >= 8, `${row.id}: a meaningful continuous row/bank allocation`);
@@ -230,7 +230,7 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
 assert.throws(() => authoredTreeStations({ count: 10000, path: [[0, 0], [1, 1]] }));
 assert.deepEqual(redistributeAuthoredTrees([], [], [], new Set(),
   [{ id: 'no-species-budget', species: 'oak', count: 2, path: [[0, 0], [10, 0]] }], {}, () => true, [], []),
-[{ id: 'no-species-budget', attempted: 2, accepted: 0, unsafe: 0, noDonor: 2 }], 'missing donors remain explicit, never add replacement trees');
+[{ id: 'no-species-budget', attempted: 2, accepted: 0, unsafe: 0, noDonor: 2, displaced: 0 }], 'missing donors remain explicit, never add replacement trees');
 assert.ok(source.indexOf('redistributeAuthoredTrees(trees') < source.indexOf('  createTreeMeshPools();'));
 assert.ok(source.indexOf('redistributeAuthoredTrees(trees') < source.indexOf('  createTreeRootDecals();'));
 assert.ok(source.indexOf('excludeStructureVegetation(') < source.indexOf('redistributeAuthoredTrees(trees'));

@@ -72,20 +72,21 @@ export const FRONTLINE_INTENSITY: Readonly<Record<MapId, number>> = Object.freez
 });
 
 export const FRONTLINE_LIMITS = Object.freeze({
-  columns: [6, 10] as const,
+  // 2026-09-14 campaign flavour: a denser, louder front — more columns, planes, AA and fire
+  columns: [8, 14] as const,
   columnRangeM: [650, 950] as const,
   columnHeightM: [120, 220] as const,
-  spriteCap: 32,
-  aircraftCap: 2,
+  spriteCap: 48,
+  aircraftCap: 3,
   aircraftAltitudeM: [250, 420] as const,
   aircraftSpeedMps: [110, 160] as const,
   aircraftRadiusM: 1300,
-  artilleryIntervalS: [5, 18] as const,
-  flakIntervalS: [12, 40] as const,
-  flyoverIntervalS: [60, 120] as const,
+  artilleryIntervalS: [4, 14] as const,
+  flakIntervalS: [9, 30] as const,
+  flyoverIntervalS: [40, 90] as const,
   logCap: 256,
   // campaign slice 2 (2026-09-12): anti-air guns behind the player's line
-  aaGuns: [2, 3] as const,
+  aaGuns: [3, 4] as const,
   aaBehindM: [60, 140] as const,
   aaLateralM: [40, 130] as const,
   aaRangeM: 950,
@@ -95,7 +96,7 @@ export const FRONTLINE_LIMITS = Object.freeze({
   /** Shell hit volume of one gun: a vertical capsule over its base. */
   aaHitRadiusM: 1.9,
   aaHitHeightM: 2.6,
-  tracerCap: 48,
+  tracerCap: 64,
   tracerSpeedMps: 420,
   tracerLifeS: 2.2,
 });

@@ -35,5 +35,5 @@ assert.deepEqual(routedIds('isIndustrial'), ['urban', 'railyard', 'foundry', 'ca
   'mine, airfield and polar logistics use the existing sleeping industrial clutter bodies');
 assert.deepEqual(routedIds('isDry'), ['desert', 'badlands', 'frontier', 'oasis'],
   'oasis compounds use the existing dry-country clutter palette');
-assert.match(source, /const looseCap = inh\.looseClutter \?\?/, 'biome routing preserves the configured population ceiling');
+assert.match(source, /const looseCap = richCount\(inh\.looseClutter,/, 'biome routing preserves the configured population ceiling (tier richness applied at the read)');
 console.log('mapIntegration.selftest: thirty solo/private/ranked/UI identities and existing clutter profile routing passed');

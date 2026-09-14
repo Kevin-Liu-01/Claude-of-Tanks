@@ -35,7 +35,7 @@ assert.match(composition, /autumnCropRows\.length = 0;\s+autumnFieldContext = nu
 const predecessorFields = `() => {
   const fieldContext = { rng: drng, village: v, heightField, noVegetation: noVeg,
     spawns: [L.spawns.player, ...L.spawns.enemies], addDestructible };
-  const baleCount = inh.bales ?? 0, stookCount = inh.stooks ?? 0, sledCount = inh.sleds ?? 0;
+  const baleCount = richCount(inh.bales), stookCount = richCount(inh.stooks), sledCount = richCount(inh.sleds); // 2026-09-14 richness: frozen twin follows the count reads
   if (baleCount > 0) scatterFieldProps(fieldContext, 'bale', baleCount);
   if (stookCount > 0) scatterFieldProps(fieldContext, 'stook', stookCount);
   if (sledCount > 0) scatterFieldProps(fieldContext, 'sled', sledCount);

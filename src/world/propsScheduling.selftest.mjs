@@ -513,7 +513,7 @@ const groundOriginal = groundCandidate
 // Frozen pre-change body: reconstructing the synchronous control above must
 // remove only scheduling, never silently share a changed formula with control.
 assert.equal(createHash('sha256').update(groundOriginal).digest('hex'),
-  '5f9a3ac81e2135e1204c95e3cf62bab5dd3d4a884530b245bda2072ff2f0791e');
+  'a2d082b415614f713aded1463cf590049c8465c5c760761eedb908c3ec33cdeb'); // 2026-09-14: craterCap via richCount
 const mathStart = source.indexOf('function clamp('), mathEnd = source.indexOf('\n// ---', mathStart);
 const rubbleStart = source.indexOf('  const _rubbleOff ='), rubbleEnd = source.indexOf('\n  function addRubblePile(', rubbleStart);
 assert.ok(mathEnd > mathStart && rubbleEnd > rubbleStart);
@@ -551,7 +551,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     },
     putImageData(image) { canvas.pixels = image.data; },
   };
-  const dependencies = {
+  const dependencies = { richCount: (n, fallback = 0) => n ?? fallback, // 2026-09-14: props.ts reads counts through richCount; control and scheduled bodies share this authored-count port
     THREE: { ...THREE, BufferGeometry: InputGeometry }, mergeGeometries, box, jitterUV, group, buckets, buildingFeatures,
     rng() { const value = random(); randoms.push(value); return value; },
     mulberry32(seed) {

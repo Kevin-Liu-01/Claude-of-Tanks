@@ -33,7 +33,10 @@ const dependencies = { THREE, mulberry32, cloneCollisionRecord, setCircleShape, 
   deriveRuntimeStructureCollisionWithSolids, deriveRuntimeStructureContactBand,
   applyStructureCollisionBand, attachGroundCoverSolidProfile, createGroundCoverSolidProfile,
   GROUND_COVER_PLACEMENT_BYTES, setWorldNightFixtureActive,
-  authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES };
+  authoredRoadStationCount, authoredRoadStationIndex, FIELD_LOG_COUNTS, HAY_CRATE_SITES,
+  // props.ts reads its settlement counts through richCount (tier multiplier, 2026-09-14); this
+  // receipt checks the authored counts, i.e. the mobile tier's production value.
+  richCount: (n, fallback = 0) => n ?? fallback };
 // Real source stages, not a replacement placement algorithm. The log stream
 // starts at an explicit test checkpoint; this does not claim a full-world
 // source census. Heavy traffic has its actual dedicated production RNG seed.

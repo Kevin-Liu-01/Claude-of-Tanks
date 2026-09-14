@@ -2765,7 +2765,9 @@ const worldFramePresentation = {
       }
       // Frontline Assault brings the front closer with every sector taken.
       const line = game.matchModeState?.line;
-      frontline.current?.setScale(line ? 0.8 + 0.35 * (line.index ?? 0) : 1);
+      // 2026-09-14 campaign flavour: the front runs hotter — every battle at 1.15, Frontline
+      // Assault from 1.25 and climbing with every sector taken (setScale clamps at 2).
+      frontline.current?.setScale(line ? 1.25 + 0.35 * (line.index ?? 0) : 1.15);
       frontline.update(dtSeconds);
     }
   },

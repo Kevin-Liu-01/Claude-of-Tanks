@@ -17,6 +17,18 @@ import {
 import { applyTone, type HeightField, type TerrainLayout } from './terrain.ts';
 import { authoredRoadStationCount, authoredRoadStationIndex } from './maps/roadStations.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+
+// Environment richness (2026-09-14, owner: "add back so much environmental details — they
+// feel much barer now"): desktop tiers place 35 % more settlement and roadside clutter than
+// the authored per-map counts (stalls, benches, core clutter, bales, stooks, sleds, drums,
+// pots, trucks, cars, drum clusters, loose clutter, camps). Mobile keeps the authored counts.
+// Applied at the count reads so every map's authoring stays byte-identical.
+// Read at call time: the device tier is resolved after module evaluation.
+export const DESKTOP_ENVIRONMENT_RICHNESS = 1.35;
+export function environmentRichness(): number { return getDeviceTier() === 'mobile' ? 1 : DESKTOP_ENVIRONMENT_RICHNESS; }
+// A function declaration: roadStations.selftest.mjs extracts and executes the production placement
+// functions from this source, and they read their counts through this helper.
+function richCount(n: number | undefined, fallback = 0): number { return Math.round((n ?? fallback) * environmentRichness()); }
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { destructibleCastsShadow } from './destructibleRenderPolicy.ts';
@@ -3954,7 +3966,7 @@ ${snowCap ? `
       && Math.hypot(x - building.x, z - building.z) < building.rr + padding);
     // market: stall ring + goods clutter around the junction plaza
     const placeMarketStalls = (): void => {
-      const nStalls = inh.stalls ?? 0;
+      const nStalls = richCount(inh.stalls);
       if (nStalls <= 0) return;
       const placeMarketGoods = (x: number, z: number): void => {
         if (drng() < 0.8) scatterDestructibles('crate', x, z, 1, 1.6, 2.6);
@@ -3977,11 +3989,11 @@ ${snowCap ? `
         placedSt++;
       }
       // benches around the square
-      scatterDestructibles('bench', junction.x, junction.z, inh.benches ?? 2, 7, 15, 4.0);
+      scatterDestructibles('bench', junction.x, junction.z, richCount(inh.benches, 2), 7, 15, 4.0);
     };
     // village-core work clutter: crates/barrels/pallets between the houses
     const placeCoreClutter = (): void => {
-      const coreClutter = inh.coreClutter ?? 0;
+      const coreClutter = richCount(inh.coreClutter);
       if (coreClutter <= 0) return;
       for (let k = 0; k < coreClutter; k++) {
         const x = v.x0 + drng() * (v.x1 - v.x0);
@@ -4005,9 +4017,9 @@ ${snowCap ? `
         spawns: [L.spawns.player, ...L.spawns.enemies],
         addDestructible,
       };
-      const baleCount = inh.bales ?? 0;
-      const stookCount = inh.stooks ?? 0;
-      const sledCount = inh.sleds ?? 0;
+      const baleCount = richCount(inh.bales);
+      const stookCount = richCount(inh.stooks);
+      const sledCount = richCount(inh.sleds);
       if (autumnCropRows) {
         autumnFieldContext = fieldContext;
         autumnFieldStart = destructibles.length;
@@ -4019,7 +4031,7 @@ ${snowCap ? `
     };
     // industrial dressing: oil drums + pallet spots along streets/aprons
     const placeIndustrialDrums = (): void => {
-      const drumCount = inh.drums ?? 0;
+      const drumCount = richCount(inh.drums);
       if (drumCount <= 0) return;
       for (let t = 0, placed = 0; t < drumCount * 16 && placed < drumCount; t++) {
         const x = v.x0 + drng() * (v.x1 - v.x0);
@@ -4036,7 +4048,7 @@ ${snowCap ? `
     };
     // souk dressing: pottery clusters + rug display frames near buildings
     const placeSoukObjects = (): void => {
-      const potCount = inh.pots ?? 0;
+      const potCount = richCount(inh.pots ?? 0);
       if (potCount <= 0) return;
       for (let t = 0, placed = 0; t < potCount * 16 && placed < potCount; t++) {
         const pb = placedB.length ? placedB[(drng() * placedB.length) | 0] : null;
@@ -4075,7 +4087,7 @@ ${snowCap ? `
     // Heavy roadside vehicles: map-flavored cargo, box-body, and flatbed
     // families. The selector is seeded and bounded to three pools per lane.
     const placeHeavyRoadTraffic = (): void => {
-    for (let k = 0, cap = inh.trucks ?? 0; k < cap; k++) {
+    for (let k = 0, cap = richCount(inh.trucks); k < cap; k++) {
       const spot = findRoadsideSpot(roadsideContext, 5.6, 9.5);
       if (!spot) continue;
       const y = heightField.getHeightAt(spot[0], spot[1]);
@@ -4092,7 +4104,7 @@ ${snowCap ? `
     // Light traffic: distinct sedans, wagons, pickups, vans, and utility 4x4s
     // replace the repeated single jeep while keeping the authored count.
     const placeLightRoadTraffic = (): void => {
-    for (let k = 0, cap = inh.jeeps ?? 0; k < cap; k++) {
+    for (let k = 0, cap = richCount(inh.jeeps); k < cap; k++) {
       const spot = findRoadsideSpot(roadsideContext, 4.8, 7.5);
       if (!spot) continue;
       const y = heightField.getHeightAt(spot[0], spot[1]);
@@ -4104,7 +4116,7 @@ ${snowCap ? `
     placeLightRoadTraffic();
     // fuel-drum clusters (2-4 drums; ~12% carry one RED explosive drum)
     const placeFuelDrumClusters = (): void => {
-    for (let k = 0, cap = inh.drumClusters ?? 0; k < cap; k++) {
+    for (let k = 0, cap = richCount(inh.drumClusters); k < cap; k++) {
       const spot = findRoadsideSpot(roadsideContext, 5.0, 12);
       if (!spot) continue;
       const n = 2 + ((vrng() * 3) | 0);
@@ -4133,7 +4145,7 @@ ${snowCap ? `
       || mapId === 'copper_mesa' || mapId === 'airfield' || mapId === 'whiteout';
     const isDry = mapId === 'desert' || mapId === 'badlands' || mapId === 'frontier' || mapId === 'oasis';
     const looseKinds = isIndustrial ? industrialLoose : isDry ? dryLoose : ruralLoose;
-    const looseCap = inh.looseClutter ?? (P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
+    const looseCap = richCount(inh.looseClutter, P.streetRows ? 20 : P.plan.length >= 14 ? 18 : 14);
     const loosePlacement = { authoredSites: looseCap, acceptedSites: 0, placedMembers: 0, kinds: [] as string[] };
     const placedLooseKinds = new Set<string>();
     const placeLooseRoadsideClutter = (): void => {
@@ -4207,7 +4219,7 @@ ${snowCap ? `
       addDestructible(pickCivilianVehicleKind(mapId, lane, vrng()), x,
         heightField.getHeightAt(x, z) - 0.04, z, vrng() * Math.PI * 2, 0.95);
     };
-    for (let k = 0, cap = inh.camps ?? 0; k < cap; k++) {
+    for (let k = 0, cap = richCount(inh.camps); k < cap; k++) {
       const spot = findRoadsideSpot(roadsideContext, 10, 26, 60);
       if (!spot) continue;
       const [cx, cz] = spot;
@@ -5186,7 +5198,9 @@ ${snowCap ? `
       }
       return true;
     };
-    for (let i = 0, placed = 0; i < P.hedgehogs * 20 && placed < P.hedgehogs; i++) {
+    // 2026-09-14 campaign flavour: desktop tiers field more anti-tank obstacles (authored x1.35).
+    const hedgehogCap = richCount(P.hedgehogs);
+    for (let i = 0, placed = 0; i < hedgehogCap * 20 && placed < hedgehogCap; i++) {
       if (placeHedgehog(placed)) placed++;
     }
   }
@@ -5226,7 +5240,7 @@ ${snowCap ? `
       pick < 0.45 ? 'sandbagbig' : pick < 0.8 ? 'sandbagsmall' : 'sandbagwall'
     );
     let placedS = 0;
-    const sandbagCap = P.sandbagLines ?? 9;
+    const sandbagCap = richCount(P.sandbagLines, 9); // 2026-09-14 campaign flavour: more nests on desktop
     const roadA = L.roads[0];
     const placeSandbagAtRoadNode = (nodeIndex: number): boolean => {
       const at = authoredRoadStationIndex(L, 0, nodeIndex);
@@ -6025,7 +6039,9 @@ ${snowCap ? `
     function placeBattleScars(corridors: DriveCorridor[]): void {
       const craterDiscs: THREE.BufferGeometry[] = [];
       const burnDiscs: THREE.BufferGeometry[] = [];
-      for (let i = 0, placed = 0; i < P.craters * 14 && placed < P.craters; i++) {
+      // 2026-09-14 campaign flavour: desktop tiers carry 35 % more shell craters and burn scars.
+      const craterCap = richCount(P.craters);
+      for (let i = 0, placed = 0; i < craterCap * 14 && placed < craterCap; i++) {
         if (tryPlaceBattleScar(corridors, craterDiscs, burnDiscs)) placed++;
       }
       for (const [wx, wz] of wreckScorch) {
@@ -6045,7 +6061,7 @@ ${snowCap ? `
     function placeTrackTears(corridors: DriveCorridor[]): void {
       const trng = mulberry32(seed + 5115);
       const tearGeos: THREE.BufferGeometry[] = [];
-      const nTears = P.streetRows ? 10 : 16;
+      const nTears = richCount(P.streetRows ? 10 : 16); // 2026-09-14 campaign flavour: more tread-torn approaches on desktop
       for (let i = 0, placed = 0; i < nTears * 10 && placed < nTears; i++) {
         const co = corridors[(trng() * corridors.length) | 0];
         const t = 0.18 + trng() * 0.66;

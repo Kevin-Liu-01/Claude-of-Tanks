@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getDeviceTier } from '../engine/quality.ts';
 
 // environment density pass (2026-09-12): the ground litter tier. The maps read
 // bare because nothing smaller than a bush ever sat on the ground — the pebble
@@ -76,7 +77,11 @@ export interface GroundLitter {
 export const GROUND_LITTER = Object.freeze({
   cellM: 16,
   ring: 2,
-  candidatesPerCell: 150,
+  // 2026-09-14 environment richness: desktop tiers seed 40 % more litter candidates per cell
+  // (150 -> 210); the mobile tier keeps 150. The pool is sized for the desktop count; the tier
+  // is read per cell build because it resolves after module evaluation.
+  candidatesPerCell: 210,
+  mobileCandidatesPerCell: 150,
   cacheCells: 121,
   fadeInM: 24,
   fadeOutM: 32, // == cellM * ring: the ring always covers the fade, wherever the camera sits in its cell
@@ -251,7 +256,8 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   function buildCell(ix: number, iz: number): [Float32Array, Float32Array, Float32Array] {
     const rng = mulberry32(cellSeed(seed, ix, iz));
     for (const list of scratch) list.length = 0;
-    const candidates = Math.round(GROUND_LITTER.candidatesPerCell * Math.min(cfg.density, 2));
+    const perCell = getDeviceTier() === 'mobile' ? GROUND_LITTER.mobileCandidatesPerCell : GROUND_LITTER.candidatesPerCell;
+    const candidates = Math.round(perCell * Math.min(cfg.density, 2));
     const mixTotal = cfg.stones + cfg.clods + cfg.splinters;
     for (let i = 0; i < candidates; i++) {
       const x = (ix + rng()) * GROUND_LITTER.cellM;

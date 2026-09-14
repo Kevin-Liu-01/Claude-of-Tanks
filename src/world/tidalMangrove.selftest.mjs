@@ -582,10 +582,10 @@ for (const seed of [1337, 2025, 7719]) {
   // 2026-09-13: the rim forest / saddle tree spawn clearance returned to 20 m (was 36 m
   // since ef689c9fb), so the spawn-side stands admit 143 more trees before road clearance;
   // repinned from the current build (4649 -> 4792).
-  assert.equal(after.preRoad.trees, 4792, 'original admission before road clearance');
+  assert.equal(after.preRoad.trees, 5092, 'original admission before road clearance'); // 2026-09-14: desktop treeRichness 1.1, was 4792
   assert.equal(after.trees.length, after.preRoad.trees - after.group.userData.roadPlacementClearance.rejectedTrees);
   assert.equal(after.treeObstacles.length, before.treeObstacles.length);
-  assert.equal(after.preRoad.obstacles, 4520, 'original obstacle admission before road clearance'); // 2026-09-13: 20 m rim clearance, was 4364
+  assert.equal(after.preRoad.obstacles, 4734, 'original obstacle admission before road clearance'); // 2026-09-14: desktop treeRichness 1.1 (was 4520; 2026-09-13 rim clearance, was 4364)
   assert.equal(after.concealers.length, before.concealers.length);
   assert.deepEqual(after.rng, before.rng, 'actual entire production RNG call counts and tails unchanged');
   // 2026-09-12: ordinary trunks carry the fluted collar (fifteen sides, four
@@ -608,7 +608,7 @@ for (const seed of [1337, 2025, 7719]) {
   const receipts = after.group.userData.tidalMangroves;
   assert.equal(receipts.reduce((n, r) => n + r.accepted, 0), 128, 'all 128 explicitly authored tidal sites must actually place');
   assert.equal(createHash('sha256').update(JSON.stringify(after.preRoad.donorIndices)).digest('hex'),
-    'bf92040dbd968a0b49401e37bdf8a07826f7dd06aba60dd86bf9b7c58b2b8c94',
+    '41c55a019f34d8db37a4cf356562d0503dc28cdc42242ba5efc8b361bf29603e', // 2026-09-14: desktop treeRichness 1.1 + authored-station squatter displacement change the dry-tree population (was bf92040d…)
     'reuse the exact V31 donor identities/order; thicket composition does not take another set of dry trees');
   for (const r of receipts) { assert.equal(r.unsafe, 0); assert.equal(r.noDonor, 0); }
   checkTrees(before, after, field);
