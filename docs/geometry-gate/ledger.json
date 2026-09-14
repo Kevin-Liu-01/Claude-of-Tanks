@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-13T18:34:47.339Z",
+ "generatedAt": "2026-09-14T01:27:57.258Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 65,
  "total": 163,
@@ -256,15 +256,18 @@
   {
    "id": "m3a3_bradley",
    "geoMin": 0,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
    "gatePassed": false,
    "components": {
     "hullCurves": 0,
     "stations": 0,
     "turretCurves": 0,
     "wholeCurves": 0,
-    "dims": 100,
+    "dims": 58.6,
     "floaters": 100
-   }
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "strv81",
@@ -691,19 +694,6 @@
    }
   },
   {
-   "id": "m2a2_bradley",
-   "geoMin": 49.1,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 63,
-    "stations": 54.9,
-    "turretCurves": 55.3,
-    "wholeCurves": 49.1,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "k1a1",
    "geoMin": 49.7,
    "gatePassed": false,
@@ -766,6 +756,22 @@
     "stations": 53.2,
     "wholeCurves": 63.3,
     "dims": 94.2,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "m2a2_bradley",
+   "geoMin": 53.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 66.5,
+    "stations": 64.9,
+    "turretCurves": 55.8,
+    "wholeCurves": 53.4,
+    "dims": 55.2,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -953,16 +959,6 @@
    }
   },
   {
-   "id": "marder1a3",
-   "geoMin": 81.9,
-   "gatePassed": false,
-   "components": {
-    "wholeCurves": 81.9,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "strv103",
    "geoMin": 82.2,
    "requiredMinimum": 90,
@@ -987,6 +983,19 @@
     "dims": 98.9,
     "floaters": 100
    }
+  },
+  {
+   "id": "marder1a3",
+   "geoMin": 82.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 82.4,
+    "dims": 90.7,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "bmp2",
