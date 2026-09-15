@@ -29,7 +29,7 @@ export interface BallisticShellSpec {
   tracer?: RuntimeValue;
 }
 
-export interface PenetrationSpec {
+interface PenetrationSpec {
   pen100Mm: number;
   pen1000Mm: number;
   pen2000Mm?: number;

@@ -9,12 +9,12 @@ export const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
   'verdant', 'desert', 'winter', 'foundry',
 ] as const);
 
-export interface MapPreview {
+interface MapPreview {
   readonly id: string;
   readonly thumb?: string;
 }
 
-export interface RandomMapMosaicOptions {
+interface RandomMapMosaicOptions {
   readonly showCount?: boolean;
 }
 

@@ -6,7 +6,7 @@ export type PrivateRoomFailureCode =
   | 'rtc_connect_timeout' | 'rtc_recovery_exhausted'
   | 'signaling_unavailable' | 'connection_failed';
 
-export interface PrivateRoomFailure {
+interface PrivateRoomFailure {
   readonly code: PrivateRoomFailureCode;
   /** Explicit user retry is permitted; this never authorizes an automatic retry. */
   readonly canRetry: boolean;

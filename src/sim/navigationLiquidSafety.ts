@@ -1,14 +1,14 @@
 import { tankContactRect } from './tankContactShape.ts';
 import type { TerrainMobilitySpec } from './terrainMobility.ts';
 
-export interface NavigationLiquidField {
+interface NavigationLiquidField {
   readonly navigationWaterPolicy?: 'avoid-liquid';
   getWaterMaskAt?(x: number, z: number): number;
 }
 
 type ContactShapeSpec = Parameters<typeof tankContactRect>[0];
-export type NavigationLiquidSpec = TerrainMobilitySpec & Partial<ContactShapeSpec>;
-export type NavigationLiquidSafety = (
+type NavigationLiquidSpec = TerrainMobilitySpec & Partial<ContactShapeSpec>;
+type NavigationLiquidSafety = (
   x: number, z: number, yaw: number, travel?: number,
 ) => boolean;
 

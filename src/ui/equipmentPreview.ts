@@ -16,7 +16,7 @@ import {
 } from '../sim/spotting.ts';
 import { t } from './i18n.ts';
 
-export interface EquipmentPreviewSpec {
+interface EquipmentPreviewSpec {
   id: string;
   name: string;
   era?: string | null;
@@ -34,9 +34,9 @@ export interface EquipmentPreviewSpec {
   };
 }
 
-export type EquipmentPreviewOutcome = 'improved' | 'degraded' | 'unchanged';
+type EquipmentPreviewOutcome = 'improved' | 'degraded' | 'unchanged';
 
-export interface EquipmentPreviewMetric {
+interface EquipmentPreviewMetric {
   id: string;
   label: string;
   /** i18n key for `label`; use t(metric.labelKey) at render time. */
@@ -48,7 +48,7 @@ export interface EquipmentPreviewMetric {
   outcome: EquipmentPreviewOutcome;
 }
 
-export interface EquipmentHoverPreview {
+interface EquipmentHoverPreview {
   currentLoadout: string[];
   projectedLoadout: string[];
   summary: string;

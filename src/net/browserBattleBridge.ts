@@ -271,7 +271,7 @@ type PrepareVisualTextures = (
   camo: string,
 ) => Promise<RuntimeValue>;
 
-export interface BrowserBattleBridgeOptions<
+interface BrowserBattleBridgeOptions<
   TLegacyEntity = RuntimeValue,
   TLegacyShell = RuntimeValue,
   TLegacySpotting = RuntimeValue,

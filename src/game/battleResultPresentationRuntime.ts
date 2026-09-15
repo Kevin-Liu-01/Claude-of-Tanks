@@ -26,7 +26,7 @@ interface ResultCameraRig {
   startDeathCam?(): void;
 }
 
-export interface BattleResultFlowReceipt {
+interface BattleResultFlowReceipt {
   played: boolean;
   result: BattleResult;
   timeS: number;
@@ -34,7 +34,7 @@ export interface BattleResultFlowReceipt {
   kcBeginWallMs: number | null;
 }
 
-export interface BattleResultPresentationOptions {
+interface BattleResultPresentationOptions {
   game: ResultGame;
   killcam: ResultKillcam;
   rig: ResultCameraRig;
@@ -47,13 +47,13 @@ export interface BattleResultPresentationOptions {
   deathBeatMs?: number;
 }
 
-export interface BattleResultPresentationSnapshot {
+interface BattleResultPresentationSnapshot {
   endShown: boolean;
   deathCamShown: boolean;
   pendingDeadlineMs: number | null;
 }
 
-export interface BattleResultPresentationRuntime {
+interface BattleResultPresentationRuntime {
   update(): void;
   reset(): void;
   clearPending(): void;

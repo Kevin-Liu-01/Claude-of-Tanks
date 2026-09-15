@@ -11,7 +11,7 @@
 // are accumulated in the exact same order as the original, so every result
 // is the same IEEE-754 double the three.js class returns.
 
-export interface SimplexRandomSource {
+interface SimplexRandomSource {
   random(): number;
 }
 

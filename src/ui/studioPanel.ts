@@ -47,7 +47,7 @@ type StudioInfoId = StudioGroupInfoId | StudioSectionInfoId;
 
 type StudioActorState = string;
 
-export interface StudioPoint {
+interface StudioPoint {
   x: number;
   y: number;
   z: number;
@@ -75,7 +75,7 @@ export interface StudioActor {
   readonly camo?: string | null;
 }
 
-export interface StudioEffect {
+interface StudioEffect {
   readonly id: string;
   readonly type: string;
   readonly tMs: number;
@@ -86,7 +86,7 @@ export interface StudioEffect {
   readonly at?: readonly number[];
 }
 
-export interface StudioCameraShot {
+interface StudioCameraShot {
   readonly id: string;
   readonly label: string;
   readonly tMs: number;
@@ -94,7 +94,7 @@ export interface StudioCameraShot {
   readonly transition: string;
 }
 
-export interface StudioStoryboard {
+interface StudioStoryboard {
   readonly shots: readonly StudioCameraShot[];
   readonly actorTracks: ReadonlyArray<{
     readonly actor: string;
@@ -102,7 +102,7 @@ export interface StudioStoryboard {
   }>;
 }
 
-export interface StudioCameraState {
+interface StudioCameraState {
   readonly mode: 'fly' | 'orbit' | string;
   readonly pos: readonly number[];
   readonly lookAt: readonly number[];
@@ -112,7 +112,7 @@ export interface StudioCameraState {
   readonly rollDeg: number;
 }
 
-export interface StudioSpecInfo {
+interface StudioSpecInfo {
   readonly id: string;
   readonly name: string;
   readonly era?: string;
@@ -120,7 +120,7 @@ export interface StudioSpecInfo {
   readonly rosterTag?: string;
 }
 
-export interface StudioRecordingStatus {
+interface StudioRecordingStatus {
   readonly active: boolean;
   readonly supported: boolean;
   readonly elapsedMs: number;
@@ -128,7 +128,7 @@ export interface StudioRecordingStatus {
   readonly mimeType?: string | null;
 }
 
-export interface StudioEffectRecipe {
+interface StudioEffectRecipe {
   readonly type: string;
   readonly actor?: string;
   readonly from?: readonly number[];
@@ -224,7 +224,7 @@ function errorMessage(error: RuntimeValue): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export interface StudioPanelRuntime {
+interface StudioPanelRuntime {
   readonly root: HTMLDivElement;
   show(): void;
   hide(): void;

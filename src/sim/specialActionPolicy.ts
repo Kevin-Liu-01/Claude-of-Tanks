@@ -8,7 +8,7 @@ export const SPECIAL_ACTION_KINDS = Object.freeze({
 
 export type SpecialActionKind = typeof SPECIAL_ACTION_KINDS[keyof typeof SPECIAL_ACTION_KINDS];
 
-export interface SpecialActionDescriptor {
+interface SpecialActionDescriptor {
   kind: SpecialActionKind;
   label: string;
   shortLabel: string;

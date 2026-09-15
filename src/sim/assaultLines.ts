@@ -8,9 +8,9 @@
 
 export const ASSAULT_LINE_FRACTIONS = [0.25, 0.55, 0.85] as const;
 
-export interface AssaultPoint { x: number; z: number }
+interface AssaultPoint { x: number; z: number }
 
-export interface AssaultTrenchLine {
+interface AssaultTrenchLine {
   /** Line centre on the alpha→bravo axis. */
   x: number;
   z: number;

@@ -40,14 +40,14 @@ type Vec2 = [number, number];
 type Vec3 = readonly [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
 
-export interface DamagePanelModuleVolume {
+interface DamagePanelModuleVolume {
   module: string;
   min: Vec3;
   max: Vec3;
   turretLocal?: boolean;
 }
 
-export interface DamagePanelCrewVolume {
+interface DamagePanelCrewVolume {
   crew: string;
   min: Vec3;
   max: Vec3;
@@ -110,7 +110,7 @@ interface MaskTints {
   turretBody: Record<string, HTMLCanvasElement>;
 }
 
-export interface ModuleAnchor {
+interface ModuleAnchor {
   kind: 'module';
   name: string;
   x: number;
@@ -120,7 +120,7 @@ export interface ModuleAnchor {
   turretLocal: boolean;
 }
 
-export interface CrewAnchor {
+interface CrewAnchor {
   kind: 'crew';
   name: string;
   x: number;
@@ -130,16 +130,16 @@ export interface CrewAnchor {
   turretLocal: boolean;
 }
 
-export type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
+type DamagePanelAnatomyAnchor = ModuleAnchor | CrewAnchor;
 
-export interface DamagePanelScreenAnchorInput {
+interface DamagePanelScreenAnchorInput {
   kind: 'module' | 'crew';
   name: string;
   sourcePx: number;
   sourcePy: number;
 }
 
-export interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
+interface DamagePanelScreenAnchor extends DamagePanelScreenAnchorInput {
   x: number;
   y: number;
 }
@@ -356,7 +356,7 @@ MODULE_ICON.gunMount = MODULE_ICON.turretRing;
 
 export const DAMAGE_PANEL_MODULE_ICON_IDS = Object.freeze(Object.keys(MODULE_ICON));
 
-export type DamagePanelModuleKind = 'weapon' | 'movement';
+type DamagePanelModuleKind = 'weapon' | 'movement';
 
 // The compact HUD needs only two mechanical silhouettes. Powertrain/fuel
 // systems use a broad hexagon; every fighting-system component uses a diamond.

@@ -14,7 +14,7 @@ interface WindowCandidate {
   score: number;
 }
 
-export interface NightWindowInspection {
+interface NightWindowInspection {
   kind: ApertureKind;
   ownerUuid: string;
   materialUuid: string;

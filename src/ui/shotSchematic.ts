@@ -1,6 +1,6 @@
 // Shared exact schematic arithmetic. Workers drain it; the DOM fallback yields
 // between bounded checkpoints. No fleet, DOM construction or renderer imports.
-export type SchematicCanvas = HTMLCanvasElement | OffscreenCanvas;
+type SchematicCanvas = HTMLCanvasElement | OffscreenCanvas;
 export interface SchematicRequest { url: string; width: number; height: number }
 type SchematicContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 const PIXEL_BATCH_BYTES = 4096 * 4;

@@ -31,11 +31,11 @@
 
 import { isPostwarVehicleEra } from '../vehicles/taxonomy.ts';
 
-export type EquipmentEra = 'all' | 'modern';
-export type EquipmentCategoryId = 'all' | 'fire' | 'recon' | 'mobility' | 'survival';
-export type EquipmentModuleId = 'trackL' | 'trackR' | 'ammoRack' | 'fuelTank';
+type EquipmentEra = 'all' | 'modern';
+type EquipmentCategoryId = 'all' | 'fire' | 'recon' | 'mobility' | 'survival';
+type EquipmentModuleId = 'trackL' | 'trackR' | 'ammoRack' | 'fuelTank';
 
-export interface EquipmentEffects {
+interface EquipmentEffects {
   reload?: number;
   aimTime?: number;
   bloom?: number;
@@ -61,7 +61,7 @@ export interface EquipmentItem {
   spot?: boolean;
 }
 
-export interface EquipmentCategory {
+interface EquipmentCategory {
   id: EquipmentCategoryId;
   label: string;
 }
@@ -74,7 +74,7 @@ export interface EquipmentSpecLike {
   };
 }
 
-export interface EquipmentStatsSpec extends EquipmentSpecLike {
+interface EquipmentStatsSpec extends EquipmentSpecLike {
   gun: {
     autoloader?: object;
     reloadS: number;
@@ -83,7 +83,7 @@ export interface EquipmentStatsSpec extends EquipmentSpecLike {
   hullTraverseDegS: number;
 }
 
-export interface EquipmentMultipliers {
+interface EquipmentMultipliers {
   reload: number;
   aimTime: number;
   bloom: number;
@@ -109,12 +109,12 @@ export interface EquipmentCombatState {
   }>>;
 }
 
-export interface ModifiedEquipmentStat {
+interface ModifiedEquipmentStat {
   base: number;
   mod: number;
 }
 
-export interface EquipmentModifiedStats {
+interface EquipmentModifiedStats {
   reloadS: ModifiedEquipmentStat;
   aimTimeS: ModifiedEquipmentStat;
   traverseDegS: ModifiedEquipmentStat;

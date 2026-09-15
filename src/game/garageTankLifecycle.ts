@@ -8,7 +8,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
  * showroom.
  *
  */
-export interface LifecycleVisual {
+interface LifecycleVisual {
   resetForGaragePresentation?(): void;
   resetDestroyed?(): void;
   setVisible?(visible: boolean): void;
@@ -49,7 +49,7 @@ interface LifecycleEntity<Visual extends LifecycleVisual = LifecycleVisual> {
   input?: LifecycleInput | null;
 }
 
-export interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
+interface BattleExitState<Visual extends LifecycleVisual = LifecycleVisual> {
   allTanks?: LifecycleEntity<Visual>[];
   tanks: RuntimeValue[];
   shells: RuntimeValue[];

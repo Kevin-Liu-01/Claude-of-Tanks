@@ -117,7 +117,7 @@ interface HudShellCard {
   count?: number;
 }
 
-export interface HudAimInput {
+interface HudAimInput {
   point?: THREE.Vector3 | null;
   distM?: number | null;
   dispersionRadM?: number | null;
@@ -161,7 +161,7 @@ interface HudAimView {
   dispRadM: number | null;
 }
 
-export interface HudTankVisual {
+interface HudTankVisual {
   turretTopWorld?(out: THREE.Vector3): void;
 }
 
@@ -236,7 +236,7 @@ interface MapBuilding {
   yaw?: number;
   rot?: number;
 }
-export interface HudMinimapFeatures {
+interface HudMinimapFeatures {
   roads?: Array<Array<readonly [number, number]>>;
   buildings?: MapBuilding[];
   tacticalBeats?: MapBuilding[];
@@ -244,7 +244,7 @@ export interface HudMinimapFeatures {
   waterOrSoft?: MapDisc[];
 }
 
-export interface HudMinimapPalette {
+interface HudMinimapPalette {
   base: readonly number[];
   hard: readonly number[];
   soft: readonly number[];

@@ -18,13 +18,13 @@ export interface ResourceLimits {
   readonly worldScenes: number;
 }
 
-export interface RetainedObject3DResources {
+interface RetainedObject3DResources {
   geometries?: Iterable<BufferGeometry>;
   materials?: Iterable<Material>;
   textures?: Iterable<Texture>;
 }
 
-export interface ResourceDisposalReceipt {
+interface ResourceDisposalReceipt {
   objects: number;
   geometries: number;
   materials: number;

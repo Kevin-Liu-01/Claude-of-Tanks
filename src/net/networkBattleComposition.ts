@@ -31,7 +31,7 @@ type PresentationLifecyclePorts = Pick<
   'setGarageLighting' | 'setWaitingForPeers' | 'runBlackWatchdog'
 >;
 
-export type NetworkBattleCompositionPresentationOptions = Omit<
+type NetworkBattleCompositionPresentationOptions = Omit<
   NetworkBattlePresentationOptions,
   'presentation' | 'load'
 > & {
@@ -39,7 +39,7 @@ export type NetworkBattleCompositionPresentationOptions = Omit<
   presentation: PresentationLifecyclePorts;
 };
 
-export interface NetworkBattleCompositionOptions {
+interface NetworkBattleCompositionOptions {
   round: Pick<NetworkRoundLifecycleOptions, 'game' | 'session'>;
   presentation: NetworkBattleCompositionPresentationOptions;
   launcher: Omit<
@@ -72,7 +72,7 @@ export interface NetworkBattleCompositionRuntime {
   readonly presentation: NetworkBattlePresentationAccess;
 }
 
-export interface NetworkBattleCompositionFactories {
+interface NetworkBattleCompositionFactories {
   createRound: typeof createNetworkRoundLifecycle;
   createPresentation: typeof createNetworkBattlePresentationAccess;
   createLauncher: typeof createNetworkBattleLaunchRuntime;

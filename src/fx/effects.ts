@@ -114,7 +114,7 @@ interface FxVisual {
   applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
 }
 
-export interface FxDecalVisual {
+interface FxDecalVisual {
   root: THREE.Object3D;
 }
 

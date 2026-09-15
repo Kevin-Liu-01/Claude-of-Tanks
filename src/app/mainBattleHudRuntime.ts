@@ -16,7 +16,7 @@ import {
 type HudBus = Parameters<typeof createBattleHudAccess>[0];
 type HudEngineContext = Parameters<typeof createBattleHudAccess>[1];
 
-export interface MainBattleHudRuntimeOptions {
+interface MainBattleHudRuntimeOptions {
   bus: HudBus;
   engineContext: HudEngineContext;
   perfMeterEnabled(): boolean;

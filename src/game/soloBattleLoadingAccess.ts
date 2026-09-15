@@ -10,7 +10,7 @@ type LoadingModule = Pick<
   'createSoloBattleLoadingRuntime'
 >;
 
-export interface SoloBattleLoadingAccess extends SoloBattleLoadingRuntime {
+interface SoloBattleLoadingAccess extends SoloBattleLoadingRuntime {
   preload(): Promise<SoloBattleLoadingRuntime>;
   readonly current: SoloBattleLoadingRuntime | null;
 }

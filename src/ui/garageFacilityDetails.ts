@@ -12,7 +12,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 
-export interface GarageFacilityDetailStats {
+interface GarageFacilityDetailStats {
   readonly facilityProps: number;
   readonly facilityStations: number;
   readonly looseParts: number;
@@ -32,7 +32,7 @@ export interface GarageFacilityDetailStats {
   readonly openingSightlineIntrusions: number;
 }
 
-export interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
+interface GarageFacilityDetailBuild extends GarageFacilityDetailStats {
   readonly meshes: readonly THREE.InstancedMesh[];
   readonly materials: readonly THREE.MeshStandardMaterial[];
 }
@@ -50,7 +50,7 @@ interface FacilityBuildOptions {
   readonly variant: GarageVariant;
 }
 
-export interface GarageFacilityTerrace {
+interface GarageFacilityTerrace {
   readonly label: string;
   readonly side: number;
   readonly depth: number;

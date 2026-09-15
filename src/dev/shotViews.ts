@@ -28,7 +28,7 @@ interface ForcedHudFrame {
   shells?: readonly RuntimeValue[];
 }
 
-export interface ShotTankSpec extends DamageTankSpec {
+interface ShotTankSpec extends DamageTankSpec {
   name: string;
   hydropneumaticAim?: RuntimeValue;
   dims: { heightM: number; widthM: number };
@@ -62,7 +62,7 @@ export interface ShotEntity {
   visual: ShotVisual;
 }
 
-export interface RequiredShotTankRegistry {
+interface RequiredShotTankRegistry {
   /** Engineering shots stage these guaranteed members before recipes run. */
   get(specId: string): ShotEntity;
 }

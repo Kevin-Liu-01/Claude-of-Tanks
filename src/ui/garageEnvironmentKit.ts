@@ -43,7 +43,7 @@ interface GarageEnvironmentEngineContext {
   setupShadowMaterial?(material: THREE.Material): void;
 }
 
-export interface GarageEnvironmentStats {
+interface GarageEnvironmentStats {
   readonly distinctiveElements: readonly string[];
   readonly drawCalls: number;
   readonly enclosingSurfaces: number;

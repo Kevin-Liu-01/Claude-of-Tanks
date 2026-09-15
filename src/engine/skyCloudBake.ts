@@ -28,7 +28,7 @@ export interface CumulusBakeConfig {
   maxAlpha: number;
 }
 
-export interface CirrusBakeConfig {
+interface CirrusBakeConfig {
   seed: number;
 }
 

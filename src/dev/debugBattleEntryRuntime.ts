@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface DebugBattleEntryOptions {
+interface DebugBattleEntryOptions {
   getPendingMapId(): string;
   resolveMapId(mapId: string): string;
   ensureFullFleet(): Promise<RuntimeValue>;

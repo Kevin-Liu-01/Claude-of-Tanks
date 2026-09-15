@@ -7,7 +7,7 @@ type PrivateMatchHandoffModule = typeof import('../net/privateMatchHandoff.ts');
 type DedicatedClientModule = typeof import('../net/dedicatedClient.ts');
 type RoomChatModule = typeof import('../ui/roomChat.ts');
 
-export type NetworkBattleModules = [
+type NetworkBattleModules = [
   BrowserBattleBridgeModule,
   NetworkStatusModule,
   BrowserInputRuntimeModule,
@@ -21,7 +21,7 @@ interface BattleModuleLoaders {
   roomChat(): Promise<RoomChatModule>;
 }
 
-export interface BattleModuleAccess {
+interface BattleModuleAccess {
   loadPlayMenuModule(): Promise<PlayMenuModule>;
   preloadNetworkBattleModules(): Promise<NetworkBattleModules>;
   preloadPrivateMatchHandoffModule(): Promise<PrivateMatchHandoffModule>;

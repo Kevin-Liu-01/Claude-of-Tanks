@@ -14,7 +14,7 @@ const CAMPAIGN_VERSION = 2;
 /** Second star: the line is held inside this share of the sortie clock. */
 export const CAMPAIGN_PAR_SHARE = 0.55;
 
-export type CampaignResult = 'victory' | 'draw' | 'defeat';
+type CampaignResult = 'victory' | 'draw' | 'defeat';
 
 export interface FrontlineMapProgress {
   attempts: number;
@@ -35,7 +35,7 @@ export interface CampaignRecord {
   frontline: Record<string, FrontlineMapProgress>;
 }
 
-export interface FrontlineOutcomeInput {
+interface FrontlineOutcomeInput {
   mapId?: RuntimeValue;
   result?: RuntimeValue;
   reason?: RuntimeValue;
@@ -48,7 +48,7 @@ export interface FrontlineOutcomeInput {
   alliesLost?: RuntimeValue;
 }
 
-export interface CampaignStorage {
+interface CampaignStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
@@ -169,7 +169,7 @@ export function recordFrontlineOutcome(
   return record;
 }
 
-export interface FrontlineSummary {
+interface FrontlineSummary {
   attempts: number;
   bestLine: number;
   total: number;

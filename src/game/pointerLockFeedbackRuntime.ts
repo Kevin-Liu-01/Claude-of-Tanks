@@ -14,7 +14,7 @@ interface TouchControlsLike {
   refresh?(): void;
 }
 
-export interface PointerLockFeedbackRuntimeOptions {
+interface PointerLockFeedbackRuntimeOptions {
   input: PointerLockInput;
   bus: EventBus;
   canvas: HTMLElement;
@@ -25,7 +25,7 @@ export interface PointerLockFeedbackRuntimeOptions {
   nextFrame(): Promise<RuntimeValue>;
 }
 
-export interface PointerLockFeedbackRuntime {
+interface PointerLockFeedbackRuntime {
   dispose(): void;
 }
 

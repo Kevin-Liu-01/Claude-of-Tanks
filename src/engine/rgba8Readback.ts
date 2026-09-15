@@ -4,7 +4,7 @@ type ReadbackTimings = Partial<Record<Rgba8ReadbackStage, number>>;
 type ReadbackMeasure = <Result>(stage: Rgba8ReadbackStage, run: () => Result) => Result;
 
 /** Timing injection is for deterministic tests; delay must settle after its task. */
-export interface Rgba8ReadbackOptions {
+interface Rgba8ReadbackOptions {
   now?: () => number;
   delay?: (milliseconds: number) => Promise<void>;
   /** May shorten the default 5000 ms ownership limit, but never extend it. */

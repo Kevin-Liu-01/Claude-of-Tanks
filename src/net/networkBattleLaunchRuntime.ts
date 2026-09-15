@@ -71,7 +71,7 @@ interface MapPresentation {
   biome: string;
 }
 
-export interface NetworkEntryFailure {
+interface NetworkEntryFailure {
   message: string;
   role?: string;
   clientConnected: boolean;
@@ -123,7 +123,7 @@ export interface PrivateBattleLaunchRequest {
   battleLimitS?: number;
 }
 
-export interface RankedBattleLaunchRequest {
+interface RankedBattleLaunchRequest {
   serviceUrl?: string;
   state?: RankedQueueState;
 }

@@ -30,7 +30,7 @@ interface InitialSnapshotRequest {
   spectator?: boolean;
 }
 
-export interface NetworkBattleBarrier {
+interface NetworkBattleBarrier {
   waitForInitialSnapshot(request: InitialSnapshotRequest): Promise<NetworkSnapshot>;
   waitForPeerReadiness(): Promise<NetworkSnapshot>;
   cancel(): void;

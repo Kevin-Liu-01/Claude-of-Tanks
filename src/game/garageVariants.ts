@@ -48,7 +48,7 @@ export function getGarageVariant(id: string | null | undefined): GarageVariant {
 
 import { t } from '../ui/i18n.ts';
 
-export interface LocalizedGarageVariant {
+interface LocalizedGarageVariant {
   readonly id: string;
   readonly name: string;
   readonly location: string;

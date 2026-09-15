@@ -6,8 +6,8 @@
 export const BATTLE_WEATHER_VERSION = 2;
 
 export type BattleWeatherBiome = 'temperate' | 'arid' | 'tropical' | 'cold' | 'coastal';
-export type BattleWeatherCondition = 'clear';
-export type BattleTimeOfDay = 'day' | 'night';
+type BattleWeatherCondition = 'clear';
+type BattleTimeOfDay = 'day' | 'night';
 
 export interface BattleWeather {
   readonly version: typeof BATTLE_WEATHER_VERSION;

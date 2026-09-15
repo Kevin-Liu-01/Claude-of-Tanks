@@ -10,7 +10,7 @@ import { matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
 
 export type RandomSource = () => number;
 export type EventListener = (payload: RuntimeValue) => void;
-export type EventRecorder = (event: string, payload: RuntimeValue) => void;
+type EventRecorder = (event: string, payload: RuntimeValue) => void;
 
 export interface EventBus {
   on(event: string, listener: EventListener): () => void;

@@ -10,14 +10,14 @@ interface EndOverlayBus {
   emit(event: string, payload: Record<string, RuntimeValue>): void;
 }
 
-export interface EndOverlayRuntime {
+interface EndOverlayRuntime {
   readonly root: HTMLDivElement;
   readonly returnButton: HTMLButtonElement;
   show(result: BattleResult): void;
   hide(): void;
 }
 
-export interface EndOverlayOptions {
+interface EndOverlayOptions {
   bus: EndOverlayBus;
   onReturnToGarage(): void;
   getRecord?: () => BattleRecord | null;

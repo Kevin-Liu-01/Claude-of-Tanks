@@ -71,7 +71,7 @@ export interface PlayerFrameSample {
   player: PlayerEntity | null;
 }
 
-export interface PlayerFrameInputOptions {
+interface PlayerFrameInputOptions {
   input: FrameInputPort;
   hasAmmo(slot: number): boolean;
   forceFire(): boolean;

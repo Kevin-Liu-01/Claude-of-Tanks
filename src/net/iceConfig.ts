@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { RtcIceLeaseConfiguration } from './rtcIceLease.ts';
 
-export type IceServerConfig = RTCIceServer;
+type IceServerConfig = RTCIceServer;
 
 export interface IceConfiguration extends RtcIceLeaseConfiguration {
   relayAvailable: boolean;

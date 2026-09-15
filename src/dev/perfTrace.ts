@@ -40,7 +40,7 @@ interface TraceRefs {
   [key: string]: RuntimeValue;
 }
 
-export interface DevTraceOptions {
+interface DevTraceOptions {
   enabled?: boolean;
   now?: () => number;
   eventCapacity?: number;

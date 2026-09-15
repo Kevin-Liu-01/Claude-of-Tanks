@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { normalizeRoomCode } from './protocol.ts';
 import { normalizePlayerName } from './playerNames.ts';
 
-export type RoomInviteMode = 'private' | 'lan';
+type RoomInviteMode = 'private' | 'lan';
 
 export interface RoomInvite {
   roomCode: string;
@@ -17,7 +17,7 @@ export interface RoomInvite {
   hostName: string | null;
 }
 
-export interface CreateRoomInviteOptions {
+interface CreateRoomInviteOptions {
   roomCode?: RuntimeValue;
   mode?: RuntimeValue;
   hostName?: RuntimeValue;

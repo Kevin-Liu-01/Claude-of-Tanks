@@ -1,8 +1,8 @@
 import { isMapId, type MapId } from '../world/maps/catalog.ts';
 
-export type AmbientBiome = 'field' | 'forest' | 'coastal' | 'wetland'
+type AmbientBiome = 'field' | 'forest' | 'coastal' | 'wetland'
   | 'desert' | 'alpine' | 'polar' | 'industrial';
-export type AmbientCueKind = 'bird' | 'gull' | 'insect' | 'metal' | 'none';
+type AmbientCueKind = 'bird' | 'gull' | 'insect' | 'metal' | 'none';
 
 export interface AmbientProfile {
   readonly biome: AmbientBiome;

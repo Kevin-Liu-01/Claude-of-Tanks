@@ -18,7 +18,7 @@ const VALUE_COUNT = SCALARS.length + SPRING.length + ROCK.length * 2 +
 const MAX_ABS_VALUE = 1_000_000;
 const MAX_FLAGS = 1023;
 
-export interface MovementPredictionState {
+interface MovementPredictionState {
   version: 1;
   values: number[];
   flags: number;

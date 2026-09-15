@@ -107,7 +107,7 @@ interface TopMaskLoadInterval {
   endTime?: number;
 }
 
-export interface TopMaskLoadTrace {
+interface TopMaskLoadTrace {
   status: 'pending' | 'complete' | 'failed';
   startedAt: number;
   endedAt?: number;

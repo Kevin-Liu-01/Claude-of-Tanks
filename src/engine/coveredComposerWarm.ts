@@ -1,13 +1,13 @@
 import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 
-export type CoveredComposerOperation = 'render' | 'copyTextureToTexture' | 'setRenderTarget'
+type CoveredComposerOperation = 'render' | 'copyTextureToTexture' | 'setRenderTarget'
   | 'clear' | 'getUniformLocation' | 'getProgramParameter' | 'getLinkStatus' | 'getActiveUniform'
   | 'getParameter' | 'shaderDiagnostics';
-export interface CoveredComposerOperationTiming { count: number; totalMs: number; maxMs: number }
+interface CoveredComposerOperationTiming { count: number; totalMs: number; maxMs: number }
 type ProgramTypeCounts = Record<'depth' | 'distance' | 'standard' | 'basic' | 'shader' | 'raw' | 'other', number>;
 
-export interface CoveredComposerPassTiming {
+interface CoveredComposerPassTiming {
   index: number;
   label: string;
   renderMs: number;

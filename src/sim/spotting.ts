@@ -50,9 +50,9 @@ export interface SpottingVector3 {
   z: number;
 }
 
-export type SpottingModuleState = 'ok' | 'yellow' | 'red';
+type SpottingModuleState = 'ok' | 'yellow' | 'red';
 
-export interface SpottingTankSpec {
+interface SpottingTankSpec {
   id: string;
   role?: string;
   dims?: { heightM: number };
@@ -84,7 +84,7 @@ export interface SpottingRayHit {
   dist: number;
 }
 
-export interface SpottingDependencies {
+interface SpottingDependencies {
   getTanks: () => SpottingTank[];
   raycast?: (
     origin: SpottingVector3,
@@ -98,14 +98,14 @@ export interface SpottingDependencies {
   teams?: readonly string[];
 }
 
-export interface SpottingEvent {
+interface SpottingEvent {
   id: string;
   team: string;
   timeS: number;
   spotterId: string;
 }
 
-export interface ConcealmentSnapshot {
+interface ConcealmentSnapshot {
   camo: number;
   base: number;
   paint: number;

@@ -196,7 +196,7 @@ export interface KillcamEntity {
   modeActive?: boolean;
 }
 
-export interface KillcamShell {
+interface KillcamShell {
   id: number;
   dead?: boolean;
   pos: THREE.Vector3;

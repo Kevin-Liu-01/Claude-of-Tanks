@@ -27,7 +27,7 @@ interface BrowserInputPlayer {
   combat?: { destroyed?: boolean } | null;
 }
 
-export interface BrowserNetworkInputFrame extends NetworkInputSample {
+interface BrowserNetworkInputFrame extends NetworkInputSample {
   throttle: number;
   steer: number;
   brake: boolean;

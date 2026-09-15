@@ -1,4 +1,4 @@
-export interface LazyRuntimeOwner<Runtime> {
+interface LazyRuntimeOwner<Runtime> {
   preload(): Promise<Runtime>;
   readonly current: Runtime | null;
 }

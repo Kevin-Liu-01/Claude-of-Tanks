@@ -1,7 +1,7 @@
 import type { PlayerFrameInput, PlayerFrameSample } from './playerFrameInput.ts';
 import type { GameState } from './stateCore.ts';
 
-export interface BattlePauseInfo {
+interface BattlePauseInfo {
   paused: boolean;
   resumes: number;
   lastDtR: number;
@@ -43,7 +43,7 @@ interface BattleFramePresentationPort {
   updateResult(): void;
 }
 
-export interface BattleFrameRuntimeOptions {
+interface BattleFrameRuntimeOptions {
   game: GameState;
   settings: BattleFrameSettingsPort;
   killcam: BattleFrameKillcamPort;

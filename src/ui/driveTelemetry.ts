@@ -1,10 +1,10 @@
-export type DriveDirection = 'FWD' | 'REV' | 'HOLD';
+type DriveDirection = 'FWD' | 'REV' | 'HOLD';
 
-export interface DriveTelemetryState {
+interface DriveTelemetryState {
   readonly speed?: number;
 }
 
-export interface DriveTelemetrySpec {
+interface DriveTelemetrySpec {
   readonly topSpeedKmh?: number;
   readonly reverseSpeedKmh?: number;
 }

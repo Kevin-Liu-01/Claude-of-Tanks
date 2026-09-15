@@ -1,6 +1,6 @@
 import type { GarageVariant } from './garageVariants.ts';
 
-export type GarageWorkshopBayId =
+type GarageWorkshopBayId =
   | 'burlak_gantry'
   | 'abrams_welding'
   | 't90m_relikt'

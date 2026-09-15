@@ -1,13 +1,13 @@
 type MaybePromise<T> = T | PromiseLike<T>;
 
-export interface FxRuntimeAccessOptions<TModule, TRuntime extends object> {
+interface FxRuntimeAccessOptions<TModule, TRuntime extends object> {
   loadModule(): MaybePromise<TModule>;
   initialize(module: TModule): MaybePromise<TRuntime>;
   activate?(runtime: TRuntime): void;
   suspend?(runtime: TRuntime): void;
 }
 
-export interface FxRuntimeAccess<TModule, TRuntime extends object> {
+interface FxRuntimeAccess<TModule, TRuntime extends object> {
   readonly current: TRuntime | null;
   readonly active: boolean;
   preloadModule(): Promise<TModule>;

@@ -14,7 +14,7 @@
 import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
 import { MAP_HEROES } from './mapThumbs.ts';
 
-export interface FeaturedShot {
+interface FeaturedShot {
   readonly img: string;
   readonly bootImg?: string;
   readonly capKey: string;

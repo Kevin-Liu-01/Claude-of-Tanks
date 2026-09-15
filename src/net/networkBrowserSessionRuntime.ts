@@ -17,13 +17,13 @@ export type NetworkBrowserMatch = NetworkMatchLike & {
   close(reason?: string): RuntimeValue;
 };
 
-export interface NetworkBrowserBridge extends NetworkBridgeLike {
+interface NetworkBrowserBridge extends NetworkBridgeLike {
   entities: Map<string, RuntimeValue>;
   dispose(): void;
   getPresentationEventStats?(): Record<string, RuntimeValue> | null;
 }
 
-export interface NetworkBrowserStatus extends NetworkStatusLike {
+interface NetworkBrowserStatus extends NetworkStatusLike {
   set(status: RuntimeValue): void;
   dispose(): void;
 }

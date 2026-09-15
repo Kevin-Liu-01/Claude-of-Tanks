@@ -3,17 +3,17 @@
  * Counts represent shots remaining, including any round currently ready to fire.
  */
 
-export interface AmmunitionShellSpec {
+interface AmmunitionShellSpec {
   type?: string;
   count?: number | null;
 }
 
-export interface AmmunitionState {
+interface AmmunitionState {
   ammo: number[];
   ammoCapacity: number[];
 }
 
-export interface AmmunitionPickupResult {
+interface AmmunitionPickupResult {
   added: number[];
   totalAdded: number;
 }

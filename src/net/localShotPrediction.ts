@@ -22,7 +22,7 @@ export interface LocalShotPresentationFrame {
 }
 
 /** Presentation eligibility only. No simulation, ammunition or projectile state. */
-export interface ShotAuthorityReadiness {
+interface ShotAuthorityReadiness {
   tick: number;
   alive: boolean;
   shellSlot: number;
@@ -34,7 +34,7 @@ export interface ShotAuthorityReadiness {
   weaponBlocked: boolean;
 }
 
-export interface PredictedShotRecord {
+interface PredictedShotRecord {
   intentSeq: number;
   shellSlot: number;
   muzzleIndex: number | null;

@@ -78,7 +78,7 @@ interface DestroyedPropEvent {
 
 type DestroyedEventSink = (event: DestroyedPropEvent) => void;
 
-export interface CombatFeedbackRuntimeOptions {
+interface CombatFeedbackRuntimeOptions {
   bus: EventBus;
   game: FeedbackGame;
   rig: FeedbackRig;
@@ -91,7 +91,7 @@ export interface CombatFeedbackRuntimeOptions {
   getDeviceTier(): string;
 }
 
-export interface CombatFeedbackRuntime {
+interface CombatFeedbackRuntime {
   dispose(): void;
 }
 

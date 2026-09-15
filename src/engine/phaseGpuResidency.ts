@@ -17,7 +17,7 @@ export interface PhaseGpuResidencyStats {
   lastRelease: GpuReleaseReceipt | null;
 }
 
-export interface RetainedPhaseGpuResidency {
+interface RetainedPhaseGpuResidency {
   suspend(options?: { releaseTextures?: boolean; additionalRoots?: Object3D[] }): GpuReleaseReceipt | null;
   invalidate(): boolean;
   resume(): Promise<boolean>;

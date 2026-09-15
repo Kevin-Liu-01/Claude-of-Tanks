@@ -10,7 +10,7 @@ import type { WireCodec } from './channelTransport.ts';
 
 type WireRow = Record<string, RuntimeValue>;
 
-export interface SnapshotWirePayload {
+interface SnapshotWirePayload {
   tick: number;
   serverTimeMs: number;
   ackInputSeq: number | null;
@@ -22,7 +22,7 @@ export interface SnapshotWirePayload {
   meta: Record<string, RuntimeValue> | null;
 }
 
-export type ReplaceableWireEnvelope =
+type ReplaceableWireEnvelope =
   | ProtocolEnvelope<NormalizedPlayerInput>
   | ProtocolEnvelope<SnapshotWirePayload>;
 

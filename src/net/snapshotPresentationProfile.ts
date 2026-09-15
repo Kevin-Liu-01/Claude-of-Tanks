@@ -1,4 +1,4 @@
-export interface SnapshotPresentationProfile {
+interface SnapshotPresentationProfile {
   readonly interpolationDelayMs: number;
   readonly maxInterpolationDelayMs: number;
   readonly maxExtrapolationMs: number;

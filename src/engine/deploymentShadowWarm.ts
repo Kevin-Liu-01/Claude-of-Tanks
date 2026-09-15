@@ -81,7 +81,7 @@ interface ShadowDrawAttribution {
   renders: ShadowRenderSample[];
 }
 
-export interface DeploymentShadowWarmReceipt {
+interface DeploymentShadowWarmReceipt {
   cascades: number;
   cascadeMs?: number[];
   maxMs: number;
@@ -104,7 +104,7 @@ export interface DeploymentShadowWarmOwner {
   dispose(): void;
 }
 
-export interface DeploymentShadowWarmOptions {
+interface DeploymentShadowWarmOptions {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;

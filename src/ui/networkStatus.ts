@@ -5,7 +5,7 @@ const STYLE_ID = 'cot-network-status-style';
 
 export type NetworkConnectionState = 'reconnecting' | 'reconnected' | 'failed' | 'closed' | 'connected';
 
-export interface NetworkStatusState {
+interface NetworkStatusState {
   readonly state?: NetworkConnectionState;
   readonly attempt?: number;
   readonly reason?: string;
@@ -21,7 +21,7 @@ interface NetworkTransportStats extends NetworkTransportCounters {
   readonly state?: NetworkTransportCounters;
 }
 
-export interface NetworkDiagnosticsStats {
+interface NetworkDiagnosticsStats {
   readonly rttMs?: number | null;
   readonly rttJitterMs?: number;
   readonly estimatedSnapshotLoss?: number;
@@ -42,7 +42,7 @@ export interface NetworkDiagnosticsStats {
   readonly transport?: NetworkTransportStats;
 }
 
-export interface NetworkStatusController {
+interface NetworkStatusController {
   readonly root: HTMLDivElement;
   readonly diagnostics: HTMLDivElement;
   set(status?: NetworkStatusState): void;

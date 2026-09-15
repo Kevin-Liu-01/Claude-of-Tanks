@@ -2,7 +2,7 @@
 // Keep this pure data: authoritative simulation imports it under Node and the
 // browser-side technical-card renderer imports the same labels/order.
 
-export interface ModuleDefinition {
+interface ModuleDefinition {
   readonly label: string;
   readonly hp: number;
   /** Chance that an intersecting shell actually damages this module. */

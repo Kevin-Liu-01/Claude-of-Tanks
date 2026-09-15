@@ -16,18 +16,18 @@ import type { GarageStageRuntime } from '../ui/garageStage.ts';
 import type { GarageRuntime } from '../ui/garage.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
-export type GarageWorkshopVariant = Pick<
+type GarageWorkshopVariant = Pick<
   GarageVariant,
   'id' | 'mapId' | 'name' | 'architecture'
 >;
 
-export interface GarageWorkshopBuildTiming {
+interface GarageWorkshopBuildTiming {
   readonly chunk: string;
   readonly ms: number;
   readonly at: number;
 }
 
-export interface GarageWorkshopTransferTiming {
+interface GarageWorkshopTransferTiming {
   readonly specId?: RuntimeValue;
   readonly finish?: RuntimeValue;
   readonly textureCount?: RuntimeValue;
@@ -40,12 +40,12 @@ export interface GarageWorkshopTransferTiming {
   readonly [key: string]: RuntimeValue;
 }
 
-export interface GarageWorkshopWallLayout {
+interface GarageWorkshopWallLayout {
   readonly bays: number;
   readonly overlaps: readonly string[];
 }
 
-export interface GarageWorkshopStats {
+interface GarageWorkshopStats {
   readonly selected: string;
   readonly built: boolean;
   readonly triangles: number;
@@ -108,14 +108,14 @@ export interface GarageWorkshopStats {
   readonly renderer: { readonly calls: number; readonly triangles: number };
 }
 
-export interface GarageWorkshopDiagnostics {
+interface GarageWorkshopDiagnostics {
   readonly variants: readonly GarageWorkshopVariant[];
   ensureBuilt(): Promise<void>;
   set(variantId: string): boolean;
   stats(): GarageWorkshopStats;
 }
 
-export interface GarageWorkshopDiagnosticsOptions {
+interface GarageWorkshopDiagnosticsOptions {
   readonly variants: readonly GarageVariant[];
   readonly garage: Pick<
     GarageRuntime,

@@ -16,7 +16,7 @@ export interface GarageFramePacer {
   };
 }
 
-export interface GarageFramePacerOptions {
+interface GarageFramePacerOptions {
   idleFramesPerSecond?: number;
   activeTailMs?: number;
 }

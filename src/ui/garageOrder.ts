@@ -6,23 +6,23 @@ const NAME_COLLATOR = new Intl.Collator('en', {
   sensitivity: 'base',
 });
 
-export interface GarageOrderSpec {
+interface GarageOrderSpec {
   readonly id: string;
   readonly name?: string;
   readonly nation: string;
 }
 
-export interface GarageMapChoice {
+interface GarageMapChoice {
   readonly id: string;
 }
 
-export interface CountryFilterGroup<Spec> {
+interface CountryFilterGroup<Spec> {
   readonly id: string;
   readonly representative: Spec;
   readonly count: number;
 }
 
-export interface HorizontalRailState {
+interface HorizontalRailState {
   readonly maxScroll: number;
   readonly hasLeft: boolean;
   readonly hasRight: boolean;
@@ -33,7 +33,7 @@ interface GarageSelectionStorage {
   setItem(key: string, value: string): void;
 }
 
-export interface GarageCountrySelectionMemory<Spec extends GarageOrderSpec> {
+interface GarageCountrySelectionMemory<Spec extends GarageOrderSpec> {
   preferredSpec(countryId: string): Spec | undefined;
   remember(specId: string): boolean;
 }

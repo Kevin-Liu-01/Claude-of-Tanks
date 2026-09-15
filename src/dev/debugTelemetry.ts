@@ -58,7 +58,7 @@ interface DiagnosticGlobal {
   __GL_DIAG?: { rescue?: string; errors?: RuntimeValue };
 }
 
-export interface DebugTelemetryDependencies {
+interface DebugTelemetryDependencies {
   renderer: DebugRenderer;
   scene: THREE.Scene;
   camera: THREE.Camera;
@@ -73,7 +73,7 @@ export interface DebugTelemetryDependencies {
   nextFrame?: () => Promise<void>;
 }
 
-export interface DebugTelemetryOwner {
+interface DebugTelemetryOwner {
   collect(): Record<string, RuntimeValue>;
   sampleShadowContribution(): Promise<Record<string, RuntimeValue>>;
 }

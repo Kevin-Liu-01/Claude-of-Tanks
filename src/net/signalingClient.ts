@@ -44,14 +44,14 @@ export interface SignalingEvent {
   [key: string]: RuntimeValue;
 }
 
-export interface SignalingRoomInfo extends Record<string, RuntimeValue> {
+interface SignalingRoomInfo extends Record<string, RuntimeValue> {
   roomCode: string;
   peerId: string;
   hostId: string;
   mode?: string;
 }
 
-export interface RoomSignalingClientOptions {
+interface RoomSignalingClientOptions {
   url?: RuntimeValue;
   WebSocketImpl?: RuntimeValue;
   connectTimeoutMs?: number;
@@ -63,13 +63,13 @@ export interface RoomSignalingClientOptions {
   resumeStorage?: ResumeCredentialStorage | null;
 }
 
-export interface CreateSignalingRoomOptions {
+interface CreateSignalingRoomOptions {
   player?: RuntimeValue;
   maxPlayers?: number;
   mode?: RuntimeValue;
 }
 
-export interface JoinSignalingRoomOptions {
+interface JoinSignalingRoomOptions {
   roomCode?: RuntimeValue;
   player?: RuntimeValue;
 }

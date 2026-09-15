@@ -18,7 +18,7 @@ interface SettingsAccessEnvironment {
   now(): number;
 }
 
-export interface SettingsAccess {
+interface SettingsAccess {
   readonly root: HTMLElement | null;
   readonly gear: HTMLButtonElement;
   open(): void;

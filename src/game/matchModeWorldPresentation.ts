@@ -24,7 +24,7 @@ export interface MatchModeWorldPresentation {
 }
 
 /** campaign slice 3 (2026-09-12): ground fit for dressing that spreads beyond an objective centre. */
-export interface MatchModeWorldPresentationOptions {
+interface MatchModeWorldPresentationOptions {
   groundHeight?: (x: number, z: number) => number;
   /**
    * Engine hook folding a lit material into the cascaded-shadow setup; a lit
@@ -35,9 +35,9 @@ export interface MatchModeWorldPresentationOptions {
   releaseMaterial?: (material: THREE.Material) => void;
 }
 
-export interface WorksPlacement { x: number; y: number; z: number; yaw: number }
+interface WorksPlacement { x: number; y: number; z: number; yaw: number }
 
-export interface LineWorksPlan {
+interface LineWorksPlan {
   lines: number;
   bags: WorksPlacement[];
   planks: WorksPlacement[];

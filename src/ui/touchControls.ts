@@ -234,7 +234,7 @@ const SOUND_OFF = uiIconSVG('soundOff', 20);
 const GRAPHICS = uiIconSVG('graphics', 20);
 const SETTINGS = uiIconSVG('settings', 20);
 
-export interface MobileFireGestureState {
+interface MobileFireGestureState {
   readonly active: boolean;
   readonly pointerId: number | null;
   readonly dragging: boolean;
@@ -242,7 +242,7 @@ export interface MobileFireGestureState {
   readonly autoFiring: boolean;
 }
 
-export interface MobileFireGestureOptions {
+interface MobileFireGestureOptions {
   onAim?(dx: number, dy: number): void;
   onFire?(): void;
   onHoldStart?(): void;
@@ -256,7 +256,7 @@ export interface MobileFireGestureOptions {
   cancelHold?(timer: ReturnType<typeof setTimeout>): void;
 }
 
-export interface MobileFireGesture {
+interface MobileFireGesture {
   begin(id: number | null | undefined, x: number, y: number): boolean;
   move(id: number, x: number, y: number): MobileFireGestureState;
   end(id: number | null, x: number, y: number): boolean;

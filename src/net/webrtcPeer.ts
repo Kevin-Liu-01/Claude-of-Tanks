@@ -23,7 +23,7 @@ export interface WebRtcPeerSession {
   restartIce(): void;
 }
 
-export interface WebRtcPeerOptions {
+interface WebRtcPeerOptions {
   role: 'host' | 'client';
   onSignal: (signal: RtcSignal) => void;
   onConnectionStateChange?: (state: RTCPeerConnectionState) => void;

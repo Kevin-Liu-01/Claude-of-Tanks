@@ -15,7 +15,7 @@ import {
   CAMPAIGN_PAR_SHARE, readCampaignRecord, type CampaignRecord, type FrontlineMapProgress,
 } from './campaignProgress.ts';
 
-export type CampaignEnemy = 'russia' | 'germany' | 'china' | 'usa';
+type CampaignEnemy = 'russia' | 'germany' | 'china' | 'usa';
 
 export interface CampaignOperation {
   readonly id: string;
@@ -47,9 +47,9 @@ export const CAMPAIGN_ENEMY_NATIONS: Readonly<Record<CampaignEnemy, readonly str
   usa: Object.freeze(['USA', 'US']),
 });
 
-export type CampaignOperationStatus = 'locked' | 'ready' | 'cleared';
+type CampaignOperationStatus = 'locked' | 'ready' | 'cleared';
 
-export interface CampaignLadderEntry {
+interface CampaignLadderEntry {
   readonly operation: CampaignOperation;
   readonly status: CampaignOperationStatus;
   /** The per-map Frontline record behind the status, when the map has been fought. */
@@ -118,7 +118,7 @@ export function campaignNextOperation(operation: CampaignOperation | null | unde
   return CAMPAIGN_OPERATIONS[operation.index] ?? null;
 }
 
-export interface CampaignSummary {
+interface CampaignSummary {
   readonly cleared: number;
   readonly total: number;
   /** Stars earned across the ladder, out of three per operation. */

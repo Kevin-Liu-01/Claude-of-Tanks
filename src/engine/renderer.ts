@@ -22,7 +22,7 @@ interface ContextRecoveryOwner {
   onRestored?(): boolean | void | Promise<boolean | void>;
 }
 
-export type GameRenderer = THREE.WebGLRenderer & {
+type GameRenderer = THREE.WebGLRenderer & {
   userData: {
     outputResolution?: OutputResolution;
     contextRecovery?: ContextRecoveryOwner;

@@ -5,18 +5,18 @@ export type NetworkConnectionState =
   | 'failed'
   | 'closed';
 
-export interface NetworkConnectionStatusSink {
+interface NetworkConnectionStatusSink {
   set(update: { state: NetworkConnectionState; attempt?: number; reason?: string }): void;
 }
 
-export interface RecoverableMatchClient {
+interface RecoverableMatchClient {
   readonly closed?: boolean;
   readonly closeReason?: string | null;
   readonly lastSnapshotReceivedAtMs?: number | null;
   onConnection?(listener: (connected: boolean) => void): (() => void) | void;
 }
 
-export interface NetworkRecoverySnapshot {
+interface NetworkRecoverySnapshot {
   recovering: boolean;
   failed: boolean;
   attempt: number;

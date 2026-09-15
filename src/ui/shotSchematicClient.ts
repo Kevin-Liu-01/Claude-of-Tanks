@@ -10,7 +10,7 @@ export interface SchematicWorkerPort {
   postMessage(message: SchematicMessage): void;
   terminate(): void;
 }
-export interface SchematicClientPorts {
+interface SchematicClientPorts {
   worker(): SchematicWorkerPort | null;
   fallback(request: SchematicRequest, signal: AbortSignal): Promise<Blob | null>;
   dataUrl(blob: Blob, signal: AbortSignal): Promise<string | null>;

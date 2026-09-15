@@ -1,10 +1,10 @@
-export interface ShadowFitInputs {
+interface ShadowFitInputs {
   cameraWorld: ArrayLike<number>;
   projection: ArrayLike<number>;
   lightDirection: ArrayLike<number>;
 }
 
-export interface ShadowFitCache {
+interface ShadowFitCache {
   changed(inputs: ShadowFitInputs, force?: boolean): boolean;
   invalidate(): void;
 }

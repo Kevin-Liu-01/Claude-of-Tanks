@@ -22,7 +22,7 @@ import {
 
 type Unsubscribe = () => void;
 
-export interface LobbyTransport {
+interface LobbyTransport {
   readonly readyState?: string;
   send(message: RuntimeValue): boolean;
   onMessage(listener: (message: RuntimeValue) => void): Unsubscribe;
@@ -37,7 +37,7 @@ export interface ReleasedLobbyTransport {
   finishHandoff: Unsubscribe;
 }
 
-export interface LobbyHostRuntimeOptions {
+interface LobbyHostRuntimeOptions {
   lobby?: LobbyState;
   isVehicleAllowed?: (specId: string, player: LobbyPlayer, lobby: LobbyState) => boolean;
   isCamoAllowed?: (camo: string, player: LobbyPlayer, lobby: LobbyState) => boolean;
@@ -45,11 +45,11 @@ export interface LobbyHostRuntimeOptions {
   onStart?: ((state: SerializedLobby) => void) | null;
 }
 
-export interface LobbyClientRuntimeOptions {
+interface LobbyClientRuntimeOptions {
   transport?: LobbyTransport;
 }
 
-export interface LobbyRuntimeError {
+interface LobbyRuntimeError {
   code: string;
   message: string;
 }

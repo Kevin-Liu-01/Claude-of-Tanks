@@ -15,9 +15,9 @@ const STUDIO_MAX_CAMERA_SHOTS = 32;
 const STUDIO_MAX_CAMERA_CUES = 48;
 const STUDIO_MAX_ACTOR_KEYS = 64;
 
-export type StudioTransition = 'smooth' | 'linear' | 'cut' | 'bezier' | 'drive';
-export type StudioVec2 = [number, number];
-export type StudioVec3 = [number, number, number];
+type StudioTransition = 'smooth' | 'linear' | 'cut' | 'bezier' | 'drive';
+type StudioVec2 = [number, number];
+type StudioVec3 = [number, number, number];
 
 export interface CameraShotInput {
   id?: RuntimeValue;
@@ -32,7 +32,7 @@ export interface CameraShotInput {
   transition?: RuntimeValue;
 }
 
-export interface CameraShot {
+interface CameraShot {
   id: string;
   label: string;
   tMs: number;
@@ -55,7 +55,7 @@ export interface ActorKeyInput {
   transition?: RuntimeValue;
 }
 
-export interface ActorKey {
+interface ActorKey {
   id: string;
   tMs: number;
   pos: StudioVec2;
@@ -65,7 +65,7 @@ export interface ActorKey {
   transition: StudioTransition;
 }
 
-export interface ActorTrackInput {
+interface ActorTrackInput {
   actor?: RuntimeValue;
   keys?: readonly ActorKeyInput[] | RuntimeValue;
 }
@@ -90,7 +90,7 @@ export interface Storyboard {
   actorTracks: ActorTrack[];
 }
 
-export interface CameraCueInput {
+interface CameraCueInput {
   id?: RuntimeValue;
   label?: RuntimeValue;
   tMs?: RuntimeValue;
@@ -102,7 +102,7 @@ export interface CameraCueInput {
   seed?: RuntimeValue;
 }
 
-export interface CameraCue {
+interface CameraCue {
   id: string;
   label: string;
   tMs: number;
@@ -114,7 +114,7 @@ export interface CameraCue {
   seed: number;
 }
 
-export interface CameraCueSample {
+interface CameraCueSample {
   rightM: number;
   upM: number;
   forwardM: number;

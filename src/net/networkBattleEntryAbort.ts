@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 export const NETWORK_BATTLE_ENTRY_ABORTED = 'network_battle_entry_aborted';
 
-export interface NetworkBattleEntryAbortError extends Error {
+interface NetworkBattleEntryAbortError extends Error {
   code: typeof NETWORK_BATTLE_ENTRY_ABORTED;
 }
 

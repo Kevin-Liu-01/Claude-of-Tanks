@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface SignalEndpointOptions {
+interface SignalEndpointOptions {
   configured?: RuntimeValue;
   protocol?: RuntimeValue;
   hostname?: RuntimeValue;

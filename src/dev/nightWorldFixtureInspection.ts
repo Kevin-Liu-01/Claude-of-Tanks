@@ -20,7 +20,7 @@ interface FixtureFace {
   readonly direction: Vector3;
   readonly score: number;
 }
-export interface NightWorldFixtureInspection {
+interface NightWorldFixtureInspection {
   readonly kind: NightWorldFixtureKind;
   readonly ownerUuid: string;
   readonly ownerName: string;

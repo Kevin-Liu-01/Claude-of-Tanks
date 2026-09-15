@@ -14,7 +14,7 @@ interface BattleRolloutAudio {
   ambientOn(active: boolean): void;
 }
 
-export interface BattleRolloutRuntimeOptions {
+interface BattleRolloutRuntimeOptions {
   game: BattleRolloutGame;
   bus: EventBus;
   audio: BattleRolloutAudio;
@@ -22,7 +22,7 @@ export interface BattleRolloutRuntimeOptions {
   defaultPreBattleSeconds: number;
 }
 
-export interface BattleRolloutRuntime {
+interface BattleRolloutRuntime {
   open(preBattleSeconds?: number): void;
 }
 

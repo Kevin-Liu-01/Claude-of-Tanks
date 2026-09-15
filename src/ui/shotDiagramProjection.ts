@@ -43,7 +43,7 @@ export interface ShotDiagramEvent {
   readonly impactFrame?: string;
 }
 
-export interface ShotDiagramProjectionOptions {
+interface ShotDiagramProjectionOptions {
   readonly topSize?: number;
   readonly sideWidth?: number;
   readonly sideHeight?: number;
@@ -56,7 +56,7 @@ export interface ShotDiagramProjectionOptions {
   };
 }
 
-export interface ShotDiagramProjection {
+interface ShotDiagramProjection {
   readonly topScale: number;
   readonly sideScale: number;
   topPoint(x: number, z: number): number[];

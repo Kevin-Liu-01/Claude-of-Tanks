@@ -38,7 +38,7 @@ export interface NetworkRoomState {
   players: NetworkRoomPlayer[];
 }
 
-export interface NetworkLobbyContext {
+interface NetworkLobbyContext {
   state: NetworkRoomState;
   playerId: string;
   role?: string;

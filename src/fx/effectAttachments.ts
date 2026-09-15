@@ -29,7 +29,7 @@ export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
 } as const);
 
 type EffectAttachmentPolicy = typeof EFFECT_ATTACHMENT_POLICY;
-export type EffectFamily = keyof EffectAttachmentPolicy;
+type EffectFamily = keyof EffectAttachmentPolicy;
 export type EffectAttachmentMode = EffectAttachmentPolicy[EffectFamily];
 
 interface MutablePosition {
@@ -48,14 +48,14 @@ interface VisualAnchorRoot {
   updateWorldMatrix?(updateParents: boolean, updateChildren: boolean): void;
 }
 
-export interface EffectEmitterAnchor {
+interface EffectEmitterAnchor {
   pos: number[];
   localPos?: number[];
   anchorSpace?: object;
   anchorMode?: 'visual-root' | 'state-yaw';
 }
 
-export interface EffectSubjectAnchor {
+interface EffectSubjectAnchor {
   visual?: { root?: RuntimeValue };
   state?: {
     pos?: Partial<MutablePosition>;

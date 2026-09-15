@@ -2,10 +2,10 @@ export const PREDICTION_CORRECTION_KEYS = Object.freeze([
   'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
 ] as const);
 
-export type PredictionCorrectionKey = typeof PREDICTION_CORRECTION_KEYS[number];
+type PredictionCorrectionKey = typeof PREDICTION_CORRECTION_KEYS[number];
 export type PredictionCorrection = Record<PredictionCorrectionKey, number>;
 
-export interface PredictionCorrectionDecay {
+interface PredictionCorrectionDecay {
   horizontalTauS: number;
   verticalTauS: number;
   aimTauS: number;

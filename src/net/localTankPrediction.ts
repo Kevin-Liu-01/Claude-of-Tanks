@@ -55,7 +55,7 @@ export interface PredictionInput {
   actionBits?: number;
 }
 
-export interface PredictionSnapshot {
+interface PredictionSnapshot {
   x: number;
   y: number;
   z: number;
@@ -73,7 +73,7 @@ export interface PredictionSnapshot {
 
 export type PredictionTankState = TankState;
 
-export interface PredictionEntity {
+interface PredictionEntity {
   id?: string;
   spec: MovementSpec;
   state: PredictionTankState;
@@ -93,16 +93,16 @@ export interface PredictionSimEntity extends PredictionEntity {
   _predictionDynamicContacts?: number;
 }
 
-export interface PredictionHeightField extends MovementHeightField {}
+interface PredictionHeightField extends MovementHeightField {}
 
-export type PredictionCollision = (
+type PredictionCollision = (
   entity: PredictionSimEntity,
   position: Vector3,
   radius: number,
   outPush: Vector3,
 ) => boolean;
 
-export interface LocalTankPredictorOptions {
+interface LocalTankPredictorOptions {
   entity?: PredictionEntity;
   heightField?: PredictionHeightField;
   collide?: PredictionCollision | null;

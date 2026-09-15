@@ -19,7 +19,7 @@ interface RendererProgramInfo {
   programs?: readonly LinkedProgram[] | null;
 }
 
-export interface RendererWithPrograms {
+interface RendererWithPrograms {
   info?: RendererProgramInfo | null;
 }
 
@@ -144,7 +144,7 @@ export type ProgramPreparationResult =
   | { status: 'incomplete'; pending: number | null;
     reason: 'budget' | 'query' | 'reflection' | 'invalidated' | 'not-requested' };
 
-export interface SceneProgramCompileOptions {
+interface SceneProgramCompileOptions {
   signal?: AbortSignal;
   timing?: ForwardProgramCompileTiming;
   /** Submission defaults to 8 ms; opt-in first use defaults to 4 ms and clamps to 1–8 ms. */
@@ -206,13 +206,13 @@ function programWarmLifetimeIsCurrent(renderer: ContextProgramRenderer, lifetime
 
 type MaterialProgramCohort = Map<LinkedProgram, CapturedProgram>;
 
-export interface SceneProgramCompilePass {
+interface SceneProgramCompilePass {
   readonly layerMask: number;
   /** The actual scene-pass destination; null retains the current target. */
   readonly target: RenderTarget;
 }
 
-export interface ForwardProgramWarmOptions {
+interface ForwardProgramWarmOptions {
   renderer: ForwardWarmRenderer;
   scene: Scene;
   camera: Camera;
@@ -228,7 +228,7 @@ interface RendererWithTargets extends RendererWithPrograms {
   compile(root: Object3D, camera: Camera, targetScene?: Scene | null): Set<Material>;
 }
 
-export interface ProgramUniformWarmReceipt {
+interface ProgramUniformWarmReceipt {
   programs: number;
   totalMs: number;
   maxMs: number;
@@ -250,7 +250,7 @@ export class ProgramUniformPreparationError extends Error {
   }
 }
 
-export interface TargetCompileOptions {
+interface TargetCompileOptions {
   renderer: RendererWithTargets;
   root: Object3D;
   camera: Camera;

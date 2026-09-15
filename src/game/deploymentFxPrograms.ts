@@ -24,7 +24,7 @@ export interface DeploymentFxProgramReceipt {
   error?: string;
 }
 
-export interface DeploymentFxProgramOptions {
+interface DeploymentFxProgramOptions {
   root: Object3D;
   camera: Pick<Camera, 'layers'>;
   warmRender: Pick<OffscreenSceneWarmer, 'prepareProgramsSteps'>;

@@ -81,7 +81,7 @@ export type BindingSlot = 0 | 1;
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
 export type RmbMode = 'hold' | 'toggle' | 'freelook';
 
-export interface InputVector {
+interface InputVector {
   x: number;
   y: number;
 }

@@ -7,7 +7,7 @@ export interface TopMaskProgram {
   getAttributes?(): object;
 }
 
-export interface TopMaskProgramContext {
+interface TopMaskProgramContext {
   isContextLost(): boolean;
   isCurrent(): boolean;
   hasProgram(program: TopMaskProgram): boolean;
@@ -19,7 +19,7 @@ export interface TopMaskProgramPreparation {
 }
 
 /** Deterministic test timing; injected delay must settle after its task. */
-export interface TopMaskProgramWarmOptions {
+interface TopMaskProgramWarmOptions {
   now?: () => number;
   delay?: (milliseconds: number) => Promise<void>;
   /** May shorten, but never extend, the 5000 ms ownership limit. */

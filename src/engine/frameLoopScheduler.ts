@@ -61,7 +61,7 @@ interface InputTarget {
   ): void;
 }
 
-export interface FrameLoopSchedulerOptions {
+interface FrameLoopSchedulerOptions {
   tick: FrameCallback;
   isBootComplete(): boolean;
   /** True only while a visible phase has no frame-rate work to perform. */
@@ -85,7 +85,7 @@ export interface FrameLoopSchedulerOptions {
   inputTarget?: InputTarget;
 }
 
-export interface FrameLoopScheduler {
+interface FrameLoopScheduler {
   schedule(): void;
   restart(): void;
   /** Explicit QA attachment; storage and bounds belong to the observing tool. */

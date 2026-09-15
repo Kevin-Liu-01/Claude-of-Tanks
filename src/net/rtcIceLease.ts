@@ -5,7 +5,7 @@ export interface RtcIceLeaseConfiguration {
   expiresInSeconds?: number;
 }
 
-export interface RtcIceLeaseOptions {
+interface RtcIceLeaseOptions {
   refresh?: (() => Promise<RtcIceLeaseConfiguration>) | null;
   now?: () => number;
   retryDelayMs?: number;

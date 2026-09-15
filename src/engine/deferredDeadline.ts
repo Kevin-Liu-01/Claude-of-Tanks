@@ -1,10 +1,10 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface DeadlineClock {
+interface DeadlineClock {
   setTimeout(callback: () => void, delayMs: number): RuntimeValue;
   clearTimeout(handle: RuntimeValue): void;
 }
 
-export interface DeferredDeadline<T> {
+interface DeferredDeadline<T> {
   readonly promise: Promise<T>;
   settle(value: T): boolean;
   readonly settled: boolean;

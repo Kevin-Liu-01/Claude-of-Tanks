@@ -54,7 +54,7 @@ export function temporalAoHistoryDepthMatches(
  */
 export const TEMPORAL_AO_DARK_RELEASE_SLACK = 0;
 
-export interface TemporalAoSample {
+interface TemporalAoSample {
   current: number;
   history: number;
   neighborhoodMin: number;

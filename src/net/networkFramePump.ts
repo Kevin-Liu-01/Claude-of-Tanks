@@ -26,7 +26,7 @@ export interface NetworkInputFrame {
   aimLocked?: boolean;
 }
 
-export interface NetworkClientLike {
+interface NetworkClientLike {
   closed: boolean;
   connected: boolean;
   readySent?: boolean;
@@ -47,13 +47,13 @@ interface NetworkMatchBase {
   client: NetworkClientLike | null;
 }
 
-export interface NetworkHostMatchLike extends NetworkMatchBase {
+interface NetworkHostMatchLike extends NetworkMatchBase {
   role: 'host';
   onRemoteInput?(listener: () => void): (() => void);
   advance(dtMs: number, input: NetworkInputFrame | null, countdownElapsedMs?: number): NetworkSnapshot | null;
 }
 
-export interface NetworkClientMatchLike extends NetworkMatchBase {
+interface NetworkClientMatchLike extends NetworkMatchBase {
   role: 'client';
   update(nowMs: number): NetworkSnapshot | null;
   submitInput(input: NetworkInputFrame): boolean;
@@ -114,7 +114,7 @@ interface NetworkFramePumpOptions {
   authorityStallMs?: number;
 }
 
-export interface NetworkFramePump {
+interface NetworkFramePump {
   ensureInputRuntime(create: () => NetworkInputRuntimeLike): NetworkInputRuntimeLike;
   queueAction(action: string): void;
   queueConsumable(slot: number): void;

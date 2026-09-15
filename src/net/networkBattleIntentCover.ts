@@ -18,7 +18,7 @@ interface NetworkBattleIntentCoverOptions {
   uncoverRendering(): void;
 }
 
-export interface NetworkBattleIntentCover {
+interface NetworkBattleIntentCover {
   show(request?: PrivateBattleLaunchRequest): void;
   releaseAfterFailure(): Promise<void>;
 }

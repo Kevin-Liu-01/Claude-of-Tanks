@@ -43,7 +43,7 @@ interface GarageWorkshopQualityReceipt {
   readonly modelMode?: string;
 }
 
-export interface GarageQualityInput {
+interface GarageQualityInput {
   readonly id: string;
   readonly isVerdant: boolean;
   readonly architecture: Readonly<GarageArchitectureQualityReceipt>;
@@ -51,7 +51,7 @@ export interface GarageQualityInput {
   readonly transitionMaxGapMs: number;
 }
 
-export interface GarageQualityScore {
+interface GarageQualityScore {
   readonly id: string;
   readonly structuralIntegrity: number;
   readonly functionalStory: number;

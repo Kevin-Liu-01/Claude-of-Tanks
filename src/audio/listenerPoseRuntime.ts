@@ -1,6 +1,6 @@
 import { Vector3, type Camera } from 'three';
 
-export type AudioListenerKind =
+type AudioListenerKind =
   | 'camera'
   | 'killcam-camera'
   | 'player-tank'
@@ -39,7 +39,7 @@ interface AudioMixer {
   update(dtSeconds: number, listener: AudioListenerPose, tanks: readonly AudioTank[]): void;
 }
 
-export interface ListenerPoseRuntimeOptions {
+interface ListenerPoseRuntimeOptions {
   camera: Camera;
   game: AudioGame;
   rig: AudioRig;

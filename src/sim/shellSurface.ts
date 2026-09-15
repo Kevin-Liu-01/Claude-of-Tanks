@@ -4,11 +4,11 @@
 // FX (white column, foam ring, spray) and the audio (splash instead of a dirt
 // thud) key off the same answer, so it is computed once here.
 
-export interface ShellSurfaceWorld {
+interface ShellSurfaceWorld {
   heightField?: { getWaterMaskAt?(x: number, z: number): number } | null;
 }
 
-export interface ShellSurfaceHit {
+interface ShellSurfaceHit {
   kind?: string | null;
   point: { x: number; z: number };
   record?: { kind?: string | null } | null;

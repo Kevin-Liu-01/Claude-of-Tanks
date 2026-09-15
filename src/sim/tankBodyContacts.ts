@@ -10,7 +10,7 @@
 
 import { tankContactRect } from './tankContactShape.ts';
 
-export interface TankBodyState {
+interface TankBodyState {
   pos: { x: number; y: number; z: number };
   yaw: number;
   speed: number;
@@ -35,7 +35,7 @@ export interface TankBodyState {
   };
 }
 
-export interface TankBodyEntity {
+interface TankBodyEntity {
   id?: string;
   modeActive?: boolean;
   spec: {
@@ -49,7 +49,7 @@ export interface TankBodyEntity {
   state: TankBodyState;
 }
 
-export type TankBodyImpact<Entity extends TankBodyEntity = TankBodyEntity> = (
+type TankBodyImpact<Entity extends TankBodyEntity = TankBodyEntity> = (
   upper: Entity,
   lower: Entity,
   closingMps: number,

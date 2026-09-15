@@ -243,7 +243,7 @@ type BurnStepFactory = (
   selection: string,
 ) => Iterable<void>;
 
-export interface WreckWarmOptions {
+interface WreckWarmOptions {
   signal?: AbortSignal;
   entities: Iterable<BattleWarmEntity>;
   prebakeBurntSteps: BurnStepFactory;
@@ -614,13 +614,13 @@ let studioEffectsWarmed = false;
 let studioEffectsWarmPromise: Promise<void> | null = null;
 let warmGeneration = 0;
 
-export interface StudioWarmTrace {
+interface StudioWarmTrace {
   stages: Record<string, number>;
   totalMs: number;
   error?: string;
 }
 
-export interface StudioEffectsWarmOptions {
+interface StudioEffectsWarmOptions {
   fx: StudioFxPort;
   post: BattlePostPort;
   renderer: Pick<WebGLRenderer, 'initTexture'>;

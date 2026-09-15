@@ -23,7 +23,7 @@ interface DossierAutoloader {
   readonly intraClipS: number;
 }
 
-export interface GarageDossierSpec {
+interface GarageDossierSpec {
   readonly id?: string;
   readonly era?: string;
   readonly armor?: {
@@ -44,13 +44,13 @@ export interface GarageDossierSpec {
   readonly gunElevationDeg?: number;
 }
 
-export interface GarageDossierRow {
+interface GarageDossierRow {
   readonly id: string;
   readonly label: string;
   readonly icon: string;
 }
 
-export interface GarageSpecialSystem {
+interface GarageSpecialSystem {
   readonly kind: string;
   readonly label: string;
   readonly shortLabel: string;
@@ -61,7 +61,7 @@ export interface GarageSpecialSystem {
 
 export type GarageTechnicalViewId = 'armor' | 'modules' | 'crew';
 
-export interface GarageTechnicalView {
+interface GarageTechnicalView {
   readonly id: GarageTechnicalViewId;
   readonly label: string;
   readonly caption: string;

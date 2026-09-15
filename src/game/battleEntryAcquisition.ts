@@ -1,13 +1,13 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export type BattleEntryTask<T = RuntimeValue> = () => T | PromiseLike<T>;
+type BattleEntryTask<T = RuntimeValue> = () => T | PromiseLike<T>;
 
-export interface BattleEntryTimings {
+interface BattleEntryTimings {
   modulesMs?: number;
   worldMs?: number;
   connectMs?: number;
 }
 
-export interface NetworkBattleAcquisitionOptions<TModules, TWorld, TMatch> {
+interface NetworkBattleAcquisitionOptions<TModules, TWorld, TMatch> {
   loadModules: BattleEntryTask<TModules>;
   loadWorld: BattleEntryTask<TWorld>;
   connect: BattleEntryTask<TMatch>;
@@ -16,7 +16,7 @@ export interface NetworkBattleAcquisitionOptions<TModules, TWorld, TMatch> {
   timings?: BattleEntryTimings;
 }
 
-export interface NetworkBattleAcquisition<TModules, TWorld, TMatch> {
+interface NetworkBattleAcquisition<TModules, TWorld, TMatch> {
   modules: TModules;
   world: TWorld;
   match: TMatch;

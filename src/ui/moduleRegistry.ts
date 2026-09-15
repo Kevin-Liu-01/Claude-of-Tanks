@@ -28,7 +28,7 @@ export const CREW_LABEL = Object.freeze({
   weaponOperatorRight: 'Right Weapon Operator',
 } as const);
 
-export type CrewId = keyof typeof CREW_LABEL;
+type CrewId = keyof typeof CREW_LABEL;
 
 /** Crew presentation order (damage panel chips, killcam rows). */
 export const CREW_ORDER = Object.freeze([

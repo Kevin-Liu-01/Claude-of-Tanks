@@ -63,7 +63,7 @@ interface ArmorOverlaySample {
   offset: number;
 }
 
-export interface ArmorOverlayFrame {
+interface ArmorOverlayFrame {
   owner: THREE.Object3D;
   mesh: THREE.Mesh;
   geometry: THREE.BufferGeometry;
@@ -71,7 +71,7 @@ export interface ArmorOverlayFrame {
   samples: ArmorOverlaySample[];
 }
 
-export interface ArmorOverlayEntry {
+interface ArmorOverlayEntry {
   target: ArmorOverlayTarget;
   group: THREE.Group;
   frames: ArmorOverlayFrame[];
@@ -84,7 +84,7 @@ export interface ArmorOverlayEntry {
   lastShellSpec: DamageShellSpec | null;
 }
 
-export interface ArmorAimOverlayUpdateOptions {
+interface ArmorAimOverlayUpdateOptions {
   enabled: boolean;
   scoped: boolean;
   targets?: readonly ArmorOverlayTarget[];

@@ -2,8 +2,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { Material, Object3D, Scene, Texture } from 'three';
 import type { ArmorOverlayTarget } from './armorAimOverlay.ts';
 
-export type VisualBudgetYield = (covered?: boolean) => Promise<void>;
-export type VisualPredicate<Entity extends BattleVisualEntity = BattleVisualEntity> = (
+type VisualBudgetYield = (covered?: boolean) => Promise<void>;
+type VisualPredicate<Entity extends BattleVisualEntity = BattleVisualEntity> = (
   entity: Entity
 ) => boolean;
 
@@ -75,7 +75,7 @@ interface ForwardCompileOwner {
   compile(root: Object3D): void;
 }
 
-export interface BattleVisualStageReceipt {
+interface BattleVisualStageReceipt {
   preUploadYieldMs: number;
   textureUploadMs: number;
   compileMs: number;
@@ -83,7 +83,7 @@ export interface BattleVisualStageReceipt {
   totalMs: number;
 }
 
-export interface BattleVisualStageOptions {
+interface BattleVisualStageOptions {
   /** Covered solo entry compiles after final camouflage and night-light setup. */
   readonly compilePrograms?: boolean;
 }

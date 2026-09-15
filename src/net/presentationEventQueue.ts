@@ -17,13 +17,13 @@ export interface PresentationEvent extends Record<string, RuntimeValue> {
   type?: string;
 }
 
-export interface PresentationEventQueueOptions {
+interface PresentationEventQueueOptions {
   emit?: (event: PresentationEvent) => void;
   maxEventsPerFlush?: number;
   isHeavy?: (event: PresentationEvent) => boolean;
 }
 
-export interface PresentationEventQueueStats {
+interface PresentationEventQueueStats {
   pending: number;
   emitted: number;
   peakPending: number;

@@ -38,7 +38,7 @@ export interface DedicatedMatchTicket extends Record<string, RuntimeValue> {
   roster?: RuntimeValue[];
 }
 
-export interface DedicatedConnectionOptions extends Partial<MatchClientOptions> {
+interface DedicatedConnectionOptions extends Partial<MatchClientOptions> {
   url?: RuntimeValue;
   matchId?: string;
   playerId?: string;
@@ -48,7 +48,7 @@ export interface DedicatedConnectionOptions extends Partial<MatchClientOptions> 
   clientOptions?: MatchClientOptions;
 }
 
-export interface DedicatedConnection {
+interface DedicatedConnection {
   socket: SocketLike;
   transport: ChannelTransport | AdverseNetworkTransport;
   client: MatchClientRuntime;
@@ -60,7 +60,7 @@ export interface DedicatedStatus extends Record<string, RuntimeValue> {
   state: string;
 }
 
-export interface DedicatedClientMatchOptions {
+interface DedicatedClientMatchOptions {
   url?: RuntimeValue;
   ticket?: DedicatedMatchTicket;
   WebSocketImpl?: RuntimeValue;
@@ -68,7 +68,7 @@ export interface DedicatedClientMatchOptions {
   reconnectDelaysMs?: number[];
 }
 
-export interface DedicatedClientMatch {
+interface DedicatedClientMatch {
   readonly kind: 'ranked';
   readonly role: 'client';
   readonly playerId: string;

@@ -11,7 +11,7 @@ import type {
 type MaybePromise<T> = T | PromiseLike<T>;
 type MenuCreationOptions = Omit<PlayMenuOptions, 'onSolo'>;
 
-export interface PlaySurfaceRequest {
+interface PlaySurfaceRequest {
   mode?: PlayMode;
   invite?: PlayMenuInvite;
   specId?: string;

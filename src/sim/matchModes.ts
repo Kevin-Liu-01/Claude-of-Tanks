@@ -28,7 +28,7 @@ export const GAME_MODE_IDS = Object.freeze([
 export type GameModeId = typeof GAME_MODE_IDS[number];
 export type ObjectiveTeam = 'alpha' | 'bravo';
 
-export interface GameModeDefinition {
+interface GameModeDefinition {
   id: GameModeId;
   label: string;
   shortLabel: string;

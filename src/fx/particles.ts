@@ -22,7 +22,7 @@ type Vec3Tuple = readonly [number, number, number];
 type ParticlePoolName = 'smoke' | 'fire' | 'billow' | 'psmoke' | 'dust'
   | 'flash' | 'jet' | 'sparks' | 'debris';
 
-export interface ParticleTextureWarmOptions {
+interface ParticleTextureWarmOptions {
   /** Default preloads assets; ready-only never waits on or starts asset requests. */
   assets?: 'preload' | 'ready-only';
 }

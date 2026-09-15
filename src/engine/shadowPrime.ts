@@ -6,7 +6,7 @@ import {
 
 const SHADOW_PRIME_LAYER = 31;
 
-export interface ShadowCasterWarmBatch {
+interface ShadowCasterWarmBatch {
   cascadeIndex: number;
   batchIndex: number;
   /** Candidate counts before the production shadow renderer's frustum cull. */
@@ -14,11 +14,11 @@ export interface ShadowCasterWarmBatch {
   vertexCount: number;
 }
 
-export interface ShadowCasterWarmTiming extends ShadowCasterWarmBatch {
+interface ShadowCasterWarmTiming extends ShadowCasterWarmBatch {
   elapsedMs: number;
 }
 
-export interface ShadowCasterWarmupOptions {
+interface ShadowCasterWarmupOptions {
   maxVerticesPerBatch?: number;
   maxCastersPerBatch?: number;
   yieldBeforeBatch?: (batch: ShadowCasterWarmBatch) => void | Promise<void>;

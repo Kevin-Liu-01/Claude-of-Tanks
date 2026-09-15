@@ -57,7 +57,7 @@ export interface ProtocolEnvelope<TPayload = RuntimeValue> {
   payload: TPayload | null;
 }
 
-export interface EnvelopeOptions {
+interface EnvelopeOptions {
   seq?: number;
   ack?: number;
   tick?: number;

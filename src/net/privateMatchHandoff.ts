@@ -37,7 +37,7 @@ import {
 type Team = 'alpha' | 'bravo' | 'spectator';
 type Unsubscribe = () => void;
 
-export interface PrivateMatchPlayer {
+interface PrivateMatchPlayer {
   id: string;
   name: string;
   specId: string;
@@ -51,7 +51,7 @@ export interface PrivateMatchPlayer {
   isHost?: boolean;
 }
 
-export interface PrivateMatchLobby {
+interface PrivateMatchLobby {
   phase: 'starting' | 'playing';
   mapId: string;
   matchSeed: number;
@@ -264,7 +264,7 @@ function createPersistentRoomController(
   };
 }
 
-export interface PrivateHostMatch {
+interface PrivateHostMatch {
   readonly kind: string;
   readonly role: 'host';
   readonly playerId: string;
@@ -291,7 +291,7 @@ export interface PrivateHostMatch {
   close(reason?: string): void;
 }
 
-export interface PrivateClientMatch {
+interface PrivateClientMatch {
   readonly kind: string;
   readonly role: 'client';
   readonly playerId: string;
@@ -308,7 +308,7 @@ export interface PrivateClientMatch {
   close(reason?: string): void;
 }
 
-export interface BeginPrivateHostMatchOptions {
+interface BeginPrivateHostMatchOptions {
   session?: HostRoomSession;
   lobbyState?: RuntimeValue;
   simulationFactory?: PrivateSimulationFactory;

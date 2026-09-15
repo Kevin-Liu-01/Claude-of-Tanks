@@ -10,7 +10,7 @@ const GARAGE_X = -1500;
 const GARAGE_Z = -1500;
 export { GARAGE_CAMERA_LOOK_HEIGHT_M } from './garagePresentationPose.ts';
 
-export interface GarageEnvironmentPresentationOptions {
+interface GarageEnvironmentPresentationOptions {
   garagePosition: THREE.Vector3;
   getSelectedVariantId(): string;
   setWorldDormant(dormant: boolean): void;

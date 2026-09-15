@@ -6,7 +6,7 @@ import {
   type MatchSimulation,
 } from './matchRuntime.ts';
 
-export interface LocalMatchSessionOptions {
+interface LocalMatchSessionOptions {
   playerId?: string;
   simulation: MatchSimulation;
   tickHz?: number;

@@ -2,7 +2,7 @@ import type { Object3D, Scene, Vector3Like } from 'three';
 import { createLazyRuntimeOwner } from '../app/lazyRuntimeOwner.ts';
 import type { NightLightingBudget, NightLightingRoot, NightLightingRuntime } from './nightLightingRuntime.ts';
 
-export interface NightLightingEntity {
+interface NightLightingEntity {
   readonly id: string;
   readonly team?: string;
   readonly isPlayer?: boolean;
@@ -11,7 +11,7 @@ export interface NightLightingEntity {
   readonly networkVisible?: boolean;
 }
 
-export interface NightLightingAccessOptions {
+interface NightLightingAccessOptions {
   scene: Scene;
   getWorldRoot(): Object3D | null;
   getEntities(): Iterable<NightLightingEntity>;

@@ -1,7 +1,7 @@
 import { createOpaqueLoadingYielder } from '../engine/frameScheduler.ts';
 import { mulberry32 } from './audioPolicy.ts';
 
-export type AudioBufferContext = Pick<AudioContext, 'sampleRate' | 'createBuffer'>;
+type AudioBufferContext = Pick<AudioContext, 'sampleRate' | 'createBuffer'>;
 type Random = () => number;
 type GunKind = 'light' | 'medium' | 'heavy' | 'huge';
 

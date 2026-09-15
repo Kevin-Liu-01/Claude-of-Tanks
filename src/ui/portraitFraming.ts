@@ -2,7 +2,7 @@
 // Keep this module DOM-free so the renderer, runtime UI, and release tooling all
 // use the exact same alpha policy and placement math.
 
-export interface PortraitFramePolicy {
+interface PortraitFramePolicy {
   widthRatio: number;
   heightRatio: number;
   baselineRatio: number;
@@ -52,13 +52,13 @@ export interface PortraitPixelBounds {
   bottom: number;
 }
 
-export interface PortraitPlacement {
+interface PortraitPlacement {
   x: number;
   y: number;
   scale: number;
 }
 
-export interface PortraitFrameAudit {
+interface PortraitFrameAudit {
   passes: boolean;
   displayedFullWidth: number;
   displayedFullHeight: number;

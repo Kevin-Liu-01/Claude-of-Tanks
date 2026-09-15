@@ -18,7 +18,7 @@ interface GarageDressingSchedulerOptions {
   quietMs?: number;
 }
 
-export interface GarageDressingScheduler {
+interface GarageDressingScheduler {
   noteActivity(): void;
   getLastActivityAt(): number;
   schedule(): void;

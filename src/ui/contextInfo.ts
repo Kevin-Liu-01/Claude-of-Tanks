@@ -19,9 +19,9 @@ interface InfoImageRecord {
 }
 
 export type InfoImage = string | InfoImageRecord | null | undefined;
-export type InfoImageSource = LiveValue<InfoImage>;
+type InfoImageSource = LiveValue<InfoImage>;
 
-export interface ResolvedInfoImage {
+interface ResolvedInfoImage {
   src: string;
   alt: string;
   fit: InfoImageFit;

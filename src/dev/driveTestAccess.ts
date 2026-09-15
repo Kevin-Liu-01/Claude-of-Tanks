@@ -7,13 +7,13 @@ interface DriveTestControllerModule {
   createDriveTestController(options: DriveTestControllerOptions): DriveTestController;
 }
 
-export interface DriveTestAccessOptions {
+interface DriveTestAccessOptions {
   enabled: boolean;
   options(): DriveTestControllerOptions;
   load?(): Promise<DriveTestControllerModule>;
 }
 
-export interface DriveTestAccess extends DriveTestController {
+interface DriveTestAccess extends DriveTestController {
   preload(): Promise<DriveTestController | null>;
 }
 

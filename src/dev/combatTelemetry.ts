@@ -86,7 +86,7 @@ export interface BotPressureTelemetry {
   dmgOnPlayer: number;
 }
 
-export interface CombatTelemetry {
+interface CombatTelemetry {
   playerShellLog: PlayerShellTelemetryRecord[];
   botPressure: BotPressureTelemetry;
 }

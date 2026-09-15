@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface CamoSwatchAccessOptions<T> {
+interface CamoSwatchAccessOptions<T> {
   load: () => Promise<T>;
   isPlayable: () => boolean;
   schedule?: (callback: () => void, delayMs: number) => RuntimeValue;
@@ -8,7 +8,7 @@ export interface CamoSwatchAccessOptions<T> {
   postReadyDelayMs?: number;
 }
 
-export interface CamoSwatchAccess<T> {
+interface CamoSwatchAccess<T> {
   preload(options?: { immediate?: boolean }): Promise<T>;
   isReady(): boolean;
 }

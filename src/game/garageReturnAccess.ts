@@ -12,7 +12,7 @@ type GarageReturnModule = Pick<
   'createGarageReturnRuntime'
 >;
 
-export interface GarageReturnAccess extends GarageReturnRuntime {
+interface GarageReturnAccess extends GarageReturnRuntime {
   preload(): Promise<GarageReturnRuntime>;
   readonly current: GarageReturnRuntime | null;
 }

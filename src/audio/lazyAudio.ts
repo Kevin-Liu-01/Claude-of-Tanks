@@ -33,7 +33,7 @@ interface AudioMixerModule {
   }): AudioMixer;
 }
 
-export interface LazyAudioOptions {
+interface LazyAudioOptions {
   loadMixer?(): Promise<AudioMixerModule | null>;
   createContext?(): AudioContext | null;
   getMapId?(): string | null;

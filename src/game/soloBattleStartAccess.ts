@@ -10,7 +10,7 @@ interface SoloBattleStartModule {
 
 type SoloBattleStartLoader = () => Promise<SoloBattleStartModule>;
 
-export interface SoloBattleStartAccess extends SoloBattleStartRuntime {
+interface SoloBattleStartAccess extends SoloBattleStartRuntime {
   preload(): Promise<SoloBattleStartRuntime>;
 }
 

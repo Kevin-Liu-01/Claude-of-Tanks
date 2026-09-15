@@ -40,7 +40,7 @@ interface BattleActionSpec extends ActionSpec {
   gun: ActionSpec['gun'] & { shells: ActionShell[] };
 }
 
-export interface BattleActionEntity extends Omit<
+interface BattleActionEntity extends Omit<
   ActionSpecialEntity,
   'id' | 'spec' | 'combat' | 'input' | 'state'
 > {
@@ -69,7 +69,7 @@ interface NetworkActionPort {
   queueAction(action: 'reloadMagazine' | 'specialAction' | 'selfRight'): void;
 }
 
-export interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
+interface PlayerBattleActionsOptions<TEntity extends BattleActionEntity> {
   game: BattleActionGame<TEntity>;
   bus: EventBus;
   input: ActionInput;

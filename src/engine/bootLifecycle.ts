@@ -1,12 +1,12 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface BootProgressScreen {
+interface BootProgressScreen {
   begin(stage: string): void;
   end(stage: string): void;
 }
 
-export type BootTimings = Record<string, number>;
+type BootTimings = Record<string, number>;
 
-export interface BootLifecycle {
+interface BootLifecycle {
   readonly startedAt: number;
   readonly timings: BootTimings;
   run<T>(stage: string, work: () => T | Promise<T>): Promise<T>;

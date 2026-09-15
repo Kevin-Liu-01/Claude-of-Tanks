@@ -22,7 +22,7 @@ interface CustomCamoOptions {
   setCustom(specId: string, draft: CustomCamoDraft): void;
 }
 
-export interface CustomCamoStudioOptions {
+interface CustomCamoStudioOptions {
   button: HTMLButtonElement;
   camo: CustomCamoOptions;
   selectedId: () => string | null;

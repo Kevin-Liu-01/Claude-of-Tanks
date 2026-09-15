@@ -9,10 +9,10 @@ import type {
 
 type MaybePromise<T> = T | PromiseLike<T>;
 
-export type KillcamResult = 'victory' | 'defeat';
-export type KillcamCapturePhase = 'xray' | 'firing' | 'collision';
+type KillcamResult = 'victory' | 'defeat';
+type KillcamCapturePhase = 'xray' | 'firing' | 'collision';
 
-export interface KillcamReplayInfo {
+interface KillcamReplayInfo {
   phase: PlaybackPhase;
   replayKind: ReplayKind;
   attackerId: string | null;
@@ -34,11 +34,11 @@ export interface KillcamReplayInfo {
   targetImpactPose: number[];
 }
 
-export interface KillcamPlayOptions {
+interface KillcamPlayOptions {
   freshKill?: boolean;
 }
 
-export interface KillcamSpectateAccess {
+interface KillcamSpectateAccess {
   readonly active: boolean;
   readonly targetId: string | null;
   startObserver(): boolean;
@@ -76,12 +76,12 @@ export interface KillcamRuntime {
   ): void;
 }
 
-export interface KillcamAccessOptions<TModule, TRuntime extends KillcamRuntime> {
+interface KillcamAccessOptions<TModule, TRuntime extends KillcamRuntime> {
   loadModule(): MaybePromise<TModule>;
   initialize(module: TModule): MaybePromise<TRuntime>;
 }
 
-export interface KillcamAccess<TModule, TRuntime extends KillcamRuntime> {
+interface KillcamAccess<TModule, TRuntime extends KillcamRuntime> {
   readonly current: TRuntime | null;
   readonly presentation: KillcamRuntime;
   preloadModule(): Promise<TModule>;

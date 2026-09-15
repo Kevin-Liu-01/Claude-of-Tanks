@@ -14,7 +14,7 @@ interface StreamerAccessLoaders {
   load(): Promise<StreamerModule>;
 }
 
-export interface BattleVisualStreamerAccess<
+interface BattleVisualStreamerAccess<
   Entity extends BattleVisualEntity = BattleVisualEntity,
 > {
   preload(): Promise<BattleVisualStreamer<Entity>>;

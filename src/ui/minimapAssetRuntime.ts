@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 type MaybePromise<T> = T | PromiseLike<T>;
 
-export interface MinimapWorldRef {
+interface MinimapWorldRef {
   mapId: string;
 }
 
@@ -24,7 +24,7 @@ interface MinimapAssetRuntimeOptions<World extends MinimapWorldRef> {
   publishTrace?(trace: MinimapLoadTrace): void;
 }
 
-export interface MinimapAssetRuntime<World extends MinimapWorldRef> {
+interface MinimapAssetRuntime<World extends MinimapWorldRef> {
   queue(world?: World | null): Promise<boolean> | null;
   dispose(): void;
 }

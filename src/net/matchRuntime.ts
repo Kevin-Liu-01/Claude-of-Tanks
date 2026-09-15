@@ -49,7 +49,7 @@ export interface MatchTransport {
   close?(reason?: string): void;
 }
 
-export interface MatchRoomPlayer {
+interface MatchRoomPlayer {
   id?: string;
   name?: string;
   team?: string;
@@ -65,7 +65,7 @@ export interface MatchRoomState {
   players?: MatchRoomPlayer[];
 }
 
-export interface RoomController {
+interface RoomController {
   state(): MatchRoomState;
   command(peerId: string, command: Record<string, RuntimeValue>): MatchRoomState | null | undefined;
   rejoin?(peerId: string, player: Record<string, RuntimeValue>): RuntimeValue;
@@ -76,7 +76,7 @@ export interface RoomController {
   finish?(outcome: { result: RuntimeValue; reason: RuntimeValue }): RuntimeValue;
 }
 
-export interface SimulationStepContext {
+interface SimulationStepContext {
   dt: number;
   /** Authority-owned pregame elapsed; never a combat integration delta. */
   countdownElapsedS?: number;
@@ -108,7 +108,7 @@ export interface MatchSimulation {
   afterSnapshotBroadcast?(): RuntimeValue;
 }
 
-export interface AuthoritativeMatchStats {
+interface AuthoritativeMatchStats {
   steps: number;
   snapshots: number;
   droppedCatchUpMs: number;
@@ -195,7 +195,7 @@ export interface MatchClientOptions {
   clock?: () => number;
 }
 
-export interface MatchClientStats extends Record<string, RuntimeValue> {
+interface MatchClientStats extends Record<string, RuntimeValue> {
   connected: boolean;
   rttMs: number | null;
   rttJitterMs: number;

@@ -16,7 +16,7 @@ import { PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 // the vehicle registry so every carousel and battle path shares one source.
 export const GARAGE_HIDDEN_TANK_IDS = PRODUCTION_HIDDEN_TANK_IDS;
 
-export interface MatchCandidate {
+interface MatchCandidate {
   specId: string;
   spec?: { era?: string | null } | null;
 }

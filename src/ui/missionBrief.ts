@@ -27,7 +27,7 @@ const CSS = `
 .cot-brief .enemy{font:700 9px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;color:#f0a4a4}
 `;
 
-export interface MissionBriefRequest {
+interface MissionBriefRequest {
   /** Ladder operation launched from the campaign card, when there is one. */
   readonly operationId?: string | null;
   readonly mapId: string;
@@ -35,7 +35,7 @@ export interface MissionBriefRequest {
   readonly durationS?: number;
 }
 
-export interface MissionBriefView {
+interface MissionBriefView {
   readonly kicker: string;
   readonly title: string;
   readonly brief: string | null;
@@ -60,7 +60,7 @@ export function missionBriefView(request: Pick<MissionBriefRequest, 'operationId
   };
 }
 
-export interface MissionBriefRuntime {
+interface MissionBriefRuntime {
   show(request: MissionBriefRequest): MissionBriefView;
   hide(): void;
   isShowing(): boolean;

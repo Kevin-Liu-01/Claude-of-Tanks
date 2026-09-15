@@ -9,7 +9,7 @@ interface AmmunitionCard {
 type TextNode = Pick<HTMLElement, 'textContent'>;
 type StyledNode = Pick<HTMLElement, 'style'>;
 
-export interface AmmunitionSlotElements {
+interface AmmunitionSlotElements {
   button: Pick<HTMLButtonElement,
     'classList' | 'setAttribute' | 'removeAttribute' | 'style' | 'tabIndex'>;
   type: TextNode & StyledNode;

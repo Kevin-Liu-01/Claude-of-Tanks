@@ -39,7 +39,7 @@ export interface DeploymentForwardWarmBatch {
   ms: number;
 }
 
-export interface DeploymentForwardWarmOptions {
+interface DeploymentForwardWarmOptions {
   scene: Scene;
   csmLights?: readonly ShadowLight[] | null;
   worldGroup?: Object3D | null;

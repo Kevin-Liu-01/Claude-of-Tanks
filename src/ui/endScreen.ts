@@ -53,14 +53,14 @@ export interface EndScreenTeamRow {
   isPlayer?: boolean;
 }
 
-export interface EndScreenKillRow {
+interface EndScreenKillRow {
   id: string;
   name?: string | null;
   specId?: string | null;
   dmg: number;
 }
 
-export interface EndScreenStats {
+interface EndScreenStats {
   dealt: number;
   received: number;
   blocked: number;
@@ -73,7 +73,7 @@ export interface EndScreenStats {
   spotAttributed?: boolean;
 }
 
-export interface EndScreenBestShot {
+interface EndScreenBestShot {
   damage: number;
   shellType?: string;
   shellName?: string;
@@ -100,7 +100,7 @@ export interface EndScreenSummary {
   campaign?: CampaignDebrief | null;
 }
 
-export interface EndScreenRuntime {
+interface EndScreenRuntime {
   readonly root: HTMLElement;
   readonly visible: boolean;
   show(result: EndScreenResult, summary: EndScreenSummary): void;
@@ -143,7 +143,7 @@ interface TeamSummaryInput {
   dmg?: RuntimeValue;
 }
 
-export interface TeamSummary {
+interface TeamSummary {
   total: number;
   alive: number;
   kills: number;

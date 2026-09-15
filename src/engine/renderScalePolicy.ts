@@ -6,13 +6,13 @@
 
 const DEFAULT_DYNAMIC_MIN = 0.75;
 
-export interface RenderScalePreset {
+interface RenderScalePreset {
   maxPixelRatio?: number;
   adaptiveBasePixelRatio?: number;
   dynMin?: number;
 }
 
-export type OverloadReliefLever = 'trim' | 'resolution' | 'tier';
+type OverloadReliefLever = 'trim' | 'resolution' | 'tier';
 export type ReconstructionMode = 'linear' | 'easu' | 'easu+rcas' | 'native-rcas';
 
 export function cappedPixelRatio(

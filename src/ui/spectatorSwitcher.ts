@@ -10,7 +10,7 @@ export interface SpectatorCardPayload {
   readonly index?: number;
 }
 
-export interface SpectatorCardModel {
+interface SpectatorCardModel {
   readonly icon: string;
   readonly position: string;
 }

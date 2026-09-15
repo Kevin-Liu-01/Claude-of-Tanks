@@ -1,15 +1,15 @@
-export type GarageIdleWorkKind =
+type GarageIdleWorkKind =
   | 'world-intent'
   | 'pedestal-neighbors'
   | 'world'
   | 'dressing';
 
-export interface GarageIdleWorkLease {
+interface GarageIdleWorkLease {
   readonly kind: GarageIdleWorkKind;
   release(): void;
 }
 
-export interface GarageIdleWorkStats {
+interface GarageIdleWorkStats {
   current: GarageIdleWorkKind | null;
   queued: number;
   maxQueued: number;

@@ -141,7 +141,7 @@ interface PlayRequest {
   readonly startSolo: () => void;
 }
 
-export interface GarageOptions {
+interface GarageOptions {
   readonly specs: GarageTankSpec[];
   readonly bus?: { emit(event: string, payload: RuntimeValue): void };
   readonly onSelect?: (specId: string) => void;

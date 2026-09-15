@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface PerfHudRuntime {
+interface PerfHudRuntime {
   update(dtMs: number): void;
   toggle(): void;
   setVisible(visible: boolean): void;
@@ -10,12 +10,12 @@ export interface PerfHudRuntime {
   snapshot(): RuntimeValue;
 }
 
-export interface DebugTelemetryRuntime {
+interface DebugTelemetryRuntime {
   collect(): Record<string, RuntimeValue>;
   sampleShadowContribution(): Promise<Record<string, RuntimeValue>>;
 }
 
-export interface PerfDiagnosticsRuntime {
+interface PerfDiagnosticsRuntime {
   hud: PerfHudRuntime;
   telemetry: DebugTelemetryRuntime;
 }

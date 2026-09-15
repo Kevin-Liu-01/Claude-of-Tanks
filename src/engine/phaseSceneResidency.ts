@@ -21,7 +21,7 @@ export interface PhaseSceneResidency {
   };
 }
 
-export interface PhaseSceneResidencyOptions {
+interface PhaseSceneResidencyOptions {
   scene: SceneHost;
   garageRoots: readonly SceneRoot[];
 }

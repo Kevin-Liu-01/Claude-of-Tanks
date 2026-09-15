@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type NightLightKind = 'headlight' | 'building' | 'shtora' | 'marker';
+type NightLightKind = 'headlight' | 'building' | 'shtora' | 'marker';
 type LocalPoint = readonly [number, number, number];
 
 /** Only dedicated lamp materials or a proven semantic lamp-mask shader belong

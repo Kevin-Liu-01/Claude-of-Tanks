@@ -16,7 +16,7 @@ export interface AimIntentInput {
   aimDistance?: RuntimeValue;
 }
 
-export interface AimIntent {
+interface AimIntent {
   aimYaw: number;
   aimPitch: number;
   aimDistance: number;

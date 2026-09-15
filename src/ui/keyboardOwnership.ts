@@ -1,9 +1,9 @@
-export interface EditingControlTarget {
+interface EditingControlTarget {
   readonly tagName?: string;
   readonly isContentEditable?: boolean;
 }
 
-export interface PointerUnlockContext {
+interface PointerUnlockContext {
   readonly pointerLocked?: boolean;
   readonly settingsOpen?: boolean;
   readonly battleActive?: boolean;

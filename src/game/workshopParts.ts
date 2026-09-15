@@ -10,7 +10,7 @@ const PART_KINDS = Object.freeze([
 ] as const);
 export { PART_KINDS as WORKSHOP_PART_KINDS };
 
-export type WorkshopPartKind = (typeof PART_KINDS)[number];
+type WorkshopPartKind = (typeof PART_KINDS)[number];
 type WorkshopScale = number | readonly [number, number, number];
 type WorkshopTransform = readonly [
   x: number, y: number, z: number,
@@ -18,11 +18,11 @@ type WorkshopTransform = readonly [
   scale?: WorkshopScale,
 ];
 
-export interface WorkshopEngineContext {
+interface WorkshopEngineContext {
   setupShadowMaterial?(material: THREE.Material): void;
 }
 
-export interface WorkshopAssemblyOptions { name?: string }
+interface WorkshopAssemblyOptions { name?: string }
 
 type FamilyKey = 'abrams' | 't90' | 'leclerc';
 interface FamilyProfile {

@@ -11,7 +11,7 @@ type DeploymentModule = Pick<
   'createSoloBattleDeploymentRuntime'
 >;
 
-export interface SoloBattleDeploymentAccess extends SoloBattleDeploymentRuntime {
+interface SoloBattleDeploymentAccess extends SoloBattleDeploymentRuntime {
   preload(): Promise<SoloBattleDeploymentRuntime>;
   readonly current: SoloBattleDeploymentRuntime | null;
 }

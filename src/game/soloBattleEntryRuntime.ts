@@ -21,7 +21,7 @@ export interface SoloBattleEntryRequest extends SoloBattleLoadingStartOptions {
   campaignOperationId?: string | null;
 }
 
-export interface SoloBattleEntryRuntimeOptions {
+interface SoloBattleEntryRuntimeOptions {
   lifecycle: BattleEntryLifecycle;
   loading: SoloBattleLoadingRuntime;
   battleLoad: EntryLoadScreen;
@@ -35,7 +35,7 @@ export interface SoloBattleEntryRuntimeOptions {
   reportError?(message: string, error: RuntimeValue): void;
 }
 
-export interface SoloBattleEntryRuntime {
+interface SoloBattleEntryRuntime {
   begin(
     specId: string,
     mapId?: string | null,

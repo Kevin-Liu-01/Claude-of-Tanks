@@ -52,7 +52,7 @@ interface NetworkLoadInterval<Stage extends string> {
   endTime?: number;
 }
 
-export interface NetworkBattleLoadTrace {
+interface NetworkBattleLoadTrace {
   mode: string;
   map: string;
   stages: Record<string, number>;

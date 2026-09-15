@@ -20,26 +20,26 @@ export interface MessageTransport {
   close(reason?: string): void;
 }
 
-export interface LoopbackTransportStats {
+interface LoopbackTransportStats {
   sent: number;
   received: number;
   rejected: number;
   peakQueue: number;
 }
 
-export interface LoopbackTransport extends MessageTransport {
+interface LoopbackTransport extends MessageTransport {
   readonly kind: 'loopback';
   readonly label: string;
   readonly bufferedMessages: number;
   readonly stats: LoopbackTransportStats;
 }
 
-export interface LoopbackTransportPair {
+interface LoopbackTransportPair {
   client: LoopbackTransport;
   host: LoopbackTransport;
 }
 
-export interface LoopbackTransportOptions {
+interface LoopbackTransportOptions {
   maxQueuedMessages?: number;
   direct?: boolean;
 }

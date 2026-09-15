@@ -10,7 +10,7 @@ import zhCN from './i18nCatalog.zh-CN.json' with { type: 'json' };
 
 export { enUS, zhCN };
 
-export type CatalogLocale = 'en-US' | 'zh-CN';
+type CatalogLocale = 'en-US' | 'zh-CN';
 
 export const CATALOG: Readonly<Record<CatalogLocale, Readonly<Record<string, string>>>> = {
   'en-US': enUS,

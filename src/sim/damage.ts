@@ -78,7 +78,7 @@ export interface DamageShell extends ShellEntity<DamageShellSpec> {
 }
 
 export type DamageArmorPlate = ArmorPlate;
-export type DamageArmorModel = ArmorModel;
+type DamageArmorModel = ArmorModel;
 
 export interface DamageGunSpec {
   reloadS: number;
@@ -100,14 +100,14 @@ export interface DamageTankSpec {
   dims?: { heightM: number };
 }
 
-export interface CombatModuleState {
+interface CombatModuleState {
   hp: number;
   maxHp: number;
   state: ModuleStateName;
   repairT: number;
 }
 
-export interface ReloadState {
+interface ReloadState {
   t: number;
   totalS: number;
   kind: ReloadKind;
@@ -161,7 +161,7 @@ export function mainWeaponModuleState(
   return state;
 }
 
-export type DamageTankState = ArmorPoseState;
+type DamageTankState = ArmorPoseState;
 
 export interface DamageTarget {
   id: string;
@@ -172,8 +172,8 @@ export interface DamageTarget {
 
 export type PlateHit = ArmorPlateIntersection;
 export type ModuleHit = ArmorModuleIntersection;
-export type CrewHit = ArmorCrewIntersection;
-export type ArmorHit = ArmorIntersection;
+type CrewHit = ArmorCrewIntersection;
+type ArmorHit = ArmorIntersection;
 
 export interface HitEvent {
   kind: string;

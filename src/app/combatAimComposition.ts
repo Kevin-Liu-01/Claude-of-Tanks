@@ -16,7 +16,7 @@ import type { MainEntity, MainGameState } from './mainContracts.ts';
 
 type CombatRaycast = CameraRaycast & AimControllerDependencies['worldRaycast'];
 
-export interface CombatAimCompositionOptions {
+interface CombatAimCompositionOptions {
   camera: PerspectiveCamera;
   heightField: CameraRigDeps['heightField'];
   getGame(): MainGameState;
@@ -24,7 +24,7 @@ export interface CombatAimCompositionOptions {
   getShellCards(): ShellCard[];
 }
 
-export interface CombatAimComposition {
+interface CombatAimComposition {
   battleClient: BattleClientAccess;
   rig: CameraRig;
   targetVisible: AimControllerDependencies['targetVisible'];

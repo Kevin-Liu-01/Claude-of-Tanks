@@ -106,7 +106,7 @@ export interface SnapshotShellSource {
   spec?: { type?: RuntimeValue; guided?: boolean } | null;
 }
 
-export interface QuantizedEntitySnapshot {
+interface QuantizedEntitySnapshot {
   id: string;
   specId: string;
   team: string;
@@ -162,7 +162,7 @@ export interface WorldSnapshot {
   meta: Record<string, RuntimeValue> | null;
 }
 
-export interface SnapshotPacket extends WorldSnapshot {
+interface SnapshotPacket extends WorldSnapshot {
   baseTick?: number;
   removedEntityIds?: string[];
 }
@@ -230,7 +230,7 @@ export interface SampledSnapshotFrame {
   immediateAuthority: ImmediateAuthoritySnapshot | null;
 }
 
-export interface CaptureWorldSnapshotOptions {
+interface CaptureWorldSnapshotOptions {
   tick?: number;
   serverTimeMs?: number;
   entities?: Iterable<SnapshotEntitySource> | null;
@@ -946,7 +946,7 @@ function stabilizeRestPose(
  * Client-side jitter buffer. It renders slightly behind authority, uses
  * Hermite motion for tracked vehicles, and bounds extrapolation during loss.
  */
-export interface SnapshotBufferOptions {
+interface SnapshotBufferOptions {
   interpolationDelayMs?: number;
   maxExtrapolationMs?: number;
   capacity?: number;
@@ -955,7 +955,7 @@ export interface SnapshotBufferOptions {
   maxInterpolationDelayMs?: number;
 }
 
-export interface SnapshotBufferStats {
+interface SnapshotBufferStats {
   interpolationDelayMs: number;
   targetInterpolationDelayMs: number;
   arrivalJitterMs: number;

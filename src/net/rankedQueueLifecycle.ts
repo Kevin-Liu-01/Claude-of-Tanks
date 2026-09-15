@@ -1,6 +1,6 @@
 import type { RankedQueueTicket } from './rankedServiceClient.ts';
 
-export interface RankedQueueAttempt {
+interface RankedQueueAttempt {
   readonly signal: AbortSignal;
   isCurrent(): boolean;
   adoptTicket(ticket: RankedQueueTicket): Promise<boolean>;

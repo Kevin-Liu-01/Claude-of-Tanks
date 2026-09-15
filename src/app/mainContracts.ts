@@ -19,7 +19,7 @@ export type MainLightingRuntime = ReturnType<typeof createLighting>;
 
 export type MainGarageRuntime = GarageRuntime;
 
-export type MainVisual = NonNullable<RosterEntity['visual']>;
+type MainVisual = NonNullable<RosterEntity['visual']>;
 
 export interface MainFxRuntime extends Omit<
   FxRuntime,

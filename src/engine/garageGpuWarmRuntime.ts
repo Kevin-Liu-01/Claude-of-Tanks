@@ -52,7 +52,7 @@ interface GaragePostWarmPort extends GaragePostRenderPort {
   ): Promise<Array<{ label: string; ms: number }>>;
 }
 
-export interface GarageGpuWarmTimings {
+interface GarageGpuWarmTimings {
   postCompile?: number;
   shadowPassMax?: number;
   shadowPasses?: number[];
@@ -64,7 +64,7 @@ export interface GarageGpuWarmTimings {
   postPasses?: Array<{ label: string; ms: number }>;
 }
 
-export interface GarageGpuWarmOptions {
+interface GarageGpuWarmOptions {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;
@@ -101,7 +101,7 @@ export interface GarageGpuRestoreReceipt {
   settleFrameMs: number;
 }
 
-export interface GarageGpuRestoreOptions {
+interface GarageGpuRestoreOptions {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;

@@ -2,13 +2,13 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared consumable rules. Kits are reusable for the whole battle; successful
 // use starts the item's own cooldown, while no-op presses remain free.
 
-export interface ConsumableRule {
+interface ConsumableRule {
   readonly id: 'repair' | 'first_aid' | 'extinguisher';
   readonly label: string;
   readonly cooldownS: number;
 }
 
-export type ConsumableCooldownResult =
+type ConsumableCooldownResult =
   | { ok: false; remainingS: number }
   | { ok: true; cooldownS: number; readyAt: number };
 

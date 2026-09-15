@@ -11,11 +11,11 @@ import {
   type PhaseSceneResidency,
 } from '../engine/phaseSceneResidency.ts';
 
-export type GarageSkyConfig = MapSkyConfig;
+type GarageSkyConfig = MapSkyConfig;
 
 export type GaragePresentationRestoreReceipt = GarageGpuRestoreReceipt;
 
-export interface GaragePresentationRestoreContext {
+interface GaragePresentationRestoreContext {
   resourcesReleased: boolean;
 }
 
@@ -24,7 +24,7 @@ interface GarageLightingPort {
   setSun(sunDirection: THREE.Vector3, config: GarageSkyConfig): void;
 }
 
-export interface GaragePhasePresentationOptions {
+interface GaragePhasePresentationOptions {
   scene: THREE.Scene;
   stageRoot: THREE.Object3D;
   dressingRoot: THREE.Object3D;

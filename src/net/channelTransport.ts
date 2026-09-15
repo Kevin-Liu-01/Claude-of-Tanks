@@ -33,7 +33,7 @@ export interface WireCodec {
   size?(value: RuntimeValue): number;
 }
 
-export interface ChannelTransportOptions {
+interface ChannelTransportOptions {
   kind?: string;
   codec?: WireCodec;
   stateCodec?: WireCodec;
@@ -45,7 +45,7 @@ export interface ChannelTransportOptions {
   maxInputBufferedBytes?: number;
 }
 
-export interface ChannelTransportStats {
+interface ChannelTransportStats {
   sent: number;
   received: number;
   rejected: number;
@@ -58,7 +58,7 @@ export interface ChannelTransportStats {
   inputPending: number;
 }
 
-export interface SplitTransportStats {
+interface SplitTransportStats {
   control: ChannelTransportStats;
   state: ChannelTransportStats;
 }

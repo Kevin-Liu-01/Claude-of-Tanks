@@ -29,7 +29,7 @@ interface PoseSpring {
   rv?: number;
 }
 
-export interface TankPoseSource {
+interface TankPoseSource {
   pos?: PoseVector;
   yaw?: number;
   speed?: number;
@@ -58,7 +58,7 @@ interface MutableSpring {
   rv: number;
 }
 
-export interface TankPresentationSample {
+interface TankPresentationSample {
   pos: Vector3;
   yaw: number;
   speed: number;

@@ -9,7 +9,7 @@ export interface NetworkInputSample {
   actionBits?: number;
 }
 
-export interface NetworkInputCadenceOptions {
+interface NetworkInputCadenceOptions {
   sendHz?: number;
   analogEdgeThreshold?: number;
   maxAccumulatedS?: number;

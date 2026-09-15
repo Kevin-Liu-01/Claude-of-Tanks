@@ -13,7 +13,7 @@ export const MOBILE_OUTPUT_PIXEL_BUDGET = 4_000_000;
 
 type NumericInput = number | null | undefined;
 
-export interface OutputResolutionOptions {
+interface OutputResolutionOptions {
   width?: NumericInput;
   height?: NumericInput;
   devicePixelRatio?: NumericInput;

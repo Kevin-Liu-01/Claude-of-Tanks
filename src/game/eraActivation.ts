@@ -1,6 +1,6 @@
 /** Shared presentation contract for one-shot explosive reactive armor. */
 
-export interface EraHitEvent {
+interface EraHitEvent {
   eraPlate?: string | null;
   eraActivations?: readonly {
     plate: string;

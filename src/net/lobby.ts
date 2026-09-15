@@ -21,7 +21,7 @@ export const LOBBY_TEAMS = {
   SPECTATOR: 'spectator',
 } as const;
 
-export type LobbyPhase = typeof LOBBY_PHASES[keyof typeof LOBBY_PHASES];
+type LobbyPhase = typeof LOBBY_PHASES[keyof typeof LOBBY_PHASES];
 export type LobbyTeam = typeof LOBBY_TEAMS[keyof typeof LOBBY_TEAMS];
 
 export interface LobbyPlayer {
@@ -37,7 +37,7 @@ export interface LobbyPlayer {
   rating: number | null;
 }
 
-export interface LobbyResult {
+interface LobbyResult {
   round: number;
   result: string | null;
   reason: string | null;
@@ -207,7 +207,7 @@ interface LobbyPlayerInput {
   rating?: RuntimeValue;
 }
 
-export interface CreateLobbyOptions {
+interface CreateLobbyOptions {
   roomCode?: RuntimeValue;
   hostId?: RuntimeValue;
   hostName?: RuntimeValue;

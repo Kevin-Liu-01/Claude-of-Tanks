@@ -39,7 +39,7 @@ interface FrameTrace {
   mark?(name: string, data: Readonly<Record<string, number>>): void;
 }
 
-export interface MainFrameRuntimeOptions {
+interface MainFrameRuntimeOptions {
   scene: Scene;
   camera: PerspectiveCamera;
   game: MainGameState;
@@ -81,7 +81,7 @@ export interface MainFrameRuntimeOptions {
   trace?: FrameTrace | null;
 }
 
-export interface MainFrameRuntime {
+interface MainFrameRuntime {
   tick(nowMs: number): void;
   noteFovPrimed(fov: number): void;
 }

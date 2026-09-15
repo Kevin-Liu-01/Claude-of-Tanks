@@ -2,7 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { RoomInvite } from '../net/roomInvite.ts';
 import { resolveLocalePath } from '../ui/localeRouting.ts';
 
-export interface StartupLocation {
+interface StartupLocation {
   search?: string;
   pathname?: string;
   href?: string;
@@ -12,7 +12,7 @@ interface RoomInviteModule {
   parseRoomInvite(value: RuntimeValue): RoomInvite | null;
 }
 
-export interface StartupIntent {
+interface StartupIntent {
   studioRequested: boolean;
   studioMapId: string;
   pendingRoomInvite: Promise<RoomInvite | null> | null;

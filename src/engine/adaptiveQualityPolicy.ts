@@ -16,7 +16,7 @@ export type AdaptiveQualityAction =
   | 'trim-up'
   | 'tier-up';
 
-export interface AdaptiveQualityWindow {
+interface AdaptiveQualityWindow {
   readonly clockSeconds: number;
   readonly frameEmaMs: number;
   readonly frameBudgetMs: number;

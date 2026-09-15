@@ -36,9 +36,9 @@ const FADE_OUT_MS = 140;
 const QUICK_FADE_IN_MS = 90;
 const QUICK_FADE_OUT_MS = 80;
 
-export type TransitionPace = 'standard' | 'quick';
+type TransitionPace = 'standard' | 'quick';
 
-export interface TransitionOptions {
+interface TransitionOptions {
   readonly kicker?: string;
   readonly title?: string;
   readonly sub?: string;
@@ -52,10 +52,10 @@ export interface TransitionOptions {
   readonly holdSceneDuringFadeIn?: boolean;
 }
 
-export type TransitionProgress = (fraction: number, label?: string) => void;
-export type TransitionWork<Result> = (progress: TransitionProgress) => Result | Promise<Result>;
+type TransitionProgress = (fraction: number, label?: string) => void;
+type TransitionWork<Result> = (progress: TransitionProgress) => Result | Promise<Result>;
 
-export interface TransitionScreen {
+interface TransitionScreen {
   readonly visible: boolean;
   readonly active: boolean;
   readonly holdingSceneForFadeIn: boolean;

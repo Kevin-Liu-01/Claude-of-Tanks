@@ -29,7 +29,7 @@ interface MobileAutoAimModule<TTank extends MobileBattleInputTank> {
   ): MobileAutoAimRuntime;
 }
 
-export interface MobileBattleInputOptions<
+interface MobileBattleInputOptions<
   TTank extends MobileBattleInputTank = MobileBattleInputTank,
 > {
   input: InputLayer;
@@ -58,7 +58,7 @@ interface MobileBattleInputDependencies<TTank extends MobileBattleInputTank> {
   loadAutoAim(): Promise<MobileAutoAimModule<TTank>>;
 }
 
-export interface MobileBattleInputAccess {
+interface MobileBattleInputAccess {
   preload(): Promise<TouchControlsRuntime | null>;
   getAutoAim(): MobileAutoAimRuntime | null;
 }

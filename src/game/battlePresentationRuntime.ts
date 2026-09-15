@@ -87,14 +87,14 @@ type PosePorts = Pick<BattleClientAccess,
   | 'isPostwarVehicleEra'
 >;
 
-export interface BattlePresentationRuntime {
+interface BattlePresentationRuntime {
   resetSoloPoses(): void;
   primeDeploymentTerrainTiles(): void;
   captureSoloPoses(): void;
   update(dtFrame?: number, presentationAlpha?: number): void;
 }
 
-export interface BattlePresentationRuntimeOptions {
+interface BattlePresentationRuntimeOptions {
   game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting'>;
   camera: PerspectiveCamera;
   scene: Scene;

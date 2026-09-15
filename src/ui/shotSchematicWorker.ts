@@ -15,7 +15,7 @@ export function isSchematicMessage(value: RuntimeValue): value is SchematicMessa
     && validSchematicSize(request.width, request.height);
 }
 
-export interface SchematicWorkerPorts {
+interface SchematicWorkerPorts {
   decode(url: string): Promise<ImageBitmap>;
   createCanvas(width: number, height: number): OffscreenCanvas;
   post(reply: SchematicReply): void;

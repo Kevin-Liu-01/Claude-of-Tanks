@@ -8,7 +8,7 @@ interface BakedMaterialLifecycle {
   release(material: THREE.Material): void;
 }
 
-export interface GarageDressingOptimizationOptions {
+interface GarageDressingOptimizationOptions {
   /**
    * World-space bounding-sphere radius below which a static fitting no longer
    * submits to the Garage shadow cascades. The color pass remains untouched.

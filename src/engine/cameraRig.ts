@@ -85,7 +85,7 @@ const _autoAimAnchor = new THREE.Vector3();
 const _lookTarget = new THREE.Vector3();
 // <<< gameplay_feel r4
 
-export interface CameraRaycastHit {
+interface CameraRaycastHit {
   point: THREE.Vector3;
   normal: THREE.Vector3;
   dist: number;
@@ -98,18 +98,18 @@ export type CameraRaycast = (
   maxDistanceM: number,
 ) => CameraRaycastHit | null;
 
-export interface CameraAimRaycastHit {
+interface CameraAimRaycastHit {
   point: THREE.Vector3;
   dist: number;
 }
 
-export type CameraAimRaycast = (
+type CameraAimRaycast = (
   origin: THREE.Vector3,
   direction: THREE.Vector3,
   maxDistanceM: number,
 ) => CameraAimRaycastHit | null;
 
-export interface CameraEntityVisual {
+interface CameraEntityVisual {
   root: THREE.Object3D;
   boundingRadiusM?: number;
   turretTopWorld(out: THREE.Vector3): RuntimeValue;
@@ -142,7 +142,7 @@ export interface CameraRigDeps {
   getPlayer(): CameraEntity | null;
 }
 
-export interface CameraInputFrame {
+interface CameraInputFrame {
   mouseDX: number;
   mouseDY: number;
   wheel: number;
@@ -1487,14 +1487,14 @@ function measureLocalBox(
  * is the world azimuth of the camera as seen from the vehicle (0 → +Z), while
  * `heroPitchRad` is its elevation.
  */
-export interface ShowroomStageRect {
+interface ShowroomStageRect {
   x: number;
   y: number;
   w: number;
   h: number;
 }
 
-export interface ShowroomFixedFrame {
+interface ShowroomFixedFrame {
   x: number;
   y: number;
   z: number;
@@ -1503,11 +1503,11 @@ export interface ShowroomFixedFrame {
   hd: number;
 }
 
-export interface ShowroomPoseRig {
+interface ShowroomPoseRig {
   setExternalPose(position: THREE.Vector3, target: THREE.Vector3, fovDeg?: number): void;
 }
 
-export interface ShowroomOrbitDeps {
+interface ShowroomOrbitDeps {
   getSubject(): THREE.Object3D | null;
   getStageRect?(): ShowroomStageRect | null;
   heroYawRad: number;
@@ -1516,7 +1516,7 @@ export interface ShowroomOrbitDeps {
   floorY?(): number;
 }
 
-export interface ShowroomOrbit {
+interface ShowroomOrbit {
   readonly active: boolean;
   readonly moving: boolean;
   readonly heroDist: number;

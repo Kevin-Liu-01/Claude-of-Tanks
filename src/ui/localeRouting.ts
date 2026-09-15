@@ -10,7 +10,7 @@ export const DEFAULT_LOCALE = 'en-US' as const;
 export const SUPPORTED_LOCALES = ['en-US', 'zh-CN'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
-export type PublicRouteId =
+type PublicRouteId =
   | 'game'
   | 'home'
   | 'gallery'
@@ -61,7 +61,7 @@ export const PUBLIC_ROUTE_RECORDS: readonly PublicRouteRecord[] = Object.freeze(
 
 const ROUTE_BY_PATH = new Map(PUBLIC_ROUTE_RECORDS.map((route) => [route.pathname, route]));
 
-export interface LocalePathResolution {
+interface LocalePathResolution {
   readonly locale: SupportedLocale | null;
   readonly pathname: string;
   readonly route: PublicRouteRecord | null;

@@ -23,12 +23,12 @@ export const VIEWPORT_HEIGHT_BANDS = Object.freeze({
   tall: Object.freeze({ min: 900, max: Infinity }),
 });
 
-export type ViewportWidthBand = keyof typeof VIEWPORT_WIDTH_BANDS;
-export type ViewportHeightBand = keyof typeof VIEWPORT_HEIGHT_BANDS;
-export type ViewportOrientation = 'landscape' | 'portrait';
-export type ViewportInputMode = 'coarse' | 'fine';
+type ViewportWidthBand = keyof typeof VIEWPORT_WIDTH_BANDS;
+type ViewportHeightBand = keyof typeof VIEWPORT_HEIGHT_BANDS;
+type ViewportOrientation = 'landscape' | 'portrait';
+type ViewportInputMode = 'coarse' | 'fine';
 
-export interface ViewportMeasurements {
+interface ViewportMeasurements {
   width?: number;
   height?: number;
   offsetLeft?: number;
@@ -38,7 +38,7 @@ export interface ViewportMeasurements {
   hover?: boolean;
 }
 
-export interface ViewportSnapshot {
+interface ViewportSnapshot {
   readonly width: number;
   readonly height: number;
   readonly offsetLeft: number;
@@ -55,7 +55,7 @@ export interface ViewportSnapshot {
   readonly scale: number;
 }
 
-export interface ResponsiveLayoutHandle {
+interface ResponsiveLayoutHandle {
   snapshot(): ViewportSnapshot | null;
   refresh(): void;
   destroy(): void;

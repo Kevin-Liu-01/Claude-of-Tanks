@@ -27,7 +27,7 @@ export interface GarageWorkshopMaterialPalette {
   dispose(): void;
 }
 
-export interface GarageWorkshopMaterialEngineContext {
+interface GarageWorkshopMaterialEngineContext {
   setupShadowMaterial?(material: THREE.Material): void;
   releaseShadowMaterial?(material: THREE.Material): boolean;
 }

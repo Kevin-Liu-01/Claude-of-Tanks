@@ -26,7 +26,7 @@ import {
 const STORAGE_KEY = 'cot.locale';
 export type { SupportedLocale } from './localeRouting.ts';
 
-export interface LocaleChangeDetail {
+interface LocaleChangeDetail {
   readonly locale: SupportedLocale;
   readonly previous: SupportedLocale;
 }

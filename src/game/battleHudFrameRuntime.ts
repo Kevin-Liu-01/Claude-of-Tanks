@@ -76,14 +76,14 @@ function isHudTankEntity(value: RuntimeValue): value is HudTankEntity {
       || typeof Reflect.get(value, 'visual') === 'object');
 }
 
-export interface BattleHudSpotFrame<TEntity extends HudTankEntity = HudTankEntity>
+interface BattleHudSpotFrame<TEntity extends HudTankEntity = HudTankEntity>
   extends HudSpottingView {
   receiver: TEntity | null;
   isSpotted(id: string): boolean;
   player: ConcealmentView | null;
 }
 
-export interface BattleHudFrameInfo<TEntity extends HudTankEntity = HudTankEntity>
+interface BattleHudFrameInfo<TEntity extends HudTankEntity = HudTankEntity>
   extends HudFrame {
   timeS: number;
   pingMs: number;
@@ -104,7 +104,7 @@ type BattleHudGameState<TEntity extends HudTankEntity> = Omit<
   'matchModeState'
 > & { matchModeState: HudMatchModeState | null };
 
-export interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
+interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
   game: BattleHudGameState<TEntity>;
   camera: PerspectiveCamera;
   rig: CameraRigView;

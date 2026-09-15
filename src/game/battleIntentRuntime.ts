@@ -10,12 +10,12 @@ interface BattleIntentFxRuntime {
   preloadTextures?(): MaybePromise;
 }
 
-export interface BattleIntentOptions {
+interface BattleIntentOptions {
   specId?: string | null;
   mapId?: string | null;
 }
 
-export interface BattleRosterPreparation {
+interface BattleRosterPreparation {
   specId: string;
   mapId: string;
   rosterIds: readonly string[];

@@ -29,7 +29,7 @@ export {
   specialActionKind,
 } from './specialActionPolicy.ts';
 
-export interface SpecialActionResult {
+interface SpecialActionResult {
   ok: boolean;
   kind: SpecialActionKind;
   reason?: string;
@@ -37,7 +37,7 @@ export interface SpecialActionResult {
   slot?: number;
 }
 
-export interface SpecialActionEntity {
+interface SpecialActionEntity {
   spec?: (SpecialActionSpec & DamageTankSpec) | null;
   state?: { suspensionAim?: boolean } | null;
   combat?: CombatState | null;

@@ -106,6 +106,13 @@ worktree and never stage generated tank work wholesale.
   `NOTICE.md`; every playable spec inherits the named authorship record from
   `src/authorship.ts`. Record third-party exceptions in `docs/ATTRIBUTION.md`
   and run `npm run attribution:check`.
+- Every game-mode rule (gravity, speed, hull, damage, reload, ammunition, equipment,
+  consumables, respawn, clock, roster split, assault escalation, score targets) lives in
+  `src/sim/matchRuleset.ts`; the mode controller, `state.ts`, the authority, the HUD and the
+  rule cards read that table. Never add a mode literal elsewhere.
+- Export only what another file imports: a scratch scan
+  (`unused-exports`) drives periodic un-export passes; `npm run typecheck` runs the
+  unused-locals check on the core owners.
 - Add focused `*.selftest.mjs` coverage and include it in `npm test`.
 - Any playable tank addition or geometry/profile change must run the complete
   combat-anatomy procedure: `npm run tank:anatomy:update`,

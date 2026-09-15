@@ -2,14 +2,14 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type * as THREE from 'three';
 import { createShowroomOrbit } from '../engine/cameraRig.ts';
 
-export interface GarageStageRect {
+interface GarageStageRect {
   x: number;
   y: number;
   w: number;
   h: number;
 }
 
-export interface GarageShowroomFrame {
+interface GarageShowroomFrame {
   x: number;
   y: number;
   z: number;

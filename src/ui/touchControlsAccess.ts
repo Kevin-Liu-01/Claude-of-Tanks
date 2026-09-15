@@ -3,7 +3,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { ActionId } from '../game/input.ts';
 import type { EventBus } from '../game/stateCore.ts';
 
-export interface TouchControlsInput {
+interface TouchControlsInput {
   isTouchLayout(): boolean;
   setVirtualMove(x: number, y: number): void;
   addVirtualAim(dx: number, dy: number): void;

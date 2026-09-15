@@ -31,11 +31,11 @@ export function containModalTab(event: KeyboardEvent, panel: HTMLElement, fallba
 }
 export type ModalSize = 'small' | 'medium' | 'large' | 'wide';
 
-export interface ModalOpenOptions {
+interface ModalOpenOptions {
   trigger?: HTMLElement | null;
 }
 
-export interface ModalCloseOptions {
+interface ModalCloseOptions {
   restoreFocus?: boolean;
   immediate?: boolean;
 }
@@ -56,7 +56,7 @@ export interface ModalController {
   dispose(): void;
 }
 
-export interface ModalOptions {
+interface ModalOptions {
   title?: string;
   eyebrow?: string;
   subtitle?: string;

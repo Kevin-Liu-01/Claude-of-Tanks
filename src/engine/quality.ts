@@ -42,11 +42,11 @@
  */
 import type { WebGLRenderer } from 'three';
 
-export type DeviceTier = 'mobile' | 'desktop';
-export type DesktopPresetName = 'low' | 'medium' | 'high' | 'ultra';
-export type MobilePresetName = 'mobile-low' | 'mobile' | 'mobile-high';
+type DeviceTier = 'mobile' | 'desktop';
+type DesktopPresetName = 'low' | 'medium' | 'high' | 'ultra';
+type MobilePresetName = 'mobile-low' | 'mobile' | 'mobile-high';
 export type PresetName = DesktopPresetName | MobilePresetName;
-export type PresetChoice = 'auto' | DesktopPresetName;
+type PresetChoice = 'auto' | DesktopPresetName;
 
 export interface QualityPreset {
   readonly label: string;

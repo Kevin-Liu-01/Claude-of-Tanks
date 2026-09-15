@@ -18,7 +18,7 @@ interface MainDiagnosticsInstallers {
   installSurface(options: DebugSurfaceDependencies): RuntimeValue;
 }
 
-export interface MainDiagnosticsRuntimeOptions {
+interface MainDiagnosticsRuntimeOptions {
   telemetry: CombatTelemetryOptions;
   debugSurface: DebugSurfaceDependencies;
   perfHud: PerfHudDiagnosticsPort;

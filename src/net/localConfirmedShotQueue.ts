@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
-export interface ConfirmedShotEvent extends Record<string, RuntimeValue> {
+interface ConfirmedShotEvent extends Record<string, RuntimeValue> {
   type: 'shell_fired';
   shooterId: string;
   shellId: number;

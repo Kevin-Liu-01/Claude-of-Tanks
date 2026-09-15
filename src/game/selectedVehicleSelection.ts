@@ -3,14 +3,14 @@ interface SelectionStorage {
   setItem(key: string, value: string): void;
 }
 
-export interface SelectedVehicleSelection {
+interface SelectedVehicleSelection {
   readonly id: string;
   set(id: string): void;
   remember(id: string): void;
   select(id: string): void;
 }
 
-export interface SelectedVehicleSelectionOptions {
+interface SelectedVehicleSelectionOptions {
   visibleIds: readonly string[];
   defaultId: string;
   storageKey?: string;

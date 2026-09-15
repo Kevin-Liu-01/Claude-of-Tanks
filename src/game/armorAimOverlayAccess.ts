@@ -11,7 +11,7 @@ interface ArmorAimOverlayModule {
   createArmorAimOverlay(): ArmorAimOverlayRuntime;
 }
 
-export interface ArmorAimOverlayAccess extends ArmorAimOverlayRuntime {
+interface ArmorAimOverlayAccess extends ArmorAimOverlayRuntime {
   preload(): Promise<ArmorAimOverlayRuntime>;
   isReady(): boolean;
   readonly current: ArmorAimOverlayRuntime | null;

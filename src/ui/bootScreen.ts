@@ -77,11 +77,11 @@ function resolveStageLabel(key: keyof typeof STAGE_KEYS): string {
   return t(STAGE_KEYS[key]);
 }
 
-export interface BootScreenOptions {
+interface BootScreenOptions {
   readonly mode?: 'garage' | 'studio';
 }
 
-export interface BootScreen {
+interface BootScreen {
   begin(key: string): void;
   end(key: string): void;
   sub(fraction: number): void;

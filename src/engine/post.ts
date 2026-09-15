@@ -101,7 +101,7 @@ interface LateFxSoftState {
   isActive(): boolean;
 }
 
-export interface LateFxSoftStateInput {
+interface LateFxSoftStateInput {
   uSceneDepth?: THREE.IUniform<THREE.DepthTexture | null>;
   uSoftViewport?: THREE.IUniform<THREE.Vector2>;
   uCameraNear?: THREE.IUniform<number>;
@@ -128,7 +128,7 @@ interface OutputGradePass extends OutputPass {
   isOutputGradePass: boolean;
 }
 
-export interface PostWarmTiming {
+interface PostWarmTiming {
   label: string;
   ms: number;
 }

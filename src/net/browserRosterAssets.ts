@@ -9,7 +9,7 @@ import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { throwIfNetworkBattleEntryAborted } from './networkBattleEntryAbort.ts';
 
-export interface BrowserRosterPlayer {
+interface BrowserRosterPlayer {
   id: string;
   name?: string;
   specId: string;
@@ -17,11 +17,11 @@ export interface BrowserRosterPlayer {
   team?: string;
 }
 
-export interface PreparedBrowserRosterPlayer extends BrowserRosterPlayer {
+interface PreparedBrowserRosterPlayer extends BrowserRosterPlayer {
   camo: string;
 }
 
-export interface BrowserRosterAssetRequest {
+interface BrowserRosterAssetRequest {
   players: readonly BrowserRosterPlayer[];
   viewerId: string;
   spectator: boolean;
@@ -38,7 +38,7 @@ export interface BrowserRosterAssetPreparation {
   dispose(): Promise<void>;
 }
 
-export interface BrowserRosterAssetDependencies {
+interface BrowserRosterAssetDependencies {
   ensureTankBuilder(specId: string): Promise<void>;
   getSpec(specId: string): FleetTankSpec;
   resolveMultiplayerCamoPattern(specId: string, selection: string, mapId: string): string;

@@ -6,7 +6,7 @@
  */
 import type { Object3D } from 'three';
 
-export interface PooledBattleVisual {
+interface PooledBattleVisual {
   specId?: string;
   root?: Object3D;
   setVisible?(visible: boolean): void;
@@ -15,7 +15,7 @@ export interface PooledBattleVisual {
   prepareForSimulation?(): void;
 }
 
-export interface BattleVisualPool<T extends PooledBattleVisual = PooledBattleVisual> {
+interface BattleVisualPool<T extends PooledBattleVisual = PooledBattleVisual> {
   release(visual: T | null | undefined): boolean;
   take(specId: string): T | null;
   clear(): void;

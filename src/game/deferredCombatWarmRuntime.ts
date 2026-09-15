@@ -56,7 +56,7 @@ type DeferredWarmHost = typeof globalThis & {
   __COMBAT_RARE_WARM?: { stages?: Record<string, number> };
 };
 
-export interface DeferredCombatWarmRuntimeOptions<
+interface DeferredCombatWarmRuntimeOptions<
   Game extends BattleGame,
   Entity extends BattleVisualEntity & BattleEntity,
   World extends WarmableWorld,

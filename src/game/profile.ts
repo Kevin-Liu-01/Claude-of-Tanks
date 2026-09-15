@@ -19,7 +19,7 @@ export interface BattleRecord {
   completedAt: number;
 }
 
-export interface PlayerRecord {
+interface PlayerRecord {
   version: number;
   matches: number;
   wins: number;
@@ -31,7 +31,7 @@ export interface PlayerRecord {
   lastBattle: BattleRecord | null;
 }
 
-export interface BattleResultInput {
+interface BattleResultInput {
   result?: RuntimeValue;
   kills?: RuntimeValue;
   damage?: RuntimeValue;

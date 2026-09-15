@@ -6,7 +6,7 @@
 
 export type ImagePriority = 'low' | 'auto' | 'high';
 
-export interface ImagePreloadOptions {
+interface ImagePreloadOptions {
   readonly priority?: ImagePriority;
   readonly decode?: boolean;
 }

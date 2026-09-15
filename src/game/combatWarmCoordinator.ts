@@ -12,7 +12,7 @@ export const COMBAT_WARM_PROGRAM_CHECKPOINT = Object.freeze({ force: true });
 type WarmFactory = (execution?: CombatWarmExecution) => WarmGenerator;
 type WarmKind = 'opening' | 'rare';
 
-export interface CombatWarmCoordinatorOptions {
+interface CombatWarmCoordinatorOptions {
   createOpening: WarmFactory;
   createRare: WarmFactory;
   createYielder?: (budgetMs: number) => WorkYielder;

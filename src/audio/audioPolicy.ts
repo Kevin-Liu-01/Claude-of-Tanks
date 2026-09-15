@@ -82,7 +82,7 @@ export const AUDIO_MIX_PROFILE = Object.freeze({
   combatCeilingHz: 14500,
 });
 
-export interface EngineSoundProfile {
+interface EngineSoundProfile {
   kind: string;
   baseHz: number;
   toneCutoffHz: number;
@@ -234,7 +234,7 @@ export function resolveWeaponReportProfile(id: RuntimeValue): Readonly<WeaponRep
 export type ReloadCueType = 'motor' | 'index' | 'breechOpen' | 'extract'
   | 'shellLift' | 'ram' | 'breechClose';
 
-export interface ReloadCue {
+interface ReloadCue {
   at: number;
   type: ReloadCueType;
 }

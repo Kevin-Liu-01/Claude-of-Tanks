@@ -61,7 +61,7 @@ export function resolveShadowPrimeCount(
 /**
  * @param {number} cascadeCount
  */
-export interface ShadowRefreshScheduler {
+interface ShadowRefreshScheduler {
   step(dtS: number): number;
   reset(resetCadence?: boolean): void;
   forceMask(): number;

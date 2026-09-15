@@ -44,7 +44,7 @@ export interface OffscreenSceneWarmer {
   dispose(): void;
 }
 
-export interface OffscreenWarmBatchOptions {
+interface OffscreenWarmBatchOptions {
   scale?: number;
   maxObjects?: number;
   maxWeight?: number;

@@ -5,7 +5,7 @@
  * skirts; they are only a fallback for synthetic/unfinalized fixtures.
  */
 
-export interface TankContactRect {
+interface TankContactRect {
   centerX: number;
   centerZ: number;
   halfWidth: number;

@@ -1,4 +1,4 @@
-export interface BattlePhasePolicyOptions {
+interface BattlePhasePolicyOptions {
   getPhase(): string;
   hasResult(): boolean;
   hasControllablePlayer(): boolean;
@@ -6,12 +6,12 @@ export interface BattlePhasePolicyOptions {
   isBattleLoadVisible(): boolean;
 }
 
-export interface PointerRecaptureState {
+interface PointerRecaptureState {
   settingsOpen: boolean;
   spectating: boolean;
 }
 
-export interface BattlePhasePolicy {
+interface BattlePhasePolicy {
   isBattle(): boolean;
   isGarage(): boolean;
   canOpenBattleSettings(): boolean;

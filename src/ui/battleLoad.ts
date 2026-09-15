@@ -193,7 +193,7 @@ export interface BattleLoadRosterRow {
   readonly isPlayer?: boolean;
 }
 
-export interface BattleLoadInfo {
+interface BattleLoadInfo {
   readonly mapName: string;
   readonly thumb?: string;
   readonly biome?: string;

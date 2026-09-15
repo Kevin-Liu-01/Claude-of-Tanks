@@ -2,9 +2,9 @@
 // The old dressing placed signs/boards independently, so later chunks could
 // silently occupy the same wall pixels. These bays are auditable without DOM
 // or WebGL and include clearance between neighboring rectangles.
-export type GarageWallSide = 'north' | 'south' | 'east' | 'west';
+type GarageWallSide = 'north' | 'south' | 'east' | 'west';
 
-export interface GarageWallBay {
+interface GarageWallBay {
   readonly id: string;
   readonly side: GarageWallSide;
   readonly along: number;

@@ -45,7 +45,7 @@ import type {
 } from '../sim/movement.ts';
 
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
-export type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
+type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
 type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
 type RandomSource = () => number;
 
@@ -99,13 +99,13 @@ interface AiControllerDebugInfo {
   targetId: string | null;
 }
 
-export interface FriendlyFireRisk {
+interface FriendlyFireRisk {
   allyId: string;
   kind: 'corridor' | 'blast';
   clearanceM: number;
 }
 
-export interface AiController {
+interface AiController {
   update(dt: number, timeS: number): void;
   setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
   notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'>): void;
@@ -117,7 +117,7 @@ export interface AiController {
   state: string;
 }
 
-export interface AiEntity {
+interface AiEntity {
   id: string;
   team: string;
   isPlayer?: boolean;

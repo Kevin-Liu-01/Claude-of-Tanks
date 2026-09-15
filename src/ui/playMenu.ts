@@ -50,27 +50,27 @@ type RoomSession = PrivateRoomConnection['session'];
 type RoomRole = PrivateRoomConnection['role'];
 type MaybePromise<T> = T | PromiseLike<T>;
 
-export interface PlayMenuMap {
+interface PlayMenuMap {
   id: string;
   name: string;
   thumb?: string;
   hero?: string;
 }
 
-export interface PlayMenuVehicle {
+interface PlayMenuVehicle {
   id: string;
   name: string;
   tier?: number;
 }
 
-export interface PlayMenuSelection {
+interface PlayMenuSelection {
   specId: string;
   mapId: string;
   equipment: string[];
   camo: string;
 }
 
-export interface PlayMenuLobbyContext {
+interface PlayMenuLobbyContext {
   state: SerializedLobby;
   playerId: string;
   role: RoomRole;

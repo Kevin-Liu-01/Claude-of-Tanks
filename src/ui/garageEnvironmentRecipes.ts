@@ -22,7 +22,7 @@ import {
 export type GarageSurfaceKey = 'grass' | 'sand' | 'snow' | 'rock' | 'cobble' |
   'plaster' | 'roof' | 'wood' | 'brick';
 
-export interface GarageStructurePlacement {
+interface GarageStructurePlacement {
   readonly builder: StructureBuilder;
   /** Stable exterior-detail catalog key. Never infer this from Function.name:
    * production minification renames builders and silently drops facades. */

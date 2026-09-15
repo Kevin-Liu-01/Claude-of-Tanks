@@ -74,7 +74,7 @@ export interface ArmorPlate {
   traceBounds?: { min: Vec3Tuple; max: Vec3Tuple };
 }
 
-export interface ArmorCollisionFace {
+interface ArmorCollisionFace {
   indices: readonly number[];
   normal: Vec3Tuple;
   center: Vec3Tuple;
@@ -246,7 +246,7 @@ export interface AimArmorInfo {
   layers: ArmorPlateIntersection[];
 }
 
-export interface BlastTarget {
+interface BlastTarget {
   kind: 'module' | 'crew';
   name: string;
   external: boolean;

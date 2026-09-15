@@ -56,14 +56,14 @@ interface VoiceLogEntry {
   t: number;
 }
 
-export interface VoiceSayOptions {
+interface VoiceSayOptions {
   prob?: number;
   force?: boolean;
   delayS?: number;
   staleS?: number;
 }
 
-export interface VoiceRadio {
+interface VoiceRadio {
   load(audioContext: AudioContext, voiceBus: GainNode): void;
   say(id: string, options?: VoiceSayOptions): boolean;
   update(): void;

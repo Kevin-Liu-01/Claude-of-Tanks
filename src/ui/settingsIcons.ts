@@ -1,7 +1,7 @@
 import type { ActionId, InputSettings } from '../game/input.ts';
 import type { UiIconId } from './uiIcons.ts';
 
-export type SettingsIconTone = 'steel' | 'amber' | 'red' | 'green' | 'cyan' | 'violet';
+type SettingsIconTone = 'steel' | 'amber' | 'red' | 'green' | 'cyan' | 'violet';
 
 export interface SettingsIconSpec {
   readonly id: UiIconId;
@@ -36,7 +36,7 @@ export const SETTINGS_ACTION_ICONS = Object.freeze({
   settingsMenu: { id: 'settings' },
 } satisfies Readonly<Record<ActionId, SettingsIconSpec>>);
 
-export type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality';
+type SettingsOptionIconKey = keyof InputSettings | 'graphicsQuality';
 
 export const SETTINGS_OPTION_ICONS = Object.freeze({
   sensitivity: { id: 'mouse' },

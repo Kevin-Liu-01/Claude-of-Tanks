@@ -30,7 +30,7 @@ interface GaragePedestalPreloaderOptions {
   neighborDelayMs?: number;
 }
 
-export interface GaragePedestalPreloader {
+interface GaragePedestalPreloader {
   invalidate(): void;
   queueNeighbors(): void;
   preloadIntent(specId: string): Promise<RuntimeValue>;

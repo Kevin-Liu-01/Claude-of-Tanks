@@ -37,7 +37,7 @@ interface TraceSink {
   mark?(event: string, payload: Record<string, RuntimeValue>): void;
 }
 
-export interface CombatWarmCompositionOptions {
+interface CombatWarmCompositionOptions {
   game: MainGameState;
   renderer: WebGLRenderer;
   scene: Scene;
@@ -66,7 +66,7 @@ export interface CombatWarmCompositionOptions {
   devTrace?: TraceSink | null;
 }
 
-export interface CombatWarmComposition {
+interface CombatWarmComposition {
   combatWarm: CombatWarmCoordinator;
   warmRender: OffscreenSceneWarmer;
   deploymentShadowWarm: DeploymentShadowWarmOwner;

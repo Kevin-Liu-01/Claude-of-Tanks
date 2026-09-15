@@ -10,7 +10,7 @@ interface StorageLike {
   removeItem(key: string): RuntimeValue;
 }
 
-export interface RankedIdentity extends JsonObject {
+interface RankedIdentity extends JsonObject {
   playerId: string;
   token: string;
 }
@@ -45,7 +45,7 @@ export interface RankedQueueState extends JsonObject {
   match?: RankedMatchAssignment | null;
 }
 
-export interface RankedWaitOptions {
+interface RankedWaitOptions {
   signal?: AbortSignal | null;
   onUpdate?: ((state: RankedQueueState) => void) | null;
   intervalMs?: number;
@@ -59,7 +59,7 @@ export interface RankedQueueTicket extends JsonObject {
   wait(options?: RankedWaitOptions): Promise<RankedQueueState>;
 }
 
-export interface RankedServiceClient {
+interface RankedServiceClient {
   readonly serviceUrl: string;
   readonly webSocketUrl: string;
   ensureIdentity(name?: string): Promise<RankedIdentity>;
@@ -70,7 +70,7 @@ export interface RankedServiceClient {
   join(options?: RankedJoinOptions): Promise<RankedQueueTicket>;
 }
 
-export interface RankedServiceClientOptions {
+interface RankedServiceClientOptions {
   url?: RuntimeValue;
   fetchImpl?: FetchLike;
   storage?: StorageLike;

@@ -1,4 +1,4 @@
-export interface NetworkCompositionAccess<T> {
+interface NetworkCompositionAccess<T> {
   readonly current: T | null;
   preload(): Promise<T>;
 }

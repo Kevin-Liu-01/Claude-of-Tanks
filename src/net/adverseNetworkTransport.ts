@@ -5,7 +5,7 @@ type Lane = 'control' | 'input' | 'state';
 type Direction = 'send' | 'receive';
 type TimerHandle = ReturnType<typeof setTimeout>;
 
-export interface NetworkSimulationOptions {
+interface NetworkSimulationOptions {
   latencyMs: number;
   jitterMs: number;
   stateLossRate: number;
@@ -14,14 +14,14 @@ export interface NetworkSimulationOptions {
   netSeed?: number;
 }
 
-export interface AdverseNetworkOptions extends Partial<NetworkSimulationOptions> {
+interface AdverseNetworkOptions extends Partial<NetworkSimulationOptions> {
   rng?: () => number;
   clock?: () => number;
   schedule?: (callback: () => void, delayMs: number) => TimerHandle;
   cancel?: (handle: TimerHandle) => void;
 }
 
-export interface SimulatableTransport {
+interface SimulatableTransport {
   readonly kind?: string;
   readonly readyState?: string;
   readonly bufferedAmount?: number;
@@ -35,7 +35,7 @@ export interface SimulatableTransport {
   close?(reason?: string): void;
 }
 
-export interface AdverseNetworkStats {
+interface AdverseNetworkStats {
   delayedOutgoing: number;
   delayedIncoming: number;
   droppedState: number;

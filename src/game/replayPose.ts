@@ -24,7 +24,7 @@ export interface ReplayPose {
   gunPitch: number;
 }
 
-export interface ReplayGunLimits {
+interface ReplayGunLimits {
   gunArcDeg?: number;
   gunDepressionDeg?: number;
   gunElevationDeg?: number;
@@ -37,7 +37,7 @@ export interface ReplayFlightTimeline {
   times: Float32Array;
 }
 
-export interface ReplayFlightOptions {
+interface ReplayFlightOptions {
   slowRate?: number;
   slowStartM?: number;
   slowFullM?: number;

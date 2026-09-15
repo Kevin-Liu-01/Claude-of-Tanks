@@ -1,4 +1,4 @@
-export interface RosterPresentationRow {
+interface RosterPresentationRow {
   id: string;
   name: string;
   tier: string;

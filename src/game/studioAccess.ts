@@ -19,7 +19,7 @@ interface KeyboardEventTarget {
   removeEventListener(type: 'keydown', listener: EventListener, options?: boolean): void;
 }
 
-export interface StudioAccessOptions {
+interface StudioAccessOptions {
   loadModule(): Promise<StudioModule>;
   preloadFxModule(): Promise<RuntimeValue>;
   ensureFxRuntime(): Promise<RuntimeValue>;
@@ -30,7 +30,7 @@ export interface StudioAccessOptions {
   onEntryError?: (error: RuntimeValue) => void;
 }
 
-export interface StudioAccess {
+interface StudioAccess {
   readonly presentation: StudioPresentation;
   preloadModule(): Promise<StudioModule>;
   preloadIntent(): void;

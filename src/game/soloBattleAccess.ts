@@ -1,14 +1,14 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-export interface SoloBattleRuntime {
+interface SoloBattleRuntime {
   setupBattle(...args: RuntimeValue[]): RuntimeValue;
   simStep(...args: RuntimeValue[]): RuntimeValue;
   createCollider(...args: RuntimeValue[]): RuntimeValue;
   prepareNextOpeningRoute(...args: RuntimeValue[]): RuntimeValue;
 }
 
-export type SoloBattleRuntimeLoader = () => Promise<SoloBattleRuntime>;
+type SoloBattleRuntimeLoader = () => Promise<SoloBattleRuntime>;
 
-export interface SoloBattleRuntimeAccess extends SoloBattleRuntime {
+interface SoloBattleRuntimeAccess extends SoloBattleRuntime {
   preload(): Promise<SoloBattleRuntime>;
   isReady(): boolean;
 }

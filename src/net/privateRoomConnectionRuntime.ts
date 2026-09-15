@@ -65,7 +65,7 @@ interface ConnectionAdapters {
   serializeLobby(lobby: LobbyModel): LobbyState;
 }
 
-export interface PrivateRoomConnectRequest {
+interface PrivateRoomConnectRequest {
   kind: 'create' | 'join';
   mode: string;
   signalUrl: string;
@@ -85,12 +85,12 @@ interface PrivateRoomConnectionBase {
   readonly runtime: RoomStateRuntime;
 }
 
-export interface PrivateRoomHostConnection extends PrivateRoomConnectionBase {
+interface PrivateRoomHostConnection extends PrivateRoomConnectionBase {
   readonly role: 'host';
   readonly session: HostSessionLike;
 }
 
-export interface PrivateRoomClientConnection extends PrivateRoomConnectionBase {
+interface PrivateRoomClientConnection extends PrivateRoomConnectionBase {
   readonly role: 'client';
   readonly session: ClientSessionLike;
 }
@@ -121,7 +121,7 @@ interface AcquiredRoom {
   ice: IceConfiguration;
 }
 
-export interface PrivateRoomConnectionRuntime {
+interface PrivateRoomConnectionRuntime {
   connect(request: PrivateRoomConnectRequest): Promise<PrivateRoomConnection | null>;
   observe(listener: (state: LobbyState) => void): Unsubscribe;
   close(reason?: string, options?: { transportAlreadyClosed?: boolean }): void;

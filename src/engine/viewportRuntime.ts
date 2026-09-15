@@ -20,7 +20,7 @@ interface ViewportEnvironment {
   clearInterval: typeof globalThis.clearInterval;
 }
 
-export interface ViewportRuntime {
+interface ViewportRuntime {
   apply(): void;
   /** Repair a silent density change before a visible frame; inert otherwise. */
   syncPixelRatio(): boolean;
@@ -28,7 +28,7 @@ export interface ViewportRuntime {
   isRecovering(): boolean;
 }
 
-export interface ViewportRuntimeOptions {
+interface ViewportRuntimeOptions {
   container: HTMLElement;
   renderer: WebGLRenderer;
   camera: PerspectiveCamera;

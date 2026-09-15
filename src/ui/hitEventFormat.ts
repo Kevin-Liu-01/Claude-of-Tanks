@@ -18,7 +18,7 @@ export interface HitEventPresentation {
   readonly flightDistM?: number;
 }
 
-export type HitOutcomeId =
+type HitOutcomeId =
   | 'penetration'
   | 'ricochet'
   | 'blocked'
@@ -39,9 +39,9 @@ export interface HitOutcomePresentation {
   readonly confirmTone: 'damage' | 'deflect';
 }
 
-export type IncomingHitArcKind = 'pen' | 'bounce' | 'he';
+type IncomingHitArcKind = 'pen' | 'bounce' | 'he';
 
-export interface IncomingHitFeedbackPresentation {
+interface IncomingHitFeedbackPresentation {
   readonly kind: IncomingHitArcKind;
   readonly outcomeId: HitOutcomeId;
   readonly label: string;
