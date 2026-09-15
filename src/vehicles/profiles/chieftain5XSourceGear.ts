@@ -46,6 +46,7 @@ export function addChieftain5XSourceGear(P: TankBuilderPort): void {
       axleBossCenterAbsXM: 1.022, anchorLiftM: .010 },
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler, sprocket, contact: { zR: -2.21302, zF: 2.34030 }, botY, topY,
+      endWheels: KIT.endRoadWheels(wheelZs, .4481615, .3952785),
       supports: rollers.map(r => ({ z: r.z, y: 1.1515 + (r.z + 3.08) * .00131 })),
       sag: .001, frontArcSteps: 24, rearArcSteps: 24,
     }), botY, .3952785),

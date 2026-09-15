@@ -17,6 +17,9 @@ interface RoadContact {z:number;y:number;r:number;voff?:number;}
 interface Positions {readonly length:number;[index:number]:number;}
 interface ContactScratch {y:Float64Array;z:Float64Array;drop:Float64Array;}
 
+/** Maximum fitted-band slope (drop per metre of run, ~39°) — see the spreading pass below. */
+const MAX_FIT_SLOPE=0.8;
+
 export function loadedContactScratch(pointCount:number):ContactScratch {
   return {y:new Float64Array(pointCount),z:new Float64Array(pointCount),drop:new Float64Array(pointCount)};
 }
@@ -44,6 +47,7 @@ export function fitLoadedTrackContact(
     y[i]=(positions[base+7]+positions[base+19])/2;
     z[i]=(positions[base+8]+positions[base+20])/2;
   }
+  const lower=new Uint8Array(n);
   for(let i=0;i<n;i++) {
     const j=(i+1)%n,base=i*72;
     const restY0=(rest[base+7]+rest[base+19])/2;
@@ -51,10 +55,24 @@ export function fitLoadedTrackContact(
     for(const wheel of wheels) {
       // Never refit the upper return across a road wheel's horizontal span.
       if(restY0>=wheel.y&&restY1>=wheel.y)continue;
+      lower[i]=1;lower[j]=1;
       const required=loadedSpanDrop(z[i],y[i],z[j],y[j],wheel.z,
         wheel.y+(wheel.voff??0),wheel.r+halfThickness+.001);
       drop[i]=Math.max(drop[i],required);drop[j]=Math.max(drop[j],required);
     }
+  }
+  // Spread each drop along the lower run so the fitted band bends no steeper than MAX_FIT_SLOPE
+  // (2026-09-14): with the loaded run wrapping the outer road wheels, a wheel at full droop pulled
+  // the short wrap cells straight down and the band rejoined the fixed ramp at a sharp kink; a rigid
+  // shoe straddling that kink cut 8 mm into the tire it had been fitted around (Type 10 X wave
+  // fixture). Two alternating passes bound the slope in both directions; cells of the upper return
+  // never take a drop.
+  for(let pass=0;pass<2;pass++)for(let step=0;step<n;step++) {
+    const i=pass?n-1-step:step,j=(i+1)%n;
+    if(!lower[i]||!lower[j])continue;
+    const limit=MAX_FIT_SLOPE*Math.hypot(z[j]-z[i],y[j]-y[i]);
+    if(drop[j]>drop[i]+limit)drop[i]=drop[j]-limit;
+    if(drop[i]>drop[j]+limit)drop[j]=drop[i]-limit;
   }
   for(let i=0;i<n;i++)for(let k=0;k<24;k++) {
     positions[i*72+k*3+1]-=drop[TRACK_BAND_ENDPOINT_ONE[k]?(i+1)%n:i];

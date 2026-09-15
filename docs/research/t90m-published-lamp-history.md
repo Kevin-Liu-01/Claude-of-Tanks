@@ -20,10 +20,11 @@ matrices; ignoring a new `nightEmissionMask` attribute cannot explain or
 repair this physical change.
 
 The complete `profiles/t90.ts` post-repair SHA-256 is
-`db8279500f86e1165baf4b945d3607d621554f9dc75be720678fb3d80751d97f`.
+`e749c1a249f3a7f07bff3e9aba07f38bb0310ee6c77c506b465727a413382e7a`
+(2026-09-14: the hub-package seating from the wheel review moved the file; the lamp block itself is unchanged).
 Removing exactly the published replacement block and its new import restores
 the independently committed pre-repair SHA-256
-`a93e505c9c98e06ad45c4b189ec6228864472651f9c0b245d2cb4d6a51500e50`.
+`5f6e59f9a6d66c2951d046c5e027469f1e253e38ef455e15735e31265a99da54`.
 It is measured from parent commit
 `56c98e286ec273199b41bce05d96c54d84b78501`, not generated from the candidate.
 

@@ -71,16 +71,16 @@ const ORIGINALS = {
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t90sm: ['7553c30373cda69888fd1734872907fbdbb37737ca76ba12b41169332d041cfb',
-    '155d8c518f395095534f8fa6f9b6c8cf5f654514bfb893498f6f71b9626abee8'],
-  t90m: ['37c66f62ddbface1ba23dd71cef3a2fb359f46d26a7d7bc13682f528ef83a331',
-    '8d5aa9a07acc32a382416097d5f2945499512b1180b5e60ca1e82f023ade3225'],
+  t90sm: ['fb29d67115caf0caca77e91832427ac99463d0235fd3d21d3644d30fb5769039',
+    'aa14feb2200cedff15833c41cc05d25f99bc4cf8dcf9381606afa00b5834eaf1'],
+  t90m: ['1c6e90c865021e6c37b03ce6b99d188ffa72e82dab6b0d9dec13cb5a95253e5b',
+    'ba998556d2d73d647181c1b6b18e21b8b8f5662f1f1eebc56eccfe55116ecab2'],
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
-  m1a2: ['b0a1f2adf4433f9dac54ec7293e57ad829d20b7127ec1d79b6b9faca24faa7ae',
-    'a5555424d6aee0afe80c30f4dfe690b7c7a5ff3663564b42b8f5ed77c066914c'],
-  leo2a5: ['08efd1106a79835d3b0ad6c4ffe8a502faea5212ee785c1f84b790d331d8846f',
-    '011e249a2d5f6d555a8b8fada08e53c7a92cc7aed15035782bb6110c7b057f6c'],
+  m1a2: ['29d42fb6cae8262608049fd660c0a11fa59ded0e65ee7cb19a16f931de630558',
+    '9fb0d693fb2c953a31ee33c8be78af050875644fcb3997f0e8ff918c7738cbd9'],
+  leo2a5: ['ed0fa6fe2d5511bc80502130e9e4e91f481f5c09f470a278c93cf5837985db99',
+    '5b9e69d2558e36f41c942b0570bbf79990be36c733709ed6c54811f4d8c17311'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {

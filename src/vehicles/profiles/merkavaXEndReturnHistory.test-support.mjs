@@ -22,7 +22,7 @@ function beforeRollers(source,readHelper){
   assert.equal(count(source,'merkavaXReturnRollers'),4,'One roller import path/symbol and two exact calls');
   assert.equal(count(source,imported),1,'One exact roller helper import');
   assert.equal(hash(readHelper('merkavaXReturnRollers.ts')),
-    '75afb5ab186d62ebb2a5ece37071b2298f855f865831f3c50891da19c0069df2','Complete reviewed roller helper');
+    'a751e20dafb8cb363afb9a5e743fc1b0b552b287f23a69cf9237192eb222fcba','Complete reviewed roller helper'); // 2026-09-14: helper passes the outer road wheels to the loop (tangent wrap)
   assert.equal(hash(readHelper('../upperReturnBandStock.ts')),
     '3de12aa98490a81195866eb36baf263f54fc73e7d3866e6466ee3cdce69629ea','Complete reviewed closed upper stock leaf');
   const lining='  lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);\n';

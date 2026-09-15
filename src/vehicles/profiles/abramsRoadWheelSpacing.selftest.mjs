@@ -14,7 +14,8 @@ const ABRAMS_FAMILY_IDS = [
   'mbt70',
 ];
 const EXPECTED_WHEEL_ZS = [2.19, 1.46, 0.73, 0, -0.73, -1.46, -2.19];
-const EXPECTED_CONTACT_ZS = [2.32, -2.31];
+// 2026-09-14 tangent wrap: the flat run ends under the outer axles and the band wraps the wheels
+const EXPECTED_CONTACT_ZS = [2.19, -2.19];
 const EPSILON = 1e-6;
 const ABRAMS_RETURN_ROLLER_CASES = [
   ['m1a2', 2],
@@ -95,7 +96,7 @@ for (const id of ABRAMS_FAMILY_IDS) {
       .map(([z]) => z);
     assert.ok(groundRunZs.some((z) => Math.abs(z - EXPECTED_CONTACT_ZS[0]) <= EPSILON)
       && groundRunZs.some((z) => Math.abs(z - EXPECTED_CONTACT_ZS[1]) <= EPSILON),
-    `${id}: track contact patch remains pinned after reseating the wheels`);
+    `${id}: flat run spans the outer road-wheel axles after reseating the wheels`);
     assert.ok(Math.max(...receipt.loopPoints.map(([z]) => z)) > receipt.idler.z,
       `${id}: track still wraps the front idler`);
     assert.ok(Math.min(...receipt.loopPoints.map(([z]) => z)) < receipt.sprocket.z,

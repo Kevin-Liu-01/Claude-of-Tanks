@@ -195,6 +195,10 @@ interface TrackLoopOptions {
   tautFrontSpan?: boolean;
   tautRearSpan?: boolean;
   smoothRearTopTangent?: boolean;
+  /** Outer road wheels (axle z/y, tire radius). When present the loaded run leaves the ground
+   * tangentially around them — see roadWheelWrap — instead of kinking at the authored contact
+   * pins (2026-09-14 owner: "cornered" tracks with the end wheel poking through the band). */
+  endWheels?: { front: GearEndpoint; rear: GearEndpoint } | null;
 }
 
 interface WheelGeometrySet {
@@ -367,6 +371,9 @@ export interface RunningGearConfig {
   wheelY?: number;
   /** Absolute authored axle heights, in the same station order as wheelZs. */
   wheelYs?: readonly number[];
+  /** Default true: the loaded run wraps the outer road wheels and rises on their external tangent
+   * to the end-wheel wraps (2026-09-14). False keeps the authored contact-pin trapezoid. */
+  wrapEndRoadWheels?: boolean;
   /** Road-wheel axle offset only, outward from each native track lane. */
   roadWheelOutsetM?: number;
   /** Independently measured side overrides; the belt lanes are not moved. */
@@ -958,19 +965,37 @@ function isRunningGearConfig(value: object): value is RunningGearConfig {
 }
 
 /** Linear luminance of a material's base colour (0 for unpainted/mapped materials without a colour). */
-export function wheelDishLuminance(material: THREE.Material): number {
-  const color = (material as { color?: THREE.Color }).color;
-  if (!color) return 0;
-  return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+export /** Fixed-colour gear roles (tire rubber, wheel insets, track steel) are recoloured by the
+ * appearance normaliser after the build. A mesh in one of those roles must therefore never share
+ * a paint material with a painted part: the 2026-09-14 "grey wheels" regression came from the
+ * wheel insets borrowing the shared wheel paint, which the normaliser then set to tire rubber for
+ * the whole fleet. Materials already tagged with the role (mats.rubber for wheelInset/wheelTire)
+ * pass through; anything else is cloned for that mesh alone. */
+const FIXED_GEAR_ROLE_MATERIAL_ROLE: Readonly<Record<string, string>> = Object.freeze({
+  wheelInset: 'tireRubber', wheelTire: 'tireRubber', tireRubber: 'tireRubber',
+  trackPad: 'trackPad', trackSteel: 'trackSteel', trackHardware: 'trackSteel', gearShadow: 'gearShadow',
+});
+export function isolatedGearMaterial<M extends THREE.Material>(
+  material: M, appearanceRole: string | undefined, disposables: Array<{ dispose(): void }>,
+): M {
+  const wanted = appearanceRole ? FIXED_GEAR_ROLE_MATERIAL_ROLE[appearanceRole] : undefined;
+  if (!wanted) return material;
+  const tagged = (material.userData as { appearanceRole?: unknown } | undefined)?.appearanceRole;
+  if (tagged === wanted) return material;
+  const clone = material.clone() as M;
+  clone.onBeforeCompile = material.onBeforeCompile;
+  clone.customProgramCacheKey = material.customProgramCacheKey;
+  clone.userData = { ...(material.userData || {}), appearanceRole: wanted, isolatedFrom: material.name };
+  disposables.push(clone);
+  return clone;
 }
-/** Dish paint below this linear luminance counts as a dark dish (fleet wheel paint 0x545b48 sits at ~0.10). */
-export const DARK_WHEEL_DISH_LUMINANCE = 0.065;
-/** Inset (hub well, bolts, holes) material chosen for contrast against the dish paint (2026-09-14). */
+/** Wheel insets (hub wells, bolt heads, lightening holes) are always tire-rubber dark: the dish
+ * paint carries the wheel-paint floor, so the insets read against it in every scheme. */
 export function wheelInsetMaterialFor(
-  dishMaterial: THREE.Material,
+  _dishMaterial: THREE.Material,
   mats: { rubber: THREE.Material; wheels: THREE.Material },
 ): THREE.Material {
-  return wheelDishLuminance(dishMaterial) < DARK_WHEEL_DISH_LUMINANCE ? mats.wheels : mats.rubber;
+  return mats.rubber;
 }
 
 function buildRunningGearPublic(builder: object, options: object): RunningGearUnit {
@@ -1920,6 +1945,24 @@ const TRACK_TEXTURE_LINKS_PER_REPEAT = 4;
 // conformance, steering phase and wrap tangents all come from the belt course.
 const TRACK_SHOE_BAND_GAP_M = 0.012;
 
+function appendCircleArc(
+  points: TrackPoint[],
+  centreZ: number,
+  centreY: number,
+  radius: number,
+  fromDeg: number,
+  toDeg: number,
+  steps: number,
+): void {
+  for (let step = 0; step <= steps; step++) {
+    const angle = (fromDeg + ((toDeg - fromDeg) * step) / steps) * D2R;
+    points.push([
+      centreZ + Math.sin(angle) * radius,
+      centreY + Math.cos(angle) * radius,
+    ]);
+  }
+}
+
 function appendTrackArc(
   points: TrackPoint[],
   endpoint: GearEndpoint,
@@ -1927,14 +1970,111 @@ function appendTrackArc(
   toDeg: number,
   steps: number,
 ): void {
-  for (let step = 0; step <= steps; step++) {
-    const angle = (fromDeg + ((toDeg - fromDeg) * step) / steps) * D2R;
-    const radius = endpoint.r + TRACK_WRAP_CLEARANCE_M;
-    points.push([
-      endpoint.z + Math.sin(angle) * radius,
-      endpoint.y + Math.cos(angle) * radius,
-    ]);
+  appendCircleArc(points, endpoint.z, endpoint.y, endpoint.r + TRACK_WRAP_CLEARANCE_M, fromDeg, toDeg, steps);
+}
+
+/** Outer road wheels for TrackLoopOptions.endWheels, for profiles that author their loop through
+ * KIT.trackLoopPoints (2026-09-14): the same tangent wrap the kit course gets from buildTrackCourse. */
+export function endRoadWheels(
+  wheelZs: readonly number[], wheelY: number, wheelR: number, wheelYs?: readonly number[],
+): { front: GearEndpoint; rear: GearEndpoint } | null {
+  if (!wheelZs.length) return null;
+  const frontIndex = wheelZs.indexOf(Math.max(...wheelZs));
+  const rearIndex = wheelZs.indexOf(Math.min(...wheelZs));
+  return {
+    front: { z: wheelZs[frontIndex], y: wheelYs?.[frontIndex] ?? wheelY, r: wheelR },
+    rear: { z: wheelZs[rearIndex], y: wheelYs?.[rearIndex] ?? wheelY, r: wheelR },
+  };
+}
+
+interface RoadWheelWrap {
+  /** Common radial angle (arc() convention: 0 = up, 90 = +z) of the external tangent on both circles. */
+  deg: number;
+  /** Band-centreline radius around the road wheel: axle height minus the ground run. */
+  wheelRadius: number;
+}
+
+/**
+ * Road-wheel arc with graded chords. A rigid shoe sits centred on its chord, so a 12° first chord
+ * off the ground tilted it 6° and drove its pad corner ~8 mm under the floor (Ariete X receipt,
+ * 2026-09-14): the chords start at 1° where the arc meets the flat run and double away from it up
+ * to a 6° cap (1, 2, 4, 6, 6 …°). Every vertex except the ground vertex sits on the radius
+ * circumscribing its larger adjacent chord (R / cos(chord/2)), so each chord touches the seat
+ * circle at its midpoint instead of cutting inside it by the sagitta — the band and its shoes never
+ * pass through the tire, at rest or when the suspension fits the run to a moving wheel. The
+ * ground vertex stays on the circle so the flat run is continuous. `groundAt` says which end of
+ * [fromDeg, toDeg] touches the run.
+ */
+function appendRoadWheelArc(
+  points: TrackPoint[],
+  wheel: GearEndpoint,
+  radius: number,
+  fromDeg: number,
+  toDeg: number,
+  groundAt: 'start' | 'end',
+): void {
+  const sweep = Math.abs(toDeg - fromDeg);
+  const chords: number[] = [];
+  let covered = 0;
+  for (let step = 1; covered < sweep - 1e-9; step = Math.min(step * 2, 6)) {
+    const chord = Math.min(step, sweep - covered);
+    chords.push(chord);
+    covered += chord;
   }
+  const ordered = groundAt === 'start' ? chords : chords.slice().reverse();
+  const direction = Math.sign(toDeg - fromDeg) || 1;
+  // Only the capped 6° chords are worth circumscribing (sagitta 0.53 mm on a 0.39 m wheel); the
+  // 1–4° chords at the ground stay on the circle — lifting their vertices steepens the first
+  // chords and a centred rigid shoe dips further, not less (Ariete X photo-draft receipt).
+  const circumscribed = (chord: number): number => (chord >= 6 ? radius / Math.cos((chord / 2) * D2R) : radius);
+  const push = (deg: number, r: number): void => {
+    points.push([wheel.z + Math.sin(deg * D2R) * r, wheel.y + Math.cos(deg * D2R) * r]);
+  };
+  let angle = fromDeg;
+  push(angle, groundAt === 'start' ? radius : circumscribed(ordered[0] ?? 0));
+  for (let index = 0; index < ordered.length; index++) {
+    angle += direction * ordered[index];
+    const groundVertex = groundAt === 'end' && index === ordered.length - 1;
+    push(angle, groundVertex ? radius : circumscribed(Math.max(ordered[index], ordered[index + 1] ?? 0)));
+  }
+}
+
+/**
+ * ROAD-WHEEL WRAP (owner 2026-09-14: "reseat tracks — cornered track in the bottom right, wheels
+ * glitch into tracks"). The loaded run used to end at an authored contact pin and rise from there
+ * in a straight line to the end-wheel wrap; that straight chord cut through the outer road wheel
+ * whenever the pin sat near its axle and left a visible corner where the flat run met the ramp.
+ * A real track leaves the ground tangentially around the last road wheel. This solves the
+ * external tangent shared by the end-wheel wrap circle (radius r + clearance) and the road wheel's
+ * band circle (radius = axle height − ground run, so the arc is tangent to the flat run exactly
+ * under the axle): (B − A)·n = R_A − R_B, n = (sin θ, cos θ). Returns null — legacy behaviour —
+ * when the end wheel sits at ground level (its wrap already crosses the run), when the circles
+ * nest, or when no tangent lands in the outer quadrant.
+ */
+function roadWheelWrap(
+  end: GearEndpoint,
+  wheel: GearEndpoint,
+  botY: number,
+  side: 'front' | 'rear',
+): RoadWheelWrap | null {
+  const endRadius = end.r + TRACK_WRAP_CLEARANCE_M;
+  const wheelRadius = wheel.y - botY;
+  if (!(wheelRadius > 0.05)) return null;
+  if (end.y - endRadius <= botY + 0.005) return null;
+  const dz = wheel.z - end.z;
+  const dy = wheel.y - end.y;
+  const distance = Math.hypot(dz, dy);
+  if (distance <= Math.abs(endRadius - wheelRadius) + 1e-3) return null;
+  const phi = Math.atan2(dz, dy);
+  const spread = Math.acos(Math.max(-1, Math.min(1, (endRadius - wheelRadius) / distance)));
+  const lo = side === 'front' ? 90 : 180;
+  const hi = lo + 90;
+  const normalise = (radians: number): number => (((radians / D2R) % 360) + 360) % 360;
+  const candidates = [normalise(phi + spread), normalise(phi - spread)]
+    .filter((deg) => deg > lo + 0.5 && deg < hi - 0.5)
+    .sort((a, b) => Math.abs(a - (lo + hi) / 2) - Math.abs(b - (lo + hi) / 2));
+  if (!candidates.length) return null;
+  return { deg: candidates[0], wheelRadius };
 }
 
 function trackTangentDeg(
@@ -2075,7 +2215,7 @@ function appendTrackGroundRun(
 function trackLoopPoints({
   idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
   frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
-  tautRearSpan = false, smoothRearTopTangent = false,
+  tautRearSpan = false, smoothRearTopTangent = false, endWheels = null,
 }: TrackLoopOptions): TrackPoint[] {
   const pts: TrackPoint[] = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
@@ -2129,7 +2269,16 @@ function trackLoopPoints({
   const aF = Math.min(aIdler, 176, gF);        // front arc end
   const aGR = 360 - gR;                        // rear crossing in arc() angles
   const aR = Math.max(aSprk, 184, aGR);        // rear arc start
-  appendTrackArc(pts, idler, 0, aF, frontArcSteps); // around the idler (front)
+  // ROAD-WHEEL WRAP (2026-09-14): with the outer road wheels known, each end of the loaded run
+  // hugs its road wheel and rises along the common external tangent to the end-wheel wrap.
+  const frontWrap = endWheels ? roadWheelWrap(idler, endWheels.front, botY, 'front') : null;
+  const rearWrap = endWheels ? roadWheelWrap(sprocket, endWheels.rear, botY, 'rear') : null;
+  if (frontWrap && endWheels) {
+    appendTrackArc(pts, idler, 0, frontWrap.deg, frontArcSteps);
+    appendRoadWheelArc(pts, endWheels.front, frontWrap.wheelRadius, frontWrap.deg, 180, 'end');
+  } else {
+    appendTrackArc(pts, idler, 0, aF, frontArcSteps); // around the idler (front)
+  }
   // bottom run: approach point -> flat contact span -> departure point.
   // A ground-terminated wrap enters the ground at its own crossing point —
   // never emit a flat-run endpoint past it (a contact span reaching beyond a
@@ -2138,8 +2287,23 @@ function trackLoopPoints({
     ? idler.z + Math.sin(aF * D2R) * (idler.r + TRACK_WRAP_CLEARANCE_M) : cF;
   const zEnterR = aR === aGR
     ? sprocket.z + Math.sin(aR * D2R) * (sprocket.r + TRACK_WRAP_CLEARANCE_M) : cR;
-  appendTrackGroundRun(pts, contact, cF, cR, zEnterF, zEnterR, zi, zs, botY);
-  appendTrackArc(pts, sprocket, aR, 360 + rearExit.angleDeg, rearArcSteps);
+  if ((frontWrap || rearWrap) && endWheels) {
+    // A wrapped end already stands on the ground under its axle (the wheel arc's last / first
+    // point), so the flat run only fills the interior stations toward the other end.
+    const startZ = frontWrap ? endWheels.front.z : Math.min(cF, zEnterF);
+    const endZ = rearWrap ? endWheels.rear.z : Math.max(cR, zEnterR);
+    for (let step = frontWrap ? 1 : 0; step <= (rearWrap ? 4 : 5); step++) {
+      pts.push([startZ + (endZ - startZ) * (step / 5), botY]);
+    }
+  } else {
+    appendTrackGroundRun(pts, contact, cF, cR, zEnterF, zEnterR, zi, zs, botY);
+  }
+  if (rearWrap && endWheels) {
+    appendRoadWheelArc(pts, endWheels.rear, rearWrap.wheelRadius, 180, rearWrap.deg, 'start');
+    appendTrackArc(pts, sprocket, rearWrap.deg, 360 + rearExit.angleDeg, rearArcSteps);
+  } else {
+    appendTrackArc(pts, sprocket, aR, 360 + rearExit.angleDeg, rearArcSteps);
+  }
   // drop duplicate closing point
   pts.pop();
   // ground clamp, kept as the last-resort safety net (pathological cfgs
@@ -3265,11 +3429,14 @@ function buildTrackCourse({
   // drive location is independent of course winding.
   const { frontEnd, rearEnd } = orderedTrackEndpoints(sprocket, idler);
   const contact = runningGearContactPatch(wheelZs, wheelR, cfg);
+  // Outer road wheels for the tangent wrap (2026-09-14). Interleaved rigs carry per-station
+  // heights; the wrap uses the real axle of each outer wheel. Opt out with wrapEndRoadWheels:false.
+  const endWheels = cfg.wrapEndRoadWheels === false ? null : endRoadWheels(wheelZs, wheelY, wheelR, cfg.wheelYs);
   const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
     ? cfg.loopPoints.map((p): TrackPoint => [p[0], p[1]])
     : trackLoopPoints({
       idler: { ...frontEnd }, sprocket: { ...rearEnd },
-      botY, topY, sag, supports, contact,
+      botY, topY, sag, supports, contact, endWheels,
       frontArcSteps: cfg.frontArcSteps ?? 7,
       rearArcSteps: cfg.rearArcSteps ?? 7,
       tautFrontSpan: cfg.tautFrontSpan ?? false,
@@ -3782,7 +3949,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     appearanceRole?: string,
     name?: string,
   ): THREE.InstancedMesh<THREE.BufferGeometry, M> => {
-    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    const isolated = (Array.isArray(mat)
+      ? mat.map((entry) => isolatedGearMaterial(entry, appearanceRole, disposables))
+      : isolatedGearMaterial(mat, appearanceRole, disposables)) as M;
+    const im = new THREE.InstancedMesh(geo, isolated, list.length);
     im.userData.runningGear = true;
     im.userData.runningGearUnitId = runningGearUnitId;
     im.userData.wheelPattern = wheelPattern.id;
@@ -3859,6 +4029,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const buildRunningGearAssemblyStage4 = (): void => {
     if (cfg.wheelHex) {
       dishMat = dishMat.clone();
+      // (the appearance normaliser floors this clone with the rest of the wheel paint, 2026-09-14)
       dishMat.color = new THREE.Color(cfg.wheelHex);
       dishMat.onBeforeCompile = vehicleAmbientFloorHook;
       dishMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
@@ -3877,12 +4048,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     // wheel material (own InstancedMesh — one extra draw call on 2 tanks)
     if (recList.length) mkInst(disc, mats.wheelsRecessed || dishMat, recList,
       'wheelDish', 'gearRoadWheelDiscsRecessed');
-    // dark inserts (stamped lightening holes on the Christie 'holes' style)
-    // 2026-09-14 owner: "details blend in — some road wheels read flat". Hub wells, bolts and
-    // lightening holes were always near-black rubber; on a dark-painted dish (T-80U, T-80BV,
-    // Challenger 3 wheelHex) that is black on near-black and the face reads as one flat disc.
-    // Pick the inset tone against the dish: dark dishes get the fleet's dusty wheel paint for
-    // their details, light dishes keep the rubber-black insets.
+    // dark inserts (stamped lightening holes, hub wells, bolt heads): tire-rubber dark against a
+    // dish that carries the wheel-paint floor (wheelPaintFloor.ts), so the face never reads flat.
     if (dark) mkInst(dark, wheelInsetMaterialFor(dishMat, mats), entries, 'wheelInset', 'gearRoadWheelInsets');
   };
   const buildRunningGearRunningGearStage12 = (): void => {
@@ -6109,7 +6276,7 @@ export const KIT = {
   straightRidgeGunMask,
   boxUV, mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometry,
   simplifiedTrackShoeGeometry, trackHitboxHull,
-  runningGearContactPatch,
+  runningGearContactPatch, endRoadWheels,
   buildRunningGear: buildRunningGearPublic, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, openRackGrid, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,

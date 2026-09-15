@@ -257,6 +257,7 @@ function buildAmx40X(P:TankBuilderPort):void {
       idler:{z:2.7711,y:.8976,r:.274},sprocket:{z:-2.8357,y:.78885,r:.322},
       botY:.050,topY:1.151,sag:.022, // +.002 with the .024 band so the rigid shoe corner stays on the floor (roundedTrackContact)
       contact:KIT.runningGearContactPatch(AMX40_X_DATUMS.wheelZs,.3401),
+      endWheels:KIT.endRoadWheels(AMX40_X_DATUMS.wheelZs,.41530,.3401),
       supports:[-1.6338,-.6815,.0856,1.0379,1.92295].map(z=>({z,y:1.12815})),
     }),.048,.3673),
     rigidLinkChords:true,

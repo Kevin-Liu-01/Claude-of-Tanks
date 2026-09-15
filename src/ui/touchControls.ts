@@ -630,9 +630,13 @@ export function createTouchControls({
     if (!fireGesture.getState().active) return;
     fireGesture.cancel(); renderFireGesture(); activeFireButton = null;
   };
-  window.addEventListener('blur', cancelFireGesture);
+  // Losing the page (app switch, notification shade, tab change) must drop every held
+  // touch: the fire gesture AND the joystick / aim pad / pinch (2026-09-14 touch QA: the
+  // knob stayed 40 px off centre and the tank kept driving after a backgrounded hold).
+  const releaseAllTouch = (): void => { cancelFireGesture(); resetMove(); };
+  window.addEventListener('blur', releaseAllTouch);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) cancelFireGesture();
+    if (document.hidden) releaseAllTouch();
   });
   root.querySelector<HTMLButtonElement>('.scope')!.addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});

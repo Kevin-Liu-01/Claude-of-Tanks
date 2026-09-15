@@ -288,6 +288,12 @@
   border-left:3px solid transparent;border-right:3px solid transparent;border-top:4px solid currentColor;
   opacity:.82;transition:transform .12s;}
 .cot-battle-mode[aria-expanded='true']::after{transform:rotate(180deg);}
+/* Coarse pointers (2026-09-14, outside QA): the mode toggle decides what you are about to play and
+   measured 38x44 beside the 114x44 BATTLE button — the easiest finger-miss on the screen. It takes a
+   third of the control with a larger label; the semantic input attribute drives it, never a width query. */
+body[data-cot-input='coarse'] .cot-battle{flex:0 0 62%;}
+body[data-cot-input='coarse'] .cot-battle-mode{flex:0 0 38%;min-width:72px;padding:1px 16px 0 6px;font-size:10px;letter-spacing:.12em;}
+body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-width:4px;border-right-width:4px;border-top-width:5px;}
 .cot-battle:active,.cot-battle-mode:active{transform:translateY(1px);}
 .cot-battle-menu{position:absolute;top:calc(100% + 7px);right:0;width:206px;display:none;
   max-height:min(620px,calc(var(--cot-viewport-height,100dvh) - 120px));overflow-y:auto;overscroll-behavior:contain;

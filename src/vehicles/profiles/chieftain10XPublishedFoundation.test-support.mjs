@@ -66,17 +66,33 @@ export function assertPublishedChieftainFoundationSources(
     assert.deepEqual(history.verification.exactOldDrawVertexPreservation[quality],
       {count, sha256:hash}, 'The independently archived pre-foundation receipt remains unchanged');
   }
-  // The published099 multiset is retained as explicit history; the active
-  // successor differs only by the owner-directed muzzle mouth seat.
-  assert.equal(receipt.successorHistory.length, 1);
+  // The published099 multiset is retained as explicit history, then the owner-directed muzzle
+  // mouth seat (draw vertices moved, none added or removed), then the 2026-09-14 tangent track
+  // wrap (the two band meshes lost 240 draw vertices each and the linked shoes moved; every other
+  // physical vertex is authenticated unchanged by the non-track multiset the receipt re-derives).
+  assert.equal(receipt.successorHistory.length, 2);
   assert.deepEqual(receipt.successorHistory[0].high,
     {count: 318516, sha256: 'e927370c12f00c11a34427869aead2258efaf86dd0ddbcac31ce47b665cbf4bf'});
   assert.deepEqual(receipt.successorHistory[0].low,
     {count: 292116, sha256: '29edd3bbcd982846879d481ca9f66a28c9ed884f5f807a8c63847750a0bacac2'});
+  assert.deepEqual(receipt.successorHistory[1].high,
+    {count: 318516, sha256: 'c83fa1d589a234388d3ffb88e9fb4b4a6662f864f81432bd4f137fb79da72437'});
+  assert.deepEqual(receipt.successorHistory[1].low,
+    {count: 292116, sha256: '7bc8bc1603ea8a60909c028dc9ea44a7e67eaf9e0de805c40234cd7f9a8a30fb'});
   for (const quality of ['high', 'low']) {
-    assert.equal(receipt.successor[quality].count, receipt.successorHistory[0].count ?? receipt.successorHistory[0][quality].count,
+    assert.equal(receipt.successorHistory[1][quality].count, receipt.successorHistory[0][quality].count,
       'the muzzle mouth seat moves draw vertices without adding or removing any');
+    assert.equal(receipt.successor[quality].count,
+      receipt.successorHistory[1][quality].count + receipt.laterTrackWrap.trackDrawVertexDelta,
+      'the tangent track wrap changes exactly the declared number of band draw vertices');
   }
   assert.match(receipt.laterMuzzleSeat.scope, /muzzleBoreShadowFallback/);
+  assert.match(receipt.laterTrackWrap.scope, /roadWheelWrap/);
+  assert.equal(receipt.laterTrackWrap.trackDrawVertexDelta, -480);
   return receipt.successor;
+}
+
+/** Non-track draw-vertex multiset the wrap successor claims unchanged (receipt re-derives and compares). */
+export function publishedChieftainNonTrackMultiset(quality) {
+  return receipt.laterTrackWrap.nonTrack[quality];
 }

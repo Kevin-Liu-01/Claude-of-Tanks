@@ -1445,12 +1445,14 @@ function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
     // an X-facing wheel ring needs rz π/2, never ry (a flat ring poked the
     // 1.66 width guard by its full major radius and safeScale-shrank the
     // whole build 6% before this was caught).
+    // 2026-09-14 owner: the facet rim stood 3.3 cm proud of the 0.120 tire face; rim 1.8 cm
+    // proud (a cast rim lip), dark annulus flush with the face.
     gear.addRoadWheelLayer(KIT.torus(0.268, 0.012, 12).rotateZ(Math.PI / 2), P.mats.spareTrack, {
-      outset: 0.141,
+      outset: 0.126,
       name: 'gearRoadWheelFacetRims',
     });
     gear.addRoadWheelLayer(KIT.torus(0.162, 0.014, 14).rotateZ(Math.PI / 2), P.mats.dark, {
-      outset: 0.1235,
+      outset: 0.1105,
       name: 'gearRoadWheelDarkAnnuli',
     });
     for (const sx of [-1, 1]) {

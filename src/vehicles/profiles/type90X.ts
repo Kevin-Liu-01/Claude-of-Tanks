@@ -340,6 +340,7 @@ export function buildType90X(P:TankBuilderPort):void {
       idler:{z:3.510616,y:.81982,r:.3161},sprocket:{z:-2.94311,y:.86132,r:.2852},
       botY:.0865,topY:1.242,sag:.022,
       contact:KIT.runningGearContactPatch(TYPE90_X_DATUMS.wheelStations,.357347),
+      endWheels:KIT.endRoadWheels(TYPE90_X_DATUMS.wheelStations,.44142,.357347),
       supports:[-1.92,.04,2.03].map(z=>({z,y:1.1599})),
     }),.0865,.389),
     topY:1.242,botY:.0865,paintedEnds:true,coveredTop:true,arms:true,

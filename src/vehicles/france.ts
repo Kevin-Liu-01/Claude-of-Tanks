@@ -323,24 +323,26 @@ function buildAMX40(P: FranceBuilderPort): void {
     // lines (side_hull worst clusters z ±2.66..3.23 / -2.89..-3.11)
     sprocket: { z: -2.70, y: 0.67, r: 0.24, trackR: 0.16 }, idler: { z: 2.72, y: 0.70, r: 0.28, trackR: 0.20 },
     rollers: [1.72, 0.43, -0.86, -1.98].map((z: number) => ({ z, y: 0.98, r: 0.07 })),
-    trackW: 0.54, endRingSpan: 0.50, topY: 1.03, contactZF: 2.30, contactZR: -2.00,
-    loopPoints: [
-      [-2.70, 1.03], [2.72, 1.03], [2.86, 0.98], [3.00, 0.74],
-      [2.96, 0.70], [2.72, 0.35], [2.48, 0.22], [2.35, 0.15], [2.23, 0.10],
-      [-2.075, 0.10], [-2.314, 0.29], [-2.65, 0.47], [-3.00, 0.66],
-      [-3.18, 0.76], [-3.02, 1.03],
-    ],
+    trackW: 0.54, endRingSpan: 0.50, topY: 1.03,
+    // 2026-09-14 owner ("cornered track in the bottom right, wheels glitch into tracks"): the
+    // hand-authored polygon rose from z -2.075 to -2.314 straight through the aft road wheel
+    // (axle -2.15, r 0.36) and met the flat run at a corner. The kit course now wraps the outer
+    // wheels tangentially; botY 0.10 keeps the authored seat (tire bottom 0.13 rests 1.5 cm into
+    // the 0.09 band, as the old polygon's ground line did).
+    botY: 0.10,
     paintedEnds: true, coveredTop: true,
   });
   // Preserve the authored olive dish/hub/rim anatomy as layers of the one
   // suspension-driven road-wheel train. These used to be parked hull meshes
   // and separated from the real wheels over terrain.
-  P.gear.addRoadWheelLayer(cylX(0.285, 0.032, 18), P.mats.detail,
-    { outset: 1.565 - 1.27, name: 'gearRoadWheelOuterDishes' });
+  // 2026-09-14 owner: the package floated 0.20 m outboard of the tire face (old hull-parked x).
+  // Seated on the wheel: tire face 0.122 from the axle; dish 3 mm inside, rim flush, cap 8 mm proud.
+  P.gear.addRoadWheelLayer(cylX(0.285, 0.032, 18), P.mats.wheels,
+    { outset: 0.103, name: 'gearRoadWheelOuterDishes' });
   P.gear.addRoadWheelLayer(cylX(0.095, 0.036, 14), P.mats.dark,
-    { outset: 1.570 - 1.27, name: 'gearRoadWheelHubCaps' });
+    { outset: 0.112, name: 'gearRoadWheelHubCaps' });
   P.gear.addRoadWheelLayer(torus(0.215, 0.013, 18).rotateZ(Math.PI / 2), P.mats.dark,
-    { outset: 1.584 - 1.27, name: 'gearRoadWheelRimRings' });
+    { outset: 0.106, name: 'gearRoadWheelRimRings' });
   };
   buildSuspension();
   // ---- hull furniture ----

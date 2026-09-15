@@ -2798,8 +2798,8 @@ const battleFrame = createBattleFrameRuntime({
   countdown: {
     isWarmPending: () => battleWarmPending,
     advance: advancePreBattleCountdown,
-    show: (seconds: number) => {
-      currentHud()?.preBattleCountdown(seconds);
+    show: (seconds: number, warmPending = false) => {
+      currentHud()?.preBattleCountdown(seconds, warmPending);
       // campaign slice 5: the solo countdown opens the mission brief once per sortie
       if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
         missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });

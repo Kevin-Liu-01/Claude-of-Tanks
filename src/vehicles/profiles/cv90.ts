@@ -364,7 +364,7 @@ function buildCv90(P: CvBuilderPort): void {
       lowerHullFusion: 'belly-to-upper-cell-overlap-v1',
       bowShoulderJoin: 'single-cell-glacis-to-skirt-v1',
       rearSkirtClosure: 'tapered-armored-rear-corner-v1', lowerRubberStripRemoved: true,
-      rearTrackDeparture: 'rear-wheel-tangent-forward-v1', rearTrackDepartureZM: -2.48,
+      rearTrackDeparture: 'rear-wheel-tangent-wrap-v2', rearTrackDepartureZM: -2.45, // 2026-09-14: under the aft axle
       fenderBridge: 'continuous-glacis-shoulder-skirt-seat-v2', tracksExtendedForRearHull: false,
       rearHullExtensionM: 0.15, rearTroopRamp: true,
     });
@@ -660,7 +660,7 @@ function buildCv90Mkiv(P: CvBuilderPort): void {
       concaveSurfaceCount: 0, lowerHullFusion: 'belly-to-upper-cell-overlap-v1',
       bowShoulderJoin: 'single-cell-glacis-to-skirt-v1',
       rearSkirtClosure: 'tapered-armored-rear-corner-v1', lowerRubberStripRemoved: true,
-      rearTrackDeparture: 'rear-wheel-tangent-forward-v1', rearTrackDepartureZM: -2.56,
+      rearTrackDeparture: 'rear-wheel-tangent-wrap-v2', rearTrackDepartureZM: -2.53, // 2026-09-14: under the aft axle
       auxiliaryFuelDrums: 2,
       fenderBridge: 'continuous-glacis-shoulder-skirt-seat-v2',
       tracksExtendedForRearHull: false, rearHullExtensionM: 0.08, rearTroopRamp: true,

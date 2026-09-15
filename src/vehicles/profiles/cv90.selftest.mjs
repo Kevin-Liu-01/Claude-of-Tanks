@@ -41,7 +41,7 @@ const expected = Object.freeze({
     rwsName: 'cv90K2bStyleRws', rwsScale: 0.80,
     turretPivotZ: -0.432,
     trackWidth: 0.50, sideStations: 9, rearExtension: 0.15, guided: false,
-    rearTrackDepartureZ: -2.48,
+    rearTrackDepartureZ: -2.45,
   }),
   cv90_mkiv: Object.freeze({
     name: 'CV90 Mk IV', tier: 10, caliber: 50, weight: 40,
@@ -57,7 +57,7 @@ const expected = Object.freeze({
     rwsName: 'cv90MkivK2bStyleRws', rwsScale: 0.90,
     turretPivotZ: -0.396,
     trackWidth: 0.57, sideStations: 9, rearExtension: 0.08, guided: true,
-    rearTrackDepartureZ: -2.56,
+    rearTrackDepartureZ: -2.53,
   }),
 });
 
@@ -119,7 +119,7 @@ for (const [id, target] of Object.entries(expected)) {
     assert.equal(hullReceipt.bowShoulderJoin, 'single-cell-glacis-to-skirt-v1');
     assert.equal(hullReceipt.rearSkirtClosure, 'tapered-armored-rear-corner-v1');
     assert.equal(hullReceipt.lowerRubberStripRemoved, true);
-    assert.equal(hullReceipt.rearTrackDeparture, 'rear-wheel-tangent-forward-v1');
+    assert.equal(hullReceipt.rearTrackDeparture, 'rear-wheel-tangent-wrap-v2');
     assert.equal(hullReceipt.rearTrackDepartureZM, target.rearTrackDepartureZ);
     assert.equal(hullReceipt.auxiliaryFuelDrums, id === 'cv90_mkiv' ? 2 : undefined);
     assert.equal(hullReceipt.fenderBridge, 'continuous-glacis-shoulder-skirt-seat-v2');

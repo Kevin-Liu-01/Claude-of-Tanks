@@ -4,7 +4,8 @@ import { createTank } from '../tankFactory.ts';
 
 const EXPECTED_ROAD_WHEEL_ZS = [2.48, 1.55, 0.62, -0.31, -1.24, -2.17];
 const EXPECTED_RETURN_ROLLER_ZS = [1.61, 0.20, -1.21];
-const EXPECTED_REAR_CONTACT_Z = -2.395;
+// 2026-09-14 tangent wrap: the flat run ends under the rear axle (-2.17) and the band wraps the wheel
+const EXPECTED_REAR_CONTACT_Z = -2.17;
 const EPSILON = 1e-6;
 
 const near = (actual, expected, message) => {
@@ -66,12 +67,12 @@ for (const id of ['k2', 'k2b']) {
       `${id}: front idler stays in its certified position`);
 
     const groundRun = receipt.loopPoints.filter(([, y]) => Math.abs(y - receipt.botY) <= EPSILON);
-    assert.ok(groundRun.some(([z]) => Math.abs(z - 2.40) <= EPSILON),
-      `${id}: front track contact remains fixed`);
+    assert.ok(groundRun.some(([z]) => Math.abs(z - 2.48) <= EPSILON),
+      `${id}: flat run reaches the front road-wheel axle`);
     assert.ok(groundRun.some(([z]) => Math.abs(z - EXPECTED_REAR_CONTACT_Z) <= EPSILON),
       `${id}: rear track departure is reseated around the moved rear wheel`);
-    assert.ok(EXPECTED_REAR_CONTACT_Z <= receipt.wheelZs.at(-1) - receipt.wheelR / 2 + EPSILON,
-      `${id}: bottom track fully supports the rear road-wheel footprint`);
+    assert.ok(Math.abs(EXPECTED_REAR_CONTACT_Z - receipt.wheelZs.at(-1)) <= EPSILON,
+      `${id}: the loaded run leaves the ground under the rear axle and wraps the wheel`);
   } finally {
     tank.dispose();
   }

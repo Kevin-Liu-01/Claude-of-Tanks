@@ -169,8 +169,8 @@ function nonTarget(t,quality){
     rows.push([name,preservedMeshHash(m)]);
   });
   rows.sort(([a],[b])=>a.localeCompare(b));
-  const expected=quality==='high'?'87110758e04199df6ecc4df7c8949728a54138aaf60afbd49f55fd83c5d651ca'
-    :'e7dbdb110ce5593882fef2e932d104cb332821fb15a09ae038ef1bef5df0e40a';
+  const expected=quality==='high'?'d8e34c2f4a843dda825e330e1fad8fc16472736cb51769d1064b12cfe39d86be'
+    :'ac7725d2b9bc9bac3d7c879713e393b7c4ff081ca6b30e089517b7ebbbeed8cf';
   assert.equal(rows.length,quality==='high'?37:36);
   assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'),expected,
     'immutable non-target runtime geometry, world matrices, MG, antenna-independent armor and all wheels/course');

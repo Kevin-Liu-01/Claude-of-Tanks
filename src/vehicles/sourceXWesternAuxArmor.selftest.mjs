@@ -20,10 +20,10 @@ const cases = {
 // AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated), the scheme-painted
 // pressed dish, the Chieftain 5 X commander GPMG and the Ariete loader GPMG move
 // the western native digests; values below are repinned from the current build.
-  leo2a6_x: { main: '9738004144f8aefecdc007bf5f40f6c841672c73fc2f7cade841d209c727d63b', geometry: ['e8dc92f5', '7274f9b6'], counts: [20, 0] },
-  strv122_x: { main: 'b8a437d4d0b97a7439e6acef7fb40854919f560386ccf6fc501aeea2c8c0e483', geometry: ['00330f80', 'b931e45f'], counts: [676, 66] },
-  ariete_c1_x: { main: '9437418be3b9b6d1eee68126b9e9c4f5e5e68e2a1cafe279ab8ef5b6c9ba227b', geometry: ['6457dc4e', 'e586ce75'], counts: [210, 0] },
-  challenger1_x: { main: 'f9430cb0661468905519c4e24351a74569927f063009ef79e8835fe16a74dbc4', geometry: ['49535bca', '606afe28'], counts: [156, 0] },
+  leo2a6_x: { main: '45fadbfaef827bc537af7264b26b55e879413f68695aa90b46c3e3cabab6a3cb', geometry: ['be57c0b1', '17dec522'], counts: [20, 0] },
+  strv122_x: { main: '2be53d528e6b36e7ff66bafcdd02729b00589e1ddbfd8e12cebaf14fab24fc80', geometry: ['aa49462b', '4341fbfc'], counts: [676, 66] },
+  ariete_c1_x: { main: '5ec104dd88541f1526221ab452fabe2ba9b63bb9a1825e73dc7165b918465b59', geometry: ['ea344594', 'f47e5f4f'], counts: [210, 0] },
+  challenger1_x: { main: 'd8df914a592ec7c2b45dddc9c2c2a13bcb2a85001758a3cfb4a5100a40484f60', geometry: ['d8449f46', 'ab33df88'], counts: [156, 0] },
 };
 const pose = yaw => tankPoseFromState({ pos: new THREE.Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: yaw, gunPitch: 0 });

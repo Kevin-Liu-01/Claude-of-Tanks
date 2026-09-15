@@ -10,8 +10,8 @@ import {markVehicleNightLens,vehicleNightLightEmittersFor} from './vehicleNightL
 import {NIGHT_EMISSION_ATTRIBUTE} from '../engine/nightEmissionMaterial.ts';
 
 const hash=b=>createHash('sha256').update(b).digest('hex');
-const BEFORE='a93e505c9c98e06ad45c4b189ec6228864472651f9c0b245d2cb4d6a51500e50';
-const AFTER='db8279500f86e1165baf4b945d3607d621554f9dc75be720678fb3d80751d97f';
+const BEFORE='5f6e59f9a6d66c2951d046c5e027469f1e253e38ef455e15735e31265a99da54'; // 2026-09-14: t90.ts hub package seated (wheel review)
+const AFTER='e749c1a249f3a7f07bff3e9aba07f38bb0310ee6c77c506b465727a413382e7a';
 const added=`    // These existing discs faced upward. Seat their apertures in the actual
     // canted cassette front, with 5.5 mm of rear stock entering its housing.
     for (const dx of [-0.075, 0.075]) {

@@ -62,6 +62,7 @@ export function addStrv122XSuppliedGear(P:TankBuilderPort):void{
     .map(([z,y])=>({z,y,r:.078}));
   const loop=KIT.trackLoopPoints({sprocket:d.rear,idler:d.front,
     botY:.054,topY:1.155,sag:.012,contact:{zR:-2.47,zF:2.69},
+    endWheels:KIT.endRoadWheels(d.roadZ,d.roadY,d.roadRadius),
     supports:rollers.map(r=>({z:r.z,y:r.y+r.r+.017}))});
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',wheelR:d.roadRadius, // 2026-09-14 owner: nation/family pattern (Leopard 2 plain-dish-twelve), no per-tank override

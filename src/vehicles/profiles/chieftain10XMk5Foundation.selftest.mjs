@@ -21,10 +21,10 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // scene attributes, indices, instances, hierarchy and local/world transforms;
 // no marking, batch, gear, material-bucket or spatial-envelope exclusion.
 const MK5_BEFORE = {
-  high: ['414edfab27361c3d291bc6db9f4438a81dd5d6fd2cb38ce48c139dda655f5ae4', 77, 44],
-  low: ['20ef64b965b239531b6f8244877009ed0e9677771adffe515a93af9d0ed48294', 75, 42],
+  high: ['54c62c28236d10a7fe91559c64ed9c0d799c3e132876b6c3f4280bb1d2d2f10e', 77, 44],
+  low: ['bf9072532695c8caa92c8d1d2380819a5870b74f163ab1459293bcf81f26badd', 75, 42],
 };
-const MK5_SPEC = 'e2a0bbcccd61f47446fba78b2f6aa8ccca7a822847c4e8cd6f9d50c01440538f';
+const MK5_SPEC = '659eba9704b96eb8cb3c7b031f43aad99a43532aa559c7ddaa2402e993cc15b1';
 const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d471a30';
 // Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
 // hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,
@@ -33,8 +33,8 @@ const MK10_EMISSIONS = '9718ffa9e0b4fab65b7f9cd9ccfa3e95a153e86f481965a175662d4f
 // 2026-09-11: the detail buckets now carry camouflage, so one more merged
 // mesh per quality is a paint-transformed bucket (36/34 -> 37/35).
 const MK10_OTHER = {
-  high: ['4d980c7d16701140c04038cbc4524402871320bc051cd46183d6611fd2923022', 37],
-  low: ['c31e65acfded79ab7a042830a4289d0b91227d2f5b7209d58d79e63bdadeb113', 35],
+  high: ['a4c28ad25cd7bfaa18010ad68332f1c5cce2c0169083b7c0421d0a2339bf9fe1', 37],
+  low: ['a670444e377876d51cec002697a8346aa84c73ef303f034664f784b7f5f4040d', 35],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated

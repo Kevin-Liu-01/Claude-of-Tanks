@@ -287,20 +287,20 @@ const T90M_REST_REVISIONS = Object.freeze({
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: 'd112460ae8246ffafb32e49ab13fbc8dbfd7b3cf3ef13634c01339b53c4f054d',
+  forwardLampSeat: '17d7bd8906b26f18a37115b56bda26229ea5bbfc317f38b6092b48884981e15c',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently
 // verified intentional lamp-seat revision above versions a physical rest row.
 for (const [id, rest, armor] of [
-  ['leo2a6', 'd99c4911867c659fb8ec7b8d5036890fd83136c33c1512d4196fe302d71ea95c',
-    'f029abdac12ed1a9891ac7f48e7d6ada06190ffe8b0615a7d12e00aa7d8c1566'],
+  ['leo2a6', '60089453e1d18e1698a233dc7151f46fcc0449e109bb0a18f5c73537e17b543f',
+    '913d3a709a32319689a20f6ef5647b5764b34167daf0533e2a7f149d76a5321c'],
   ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
-    '050d079304b3b60b62cea6f714d2fadbdcf7cfe79fa7e8796826f121dc382e65'],
+    '34a18c61b077485c3f27983ae071118b1923aea8117bf2691996522ed5646fa7'],
   // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
   // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
-  ['m1a2', '7af8f6616247b687a11f6798a4bb6aacd0b71435082d96504e1ad5f2fe4dc9ab',
-    '47159a9590d264887e9883ab2e4fa8dc31634a4ed184e176be7fcb05a8909036'],
+  ['m1a2', '96a513dd9f306a0984fa649131eef351b3618564310bbb158e705d22f7e4a000',
+    'e859f45a54f52dbcbe22ff061c5e9352437ca05eaa618f84d670f81258a64856'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   assert.equal(restHash(visual), rest, `${id}: exact approved intact draw content`);

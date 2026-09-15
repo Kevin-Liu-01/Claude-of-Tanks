@@ -480,7 +480,7 @@ export interface HudRuntime {
   getSpectateBar(): { shown: boolean; nick: string | null; vehicle: string | null };
   stageSpectateBar(payload?: HudEventPayload): void;
   warmShotCards(specIds: readonly string[]): void;
-  preBattleCountdown(secondsLeft: number): void;
+  preBattleCountdown(secondsLeft: number, warmPending?: boolean): void;
   setPreBattleWaiting(waiting: boolean): void;
   setMode(mode: HudMode): void;
   update(frame: HudFrame): void;
@@ -5866,8 +5866,8 @@ export function initHud(bus: EventBus): HudRuntime {
      * only updates when the displayed second changes.
      * @param {number} secondsLeft remaining hold (0 = released)
      */
-    preBattleCountdown(secondsLeft: number) {
-      preBattleOverlay.countdown(secondsLeft);
+    preBattleCountdown(secondsLeft: number, warmPending = false) {
+      preBattleOverlay.countdown(secondsLeft, warmPending);
     },
 
     setPreBattleWaiting(waiting: boolean) { preBattleOverlay.setWaiting(waiting); },

@@ -69,7 +69,7 @@ try{
           assert.ok(triangles<=48,`${quality}/${name}: far fleet course stays within its 48-triangle budget (${triangles})`);
         }
         assert.equal(shoes.count,162,'unchanged 81-link native course per side');
-        assert.equal(hash(shoes.instanceMatrix.array),'3e1981365e4526c8d4cb6a8270fa770f317141ddbbf5ccca7b794ceeddc0f474',
+        assert.equal(hash(shoes.instanceMatrix.array),'560519e5cc782e84344f9aba9f5fc01440094d531fb46974d50e7bffa695ec5d',
           'all original shoe positions and orientations are bit-identical');
         const m=new THREE.Matrix4();shoes.getMatrixAt(144,m);m.premultiply(shoes.matrixWorld);
         const pin=new THREE.Vector3(.3180395,-.0051314,.0388075).applyMatrix4(m);
@@ -79,8 +79,8 @@ try{
       if(quality==='high'){
         const expected={gearRoadWheelTires:'e45962ab33c93f70ea9c95ee68c225e9f8ad58dd327a32570ddceec17711e30d',
           gearRoadWheelDiscs:'1900b58d591d951a976fe0c89fa9f57ee3eb6643aa1419152e7ad2eda237685f',
-          gearTrackBandL:'81eebf27689ed2e82a392cd40951711f9417ce27325f9101e066148a55ab339e',
-          gearTrackBandR:'81eebf27689ed2e82a392cd40951711f9417ce27325f9101e066148a55ab339e'};
+          gearTrackBandL:'c2b2e2cfeb2f600ed50187bb36f4e583525c364242274da37cfffcc7b202f8cf',
+          gearTrackBandR:'c2b2e2cfeb2f600ed50187bb36f4e583525c364242274da37cfffcc7b202f8cf'};
         for(const[name,value]of Object.entries(expected))assert.equal(hash(root.getObjectByName(name).geometry.attributes.position.array),value,
           `${name}: existing wheel/carrier shape remains bit-identical`);
       }

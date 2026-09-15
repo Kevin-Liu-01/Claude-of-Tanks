@@ -436,7 +436,7 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
       sideArmorLayers: 3,
       frontSkirtTransition: 'continuous-glacis-to-skirt-shoulder-v4',
       frontCapPanelsRemoved: true,
-      rearTrackDepartureZM: -2.17,
+      rearTrackDepartureZM: -2.00, // 2026-09-14: the loaded run leaves the ground under the aft axle and wraps the wheel
       nativeTrackPattern: 'japanese-modular',
       baseGunAssembly: 'flat-mask-kde35-mantlet-v8',
       jyuMatLaunchTubes: 4,

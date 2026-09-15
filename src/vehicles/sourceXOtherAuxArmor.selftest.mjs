@@ -22,21 +22,21 @@ const BEFORE={
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
- 'k1a1_x/high':'b6f73eec3a7f098fe890b6d34ff8c504fd67ce43e2208694eda2932bf8ae5991',
- 'k1a1_x/low':'9005a169357c4ce4124fd1f34e521d385a863411a5af2010dde6fdcbf655d8ae',
- 'amx30_x/high':'ad1014d513da8a3c6983015efb63d70c8d5dc3862ac234866a5c1d164f4a6b20',
- 'amx30_x/low':'30f2edd99b605e169048c29db000249a2e7adbfc04320199c1825ceb599ec278',
- 'leclerc_x/high':'42c280e95dcc0ce0e5ef8360dbdc573da5f9eaf5fd298d9158e8c4c89409bdfc',
- 'leclerc_x/low':'33abc7e3c7a5a5fb886b9171e49fac1f28b2fb1c88ce6e486f1a46f4f0857182',
- 'leclerc_classic_x/high':'236a179b5c15954ff1eab74761d337fc706c95cf124e56cc6ab1070852c6a13d',
- 'leclerc_classic_x/low':'bc3b2dba936676ed5ae212a563bd210775b362e25d86932c23ed7965a9f3ec45',
- 'type10_x/high':'058fc1efb87f39594a33c837cb19851c4e705c5819c90b14cc8e7b2f6ad2a18d',
- 'type10_x/low':'a6a69b8381f26abcc7ee4b4c3ac708f1210b4c712fcd7fb7afc752e6580b84e8',
- 'type90_x/high':'dfcf6d62a432414a6b1183000d5375d4f75ea182a2bc05c77a925ab0027a3804',
- 'type90_x/low':'2064861efdbe19a297516b29906f11442fbdcb381170ff52eb407403084e1533',
+ 'k1a1_x/high':'dc97b5c92539df91be8bdf8f0c01fe2dde915814cb387993df5c7aaccda12f31',
+ 'k1a1_x/low':'739690de4af8d74fd57293bc0d06a79fd486a423b5d3fe7c35fae3c159bbe83d',
+ 'amx30_x/high':'36e2bbae60cec18ad2d5ef280f5e54fe56f6fc7e56b5e7a80053704550d34d45',
+ 'amx30_x/low':'2789d0e603fe530f40415865ebe98582b50f24f1c54a02144f33c8d8eaae6534',
+ 'leclerc_x/high':'41b9999082f67a63a6ff49a5352e6c7ae6d3db639244bd27c798d6101e4e5315',
+ 'leclerc_x/low':'18327ae6414f9b9bbf4b840fd11a2d4fe9a2a4db2d8329acb732f50c1b150495',
+ 'leclerc_classic_x/high':'ff9bd394521fb27808b1fd7ef1b6acd1212ba0f3daa784222b00d991155fafe0',
+ 'leclerc_classic_x/low':'0a38e6048eb98b2873d41fef86888514eb5b31258e1d6ffec7a89e2fb1f3177a',
+ 'type10_x/high':'632e0538b465eeab022d14a864a7038c4758ff0ddbb5011e65c6f0e764dade0d',
+ 'type10_x/low':'f00d6a053bf6e5a8953caefe58e00eb69ebedc896824e95890a64500f6327e46',
+ 'type90_x/high':'4a32e19dcd76db821a67d16cb14983818df54ad503eb5229c90a4d9fb9f8ddae',
+ 'type90_x/low':'1cb5dcbc2584e6668e3d9d68da91f34df94a58ffdabb8ca3b94d1fa0726b93e8',
  // 2026-09-12 (evening): AMX-40 X .024 band + botY .050 contact fix; native fingerprints repinned.
- 'amx40_x/high':'c109747fd2866bd4543b7c864ed59ff88c54a6ae52dc6976f2b660965d32991a',
- 'amx40_x/low':'24bb77c1316801fe5cbad0eadb1c41279b3ca60b878c185b8451fc825ba42551',
+ 'amx40_x/high':'5facf4ca899c96a4ef49c78f28a96b7f0338e1865c535abbfe157b3bfab87b0f',
+ 'amx40_x/low':'2fd96153098ba1be202d41fd85f251dbdb160049c71501655d3d176a7ddadf17',
 };
 const pose=tankPoseFromState({pos:new THREE.Vector3(),yaw:0,visualPitch:0,visualRoll:0,turretYaw:0,gunPitch:0});
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} vs ${b} ±${t}`);

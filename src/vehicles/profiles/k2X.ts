@@ -492,6 +492,7 @@ export function buildK2X(P: TankBuilderPort): void {
       y:roller.y+.095175+.066/2+.0002})),
     contact:{zF:Math.max(...gearConfig.wheelZs)+gearConfig.wheelR*.5,
       zR:Math.min(...gearConfig.wheelZs)-gearConfig.wheelR*.5},
+    endWheels:KIT.endRoadWheels(gearConfig.wheelZs,gearConfig.wheelY??gearConfig.wheelR+.10,gearConfig.wheelR),
   });
   P.gear = KIT.buildRunningGear(P,gearConfig);
   hullFurniture(P);

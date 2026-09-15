@@ -337,9 +337,9 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     P.gear.addRoadWheelLayer(cylX(0.29, 0.032, 16), P.mats.detail,
       // wheel review 2026-09-13: 1.505/1.510 floated 7 cm outboard of the tire face (1.378); the
       // face disc now sits in the tire plane and only the small hub protrudes (2 cm).
-      { outset: 1.372 - g.trackXc, name: 'gearRoadWheelFaceDressing' });
+      { outset: 1.360 - g.trackXc, name: 'gearRoadWheelFaceDressing' }); // 2026-09-14: seated on the 1.382 tire face
     P.gear.addRoadWheelLayer(cylX(0.105, 0.038, 14), P.mats.dark,
-      { outset: 1.398 - g.trackXc, name: 'gearRoadWheelHubDressing' });
+      { outset: 1.376 - g.trackXc, name: 'gearRoadWheelHubDressing' }); // hub 1.3 cm proud
   };
   challenger1BuildAssemblyStage1();
   // BOW GUARD COURSE — NO-STAIRCASES r1 (§B1 law 5f4cfae, owner screenshot).

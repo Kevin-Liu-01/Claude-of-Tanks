@@ -12,13 +12,13 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
   .map(id => [id, TANK_SPECS[id]]);
 // Captured before this metadata correction. No source meshes or generated
 // armor vertices are embedded in the regression.
-const donorHash = '5a4f40320368135501f960241752d4f77122a3f6ae0251d90ec5bdb2c26e8b6e';
+const donorHash = '843b767d98117f9554283175a4edb0767f6591ad52902de993e283da97b221a2';
 const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f833';
 const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
-const moduleCrewHash = 'f59555c2d9c5e31a1a17417807ff155df63dbd089589b2bce30b6b6088c0aec5';
+const moduleCrewHash = 'eb348d13390a859042020234d8d73f6f24efbd9c4820764463380bfee2b2a0a3';
 const geometryHashes = {
-  jpz_e100_x: { high: '89c78a62', low: '47a5e5eb' },
-  jpz_e100: { high: 'b93d7759', low: 'c0f647ce' },
+  jpz_e100_x: { high: '8401115d', low: '2780d778' },
+  jpz_e100: { high: '68750c36', low: '8de30f05' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,

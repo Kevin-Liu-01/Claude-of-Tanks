@@ -91,7 +91,7 @@ try {
     skirtAttachment: 'direct-monocoque-overlap-seat-v4',
     frontSkirtTransition: 'revolution-amap-glacis-downfold-v4',
     frontShoulderBridge: 'cyclic-hull-amap-overlap-volume-v1',
-    rearTrackDepartureZM: -2.37,
+    rearTrackDepartureZM: -2.20,
     rearBulkheadClosureDepthM: 0.20,
     nativeTrackPattern: 'compact-ifv',
     baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',
@@ -185,15 +185,16 @@ try {
   assert.equal(gear?.trackW, 0.56, 'S1 native course is slightly widened under the new skirts');
   assert.equal(gear?.trackPatternId, 'compact-ifv',
     'S1 uses its unique fine-rib heavy IFV shoe construction');
-  assert.equal(hull.userData.pumaS1Receipt.rearTrackDepartureZM, -2.37,
+  assert.equal(hull.userData.pumaS1Receipt.rearTrackDepartureZM, -2.20,
     'Puma rear track departure is seated under the aft road-wheel quadrant');
   const rearRoadWheelZ = Math.min(...gear.wheelZs);
   const lowerCourse = gear.loopPoints.filter(([, y]) => Math.abs(y - gear.botY) < 1e-6);
   const rearGroundJointZ = Math.min(...lowerCourse.map(([z]) => z));
-  assert.ok(Math.abs(rearGroundJointZ - (-2.37)) < 0.01,
-    `Puma loaded course joins its rear rise at -2.37 m (${rearGroundJointZ})`);
-  assert.ok(Math.abs((rearRoadWheelZ - rearGroundJointZ) - gear.wheelR * 0.5) < 0.01,
-    'Puma loaded course begins rising at the aft road-wheel quadrant');
+  // 2026-09-14: the loaded run leaves the ground under the aft axle (-2.20) and wraps the wheel
+  assert.ok(Math.abs(rearGroundJointZ - (-2.20)) < 0.01,
+    `Puma loaded course joins its rear rise under the aft road wheel at -2.20 m (${rearGroundJointZ})`);
+  assert.ok(Math.abs(rearRoadWheelZ - rearGroundJointZ) < 1e-6,
+    'Puma loaded course begins rising under the aft axle and wraps the wheel (2026-09-14 tangent wrap)');
   assert.ok(gear?.loopPoints.some(([z]) => z > 3.48) && gear?.loopPoints.some(([z]) => z < -3.42),
     'S1 track course reaches both full-length hull shoulders');
   assert.equal(gear?.suspensionDynamic, true, 'S1 road wheels retain dynamic suspension arms');

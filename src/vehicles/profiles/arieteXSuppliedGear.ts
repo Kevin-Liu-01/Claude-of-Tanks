@@ -59,6 +59,7 @@ export function addArieteXSuppliedGear(P: TankBuilderPort): void {
       idler: { ...idler, r: idler.trackR }, sprocket: { ...sprocket, r: sprocket.trackR },
       botY, topY, sag: .006,
       contact: KIT.runningGearContactPatch(wheelZs, D.wheelRadiusM),
+      endWheels: KIT.endRoadWheels(wheelZs, D.wheelY, D.wheelRadiusM),
       supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .012 })),
     }), botY, .29),
     arms: true, paintedEnds: true, coveredTop: true,

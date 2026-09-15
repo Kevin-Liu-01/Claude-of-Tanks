@@ -39,6 +39,7 @@ export {
   CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID,
 } from './camoPolicy.ts';
 import { tagVehicleMaterial } from './appearanceAudit.ts';
+import { liftSrgbToWheelFloor } from './wheelPaintFloor.ts';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
@@ -1824,7 +1825,10 @@ const wheelRgbOf = (v: MaterialVisual): Rgb => {
   const wash = v.scheme === 'winter' || v.scheme === 'washworn'; // camo r8
   const dust: Rgb = wash ? [102, 107, 110] : [118, 110, 86];
   const c = scale3(mix(scale3(wheelToneOf(v), 0.92), dust, 0.12), 0.84);
-  return wash ? scale3(c, 0.85) : c;
+  // 2026-09-14 owner: dark schemes pushed the dish paint down to the tire's value and the wheels
+  // read as one flat grey disc. The paint keeps the scheme's family but never drops below the
+  // fleet wheel-paint floor (see wheelPaintFloor.ts).
+  return liftSrgbToWheelFloor(wash ? scale3(c, 0.85) : c);
 };
 // Recessed interleaved-row wheels bake their own occlusion: same scheme paint
 // dropped toward shadow so the Schachtellaufwerk rows separate (r5). Kept at

@@ -127,6 +127,7 @@ function runningGear(P: TankBuilderPort): void {
       idler: { z: 2.86860, y: .79055, r: .297265 },
       sprocket: { z: -2.57518, y: .77031, r: .317005 },
       contact: KIT.runningGearContactPatch(zs, .3307865), botY: .0525, topY: 1.132315,
+      endWheels: KIT.endRoadWheels(zs, .4040425, .3307865),
       sag: .008, supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .014 })),
     }), .0525, .34),
     rigidLinkChords: true,

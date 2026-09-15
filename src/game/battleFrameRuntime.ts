@@ -33,7 +33,7 @@ interface BattleFrameNetworkPort {
 interface BattleFrameCountdownPort {
   isWarmPending(): boolean;
   advance(seconds: number, wallDtSeconds: number, warmPending: boolean): number;
-  show(seconds: number): void;
+  show(seconds: number, warmPending?: boolean): void;
   rollout(): void;
 }
 
@@ -169,12 +169,15 @@ export function createBattleFrameRuntime({
   const advanceCountdown = (wallDtSeconds: number): void => {
     if (game.preBattleS === Infinity) return;
     const heldSeconds = game.preBattleS;
+    const warmPending = countdown.isWarmPending();
     game.preBattleS = countdown.advance(
       game.preBattleS,
       wallDtSeconds,
-      countdown.isWarmPending(),
+      warmPending,
     );
-    countdown.show(game.preBattleS);
+    // Countdown 2026-09-14 (owner: "seems to stall at 3"): the presentation is told when the
+    // count is held for warm work, so it shows PREPARING instead of a frozen numeral.
+    countdown.show(game.preBattleS, warmPending);
     if (heldSeconds > 0 && game.preBattleS === 0) countdown.rollout();
   };
 

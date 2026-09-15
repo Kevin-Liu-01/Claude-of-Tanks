@@ -611,7 +611,7 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
       skirtAttachment: 'direct-monocoque-overlap-seat-v4',
       frontSkirtTransition: 'revolution-amap-glacis-downfold-v4',
       frontShoulderBridge: 'cyclic-hull-amap-overlap-volume-v1',
-      rearTrackDepartureZM: -2.37,
+      rearTrackDepartureZM: -2.20, // 2026-09-14: loaded run leaves the ground under the aft axle (tangent wrap)
       rearBulkheadClosureDepthM: 0.20,
       nativeTrackPattern: 'compact-ifv',
       baseGunAssembly: 'compact-slash-port-mk30-cradle-v7',

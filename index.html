@@ -450,8 +450,11 @@
       // so a stage that is merely slow keeps its document while a promise,
       // driver submission, or missing resource that makes no forward progress
       // recovers substantially sooner.
-      const STAGE_NOTICE_MS = 8000;
-      const STAGE_RECOVER_MS = 20000;
+      // 2026-09-14 (outside QA at phone size): a RETRY LOADING button appeared at ~50 % while the
+      // eased bar was still moving — an 8 s silent stage on a slow renderer is not a stall. The
+      // stage notice now only changes the status line; the button waits for the recovery point.
+      const STAGE_NOTICE_MS = 16000;
+      const STAGE_RECOVER_MS = 30000;
       const STABLE_READY_MS = 30000;
       let navigating = false;
       let recoveryScheduled = false;
@@ -502,6 +505,13 @@
         location.replace(url.href);
       }
 
+      function showNotice(reason) {
+        if (navigating || window.__GAME_READY) return;
+        const stage = document.getElementById('cot-boot-stage');
+        if (stage) stage.textContent = reason === 'timeout' || reason.startsWith('stall:')
+          ? 'Loading is taking longer than expected'
+          : 'A game file did not load';
+      }
       function showRetry(reason) {
         if (navigating) return;
         const stage = document.getElementById('cot-boot-stage');
@@ -554,7 +564,7 @@
         if (stageTimer) clearTimeout(stageTimer);
         if (stageRecoveryTimer) clearTimeout(stageRecoveryTimer);
         stageTimer = setTimeout(() => {
-          if (!window.__GAME_READY) showRetry(`stall:${stage}`);
+          if (!window.__GAME_READY) showNotice(`stall:${stage}`);
         }, STAGE_NOTICE_MS);
         stageRecoveryTimer = setTimeout(() => {
           if (!window.__GAME_READY) recover(`stall:${stage}`);
@@ -835,7 +845,7 @@
           <span class="cot-github-stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span>
         </a>
       </div>
-      <div class="cot-boot-gate" id="cot-boot-gate" data-i18n="boot.pressAnyKey">Press any key to continue</div>
+      <div class="cot-boot-gate" id="cot-boot-gate" data-i18n="boot.pressAnyKey">Tap or press any key to continue</div>
       <button class="cot-boot-retry" id="cot-boot-retry" type="button" data-i18n="boot.retry">Retry loading</button>
     </div>
     <div class="cot-boot-foot">Claude of Tanks &middot; {{COT_APP_VERSION}}</div>

@@ -4,7 +4,7 @@ import {wheelPatternFor} from '../wheelPatterns.ts';
 import {efficientReturnRoller} from '../efficientReturnRoller.ts';
 
 type MerkavaGearInput = Pick<Parameters<typeof KIT.trackLoopPoints>[0], 'sprocket'|'idler'|'topY'> & {
-  wheelZs: number[]; wheelR: number; xc: number; trackTh?: number; botY?: number;
+  wheelZs: number[]; wheelR: number; wheelY: number; xc: number; trackTh?: number; botY?: number;
   style?: string; wheelPattern?: Parameters<typeof wheelPatternFor>[2];
 };
 
@@ -30,7 +30,8 @@ export function merkavaXReturnRollers<C extends MerkavaGearInput>(
   });
   const loopPoints=KIT.trackLoopPoints({sprocket:{...rear},idler:{...front},
     botY:cfg.botY??.055,topY:cfg.topY,sag:0,supports,
-    contact:{zF:Math.max(...cfg.wheelZs)+cfg.wheelR*.5,zR:Math.min(...cfg.wheelZs)-cfg.wheelR*.5}});
+    contact:{zF:Math.max(...cfg.wheelZs)+cfg.wheelR*.5,zR:Math.min(...cfg.wheelZs)-cfg.wheelR*.5},
+    endWheels:KIT.endRoadWheels(cfg.wheelZs,cfg.wheelY,cfg.wheelR)});
   for(let i=loopPoints.length-1;i>0;i--){
     if(Math.hypot(loopPoints[i][0]-loopPoints[i-1][0],loopPoints[i][1]-loopPoints[i-1][1])<1e-7)
       loopPoints.splice(i,1);

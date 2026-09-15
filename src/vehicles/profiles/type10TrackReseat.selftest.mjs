@@ -51,15 +51,17 @@ for (const id of ['type10', 'type10b']) {
     assert.ok(bandInnerSurface - nominalWheelBottom >= 0.018,
       `${id}: road-wheel rims remain seated inside the lower belt`);
 
-    const expectedFrontContact = receipt.wheelZs[0] + receipt.wheelR / 2;
-    const expectedRearContact = receipt.wheelZs.at(-1) - receipt.wheelR / 2;
+    // 2026-09-14 tangent wrap: the flat run ends under the outer axles and the band wraps each
+    // outer wheel, so the quadrant beyond the axle is carried by the wrap arc, not the flat run.
+    const expectedFrontContact = receipt.wheelZs[0];
+    const expectedRearContact = receipt.wheelZs.at(-1);
     const groundRun = receipt.loopPoints
       .filter(([, y]) => Math.abs(y - receipt.botY) <= EPSILON)
       .map(([z]) => z);
     assert.ok(groundRun.some((z) => Math.abs(z - expectedFrontContact) <= EPSILON),
-      `${id}: loaded run supports the front road-wheel outer quadrant`);
+      `${id}: loaded run reaches the front road-wheel axle`);
     assert.ok(groundRun.some((z) => Math.abs(z - expectedRearContact) <= EPSILON),
-      `${id}: loaded run supports the rear road-wheel outer quadrant`);
+      `${id}: loaded run reaches the rear road-wheel axle`);
 
     for (const [label, end] of [['idler', receipt.idler], ['sprocket', receipt.sprocket]]) {
       const wrapTop = Math.max(...receipt.loopPoints

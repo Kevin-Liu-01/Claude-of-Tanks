@@ -83,7 +83,7 @@ try {
     sideArmorLayers: 3,
     frontSkirtTransition: 'continuous-glacis-to-skirt-shoulder-v4',
     frontCapPanelsRemoved: true,
-    rearTrackDepartureZM: -2.17,
+    rearTrackDepartureZM: -2,
     nativeTrackPattern: 'japanese-modular',
     baseGunAssembly: 'flat-mask-kde35-mantlet-v8',
     jyuMatLaunchTubes: 4,
@@ -171,9 +171,9 @@ try {
   assert.equal(gear?.trackW, 0.46, 'Light Tiger native course clears the hull while filling the attached skirt envelope');
   assert.equal(gear?.trackPatternId, 'japanese-modular',
     'Light Tiger retains its unique staggered-rib Japanese shoe construction');
-  assert.equal(hull.userData.type89LightTigerReceipt.rearTrackDepartureZM, -2.17,
+  assert.equal(hull.userData.type89LightTigerReceipt.rearTrackDepartureZM, -2.00,
     'rear track departure wraps the aft road wheel instead of joining behind it');
-  assert.ok(gear?.loopPoints.some(([z, y]) => Math.abs(z + 2.17) < 1e-9
+  assert.ok(gear?.loopPoints.some(([z, y]) => Math.abs(z + 2.00) < 1e-9
     && Math.abs(y - 0.05) < 1e-9),
   'rear track course physically departs its lower run at the authored aft-wheel seat');
   assert.ok(gear?.loopPoints.some(([z]) => z > 3.28) && gear?.loopPoints.some(([z]) => z < -3.22),

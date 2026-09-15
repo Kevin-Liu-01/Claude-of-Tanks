@@ -11118,7 +11118,10 @@ function buildKF51(P: TankBuilderPort) {
   buildKF51RunningGearStage2();
   const kf51Gear = P.gear;
   if (!kf51Gear) throw new Error('KF51 running gear must exist before wheel-face finishing');
-  const wheelFaceOutsetM = 0.152;
+  // 2026-09-14 owner: the forged face stack stood 0.15 m off the axle — 4–8 cm outboard of the
+  // 0.109 tire face — so the hub caps floated in front of the wheels. Seated: outer rim flush with
+  // the tire face, service hub 1 cm proud, hub cap 2 cm proud.
+  const wheelFaceOutsetM = 0.088;
   const wheelFaceSegments = P.q ? 30 : 20;
   const buildKF51AssemblyStage1 = (): void => {
     kf51Gear.addRoadWheelLayer(

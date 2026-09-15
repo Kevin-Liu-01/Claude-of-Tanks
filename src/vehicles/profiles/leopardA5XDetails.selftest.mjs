@@ -31,8 +31,8 @@ const coverWitnesses = [
 // 2026-09-13 fender-to-skirt closure: the rear skirt skin continues up to the
 // sponson shelf (1.308 -> 1.480) and the 1.50..1.672 slot closes; repinned.
 const retained = {
-  high: [246266,'416679e0e260bc030373cb755515ba94f9cc06d3f77bae14919aaf2d43a0dedf'],
-  low: [231202,'78d7ede7cd7ecf01c82ee248ec5db19d77b1390ce9acb7c5af3ed03e5d2c5ea4'],
+  high: [245786,'6be8b05be0768cd85b0f1a79ac21a89c7b7c8e65d40552e6fd91c0691c2e85cc'],
+  low: [230722,'a17fb2cb80fdd95dc86fa0835a7dd759008ea4130cf22d418af0dd74a95ee455'],
 };
 function retainedFingerprint(root) {
   const rows=[];

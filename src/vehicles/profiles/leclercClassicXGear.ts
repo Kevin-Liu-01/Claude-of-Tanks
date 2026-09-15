@@ -80,6 +80,7 @@ export function addLeclercClassicXGear(P: TankBuilderPort): void {
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler: { ...idler, r: idler.trackR }, sprocket: { ...sprocket, r: sprocket.trackR }, botY, topY,
       sag: .008, contact: KIT.runningGearContactPatch(D.wheelZsLeft, D.wheelRadiusM),
+      endWheels: KIT.endRoadWheels(D.wheelZsLeft, D.wheelY, D.wheelRadiusM),
       supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .014 })),
     }), botY, .35),
     rigidLinkChords: true, arms: true, paintedEnds: true, coveredTop: true,

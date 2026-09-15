@@ -2088,14 +2088,16 @@ function buildT72B3M(P: T72BuilderPort): void {
     // the wheel circles (bottoms 0.14+ vs wheel 0.075) and the band x-zone.
     {
       const { torus } = KIT;
+      // 2026-09-14 owner: hub drum and cap stood up to 4 cm proud of the 0.108 tire face. Rims
+      // flush with the face, hub drum 8 mm proud, centre cap 1.6 cm proud (a real T-72 cap).
       P.gear.addRoadWheelLayer(torus(0.354, 0.007, 22).rotateZ(Math.PI / 2), P.mats.detail,
-        { outset: 1.4385 - 1.33, name: 'gearRoadWheelOuterRims' });
+        { outset: 0.099, name: 'gearRoadWheelOuterRims' });
       P.gear.addRoadWheelLayer(torus(0.19, 0.005, 16).rotateZ(Math.PI / 2), P.mats.detail,
-        { outset: 1.4425 - 1.33, name: 'gearRoadWheelInnerRims' });
+        { outset: 0.101, name: 'gearRoadWheelInnerRims' });
       P.gear.addRoadWheelLayer(cylX(0.085, 0.048, 12), P.mats.detail,
-        { outset: 1.442 - 1.33, name: 'gearRoadWheelHubCaps' });
-      P.gear.addRoadWheelLayer(cylX(0.048, 0.066, 10), P.mats.dark,
-        { outset: 1.4445 - 1.33, name: 'gearRoadWheelHubInsets' });
+        { outset: 0.092, name: 'gearRoadWheelHubCaps' });
+      P.gear.addRoadWheelLayer(cylX(0.048, 0.044, 10), P.mats.dark,
+        { outset: 0.102, name: 'gearRoadWheelHubInsets' });
       for (const s of [-1, 1]) {
         // The road-wheel rings above share the native suspension matrices.
         // Keep the independently seated idler/sprocket hub sets below.

@@ -28,6 +28,7 @@ wheelY:p(0,18.9370075,0)[1],
     trackShoeDimensions:{padHeight:.030,grouserHeight:.008,webHeight:.014,hornHeight:.045,pinRadius:.007,pinCentreY:0},
     loopPoints:KIT.trackLoopPoints({sprocket:rear,idler:front,
       contact:{zF:p(0,0,58)[2],zR:p(0,0,-135)[2]},botY:.0325,topY:p(0,42.25,0)[1],sag:.011,
+      endWheels:KIT.endRoadWheels(wheelZs,p(0,18.9370075,0)[1],m(15.9448815)),
       supports:rollers.map(r=>({z:r.z,y:r.y+r.r+.018}))}),
     arms:true,coveredTop:true,paintedEnds:true,rigidLinkChords:true,
     // Concealed joints are a mechanical inference: move the web12mm inward

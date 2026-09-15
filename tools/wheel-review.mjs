@@ -9,7 +9,8 @@
 // open annulus / thin core), the road-wheel paint and tire lightness (HSL L of the material colour), and the widest
 // wheel dressing layer relative to the tire face (dressing that floats outboard reads as an offset wheel).
 // Flags: BRIGHT (paint lightness above --max-lightness), BRIGHT-TIRE (tire lightness above 0.30), PROUD (dressing
-// more than --max-proud-m outboard of the tire face), MISMATCH (built pattern differs from the spec's pattern).
+// more than --max-proud-m outboard of the tire face, default 0.025), MISMATCH (built pattern differs from the spec's
+// pattern), FLAT (dish paint less than --min-dish-tire-ratio times the tire lightness — the 2026-09-14 grey-wheel bug).
 // --gate exits 1 when any flag fires.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -17,7 +18,10 @@ import './tank-surface-collect.mjs'; // node canvas shim
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
-const MAX_L = Number(opt('max-lightness', '0.34')), MAX_TIRE_L = 0.30, MAX_PROUD = Number(opt('max-proud-m', '0.04'));
+const MAX_L = Number(opt('max-lightness', '0.34')), MAX_TIRE_L = 0.30, MAX_PROUD = Number(opt('max-proud-m', '0.025')); // a real hub cap protrudes up to ~2.5 cm
+// FLAT (2026-09-14 owner: "wheels grey by default, all blend in"): the dish paint must sit clearly above the tire —
+// linear-luminance ratio dish/tire below this reads as one flat disc.
+const MIN_DISH_TIRE_RATIO = Number(opt('min-dish-tire-ratio', '2.2'));
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { wheelPatternFor } = await import('../src/vehicles/wheelPatterns.ts');
@@ -29,7 +33,7 @@ function instanceXs(mesh) { const xs = []; const e = mesh.instanceMatrix?.array;
 
 const rows = []; let flagged = 0;
 for (const id of ids) {
-  let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high' }); } catch (error) { rows.push({ id, error: error.message }); continue; }
+  let tank; try { tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, batchStatic: false }); } catch (error) { rows.push({ id, error: error.message }); continue; }
   const spec = TANK_SPECS[id]; const root = tank.root; root.updateMatrixWorld(true);
   const hull = root.getObjectByName('rig_hull');
   const receipts = hull?.userData?.runningGearReceipts || []; const patterns = hull?.userData?.nativeWheelPatterns || hull?.userData?.wheelPatternReceipts || [];
@@ -61,6 +65,7 @@ for (const id of ids) {
   const flags = [];
   if (paintL !== null && paintL > MAX_L) flags.push('BRIGHT'); if (tireL !== null && tireL > MAX_TIRE_L) flags.push('BRIGHT-TIRE');
   if (proud > MAX_PROUD) flags.push('PROUD'); if (specPattern && builtPattern && specPattern !== builtPattern) flags.push('MISMATCH');
+  if (paintL !== null && tireL !== null && paintL < tireL * MIN_DISH_TIRE_RATIO) flags.push('FLAT');
   if (flags.length) flagged++;
   rows.push({ id, nation: spec?.nation ?? '?', specPattern, builtPattern, style: gear.style ?? null, wheelR: gear.wheelR ?? null, hollow: hollow.join('+') || 'solid', paintL, tireL, tireFaceX: +tireFaceX.toFixed(3), dressingMaxX: +dressingMaxX.toFixed(3), dressingName, proud, flags });
   tank.dispose?.();

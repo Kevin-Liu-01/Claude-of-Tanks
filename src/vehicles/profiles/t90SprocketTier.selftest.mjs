@@ -8,13 +8,13 @@ const CONFIGS = Object.freeze({
     wheelZs: [-1.90, -1.12, -0.34, 0.44, 1.22, 2.00],
     sprocket: { z: -2.52, y: 0.90, r: 0.299 },
     idler: { z: 2.70, y: 0.71, r: 0.27 },
-    rearContactZ: -2.16,
+    rearContactZ: -1.90, // 2026-09-14: the flat run ends under the rear axle (tangent wrap)
   }),
   t90ms: Object.freeze({
     wheelZs: [-1.78, -0.992, -0.204, 0.584, 1.372, 2.16],
     sprocket: { z: -2.58, y: 0.95, r: 0.20 },
     idler: { z: 2.76, y: 0.69, r: 0.25 },
-    rearContactZ: -2.0325,
+    rearContactZ: -1.78, // 2026-09-14: under the rear axle
   }),
 });
 
@@ -78,7 +78,7 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
     assert.ok(receipt.loopPoints.some(([z, y]) =>
       Math.abs(z - expected.rearContactZ) <= EPSILON
         && Math.abs(y - receipt.botY) <= EPSILON),
-    `${id}: loaded track run remains seated beneath the rear road wheel`);
+    `${id}: loaded track run ends under the rear road-wheel axle and wraps it`);
   } finally {
     tank.dispose();
   }

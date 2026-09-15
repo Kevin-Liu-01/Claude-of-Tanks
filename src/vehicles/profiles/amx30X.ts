@@ -343,6 +343,7 @@ export function buildAmx30X(P: TankBuilderPort): void {
       idler:{z:2.86334,y:.77268,r:.314},sprocket:{z:-2.90252,y:.78493,r:.304},
       botY: .0495 /* fleet track standard 2026-09-12: +.007 course datum for the .024 band */,topY:1.129,sag:.022,
       contact:KIT.runningGearContactPatch(AMX30_X_DATUMS.wheelStations,.36545),
+      endWheels:KIT.endRoadWheels(AMX30_X_DATUMS.wheelStations,.41638,.36545),
       supports:[-2.21193,-1.33211,-.35206,.62792,1.60837].map(z=>({z,y:1.11289})),
     }),.0425,.37388),
     rigidLinkChords:true,

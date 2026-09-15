@@ -306,4 +306,56 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
     && armorB.trackShapes[0].x1 === 1.2, 'hand-override hook wins over the derived hulls');
 }
 
-console.log('track-geometry: loop winding, loaded-base profile, integrated detailed shoes, and track-hitbox derivation verified');
+{
+  // ROAD-WHEEL WRAP (owner 2026-09-14: "reseat tracks — cornered track, wheels glitch into tracks").
+  // With the outer road wheels known, the loaded run ends under their axles and the band hugs each
+  // wheel on the way to the end-wheel tangent instead of kinking at an authored contact pin.
+  const wheelZs = [-2.19, -1.46, -0.73, 0, 0.73, 1.46, 2.19];
+  const wheelY = 0.40, wheelR = 0.33, botY = 0.055;
+  const idler = { z: 3.36, y: 0.866, r: 0.292 }, sprocket = { z: -3.33, y: 0.848, r: 0.322 };
+  const endWheels = KIT.endRoadWheels(wheelZs, wheelY, wheelR);
+  assert.deepEqual(endWheels, { front: { z: 2.19, y: 0.40, r: 0.33 }, rear: { z: -2.19, y: 0.40, r: 0.33 } },
+    'endRoadWheels picks the outer stations at the shared axle height');
+  assert.deepEqual(KIT.endRoadWheels([0.5, -0.5], 0.4, 0.3, [0.42, 0.38]).rear, { z: -0.5, y: 0.38, r: 0.3 },
+    'per-station heights (interleaved rigs) feed the outer wheel');
+  const options = {
+    idler, sprocket, botY, topY: 1.2, sag: 0.022,
+    supports: [{ z: -1.8, y: 1.2 }, { z: 0, y: 1.19 }, { z: 1.8, y: 1.2 }],
+    contact: { zF: 2.32, zR: -2.31 },
+  };
+  const legacy = KIT.trackLoopPoints(options);
+  const wrapped = KIT.trackLoopPoints({ ...options, endWheels });
+  const flat = wrapped.filter(([, y]) => Math.abs(y - botY) < 1e-9).map(([z]) => z);
+  assert.ok(Math.abs(Math.max(...flat) - 2.19) < 1e-9 && Math.abs(Math.min(...flat) + 2.19) < 1e-9,
+    'the flat run ends under the outer road-wheel axles, not at the authored contact pins');
+  const seat = wheelY - botY;
+  for (const [axleZ, side] of [[2.19, 'front'], [-2.19, 'rear']]) {
+    let closest = Infinity;
+    for (const [z, y] of wrapped) {
+      if (y - botY < 1e-9 || y > wheelY) continue;
+      if (side === 'front' ? z < 2.19 : z > -2.19) continue;
+      const distance = Math.hypot(z - axleZ, y - wheelY);
+      assert.ok(distance >= seat - 1e-9, `${side}: no ramp point cuts inside the road wheel's band circle (${distance.toFixed(4)} < ${seat})`);
+      closest = Math.min(closest, distance);
+    }
+    // vertices sit on the circumscribed radius (R / cos 3° at most, +0.14 %), so the closest ramp
+    // vertex is within a millimetre of the seat circle and nothing is inside it
+    assert.ok(Math.abs(closest - seat) < 1e-3, `${side}: the ramp leaves the wheel on its own circle (hugs, no corner): ${(closest - seat).toFixed(5)}`);
+  }
+  // graded chords: the first point off the ground sits 1° up the wheel circle
+  const rearFlatIndex = wrapped.findIndex(([z, y]) => Math.abs(y - botY) < 1e-9 && Math.abs(z + 2.19) < 1e-9);
+  const firstUp = wrapped[rearFlatIndex + 1];
+  const firstUpDeg = Math.atan2(firstUp[0] + 2.19, firstUp[1] - wheelY) * 180 / Math.PI;
+  assert.ok(Math.abs(Math.abs(firstUpDeg) - 181) < 1e-6 || Math.abs(Math.abs(firstUpDeg) - 179) < 1e-6,
+    `the first chord off the ground subtends 1° so a rigid shoe barely tilts (${firstUpDeg.toFixed(3)}°)`);
+  // the legacy call is untouched: its flat run still reaches the authored pins
+  const legacyFlat = legacy.filter(([, y]) => Math.abs(y - botY) < 1e-9).map(([z]) => z);
+  assert.ok(legacyFlat.some((z) => Math.abs(z - 2.32) < 1e-9) && legacyFlat.some((z) => Math.abs(z + 2.31) < 1e-9),
+    'without end wheels the contact-pin trapezoid is byte-compatible');
+  // ground-level end wheel: the wrap declines and the run stays flat to the crossing
+  const lowEnd = KIT.trackLoopPoints({ ...options, sprocket: { z: -3.2, y: 0.20, r: 0.20 }, endWheels });
+  const lowFlat = lowEnd.filter(([, y]) => Math.abs(y - botY) < 1e-9).map(([z]) => z);
+  assert.ok(Math.min(...lowFlat) < -2.19 - 0.3, 'a drive at ground level keeps the flat run out to its own crossing');
+}
+
+console.log('track-geometry: loop winding, loaded-base profile, road-wheel wrap, integrated detailed shoes, and track-hitbox derivation verified');

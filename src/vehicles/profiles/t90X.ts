@@ -73,8 +73,9 @@ function sourceWheelFaces(P: TankBuilderPort,r:number,halfWidth:number,zScale:nu
   });
   P.gear?.addRoadWheelLayer(disc,P.mats.wheels,{outset:halfWidth+.004,name:'gearRoadWheelSourcePressedFaces',appearanceRole:'wheelDish'});
   P.gear?.addRoadWheelLayer(rim,P.mats.wheels,{outset:halfWidth+.010,name:'gearRoadWheelSourceRims',appearanceRole:'wheelDish'});
-  P.gear?.addRoadWheelLayer(cylX(r*.24,.030,20),P.mats.wheels,{outset:halfWidth+.010,name:'gearRoadWheelSourceHubs',appearanceRole:'wheelDish'});
-  P.gear?.addRoadWheelLayer(KIT.mergeAll(bolts),P.mats.dark,{outset:halfWidth+.019,name:'gearRoadWheelSourceBolts',appearanceRole:'wheelInset'});
+  // 2026-09-14 owner: hub and bolt heads stood 3 cm proud of the tire; seated within 2 cm.
+  P.gear?.addRoadWheelLayer(cylX(r*.24,.030,20),P.mats.wheels,{outset:halfWidth+.004,name:'gearRoadWheelSourceHubs',appearanceRole:'wheelDish'});
+  P.gear?.addRoadWheelLayer(KIT.mergeAll(bolts),P.mats.dark,{outset:halfWidth+.006,name:'gearRoadWheelSourceBolts',appearanceRole:'wheelInset'});
 }
 
 function hullStation([z,half,roof,keel]: Station): SolidSection {

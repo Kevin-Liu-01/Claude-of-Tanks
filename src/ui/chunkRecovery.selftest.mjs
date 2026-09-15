@@ -113,14 +113,31 @@ assert.equal(extensionBoot.timers.some(({ ms }) => ms < 1000), false,
   'an extension exception must not reload a healthy game document');
 
 const stalledBoot = createHarness(false);
+const armedBeforeStage = stalledBoot.timers.length;
 stalledBoot.window.__COT_BOOT_RECOVERY.progress('vehicle');
-const stallNotice = stalledBoot.timers.find(({ ms }) => ms === 8000);
-const stallWatchdog = stalledBoot.timers.find(({ ms }) => ms === 20000);
+// 2026-09-14: the stage notice waits 16 s and only changes the status line; the bounded recovery
+// (and the Retry button) waits 30 s, so a slow-but-progressing phone renderer never sees RETRY.
+// Only the timers this progress() call armed count — the document-level timeout watchdog armed at
+// load shares the 30 s value.
+const stageTimers = stalledBoot.timers.slice(armedBeforeStage);
+const stallNotice = stageTimers.find(({ ms }) => ms === 16000);
+const stallWatchdog = stageTimers.find(({ ms }) => ms === 30000);
 assert.ok(stallNotice && stallWatchdog,
   'each real boot stage must arm a nonblocking notice and bounded recovery watchdog');
+// The harness document has no elements; hand the notice a stage line and a Retry button so
+// the receipt can see what each timer touches (2026-09-14 phone QA: RETRY LOADING appeared at
+// 50 % while the bar still moved — the notice must only change the status text).
+const stageLine = { textContent: '' };
+const retryClasses = [];
+const retryButton = { classList: { add: (name) => retryClasses.push(name) }, onclick: null };
+stalledBoot.document.getElementById = (id) => (id === 'cot-boot-stage' ? stageLine : id === 'cot-boot-retry' ? retryButton : null);
 stallNotice.fn();
 assert.equal(stalledBoot.replacedUrl, null,
   'a merely slow first-visit stage must keep running after the early notice');
+assert.match(stageLine.textContent, /taking longer/i,
+  'the stage notice must tell the player loading is slow');
+assert.deepEqual(retryClasses, [],
+  'the early notice must not raise the Retry button while the boot is still progressing');
 stallWatchdog.fn();
 assert.ok(stalledBoot.timers.some(({ ms }) => ms < 1000),
   'a genuinely stalled stage must eventually schedule one fresh-document recovery');

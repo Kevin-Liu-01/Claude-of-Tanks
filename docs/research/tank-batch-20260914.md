@@ -71,3 +71,99 @@ production night on verdant measures median luminance 30 / dark 87.6 % (deploy 1
 the play-menu ladder renders six operations with Operation First Light ready; a frontier sortie
 places its three sectors at distinct points (−30,−191), (−16,37), (−2,266); garage renders of
 Challenger 3, Challenger 2 and T-72B3M X match the local build.
+
+## Batch 18 — wheels read, tracks wrap, mobile boot and touch
+
+Owner (2026-09-14, with two screenshots): "fix our road wheels that are now gray by default and
+all just blend in … fix the rim rings and hubs that sit proud of their tires … do the wheel fixes
+and reseat tracks — the cornered track in the bottom right; don't let wheels glitch into tracks".
+
+### Wheels
+
+- **Root cause of the grey wheels** (a batch-17 regression): `wheelInsetMaterialFor` handed the
+  shared fleet wheel paint to the inset layer on dark dishes, and the appearance normaliser
+  (`normalizeTankAppearance`) recolours every `wheelInset` mesh to tire rubber — through the shared
+  material, so the dish itself turned `#292a28`. Browser probe before the fix: dish, tire and
+  insets all `#292a28` on Leopard 2A4M, Ariete, AMX-40, KF51, T-72B3M, Leclerc, T-90M.
+- **Fix**: fixed-colour gear roles (`wheelInset`, `wheelTire`, track roles) now get an isolated
+  clone when the material handed in is not already tagged for that role
+  (`isolatedGearMaterial`, applied in the wheel `mkInst` path), and the insets are tire rubber
+  again.
+- **Wheel-paint floor** (`src/vehicles/wheelPaintFloor.ts`): painted dishes never drop below
+  linear luminance 0.075 (~3× the tire's 0.023). Applied once, centrally, in the appearance
+  normaliser to every material tagged `wheelPaint` (the fleet paint and every profile clone of it —
+  KF51 `#2e2c22`, Leopard 2A5/Strv 122 `#3c3c2e`, PT-91M `#403f31` were all below it) and in
+  `materials.ts` to the camouflage-derived paint. Camouflage-mapped paint is left alone.
+- **Proud dressing seated on the tire face** (tool: `tools/wheel-review.mjs`, PROUD default now
+  0.025 m, new FLAT flag = dish/tire luminance ratio < 2.2): Ariete dish/hub/rim (0.24 m proud →
+  flush/7 mm), AMX-40 (0.20 → flush/8 mm), KF51 forged face stack (`wheelFaceOutsetM` 0.152 →
+  0.088), T-80U X steel shells (0.082 → 0.019; receipt cuts repinned), T-72 and T-90 hub packages,
+  T-90 X source bolts, Challenger 1 dressing, KV-2 facet rim, Sheridan rim/hub. Fleet review after:
+  181 tanks, 0 flagged.
+
+### Tracks
+
+- **Road-wheel wrap** (`roadWheelWrap` in `trackLoopPoints`): the loaded run leaves the ground
+  tangentially around the outer road wheels and rises on the common external tangent to the end
+  wheel wrap ((B−A)·n = R_A − R_B), instead of kinking at an authored contact pin and cutting a
+  chord through the last wheel. `buildTrackCourse` passes the outer wheels (`endRoadWheels`); the
+  18 profiles that author their loop through `KIT.trackLoopPoints` pass them too. Ground-level end
+  wheels (dead-track WWII rigs) keep the flat run to their own crossing. Opt-out per unit:
+  `wrapEndRoadWheels: false`. The wheel arc's chords are graded from 1° at the ground (1, 2, 4,
+  8 …°): a rigid shoe centred on a 12° chord tilted 6° and drove its pad corner 9 mm under the
+  floor (Ariete X photo-draft receipt); at 1° the corner stays within a millimetre.
+- The AMX-40's hand-authored polygon (the tank in the owner's second screenshot: pale dish, dark
+  hub) rose from z −2.075 to −2.314 straight through the aft wheel at −2.15; it now uses the kit
+  course with `botY 0.10` (the authored seat).
+- Fleet review tool `tools/track-wrap-review.mjs`: ramp radius vs flat-run seat radius per end;
+  after the batch 181 tanks / 184 units, 0 cut a wheel, 0 gaps.
+- Departure receipts (Type 89 Light Tiger, Puma S1, CV90, Abrams spacing, K2 seat, T-90 sprocket
+  tier, Type 10 reseat) now record the aft axle as the departure station; the Challenger 3 receipt
+  measures the band body against the wheel instead of shoe boxes (guide horns pass between the
+  paired halves).
+- Rigid shoes on the wrap: a straight shoe centred on the wheel's circle tilts with its chord, so
+  the shoes leaving the ground sit 1–5 mm under the flat pad plane on tanks whose grousers already
+  ride within millimetres of the floor (Ariete X photo-draft, Type 90 X, Leopard 2A5 X). The
+  ground receipts bound that to the ground plane (4–6 mm) instead of the flat plane; the arc's
+  6° chords are circumscribed so no chord cuts inside the tire.
+- Runtime fitting (`fitLoadedTrackContact`): with the run wrapping the outer wheels, a wheel at
+  full droop pulled the short wrap cells straight down and the band rejoined the fixed ramp at a
+  kink; a rigid shoe across that kink cut 8 mm into the tire (Type 10 X wave fixture). Drops now
+  spread along the lower run at no more than 0.8 m per metre (~39°); the fixture reads +1.1 mm.
+- Source-contract ledgers restated with authenticated reasons: the T-90M lamp history hashes the
+  whole `t90.ts` (hub package seated), the T-72B3M X side-mount preservation ledger
+  (`COT_UPDATE_LEDGER=1` mode added to its receipt), the Merkava return-roller helper hash, and
+  the Chieftain Mk10 X published-foundation protocol, which gains a `laterTrackWrap` successor
+  record whose non-track draw-vertex multiset the receipt re-derives (unchanged before/after:
+  199 716 / 173 316 vertices, same SHA) — the wrap changed exactly the two band meshes (−240
+  draw vertices each) and the shoe positions.
+
+### Geometry gate (standard check, step 1 of the release check)
+
+Candidates and outcome, batch 17 → batch 18: t90a_burlak_x 94.7, strv122_x 96.0, leo2a4m_x 93.1,
+kf51_x 93.3, t80u_x 95.0, amx40_x 92.3, leclerc_x 93.4, t90m_x 91.9/90 all PASS; challenger_3 and
+challenger2 have no registered oracle; challenger1_x was 0 before and after (mg0, dims 0 —
+pre-existing). Four X tanks moved: t72b3m_x dims 93.3 → 91.9 (the hub package pulled in 3 cm),
+leo2a7v_x whole 92.2 → 91.9, type10_x dims 79.4 → 75.7 and m1a2_sepv2_x hull 87.6 → 76.8 —
+the last two were already below the bar (their pre-batch shoes sat 87 mm and 43 mm under the
+tank-frame floor; the presentation floor offset hides it in game). The mask oracles for the X
+tanks are their source GLBs, whose track ramps start at the old contact pins; the owner-directed
+wrap deviates from them by design. The release check ran on the eight passing ids.
+
+### Mobile and boot (outside QA at 390×844)
+
+- Boot gate copy: "Tap or press any key to continue" (touch: `boot.gate.promptTouch`).
+- Bots mode toggle 38×44 → 72×44 beside a 62 % BATTLE button on coarse pointers.
+- Boot watchdog: stage notice 16 s (status line only), recovery 30 s — no RETRY button while the bar
+  still moves. Receipt `chunkRecovery` repinned to the timers the stage arms.
+- Touch layer: backgrounding releases the joystick and aim pad as well as the fire gesture.
+  Harness `.qa-dev/touch-loop.mjs` (20 scenarios: boot gate, joystick, fire, two-finger, cancel
+  mid-drag, second finger mid-fire, background/return, restart, orientation): 20/20 portrait and
+  20/20 landscape, 0 page errors.
+
+### Also in this batch
+
+- Pre-battle countdown: a PREPARING BATTLEFIELD state while the warm-up is pending, so the numeral
+  no longer sits on 3.
+- Per-map water bodies beyond the turbidity field (`waterContact.ts`: cold sea, glacial lake,
+  silt river, mud pool, obsidian lake …).

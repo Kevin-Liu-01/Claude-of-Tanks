@@ -91,12 +91,12 @@ const originalBakeFixtures = [
     // gains triangles (38560 -> 44884); bounds, byte sizes and the three visible-attribute hashes
     // are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'm1a1', seed: 2002,
-    bounds: [45676, 4.026729702949524, 3.9549999237060547, 2.698679208755493], // 2026-09-14: fleet fills to zero
-    bytes: [1644336, 1644336, 1644336, 6984],
+    bounds: [45884, 4.026729702949524, 3.9549999237060547, 2.698679208755493], // 2026-09-14: fleet fills to zero
+    bytes: [1651824, 1651824, 1651824, 6984],
     hashes: [
-      '5292d0b5443d4942795b1d0d4925223e456b0bc3c02273bbccd649358b640e32',
-      'dccf1e095c392d6213cea13244a2fee1737de19c543998a205808826701ecc85',
-      '9c428ad847f51a67d05131b3780ccbb6f350d11aa11a06ecd4bc60774768532d',
+      '9e801eecef6223e127deaed9702adfdec603b08a95a2db2954293827761e3d22',
+      '3707aa5a6a6d16c0b70aacd4dbad3b86219a9a8925e906ef8f0b6bcb9566f7cb',
+      '3aca049e3062a16e42f1baf01465c89a4a841ce49ec783c4eb36584fa277e6f6',
       'c6fceff4985f5bc2f0f996528717780d69bac42d9a1c54b7621b75c2f66bcaf4',
     ],
   },
@@ -104,12 +104,12 @@ const originalBakeFixtures = [
     // 2026-09-13 interior fills: type10 carries generated interior fills (every hull and turret
     // does now), so its wreck bake gains triangles (31508 -> 35660); repinned from the current build.
     specId: 'type10', seed: 2133,
-    bounds: [39860, 4.445803761482239, 3.807588815689087, 3.2575206756591797], // 2026-09-14: fleet fills to zero
-    bytes: [1434960, 1434960, 1434960, 7704],
+    bounds: [40052, 4.445803761482239, 3.807588815689087, 3.2575206756591797], // 2026-09-14: fleet fills to zero
+    bytes: [1441872, 1441872, 1441872, 7704],
     hashes: [
-      '63e1e3b6464565957a13afdc2784fc9220c0fe73ec2997ac7809e0b4c4c9f6b0',
-      '71e57158c4a0554d2c15492172e8ba36e8bf6956272734e19e422c482e808e9b',
-      'e684b0c7cdfe1c9e4be9f872badcb2cd74c97151c4afec531977fa089793bf69',
+      'ab28efd845608dc20a3666958340b34484343616d264399e534bb91727d3d5f6',
+      'a2f7b73fb2754e4db9293f562bdce6846c152e4235362d03484f5129dfcba5dd',
+      '76ab1dd62a682362d103e7286fd65f8bb2e2161c9f26329eeb05d49b212ea79f',
       'ca8a28e323d0ac81a158deb7c69ad329581bbf69c80a53a79bcb53dcbb771b44',
     ],
   },

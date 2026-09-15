@@ -21,9 +21,9 @@ const original = {
 // its fans from geometry), both chin slabs are wound clockwise and the raked
 // lower bow frustum's front/rear z are in order — the same corners, outward
 // faces; only the t14 digest moves (61ce3db7 → 30f61a47).
-  leo2a7v:'279ca80a', leo2a6m:'d870b601', leo2a4m:'63b8661e', leo2a5:'e0fd3d59',
-  merkava4:'e068d72b', merkava3d:'7e6d399e', k2:'b5fcbf2b', kf51:'c000d8bc',
-  t90a:'451e1ad2', t90a_vladimir:'fe9d9d29', t90m:'897411ff', t90sm:'fcdc5b96', t14:'30f61a47',
+  leo2a7v:'9d7395bf', leo2a6m:'7a81ff42', leo2a4m:'a8f594ed', leo2a5:'a1ddf157',
+  merkava4:'159a6536', merkava3d:'421ba8b4', k2:'698c5875', kf51:'6e10608a',
+  t90a:'8851fc9b', t90a_vladimir:'de5d008e', t90m:'19863381', t90sm:'b49791c1', t14:'e594ee15',
 };
 const options = { proceduralOnly:true, geometryReceipt:true, quality:'high', camoSeed:4242 };
 for (const [id, hash] of Object.entries(original)) {

@@ -7,11 +7,16 @@
 
 import type { Material, Object3D } from 'three';
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { liftLinearRgbToWheelFloor } from './wheelPaintFloor.ts';
 
 interface ColorPort {
+  r: number;
+  g: number;
+  b: number;
   getHexString(): string;
   getHSL(target: { h: number; s: number; l: number }): { h: number; s: number; l: number };
   setHex(hex: number): ColorPort;
+  setRGB(r: number, g: number, b: number): ColorPort;
 }
 
 interface AppearanceColorRecord {
@@ -110,9 +115,24 @@ export function normalizeTankAppearance(root: Object3D | null | undefined): numb
       const role = roleOf(object, material);
       const color = FIXED_ROLE_COLOR[role];
       const materialColor = colorOf(material);
-      if (color == null || !materialColor) continue;
-      materialColor.setHex(color);
-      normalized.add(material);
+      if (!materialColor) continue;
+      if (color != null) {
+        materialColor.setHex(color);
+        normalized.add(material);
+        continue;
+      }
+      // WHEEL-PAINT FLOOR (owner 2026-09-14): every painted dish — the fleet wheel paint and any
+      // profile retone cloned from it (tagged wheelPaint) — stays clearly above the tire rubber,
+      // whatever reference shade a profile tuned it toward. Camouflage-mapped paint is left alone:
+      // its colour is only a multiplier over the map.
+      if (dataValue(material, 'appearanceRole') === 'wheelPaint'
+          && !(material as Material & { map?: unknown }).map) {
+        const [r, g, b] = liftLinearRgbToWheelFloor([materialColor.r, materialColor.g, materialColor.b]);
+        if (r !== materialColor.r || g !== materialColor.g || b !== materialColor.b) {
+          materialColor.setRGB(r, g, b);
+          normalized.add(material);
+        }
+      }
     }
   });
   return normalized.size;

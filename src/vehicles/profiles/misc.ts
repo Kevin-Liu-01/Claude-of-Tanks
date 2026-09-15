@@ -596,12 +596,15 @@ export function buildAriete(P: MiscBuilderPort): void {
     });
     // Keep the olive dish/dark hub cadence, but register it with the one
     // suspension-driven wheel train instead of leaving a fixed hull-owned row.
-    P.gear.addRoadWheelLayer(cylX(0.275, 0.035, 18), P.mats.detail,
-      { outset: 1.69 - 1.3725, name: 'gearRoadWheelOuterDishes' });
+    // 2026-09-14 owner: the dish/hub/rim package floated 0.24 m outboard of the tire face (the old
+    // hull-parked x positions). Seated on the wheel: tire face at 0.1085 from the axle; the dish
+    // sits 3 mm inside it, the rim ring flush, the hub cap 7 mm proud like the real cap.
+    P.gear.addRoadWheelLayer(cylX(0.275, 0.035, 18), P.mats.wheels,
+      { outset: 0.088, name: 'gearRoadWheelOuterDishes' });
     P.gear.addRoadWheelLayer(cylX(0.095, 0.039, 14), P.mats.dark,
-      { outset: 1.695 - 1.3725, name: 'gearRoadWheelHubCaps' });
+      { outset: 0.096, name: 'gearRoadWheelHubCaps' });
     P.gear.addRoadWheelLayer(torus(0.205, 0.014, 18).rotateZ(Math.PI / 2), P.mats.dark,
-      { outset: 1.711 - 1.3725, name: 'gearRoadWheelRimRings' });
+      { outset: 0.090, name: 'gearRoadWheelRimRings' });
     // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
     // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
     // patch held the belly grounded to 2.45 then climbed steep: 6 ramp cols

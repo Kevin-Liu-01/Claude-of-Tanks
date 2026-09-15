@@ -7630,20 +7630,22 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
   });
   // These annuli, hubs and bolts are wheel-face anatomy, so every layer is
   // instanced by the canonical gear unit and follows suspension travel/spin.
+  // 2026-09-14 owner: the hub package stood 3.5 cm proud of the 0.11 tire face. Rims flush,
+  // hub drum 6 mm proud, centre cap and bolt heads 1.3 cm proud.
   gear.addRoadWheelLayer(torus(0.266, 0.009, 24).rotateZ(Math.PI / 2), P.mats.detail,
-    { outset: 1.544 - 1.435, name: 'gearRoadWheelOuterRims' });
+    { outset: 0.098, name: 'gearRoadWheelOuterRims' });
   gear.addRoadWheelLayer(torus(0.150, 0.007, 18).rotateZ(Math.PI / 2), P.mats.detail,
-    { outset: 1.545 - 1.435, name: 'gearRoadWheelInnerRims' });
+    { outset: 0.100, name: 'gearRoadWheelInnerRims' });
   gear.addRoadWheelLayer(cylX(0.090, 0.052, 14), P.mats.detail,
-    { outset: 1.543 - 1.435, name: 'gearRoadWheelHubCaps' });
-  gear.addRoadWheelLayer(cylX(0.050, 0.068, 12), P.mats.dark,
-    { outset: 1.546 - 1.435, name: 'gearRoadWheelHubInsets' });
+    { outset: 0.090, name: 'gearRoadWheelHubCaps' });
+  gear.addRoadWheelLayer(cylX(0.050, 0.046, 12), P.mats.dark,
+    { outset: 0.100, name: 'gearRoadWheelHubInsets' });
   const boltRing = KIT.mergeAll(Array.from({ length: 8 }, (_, k) => {
     const a = k * Math.PI / 4;
-    return KIT.xform(cylX(0.011, 0.070, 8), 0, Math.cos(a) * 0.106, Math.sin(a) * 0.106);
+    return KIT.xform(cylX(0.011, 0.040, 8), 0, Math.cos(a) * 0.106, Math.sin(a) * 0.106);
   }));
   gear.addRoadWheelLayer(boltRing, P.mats.dark,
-    { outset: 1.548 - 1.435, name: 'gearRoadWheelBoltRings' });
+    { outset: 0.098, name: 'gearRoadWheelBoltRings' });
 
   // Shallow six-panel skirts expose the lower wheel arcs and turn down only
   // at the terminal mudguards.  Their upper lips are separate structural

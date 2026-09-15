@@ -87,6 +87,7 @@ function runningGear(P: TankBuilderPort): void {
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler: { z: 3.36, y: .866, r: .292 }, sprocket: { z: -3.33, y: .848, r: .322 },
       contact: { zF: 2.395, zR: -2.395 }, botY: .0515, topY: 1.203, sag: .022,
+      endWheels: KIT.endRoadWheels(zs, .470, .395),
       supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .012 })),
     }), .0515, .40),
     rigidLinkChords: true, arms: true, coveredTop: true, paintedEnds: true,

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import { createTank } from '../tankFactory.ts';
 import { addChieftain10XServiceFrame } from './chieftain10XServiceFrame.ts';
-import {assertPublishedChieftainFoundationSources, PRE_FOUNDATION_HISTORY}
+import {assertPublishedChieftainFoundationSources, PRE_FOUNDATION_HISTORY, publishedChieftainNonTrackMultiset}
   from './chieftain10XPublishedFoundation.test-support.mjs';
 
 const ray = (meshes, p, d, far = 8) => new THREE.Raycaster(new THREE.Vector3(...p),
@@ -99,16 +99,34 @@ function counts(root) {
   }); return map;
 }
 
-function preservation(tank, fixture, expectedCount, expectedHash) {
+function successorRows(tank, fixture) {
   const actual = counts(tank.root), added = counts(fixture.group);
   for (const [key, n] of added) {
     assert.ok(actual.get(key) >= n, `every added draw vertex exists with exact multiplicity: ${key}`);
     actual.set(key, actual.get(key) - n);
   }
-  const rows = [...actual].filter(([, n]) => n).sort(([a], [b]) => a.localeCompare(b));
+  return [...actual].filter(([, n]) => n).sort(([a], [b]) => a.localeCompare(b));
+}
+const multisetOf = rows => ({ count: rows.reduce((sum, [, n]) => sum + n, 0),
+  sha256: createHash('sha256').update(JSON.stringify(rows)).digest('hex') });
+
+function preservation(tank, fixture, expectedCount, expectedHash) {
+  const rows = successorRows(tank, fixture);
   assert.equal(rows.reduce((sum, [, n]) => sum + n, 0), expectedCount);
   assert.equal(createHash('sha256').update(JSON.stringify(rows)).digest('hex'), expectedHash,
     'subtracting only the service helper preserves the published099 post-foundation physical vertices, including all gear and turret');
+}
+
+// The 2026-09-14 tangent track wrap (tankFactoryCore roadWheelWrap) is the only later change to
+// this successor: every draw vertex outside the track band and shoe meshes must still be the
+// muzzle-seat successor's, re-derived here rather than trusted from the ledger text.
+function nonTrackRows(tank) {
+  const track = [];
+  tank.root.traverse(m => { if (m.isMesh && /^gearTrack/.test(m.name)) track.push(m); });
+  const parents = track.map(m => [m, m.parent]);
+  for (const [m] of parents) m.removeFromParent();
+  try { return [...counts(tank.root)].sort(([a], [b]) => a.localeCompare(b)); }
+  finally { for (const [m, parent] of parents) parent.add(m); }
 }
 
 function negativeControls(tank, fixture, count, hash) {
@@ -140,14 +158,20 @@ function negativeControls(tank, fixture, count, hash) {
 // The old pre-foundation receipt remains explicit history, not an active claim
 // that the later owner-requested casting never changed. The successor values
 // were captured independently from immutable published099, not this candidate.
-const published = assertPublishedChieftainFoundationSources();
-for (const mutated of ['src/vehicles/profiles/chieftain10X.ts',
+const UPDATE_LEDGER = process.env.COT_UPDATE_LEDGER === '1';
+const ledgerUrl = new URL('../../../docs/references/tanks/chieftain_mk10_x.published-foundation-preservation.json', import.meta.url);
+// In update mode the ledger is about to be rewritten, so its successor is read raw and the source
+// contract is authenticated on the normal run that must follow.
+const published = UPDATE_LEDGER ? JSON.parse(readFileSync(ledgerUrl, 'utf8')).successor
+  : assertPublishedChieftainFoundationSources();
+if (!UPDATE_LEDGER) for (const mutated of ['src/vehicles/profiles/chieftain10X.ts',
   'src/vehicles/profiles/chieftain10XBowLights.ts']) {
   assert.throws(() => assertPublishedChieftainFoundationSources(file => {
     const source = readFileSync(new URL(`../../../${file}`, import.meta.url), 'utf8');
     return file === mutated ? source + '\n// unauthorized source mutation' : source;
   }), /source contract|annotation source/, 'Family source mutations cannot silently replace the published contract');
 }
+const ledgerUpdate = UPDATE_LEDGER ? { successor: {}, nonTrack: {} } : null;
 for (const [quality] of PRE_FOUNDATION_HISTORY) {
   const {count, sha256:hash} = published[quality];
   const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
@@ -156,7 +180,16 @@ for (const [quality] of PRE_FOUNDATION_HISTORY) {
     tank.root.updateMatrixWorld(true);
     const all = []; tank.root.traverse(m => { if (m.isMesh && !m.userData.vehicleMarking
       && !m.name.startsWith('procShadow_')) all.push(m); });
-    sourceSurfaces(all); contacts(fixture.parts, all); preservation(tank, fixture, count, hash);
+    sourceSurfaces(all); contacts(fixture.parts, all);
+    if (ledgerUpdate) {
+      // COT_UPDATE_LEDGER=1: record the current build as the active successor (2026-09-14 wrap).
+      ledgerUpdate.successor[quality] = multisetOf(successorRows(tank, fixture));
+      ledgerUpdate.nonTrack[quality] = multisetOf(nonTrackRows(tank));
+      continue;
+    }
+    preservation(tank, fixture, count, hash);
+    assert.deepEqual(multisetOf(nonTrackRows(tank)), publishedChieftainNonTrackMultiset(quality),
+      `${quality}: every draw vertex outside the track meshes is the muzzle-seat successor's (only the tangent wrap changed the tracks)`);
     negativeControls(tank, fixture, count, hash);
     const hull = all.filter(m => m.name === 'hull' || m.name.startsWith('hull'));
     const matrices = hull.map(m => m.matrixWorld.clone()), buffers = hull.map(m => m.geometry);
@@ -166,5 +199,22 @@ for (const [quality] of PRE_FOUNDATION_HISTORY) {
         'all service fittings remain permanently hull-owned through yaw');
     }
   } finally { tank.dispose(); fixture.dispose(); }
+}
+if (ledgerUpdate) {
+  const ledger = JSON.parse(readFileSync(ledgerUrl, 'utf8'));
+  const previous = ledger.successor;
+  const delta = ledgerUpdate.successor.high.count - previous.high.count;
+  ledger.successorHistory = [ledger.successorHistory[0], { ...previous,
+    status: 'muzzle-seat successor before the 2026-09-14 tangent track wrap; retained as history, not an active claim' }];
+  ledger.successor = ledgerUpdate.successor;
+  ledger.laterTrackWrap = {
+    branch: 'codex/restore-1049-visuals-20260911', capturedAt: '2026-09-14',
+    scope: 'Owner direction: the loaded track run wraps the outer road wheels on their own circle and rises on the external tangent to the end wheel (tankFactoryCore roadWheelWrap, graded 1–6° chords) instead of kinking at the authored contact pins. Only the two track band meshes (draw-vertex count change) and the linked shoes (positions) changed; the non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly.',
+    trackDrawVertexDelta: delta, nonTrack: ledgerUpdate.nonTrack,
+  };
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(ledgerUrl, JSON.stringify(ledger, null, 2) + '\n');
+  console.log(`chieftain10XServiceFrame: ledger rewritten — successor high ${ledgerUpdate.successor.high.count} low ${ledgerUpdate.successor.low.count}, track draw-vertex delta ${delta}`);
+  process.exit(0);
 }
 console.log('chieftain10XServiceFrame: high/low source crowns/web underside, five real rail gaps, supported folded feet, published099 successor preservation, rejection controls and hull ownership pass; pre-foundation receipt retained as history');

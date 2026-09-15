@@ -62,16 +62,23 @@ function shoeClearance(trackPads, receipt, wheelZ, includesShoe) {
   return minimum;
 }
 
-function rampShoeClearance(trackPads, receipt, wheelZ, end) {
+/** 2026-09-14: the loaded run wraps the outer road wheels (tankFactoryCore roadWheelWrap), so the
+ * ramp band rides on the tire and its guide horns pass between the paired wheel halves — the shoe
+ * bounding-box test above cannot tell that from a chord through the tire. Measure the band body
+ * itself: the closest ramp centreline point to the wheel axle, minus the radius the band's inner
+ * face must keep (tire radius + half the band thickness). Zero = seated on the tire. */
+function rampBandClearance(receipt, wheelZ, end) {
   const flatRun = receipt.loopPoints.filter(([, y]) => Math.abs(y - receipt.botY) <= EPSILON);
   const contactZ = end === 'rear'
     ? Math.min(...flatRun.map(([z]) => z))
     : Math.max(...flatRun.map(([z]) => z));
-  return shoeClearance(trackPads, receipt, wheelZ, (matrix, center) => {
-    const isRamp = Math.abs(matrix.elements[6]) > 0.15;
-    const beyondContact = end === 'rear' ? center.z < contactZ : center.z > contactZ;
-    return isRamp && beyondContact;
-  });
+  let minimum = Infinity;
+  for (const [z, y] of receipt.loopPoints) {
+    if (y - receipt.botY <= EPSILON || y > receipt.wheelY) continue;
+    if (end === 'rear' ? z > contactZ - EPSILON : z < contactZ + EPSILON) continue;
+    minimum = Math.min(minimum, Math.hypot(z - wheelZ, y - receipt.wheelY) - (receipt.wheelR + receipt.trackTh / 2));
+  }
+  return minimum;
 }
 
 function upperShoeClearance(trackPads, receipt, wheelZ) {
@@ -176,14 +183,15 @@ for (const id of IDS) {
     assert.ok(terminalClearance(receipt, EXPECTED_WHEEL_ZS.at(-1), receipt.sprocket) >= 0.08,
       `${id}: trailing road wheel remains separate from the rear final drive`);
 
-    const rearRampClearance = rampShoeClearance(
-      trackPads, receipt, EXPECTED_WHEEL_ZS.at(-1), 'rear');
-    const frontRampClearance = rampShoeClearance(
-      trackPads, receipt, EXPECTED_WHEEL_ZS[0], 'front');
-    assert.ok(rearRampClearance >= 0.03 - EPSILON,
-      `${id}: rear road wheel clears the rising linked-shoe course`);
-    assert.ok(frontRampClearance >= 0.015 - EPSILON,
-      `${id}: forward shift preserves clearance at the front linked-shoe course`);
+    const rearRampClearance = rampBandClearance(receipt, EXPECTED_WHEEL_ZS.at(-1), 'rear');
+    const frontRampClearance = rampBandClearance(receipt, EXPECTED_WHEEL_ZS[0], 'front');
+    // 2026-09-14: the loaded run wraps the outer road wheels and rises on their external tangent,
+    // so the ramp band rides on the tire. Assert the mechanical truth at both ends: the band body
+    // never cuts into the wheel, and it stays seated (no daylight between tire and ramp).
+    assert.ok(rearRampClearance >= -0.005 && rearRampClearance <= 0.04,
+      `${id}: rear ramp band rides on the trailing road wheel without cutting into it (${rearRampClearance.toFixed(3)} m)`);
+    assert.ok(frontRampClearance >= -0.005 && frontRampClearance <= 0.04,
+      `${id}: front ramp band rides on the leading road wheel without cutting into it (${frontRampClearance.toFixed(3)} m)`);
 
     const loadedTrackInnerY = receipt.botY + receipt.trackTh / 2;
     const tireBottomY = receipt.wheelY - receipt.wheelR;

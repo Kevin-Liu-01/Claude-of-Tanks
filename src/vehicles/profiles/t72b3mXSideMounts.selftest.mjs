@@ -128,6 +128,9 @@ function preserveNonTarget(tank,quality){
     const n=seen[m.name]??0;seen[m.name]=n+1;meshes.set(`${m.name}#${n}`,m);});
   for(const [name,expected]of Object.entries(PRESERVED[quality])){
     const m=meshes.get(name);assert.ok(m?.isMesh);
+    // COT_UPDATE_LEDGER=1 rewrites the held-out ledger after a deliberate fleet-wide gear change
+    // (2026-09-14: wheel paint isolation and the end-wheel track wrap moved every gear batch).
+    if(process.env.COT_UPDATE_LEDGER==='1'){PRESERVED[quality][name]=geometryHash(m);continue;}
     assert.equal(geometryHash(m),expected,`unchanged pre-mount ${quality} ${name} geometry, ownership frame and native instance course`);
   }
   if(quality==='low')preservationNegativeControls(meshes.get('mobileStaticBatch_0#0'));
@@ -238,5 +241,9 @@ for(const quality of ['high','low']){
     attachment(tank,all);sourceAir(all);
     assert.equal(tank.resetEra(),true);sourceSurfaces(all);
   }finally{tank.dispose();}
+}
+if(process.env.COT_UPDATE_LEDGER==='1'){
+  fs.writeFileSync(new URL('../../../docs/references/tanks/t72b3m_x.side-mount-preservation.json',import.meta.url),JSON.stringify(PRESERVED,null,1)+'\n');
+  console.log('t72b3mXSideMounts: preservation ledger rewritten');
 }
 console.log('t72b3mXSideMounts: high/low actual source surfaces, full helper wiring, permanent attachment after ERA stripping, shoulder cover closes the fender-to-skirt gap, clamp air PASS');

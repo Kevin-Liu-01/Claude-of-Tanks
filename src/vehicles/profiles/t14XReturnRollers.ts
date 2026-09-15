@@ -25,6 +25,7 @@ export function t14XReturnRollers(P: TankBuilderPort, cfg: RunningGearConfig): R
     sprocket:{...rear,r:rear.trackR??rear.r},idler:{...front,r:front.trackR??front.r},
     botY:cfg.botY??.055,topY:cfg.topY,sag:0,supports,
     contact:{zF:Math.max(...cfg.wheelZs)+cfg.wheelR*.5,zR:Math.min(...cfg.wheelZs)-cfg.wheelR*.5},
+    endWheels:KIT.endRoadWheels(cfg.wheelZs,cfg.wheelY??cfg.wheelR+.10,cfg.wheelR,cfg.wheelYs), // same default as buildRunningGear
   });
   for(let i=loopPoints.length-1;i>0;i--)if(Math.hypot(
     loopPoints[i][0]-loopPoints[i-1][0],loopPoints[i][1]-loopPoints[i-1][1])<1e-7)loopPoints.splice(i,1);

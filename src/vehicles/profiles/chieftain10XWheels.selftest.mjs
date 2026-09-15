@@ -104,8 +104,8 @@ function suspension(root, gear) {
 }
 
 for (const [quality, expected] of [
-  ['high', '3ab26b4855beab1b9b80e8445be24aa4dcc772dc5b4d44c3aff47eb3831ae87c'],
-  ['low', 'c3c67cecb2a2afda82645caff39bd6f5800f35bf367ff000e0aee0523cd312cf'],
+  ['high', '488cc6786c8c00d7e493a3592d5347972d8817cc8ce0a3562384878db990aa40'],
+  ['low', 'a94efa13f85494668e8f692680420cad54ab1a24f76eefb175a046e1d21c99b4'],
 ]) {
   let gear;
   const original = KIT.buildRunningGear;

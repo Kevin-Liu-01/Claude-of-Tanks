@@ -19,10 +19,10 @@ function beforeType10TrackCalibration(armor){
     const tracks=copy.modules.filter(m=>m.module===side);assert.equal(tracks.length,1);
     const m=tracks[0];assert.equal(m.shapes.length,1);assert.equal(m.shapes[0].kind,'ellipsoid');
     for(const [values,current,previous] of [
-      [m.min,[-.0242,-3.2563],[.063,-3.2251]],
-      [m.max,[1.2875,3.6363],[1.23,3.6056]],
-      [m.shapes[0].center,[.63165,.18999999999999995],[.6465,.19025000000000003]],
-      [m.shapes[0].radii,[.590265,3.170596],[.52515,3.142122]],
+      [m.min,[-.0242,-3.2565],[.063,-3.2251]],
+      [m.max,[1.2875,3.6367],[1.23,3.6056]],
+      [m.shapes[0].center,[.63165,.19009999999999994],[.6465,.19025000000000003]],
+      [m.shapes[0].radii,[.590265,3.170872],[.52515,3.142122]],
     ]){
       assert.deepEqual(values.slice(1),current,'only the declared fitted-track calibration may be reversed');
       values.splice(1,2,...previous);
@@ -44,7 +44,7 @@ assert.equal(hash(ids.map(id=>({id,armor:id==='type10_x'
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  '1ae1208f2f46c657245b8981c30812871a41d646c7acee354b919a61500cf6e1',
+  '7cd0f36f5894320c95db38ddb62fb75dd258aca08cf8b6036ab359f131a3521e',
   'all seven pre-optimization armor objects retain their golden, with the declared Type 10 track-only inverse');
 assert.equal(serialize(type10Armor),type10Before,'historical witness must not mutate the current candidate');
 

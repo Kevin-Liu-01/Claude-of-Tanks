@@ -21,8 +21,8 @@ function createTank(...args) {
 // These are pre-change native buffers, not a source metrology claim. They
 // protect the load-bearing armor, gun and exact populated track courses.
 const UNCHANGED = {
- gearTrackPads:'11a5898aad8844476b83c0fefe831da226a395c9b7d39da45de9fd21c771c50f',
- gearTrackPadsSimplified:'9427abdab14b8406f8a5319b317a772bad03e172e292d806eb453eb1218ec881',
+ gearTrackPads:'c756995091ce42c9011a55e5cb58906af1b1ef5d2a9ebfc739bcd4f253b3ba3d',
+ gearTrackPadsSimplified:'b0be2fcb762cf714d3fdbeb0d0e63ea1aa67c20da76ff02352a047024cf5006e',
  hull:'f79e51cdbc58bd075522a18b3a184652b257668618294180f7a17a2fb1878eb5',
  gun:'f31773814e430d60eae149c0b6e7e227e3b714d495d37ff14b12efaa94e0abac',
  gunDark:'83839050dccabbfffa939a1e91202abcce452bba69ebc309e08272f33764990b',

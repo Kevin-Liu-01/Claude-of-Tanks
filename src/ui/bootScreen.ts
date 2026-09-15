@@ -262,7 +262,10 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const elTip = $('cot-boot-tip');
   const elGate = $('cot-boot-gate');
   const elRetry = $('cot-boot-retry');
-  if (elGate) elGate.textContent = t('boot.gate.prompt');
+  // 2026-09-14 (outside QA): phone players read keyboard-only copy on their first screen; a
+  // coarse pointer gets the touch prompt.
+  const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  if (elGate) elGate.textContent = t(coarsePointer ? 'boot.gate.promptTouch' : 'boot.gate.prompt');
   if (elRetry) elRetry.textContent = t('boot.gate.retry');
   mountGitHubStars(document);
 

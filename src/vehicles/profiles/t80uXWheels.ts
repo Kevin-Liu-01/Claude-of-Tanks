@@ -20,9 +20,13 @@ function hubCone(side: -1 | 1, floor: number, apex: number): THREE.BufferGeometr
 }
 
 function shell(side: -1 | 1): THREE.BufferGeometry {
+  // 2026-09-14 owner: the source steel body ran 0.22–0.24 m outboard of the axle while the rubber
+  // shoulder ends at 0.1787 — the dish stood 5–8 cm proud of its own tire. The outboard face is
+  // pulled in so the rim lip ends 1.9 cm outside the 0.1735 tire band (lip = 1.35185 + 0.193);
+  // the inner back face and the dish depth are unchanged.
   const [back, floor, outside, hub, lip] = side < 0
-    ? [1.17167240, 1.51006156, 1.57202631, 1.58356249, 1.58960503]
-    : [1.18925124, 1.52775055, 1.58960539, 1.60114133, 1.60718399];
+    ? [1.17167240, 1.46516156, 1.52712631, 1.53866249, 1.54470503]
+    : [1.18925124, 1.46525055, 1.52710539, 1.53864133, 1.54468399];
   // Fixed original axle. Real source side asymmetry belongs to the steel
   // face, not to a shifted wheel center or moved track lane.
   const profile = [[0, back], [.35247, back], [.35247, outside],

@@ -42,6 +42,7 @@ export function buildType10XGear(P:TankBuilderPort,base:RunningGearConfig) {
     supports:base.rollers!.map(row=>({z:row.z,y:row.y+(row.r??.095)+.09/2+.0025})),
     contact:{zF:Math.max(...base.wheelZs)+base.wheelR*.5,
       zR:Math.min(...base.wheelZs)-base.wheelR*.5},
+    endWheels:KIT.endRoadWheels(base.wheelZs,base.wheelY??base.wheelR+.10,base.wheelR),
     frontArcSteps:16,rearArcSteps:16,smoothRearTopTangent:true,
   });
   return KIT.buildRunningGear(P,cfg);

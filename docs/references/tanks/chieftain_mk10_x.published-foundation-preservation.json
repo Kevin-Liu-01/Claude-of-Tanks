@@ -24,12 +24,12 @@
   ],
   "successor": {
     "high": {
-      "count": 318516,
-      "sha256": "c83fa1d589a234388d3ffb88e9fb4b4a6662f864f81432bd4f137fb79da72437"
+      "count": 318036,
+      "sha256": "46ccc0faa0684ebfc2557ec312063aeabd42480958529378a9f6bb6ed5ffefe8"
     },
     "low": {
-      "count": 292116,
-      "sha256": "7bc8bc1603ea8a60909c028dc9ea44a7e67eaf9e0de805c40234cd7f9a8a30fb"
+      "count": 291636,
+      "sha256": "e1dad1e42f4d5a00cae22aef3b9bd9eb51af011cfc58185f2810661bb7704249"
     }
   },
   "successorHistory": [
@@ -44,6 +44,17 @@
         "sha256": "29edd3bbcd982846879d481ca9f66a28c9ed884f5f807a8c63847750a0bacac2"
       },
       "status": "published099 physical multiset before the owner-directed muzzle mouth seat; retained as history, not an active claim"
+    },
+    {
+      "high": {
+        "count": 318516,
+        "sha256": "c83fa1d589a234388d3ffb88e9fb4b4a6662f864f81432bd4f137fb79da72437"
+      },
+      "low": {
+        "count": 292116,
+        "sha256": "7bc8bc1603ea8a60909c028dc9ea44a7e67eaf9e0de805c40234cd7f9a8a30fb"
+      },
+      "status": "muzzle-seat successor before the 2026-09-14 tangent track wrap; retained as history, not an active claim"
     }
   ],
   "laterMuzzleSeat": {
@@ -58,7 +69,7 @@
     "expectedHigh": 317904
   },
   "authoredSources": {
-    "src/vehicles/profiles/chieftain10X.ts": "bef8c25b586b9b59a744a71761ba23fd3abf456655f4091e8f50c2962f8de353",
+    "src/vehicles/profiles/chieftain10X.ts": "85807745928dde657b803ac966d5937bb39419a94631d0efbbda27a384ab08d8",
     "src/vehicles/profiles/chieftain10XAftCasting.ts": "f2aa34a46d45c1528497a88c4be3e6a387196ead87a0803234896cccd296e933",
     "src/vehicles/profiles/chieftain10XBasket.ts": "04d56fbb2aa469f1de35f46e65d038fb0951ed65a0bb1dc993803af128253f01",
     "src/vehicles/profiles/chieftain10XBowLights.ts": "00618365219b24e8773522733ae6c20f7e32f94e9bb740eec3d30281f6437b9e",
@@ -108,7 +119,7 @@
   },
   "publishedRuntimeSources": {
     "package-lock.json": "601b6cf1fe3b749446b87bd09df842d67866d562357b0cf89373e00052cbaef0",
-    "src/vehicles/profiles/chieftain10X.ts": "bef8c25b586b9b59a744a71761ba23fd3abf456655f4091e8f50c2962f8de353",
+    "src/vehicles/profiles/chieftain10X.ts": "85807745928dde657b803ac966d5937bb39419a94631d0efbbda27a384ab08d8",
     "src/vehicles/profiles/chieftain10XServiceFrame.ts": "ef67fed10ff481026c7875d55c8333dc637e9009f2fe109cfdb2b7f6ef1efa47",
     "src/vehicles/profiles/chieftainXFoundation.ts": "e90c75351459ab6cbb42da27df4e4c3a82c3ab4ded691aeacf4bc451eb015885",
     "src/vehicles/profiles/sectionSolid.ts": "b266fe61c777c856c90329ba513e7d92f70236ea48d4d38957b423abc5a8a9db",
@@ -142,6 +153,22 @@
         "sha256": "e7e2a12c233876c2d511ba02b349713c1e1e9de6c08b77126c13cfa0386f1844"
       },
       "status": "terminal-surface-fit-r1 successor values (lip 0.28 R, lining 1.2 mm inside), superseded by the r2 rule; the published099 history entry above stays the single archived predecessor"
+    }
+  },
+  "laterTrackWrap": {
+    "branch": "codex/restore-1049-visuals-20260911",
+    "capturedAt": "2026-09-14",
+    "scope": "Owner direction: the loaded track run wraps the outer road wheels on their own circle and rises on the external tangent to the end wheel (tankFactoryCore roadWheelWrap, graded 1–6° chords) instead of kinking at the authored contact pins. Only the two track band meshes (draw-vertex count change) and the linked shoes (positions) changed; the non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly.",
+    "trackDrawVertexDelta": -480,
+    "nonTrack": {
+      "high": {
+        "count": 199716,
+        "sha256": "8680f49dda41e455f35c5eb689f9de2a7b229d18fc71970f7977935829138fde"
+      },
+      "low": {
+        "count": 173316,
+        "sha256": "c93ac4b0055d476baae7290f54bbd811320e143f335e784712b3357066ed5df5"
+      }
     }
   }
 }
