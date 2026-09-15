@@ -2959,5 +2959,7 @@
   "garage.record.campaignStars": "Stars",
   "garage.record.campaignPush": "Best push (sectors)",
   "garage.record.campaignHeld": "Lines held",
-  "garage.record.campaignNone": "No campaign sortie yet — the first operation is open in the play menu."
+  "garage.record.campaignNone": "No campaign sortie yet — the first operation is open in the play menu.",
+  "hud.modeStatus.brief": "Brief",
+  "hud.modeStatus.briefAria": "Show the mission brief again"
 }

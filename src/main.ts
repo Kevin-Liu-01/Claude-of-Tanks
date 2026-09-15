@@ -2726,6 +2726,12 @@ bus.on('ui:roomStart', () => currentNetworkRoom()?.startRound());
 
 // batch 19 (2026-09-14): the end screen's NEXT / RETRY OPERATION button — the covered return owns the
 // dismissal exactly like Battle Again, then the ladder sortie starts in place of the Garage's BATTLE click
+// batch 21: the objective plate's BRIEF button re-opens (or dismisses) the mission brief mid-sortie
+bus.on('ui:missionBrief', () => {
+  if (game.phase !== 'battle' || game.gameMode !== 'frontline_assault') return;
+  if (missionBrief.isShowing()) { missionBrief.hide(); return; }
+  missionBrief.show({ operationId: game.campaignOperationId ?? pendingCampaignOperationId, mapId: game.mapId, durationS: 14 });
+});
 bus.on('ui:campaignNext', (payload) => {
   const request = payload && typeof payload === 'object' ? payload as { operationId?: unknown; mapId?: unknown } : null;
   const operationId = typeof request?.operationId === 'string' ? request.operationId : null;

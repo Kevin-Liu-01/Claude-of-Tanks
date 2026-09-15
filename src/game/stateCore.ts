@@ -19,7 +19,7 @@ export interface EventBus {
 }
 
 export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, MatchModeState = RuntimeValue> {
-  phase: 'garage' | 'battle' | 'ended' | 'shot';
+  phase: 'garage' | 'battle' | 'ended' | 'shot' | 'studio';
   preBattleS: number;
   mapId: string;
   tanks: Entity[];

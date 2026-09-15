@@ -107,3 +107,13 @@ invulnerable at battle start. CDP `Input.dispatchTouchEvent` semantics recorded 
 synthesised secondary touches carry no coordinates. Touch loop 29/29 in both orientations
 afterwards. The Garage's service record gained the campaign standing (operations cleared, stars,
 best push, lines held, the next operation).
+
+## Batch 21: the brief comes back on demand
+
+The campaign brief faded after the countdown with no way back. The objective plate now carries a
+BRIEF button in Frontline Assault sorties (hidden in every other mode); it fires on the pointer lift
+so a steering thumb cannot suppress it, and main toggles the mission brief (`ui:missionBrief`).
+`isShowing()` now flips the moment the card starts fading — a tap during the 450 ms fade re-opens
+instead of cancelling (the first probe run toggled it off by exactly that window). `game.phase`
+finally lists `'studio'`. Receipt `src/ui/missionBrief.selftest.mjs`; probe
+`.qa-dev/brief-button-probe.mjs` (shown / fades / re-opens / dismisses / hidden in Zone Control).

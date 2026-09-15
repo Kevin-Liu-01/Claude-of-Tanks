@@ -102,7 +102,7 @@ interface GarageReturnAudioPort {
 }
 
 interface GarageReturnGameState {
-  phase: 'garage' | 'battle' | 'ended' | 'shot';
+  phase: 'garage' | 'battle' | 'ended' | 'shot' | 'studio';
   preBattleS: number;
   mapId: string;
 }

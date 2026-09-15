@@ -110,8 +110,10 @@ export function createMissionBrief(parent: HTMLElement = document.body): Mission
     // next frame so the transition runs from the hidden state
     requestAnimationFrame(() => { if (showing) root.classList.add('show'); });
     const durationS = Math.max(4, request.durationS ?? 18);
-    fadeTimer = setTimeout(() => { root.classList.remove('show'); }, durationS * 1000);
-    hideTimer = setTimeout(() => { if (showing) hide(); }, durationS * 1000 + 450);
+    // the card counts as shown only while it is legible: the fade flips `showing` at once, so a
+    // BRIEF tap that lands during the fade re-opens instead of cancelling (batch 21)
+    fadeTimer = setTimeout(() => { root.classList.remove('show'); showing = false; }, durationS * 1000);
+    hideTimer = setTimeout(() => { if (!showing) hide(); }, durationS * 1000 + 450);
     return view;
   }
 

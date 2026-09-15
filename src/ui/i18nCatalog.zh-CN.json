@@ -2959,5 +2959,7 @@
   "garage.record.campaignStars": "星数",
   "garage.record.campaignPush": "最佳推进（阵地）",
   "garage.record.campaignHeld": "守住战线次数",
-  "garage.record.campaignNone": "尚未出击战役——第一场行动已在作战菜单中开放。"
+  "garage.record.campaignNone": "尚未出击战役——第一场行动已在作战菜单中开放。",
+  "hud.modeStatus.brief": "简报",
+  "hud.modeStatus.briefAria": "再次显示任务简报"
 }

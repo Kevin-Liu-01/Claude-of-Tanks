@@ -1204,6 +1204,10 @@ const HUD_CSS = `
   font:800 8px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
 .cot-mode-status .mi{color:#f0a030}.cot-mode-status .mv{color:#fff1d6;font-variant-numeric:tabular-nums}
+.cot-mode-status .mb{margin-left:4px;padding:4px 8px 3px;min-height:24px;border:1px solid rgba(240,176,74,.5);border-radius:3px;
+  background:rgba(240,160,48,.12);color:#ffd27a;font:inherit;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
+  pointer-events:auto;touch-action:none}
+.cot-mode-status .mb[hidden]{display:none}.cot-mode-status .mb:hover{background:rgba(240,160,48,.24)}
 @keyframes cotChipIn{from{opacity:0}to{opacity:1}}
 /* Compact player telemetry. The engineering dashboard folds this strip into
    its richer top-right panel instead of allowing two readouts to overlap. */
@@ -1800,10 +1804,22 @@ export function initHud(bus: EventBus): HudRuntime {
   const wedgeR = requireElement<HTMLElement>(topPlate, '.wedge.r');
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>`;
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>` +
+    `<button class="mb" type="button" hidden aria-label="${t('hud.modeStatus.briefAria')}">${t('hud.modeStatus.brief')}</button>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
+  // batch 21: the campaign sortie's BRIEF button re-opens the mission brief; it fires on the pointer
+  // lift (a steering thumb suppresses the synthetic click) and keeps click for keyboard activation
+  const modeBriefButton = requireElement<HTMLButtonElement>(modeStatusEl, '.mb');
+  let briefTapAt = 0;
+  const requestBrief = (): void => { bus.emit('ui:click', {}); bus.emit('ui:missionBrief', {}); };
+  modeBriefButton.addEventListener('pointerup', (e) => { e.stopPropagation(); briefTapAt = performance.now(); requestBrief(); });
+  modeBriefButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (performance.now() - briefTapAt < 600) { e.preventDefault(); return; }
+    requestBrief();
+  });
   let lastModeStatus = '';
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
@@ -2811,6 +2827,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function updateModeStatus(modeState: HudMatchModeState, ownScore: string | number): void {
+    modeBriefButton.hidden = modeState.id !== 'frontline_assault';
     const copy = modeStatusCopy(modeState, ownScore);
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
