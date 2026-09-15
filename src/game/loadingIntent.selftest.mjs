@@ -159,7 +159,8 @@ assert.match(networkPresentation,
   'network entry should delegate modules, battlefield construction, and connection setup');
 const networkWorldAdapter = main.slice(main.indexOf('loadWorld: (mapId: string'),
   main.indexOf('publishMatch: (match) => networkSession.publishMatch(match)'));
-const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle' \}\)/;
+// batch 27 (2026-09-15): a Frontline Assault room also hands the trench terrain variant through
+const coveredWorldOptions = /ensureWorld\(mapId, onProgress, \{ precompile: false, atmosphere: 'covered-battle', \.\.\.\(terrainVariant \? \{ terrainVariant \} : \{\}\) \}\)/;
 assert.match(networkWorldAdapter, coveredWorldOptions,
   'network acquisition must defer Garage-light compilation and select covered battle atmosphere');
 assert.doesNotMatch(networkWorldAdapter.replace("atmosphere: 'covered-battle'", "atmosphere: 'garage'"),
