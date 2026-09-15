@@ -7,11 +7,16 @@ CLI: `vercel pull --yes --environment=production` → `vercel build --prod` →
 removed on 2026-09-14 (its last run had failed on an invalid `VERCEL_TOKEN` secret), and the
 owner's standing rule is that nothing deploys without a green gate and a person running it.
 
-Each deploy carries Vercel metadata (`title`, `githubCommitMessage`, `githubCommitRef`,
-`githubCommitSha`, …) so the Vercel deployments list reads
-`main · deploy N: <title> (<head> — <commit subject>)` instead of a bare URL. The script that
-does this lives in the session scratchpad (`deploy-prod.sh <number> "<title>"`) and appends a
-row here; commit the row with the deploy's docs.
+Deploys 3–20 were made from a detached, dirty gate checkout, so Vercel recorded them as
+`ref HEAD, dirty` with no branch link and the dashboard lists them by id with the source
+"vercel deploy" (deployment metadata is immutable, so those rows stay that way). From deploy
+21 the deploy runs in a clean clone on branch `main` (`deploy-prod-main.sh <number> "<title>"`
+in the session scratchpad: fetch, reset to origin/main, `vercel pull`, `vercel build --prod`,
+restore package-lock.json, `vercel deploy --prebuilt --prod`) and passes the branch-link
+metadata Vercel documents for CLI deploys — `githubDeployment=1`, `githubCommitRef=main`,
+the commit sha and subject, and the linked repository's name and ids — so the list reads
+`main · deploy N: <title>` and the production branch owns the deployment. `title` and
+`gateHead` ride along as before; the script appends the row below.
 
 **Git auto-deploys are off.** `vercel.json` carries
 `"git": { "deploymentEnabled": { "main": false, "codex/*": false } }` (2026-09-15, owner: the
