@@ -50,6 +50,7 @@ import {
   tickReload,
   tickFire,
   tickModuleRepairs,
+  hullDamageTaken,
 } from './damage.ts';
 import type {
   CombatState,
@@ -93,6 +94,9 @@ import {
 } from './specialActions.ts';
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
+import {
+  applyRulesetToCombat, matchRulesetFor, refillUnlimitedAmmunition, rulesetLoadout, type MatchRuleset,
+} from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from './matchPlacement.ts';
 import type {
   GameModeId,
@@ -189,6 +193,7 @@ export interface AuthoritativeEntity {
   aiCtl?: AuthoritativeAIController;
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
+  modeGravityScale?: number;
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
@@ -237,6 +242,8 @@ export interface AuthoritativeMatchOptions {
   battleLimitS?: number;
   countdownS?: number;
   gameMode?: GameModeId | string;
+  /** Rules the match plays by; derived from gameMode when absent (campaign operations pass theirs). */
+  ruleset?: MatchRuleset;
   worldCollision?: AuthoritativeWorldCollision | null;
 }
 
@@ -627,6 +634,7 @@ export function createAuthoritativeMatch({
   battleLimitS = BATTLE_LIMIT_S,
   countdownS = 5,
   gameMode = 'standard',
+  ruleset: rulesetOption,
   worldCollision = null,
 }: AuthoritativeMatchOptions = {}): AuthoritativeMatch {
   if (!Array.isArray(players) || players.length < 1 || players.length > 14) {
@@ -662,6 +670,12 @@ export function createAuthoritativeMatch({
   const staticObstacles = worldCollision && typeof worldCollision.getObstacles === 'function'
     ? worldCollision.getObstacles() : [];
   const normalizedGameMode = normalizeGameMode(gameMode);
+  // RULESETS (sim/matchRuleset.ts, 2026-09-14): the same pure rules the browser sim applies — hull,
+  // damage-taken, reload, ammunition and equipment at spawn / revive, gravity at the muzzle, the clock.
+  const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === normalizedGameMode
+    ? rulesetOption : matchRulesetFor(normalizedGameMode);
+  // an explicit battleLimitS (tests, tooling) wins; otherwise the ruleset's clock (null = no clock)
+  const clockLimitS = battleLimitS !== BATTLE_LIMIT_S ? battleLimitS : (ruleset.timeLimitS ?? Infinity);
   const placement = createMatchPlacement({
     mapId,
     heightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
@@ -711,13 +725,14 @@ export function createAuthoritativeMatch({
     input.aimPoint.copy(state.aimPoint);
     const combat = createCombatState(spec) as AuthoritativeCombatState;
     const bot = !!record.bot;
-    const loadout = Array.isArray(record.equipment)
-      ? record.equipment.slice() : defaultLoadoutFor(spec);
+    const loadout = rulesetLoadout(ruleset, Array.isArray(record.equipment)
+      ? record.equipment.slice() : defaultLoadoutFor(spec));
     const equipment = applyEquipmentToCombat(
       combat,
       loadout,
       spec,
     );
+    applyRulesetToCombat(combat, spec.gun.shells, ruleset);
     const entity: AuthoritativeEntity = {
       id,
       specId: spec.id,
@@ -840,13 +855,11 @@ export function createAuthoritativeMatch({
     tank.input = makeInput();
     tank.input.aimPoint.copy(tank.state.aimPoint);
     tank.combat = createCombatState(tank.spec) as AuthoritativeCombatState;
-    if (healthScale !== 1) {
-      tank.combat.maxHp = Math.max(1, Math.round(tank.combat.maxHp * healthScale));
-      tank.combat.hp = tank.combat.maxHp;
-    }
     tank.equip = applyEquipmentToCombat(
-      tank.combat, tank.loadout || defaultLoadoutFor(tank.spec), tank.spec,
+      tank.combat, tank.loadout || rulesetLoadout(ruleset, defaultLoadoutFor(tank.spec)), tank.spec,
     );
+    // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
+    applyRulesetToCombat(tank.combat, tank.spec.gun.shells, ruleset, healthScale);
     tank.consumableReadyAt = [0, 0, 0];
     tank.specialAction = createSpecialActionState(tank.spec);
     for (let n = 0; n < 30; n++) updateTank(tank, heightField, SIM_DT);
@@ -857,6 +870,7 @@ export function createAuthoritativeMatch({
     entities,
     seed,
     placement,
+    ruleset,
     revive: reviveForMode,
     setActive(entity, active) { entity.modeActive = active; },
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
@@ -1171,8 +1185,8 @@ export function createAuthoritativeMatch({
     if (damage.total <= 0) return;
     ramPairTime.set(key, timeS);
     const bWasDestroyed = b.combat.destroyed;
-    const damageA = damage.toA;
-    const damageB = bWasDestroyed ? 0 : damage.toB;
+    const damageA = hullDamageTaken(a.combat, damage.toA);
+    const damageB = bWasDestroyed ? 0 : hullDamageTaken(b.combat, damage.toB);
     a.combat.hp = Math.max(0, a.combat.hp - damageA);
     if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
     a.combat.destroyed = a.combat.hp <= 0;
@@ -1382,6 +1396,9 @@ export function createAuthoritativeMatch({
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
+    // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
+    shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;
+    refillUnlimitedAmmunition(ruleset, combat, firedSlot);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
     selectFallbackAfterShot(entity, firedSlot);
@@ -1637,9 +1654,11 @@ export function createAuthoritativeMatch({
   }
 
   function determineModeResult(): void {
-    if (normalizedGameMode === 'endless_horde' || timeS < battleLimitS) return;
+    if (timeS < clockLimitS) return;
     const score = modeController.state.score;
-    finishMatch(winnerFromScores(score.alpha, score.bravo), 'time_limit');
+    const winner = winnerFromScores(score.alpha, score.bravo);
+    // a level score resolves by the ruleset: Standard rules draw, a campaign sortie is lost by the attackers
+    finishMatch(winner === 'draw' && ruleset.timeout === 'defeat' ? TEAM_BRAVO : winner, 'time_limit');
   }
 
   function countSurvivingTeams(): void {
@@ -1656,7 +1675,7 @@ export function createAuthoritativeMatch({
     const alpha = survivingTeams.alpha;
     const bravo = survivingTeams.bravo;
     const eliminated = alpha === 0 || bravo === 0;
-    if (!eliminated && timeS < battleLimitS) return;
+    if (!eliminated && timeS < clockLimitS) return;
     finishMatch(
       winnerFromScores(alpha, bravo),
       eliminated ? 'elimination' : 'time_limit',

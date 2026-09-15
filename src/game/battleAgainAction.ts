@@ -5,7 +5,7 @@ interface FailureNotice {
   hideGarageReturnFailure(): void;
 }
 interface BattleAgainActionOptions {
-  action(): Promise<void>;
+  action(trigger?: () => boolean): Promise<void>;
   loadFailure(): Promise<FailureNotice>;
   getPhase(): string;
   getEntryGeneration(): number;
@@ -55,12 +55,12 @@ export function createBattleAgainAction({
       reportError('Battle Again failure notice unavailable', noticeError);
     }
   };
-  const run = (): Promise<void> => {
+  const run = (trigger?: () => boolean): Promise<void> => {
     if (pendingAction) return pendingAction;
     const revision = ++actionRevision;
     invalidate();
     // Arm before invoking adapters, including synchronous/re-entrant ones.
-    const pending = Promise.resolve().then(action).then(() => {
+    const pending = Promise.resolve().then(() => action(trigger)).then(() => {
       if (pendingAction === pending) pendingAction = null;
     }, (error) => {
       if (pendingAction === pending) pendingAction = null;

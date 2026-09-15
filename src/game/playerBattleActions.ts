@@ -55,6 +55,8 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   phase: string;
   timeS: number;
   player: TEntity | null;
+  /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off. */
+  ruleset?: { consumables: boolean } | null;
 }
 
 interface ActionInput {
@@ -171,6 +173,11 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const slot = Number((payload as { slot?: RuntimeValue } | null)?.slot);
     const player = battleInputAllowed() ? livePlayer() : null;
     if (!player || !Number.isInteger(slot) || !rules.hasConsumableRule(slot)) return;
+    // RULESETS: a mode without consumables says so instead of silently ignoring the key
+    if (game.ruleset && game.ruleset.consumables === false) {
+      bus.emit('ui:consumableDenied', { slot, reason: 'RULESET' });
+      return;
+    }
     if (network.isActive()) {
       network.queueConsumable(slot);
       bus.emit('ui:click', {});

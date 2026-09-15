@@ -131,6 +131,8 @@ export interface CombatState {
   ammo: number[];
   ammoCapacity: number[];
   equipMults?: Partial<Record<string, number>>;
+  /** Ruleset damage-taken scale (matchRuleset.ts); absent or 1 = the vehicle's authored hit points. */
+  modeDamageTakenScale?: number;
 }
 
 const MODULE_STATE_RANK: Readonly<Record<ModuleStateName, number>> = Object.freeze({
@@ -420,6 +422,19 @@ function equipMult(combat: CombatState | null | undefined, key: string): number 
   const m = combat && combat.equipMults;
   const v = m && m[key];
   return Number.isFinite(v) ? v! : 1;
+}
+
+/**
+ * RULESETS (sim/matchRuleset.ts): hull hit points actually lost for a raw roll. Turbo Ball halves
+ * every loss; Standard leaves the roll alone. Module and crew rolls stay unscaled — the ruleset
+ * changes how long a hull lasts, not how the vehicle breaks.
+ */
+export function hullDamageTaken(
+  combat: Pick<CombatState, 'modeDamageTakenScale'> | null | undefined,
+  raw: number,
+): number {
+  const scale = combat?.modeDamageTakenScale;
+  return Number.isFinite(scale) && scale! > 0 && scale !== 1 ? raw * scale! : raw;
 }
 
 /**
@@ -1020,8 +1035,8 @@ function resolveMainPlate(
       event.kind = 'pen';
       stampImpact(event, hit, effMm, resolution.pen);
       stampShotInfo(event, hit, resolution.shellSpec, resolution.target, shell.vel);
-      event.damage = dmgRoll;
-      combat.hp -= dmgRoll;
+      event.damage = hullDamageTaken(combat, dmgRoll);
+      combat.hp -= event.damage;
       resolution.decided = true;
       flushStraddlers(resolution, hit.t);
     }
@@ -1086,8 +1101,8 @@ function applySeamInternalDamage(
     return;
   }
   event.kind = 'pen';
-  event.damage = dmgRoll;
-  combat.hp -= dmgRoll;
+  event.damage = hullDamageTaken(combat, dmgRoll);
+  combat.hp -= event.damage;
   for (const hit of resolution.hits) {
     if (hit.kind === 'module' && isInternalSeamHit(hit)) {
       mergeModuleOutcome(event, rollModuleDamage(resolution, hit.module));
@@ -1585,8 +1600,8 @@ function applyHePenetration(
   event.kind = 'he_pen';
   stampImpact(event, plateHit, effMm, shell.remainingPenMm);
   stampShotInfo(event, plateHit, shell.spec, target, shell.vel);
-  event.damage = dmgRoll;
-  target.combat.hp -= dmgRoll;
+  event.damage = hullDamageTaken(target.combat, dmgRoll);
+  target.combat.hp -= event.damage;
   const limitM = postPenetrationLimitM(shell.spec.caliberMm);
   for (const hit of hits) {
     const spanEnd = hit.tExit ?? hit.t;
@@ -1623,8 +1638,8 @@ function applyHeSurfaceBurst(
     * spall * equipMult(target.combat, 'heSplash');
   stampImpact(event, plateHit, effMm, shell.remainingPenMm);
   stampShotInfo(event, plateHit, shell.spec, target, shell.vel);
-  event.damage = dmg;
-  target.combat.hp -= dmg;
+  event.damage = hullDamageTaken(target.combat, dmg);
+  target.combat.hp -= event.damage;
   // A missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
   if (plate.moduleLink) {
     mergeModuleOutcome(event, rollModuleDamage(ctx, plate.moduleLink));
@@ -1879,8 +1894,8 @@ function resolveHeSplashTarget(
   stampImpact(event, plateHit, armorMm, shell.remainingPenMm);
   _siDir.subVectors(plateHit.point, burstPoint);
   stampShotInfo(event, plateHit, shell.spec, tank, _siDir);
-  event.damage = dmg;
-  tank.combat.hp -= dmg;
+  event.damage = hullDamageTaken(tank.combat, dmg);
+  tank.combat.hp -= event.damage;
   // A missing link is absent from combat.modules, so rollModuleDamage is the same no-op.
   if (plateHit.plate.moduleLink) {
     ctx.chanceScale = 1;

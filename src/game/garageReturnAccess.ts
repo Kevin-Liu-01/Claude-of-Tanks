@@ -49,8 +49,8 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     async leave() {
       return (await owner.preload()).leave();
     },
-    async battleAgain() {
-      return (await owner.preload()).battleAgain();
+    async battleAgain(trigger?: () => boolean) {
+      return (await owner.preload()).battleAgain(trigger);
     },
   });
 }

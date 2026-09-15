@@ -2655,8 +2655,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const battleRuleMeta: Partial<Record<GameModeId, BattleChoiceMeta>> = {
     capture_the_flag: { short: 'CTF', label: t('garage.battle.ctfLabel'), icon: 'modeFlag' },
-    zone_control: { short: '1000', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
-    turbo_ball: { short: 'BALL', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
+    zone_control: { short: '750', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
+    turbo_ball: { short: 'TURBO', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
     endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
     frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
   };
@@ -2747,6 +2747,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setBattleGameMode(choice.dataset.gameMode);
     closeBattleMenu({ restoreFocus: true });
   });
+  // batch 19 (2026-09-14): the Garage and the play menu share the remembered rule set — a mode picked
+  // in the play menu (or last session) is what BATTLE launches instead of silently reverting to Standard
+  try {
+    const remembered = localStorage.getItem('cot.game.mode.v1');
+    if (remembered && remembered !== 'standard' && battleRuleMeta[normalizeGameMode(remembered)]) {
+      setBattleGameMode(remembered);
+    }
+  } catch (_) { /* session-only */ }
   root.addEventListener('pointerdown', (event) => {
     if (!battleControl.contains(eventNode(event))) closeBattleMenu();
   });

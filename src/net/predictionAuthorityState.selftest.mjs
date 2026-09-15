@@ -55,10 +55,12 @@ test('mobility capture is a detached, minimal viewer-only primitive record', () 
   entity.combat.crew.driver = false;
   entity.combat.equipMults.turret = 1.15;
   entity.modeSpeedMultiplier = 1.85;
+  entity.modeGravityScale = 0.6; // batch 19: the ruleset gravity rides the same record
   entity.hiddenEnemy = { id: 'classified-enemy', pos: { x: 421, z: 312 } };
   const captured = capturePredictionAuthorityState(entity);
   assert.deepEqual(Object.keys(captured).sort(),
-    ['crew', 'equipment', 'id', 'modeSpeedMultiplier', 'modules', 'movement']);
+    ['crew', 'equipment', 'id', 'modeGravityScale', 'modeSpeedMultiplier', 'modules', 'movement']);
+  assert.equal(captured.modeGravityScale, 0.6);
   assert.equal(captured.id, 'viewer');
   assert.equal(JSON.stringify(captured).includes('classified-enemy'), false);
   assert.equal(JSON.stringify(captured).includes('maxHp'), false);

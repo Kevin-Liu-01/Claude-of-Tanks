@@ -48,6 +48,7 @@ import {
 } from './endScreen.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
+import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
 
 type EntityId = string;
 type TeamSide = 'ally' | 'enemy' | null;
@@ -118,8 +119,16 @@ interface BattleEndedEvent {
   readonly roster?: readonly EndRosterRow[];
   readonly timeS?: number;
   readonly map?: string | null;
+  readonly mapId?: string | null;
   readonly reason?: string | null;
   readonly result?: EndScreenResult;
+  // batch 19: the campaign debrief reads the mode, the operation, the line, the clock and the losses
+  readonly gameMode?: string;
+  readonly campaignOperationId?: string | null;
+  readonly line?: RuntimeValue;
+  readonly durationS?: number;
+  readonly timeLimitS?: number | null;
+  readonly alliesLost?: number;
 }
 
 interface Combatant {
@@ -188,6 +197,7 @@ interface EndInfo {
   readonly timeS?: number;
   readonly map: string | null;
   readonly reason: string | null;
+  readonly campaign: CampaignDebrief | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -1366,6 +1376,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       } : null,
       allies,
       enemies,
+      campaign: endInfo?.campaign ?? null,
     };
   }
 
@@ -1596,7 +1607,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // report header data (r3): battle duration is the payload's end-of-battle
     // sim clock (setupBattle zeroes it), map id is an additive state.ts
     // enrichment (docs/SYSTEMS.md) — the header simply omits what is absent
-    endInfo = p ? { timeS: p.timeS, map: p.map || null, reason: p.reason || null } : null;
+    endInfo = p ? { timeS: p.timeS, map: p.map || p.mapId || null, reason: p.reason || null, campaign: campaignDebrief(p) } : null;
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();
   });

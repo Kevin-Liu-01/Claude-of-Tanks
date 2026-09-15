@@ -35,6 +35,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
+import type { CampaignDebrief } from '../game/campaignDebrief.ts';
 import type {
   NetworkRoomPlayer,
   NetworkRoomState,
@@ -95,6 +96,8 @@ export interface EndScreenSummary {
   bestShot?: EndScreenBestShot | null;
   allies: EndScreenTeamRow[];
   enemies: EndScreenTeamRow[];
+  /** Campaign sortie debrief (Frontline Assault on a ladder map); absent otherwise. */
+  campaign?: CampaignDebrief | null;
 }
 
 export interface EndScreenRuntime {
@@ -204,6 +207,16 @@ const ES_CSS = `
   text-transform:uppercase;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;gap:18px;}
 .cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:#8797a3}
 .cot-es .es-meta b{color:#c8d4de;font-weight:800;}
+.cot-es .es-campaign{margin:12px auto 0;width:min(560px,92vw);padding:10px 14px 11px;text-align:center;
+  border:1px solid rgba(230,154,54,.5);border-left:3px solid #e69a36;border-radius:4px;background:rgba(9,13,18,.72);}
+.cot-es .es-campaign .ck{font-family:${FONT_COND};font-size:9px;font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:#e2b56a;}
+.cot-es .es-campaign .ct{margin-top:3px;font-family:${FONT_COND};font-size:19px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff0d8;}
+.cot-es .es-campaign .cs{margin-top:5px;font-size:12.5px;color:#c8d3db;}
+.cot-es .es-campaign .cs b{color:#ffe4b0;font-weight:800;}
+.cot-es .es-campaign .stars{display:inline-flex;gap:3px;margin:6px 0 0;font-size:20px;line-height:1;letter-spacing:.04em;}
+.cot-es .es-campaign .stars i{font-style:normal;color:#4a5560;}
+.cot-es .es-campaign .stars i.on{color:#ffcc55;text-shadow:0 0 10px rgba(255,190,70,.55);}
+.cot-es .es-campaign .cn{margin-top:6px;font-family:${FONT_COND};font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8ea2b0;}
 /* --- two-column debrief --------------------------------------------------- */
 .cot-es .es-report{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
   align-items:stretch;gap:12px;width:1160px;max-width:96vw;height:clamp(300px,45vh,390px);
@@ -746,7 +759,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         ? t('endScreen.outcome.victory.survived')
         : t('endScreen.outcome.victory.alive');
     }
-    if (result === 'defeat') return t('endScreen.outcome.defeat');
+    if (result === 'defeat') {
+      return sum.reason === 'time_limit' ? t('endScreen.outcome.defeat.time') : t('endScreen.outcome.defeat');
+    }
     if (result !== 'draw') return '';
     return sum.reason === 'time_limit'
       ? t('endScreen.outcome.draw.time')
@@ -780,6 +795,42 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     meta.innerHTML = bits.join('');
     if (sum.map) host.dataset.map = sum.map;
     if (sum.timeS > 0) host.dataset.durationS = String(Math.floor(sum.timeS));
+    if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
+  }
+
+  // batch 19 (2026-09-14): a Frontline Assault sortie on a ladder map debriefs the operation —
+  // sectors, the stars this sortie earned (held / under par / no ally lost) and what opens next
+  function renderCampaignDebrief(hero: HTMLElement, debrief: CampaignDebrief): void {
+    const block = el('div', 'es-campaign es-in', hero);
+    block.style.setProperty('--i', nextI());
+    block.dataset.campaignOperation = debrief.operation.id;
+    block.dataset.campaignStars = String(debrief.stars);
+    const kicker = el('div', 'ck', block);
+    kicker.textContent = t('endScreen.campaign.kicker', { index: String(debrief.operation.index), total: '6' });
+    const title = el('div', 'ct', block);
+    title.textContent = t(`campaign.op.${debrief.operation.id}.title`);
+    const summary = el('div', 'cs', block);
+    const timeBits = debrief.durationS != null
+      ? t('endScreen.campaign.time', { time: fmtTime(debrief.durationS), par: fmtTime(debrief.parTimeS) }) : '';
+    summary.innerHTML = `${t(debrief.cleared ? 'endScreen.campaign.cleared' : 'endScreen.campaign.lost', {
+      taken: `<b>${debrief.sectorsTaken}</b>`, total: String(debrief.sectorsTotal),
+    })}${timeBits ? ` · ${timeBits}` : ''}`;
+    const stars = el('div', 'stars', block);
+    stars.setAttribute('role', 'img');
+    stars.setAttribute('aria-label', t('endScreen.campaign.starsAria', { stars: String(debrief.stars) }));
+    const labels = ['endScreen.campaign.star.held', 'endScreen.campaign.star.par', 'endScreen.campaign.star.allies'];
+    const lit = [debrief.cleared, debrief.underPar, debrief.noAllyLost];
+    labels.forEach((key, index) => {
+      const star = el('i', lit[index] ? 'on' : '', stars);
+      star.textContent = '★';
+      star.title = t(key);
+    });
+    const next = el('div', 'cn', block);
+    next.textContent = !debrief.cleared
+      ? t('endScreen.campaign.retryHint')
+      : debrief.next
+        ? t('endScreen.campaign.nextHint', { title: t(`campaign.op.${debrief.next.id}.title`) })
+        : t('endScreen.campaign.complete');
   }
 
   function renderMiniStat(
@@ -919,9 +970,23 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     renderRematchPanel(rematchPanel);
   }
 
-  function renderEndActions(): void {
+  function renderEndActions(sum: EndScreenSummary | null = null): void {
     const actions = el('div', 'es-actions es-in', host);
     actions.style.setProperty('--i', String(seq + 3));
+    if (!roomContext?.state && sum?.campaign?.next) {
+      // campaign ladder: the next (or the same, after a loss) operation is one click away
+      const debrief = sum.campaign;
+      const next = debrief.next!;
+      const cta = el('button', 'cot-es-btn prime', actions);
+      cta.type = 'button';
+      cta.dataset.campaignNext = next.id;
+      cta.innerHTML = `<span class="btn-inner">${uiIconSVG('modeZones', 18)}` +
+        `<span>${t(debrief.cleared ? 'endScreen.campaign.next' : 'endScreen.campaign.retry', { title: t(`campaign.op.${next.id}.title`) })}</span></span>`;
+      cta.addEventListener('click', () => {
+        bus.emit('ui:click', {});
+        bus.emit('ui:campaignNext', { operationId: next.id, mapId: next.mapId });
+      });
+    }
     if (!roomContext?.state) {
       const again = el('button', 'cot-es-btn prime', actions);
       again.type = 'button';
@@ -968,7 +1033,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       renderTeamDebrief(report, sum);
 
       renderEndRematch();
-      renderEndActions();
+      renderEndActions(sum);
 
       host.classList.add('show');
       host.setAttribute('aria-hidden', 'false');

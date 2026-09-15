@@ -81,6 +81,7 @@ export interface PredictionEntity {
   contactGeom?: MovementContactGeometry | null;
   rigidGear?: boolean;
   modeSpeedMultiplier?: number;
+  modeGravityScale?: number;
 }
 
 export interface PredictionSimEntity extends PredictionEntity {
@@ -462,6 +463,7 @@ export class LocalTankPredictor {
       contactGeom: entity.contactGeom || null,
       rigidGear: !!entity.rigidGear,
       modeSpeedMultiplier: entity.modeSpeedMultiplier,
+      modeGravityScale: entity.modeGravityScale,
       input: {
         throttle: 0,
         steer: 0,
@@ -653,6 +655,7 @@ export class LocalTankPredictor {
     // These values have already been admitted by the authoritative snapshot
     // bridge. Do not infer special-action activation from local action bits.
     this.simEntity.modeSpeedMultiplier = this.entity.modeSpeedMultiplier;
+    this.simEntity.modeGravityScale = this.entity.modeGravityScale;
     this.simEntity.state.suspensionAim = this.entity.state.suspensionAim;
   }
 

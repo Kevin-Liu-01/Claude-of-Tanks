@@ -4,9 +4,15 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // sorties — how far the line was pushed on each map and how often the last
 // sector was held. Like the battle profile it records outcomes only; there
 // is no wallet, research or unlock behind it.
+//
+// Batch 19 (2026-09-14): version 2 adds stars per map (cleared / under par /
+// no ally lost, best of every sortie) and the fastest held line. A version-1
+// record migrates in place (one star per held map, no time).
 
 export const CAMPAIGN_KEY = 'cot.campaign.v1';
-const CAMPAIGN_VERSION = 1;
+const CAMPAIGN_VERSION = 2;
+/** Second star: the line is held inside this share of the sortie clock. */
+export const CAMPAIGN_PAR_SHARE = 0.55;
 
 export type CampaignResult = 'victory' | 'draw' | 'defeat';
 
@@ -18,6 +24,10 @@ export interface FrontlineMapProgress {
   held: number;
   lastResult: CampaignResult | null;
   updatedAt: number;
+  /** Best stars earned on the map (0–3). */
+  stars: number;
+  /** Fastest held line in seconds, null until one was held with a known clock. */
+  bestTimeS: number | null;
 }
 
 export interface CampaignRecord {
@@ -31,6 +41,11 @@ export interface FrontlineOutcomeInput {
   reason?: RuntimeValue;
   line?: RuntimeValue;
   completedAt?: RuntimeValue;
+  /** Sortie clock read at the end (seconds) and the ruleset clock it ran against. */
+  durationS?: RuntimeValue;
+  timeLimitS?: RuntimeValue;
+  /** Allied bots destroyed during the sortie. */
+  alliesLost?: RuntimeValue;
 }
 
 export interface CampaignStorage {
@@ -62,8 +77,36 @@ function finiteInt(value: unknown, fallback = 0): number {
   return Number.isFinite(n) ? Math.max(0, Math.round(n)) : fallback;
 }
 
+function finiteSeconds(value: unknown): number | null {
+  const n = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function normalizeResult(value: unknown): CampaignResult | null {
   return value === 'victory' || value === 'defeat' || value === 'draw' ? value : null;
+}
+
+/** Stars a sortie earns: one for holding the line, one for holding it inside par, one for losing no ally. */
+export function campaignStarsFor(input: Pick<FrontlineOutcomeInput, 'result' | 'durationS' | 'timeLimitS' | 'alliesLost'>): number {
+  if (normalizeResult(input.result) !== 'victory') return 0;
+  let stars = 1;
+  const durationS = finiteSeconds(input.durationS);
+  const timeLimitS = finiteSeconds(input.timeLimitS);
+  if (durationS != null && timeLimitS != null && timeLimitS > 0 && durationS <= timeLimitS * CAMPAIGN_PAR_SHARE) stars++;
+  const alliesLost = input.alliesLost;
+  if ((typeof alliesLost === 'number' || typeof alliesLost === 'string') && Number(alliesLost) === 0) stars++;
+  return stars;
+}
+
+function normalizeProgress(entry: Partial<FrontlineMapProgress>, version: number): FrontlineMapProgress {
+  const held = finiteInt(entry.held);
+  return {
+    attempts: finiteInt(entry.attempts), bestLine: finiteInt(entry.bestLine), total: finiteInt(entry.total, 3),
+    held, lastResult: normalizeResult(entry.lastResult), updatedAt: finiteInt(entry.updatedAt),
+    // version 1 knew no stars: a held line is worth one
+    stars: version >= 2 ? Math.min(3, finiteInt(entry.stars)) : (held > 0 ? 1 : 0),
+    bestTimeS: version >= 2 ? finiteSeconds(entry.bestTimeS) : null,
+  };
 }
 
 export function readCampaignRecord(storage: CampaignStorage | null = defaultStorage()): CampaignRecord {
@@ -72,17 +115,14 @@ export function readCampaignRecord(storage: CampaignStorage | null = defaultStor
     const raw = storage.getItem(CAMPAIGN_KEY);
     if (!raw) return emptyRecord();
     const parsed = JSON.parse(raw) as Partial<CampaignRecord> | null;
-    if (!parsed || parsed.version !== CAMPAIGN_VERSION || typeof parsed.frontline !== 'object' || !parsed.frontline) {
+    const version = parsed?.version;
+    if (!parsed || (version !== 1 && version !== CAMPAIGN_VERSION) || typeof parsed.frontline !== 'object' || !parsed.frontline) {
       return emptyRecord();
     }
     const frontline: Record<string, FrontlineMapProgress> = {};
     for (const [mapId, entry] of Object.entries(parsed.frontline)) {
       if (!entry || typeof entry !== 'object') continue;
-      const e = entry as Partial<FrontlineMapProgress>;
-      frontline[mapId] = {
-        attempts: finiteInt(e.attempts), bestLine: finiteInt(e.bestLine), total: finiteInt(e.total, 3),
-        held: finiteInt(e.held), lastResult: normalizeResult(e.lastResult), updatedAt: finiteInt(e.updatedAt),
-      };
+      frontline[mapId] = normalizeProgress(entry as Partial<FrontlineMapProgress>, version);
     }
     return { version: CAMPAIGN_VERSION, frontline };
   } catch {
@@ -98,7 +138,7 @@ function writeCampaignRecord(record: CampaignRecord, storage: CampaignStorage | 
 /**
  * Records one Frontline Assault sortie. A victory means the last sector was
  * held (`line_held`), so the whole line counts; otherwise the sectors taken so
- * far (`line.index`) stand as the push.
+ * far (`line.index`) stand as the push. Stars and the fastest hold only ever improve.
  */
 export function recordFrontlineOutcome(
   input: FrontlineOutcomeInput,
@@ -111,8 +151,9 @@ export function recordFrontlineOutcome(
   const total = Math.max(1, finiteInt(line?.total, 3));
   const reached = result === 'victory' ? total : Math.min(total, finiteInt(line?.index));
   const previous = record.frontline[mapId] ?? {
-    attempts: 0, bestLine: 0, total, held: 0, lastResult: null, updatedAt: 0,
+    attempts: 0, bestLine: 0, total, held: 0, lastResult: null, updatedAt: 0, stars: 0, bestTimeS: null,
   };
+  const durationS = result === 'victory' ? finiteSeconds(input.durationS) : null;
   record.frontline[mapId] = {
     attempts: previous.attempts + 1,
     bestLine: Math.max(previous.bestLine, reached),
@@ -120,6 +161,9 @@ export function recordFrontlineOutcome(
     held: previous.held + (result === 'victory' ? 1 : 0),
     lastResult: result,
     updatedAt: finiteInt(input.completedAt, Date.now()),
+    stars: Math.max(previous.stars, campaignStarsFor(input)),
+    bestTimeS: durationS == null ? previous.bestTimeS
+      : previous.bestTimeS == null ? durationS : Math.min(previous.bestTimeS, durationS),
   };
   writeCampaignRecord(record, storage);
   return record;
@@ -131,14 +175,16 @@ export interface FrontlineSummary {
   total: number;
   held: number;
   maps: number;
+  stars: number;
 }
 
 export function frontlineSummary(record: CampaignRecord = readCampaignRecord()): FrontlineSummary {
-  const summary: FrontlineSummary = { attempts: 0, bestLine: 0, total: 3, held: 0, maps: 0 };
+  const summary: FrontlineSummary = { attempts: 0, bestLine: 0, total: 3, held: 0, maps: 0, stars: 0 };
   for (const entry of Object.values(record.frontline)) {
     summary.attempts += entry.attempts;
     summary.held += entry.held;
     summary.maps += 1;
+    summary.stars += entry.stars;
     if (entry.bestLine > summary.bestLine || (entry.bestLine === summary.bestLine && entry.total > summary.total)) {
       summary.bestLine = entry.bestLine;
       summary.total = entry.total;
@@ -165,6 +211,7 @@ export function installCampaignProgress(
     if (event.reason === 'network_disconnect') return;
     recordFrontlineOutcome({
       mapId: event.mapId ?? event.map, result: event.result, reason: event.reason, line: event.line,
+      durationS: event.durationS ?? event.timeS, timeLimitS: event.timeLimitS, alliesLost: event.alliesLost,
     }, storage);
   });
 }

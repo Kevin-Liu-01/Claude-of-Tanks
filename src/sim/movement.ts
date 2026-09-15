@@ -234,6 +234,7 @@ interface DriveStep {
   topSpeed: number;
   reverseSpeed: number;
   speedMultiplier: number;
+  gravityScale: number;
   traverseMax: number;
   gunArc: number;
   acceleration: number;
@@ -304,6 +305,8 @@ export interface MovementEntity {
   combat?: MovementCombatState | null;
   contactGeom?: MovementContactGeometry | null;
   modeSpeedMultiplier?: number;
+  /** Ruleset gravity scale (sim/matchRuleset.ts): airborne hulls and the slope pull scale by it. */
+  modeGravityScale?: number;
   rigidGear?: boolean;
 }
 
@@ -802,6 +805,7 @@ const _driveStep: DriveStep = {
   topSpeed: 0,
   reverseSpeed: 0,
   speedMultiplier: 1,
+  gravityScale: 1,
   traverseMax: 0,
   gunArc: Infinity,
   acceleration: 0,
@@ -1139,8 +1143,9 @@ function advanceAirborneRide(
   dt: number,
   contactY: number,
   floorY: number,
+  gravityScale = 1,
 ): boolean {
-  ride.v -= GRAVITY * dt;
+  ride.v -= GRAVITY * gravityScale * dt;
   ride.y += ride.v * dt;
   ride.airTime = (ride.airTime || 0) + dt;
   // A rising hull must not be grabbed back out of flight by a ramp below it.
@@ -1181,7 +1186,7 @@ function constrainLoadedRide(
   return true;
 }
 
-function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number): void {
+function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: number, gravityScale = 1): void {
   const supportY = state._sup.y;
   const floorY = Number.isFinite(state._sup.floorY) ? state._sup.floorY : supportY;
   const ride = initializeRideState(state, supportY);
@@ -1189,7 +1194,7 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
   const contactY = supportY + RIDE_DROOP_M;
   const grounded = groundedAtStart
     ? constrainLoadedRide(ride, supportY, contactY, floorY, dt)
-    : advanceAirborneRide(state, ride, dt, contactY, floorY);
+    : advanceAirborneRide(state, ride, dt, contactY, floorY, gravityScale);
   state.grounded = grounded;
   ride.grounded = grounded;
   state.verticalSpeed = ride.v;
@@ -2188,6 +2193,13 @@ function prepareDriveStep(
     0.25,
     3,
   );
+  // ruleset gravity (sim/matchRuleset.ts): Turbo Ball's 0.6 g keeps a jumped hull in the air longer
+  // and softens the slope pull; the shell gravity scales at the muzzle from the same stamp.
+  drive.gravityScale = clamp(
+    Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1,
+    0.1,
+    3,
+  );
   drive.topSpeed = spec.topSpeedKmh / 3.6 * drive.speedMultiplier;
   drive.reverseSpeed = spec.reverseSpeedKmh / 3.6 * drive.speedMultiplier;
   drive.traverseMax = 0;
@@ -2387,7 +2399,7 @@ function applySlopeForces(
   const gravityShare = gripBlocked
     ? 1
     : (drive.throttle !== 0 ? 0.3 + 0.7 * slow : 1);
-  state.speed += -GRAVITY * Math.sin(drive.terrainPitch) * dt * gravityShare;
+  state.speed += -GRAVITY * drive.gravityScale * Math.sin(drive.terrainPitch) * dt * gravityShare;
 }
 
 function applyClimbCreep(
@@ -2611,7 +2623,7 @@ export function updateTank(
 
   // Loaded suspension follows the support envelope; once the droop limit is
   // exceeded, the chassis uses an independent ballistic phase until landing.
-  updateVerticalContact(state, groundedAtStart, dt);
+  updateVerticalContact(state, groundedAtStart, dt, drive.gravityScale);
 
   updateGunLay(entity, debuff, hAt, drive.gunArc, drive.steer, dt);
   updateTrackScrollAndBloom(spec, state, debuff, dt);

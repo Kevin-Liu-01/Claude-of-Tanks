@@ -148,11 +148,23 @@ await Promise.resolve();
 assert.deepEqual(customStarts, [],
   'the latest operation owns the menu solo fallback instead of stale intent');
 assert.deepEqual(soloStarts.at(-1), { specId: 'm1a2', mapId: 'winter' });
+// batch 19 (2026-09-14): a request that names its rules, map or operation beats a stale retained start —
+// the campaign ladder's Launch must never be swallowed by the Garage's pending BOTS start
+await runtime.open({ mode: 'private', startSolo: () => customStarts.push('stale') });
+capturedOptions.onSolo({ gameMode: 'frontline_assault', mapId: 'alpine', campaignOperationId: 'iron_ridge' });
+await Promise.resolve();
+assert.deepEqual(customStarts, [], 'the explicit campaign launch drops the stale retained start');
+assert.deepEqual(soloStarts.at(-1), { specId: 'm1a2', mapId: 'alpine', gameMode: 'frontline_assault', campaignOperationId: 'iron_ridge' },
+  'the campaign request reaches the loading boundary with its map and operation');
+await runtime.open({ mode: 'private', startSolo: () => customStarts.push('retained') });
+capturedOptions.onSolo({});
+await Promise.resolve();
+assert.deepEqual(customStarts, ['retained'], 'a bare Solo click still serves the retained Garage start');
 
 menuShowsRoom = true;
 const beforeCurrentRoom = events.slice();
 await runtime.open({ mode: 'ranked' });
-assert.equal(events.filter((event) => event[0] === 'show').length, 2,
+assert.equal(events.filter((event) => event[0] === 'show').length, beforeCurrentRoom.filter((event) => event[0] === 'show').length,
   'an already presented room prevents operation replacement');
 assert.deepEqual(events, beforeCurrentRoom, 'the retained-menu room guard starts no extra preload');
 assert.equal(await runtime.showCurrentRoom(), true);

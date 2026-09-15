@@ -208,7 +208,10 @@ import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
-import { createBus, createGameState } from './game/stateCore.ts';
+import { clearMatchSession, createBus, createGameState } from './game/stateCore.ts';
+import { campaignEnemyNations, campaignOperationById } from './game/campaignOperations.ts';
+import { matchRulesetFor } from './sim/matchRuleset.ts';
+import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
@@ -2025,10 +2028,11 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     preloadSettings: () => settings.preload(),
     preloadArmorAim: () => armorAimOverlay.preload(),
     preloadGarageReturn: () => garageReturn.preload(),
-    planRoster: (specId: string, randomRoster: boolean) =>
-      planBattleParticipantIds(game, specId, randomRoster),
-    planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean) =>
-      planBattleCamoOverrides(game, specId, mapId, randomRoster),
+    // campaign: the plan follows the operation's formation so the right profiles transfer early
+    planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null) =>
+      planBattleParticipantIds(game, specId, randomRoster, campaignEnemyNations(campaignOperationId)),
+    planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null) =>
+      planBattleCamoOverrides(game, specId, mapId, randomRoster, campaignEnemyNations(campaignOperationId)),
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
     preloadBattleClient: preloadBattleClientRuntime,
@@ -2381,6 +2385,8 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
             const hud = currentHud();
             hud?.setPreBattleWaiting(waiting);
             if (!waiting) hud?.preBattleCountdown(game.preBattleS);
+            // network rooms play the mode's own ruleset (the authority applies the same table)
+            if (!waiting) hud?.setPreBattleRules(matchRulesetFor(normalizeGameMode(game.gameMode)));
             // campaign slice 5: the brief opens with the countdown and fades a few seconds into play
             if (!waiting && game.gameMode === 'frontline_assault') {
               missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: game.preBattleS + 14 });
@@ -2496,6 +2502,10 @@ function beginBattleEntry(
   mapId: string | null = null,
   options: SoloBattleLoadingStartOptions | undefined = undefined,
 ) {
+  // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
+  // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
+  pendingTerrainVariant = options?.gameMode === 'frontline_assault' ? 'assault-trenches' : null;
+  pendingCampaignOperationId = null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
@@ -2515,7 +2525,11 @@ async function beginSoloBattle({
   pendingTerrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
   // campaign slice 5: the mission brief names the ladder operation when the sortie came from it
   pendingCampaignOperationId = gameMode === 'frontline_assault' ? campaignOperationId : null;
-  return soloBattleEntry.beginSelected({ specId, mapId, randomRoster, gameMode });
+  // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
+  const operation = campaignOperationById(pendingCampaignOperationId);
+  return soloBattleEntry.beginSelected({
+    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
+  });
 }
 
 /** QA-only cold entry. Production paths already own a loading veil and call
@@ -2682,7 +2696,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
 });
 
 const battleAgainAction = createBattleAgainAction({
-  action: () => garageReturn.battleAgain(),
+  action: (trigger) => garageReturn.battleAgain(trigger),
   loadFailure: () => import('./ui/garageReturnFailure.ts'),
   getPhase: () => game.phase,
   getEntryGeneration: () => sceneWatchdogEntryGeneration,
@@ -2709,6 +2723,19 @@ bus.on('ui:roomReady', (payload) => {
 });
 
 bus.on('ui:roomStart', () => currentNetworkRoom()?.startRound());
+
+// batch 19 (2026-09-14): the end screen's NEXT / RETRY OPERATION button — the covered return owns the
+// dismissal exactly like Battle Again, then the ladder sortie starts in place of the Garage's BATTLE click
+bus.on('ui:campaignNext', (payload) => {
+  const request = payload && typeof payload === 'object' ? payload as { operationId?: unknown; mapId?: unknown } : null;
+  const operationId = typeof request?.operationId === 'string' ? request.operationId : null;
+  const mapId = typeof request?.mapId === 'string' ? request.mapId : null;
+  if (!operationId || !mapId) return;
+  void battleAgainAction.run(() => {
+    void beginSoloBattle({ specId: selectedVehicle.id, mapId, gameMode: 'frontline_assault', campaignOperationId: operationId });
+    return true;
+  });
+});
 
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)
@@ -2800,6 +2827,8 @@ const battleFrame = createBattleFrameRuntime({
     advance: advancePreBattleCountdown,
     show: (seconds: number, warmPending = false) => {
       currentHud()?.preBattleCountdown(seconds, warmPending);
+      // batch 19: the rules of engagement sit under the count (Standard shows none)
+      currentHud()?.setPreBattleRules(game.ruleset);
       // campaign slice 5: the solo countdown opens the mission brief once per sortie
       if (game.gameMode === 'frontline_assault' && !missionBrief.isShowing()) {
         missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
@@ -2913,7 +2942,12 @@ invalidateGaragePresentation = () => {
   frameLoop.restart();
 };
 bus.on('phase:change', () => {
-  if (game.phase === 'garage') pendingTerrainVariant = null;
+  if (game.phase === 'garage') {
+    pendingTerrainVariant = null;
+    // batch 19: the finished match's objective state, ruleset and operation never outlive the return
+    pendingCampaignOperationId = null;
+    clearMatchSession(game);
+  }
   frameLoop.restart();
 });
 

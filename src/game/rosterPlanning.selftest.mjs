@@ -20,6 +20,26 @@ assert.deepEqual(again, first, 'planning is deterministic until a battle starts'
 assert.equal(first[0], 'm1a2', 'player remains the first participant');
 assert.equal(first.length, 14, 'random battle plan covers the full 7v7 roster');
 assert.equal(new Set(first).size, first.length, 'planned participant ids are unique');
+// batch 19 (2026-09-14): a campaign operation's formation fills the enemy seats first — same-era vehicles of
+// the named nations lead the plan (at most ten, leaving seats for the allies); no formation keeps the standard plan
+{
+  const russian = ['Russia', 'USSR', 'USSR/Russia', 'RU'];
+  const playerEra = getSpec('m1a2').era;
+  const contemporaries = { ww2: ['ww2'], 'cold-war': ['cold-war', 'modern'], modern: ['modern', 'cold-war', 'next-generation'], 'next-generation': ['next-generation', 'modern'] }[playerEra];
+  const inFormation = (id) => russian.includes(getSpec(id).nation) && contemporaries.includes(getSpec(id).era);
+  const formation = planBattleParticipantIds(game, 'm1a2', true, russian);
+  assert.equal(formation.length, 14); assert.equal(formation[0], 'm1a2');
+  assert.equal(new Set(formation).size, formation.length);
+  const available = game.allTanks.filter((tank) => tank.specId !== 'm1a2' && inFormation(tank.specId)).length;
+  assert.ok(available >= 3, `the production catalog fields same-era Russian vehicles (${available})`);
+  const lead = formation.slice(1, 11).filter(inFormation).length;
+  assert.equal(lead, Math.min(10, available), 'up to ten contemporary formation vehicles lead the roster');
+  const sameEraLead = formation.slice(1, 11).filter((id) => inFormation(id) && getSpec(id).era === playerEra).length;
+  const sameEraAvailable = game.allTanks.filter((tank) => tank.specId !== 'm1a2' && inFormation(tank.specId) && getSpec(tank.specId).era === playerEra).length;
+  assert.equal(sameEraLead, Math.min(10, sameEraAvailable), 'the player\'s own era fills the formation before its contemporaries');
+  assert.deepEqual(planBattleParticipantIds(game, 'm1a2', true, []), first, 'no formation keeps the standard plan');
+  assert.deepEqual(planBattleParticipantIds(game, 'm1a2', true, russian), formation, 'the formation plan is deterministic');
+}
 const firstCamo = planBattleCamoOverrides(game, 'm1a2', 'verdant', true);
 assert.deepEqual(planBattleCamoOverrides(game, 'm1a2', 'verdant', true), firstCamo,
   'planned bot camouflage is deterministic until a battle starts');

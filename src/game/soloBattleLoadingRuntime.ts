@@ -99,8 +99,8 @@ export interface SoloBattleLoadingRuntimeOptions {
   preloadSettings(): AsyncLoadResult;
   preloadArmorAim(): AsyncLoadResult;
   preloadGarageReturn(): AsyncLoadResult;
-  planRoster(specId: string, randomRoster: boolean): string[];
-  planCamoOverrides(specId: string, mapId: string, randomRoster: boolean): string[];
+  planRoster(specId: string, randomRoster: boolean, campaignOperationId?: string | null): string[];
+  planCamoOverrides(specId: string, mapId: string, randomRoster: boolean, campaignOperationId?: string | null): string[];
   ensureTankBuilders(specIds: string[]): AsyncLoadResult;
   preloadSoloAuthority(): AsyncLoadResult;
   preloadBattleClient(): AsyncLoadResult;
@@ -116,6 +116,7 @@ export interface SoloBattleLoadingRuntimeOptions {
       preBattleHold: boolean;
       randomRoster: boolean;
       gameMode?: string;
+      campaignOperationId?: string | null;
     },
   ): void;
   prepareBattleWorldServices(world: WorldRuntime): void;
@@ -157,6 +158,8 @@ export interface SoloBattleLoadingRuntime {
 export interface SoloBattleLoadingStartOptions {
   randomRoster?: boolean;
   gameMode?: string;
+  /** Campaign ladder operation (Frontline Assault): its difficulty and clock fold into the ruleset. */
+  campaignOperationId?: string | null;
 }
 
 export function soloBattleLoadingModeLabel(gameMode: string, requestedMapId: string | null): string {
@@ -341,7 +344,7 @@ export function createSoloBattleLoadingRuntime(
   const host = globalThis as LoadingHost;
 
   return {
-    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard' } = {}) {
+    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard', campaignOperationId = null } = {}) {
       // Debug/API entry can bypass the Garage's ui:battleStart event.
       post.setAdaptiveSuspended(true);
       const shownAt = now();
@@ -389,8 +392,8 @@ export function createSoloBattleLoadingRuntime(
       ]);
 
       battleLoad.progress(0.02, 'Loading battlefield');
-      const plannedRoster = planRoster(specId, randomRoster);
-      const plannedAutoCamoIds = planCamoOverrides(specId, resolved, randomRoster);
+      const plannedRoster = planRoster(specId, randomRoster, campaignOperationId);
+      const plannedAutoCamoIds = planCamoOverrides(specId, resolved, randomRoster, campaignOperationId);
       const rosterTexture = battleIntent.prepareRoster({
         specId,
         mapId: resolved,
@@ -467,6 +470,7 @@ export function createSoloBattleLoadingRuntime(
         preBattleHold: true,
         randomRoster,
         ...(normalizedGameMode === 'standard' ? {} : { gameMode: normalizedGameMode }),
+        ...(campaignOperationId ? { campaignOperationId } : {}),
       });
       battleLoad.progress(0.565, 'Drawing tactical map');
       prepareBattleWorldServices(getWorld());

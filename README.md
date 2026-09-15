@@ -47,8 +47,8 @@ films, 24-shot mosaic, and directed Strv 122 versus Leclerc sequence now publish
   <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
 </p>
 
-- **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed super-speed Turbo Ball, or cooperative
-  Endless Horde in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
+- **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, cooperative
+  Endless Horde, or the six-operation Frontline Assault campaign in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
   terrain, collision, destructible structures, persistent wrecks, mode-specific respawns, and authority-owned results.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
   exact-surface review packet from the same specification used in combat.

@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import {
-  CAMPAIGN_OPERATIONS, CAMPAIGN_OBJECTIVE_KEYS, campaignLadder, campaignOperationById,
-  campaignOperationForMap, campaignOperationStatus, campaignSummary,
+  CAMPAIGN_OPERATIONS, CAMPAIGN_OBJECTIVE_KEYS, CAMPAIGN_ENEMY_NATIONS, campaignLadder, campaignOperationById,
+  campaignOperationForMap, campaignOperationStatus, campaignSummary, campaignRulesetInput, campaignEnemyNations,
+  campaignNextOperation, campaignParTimeS,
 } from './campaignOperations.ts';
+import { CAMPAIGN_PAR_SHARE } from './campaignProgress.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
 // The ladder: six operations, unique ids and maps, catalog maps only, 1-based contiguous indices.
 assert.equal(CAMPAIGN_OPERATIONS.length, 6);
@@ -18,6 +21,27 @@ for (const operation of CAMPAIGN_OPERATIONS) {
   assert.equal(campaignOperationForMap(operation.mapId), operation);
 }
 assert.equal(campaignOperationById('nope'), null);
+// batch 19: difficulty climbs the ladder, the clock tightens, par is a fixed share of the clock, and the
+// operation's formation names real spec nations that the ruleset and the roster read
+assert.deepEqual(CAMPAIGN_OPERATIONS.map((operation) => operation.difficulty), [1, 2, 3, 4, 5, 6]);
+for (let i = 1; i < CAMPAIGN_OPERATIONS.length; i++) {
+  assert.ok(CAMPAIGN_OPERATIONS[i].timeLimitS <= CAMPAIGN_OPERATIONS[i - 1].timeLimitS, 'the clock never loosens up the ladder');
+}
+assert.ok(CAMPAIGN_OPERATIONS.every((operation) => operation.timeLimitS >= 600 && operation.timeLimitS <= 900));
+assert.equal(campaignParTimeS(CAMPAIGN_OPERATIONS[1]), Math.round(750 * CAMPAIGN_PAR_SHARE));
+assert.deepEqual(campaignRulesetInput('iron_ridge'), { difficulty: 2, timeLimitS: 750 });
+assert.equal(campaignRulesetInput(null), null); assert.equal(campaignRulesetInput('nope'), null);
+{
+  const ruleset = matchRulesetFor('frontline_assault', campaignRulesetInput('delta_crossing'));
+  assert.equal(ruleset.timeLimitS, 660, 'the operation clock is the ruleset clock');
+  assert.equal(ruleset.assault.extraDefenders, 2, 'operation 6 fields two extra defenders per sector');
+  assert.ok(Math.abs(ruleset.assault.difficultyHp - 0.3) < 1e-9);
+}
+assert.ok(campaignEnemyNations('first_light').includes('Russia') && campaignEnemyNations('first_light').includes('USSR'));
+assert.deepEqual(campaignEnemyNations('steinburg'), CAMPAIGN_ENEMY_NATIONS.germany);
+assert.deepEqual(campaignEnemyNations(null), []);
+assert.equal(campaignNextOperation(CAMPAIGN_OPERATIONS[0]), CAMPAIGN_OPERATIONS[1]);
+assert.equal(campaignNextOperation(CAMPAIGN_OPERATIONS[5]), null); assert.equal(campaignNextOperation(null), null);
 assert.equal(campaignOperationForMap('desert'), null, 'maps outside the ladder are free sorties');
 
 // Unlock rule over synthetic records: the first is always ready; a cleared operation (last sector held) opens the next.
@@ -34,9 +58,15 @@ assert.deepEqual(campaignLadder(outOfOrder).map((entry) => entry.status), ['read
   'a free sortie that held a later map counts as cleared and opens the map after it');
 assert.equal(campaignOperationStatus(CAMPAIGN_OPERATIONS[5], two), 'locked');
 const all = { version: 1, frontline: Object.fromEntries(CAMPAIGN_OPERATIONS.map((operation) => [operation.mapId, progress(1)])) };
-assert.deepEqual(campaignSummary(all), { cleared: 6, total: 6, next: CAMPAIGN_OPERATIONS[5] });
-assert.deepEqual(campaignSummary(two), { cleared: 2, total: 6, next: CAMPAIGN_OPERATIONS[2] });
-assert.deepEqual(campaignSummary(empty), { cleared: 0, total: 6, next: CAMPAIGN_OPERATIONS[0] });
+assert.deepEqual(campaignSummary(all), { cleared: 6, total: 6, stars: 0, maxStars: 18, next: CAMPAIGN_OPERATIONS[5] });
+assert.deepEqual(campaignSummary(two), { cleared: 2, total: 6, stars: 0, maxStars: 18, next: CAMPAIGN_OPERATIONS[2] });
+assert.deepEqual(campaignSummary(empty), { cleared: 0, total: 6, stars: 0, maxStars: 18, next: CAMPAIGN_OPERATIONS[0] });
+{
+  const starred = { version: 2, frontline: { verdant: { ...progress(1), stars: 3 }, alpine: { ...progress(1), stars: 2 } } };
+  assert.deepEqual(campaignLadder(starred).map((entry) => entry.stars), [3, 2, 0, 0, 0, 0]);
+  assert.equal(campaignSummary(starred).stars, 5, 'the summary totals the stars');
+  assert.equal(campaignLadder({ version: 2, frontline: { verdant: { ...progress(1), stars: 7 } } })[0].stars, 3, 'stars clamp at three');
+}
 assert.ok(Object.isFrozen(CAMPAIGN_OPERATIONS) && CAMPAIGN_OPERATIONS.every((operation) => Object.isFrozen(operation)));
 
 // Copy: every operation has a title and a brief in both catalogs, plus the shared campaign / brief strings.

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createBus, createGameState, mulberry32 } from './stateCore.ts';
+import { clearMatchSession, createBus, createGameState, mulberry32 } from './stateCore.ts';
 
 const first = mulberry32(6000);
 const second = mulberry32(6000);
@@ -38,5 +38,23 @@ assert.equal(a.mapId, 'verdant');
 assert.notEqual(a.tanks, b.tanks);
 assert.notEqual(a.tankById, b.tankById);
 assert.deepEqual(a.openingRouteJobs, []);
+assert.equal(a.ruleset.mode, 'standard', 'a fresh session plays Standard rules');
+assert.equal(a.campaignOperationId, null);
+{
+  const session = createGameState();
+  session.gameMode = 'turbo_ball';
+  session.matchModeController = { id: 'turbo_ball' };
+  session.matchModeState = { id: 'turbo_ball' };
+  session.modeEvents.push({ type: 'mode_goal_scored', payload: {} });
+  session.ruleset = { ...session.ruleset, mode: 'turbo_ball', gravityScale: 0.6 };
+  session.campaignOperationId = 'first_light';
+  clearMatchSession(session);
+  assert.equal(session.gameMode, 'standard');
+  assert.equal(session.matchModeController, null);
+  assert.equal(session.matchModeState, null);
+  assert.deepEqual(session.modeEvents, []);
+  assert.equal(session.ruleset.gravityScale, 1, 'the garage return restores Standard rules');
+  assert.equal(session.campaignOperationId, null);
+}
 
 console.log('stateCore.selftest: deterministic session shell and mutation-safe bus passed');

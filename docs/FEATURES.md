@@ -19,7 +19,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Battlefields | 30 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
-| Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde; solo, private, LAN, and ranked deployment |
+| Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder); one ruleset per mode; solo, private, LAN, and ranked deployment |
 | Platforms | Desktop and mobile browsers |
 | Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
@@ -36,15 +36,20 @@ development-only vehicles and two reference-only placeholders.
 
 ## Battle rules
 
-Five rule sets use the same complete armored-combat simulation. Standard
+Six rule sets use the same complete armored-combat simulation, each described
+by one pure ruleset (`src/sim/matchRuleset.ts`) that the sim, the network
+authority, the HUD and the rule cards all read — see `docs/GAME-MODES.md`. Standard
 Battle is the unchanged elimination game. Capture the Flag adds flag carry,
 drop, return, three-capture scoring, and six-second respawns. Zone Control
-scores three capturable sectors until one team reaches 1,000 points. Turbo Ball
+scores three capturable sectors until one team reaches 750 points. Turbo Ball
 gives both teams super-fast tanks and a physical ball that can be moved by a
 hull or a shell; guns, armor, and damage remain active. Endless Horde is
 cooperative: escalating bot waves increase in number, durability, and speed,
 while deterministic floating repair and ammunition caches become progressively
-harder to sustain.
+harder to sustain; every cleared wave repairs the survivors. Frontline Assault is
+the campaign sortie: take three trench sectors against escalating counter-attacks
+and hold the last one before its clock runs out, across a six-operation ladder
+with rising difficulty, per-operation clocks and stars.
 
 The room host selects the rule before ready-up. The choice persists through
 the authoritative lobby handoff and rematches. Objective bots pursue live

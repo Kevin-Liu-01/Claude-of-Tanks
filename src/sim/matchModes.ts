@@ -12,6 +12,9 @@ import {
 import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
+import {
+  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset,
+} from './matchRuleset.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
@@ -46,8 +49,8 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
       respawns: true,
     }),
     zone_control: Object.freeze({
-      id: 'zone_control', label: 'Zone Control', shortLabel: '1000', icon: 'modeZones',
-      description: 'Capture and hold three sectors. First team to 1,000 points wins.',
+      id: 'zone_control', label: 'Zone Control', shortLabel: '750', icon: 'modeZones',
+      description: 'Capture and hold three sectors. First team to 750 points wins.',
       respawns: true,
     }),
     turbo_ball: Object.freeze({
@@ -71,24 +74,21 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);
-const RESPAWN_S = 6;
+// Score targets, respawn delays, mode speed / gravity, the flag-carrier penalty, the Horde wave
+// repair and the Frontline Assault escalation are rules — they live in matchRuleset.ts so the sim,
+// the authority, the HUD and the rule cards read one source. The constants below are geometry.
 const FLAG_RADIUS_M = 8;
 const FLAG_CAPTURE_RADIUS_M = 12;
 const FLAG_RETURN_S = 18;
-const FLAG_SCORE_TARGET = 3;
 const ZONE_RADIUS_M = 30;
 const ZONE_CAPTURE_S = 8;
 const ZONE_POINTS_PER_SECOND = 2;
-const ZONE_SCORE_TARGET = 1000;
 const BALL_RADIUS_M = 2.2;
 const BALL_GOAL_RADIUS_M = 18;
-const BALL_SCORE_TARGET = 5;
 const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
 const HORDE_INITIAL_ACTIVE = 3;
-const ASSAULT_HOLD_S = 20;
-const ASSAULT_INITIAL_ACTIVE = 3;
 const PICKUP_RADIUS_M = 7;
 
 interface Vec3Like { x: number; y: number; z: number }
@@ -111,6 +111,8 @@ export interface MatchModeEntity {
   };
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
+  /** Ruleset gravity scale (matchRuleset.ts) the movement and ballistics read. */
+  modeGravityScale?: number;
 }
 
 export interface MatchModeSpawn {
@@ -132,6 +134,8 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
   entities: Entity[];
   seed?: number;
   placement?: MatchPlacement;
+  /** The rules this match plays by; derived from the mode when absent (campaign operations pass theirs). */
+  ruleset?: MatchRuleset;
 }
 
 interface TeamScore { alpha: number; bravo: number }
@@ -221,6 +225,8 @@ export interface MatchModeController<
 > {
   readonly id: GameModeId;
   readonly definition: GameModeDefinition;
+  /** The rules this match plays by (sim/matchRuleset.ts). */
+  readonly ruleset: MatchRuleset;
   readonly state: MatchModePresentationState;
   readonly usesElimination: boolean;
   step(dt: number, timeS: number): MatchModeResult | null;
@@ -248,10 +254,7 @@ function otherTeam(team: ObjectiveTeam): ObjectiveTeam {
 }
 
 function scoreTargetForMode(mode: GameModeId): number | null {
-  if (mode === 'capture_the_flag') return FLAG_SCORE_TARGET;
-  if (mode === 'zone_control') return ZONE_SCORE_TARGET;
-  if (mode === 'turbo_ball') return BALL_SCORE_TARGET;
-  return null;
+  return RULESET_SCORE_TARGETS[mode] ?? null;
 }
 
 function squaredDistance(entity: MatchModeEntity, x: number, z: number): number {
@@ -292,12 +295,23 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
   terrainHeight = () => 0, emit = () => {},
   placement,
+  ruleset: rulesetOption,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
   if (!Array.isArray(entities) || entities.length < 1 || typeof revive !== 'function') {
     throw new TypeError('match mode controller requires entities and a revive hook');
   }
   const id = normalizeGameMode(mode);
   const definition = GAME_MODE_DEFINITIONS[id];
+  const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === id ? rulesetOption : matchRulesetFor(id);
+  const baseSpeed = ruleset.speedMultiplier;
+  const scoreTarget = scoreTargetForMode(id) ?? Infinity;
+  // Physics the ruleset bends: the movement reads modeSpeedMultiplier / modeGravityScale every step,
+  // ballistics reads the gravity scale at the muzzle; stamped at start, at every revive, and when a
+  // flag changes hands.
+  const stampPhysics = (entity: Entity, speed = baseSpeed): void => {
+    entity.modeSpeedMultiplier = speed;
+    entity.modeGravityScale = ruleset.gravityScale;
+  };
   const rng = seededRandom(seed ^ 0x4d4f4445);
   const spawns = new Map<string, MatchModeSpawn>();
   const entityById = new Map<string, Entity>();
@@ -316,7 +330,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     });
     destroyed.set(entity.id, !!entity.combat.destroyed);
     entity.modeActive = true;
-    entity.modeSpeedMultiplier = id === 'turbo_ball' ? 1.85 : 1;
+    stampPhysics(entity);
   }
   for (const team of ['alpha', 'bravo'] as const) {
     if (!teams[team].length) continue;
@@ -409,7 +423,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     id,
     label: definition.label,
     perspectiveTeam: 'alpha',
-    respawns: definition.respawns,
+    respawns: ruleset.respawnS != null,
     target: scoreTargetForMode(id),
     score,
     flags,
@@ -448,9 +462,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     revive(entity, safeSpawn, healthScale);
     entity.modeActive = true;
-    entity.modeSpeedMultiplier = id === 'turbo_ball' ? 1.85
-      : (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
-        ? 1 + Math.min(0.55, (wave - 1) * 0.045) : 1;
+    // wave pressure: Horde / Frontline defenders drive faster every wave (capped at +55 %)
+    stampPhysics(entity, (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
+      ? baseSpeed * (1 + Math.min(0.55, (wave - 1) * 0.045)) : baseSpeed);
     destroyed.set(entity.id, false);
     respawnAt.delete(entity.id);
     setActive(entity, true);
@@ -539,9 +553,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   let holdUntilS: number | null = null;
   const liveLine = (): ZoneState | null => zones[Math.min(lineIndex, zones.length - 1)] ?? null;
 
+  const assaultRules = ruleset.assault ?? matchRulesetFor('frontline_assault').assault!;
   const startAssaultWave = (): void => {
-    const activeCount = Math.min(hordeEnemies.length, ASSAULT_INITIAL_ACTIVE + lineIndex);
-    const healthScale = 1 + lineIndex * 0.16;
+    const activeCount = Math.min(hordeEnemies.length,
+      assaultRules.initialActive + assaultRules.extraDefenders + lineIndex);
+    const healthScale = 1 + lineIndex * assaultRules.hpPerLine + assaultRules.difficultyHp;
     for (let index = 0; index < hordeEnemies.length; index++) {
       const entity = hordeEnemies[index];
       if (index < activeCount) reviveAtSpawn(entity, healthScale);
@@ -581,7 +597,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     // Final sector: hold it against the last counter-attack.
     if (zone.owner === 'alpha') {
-      if (holdUntilS == null) holdUntilS = timeS + ASSAULT_HOLD_S;
+      if (holdUntilS == null) holdUntilS = timeS + assaultRules.holdS;
       if (state.line) state.line.holdS = Math.max(0, holdUntilS - timeS);
       if (timeS >= holdUntilS) {
         if (state.line) state.line.index = zones.length;
@@ -618,6 +634,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (flag.carrierId !== entity.id) continue;
       flag.carrierId = null;
       flag.status = 'dropped';
+      stampPhysics(entity);
       flag.x = entity.state.pos.x;
       flag.z = entity.state.pos.z;
       flag.y = terrainHeight(flag.x, flag.z) + 2.5;
@@ -633,7 +650,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     destroyed.set(entity.id, isDead);
     if (!isDead) return;
     dropCarriedFlags(entity, timeS);
-    if (definition.respawns) respawnAt.set(entity.id, { atS: timeS + RESPAWN_S, healthScale: 1 });
+    if (ruleset.respawnS != null) respawnAt.set(entity.id, { atS: timeS + ruleset.respawnS, healthScale: 1 });
   };
 
   const handleDeathsAndRespawns = (timeS: number): void => {
@@ -674,6 +691,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     flag.status = 'carried';
     flag.carrierId = entity.id;
     flag.returnAtS = null;
+    stampPhysics(entity, baseSpeed * FLAG_CARRIER_SPEED_SCALE); // the carrier is slower until it scores or falls
     emit('mode_flag_taken', { team: flag.team, by: entity.id });
     return true;
   };
@@ -706,8 +724,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (squaredDistance(entity, base.x, base.z) > FLAG_CAPTURE_RADIUS_M ** 2) return null;
     score[team]++;
     resetFlag(enemyFlag);
+    stampPhysics(entity);
     emit('mode_flag_captured', { team, by: entity.id, score: score[team] });
-    return score[team] >= FLAG_SCORE_TARGET ? finish(team, 'flag_limit') : null;
+    return score[team] >= scoreTarget ? finish(team, 'flag_limit') : null;
   };
 
   const stepFlags = (timeS: number): MatchModeResult | null => {
@@ -746,7 +765,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const zoneScoreWinner = (): ObjectiveTeam | 'draw' | null => {
-    if (score.alpha < ZONE_SCORE_TARGET && score.bravo < ZONE_SCORE_TARGET) return null;
+    if (score.alpha < scoreTarget && score.bravo < scoreTarget) return null;
     if (score.alpha === score.bravo) return 'draw';
     return score.alpha > score.bravo ? 'alpha' : 'bravo';
   };
@@ -794,7 +813,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
 
   const integrateBall = (dt: number): void => {
     if (!ball) return;
-    ball.vy -= BALL_GRAVITY_MPS2 * dt;
+    ball.vy -= BALL_GRAVITY_MPS2 * ruleset.gravityScale * dt;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
     ball.z += ball.vz * dt;
@@ -840,7 +859,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     });
     resetBall();
     for (const entity of entities) reviveAtSpawn(entity, 1);
-    return score[scoringTeam] >= BALL_SCORE_TARGET
+    return score[scoringTeam] >= scoreTarget
       ? finish(scoringTeam, 'goal_limit') : null;
   };
 
@@ -870,7 +889,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (alive === 0 && nextWaveAtS == null) {
       nextWaveAtS = timeS + HORDE_INTERMISSION_S;
       spawnPickup();
-      emit('mode_wave_cleared', { wave, nextWaveInS: HORDE_INTERMISSION_S });
+      // the survivors patch up between waves (HORDE_WAVE_REPAIR of maximum hull)
+      let repaired = 0;
+      for (const ally of teams.alpha) {
+        if (ally.combat.destroyed || ally.modeActive === false) continue;
+        const next = Math.min(ally.combat.maxHp, ally.combat.hp + Math.round(ally.combat.maxHp * HORDE_WAVE_REPAIR));
+        repaired += next - ally.combat.hp;
+        ally.combat.hp = next;
+      }
+      emit('mode_wave_cleared', { wave, nextWaveInS: HORDE_INTERMISSION_S, repaired });
     }
     if (nextWaveAtS != null && timeS >= nextWaveAtS) {
       wave++;
@@ -989,6 +1016,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   return {
     id,
     definition,
+    ruleset,
     state,
     usesElimination: id === 'standard',
     step(dt, timeS) {

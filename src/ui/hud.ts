@@ -18,6 +18,10 @@ import { getLocale, t } from './i18n.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import type { TankState } from '../sim/movement.ts';
 import { canSelfRightTank } from '../sim/rollover.ts';
+// RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
+// same table the sim applies (sim/matchRuleset.ts)
+import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
+import { normalizeGameMode } from '../sim/matchModes.ts';
 import { shellTypeLabel } from './garageDossier.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
@@ -210,6 +214,8 @@ export interface HudFrame {
   aim?: HudAimInput;
   spotting?: HudSpottingView | null;
   matchModeState?: HudMatchModeState | null;
+  /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
+  timeLimitS?: number | null;
   selfRightKeyLabel?: string;
 }
 
@@ -292,6 +298,9 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   by?: string;
   ammoAdded?: number;
   wave?: number;
+  line?: number;
+  total?: number;
+  nextWaveInS?: number;
   team?: string;
   module?: string;
   state?: string;
@@ -482,6 +491,8 @@ export interface HudRuntime {
   warmShotCards(specIds: readonly string[]): void;
   preBattleCountdown(secondsLeft: number, warmPending?: boolean): void;
   setPreBattleWaiting(waiting: boolean): void;
+  /** Rule lines shown under the countdown (the ruleset's deviations from Standard); null clears. */
+  setPreBattleRules(ruleset: MatchRuleset | null): void;
   setMode(mode: HudMode): void;
   update(frame: HudFrame): void;
   buildMinimap(
@@ -916,7 +927,16 @@ import { MAX_SPOT_RANGE_M as SPOT_RANGE_M, SPOT_LINGER_S as SPOT_PERSIST_S }
 // SPOTTING SECTION: single source of truth for the sixth-sense timing —
 // the lamp fuse/window MUST match the sim's getConcealment display gate.
 import { SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S } from '../sim/spotting.ts';
-const BATTLE_DURATION_S = 900; // 15:00 countdown
+// The battle clock is the ruleset's: the frame carries timeLimitS (solo), otherwise the mode's own
+// ruleset answers; null means no clock (Endless Horde counts up).
+function battleClockLimitS(frame: HudFrame, modeId: string | null | undefined): number | null {
+  if (frame.timeLimitS !== undefined) return frame.timeLimitS;
+  return matchRulesetFor(normalizeGameMode(modeId || 'standard')).timeLimitS;
+}
+
+function clockText(frame: HudFrame, limitS: number | null): string {
+  return limitS == null ? fmtTimer(frame.timeS) : fmtTimer(limitS - frame.timeS);
+}
 
 // Default shell card data (used only when a forced screenshot aim view arrives
 // before any live frame — matches the m1a2 default player loadout).
@@ -1453,7 +1473,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
    kicker hides for rollout. Pure overlay: pointer-events none, no page layout impact. */
 .cot-prebattle{position:absolute;z-index:var(--hud-layer-status);left:50%;top:22%;transform:translateX(-50%);
   width:min(390px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr);
-  grid-template-rows:30px 92px;
+  grid-template-rows:30px 92px auto;
   row-gap:7px;justify-items:center;text-align:center;pointer-events:none;
   opacity:0;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle.on{opacity:1;}
@@ -1465,6 +1485,13 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
     0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);
   transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
 .cot-prebattle.rollout .k{visibility:hidden;opacity:0;}
+.cot-prebattle .r{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 6px;max-width:100%;margin-top:2px;
+  transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
+.cot-prebattle .r:empty{display:none}
+.cot-prebattle .r span{padding:3px 8px 2px;border:1px solid rgba(240,200,120,.42);border-radius:3px;
+  background:rgba(6,9,13,.72);font-family:${FONT_COND};font-size:10px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:#f2d9a6;text-shadow:0 1px 3px rgba(0,0,0,.9);}
+.cot-prebattle.rollout .r,.cot-prebattle.waiting .r{visibility:hidden;opacity:0;}
 .cot-prebattle .n{width:100%;height:92px;display:flex;align-items:center;justify-content:center;
   font-family:${FONT_STACK};font-size:92px;
   font-weight:800;line-height:1;color:#ffd27a;font-variant-numeric:tabular-nums;
@@ -2022,6 +2049,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const pbKick = el('div', 'k', preBattleEl);
   pbKick.textContent = t('hud.battleBeginsIn');
   const pbNum = el('div', 'n', preBattleEl);
+  // batch 19: the rules of engagement — one chip per ruleset line, Standard shows none
+  const pbRules = el('div', 'r', preBattleEl);
+  pbRules.setAttribute('aria-label', t('hud.preBattleRules'));
   const preBattleOverlay = createPreBattleOverlay(preBattleEl, pbKick, pbNum);
 
   const alertEl = el('div', 'cot-alert', root);
@@ -2735,13 +2765,13 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
-  function modeTimerLabel(modeId: string, waiting: boolean): string {
-    if (waiting) return 'Next wave';
-    if (modeId === 'capture_the_flag') return 'Capture 3';
-    if (modeId === 'zone_control') return 'First 1000';
-    if (modeId === 'turbo_ball') return 'First 5';
-    if (modeId === 'frontline_assault') return 'Take the line';
-    return 'Survive';
+  function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null): string {
+    if (waiting) return t('hud.timer.nextWave');
+    if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(RULESET_SCORE_TARGETS.capture_the_flag) });
+    if (modeId === 'zone_control') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.zone_control) });
+    if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.turbo_ball) });
+    if (modeId === 'frontline_assault') return t('hud.timer.takeLine');
+    return limitS == null ? t('hud.timer.survive') : t('hud.team.time');
   }
 
   function modeStatusCopy(
@@ -2752,7 +2782,7 @@ export function initHud(bus: EventBus): HudRuntime {
       return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
     }
     if (modeState.id === 'zone_control') {
-      return t('hud.modeStatus.control', { own: String(ownScore), target: String(modeState.target || 1000) });
+      return t('hud.modeStatus.control', { own: String(ownScore), target: String(modeState.target || RULESET_SCORE_TARGETS.zone_control) });
     }
     if (modeState.id === 'turbo_ball') {
       return t('hud.modeStatus.goals', { own: String(ownScore), target: String(modeState.target || 5) });
@@ -2817,8 +2847,9 @@ export function initHud(bus: EventBus): HudRuntime {
       lastScore = score;
     }
     const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
-    const timer = waitS > 0 ? `${waitS}s` : fmtTimer(BATTLE_DURATION_S - frame.timeS);
-    updateTimer(modeTimerLabel(modeState.id || '', waitS > 0), timer);
+    const limitS = battleClockLimitS(frame, modeState.id);
+    const timer = waitS > 0 ? `${waitS}s` : clockText(frame, limitS);
+    updateTimer(modeTimerLabel(modeState.id || '', waitS > 0, limitS), timer);
     updateModeStatus(modeState, ownScore);
   }
 
@@ -2842,7 +2873,8 @@ export function initHud(bus: EventBus): HudRuntime {
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;
     }
-    updateTimer(t('hud.team.time'), fmtTimer(BATTLE_DURATION_S - frame.timeS));
+    const limitS = battleClockLimitS(frame, 'standard');
+    updateTimer(t(limitS == null ? 'hud.timer.elapsed' : 'hud.team.time'), clockText(frame, limitS));
   }
 
   function updateTeams(frame: HudFrame): void {
@@ -5490,6 +5522,8 @@ export function initHud(bus: EventBus): HudRuntime {
     } else if (reason === 'COOLDOWN') {
       showAlert(t('hud.alert.consumableReadyIn', { seconds: Math.ceil(remainingS || 0) }),
         { icon: 'clock', tone: 'info' });
+    } else if (reason === 'RULESET') {
+      showAlert(t('hud.alert.consumablesDisabled'), { icon: 'info', tone: 'info' });
     }
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
@@ -5558,6 +5592,46 @@ export function initHud(bus: EventBus): HudRuntime {
     const allied = team === objectiveTeam;
     showAlert(t(allied ? 'hud.alert.alliedGoal' : 'hud.alert.enemyGoal'), {
       icon: 'modeTurbo', tone: allied ? 'success' : 'danger',
+    });
+  });
+  // batch 19 (2026-09-14): the remaining mode events reach the player — sectors taken, waves cleared
+  // (with the repair), respawns, the flag changing hands, caches dropping
+  on('mode:line_advanced', ({ line, total }) => {
+    showAlert(t('hud.alert.lineTaken', { line: Math.max(1, Number(line) || 1), total: Math.max(1, Number(total) || 3) }), {
+      icon: 'modeZones', tone: 'success',
+    });
+  });
+  on('mode:wave_cleared', ({ wave, nextWaveInS }) => {
+    showAlert(t('hud.alert.waveCleared', { wave: Math.max(1, Number(wave) || 1), seconds: Math.ceil(Number(nextWaveInS) || 0) }), {
+      icon: 'repair', tone: 'success',
+    });
+  });
+  on('mode:respawn', ({ id }) => {
+    if (playerId != null && id !== playerId) return;
+    showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });
+  });
+  on('mode:flag_taken', ({ team }) => {
+    // the payload names the flag's owner: our flag taken means the enemy carries it
+    const ours = team === objectiveTeam;
+    showAlert(t(ours ? 'hud.alert.flagTakenEnemy' : 'hud.alert.flagTakenAllied'), {
+      icon: 'modeFlag', tone: ours ? 'danger' : 'success',
+    });
+  });
+  on('mode:flag_dropped', ({ team }) => {
+    const ours = team === objectiveTeam;
+    showAlert(t(ours ? 'hud.alert.flagDroppedEnemy' : 'hud.alert.flagDroppedAllied'), {
+      icon: 'modeFlag', tone: ours ? 'success' : 'warning',
+    });
+  });
+  on('mode:flag_returned', ({ team }) => {
+    const ours = team === objectiveTeam;
+    showAlert(t(ours ? 'hud.alert.flagReturnedAllied' : 'hud.alert.flagReturnedEnemy'), {
+      icon: 'modeFlag', tone: ours ? 'success' : 'info',
+    });
+  });
+  on('mode:pickup_spawned', ({ kind }) => {
+    showAlert(t(kind === 'heal' ? 'hud.alert.repairCacheDropped' : 'hud.alert.ammoCacheDropped'), {
+      icon: kind === 'heal' ? 'repair' : 'shell', tone: 'info',
     });
   });
   // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
@@ -5871,6 +5945,16 @@ export function initHud(bus: EventBus): HudRuntime {
     },
 
     setPreBattleWaiting(waiting: boolean) { preBattleOverlay.setWaiting(waiting); },
+
+    setPreBattleRules(ruleset: MatchRuleset | null) {
+      pbRules.replaceChildren();
+      if (!ruleset) return;
+      for (const line of rulesetLines(ruleset)) {
+        const chip = document.createElement('span');
+        chip.textContent = t(`rules.line.${line.key}`, line.values);
+        pbRules.appendChild(chip);
+      }
+    },
 
     /**
      * Switch overall HUD mode.

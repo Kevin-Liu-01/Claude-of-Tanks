@@ -7,6 +7,8 @@ import type {
   ArmorOverlayTarget,
 } from './armorAimOverlay.ts';
 import type { GameState } from './stateCore.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import { normalizeGameMode } from '../sim/matchModes.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import type {
   ConcealmentView,
@@ -226,11 +228,17 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.spotting = spotFrame;
   };
 
+  // RULESETS: the HUD clock is the ruleset's; a network battle's local session keeps the Standard
+  // ruleset object, so the mode's own table answers there (the authority applies the same one)
+  const clockLimitS = (): number | null => (game.ruleset && game.ruleset.mode === normalizeGameMode(game.gameMode)
+    ? game.ruleset : matchRulesetFor(normalizeGameMode(game.gameMode))).timeLimitS;
+
   const reset = (): void => {
     frameInfo.player = null;
     frameInfo.tanks = game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
+    frameInfo.timeLimitS = clockLimitS();
   };
 
   const observerFocus = (bridge: NetworkBridgeView | null): TEntity | null => {
@@ -251,6 +259,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.rosterTanks = bridge?.roster || game.tanks;
     frameInfo.shells = game.shells;
     frameInfo.matchModeState = game.matchModeState;
+    frameInfo.timeLimitS = clockLimitS();
     frameInfo.selfRightKeyLabel = input.labelFor(input.getBinding('selfRight'));
     updateSpotting(focus);
   };

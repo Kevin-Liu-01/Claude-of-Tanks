@@ -5,6 +5,7 @@ import {
   createMatchModeController,
   normalizeGameMode,
 } from './matchModes.ts';
+import { FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, matchRulesetFor } from './matchRuleset.ts';
 
 function entity(id, team, x, z, { bot = false } = {}) {
   return {
@@ -22,13 +23,14 @@ function entity(id, team, x, z, { bot = false } = {}) {
   };
 }
 
-function controller(mode, entities, seed = 42) {
+function controller(mode, entities, seed = 42, extra = {}) {
   const events = [];
   let revives = 0;
   const match = createMatchModeController({
     mode,
     entities,
     seed,
+    ...extra,
     terrainHeight: () => 0,
     setActive(target, active) { target.modeActive = active; },
     revive(target, spawn, healthScale) {
@@ -99,7 +101,8 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
     result = match.step(1 / 60, tick / 60);
   }
   assert.deepEqual(result, { result: 'alpha', reason: 'score_limit' });
-  assert.ok(match.state.score.alpha >= 1000);
+  assert.ok(match.state.score.alpha >= 750, 'zone control plays to the ruleset target (750)');
+  assert.equal(match.state.target, 750);
 }
 
 {
@@ -232,4 +235,77 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
     'the human attacker falling ends the assault');
 }
 
-console.log('matchModes.selftest: standard, flags, zones, turbo ball, horde, assault, respawns, and loot passed');
+// RULESETS (2026-09-14): the controller reads sim/matchRuleset.ts — respawn delay, speed and gravity
+// stamps, the flag-carrier penalty, the wave-clear repair and the campaign escalation.
+{
+  const alpha = entity('alpha', 'alpha', 0, -180);
+  const bravo = entity('bravo', 'bravo', 0, 180);
+  const { match, events } = controller('turbo_ball', [alpha, bravo]);
+  assert.equal(match.ruleset.mode, 'turbo_ball');
+  assert.equal(alpha.modeGravityScale, 0.6, 'Turbo Ball stamps the 0.6 g ruleset gravity');
+  assert.equal(match.state.respawns, true);
+  alpha.combat.destroyed = true;
+  match.step(1 / 60, 1);
+  match.step(1 / 60, 3.99);
+  assert.equal(alpha.combat.destroyed, true, 'a Turbo Ball respawn waits the ruleset\'s 3 s');
+  match.step(1 / 60, 4.01);
+  assert.equal(alpha.combat.destroyed, false, 'and revives at 3 s');
+  assert.equal(alpha.modeSpeedMultiplier, 1.85);
+  assert.equal(alpha.modeGravityScale, 0.6, 'the revive restamps the gravity');
+  assert.ok(events.some((event) => event.type === 'mode_respawn'));
+  match.state.ball.y += 30;
+  match.state.ball.vy = 0;
+  match.step(1 / 60, 4.02);
+  assert.ok(Math.abs(match.state.ball.vy + 9.81 * 0.6 / 60) < 1e-9, 'the ball falls at the ruleset gravity');
+}
+{
+  const alpha = entity('alpha', 'alpha', 0, -100);
+  const bravo = entity('bravo', 'bravo', 0, 100);
+  const { match } = controller('capture_the_flag', [alpha, bravo]);
+  assert.equal(match.state.respawns, true);
+  const enemyFlag = match.state.flags.find((flag) => flag.team === 'bravo');
+  const ownFlag = match.state.flags.find((flag) => flag.team === 'alpha');
+  alpha.state.pos.x = enemyFlag.x; alpha.state.pos.z = enemyFlag.z;
+  match.step(1 / 60, 1);
+  assert.equal(enemyFlag.carrierId, 'alpha');
+  assert.ok(Math.abs(alpha.modeSpeedMultiplier - FLAG_CARRIER_SPEED_SCALE) < 1e-9, 'the carrier drives at 85 %');
+  alpha.state.pos.x = ownFlag.baseX; alpha.state.pos.z = ownFlag.baseZ;
+  match.step(1 / 60, 2);
+  assert.equal(match.state.score.alpha, 1);
+  assert.equal(alpha.modeSpeedMultiplier, 1, 'scoring restores the mode speed');
+}
+{
+  const player = entity('player', 'alpha', 0, -150);
+  const enemies = Array.from({ length: 4 }, (_, index) =>
+    entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  const run = controller('endless_horde', [player, ...enemies], 6000);
+  assert.equal(run.match.state.respawns, false);
+  player.combat.hp = 40;
+  for (const target of enemies) if (target.modeActive !== false) target.combat.destroyed = true;
+  run.match.step(1 / 60, 1);
+  assert.equal(player.combat.hp, 40 + Math.round(100 * HORDE_WAVE_REPAIR), 'clearing a wave repairs the survivors by 30 %');
+  const cleared = run.events.find((event) => event.type === 'mode_wave_cleared');
+  assert.equal(cleared.payload.repaired, 30);
+}
+{
+  const player = entity('player', 'alpha', 0, -150);
+  const enemies = Array.from({ length: 8 }, (_, index) =>
+    entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  const { match } = controller('frontline_assault', [player, ...enemies], 6000,
+    { ruleset: matchRulesetFor('frontline_assault', { difficulty: 4 }) });
+  assert.equal(match.ruleset.assault.extraDefenders, 1);
+  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 4,
+    'operation 4 fields an extra defender on the first sector');
+  const active = enemies.find((target) => target.modeActive !== false);
+  assert.equal(active.combat.maxHp, Math.round(100 * 1.18), 'operation 4 defenders carry +18 % hull');
+}
+{
+  const alpha = entity('alpha', 'alpha', 0, -100);
+  const bravo = entity('bravo', 'bravo', 0, 100);
+  const { match } = controller('standard', [alpha, bravo], 42, { ruleset: matchRulesetFor('turbo_ball') });
+  assert.equal(match.ruleset.mode, 'standard', 'a ruleset for another mode is ignored');
+  assert.equal(alpha.modeSpeedMultiplier, 1);
+  assert.equal(alpha.modeGravityScale, 1);
+}
+
+console.log('matchModes.selftest: standard, flags, zones, turbo ball, horde, assault, respawns, loot, and rulesets passed');

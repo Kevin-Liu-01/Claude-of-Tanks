@@ -1,9 +1,11 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
 /**
  * Lightweight integration state shared by the garage, Studio, and battle
  * runtime. This module deliberately has no Three.js, DOM, WebGL, vehicle, or
- * simulation imports so presentation-only entry points do not acquire the
- * combat graph merely to create a bus or an empty session.
+ * simulation imports (the ruleset table is pure data) so presentation-only
+ * entry points do not acquire the combat graph merely to create a bus or an
+ * empty session.
  */
 
 export type RandomSource = () => number;
@@ -38,6 +40,10 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   matchModeState: MatchModeState | null;
   matchModeController: RuntimeValue | null;
   modeEvents: Array<{ type: string; payload: Record<string, RuntimeValue> }>;
+  /** The rules the current battle plays by (sim/matchRuleset.ts); Standard between battles. */
+  ruleset: MatchRuleset;
+  /** Campaign ladder operation of the current sortie; null for free sorties. */
+  campaignOperationId: string | null;
 }
 
 /** Canonical deterministic PRNG used by the legacy solo runtime. */
@@ -118,5 +124,21 @@ export function createGameState<
     matchModeState: null,
     matchModeController: null,
     modeEvents: [],
+    ruleset: matchRulesetFor('standard'),
+    campaignOperationId: null,
   };
+}
+
+/**
+ * Garage return (2026-09-14): drop the finished match's objective state so nothing of it — markers,
+ * events, the campaign operation, a bent ruleset — leaks into the garage or the next sortie.
+ */
+export function clearMatchSession(game: Pick<GameState,
+  'gameMode' | 'matchModeState' | 'matchModeController' | 'modeEvents' | 'ruleset' | 'campaignOperationId'>): void {
+  game.matchModeController = null;
+  game.matchModeState = null;
+  game.modeEvents.length = 0;
+  game.gameMode = 'standard';
+  game.ruleset = matchRulesetFor('standard');
+  game.campaignOperationId = null;
 }

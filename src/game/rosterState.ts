@@ -461,11 +461,47 @@ function randomBattleCandidates(
  * rosters include community vehicles.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
+/** Eras a campaign formation may draw from around the player's: contemporaries only, never WW2 against modern. */
+const FORMATION_ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  ww2: Object.freeze(['ww2']),
+  'cold-war': Object.freeze(['cold-war', 'modern']),
+  modern: Object.freeze(['modern', 'cold-war', 'next-generation']),
+  'next-generation': Object.freeze(['next-generation', 'modern']),
+});
+
+/**
+ * CAMPAIGN (batch 19, 2026-09-14): an operation's formation fills the enemy seats first — vehicles of
+ * the named nations move to the front of the curated pool, the player's own era first and then its
+ * contemporaries (the next-generation fleet has two Russian vehicles; the modern one has twenty-two),
+ * at most `cap` so seats remain for the allies. The seeded order is kept inside every band so
+ * rosters stay reproducible per battle ordinal.
+ */
+function preferNations(
+  candidates: RosterEntity[],
+  player: RosterEntity,
+  nations: readonly string[],
+  cap: number,
+): RosterEntity[] {
+  if (!nations.length || cap <= 0) return candidates;
+  const era = player.spec?.era ?? null;
+  const neighbours = era ? (FORMATION_ERA_NEIGHBOURS[era] ?? [era]) : null;
+  const eraOf = (entity: RosterEntity): string => String((entity.spec as { era?: string } | null | undefined)?.era || '');
+  const inFormation = (entity: RosterEntity): boolean =>
+    nations.includes(String((entity.spec as { nation?: string } | null | undefined)?.nation || ''));
+  const sameEra = candidates.filter((entity) => inFormation(entity) && (!era || eraOf(entity) === era));
+  const contemporaries = candidates.filter((entity) => inFormation(entity) && era && eraOf(entity) !== era
+    && neighbours!.includes(eraOf(entity)));
+  const preferred = [...sameEra, ...contemporaries].slice(0, cap);
+  const chosen = new Set(preferred);
+  return [...preferred, ...candidates.filter((entity) => !chosen.has(entity))];
+}
+
 export function pickBattleParticipants(
   game: RosterGameState,
   playerSpecId: string,
   randomize: boolean,
   battleOrdinal = game.battleCount,
+  preferredNations: readonly string[] = [],
 ): RosterEntity[] {
   const player = game.tankById.get(playerSpecId);
   if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
@@ -488,7 +524,8 @@ export function pickBattleParticipants(
     // cross-era tank is an emergency fallback only when
     // the production catalog cannot fill all 13 non-player slots;
     // picking the Random battlefield no longer turns WWII vs modern back on.
-    others = randomBattleCandidates(game, player, battleOrdinal);
+    others = preferNations(randomBattleCandidates(game, player, battleOrdinal), player, preferredNations,
+      Math.max(0, enemySlots - 3));
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = stagedBattleCandidates(game, playerSpecId);
@@ -506,8 +543,9 @@ export function planBattleParticipantIds(
   game: RosterGameState,
   playerSpecId: string,
   randomize = true,
+  preferredNations: readonly string[] = [],
 ) {
-  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1)
+  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations)
     .map((entity) => entity.specId);
 }
 
@@ -541,9 +579,10 @@ export function planBattleCamoOverrides(
   playerSpecId: string,
   mapId: string,
   randomize = true,
+  preferredNations: readonly string[] = [],
 ) {
   const battleOrdinal = game.battleCount + 1;
-  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal);
+  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations);
   return autoCamoIdsForBattle(
     participants, playerSpecId, mapId, randomize, battleOrdinal,
   );

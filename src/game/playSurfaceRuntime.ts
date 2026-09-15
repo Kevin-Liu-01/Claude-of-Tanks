@@ -109,7 +109,11 @@ export function createPlaySurfaceRuntime({
         onSolo: (request: { gameMode?: GameModeId; mapId?: string; campaignOperationId?: string } = {}) => {
           const requested = pendingSoloStart;
           pendingSoloStart = null;
-          if (requested) runSolo(requested);
+          // A retained Garage start (BOTS with the garage's own rules) serves a bare Solo click only;
+          // a request that names its rules, map or operation (the campaign ladder) always wins over
+          // whatever the Garage left pending (2026-09-14: a stale pending start swallowed campaign launches).
+          const explicit = request.gameMode != null || request.mapId != null || request.campaignOperationId != null;
+          if (requested && !explicit) runSolo(requested);
           else runSolo(() => startSolo({
             specId: getSelectedSpecId(),
             // a campaign operation names its own map; every other solo start keeps the garage pick

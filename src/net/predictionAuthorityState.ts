@@ -12,6 +12,7 @@ interface PredictionAuthorityEntity {
   id: string;
   combat: MovementCombatState;
   modeSpeedMultiplier?: number;
+  modeGravityScale?: number;
   state?: TankState;
 }
 
@@ -37,7 +38,8 @@ export function capturePredictionAuthorityState(
   const movement = entity.state ? captureMovementPredictionState(entity.state) : null;
   return { id: entity.id, modules, crew, equipment,
     ...(movement ? { movement } : {}),
-    modeSpeedMultiplier: multiplier(entity.modeSpeedMultiplier) };
+    modeSpeedMultiplier: multiplier(entity.modeSpeedMultiplier),
+    modeGravityScale: multiplier(entity.modeGravityScale) };
 }
 
 export function applyPredictionAuthorityState(
@@ -64,5 +66,6 @@ export function applyPredictionAuthorityState(
   const targetEquipment = entity.combat.equipMults || (entity.combat.equipMults = {});
   for (const key of EQUIPMENT) targetEquipment[key] = multiplier(equipment[key]);
   entity.modeSpeedMultiplier = multiplier(state.modeSpeedMultiplier);
+  entity.modeGravityScale = multiplier(state.modeGravityScale);
   return true;
 }

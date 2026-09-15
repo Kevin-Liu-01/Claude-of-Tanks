@@ -38,6 +38,7 @@ import {
   normalizeGameMode,
   type GameModeId,
 } from '../sim/matchModes.ts';
+import { matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
 import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
@@ -184,6 +185,11 @@ const CSS = `
   color:inherit;font:900 9px ${FONT_COND};letter-spacing:.08em;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
 .cot-play .rule-copy small{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
 .cot-play .rule-copy .rule-progress{color:#e2b56a;text-transform:none;letter-spacing:.04em}
+.cot-play .rule-copy .rule-lines{color:#8ea2b0;text-transform:none;letter-spacing:.02em;line-height:1.35;white-space:normal}
+.cot-play .rule-note{display:block;margin:6px 0 0;color:#e2b56a;font:700 9px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
+.cot-play .rule-note[hidden]{display:none}
+.cot-play .op-stars{display:inline-flex;gap:2px;margin-left:6px;font-size:11px;line-height:1;letter-spacing:.02em;vertical-align:middle}
+.cot-play .op-stars i{font-style:normal;color:#4a5560}.cot-play .op-stars i.on{color:#ffcc55}
 .cot-play .campaign{margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)}
 .cot-play .campaign-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 4px}
 .cot-play .campaign-heading b{font:900 10px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase;color:#d9e3e9}
@@ -609,25 +615,34 @@ export function createPlayMenu({
   const campaignMarkup = (): string => {
     const ladder = campaignLadder();
     const summary = campaignSummary();
-    const cards = ladder.map(({ operation, status, progress }) => {
+    const cards = ladder.map(({ operation, status, progress, stars }) => {
       const best = progress
         ? t('campaign.best', { best: progress.bestLine, total: progress.total })
         : t('campaign.noSortie');
+      // batch 19: stars per operation (held / under par / no ally lost) and the operation's own clock
+      const starMarks = `<span class="op-stars" role="img" aria-label="${t('campaign.starsAria', { stars, max: 3 })}">${
+        [0, 1, 2].map((slot) => `<i class="${slot < stars ? 'on' : ''}">★</i>`).join('')}</span>`;
+      const clock = t('campaign.clock', { minutes: Math.round(operation.timeLimitS / 60), difficulty: operation.difficulty });
       const action = status === 'locked'
         ? `<small class="op-hint">${t('campaign.lockedHint', { index: operation.index - 1 })}</small>`
         : `<button class="op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
           t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
       return `<article class="op ${status}" data-campaign-op="${operation.id}" aria-label="${t(`campaign.op.${operation.id}.title`)}">
         <span class="op-index">${String(operation.index).padStart(2, '0')}</span>
-        <span class="op-copy"><b>${t(`campaign.op.${operation.id}.title`)}</b><small>${t(`map.${operation.mapId}`)} · ${t(`campaign.status.${status}`)}</small><small class="op-best">${best}</small></span>
+        <span class="op-copy"><b>${t(`campaign.op.${operation.id}.title`)}${starMarks}</b><small>${t(`map.${operation.mapId}`)} · ${t(`campaign.status.${status}`)} · ${clock}</small><small class="op-best">${best}</small></span>
         ${action}</article>`;
     }).join('');
-    return `<div class="campaign-heading"><b>${t('campaign.heading')}</b><span>${t('campaign.progress', { cleared: summary.cleared, total: summary.total })}</span></div>
+    return `<div class="campaign-heading"><b>${t('campaign.heading')}</b><span>${t('campaign.progress', { cleared: summary.cleared, total: summary.total })} · ${t('campaign.stars', { stars: summary.stars, max: summary.maxStars })}</span></div>
       <p class="campaign-sub">${t('campaign.sub')}</p><div class="ops" role="list">${cards}</div>`;
   };
+  // batch 19 (2026-09-14): every card lists the rules the code applies (sim/matchRuleset.ts), generated
+  // from the same table the sim reads, so the card can never promise a rule the battle does not keep
+  const ruleLineCopy = (id: GameModeId): string => rulesetLines(matchRulesetFor(id))
+    .map((line) => t(`rules.line.${line.key}`, line.values)).join(' · ');
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
     `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
+        ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
   root.innerHTML = `<div class="panel"><button class="close" type="button" aria-label="${t('playMenu.close')}">×</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2>${t('playMenu.title')}</h2>
@@ -639,6 +654,7 @@ export function createPlayMenu({
     </div>
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
+    <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
     <section class="campaign" data-campaign>${campaignMarkup()}</section>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
@@ -882,12 +898,18 @@ export function createPlayMenu({
   let invitedHostName: string | null = null;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
+  /** Rooms play every objective mode except the campaign, which is a solo operation (the coordinator rejects it). */
+  const roomGameMode = (mode: GameModeId): GameModeId => (mode === 'frontline_assault' ? 'standard' : mode);
+
   function showSelectedGameMode(
     next: RuntimeValue = selectedGameMode,
     { fromLobby = false }: { fromLobby?: boolean } = {},
   ): void {
     selectedGameMode = normalizeGameMode(next);
     remember(GAME_MODE_KEY, selectedGameMode);
+    // the campaign is a solo operation: a room created while it is selected plays Standard, and the note says so
+    const note = root.querySelector<HTMLElement>('[data-rule-note]');
+    if (note) note.hidden = selectedGameMode !== 'frontline_assault';
     for (const button of ruleButtons) {
       button.classList.toggle('on', button.dataset.gameMode === selectedGameMode);
       button.setAttribute('aria-pressed', String(button.dataset.gameMode === selectedGameMode));
@@ -1365,7 +1387,7 @@ export function createPlayMenu({
 
   async function connectRoom(kind: 'create' | 'join', generation: number): Promise<boolean> {
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
-    const selection = { ...getSelection(), gameMode: selectedGameMode };
+    const selection = { ...getSelection(), gameMode: roomGameMode(selectedGameMode) };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
     nameInput.value = name;

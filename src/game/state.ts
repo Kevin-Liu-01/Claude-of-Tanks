@@ -31,6 +31,13 @@ import type {
   MatchModeResult,
   MatchModeSpawn,
 } from '../sim/matchModes.ts';
+// RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
+// reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
+import {
+  applyRulesetToCombat, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetLoadout,
+  type MatchRuleset,
+} from '../sim/matchRuleset.ts';
+import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -56,7 +63,7 @@ import { tankPoseFromState, traceTank } from '../sim/armor.ts';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass, ramDamage,
-  repairAllModules, startMagazineReload, mainWeaponModuleState,
+  repairAllModules, startMagazineReload, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
 import {
   activateSpecialAction,
@@ -194,6 +201,8 @@ type SoloPooledEntity = Omit<RosterEntity,
     consumableReadyAt?: number[];
     bot?: boolean;
     modeActive?: boolean;
+    modeSpeedMultiplier?: number;
+    modeGravityScale?: number;
     equip?: string[];
     _glbContactStampedVisual?: SoloVisual | null;
     _openingRoute?: Waypoint[] | null;
@@ -250,6 +259,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   matchModeState: MatchModePresentationState | null;
   matchModeController: MatchModeController<SoloEntity> | null;
   modeEvents: ModeEvent[];
+  ruleset: MatchRuleset;
+  campaignOperationId: string | null;
   player: SoloEntity | null;
   spotting: SpottingSystem | null;
   openingRouteJobs: Array<() => void>;
@@ -317,6 +328,8 @@ interface SoloWorld {
 interface SetupBattleOptions {
   random?: boolean;
   gameMode?: GameModeId | string | null;
+  /** Campaign ladder operation (Frontline Assault only): difficulty and clock fold into the ruleset. */
+  campaignOperationId?: string | null;
   deferCamoRepaint?: boolean;
   deferVisuals?: boolean;
   deferOpeningRoutes?: boolean;
@@ -448,7 +461,8 @@ function soloDebugFlags(): SoloDebugFlags | null {
 const COMBAT_SEED = 6000;
 // module repair duration lives with the state machine: sim/damage.ts REPAIR_S
 const FIRE_TICK_S = 0.5;
-const BATTLE_TIME_LIMIT_S = 900; // 15:00 clock (HUD counts it down) — timeout = draw
+// The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
+// Horde, 12:00 lost-on-expiry for a campaign sortie); the HUD counts the same value down.
 const ALLY_SPAWN_SLOTS = Object.freeze([
   Object.freeze({ lat: 26, back: 0 }),
   Object.freeze({ lat: -26, back: 0 }),
@@ -561,6 +575,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.result = null;
   game.resultReason = null;
   game.gameMode = normalizeGameMode(options.gameMode);
+  game.campaignOperationId = game.gameMode === 'frontline_assault' ? (options.campaignOperationId ?? null) : null;
+  game.ruleset = matchRulesetFor(game.gameMode, campaignRulesetInput(game.campaignOperationId));
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -641,16 +657,31 @@ function chooseBattleAllies(
     }
     return allies.slice(0, 3);
   }
+  // RULESETS (2026-09-14): the mode sets the split — Horde fields two allies, Frontline Assault
+  // three, Standard keeps the 6 / 7 balance. The cap never exceeds the pool minus one enemy.
   const exactCap = soloDebugFlags()?.rosterExact && candidates.length < 13 ? 3 : 6;
-  const allyCap = Math.min(exactCap, Math.max(1, candidates.length - 1));
+  const allyCap = Math.min(rulesetAllyCap(game.ruleset, exactCap), Math.max(0, candidates.length - 1));
   const enemyCap = candidates.length - allyCap;
   const byTier = candidates.slice()
     .sort((a, b) => tankTier(b.specId) - tankTier(a.specId));
   const allies: SoloEntity[] = [];
   let allyTierSum = tankTier(playerSpecId);
   let enemyTierSum = 0;
-  let enemyCount = 0;
+  // campaign: the operation's formation fills the enemy side first (spec nation), the tier-balanced
+  // greedy pass below splits the rest
+  const enemyNations = campaignEnemyNations(game.campaignOperationId);
+  const formation = new Set<SoloEntity>();
+  if (enemyNations.length) {
+    for (const entity of byTier) {
+      if (formation.size >= enemyCap) break;
+      if (!enemyNations.includes(String(entity.spec.nation || ''))) continue;
+      formation.add(entity);
+      enemyTierSum += tankTier(entity.specId);
+    }
+  }
+  let enemyCount = formation.size;
   for (const entity of byTier) {
+    if (formation.has(entity)) continue;
     const tier = tankTier(entity.specId);
     const allyRoom = allies.length < allyCap;
     const enemyRoom = enemyCount < enemyCap;
@@ -743,10 +774,13 @@ function initializeBattleEntity(
   entity.state = createTankState(entity.spec, _spawnPos, spawn.yaw);
   entity.combat = createCombatState(entity.spec);
   entity.specialAction = createSpecialActionState(entity.spec);
-  entity.equip = isPlayer
+  // RULESETS: the mode decides which equipment slots count (Turbo Ball: none), then stamps hull,
+  // damage-taken, reload and ammunition on the fresh combat state
+  entity.equip = rulesetLoadout(context.game.ruleset, isPlayer
     ? (loadEquipment(entity.specId) || [])
-    : defaultLoadoutFor(entity.spec);
+    : defaultLoadoutFor(entity.spec));
   applyEquipmentToCombat(entity.combat, entity.equip, entity.spec);
+  applyRulesetToCombat(entity.combat, entity.spec.gun.shells, context.game.ruleset);
   entity.input.throttle = 0;
   entity.input.steer = 0;
   entity.input.brake = false;
@@ -1019,7 +1053,9 @@ export function setupBattle(
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
-  game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random) as SoloEntity[];
+  // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
+  game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
+    campaignEnemyNations(game.campaignOperationId)) as SoloEntity[];
   // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
   // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
   // snowfields/dunes stop being full of factory-green bots (the player's
@@ -1155,6 +1191,7 @@ export function setupBattle(
   spawnBattleEntities(spawnContext);
   game.matchModeController = createMatchModeController({
     mode: game.gameMode,
+    ruleset: game.ruleset,
     entities: game.tanks,
     seed: COMBAT_SEED + game.battleCount,
     placement,
@@ -1168,15 +1205,13 @@ export function setupBattle(
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);
-      if (healthScale !== 1) {
-        ent.combat.maxHp = Math.max(1, Math.round(ent.combat.maxHp * healthScale));
-        ent.combat.hp = ent.combat.maxHp;
-      }
       applyEquipmentToCombat(
         ent.combat,
-        ent.equip || defaultLoadoutFor(ent.spec),
+        ent.equip || rulesetLoadout(game.ruleset, defaultLoadoutFor(ent.spec)),
         ent.spec,
       );
+      // the wave's health scale folds into the ruleset stamp (hull, damage-taken, reload, ammunition)
+      applyRulesetToCombat(ent.combat, ent.spec.gun.shells, game.ruleset, healthScale);
       ent.specialAction = createSpecialActionState(ent.spec);
       ent.input.throttle = 0;
       ent.input.steer = 0;
@@ -1758,6 +1793,9 @@ function tryFire(
     _dir,
     game.nextShellId++,
   );
+  // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
+  shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
+  refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
   applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
@@ -2232,8 +2270,8 @@ function resolveRamDamage(
   if (damage.total <= 0) return null;
   cooldowns.set(key, game.timeS);
   const bWasWreck = b.combat.destroyed;
-  const damageA = damage.toA;
-  const damageB = bWasWreck ? 0 : damage.toB;
+  const damageA = hullDamageTaken(a.combat, damage.toA);
+  const damageB = bWasWreck ? 0 : hullDamageTaken(b.combat, damage.toB);
   a.combat.hp = Math.max(0, a.combat.hp - damageA);
   if (!bWasWreck) b.combat.hp = Math.max(0, b.combat.hp - damageB);
   a.combat.destroyed ||= a.combat.hp <= 0;
@@ -2401,10 +2439,11 @@ function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | nu
 }
 
 function applyTimedModeResult(game: SoloGameState): void {
-  if (!game.matchModeController || game.gameMode === 'endless_horde' ||
-      game.timeS < BATTLE_TIME_LIMIT_S) return;
+  const limitS = game.ruleset.timeLimitS;
+  if (!game.matchModeController || limitS == null || game.timeS < limitS) return;
   const score = game.matchModeController.state.score;
-  game.result = score.alpha === score.bravo ? 'draw'
+  // a level score resolves by the ruleset: Standard rules draw, a campaign sortie is lost
+  game.result = score.alpha === score.bravo ? (game.ruleset.timeout === 'defeat' ? 'defeat' : 'draw')
     : score.alpha > score.bravo ? 'victory' : 'defeat';
   game.resultReason = 'time_limit';
 }
@@ -2420,8 +2459,8 @@ function applyEliminationResult(
   } else if (game.player?.combat.destroyed && alliesLeft === 0) {
     game.result = 'defeat';
     game.resultReason = 'elimination';
-  } else if (game.timeS >= BATTLE_TIME_LIMIT_S) {
-    game.result = 'draw';
+  } else if (game.ruleset.timeLimitS != null && game.timeS >= game.ruleset.timeLimitS) {
+    game.result = game.ruleset.timeout === 'defeat' ? 'defeat' : 'draw';
     game.resultReason = 'time_limit';
   }
 }
@@ -2432,6 +2471,14 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     reason: game.resultReason,
     timeS: game.timeS,
     map: game.mapId,
+    // 2026-09-14: the profile and campaign records read mapId / durationS (map / timeS stay for the
+    // older listeners); the campaign debrief needs the operation, the allies lost and the clock
+    mapId: game.mapId,
+    durationS: game.timeS,
+    campaignOperationId: game.campaignOperationId,
+    timeLimitS: game.ruleset.timeLimitS,
+    alliesLost: game.tanks.filter((entity) =>
+      entity.team === 'player' && entity.id !== game.player?.id && entity.combat.destroyed).length,
     // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
     gameMode: game.gameMode,
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,

@@ -143,7 +143,8 @@ export interface GarageReturnRuntime {
   /** Retry an interrupted canonical return under the restored device's cover. */
   recoverAfterContextRestore(isCurrent: () => boolean): Promise<boolean>;
   leave(): Promise<void>;
-  battleAgain(): Promise<void>;
+  /** Covered return then a new entry; the trigger defaults to the Garage BATTLE click (the campaign ladder passes its own). */
+  battleAgain(trigger?: () => boolean): Promise<void>;
 }
 
 function validateGarageReturnPorts<Visual>(
@@ -500,7 +501,7 @@ export function createGarageReturnRuntime<Visual = object>(
     });
   });
 
-  const battleAgain = (): Promise<void> => {
+  const battleAgain = (trigger: () => boolean = () => ui.triggerBattle()): Promise<void> => {
     if (activeTransition) return activeTransition;
     return beginTransition(async () => {
       await transition.run(async () => {
@@ -514,7 +515,7 @@ export function createGarageReturnRuntime<Visual = object>(
           throw new Error('The previous battle is still loading. Please try Battle Again when it finishes.');
         }
         await enter();
-        if (!ui.triggerBattle()) {
+        if (!trigger()) {
           throw new Error('Battle Again is unavailable. Your Garage is ready; choose a battle from there.');
         }
         const handoffStartedAt = nowMs();

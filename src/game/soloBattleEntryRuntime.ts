@@ -97,9 +97,12 @@ export function createSoloBattleEntryRuntime({
       mapId,
       randomRoster = true,
       gameMode = 'standard',
+      campaignOperationId = null,
     }: SoloBattleEntryRequest = {}) {
       const selected = specId && isVisibleSpecId(specId) ? specId : getSelectedSpecId();
-      return begin(selected, mapId || getSelectedMapId(), { randomRoster, gameMode });
+      return begin(selected, mapId || getSelectedMapId(), {
+        randomRoster, gameMode, ...(campaignOperationId ? { campaignOperationId } : {}),
+      });
     },
   });
 }
