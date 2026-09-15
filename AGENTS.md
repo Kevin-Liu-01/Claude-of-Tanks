@@ -123,6 +123,12 @@ worktree and never stage generated tank work wholesale.
 - Never make a client authoritative for hits, damage, reloads, or match result.
 - Do not import full fleet builders into a new boot-critical module.
 - Do not add multicrew roles or multiple player seats inside one vehicle.
+- Never deploy per commit. Git auto-deploys are disabled in `vercel.json`
+  (`git.deploymentEnabled` off for `main` and `codex/*`); production changes
+  only through the once-per-round prebuilt CLI deploy in `docs/DEPLOYS.md`
+  (`vercel pull --yes --environment=production && vercel build --prod &&
+  vercel deploy --prebuilt --prod`, scope `kl01s-projects`) after a green
+  gate. Do not add a second gate (Ignored Build Step) or a CI deploy.
 
 ## Extending this project's agent system
 <!-- agent-docs:fill:extending -->

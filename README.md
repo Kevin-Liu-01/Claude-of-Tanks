@@ -386,6 +386,14 @@ The public build strips quarantined comparison assets. Simulation, networking, b
 destruction, rendering policy, UI, mobile controls, vehicle provenance, anatomy, generated assets, and both build variants
 have executable checks.
 
+## Deploying
+
+Production (`cot.kevinliu.studio`) is deployed **once per round, by hand**, never per commit. Git
+auto-deploys are disabled in `vercel.json` for `main` and `codex/*`, so pushing never builds on
+Vercel; the release path is the prebuilt CLI deploy documented in [`docs/DEPLOYS.md`](docs/DEPLOYS.md)
+(`vercel pull --yes --environment=production` → `vercel build --prod` → `vercel deploy --prebuilt --prod`),
+run after the release gate is green. There is no CI deploy.
+
 ## Credits and licensing
 
 **Kevin B. Liu** created, designed, and directed the project. Claude and Codex assisted with research, vehicle authoring,

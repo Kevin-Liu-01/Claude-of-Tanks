@@ -13,6 +13,15 @@ Each deploy carries Vercel metadata (`title`, `githubCommitMessage`, `githubComm
 does this lives in the session scratchpad (`deploy-prod.sh <number> "<title>"`) and appends a
 row here; commit the row with the deploy's docs.
 
+**Git auto-deploys are off.** `vercel.json` carries
+`"git": { "deploymentEnabled": { "main": false, "codex/*": false } }` (2026-09-15, owner: the
+Aug 26 – Sep 10 commit storm built 1,220 times — one Vercel build per pushed commit, ~1,400 billed
+build minutes). A push never builds; production changes only through the prebuilt CLI deploy
+above, once per round after the gate, which uploads a local build and consumes no Vercel build
+minutes. Preview deployments for `codex/*` branches are off for the same reason. The Ignored Build
+Step is deliberately not used — one gate, not two. To check: `vercel ls claude-of-tanks --scope
+kl01s-projects` must list only the intentional deployments in this table.
+
 Bundle = the hashed entry chunk served by production after the deploy (`main-<hash>.js`), the
 quickest proof that the live site is the gate build.
 
