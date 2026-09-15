@@ -52,3 +52,4 @@ quickest proof that the live site is the gate build.
 | 18 | 2026-09-14 20:51 | 4748e33f0 | wheels read again, tracks wrap the road wheels, phone boot and touch fixes | main-CquDnnhm.js | claude-of-tanks-bn66bd817 |
 | 19 | 2026-09-14 21:04 | 8388bda3f | every mode plays by its own ruleset; campaign operations with difficulty, clocks and stars | main-wgQRTYGc.js | claude-of-tanks-9salxlpk1 |
 | 20 | 2026-09-14 22:44 | 35656f236 | mobile toolbar taps under a steering thumb, campaign in the service record, BRIEF button, cleanup slices | main-D2byEoBu.js | claude-of-tanks-awxosmmku |
+| 21 | 2026-09-15 14:39 | e7b7580d6 | tactical map, Revolution recess, fills to zero, era stowage, settlement details | main-CgudSgmE.js | claude-of-tanks-qrgjn1vsx |
