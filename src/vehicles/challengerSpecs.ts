@@ -206,7 +206,7 @@ const CHALLENGER_SPEC_IDS = [
 ] as const;
 type ChallengerSpecId = typeof CHALLENGER_SPEC_IDS[number];
 
-export const CHALLENGER_SPECS = {
+const CHALLENGER_SPECS = {
   fv4034: {
     id: 'fv4034', name: 'FV4034', nation: 'UK', era: 'cold-war', role: 'mbt',
     hp: 2250,

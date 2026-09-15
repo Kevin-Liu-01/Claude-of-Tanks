@@ -47,7 +47,7 @@ interface AssetMuzzleSpec {
   z?: number;
 }
 
-export interface TankAssetSpec {
+interface TankAssetSpec {
   id: string;
   name?: string | null;
   nation: string;
@@ -90,7 +90,7 @@ interface GeometryObjectLike {
   count?: number;
 }
 
-export interface GeometryRootLike {
+interface GeometryRootLike {
   updateMatrixWorld(force: boolean): void;
   traverse(visitor: (object: GeometryObjectLike) => void): void;
 }
@@ -111,7 +111,7 @@ export const TANK_ASSET_VIEWS = Object.freeze({
   markings: Object.freeze({ suffix: 'markings', ext: 'png', width: 256, height: 128, role: 'national insignia and tactical designation' }),
 });
 
-export type TankAssetView = keyof typeof TANK_ASSET_VIEWS;
+type TankAssetView = keyof typeof TANK_ASSET_VIEWS;
 
 export function tankAssetFile(id: string, view: TankAssetView): string {
   const def = TANK_ASSET_VIEWS[view];

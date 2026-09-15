@@ -13,7 +13,7 @@ import { ensureWorldNightEmissionMask, markWorldLantern } from '../worldNightEmi
 const SUPPORT_EPSILON = 0.065;
 const EXTERIOR_RECEIPTS = Symbol('exterior-detail-receipts');
 
-export interface ExteriorSupportRecord {
+interface ExteriorSupportRecord {
   building: string;
   part: string;
   support: string;
@@ -22,7 +22,7 @@ export interface ExteriorSupportRecord {
   minContactSpan: number;
 }
 
-export interface ExteriorReceipt {
+interface ExteriorReceipt {
   id: string;
   profile: string;
   added: number;

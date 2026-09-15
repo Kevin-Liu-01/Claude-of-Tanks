@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 
-export type VehicleMarkingSeat = Readonly<Record<string, RuntimeValue>>;
+type VehicleMarkingSeat = Readonly<Record<string, RuntimeValue>>;
 
 export interface VehicleMarkingSeatRecord {
   schemaVersion: typeof VEHICLE_MARKING_SEAT_SCHEMA_VERSION;

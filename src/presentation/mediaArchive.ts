@@ -29,7 +29,7 @@ interface MediaArchiveOptions {
 
 let manifestPromise: Promise<PresentationManifest> | undefined;
 
-export function loadPresentationManifest(): Promise<PresentationManifest> {
+function loadPresentationManifest(): Promise<PresentationManifest> {
   if (!manifestPromise) {
     manifestPromise = fetch(MANIFEST_URL).then((response) => {
       if (!response.ok) throw new Error(`Presentation archive unavailable (${response.status})`);

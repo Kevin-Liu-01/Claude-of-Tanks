@@ -1,7 +1,7 @@
 // Standalone opt-in experiment. No game modules, device discovery or permissions.
 // https://developer.chrome.com/blog/audiocontext-setsinkid/
 // https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext
-export const AUDIO_SINK_MODES = Object.freeze(['default', 'silent-then-default']);
+const AUDIO_SINK_MODES = Object.freeze(['default', 'silent-then-default']);
 
 export function audioSinkOrder(blocks = 3) {
   if (!Number.isInteger(blocks) || blocks < 1 || blocks > 6) throw new Error('blocks must be 1 through 6');

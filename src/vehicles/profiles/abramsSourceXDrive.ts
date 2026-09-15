@@ -246,7 +246,7 @@ function capRing(x: number, front: boolean): Space[] {
 /** LOW preserves the original complete exposed triangular head. Only the
  * concealed rear becomes a tapered shank: its tip laps 1.83 mm into the
  * unchanged mounting plate. Four closed faces replace eight prism faces. */
-export function abramsDriveFastener(high:boolean):THREE.BufferGeometry {
+function abramsDriveFastener(high:boolean):THREE.BufferGeometry {
   if(high)return gearFastener(.0245,.02101,true);
   const front=.02101/2,r=.0245,vertices=[
     [front,0,r],[front,Math.sin(Math.PI*2/3)*r,-r/2],

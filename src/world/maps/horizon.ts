@@ -35,7 +35,7 @@ import { registerRetainedObject3DResources } from '../../engine/resourceLifetime
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
 
-export type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
+type HorizonStyle = 'rolling' | 'alpine' | 'mesa' | 'escarpment';
 
 interface HorizonSeaOpening {
   azimuthDeg: number;
@@ -44,7 +44,7 @@ interface HorizonSeaOpening {
   colorHex?: number;
 }
 
-export interface HorizonConfig {
+interface HorizonConfig {
   baseHex?: number;
   amp?: number;
   style?: HorizonStyle;
@@ -111,7 +111,7 @@ interface TreelineCrownOptions {
   samples?: number;
 }
 
-export interface HorizonTextureOptions {
+interface HorizonTextureOptions {
   banding: number;
   snowline: number;
   treeline: number;
@@ -338,7 +338,7 @@ export function sampleHorizonSilhouette({
 // centred on 0.62 (recentred by the material color) — hue stays in the
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
-export type HorizonNoiseSampler = (
+type HorizonNoiseSampler = (
   u: number,
   v: number,
   frequencyU: number,
@@ -346,7 +346,7 @@ export type HorizonNoiseSampler = (
   offset: number,
 ) => number;
 
-export interface HorizonTextureTerrainSample {
+interface HorizonTextureTerrainSample {
   luminance: number;
   belowTree: number;
   ridge: number;

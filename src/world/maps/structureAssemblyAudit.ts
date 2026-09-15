@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GeometryBuckets } from './exteriorDetailKit.ts';
 
-export interface StructureAssemblyAudit {
+interface StructureAssemblyAudit {
   readonly parts: number;
   readonly groundedParts: number;
   readonly unsupportedParts: number;

@@ -3,7 +3,7 @@
 import type { BufferGeometry } from 'three';
 import { planeBoundedArmor, type ArmorPlane } from './abramsSourceXGeometry.ts';
 
-export interface AbramsSourceXAftCasePart {
+interface AbramsSourceXAftCasePart {
   name: string;
   geometry: BufferGeometry;
 }

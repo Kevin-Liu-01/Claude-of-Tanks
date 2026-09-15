@@ -79,9 +79,9 @@ interface TriangleScratch {
   readonly faceNormal: THREE.Vector3;
 }
 
-export type CoplanarFinding = Omit<InternalFinding, '_objectRefs' | '_samples'>;
+type CoplanarFinding = Omit<InternalFinding, '_objectRefs' | '_samples'>;
 
-export interface CoplanarAuditResult {
+interface CoplanarAuditResult {
   readonly settings: AuditSettings;
   readonly stats: {
     readonly objects: number;
@@ -215,7 +215,7 @@ function lineIntersection(
   return [a[0] + abx * t, a[1] + aby * t];
 }
 
-export function triangleIntersectionPolygon2D(
+function triangleIntersectionPolygon2D(
   lhs: readonly Vec2Tuple[],
   rhs: readonly Vec2Tuple[],
   epsilon = 1e-10,

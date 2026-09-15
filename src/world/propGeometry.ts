@@ -4,24 +4,24 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 type RandomSource = () => number;
 type Rgb = readonly [number, number, number];
 
-export type RoofPlaneKind = 'gable' | 'skillion' | 'sawtooth' | 'dormer';
+type RoofPlaneKind = 'gable' | 'skillion' | 'sawtooth' | 'dormer';
 
-export interface RoofPlanePitchReceipt {
+interface RoofPlanePitchReceipt {
   axis: 'x' | 'z';
   outwardSign: -1 | 1;
   angleRad: number;
   kind: RoofPlaneKind;
 }
 
-export interface RoofPlanePitchAudit extends RoofPlanePitchReceipt {
+interface RoofPlanePitchAudit extends RoofPlanePitchReceipt {
   wallEdgeY: number;
   outwardEdgeY: number;
   drop: number;
   measuredAngleRad: number;
 }
 
-export type SkillionRoofPitchReceipt = Omit<RoofPlanePitchReceipt, 'kind'>;
-export type SkillionRoofPitchAudit = Omit<RoofPlanePitchAudit, 'kind'>;
+type SkillionRoofPitchReceipt = Omit<RoofPlanePitchReceipt, 'kind'>;
+type SkillionRoofPitchAudit = Omit<RoofPlanePitchAudit, 'kind'>;
 
 export function scaleUV<T extends THREE.BufferGeometry>(
   geometry: T,

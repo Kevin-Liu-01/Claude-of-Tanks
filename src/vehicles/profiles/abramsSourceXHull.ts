@@ -21,7 +21,7 @@ import { abramsRearTrackCeiling, abramsFrontTrackHalfWidth, addAbramsRearTrackFe
 import type { TankBuilderPort, TrackGuideProfile, TrackShoeBuildParameters } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylZ } = KIT;
-export interface AbramsSourceXHullOptions {
+interface AbramsSourceXHullOptions {
   urbanArmor: boolean;
   curvedArat: boolean;
   sepv3: boolean;
@@ -389,7 +389,7 @@ function bowEquipment(P: TankBuilderPort): void {
   }
 }
 
-export function buildAbramsSourceXHull(P: TankBuilderPort, options: AbramsSourceXHullOptions): void {
+function buildAbramsSourceXHull(P: TankBuilderPort, options: AbramsSourceXHullOptions): void {
   drainTankBuild(buildAbramsSourceXHullCooperativeSteps(P, options, false));
 }
 

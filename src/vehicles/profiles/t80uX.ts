@@ -13,7 +13,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[0,1.55158,.0718698169];
 const GUN:Point3=[0,1.7564274071,1.4199398169];
-export const T80U_X_DATUMS={
+const T80U_X_DATUMS={
   dims:{hullLengthM:6.720291335,overallLengthM:9.534282731,widthM:3.60,heightM:2.172451481},
   turretPivot:YAW,trunnion:GUN,muzzleZ:6.002754533,highestFittingM:2.496602805,
   structuralRoofM:2.172451481,sourceHullBoundsZ:[-3.360145667,3.360145667],
@@ -228,7 +228,7 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-export function buildT80UX(P:TankBuilderPort):void {
+function buildT80UX(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T80U_X_DATUMS.muzzleZ-GUN[2];P.topY=T80U_X_DATUMS.highestFittingM-YAW[1];

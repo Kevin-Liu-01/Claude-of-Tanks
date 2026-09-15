@@ -6,7 +6,7 @@ import { KIT } from './kit.ts';
 import { vehicleAmbientFloorHook } from '../materials.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicleNightLighting.ts';
 
-export interface ShtoraPort {
+interface ShtoraPort {
   readonly mats: { readonly dark: THREE.MeshStandardMaterial };
   readonly turretG: THREE.Group;
   _shtoraRed?: THREE.MeshStandardMaterial;

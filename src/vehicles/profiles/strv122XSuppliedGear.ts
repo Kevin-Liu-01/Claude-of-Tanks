@@ -6,7 +6,7 @@ import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-export const STRV122_SUPPLIED_GEAR = Object.freeze({
+const STRV122_SUPPLIED_GEAR = Object.freeze({
   roadZ: [-2.245,-1.4375,-.645,.1275,.8925,1.6675,2.465] as readonly number[],
   roadY: .432, roadRadius: .3375, roadAxisAbsX: 1.335,roadAxisLeftAbsX:1.315,
   trackAxisAbsX: 1.410,trackAxisLeftAbsX:1.387,trackWidth: .640,

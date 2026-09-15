@@ -70,7 +70,7 @@ export function cardHtml(label, source, position, fit = 'cover') {
   </div></body></html>`;
 }
 
-export async function generateOgImages(cards = OG_IMAGE_CARDS) {
+async function generateOgImages(cards = OG_IMAGE_CARDS) {
   mkdirSync(OUTPUT, { recursive: true });
   const browser = await puppeteer.launch({
     headless: 'new',

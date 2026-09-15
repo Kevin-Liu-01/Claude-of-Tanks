@@ -12,7 +12,7 @@ import {sourceMachineGun} from './sourceMachineGun.ts';
 import {T72BU_X_SOURCE_DATUMS} from '../t72buXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
-export const T72BU_X_DATUMS=T72BU_X_SOURCE_DATUMS;
+const T72BU_X_DATUMS=T72BU_X_SOURCE_DATUMS;
 const YAW=T72BU_X_DATUMS.turretPivot,GUN=T72BU_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
 const cylY=(r:number,h:number,n=28)=>KIT.cylY(r,r,h,n);

@@ -36,11 +36,11 @@ interface ReferenceGlbConfig {
   readonly brightenOracle?: boolean;
 }
 
-export interface ReferenceGlbSource extends PreservationSource {
+interface ReferenceGlbSource extends PreservationSource {
   readonly glb?: ReferenceGlbConfig;
 }
 
-export interface ReferenceVehicleSpec {
+interface ReferenceVehicleSpec {
   readonly dims?: { readonly widthM?: number };
 }
 

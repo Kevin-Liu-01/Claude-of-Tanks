@@ -9,7 +9,7 @@ const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
 const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 };
 
-export const FRANCE_SPECS = {
+const FRANCE_SPECS = {
   amx40: {
     id: 'amx40', name: 'AMX-40', nation: 'France', era: 'modern', role: 'mbt',
     hp: 2000,

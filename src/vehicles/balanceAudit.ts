@@ -57,7 +57,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   ua_t64bv: 'modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling',
 } as const);
 
-export interface FleetBalanceOutlier {
+interface FleetBalanceOutlier {
   id: string;
   group: string;
   metric: 'hp' | 'dpm' | 'penetration' | 'powerWeight' | 'fireControl';

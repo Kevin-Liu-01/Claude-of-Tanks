@@ -3,7 +3,7 @@
 // diagnostics and the kill cam. Exact armour envelopes remain geometry-derived
 // in combatAnatomyCalibrations.ts; classified dimensions are never invented.
 
-export interface InternalLayoutSource {
+interface InternalLayoutSource {
   readonly title: string;
   readonly url: string;
   readonly kind: string;
@@ -20,7 +20,7 @@ export interface InternalSystemPlacement {
   readonly form: string;
 }
 
-export interface InternalSystems {
+interface InternalSystems {
   readonly engine: InternalSystemPlacement;
   readonly transmission: InternalSystemPlacement;
   readonly optics: InternalSystemPlacement;
@@ -191,7 +191,7 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
 
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
 
-export interface InternalLayoutDefinition {
+interface InternalLayoutDefinition {
   readonly confidence: string;
   readonly sources: readonly InternalLayoutSourceId[];
   readonly crew: readonly InternalCrewStation[];

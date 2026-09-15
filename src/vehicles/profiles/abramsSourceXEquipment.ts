@@ -22,14 +22,14 @@ import { abramsCommanderLid, abramsCommanderCap } from './abramsSourceXHatches.t
 import { abramsAratBracket } from './abramsSourceXAratBrackets.ts';
 import { compactRoundMember } from '../compactRoundMember.ts';
 
-export interface AbramsSourceXEquipmentOptions {
+interface AbramsSourceXEquipmentOptions {
   a1: boolean;
   urbanArmor: boolean;
   curvedArat: boolean;
   sepv3: boolean;
   ukrainian: boolean;
 }
-export interface AbramsSourceXEquipmentFrame {
+interface AbramsSourceXEquipmentFrame {
   turret: [number, number, number];
   gun: [number, number, number];
 }
@@ -40,7 +40,7 @@ interface EquipmentContext {
   frame: AbramsSourceXEquipmentFrame;
 }
 
-export const ABRAMS_SOURCE_X_EQUIPMENT_DATUMS = Object.freeze({
+const ABRAMS_SOURCE_X_EQUIPMENT_DATUMS = Object.freeze({
   boreAxis: [-.0200025, 1.849085] as const,
   tubeRearZ: 2.029245,
   muzzleZ: 5.809425,

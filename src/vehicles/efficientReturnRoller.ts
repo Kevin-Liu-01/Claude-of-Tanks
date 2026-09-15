@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export interface EfficientReturnRollerOptions {
+interface EfficientReturnRollerOptions {
   quality: 'high' | 'low';
   radiusM: number;
   axialWidthM: number;

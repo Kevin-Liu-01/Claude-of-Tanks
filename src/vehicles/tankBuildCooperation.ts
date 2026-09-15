@@ -9,7 +9,7 @@ interface BuildMesh extends Object3D {
   isInstancedMesh?: boolean;
   dispose?(): void;
 }
-export type TankBuildStage = string | {
+type TankBuildStage = string | {
   label: string;
   resources: readonly BufferGeometry[];
 };
@@ -21,11 +21,11 @@ const NO_STAGES: IterableIterator<never> = Object.freeze({
   next: (): IteratorReturnResult<void> => EMPTY_RESULT,
   [Symbol.iterator](): IterableIterator<never> { return this; },
 });
-export interface TankBuildCheckpoint {
+interface TankBuildCheckpoint {
   label: string;
   owner: TankBuildOwner;
 }
-export interface TankBuildOwner {
+interface TankBuildOwner {
   root: Object3D;
   checkpoint(stage: TankBuildStage): TankBuildCheckpoint;
   stats(): { closed: boolean; observed: number; disposed: number };
@@ -53,7 +53,7 @@ export function tankBuildCheckpoint(owner: TankBuildOwner | null, label: string)
 export function tankProfileCheckpoint(enabled: boolean, label: string): Iterable<string> {
   return enabled ? singleStage(label) : NO_STAGES;
 }
-export function* observeTankProfile(owner: TankBuildOwner, stages: TankProfileBuild): Generator<TankBuildCheckpoint, void, void> {
+function* observeTankProfile(owner: TankBuildOwner, stages: TankProfileBuild): Generator<TankBuildCheckpoint, void, void> {
   for (const stage of stages) yield owner.checkpoint(stage);
 }
 export function constructTankProfile<Builder>(builder: Builder, owner: TankBuildOwner | null,

@@ -152,7 +152,7 @@ export function shoulderCoverTop(z:number):number {
 }
 /** Skirt top per station (t72b3mX.ts skirt ERA spans). */
 function skirtTopAt(z:number):number { return z>2.242?1.47615:z>1.637?1.52077:1.53164; }
-export const SHOULDER_COVER_Z:readonly[number,number]=[-3.153,2.702];
+const SHOULDER_COVER_Z:readonly[number,number]=[-3.153,2.702];
 const SHOULDER_COVER_THICKNESS=.024;
 
 function shoulderCover(P:TankBuilderPort,side:number):void {

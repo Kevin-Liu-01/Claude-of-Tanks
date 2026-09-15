@@ -22,7 +22,7 @@ const { box, cylX, cylY, cylZ } = KIT;
 type Point = readonly [number, number, number];
 type Row = readonly [z: number, left: number, right: number, floor: number, roof: number];
 
-export const LECLERC_X_DATUMS = Object.freeze({
+const LECLERC_X_DATUMS = Object.freeze({
   leclerc_x: {
     dims: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494 },
     structuralRoofY: 2.36494, fixedOpticHeightM: 2.764625, highestFittingM: 3.0665927,

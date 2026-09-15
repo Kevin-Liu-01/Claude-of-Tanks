@@ -9,13 +9,13 @@ import {
   type SourcedTextureCompositionRequest,
 } from './sourcedTextureCompositionProtocol.ts';
 
-export interface SourcedCompositionImages {
+interface SourcedCompositionImages {
   color: HTMLImageElement;
   ao: HTMLImageElement | null;
   rough: HTMLImageElement | null;
 }
 
-export interface SourcedCompositionInput {
+interface SourcedCompositionInput {
   /** Source-set identity; the client additionally keys every option and image owner. */
   key: string;
   size: number;
@@ -24,7 +24,7 @@ export interface SourcedCompositionInput {
   images: SourcedCompositionImages;
 }
 
-export interface SourcedCompositionWorkerPort {
+interface SourcedCompositionWorkerPort {
   onmessage: ((event: { data: RuntimeValue }) => void) | null;
   onerror: (() => void) | null;
   onmessageerror: (() => void) | null;
@@ -32,7 +32,7 @@ export interface SourcedCompositionWorkerPort {
   terminate(): void;
 }
 
-export interface SourcedCompositionClientPorts {
+interface SourcedCompositionClientPorts {
   createWorker(): SourcedCompositionWorkerPort | null;
   createBitmap(image: HTMLImageElement): Promise<ImageBitmap>;
   /** Separate native image conversions from replies and from one another. */
@@ -57,7 +57,7 @@ interface CompositionJob {
   finished: boolean;
 }
 
-export interface SourcedCompositionClient {
+interface SourcedCompositionClient {
   compose(input: SourcedCompositionInput, signal?: AbortSignal): Promise<SourcedTextureCompositionComplete | null>;
   available(): boolean;
   dispose(): void;

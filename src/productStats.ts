@@ -7,7 +7,7 @@
  * pulling the vehicle or battlefield registries into the initial graph.
  * `productStats.selftest.mjs` verifies every value against those registries.
  */
-export interface ProductStats {
+interface ProductStats {
   productionVehicles: number;
   developmentVehicles: number;
   savedVehicleRecords: number;

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { t } from '../ui/i18n.ts';
 
 export const MARKUP_OPERATIONS = Object.freeze(['inspect', 'remove', 'reshape', 'add'] as const);
-export type MarkupOperation = (typeof MARKUP_OPERATIONS)[number];
+type MarkupOperation = (typeof MARKUP_OPERATIONS)[number];
 
 const OPERATION_COLORS: Readonly<Record<MarkupOperation, number>> = Object.freeze({
   inspect: 0x65a9ff,
@@ -41,7 +41,7 @@ interface GeometryAdjacency {
 }
 
 type PositionAttribute = THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
-export type SurfacePickTarget = THREE.Mesh | THREE.InstancedMesh;
+type SurfacePickTarget = THREE.Mesh | THREE.InstancedMesh;
 type PickTarget = SurfacePickTarget;
 type SurfaceHit = THREE.Intersection<PickTarget> & {
   face: THREE.Face;
@@ -128,7 +128,7 @@ export interface SurfaceInspectionInfo {
   point: number[];
 }
 
-export interface SurfaceMarkupOptions {
+interface SurfaceMarkupOptions {
   renderer: THREE.WebGLRenderer;
   camera: THREE.PerspectiveCamera;
   controls: SurfaceControls;

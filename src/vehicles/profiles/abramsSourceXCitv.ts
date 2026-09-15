@@ -4,7 +4,7 @@ import * as T from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { closedSectionLoft, planeBoundedArmor, type ArmorPlane, type XY } from './abramsSourceXGeometry.ts';
 
-export interface AbramsSourceXCitvPart {
+interface AbramsSourceXCitvPart {
   name: string;
   geometry: T.BufferGeometry;
   glass?: boolean;

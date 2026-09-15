@@ -262,7 +262,7 @@ const faceCache=new Map<boolean,StockFace[]>();
 function copyFaces(faces:readonly StockFace[]):StockFace[]{
   return faces.map(face=>({...face,verts:face.verts.map(p=>[...p]),excludedEdges:face.excludedEdges?[...face.excludedEdges]:undefined}));
 }
-export function abramsSourceXRackStockFaces(extended:boolean):StockFace[]{
+function abramsSourceXRackStockFaces(extended:boolean):StockFace[]{
   const cached=faceCache.get(extended);if(cached)return copyFaces(cached);
   const out:StockFace[]=[];
   mainCourses(out);mainFrames(out);mainRibs(out);

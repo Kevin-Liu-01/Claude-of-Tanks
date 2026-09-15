@@ -5,7 +5,7 @@ import {KIT} from './kit.ts';
 import {sectionSolid, type SolidSection} from './sectionSolid.ts';
 
 export type Point3 = readonly [number,number,number];
-export type BoxStation = readonly [z:number,half:number,top:number,bottom:number];
+type BoxStation = readonly [z:number,half:number,top:number,bottom:number];
 export type CastStation = readonly [z:number,left:number,right:number,top:number,bottom:number,shoulder:number];
 
 export function boxSections(rows:readonly BoxStation[]):THREE.BufferGeometry {

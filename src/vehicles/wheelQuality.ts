@@ -54,12 +54,12 @@ type RenderObject = Object3D & {
   material?: Material | Material[];
 };
 
-export interface WheelQualityIssue {
+interface WheelQualityIssue {
   code: string;
   [key: string]: RuntimeValue;
 }
 
-export interface WheelQualityAudit {
+interface WheelQualityAudit {
   version: 1;
   issues: WheelQualityIssue[];
   patterns: WheelPatternId[];

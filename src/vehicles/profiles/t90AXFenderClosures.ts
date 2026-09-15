@@ -3,7 +3,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 
 // One set of authored stations owns both the original curved roof and its
 // fitted outer return. The toe narrows only beyond the forward track bend.
-export const T90A_FRONT_GUARD_ROWS: readonly (readonly [number, number, number])[] = [
+const T90A_FRONT_GUARD_ROWS: readonly (readonly [number, number, number])[] = [
   [3.180,1.278,1.827],[3.300,1.265,1.827],[3.400,1.247,1.827],
   [3.500,1.216,1.826],[3.590,1.161,1.825],[3.685,1.071,1.825],[3.782,.857,1.698],
 ];

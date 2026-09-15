@@ -11,7 +11,7 @@ const HEADER_BYTES = 12;
 const RECORD_HEADER_BYTES = 40;
 const align4 = (value) => (value + 3) & ~3;
 
-export function encodePropModelArchive(models) {
+function encodePropModelArchive(models) {
   // Preserve the baker's stable insertion order. It intentionally keeps the
   // two near-identical trench meshes adjacent, which gives gzip substantially
   // better cross-record matches than alphabetical ordering.

@@ -142,7 +142,7 @@ export const leftCheekPlate = (
 ): ArmorPlate =>
   plate(name, mm, [-xOut, y0, zOut], [-xIn, y0, zIn], [-xOut + xi, y1, zOut - tb], o);
 
-export type ReactivePlateSurface = 'front' | 'left' | 'right' | 'top';
+type ReactivePlateSurface = 'front' | 'left' | 'right' | 'top';
 
 /**
  * Register a semantic reactive-armor zone before its fitted visual geometry is
@@ -300,7 +300,7 @@ export function communityArmor(
  */
 type ArmorTriple = readonly [number, number, number];
 
-export interface ModernArmorInput {
+interface ModernArmorInput {
   hl: number;
   hw: number;
   inW: number;

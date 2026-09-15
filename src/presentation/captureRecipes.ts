@@ -1,6 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 const RECIPES_URL = '/media/capture-recipes-r1.json';
-export interface CaptureRecipeCatalog {
+interface CaptureRecipeCatalog {
   media: Record<string, string>;
   recipes: Record<string, RuntimeValue>;
 }
@@ -17,7 +17,7 @@ export function loadCaptureRecipes(): Promise<CaptureRecipeCatalog> {
   return recipesPromise;
 }
 
-export function mediaPath(value: RuntimeValue): string {
+function mediaPath(value: RuntimeValue): string {
   const source = String(value || '');
   if (!source) return '';
   try { return new URL(source, globalThis.location?.href || 'http://localhost/').pathname; }

@@ -6,14 +6,14 @@ import {
 
 export type { MaterialPainterRequest, MaterialPainterResult } from './materialPainterProtocol.ts';
 
-export interface MaterialPainterWorkerPort {
+interface MaterialPainterWorkerPort {
   onmessage: ((event: { data: RuntimeValue }) => void) | null;
   onerror: (() => void) | null;
   onmessageerror: (() => void) | null;
   postMessage(message: MaterialPainterMessage): void;
   terminate(): void;
 }
-export interface MaterialPainterClientPorts {
+interface MaterialPainterClientPorts {
   createWorker(): MaterialPainterWorkerPort | null;
   schedule(callback: () => void, delayMs: number): () => void;
   clone(request: MaterialPainterRequest): MaterialPainterRequest;
@@ -25,7 +25,7 @@ interface PendingPaint {
   resolve(value: MaterialPainterResult | null): void;
   cancelTimer(): void;
 }
-export interface MaterialPainterClient {
+interface MaterialPainterClient {
   paint(request: MaterialPainterRequest): Promise<MaterialPainterResult | null>;
   dispose(): void;
   available(): boolean;

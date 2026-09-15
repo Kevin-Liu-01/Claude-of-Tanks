@@ -1,4 +1,4 @@
-export interface MapResourceLease<T> {
+interface MapResourceLease<T> {
   value: T;
   release(): void;
 }

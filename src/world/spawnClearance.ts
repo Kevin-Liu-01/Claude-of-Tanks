@@ -1,4 +1,4 @@
-export interface SpawnPoint2D {
+interface SpawnPoint2D {
   x: number;
   z: number;
 }

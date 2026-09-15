@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { orientedSlab } from './kit.ts';
 
-export type ChevronSide = -1 | 1;
+type ChevronSide = -1 | 1;
 
 export interface ChevronStation {
   readonly x: number;

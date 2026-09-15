@@ -6,7 +6,7 @@ import type { GeometryBuckets, StructureDimensions } from './exteriorDetailKit.t
  * their broad placement envelope only for terrain seating; these slices are
  * the substantially tighter gameplay shape used by movement and ray queries.
  */
-export interface StructureCollisionFootprint {
+interface StructureCollisionFootprint {
   readonly cx: number;
   readonly cz: number;
   readonly halfWidth: number;
@@ -15,7 +15,7 @@ export interface StructureCollisionFootprint {
   readonly maxY: number;
 }
 
-export interface StructureCollisionAudit {
+interface StructureCollisionAudit {
   readonly purpose: StructureCollisionPurpose;
   readonly footprints: readonly StructureCollisionFootprint[];
   readonly broadAreaM2: number;
@@ -24,7 +24,7 @@ export interface StructureCollisionAudit {
   readonly sourceParts: number;
 }
 
-export type StructureCollisionPurpose = 'movement' | 'ray';
+type StructureCollisionPurpose = 'movement' | 'ray';
 
 // These authored families contain intentional drive-through space, separated
 // buildings, exposed supports or accessible courtyards. Every other catalog

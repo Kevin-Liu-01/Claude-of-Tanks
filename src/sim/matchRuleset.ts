@@ -9,10 +9,10 @@
 // points lost), ammunition and equipment at spawn, and the play-menu rule cards.
 import type { GameModeId } from './matchModes.ts';
 
-export type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
-export type RulesetTimeout = 'draw' | 'defeat';
+type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
+type RulesetTimeout = 'draw' | 'defeat';
 
-export interface AssaultRules {
+interface AssaultRules {
   /** Defenders fielded on the first sector; each further sector adds one. */
   readonly initialActive: number;
   /** Extra defenders per sector from the operation's difficulty. */
@@ -128,7 +128,7 @@ function percent(scale: number): string {
   return `${delta > 0 ? '+' : ''}${delta} %`;
 }
 
-export interface RulesetLine {
+interface RulesetLine {
   /** i18n key under `rules.line.*`. */
   readonly key: string;
   readonly values: Readonly<Record<string, string>>;
@@ -182,7 +182,7 @@ export function rulesetReloadMultiplier(ruleset: MatchRuleset): number {
 }
 
 /** Structural view of the combat state a ruleset stamps (damage.ts CombatState and the authority's share it). */
-export interface RulesetCombatState {
+interface RulesetCombatState {
   hp: number;
   maxHp: number;
   ammo: number[];
@@ -192,7 +192,7 @@ export interface RulesetCombatState {
   modeDamageTakenScale?: number;
 }
 
-export interface RulesetShellSpec { readonly type?: string }
+interface RulesetShellSpec { readonly type?: string }
 
 /**
  * Stamp a freshly created combat state with the ruleset: hull hit points (times the wave / health scale

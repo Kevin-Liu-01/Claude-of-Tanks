@@ -8,7 +8,7 @@ import {
 
 export const SITE_ORIGIN = 'https://cot.kevinliu.studio';
 
-export type SiteMetadata = {
+type SiteMetadata = {
   title: string;
   description: string;
   canonical: string;
@@ -24,7 +24,7 @@ export type SiteMetadata = {
 const INDEX_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 const PRIVATE_ROBOTS = 'noindex, nofollow, noarchive, max-image-preview:large';
 
-export const GAME_METADATA: SiteMetadata = {
+const GAME_METADATA: SiteMetadata = {
   title: `Claude of Tanks — Free Browser Tank Game | ${PRODUCT_STATS.productionVehicles} Tanks, ${PRODUCT_STATS.battlefields} Battlefields`,
   description: `Claude of Tanks is a free browser-native armored warfare game with ${PRODUCT_STATS.productionVehicles} production vehicles, ${PRODUCT_STATS.battlefields} battlefields, bot and multiplayer battles, X-ray killcams, and a cinematic scene studio — pure Three.js, no install, no account.`,
   canonical: `${SITE_ORIGIN}/`,
@@ -95,7 +95,7 @@ export function normalizeRoomCode(value: string | null): string {
     .slice(0, 6);
 }
 
-export function normalizeHostName(value: string | null): string {
+function normalizeHostName(value: string | null): string {
   return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 24);
 }
 

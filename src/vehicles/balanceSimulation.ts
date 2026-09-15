@@ -72,7 +72,7 @@ const FLAT_RANGE_WORLD: AuthoritativeWorldCollision = {
   getConcealment: () => [],
 };
 
-export interface BalanceDuelOptions {
+interface BalanceDuelOptions {
   aId: string;
   bId: string;
   seed: number;
@@ -86,7 +86,7 @@ export interface BalanceDuelOptions {
   advanceToM?: number;
 }
 
-export interface BalanceDuelReceipt {
+interface BalanceDuelReceipt {
   aId: string;
   bId: string;
   seed: number;
@@ -112,7 +112,7 @@ export interface BalanceSeriesOptions {
   advanceToM?: number;
 }
 
-export interface BalanceSeriesReceipt {
+interface BalanceSeriesReceipt {
   aId: string;
   bId: string;
   seeds: number[];

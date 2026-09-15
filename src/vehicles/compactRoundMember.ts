@@ -4,7 +4,7 @@ type Point = readonly [number, number, number];
 
 /** Retriangulate only the two planar fans of an owned closed cylinder.
  * Positions, normals, UVs, side faces and occupied stock are unchanged. */
-export function compactCylinderCaps(geometry: THREE.CylinderGeometry): THREE.CylinderGeometry {
+function compactCylinderCaps(geometry: THREE.CylinderGeometry): THREE.CylinderGeometry {
   const segments = geometry.parameters.radialSegments;
   if (geometry.parameters.openEnded || geometry.parameters.heightSegments !== 1
     || geometry.parameters.thetaLength !== Math.PI * 2 || geometry.groups.length !== 3)

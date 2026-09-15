@@ -63,7 +63,7 @@ export const WHEEL_PATTERN_DEFINITIONS = Object.freeze({
 } as const);
 
 export type WheelPatternId = keyof typeof WHEEL_PATTERN_DEFINITIONS;
-export type WheelPatternDefinition = typeof WHEEL_PATTERN_DEFINITIONS[WheelPatternId];
+type WheelPatternDefinition = typeof WHEEL_PATTERN_DEFINITIONS[WheelPatternId];
 export type WheelPattern = Readonly<{ id: WheelPatternId } & WheelPatternDefinition>;
 
 interface WheelPatternSpec {

@@ -13,7 +13,7 @@ export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 // Inferred articulation from the source's bearing circle and level bore.
 // These are authoring joints: OBJ has no skeleton. Their provenance is in
 // the source study, independently of any candidate envelope fitting.
-export function abramsSourceXConfiguration(id: string) {
+function abramsSourceXConfiguration(id: string) {
   const a1 = id === 'm1a1_x' || id === 'm1a1ha_x' || id === 'ua_m1a1_x';
   const sepv3 = id === 'm1a2_sepv3_x';
   const curvedArat = id === 'm1a2_sepv2_x';
@@ -94,7 +94,7 @@ export function buildAbramsX(P: TankBuilderPort): void {
   drainTankBuild(buildAbramsXCooperativeSteps(P, false));
 }
 
-export function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): TankProfileBuild {
+function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): TankProfileBuild {
   const frame = ABRAMS_SOURCE_X_FRAME;
   const options = abramsSourceXConfiguration(P.spec.id);
   P.hullG.position.set(0, 0, 0);

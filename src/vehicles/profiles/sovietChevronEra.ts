@@ -55,7 +55,7 @@ interface ChevronBuilderPort {
   visualEraCluster(sector: string, owner: 'turret', build: () => void): void;
 }
 
-export interface SovietChevronEraOptions {
+interface SovietChevronEraOptions {
   sector: string;
   receiptKey: string;
   family: string;
@@ -75,7 +75,7 @@ export interface SovietChevronEraOptions {
   centerClosure?: CenterClosure | null;
 }
 
-export interface SovietChevronEraReceipt {
+interface SovietChevronEraReceipt {
   readonly family: string;
   readonly rowsPerCheek: number;
   readonly carriersPerRow: number;

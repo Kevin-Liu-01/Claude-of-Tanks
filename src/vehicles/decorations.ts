@@ -126,7 +126,7 @@ interface DecorKitArgs {
 
 type DecorKitBuilder = (args: DecorKitArgs) => DecorPartList;
 
-export type FleetEquipmentNationStyle =
+type FleetEquipmentNationStyle =
   | 'american'
   | 'british'
   | 'east-asian'
@@ -190,7 +190,7 @@ export const FLEET_EQUIPMENT_VARIANTS = Object.freeze([
   'thermos-crate',
 ] as const);
 
-export type FleetEquipmentVariant = typeof FLEET_EQUIPMENT_VARIANTS[number];
+type FleetEquipmentVariant = typeof FLEET_EQUIPMENT_VARIANTS[number];
 
 interface DecorSlotArgs {
   side?: number;
@@ -3084,13 +3084,13 @@ function clonePartList(parts: DecorPartList): DecorPartList {
  * @returns {?object} summary { pieces, tris, drawCalls, skipped } or null
  */
 export const DECORATION_INDEX_BATCH_LIMIT = 256;
-export const DECORATION_WORK_BUDGET_MS = 2;
-export interface DecorationWorkSlice {
+const DECORATION_WORK_BUDGET_MS = 2;
+interface DecorationWorkSlice {
   stage: 'surface-index' | 'surface-ready' | 'manifest-row' | 'material-bucket' | 'publish';
   completed: number;
   total: number;
 }
-export interface DecorationWorkOptions { now?: () => number; }
+interface DecorationWorkOptions { now?: () => number; }
 const decorationWorkNow = (): number => performance.now();
 
 /** Only newly authored decoration resources enter this per-job owner. */

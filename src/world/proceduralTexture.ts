@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export interface ProceduralTextureOptions {
+interface ProceduralTextureOptions {
   srgb?: boolean;
   anisotropy?: number;
   repeat?: boolean;

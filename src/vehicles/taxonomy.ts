@@ -24,7 +24,7 @@ export const VEHICLE_ERA_ORDER: readonly VehicleEra[] = Object.freeze([
   VEHICLE_ERAS.NEXT_GENERATION,
 ]);
 
-export interface VehicleEraMetadata {
+interface VehicleEraMetadata {
   label: string;
   shortLabel: string;
 }
@@ -98,11 +98,11 @@ for (const era of VEHICLE_ERA_ORDER) {
   }
 }
 
-export const VEHICLE_ROLES = Object.freeze([
+const VEHICLE_ROLES = Object.freeze([
   'light', 'medium', 'heavy', 'td', 'mbt', 'ifv', 'spg',
 ] as const);
 
-export type VehicleRole = typeof VEHICLE_ROLES[number];
+type VehicleRole = typeof VEHICLE_ROLES[number];
 
 const VEHICLE_ROLE_SET = new Set<string>(VEHICLE_ROLES);
 
@@ -161,7 +161,7 @@ export function isVehicleRole(role: RuntimeValue): role is VehicleRole {
   return typeof role === 'string' && VEHICLE_ROLE_SET.has(role);
 }
 
-export interface VehicleTaxonomySpec {
+interface VehicleTaxonomySpec {
   id?: RuntimeValue;
   role?: RuntimeValue;
   era?: RuntimeValue;

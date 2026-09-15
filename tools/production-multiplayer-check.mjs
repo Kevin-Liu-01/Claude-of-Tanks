@@ -197,7 +197,7 @@ async function verifyRoomResume(client, timeoutMs) {
 }
 
 /** Scoped write probe: never print room codes, session tokens, or credentials. */
-export async function verifySignalingRoomLifecycle({ url, origin, timeoutMs = 10_000 } = {}) {
+async function verifySignalingRoomLifecycle({ url, origin, timeoutMs = 10_000 } = {}) {
   const [{ WebSocket }, { RoomSignalingClient }] = await Promise.all([
     import('ws'), import('../src/net/signalingClient.ts'),
   ]);

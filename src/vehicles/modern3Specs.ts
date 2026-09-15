@@ -69,7 +69,7 @@ function offsetTurretRing(armor: ArmorEnvelope, offsetX: number): void {
 // The spec table (values per modern-roster.md sections cited above)
 // ---------------------------------------------------------------------------
 
-export const MODERN3_SPECS = {
+const MODERN3_SPECS = {
   chieftain_mk10: {
     id: 'chieftain_mk10', name: 'Chieftain Mk 10', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 1750,

@@ -7,12 +7,12 @@
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
-export interface TankLabelSpec {
+interface TankLabelSpec {
   id?: RuntimeValue;
   name?: RuntimeValue;
 }
 
-export interface TankLabelRecord {
+interface TankLabelRecord {
   readonly id: string;
   readonly displayName: string;
   readonly shortName: string;

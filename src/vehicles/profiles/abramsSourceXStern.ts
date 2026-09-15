@@ -51,7 +51,7 @@ function chamferEye(body: THREE.BufferGeometry, xs: readonly number[], depth: nu
 
 /** The receiving arm has a real circular eye, a low hinge finger and a
  * tapered fore-web. Its bounding rectangle is mostly empty space. */
-export function buildAbramsSourceXSternArm(side: -1 | 1): THREE.BufferGeometry {
+function buildAbramsSourceXSternArm(side: -1 | 1): THREE.BufferGeometry {
   const parts = buildAbramsSourceXSternArmStocks(side);
   const merged = mergeGeometries(parts);
   for (const g of parts) g.dispose();
@@ -60,7 +60,7 @@ export function buildAbramsSourceXSternArm(side: -1 | 1): THREE.BufferGeometry {
 }
 
 /** Separate closed stocks are exposed for independent manifold tests. */
-export function buildAbramsSourceXSternArmStocks(side: -1 | 1): THREE.BufferGeometry[] {
+function buildAbramsSourceXSternArmStocks(side: -1 | 1): THREE.BufferGeometry[] {
   const left = side < 0, inner = left ? -1.03714 : 1.09394;
   const outer = left ? -1.0678 : 1.12388, x0 = Math.min(inner, outer);
   const bottom = left ? 1.364755 : 1.377595, fingerTop = left ? 1.404665 : 1.416625;
@@ -113,7 +113,7 @@ export function buildAbramsSourceXSternArmStocks(side: -1 | 1): THREE.BufferGeom
  * Its former straight G–A closing edge crossed exterior edge B–C. Keep
  * every exterior datum and use the existing folded-sheet inner datum for
  * the hidden return, rather than trimming the source fold or sealing air. */
-export function buildAbramsSourceXSternSideReturn(side: -1 | 1): THREE.BufferGeometry {
+function buildAbramsSourceXSternSideReturn(side: -1 | 1): THREE.BufferGeometry {
   const lo = side < 0 ? -1.067035 : 1.032035;
   const hi = side < 0 ? -1.032035 : 1.067035;
   return acrossX(lo, hi, [
@@ -124,7 +124,7 @@ export function buildAbramsSourceXSternSideReturn(side: -1 | 1): THREE.BufferGeo
 }
 
 /** Continuous broad folded skin, exposed separately for occupied-stock QA. */
-export function buildAbramsSourceXSternLowerFold(): THREE.BufferGeometry {
+function buildAbramsSourceXSternLowerFold(): THREE.BufferGeometry {
   return acrossX(-1.067035, 1.067035, [
     [.648044, -3.472775], [.670293, -3.461365], [.91149, -3.643175],
     [.921994, -3.651185], [1.009394, -3.659445], [1.008, -3.637835],

@@ -18,7 +18,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylX,cylY,cylZ,torus}=KIT;
 const YAW=[-.03904,1.56289,.16819] as const;
 const GUN=[-.00005,1.94827,1.3413] as const;
-export const AMX40_X_DATUMS=Object.freeze({
+const AMX40_X_DATUMS=Object.freeze({
   dims:{hullLengthM:6.6816,overallLengthM:10.0588002,widthM:3.3585,heightM:2.50869},
   turretPivot:YAW,trunnion:GUN,muzzleZ:6.6028,highestFittingM:5.11445,
   wheelZs:[-2.09295,-1.32125,-.49710,.27870,1.22035,2.15535],

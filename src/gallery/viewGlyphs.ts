@@ -2,7 +2,7 @@ export const CAMERA_VIEW_IDS = Object.freeze([
   'hero', 'front', 'left', 'right', 'rear', 'top', 'elevated-left', 'elevated-right', 'auto',
 ] as const);
 
-export type CameraViewId = typeof CAMERA_VIEW_IDS[number];
+type CameraViewId = typeof CAMERA_VIEW_IDS[number];
 
 const VIEW_POSITIONS: Partial<Record<CameraViewId, readonly [number, number]>> = Object.freeze({
   hero: [4, 4],

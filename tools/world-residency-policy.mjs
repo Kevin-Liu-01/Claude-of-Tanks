@@ -7,7 +7,7 @@ import {
 // v3 requires actual pinned scene and absolute camera identities. Earlier reports remain evidence
 // under their original evaluator, never a matched baseline for this protocol.
 export const RESIDENCY_SCHEMA = 3;
-export const RESIDENCY_LIMITS = Object.freeze({
+const RESIDENCY_LIMITS = Object.freeze({
   repeatHeapBytes: 1_048_576,
   repeatHeapFraction: 0.01,
   comparisonHeapBytes: 2_097_152,

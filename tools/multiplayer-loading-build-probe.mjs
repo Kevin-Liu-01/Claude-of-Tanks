@@ -15,7 +15,7 @@ import { productionDiagnosticDetails, productionFailureEvidence, verifyProductio
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const CAPTURE_QUEUE_TIMEOUT_MS = 45 * 60 * 1000;
-export const SCENARIO_TIMEOUT_MS = 300000;
+const SCENARIO_TIMEOUT_MS = 300000;
 const CLEANUP_RESERVE_MS = 10000;
 // Native DOM samples can straddle frame/snapshot delivery. Keep that allowance
 // explicit and bounded; a complete numeral sequence alone can still run too slowly.

@@ -189,7 +189,7 @@ async function runTrial(browser, url, input, plan, settings, report, workerSourc
   return row;
 }
 
-export async function runCompositionProbe(args) {
+async function runCompositionProbe(args) {
   const settings = parseCompositionOptions(args);
   const persistent = settings.mode === 'persistent-worker';
   const before = await snapshot(persistent);

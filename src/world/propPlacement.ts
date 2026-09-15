@@ -33,14 +33,14 @@ export function cropRowSegmentIsSupported(
   return true;
 }
 
-export interface GroundSupport {
+interface GroundSupport {
   y: number;
   min: number;
   max: number;
   spread: number;
 }
 
-export interface UtilityPoleStationOptions {
+interface UtilityPoleStationOptions {
   spacing?: number;
   radius?: number;
   sink?: number;
@@ -49,7 +49,7 @@ export interface UtilityPoleStationOptions {
   allowPair?: boolean;
 }
 
-export interface UtilityPolePlacement {
+interface UtilityPolePlacement {
   x: number;
   y: number;
   z: number;
@@ -70,7 +70,7 @@ export interface GroundedSegmentEndpoint {
   support: GroundSupport;
 }
 
-export interface GroundedObbSample {
+interface GroundedObbSample {
   ix: number;
   iz: number;
   lx: number;
@@ -80,7 +80,7 @@ export interface GroundedObbSample {
   z: number;
 }
 
-export interface HedgehogBeamSpec {
+interface HedgehogBeamSpec {
   x: number;
   z: number;
   yaw: number;
@@ -91,9 +91,9 @@ export interface HedgehogBeamSpec {
   maxY: number;
 }
 
-export const UTILITY_POLE_PAIR_SPACING = 6.5;
+const UTILITY_POLE_PAIR_SPACING = 6.5;
 export const UTILITY_POLE_PAIR_MAX_RELIEF = 0.4;
-export const UTILITY_POLE_LOCAL_MAX_RELIEF = 0.18;
+const UTILITY_POLE_LOCAL_MAX_RELIEF = 0.18;
 
 function heightAt(heightField: HeightField, x: number, z: number): number {
   return heightField.getHeightAt(x, z);

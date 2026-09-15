@@ -19,7 +19,7 @@ const MATCH_ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;
 const PLAYER_ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
 const LOADING_GRACE_MS = 180_000;
 
-export interface DedicatedSimulationOptions {
+interface DedicatedSimulationOptions {
   players: AuthoritativePlayerRecord[];
   mapId: string;
   seed: number;
@@ -31,12 +31,12 @@ export interface DedicatedMatchTicket {
   token: string;
 }
 
-export interface DedicatedMatchCreateResult {
+interface DedicatedMatchCreateResult {
   matchId: string;
   tickets: DedicatedMatchTicket[];
 }
 
-export interface DedicatedMatchCreateOptions {
+interface DedicatedMatchCreateOptions {
   matchId?: string;
   players?: AuthoritativePlayerRecord[];
   mapId?: string;
@@ -44,17 +44,17 @@ export interface DedicatedMatchCreateOptions {
   metadata?: Record<string, RuntimeValue> | null;
 }
 
-export interface DedicatedMatchCredentials {
+interface DedicatedMatchCredentials {
   matchId?: RuntimeValue;
   playerId?: RuntimeValue;
   token?: RuntimeValue;
 }
 
-export interface DedicatedMatchAttachOptions extends DedicatedMatchCredentials {
+interface DedicatedMatchAttachOptions extends DedicatedMatchCredentials {
   transport?: MatchTransport;
 }
 
-export interface DedicatedPlayerState {
+interface DedicatedPlayerState {
   player: AuthoritativePlayerRecord;
   tokenHash: Buffer;
   connected: boolean;
@@ -62,7 +62,7 @@ export interface DedicatedPlayerState {
   unsubscribeClose: (() => void) | null;
 }
 
-export interface DedicatedMatchRecord {
+interface DedicatedMatchRecord {
   id: string;
   mapId: string;
   seed: number;
@@ -74,19 +74,19 @@ export interface DedicatedMatchRecord {
   finishedAtMs: number | null;
 }
 
-export interface DedicatedMatchRegistryOptions {
+interface DedicatedMatchRegistryOptions {
   simulationFactory?: (options: DedicatedSimulationOptions) => AuthoritativeMatch;
   runtimeFactory?: (simulation: AuthoritativeMatch) => AuthoritativeMatchRuntime;
   tokenFactory?: () => string;
   now?: () => number;
 }
 
-export interface DedicatedMatchAuthentication {
+interface DedicatedMatchAuthentication {
   match: DedicatedMatchRecord;
   player: DedicatedPlayerState;
 }
 
-export interface DedicatedMatchRegistryStats {
+interface DedicatedMatchRegistryStats {
   matches: number;
   connectedPlayers: number;
 }

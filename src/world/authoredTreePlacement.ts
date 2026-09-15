@@ -34,7 +34,7 @@ interface PlacementTerrain {
 
 type AuthoredWallRun = readonly [number, number, number, number, number?];
 
-export interface AuthoredTreeReceipt {
+interface AuthoredTreeReceipt {
   id: string;
   attempted: number;
   accepted: number;

@@ -129,7 +129,7 @@ const CANONICAL_CREW = Object.freeze({
  * fighting-compartment roof and make a seated figure appear through the
  * turret crown.
  */
-export function crewArmorEnvelope(
+function crewArmorEnvelope(
   armor: InternalArmorModelPort | null | undefined,
   turretLocal: boolean,
 ): BoundsPort | null {
@@ -218,7 +218,7 @@ function localCrewRoofY(
 }
 
 /** Lowest exact hull-shell point, expressed in the requested owner frame. */
-export function internalTankFloorY(
+function internalTankFloorY(
   armor: InternalArmorModelPort | null | undefined,
   turretLocal = false,
 ): number {

@@ -19,7 +19,7 @@ function groupForId(id: string): MarkingSeatGroup {
   return FLEET_GROUP_BY_ID[id] || CORE_GROUP;
 }
 
-export function ensureVehicleMarkingSeatGroup(group: MarkingSeatGroup): Promise<void> {
+function ensureVehicleMarkingSeatGroup(group: MarkingSeatGroup): Promise<void> {
   if (readyGroups.has(group)) return Promise.resolve();
   let pending = pendingGroups.get(group);
   if (!pending) {

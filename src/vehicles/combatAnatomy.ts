@@ -124,7 +124,7 @@ interface CombatShell {
   type?: string;
 }
 
-export interface CombatAnatomySpec {
+interface CombatAnatomySpec {
   id: string;
   role: string;
   gun?: { reloadS: number; shells?: CombatShell[] };

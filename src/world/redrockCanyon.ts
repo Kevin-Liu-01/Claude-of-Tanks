@@ -1,5 +1,5 @@
 /** Redrock's single authored drainage system, shared by playable ground and outland. */
-export const REDROCK_CANYON = Object.freeze({
+const REDROCK_CANYON = Object.freeze({
   centerX: 8, axisSlope: 0.16, floorHalfWidth: 210, mouthHalfWidth: 330,
   flareStart: 230, flareEnd: 430, floorY: 4, floorGrade: 0.004,
   westHeight: 64, eastHeight: 86,

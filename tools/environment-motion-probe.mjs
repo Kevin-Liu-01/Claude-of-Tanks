@@ -35,7 +35,7 @@ export const MOTION_CASES = Object.freeze([
 ]);
 
 /** Browser-side: retain ordinary battle/world updates; change the camera only. */
-export function prepareLivePan({ mapId }) {
+function prepareLivePan({ mapId }) {
   const D = window.__DEBUG, world = D.world, hf = world.heightField;
   if (D.shotMode || D.game.phase !== 'battle' || world.mapId !== mapId
       || D.game.player.specId !== 'm1a2') throw new Error('Live pan needs the requested real M1A2 battle');
@@ -114,7 +114,7 @@ export function motionReceipt() {
 }
 
 /** Measure all viewport owners without changing CSS, camera, or renderer. */
-export function browserLayoutReceipt() {
+function browserLayoutReceipt() {
   const canvas = window.__DEBUG?.renderer?.domElement;
   const box = element => element ? {
     client: [element.clientWidth, element.clientHeight],
@@ -201,7 +201,7 @@ export function validateEffectiveQuality(state, testCase) {
   return errors;
 }
 
-export function validateScopeReceipt(receipt, testCase) {
+function validateScopeReceipt(receipt, testCase) {
   const errors = validateMotionReceipt(receipt, testCase, { live: false });
   if (receipt.shotMode !== true || receipt.scoped !== true || receipt.rigMode !== 'SNIPER'
       || receipt.rigZoom !== 8) errors.push('Missing actual x8 scope');

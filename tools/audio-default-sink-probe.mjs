@@ -136,7 +136,7 @@ async function runSample(browser, url, scenario, report) {
   }
 }
 
-export async function runAudioSinkProbe(options) {
+async function runAudioSinkProbe(options) {
   const { out, blocks, executablePath, expectedBrowserVersion, freshBrowserPerArm } = audioProbeOptions([
     '--allow-native-audio', `--out=${options.out}`,
     ...(options.blocks === undefined ? [] : [`--blocks=${options.blocks}`]),

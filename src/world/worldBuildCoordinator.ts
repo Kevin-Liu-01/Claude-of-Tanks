@@ -8,7 +8,7 @@ import {
   residentResourceLimits,
 } from '../engine/resourceLifetime.ts';
 
-export interface WorldScene {
+interface WorldScene {
   group: THREE.Object3D;
   /** Final-eviction hook for external bindings, separate from GPU release. */
   dispose?(): void;
@@ -97,7 +97,7 @@ export interface WorldBuildCoordinatorDependencies<World extends WorldScene = Wo
   resourceLimits?: ResourceLimits;
 }
 
-export interface WorldBuildRequest<World extends WorldScene = WorldScene> {
+interface WorldBuildRequest<World extends WorldScene = WorldScene> {
   promise: Promise<World>;
   listeners: Set<ProgressListener> | null;
   fraction: number;

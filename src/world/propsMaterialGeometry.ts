@@ -5,7 +5,7 @@ export const PROPS_CONVERSION_BATCH_LIMIT = 64;
 export const PROPS_CONVERSION_BUDGET_MS = 2;
 const propsConversionNow = (): number => performance.now();
 
-export interface PropsMaterialGeometrySlice {
+interface PropsMaterialGeometrySlice {
   fine: true;
   progress: false;
   stage: string;

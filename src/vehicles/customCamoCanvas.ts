@@ -18,7 +18,7 @@ interface CamoStrokeInput {
   points?: ReadonlyArray<ReadonlyArray<number>>;
 }
 
-export interface CustomCamoPaintOptions {
+interface CustomCamoPaintOptions {
   width: number;
   height: number;
   colorA: string;

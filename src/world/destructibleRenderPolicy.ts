@@ -1,4 +1,4 @@
-export interface DestructibleRenderMetadata {
+interface DestructibleRenderMetadata {
   castShadow?: boolean;
   cls?: string;
   h?: number;

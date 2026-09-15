@@ -1,6 +1,6 @@
 import type { BalanceSeriesOptions } from './balanceSimulation.ts';
 
-export interface BalanceScenario extends BalanceSeriesOptions {
+interface BalanceScenario extends BalanceSeriesOptions {
   id: string;
   purpose: string;
   minAScore?: number;

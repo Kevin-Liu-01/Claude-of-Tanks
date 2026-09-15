@@ -12,7 +12,7 @@ export const CODE_QUALITY_LIMITS = Object.freeze({
   halsteadDifficulty: 80,
 });
 
-export interface FunctionQualityMetric {
+interface FunctionQualityMetric {
   file: string;
   line: number;
   name: string;
@@ -21,13 +21,13 @@ export interface FunctionQualityMetric {
   halsteadDifficulty: number;
 }
 
-export interface ExplicitTypeMetric {
+interface ExplicitTypeMetric {
   file: string;
   line: number;
   kind: 'any' | 'unknown';
 }
 
-export interface SourceQualityReport {
+interface SourceQualityReport {
   functions: FunctionQualityMetric[];
   explicitTypes: ExplicitTypeMetric[];
 }

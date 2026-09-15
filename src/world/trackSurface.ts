@@ -1,6 +1,6 @@
 /** Presentation only: these values share the existing track-print attribute. */
 export type TrackSurface = 0 | 2 | 3;
-export type TrackSurfacePolicy = 'earth' | 'sand' | 'snow' | 'shore';
+type TrackSurfacePolicy = 'earth' | 'sand' | 'snow' | 'shore';
 
 /** Pass the resolved SOURCED terrain palette, not the props/horizon palette. */
 export function trackSurfacePolicy(palette: string): TrackSurfacePolicy {

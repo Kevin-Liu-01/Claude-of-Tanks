@@ -8,7 +8,7 @@ import { LECLERC_CLASSIC_X_DATUMS as D } from './leclercClassicXFrame.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 export { LECLERC_CLASSIC_X_DATUMS } from './leclercClassicXFrame.ts';
 
-export function buildLeclercClassicX(P: TankBuilderPort): void {
+function buildLeclercClassicX(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...D.turretPivot);
   P.gunG.position.set(D.trunnion[0] - D.turretPivot[0],

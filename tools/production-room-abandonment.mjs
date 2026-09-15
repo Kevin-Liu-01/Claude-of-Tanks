@@ -21,7 +21,7 @@ export function abandonmentOptions({ url, origin, timeoutMs = 225_000 } = {}) {
 
 function failure(code) { return Object.assign(new Error(code), { code }); }
 
-export class ProbePeer {
+class ProbePeer {
   pending = new Set();
   messages = [];
   sequence = 0;

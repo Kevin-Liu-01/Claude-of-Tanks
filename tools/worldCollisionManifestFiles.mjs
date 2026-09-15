@@ -10,7 +10,7 @@ import { encodeCollisionManifest } from '../server/collisionManifestCodec.ts';
 export const collisionManifestDirectory = new URL('../server/world-collision-manifests/', import.meta.url);
 
 /** The retired migration must never be interpreted as a capture session. */
-export function assertCollisionCaptureArgs(args) {
+function assertCollisionCaptureArgs(args) {
   if (args.some((arg) => arg === '--migrate' || arg.startsWith('--migrate='))) {
     throw new Error('--migrate is retired; capture the canonical map shards with tools/capture-world-collision-manifests.mjs <session>');
   }

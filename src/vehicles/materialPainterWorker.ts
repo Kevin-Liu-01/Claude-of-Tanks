@@ -32,7 +32,7 @@ export function paintMaterialBase<C extends MaterialCanvas>(
   }
 }
 
-export interface MaterialPainterFontPorts {
+interface MaterialPainterFontPorts {
   fonts: Pick<FontFaceSet, 'add' | 'delete' | 'has' | 'check'>;
   readBytes(url: string): Promise<ArrayBuffer>;
   createFont(bytes: ArrayBuffer): FontFace;
@@ -53,7 +53,7 @@ export async function loadMaterialPainterFont(url: string, ports: MaterialPainte
   }
 }
 
-export interface MaterialPainterWorkerPorts {
+interface MaterialPainterWorkerPorts {
   initialize(fontUrl: string): Promise<boolean>;
   paint(request: MaterialPainterRequest): MaterialPainterResult;
   post(reply: MaterialPainterReply, transfer: ArrayBuffer[]): void;

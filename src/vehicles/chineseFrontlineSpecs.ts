@@ -10,7 +10,7 @@ import type { FleetTankSpec } from './specContracts.ts';
 
 const p = apfsdsPenetration(720);
 
-export const CHINESE_FRONTLINE_SPECS = {
+const CHINESE_FRONTLINE_SPECS = {
   vt4a1: {
     id: 'vt4a1', name: 'VT-4A1', nation: 'China', era: 'modern', role: 'mbt',
     hp: 2650,

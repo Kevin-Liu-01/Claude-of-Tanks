@@ -37,7 +37,7 @@ const VDIR = path.join(ROOT, 'docs/references/vertex');
 // ---- plans in GATE METERS: [from, to] control points ----------------------
 // Derivations: docs/references/vertex/<id>.json measured landmarks vs pubDims
 // (see the per-tank packet batch-12 sections for the full derivation).
-export const PLANS = {
+const PLANS = {
   // AFV program batch-39 (the AFV-r1 formal warp request, bmp2.md): the
   // Bergman print is -5.8% short — uniform z stretch about the centred
   // mask mid to the published 6.72; y identity (bodyH -1.1% honest);

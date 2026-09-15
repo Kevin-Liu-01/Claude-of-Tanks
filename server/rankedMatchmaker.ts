@@ -35,7 +35,7 @@ export interface RankedRosterPlayer extends RatedPlayer {
   rating: number;
 }
 
-export type PublicRankedRosterPlayer = Omit<RankedRosterPlayer, 'equipment'>;
+type PublicRankedRosterPlayer = Omit<RankedRosterPlayer, 'equipment'>;
 
 export interface RankedMatchAssignment {
   matchId: string;
@@ -70,7 +70,7 @@ interface TrackedRatedMatch {
   settled: boolean;
 }
 
-export interface PublicRankedTicket {
+interface PublicRankedTicket {
   ticketId: string;
   status: RankedTicketStatus;
   queuedAtMs: number;
@@ -81,7 +81,7 @@ export interface PublicRankedTicket {
   profile?: PublicRatingProfile | null;
 }
 
-export interface RankedJoinResult extends PublicRankedTicket {
+interface RankedJoinResult extends PublicRankedTicket {
   ticketToken: string;
 }
 
@@ -94,7 +94,7 @@ export interface RankedJoinOptions {
   teamSize?: RuntimeValue;
 }
 
-export interface RankedMatchmakerOptions {
+interface RankedMatchmakerOptions {
   registry?: DedicatedMatchRegistry;
   ratings?: RatingStore;
   now?: () => number;
@@ -104,7 +104,7 @@ export interface RankedMatchmakerOptions {
   maxEntries?: number;
 }
 
-export interface RankedMatchmakerStats {
+interface RankedMatchmakerStats {
   queuedPlayers: number;
   ratedMatches: number;
 }

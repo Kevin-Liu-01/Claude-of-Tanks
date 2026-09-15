@@ -15,7 +15,7 @@ const RING_Y = 1.4596;
 const RING_Z = .5185;
 const GUN_Y = 1.85491175;
 const GUN_Z = 1.3478;
-export const KF51_X_DATUMS = Object.freeze({
+const KF51_X_DATUMS = Object.freeze({
   hullLengthM: 7.70, widthM: 3.5603123, overallLengthM: 10.7497,
   roofHeightM: 2.5603, overallHeightM: 5.7214742,
   turretPivot: [0, RING_Y, RING_Z] as const,

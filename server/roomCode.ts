@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../src/runtimeTypes.ts';
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 
-export interface CodedError extends Error {
+interface CodedError extends Error {
   code: string;
 }
 

@@ -16,7 +16,7 @@ const RING_Y = 1.49566, RING_Z = .42564;
 // OBJ has no pivot nodes. X/Y are the measured circular bore axis; Z is the
 // explicitly inferred pitch bearing at the rear boot, not a recovered rig.
 const GUN_X = .0352, GUN_Y = 1.81797, GUN_Z = 1.57716;
-export const K1A1_X_DATUMS = Object.freeze({
+const K1A1_X_DATUMS = Object.freeze({
   dims: { hullLengthM: 7.627, overallLengthM: 9.72264, widthM: 3.6758, heightM: 2.20756 },
   roofHeightM: 2.20756, highestFittingM: 4.07025,
   turretPivot: [0, RING_Y, RING_Z] as const,
@@ -539,7 +539,7 @@ function mainGun(P: TankBuilderPort): void {
   P.muzzleZ=K1A1_X_DATUMS.muzzleZ-GUN_Z;
 }
 
-export function buildK1A1X(P: TankBuilderPort): void {
+function buildK1A1X(P: TankBuilderPort): void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(0,RING_Y,RING_Z);
   P.gunG.position.set(GUN_X,GUN_Y-RING_Y,GUN_Z-RING_Z);

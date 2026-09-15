@@ -3,7 +3,7 @@
 import type * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-export type ClassicPoint = readonly [number, number, number];
+type ClassicPoint = readonly [number, number, number];
 export const LECLERC_CLASSIC_X_DATUMS = Object.freeze({
   dims: { hullLengthM: 7.43927585874, overallLengthM: 10.03416968112,
     widthM: 3.6, heightM: 2.4667723048 },

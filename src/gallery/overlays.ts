@@ -65,7 +65,7 @@ interface InspectionSpec {
 
 interface InspectionVisual { root: THREE.Object3D }
 
-export interface InspectionOverlay {
+interface InspectionOverlay {
   mode: InspectionMode;
   count: number;
   pickables: THREE.Mesh[];

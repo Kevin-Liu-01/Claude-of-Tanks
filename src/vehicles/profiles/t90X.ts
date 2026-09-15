@@ -1446,7 +1446,7 @@ function sourceRoofArmor(P: TankBuilderPort,d: Datum): void {
     [-1.05,2.183,.73,.25,.50,.18,-.14,2],[1.10,2.152,.78,.25,.55,.18,.17,3]]);
 }
 
-export function buildT90AX(P: TankBuilderPort): void {
+function buildT90AX(P: TankBuilderPort): void {
   frame(P,A);
   P.add('hull',hullSolid([
     [-3.43,1.138,1.265,1.250],[-3.10,1.138,1.412,.74],[-2.65,1.138,1.417,.402],
@@ -1479,7 +1479,7 @@ export function buildT90AX(P: TankBuilderPort): void {
   mantlet(P,A,.59,1.69,1.02);addT90AGun(P);
 }
 
-export function buildT90AVladimirX(P: TankBuilderPort): void {
+function buildT90AVladimirX(P: TankBuilderPort): void {
   frame(P,V);
   P.add('hull',hullSolid([
     [-3.43,.997,1.285,1.273],[-3.15,1.123,1.514,.84],[-2.74,1.123,1.514,.48],
@@ -1509,7 +1509,7 @@ export function buildT90AVladimirX(P: TankBuilderPort): void {
   mantlet(P,V,.63,1.80,1.10);barrel(P,V,.095,4.54,.81);
 }
 
-export function buildT90MX(P: TankBuilderPort): void {
+function buildT90MX(P: TankBuilderPort): void {
   frame(P,M);
   P.add('hull',hullSolid([
     [-3.43,1.088,1.167,1.157],[-3.13,1.088,1.167,.682],[-3.00,1.088,1.167,.460],[-2.86,1.088,1.167,.348],
@@ -1547,7 +1547,7 @@ export function buildT90MX(P: TankBuilderPort): void {
   mantlet(P,M,.71,1.36,.871);barrel(P,M,.091,4.44,.74);
 }
 
-export function buildT90SMX(P: TankBuilderPort): void {
+function buildT90SMX(P: TankBuilderPort): void {
   frame(P,S);
   const hullRows: readonly Station[] = [
     [-3.43,1.035,1.317,1.308],[-3.13,1.039,1.56,.81],[-2.85,1.039,1.56,.524],

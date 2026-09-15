@@ -37,7 +37,7 @@ interface YardVehicle {
 }
 interface YardVehiclePool { meta: { hw?: number; hl?: number; r: number }; mats4: Matrix4[] }
 interface PlacementReceipt { attempted: number; accepted: number; unsafe: number; unavailable: number }
-export interface LoggingYardReceipt {
+interface LoggingYardReceipt {
   flatbeds: PlacementReceipt; bundles: PlacementReceipt; clearcut: PlacementReceipt;
   campsMoved: 0;
 }

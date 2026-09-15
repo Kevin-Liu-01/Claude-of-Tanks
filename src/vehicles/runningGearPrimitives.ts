@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 
-export type GearRadialStation = readonly [radiusM: number, axleXM: number];
+type GearRadialStation = readonly [radiusM: number, axleXM: number];
 
 /** Remove only zero-area axis/seam triangles emitted by a lathe/cylinder.
  * No vertex moves, normal changes, tolerance-driven decimation or hole fill. */
-export function removeDegenerateGearTriangles(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+function removeDegenerateGearTriangles(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
   const p = geometry.getAttribute('position'), source = geometry.index;
   const count = source?.count ?? p.count, indices: number[] = [];
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();

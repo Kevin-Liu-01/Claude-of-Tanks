@@ -14,7 +14,7 @@ import {addT72B3RearDrums} from './t72b3XRearDrums.ts';
 import {addT72B3MachineGunBody} from './t72b3XMachineGunBody.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
-export const T72B3_X_DATUMS=T72B3_X_SOURCE_DATUMS;
+const T72B3_X_DATUMS=T72B3_X_SOURCE_DATUMS;
 const YAW=T72B3_X_DATUMS.turretPivot,GUN=T72B3_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
 const cylY=(r:number,h:number,n=28)=>KIT.cylY(r,r,h,n);
@@ -312,7 +312,7 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-export function buildT72B3X(P:TankBuilderPort):void {
+function buildT72B3X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T72B3_X_DATUMS.muzzleZ-GUN[2];P.topY=T72B3_X_DATUMS.highestFittingM-YAW[1];

@@ -4,7 +4,7 @@ export type Vec3Tuple = [number, number, number];
 export type VehicleAssemblyOwner = 'hull' | 'turret';
 
 export type TransformObjectPort = Object3D;
-export type AssemblyGroupPort = Group;
+type AssemblyGroupPort = Group;
 
 /** Shared structural port for authored procedural profile adapters. It
  * describes assembly ownership and transform operations without coupling the

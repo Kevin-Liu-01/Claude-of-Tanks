@@ -1,6 +1,6 @@
 // Invocation-local shared cuts for a native skin partition. No spatial weld,
 // borrowed geometry, persistent cache, or inferred proximity is involved.
-export type CoverPoint = readonly [number, number, number];
+type CoverPoint = readonly [number, number, number];
 const pointKey = (p: CoverPoint): string => p.join(',');
 const compare = (a: CoverPoint, b: CoverPoint): number =>
   a[0] - b[0] || a[1] - b[1] || a[2] - b[2];

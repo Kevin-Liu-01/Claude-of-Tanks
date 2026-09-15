@@ -5,7 +5,7 @@ import { roundedTrackContact } from './roundedTrackContact.ts';
 import { chieftain5SourceWheelSolids } from './chieftain5XSourceWheels.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
-export const CHIEFTAIN5_SOURCE_ROAD_ZS = Object.freeze([
+const CHIEFTAIN5_SOURCE_ROAD_ZS = Object.freeze([
   -2.230051, -1.339106, -.420375, .470570, 1.491482, 2.382427,
 ]);
 

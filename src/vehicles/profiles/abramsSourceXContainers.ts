@@ -5,7 +5,7 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { closedSectionLoft, planeBoundedArmor, roundMember, type ArmorPlane, type XY, type XYZ } from './abramsSourceXGeometry.ts';
 
 interface ContainerPart { name: string; geometry: THREE.BufferGeometry }
-export const SOURCE_CONTAINER_SEATS = [
+const SOURCE_CONTAINER_SEATS = [
   [-1.288625, 1.879755, -2.375235, 0],
   [1.150562, 1.879755, -2.375235, 0],
   [-1.203210, 1.889645, -3.149505, -Math.PI / 2],

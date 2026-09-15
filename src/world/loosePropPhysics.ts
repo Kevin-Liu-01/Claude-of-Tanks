@@ -15,7 +15,7 @@ const EPS = 1e-8;
 
 export type LoosePropKickCause = 'ram' | 'shell' | 'blast';
 
-export interface LoosePropBodyOptions {
+interface LoosePropBodyOptions {
   x: number;
   baseY: number;
   z: number;

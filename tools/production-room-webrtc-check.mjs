@@ -257,7 +257,7 @@ export async function cleanupPeerProbe(owners) {
 }
 
 /** Explicit scoped production write probe. Never run on import or select default production URLs. */
-export async function verifyProductionRoomWebRtc({ baseUrl, backendUrl, timeoutMs = 45_000,
+async function verifyProductionRoomWebRtc({ baseUrl, backendUrl, timeoutMs = 45_000,
   launchBrowser = null } = {}) {
   const endpoints = roomWebRtcEndpoints({ baseUrl, backendUrl, timeoutMs });
   const owners = { ...await signalingOwners(endpoints), browser: null, contexts: [], pages: [], unsubscribe: [] };

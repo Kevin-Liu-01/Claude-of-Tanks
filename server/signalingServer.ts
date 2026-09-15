@@ -33,7 +33,7 @@ interface StoreJoinResponse {
   notify: StoreNotification[];
 }
 
-export interface SignalingStore {
+interface SignalingStore {
   rooms?: Map<RuntimeValue, RuntimeValue>;
   membership?: { has(connection: SignalingConnection): boolean };
   create(connection: SignalingConnection, options?: CreateRoomOptions):
@@ -56,7 +56,7 @@ export interface SignalingStore {
   close?(): Promise<void>;
 }
 
-export interface SignalingServerOptions {
+interface SignalingServerOptions {
   host?: string;
   port?: number;
   allowedOrigins?: readonly string[] | null;
@@ -70,7 +70,7 @@ export interface SignalingServerOptions {
   unauthenticatedTimeoutMs?: number;
 }
 
-export interface SignalingServerService {
+interface SignalingServerService {
   server: http.Server;
   webSocketServer: WebSocketServer;
   store: SignalingStore;

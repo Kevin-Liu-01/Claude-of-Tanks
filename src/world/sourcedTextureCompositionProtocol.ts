@@ -2,7 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { SourcedComposeOptions } from './sourcedTextureComposer.ts';
 
 export const SOURCED_TEXTURE_COMPOSITION_PROTOCOL = 'sourced-texture-composition-v1';
-export const SOURCED_TEXTURE_COMPOSITION_MAX_SIZE = 1024;
+const SOURCED_TEXTURE_COMPOSITION_MAX_SIZE = 1024;
 export type SourcedTextureCompositionPixels = Uint8ClampedArray<ArrayBuffer>;
 
 export interface SourcedTextureCompositionRequest {
@@ -41,7 +41,7 @@ export interface SourcedTextureCompositionError {
 }
 
 export type SourcedTextureCompositionReply = SourcedTextureCompositionComplete | SourcedTextureCompositionError;
-export interface SourcedTextureCompositionExpectation {
+interface SourcedTextureCompositionExpectation {
   requestId: number;
   key: string;
   size: number;

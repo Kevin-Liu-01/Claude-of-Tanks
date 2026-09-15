@@ -181,19 +181,19 @@ interface LocalMembership {
   refreshing: Promise<void> | null;
 }
 
-export interface DistributedNotification {
+interface DistributedNotification {
   peerId?: string;
   connection?: SignalingConnection | null;
   recipient?: string;
   message: SignalingMessage;
 }
 
-export interface DistributedJoinResponse {
+interface DistributedJoinResponse {
   result: SignalingJoinResult;
   notify: DistributedNotification[];
 }
 
-export interface DistributedStoreHealth {
+interface DistributedStoreHealth {
   ok: boolean;
   command: 'ready' | 'unavailable';
   subscriber: 'ready' | 'polling_fallback';

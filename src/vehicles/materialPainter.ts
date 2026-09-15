@@ -75,7 +75,7 @@ export interface MaterialBasePaintRequest {
   plateLines: boolean;
 }
 
-export interface MaterialBasePaintEntry<C extends MaterialCanvas> {
+interface MaterialBasePaintEntry<C extends MaterialCanvas> {
   camoCanvas: C;
   normalCanvas: C;
   roughCanvas: C;

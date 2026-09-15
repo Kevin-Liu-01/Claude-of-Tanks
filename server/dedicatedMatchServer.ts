@@ -14,7 +14,7 @@ const MAX_MESSAGES_PER_SECOND = 180;
 
 type AllowedOriginsInput = string | readonly string[] | null;
 
-export interface DedicatedMatchServerOptions {
+interface DedicatedMatchServerOptions {
   host?: string;
   port?: number;
   allowedOrigins?: AllowedOriginsInput;
@@ -23,7 +23,7 @@ export interface DedicatedMatchServerOptions {
   matchmaker?: RankedMatchmaker;
 }
 
-export interface DedicatedMatchServerService {
+interface DedicatedMatchServerService {
   registry: DedicatedMatchRegistry;
   matchmaker: RankedMatchmaker;
   server: http.Server;

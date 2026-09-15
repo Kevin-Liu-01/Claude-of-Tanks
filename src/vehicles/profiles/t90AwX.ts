@@ -20,7 +20,7 @@ import {addT90AWAAContainers} from './t90AwXAAContainers.ts';
 import {addT90AWRearStowage} from './t90AwXRearStowage.ts';
 import {addT90AWSideMounts} from './t90AwXSideMounts.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-export const T90_AW_X_DATUMS=T90_AW_X_SOURCE_DATUMS;
+const T90_AW_X_DATUMS=T90_AW_X_SOURCE_DATUMS;
 const YAW=T90_AW_X_DATUMS.turretPivot,GUN=T90_AW_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
 const cylY=(r:number,h:number,n=28)=>KIT.cylY(r,r,h,n);

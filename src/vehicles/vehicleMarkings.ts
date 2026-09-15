@@ -35,7 +35,7 @@ export interface VehicleMarkingRecord {
   readonly markingCode: string;
 }
 
-export interface CanvasBounds {
+interface CanvasBounds {
   readonly x?: number;
   readonly y?: number;
   readonly width?: number;

@@ -98,7 +98,7 @@ interface RuinedConcretePart {
 type LightStructureBuilder = (rng: Rng) => THREE.BufferGeometry;
 type DebrisMaterial = 'wood' | 'canvas' | 'metal';
 
-export interface DestructibleBuildingType {
+interface DestructibleBuildingType {
   id: string;
   family: string;
   cls: 'break';
@@ -943,7 +943,7 @@ export function makeMegatower(rng: Rng, buckets: GeometryBuckets, wallBucket = '
 }
 
 /** Twin stepped arcology slabs joined by a damaged high skybridge. */
-export function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), towerW = 12.0, d = 22.0, hA = 39.0, hB = 33.0;
   const towers: Array<readonly [number, number, string]> = [
     [-9.0, hA, wallBucket],
@@ -1001,7 +1001,7 @@ export function makeArcology(rng: Rng, buckets: GeometryBuckets, wallBucket = 's
 }
 
 /** Slender setback tower with a polished civic needle and deep stone fins. */
-export function makeNeedleTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
+function makeNeedleTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster2'): StructureDimensions {
   const out = parts(), w = 14.0, d = 16.0, podiumH = 5.4;
   out.stone.push(box(w + 4.8, podiumH, d + 4.8).translate(0, podiumH / 2, 0));
   out.dark.push(box(5.2, 3.1, 0.16).translate(0, 1.55, d / 2 + 2.47));
@@ -1033,7 +1033,7 @@ export function makeNeedleTower(rng: Rng, buckets: GeometryBuckets, wallBucket =
 }
 
 /** Offset broadcast headquarters with stacked terraces and a lattice mast. */
-export function makeBroadcastTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
+function makeBroadcastTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'plaster3'): StructureDimensions {
   const out = parts(), w = 19.0, d = 15.0, podiumH = 6.2;
   out.stone.push(box(w + 5.0, podiumH, d + 5.0).translate(0, podiumH / 2, 0));
   const coreH = 29.0;
@@ -1068,7 +1068,7 @@ export function makeBroadcastTower(rng: Rng, buckets: GeometryBuckets, wallBucke
 }
 
 /** Broad terraced financial tower with an asymmetric split-blade crown. */
-export function makeTerraceTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
+function makeTerraceTower(rng: Rng, buckets: GeometryBuckets, wallBucket = 'stone'): StructureDimensions {
   const out = parts(), w = 21.0, d = 18.0, podiumH = 5.8;
   out.plaster3.push(box(w + 4.0, podiumH, d + 4.0).translate(0, podiumH / 2, 0));
   const lowerH = 22.0;

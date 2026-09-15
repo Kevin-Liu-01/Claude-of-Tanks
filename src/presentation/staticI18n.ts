@@ -62,7 +62,7 @@ function applyToElement(el: HTMLElement): void {
   }
 }
 
-export function applyStaticI18n(root: ParentNode = document): void {
+function applyStaticI18n(root: ParentNode = document): void {
   const elements = root.querySelectorAll<HTMLElement>(
     '[data-i18n],[data-i18n-html],[data-i18n-placeholder],[data-i18n-title],[data-i18n-alt],[data-i18n-aria-label],[data-i18n-aria]',
   );

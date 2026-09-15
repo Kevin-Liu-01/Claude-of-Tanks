@@ -2,18 +2,18 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export type ProfileBuilderPort = RuntimeValue;
 
-export type AuthoredProfileBuilder = (
+type AuthoredProfileBuilder = (
   builder: ProfileBuilderPort,
   profile: VehicleProfile,
 ) => void;
 
-export interface VehicleProfile extends Record<string, RuntimeValue> {
+interface VehicleProfile extends Record<string, RuntimeValue> {
   readonly build?: RuntimeValue;
   readonly base?: RuntimeValue;
 }
 
 export type VehicleProfileRecord = Record<string, VehicleProfile>;
-export type ProfileBuilder = (builder: ProfileBuilderPort) => void;
+type ProfileBuilder = (builder: ProfileBuilderPort) => void;
 
 export interface ProfileBuildFunctions {
   buildDonorVariant(builder: ProfileBuilderPort, profile: VehicleProfile): void;

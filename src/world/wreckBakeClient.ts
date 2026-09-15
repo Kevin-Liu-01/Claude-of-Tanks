@@ -13,7 +13,7 @@ export type WreckBakeReply =
 
 type WorkerPort = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror' | 'onmessageerror'>;
 
-export interface WreckBakeClient {
+interface WreckBakeClient {
   prepare(): void;
   bake(specId: string, options: WreckOptions, checkpoint: () => Promise<void> | void): Promise<WreckBake | null>;
   dispose(): void;

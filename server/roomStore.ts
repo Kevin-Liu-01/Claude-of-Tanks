@@ -34,7 +34,7 @@ export interface SignalingNotification {
   message: SignalingMessage;
 }
 
-export interface SignalingPeerSummary {
+interface SignalingPeerSummary {
   peerId: string;
   player: SignalingPlayer;
   sessionId: string;
@@ -53,12 +53,12 @@ export interface SignalingJoinResult {
   resumeToken: string;
 }
 
-export interface SignalingJoinResponse {
+interface SignalingJoinResponse {
   result: SignalingJoinResult;
   notify: SignalingNotification[];
 }
 
-export interface SignalingRoomStoreOptions {
+interface SignalingRoomStoreOptions {
   now?: () => number;
   roomCodeFactory?: () => string;
   roomTtlMs?: number;
@@ -116,7 +116,7 @@ interface SignalingMembership {
 }
 
 /** Durable adapter state contains capability hashes, never bearer tokens or RTC payloads. */
-export interface SignalingRoomSnapshot {
+interface SignalingRoomSnapshot {
   version: 1;
   rooms: {
     roomCode: string;

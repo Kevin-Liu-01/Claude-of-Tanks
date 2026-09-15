@@ -9,7 +9,7 @@ export const WHEEL_PAINT_FLOOR_LUMINANCE = 0.075;
 /** Road dust, linear RGB (#766e56). */
 export const WHEEL_DUST_LINEAR: readonly [number, number, number] = [0.184, 0.158, 0.093];
 
-export type LinearRgb = readonly [number, number, number];
+type LinearRgb = readonly [number, number, number];
 
 export function linearLuminance([r, g, b]: LinearRgb): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -20,7 +20,7 @@ export function srgbChannelToLinear(value: number): number {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-export function linearChannelToSrgb(value: number): number {
+function linearChannelToSrgb(value: number): number {
   const c = Math.max(0, Math.min(1, value));
   return Math.round(255 * (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055));
 }

@@ -14,14 +14,14 @@ import {
 type MaybePromise<T> = T | PromiseLike<T>;
 type ProgressListener = (fraction: number, label: string) => void;
 
-export interface WorldRaycastHit {
+interface WorldRaycastHit {
   point: THREE.Vector3;
   normal: THREE.Vector3;
   dist: number;
   kind: string;
 }
 
-export interface ActiveWorld<SkyConfig extends object = object> {
+interface ActiveWorld<SkyConfig extends object = object> {
   mapId: string;
   terrainVariant?: 'assault-trenches' | null;
   group: THREE.Object3D;
@@ -33,9 +33,9 @@ export interface ActiveWorld<SkyConfig extends object = object> {
   ): WorldRaycastHit | null;
 }
 
-export type WorldActivationStage = 'build' | 'present' | 'compile' | 'shadowWarm' | 'clouds' | 'activate';
+type WorldActivationStage = 'build' | 'present' | 'compile' | 'shadowWarm' | 'clouds' | 'activate';
 
-export interface WorldActivationStageInterval {
+interface WorldActivationStageInterval {
   stage: WorldActivationStage;
   /** Absolute performance.now() timebase, matching PerformanceEntry.startTime. */
   startTime: number;
@@ -43,7 +43,7 @@ export interface WorldActivationStageInterval {
   endTime?: number;
 }
 
-export interface WorldActivationTrace {
+interface WorldActivationTrace {
   id: string;
   cached: boolean;
   status: 'pending' | 'complete' | 'failed';
@@ -78,7 +78,7 @@ type CoordinatorDependencies<World extends ActiveWorld> = Omit<
   'getCurrentWorld'
 >;
 
-export interface WorldActivationRuntimeOptions<
+interface WorldActivationRuntimeOptions<
   World extends ActiveWorld<SkyConfig>,
   Collider,
   SkyConfig extends object = object,

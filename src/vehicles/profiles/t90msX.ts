@@ -15,7 +15,7 @@ import {addT90MSOpticalHead} from './t90msXOpticalHead.ts';
 import {addT90MSRearCradles,addT90MSRearCase,addT90MSRearFenderCourses} from './t90msXHullEnds.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-export const T90MS_X_DATUMS=T90MS_X_SOURCE_DATUMS;
+const T90MS_X_DATUMS=T90MS_X_SOURCE_DATUMS;
 const YAW=T90MS_X_DATUMS.turretPivot,GUN=T90MS_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
 const cylY=(r:number,h:number,n=28)=>KIT.cylY(r,r,h,n);
@@ -259,7 +259,7 @@ function mainGun(P:TankBuilderPort):void{
   P.add('gun',box(.065,.041,.030),0,.103,6.079-GUN[2]);
   P.muzzleZ=tip-GUN[2];
 }
-export function buildT90MSX(P:TankBuilderPort):void{
+function buildT90MSX(P:TankBuilderPort):void{
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T90MS_X_DATUMS.highestFittingM-YAW[1];
   hull(P);runningGear(P);glacis(P);skirts(P);engineDeck(P);rearAndHullCages(P);turret(P);cheeks(P);sideArmor(P);bustle(P);roofEquipment(P);aps(P);remoteWeapon(P);smoke(P);mainGun(P);

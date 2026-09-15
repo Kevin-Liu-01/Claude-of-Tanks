@@ -1,5 +1,5 @@
 /** Shallow presentation water; the authored drivable bed remains authoritative. */
-export interface WaterContactProfile {
+interface WaterContactProfile {
   kind: 'coast' | 'lake' | 'river' | 'marsh';
   depthM: number;
   color: number;

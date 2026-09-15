@@ -41,7 +41,7 @@ interface GrassCarpetWorkOptions {
   publish(counts: readonly [number, number], cellX: number, cellZ: number, generation: number): void;
 }
 
-export interface GrassCarpetWork {
+interface GrassCarpetWork {
   readonly complete: boolean;
   request(cellX: number, cellZ: number): void;
   step(): void;

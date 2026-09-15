@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { texSize } from '../engine/quality.ts';
 
-export type HorizonDetailKind = 'woodland' | 'conifer' | 'scrub' | 'rock' | 'snow' | 'mesa';
+type HorizonDetailKind = 'woodland' | 'conifer' | 'scrub' | 'rock' | 'snow' | 'mesa';
 export const HORIZON_DETAIL_ATLAS_VARIANTS = 4;
 
 type Random = () => number;

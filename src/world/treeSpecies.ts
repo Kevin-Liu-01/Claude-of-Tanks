@@ -17,7 +17,7 @@ export const TREE_SPECIES = Object.freeze([
 
 export type TreeSpecies = (typeof TREE_SPECIES)[number];
 
-export interface TreeArchetype {
+interface TreeArchetype {
   family: 'conifer' | 'broadleaf' | 'palm' | 'birch';
   leanMaxRad: number;
   trunkRadiusM: number;

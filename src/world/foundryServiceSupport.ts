@@ -2,21 +2,21 @@
 import { Box3, Matrix4, Vector3, type BufferGeometry } from 'three';
 
 interface Pose { x: number; y: number; z: number; yaw: number }
-export interface FoundrySupportDonor {
+interface FoundrySupportDonor {
   kind: string;
   buckets: Record<string, readonly BufferGeometry[]>;
   source: Pose;
 }
-export interface FoundrySupportSite { x: number; z: number; yawDeg: number }
-export interface FoundrySupportField {
+interface FoundrySupportSite { x: number; z: number; yawDeg: number }
+interface FoundrySupportField {
   getHeightAt(x: number, z: number): number;
   getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
 }
-export const FOUNDRY_SUPPORT_EMBED = 0.03;
-export const FOUNDRY_SUPPORT_TOP_CLEARANCE = 0.03;
+const FOUNDRY_SUPPORT_EMBED = 0.03;
+const FOUNDRY_SUPPORT_TOP_CLEARANCE = 0.03;
 /** Explicit art limit: a container body is not a 2.6m-thick foundation. */
-export const FOUNDRY_CONTAINER_MAX_BURIAL = 0.12;
+const FOUNDRY_CONTAINER_MAX_BURIAL = 0.12;
 
 interface Foot { role: string; box: Box3 }
 interface FootSample {
@@ -24,7 +24,7 @@ interface FootSample {
   minX: number; maxX: number; minZ: number; maxZ: number;
   minRoad: number; maxWater: number;
 }
-export interface FoundrySupportReceipt {
+interface FoundrySupportReceipt {
   role: string;
   min: [number, number, number];
   max: [number, number, number];
@@ -32,7 +32,7 @@ export interface FoundrySupportReceipt {
   bottomGapMin: number; bottomGapMax: number;
   topClearanceMin: number; topClearanceMax: number;
 }
-export interface FoundrySupportPlan {
+interface FoundrySupportPlan {
   y: number; lowerY: number; upperY: number;
   supports: FoundrySupportReceipt[];
   minRoad: number; maxWater: number;

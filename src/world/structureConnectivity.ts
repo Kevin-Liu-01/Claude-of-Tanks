@@ -1,6 +1,6 @@
 import { Box3, Vector3, type BufferGeometry } from 'three';
 
-export interface StructureConnectivityReceipt {
+interface StructureConnectivityReceipt {
   id: string;
   parts: number;
   connected: number;
@@ -9,19 +9,19 @@ export interface StructureConnectivityReceipt {
   epsilon: number;
 }
 
-export interface StructureConnectivityOptions {
+interface StructureConnectivityOptions {
   epsilon?: number;
   groundMinY?: number;
   groundMaxY?: number;
 }
 
-export interface StructureAttachmentPart {
+interface StructureAttachmentPart {
   id: string;
   geometry: BufferGeometry;
   support: string;
 }
 
-export interface StructureAttachmentRecord {
+interface StructureAttachmentRecord {
   part: string;
   support: string;
   gap: number;
@@ -29,7 +29,7 @@ export interface StructureAttachmentRecord {
   minContactSpan: number;
 }
 
-export interface StructureAttachmentReceipt {
+interface StructureAttachmentReceipt {
   id: string;
   parts: number;
   maxGap: number;
@@ -37,7 +37,7 @@ export interface StructureAttachmentReceipt {
   records: StructureAttachmentRecord[];
 }
 
-export interface BoundsJoint {
+interface BoundsJoint {
   gap: number;
   contactAxes: number;
   minContactSpan: number;

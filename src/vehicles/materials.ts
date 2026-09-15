@@ -53,8 +53,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 type Rng = () => number;
 type Rgb = [number, number, number];
-export type MaterialTextureQuality = 'low' | 'ai' | 'preview' | 'high';
-export type ResolvedMaterialCamoPattern = Exclude<CamoPatternId, 'auto'> | 'urban';
+type MaterialTextureQuality = 'low' | 'ai' | 'preview' | 'high';
+type ResolvedMaterialCamoPattern = Exclude<CamoPatternId, 'auto'> | 'urban';
 type MaterialPatternId = CamoPatternId | 'urban' | typeof CUSTOM_CAMO_ID | string;
 type BakeYield = () => Promise<void> | void;
 

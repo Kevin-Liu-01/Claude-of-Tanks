@@ -10,7 +10,7 @@ type Rng = () => number;
 type Palette = readonly [number, number, number];
 type Builder = (rng: Rng) => THREE.BufferGeometry;
 
-export type CivilianVehicleKind =
+type CivilianVehicleKind =
   | 'truck'
   | 'jeep'
   | 'sedan'
@@ -20,7 +20,7 @@ export type CivilianVehicleKind =
   | 'truckbox'
   | 'truckflatbed';
 
-export interface CivilianVehicleReceipt {
+interface CivilianVehicleReceipt {
   lane: 'heavy' | 'light';
   halfWidth: number;
   halfLength: number;
@@ -444,9 +444,9 @@ const DRY_LIGHT: readonly CivilianVehicleKind[] = ['pickup', 'jeep', 'van', 'wag
 const INDUSTRIAL_MAPS = new Set(['urban', 'railyard', 'foundry', 'caldera', 'blackglass', 'skybridge']);
 const DRY_MAPS = new Set(['desert', 'badlands', 'frontier', 'titanGorge']);
 
-export type CivilianVehicleLane = 'heavy' | 'light';
+type CivilianVehicleLane = 'heavy' | 'light';
 
-export const MIN_VISIBLE_VEHICLES_PER_LANE = Object.freeze({
+const MIN_VISIBLE_VEHICLES_PER_LANE = Object.freeze({
   heavy: 6,
   light: 10,
 } satisfies Record<CivilianVehicleLane, number>);

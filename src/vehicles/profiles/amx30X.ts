@@ -17,7 +17,7 @@ const YAW_Z = .285;
 const GUN_X = -.011;
 const GUN_Y = 1.87565;
 const GUN_Z = 1.60;
-export const AMX30_X_DATUMS = Object.freeze({
+const AMX30_X_DATUMS = Object.freeze({
   dims: { hullLengthM: 6.30289, overallLengthM: 9.54869, widthM: 3.11322, heightM: 2.284 },
   turretPivot: [0, YAW_Y, YAW_Z] as const,
   trunnion: [GUN_X, GUN_Y, GUN_Z] as const,

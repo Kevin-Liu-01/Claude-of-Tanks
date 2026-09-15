@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 type Side = 'left' | 'right';
-export interface SpatialArmClearance {
+interface SpatialArmClearance {
   minimumM: number;
   samples: number;
   arms: number;

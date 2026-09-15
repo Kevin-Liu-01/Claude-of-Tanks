@@ -19,7 +19,7 @@ function groupForId(id: string): CalibrationGroup {
   return FLEET_GROUP_BY_ID[id] || CORE_GROUP;
 }
 
-export function ensureCombatAnatomyGroup(group: CalibrationGroup): Promise<void> {
+function ensureCombatAnatomyGroup(group: CalibrationGroup): Promise<void> {
   if (readyGroups.has(group)) return Promise.resolve();
   let pending = pendingGroups.get(group);
   if (!pending) {

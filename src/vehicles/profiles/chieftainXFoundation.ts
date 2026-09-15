@@ -3,8 +3,8 @@
 // vertices, rig scaling or equipment overlay participates in this construction.
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 
-export type ChieftainSectionPoint = readonly [x: number, y: number];
-export type ChieftainDeckRow = readonly [z: number, inner: number, outer: number,
+type ChieftainSectionPoint = readonly [x: number, y: number];
+type ChieftainDeckRow = readonly [z: number, inner: number, outer: number,
   low: number, top: number];
 export type ChieftainHornRow = readonly [z: number, inner: number, outer: number,
   low: number, top: number];
@@ -36,7 +36,7 @@ export function chieftainDeckSolid(rows: readonly ChieftainDeckRow[], side: numb
   }));
 }
 
-export interface ChieftainCastSection {
+interface ChieftainCastSection {
   readonly z: number;
   readonly floor: readonly ChieftainSectionPoint[];
   readonly rightSide: readonly ChieftainSectionPoint[];

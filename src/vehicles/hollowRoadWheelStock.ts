@@ -15,7 +15,7 @@ const REF_RADIUS = .3166805;
 const GAP_HALF = .03035;
 const OUTER_HALF = .215435;
 
-export interface HollowPairedRoadWheelOptions {
+interface HollowPairedRoadWheelOptions {
   readonly radiusM: number;
   readonly high: boolean;
   /** Hub fasteners per half on the high tier (0 disables). */

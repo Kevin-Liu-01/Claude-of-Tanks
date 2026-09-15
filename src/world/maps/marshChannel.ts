@@ -1,5 +1,5 @@
 /** Pure authoring helper: samples overlap even after shoreline modulation. */
-export interface MarshChannelStation {
+interface MarshChannelStation {
   x: number;
   z: number;
   r: number;

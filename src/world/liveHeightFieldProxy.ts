@@ -18,7 +18,7 @@ interface HeightFieldWorld<Normal> {
   heightField: HeightFieldLike<Normal>;
 }
 
-export interface LiveHeightFieldProxy<Normal> {
+interface LiveHeightFieldProxy<Normal> {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast(x: number, z: number): number;
   getHeightAtExact(x: number, z: number): number;

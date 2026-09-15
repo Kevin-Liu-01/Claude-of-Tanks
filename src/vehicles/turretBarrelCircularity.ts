@@ -45,7 +45,7 @@ interface BarrelSamplingContext {
   samples: BarrelCircularitySample[];
 }
 
-export interface BarrelCircularitySample {
+interface BarrelCircularitySample {
   zM: number;
   widthM: number;
   heightM: number;
@@ -63,7 +63,7 @@ export interface BarrelCircularitySample {
   pass?: boolean;
 }
 
-export interface TurretBarrelCircularityOptions {
+interface TurretBarrelCircularityOptions {
   sampleFractions?: readonly number[];
   maxAspectRatio?: number;
   maxRadiusM?: number;
@@ -78,11 +78,11 @@ export interface TurretBarrelCircularityOptions {
   maxLateralAxisOffsetM?: number;
 }
 
-export interface TurretBarrelVisual {
+interface TurretBarrelVisual {
   root?: THREE.Object3D | null;
 }
 
-export interface TurretBarrelCircularityResult {
+interface TurretBarrelCircularityResult {
   pass: boolean;
   error?: string;
   skipped?: boolean;

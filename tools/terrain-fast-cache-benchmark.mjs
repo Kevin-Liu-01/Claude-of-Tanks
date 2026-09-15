@@ -76,7 +76,7 @@ export function createTerrainRayExperiment(THREE, heightField, sample) {
   return rayFactory(THREE, heightField, sample);
 }
 
-export function createWinterCorridor(THREE, field) {
+function createWinterCorridor(THREE, field) {
   // Same fixed path as the terrain streaming benchmark; not a production replay.
   const rays = [];
   for (let index = 0; index < 24; index++) {
@@ -131,7 +131,7 @@ function summarize(runs, phase) {
     counts: runs[0][phase].counts };
 }
 
-export async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100 } = {}) {
+async function benchmarkWinterCache({ rounds = 7, hotRepeats = 100 } = {}) {
   assert.ok(Number.isInteger(rounds) && rounds >= 1 && rounds <= 9);
   assert.ok(Number.isInteger(hotRepeats) && hotRepeats >= 1 && hotRepeats <= 200);
   const [THREE, { createHeightField }, { default: winter }] = await Promise.all([

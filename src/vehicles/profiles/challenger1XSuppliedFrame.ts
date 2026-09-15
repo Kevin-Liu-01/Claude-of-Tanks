@@ -1,6 +1,6 @@
 // Fixed authoring ruler approved before the supplied-file rebuild. These are
 // scalar measurements, not a runtime source transform or imported geometry.
-export type ChallengerPoint = readonly [number, number, number];
+type ChallengerPoint = readonly [number, number, number];
 const SCALE = .022766597878026665;
 const OFFSET: ChallengerPoint = [.000448134021952124, .002688968328105816, 1.225273105020766];
 export const c1Length = (raw: number): number => raw * SCALE;

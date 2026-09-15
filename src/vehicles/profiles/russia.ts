@@ -516,7 +516,7 @@ export function lowerT64BellyProfile(points: ProfileCurve, dropM = T64_LOWER_HUL
 // Canonical T-80 cast-turret shell, shared by every T-80 family builder.
 // This is the accepted T-80/T-80B/T-80U Kursk nine-ring silhouette. Variant
 // identity belongs in armor and equipment, never in another base casting.
-export const T80_CAST_TURRET_RINGS = Object.freeze([
+const T80_CAST_TURRET_RINGS = Object.freeze([
   Object.freeze([1.44, 0.06]), Object.freeze([1.465, 0.40]),
   Object.freeze([1.435, 0.44]), Object.freeze([1.30, 0.545]),
   Object.freeze([1.19, 0.585]), Object.freeze([1.05, 0.615]),

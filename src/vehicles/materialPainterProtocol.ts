@@ -1,7 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { MaterialVisual, PlateFeatures } from './materialPainter.ts';
 
-export interface MaterialPainterDimensions { albedo: number; map: number }
+interface MaterialPainterDimensions { albedo: number; map: number }
 export interface MaterialPainterRequest {
   identity: string;
   visual: MaterialVisual;

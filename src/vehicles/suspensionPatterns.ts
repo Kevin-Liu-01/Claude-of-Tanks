@@ -45,7 +45,7 @@ export const SUSPENSION_PATTERN_DEFINITIONS = Object.freeze({
 } as const);
 
 export type SuspensionPatternId = keyof typeof SUSPENSION_PATTERN_DEFINITIONS;
-export type SuspensionPatternDefinition = typeof SUSPENSION_PATTERN_DEFINITIONS[SuspensionPatternId];
+type SuspensionPatternDefinition = typeof SUSPENSION_PATTERN_DEFINITIONS[SuspensionPatternId];
 export type SuspensionPattern = Readonly<{
   id: SuspensionPatternId;
 } & SuspensionPatternDefinition>;

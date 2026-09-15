@@ -7,7 +7,7 @@
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
-export const DEV_FLEET_ENV_KEY = 'VITE_COT_DEV_FLEET_KEY';
+const DEV_FLEET_ENV_KEY = 'VITE_COT_DEV_FLEET_KEY';
 export const DEV_FLEET_KEY = 'claude-of-tanks-local-dev';
 export const DEV_FLEET_LABEL = 'DEV';
 

@@ -3,7 +3,7 @@
 
 export type TerrainLodLevel = 0 | 1 | 2;
 
-export interface TerrainLodChunk {
+interface TerrainLodChunk {
   cx: number;
   cz: number;
   level: TerrainLodLevel;
@@ -18,9 +18,9 @@ export interface TerrainLodBuild {
   urgent: boolean;
 }
 
-export type TerrainLodBuilder = (job: TerrainLodBuild) => void;
+type TerrainLodBuilder = (job: TerrainLodBuild) => void;
 
-export const TERRAIN_LOD_DIST = Object.freeze([200, 430] as const);
+const TERRAIN_LOD_DIST = Object.freeze([200, 430] as const);
 
 export function terrainLodForDistance(
   distanceM: number,

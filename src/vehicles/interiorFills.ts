@@ -27,23 +27,23 @@ export interface InteriorFillRecord {
   readonly gun?: string;
 }
 
-export type InteriorFillComponent = 'hull' | 'turret' | 'gun';
+type InteriorFillComponent = 'hull' | 'turret' | 'gun';
 
-export type InteriorFillBox = readonly [cx: number, cy: number, cz: number, sx: number, sy: number, sz: number];
+type InteriorFillBox = readonly [cx: number, cy: number, cz: number, sx: number, sy: number, sz: number];
 
 const registry = new Map<string, InteriorFillRecord>();
 const loadedGroups = new Set<string>();
 const pendingGroups = new Map<string, Promise<void>>();
 
-export function registerInteriorFills(records: Readonly<Record<string, InteriorFillRecord>>): void {
+function registerInteriorFills(records: Readonly<Record<string, InteriorFillRecord>>): void {
   for (const [id, record] of Object.entries(records)) registry.set(id, record);
 }
 
-export function interiorFillGroupOf(specId: string): string {
+function interiorFillGroupOf(specId: string): string {
   return FLEET_GROUP_BY_ID[specId] || 'core';
 }
 
-export function ensureInteriorFillGroup(group: string): Promise<void> {
+function ensureInteriorFillGroup(group: string): Promise<void> {
   if (loadedGroups.has(group)) return Promise.resolve();
   const loader = (INTERIOR_FILL_GROUP_LOADERS as Readonly<Record<string, (() => Promise<{ INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> }>) | undefined>>)[group];
   if (!loader) { loadedGroups.add(group); return Promise.resolve(); }
@@ -86,7 +86,7 @@ function decodeSextets(encoded: string): Uint16Array {
 }
 
 /** Decode one component's boxes into [centre, size] metres in the TANK frame (build pose). */
-export function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
+function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
   const encoded = record[component];
   if (!encoded) return [];
   const spans = decodeSextets(encoded);
@@ -104,7 +104,7 @@ export function interiorFillBoxes(record: InteriorFillRecord, component: Interio
 }
 
 /** Merge a component's boxes into one geometry (24 vertices per box, no index). */
-export function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGeometry | null {
+function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGeometry | null {
   if (!boxes.length) return null;
   const positions = new Float32Array(boxes.length * 36 * 3);
   const normals = new Float32Array(boxes.length * 36 * 3);
@@ -133,7 +133,7 @@ export function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.B
   return geometry;
 }
 
-export interface ApplyInteriorFillsOptions {
+interface ApplyInteriorFillsOptions {
   readonly specId: string;
   readonly hullG: THREE.Object3D;
   readonly turretG: THREE.Object3D;

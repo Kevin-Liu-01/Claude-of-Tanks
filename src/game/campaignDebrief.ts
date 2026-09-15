@@ -26,7 +26,7 @@ export interface CampaignDebrief {
   readonly next: CampaignOperation | null;
 }
 
-export interface CampaignDebriefInput {
+interface CampaignDebriefInput {
   readonly gameMode?: RuntimeValue;
   readonly campaignOperationId?: RuntimeValue;
   readonly mapId?: RuntimeValue;

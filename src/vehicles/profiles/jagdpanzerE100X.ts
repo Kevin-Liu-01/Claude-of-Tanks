@@ -11,7 +11,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 const PITCH = [-.0007, 2.33805, .20] as const;
-export const JPZE100_X_DATUMS = Object.freeze({
+const JPZE100_X_DATUMS = Object.freeze({
   dims: {hullLengthM:8.7475677,overallLengthM:11.4206558,widthM:4.4788417,heightM:3.16101265},
   turretPivot: PITCH, trunnion: PITCH, muzzleZ:7.04687214, roofEquipmentTopM:3.400795,
   // Internal virtual traverse axis, not a claimed bearing in the reference.
@@ -279,7 +279,7 @@ function cannon(P:TankBuilderPort):void {
   P.muzzleZ=JPZE100_X_DATUMS.muzzleZ-PITCH[2];
 }
 
-export function buildJagdpanzerE100X(P:TankBuilderPort):void {
+function buildJagdpanzerE100X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(...PITCH);
   P.gunG.position.set(0,0,0);

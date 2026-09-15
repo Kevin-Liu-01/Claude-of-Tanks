@@ -40,7 +40,7 @@ interface HeadlessCollisionWorldOptions {
   manifest?: CollisionManifest;
 }
 
-export interface HeadlessRayHit {
+interface HeadlessRayHit {
   point: Vector3;
   normal: Vector3;
   dist: number;
@@ -48,7 +48,7 @@ export interface HeadlessRayHit {
   record: CollisionRecord | null;
 }
 
-export interface HeadlessCollisionWorld {
+interface HeadlessCollisionWorld {
   mapId?: string;
   heightField: HeightField;
   raycast(origin: Vector3, direction: Vector3, maxDistance: number): HeadlessRayHit | null;

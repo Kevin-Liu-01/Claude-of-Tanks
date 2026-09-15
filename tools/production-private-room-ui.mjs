@@ -739,7 +739,7 @@ export function readUiState() {
 }
 
 /** Fixed booleans/counts only, safe even while an invitation is displayed. */
-export function readProductionReadyControls() {
+function readProductionReadyControls() {
   const map=document.querySelector('.cot-play [data-control="map"]');
   const trigger=map?.querySelector('[data-select-trigger]');
   const option=map?.querySelector('[role="option"][data-value="winter"]');

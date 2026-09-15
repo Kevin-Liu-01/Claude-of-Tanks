@@ -52,7 +52,7 @@ function cheekCovers(): THREE.BufferGeometry[] {
   return result;
 }
 
-export const CHIEFTAIN5_SOURCE_SMOKE_BANKS = Object.freeze([
+const CHIEFTAIN5_SOURCE_SMOKE_BANKS = Object.freeze([
   { center: [-1.2001761, 1.9217159, 1.1248851] as Point, axis: [-.736, .350, .579] as Point },
   { center: [.7842825, 1.9306791, 1.6617824] as Point, axis: [.620, .289, .730] as Point },
 ]);

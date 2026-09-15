@@ -25,14 +25,14 @@ interface AppearanceColorRecord {
   lightness: number;
 }
 
-export interface VehicleAppearanceIssue {
+interface VehicleAppearanceIssue {
   code: 'saturated-running-gear' | 'track-guard-uses-gear-material' | 'armor-uses-gear-material';
   object: string;
   role: string;
   color: AppearanceColorRecord | null;
 }
 
-export interface VehicleAppearanceAudit {
+interface VehicleAppearanceAudit {
   version: 1;
   issues: VehicleAppearanceIssue[];
   roles: Record<string, number>;

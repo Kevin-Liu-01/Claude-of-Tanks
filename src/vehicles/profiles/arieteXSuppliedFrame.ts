@@ -2,7 +2,7 @@
 // uniform comparison frame, not CIO real-vehicle dimensions or source arrays.
 import type * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-export type ArietePoint = readonly [number, number, number];
+type ArietePoint = readonly [number, number, number];
 export const ARIETE_SUPPLIED_X_DATUMS = Object.freeze({
   dims: { hullLengthM: 7.0114073416, overallLengthM: 8.5337977835,
     widthM: 3.61, heightM: 2.131347 },

@@ -6,7 +6,7 @@ const DEFAULT_SEGMENTS = 16;
 const CATENARY_K = 1.35;
 const COSH_DENOM = Math.cosh(CATENARY_K) - 1;
 
-export interface UtilityPoleInput {
+interface UtilityPoleInput {
   x: number;
   y: number;
   z: number;
@@ -14,13 +14,13 @@ export interface UtilityPoleInput {
   attachH?: number;
 }
 
-export interface UtilityPole extends UtilityPoleInput {
+interface UtilityPole extends UtilityPoleInput {
   attachH: number;
 }
 
-export type UtilitySpanInput = readonly [number, number];
+type UtilitySpanInput = readonly [number, number];
 
-export interface UtilityNetworkOptions {
+interface UtilityNetworkOptions {
   segments?: number;
   sideOffset?: number;
 }

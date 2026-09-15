@@ -322,7 +322,7 @@ function roadWheelCore(quality:boolean):THREE.BufferGeometry {
     .rotateZ(-Math.PI/2);
 }
 
-export function buildType90X(P:TankBuilderPort):void {
+function buildType90X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
   hull(P);

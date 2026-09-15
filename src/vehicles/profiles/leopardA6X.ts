@@ -14,7 +14,7 @@ const { box, cylX, cylY, cylZ, torus } = KIT;
 type Point = readonly [number, number, number];
 type Row = readonly [z: number, left: number, right: number, floor: number, roof: number];
 
-export const LEOPARD_A6_X_DATUMS = Object.freeze({
+const LEOPARD_A6_X_DATUMS = Object.freeze({
   leo2a6_x: {
     dims: { hullLengthM: 7.63049, overallLengthM: 10.9547999, widthM: 3.80991006, heightM: 2.43111 },
     structuralRoofY: 2.43111,

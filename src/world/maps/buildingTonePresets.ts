@@ -1,10 +1,10 @@
-export type BuildingTone = (
+type BuildingTone = (
   hue: number,
   saturation: number,
   lightness: number,
 ) => readonly [number, number, number];
 
-export interface RealisticCityToneOptions {
+interface RealisticCityToneOptions {
   value?: number;
   saturation?: number;
   soot?: number;
@@ -12,7 +12,7 @@ export interface RealisticCityToneOptions {
   coolAccent?: number;
 }
 
-export interface RealisticCityBuildingTones {
+interface RealisticCityBuildingTones {
   [bucket: string]: BuildingTone | null;
   plaster: BuildingTone;
   plaster2: BuildingTone;

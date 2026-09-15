@@ -6,13 +6,13 @@ import type {
 } from './specContracts.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
-export interface FleetRegistries {
+interface FleetRegistries {
   readonly tankSpecs: TankSpecRegistry;
   readonly modelSources: ModelSourceRegistry;
   readonly allTankIds: string[];
 }
 
-export interface VariantIdentity {
+interface VariantIdentity {
   readonly name: string;
   readonly nation: string;
   readonly era?: string;

@@ -236,7 +236,7 @@ const CAMO_NATION_TAG: Readonly<Record<string, CamoTagId>> = Object.freeze({
   Ukraine: 'ua',
 });
 
-export interface SharedCamoVisual {
+interface SharedCamoVisual {
   readonly scheme: string;
   readonly base: string;
   readonly weather: string;
@@ -247,7 +247,7 @@ export interface SharedCamoVisual {
   readonly solidWeatheringIntensity?: number;
 }
 
-export interface SharedCamoPreset {
+interface SharedCamoPreset {
   readonly id: CamoPatternId;
   readonly sourceTankId: string | null;
   readonly tags: readonly CamoTagId[];
@@ -608,7 +608,7 @@ export const CUSTOM_CAMO_ID = 'custom';
 export const CUSTOM_CAMO_STYLES = Object.freeze([
   'drawn', 'blotch', 'digital', 'stripes', 'splinter',
 ] as const);
-export type CustomCamoStyle = typeof CUSTOM_CAMO_STYLES[number];
+type CustomCamoStyle = typeof CUSTOM_CAMO_STYLES[number];
 
 const DEFAULT_CUSTOM_CAMO = Object.freeze({
   style: 'drawn',

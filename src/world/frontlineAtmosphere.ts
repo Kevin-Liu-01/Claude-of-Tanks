@@ -14,15 +14,15 @@ import * as THREE from 'three';
 import { isMapId, type MapId } from './maps/catalog.ts';
 import { emitBreakFx, emitDestroyed, registerWorldDestructibles } from './destructibles.ts';
 
-export interface FrontlineEventBus {
+interface FrontlineEventBus {
   emit(event: string, payload: unknown): void;
 }
 
-export interface FrontlineHeightField {
+interface FrontlineHeightField {
   getHeightAt?(x: number, z: number): number;
 }
 
-export interface FrontlineSpawns {
+interface FrontlineSpawns {
   player?: { pos: readonly number[] } | null;
   enemies?: ReadonlyArray<{ pos: readonly number[] }> | null;
 }
@@ -39,7 +39,7 @@ export interface FrontlineAtmosphereOptions {
   releaseMaterial?: (material: THREE.Material) => void;
 }
 
-export interface FrontlineEvent {
+interface FrontlineEvent {
   kind: 'artillery' | 'flak' | 'flyover' | 'aa' | 'aa-destroyed';
   timeS: number;
   pos: [number, number, number];

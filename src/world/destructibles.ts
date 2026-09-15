@@ -17,7 +17,7 @@
 // (a rebuild of the same map replaces its entry) and are dispatched only when
 // their world group is actually visible in the scene graph.
 
-export type BreakFxProvider = (
+type BreakFxProvider = (
   kind: string,
   x: number,
   y: number,
@@ -33,12 +33,12 @@ export interface DestroyedPropEvent {
   cause: 'ram' | 'shell' | 'blast';
 }
 
-export interface ShellImpactOptions {
+interface ShellImpactOptions {
   r: number;
   he: boolean;
 }
 
-export interface WorldDestructibleEntry {
+interface WorldDestructibleEntry {
   key: string;
   isActive(): boolean;
   sweep(ax: number, ay: number, az: number, bx: number, by: number, bz: number): void;

@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { createCaptureLock } from './capture-lock.mjs';
 
-export const PROTOCOL = 'cold-native-horizon-construction-v1';
+const PROTOCOL = 'cold-native-horizon-construction-v1';
 const SELF = fileURLToPath(import.meta.url);
 const MEMORY_KEYS = ['heapUsed', 'arrayBuffers', 'external', 'rss'];
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -162,7 +162,7 @@ async function nativeRuntime(root, canvasModule, tier) {
     rasterizer: { path: fs.realpathSync(canvasModule), version: manifest.version, moduleHash: fileHash(canvasModule), bindings } };
 }
 
-export async function workerTrial({ root, map, seed, canvasModule, tier }) {
+async function workerTrial({ root, map, seed, canvasModule, tier }) {
   assert.equal(typeof globalThis.gc, 'function', 'Worker requires --expose-gc');
   const saved = new Map(['window', 'document', 'ImageData'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   let mesh = null, runtime;
@@ -259,7 +259,7 @@ export async function compareTrials(options, { snapshot = sourceSnapshot, trial 
   return report;
 }
 
-export function validateTrial(result, item, tier) {
+function validateTrial(result, item, tier) {
   assert.ok(result.code === 0 && result.signal === null && !result.error && result.receipt?.ok === true,
     'Worker failed; raw result retained');
   const value = result.receipt.value;
@@ -278,7 +278,7 @@ function statistics(values) {
   return { min: sorted[0], max: sorted.at(-1), median: (sorted[middle] + sorted[Math.floor((sorted.length - 1) / 2)]) / 2 };
 }
 
-export function summarizeTrials(runs) {
+function summarizeTrials(runs) {
   const groups = new Map();
   for (const run of runs) {
     if (!run.valid) continue;

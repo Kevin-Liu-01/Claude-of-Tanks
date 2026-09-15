@@ -17,7 +17,7 @@ const YAW_Z = 0.35 - CENTER_Z;
 const GUN_Y = 1.99253;
 const GUN_Z = 1.50 - CENTER_Z;
 
-export const K2_X_DATUMS = Object.freeze({
+const K2_X_DATUMS = Object.freeze({
   hullLengthM: 7.8535, widthM: 3.71906, overallLengthM: 10.8448,
   roofHeightM: 2.369, overallHeightM: 4.73527,
   turretPivot: [0, YAW_Y, YAW_Z] as const,

@@ -12,7 +12,7 @@ export const T62MV1_X_ERA_ZONE_NAMES={
 // the existing first-generation K1 balance preset (modern1.ts) is proposed.
 // The source title is MV-1; its low-detail broad covers alone do not establish
 // explosive composition. Parent registration must retain that provenance note.
-export const T62MV1_X_ERA_CONTACT={keReduction:.05,ceFlatMm:280} as const;
+const T62MV1_X_ERA_CONTACT={keReduction:.05,ceFlatMm:280} as const;
 export const T62MV1_X_ERA_ZONES=[
   {name:'glacis_era_L',owner:'hull',type:'first-generation-reactive',
     bounds:{min:[-.883,.90,1.93],max:[-.005,1.473,2.925]},

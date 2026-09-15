@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 
-export type StitchedGearStation = readonly [radiusM:number, axleXM:number, segments:number];
+type StitchedGearStation = readonly [radiusM:number, axleXM:number, segments:number];
 type Ring = { start:number; count:number };
-export type GearAngularStations = (radiusM:number, axleXM:number, segments:number)=>readonly number[];
+type GearAngularStations = (radiusM:number, axleXM:number, segments:number)=>readonly number[];
 type AngularRing = Ring & { fractions?:readonly number[] };
 
 function stitch(a:Ring,b:Ring,indices:number[]):void {

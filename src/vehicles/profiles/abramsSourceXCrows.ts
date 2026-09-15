@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { closedSectionLoft, planeBoundedArmor, profiledTube, type XYZ, type XY } from './abramsSourceXGeometry.ts';
 
-export type CrowsEmitter = (name: string, geometry: THREE.BufferGeometry, glass?: boolean) => void;
+type CrowsEmitter = (name: string, geometry: THREE.BufferGeometry, glass?: boolean) => void;
 
 function slab(emit: CrowsEmitter, name: string, size: XYZ, center: XYZ): void {
   emit(name, new THREE.BoxGeometry(...size).translate(...center));

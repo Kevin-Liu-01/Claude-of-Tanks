@@ -8,12 +8,12 @@ export interface CollisionManifestCounts {
   concealers: number;
 }
 
-export interface CollisionManifestEntry extends CollisionManifestCounts {
+interface CollisionManifestEntry extends CollisionManifestCounts {
   bytes: number;
   sha256: string;
 }
 
-export interface CollisionManifestIndex {
+interface CollisionManifestIndex {
   version: 2;
   terrainSeed: number;
   propsSeed: number;
@@ -21,7 +21,7 @@ export interface CollisionManifestIndex {
   maps: Record<string, CollisionManifestEntry>;
 }
 
-export const MAX_COLLISION_SHARD_BYTES = 16 * 1024 * 1024;
+const MAX_COLLISION_SHARD_BYTES = 16 * 1024 * 1024;
 
 function isRecord(value: RuntimeValue): value is Record<string, RuntimeValue> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

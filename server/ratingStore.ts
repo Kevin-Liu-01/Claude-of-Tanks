@@ -8,9 +8,9 @@ const START_RATING = 1000;
 const MIN_RATING = 100;
 const MAX_RATING = 3000;
 
-export type RatingRank = 'Master' | 'Diamond' | 'Platinum' | 'Gold' |
+type RatingRank = 'Master' | 'Diamond' | 'Platinum' | 'Gold' |
   'Silver' | 'Bronze' | 'Recruit';
-export type RatedTeam = 'alpha' | 'bravo';
+type RatedTeam = 'alpha' | 'bravo';
 export type RatedResult = RatedTeam | 'draw';
 
 interface StoredRatingProfile {
@@ -50,18 +50,18 @@ export interface RatedPlayer {
   team: RatedTeam;
 }
 
-export interface RatingUpdate extends PublicRatingProfile {
+interface RatingUpdate extends PublicRatingProfile {
   before: number;
   delta: number;
 }
 
-export interface RatingStoreOptions {
+interface RatingStoreOptions {
   identityFactory?: () => string;
   secretFactory?: () => string;
   filePath?: string | null;
 }
 
-export interface RecordTeamMatchOptions {
+interface RecordTeamMatchOptions {
   matchId?: string;
   result?: RatedResult;
   players?: RatedPlayer[];

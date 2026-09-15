@@ -41,7 +41,7 @@ export function extrusionPrism(before,after){
 }
 /** Full triangle clipping, not sparse barycentric witnesses. Open sheets count.
  * The old end face alone is excluded; all genuinely added volume stays closed. */
-export function triangleInExtrusion(prism,triangle){
+function triangleInExtrusion(prism,triangle){
  let polygon=triangle.map(p=>p.clone());
  for(const {normal,constant}of prism.planes){
   const next=[];

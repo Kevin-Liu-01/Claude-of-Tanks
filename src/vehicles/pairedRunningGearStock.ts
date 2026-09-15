@@ -2,7 +2,7 @@ import type {BufferGeometry} from 'three';
 import {turnedGearStock, gearFastener} from './runningGearPrimitives.ts';
 import {mergeAll, xform} from './factoryGeometry.ts';
 
-export interface PairedRunningGearStockOptions {
+interface PairedRunningGearStockOptions {
   radiusM: number;
   axialWidthM: number;
   guideGapM: number;

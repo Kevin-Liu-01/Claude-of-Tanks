@@ -23,7 +23,7 @@ const finishes = {
   'zimmerit-bolted': { modernWelds: false, zimmerit: true },
 };
 
-export function parseHeightProbeOptions(args) {
+function parseHeightProbeOptions(args) {
   const option = (name, fallback) => args.find(arg => arg.startsWith(`--${name}=`))
     ?.slice(name.length + 3) ?? fallback;
   const quality = option('quality', 'high'), finish = option('finish', 'modern');
@@ -42,7 +42,7 @@ export function parseHeightProbeOptions(args) {
     timeoutMs: integer('timeout-ms', 120000, 1000, 300000) };
 }
 
-export function extractHeightProbeOwners(source) {
+function extractHeightProbeOwners(source) {
   const slice = (first, next) => {
     const start = source.indexOf(first), end = source.indexOf(next, start + first.length);
     if (start < 0 || end <= start) throw new Error(`Missing actual owner: ${first}`);
@@ -83,7 +83,7 @@ export function extractHeightProbeOwners(source) {
 // Self-contained for page.evaluate. All image comparisons happen AFTER timed
 // work. The height pixels are the exact existing normal-generator readback;
 // there is no second height read or forced GPU finish inside the measurement.
-export async function compareHeightCanvases({ sources, settings }) {
+async function compareHeightCanvases({ sources, settings }) {
   const canvases = [];
   const ownedDocument = { createElement(tag) {
     if (tag !== 'canvas') throw new Error('Unexpected painter element');
@@ -192,7 +192,7 @@ export async function compareHeightCanvases({ sources, settings }) {
   }
 }
 
-export function summarizeHeightProbe(rows) {
+function summarizeHeightProbe(rows) {
   if (!rows.length) throw new Error('No completed measured pairs');
   const summary = {};
   for (const policy of ['before', 'after']) {
@@ -224,7 +224,7 @@ async function readNativeGraphics(page) {
   });
 }
 
-export async function runHeightProbe(args) {
+async function runHeightProbe(args) {
   const settings = parseHeightProbeOptions(args);
   const sourcePath = '../src/vehicles/materialPainter.ts';
   const source = await readFile(new URL(sourcePath, import.meta.url), 'utf8');

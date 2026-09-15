@@ -5,7 +5,7 @@ import { waterContactProfile } from './waterContact.ts';
 const GRID_STEP_M = 8;
 const MIN_COVERAGE = 0.002;
 
-export interface ShallowWaterGeometry {
+interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
   heightAt(x: number, z: number): number;
 }
@@ -95,10 +95,10 @@ export function* shallowWaterGeometrySteps(
 }
 
 /** Water pass 6 (2026-09-14): a vehicle in the water — rings and churn spread from it. */
-export interface WaterDisturbance { readonly x: number; readonly z: number; readonly strength: number; }
-export const WATER_DISTURBANCE_CAP = 8;
+interface WaterDisturbance { readonly x: number; readonly z: number; readonly strength: number; }
+const WATER_DISTURBANCE_CAP = 8;
 
-export interface ShallowWaterSurface {
+interface ShallowWaterSurface {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   update(deltaSeconds: number): void;
   setTime(timeSeconds: number): void;
@@ -114,7 +114,7 @@ type ShallowWaterShader = Parameters<NonNullable<THREE.MeshStandardMaterial['onB
  * struck the sheet at once — four suns on every bay, which every earlier
  * water tuning (roughness floors, opacity, sky reflection) was fighting.
  */
-export type ShallowWaterMaterialSetup =
+type ShallowWaterMaterialSetup =
   (material: THREE.MeshStandardMaterial, hook: (shader: ShallowWaterShader) => void) => void;
 
 export function createShallowWaterSurface(

@@ -4,13 +4,13 @@
 
 type Vec3 = readonly [number, number, number];
 
-export interface Type10GunSeat {
+interface Type10GunSeat {
   readonly turretLocalPivot: Vec3;
   readonly turretAttachmentCenterZ: number;
   readonly certifiedMuzzleWorldZ: number;
 }
 
-export interface Type10MantletFit {
+interface Type10MantletFit {
   readonly throatHalfWidth: number;
   readonly throatBottomY: number;
   readonly throatTopY: number;

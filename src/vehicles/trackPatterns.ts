@@ -108,7 +108,7 @@ export const TRACK_PATTERN_DEFINITIONS = Object.freeze({
 } as const);
 
 export type TrackPatternId = keyof typeof TRACK_PATTERN_DEFINITIONS;
-export type TrackPatternDefinition = typeof TRACK_PATTERN_DEFINITIONS[TrackPatternId];
+type TrackPatternDefinition = typeof TRACK_PATTERN_DEFINITIONS[TrackPatternId];
 export type TrackPattern = Readonly<{ id: TrackPatternId } & TrackPatternDefinition>;
 
 interface TrackPatternSpec {

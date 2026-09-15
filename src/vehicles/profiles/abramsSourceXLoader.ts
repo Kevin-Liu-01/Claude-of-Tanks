@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { closedSectionLoft, roundMember, planeBoundedArmor, type XY, type XYZ } from './abramsSourceXGeometry.ts';
 
-export interface LoaderStock { name: string; geometry: THREE.BufferGeometry; glass?: boolean }
+interface LoaderStock { name: string; geometry: THREE.BufferGeometry; glass?: boolean }
 const YAW = Math.atan2(.829, .559);
 
 function add(parts: LoaderStock[], name: string, geometry: THREE.BufferGeometry): void {

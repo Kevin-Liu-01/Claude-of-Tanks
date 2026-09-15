@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 const EPS = 1e-9;
 
-export type Bounds3 = [number, number, number];
+type Bounds3 = [number, number, number];
 
 export type SimpleCollisionShape =
   | { kind: 'obb'; cx: number; cz: number; hw: number; hl: number; yaw: number }

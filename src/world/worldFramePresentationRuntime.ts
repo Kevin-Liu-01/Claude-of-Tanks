@@ -22,7 +22,7 @@ interface WorldFrameTarget {
   ): void;
 }
 
-export interface WorldFramePresentationRuntimeOptions {
+interface WorldFramePresentationRuntimeOptions {
   camera: PerspectiveCamera;
   rig: WorldFrameRig;
   getWorld(): WorldFrameTarget | null;

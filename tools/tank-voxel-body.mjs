@@ -63,7 +63,7 @@ export function floodExterior(grid) {
 }
 
 /** Body component of a shell group: hull-family, turret-family (gun mount/mantlet ride with the turret) or other. */
-export function componentOf(name) {
+function componentOf(name) {
   if (/^turret|^gunMount|^mantlet|^gun\b|^gunDark/i.test(name)) return 2;
   if (/^hull/i.test(name)) return 1;
   return 0;

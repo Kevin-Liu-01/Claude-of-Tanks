@@ -11,7 +11,7 @@ import { getDeviceTier } from '../engine/quality.ts';
 // water and soft ground, off steep faces and out of every sealed building
 // footprint; road shoulders carry extra gravel spill.
 
-export interface GroundLitterField {
+interface GroundLitterField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { x: number; y: number; z: number };
@@ -35,12 +35,12 @@ export interface GroundLitterConfig {
   soilTint?: readonly [number, number, number];
 }
 
-export type GroundLitterBlocked =
+type GroundLitterBlocked =
   (x: number, y: number, z: number, height: number, radius: number) => boolean;
 
-export type GroundLitterMaterialHook = (shader: { uniforms: Record<string, { value: unknown }>; vertexShader: string; fragmentShader: string }) => void;
+type GroundLitterMaterialHook = (shader: { uniforms: Record<string, { value: unknown }>; vertexShader: string; fragmentShader: string }) => void;
 
-export interface GroundLitterOptions {
+interface GroundLitterOptions {
   seed?: number;
   config?: GroundLitterConfig | null;
   blocked?: GroundLitterBlocked | null;
@@ -55,7 +55,7 @@ export interface GroundLitterOptions {
   releaseMaterial?: ((material: THREE.Material) => void) | null;
 }
 
-export interface GroundLitterState {
+interface GroundLitterState {
   cellX: number;
   cellZ: number;
   cells: number;
@@ -66,7 +66,7 @@ export interface GroundLitterState {
   publishes: number;
 }
 
-export interface GroundLitter {
+interface GroundLitter {
   readonly group: THREE.Group;
   readonly meshes: readonly [THREE.InstancedMesh, THREE.InstancedMesh, THREE.InstancedMesh];
   update(cameraPosition: { x: number; z: number }): void;

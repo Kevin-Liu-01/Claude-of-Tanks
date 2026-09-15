@@ -24,14 +24,14 @@ interface CompositionCanvas {
   getContext(kind: '2d', options: CanvasRenderingContext2DSettings): CompositionContext | null;
 }
 
-export interface SourcedTextureCompositionWorkerPorts {
+interface SourcedTextureCompositionWorkerPorts {
   createCanvas(width: number, height: number): CompositionCanvas;
   isBitmap: SourcedTextureBitmapGuard;
   postMessage(reply: SourcedTextureCompositionReady | SourcedTextureCompositionReply, transfer: ArrayBuffer[]): void;
   close(): void;
 }
 
-export interface SourcedTextureCompositionHandler {
+interface SourcedTextureCompositionHandler {
   receive(value: RuntimeValue): void;
   dispose(): void;
 }

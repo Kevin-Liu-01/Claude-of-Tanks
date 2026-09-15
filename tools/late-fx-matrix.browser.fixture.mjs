@@ -143,7 +143,7 @@ function createFixture(renderer, samples, aoEnabled) {
 // Synchronous diagnostic scope only: preserve direct draw order, receiver,
 // exact arguments, return values and original exceptions. No wrapper crosses
 // a readback/await or overwrites a replacement installed by a draw callback.
-export function withDirectDrawObserver(renderer, observe, render) {
+function withDirectDrawObserver(renderer, observe, render) {
   const original = renderer.renderBufferDirect;
   let observationFailure;
   function observed(...args) {

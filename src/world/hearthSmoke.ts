@@ -8,9 +8,9 @@
 // allocation, no scene light, and nothing collides or occludes.
 import * as THREE from 'three';
 
-export type HearthAnchor = readonly [number, number, number];
+type HearthAnchor = readonly [number, number, number];
 
-export interface HearthSmokeOptions {
+interface HearthSmokeOptions {
   seed?: number;
   /** Share of detected chimneys that smoke (0..1). */
   share?: number;
@@ -19,7 +19,7 @@ export interface HearthSmokeOptions {
   cap?: number;
 }
 
-export interface HearthSmoke {
+interface HearthSmoke {
   readonly mesh: THREE.InstancedMesh;
   readonly count: number;
   setTime(seconds: number): void;

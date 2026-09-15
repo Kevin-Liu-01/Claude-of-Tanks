@@ -21,7 +21,7 @@ export const AUTHORED_EXIT_FIXTURE = {
   ],
 };
 
-export function configuredIdentity(value) {
+function configuredIdentity(value) {
   return JSON.stringify(value, (_key, item) => typeof item === 'function'
     ? { functionSource: item.toString() } : item);
 }

@@ -14,5 +14,5 @@
 export type RuntimeValue = {} | null | undefined;
 
 /** Values that can cross the game's JSON network and persistence boundaries. */
-export type JsonPrimitive = null | string | number | boolean;
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+type JsonPrimitive = null | string | number | boolean;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
