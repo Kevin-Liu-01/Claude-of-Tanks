@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { createGaragePhasePresentationRuntime } from '../game/garagePhasePresentationRuntime.ts';
 import { SHOT_VIEWS } from './shotContract.ts';
-import { setShotView } from './shotRuntime.ts';
+import { isMapEstablishingView, setShotView } from './shotRuntime.ts';
 
 const beforeRecipe = new Error('fixture reached the recipe boundary');
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');
@@ -98,6 +98,9 @@ function createFixture(releaseTextures = false) {
     },
     getWorld: () => world, getSelectedSpecId: () => 'm1a2',
     setCamoBiome: noop, applyCamoPatterns: noop, setupBattle: noop,
+    // 2026-09-15: map establishing shots prepare the distant front; other views clear it
+    prepareFrontline: async (seed, mapId) => events.push(`front:${seed}:${mapId}`),
+    resetFrontline: () => events.push('front:reset'),
     resetCombatWarm: noop,
     drainCombatWarm: () => {
       assertOwned();
@@ -152,6 +155,18 @@ for (const name of SHOT_VIEWS) {
     < fixture.events.indexOf('world-preload'));
   assert.equal(fixture.events.at(-2), `dormant:${name === 'garage'}`);
   fixture.assertOwned();
+  // the front is laid out after world acquisition and before the final ownership hand-off
+  const front = fixture.events.filter(event => event.startsWith('front:'));
+  if (isMapEstablishingView(name)) {
+    const mapId = name === 'battlefield' ? 'verdant' : name.slice('battlefield_'.length);
+    assert.deepEqual(front, [`front:1049:${mapId}`], `${name}: the establishing shot prepares its map's front once`);
+  } else {
+    assert.deepEqual(front, ['front:reset'], `${name}: other views clear the front`);
+  }
+  // acquisition itself wakes the world once (dormant:false); the final hand-off is the last one
+  assert.ok(fixture.events.indexOf(front[0]) > fixture.events.indexOf('world-preload')
+    && fixture.events.indexOf(front[0]) < fixture.events.lastIndexOf(`dormant:${name === 'garage'}`),
+    `${name}: front follows acquisition and precedes the final ownership hand-off`);
 }
 
 // Cold Garage, Garage→battle, cached same-map battle, map-switch battle, then

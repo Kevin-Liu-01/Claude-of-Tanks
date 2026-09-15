@@ -50,7 +50,15 @@ draft 2 (20 puffs, darker) leaned into 45° streaks on railyard; draft 3 fixed t
 stayed a smooth stalk; the shipped draft (14 crisp puffs, stronger sphere shading) shows
 lumpy, dense columns with varied lean and torn tops on all four maps.
 
-The garage map-picker art (`public/maps/*.webp`, `public/maps/thumbs/*.webp`,
-`src/ui/mapThumbs.ts`) was re-rendered from the establishing shots after this change
-(`node tools/screenshot.mjs --width 3840 --height 2160 --dyn-scale 1 --views …` →
-`node tools/map-thumbs.mjs`).
+## Map preview art
+
+Owner: "then take new map preview pictures and use those." The establishing shots
+(`battlefield`, `battlefield_<id>`) staged a battle but never prepared the frontline layer,
+so no preview had ever shown the front. `setShotView` (`src/dev/shotRuntime.ts`) now calls
+`prepareFrontline(1049, mapId)` for every map establishing view — one fixed seed, so the
+layout is a pure function of the map — and `resetFrontline()` for every other view, so
+close-ups and HUD frames keep a clear horizon (`shotRuntime.selftest`: front prepared once
+after acquisition and before the final ownership hand-off; cleared elsewhere). The garage
+map-picker art (`public/maps/*.webp`, `public/maps/thumbs/*.webp`, `src/ui/mapThumbs.ts`)
+was re-rendered from those frames (`node tools/screenshot.mjs --width 3840 --height 2160
+--dyn-scale 1 --views <30 battlefield views>` → `node tools/map-thumbs.mjs --shots-dir …`).

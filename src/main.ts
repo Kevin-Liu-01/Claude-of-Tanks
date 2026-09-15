@@ -2987,6 +2987,9 @@ window.__SHOTS = {
       setCamoBiome,
       applyCamoPatterns,
       setupBattle,
+      // 2026-09-15: the map establishing shots carry the distant front (garage picker art)
+      prepareFrontline: (seed: number | undefined, mapId: string) => frontline.prepare(seed, mapId),
+      resetFrontline: () => frontline.reset(),
       resetCombatWarm: () => combatWarm.reset(),
       drainCombatWarm: () => combatWarm.drain(),
       buildShellCards: playerBattleActions.setTank,
@@ -3042,7 +3045,8 @@ window.__SHOTS = {
       createCombatState,
     }, 'shot runtime', [
       'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
-      'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
+      'switchMap', 'setupBattle', 'prepareFrontline', 'resetFrontline',
+      'getWorld', 'getHud', 'getFx', 'getKillcam',
     ]));
   },
 };
