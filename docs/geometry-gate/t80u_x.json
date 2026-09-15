@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 94.99004276782456,
+ "rawGeoMin": 94.99706549483446,
  "rawComponents": {
-  "wholeCurves": 94.99004276782456,
+  "wholeCurves": 94.99706549483446,
   "dims": 95.30158730158728,
   "floaters": 100
  },
@@ -235,8 +235,8 @@
    ]
   },
   "side_whole": {
-   "score": 91.76944718691072,
-   "meanPct": 0.6,
+   "score": 91.79630054029764,
+   "meanPct": 0.59,
    "p95Pct": 1.81,
    "coverPct": 0,
    "reg": {
@@ -582,7 +582,7 @@
      "refBot": -1.25,
      "procTop": 0.29,
      "procBot": -1.22,
-     "errM": 0.488
+     "errM": 0.486
     },
     {
      "at": -1.19,
@@ -667,7 +667,7 @@
    ]
   },
   "front_whole": {
-   "score": 78.1914862150739,
+   "score": 78.21176377321888,
    "meanPct": 1.43,
    "p95Pct": 7.76,
    "coverPct": 0,
@@ -951,9 +951,9 @@
   },
   {
    "name": "physicalHeightM",
-   "actual": 2.4789259888988533,
+   "actual": 2.478530257679707,
    "published": 2.4966023175442444,
-   "pct": 0.7080153904037979,
+   "pct": 0.7238661815516457,
    "method": "full visible physical envelope, no raster filtering"
   },
   {
@@ -986,7 +986,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 141737,
+     "area": 141749,
      "minX": 158,
      "minY": 375,
      "maxX": 969,
@@ -1000,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 136384,
+     "area": 136396,
      "minX": 232,
      "minY": 375,
      "maxX": 1023,
@@ -1014,7 +1014,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 140560,
+     "area": 140572,
      "minX": 232,
      "minY": 375,
      "maxX": 1023,
@@ -1028,7 +1028,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 138484,
+     "area": 138496,
      "minX": 159,
      "minY": 375,
      "maxX": 969,
@@ -1042,7 +1042,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 142525,
+     "area": 142537,
      "minX": 168,
      "minY": 375,
      "maxX": 969,

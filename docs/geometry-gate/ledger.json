@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-14T23:19:27.101Z",
+ "generatedAt": "2026-09-15T00:18:03.482Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
  "passed": 62,
  "total": 163,
@@ -1614,8 +1614,8 @@
    "components": {
     "hullCurves": 91.9,
     "stations": 98.5,
-    "turretCurves": 95.4,
-    "wholeCurves": 92.1,
+    "turretCurves": 95.3,
+    "wholeCurves": 92.3,
     "dims": 100,
     "floaters": 100
    },
@@ -1821,12 +1821,12 @@
   },
   {
    "id": "leo2a4m_x",
-   "geoMin": 93.1,
+   "geoMin": 93.2,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 93.1,
+    "wholeCurves": 93.2,
     "dims": 97,
     "floaters": 100
    },
@@ -1849,6 +1849,22 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "kf51_x",
+   "geoMin": 93.2,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 93.2,
+    "stations": 100,
+    "turretCurves": 94.4,
+    "wholeCurves": 96.1,
+    "dims": 99.6,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "merkava3d_x",
    "geoMin": 93.3,
    "requiredMinimum": 92,
@@ -1857,22 +1873,6 @@
    "components": {
     "wholeCurves": 93.3,
     "dims": 99.3,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "kf51_x",
-   "geoMin": 93.3,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 93.3,
-    "stations": 100,
-    "turretCurves": 94.4,
-    "wholeCurves": 96.3,
-    "dims": 99.6,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

@@ -235,7 +235,7 @@
    ]
   },
   "side_whole": {
-   "score": 95.42047287126171,
+   "score": 95.40518229654138,
    "meanPct": 0.34,
    "p95Pct": 0.8,
    "coverPct": 0,
@@ -667,7 +667,7 @@
    ]
   },
   "front_whole": {
-   "score": 86.04581745349762,
+   "score": 86.0458379452643,
    "meanPct": 0.93,
    "p95Pct": 3.07,
    "coverPct": 0.63,
@@ -951,9 +951,9 @@
   },
   {
    "name": "physicalHeightM",
-   "actual": 4.639572952743194,
+   "actual": 4.639565645494879,
    "published": 4.627689838409424,
-   "pct": 0.2567828603192305,
+   "pct": 0.25662495759519244,
    "method": "full visible physical envelope, no raster filtering"
   },
   {
@@ -986,7 +986,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 142563,
+     "area": 142570,
      "minX": 168,
      "minY": 280,
      "maxX": 941,
@@ -1000,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139829,
+     "area": 139836,
      "minX": 221,
      "minY": 280,
      "maxX": 1005,
@@ -1014,7 +1014,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139758,
+     "area": 139765,
      "minX": 221,
      "minY": 280,
      "maxX": 1005,
@@ -1028,7 +1028,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 139949,
+     "area": 139956,
      "minX": 169,
      "minY": 280,
      "maxX": 941,
@@ -1042,7 +1042,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 142228,
+     "area": 142235,
      "minX": 177,
      "minY": 280,
      "maxX": 941,

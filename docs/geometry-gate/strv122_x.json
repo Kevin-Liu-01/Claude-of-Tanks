@@ -112,9 +112,9 @@
  },
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 96.01046340706662,
+ "rawGeoMin": 96.01256978146658,
  "rawComponents": {
-  "wholeCurves": 96.01046340706662,
+  "wholeCurves": 96.01256978146658,
   "dims": 96.54166666666671,
   "floaters": 100
  },
@@ -986,7 +986,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 192480,
+     "area": 192484,
      "minX": 168,
      "minY": 223,
      "maxX": 969,
@@ -1000,7 +1000,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 187526,
+     "area": 187530,
      "minX": 179,
      "minY": 223,
      "maxX": 995,
@@ -1014,7 +1014,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 191452,
+     "area": 191456,
      "minX": 179,
      "minY": 223,
      "maxX": 994,
@@ -1028,7 +1028,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 187451,
+     "area": 187455,
      "minX": 171,
      "minY": 223,
      "maxX": 969,
@@ -1042,7 +1042,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 193351,
+     "area": 193355,
      "minX": 179,
      "minY": 223,
      "maxX": 969,

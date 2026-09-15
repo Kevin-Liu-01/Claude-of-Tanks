@@ -148,7 +148,10 @@ leo2a7v_x whole 92.2 → 91.9, type10_x dims 79.4 → 75.7 and m1a2_sepv2_x hull
 the last two were already below the bar (their pre-batch shoes sat 87 mm and 43 mm under the
 tank-frame floor; the presentation floor offset hides it in game). The mask oracles for the X
 tanks are their source GLBs, whose track ramps start at the old contact pins; the owner-directed
-wrap deviates from them by design. The release check ran on the eight passing ids.
+wrap deviates from them by design. The release check ran on the eight passing ids; its fidelity
+step put kf51_x's `component.turret.right` at 91.8 (92.8 at 88f235a41, 97.6 overall either way —
+the wrap shifts the right-view registration against the GLB), recorded as a fleet bar in
+`tools/west-x-reference-overrides.ts` per the owner-directed-change rule.
 
 ### Mobile and boot (outside QA at 390×844)
 

@@ -1,6 +1,6 @@
 {
  "id": "leo2a4m_x",
- "geoMin": 93.1,
+ "geoMin": 93.2,
  "requiredMinimum": 92,
  "registration": {
   "mode": "legacy-hull-translation"
@@ -9,14 +9,14 @@
  "dimensionTarget": "published specification",
  "qualityBar": "exemplar",
  "gatePassed": true,
- "rawGeoMin": 93.1480321173873,
+ "rawGeoMin": 93.15854587736929,
  "rawComponents": {
-  "wholeCurves": 93.1480321173873,
+  "wholeCurves": 93.15854587736929,
   "dims": 97.03055116869028,
   "floaters": 100
  },
  "components": {
-  "wholeCurves": 93.1,
+  "wholeCurves": 93.2,
   "dims": 97,
   "floaters": 100
  },
@@ -858,7 +858,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 170342,
+     "area": 170341,
      "minX": 152,
      "minY": 287,
      "maxX": 961,
@@ -872,7 +872,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167166,
+     "area": 167165,
      "minX": 214,
      "minY": 287,
      "maxX": 961,
@@ -886,7 +886,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167662,
+     "area": 167661,
      "minX": 214,
      "minY": 287,
      "maxX": 965,
@@ -900,7 +900,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 167681,
+     "area": 167680,
      "minX": 155,
      "minY": 287,
      "maxX": 961,
@@ -914,7 +914,7 @@
    "islandCount": 1,
    "regions": [
     {
-     "area": 170973,
+     "area": 170972,
      "minX": 169,
      "minY": 287,
      "maxX": 961,

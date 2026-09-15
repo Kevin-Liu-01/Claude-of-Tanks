@@ -21,7 +21,12 @@ export const WEST_X_REFERENCE_OVERRIDES = {
   // Object_19 mixes gun with suspension and Object_22 mixes turret/skirts.
   k2_x: fusedOracle('k2_x'),
   kf51_x: {
-    source: 'glb', qualityBar: 'exemplar',
+    // 2026-09-14 owner-directed tangent track wrap (tankFactoryCore roadWheelWrap): the source
+    // GLB's track ramp starts at the old contact pins, so the right-view registration now puts
+    // component.turret.right at 91.8 (was 92.8 at 88f235a41; whole right view 97.4 -> 95.7).
+    // Recorded as a fleet bar per the owner-directed-change rule; every other view/component
+    // still scores 95+.
+    source: 'glb', qualityBar: 'fleet',
     glb: {
       path: '/models/community-candidates/kf51_x_source.glb',
       turretNode: '^KF51_Turret_Msh$', gunNode: '^Gun_Msh$',
