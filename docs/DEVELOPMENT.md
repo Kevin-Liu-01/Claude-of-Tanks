@@ -180,6 +180,37 @@ The ordered inventory lives in `tools/selftest-suites.mjs`; package scripts
 invoke the small `tools/run-selftests.mjs` runner instead of embedding hundreds
 of shell commands.
 
+### Fast checks (2026-09-15)
+
+A full run of the 1,024 receipts costs about 100 minutes of child CPU (the fleet
+sweeps each rebuild all 181 tanks), and the release check used to stop at the
+first failing receipt, so one broken pin cost a 40-minute re-run. Three things
+changed, none of which relaxes an assertion:
+
+- **Result cache.** `tools/selftest-cache.mjs` derives every input a receipt can
+  observe — its import graph (static, re-exports, `import('…')`, template dynamic
+  imports pull in their directory), the files it names (`new URL(…,
+  import.meta.url)`, `join(here, '..', 'x')`, repo-rooted and dev-server paths,
+  paths listed inside JSON contracts it reads), the directories it lists, and,
+  for receipts that spawn children, list directories or drive the app in a
+  browser, the whole `src/ tools/ server/ public/ docs/` trees — plus node's
+  version, `package-lock.json` and the runner itself. When every input is
+  byte-identical to the receipt's last PASS the runner prints `SKIP <file>: N
+  inputs unchanged since PASS at <time>` instead of running it. The record lives
+  under `node_modules/.cache/cot-selftests/` (per worktree, never committed).
+  `COT_SELFTEST_CACHE=0 npm test` runs everything (`--all` does the same for a
+  single `node tools/run-selftests.mjs <group> --all`; npm hands extra arguments
+  only to the `test` script, not to `pretest`/`posttest`); delete the directory to
+  forget every pass.
+- **Every failure in one run.** A failing receipt no longer stops its group; the
+  runner keeps going, names each failed file, and exits with the earliest one's
+  status. `COT_SELFTEST_FAIL_FAST=1` restores stop-at-first-failure. A child that
+  dies to a signal still ends the suite.
+- **Staged release check.** `tank:release:check` runs the load-sensitive scoring
+  (standard → sealed → fidelity) serially, then the fleet probes, the receipt
+  suite and the production build concurrently (four at a time; GPU children still
+  serialise through the capture queue).
+
 Build the public artifact:
 
     npm run build

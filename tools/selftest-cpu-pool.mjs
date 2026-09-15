@@ -2,9 +2,16 @@
 // regressions are barriers: drain CPU children, release, then run alone.
 export async function runSelftestCpuPool(name, files, options) {
   const { concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles = [], refreshMs, maxLeaseBatchMs,
-    now, log, logError, onTiming } = options;
+    now, log, logError, onTiming, failFast = false, gate = { lookup: () => null, record: () => {} } } = options;
   let held = false, acquiredAt = 0, refresher, next = 0, failure;
+  const failures = [];
+  const keys = new Map();
   const active = new Map();
+  // stop admitting new children in fail-fast mode, when the runner itself could not launch a
+  // child (a spawn error is infrastructure, not a receipt verdict) or when a child died to a
+  // signal (a requested interruption must still end the suite); otherwise every file runs
+  const interrupted = (result) => result.error || result.status === null || result.status >= 128;
+  const halted = () => failure && (failFast || interrupted(failure.result));
   const release = () => {
     clearInterval(refresher);
     if (!held) return;
@@ -21,11 +28,21 @@ export async function runSelftestCpuPool(name, files, options) {
   const collect = row => {
     const { file, index, result, runMs, queueMs } = row;
     onTiming({ file, runMs, queueMs, status: result.status ?? null, error: result.error });
-    if ((result.error || result.status !== 0) && (!failure || index < failure.index)) failure = row;
+    if (result.error || result.status !== 0) {
+      failures.push(row);
+      if (!failure || index < failure.index) failure = row;
+    } else gate.record(file, keys.get(file), result.status);
   };
   const admit = async () => {
-    while (!failure && next < files.length && active.size < concurrency) {
+    while (!halted() && next < files.length && active.size < concurrency) {
       const file = files[next];
+      const cached = gate.lookup(file);
+      if (cached?.skip) {
+        next++;
+        onTiming({ file, runMs: 0, queueMs: 0, status: 0, error: undefined, skipped: true });
+        continue;
+      }
+      if (cached?.key) keys.set(file, cached.key);
       const exclusiveCpu = exclusiveCpuFiles.includes(file);
       if (exclusiveCpu && active.size) break;
       if (ownedLeaseFiles.includes(file)) {
@@ -69,11 +86,15 @@ export async function runSelftestCpuPool(name, files, options) {
         const row = await Promise.race(active.values());
         active.delete(row.index);
         collect(row);
-      } else if (failure) break;
+      } else if (halted()) break;
+      else if (next >= files.length) break;
     }
     if (failure) {
+      // every failed file is named; a spawn error still surfaces as the thrown error
+      for (const row of failures.sort((a, b) => a.index - b.index)) {
+        if (!row.result.error) logError(`[selftests] FAIL ${row.file}`);
+      }
       if (failure.result.error) throw failure.result.error;
-      logError(`[selftests] FAIL ${failure.file}`);
       return failure.result.status ?? 1;
     }
     log(`[selftests] PASS ${name}`);

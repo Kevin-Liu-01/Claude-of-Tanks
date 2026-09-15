@@ -87,20 +87,45 @@ for(const file of SELFTEST_EXCLUSIVE_CPU_FILES)for(const concurrency of [2,4,8])
     assert.deepEqual(isolated.starts,['a','b',file,'after']);
     assert.equal(isolated.acquisitions,2,'long exclusive child yields FIFO before later CPU work');
     isolated.finish('after');
-  }else assert.deepEqual(isolated.starts,['a','b',file],'exclusive failure stops admission');
+  }else{
+    // fast checks (2026-09-15): a failure no longer stops admission; the later file still runs
+    assert.deepEqual(isolated.starts,['a','b',file,'after'],'exclusive failure still lets the later file run');
+    isolated.finish('after');
+  }
   assert.equal(await run,status);assert.equal(isolated.held,false);
 }
 
 for (const first of ['a', 'b']) {
+  // fast checks (2026-09-15): every file runs and every failure is named; the earliest registry
+  // entry still supplies the status. failFast restores stop-at-first-failure.
   const failed = fixture(), other = first === 'a' ? 'b' : 'a';
   const pending = runSelftestSuite('failure', ['a', 'b', 'never'], failed.options);
   await tick(); failed.finish(first, { status: 7 }); await tick();
-  assert.deepEqual(failed.starts, ['a', 'b'], 'first observed failure stops new admission');
+  assert.deepEqual(failed.starts, ['a', 'b', 'never'], 'a failure does not stop admission');
   assert.equal(failed.held, true, 'already started peer must be drained');
-  failed.finish(other, { status: 9 });
+  failed.finish(other, { status: 9 }); await tick(); failed.finish('never');
   assert.equal(await pending, first === 'a' ? 7 : 9, 'earliest failed suite entry supplies deterministic status');
-  assert.equal(failed.held, false); assert.equal(failed.timings.length, 2);
-  assert.deepEqual(failed.errors, ['[selftests] FAIL a']);
+  assert.equal(failed.held, false); assert.equal(failed.timings.length, 3);
+  assert.deepEqual(failed.errors, ['[selftests] FAIL a', '[selftests] FAIL b'], 'every failed file is named in registry order');
+  const fast = fixture();
+  const fastRun = runSelftestSuite('fail-fast', ['a', 'b', 'never'], { ...fast.options, failFast: true });
+  await tick(); fast.finish(first, { status: 7 }); await tick();
+  assert.deepEqual(fast.starts, ['a', 'b'], 'fail-fast: first observed failure stops new admission');
+  fast.finish(other, { status: 9 });
+  assert.equal(await fastRun, first === 'a' ? 7 : 9); assert.equal(fast.held, false);
+  assert.deepEqual(fast.errors, ['[selftests] FAIL a', '[selftests] FAIL b']);
+}
+{
+  // cache gate in the pool: skipped files never launch, passes record their keys
+  const gated = fixture(2); const records = [];
+  gated.options.cache = { lookup: (file) => file === 'b' ? { skip: true, key: 'kb', inputs: 2, passedAt: 't0' } : { skip: false, key: `k-${file}`, inputs: 1 },
+    recordPass: (file, key) => records.push([file, key]) };
+  const gatedRun = runSelftestSuite('gated', ['a', 'b', 'c'], gated.options);
+  await tick(); assert.deepEqual(gated.starts, ['a', 'c'], 'the cached file is never launched');
+  gated.finish('a'); await tick(); gated.finish('c'); await tick();
+  assert.equal(await gatedRun, 0);
+  assert.deepEqual(records.sort(), [['a', 'k-a'], ['c', 'k-c']]);
+  assert.deepEqual(gated.timings.filter((row) => row.skipped).map((row) => row.file), ['b']);
 }
 const rejected = fixture(), launchError = new Error('spawn failed');
 const rejectedRun = runSelftestSuite('spawn-failure', ['a', 'b', 'never'], rejected.options);
@@ -130,9 +155,15 @@ assert.equal(fair.held, false);
 
 const browserFailure = fixture();
 const browserRun = runSelftestSuite('browser-failure', ['browser', 'never'], browserFailure.options);
-await tick(); browserFailure.finish('browser', { status: 4 });
-assert.equal(await browserRun, 4); assert.equal(browserFailure.acquisitions, 0);
-assert.deepEqual(browserFailure.starts, ['browser']);
+await tick(); browserFailure.finish('browser', { status: 4 }); await tick();
+// fast checks (2026-09-15): the later file still runs after the browser failure
+assert.deepEqual(browserFailure.starts, ['browser', 'never']); browserFailure.finish('never');
+assert.equal(await browserRun, 4); assert.equal(browserFailure.acquisitions, 1, 'the later CPU file took the lease once');
+const browserFailFast = fixture();
+const browserFastRun = runSelftestSuite('browser-failure-fast', ['browser', 'never'], { ...browserFailFast.options, failFast: true });
+await tick(); browserFailFast.finish('browser', { status: 4 });
+assert.equal(await browserFastRun, 4); assert.equal(browserFailFast.acquisitions, 0);
+assert.deepEqual(browserFailFast.starts, ['browser']);
 const blocked = fixture();
 blocked.options.lock.acquire = async () => { throw new Error('busy'); };
 await assert.rejects(runSelftestSuite('blocked', ['never'], blocked.options), /busy/);
@@ -158,7 +189,7 @@ for (const concurrency of [3, 4, 5, 6, 7, 8]) {
   assert.equal(barrier.timings.length, files.length + 2);
 
   const failure = fixture(concurrency);
-  const failureRun = runSelftestSuite('wide-failure', [...files, 'never'], failure.options);
+  const failureRun = runSelftestSuite('wide-failure', [...files, 'never'], { ...failure.options, failFast: true });
   await tick(); failure.finish(files.at(-1), { status: 9 }); await tick();
   assert.deepEqual(failure.starts, files); assert.equal(failure.held, true);
   failure.finish(files[0], { status: 7 }); await tick();

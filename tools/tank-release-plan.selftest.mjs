@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { tankReleaseSteps } from './tank-release-plan.mjs';
+import { tankReleaseSteps, tankReleaseStages } from './tank-release-plan.mjs';
 const steps=tankReleaseSteps('leo2a7v_x,t14_x',true,'node-test');
 const byTool=tool=>steps.find(step=>step.args[0]===`tools/${tool}.mjs`);
 assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
@@ -42,4 +42,17 @@ assert.equal(tankReleaseSteps('m1a2',false).some(step=>step.args[0]==='tools/pro
   'non-source release does not require an unavailable reference');
 assert.equal(tankReleaseSteps('m1a2',false).length,12,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check)');
 for(const ids of ['',',','t14_x,'])assert.throws(()=>tankReleaseSteps(ids,true),/nonempty/);
-console.log('tank-release-plan: strict fidelity plus geometry, complete scope, CPU phases and nonnested capture locks pass');
+// Fast checks (2026-09-15): the same steps, staged — serial browser scoring first, then every
+// remaining probe beside the receipt suite and the build, four at a time.
+const stages=tankReleaseStages('leo2a7v_x,t14_x',true,'node-test');
+assert.deepEqual(stages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),
+  [['scoring',1,3],['fleet probes, receipts and build',4,10]]);
+assert.deepEqual(stages[0].steps.map(step=>step.args[0]),
+  ['tools/tank-standard-check.mjs','tools/tank-sealed-check.mjs','tools/procedural-fidelity.mjs'],
+  'the load-sensitive scoring stays serial and first');
+assert.deepEqual(stages.flatMap(stage=>stage.steps),steps,'staging reorders nothing and drops nothing');
+assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[0]==='test'));
+assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[1]==='build:private'));
+const plain=tankReleaseStages('m1a2',false,'node-test');
+assert.deepEqual(plain.map(stage=>stage.steps.length),[2,10],'without a reference the scoring stage has no fidelity step');
+console.log('tank-release-plan: strict fidelity plus geometry, complete scope, CPU phases, nonnested capture locks and staged concurrency pass');

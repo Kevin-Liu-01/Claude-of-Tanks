@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createCaptureLock } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { runSelftestCpuPool } from './selftest-cpu-pool.mjs';
+import { createSelftestCache } from './selftest-cache.mjs';
 
 // These real browser regressions own the shared lease inside their processes.
 // Other subprocess tests either remain CPU-only or reject browser CLI input
@@ -79,6 +80,30 @@ export function runSelftestFile(file, { spawnProcess = spawn, signals = process,
   });
 }
 
+// Fast checks (2026-09-15): every file in a group runs and every failure is reported
+// before the group returns (the earliest registry entry supplies the exit status), so one
+// run surfaces everything a round broke instead of one failure per 40-minute cycle.
+// COT_SELFTEST_FAIL_FAST=1 restores stop-at-first-failure for debugging.
+export function selftestFailFast(env = process.env) {
+  return env.COT_SELFTEST_FAIL_FAST === '1';
+}
+
+// A receipt whose observable inputs are byte-identical to its last PASS is skipped with a
+// SKIP line (tools/selftest-cache.mjs derives the inputs; `--all` / COT_SELFTEST_CACHE=0
+// run everything). The pool and the serial path share this gate.
+export function selftestCacheGate(cache, log) {
+  if (!cache) return { lookup: () => null, record: () => {} };
+  return {
+    lookup(file) {
+      const hit = cache.lookup(file);
+      if (!hit.skip) return hit.key ? { key: hit.key } : null;
+      log(`[selftests] SKIP ${file}: ${hit.inputs} inputs unchanged since PASS at ${hit.passedAt}`);
+      return { skip: true, key: hit.key };
+    },
+    record(file, key, status) { if (status === 0 && key) cache.recordPass(file, key); },
+  };
+}
+
 export async function runSelftestSuite(suiteName, suite, {
   runFile = runSelftestFile,
   lock = createCaptureLock(),
@@ -91,13 +116,17 @@ export async function runSelftestSuite(suiteName, suite, {
   logError = console.error,
   onTiming = () => {},
   concurrency = 1,
+  failFast = false,
+  cache = null,
 } = {}) {
   if (!Number.isFinite(maxLeaseBatchMs) || maxLeaseBatchMs <= 0) {
     throw new TypeError('maxLeaseBatchMs must be finite and positive');
   }
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
+  const gate = selftestCacheGate(cache, log);
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
     concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
+    failFast, gate,
   });
   let held = false;
   let acquiredAt = 0;
@@ -110,9 +139,12 @@ export async function runSelftestSuite(suiteName, suite, {
   };
   process.once('exit', release);
   log('[selftests] ' + suiteName + ': ' + suite.length + ' files');
+  let failure = null;
   try {
     for (const file of suite) {
       let queueMs = 0;
+      const cached = gate.lookup(file);
+      if (cached?.skip) { onTiming({ file, runMs: 0, queueMs: 0, status: 0, error: undefined, skipped: true }); continue; }
       // Complete every child before yielding. Long full-fleet suites must
       // rejoin the FIFO between bounded batches, rather than starving native
       // geometry/visual verification for the entire npm lifecycle.
@@ -139,9 +171,14 @@ export async function runSelftestSuite(suiteName, suite, {
       if (result.error) throw result.error;
       if (result.status !== 0) {
         logError('[selftests] FAIL ' + file);
-        return result.status ?? 1;
+        failure ??= result.status ?? 1;
+        // fail-fast, or a child that died to a signal (a requested interruption ends the suite)
+        if (failFast || result.status === null || result.status >= 128) return failure;
+        continue;
       }
+      gate.record(file, cached?.key, result.status);
     }
+    if (failure !== null) return failure;
     log('[selftests] PASS ' + suiteName);
     return 0;
   } finally {
@@ -157,17 +194,26 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error('Unknown self-test suite "' + (suiteName || '') + '". Expected: ' + Object.keys(SELFTEST_SUITES).join(', '));
     process.exitCode = 2;
   } else {
-    let completed = 0, executionMs = 0, queueMs = 0;
+    let completed = 0, executionMs = 0, queueMs = 0, skipped = 0;
+    const failures = [];
     const suiteStarted = performance.now();
     const concurrency = selftestWorkerCount();
+    const cache = createSelftestCache();
     process.exitCode = await runSelftestSuite(suiteName, suite, {
       concurrency,
+      failFast: selftestFailFast(),
+      cache,
       onTiming(row) {
         completed++; executionMs += row.runMs; queueMs += row.queueMs;
+        if (row.skipped) { skipped++; return; }
         const state = row.status === 0 && !row.error ? 'PASS' : 'FAIL';
+        if (state === 'FAIL') failures.push(row.file);
         console.log(`[selftests] ${suiteName} ${completed}/${suite.length} ${state} ${row.file}: ${row.runMs.toFixed(0)}ms child, ${row.queueMs.toFixed(0)}ms FIFO`);
       },
     });
+    cache.persist();
+    if (skipped) console.log(`[selftests] ${suiteName}: ${skipped} of ${suite.length} receipts skipped (inputs unchanged since their last PASS; --all or COT_SELFTEST_CACHE=0 runs everything)${cache.enabled ? '' : ' [cache disabled]'}`);
+    if (failures.length) console.error(`[selftests] ${suiteName}: ${failures.length} FAILED\n  ${failures.join('\n  ')}`);
     console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);
   }
 }

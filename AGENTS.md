@@ -45,6 +45,11 @@ worktree and never stage generated tank work wholesale.
 - Package scripts detected: 122. Use `package.json` as the exhaustive source.
 - `npm run build` - VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs
 - `npm run test` - node tools/run-selftests.mjs core
+- `npm test` runs the pre → core → post receipt groups; a receipt whose observable inputs are
+  byte-identical to its last PASS is skipped with a SKIP line (`COT_SELFTEST_CACHE=0 npm test`
+  runs everything), every failure in a group is reported in one run (`COT_SELFTEST_FAIL_FAST=1`
+  stops at the first), and `tank:release:check` runs its fleet probes beside the suite and the
+  build after the serial scoring steps. See docs/DEVELOPMENT.md "Fast checks".
 - `npm run typecheck` - node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs
 - `npm run agent-docs` - node scripts/run-agent-docs.ts
 - Keep this block compact. Put full command catalogs in a generated command index, not in AGENTS.md.

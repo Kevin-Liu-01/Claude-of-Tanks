@@ -27,3 +27,23 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     {command:'npm',args:['run','build:private'],capture:true},
   ];
 }
+
+/**
+ * Fast checks (2026-09-15): the same steps, grouped into stages the check runs one after the
+ * other, with every step inside a stage running concurrently. Stage 1 is the load-sensitive
+ * browser scoring (standard → sealed → fidelity) and stays serial. Stage 2 runs the fleet-wide
+ * node probes side by side with the receipt suite and the production build: they read the same
+ * tree, never write to it, and the GPU children still serialise through the capture queue.
+ * A stage stops at its first failure; a later stage never starts after a failed one.
+ */
+export function tankReleaseStages(ids, gate, node = process.execPath) {
+  const steps = tankReleaseSteps(ids, gate, node);
+  const tool = (step) => (step.command === node ? step.args[0] : `${step.command} ${step.args.join(' ')}`);
+  const serialTools = new Set(['tools/tank-standard-check.mjs', 'tools/tank-sealed-check.mjs', 'tools/procedural-fidelity.mjs']);
+  const serial = steps.filter((step) => serialTools.has(tool(step)));
+  const parallel = steps.filter((step) => !serialTools.has(tool(step)));
+  return [
+    { name: 'scoring', concurrency: 1, steps: serial },
+    { name: 'fleet probes, receipts and build', concurrency: 4, steps: parallel },
+  ];
+}

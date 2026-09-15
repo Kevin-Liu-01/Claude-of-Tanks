@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, selftestChildEnv, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
+import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, SELFTEST_OWNED_LEASE_FILES } from './run-selftests.mjs';
 
 function fixture({ failAt, errorAt, acquireError } = {}) {
   const events = [], errors = [];
@@ -43,12 +43,41 @@ const refreshes = ordered.refreshes;
 await new Promise((resolve) => setTimeout(resolve, 15));
 assert.equal(ordered.refreshes, refreshes, 'finished suites clear their heartbeat');
 
+// Fast checks (2026-09-15): a failure no longer stops the group — every remaining file runs
+// and every failure is named, so one run reports everything a round broke. The earliest
+// registry entry still supplies the exit status. COT_SELFTEST_FAIL_FAST=1 (option failFast)
+// restores stop-at-first-failure for debugging.
 for (const failAt of ['a', 'browser']) {
   const failed = fixture({ failAt });
   assert.equal(await runSelftestSuite('failure', ['a', 'browser', 'never'], failed.options), 7);
-  assert.equal(failed.events.includes('never'), false, 'preserve fail-fast ordering');
+  assert.equal(failed.events.includes('never'), true, 'later files still run after a failure');
   assert.deepEqual(failed.errors, [`[selftests] FAIL ${failAt}`]);
   assert.equal(failed.held, false, 'ordinary and own-lock failures release only runner ownership');
+  const fast = fixture({ failAt });
+  assert.equal(await runSelftestSuite('fail-fast', ['a', 'browser', 'never'], { ...fast.options, failFast: true }), 7);
+  assert.equal(fast.events.includes('never'), false, 'fail-fast mode preserves the old stop-at-first-failure ordering');
+  assert.deepEqual(fast.errors, [`[selftests] FAIL ${failAt}`]);
+}
+assert.equal(selftestFailFast({}), false); assert.equal(selftestFailFast({ COT_SELFTEST_FAIL_FAST: '1' }), true);
+{
+  // the result cache: an unchanged receipt is skipped with a SKIP line and reported as a
+  // skipped timing row; a pass is recorded under the key the lookup produced; failures are not
+  const cached = fixture();
+  const records = [];
+  const cache = {
+    lookup: (file) => file === 'a' ? { skip: true, key: 'k-a', inputs: 3, passedAt: 'earlier' } : { skip: false, key: `k-${file}`, inputs: 1 },
+    recordPass: (file, key) => records.push([file, key]),
+  };
+  const rows = [];
+  assert.equal(await runSelftestSuite('cached', ['a', 'b', 'browser'], { ...cached.options, cache, onTiming: (row) => rows.push(row) }), 0);
+  assert.equal(cached.events.includes('a'), false, 'an unchanged receipt does not run');
+  assert.ok(cached.events.some((event) => /SKIP a: 3 inputs unchanged since PASS at earlier/.test(event)), 'the skip is logged with its evidence');
+  assert.deepEqual(rows.map((row) => [row.file, row.skipped === true]), [['a', true], ['b', false], ['browser', false]]);
+  assert.deepEqual(records, [['b', 'k-b'], ['browser', 'k-browser']], 'passes are recorded under their input keys');
+  const failedCached = fixture({ failAt: 'b' });
+  records.length = 0;
+  assert.equal(await runSelftestSuite('cached-fail', ['b'], { ...failedCached.options, cache }), 7);
+  assert.deepEqual(records, [], 'a failure is never recorded as a pass');
 }
 const spawnFailed = fixture({ errorAt: 'a' });
 await assert.rejects(runSelftestSuite('spawn-error', ['a'], spawnFailed.options), /spawn failed/);
@@ -90,8 +119,8 @@ const failureRunFile = boundaryFail.options.runFile;
 boundaryFail.options.now = () => failureClock;
 boundaryFail.options.runFile = async (file) => { const result = await failureRunFile(file); failureClock += 45_000; return result; };
 assert.equal(await runSelftestSuite('boundary-fail', ['a', 'b', 'never'], boundaryFail.options), 7);
-assert.equal(boundaryFail.events.includes('never'), false);
-assert.equal(boundaryFail.events.filter(event => event === 'acquire').length, 2);
+assert.equal(boundaryFail.events.includes('never'), true, 'the batch boundary keeps running after a failure');
+assert.equal(boundaryFail.events.filter(event => event === 'acquire').length, 3);
 assert.equal(boundaryFail.held, false);
 for (const budget of [0, -1, NaN, Infinity]) {
   const invalidBudget = fixture();
@@ -211,7 +240,8 @@ assert.equal(await runSelftestSuite('measured', ['a', 'b', 'never'], measured.op
 assert.deepEqual(timings, [
   { file: 'a', runMs: 30, queueMs: 120, status: 0, error: undefined },
   { file: 'b', runMs: 70, queueMs: 0, status: 7, error: undefined },
-], 'execution and FIFO time stay separate, including the terminal failing file');
+  { file: 'never', runMs: 70, queueMs: 0, status: 7, error: undefined },
+], 'execution and FIFO time stay separate, and the files after a failure are still measured');
 
 for (const env of [{ NODE_DISABLE_COMPILE_CACHE: '1' }, { NODE_COMPILE_CACHE: '/explicit' }, { NODE_V8_COVERAGE: '/coverage' }]) {
   assert.equal(selftestChildEnv(env), env, 'respect caller opt-out, explicit cache and coverage');
