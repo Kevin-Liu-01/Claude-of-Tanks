@@ -40,7 +40,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "bccd40e27794f37ac0c15f3fb3b0c88ee7ae2f5a59eee6e7f62828eeab9e8c4a",
+    "sha256": "e788c232b3295ef9f0c7dbe76a87bd256498d0d92eb2e0ae183c48bd1ea156e5",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel (hollowRoadWheelStock.ts), lost the gear_wheelBayVoidDress blocks and carries generated interior fills; material-inclusive digest repinned from the current build"
   },
   {
@@ -53,7 +53,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": true
     },
-    "sha256": "66a9ed1198698bd15efe9677d658a25cc8060af4fd6ea104c9d6ce617eb749dc"
+    "sha256": "c9e658db03559c9c293c72bcd5cce9c60441035db6d0b1246a8517bad2d421bf"
   },
   {
     "id": "m1a1",
@@ -65,7 +65,7 @@ const goldenReceipts = [
       "decor": true,
       "geometryQuality": "low"
     },
-    "sha256": "32225d432bee78be0bffda7847eb377e493ca1f2c80e560a34e885ef336b46f9",
+    "sha256": "503e63e4df5ef8fb72b13ed4fc2cbd996093055268ed5a8cf9b4f934a03729af",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -79,7 +79,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "a2e4a76d8c5f41dcf0d5ed378e95a531f528423c37c302f361b6b8b12403c725",
+    "sha256": "2174d10612ca050412f3ab9b1386548962cb8f1ef7c982cc5a7cd3bcc5a3ac34",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   },
   {
@@ -94,7 +94,7 @@ const goldenReceipts = [
       "batchStatic": true,
       "battleDetailLod": true
     },
-    "sha256": "c0ec091833ca4315ddf8f6568e4f8053554290db82657a480c7a3ed2ab2a63d0"
+    "sha256": "0342bb762e161c89467a8e23c7c7a17bd6e150dcc2af195e90f0fbb6b03698b8"
   },
   {
     "id": "m1a1",
@@ -105,7 +105,7 @@ const goldenReceipts = [
       "camoSeed": 4242,
       "decor": false
     },
-    "sha256": "d1fe3c9e8506aac928da7a7a87d8e592cb4cba89976f859d2da8a43d0f95d3f0",
+    "sha256": "336f80850f58887be31ccd600aa0cb0c8f9b7499d66f308468658ae6d4c20d13",
     "_repin_2026_09_13b": "wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost the gear_wheelBayVoidDress blocks and carries generated interior fills; digest repinned from the current build"
   }
 ];
