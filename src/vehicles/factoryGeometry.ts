@@ -24,7 +24,7 @@ export interface PolyMultiLoftRing {
   offsetZ?: number;
 }
 
-export interface StraightRidgeGunMaskOptions {
+interface StraightRidgeGunMaskOptions {
   rearHalfWidth: number;
   rearHalfHeight: number;
   ridgeHalfWidth: number;

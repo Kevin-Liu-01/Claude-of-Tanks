@@ -24,7 +24,7 @@ import { getDeviceTier } from '../engine/quality.ts';
 // pots, trucks, cars, drum clusters, loose clutter, camps). Mobile keeps the authored counts.
 // Applied at the count reads so every map's authoring stays byte-identical.
 // Read at call time: the device tier is resolved after module evaluation.
-export const DESKTOP_ENVIRONMENT_RICHNESS = 1.35;
+const DESKTOP_ENVIRONMENT_RICHNESS = 1.35;
 export function environmentRichness(): number { return getDeviceTier() === 'mobile' ? 1 : DESKTOP_ENVIRONMENT_RICHNESS; }
 // A function declaration: roadStations.selftest.mjs extracts and executes the production placement
 // functions from this source, and they read their counts through this helper.

@@ -19,8 +19,8 @@ export function originalRoadPlacementConfig(cfg: TerrainMapConfig | null): Terra
 }
 
 export type RoadPoint = readonly [number, number];
-export type RoadEndpoint = 'boundary' | 'loop' | 'shore' | { junction: number; at?: RoadPoint };
-export type RoadEnds = readonly [RoadEndpoint, RoadEndpoint];
+type RoadEndpoint = 'boundary' | 'loop' | 'shore' | { junction: number; at?: RoadPoint };
+type RoadEnds = readonly [RoadEndpoint, RoadEndpoint];
 const through: RoadEnds = ['boundary', 'boundary'];
 const join = (start: number, end: number): RoadEnds => [{ junction: start }, { junction: end }];
 

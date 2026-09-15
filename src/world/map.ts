@@ -73,7 +73,7 @@ interface LayoutDisc {
   r: number;
 }
 
-export type WorldHeightField = HeightField;
+type WorldHeightField = HeightField;
 
 interface TerrainUserData {
   sourcedTexturesReady?: Promise<SourcedTextureResult[]>;

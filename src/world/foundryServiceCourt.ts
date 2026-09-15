@@ -6,7 +6,7 @@ import type { FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { planFoundrySupport } from './foundryServiceSupport.ts';
 
 interface Pose { x: number; y: number; z: number; yaw: number }
-export interface FoundryServiceCourtSite {
+interface FoundryServiceCourtSite {
   planIndex: number; kind: string; x: number; z: number; yawDeg: number;
 }
 export interface FoundryServiceCourtConfig { sites: readonly FoundryServiceCourtSite[] }

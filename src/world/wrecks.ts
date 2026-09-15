@@ -52,7 +52,7 @@ export interface WreckBake {
 
 type TankWreckVisual = ReturnType<typeof createTank>;
 
-export interface WreckBuildSlice extends WreckGeometryBuildSlice {
+interface WreckBuildSlice extends WreckGeometryBuildSlice {
   progress: false;
 }
 

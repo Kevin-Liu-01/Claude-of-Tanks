@@ -5,7 +5,7 @@ import { createObjectiveAccess } from './matchPlacementAccess.ts';
 import type { BotNavigationGrid } from './botRoutePlanner.ts';
 
 export interface PlacementPoint { x: number; z: number }
-export interface PlacementSpawn extends PlacementPoint { yaw: number }
+interface PlacementSpawn extends PlacementPoint { yaw: number }
 export interface PlacementTerrain {
   getHeightAt(x: number, z: number): number;
   getNormalAt?(x: number, z: number): { y: number };

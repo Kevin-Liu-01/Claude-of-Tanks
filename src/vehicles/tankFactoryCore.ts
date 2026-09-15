@@ -975,7 +975,7 @@ const FIXED_GEAR_ROLE_MATERIAL_ROLE: Readonly<Record<string, string>> = Object.f
   wheelInset: 'tireRubber', wheelTire: 'tireRubber', tireRubber: 'tireRubber',
   trackPad: 'trackPad', trackSteel: 'trackSteel', trackHardware: 'trackSteel', gearShadow: 'gearShadow',
 });
-export function isolatedGearMaterial<M extends THREE.Material>(
+function isolatedGearMaterial<M extends THREE.Material>(
   material: M, appearanceRole: string | undefined, disposables: Array<{ dispose(): void }>,
 ): M {
   const wanted = appearanceRole ? FIXED_GEAR_ROLE_MATERIAL_ROLE[appearanceRole] : undefined;
@@ -991,7 +991,7 @@ export function isolatedGearMaterial<M extends THREE.Material>(
 }
 /** Wheel insets (hub wells, bolt heads, lightening holes) are always tire-rubber dark: the dish
  * paint carries the wheel-paint floor, so the insets read against it in every scheme. */
-export function wheelInsetMaterialFor(
+function wheelInsetMaterialFor(
   _dishMaterial: THREE.Material,
   mats: { rubber: THREE.Material; wheels: THREE.Material },
 ): THREE.Material {

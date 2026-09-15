@@ -27,7 +27,7 @@ interface Field {
 }
 interface Support { min: number; max: number }
 interface WharfPlan extends Pose { annexBottom: number; step: number; ground: Support }
-export interface FisheryWharfReceipt {
+interface FisheryWharfReceipt {
   status: 'placed' | 'unavailable' | 'blocked';
   reason: string;
   pose?: Pose;

@@ -51,7 +51,7 @@ interface IndexedVertex {
 
 type StructureGeometryBuckets = Record<string, BufferGeometry[] | undefined>;
 
-export interface StructureFootprintReceipt {
+interface StructureFootprintReceipt {
   sourceParts: number;
   collisionParts: number;
   precision: number;
@@ -66,7 +66,7 @@ export interface StructureCollisionRuntimeBand {
   parts: SimpleCollisionShape[];
 }
 
-export interface StructureCollisionBand
+interface StructureCollisionBand
   extends StructureCollisionRuntimeBand, StructureFootprintReceipt {}
 
 export interface StructureCollisionRuntimeProfile {
@@ -74,13 +74,13 @@ export interface StructureCollisionRuntimeProfile {
   shell: StructureCollisionRuntimeBand[];
 }
 
-export interface StructureCollisionProfile {
+interface StructureCollisionProfile {
   contact: StructureCollisionBand;
   shell: StructureCollisionBand[];
   minimumScore: number;
 }
 
-export interface StructureCollisionCertification {
+interface StructureCollisionCertification {
   contact: StructureFootprintReceipt;
   shell: StructureFootprintReceipt[];
   minimumScore: number;

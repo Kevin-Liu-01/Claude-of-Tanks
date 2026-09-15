@@ -220,7 +220,7 @@ interface ConcealmentDisc extends VegetationDisc {
   add: number;
 }
 
-export interface VegetationGrassWorkState {
+interface VegetationGrassWorkState {
   total: number;
   built: number;
   pendingVisible: number;
@@ -259,7 +259,7 @@ export interface VegetationRuntime {
   _buildDetail?: VegetationBuildDetail;
 }
 
-export interface GarageTreeKit {
+interface GarageTreeKit {
   species: Species;
   trunk: THREE.BufferGeometry;
   foliage: THREE.BufferGeometry;

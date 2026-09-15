@@ -54,7 +54,7 @@ interface MudguardBuilderPort {
   addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
-export interface ShapedMudguardOptions {
+interface ShapedMudguardOptions {
   readonly label: string;
   readonly x: number;
   readonly y: number;

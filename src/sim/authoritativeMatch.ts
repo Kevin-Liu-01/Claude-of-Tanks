@@ -114,7 +114,7 @@ type MatchPhase = 'loading' | 'countdown' | 'playing';
 type MatchResult = ObjectiveTeam | 'draw';
 type Rng = () => number;
 
-export interface AuthoritativeSpawn {
+interface AuthoritativeSpawn {
   x: number;
   z: number;
   yaw?: number;
@@ -153,7 +153,7 @@ interface AuthoritativeInput {
   [name: string]: RuntimeValue;
 }
 
-export type AuthoritativeSpec = FleetTankSpec;
+type AuthoritativeSpec = FleetTankSpec;
 
 type AuthoritativeCombatState = CombatState & EquipmentCombatState &
   MovementCombatState & MatchModeEntity['combat'];
@@ -204,7 +204,7 @@ export interface AuthoritativeObstacle extends CollisionRecord {
   _pressS?: number;
 }
 
-export interface AuthoritativeWorldRayHit extends SpottingRayHit {
+interface AuthoritativeWorldRayHit extends SpottingRayHit {
   kind: string;
   record?: AuthoritativeObstacle | null;
   normal?: SpottingVector3 | null;
@@ -247,19 +247,19 @@ export interface AuthoritativeMatchOptions {
   worldCollision?: AuthoritativeWorldCollision | null;
 }
 
-export interface AuthoritativeEvent extends Record<string, RuntimeValue> {
+interface AuthoritativeEvent extends Record<string, RuntimeValue> {
   type: string;
   timeS: number;
 }
 
-export interface AuthoritativeStepOptions {
+interface AuthoritativeStepOptions {
   dt: number;
   /** Injected by authority for pregame only; direct fixed-step callers omit it. */
   countdownElapsedS?: number;
   inputs: ReadonlyMap<string, AuthoritativePlayerInput | null | undefined>;
 }
 
-export interface AuthoritativeSnapshotOptions {
+interface AuthoritativeSnapshotOptions {
   tick: number;
   serverTimeMs: number;
   viewerId: string;

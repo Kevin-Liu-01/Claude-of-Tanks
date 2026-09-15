@@ -92,7 +92,7 @@ export function roadPortalInnerSquare(mapId: string | undefined, roads: readonly
 }
 
 const PORTAL_STRIDE = 9;
-export interface RoadPortalShoulderIndex {
+interface RoadPortalShoulderIndex {
   readonly data: Float64Array;
   readonly cells: Uint16Array;
   readonly width: number;

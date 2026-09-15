@@ -68,7 +68,7 @@ interface CloudWorkerMessage extends CloudBakePixels {
 
 type CloudDeck = THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
 
-export interface SkyRig {
+interface SkyRig {
   sunDir: THREE.Vector3;
   horizonColor: THREE.Color;
   ensureCloudTextures(): void;

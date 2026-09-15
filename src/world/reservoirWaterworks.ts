@@ -39,7 +39,7 @@ interface SiteRect { x0: number; z0: number; x1: number; z1: number }
 interface Support { min: number; max: number }
 interface PipeRoute { ax: number; az: number; dx: number; dz: number; nx: number; nz: number }
 interface DonorSelection { removed: Set<BufferGeometry>; ignored: Set<CollisionRecord> }
-export interface ReservoirWaterworksReceipt {
+interface ReservoirWaterworksReceipt {
   status: 'built' | 'unavailable' | 'unsafe' | 'budget';
   donors: number;
   before: Budget;
