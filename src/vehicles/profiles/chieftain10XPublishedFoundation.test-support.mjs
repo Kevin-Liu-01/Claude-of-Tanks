@@ -52,6 +52,18 @@ export function assertPublishedChieftainFoundationSources(
       assert.equal(source.split(original).length, 1);
       source = source.replace(addedImport, '').replace(painted, original);
     }
+    if (file === receipt.laterExportAnnotation.file) {
+      // 2026-09-15 unused-export cleanup (batch 25 slice C): three declarations lost their
+      // `export` keyword and nothing else. Authenticate the complete current source, then put
+      // the keywords back to recover the published text.
+      assert.equal(sha(source), receipt.laterExportAnnotation.currentSourceSha256,
+        'Authenticate the complete subsequently published export-visibility source');
+      for (const declaration of ['type ChieftainSectionPoint = ', 'type ChieftainDeckRow = ', 'interface ChieftainCastSection {']) {
+        assert.equal(source.split(declaration).length, 2, `${declaration} appears exactly once`);
+        assert.equal(source.split(`export ${declaration}`).length, 1, `${declaration} is no longer exported`);
+        source = source.replace(declaration, `export ${declaration}`);
+      }
+    }
     assert.equal(sha(source), expected, `Published Mk10 foundation source contract: ${file}`);
   }
   const three = JSON.parse(read('node_modules/three/package.json'));

@@ -107,6 +107,13 @@
     "currentSourceSha256": "dbb284dad1717206d494287d83ce50b7441b711035a2c38a9fe56c5133d38763",
     "scope": "Exact fixedPaintedPanel import and the material-only turretPaintedDetail migration of part() only (fleet paint standard); authenticate complete source before/after. No geometry, station or receipt rollback."
   },
+  "laterExportAnnotation": {
+    "file": "src/vehicles/profiles/chieftainXFoundation.ts",
+    "commit": "2cb510072",
+    "capturedAt": "2026-09-15",
+    "currentSourceSha256": "6bb00cde6ffadc688de63fbde8715f7bbea0c9fa5b5b1a3ca411e4325696659d",
+    "scope": "Visibility only (batch 25 slice C, unused-export cleanup): the export keyword removed from the ChieftainSectionPoint and ChieftainDeckRow type aliases and the ChieftainCastSection interface; authenticate complete source before/after. No geometry, no metadata."
+  },
   "dependencies": {
     "three": "0.185.1",
     "typescript": "7.0.2"
