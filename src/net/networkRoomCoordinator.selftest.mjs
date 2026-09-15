@@ -268,4 +268,18 @@ for (const successor of ['closed', 'same-code-rejoin', 'other-room', 'starting',
   await Promise.resolve();
 }
 
+
+// batch 27 (2026-09-15): every registered mode rides the wire — a Frontline Assault room state is a
+// complete lobby envelope (it used to fail validation, so every client dropped the lobby UI); an
+// unknown id still fails the presentation contract.
+for (const [gameMode, presentable] of [['frontline_assault', true], ['endless_horde', true], ['bogus_mode', false]]) {
+  const modal = createNetworkRoomCoordinator(options);
+  modal.attach({ ...room(), gameMode });
+  await Promise.resolve();
+  assert.equal(await modal.showActiveRoom(), presentable,
+    `${gameMode} room presentation is ${presentable ? 'accepted' : 'rejected'} by the lobby envelope contract`);
+  modal.clear();
+  await Promise.resolve();
+}
+
 console.log('networkRoomCoordinator.selftest: lobby, chat, readiness guards, commands, and rematch lifecycle passed');

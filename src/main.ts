@@ -921,7 +921,8 @@ function ensureWorld(
   // no covered atmosphere) and the garage staging area (switchMap) keep the
   // standard map.
   const battleContext = opts?.atmosphere === 'covered-battle' || opts?.services !== false;
-  const terrainVariant = pendingTerrainVariant && battleContext ? pendingTerrainVariant : null;
+  // an explicit variant (network rooms) wins; the solo entries leave theirs in pendingTerrainVariant
+  const terrainVariant = opts?.terrainVariant ?? (pendingTerrainVariant && battleContext ? pendingTerrainVariant : null);
   return worldRuntime.ensure(mapId, onProgress, terrainVariant ? { ...(opts ?? {}), terrainVariant } : opts);
 }
 
@@ -2203,8 +2204,9 @@ function loadNetworkComposition(): Promise<NetworkBattleCompositionRuntime> {
           // Final combat warming follows Garage-light removal and authority
           // weather. Early world warming compiles a different light variant;
           // retain world/services here and the covered real-frame gates below.
-          loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void) => (
-            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle' })
+          // batch 27: a Frontline Assault room carves the trench variant on every client
+          loadWorld: (mapId: string, onProgress: (fraction: number, label: string) => void, terrainVariant: 'assault-trenches' | null = null) => (
+            ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', ...(terrainVariant ? { terrainVariant } : {}) })
           ),
           publishMatch: (match) => networkSession.publishMatch(match),
           getMatch: () => networkSession.match,

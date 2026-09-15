@@ -1722,6 +1722,15 @@ export function createKillCam(deps: KillcamDeps) {
       // SPECTATE lifecycle: the chase ends the moment the battle is decided
       // (the end flow takes the camera) or the phase leaves battle (garage).
       bus.on('battle:ended', () => spectate.stop(true));
+      // RESPAWN (2026-09-15): in a mode that revives the player, the revive takes the camera back —
+      // the ally chase ends, a pending death view is cancelled, and the HUD leaves its spectating state.
+      bus.on('mode:respawn', (payload) => {
+        const p = payload as { id?: string } | null;
+        const player = getPlayer();
+        if (!p || !player || p.id !== player.id) return;
+        api.cancel();
+        spectate.stop(true);
+      });
       // Pointer/touch controls in the HUD use the same controller as A/D and
       // arrow keys, so the on-screen keycaps are real controls instead of
       // decorative hints. cycle() is a no-op outside spectator mode.

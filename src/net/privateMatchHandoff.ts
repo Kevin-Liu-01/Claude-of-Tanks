@@ -31,7 +31,7 @@ import {
   setLobbyPlayerConnected,
   type FinishLobbyRoundOptions,
   type LobbyState,
-  type SerializedLobby,
+  type SerializedLobby, isCoopGameMode
 } from './lobby.ts';
 
 type Team = 'alpha' | 'bravo' | 'spectator';
@@ -168,7 +168,8 @@ export function resolvePrivateMatchMap(lobbyState: RuntimeValue): string {
 /** Deterministically fill empty lobby slots with authority-owned bots. */
 export function buildPrivateMatchPlayers(lobbyState: RuntimeValue): PrivateMatchPlayer[] {
   const lobby = validateMatchLobby(lobbyState);
-  const horde = lobby.gameMode === 'endless_horde';
+  // co-op (Horde, Frontline Assault): humans attack from alpha, the authority's bots hold bravo
+  const horde = isCoopGameMode(lobby.gameMode);
   const humans = lobby.players
     .filter((player) => player.team !== 'spectator')
     .map((player) => ({ ...player, team: horde ? 'alpha' : player.team, bot: false }));

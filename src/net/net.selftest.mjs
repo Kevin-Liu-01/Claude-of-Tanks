@@ -404,6 +404,30 @@ applyLobbyCommand(hordeLobby, 'horde-host', {
   type: 'set_game_mode', gameMode: 'zone_control',
 });
 assert.equal(serializeLobby(hordeLobby).gameMode, 'zone_control');
+// batch 27 (2026-09-15): Frontline Assault rooms are cooperative like Horde — every human attacks
+// from Alpha, the defenders are the authority's bots, and the mode rides the lobby wire.
+const assaultLobby = createLobby({
+  roomCode: 'FRT234', hostId: 'front-host', hostName: 'Host', hostSpecId: 'm1a2',
+  gameMode: 'frontline_assault', teamSize: 1,
+});
+addLobbyPlayer(assaultLobby, { id: 'front-a', name: 'Ally A', specId: 'm1a2', team: LOBBY_TEAMS.BRAVO });
+addLobbyPlayer(assaultLobby, { id: 'front-b', name: 'Ally B', specId: 'm1a2' });
+assert.equal(assaultLobby.teamSize, 3, 'co-op assault expands human capacity as attackers join');
+assert.deepEqual([...assaultLobby.players.values()].map((player) => player.team),
+  ['alpha', 'alpha', 'alpha'], 'the assault seats every human on the attacking team, whatever they asked for');
+expectCode(() => applyLobbyCommand(assaultLobby, 'front-a', {
+  type: 'set_team', team: LOBBY_TEAMS.BRAVO,
+}), LobbyError, 'cooperative_team');
+assert.equal(serializeLobby(assaultLobby).gameMode, 'frontline_assault', 'the campaign mode serializes for the room');
+applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_game_mode', gameMode: 'standard' });
+assert.equal(serializeLobby(assaultLobby).gameMode, 'standard');
+{
+  // a standard room that switches to the assault pulls every active player onto Alpha
+  const switched = createLobby({ roomCode: 'FRT235', hostId: 'sw-host', hostName: 'Host', hostSpecId: 'm1a2', teamSize: 2 });
+  addLobbyPlayer(switched, { id: 'sw-b', name: 'Bravo', specId: 't90m', team: LOBBY_TEAMS.BRAVO });
+  applyLobbyCommand(switched, 'sw-host', { type: 'set_game_mode', gameMode: 'frontline_assault' });
+  assert.deepEqual([...switched.players.values()].map((player) => player.team), ['alpha', 'alpha']);
+}
 const observerLobby = createLobby({
   roomCode: 'OBS234', hostId: 'observer', hostName: 'Observer', hostSpecId: 'm1a2', teamSize: 1,
 });

@@ -5,6 +5,7 @@ import type {
   PlayMenuRuntime,
 } from '../ui/playMenu.ts';
 import type { SerializedLobby } from './lobby.ts';
+import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 
 export interface NetworkRoomPlayer {
   id: string;
@@ -125,10 +126,11 @@ function isLobbyPhase(value: RuntimeValue): value is SerializedLobby['phase'] {
     value === 'playing' || value === 'finished';
 }
 
+// Every registered mode rides the wire (batch 27, 2026-09-15: Frontline Assault rooms) — the list
+// lives in sim/matchModes.ts so a new mode cannot be silently rejected here again.
+const WIRE_GAME_MODES: ReadonlySet<string> = new Set<string>(GAME_MODE_IDS);
 function isGameMode(value: RuntimeValue): value is SerializedLobby['gameMode'] {
-  return value === 'standard' || value === 'capture_the_flag' ||
-    value === 'zone_control' || value === 'turbo_ball' ||
-    value === 'endless_horde';
+  return typeof value === 'string' && WIRE_GAME_MODES.has(value);
 }
 
 function isNonNegativeInteger(value: number | undefined): boolean {

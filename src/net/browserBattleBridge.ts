@@ -1117,6 +1117,9 @@ export function createBrowserBattleBridge<
       reason: game.resultReason,
       timeS: game.timeS,
       map: game.mapId,
+      mapId: game.mapId,
+      durationS: game.timeS,
+      network: true,
       roster: resultRoster(),
     });
   }
@@ -1401,6 +1404,9 @@ export function createBrowserBattleBridge<
       reason: game.resultReason,
       timeS: game.timeS,
       map: game.mapId,
+      mapId: game.mapId,
+      durationS: game.timeS,
+      network: true,
       roster: resultRoster(),
     });
   }
@@ -1414,6 +1420,9 @@ export function createBrowserBattleBridge<
       reason: game.resultReason,
       timeS: game.timeS,
       map: game.mapId,
+      mapId: game.mapId,
+      durationS: game.timeS,
+      network: true,
       roster: resultRoster(),
     });
     return true;

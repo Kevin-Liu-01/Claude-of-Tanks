@@ -339,8 +339,14 @@ function activePlayers(lobby: LobbyState): LobbyPlayer[] {
   return [...lobby.players.values()].filter((player) => player.team !== LOBBY_TEAMS.SPECTATOR);
 }
 
+/** Cooperative modes: every human deploys on Alpha and the other side is held by authority bots — Horde's
+ * waves and Frontline Assault's defenders (batch 27, 2026-09-15). */
+export function isCoopGameMode(gameMode: string | null | undefined): boolean {
+  return gameMode === 'endless_horde' || gameMode === 'frontline_assault';
+}
+
 function autoTeam(lobby: LobbyState): typeof LOBBY_TEAMS.ALPHA | typeof LOBBY_TEAMS.BRAVO {
-  if (lobby.gameMode === 'endless_horde') return LOBBY_TEAMS.ALPHA;
+  if (isCoopGameMode(lobby.gameMode)) return LOBBY_TEAMS.ALPHA;
   const alpha = countTeam(lobby, LOBBY_TEAMS.ALPHA);
   const bravo = countTeam(lobby, LOBBY_TEAMS.BRAVO);
   return alpha <= bravo ? LOBBY_TEAMS.ALPHA : LOBBY_TEAMS.BRAVO;
@@ -459,11 +465,11 @@ function resolveActiveJoinTeam(lobby: LobbyState, requestedTeam: LobbyTeam): Lob
   if (activeCount >= lobby.maxPlayers) {
     throw new LobbyError('lobby_full', 'player slots are full');
   }
-  const horde = lobby.gameMode === 'endless_horde';
+  const horde = isCoopGameMode(lobby.gameMode);
   if (horde) {
     const nextCount = activeCount + 1;
     if (nextCount > 7) {
-      throw new LobbyError('horde_capacity', 'Horde supports up to seven co-op players');
+      throw new LobbyError('horde_capacity', 'Co-op modes support up to seven players');
     }
     lobby.teamSize = Math.max(lobby.teamSize, nextCount);
   }
@@ -504,7 +510,7 @@ export function addLobbyPlayer(lobby: LobbyState, {
   if (lobby.locked) throw new LobbyError('lobby_locked', 'lobby is locked');
   const playerId = cleanId(id);
   if (lobby.players.has(playerId)) throw new LobbyError('duplicate_player', 'player already joined');
-  const requestedTeam: RuntimeValue = lobby.gameMode === 'endless_horde'
+  const requestedTeam: RuntimeValue = isCoopGameMode(lobby.gameMode)
     ? LOBBY_TEAMS.ALPHA : team || autoTeam(lobby);
   if (!isLobbyTeam(requestedTeam)) throw new LobbyError('invalid_team', 'unknown team');
   const targetTeam = resolveJoinTeam(lobby, requestedTeam);
@@ -592,8 +598,8 @@ function applyTeamSelection(
   }
   const team = command.team;
   if (!isLobbyTeam(team)) throw new LobbyError('invalid_team', 'unknown team');
-  if (lobby.gameMode === 'endless_horde' && team === LOBBY_TEAMS.BRAVO) {
-    throw new LobbyError('cooperative_team', 'Horde players deploy together on Alpha');
+  if (isCoopGameMode(lobby.gameMode) && team === LOBBY_TEAMS.BRAVO) {
+    throw new LobbyError('cooperative_team', 'Co-op players deploy together on Alpha');
   }
   const capacity = team === LOBBY_TEAMS.SPECTATOR
     ? lobby.maxSpectators
@@ -616,10 +622,10 @@ function applyGameModeSelection(
 ): void {
   assertHost(lobby, playerId);
   const gameMode = normalizeGameMode(command.gameMode);
-  if (gameMode === 'endless_horde') {
+  if (isCoopGameMode(gameMode)) {
     const players = activePlayers(lobby);
     if (players.length > 7) {
-      throw new LobbyError('horde_capacity', 'Horde supports up to seven co-op players');
+      throw new LobbyError('horde_capacity', 'Co-op modes support up to seven players');
     }
     lobby.teamSize = Math.max(lobby.teamSize, players.length);
     for (const player of players) player.team = LOBBY_TEAMS.ALPHA;

@@ -88,9 +88,20 @@ campaign block (sectors, stars, what opens next) and the NEXT / RETRY OPERATION
 button, which re-enters through the Battle Again transaction with the ladder
 sortie as its trigger (`ui:campaignNext`).
 
-The campaign is a solo operation: the play menu maps a Frontline Assault selection
-to Standard when a room is created and says so; the room coordinator rejects the
-mode on the wire.
+Frontline Assault also plays in rooms (batch 27, 2026-09-15): the room carries the
+mode on the wire like every registered mode (`GAME_MODE_IDS` is the coordinator's
+envelope check), every human deploys on Alpha as the attacking side (`isCoopGameMode`
+in `net/lobby.ts` covers Endless Horde and Frontline Assault: no team select, seven
+seats), the authority bakes the `assault-trenches` terrain variant as its own shared
+terrain entry and seats the sectors on the carved lines, the presentation runtime
+loads the same variant in the browser, and the private-match handoff fills Bravo with
+defender bots. Campaign progress stays a solo record: a network `battle:ended`
+(`network: true`) never records an operation.
+
+Respawning modes (Capture the Flag, Zone Control, Turbo Ball, Endless Horde and the
+Frontline Assault attackers) revive the player through `mode:respawn`; the killcam
+cancels its spectate and any pending ghost replay on the local player's revive so the
+camera returns to the tank instead of holding the wreck view (batch 27).
 
 ## State machine
 

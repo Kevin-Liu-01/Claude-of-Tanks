@@ -83,6 +83,9 @@ assert.doesNotThrow(() => recordFrontlineOutcome({ mapId: 'x', result: 'victory'
     durationS: 300, timeLimitS: 720, alliesLost: 0 });
   assert.equal(readCampaignRecord(store).frontline.frontier.stars, 3, 'the batch-19 payload fields (mapId, durationS, timeLimitS, alliesLost) score the stars');
   assert.equal(readCampaignRecord(store).frontline.frontier.bestTimeS, 300);
+  // batch 27: a room's Frontline Assault result never writes the player's own ladder record
+  ended({ gameMode: 'frontline_assault', result: 'victory', reason: 'line_held', mapId: 'alpine', line: { index: 2, total: 3 }, network: true });
+  assert.equal(readCampaignRecord(store).frontline.alpine, undefined, 'network sorties are not campaign progress');
   assert.doesNotThrow(() => installCampaignProgress(null));
 }
 

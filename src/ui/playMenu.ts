@@ -38,6 +38,7 @@ import {
   normalizeGameMode,
   type GameModeId,
 } from '../sim/matchModes.ts';
+import { isCoopGameMode } from '../net/lobby.ts';
 import { matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
 import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
 
@@ -898,16 +899,13 @@ export function createPlayMenu({
   let invitedHostName: string | null = null;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
-  /** Rooms play every objective mode except the campaign, which is a solo operation (the coordinator rejects it). */
-  const roomGameMode = (mode: GameModeId): GameModeId => (mode === 'frontline_assault' ? 'standard' : mode);
-
   function showSelectedGameMode(
     next: RuntimeValue = selectedGameMode,
     { fromLobby = false }: { fromLobby?: boolean } = {},
   ): void {
     selectedGameMode = normalizeGameMode(next);
     remember(GAME_MODE_KEY, selectedGameMode);
-    // the campaign is a solo operation: a room created while it is selected plays Standard, and the note says so
+    // Frontline Assault rooms are co-op: the note says every player attacks together (batch 27)
     const note = root.querySelector<HTMLElement>('[data-rule-note]');
     if (note) note.hidden = selectedGameMode !== 'frontline_assault';
     for (const button of ruleButtons) {
@@ -1251,7 +1249,7 @@ export function createPlayMenu({
     vehicleSelect.disabled = !player || next.phase !== 'waiting' || !!player.ready ||
       player?.team === 'spectator';
     teamSelect.disabled = next.phase !== 'waiting' || !!player?.ready ||
-      next.gameMode === 'endless_horde';
+      isCoopGameMode(next.gameMode);
     mapSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
@@ -1333,7 +1331,9 @@ export function createPlayMenu({
   function renderLobbyNote(next: SerializedLobby): void {
     const fillNote = next.gameMode === 'endless_horde'
       ? t('playMenu.note.hordeFill')
-      : t('playMenu.note.botFill', { size: next.teamSize || 1 });
+      : next.gameMode === 'frontline_assault'
+        ? t('playMenu.note.frontlineFill', { size: next.teamSize || 1 })
+        : t('playMenu.note.botFill', { size: next.teamSize || 1 });
     const relayNote = mode === 'private' && roomIce && !roomIce.relayAvailable
       ? t('playMenu.note.relayUnavailable')
       : '';
@@ -1387,7 +1387,7 @@ export function createPlayMenu({
 
   async function connectRoom(kind: 'create' | 'join', generation: number): Promise<boolean> {
     if (connecting || session || privateRoomConnection.connecting || privateRoomConnection.current) return false;
-    const selection = { ...getSelection(), gameMode: roomGameMode(selectedGameMode) };
+    const selection = { ...getSelection(), gameMode: selectedGameMode };
     const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
     nameInput.value = name;

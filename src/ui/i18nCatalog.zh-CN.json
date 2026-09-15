@@ -2936,7 +2936,7 @@
   "hud.alert.repairCacheDropped": "维修补给已投放",
   "hud.alert.ammoCacheDropped": "弹药补给已投放",
   "hud.alert.consumablesDisabled": "本模式禁用消耗品",
-  "playMenu.rules.campaignSoloNote": "前线突击是单人战役——此时创建的房间将进行标准战斗。",
+  "playMenu.rules.campaignSoloNote": "前线突击房间为合作模式——所有人从 Alpha 方一同进攻，守军逐波增强；房间战果不计入单人战役进度。",
   "campaign.stars": "{stars} / {max} 星",
   "campaign.starsAria": "{max} 星中获得 {stars} 星",
   "campaign.clock": "{minutes} 分钟 · 难度 {difficulty}",
@@ -2961,5 +2961,6 @@
   "garage.record.campaignHeld": "守住战线次数",
   "garage.record.campaignNone": "尚未出击战役——第一场行动已在作战菜单中开放。",
   "hud.modeStatus.brief": "简报",
-  "hud.modeStatus.briefAria": "再次显示任务简报"
+  "hud.modeStatus.briefAria": "再次显示任务简报",
+  "playMenu.note.frontlineFill": "前线突击为合作模式：所有玩家从 Alpha 方进攻；守军由权威端派出（每段阵地 {size} 名，逐步增加）。"
 }

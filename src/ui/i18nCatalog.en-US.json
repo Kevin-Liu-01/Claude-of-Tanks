@@ -2936,7 +2936,7 @@
   "hud.alert.repairCacheDropped": "REPAIR CACHE DROPPED",
   "hud.alert.ammoCacheDropped": "AMMUNITION CACHE DROPPED",
   "hud.alert.consumablesDisabled": "CONSUMABLES ARE OFF IN THIS MODE",
-  "playMenu.rules.campaignSoloNote": "Frontline Assault is a solo campaign — a room created now plays Standard Battle.",
+  "playMenu.rules.campaignSoloNote": "Frontline Assault rooms are cooperative — everyone attacks together from Alpha against escalating defenders; room results do not write the solo campaign ladder.",
   "campaign.stars": "{stars} / {max} stars",
   "campaign.starsAria": "{stars} of {max} stars",
   "campaign.clock": "{minutes} min · difficulty {difficulty}",
@@ -2961,5 +2961,6 @@
   "garage.record.campaignHeld": "Lines held",
   "garage.record.campaignNone": "No campaign sortie yet — the first operation is open in the play menu.",
   "hud.modeStatus.brief": "Brief",
-  "hud.modeStatus.briefAria": "Show the mission brief again"
+  "hud.modeStatus.briefAria": "Show the mission brief again",
+  "playMenu.note.frontlineFill": "Frontline Assault is cooperative: every player attacks from Alpha; the authority fields the defenders ({size} per sector, escalating)."
 }

@@ -344,6 +344,7 @@ export function createNetworkBattleLaunchRuntime({
             mapId,
             matchPlayers,
             modeLabel,
+            gameMode: lobbyState.gameMode,
             transitionShown: true,
             signal: entryController.signal,
             connectAfterWorld: role === 'host',
@@ -415,6 +416,7 @@ export function createNetworkBattleLaunchRuntime({
             mapId,
             matchPlayers,
             modeLabel,
+            gameMode: lobbyState.gameMode,
             transitionShown: true,
             signal: entryController.signal,
             // Retained authority also needs the newly selected world's collision;

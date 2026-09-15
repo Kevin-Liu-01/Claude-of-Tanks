@@ -513,6 +513,22 @@ assert.ok(hordeRoster.filter((player) => !player.bot)
   .every((player) => player.team === 'alpha'), 'horde seats all humans cooperatively');
 assert.equal(hordeRoster.filter((player) => player.team === 'bravo' && player.bot).length, 4,
   'horde fills only the enemy wave pool with authority-owned bots');
+// batch 27: Frontline Assault rooms field the same shape — humans on alpha, a bot-held defence on bravo
+const assaultRoster = buildPrivateMatchPlayers({
+  ...lobbyState,
+  gameMode: 'frontline_assault',
+  teamSize: 5,
+  players: [
+    { id: 'host-1', specId: 'm1a2', team: 'alpha' },
+    { id: 'peer-1', specId: 'challenger3', team: 'bravo' },
+  ],
+});
+assert.ok(assaultRoster.filter((player) => !player.bot).every((player) => player.team === 'alpha'),
+  'the assault seats every human attacker on alpha');
+assert.equal(assaultRoster.filter((player) => player.team === 'alpha' && player.bot).length, 0,
+  'no bot pads the attacking side');
+assert.equal(assaultRoster.filter((player) => player.team === 'bravo' && player.bot).length, 5,
+  'the defence is the authority\'s bot roster at team size');
 const hostSession = {
   roomInfo: { peerId: 'host-1', mode: 'lan' },
   takeMatchChannels: () => [],

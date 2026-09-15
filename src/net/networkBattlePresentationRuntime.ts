@@ -32,6 +32,8 @@ export interface NetworkBattlePresentationRequest {
   mapId: string;
   matchPlayers: NetworkBattlePresentationPlayer[];
   modeLabel: string;
+  /** Room game mode: Frontline Assault carves the trench variant on every client (batch 27). */
+  gameMode?: string;
   connectMatch: () => MaybePromise<NetworkMatchPort>;
   signal?: AbortSignal;
   connectAfterWorld?: boolean;
@@ -220,6 +222,7 @@ export interface NetworkBattlePresentationOptions {
     loadWorld(
       mapId: string,
       onProgress: (fraction: number, label: string) => void,
+      terrainVariant?: 'assault-trenches' | null,
     ): MaybePromise<RuntimeValue>;
     publishMatch(match: NetworkMatchPort): void;
     getMatch(): NetworkMatchPort | null;
@@ -384,11 +387,13 @@ export function createNetworkBattlePresentationRuntime(
       mapId,
       matchPlayers,
       modeLabel,
+      gameMode = 'standard',
       connectMatch,
       signal,
       connectAfterWorld = false,
       transitionShown = false,
       } = request;
+      const terrainVariant = gameMode === 'frontline_assault' ? 'assault-trenches' : null;
       throwIfNetworkBattleEntryAborted(signal);
 
       load.audio.resume();
@@ -444,7 +449,7 @@ export function createNetworkBattlePresentationRuntime(
         },
         loadWorld: () => entry.loadWorld(mapId, (fraction, label) => {
           load.battleLoad.progress(0.08 + fraction * 0.48, label);
-        }),
+        }, terrainVariant),
         connect: async () => {
           const match = await connectMatch();
           if (signal?.aborted) {

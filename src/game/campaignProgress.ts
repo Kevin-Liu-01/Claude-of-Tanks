@@ -209,6 +209,8 @@ export function installCampaignProgress(
     const event = recordOf(payload);
     if (!event || event.gameMode !== 'frontline_assault') return;
     if (event.reason === 'network_disconnect') return;
+    // batch 27: rooms play Frontline Assault too; only the player's own sorties write the ladder record
+    if (event.network === true) return;
     recordFrontlineOutcome({
       mapId: event.mapId ?? event.map, result: event.result, reason: event.reason, line: event.line,
       durationS: event.durationS ?? event.timeS, timeLimitS: event.timeLimitS, alliesLost: event.alliesLost,

@@ -402,6 +402,36 @@ assert.equal(timedMatch.resultReason, 'time_limit');
 assert.equal(timedMatch.snapshot({ tick: 60, serverTimeMs: 1000,
   viewerId: 'time-a', ackInputSeq: 0 }).meta.resultReason, 'time_limit');
 
+// batch 27 (2026-09-15): a Frontline Assault authority bakes the trench terrain variant (its own
+// cache entry) and seats the mode's sectors on the carved lines, exactly as the solo path does.
+{
+  const retainedBefore = authoritativeTerrainCacheStats().retainedMaps;
+  const assaultMatch = createAuthoritativeMatch({
+    mapId: 'verdant', countdownS: 0, gameMode: 'frontline_assault',
+    players: [
+      { id: 'fa-a', specId: 'm1a2', team: 'alpha' },
+      { id: 'fa-b', specId: 't90m', team: 'bravo' },
+    ],
+  });
+  assaultMatch.onMatchReady();
+  assert.equal(authoritativeTerrainCacheStats().retainedMaps, retainedBefore + 1,
+    'the trench variant is baked as its own shared terrain entry');
+  const plan = assaultMatch.heightField.assaultTrenchLines;
+  assert.ok(plan && plan.lines.length > 0 && Array.isArray(plan.sectors),
+    'the authority terrain carries the carved assault trench lines');
+  const snapshot = assaultMatch.snapshot({ tick: 1, serverTimeMs: 1000 / 60, viewerId: 'fa-a', ackInputSeq: 0 });
+  assert.equal(snapshot.meta.gameMode, 'frontline_assault');
+  assert.equal(snapshot.meta.modeState.line.total, plan.sectors.length);
+  for (const [index, sector] of plan.sectors.entries()) {
+    if (!sector) continue;
+    const zone = snapshot.meta.modeState.zones[index];
+    assert.ok(zone && Math.hypot(zone.x - sector.x, zone.z - sector.z) < 1.5,
+      `sector ${index + 1} sits on its carved line`);
+  }
+  assert.equal(match.heightField.assaultTrenchLines ?? null, null,
+    'a standard match on the same map keeps the uncarved terrain');
+}
+
 const eliminatedMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [

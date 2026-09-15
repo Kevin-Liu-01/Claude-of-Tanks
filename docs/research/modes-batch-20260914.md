@@ -78,7 +78,7 @@ ladder sortie as trigger). Ladder cards show stars and the operation clock / dif
 
 ## Left open
 
-- Frontline Assault stays solo-only on the wire (the coordinator rejects it; the play menu says so).
+- Frontline Assault rides the wire since batch 27 (2026-09-15): co-op rooms, trench variant on the authority, defender bots from the handoff; see docs/GAME-MODES.md.
 - `game.phase` still lacks `'studio'` in its union (studio.ts casts).
 - RECORD modal campaign section and a HUD button to reopen the mission brief were not built.
 

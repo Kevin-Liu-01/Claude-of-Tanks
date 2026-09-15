@@ -353,15 +353,17 @@ export function authoritativeTerrainCacheStats() {
   return { retainedMaps: terrainCache.size, limit: TERRAIN_IDLE_LIMIT, builds: terrainBuilds };
 }
 
-function sharedTerrain(mapId: string): SharedTerrain {
-  const key = String(mapId || 'verdant');
+function sharedTerrain(mapId: string, assaultTrenches = false): SharedTerrain {
+  // the trench variant is its own cache entry (the browser's world build keys it the same way)
+  const key = `${String(mapId || 'verdant')}${assaultTrenches ? '#assault-trenches' : ''}`;
   let cached = terrainCache.get(key);
   if (cached) {
     terrainCache.delete(key);
     terrainCache.set(key, cached);
     return cached;
   }
-  const config = getMapConfig(key);
+  const baseConfig = getMapConfig(String(mapId || 'verdant'));
+  const config = assaultTrenches ? { ...baseConfig, assaultTrenches: true } : baseConfig;
   // The rendered battlefields use seed 1337 unless explicitly overridden.
   // Height fields are immutable after construction, so dedicated matches can
   // safely share this expensive 1 km terrain bake while keeping combat state
@@ -647,7 +649,9 @@ export function createAuthoritativeMatch({
   // A browser world or dedicated collision lease already owns the exact field.
   // Do not bake a second 5.5 MB field merely to obtain its existing layout.
   const suppliedHeightField = worldCollision?.heightField;
-  const shared = suppliedHeightField ? null : sharedTerrain(mapId);
+  // batch 27: a Frontline Assault authority bakes the trench variant so its sectors sit in the carved lines
+  const normalizedGameMode = normalizeGameMode(gameMode);
+  const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
   const heightField = suppliedHeightField || shared!.heightField;
   const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
   const rng = mulberry32(seed);
@@ -669,17 +673,19 @@ export function createAuthoritativeMatch({
   let countdownRemainingS = Math.max(0, finite(countdownS, 5));
   const staticObstacles = worldCollision && typeof worldCollision.getObstacles === 'function'
     ? worldCollision.getObstacles() : [];
-  const normalizedGameMode = normalizeGameMode(gameMode);
   // RULESETS (sim/matchRuleset.ts, 2026-09-14): the same pure rules the browser sim applies — hull,
   // damage-taken, reload, ammunition and equipment at spawn / revive, gravity at the muzzle, the clock.
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === normalizedGameMode
     ? rulesetOption : matchRulesetFor(normalizedGameMode);
   // an explicit battleLimitS (tests, tooling) wins; otherwise the ruleset's clock (null = no clock)
   const clockLimitS = battleLimitS !== BATTLE_LIMIT_S ? battleLimitS : (ruleset.timeLimitS ?? Infinity);
+  const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
     mapId,
     heightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
     anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
+    // index-aligned carved sectors (null where the terrain dropped a line), exactly as the solo path passes them
+    assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,
   });
   const nearbyObstacles: AuthoritativeObstacle[] = [];
   const obstacleIndex = new Map<AuthoritativeObstacle, number>(
