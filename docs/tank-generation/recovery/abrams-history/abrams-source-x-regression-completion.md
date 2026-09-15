@@ -78,7 +78,7 @@ outside these three regression tests.
 - [Garage test](../../src/ui/garageArchitecture.selftest.mjs): added measured
   success output without changing either timing assertion.
 - Synchronized the approved public surfaces: [README](../../README.md),
-  [features](../FEATURES.md), [generated roster](../VEHICLE-ROSTER.md),
+  [features](../../../FEATURES.md), [generated roster](../../../VEHICLE-ROSTER.md),
   [short LLM facts](../../public/llms.txt),
   [full LLM facts](../../public/llms-full.txt),
   [docs LLM facts](../../public/docs/llms.txt) and

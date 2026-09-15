@@ -20,7 +20,7 @@ const coalCensus = { railyard: 7, caldera: 7, foundry: 5, skybridge: 5 };
 // placements on six maps. These exact counts preserve every non-wreck record
 // and concealment list; terrain rejection and placement budgets are unchanged.
 // The scoped coal capture adds 24 movement/shell pairs on four rail maps;
-// its exact native-control attribution is in RAIL-COAL-STOCKPILES-CHECKPOINT.md.
+// its exact native-control attribution is in docs/history/environment-2026-09/RAIL-COAL-STOCKPILES-CHECKPOINT.md.
 // 2026-09-11: fresh all-map road-completion capture. The original planting
 // sampler preserves seeded vegetation; only newly unsafe road/slope sites
 // are excluded. Props use the completed physical roads. Exact census deltas

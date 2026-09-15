@@ -180,7 +180,7 @@ const GEOMETRY_GOLDENS = {
   skybridge: '13f67e43c27dc650573a9ea5cf92b95a10032eb1f1fd3be3c9d64d5bc9c87731',
   // Published 37271a90b authored basin contours, then 56924f7bf revised
   // drainage/composition. Authenticated history replay preserves emitter and
-  // eager/live parity: docs/POLDERS-STREAMING-GOLDEN.md.
+  // eager/live parity: docs/history/environment-2026-09/POLDERS-STREAMING-GOLDEN.md.
   polders: 'b933cb9c4bd67070e904ffe66696ec235014bb53398886534f920f1345bc5f51',
   copper_mesa: 'ae0d5b90fb81ac1f36efa7e3c2e73b9a7259f3564aca6b461ab6f4d698544f46',
   airfield: '55490ff86d039a9015d19034937ae5b4e6ed4f5b85eb8b2f6f70d05830a2e254',

@@ -33,7 +33,7 @@ The unchanged original `abramsSourceXFrontDeck.selftest.mjs` also passes:
 30 source boundary/air witnesses, unchanged top plane, five original other
 hull hashes and authenticated end-wheel interfaces. The stable24-image
 Abrams/Leclerc native pilot documented in
-[the wheel packet](leclerc-low-wheel-20260907.md#native-pilot) shows the reviewed
+the wheel packet (`leclerc-low-wheel-20260907.md`, record not kept) shows the reviewed
 SEPv2 front shoulder continuous and the rear receiving rail attached; it does
 not yet contain the full thicker-outsole rollout.
 

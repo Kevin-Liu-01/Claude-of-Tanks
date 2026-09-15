@@ -87,7 +87,7 @@ The selective R5 resync is now applied in the integrated worktree. Interim,
 truthfully measured Abrams marking/anatomy group receipts unblock browser
 preview; they do not freeze ongoing chassis/gear changes or replace the final
 full-fleet generation/release procedure. See
-[the construction and preview receipt](fleet-construction-performance-20260907.md)
+the construction and preview receipt (`fleet-construction-performance-20260907.md`, record not kept)
 for measured paths, cache isolation, current tests and remaining gates. The
 owner clarified that upper shoulder/skirt gaps must close while lower wheels
 remain visible; no full road-wheel-covering skirt extension is authorized.

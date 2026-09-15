@@ -107,6 +107,7 @@ retain decisions, status and reproducible evidence summaries.
 | LESSONS.md | Incidents that informed vehicle build law |
 | POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md | Running-gear incident record |
 | DECISIONS.md | Maintained implementation choices and migration constraints |
+| history/environment-2026-09/ | Environment-pass checkpoints, candidates, reviews and golden captures from the 2026-09-08/09 world recovery (32 records; evidence paths point at the authoring machine) |
 
 Historical counts and architecture claims may differ from the current runtime.
 

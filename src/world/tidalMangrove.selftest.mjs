@@ -531,7 +531,7 @@ const shapes = [
   { cy: 3.30, rx: 3.85, ry: 1.15, rz: 3.45, trunkH: 2.2, n: 76 },
 ];
 // Reviewed woody-root orientation/seating only; old→new provenance is retained
-// in docs/WOODY-ROOT-ORIENTATION-CANDIDATE.md (ridge successor 2026-09-11).
+// in docs/history/environment-2026-09/WOODY-ROOT-ORIENTATION-CANDIDATE.md (ridge successor 2026-09-11).
 // Tree bases 2026-09-12: the shared fluted root collar and swept surface
 // roots replace the ridge successor under every ordinary trunk; the ordinary
 // woody digests are repinned from that build. Tidal geometry remains current.

@@ -13,18 +13,18 @@ This is the implementation guide for the complete pass, following the
 | Work | State |
 |---|---|
 | Whole-scene reference analysis and 30-map identity plan | Recorded here |
-| Torn tree crowns | Far-shell-only seam repair has all30-map geometry/RNG coverage and 12 personally reviewed native Verdant/Coastal pictures. Existing two-map cost comparisons pass with equal render medians and resource counts; p95 and delivered-interval increases remain recorded ([evidence](CANOPY-FAR-SEAMS-CANDIDATE.md)). Near geometry/indexing stays baseline. The old combined index candidate and its failed/mixed performance evidence remain held; broad forest composition and all-map/mobile performance are not certified |
-| Dark grass speckles | Grass atlases retain transparent-edge color in `a38ab190d`; native Coastal/Verdant pairs show reduced black speckling with exact scene/material/texture inventories ([evidence](GRASS-ATLAS-PADDING-CHECKPOINT.md)). Distribution/tone and complete frame/heap parity remain separate |
-| Dark foliage atlas edges | The same straight-alpha correction covers the four tree atlas families in `090bdcb1d`;64 real Canvas cases and22 matched native poses pass with unchanged resource inventories ([evidence](FOLIAGE-ATLAS-PADDING-CHECKPOINT.md)). This is a subtle edge correction, not a crown-shape redesign |
-| Moving terrain texture coordinates / inland sand relief | World-fixed detail chart and Coastal/Saltwind beach-only relief pushed in `cb955e194`; native three-map checks pass ([evidence](TERRAIN-SURFACE-CHART-CHECKPOINT.md)). Coastal/Saltwind ambient sand marbling is reduced in `c97e20fd2`, with matched native pairs and unchanged scene/texture counts ([evidence](COASTAL-WORN-GROUND-CANDIDATE.md)); broad town wear remains separate |
+| Torn tree crowns | Far-shell-only seam repair has all30-map geometry/RNG coverage and 12 personally reviewed native Verdant/Coastal pictures. Existing two-map cost comparisons pass with equal render medians and resource counts; p95 and delivered-interval increases remain recorded ([evidence](history/environment-2026-09/CANOPY-FAR-SEAMS-CANDIDATE.md)). Near geometry/indexing stays baseline. The old combined index candidate and its failed/mixed performance evidence remain held; broad forest composition and all-map/mobile performance are not certified |
+| Dark grass speckles | Grass atlases retain transparent-edge color in `a38ab190d`; native Coastal/Verdant pairs show reduced black speckling with exact scene/material/texture inventories ([evidence](history/environment-2026-09/GRASS-ATLAS-PADDING-CHECKPOINT.md)). Distribution/tone and complete frame/heap parity remain separate |
+| Dark foliage atlas edges | The same straight-alpha correction covers the four tree atlas families in `090bdcb1d`;64 real Canvas cases and22 matched native poses pass with unchanged resource inventories ([evidence](history/environment-2026-09/FOLIAGE-ATLAS-PADDING-CHECKPOINT.md)). This is a subtle edge correction, not a crown-shape redesign |
+| Moving terrain texture coordinates / inland sand relief | World-fixed detail chart and Coastal/Saltwind beach-only relief pushed in `cb955e194`; native three-map checks pass ([evidence](history/environment-2026-09/TERRAIN-SURFACE-CHART-CHECKPOINT.md)). Coastal/Saltwind ambient sand marbling is reduced in `c97e20fd2`, with matched native pairs and unchanged scene/texture counts ([evidence](history/environment-2026-09/COASTAL-WORN-GROUND-CANDIDATE.md)); broad town wear remains separate |
 | Verdant horizon | User reversed the restoration request: newer low pastoral watershed/layered woodland horizon reinstated and pushed in `139585281`; no broader village/ground/palette prototype was reinstated |
-| Coastal/Saltwind blanket village sand | Four existing-channel activity footprints per map replace broad off-road settlement wear in `85f93d809`, with scoped tests in `853c6bc6b`. Both native before/after pairs were personally reviewed; roads/water/terrain heights and other28 masks remain exact ([evidence](COASTAL-VILLAGE-WEAR-CANDIDATE.md)). Sparse village grass remains separate |
-| Standing-grain backface lighting | Published in `85d68decd`: preserve the authored upward crop normals on both card faces instead of reversing them into black bands. Matched native front/back/establishing views were reviewed, three-sweep resource comparisons pass, and the fixed full-frame cost pair passes. Geometry, palettes, alpha and crop placement remain unchanged. [Scoped evidence and limits](COASTAL-MEADOW-NATIVE-REVIEW.md) |
+| Coastal/Saltwind blanket village sand | Four existing-channel activity footprints per map replace broad off-road settlement wear in `85f93d809`, with scoped tests in `853c6bc6b`. Both native before/after pairs were personally reviewed; roads/water/terrain heights and other28 masks remain exact ([evidence](history/environment-2026-09/COASTAL-VILLAGE-WEAR-CANDIDATE.md)). Sparse village grass remains separate |
+| Standing-grain backface lighting | Published in `85d68decd`: preserve the authored upward crop normals on both card faces instead of reversing them into black bands. Matched native front/back/establishing views were reviewed, three-sweep resource comparisons pass, and the fixed full-frame cost pair passes. Geometry, palettes, alpha and crop placement remain unchanged. [Scoped evidence and limits](history/environment-2026-09/COASTAL-MEADOW-NATIVE-REVIEW.md) |
 | Coastal/Saltwind meadow and crop composition | The grass-height candidate remains unpublished. The unequal crop-rhythm candidate at `83e74e4de` and the root-color interpolation experiment at `4ac879eed` both completed matched native captures but were **rejected visually**: their establishing views still read as parallel pegs; darker roots merely add gray stalk columns. Focused tests/typecheck/private builds pass, but these art candidates are not shipped or advanced to performance acceptance. The rejected root-depth receipt is preserved in its branch at `69e37bd58` |
-| Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
+| Mode placement | Shared solo/server safety checkpoint passes all 30 maps × 5 modes on current roads ([evidence](history/environment-2026-09/MATCH-PLACEMENT-CHECKPOINT.md)); road integration must revalidate it |
 | Road continuity | The22-map continuity candidate remains unpublished. Local checkpoints `d55bc626f` and `06e84b2e3` now pass the all30-map physical inventory and all30×5-mode placement checks; all22 changed collision shards are freshly captured with lossless packing, leaving eight unchanged. The four-map horizon pilot passes packed terrain-contact/winding checks, but all eight latest matched native views were **rejected visually**: angular, differently shaded road strips still meet implausible outer slopes. Two north Frontier exits are also unresolved. Candidate minimap refresh is underway; the previous five-map native frame-time failure remains held. Only the independent exact-output lookup optimization `d9960ad92` is published |
-| Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass ([entry](NIGHT-ENTRY-CHECKPOINT.md), [aim](NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](NIGHT-WORLD-INTENSITY-CHECKPOINT.md)). Covered entry now skips the discarded authored-day PMREM bake: actual native A/B observes two bake returns on baseline versus one selected-night return on the candidate, ready before the first covered frame. [Evidence and limits](NIGHT-SINGLE-BAKE-REVIEW.md). This is not a measured general loading-speed or memory claim. Service windows glow but are not all spatial lights; flat interiors and unshadowed point-light occlusion remain |
-| Ironworks masonry | Foundry-only brick pigment and roof reflection refinements are image-reviewed and published, preserving Copper Mesa and other material buckets. Roof gain uses the existing material uniform, without extra textures. Matched native views and scoped cost comparisons pass with actual timing deltas retained ([evidence](FOUNDRY-MASONRY-CHECKPOINT.md)). Flat trim and settlement composition remain separate |
+| Nighttime entry and lights | Final-light-first correction, downward headlight aim and restrained window/streetlamp intensity pushed; matched native closeups and lifecycle checks pass ([entry](history/environment-2026-09/NIGHT-ENTRY-CHECKPOINT.md), [aim](history/environment-2026-09/NIGHT-LIGHT-AIM-CHECKPOINT.md), [intensity](history/environment-2026-09/NIGHT-WORLD-INTENSITY-CHECKPOINT.md)). Covered entry now skips the discarded authored-day PMREM bake: actual native A/B observes two bake returns on baseline versus one selected-night return on the candidate, ready before the first covered frame. [Evidence and limits](history/environment-2026-09/NIGHT-SINGLE-BAKE-REVIEW.md). This is not a measured general loading-speed or memory claim. Service windows glow but are not all spatial lights; flat interiors and unshadowed point-light occlusion remain |
+| Ironworks masonry | Foundry-only brick pigment and roof reflection refinements are image-reviewed and published, preserving Copper Mesa and other material buckets. Roof gain uses the existing material uniform, without extra textures. Matched native views and scoped cost comparisons pass with actual timing deltas retained ([evidence](history/environment-2026-09/FOUNDRY-MASONRY-CHECKPOINT.md)). Flat trim and settlement composition remain separate |
 | Unified ground/forest composition, road and settlement materials | Planned; not implemented by the study |
 | Biome rollout and fresh marketing images | Not accepted or released |
 | No performance/memory regressions | Required, **not yet demonstrated** for the latest drafts |
@@ -38,7 +38,7 @@ describe that as personally viewing every current map at every quality level.
 Fresh main/candidate captures now also cover Verdant, Coastal and Winter with
 26 exactly matched camera receipts. See [foundation verification](MAP-RENDER-FOUNDATIONS.md)
 for the historical failed performance check; the isolated canopy candidate is
-still held. The [Verdant scene checkpoint](VERDANT-SCENE-CHECKPOINT.md) remains
+still held. The [Verdant scene checkpoint](history/environment-2026-09/VERDANT-SCENE-CHECKPOINT.md) remains
 a superseded whole-scene proposal. The user first requested the original
 horizon, then explicitly reversed that request after viewing it: "go with your
 version." Commit `139585281` therefore restores only the newer low pastoral
@@ -203,7 +203,7 @@ tapered stems, seats each root in its own bed and attaches existing heads.
 Actual Autumn before/after images were independently reviewed; counts, RNG,
 collision and final GPU geometry budgets stay unchanged. This is a small
 contact/shape correction, not a new population or whole-bank beautification.
-See `RIVER-REED-CONTACT-CANDIDATE.md` for evidence and limits.
+See `history/environment-2026-09/RIVER-REED-CONTACT-CANDIDATE.md` for evidence and limits.
 
 The Coastal/Fjord driftwood experiment remains local and rejected: its native
 close-up reads as a thin notched strip with stretched grain, not natural wood.
@@ -222,7 +222,7 @@ at `5c6a6f852` fits the existing cap into its actual crown without extra geometr
 or per-frame work. All46 seeded variants, integrated reed/contact tests, TS7 and
 production build pass; four native images were reviewed. The visual difference
 is subtle and joins partly overlap other foliage. See
-`MANGROVE-STEM-CONTACT-CHECKPOINT.md` for exact evidence and cost limitations.
+`history/environment-2026-09/MANGROVE-STEM-CONTACT-CHECKPOINT.md` for exact evidence and cost limitations.
 This was pre-existing, not a reed change; the historical failed full-suite
 boundary remains recorded separately from the repaired focused checks.
 
@@ -234,7 +234,7 @@ crops for Delta. All eight matched native images were reviewed; the old pale
 card ranks are reduced, but grass still obscures Autumn's low stubble and
 Delta retains regular dotted rows at distance. The other 28 painters are
 unchanged. Focused integration tests, TS7 and public build pass. See
-`CROP-BIOME-IDENTITY-CHECKPOINT.md` for source pins, earlier failures, exact
+`history/environment-2026-09/CROP-BIOME-IDENTITY-CHECKPOINT.md` for source pins, earlier failures, exact
 resource contracts and the remaining full-frame/mobile performance limits.
 
 ### Grass and palm shape checkpoint — 2026-09-09
@@ -246,7 +246,7 @@ stepped palm joints become continuous stems. Grass geometry, instances,
 allocated buffers, materials and measured draw submissions stay exact.
 Eleven focused tests, TS7, scoped quality/Doctor and public build pass.
 The failed first native acquisition and its source-bound readiness correction
-are preserved in `GRASS-PALM-SHAPE-CHECKPOINT.md`, together with raw CPU timing
+are preserved in `history/environment-2026-09/GRASS-PALM-SHAPE-CHECKPOINT.md`, together with raw CPU timing
 and remaining motion/mobile/full-frame limits. More ground and regular crop
 rows now show through; broad forest, water and settlement composition remain
 unfinished. This is not a whole-map or zero-regression certificate.
@@ -258,7 +258,7 @@ olive families. Four matched native close/wide images were reviewed; the
 scarlet/orange uniformity is reduced with exact geometry, alpha, instance,
 resource-storage and observed foliage-submission counts. Focused tests, TS7,
 quality/Doctor and public builds pass, including current-main integration.
-See `AUTUMN-SEASONAL-PALETTE-CANDIDATE.md` for source/evidence and cost limits.
+See `history/environment-2026-09/AUTUMN-SEASONAL-PALETTE-CANDIDATE.md` for source/evidence and cost limits.
 This is not a bush-shape or full-scene acceptance. The separate tiered bush
 experiment is rejected: it creates repeated cactus/topiary silhouettes and
 remains local. Farm-prop relationships and shoreline planting remain open.
