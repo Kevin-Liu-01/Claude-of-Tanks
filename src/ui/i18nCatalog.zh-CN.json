@@ -2953,5 +2953,11 @@
   "endScreen.campaign.retryHint": "行动仍然开放——战线还在那里。",
   "endScreen.campaign.complete": "整条战线已归你所有——所有行动均已完成。",
   "endScreen.campaign.next": "下一场行动——{title}",
-  "endScreen.campaign.retry": "重试行动——{title}"
+  "endScreen.campaign.retry": "重试行动——{title}",
+  "garage.record.campaign": "战役",
+  "garage.record.campaignOperations": "已完成行动",
+  "garage.record.campaignStars": "星数",
+  "garage.record.campaignPush": "最佳推进（阵地）",
+  "garage.record.campaignHeld": "守住战线次数",
+  "garage.record.campaignNone": "尚未出击战役——第一场行动已在作战菜单中开放。"
 }

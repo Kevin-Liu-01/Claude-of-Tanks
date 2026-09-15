@@ -110,4 +110,19 @@ if (holdStarts !== 3 || holdEnds !== 3 || fired !== 2 || cancelled !== 2) {
   throw new Error('pointer cancellation left auto fire active');
 }
 
-console.log('touchControls hybrid fire selftest passed');
+// batch 20 (2026-09-14 touch QA): the toolbar's quick buttons must work while the other thumb steers —
+// `touch-action: none` (a second finger is not a pinch) and a tap on the button's own captured pointer
+// lift, not the synthetic click the browser withholds during multi-touch.
+{
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('./touchControls.ts', import.meta.url), 'utf8');
+  const quickRule = source.match(/\.cot-touch \.quick\{[^}]*\}/)?.[0] ?? '';
+  if (!/touch-action:none/.test(quickRule)) throw new Error('quick buttons must declare touch-action:none');
+  for (const button of ['soundButton', 'graphicsButton', "root.querySelector<HTMLButtonElement>('.quick.settings')!"]) {
+    if (!source.includes(`tapButton(${button}, `)) throw new Error(`${button} must be wired through tapButton`);
+  }
+  if (/\.quick\.(sound|graphics|settings)'\)!\.addEventListener\('click'/.test(source)) throw new Error('quick buttons must not rely on click alone');
+  if (!/button\.addEventListener\('pointerup', lift\)/.test(source)) throw new Error('tapButton fires on the captured pointer lift');
+}
+
+console.log('touchControls hybrid fire and toolbar tap selftest passed');

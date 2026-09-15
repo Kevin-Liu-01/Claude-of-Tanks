@@ -96,7 +96,7 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
   top:calc(max(8px,env(safe-area-inset-top)) + 60px);
 }
 .cot-touch .quick{width:44px;height:44px;padding:3px 2px 2px;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:manipulation;
+  align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:none;
   border:1px solid var(--touch-edge);border-bottom:2px solid rgba(205,219,229,.42);border-radius:2px;
   background:linear-gradient(180deg,rgba(29,38,45,.96),var(--touch-panel));
   color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);
@@ -654,9 +654,52 @@ export function createTouchControls({
     const label = autoAim.querySelector('.lb');
     if (label) label.textContent = on ? t('touch.autoAim.locked') : t('touch.autoAim');
   });
+  // QUICK BUTTONS (2026-09-14 touch QA): a tap on the toolbar must work while the other thumb
+  // steers. With a second finger down the browser treats the pair as a possible pinch: under
+  // `touch-action: manipulation` it cancelled the button's pointer (pointercancel, no lift, no
+  // click), so the toolbar now declares `touch-action: none` like the joystick and fire buttons, and
+  // each button fires on its own pointer lift — same pointer that pressed it, lifted inside the
+  // button — swallowing the click that may still follow a lone tap.
+  const tapButton = (button: HTMLButtonElement, handler: () => void): void => {
+    let pointerId: number | null = null;
+    let lastX = 0;
+    let lastY = 0;
+    let positioned = false;
+    let tappedAt = 0;
+    const remember = (e: PointerEvent): void => {
+      if (e.clientX || e.clientY) { lastX = e.clientX; lastY = e.clientY; positioned = true; }
+    };
+    button.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      pointerId = e.pointerId; positioned = false; remember(e);
+      try { button.setPointerCapture(e.pointerId); } catch (_) { /* capture unavailable */ }
+    });
+    button.addEventListener('pointermove', (e) => { if (e.pointerId === pointerId) remember(e); });
+    const lift = (e: PointerEvent): void => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      e.stopPropagation();
+      remember(e);
+      // a finger that slid off the button is not a tap — judged only when the pointer ever reported
+      // a position (synthetic secondary touches report none; the captured lift is the tap then)
+      if (positioned) {
+        const r = button.getBoundingClientRect();
+        if (lastX < r.left - 6 || lastX > r.right + 6 || lastY < r.top - 6 || lastY > r.bottom + 6) return;
+      }
+      tappedAt = performance.now();
+      handler();
+    };
+    button.addEventListener('pointerup', lift);
+    button.addEventListener('pointercancel', (e) => { if (e.pointerId === pointerId) pointerId = null; });
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // keyboard / assistive activation still lands here; a pointer tap already ran
+      if (performance.now() - tappedAt < 600) { e.preventDefault(); return; }
+      handler();
+    });
+  };
   const soundButton = root.querySelector<HTMLButtonElement>('.quick.sound')!;
-  soundButton.addEventListener('click', (e) => {
-    e.stopPropagation();
+  tapButton(soundButton, () => {
     const muted = !!onToggleSound();
     soundButton.classList.toggle('muted', muted);
     soundButton.innerHTML = `${muted ? SOUND_OFF : SOUND}<span class="ql">${muted ? t('touch.muted') : t('touch.sound')}</span>`;
@@ -680,8 +723,7 @@ export function createTouchControls({
     graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
     graphicsButton.title = t('touch.gfx.title', { label });
   }
-  graphicsButton.addEventListener('click', (e) => {
-    e.stopPropagation();
+  tapButton(graphicsButton, () => {
     const mobile = getDeviceTier() === 'mobile';
     const next = nextQuickGraphicsPreset(graphicsChoice(), mobile);
     if (mobile) setMobilePresetName(next); else setPresetName(next);
@@ -689,8 +731,8 @@ export function createTouchControls({
     bus.emit('ui:click', {});
   });
   renderGraphicsButton();
-  root.querySelector<HTMLButtonElement>('.quick.settings')!.addEventListener('click', (e) => {
-    e.stopPropagation(); bus.emit('ui:click', {}); onOpenSettings();
+  tapButton(root.querySelector<HTMLButtonElement>('.quick.settings')!, () => {
+    bus.emit('ui:click', {}); onOpenSettings();
   });
 
   bus.on('phase:change', (payload) => {

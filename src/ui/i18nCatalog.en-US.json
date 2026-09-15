@@ -2953,5 +2953,11 @@
   "endScreen.campaign.retryHint": "The operation stays open — the line is still there.",
   "endScreen.campaign.complete": "The front is yours — every operation cleared.",
   "endScreen.campaign.next": "NEXT OPERATION — {title}",
-  "endScreen.campaign.retry": "RETRY OPERATION — {title}"
+  "endScreen.campaign.retry": "RETRY OPERATION — {title}",
+  "garage.record.campaign": "Campaign",
+  "garage.record.campaignOperations": "Operations cleared",
+  "garage.record.campaignStars": "Stars",
+  "garage.record.campaignPush": "Best push (sectors)",
+  "garage.record.campaignHeld": "Lines held",
+  "garage.record.campaignNone": "No campaign sortie yet — the first operation is open in the play menu."
 }

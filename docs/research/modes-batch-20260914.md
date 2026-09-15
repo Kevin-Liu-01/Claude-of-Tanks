@@ -90,3 +90,20 @@ landed tree (every mode, two ladder operations: stamps, HUD, clocks, results, en
 block, Garage return, formation roster 10/10 Russian on Tarkhan Steppe). Pushed as 8388bda3f;
 deploy 19 (main-wgQRTYGc.js, claude-of-tanks-9salxlpk1): production map smoke reached battle on verdant
 and steppe with no errors, and the same mode-loop probe passed 140/140 against the live site.
+
+## Follow-up the same evening (batch 20: mobile toolbar and the service record)
+
+The production touch loop after deploy 18 left two findings. Reproduced against the dev server:
+the touch toolbar's quick buttons (sound, graphics, settings) opened on `click`, and their
+`touch-action: manipulation` let the browser read a second finger as a possible pinch — with a
+steering thumb down, a tap on SETTINGS never reached the button (no lift, no click). The toolbar
+now declares `touch-action: none` like the joystick and fire buttons, and each quick button fires on
+its own captured pointer lift (`tapButton` in `touchControls.ts`), keeping the slide-off cancel when
+the pointer reported a position and swallowing the click that follows a lone tap. The landscape
+"drag beyond the ring reads speed 0" finding was the probe's: a blocked or destroyed hull cannot
+move, so the drive criterion is now the throttle reaching the sim, and the probe makes its player
+invulnerable at battle start. CDP `Input.dispatchTouchEvent` semantics recorded in the probe: the
+`touchEnd` list names the points being *released* (an empty list releases every remaining one), and
+synthesised secondary touches carry no coordinates. Touch loop 29/29 in both orientations
+afterwards. The Garage's service record gained the campaign standing (operations cleared, stars,
+best push, lines held, the next operation).

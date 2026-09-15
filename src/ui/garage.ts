@@ -53,6 +53,8 @@ import {
 import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import { campaignSummary } from '../game/campaignOperations.ts';
+import { frontlineSummary } from '../game/campaignProgress.ts';
 import type { PlayMode } from '../net/playMode.ts';
 import { shellAmmunitionCapacity } from '../sim/ammunition.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -698,6 +700,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } as Record<string, string>)[char] ?? char);
     const metric = (label: string, value: string, note: string) => `<div class="cot-record-metric"><span>${label}</span>` +
       `<strong>${value}</strong><small>${note}</small></div>`;
+    // batch 19/20 (2026-09-14): the campaign ladder's standing — operations cleared, stars, best push
+    const campaignBlock = (): string => {
+      const ladder = campaignSummary();
+      const front = frontlineSummary();
+      const standing = front.attempts
+        ? `<div class="cot-last-battle-grid">` +
+          `<div><span>${t('garage.record.campaignOperations')}</span><b>${num(ladder.cleared)} / ${num(ladder.total)}</b></div>` +
+          `<div><span>${t('garage.record.campaignStars')}</span><b>${num(ladder.stars)} / ${num(ladder.maxStars)}</b></div>` +
+          `<div><span>${t('garage.record.campaignPush')}</span><b>${num(front.bestLine)} / ${num(front.total)}</b></div>` +
+          `<div><span>${t('garage.record.campaignHeld')}</span><b>${num(front.held)}</b></div></div>`
+        : `<div class="cot-record-empty">${t('garage.record.campaignNone')}</div>`;
+      return `<div class="cot-last-battle cot-record-campaign"><div class="cot-last-battle-head">` +
+        `<strong>${t('garage.record.campaign')}</strong><time>${safe(t(`campaign.op.${ladder.next.id}.title`))}</time></div>${standing}</div>`;
+    };
     let lastBattle = `<div class="cot-record-empty">${t('garage.record.empty')}</div>`;
     if (record.lastBattle) {
       const last = record.lastBattle;
@@ -731,7 +747,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       metric(t('garage.record.avgDamage'), num(avgDamage), t('garage.record.perBattle')) +
       metric(t('garage.record.bestDamage'), num(record.bestDamage), t('garage.record.singleBattle')) +
       metric(t('garage.record.decisiveResults'), num(record.wins + record.losses), t('garage.record.nonDraw')) +
-      `</div></div></div>${lastBattle}`;
+      `</div></div></div>${lastBattle}${campaignBlock()}`;
   }
 
   // --- MARKETING FEATURED PANEL: rotating in-engine action stills ------------
