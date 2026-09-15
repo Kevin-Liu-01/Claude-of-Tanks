@@ -117,3 +117,18 @@ so a steering thumb cannot suppress it, and main toggles the mission brief (`ui:
 instead of cancelling (the first probe run toggled it off by exactly that window). `game.phase`
 finally lists `'studio'`. Receipt `src/ui/missionBrief.selftest.mjs`; probe
 `.qa-dev/brief-button-probe.mjs` (shown / fades / re-opens / dismisses / hidden in Zone Control).
+
+## Batches 22–24: cleanup slices
+
+Owner ruling: clean up the codebase and docs. `tools/unused-exports.mjs` (promoted from a scratch
+scan) lists every exported declaration no other file mentions — 978 at the start of the evening.
+Slice A un-exported 513 `interface` / `type` declarations used only inside their own file (228
+files across sim, game, net, engine, ui, app, fx, audio, dev); slice B did the same for 30
+functions, constants and classes (24 files), each re-verified against the current tree. Vehicle
+profiles and world sources stayed untouched — their hash receipts pin the text — and so did the
+four hash-pinned files elsewhere (sky, impact decals, the authority, match placement). 441 entries
+remain, nearly all in those protected areas. Docs: the 32 environment-pass checkpoint / candidate /
+review / golden / proof records moved from the docs root to `docs/history/environment-2026-09/`
+(the index reserves the root for current references), the beautification summary and three
+receipts follow them, and five long-dead relative links in the Abrams recovery history are
+repaired; a repository-wide relative-link check passes.
