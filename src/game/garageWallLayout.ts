@@ -33,7 +33,7 @@ export const GARAGE_WALL_BAYS = Object.freeze<readonly GarageWallBay[]>([
 
 const BY_ID = new Map(GARAGE_WALL_BAYS.map((bay) => [bay.id, bay]));
 
-export function getGarageWallBay(id: string): GarageWallBay {
+function getGarageWallBay(id: string): GarageWallBay {
   const bay = BY_ID.get(id);
   if (!bay) throw new Error(`unknown garage wall bay '${id}'`);
   return bay;

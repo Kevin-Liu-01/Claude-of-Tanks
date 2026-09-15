@@ -2,7 +2,7 @@
 // Keep this DOM-free so resolved hit coordinates can be regression-tested
 // without constructing the HUD or a WebGL renderer.
 
-export const SHOT_DIAGRAM_ICON_MARGIN = 1.07;
+const SHOT_DIAGRAM_ICON_MARGIN = 1.07;
 
 type Vector3 = readonly number[];
 

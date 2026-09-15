@@ -200,7 +200,7 @@ export interface WeaponReportProfile {
   twin: boolean;
 }
 
-export const DEFAULT_WEAPON_REPORT: Readonly<WeaponReportProfile> = Object.freeze({
+const DEFAULT_WEAPON_REPORT: Readonly<WeaponReportProfile> = Object.freeze({
   kind: 'cannon', rate: 1, gain: 1, crackGain: 1, tailGain: 1,
   mechanicalHz: 0, mechanicalGain: 0, toneHz: 0, hissGain: 0,
   durationS: 0, twin: false,

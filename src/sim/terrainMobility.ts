@@ -12,7 +12,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 export const DRIVE_ACCEL_PER_HPT = 0.165;
 export const GRAVITY_MPS2 = 9.81;
-export const TRACKED_GRAVITY_SHARE = 0.3;
+const TRACKED_GRAVITY_SHARE = 0.3;
 export const TERRAIN_MARGIN_EPS = 0.01;
 
 const TRACK_GRIP_PER_RESISTANCE = 0.24;
@@ -45,7 +45,7 @@ export function groundResistanceFor(
 }
 
 /** Rated engine acceleration available at the tracks on this ground. */
-export function engineDriveAcceleration(
+function engineDriveAcceleration(
   spec: TerrainMobilitySpec | null | undefined,
   groundType = 'medium',
   powerMult = 1,
@@ -64,7 +64,7 @@ export function engineDriveAcceleration(
  * optional explicit multiplier for vehicles with unusually capable or poor
  * running gear without forcing every existing specification to duplicate it.
  */
-export function trackGripCoefficient(
+function trackGripCoefficient(
   spec: TerrainMobilitySpec | null | undefined,
   groundType = 'medium',
 ): number {

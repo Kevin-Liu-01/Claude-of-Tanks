@@ -5,7 +5,7 @@
  */
 import { t } from './i18n.ts';
 
-export const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
+const RANDOM_MAP_PREVIEW_IDS = Object.freeze([
   'verdant', 'desert', 'winter', 'foundry',
 ] as const);
 

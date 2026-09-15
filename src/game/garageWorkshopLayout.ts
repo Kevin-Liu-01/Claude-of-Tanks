@@ -66,7 +66,7 @@ const BASE_BAY_POSES = Object.freeze<readonly GarageWorkshopBayPose[]>([
 
 // Tiny whole-workshop variations preserve each environment's composition,
 // but never rearrange the four service stories internally.
-export const GARAGE_WORKSHOP_LAYOUT_POSES = Object.freeze([
+const GARAGE_WORKSHOP_LAYOUT_POSES = Object.freeze([
   [0, 0, 0], [0.7, -0.4, 0.028], [-0.5, 0.4, -0.022],
   [0.35, 0.55, 0.018], [-0.65, -0.2, -0.026], [0.5, 0.25, 0.022],
   [-0.4, -0.45, -0.018], [0.55, 0.35, 0.024], [-0.6, 0.2, -0.024],

@@ -143,7 +143,7 @@ async function fetchGitHubStars(): Promise<number | null> {
 }
 
 /** Refresh through the same-origin cached endpoint without blocking UI startup. */
-export function refreshGitHubStars(): Promise<number | null> {
+function refreshGitHubStars(): Promise<number | null> {
   const cached = readCachedStars();
   if (cached && Date.now() - cached.savedAt < STAR_CACHE_TTL_MS) {
     renderGitHubStarCount(cached.count);

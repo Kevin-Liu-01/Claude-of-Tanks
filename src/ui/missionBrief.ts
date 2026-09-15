@@ -44,7 +44,7 @@ interface MissionBriefView {
 }
 
 /** Copy for a sortie: the ladder operation's brief, or the free-sortie framing for any other map. */
-export function missionBriefView(request: Pick<MissionBriefRequest, 'operationId' | 'mapId'>): MissionBriefView {
+function missionBriefView(request: Pick<MissionBriefRequest, 'operationId' | 'mapId'>): MissionBriefView {
   const operation: CampaignOperation | null = campaignOperationById(request.operationId) ?? campaignOperationForMap(request.mapId);
   const mapName = t(`map.${request.mapId}`);
   const objectives = CAMPAIGN_OBJECTIVE_KEYS.map((key) => t(key));

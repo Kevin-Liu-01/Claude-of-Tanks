@@ -110,9 +110,11 @@ worktree and never stage generated tank work wholesale.
   consumables, respawn, clock, roster split, assault escalation, score targets) lives in
   `src/sim/matchRuleset.ts`; the mode controller, `state.ts`, the authority, the HUD and the
   rule cards read that table. Never add a mode literal elsewhere.
-- Export only what another file imports: a scratch scan
-  (`unused-exports`) drives periodic un-export passes; `npm run typecheck` runs the
-  unused-locals check on the core owners.
+- Export only what another file imports: `node tools/unused-exports.mjs` lists the
+  exports nothing else mentions and drives the periodic un-export passes;
+  `npm run typecheck` runs the unused-locals check on the core owners. Leave
+  hash-pinned sources (vehicle profiles, terrain, sky, impact decals, the authority,
+  match placement) to their receipts.
 - Add focused `*.selftest.mjs` coverage and include it in `npm test`.
 - Any playable tank addition or geometry/profile change must run the complete
   combat-anatomy procedure: `npm run tank:anatomy:update`,

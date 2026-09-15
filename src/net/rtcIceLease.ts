@@ -31,7 +31,7 @@ function cloneConfiguration(config: RtcIceLeaseConfiguration): RtcIceLeaseConfig
   };
 }
 
-export function hasTurnServer(servers: RTCIceServer[]): boolean {
+function hasTurnServer(servers: RTCIceServer[]): boolean {
   return servers.some((server) => {
     const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
     return urls.some((url) => typeof url === 'string' && /^turns?:/i.test(url));

@@ -12,7 +12,7 @@ function reasonMessage(signal: AbortSignal): string {
   return 'Network battle entry was cancelled.';
 }
 
-export function createNetworkBattleEntryAbortError(
+function createNetworkBattleEntryAbortError(
   signal: AbortSignal,
 ): NetworkBattleEntryAbortError {
   const error = new Error(reasonMessage(signal)) as NetworkBattleEntryAbortError;

@@ -4,7 +4,7 @@ import { bakeSchematicSteps, validSchematicSize, type SchematicRequest } from '.
 export interface SchematicMessage { id: number; request: SchematicRequest }
 export interface SchematicReply { id: number; request: SchematicRequest; blob: Blob | null }
 
-export function isSchematicMessage(value: RuntimeValue): value is SchematicMessage {
+function isSchematicMessage(value: RuntimeValue): value is SchematicMessage {
   if (!value || typeof value !== 'object' || !('id' in value) || !('request' in value)) return false;
   const request = value.request;
   return typeof value.id === 'number' && Number.isSafeInteger(value.id) && value.id > 0

@@ -163,7 +163,7 @@ function errorMessage(error: RuntimeValue): string {
 }
 
 /** Stable portrait URL for a tank. @param {string} specId */
-export function getTankThumb(specId: string): string {
+function getTankThumb(specId: string): string {
   return `/icons/thumbs/${specId}_angle.webp`;
 }
 

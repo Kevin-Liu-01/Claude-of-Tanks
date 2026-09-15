@@ -23,7 +23,7 @@ function normalizedCount(value: number | null | undefined): number {
   return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
 }
 
-export const DEFAULT_AMMUNITION_BY_TYPE: Readonly<Record<string, number>> = Object.freeze({
+const DEFAULT_AMMUNITION_BY_TYPE: Readonly<Record<string, number>> = Object.freeze({
   AP: 24,
   APCR: 20,
   APFSDS: 24,

@@ -15,7 +15,7 @@ export interface EraVisual {
 }
 
 /** Canonical unique plate names, with legacy single-plate event support. */
-export function activatedEraPlateNames(
+function activatedEraPlateNames(
   event: EraHitEvent | null | undefined,
 ): string[] {
   const names: string[] = [];

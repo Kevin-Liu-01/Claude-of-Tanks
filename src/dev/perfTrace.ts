@@ -101,7 +101,7 @@ declare global {
 }
 
 const VITE_DEV = !!import.meta.env?.DEV;
-export const DEV_TRACE_ACTIVE = typeof window !== 'undefined' && VITE_DEV;
+const DEV_TRACE_ACTIVE = typeof window !== 'undefined' && VITE_DEV;
 
 const PHASES = ['unknown', 'garage', 'battle', 'ended', 'shot', 'studio'];
 const PHASE_CODE = new Map(PHASES.map((name, i) => [name, i]));

@@ -244,5 +244,5 @@ export function schematicUrl(key: string, request: SchematicRequest): Promise<st
     return shared.get(key, { ...request, url: new URL(request.url, document.baseURI).href });
   } catch { return Promise.resolve(null); }
 }
-export function disposeSchematicPreparation(): void { shared?.dispose(); shared = null; }
+function disposeSchematicPreparation(): void { shared?.dispose(); shared = null; }
 if (typeof window !== 'undefined') window.addEventListener('pagehide', disposeSchematicPreparation);

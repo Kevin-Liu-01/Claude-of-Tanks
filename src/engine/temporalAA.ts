@@ -25,7 +25,7 @@ export const TAA_HISTORY_WEIGHT_MOVING = 0.9;
 /** Max view-projection element change per frame above which the camera counts as fast. */
 export const TAA_MOVING_DELTA = 0.02;
 export const TAA_JITTER_LENGTH = 8;
-export const TAA_STALE_MS = 250;
+const TAA_STALE_MS = 250;
 export const TAA_CLIP_GAMMA = 1.0;
 /**
  * History depth is stored as linear view depth over the far plane (half-float
@@ -33,8 +33,8 @@ export const TAA_CLIP_GAMMA = 1.0;
  * quantizes coarser than any useful tolerance and rejected almost every
  * sample). Rejection tolerance is a floor plus a relative share.
  */
-export const TAA_DEPTH_REJECT_MIN = 0.02;
-export const TAA_DEPTH_REJECT_RELATIVE = 0.1;
+const TAA_DEPTH_REJECT_MIN = 0.02;
+const TAA_DEPTH_REJECT_RELATIVE = 0.1;
 
 export function halton(index: number, base: number): number {
   let f = 1;

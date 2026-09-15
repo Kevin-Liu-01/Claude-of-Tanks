@@ -10,7 +10,7 @@
  * visible count (3 s): while warm work is pending the numeral waits on "3",
  * and 3 → 2 → 1 → ROLL OUT always runs on warmed frames at wall-clock pace.
  */
-export const PRE_BATTLE_WARM_HOLD_S = 3;
+const PRE_BATTLE_WARM_HOLD_S = 3;
 
 export function advancePreBattleCountdown(
   seconds: number,

@@ -105,7 +105,7 @@ const HIT_OUTCOME_LABEL_KEYS: Readonly<Record<HitOutcomeId, string>> = Object.fr
 });
 
 /** Resolve the localized label for one outcome id. */
-export function hitOutcomeLabel(id: HitOutcomeId): string {
+function hitOutcomeLabel(id: HitOutcomeId): string {
   return t(HIT_OUTCOME_LABEL_KEYS[id] || 'hud.hitOutcome.no_damage');
 }
 

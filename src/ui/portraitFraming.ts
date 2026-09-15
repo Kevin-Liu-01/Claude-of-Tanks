@@ -128,7 +128,7 @@ export function measurePortraitCoreBounds(
   );
 }
 
-export function measurePortraitFullBounds(
+function measurePortraitFullBounds(
   pixels: ArrayLike<number>,
   width: number,
   height: number,

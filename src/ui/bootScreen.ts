@@ -134,7 +134,7 @@ const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementTy
 // Garage gallery. The first shot has a small boot derivative; later shots are
 // fetched only if the player leaves the entry gate open long enough to see
 // another frame.
-export const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
+const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
 const HERO_ROTATE_MS = 9000;
 
 function afterPaint(): Promise<void> {

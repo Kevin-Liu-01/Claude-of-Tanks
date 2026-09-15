@@ -1,6 +1,6 @@
 export const SHADOW_NORMAL_BIAS_MIN_M = 0.045;
 export const SHADOW_NORMAL_BIAS_MAX_M = 0.28;
-export const SHADOW_NORMAL_BIAS_TEXELS = 0.35;
+const SHADOW_NORMAL_BIAS_TEXELS = 0.35;
 /**
  * Daylight cast-shadow strength. The 1049e4e presentation the owner prefers
  * used Three's full-strength cascades: the sun is fully occluded inside a cast

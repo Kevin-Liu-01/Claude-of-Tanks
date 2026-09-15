@@ -4,8 +4,8 @@
  * in renderScalePolicy.ts; this module owns the final display backing store.
  */
 
-export const DESKTOP_OUTPUT_DPR_CAP = 2;
-export const MOBILE_OUTPUT_DPR_CAP = 3;
+const DESKTOP_OUTPUT_DPR_CAP = 2;
+const MOBILE_OUTPUT_DPR_CAP = 3;
 // Covers current DPR-3 phone viewports at native density (~3.0-3.8 MP) while
 // preventing large tablets/foldables from silently allocating a 5-10 MP
 // default framebuffer plus equally large reconstruction targets.

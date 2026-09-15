@@ -140,13 +140,13 @@ const CREW_I18N: Readonly<Record<string, string>> = Object.freeze({
 
 /** Resolve a module id to its localized label, falling back to the
  *  catalog English label. */
-export function moduleLabel(id: string): string {
+function moduleLabel(id: string): string {
   const key = MODULE_I18N[id];
   return key ? t(key) : (MODULE_LABEL_BY_ID[id] || id);
 }
 
 /** Resolve a crew id to its localized label. */
-export function crewLabel(id: string): string {
+function crewLabel(id: string): string {
   const key = CREW_I18N[id];
   return key ? t(key) : (CREW_LABEL_BY_ID[id] || id);
 }
