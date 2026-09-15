@@ -15,7 +15,14 @@ export async function awaitMapCaptureReadiness(
   world: CaptureWorld,
   getActive: () => CaptureWorld | null,
   timeoutMs = 120_000,
-  clock: CaptureClock = { schedule: setTimeout, cancel: clearTimeout },
+  // Bound wrappers: handing setTimeout itself over as the schedule method made the clock object
+  // its receiver, which Chrome rejects ("Illegal invocation") — and a throw inside the race's
+  // Promise executor becomes a rejection that wins the race whenever the texture promise is
+  // still pending (gate 26 smoke, polders, 2026-09-14).
+  clock: CaptureClock = {
+    schedule: (callback, milliseconds) => setTimeout(callback, milliseconds),
+    cancel: (handle) => clearTimeout(handle),
+  },
 ): Promise<{ mapId: string; requested: number; applied: number }> {
   if (getActive() !== world) throw new Error(`capture map is stale: ${world.mapId}`);
   const state = world.minimapTextureState;

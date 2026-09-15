@@ -67,4 +67,22 @@ assert.match(main, /bakeMinimapForMap: async[\s\S]{0,200}await import\('\.\/dev\
 assert.match(main, /await awaitMapCaptureReadiness\(next, currentWorld\)[\s\S]{0,500}requireTextured: true[\s\S]{0,140}exportMinimapBackground\('image\/webp', 0\.92, true\)/);
 const activation = await readFile(new URL('../world/worldActivationRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(activation, /awaitMapCaptureReadiness|minimapTextureState\.promise/, 'production world activation acquires no new blocking wait');
-console.log('mapCaptureReadiness.selftest: deferred swaps, errors, timeout cleanup, stale worlds, capture-only wiring passed');
+// gate 26 smoke (2026-09-14): the default clock must wrap the timer functions — `schedule: setTimeout`
+// runs window.setTimeout with the clock object as receiver (Chrome: "Illegal invocation"), and the
+// throw inside the race's executor rejected the readiness of any map whose textures were still loading.
+const readiness = await readFile(new URL('./mapCaptureReadiness.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(readiness, /schedule:\s*setTimeout|cancel:\s*clearTimeout/, 'the default clock wraps setTimeout/clearTimeout instead of passing them as methods');
+assert.match(readiness, /schedule: \(callback, milliseconds\) => setTimeout\(callback, milliseconds\)/);
+{
+  // default clock end to end: a pending texture promise that settles later must resolve (not reject)
+  const late = { mapId: 'late', minimapTextureState: { settled: false, results: [], promise: null } };
+  let settle;
+  late.minimapTextureState.promise = new Promise((resolve) => { settle = resolve; });
+  const pending = awaitMapCaptureReadiness(late, () => late, 5000);
+  late.minimapTextureState.settled = true;
+  late.minimapTextureState.results = [{ target: 'minimap', applied: true, failures: [] }];
+  settle();
+  const receipt = await pending;
+  assert.equal(receipt.mapId, 'late');
+}
+console.log('mapCaptureReadiness.selftest: deferred swaps, errors, timeout cleanup, stale worlds, capture-only wiring, default clock passed');
