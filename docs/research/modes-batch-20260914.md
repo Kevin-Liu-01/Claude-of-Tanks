@@ -132,3 +132,12 @@ review / golden / proof records moved from the docs root to `docs/history/enviro
 (the index reserves the root for current references), the beautification summary and three
 receipts follow them, and five long-dead relative links in the Abrams recovery history are
 repaired; a repository-wide relative-link check passes.
+
+## Landed (batches 20–24)
+
+Gate 29 on d65618ea5 (smoke 30/30, core 800, post 45, build; the pre group's 582 receipts rerun
+after a stray process kill interrupted the first pass) and gate 30 on 21885cec8 in the
+self-contained scratch checkout (smoke 30/30, pre 315, core 666, post 42, build). Pushed through
+35656f236; deploy 20 (main-D2byEoBu.js, claude-of-tanks-awxosmmku). Production: touch loop 29/29 in
+portrait and landscape, BRIEF button shown / fades / re-opens / dismisses / hidden elsewhere,
+service record shows the campaign standing, mode loop 38/38 on Turbo Ball and the first operation.
