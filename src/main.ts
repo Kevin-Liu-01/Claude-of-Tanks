@@ -337,6 +337,8 @@ const scene = new THREE.Scene();
 // campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
 const matchModeWorld = createMatchModeWorldPresentation(scene, {
   groundHeight: (x, z) => groundSampler(x, z),
+  // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
+  viewerPosition: () => camera.position,
   setupMaterial: (material) => engineCtx.setupShadowMaterial(material),
   releaseMaterial: (material) => engineCtx.releaseShadowMaterial(material),
 });

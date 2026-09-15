@@ -13,7 +13,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { collectTriangles } from './tank-surface-collect.mjs';
-import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
+import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -22,7 +22,12 @@ const VOXEL = Number(opt('voxel', '0.025'));
 const MAX_LEAK_L = Number(opt('max-leak-l', '0.05'));
 // Running gear, decals, shadow proxies, wires and soft goods are not body: the owner's rule is "hull and turret,
 // not tracks or fenders". Wheel/hub/sprocket names cover the source-fitted road wheels that are not in 'gear' buckets.
-const EXCLUDE = new RegExp(opt('exclude', '^(gear|track|procShadow|vehicleMarking|utility|antenna|aerial|wire|cable|cloth|canvas|tarp|net|ghillie|mesh)|wheel|hub|sprocket|idler|roller|shoe|EndWheel|Skirt|skirt|Fender|fender|Mudguard|mudguard|ExternalArmor'), 'i');
+// Fills to zero (2026-09-15): the check must drop exactly the meshes the fill generator drops. Its own
+// case-insensitive copy of the pattern also matched every unnamed body mesh (three.js names them
+// "Mesh"; the pattern's `^mesh` was meant for the hull's mesh-grille parts), so thousands of hull
+// triangles vanished from the check alone (KF51 89.9 L, Leopard 2A5 6.4 L…). Share DEFAULT_EXCLUDE;
+// an explicit --exclude stays case-insensitive as documented.
+const EXCLUDE = opt('exclude') ? new RegExp(opt('exclude'), 'i') : DEFAULT_EXCLUDE;
 const verbose = flag('verbose');
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // Interior fills 2026-09-13: the shipped tank carries its generated fills; --no-fills measures the authored shells alone.

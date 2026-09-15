@@ -982,6 +982,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/touchControls.selftest.mjs',
     'src/ui/mobileLayout.selftest.mjs',
     'src/ui/minimapOrientation.selftest.mjs',
+    'src/ui/minimapObjectives.selftest.mjs',
     'src/ui/minimapCapturePolicy.selftest.mjs',
     'src/vehicles/trackPatterns.selftest.mjs',
     'tools/track-geometry.selftest.mjs',

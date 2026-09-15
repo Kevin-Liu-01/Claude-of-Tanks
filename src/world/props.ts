@@ -210,6 +210,10 @@ interface InhabitSettings {
   churns?: number;
   laundry?: number;
   handcarts?: number;
+  /** settlement detail 2026-09-15: doorstep bench + pots, second woodpile, gate stack (default on) */
+  doorsteps?: number;
+  woodpiles?: number;
+  gateStacks?: number;
 }
 
 interface TacticalOutcropSettings {
@@ -3770,6 +3774,91 @@ ${snowCap ? `
       placeFenceRun(yardFence, spot[0] - tx * len / 2, spot[1] - tz * len / 2,
         spot[0] + tx * len / 2, spot[1] + tz * len / 2, 0.2);
     };
+    // Settlement detail pass (2026-09-15, owner: "environment and settlement detail beyond the
+    // frontline layer"): the lived-in tells that sit close to the walls, all from the existing
+    // destructible kinds — a bench with its back to the wall and pots (or a bucket where the map
+    // keeps no pottery) on the doorstep, a second woodpile stacked along the wall with its
+    // splitting crate, and a bale-and-crate stack by the yard gate on farm maps (crates and a
+    // barrel elsewhere).
+    // Their own random stream: the batch-1 yard dressing above keeps its exact positions on every
+    // seed (the reservoir's waterworks planned around those positions — a shifted barrel at seed
+    // 2049 sat in the kiosk footprint when the new rows shared yrng).
+    const detailRng = mulberry32(seed + 809);
+    const hasPots = (INH.pots ?? 0) > 0;
+    const hasBales = (INH.bales ?? 0) > 0;
+    // The reservoir's authored waterworks (kiosk, bank, intake and the pipe runs between them)
+    // plan their bodies against every destructible already placed; the settlement details stay
+    // out of those footprints so the assembly never reads a doorstep bench as a blocker.
+    const waterworks = P.reservoirWaterworks;
+    const waterworksClear = (x: number, z: number): boolean => {
+      if (!waterworks) return true;
+      const near = (point: readonly [number, number], radius: number): boolean =>
+        Math.hypot(x - point[0], z - point[1]) < radius;
+      if (near(waterworks.kiosk, 6) || near(waterworks.bank, 8.5) || near(waterworks.intake, 3.5)) return false;
+      const corridor = (a: readonly [number, number], b: readonly [number, number]): boolean => {
+        const dx = b[0] - a[0], dz = b[1] - a[1], len2 = dx * dx + dz * dz || 1;
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / len2));
+        return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t) < 2.5;
+      };
+      return !corridor(waterworks.kiosk, waterworks.bank) && !corridor(waterworks.bank, waterworks.intake);
+    };
+    const detailSpot = (building: PlacedRadius, rMin: number, rMax: number): [number, number] | null => {
+      for (let t = 0; t < 8; t++) {
+        const a = detailRng() * Math.PI * 2, r = building.rr + rMin + detailRng() * (rMax - rMin);
+        const x = building.x + Math.cos(a) * r, z = building.z + Math.sin(a) * r;
+        if (heightField._roadDist(x, z) < 4.5 || noVeg(x, z)) continue;
+        if (heightField.getNormalAt(x, z).y < 0.9) continue;
+        if (!waterworksClear(x, z)) continue;
+        let clear = true;
+        for (const ob of placedB) {
+          if (ob !== building && Math.hypot(x - ob.x, z - ob.z) < ob.rr) { clear = false; break; }
+        }
+        if (clear) return [x, z];
+      }
+      return null;
+    };
+    const placeYardDoorstep = (building: PlacedRadius): void => {
+      if (!(INH.doorsteps ?? 1) || detailRng() >= 0.5) return;
+      const spot = detailSpot(building, 0.35, 1.1);
+      if (!spot) return;
+      const y = heightField.getHeightAt(spot[0], spot[1]);
+      const toWall = Math.atan2(building.x - spot[0], building.z - spot[1]);
+      addDestructible('bench', spot[0], y - 0.03, spot[1], toWall + Math.PI, 0.9 + detailRng() * 0.2);
+      const along = toWall + Math.PI / 2;
+      const count = 1 + ((detailRng() * 2) | 0);
+      for (let i = 0; i < count; i++) {
+        const px = spot[0] + Math.sin(along) * (0.95 + i * 0.5), pz = spot[1] + Math.cos(along) * (0.95 + i * 0.5);
+        if (heightField._roadDist(px, pz) < 4.0 || noVeg(px, pz)) continue;
+        addDestructible(hasPots ? 'pot' : 'bucket', px, heightField.getHeightAt(px, pz) - 0.02, pz,
+          detailRng() * Math.PI * 2, hasPots ? 0.7 + detailRng() * 0.3 : 1);
+      }
+    };
+    const placeYardWoodpile = (building: PlacedRadius): void => {
+      if (!(INH.woodpiles ?? 1) || detailRng() >= 0.3) return;
+      const spot = detailSpot(building, 0.6, 1.8);
+      if (!spot) return;
+      const y = heightField.getHeightAt(spot[0], spot[1]);
+      const yaw = Math.atan2(building.x - spot[0], building.z - spot[1]) + Math.PI / 2;
+      addDestructible('firewood', spot[0], y - 0.03, spot[1], yaw, 0.85 + detailRng() * 0.2);
+      if (detailRng() < 0.6) {
+        const cx = spot[0] + Math.sin(yaw) * 1.3, cz = spot[1] + Math.cos(yaw) * 1.3;
+        if (heightField._roadDist(cx, cz) >= 4.0 && !noVeg(cx, cz)) {
+          addDestructible('crate', cx, heightField.getHeightAt(cx, cz) - 0.03, cz, yaw + (detailRng() - 0.5) * 0.4, 0.8 + detailRng() * 0.2);
+        }
+      }
+    };
+    const placeYardGateStack = (building: PlacedRadius): void => {
+      if (!(INH.gateStacks ?? 1) || detailRng() >= 0.25) return;
+      const spot = detailSpot(building, 2.0, 3.6);
+      if (!spot) return;
+      const y = heightField.getHeightAt(spot[0], spot[1]);
+      const yaw = detailRng() * Math.PI * 2;
+      addDestructible(hasBales ? 'bale' : 'crate', spot[0], y - 0.03, spot[1], yaw, 0.9 + detailRng() * 0.2);
+      const sx = spot[0] + Math.sin(yaw) * 1.4, sz = spot[1] + Math.cos(yaw) * 1.4;
+      if (heightField._roadDist(sx, sz) >= 4.0 && !noVeg(sx, sz)) {
+        addDestructible(hasBales ? 'crate' : 'barrel', sx, heightField.getHeightAt(sx, sz) - 0.03, sz, yaw + 0.3, 0.85 + detailRng() * 0.2);
+      }
+    };
     for (const building of placedB) {
       placeYardFirewood(building);
       placeYardBarrels(building);
@@ -3778,6 +3867,9 @@ ${snowCap ? `
       placeYardLaundry(building);
       placeYardHandcart(building);
       placeYardFence(building);
+      placeYardDoorstep(building);
+      placeYardWoodpile(building);
+      placeYardGateStack(building);
     }
   }
   placeYardClutter();

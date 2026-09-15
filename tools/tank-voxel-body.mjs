@@ -23,6 +23,15 @@ export function voxelise(tris, meshes, { voxel = 0.025, exclude = DEFAULT_EXCLUD
   const nx = Math.ceil((maxX - minX) / VOXEL) + 2 * pad, ny = Math.ceil((maxY - minY) / VOXEL) + 2 * pad, nz = Math.ceil((maxZ - minZ) / VOXEL) + 2 * pad;
   const shell = new Uint16Array(nx * ny * nz); // 0 = empty, else group id + 1
   const idx = (x, y, z) => (z * ny + y) * nx + x;
+  // Fills to zero (2026-09-15): a closed mesh's face that lies exactly ON a lattice plane (the
+  // generated interior-fill boxes are authored on the lattice; many plates sit at round metres)
+  // must rasterise into the voxel on the mesh's INSIDE, so a box spanning voxels k..k1 marks
+  // exactly k..k1 — the same set the generator claimed — and not a neighbour that floor() or a
+  // both-sides rule happened to pick. Marking the outer neighbour widened every fill by a voxel
+  // in the check alone, which lifted deepInterior's hull column spans and turned unclaimed
+  // slivers into "deep" leaks the generator never saw. Each sample is therefore nudged half a
+  // millimetre against the triangle's winding normal before it is binned.
+  const NUDGE = VOXEL * 0.02;
   const mark = (x, y, z, g) => {
     const ix = Math.floor((x - origin[0]) / VOXEL), iy = Math.floor((y - origin[1]) / VOXEL), iz = Math.floor((z - origin[2]) / VOXEL);
     if (ix < 0 || iy < 0 || iz < 0 || ix >= nx || iy >= ny || iz >= nz) return;
@@ -34,11 +43,20 @@ export function voxelise(tris, meshes, { voxel = 0.025, exclude = DEFAULT_EXCLUD
     // sample the triangle densely enough that no voxel it crosses is skipped (step = half a voxel along both barycentric axes)
     const e1 = Math.hypot(t.bx - t.ax, t.by - t.ay, t.bz - t.az), e2 = Math.hypot(t.cx - t.ax, t.cy - t.ay, t.cz - t.az), e3 = Math.hypot(t.cx - t.bx, t.cy - t.by, t.cz - t.bz);
     const n = Math.max(1, Math.ceil(Math.max(e1, e2, e3) / (VOXEL * 0.5)));
+    // winding normal (outward for the closed bodies and the fill boxes); degenerate triangles get no nudge
+    let nxv = (t.by - t.ay) * (t.cz - t.az) - (t.bz - t.az) * (t.cy - t.ay);
+    let nyv = (t.bz - t.az) * (t.cx - t.ax) - (t.bx - t.ax) * (t.cz - t.az);
+    let nzv = (t.bx - t.ax) * (t.cy - t.ay) - (t.by - t.ay) * (t.cx - t.ax);
+    const nl = Math.hypot(nxv, nyv, nzv);
+    if (nl > 1e-12) { nxv *= NUDGE / nl; nyv *= NUDGE / nl; nzv *= NUDGE / nl; } else { nxv = nyv = nzv = 0; }
+    // samples are also drawn a hair toward the centroid: a sample exactly on a triangle's edge that
+    // lies on a lattice plane at the far side of a box (y1 + 1) would floor() into the voxel beyond it
+    const EDGE = 1e-4;
     for (let i = 0; i <= n; i++) {
-      const u = i / n;
+      const u = (i / n) * (1 - EDGE) + EDGE / 3;
       for (let j = 0; j <= n - i; j++) {
-        const v = j / n, w = 1 - u - v;
-        mark(t.ax * w + t.bx * u + t.cx * v, t.ay * w + t.by * u + t.cy * v, t.az * w + t.bz * u + t.cz * v, g);
+        const v = (j / n) * (1 - EDGE) + EDGE / 3, w = 1 - u - v;
+        mark(t.ax * w + t.bx * u + t.cx * v - nxv, t.ay * w + t.by * u + t.cy * v - nyv, t.az * w + t.bz * u + t.cz * v - nzv, g);
       }
     }
   }

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { MINIMAP_RASTER_REVISION } from '../ui/minimapAssetUrl.ts';
 import { Group } from 'three';
 import { createWorldActivationRuntime } from './worldActivationRuntime.ts';
 import { createBattleAtmosphereAccess } from '../engine/battleAtmosphereAccess.ts';
@@ -106,7 +107,7 @@ assert.deepEqual(runtime.raycast('o', 'd', 5), {
   origin: 'o', direction: 'd', maxDistance: 5, mapId: 'desert',
 });
 await runtime.queueMinimap();
-assert.deepEqual(minimapUrls.at(-1), ['desert', '/game/minimaps/desert.webp?v=north-up-v7']);
+assert.deepEqual(minimapUrls.at(-1), ['desert', `/game/minimaps/desert.webp?v=${MINIMAP_RASTER_REVISION}`]);
 assert.ok(events.some(([kind, preset]) => kind === 'sky' && preset === 'desert'));
 assert.ok(!events.some(([kind]) => kind === 'compile'), 'fast activation skips pre-atmosphere programs');
 assert.ok(!events.some(([kind]) => kind === 'shadow'), 'fast activation skips exhaustive shadow warm');
@@ -305,11 +306,11 @@ for (const version of [undefined, 'capture-fixture']) {
   const oasisWorld = world('oasis');
   instance.activate(oasisWorld);
   await instance.queueMinimap();
-  assert.deepEqual(urls, [['oasis', `/game/minimaps/oasis.webp?v=${version || 'north-up-v7-oasis-shoreline-v2'}`]],
+  assert.deepEqual(urls, [['oasis', `/game/minimaps/oasis.webp?v=${version || MINIMAP_RASTER_REVISION}`]],
     'actual activation loads the refreshed Oasis raster, coalescing the prepared request');
   instance.activate(cachedWorld);
   await instance.queueMinimap();
-  assert.deepEqual(urls.at(-1), ['desert', `/game/minimaps/desert.webp?v=${version || 'north-up-v7'}`],
+  assert.deepEqual(urls.at(-1), ['desert', `/game/minimaps/desert.webp?v=${version || MINIMAP_RASTER_REVISION}`],
     'other map cache keys and explicit capture/test revisions stay unchanged');
 }
 

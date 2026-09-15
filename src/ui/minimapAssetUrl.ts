@@ -1,10 +1,12 @@
+/**
+ * Raster revision shared by every battlefield: bump it when the bake changes for
+ * all maps (tactical map 2026-09-15: cartographic tone curve, hillshade, union
+ * shorelines — every raster was re-baked, so every cache entry invalidates).
+ */
+export const MINIMAP_RASTER_REVISION = 'north-up-v8-tactical';
+
 /** Shared by intent prefetch and world activation; keep unchanged maps cached. */
 export function minimapAssetUrl(mapId: string, baseUrl = '/', version?: string): string {
-  const assetVersion = version || (mapId === 'badlands' ? 'north-up-v7-redrock-material-v2'
-    : (mapId === 'frontier' || mapId === 'alpine')
-    ? 'north-up-v7-regional-relief-v1' : mapId === 'oasis'
-    ? 'north-up-v7-oasis-shoreline-v2' : mapId === 'autumn'
-      ? 'north-up-v7-autumn-headlands' : mapId === 'foundry'
-        ? 'north-up-v7-foundry-localized-soil' : 'north-up-v7');
+  const assetVersion = version || MINIMAP_RASTER_REVISION;
   return `${baseUrl || '/'}minimaps/${encodeURIComponent(mapId)}.webp?v=${assetVersion}`;
 }

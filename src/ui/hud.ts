@@ -22,6 +22,11 @@ import { canSelfRightTank } from '../sim/rollover.ts';
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
+import {
+  OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawPennant, drawPickupGlyph,
+  drawProgressArc, drawSpawnGlyph, sideColor, sideFill,
+} from './objectiveGlyphs.ts';
 import { shellTypeLabel } from './garageDossier.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
@@ -191,7 +196,9 @@ export interface HudSpottingView {
   isSpotted(id: string): boolean;
 }
 
-export interface HudMatchModeState {
+// tactical map 2026-09-15: the objective arrays (flags, zones, ball, goals, pickups, spawns)
+// ride along structurally from the sim's presentation state for the minimap markers.
+export interface HudMatchModeState extends ObjectiveStateView {
   id?: string;
   label?: string;
   perspectiveTeam?: 'alpha' | 'bravo';
@@ -1684,7 +1691,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
   border-top:6px solid rgba(255,120,110,.95);
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));}
 .cot-minimap{position:absolute;z-index:var(--hud-layer-controls);right:16px;bottom:16px;width:220px;height:220px;
-  border:1px solid rgba(210,225,240,.28);box-shadow:0 6px 22px rgba(0,0,0,.55);
+  border:1px solid rgba(222,234,246,.46);border-radius:3px;
+  box-shadow:0 0 0 1px rgba(0,0,0,.62),0 0 0 3px rgba(20,26,30,.55),0 10px 28px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.07);
   background:#0d1310;}
 .cot-minimap canvas{display:block;width:100%;height:100%;}
 /* Detection is one compact instrument, revealed after the authoritative
@@ -4414,17 +4422,77 @@ export function initHud(bus: EventBus): HudRuntime {
     buildingFill: '#ccd1d9',
   };
 
+  // Mean luminance of a capture (32x32 downsample): snow, salt and sand maps
+  // keep a gentler curve so their highlights survive the contrast lift.
+  function captureLuminance(capture: HTMLCanvasElement): number {
+    const probe = document.createElement('canvas');
+    probe.width = 32; probe.height = 32;
+    const pctx = requireCanvasContext(probe);
+    pctx.drawImage(capture, 0, 0, 32, 32);
+    const data = pctx.getImageData(0, 0, 32, 32).data;
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    }
+    return sum / (32 * 32 * 255);
+  }
+
   function paintCapturedMinimapUnderlay(
     context: CanvasRenderingContext2D,
     capture: HTMLCanvasElement,
     size: number,
   ): void {
+    // tactical map 2026-09-15: a cartographic tone curve instead of the flat
+    // brightness lift — deeper contrast and richer saturation on the vegetated
+    // maps, a gentler curve where the ground is already bright.
+    const bright = captureLuminance(capture) > 0.58;
     context.imageSmoothingQuality = 'high';
-    context.filter = 'saturate(1.05) brightness(1.15) contrast(1.03)';
+    context.filter = bright
+      ? 'saturate(1.08) brightness(1.04) contrast(1.08)'
+      : 'saturate(1.12) brightness(1.08) contrast(1.10)';
     context.drawImage(capture, 0, 0, size, size);
     context.filter = 'none';
-    context.fillStyle = 'rgba(6,10,8,0.06)';
-    context.fillRect(0, 0, size, size);
+  }
+
+  // tactical map 2026-09-15: hillshade from the height field over the underlay
+  // — light from the map's upper-left, shade on the slopes facing away — so
+  // ridges, valleys and the settlement plateau read as relief instead of
+  // texture noise. Alpha-encoded at a quarter of the map resolution (the
+  // field is smooth at that pitch) and scaled up with smoothing.
+  function paintMinimapRelief(
+    context: CanvasRenderingContext2D,
+    heightField: HudHeightField,
+    size: number,
+  ): void {
+    const cells = Math.max(24, Math.round(size / 6));
+    const relief = document.createElement('canvas');
+    relief.width = cells; relief.height = cells;
+    const rctx = requireCanvasContext(relief);
+    const image = rctx.createImageData(cells, cells);
+    const data = image.data;
+    const half = mapWorldSize / 2;
+    const step = mapWorldSize / cells;
+    const reach = step * 2; // a wide stencil reads hills, not the texture-scale wrinkles
+    const gain = 1.7 / (2 * reach); // slope per metre -> shade
+    for (let row = 0; row < cells; row++) {
+      const z = half - (row + 0.5) * step;
+      for (let column = 0; column < cells; column++) {
+        const x = half - (column + 0.5) * step;
+        // map-right is world -x, map-up is world +z
+        const dRight = heightField.getHeightAt(x - reach, z) - heightField.getHeightAt(x + reach, z);
+        const dUp = heightField.getHeightAt(x, z + reach) - heightField.getHeightAt(x, z - reach);
+        // sun in the upper-left: ground rising toward the lower-right is lit
+        const lit = Math.max(-1, Math.min(1, (dRight - dUp) * gain));
+        const o = (row * cells + column) * 4;
+        const tone = lit > 0 ? 255 : 0;
+        data[o] = tone; data[o + 1] = tone; data[o + 2] = tone;
+        data[o + 3] = Math.round(Math.abs(lit) * (lit > 0 ? 48 : 80));
+      }
+    }
+    rctx.putImageData(image, 0, 0);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(relief, 0, 0, size, size);
   }
 
   function paintProceduralMinimapTerrain(
@@ -4643,6 +4711,68 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
+  // tactical map 2026-09-15: water reads as water — a soft pale rim just inside
+  // the shore and a dark keyline just outside it, following the UNION of the
+  // lake and marsh patches (a river is a chain of overlapping discs; stroking
+  // each disc drew a string of beads). Built from masks: A = the union fill,
+  // B = A blurred; inside band = A minus B, outside band = B minus A.
+  function paintMinimapShorelines(
+    context: CanvasRenderingContext2D,
+    patches: MapDisc[] | undefined,
+    palette: HudMinimapPalette,
+  ): void {
+    if (!patches?.length) return;
+    const width = context.canvas.width;
+    const height = context.canvas.height;
+    const transform = context.getTransform();
+    const scale = Math.max(1, Math.abs(transform.a) || 1);
+    const layer = (): [HTMLCanvasElement, CanvasRenderingContext2D] => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      return [canvas, requireCanvasContext(canvas)];
+    };
+    const [union, uctx] = layer();
+    uctx.setTransform(transform);
+    uctx.beginPath();
+    for (let i = 0; i < patches.length; i++) {
+      const patch = patches[i];
+      for (let vertex = 0; vertex < SHORELINE_SEGMENTS; vertex++) {
+        const angle = vertex / SHORELINE_SEGMENTS * Math.PI * 2;
+        const radius = shorelineRadiusAt(patch, angle);
+        const point = worldToMap(patch.x + Math.cos(angle) * radius,
+          patch.z + Math.sin(angle) * radius);
+        if (vertex === 0) uctx.moveTo(point[0], point[1]);
+        else uctx.lineTo(point[0], point[1]);
+      }
+      uctx.closePath();
+    }
+    uctx.fillStyle = '#fff';
+    uctx.fill();
+    const [blurred, bctx] = layer();
+    bctx.filter = `blur(${(1.9 * scale).toFixed(2)}px)`;
+    bctx.drawImage(union, 0, 0);
+    bctx.filter = 'none';
+    const band = (base: HTMLCanvasElement, subtract: HTMLCanvasElement, tint: string): HTMLCanvasElement => {
+      const [canvas, ctx] = layer();
+      ctx.drawImage(base, 0, 0);
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.drawImage(subtract, 0, 0);
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, width, height);
+      return canvas;
+    };
+    const rim = band(union, blurred, 'rgb(204,234,240)');
+    const keyline = band(blurred, union, palette.waterStroke);
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalAlpha = 0.55;
+    context.drawImage(rim, 0, 0);
+    context.globalAlpha = 0.9;
+    context.drawImage(keyline, 0, 0);
+    context.restore();
+  }
+
   function buildMinimapBg(
     heightField: HudHeightField,
     features?: HudMinimapFeatures | null,
@@ -4668,6 +4798,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const bctx = requireCanvasContext(bg);
     if (snapBg) paintCapturedMinimapUnderlay(bctx, snapBg, N);
     else paintProceduralMinimapTerrain(bctx, heightField, pal, N);
+    paintMinimapRelief(bctx, heightField, N);
 
     // compose feature layers at device resolution (vector coords in CSS px)
     const out = document.createElement('canvas');
@@ -4678,6 +4809,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
     const f = features || {};
     paintMinimapWater(octx, f.waterOrSoft, pal);
+    paintMinimapShorelines(octx, f.waterOrSoft, pal);
     // tree clusters: irregular forest polygons — r7 SATELLITE READ, r4
     // DE-STICKER pass: the repeated dark-outlined octagons read as clipart
     // dabs. Each stand is now a 12-vertex lumpy polygon whose per-vertex
@@ -4746,9 +4878,28 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // Shared minimap chrome: 10x10 grid, coordinate strips, inner vignette —
   // drawn over BOTH underlay styles (ortho capture and procedural fallback).
+  let mmVignette: CanvasGradient | null = null;
+  function minimapVignette(octx: CanvasRenderingContext2D): CanvasGradient {
+    if (mmVignette) return mmVignette;
+    const gradient = octx.createRadialGradient(MM / 2, MM / 2, MM * 0.44, MM / 2, MM / 2, MM * 0.76);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.32)');
+    mmVignette = gradient;
+    return gradient;
+  }
+
   function drawMinimapChrome(octx: CanvasRenderingContext2D): void {
-    // grid 10x10
-    octx.strokeStyle = 'rgba(230,240,250,0.11)';
+    // grid 10x10 — tactical map 2026-09-15: a light hairline over a dark one,
+    // so the grid reads on snow and in dark forest alike
+    octx.lineWidth = 1;
+    octx.strokeStyle = 'rgba(0,0,0,0.20)';
+    octx.beginPath();
+    for (let i = 1; i < 10; i++) {
+      octx.moveTo(i * MM / 10 + 1, 0); octx.lineTo(i * MM / 10 + 1, MM);
+      octx.moveTo(0, i * MM / 10 + 1); octx.lineTo(MM, i * MM / 10 + 1);
+    }
+    octx.stroke();
+    octx.strokeStyle = 'rgba(236,244,252,0.17)';
     octx.lineWidth = 0.7;
     octx.beginPath();
     for (let i = 1; i < 10; i++) {
@@ -4761,13 +4912,13 @@ export function initHud(bus: EventBus): HudRuntime {
     // down the left edge), NUMBERS are the COLUMNS (1 west → 0 east, along
     // the top). Labels render as translucent shadowed text INSIDE the edge
     // cells — the old solid dark gutter strips ate map area.
-    octx.font = `700 7.5px ${FONT_COND}`;
+    octx.font = `700 8px ${FONT_COND}`;
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
     octx.save();
-    octx.shadowColor = 'rgba(0,0,0,0.85)';
-    octx.shadowBlur = 2;
-    octx.fillStyle = 'rgba(255,255,255,0.55)';
+    octx.shadowColor = 'rgba(0,0,0,0.9)';
+    octx.shadowBlur = 3;
+    octx.fillStyle = 'rgba(255,255,255,0.74)';
     for (let i = 0; i < 10; i++) {
       const c = i * MM / 10 + MM / 20;
       // column numbers across the top edge (WoT prints "0" for the 10th)
@@ -4779,10 +4930,16 @@ export function initHud(bus: EventBus): HudRuntime {
     octx.restore();
     octx.textAlign = 'left';
     octx.textBaseline = 'alphabetic';
-    // inner vignette edge
-    octx.strokeStyle = 'rgba(0,0,0,0.45)';
-    octx.lineWidth = 1.5;
-    octx.strokeRect(0.75, 0.75, MM - 1.5, MM - 1.5);
+    // corner vignette (cached gradient): the plate darkens toward the frame
+    octx.fillStyle = minimapVignette(octx);
+    octx.fillRect(0, 0, MM, MM);
+    // inner frame: dark keyline under a chalk hairline
+    octx.strokeStyle = 'rgba(0,0,0,0.55)';
+    octx.lineWidth = 2;
+    octx.strokeRect(1, 1, MM - 2, MM - 2);
+    octx.strokeStyle = 'rgba(226,236,246,0.24)';
+    octx.lineWidth = 1;
+    octx.strokeRect(0.5, 0.5, MM - 1, MM - 1);
   }
 
   function drawMinimapBackground(): void {
@@ -4815,37 +4972,6 @@ export function initHud(bus: EventBus): HudRuntime {
       { x: ax / an, z: az / an, color: '#8df08d', fill: 'rgba(126,232,126,0.30)' },
       { x: ex / en, z: ez / en, color: '#f26e64', fill: 'rgba(240,90,90,0.30)' },
     ];
-  }
-
-  // WoT-style base/spawn glyph: pole + team-colored pennant with a dark halo.
-  // r4: taller pole (pennant at -14..-8) so the own-base pennant clears the
-  // player/ally arrow blips parked on top of it at battle start.
-  function drawSpawnFlag(
-    c: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    color: string,
-  ): void {
-    c.save();
-    c.translate(Math.round(x), Math.round(y));
-    c.lineJoin = 'round';
-    c.strokeStyle = 'rgba(6,9,12,0.85)';
-    c.lineWidth = 3;
-    c.beginPath();
-    c.moveTo(0.5, 4); c.lineTo(0.5, -14);
-    c.stroke();
-    c.beginPath();
-    c.moveTo(0.5, -14); c.lineTo(8.5, -11.2); c.lineTo(0.5, -8.4);
-    c.closePath();
-    c.stroke();
-    c.fillStyle = color;
-    c.fill();
-    c.strokeStyle = 'rgba(228,238,246,0.95)';
-    c.lineWidth = 1.2;
-    c.beginPath();
-    c.moveTo(0.5, 4); c.lineTo(0.5, -14);
-    c.stroke();
-    c.restore();
   }
 
   // minimap blip: WoT's vanilla marker language is ARROWS — a directional
@@ -4959,19 +5085,117 @@ export function initHud(bus: EventBus): HudRuntime {
       const dimmed = Math.hypot(x - playerMapX, y - playerMapY) < 15;
       mmCtx.save();
       if (dimmed) mmCtx.globalAlpha = 0.55;
-      mmCtx.strokeStyle = 'rgba(6,9,12,0.78)';
-      mmCtx.lineWidth = 4.2;
-      mmCtx.beginPath();
-      mmCtx.arc(x, y, 11, 0, Math.PI * 2);
-      mmCtx.stroke();
-      mmCtx.fillStyle = flag.fill || 'rgba(240,246,252,0.07)';
-      mmCtx.strokeStyle = flag.color;
-      mmCtx.lineWidth = 2.4;
-      mmCtx.beginPath();
-      mmCtx.arc(x, y, 11, 0, Math.PI * 2);
-      mmCtx.fill();
-      mmCtx.stroke();
-      drawSpawnFlag(mmCtx, x, y + 3.5, flag.color);
+      // tactical map 2026-09-15: the base is the shared spawn glyph — keylined
+      // ring with cardinal ticks, team cap and pennant (ui/objectiveGlyphs.ts),
+      // the same mark the mode objectives and the world beacons use.
+      drawSpawnGlyph(mmCtx, x, y, 10, flag.color, flag.fill || 'rgba(240,246,252,0.07)');
+      mmCtx.restore();
+    }
+  }
+
+  // tactical map 2026-09-15: mode objectives on the map from the shared marker
+  // derivation (ui/minimapObjectives.ts) in the shared glyph language — spawns,
+  // flag bases and flags, lettered capture zones with control arcs, numbered
+  // Frontline sectors (taken / active / locked), Turbo goals and ball, horde
+  // caches. Pulses breathe on the frame clock; a marker under the player arrow
+  // fades like the bases do.
+  function drawMinimapObjectives(
+    markers: readonly ObjectiveMarker[],
+    timeS: number,
+    playerMapX: number,
+    playerMapY: number,
+    playerDown: boolean,
+  ): void {
+    const breath = 0.5 + 0.5 * Math.sin(timeS * 5.2);
+    for (const marker of markers) {
+      const point = worldToMap(marker.x, marker.z);
+      const x = Math.max(7, Math.min(MM - 7, point[0]));
+      const y = Math.max(7, Math.min(MM - 7, point[1]));
+      const color = sideColor(marker.side);
+      const fill = sideFill(marker.side);
+      const nearPlayer = Math.hypot(x - playerMapX, y - playerMapY) < 14;
+      const halo = (radius: number, strength: number): void => {
+        mmCtx.beginPath();
+        mmCtx.arc(x, y, radius + breath * 3.5, 0, Math.PI * 2);
+        mmCtx.lineWidth = 2;
+        mmCtx.strokeStyle = color;
+        mmCtx.globalAlpha = strength * (1 - breath);
+        mmCtx.stroke();
+        mmCtx.globalAlpha = 1;
+      };
+      mmCtx.save();
+      switch (marker.kind) {
+        case 'spawn': {
+          const reviving = marker.status === 'respawn' && marker.side === 'own' && playerDown;
+          if (nearPlayer && !reviving) mmCtx.globalAlpha = 0.6;
+          if (reviving) halo(12, 0.6);
+          drawSpawnGlyph(mmCtx, x, y, 8.5, color, fill);
+          break;
+        }
+        case 'flagBase': {
+          if (nearPlayer) mmCtx.globalAlpha = 0.7;
+          mmCtx.beginPath();
+          mmCtx.arc(x, y, 10, 0, Math.PI * 2);
+          mmCtx.fillStyle = fill;
+          mmCtx.fill();
+          mmCtx.lineWidth = 3.6;
+          mmCtx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+          mmCtx.stroke();
+          if (marker.status === 'away') mmCtx.setLineDash([4, 3]);
+          mmCtx.lineWidth = 2;
+          mmCtx.strokeStyle = color;
+          mmCtx.stroke();
+          mmCtx.setLineDash([]);
+          break;
+        }
+        case 'flag': {
+          if (marker.pulse) halo(8, 0.55);
+          if (marker.status === 'dropped') {
+            mmCtx.setLineDash([2.5, 2.5]);
+            mmCtx.lineWidth = 1.2;
+            mmCtx.strokeStyle = color;
+            mmCtx.beginPath();
+            mmCtx.arc(x, y, 7.5, 0, Math.PI * 2);
+            mmCtx.stroke();
+            mmCtx.setLineDash([]);
+          }
+          drawPennant(mmCtx, x, y + 4, 15, color);
+          break;
+        }
+        case 'zone':
+        case 'sector': {
+          const locked = marker.status === 'locked';
+          const taken = marker.status === 'taken';
+          // zones can sit ~100 m apart (22 px here): keep the badges from overlapping
+          const r = taken ? 7.5 : marker.kind === 'zone' ? 8.5 : 9.5;
+          if (locked) mmCtx.globalAlpha = 0.72;
+          if (marker.pulse) halo(r + 3, 0.5);
+          drawHexBadge(mmCtx, x, y, r, {
+            fill, stroke: color, label: marker.label, ringWidth: 2,
+            dashed: marker.side === 'contested' || locked,
+            font: `700 ${taken ? 8.5 : 10}px ${FONT_COND}`,
+          });
+          const progress = marker.progress ?? 0;
+          if (progress > 0.01 && progress < 0.995 && marker.progressSide) {
+            drawProgressArc(mmCtx, x, y, r + 3.4, progress, sideColor(marker.progressSide), 2);
+          }
+          if (taken) drawCheck(mmCtx, x + r * 0.7, y + r * 0.7, 5, OBJECTIVE_PALETTE.own);
+          break;
+        }
+        case 'goal':
+          if (nearPlayer) mmCtx.globalAlpha = 0.7;
+          drawGoalGlyph(mmCtx, x, y, 9, color, fill);
+          break;
+        case 'ball':
+          halo(5, 0.35);
+          drawBallGlyph(mmCtx, x, y, 5.2);
+          break;
+        case 'pickup':
+          drawPickupGlyph(mmCtx, x, y, 6, marker.status === 'heal' ? 'heal' : 'ammo');
+          break;
+        default:
+          break;
+      }
       mmCtx.restore();
     }
   }
@@ -5174,26 +5398,16 @@ export function initHud(bus: EventBus): HudRuntime {
       plMapX = pm[0]; plMapY = pm[1];
     }
     // team bases under everything else: WoT convention — a white circle
-    // outline (the base perimeter) with the team-colored flag at its center
-    if (spawnFlags) {
-      // r6: BOTH bases carry the identical-weight WoT flag+circle treatment —
-      // team-tinted cap fill, team-colored ring over a dark keyline, flag.
-      // (The own base's white ring + weak fill used to vanish under the
-      // ally blip cluster while the enemy flag read at full strength.)
-      // r8: a base OVERLAPPED by the player arrow fades to 40% so the spawn
-      // marker cluster stays readable (ring directly under the arrow at
-      // battle start made the own-base corner a busy green clump).
-      // r6-2 (round critique: "own base nearly vanishes into the green
-      // terrain while the enemy base is a bold red circle"): both bases run
-      // the IDENTICAL full-weight treatment — heavier team ring over the
-      // dark keyline, 30% cap fill, brighter flag — and the player-overlap
-      // dim floor rises to 85% (the relaxation pass already clears blips).
-      // r7-2 (round critique: "base circle, player arrow and ally markers
-      // merge into one green blob at spawn"): a base OVERLAPPED by the
-      // player drops to 55% so the arrow cluster reads ON TOP of it — the
-      // r6-2 85% floor kept the ring at nearly full weight exactly where
-      // four green markers stack on it.
-      drawMinimapBases(plMapX, plMapY);
+    // outline (the base perimeter) with the team-colored flag at its center.
+    // r6/r6-2/r7-2 history: both bases carry the identical full-weight
+    // treatment and a base under the player arrow drops to 55 %.
+    // tactical map 2026-09-15: modes whose objectives stand on the spawns
+    // (flag bases, goals) or that carry their own spawn markers skip the
+    // generic base rings; every other objective is drawn by kind.
+    const markers = objectiveMarkers(frame.matchModeState);
+    if (spawnFlags && !markersStandOnSpawns(markers)) drawMinimapBases(plMapX, plMapY);
+    if (markers.length) {
+      drawMinimapObjectives(markers, frame.timeS, plMapX, plMapY, !!player?.combat?.destroyed);
     }
     // enemy / ally blips (spotting-gated for live enemies)
     // r5: live arrow blips are COLLECTED first, then relaxed to a minimum

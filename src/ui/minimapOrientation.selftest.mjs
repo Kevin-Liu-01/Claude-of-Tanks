@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import { MAP_IDS, getMapConfig } from '../world/maps/index.ts';
 import { createLayout } from '../world/terrain.ts';
 import { SHORELINE_SEGMENTS, shorelineRadiusAt } from '../world/shoreline.ts';
-import { minimapAssetUrl } from './minimapAssetUrl.ts';
+import { MINIMAP_RASTER_REVISION, minimapAssetUrl } from './minimapAssetUrl.ts';
 import {
   minimapAngleForDirection,
   minimapYawForHeading,
@@ -60,19 +60,18 @@ assert.match(mainSource, /getMinimapAssetUrl\(mapId, import\.meta\.env\.BASE_URL
 assert.match(worldActivationSource, /minimapAssetUrl\(mapId, baseUrl, options\.minimapAssetVersion\)/);
 assert.doesNotMatch(mainSource + worldActivationSource, /north-up-v\d/,
   'callers cannot retain a stale hardcoded raster revision');
+// tactical map 2026-09-15: every raster was re-baked (tone curve, hillshade, union
+// shorelines), so one shared revision invalidates every cache entry at once.
+assert.equal(MINIMAP_RASTER_REVISION, 'north-up-v8-tactical');
 for (const mapId of MAP_IDS) {
-  const revision = mapId === 'badlands' ? 'north-up-v7-redrock-material-v2'
-    : (mapId === 'frontier' || mapId === 'alpine') ? 'north-up-v7-regional-relief-v1'
-    : mapId === 'oasis' ? 'north-up-v7-oasis-shoreline-v2'
-    : mapId === 'autumn' ? 'north-up-v7-autumn-headlands'
-      : mapId === 'foundry' ? 'north-up-v7-foundry-localized-soil' : 'north-up-v7';
+  const revision = MINIMAP_RASTER_REVISION;
   assert.equal(minimapAssetUrl(mapId), `/minimaps/${mapId}.webp?v=${revision}`,
-    'only explicitly refreshed rasters invalidate their previous browser cache entries');
+    'a refreshed raster invalidates its previous browser cache entry');
   assert.equal(minimapAssetUrl(mapId, '/game/'), `/game/minimaps/${mapId}.webp?v=${revision}`);
   assert.equal(minimapAssetUrl(mapId, '/game/', 'capture-fixture'),
     `/game/minimaps/${mapId}.webp?v=capture-fixture`, 'explicit capture/test overrides remain honored');
 }
-assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v7');
+assert.equal(minimapAssetUrl('test/map name', ''), '/minimaps/test%2Fmap%20name.webp?v=north-up-v8-tactical');
 
 // Exercise the actual nested canvas painters without creating the full HUD,
 // WebGL, DOM, or a second copy of their presentation policy.

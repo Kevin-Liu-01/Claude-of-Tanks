@@ -217,6 +217,23 @@ a Soviet school (drums, unditching log, DShK) and US school (M2, sandbags,
 helmet-on-antenna) flavor split. `COLDWAR_IDS` overrides the binary
 `spec.era` for the transitional generation.
 
+### Batch 2 — era hull kits (2026-09-15, triple-A program)
+
+`appendEraHullKit` adds era-specific stowage to the default hull load: WW2 crews pile
+bedrolls on the deck (`packs` on `rearDeck spread`) and non-Soviet hulls lash an unditching
+beam (`log` on `hullRearLow`); Cold War fleets carry extra fuel on the rear deck (`jerry`,
+corner −1 back), a rolled net on the turret side and a steel bin on the other side; modern
+crews stow packs on the turret side, bolt a patch plate on the flank and carry more
+rations. Every row reuses a kit / station pairing the curated manifests already place.
+Source-study rebuilds (`*_x`) and the renamed Revolution original (`leo2_revolution_proto`)
+keep the batch-1 rows exactly (`isSourceStudy`): their silhouettes gate against source
+masks and the Proto's manifest / jitter streams are pinned. **Deferred:** letting X studies
+inherit their base tank's curated manifest — it changes gated silhouettes and needs a
+per-id fidelity A/B first. The garage floor gained the pedestal wear apron
+(`garage_pedestal_wear_apron` in `garageDressing.ts`): scuffed grit ring hugging the
+platform base, two faded tread lanes along the hero heading, drips by the ramp; the deck
+and its painted rim stay masked clean.
+
 ### Asks for the fleet/profile agents (profiles are yours — no edits made)
 
 1. **m60a1 / t34_85 / kv2 low fender shelves** — the placement engine found

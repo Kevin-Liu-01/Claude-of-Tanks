@@ -133,11 +133,21 @@ shadow-free battlefield markers. The HUD presents one compact objective line
 beneath the score plate; reliable mode events drive capture, goal, wave (with the
 repair), sector, respawn, flag and cache feedback.
 
+Tactical map (2026-09-15, `docs/research/tactical-map-20260915.md`): the minimap and
+the world share one objective language — `src/ui/minimapObjectives.ts` derives the
+markers (sides from the viewer's team, zone letters, sector statuses, flag statuses,
+spawns from the new `spawns` field of the presentation state) and
+`src/ui/objectiveGlyphs.ts` draws them; the HUD paints them on the minimap and the
+world presentation rasterises them into floating sprite icons with light columns.
+Do not draw a mode-specific marker anywhere else.
+
 ## Verification
 
     node src/sim/matchRuleset.selftest.mjs
     node src/sim/matchModes.selftest.mjs
     node src/game/campaignOperations.selftest.mjs
+    node src/ui/minimapObjectives.selftest.mjs
+    node src/game/matchModeWorldPresentation.selftest.mjs
     node src/game/campaignProgress.selftest.mjs
     node src/game/campaignDebrief.selftest.mjs
     node src/game/playSurfaceRuntime.selftest.mjs

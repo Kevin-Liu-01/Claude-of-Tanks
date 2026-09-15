@@ -156,6 +156,12 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   let snapshot = run.match.serialize('player');
   assert.equal(snapshot.playerAmmo, 0);
   assert.equal(snapshot.playerAmmoCapacity, 46);
+  // tactical map 2026-09-15: the team spawn centres ride the presentation state (and its
+  // serialisation clones them) so the map and the world can mark them
+  assert.deepEqual(snapshot.spawns.map((spawn) => spawn.team), ['alpha', 'bravo']);
+  assert.ok(snapshot.spawns.every((spawn) => Number.isFinite(spawn.x) && Number.isFinite(spawn.y) && Number.isFinite(spawn.z)));
+  assert.notEqual(snapshot.spawns, run.match.state.spawns, 'serialize clones the spawn list');
+  assert.deepEqual(snapshot.spawns, run.match.state.spawns);
 
   let clock = 7.01;
   let collectedAmmo = false;

@@ -67,7 +67,8 @@ view.update({
   ],
 }, 1);
 assert.equal(view.root.visible, true);
-assert.equal(view.root.children.length, 2);
+// tactical map 2026-09-15: two flags and their two home bases (halo + light column)
+assert.equal(view.root.children.length, 4);
 const alphaFlag = view.root.getObjectByName('alpha-flag');
 const bravoFlag = view.root.getObjectByName('bravo-flag');
 assert.ok(alphaFlag && bravoFlag);
@@ -78,8 +79,15 @@ assertVector(bravoFlag.position, [-8, 7.5, 85], 'carried flag follows world heig
 close(alphaFlag.rotation.y, 0.22, 'alpha flag rotation');
 close(bravoFlag.rotation.y, 0.22 + Math.PI, 'bravo flag rotation');
 for (const [marker, color] of [[alphaFlag, ALLY], [bravoFlag, ENEMY]]) {
-  assert.equal(marker.children.length, 3);
-  const [pole, banner, ring] = marker.children;
+  assert.equal(marker.children.length, 4, 'pole, banner, home ring and the floating pennant icon');
+  const [pole, banner, ring, icon] = marker.children;
+  assert.equal(icon.isSprite, true, 'the flag icon is a sprite');
+  assert.equal(icon.material.type, 'SpriteMaterial');
+  assert.equal(icon.material.depthTest, false, 'objective icons read through terrain and walls');
+  assert.equal(icon.material.toneMapped, false);
+  assert.ok(icon.material.map && icon.material.map.isCanvasTexture, 'the icon carries a rasterised glyph');
+  assert.equal(icon.renderOrder, 6);
+  close(icon.position.y, 7.2, 'flag icon floats above the pennant');
   assert.equal(pole.geometry.type, 'CylinderGeometry');
   assert.deepEqual(pole.geometry.parameters,
     { radiusTop: 0.11, radiusBottom: 0.15, height: 4.5, radialSegments: 8,
@@ -98,6 +106,21 @@ for (const [marker, color] of [[alphaFlag, ALLY], [bravoFlag, ENEMY]]) {
 }
 assert.equal(alphaFlag.children[2].visible, true);
 assert.equal(bravoFlag.children[2].visible, false);
+// the home bases stay at the base while the carried flag travels
+const alphaBase = view.root.getObjectByName('alpha-flag-base');
+const bravoBase = view.root.getObjectByName('bravo-flag-base');
+assert.ok(alphaBase && bravoBase);
+assertVector(bravoBase.position, [-8, 2, 85], 'the enemy base stays home while its flag is carried');
+assert.equal(bravoBase.children.length, 2, 'halo ring and light column');
+const [bravoHalo, bravoColumn] = bravoBase.children;
+assert.equal(bravoHalo.geometry.type, 'RingGeometry');
+assert.equal(bravoColumn.name, 'beacon');
+assert.equal(bravoColumn.geometry.type, 'CylinderGeometry');
+assert.equal(bravoColumn.material.blending, 2, 'the light column is additive'); // THREE.AdditiveBlending
+assert.equal(bravoColumn.material.color.getHex(), ENEMY);
+assert.equal(bravoColumn.material.depthWrite, false);
+assert.notEqual(alphaFlag.children[3].material.map, bravoFlag.children[3].material.map,
+  'own and enemy pennant icons are different rasters');
 
 view.update({
   ...base,
@@ -108,7 +131,7 @@ view.update({
       status: 'dropped', carrierId: null, returnAtS: 12 },
   ],
 }, 1.5);
-assert.equal(view.root.children.length, 2, 'flag markers are retained');
+assert.equal(view.root.children.length, 4, 'flag markers and bases are retained');
 assert.equal(view.root.getObjectByName('alpha-flag'), alphaFlag);
 assertVector(alphaFlag.position, [3, 6.5, -96], 'dropped flag placement');
 close(alphaFlag.rotation.y, 0.33, 'retained flag rotation');
@@ -137,11 +160,24 @@ const zoneExpected = [
   { position: [2, 3, 4], color: AMBER, opacity: 0.68 },
   { position: [40, 5, -6], color: NEUTRAL, opacity: 0.28 },
 ];
+// A and B carry owners (no partial arc, even while B is contested), C is untouched (no arc);
+// the partial-control arc is exercised in the spawn block below
+assert.equal(zoneMarkers[0].userData.arc.visible, false, 'an owned zone shows no partial arc');
+assert.equal(zoneMarkers[1].userData.arc.visible, false, 'an owned contested zone keeps the dashed badge, not an arc');
+assert.equal(zoneMarkers[2].userData.arc.visible, false);
+assert.notEqual(zoneMarkers[0].userData.icon.material.map, zoneMarkers[1].userData.icon.material.map,
+  'zone badges differ by letter and side');
 for (let index = 0; index < zoneMarkers.length; index += 1) {
   const marker = zoneMarkers[index];
-  const [ring, core] = marker.children;
+  const [ring, core, disc, arc, icon] = marker.children;
   assert.equal(marker.visible, true);
-  assert.equal(marker.children.length, 2);
+  assert.equal(marker.children.length, 5, 'ring, core, area disc, progress arc, letter badge');
+  assert.equal(disc.geometry.type, 'CircleGeometry');
+  assert.equal(disc.geometry.parameters.radius, 26.5, 'the disc fills the ring');
+  assert.equal(disc.material.color.getHex(), zoneExpected[index].color, `zone ${index + 1} disc follows the owner`);
+  assert.equal(arc.geometry.type, 'RingGeometry');
+  assert.equal(icon.isSprite, true);
+  close(icon.position.y, 9.5, `zone ${index + 1} badge height`);
   assertVector(marker.position, zoneExpected[index].position, `zone ${index + 1} position`);
   assert.equal(ring.geometry.type, 'RingGeometry');
   close(ring.rotation.x, -Math.PI / 2, `zone ${index + 1} ring rotation`);
@@ -210,7 +246,9 @@ for (let index = 0; index < goalMarkers.length; index += 1) {
   expectedLook.position.copy(marker.position);
   expectedLook.lookAt(midpoint);
   assertQuaternion(marker.quaternion, expectedLook.quaternion, `goal ${index + 1} look-at`);
-  assert.equal(marker.children.length, 1);
+  assert.equal(marker.children.length, 2, 'hoop and the goal icon');
+  assert.equal(marker.children[1].isSprite, true);
+  close(marker.children[1].position.y, 24, 'goal icon floats above the hoop');
   assert.equal(hoop.geometry.type, 'TorusGeometry');
   close(hoop.position.y, 10, `goal ${index + 1} hoop height`);
   assert.equal(marker.userData.markerMaterial, hoop.material);
@@ -240,8 +278,9 @@ const pickupMarkers = Array.from({ length: 12 }, (_, index) =>
 assert.equal(pickupMarkers.every(Boolean), true);
 assert.equal(pickupMarkers.every((marker) => !marker.visible), true,
   'new pickup pool starts hidden');
-const [cage, shellGroup, healGroup] = pickupMarkers[0].children;
-assert.equal(pickupMarkers[0].children.length, 3);
+const [cage, shellGroup, healGroup, cacheIcon] = pickupMarkers[0].children;
+assert.equal(pickupMarkers[0].children.length, 4, 'cage, shells, cross and the cache icon');
+assert.equal(cacheIcon.isSprite, true);
 assert.equal(cage.geometry.type, 'OctahedronGeometry');
 assert.equal(cage.material.wireframe, true);
 assertBasicMaterial(cage.material, NEUTRAL, 0.26, 'pickup cage material');
@@ -312,6 +351,93 @@ assert.equal(pickupMarkers[0].visible, true,
 // lines — sandbag parapet, timber revetment on posts, crates in the lee and a
 // picket-and-wire belt out front — lit, instanced, ground-fitted, planned once
 // per sector layout and hidden for every other mode.
+// tactical map 2026-09-15: team spawns are marked in Zone Control (both sides) and the
+// co-op modes (the human side); CTF and Turbo Ball stand their own objectives on the spawns.
+// Sides follow the viewer's team: a bravo viewer sees its own spawn and zones in ally green.
+{
+  const spawnScene = new Scene();
+  const spawnView = createMatchModeWorldPresentation(spawnScene, { groundHeight: () => 3 });
+  const spawns = [{ team: 'alpha', x: -300, y: 2, z: -300 }, { team: 'bravo', x: 300, y: 4, z: 300 }];
+  const zones = [
+    { id: 'zone-1', x: -100, y: 1, z: 0, control: -1, owner: 'bravo', contested: false },
+    { id: 'zone-2', x: 0, y: 1, z: 0, control: 0.4, owner: null, contested: false },
+    { id: 'zone-3', x: 100, y: 1, z: 0, control: 0, owner: null, contested: false },
+  ];
+  spawnView.update({ ...base, id: 'zone_control', label: 'Zone Control', zones, spawns }, 1);
+  const alphaSpawn = spawnView.root.getObjectByName('alpha-spawn');
+  const bravoSpawn = spawnView.root.getObjectByName('bravo-spawn');
+  assert.ok(alphaSpawn && bravoSpawn, 'both spawns are marked in Zone Control');
+  assert.equal(alphaSpawn.visible && bravoSpawn.visible, true);
+  assertVector(alphaSpawn.position, [-300, 2, -300], 'the spawn mark stands on the spawn centre');
+  assert.equal(alphaSpawn.children.length, 3, 'ring, light column, spawn icon');
+  assert.equal(alphaSpawn.children[0].material.color.getHex(), ALLY);
+  assert.equal(bravoSpawn.children[0].material.color.getHex(), ENEMY);
+  assert.equal(alphaSpawn.children[1].name, 'beacon');
+  assert.equal(alphaSpawn.children[2].isSprite, true);
+  const zone1 = spawnView.root.getObjectByName('capture-zone-1');
+  assert.equal(zone1.userData.markerMaterial.color.getHex(), ENEMY, 'alpha viewer: a bravo zone is enemy red');
+  // the same match seen from bravo
+  spawnView.update({ ...base, perspectiveTeam: 'bravo', id: 'zone_control', label: 'Zone Control', zones, spawns }, 2);
+  assert.equal(bravoSpawn.children[0].material.color.getHex(), ALLY, 'bravo viewer: its own spawn is ally green');
+  assert.equal(alphaSpawn.children[0].material.color.getHex(), ENEMY);
+  assert.equal(zone1.userData.markerMaterial.color.getHex(), ALLY, 'bravo viewer: its own zone is ally green');
+  assert.equal(zone1.userData.discMaterial.color.getHex(), ALLY);
+  const zone2 = spawnView.root.getObjectByName('capture-zone-2');
+  assert.equal(zone2.userData.arc.visible, true, 'partial control shows the arc');
+  assert.equal(zone2.userData.arcMaterial.color.getHex(), ENEMY, 'bravo viewer: alpha progress is enemy red');
+  // the map marks the human spawn in horde and frontline, but a world beacon needs a revive
+  // point: without respawns neither spawn carries one
+  spawnView.update({ ...base, id: 'endless_horde', label: 'Endless Horde', respawns: false,
+    horde: { wave: 1, alive: 0, total: 0, nextWaveInS: 1, healChance: 0.4 }, spawns }, 3);
+  assert.equal(alphaSpawn.visible, false, 'horde: no revive, no spawn beacon');
+  assert.equal(bravoSpawn.visible, false, 'horde: the wave side has no spawn mark');
+  // CTF stands its flag bases on the spawns instead
+  spawnView.update({ ...base, id: 'capture_the_flag', label: 'Capture the Flag', spawns, flags: [
+    { team: 'alpha', baseX: -300, baseY: 2, baseZ: -300, x: -300, y: 4.5, z: -300, status: 'home', carrierId: null, returnAtS: null },
+    { team: 'bravo', baseX: 300, baseY: 4, baseZ: 300, x: 300, y: 6.5, z: 300, status: 'home', carrierId: null, returnAtS: null },
+  ] }, 4);
+  assert.equal(alphaSpawn.visible || bravoSpawn.visible, false, 'CTF: flag bases replace the spawn marks');
+  assert.equal(spawnView.root.getObjectByName('alpha-flag-base').visible, true);
+  spawnView.dispose();
+  assert.equal(spawnScene.children.length, 0);
+}
+
+// tactical map 2026-09-15: icons and light columns fade out around the viewer and icons hold a
+// constant screen size far away (sizeAttenuation sprites grow with distance past 120 m)
+{
+  const viewer = { x: 0, y: 3, z: 0 };
+  const fadeScene = new Scene();
+  const fadeView = createMatchModeWorldPresentation(fadeScene, { viewerPosition: () => viewer });
+  const zones = [
+    { id: 'zone-1', x: 5, y: 1, z: 0, control: 0, owner: null, contested: false },
+    { id: 'zone-2', x: 30, y: 1, z: 0, control: 0, owner: null, contested: false },
+    { id: 'zone-3', x: 420, y: 1, z: 0, control: 0, owner: null, contested: false },
+  ];
+  fadeView.update({ ...base, id: 'zone_control', label: 'Zone Control', zones,
+    spawns: [{ team: 'alpha', x: 0, y: 1, z: 0 }, { team: 'bravo', x: 300, y: 1, z: 300 }] }, 1);
+  const icons = [1, 2, 3].map((index) => fadeView.root.getObjectByName(`capture-zone-${index}`).userData.icon);
+  assert.equal(icons[0].visible, false, 'a badge over the viewer is hidden');
+  close(icons[1].material.opacity, (30 - 16) / (42 - 16), 'a badge a few tank lengths away is fading in');
+  assert.equal(icons[2].material.opacity, 1, 'a far badge is fully visible');
+  close(icons[2].scale.x, 7.5 * 3.5, 'a far badge grows to hold its screen size');
+  close(icons[1].scale.x, 7.5, 'a near badge keeps its base size');
+  const ownSpawn = fadeView.root.getObjectByName('alpha-spawn');
+  assert.equal(ownSpawn.userData.icon.visible, false, 'the spawn you stand on shows no floating mark');
+  close(ownSpawn.userData.beaconMaterial.opacity, 0, 'its light column is faded out too');
+  const farSpawn = fadeView.root.getObjectByName('bravo-spawn');
+  close(farSpawn.userData.beaconMaterial.opacity, 0.12, 'the far light column keeps its authored opacity');
+  viewer.x = 300; viewer.z = 300;
+  fadeView.update({ ...base, id: 'zone_control', label: 'Zone Control', zones,
+    spawns: [{ team: 'alpha', x: 0, y: 1, z: 0 }, { team: 'bravo', x: 300, y: 1, z: 300 }] }, 2);
+  close(farSpawn.userData.beaconMaterial.opacity, 0, 'moving onto a spawn fades its column');
+  close(ownSpawn.userData.beaconMaterial.opacity, 0.12, 'and the other one comes back');
+  // spawns are beacons only where the mode revives players
+  fadeView.update({ ...base, respawns: false, id: 'zone_control', label: 'Zone Control', zones,
+    spawns: [{ team: 'alpha', x: 0, y: 1, z: 0 }] }, 3);
+  assert.equal(ownSpawn.visible, false, 'no revive, no spawn beacon in the world');
+  fadeView.dispose();
+}
+
 {
   const frontScene = new Scene();
   const ground = (x, z) => 2 + x * 0.05 - z * 0.02;
@@ -426,7 +552,8 @@ view.root.add(materiallessMesh);
 const disposedGeometries = new Map();
 const disposedMaterials = new Map();
 view.root.traverse((object) => {
-  if (object.geometry && !disposedGeometries.has(object.geometry)) {
+  // sprites share three's one static plane geometry; the presentation never disposes it
+  if (object.geometry && !object.isSprite && !disposedGeometries.has(object.geometry)) {
     disposedGeometries.set(object.geometry, 0);
     object.geometry.addEventListener('dispose', () => {
       disposedGeometries.set(object.geometry, disposedGeometries.get(object.geometry) + 1);

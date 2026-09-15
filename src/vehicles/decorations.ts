@@ -2115,6 +2115,44 @@ function appendDefaultHullManifest(
   manifest.push({ kit: 'bucket', p: era === 'modern' ? 0.15 : 0.35, v: {}, slot: ['hullRearHang', {}] });
   manifest.push({ kit: 'rations', p: 0.35, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] });
   manifest.push({ kit: 'chain', p: 0.3, v: { links: 5 }, slot: ['bowChain', {}] });
+  // Decoration batch 2 (2026-09-15, triple-A program): era kits on the default load. The source-study
+  // X profiles keep the rows above exactly — their silhouettes are gated against source-model masks.
+  if (!isSourceStudy(spec)) appendEraHullKit(manifest, spec, rng, context);
+}
+
+/**
+ * Source-study rebuilds (`*_x`) gate against source masks, and the renamed Revolution original keeps its
+ * historical manifest and jitter streams: their stowage stays exactly as authored.
+ */
+function isSourceStudy(spec: FleetTankSpec): boolean {
+  return /_x$/.test(spec.id) || spec.id === 'leo2_revolution_proto';
+}
+
+/**
+ * Era-specific hull stowage beyond the common load (decoration batch 2): WW2 crews piled bedrolls on the
+ * deck and lashed an unditching beam; Cold War fleets carried extra fuel on the deck and rolled nets on the
+ * turret; modern crews stow packs on the turret side and bolt patch plates on the flanks. Every row reuses a
+ * kit / station pairing the curated manifests already place.
+ */
+function appendEraHullKit(
+  manifest: DecorManifestRow[],
+  spec: FleetTankSpec,
+  rng: Rng,
+  context: DefaultManifestContext,
+): void {
+  const { era, soviet } = context;
+  if (era === 'ww2') {
+    manifest.push({ kit: 'packs', p: 0.45, v: { n: 3 }, slot: ['rearDeck', { spread: 0.4 }] });
+    if (!soviet) manifest.push({ kit: 'log', p: 0.3, v: { len: Math.min(2.6, spec.dims.widthM * 0.78) }, slot: ['hullRearLow', {}] });
+  } else if (era === 'cold-war') {
+    manifest.push({ kit: 'jerry', p: 0.4, v: { n: 2 }, slot: ['rearDeck', { corner: -1, back: true }] });
+    manifest.push({ kit: 'camonet', p: 0.3, v: { v: 'roll', len: 0.9 }, slot: ['turretSide', { side: 1 }] });
+    if (!context.casemate) manifest.push({ kit: 'bin', p: 0.35, v: { v: 'steel', w: 0.6, h: 0.3, d: 0.4 }, slot: ['turretSide', { side: -1 }] });
+  } else {
+    if (!context.casemate) manifest.push({ kit: 'packs', p: 0.35, v: { n: 2 }, slot: ['turretSide', { side: rng() < 0.5 ? -1 : 1 }] });
+    manifest.push({ kit: 'patch', p: 0.3, v: { w: 0.45, h: 0.4 }, slot: ['hullSide', { side: -1, zFrac: 0.15 }] });
+    manifest.push({ kit: 'rations', p: 0.3, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] });
+  }
 }
 
 function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {

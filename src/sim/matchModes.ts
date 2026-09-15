@@ -180,6 +180,14 @@ interface GoalState {
   z: number;
 }
 
+/** tactical map 2026-09-15: a team's spawn centre, so the map and the world can mark it. */
+interface SpawnMarkerState {
+  team: ObjectiveTeam;
+  x: number;
+  y: number;
+  z: number;
+}
+
 interface PickupState {
   id: string;
   kind: 'heal' | 'ammo';
@@ -201,6 +209,7 @@ export interface MatchModePresentationState {
   zones: ZoneState[];
   ball: BallState | null;
   goals: GoalState[];
+  spawns: SpawnMarkerState[];
   horde: {
     wave: number;
     alive: number;
@@ -430,6 +439,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     zones,
     ball,
     goals,
+    // tactical map 2026-09-15: the team spawn centres (the flag bases / goals stand on them in
+    // CTF and Turbo Ball; Zone Control marks both, the co-op modes only the human side)
+    spawns: (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => ({
+      team, x: centers[team].x, y: terrainHeight(centers[team].x, centers[team].z) + 0.1, z: centers[team].z,
+    })),
     horde: id === 'endless_horde' || id === 'frontline_assault' ? {
       wave, alive: 0, total: 0, nextWaveInS: 0, healChance: 0,
     } : null,
@@ -958,6 +972,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       zones: zones.map((zone) => ({ ...zone })),
       ball: ball ? { ...ball } : null,
       goals: goals.map((goal) => ({ ...goal })),
+      spawns: state.spawns.map((spawn) => ({ ...spawn })),
       horde: state.horde ? { ...state.horde } : null,
       line: state.line ? { ...state.line } : null,
       pickups: pickups.filter((pickup) => pickup.active).map((pickup) => ({ ...pickup })),

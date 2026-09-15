@@ -35,6 +35,7 @@ import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant } from './garageVariants.ts';
 import { VERDANT_GANTRY } from './garageGantry.ts';
+import { GARAGE_HERO_HEADING_RAD, GARAGE_PLATFORM_GEOMETRY } from './garagePresentationPose.ts';
 import { auditGarageWallBays, garageWallTransform } from './garageWallLayout.ts';
 import {
   ABRAMS_FLAMMABLE_BAY_OFFSET,
@@ -431,6 +432,90 @@ export function createGarageDressing(
       g.quadraticCurveTo(120, 96 + off, 250, 22 + off * 0.6);
       g.stroke();
     }
+    return c;
+  }
+
+  // Triple-A garage program (2026-09-15): the floor remembers the tanks that rolled onto
+  // the turntable. One decal — a scuffed apron hugging the platform base (rubber and grit
+  // ground into the concrete where tracks pivot), two faded tread lanes along the hero
+  // heading (the way in and out), a few drips by the ramp. Everything stays OUTSIDE the
+  // painted ring: the deck itself is masked clean, so the pedestal read is untouched.
+  function makePedestalWearTexture(spanM: number): HTMLCanvasElement {
+    const c = document.createElement('canvas');
+    const N = 1024;
+    c.width = N; c.height = N;
+    const g = c.getContext('2d')!;
+    const px = N / spanM; // texture px per metre
+    const cx = N / 2, cy = N / 2;
+    const baseR = GARAGE_PLATFORM_GEOMETRY.baseRadiusM * px;
+    const wearRng = mulberry32(0x5eed);
+    // scuffed apron: a soft annulus that fades outward
+    const apron = g.createRadialGradient(cx, cy, baseR, cx, cy, baseR + 1.6 * px);
+    apron.addColorStop(0, 'rgba(14,16,18,0.26)');
+    apron.addColorStop(0.45, 'rgba(14,16,18,0.13)');
+    apron.addColorStop(1, 'rgba(14,16,18,0)');
+    g.fillStyle = apron;
+    g.beginPath();
+    g.arc(cx, cy, baseR + 1.6 * px, 0, Math.PI * 2);
+    g.fill();
+    // grit arcs: short rotational streaks where tracks turned on the spot
+    g.lineCap = 'round';
+    for (let i = 0; i < 140; i++) {
+      const r = baseR + (0.1 + wearRng() * 1.2) * px;
+      const a0 = wearRng() * Math.PI * 2;
+      const len = (0.15 + wearRng() * 0.6) / (r / px);
+      g.strokeStyle = `rgba(10,12,14,${(0.05 + wearRng() * 0.12).toFixed(3)})`;
+      g.lineWidth = 1 + wearRng() * 2.2;
+      g.beginPath();
+      g.arc(cx, cy, r, a0, a0 + len);
+      g.stroke();
+    }
+    // two heavier pivot scuffs
+    for (const a of [0.9, 4.1]) {
+      g.strokeStyle = 'rgba(12,13,15,0.16)';
+      g.lineWidth = 0.34 * px;
+      g.beginPath();
+      g.arc(cx, cy, baseR + 0.55 * px, a, a + 0.85);
+      g.stroke();
+    }
+    // tread lanes along the texture's vertical axis, through the platform, masked out later
+    const gauge = 2.85 * px, laneW = 0.62 * px;
+    const laneEnd = spanM / 2 * px - 6;
+    for (const sx of [-1, 1]) {
+      const x = cx + sx * gauge / 2;
+      const fade = g.createLinearGradient(0, cy - laneEnd, 0, cy + laneEnd);
+      fade.addColorStop(0, 'rgba(16,18,20,0)');
+      fade.addColorStop(0.2, 'rgba(16,18,20,0.14)');
+      fade.addColorStop(0.5, 'rgba(16,18,20,0.2)');
+      fade.addColorStop(0.8, 'rgba(16,18,20,0.14)');
+      fade.addColorStop(1, 'rgba(16,18,20,0)');
+      g.fillStyle = fade;
+      g.fillRect(x - laneW / 2, cy - laneEnd, laneW, laneEnd * 2);
+      // tread bars
+      g.fillStyle = 'rgba(10,12,14,0.16)';
+      for (let y = cy - laneEnd; y < cy + laneEnd; y += 0.27 * px) {
+        const d = Math.abs(y - cy) / laneEnd;
+        if (wearRng() < 0.35 + d * 0.5) continue;
+        g.fillRect(x - laneW / 2 + 2, y, laneW - 4, 0.09 * px);
+      }
+    }
+    // drips by the approach edge
+    for (const [dx, dy, r] of [[-0.6, baseR / px + 1.1, 0.22], [0.35, baseR / px + 1.7, 0.16], [1.1, -(baseR / px + 1.3), 0.19]]) {
+      const drip = g.createRadialGradient(cx + dx * px, cy + dy * px, 0, cx + dx * px, cy + dy * px, r * px);
+      drip.addColorStop(0, 'rgba(8,9,11,0.42)');
+      drip.addColorStop(1, 'rgba(8,9,11,0)');
+      g.fillStyle = drip;
+      g.beginPath();
+      g.arc(cx + dx * px, cy + dy * px, r * px, 0, Math.PI * 2);
+      g.fill();
+    }
+    // the deck and its painted rim stay clean
+    g.globalCompositeOperation = 'destination-out';
+    g.fillStyle = '#000';
+    g.beginPath();
+    g.arc(cx, cy, baseR + 1.5, 0, Math.PI * 2);
+    g.fill();
+    g.globalCompositeOperation = 'source-over';
     return c;
   }
 
@@ -2154,6 +2239,19 @@ export function createGarageDressing(
       skid.scale.set(kw, kw, 1);
       skid.position.set(kx, 0.027, kz);
       group.add(skid);
+    }
+    // pedestal wear apron and tread lanes (triple-A garage program, 2026-09-15)
+    {
+      const wearSpanM = GARAGE_PLATFORM_GEOMETRY.baseRadiusM * 2 + 16;
+      const wearMat = track(new THREE.MeshBasicMaterial({
+        map: track(canvasTexture(makePedestalWearTexture(wearSpanM))), transparent: true, depthWrite: false,
+      }));
+      const wear = new THREE.Mesh(track(new THREE.PlaneGeometry(1, 1)), wearMat);
+      wear.name = 'garage_pedestal_wear_apron';
+      wear.rotation.set(-Math.PI / 2, 0, GARAGE_HERO_HEADING_RAD);
+      wear.scale.set(wearSpanM, wearSpanM, 1);
+      wear.position.set(0, 0.023, 0);
+      group.add(wear);
     }
     // painted guide spur splitting from the center lane toward bay A
     {

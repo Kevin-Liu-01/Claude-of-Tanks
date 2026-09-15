@@ -111,6 +111,14 @@ for (const id of ids) {
   const grid = voxelise(tris, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });
   const ext = floodExterior(grid); const deep = deepInterior(grid);
   const { shell, nx, ny, nz, origin } = grid;
+  // Fills to zero (2026-09-15): the residual test must see the fills exactly as the watertight check
+  // will — as shell voxels of the `<component>InteriorFill` meshes the factory adds. Marking them as
+  // group 1 (whatever mesh came first) gave the hull / turret column spans of deepInterior a
+  // different shape than the check's, so a generator residual of 0 L did not mean a check of 0 L.
+  const fillGroup = [0, 0, 0, 0];
+  for (const [comp, key] of [[1, 'hull'], [2, 'turret'], [3, 'gun']]) {
+    grid.groups.push(`${key}InteriorFill`); fillGroup[comp] = grid.groups.length; // shell value = index + 1
+  }
   // leak voxels with component; moving-part columns skipped
   const proper = turretProperSpans(grid), moving = movingSpans(grid);
   const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0;
@@ -176,7 +184,7 @@ for (const id of ids) {
     // claim the filled voxels (and mark them shell for the residual test)
     for (let cz = 0; cz < cnz; cz++) for (let cy = 0; cy < cny; cy++) for (let cx = 0; cx < cnx; cx++) {
       const c = cell[(cz * cny + cy) * cnx + cx]; if (!c) continue;
-      for (let dz = 0; dz < step; dz++) for (let dy = 0; dy < step; dy++) for (let dx = 0; dx < step; dx++) { const i = ((cz * step + dz) * ny + (cy * step + dy)) * nx + (cx * step + dx); compOf[i] = c; vox[i] = 0; claimed[i] = 1; shell[i] = 1; }
+      for (let dz = 0; dz < step; dz++) for (let dy = 0; dy < step; dy++) for (let dx = 0; dx < step; dx++) { const i = ((cz * step + dz) * ny + (cy * step + dy)) * nx + (cx * step + dx); compOf[i] = c; vox[i] = 0; claimed[i] = 1; shell[i] = fillGroup[c]; }
     }
   }
   }
@@ -191,7 +199,8 @@ for (const id of ids) {
   const ext2 = floodExterior(grid); const deep2 = deepInterior(grid); let residual = 0;
   for (let i = 0; i < shell.length; i++) if (ext2[i] && deep2[i]) residual++;
   const L = (n) => +(n * VOXEL ** 3 * 1000).toFixed(1);
-  out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(4)), t: turretOrigin.map((v) => +v.toFixed(4)), g: gunOrigin.map((v) => +v.toFixed(4)), ...entry };
+  // origins at 6 decimals: a 4-decimal origin put every fill face a few microns off the lattice
+  out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(6)), t: turretOrigin.map((v) => +v.toFixed(6)), g: gunOrigin.map((v) => +v.toFixed(6)), ...entry };
   const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
   stats.push(row);
   console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, gun-frame under moving parts ${row.skippedL} L (${row.ms} ms)`);

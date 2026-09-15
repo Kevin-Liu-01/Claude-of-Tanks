@@ -110,6 +110,10 @@ worktree and never stage generated tank work wholesale.
   consumables, respawn, clock, roster split, assault escalation, score targets) lives in
   `src/sim/matchRuleset.ts`; the mode controller, `state.ts`, the authority, the HUD and the
   rule cards read that table. Never add a mode literal elsewhere.
+- Objective markers (spawns, flags, zones, sectors, goals, caches) come from one derivation,
+  `src/ui/minimapObjectives.ts`, and one glyph set, `src/ui/objectiveGlyphs.ts`; the HUD
+  minimap and `src/game/matchModeWorldPresentation.ts` both consume them. A new objective
+  gets a marker kind and a glyph there, never an ad-hoc drawing in the HUD or the world.
 - Export only what another file imports: `node tools/unused-exports.mjs` lists the
   exports nothing else mentions and drives the periodic un-export passes;
   `npm run typecheck` runs the unused-locals check on the core owners. Leave
