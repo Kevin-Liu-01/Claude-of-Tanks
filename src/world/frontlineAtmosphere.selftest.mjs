@@ -70,7 +70,16 @@ gapsWithin(a.runtime.log, 'flyover', FRONTLINE_LIMITS.flyoverIntervalS);
 
 // Geometry envelope: columns beyond the playable half-map and below the horizon ring; aircraft inside the sky.
 const columns = a.parent.getObjectByName('frontline-smoke-columns');
-assert.ok(columns.count >= FRONTLINE_LIMITS.columns[0] && columns.count <= FRONTLINE_LIMITS.columns[1]);
+// 2026-09-15: a plume is FRONTLINE_LIMITS.columnPuffs billboard puffs sharing the column matrix
+assert.equal(columns.count % FRONTLINE_LIMITS.columnPuffs, 0, 'whole plumes only');
+const plumeCount = columns.count / FRONTLINE_LIMITS.columnPuffs;
+assert.ok(plumeCount >= FRONTLINE_LIMITS.columns[0] && plumeCount <= FRONTLINE_LIMITS.columns[1], `${plumeCount} plumes`);
+const puffs = columns.geometry.getAttribute('aPuff');
+for (let i = 0; i < columns.count; i++) {
+  assert.ok(puffs.getX(i) >= 0 && puffs.getX(i) < 1.05, 'rise phase in the cycle');
+  assert.ok(puffs.getZ(i) >= 0.8 && puffs.getZ(i) <= 1.25, 'puff size scale');
+  assert.ok([0, 1, 2, 3].includes(puffs.getW(i)), 'atlas variant');
+}
 const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
 for (let i = 0; i < columns.count; i++) {
   columns.getMatrixAt(i, m); m.decompose(p, q, s);
