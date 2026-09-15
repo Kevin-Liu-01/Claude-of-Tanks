@@ -14,7 +14,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[0,1.446436,.3041853764];
 const GUN:Point3=[0,1.6650417561,1.5303753764];
-const T62MV1_X_DATUMS={
+export const T62MV1_X_DATUMS={
   dims:{hullLengthM:6.363553662,overallLengthM:9.510790337,widthM:3.30,heightM:2.082969},
   turretPivot:YAW,trunnion:GUN,muzzleZ:5.920914939,
   highestFittingM:2.757345597,
