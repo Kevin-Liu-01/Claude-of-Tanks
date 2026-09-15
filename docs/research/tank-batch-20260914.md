@@ -170,3 +170,21 @@ the wrap shifts the right-view registration against the GLB), recorded as a flee
   no longer sits on 3.
 - Per-map water bodies beyond the turbidity field (`waterContact.ts`: cold sea, glacial lake,
   silt river, mud pool, obsidian lake …).
+
+### Landed (2026-09-14 evening)
+
+Gate 26 on 24b1a7b9c: pre 582 / core 800 / post 45 receipts green and the private build green; its
+all-map smoke failed on polders with "Illegal invocation" — `awaitMapCaptureReadiness` handed
+`setTimeout` over as the default clock's method, so the timeout promise rejected inside the race and
+won it whenever a map's textures were still loading (twenty maps had settled first). Fixed in
+4748e33f0 (bound wrappers, receipt drives the default clock through a late promise); gate 27 reran
+the smoke (30/30), the receipt and the build. Release check runs 4 and 5 fell to machine load during
+the fidelity capture and to an unregistered receipt left in the checkout; run 6 passed end to end on
+t90a_burlak_x, strv122_x, leo2a4m_x, kf51_x, t80u_x, amx40_x, leclerc_x, t90m_x. Deploy 18
+(main-CquDnnhm.js, claude-of-tanks-bn66bd817): production map smoke reached battle on verdant /
+frontier / alpine with no errors; live wheel materials read dish #504e3d–#534d3c over tire #292a28
+(the floor holds); garage renders of six tanks OK; touch loop 26/28 on production (portrait) — the
+fire-tap miss was production latency (passes locally), the settings scenario looked for the garage
+gear on the battlefield (probe fixed: the touch layer's own quick button), and two findings remain
+for the next mobile pass: the quick settings button listens for `click`, which the browser withholds
+while a steering finger is down, and a far up-right joystick drag in landscape read speed 0.

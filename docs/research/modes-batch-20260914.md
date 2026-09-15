@@ -81,3 +81,12 @@ ladder sortie as trigger). Ladder cards show stars and the operation clock / dif
 - Frontline Assault stays solo-only on the wire (the coordinator rejects it; the play menu says so).
 - `game.phase` still lacks `'studio'` in its union (studio.ts casts).
 - RECORD modal campaign section and a HUD button to reopen the mission brief were not built.
+
+## Landed
+
+Gate 28 on the batch (pre 315 / core 665 / post 42 receipts green, all-map smoke 30/30, private
+build) in the self-contained batch checkout; typecheck clean; the mode-loop probe 140/140 on the
+landed tree (every mode, two ladder operations: stamps, HUD, clocks, results, end screen, campaign
+block, Garage return, formation roster 10/10 Russian on Tarkhan Steppe). Pushed as 8388bda3f;
+deploy 19 (main-wgQRTYGc.js, claude-of-tanks-9salxlpk1): production map smoke reached battle on verdant
+and steppe with no errors, and the same mode-loop probe passed 140/140 against the live site.
