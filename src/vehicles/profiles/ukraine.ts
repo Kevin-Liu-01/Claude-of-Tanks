@@ -2334,7 +2334,9 @@ function addCageBar(
   ry = 0,
   rz = 0,
 ): void {
-  P.add('turretDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
+  // open lattice (2026-09-15): cage bars are exterior air for the body rasters — the interior-fill
+  // generator once filled this cage as turret interior (the grey side panels the owner saw)
+  P.add('turretOpenLatticeDark', KIT.box(w, h, d), x, y, z, rx, ry, rz);
 }
 
 const ABRAMS_DRONE_CAGE_STATIONS: readonly CageStation[] = Object.freeze([

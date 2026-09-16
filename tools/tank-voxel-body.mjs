@@ -2,7 +2,12 @@
 // conservative triangle voxelisation of the body (running gear, decals, shadow proxies, wires and soft goods
 // excluded), exterior flood fill, and the "deep interior" test (shell in all six axis directions AND inside the
 // hull's or turret's own vertical shell span at that column).
-export const DEFAULT_EXCLUDE = /^(gear|track|procShadow|vehicleMarking|utility|antenna|aerial|wire|cable|cloth|canvas|tarp|net|ghillie|mesh)|wheel|hub|sprocket|idler|roller|shoe|EndWheel|Skirt|skirt|Fender|fender|Mudguard|mudguard|ExternalArmor/;
+// 2026-09-15: ghillie meshes are named `<id>_ghillie_<carrier>_<layer>`, so `ghillie` must match anywhere — anchored,
+// the M1A1 SA (Ukraine)'s cage net sealed its drone cage and the generator filled the whole cage as turret interior
+// (the grey panels the owner saw covering the cage). Open-lattice buckets (drone cages, slat screens, basket
+// frames) are exterior air here as they are for the standard check's continuity raster: a cage's bars never
+// enclose a body volume, so the generator must not fill one.
+export const DEFAULT_EXCLUDE = /^(gear|track|procShadow|vehicleMarking|utility|antenna|aerial|wire|cable|cloth|canvas|tarp|net|ghillie|mesh)|wheel|hub|sprocket|idler|roller|shoe|EndWheel|Skirt|skirt|Fender|fender|Mudguard|mudguard|ExternalArmor|ghillie|OpenLattice/;
 
 /** Conservative voxelisation: every voxel a triangle passes through becomes shell (owner = first writer). */
 export function voxelise(tris, meshes, { voxel = 0.025, exclude = DEFAULT_EXCLUDE } = {}) {

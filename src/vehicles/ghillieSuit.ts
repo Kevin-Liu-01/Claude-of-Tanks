@@ -883,13 +883,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         yAt: (x, z) => 1.38 + Math.cos(x * 1.2) * 0.012 - Math.max(0, z - 1.5) * 0.10,
         outline: [[-1.72, -3.42], [1.72, -3.42], [2.10, -2.82], [2.02, 1.80], [1.58, 2.66], [0.54, 2.66], [0.54, 1.82], [-0.54, 1.82], [-0.54, 2.66], [-1.58, 2.66], [-2.02, 1.80], [-2.10, -2.82]],
         holes: [rect(-0.54, 0.54, 1.62, 2.74), rect(-0.48, 0.48, 0.80, 1.70)], seed: 245 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.38, z1: 2.46, nz: 42, ny: 10,
-        topAt: (z) => 1.36 - Math.max(0, z - 1.5) * 0.09,
-        bottomAt: (z) => 0.12 + Math.sin(z * 3.0) * 0.032,
-        outAt: (_z, t) => 2.10 + (1 - t) * 0.045, seed: 253 + side })),
-      face: [{ z: 2.72, x0: -1.98, x1: 1.98, y0: 0.16, y1: 1.18, nx: 28, ny: 10,
-        outline: [[-1.88, 0.16], [1.88, 0.16], [1.98, 0.82], [1.48, 1.18], [0.54, 1.18], [0.54, 0.24], [-0.54, 0.24], [-0.54, 1.18], [-1.48, 1.18], [-1.98, 0.82]],
-        holes: [rect(-0.56, 0.56, 0.12, 1.22)], seed: 261 }],
+      // owner 2026-09-15 (evening): the net walls that hung on the cage's sides and front read as
+      // grey panels covering the cage; only the roof drape remains (the cage bars stay visible).
     },
   },
   leo2a6_ua: {

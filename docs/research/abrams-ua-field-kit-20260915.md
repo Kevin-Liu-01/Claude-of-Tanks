@@ -59,3 +59,23 @@ exposed first hit, exact activation, visible depletion, no reactivation, round r
 every turret cassette: all 66 outer-first hits land on the cassette itself 5–8 cm outside the
 turret plane. Icons re-rendered with `node tools/genIcons.mjs --ids=ua_m1a1_x`; the
 regeneration chain and the release check run in the main worktree.
+
+## Cage rework — 2026-09-15 evening
+
+Owner: "make its cage components much better and more properly attached to the tank instead of
+floating." Root cause: the cage's posts, frame and slat brackets were round members built from
+seated endpoints and then seated again by `put()`, so they sat 1.5 m inside the hull; only the
+lattice boxes rendered, floating over the turret. The cage was rebuilt (`roofCage`): eight posts
+standing on the real roof surface (`turretRoofY`, the lower envelope of the turret's roof planes)
+on bolted base plates, outrigger arms to a perimeter frame whose forward bay follows the roof down
+toward the mantlet, diagonal braces, a rod lattice welded into the frame, mesh walls hanging on both
+flanks above the K-1 courses and on the rear, and two struts to the bustle rack's top course; the
+roof sits 1.0 m above the turret so the commander's weapon station clears it. The slat screen now
+hangs just behind the main rack with its brackets in the rack's third course; the net roll rests on
+the rack's top course. Cage and slats live in the `turretOpenLatticeDark` bucket: open lattice is
+exterior air for the body rasters (`tools/tank-voxel-body.mjs` excludes `OpenLattice` and, now
+unanchored, `ghillie`) — the M1A1 SA (Ukraine)'s ghillie net had sealed its drone cage for the
+interior-fill generator, which filled the whole cage as turret interior (the grey side panels the
+owner asked to remove). Receipt: post feet on the roof within 2 mm, frame above 3.10 m, forward bay
+below 3.20 m, slats behind the rack, brackets in the course, net roll on the top course.
+

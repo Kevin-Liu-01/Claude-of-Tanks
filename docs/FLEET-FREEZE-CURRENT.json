@@ -1363,18 +1363,18 @@
       "vertices": 166483
     },
     "ua_m1a1": {
-      "freezeHash": "a5b572e4",
-      "instanceFreezeHash": "c7b5ab36",
-      "assetGeometryHash": "3cc791b6",
-      "meshes": 74,
-      "vertices": 229024
+      "freezeHash": "2f6213a0",
+      "instanceFreezeHash": "982c614c",
+      "assetGeometryHash": "885fd7f0",
+      "meshes": 75,
+      "vertices": 211426
     },
     "ua_m1a1_x": {
-      "freezeHash": "c9c3cfb4",
-      "instanceFreezeHash": "3eb8c7ff",
-      "assetGeometryHash": "3eb8c7ff",
-      "meshes": 183,
-      "vertices": 194202
+      "freezeHash": "357cd452",
+      "instanceFreezeHash": "95534eea",
+      "assetGeometryHash": "95534eea",
+      "meshes": 184,
+      "vertices": 213618
     },
     "ua_m2a3_bradley": {
       "freezeHash": "f9046a44",

@@ -7,65 +7,27 @@
 // and re-seated into the turret frame where the turret owns it. The cassette courses are visual
 // ERA clusters bound to the gameplay zones of abramsSourceXUkraineEraArmor.ts (one depletable
 // bank per course); the cage, slats, jammers and stowage are passive.
+// Cage rework (owner 2026-09-15, evening: "make its cage components much better and more properly
+// attached to the tank instead of floating"): the posts stand on the real roof surface with
+// bolted base plates, the frame follows the roof down toward the mantlet, mesh walls hang on
+// the flanks and the rear, and struts tie the cage to the bustle rack.
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT } from './kit.ts';
 import { roundMember, type XYZ } from './abramsSourceXGeometry.ts';
-import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
-
-/** Outward unit normal and offset: a point p lies on the plane when n·p = d. */
-type Plane = readonly [number, number, number, number];
-type Owner = 'hull' | 'turret';
+import {
+  GLACIS, LEFT_CHEEK, LEFT_SIDE, RIGHT_CHEEK, RIGHT_SIDE, ROOF_Y, type KitOwner as Owner, type Plane,
+  onPlaneX, onPlaneY, onPlaneZ, planeFrame, putKit, seatKit, turretRoofY, turretSideX,
+} from './abramsSourceXKitBase.ts';
 
 const { box, cylY, cylX } = KIT;
-const TURRET = ABRAMS_SOURCE_X_FRAME.turret;
 /** Kontakt-1 4S20 cassette: 251.9 x 131.9 x 70 mm. */
 const BRICK = Object.freeze({ w: .252, h: .132, t: .070 });
-const ROOF_Y = 2.360795;
-const CAGE_Y = ROOF_Y + .55;
 
-// Measured source planes (hull frame) from buildTurretArmor / frontDeck.
-const RIGHT_SIDE: Plane = [.861624, .507547, 0, 2.159152];
-const LEFT_SIDE: Plane = [-.86164, .507521, 0, 2.276882];
-const RIGHT_CHEEK: Plane = [.510997, .499844, .699312, 2.674797];
-const LEFT_CHEEK: Plane = [-.363382, .515021, .776342, 2.888263];
-// frontDeck(): y = 1.64504 - 0.12582 z on the upper glacis (z 1.72 .. 3.91).
-const GLACIS: Plane = [0, .99217, .12483, 1.63216];
-
-function tag(geometry: THREE.BufferGeometry, part: string): THREE.BufferGeometry {
-  geometry.userData.uaKit = part;
-  return geometry;
-}
-
-function seat(owner: Owner, p: XYZ): XYZ {
-  return owner === 'turret' ? [p[0] - TURRET[0], p[1] - TURRET[1], p[2] - TURRET[2]] : p;
-}
-
+const seat = (owner: Owner, p: XYZ): XYZ => seatKit(owner, p);
 function put(P: TankBuilderPort, owner: Owner, bucket: string, part: string,
   geometry: THREE.BufferGeometry, center: XYZ, equipment = true): void {
-  const c = seat(owner, center);
-  const g = tag(geometry, part);
-  if (equipment) P.addEquipment(bucket, g, c[0], c[1], c[2]);
-  else P.add(bucket, g, c[0], c[1], c[2]);
-}
-
-/** Orthonormal frame on a plane: u horizontal along the plane, v up the plane, n outward. */
-function planeFrame(plane: Plane): { u: THREE.Vector3; v: THREE.Vector3; n: THREE.Vector3 } {
-  const n = new THREE.Vector3(plane[0], plane[1], plane[2]).normalize();
-  const u = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), n).normalize();
-  const v = new THREE.Vector3().crossVectors(n, u).normalize();
-  return { u, v, n };
-}
-
-/** Solve the plane for the missing coordinate so an authored (y, z) or (x, y) point sits on it. */
-function onPlaneX(plane: Plane, y: number, z: number): XYZ {
-  return [(plane[3] - plane[1] * y - plane[2] * z) / plane[0], y, z];
-}
-function onPlaneZ(plane: Plane, x: number, y: number): XYZ {
-  return [x, y, (plane[3] - plane[0] * x - plane[1] * y) / plane[2]];
-}
-function onPlaneY(plane: Plane, x: number, z: number): XYZ {
-  return [x, (plane[3] - plane[0] * x - plane[2] * z) / plane[1], z];
+  putKit(P, owner, bucket, 'uaKit', part, geometry, center, equipment);
 }
 
 interface Course {
@@ -155,45 +117,88 @@ function skirtCassettes(P: TankBuilderPort): void {
   });
 }
 
-/** Welded anti-drone cage: eight posts, a tube frame and a rod lattice over the whole roof. */
+/** Welded anti-drone cage over the turret: posts on the real roof surface with bolted base plates,
+ * a tube frame that follows the roof down toward the mantlet, a rod lattice welded into the frame,
+ * mesh walls hanging on both flanks and the rear, and struts tying the cage to the bustle rack. */
 function roofCage(P: TankBuilderPort): void {
-  const x0 = -1.15, x1 = 1.02, z0 = -2.15, z1 = 1.15;
-  const rod = .012;
-  const posts: XYZ[] = [[x0, 0, z0], [x1, 0, z0], [x0, 0, z1], [x1, 0, z1],
-    [x0, 0, (z0 + z1) / 2], [x1, 0, (z0 + z1) / 2], [(x0 + x1) / 2, 0, z0], [(x0 + x1) / 2, 0, z1]];
-  for (const [x, , z] of posts) {
-    put(P, 'turret', 'turretDark', 'cage-post',
-      roundMember(seat('turret', [x, ROOF_Y + .01, z]), seat('turret', [x, CAGE_Y, z]), .022), [0, 0, 0]);
+  const CAGE_Y = ROOF_Y + 1.00; // 3.36 m: clears the CROWS-LP head (3.15 m); the jammer masts rise through
+  const DROP = .20; // the forward bay follows the roof down toward the mantlet
+  const zRear = -2.22, zBend = .30, zFront = 1.20;
+  const xR = 1.30, xL = -1.40; // the frame overhangs the inclined walls (roof edges 1.115 / -1.252)
+  const rod = .006;
+  const frameY = (z: number): number => z <= zBend ? CAGE_Y : CAGE_Y - DROP * (z - zBend) / (zFront - zBend);
+  // members are authored in the hull frame; put() seats the whole geometry once (the first cage seated the
+  // endpoints AND the centre, which sank every post and tube 1.5 m into the hull and left the lattice floating)
+  const member = (part: string, a: XYZ, b: XYZ, r: number): void =>
+    put(P, 'turret', 'turretOpenLatticeDark', part, roundMember(a, b, r), [0, 0, 0]);
+  // perimeter frame with a bend cross tube and a mid cross tube
+  const ring: XYZ[] = [[xL, CAGE_Y, zRear], [xR, CAGE_Y, zRear], [xR, CAGE_Y, zBend], [xR, CAGE_Y - DROP, zFront],
+    [xL, CAGE_Y - DROP, zFront], [xL, CAGE_Y, zBend]];
+  for (let k = 0; k < ring.length; k++) member('cage-frame', ring[k], ring[(k + 1) % ring.length], .020);
+  member('cage-frame', [xL, CAGE_Y, zBend], [xR, CAGE_Y, zBend], .020);
+  member('cage-frame', [xL, CAGE_Y, -1.00], [xR, CAGE_Y, -1.00], .020);
+  // posts stand on the roof inboard of the frame: base plate, four bolts, post, outrigger arm
+  const feet: readonly (readonly [number, number])[] = [
+    [-1.10, -2.05], [-1.14, -.95], [-1.10, .30], [-.95, 1.05],
+    [.98, -2.05], [1.00, -.95], [.98, .30], [.85, 1.05],
+  ];
+  for (const [x, z] of feet) {
+    const foot = turretRoofY(x, z), top = frameY(z);
+    put(P, 'turret', 'turretDark', 'cage-foot', box(.14, .010, .14), [x, foot + .005, z]);
+    for (const dx of [-.05, .05]) for (const dz of [-.05, .05]) {
+      put(P, 'turret', 'turretDark', 'cage-bolt', cylY(.011, .011, .012, 8), [x + dx, foot + .016, z + dz]);
+    }
+    member('cage-post', [x, foot + .010, z], [x, top - .010, z], .024);
+    member('cage-arm', [x, top, z], [x < 0 ? xL : xR, top, z], .018);
   }
-  const corners: XYZ[] = [[x0, CAGE_Y, z0], [x1, CAGE_Y, z0], [x1, CAGE_Y, z1], [x0, CAGE_Y, z1]];
-  for (let k = 0; k < 4; k++) {
-    put(P, 'turret', 'turretDark', 'cage-frame',
-      roundMember(seat('turret', corners[k]), seat('turret', corners[(k + 1) % 4]), .020), [0, 0, 0]);
+  // diagonal braces between neighbouring posts on each flank, an X across the rear bay
+  for (const side of [0, 4]) {
+    for (let i = side; i < side + 3; i++) {
+      const [xa, za] = feet[i], [xb, zb] = feet[i + 1];
+      member('cage-brace', [xa, frameY(za) - .06, za], [xb, turretRoofY(xb, zb) + .16, zb], .014);
+    }
   }
-  // lattice: longitudinal rods every 164 mm, transverse rods every 157 mm
-  for (let i = 0; i <= 12; i++) {
-    const x = x0 + .1 + i * ((x1 - x0 - .2) / 12);
-    put(P, 'turret', 'turretDark', 'cage-rod', box(rod, rod, z1 - z0), [x, CAGE_Y + .012, (z0 + z1) / 2]);
+  member('cage-brace', [-1.10, frameY(-2.05) - .06, -2.05], [.98, turretRoofY(.98, -2.05) + .16, -2.05], .014);
+  member('cage-brace', [.98, frameY(-2.05) - .06, -2.05], [-1.10, turretRoofY(-1.10, -2.05) + .16, -2.05], .014);
+  // lattice: longitudinal rods bend with the frame, transverse rods sit on top of them
+  for (let x = xL + .10; x <= xR - .10 + 1e-6; x += .155) {
+    member('cage-rod', [x, CAGE_Y + .008, zRear + .01], [x, CAGE_Y + .008, zBend], rod);
+    member('cage-rod', [x, CAGE_Y + .008, zBend], [x, CAGE_Y - DROP + .008, zFront - .01], rod);
   }
-  for (let j = 0; j <= 20; j++) {
-    const z = z0 + .08 + j * ((z1 - z0 - .16) / 20);
-    put(P, 'turret', 'turretDark', 'cage-rod', box(x1 - x0, rod, rod), [(x0 + x1) / 2, CAGE_Y + .024, z]);
+  for (let z = zRear + .08; z <= zFront - .08 + 1e-6; z += .155) {
+    member('cage-rod', [xL + .02, frameY(z) + .016, z], [xR - .02, frameY(z) + .016, z], rod);
   }
+  // mesh walls: flank rods from the frame edge down to a rail just off the wall, above the K-1 bricks
+  for (const side of [-1, 1] as const) {
+    const xFrame = side > 0 ? xR : xL;
+    const railX = (y: number): number => turretSideX(side, y) + side * .07;
+    for (let z = zRear + .06; z <= zFront - .06 + 1e-6; z += .155) {
+      member('cage-mesh', [xFrame, frameY(z) - .012, z], [railX(2.20), 2.20, z], rod);
+    }
+    for (const y of [2.20, 2.75]) member('cage-rail', [railX(y), y, zRear + .04], [railX(y), y, zFront - .04], .010);
+  }
+  // rear wall down to a rail just behind the turret rear face, clear of the radio mast
+  const zWall = zRear - .04;
+  for (let x = xL + .10; x <= xR - .10 + 1e-6; x += .155) member('cage-mesh', [x, CAGE_Y - .012, zRear], [x, 2.45, zWall], rod);
+  member('cage-rail', [xL + .05, 2.45, zWall], [xR - .05, 2.45, zWall], .010);
+  // struts tie the cage to the bustle rack's top course
+  member('cage-strut', [-1.10, CAGE_Y - .02, zRear], [-1.05, 2.28926, -2.7842], .016);
+  member('cage-strut', [.98, CAGE_Y - .02, zRear], [.95, 2.28926, -2.7842], .016);
 }
 
-/** Slat screen hung behind the bustle rack: vertical bars on two rails and two brackets. */
+/** Slat screen hung behind the bustle rack: vertical bars on two rails, bracketed to the rack's third course.
+ * Open lattice like the cage: exterior air for the body rasters. */
 function bustleSlats(P: TankBuilderPort): void {
-  const z = -3.42, x0 = -1.05, x1 = .95, y0 = 1.85, y1 = 2.55;
+  const z = -2.96, x0 = -1.05, x1 = .95, y0 = 1.85, y1 = 2.55;
   for (let i = 0; i <= 26; i++) {
     const x = x0 + .02 + i * ((x1 - x0 - .04) / 26);
-    put(P, 'turret', 'turretDark', 'slat', box(.020, y1 - y0, .004), [x, (y0 + y1) / 2, z]);
+    put(P, 'turret', 'turretOpenLatticeDark', 'slat', box(.020, y1 - y0, .004), [x, (y0 + y1) / 2, z]);
   }
   for (const y of [y0 + .01, y1 - .01]) {
-    put(P, 'turret', 'turretDark', 'slat-rail', box(x1 - x0, .022, .022), [(x0 + x1) / 2, y, z]);
+    put(P, 'turret', 'turretOpenLatticeDark', 'slat-rail', box(x1 - x0, .022, .022), [(x0 + x1) / 2, y, z]);
   }
   for (const x of [-.85, .78]) {
-    put(P, 'turret', 'turretDark', 'slat-bracket',
-      roundMember(seat('turret', [x, 2.20, z]), seat('turret', [x, 2.20, -3.15]), .014), [0, 0, 0]);
+    put(P, 'turret', 'turretOpenLatticeDark', 'slat-bracket', roundMember([x, 2.159575, z], [x, 2.159575, -2.7842], .014), [0, 0, 0]);
   }
 }
 
@@ -213,11 +218,11 @@ function stowage(P: TankBuilderPort): void {
     put(P, 'turret', 'turretDetail', 'crate', box(.46, .30, .34), [x, ROOF_Y + .15, z]);
     put(P, 'turret', 'turretDark', 'crate', box(.48, .022, .36), [x, ROOF_Y + .30, z]);
   }
-  // camouflage net rolled and lashed across the top of the bustle rack
+  // camouflage net rolled and lashed across the top course of the bustle rack
   const net = cylY(.15, .15, 2.0, 14).rotateZ(Math.PI / 2);
-  put(P, 'turret', 'turretDetail', 'net-roll', net, [-.05, 2.62, -2.72]);
+  put(P, 'turret', 'turretDetail', 'net-roll', net, [-.05, 2.28926 + .15, -2.62]);
   for (const x of [-.7, .6]) {
-    put(P, 'turret', 'turretDark', 'net-strap', box(.025, .32, .32), [x, 2.62, -2.72]);
+    put(P, 'turret', 'turretDark', 'net-strap', box(.025, .32, .32), [x, 2.28926 + .15, -2.62]);
   }
   // low tarp rolls and a stack of spare track shoes on the rear deck, under the bustle sweep
   for (const side of [-1, 1]) {

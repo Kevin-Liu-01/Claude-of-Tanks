@@ -5,6 +5,7 @@ import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { buildAbramsX } from './abramsSourceX.ts';
 import { getSpec } from '../specs.ts';
 import { UA_ERA_PLATE_NAMES } from '../abramsSourceXUkraineEraArmor.ts';
+import { TURRET, turretRoofY } from './abramsSourceXKitBase.ts';
 
 // M1A2 Abrams UA field kit (owner 2026-09-15): the Ukrainian study alone wears Kontakt-1
 // cassettes on the turret cheeks, flanks and glacis, ARAT-style skirt cassettes, a roof cage,
@@ -41,8 +42,13 @@ assert.equal(count('turret-brick'), (7 * 3 * 2 + 4 * 3 * 2) * 2, 'flank and chee
 assert.equal(count('glacis-brick'), 3 * 5 * 2 * 2, 'two glacis banks with lids');
 assert.equal(count('skirt-cassette'), 16, 'eight skirt cassettes per side');
 assert.equal(count('skirt-cassette-stud'), 32);
-assert.equal(count('cage-post'), 8); assert.equal(count('cage-frame'), 4);
-assert.equal(count('cage-rod'), 13 + 21, 'rod lattice over the whole roof');
+// cage rework (owner 2026-09-15, evening): posts on bolted base plates, a bent frame, welded lattice,
+// mesh walls on the flanks and the rear, struts to the rack
+assert.equal(count('cage-post'), 8); assert.equal(count('cage-foot'), 8); assert.equal(count('cage-bolt'), 32);
+assert.equal(count('cage-arm'), 8); assert.equal(count('cage-brace'), 8); assert.equal(count('cage-frame'), 8);
+assert.equal(count('cage-rod'), 34 + 22, 'bent longitudinal rods and transverse rods over the whole roof');
+assert.equal(count('cage-mesh'), 22 * 2 + 17, 'flank and rear mesh rods'); assert.equal(count('cage-rail'), 5);
+assert.equal(count('cage-strut'), 2, 'struts tie the cage to the rack');
 assert.equal(count('slat'), 27); assert.equal(count('slat-rail'), 2); assert.equal(count('slat-bracket'), 2);
 assert.ok(count('jammer') >= 7 && count('crate') === 4 && count('net-roll') === 1 && count('tarp-roll') === 2, 'jammers and stowage');
 
@@ -59,7 +65,22 @@ for (const p of parts) {
 const cage = parts.filter((p) => p.part === 'cage-rod');
 assert.ok(Math.min(...cage.map((p) => p.min[1])) + turretFrameY > 2.85, 'cage lattice clears the roof equipment');
 const slats = parts.filter((p) => p.part === 'slat');
-assert.ok(Math.max(...slats.map((p) => p.max[2])) + .392712 < -3.3, 'slats sit behind the bustle stowage');
+assert.ok(Math.max(...slats.map((p) => p.max[2])) + .392712 < -2.90, 'slats hang behind the main rack rear course');
+const brackets = parts.filter((p) => p.part === 'slat-bracket');
+assert.ok(brackets.every((p) => p.max[2] + TURRET[2] > -2.80), 'slat brackets reach into the rack course');
+// every cage post stands on the real roof surface with its base plate on the roof
+for (const foot of parts.filter((p) => p.part === 'cage-foot')) {
+  const cx = (foot.min[0] + foot.max[0]) / 2 + TURRET[0], cz = (foot.min[2] + foot.max[2]) / 2 + TURRET[2];
+  assert.ok(Math.abs(foot.min[1] + TURRET[1] - turretRoofY(cx, cz)) < .002, `cage foot at (${cx.toFixed(2)}, ${cz.toFixed(2)}) sits on the roof`);
+  const post = parts.find((p) => p.part === 'cage-post' && Math.abs((p.min[0] + p.max[0]) / 2 - (foot.min[0] + foot.max[0]) / 2) < .03
+    && Math.abs((p.min[2] + p.max[2]) / 2 - (foot.min[2] + foot.max[2]) / 2) < .03);
+  assert.ok(post && post.min[1] + TURRET[1] - turretRoofY(cx, cz) < .012, 'the post starts on its base plate');
+}
+const cageFrame = parts.filter((p) => p.part === 'cage-frame');
+assert.ok(Math.min(...cageFrame.map((p) => p.min[1])) + turretFrameY > 3.10, 'the cage roof clears the commander\'s weapon station');
+assert.ok(Math.min(...cageFrame.map((p) => p.max[1])) + turretFrameY < 3.20, 'the forward bay follows the roof down toward the mantlet');
+const netRoll = parts.find((p) => p.part === 'net-roll');
+assert.ok(netRoll && Math.abs(netRoll.min[1] + TURRET[1] - 2.28926) < .01, 'the net roll rests on the rack\'s top course');
 const meshes = []; tank.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
 assert.ok(meshes.length > 0, 'the kitted tank builds');
 
@@ -108,4 +129,4 @@ assert.deepEqual([...sectors].sort(), ['ua-m1a2-k1-glacis-era', 'ua-m1a2-k1-turr
 // no other study wears the kit
 const { parts: plain } = capture('m1a2_x');
 assert.equal(plain.length, 0, 'the M1A2 study carries no Ukrainian kit');
-console.log(`abramsSourceXUkraineKit: ${parts.length} kit parts on the M1A2 Abrams UA (bricks, skirt cassettes, cage, slats, jammers, stowage), ${seated} cassettes seated on ${new Set(zones.map((z) => z.plate.name)).size} gameplay ERA banks (${zones.length} finalized faces); the M1A2 study stays clean PASS`);
+console.log(`abramsSourceXUkraineKit: ${parts.length} kit parts on the M1A2 Abrams UA (bricks, skirt cassettes, bolted cage with mesh walls and rack struts, slats, jammers, stowage), ${seated} cassettes seated on ${new Set(zones.map((z) => z.plate.name)).size} gameplay ERA banks (${zones.length} finalized faces); the M1A2 study stays clean PASS`);
