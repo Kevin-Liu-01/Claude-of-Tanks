@@ -269,7 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '015714d0c5286d91311eab3548a602c2f346f2517f13f0aeee0a0189b558ca01', // 2026-09-15: signature/service labels follow the renamed source hulls (2A4M CAN, 2A4 OTCO, 2A3, KF51-U, T-90AM, XK2, M1A1 SA Ukraine); Type 100 preset
+  'edcc328c3a804363ea0e8f9d4ed15eb4fa36b857fffd36ad43735bb8f8cc2fa1', // 2026-09-15: signature/service labels follow the renamed source hulls (2A4M CAN, 2A4 OTCO, 2A3, KF51-U, T-90AM, XK2, M1A1 SA Ukraine); Type 100 preset
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

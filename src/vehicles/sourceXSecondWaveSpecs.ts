@@ -26,8 +26,9 @@ const entries = [
   ['t62mv1_x', 't62mv1', 'T-62MV-1'],
   ['t72b_1987_x', 't72b_1987', 'T-72B obr. 1987'],
   ['t80u_x', 't80u', 'T-80U'],
-  ['leclerc_x', 'leclerc', 'Leclerc SXXI'],
-  ['leclerc_classic_x', 'leclerc', 'Leclerc S1'],
+  // owner 2026-09-16: the studies carry the newer marks (SXXI -> XLR, S1 -> AMX 56 swapped with the legacy hulls)
+  ['leclerc_x', 'leclerc', 'Leclerc XLR'],
+  ['leclerc_classic_x', 'leclerc', 'AMX 56'],
   ['chieftain_mk10_x', 'chieftain_mk10', 'Chieftain Mk 10'],
   ['t72b3_x', 't72b3', 'T-72B3'],
   ['jpz_e100_x', 'jpz_e100', 'Jagdpanzer E100'],

@@ -132,7 +132,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   service_soviet_coldwar: 'Soviet Cold War Amoeba',
   service_t90m: 'Modern Russian Service Digital',
   service_challenger_3: 'Challenger 3 Service',
-  service_leclerc_xlr: 'Leclerc XLR Service',
+  service_leclerc_xlr: 'Leclerc SXXI Service', // the legacy hull is the SXXI since 2026-09-16
   service_type99a: 'Type 99A Service Digital',
   service_ariete_c1: 'Ariete C1 Service',
   service_type10: 'Type 10 Service',
@@ -157,7 +157,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_t90a_vladimir: 'T-90A Vladimir Digital',
   sig_challenger2e: 'Challenger 2E',
   sig_challenger_3x: 'Challenger 3',
-  sig_amx56: 'AMX 56',
+  sig_amx56: 'Leclerc S1', // the legacy hull is the S1 since 2026-09-16
   sig_leclerc: 'Leclerc S2',
   sig_ariete_c2: 'Ariete C2',
   sig_type10b: 'Type 10B',

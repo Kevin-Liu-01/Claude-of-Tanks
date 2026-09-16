@@ -110,8 +110,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 100 | PROD | `leo2_revolution` | Leopard 2 Revolution | Germany | X | Modern | Production |
 | 101 | PROD | `leo2a7v` | Leopard 2 Improved | Germany | X | Modern | Production |
 | 102 | PROD | `leclerc` | Leclerc S2 | France | IX | Modern | Production |
-| 103 | PROD | `leclerc_xlr` | Leclerc XLR | France | X | Modern | Production |
-| 104 | PROD | `amx56` | AMX 56 | France | X | Modern | Production |
+| 103 | PROD | `leclerc_xlr` | Leclerc SXXI | France | IX | Modern | Production |
+| 104 | PROD | `amx56` | Leclerc S1 | France | IX | Modern | Production |
 | 105 | PROD | `type59` | Type 59 | China | VII | Cold War | Production |
 | 106 | PROD | `ztz85_iii` | ZTZ-85-III | China | VIII | Cold War | Production |
 | 107 | PROD | `type99a` | ZTZ-99A (Type 99A) | China | IX | Modern | Production |
@@ -195,8 +195,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 185 | PROD | `t62mv1_x` | T-62MV-1 | USSR/Russia | VII | Cold War | Production |
 | 186 | PROD | `t72b_1987_x` | T-72B obr. 1987 | USSR/Russia | VIII | Modern | Production |
 | 187 | PROD | `t80u_x` | T-80U | USSR/Russia | VIII | Modern | Production |
-| 188 | PROD | `leclerc_x` | Leclerc SXXI | France | IX | Modern | Production |
-| 189 | PROD | `leclerc_classic_x` | Leclerc S1 | France | IX | Modern | Production |
+| 188 | PROD | `leclerc_x` | Leclerc XLR | France | X | Modern | Production |
+| 189 | PROD | `leclerc_classic_x` | AMX 56 | France | X | Modern | Production |
 | 190 | PROD | `chieftain_mk10_x` | Chieftain Mk 10 | UK | VIII | Modern | Production |
 | 191 | PROD | `t72b3_x` | T-72B3 | Russia | VIII | Modern | Production |
 | 192 | PROD | `jpz_e100_x` | Jagdpanzer E100 | Germany | VII | World War II | Production |

@@ -43,7 +43,8 @@ for (const id of SECOND_WAVE_X_IDS) {
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
   assert.ok(!spec.name.endsWith(' X'), `${id}: the X suffix was retired (owner 2026-09-15)`);
   // 2026-09-15 owner rulings (evening): the Leopard 2A6 study is tier X, the Jagdpanzer E100 study tier VII.
-  const ruled = { leo2a6_x: 10, jpz_e100_x: 7 }[id];
+  // 2026-09-16: the Leclerc XLR and AMX 56 studies are tier X ("the newer models are the tier 10s")
+  const ruled = { leo2a6_x: 10, jpz_e100_x: 7, leclerc_x: 10, leclerc_classic_x: 10 }[id];
   assert.equal(tankTier(id), ruled ?? tankTier(donor), `${id}: rebuild must not silently increase combat tier`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);

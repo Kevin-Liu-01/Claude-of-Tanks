@@ -164,3 +164,21 @@ T-90A Vladimir Digital, Leclerc S2, Type 90 Kyū-maru) are unchanged.
 leo2a6m_x, leo2a6_x, leo2a4m_x, leo2a5_x, kf51, kf51b, spz_puma_s1, mbt70`, then `leo2a7v`); all
 eleven are tier X so the run alone orders the German left edge (`garageOrder.selftest`).
 
+## Leclerc swap (owner 2026-09-16)
+
+"make the leclerc s1 the amx 56 and make the leclerc sxxi the leclerc xlr, basically switch them
+around so the newer models are the tier 10s. also make the leclerc xlr a tier X as well." The studies
+take the newer marks and tier X, the legacy hulls the older marks at IX:
+
+| id | was | now |
+| --- | --- | --- |
+| `leclerc_x` | Leclerc SXXI, IX | **Leclerc XLR, X** |
+| `leclerc_classic_x` | Leclerc S1, IX | **AMX 56, X** |
+| `leclerc_xlr` | Leclerc XLR, X | Leclerc SXXI, IX |
+| `amx56` | AMX 56, X | Leclerc S1, IX |
+| `leclerc` | Leclerc S2, IX | unchanged |
+
+Camo labels follow their source hulls (`service_leclerc_xlr` → "Leclerc SXXI Service", `sig_amx56` →
+"Leclerc S1"); the second-wave receipt carries the two tier rulings; the modern2 facade, the roster
+report and the icon manifest metadata were regenerated.
+

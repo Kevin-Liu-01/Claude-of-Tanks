@@ -749,7 +749,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
   const xlrArmor = cloneArmor(base.armor);
   MODERN2_SPECS.leclerc_xlr = {
     ...base,
-    id: 'leclerc_xlr', name: 'Leclerc XLR', hp: 2650,
+    id: 'leclerc_xlr', name: 'Leclerc SXXI', hp: 2650, // owner 2026-09-16: swapped with the leclerc_x study
     weightTons: 57.4, topSpeedKmh: 70,
     gun: {
       ...base.gun,
@@ -789,7 +789,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
   const amx56Armor = cloneArmor(base.armor);
   MODERN2_SPECS.amx56 = {
     ...base,
-    id: 'amx56', name: 'AMX 56', hp: 2750,
+    id: 'amx56', name: 'Leclerc S1', hp: 2750, // owner 2026-09-16: swapped with the leclerc_classic_x study
     enginePowerHp: 1550, weightTons: 58.8, topSpeedKmh: 68,
     gun: {
       ...base.gun,
