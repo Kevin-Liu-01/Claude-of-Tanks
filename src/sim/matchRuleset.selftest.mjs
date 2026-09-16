@@ -26,10 +26,12 @@ const turbo = matchRulesetFor('turbo_ball');
 assert.equal(turbo.gravityScale, 0.6, 'Turbo Ball plays at 0.6 g');
 assert.equal(turbo.speedMultiplier, 1.85);
 assert.equal(turbo.ammo, 'unlimited'); assert.equal(turbo.equipmentSlots, 0); assert.equal(turbo.consumables, false);
+assert.equal(turbo.criticalDamage, false, 'owner 2026-09-15: no consumables, so modules, crew and fires never break in Turbo Ball');
+assert.equal(matchRulesetFor('standard').criticalDamage, true);
 assert.equal(turbo.respawnS, 3); assert.equal(turbo.timeLimitS, 600);
 assert.equal(rulesetReloadMultiplier(turbo), 0.7);
 const turboKeys = rulesetLines(turbo).map((line) => line.key);
-assert.deepEqual(turboKeys, ['gravity', 'speed', 'hp', 'damage', 'reload', 'ammoUnlimited', 'noEquipment', 'noConsumables', 'respawn', 'clock'],
+assert.deepEqual(turboKeys, ['gravity', 'speed', 'hp', 'damage', 'reload', 'ammoUnlimited', 'noEquipment', 'noConsumables', 'noCriticalDamage', 'respawn', 'clock'],
   'the Turbo Ball card lists exactly the rules the code applies, in order');
 assert.equal(rulesetLines(turbo)[0].values.value, '0.6 g');
 assert.equal(rulesetLines(turbo)[1].values.value, '+85 %');

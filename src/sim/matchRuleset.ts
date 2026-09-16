@@ -72,6 +72,9 @@ export interface MatchRuleset {
   /** Equipment slots honoured (0 disables equipment). */
   readonly equipmentSlots: 0 | 1 | 2 | 3;
   readonly consumables: boolean;
+  /** Modules, crew and fires take damage. False (owner 2026-09-15, Turbo Ball: "make modules not break since
+   * there's no consumables") keeps every critical system intact — hull hit points are the only thing a hit costs. */
+  readonly criticalDamage: boolean;
   /** Seconds to respawn, or null when a destroyed vehicle stays destroyed. */
   readonly respawnS: number | null;
   /** Clock in seconds, or null for no clock. */
@@ -99,7 +102,7 @@ export interface CampaignRulesetInput {
 
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
-  ammo: 'spec', equipmentSlots: 3, consumables: true, respawnS: null, timeLimitS: 900, timeout: 'draw',
+  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, respawnS: null, timeLimitS: 900, timeout: 'draw',
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
 });
 
@@ -115,7 +118,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   turbo_ball: Object.freeze({
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
-    respawnS: 3, timeLimitS: 600,
+    criticalDamage: false, respawnS: 3, timeLimitS: 600,
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
   // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
@@ -239,6 +242,7 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (ruleset.equipmentSlots === 0) line('noEquipment');
   else if (ruleset.equipmentSlots < 3) line('equipmentSlots', { value: String(ruleset.equipmentSlots) });
   if (!ruleset.consumables) line('noConsumables');
+  if (!ruleset.criticalDamage) line('noCriticalDamage');
   if (ruleset.respawnS != null) line('respawn', { value: String(ruleset.respawnS) });
   else if (ruleset.mode !== 'standard') line('noRespawn');
   if (ruleset.timeLimitS == null) line('noClock');
@@ -281,6 +285,8 @@ interface RulesetCombatState {
   equipMults?: Partial<Record<string, number>>;
   /** Multiplies every hit point lost (damage.ts hull sites and ramming). */
   modeDamageTakenScale?: number;
+  /** False keeps modules, crew and fires intact (damage.ts rollModuleDamage / rollCrewHit). */
+  modeCriticalDamage?: boolean;
 }
 
 interface RulesetShellSpec { readonly type?: string }
@@ -304,6 +310,7 @@ export function applyRulesetToCombat(
     combat.hp = combat.maxHp;
   }
   combat.modeDamageTakenScale = ruleset.damageScale;
+  combat.modeCriticalDamage = ruleset.criticalDamage;
   if (ruleset.reloadScale !== 1) {
     const mults = combat.equipMults || (combat.equipMults = {});
     const current = mults.reload;

@@ -704,6 +704,31 @@ function mkShell(shellSpec, distM = 100) {
   const ev3 = resolveShellHit(shell3, target3, hits3, rng3);
   assert(ev3.crewHit.length === 1 && ev3.crewHit[0] === 'gunner', '§8 gunner knocked out');
   assert(target3.combat.crew.gunner === false, '§8 crew state persisted');
+
+  // RULESETS (owner 2026-09-15, Turbo Ball): with criticalDamage off the same module ray costs hull
+  // points only — the module keeps its hit points, no fire roll, no module event; the chance draw is
+  // still consumed so the RNG order matches. Crew saving throws are skipped the same way.
+  const target4 = mkTarget();
+  target4.combat.modeCriticalDamage = false;
+  const shell4 = mkShell(AP100, 100);
+  const hits4 = [
+    mkPlateHit(0.4, mkPlate({ name: 'front50', physicalMm: 50, keMm: 50, ceMm: 50 }), 0, V(0, 1, 2)),
+    { t: 0.45, kind: 'module', module: 'engine', point: V(0, 1, 1.5) },
+  ];
+  const rng4 = seqRng([0.5, 0.5, 0.1, 0.5, 0.9]);
+  const ev4 = resolveShellHit(shell4, target4, hits4, rng4);
+  assert(ev4.kind === 'pen', 'no-critical-damage: the hit still penetrates');
+  assert(rng4.consumed() === 3, `no-critical-damage: pen, dmg and the consumed chance draw only (got ${rng4.consumed()})`);
+  near(target4.combat.modules.engine.hp, 160, 1e-9, 'no-critical-damage: the engine keeps its hit points');
+  assert(ev4.modulesHit.length === 0 && ev4.fireStarted === false, 'no-critical-damage: no module event, no fire');
+  near(target4.combat.hp, 750, 1e-9, 'no-critical-damage: hull damage still applies');
+  const target5 = mkTarget();
+  target5.combat.modeCriticalDamage = false;
+  const ev5 = resolveShellHit(mkShell(AP100, 100), target5, [
+    mkPlateHit(0.4, mkPlate({ name: 'front50', physicalMm: 50, keMm: 50, ceMm: 50 }), 0, V(0, 1, 2)),
+    { t: 0.45, kind: 'crew', crew: 'gunner', point: V(0, 1, 1.5) },
+  ], seqRng([0.5, 0.5, 0.2]));
+  assert(ev5.crewHit.length === 0 && target5.combat.crew.gunner !== false, 'no-critical-damage: the gunner stays at his post');
 }
 
 // -------------------------------------------- HE vs spaced armor (doc §7) --

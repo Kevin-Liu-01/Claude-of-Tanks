@@ -133,6 +133,8 @@ export interface CombatState {
   equipMults?: Partial<Record<string, number>>;
   /** Ruleset damage-taken scale (matchRuleset.ts); absent or 1 = the vehicle's authored hit points. */
   modeDamageTakenScale?: number;
+  /** Ruleset critical-damage switch (matchRuleset.ts); false keeps modules, crew and fires intact. Absent = true. */
+  modeCriticalDamage?: boolean;
 }
 
 const MODULE_STATE_RANK: Readonly<Record<ModuleStateName, number>> = Object.freeze({
@@ -595,6 +597,9 @@ function rollModuleDamage(
   const m = ctx.combat.modules[moduleName];
   if (!m) return res;
   const damageRoll = ctx.rng(); // always consumed — fixed order
+  // RULESETS: a mode without consumables (Turbo Ball) never breaks a module or starts a fire; the
+  // chance draw above is still consumed so replay RNG order matches every other mode.
+  if (ctx.combat.modeCriticalDamage === false) return res;
   const chance = MODULE_DEFS[moduleName].damageChance * ctx.chanceScale;
   if (damageRoll >= Math.min(1, chance) || m.hp <= 0) return res;
 
@@ -642,6 +647,7 @@ function rollModuleDamage(
  */
 function rollCrewHit(ctx: ResolutionContext, crewName: string, isHe: boolean): void {
   const roll = ctx.rng(); // always consumed — fixed order
+  if (ctx.combat.modeCriticalDamage === false) return; // RULESETS: no consumables, no casualties
   if (!(crewName in ctx.combat.crew) || ctx.combat.crew[crewName] === false) return;
   // EQUIPMENT SYSTEM: spall liner halves crew hits from HE splash only —
   // direct penetrations bypass the liner.

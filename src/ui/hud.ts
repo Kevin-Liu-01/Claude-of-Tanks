@@ -1476,6 +1476,21 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-alert.danger{color:#ff9b91;border-bottom-color:#ef6157;}
 .cot-alert.success{color:#a8e8b2;border-bottom-color:#68cf78;}
 .cot-alert.info{color:#cbd8e2;border-bottom-color:#8fa3b4;}
+/* respawn (owner 2026-09-15): in a mode that revives the player the death is a count, not a
+   hand-off — kicker + numeral in the pre-battle style, a little lower so the wreck stays visible.
+   Hidden the instant the revive lands (mode:respawn) or the battle ends. */
+.cot-revive{position:absolute;z-index:var(--hud-layer-status);left:50%;top:30%;transform:translateX(-50%);
+  width:min(390px,calc(100vw - 32px));display:grid;grid-template-rows:30px 92px;row-gap:7px;
+  justify-items:center;text-align:center;pointer-events:none;
+  opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
+.cot-revive.on{opacity:1;}
+.cot-revive .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};font-size:17px;font-weight:900;
+  line-height:1;letter-spacing:.3em;text-indent:.3em;text-transform:uppercase;color:#ffe0a2;
+  text-shadow:-1px -1px 0 rgba(4,7,10,.98),1px -1px 0 rgba(4,7,10,.98),-1px 1px 0 rgba(4,7,10,.98),1px 1px 0 rgba(4,7,10,.98),
+    0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);}
+.cot-revive .n{font-family:${FONT_COND};font-size:84px;font-weight:900;line-height:92px;color:#f6f1e6;
+  text-shadow:-2px -2px 0 rgba(4,7,10,.98),2px -2px 0 rgba(4,7,10,.98),-2px 2px 0 rgba(4,7,10,.98),2px 2px 0 rgba(4,7,10,.98),
+    0 3px 14px rgba(0,0,0,.9);}
 /* battle_countdown r3: WoT-style pre-battle freeze — kicker + big numeral,
    center-upper so it never fights the reticle. The numeral pops on each
    second via a keyed scale animation; the release swaps to ROLL OUT! and
@@ -2077,6 +2092,45 @@ export function initHud(bus: EventBus): HudRuntime {
   const pbRules = el('div', 'r', preBattleEl);
   pbRules.setAttribute('aria-label', t('hud.preBattleRules'));
   const preBattleOverlay = createPreBattleOverlay(preBattleEl, pbKick, pbNum);
+  // respawn (owner 2026-09-15): the revive count replaces the death hand-off to spectate/garage
+  const reviveEl = el('div', 'cot-revive', root);
+  reviveEl.setAttribute('aria-live', 'polite');
+  const rvKick = el('div', 'k', reviveEl);
+  const rvNum = el('div', 'n', reviveEl);
+  let liveRuleset: MatchRuleset | null = null;
+  let reviveTimer: ReturnType<typeof setInterval> | null = null;
+  let reviveUntil = 0;
+  const reviveCountdown = {
+    hide(): void {
+      if (reviveTimer !== null) clearInterval(reviveTimer);
+      reviveTimer = null;
+      reviveEl.classList.remove('on');
+    },
+    /** A destroyed player in a reviving mode sees the seconds to the revive, never a garage bar. */
+    onDestroyed(id: string | null | undefined): void {
+      if (playerId == null || id !== playerId) return;
+      reviveCountdown.start();
+    },
+    /** Frame-driven fallback: a death the bus never announced (debug kills) still counts down. */
+    observe(dead: boolean): void {
+      if (dead && reviveTimer === null) reviveCountdown.start();
+      else if (!dead && reviveTimer !== null) reviveCountdown.hide();
+    },
+    start(): void {
+      const respawnS = liveRuleset?.respawnS;
+      if (respawnS == null) return;
+      reviveCountdown.hide();
+      reviveUntil = performance.now() + respawnS * 1000;
+      rvKick.textContent = t('hud.revive.kicker');
+      const tick = (): void => {
+        const left = Math.max(1, Math.ceil((reviveUntil - performance.now()) / 1000));
+        rvNum.textContent = String(left);
+      };
+      tick();
+      reviveEl.classList.add('on');
+      reviveTimer = setInterval(tick, 100);
+    },
+  };
 
   const alertEl = el('div', 'cot-alert', root);
   alertEl.setAttribute('role', 'status');
@@ -5638,7 +5692,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   let playerRef: HudTank | null = null;
-  on('tank:destroyed', (p) => { pushKill(p); });
+  on('tank:destroyed', (p) => { pushKill(p); reviveCountdown.onDestroyed(p.id); });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
   // the HUD renders selection state from the bus instead of its own listener.
   on('ui:shellSelect', ({ slot }) => {
@@ -5839,6 +5893,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('mode:respawn', ({ id }) => {
     if (playerId != null && id !== playerId) return;
+    reviveCountdown.hide();
     showAlert(t('hud.alert.respawned'), { icon: 'rematch', tone: 'info' });
   });
   on('mode:flag_taken', ({ team }) => {
@@ -6082,6 +6137,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateAimPresentation(frame: HudFrame, state: HudFrameUpdateState): void {
     const aim = (!state.advancing && forced) ? forced : (frame.aim || {});
     assembleAimView(state.camera, aim);
+    reviveCountdown.observe(frame.player?.combat?.destroyed === true);
     aimView.selfRightLabel = frame.player?.combat?.destroyed !== true &&
       canSelfRightTank(frame.player?.state)
       ? (frame.selfRightKeyLabel || 'F')
@@ -6178,6 +6234,8 @@ export function initHud(bus: EventBus): HudRuntime {
     setPreBattleWaiting(waiting: boolean) { preBattleOverlay.setWaiting(waiting); },
 
     setPreBattleRules(ruleset: MatchRuleset | null) {
+      liveRuleset = ruleset;
+      reviveCountdown.hide();
       pbRules.replaceChildren();
       if (!ruleset) return;
       for (const line of rulesetLines(ruleset)) {

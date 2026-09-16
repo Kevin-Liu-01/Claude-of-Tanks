@@ -19,7 +19,7 @@ rule the battle does not keep.
 | Standard Battle | Destroy the opposing force | — | No | Elimination, or the 15:00 clock (draw) |
 | Capture the Flag | Carry the enemy flag to a home flag that has not been stolen | flag carrier drives at 85 % | 6 s | First team to 3 captures, or the clock (score) |
 | Zone Control | Capture and hold three battlefield sectors | — | 6 s | First team to 750 points, or the clock (score) |
-| Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables | 3 s | First team to 5 goals, or the 10:00 clock (score) |
+| Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage | 3 s | First team to 5 goals, or the 10:00 clock (score) |
 | Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 
@@ -120,7 +120,15 @@ campaign operation names the map, the nation and the difficulty). Campaign progr
 Respawning modes (Capture the Flag, Zone Control, Turbo Ball, Endless Horde and the
 Frontline Assault attackers) revive the player through `mode:respawn`; the killcam
 cancels its spectate and any pending ghost replay on the local player's revive so the
-camera returns to the tank instead of holding the wreck view (batch 27).
+camera returns to the tank instead of holding the wreck view (batch 27). Since
+2026-09-15 the death hand-off to the ally chase and its garage bar never starts while the
+ruleset revives the player; the HUD counts the revive down ("BACK IN n", from the death
+event or the frame-observed destroyed state) until the revive lands.
+
+Turbo Ball has no consumables, so its ruleset switches critical damage off
+(`criticalDamage: false` → `combat.modeCriticalDamage`): `rollModuleDamage` and
+`rollCrewHit` consume their chance draw and return, so no module breaks, no crew member is
+knocked out and no fire starts, while hull hit points and replay RNG order are unchanged.
 
 ## State machine
 

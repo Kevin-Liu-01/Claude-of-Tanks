@@ -5940,6 +5940,9 @@ export function createKillCam(deps: KillcamDeps) {
         const p = getPlayer();
         if (!g || g.result || g.phase !== 'battle') return false;
         if (!p || !p.combat || !p.combat.destroyed) return false;
+        // RESPAWN (owner 2026-09-15): a mode that revives the player never hands the camera to the
+        // ally chase and its garage bar — the HUD counts the revive down and the player is back in.
+        if ((g as { ruleset?: { respawnS?: number | null } | null }).ruleset?.respawnS != null) return false;
         return start();
       },
       /** Enter lobby observer mode without requiring an owned/dead tank. */
