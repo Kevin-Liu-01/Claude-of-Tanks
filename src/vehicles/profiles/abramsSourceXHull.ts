@@ -364,7 +364,7 @@ function driverHatch(P: TankBuilderPort): void {
   P.addEquipment('hullDetail', roundMember([-.17, 1.511, 1.95], [.14, 1.511, 1.95], .013));
 }
 
-function rearEquipment(P: TankBuilderPort, sepv3: boolean): void {
+function rearEquipment(P: TankBuilderPort): void {
   addAbramsSourceXRearGrilles(P);
   for (const side of [-1, 1]) {
     P.addEquipment('hullDetail', cylZ(.124, .194, 20), side * 1.59, 1.5634, -3.83);
@@ -372,7 +372,7 @@ function rearEquipment(P: TankBuilderPort, sepv3: boolean): void {
   }
   P.addEquipment('hullDetail', box(.744, .031, .50), .70184, 1.704, -2.4721);
   P.addEquipment('hullDetail', box(.41, .031, 1.02), -.8331, 1.704, -2.20);
-  if (sepv3) P.addEquipment('hullDetail', box(.48, .19, .66), 1.34, 1.805, -3.00);
+  // the SEPv3's sponson boxes and auxiliary power unit live in abramsSourceXSepv3Kit.ts (2026-09-15)
 }
 
 function bowEquipment(P: TankBuilderPort): void {
@@ -413,8 +413,8 @@ export function* buildAbramsSourceXHullCooperativeSteps(P: TankBuilderPort, opti
   if (cooperative) yield "buildAbramsSourceXHull:if (options.curvedArat) addAbramsSourceXSkirtReturns(P);";
   driverHatch(P);
   if (cooperative) yield "buildAbramsSourceXHull:driverHatch(P);";
-  rearEquipment(P, options.sepv3);
-  if (cooperative) yield "buildAbramsSourceXHull:rearEquipment(P, options.sepv3);";
+  rearEquipment(P);
+  if (cooperative) yield "buildAbramsSourceXHull:rearEquipment(P);";
   bowEquipment(P);
   if (cooperative) yield "buildAbramsSourceXHull:bowEquipment(P);";
   addAbramsSourceXHullFittings(P);

@@ -635,11 +635,11 @@
       "vertices": 185980
     },
     "m1a2_sepv3_x": {
-      "freezeHash": "128a5268",
-      "instanceFreezeHash": "cfe7ab70",
-      "assetGeometryHash": "cfe7ab70",
-      "meshes": 180,
-      "vertices": 169032
+      "freezeHash": "26334e38",
+      "instanceFreezeHash": "53a53600",
+      "assetGeometryHash": "53a53600",
+      "meshes": 184,
+      "vertices": 217236
     },
     "m1a2_tusk": {
       "freezeHash": "a3015831",

@@ -981,7 +981,8 @@ export function* buildAbramsSourceXEquipmentCooperativeSteps(P: TankBuilderPort,
   yield* tankProfileCheckpoint(cooperative, "buildAbramsSourceXEquipment:loaderWeapon(C, options.urbanArmor);");
   smoke(C);
   yield* tankProfileCheckpoint(cooperative, "buildAbramsSourceXEquipment:smoke(C);");
-  yield* rearEquipmentCooperativeSteps(C, options.curvedArat, cooperative);
+  // the SEPv3 (owner 2026-09-15) carries the extended rack and full stowage like the urban SEP v2
+  yield* rearEquipmentCooperativeSteps(C, options.curvedArat || options.sepv3, cooperative);
   if (options.urbanArmor) turretArat(C, options.curvedArat);
   yield* tankProfileCheckpoint(cooperative, "buildAbramsSourceXEquipment:if (options.urbanArmor) turretArat(C, options.curvedArat);");
   // Ukrainian service does not, by itself, prove a specific field cage or ERA

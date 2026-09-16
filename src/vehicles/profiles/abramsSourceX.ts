@@ -8,6 +8,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { planeBoundedArmor, type ArmorPlane, type XYZ } from './abramsSourceXGeometry.ts';
 import { bindAbramsSourceXStockEra } from './abramsSourceXEra.ts';
 import { buildAbramsSourceXUkraineKit } from './abramsSourceXUkraineKit.ts';
+import { buildAbramsSourceXSepv3Kit } from './abramsSourceXSepv3Kit.ts';
 import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 
@@ -118,6 +119,11 @@ function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): 
     // owner 2026-09-15: the M1A2 Abrams UA wears its field kit over the finished study
     buildAbramsSourceXUkraineKit(P);
     if (cooperative) yield "buildAbramsX:buildAbramsSourceXUkraineKit(P);";
+  }
+  if (options.sepv3) {
+    // owner 2026-09-15 (evening): the SEPv3 carries Trophy, the UAAPU and the fielded M1A2C detail
+    buildAbramsSourceXSepv3Kit(P);
+    if (cooperative) yield "buildAbramsX:buildAbramsSourceXSepv3Kit(P);";
   }
   P.topY = 2.405;
   if (cooperative) yield "buildAbramsX:P.topY = 2.405;";

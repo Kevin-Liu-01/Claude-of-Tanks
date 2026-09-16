@@ -71,6 +71,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/abramsSourceXSkirtReturns.selftest.mjs',
     'src/vehicles/abramsSourceXRearGrilles.selftest.mjs',
     'src/vehicles/profiles/abramsSourceXUkraineKit.selftest.mjs',
+    'src/vehicles/profiles/abramsSourceXSepv3Kit.selftest.mjs',
     'src/vehicles/abramsSourceXWheels.selftest.mjs',
     'src/vehicles/abramsSourceXEndGear.selftest.mjs',
     'src/vehicles/abramsSourceXTrackGuide.selftest.mjs',
