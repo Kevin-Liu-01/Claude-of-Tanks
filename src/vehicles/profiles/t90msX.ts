@@ -15,6 +15,7 @@ import {addT90MSOpticalHead} from './t90msXOpticalHead.ts';
 import {addT90MSRearCradles,addT90MSRearCase,addT90MSRearFenderCourses} from './t90msXHullEnds.ts';
 import {addT90MSHullCages} from './t90msXHullCages.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {addShtoraEyes} from './shtora.ts';
 const T90MS_X_DATUMS=T90MS_X_SOURCE_DATUMS;
 const YAW=T90MS_X_DATUMS.turretPivot,GUN=T90MS_X_DATUMS.trunnion;
 const {box,cylX,cylZ,torus}=KIT;
@@ -204,10 +205,13 @@ function aps(P:TankBuilderPort):void{
     const x=side*.6735;
     top(P,'turretDetail',box(.4431,.4117,.030),x,2.07304,1.65329);
     top(P,'turretDetail',boxSections([[-.17,.1903,.095,-.1344],[-.10,.1903,.1344,-.1344],[.17,.174,.095,-.1344]]),x,2.09509,1.68259);
-    top(P,'turretDark',box(.278,.198,.013),x,2.09509,1.855);
     top(P,'turretDetail',box(.33,.16,.30).rotateY(side*.785),side*.92,2.06129,1.30144);
     top(P,'turretDetail',beamBetween([side*.78,1.87,1.44],[x,1.984,1.65],.02),0,0,0);
   }
+  // owner 2026-09-16 ("add proper shtora eyes to these"): the housings' blank dark faces become the
+  // OTShU-1-7 emitter set — housing, ring and red night lens, louvre bars, side plates and bracket —
+  // from the shared Shtora vocabulary, seated on the housing fronts (lens face ~1.86, proud of the plate)
+  addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0]});
 }
 function remoteWeapon(P:TankBuilderPort):void{
   for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.34454,.21715,.0747],[2.52154,.21715,.2803]])
