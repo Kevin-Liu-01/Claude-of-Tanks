@@ -269,7 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '8ab464c2dca24e5fc31303514b6fe11401c2d6860128ee3c4874d3e23765f062', // 2026-09-15: Challenger 3 label lost the X suffix; Type 100 parade digital preset added
+  '015714d0c5286d91311eab3548a602c2f346f2517f13f0aeee0a0189b558ca01', // 2026-09-15: signature/service labels follow the renamed source hulls (2A4M CAN, 2A4 OTCO, 2A3, KF51-U, T-90AM, XK2, M1A1 SA Ukraine); Type 100 preset
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

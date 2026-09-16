@@ -145,3 +145,14 @@ cassette courses are visible reactive packages without gameplay zones — and wa
 giving the M1A2 Abrams UA eight depletable ERA banks
 (`src/vehicles/abramsSourceXUkraineEraArmor.ts`; see the kit note).
 
+## Camo labels follow the source hull (deploy 24 follow-up)
+
+The garage camo picker labels signature and service schemes by the hull they were captured
+from, so seven labels still named the pre-pass hulls after deploy 23: `service_leo2a4m` →
+"Leopard 2A4M CAN Service", `service_leo2a6m` → "Leopard 2A4 OTCO Service", `sig_leo2a4_otco`
+→ "Leopard 2A3", `sig_kf51b` → "KF51-U", `sig_t90m` → "T-90AM Field Digital", `sig_k2` →
+"XK2 Black Panther", `sig_ua_m1a1` → "M1A1 SA Ukraine"; the en-US/zh-CN catalogs follow
+(`camoPattern.*`, including the "Challenger 3" label the policy had already dropped the X
+from). Scheme names that describe a family rather than one hull (T-90A Service Digital,
+T-90A Vladimir Digital, Leclerc S2, Type 90 Kyū-maru) are unchanged.
+
