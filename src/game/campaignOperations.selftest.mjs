@@ -29,7 +29,7 @@ for (let i = 1; i < CAMPAIGN_OPERATIONS.length; i++) {
 }
 assert.ok(CAMPAIGN_OPERATIONS.every((operation) => operation.timeLimitS >= 600 && operation.timeLimitS <= 900));
 assert.equal(campaignParTimeS(CAMPAIGN_OPERATIONS[1]), Math.round(750 * CAMPAIGN_PAR_SHARE));
-assert.deepEqual(campaignRulesetInput('iron_ridge'), { difficulty: 2, timeLimitS: 750 });
+assert.deepEqual(campaignRulesetInput('iron_ridge'), { difficulty: 2, timeLimitS: 750, enemy: 'germany' });
 assert.equal(campaignRulesetInput(null), null); assert.equal(campaignRulesetInput('nope'), null);
 {
   const ruleset = matchRulesetFor('frontline_assault', campaignRulesetInput('delta_crossing'));

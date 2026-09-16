@@ -21,8 +21,7 @@ import {
   applyLobbyCommand,
   createLobby,
   removeLobbyPlayer,
-  serializeLobby,
-} from './lobby.ts';
+  serializeLobby, readSerializedLobby } from './lobby.ts';
 import { createLoopbackTransportPair } from './loopbackTransport.ts';
 import {
   automaticPlayerName,
@@ -419,8 +418,28 @@ expectCode(() => applyLobbyCommand(assaultLobby, 'front-a', {
   type: 'set_team', team: LOBBY_TEAMS.BRAVO,
 }), LobbyError, 'cooperative_team');
 assert.equal(serializeLobby(assaultLobby).gameMode, 'frontline_assault', 'the campaign mode serializes for the room');
+// owner 2026-09-15 (team arrangement): the host arranges the co-op sides and picks the operation;
+// both ride the serialized lobby, clamp like the ruleset, and reset with the mode
+applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_campaign_operation', campaignOperationId: 'iron_ridge' });
+assert.equal(serializeLobby(assaultLobby).campaignOperationId, 'iron_ridge');
+expectCode(() => applyLobbyCommand(assaultLobby, 'front-a', { type: 'set_campaign_operation', campaignOperationId: 'iron_ridge' }), LobbyError, 'host_only');
+expectCode(() => applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_campaign_operation', campaignOperationId: 'Bad Id!' }), LobbyError, 'invalid_command');
+applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_arrangement', arrangement: { allies: 9, enemies: 3, enemyNation: 'china', waveSize: 5 } });
+assert.deepEqual(serializeLobby(assaultLobby).arrangement, { allies: 6, enemies: 4, waveSize: null, enemyNation: 'china' },
+  'the arrangement clamps to the Frontline limits and drops the Horde-only wave size');
+expectCode(() => applyLobbyCommand(assaultLobby, 'front-a', { type: 'set_arrangement', arrangement: { allies: 1 } }), LobbyError, 'host_only');
+expectCode(() => applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_arrangement', arrangement: 'lots' }), LobbyError, 'invalid_arrangement');
+const overWire = readSerializedLobby(JSON.parse(JSON.stringify(serializeLobby(assaultLobby))));
+assert.deepEqual(overWire.arrangement, { allies: 6, enemies: 4, waveSize: null, enemyNation: 'china' }, 'the arrangement survives the wire');
+assert.equal(overWire.campaignOperationId, 'iron_ridge');
+const legacy = JSON.parse(JSON.stringify(serializeLobby(assaultLobby)));
+delete legacy.arrangement; delete legacy.campaignOperationId;
+assert.equal(readSerializedLobby(legacy).arrangement, null, 'a peer on the previous protocol reads as defaults');
 applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_game_mode', gameMode: 'standard' });
 assert.equal(serializeLobby(assaultLobby).gameMode, 'standard');
+assert.equal(serializeLobby(assaultLobby).arrangement, null, 'changing the mode drops the arrangement');
+assert.equal(serializeLobby(assaultLobby).campaignOperationId, null, 'and the operation');
+expectCode(() => applyLobbyCommand(assaultLobby, 'front-host', { type: 'set_campaign_operation', campaignOperationId: 'iron_ridge' }), LobbyError, 'invalid_command');
 {
   // a standard room that switches to the assault pulls every active player onto Alpha
   const switched = createLobby({ roomCode: 'FRT235', hostId: 'sw-host', hostName: 'Host', hostSpecId: 'm1a2', teamSize: 2 });

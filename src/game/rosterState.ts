@@ -502,10 +502,14 @@ export function pickBattleParticipants(
   randomize: boolean,
   battleOrdinal = game.battleCount,
   preferredNations: readonly string[] = [],
+  // team arrangement (2026-09-15): the co-op modes size the non-player field themselves
+  // (allies + enemy pool) and keep exactly `formationLead` seats for the named nation
+  slots: number | null = null,
+  formationLead: number | null = null,
 ): RosterEntity[] {
   const player = game.tankById.get(playerSpecId);
   if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
-  const enemySlots = randomize ? 13 : 7;
+  const enemySlots = slots != null && Number.isFinite(slots) ? Math.max(1, Math.floor(slots)) : randomize ? 13 : 7;
   // PERF (performance_budget r3, certification determinism): an explicit
   // debug roster bypasses the seeded shuffle/era matchmaking so the perf
   // gate measures a PINNED worst-case lineup (all multi-mesh GLB heavies)
@@ -525,7 +529,7 @@ export function pickBattleParticipants(
     // the production catalog cannot fill all 13 non-player slots;
     // picking the Random battlefield no longer turns WWII vs modern back on.
     others = preferNations(randomBattleCandidates(game, player, battleOrdinal), player, preferredNations,
-      Math.max(0, enemySlots - 3));
+      Math.max(0, formationLead != null ? Math.min(enemySlots, Math.floor(formationLead)) : enemySlots - 3));
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = stagedBattleCandidates(game, playerSpecId);
@@ -544,8 +548,10 @@ export function planBattleParticipantIds(
   playerSpecId: string,
   randomize = true,
   preferredNations: readonly string[] = [],
+  slots: number | null = null,
+  formationLead: number | null = null,
 ) {
-  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations)
+  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead)
     .map((entity) => entity.specId);
 }
 
@@ -580,9 +586,11 @@ export function planBattleCamoOverrides(
   mapId: string,
   randomize = true,
   preferredNations: readonly string[] = [],
+  slots: number | null = null,
+  formationLead: number | null = null,
 ) {
   const battleOrdinal = game.battleCount + 1;
-  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations);
+  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead);
   return autoCamoIdsForBattle(
     participants, playerSpecId, mapId, randomize, battleOrdinal,
   );

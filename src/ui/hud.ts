@@ -6182,7 +6182,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (!ruleset) return;
       for (const line of rulesetLines(ruleset)) {
         const chip = document.createElement('span');
-        chip.textContent = t(`rules.line.${line.key}`, line.values);
+        chip.textContent = t(`rules.line.${line.key}`, line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : line.values);
         pbRules.appendChild(chip);
       }
     },

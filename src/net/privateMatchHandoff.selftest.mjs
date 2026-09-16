@@ -4,8 +4,8 @@ import {
   beginPrivateClientMatch,
   beginPrivateHostMatch,
   buildPrivateMatchPlayers,
-  resolvePrivateMatchMap,
-} from './privateMatchHandoff.ts';
+  resolvePrivateMatchMap, privateMatchRuleset } from './privateMatchHandoff.ts';
+import { getSpec } from '../vehicles/specs.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
 import { MatchClientRuntime } from './matchRuntime.ts';
@@ -511,8 +511,26 @@ const hordeRoster = buildPrivateMatchPlayers({
 assert.equal(hordeRoster.filter((player) => !player.bot).length, 2);
 assert.ok(hordeRoster.filter((player) => !player.bot)
   .every((player) => player.team === 'alpha'), 'horde seats all humans cooperatively');
-assert.equal(hordeRoster.filter((player) => player.team === 'bravo' && player.bot).length, 4,
-  'horde fills only the enemy wave pool with authority-owned bots');
+// owner 2026-09-15 (team arrangement): the room fields the Horde ruleset's allied bots and enemy pool,
+// not the human team size — fourteen hostile identities and two allied bots by default
+assert.equal(hordeRoster.filter((player) => player.team === 'bravo' && player.bot).length, 14,
+  'horde fills the enemy pool with authority-owned bots');
+assert.equal(hordeRoster.filter((player) => player.team === 'alpha' && player.bot).length, 2,
+  'two allied bots join the humans by default');
+{
+  const arranged = buildPrivateMatchPlayers({
+    ...lobbyState, gameMode: 'endless_horde', teamSize: 2,
+    arrangement: { allies: 0, enemies: 8, waveSize: 4, enemyNation: 'germany' },
+    players: [{ id: 'host-1', specId: 'm1a2', team: 'alpha' }],
+  });
+  assert.equal(arranged.filter((player) => player.team === 'alpha' && player.bot).length, 0, 'the host arranged no allies');
+  const hostiles = arranged.filter((player) => player.team === 'bravo' && player.bot);
+  assert.equal(hostiles.length, 8, 'the host arranged an eight-strong pool');
+  assert.ok(hostiles.every((player) => getSpec(player.specId).nation === 'Germany'), 'a same-nation force: every hostile is German');
+  assert.equal(new Set(hostiles.map((player) => player.specId)).size, hostiles.length, 'distinct identities while the nation has enough vehicles');
+  assert.deepEqual(privateMatchRuleset({ gameMode: 'endless_horde', arrangement: { allies: 0, enemies: 8, waveSize: 4, enemyNation: 'germany' } }).horde,
+    { waveSize: 4, waveStep: 1, surgeEvery: 3 }, 'the handoff ruleset carries the arranged first wave');
+}
 // batch 27: Frontline Assault rooms field the same shape — humans on alpha, a bot-held defence on bravo
 const assaultRoster = buildPrivateMatchPlayers({
   ...lobbyState,
@@ -525,10 +543,22 @@ const assaultRoster = buildPrivateMatchPlayers({
 });
 assert.ok(assaultRoster.filter((player) => !player.bot).every((player) => player.team === 'alpha'),
   'the assault seats every human attacker on alpha');
-assert.equal(assaultRoster.filter((player) => player.team === 'alpha' && player.bot).length, 0,
-  'no bot pads the attacking side');
-assert.equal(assaultRoster.filter((player) => player.team === 'bravo' && player.bot).length, 5,
-  'the defence is the authority\'s bot roster at team size');
+assert.equal(assaultRoster.filter((player) => player.team === 'alpha' && player.bot).length, 3,
+  'the Frontline ruleset\'s three allied bots join the attackers');
+assert.equal(assaultRoster.filter((player) => player.team === 'bravo' && player.bot).length, 10,
+  'the defence is the ruleset\'s ten-strong formation pool');
+{
+  // a campaign operation names the map and the formation for the whole room
+  const operationLobby = { ...lobbyState, gameMode: 'frontline_assault', mapId: 'random', campaignOperationId: 'iron_ridge',
+    players: [{ id: 'host-1', specId: 'm1a2', team: 'alpha' }] };
+  assert.equal(resolvePrivateMatchMap(operationLobby), 'alpine', 'operation 2 fights on its own battlefield');
+  const defenders = buildPrivateMatchPlayers(operationLobby).filter((player) => player.team === 'bravo' && player.bot);
+  assert.ok(defenders.length >= 10 && defenders.every((player) => getSpec(player.specId).nation === 'Germany'),
+    'the Iron Ridge defence is German armour');
+  assert.equal(privateMatchRuleset(operationLobby).assault.extraDefenders, 0);
+  assert.equal(privateMatchRuleset(operationLobby).timeLimitS, 750, 'the operation clock rides the handoff');
+  assert.equal(privateMatchRuleset(operationLobby).enemyNation, 'germany');
+}
 const hostSession = {
   roomInfo: { peerId: 'host-1', mode: 'lan' },
   takeMatchChannels: () => [],

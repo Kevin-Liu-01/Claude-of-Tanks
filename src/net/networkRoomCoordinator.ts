@@ -22,6 +22,8 @@ export interface NetworkRoomPlayer {
 
 export interface NetworkRoomState {
   roomCode?: string;
+  arrangement?: RuntimeValue;
+  campaignOperationId?: RuntimeValue;
   mode?: string;
   gameMode?: string;
   phase?: string;
@@ -180,6 +182,9 @@ function hasSerializedLobbyEnvelope(state: NetworkRoomState, playerIds: string[]
     && typeof state.locked === 'boolean'
     && typeof state.mapId === 'string'
     && isPositiveInteger(state.teamSize)
+    // team arrangement (2026-09-15): optional on the wire, an object or null when present
+    && (state.arrangement === undefined || state.arrangement === null || (typeof state.arrangement === 'object' && !Array.isArray(state.arrangement)))
+    && (state.campaignOperationId === undefined || state.campaignOperationId === null || typeof state.campaignOperationId === 'string')
     && isNonNegativeInteger(state.revision)
     && (state.matchSeed === null || isNonNegativeInteger(state.matchSeed))
     && isNonNegativeInteger(state.round);

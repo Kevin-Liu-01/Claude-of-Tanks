@@ -33,6 +33,10 @@ import {
   type LobbyState,
   type SerializedLobby, isCoopGameMode
 } from './lobby.ts';
+import { normalizeGameMode } from '../sim/matchModes.ts';
+import { matchRulesetFor, type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
+import { campaignEnemyNations, campaignOperationById, campaignRulesetInput } from '../game/campaignOperations.ts';
+import { enemyNationSpecNations } from '../game/teamArrangement.ts';
 
 type Team = 'alpha' | 'bravo' | 'spectator';
 type Unsubscribe = () => void;
@@ -60,6 +64,15 @@ interface PrivateMatchLobby {
   gameMode?: string;
   mode?: string;
   round?: number;
+  arrangement?: TeamArrangement | null;
+  campaignOperationId?: string | null;
+}
+
+/** The rules a room plays by: the mode, the campaign operation (Frontline) and the host's arrangement. */
+export function privateMatchRuleset(lobby: Pick<PrivateMatchLobby, 'gameMode' | 'arrangement' | 'campaignOperationId'>): MatchRuleset {
+  const mode = normalizeGameMode(lobby.gameMode);
+  const operation = mode === 'frontline_assault' ? campaignOperationById(lobby.campaignOperationId) : null;
+  return matchRulesetFor(mode, operation ? campaignRulesetInput(operation.id) : null, lobby.arrangement ?? null);
 }
 
 type MatchClientPort = MatchClientRuntime;
@@ -162,6 +175,9 @@ function validateStartingLobby(lobbyState: RuntimeValue): PrivateMatchLobby & { 
 /** Resolve a random lobby map identically on every peer before match handoff. */
 export function resolvePrivateMatchMap(lobbyState: RuntimeValue): string {
   const lobby = validateMatchLobby(lobbyState);
+  // a campaign operation always fights on its own battlefield
+  const operation = normalizeGameMode(lobby.gameMode) === 'frontline_assault' ? campaignOperationById(lobby.campaignOperationId) : null;
+  if (operation) return operation.mapId;
   return resolveMapId(lobby.mapId, seededUnit(lobby.matchSeed));
 }
 
@@ -182,21 +198,42 @@ export function buildPrivateMatchPlayers(lobbyState: RuntimeValue): PrivateMatch
     throw new Error('human roster exceeds the selected team size');
   }
   const referenceEra = humans[0]?.specId ? readVehicleSpec(humans[0].specId)?.era : null;
-  let pool = PRODUCTION_TANK_IDS.filter((id) => isBotTankId(id) &&
+  const eraPool = PRODUCTION_TANK_IDS.filter((id) => isBotTankId(id) &&
     (!referenceEra || readVehicleSpec(id)?.era === referenceEra));
-  if (!pool.length) pool = PRODUCTION_TANK_IDS.filter(isBotTankId);
-  const random = seededUnit(lobby.matchSeed ^ 0x5b07f11);
-  pool = pool.slice();
-  for (let index = pool.length - 1; index > 0; index--) {
-    const target = Math.floor(random() * (index + 1));
-    [pool[index], pool[target]] = [pool[target], pool[index]];
+  let pool = eraPool.length ? eraPool : PRODUCTION_TANK_IDS.filter(isBotTankId);
+  // team arrangement (owner 2026-09-15): a co-op room fields the host's allied bots and enemy pool,
+  // and a named formation (the operation's nation or the arranged one) fills the enemy side —
+  // the human's era first, then any era of that nation, then the mixed era pool
+  const ruleset = horde ? privateMatchRuleset(lobby) : null;
+  const operationNations = normalizeGameMode(lobby.gameMode) === 'frontline_assault'
+    ? campaignEnemyNations(lobby.campaignOperationId) : [];
+  const nations = ruleset ? (operationNations.length ? operationNations : enemyNationSpecNations(ruleset.enemyNation)) : [];
+  let formation: string[] = [];
+  if (nations.length) {
+    const ofNation = (id: string) => nations.includes(String(readVehicleSpec(id)?.nation || ''));
+    formation = [...eraPool.filter(ofNation), ...PRODUCTION_TANK_IDS.filter((id) => isBotTankId(id) && ofNation(id) && !eraPool.includes(id))];
   }
+  const random = seededUnit(lobby.matchSeed ^ 0x5b07f11);
+  const shuffle = (list: string[]): string[] => {
+    const copy = list.slice();
+    for (let index = copy.length - 1; index > 0; index--) {
+      const target = Math.floor(random() * (index + 1));
+      [copy[index], copy[target]] = [copy[target], copy[index]];
+    }
+    return copy;
+  };
+  pool = shuffle(pool);
+  formation = shuffle(formation);
   const players = humans.slice();
-  let poolIndex = 0;
+  let poolIndex = 0, formationIndex = 0;
   for (const team of ['alpha', 'bravo'] as const) {
-    const targetSize = horde && team === 'alpha' ? counts.alpha : teamSize;
+    const targetSize = horde
+      ? (team === 'alpha' ? counts.alpha + Math.max(0, ruleset?.allies ?? 0) : Math.max(1, ruleset?.enemies ?? teamSize))
+      : teamSize;
     for (let index = counts[team]; index < targetSize; index++) {
-      const specId = pool[poolIndex++ % pool.length];
+      const specId = horde && team === 'bravo' && formationIndex < formation.length
+        ? formation[formationIndex++]
+        : pool[poolIndex++ % pool.length];
       players.push({
         id: `bot-${team}-${index}-${(lobby.matchSeed >>> 0).toString(36)}`,
         name: `Bot ${team === 'alpha' ? 'A' : 'B'}${index + 1}`,
@@ -344,6 +381,8 @@ export function beginPrivateHostMatch({
     mapId,
     seed: lobby.matchSeed,
     gameMode: lobby.gameMode,
+    // the co-op rules (arrangement, campaign operation) ride the handoff into the authority
+    ...(isCoopGameMode(lobby.gameMode) ? { ruleset: privateMatchRuleset(lobby) } : {}),
     worldCollision,
     ...(battleLimitS === undefined ? {} : { battleLimitS }),
   });

@@ -76,7 +76,7 @@ export function campaignParTimeS(operation: Pick<CampaignOperation, 'timeLimitS'
 /** What the Frontline Assault ruleset folds in for an operation (null for a free sortie). */
 export function campaignRulesetInput(operationId: string | null | undefined): CampaignRulesetInput | null {
   const operation = campaignOperationById(operationId);
-  return operation ? { difficulty: operation.difficulty, timeLimitS: operation.timeLimitS } : null;
+  return operation ? { difficulty: operation.difficulty, timeLimitS: operation.timeLimitS, enemy: operation.enemy } : null;
 }
 
 /** Spec nations the enemy roster fills first for an operation ([] for a free sortie). */

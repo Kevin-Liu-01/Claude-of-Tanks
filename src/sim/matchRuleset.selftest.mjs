@@ -5,7 +5,8 @@ import { GAME_MODE_IDS } from './matchModes.ts';
 import {
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
-  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR,
+  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
+  acceptsTeamArrangement, hordeWaveSize,
 } from './matchRuleset.ts';
 
 for (const mode of GAME_MODE_IDS) {
@@ -36,11 +37,32 @@ assert.equal(rulesetLines(turbo)[4].values.value, '+43 %', 'reload shows as a ra
 
 const horde = matchRulesetFor('endless_horde');
 assert.equal(horde.allies, 2, 'Horde fields the player with two allied bots (co-op humans join alpha)');
-assert.equal(horde.enemies, 11);
+assert.equal(horde.enemies, 14, 'owner 2026-09-15: fourteen hostile identities in the pool');
+assert.deepEqual(horde.horde, { waveSize: 5, waveStep: 1, surgeEvery: 3 }, 'five on the first wave, one more each wave, a surge every third');
+assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((w) => hordeWaveSize(horde.horde, w)), [5, 6, 7, 9, 10, 11, 13], 'the wave law grows without a cap');
 assert.equal(horde.timeLimitS, null); assert.equal(horde.respawnS, null); assert.equal(horde.hpScale, 1.25);
-assert.deepEqual(rulesetLines(horde).map((line) => line.key), ['hp', 'noRespawn', 'noClock', 'allies', 'waveRepair']);
-assert.equal(rulesetLines(horde)[4].values.value, '30 %');
+assert.deepEqual(rulesetLines(horde).map((line) => line.key), ['hp', 'noRespawn', 'noClock', 'allies', 'enemyPool', 'hordeWaves', 'waveRepair']);
+assert.equal(rulesetLines(horde)[6].values.value, '30 %');
+assert.deepEqual(rulesetLines(horde)[5].values, { value: '5', step: '1' });
 assert.equal(HORDE_WAVE_REPAIR, 0.3);
+
+// team arrangement (owner 2026-09-15): the co-op modes take the player's side arrangement, clamped
+assert.ok(acceptsTeamArrangement('endless_horde') && acceptsTeamArrangement('frontline_assault') && !acceptsTeamArrangement('standard'));
+assert.equal(normalizeTeamArrangement('standard', { allies: 1 }), null, 'only the co-op modes arrange their sides');
+assert.equal(normalizeTeamArrangement('endless_horde', null), null); assert.equal(normalizeTeamArrangement('endless_horde', {}), null);
+assert.deepEqual(normalizeTeamArrangement('endless_horde', { allies: 9, enemies: 3, waveSize: 40, enemyNation: 'germany' }),
+  { allies: TEAM_ARRANGEMENT_LIMITS.allies[1], enemies: TEAM_ARRANGEMENT_LIMITS.enemies.endless_horde[0], waveSize: TEAM_ARRANGEMENT_LIMITS.waveSize[1], enemyNation: 'germany' },
+  'every field clamps to the published limits');
+assert.equal(normalizeTeamArrangement('frontline_assault', { waveSize: 8 }), null, 'the wave size is a Horde setting');
+assert.equal(normalizeTeamArrangement('endless_horde', { enemyNation: 'not a nation!' }), null, 'a malformed nation id is dropped');
+const arrangedHorde = matchRulesetFor('endless_horde', null, { allies: 0, enemies: 18, waveSize: 8, enemyNation: 'russia' });
+assert.equal(arrangedHorde.allies, 0); assert.equal(arrangedHorde.enemies, 18); assert.equal(arrangedHorde.horde.waveSize, 8);
+assert.equal(arrangedHorde.enemyNation, 'russia');
+assert.ok(Object.isFrozen(arrangedHorde) && Object.isFrozen(arrangedHorde.horde));
+assert.deepEqual(rulesetLines(arrangedHorde).map((line) => line.key), ['hp', 'noRespawn', 'noClock', 'noAllies', 'enemyPool', 'enemyNation', 'hordeWaves', 'waveRepair']);
+assert.equal(matchRulesetFor('endless_horde', null, { waveSize: 12, enemies: 6 }).horde.waveSize, 6, 'the first wave never exceeds the pool');
+assert.equal(matchRulesetFor('endless_horde', null, {}), horde, 'an empty arrangement is the base ruleset');
+assert.equal(matchRulesetFor('standard', null, { allies: 0 }), standard, 'Standard ignores arrangements');
 
 const ctf = matchRulesetFor('capture_the_flag');
 assert.equal(ctf.respawnS, 6); assert.equal(RULESET_SCORE_TARGETS.capture_the_flag, 3);
@@ -51,9 +73,16 @@ assert.equal(RULESET_SCORE_TARGETS.zone_control, 750, 'zone target resolves insi
 const assault = matchRulesetFor('frontline_assault');
 assert.equal(assault.timeout, 'defeat', 'an expired assault clock loses the operation');
 assert.equal(assault.timeLimitS, 720); assert.equal(assault.allies, 3); assert.equal(assault.respawnS, null);
+assert.equal(assault.enemies, 10, 'ten defenders in the formation pool'); assert.equal(assault.enemyNation, null, 'a free sortie names no nation unless arranged');
 assert.deepEqual(assault.assault, { initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 });
-const op4 = matchRulesetFor('frontline_assault', { difficulty: 4 });
+const op4 = matchRulesetFor('frontline_assault', { difficulty: 4, enemy: 'russia' });
 assert.equal(op4.assault.extraDefenders, 1, 'operation 4 fields one extra defender per sector');
+assert.equal(op4.enemyNation, 'russia', 'the operation names the formation');
+assert.equal(matchRulesetFor('frontline_assault', { difficulty: 4, enemy: 'russia' }, { enemyNation: 'germany', allies: 1 }).enemyNation, 'russia',
+  'a free-sortie nation setting never overrides the operation\'s formation');
+assert.equal(matchRulesetFor('frontline_assault', { difficulty: 4, enemy: 'russia' }, { enemyNation: 'germany', allies: 1 }).allies, 1,
+  'but the ally count is the player\'s');
+assert.equal(matchRulesetFor('frontline_assault', null, { enemyNation: 'china' }).enemyNation, 'china', 'a free sortie takes the nation setting');
 assert.ok(Math.abs(op4.assault.difficultyHp - 0.18) < 1e-9, 'operation 4 defenders carry +18 % hull');
 const op4Short = matchRulesetFor('frontline_assault', { difficulty: 4, timeLimitS: 600 });
 assert.equal(op4Short.timeLimitS, 600, 'an operation may shorten the clock');
@@ -100,4 +129,4 @@ assert.deepEqual(rulesetLoadout({ ...standard, equipmentSlots: 1 }, ['a', 'b', '
 assert.deepEqual(rulesetLoadout(standard, null), []);
 assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde, 6), 2); assert.equal(rulesetAllyCap(assault, 6), 3);
 
-console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, rule-card lines, spawn stamps and ammo/reload helpers verified');
+console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps and ammo/reload helpers verified');

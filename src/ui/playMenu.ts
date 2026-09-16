@@ -1,7 +1,9 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
-import { campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
+import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
+import { ENEMY_NATION_OPTIONS, readTeamArrangement, writeTeamArrangement } from '../game/teamArrangement.ts';
+import { TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, normalizeTeamArrangement, type TeamArrangement } from '../sim/matchRuleset.ts';
 /**
  * Battle-mode picker and private/LAN lobby presentation.
  *
@@ -186,6 +188,18 @@ const CSS = `
   color:inherit;font:900 9px ${FONT_COND};letter-spacing:.08em;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
 .cot-play .rule-copy small{color:#728591;font:700 7px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
 .cot-play .rule-copy .rule-progress{color:#e2b56a;text-transform:none;letter-spacing:.04em}
+.cot-play .arrange{margin:10px 0 4px;padding:10px 12px;border:1px solid rgba(230,154,54,.28);border-radius:10px;background:rgba(230,154,54,.06)}
+.cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px}
+.cot-play .arrange-head b{font:900 10px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase;color:#f0d9b0}.cot-play .arrange-head span{color:#8a9aa6;font-size:9px}
+.cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:8px;align-items:end}
+.cot-play .arrange-fields label{display:grid;gap:4px;font:700 8px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;color:#9fb0bb}
+.cot-play .arrange-fields select{font:700 12px ${FONT_STACK};color:#f2f6f8;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 8px}
+.cot-play .arrange-fields select:disabled{opacity:.55}.cot-play .arrange-fields label[hidden]{display:none}
+.cot-play .arrange-fields .action{padding:7px 10px;font-size:9px}
+body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cot-play .operation-picker{display:grid;gap:4px;margin-top:8px}.cot-play .operation-picker[hidden]{display:none}
+.cot-play .operation-picker select{font:700 12px ${FONT_STACK};color:#f2f6f8;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 8px;max-width:100%}
+.cot-play .operation-picker select:disabled{opacity:.55}
 .cot-play .rule-copy .rule-lines{color:#8ea2b0;text-transform:none;letter-spacing:.02em;line-height:1.35;white-space:normal}
 .cot-play .rule-note{display:block;margin:6px 0 0;color:#e2b56a;font:700 9px ${FONT_COND};letter-spacing:.08em;text-transform:uppercase}
 .cot-play .rule-note[hidden]{display:none}
@@ -638,8 +652,12 @@ export function createPlayMenu({
   };
   // batch 19 (2026-09-14): every card lists the rules the code applies (sim/matchRuleset.ts), generated
   // from the same table the sim reads, so the card can never promise a rule the battle does not keep
-  const ruleLineCopy = (id: GameModeId): string => rulesetLines(matchRulesetFor(id))
-    .map((line) => t(`rules.line.${line.key}`, line.values)).join(' · ');
+  // team arrangement (2026-09-15): the card follows the player's arrangement, the nation reads as copy
+  const ruleLineValues = (line: { key: string; values: Readonly<Record<string, string>> }): Record<string, string> =>
+    line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : { ...line.values };
+  const ruleLineCopy = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string =>
+    rulesetLines(matchRulesetFor(id, null, arrangement))
+      .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
   const ruleCards = Object.values(GAME_MODE_DEFINITIONS).map((rule) =>
     `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`)}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`)}</small>${
@@ -656,6 +674,16 @@ export function createPlayMenu({
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
+    <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
+      <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note>${t('playMenu.arrange.sub')}</span></div>
+      <div class="arrange-fields">
+        <label><span>${t('playMenu.arrange.allies')}</span><select data-arrange="allies"></select></label>
+        <label><span>${t('playMenu.arrange.enemies')}</span><select data-arrange="enemies"></select></label>
+        <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
+        <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
+        <button class="action alt" type="button" data-arrange-reset>${t('playMenu.arrange.reset')}</button>
+      </div>
+    </section>
     <section class="campaign" data-campaign>${campaignMarkup()}</section>
     <section class="room"><div class="setup">
       <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
@@ -709,7 +737,10 @@ export function createPlayMenu({
                 <span class="menu-select-trigger-copy"><span id="cot-room-map-value" data-select-value>${t('playMenu.advanced.battlefieldRandom')}</span>
                   <small data-select-meta>${t('playMenu.advanced.battlefieldAny')}</small></span></button>
               <div class="menu-select-list" id="cot-room-map-list" role="listbox" aria-labelledby="cot-room-map-label"></div>
-            </div></div></div></div>
+            </div>
+            <label class="operation-picker" data-operation-field hidden><span class="field-label">${t('playMenu.operation.label')}</span>
+              <select data-control="operation"><option value="">${t('playMenu.operation.free')}</option>${CAMPAIGN_OPERATIONS.map((operation) =>
+                `<option value="${operation.id}">${String(operation.index).padStart(2, '0')} · ${t(`campaign.op.${operation.id}.title`)} · ${t(`map.${operation.mapId}`)}</option>`).join('')}</select></label></div></div></div>
       <div class="players"></div><div class="controls">
         <div class="control-options"><div class="field vehicle-field"><span class="field-label" id="cot-room-vehicle-label">${t('playMenu.advanced.vehicle')}</span>
           <div class="menu-select menu-select--vehicle" data-control="vehicle" data-value="">
@@ -859,6 +890,8 @@ export function createPlayMenu({
   bindRoomMenu(sizeSelect);
   bindRoomMenu(mapSelect);
   const battlefieldCard = requiredElement<HTMLElement>(root, '.battlefield-card');
+  const operationField = requiredElement<HTMLElement>(root, '[data-operation-field]');
+  const operationSelect = requiredElement<HTMLSelectElement>(root, 'select[data-control="operation"]');
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
   const battlefieldName = requiredElement<HTMLElement>(root, '[data-map-name]');
@@ -899,6 +932,66 @@ export function createPlayMenu({
   let invitedHostName: string | null = null;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
+  // ---- team arrangement (owner 2026-09-15) --------------------------------------------------
+  const arrangeSection = root.querySelector<HTMLElement>('[data-arrange]')!;
+  const arrangeSelect = (name: string): HTMLSelectElement => arrangeSection.querySelector<HTMLSelectElement>(`select[data-arrange="${name}"]`)!;
+  const fillOptions = (select: HTMLSelectElement, entries: Array<[string, string]>, value: string): void => {
+    select.innerHTML = entries.map(([id, label]) => `<option value="${id}"${id === value ? ' selected' : ''}>${label}</option>`).join('');
+    select.value = value;
+  };
+  const range = (from: number, to: number): Array<[string, string]> =>
+    Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)]);
+  /** The arrangement the panel shows: the room's (in a lobby) or the player's stored one, over the mode defaults. */
+  const currentArrangement = (mode: GameModeId): TeamArrangement | null =>
+    state && acceptsTeamArrangement(mode) ? (state.arrangement ?? null) : readTeamArrangement(mode);
+  function refreshRuleLines(mode: GameModeId): void {
+    const card = ruleButtons.find((button) => button.dataset.gameMode === mode);
+    const lines = card?.querySelector<HTMLElement>('[data-rule-lines]');
+    if (lines) lines.textContent = ruleLineCopy(mode, currentArrangement(mode));
+  }
+  function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
+    if (!acceptsTeamArrangement(mode)) { arrangeSection.hidden = true; return; }
+    arrangeSection.hidden = false;
+    const defaults = matchRulesetFor(mode);
+    const arranged = currentArrangement(mode);
+    fillOptions(arrangeSelect('allies'), range(TEAM_ARRANGEMENT_LIMITS.allies[0], TEAM_ARRANGEMENT_LIMITS.allies[1]),
+      String(arranged?.allies ?? defaults.allies ?? 0));
+    fillOptions(arrangeSelect('enemies'), range(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0], TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]),
+      String(arranged?.enemies ?? defaults.enemies ?? TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]));
+    const waveLabel = arrangeSection.querySelector<HTMLElement>('[data-arrange-wave]')!;
+    waveLabel.hidden = mode !== 'endless_horde';
+    if (mode === 'endless_horde') {
+      fillOptions(arrangeSelect('waveSize'), range(TEAM_ARRANGEMENT_LIMITS.waveSize[0], TEAM_ARRANGEMENT_LIMITS.waveSize[1]),
+        String(arranged?.waveSize ?? defaults.horde?.waveSize ?? TEAM_ARRANGEMENT_LIMITS.waveSize[0]));
+    }
+    fillOptions(arrangeSelect('enemyNation'),
+      [['', t('playMenu.arrange.mixed')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
+      arranged?.enemyNation ?? '');
+    const locked = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
+    for (const select of arrangeSection.querySelectorAll<HTMLSelectElement>('select')) select.disabled = locked;
+    arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.disabled = locked;
+    const note = arrangeSection.querySelector<HTMLElement>('[data-arrange-note]');
+    if (note) note.textContent = t(fromLobby ? (role === 'host' ? 'playMenu.arrange.subHost' : 'playMenu.arrange.subGuest') : 'playMenu.arrange.sub');
+    refreshRuleLines(mode);
+  }
+  function readArrangementPanel(mode: GameModeId): TeamArrangement | null {
+    const number = (name: string): number | null => { const v = Number(arrangeSelect(name).value); return Number.isFinite(v) ? v : null; };
+    return normalizeTeamArrangement(mode, {
+      allies: number('allies'), enemies: number('enemies'),
+      waveSize: mode === 'endless_horde' ? number('waveSize') : null,
+      enemyNation: arrangeSelect('enemyNation').value || null,
+    });
+  }
+  function applyArrangement(arrangement: TeamArrangement | null): void {
+    const mode = selectedGameMode;
+    if (!acceptsTeamArrangement(mode)) return;
+    writeTeamArrangement(mode, arrangement);
+    if (state && role === 'host' && state.phase === 'waiting') command({ type: 'set_arrangement', arrangement });
+    renderArrangement(mode, !!state);
+  }
+  arrangeSection.addEventListener('change', () => applyArrangement(readArrangementPanel(selectedGameMode)));
+  arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.addEventListener('click', () => applyArrangement(null));
+
   function showSelectedGameMode(
     next: RuntimeValue = selectedGameMode,
     { fromLobby = false }: { fromLobby?: boolean } = {},
@@ -913,6 +1006,7 @@ export function createPlayMenu({
       button.setAttribute('aria-pressed', String(button.dataset.gameMode === selectedGameMode));
       button.disabled = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
     }
+    renderArrangement(selectedGameMode, fromLobby);
   }
   showSelectedGameMode();
 
@@ -1202,8 +1296,13 @@ export function createPlayMenu({
 
   function renderLobbyBattlefield(next: SerializedLobby): void {
     codeEl.textContent = next.roomCode;
-    mapSelect.value = next.mapId;
-    const selectedMap = mapById.get(next.mapId) || mapById.get('random') || maps[0];
+    // batch 30 (2026-09-15): a Frontline room may play a campaign operation — it names the battlefield
+    const operation = next.gameMode === 'frontline_assault' ? campaignOperationById(next.campaignOperationId) : null;
+    operationField.hidden = next.gameMode !== 'frontline_assault';
+    operationSelect.value = operation?.id ?? '';
+    operationSelect.disabled = role !== 'host' || next.phase !== 'waiting';
+    mapSelect.value = operation?.mapId ?? next.mapId;
+    const selectedMap = mapById.get(operation?.mapId ?? next.mapId) || mapById.get('random') || maps[0];
     battlefieldName.textContent = selectedMap?.name || next.mapId || t('playMenu.map.random');
     const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
@@ -1250,7 +1349,8 @@ export function createPlayMenu({
       player?.team === 'spectator';
     teamSelect.disabled = next.phase !== 'waiting' || !!player?.ready ||
       isCoopGameMode(next.gameMode);
-    mapSelect.disabled = role !== 'host' || next.phase !== 'waiting';
+    mapSelect.disabled = role !== 'host' || next.phase !== 'waiting'
+      || (next.gameMode === 'frontline_assault' && !!campaignOperationById(next.campaignOperationId));
     sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
     const activePlayers = next.players.filter((candidate) => candidate.team !== 'spectator');
@@ -1548,6 +1648,7 @@ export function createPlayMenu({
     command({ type: 'set_team_size', teamSize: Number(sizeSelect.value) });
   });
   mapSelect.addEventListener('change', () => command({ type: 'set_map', mapId: mapSelect.value }));
+  operationSelect.addEventListener('change', () => command({ type: 'set_campaign_operation', campaignOperationId: operationSelect.value || null }));
   readyBtn.addEventListener('click', () => {
     const me = state && state.players.find((player) => player.id === ownId());
     const ready = !me?.ready;

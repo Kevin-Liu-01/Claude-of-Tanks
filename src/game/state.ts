@@ -35,9 +35,9 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetLoadout,
-  type MatchRuleset,
-} from '../sim/matchRuleset.ts';
+  type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
+import { enemyNationSpecNations, readTeamArrangement } from './teamArrangement.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
 import type { ConcealerDisc, SpottingSystem, SpottingTank } from '../sim/spotting.ts';
 import type { CollisionRecord } from '../world/collision.ts';
@@ -330,6 +330,8 @@ interface SetupBattleOptions {
   gameMode?: GameModeId | string | null;
   /** Campaign ladder operation (Frontline Assault only): difficulty and clock fold into the ruleset. */
   campaignOperationId?: string | null;
+  /** Team arrangement for the co-op modes; undefined reads the player's stored setting, null takes the defaults. */
+  arrangement?: TeamArrangement | null;
   deferCamoRepaint?: boolean;
   deferVisuals?: boolean;
   deferOpeningRoutes?: boolean;
@@ -576,7 +578,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.resultReason = null;
   game.gameMode = normalizeGameMode(options.gameMode);
   game.campaignOperationId = game.gameMode === 'frontline_assault' ? (options.campaignOperationId ?? null) : null;
-  game.ruleset = matchRulesetFor(game.gameMode, campaignRulesetInput(game.campaignOperationId));
+  game.ruleset = matchRulesetFor(game.gameMode, campaignRulesetInput(game.campaignOperationId),
+    options.arrangement === undefined ? readTeamArrangement(game.gameMode) : options.arrangement);
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -642,6 +645,33 @@ function createBattleSpotting(game: SoloGameState, world: SoloWorld): SpottingSy
   });
 }
 
+/** Spec nations the enemy side fills from first: the operation's formation, else the arranged nation. */
+export function battleEnemyNations(ruleset: MatchRuleset, campaignOperationId: string | null | undefined): readonly string[] {
+  const campaign = campaignEnemyNations(campaignOperationId);
+  return campaign.length ? campaign : enemyNationSpecNations(ruleset.enemyNation);
+}
+
+/** How many non-player vehicles a battle fields and how many seats the formation leads with. */
+export function battleRosterPlan(
+  ruleset: MatchRuleset,
+  campaignOperationId: string | null | undefined,
+  randomBattle: boolean,
+): { nations: readonly string[]; slots: number | null; formationLead: number | null } {
+  const nations = battleEnemyNations(ruleset, campaignOperationId);
+  // team arrangement (2026-09-15): the co-op modes size their own field — allied bots plus the enemy pool
+  if (randomBattle && ruleset.allies != null && ruleset.enemies != null) {
+    return { nations, slots: ruleset.allies + ruleset.enemies, formationLead: ruleset.enemies };
+  }
+  return { nations, slots: null, formationLead: null };
+}
+
+/** The loading plan's view of a sortie (main.ts planRoster / planCamoOverrides), from the stored arrangement. */
+export function soloRosterPlan(gameMode: string | null | undefined, campaignOperationId: string | null | undefined, randomBattle = true) {
+  const mode = normalizeGameMode(gameMode);
+  const ruleset = matchRulesetFor(mode, campaignRulesetInput(campaignOperationId), readTeamArrangement(mode));
+  return battleRosterPlan(ruleset, campaignOperationId, randomBattle);
+}
+
 function chooseBattleAllies(
   game: SoloGameState,
   playerSpecId: string,
@@ -669,7 +699,7 @@ function chooseBattleAllies(
   let enemyTierSum = 0;
   // campaign: the operation's formation fills the enemy side first (spec nation), the tier-balanced
   // greedy pass below splits the rest
-  const enemyNations = campaignEnemyNations(game.campaignOperationId);
+  const enemyNations = battleEnemyNations(game.ruleset, game.campaignOperationId);
   const formation = new Set<SoloEntity>();
   if (enemyNations.length) {
     for (const entity of byTier) {
@@ -1054,8 +1084,9 @@ export function setupBattle(
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
   // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
+  const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
   game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
-    campaignEnemyNations(game.campaignOperationId)) as SoloEntity[];
+    rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead) as SoloEntity[];
   // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
   // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
   // snowfields/dunes stop being full of factory-green bots (the player's

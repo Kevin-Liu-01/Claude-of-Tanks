@@ -13,8 +13,7 @@ import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
-  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset,
-} from './matchRuleset.ts';
+  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize } from './matchRuleset.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
@@ -88,7 +87,6 @@ const BALL_GOAL_RADIUS_M = 18;
 const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
-const HORDE_INITIAL_ACTIVE = 3;
 const PICKUP_RADIUS_M = 7;
 
 interface Vec3Like { x: number; y: number; z: number }
@@ -493,15 +491,35 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     setActive(entity, false);
   };
 
-  const startHordeWave = (): void => {
-    const activeCount = Math.min(hordeEnemies.length,
-      HORDE_INITIAL_ACTIVE + Math.floor((wave - 1) / 2));
-    const healthScale = 1 + (wave - 1) * 0.16;
-    for (let index = 0; index < hordeEnemies.length; index++) {
-      const entity = hordeEnemies[index];
-      if (index < activeCount) reviveAtSpawn(entity, healthScale);
+  // owner 2026-09-15 ("only 3 tanks every time and the same tanks each round"): every wave draws
+  // its hostiles afresh from the pool — a seeded shuffle that puts identities rested last wave
+  // first — so consecutive waves share as few vehicles as the pool allows, and the wave grows by
+  // the ruleset's law until the whole pool is on the field.
+  const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
+  let lastWaveIds = new Set<string>();
+  const drawWave = (count: number): Set<Entity> => {
+    const order = hordeEnemies.slice();
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    // stable: rested identities lead, the shuffled order decides within each band
+    order.sort((a, b) => Number(lastWaveIds.has(a.id)) - Number(lastWaveIds.has(b.id)));
+    const active = new Set(order.slice(0, Math.min(count, order.length)));
+    lastWaveIds = new Set([...active].map((entity) => entity.id));
+    return active;
+  };
+  const fieldWave = (active: Set<Entity>, healthScale: number): void => {
+    for (const entity of hordeEnemies) {
+      if (active.has(entity)) reviveAtSpawn(entity, healthScale);
       else deactivate(entity);
     }
+  };
+
+  const startHordeWave = (): void => {
+    const activeCount = Math.min(hordeEnemies.length, hordeWaveSize(hordeRules, wave));
+    const healthScale = 1 + (wave - 1) * 0.16;
+    fieldWave(drawWave(activeCount), healthScale);
     for (const ally of teams.alpha) {
       if (ally.combat.destroyed) reviveAtSpawn(ally, 1);
     }
@@ -572,11 +590,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const activeCount = Math.min(hordeEnemies.length,
       assaultRules.initialActive + assaultRules.extraDefenders + lineIndex);
     const healthScale = 1 + lineIndex * assaultRules.hpPerLine + assaultRules.difficultyHp;
-    for (let index = 0; index < hordeEnemies.length; index++) {
-      const entity = hordeEnemies[index];
-      if (index < activeCount) reviveAtSpawn(entity, healthScale);
-      else deactivate(entity);
-    }
+    // each sector's counter-attack is a fresh draw from the formation (owner 2026-09-15)
+    fieldWave(drawWave(activeCount), healthScale);
     for (const ally of teams.alpha) {
       if (ally.combat.destroyed && ally.bot) reviveAtSpawn(ally, 1);
     }

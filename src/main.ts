@@ -209,7 +209,8 @@ import {
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
 import { clearMatchSession, createBus, createGameState } from './game/stateCore.ts';
-import { campaignEnemyNations, campaignOperationById } from './game/campaignOperations.ts';
+import { campaignOperationById } from './game/campaignOperations.ts';
+import { soloRosterPlan } from './game/state.ts';
 import { matchRulesetFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
@@ -2033,10 +2034,15 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     preloadArmorAim: () => armorAimOverlay.preload(),
     preloadGarageReturn: () => garageReturn.preload(),
     // campaign: the plan follows the operation's formation so the right profiles transfer early
-    planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null) =>
-      planBattleParticipantIds(game, specId, randomRoster, campaignEnemyNations(campaignOperationId)),
-    planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null) =>
-      planBattleCamoOverrides(game, specId, mapId, randomRoster, campaignEnemyNations(campaignOperationId)),
+    // team arrangement (2026-09-15): the plan sizes the field and leads with the arranged nation like setupBattle
+    planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
+      const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
+      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead);
+    },
+    planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
+      const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead);
+    },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,
     preloadBattleClient: preloadBattleClientRuntime,

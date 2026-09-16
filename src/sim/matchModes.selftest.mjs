@@ -140,8 +140,9 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
     entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
   const run = controller('endless_horde', [player, ...enemies], 6000);
   assert.equal(run.match.state.horde.wave, 1);
-  assert.equal(run.match.state.horde.total, 3);
-  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 3);
+  // owner 2026-09-15: the first wave fields five hostiles (the whole five-strong pool here)
+  assert.equal(run.match.state.horde.total, 5);
+  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 5);
   assert.deepEqual(player.combat.ammo, [24, 16, 6]);
   player.combat.ammo = [0, 0, 0];
   for (const target of enemies) {
@@ -190,6 +191,39 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.equal(snapshot.playerAmmoCapacity, 46);
 }
 
+// owner 2026-09-15 ("they're the same tanks each round"): waves draw fresh identities from the pool,
+// rested vehicles first, and grow by the wave law (5, 6, 7, then a surge on the fourth wave).
+{
+  const player = entity('player', 'alpha', 0, -150);
+  const enemies = Array.from({ length: 9 }, (_, index) =>
+    entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  const run = controller('endless_horde', [player, ...enemies], 4242);
+  const active = () => new Set(enemies.filter((target) => target.modeActive !== false).map((target) => target.id));
+  const waveOne = active();
+  assert.equal(waveOne.size, 5, 'wave 1 fields five of the nine');
+  let clock = 0;
+  const clear = () => {
+    for (const target of enemies) if (target.modeActive !== false) target.combat.destroyed = true;
+    clock += 0.5; run.match.step(1 / 60, clock); clock += 6.01; run.match.step(1 / 60, clock);
+  };
+  clear();
+  const waveTwo = active();
+  assert.equal(run.match.state.horde.wave, 2); assert.equal(waveTwo.size, 6, 'wave 2 adds one hostile');
+  const rested = enemies.filter((target) => !waveOne.has(target.id)).map((target) => target.id);
+  assert.ok(rested.every((id) => waveTwo.has(id)), 'every vehicle rested on wave 1 leads wave 2');
+  clear();
+  assert.equal(run.match.state.horde.wave, 3); assert.equal(active().size, 7);
+  clear();
+  assert.equal(run.match.state.horde.wave, 4); assert.equal(active().size, 9, 'the surge on wave 4 (8 + 1) is capped by the nine-strong pool');
+  const started = run.events.filter((event) => event.type === 'mode_wave_started').map((event) => event.payload.enemies);
+  assert.deepEqual(started, [5, 6, 7, 9]);
+  // the same seed replays the same draws
+  const enemiesAgain = Array.from({ length: 9 }, (_, index) => entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  controller('endless_horde', [entity('player', 'alpha', 0, -150), ...enemiesAgain], 4242);
+  assert.deepEqual(new Set(enemiesAgain.filter((target) => target.modeActive !== false).map((target) => target.id)), waveOne,
+    'the seed decides the draw');
+}
+
 // campaign slice 1 (2026-09-12): Frontline Assault — three sectors on the axis
 // to the enemy, a counter-attack wave per sector, hold the last one to win.
 {
@@ -207,7 +241,8 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.equal(enemies.filter((target) => target.modeActive !== false).length, 3, 'wave 1 fields three defenders');
   assert.deepEqual(match.botTarget(ally), { x: match.state.zones[0].x, z: match.state.zones[0].z },
     'attackers push for the live sector');
-  assert.deepEqual(match.botTarget(enemies[0]), { x: match.state.zones[0].x, z: match.state.zones[0].z },
+  const defender = enemies.find((target) => target.modeActive !== false);
+  assert.deepEqual(match.botTarget(defender), { x: match.state.zones[0].x, z: match.state.zones[0].z },
     'defenders fall back on the live sector when no attacker is closer');
   let timeS = 0;
   const hold = (seconds) => {

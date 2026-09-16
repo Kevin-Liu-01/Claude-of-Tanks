@@ -20,11 +20,17 @@ rule the battle does not keep.
 | Capture the Flag | Carry the enemy flag to a home flag that has not been stolen | flag carrier drives at 85 % | 6 s | First team to 3 captures, or the clock (score) |
 | Zone Control | Capture and hold three battlefield sectors | — | 6 s | First team to 750 points, or the clock (score) |
 | Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables | 3 s | First team to 5 goals, or the 10:00 clock (score) |
-| Endless Horde | Survive increasingly numerous, durable and mobile bot waves | +25 % hull, two allied bots (co-op humans join alpha), 30 % repair for every survivor when a wave is cleared, no clock | No | The final human-controlled tank is destroyed |
-| Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
+| Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
+| Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 
-Horde begins with three active enemies and adds one every second wave until it
-reaches the room's enemy roster. Enemy hit points increase by 16% per wave and
+Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
+they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +
+⌊(wave − 1) / surgeEvery⌋` hostiles — 5, 6, 7, 9, 10, 11, 13 … by default — drawn afresh
+every wave from a pool of fourteen hostile identities (`ruleset.enemies`): a seeded shuffle
+that puts the vehicles rested last wave first, so consecutive waves share as few tanks as
+the pool allows, and the whole pool is on the field once the law overtakes it. The wave
+law and the pool are `HordeRules` / `TeamArrangement` in `sim/matchRuleset.ts`
+(`TEAM_ARRANGEMENT_LIMITS`: allies 0–6, pool 6–20, first wave 2–12). Enemy hit points increase by 16% per wave and
 mobility increases by 4.5% per wave, capped at 55%. Clearing a wave repairs every
 surviving attacker by 30 % of maximum hull, starts a six-second intermission and
 places one deterministic floating cache. Repair cache probability begins at 62%,
@@ -33,7 +39,8 @@ caches replenish 20% of every non-full authored ammunition channel (with a minim
 of one round per channel). Horde uses the vehicle's normal per-shell loadout from
 the first wave onward. At most 12 uncollected caches remain active.
 
-Frontline Assault fields `3 + extraDefenders + sector` defenders per wave with
+Frontline Assault draws each sector's counter-attack the same way (fresh identities from
+the ten-strong formation pool) and fields `3 + extraDefenders + sector` defenders per wave with
 `1 + 0.16 × sector + difficultyHp` hull; a campaign operation of difficulty *d* adds
 `floor((d − 1) / 2)` defenders and `(d − 1) × 6 %` hull. A level score when the clock
 expires is a draw under Standard rules and a defeat for the attackers in Frontline
@@ -64,10 +71,21 @@ Assault (`timeout: 'defeat'`).
   `determineEliminationResult` (authority); the HUD counts the same clock down
   (`frame.timeLimitS`, counting up when a mode has none).
 - **Roster** — `rulesetAllyCap` sets the solo split (Standard 6 / 7, Horde 2 /
-  11, Frontline Assault 3 / 10); a campaign operation's formation
-  (`campaignEnemyNations`) leads the curated pool (`rosterState.preferNations`:
-  the player's era first, then its contemporaries, never WW2 against modern) and
-  fills the enemy side first.
+  14, Frontline Assault 3 / 10; the co-op modes size their own field from
+  `ruleset.allies + ruleset.enemies`, `state.battleRosterPlan`); a campaign
+  operation's formation (`campaignEnemyNations`) or the arranged enemy nation
+  (`game/teamArrangement.ts` `ENEMY_NATION_OPTIONS`, every fleet nation) leads the
+  curated pool (`rosterState.preferNations`: the player's era first, then its
+  contemporaries, never WW2 against modern) and fills the enemy side first.
+- **Team arrangement (2026-09-15)** — the play menu's arrangement panel (allied bots,
+  enemy pool, first Horde wave, enemy nation) is saved per mode
+  (`cot.game.teams.v1`, `readTeamArrangement`) and folds into the ruleset
+  (`matchRulesetFor(mode, campaign, arrangement)`); a campaign operation's nation is
+  never overridden. In a room the host's arrangement and the chosen campaign
+  operation ride the lobby (`set_arrangement`, `set_campaign_operation`), the
+  handoff fills Alpha with the allied bots and Bravo with the same-nation pool
+  (`privateMatchHandoff.privateMatchRuleset`, the operation's own map) and passes
+  the ruleset into the authority.
 - **Player affordances** — equipment slots at spawn, `ui:consumable` denied with
   reason `RULESET` when the mode has no consumables, rule chips under the
   pre-battle countdown (`hud.setPreBattleRules`), and the rule lines on every
@@ -95,7 +113,8 @@ in `net/lobby.ts` covers Endless Horde and Frontline Assault: no team select, se
 seats), the authority bakes the `assault-trenches` terrain variant as its own shared
 terrain entry and seats the sectors on the carved lines, the presentation runtime
 loads the same variant in the browser, and the private-match handoff fills Bravo with
-defender bots. Campaign progress stays a solo record: a network `battle:ended`
+the formation's defender bots and Alpha with the arranged allied bots (the room's
+campaign operation names the map, the nation and the difficulty). Campaign progress stays a solo record: a network `battle:ended`
 (`network: true`) never records an operation.
 
 Respawning modes (Capture the Flag, Zone Control, Turbo Ball, Endless Horde and the

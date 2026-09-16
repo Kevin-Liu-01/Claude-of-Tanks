@@ -25,6 +25,36 @@ interface AssaultRules {
   readonly holdS: number;
 }
 
+/** Endless Horde wave law (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time"). */
+export interface HordeRules {
+  /** Hostiles fielded on the first wave. */
+  readonly waveSize: number;
+  /** Hostiles added every wave. */
+  readonly waveStep: number;
+  /** One more hostile every this many waves (0 = never). */
+  readonly surgeEvery: number;
+}
+
+/**
+ * Team arrangement (owner 2026-09-15): the co-op modes let the player arrange both sides — allied
+ * bots, the enemy pool (distinct hostile identities in the match), the first Horde wave and the
+ * enemy nation. Absent fields keep the mode's defaults; every value is clamped by
+ * TEAM_ARRANGEMENT_LIMITS.
+ */
+export interface TeamArrangement {
+  readonly allies?: number | null;
+  readonly enemies?: number | null;
+  readonly waveSize?: number | null;
+  /** Enemy nation id (game/teamArrangement.ts ENEMY_NATION_OPTIONS) or null for a mixed force. */
+  readonly enemyNation?: string | null;
+}
+
+export const TEAM_ARRANGEMENT_LIMITS = Object.freeze({
+  allies: Object.freeze([0, 6] as const),
+  enemies: Object.freeze({ endless_horde: Object.freeze([6, 20] as const), frontline_assault: Object.freeze([4, 14] as const) }),
+  waveSize: Object.freeze([2, 12] as const),
+});
+
 export interface MatchRuleset {
   readonly mode: GameModeId;
   /** Multiplies 9.81 m/s² for hulls in the air, shells in flight and the ball. */
@@ -53,18 +83,24 @@ export interface MatchRuleset {
   readonly enemies: number | null;
   /** Frontline Assault wave rules (campaign difficulty folds in here). */
   readonly assault: AssaultRules | null;
+  /** Endless Horde wave law. */
+  readonly horde: HordeRules | null;
+  /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
+  readonly enemyNation: string | null;
 }
 
 export interface CampaignRulesetInput {
   /** 1-based ladder difficulty. */
   readonly difficulty: number;
   readonly timeLimitS?: number | null;
+  /** The operation's enemy nation id (campaignOperations.ts). */
+  readonly enemy?: string | null;
 }
 
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, respawnS: null, timeLimitS: 900, timeout: 'draw',
-  allies: null, enemies: null, assault: null,
+  allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
 });
 
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
@@ -81,18 +117,20 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     respawnS: 3, timeLimitS: 600,
   }),
-  // Horde: survival — the player with two allied bots on alpha (co-op humans join it), every
-  // other bot cycling through the waves on the far side, tougher hull, no respawn, no clock;
-  // clearing a wave repairs the survivors by HORDE_WAVE_REPAIR and drops a cache.
+  // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
+  // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
+  // one more each wave and a surge every third), tougher hull, no respawn, no clock; clearing a
+  // wave repairs the survivors by HORDE_WAVE_REPAIR and drops a cache.
   endless_horde: Object.freeze({
     ...STANDARD, mode: 'endless_horde', hpScale: 1.25, respawnS: null, timeLimitS: null,
-    allies: 2, enemies: 11,
+    allies: 2, enemies: 14,
+    horde: Object.freeze({ waveSize: 5, waveStep: 1, surgeEvery: 3 }),
   }),
   // Frontline Assault: the campaign sortie — three allies, no respawn, a twelve-minute clock that
   // costs the operation when it runs out; defenders escalate per sector and per difficulty.
   frontline_assault: Object.freeze({
     ...STANDARD, mode: 'frontline_assault', respawnS: null, timeLimitS: 720, timeout: 'defeat',
-    allies: 3, enemies: null,
+    allies: 3, enemies: 10,
     assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 }),
   }),
 });
@@ -106,20 +144,70 @@ export const FLAG_CARRIER_SPEED_SCALE = 0.85;
 /** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared. */
 export const HORDE_WAVE_REPAIR = 0.3;
 
-export function matchRulesetFor(mode: GameModeId, campaign: CampaignRulesetInput | null = null): MatchRuleset {
+/** The modes whose sides the player arranges. */
+export function acceptsTeamArrangement(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {
+  return mode === 'endless_horde' || mode === 'frontline_assault';
+}
+
+const clampInt = (value: unknown, range: readonly [number, number]): number | null => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(range[0], Math.min(range[1], Math.round(n)));
+};
+
+/** Clamp an arrangement to the mode's limits; null for modes that take none or an empty input. */
+export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangement | null | undefined): TeamArrangement | null {
+  if (!input || !acceptsTeamArrangement(mode)) return null;
+  const allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies);
+  const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
+  const waveSize = mode === 'endless_horde' && input.waveSize != null
+    ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
+  const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null) return null;
+  return Object.freeze({ allies, enemies, waveSize, enemyNation });
+}
+
+export function matchRulesetFor(
+  mode: GameModeId,
+  campaign: CampaignRulesetInput | null = null,
+  arrangement: TeamArrangement | null = null,
+): MatchRuleset {
   const base = BASE_RULESETS[mode] ?? STANDARD;
-  if (!campaign || mode !== 'frontline_assault' || !base.assault) return base;
-  const difficulty = Math.max(1, Math.min(9, Math.floor(campaign.difficulty) || 1));
-  return Object.freeze({
-    ...base,
-    timeLimitS: campaign.timeLimitS === undefined ? base.timeLimitS : campaign.timeLimitS,
-    assault: Object.freeze({
-      ...base.assault,
-      // one extra defender every two operations, and 6 % hull per operation past the first
-      extraDefenders: Math.floor((difficulty - 1) / 2),
-      difficultyHp: (difficulty - 1) * 0.06,
-    }),
-  });
+  let ruleset: MatchRuleset = base;
+  if (campaign && mode === 'frontline_assault' && base.assault) {
+    const difficulty = Math.max(1, Math.min(9, Math.floor(campaign.difficulty) || 1));
+    ruleset = {
+      ...base,
+      timeLimitS: campaign.timeLimitS === undefined ? base.timeLimitS : campaign.timeLimitS,
+      enemyNation: typeof campaign.enemy === 'string' ? campaign.enemy : base.enemyNation,
+      assault: Object.freeze({
+        ...base.assault,
+        // one extra defender every two operations, and 6 % hull per operation past the first
+        extraDefenders: Math.floor((difficulty - 1) / 2),
+        difficultyHp: (difficulty - 1) * 0.06,
+      }),
+    };
+  }
+  const arranged = normalizeTeamArrangement(mode, arrangement);
+  if (arranged) {
+    ruleset = {
+      ...ruleset,
+      allies: arranged.allies ?? ruleset.allies,
+      enemies: arranged.enemies ?? ruleset.enemies,
+      // a campaign operation's formation is not overridden by the free-sortie nation setting
+      enemyNation: campaign?.enemy ? ruleset.enemyNation : (arranged.enemyNation ?? ruleset.enemyNation),
+      horde: ruleset.horde && arranged.waveSize != null
+        ? Object.freeze({ ...ruleset.horde, waveSize: Math.min(arranged.waveSize, arranged.enemies ?? ruleset.enemies ?? arranged.waveSize) })
+        : ruleset.horde,
+    };
+  }
+  return ruleset === base ? base : Object.freeze(ruleset);
+}
+
+/** Hostiles the Horde fields on a wave (1-based), before the pool caps it. */
+export function hordeWaveSize(rules: HordeRules, wave: number): number {
+  const w = Math.max(1, Math.floor(wave));
+  return rules.waveSize + (w - 1) * rules.waveStep + (rules.surgeEvery > 0 ? Math.floor((w - 1) / rules.surgeEvery) : 0);
 }
 
 /** Whole-number percent for copy ("+50 %", "-40 %"). */
@@ -159,7 +247,10 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   }
   if (ruleset.allies === 0) line('noAllies');
   else if (ruleset.allies != null) line('allies', { value: String(ruleset.allies) });
+  if (ruleset.enemies != null && acceptsTeamArrangement(ruleset.mode)) line('enemyPool', { value: String(ruleset.enemies) });
+  if (ruleset.enemyNation) line('enemyNation', { value: ruleset.enemyNation });
   if (ruleset.mode === 'capture_the_flag') line('carrierSpeed', { value: percent(FLAG_CARRIER_SPEED_SCALE) });
+  if (ruleset.horde) line('hordeWaves', { value: String(ruleset.horde.waveSize), step: String(ruleset.horde.waveStep) });
   if (ruleset.mode === 'endless_horde') line('waveRepair', { value: `${Math.round(HORDE_WAVE_REPAIR * 100)} %` });
   if (ruleset.assault) {
     line('assaultWaves', {

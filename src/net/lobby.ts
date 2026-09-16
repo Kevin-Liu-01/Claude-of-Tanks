@@ -7,6 +7,7 @@ import {
   normalizeGameMode,
   type GameModeId,
 } from '../sim/matchModes.ts';
+import { normalizeTeamArrangement, type TeamArrangement } from '../sim/matchRuleset.ts';
 
 export const LOBBY_PHASES = {
   WAITING: 'waiting',
@@ -55,6 +56,10 @@ export interface LobbyState {
   locked: boolean;
   mapId: string;
   teamSize: number;
+  /** Team arrangement for the co-op modes (owner 2026-09-15); host-set, null keeps the mode's defaults. */
+  arrangement: TeamArrangement | null;
+  /** Frontline Assault campaign operation the room plays (host-set), null for a free sortie. */
+  campaignOperationId: string | null;
   revision: number;
   updatedAtTick: number;
   matchSeed: number | null;
@@ -188,12 +193,36 @@ export function readSerializedLobby(value: RuntimeValue): SerializedLobby {
     locked: value.locked,
     mapId: value.mapId,
     teamSize: Number(value.teamSize),
+    // wire compatibility: peers on the previous protocol send neither field
+    arrangement: normalizeTeamArrangement(value.gameMode, readArrangementField(value.arrangement)),
+    campaignOperationId: readCampaignOperationField(value.campaignOperationId),
     revision: value.revision,
     matchSeed,
     round: value.round,
     lastResult,
     players,
   };
+}
+
+const CAMPAIGN_OPERATION_ID = /^[a-z][a-z0-9_]{1,40}$/;
+
+function readArrangementField(value: RuntimeValue): TeamArrangement | null {
+  if (value === null || value === undefined) return null;
+  if (!isRecord(value)) throw invalidLobbyState('lobby arrangement must be an object');
+  const pick = (key: string): number | string | null => {
+    const field = (value as LobbyRecord)[key];
+    return field === undefined || field === null ? null : typeof field === 'number' || typeof field === 'string' ? field : null;
+  };
+  return {
+    allies: pick('allies') as number | null, enemies: pick('enemies') as number | null,
+    waveSize: pick('waveSize') as number | null, enemyNation: pick('enemyNation') as string | null,
+  };
+}
+
+function readCampaignOperationField(value: RuntimeValue): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string' || !CAMPAIGN_OPERATION_ID.test(value)) throw invalidLobbyState('lobby campaign operation must be an id');
+  return value;
 }
 
 interface LobbyPlayerInput {
@@ -230,6 +259,8 @@ export interface AddLobbyPlayerOptions extends LobbyPlayerInput {
 
 interface LobbyCommand extends Record<string, RuntimeValue> {
   type?: RuntimeValue;
+  arrangement?: RuntimeValue;
+  campaignOperationId?: RuntimeValue;
   name?: RuntimeValue;
   specId?: RuntimeValue;
   equipment?: RuntimeValue;
@@ -441,6 +472,8 @@ export function createLobby({
     locked: false,
     mapId: String(mapId || 'random'),
     teamSize,
+    arrangement: null,
+    campaignOperationId: null,
     revision: 0,
     updatedAtTick: 0,
     matchSeed: null,
@@ -630,7 +663,43 @@ function applyGameModeSelection(
     lobby.teamSize = Math.max(lobby.teamSize, players.length);
     for (const player of players) player.team = LOBBY_TEAMS.ALPHA;
   }
+  // an arrangement is a per-mode setting; the host resends it for the new mode
+  if (gameMode !== lobby.gameMode) lobby.arrangement = null;
+  if (gameMode !== 'frontline_assault') lobby.campaignOperationId = null;
   lobby.gameMode = gameMode;
+  resetLobbyReadiness(lobby);
+}
+
+/** owner 2026-09-15: the host arranges both sides of a co-op room (allies, enemy pool, first wave, nation). */
+function applyArrangementSelection(
+  lobby: LobbyState,
+  playerId: string,
+  command: LobbyCommand,
+): void {
+  assertHost(lobby, playerId);
+  if (command.arrangement !== null && command.arrangement !== undefined && !isRecord(command.arrangement)) {
+    throw new LobbyError('invalid_arrangement', 'team arrangement must be an object or null');
+  }
+  lobby.arrangement = normalizeTeamArrangement(lobby.gameMode,
+    readArrangementField(command.arrangement === undefined ? null : command.arrangement));
+  resetLobbyReadiness(lobby);
+}
+
+/** The Frontline room plays a campaign operation (its map, formation and difficulty ride the handoff). */
+function applyCampaignOperationSelection(
+  lobby: LobbyState,
+  playerId: string,
+  command: LobbyCommand,
+): void {
+  assertHost(lobby, playerId);
+  if (lobby.gameMode !== 'frontline_assault') {
+    throw new LobbyError('invalid_command', 'campaign operations belong to Frontline Assault rooms');
+  }
+  const id = command.campaignOperationId;
+  if (id !== null && id !== undefined && (typeof id !== 'string' || !CAMPAIGN_OPERATION_ID.test(id))) {
+    throw new LobbyError('invalid_command', 'campaign operation must be an id or null');
+  }
+  lobby.campaignOperationId = typeof id === 'string' ? id : null;
   resetLobbyReadiness(lobby);
 }
 
@@ -744,6 +813,14 @@ export function applyLobbyCommand(
       applyTeamSizeSelection(lobby, id, command);
       break;
     }
+    case 'set_arrangement': {
+      applyArrangementSelection(lobby, id, command);
+      break;
+    }
+    case 'set_campaign_operation': {
+      applyCampaignOperationSelection(lobby, id, command);
+      break;
+    }
     case 'set_map': {
       applyMapSelection(lobby, id, command, isMapAllowed);
       break;
@@ -804,6 +881,8 @@ export function serializeLobby(lobby: LobbyState): SerializedLobby {
     locked: lobby.locked,
     mapId: lobby.mapId,
     teamSize: lobby.teamSize,
+    arrangement: lobby.arrangement ? { ...lobby.arrangement } : null,
+    campaignOperationId: lobby.campaignOperationId ?? null,
     revision: lobby.revision,
     matchSeed: lobby.matchSeed,
     round: Number(lobby.round) || 0,
