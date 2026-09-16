@@ -17,7 +17,7 @@ MUST uphold this contract at all times or the build is considered broken.
 
 | view | what it must show |
 |---|---|
-| `battlefield` | wide establishing shot of the map: terrain, sky, foliage, several tanks, and the distant front (smoke plumes behind the enemy side, staged by `setShotView` for every `battlefield*` view since 2026-09-15 — the garage map picker and loading heroes are cut from these frames) |
+| `battlefield` | wide establishing shot of the map: terrain, sky, foliage, several tanks |
 | `player_view` | standard WoT third-person chase camera behind the player tank, HUD visible |
 | `spectator_view` | allied chase camera with the death-state vehicle switcher visible |
 | `sniper_view` | first-person gunner zoom with reticle, penetration indicator, HUD |

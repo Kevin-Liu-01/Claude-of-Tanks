@@ -195,9 +195,6 @@ interface ShotRuntimeContext {
   setCamoBiome(mapId: string): void;
   applyCamoPatterns(): void;
   setupBattle(game: ShotRuntimeGame, playerSpecId: string, world: RuntimeShotWorld): void;
-  /** 2026-09-15: the distant front behind the enemy side (on in every battle); map establishing shots carry it. */
-  prepareFrontline(seed: number | undefined, mapId: string): Promise<void>;
-  resetFrontline(): void;
   resetCombatWarm(): void;
   drainCombatWarm(): void;
   buildShellCards(spec: ShotEntity['spec']): void;
@@ -378,13 +375,6 @@ function createRecipeHelpers(context: ShotRuntimeContext) {
  * stays out of the normal garage/battle graph until a capture tool explicitly
  * calls window.__SHOTS.set().
  */
-/** One fixed front per map for the picker art: the layout is a pure function of seed and map. */
-const SHOT_FRONTLINE_SEED = 1049;
-
-export function isMapEstablishingView(name: string): boolean {
-  return name === 'battlefield' || name.startsWith('battlefield_');
-}
-
 export async function setShotView(
   name: ShotViewName,
   context: ShotRuntimeContext,
@@ -431,15 +421,6 @@ export async function setShotView(
     VIEW_MAP[name] || 'verdant',
     featuredPlayerId,
   );
-  // 2026-09-15 (owner: new map preview pictures after the smoke rewrite): the map
-  // establishing shots render the distant front the player sees in every battle —
-  // the garage picker and the loading heroes are cut from these frames. Every other
-  // view keeps the horizon clear so close-ups and HUD frames stay reproducible.
-  if (isMapEstablishingView(name)) {
-    await context.prepareFrontline(SHOT_FRONTLINE_SEED, VIEW_MAP[name] || 'verdant');
-  } else {
-    context.resetFrontline();
-  }
   // Acquisition may mount a world for terrain/roster preparation. A Garage
   // recipe still owns only the showroom when it starts painting.
   context.setWorldDormant(name === 'garage');

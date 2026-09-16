@@ -23,7 +23,6 @@ import {
   createPropsAsync,
   preloadPropModels,
 } from './props.ts';
-import { createHearthSmoke } from './hearthSmoke.ts';
 import { createGroundLitter, groundLitterProfile, type GroundLitterConfig } from './groundLitter.ts';
 import type { CrushableRecord } from './props.ts';
 import { getMapConfig, type BattlefieldMapConfig } from './maps/index.ts';
@@ -325,9 +324,6 @@ function assembleWorld(
   const group = new THREE.Group();
   group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
-  // settlement pass 2 (2026-09-12): hearth smoke over the placed chimneys.
-  const hearths = createHearthSmoke(props.features?.hearths ?? [], { seed: 2003, windDeg: 35 });
-  group.add(hearths.mesh);
   engineCtx.scene.add(group);
   // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
   // objects"): every world dynamic goes through instanceMatrix writes or
@@ -500,7 +496,6 @@ function assembleWorld(
       terrain.userData.cancelSourcedTextures?.();
       unregisterDestructibles();
       vegetation.dispose();
-      hearths.dispose();
       litter.dispose();
     },
     config,
@@ -611,7 +606,6 @@ function assembleWorld(
       terrain.userData.updateLOD(cameraPos);
       terrain.userData.updateWater?.(dt);
       vegetation.update(dt, cameraPos, cameraFwd, focusPos);
-      hearths.advance(dt);
       litter.update(cameraPos);
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
     },
@@ -624,7 +618,7 @@ function assembleWorld(
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
     },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */
-    setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); hearths.setTime(t); },
+    setWindTime(t: number) { vegetation.setWindTime(t); terrain.userData.setWaterTime?.(t); },
     setWaterDisturbances(sources) { terrain.userData.setWaterDisturbances?.(sources); },
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).

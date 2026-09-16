@@ -73,11 +73,10 @@ export const FRONTLINE_INTENSITY: Readonly<Record<MapId, number>> = Object.freez
 
 export const FRONTLINE_LIMITS = Object.freeze({
   // 2026-09-14 campaign flavour: a denser, louder front — more columns, planes, AA and fire
+  // owner 2026-09-15 (evening): no distant smoke. The front keeps its artillery anchors
+  // ("columns" by name only), flashes, flak, aircraft and AA guns.
   columns: [8, 14] as const,
   columnRangeM: [650, 950] as const,
-  columnHeightM: [120, 220] as const,
-  /** 2026-09-15 owner ("far better smoke in the distance"): each plume is a rising stack of billboard puffs */
-  columnPuffs: 14,
   spriteCap: 48,
   aircraftCap: 3,
   aircraftAltitudeM: [250, 420] as const,
@@ -129,65 +128,6 @@ export function resolveFrontBearingDeg(spawns: FrontlineSpawns | null | undefine
 
 // ---------------------------------------------------------------- textures ---
 
-/** Value noise / fBm for the plume sheet (deterministic, no allocation per sample). */
-function valueNoise2(x: number, y: number, seed: number): number {
-  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-  const h = (i: number, j: number): number => {
-    let n = (i * 374761393 + j * 668265263 + seed * 1274126177) | 0;
-    n = (n ^ (n >>> 13)) * 1274126177; n = (n ^ (n >>> 16)) >>> 0;
-    return n / 4294967296;
-  };
-  const sx = xf * xf * (3 - 2 * xf), sy = yf * yf * (3 - 2 * yf);
-  const a = h(xi, yi), b = h(xi + 1, yi), c = h(xi, yi + 1), d = h(xi + 1, yi + 1);
-  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
-}
-function fbm2(x: number, y: number, seed: number, octaves = 5): number {
-  let amp = 0.5, sum = 0, norm = 0, fx = x, fy = y;
-  for (let o = 0; o < octaves; o++) { sum += valueNoise2(fx, fy, seed + o * 17) * amp; norm += amp; amp *= 0.5; fx *= 2.03; fy *= 2.03; }
-  return sum / norm;
-}
-
-/**
- * Smoke puff atlas (2026-09-15 owner: "we need far better smoke in the distance"): four
- * cauliflower puffs, each a soft radial body whose edge is eaten by low-frequency fBm so no two
- * lobes repeat, with mottled self-shading in RGB. A plume is a rising stack of these billboards
- * (see COLUMN_VERT), not a single textured sheet — the sheet's vertically stretched noise read
- * as paint strokes against the sky.
- */
-function makeSmokePuffTexture(): THREE.DataTexture {
-  const cell = 128, cells = 2, size = cell * cells, data = new Uint8Array(size * size * 4);
-  for (let variant = 0; variant < cells * cells; variant++) {
-    const ox = (variant % cells) * cell, oy = Math.floor(variant / cells) * cell, seed = 101 + variant * 37;
-    for (let y = 0; y < cell; y++) {
-      for (let x = 0; x < cell; x++) {
-        const u = (x + 0.5) / cell - 0.5, v = (y + 0.5) / cell - 0.5;
-        const r = Math.hypot(u, v) * 2, angle = Math.atan2(v, u);
-        // ragged silhouette: the radius wobbles with angle, lobes bulge out of a core disc
-        const wobble = fbm2(Math.cos(angle) * 1.6 + 3.0, Math.sin(angle) * 1.6 + 3.0, seed, 3) - 0.5;
-        const lobes = fbm2(u * 4.5 + 9.0, v * 4.5 + 2.0, seed + 5, 4) - 0.5;
-        const radius = 0.58 + wobble * 0.40 + lobes * 0.30;
-        const body = Math.max(0, 1 - r / Math.max(0.2, radius));
-        // a dense body with a crisp, lumpy edge: soft falloff averaged into a halo across a stack
-        const alpha = Math.pow(body, 0.75) * (0.80 + 0.20 * fbm2(u * 7.0 + 1.0, v * 7.0 + 4.0, seed + 11, 3));
-        // mottled shading inside the puff (lit crests over dark folds); the shader adds the sun side
-        const shade = 0.62 + 0.38 * fbm2(u * 5.0 + 6.0, v * 5.0 + 6.0, seed + 17, 3) - 0.12 * r;
-        const i = ((oy + y) * size + (ox + x)) * 4;
-        const tone = Math.round(255 * Math.min(1, Math.max(0, shade)));
-        data[i] = tone; data[i + 1] = tone; data[i + 2] = tone;
-        data[i + 3] = Math.round(255 * Math.min(1, Math.max(0, alpha)));
-      }
-    }
-  }
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.wrapS = THREE.ClampToEdgeWrapping; texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 /** Soft disc with a ragged edge: flak puff and (brightened) artillery flash. */
 function makePuffTexture(): THREE.DataTexture {
   const s = 64, data = new Uint8Array(s * s * 4);
@@ -211,96 +151,6 @@ function makePuffTexture(): THREE.DataTexture {
 }
 
 // ---------------------------------------------------------------- shaders ----
-
-const COLUMN_VERT = /* glsl */`
-// aPuff: rise phase 0..1, plume seed (shared by the plume's puffs), radius scale, atlas variant (0..3)
-attribute vec4 aPuff;
-varying vec2 vUv;
-varying vec2 vLocal;
-varying vec2 vSun;
-varying float vRise;
-varying float vSeed;
-uniform float uTime;
-uniform vec3 uSunDir;
-uniform vec3 uWind;
-#include <common>
-#include <fog_pars_vertex>
-void main() {
-  vSeed = aPuff.y;
-  vec4 base = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-  float w = length(vec3(instanceMatrix[0].xyz));
-  float h = length(vec3(instanceMatrix[1].xyz));
-  // every puff climbs the plume once every ~70 s and is reborn at the foot: a continuous stream,
-  // never a picture sliding over a sheet. One speed per plume keeps the puffs evenly strung.
-  float rise = fract(aPuff.x + uTime * (0.012 + 0.005 * aPuff.y));
-  vRise = rise;
-  // per-puff jitter (orientation, drift) from the puff's own phase and size, not the plume seed
-  float puff = fract(sin(aPuff.x * 91.7 + aPuff.z * 47.3) * 43758.5453);
-  vec3 windDir = normalize(vec3(uWind.x, 0.0, uWind.z) + vec3(1e-4, 0.0, 0.0));
-  vec3 side = normalize(cross(vec3(0.0, 1.0, 0.0), windDir));
-  // the plume bends downwind as it climbs and cools; a hot fire (high seed) stands straighter.
-  // Capped well short of a diagonal so a strong wind never turns the front into parallel streaks.
-  float buoyancy = 0.4 + 0.6 * aPuff.y;
-  float lean = h * length(uWind.xz) * 0.5 * pow(rise, 1.6) * (1.4 - buoyancy);
-  // one S-curve per plume, and each puff drifts a little off the spine
-  float meander = sin(rise * 4.5 + aPuff.y * 21.0 + uTime * 0.04) * w * 0.16 * rise
-    + (puff - 0.5) * w * 0.14 * rise;
-  vec3 center = base.xyz + vec3(0.0, rise * h, 0.0) + windDir * lean + side * meander;
-  // a puff swells as it climbs and cools
-  float radius = w * (0.22 + 0.62 * pow(rise, 0.7)) * aPuff.z;
-  vec3 toCam = normalize(cameraPosition - center);
-  vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), toCam + vec3(1e-4, 0.0, 0.0)));
-  vec3 up = cross(toCam, right);
-  float spin = puff * 6.2831 + uTime * 0.03 * (puff - 0.5);
-  vec2 rp = vec2(position.x * cos(spin) - position.y * sin(spin), position.x * sin(spin) + position.y * cos(spin));
-  vLocal = rp * 2.0;
-  vec3 world = center + right * (rp.x * 2.0 * radius) + up * (rp.y * 2.0 * radius);
-  // the sun's direction in the billboard's plane: the fragment lights that side of the puff
-  vec3 sun = normalize(uSunDir + vec3(1e-4));
-  vSun = vec2(dot(sun, right), dot(sun, up));
-  // atlas cell for this puff's variant
-  float variant = floor(aPuff.w + 0.5);
-  vUv = (uv + vec2(mod(variant, 2.0), floor(variant / 2.0))) * 0.5;
-  vec4 mvPosition = viewMatrix * vec4(world, 1.0);
-  gl_Position = projectionMatrix * mvPosition;
-  #include <fog_vertex>
-}`;
-
-const COLUMN_FRAG = /* glsl */`
-uniform sampler2D uMap;
-uniform vec3 uTintFoot;
-uniform vec3 uTintMid;
-uniform vec3 uTintTop;
-uniform vec3 uEmber;
-uniform float uOpacity;
-uniform float uTime;
-varying vec2 vUv;
-varying vec2 vLocal;
-varying vec2 vSun;
-varying float vRise;
-varying float vSeed;
-#include <common>
-#include <fog_pars_fragment>
-void main() {
-  vec4 s = texture2D(uMap, vUv);
-  // density over the climb: thick in the lower half, thinning and tearing at the top
-  float dens = smoothstep(0.0, 0.05, vRise) * (1.0 - smoothstep(0.5, 1.0, vRise));
-  float a = s.a * uOpacity * mix(0.42, 1.0, dens) * (1.0 - smoothstep(0.68, 1.0, vRise));
-  // colour: sooty brown-grey at the foot, grey through the body, pale at the top
-  vec3 col = mix(uTintFoot, uTintMid, smoothstep(0.0, 0.45, vRise));
-  col = mix(col, uTintTop, smoothstep(0.45, 1.0, vRise));
-  // the puff as a lit sphere: the sun side brightens, the lee side deepens
-  float len = length(vLocal);
-  vec2 n = len > 1e-4 ? vLocal / max(len, 1.0) : vec2(0.0);
-  float lit = 0.76 + 0.36 * clamp(dot(n, normalize(vSun + vec2(1e-4))), -1.0, 1.0);
-  col *= s.rgb * lit;
-  // ember light at the root of the plume: the fire it stands on
-  float ember = (1.0 - smoothstep(0.0, 0.14, vRise)) * (0.5 + 0.5 * sin(uTime * 2.3 + vSeed * 12.0)) * 0.45;
-  col += uEmber * ember * s.a;
-  if (a < 0.01) discard;
-  gl_FragColor = vec4(col, a);
-  #include <fog_fragment>
-}`;
 
 const SPRITE_VERT = /* glsl */`
 attribute vec4 aEvent; // birth, life, size, kind(0 flash, 1 flak)
@@ -420,21 +270,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   group.visible = false;
   parent.add(group);
 
-  const columnTexture = makeSmokePuffTexture();
   const puffTexture = makePuffTexture();
-  const columnUniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
-    uMap: { value: null }, uTime: { value: 0 }, uOpacity: { value: 0.96 },
-    uTintFoot: { value: new THREE.Color(0x2e2924) }, uTintMid: { value: new THREE.Color(0x6d6761) },
-    uTintTop: { value: new THREE.Color(0xb4afa8) },
-    uEmber: { value: new THREE.Color(0xff6a1a) }, uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.3) },
-    uWind: { value: new THREE.Vector3(0.6, 0.0, 0.8) },
-  }]);
-  columnUniforms.uMap.value = columnTexture;
-  const columnMaterial = new THREE.ShaderMaterial({
-    uniforms: columnUniforms, vertexShader: COLUMN_VERT, fragmentShader: COLUMN_FRAG,
-    transparent: true, depthWrite: false, fog: true, side: THREE.DoubleSide,
-  });
-  const PUFFS = FRONTLINE_LIMITS.columnPuffs;
   const spriteUniformsFor = (): Record<string, THREE.IUniform> => {
     const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uMap: { value: null }, uTime: { value: 0 }, uOpacity: { value: 1 } }]);
     u.uMap.value = puffTexture;
@@ -451,17 +287,6 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   const aircraftMaterial = new THREE.MeshBasicMaterial({ color: 0x22262b, fog: true });
 
   const quad = new THREE.PlaneGeometry(1, 1);
-  // one quad per puff; PUFFS instances share a column's matrix (foot position, width, height)
-  const columnGeometry = quad.clone();
-  const columnCap = (FRONTLINE_LIMITS.columns[1] + FRONTLINE_LIMITS.aaGuns[1]) * PUFFS; // + one wreck plume per destroyed gun
-  const columnPuffs = new THREE.InstancedBufferAttribute(new Float32Array(columnCap * 4), 4);
-  columnGeometry.setAttribute('aPuff', columnPuffs);
-  const columns = new THREE.InstancedMesh(columnGeometry, columnMaterial, columnCap);
-  columns.name = 'frontline-smoke-columns';
-  columns.frustumCulled = false;
-  columns.renderOrder = 4;
-  columns.count = 0;
-  group.add(columns);
 
   const spriteCap = FRONTLINE_LIMITS.spriteCap;
   const makeSpritePool = (material: THREE.ShaderMaterial, name: string) => {
@@ -589,7 +414,8 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     pool.seeds.needsUpdate = true;
   };
 
-  function layoutColumns(): void {
+  /** The front's artillery anchors: a fan of positions beyond the playable half-map (no smoke since 2026-09-15). */
+  function layoutFront(): void {
     columnAnchors.length = 0;
     const count = Math.round(lerp(FRONTLINE_LIMITS.columns[0], FRONTLINE_LIMITS.columns[1], effective()));
     const bearing = THREE.MathUtils.degToRad(bearingDeg);
@@ -598,29 +424,10 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
       const a = bearing + spread;
       const r = lerp(FRONTLINE_LIMITS.columnRangeM[0], FRONTLINE_LIMITS.columnRangeM[1], rng());
       const x = Math.sin(a) * r, z = Math.cos(a) * r;
-      const h = lerp(FRONTLINE_LIMITS.columnHeightM[0], FRONTLINE_LIMITS.columnHeightM[1], rng());
-      const w = h * (0.30 + rng() * 0.14);
-      const y = groundY(x, z) - 6;
-      _p.set(x, y, z);
-      columnAnchors.push(_p.clone());
-      _m.compose(_p, _q.identity(), _s.set(w, h, 1));
-      writePlume(i * PUFFS, _m);
-    }
-    columns.count = count * PUFFS;
-    columns.instanceMatrix.needsUpdate = true;
-    columnPuffs.needsUpdate = true;
-    // one wind for the whole front: the plumes lean together, each by its own amount
-    const windAngle = bearing + Math.PI / 2 + (rng() - 0.5) * 1.4;
-    const windStrength = 0.35 + rng() * 0.35;
-    columnUniforms.uWind.value.set(Math.sin(windAngle) * windStrength, 0, Math.cos(windAngle) * windStrength);
-  }
-
-  /** PUFFS instances for one plume: the column matrix plus a staggered rise phase, the plume's seed, a size and an atlas cell each. */
-  function writePlume(first: number, matrix: THREE.Matrix4): void {
-    const seed = rng();
-    for (let k = 0; k < PUFFS; k++) {
-      columns.setMatrixAt(first + k, matrix);
-      columnPuffs.setXYZW(first + k, (k + rng() * 0.6) / PUFFS, seed, 0.8 + rng() * 0.45, Math.floor(rng() * 4));
+      // the former plume layout drew height, width and a plume seed here; keep the draws so a
+      // seed still replays the same front (receipt: byte-identical event logs)
+      rng(); rng(); rng();
+      columnAnchors.push(new THREE.Vector3(x, groundY(x, z) - 6, z));
     }
   }
 
@@ -822,16 +629,6 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     aaBases.setMatrixAt(index, _m);
     aaBases.instanceMatrix.needsUpdate = true;
     writeAaHeads();
-    // a wreck plume: a short smoke column of its own on the burning mount
-    const slot = columns.count;
-    if (slot + PUFFS <= columnCap) {
-      _p.copy(gun.pos); _p.y -= 2;
-      _m.compose(_p, _q.identity(), _s.set(8, 24, 1));
-      writePlume(slot, _m);
-      columns.count = slot + PUFFS;
-      columns.instanceMatrix.needsUpdate = true;
-      columnPuffs.needsUpdate = true;
-    }
     emitBreakFx('drumblast', gun.pos.x, gun.pos.y + 0.9, gun.pos.z, dirX, dirZ, 2.4);
     emitDestroyed({ kind: 'aaGun', pos: [gun.pos.x, gun.pos.y, gun.pos.z], cause });
     const event = record('aa-destroyed', gun.pos);
@@ -874,7 +671,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     intensity = effective();
     rng = mulberry32(((seed ?? 0) * 7919 + hashId(mapId)) | 0);
     bearingDeg = resolveFrontBearingDeg(getSpawns?.(), rng() * 360);
-    layoutColumns();
+    layoutFront();
     layoutAaGuns();
     registerAaDestructibles(mapId);
     nextArtillery = 2 + rng() * 4;
@@ -888,7 +685,6 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     if (!prepared || !(dtSeconds > 0)) return;
     const dt = Math.min(0.1, dtSeconds);
     time += dt;
-    columnUniforms.uTime.value = time;
     flashMaterial.uniforms.uTime.value = time;
     flakMaterial.uniforms.uTime.value = time;
     tracerMaterial.uniforms.uTime.value = time;
@@ -904,7 +700,6 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     group.visible = false;
     time = 0;
     log.length = 0;
-    columns.count = 0;
     for (const pool of [flashes, flak]) {
       pool.events.array.fill(-1); pool.events.needsUpdate = true; pool.cursor = 0;
     }
@@ -917,13 +712,13 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   function dispose(): void {
     reset();
     parent.remove(group);
-    columnGeometry.dispose(); quad.dispose();
+    quad.dispose();
     flashes.mesh.geometry.dispose(); flak.mesh.geometry.dispose();
     aircraftGeometry.dispose(); aaBaseGeometry.dispose(); aaHeadGeometry.dispose(); tracerGeometry.dispose();
-    columnMaterial.dispose(); flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();
+    flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();
     options.releaseMaterial?.(aaMaterial);
     aaMaterial.dispose(); tracerMaterial.dispose();
-    columnTexture.dispose(); puffTexture.dispose();
+    puffTexture.dispose();
   }
 
   return {

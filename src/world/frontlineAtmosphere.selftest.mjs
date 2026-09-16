@@ -68,28 +68,18 @@ const gapsWithin = (log, kind, range) => {
 gapsWithin(a.runtime.log, 'artillery', FRONTLINE_LIMITS.artilleryIntervalS);
 gapsWithin(a.runtime.log, 'flyover', FRONTLINE_LIMITS.flyoverIntervalS);
 
-// Geometry envelope: columns beyond the playable half-map and below the horizon ring; aircraft inside the sky.
-const columns = a.parent.getObjectByName('frontline-smoke-columns');
-// 2026-09-15: a plume is FRONTLINE_LIMITS.columnPuffs billboard puffs sharing the column matrix
-assert.equal(columns.count % FRONTLINE_LIMITS.columnPuffs, 0, 'whole plumes only');
-const plumeCount = columns.count / FRONTLINE_LIMITS.columnPuffs;
-assert.ok(plumeCount >= FRONTLINE_LIMITS.columns[0] && plumeCount <= FRONTLINE_LIMITS.columns[1], `${plumeCount} plumes`);
-const puffs = columns.geometry.getAttribute('aPuff');
-for (let i = 0; i < columns.count; i++) {
-  assert.ok(puffs.getX(i) >= 0 && puffs.getX(i) < 1.05, 'rise phase in the cycle');
-  assert.ok(puffs.getZ(i) >= 0.8 && puffs.getZ(i) <= 1.25, 'puff size scale');
-  assert.ok([0, 1, 2, 3].includes(puffs.getW(i)), 'atlas variant');
+// owner 2026-09-15 (evening, "remove the smoke in distance"): the front renders no smoke columns.
+// It keeps its artillery anchors (a fan beyond the playable half-map), flashes, flak, aircraft and AA.
+assert.equal(a.parent.getObjectByName('frontline-smoke-columns'), undefined, 'no smoke column mesh');
+assert.ok(!Object.hasOwn(FRONTLINE_LIMITS, 'columnPuffs'), 'no plume limits remain');
+for (const e of a.runtime.log) {
+  if (e.kind !== 'artillery') continue;
+  const r = Math.hypot(e.pos[0], e.pos[2]);
+  assert.ok(r >= FRONTLINE_LIMITS.columnRangeM[0] - 70 && r <= FRONTLINE_LIMITS.columnRangeM[1] + 70, `artillery at ${r.toFixed(0)} m`);
+  const bearing = THREE.MathUtils.radToDeg(Math.atan2(e.pos[0], e.pos[2]));
+  assert.ok(Math.abs(((bearing - a.runtime.bearingDeg + 540) % 360) - 180) <= 75, 'artillery lands inside the front fan');
 }
 const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
-for (let i = 0; i < columns.count; i++) {
-  columns.getMatrixAt(i, m); m.decompose(p, q, s);
-  const r = Math.hypot(p.x, p.z);
-  assert.ok(r >= FRONTLINE_LIMITS.columnRangeM[0] - 1 && r <= FRONTLINE_LIMITS.columnRangeM[1] + 1, `column ${i} at ${r.toFixed(0)} m`);
-  assert.ok(s.y >= FRONTLINE_LIMITS.columnHeightM[0] && s.y <= FRONTLINE_LIMITS.columnHeightM[1]);
-  // the front lies ahead of the player (toward the enemy centroid, bearing ~0 here) within its 130-degree fan
-  const bearing = THREE.MathUtils.radToDeg(Math.atan2(p.x, p.z));
-  assert.ok(Math.abs(((bearing - a.runtime.bearingDeg + 540) % 360) - 180) <= 66, `column ${i} inside the front fan`);
-}
 for (const e of a.runtime.log) {
   if (e.kind === 'flyover') {
     const alt = e.pos[1];

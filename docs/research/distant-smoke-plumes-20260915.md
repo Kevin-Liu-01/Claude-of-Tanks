@@ -62,3 +62,14 @@ after acquisition and before the final ownership hand-off; cleared elsewhere). T
 map-picker art (`public/maps/*.webp`, `public/maps/thumbs/*.webp`, `src/ui/mapThumbs.ts`)
 was re-rendered from those frames (`node tools/screenshot.mjs --width 3840 --height 2160
 --dyn-scale 1 --views <30 battlefield views>` → `node tools/map-thumbs.mjs --shots-dir …`).
+
+## Reversed the same evening
+
+Owner (2026-09-15, evening): "remove the smoke in distance. it looks so bad lmao. also remove
+it from chimneys in houses. then take new map preview pictures and use those." The plume
+system (atlas, shaders, `aPuff` attribute, `writePlume`, the AA wreck plume) is gone; the front
+keeps its artillery anchors (`layoutFront`, the same seeded draws so event logs replay), flashes,
+flak, aircraft and AA guns. `src/world/hearthSmoke.ts` and its receipt are deleted and the
+world no longer mounts a hearth layer. The establishing-shot front staging (`prepareFrontline`
+/ `resetFrontline` on the shot runtime port) was removed again since nothing visible remained
+to stage, and the thirty map heroes and picker thumbs were re-rendered without smoke.
