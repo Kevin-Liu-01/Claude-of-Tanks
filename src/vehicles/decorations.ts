@@ -2504,6 +2504,10 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
   if (['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'].includes(spec.id)) return [];
+  // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
+  // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
+  // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.
+  if (spec.id === 'type100') return [];
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.

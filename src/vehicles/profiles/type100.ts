@@ -1,17 +1,20 @@
-// Type 100 (ZTZ-100) — the PLA's next-generation medium tank as paraded in September 2025
-// (owner 2026-09-15: "make a chinese type 100, that is a super detailed mix of the puma and
-// cv90mk4, just check the image and make it look like that"). Reads from the parade photograph:
-// a low, wide, sharply angled hull with a two-facet glacis and layered skirt doors (Puma
-// vocabulary), a compact faceted turret with flat cheek modules, twin quadruple launcher pods on
-// the turret shoulders, a tall commander's sensor mast rising behind the roof, a compact RWS, a
-// 105 mm gun in a boxy mantlet, and PLA digital desert camouflage. First-party procedural build;
-// no source model or measurement oracle participates.
+// Type 100 (ZTZ-100) — rebuilt 2026-09-16 from the owner's ten RenderHub reference renders of the
+// vehicle ("redesign the type 100 completely … use all of these as references"). What the renders
+// dictate: a long, low hull with one wide glacis over a steep lower bow and chamfered bow corners,
+// vertical upper sides flush with seven bolted skirt panels over a rubber apron, two crew hatches at
+// the glacis top, a round intake grille and a louvred deck panel, twin louvred exhaust grilles between
+// the tail lamps; a low unmanned turret with a wedge front and a boxed 105 mm mantlet, the gunner's
+// sight box right of the gun and the panoramic drum left of it, two roof hatches, four corner sensor
+// cubes, twin quad hard-kill pods on the rear roof corners, the tall mast-mounted remote weapon station
+// at the rear centre, two whip antennas and a louvred turret-rear grille; PLA digital woodland finish.
+// First-party procedural build; no source model participates.
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab, convexSlab, muzzleBore } from './kit.ts';
 
 type Vec3 = readonly [number, number, number];
+type XYZ = [number, number, number];
 const { box, cylX, cylY, cylZ, torus, polyMultiLoft } = KIT;
 
 function tag(geometry: THREE.BufferGeometry, part: string): THREE.BufferGeometry {
@@ -26,12 +29,11 @@ function mount(P: TankBuilderPort, owner: 'hull' | 'turret', object: THREE.Objec
   (owner === 'hull' ? P.hullG : P.turretG).add(object);
 }
 
-/** A sloped armour plate spanning x0..x1 whose outer face runs from (yb, zb) to (yt, zt) in the
- * y/z plane; the inner face sits `thickness` behind it along the plate's inward normal. */
+/** A sloped armour plate spanning x0..x1 whose outer face runs from (yb, zb) to (yt, zt); the inner
+ * face sits `thickness` behind it along the plate's inward normal. */
 function slopedPlate(x0: number, x1: number, yb: number, zb: number, yt: number, zt: number,
   thickness: number): THREE.BufferGeometry {
   const dz = zt - zb, dy = yt - yb, len = Math.hypot(dz, dy);
-  // outward normal of a face rising rearward: (+z, +y) side
   const nz = dy / len, ny = -dz / len;
   const iz = -nz * thickness, iy = -ny * thickness;
   return orientedSlab(
@@ -40,179 +42,225 @@ function slopedPlate(x0: number, x1: number, yb: number, zb: number, yt: number,
   );
 }
 
+/** A louvred grille: dark backing plate with `count` lighter slats across it (a is the slat length axis). */
+function louvres(P: TankBuilderPort, owner: 'hull' | 'turret', part: string, center: XYZ, width: number,
+  height: number, count: number, faceNormal: 'z' | 'y', depth = 0.04): void {
+  const dark = owner === 'hull' ? 'hullDark' : 'turretDark';
+  const detail = owner === 'hull' ? 'hullDetail' : 'turretDetail';
+  const [x, y, z] = center;
+  if (faceNormal === 'z') {
+    P.add(dark, tag(box(width, height, depth), part), x, y, z);
+    const pitch = (height - 0.08) / (count - 1);
+    for (let i = 0; i < count; i++) {
+      P.add(detail, tag(box(width - 0.08, 0.016, depth + 0.02), `${part}-slat`), x, y - (height - 0.08) / 2 + i * pitch, z);
+    }
+  } else {
+    P.add(dark, tag(box(width, depth, height), part), x, y, z);
+    const pitch = (height - 0.08) / (count - 1);
+    for (let i = 0; i < count; i++) {
+      P.add(detail, tag(box(width - 0.08, depth + 0.02, 0.016), `${part}-slat`), x, y, z - (height - 0.08) / 2 + i * pitch);
+    }
+  }
+}
+
 // ------------------------------------------------------------------ hull ----
 const HULL_ROOF_Y = 1.80;
+const SPONSON_Y = 1.02;
+const SIDE_X = 1.70;
 const SKIRT_X = 1.76;
 
 function buildType100Hull(P: TankBuilderPort): void {
   // lower tub between the tracks, from the belly to the sponson floor
-  P.add('hull', tag(box(2.30, 0.86, 6.95), 'tub'), 0, 0.81, -0.15);
-  // two-facet glacis over a steep lower bow: the parade tank's nose reads as three planes
-  P.add('hull', tag(slopedPlate(-1.15, 1.15, 0.40, 3.42, 1.12, 3.08, 0.12), 'bow'));
-  P.add('hull', tag(slopedPlate(-1.15, 1.15, 1.12, 3.08, 1.50, 2.30, 0.11), 'glacis-lower'));
-  P.add('hull', tag(slopedPlate(-1.15, 1.15, 1.50, 2.30, HULL_ROOF_Y, 1.30, 0.10), 'glacis-upper'));
-  // crowned monocoque over the sponsons: cut plan corners at the bow and stern (Puma vocabulary)
-  const plan: [number, number][] = [[-1.16, 1.32], [1.16, 1.32], [1.62, 0.92], [1.62, -3.10],
-    [1.40, -3.48], [-1.40, -3.48], [-1.62, -3.10], [-1.62, 0.92]];
-  P.add('hull', tag(polyMultiLoft(plan, [{ height: 0.00, inset: 1.00 }, { height: 0.42, inset: 0.985 },
-    { height: 0.56, inset: 0.93 }]), 'monocoque'), 0, 1.24, 0);
-  // engine deck: dark grille plate with louvres, an exhaust cowl on the right flank
-  P.add('hullDark', tag(box(1.90, 0.03, 1.55), 'deck-grille'), 0, HULL_ROOF_Y + 0.02, -2.45);
-  for (let i = 0; i < 9; i++) P.add('hullDetail', tag(box(1.72, 0.018, 0.05), 'deck-louvre'), 0, HULL_ROOF_Y + 0.045, -1.78 - i * 0.16);
-  P.add('hullDark', tag(box(0.34, 0.20, 0.62), 'exhaust'), 1.42, HULL_ROOF_Y - 0.02, -2.05);
-  for (let i = 0; i < 5; i++) P.add('hullDetail', tag(box(0.30, 0.012, 0.04), 'exhaust-louvre'), 1.42, HULL_ROOF_Y + 0.04 + i * 0.03, -2.05 - 0.22 + i * 0.11);
-  // driver's hatch front-left with three periscopes and the low bow handrail
-  P.addCupola('hull', tag(cylY(0.30, 0.32, 0.055, 20), 'driver-hatch'), -0.62, HULL_ROOF_Y + 0.025, 0.86);
-  P.add('hullDark', tag(torus(0.30, 0.013, 20), 'driver-hatch-ring'), -0.62, HULL_ROOF_Y + 0.052, 0.86);
-  for (const x of [-0.84, -0.62, -0.40]) KIT.periscope(P, 'hullDetail', x, HULL_ROOF_Y + 0.02, 1.16);
-  P.add('hullDark', tag(cylX(0.016, 2.30, 10), 'bow-rail'), 0, HULL_ROOF_Y + 0.12, 1.34);
-  for (const x of [-1.05, 0, 1.05]) P.add('hullDark', tag(box(0.026, 0.13, 0.026), 'bow-rail-post'), x, HULL_ROOF_Y + 0.06, 1.34);
-  // recessed lamp clusters on the sponson fronts, tow eyes, the glacis tow cable
-  for (const side of [-1, 1]) {
+  P.add('hull', tag(box(2.30, 0.86, 7.30), 'tub'), 0, 0.81, -0.10);
+  // steep lower bow, then the single wide glacis rising to the roof (renders 1, 7, 8)
+  P.add('hull', tag(slopedPlate(-1.15, 1.15, 0.40, 3.78, SPONSON_Y, 3.50, 0.12), 'bow'));
+  P.add('hull', tag(slopedPlate(-1.15, 1.15, SPONSON_Y, 3.50, HULL_ROOF_Y, 1.75, 0.11), 'glacis'));
+  // chamfered bow corners between the glacis edge and the vertical upper sides — twisted hexahedra, so
+  // they are convex hulls (orientedSlab leaves inward quads on twisted rings; sealed check 2026-09-13)
+  for (const s of [-1, 1]) {
+    const inward = (p: XYZ): XYZ => [p[0] - s * 0.12, p[1], p[2] - 0.08];
+    const a: XYZ = [s * 1.15, SPONSON_Y, 3.50], b: XYZ = [s * SIDE_X, SPONSON_Y, 2.85];
+    const c: XYZ = [s * SIDE_X, HULL_ROOF_Y, 1.75], d: XYZ = [s * 1.15, HULL_ROOF_Y, 1.75];
+    P.add('hull', tag(convexSlab(a, b, inward(b), inward(a), d, c, inward(c), inward(d)), 'bow-corner'));
+    const la: XYZ = [s * 1.15, 0.40, 3.78], lb: XYZ = [s * 1.60, 0.40, 3.28];
+    P.add('hull', tag(convexSlab(la, lb, inward(lb), inward(la), a, b, inward(b), inward(a)), 'bow-corner-lower'));
+  }
+  // upper body: vertical sides flush over the skirt line, cut stern corners, a slight roof chamfer
+  const plan: [number, number][] = [[-SIDE_X, 1.75], [SIDE_X, 1.75], [SIDE_X, -3.62], [1.56, -3.75],
+    [-1.56, -3.75], [-SIDE_X, -3.62]];
+  P.add('hull', tag(polyMultiLoft(plan, [{ height: 0.00, inset: 1.00 }, { height: 0.74, inset: 1.00 },
+    { height: HULL_ROOF_Y - SPONSON_Y, inset: 0.97 }]), 'upper-body'), 0, SPONSON_Y, 0);
+  // roof panel seams
+  for (const x of [-0.75, 0.75]) P.add('hullDark', tag(box(0.02, 0.006, 5.00), 'roof-seam'), x, HULL_ROOF_Y + 0.003, -0.95);
+  for (const z of [1.10, -0.60, -2.20]) P.add('hullDark', tag(box(3.20, 0.006, 0.02), 'roof-seam'), 0, HULL_ROOF_Y + 0.003, z);
+  // two crew hatches at the glacis top with their periscopes (renders 6, 9)
+  for (const [s, scopes] of [[-1, [-0.82, -0.60, -0.38]], [1, [0.50, 0.72]]] as const) {
+    P.addCupola('hull', tag(box(0.60, 0.05, 0.56), 'hull-hatch'), s * 0.60, HULL_ROOF_Y + 0.025, 1.28);
+    P.add('hullDark', tag(box(0.60, 0.02, 0.04), 'hull-hatch-hinge'), s * 0.60, HULL_ROOF_Y + 0.06, 1.58);
+    P.add('hullDark', tag(box(0.10, 0.03, 0.03), 'hull-hatch-handle'), s * 0.60, HULL_ROOF_Y + 0.065, 1.02);
+    for (const x of scopes) KIT.periscope(P, 'hullDetail', x, HULL_ROOF_Y + 0.02, 1.66);
+  }
+  // round intake grille right of the turret ring, louvred deck panel, exhaust grilles at the stern
+  P.add('hullDark', tag(cylY(0.32, 0.32, 0.05, 24), 'intake'), 1.10, HULL_ROOF_Y + 0.025, -1.78);
+  P.add('hullDark', tag(torus(0.32, 0.014, 24), 'intake-rim'), 1.10, HULL_ROOF_Y + 0.05, -1.78, Math.PI / 2, 0, 0);
+  for (const r of [0.10, 0.19, 0.27]) P.add('hullDark', tag(torus(r, 0.006, 20), 'intake-ring'), 1.10, HULL_ROOF_Y + 0.052, -1.78, Math.PI / 2, 0, 0);
+  louvres(P, 'hull', 'deck-grille', [0, HULL_ROOF_Y + 0.02, -2.95], 1.80, 1.00, 7, 'y', 0.03);
+  for (const s of [-1, 1]) louvres(P, 'hull', 'rear-grille', [s * 0.60, 1.40, -3.78], 0.92, 0.56, 6, 'z');
+  // bow handrail loop front-left, lifting eyes, forward sensor cubes
+  P.add('hullDark', tag(cylZ(0.016, 0.60, 10), 'bow-rail'), -1.30, HULL_ROOF_Y + 0.16, 1.10);
+  for (const z of [1.40, 0.80]) P.add('hullDark', tag(box(0.026, 0.16, 0.026), 'bow-rail-post'), -1.30, HULL_ROOF_Y + 0.08, z);
+  for (const s of [-1, 1]) {
+    KIT.liftEye(P, 'hullDetail', s * 1.35, HULL_ROOF_Y + 0.04, -3.35);
+    KIT.liftEye(P, 'hullDetail', s * 1.35, HULL_ROOF_Y + 0.04, 1.40);
+    P.addEquipment('hull', tag(box(0.14, 0.14, 0.14), 'bow-das'), s * 1.52, HULL_ROOF_Y + 0.07, 1.58);
+    P.addModuleVisual('optics', 'hullGlass', tag(box(0.08, 0.06, 0.012), 'bow-das-glass'), s * 1.52, HULL_ROOF_Y + 0.07, 1.655);
+    // recessed lamp clusters low on the glacis corners, bow and stern tow hooks
     mount(P, 'hull', FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.13, r: 0.046, guard: true,
-      rake: -0.22, nightKind: 'headlight', seed: 1262 + (side > 0 ? 1 : 0) }), side * 1.38, 1.56, 1.16, [-0.30, side * 0.55, 0]);
-    P.add('hullDark', tag(torus(0.075, 0.018, 12), 'tow-eye'), side * 0.86, 0.66, 3.40, Math.PI / 2, 0, 0);
-    KIT.liftEye(P, 'hullDetail', side * 1.30, HULL_ROOF_Y + 0.04, -3.30);
+      rake: -0.60, nightKind: 'headlight', seed: 1262 + (s > 0 ? 1 : 0) }), s * 1.00, 1.10, 3.30, [-0.55, 0, 0]);
+    P.add('hullDark', tag(torus(0.075, 0.018, 12), 'tow-hook'), s * 0.80, 0.64, 3.74, Math.PI / 2, 0, 0);
+    P.add('hullDark', tag(torus(0.075, 0.018, 12), 'tow-hook'), s * 0.70, 0.72, -3.80, Math.PI / 2, 0, 0);
+    // tail lamp clusters at the stern corners: red over amber
+    P.add('hullDark', tag(box(0.18, 0.12, 0.06), 'tail-lamp'), s * 1.16, 1.72, -3.78);
+    P.addModuleVisual('optics', 'hullGlass', tag(box(0.07, 0.08, 0.012), 'tail-lamp-glass'), s * (1.16 - 0.04), 1.72, -3.815);
+    P.addModuleVisual('optics', 'hullGlass', tag(box(0.07, 0.08, 0.012), 'tail-lamp-glass'), s * (1.16 + 0.04), 1.72, -3.815);
   }
-  KIT.towCable(P, [[-1.05, 1.50, 2.12], [-0.30, 1.28, 2.78], [0.30, 1.28, 2.78], [1.05, 1.50, 2.12]]);
-  // stern: rear plate, two stowage bins, lamp guards
-  P.add('hullDark', tag(box(2.30, 0.98, 0.05), 'rear-plate'), 0, 0.98, -3.55);
-  for (const side of [-1, 1]) {
-    P.addEquipment('hullDetail', tag(box(0.62, 0.36, 0.30), 'rear-bin'), side * 0.78, 1.48, -3.66);
-    P.add('hullDark', tag(box(0.14, 0.10, 0.06), 'tail-lamp'), side * 1.20, 1.16, -3.60);
-    P.add('hullGlass', tag(box(0.10, 0.06, 0.01), 'tail-lamp-glass'), side * 1.20, 1.16, -3.635);
-  }
+  P.add('hullRubber', tag(box(2.30, 0.28, 0.03), 'mud-flap'), 0, 0.48, -3.82);
 }
 
 function buildType100RunningGear(P: TankBuilderPort): void {
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', dishR: 0.74, wheelR: 0.34, wheelW: 0.25, wheelY: 0.42, xc: 1.40,
-    wheelZs: [2.32, 1.40, 0.48, -0.44, -1.36, -2.28],
-    sprocket: { z: -3.02, y: 0.86, r: 0.34 }, idler: { z: 3.00, y: 0.80, r: 0.30 },
+    wheelZs: [2.30, 1.38, 0.46, -0.46, -1.38, -2.30],
+    sprocket: { z: -3.05, y: 0.86, r: 0.34 }, idler: { z: 3.05, y: 0.80, r: 0.30 },
     rollerR: 0.085, rollers: [{ z: 1.45, y: 1.05 }, { z: 0.02, y: 1.06 }, { z: -1.42, y: 1.05 }],
     trackW: 0.58, trackTh: 0.09, topY: 1.20, botY: 0.06,
-    wheelPattern: 'armored-hub-six', trackPattern: 'compact-ifv', linkPitchM: 0.150, shoeWidthScale: 0.99,
+    wheelPattern: 'pressed-eight', trackPattern: 'compact-ifv', linkPitchM: 0.150, shoeWidthScale: 0.99,
     paintedEnds: true, arms: true, coveredTop: true,
-    contactZF: 2.52, contactZR: -2.46,
+    contactZF: 2.52, contactZR: -2.50,
   });
-  // layered skirt doors on an armour carrier wall, with the parade tank's chamfered leading door
-  for (const side of [-1, 1]) {
-    P.addExternalArmor('hull', tag(box(0.10, 1.00, 6.30), 'skirt-carrier'), side * 1.68, 1.22, -0.30);
-    P.add('hull', tag(box(0.26, 0.16, 6.40), 'fender-cap'), side * 1.56, HULL_ROOF_Y + 0.02, -0.30);
+  // seven bolted skirt panels a side over a rubber apron, flush under the upper side plate (renders 5, 8)
+  for (const s of [-1, 1]) {
+    P.addExternalArmor('hull', tag(box(0.10, 1.06, 6.40), 'skirt-carrier'), s * 1.66, 1.03, -0.20);
+    P.add('hullDark', tag(box(0.02, 0.03, 5.10), 'skirt-line'), s * (SIDE_X + 0.01), 1.54, -0.80);
     for (let i = 0; i < 7; i++) {
-      const z = 2.10 - i * 0.84;
+      const z = 2.66 - i * 0.84;
       if (i === 0) {
-        // leading door: its lower front corner is cut back over the idler
+        // leading panel: its lower front corner is cut back over the idler
         P.addExternalArmor('hull', tag(orientedSlab(
-          [side * (SKIRT_X - 0.07), 0.98, z + 0.40], [side * (SKIRT_X + 0.07), 0.98, z + 0.40],
-          [side * (SKIRT_X + 0.07), 0.70, z - 0.40], [side * (SKIRT_X - 0.07), 0.70, z - 0.40],
-          [side * (SKIRT_X - 0.07), 1.55, z + 0.40], [side * (SKIRT_X + 0.07), 1.55, z + 0.40],
-          [side * (SKIRT_X + 0.07), 1.55, z - 0.40], [side * (SKIRT_X - 0.07), 1.55, z - 0.40],
+          [s * (SKIRT_X - 0.06), 0.88, z + 0.40], [s * (SKIRT_X + 0.06), 0.88, z + 0.40],
+          [s * (SKIRT_X + 0.06), 0.60, z - 0.40], [s * (SKIRT_X - 0.06), 0.60, z - 0.40],
+          [s * (SKIRT_X - 0.06), 1.50, z + 0.40], [s * (SKIRT_X + 0.06), 1.50, z + 0.40],
+          [s * (SKIRT_X + 0.06), 1.50, z - 0.40], [s * (SKIRT_X - 0.06), 1.50, z - 0.40],
         ), 'skirt-door'));
       } else {
-        P.addExternalArmor('hull', tag(box(0.14, 0.86, 0.80), 'skirt-door'), side * SKIRT_X, 1.12, z, 0, 0, side * (i % 2 ? 0.010 : -0.010));
+        P.addExternalArmor('hull', tag(box(0.12, 0.90, 0.80), 'skirt-door'), s * SKIRT_X, 1.05, z);
       }
-      // painted door face with a raised rim, a dark seam to the next door and four bolts
-      P.add('hull', tag(box(0.020, 0.66, 0.62), 'skirt-face'), side * (SKIRT_X + 0.08), 1.14, z);
-      if (i > 0) P.add('hullDark', tag(box(0.030, 0.84, 0.030), 'skirt-seam'), side * (SKIRT_X + 0.06), 1.12, z + 0.42);
-      for (const y of [0.86, 1.44]) for (const dz of [-0.28, 0.28]) P.add('hullDetail', tag(cylX(0.016, 0.20, 8), 'skirt-bolt'), side * (SKIRT_X + 0.03), y, z + dz);
+      if (i > 0) P.add('hullDark', tag(box(0.03, 0.90, 0.03), 'skirt-seam'), s * (SKIRT_X + 0.05), 1.05, z + 0.42);
+      for (const dz of [-0.30, -0.10, 0.10, 0.30]) P.add('hullDetail', tag(cylX(0.014, 0.16, 8), 'skirt-bolt'), s * (SKIRT_X + 0.02), 1.44, z + dz);
     }
-    P.add('hullRubber', tag(box(0.04, 0.14, 6.20), 'skirt-lip'), side * (SKIRT_X + 0.02), 0.66, -0.30);
-    // flank situational-awareness cameras
-    for (const z of [1.10, -0.40, -1.90]) {
-      P.addEquipment('hull', tag(box(0.10, 0.22, 0.28), 'flank-camera'), side * (SKIRT_X + 0.12), 1.68, z);
-      P.addModuleVisual('optics', 'hullGlass', tag(box(0.014, 0.12, 0.16), 'flank-camera-glass'), side * (SKIRT_X + 0.18), 1.68, z);
-    }
+    // short trailing cap over the sprocket
+    P.addExternalArmor('hull', tag(box(0.12, 0.62, 0.50), 'skirt-cap'), s * SKIRT_X, 1.19, -3.10);
+    P.add('hullRubber', tag(box(0.04, 0.16, 6.40), 'skirt-apron'), s * (SKIRT_X + 0.02), 0.52, -0.20);
   }
 }
 
 // ---------------------------------------------------------------- turret ----
-const ROOF_Y = 0.78;
+const ROOF_Y = 0.62;
 const GUN_LEN = 4.95;
 
 function buildType100Turret(P: TankBuilderPort): void {
-  // low faceted citadel: wide wedge front, parallel flanks, narrowed bustle
-  const plan: [number, number][] = [[-0.55, 1.70], [0.55, 1.70], [1.15, 1.20], [1.40, 0.40], [1.40, -1.10],
-    [1.05, -1.70], [0.65, -1.85], [-0.65, -1.85], [-1.05, -1.70], [-1.40, -1.10], [-1.40, 0.40], [-1.15, 1.20]];
-  P.add('turretDark', tag(cylY(1.28, 1.34, 0.10, 28), 'ring'), 0, -0.05, 0);
-  P.add('turret', tag(polyMultiLoft(plan, [{ height: 0.02, inset: 1.00 }, { height: 0.46, inset: 0.975 },
-    { height: ROOF_Y, inset: 0.86 }]), 'citadel'));
-  // flat cheek modules with a horizontal crease, one per side of the gun bay
-  for (const side of [-1, 1]) {
-    for (const [y0, y1, out] of [[0.06, 0.40, 0.11], [0.42, 0.74, 0.07]] as const) {
+  // low unmanned citadel: wedge front, vertical flanks, cut bustle corners (renders 2, 6, 9)
+  const plan: [number, number][] = [[-0.44, 1.72], [0.44, 1.72], [1.22, 1.05], [1.32, 0.55], [1.32, -1.55],
+    [1.06, -1.88], [-1.06, -1.88], [-1.32, -1.55], [-1.32, 0.55], [-1.22, 1.05]];
+  P.add('turretDark', tag(cylY(1.30, 1.36, 0.08, 28), 'ring'), 0, -0.04, 0);
+  P.add('turret', tag(polyMultiLoft(plan, [{ height: 0.00, inset: 1.00 }, { height: 0.46, inset: 0.99 },
+    { height: ROOF_Y, inset: 0.91 }]), 'citadel'));
+  for (const s of [-1, 1]) {
+    // flat cheek modules with a horizontal crease on the wedge faces
+    for (const [y0, y1, out] of [[0.04, 0.32, 0.09], [0.34, 0.58, 0.06]] as const) {
       P.addExternalArmor('turret', tag(orientedSlab(
-        [side * 0.58, y0, 1.62 + out], [side * 1.16, y0, 1.12 + out], [side * 1.10, y0, 1.06], [side * 0.58, y0, 1.56],
-        [side * 0.58, y1, 1.62 + out], [side * 1.16, y1, 1.12 + out], [side * 1.10, y1, 1.06], [side * 0.58, y1, 1.56],
+        [s * 0.46, y0, 1.66 + out], [s * 1.20, y0, 1.02 + out], [s * 1.14, y0, 0.96], [s * 0.46, y0, 1.60],
+        [s * 0.46, y1, 1.66 + out], [s * 1.20, y1, 1.02 + out], [s * 1.14, y1, 0.96], [s * 0.46, y1, 1.60],
       ), 'cheek-module'));
     }
-    // twin quadruple launcher pods on the shoulders, elevated and splayed outward
-    const podX = side * 1.32, podY = 0.60, podZ = 0.52, yaw = side * 0.30;
-    P.addEquipment('turret', tag(box(0.30, 0.50, 0.52), 'pod-frame'), podX, podY, podZ, -0.18, yaw, 0);
-    for (const dy of [-0.13, 0.13]) {
-      for (const dx of [-0.095, 0.095]) {
-        P.add('turretDark', tag(cylZ(0.072, 0.62, 16).translate(dx, dy, 0.10), 'pod-tube'), podX, podY, podZ, -0.18, yaw, 0);
-        P.add('turretDetail', tag(torus(0.075, 0.011, 16).rotateX(Math.PI / 2).translate(dx, dy, 0.41), 'pod-mouth'), podX, podY, podZ, -0.18, yaw, 0);
+    // angled cheek sensor blocks with a window (render 8)
+    P.addEquipment('turret', tag(box(0.40, 0.28, 0.34), 'cheek-sensor'), s * 1.02, 0.50, 1.02, 0, s * 0.72, 0);
+    P.addModuleVisual('optics', 'turretGlass', tag(box(0.20, 0.12, 0.012).rotateY(s * 0.72), 'cheek-sensor-glass'),
+      s * (1.02 + 0.115), 0.50, 1.02 + 0.126);
+    // corner sensor cubes on the roof
+    for (const z of [1.00, -1.62]) {
+      P.addEquipment('turret', tag(box(0.14, 0.14, 0.14), 'das'), s * 1.10, ROOF_Y + 0.07, z);
+      P.addModuleVisual('optics', 'turretGlass', tag(box(0.08, 0.06, 0.012), 'das-glass'), s * 1.10, ROOF_Y + 0.07, z + 0.075);
+    }
+    // twin quad hard-kill pods on the rear roof corners, pitched up and splayed outward (renders 3, 4)
+    const podX = s * 1.02, podY = ROOF_Y + 0.20, podZ = -1.05, pitch = -0.38, yaw = s * 0.30;
+    P.addEquipment('turret', tag(box(0.34, 0.34, 0.44), 'pod-frame'), podX, podY, podZ, pitch, yaw, 0);
+    for (const dy of [-0.10, 0.10]) {
+      for (const dx of [-0.10, 0.10]) {
+        P.add('turretDark', tag(cylZ(0.085, 0.64, 16).translate(dx, dy, 0.08), 'pod-tube'), podX, podY, podZ, pitch, yaw, 0);
+        P.add('turretDark', tag(torus(0.086, 0.008, 16).rotateX(Math.PI / 2).translate(dx, dy, 0.40), 'pod-mouth'), podX, podY, podZ, pitch, yaw, 0);
+        P.add('turretDark', tag(cylZ(0.072, 0.012, 16).translate(dx, dy, 0.40), 'pod-cap'), podX, podY, podZ, pitch, yaw, 0);
       }
     }
-    // laser warning receivers at the four roof corners
-    for (const z of [1.05, -1.55]) {
-      P.addEquipment('turret', tag(box(0.16, 0.14, 0.14), 'lwr'), side * 1.10, ROOF_Y + 0.07, z);
-      P.addModuleVisual('optics', 'turretGlass', tag(box(0.10, 0.06, 0.012), 'lwr-glass'), side * 1.10, ROOF_Y + 0.08, z + 0.075);
-    }
+    // roof hatches with hinge strips and handles
+    P.addCupola('turret', tag(box(0.54, 0.04, 0.50), 'turret-hatch'), s * 0.55, ROOF_Y + 0.02, -0.25);
+    P.add('turretDark', tag(box(0.54, 0.02, 0.04), 'turret-hatch-hinge'), s * 0.55, ROOF_Y + 0.05, 0.02);
+    P.add('turretDark', tag(box(0.10, 0.03, 0.03), 'turret-hatch-handle'), s * 0.55, ROOF_Y + 0.055, -0.48);
+    // antennas on the bustle corners, grab handles
+    P.add('turretDark', tag(cylY(0.040, 0.052, 0.09, 10), 'antenna-pot'), s * 0.85, ROOF_Y + 0.045, -1.60);
+    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.30 + (s > 0 ? 0.25 : 0), r: 0.010, seed: 1265 + (s > 0 ? 1 : 0) }),
+      s * 0.85, ROOF_Y + 0.09, -1.60);
+    P.add('turretDark', tag(cylX(0.012, 0.30, 8), 'grab-handle'), s * 0.60, ROOF_Y + 0.08, -1.45);
   }
-  // gun: boxy mantlet housing, trunnion, 105 mm tube with thermal sleeve, evacuator and MRS collar
+  // gun: boxed mantlet with a chamfered top, trunnion, 105 mm tube with sleeve, evacuator and collar
   P.addGunExtra(tag(orientedSlab(
-    [-0.30, 0.20, 0.02], [0.30, 0.20, 0.02], [0.24, 0.20, 0.98], [-0.24, 0.20, 0.98],
-    [-0.30, 0.66, 0.02], [0.30, 0.66, 0.02], [0.24, 0.62, 0.98], [-0.24, 0.62, 0.98],
-  ), 'mantlet'), 0, -0.42, 0);
+    [-0.33, -0.24, 0.02], [0.33, -0.24, 0.02], [0.27, -0.24, 1.00], [-0.27, -0.24, 1.00],
+    [-0.33, 0.26, 0.02], [0.33, 0.26, 0.02], [0.27, 0.20, 1.00], [-0.27, 0.20, 1.00],
+  ), 'mantlet'), 0, 0, 0);
   P.addGunExtraDark(tag(cylZ(0.150, 0.50, 22), 'trunnion'), 0, 0, 0.55);
   KIT.buildGun(P, { len: GUN_LEN, r: 0.078, sleeve: true, evac: 0.55, evacR: 1.55, collar: true, baseR: 0.150 });
   muzzleBore(P, { len: GUN_LEN, r: 0.078, seg: 20 });
   P.muzzleZ = GUN_LEN;
-  // crew: commander's hatch front-left, the gunner's primary sight front-right
-  P.addCupola('turret', tag(cylY(0.30, 0.32, 0.06, 20), 'commander-hatch'), -0.60, ROOF_Y + 0.03, 0.55);
-  P.add('turretDark', tag(torus(0.30, 0.014, 20), 'commander-hatch-ring'), -0.60, ROOF_Y + 0.06, 0.55);
-  for (let i = 0; i < 5; i++) {
-    const a = -0.9 + i * 0.45;
-    KIT.periscope(P, 'turretDetail', -0.60 + Math.sin(a) * 0.36, ROOF_Y + 0.03, 0.55 + Math.cos(a) * 0.36, a);
-  }
-  P.addEquipment('turret', tag(box(0.44, 0.36, 0.46), 'gunner-sight'), 0.62, ROOF_Y + 0.14, 0.55);
-  P.add('turretDark', tag(box(0.46, 0.05, 0.16), 'gunner-sight-hood'), 0.62, ROOF_Y + 0.34, 0.80);
-  P.addModuleVisual('optics', 'turretGlass', tag(box(0.30, 0.20, 0.016), 'gunner-sight-glass'), 0.62, ROOF_Y + 0.14, 0.79);
-  // the commander's independent sensor mast: pedestal, column, boxed head with a wide window, cap and dome
-  P.add('turret', tag(cylY(0.22, 0.26, 0.16, 20), 'mast-pedestal'), 0.10, ROOF_Y + 0.08, -0.55);
-  P.add('turretDark', tag(cylY(0.10, 0.12, 0.52, 16), 'mast-column'), 0.10, ROOF_Y + 0.42, -0.55);
-  P.addEquipment('turret', tag(box(0.44, 0.38, 0.42), 'mast-head'), 0.10, ROOF_Y + 0.87, -0.55);
-  P.addModuleVisual('optics', 'turretGlass', tag(box(0.28, 0.18, 0.02), 'mast-window'), 0.10, ROOF_Y + 0.88, -0.335);
-  P.add('turretDark', tag(box(0.36, 0.03, 0.36), 'mast-cap'), 0.10, ROOF_Y + 1.075, -0.55);
-  P.add('turretDetail', tag(cylY(0.09, 0.09, 0.10, 16), 'mast-dome'), 0.10, ROOF_Y + 1.14, -0.55);
-  // remote weapon station right-rear, antenna whips on the bustle corners, the bustle rack
-  const rws = FITTINGS.openYokeRws({ mats: P.mats, sizeStandard: 'k2b-compact-tower', scale: 0.78, towerRise: 0.10,
-    variant: 'korean-twin', ammoSide: 1, sensorSide: -1, caliberMm: 12.7, weaponName: 'Type 100 remote 12.7 mm', seed: 1264 });
-  rws.userData.hostVariant = 'type100';
-  mount(P, 'turret', rws, 0.72, ROOF_Y + 0.06, -1.05);
-  for (const side of [-1, 1]) {
-    P.add('turretDark', tag(cylY(0.040, 0.052, 0.09, 10), 'antenna-pot'), side * 1.12, ROOF_Y + 0.045, -1.58);
-    mount(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 0.95 + (side > 0 ? 0.15 : 0), r: 0.010, seed: 1265 + (side > 0 ? 1 : 0) }),
-      side * 1.12, ROOF_Y + 0.09, -1.58);
-  }
-  mount(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.80, d: 0.40, h: 0.22, fill: 0.45, rails: 4, seed: 1263 }), 0, 0.44, -2.02);
-  P.add('turretDark', tag(box(1.70, 0.12, 0.16), 'bustle-sill'), 0, 0.30, -1.92);
-  P.topY = Math.max(P.topY || 0, ROOF_Y + 1.20);
+  // gunner's sight box right of the gun, the panoramic drum left of it, the meteorological mast
+  P.addEquipment('turret', tag(box(0.42, 0.30, 0.46), 'gunner-sight'), 0.64, ROOF_Y + 0.15, 1.00);
+  P.add('turretDark', tag(box(0.44, 0.05, 0.16), 'gunner-sight-hood'), 0.64, ROOF_Y + 0.32, 1.24);
+  P.addModuleVisual('optics', 'turretGlass', tag(box(0.28, 0.18, 0.016), 'gunner-sight-glass'), 0.64, ROOF_Y + 0.15, 1.235);
+  P.add('turret', tag(cylY(0.20, 0.22, 0.24, 20), 'panoramic-drum'), -0.60, ROOF_Y + 0.12, 0.70);
+  P.addEquipment('turret', tag(box(0.30, 0.26, 0.34), 'panoramic-head'), -0.60, ROOF_Y + 0.38, 0.70);
+  P.addModuleVisual('optics', 'turretGlass', tag(box(0.20, 0.14, 0.014), 'panoramic-glass'), -0.60, ROOF_Y + 0.38, 0.877);
+  P.add('turretDark', tag(cylY(0.012, 0.012, 0.40, 8), 'met-mast'), 0.95, ROOF_Y + 0.20, 1.10);
+  P.add('turretDark', tag(box(0.12, 0.02, 0.02), 'met-mast-cross'), 0.95, ROOF_Y + 0.40, 1.10);
+  // the mast-mounted remote weapon station at the rear centre (renders 3, 4, 8): base, column, cradle,
+  // 12.7 mm gun with receiver and flash hider, sensor pod and ammunition box
+  const rwsZ = -1.20;
+  P.add('turret', tag(box(0.62, 0.22, 0.62), 'rws-base'), 0, ROOF_Y + 0.11, rwsZ);
+  P.add('turretDark', tag(box(0.20, 0.52, 0.20), 'rws-column'), 0, ROOF_Y + 0.48, rwsZ);
+  P.addEquipment('turret', tag(box(0.44, 0.30, 0.60), 'rws-cradle'), 0, ROOF_Y + 0.95, rwsZ);
+  P.add('turretDark', tag(box(0.14, 0.12, 0.44), 'rws-receiver'), 0.12, ROOF_Y + 1.02, rwsZ);
+  P.add('turretDark', tag(cylZ(0.028, 1.15, 12), 'rws-barrel'), 0.12, ROOF_Y + 1.02, rwsZ + 0.60);
+  P.add('turretDark', tag(cylZ(0.036, 0.10, 12), 'rws-flash-hider'), 0.12, ROOF_Y + 1.02, rwsZ + 1.18);
+  P.addEquipment('turret', tag(box(0.18, 0.24, 0.22), 'rws-sensor'), -0.26, ROOF_Y + 0.95, rwsZ + 0.16);
+  P.addModuleVisual('optics', 'turretGlass', tag(box(0.11, 0.13, 0.012), 'rws-sensor-glass'), -0.26, ROOF_Y + 0.95, rwsZ + 0.276);
+  P.addEquipment('turret', tag(box(0.20, 0.18, 0.28), 'rws-ammo'), 0.30, ROOF_Y + 0.93, rwsZ);
+  // louvred grille across the turret rear (renders 3, 4)
+  louvres(P, 'turret', 'turret-grille', [0, 0.24, -1.89], 1.70, 0.36, 6, 'z');
+  P.topY = Math.max(P.topY || 0, ROOF_Y + 1.10);
 }
 
 function buildType100(P: TankBuilderPort): void {
   buildType100Hull(P);
   buildType100RunningGear(P);
   buildType100Turret(P);
-  // PLA star and the hull number on the left bow skirt, as the parade photographs show them
-  P.decal('hull', 'star', null, 0.22, [-(SKIRT_X + 0.13), 1.26, 2.30], -Math.PI / 2);
-  P.decal('hull', 'number', P.spec.visual.number || '1262', 0.24, [-(SKIRT_X + 0.13), 1.26, 1.62], -Math.PI / 2);
-  P.decal('turret', 'star', null, 0.24, [-1.46, 0.40, -0.40], -Math.PI / 2);
+  // PLA star and hull number on both upper hull sides, the emblem field on both turret flanks
+  for (const s of [-1, 1]) {
+    P.decal('hull', 'star', null, 0.22, [s * (SIDE_X + 0.012), 1.50, 1.30], s * -Math.PI / 2);
+    P.decal('hull', 'number', P.spec.visual.number || 'LZ83', 0.26, [s * (SIDE_X + 0.012), 1.50, 0.50], s * -Math.PI / 2);
+    P.decal('turret', 'star', null, 0.24, [s * 1.335, 0.32, 0.20], s * -Math.PI / 2);
+  }
   if (P.geometryReceipt) {
     P.hullG.userData.type100Receipt = Object.freeze({
-      architecture: 'type100-parade-r1', glacisFacets: 3, skirtDoorsPerSide: 7, roadWheelsPerSide: 6,
-      launcherTubes: 8, sensorMastTopM: ROOF_Y + 1.20, gunLengthM: GUN_LEN,
+      architecture: 'type100-ztz100-r2', glacisFacets: 2, skirtDoorsPerSide: 7, roadWheelsPerSide: 6,
+      launcherTubes: 8, rwsTopM: ROOF_Y + 1.10, gunLengthM: GUN_LEN,
     });
   }
 }

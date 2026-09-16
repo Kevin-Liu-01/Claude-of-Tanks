@@ -168,7 +168,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_type99a: 'Type 99A Tight Digital',
   sig_ztz99a2_prototype: 'ZTZ-99A2 Prototype',
   sig_ztz99a2: 'ZTZ-99A2',
-  sig_type100: 'Type 100 Parade Digital',
+  sig_type100: 'Type 100 Digital',
   sig_pt91m: 'PT-91M Pendekar',
   sig_t72m1_jaguar: 'T-72M1 Jaguar',
   sig_pt91_twardy: 'PT-91A Twardy',
@@ -380,9 +380,10 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#35453a', weather: '#4a5847', patches: ['#222f28', '#59634c', '#73694f'], camoScale: 0.43 }),
   preset('sig_ztz99a2', 'ztz99a2', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#36463a', weather: '#4c5a49', patches: ['#232f28', '#5e654d', '#766b52'], camoScale: 0.43 }),
-  // Type 100 parade finish: sand digital with olive and pale cream cells (owner photograph 2026-09-15)
-  preset('sig_type100', 'type100', signatureTags('cn', 'desert', 'digital'),
-    { scheme: 'digital', base: '#b39a6c', weather: '#c2ab7c', patches: ['#7f8f5c', '#e3d6ab', '#5d6c48'], camoScale: 0.40, digitalCellK: 1.4 }),
+  // Type 100 finish: PLA digital woodland — olive field with pale sage, dark green and grey cells (owner
+  // reference renders 2026-09-16)
+  preset('sig_type100', 'type100', signatureTags('cn', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#59654a', weather: '#65704f', patches: ['#8a9370', '#3a452f', '#7f8477'], camoScale: 0.34, digitalCellK: 1.0 }),
   preset('sig_pt91m', 'pt91m', signatureTags('pl', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#394b3c', weather: '#53604a', patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42 }),
   preset('sig_t72m1_jaguar', 't72m1_jaguar', signatureTags('pl', 'woodland', 'organic'),
