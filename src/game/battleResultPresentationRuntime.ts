@@ -9,6 +9,8 @@ interface ResultGame {
   result?: BattleResult | null;
   timeS: number;
   player?: ResultPlayer | null;
+  /** The live match ruleset; a non-null respawn timer means a destroyed player comes back at spawn. */
+  ruleset?: { respawnS?: number | null } | null;
 }
 
 interface ResultKillcam {
@@ -153,7 +155,11 @@ export function createBattleResultPresentationRuntime({
       endShown = false;
     }
 
-    if (!result && game.player?.combat?.destroyed && !deathCamShown) {
+    // Reviving modes (owner 2026-09-16: "it should 3 2 1 and you're back at spawn"): a destroyed player
+    // keeps the live chase view and the pointer lock while the HUD counts down; no death cam, no kill-cam
+    // replay, no post-replay orbit. The mode revives the entity at spawn and the camera follows it.
+    const revives = game.ruleset?.respawnS != null;
+    if (!result && game.player?.combat?.destroyed && !deathCamShown && !revives) {
       deathCamShown = true;
       // Destruction hands pointer ownership to the post-death UI immediately.
       // Keeping the lock through the cinematic forced players to press Esc

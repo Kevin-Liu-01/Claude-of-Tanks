@@ -117,9 +117,32 @@ assert.notEqual(delayed.runtime.snapshot().pendingDeadlineMs, null);
 delayed.runtime.clearPending();
 assert.equal(delayed.runtime.snapshot().pendingDeadlineMs, null);
 
+// reviving modes: a destroyed player triggers no death cam, no replay and no pointer unlock; the verdict
+// pipeline still presents the final result when the mode ends
+const reviving = createHarness();
+reviving.game.ruleset = { respawnS: 3 };
+reviving.game.player.combat.destroyed = true;
+reviving.runtime.update();
+reviving.now = 100 + 5000;
+reviving.runtime.update();
+assert.deepEqual(reviving.calls, [], 'a reviving player keeps the live view: no unlock, death cam or replay');
+assert.equal(reviving.plays.length, 0);
+assert.deepEqual(reviving.runtime.snapshot(), { endShown: false, deathCamShown: false, pendingDeadlineMs: null });
+reviving.game.player.combat.destroyed = false;
+reviving.game.result = 'victory';
+reviving.runtime.update();
+assert.equal(reviving.plays.length, 1, 'the final verdict still reaches the replay pipeline');
+assert.equal(reviving.plays[0].result, 'victory');
+assert.deepEqual(reviving.plays[0].options, { freshKill: false });
+const revivingNull = createHarness();
+revivingNull.game.ruleset = { respawnS: null };
+revivingNull.game.player.combat.destroyed = true;
+revivingNull.runtime.update();
+assert.deepEqual(revivingNull.calls, [['unlock'], ['deathCam']], 'a null respawn timer keeps the death beat');
+
 assert.throws(
   () => createBattleResultPresentationRuntime({ deathBeatMs: -1 }),
   /requires every lifecycle port|deathBeatMs/,
 );
 
-console.log('battleResultPresentationRuntime.selftest: replay, death beat, verdict, and reset pass');
+console.log('battleResultPresentationRuntime.selftest: replay, death beat, reviving modes, verdict, and reset pass');
