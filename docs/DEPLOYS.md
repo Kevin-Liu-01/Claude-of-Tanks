@@ -56,3 +56,4 @@ quickest proof that the live site is the gate build.
 | 22 | 2026-09-15 16:25 | 0f866ab62 | distant smoke plumes, map previews carry the front, fast checks | main-Dg5H_mkN.js | claude-of-tanks-gbt8yvqkd |
 | 23 | 2026-09-15 20:12 | 5b314176b | roster names, M1A2 Abrams UA kit, Type 100, smoke-free previews, team arrangement | main-DLyO1mF-.js | claude-of-tanks-7vw3e22k1 |
 | 24 | 2026-09-15 20:46 | 084c60292 | camo labels follow the renamed hulls | main-PgCLN_4U.js | claude-of-tanks-jiqcvprgz |
+| 25 | 2026-09-15 23:39 | 6da591544 | SEPv3 Trophy configuration, Ukrainian Abrams cages, Turbo Ball rules, respawn countdown, tiers | main-S1eOJif3.js | claude-of-tanks-nozrmuxf2 |
