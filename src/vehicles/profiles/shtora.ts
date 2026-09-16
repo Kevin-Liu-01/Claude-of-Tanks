@@ -10,6 +10,7 @@ interface ShtoraPort {
   readonly mats: { readonly dark: THREE.MeshStandardMaterial };
   readonly turretG: THREE.Group;
   _shtoraRed?: THREE.MeshStandardMaterial;
+  _shtoraBlue?: THREE.MeshStandardMaterial;
   add(slot: string, geometry: THREE.BufferGeometry, x: number, y: number, z: number): void;
 }
 
@@ -21,6 +22,8 @@ interface ShtoraSeats {
   readonly round: boolean;
   readonly kit: boolean;
   readonly offset?: readonly [number, number, number];
+  /** Lens tint: the OTShU red by default; blue where the owner asked for it (T-90MS X, 2026-09-16). */
+  readonly lens?: 'red' | 'blue';
 }
 
 export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
@@ -28,14 +31,16 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
   const { x, scale: es } = seats;
   const [dx, dy, dz] = seats.offset ?? [0, 0, 0];
   const y = seats.y + dy, zc = seats.z + dz;
-  if (seats.round && !P._shtoraRed) {
+  const blue = seats.lens === 'blue';
+  if (seats.round && !(blue ? P._shtoraBlue : P._shtoraRed)) {
     const material = P.mats.dark.clone();
     material.onBeforeCompile = vehicleAmbientFloorHook;
     material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    material.color.setHex(0x54180e);
-    material.emissive.setHex(0x7c2410);
-    P._shtoraRed = material;
+    material.color.setHex(blue ? 0x0c2a5a : 0x54180e);
+    material.emissive.setHex(blue ? 0x1a4a9a : 0x7c2410);
+    if (blue) P._shtoraBlue = material; else P._shtoraRed = material;
   }
+  const lensMaterial = blue ? P._shtoraBlue : P._shtoraRed;
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.24 * es, 0.27 * es, 0.22 * es), s * x + dx, y, zc);
     if (seats.round) {
@@ -43,7 +48,7 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
       P.add('turretDetail', KIT.cylZ(0.106 * es, 0.016 * es, 16), s * x + dx, y, zc + 0.092 * es);
       const geometry = markVehicleNightLens(KIT.cylZ(0.072 * es, 0.014 * es, 16), 'shtora');
       prepareVehicleNightLensParts([geometry]);
-      const lens = new THREE.Mesh(geometry, P._shtoraRed);
+      const lens = new THREE.Mesh(geometry, lensMaterial);
       lens.position.set(s * x + dx, y, zc + 0.123 * es);
       lens.castShadow = lens.receiveShadow = true;
       P.turretG.add(lens);

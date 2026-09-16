@@ -9,3 +9,9 @@ the lower bracket, at scale 0.9 so the set sits inside the 0.44 m housing front 
 proud of the old plate line. Fills regenerated for the study (WATERTIGHT); per-id chain; receipts
 (second-wave optics, night lighting, Soviet aux armour, second-wave ERA, the T-90MS X gun base /
 mast / hull ends, second-wave geometry, visible wheel faces).
+
+**Blue lenses (owner, later the same day: "make the t-90ms tagil have blue shtora eyes").** `addShtoraEyes`
+takes `lens: 'red' | 'blue'`; the blue tint (0x0c2a5a, emissive 0x1a4a9a) is a second cached material on
+the port (`_shtoraBlue`), still registered as a `shtora` night lens. The T-90MS X passes `lens: 'blue'`;
+every other Shtora carrier keeps the OTShU red.
+

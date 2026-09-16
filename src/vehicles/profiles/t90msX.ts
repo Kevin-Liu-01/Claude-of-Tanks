@@ -211,7 +211,8 @@ function aps(P:TankBuilderPort):void{
   // owner 2026-09-16 ("add proper shtora eyes to these"): the housings' blank dark faces become the
   // OTShU-1-7 emitter set — housing, ring and red night lens, louvre bars, side plates and bracket —
   // from the shared Shtora vocabulary, seated on the housing fronts (lens face ~1.86, proud of the plate)
-  addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0]});
+  // owner 2026-09-16: "make the t-90ms tagil have blue shtora eyes"
+  addShtoraEyes(P,{x:.6735,y:2.09509-YAW[1],z:1.75-YAW[2],scale:.9,round:true,kit:true,offset:[-YAW[0],0,0],lens:'blue'});
 }
 function remoteWeapon(P:TankBuilderPort):void{
   for(const[y,r,h]of [[2.19559,.2553,.1636],[2.28619,.2881,.0244],[2.30229,.308,.0098],[2.34454,.21715,.0747],[2.52154,.21715,.2803]])
