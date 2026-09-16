@@ -196,6 +196,8 @@ function mGunBoot(P:TankBuilderPort):void {
   // Source canvas covers a longer pitching cradle than the steel trunnion.
   // Original positive U-section cloth skins keep the underside and forward
   // barrel aperture open; they do not fill a rectangular bounding volume.
+  // Owner 2026-09-16 ("fix this green mantlet on the t90m"): the Proryv's cradle cover is painted with
+  // the vehicle scheme like the turret around it, not left in bare olive canvas — 'gunMount' paint.
   const rows:readonly(readonly[number,number,number,number,number])[]=[
     [.987,-.4149,.3123,1.969,1.982],[1.140,-.4149,.3123,1.421,1.926],
     [1.450,-.4149,.3188,1.4865,1.830],[1.800,-.4149,.3187,1.583,1.718],
@@ -206,12 +208,12 @@ function mGunBoot(P:TankBuilderPort):void {
     [right-.007-M.gun[0],low-M.gun[1]],[right-M.gun[0],low-M.gun[1]],
     [right-M.gun[0],high-M.gun[1]],[left-M.gun[0],high-M.gun[1]],
   ]}));
-  P.add('gunMountCanvasSkin',sectionSolid(sections));
+  P.add('gunMount',sectionSolid(sections));
   for(const side of [-1,1]) {
     const flap:readonly(readonly[number,number,number,number])[]=side<0?
       [[1.800,-.4149,1.583,1.718],[1.950,-.2404,1.6265,1.671],[2.005,-.131,1.641,1.654]]:
       [[1.800,.3187,1.5846,1.718],[1.950,.1854,1.6272,1.671],[2.005,.115,1.641,1.654]];
-    P.add('gunMountCanvasSkin',sectionSolid(flap.map(([z,outer,low,high]):SolidSection=>{
+    P.add('gunMount',sectionSolid(flap.map(([z,outer,low,high]):SolidSection=>{
       const left=Math.min(outer,side*.097),right=Math.max(outer,side*.097);
       return {z:z-M.gun[2],ring:[[left-M.gun[0],low-M.gun[1]],[right-M.gun[0],low-M.gun[1]],
         [right-M.gun[0],high-M.gun[1]],[left-M.gun[0],high-M.gun[1]]]};

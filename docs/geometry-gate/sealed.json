@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-16T21:06:03.436Z",
+ "generatedAt": "2026-09-16T22:27:55.787Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -1174,11 +1174,11 @@
   },
   "t90m_x": {
    "sealed": true,
-   "openPx": 5,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 299,
-   "seeThroughPx": 33,
-   "tris": 101066
+   "insideOutPx": 287,
+   "seeThroughPx": 34,
+   "tris": 100882
   },
   "t90ms": {
    "sealed": true,

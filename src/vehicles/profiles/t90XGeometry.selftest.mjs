@@ -47,7 +47,7 @@ function ray(mesh,x,z,up=false) {
 function pitchingMount(tank,id){
   const mount=tank.root.getObjectByName('gunMount'),parts=[mount];
   assert.ok(mount?.isMesh&&mount.geometry.attributes.position.count>0,`${id}: actual metal mantlet`);
-  if(id==='t90a_vladimir_x'||id==='t90m_x'){
+  if(id==='t90a_vladimir_x'){
     const cloth=tank.root.getObjectByName('gunMountCanvasSkin');
     assert.ok(cloth?.isMesh&&cloth.geometry.attributes.position.count>0,`${id}: actual separately finished boot`);
     assert.equal(cloth.parent,tank.root.getObjectByName('rig_gun'),'continuous boot keeps its original pitching owner');
@@ -127,7 +127,7 @@ function assertSourceEquipmentSections(tank,id) {
     near(ray(mesh('hullExternalArmor'),1.843,.525),1.32474,.012,'M: separately seated outer curtain');
     near(ray(mesh('turret'),.90,-.80),1.96962,.015,'M: broad nearly level aft roof shoulder');
     near(ray(mesh('turret'),.90,.507),1.92279,.015,'M: independently inclined forward roof shoulder');
-    near(ray(mesh('gunMountCanvasSkin'),-.27,1.80),1.71804,.016,'M: source forward canvas cradle cover');
+    near(ray(mesh('gunMount'),-.27,1.80),1.71804,.016,'M: source forward cradle cover, painted with the scheme');
   } else if(id==='t90sm_x') {
     const casing=mesh('hullDetail');
     const hit=new THREE.Raycaster(new THREE.Vector3(-1.30,1.10,-2.70),new THREE.Vector3(0,1,0),0,.40)
