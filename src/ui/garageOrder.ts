@@ -61,18 +61,10 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'cv90_mkiv',
   ]),
   Germany: Object.freeze([
-    'kf51_x',
-    'leo2a7v_x',
-    'leo2a6m_x',
-    'kf51b',
-    'kf51',
-    'leo2a7v',
-    'leo2_revolution',
-    'mbt70',
-    'spz_puma_s1',
-    'leo2a4m_x',
-    'leo2a5_x',
-    'leo2a6_x',
+    // owner 2026-09-16: "german tank order should be kf51 panther, leopard 2a7v, leopard 2 revolution,
+    // leopard 2a6m, leopard 2a6, leopard 2a5m, leopard 2a5, kf51 evo, kf51-U, puma s1, mbt 70, and so on"
+    'kf51_x', 'leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a6_x', 'leo2a4m_x', 'leo2a5_x',
+    'kf51', 'kf51b', 'spz_puma_s1', 'mbt70', 'leo2a7v',
   ]),
   China: Object.freeze([
     'type100',

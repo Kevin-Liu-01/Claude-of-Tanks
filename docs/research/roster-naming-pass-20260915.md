@@ -156,3 +156,11 @@ from, so seven labels still named the pre-pass hulls after deploy 23: `service_l
 from). Scheme names that describe a family rather than one hull (T-90A Service Digital,
 T-90A Vladimir Digital, Leclerc S2, Type 90 Kyū-maru) are unchanged.
 
+## German garage order (owner 2026-09-16)
+
+"german tank order should be kf51 panther, leopard 2a7v, leopard 2 revolution, leopard 2a6m, leopard
+2a6, leopard 2a5m, leopard 2a5, kf51 evo, kf51-U, puma s1, mbt 70, and so on" —
+`GARAGE_LEADING_VEHICLE_IDS_BY_NATION.Germany` is that run (`kf51_x, leo2a7v_x, leo2_revolution,
+leo2a6m_x, leo2a6_x, leo2a4m_x, leo2a5_x, kf51, kf51b, spz_puma_s1, mbt70`, then `leo2a7v`); all
+eleven are tier X so the run alone orders the German left edge (`garageOrder.selftest`).
+
