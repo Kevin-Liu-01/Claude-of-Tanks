@@ -59,3 +59,4 @@ quickest proof that the live site is the gate build.
 | 25 | 2026-09-15 23:39 | 6da591544 | SEPv3 Trophy configuration, Ukrainian Abrams cages, Turbo Ball rules, respawn countdown, tiers | main-S1eOJif3.js | claude-of-tanks-nozrmuxf2 |
 | 26 | 2026-09-16 11:16 | 5277398bf | SEPv3 full side armour, German garage order, T-90MS X Shtora emitters | main-Cu72iRIN.js | claude-of-tanks-9ex9s4ewi |
 | 27 | 2026-09-16 12:13 | f44249ba0 | M1A1 SA (Ukraine) cage gains the fine rod layers | main-BNZqsPyu.js | claude-of-tanks-rcge3huoz |
+| 28 | 2026-09-16 13:22 | 4bcd8eec4 | Leclerc XLR and AMX 56 studies at tier X, blue Shtora lenses on the T-90MS X | main-CZSgaV3D.js | claude-of-tanks-djdbaa6x1 |
