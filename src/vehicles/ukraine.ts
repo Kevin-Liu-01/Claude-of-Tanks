@@ -96,7 +96,7 @@ const UKRAINE_SPECS = {
     armorFactor: 1.12,
   }),
   ua_m1a1: variant('ua_m1a1', 'm1a1ha', {
-    name: 'M1A1 Abrams UA', number: 'UA M1', base: '#55594b', weather: '#69695a',
+    name: 'M1A1 SA (Ukraine)', number: 'UA M1', base: '#55594b', weather: '#69695a',
     patches: ['#393c34', '#77705b', '#82755c'], camoScale: 0.55,
     stats: { hp: 2450, weightTons: 64.0, topSpeedKmh: 65 },
   }),

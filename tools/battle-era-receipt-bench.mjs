@@ -9,7 +9,7 @@ import { cpus, loadavg } from 'node:os';
 import { isAbsolute } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
 
-const ids = ['t64bv1', 't80u', 't80bv', 't90m', 'm1a1ha_x', 'merkava1b'];
+const ids = ['t64bv1', 't80u', 't80bv', 't90m', 'ua_m1a1_x', 'merkava1b'];
 const [out, mode = 'geometry-only'] = process.argv.slice(2);
 assert.ok(out && isAbsolute(out) && process.argv.length <= 4
   && ['geometry-only', 'rendered'].includes(mode),

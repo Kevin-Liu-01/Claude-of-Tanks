@@ -150,14 +150,18 @@ assert.equal(guidedRounds.length, 22, 'the complete guided-ammunition fleet is c
 // Every new variant is exercised in the fleet loop above, not just its donor.
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
 assert.equal(SECOND_WAVE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 69);
-assert.equal(ABRAMS_SOURCE_X_IDS.length, 7);
-assert.equal(ABRAMS_SOURCE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 21);
+assert.equal(ABRAMS_SOURCE_X_IDS.length, 5); // owner 2026-09-15 retired the M1A1 X / M1A1 HA X studies
+assert.equal(ABRAMS_SOURCE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 15);
 const addedXIds = new Set([...SECOND_WAVE_X_IDS, ...ABRAMS_SOURCE_X_IDS]);
-assert.equal(addedXIds.size, 30, 'the two additive X batches have distinct identities');
-assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id))
+assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct identities');
+// Later non-X additions are exercised in the fleet loop above but are not part of the
+// pre-existing census (2026-09-15: the Chinese Type 100 and its three channels).
+const laterIds = new Set(['type100']);
+assert.equal(TANK_SPECS.type100.gun.shells.length, 3);
+assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) && !laterIds.has(spec.id))
   .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
   'the pre-existing ammunition-channel census remains intact');
-assert.equal(authoredShellChannels, 625,
+assert.equal(authoredShellChannels, 622 /* 535 + 69 + 15 + 3 (Type 100) */,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

@@ -209,14 +209,14 @@ const SPECS: FleetTankSpec[] = [
       // Owner source measured hood top is 2.866 m above its track datum.
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00,
         heightM: 2.64, silhouetteHeightM: 2.866 } }),
-  make('leo2a6', 'leo2a5', 'Leopard 2A5', 'Germany',
+  make('leo2a6', 'leo2a5', 'Leopard 2A4 V', 'Germany',
     { hp: 2350, weightTons: 59.5, gun: { reloadS: 6.4 },
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64 },
       // bakeDirt deck equalizer (f243966; r10 A/B: deck med -> 56.6 toward
       // ref 59.9, deck sub45 -507, hero-rr -307, gear/rear/glacis identical;
       // caution logged: deck over92 72 -> 154 vs ref 29 — critic adjudicates).
       visual: { bakeDirtDeckEq: true } }),
-  make('leo2a7', 'leo2a7v', 'Leopard 2A7V', 'Germany',
+  make('leo2a7', 'leo2a7v', 'Leopard 2 Improved', 'Germany',
     { hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
       // 2.87 m remains the published configured-vehicle envelope.  Geometry
       // validation uses the authored broad-body P95 (2.50 m) rather than
@@ -232,7 +232,7 @@ const SPECS: FleetTankSpec[] = [
       // seated cover measures a 2.80 m combat envelope; 2.44 m remains the
       // bare turret datum and is no longer honest for this configured mark.
       dims: { heightM: 2.80 } }),
-  make('m1a2', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA',
+  make('m1a2', 'm1a2_sepv2', 'M1A1 Abrams AIM', 'USA',
     { hp: 2600, weightTons: 66.8, gun: { reloadS: 6.0 },
       armor: abramsReactiveArmor('m1a2', 'm1a2_sepv2'),
       // §5.73-1 P95 datum: elevated armored CROWS plus its seated ghillie
@@ -406,9 +406,9 @@ const SPECS: FleetTankSpec[] = [
         silhouetteOverallLengthM: 8.61,
         silhouetteHeightM: 2.28,
       } }),
-  make('t72b3', 't72b_1987', 'T-72B obr. 1987', 'USSR/Russia',
+  make('t72b3', 't72b_1987', 'T-72B obr. 1985', 'USSR/Russia',
     { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } }),
-  make('t72b3', 't72b3m', 'T-72B3M obr. 2022', 'Russia',
+  make('t72b3', 't72b3m', 'T-72B3M obr. 2016', 'Russia',
     { hp: 2250, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 20, gun: { reloadS: 6.5 },
       visual: {
         // Keep the authored factory-green field coherent under the warm
@@ -419,9 +419,9 @@ const SPECS: FleetTankSpec[] = [
         weather: '#2e422d',
         solidWeatheringIntensity: 0.03,
       } }),
-  make('t90a', 't72bu', 'T-72BU', 'USSR/Russia',
+  make('t90a', 't72bu', 'T-72BU obr. 1989', 'USSR/Russia',
     { hp: 2050, weightTons: 46.5, topSpeedKmh: 65, gun: { reloadS: 7.0 } }),
-  make('t90m', 't90sm', 'T-90SM', 'Russia',
+  make('t90m', 't90sm', 'T-90SM obr. 2013', 'Russia',
     { hp: 2400, weightTons: 48, topSpeedKmh: 72, gun: { reloadS: 6.4 },
       // The procedural T-90SM fit has a Relikt glacis and frontal turret
       // field. It does not carry the donor Proryv skirt or turret-flank kit.
@@ -447,7 +447,7 @@ const SPECS: FleetTankSpec[] = [
         autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
       },
       dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
-  make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
+  make('t90a', 't90a_vladimir', 'T-90A obr. 2006', 'Russia',
     { hp: 2300, topSpeedKmh: 65, gun: { reloadS: 6.6 } }),
 ];
 

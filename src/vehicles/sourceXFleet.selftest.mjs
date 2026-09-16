@@ -8,6 +8,10 @@ import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
 import {withHistoricalT90MLamps,assertCurrentT90MLampSeats} from './historicalT90MLamps.test-support.mjs';
 
+// 2026-09-15 owner ruling: the four T-90 X studies are tier X ("all should be tier 10 and prominent").
+// Every other X study still may not out-tier its donor without an explicit ruling here.
+const OWNER_TIER_RULINGS = Object.freeze({ t90a_x: 10, t90a_vladimir_x: 10, t90m_x: 10, t90sm_x: 10 });
+
 // Independent geometry-only fingerprints measured from the completed
 // pre-X commit 2c22d203d8726cfceefbe427f3930a000524da32 at seed4242.
 // Hashes include instanced wheel/track transforms; no supplied model involved.
@@ -43,8 +47,9 @@ assert.equal(SOURCE_X_IDS.length, 13);
 for (const id of SOURCE_X_IDS) {
   const donor = SOURCE_X_DONORS[id], spec = TANK_SPECS[id];
   assert.equal(ALL_TANK_IDS.filter(value => value === id).length, 1, `${id}: exactly one selectable row`);
-  assert.ok(spec.name.endsWith(' X'), `${id}: temporary X suffix`);
-  assert.equal(tankTier(id), tankTier(donor), `${id}: no implicit combat tier increase`);
+  // 2026-09-15 owner roster pass: the X suffix is retired — the study carries the canonical public name
+  assert.ok(!spec.name.endsWith(' X'), `${id}: no X suffix on a shipped study`);
+  assert.equal(tankTier(id), OWNER_TIER_RULINGS[id] ?? tankTier(donor), `${id}: no implicit combat tier increase`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);
   assert.ok(FLEET_GROUP_BY_ID[id].endsWith('X'), `${id}: independently demand-loaded builder`);

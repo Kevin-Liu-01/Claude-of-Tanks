@@ -87,5 +87,5 @@ for (const quality of ['high', 'low']) for (const id of ABRAMS_SOURCE_X_IDS) {
   }
 }
 material.dispose();
-assert.equal(builds, 14);
+assert.equal(builds, 10); // five studies x high/low (owner 2026-09-15 retired the M1A1 X / M1A1 HA X)
 console.log(JSON.stringify({ pass: true, builds, counterexamples, contacts, preservedAir }));

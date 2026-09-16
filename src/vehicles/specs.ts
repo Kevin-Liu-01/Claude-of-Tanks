@@ -754,7 +754,7 @@ export const TANK_SPECS: TankSpecRegistry = {
   },
 
   t90m: {
-    id: 't90m', name: 'T-90M', nation: 'Russia', era: 'modern', role: 'mbt',
+    id: 't90m', name: 'T-90AM', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65, reverseSpeedKmh: 12,
     hullTraverseDegS: 44,
@@ -817,7 +817,7 @@ export const TANK_SPECS: TankSpecRegistry = {
 // letting it shadow the player-facing M1A2.
 TANK_SPECS.m1a2 = structuredClone(TANK_SPECS.m1a2_legacy);
 TANK_SPECS.m1a2.id = 'm1a2';
-TANK_SPECS.m1a2.name = 'M1A2 Abrams';
+TANK_SPECS.m1a2.name = 'M1A1 Abrams HC'; // 2026-09-15 owner: the X study is the M1A2; this hull is the HC mark
 TANK_SPECS.m1a2.dims.heightM = 3.30;
 TANK_SPECS.m1a2.visual.number = '23';
 TANK_SPECS.m1a2.armor.hullPlates.push(
@@ -1370,7 +1370,7 @@ const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
   },
 
   jpz_e100: {
-    id: 'jpz_e100', name: 'Jagdpanzer E100', nation: 'Germany', era: 'ww2', role: 'td',
+    id: 'jpz_e100', name: 'Jagdpanzer E100 Prototype', nation: 'Germany', era: 'ww2', role: 'td',
     community: {
       author: 'Haphazard0587',
       source: 'https://www.thingiverse.com/thing:2624802',

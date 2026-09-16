@@ -71,7 +71,7 @@ function offsetTurretRing(armor: ArmorEnvelope, offsetX: number): void {
 
 const MODERN3_SPECS = {
   chieftain_mk10: {
-    id: 'chieftain_mk10', name: 'Chieftain Mk 10', nation: 'UK', era: 'modern', role: 'mbt',
+    id: 'chieftain_mk10', name: 'Chieftain Mk 9', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 1750,
     enginePowerHp: 750, weightTons: 55, topSpeedKmh: 48, reverseSpeedKmh: 10,
     hullTraverseDegS: 28,
@@ -109,7 +109,7 @@ const MODERN3_SPECS = {
   },
 
   k2: {
-    id: 'k2', name: 'K2 Black Panther', nation: 'South Korea', era: 'modern', role: 'mbt',
+    id: 'k2', name: 'XK2 Black Panther', nation: 'South Korea', era: 'modern', role: 'mbt',
     hp: 2450,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -160,7 +160,7 @@ const MODERN3_SPECS = {
   // full skirts. Print: public/models/community-candidates/k1a1_kojf.glb
   // (semantic re-bake, LOCAL-ONLY quarantine — measurement/influence only).
   k1a1: {
-    id: 'k1a1', name: 'K1A1', nation: 'South Korea', era: 'modern', role: 'mbt',
+    id: 'k1a1', name: 'K1E1', nation: 'South Korea', era: 'modern', role: 'mbt',
     hp: 2200,
     enginePowerHp: 1200, weightTons: 53.2, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 42,
@@ -206,7 +206,7 @@ const MODERN3_SPECS = {
   },
 
   type10: {
-    id: 'type10', name: 'Type 10', nation: 'Japan', era: 'modern', role: 'mbt',
+    id: 'type10', name: 'Type 10 (TK-X)', nation: 'Japan', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1200, weightTons: 48, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,
@@ -733,7 +733,7 @@ const MODERN3_SPECS = {
   },
 
   ariete_c1: {
-    id: 'ariete_c1', name: 'C1 Ariete', nation: 'Italy', era: 'modern', role: 'mbt',
+    id: 'ariete_c1', name: 'C1 Ariete (Serie 1)', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1270, weightTons: 56, topSpeedKmh: 63, reverseSpeedKmh: 25,
     hullTraverseDegS: 39,

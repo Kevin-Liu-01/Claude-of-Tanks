@@ -24,7 +24,8 @@ const MK5_BEFORE = {
   high: ['54c62c28236d10a7fe91559c64ed9c0d799c3e132876b6c3f4280bb1d2d2f10e', 77, 44],
   low: ['bf9072532695c8caa92c8d1d2380819a5870b74f163ab1459293bcf81f26badd', 75, 42],
 };
-const MK5_SPEC = '659eba9704b96eb8cb3c7b031f43aad99a43532aa559c7ddaa2402e993cc15b1';
+// 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
+const MK5_SPEC = 'e3905b7efc119d9b744b30103c30355cc79d6444cc83c1f6cc6f461dede9603d';
 const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d471a30';
 // Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
 // hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,

@@ -20,13 +20,12 @@ import { applyNativeFamilyOrder } from './fleetOrder.ts';
 import { ABRAMS_SOURCE_X_FRAME, ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
 
 const expected = [
-  ['m1a1_x', 'm1a1', 'M1A1 Abrams X', 'USA', 9],
-  ['m1a1ha_x', 'm1a1ha', 'M1A1 Abrams HA X', 'USA', 9],
-  ['m1a2_x', 'm1a2', 'M1A2 Abrams X', 'USA', 10],
-  ['m1a2_tusk_x', 'm1a2_tusk', 'M1A2 Abrams TUSK X', 'USA', 10],
-  ['m1a2_sepv2_x', 'm1a2_sepv2', 'M1A2 Abrams SEPv2 X', 'USA', 10],
-  ['m1a2_sepv3_x', 'm1a2_sepv3', 'M1A2 Abrams SEPv3 X', 'USA', 10],
-  ['ua_m1a1_x', 'ua_m1a1', 'M1A1 Abrams UA X', 'Ukraine', 9],
+  // 2026-09-15 owner roster pass: X studies carry the canonical names; M1A1 X / HA X retired
+  ['m1a2_x', 'm1a2', 'M1A2 Abrams', 'USA', 10],
+  ['m1a2_tusk_x', 'm1a2_tusk', 'M1A2 Abrams TUSK', 'USA', 10],
+  ['m1a2_sepv2_x', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA', 10],
+  ['m1a2_sepv3_x', 'm1a2_sepv3', 'M1A2 Abrams SEPv3', 'USA', 10],
+  ['ua_m1a1_x', 'ua_m1a1', 'M1A2 Abrams UA', 'Ukraine', 9],
 ];
 assert.deepEqual(ABRAMS_SOURCE_X_ENTRIES, expected.map((row) => row.slice(0, 3)));
 assert.deepEqual(ABRAMS_SOURCE_X_IDS, expected.map(([id]) => id));

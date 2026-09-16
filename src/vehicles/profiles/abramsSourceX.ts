@@ -7,6 +7,7 @@ import { KIT, orientedSlab } from './kit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { planeBoundedArmor, type ArmorPlane, type XYZ } from './abramsSourceXGeometry.ts';
 import { bindAbramsSourceXStockEra } from './abramsSourceXEra.ts';
+import { buildAbramsSourceXUkraineKit } from './abramsSourceXUkraineKit.ts';
 import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 
@@ -14,7 +15,8 @@ export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 // These are authoring joints: OBJ has no skeleton. Their provenance is in
 // the source study, independently of any candidate envelope fitting.
 function abramsSourceXConfiguration(id: string) {
-  const a1 = id === 'm1a1_x' || id === 'm1a1ha_x' || id === 'ua_m1a1_x';
+  // 2026-09-15: the M1A1 X and M1A1 HA X studies were retired; the Ukrainian M1A1 keeps the A1 kit
+  const a1 = id === 'ua_m1a1_x';
   const sepv3 = id === 'm1a2_sepv3_x';
   const curvedArat = id === 'm1a2_sepv2_x';
   return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_tusk_x',
@@ -107,9 +109,16 @@ function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): 
   yield* buildAbramsSourceXHullCooperativeSteps(P, options, cooperative);
   buildTurretArmor(P);
   if (cooperative) yield "buildAbramsX:buildTurretArmor(P);";
-  bindAbramsSourceXStockEra(P, options.urbanArmor);
-  if (cooperative) yield "buildAbramsX:bindAbramsSourceXStockEra(P, options.urbanArmor);";
+  // The Ukrainian study's reactive zones are the kit's external Kontakt-1 and ARAT cassettes,
+  // not a partitioned stock skin (abramsSourceXUkraineEraArmor.ts).
+  bindAbramsSourceXStockEra(P, options.urbanArmor || options.ukrainian);
+  if (cooperative) yield "buildAbramsX:bindAbramsSourceXStockEra(P, options.urbanArmor || options.ukrainian);";
   yield* buildAbramsSourceXEquipmentCooperativeSteps(P, options, frame, cooperative);
+  if (options.ukrainian) {
+    // owner 2026-09-15: the M1A2 Abrams UA wears its field kit over the finished study
+    buildAbramsSourceXUkraineKit(P);
+    if (cooperative) yield "buildAbramsX:buildAbramsSourceXUkraineKit(P);";
+  }
   P.topY = 2.405;
   if (cooperative) yield "buildAbramsX:P.topY = 2.405;";
   P.muzzleZ = 5.809425 - frame.gun[2];

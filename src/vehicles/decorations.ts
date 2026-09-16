@@ -2503,8 +2503,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
-  if (['m1a1_x', 'm1a1ha_x', 'm1a2_x', 'm1a2_tusk_x',
-    'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'].includes(spec.id)) return [];
+  if (['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'].includes(spec.id)) return [];
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.

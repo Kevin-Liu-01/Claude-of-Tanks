@@ -12,7 +12,9 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
   .map(id => [id, TANK_SPECS[id]]);
 // Captured before this metadata correction. No source meshes or generated
 // armor vertices are embedded in the regression.
-const donorHash = '843b767d98117f9554283175a4edb0767f6591ad52902de993e283da97b221a2';
+// Repinned 2026-09-15: the owner roster pass renamed donor display names (AMX-30B -> AMX-30,
+// AMX-40 -> AMX-40 Prototype, C1 Ariete -> Serie 1, Challenger 1 Mk 3 -> Mk 2 ...); no armor row moved.
+const donorHash = 'ce6ed7d80344189ea8aadb92f162a159d0c7b723ccf024170351666cb69f0fda';
 const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f833';
 const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
 const moduleCrewHash = 'eb348d13390a859042020234d8d73f6f24efbd9c4820764463380bfee2b2a0a3';

@@ -56,8 +56,9 @@ for (const [id, expected] of Object.entries(cases)) {
   }
 }
 
-assert.equal(getSpec('t90m').name, 'T-90M');
-assert.equal(tankTier('t90m'), 9, 'the retained T-90M occupies tier IX');
+// 2026-09-15 owner roster pass: the T-90M X study carries the T-90M name; the retained hull is the T-90AM.
+assert.equal(getSpec('t90m').name, 'T-90AM');
+assert.equal(tankTier('t90m'), 9, 'the retained T-90AM occupies tier IX');
 assert.equal(getSpec('t90m_proryv').name, 'T-90M Proryv');
 assert.equal(tankTier('t90m_proryv'), 10, 'the new chevron Proryv occupies tier X');
 

@@ -6,7 +6,7 @@ import { tankTier } from '../tier.ts';
 
 const id = 'leo2a5_a5nl';
 const spec = getSpec(id);
-assert.equal(spec.name, 'Leopard 2A5/A5NL');
+assert.equal(spec.name, 'Leopard 2A4M'); // owner roster pass 2026-09-15 (the A5NL hull carries the 2A4M name)
 assert.equal(tankTier(id), 10, 'A5/A5NL is the Tier X A5 progression');
 assert.equal(spec.dims.widthM, 3.98, 'A5NL width includes its backed skirt protection');
 

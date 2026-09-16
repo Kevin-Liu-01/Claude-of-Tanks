@@ -381,7 +381,7 @@ function mbt70Armor() {
 // ---------------------------------------------------------------------------
 const MODERN2_SPECS: TankSpecRegistry = {
   leo2a4: {
-    id: 'leo2a4', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
+    id: 'leo2a4', name: 'Leopard 2A2', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2200,
     enginePowerHp: 1500, weightTons: 55.15, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -420,7 +420,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
   },
 
   t80u: {
-    id: 't80u', name: 'T-80U', nation: 'USSR/Russia', era: 'modern', role: 'mbt',
+    id: 't80u', name: 'T-80UK', nation: 'USSR/Russia', era: 'modern', role: 'mbt',
     hp: 1900,
     enginePowerHp: 1250, weightTons: 46, topSpeedKmh: 70, reverseSpeedKmh: 11,
     hullTraverseDegS: 43,
@@ -648,7 +648,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
   },
 
   t14: {
-    id: 't14', name: 'T-14 Armata', nation: 'Russia', era: 'modern', role: 'mbt',
+    id: 't14', name: 'Object 148 Proto', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 75, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,

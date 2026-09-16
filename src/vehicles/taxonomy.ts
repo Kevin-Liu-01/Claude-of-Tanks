@@ -50,7 +50,6 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
     'amx30_x', 'amx40_x', 't62mv1_x',
-    'm1a1_x', 'm1a1ha_x',
     'challenger1_x',
     't72bu_x',
     'chieftain5_x',
@@ -86,7 +85,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
     'kf51_x', 't14_x',
     'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'm1a3', 'abramsx',
-    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv',
+    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv', 'type100',
   ]),
 });
 

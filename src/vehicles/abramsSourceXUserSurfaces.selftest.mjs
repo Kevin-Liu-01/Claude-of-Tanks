@@ -83,5 +83,5 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
   registerProfiledBuilders({[id]:buildAbramsX});
  }
 }
-material.dispose();assert.equal(builds,14);assert.equal(poses,42);assert.equal(contacts,840);
-console.log(JSON.stringify({pass:true,builds,poses,contacts,underShoulderAir:air,scope:'aft shoulder roofs and42 urban turret ERA bracket roots'}));
+material.dispose();assert.equal(builds,10);assert.equal(poses,30);assert.equal(contacts,840);
+console.log(JSON.stringify({pass:true,builds,poses,contacts,underShoulderAir:air,scope:'aft shoulder roofs and30 urban turret ERA bracket roots'}));

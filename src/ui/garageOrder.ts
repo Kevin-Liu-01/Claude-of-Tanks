@@ -44,35 +44,86 @@ interface GarageCountrySelectionMemory<Spec extends GarageOrderSpec> {
 export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   USA: Object.freeze([
     'm1a3',
-    'm1a2_tusk',
+    'm1a2_tusk_x',
+    'm1a2_sepv3_x',
     'm551a1_tts',
     'm3a3_bradley',
   ]),
   Japan: Object.freeze([
+    'type10_x',
     'type10b',
-    'type10',
     'type89_light_tiger',
+    'type90_x',
   ]),
   Sweden: Object.freeze([
-    'strv122',
+    'strv122_x',
     'strv103',
     'cv90_mkiv',
   ]),
   Germany: Object.freeze([
+    'kf51_x',
+    'leo2a7v_x',
+    'leo2a6m_x',
     'kf51b',
     'kf51',
     'leo2a7v',
-    'leo2a5_a5nl',
-    'leo2a5',
-    'leo2a6m',
-    'mbt70',
     'leo2_revolution',
+    'mbt70',
     'spz_puma_s1',
+    'leo2a4m_x',
+    'leo2a5_x',
+    'leo2a6_x',
   ]),
   China: Object.freeze([
+    'type100',
     'vt4a1',
     'ztz99a2',
     'ztz99a2_prototype',
+  ]),
+  // 2026-09-15 owner roster pass ("our x tanks are better models, i like featuring them
+  // more"): the X studies lead their tier in every nation that has them; the four T-90 X
+  // studies are tier X and open the Russian fleet.
+  Russia: Object.freeze([
+    't90m_x',
+    't90sm_x',
+    't90a_vladimir_x',
+    't90a_x',
+    't14_x',
+  ]),
+  'USSR/Russia': Object.freeze([
+    't90ms_x',
+    't90a_burlak_x',
+    't90_x',
+    't80u_x',
+    't72bu_x',
+    't72b_1987_x',
+    't62mv1_x',
+  ]),
+  UK: Object.freeze([
+    'challenger_3x',
+    'challenger1_x',
+    'chieftain_mk10_x',
+    'chieftain5_x',
+  ]),
+  France: Object.freeze([
+    'leclerc_x',
+    'leclerc_classic_x',
+    'amx40_x',
+    'amx30_x',
+  ]),
+  Israel: Object.freeze([
+    'merkava3d_x',
+    'merkava4_x',
+  ]),
+  Italy: Object.freeze([
+    'ariete_c1_x',
+  ]),
+  'South Korea': Object.freeze([
+    'k2_x',
+    'k1a1_x',
+  ]),
+  Ukraine: Object.freeze([
+    'ua_m1a1_x',
   ]),
 });
 

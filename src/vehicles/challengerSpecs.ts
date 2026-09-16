@@ -310,7 +310,7 @@ const CHALLENGER_SPECS = {
     },
   },
   challenger_3: {
-    id: 'challenger_3', name: 'Challenger 3', nation: 'UK', era: 'modern', role: 'mbt',
+    id: 'challenger_3', name: 'Challenger 3 Prototype', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2500,
     // CV12-9A uprate path (1,500 hp program figure), 66 t combat
     enginePowerHp: 1500, weightTons: 66, topSpeedKmh: 60, reverseSpeedKmh: 20,
@@ -343,7 +343,7 @@ const CHALLENGER_SPECS = {
     },
   },
   challenger_3x: {
-    id: 'challenger_3x', name: 'Challenger 3 X', nation: 'UK', era: 'modern', role: 'mbt',
+    id: 'challenger_3x', name: 'Challenger 3', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2780,
     enginePowerHp: 1800, weightTons: 76, topSpeedKmh: 58, reverseSpeedKmh: 22,
     hullTraverseDegS: 36,

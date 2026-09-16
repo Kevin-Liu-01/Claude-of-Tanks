@@ -6,19 +6,19 @@ import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhou
 import type { FleetTankSpec, FleetDimensions } from './specContracts.ts';
 
 const entries = [
-  ['leo2a7v_x', 'leo2a7v', 'Leopard 2A7V X'],
-  ['leo2a6m_x', 'leo2a6m', 'Leopard 2A6M X'],
-  ['leo2a4m_x', 'leo2a4m', 'Leopard 2A4M X'],
-  ['leo2a5_x', 'leo2a5', 'Leopard 2A5 X'],
-  ['merkava4_x', 'merkava4', 'Merkava Mk.4 X'],
-  ['merkava3d_x', 'merkava3d', 'Merkava Mk.3D X'],
-  ['k2_x', 'k2', 'K2 Black Panther X'],
-  ['kf51_x', 'kf51', 'KF51 Panther X'],
-  ['t90a_x', 't90a', 'T-90A X'],
-  ['t90a_vladimir_x', 't90a_vladimir', 'T-90A Vladimir X'],
-  ['t90m_x', 't90m', 'T-90M X'],
-  ['t90sm_x', 't90sm', 'T-90SM X'],
-  ['t14_x', 't14', 'T-14 Armata X'],
+  ['leo2a7v_x', 'leo2a7v', 'Leopard 2A7V'],
+  ['leo2a6m_x', 'leo2a6m', 'Leopard 2A6M'],
+  ['leo2a4m_x', 'leo2a4m', 'Leopard 2A5M'],
+  ['leo2a5_x', 'leo2a5', 'Leopard 2A5'],
+  ['merkava4_x', 'merkava4', 'Merkava Mk 4'],
+  ['merkava3d_x', 'merkava3d', 'Merkava Mk 3D'],
+  ['k2_x', 'k2', 'K2 Black Panther'],
+  ['kf51_x', 'kf51', 'KF51 Panther'],
+  ['t90a_x', 't90a', 'T-90A'],
+  ['t90a_vladimir_x', 't90a_vladimir', 'T-90A Vladimir'],
+  ['t90m_x', 't90m', 'T-90M'],
+  ['t90sm_x', 't90sm', 'T-90SM'],
+  ['t14_x', 't14', 'T-14 Armata'],
 ] as const;
 
 export const SOURCE_X_IDS = Object.freeze(entries.map(([id]) => id));

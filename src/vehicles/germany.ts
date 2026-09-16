@@ -97,7 +97,7 @@ function variant(
 
 const GERMANY_SPECS = {
   leo2a4_otco: variant('leo2a4_otco', 'leo2a4', {
-    name: 'Leopard 2A4 OTCO', number: 'OTCO', scheme: 'stripes',
+    name: 'Leopard 2A3', number: 'OTCO', scheme: 'stripes',
     base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'],
     camoScale: 0.44,
     dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.90 },
@@ -106,7 +106,7 @@ const GERMANY_SPECS = {
     reloadS: 6.1, shellName: 'DM53 APFSDS', armorFactor: 1.08,
   }),
   leo2a4m: variant('leo2a4m', 'leo2a4', {
-    name: 'Leopard 2A4M', number: 'A4M', scheme: 'stripes',
+    name: 'Leopard 2A4M CAN', number: 'A4M', scheme: 'stripes',
     base: '#4a5141', weather: '#656b58', patches: ['#2b3329', '#625941', '#77705b'],
     camoScale: 0.42,
     dims: { hullLengthM: 7.72, overallLengthM: 9.96, widthM: 3.77, heightM: 2.62 },
@@ -119,7 +119,7 @@ const GERMANY_SPECS = {
     reloadS: 5.9, shellName: 'DM53A1 APFSDS', armorFactor: 1.22,
   }),
   leo2a6m: variant('leo2a6m', 'leo2a6', {
-    name: 'Leopard 2A6M', number: 'A6M', scheme: 'stripes',
+    name: 'Leopard 2A4 OTCO', number: 'A6M', scheme: 'stripes',
     base: '#48503f', weather: '#626956', patches: ['#293128', '#605640', '#746d58'],
     camoScale: 0.40,
     dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 3.98, heightM: 3.03 },
@@ -132,7 +132,7 @@ const GERMANY_SPECS = {
     reloadS: 5.7, shellName: 'DM63 APFSDS', armorFactor: 1.27,
   }),
   leo2a5_a5nl: variant('leo2a5_a5nl', 'leo2a5', {
-    name: 'Leopard 2A5/A5NL', number: 'A5NL', scheme: 'stripes',
+    name: 'Leopard 2A4M', number: 'A5NL', scheme: 'stripes',
     base: '#465041', weather: '#626b58', patches: ['#273229', '#625a42', '#78715c'],
     camoScale: 0.39,
     dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.98, heightM: 3.12 },

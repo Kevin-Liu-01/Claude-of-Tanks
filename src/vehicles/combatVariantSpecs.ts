@@ -113,7 +113,7 @@ const VARIANT_SPECS = {
 
   // ---- T-90A — roster §13 (priority 2) ------------------------------------
   t90a: {
-    id: 't90a', name: 'T-90A', nation: 'Russia', era: 'modern', role: 'mbt',
+    id: 't90a', name: 'T-90A obr. 2004', nation: 'Russia', era: 'modern', role: 'mbt',
     variantOf: 't90m', // see m1a1 note
     hp: 2200,
     enginePowerHp: 1000, weightTons: 46.5, topSpeedKmh: 60, reverseSpeedKmh: 5,
@@ -158,7 +158,7 @@ const VARIANT_SPECS = {
 
   // ---- M1A2 Abrams TUSK — roster §3 (priority 3) --------------------------
   m1a2_tusk: {
-    id: 'm1a2_tusk', name: 'M1A2 Abrams TUSK', nation: 'USA', era: 'modern', role: 'mbt',
+    id: 'm1a2_tusk', name: 'M1A1 Abrams SA', nation: 'USA', era: 'modern', role: 'mbt',
     variantOf: 'm1a2', // see m1a1 note
     hp: 2650,
     enginePowerHp: 1500, weightTons: 69.5, topSpeedKmh: 64, reverseSpeedKmh: 25,

@@ -15,15 +15,16 @@ import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 import { ABRAMS_SOURCE_X_FRAME, ABRAMS_SOURCE_X_MEASUREMENTS } from './abramsSourceXDatums.ts';
 import { applyAbramsSourceXSkirtArmor } from './abramsSourceXSkirtArmor.ts';
 import { applyAbramsSourceXRackArmor } from './abramsSourceXRackArmor.ts';
+import { applyAbramsSourceXUkraineEraArmor } from './abramsSourceXUkraineEraArmor.ts';
 
 export const ABRAMS_SOURCE_X_ENTRIES = Object.freeze([
-  ['m1a1_x', 'm1a1', 'M1A1 Abrams X'],
-  ['m1a1ha_x', 'm1a1ha', 'M1A1 Abrams HA X'],
-  ['m1a2_x', 'm1a2', 'M1A2 Abrams X'],
-  ['m1a2_tusk_x', 'm1a2_tusk', 'M1A2 Abrams TUSK X'],
-  ['m1a2_sepv2_x', 'm1a2_sepv2', 'M1A2 Abrams SEPv2 X'],
-  ['m1a2_sepv3_x', 'm1a2_sepv3', 'M1A2 Abrams SEPv3 X'],
-  ['ua_m1a1_x', 'ua_m1a1', 'M1A1 Abrams UA X'],
+  // 2026-09-15 owner roster pass: the X studies carry the canonical names (their donors moved
+  // to older M1A1 marks) and the M1A1 X / M1A1 HA X studies were retired.
+  ['m1a2_x', 'm1a2', 'M1A2 Abrams'],
+  ['m1a2_tusk_x', 'm1a2_tusk', 'M1A2 Abrams TUSK'],
+  ['m1a2_sepv2_x', 'm1a2_sepv2', 'M1A2 Abrams SEPv2'],
+  ['m1a2_sepv3_x', 'm1a2_sepv3', 'M1A2 Abrams SEPv3'],
+  ['ua_m1a1_x', 'ua_m1a1', 'M1A2 Abrams UA'], // owner 2026-09-15: the kitted Ukrainian study is the M1A2 UA
 ] as const);
 
 export const ABRAMS_SOURCE_X_IDS = Object.freeze(
@@ -61,6 +62,8 @@ function provisionalArmor(donor: FleetTankSpec, donorId: string): FleetTankSpec[
     partitionedSkin: donorId === 'm1a2' || donorId === 'm1a2_sepv3',
   });
   applyAbramsSourceXRackArmor(armor, { extended: donorId === 'm1a2_sepv2' });
+  // The Ukrainian study alone wears the field kit's reactive cassettes (owner 2026-09-15).
+  if (donorId === 'ua_m1a1') applyAbramsSourceXUkraineEraArmor(armor);
   return armor;
 }
 

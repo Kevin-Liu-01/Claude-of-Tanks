@@ -41,7 +41,7 @@ for (const [id, expected] of Object.entries(original)) {
 for (const id of SECOND_WAVE_X_IDS) {
   const donor = SECOND_WAVE_X_DONORS[id], spec = TANK_SPECS[id];
   assert.equal(ALL_TANK_IDS.filter(x=>x===id).length, 1, `${id}: distinct selectable identity`);
-  assert.ok(spec.name.endsWith(' X'));
+  assert.ok(!spec.name.endsWith(' X'), `${id}: the X suffix was retired (owner 2026-09-15)`);
   assert.equal(tankTier(id), tankTier(donor), `${id}: rebuild must not silently increase combat tier`);
   assert.equal(MODEL_SOURCE[id].source, 'procedural');
   assert.equal(spec.community, undefined);

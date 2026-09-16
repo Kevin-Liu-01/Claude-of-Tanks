@@ -144,5 +144,5 @@ for(const id of ABRAMS_SOURCE_X_IDS)for(const quality of['high','low']){
   }
  }finally{restore.forEach(f=>f());tank.dispose();}
 }
-assert.equal(poses,42);
-console.log(`Abrams muzzle: ${pieces.length} closed stocks/${triangles} triangles; source collar/rounded wing/actual bore/owner articulation high-low42poses PASS`);
+assert.equal(poses,30); // five studies (owner 2026-09-15 retired the M1A1 X / M1A1 HA X) x high/low x three poses
+console.log(`Abrams muzzle: ${pieces.length} closed stocks/${triangles} triangles; source collar/rounded wing/actual bore/owner articulation high-low30poses PASS`);

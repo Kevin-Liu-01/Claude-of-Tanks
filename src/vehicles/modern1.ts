@@ -268,7 +268,7 @@ function armorLeo2A6(): ArmorEnvelope {
 // ---------------------------------------------------------------------------
 const MODERN1_SPECS = {
   t72b3: {
-    id: 't72b3', name: 'T-72B3', nation: 'Russia', era: 'modern', role: 'mbt',
+    id: 't72b3', name: 'T-72B3 obr. 2011', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 1850,
     enginePowerHp: 840, weightTons: 46.5, topSpeedKmh: 60, reverseSpeedKmh: 4.8,
     hullTraverseDegS: 36,
@@ -319,7 +319,7 @@ const MODERN1_SPECS = {
   },
 
   leo2a6: {
-    id: 'leo2a6', name: 'Leopard 2A6', nation: 'Germany', era: 'modern', role: 'mbt',
+    id: 'leo2a6', name: 'Leopard 2A4', nation: 'Germany', era: 'modern', role: 'mbt',
     hp: 2400,
     enginePowerHp: 1500, weightTons: 62.3, topSpeedKmh: 68, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,

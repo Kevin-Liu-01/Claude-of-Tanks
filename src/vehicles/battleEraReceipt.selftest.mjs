@@ -13,7 +13,7 @@ import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
 // These are real browser-facade builds, not replacement builders or a reduced
 // geometry/material fixture. This is CPU structural/material evidence, not GPU
 // rendering, pixel presentation, frame-time or browser performance evidence.
-const IDS = ['t64bv1', 't80u', 't80bv', 't90m', 'm1a1ha_x', 'merkava1b'];
+const IDS = ['t64bv1', 't80u', 't80bv', 't90m', 'ua_m1a1_x', 'merkava1b'];
 const ROOT_EXCLUSIONS = new Set([
   'eraVisualBindingReceipt', // The one intentionally omitted diagnostic payload.
   'coreBuildTiming', 'decorBuildMs', 'decorYieldMs', // Measured elapsed time only.

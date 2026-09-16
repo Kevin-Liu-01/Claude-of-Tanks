@@ -160,5 +160,5 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
     builds++;
   }finally{current.tank.dispose();old.tank.dispose();}
 }
-assert.equal(builds,14);assert.equal(phaseChecks,96);assert.equal(articulationChecks,4);material.dispose();
-console.log(JSON.stringify({test:'Abrams source120 guide',actualBuilds:28,pairedQualityVariantChecks:builds,completeBilateralPhaseChecks:phaseChecks,articulationChecks,occupiedChecks,neighborChecks,status:'PASS'}));
+assert.equal(builds,10);assert.equal(phaseChecks,96);assert.equal(articulationChecks,4);material.dispose();
+console.log(JSON.stringify({test:'Abrams source120 guide',actualBuilds:20,pairedQualityVariantChecks:builds,completeBilateralPhaseChecks:phaseChecks,articulationChecks,occupiedChecks,neighborChecks,status:'PASS'}));

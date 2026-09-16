@@ -23,7 +23,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 // Leopard 2 hull — the harder-hitting, slightly softer sibling of the 2A7 at
 // the top of the German MBT ladder.
 const KF51_SPEC = {
-    id: 'kf51', name: 'KF51 Panther', nation: 'Germany', era: 'modern', role: 'mbt',
+    id: 'kf51', name: 'KF51 EVO', nation: 'Germany', era: 'modern', role: 'mbt',
     variantOf: 'kf51',      // self-marker (m1a1 rule): stays on the nation tab
     hp: 2500,
     enginePowerHp: 1475, weightTons: 59, topSpeedKmh: 70, reverseSpeedKmh: 30,
@@ -76,7 +76,7 @@ KF51_SPEC.armor.hullPlates.push(
 // vehicle as KF51B with its measured palette and geometry.
 const KF51B_SPEC = {
   ...KF51_SPEC,
-  id: 'kf51b', name: 'KF51B Panther', variantOf: 'kf51b',
+  id: 'kf51b', name: 'KF51-U', variantOf: 'kf51b',
   // §5.299 fleet-integration truth-up (kf51b row ONLY — kf51's shared armor
   // object is untouched, this is a fresh communityArmor instance). The
   // rebuilt Panther is installed at 1.05x, so these are the final rendered

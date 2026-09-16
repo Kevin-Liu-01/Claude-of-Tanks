@@ -11,7 +11,7 @@ const BLOOM_MODERN = { move: 0.06, hullRot: 0.08, turret: 0.06, afterShot: 2.2 }
 
 const FRANCE_SPECS = {
   amx40: {
-    id: 'amx40', name: 'AMX-40', nation: 'France', era: 'modern', role: 'mbt',
+    id: 'amx40', name: 'AMX-40 Prototype', nation: 'France', era: 'modern', role: 'mbt',
     hp: 2000,
     enginePowerHp: 1100, weightTons: 43.7, topSpeedKmh: 70, reverseSpeedKmh: 22,
     hullTraverseDegS: 44,

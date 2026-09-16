@@ -204,7 +204,7 @@ const SPECS: FleetTankSpec[] = [
       dims: { hullLengthM: 6.78, overallLengthM: 9.66, widthM: 3.52, heightM: 2.20 },
       visual: { number: '319' } }, BERGMAN),
   // -- NATO cold-war ---------------------------------------------------------
-  make('leo1a5', 'amx30', 'AMX-30B', 'France',
+  make('leo1a5', 'amx30', 'AMX-30', 'France',
     { hp: 1600, enginePowerHp: 720, weightTons: 36, reverseSpeedKmh: 11,
       gun: { reloadS: 7.0 },
       // §5.309 REBUILD (owner order 2026-08-17: stripped-down amx40 base):
@@ -315,7 +315,7 @@ const SPECS: FleetTankSpec[] = [
   // entry): NO MODEL_SOURCE rows and no credit cards — every playable renders
   // its OWN procedural build (profiles/russia.ts, RUSSIA_PROFILES).
   // t90: base 1992 obr. — V-84MS 840 hp, cast turret, K-5 clamshell, NSVT.
-  make('t90a', 't90', 'T-90', 'USSR/Russia',
+  make('t90a', 't90', 'T-90 obr. 1992', 'USSR/Russia',
     { hp: 2350, enginePowerHp: 840, weightTons: 46.5,
       gun: {
         reloadS: 6.6,
@@ -330,7 +330,7 @@ const SPECS: FleetTankSpec[] = [
   // t90ms: Tagil export demonstrator — V-92S2F 1130 hp, welded turret with
   // the big bustle + rear cage + UDP T05BV-1 RWS; desert-sand factory paint
   // (the export-demo look; also the garage tell vs the green t90sm).
-  make('t90a', 't90ms', 'T-90MS Tagil', 'USSR/Russia',
+  make('t90a', 't90ms', 'T-90MS obr. 2011', 'USSR/Russia',
     { hp: 2550, enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65,
       gun: {
         reloadS: 6.1,
@@ -348,7 +348,7 @@ const SPECS: FleetTankSpec[] = [
   // the Burlak bustle overhangs the hull rear ~0.24 past the T-90A datum
   // (print -3.66 corroborates) — 9.76 is the variant's honest gun-forward
   // total (ASK-OWNER note in the packet; §5.38 named only heightM 2.30).
-  make('t90a', 't90a_burlak', 'T-90A Burlak', 'USSR/Russia',
+  make('t90a', 't90a_burlak', 'T-90A Burlak Proto', 'USSR/Russia',
     { hp: 2500, gun: {
         reloadS: 6.0,
         shells: requireFleetSpec('t90a').gun.shells.map((round, index) => ({

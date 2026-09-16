@@ -185,20 +185,22 @@ for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
   assert.equal(ALL_TANK_IDS.includes(id), false, `${id}: retired external placeholder is not selectable`);
 }
 
-assert.equal(getSpec('m1a2').name, 'M1A2 Abrams', 'Tejas is the canonical M1A2 identity');
+assert.equal(getSpec('m1a2').name, 'M1A1 Abrams HC', '2026-09-15: the Tejas hull is the M1A1 HC mark; the X study is the canonical M1A2');
 assert.equal(getSpec('m1a2_legacy').name, 'M1A2 Abrams (Legacy)', 'former M1A2 retains the legacy identity');
 assert.equal(getSpec('m1a1ha').name, 'M1A1 Abrams HA', 'Abrams family naming is consistent');
-assert.equal(getSpec('m1a2_sepv3').name, 'M1A2 Abrams SEPv3', 'SEPv3 carries the family name');
+assert.equal(getSpec('m1a2_sepv3').name, 'M1A1 Abrams FEP', 'the older SEPv3 hull carries the M1A1 FEP mark');
 assert.equal(getSpec('bwp1').name, 'BWP-1 (Bojowy Wóz Piechoty 1)',
   'BMP-derived Upior entry is publicly named BWP-1');
 assert.equal(ALL_TANK_IDS.includes('upior_ifv'), false,
   'retired Upior IFV id is absent from the runtime roster');
 assert.equal(getSpec('upior').name, 'Upiór IFV',
   'separate ground-up Upior identity remains unchanged');
-assert.equal(getSpec('strv122').name, 'Stridsvagn 122',
+assert.equal(getSpec('strv122_x').name, 'Stridsvagn 122', 'the Strv 122 study carries the canonical name (owner 2026-09-15)');
+assert.equal(getSpec('strv122').name, 'Stridsvagn 122A',
   'Swedish vehicle uses its operator-standard public name');
-assert.equal(getSpec('k2').label.shortName, 'K2',
-  'K2 keeps the canonical designation as its concise public label');
+assert.equal(getSpec('k2_x').label.shortName, 'K2',
+  'the K2 study keeps the canonical designation as its concise public label (owner 2026-09-15)');
+assert.equal(getSpec('k2').label.shortName, 'XK2', 'the older K2 hull carries the prototype designation');
 assert.equal(getSpec('spz_puma').name, 'Schützenpanzer Puma',
   'Puma uses the Bundeswehr vehicle-class designation');
 assert.equal(getSpec('marder1a3').name, 'Schützenpanzer Marder 1A3',

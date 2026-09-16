@@ -269,7 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '3e4c8d4a617a9b21823e2fb06a92ed7e11e8df9b3985f5d1db589c413b34791c',
+  '8ab464c2dca24e5fc31303514b6fe11401c2d6860128ee3c4874d3e23765f062', // 2026-09-15: Challenger 3 label lost the X suffix; Type 100 parade digital preset added
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

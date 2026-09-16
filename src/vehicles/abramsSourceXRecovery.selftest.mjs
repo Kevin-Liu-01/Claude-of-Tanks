@@ -61,5 +61,5 @@ try {
     } finally { tank.dispose(); }
   }
 } finally { globalThis.fetch = originalFetch; }
-assert.equal(rows.length, 14);
+assert.equal(rows.length, 10); // five studies x high/low (owner 2026-09-15 retired the M1A1 X / M1A1 HA X)
 console.log(JSON.stringify({ pass:true, contract:'native lazy construction and articulation; not release qualification', rows }));

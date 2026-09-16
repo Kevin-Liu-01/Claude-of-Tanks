@@ -31,7 +31,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   k2X: Object.freeze(['k2_x']),
   kf51X: Object.freeze(['kf51_x']),
   t14X: Object.freeze(['t14_x']),
-  modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type59']),
+  modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type59', 'type100']),
   franceCore: Object.freeze(['amx40']),
   modern3Core: Object.freeze(['k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89']),
   // These visual profiles used to be imported by every garage boot even when
@@ -70,7 +70,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1',
   ]),
   poland: Object.freeze(['t72m1_jaguar', 'pt91_twardy', 'pl01', 'pl01_105']),
-  abramsSourceX: Object.freeze(['m1a1_x', 'm1a1ha_x', 'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x']),
+  abramsSourceX: Object.freeze(['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x']),
   abrams: Object.freeze([
     'm1a2_legacy', 'm1a2', 'm1a1', 'm1a1ha', 'm1a2_tusk', 'm1a2_sepv2',
     'm1a2_sepv3', 'm1a1_aim', 'm1a3', 'abramsx',

@@ -90,41 +90,58 @@ assert.deepEqual(
 );
 
 const usTopRun = [
+  { id: 'm1a2_x', nation: 'USA', name: 'M1A2 Abrams' },
   { id: 'm1a3', nation: 'USA', name: 'M1A3 Abrams' },
-  { id: 'm1a2_tusk', nation: 'USA', name: 'M1A2 Abrams TUSK' },
+  { id: 'm1a2_tusk_x', nation: 'USA', name: 'M1A2 Abrams TUSK' },
   { id: 'm551a1_tts', nation: 'USA', name: 'M551A1 TTS' },
   { id: 'm3a3_bradley', nation: 'USA', name: 'M3A3 Bradley CFV' },
-  { id: 'm1a2_sepv3', nation: 'USA', name: 'M1A2 Abrams SEP v3' },
+  { id: 'm1a2_sepv3_x', nation: 'USA', name: 'M1A2 Abrams SEPv3' },
 ];
 const topRunTierOf = () => 10;
 const sortedUsTopRun = usTopRun.sort((a, b) => (
   compareCountryThenTierThenName(a, b, rank, topRunTierOf)
 ));
 assert.deepEqual(
-  sortedUsTopRun.slice(0, 4).map((card) => card.id),
+  sortedUsTopRun.slice(0, 5).map((card) => card.id),
   GARAGE_LEADING_VEHICLE_IDS_BY_NATION.USA,
-  'the U.S. left edge leads with M1A3, TUSK, M551A1 TTS, then Bradley',
+  'the U.S. left edge leads with M1A3, M1A2 TUSK, M1A2 SEPv3, M551A1 TTS, then Bradley (owner 2026-09-15)',
 );
 
 const nationalShowcaseCases = [
   {
     nation: 'Japan', filler: 'type90a',
-    expected: ['type10b', 'type10', 'type89_light_tiger'],
+    expected: ['type10_x', 'type10b', 'type89_light_tiger', 'type90_x'],
   },
   {
     nation: 'Sweden', filler: 'cv90',
-    expected: ['strv122', 'strv103', 'cv90_mkiv'],
+    expected: ['strv122_x', 'strv103', 'cv90_mkiv'],
   },
   {
     nation: 'Germany', filler: 'leo2a6',
     expected: [
-      'kf51b', 'kf51', 'leo2a7v', 'leo2a5_a5nl', 'leo2a5',
-      'leo2a6m', 'mbt70', 'leo2_revolution', 'spz_puma_s1',
+      'kf51_x', 'leo2a7v_x', 'leo2a6m_x', 'kf51b', 'kf51', 'leo2a7v',
+      'leo2_revolution', 'mbt70', 'spz_puma_s1', 'leo2a4m_x', 'leo2a5_x', 'leo2a6_x',
     ],
   },
   {
     nation: 'China', filler: 'type99a',
-    expected: ['vt4a1', 'ztz99a2', 'ztz99a2_prototype'],
+    expected: ['type100', 'vt4a1', 'ztz99a2', 'ztz99a2_prototype'],
+  },
+  {
+    nation: 'Russia', filler: 't90m_proryv',
+    expected: ['t90m_x', 't90sm_x', 't90a_vladimir_x', 't90a_x', 't14_x'],
+  },
+  {
+    nation: 'USSR/Russia', filler: 't90a_burlak',
+    expected: ['t90ms_x', 't90a_burlak_x', 't90_x', 't80u_x', 't72bu_x', 't72b_1987_x', 't62mv1_x'],
+  },
+  {
+    nation: 'UK', filler: 'challenger_3',
+    expected: ['challenger_3x', 'challenger1_x', 'chieftain_mk10_x', 'chieftain5_x'],
+  },
+  {
+    nation: 'France', filler: 'leclerc',
+    expected: ['leclerc_x', 'leclerc_classic_x', 'amx40_x', 'amx30_x'],
   },
 ];
 
