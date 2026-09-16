@@ -20,7 +20,9 @@ function abramsSourceXConfiguration(id: string) {
   const a1 = id === 'ua_m1a1_x';
   const sepv3 = id === 'm1a2_sepv3_x';
   const curvedArat = id === 'm1a2_sepv2_x';
-  return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_tusk_x',
+  // owner 2026-09-16: the SEPv3 carries all the side turret and skirt armour and attachments — the
+  // rectangular ARAT set with the Trophy launchers taking three stations of each rear course
+  return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_tusk_x' || sepv3,
     ukrainian: id === 'ua_m1a1_x' };
 }
 

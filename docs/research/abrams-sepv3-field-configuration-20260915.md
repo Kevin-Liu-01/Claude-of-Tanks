@@ -25,11 +25,23 @@ urban kit (ARAT tiles, loader shields, counter-assault mount, belly add-on) and 
     all sixteen receiving plates; **turret side bins** on the rear quarters behind the launchers.
   - The study now carries the SEP v2's full rear loadout (extended rack, three bags, four containers
     and receivers, the tall electronic mast) — `rearEquipmentCooperativeSteps(C, curvedArat || sepv3)`.
-- Kit parts: 197 tagged (`sepv3Kit`) plus the ~60 loadout parts; the SEP v2's urban kit is ~80.
+- **Urban set (owner 2026-09-16, "add all the side turret and sideskirt armor and attachments")**:
+  the study is now an urban-armour configuration (`urbanArmor` in `abramsSourceXConfiguration`):
+  rectangular ARAT cassettes on all sixteen skirt plates (`reactiveSkirts`, bound to the
+  `m1a2_sepv3_skirt_era_L/R` zones), the turret ARAT courses with brackets (`turretArat`) — the rear
+  course leaves stations 1–3 open on each side where the Trophy launcher assembly sits
+  (`rearAratCourse(…, trophy)`), the fore courses complete — bound to `m1a2_sepv3_turret_era_L/R`;
+  the belly add-on, the counter-assault M2 mount on the mantlet and the loader's and commander's
+  shields. The spec width follows the TUSK's rectangular set (4.063 m) and the donor's partitioned
+  skirt skin is dropped (the cassettes are the reactive skirt). The kit's skirt furniture and turret
+  side bins gave way to the tiles.
+- Kit parts: 123 tagged (`sepv3Kit`) over 60 urban parts and the ~60 loadout parts.
 
 ## Verification
 
-`src/vehicles/profiles/abramsSourceXSepv3Kit.selftest.mjs` (core group): every count, the envelope
+`src/vehicles/profiles/abramsSourceXSepv3Kit.selftest.mjs` (core group): every count, the rear ARAT
+stations [0, 4, 5, 6] per side with complete fore courses, the four ERA zones bound to visible
+cassettes, the envelope
 (skirt line, below the CROWS-LP head, above the fenders; skirt furniture a few centimetres proud),
 the launchers clear the inclined walls at their lowest edge and stop at the skirt line, the APU stands
 on the left fender under the rack floor behind the turret ring, the counterweights hang behind the

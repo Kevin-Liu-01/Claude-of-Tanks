@@ -920,8 +920,10 @@ function reactiveCassette(C: EquipmentContext, side: number, build: () => void):
   C.P.destructibleCluster(plate.name, build);
 }
 
-function rearAratCourse(C: EquipmentContext, curved: boolean, side: number): void {
+function rearAratCourse(C: EquipmentContext, curved: boolean, side: number, trophy = false): void {
   for (let i = 0; i < 7; i++) {
+    // the Trophy HV launcher assembly (abramsSourceXSepv3Kit.ts, z -1.54 .. -.76) takes stations 1-3
+    if (trophy && i >= 1 && i <= 3) continue;
     const z = -1.793205 + i * .33286, topX = 1.66374 + i * .02265 + (side < 0 ? .13617 : 0);
     const bottom = i < 4 ? 1.832995 : 1.761055, top = bottom + .43671;
     const x = side * (topX - .110);
@@ -950,9 +952,9 @@ function foreAratCourse(C: EquipmentContext, curved: boolean, side: number): voi
   }
 }
 
-function turretArat(C: EquipmentContext, curved: boolean): void {
+function turretArat(C: EquipmentContext, curved: boolean, trophy = false): void {
   for (const side of [-1, 1]) {
-    rearAratCourse(C, curved, side);
+    rearAratCourse(C, curved, side, trophy);
     foreAratCourse(C, curved, side);
   }
 }
@@ -983,7 +985,7 @@ export function* buildAbramsSourceXEquipmentCooperativeSteps(P: TankBuilderPort,
   yield* tankProfileCheckpoint(cooperative, "buildAbramsSourceXEquipment:smoke(C);");
   // the SEPv3 (owner 2026-09-15) carries the extended rack and full stowage like the urban SEP v2
   yield* rearEquipmentCooperativeSteps(C, options.curvedArat || options.sepv3, cooperative);
-  if (options.urbanArmor) turretArat(C, options.curvedArat);
+  if (options.urbanArmor) turretArat(C, options.curvedArat, options.sepv3);
   yield* tankProfileCheckpoint(cooperative, "buildAbramsSourceXEquipment:if (options.urbanArmor) turretArat(C, options.curvedArat);");
   // Ukrainian service does not, by itself, prove a specific field cage or ERA
   // kit. The documented A1 station remains the only roof configuration delta.

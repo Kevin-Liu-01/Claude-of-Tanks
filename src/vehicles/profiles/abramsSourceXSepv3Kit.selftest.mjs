@@ -10,11 +10,12 @@ import { TURRET, turretSideX } from './abramsSourceXKitBase.ts';
 // envelope and seating; the other Abrams studies must carry none of it.
 
 function capture(id) {
-  const parts = [];
+  const parts = [], urban = [];
   registerProfiledBuilders({ [id]: (P) => buildAbramsX(new Proxy(P, {
     get(target, key) {
-      if (key === 'add' || key === 'addEquipment') {
+      if (key === 'add' || key === 'addEquipment' || key === 'addExternalArmor') {
         return (bucket, geometry, x = 0, y = 0, z = 0) => {
+          if (/^abramsSourceX_(Square|Fore|Arat)/.test(geometry.name || '')) urban.push(geometry.name.replace(/^abramsSourceX_/, ''));
           if (geometry.userData.sepv3Kit) {
             geometry.computeBoundingBox();
             const b = geometry.boundingBox;
@@ -29,12 +30,12 @@ function capture(id) {
     },
   })) });
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality: 'high', batchStatic: false });
-  return { parts, tank };
+  return { parts, urban, tank };
 }
 
-const { parts, tank } = capture('m1a2_sepv3_x');
+const { parts, urban, tank } = capture('m1a2_sepv3_x');
 const count = (part) => parts.filter((p) => p.part === part).length;
-const hullOwned = (part) => /^(uaapu|sponson|tow-|pioneer|jerry|skirt-)/.test(part);
+const hullOwned = (part) => /^(uaapu|sponson|tow-|pioneer|jerry)/.test(part);
 const hull = (p) => (hullOwned(p.part) ? p : { ...p, min: p.min.map((v, i) => v + TURRET[i]), max: p.max.map((v, i) => v + TURRET[i]) });
 
 // Trophy HV: two launcher assemblies, four radars, two counterweights
@@ -50,17 +51,15 @@ assert.equal(count('uaapu-hinge'), 2); assert.equal(count('uaapu-latch'), 2); as
 assert.equal(count('sponson-box'), 1); assert.equal(count('trophy-controller'), 1); assert.equal(count('adl-box'), 2);
 assert.equal(count('gps-antenna'), 1); assert.equal(count('wind-sensor'), 2);
 assert.equal(count('tow-cable'), 5); assert.equal(count('tow-clamp'), 3); assert.equal(count('jerry-can'), 2);
-assert.equal(count('skirt-hinge'), 16); assert.equal(count('skirt-handle'), 48, 'a D-handle on every receiving plate');
-assert.equal(count('side-bin'), 2); assert.equal(count('side-bin-strap'), 4);
-assert.equal(parts.length, 123 + 64 + 10, 'the whole kit is accounted for');
+assert.equal(parts.length, 123, 'the whole kit is accounted for');
 
 // envelope: inside the 3.66 m hull width, nothing above the CROWS-LP head, nothing below the fenders
 for (const raw of parts) {
   const p = hull(raw);
   // skirt handles and hinges stand a few centimetres proud of the receiving plates, like the ARAT cassettes do
-  assert.ok(Math.max(Math.abs(p.min[0]), Math.abs(p.max[0])) <= (p.part.startsWith('skirt-') ? 1.88 : 1.84), `${p.part}: inside the skirt width`);
+  assert.ok(Math.max(Math.abs(p.min[0]), Math.abs(p.max[0])) <= 1.84, `${p.part}: inside the skirt width`);
   assert.ok(p.max[1] <= 3.05, `${p.part}: below the weapon station`);
-  assert.ok(p.min[1] >= (p.part.startsWith('skirt-') ? 1.00 : 1.40), `${p.part}: above the fenders`);
+  assert.ok(p.min[1] >= 1.40, `${p.part}: above the fenders`);
 }
 // the launchers clear the inclined walls and stay inside the skirt line; the muzzles face outward
 for (const raw of parts.filter((p) => p.part === 'trophy-launcher')) {
@@ -81,10 +80,20 @@ for (const raw of parts.filter((p) => p.part === 'trophy-counterweight')) {
   assert.ok(p.max[2] < -3.36, 'counterweight behind the rack extension');
   assert.ok(p.min[1] > 1.80, 'counterweight above the sponson boxes');
 }
+// the urban set (owner 2026-09-16): rectangular ARAT on both skirts and the turret courses, with the three
+// rear stations under each Trophy launcher left open; every reactive bank binds a gameplay zone
+const stations = (side) => [0, 1, 2, 3, 4, 5, 6].filter((i) => urban.includes(`SquareArat${side}_${i}`));
+assert.deepEqual(stations(1), [0, 4, 5, 6], 'right rear ARAT course keeps four stations around the launcher');
+assert.deepEqual(stations(-1), [0, 4, 5, 6], 'left rear ARAT course keeps four stations around the launcher');
+assert.equal(urban.filter((n) => /^ForeSquareArat/.test(n)).length, 3 + 4, 'both fore ARAT courses complete');
+const binding = tank.root.userData.eraVisualBindingReceipt;
+const zones = [...new Set((binding?.plates || []).map((row) => row.name))].sort();
+assert.deepEqual(zones, ['m1a2_sepv3_skirt_era_L', 'm1a2_sepv3_skirt_era_R', 'm1a2_sepv3_turret_era_L', 'm1a2_sepv3_turret_era_R'], 'skirt and turret ARAT banks own the gameplay ERA zones');
+for (const row of binding.plates) assert.ok(row.registered && row.partCount > 0, `${row.name}: bound to visible cassettes`);
 // finished tank builds; the other Abrams studies carry no SEPv3 kit
 const meshes = []; tank.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
 assert.ok(meshes.length > 0, 'the SEPv3 builds');
 for (const other of ['m1a2_sepv2_x', 'm1a2_x']) {
   assert.equal(capture(other).parts.length, 0, `${other} carries no SEPv3 kit`);
 }
-console.log(`abramsSourceXSepv3Kit: ${parts.length} kit parts on the M1A2 Abrams SEPv3 (Trophy launchers, radars and counterweights, UAAPU, sponson box, roof electronics, fender stowage); the SEP v2 and M1A2 studies stay clean PASS`);
+console.log(`abramsSourceXSepv3Kit: ${parts.length} kit parts on the M1A2 Abrams SEPv3 (Trophy launchers, radars and counterweights, UAAPU, sponson box, roof electronics, fender stowage) over the rectangular ARAT set with ${urban.length} urban parts; the SEP v2 and M1A2 studies stay clean PASS`);

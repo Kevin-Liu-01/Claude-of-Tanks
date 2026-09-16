@@ -6,6 +6,9 @@
 // data link and Trophy electronics on the roof, and the crew's stowage on the fenders. Every part is
 // laid in the hull frame on the study's measured planes and re-seated into the turret frame where the
 // turret owns it (abramsSourceXKitBase.ts). Passive detail: the gameplay armour record is unchanged.
+// The study's urban set (rectangular ARAT on skirts and turret, belly add-on, counter-assault mount,
+// loader shields — owner 2026-09-16 "add all the side turret and sideskirt armor and attachments")
+// comes from the hull/equipment modules; the rear ARAT courses leave three stations for each launcher.
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT } from './kit.ts';
@@ -154,36 +157,6 @@ function fenderStowage(P: TankBuilderPort): void {
   for (const z of [-2.45, -2.05]) put(P, 'hull', 'hullDetail', 'jerry-can', box(.18, .42, .35), [1.52, 1.405 + .21, z]);
 }
 
-/** Skirt furniture on both sides: a hinge strip along every receiving plate's top edge and a D-handle
- * on each plate, as the heavy skirts wear them in the field. */
-function skirtFurniture(P: TankBuilderPort): void {
-  const stations = [-2.60, -1.985, -1.315, -.645, .025, .695, 1.365, 2.035, 2.99];
-  for (const side of [-1, 1] as const) {
-    for (let i = 0; i < stations.length - 1; i++) {
-      const z0 = stations[i] + .008, z1 = stations[i + 1] - .008, zc = (z0 + z1) / 2;
-      const face = side * (i >= 6 ? 1.824115 + .00969 / 2 : 1.82580 + .00670 / 2);
-      put(P, 'hull', 'hullDark', 'skirt-hinge', box(.014, .036, z1 - z0 - .06), [face + side * .007, 1.386, zc]);
-      const hx = face + side * .030, hy = 1.05;
-      member(P, 'hull', 'hullDark', 'skirt-handle', [face, hy, zc - .09], [hx, hy, zc - .09], .008);
-      member(P, 'hull', 'hullDark', 'skirt-handle', [face, hy, zc + .09], [hx, hy, zc + .09], .008);
-      member(P, 'hull', 'hullDark', 'skirt-handle', [hx, hy, zc - .09], [hx, hy, zc + .09], .009);
-    }
-  }
-}
-
-/** Stowage bins on the turret's rear quarters, behind the Trophy launchers, strapped to the inclined wall. */
-function turretSideBins(P: TankBuilderPort): void {
-  for (const side of [-1, 1] as const) {
-    const y = 2.05, zc = -1.96, depth = .22; // shallow enough to stay inside the skirt line on the wider left wall
-    const wall = Math.abs(turretSideX(side, y - .20));
-    const inner = wall + .02, xc = side * (inner + depth / 2);
-    put(P, 'turret', 'turret', 'side-bin', box(depth, .40, .56), [xc, y, zc]);
-    put(P, 'turret', 'turretDark', 'side-bin-lid', box(depth + .03, .014, .58), [xc, y + .207, zc]);
-    for (const dz of [-.17, .17]) put(P, 'turret', 'turretDark', 'side-bin-strap', box(depth + .02, .42, .03), [xc, y, zc + dz]);
-    put(P, 'turret', 'turretDark', 'side-bin-latch', cylX(.014, .02, 8), [side * (inner + depth + .01), y - .05, zc]);
-  }
-}
-
 export function buildAbramsSourceXSepv3Kit(P: TankBuilderPort): void {
   for (const side of [-1, 1] as const) trophyLauncher(P, side);
   trophyRadars(P);
@@ -192,6 +165,4 @@ export function buildAbramsSourceXSepv3Kit(P: TankBuilderPort): void {
   sponsonBox(P);
   roofElectronics(P);
   fenderStowage(P);
-  skirtFurniture(P);
-  turretSideBins(P);
 }

@@ -59,7 +59,7 @@ function provisionalArmor(donor: FleetTankSpec, donorId: string): FleetTankSpec[
   }
   applyAbramsSourceXSkirtArmor(armor, {
     extendedFront: donorId === 'm1a2_sepv2',
-    partitionedSkin: donorId === 'm1a2' || donorId === 'm1a2_sepv3',
+    partitionedSkin: donorId === 'm1a2', // the SEPv3's reactive skirt is its ARAT cassettes (2026-09-16)
   });
   applyAbramsSourceXRackArmor(armor, { extended: donorId === 'm1a2_sepv2' });
   // The Ukrainian study alone wears the field kit's reactive cassettes (owner 2026-09-15).
@@ -89,7 +89,7 @@ export function createAbramsSourceXSpecs(donors: TankSpecRegistry): TankSpecRegi
       overallLengthM: ABRAMS_SOURCE_X_MEASUREMENTS.overallLengthM,
       widthM: id === 'm1a2_sepv2_x'
         ? ABRAMS_SOURCE_X_MEASUREMENTS.curvedUrbanArmorWidthM
-        : id === 'm1a2_tusk_x'
+        : id === 'm1a2_tusk_x' || id === 'm1a2_sepv3_x' // owner 2026-09-16: the SEPv3 wears the rectangular ARAT set
           ? ABRAMS_SOURCE_X_MEASUREMENTS.rectangularUrbanArmorWidthM
         : ABRAMS_SOURCE_X_MEASUREMENTS.standardWidthM,
     });

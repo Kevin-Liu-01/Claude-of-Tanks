@@ -635,11 +635,11 @@
       "vertices": 185980
     },
     "m1a2_sepv3_x": {
-      "freezeHash": "26334e38",
-      "instanceFreezeHash": "53a53600",
-      "assetGeometryHash": "53a53600",
-      "meshes": 184,
-      "vertices": 217236
+      "freezeHash": "81cc5f54",
+      "instanceFreezeHash": "3e494e8b",
+      "assetGeometryHash": "3e494e8b",
+      "meshes": 203,
+      "vertices": 238096
     },
     "m1a2_tusk": {
       "freezeHash": "a3015831",
@@ -1230,11 +1230,11 @@
       "vertices": 81426
     },
     "t90ms_x": {
-      "freezeHash": "ffda5f14",
-      "instanceFreezeHash": "9d7b57ca",
-      "assetGeometryHash": "8a6d64e3",
-      "meshes": 42,
-      "vertices": 82567
+      "freezeHash": "8a7383d8",
+      "instanceFreezeHash": "049ba59e",
+      "assetGeometryHash": "9ba4f217",
+      "meshes": 44,
+      "vertices": 84615
     },
     "t90sm": {
       "freezeHash": "8fbff82a",
