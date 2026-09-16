@@ -80,6 +80,10 @@ for (const id of ['m1a1', 'm1a1ha', 'ua_m1a1']) {
       `${id}: front ties follow the pitched canopy height`);
     assert.ok(near(cage.zM, 2.62),
       `${id}: front ties terminate at the marked centre-rail end`);
+    // owner 2026-09-16: the fine rod layers from the M1A2 Abrams UA cage hang inside the heavy frame
+    const lattice = turretRig.userData.uaM1A1CageLatticeReceipt;
+    assert.ok(lattice && lattice.rodM === 0.006 && lattice.pitchM === 0.155 && lattice.rods >= 180,
+      `${id}: fine rod lattice published (${lattice?.rods} rods)`);
   }
 }
 

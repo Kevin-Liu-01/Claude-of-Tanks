@@ -1363,11 +1363,11 @@
       "vertices": 166483
     },
     "ua_m1a1": {
-      "freezeHash": "2f6213a0",
-      "instanceFreezeHash": "982c614c",
-      "assetGeometryHash": "885fd7f0",
+      "freezeHash": "c794fc68",
+      "instanceFreezeHash": "066a8c41",
+      "assetGeometryHash": "554a5a3d",
       "meshes": 75,
-      "vertices": 211426
+      "vertices": 219202
     },
     "ua_m1a1_x": {
       "freezeHash": "357cd452",

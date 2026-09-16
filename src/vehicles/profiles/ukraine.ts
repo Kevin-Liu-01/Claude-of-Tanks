@@ -2489,6 +2489,61 @@ function addAbramsCageRearPayload(P: UkraineBuilderPort, thickness: number): voi
   }
 }
 
+/** Fine rod lattice (owner 2026-09-16: "add the smaller thinner cage layers from the m1a2 abrams ua
+ * cages to the M1A1 SA"): 6 mm rods at 155 mm pitch — longitudinal rods per bay following the pitched
+ * canopy, transverse rods along the bays, vertical rods hanging on both flanks and across the rear wall —
+ * welded into the 32 mm frame (rod centres sit inside the frame's half-thickness). The front bay keeps
+ * the gun corridor (|x| < 0.50) open like the heavy ribs do. Open lattice: exterior air for the rasters. */
+function addAbramsCageFineLattice(P: UkraineBuilderPort): void {
+  const rod = 0.006, pitch = 0.155;
+  const stations = ABRAMS_DRONE_CAGE_STATIONS;
+  const lerp = THREE.MathUtils.lerp;
+  let rods = 0;
+  const bar = (w: number, h: number, d: number, x: number, y: number, z: number, rx = 0): void => {
+    addCageBar(P, w, h, d, x, y, z, rx, 0, 0);
+    rods++;
+  };
+  for (let index = 0; index < stations.length - 1; index++) {
+    const a = stations[index];
+    const b = stations[index + 1];
+    const dz = b.z - a.z;
+    const dy = b.roof - a.roof;
+    const length = Math.hypot(dz, dy);
+    const pitchX = -Math.atan2(dy, dz);
+    const halfX = Math.min(a.x, b.x) - 0.08;
+    const columns = Math.round(2 * halfX / pitch);
+    for (let i = 0; i <= columns; i++) {
+      const x = -halfX + i * (2 * halfX / columns);
+      if (index === 0 && Math.abs(x) < 0.50) continue;
+      bar(rod, rod, length - 0.04, x, (a.roof + b.roof) * 0.5 + 0.012, (a.z + b.z) * 0.5, pitchX);
+    }
+    const rows = Math.max(1, Math.round(Math.abs(dz) / pitch));
+    for (let j = 1; j < rows; j++) {
+      const t = j / rows;
+      const z = lerp(a.z, b.z, t);
+      const y = lerp(a.roof, b.roof, t) + 0.018;
+      const halfWidth = lerp(a.x, b.x, t) - 0.05;
+      if (index === 0) {
+        for (const side of [-1, 1]) bar(halfWidth - 0.50, rod, rod, side * (0.50 + (halfWidth - 0.50) * 0.5), y, z);
+      } else {
+        bar(halfWidth * 2, rod, rod, 0, y, z);
+      }
+      for (const side of [-1, 1]) {
+        const base = lerp(a.base, b.base, t);
+        const roof = lerp(a.roof, b.roof, t);
+        bar(rod, roof - base - 0.05, rod, side * (lerp(a.x, b.x, t) + 0.012), (base + roof) * 0.5, z);
+      }
+    }
+  }
+  const rear = stations[stations.length - 1];
+  const rearColumns = Math.round((rear.x * 2 - 0.10) / pitch);
+  for (let i = 0; i <= rearColumns; i++) {
+    const x = -rear.x + 0.05 + i * ((rear.x * 2 - 0.10) / rearColumns);
+    bar(rod, rear.roof - rear.base - 0.05, rod, x, (rear.roof + rear.base) * 0.5, rear.z - 0.012);
+  }
+  P.turretG.userData.uaM1A1CageLatticeReceipt = Object.freeze({ rodM: rod, pitchM: pitch, rods });
+}
+
 function addAbramsDroneCage(P: UkraineBuilderPort): void {
   const { box } = KIT;
   const t = 0.032;
@@ -2514,6 +2569,8 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   // Connected rear wall and filled bustle payload.  The rack, spare aerial
   // boxes, EW heads and rolled covers eliminate the former empty black cage.
   addAbramsCageRearPayload(P, t);
+  // The fine rod layers (owner 2026-09-16) hang inside the heavy frame.
+  addAbramsCageFineLattice(P);
   // Forward EO/EW cluster is planted on a real crossmember and remains
   // below the canopy crown.
   addCageBar(P, 0.72, 0.10, 0.20, 0, 1.15, 0.74);
