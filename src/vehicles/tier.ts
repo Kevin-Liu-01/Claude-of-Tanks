@@ -2,12 +2,12 @@
 // battle loading, HUD target panels, killcam and generated asset manifests.
 
 export const TANK_TIER = Object.freeze({
-  leo2a6_x: 9,
+  leo2a6_x: 10, // owner 2026-09-15 (evening): the Leopard 2A6 study is tier X
   k1a1_x: 8, amx30_x: 7, t62mv1_x: 7,
   t72b_1987_x: 8, t80u_x: 8, leclerc_x: 9, leclerc_classic_x: 9,
   chieftain_mk10_x: 8,
   t72b3_x: 8,
-  jpz_e100_x: 10,
+  jpz_e100_x: 7, // owner 2026-09-15 (evening): the Jagdpanzer E100 study is tier VII
   type10_x: 10,
   type90_x: 9,
   amx40_x: 9,
@@ -20,7 +20,7 @@ export const TANK_TIER = Object.freeze({
   t90_x: 10,
   t90a_burlak_x: 10,
   t90ms_x: 10,
-  leo2a7v_x: 10, leo2a6m_x: 10, leo2a4m_x: 9, leo2a5_x: 9,
+  leo2a7v_x: 10, leo2a6m_x: 10, leo2a4m_x: 10, leo2a5_x: 10, // owner 2026-09-15 (evening): 2A5M and 2A5 studies tier X
   merkava4_x: 9, merkava3d_x: 10, k2_x: 9, kf51_x: 10,
   m1a2_x: 10, m1a2_tusk_x: 10,
   m1a2_sepv2_x: 10, m1a2_sepv3_x: 10, ua_m1a1_x: 9,

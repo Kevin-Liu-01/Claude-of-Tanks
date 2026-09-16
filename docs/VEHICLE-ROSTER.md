@@ -178,8 +178,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 168 | PROD | `m551a1_tts` | M551A1 TTS | USA | X | Next Generation | Production |
 | 169 | PROD | `leo2a7v_x` | Leopard 2A7V | Germany | X | Modern | Production |
 | 170 | PROD | `leo2a6m_x` | Leopard 2A6M | Germany | X | Modern | Production |
-| 171 | PROD | `leo2a4m_x` | Leopard 2A5M | Germany | IX | Modern | Production |
-| 172 | PROD | `leo2a5_x` | Leopard 2A5 | Germany | IX | Modern | Production |
+| 171 | PROD | `leo2a4m_x` | Leopard 2A5M | Germany | X | Modern | Production |
+| 172 | PROD | `leo2a5_x` | Leopard 2A5 | Germany | X | Modern | Production |
 | 173 | PROD | `merkava4_x` | Merkava Mk 4 | Israel | IX | Modern | Production |
 | 174 | PROD | `merkava3d_x` | Merkava Mk 3D | Israel | X | Modern | Production |
 | 175 | PROD | `k2_x` | K2 Black Panther | South Korea | IX | Modern | Production |
@@ -189,7 +189,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 179 | PROD | `t90m_x` | T-90M | Russia | X | Modern | Production |
 | 180 | PROD | `t90sm_x` | T-90SM | Russia | X | Modern | Production |
 | 181 | PROD | `t14_x` | T-14 Armata | Russia | X | Next Generation | Production |
-| 182 | PROD | `leo2a6_x` | Leopard 2A6 | Germany | IX | Modern | Production |
+| 182 | PROD | `leo2a6_x` | Leopard 2A6 | Germany | X | Modern | Production |
 | 183 | PROD | `k1a1_x` | K1A1 | South Korea | VIII | Modern | Production |
 | 184 | PROD | `amx30_x` | AMX-30B | France | VII | Cold War | Production |
 | 185 | PROD | `t62mv1_x` | T-62MV-1 | USSR/Russia | VII | Cold War | Production |
@@ -199,7 +199,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 189 | PROD | `leclerc_classic_x` | Leclerc S1 | France | IX | Modern | Production |
 | 190 | PROD | `chieftain_mk10_x` | Chieftain Mk 10 | UK | VIII | Modern | Production |
 | 191 | PROD | `t72b3_x` | T-72B3 | Russia | VIII | Modern | Production |
-| 192 | PROD | `jpz_e100_x` | Jagdpanzer E100 | Germany | X | World War II | Production |
+| 192 | PROD | `jpz_e100_x` | Jagdpanzer E100 | Germany | VII | World War II | Production |
 | 193 | PROD | `type10_x` | Type 10 | Japan | X | Modern | Production |
 | 194 | PROD | `type90_x` | Type 90 | Japan | IX | Modern | Production |
 | 195 | PROD | `amx40_x` | AMX-40 | France | IX | Cold War | Production |

@@ -8,9 +8,10 @@ import { geometryFingerprint } from './tankAssets.ts';
 import { tankTier } from './tier.ts';
 import {withHistoricalT90MLamps,assertCurrentT90MLampSeats} from './historicalT90MLamps.test-support.mjs';
 
-// 2026-09-15 owner ruling: the four T-90 X studies are tier X ("all should be tier 10 and prominent").
+// 2026-09-15 owner rulings: the four T-90 X studies are tier X ("all should be tier 10 and prominent");
+// evening: "make the leopard 2a5m, leopard 2a5, leopard 2a6 tier 10" (the 2A5M and 2A5 studies live here).
 // Every other X study still may not out-tier its donor without an explicit ruling here.
-const OWNER_TIER_RULINGS = Object.freeze({ t90a_x: 10, t90a_vladimir_x: 10, t90m_x: 10, t90sm_x: 10 });
+const OWNER_TIER_RULINGS = Object.freeze({ t90a_x: 10, t90a_vladimir_x: 10, t90m_x: 10, t90sm_x: 10, leo2a4m_x: 10, leo2a5_x: 10 });
 
 // Independent geometry-only fingerprints measured from the completed
 // pre-X commit 2c22d203d8726cfceefbe427f3930a000524da32 at seed4242.
