@@ -62,3 +62,4 @@ quickest proof that the live site is the gate build.
 | 28 | 2026-09-16 13:22 | 4bcd8eec4 | Leclerc XLR and AMX 56 studies at tier X, blue Shtora lenses on the T-90MS X | main-CZSgaV3D.js | claude-of-tanks-djdbaa6x1 |
 | 29 | 2026-09-16 15:20 | da2a30ead | Type 100 rebuilt from the ZTZ-100 reference set | main-CF9R4110.js | claude-of-tanks-c3562xe51 |
 | 30 | 2026-09-16 16:40 | 71d9637dc | T-90M X painted cradle cover, reviving modes skip the death cam and kill cam | main-Qj9kzwOa.js | claude-of-tanks-rmlizvpa0 |
+| 31 | 2026-09-16 19:18 | fdf9158c3 | Type 100 remade (T-90M hull grammar, T-14 turret grammar, IFV prow); Turbo Ball hides consumable slots | main-XeSMiX4A.js | claude-of-tanks-89jab6hjw |
