@@ -250,6 +250,10 @@ try {
 }
 
 const hudSource = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
+// Owner (2026-09-16): a ruleset without consumables (Turbo Ball) shows no consumable slots or separator.
+assert.ok(hudSource.includes("const noConsumables = ruleset?.consumables === false;"), 'the pre-battle ruleset decides whether consumable slots show');
+assert.ok(hudSource.includes("conSep.style.display = noConsumables ? 'none' : '';") && hudSource.includes("conBox.style.display = noConsumables ? 'none' : '';"),
+  'separator and consumable wrapper hide together when the ruleset carries no consumables');
 const selectorFunctions = hudSource.slice(hudSource.indexOf('  // ---------- shell selector ----------'),
   hudSource.indexOf('  // ---------- world-space tank nameplates ----------'));
 assert.doesNotMatch(selectorFunctions, /requireElement|querySelector/,

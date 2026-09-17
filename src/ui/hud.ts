@@ -2374,7 +2374,7 @@ export function initHud(bus: EventBus): HudRuntime {
       setTouchAmmoOpen(false);
     }
   }, { capture: true });
-  el('div', 'cot-consep', shellBox);
+  const conSep = el('div', 'cot-consep', shellBox);
   // MOBILE-UX r1: consumables get their own wrapper (desktop: display:contents
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
   const conBox = el('div', 'cot-cons', shellBox);
@@ -6236,6 +6236,12 @@ export function initHud(bus: EventBus): HudRuntime {
     setPreBattleRules(ruleset: MatchRuleset | null) {
       liveRuleset = ruleset;
       reviveCountdown.hide();
+      // Owner (2026-09-16): a ruleset without consumables (Turbo Ball) shows no consumable slots — the
+      // separator and the three keycaps leave the shell selector instead of reading as "∞" spares.
+      const noConsumables = ruleset?.consumables === false;
+      // inline display: the wrapper's own display rule (contents / mobile column) would outrank [hidden]
+      conSep.style.display = noConsumables ? 'none' : '';
+      conBox.style.display = noConsumables ? 'none' : '';
       pbRules.replaceChildren();
       if (!ruleset) return;
       for (const line of rulesetLines(ruleset)) {
