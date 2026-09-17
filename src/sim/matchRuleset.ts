@@ -75,6 +75,15 @@ export interface MatchRuleset {
   /** Modules, crew and fires take damage. False (owner 2026-09-15, Turbo Ball: "make modules not break since
    * there's no consumables") keeps every critical system intact — hull hit points are the only thing a hit costs. */
   readonly criticalDamage: boolean;
+  /** Upward launch (m/s) the F key gives a grounded, upright hull, or null when the mode has no jump (owner
+   * 2026-09-16, Turbo Ball: "make an f button that just adds an upward vector so you go flying"). */
+  readonly jumpMps: number | null;
+  /** Multiplies the hull's firing recoil into a real launch opposite the muzzle (owner: "aim behind you and launch
+   * yourself and use it as a speed boost"); 1 keeps the ordinary hull kick. */
+  readonly recoilLaunchScale: number;
+  /** Multiplies the shove a shell impact gives the hull it hits (owner: "shells should have more physics effects
+   * that knock you"); 1 is the whole-game baseline. */
+  readonly shellKnockScale: number;
   /** Seconds to respawn, or null when a destroyed vehicle stays destroyed. */
   readonly respawnS: number | null;
   /** Clock in seconds, or null for no clock. */
@@ -102,7 +111,8 @@ export interface CampaignRulesetInput {
 
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
-  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, respawnS: null, timeLimitS: 900, timeout: 'draw',
+  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 1,
+  respawnS: null, timeLimitS: 900, timeout: 'draw',
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
 });
 
@@ -118,7 +128,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   turbo_ball: Object.freeze({
     ...STANDARD, mode: 'turbo_ball', gravityScale: 0.6, speedMultiplier: 1.85, hpScale: 1.5,
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
-    criticalDamage: false, respawnS: 3, timeLimitS: 600,
+    criticalDamage: false, jumpMps: 9, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
   }),
   // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
   // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
@@ -243,6 +253,9 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   else if (ruleset.equipmentSlots < 3) line('equipmentSlots', { value: String(ruleset.equipmentSlots) });
   if (!ruleset.consumables) line('noConsumables');
   if (!ruleset.criticalDamage) line('noCriticalDamage');
+  if (ruleset.jumpMps != null) line('jump', { value: String(ruleset.jumpMps) });
+  if (ruleset.recoilLaunchScale !== 1) line('recoilLaunch', { value: `×${Math.round(ruleset.recoilLaunchScale * 10) / 10}` });
+  if (ruleset.shellKnockScale !== 1) line('shellKnock', { value: `×${Math.round(ruleset.shellKnockScale * 10) / 10}` });
   if (ruleset.respawnS != null) line('respawn', { value: String(ruleset.respawnS) });
   else if (ruleset.mode !== 'standard') line('noRespawn');
   if (ruleset.timeLimitS == null) line('noClock');

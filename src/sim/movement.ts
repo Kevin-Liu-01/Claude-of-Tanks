@@ -685,6 +685,9 @@ const IFV_AUTOCANNON_MAX_CYCLE_S = 1;
 export const IFV_AUTOCANNON_RECOIL_SCALE = 0.36;
 const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
+const LAUNCH_SPEED_CAP_MPS = 45; // ruleset launches never push the run speed past this
+const KNOCK_TRANSLATION_GAIN = 2.2; // impact shove → decaying translation impulse (≈ knock × 0.29 m of displacement)
+const JUMP_AIRTIME_GRACE_S = 0.05;
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
 const RECOIL_KICK_MAX_DEGS = 15; // spring pitch-rate kick, heavy gun
 const OUTER_TRACK_ARM_M = 1.5;   // trackScroll differential arm: v ± yawRate × 1.5
@@ -2651,10 +2654,77 @@ export function shotRecoilScale(
  *   from the slower missile rail carried by the same IFV.
  * @returns {void}
  */
+/** Ruleset launch request: the fired shell's world direction and the mode's recoil launch scale. */
+export interface RecoilLaunch { scale: number; dirX: number; dirY: number; dirZ: number }
+
+/** The slice of a movement state a jump or lift touches; TankState and the client's action state both satisfy it. */
+export interface LiftableState {
+  overturned?: boolean;
+  grounded?: boolean;
+  verticalSpeed?: number;
+  _ride?: { y?: number; v?: number; airTime?: number; grounded?: boolean };
+}
+
+/** Lift the ride into flight: vertical velocity plus an immediate detach, so the next tick integrates the airborne
+ * parabola instead of the loaded suspension spring (which would damp a 9 m/s launch to under 1 m/s in one step). */
+function liftTankRide(state: LiftableState, upMps: number): void {
+  if (!(upMps > 0)) return;
+  state.verticalSpeed = Math.max(state.verticalSpeed || 0, 0) + upMps;
+  const ride = state._ride;
+  if (ride) {
+    ride.v = Math.max(ride.v || 0, 0) + upMps;
+    ride.airTime = 0;
+    if (Number.isFinite(ride.y)) ride.y = (ride.y as number) + RIDE_DETACH_CLEARANCE_M + 0.005;
+    ride.grounded = false;
+  }
+  state.grounded = false;
+}
+
+/**
+ * Jump (owner 2026-09-16, Turbo Ball F key): a grounded, upright hull gets `jumpMps` of upward velocity. Refused
+ * while airborne, overturned or when the mode has no jump, so the key keeps its self-right meaning elsewhere.
+ */
+export function requestTankJump(state: LiftableState | null | undefined, jumpMps: number | null | undefined): boolean {
+  if (!state || !(jumpMps != null && jumpMps > 0)) return false;
+  if (state.overturned === true || state.grounded === false) return false;
+  if (state._ride && (state._ride.airTime || 0) > JUMP_AIRTIME_GRACE_S) return false;
+  liftTankRide(state, jumpMps);
+  return true;
+}
+
+/**
+ * Shove a shell impact gives the hull it hits (owner 2026-09-16: "shells should have more physics effects that
+ * knock you"): metres per second from calibre squared, shell speed and the victim's mass, times the ruleset scale.
+ */
+export function shellKnockMps(caliberMm: number, shellSpeedMps: number, massTons: number, scale = 1): number {
+  const cal = clamp((caliberMm || 105) / 105, 0.3, 2.2);
+  const speed = clamp((shellSpeedMps || 800) / 900, 0.3, 2.0);
+  const mass = massTons > 0 ? clamp(45 / massTons, 0.4, 2.5) : 1;
+  return Math.min(9, 1.3 * cal * cal * speed * mass * Math.max(0, scale));
+}
+
+/** Apply an impact shove along the shell's world direction: a decaying translation impulse (the hull is shoved,
+ * the drivetrain speed is untouched so a hit never becomes a lasting drive input — balance duels stay stable),
+ * an attitude rock, and for heavy shoves a lift of the ride. */
+export function applyShellKnock(state: TankState, dirX: number, dirY: number, dirZ: number, knockMps: number): void {
+  if (!(knockMps > 0)) return;
+  const h = Math.hypot(dirX, dirZ) || 1;
+  const kx = dirX / h, kz = dirZ / h;
+  const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+  const along = kx * fx + kz * fz;
+  const spr = state._spring;
+  spr.recoilVX += kx * knockMps * KNOCK_TRANSLATION_GAIN;
+  spr.recoilVZ += kz * knockMps * KNOCK_TRANSLATION_GAIN;
+  spr.pitchV += -along * knockMps * 0.12;
+  spr.rollV += (kx * fz - kz * fx) * knockMps * 0.12;
+  if (knockMps > 2.5) liftTankRide(state, (knockMps - 2.5) * 0.35 + Math.max(0, dirY) * knockMps * 0.3);
+}
+
 export function fireRecoil(
   state: TankState,
   spec: MovementSpec,
   shellSpec: MovementShellSpec | null = null,
+  launch: RecoilLaunch | null = null,
 ): void {
   const cal = spec.gun.caliberMm;
   const heavy = clamp((cal - 75) / 85, 0, 1); // 75 mm → light kick, 160 mm+ → max
@@ -2674,6 +2744,22 @@ export function fireRecoil(
   const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale;
   spr.recoilVX -= Math.sin(gunYawWorld) * v;
   spr.recoilVZ -= Math.cos(gunYawWorld) * v;
+  if (launch && launch.scale > 1) {
+    // Ruleset launch (Turbo Ball): the recoil becomes a real velocity change opposite the muzzle — fire behind you
+    // for a speed boost, fire downward to hop. The part along the hull joins the run speed, the lateral part rides
+    // the decaying translation, the vertical part lifts the ride.
+    const launchV = v * (launch.scale - 1);
+    const h = Math.hypot(launch.dirX, launch.dirZ) || 1;
+    const lx = -launch.dirX / h, lz = -launch.dirZ / h;
+    const fx = Math.sin(state.yaw), fz = Math.cos(state.yaw);
+    const along = lx * fx + lz * fz;
+    const down = Math.max(0, -launch.dirY);
+    const horizontal = launchV * (1 - down);
+    state.speed = clamp(state.speed + along * horizontal, -LAUNCH_SPEED_CAP_MPS, LAUNCH_SPEED_CAP_MPS);
+    spr.recoilVX += (lx - along * fx) * horizontal * 0.5;
+    spr.recoilVZ += (lz - along * fz) * horizontal * 0.5;
+    if (down > 0.05) liftTankRide(state, launchV * down);
+  }
   const rapidIfvShot = recoilScale < 1;
   const afterShotBloom = rapidIfvShot
     ? Math.min(spec.gun.bloom.afterShot, IFV_AUTOCANNON_AFTER_SHOT_BLOOM)

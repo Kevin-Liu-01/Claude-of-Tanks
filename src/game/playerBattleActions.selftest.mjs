@@ -118,6 +118,11 @@ const rules = {
     localCalls.push('selfRight');
     return true;
   },
+  requestTankJump(state, jumpMps) {
+    if (!(jumpMps > 0) || state.overturned) return false;
+    localCalls.push('jump');
+    return true;
+  },
 };
 
 const actions = createPlayerBattleActions({
@@ -208,6 +213,17 @@ assert(events.some(({ event, payload }) =>
 input.press('selfRight');
 assert.equal(localCalls.at(-1), 'selfRight');
 assert(events.some(({ event }) => event === 'tank:selfRight'));
+// owner 2026-09-16 (Turbo Ball): the same key jumps an upright hull when the ruleset stamps a jump launch
+const overturnedBefore = player.state.overturned;
+player.state.overturned = false;
+input.press('selfRight');
+assert(localCalls.at(-1) !== 'jump', 'no jump without a stamped launch');
+player.modeJumpMps = 9;
+input.press('selfRight');
+assert.equal(localCalls.at(-1), 'jump', 'an upright hull jumps in a jumping ruleset');
+assert(events.some(({ event }) => event === 'tank:jump'));
+player.modeJumpMps = null;
+player.state.overturned = overturnedBefore;
 
 networkActive = true;
 player.combat.damagedModule = 'trackL';

@@ -1534,6 +1534,9 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 @keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
 @keyframes cot-pb-pop-alt{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
+.cot-jump{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:150px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.28);border-radius:6px;background:rgba(10,12,14,.55);color:#e8e6df;font:600 12px/1 var(--hud-font,system-ui);letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+.cot-jump.on{display:flex}
+.cot-jump .sk{padding:2px 6px;border:1px solid rgba(255,255,255,.5);border-radius:4px;font-weight:700}
 .cot-special{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:88px;transform:translateX(-50%);
   min-width:164px;min-height:42px;padding:5px 12px 5px 8px;display:none;
   grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
@@ -2251,6 +2254,10 @@ export function initHud(bus: EventBus): HudRuntime {
     event.stopPropagation();
     if (event.detail === 0) bus.emit('ui:specialAction', {});
   });
+  // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
+  const jumpHint = el('div', 'cot-jump', root);
+  jumpHint.innerHTML = '<span class="sl"></span><span class="sk">F</span>';
+  const jumpLabel = requireElement<HTMLElement>(jumpHint, '.sl');
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
   const specialKey = requireElement<HTMLElement>(specialButton, '.sk');
@@ -6238,6 +6245,8 @@ export function initHud(bus: EventBus): HudRuntime {
       reviveCountdown.hide();
       // Owner (2026-09-16): a ruleset without consumables (Turbo Ball) shows no consumable slots — the
       // separator and the three keycaps leave the shell selector instead of reading as "∞" spares.
+      jumpLabel.textContent = t('hud.jump');
+      jumpHint.classList.toggle('on', ruleset?.jumpMps != null);
       const noConsumables = ruleset?.consumables === false;
       // inline display: the wrapper's own display rule (contents / mobile column) would outrank [hidden]
       conSep.style.display = noConsumables ? 'none' : '';

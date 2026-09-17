@@ -111,6 +111,10 @@ export interface MatchModeEntity {
   modeSpeedMultiplier?: number;
   /** Ruleset gravity scale (matchRuleset.ts) the movement and ballistics read. */
   modeGravityScale?: number;
+  /** Ruleset jump launch, recoil launch and impact-knock scales (matchRuleset.ts) the sims read. */
+  modeJumpMps?: number | null;
+  modeRecoilLaunchScale?: number;
+  modeShellKnockScale?: number;
 }
 
 export interface MatchModeSpawn {
@@ -318,6 +322,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const stampPhysics = (entity: Entity, speed = baseSpeed): void => {
     entity.modeSpeedMultiplier = speed;
     entity.modeGravityScale = ruleset.gravityScale;
+    entity.modeJumpMps = ruleset.jumpMps;
+    entity.modeRecoilLaunchScale = ruleset.recoilLaunchScale;
+    entity.modeShellKnockScale = ruleset.shellKnockScale;
   };
   const rng = seededRandom(seed ^ 0x4d4f4445);
   const spawns = new Map<string, MatchModeSpawn>();

@@ -19,7 +19,7 @@ rule the battle does not keep.
 | Standard Battle | Destroy the opposing force | — | No | Elimination, or the 15:00 clock (draw) |
 | Capture the Flag | Carry the enemy flag to a home flag that has not been stolen | flag carrier drives at 85 % | 6 s | First team to 3 captures, or the clock (score) |
 | Zone Control | Capture and hold three battlefield sectors | — | 6 s | First team to 750 points, or the clock (score) |
-| Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage | 3 s | First team to 5 goals, or the 10:00 clock (score) |
+| Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage, F jumps 9 m/s, ×12 recoil launch, ×2.5 impact knock | 3 s | First team to 5 goals, or the 10:00 clock (score) |
 | Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 
@@ -129,6 +129,23 @@ Turbo Ball has no consumables, so its ruleset switches critical damage off
 (`criticalDamage: false` → `combat.modeCriticalDamage`): `rollModuleDamage` and
 `rollCrewHit` consume their chance draw and return, so no module breaks, no crew member is
 knocked out and no fire starts, while hull hit points and replay RNG order are unchanged.
+
+## Impact physics (owner 2026-09-16)
+
+Every mode: a shell that hits a hull shoves it along its flight direction (`shellKnockMps` in
+`sim/movement.ts`: calibre squared × shell speed × 45 t / victim mass, bounded at 9 m/s; a 105 mm
+round at 900 m/s moves a 45 t hull 1.3 m/s). The shove is a decaying translation impulse (about 0.3 m of
+displacement per m/s), the hull rocks, and heavy shoves lift the ride; the drivetrain speed is untouched, so
+a hit never becomes a lasting drive input. The balance range model excludes shoves (it measures gunnery and
+armour).
+Ram damage keeps its kinetic law (closing speed squared × reduced mass) but the freight-train cap rose
+from 900 to 2 400 hp, so a fast ram keeps hurting more the faster it is.
+
+Turbo Ball adds three ruleset knobs (`jumpMps`, `recoilLaunchScale`, `shellKnockScale`) stamped on
+every entity by the mode controller: **F** launches a grounded, upright hull 9 m/s upward (the key
+still self-rights an overturned hull), the firing recoil becomes a real launch opposite the muzzle
+(×12 — aim behind you and fire for a speed boost, aim down to hop), and impact knocks are ×2.5. The
+HUD shows a JUMP · F keycap only in rulesets with a jump.
 
 ## State machine
 

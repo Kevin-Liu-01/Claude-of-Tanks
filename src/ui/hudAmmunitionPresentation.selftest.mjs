@@ -254,6 +254,7 @@ const hudSource = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 assert.ok(hudSource.includes("const noConsumables = ruleset?.consumables === false;"), 'the pre-battle ruleset decides whether consumable slots show');
 assert.ok(hudSource.includes("conSep.style.display = noConsumables ? 'none' : '';") && hudSource.includes("conBox.style.display = noConsumables ? 'none' : '';"),
   'separator and consumable wrapper hide together when the ruleset carries no consumables');
+assert.ok(hudSource.includes("jumpHint.classList.toggle('on', ruleset?.jumpMps != null);"), 'the jump keycap shows only in rulesets with a jump launch');
 const selectorFunctions = hudSource.slice(hudSource.indexOf('  // ---------- shell selector ----------'),
   hudSource.indexOf('  // ---------- world-space tank nameplates ----------'));
 assert.doesNotMatch(selectorFunctions, /requireElement|querySelector/,

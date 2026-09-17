@@ -44,6 +44,7 @@ export interface BattleClientAccess {
   readonly mobileAutoAimCenter: RuntimeModule['mobileAutoAimCenter'];
   readonly pickMobileAutoAimTarget: RuntimeModule['pickMobileAutoAimTarget'];
   readonly requestTankSelfRight: RuntimeModule['requestTankSelfRight'];
+  readonly requestTankJump: RuntimeModule['requestTankJump'];
 }
 
 /**
@@ -136,5 +137,6 @@ export function createBattleClientAccess(
     mobileAutoAimCenter: (...args) => requireRuntime().mobileAutoAimCenter(...args),
     pickMobileAutoAimTarget: (...args) => requireRuntime().pickMobileAutoAimTarget(...args),
     requestTankSelfRight: (...args) => requireRuntime().requestTankSelfRight(...args),
+    requestTankJump: (...args) => requireRuntime().requestTankJump(...args),
   };
 }

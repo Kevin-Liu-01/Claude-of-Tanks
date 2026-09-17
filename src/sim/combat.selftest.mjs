@@ -4174,7 +4174,8 @@ function mkShell(shellSpec, distM = 100) {
   assert(bump.total === 0 && bump.toA === 0 && bump.toB === 0,
     'ram: sub-threshold parking bump is free');
   const cap = ramDamage(70, 70, 40);
-  near(cap.total, 900, 1e-9, 'ram: freight-train collisions cap at RAM_MAX_TOTAL');
+  near(cap.total, 2400, 1e-9, 'ram: freight-train collisions cap at RAM_MAX_TOTAL (owner 2026-09-16: ram damage scales with speed)');
+  assert(ramDamage(45, 45, 16).total > ramDamage(45, 45, 8).total * 3.9, 'ram: doubling the closing speed quadruples the pool below the cap');
   const fb = ramDamage(0, -5, 8);
   assert(fb.total > 0 && isFinite(fb.toA) && isFinite(fb.toB),
     'ram: missing masses fall back sanely');

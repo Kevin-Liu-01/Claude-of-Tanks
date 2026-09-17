@@ -49,6 +49,7 @@ import { getSpec } from '../vehicles/specs.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
+  applyShellKnock, shellKnockMps, type RecoilLaunch,
 } from '../sim/movement.ts';
 import {
   prefersVerticalTankContact,
@@ -203,6 +204,9 @@ type SoloPooledEntity = Omit<RosterEntity,
     modeActive?: boolean;
     modeSpeedMultiplier?: number;
     modeGravityScale?: number;
+    modeJumpMps?: number | null;
+    modeRecoilLaunchScale?: number;
+    modeShellKnockScale?: number;
     equip?: string[];
     _glbContactStampedVisual?: SoloVisual | null;
     _openingRoute?: Waypoint[] | null;
@@ -1738,7 +1742,7 @@ function applyShotFeedback(
   recoilScale: number,
   rig: CameraRig | null,
 ): void {
-  fireRecoil(entity.state, entity.spec, shell);
+  fireRecoil(entity.state, entity.spec, shell, recoilLaunchFor(entity, _dir));
   entity.visual?.recoilKick(
     0,
     recoilScale,
@@ -1906,6 +1910,21 @@ function emitHeOutcomes(
   for (const event of events) emitHitOutcome(game, bus, event);
 }
 
+/** The ruleset launch for a shot: the fired direction and the shooter's stamped recoil launch scale, or null. */
+function recoilLaunchFor(entity: SoloEntity, dir: THREE.Vector3): RecoilLaunch | null {
+  // crews only: bots keep the ordinary hull kick so their driving and gunnery are not thrown around
+  const scale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1);
+  return scale > 1 ? { scale, dirX: dir.x, dirY: dir.y, dirZ: dir.z } : null;
+}
+
+/** Impact knock (owner 2026-09-16): the hit hull is shoved along the shell's flight direction. */
+function knockEntityFromShell(entity: SoloEntity, shell: DamageShell): void {
+  const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
+  const knock = shellKnockMps(shell.spec.caliberMm, speed, entity.spec.weightTons, entity.modeShellKnockScale ?? 1);
+  if (!(knock > 0)) return;
+  applyShellKnock(entity.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock);
+}
+
 function resolveTankShellImpact(
   game: SoloGameState,
   bus: EventBus,
@@ -1915,6 +1934,7 @@ function resolveTankShellImpact(
   const entity = nearest.entity;
   const intersections = nearest.intersections;
   if (!entity || !intersections) return;
+  knockEntityFromShell(entity, shell);
   if (isHeClass(shell.spec.type)) {
     emitHeOutcomes(game, bus, shell, intersections[0].point, entity, intersections);
   } else {

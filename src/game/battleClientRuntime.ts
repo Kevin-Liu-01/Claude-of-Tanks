@@ -47,3 +47,4 @@ export {
   pickMobileAutoAimTarget,
 } from './mobileAutoAim.ts';
 export { requestTankSelfRight } from '../sim/rollover.ts';
+export { requestTankJump } from '../sim/movement.ts';

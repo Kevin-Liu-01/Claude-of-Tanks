@@ -209,6 +209,10 @@ export function runBalanceDuel({
 
   const alpha = match.entityById.get('range-alpha')!;
   const bravo = match.entityById.get('range-bravo')!;
+  // The range model measures gunnery and armour. Impact shoves (movement.ts applyShellKnock, owner 2026-09-16)
+  // are a battle-feel layer that jitters hull poses between shots; the reviewed balance bands exclude them.
+  alpha.modeShellKnockScale = 0;
+  bravo.modeShellKnockScale = 0;
   const alphaSlot = swapSides ? bShellSlot : aShellSlot;
   const bravoSlot = swapSides ? aShellSlot : bShellSlot;
   const maxTicks = Math.ceil(durationS / SIM_DT) + 1;

@@ -382,7 +382,7 @@ function rollUniform(rng: Rng, avg: number): number {
 const RAM_MIN_CLOSING_MPS = 2.5; // parking bumps and column shuffles: free
 const RAM_K = 0.2;               // hp per (m/s)^2 per reduced ton
 const RAM_SELF_SCALE = 0.65;     // attacker discount on the rammer's share
-const RAM_MAX_TOTAL = 900;       // freight-train cap (60+ km/h closing)
+const RAM_MAX_TOTAL = 2400;      // freight-train cap — owner 2026-09-16: ram damage keeps scaling with speed well past 60 km/h
 
 /**
  * Kinetic ram damage split for a tank-tank collision.

@@ -26,6 +26,7 @@ type ActionRules = Pick<BattleClientAccess,
   | 'resetConsumableCooldowns'
   | 'startConsumableCooldown'
   | 'requestTankSelfRight'
+  | 'requestTankJump'
 >;
 type ActionCombat = Parameters<ActionRules['selectShell']>[0];
 type ActionSpec = NonNullable<Parameters<ActionRules['selectShell']>[2]>;
@@ -49,6 +50,8 @@ interface BattleActionEntity extends Omit<
   combat: ActionCombat | null;
   state: ActionState | null;
   input: { shellSlot: number };
+  /** Ruleset jump launch stamped by the mode controller (Turbo Ball); null elsewhere. */
+  modeJumpMps?: number | null;
 }
 
 interface BattleActionGame<TEntity extends BattleActionEntity> {
@@ -315,7 +318,14 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
       bus.emit('ui:click', {});
       return;
     }
-    if (!rules.requestTankSelfRight(player.state)) return;
+    if (!rules.requestTankSelfRight(player.state)) {
+      // Owner (2026-09-16, Turbo Ball): the same key jumps an upright hull when the ruleset allows it.
+      if (player.modeJumpMps != null && rules.requestTankJump(player.state, player.modeJumpMps)) {
+        bus.emit('tank:jump', { id: player.id });
+        bus.emit('ui:click', {});
+      }
+      return;
+    }
     bus.emit('tank:selfRight', { id: player.id });
     bus.emit('ui:click', {});
   });

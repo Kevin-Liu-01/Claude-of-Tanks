@@ -20,6 +20,9 @@ import {
   computeDispersionRadM,
   createTankState,
   fireRecoil,
+  requestTankJump,
+  applyShellKnock,
+  shellKnockMps,
   updateTank,
 } from './movement.ts';
 import type { MovementCombatState, TankState } from './movement.ts';
@@ -194,6 +197,9 @@ export interface AuthoritativeEntity {
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
   modeGravityScale?: number;
+  modeJumpMps?: number | null;
+  modeRecoilLaunchScale?: number;
+  modeShellKnockScale?: number;
   _modeTargetX?: number;
   _modeTargetZ?: number;
   _deniedShellSlot?: number;
@@ -1305,8 +1311,9 @@ export function createAuthoritativeMatch({
     if (!bits || entity.combat.destroyed) return;
     if (bits & PLAYER_ACTION_BITS.RELOAD_MAGAZINE) reloadMagazine(entity);
     if (bits & PLAYER_ACTION_BITS.SPECIAL_ACTION) useSpecialAction(entity);
-    if (bits & PLAYER_ACTION_BITS.SELF_RIGHT && requestTankSelfRight(entity.state)) {
-      emit('tank_self_right', { id: entity.id });
+    if (bits & PLAYER_ACTION_BITS.SELF_RIGHT) {
+      if (requestTankSelfRight(entity.state)) emit('tank_self_right', { id: entity.id });
+      else requestTankJump(entity.state, entity.modeJumpMps);
     }
     for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
       useConsumableSlot(entity, bits, slot);
@@ -1408,7 +1415,8 @@ export function createAuthoritativeMatch({
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
     selectFallbackAfterShot(entity, firedSlot);
-    fireRecoil(entity.state, entity.spec, shellSpec);
+    const launchScale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1); // crews only, as in the solo sim
+    fireRecoil(entity.state, entity.spec, shellSpec, launchScale > 1 ? { scale: launchScale, dirX: _gunDir.x, dirY: _gunDir.y, dirZ: _gunDir.z } : null);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
     notifyEnemyBotsOfPlayerShot(entity);
     emitShellFired(entity, shell, shellSpec, gun.muzzle, _gunDir, firedSlot);
@@ -1602,7 +1610,14 @@ export function createAuthoritativeMatch({
     emitWorldShellImpact(shell, worldHit);
   }
 
+  function knockTargetFromShell(target: AuthoritativeEntity, shell: DamageShell): void {
+    const speed = Math.hypot(shell.vel.x, shell.vel.y, shell.vel.z) || shell.spec.velocityMps || 800;
+    const knock = shellKnockMps(shell.spec.caliberMm, speed, target.spec.weightTons, target.modeShellKnockScale ?? 1);
+    if (knock > 0) applyShellKnock(target.state, shell.vel.x / speed, shell.vel.y / speed, shell.vel.z / speed, knock);
+  }
+
   function resolveTankShellHit(shell: DamageShell, tankHit: TankTrace): void {
+    knockTargetFromShell(tankHit.target, shell);
     if (isHeClass(shell.spec.type)) {
       resolveHeImpact(shell, tankHit.hits[0]!.point, tankHit.target, tankHit.hits);
       return;

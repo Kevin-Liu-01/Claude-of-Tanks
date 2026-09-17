@@ -12,7 +12,7 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import {
   createTankState, fireRecoil, resetTankVerticalState, shotRecoilScale,
   IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
-  updateTank, SIM_DT,
+  updateTank, SIM_DT, requestTankJump, applyShellKnock, shellKnockMps,
 } from './movement.ts';
 import { requestTankSelfRight } from './rollover.ts';
 
@@ -563,6 +563,78 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(upY > 0.9, `auto-right actuator rolls through the contact edge (${upY.toFixed(3)} up)`);
   assert(ent.state._body.autoRighting === false && ent.state._body.tumbling === false,
     'auto-right actuator releases back to ordinary terrain support');
+}
+
+// Owner 2026-09-16 (Turbo Ball): the F key adds an upward vector to a grounded upright hull; airborne and
+// overturned hulls refuse it, and modes without a jump refuse it, so F keeps its self-right meaning elsewhere.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  run(ent, field, 30);
+  assert(!requestTankJump(ent.state, null), 'no jump without a ruleset launch');
+  assert(requestTankJump(ent.state, 9), 'a grounded upright hull jumps');
+  assert(ent.state.verticalSpeed >= 9 && ent.state._ride.v >= 9, 'the jump is a vertical velocity, not a teleport');
+  const startY = ent.state.pos.y;
+  run(ent, field, 20);
+  assert(ent.state.pos.y > startY + 0.5, `the hull leaves the ground (${(ent.state.pos.y - startY).toFixed(2)} m up)`);
+  assert(!requestTankJump(ent.state, 9), 'no double jump while airborne');
+  run(ent, field, 400);
+  assert(Math.abs(ent.state.pos.y - startY) < 0.3, 'it lands back on the field');
+  const flipped = makeEntity(field, 0, 0, 0);
+  flipped.state.overturned = true;
+  assert(!requestTankJump(flipped.state, 9), 'an overturned hull cannot jump; F self-rights it instead');
+}
+
+// Ruleset recoil launch (Turbo Ball: "aim behind you and launch yourself and use it as a speed boost"): firing
+// over the rear adds run speed, firing forward brakes, firing downward lifts the ride; scale 1 keeps the old kick.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  run(ent, field, 30);
+  const before = ent.state.speed;
+  ent.state.turretYaw = Math.PI;
+  fireRecoil(ent.state, SPEC, null, { scale: 12, dirX: 0, dirY: 0, dirZ: -1 });
+  assert(ent.state.speed > before + 1.5, `firing over the rear boosts the run speed (${(ent.state.speed - before).toFixed(2)} m/s)`);
+  const braked = makeEntity(field, 0, 0, 0);
+  run(braked, field, 30);
+  braked.state.speed = 8;
+  fireRecoil(braked.state, SPEC, null, { scale: 12, dirX: 0, dirY: 0, dirZ: 1 });
+  assert(braked.state.speed < 8, 'firing forward pushes the hull back');
+  const hop = makeEntity(field, 0, 0, 0);
+  run(hop, field, 30);
+  fireRecoil(hop.state, SPEC, null, { scale: 12, dirX: 0, dirY: -0.7, dirZ: 0.714 });
+  assert(hop.state.verticalSpeed > 0.5, 'firing downward hops the hull');
+  const plain = makeEntity(field, 0, 0, 0);
+  run(plain, field, 30);
+  const plainSpeed = plain.state.speed;
+  fireRecoil(plain.state, SPEC, null, { scale: 1, dirX: 0, dirY: 0, dirZ: -1 });
+  assert(plain.state.speed === plainSpeed && !(plain.state.verticalSpeed > 0), 'scale 1 keeps the ordinary hull kick only');
+}
+
+// Impact knock (whole game): a shell shoves the hull it hits along its flight direction; the magnitude follows
+// calibre squared, shell speed and the victim's mass, bounded; the ruleset scale multiplies it.
+{
+  const light = shellKnockMps(105, 900, 45, 1), heavy = shellKnockMps(152, 900, 45, 1), fast = shellKnockMps(105, 1600, 45, 1);
+  assert(Math.abs(light - 1.3) < 1e-9, `105 mm at 900 m/s on 45 t shoves 1.3 m/s (${light})`);
+  assert(heavy > light * 1.9 && fast > light, 'heavier and faster shells shove more');
+  assert(shellKnockMps(105, 900, 20, 1) > light && shellKnockMps(105, 900, 70, 1) < light, 'lighter hulls are shoved further');
+  assert(shellKnockMps(152, 1600, 10, 4) === 9, 'the shove is bounded');
+  assert(Math.abs(shellKnockMps(105, 900, 45, 2.5) - 3.25) < 1e-9, 'the ruleset scale multiplies the shove');
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  run(ent, field, 30);
+  const speed0 = ent.state.speed;
+  applyShellKnock(ent.state, 0, 0, 1, 1.3);
+  assert(ent.state._spring.recoilVZ > 2.0 && ent.state.speed === speed0, 'a shell from behind shoves the hull forward without becoming a drive input');
+  const side = makeEntity(field, 0, 0, 0);
+  run(side, field, 30);
+  applyShellKnock(side.state, 1, 0, 0, 1.3);
+  assert(Math.abs(side.state._spring.recoilVX) > 2.0 && Math.abs(side.state.speed) < 0.2, 'a shell from the side shoves the hull sideways');
+  assert(Math.abs(side.state._spring.rollV) > 0.05, 'and rocks it');
+  const big = makeEntity(field, 0, 0, 0);
+  run(big, field, 30);
+  applyShellKnock(big.state, 0, 0.2, 1, 4);
+  assert(big.state.verticalSpeed > 0.3, 'a heavy shove lifts the ride');
 }
 
 // Airborne ticks skip loaded-track material and four-corner suspension-rock
