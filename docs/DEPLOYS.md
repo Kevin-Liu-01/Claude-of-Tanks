@@ -64,3 +64,4 @@ quickest proof that the live site is the gate build.
 | 30 | 2026-09-16 16:40 | 71d9637dc | T-90M X painted cradle cover, reviving modes skip the death cam and kill cam | main-Qj9kzwOa.js | claude-of-tanks-rmlizvpa0 |
 | 31 | 2026-09-16 19:18 | fdf9158c3 | Type 100 remade (T-90M hull grammar, T-14 turret grammar, IFV prow); Turbo Ball hides consumable slots | main-XeSMiX4A.js | claude-of-tanks-89jab6hjw |
 | 32 | 2026-09-16 20:09 | 15e9a203c | Turbo Ball jump (F) and recoil launch, impact knock and faster rams everywhere | main-Lf4gZaXE.js | claude-of-tanks-4kznbqoor |
+| 33 | 2026-09-17 23:05 | 2b869b9d0 | X-standard tracks and reseated wheels fleet-wide, ZTZ-100 and Type 100 IFV, objective-driven bots, wreck-bound smoke, fortifications on every map | main-DxfDEKBx.js | claude-of-tanks-gdr6mn59w |
