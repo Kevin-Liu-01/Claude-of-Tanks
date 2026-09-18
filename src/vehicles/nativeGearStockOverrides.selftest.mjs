@@ -11,7 +11,10 @@ import {KIT} from './tankFactoryCore.ts';
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-const DEFAULT_FINGERPRINT='26c5e8b88a0c633af4b67c5fa3e7233595ab06430168e4629f505f989a1f4b7c';
+// 2026-09-18 end-wheel re-lay: under terrain conformance the wrap arcs and ramps beyond the outer road wheels now pivot
+// with the wheel about the fixed end wheel (deformBand relayEnds), so every motion snapshot of the band moves; the
+// authored rest geometry is unchanged (trackEndRamp.selftest pins the law and the byte-identical garage reset).
+const DEFAULT_FINGERPRINT='aae2f1d5fa262ceedf5c7ef2357da4c08b50636fe95a2c054099cdcde331c93a';
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){

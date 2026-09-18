@@ -70,3 +70,33 @@ is documented inline with dated notes (T-14 X shoe extremes, Type 10 reseat cons
 Leopard A5 web inset following the shoe stock, helper shoes following the kinked course instead of rigid chords,
 Merkava heavy pins 19 mm with the authored seats, Strv 122 X front joint gap, Leopard 2A6M X idler crest, the
 Chieftain foundation contract's later-seat record, the T-90SM arm forging).
+
+## End-wheel re-lay (2026-09-18)
+
+Owner: "the tracks appear sticky to the wheels … the tracks are morphing to stick onto the wheels instead of behaving like
+they should" (front and rear road wheels in battle). Measured on the 18 m round course (`.qa-dev/band-ramp-probe.mjs`): at
+rest every band station beyond the outer road wheels sat exactly on the wrap circle or the common tangent to the idler /
+sprocket wrap; with the outer wheels drooped 11 cm the wrap arc followed the wheel down (0–1 mm) but the ramp never
+pivoted — the band climbed 13 cm in 8 cm of run to rejoin the rest ramp, 62 mm off the true tangent on the Bradley. The
+influence field moved those stations by a fading share of the travel (`resolveBandWheelWeights`, 0.5 m beyond the end
+wheel) and the loaded-run fit then pushed whatever the moved tire intersected back onto the tire, so the band wore the
+wheel like a sock. `buildRunningGear` now classifies, from the authored course, the road-wheel wrap arc, the ramp
+stations and the end-wheel arc below its top exit (`hullG.userData.runningGearEndRelays`), and `deformBand` re-solves the
+external tangent from the LIVE seat circle to the fixed end-wheel wrap every frame (`roadWheelWrap` with the moved axle),
+re-laying the three groups by their rest fractions — cross-sections translate as one, so the stock is kept and the shoes
+sample the same centreline. The contact fit runs after the re-lay (an interleaved Tiger neighbour that drooped less than
+the outer wheel still gets cleared). With the end wheel at rest the stations are the rest vertices and the garage reset
+restores the authored band byte for byte. Receipt `src/vehicles/trackEndRamp.selftest.mjs`: six rigs (Bradley, T-90M,
+Puma S1, Tiger, Leopard 2A6, KF51 X) on the round course, every re-laid station within 6 mm of the live wrap / tangent /
+end circle (measured 4 mm — the fit's chord-sagitta margin), byte-identical rest after `resetForGaragePresentation`.
+Authored loops (`cfg.loopPoints`) take part when their course carries the same wrap; ends whose geometry does not match
+are left on the legacy law.
+
+The landed law reads the course itself: the seat radius is the foot station's distance under the axle, the end radius the
+first arc point past the ramp, and the rest course must be their external tangent within 0.05° — so the loop-authoring
+studies (Leclerc X, AMX-30 / 40 X, Chieftain X, Type 10 X, Ariete C1 X, Strv 122 X, Challenger 1 X) take part, and the
+ramp-subdivision station that sits a sagitta inside a large end-wheel arc keeps its own radius. The contact fit runs
+after the re-lay, reads the authored clearance at the rest z and skips its footprint follow on the re-laid stations
+(`pinned`), while its clearance passes still push a station out of any tire the pivoted ramp meets. Fleet sweep
+(`.qa-dev/ramp-sweep.mjs`, 171 production tanks on the round course): every tank carries both re-lays; the only
+deviations from the exact law are the fit's ≤ 3 mm outward chord clearances on large seats.

@@ -40,6 +40,9 @@ export const TRACK_BAND_ENDPOINT_ONE=[
 export function fitLoadedTrackContact(
   positions:Positions,rest:Positions,wheels:readonly RoadContact[],
   halfThickness:number,scratch:ContactScratch,fromOuterFace=false,
+  /** stations the end-wheel re-lay already placed on the live wrap / tangent (2026-09-18): the footprint follow
+   * never pulls them back toward their authored tire gap; the clearance passes still push them out of a tire */
+  pinned:Uint8Array|null=null,
 ):void {
   const {y,z,drop}=scratch,n=y.length;drop.fill(0);
   for(let i=0;i<n;i++) {
@@ -65,10 +68,13 @@ export function fitLoadedTrackContact(
   for(let i=0;i<n;i++) {
     const base=i*72;
     const restY0=(rest[base+7]+rest[base+19])/2; // rest = the unlined carrier copy, so the midpoint is the nominal carrier
+    // 2026-09-18: the end-wheel re-lay moves stations along z as well, so the AUTHORED clearance is read at the rest z
+    const restZ0=(rest[base+8]+rest[base+20])/2;
     for(const wheel of wheels) {
       // Never refit the upper return across a road wheel's horizontal span.
       if(restY0>=wheel.y)continue;
       const dz=z[i]-wheel.z;
+      const dzRest=restZ0-wheel.z;
       const trueRadius=wheel.r+halfThickness;
       if(Math.abs(dz)>=trueRadius+.004)continue;
       lower[i]=1;
@@ -77,8 +83,8 @@ export function fitLoadedTrackContact(
       // the tire circle by design and must not be pushed off it at rest (garage reset restores the authored band
       // byte for byte). Stations are 0.05 m apart around each axle (loadedRunStations), so a chord between two
       // fitted stations dips at most ~1 mm inside the circle; the margin keeps it outside.
-      const restUnderside=wheel.y-Math.sqrt(Math.max(0,trueRadius*trueRadius-dz*dz));
-      const restClear=restUnderside-restY0;
+      const restUnderside=wheel.y-Math.sqrt(Math.max(0,trueRadius*trueRadius-dzRest*dzRest));
+      const restClear=Math.abs(dzRest)<trueRadius?restUnderside-restY0:Infinity;
       const wanted=Math.min(.004,.001+.03*Math.abs(dz));
       const margin=restClear>wanted?wanted:0;
       const radius=trueRadius+margin;
@@ -96,16 +102,19 @@ export function fitLoadedTrackContact(
   // footprint rides up as one piece and blends out through the influence weights beyond it. A parked band
   // (gap == authored gap) is untouched; a station another tire needs pushed down is never lifted.
   for(let i=0;i<n;i++) {
-    if(drop[i]>0)continue;
+    if(drop[i]>0||(pinned&&pinned[i]))continue;
     const base=i*72;
     const restY0=(rest[base+7]+rest[base+19])/2;
+    const restZ0=(rest[base+8]+rest[base+20])/2;
     for(const wheel of wheels) {
       if(restY0>=wheel.y)continue;
       const dz=z[i]-wheel.z;
+      const dzRest=restZ0-wheel.z;
       const trueRadius=wheel.r+halfThickness;
-      if(Math.abs(dz)>=trueRadius)continue;
+      if(Math.abs(dz)>=trueRadius||Math.abs(dzRest)>=trueRadius)continue;
       const chord=Math.sqrt(trueRadius*trueRadius-dz*dz);
-      const gapRest=(wheel.y-chord)-restY0;
+      const chordRest=Math.sqrt(trueRadius*trueRadius-dzRest*dzRest);
+      const gapRest=(wheel.y-chordRest)-restY0;
       const gapNow=(wheel.y+(wheel.voff??0)-chord)-(y[i]-drop[i]);
       // blend the follow out to nothing at the footprint edge — a rigid translation of the whole footprint left a
       // step at its edge and the rigid shoe astride it tilted its far corner 3 cm into the tire (Type 10 X)
