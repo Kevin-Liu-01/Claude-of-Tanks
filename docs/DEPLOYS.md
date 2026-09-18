@@ -67,3 +67,4 @@ quickest proof that the live site is the gate build.
 | 33 | 2026-09-17 23:05 | 2b869b9d0 | X-standard tracks and reseated wheels fleet-wide, ZTZ-100 and Type 100 IFV, objective-driven bots, wreck-bound smoke, fortifications on every map | main-DxfDEKBx.js | claude-of-tanks-gdr6mn59w |
 | 34 | 2026-09-18 00:59 | f11b4b6ea | Fire trenches carved into every map, rosters that advance across sessions, the suspension simulation as a receipt | main-Bn_6Nqry.js | claude-of-tanks-1u6b51q72 |
 | 35 | 2026-09-18 01:39 | 10f340faa | Matchmaking rotates through the contemporary eras: fresh vehicles before any repeat | main-DpR4Bmsy.js | claude-of-tanks-7jqqc23zk |
+| 36 | 2026-09-18 02:30 | c7901d34d | Horde and Frontline waves defend with one nation: the formation is the enemy side | main-DKcoaDiE.js | claude-of-tanks-3ssaic8lw |
