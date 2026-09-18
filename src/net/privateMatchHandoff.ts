@@ -36,7 +36,7 @@ import {
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import { matchRulesetFor, type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignEnemyNations, campaignOperationById, campaignRulesetInput } from '../game/campaignOperations.ts';
-import { enemyNationSpecNations } from '../game/teamArrangement.ts';
+import { ENEMY_NATION_OPTIONS, enemyNationSpecNations } from '../game/teamArrangement.ts';
 
 type Team = 'alpha' | 'bravo' | 'spectator';
 type Unsubscribe = () => void;
@@ -181,6 +181,20 @@ export function resolvePrivateMatchMap(lobbyState: RuntimeValue): string {
   return resolveMapId(lobby.mapId, seededUnit(lobby.matchSeed));
 }
 
+/** The nation bloc a co-op room defends with when nothing named one: every bloc whose production catalog can
+ * field the whole enemy pool (else the largest blocs), indexed by the match seed so rooms meet different armies. */
+function defaultRoomWaveNations(poolSize: number, matchSeed: number): readonly string[] {
+  const blocs = ENEMY_NATION_OPTIONS.map((option) => ({
+    option,
+    count: PRODUCTION_TANK_IDS.filter((id) => isBotTankId(id) &&
+      option.specNations.includes(String(readVehicleSpec(id)?.nation || ''))).length,
+  }));
+  const best = blocs.reduce((max, bloc) => Math.max(max, bloc.count), 0);
+  if (best <= 0) return [];
+  const eligible = blocs.filter((bloc) => bloc.count >= Math.min(poolSize, best));
+  return eligible[Math.abs(Math.floor(matchSeed) * 7) % eligible.length].option.specNations;
+}
+
 /** Deterministically fill empty lobby slots with authority-owned bots. */
 export function buildPrivateMatchPlayers(lobbyState: RuntimeValue): PrivateMatchPlayer[] {
   const lobby = validateMatchLobby(lobbyState);
@@ -207,7 +221,12 @@ export function buildPrivateMatchPlayers(lobbyState: RuntimeValue): PrivateMatch
   const ruleset = horde ? privateMatchRuleset(lobby) : null;
   const operationNations = normalizeGameMode(lobby.gameMode) === 'frontline_assault'
     ? campaignEnemyNations(lobby.campaignOperationId) : [];
-  const nations = ruleset ? (operationNations.length ? operationNations : enemyNationSpecNations(ruleset.enemyNation)) : [];
+  // same-nation waves (owner 2026-09-17/18): a co-op room without an operation or an arranged nation still
+  // defends with ONE nation — rotated by the match seed through the nations whose production catalog can
+  // fill the whole enemy pool (rosterState.defaultWaveNations does the same for solo battles)
+  const namedNations = ruleset ? (operationNations.length ? operationNations : enemyNationSpecNations(ruleset.enemyNation)) : [];
+  const nations = !ruleset || namedNations.length ? namedNations
+    : defaultRoomWaveNations(Math.max(1, ruleset.enemies ?? teamSize), lobby.matchSeed);
   let formation: string[] = [];
   if (nations.length) {
     const ofNation = (id: string) => nations.includes(String(readVehicleSpec(id)?.nation || ''));

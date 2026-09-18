@@ -6,6 +6,7 @@ import {
   buildPrivateMatchPlayers,
   resolvePrivateMatchMap, privateMatchRuleset } from './privateMatchHandoff.ts';
 import { getSpec } from '../vehicles/specs.ts';
+import { ENEMY_NATION_OPTIONS } from '../game/teamArrangement.ts';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.ts';
 import { PrivateRoomClientSession, PrivateRoomHostSession } from './privateRoomSession.ts';
 import { MatchClientRuntime } from './matchRuntime.ts';
@@ -517,6 +518,25 @@ assert.equal(hordeRoster.filter((player) => player.team === 'bravo' && player.bo
   'horde fills the enemy pool with authority-owned bots');
 assert.equal(hordeRoster.filter((player) => player.team === 'alpha' && player.bot).length, 2,
   'two allied bots join the humans by default');
+// same-nation waves (2026-09-18): with no operation and no arranged nation the room still defends with ONE nation
+// bloc, rotated by the match seed (the solo default wave nation's counterpart)
+{
+  const blocOf = (id) => ENEMY_NATION_OPTIONS.find((option) => option.specNations.includes(getSpec(id).nation))?.id ?? getSpec(id).nation;
+  const hostiles = hordeRoster.filter((player) => player.team === 'bravo' && player.bot);
+  assert.equal(new Set(hostiles.map((player) => blocOf(player.specId))).size, 1,
+    `a default Horde room fields one nation bloc (${[...new Set(hostiles.map((player) => blocOf(player.specId)))].join(',')})`);
+  assert.equal(new Set(hostiles.map((player) => player.specId)).size, hostiles.length, 'distinct identities in the default bloc');
+  const seeds = new Set();
+  for (const matchSeed of [1, 2, 3, 4]) {
+    const room = buildPrivateMatchPlayers({ ...lobbyState, gameMode: 'endless_horde', teamSize: 4, matchSeed,
+      players: [{ id: 'host-1', specId: 'm1a2', team: 'alpha' }] });
+    const defenders = room.filter((player) => player.team === 'bravo' && player.bot);
+    const blocs = new Set(defenders.map((player) => blocOf(player.specId)));
+    assert.equal(blocs.size, 1, `seed ${matchSeed}: one bloc`);
+    seeds.add([...blocs][0]);
+  }
+  assert.ok(seeds.size >= 2, `different match seeds meet different armies (${[...seeds].join(',')})`);
+}
 {
   const arranged = buildPrivateMatchPlayers({
     ...lobbyState, gameMode: 'endless_horde', teamSize: 2,

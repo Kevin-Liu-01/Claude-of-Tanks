@@ -82,7 +82,12 @@ Assault (`timeout: 'defeat'`).
   modes keep that nation pure across every era before another nation fills a seat, and
   with no arranged or campaign nation they still field ONE nation per battle — rotated by
   battle ordinal through the nations that can field the whole lead
-  (`rosterState.defaultWaveNations`, owner 2026-09-17: same-nation waves). Ordinary
+  (`rosterState.defaultWaveNations`, owner 2026-09-17: same-nation waves). The allied bots are
+  never drawn from that formation: the picker leads the field with the enemy pool and the solo
+  team split (`state.chooseBattleAllies`) takes exactly those seats for the enemy side
+  (2026-09-18 — the tier-balanced split used to hand formation vehicles to the allies and field the
+  fillers as hostiles); a co-op room without a named nation defends with one nation bloc as well
+  (`privateMatchHandoff.defaultRoomWaveNations`, rotated by the match seed). Ordinary
   matchmaking rotates too: the bots of the last two battles rank behind every fresh vehicle of
   the player's era AND of its contemporary eras (`matchmaking.ERA_NEIGHBOURS`; the eighteen other
   next-generation hulls alone cannot fill thirteen seats twice), so a vehicle only repeats once

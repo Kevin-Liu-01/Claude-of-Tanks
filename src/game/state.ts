@@ -702,11 +702,21 @@ function chooseBattleAllies(
   const allies: SoloEntity[] = [];
   let allyTierSum = tankTier(playerSpecId);
   let enemyTierSum = 0;
-  // campaign: the operation's formation fills the enemy side first (spec nation), the tier-balanced
-  // greedy pass below splits the rest
+  // wave modes (same-nation waves, owner 2026-09-17/18): the roster picker already leads the field with
+  // the enemy pool — `formationLead` seats of ONE nation (the operation's, the arranged one, or the
+  // battle's default wave nation) — so those seats ARE the enemy side and the allied bots come from the
+  // seats behind them. The tier-balanced pass below used to split the whole field and leaked formation
+  // vehicles to the allies while the fillers fought as hostiles (production: 13 UK + 1 Russian defender).
+  // campaign / arranged standard battles: the formation fills the enemy side first by spec nation.
   const enemyNations = battleEnemyNations(game.ruleset, game.campaignOperationId);
+  const formationLead = battleRosterPlan(game.ruleset, game.campaignOperationId, randomBattle).formationLead;
   const formation = new Set<SoloEntity>();
-  if (enemyNations.length) {
+  if (formationLead != null) {
+    for (const entity of candidates.slice(0, Math.min(enemyCap, Math.max(0, Math.floor(formationLead))))) {
+      formation.add(entity);
+      enemyTierSum += tankTier(entity.specId);
+    }
+  } else if (enemyNations.length) {
     for (const entity of byTier) {
       if (formation.size >= enemyCap) break;
       if (!enemyNations.includes(String(entity.spec.nation || ''))) continue;

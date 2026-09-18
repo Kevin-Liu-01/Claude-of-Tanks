@@ -428,6 +428,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
     'src/game/rosterRotationMemory.selftest.mjs',
+    'src/game/waveFormationSplit.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
