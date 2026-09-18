@@ -256,7 +256,9 @@ function* runningGearCooperativeSteps(P: TankBuilderPort, cooperative = false): 
     trackOutsoleDimensions:{padHeight:.060,grouserHeight:.020},
     trackShoeBuilder: (parameters: TrackShoeBuildParameters) => buildAbramsSourceXTrackShoe(parameters,
       parameters.guideProfile, parameters.outsole),
-    rigidLinkChords:true,continuousShoeFloorYM:-.042004,
+    // 2026-09-17 ground datum: the complete rigid shoe course now rests its soles on hull-local y = 0 (the
+    // -.042004 certificate described the pre-datum outsole offset and floated all four Abrams X by 42 mm).
+    rigidLinkChords:true,continuousShoeFloorYM:0,
   });
   if (cooperative) yield 'core-running-gear';
 }

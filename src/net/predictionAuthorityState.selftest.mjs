@@ -177,8 +177,11 @@ test('authored visual contact geometry cannot change network prediction terrain/
     const visual = createTank(specId, null, { materialMode: 'geometry-only',
       quality: 'high', geometryQuality: 'high', proceduralOnly: true });
     const visualContact = visual.prepareForSimulation();
-    assert.ok(visualContact && visualContact.bottomYM < -0.01,
-      `${specId} uses the actual authored running-gear receipt`);
+    // 2026-09-17 ground datum: the authored receipt seats every shoe sole on hull-local y = 0, so the rendered gear
+    // bottom reads 0 (a rig without a receipt yields no contact geometry at all).
+    assert.ok(visualContact && Number.isFinite(visualContact.gearBottomYM)
+      && visualContact.bottomYM <= 1e-6 && visualContact.bottomYM > -0.05,
+      `${specId} uses the actual authored running-gear receipt (bottom ${visualContact?.bottomYM})`);
     const height = (x, z) => 0.25 * Math.sin(z / 2) + 0.15 * Math.sin(x / 2);
     const field = { ...terrain, getHeightAt: height, getHeightAtFast: height };
     const game = { tanks: [], tankById: new Map(), player: null, shells: [],

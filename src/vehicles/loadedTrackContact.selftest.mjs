@@ -19,7 +19,8 @@ assert.equal(loadedSpanDrop(2,0,3,0,0,0,.5),0);
 assert.equal(loadedSpanDrop(0,0,0,1,0,0,.5),0);
 assert.ok(loadedSpanDrop(-1,-.45,1,-.45,0,0,.5)>.049,'Intersecting chord is rejected');
 
-const points=[[-2,1],[2,1],[2,0],[.3,0],[-.3,0],[-2,0]];
+// the loaded run carries a station under every axle (insertLoadedRunStations), so the fixture does too
+const points=[[-2,1],[2,1],[2,0],[.3,0],[0,0],[-.3,0],[-2,0]];
 const g=KIT.trackBandGeo(points,.5,.09,.64),rest=g.attributes.position.array.slice();
 const a=g.attributes.position.array;
 try {
@@ -41,7 +42,7 @@ try {
     if(seen.has(key))assert.equal(a[i+1],seen.get(key),'No split between duplicate faces');
     seen.set(key,a[i+1]);
   }
-  assert.ok(scratch.drop.some(x=>x>.2),'Actual lower run moves below dropped rim');
+  assert.ok(scratch.drop.some(x=>x>.2),'Actual lower run moves below dropped rim (per-station clearance, 2026-09-17)');
   for(let i=0;i<72;i++)assert.equal(a[i],rest[i],'Upper return remains fixed');
   a.set(rest);scratch.drop.fill(123);
   fitLoadedTrackContact(a,rest,[],.045,scratch);

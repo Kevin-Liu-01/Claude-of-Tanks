@@ -126,7 +126,7 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'China', filler: 'type99a',
-    expected: ['type100', 'vt4a1', 'ztz99a2', 'ztz99a2_prototype'],
+    expected: ['ztz100_x', 'type100', 'vt4a1', 'ztz99a2', 'ztz99a2_prototype'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',

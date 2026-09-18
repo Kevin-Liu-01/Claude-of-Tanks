@@ -21,11 +21,11 @@ const near = (a, b, e, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b)
 // scene attributes, indices, instances, hierarchy and local/world transforms;
 // no marking, batch, gear, material-bucket or spatial-envelope exclusion.
 const MK5_BEFORE = {
-  high: ['54c62c28236d10a7fe91559c64ed9c0d799c3e132876b6c3f4280bb1d2d2f10e', 77, 44],
-  low: ['bf9072532695c8caa92c8d1d2380819a5870b74f163ab1459293bcf81f26badd', 75, 42],
+  high: ['5e91827a169fc9436b658417fffd6dca4261af185e8aea26667653f4e80b3990', 77, 44],
+  low: ['7f8efbed6de4c309d06ea5f729c64ecdd7c9ed6508c54d460b57834b8dbecf8e', 75, 42],
 };
 // 2026-09-15 owner roster pass: the study is named 'Chieftain Mk 5' (no ' X' suffix); name-only repin.
-const MK5_SPEC = 'e3905b7efc119d9b744b30103c30355cc79d6444cc83c1f6cc6f461dede9603d';
+const MK5_SPEC = '56e6727221553aa2eda63da2ab9e13c3be0fe971487830059bf10d9d436e311e';
 const MK5_DATUMS = '0faf866441b38be84cc3b9fa9065a11cce13ac3999c71445b840d5179d471a30';
 // Separate pre-edit actual Mk10 evidence pins EVERY emission except the exact
 // hull/cast/horn/Stillbrew foundation scope. Thus copying the Mk5 projector,
@@ -34,8 +34,8 @@ const MK10_EMISSIONS = '9718ffa9e0b4fab65b7f9cd9ccfa3e95a153e86f481965a175662d4f
 // 2026-09-11: the detail buckets now carry camouflage, so one more merged
 // mesh per quality is a paint-transformed bucket (36/34 -> 37/35).
 const MK10_OTHER = {
-  high: ['a4c28ad25cd7bfaa18010ad68332f1c5cce2c0169083b7c0421d0a2339bf9fe1', 37],
-  low: ['a670444e377876d51cec002697a8346aa84c73ef303f034664f784b7f5f4040d', 35],
+  high: ['aa76d6c1ba6fa5f86829834faab49796bbb7dbf2cb0f4392ede42be519b4d3f6', 37],
+  low: ['bc054c76609943579546a21447040a542eeec1148c1f7f2ed44b0292d7f6b78d', 35],
 };
 // Immutable pre-edit paint matrices from the same capture as MK10_OTHER.
 // A live marking solve follows the new casting. Reconstruct only authenticated

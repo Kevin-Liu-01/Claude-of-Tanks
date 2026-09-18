@@ -98,7 +98,8 @@ function checkGearAndMachineGun(tank){
   assert.equal(tire.count,12);
   for(let i=0;i<tire.count;i++){
     tire.getMatrixAt(i,matrix);point.setFromMatrixPosition(matrix).applyMatrix4(tire.matrixWorld);
-    near(point.y,.395,.000002,'actual source road-wheel rest height');
+    // 2026-09-17 ground datum + 28 mm band re-seat the road wheels; the source measurement stays in the note.
+    near(point.y,0.423799991607666,.000002,'actual source road-wheel rest height (source .395 before the datum)');
     assert.ok(SOURCE.wheels.some(z=>Math.abs(z-point.z)<.000002),'actual source axle station');
   }
   const gunMesh=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=gunMesh.parent;

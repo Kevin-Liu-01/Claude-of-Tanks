@@ -2,6 +2,12 @@
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
 export const SOURCE_WORLD_FRAMES = Object.freeze({
+  // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
+  // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
+  ztz100_x: {
+    sha256:'7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1',
+    fused:true,turret:[0,1.41,-.55],gun:[0,1.76,.55],
+  },
   strv122_x: {
     sha256:'d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582',
     fused:true,turret:[0,1.705,-.12],gun:[.00787,2.02397,1.24],

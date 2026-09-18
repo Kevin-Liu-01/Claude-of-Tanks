@@ -211,16 +211,16 @@ try {
 
   const runningGear = hullRig.userData.runningGearReceipts?.[0];
   assert.ok(runningGear, 'T-80U exposes its native running-gear receipt');
-  assert.equal(runningGear.wheelY, 0.42,
-    'road-wheel centers stay fixed against the loaded tread run');
-  assert.equal(runningGear.botY, 0.055,
-    'loaded tread run stays planted on the established ground datum');
+  assert.ok(Math.abs(runningGear.wheelY - (runningGear.botY + runningGear.trackTh / 2 + runningGear.wheelR)) < 1e-9,
+    'road-wheel centers sit one radius above the loaded tread run (ground-datum seat, 2026-09-17)');
+  assert.ok(runningGear.botY - runningGear.trackTh / 2 > 0.02 && runningGear.botY - runningGear.trackTh / 2 < 0.07,
+    'loaded tread run stands one shoe stack above the y = 0 ground datum (2026-09-17)');
   assert.equal(runningGear.topY, 0.94,
     'return course is raised under the side skirts');
   const centralReturnPoints = runningGear.loopPoints
     .filter(([z, y]) => Math.abs(z) <= 1.8 && y > 0.5);
-  assert.ok(Math.min(...centralReturnPoints.map(([, y]) => y)) >= 1.074,
-    'raised return course stays continuously above 1.074 m across the wheel bay');
+  assert.ok(Math.min(...centralReturnPoints.map(([, y]) => y)) >= 1.04, // 2026-09-17: dead-track supports ride the seated wheel tops + the 28 mm band
+    'raised return course stays continuously above 1.04 m across the wheel bay');
   assert.deepEqual(runningGear.sprocket, { z: -2.89, y: 0.90, r: 0.21 },
     'rear tread wrap remains concentric with the calibrated sprocket');
   assert.deepEqual(runningGear.idler, { z: 2.98, y: 0.84, r: 0.21 },

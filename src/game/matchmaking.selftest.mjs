@@ -32,4 +32,9 @@ const stable = rankMatchCandidates([ent('t90m'), ent('t72b3m')], player);
 assert.deepEqual(stable.map((e) => e.specId), ['t90m', 't72b3m'],
   'seeded shuffle order survives equal matchmaking scores');
 
-console.log('matchmaking.selftest: production bot eligibility, era priority, and catalog variety passed');
+// matchmaking diversity (owner 2026-09-17): last battle's vehicles rotate to the back of their era band
+const rotated = rankMatchCandidates([ent('t72b3m'), ent('t90m'), ent('type74', 'cold-war')], player, new Set(['t72b3m']));
+assert.deepEqual(rotated.map((e) => e.specId), ['t90m', 't72b3m', 'type74'],
+  'a vehicle that fought the previous battle yields its band position; the cross-era fallback still trails');
+
+console.log('matchmaking.selftest: production bot eligibility, era priority, catalog variety, and recent-roster rotation passed');

@@ -31,10 +31,10 @@ function sourceScalars(tank, all) {
   near(cast(barrel, [-.008067, 1.859441, 7.1], [0, 0, -1])?.point.z,
     6.24935, .000003, 'measured recessed source bore floor');
   for (const [r, x] of [[.19, 1.334176], [.22, 1.334176], [.29, 1.392437], [.31, 1.392437]]) {
-    const positive = cast(all, [1.58, .4481615 + r, -2.230051], [-1, 0, 0]);
+    const positive = cast(all, [1.58, .4562785 + r, -2.230051], [-1, 0, 0]);
     assert.equal(positive?.object.name, 'gearMk5SourceDishR');
     near(positive?.point.x, x, .00002, 'held-out source radial dish surface with outward winding');
-    assert.equal(cast(all, [1.58, .4481615 + r, -2.230051], [-1, 0, 0], 1.58 - x - .001),
+    assert.equal(cast(all, [1.58, .4562785 + r, -2.230051], [-1, 0, 0], 1.58 - x - .001),
       undefined, 'genuine approach air before the recessed dish');
   }
   assert.equal(cast(all, [0, 2.25, 1.8], [0, 0, -1], .38), undefined,
@@ -98,7 +98,7 @@ for (const quality of ['high', 'low']) {
     assert.deepEqual(auditTankWheelQuality(tank.root).issues, [], 'unmodified strict wheel mechanics audit');
     assert.deepEqual(gear.roadWheelLayout.wheelZs, [-2.230051, -1.339106, -.420375, .470570, 1.491482, 2.382427],
       'all six independently measured source road stations are retained');
-    near(gear.roadWheelLayout.wheelY, .4481615, .000001, 'source road-axis height');
+    near(gear.roadWheelLayout.wheelY, .4562785, .000001, 'source road-axis height');
     assert.ok(!all.some(m => m.name.startsWith('sourceMachineGun_')),
       'source projector is not mislabeled as an absent complete weapon');
     const yaw = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');

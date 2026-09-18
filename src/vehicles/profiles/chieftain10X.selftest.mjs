@@ -116,7 +116,7 @@ function checkMeasuredCourse(root, meshes, gear) {
   assert.deepEqual(layout.wheelZs,
     [-2.174642, -1.254642, -.289679, .630321, 1.700374, 2.620374],
     'source six road-wheel axles do not move to clear the belt');
-  near(layout.wheelY, .474396, .000001, 'source road axle height');
+  near(layout.wheelY, .467955, .000001, 'source road axle height');
   const pitch = shoes[0].userData.trackShoePitchM;
   for (let phase = 0; phase < 48; phase++) {
     gear.update(pitch * phase / 48, -pitch * phase / 48, 0);

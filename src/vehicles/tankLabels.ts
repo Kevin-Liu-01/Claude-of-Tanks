@@ -204,8 +204,12 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['Type 99A2 Prototype', 'ZTZ 99A2 Prototype', '99A2-P'],
   },
   type100: {
-    displayName: 'Type 100', shortName: 'Type 100',
-    searchAliases: ['ZTZ-100', 'Type 100 medium tank', 'PLA next-generation tank', '100式'],
+    displayName: 'Type 100 IFV', shortName: 'Type 100 IFV',
+    searchAliases: ['Type 100 support vehicle', 'ZBD-100', 'PLA next-generation IFV', '100式支援战车'],
+  },
+  ztz100_x: {
+    displayName: 'ZTZ-100', shortName: 'ZTZ-100',
+    searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
   },
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
   m1a2_sepv3: { displayName: 'M1A1 Abrams FEP' },

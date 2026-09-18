@@ -286,21 +286,22 @@ const T90M_REST_REVISIONS = Object.freeze({
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
+// 2026-09-17 track law (28 mm X-standard band, ground datum, seated wheels): every rest/armor digest below moves again.
   beforeForwardLampSeat: 'b5948e28d385c5b49fbb18bfe2057ba8f6903b9957a9c5311856526133bc7530',
-  forwardLampSeat: '17d7bd8906b26f18a37115b56bda26229ea5bbfc317f38b6092b48884981e15c',
+  forwardLampSeat: '8031cc534908ce99e798424f93b35ac627f30598791817170e60b4f44b7d134b',
 });
 
 // Recorded before the equipment-damage opt-in/hook; only the independently
 // verified intentional lamp-seat revision above versions a physical rest row.
 for (const [id, rest, armor] of [
-  ['leo2a6', '60089453e1d18e1698a233dc7151f46fcc0449e109bb0a18f5c73537e17b543f',
-    '913d3a709a32319689a20f6ef5647b5764b34167daf0533e2a7f149d76a5321c'],
+  ['leo2a6', 'b90250a4e3c90869f1b828a477a2c662210f3ef2b8e428ca7a553ffc11b9e3e5',
+    'b72c54aa5f4aa4cc99546188a6dfef248896f67c520ae6925dcf7166b874e7a5'],
   ['t90m', T90M_REST_REVISIONS.forwardLampSeat,
-    '34a18c61b077485c3f27983ae071118b1923aea8117bf2691996522ed5646fa7'],
+    'c371fb173216b778135fc1b0a7201201b6f3df27dfee82705c4408ea2e9aa26a'],
   // 2026-09-13 wheel review + interior fills: m1a2 draws the hollow paired road wheel, lost the
   // inter-wheel void blocks and carries generated interior fills; intact digest repinned.
-  ['m1a2', '96a513dd9f306a0984fa649131eef351b3618564310bbb158e705d22f7e4a000',
-    'e859f45a54f52dbcbe22ff061c5e9352437ca05eaa618f84d670f81258a64856'],
+  ['m1a2', '82ade7b7c67695ab51ceffd83a17d49f83b8025714f1d4ccb3ac6c32310e7c23',
+    '01732c70cb6f3be5c8428342f6971c1825d225d6d1caf6bab6be6e6564dacf1a'],
 ]) {
   const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   assert.equal(restHash(visual), rest, `${id}: exact approved intact draw content`);

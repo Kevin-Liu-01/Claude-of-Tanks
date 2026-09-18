@@ -97,7 +97,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
     wheelY: 0.421, xc: 1.312, trackW: 0.535, trackTh: 0.072,
     sprocket: { z: -2.7783, y: 0.836, r: 0.3514 },
     idler: { z: 3.202, y: 0.809, r: 0.2777 },
-    topY: 1.157, botY: 0.048, paintedEnds: true, arms: true,
+    topY: 1.157, botY: 0.048, floorY: -0.014 /* authored sole datum (2026-09-17 ground-datum reseat) */, paintedEnds: true, arms: true,
     coveredTop: true,
   },[-1.93,-.29,1.25,2.06]));
 

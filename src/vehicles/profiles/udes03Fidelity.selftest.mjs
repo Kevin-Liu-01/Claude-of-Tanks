@@ -42,7 +42,8 @@ assert.equal(gear.sprocket.r, 0.175, 'compact drive sprocket is half its former 
 assert.equal(gear.idler.r, 0.17, 'compact idler is half its former diameter class');
 assert.ok(gear.sprocket.r < gear.wheelR * 0.5 && gear.idler.r < gear.wheelR * 0.5,
   'both raised endpoint wheels remain visually subordinate to the four road wheels');
-assert.ok(gear.sprocket.y - gear.wheelY >= 0.32 && gear.idler.y - gear.wheelY >= 0.34,
+// 2026-09-17 ground-datum seat raised the road axles ~3 cm onto the thin band; the shoulders remain ≥ 0.28/0.30 m
+assert.ok(gear.sprocket.y - gear.wheelY >= 0.28 && gear.idler.y - gear.wheelY >= 0.30,
   'front sprocket and rear idler sit high enough to form distinct rising track shoulders');
 assert.ok(gear.sprocket.z + gear.sprocket.r < stations[0].z + 0.02,
   'front sprocket remains inside the armored beak envelope');

@@ -83,7 +83,8 @@ function gearAndFitting(tank){
   assert.equal(tires.count,12);
   for(let i=0;i<tires.count;i++){
     tires.getMatrixAt(i,matrix);p.setFromMatrixPosition(matrix).applyMatrix4(tires.matrixWorld);
-    near(p.y,.4728865,.000002,'source road axle height');
+    // 2026-09-17 ground datum + 28 mm band re-seat the road wheels; the source measurement stays in the note.
+    near(p.y,0.4607659876346588,.000002,'source road axle height (source .4728865 before the datum)');
     assert.ok(SOURCE.wheels.some(z=>Math.abs(z-p.z)<.000002),'documented average of paired source axle stations');
   }
   const gun=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=gun.parent;

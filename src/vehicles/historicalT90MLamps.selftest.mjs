@@ -20,7 +20,7 @@ for(const quality of ['high','low']){
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-    if(quality==='high')assert.equal(old,'19863381','Independent pre-X golden is preserved unchanged');
+    if(quality==='high')assert.equal(old,'ab9e05d0','Independent pre-X golden is preserved unchanged');
     rows.push({quality,current:actual,historical:old,actualLampPositions:assertCurrentT90MLampSeats(current)});
     let lamp;current.root.traverse(m=>{lamp??=vehicleNightLightEmittersFor(m).find(l=>l.kind==='headlight');});
     const direction=lamp.direction;

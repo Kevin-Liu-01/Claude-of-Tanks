@@ -24,7 +24,8 @@ export function withHistoricalType10Supports(build) {
     assert.equal(P.spec.id,'type10_x');
     assert.equal(cfg.returnRollerHullHalfWidthM,.878,'declared six spindle attachments');
     assert.equal(cfg.trackTh,.09,'declared fitted carrier');
-    assert.equal(cfg.botY,.02083,'declared lowered course');
+    // 2026-09-17 ground datum: KIT.groundSeatBotY re-seats the declared .02083 lowered course to the shoe-sole datum (.0145)
+    assert.ok(Math.abs(cfg.botY-.0145)<1e-9,'declared lowered course re-seated on the ground datum');
     assert.deepEqual(cfg.trackCarrierWidthStations,[{z:-2.40,widthM:.42},{z:-2.30,widthM:.486738}],
       'declared sprocket recess, not a new whole-course source witness');
     assert.equal(cfg.fitLoadedRun,true,'declared live lower-course fit');

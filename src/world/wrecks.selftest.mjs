@@ -84,6 +84,8 @@ function assertBakeFingerprint(baked, expected) {
 // These independently cover two real vehicle families, all color branches,
 // posed geometry, normals, shadow geometry and exact bounds—not a copy of the
 // new arithmetic or a source-fragment mock.
+// 2026-09-17 track law (28 mm X-standard band, ground datum): both fixtures' triangle counts, heights, byte
+// capacities and stream digests are repinned from the current bake.
 const originalBakeFixtures = [
   {
     // 2026-09-13 wheel review + interior fills: m1a1 draws the hollow paired road wheel, lost
@@ -91,12 +93,12 @@ const originalBakeFixtures = [
     // gains triangles (38560 -> 44884); bounds, byte sizes and the three visible-attribute hashes
     // are repinned from the current build. The shadow geometry hash is unchanged.
     specId: 'm1a1', seed: 2002,
-    bounds: [45872, 4.026729702949524, 3.9549999237060547, 2.698679208755493], // 2026-09-14: fleet fills to zero
-    bytes: [1651392, 1651392, 1651392, 6984],
+    bounds: [47236, 4.026729702949524, 3.9549999237060547, 2.6346793174743652], // 2026-09-14: fleet fills to zero
+    bytes: [1700496, 1700496, 1700496, 6984],
     hashes: [
-      '1102f06e47dd8b406320782999c47bad7fb6bc6256604025f664d2cd82f749a0',
-      '7dd32a12b1e84f67567f70c9ea00a4ea819ce52072e3be389f5a738ef7d64d11',
-      '3f074302b1d6c44b9ba124e943dbc958d77cb679b39205400232622f9fad5fa2',
+      '83bfa668c78953d8a44d01940ab973e7dc6edaa0e6c1dde6ffc93de35939f89d',
+      '8f37057cd5455227686c74ea179f9c4984a961bdd098e47e8482596ea3880e78',
+      '2dea343edab0a50d863197a1f7806bd466429485f77ecee667ff6e8a054d40af',
       'c6fceff4985f5bc2f0f996528717780d69bac42d9a1c54b7621b75c2f66bcaf4',
     ],
   },
@@ -104,12 +106,12 @@ const originalBakeFixtures = [
     // 2026-09-13 interior fills: type10 carries generated interior fills (every hull and turret
     // does now), so its wreck bake gains triangles (31508 -> 35660); repinned from the current build.
     specId: 'type10', seed: 2133,
-    bounds: [40268, 4.445803761482239, 3.807588815689087, 3.2575206756591797], // 2026-09-14: fleet fills to zero
-    bytes: [1449648, 1449648, 1449648, 7704],
+    bounds: [41504, 4.445803761482239, 3.807588815689087, 3.2081706523895264], // 2026-09-14: fleet fills to zero
+    bytes: [1494144, 1494144, 1494144, 7704],
     hashes: [
-      '83515a6d1e337200948333c10baa8cc48c7abefa8523c789da808ab5480a0a37',
-      '7dade0232c62e6a565290ac13c51b9782fd4167861a2f31acf6d111ef00f73ac',
-      '1d547b31e4c73bae417bb8487ce6e2191800a163dd1aa6c9303c4ded9c04502c',
+      '3a1b02742610b87d2437abcc43e6f44bbe574cb65fdcbc8bac53fc1ffda7d014',
+      '03cc08cc33b41a375b4b2cba33ec91cab109b204c9ad8c993854fbaa9b80169a',
+      '81a4baea396d98cc0df3a76639595051b9e0b5719b44b5b1d8ae5821b92efd0f',
       'ca8a28e323d0ac81a158deb7c69ad329581bbf69c80a53a79bcb53dcbb771b44',
     ],
   },

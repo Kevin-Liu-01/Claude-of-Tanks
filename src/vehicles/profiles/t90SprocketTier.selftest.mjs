@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { trackWrapClearanceM } from '../tankFactoryCore.ts';
 import { createTank } from '../tankFactory.ts';
 import { tankTier, tierNumeral } from '../tier.ts';
 
@@ -61,7 +62,7 @@ for (const [id, expected] of Object.entries(CONFIGS)) {
         `t90: rear wrap closes smoothly into its return run (${turnDeg.toFixed(2)} degrees)`);
       const rearWrapSamples = receipt.loopPoints.filter(([z, y]) =>
         Math.abs(Math.hypot(z - expected.sprocket.z, y - expected.sprocket.y)
-          - (expected.sprocket.r + receipt.trackTh / 2)) < 1e-5);
+          - (expected.sprocket.r + trackWrapClearanceM(receipt.trackTh))) < 1e-5); // band hugs the rim: th/2 + 2 mm (2026-09-17)
       assert.ok(rearWrapSamples.length >= 18,
         `t90: rounded rear wrap keeps at least 18 arc samples (${rearWrapSamples.length})`);
     }

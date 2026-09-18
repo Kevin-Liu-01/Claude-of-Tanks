@@ -68,7 +68,8 @@ export function continuousShoeClearance(c,bounds){
    assert.ok(length>0,'Actual finite inner/outer carrier stock exists');
    // Authored inner lining extends the original unit-normal stock direction.
    // Only the original nominal half-thickness locates the real shoe course.
-   return[bp.getY(outer)+dy/length*c.cfg.trackTh/2,bp.getZ(outer)+dz/length*c.cfg.trackTh/2];
+   const builtTh=c.receipt.trackTh; // the built fleet-standard band, not the authored slab (2026-09-17)
+   return[bp.getY(outer)+dy/length*builtTh/2,bp.getZ(outer)+dz/length*builtTh/2];
   };
   for(let i=0;i<bp.count;i+=24){
    const [y0,z0]=endpoint(i,false),[y1,z1]=endpoint(i,true);

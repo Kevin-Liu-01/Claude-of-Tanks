@@ -241,12 +241,16 @@ function buildAmx40X(P:TankBuilderPort):void {
   P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   hull(P);turretCasting(P);turretRoof(P);cannon(P);
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = {webHeight:.035,padHeight:.028,grouserHeight:.012,hornHeight:.055,pinRadius:.010,pinCentreY:0};
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',wheelR:.3401,wheelW:.3211,wheelY:.41530,
     wheelZs:[...AMX40_X_DATUMS.wheelZs],xc:1.2738,trackW:.587,trackTh:.024, // fleet track standard 2026-09-12 (owner: apply everywhere)
     roadWheelOutsetM:.02335,wheelFaceDepthScale:.70,wheelTireInnerRadiusM:.282,
     wheelFaceLayers:[{geometry:wheelFaces(),material:P.mats.wheels,name:'amx40WheelPressedFaces'}],
-    trackShoeDimensions:{webHeight:.035,padHeight:.028,grouserHeight:.012,hornHeight:.055,pinRadius:.010,pinCentreY:0},
+    trackShoeDimensions: shoeDims,
     sprocket:{z:-2.8357,y:.78885,r:.3506,trackR:.322,toothTipRadiusM:.3506,
       axleOutsetM:.0166,axialScaleLeft:.85,axialScaleRight:.85},
     idler:{z:2.77110,y:.8976,r:.3042,trackR:.274,axleOutsetM:.02895,
@@ -255,13 +259,13 @@ function buildAmx40X(P:TankBuilderPort):void {
     rollerR:.1575,returnRollerWidthM:.24,returnRollerInsetM:.012,
     loopPoints:roundedTrackContact(KIT.trackLoopPoints({
       idler:{z:2.7711,y:.8976,r:.274},sprocket:{z:-2.8357,y:.78885,r:.322},
-      botY:.050,topY:1.151,sag:.022, // +.002 with the .024 band so the rigid shoe corner stays on the floor (roundedTrackContact)
+      botY,topY:1.151,sag:.022,
       contact:KIT.runningGearContactPatch(AMX40_X_DATUMS.wheelZs,.3401),
-      endWheels:KIT.endRoadWheels(AMX40_X_DATUMS.wheelZs,.41530,.3401),
+      endWheels:KIT.endRoadWheels(AMX40_X_DATUMS.wheelZs,KIT.seatedWheelY(botY,.024,.3401),.3401),
       supports:[-1.6338,-.6815,.0856,1.0379,1.92295].map(z=>({z,y:1.12815})),
-    }),.048,.3673),
+    }),botY,.3673),
     rigidLinkChords:true,
-    topY:1.151,botY:.050,arms:true,paintedEnds:true,coveredTop:true,
+    topY:1.151,botY,arms:true,paintedEnds:true,coveredTop:true,
   });
   P.topY=AMX40_X_DATUMS.highestFittingM-YAW[1];
   P.hullG.userData.xRebuild={candidate:'amx40_x',independent:true,datumVersion:1,sourceLocalOnly:true};

@@ -71,16 +71,16 @@ const ORIGINALS = {
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t90sm: ['fb29d67115caf0caca77e91832427ac99463d0235fd3d21d3644d30fb5769039',
-    'aa14feb2200cedff15833c41cc05d25f99bc4cf8dcf9381606afa00b5834eaf1'],
-  t90m: ['1c6e90c865021e6c37b03ce6b99d188ffa72e82dab6b0d9dec13cb5a95253e5b',
-    'ba998556d2d73d647181c1b6b18e21b8b8f5662f1f1eebc56eccfe55116ecab2'],
+  t90sm: ['6b64deac194837dad7c669607da2b76d9173d9832aef289c9ed5c32581136cc9',
+    '29a493f15d88af986c8e34c96dcf77765a61c547fb52bb7152a3a50e263355ed'],
+  t90m: ['ea88f2446970cc2d69e03a2819536afb69bffcedd7c8ad0dd7fea5fb8529aef7',
+    '14578c924c2c7c05f6fc79839a4ce7c27b395ace8b4a3f0d3d3486766da3be2a'],
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel (hollowRoadWheelStock.ts) and lost
   // the gear_wheelBayVoidDress blocks; high/low gear digests repinned from the current build.
-  m1a2: ['29d42fb6cae8262608049fd660c0a11fa59ded0e65ee7cb19a16f931de630558',
-    '9fb0d693fb2c953a31ee33c8be78af050875644fcb3997f0e8ff918c7738cbd9'],
-  leo2a5: ['ed0fa6fe2d5511bc80502130e9e4e91f481f5c09f470a278c93cf5837985db99',
-    '5b9e69d2558e36f41c942b0570bbf79990be36c733709ed6c54811f4d8c17311'],
+  m1a2: ['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253',
+    '7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
+  leo2a5: ['30e0ab616b355cc8515bd454093d2f9ac5eb4f631c5d79048c281fb26c910f8b',
+    '7475bc40b7cc7082ced96e7bf09044629c219b9a0ea3d0de33b97b0f1ef3f30c'],
 };
 for (const [id, hashes] of Object.entries(ORIGINALS)) {
   for (const [index, quality] of ['high', 'low'].entries()) {
@@ -138,7 +138,7 @@ for(const high of[true,false]) {
     for(const wheel of positions(model.root.getObjectByName('gearRoadWheelTires'))) {
       const expected=wheel.x<0?[-1.038,-.038,.962]:right;
       assert.ok(expected.some(z=>Math.abs(z-wheel.z)<1e-6),'side axle stagger survives independent spinning');
-      close(wheel.y,.5,'stagger does not move wheel heights');
+      close(wheel.y,model.receipt.wheelY,'stagger does not move wheel heights (ground-datum seat, 2026-09-17)');
       const joints=positions(model.root.getObjectByName('gearSuspensionJointBosses'));
       assert.ok(joints.some(p=>Math.sign(p.x)===Math.sign(wheel.x)&&Math.abs(p.z-wheel.z)<1e-6&&Math.abs(p.y-wheel.y)<1e-6),
         'source stagger carries its physical suspension axle');
@@ -160,10 +160,11 @@ for(const high of[true,false]) {
   try {
     model.root.updateMatrixWorld(true);
     const tire=model.root.getObjectByName('gearRoadWheelTires');
-    const hit=(x,r)=>new THREE.Raycaster(new THREE.Vector3(x,.5+r,-1.8),new THREE.Vector3(0,0,1),0,1.6).intersectObject(tire,false);
+    const axleY=model.receipt.wheelY; // ground-datum seat (2026-09-17): rays follow the seated axle
+    const hit=(x,r)=>new THREE.Raycaster(new THREE.Vector3(x,axleY+r,-1.8),new THREE.Vector3(0,0,1),0,1.6).intersectObject(tire,false);
     assert.equal(hit(1.3,.35).length,0,'true 100mm inter-tire air, no rubber bridge');
     assert.ok(hit(1.20,.35).length&&hit(1.40,.35).length,'both physical rubber rings exist');
-    const ray=new THREE.Raycaster(new THREE.Vector3(1.20,.5,-1),new THREE.Vector3(0,1,0),0,.29);
+    const ray=new THREE.Raycaster(new THREE.Vector3(1.20,axleY,-1),new THREE.Vector3(0,1,0),0,.29);
     assert.equal(ray.intersectObject(tire,false).length,0,'rubber does not fill steel-dish cavity');
     close(model.root.getObjectByName('gearRoadWheelDiscs').geometry.boundingBox?.max.y??.08,.08,'measured core has no injected full-radius disc');
     const steel=new THREE.MeshBasicMaterial();
@@ -196,18 +197,20 @@ function assertStations(model, heights, outset) {
 for (const high of [true, false]) {
   const legacy = fixture({}, high);
   const uniform = fixture({ wheelYs: [.5, .5, .5], roadWheelOutsetM: 0 }, high);
-  const heights = [.53, .5, .56];
+  const heights = [.53, .5, .56]; // authored per-station inputs
+  // the ground-datum seat (2026-09-17) shifts every station by (seated − authored) axle: .5 → .471
+  const seated = [.501, .471, .531];
   const shifted = fixture({ wheelYs: heights, roadWheelOutsetM: .02 }, high);
   try {
     assert.equal(gearFingerprint(legacy.root), gearFingerprint(uniform.root),
       'explicit uniform heights and zero outset preserve all original surfaces/poses');
     assert.equal(Object.hasOwn(legacy.receipt, 'wheelYs'), false);
-    assert.deepEqual(shifted.receipt.wheelYs, heights);
+    assert.deepEqual(shifted.receipt.wheelYs.map(y => Math.round(y * 1e6) / 1e6), seated);
     assert.equal(shifted.receipt.roadWheelOutsetM, .02);
-    assertStations(shifted, heights, .02);
+    assertStations(shifted, seated, .02);
     for (const [index, z] of BASE.wheelZs.entries()) {
       const support = shifted.receipt.loopPoints.find(point => point[0] === z && point[1] > .8);
-      close(support[1], heights[index] + .4 + .09 / 2 - .02, 'belt support follows station');
+      close(support[1], seated[index] + .4 + .028 / 2 - .02, 'belt support follows station'); // fleet-standard band
     }
     for (const model of [legacy, shifted]) {
       for (const child of model.root.children.filter(object => object.name === 'gearEndWheelBody')) {
@@ -217,7 +220,7 @@ for (const high of [true, false]) {
     }
     heights[0] = 99;
     shifted.gear.update(.27, .19);
-    assertStations(shifted, [.53, .5, .56], .02);
+    assertStations(shifted, seated, .02);
     const state = { pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0 };
     const before = positions(shifted.root.getObjectByName('gearRoadWheelTires'));
     for (let step = 0; step < 12; step++) {
@@ -230,7 +233,7 @@ for (const high of [true, false]) {
     for (const wheel of after) assert.ok(movingJoints.some(joint =>
       Math.sign(joint.x) === Math.sign(wheel.x) && Math.abs(joint.z - wheel.z) < 1e-6
       && Math.abs(joint.y - wheel.y) < 1e-6), 'moving arm follows offset axle');
-    shifted.gear.resetPose(); assertStations(shifted, [.53, .5, .56], .02);
+    shifted.gear.resetPose(); assertStations(shifted, seated, .02);
   } finally { legacy.dispose(); uniform.dispose(); shifted.dispose(); }
 }
 
@@ -300,7 +303,7 @@ for(const high of[true,false])for(const batch of[true,false]) {
     model.gear.update(.19,-.37);
     for(const wheel of positions(model.root.getObjectByName('gearRoadWheelTires'))) {
       close(wheel.x,wheel.x<0?-(BASE.xc+.019):BASE.xc-.021,'independent side road datum survives spinning');
-      close(wheel.y,BASE.wheelY,'asymmetric axial adjustment does not alter height');
+      close(wheel.y,model.receipt.wheelY,'asymmetric axial adjustment does not alter height (seated axle)');
     }
     for(const side of[-1,1]) {
       const band=model.root.getObjectByName(side<0?'gearTrackBandL':'gearTrackBandR');
@@ -358,8 +361,11 @@ function assertSourceArm(root){
   for(const index of [2,3,4,5,6,7,8,9]){
     mesh.getMatrixAt(index,matrix);const bounds=new THREE.Box3();
     for(let i=0;i<mesh.geometry.attributes.position.count;i++)bounds.expandByPoint(point.fromBufferAttribute(mesh.geometry.attributes.position,i).applyMatrix4(matrix));
-    assert.ok(Math.abs(bounds.min.y-.364789)<.003,'source low end forging envelope');
-    assert.ok(Math.abs(bounds.max.y-.69952)<.003,'source raised end forging envelope');
+    // forging low end sits 135.2 mm under the axle; the axle itself follows the ground-datum seat (2026-09-17)
+    // 2026-09-17 ground-datum seat: the T-90SM axle sits at 0.4696 and the source forging's low end at 0.3784 (was 0.3648)
+    assert.ok(Math.abs(bounds.min.y-.378354)<.003,'source low end forging envelope');
+    // 2026-09-17 end-wrap law: the arm's raised (hull) end follows the reseated course, 0.7161 (was 0.6995)
+    assert.ok(Math.abs(bounds.max.y-.716068)<.003,'source raised end forging envelope: '+bounds.max.y);
   }
   for(const x of [-1.13,1.13])assert.equal(new THREE.Raycaster(new THREE.Vector3(x,.30,-.30),new THREE.Vector3(0,1,0),0,.45)
     .intersectObject(mesh,false).length,0,'real longitudinal air remains between individual arms');

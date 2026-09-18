@@ -172,7 +172,7 @@ interface SoloAiController {
   update(dt: number, timeS: number): void;
   setWaypoints(points: Waypoint[], options?: { loop?: boolean }): void;
   notifyShellResult(event: SoloHitEvent): void;
-  notifyUnderFire?(shooter: SoloEntity): void;
+  notifyUnderFire?(shooter: SoloEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
   notifyPlayerFired?(shooter: SoloEntity, rank?: number): void;
 }
 
@@ -1034,6 +1034,8 @@ function createBattleBot(
             ? context.game.spotting.isSpotted(id, entity.team, receiver)
             : true,
       },
+      // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
+      getObjective: () => context.game.matchModeController?.botObjective(entity) ?? null,
     },
   }) as SoloAiController;
   entity.aiCtl = controller;
@@ -1091,6 +1093,8 @@ export function setupBattle(
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
   game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
     rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead) as SoloEntity[];
+  // matchmaking diversity (owner 2026-09-17): this battle's bots yield their era-band place next time
+  game.recentBotSpecIds = new Set(game.tanks.filter((entity) => entity.specId !== playerSpecId).map((entity) => entity.specId));
   // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
   // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
   // snowfields/dunes stop being full of factory-green bots (the player's
@@ -1649,6 +1653,7 @@ function notifyTeamUnderFire(
   game: SoloGameState,
   shooter: SoloPooledEntity | undefined,
   target: SoloPooledEntity | null,
+  event: SoloHitEvent,
 ): void {
   if (!isActiveSoloEntity(shooter) || !isActiveSoloEntity(target) ||
       shooter.team === target.team) return;
@@ -1656,7 +1661,10 @@ function notifyTeamUnderFire(
     if (entity.team !== target.team || !entity.aiCtl || entity.combat.destroyed) continue;
     if (entity !== target &&
         entity.state.pos.distanceToSquared(target.state.pos) > 200 * 200) continue;
-    entity.aiCtl.notifyUnderFire?.(shooter);
+    // bot philosophy r1: the struck hull learns it was ITS hull (reaction picker), and whether the shell bit
+    entity.aiCtl.notifyUnderFire?.(shooter, {
+      selfHit: entity === target, damaging: (event.damage || 0) > 0, kind: event.kind,
+    });
   }
 }
 
@@ -1673,7 +1681,7 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent)
   }
   const shooter = game.tankById.get(event.attackerId);
   shooter?.aiCtl?.notifyShellResult(event);
-  notifyTeamUnderFire(game, shooter, target);
+  notifyTeamUnderFire(game, shooter, target, event);
 }
 
 function announceDestroyed(

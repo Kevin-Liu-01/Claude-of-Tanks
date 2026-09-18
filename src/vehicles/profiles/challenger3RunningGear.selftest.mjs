@@ -101,7 +101,7 @@ function roadWheelCenters(roadWheels, side) {
 
 function minimumLoadedCarrierClearance(band, wheels, receipt) {
   const positions = band.geometry.getAttribute('position');
-  const radius = receipt.wheelR + receipt.trackTh / 2 + 0.001;
+  const radius = receipt.wheelR + receipt.trackTh / 2; // the fitted band rests on the tire (2026-09-17: no 1 mm stand-off)
   let minimum = Infinity;
   for (let cell = 0; cell < receipt.loopPoints.length; cell += 1) {
     const base = cell * 24;
@@ -163,8 +163,9 @@ for (const id of IDS) {
       `${id}: loaded track spans remain fitted to the live Hydrogas rims`);
     assert.deepEqual(uniqueInstanceAxis(roadWheels, 'z'), EXPECTED_WHEEL_ZS,
       `${id}: rendered road wheels use the reviewed stations`);
-    assert.deepEqual(uniqueInstanceAxis(roadWheels, 'y'), [0.51],
-      `${id}: every road wheel is reseated at the corrected axle height (2026-09-14: 0.40 m paired wheels, axle 50 mm lower)`);
+    const axleYs = uniqueInstanceAxis(roadWheels, 'y');
+    assert.ok(axleYs.length === 1 && Math.abs(axleYs[0] - (receipt.botY + receipt.trackTh / 2 + receipt.wheelR)) < 0.006, // uniqueInstanceAxis rounds to centimetres
+      `${id}: every road wheel rests on the band face (ground-datum seat 2026-09-17; 0.40 m paired wheels)`);
     assert.equal(roadWheels.count, 12, `${id}: retains six road wheels per side`);
     // 2026-09-14 owner: paired hollow road wheels replace the open eight-rib discs. The nation
     // pattern (UK pressed-eight) is recorded, no shared face layers are stacked on the custom
@@ -232,7 +233,7 @@ for (const id of IDS) {
       const rightClearance = minimumLoadedCarrierClearance(
         hull.getObjectByName('gearTrackBandR'), roadWheelCenters(roadWheels, 1), receipt);
       assert.ok(Number.isFinite(leftClearance) && Number.isFinite(rightClearance)
-        && Math.min(leftClearance, rightClearance) >= -2e-5,
+        && Math.min(leftClearance, rightClearance) >= -1.2e-3, // polyline chords on the 6° wrap arcs dip ≤ 0.6 mm inside the rim circle
         `${id}: ${name} loaded carrier stays below every moving road-wheel rim`);
     }
     runningGear.gear.resetPose();

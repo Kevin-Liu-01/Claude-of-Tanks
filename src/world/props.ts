@@ -317,6 +317,8 @@ interface PropsSettings {
   inhabit?: InhabitSettings;
   wallStyle?: string;
   sandbagLines?: number;
+  /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
+  fieldWorks?: number;
   tankWrecks?: TankWreckSettings;
   rockSink?: number;
   extraKits?: readonly string[] | null;
@@ -5410,9 +5412,93 @@ ${snowCap ? `
         if (Math.max(Math.abs(ex), Math.abs(ez)) > 455 || heightField._roadDist(ex, ez) < 5 || noVeg(ex, ez)) continue;
         addDestructible(trng() < 0.5 ? 'drum' : 'barrier', ex, heightField.getHeightAt(ex, ez) - 0.03, ez, yaw + Math.PI / 2, 1);
       }
+      // owner 2026-09-17 ("extra in Frontline Assault"): a barbed-wire belt 7.5 m ahead of every parapet
+      for (let along = -reach; along <= reach; along += 2.65) {
+        const wx = line.x + line.lx * along + line.ax * (lip + 7.5), wz = line.z + line.lz * along + line.az * (lip + 7.5);
+        if (Math.max(Math.abs(wx), Math.abs(wz)) > 455 || heightField._roadDist(wx, wz) < 5) continue;
+        if (heightField.getGroundType(wx, wz) === 'soft' || noVeg(wx, wz)) continue;
+        addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, yaw + (trng() - 0.5) * 0.1, 0.95 + trng() * 0.15);
+      }
     }
   }
   placeTrenchWorks();
+
+  // --- fortifications on every map (owner 2026-09-17: "more trenches/barbed wire/AA guns/bunkers on ALL maps,
+  // extra in Frontline Assault"): field works between the spawns — a breastwork facing the threat (sourced sandbag
+  // modules, concrete barriers where the bags are absent), a barbed-wire belt in front of it, and a pillbox at one
+  // end of every second work. Own rng stream (seed + 7411) so no existing placement shifts; the assault variant
+  // (trench plan present) fields two more works on top of its wired parapets.
+  function placeFieldWorks(): void {
+    const wrng = mulberry32(seed + 7411);
+    const player = L.spawns.player;
+    const enemies = L.spawns.enemies;
+    if (!player || !enemies.length) return;
+    let ex = 0, ez = 0;
+    for (const enemy of enemies) { ex += enemy.x; ez += enemy.z; }
+    ex /= enemies.length; ez /= enemies.length;
+    const dx = ex - player.x, dz = ez - player.z;
+    const axis = Math.hypot(dx, dz);
+    if (axis < 120) return;
+    const ax = dx / axis, az = dz / axis;   // attack direction (player → enemy)
+    const lx = -az, lz = ax;                // lateral along the front
+    const trenchLines = heightField.assaultTrenchLines?.lines ?? [];
+    const target = richCount(P.fieldWorks, 3) + (trenchLines.length ? 2 : 0);
+    // the carved fire trenches (assault variant) keep a 16 m berth so no work lands in a trench floor
+    const nearTrench = (x: number, z: number): boolean => trenchLines.some((line) => {
+      const along = (x - line.x) * line.lx + (z - line.z) * line.lz;
+      const across = (x - line.x) * line.ax + (z - line.z) * line.az;
+      return Math.abs(along) <= line.halfLengthM + 8 && Math.abs(across) <= 16;
+    });
+    const clear = (x: number, z: number): boolean => Math.max(Math.abs(x), Math.abs(z)) <= 455
+      && heightField._roadDist(x, z) >= 6 && heightField.getGroundType(x, z) !== 'soft' && !noVeg(x, z)
+      && heightField.getNormalAt(x, z).y >= 0.86 && !nearTrench(x, z)
+      && ![player, ...enemies].some((spawn) => Math.hypot(x - spawn.x, z - spawn.z) < 45)
+      && !placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 6);
+    let placed = 0;
+    for (let attempt = 0; attempt < target * 30 && placed < target; attempt++) {
+      const along = 0.22 + wrng() * 0.56;
+      const lateral = (wrng() * 2 - 1) * Math.min(170, axis * 0.35);
+      const cx = player.x + ax * axis * along + lx * lateral, cz = player.z + az * axis * along + lz * lateral;
+      if (!clear(cx, cz)) continue;
+      const facing = along < 0.5 ? 1 : -1;  // the near half faces the enemy, the far half faces the player
+      const fx = ax * facing, fz = az * facing;
+      const yaw = Math.atan2(lx, lz);
+      const modules = 3 + Math.floor(wrng() * 3);
+      const stations: Array<readonly [number, number]> = [];
+      for (let m = 0; m < modules; m++) {
+        const off = (m - (modules - 1) / 2) * 2.7;
+        stations.push([cx + lx * off, cz + lz * off]);
+      }
+      if (!stations.every(([bx, bz]) => clear(bx, bz))) continue;
+      for (const [bx, bz] of stations) {
+        const kind = SOURCED.sandbags ? (wrng() < 0.6 ? 'sandbagwall' : 'sandbagbig') : 'barrier';
+        addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, yaw + (wrng() - 0.5) * 0.1,
+          SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1);
+      }
+      // wire belt 14–18 m toward the threat, one module wider than the breastwork on each side
+      const wireDist = 14 + wrng() * 4;
+      for (let m = -1; m <= modules; m++) {
+        const off = (m - (modules - 1) / 2) * 2.6;
+        const wx = cx + fx * wireDist + lx * off, wz = cz + fz * wireDist + lz * off;
+        if (!clear(wx, wz)) continue;
+        addDestructible('barbedwire', wx, heightField.getHeightAt(wx, wz) - 0.02, wz, yaw + (wrng() - 0.5) * 0.12, 0.95 + wrng() * 0.15);
+      }
+      // a pillbox closes one end of every second work (either end, else the centre) 3–4 m behind the breastwork line
+      if (placed % 2 === 0) {
+        const first = wrng() < 0.5 ? 1 : -1;
+        const reach = modules * 1.35 + 4.4;
+        for (const [ox, oz] of [[lx * first * reach, lz * first * reach], [-lx * first * reach, -lz * first * reach], [-fx * 4, -fz * 4]]) {
+          const px = cx + ox - fx * 3, pz = cz + oz - fz * 3;
+          if (!clear(px, pz) || heightField.getNormalAt(px, pz).y < 0.9) continue;
+          addDestructible('bunker', px, heightField.getHeightAt(px, pz) - 0.08, pz, Math.atan2(fx, fz), 1);
+          if (wrng() < 0.7) scatterDestructibles('ammobox', px - fx * 4.5, pz - fz * 4.5, 1, 1.5, 3);
+          break;
+        }
+      }
+      placed++;
+    }
+  }
+  placeFieldWorks();
 
   // --- knocked-out TANK WRECKS: real roster vehicles, baked static ----------
   yield;

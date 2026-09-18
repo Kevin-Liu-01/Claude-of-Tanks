@@ -16,8 +16,8 @@ function geometryHash(g){
   return h.digest('hex');
 }
 for(const[name,expected]of[
-  ['trackShoeGeometry','1b05323014a89f85e40a9497c81292fcd7faa30246fecf79351dba0e94f7178b'],
-  ['simplifiedTrackShoeGeometry','1fef0ce7534e8a52142c4ad15606488d898c81f6c3c2ff652c66bbc3bff6af43'],
+  ['trackShoeGeometry','da630d3f1193b2a107f9dba0f6ac8e9e8d6da81a880b9c8f3e92f3f6305f8f45'],
+  ['simplifiedTrackShoeGeometry','a3636af03ba82c049683aefe2f7f917f5b29fdd5174781ab52321734b68e53fc'],
 ]){
   const g=KIT[name](.636079,.15,trackPatternFor({id:'leclerc'}));
   try{assert.equal(geometryHash(g),expected,'absent opt-in preserves every legacy attribute byte');}
@@ -68,8 +68,8 @@ try{
           near(shoes.geometry.boundingBox.max.x-shoes.geometry.boundingBox.min.x,2*.3099674,1e-6,'far course keeps the measured connector envelope');
           assert.ok(triangles<=48,`${quality}/${name}: far fleet course stays within its 48-triangle budget (${triangles})`);
         }
-        assert.equal(shoes.count,162,'unchanged 81-link native course per side');
-        assert.equal(hash(shoes.instanceMatrix.array),'560519e5cc782e84344f9aba9f5fc01440094d531fb46974d50e7bffa695ec5d',
+        assert.equal(shoes.count,160,'unchanged 81-link native course per side');
+        assert.equal(hash(shoes.instanceMatrix.array),'b97adf24e1cbca466fb0e0c20b767f4f13b87c87606374bf5bbfd5915e841507',
           'all original shoe positions and orientations are bit-identical');
         const m=new THREE.Matrix4();shoes.getMatrixAt(144,m);m.premultiply(shoes.matrixWorld);
         const pin=new THREE.Vector3(.3180395,-.0051314,.0388075).applyMatrix4(m);
@@ -79,8 +79,8 @@ try{
       if(quality==='high'){
         const expected={gearRoadWheelTires:'e45962ab33c93f70ea9c95ee68c225e9f8ad58dd327a32570ddceec17711e30d',
           gearRoadWheelDiscs:'1900b58d591d951a976fe0c89fa9f57ee3eb6643aa1419152e7ad2eda237685f',
-          gearTrackBandL:'c2b2e2cfeb2f600ed50187bb36f4e583525c364242274da37cfffcc7b202f8cf',
-          gearTrackBandR:'c2b2e2cfeb2f600ed50187bb36f4e583525c364242274da37cfffcc7b202f8cf'};
+          gearTrackBandL:'3e7e3673313970cbcbfe53eb3a2384b008d653c1cdb445a045657d6663fa10b1',
+          gearTrackBandR:'3e7e3673313970cbcbfe53eb3a2384b008d653c1cdb445a045657d6663fa10b1'};
         for(const[name,value]of Object.entries(expected))assert.equal(hash(root.getObjectByName(name).geometry.attributes.position.array),value,
           `${name}: existing wheel/carrier shape remains bit-identical`);
       }

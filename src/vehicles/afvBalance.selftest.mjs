@@ -24,10 +24,12 @@ const EXPECTED = Object.freeze({
   bmp3:               { hp: 1450, speed: 70, reverse: 20, traverse: 48, damage: 55, pen: [112, 102, 92], reload: 0.34, sound: '2a72', missile: [500, 'arkan-launch'] },
   upior:              { hp: 1700, speed: 75, reverse: 30, traverse: 52, damage: 58, pen: [146, 132, 118], reload: 0.30, sound: '2a72', missile: [550, 'spike-launch'] },
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 32, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
+  // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
+  type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 54, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 19, 'complete selectable IFV fleet');
+assert.equal(ifvIds.length, 20, 'complete selectable IFV fleet');
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

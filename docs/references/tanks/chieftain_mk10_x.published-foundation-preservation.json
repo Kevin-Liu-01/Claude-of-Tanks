@@ -24,12 +24,12 @@
   ],
   "successor": {
     "high": {
-      "count": 318036,
-      "sha256": "46ccc0faa0684ebfc2557ec312063aeabd42480958529378a9f6bb6ed5ffefe8"
+      "count": 320724,
+      "sha256": "595d361a80c1ca11ace02e54097d3e9802a2a69dac91d71216be963a2197ba1e"
     },
     "low": {
-      "count": 291636,
-      "sha256": "e1dad1e42f4d5a00cae22aef3b9bd9eb51af011cfc58185f2810661bb7704249"
+      "count": 294324,
+      "sha256": "29a9f05af8fbac81a9c1716adcbdfad5a3d4c44c411f2fe70f3b9b02737e2073"
     }
   },
   "successorHistory": [
@@ -69,7 +69,7 @@
     "expectedHigh": 317904
   },
   "authoredSources": {
-    "src/vehicles/profiles/chieftain10X.ts": "85807745928dde657b803ac966d5937bb39419a94631d0efbbda27a384ab08d8",
+    "src/vehicles/profiles/chieftain10X.ts": "5b94a2ebeab72c1b33d671d930f1f96dc701edca4912cac2daabcbcab947f062",
     "src/vehicles/profiles/chieftain10XAftCasting.ts": "f2aa34a46d45c1528497a88c4be3e6a387196ead87a0803234896cccd296e933",
     "src/vehicles/profiles/chieftain10XBasket.ts": "04d56fbb2aa469f1de35f46e65d038fb0951ed65a0bb1dc993803af128253f01",
     "src/vehicles/profiles/chieftain10XBowLights.ts": "00618365219b24e8773522733ae6c20f7e32f94e9bb740eec3d30281f6437b9e",
@@ -126,7 +126,7 @@
   },
   "publishedRuntimeSources": {
     "package-lock.json": "601b6cf1fe3b749446b87bd09df842d67866d562357b0cf89373e00052cbaef0",
-    "src/vehicles/profiles/chieftain10X.ts": "85807745928dde657b803ac966d5937bb39419a94631d0efbbda27a384ab08d8",
+    "src/vehicles/profiles/chieftain10X.ts": "5b94a2ebeab72c1b33d671d930f1f96dc701edca4912cac2daabcbcab947f062",
     "src/vehicles/profiles/chieftain10XServiceFrame.ts": "ef67fed10ff481026c7875d55c8333dc637e9009f2fe109cfdb2b7f6ef1efa47",
     "src/vehicles/profiles/chieftainXFoundation.ts": "e90c75351459ab6cbb42da27df4e4c3a82c3ab4ded691aeacf4bc451eb015885",
     "src/vehicles/profiles/sectionSolid.ts": "b266fe61c777c856c90329ba513e7d92f70236ea48d4d38957b423abc5a8a9db",
@@ -165,7 +165,7 @@
   "laterTrackWrap": {
     "branch": "codex/restore-1049-visuals-20260911",
     "capturedAt": "2026-09-14",
-    "scope": "Owner direction: the loaded track run wraps the outer road wheels on their own circle and rises on the external tangent to the end wheel (tankFactoryCore roadWheelWrap, graded 1–6° chords) instead of kinking at the authored contact pins. Only the two track band meshes (draw-vertex count change) and the linked shoes (positions) changed; the non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly.",
+    "scope": "Owner direction: the loaded track run wraps the outer road wheels on their own circle and rises on the external tangent to the end wheel (tankFactoryCore roadWheelWrap, graded 1\u20136\u00b0 chords) instead of kinking at the authored contact pins. Only the two track band meshes (draw-vertex count change) and the linked shoes (positions) changed; the non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly.",
     "trackDrawVertexDelta": -480,
     "nonTrack": {
       "high": {
@@ -177,5 +177,22 @@
         "sha256": "c93ac4b0055d476baae7290f54bbd811320e143f335e784712b3357066ed5df5"
       }
     }
+  },
+  "laterGroundDatumSeat": {
+    "branch": "codex/restore-1049-visuals-20260911",
+    "capturedAt": "2026-09-17",
+    "scope": "Owner direction 2026-09-16/17: fleet track reseat (tankFactoryCore groundSeatBotY / seatedWheelY / trackWrapClearanceM, loadedRunStations flank + ramp stations, per-station loadedTrackContact fit). The two band meshes gained draw vertices (flank stations every 5 cm around each axle, ramp stations every 10 cm); the linked shoes and the road-wheel instances moved. The non-track draw-vertex multiset recorded here is re-derived by the receipt and must match exactly. 2026-09-17 later the same day: the end-wrap law (endpointWrap: measured centreline capped at the rim, datum sinks, crown gap) re-shaped the end arcs; the delta over the tangent-wrap history is now 2688 draw vertices. The end-wrap law also re-cut the drive teeth (tooth reach follows the band's outer radius), so the non-track multiset moved by 144 draw vertices at HIGH.",
+    "trackDrawVertexDelta": 2688,
+    "nonTrack": {
+      "high": {
+        "count": 199572,
+        "sha256": "9dade549a79971eb49b53fa40d67f1a964b5a8a14852771a39b26f960e17893c"
+      },
+      "low": {
+        "count": 173172,
+        "sha256": "228092361eb09039f84124f1e647d0417612770f5b19853b867bec5ae70a6f75"
+      }
+    },
+    "nonTrackUnchangedFromWrap": false
   }
 }

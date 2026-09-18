@@ -220,7 +220,7 @@ function groundScroll(tank, gear) {
     tires.getMatrixAt(i, m);
     const side = i % 2;
     near(m.elements[12], D.wheelCenters[side], 1e-6, 'source asymmetric road-wheel axle X');
-    near(m.elements[13], D.wheelY, 1e-6, 'source road-wheel axle height');
+    near(m.elements[13], tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY ?? D.wheelY, 1e-6, 'road-wheel axle height follows the ground-datum seat (2026-09-17)');
     near(m.elements[14], (side ? D.wheelZsRight : D.wheelZsLeft)[Math.floor(i / 2)],
       1e-6, 'independent source left/right wheel stations');
   }

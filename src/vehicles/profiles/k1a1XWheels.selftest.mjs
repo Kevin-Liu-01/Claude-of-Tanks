@@ -31,7 +31,8 @@ function sourceWitnesses(root){
  const all=meshes(root);
  // Held-out whole-source first surfaces at the third axle, independently
  // measured on both mirrored source nodes. Not rings fed into the builder.
- for(const side of [-1,1])for(const[r,x]of sourceRows){const origin=new T.Vector3(side*1.6376,.3978-r,-.4408),direction=new T.Vector3(-side,0,0);
+ const axleY=root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY??.3978; // ground-datum seat (2026-09-17)
+ for(const side of [-1,1])for(const[r,x]of sourceRows){const origin=new T.Vector3(side*1.6376,axleY-r,-.4408),direction=new T.Vector3(-side,0,0);
   const face=root.getObjectByName(names[side<0?0:1]);
   if(r>TIRE_INNER_R){
    const first=new T.Raycaster(origin,direction,0,.8).intersectObjects(all,false)[0];

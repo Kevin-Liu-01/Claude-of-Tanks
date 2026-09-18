@@ -382,7 +382,16 @@ function rollUniform(rng: Rng, avg: number): number {
 const RAM_MIN_CLOSING_MPS = 2.5; // parking bumps and column shuffles: free
 const RAM_K = 0.2;               // hp per (m/s)^2 per reduced ton
 const RAM_SELF_SCALE = 0.65;     // attacker discount on the rammer's share
-const RAM_MAX_TOTAL = 2400;      // freight-train cap — owner 2026-09-16: ram damage keeps scaling with speed well past 60 km/h
+const RAM_MAX_TOTAL = 4000;      // freight-train cap (owner 2026-09-17: "the speed system for ram damage needs to scale a lot more")
+const RAM_SPEED_ANCHOR_MPS = 8;  // the quadratic law is exact here; above it the pool grows ~c^3.5, below it fades faster
+const RAM_SPEED_POWER = 1.5;     // extra progression exponent on (c / anchor)
+
+/** Progressive speed gain on top of the kinetic law: 1 at the anchor, (c/8)^1.5 elsewhere. Pure. */
+export function ramSpeedGain(closingMps: number): number {
+  const c = Math.abs(Number(closingMps));
+  if (!(c > 0)) return 0;
+  return Math.pow(c / RAM_SPEED_ANCHOR_MPS, RAM_SPEED_POWER);
+}
 
 /**
  * Kinetic ram damage split for a tank-tank collision.
@@ -402,7 +411,7 @@ export function ramDamage(
   const c = Math.abs(Number(closingMps));
   if (!(c >= RAM_MIN_CLOSING_MPS)) return { total: 0, toA: 0, toB: 0 };
   const mRed = (mA * mB) / (mA + mB);
-  const total = Math.min(RAM_MAX_TOTAL, RAM_K * c * c * mRed);
+  const total = Math.min(RAM_MAX_TOTAL, RAM_K * c * c * mRed * ramSpeedGain(c));
   return {
     total,
     toA: total * (mB / (mA + mB)) * RAM_SELF_SCALE,

@@ -84,6 +84,11 @@ function runningGear(P: TankBuilderPort): void {
   // supports are inferred, but seat that measured course rather than a low
   // generic run. Ground/road axes are unchanged by the optional rounded knee.
   const rollers = [-1.52, -.12, 1.28].map(z => ({ z, y: 1.016 + .0023 * z, r: .095 }));
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = { padHeight: .027, grouserHeight: .013, webHeight: .026,
+      hornHeight: .081, pinRadius: .0222443, pinCentreY: -.0051314 };
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .028, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .3307865, wheelW: .526689, wheelY: .4040425,
     wheelTireBands: [-.1563971, .1563971].map(centerM => ({ centerM,
@@ -98,9 +103,8 @@ function runningGear(P: TankBuilderPort): void {
     // Source Object_5 tread plates span 525.327 mm inside the separate
     // 636.079 mm pin/link envelope. Preserve connector air rather than
     // making the concealed continuous carrier as wide as the pins.
-    trackCarrierWidthM: .525327, trackTh: .028, botY: .0525, topY: 1.132315,
-    trackShoeDimensions: { padHeight: .027, grouserHeight: .013, webHeight: .026,
-      hornHeight: .081, pinRadius: .0222443, pinCentreY: -.0051314 },
+    trackCarrierWidthM: .525327, trackTh: .028, botY, topY: 1.132315,
+    trackShoeDimensions: shoeDims,
     pinCapOuter: .3180395,
     // Separate measured pad, rectangular connector forging and round cap.
     // Source connector's tiny .224° pitch is bounded here by a level forging
@@ -126,10 +130,10 @@ function runningGear(P: TankBuilderPort): void {
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler: { z: 2.86860, y: .79055, r: .297265 },
       sprocket: { z: -2.57518, y: .77031, r: .317005 },
-      contact: KIT.runningGearContactPatch(zs, .3307865), botY: .0525, topY: 1.132315,
-      endWheels: KIT.endRoadWheels(zs, .4040425, .3307865),
+      contact: KIT.runningGearContactPatch(zs, .3307865), botY, topY: 1.132315,
+      endWheels: KIT.endRoadWheels(zs, KIT.seatedWheelY(botY, .028, .3307865), .3307865),
       sag: .008, supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .014 })),
-    }), .0525, .34),
+    }), botY, .34),
     rigidLinkChords: true,
     arms: true, paintedEnds: true, coveredTop: true,
   });

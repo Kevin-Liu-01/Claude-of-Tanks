@@ -130,6 +130,10 @@ export interface CameraEntity {
       heightM: number;
     };
   };
+  /** Live combat state; `destroyed` ends every scoped view (death r1). */
+  combat?: {
+    destroyed?: boolean;
+  } | null;
   visual?: CameraEntityVisual | null;
 }
 
@@ -211,6 +215,11 @@ export interface CameraRig {
   snapArcade(step: number, orbitYaw: number, orbitPitch: number): void;
   snapSniper(zoom: number, aimYaw: number, aimPitch: number): void;
   release(): void;
+}
+
+/** True once the player's own combat state reports the wreck (death r1). */
+function isWreck(entity: CameraEntity | null): boolean {
+  return !!(entity && entity.combat && entity.combat.destroyed);
 }
 
 /** Forward direction from view yaw/pitch (yaw 0 → +Z, positive pitch → up). */
@@ -880,6 +889,14 @@ export function createCameraRig(
      * @returns {void}
      */
     update(dt: number, camInput: CameraInputFrame): void {
+      // death r1 (owner 2026-09-17: "if you die you should get kicked out of
+      // scope mode"): the frame the player's tank is a wreck the rig leaves
+      // SNIPER on its own — before any external killcam pose, death cam,
+      // spectate or result flow decides what to show — so no zoomed gun view
+      // or scope-only HUD rides the corpse whichever presentation follows.
+      // Shift-exit semantics (restore the pre-scope orbit step) keep the
+      // arcade camera where the player last orbited.
+      if (rig.mode === 'SNIPER' && isWreck(getPlayer())) rig.exitSniper(true);
       if (external) return;
 
       // A lobby spectator has no player entity. The observer chase still has
@@ -1009,6 +1026,7 @@ export function createCameraRig(
       const player = getPlayer();
       death = { az: player && player.state ? player.state.yaw + Math.PI * 0.75 : 0 };
       rig.mode = 'ARCADE';
+      camera.userData.scoped = false; // death r1: scope consumers follow this frame
       applyPlayerVisibility(player, true);
     },
 
@@ -1123,6 +1141,7 @@ export function createCameraRig(
      */
     enterSniper(): void {
       if (rig.mode === 'SNIPER') return;
+      if (isWreck(getPlayer())) return; // death r1: a wreck never scopes in
       rig.mode = 'SNIPER';
       preSniperStep = step; // gameplay_feel r6: restored on Shift-exit
       // AIM PRESERVATION (gunnery r1, owner bug 2 — bidirectional with

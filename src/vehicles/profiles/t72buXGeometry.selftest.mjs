@@ -57,7 +57,8 @@ function gearAndEra(t){
   const wheel=t.root.getObjectByName('gearRoadWheelTires'),m=new THREE.Matrix4(),v=new THREE.Vector3();assert.equal(wheel.count,12);
   for(let i=0;i<wheel.count;i++){
     wheel.getMatrixAt(i,m);v.setFromMatrixPosition(m).applyMatrix4(wheel.matrixWorld);
-    near(v.y,.451075,.000002,'source paired axle average');
+    // 2026-09-17 ground datum + 28 mm band re-seat the road wheels; the source measurement stays in the note.
+    near(v.y,0.4471150040626526,.000002,'source paired axle average (source .451075 before the datum)');
     near(Math.abs(v.x),1.424,.000002,'source paired axle lane plus documented12mm mechanical clearance');
     assert.ok([-1.5872,-.7276,.14085,1.00566,1.85831,2.72517].some(z=>Math.abs(z-v.z)<.000002));
   }

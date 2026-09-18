@@ -16,17 +16,17 @@ registerProfiledBuilders({ ariete_c1_x: buildArieteX, challenger1_x: buildChalle
 // Army-photo shape contracts, not precision measurements from the AI inputs.
 // Actual wheel/track datums below predate this face-only correction.
 const cases = [
-  { id:'challenger1_x',radius:.395,width:.39,x:1.385,y:.470,
+  { id:'challenger1_x',radius:.395,width:.39,x:1.385,y:.4585 /* seated axle, 2026-09-17 */,
     zs:[-2.18,-1.385,-.59,.59,1.385,2.18],
     shoulder:'challenger1PhotoWheelRubberShoulders',hub:.219,
     witnesses:[[.220,.1197142857],[.290,.1482903226],[.334,.1794857143],[.367,.202]],
     openingRadius:.369,rim:.371,rayStart:.30 },
-  { id: 'ariete_c1_x', radius: .347, width: .39, x: 1.425, y: .423,
+  { id: 'ariete_c1_x', radius: .347, width: .39, x: 1.425, y: .413 /* seated axle, 2026-09-17 */,
     zs: [-2.57, -1.73, -.89, -.05, .79, 1.63, 2.47],
     shoulder: 'arietePhotoWheelRubberShoulders', hub: .229,
     witnesses: [[.150, .110921875], [.220, .1352586207], [.270, .169], [.310, .204]],
     openingRadius: .314, rim: .316 },
-  { id: 'strv122_x', radius: .345, width: .40, x: 1.42, y: .421,
+  { id: 'strv122_x', radius: .345, width: .40, x: 1.42, y: .411 /* seated axle, 2026-09-17 */,
     zs: [-2.46, -1.63, -.80, .03, .86, 1.69, 2.52],
     shoulder: 'strv122PhotoWheelRubberShoulders', hub: .194,
     witnesses: [[.160, .085], [.230, .1211052632], [.275, .1637333333], [.309, .208]],

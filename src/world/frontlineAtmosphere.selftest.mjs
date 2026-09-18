@@ -72,12 +72,23 @@ gapsWithin(a.runtime.log, 'flyover', FRONTLINE_LIMITS.flyoverIntervalS);
 // It keeps its artillery anchors (a fan beyond the playable half-map), flashes, flak, aircraft and AA.
 assert.equal(a.parent.getObjectByName('frontline-smoke-columns'), undefined, 'no smoke column mesh');
 assert.ok(!Object.hasOwn(FRONTLINE_LIMITS, 'columnPuffs'), 'no plume limits remain');
-for (const e of a.runtime.log) {
-  if (e.kind !== 'artillery') continue;
-  const r = Math.hypot(e.pos[0], e.pos[2]);
-  assert.ok(r >= FRONTLINE_LIMITS.columnRangeM[0] - 70 && r <= FRONTLINE_LIMITS.columnRangeM[1] + 70, `artillery at ${r.toFixed(0)} m`);
-  const bearing = THREE.MathUtils.radToDeg(Math.atan2(e.pos[0], e.pos[2]));
-  assert.ok(Math.abs(((bearing - a.runtime.bearingDeg + 540) % 360) - 180) <= 75, 'artillery lands inside the front fan');
+// owner 2026-09-17 ("distant explosions visible everywhere"): the front fan still carries most of the
+// artillery, but the rest of the horizon flashes too — no bearing is silent
+{
+  let inFan = 0, outside = 0, total = 0;
+  for (const e of a.runtime.log) {
+    if (e.kind !== 'artillery') continue;
+    total++;
+    const r = Math.hypot(e.pos[0], e.pos[2]);
+    assert.ok(r >= FRONTLINE_LIMITS.columnRangeM[0] - 70 && r <= FRONTLINE_LIMITS.columnRangeM[1] + 70, `artillery at ${r.toFixed(0)} m`);
+    const bearing = THREE.MathUtils.radToDeg(Math.atan2(e.pos[0], e.pos[2]));
+    const off = Math.abs(((bearing - a.runtime.bearingDeg + 540) % 360) - 180);
+    if (off <= 75) inFan++;
+    if (off > 100) outside++;
+  }
+  assert.ok(total >= 10, `enough artillery to judge the spread (${total})`);
+  assert.ok(inFan >= total * 0.45, `the front fan keeps most of the artillery (${inFan}/${total})`);
+  assert.ok(outside >= 1, `some artillery flashes well outside the front fan (${outside}/${total})`);
 }
 const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
 for (const e of a.runtime.log) {
@@ -92,20 +103,29 @@ const speed = Math.hypot(...flyover[1].v);
 assert.ok(speed >= FRONTLINE_LIMITS.aircraftSpeedMps[0] && speed <= FRONTLINE_LIMITS.aircraftSpeedMps[1]);
 assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exists');
 
-// campaign slice 2: anti-air guns sit behind the player's spawn, away from the
-// front, and only fire tracer bursts while an aircraft is up and in range.
+// campaign slice 2: anti-air guns only fire tracer bursts while an aircraft is up and in range;
+// owner 2026-09-17 ("AA spread around map borders"): the guns ring the whole map edge.
 {
   const bases = a.parent.getObjectByName('frontline-aa-bases');
   const heads = a.parent.getObjectByName('frontline-aa-heads');
-  assert.ok(bases.count >= FRONTLINE_LIMITS.aaGuns[0] && bases.count <= FRONTLINE_LIMITS.aaGuns[1], `${bases.count} guns`);
+  assert.ok(bases.count >= FRONTLINE_LIMITS.aaGuns[0] && bases.count <= FRONTLINE_LIMITS.aaGunsCap, `${bases.count} guns`);
   assert.equal(heads.count, bases.count, 'every gun has a traversing head');
-  const front = THREE.MathUtils.degToRad(a.runtime.bearingDeg);
+  const bearings = [];
   for (let i = 0; i < bases.count; i++) {
     bases.getMatrixAt(i, m); m.decompose(p, q, s);
-    // behind the player spawn (0, -300) relative to the front direction
-    const along = (p.x - 0) * Math.sin(front) + (p.z + 300) * Math.cos(front);
-    assert.ok(along <= -FRONTLINE_LIMITS.aaBehindM[0] + 1 && along >= -FRONTLINE_LIMITS.aaBehindM[1] - 1, `gun ${i} ${along.toFixed(0)} m behind the line`);
+    const r = Math.hypot(p.x, p.z);
+    assert.ok(r >= FRONTLINE_LIMITS.aaRingRadiusM[0] - 1 && r <= FRONTLINE_LIMITS.aaRingRadiusM[1] + 1, `gun ${i} on the border ring (${r.toFixed(0)} m)`);
+    bearings.push(((Math.atan2(p.x, p.z) * 180) / Math.PI + 360) % 360);
   }
+  bearings.sort((u, v) => u - v);
+  let widestGap = bearings[0] + 360 - bearings[bearings.length - 1];
+  for (let i = 1; i < bearings.length; i++) widestGap = Math.max(widestGap, bearings[i] - bearings[i - 1]);
+  assert.ok(widestGap <= (360 / bases.count) * 2, `the guns spread around the whole border (widest gap ${widestGap.toFixed(0)}°)`);
+  // Frontline Assault raises the atmosphere scale past 1 → extra guns join the ring
+  const heavy = make(); heavy.runtime.setScale(1.6); heavy.runtime.prepare(1337, 'frontier');
+  const heavyBases = heavy.parent.getObjectByName('frontline-aa-bases');
+  assert.ok(heavyBases.count > bases.count && heavyBases.count <= FRONTLINE_LIMITS.aaGunsCap, `campaign scale adds guns (${heavyBases.count} vs ${bases.count})`);
+  heavy.runtime.dispose();
   const firstFlyover = a.runtime.log.find((e) => e.kind === 'flyover');
   const firstAa = a.runtime.log.find((e) => e.kind === 'aa');
   assert.ok(firstAa, 'the guns opened fire during three minutes on the front');

@@ -60,9 +60,13 @@ export function addStrv122XSuppliedGear(P:TankBuilderPort):void{
   // concealed rolling supports are mechanical inference, not authored nodes.
   const rollers=[[-1.85,1.070],[-.38,1.060],[1.15,1.050],[2.00,1.018]]
     .map(([z,y])=>({z,y,r:.078}));
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = {padHeight:.030,grouserHeight:.010,webHeight:.025,hornHeight:.070,pinRadius:.009,pinCentreY:0};
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .022, trackShoeDimensions: shoeDims });
   const loop=KIT.trackLoopPoints({sprocket:d.rear,idler:d.front,
-    botY:.054,topY:1.155,sag:.012,contact:{zR:-2.47,zF:2.69},
-    endWheels:KIT.endRoadWheels(d.roadZ,d.roadY,d.roadRadius),
+    botY,topY:1.155,sag:.012,contact:{zR:-2.47,zF:2.69},
+    endWheels:KIT.endRoadWheels(d.roadZ,KIT.seatedWheelY(botY,.022,d.roadRadius),d.roadRadius),
     supports:rollers.map(r=>({z:r.z,y:r.y+r.r+.017}))});
   P.gear=KIT.buildRunningGear(P,{
     style:'rubber',wheelR:d.roadRadius, // 2026-09-14 owner: nation/family pattern (Leopard 2 plain-dish-twelve), no per-tank override
@@ -75,14 +79,14 @@ wheelY:d.roadY,
     wheelZs:[...d.roadZ],xc:d.trackAxisAbsX,xcLeft:d.trackAxisLeftAbsX,
     roadWheelOutsetRightM:d.roadAxisAbsX-d.trackAxisAbsX,
     roadWheelOutsetLeftM:d.roadAxisLeftAbsX-d.trackAxisLeftAbsX,
-    trackW:d.trackWidth,trackCarrierWidthM:.540,trackTh:.022,botY:.054,topY:1.155,
+    trackW:d.trackWidth,trackCarrierWidthM:.540,trackTh:.022,botY,topY:1.155,
     sprocket:d.rear,idler:d.front,rollers,returnRollerWidthM:.19,returnRollerInsetM:.17,
     loopPoints:loop,linkPitchM:.143,rigidLinkChords:true,
     // Keep the fitted course, national tread recipe and physical dimensions;
     // share quality-aware link stock instead of repeating full-detail links
     // at LOW detail as well as HIGH.
     trackShoeBuilder:buildFleetTrackShoe,
-    trackShoeDimensions:{padHeight:.030,grouserHeight:.010,webHeight:.025,hornHeight:.070,pinRadius:.009,pinCentreY:0},
+    trackShoeDimensions: shoeDims,
     arms:true,coveredTop:true,paintedEnds:true,
     // Concealed inferred arms must clear the independently seated left wheel
     // as well as the right. The former symmetric arm intersected the left

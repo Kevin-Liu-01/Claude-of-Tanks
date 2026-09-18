@@ -103,8 +103,8 @@ const boundary=fixture({returnRollerOutsetM:.5});try{axes(boundary,0,.5);}finall
 // are original vehicles, not new builders or self-derived expected hashes.
 const ORIGINALS={
   // 2026-09-13 wheel review: m1a2 draws the hollow paired road wheel and lost the void-dress blocks; repinned.
-  m1a2:['29d42fb6cae8262608049fd660c0a11fa59ded0e65ee7cb19a16f931de630558','9fb0d693fb2c953a31ee33c8be78af050875644fcb3997f0e8ff918c7738cbd9'],
-  leo2a5:['ed0fa6fe2d5511bc80502130e9e4e91f481f5c09f470a278c93cf5837985db99','5b9e69d2558e36f41c942b0570bbf79990be36c733709ed6c54811f4d8c17311'],
+  m1a2:['f47719f80c839456827c6c2fd417bb6796333fb5ad123a27087bfe2c43f7d253','7e4c7a0ccc17f06eefc179b69122bde147a0c04f315a35c37b41551e34a4a0ca'],
+  leo2a5:['30e0ab616b355cc8515bd454093d2f9ac5eb4f631c5d79048c281fb26c910f8b','7475bc40b7cc7082ced96e7bf09044629c219b9a0ea3d0de33b97b0f1ef3f30c'],
 };
 for(const[id,hashes]of Object.entries(ORIGINALS))for(const[index,quality]of['high','low'].entries()){
   const tank=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,batchStatic:false});

@@ -95,3 +95,60 @@ if (!studioSource.includes('fx.update(dt, shells, camera, resolveFxSubject)')) {
 }
 
 console.log('effect attachment selftest passed');
+
+// wreck r1 (owner 2026-09-17): fire/smoke belong to the vehicle object. The
+// destroyed-tank column rides the corpse's visual root (a shoved wreck carries
+// its smoke) and leaves the frame the corpse is gone — released to the pool,
+// revived for a respawn — instead of standing on the fixed 40 s timer.
+{
+  const { createRequire } = await import('node:module');
+  const THREE = await import('three');
+  const { createFx } = await import('./effects.ts');
+  const { createCanvas } = createRequire(import.meta.url)('@napi-rs/canvas');
+  const documentBefore = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  globalThis.document = { createElement(tag) { if (tag !== 'canvas') throw new Error(tag); return createCanvas(1, 1); } };
+  try {
+    if (EFFECT_ATTACHMENT_POLICY.destroyedTankColumn !== 'wreck-local-emitter') {
+      throw new Error('the destroyed-tank column must ride the wreck (wreck-local-emitter)');
+    }
+    const handlers = new Map();
+    const bus = { on(type, fn) { handlers.set(type, fn); return () => handlers.delete(type); }, emit(type, payload) { handlers.get(type)?.(payload); } };
+    const fx = createFx({ anisotropy: 4 }, { getHeightAt: () => 0 }, { seed: 77 });
+    fx.bindBus(bus);
+    const camera = new THREE.PerspectiveCamera();
+    const root = new THREE.Object3D(); root.position.set(40, 0, -10); root.updateWorldMatrix(true, true);
+    let wrecked = true;
+    let corpse = { visual: { root, isDestroyed: () => wrecked, setDestroyed() {} }, state: { pos: root.position, yaw: 0 }, combat: { destroyed: true } };
+    const resolve = (id) => (id === 'w1' ? corpse : null);
+    const columnsOf = () => fx.getAttachmentDebug().subjects.filter((s) => s.id === 'wreck:w1');
+    bus.emit('tank:destroyed', { id: 'w1', pos: [40, 0.5, -10], cause: 'shot' });
+    fx.update(1 / 60, [], camera, resolve);
+    let cols = columnsOf();
+    if (cols.length !== 1) throw new Error(`the live kill must raise one wreck-keyed column (got ${cols.length})`);
+    if (!cols[0].resolved) throw new Error('the wreck column must anchor to the corpse visual root');
+    // a shoved wreck carries its smoke
+    root.position.x += 6; root.updateWorldMatrix(true, true);
+    fx.update(1 / 60, [], camera, resolve);
+    cols = columnsOf();
+    if (Math.abs(cols[0].pos[0] - 46) > 1e-6) throw new Error(`the column must follow the wreck root (x ${cols[0].pos[0]})`);
+    // the corpse revives for a respawn: the smoke leaves with it
+    wrecked = false; corpse.combat.destroyed = false;
+    fx.update(1 / 60, [], camera, resolve);
+    if (columnsOf().length !== 0) throw new Error('a revived corpse must take its column along');
+    // a second kill, then the entity is released to the pool: the column is gone
+    wrecked = true; corpse.combat.destroyed = true;
+    bus.emit('tank:destroyed', { id: 'w1', pos: [46, 0.5, -10], cause: 'ammorack' });
+    fx.update(1 / 60, [], camera, resolve);
+    if (columnsOf().length !== 1) throw new Error('the second kill raises its column');
+    corpse = null;
+    fx.update(1 / 60, [], camera, resolve);
+    if (columnsOf().length !== 0) throw new Error('a released corpse must take its column along');
+    // composed replays / warm-ups (no id) keep the world-fixed column
+    fx.destruction(new THREE.Vector3(0, 0, 0), null, 'shot');
+    fx.update(1 / 60, [], camera, resolve);
+    if (fx.getAttachmentDebug().subjects.length !== 0) throw new Error('an unnamed destruction stays a world-fixed column');
+    console.log('effectAttachments.selftest: wreck columns ride and leave with the corpse');
+  } finally {
+    if (documentBefore) Object.defineProperty(globalThis, 'document', documentBefore); else delete globalThis.document;
+  }
+}

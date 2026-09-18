@@ -996,6 +996,58 @@ export function* createImpactDecalsSteps(
     return true;
   }
 
+  /**
+   * owner r1 (owner 2026-09-17: "hit marks registered to hull when on turret →
+   * attach to turret/gun"). The armor frame names the PLATE that stopped the
+   * shell; the rendered skin under the contact can belong to another rig —
+   * hull armor boxes that reach up into the turret's volume, mantlets modelled
+   * on the gun, splash contacts routed hull-local by the envelope guess. Before
+   * the skin clamp, look up which rig actually owns the surface under the
+   * contact (same launch as clampToSkin, cast against the whole vehicle) and
+   * re-parent the stamp there, so the mark traverses and elevates with the
+   * metal it sits on instead of staying painted on the hull under a turned
+   * turret. Vehicles without articulation rigs are untouched.
+   */
+  function adoptVisualOwner(
+    rec: DecalRecord,
+    visual: ImpactVisual,
+    pos: THREE.Vector3,
+    normal: THREE.Vector3,
+  ): void {
+    const turret = findArticulationNode(rec, visual, 'turret');
+    const gun = findArticulationNode(rec, visual, 'gun');
+    if (!turret && !gun) return;
+    const node = stampRoute.node;
+    const root = visual.root;
+    root.updateWorldMatrix(true, true);
+    _wp.copy(pos);
+    node.localToWorld(_wp);
+    node.getWorldQuaternion(_wq);
+    _wn.copy(normal).applyQuaternion(_wq).normalize();
+    _raycaster.ray.origin.copy(_wp).addScaledVector(_wn, 0.9);
+    _raycaster.ray.direction.copy(_wn).negate();
+    _raycaster.near = 0;
+    _raycaster.far = 1.45;
+    const hits = _raycaster.intersectObject(root, true);
+    for (const h of hits) {
+      if (!isVisibleOpaqueSkin(root, h.object)) continue;
+      let owner: THREE.Object3D = root;
+      let ownerKey: DecalNodeKey = 'hull';
+      for (let p: THREE.Object3D | null = h.object; p && p !== root; p = p.parent) {
+        if (gun && p === gun) { owner = gun; ownerKey = 'gun'; break; }
+        if (turret && p === turret) { owner = turret; ownerKey = 'turret'; break; }
+      }
+      if (owner === node) return; // the armor frame and the rendered skin agree
+      owner.updateWorldMatrix(true, false);
+      owner.worldToLocal(pos.copy(_wp));
+      owner.getWorldQuaternion(_wqi).invert();
+      normal.copy(_wn).applyQuaternion(_wqi).normalize();
+      stampRoute.nodeKey = ownerKey;
+      stampRoute.node = owner;
+      return;
+    }
+  }
+
   function isInsideTurretEnvelope(
     x: number,
     y: number,
@@ -1121,6 +1173,7 @@ export function* createImpactDecalsSteps(
     rec.lastStampT = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (!resolveStampRoute(rec, visual, impactFrame, gunPivot, pos, normal,
       dir, turretYaw, turretPivot, env)) return false;
+    adoptVisualOwner(rec, visual, pos, normal);
     clampToSkin(stampRoute.node, pos, normal);
     orientStampTangent(fam, normal, dir);
     writeStamp(rec, fam, sizeK, caliberMm, pos);

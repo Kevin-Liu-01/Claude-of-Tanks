@@ -1,1448 +1,1456 @@
 {
- "generatedAt": "2026-09-17T01:10:04.149Z",
+ "generatedAt": "2026-09-18T01:02:59.611Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
  "tanks": {
   "abramsx": {
    "sealed": true,
-   "openPx": 9,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 274,
-   "seeThroughPx": 4,
-   "tris": 94552
+   "insideOutPx": 150,
+   "seeThroughPx": 43,
+   "tris": 96180
   },
   "amx30": {
    "sealed": false,
-   "openPx": 156,
-   "openViews": 4,
-   "insideOutPx": 1879,
-   "seeThroughPx": 28,
-   "tris": 74540
+   "openPx": 169,
+   "openViews": 5,
+   "insideOutPx": 1266,
+   "seeThroughPx": 23,
+   "tris": 75392
   },
   "amx30_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 273,
+   "insideOutPx": 221,
    "seeThroughPx": 0,
-   "tris": 68374
+   "tris": 69506
   },
   "amx30b2": {
    "sealed": false,
-   "openPx": 184,
-   "openViews": 3,
-   "insideOutPx": 1657,
-   "seeThroughPx": 27,
-   "tris": 77848
+   "openPx": 167,
+   "openViews": 4,
+   "insideOutPx": 1072,
+   "seeThroughPx": 23,
+   "tris": 78700
   },
   "amx40": {
    "sealed": false,
    "openPx": 297,
-   "openViews": 7,
-   "insideOutPx": 5769,
-   "seeThroughPx": 6,
-   "tris": 81468
+   "openViews": 6,
+   "insideOutPx": 5554,
+   "seeThroughPx": 3,
+   "tris": 82056
   },
   "amx40_x": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 12,
    "openViews": 0,
-   "insideOutPx": 127,
+   "insideOutPx": 110,
    "seeThroughPx": 0,
-   "tris": 101890
+   "tris": 103014
   },
   "amx56": {
    "sealed": true,
-   "openPx": 18,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 65,
+   "insideOutPx": 46,
    "seeThroughPx": 0,
-   "tris": 108360
+   "tris": 109808
   },
   "ariete": {
    "sealed": true,
-   "openPx": 28,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 370,
+   "insideOutPx": 212,
    "seeThroughPx": 0,
-   "tris": 85490
+   "tris": 86534
   },
   "ariete_c1": {
    "sealed": true,
-   "openPx": 24,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 484,
+   "insideOutPx": 320,
    "seeThroughPx": 0,
-   "tris": 79374
+   "tris": 80466
   },
   "ariete_c1_x": {
    "sealed": true,
-   "openPx": 144,
+   "openPx": 154,
    "openViews": 0,
-   "insideOutPx": 6144,
+   "insideOutPx": 6129,
    "seeThroughPx": 0,
-   "tris": 95054
+   "tris": 96142
   },
   "ariete_c2": {
    "sealed": true,
-   "openPx": 26,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 468,
+   "insideOutPx": 300,
    "seeThroughPx": 0,
-   "tris": 88598
+   "tris": 89690
   },
   "bmp2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 450,
-   "seeThroughPx": 200,
-   "tris": 68630
+   "insideOutPx": 132,
+   "seeThroughPx": 198,
+   "tris": 69870
   },
   "bmp3": {
    "sealed": true,
-   "openPx": 3,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 884,
-   "seeThroughPx": 447,
-   "tris": 69698
+   "insideOutPx": 234,
+   "seeThroughPx": 471,
+   "tris": 70682
   },
   "bmp3_rok": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 359,
-   "seeThroughPx": 106,
-   "tris": 70714
+   "insideOutPx": 79,
+   "seeThroughPx": 112,
+   "tris": 71954
   },
   "bmpt_t90": {
    "sealed": true,
-   "openPx": 18,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 524,
-   "seeThroughPx": 3,
-   "tris": 86380
+   "insideOutPx": 260,
+   "seeThroughPx": 0,
+   "tris": 87204
   },
   "bmpt_terminator2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 417,
-   "seeThroughPx": 21,
-   "tris": 85012
+   "insideOutPx": 213,
+   "seeThroughPx": 22,
+   "tris": 85860
   },
   "bwp1": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 267,
-   "seeThroughPx": 68,
-   "tris": 68850
+   "insideOutPx": 64,
+   "seeThroughPx": 67,
+   "tris": 70090
   },
   "carro45t": {
    "sealed": false,
-   "openPx": 398,
+   "openPx": 425,
    "openViews": 19,
-   "insideOutPx": 1954,
-   "seeThroughPx": 2,
-   "tris": 68258
+   "insideOutPx": 1599,
+   "seeThroughPx": 0,
+   "tris": 69222
   },
   "centurion3": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 308,
-   "seeThroughPx": 24,
-   "tris": 76070
+   "insideOutPx": 140,
+   "seeThroughPx": 26,
+   "tris": 77950
   },
   "centurion5": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 308,
-   "seeThroughPx": 6,
-   "tris": 79962
+   "insideOutPx": 140,
+   "seeThroughPx": 12,
+   "tris": 81842
   },
   "challenger_3": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 376,
-   "seeThroughPx": 137,
-   "tris": 79908
+   "insideOutPx": 206,
+   "seeThroughPx": 164,
+   "tris": 93516
   },
   "challenger_3x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 16,
-   "seeThroughPx": 117,
-   "tris": 91140
+   "insideOutPx": 0,
+   "seeThroughPx": 129,
+   "tris": 104748
   },
   "challenger1": {
    "sealed": true,
-   "openPx": 6,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 352,
-   "seeThroughPx": 5,
-   "tris": 90960
+   "insideOutPx": 146,
+   "seeThroughPx": 9,
+   "tris": 92280
   },
   "challenger1_x": {
    "sealed": true,
    "openPx": 9,
    "openViews": 0,
-   "insideOutPx": 861,
+   "insideOutPx": 677,
    "seeThroughPx": 0,
-   "tris": 106502
+   "tris": 107446
   },
   "challenger2": {
-   "sealed": false,
-   "openPx": 97,
-   "openViews": 3,
-   "insideOutPx": 319,
-   "seeThroughPx": 212,
-   "tris": 136410
+   "sealed": true,
+   "openPx": 30,
+   "openViews": 0,
+   "insideOutPx": 134,
+   "seeThroughPx": 216,
+   "tris": 113058
   },
   "challenger2e": {
    "sealed": true,
-   "openPx": 45,
+   "openPx": 34,
    "openViews": 0,
-   "insideOutPx": 148,
-   "seeThroughPx": 120,
-   "tris": 139644
+   "insideOutPx": 105,
+   "seeThroughPx": 130,
+   "tris": 116292
   },
   "chieftain_mk10": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 613,
+   "insideOutPx": 384,
    "seeThroughPx": 0,
-   "tris": 76288
+   "tris": 77272
   },
   "chieftain_mk10_x": {
    "sealed": true,
-   "openPx": 103,
+   "openPx": 99,
    "openViews": 0,
-   "insideOutPx": 669,
+   "insideOutPx": 231,
    "seeThroughPx": 0,
-   "tris": 106704
+   "tris": 107440
   },
   "chieftain5": {
    "sealed": true,
-   "openPx": 17,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 686,
-   "seeThroughPx": 0,
-   "tris": 79168
+   "insideOutPx": 310,
+   "seeThroughPx": 3,
+   "tris": 80152
   },
   "chieftain5_x": {
    "sealed": true,
-   "openPx": 55,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 473,
+   "insideOutPx": 470,
    "seeThroughPx": 0,
-   "tris": 89670
+   "tris": 90886
   },
   "cv90": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 1472,
+   "insideOutPx": 532,
    "seeThroughPx": 0,
-   "tris": 71560
+   "tris": 72360
   },
   "cv90_mkiv": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 1140,
+   "insideOutPx": 474,
    "seeThroughPx": 0,
-   "tris": 78682
+   "tris": 79918
   },
   "fv4034": {
    "sealed": true,
    "openPx": 29,
    "openViews": 0,
-   "insideOutPx": 288,
-   "seeThroughPx": 222,
-   "tris": 127114
+   "insideOutPx": 169,
+   "seeThroughPx": 189,
+   "tris": 107602
   },
   "fv510": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 956,
+   "insideOutPx": 292,
    "seeThroughPx": 0,
-   "tris": 65998
+   "tris": 67382
   },
   "fv510_milan": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 796,
+   "insideOutPx": 274,
    "seeThroughPx": 0,
-   "tris": 70986
+   "tris": 72370
   },
   "isu122s": {
    "sealed": true,
-   "openPx": 6,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 784,
-   "seeThroughPx": 6,
-   "tris": 140488
+   "insideOutPx": 386,
+   "seeThroughPx": 4,
+   "tris": 141460
   },
   "isu152": {
    "sealed": false,
-   "openPx": 119,
-   "openViews": 10,
-   "insideOutPx": 212,
+   "openPx": 180,
+   "openViews": 14,
+   "insideOutPx": 110,
    "seeThroughPx": 0,
-   "tris": 150604
+   "tris": 151568
   },
   "jpz_e100": {
    "sealed": true,
-   "openPx": 58,
+   "openPx": 11,
    "openViews": 0,
-   "insideOutPx": 866,
-   "seeThroughPx": 7064,
-   "tris": 90634
+   "insideOutPx": 512,
+   "seeThroughPx": 7157,
+   "tris": 92718
   },
   "jpz_e100_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 196,
+   "insideOutPx": 188,
    "seeThroughPx": 0,
-   "tris": 101422
+   "tris": 103634
   },
   "k1a1": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 484,
-   "seeThroughPx": 208,
-   "tris": 80926
+   "insideOutPx": 202,
+   "seeThroughPx": 233,
+   "tris": 81478
   },
   "k1a1_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 436,
+   "insideOutPx": 94,
    "seeThroughPx": 0,
-   "tris": 93894
+   "tris": 95390
   },
   "k2": {
    "sealed": false,
-   "openPx": 184,
+   "openPx": 156,
    "openViews": 6,
-   "insideOutPx": 65,
-   "seeThroughPx": 204,
-   "tris": 89838
+   "insideOutPx": 96,
+   "seeThroughPx": 233,
+   "tris": 90902
   },
   "k2_x": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 9,
    "openViews": 0,
-   "insideOutPx": 300,
+   "insideOutPx": 114,
    "seeThroughPx": 0,
-   "tris": 76602
+   "tris": 77722
   },
   "k2b": {
    "sealed": false,
-   "openPx": 145,
+   "openPx": 133,
    "openViews": 5,
-   "insideOutPx": 9,
-   "seeThroughPx": 230,
-   "tris": 98428
+   "insideOutPx": 6,
+   "seeThroughPx": 219,
+   "tris": 99492
   },
   "kf51": {
    "sealed": true,
-   "openPx": 8,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 917,
+   "insideOutPx": 612,
    "seeThroughPx": 0,
-   "tris": 119258
+   "tris": 120434
   },
   "kf51_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 580,
+   "insideOutPx": 274,
    "seeThroughPx": 0,
-   "tris": 71074
+   "tris": 72154
   },
   "kf51b": {
    "sealed": true,
-   "openPx": 7,
+   "openPx": 4,
    "openViews": 0,
-   "insideOutPx": 388,
-   "seeThroughPx": 44,
-   "tris": 111706
+   "insideOutPx": 254,
+   "seeThroughPx": 37,
+   "tris": 112506
   },
   "kv2": {
    "sealed": true,
-   "openPx": 26,
+   "openPx": 11,
    "openViews": 0,
-   "insideOutPx": 1836,
+   "insideOutPx": 747,
    "seeThroughPx": 0,
-   "tris": 77570
+   "tris": 78986
   },
   "leclerc": {
    "sealed": true,
-   "openPx": 15,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 62,
+   "insideOutPx": 39,
    "seeThroughPx": 0,
-   "tris": 102284
+   "tris": 103732
   },
   "leclerc_classic_x": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 218,
+   "insideOutPx": 232,
    "seeThroughPx": 12,
-   "tris": 124692
+   "tris": 125820
   },
   "leclerc_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 255,
+   "insideOutPx": 260,
    "seeThroughPx": 0,
-   "tris": 120732
+   "tris": 121124
   },
   "leclerc_xlr": {
    "sealed": true,
-   "openPx": 30,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 57,
+   "insideOutPx": 51,
    "seeThroughPx": 0,
-   "tris": 105860
+   "tris": 107308
   },
   "leo1a5": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 676,
-   "seeThroughPx": 2,
-   "tris": 92500
+   "insideOutPx": 501,
+   "seeThroughPx": 1,
+   "tris": 93580
   },
   "leo2_revolution": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 512,
-   "seeThroughPx": 1,
-   "tris": 76210
+   "insideOutPx": 250,
+   "seeThroughPx": 0,
+   "tris": 77306
   },
   "leo2_revolution_proto": {
    "sealed": true,
-   "openPx": 1,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 267,
-   "seeThroughPx": 9,
-   "tris": 94484
+   "insideOutPx": 239,
+   "seeThroughPx": 0,
+   "tris": 95724
   },
   "leo2a4": {
    "sealed": true,
-   "openPx": 26,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 451,
-   "seeThroughPx": 7853,
-   "tris": 108480
+   "insideOutPx": 248,
+   "seeThroughPx": 8339,
+   "tris": 109768
   },
   "leo2a4_otco": {
    "sealed": true,
-   "openPx": 26,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 454,
-   "seeThroughPx": 11,
-   "tris": 93092
+   "insideOutPx": 252,
+   "seeThroughPx": 8,
+   "tris": 94380
   },
   "leo2a4m": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 424,
+   "insideOutPx": 300,
    "seeThroughPx": 0,
-   "tris": 99190
+   "tris": 100406
   },
   "leo2a4m_x": {
    "sealed": true,
-   "openPx": 17,
+   "openPx": 11,
    "openViews": 0,
-   "insideOutPx": 564,
+   "insideOutPx": 241,
    "seeThroughPx": 0,
-   "tris": 81074
+   "tris": 82186
   },
   "leo2a5": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 178,
+   "insideOutPx": 95,
    "seeThroughPx": 0,
-   "tris": 104866
+   "tris": 106170
   },
   "leo2a5_a5nl": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 88,
+   "insideOutPx": 79,
    "seeThroughPx": 0,
-   "tris": 112266
+   "tris": 113570
   },
   "leo2a5_x": {
    "sealed": true,
-   "openPx": 5,
+   "openPx": 3,
    "openViews": 0,
-   "insideOutPx": 499,
+   "insideOutPx": 139,
    "seeThroughPx": 0,
-   "tris": 93366
+   "tris": 94942
   },
   "leo2a6": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 338,
-   "seeThroughPx": 8,
-   "tris": 103748
+   "insideOutPx": 229,
+   "seeThroughPx": 27,
+   "tris": 104924
   },
   "leo2a6_ua": {
    "sealed": true,
-   "openPx": 8,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 845,
-   "seeThroughPx": 12865,
-   "tris": 135252
+   "insideOutPx": 752,
+   "seeThroughPx": 13598,
+   "tris": 136468
   },
   "leo2a6_x": {
    "sealed": true,
    "openPx": 190,
    "openViews": 0,
-   "insideOutPx": 371,
+   "insideOutPx": 219,
    "seeThroughPx": 0,
-   "tris": 97446
+   "tris": 98638
   },
   "leo2a6m": {
-   "sealed": false,
-   "openPx": 34,
-   "openViews": 1,
-   "insideOutPx": 1129,
-   "seeThroughPx": 0,
-   "tris": 104156
-  },
-  "leo2a6m_x": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 297,
+   "insideOutPx": 1009,
    "seeThroughPx": 0,
-   "tris": 89118
+   "tris": 105372
+  },
+  "leo2a6m_x": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 79,
+   "seeThroughPx": 0,
+   "tris": 90646
   },
   "leo2a7v": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 340,
-   "seeThroughPx": 69,
-   "tris": 100074
+   "insideOutPx": 220,
+   "seeThroughPx": 66,
+   "tris": 101346
   },
   "leo2a7v_x": {
    "sealed": true,
-   "openPx": 11,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 660,
+   "insideOutPx": 356,
    "seeThroughPx": 0,
-   "tris": 94262
+   "tris": 95486
   },
   "leopard2_proto": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 4,
    "openViews": 0,
-   "insideOutPx": 164,
+   "insideOutPx": 51,
    "seeThroughPx": 0,
-   "tris": 87440
+   "tris": 88744
   },
   "m1a1": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 3,
    "openViews": 0,
-   "insideOutPx": 64,
+   "insideOutPx": 17,
    "seeThroughPx": 0,
-   "tris": 89454
+   "tris": 102790
   },
   "m1a1ha": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 160,
+   "insideOutPx": 81,
    "seeThroughPx": 0,
-   "tris": 100530
+   "tris": 113866
   },
   "m1a2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 18,
+   "insideOutPx": 2,
    "seeThroughPx": 0,
-   "tris": 100894
+   "tris": 114230
   },
   "m1a2_legacy": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 574,
-   "seeThroughPx": 11,
-   "tris": 97630
+   "insideOutPx": 266,
+   "seeThroughPx": 8,
+   "tris": 98630
   },
   "m1a2_sepv2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 18,
-   "seeThroughPx": 14,
-   "tris": 103766
+   "insideOutPx": 2,
+   "seeThroughPx": 20,
+   "tris": 117102
   },
   "m1a2_sepv2_x": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 91,
+   "insideOutPx": 104,
    "seeThroughPx": 0,
-   "tris": 151998
+   "tris": 153474
   },
   "m1a2_sepv3": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 22,
-   "seeThroughPx": 5499,
-   "tris": 116596
+   "insideOutPx": 0,
+   "seeThroughPx": 5551,
+   "tris": 129932
   },
   "m1a2_sepv3_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 115,
+   "insideOutPx": 174,
    "seeThroughPx": 0,
-   "tris": 123590
+   "tris": 148966
   },
   "m1a2_tusk": {
    "sealed": true,
-   "openPx": 17,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 605,
+   "insideOutPx": 503,
    "seeThroughPx": 0,
-   "tris": 109698
+   "tris": 123034
   },
   "m1a2_tusk_x": {
    "sealed": true,
-   "openPx": 1,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 147,
+   "insideOutPx": 175,
    "seeThroughPx": 0,
-   "tris": 134642
+   "tris": 136118
   },
   "m1a2_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 115,
+   "insideOutPx": 139,
    "seeThroughPx": 0,
-   "tris": 118792
+   "tris": 120268
   },
   "m1a3": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 291,
+   "insideOutPx": 16,
    "seeThroughPx": 0,
-   "tris": 86518
+   "tris": 87262
   },
   "m26_pershing": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 370,
-   "seeThroughPx": 8,
-   "tris": 77394
+   "insideOutPx": 148,
+   "seeThroughPx": 5,
+   "tris": 78482
   },
   "m2a2_bradley": {
    "sealed": false,
-   "openPx": 546,
-   "openViews": 19,
-   "insideOutPx": 1097,
-   "seeThroughPx": 190,
-   "tris": 67794
+   "openPx": 549,
+   "openViews": 14,
+   "insideOutPx": 911,
+   "seeThroughPx": 165,
+   "tris": 68886
   },
   "m3a3_bradley": {
    "sealed": false,
-   "openPx": 396,
-   "openViews": 12,
-   "insideOutPx": 953,
-   "seeThroughPx": 10,
-   "tris": 75654
+   "openPx": 481,
+   "openViews": 14,
+   "insideOutPx": 856,
+   "seeThroughPx": 15,
+   "tris": 76746
   },
   "m45_patton": {
-   "sealed": false,
-   "openPx": 70,
-   "openViews": 3,
-   "insideOutPx": 1200,
+   "sealed": true,
+   "openPx": 35,
+   "openViews": 0,
+   "insideOutPx": 810,
    "seeThroughPx": 6,
-   "tris": 74118
+   "tris": 75094
   },
   "m46_patton": {
    "sealed": false,
-   "openPx": 298,
-   "openViews": 7,
-   "insideOutPx": 1681,
+   "openPx": 239,
+   "openViews": 6,
+   "insideOutPx": 1575,
    "seeThroughPx": 2,
-   "tris": 81278
+   "tris": 82190
   },
   "m47_patton": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
    "insideOutPx": 0,
    "seeThroughPx": 1,
-   "tris": 78543
+   "tris": 79439
   },
   "m48": {
    "sealed": true,
-   "openPx": 23,
+   "openPx": 20,
    "openViews": 0,
-   "insideOutPx": 1616,
+   "insideOutPx": 1490,
    "seeThroughPx": 0,
-   "tris": 83282
+   "tris": 84202
   },
   "m551_sheridan": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 1250,
-   "seeThroughPx": 14,
-   "tris": 87462
+   "insideOutPx": 485,
+   "seeThroughPx": 12,
+   "tris": 88270
   },
   "m551a1_tts": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 523,
-   "seeThroughPx": 0,
-   "tris": 92730
+   "insideOutPx": 239,
+   "seeThroughPx": 2,
+   "tris": 93538
   },
   "m60a1": {
    "sealed": false,
-   "openPx": 58,
+   "openPx": 79,
    "openViews": 2,
-   "insideOutPx": 2138,
+   "insideOutPx": 1891,
    "seeThroughPx": 0,
-   "tris": 83404
+   "tris": 84388
   },
   "m60a2": {
    "sealed": true,
-   "openPx": 20,
+   "openPx": 16,
    "openViews": 0,
-   "insideOutPx": 704,
+   "insideOutPx": 262,
    "seeThroughPx": 0,
-   "tris": 85448
+   "tris": 86448
   },
   "m60a3": {
    "sealed": false,
-   "openPx": 91,
-   "openViews": 3,
-   "insideOutPx": 2259,
-   "seeThroughPx": 2,
-   "tris": 84912
+   "openPx": 61,
+   "openViews": 1,
+   "insideOutPx": 1968,
+   "seeThroughPx": 1,
+   "tris": 85896
   },
   "marder1a3": {
    "sealed": false,
-   "openPx": 156,
-   "openViews": 11,
-   "insideOutPx": 1369,
-   "seeThroughPx": 105,
-   "tris": 64558
+   "openPx": 182,
+   "openViews": 13,
+   "insideOutPx": 1021,
+   "seeThroughPx": 121,
+   "tris": 65650
   },
   "mbt70": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 887,
+   "insideOutPx": 455,
    "seeThroughPx": 0,
-   "tris": 83970
+   "tris": 85146
   },
   "merkava1b": {
    "sealed": false,
-   "openPx": 167,
-   "openViews": 9,
-   "insideOutPx": 1186,
+   "openPx": 140,
+   "openViews": 6,
+   "insideOutPx": 778,
    "seeThroughPx": 0,
-   "tris": 115334
+   "tris": 115854
   },
   "merkava2b": {
    "sealed": false,
-   "openPx": 271,
-   "openViews": 16,
-   "insideOutPx": 1402,
+   "openPx": 299,
+   "openViews": 18,
+   "insideOutPx": 1000,
    "seeThroughPx": 4,
-   "tris": 105510
+   "tris": 105982
   },
   "merkava2d": {
    "sealed": false,
-   "openPx": 485,
-   "openViews": 17,
-   "insideOutPx": 1453,
-   "seeThroughPx": 4,
-   "tris": 107842
+   "openPx": 486,
+   "openViews": 18,
+   "insideOutPx": 1058,
+   "seeThroughPx": 13,
+   "tris": 108314
   },
   "merkava3c": {
    "sealed": true,
-   "openPx": 50,
+   "openPx": 46,
    "openViews": 0,
-   "insideOutPx": 1022,
-   "seeThroughPx": 0,
-   "tris": 115274
+   "insideOutPx": 772,
+   "seeThroughPx": 23,
+   "tris": 115730
   },
   "merkava3d": {
    "sealed": true,
-   "openPx": 20,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 454,
+   "insideOutPx": 247,
    "seeThroughPx": 0,
-   "tris": 123858
+   "tris": 124346
   },
   "merkava3d_x": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 8,
    "openViews": 0,
-   "insideOutPx": 578,
+   "insideOutPx": 275,
    "seeThroughPx": 0,
-   "tris": 79154
+   "tris": 80714
   },
   "merkava4_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 574,
+   "insideOutPx": 200,
    "seeThroughPx": 0,
-   "tris": 81486
+   "tris": 82610
   },
   "merkava4b": {
    "sealed": true,
-   "openPx": 54,
+   "openPx": 36,
    "openViews": 0,
-   "insideOutPx": 1898,
+   "insideOutPx": 1100,
    "seeThroughPx": 0,
-   "tris": 112460
+   "tris": 113068
   },
   "panther_g": {
    "sealed": true,
-   "openPx": 9,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 1227,
-   "seeThroughPx": 3192,
-   "tris": 71976
+   "insideOutPx": 579,
+   "seeThroughPx": 3218,
+   "tris": 73980
   },
   "pl01": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 430,
+   "insideOutPx": 255,
    "seeThroughPx": 0,
-   "tris": 76920
+   "tris": 78432
   },
   "pl01_105": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 430,
+   "insideOutPx": 255,
    "seeThroughPx": 0,
-   "tris": 78076
+   "tris": 79588
   },
   "pt91_twardy": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 639,
-   "seeThroughPx": 4904,
-   "tris": 80226
+   "insideOutPx": 318,
+   "seeThroughPx": 5171,
+   "tris": 81090
   },
   "pt91m": {
    "sealed": true,
    "openPx": 4,
    "openViews": 0,
-   "insideOutPx": 626,
-   "seeThroughPx": 8,
-   "tris": 79208
+   "insideOutPx": 264,
+   "seeThroughPx": 10,
+   "tris": 80360
   },
   "spz_puma": {
    "sealed": true,
-   "openPx": 24,
+   "openPx": 10,
    "openViews": 0,
-   "insideOutPx": 1220,
-   "seeThroughPx": 0,
-   "tris": 71892
+   "insideOutPx": 671,
+   "seeThroughPx": 22,
+   "tris": 72952
   },
   "spz_puma_s1": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 548,
+   "insideOutPx": 158,
    "seeThroughPx": 1,
-   "tris": 72948
+   "tris": 73796
   },
   "stb1": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 1312,
+   "insideOutPx": 418,
    "seeThroughPx": 4,
-   "tris": 66958
+   "tris": 68022
   },
   "strv103": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 7,
    "openViews": 0,
-   "insideOutPx": 788,
-   "seeThroughPx": 3440,
-   "tris": 68058
+   "insideOutPx": 540,
+   "seeThroughPx": 3424,
+   "tris": 69070
   },
   "strv103a": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 715,
-   "seeThroughPx": 4377,
-   "tris": 61942
+   "insideOutPx": 318,
+   "seeThroughPx": 4599,
+   "tris": 62650
   },
   "strv122": {
    "sealed": true,
-   "openPx": 6,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 168,
-   "seeThroughPx": 0,
-   "tris": 111434
+   "insideOutPx": 50,
+   "seeThroughPx": 1,
+   "tris": 112738
   },
   "strv122_x": {
    "sealed": true,
-   "openPx": 1,
+   "openPx": 4,
    "openViews": 0,
-   "insideOutPx": 288,
+   "insideOutPx": 192,
    "seeThroughPx": 0,
-   "tris": 130690
+   "tris": 132286
   },
   "strv81": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 344,
-   "seeThroughPx": 1,
-   "tris": 82278
+   "insideOutPx": 108,
+   "seeThroughPx": 7,
+   "tris": 84158
   },
   "sturmtiger": {
    "sealed": true,
-   "openPx": 28,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 1735,
+   "insideOutPx": 934,
    "seeThroughPx": 0,
-   "tris": 66938
+   "tris": 68654
   },
   "t14": {
    "sealed": false,
-   "openPx": 313,
-   "openViews": 12,
-   "insideOutPx": 1146,
+   "openPx": 353,
+   "openViews": 14,
+   "insideOutPx": 1130,
    "seeThroughPx": 0,
-   "tris": 78416
+   "tris": 79712
   },
   "t14_x": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 514,
+   "insideOutPx": 58,
    "seeThroughPx": 0,
-   "tris": 79842
+   "tris": 81338
   },
   "t62mv1": {
    "sealed": true,
-   "openPx": 5,
+   "openPx": 3,
    "openViews": 0,
-   "insideOutPx": 860,
-   "seeThroughPx": 0,
-   "tris": 66712
+   "insideOutPx": 308,
+   "seeThroughPx": 4,
+   "tris": 67904
   },
   "t62mv1_x": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 558,
+   "insideOutPx": 356,
    "seeThroughPx": 2,
-   "tris": 65790
+   "tris": 67238
   },
   "t64bv1": {
    "sealed": false,
-   "openPx": 325,
-   "openViews": 14,
-   "insideOutPx": 767,
+   "openPx": 335,
+   "openViews": 16,
+   "insideOutPx": 621,
    "seeThroughPx": 4,
-   "tris": 76582
+   "tris": 77558
   },
   "t72b_1987_x": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 13,
    "openViews": 0,
-   "insideOutPx": 288,
+   "insideOutPx": 214,
    "seeThroughPx": 0,
-   "tris": 79302
+   "tris": 80262
   },
   "t72b3_x": {
    "sealed": true,
-   "openPx": 3,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 176,
+   "insideOutPx": 109,
    "seeThroughPx": 0,
-   "tris": 73396
+   "tris": 74796
   },
   "t72b3m": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 200,
+   "insideOutPx": 92,
    "seeThroughPx": 18,
-   "tris": 112222
+   "tris": 113110
   },
   "t72b3m_x": {
    "sealed": true,
-   "openPx": 0,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 267,
-   "seeThroughPx": 0,
-   "tris": 84426
+   "insideOutPx": 76,
+   "seeThroughPx": 1,
+   "tris": 85818
   },
   "t72bu": {
    "sealed": true,
    "openPx": 15,
    "openViews": 0,
-   "insideOutPx": 478,
+   "insideOutPx": 177,
    "seeThroughPx": 0,
-   "tris": 78976
+   "tris": 79512
   },
   "t72bu_x": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 186,
+   "insideOutPx": 139,
    "seeThroughPx": 0,
-   "tris": 74550
+   "tris": 75510
   },
   "t72m1_jaguar": {
    "sealed": true,
-   "openPx": 7,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 956,
+   "insideOutPx": 480,
    "seeThroughPx": 0,
-   "tris": 78626
+   "tris": 79506
   },
   "t80": {
    "sealed": true,
-   "openPx": 16,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 438,
-   "seeThroughPx": 13,
-   "tris": 69408
+   "insideOutPx": 220,
+   "seeThroughPx": 17,
+   "tris": 70336
   },
   "t80b": {
    "sealed": true,
-   "openPx": 16,
+   "openPx": 12,
    "openViews": 0,
-   "insideOutPx": 426,
+   "insideOutPx": 196,
    "seeThroughPx": 0,
-   "tris": 70016
+   "tris": 70944
   },
   "t80bv": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 14,
    "openViews": 0,
-   "insideOutPx": 392,
-   "seeThroughPx": 5,
-   "tris": 80184
+   "insideOutPx": 206,
+   "seeThroughPx": 4,
+   "tris": 81112
   },
   "t80u": {
    "sealed": true,
-   "openPx": 6,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 356,
-   "seeThroughPx": 146,
-   "tris": 79568
+   "insideOutPx": 162,
+   "seeThroughPx": 116,
+   "tris": 80576
   },
   "t80u_x": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 216,
+   "insideOutPx": 130,
    "seeThroughPx": 1,
-   "tris": 63640
+   "tris": 64640
   },
   "t84": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 158,
-   "seeThroughPx": 10262,
-   "tris": 84518
+   "insideOutPx": 44,
+   "seeThroughPx": 10559,
+   "tris": 85870
   },
   "t90": {
    "sealed": true,
-   "openPx": 25,
+   "openPx": 9,
    "openViews": 0,
-   "insideOutPx": 374,
-   "seeThroughPx": 4,
-   "tris": 83372
+   "insideOutPx": 198,
+   "seeThroughPx": 7,
+   "tris": 84220
   },
   "t90_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 206,
+   "insideOutPx": 80,
    "seeThroughPx": 0,
-   "tris": 96738
+   "tris": 97786
   },
   "t90a": {
    "sealed": false,
-   "openPx": 94,
+   "openPx": 126,
    "openViews": 3,
-   "insideOutPx": 542,
+   "insideOutPx": 308,
    "seeThroughPx": 0,
-   "tris": 83352
+   "tris": 84216
   },
   "t90a_burlak": {
    "sealed": true,
-   "openPx": 8,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 474,
+   "insideOutPx": 248,
    "seeThroughPx": 0,
-   "tris": 78180
+   "tris": 79044
   },
   "t90a_burlak_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 164,
+   "insideOutPx": 64,
    "seeThroughPx": 0,
-   "tris": 84702
+   "tris": 87590
   },
   "t90a_vladimir": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 264,
-   "seeThroughPx": 4,
-   "tris": 78036
+   "insideOutPx": 132,
+   "seeThroughPx": 2,
+   "tris": 78884
   },
   "t90a_vladimir_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 417,
+   "insideOutPx": 129,
    "seeThroughPx": 0,
-   "tris": 79494
+   "tris": 80470
   },
   "t90a_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 164,
-   "seeThroughPx": 19,
-   "tris": 98306
+   "insideOutPx": 125,
+   "seeThroughPx": 18,
+   "tris": 99722
   },
   "t90m": {
    "sealed": true,
-   "openPx": 9,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 480,
+   "insideOutPx": 232,
    "seeThroughPx": 0,
-   "tris": 98258
+   "tris": 98730
   },
   "t90m_proryv": {
    "sealed": true,
-   "openPx": 9,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 482,
+   "insideOutPx": 232,
    "seeThroughPx": 4,
-   "tris": 96638
+   "tris": 97110
   },
   "t90m_x": {
    "sealed": true,
-   "openPx": 8,
+   "openPx": 7,
    "openViews": 0,
-   "insideOutPx": 287,
-   "seeThroughPx": 34,
-   "tris": 100882
+   "insideOutPx": 78,
+   "seeThroughPx": 33,
+   "tris": 102010
   },
   "t90ms": {
    "sealed": true,
-   "openPx": 16,
+   "openPx": 10,
    "openViews": 0,
-   "insideOutPx": 287,
-   "seeThroughPx": 19,
-   "tris": 73182
+   "insideOutPx": 105,
+   "seeThroughPx": 4,
+   "tris": 73670
   },
   "t90ms_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 221,
+   "insideOutPx": 114,
    "seeThroughPx": 0,
-   "tris": 82342
+   "tris": 84118
   },
   "t90sm": {
    "sealed": false,
-   "openPx": 106,
-   "openViews": 4,
-   "insideOutPx": 204,
-   "seeThroughPx": 4,
-   "tris": 75558
+   "openPx": 114,
+   "openViews": 3,
+   "insideOutPx": 146,
+   "seeThroughPx": 3,
+   "tris": 76494
   },
   "t90sm_x": {
    "sealed": true,
-   "openPx": 11,
+   "openPx": 10,
    "openViews": 0,
-   "insideOutPx": 374,
+   "insideOutPx": 193,
    "seeThroughPx": 4,
-   "tris": 105604
+   "tris": 106724
   },
   "t95": {
    "sealed": true,
-   "openPx": 10,
+   "openPx": 9,
    "openViews": 0,
-   "insideOutPx": 580,
+   "insideOutPx": 249,
    "seeThroughPx": 0,
-   "tris": 115618
+   "tris": 117626
   },
   "tiger1": {
    "sealed": true,
-   "openPx": 16,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 1598,
-   "seeThroughPx": 595,
-   "tris": 96520
+   "insideOutPx": 676,
+   "seeThroughPx": 549,
+   "tris": 98204
   },
   "type10": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 52,
-   "seeThroughPx": 69,
-   "tris": 85202
+   "insideOutPx": 36,
+   "seeThroughPx": 61,
+   "tris": 86258
   },
   "type10_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 444,
+   "insideOutPx": 346,
    "seeThroughPx": 0,
-   "tris": 67146
+   "tris": 68198
   },
   "type10b": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 50,
+   "insideOutPx": 40,
    "seeThroughPx": 54,
-   "tris": 98062
+   "tris": 99094
   },
   "type59": {
    "sealed": true,
-   "openPx": 1,
+   "openPx": 5,
    "openViews": 0,
-   "insideOutPx": 795,
-   "seeThroughPx": 3,
-   "tris": 75714
+   "insideOutPx": 360,
+   "seeThroughPx": 2,
+   "tris": 76954
   },
   "type74": {
    "sealed": false,
-   "openPx": 60,
-   "openViews": 4,
-   "insideOutPx": 3674,
+   "openPx": 58,
+   "openViews": 3,
+   "insideOutPx": 3435,
    "seeThroughPx": 0,
-   "tris": 63790
+   "tris": 65454
   },
   "type89": {
    "sealed": true,
-   "openPx": 6,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 874,
+   "insideOutPx": 372,
    "seeThroughPx": 0,
-   "tris": 63052
+   "tris": 63908
   },
   "type89_light_tiger": {
    "sealed": true,
-   "openPx": 12,
+   "openPx": 4,
    "openViews": 0,
-   "insideOutPx": 545,
+   "insideOutPx": 220,
    "seeThroughPx": 0,
-   "tris": 83558
+   "tris": 84582
   },
   "type90": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 38,
-   "seeThroughPx": 73,
-   "tris": 73030
+   "insideOutPx": 42,
+   "seeThroughPx": 72,
+   "tris": 74038
   },
   "type90_x": {
    "sealed": true,
-   "openPx": 38,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 398,
+   "insideOutPx": 148,
    "seeThroughPx": 0,
-   "tris": 72774
+   "tris": 73974
   },
   "type90a": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
-   "insideOutPx": 92,
-   "seeThroughPx": 92,
-   "tris": 82102
+   "insideOutPx": 56,
+   "seeThroughPx": 71,
+   "tris": 83086
   },
   "type99a": {
    "sealed": true,
-   "openPx": 56,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 355,
-   "seeThroughPx": 4,
-   "tris": 75950
+   "insideOutPx": 0,
+   "seeThroughPx": 6,
+   "tris": 77382
   },
   "ua_challenger2": {
    "sealed": true,
-   "openPx": 27,
+   "openPx": 30,
    "openViews": 0,
-   "insideOutPx": 167,
-   "seeThroughPx": 96,
-   "tris": 141912
+   "insideOutPx": 94,
+   "seeThroughPx": 99,
+   "tris": 118560
   },
   "ua_m1a1": {
    "sealed": true,
-   "openPx": 7,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 78,
-   "seeThroughPx": 29668,
-   "tris": 130922
+   "insideOutPx": 37,
+   "seeThroughPx": 19407,
+   "tris": 140984
   },
   "ua_m1a1_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 115,
+   "insideOutPx": 174,
    "seeThroughPx": 0,
-   "tris": 115726
+   "tris": 139930
   },
   "ua_m2a3_bradley": {
    "sealed": false,
-   "openPx": 442,
-   "openViews": 15,
-   "insideOutPx": 1022,
-   "seeThroughPx": 16,
-   "tris": 76614
+   "openPx": 540,
+   "openViews": 16,
+   "insideOutPx": 920,
+   "seeThroughPx": 15,
+   "tris": 77706
   },
   "ua_t64bv": {
    "sealed": false,
-   "openPx": 755,
-   "openViews": 23,
-   "insideOutPx": 1009,
-   "seeThroughPx": 5746,
-   "tris": 92796
+   "openPx": 764,
+   "openViews": 22,
+   "insideOutPx": 686,
+   "seeThroughPx": 5570,
+   "tris": 93772
   },
   "ua_t80bv": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 432,
-   "seeThroughPx": 4,
-   "tris": 78426
+   "insideOutPx": 192,
+   "seeThroughPx": 24,
+   "tris": 79354
   },
   "ua_t80u_kursk": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 524,
-   "seeThroughPx": 7,
-   "tris": 75586
+   "insideOutPx": 228,
+   "seeThroughPx": 3,
+   "tris": 76530
   },
   "ua_t84_oplot_m": {
    "sealed": true,
-   "openPx": 3,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 216,
+   "insideOutPx": 74,
    "seeThroughPx": 0,
-   "tris": 83894
+   "tris": 84886
   },
   "udes03": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 712,
-   "seeThroughPx": 6,
-   "tris": 50632
+   "insideOutPx": 476,
+   "seeThroughPx": 1,
+   "tris": 51356
   },
   "upior": {
    "sealed": true,
-   "openPx": 8,
+   "openPx": 1,
    "openViews": 0,
-   "insideOutPx": 562,
-   "seeThroughPx": 16,
-   "tris": 57228
+   "insideOutPx": 225,
+   "seeThroughPx": 19,
+   "tris": 57900
   },
   "vickers_mk1": {
    "sealed": true,
-   "openPx": 2,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 745,
+   "insideOutPx": 384,
    "seeThroughPx": 0,
-   "tris": 73604
+   "tris": 74484
   },
   "vt4a1": {
    "sealed": true,
-   "openPx": 6,
+   "openPx": 10,
    "openViews": 0,
-   "insideOutPx": 462,
-   "seeThroughPx": 2,
-   "tris": 74088
+   "insideOutPx": 148,
+   "seeThroughPx": 0,
+   "tris": 76048
   },
   "ztz85_iii": {
    "sealed": true,
-   "openPx": 4,
+   "openPx": 6,
    "openViews": 0,
-   "insideOutPx": 746,
+   "insideOutPx": 390,
    "seeThroughPx": 0,
-   "tris": 66204
+   "tris": 67788
   },
   "ztz99a2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 378,
-   "seeThroughPx": 10,
-   "tris": 70006
+   "insideOutPx": 140,
+   "seeThroughPx": 13,
+   "tris": 71966
   },
   "ztz99a2_prototype": {
    "sealed": true,
-   "openPx": 14,
+   "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 526,
+   "insideOutPx": 230,
    "seeThroughPx": 0,
-   "tris": 75504
+   "tris": 77464
   },
   "type100": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
-   "insideOutPx": 122,
+   "insideOutPx": 44,
    "seeThroughPx": 0,
-   "tris": 94230
+   "tris": 96086
+  },
+  "ztz100_x": {
+   "sealed": true,
+   "openPx": 0,
+   "openViews": 0,
+   "insideOutPx": 132,
+   "seeThroughPx": 36,
+   "tris": 80682
   }
  }
 }

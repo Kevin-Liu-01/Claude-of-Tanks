@@ -70,9 +70,10 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
   const triangles = shoe.index ? shoe.index.count / 3 : shoe.getAttribute('position').count / 3;
   const simplifiedTriangles = simplified.index
     ? simplified.index.count / 3 : simplified.getAttribute('position').count / 3;
-  assert.ok(bounds.max.y - bounds.min.y >= 0.20,
+  // fleet-standard shoe stack (2026-09-17): pad 0.034–0.040 + web 0.022 + horn 0.070–0.085
+  assert.ok(bounds.max.y - bounds.min.y >= 0.12,
     `${id}: integrated shoe needs real pad, web and guide-horn depth`);
-  assert.ok((bounds.max.z - bounds.min.z) / 0.165 >= definition.padCoverage,
+  assert.ok((bounds.max.z - bounds.min.z) / 0.165 >= definition.padCoverage - 1e-6,
     `${id}: broad tread face must fill its authored pitch coverage`);
   assert.ok(bounds.max.x >= 0.58 * 0.48 && bounds.min.x <= -0.58 * 0.48,
     `${id}: transverse pins or shoulders must reach the authored shoe shoulders`);

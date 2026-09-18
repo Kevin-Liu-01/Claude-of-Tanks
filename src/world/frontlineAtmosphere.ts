@@ -62,13 +62,15 @@ export interface FrontlineAtmosphere {
 }
 
 /** Per-map front intensity 0..1 (0 = silent). Authored here, not in map configs. */
+// owner 2026-09-17 ("distant explosions visible everywhere"): no map sits under 0.4 any more —
+// every battlefield hears and sees a front; the loud maps keep their authored lead.
 export const FRONTLINE_INTENSITY: Readonly<Record<MapId, number>> = Object.freeze({
   verdant: 0.45, desert: 0.5, winter: 0.5, urban: 0.8, coastal: 0.4, autumn: 0.45,
   steppe: 0.6, railyard: 0.7, frontier: 0.9, fjord: 0.4, delta: 0.45, badlands: 0.5,
-  monsoon: 0.4, alpine: 0.35, caldera: 0.5, foundry: 0.7, ruinspires: 0.75,
+  monsoon: 0.4, alpine: 0.4, caldera: 0.5, foundry: 0.7, ruinspires: 0.75,
   blackglass: 0.55, titan_gorge: 0.5, skybridge: 0.6, polders: 0.45, copper_mesa: 0.5,
-  airfield: 0.85, oasis: 0.3, whiteout: 0.25, orchard: 0.3, longleaf: 0.4,
-  mangrove: 0.35, saltwind: 0.4, reservoir: 0.4,
+  airfield: 0.85, oasis: 0.4, whiteout: 0.4, orchard: 0.4, longleaf: 0.4,
+  mangrove: 0.4, saltwind: 0.4, reservoir: 0.4,
 });
 
 export const FRONTLINE_LIMITS = Object.freeze({
@@ -86,9 +88,13 @@ export const FRONTLINE_LIMITS = Object.freeze({
   flakIntervalS: [9, 30] as const,
   flyoverIntervalS: [40, 90] as const,
   logCap: 256,
-  // campaign slice 2 (2026-09-12): anti-air guns behind the player's line
-  aaGuns: [3, 4] as const,
-  aaBehindM: [60, 140] as const,
+  // campaign slice 2 (2026-09-12): anti-air guns; owner 2026-09-17 "AA spread around map borders" —
+  // the guns now ring the whole map edge (aaRingRadiusM), more of them at higher intensity and extra
+  // ones at campaign scale (Frontline Assault), capped by the instanced pool
+  aaGuns: [5, 8] as const,
+  aaGunsCap: 10,
+  aaRingRadiusM: [385, 465] as const,
+  aaBehindM: [60, 140] as const,   // pre-ring layout constants kept for the audio/campaign tuning that reads them
   aaLateralM: [40, 130] as const,
   aaRangeM: 950,
   aaBurstIntervalS: [0.9, 1.7] as const,
@@ -346,7 +352,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   ]);
   const aaMaterial = new THREE.MeshStandardMaterial({ color: 0x4a4f44, roughness: 0.82, metalness: 0.18 });
   options.setupMaterial?.(aaMaterial); // outside the cascade setup every cascade light strikes it at once
-  const aaCap = FRONTLINE_LIMITS.aaGuns[1];
+  const aaCap = FRONTLINE_LIMITS.aaGunsCap;
   const aaBases = new THREE.InstancedMesh(aaBaseGeometry, aaMaterial, aaCap);
   aaBases.name = 'frontline-aa-bases'; aaBases.count = 0; aaBases.castShadow = true; aaBases.receiveShadow = true;
   const aaHeads = new THREE.InstancedMesh(aaHeadGeometry, aaMaterial, aaCap);
@@ -420,7 +426,10 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     const count = Math.round(lerp(FRONTLINE_LIMITS.columns[0], FRONTLINE_LIMITS.columns[1], effective()));
     const bearing = THREE.MathUtils.degToRad(bearingDeg);
     for (let i = 0; i < count; i++) {
-      const spread = (rng() - 0.5) * THREE.MathUtils.degToRad(130);
+      // owner 2026-09-17 ("distant explosions visible everywhere"): three anchors in five stay in
+      // the front fan, the other two ring the whole horizon so every bearing shows a distant war
+      const inFan = i % 5 < 3;
+      const spread = inFan ? (rng() - 0.5) * THREE.MathUtils.degToRad(130) : (rng() - 0.5) * Math.PI * 2;
       const a = bearing + spread;
       const r = lerp(FRONTLINE_LIMITS.columnRangeM[0], FRONTLINE_LIMITS.columnRangeM[1], rng());
       const x = Math.sin(a) * r, z = Math.cos(a) * r;
@@ -495,20 +504,22 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     }
   }
 
-  /** Guns sit behind the player's spawn, away from the front, spread sideways. */
+  /**
+   * Guns ring the map border (owner 2026-09-17: "AA spread around map borders"): evenly spaced
+   * bearings with a seeded jitter on an outer ring, more guns at higher intensity and extra ones at
+   * campaign scale (Frontline Assault drives scale past 1), all inside the instanced pool cap.
+   */
   function layoutAaGuns(): void {
     aaGuns.length = 0;
-    const spawns = getSpawns?.();
-    const player = spawns?.player?.pos;
-    const count = Math.round(lerp(FRONTLINE_LIMITS.aaGuns[0], FRONTLINE_LIMITS.aaGuns[1], effective()));
+    const base = Math.round(lerp(FRONTLINE_LIMITS.aaGuns[0], FRONTLINE_LIMITS.aaGuns[1], effective()));
+    const count = Math.min(FRONTLINE_LIMITS.aaGunsCap, base + Math.max(0, Math.round((scale - 1) * 4)));
     const bearing = THREE.MathUtils.degToRad(bearingDeg);
-    const fx = Math.sin(bearing), fz = Math.cos(bearing);
-    const px = player ? player[0] : -fx * 300, pz = player ? player[2] : -fz * 300;
+    const start = rng() * Math.PI * 2;
     for (let i = 0; i < count; i++) {
-      const behind = lerp(FRONTLINE_LIMITS.aaBehindM[0], FRONTLINE_LIMITS.aaBehindM[1], rng());
-      const lateral = lerp(FRONTLINE_LIMITS.aaLateralM[0], FRONTLINE_LIMITS.aaLateralM[1], rng()) * (i % 2 === 0 ? 1 : -1);
-      const x = THREE.MathUtils.clamp(px - fx * behind + fz * lateral, -470, 470);
-      const z = THREE.MathUtils.clamp(pz - fz * behind - fx * lateral, -470, 470);
+      const a = start + (i / count) * Math.PI * 2 + (rng() - 0.5) * (Math.PI / count) * 0.6;
+      const r = lerp(FRONTLINE_LIMITS.aaRingRadiusM[0], FRONTLINE_LIMITS.aaRingRadiusM[1], rng());
+      const x = THREE.MathUtils.clamp(Math.sin(a) * r, -470, 470);
+      const z = THREE.MathUtils.clamp(Math.cos(a) * r, -470, 470);
       const pos = new THREE.Vector3(x, groundY(x, z), z);
       aaGuns.push({ pos, yaw: bearing, pitch: 0.35, nextBurstAt: 0, shotsLeft: 0, nextShotAt: 0, destroyed: false });
       _m.compose(pos, _q.setFromAxisAngle(_up, bearing + (rng() - 0.5) * 0.4), _one);

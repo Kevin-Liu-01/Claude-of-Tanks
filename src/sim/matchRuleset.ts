@@ -111,7 +111,7 @@ export interface CampaignRulesetInput {
 
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
-  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 1,
+  ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw',
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
 });
@@ -255,7 +255,7 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (!ruleset.criticalDamage) line('noCriticalDamage');
   if (ruleset.jumpMps != null) line('jump', { value: String(ruleset.jumpMps) });
   if (ruleset.recoilLaunchScale !== 1) line('recoilLaunch', { value: `×${Math.round(ruleset.recoilLaunchScale * 10) / 10}` });
-  if (ruleset.shellKnockScale !== 1) line('shellKnock', { value: `×${Math.round(ruleset.shellKnockScale * 10) / 10}` });
+  if (ruleset.shellKnockScale !== 0.3) line('shellKnock', { value: `×${Math.round(ruleset.shellKnockScale * 10) / 10}` });
   if (ruleset.respawnS != null) line('respawn', { value: String(ruleset.respawnS) });
   else if (ruleset.mode !== 'standard') line('noRespawn');
   if (ruleset.timeLimitS == null) line('noClock');

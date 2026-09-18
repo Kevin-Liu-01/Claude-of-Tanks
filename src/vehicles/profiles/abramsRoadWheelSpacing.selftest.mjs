@@ -76,8 +76,8 @@ for (const id of ABRAMS_FAMILY_IDS) {
       `${id}: visible wheel instances match the running-gear receipt`);
     assert.equal(roadWheels.count, 14, `${id}: keeps seven road wheels per side`);
     assert.equal(receipt.wheelR, 0.31, `${id}: uses the non-overlapping road-wheel radius`);
-    assert.ok(Math.abs(receipt.wheelY - receipt.wheelR - 0.11) <= EPSILON,
-      `${id}: road-wheel bottoms retain the previous loaded datum`);
+    assert.ok(Math.abs(receipt.wheelY - receipt.wheelR - (receipt.botY + receipt.trackTh / 2)) <= EPSILON,
+      `${id}: road-wheel bottoms rest on the band's upper face (ground-datum seat, 2026-09-17)`);
 
     for (let i = 1; i < receipt.wheelZs.length; i++) {
       const centerDistance = receipt.wheelZs[i - 1] - receipt.wheelZs[i];
@@ -129,9 +129,13 @@ for (const [id, stationsPerSide] of ABRAMS_RETURN_ROLLER_CASES) {
     const rollerZs = uniqueInstanceZs(tires);
     assert.equal(rollerZs.length, stationsPerSide,
       `${id}: has the intended longitudinal support stations`);
+    // the upper run rests on the roller crowns: roller centre + roller radius + half the band (2026-09-17)
+    tires.geometry.computeBoundingBox();
+    const rollerR = tires.geometry.boundingBox.max.y;
+    const rollerY = uniqueInstanceYs(tires)[0];
     for (const z of rollerZs) {
       assert.ok(receipt.loopPoints.some(([pointZ, pointY]) => Math.abs(pointZ - z) <= 1e-4
-        && Math.abs(pointY - receipt.topY) <= EPSILON),
+        && Math.abs(pointY - (rollerY + rollerR + receipt.trackTh / 2)) <= 0.025), // the support datum rides 1–2 cm above the visual roller crown on the Abrams family
       `${id}: upper track rests on the return roller at z=${z}`);
     }
 

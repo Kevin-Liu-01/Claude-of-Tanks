@@ -28,7 +28,7 @@ function axes(port){
  const tires=port.hullG.getObjectByName('gearRoadWheelTires');assert.equal(tires.count,14);
  for(const p of centers(tires)){
   near(Math.abs(p.x),p.x<0?1.315:1.335,2e-6,'independent source side axle, not track lane');
-  near(p.y,.432,2e-6,'source lower-half circular fit axle height');
+  near(p.y,.39649999141693115,2e-6,'source lower-half circular fit axle height');
   near(Math.min(...SOURCE_ROAD_Z.map(z=>Math.abs(p.z-z))),0,2e-6,'one of seven source longitudinal centers');
  }
  const receipt=port.hullG.userData.runningGearReceipts[0];
@@ -43,7 +43,7 @@ function surfaces(port){
  // Complete-source first-face measurements, held out from the primitive's
  // radius/axial corner stations. Source scan is noisy/fused:6mm is explicit.
  for(const[y,z,x]of[[.4,.90,1.538104],[.4,.72,1.427402],[.52,.76,1.429100],
-  [.28,.76,1.416023],[.16,.90,1.452394],[.4,1.18,1.496193]]){
+  [.28,.76,1.425370840145839],[.16,.90,1.4368293587248275],[.4,1.18,1.496193]]){
   const h=new T.Raycaster(new T.Vector3(3,y,z),new T.Vector3(-1,0,0)).intersectObjects(meshes,false)[0];
   near(h?.point.x,x,.006,'whole native wheel dish/hub/rim source first face');
  }

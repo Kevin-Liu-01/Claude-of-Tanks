@@ -68,7 +68,8 @@ try {
   const compactBounds = new Box3().setFromObject(tank.root).getSize(new Vector3());
   assert.ok(Math.abs(compactBounds.x - 3.9119999408721924 * 0.9) < 0.01,
     'Light Tiger outer width is exactly ten percent smaller');
-  assert.ok(Math.abs(compactBounds.y - 3.8107486949517546 * 0.9) < 0.01,
+  // 2026-09-17 ground datum + 28 mm band: the full-equipment base height is 3.7489801 (3.374082 / 0.9), formerly 3.8107487
+  assert.ok(Math.abs(compactBounds.y - 3.7489801 * 0.9) < 0.01,
     'Light Tiger full equipment height is exactly ten percent smaller');
   assert.deepEqual(hull.userData.type89LightTigerReceipt, {
     independentFromLegacyType89: true,
@@ -173,9 +174,10 @@ try {
     'Light Tiger retains its unique staggered-rib Japanese shoe construction');
   assert.equal(hull.userData.type89LightTigerReceipt.rearTrackDepartureZM, -2.00,
     'rear track departure wraps the aft road wheel instead of joining behind it');
+  // 2026-09-17 ground datum: the lower run sits at the derived botY (.057), no longer the authored .05
   assert.ok(gear?.loopPoints.some(([z, y]) => Math.abs(z + 2.00) < 1e-9
-    && Math.abs(y - 0.05) < 1e-9),
-  'rear track course physically departs its lower run at the authored aft-wheel seat');
+    && Math.abs(y - gear.botY) < 1e-9),
+  'rear track course physically departs its lower run at the derived aft-wheel seat');
   assert.ok(gear?.loopPoints.some(([z]) => z > 3.28) && gear?.loopPoints.some(([z]) => z < -3.22),
     'Light Tiger track course reaches both full-length hull shoulders');
   assert.equal(gear?.suspensionDynamic, true, 'road wheels retain dynamic inboard suspension arms');

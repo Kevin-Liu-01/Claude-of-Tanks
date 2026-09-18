@@ -71,25 +71,30 @@ function runningGear(P: TankBuilderPort): void {
   const wheel=challenger1PhotoWheelSolids();
   const zs = [-2.18, -1.385, -.59, .59, 1.385, 2.18];
   const rollers = [-2.13, -.76, .76, 2.13].map(z => ({ z, y: 1.055, r: .092 }));
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = { padHeight: .029, grouserHeight: .013, webHeight: .030, hornHeight: .095 };
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .395, wheelW: .39, wheelY: .470,
     wheelTireInnerRadiusM:.369,
     wheelCoreGeometry:{disc:wheel.core},
     wheelFaceLayers:[{geometry:wheel.shoulder,material:P.mats.rubber,
       name:'challenger1PhotoWheelRubberShoulders',appearanceRole:'wheelTire'}],
-    wheelZs: zs, xc: 1.385, trackW: .650, trackTh: .024, botY: .0515, topY: 1.203,
-    linkPitchM: .1715, // 92 shoes per side, as listed in the original handbook.
-    trackShoeDimensions: { padHeight: .029, grouserHeight: .013, webHeight: .030, hornHeight: .095 },
+    wheelZs: zs, xc: 1.385, trackW: .650, trackTh: .024, botY, topY: 1.203,
+    // 92 shoes per side, as listed in the original handbook; 2026-09-17 ground datum shortened the seated loop to 15.597 m
+    linkPitchM: .1695,
+    trackShoeDimensions: shoeDims,
     sprocket: { z: -3.33, y: .848, r: .347, trackR: .322 },
     idler: { z: 3.36, y: .866, r: .31, trackR: .292 },
     rollers, returnRollerWidthM: .23, returnRollerInsetM: .09,
     contactZF: 2.395, contactZR: -2.395,
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler: { z: 3.36, y: .866, r: .292 }, sprocket: { z: -3.33, y: .848, r: .322 },
-      contact: { zF: 2.395, zR: -2.395 }, botY: .0515, topY: 1.203, sag: .022,
-      endWheels: KIT.endRoadWheels(zs, .470, .395),
+      contact: { zF: 2.395, zR: -2.395 }, botY, topY: 1.203, sag: .022,
+      endWheels: KIT.endRoadWheels(zs, KIT.seatedWheelY(botY, .024, .395), .395),
       supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .012 })),
-    }), .0515, .40),
+    }), botY, .40),
     rigidLinkChords: true, arms: true, coveredTop: true, paintedEnds: true,
   });
 }

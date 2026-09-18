@@ -50,23 +50,26 @@ function pairedWheelWitnesses(root, meshes, gear) {
   for (const face of faces) assert.equal(face.count, 7, 'seven actual paired assemblies per source side');
   for (const side of [-1, 1]) {
     // Held-out radial source rays through l/r op wheel's actual turned dish.
+    // 2026-09-17 ground datum: the source axle (.4182) re-seats to the built wheelY; every radial witness rides it
+    const axleY = root.getObjectByName('rig_hull').userData.runningGearReceipts[0].wheelY;
+    assert.ok(Number.isFinite(axleY) && axleY > .40 && axleY < .42, `built axle height ${axleY}`);
     for (const [radius, x] of [[.18, 1.37602961], [.22, 1.38845509], [.26, 1.40916759],
       [.28, 1.43291896], [.30, 1.48832500], [.33, 1.50300503]]) {
-      near(Math.abs(ray(meshes, [side * 3, .4182 + radius, -2.239845], [-side, 0, 0])?.point.x),
+      near(Math.abs(ray(meshes, [side * 3, axleY + radius, -2.239845], [-side, 0, 0])?.point.x),
         x, radius === .33 ? .0007 : .00003, 'actual source stepped wheel crown');
     }
     for (const [radius, x] of [[.22, 1.24690431], [.26, 1.20530772],
       [.28, 1.18450943], [.30, 1.16928506]]) {
       const face = faces[side < 0 ? 0 : 1];
-      const hit = ray([face], [0, .4182 + radius, -2.239845], [side, 0, 0]);
+      const hit = ray([face], [0, axleY + radius, -2.239845], [side, 0, 0]);
       near(Math.abs(hit?.point.x), x, .00003, 'one-sided source inboard dish remains a real facing surface');
       assert.ok(hit.face.normal.x * side < 0, 'inward-facing source wall has outward material winding');
     }
-    for (const y of [.6182, .7082]) assert.equal(ray(meshes, [side * 1.32814, y, -2.34],
+    for (const y of [axleY + .2, axleY + .29]) assert.equal(ray(meshes, [side * 1.32814, y, -2.34],
       [0, 0, 1], .20), undefined, 'source inter-tire air is not a hidden rubber/disc bridge');
-    near(Math.abs(ray([arms], [side * 2, .68724, .918736], [-side, 0, 0])?.point.x),
+    near(Math.abs(ray([arms], [side * 2, axleY + .26904, .918736], [-side, 0, 0])?.point.x),
       1.06018496, .00002, 'source narrow inboard anchor forging near the adjacent wheel');
-    near(Math.abs(ray([arms], [side * 2, .4182, -2.239845], [-side, 0, 0])?.point.x),
+    near(Math.abs(ray([arms], [side * 2, axleY, -2.239845], [-side, 0, 0])?.point.x),
       1.15615499, .00002, 'source axle forging retains its outward axial position');
   }
   for (const face of faces) {
@@ -163,8 +166,11 @@ for (const quality of ['high', 'low']) {
     }
     near(ray([mount], [0, 4, 2.5], [0, -1, 0])?.point.y, 2.315575, .001,
       'independent upper mantlet rake, not a shortened generic housing');
+    // 2026-09-17 ground datum: the inboard anchor rides the built axle (.47755 above the source axle .4182)
+    const builtGear = root.getObjectByName('rig_hull').userData.runningGearReceipts[0];
+    const builtAxleY = builtGear.wheelY;
     for (const side of [-1, 1]) {
-      near(ray(all, [side * .90, 0, -1.75457], [0, 1, 0])?.point.y, .47755, .001,
+      near(ray(all, [side * .90, 0, -1.75457], [0, 1, 0])?.point.y, builtAxleY + .05935, .001,
         'source-sized inboard fixed anchor, not a low axle boss in the wrong X plane');
       near(Math.abs(ray(all, [side * 3, 1.5, .20], [-side, 0, 0])?.point.x), 1.67796969, .001,
         'source folded upper skirt sheet crossfall');
@@ -188,7 +194,8 @@ for (const quality of ['high', 'low']) {
     const wheels = new THREE.Box3().setFromObject(get('gearRoadWheelTires'));
     // Low quality uses fewer angular facets; its vertex minimum may sit up to
     // 3 mm above the circumscribed source circle without changing the axle.
-    near(wheels.min.y, SOURCE.wheelBottom, .003, 'fixed road wheel rest height');
+    // 2026-09-17 ground datum: the wheel now rests on the shoe inner face (wheelY - wheelR), 4 mm under the source rest
+    near(wheels.min.y, builtGear.wheelY - builtGear.wheelR, .003, 'fixed road wheel rest height');
     const ends = all.filter(m => m.name === 'gearEndWheelBody');
     assert.equal(ends.length, 4, 'two physical drive and two idler wheels');
     for (const end of ends) {
@@ -211,15 +218,17 @@ for (const quality of ['high', 'low']) {
     const shoes = shoeBounds(root);
     assert.ok(shoes.min.y >= -1e-7, `every rigid shoe stays above source ground: ${shoes.min.y}`);
     near(shoes.min.y, 0, .003, 'source ground contact is not replaced by floating shoes');
+    // 2026-09-17 ground datum: X-standard shoes carry 14 mm grousers between the pads, so the sole is read where a
+    // pad face lands (the lowest of four pitch samples); the concealed carrier's inner top now meets the wheel rest.
     for (const x of [1.1, 1.5]) {
-      near(ray(all, [x, -.1, 0], [0, 1, 0])?.point.y, 0, .003,
+      near(Math.min(...[0, .1, .2, .3].map(z => ray(all, [x, -.1, z], [0, 1, 0])?.point.y ?? Infinity)), 0, .003,
         'source flat outer tread surface');
-      near(ray(all, [x, .2, 0], [0, -1, 0])?.point.y, .07568, .003,
-        'source flat inner shoe/web surface');
+      near(ray(all, [x, .2, 0], [0, -1, 0])?.point.y, builtGear.wheelY - builtGear.wheelR, .003,
+        'ground-seated inner run meets the road-wheel rest');
     }
     const bandInnerTop = ray([get('gearTrackBandR')], [1.1, .2, 0], [0, -1, 0])?.point.y;
-    assert.ok(bandInnerTop < SOURCE.wheelBottom,
-      'concealed carrier stays below unchanged source road-wheel rest');
+    assert.ok(bandInnerTop < SOURCE.wheelBottom && bandInnerTop <= builtGear.wheelY - builtGear.wheelR + 1e-6,
+      'concealed carrier stays below the source rest and never enters the ground-seated road wheel');
     const census = all.map(m => [m, m.geometry.attributes.position.count]);
     for (const yaw of [-.8, .65]) for (const pitch of [-.12, .25]) {
       rig.rotation.y = yaw;

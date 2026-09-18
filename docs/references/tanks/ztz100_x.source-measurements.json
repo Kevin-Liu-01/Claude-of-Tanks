@@ -1,0 +1,76 @@
+{
+  "id": "ztz100_x",
+  "measured": "2026-09-17",
+  "purpose": "Owner-authorized local comparison only; no mesh payload",
+  "source": {
+    "title": "[OD]ZTZ-20 Test-3",
+    "author": "EXcaliburK117 (sketchfab.com/EXcalibur117)",
+    "license": "CC-BY-4.0",
+    "url": "https://sketchfab.com/3d-models/odztz-20-test-3-1df862f8ae2b4616ac6d2748f0487958",
+    "supplied": "owner Downloads/odztz-20_test-3.glb, 23 209 352 bytes, 50 unnamed material meshes, 464 332 triangles"
+  },
+  "sourceSha256": "387d86557d36ab649825d55a7059f8a82deed8099063df4c7731fe495b35da5d",
+  "localOracleSha256": "7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1",
+  "normalization": {
+    "axes": "glTF node matrices already give +Y up with the gun toward +z; recipe axes x,y,z",
+    "uniformScale": 0.92,
+    "translationM": [0, 0.00644, -0.12098],
+    "why": "0.92 puts the skirt width at 3.70 m (raw 4.02 m over the front skirt planes); the translation seats the lowest track vertex on y = 0 and centres the structural hull (raw stern plate z -3.731 … nose z 3.994) on z = 0",
+    "method": "Welded-vertex island census, axis-aligned first-hit depth maps at 1 cm and normal-shaded orthographic renders (.qa-dev/ztz100-source-study.mjs, .qa-dev/ztz100-shaded.mjs); scalars only"
+  },
+  "dimensionsM": {
+    "widthOverSkirts": 3.70,
+    "skirtPlaneX": { "rearHalf": 1.765, "frontHalf": 1.849, "sponsonBoxes": 1.849 },
+    "hullExteriorLength": 6.94,
+    "hullWithSternCage": 7.36,
+    "overallLength": 8.98,
+    "hullRoof": 1.41,
+    "engineDeck": 1.50,
+    "turretRoof": 2.31,
+    "highestFitting": 3.04
+  },
+  "hullM": {
+    "sternPlateZ": -3.38,
+    "sternCageZ": -3.80,
+    "sternCageY": [1.10, 1.30],
+    "noseZ": 3.56,
+    "noseY": 1.20,
+    "upperGlacis": "one plane from the roof edge (z 1.00, y 1.46 at the shoulders, 1.39 on the centreline) to the nose (z 3.56, y 1.20); tiled appliqué field",
+    "lowerBow": "nose down to (y 0.90, z 3.42), (y 0.70, z 2.91), (y 0.50, z 2.74), (y 0.30, z 2.41)",
+    "skirtHemY": 0.45,
+    "fenderLineY": 1.30,
+    "roofPlanY": { "forward": 1.41, "deck": 1.50 },
+    "sponsonBoxes": { "x": [1.592, 1.849], "y": [1.03, 1.385], "z": [1.448, 2.358] }
+  },
+  "turretPivotM": [0, 1.41, -0.55],
+  "gunAxisM": [0, 1.76, 0.55],
+  "muzzleZM": 5.175,
+  "muzzleBrakeRadiusM": 0.154,
+  "barrelRadiusM": 0.072,
+  "turretM": {
+    "core": { "x": 1.20, "y": [1.43, 2.29], "z": [-1.02, 1.13] },
+    "bustle": { "x": 0.91, "y": [1.46, 2.31], "z": [-2.60, -1.01] },
+    "planHalfWidthAtY1.9": { "z-1.5..-0.5": 1.509, "z-2.9..-2.3": 1.256, "z-0.3": 1.367, "z0.1": 1.114, "z0.5": 0.963, "z0.7..1.1": 0.60 },
+    "roofY": 2.30,
+    "housingFrontZ": 1.13,
+    "sensorTowers": { "x": 1.25, "y": [1.91, 2.54], "z": [-0.96, -0.61] },
+    "launcherBank": { "x": [0.437, 0.582], "y": [1.737, 1.949], "z": [0.181, 1.341] },
+    "weaponStation": { "x": [-0.29, 0.29], "baseY": 2.30, "topY": 3.03, "z": [-1.06, -0.45], "barrels": { "x": [-0.49, -0.37], "y": [2.78, 3.03], "z": [-1.48, -0.09] } },
+    "sternRack": { "x": 0.959, "y": [1.78, 2.15], "z": [-3.21, -2.96] }
+  },
+  "roadWheels": {
+    "stationsZM": [-2.3375, -1.6015, -0.8655, -0.1295, 0.6065, 1.4345, 2.1705],
+    "radiusM": 0.3135,
+    "axleYM": 0.374,
+    "axialX": [1.067, 1.433]
+  },
+  "sprocket": { "zM": -2.961, "yM": 0.658, "radiusM": 0.311, "bodyRadiusM": 0.2325, "axialX": [0.993, 1.505] },
+  "idler": { "zM": 2.9915, "yM": 0.7395, "radiusM": 0.2035, "axialX": [1.089, 1.410] },
+  "returnRollers": [ { "zM": -0.933, "yM": 0.8775, "radiusM": 0.1195 }, { "zM": 0.648, "yM": 0.9045, "radiusM": 0.1195 } ],
+  "track": { "centreX": 1.2485, "widthM": 0.515, "shoePitchM": 0.177, "shoeRadialM": 0.142, "topRunShoeCentreY": 0.99 },
+  "notes": [
+    "Seven road wheels a side, drive at the rear, small idler at the front, two return rollers.",
+    "Two cylindrical sensor/launcher towers on the turret front roof corners, a tall weapon station at the rear centre, a missile bank on the right cheek, a slat cage across the stern.",
+    "All values are the game frame after the recipe: metres, +Y up, +Z forward, ground y = 0, structural hull centred on z = 0."
+  ]
+}

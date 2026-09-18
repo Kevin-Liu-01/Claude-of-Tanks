@@ -221,7 +221,7 @@ try {
     shoePitchM: gear.shoePitchM,
   };
   assert.equal(gear?.wheelZs.length, 5, 'five road wheels are authored per side');
-  assert.equal(gear?.shoeCountPerSide, 88,
+  assert.equal(gear?.shoeCountPerSide, 87,
     'track links fully close the enlarged, return-roller-supported course');
   assert.equal(gear?.sprocket.r, 0.305, 'rear sprocket is exactly 25% larger');
   assert.equal(gear?.idler.r, 0.2375, 'front idler is exactly 25% larger');

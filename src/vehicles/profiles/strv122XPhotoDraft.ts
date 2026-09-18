@@ -63,6 +63,10 @@ function hull(P: TankBuilderPort): void {
 
 function runningGear(P: TankBuilderPort): void {
   const wheel = strv122PhotoWheelSolids();
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = { padHeight: .032, grouserHeight: .014, webHeight: .030, hornHeight: .10 };
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .345, wheelW: .40, wheelY: .421,
     wheelTireInnerRadiusM: .311,
@@ -70,19 +74,19 @@ function runningGear(P: TankBuilderPort): void {
     wheelFaceLayers: [{ geometry: wheel.shoulder, material: P.mats.rubber,
       name: 'strv122PhotoWheelRubberShoulders', appearanceRole: 'wheelTire' }],
     wheelZs: [-2.46, -1.63, -.80, .03, .86, 1.69, 2.52],
-    xc: 1.42, trackW: .635, trackTh: .024, botY: .054, topY: 1.198,
-    trackShoeDimensions: { padHeight: .032, grouserHeight: .014, webHeight: .030, hornHeight: .10 },
+    xc: 1.42, trackW: .635, trackTh: .024, botY, topY: 1.198,
+    trackShoeDimensions: shoeDims,
     sprocket: { z: -3.14, y: .835, r: .335, trackR: .332 },
     idler: { z: 3.07, y: .814, r: .285, trackR: .293 },
     rollers: [-2.00, -.40, 1.24, 2.04].map(z => ({ z, y: 1.093, r: .075 })),
     returnRollerWidthM: .25, returnRollerInsetM: .15,
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler: { z: 3.07, y: .814, r: .293 }, sprocket: { z: -3.14, y: .835, r: .332 },
-      botY: .054, topY: 1.198, sag: .022,
+      botY, topY: 1.198, sag: .022,
       contact: KIT.runningGearContactPatch([-2.46, -1.63, -.80, .03, .86, 1.69, 2.52], .345),
-      endWheels: KIT.endRoadWheels([-2.46, -1.63, -.80, .03, .86, 1.69, 2.52], .421, .345),
+      endWheels: KIT.endRoadWheels([-2.46, -1.63, -.80, .03, .86, 1.69, 2.52], KIT.seatedWheelY(botY, .024, .345), .345),
       supports: [-2.00, -.40, 1.24, 2.04].map(z => ({ z, y: 1.180 })),
-    }), .054, .37),
+    }), botY, .37),
     rigidLinkChords: true,
     arms: true, coveredTop: true, paintedEnds: true,
   });

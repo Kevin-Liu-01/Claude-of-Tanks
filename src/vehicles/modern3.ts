@@ -1901,7 +1901,7 @@ function buildType10Native2026(
       sprocket: { z: -3.146, y: 1.155, r: 0.22 },
       // idlerGeo's contact rim ends at 97.5% of its nominal radius, so this
       // tiny compensation seats that real rim exactly at the 0.33 m band bore.
-      idler: { z: 3.17, y: 0.82, r: 0.33 / 0.975, trackR: 0.33 },
+      idler: { z: 3.17, y: 0.82, r: 0.33 / 0.975, trackR: 0.33, trackFace: 'datum' }, // the band's inner face meets the 0.975 r tread bore
       // The leading return roller meets the enlarged idler at exactly the same
       // 1.195 m track centerline. That makes the upper run tangent at 12 o'clock
       // instead of kinking downward immediately behind the wheel.

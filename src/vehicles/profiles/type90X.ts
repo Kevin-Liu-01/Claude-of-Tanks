@@ -326,10 +326,14 @@ function buildType90X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
   hull(P);
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = {padHeight:.064,grouserHeight:.022,webHeight:.032,hornHeight:.103};
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .032, trackShoeDimensions: shoeDims });
   P.gear=KIT.buildRunningGear(P,{style:'rubber',wheelR:.357347,wheelW:.493976,wheelY:.44142,
     wheelTireInnerRadiusM:.3158,wheelCoreGeometry:{disc:roadWheelCore(Boolean(P.q))},roadWheelOutsetM:.015776,
     wheelZs:[...TYPE90_X_DATUMS.wheelStations],xc:1.366395,trackW:.630667,trackTh:.032,
-    trackShoeDimensions:{padHeight:.064,grouserHeight:.022,webHeight:.032,hornHeight:.103},
+    trackShoeDimensions: shoeDims,
     idler:{z:3.510616,y:.81982,r:.357347,trackR:.3161},
     sprocket:{z:-2.94311,y:.86132,r:.36981,trackR:.2852},
     rollerR:.10,rollers:[{z:-1.92,y:1.0559,r:.10},{z:.04,y:1.0559,r:.10},{z:2.03,y:1.0559,r:.10}],
@@ -337,13 +341,14 @@ function buildType90X(P:TankBuilderPort):void {
     // renderer's12mm band-to-shoe offset, so actual shoe inner faces contact
     // the unchanged physical rollers instead of hovering above them.
     loopPoints:roundedTrackContact(KIT.trackLoopPoints({
-      idler:{z:3.510616,y:.81982,r:.3161},sprocket:{z:-2.94311,y:.86132,r:.2852},
-      botY:.0865,topY:1.242,sag:.022,
+      // full end wheels (rim + measured datum) so the fleet end-wrap law places the band (2026-09-17)
+      idler:{z:3.510616,y:.81982,r:.357347,trackR:.3161},sprocket:{z:-2.94311,y:.86132,r:.36981,trackR:.2852},
+      botY,topY:1.242,sag:.022,
       contact:KIT.runningGearContactPatch(TYPE90_X_DATUMS.wheelStations,.357347),
-      endWheels:KIT.endRoadWheels(TYPE90_X_DATUMS.wheelStations,.44142,.357347),
+      endWheels:KIT.endRoadWheels(TYPE90_X_DATUMS.wheelStations,KIT.seatedWheelY(botY,.032,.357347),.357347),
       supports:[-1.92,.04,2.03].map(z=>({z,y:1.1599})),
-    }),.0865,.389),
-    topY:1.242,botY:.0865,paintedEnds:true,coveredTop:true,arms:true,
+    }),botY,.389),
+    topY:1.242,botY,paintedEnds:true,coveredTop:true,arms:true,
   });
   turretArmor(P);basket(P);optic(P);roofWeapon(P);smokeBank(P,-1);smokeBank(P,1);antennas(P);mainGun(P);
   P.topY=3.153229-PIVOT[1];

@@ -11,7 +11,7 @@ function checkRunningGear(tank,quality) {
   for(let i=0;i<tires.count;i++) {
     tires.getMatrixAt(i,matrix);position.setFromMatrixPosition(matrix);
     close(Math.abs(position.x),1.2548,1e-6,'original track/axle lateral station');
-    close(position.y,.41638,1e-6,'original road axle height');
+    close(position.y,.42695000767707825,1e-6,'original road axle height');
     stations.push(+position.z.toFixed(5));
   }
   assert.deepEqual([...new Set(stations)].sort((a,b)=>a-b),[-1.84635,-.86283,.07708,1.15022,2.09506]);

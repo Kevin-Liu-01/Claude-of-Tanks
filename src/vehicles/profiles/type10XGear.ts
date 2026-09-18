@@ -17,7 +17,8 @@ export function buildType10XGear(P:TankBuilderPort,base:RunningGearConfig) {
   // The canonical receiver-aware path constructs its own shafts, not this
   // standalone leaf's optional shaft. Release it immediately, before upload.
   roller.spindle.dispose();
-  const cfg:RunningGearConfig={...base,trackTh:.09,botY:.02083,
+  // floorY: the Type 10 X hull was authored with its shoe soles 42.5 mm below y = 0 — keep that datum (2026-09-17)
+  const cfg:RunningGearConfig={...base,trackTh:.09,botY:.02083,floorY:-.0425,
     // Recess only the sprocket engagement lanes. The rest of the closed
     // carrier stays full-width underneath the actual return-roller crowns.
     trackCarrierWidthStations:[{z:-2.40,widthM:.42},{z:-2.30,widthM:base.trackW}],
@@ -34,15 +35,17 @@ export function buildType10XGear(P:TankBuilderPort,base:RunningGearConfig) {
       return buildFleetTrackShoe(p);
     },
   };
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on y = 0 for the fleet-standard band.
+  cfg.botY=KIT.groundSeatBotY(P.spec,cfg);
   cfg.loopPoints=KIT.trackLoopPoints({
     idler:{...base.idler,r:base.idler.r+.004},sprocket:{...base.sprocket,r:base.sprocket.r+.004},
-    botY:.02083,topY:base.topY,sag:.022,
+    botY:cfg.botY,topY:base.topY,sag:.022,
     // 2.5 mm clearance leaves LOW's rotating 12-sector crown within the
     // unchanged 6 mm visible support limit, independent of spin radius.
-    supports:base.rollers!.map(row=>({z:row.z,y:row.y+(row.r??.095)+.09/2+.0025})),
+    supports:base.rollers!.map(row=>({z:row.z,y:row.y+(row.r??.095)+.028/2+.0025})),
     contact:{zF:Math.max(...base.wheelZs)+base.wheelR*.5,
       zR:Math.min(...base.wheelZs)-base.wheelR*.5},
-    endWheels:KIT.endRoadWheels(base.wheelZs,base.wheelY??base.wheelR+.10,base.wheelR),
+    endWheels:KIT.endRoadWheels(base.wheelZs,KIT.seatedWheelY(cfg.botY!,cfg.trackTh,base.wheelR),base.wheelR),
     frontArcSteps:16,rearArcSteps:16,smoothRearTopTangent:true,
   });
   return KIT.buildRunningGear(P,cfg);

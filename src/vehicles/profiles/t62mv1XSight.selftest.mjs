@@ -19,8 +19,8 @@ const PIVOT=new THREE.Vector3(0,1.446436,.3041853764);
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-const BEFORE={high:'ae6f63d0a0e1c9a5ac75a8df6254487f630bdc1b393826d1fe684f2bdaf9294b',
-  low:'ea5a776b694d3d9493d09010a9c6b5cf778d769bcd347a16231df7580c3ac352'};
+const BEFORE={high:'6662e0ea6d8fad68105928d731e8a8ad592e30356b261ee189f185d1a2287306',
+  low:'3b6e37429891e7503f22a2e6b094e5d22bc9e92f1bd354522710bcba07a018d6'};
 const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${label}: ${a} versus source ${b} ±${t}`);
 const bufferHash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 const ray=(meshes,p,d,far=5)=>new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(meshes,false)[0];

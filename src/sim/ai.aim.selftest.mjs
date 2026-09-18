@@ -157,17 +157,20 @@ const req = (cond, label) => {
   req(d.playerLocked === false, 'hidden + 1 shot: no return-fire lock');
 }
 
-// E) hidden player, 2 shots, personal ray blocked — hardClaim engages on the
-// MUZZLE stamp only; live position never leaks while unspotted.
+// E) hidden player, 2 shots, personal ray blocked. Bot philosophy r1 (owner
+// 2026-09-17: "retaliate only if spotted") retired the r2 hard claim: the
+// repeat shooter is a SUSPECT — the hull moves onto the MUZZLE stamp, the gun
+// claims no target; live position never leaks while unspotted.
 {
-  const { d, muzzle, player } = acquisitionScenario('guard-hardclaim-muzzle',
+  const { d, muzzle, player } = acquisitionScenario('guard-suspect-muzzle',
     { spotted: false, shots: 2, blockRay: true, moveAfter: true });
-  req(d.targetId === 'player', 'hardClaim (2 shots): player claimed as target');
-  req(d.playerLocked === false, 'hardClaim with blocked ray: no lock');
+  req(d.targetId === null, 'suspect rule (2 shots, unspotted): no target claimed');
+  req(d.suspectId === 'player', 'the unseen repeat shooter is held as a suspect');
+  req(d.playerLocked === false, 'unspotted shooter: no lock');
   req(Math.hypot(d.lastSeenX - muzzle.x, d.lastSeenZ - muzzle.z) < 1e-6,
-    'hardClaim chase intel == notifyPlayerFired muzzle stamp');
+    'suspect move-to-contact intel == notifyPlayerFired muzzle stamp');
   req(Math.hypot(d.lastSeenX - player.state.pos.x, d.lastSeenZ - player.state.pos.z) > 50,
-    'hardClaim chase intel != live position while hidden');
+    'suspect intel != live position while hidden');
 }
 
 // F) control — a sim-spotted player is acquired with zero shots fired.

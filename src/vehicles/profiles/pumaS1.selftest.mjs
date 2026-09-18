@@ -72,7 +72,9 @@ try {
   const compactBounds = new Box3().setFromObject(tank.root).getSize(new Vector3());
   assert.ok(Math.abs(compactBounds.x - 4.127999782562256 * 0.9) < 0.01,
     'Puma outer width is exactly ten percent smaller');
-  assert.ok(Math.abs(compactBounds.y - 3.7940161061159516 * 0.9) < 0.01,
+  // 3.733 = the S1's height / 0.9: the hull, turret and gun scale by 0.9 while the ground-datum track stack
+  // (shoe soles on y = 0) does not, so the compact height is the scaled equipment above an unscaled stack (2026-09-17)
+  assert.ok(Math.abs(compactBounds.y - 3.7331689 * 0.9) < 0.01,
     'Puma full equipment height is exactly ten percent smaller');
   assert.deepEqual(hull.userData.pumaS1Receipt, {
     independentFromLegacyPuma: true,

@@ -21,6 +21,7 @@ const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
+const { KIT } = await import('../src/vehicles/tankFactoryCore.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a2,t72b3m').split(',').filter(Boolean);
 const EPS = 1e-6;
@@ -37,7 +38,9 @@ function rampClearance(receipt, end) {
   // own ground crossing; there is no wheel wrap to measure at that end.
   const ends = [receipt.sprocket, receipt.idler].filter(Boolean);
   const endWheel = ends.length === 2 ? (end === 'rear' ? (ends[0].z < ends[1].z ? ends[0] : ends[1]) : (ends[0].z < ends[1].z ? ends[1] : ends[0])) : null;
-  if (endWheel && endWheel.y - (endWheel.trackR ?? endWheel.r) - 0.045 <= botY + 0.005) return 'ground-level';
+  // wrap clearance follows tankFactoryCore endpointWrapClearanceM (2026-09-17): rim + 2 mm, or an authored datum at/below the rim
+  const wrap = endWheel ? KIT.endpointWrapClearanceM(endWheel, receipt.trackTh) : receipt.trackTh / 2 + 0.002;
+  if (endWheel && endWheel.y - (endWheel.trackR ?? endWheel.r) - wrap <= botY + 0.005) return 'ground-level';
   const flatRun = loopPoints.filter(([, y]) => Math.abs(y - botY) <= 1e-4);
   const contactZ = flatRun.length ? (end === 'rear' ? Math.min(...flatRun.map(([z]) => z)) : Math.max(...flatRun.map(([z]) => z))) : wheelZ;
   let minimum = Infinity;

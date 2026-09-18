@@ -76,7 +76,9 @@ for (const quality of ['high', 'low']) {
       actual.forEach((z, i) => assert.ok(Math.abs(z - ABRAMS_SOURCE_X_ROAD_Z[i]) < 1e-6,
         'source axle cadence is untouched'));
     }
-    for (const point of centers) assert.ok(Math.abs(point.y - .373782) < 1e-6);
+    // source axle .373782 before the ground-datum seat (2026-09-17): wheels now rest on the fleet band
+    const seatedAxleY = tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY;
+    for (const point of centers) assert.ok(Math.abs(point.y - seatedAxleY) < 1e-6, `wheel centre ${point.y} sits on the seated axle ${seatedAxleY}`);
     const before = Array.from(tires.instanceMatrix.array);
     const state = createTankState(getSpec('m1a2_sepv2_x'), new THREE.Vector3(), 0);
     tank.setGroundSampler((x, z) => Math.abs(z) < .3 ? -.05 : 0);

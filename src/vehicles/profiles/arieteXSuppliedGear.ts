@@ -34,7 +34,10 @@ export function addArieteXSuppliedGear(P: TankBuilderPort): void {
     toothTipRadiusM: .340225 };
   // Native articulated shoes require5mm more loaded-course center clearance
   // than the first continuous-source-belt estimate. Axles remain unchanged.
-  const botY = .045, topY = 1.020;
+  const shoeDims = { padHeight: .022, grouserHeight: .010,
+      webHeight: .019, hornHeight: .066, pinRadius: .018, pinCentreY: -.002 };
+  // 2026-09-17 ground datum (KIT.groundSeatBotY): soles on hull y = 0 for the fleet-standard band
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims }), topY = 1.020;
   const rollers = [-1.675, -.348636, .976].map(z => ({ z, y: .852034, r: .111866 }));
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: D.wheelRadiusM, wheelY: D.wheelY,
@@ -50,8 +53,7 @@ export function addArieteXSuppliedGear(P: TankBuilderPort): void {
       name: `arieteSuppliedRecessedWheelFace${side}`,
     })),
     trackW: .6097973, trackCarrierWidthM: .521, trackTh: .024,
-    trackShoeDimensions: { padHeight: .022, grouserHeight: .010,
-      webHeight: .019, hornHeight: .066, pinRadius: .018, pinCentreY: -.002 },
+    trackShoeDimensions: shoeDims,
     pinCapOuter: .30489865, rigidLinkChords: true,
     sprocket, idler, rollers, rollerR: .111866, returnRollerWidthM: .109343,
     returnRollerInsetM: 0, returnRollerOutsetM: .090418,
@@ -59,7 +61,7 @@ export function addArieteXSuppliedGear(P: TankBuilderPort): void {
       idler: { ...idler, r: idler.trackR }, sprocket: { ...sprocket, r: sprocket.trackR },
       botY, topY, sag: .006,
       contact: KIT.runningGearContactPatch(wheelZs, D.wheelRadiusM),
-      endWheels: KIT.endRoadWheels(wheelZs, D.wheelY, D.wheelRadiusM),
+      endWheels: KIT.endRoadWheels(wheelZs, KIT.seatedWheelY(botY, .024, D.wheelRadiusM), D.wheelRadiusM),
       supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .012 })),
     }), botY, .29),
     arms: true, paintedEnds: true, coveredTop: true,

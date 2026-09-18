@@ -171,7 +171,7 @@ interface AuthoritativeAIController {
   update(dt: number, timeS: number): void;
   setWaypoints(points: readonly BotRoutePoint[], options?: { loop?: boolean }): void;
   notifyShellResult(event: HitEvent): void;
-  notifyUnderFire(entity: AuthoritativeEntity): void;
+  notifyUnderFire(entity: AuthoritativeEntity, info?: { selfHit?: boolean; damaging?: boolean; kind?: string }): void;
   notifyPlayerFired(entity: AuthoritativeEntity, rank?: number): void;
   notifyFriendlyBlocked(risk: AIFriendlyRisk): void;
 }
@@ -826,6 +826,8 @@ export function createAuthoritativeMatch({
           isSpotted: (targetId, receiver) =>
             spotting.isSpotted(targetId, entity.team, receiver || entity),
         },
+        // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
+        getObjective: () => modeController.botObjective(entity),
       },
     });
     const teamSlot = entities.filter((entry) => entry.team === entity.team).indexOf(entity);
@@ -1432,9 +1434,12 @@ export function createAuthoritativeMatch({
       ...hit,
       targetId: target?.id || null,
     });
-    if (!shooter || !target || hit.damage <= 0) return;
+    // bot philosophy r1: a bounce is still a shot at the team — the struck hull reacts, teammates gain intel
+    if (!shooter || !target) return;
     for (const ally of entities) {
-      if (ally.team === target.team && ally.aiCtl) ally.aiCtl.notifyUnderFire(shooter);
+      if (ally.team === target.team && ally.aiCtl) ally.aiCtl.notifyUnderFire(shooter, {
+        selfHit: ally === target, damaging: hit.damage > 0, kind: hit.kind,
+      });
     }
   }
 

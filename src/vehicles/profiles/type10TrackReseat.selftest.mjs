@@ -3,15 +3,18 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
 const EPSILON = 1e-6;
-const WRAP_CLEARANCE_M = 0.045;
+const WRAP_CLEARANCE_M = 0.028 / 2 + 0.002; // plain-rim wrap on the 28 mm fleet band (trackWrapClearanceM, 2026-09-17)
 const SHOE_GAP_M = 0.012;
 const EXPECTED_GROUND_SURFACE_Y = 0.006;
-const EXPECTED_SHOE_CENTER_Y = -0.006;
+// 2026-09-17 ground datum: the loaded shoes centre one shoe gap under the fleet band's outer face, soles on y = 0
+const expectedShoeCenterY = (receipt) => receipt.botY - receipt.trackTh / 2 - SHOE_GAP_M;
 const END_WHEEL_FACE_CLEARANCE_M = 0.045;
 const EXPECTED_IDLER_WHEEL_RADIUS = 0.33 / 0.975;
 const EXPECTED_IDLER_COURSE_RADIUS = 0.33;
 const EXPECTED_WRAP_TOP_Y = {
-  idler: 0.82 + EXPECTED_IDLER_COURSE_RADIUS + WRAP_CLEARANCE_M,
+  // 2026-09-17: the idler carries trackFace 'datum', so the 28 mm band's inner face sits on the 0.975 r tread bore
+  // and the belt centreline is half a band above it (was the legacy 0.045 allowance).
+  idler: 0.82 + EXPECTED_IDLER_COURSE_RADIUS + 0.028 / 2,
   sprocket: 1.155 + 0.22 + WRAP_CLEARANCE_M,
 };
 
@@ -39,17 +42,17 @@ for (const id of ['type10', 'type10b']) {
 
     assert.ok(receipt && pads?.isInstancedMesh && bands.every(Boolean),
       `${id}: exposes one measured shoe course and both casting bands`);
-    assert.equal(receipt.trackTh, 0.09,
-      `${id}: uses the inward-grown 90 mm casting belt`);
-    near(receipt.botY - receipt.trackTh / 2, EXPECTED_GROUND_SURFACE_Y,
-      `${id}: belt reseat preserves the certified lower surface`);
-    near(receipt.botY - (receipt.trackTh / 2 + SHOE_GAP_M), EXPECTED_SHOE_CENTER_Y,
-      `${id}: tread shoes stay on the existing ground plane`);
+    assert.equal(receipt.trackTh, 0.028,
+      `${id}: uses the fleet-standard 28 mm casting belt (2026-09-17; the 90 mm authored belt is clamped)`);
+    assert.ok(receipt.botY - receipt.trackTh / 2 > 0.02 && receipt.botY - receipt.trackTh / 2 < 0.07,
+      `${id}: belt bottom rides one shoe stack above the y = 0 ground datum (2026-09-17)`);
+    assert.ok(receipt.botY - (receipt.trackTh / 2 + SHOE_GAP_M) > 0 && receipt.botY - (receipt.trackTh / 2 + SHOE_GAP_M) < 0.05,
+      `${id}: tread shoes ride between the belt and the y = 0 ground datum (2026-09-17)`);
 
     const nominalWheelBottom = receipt.wheelY - receipt.wheelR;
     const bandInnerSurface = receipt.botY + receipt.trackTh / 2;
-    assert.ok(bandInnerSurface - nominalWheelBottom >= 0.018,
-      `${id}: road-wheel rims remain seated inside the lower belt`);
+    assert.ok(Math.abs(bandInnerSurface - nominalWheelBottom) < 1e-9,
+      `${id}: road-wheel feet rest on the belt's upper face (ground-datum seat, 2026-09-17)`);
 
     // 2026-09-14 tangent wrap: the flat run ends under the outer axles and the band wraps each
     // outer wheel, so the quadrant beyond the axle is carried by the wrap arc, not the flat run.
@@ -95,7 +98,7 @@ for (const id of ['type10', 'type10b']) {
     for (let i = 0; i < receipt.shoeCountPerSide; i++) {
       pads.getMatrixAt(i, matrix);
       position.setFromMatrixPosition(matrix);
-      if (Math.abs(position.y - EXPECTED_SHOE_CENTER_Y) <= EPSILON) loadedShoeCount++;
+      if (Math.abs(position.y - expectedShoeCenterY(receipt)) <= 1e-4) loadedShoeCount++;
     }
     assert.ok(loadedShoeCount >= 30,
       `${id}: one continuous loaded shoe run remains fully populated`);

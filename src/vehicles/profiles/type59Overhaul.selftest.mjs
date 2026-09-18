@@ -82,8 +82,10 @@ try {
     const band = tank.root.getObjectByName(name);
     assert.ok(band, `${name} exists as one continuous native course`);
     const bounds = new THREE.Box3().setFromObject(band);
-    assert.ok(bounds.max.y > 1.0 && bounds.min.y < 0,
-      `${name} spans the ground run and both elevated terminal returns`);
+    // 2026-09-17 ground datum + 28 mm band: the ground run rests on the shoe-sole plane (band bottom ≈ botY − th/2 ≈ 0.04)
+    // and the thinner band tops out at 0.99 over the terminal returns
+    assert.ok(bounds.max.y > 0.95 && bounds.min.y < 0.10,
+      `${name} spans the ground run and both elevated terminal returns (${bounds.min.y.toFixed(3)}..${bounds.max.y.toFixed(3)})`);
   }
 
   const hullArmor = hull.getObjectByName('hullExternalArmor');

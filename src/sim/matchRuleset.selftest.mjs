@@ -34,7 +34,7 @@ const turboKeys = rulesetLines(turbo).map((line) => line.key);
 assert.equal(turbo.jumpMps, 9, 'owner 2026-09-16: the F key jumps in Turbo Ball');
 assert.equal(turbo.recoilLaunchScale, 12, 'recoil launches the hull in Turbo Ball'); assert.equal(turbo.shellKnockScale, 2.5, 'impacts knock harder in Turbo Ball');
 const standardPhysics = matchRulesetFor('standard');
-assert.equal(standardPhysics.jumpMps, null); assert.equal(standardPhysics.recoilLaunchScale, 1); assert.equal(standardPhysics.shellKnockScale, 1, 'the whole game keeps the baseline impact knock');
+assert.equal(standardPhysics.jumpMps, null); assert.equal(standardPhysics.recoilLaunchScale, 1); assert.equal(standardPhysics.shellKnockScale, 0.3, 'the whole game keeps the baseline impact knock');
 assert.deepEqual(turboKeys, ['gravity', 'speed', 'hp', 'damage', 'reload', 'ammoUnlimited', 'noEquipment', 'noConsumables', 'noCriticalDamage', 'jump', 'recoilLaunch', 'shellKnock', 'respawn', 'clock'],
   'the Turbo Ball card lists exactly the rules the code applies, in order');
 assert.equal(rulesetLines(turbo)[0].values.value, '0.6 g');

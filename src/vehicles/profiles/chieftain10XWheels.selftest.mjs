@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import { createTank, KIT } from '../tankFactory.ts';
+let liveAxleY = .474396; // set per built tank from the running-gear receipt (ground-datum seat, 2026-09-17)
 
 const close = (actual, expected, tolerance, label) => assert.ok(Number.isFinite(actual)
   && Math.abs(actual - expected) <= tolerance, `${label}: ${actual} vs ${expected}`);
@@ -41,19 +42,19 @@ function wheelCuts(meshes) {
     for (const [radius, outer, inner] of [[.15, 1.38073338, 1.30304211],
       [.28, 1.43624051, 1.27865444], [.30, 1.44324732, 1.27490263],
       [.38, 1.53661559, 1.18358222]]) {
-      const y = .474396 + radius, z = -2.174642;
+      const y = liveAxleY + radius, z = -2.174642; // ground-datum seat (2026-09-17): rays follow the live axle
       close(Math.abs(ray(meshes, [side * 3, y, z], [-side, 0, 0])?.point.x),
         outer, .002, 'source recessed outer bowl and separate contact rim');
       close(Math.abs(ray(meshes, [0, y, z], [side, 0, 0])?.point.x),
         inner, .002, 'source inboard pressed bowl, not a broad generic disc');
     }
     for (const radius of [.30, .38]) for (const direction of [-1, 1]) {
-      assert.equal(ray(meshes, [side * 1.36, .474396 + radius, -2.174642],
+      assert.equal(ray(meshes, [side * 1.36, liveAxleY + radius, -2.174642],
         [direction, 0, 0], .006), undefined, 'actual air between two separate wheel halves');
     }
     for (let i = 0; i < 10; i++) {
       const a = Math.PI / 10 + i * Math.PI / 5;
-      const hit = ray(meshes, [side * 3, .474396 + Math.cos(a) * .18,
+      const hit = ray(meshes, [side * 3, liveAxleY + Math.cos(a) * .18,
         -2.174642 + Math.sin(a) * .18], [-side, 0, 0]);
       close(Math.abs(hit?.point.x), 1.4256, .00003, 'ten local source flange heads');
     }
@@ -71,7 +72,7 @@ function suspension(root, gear) {
     const wheelIndex = Math.floor(index / 4), anchor = index % 2 === 0;
     const expectedZ = wheelZs[wheelIndex] + (anchor ? (wheelIndex % 2 ? -1 : 1) * .367175 : 0);
     close(p.z, expectedZ, .000001, 'paired source fore/aft anchor, not the shared pair midpoint');
-    close(p.y, .474396, .000001, 'nominal source Horstmann anchor and axle are horizontal');
+    close(p.y, liveAxleY, .000001, 'nominal source Horstmann anchor and axle are horizontal'); // live axle (ground-datum seat, 2026-09-17)
     close(Math.abs(p.x), anchor ? .990477 : 1.046706, .000001, 'source axial joint station');
   }
   for (const side of [-1, 1]) {
@@ -92,7 +93,7 @@ function suspension(root, gear) {
     for (const [i, matrix] of after.entries()) {
       const p = new THREE.Vector3().setFromMatrixPosition(matrix);
       close(p.z, wheelZs[i], .000001, 'source axle longitudinal station remains fixed while spinning');
-      close(p.y, .474396, .000001, 'source axle height remains fixed while spinning');
+      close(p.y, liveAxleY, .000001, 'source axle height remains fixed while spinning');
     }
   }
   assert.deepEqual(gear.roadWheelLayout, layout, 'wheel articulation never moves the belt or source axle recipe');
@@ -104,8 +105,8 @@ function suspension(root, gear) {
 }
 
 for (const [quality, expected] of [
-  ['high', '488cc6786c8c00d7e493a3592d5347972d8817cc8ce0a3562384878db990aa40'],
-  ['low', 'a94efa13f85494668e8f692680420cad54ab1a24f76eefb175a046e1d21c99b4'],
+  ['high', '17b3a91b748371b14bac5325c878f5779f01906317f7fd82e8a066314b81f976'],
+  ['low', '38be08e93964128d573e8c0441d2f27d3ee3aa00907331f6fa380a2a71c8ba82'],
 ]) {
   let gear;
   const original = KIT.buildRunningGear;
@@ -118,6 +119,7 @@ for (const [quality, expected] of [
     tank.root.updateMatrixWorld(true);
     assert.equal(untouchedCourse(tank.root), expected, 'all existing track/end/roller geometry is byte-identical');
     const meshes = [];
+    liveAxleY = tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY ?? .474396;
     tank.root.traverse(m => { if (m.isMesh && /gearMk10WheelDish|gearRoadWheelDiscs/.test(m.name)) meshes.push(m); });
     wheelCuts(meshes);
     suspension(tank.root, gear);

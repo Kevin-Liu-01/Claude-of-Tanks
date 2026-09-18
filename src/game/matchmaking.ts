@@ -32,13 +32,17 @@ export const isBotTankId = (id: RuntimeValue): id is string =>
  * Curate a pre-shuffled entity pool for a player match.
  *
  * Same-era vehicles always rank ahead of cross-era fallbacks. Within an era,
- * the seeded shuffle remains authoritative so every production vehicle can
+ * vehicles that fought the PREVIOUS battle (`recent`) yield their place to the
+ * rest of the catalog (matchmaking diversity, owner 2026-09-17: consecutive
+ * rosters differ whenever the era catalog allows), and the seeded shuffle
+ * remains authoritative inside each band so every production vehicle can
  * eventually reach a bot seat. Team assignment balances the resulting tiers.
  * Development and reference-only records remain barred.
  */
 export function rankMatchCandidates<T extends MatchCandidate>(
   candidates: readonly (T | null | undefined)[] | null | undefined,
   player: T,
+  recent: ReadonlySet<string> | null = null,
 ): T[] {
   const playerEra = player?.spec?.era ?? null;
   return (candidates || [])
@@ -48,9 +52,11 @@ export function rankMatchCandidates<T extends MatchCandidate>(
       ent,
       shuffleIndex,
       sameEra: !playerEra || (ent.spec && ent.spec.era === playerEra),
+      recent: !!recent && recent.has(ent.specId),
     }))
     .sort((a, b) =>
       (a.sameEra === b.sameEra ? 0 : a.sameEra ? -1 : 1) ||
+      (a.recent === b.recent ? 0 : a.recent ? 1 : -1) ||
       (a.shuffleIndex - b.shuffleIndex))
     .map((row) => row.ent);
 }

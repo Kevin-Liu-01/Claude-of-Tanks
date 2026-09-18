@@ -8,15 +8,15 @@ import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 // loader, candidate-derived target or missing-ID fallback is permitted here.
 const SOURCES={
   t62mv1_x:{yaw:[0,1.446436,.3041853764],gun:[0,1.6650417561,1.5303753764],
-    muzzle:5.920914939,boreFloor:5.65940,boreRadius:.0575,roof:2.082969,wheelY:.459085,
+    muzzle:5.920914939,boreFloor:5.65940,boreRadius:.0575,roof:2.082969,wheelY:.4616149961948395,
     wheels:[-1.858795,-.805165,.24309,1.14781,2.00987],
     hull:[[-1,1.423205327],[0,1.423205327],[1,1.423205327]],era:4},
   t72b_1987_x:{yaw:[-.0000548974,1.4040902854,-.0343498434],gun:[-.0000548633,1.6208176016,1.2669569241],
-    muzzle:5.766827075,boreFloor:5.59804,boreRadius:.0625,roof:2.105640266,wheelY:.429605,
+    muzzle:5.766827075,boreFloor:5.59804,boreRadius:.0625,roof:2.105640266,wheelY:.43082499504089355,
     wheels:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465],
     hull:[[-.6,1.38950],[0,1.38950],[1.2,1.38950]],era:6},
   t80u_x:{yaw:[0,1.55158,.0718698169],gun:[0,1.7564274071,1.4199398169],
-    muzzle:6.002754533,boreFloor:5.83777,boreRadius:.0625,roof:2.172451481,wheelY:.42629,
+    muzzle:6.002754533,boreFloor:5.83777,boreRadius:.0625,roof:2.172451481,wheelY:.42247000336647034,
     wheels:[-1.96246,-1.107005,-.274385,.47443,1.317665,2.088745],
     hull:[[-1.5,1.563],[0,1.544],[1.5,1.522]],era:4},
 };

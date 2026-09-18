@@ -6,6 +6,13 @@
  * aim lead with gravity compensation, dispersion-gated firing, weak-spot probing,
  * flanking on repeated non-penetrations, and three difficulty tiers.
  *
+ * Bot philosophy r1 (owner 2026-09-17, docs/research/bot-philosophy-20260917.md):
+ * bots are soldiers with a mission, not turrets. Targets rank mission objective
+ * → closest → weakest; a bot fires only at a SPOTTED enemy and answers a hit
+ * from an unseen gun with cover or a jink and a hull turn, never a blind shot;
+ * a hit on its own hull picks a reaction (cover, reverse to cover with the bow
+ * on the shooter, re-angle a flanked hull, jink while reloading in the open).
+ *
  * The controller drives its tank exclusively through the shared TankInput
  * (`entity.input`) — the exact same interface the player uses. It reads enemy
  * state read-only and never touches the scene graph.
@@ -47,6 +54,8 @@ import type {
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
 type AiRole = 'scout' | 'sniper' | 'brawler' | 'flanker';
 type AiMode = 'patrol' | 'engage' | 'seekCover' | 'flank';
+/** Hit reaction (bot philosophy r1): what a struck hull does for the next few seconds. */
+type Reaction = 'cover' | 'backoff' | 'angle' | 'jink';
 type RandomSource = () => number;
 
 interface Position2 {
@@ -109,7 +118,7 @@ interface AiController {
   update(dt: number, timeS: number): void;
   setWaypoints(points: Array<[number, number]>, options?: { loop?: boolean }): void;
   notifyShellResult(hitEvent: Pick<HitEvent, 'targetId' | 'kind'>): void;
-  notifyUnderFire(shooter: AiEntity): void;
+  notifyUnderFire(shooter: AiEntity, info?: HitReactionInfo): void;
   notifyPlayerFired(shooter: AiEntity, rank?: number): void;
   notifyFriendlyBlocked(risk: FriendlyFireRisk): void;
   readonly targetId: string | null;
@@ -133,6 +142,22 @@ type ControllerOwnedEntity = AiEntity & {
   ai?: AiController | null;
   aiCtl?: AiController | null;
 };
+
+/** The mode's live objective for this bot's team (zone centre, flag, ball, sector). */
+export interface AiObjective {
+  x: number;
+  z: number;
+  radiusM: number;
+}
+
+/** What the integration knows about a hit that reached this bot's team. */
+export interface HitReactionInfo {
+  /** The struck hull is this bot's own (a teammate's hit only carries intel). */
+  selfHit?: boolean;
+  /** The shell did damage (a bounce still counts as being shot at). */
+  damaging?: boolean;
+  kind?: string;
+}
 
 interface AiSupportContext {
   safeToReloadMagazine?: boolean;
@@ -243,6 +268,8 @@ interface AiDependencies {
     out: AiObstacle[],
   ) => AiObstacle[]) | null;
   spotting?: { isSpotted(id: string, receiver: AiEntity): boolean };
+  /** Mission objective for this bot (bot philosophy r1: objective → closest → weakest). */
+  getObjective?(): AiObjective | null;
 }
 
 interface CreateAiOptions {
@@ -373,6 +400,28 @@ const FALLBACK_S = 8;
 const FALLBACK_CD_S = 14;
 const BURST_RETREAT_FRAC = 0.12;
 const BURST_RETREAT_WINDOW_S = 4;
+
+// ---- bot philosophy r1 (owner 2026-09-17: "think through the whole enemy bot philosophy") ----
+// TARGET HIERARCHY: enemies on the mission objective first, then the closest (in
+// TARGET_BAND_M distance bands, threat-scaled for the player and fire-team focus),
+// and inside a band the weakest — kills finish, threats come first, the mission
+// decides where the fight is.
+const TARGET_BAND_M = 60;
+const OBJECTIVE_MARGIN_M = 12;
+// HIT REACTIONS: one reaction per REACT_COOLDOWN_S. An unseen shooter is a
+// SUSPECT (hull turn + cover or jink), never a target; a penetrating hit on a
+// hull under REACT_BACKOFF_HP (or a burst) sends it BACKWARDS to cover with the
+// bow on the shooter; a shooter more than REACT_ANGLE_RAD off the bow re-angles
+// the hull; a frontal hit while reloading in the open jinks to spoil the lead.
+const REACT_COOLDOWN_S = 5;
+const REACT_BACKOFF_HP = 0.42;
+const REACT_ANGLE_RAD = 0.75;
+const REACT_ANGLE_OFFSET_RAD = 0.42;
+const REACT_BACKOFF_M = 32;
+const REACT_JINK_PERIOD_S = 0.8;
+const REACT_DURATION_S: Readonly<Record<Reaction, number>> = Object.freeze({
+  cover: 7, backoff: 5, angle: 2.5, jink: 3.2,
+});
 
 // Shared fire-discipline constants. Both teams run the same controller and
 // therefore obey the same corridor, moving-friendly prediction and HE splash
@@ -778,6 +827,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const roleHoldR = () =>
     Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60);
   const getAllies = selectAllies(deps);
+  const getObjective = typeof deps.getObjective === 'function' ? deps.getObjective : null;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
   // A real match opens with a deployment/read phase, not both teams driving
   // straight into an immediate DPM check.  Roles release progressively:
@@ -881,6 +931,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let lastHp = combatHitPoints(entity);
   let burstDamage = 0;
   let burstDamageUntilS = -1;
+  // ---- hit reactions (bot philosophy r1) ----
+  let reaction: Reaction | null = null;
+  let reactUntilS = -1;
+  let reactCdUntilS = -1;
+  let reactSide = 1;
+  let threatBearing = 0;          // world bearing self → the gun that last hit the team
+  const reactPoint = { x: 0, z: 0 };
+  let reactions = 0;              // probe-visible count
+  // an UNSEEN shooter is a suspect, not a target: remembered for the hull turn and the cover pick
+  let suspect: AiEntity | null = null;
+  let suspectUntilS = -1;
   // scout kite/orbit: keep moving between cover, never brawl
   const kitePoint = { x: 0, z: 0 };
   let kiteUntilS = -1;
@@ -1130,12 +1191,17 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const lockActive = timeS < playerLockUntilS;
     const repeatedShooter = playerShotsInWindow >= 2 && timeS < playerAggroUntilS;
     if (!lockActive && !repeatedShooter) return false;
+    // bot philosophy r1: retaliation needs a SPOTTED shooter — an unseen player stays a suspect
+    if (!isVisibleToTeam(playerAggro)) {
+      noteSuspect(playerAggro, timeS, false);
+      return false;
+    }
     const position = playerAggro.state.pos;
     const clearLine = hasLos(
       eyeX, eyeYPosition, eyeZ,
       position.x, eyeY(playerAggro), position.z,
     );
-    claimTarget(playerAggro, timeS, clearLine, isVisibleToTeam(playerAggro));
+    claimTarget(playerAggro, timeS, clearLine, true);
     return true;
   }
 
@@ -1190,9 +1256,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const position = aggressor.state.pos;
     const seen = isVisibleToTeam(aggressor)
       && hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(aggressor), position.z);
-    const hardClaim = !seen && aggressor === playerAggro && playerShotsInWindow >= 2;
-    if (!seen && !hardClaim) return false;
-    claimTarget(aggressor, timeS, seen, seen);
+    // bot philosophy r1: an unseen aggressor (even a repeat-firing player) is a
+    // suspect — the hull turns onto the shot and seeks cover; it never becomes a
+    // target to fire at until the team spots it.
+    if (!seen) {
+      noteSuspect(aggressor, timeS, false);
+      return false;
+    }
+    claimTarget(aggressor, timeS, true, true);
     return true;
   }
 
@@ -1296,13 +1367,32 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return false;
   }
 
+  /** True when the candidate stands on (or within OBJECTIVE_MARGIN_M of) this bot's mission objective. */
+  function onObjective(candidate: AiEntity): boolean {
+    const objective = getObjective ? getObjective() : null;
+    if (!objective) return false;
+    const dx = candidate.state.pos.x - objective.x;
+    const dz = candidate.state.pos.z - objective.z;
+    const reach = objective.radiusM + OBJECTIVE_MARGIN_M;
+    return dx * dx + dz * dz <= reach * reach;
+  }
+
+  /**
+   * Bot philosophy r1 target hierarchy (lower = better): mission objective →
+   * closest → weakest. Distance is threat-scaled first (the player reads
+   * closer; a lane an ally already covers reads farther — fire-team
+   * allocation), then bucketed into TARGET_BAND_M bands so that inside one band
+   * the weakest hull leads; the raw threat distance is the final tiebreak.
+   */
   function targetPriority(candidate: AiEntity, distanceSq: number): number {
     const health = targetHealthFraction(candidate);
-    const healthWeight = health == null ? 1 : 0.55 + 0.45 * Math.max(0, health);
-    const threatDistance = candidate.isPlayer
+    const threatDistanceSq = candidate.isPlayer
       ? distanceSq * playerDistMult * (distanceSq < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1)
       : distanceSq;
-    return threatDistance * healthWeight * focusWeight(candidate);
+    const threatDistance = Math.sqrt(threatDistanceSq) * focusWeight(candidate);
+    const band = Math.floor(threatDistance / TARGET_BAND_M);
+    return (onObjective(candidate) ? 0 : 1e9) + band * 1e6
+      + (health == null ? 1 : Math.max(0, Math.min(1, health))) * 1e5 + threatDistance;
   }
 
   function scanVisibleTarget(
@@ -1515,6 +1605,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let ax = st.pos.x - tp.x, az = st.pos.z - tp.z;
     const al = Math.hypot(ax, az) || 1;
     ax /= al; az /= al;
+    return findCrestAlong(ax, az, tp.x, eyeY(target), tp.z, out, full);
+  }
+
+  /**
+   * Crest search along a unit retreat direction (ax, az) with the threat's eye
+   * at (lookX, lookY, lookZ): the reaction picker uses it for unseen shooters
+   * (a bearing, no target) and for the reverse-to-cover pullback.
+   */
+  function findCrestAlong(
+    ax: number,
+    az: number,
+    lookX: number,
+    lookY: number,
+    lookZ: number,
+    out: Position2,
+    full: boolean,
+  ): boolean {
+    const st = entity.state;
     const hSelf = spec.dims.heightM;
     for (let d = 3; d <= 27; d += 3) {
       const cx = st.pos.x + ax * d;
@@ -1526,7 +1634,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (full) {
         if (crest > hSelf * 0.9 + 0.3) { out.x = cx; out.z = cz; return true; }
       } else if (crest > hSelf * 0.45 && crest < hSelf * 0.95) {
-        if (hasLos(cx, hC + selfEyeM, cz, tp.x, eyeY(target), tp.z)) {
+        if (hasLos(cx, hC + selfEyeM, cz, lookX, lookY, lookZ)) {
           out.x = cx; out.z = cz; return true;
         }
       }
@@ -2880,18 +2988,15 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return distance;
   }
 
-  function blindFireActive(timeS: number, distance: number): boolean {
-    return !!target && !losClear && target.isPlayer === true
-      && playerShotsInWindow >= 2 && timeS < playerAggroUntilS
-      && losBlockedT > 15 && distance <= MAX_FIRE_RANGE_M;
+  // bot philosophy r1: no blind fire. A shell leaves the gun only at a spotted
+  // target with a clear personal ray; a remembered muzzle flash moves the hull,
+  // never the trigger. Both gates stay in the fire-debug surface as false.
+  function blindFireActive(_timeS: number, _distance: number): boolean {
+    return false;
   }
 
-  function blindLockActive(timeS: number): boolean {
-    if (!target || !losClear || !target.isPlayer || !spotting || isVisibleToTeam(target)) {
-      return false;
-    }
-    return timeS < playerLockUntilS
-      || (playerShotsInWindow >= 2 && timeS < playerAggroUntilS);
+  function blindLockActive(_timeS: number): boolean {
+    return false;
   }
 
   function applyBlindAim(): void {
@@ -3509,9 +3614,125 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     gunLaneMoves++;
   }
 
+  // ---- hit reactions (bot philosophy r1) -----------------------------------
+
+  /**
+   * Remember an unseen gun as a SUSPECT — never a target. `stampIntel` is true
+   * only for event-driven calls (a shot fired, a hit landed): they stamp the
+   * shooter's position AT THAT MOMENT as the hull-turn bearing and, when no
+   * living target holds the slot, as the remembered contact the hull moves on.
+   * The periodic acquisition ticks pass false so a hidden shooter's LIVE
+   * position never leaks into the intel while it stays unspotted.
+   */
+  function noteSuspect(shooter: AiEntity, timeS: number, stampIntel: boolean): void {
+    if (!shooter.state) return;
+    suspect = shooter;
+    suspectUntilS = timeS + UNDER_FIRE_WINDOW_S;
+    if (!stampIntel) return;
+    const st = entity.state;
+    const position = shooter.state.pos;
+    threatBearing = Math.atan2(position.x - st.pos.x, position.z - st.pos.z);
+    if (!target || !enemyAlive(target)) {
+      lastSeen.x = position.x;
+      lastSeen.z = position.z;
+      lastSeenAtS = timeS;
+      if (mode === 'patrol') mode = 'engage'; // move to contact on the flash, gun waits for a spot
+    }
+  }
+
+  /**
+   * Pick what this hull does about the shot that just struck it.
+   *  - unseen shooter → COVER behind a crest on the far side from the shot, or a
+   *    JINK in the open (both turn the bow onto the shot);
+   *  - seen shooter, penetrating hit on a hull under REACT_BACKOFF_HP or a burst
+   *    → BACKOFF: reverse to cover (or REACT_BACKOFF_M straight back) with the
+   *    bow on the shooter — never turn a flank to it;
+   *  - seen shooter more than REACT_ANGLE_RAD off the bow → ANGLE the hull onto
+   *    it (REACT_ANGLE_OFFSET_RAD sidescrape offset; casemates face square);
+   *  - seen frontal shooter while reloading in the open → JINK.
+   */
+  function reactToHit(shooter: AiEntity, seen: boolean, info: HitReactionInfo): void {
+    if (nowS < reactCdUntilS || !shooter.state) return;
+    const st = entity.state;
+    const sp = shooter.state.pos;
+    threatBearing = Math.atan2(sp.x - st.pos.x, sp.z - st.pos.z);
+    const away = threatBearing + Math.PI;
+    const ax = Math.sin(away), az = Math.cos(away);
+    const cb = entity.combat;
+    const hpFrac = cb && cb.maxHp ? cb.hp / cb.maxHp : 1;
+    const burst = cb && cb.maxHp ? burstDamage / cb.maxHp : 0;
+    const aspect = Math.abs(wrapAngle(threatBearing - st.yaw));
+    let pick: Reaction | null = null;
+    if (!seen) {
+      pick = findCrestAlong(ax, az, sp.x, eyeY(shooter), sp.z, reactPoint, true) ? 'cover' : 'jink';
+    } else if (info.damaging !== false && (hpFrac < REACT_BACKOFF_HP || burst >= BURST_RETREAT_FRAC)) {
+      pick = 'backoff';
+      if (!findCrestAlong(ax, az, sp.x, eyeY(shooter), sp.z, reactPoint, true)) {
+        reactPoint.x = st.pos.x + ax * REACT_BACKOFF_M;
+        reactPoint.z = st.pos.z + az * REACT_BACKOFF_M;
+      }
+    } else if (aspect > REACT_ANGLE_RAD && !casemate) {
+      pick = 'angle';
+    } else if (cb && cb.reload && cb.reload.t > 1.0 && !hasCoverPoint) {
+      pick = 'jink';
+    }
+    if (!pick) return;
+    reaction = pick;
+    reactSide = rng() < 0.5 ? 1 : -1;
+    reactUntilS = nowS + REACT_DURATION_S[pick];
+    reactCdUntilS = reactUntilS + REACT_COOLDOWN_S;
+    reactions++;
+    hasMoveTarget = false;
+    hasCoverPoint = false;
+    if (mode === 'seekCover') mode = 'engage';
+  }
+
+  /** Drive the live reaction; true while it owns the hull this tick. */
+  function driveReaction(input: AiInput, timeS: number): boolean {
+    if (!reaction) return false;
+    if (timeS >= reactUntilS) {
+      reaction = null;
+      return false;
+    }
+    const st = entity.state;
+    switch (reaction) {
+      case 'cover':
+        if (driveToXZ(input, reactPoint.x, reactPoint.z, 1)) reaction = null;
+        return true;
+      case 'backoff': {
+        const dx = reactPoint.x - st.pos.x, dz = reactPoint.z - st.pos.z;
+        if (dx * dx + dz * dz < 36) {
+          reaction = null;
+          return false;
+        }
+        reverseFacing(input, threatBearing, -0.85);
+        return true;
+      }
+      case 'angle': {
+        const want = threatBearing + reactSide * REACT_ANGLE_OFFSET_RAD;
+        faceYaw(input, want);
+        if (Math.abs(wrapAngle(want - st.yaw)) < 0.08) reaction = null;
+        return true;
+      }
+      case 'jink': {
+        // short back-and-forth jinks spoil the shooter's lead while the bow
+        // turns onto the shot (movement.ts flips steering in reverse)
+        const phase = Math.floor((reactUntilS - timeS) / REACT_JINK_PERIOD_S) % 2 === 0 ? 1 : -1;
+        const err = wrapAngle(threatBearing - st.yaw);
+        const steerSign = st.speed < -0.15 ? -1 : 1;
+        input.steer = Math.abs(err) > 0.06 ? clamp(err * 2.0, -1, 1) * steerSign : 0;
+        input.throttle = 0.8 * phase * reactSide;
+        input.brake = false;
+        return true;
+      }
+    }
+    return false;
+  }
+
   function driveCurrentMode(input: AiInput, timeS: number, targetDistance: number): void {
     input.brake = false;
     driveIntent = false;
+    if (driveReaction(input, timeS)) return;
     if (timeS < settleUntilS && target && losClear) {
       faceYaw(input, Math.atan2(
         target.state.pos.x - entity.state.pos.x,
@@ -3742,7 +3963,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * steals the target slot — return fire at the protagonist is the point.
    * @param {object} shooterEnt TankEntity that fired the shell
    */
-  function notifyUnderFire(shooterEnt: AiEntity): void {
+  function notifyUnderFire(shooterEnt: AiEntity, info: HitReactionInfo = {}): void {
     if (!shooterEnt || !shooterEnt.state || !shooterEnt.combat ||
         shooterEnt.combat.destroyed || shooterEnt.team === entity.team) return;
     if (shooterEnt.isPlayer) {
@@ -3752,6 +3973,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     underFire = shooterEnt;
     underFireUntilS = nowS + UNDER_FIRE_WINDOW_S;
+    // bot philosophy r1: a gun the team has NOT spotted is a suspect. The hull
+    // reacts (cover / jink, bow onto the shot) but claims no target — retaliation
+    // waits for the spotting sim; acquireTarget's aggressor path takes over the
+    // moment the shooter is seen.
+    if (!isVisibleToTeam(shooterEnt)) {
+      noteSuspect(shooterEnt, nowS, true);
+      if (info.selfHit) reactToHit(shooterEnt, false, info);
+      return;
+    }
+    if (info.selfHit) reactToHit(shooterEnt, true, info);
     // RETURN-FIRE LOCK (controls_gunnery r4) ROOT-CAUSE FIX: lastSeen is the
     // CHASE POINT for the CURRENT target, but this unconditional write
     // teleported it onto whichever ALLIED bot landed the latest teammate hit
@@ -3819,8 +4050,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function tryLockFiringPlayer(shooter: AiEntity, rank: number): boolean {
-    if (rank > PLAYER_LOCK_RANK ||
-        (!isVisibleToTeam(shooter) && playerShotsInWindow < 2)) return false;
+    // bot philosophy r1: the muzzle flash of an UNSEEN player never locks a target
+    if (rank > PLAYER_LOCK_RANK || !isVisibleToTeam(shooter)) return false;
     const st = entity.state;
     const position = shooter.state.pos;
     if (!hasLos(
@@ -3839,7 +4070,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function claimIdleFiringPlayer(shooter: AiEntity): boolean {
     if (target && enemyAlive(target)) return false;
-    if (!isVisibleToTeam(shooter) && playerShotsInWindow < 2) return true;
+    if (!isVisibleToTeam(shooter)) {
+      noteSuspect(shooter, nowS, true); // bot philosophy r1: move onto the flash, no target
+      return true;
+    }
     assignShooterTarget(shooter);
     if (mode === 'patrol') mode = 'engage';
     return true;
@@ -3847,6 +4081,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function claimRepeatFiringPlayer(shooter: AiEntity): void {
     if (playerShotsInWindow < 2 || target === shooter || target?.isPlayer) return;
+    if (!isVisibleToTeam(shooter)) {
+      noteSuspect(shooter, nowS, true); // bot philosophy r1: the hull moves on intel, the gun waits for a spot
+      return;
+    }
     assignShooterTarget(shooter);
     losClear = false;
     if (mode === 'patrol' || mode === 'seekCover') mode = 'engage';
@@ -3886,6 +4124,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // BATTLE-AI r7 doctrine surface: class role + measurable signals
       // (sniper relocations, live scoot/kite/fallback windows) for probes.
       role, relocations, shotsFromSpot,
+      // bot philosophy r1: live hit reaction, count, and the unseen gun the hull is turning onto
+      reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
       scooting: nowS < scootUntilS,
       kiting: nowS < kiteUntilS,
       fallingBack: nowS < fallbackUntilS,

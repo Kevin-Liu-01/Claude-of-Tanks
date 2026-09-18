@@ -68,7 +68,7 @@ function gear(root) {
   const roads = root.getObjectByName('gearRoadWheelDiscs'), rollers = root.getObjectByName('gearReturnRollerTires');
   assert.equal(roads.count,14); assert.equal(rollers.count,6);
   const m = new THREE.Matrix4(), p = new THREE.Vector3();
-  for (const [mesh,stations,x,y] of [[roads,zs,1.18048348,.34611254],
+  for (const [mesh,stations,x,y] of [[roads,zs,1.18048348,.3467588722705841],
     [rollers,[-1.675,-.348636,.976],1.267537,.852034]]) for(let i=0;i<mesh.count;i++) {
     mesh.getMatrixAt(i,m);p.setFromMatrixPosition(m).applyMatrix4(mesh.matrixWorld);
     near(Math.min(...stations.map(z=>Math.abs(z-p.z))),0,2e-6,'actual source axle Z');

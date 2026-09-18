@@ -578,7 +578,8 @@ export function buildMerkava4X(P: TankBuilderPort): void {
     wheelZs:[...MERKAVA4_X_DATUMS.wheelStations],trackW:.548,trackTh:.064,
     sprocket:{z:3.285,y:.761,r:.336},idler:{z:-3.020,y:.722,r:.314},
     // Existing road axles stay fixed; supports sit between their swept wheels.
-    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0063,true));
+    // 4.7 mm seat: with the 19 mm heavy pins the rollers still meet the near-shoe stock within 2 mm (2026-09-17)
+    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);
   merkava4HullDetails(P);
   addMerkavaXShoulderReturns(P, 'merkava4_x');

@@ -16,6 +16,7 @@ import { buildType99AHullOnly } from '../modern2.ts';
 import { addRearFuelDrums, buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { TYPE100_PROFILES } from './type100.ts';
+import { ZTZ100_X_PROFILES } from './ztz100X.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -541,4 +542,5 @@ export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   vt4a1: Object.freeze({ build: buildVT4A1 }),
   type99a: Object.freeze({ build: buildType99AWithVtDerivative }),
   ...TYPE100_PROFILES,
+  ...ZTZ100_X_PROFILES,
 }) satisfies VehicleProfileRecord;

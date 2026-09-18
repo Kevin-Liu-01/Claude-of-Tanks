@@ -6,8 +6,8 @@ import { getSpec } from '../specs.ts';
 
 const near = (actual, expected, epsilon = 1e-6) => Math.abs(actual - expected) <= epsilon;
 const driverSeatHullHashes = Object.freeze({
-  pl01: '5d1e1d2118ae2c5d6de59fabdf6c9d21c01ee209c79f022263190815692115d2',
-  pl01_105: '40719fa4b15c18aeed08d8e00f7a7675a9fb20d178f5b3ff7b7360f1eef7faa3',
+  pl01: '6d7d86707092b3146ac9c202eb44574287c063191a943a020d85cad207e6ea20',
+  pl01_105: 'cd871cc0deb95ca1ef40372c3898cadfd2b00701ca1a9e3f12775e97bc63c9fa',
 });
 
 function geometryHash(group) {
@@ -56,7 +56,7 @@ for (const id of ['pl01', 'pl01_105']) {
   assert.deepEqual(
     [...hullBounds.min.toArray(), ...hullBounds.max.toArray()]
       .map((value) => Number(value.toFixed(6))),
-    [-1.922, -0.087, -3.565, 1.922, 2.203312, 3.44],
+    [-1.922, 0, -3.565, 1.922, 2.203312, 3.44],
     `${id} driver-roof seating must not change the hull envelope`,
   );
   assert.equal(geometryHash(hull), driverSeatHullHashes[id],

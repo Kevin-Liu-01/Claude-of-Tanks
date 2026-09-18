@@ -83,8 +83,8 @@ try {
 
   assert.equal(runningGear?.wheelR, 0.355,
     'KF51B road wheels use the smaller revised Panther radius');
-  assert.equal(runningGear?.wheelY, 0.395,
-    'KF51B smaller road wheels preserve their authored ground clearance');
+  assert.ok(Math.abs(runningGear?.wheelY - (runningGear.botY + runningGear.trackTh / 2 + runningGear.wheelR)) < 1e-9,
+    'KF51B smaller road wheels rest on the fleet band (ground-datum seat, 2026-09-17)');
   closeTo(runningGear?.wheelZs[0], 2.72);
   closeTo(runningGear?.wheelZs.at(-1), -2.18);
   assert.equal(trackSeat?.roadWheelForwardShiftM, 0.12,

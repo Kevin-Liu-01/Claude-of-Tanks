@@ -8,6 +8,7 @@ import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
+import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
 import type { CombatState } from '../sim/damage.ts';
@@ -72,6 +73,8 @@ export interface RosterGameState<Entity extends RosterEntity = RosterEntity> {
   tankById: Map<string, Entity>;
   tanks: Entity[];
   battleCount: number;
+  /** Spec ids of the bots that fought the previous battle (matchmaking diversity, 2026-09-17). */
+  recentBotSpecIds?: ReadonlySet<string> | null;
   _engineCtx?: EngineContext;
   _groundSampler?: GroundSampler | null;
   _battleVisualPool?: {
@@ -447,6 +450,7 @@ function randomBattleCandidates(
   return rankMatchCandidates(
     shuffledBotPool(game, player, battleOrdinal),
     player,
+    game.recentBotSpecIds ?? null,
   );
 }
 
@@ -481,6 +485,7 @@ function preferNations(
   player: RosterEntity,
   nations: readonly string[],
   cap: number,
+  anyEra = false,
 ): RosterEntity[] {
   if (!nations.length || cap <= 0) return candidates;
   const era = player.spec?.era ?? null;
@@ -491,9 +496,34 @@ function preferNations(
   const sameEra = candidates.filter((entity) => inFormation(entity) && (!era || eraOf(entity) === era));
   const contemporaries = candidates.filter((entity) => inFormation(entity) && era && eraOf(entity) !== era
     && neighbours!.includes(eraOf(entity)));
-  const preferred = [...sameEra, ...contemporaries].slice(0, cap);
+  // same-nation waves (owner 2026-09-17): the wave modes keep the nation pure across every era
+  // before any other nation fills a seat — a WW2 hull in a modern wave beats a mixed formation there
+  const otherEras = anyEra ? candidates.filter((entity) => inFormation(entity) && era && eraOf(entity) !== era
+    && !neighbours!.includes(eraOf(entity))) : [];
+  const preferred = [...sameEra, ...contemporaries, ...otherEras].slice(0, cap);
   const chosen = new Set(preferred);
   return [...preferred, ...candidates.filter((entity) => !chosen.has(entity))];
+}
+
+/**
+ * Same-nation waves by default (owner 2026-09-17: "same-nation waves in Frontline / Endless Horde"): when a
+ * wave mode arrives with no arranged or campaign nation, its lead seats still come from ONE nation — the
+ * production catalog's nations that can field the whole lead, rotated per battle ordinal so consecutive
+ * sorties meet different armies. Deterministic for the loading plan and the battle pick alike.
+ */
+function defaultWaveNations(
+  game: RosterGameState,
+  battleOrdinal: number,
+  formationLead: number,
+): readonly string[] {
+  const countOf = (specNations: readonly string[]): number => game.allTanks.filter((entity) =>
+    isBotTankId(entity.specId) && specNations.includes(String((entity.spec as { nation?: string } | null | undefined)?.nation || ''))).length;
+  const counts = ENEMY_NATION_OPTIONS.map((option) => ({ option, count: countOf(option.specNations) }));
+  const best = counts.reduce((max, row) => Math.max(max, row.count), 0);
+  if (best <= 0) return [];
+  const needed = Math.min(Math.max(1, Math.floor(formationLead)), best);
+  const eligible = counts.filter((row) => row.count >= needed);
+  return eligible[Math.abs(Math.floor(battleOrdinal) * 7) % eligible.length].option.specNations;
 }
 
 export function pickBattleParticipants(
@@ -528,8 +558,12 @@ export function pickBattleParticipants(
     // cross-era tank is an emergency fallback only when
     // the production catalog cannot fill all 13 non-player slots;
     // picking the Random battlefield no longer turns WWII vs modern back on.
-    others = preferNations(randomBattleCandidates(game, player, battleOrdinal), player, preferredNations,
-      Math.max(0, formationLead != null ? Math.min(enemySlots, Math.floor(formationLead)) : enemySlots - 3));
+    const waveMode = formationLead != null;
+    const nations = preferredNations.length || !waveMode
+      ? preferredNations
+      : defaultWaveNations(game, battleOrdinal, Math.min(enemySlots, Math.floor(formationLead)));
+    others = preferNations(randomBattleCandidates(game, player, battleOrdinal), player, nations,
+      Math.max(0, waveMode ? Math.min(enemySlots, Math.floor(formationLead)) : enemySlots - 3), waveMode);
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = stagedBattleCandidates(game, playerSpecId);

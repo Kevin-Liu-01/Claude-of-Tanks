@@ -17,15 +17,15 @@ import { tankLabelRecord } from '../tankLabels.ts';
 // radar panels), the envelopes, the tallest turret part and the gun anchor.
 
 const spec = TANK_SPECS.type100;
-assert.equal(spec.name, 'Type 100'); assert.equal(spec.nation, 'China'); assert.equal(spec.era, 'next-generation');
-assert.equal(spec.role, 'mbt'); assert.equal(spec.gun.caliberMm, 105); assert.equal(tankTier('type100'), 10);
+assert.equal(spec.name, 'Type 100 IFV'); assert.equal(spec.nation, 'China'); assert.equal(spec.era, 'next-generation');
+assert.equal(spec.role, 'ifv'); assert.equal(spec.gun.caliberMm, 30); assert.equal(tankTier('type100'), 10);
 assert.equal(vehicleEraForId('type100'), 'next-generation'); assert.equal(FLEET_GROUP_BY_ID.type100, 'modern2');
-assert.equal(tankLabelRecord(spec).shortName, 'Type 100');
+assert.equal(tankLabelRecord(spec).shortName, 'Type 100 IFV');
 assert.equal(spec.visual.scheme, 'digital', 'digital woodland finish');
 assert.equal(spec.visual.number, 'LZ83', 'hull number from the renders');
 assert.deepEqual(spec.armor.turretPivot, [0, 1.80, -0.95], 'turret set back over the hull as in the renders');
-assert.deepEqual(spec.armor.gunPivot, [0, 0.34, 1.65], 'low trunnion at the wedge apex');
-assert.equal(spec.dims.hullLengthM, 7.05); assert.equal(spec.dims.widthM, 3.66); assert.equal(spec.dims.overallLengthM, 10.05);
+assert.deepEqual(spec.armor.gunPivot, [0, 0.30, 1.30], 'low trunnion at the compact module apex');
+assert.equal(spec.dims.hullLengthM, 7.05); assert.equal(spec.dims.widthM, 3.66); assert.equal(spec.dims.overallLengthM, 7.05, 'the autocannon ends inside the hull length');
 
 const parts = [];
 registerProfiledBuilders({ type100: (P) => TYPE100_PROFILES.type100.build(new Proxy(P, {
@@ -85,13 +85,14 @@ assert.equal(count('cheek-facet-low'), 4); assert.equal(count('cheek-facet-up'),
 assert.equal(count('shoulder-face-low'), 2); assert.equal(count('shoulder-face-up'), 2);
 assert.equal(count('bustle-face'), 1); assert.equal(count('roof-plate'), 1); assert.equal(count('turret-grille'), 1);
 const facets = parts.filter((p) => /facet/.test(p.part));
-assert.ok(facets.every((p) => Math.max(Math.abs(p.min[0]), Math.abs(p.max[0])) <= 1.32 + 1e-6), 'facet skins define the turret width');
-assert.ok(one('citadel').max[0] <= 1.05 && one('citadel').max[1] <= 0.68 + 1e-6, 'the core stays inside the skins');
+assert.ok(facets.every((p) => Math.max(Math.abs(p.min[0]), Math.abs(p.max[0])) <= 1.12 + 1e-6), 'facet skins define the 2.24 m module width');
+assert.ok(facets.every((p) => p.min[2] >= -2.07 && p.max[2] <= 1.70 + 1e-6), 'the module runs 3.8 m, bustle to apex');
+assert.ok(one('citadel').max[0] <= 0.90 && one('citadel').max[1] <= 0.60 + 1e-6, 'the core stays inside the skins');
 assert.equal(count('mantlet-housing'), 1); assert.equal(count('mantlet'), 1); assert.equal(count('trunnion-collar'), 1);
 assert.ok(one('mantlet').method === 'addGunExtra', 'the trapezoid mantlet pitches with the gun');
-assert.equal(count('mrs-collar'), 1); assert.equal(count('mrs-bracket'), 1);
+assert.equal(count('mrs-collar'), 1); assert.equal(count('mrs-bracket'), 1); assert.equal(count('barrel-jacket'), 1); assert.equal(count('jacket-ring'), 6);
 assert.equal(count('gunner-sight'), 1); assert.equal(count('gunner-sight-rim'), 2); assert.equal(count('gunner-sight-cover'), 1);
-assert.ok(one('gunner-sight').min[0] > 0.4, 'gunner sight right of the gun');
+assert.ok(one('gunner-sight').min[0] > 0.3, 'gunner sight right of the gun');
 assert.equal(count('cheek-sensor'), 2); assert.equal(count('das'), 4); assert.equal(count('radar-panel'), 4);
 assert.equal(count('smoke-tube'), 8); assert.equal(count('pod-tube'), 8); assert.equal(count('pod-cap'), 8); assert.equal(count('pod-bracket'), 2);
 assert.equal(count('roof-tile'), 5); assert.equal(count('roof-tile-bolt'), 20);
@@ -111,10 +112,10 @@ assert.ok(rwsTop + spec.armor.turretPivot[1] <= spec.dims.silhouetteHeightM + 0.
 const muzzle = tank.root.getObjectByName('rig_muzzle');
 assert.ok(muzzle, 'muzzle anchor exists');
 const muzzleWorld = muzzle.getWorldPosition(new T.Vector3());
-assert.ok(Math.abs(muzzleWorld.z - (spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + 5.60)) < 0.02, `muzzle at ${muzzleWorld.z.toFixed(2)} m`);
+assert.ok(Math.abs(muzzleWorld.z - (spec.armor.turretPivot[2] + spec.armor.gunPivot[2] + 2.85)) < 0.02, `muzzle at ${muzzleWorld.z.toFixed(2)} m`);
 assert.ok(muzzleWorld.z + 3.75 <= spec.dims.overallLengthM + 0.15, 'overall length covers the gun');
 const meshes = []; tank.root.traverse((o) => { if (o.isMesh && !o.userData.shadowOnly) meshes.push(o); });
 assert.ok(meshes.length > 20, 'the tank builds into buckets');
 const receipt = tank.root.getObjectByName('rig_hull').userData.type100Receipt;
-assert.equal(receipt?.architecture, 'type100-ztz100-r4'); assert.equal(receipt?.curtainPanelsPerSide, 8); assert.equal(receipt?.launcherTubes, 8);
-console.log(`type100: ${parts.length} tagged parts — lofted body ${body.min[2].toFixed(2)}..${body.max[2].toFixed(2)} m behind 16 hanging curtains, core loft in ${facets.length} facet skins, weapon station top ${rwsTop.toFixed(2)} m (turret), 105 mm muzzle at ${muzzleWorld.z.toFixed(2)} m PASS`);
+assert.equal(receipt?.architecture, 'type100-ifv-r5'); assert.equal(receipt?.curtainPanelsPerSide, 8); assert.equal(receipt?.launcherTubes, 8);
+console.log(`type100: ${parts.length} tagged parts — lofted body ${body.min[2].toFixed(2)}..${body.max[2].toFixed(2)} m behind 16 hanging curtains, core loft in ${facets.length} facet skins, weapon station top ${rwsTop.toFixed(2)} m (turret), 30 mm muzzle at ${muzzleWorld.z.toFixed(2)} m PASS`);

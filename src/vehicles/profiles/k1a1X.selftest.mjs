@@ -36,7 +36,7 @@ function rigAndGearChecks(tank,label) {
   assert.equal(gear.length,1,`${label}: exactly one native gear unit`);
   assert.deepEqual(gear[0].wheelZs,[-2.157,-1.2769,-.4408,.5487,1.6046,2.5251]);
   near(gear[0].wheelR,.3313,1e-9,`${label}: source wheel radius`);
-  near(gear[0].wheelY,.3978,1e-9,`${label}: source wheel height`);
+  near(gear[0].wheelY,.3983,1e-9,`${label}: source wheel height`);
   assert.deepEqual(gear[0].idler,{z:3.2984,y:.8305,r:.3313});
   assert.deepEqual(gear[0].sprocket,{z:-2.8851,y:.81225,r:.39725});
   near(tank.contactGeom.bottomYM,0,.003,`${label}: native flat-run pad contact datum`);

@@ -24,13 +24,13 @@ const original = {
 // existing surfaces; the leclerc digest is repinned from the current build.
 // 2026-09-13 wheel review: challenger1's fixed wheel dressing (face disc / hub) re-seated from
 // 7 cm outboard of the tire to the tire plane; repinned from the current build.
-  ariete_c1:'8c06b45a', challenger1:'3d5d8586', leclerc:'13b758e3',
-  chieftain5:'0e4c53e4', chieftain_mk10:'68478b83', leo2a6:'d8373bad',
-  k1a1:'485a880a', strv122:'c17ae6bd', t62mv1:'374dffcc',
-  t72b_1987:'8580b42f', t72b3:'e4193ead', t72b3m:'f7517bfa',
-  t72bu:'9569ccf4', t80u:'13e36eca', type10:'5d2faa11', type90:'303aec4e',
-  jpz_e100:'68750c36', amx30:'e946cb12', amx40:'0236741e',
-  t90:'cb4ab582', t90a_burlak:'cf5005a1', t90ms:'70e931ad',
+  ariete_c1:'100c413f', challenger1:'e2c61c09', leclerc:'4cf934c8',
+  chieftain5:'4d129a7a', chieftain_mk10:'10c1cdf7', leo2a6:'c5a30dd0',
+  k1a1:'13e4505e', strv122:'e1c6124e', t62mv1:'cbc6b3bb',
+  t72b_1987:'2f4e41a3', t72b3:'65ab20f1', t72b3m:'dbd41308',
+  t72bu:'b20657db', t80u:'9f4d5707', type10:'3c63b8fa', type90:'70bf2b48',
+  jpz_e100:'85585980', amx30:'c04e512c', amx40:'ee1410d0',
+  t90:'2b9aad5b', t90a_burlak:'99288c32', t90ms:'a22a8e76',
 };
 const options = {proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4242};
 for (const [id, expected] of Object.entries(original)) {

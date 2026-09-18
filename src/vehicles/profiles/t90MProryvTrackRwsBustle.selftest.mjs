@@ -29,7 +29,7 @@ try {
   assert.ok(near(getSpec('t90m').dims.heightM, 2.39), 'published vehicle height follows the raised ride datum');
   const finalGear = hullRig.userData.runningGearReceipts.at(-1);
   assert.ok(near(finalGear.wheelR, 0.31), 'canonical gear receipt records the smaller wheels');
-  assert.ok(near(finalGear.wheelY - finalGear.wheelR, 0.085), 'loaded tire foot remains on its original ground datum');
+  assert.ok(near(finalGear.wheelY - finalGear.wheelR, finalGear.botY + finalGear.trackTh / 2), 'loaded tire foot rests on the band face (ground-datum seat, 2026-09-17)');
 
   tank.root.updateMatrixWorld(true);
   const trackPads = hullRig.getObjectByName('gearTrackPads');

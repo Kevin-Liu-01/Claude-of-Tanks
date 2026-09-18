@@ -313,6 +313,10 @@ export function buildAmx30X(P: TankBuilderPort): void {
   P.turretG.position.set(0, YAW_Y, YAW_Z);
   P.gunG.position.set(GUN_X, GUN_Y - YAW_Y, GUN_Z - YAW_Z);
   hull(P);
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on hull y = 0 for the fleet-standard band
+  // (KIT.groundSeatBotY) — the loop, its rounded contact and cfg.botY share one datum.
+  const shoeDims = { padHeight: .035, grouserHeight: .008, webHeight: .014, hornHeight: .085, pinRadius: .007, pinCentreY: 0 };
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims });
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .36545, wheelW: .4005, wheelY: .41638,
     // Native decorative hubs otherwise protrude96mm past the independently
@@ -327,7 +331,7 @@ export function buildAmx30X(P: TankBuilderPort): void {
     // Object_6/8 has a 75 mm lower shell, intersecting the measured wheel
     // bottoms by 25 mm. The seated 43 mm outer shoe plus 4 mm projecting
     // web fits below those axles; the separate source guide rises 85 mm.
-    trackShoeDimensions: { padHeight: .035, grouserHeight: .008, webHeight: .014, hornHeight: .085, pinRadius: .007, pinCentreY: 0 },
+    trackShoeDimensions: shoeDims,
     // Physical wheel casting radii are unchanged. trackR is the native
     // engagement datum before its fixed wrap allowance, not a smaller wheel.
     sprocket: { z: -2.90252, y: .78493, r: .36207, trackR: .304,
@@ -341,13 +345,13 @@ export function buildAmx30X(P: TankBuilderPort): void {
     rollerR: .16434, returnRollerWidthM: .1873, returnRollerInsetM: .0982, shoeWidthScale: .9346,
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler:{z:2.86334,y:.77268,r:.314},sprocket:{z:-2.90252,y:.78493,r:.304},
-      botY: .0495 /* fleet track standard 2026-09-12: +.007 course datum for the .024 band */,topY:1.129,sag:.022,
+      botY,topY:1.129,sag:.022,
       contact:KIT.runningGearContactPatch(AMX30_X_DATUMS.wheelStations,.36545),
-      endWheels:KIT.endRoadWheels(AMX30_X_DATUMS.wheelStations,.41638,.36545),
+      endWheels:KIT.endRoadWheels(AMX30_X_DATUMS.wheelStations,KIT.seatedWheelY(botY,.024,.36545),.36545),
       supports:[-2.21193,-1.33211,-.35206,.62792,1.60837].map(z=>({z,y:1.11289})),
-    }),.0425,.37388),
+    }),botY,.37388),
     rigidLinkChords:true,
-    topY: 1.129, botY: .0425, paintedEnds: true, arms: true, coveredTop: false,
+    topY: 1.129, botY, paintedEnds: true, arms: true, coveredTop: false,
   });
   casting(P); roof(P); basket(P); gun(P);
   P.topY = AMX30_X_DATUMS.overallHeightM - YAW_Y;

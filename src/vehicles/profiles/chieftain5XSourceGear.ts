@@ -17,7 +17,10 @@ export function addChieftain5XSourceGear(P: TankBuilderPort): void {
   const idler = { z: 3.100381, y: .8788445, r: .25590, trackR: .2260 };
   // Fleet track standard 2026-09-12: the .030 pad (was .016) hangs .014 lower,
   // so the course datum rises by the same amount to keep the shoes grounded.
-  const botY = .054, topY = 1.1553;
+  const shoeDims = { padHeight: .030, grouserHeight: .010,
+      webHeight: .03178, hornHeight: .060 };
+  // 2026-09-17 ground datum (KIT.groundSeatBotY): soles on hull y = 0 for the fleet-standard band
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .024, trackShoeDimensions: shoeDims }), topY = 1.1553;
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: .3952785, wheelW: .41679, wheelY: .4481615,
     wheelZs, wheelTireInnerRadiusM: .3195,
@@ -31,8 +34,7 @@ export function addChieftain5XSourceGear(P: TankBuilderPort): void {
     // X1.07872450 and1.51164842; only the shoe/connector extremities span
     // 609.499 mm. A full-width continuous web incorrectly occupies their air.
     trackW: .6094994, trackCarrierWidthM: .432923913, trackTh: .024, botY, topY, // fleet track standard 2026-09-12 (owner: apply everywhere)
-    trackShoeDimensions: { padHeight: .030, grouserHeight: .010,
-      webHeight: .03178, hornHeight: .060 },
+    trackShoeDimensions: shoeDims,
     sprocket, idler, rollers, returnRollerWidthM: .22856,
     returnRollerOutsetM: .00448, returnRollerInsetM: .010,
     suspensionPattern: 'paired-bogie',
@@ -46,7 +48,7 @@ export function addChieftain5XSourceGear(P: TankBuilderPort): void {
       axleBossCenterAbsXM: 1.022, anchorLiftM: .010 },
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler, sprocket, contact: { zR: -2.21302, zF: 2.34030 }, botY, topY,
-      endWheels: KIT.endRoadWheels(wheelZs, .4481615, .3952785),
+      endWheels: KIT.endRoadWheels(wheelZs, KIT.seatedWheelY(botY, .024, .3952785), .3952785),
       supports: rollers.map(r => ({ z: r.z, y: 1.1515 + (r.z + 3.08) * .00131 })),
       sag: .001, frontArcSteps: 24, rearArcSteps: 24,
     }), botY, .3952785),

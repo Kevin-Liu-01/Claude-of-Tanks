@@ -51,8 +51,8 @@ for (const id of IDS) {
       `${id}: both sides of all five road-wheel stations remain articulated`);
 
     if (id === 'type74') {
-      assert.equal(receipt.botY, 0.055,
-        'Type 74 lower track run shares the loaded tire contact datum');
+      assert.ok(Math.abs(receipt.botY + receipt.trackTh / 2 - (receipt.wheelY - receipt.wheelR)) < 1e-9,
+        'Type 74 lower track run carries the loaded tire feet (ground-datum seat, 2026-09-17)');
       visual.root.updateMatrixWorld(true);
       const restBounds = new THREE.Box3().setFromObject(visual.root);
       assert.ok(restBounds.min.y > -0.08,

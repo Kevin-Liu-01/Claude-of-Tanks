@@ -22,7 +22,7 @@ function beforeRollers(source,readHelper){
   assert.equal(count(source,'merkavaXReturnRollers'),4,'One roller import path/symbol and two exact calls');
   assert.equal(count(source,imported),1,'One exact roller helper import');
   assert.equal(hash(readHelper('merkavaXReturnRollers.ts')),
-    'a751e20dafb8cb363afb9a5e743fc1b0b552b287f23a69cf9237192eb222fcba','Complete reviewed roller helper'); // 2026-09-14: helper passes the outer road wheels to the loop (tangent wrap)
+    '1cd30d9515a866a3e79a927abe0bef34b8b5841d75255580d9d670c4baa6d3f1','Complete reviewed roller helper'); // 2026-09-14: helper passes the outer road wheels to the loop (tangent wrap)
   assert.equal(hash(readHelper('../upperReturnBandStock.ts')),
     '3de12aa98490a81195866eb36baf263f54fc73e7d3866e6466ee3cdce69629ea','Complete reviewed closed upper stock leaf');
   const lining='  lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);\n';
@@ -40,9 +40,12 @@ function beforeRollers(source,readHelper){
     ['    // Inferred supports occupy existing axle gaps at full suspension stroke.\n',
       '    topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true',
       '},[-1.8821825,-.8756825,.9765675,1.8323175],1.075,.25,.0027));'],
-    ['    // Existing road axles stay fixed; supports sit between their swept wheels.\n',
+    // 2026-09-17: the Mk4 seat moved .0063 → .0047 with the 19 mm heavy pins and gained its own dated comment line;
+    // both lines are authenticated here and recovered together, so the immutable old call still hashes exactly.
+    ['    // Existing road axles stay fixed; supports sit between their swept wheels.\n'
+      +'    // 4.7 mm seat: with the 19 mm heavy pins the rollers still meet the near-shoe stock within 2 mm (2026-09-17)\n',
       '    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true',
-      '},[-1.6645,-.733,.27,2.017],.945,.29,.0063,true));'],
+      '},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));'],
   ]){
     assert.equal(count(before,comment),1,'One exact support comment');
     assert.equal(count(before,comment+tail+suffix),1,'Support comment stays at its own immutable gear seam');

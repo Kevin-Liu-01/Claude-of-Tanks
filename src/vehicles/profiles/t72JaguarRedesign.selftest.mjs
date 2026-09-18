@@ -48,7 +48,7 @@ assert.equal(runningGear.idler.z, 2.83,
   'front idler reaches forward beneath the bow instead of crowding the sixth road wheel');
 assert.ok(runningGear.idler.z - runningGear.wheelZs.at(-1) >= 0.73,
   'front idler has a natural full-wheel center spacing from the last road wheel');
-assert.ok(Math.max(...runningGear.loopPoints.map(([z]) => z)) > 3.16,
+assert.ok(Math.max(...runningGear.loopPoints.map(([z]) => z)) > runningGear.idler.z + runningGear.idler.r,
   'linked track course wraps around the relocated front idler');
 assert.ok(runningGear.sprocket.z <= -2.41,
   'rear sprocket moves aft instead of crowding the first road wheel');
@@ -57,8 +57,8 @@ assert.ok(Math.min(...runningGear.loopPoints.map(([z]) => z)) < -2.72,
 assert.equal(hull.userData.jaguarRunningGearReceipt?.revision,
   'fixed-road-wheels-raised-hull-and-track-course-r5',
   'Jaguar records the fixed-road-wheel, taller-track running-gear revision');
-assert.equal(runningGear.botY, 0.10,
-  'Jaguar loaded track run keeps its established ground contact while the upper course rises');
+assert.ok(Math.abs(runningGear.botY + runningGear.trackTh / 2 - (runningGear.wheelY - runningGear.wheelR)) < 1e-9,
+  'Jaguar loaded track run carries the tire feet (ground-datum seat, 2026-09-17) while the upper course rises');
 assert.equal(runningGear.wheelY, twardyHull.userData.runningGearReceipts[0].wheelY,
   'Jaguar and PT-91A share the same road-wheel center height');
 assert.equal(runningGear.topY, twardyHull.userData.runningGearReceipts[0].topY + 0.04,
@@ -71,8 +71,8 @@ assert.equal(runningGear.sprocket.y,
   'Jaguar rear sprocket rises with the taller upper track course');
 assert.ok(Math.max(...runningGear.loopPoints.map(([, y]) => y)) >= 1.05,
   'reseated Jaguar track loop reaches the raised endpoint crowns');
-assert.ok(tank.presentationTrackFloorYM >= twardy.presentationTrackFloorYM + 0.07,
-  'Jaguar loaded shoes keep their established raised presentation floor');
+assert.ok(Math.abs(tank.presentationTrackFloorYM - twardy.presentationTrackFloorYM) < 0.012,
+  'Jaguar and Twardy shoes both stand on the y = 0 ground datum (2026-09-17); the raised hull shows in the sprocket and crown pins above');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.pt91aWheelCenterMatched, true,
   'Jaguar publishes the PT-91A wheel-center stance match');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.roadWheelCentersPreserved, true,
@@ -81,8 +81,8 @@ const firstRoadWheelMatrix = new THREE.Matrix4();
 const firstRoadWheelPosition = new THREE.Vector3();
 roadWheelTires.getMatrixAt(0, firstRoadWheelMatrix);
 firstRoadWheelPosition.setFromMatrixPosition(firstRoadWheelMatrix);
-assert.ok(Math.abs(firstRoadWheelPosition.y - 0.47) <= 1e-6,
-  'rendered road-wheel instances remain at the original 0.47 m centerline');
+assert.ok(Math.abs(firstRoadWheelPosition.y - runningGear.wheelY) <= 1e-6,
+  'rendered road-wheel instances sit on the seated axle (ground-datum seat, 2026-09-17)');
 assert.equal(hull.userData.jaguarRunningGearReceipt?.hullDeckLiftM, 0.02,
   'Jaguar connected hull body rises 20 mm above the former low silhouette');
 assert.equal(turret.position.y, 1.40,

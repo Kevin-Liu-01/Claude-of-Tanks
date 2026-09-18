@@ -10,13 +10,14 @@ import { auditTankWheelQuality } from '../wheelQuality.ts';
 // 2026-09-14: steel shells pulled in (outside face 1.35185 + 0.1753, lip 1.35185 + 0.193) so the dish
 // no longer stands 5–8 cm proud of its rubber shoulder; every outboard cut moves inboard by the same shift.
 const cuts = [
-  [.37629, -1.96246, 1.504416465203, 1.504419807783],
-  [.32629, -1.96246, 1.470860535906, 1.470936716668],
+  // 2026-09-17 ground datum: the held-out hub/floor/lip metrics moved with the re-seated wheels (pre-datum values in git history)
+  [.37629, -1.96246, 1.5069789198084411, 1.506976893808879],
+  [.32629, -1.96246, 1.4734206880227032, 1.473491701771207],
   [.27629, -1.96246, 1.465161532611, 1.465250581151],
   [.22629, -1.96246, 1.465161519720, 1.465250594042],
-  [.12629, -1.96246, 1.542707382091, 1.542686319573],
-  [.214157965644, -1.750327965644, 1.539606092055, 1.539582196427],
-  [.185873694397, -1.722043694397, 1.527268891631, 1.527247976306],
+  [.12629, -1.96246, 1.5438579314087744, 1.5438368967139546],
+  [.214157965644, -1.750327965644, 1.5404080423087276, 1.5403870310091714],
+  [.185873694397, -1.722043694397, 1.5280990560110739, 1.5280781281843427],
 ];
 const zs = [-1.96246, -1.107005, -.274385, .47443, 1.317665, 2.088745];
 const near = (a, b, tolerance, label) => assert.ok(Number.isFinite(a) && Math.abs(a - b) <= tolerance,
@@ -105,7 +106,7 @@ function wheelFrames(root) {
       const m = new THREE.Matrix4(); shell.getMatrixAt(i, m);
       const p = new THREE.Vector3().setFromMatrixPosition(m);
       near(Math.abs(p.x), 1.35185, .000001, 'unchanged native axle lateral datum');
-      near(p.y, .42629, .000001, 'unchanged native axle rest datum');
+      near(p.y, .42247000336647034, .000001, 'unchanged native axle rest datum');
       near(p.z, zs[i], .000001, 'unchanged source longitudinal axle');
       result.push(m.elements);
     }

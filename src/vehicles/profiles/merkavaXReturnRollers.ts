@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {KIT, type TankBuilderPort} from '../tankFactoryCore.ts';
+import {KIT, type TankBuilderPort, type RunningGearConfig} from '../tankFactoryCore.ts';
 import {wheelPatternFor} from '../wheelPatterns.ts';
 import {efficientReturnRoller} from '../efficientReturnRoller.ts';
 
@@ -16,7 +16,9 @@ export function merkavaXReturnRollers<C extends MerkavaGearInput>(
   outerFaceCarrier=false,
 ) {
   const rear=cfg.idler,front=cfg.sprocket;
-  const rearY=rear.y+(rear.trackR??rear.r)+.045,frontY=front.y+(front.trackR??front.r)+.045;
+  // 2026-09-17 ground datum (KIT.groundSeatBotY); end wraps follow the fleet law (KIT.endpointWrapClearanceM)
+  const botY=KIT.groundSeatBotY(P.spec,cfg as Partial<RunningGearConfig>);
+  const rearY=rear.y+(rear.trackR??rear.r)+KIT.endpointWrapClearanceM(rear,cfg.trackTh),frontY=front.y+(front.trackR??front.r)+KIT.endpointWrapClearanceM(front,cfg.trackTh);
   const slope=(frontY-rearY)/(front.z-rear.z);
   const supports=stations.map(z=>({z,y:Math.max(cfg.topY??0,rearY+slope*(z-rear.z))}));
   const course=[{z:rear.z,y:rearY},...supports,{z:front.z,y:frontY}];
@@ -26,12 +28,15 @@ export function merkavaXReturnRollers<C extends MerkavaGearInput>(
       Math.hypot(1,(neighbor.y-support.y)/(neighbor.z-support.z))));
     // The Mk4's actual inboard shoe pin extends 4 mm below the Mk3
     // carrier-relative seat. Keep clearance to that stock, not only the band.
-    return {z:support.z,y:support.y-(radius+(cfg.trackTh??.09)/2+seatOffset)*normalLength,r:radius};
+    // 2026-09-17: on the 28 mm band the shoes' web in the roller lane reaches ~2 mm past the band's inner face
+    // 2026-09-17: the authored seats (Mk3D 2.7 mm, Mk4 4.7 mm) keep LOW's twelve-sector crown inside the 6 mm visible gate
+    // while the 19 mm heavy pins of the shoes following the kinked course stay clear of the rotors
+    return {z:support.z,y:support.y-(radius+Math.min(cfg.trackTh??.028,.028)/2+Math.max(seatOffset,.0027))*normalLength,r:radius};
   });
   const loopPoints=KIT.trackLoopPoints({sprocket:{...rear},idler:{...front},
-    botY:cfg.botY??.055,topY:cfg.topY,sag:0,supports,
+    botY,topY:cfg.topY,sag:0,wrapClearanceM:KIT.trackWrapClearanceM(Math.min(cfg.trackTh??.028,.028)),supports,
     contact:{zF:Math.max(...cfg.wheelZs)+cfg.wheelR*.5,zR:Math.min(...cfg.wheelZs)-cfg.wheelR*.5},
-    endWheels:KIT.endRoadWheels(cfg.wheelZs,cfg.wheelY,cfg.wheelR)});
+    endWheels:KIT.endRoadWheels(cfg.wheelZs,KIT.seatedWheelY(botY,cfg.trackTh,cfg.wheelR),cfg.wheelR)});
   for(let i=loopPoints.length-1;i>0;i--){
     if(Math.hypot(loopPoints[i][0]-loopPoints[i-1][0],loopPoints[i][1]-loopPoints[i-1][1])<1e-7)
       loopPoints.splice(i,1);
@@ -52,7 +57,9 @@ export function merkavaXReturnRollers<C extends MerkavaGearInput>(
     mounts.setMatrixAt(instance++,matrix);
   }
   P.hullG.add(mounts);P.disposables.push(spindle);
-  return {...cfg,rollers,rollerR:radius,returnRollerWidthM:width,returnRollerInsetM:inset,returnRollerGeometry:rotor,loopPoints,
+  // 2026-09-17: rigid link chords cut the corner at each support kink by ~1 mm, which is the whole 6 mm visible-contact
+  // window minus the 4.5 mm seat; the Merkava shoes follow the kinked course instead.
+  return {...cfg,rollers,rollerR:radius,returnRollerWidthM:width,returnRollerInsetM:inset,returnRollerGeometry:rotor,loopPoints,botY,rigidLinkChords:false,
     ...(outerFaceCarrier?{trackCarrierFromOuterFace:true}:{})};
 }
 

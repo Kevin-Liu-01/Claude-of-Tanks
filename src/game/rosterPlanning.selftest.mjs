@@ -4,6 +4,7 @@ import {
   planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
 } from './rosterState.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
+import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 
 const game = createGameState();
 spawnTanks(game, {});
@@ -75,4 +76,40 @@ for (const [era, ids] of catalogByEra) {
     `${era}: ordinary solo random battles rotate through the production era catalog`);
 }
 
-console.log('rosterPlanning.selftest: deterministic next-roster preload plan passed');
+// matchmaking diversity (owner 2026-09-17): the previous battle's bots rotate to the back of their era band
+{
+  game.battleCount = 0;
+  const plan = planBattleParticipantIds(game, 'm1a2', true);
+  game.recentBotSpecIds = new Set(plan.slice(1));
+  const rotated = planBattleParticipantIds(game, 'm1a2', true);
+  assert.equal(rotated[0], 'm1a2');
+  assert.equal(rotated.length, 14);
+  const modernPool = PRODUCTION_TANK_IDS.filter((id) => getSpec(id).era === getSpec('m1a2').era && id !== 'm1a2').length;
+  const repeats = rotated.slice(1).filter((id) => game.recentBotSpecIds.has(id)).length;
+  assert.equal(repeats, Math.max(0, 13 - (modernPool - 13)),
+    `consecutive rosters repeat only what the era catalog forces (${repeats} of 13, pool ${modernPool})`);
+  assert.deepEqual(planBattleParticipantIds(game, 'm1a2', true), rotated, 'the rotated plan is deterministic');
+  game.recentBotSpecIds = null;
+}
+// same-nation waves by default (owner 2026-09-17): a wave mode with no arranged nation still fields ONE nation
+// in its lead seats — every era of that nation before any other nation — rotating per battle ordinal
+{
+  const leads = [];
+  for (let ordinal = 0; ordinal < 6; ordinal++) {
+    game.battleCount = ordinal;
+    const plan = planBattleParticipantIds(game, 'm1a2', true, [], 10, 8);
+    assert.equal(plan.length, 11, 'two allies and eight enemies join the player');
+    const lead = plan.slice(1, 9).map((id) => getSpec(id).nation);
+    const option = ENEMY_NATION_OPTIONS.find((entry) => entry.specNations.includes(lead[0]));
+    assert.ok(option, `lead nation ${lead[0]} is a fieldable nation`);
+    assert.ok(lead.every((nation) => option.specNations.includes(nation)),
+      `wave ${ordinal}: the eight lead seats share one nation (${lead.join(', ')})`);
+    leads.push(option.id);
+  }
+  assert.ok(new Set(leads).size >= 2, `consecutive battles rotate the default wave nation (${leads.join(', ')})`);
+  assert.deepEqual(planBattleParticipantIds(game, 'm1a2', true, [], 10, 8), planBattleParticipantIds(game, 'm1a2', true, [], 10, 8),
+    'the default wave nation is deterministic per ordinal');
+  game.battleCount = 0;
+}
+
+console.log('rosterPlanning.selftest: deterministic next-roster preload plan, recent-roster rotation, and same-nation waves passed');

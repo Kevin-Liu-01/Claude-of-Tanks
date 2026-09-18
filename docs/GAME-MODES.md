@@ -39,8 +39,10 @@ caches replenish 20% of every non-full authored ammunition channel (with a minim
 of one round per channel). Horde uses the vehicle's normal per-shell loadout from
 the first wave onward. At most 12 uncollected caches remain active.
 
-Frontline Assault draws each sector's counter-attack the same way (fresh identities from
-the ten-strong formation pool) and fields `3 + extraDefenders + sector` defenders per wave with
+Frontline Assault's opening wave is the same fresh draw; every captured sector then REINFORCES
+the line (owner 2026-09-17: "capturing bases … shouldnt reset tanks"): defenders still alive keep
+their identity, position and damage, and only the shortfall to `3 + extraDefenders + sector`
+defenders arrives as fresh identities (rested first, that sector's wrecks last) with
 `1 + 0.16 × sector + difficultyHp` hull; a campaign operation of difficulty *d* adds
 `floor((d − 1) / 2)` defenders and `(d − 1) × 6 %` hull. A level score when the clock
 expires is a draw under Standard rules and a defeat for the attackers in Frontline
@@ -76,7 +78,14 @@ Assault (`timeout: 'defeat'`).
   operation's formation (`campaignEnemyNations`) or the arranged enemy nation
   (`game/teamArrangement.ts` `ENEMY_NATION_OPTIONS`, every fleet nation) leads the
   curated pool (`rosterState.preferNations`: the player's era first, then its
-  contemporaries, never WW2 against modern) and fills the enemy side first.
+  contemporaries, never WW2 against modern) and fills the enemy side first. The wave
+  modes keep that nation pure across every era before another nation fills a seat, and
+  with no arranged or campaign nation they still field ONE nation per battle — rotated by
+  battle ordinal through the nations that can field the whole lead
+  (`rosterState.defaultWaveNations`, owner 2026-09-17: same-nation waves). Ordinary
+  matchmaking rotates too: the previous battle's bots yield their era-band place
+  (`game.recentBotSpecIds`, `matchmaking.rankMatchCandidates`), so consecutive rosters
+  differ whenever the catalog allows.
 - **Team arrangement (2026-09-15)** — the play menu's arrangement panel (allied bots,
   enemy pool, first Horde wave, enemy nation) is saved per mode
   (`cot.game.teams.v1`, `readTeamArrangement`) and folds into the ruleset
@@ -133,18 +142,22 @@ knocked out and no fire starts, while hull hit points and replay RNG order are u
 ## Impact physics (owner 2026-09-16)
 
 Every mode: a shell that hits a hull shoves it along its flight direction (`shellKnockMps` in
-`sim/movement.ts`: calibre squared × shell speed × 45 t / victim mass, bounded at 9 m/s; a 105 mm
-round at 900 m/s moves a 45 t hull 1.3 m/s). The shove is a decaying translation impulse (about 0.3 m of
-displacement per m/s), the hull rocks, and heavy shoves lift the ride; the drivetrain speed is untouched, so
-a hit never becomes a lasting drive input. The balance range model excludes shoves (it measures gunnery and
-armour).
-Ram damage keeps its kinetic law (closing speed squared × reduced mass) but the freight-train cap rose
-from 900 to 2 400 hp, so a fast ram keeps hurting more the faster it is.
+`sim/movement.ts`: calibre squared × shell speed × 45 t / victim mass, bounded at 9 m/s, then × the
+ruleset's `shellKnockScale` — 0.3 in every standard mode since 2026-09-17, so a 105 mm round at
+900 m/s nudges a 45 t hull 0.4 m/s; the owner wanted the big shove only in Turbo Ball). The shove is a
+decaying translation impulse (about 0.3 m of displacement per m/s), the hull rocks, and heavy shoves lift
+the ride; the drivetrain speed is untouched, so a hit never becomes a lasting drive input. The balance
+range model excludes shoves (it measures gunnery and armour).
+Ram damage keeps its kinetic law (closing speed squared × reduced mass) multiplied by a speed gain
+`(closing / 8 m/s)^1.5` (`ramSpeedGain` in `sim/damage.ts`), capped at 4 000 hp: 8 m/s ≈ 290 total,
+12 m/s ≈ 1 200, 16 m/s ≈ 3 300, 20 m/s and up the cap (owner 2026-09-17: "the speed system for ram
+damage needs to scale a lot more").
 
 Turbo Ball adds three ruleset knobs (`jumpMps`, `recoilLaunchScale`, `shellKnockScale`) stamped on
 every entity by the mode controller: **F** launches a grounded, upright hull 9 m/s upward (the key
 still self-rights an overturned hull), the firing recoil becomes a real launch opposite the muzzle
-(×12 — aim behind you and fire for a speed boost, aim down to hop), and impact knocks are ×2.5. The
+(×12 — aim behind you and fire for a speed boost, aim down to hop), and impact knocks are ×2.5 —
+eight times the ×0.3 baseline. The
 HUD shows a JUMP · F keycap only in rulesets with a jump.
 
 ## State machine

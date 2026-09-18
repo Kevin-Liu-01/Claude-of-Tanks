@@ -14,13 +14,13 @@ const donorRows = () => [...new Set(Object.values(SECOND_WAVE_X_DONORS))].sort()
 // armor vertices are embedded in the regression.
 // Repinned 2026-09-15: the owner roster pass renamed donor display names (AMX-30B -> AMX-30,
 // AMX-40 -> AMX-40 Prototype, C1 Ariete -> Serie 1, Challenger 1 Mk 3 -> Mk 2 ...); no armor row moved.
-const donorHash = 'ce6ed7d80344189ea8aadb92f162a159d0c7b723ccf024170351666cb69f0fda';
+const donorHash = '09842f4d09b48cef27744d80a99ac8e512084354a116f608492c0d85c8dac942';
 const hullHash = '60571a41bc152a5aae624f029db842df453b49d8b826dc153db541aa0834f833';
 const hullCellsHash = 'e546ccd22261d60cd24fd5eae85fc268d12a432437f0becce61bc67219cf3ce7';
-const moduleCrewHash = 'eb348d13390a859042020234d8d73f6f24efbd9c4820764463380bfee2b2a0a3';
+const moduleCrewHash = 'd5651996036b6549b60468dc22d78670b0a4780980458fa09bd26cfe60d7a55f';
 const geometryHashes = {
-  jpz_e100_x: { high: '8401115d', low: '2780d778' },
-  jpz_e100: { high: '68750c36', low: '8de30f05' },
+  jpz_e100_x: { high: 'f7c5af51', low: '8f4fc310' },
+  jpz_e100: { high: '85585980', low: 'a39385a7' },
 };
 const pose = (turretYaw = 0, gunPitch = 0) => tankPoseFromState({
   pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw, gunPitch,

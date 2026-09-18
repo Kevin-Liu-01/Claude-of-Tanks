@@ -482,17 +482,19 @@ export function buildK2X(P: TankBuilderPort): void {
     idler: { z: 3.316 - CENTER_Z, y: .813 + GROUND, r: .300 },
     topY: 1.175 + GROUND, botY: .095, paintedEnds: true, arms: true, coveredTop: true,
   };
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on y = 0 for the fleet-standard band.
+  gearConfig.botY = KIT.groundSeatBotY(P.spec, gearConfig);
   // The finite inner carrier at the sloping crown needs 0.2 mm of clearance.
   // Keep the measured roller, road and end axes; lift only the three upper
   // support samples. The native lower course and articulation stay intact.
   gearConfig.loopPoints = KIT.trackLoopPoints({
     sprocket:{...gearConfig.sprocket},idler:{...gearConfig.idler},
-    botY:.095,topY:gearConfig.topY,sag:.022,
+    botY:gearConfig.botY,topY:gearConfig.topY,sag:.022,
     supports:gearConfig.rollers!.map(roller=>({z:roller.z,
-      y:roller.y+.095175+.066/2+.0002})),
+      y:roller.y+.095175+.028/2+.0002})),
     contact:{zF:Math.max(...gearConfig.wheelZs)+gearConfig.wheelR*.5,
       zR:Math.min(...gearConfig.wheelZs)-gearConfig.wheelR*.5},
-    endWheels:KIT.endRoadWheels(gearConfig.wheelZs,gearConfig.wheelY??gearConfig.wheelR+.10,gearConfig.wheelR),
+    endWheels:KIT.endRoadWheels(gearConfig.wheelZs,KIT.seatedWheelY(gearConfig.botY!,gearConfig.trackTh,gearConfig.wheelR),gearConfig.wheelR),
   });
   P.gear = KIT.buildRunningGear(P,gearConfig);
   hullFurniture(P);

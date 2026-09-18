@@ -6190,7 +6190,7 @@ function buildM1a2(P: AbramsBuilderPort, V: AbramsProfileOptions = {}): void {
     buildRunningGear(P, {
       style: 'rubber', wheelR: 0.25, wheelW: 0.20, wheelY: 0.46, xc: 1.197,
       wheelZs: [2.10, 1.347, 0.593, -0.16, -0.913, -1.667, -2.42],
-      botY: 0.28, trackW: 0.44, topY: 1.02, trackTh: 0.09,
+      botY: 0.28, floorY: 0.163 /* legacy hull built 16 cm above the fleet datum (2026-09-17) */, trackW: 0.44, topY: 1.02, trackTh: 0.09,
       rollers: [0.97, -1.29].map((z) => ({ z, y: 0.865, r: 0.11 })),
       contactZF: 2.30, contactZR: -2.62,
       sprocket: { z: -3.00, y: 0.86, r: 0.24 },

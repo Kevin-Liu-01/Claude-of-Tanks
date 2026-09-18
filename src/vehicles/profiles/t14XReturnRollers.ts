@@ -10,8 +10,10 @@ import {efficientReturnRoller} from '../efficientReturnRoller.ts';
 export function t14XReturnRollers(P: TankBuilderPort, cfg: RunningGearConfig): RunningGearConfig {
   const rear=cfg.sprocket,front=cfg.idler;
   const stations=[0,2,3,5].map(i=>(cfg.wheelZs[i]+cfg.wheelZs[i+1])/2);
-  const rearY=rear.y+(rear.trackR??rear.r)+.045;
-  const frontY=front.y+(front.trackR??front.r)+.045;
+  // 2026-09-17 ground datum (KIT.groundSeatBotY); end wraps follow the fleet law (KIT.endpointWrapClearanceM)
+  const botY=KIT.groundSeatBotY(P.spec,cfg);
+  const rearY=rear.y+(rear.trackR??rear.r)+KIT.endpointWrapClearanceM(rear,cfg.trackTh);
+  const frontY=front.y+(front.trackR??front.r)+KIT.endpointWrapClearanceM(front,cfg.trackTh);
   const slope=(frontY-rearY)/(front.z-rear.z);
   const supports=stations.map(z=>({z,y:Math.max(cfg.topY,rearY+slope*(z-rear.z))}));
   const course=[{z:rear.z,y:rearY},...supports,{z:front.z,y:frontY}];
@@ -19,13 +21,13 @@ export function t14XReturnRollers(P: TankBuilderPort, cfg: RunningGearConfig): R
   const rollers=supports.map((support,i)=>{
     const normalLength=Math.max(...[course[i],course[i+2]].map(neighbor=>
       Math.hypot(1,(neighbor.y-support.y)/(neighbor.z-support.z))));
-    return {z:support.z,y:support.y-(radius+(cfg.trackTh??.09)/2)*normalLength,r:radius};
+    return {z:support.z,y:support.y-(radius+Math.min(cfg.trackTh??.028,.028)/2)*normalLength,r:radius};
   });
   const loopPoints=KIT.trackLoopPoints({
-    sprocket:{...rear,r:rear.trackR??rear.r},idler:{...front,r:front.trackR??front.r},
-    botY:cfg.botY??.055,topY:cfg.topY,sag:0,supports,
+    sprocket:{...rear,r:rear.trackR??rear.r,rimR:rear.r},idler:{...front,r:front.trackR??front.r,rimR:front.r},
+    botY,topY:cfg.topY,sag:0,wrapClearanceM:KIT.trackWrapClearanceM(Math.min(cfg.trackTh??.028,.028)),supports,
     contact:{zF:Math.max(...cfg.wheelZs)+cfg.wheelR*.5,zR:Math.min(...cfg.wheelZs)-cfg.wheelR*.5},
-    endWheels:KIT.endRoadWheels(cfg.wheelZs,cfg.wheelY??cfg.wheelR+.10,cfg.wheelR,cfg.wheelYs), // same default as buildRunningGear
+    endWheels:KIT.endRoadWheels(cfg.wheelZs,KIT.seatedWheelY(botY,cfg.trackTh,cfg.wheelR),cfg.wheelR,cfg.wheelYs), // seated axle (2026-09-17)
   });
   for(let i=loopPoints.length-1;i>0;i--)if(Math.hypot(
     loopPoints[i][0]-loopPoints[i-1][0],loopPoints[i][1]-loopPoints[i-1][1])<1e-7)loopPoints.splice(i,1);
@@ -48,5 +50,5 @@ export function t14XReturnRollers(P: TankBuilderPort, cfg: RunningGearConfig): R
   }
   P.hullG.add(mounts);P.disposables.push(spindle);
   return {...cfg,rollers,rollerR:radius,returnRollerWidthM:width,returnRollerInsetM:inset,
-    returnRollerGeometry:rotor,loopPoints};
+    returnRollerGeometry:rotor,loopPoints,botY};
 }

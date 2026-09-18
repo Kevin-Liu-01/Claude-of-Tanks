@@ -9,7 +9,8 @@ import {unlinedLeopard2A5TestBuilder} from './leopardUpperBandHistoryTest.mjs';
 // Published 9b65f4bfa: complete pre-addition A5 running-gear inputs.
 const original={style:'rubber',wheelR:.3516,wheelW:.34,
  wheelZs:[-2.25,-1.40,-.57,.28,1.06,1.86,2.70],wheelY:.44,xc:1.371,
- trackW:.648,trackTh:.0389,topY:1.24558,botY:.06726,
+ // 2026-09-17 track law: the ground datum re-seats botY (.06726 → .06181) and the helper declares rigidLinkChords:false
+ trackW:.648,trackTh:.0389,topY:1.24558,botY:0.06180999999999999,rigidLinkChords:false,
  trackShoeDimensions:{padHeight:.0389,grouserHeight:.01636,webHeight:.04948,
   hornHeight:.06464,pinRadius:.01636,pinCentreY:-.01945},shoeWidthScale:1.032,
  sprocket:{z:-2.91,y:.914,r:.360,trackR:.2712},

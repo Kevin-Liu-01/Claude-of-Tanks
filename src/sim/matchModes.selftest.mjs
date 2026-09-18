@@ -266,6 +266,46 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.deepEqual(hold(21), { result: 'alpha', reason: 'line_held' });
   assert.equal(match.serialize('player').line.index, 3);
 }
+// Capturing a sector reinforces the line instead of re-fielding it (owner 2026-09-17: "capturing bases in
+// frontline assault shouldnt reset tanks"): living defenders keep identity, position and damage; their wrecks
+// stay wrecks while rested identities are available; only the shortfall arrives fresh.
+{
+  const player = entity('player', 'alpha', 0, -150);
+  const enemies = Array.from({ length: 6 }, (_, index) =>
+    entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+  const run = controller('frontline_assault', [player, ...enemies], 6000);
+  const match = run.match;
+  const living = () => enemies.filter((target) => target.modeActive !== false && !target.combat.destroyed);
+  const wave1 = living();
+  assert.equal(wave1.length, 3, 'wave 1 fields three defenders');
+  const revivesAfterWave1 = run.revives;
+  const [scarred, fallen, untouched] = wave1;
+  scarred.combat.hp = 37;
+  scarred.state.pos.x += 7.5;
+  scarred.state.pos.z -= 22;
+  const scarredPos = { x: scarred.state.pos.x, z: scarred.state.pos.z };
+  fallen.combat.destroyed = true;
+  let timeS = 0;
+  for (let i = 0; i < 9 * 60; i++) {
+    timeS += 1 / 60;
+    player.state.pos.x = match.state.zones[0].x; player.state.pos.z = match.state.zones[0].z;
+    assert.equal(match.step(1 / 60, timeS), null);
+  }
+  assert.equal(match.state.line.index, 1, 'the first sector is taken');
+  assert.equal(match.state.horde.wave, 2);
+  assert.equal(scarred.combat.hp, 37, 'a living defender keeps its damage across the capture');
+  assert.deepEqual({ x: scarred.state.pos.x, z: scarred.state.pos.z }, scarredPos, 'and its position');
+  assert.equal(scarred.modeActive !== false && untouched.modeActive !== false, true, 'living defenders stay fielded');
+  assert.equal(fallen.combat.destroyed, true, 'the sector\'s wreck is not resurrected while rested identities remain');
+  assert.equal(living().length, 4, 'the counter-attack brings the line up to four living defenders');
+  assert.equal(run.revives - revivesAfterWave1, 2, 'exactly the shortfall arrives fresh (two arrivals)');
+  const arrivals = living().filter((target) => !wave1.includes(target));
+  assert.equal(arrivals.length, 2);
+  for (const arrival of arrivals) {
+    assert.equal(arrival.combat.hp, arrival.combat.maxHp, 'arrivals come at the new line\'s full strength');
+    assert.ok(arrival.combat.maxHp > 100, 'with the per-line health scale');
+  }
+}
 {
   const player = entity('player', 'alpha', 0, -150);
   const enemies = Array.from({ length: 3 }, (_, index) =>

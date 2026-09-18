@@ -244,6 +244,8 @@ export interface MatchModeController<
   tryHitBall(shell: { dead?: boolean; prevPos: Vec3Like; pos: Vec3Like; vel: Vec3Like;
     shooterId?: string }): boolean;
   botTarget(entity: Entity): { x: number; z: number } | null;
+  /** The objective the bot's targets are ranked against: the same point with its capture reach. */
+  botObjective(entity: Entity): { x: number; z: number; radiusM: number } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
 }
 
@@ -522,6 +524,20 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       else deactivate(entity);
     }
   };
+  /** Frontline reinforcement: living defenders stay untouched; the shortfall arrives as a fresh draw. */
+  const reinforceLine = (targetCount: number, healthScale: number): void => {
+    const living = hordeEnemies.filter((enemy) => enemy.modeActive !== false && !enemy.combat.destroyed);
+    const pool = hordeEnemies.filter((enemy) => !living.includes(enemy));
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    // stable: identities that sat out the last wave lead; wrecks of this sector's fight arrive last
+    pool.sort((a, b) => Number(lastWaveIds.has(a.id)) - Number(lastWaveIds.has(b.id)));
+    const arrivals = pool.slice(0, Math.max(0, Math.min(pool.length, targetCount - living.length)));
+    for (const enemy of arrivals) reviveAtSpawn(enemy, healthScale);
+    lastWaveIds = new Set([...living, ...arrivals].map((entity) => entity.id));
+  };
 
   const startHordeWave = (): void => {
     const activeCount = Math.min(hordeEnemies.length, hordeWaveSize(hordeRules, wave));
@@ -597,8 +613,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const activeCount = Math.min(hordeEnemies.length,
       assaultRules.initialActive + assaultRules.extraDefenders + lineIndex);
     const healthScale = 1 + lineIndex * assaultRules.hpPerLine + assaultRules.difficultyHp;
-    // each sector's counter-attack is a fresh draw from the formation (owner 2026-09-15)
-    fieldWave(drawWave(activeCount), healthScale);
+    // The opening wave is a fresh draw from the formation (owner 2026-09-15). Every later sector REINFORCES
+    // the line instead of re-fielding it (owner 2026-09-17: "capturing bases in frontline assault shouldnt
+    // reset tanks"): defenders still alive keep their identity, position and damage, and only the arrivals
+    // that bring the counter-attack up to strength are drawn fresh, rested identities first.
+    if (lineIndex === 0) fieldWave(drawWave(activeCount), healthScale);
+    else reinforceLine(activeCount, healthScale);
     for (const ally of teams.alpha) {
       if (ally.combat.destroyed && ally.bot) reviveAtSpawn(ally, 1);
     }
@@ -1039,6 +1059,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return nearest ? { x: nearest.state.pos.x, z: nearest.state.pos.z } : null;
   };
 
+  // bot philosophy r1 (owner 2026-09-17): enemies standing on the objective rank first for the bots
+  const botObjective = (entity: Entity): { x: number; z: number; radiusM: number } | null => {
+    const point = botTarget(entity);
+    if (!point) return null;
+    const radiusM = id === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
+      : id === 'capture_the_flag' ? 20 : id === 'turbo_ball' ? 15 : 25;
+    return { x: point.x, z: point.z, radiusM };
+  };
   const botTarget = (entity: Entity): ObjectivePoint | null => {
     if (entity.modeActive === false || entity.combat.destroyed) return null;
     const team = teamOf(entity);
@@ -1080,6 +1108,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       return true;
     },
     botTarget,
+    botObjective,
     serialize,
   };
 }

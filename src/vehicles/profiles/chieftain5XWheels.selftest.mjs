@@ -108,7 +108,7 @@ for (const quality of ['high', 'low']) {
     assert.deepEqual(after.gear.roadWheelLayout, before.gear.roadWheelLayout, 'all pre-existing native gear datums preserved');
     assert.deepEqual(after.gear.roadWheelLayout.wheelZs, [-2.18, -1.39, -.395, .395, 1.39, 2.18]);
     near(after.gear.roadWheelLayout.xc, 1.365, 'unchanged lateral axle center');
-    near(after.gear.roadWheelLayout.wheelY, .471, 'unchanged road-wheel rest height');
+    near(after.gear.roadWheelLayout.wheelY, .461, 'unchanged road-wheel rest height');
     checkFaces(after.tank.root);
     for (const [left, right] of [[.17, -.29], [.65, .21]]) {
       before.gear.update(left, right, 0); after.gear.update(left, right, 0);

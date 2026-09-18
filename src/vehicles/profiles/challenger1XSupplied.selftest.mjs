@@ -85,7 +85,7 @@ function gear(t){
   for(let i=0;i<mesh.count;i++){
    mesh.getMatrixAt(i,matrix);p.setFromMatrixPosition(matrix).applyMatrix4(mesh.matrixWorld);
    near(Math.min(...zs.map(z=>Math.abs(p.z-z))),0,2e-6,'unchanged measured axle longitudinal station');
-   near(p.y,point(0,rawY,0)[1],2e-6,'unchanged measured axle height');
+   near(p.y,mesh===roads?(t.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY??point(0,rawY,0)[1]):point(0,rawY,0)[1],2e-6,mesh===roads?'road axle follows the ground-datum seat (2026-09-17)':'unchanged measured axle height');
    near(Math.abs(p.x),rawX*scale,2e-6,'actual source outboard roller/road axis, not hidden inset');
   }
  }
@@ -141,8 +141,11 @@ function sideCourses(t,ms){
   for(const[y,z]of[[30,90],[35,-160]])assert.equal(hit([armor],point(side*90,y,z),direction,.6),undefined,
    'source installed-sheet end upsweeps retain genuine end-wheel air');
  }
- near(hit(ms,point(90,20,17.97244),[-1,0,0])?.point.x,1.377846130943416,.003,
-  'lower source applique edge exposes actual road wheel, not a substitute disc');
+ { // the applique-edge ray rides 1.063 source units above the axle; the axle follows the ground-datum seat (2026-09-17)
+  const seatedAxleY=t.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY??point(0,18.9370075,0)[1];
+  const o=point(90,20,17.97244);o[1]=seatedAxleY+(point(0,20,0)[1]-point(0,18.9370075,0)[1]);
+  near(hit(ms,o,[-1,0,0])?.point.x,1.377846130943416,.003,
+   'lower source applique edge exposes actual road wheel, not a substitute disc'); }
  const idler=hit(ms,point(90,30,90),[-1,0,0]);
  assert.equal(idler?.object.name,'gearEndWheelBody','front skirt exposes the real native idler, not extra armor');
  // Preserve the existing native end face during this sheet-only correction.

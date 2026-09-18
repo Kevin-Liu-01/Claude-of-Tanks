@@ -12,6 +12,7 @@ for(const quality of ['high','low']) {
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     const recoil=tank.root.getObjectByName('rig_recoil'),muzzle=tank.root.getObjectByName('rig_muzzle');
     const tire=tank.root.getObjectByName('gearRoadWheelTires');
+    const axleY=tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY; // ground-datum seat (2026-09-17)
     const disc=tank.root.getObjectByName('gearRoadWheelDiscs');
     const pressed=tank.root.getObjectByName('amx40WheelPressedFaces');
     const matrix=new THREE.Matrix4(),metalMatrix=new THREE.Matrix4();
@@ -27,7 +28,7 @@ for(const quality of ['high','low']) {
       r.set(new THREE.Vector3(s*2,center.y+.32,center.z),direction);
       assert.ok(r.intersectObject(tire,false).length>0,'rubber crown stays physically present');
       close(Math.abs(center.x),1.29715,1e-6,'source rubber center, not its inboard axle extent');
-      close(center.y,.41530,1e-6,'source wheel center height');
+      close(center.y,axleY,1e-6,'wheel center height follows the ground-datum seat');
     }
     close(turret.position.y,1.56289,1e-6,'measured source bearing height');
     close(turret.position.z,.16819,1e-6,'measured source bearing station');

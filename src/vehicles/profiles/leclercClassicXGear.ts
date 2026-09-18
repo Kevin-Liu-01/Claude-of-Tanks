@@ -45,7 +45,10 @@ export function addLeclercClassicXGear(P: TankBuilderPort): void {
   const sprocket = { z: -2.6857465, y: .803689, r: .3347, trackR: .3107,
     toothTipRadiusM: .4062785, axleOutsetLeftM: .0202, axleOutsetRightM: -.0227,
     axialScaleLeft: .75, axialScaleRight: .75 };
-  const botY = .056, topY = 1.139;
+  const shoeDims = { padHeight: .030, grouserHeight: .015,
+      webHeight: .026, hornHeight: .080, pinRadius: .0232085, pinCentreY: -.00225 };
+  // 2026-09-17 ground datum (KIT.groundSeatBotY): soles on hull y = 0 for the fleet-standard band
+  const botY = KIT.groundSeatBotY(P.spec, { trackTh: .028, trackShoeDimensions: shoeDims }), topY = 1.139;
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: D.wheelRadiusM, wheelW: .522462, wheelY: D.wheelY,
     wheelZs: [...D.wheelZsLeft], wheelZsLeftM: D.wheelZsLeft, wheelZsRightM: D.wheelZsRight,
@@ -61,8 +64,7 @@ export function addLeclercClassicXGear(P: TankBuilderPort): void {
         name: `leclercClassicSourceWheelGroove${side}` },
     ]),
     trackW: .6309749205, trackCarrierWidthM: .521112, trackTh: .028,
-    trackShoeDimensions: { padHeight: .030, grouserHeight: .015,
-      webHeight: .026, hornHeight: .080, pinRadius: .0232085, pinCentreY: -.00225 },
+    trackShoeDimensions: shoeDims,
     pinCapOuter: .31548746025,
     // Independent old-file ground islands: .040081m round cap, .051749m
     // planar connector and .102729m longitudinal stock. The <.1° source
@@ -80,7 +82,7 @@ export function addLeclercClassicXGear(P: TankBuilderPort): void {
     loopPoints: roundedTrackContact(KIT.trackLoopPoints({
       idler: { ...idler, r: idler.trackR }, sprocket: { ...sprocket, r: sprocket.trackR }, botY, topY,
       sag: .008, contact: KIT.runningGearContactPatch(D.wheelZsLeft, D.wheelRadiusM),
-      endWheels: KIT.endRoadWheels(D.wheelZsLeft, D.wheelY, D.wheelRadiusM),
+      endWheels: KIT.endRoadWheels(D.wheelZsLeft, KIT.seatedWheelY(botY, .028, D.wheelRadiusM), D.wheelRadiusM),
       supports: rollers.map(r => ({ z: r.z, y: r.y + r.r + .014 })),
     }), botY, .35),
     rigidLinkChords: true, arms: true, paintedEnds: true, coveredTop: true,

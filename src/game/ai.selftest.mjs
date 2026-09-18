@@ -39,7 +39,7 @@ function entity(id, specId, team, x, z, yaw = 0) {
   };
 }
 
-function controller(bot, enemies, allies, seed = 41, difficulty = 'normal') {
+function controller(bot, enemies, allies, seed = 41, difficulty = 'normal', extraDeps = {}) {
   const ctl = createAI(bot, {
     difficulty,
     rng: mulberry32(seed),
@@ -50,6 +50,7 @@ function controller(bot, enemies, allies, seed = 41, difficulty = 'normal') {
       getAllies: () => allies,
       getObstacles: () => [],
       spotting: { isSpotted: () => true },
+      ...extraDeps,
     },
   });
   bot.aiCtl = ctl;
@@ -306,6 +307,82 @@ ok(JSON.stringify(alliedSupport) === JSON.stringify([
     'low-health allied and enemy flankers both disengage toward support');
   ok(allied.role === hostile.role && allied.hpFrac === hostile.hpFrac,
     'both teams use the same role and survival thresholds');
+}
+
+console.log('[10] bot philosophy r1: target hierarchy objective → closest → weakest');
+{
+  // an enemy on the mission objective outranks a closer one off it
+  const bot = entity('bot', 'tiger1', 'player', 0, 0);
+  const onObjective = entity('onObjective', 'm4a3e8', 'enemy', 5, 80);
+  const near = entity('near', 'm4a3e8', 'enemy', 20, 35);
+  const ctl = controller(bot, [onObjective, near], [], 41, 'normal',
+    { getObjective: () => ({ x: 0, z: 80, radiusM: 30 }) });
+  tick(ctl, bot, 0.5);
+  ok(ctl.targetId === 'onObjective', 'enemies on the mission objective rank first');
+  // without an objective the closest enemy leads
+  const bot2 = entity('bot2', 'tiger1', 'player', 0, 0);
+  const far2 = entity('far2', 'm4a3e8', 'enemy', 5, 80);
+  const near2 = entity('near2', 'm4a3e8', 'enemy', 20, 35);
+  const ctl2 = controller(bot2, [far2, near2], []);
+  tick(ctl2, bot2, 0.5);
+  ok(ctl2.targetId === 'near2', 'with no objective the closest enemy leads');
+  // inside one distance band the weakest hull leads
+  const bot3 = entity('bot3', 'tiger1', 'player', 0, 0);
+  const healthy = entity('healthy', 'm4a3e8', 'enemy', -6, 70);
+  const weak = entity('weak', 'm4a3e8', 'enemy', 8, 74);
+  weak.combat.hp = 220;
+  const ctl3 = controller(bot3, [healthy, weak], []);
+  tick(ctl3, bot3, 0.5);
+  ok(ctl3.targetId === 'weak', 'inside a distance band the weakest hull leads');
+}
+
+console.log('[11] bot philosophy r1: no retaliation at an unseen gun');
+{
+  const bot = entity('bot', 'tiger1', 'player', 0, 0);
+  const sniper = entity('sniper', 'm4a3e8', 'enemy', 0, 160);
+  let sniperSpotted = false;
+  const ctl = controller(bot, [sniper], [], 41, 'normal',
+    { spotting: { isSpotted: (id) => id !== 'sniper' || sniperSpotted } });
+  tick(ctl, bot, 0.3);
+  ctl.notifyUnderFire(sniper, { selfHit: true, damaging: true, kind: 'pen' });
+  const fired = tick(ctl, bot, 2.5);
+  const dbg = ctl.debugInfo();
+  ok(ctl.targetId === null, 'a hit from an unspotted gun claims no target');
+  ok(!fired, 'the bot does not fire back blindly');
+  ok(dbg.suspectId === 'sniper', 'the unseen gun is remembered as a suspect');
+  ok(dbg.reactions >= 1 && (dbg.reaction === 'jink' || dbg.reaction === 'cover' || dbg.reaction === null),
+    'the struck hull reacts (cover or jink) instead of shooting');
+  sniperSpotted = true;
+  tick(ctl, bot, 1.5);
+  ok(ctl.targetId === 'sniper', 'once the team spots the gun it becomes the target');
+}
+
+console.log('[12] bot philosophy r1: a hurt hull backs off with its bow on the shooter');
+{
+  const bot = entity('bot', 'tiger1', 'player', 0, 0);
+  bot.combat.hp = 300;
+  const shooter = entity('shooter', 'm4a3e8', 'enemy', 0, 120);
+  const ctl = controller(bot, [shooter], []);
+  tick(ctl, bot, 0.5);
+  ctl.notifyUnderFire(shooter, { selfHit: true, damaging: true, kind: 'pen' });
+  ctl.update(SIM_DT, 0.6);
+  const dbg = ctl.debugInfo();
+  ok(dbg.reaction === 'backoff', 'a penetrating hit on a hull under 42 % picks the reverse-to-cover reaction');
+  ok(bot.input.throttle < -0.5, 'the hull reverses (bow stays on the shooter) instead of turning away');
+  ok(ctl.targetId === 'shooter', 'the spotted shooter stays the target while backing off');
+}
+
+console.log('[13] bot philosophy r1: a flank shot re-angles the hull');
+{
+  const bot = entity('bot', 'tiger1', 'player', 0, 0);
+  const flanker = entity('flanker', 'm4a3e8', 'enemy', 120, 0);
+  const ctl = controller(bot, [flanker], []);
+  tick(ctl, bot, 0.5);
+  ctl.notifyUnderFire(flanker, { selfHit: true, damaging: false, kind: 'nonpen' });
+  ctl.update(SIM_DT, 0.6);
+  const dbg = ctl.debugInfo();
+  ok(dbg.reaction === 'angle', 'a shooter far off the bow picks the re-angle reaction');
+  ok(bot.input.steer > 0.3, 'the hull turns toward the shooter (angled, not square)');
 }
 
 if (failures) {

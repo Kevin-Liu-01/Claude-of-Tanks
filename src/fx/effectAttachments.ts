@@ -20,7 +20,8 @@ export const EFFECT_ATTACHMENT_POLICY = Object.freeze({
   muzzleRing: 'world-space-burst',
   impactParticles: 'world-space-burst',
   destructionParticles: 'world-space-burst',
-  destroyedTankColumn: 'world-fixed-wreck-emitter',
+  // wreck r1 (owner 2026-09-17): the wreck column rides the corpse's visual root and retires with it
+  destroyedTankColumn: 'wreck-local-emitter',
   terrainScorch: 'world-fixed-decal',
   trackPrint: 'world-fixed-decal',
   propBreak: 'world-space-burst',

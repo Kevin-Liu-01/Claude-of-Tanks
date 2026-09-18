@@ -1165,6 +1165,112 @@ function bBarrierBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+// --- fortifications (owner 2026-09-17: "more trenches/barbed wire/AA guns/bunkers on ALL maps") ---------
+
+/**
+ * Barbed-wire module: two screw pickets carrying three taut strands and a tangle of short barbed
+ * coils between them (2.6 m along +z). Shoot-through, crushable at a walking pace with a small bite.
+ */
+function bBarbedWire(rng: Rng): THREE.BufferGeometry {
+  const parts = [];
+  for (const z of [-1.15, 1.15]) {
+    const picket = cyl(0.028, 0.034, 1.02, 5);
+    picket.rotateX((rng() - 0.5) * 0.16);
+    parts.push(P(picket.translate(0, 0.51, z), RUST, 0.10, rng));
+    // corkscrew foot of the picket
+    parts.push(P(cyl(0.07, 0.05, 0.10, 6).translate(0, 0.05, z), RUST, 0.08, rng));
+  }
+  for (const y of [0.34, 0.64, 0.94]) {
+    parts.push(P(box(0.018, 0.018, 2.62).translate(0, y, 0), IRON, 0.10, rng));
+  }
+  // diagonal bracing strands
+  for (const side of [-1, 1]) {
+    const brace = box(0.016, 0.016, 2.7);
+    brace.rotateX(side * 0.235);
+    parts.push(P(brace.translate(0, 0.64, 0), IRON, 0.10, rng));
+  }
+  // concertina barbs: short angled stubs along the run
+  for (let i = 0; i < 10; i++) {
+    const barb = box(0.02, 0.02, 0.26);
+    barb.rotateX((rng() - 0.5) * 2.4);
+    barb.rotateY((rng() - 0.5) * 1.2);
+    parts.push(P(barb.translate((rng() - 0.5) * 0.18, 0.46 + rng() * 0.48, -1.1 + (i + rng()) * 0.22), RUST, 0.12, rng));
+  }
+  return merge(parts);
+}
+function bBarbedWireBroken(rng: Rng): THREE.BufferGeometry {
+  const parts = [];
+  // one picket down, strands tangled on the ground
+  const picket = cyl(0.028, 0.034, 1.02, 5);
+  picket.rotateX(Math.PI / 2 - 0.2);
+  picket.rotateY(rng() * 0.6);
+  parts.push(P(picket.translate(0.1, 0.05, 0.6), RUST, 0.10, rng));
+  for (let i = 0; i < 7; i++) {
+    const strand = box(0.018, 0.018, 0.5 + rng() * 0.6);
+    strand.rotateY(rng() * Math.PI);
+    strand.rotateX((rng() - 0.5) * 0.5);
+    parts.push(P(strand.translate((rng() - 0.5) * 0.8, 0.03 + rng() * 0.12, (rng() - 0.5) * 2.4), IRON, 0.12, rng));
+  }
+  return merge(parts);
+}
+
+/**
+ * Concrete pillbox (5.6 × 2.3 × 5.0 m): chamfered body under a roof slab, a wide firing embrasure
+ * on +z with two flank slits, a door recess aft, an earth berm skirt and a sandbag cap on the roof
+ * edge. Solid to hulls and shells (collider), breaks into rubble under fire.
+ */
+function bBunker(rng: Rng): THREE.BufferGeometry {
+  const parts = [];
+  const CONC: Palette = [0.09, 0.05, 0.42];
+  const CONC_DARK: Palette = [0.09, 0.05, 0.33];
+  const SLIT: Palette = [0.60, 0.05, 0.05];
+  const EARTH: Palette = [0.09, 0.30, 0.27];
+  const BAGS: Palette = [0.10, 0.26, 0.46];
+  parts.push(P(box(5.6, 1.9, 5.0).translate(0, 0.95, 0), CONC, 0.10, rng));
+  // chamfered shoulders soften the box silhouette
+  for (const side of [-1, 1]) {
+    const shoulder = box(1.6, 1.9, 1.6);
+    shoulder.rotateY(Math.PI / 4);
+    parts.push(P(shoulder.translate(side * 2.55, 0.95, 1.95), CONC, 0.10, rng));
+    parts.push(P(box(0.9, 0.34, 0.12).translate(side * 2.05, 1.3, 2.52), SLIT, 0.04, rng));
+  }
+  parts.push(P(box(5.95, 0.36, 5.35).translate(0, 2.08, 0), CONC_DARK, 0.09, rng));
+  parts.push(P(box(2.5, 0.44, 0.14).translate(0, 1.36, 2.52), SLIT, 0.04, rng));
+  parts.push(P(box(0.95, 1.55, 0.14).translate(0.9, 0.78, -2.52), SLIT, 0.04, rng));
+  // earth berm skirt on three sides (the door side stays open)
+  for (const [x, z, ry] of [[0, 2.95, 0], [-3.25, 0, Math.PI / 2], [3.25, 0, Math.PI / 2]] as const) {
+    const berm = box(6.6, 0.9, 1.2);
+    berm.rotateX(0.62);
+    berm.rotateY(ry);
+    parts.push(P(berm.translate(x, 0.18, z), EARTH, 0.12, rng));
+  }
+  // sandbag cap along the roof edges
+  for (const [x, z, ry] of [[0, 2.55, 0], [0, -2.55, 0], [-2.85, 0, Math.PI / 2], [2.85, 0, Math.PI / 2]] as const) {
+    const cap = box(5.6, 0.34, 0.42);
+    cap.rotateY(ry);
+    parts.push(P(cap.translate(x, 2.43, z), BAGS, 0.12, rng));
+  }
+  return merge(parts);
+}
+function bBunkerBroken(rng: Rng): THREE.BufferGeometry {
+  const parts = [];
+  const CONC: Palette = [0.09, 0.05, 0.36];
+  // the roof slab dropped and tilted into the shell
+  const slab = box(5.6, 0.36, 5.0);
+  slab.rotateZ(0.22);
+  slab.rotateX(-0.12);
+  parts.push(P(slab.translate(0.3, 1.05, 0.2), CONC, 0.10, rng));
+  parts.push(P(box(5.4, 0.9, 4.8).translate(0, 0.45, 0), CONC, 0.10, rng));
+  for (let i = 0; i < 9; i++) {
+    const s = 0.4 + rng() * 0.6;
+    const chunk = box(s * (0.8 + rng()), s, s * (0.7 + rng() * 0.7));
+    chunk.rotateX((rng() - 0.5) * 0.9);
+    chunk.rotateY(rng() * Math.PI);
+    parts.push(P(chunk.translate((rng() - 0.5) * 6.4, s * 0.4, (rng() - 0.5) * 6.0), CONC, 0.16, rng));
+  }
+  return merge(parts);
+}
+
 function bRoadsign(rng: Rng): THREE.BufferGeometry {
   const parts = [];
   const post = box(0.11, 2.8, 0.11);
@@ -1370,6 +1476,9 @@ export const DESTRUCTIBLE_TYPES = {
   tent:        { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.7,  h: 2.1,  hw: 1.28, hl: 1.90, build: bTent, broken: bTentBroken, keep: 0.985 },
   drumred:     { cls: 'break',  mat: 'baked', contact: 'loop', r: 0.34, h: 0.92, build: bDrumRed,    broken: bDrumRedBroken, explosive: true },
   barrier:     { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.45, h: 1.0,  hw: 0.42, hl: 1.42, build: bBarrier, broken: bBarrierBroken, collider: true, keep: 0.83, crushMin: 2.4 },
+  // fortifications (2026-09-17): shoot-through wire a hull crushes with a bite; a pillbox no hull crushes and shells stop on
+  barbedwire:  { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.4,  h: 1.05, hw: 0.10, hl: 1.32, build: bBarbedWire, broken: bBarbedWireBroken, keep: 0.9, crushMin: 1.5 },
+  bunker:      { cls: 'break',  mat: 'stone', contact: 'ob',   r: 3.9,  h: 2.45, hw: 2.98, hl: 2.68, build: bBunker, broken: bBunkerBroken, collider: true, keep: 0.0, crushMin: 999 },
   roadsign:    { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.48, h: 2.85, shape: 'circle', collisionR: 0.20, groundR: 0.22, build: bRoadsign, broken: null, keep: 0.96 },
   cone:        { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.32, h: 0.8,  build: bCone,       broken: null, bodyR: 0.27, mass: 0.34, bounce: 0.20, friction: 3.8, angularDrag: 2.4, groundConstrained: true },
   transformer: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 0.9,  h: 1.85, hw: 0.76, hl: 0.51, build: bTransformer, broken: bTransformerBroken, collider: true, keep: 0.86, crushMin: 2.2 },

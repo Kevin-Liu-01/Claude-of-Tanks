@@ -11,11 +11,14 @@ export function leopardReturnRollers(
   spindleInnerXM=.965,
 ): RunningGearConfig {
   const rear=cfg.sprocket,front=cfg.idler;
+  // 2026-09-17 ground datum: the flat run stands the shoe soles on y = 0 (KIT.groundSeatBotY); the
+  // end wraps follow the fleet law (KIT.endpointWrapClearanceM, 2026-09-17).
+  const botY=KIT.groundSeatBotY(P.spec,cfg);
   if(stations.length!==4||stations.some((z,i)=>!Number.isFinite(z)||z<=rear.z||z>=front.z||(i>0&&z<=stations[i-1])))
     throw new RangeError('Leopard return support requires four ordered stations between its end wheels');
   // Match the canonical trackLoopPoints endpoint crown clearance.
-  const rearY=rear.y+(rear.trackR??rear.r)+.045;
-  const frontY=front.y+(front.trackR??front.r)+.045;
+  const rearY=rear.y+(rear.trackR??rear.r)+KIT.endpointWrapClearanceM(rear,cfg.trackTh);
+  const frontY=front.y+(front.trackR??front.r)+KIT.endpointWrapClearanceM(front,cfg.trackTh);
   const slope=(frontY-rearY)/(front.z-rear.z);
   const radius=.095,width=.16,inset=.18;
   const outer=cfg.xc-inset+.015;
@@ -28,14 +31,15 @@ export function leopardReturnRollers(
     // roller cylinder; a vertical-radius offset alone clips its crown.
     const normalLength=Math.max(...[course[i],course[i+2]].map(neighbor=>
       Math.hypot(1,(neighbor.y-support.y)/(neighbor.z-support.z))));
-    return {z:support.z,y:support.y-(radius+(cfg.trackTh??.09)/2+supportInsetM)*normalLength,r:radius};
+    // 2026-09-17: on the 28 mm band the shoes' web in the roller lane reaches ~5 mm past the band's inner face
+    return {z:support.z,y:support.y-(radius+Math.min(cfg.trackTh??.028,.028)/2+Math.max(supportInsetM,.0083))*normalLength,r:radius};
   });
   const loopPoints=KIT.trackLoopPoints({
-    sprocket:{...rear,r:rear.trackR??rear.r},idler:{...front,r:front.trackR??front.r},
-    botY:cfg.botY??.055,topY:cfg.topY,sag:0,
+    sprocket:{...rear,r:rear.trackR??rear.r,rimR:rear.r},idler:{...front,r:front.trackR??front.r,rimR:front.r},
+    botY,topY:cfg.topY,sag:0,wrapClearanceM:KIT.trackWrapClearanceM(Math.min(cfg.trackTh??.028,.028)),
     supports,
     contact:{zF:Math.max(...cfg.wheelZs)+cfg.wheelR*.5,zR:Math.min(...cfg.wheelZs)-cfg.wheelR*.5},
-    endWheels:KIT.endRoadWheels(cfg.wheelZs,cfg.wheelY??cfg.wheelR+.10,cfg.wheelR,cfg.wheelYs), // same default as buildRunningGear
+    endWheels:KIT.endRoadWheels(cfg.wheelZs,KIT.seatedWheelY(botY,cfg.trackTh,cfg.wheelR),cfg.wheelR,cfg.wheelYs), // seated axle (2026-09-17)
   });
   for(let i=loopPoints.length-1;i>0;i--){
     if(Math.hypot(loopPoints[i][0]-loopPoints[i-1][0],loopPoints[i][1]-loopPoints[i-1][1])<1e-7)
@@ -60,5 +64,6 @@ export function leopardReturnRollers(
   // The factory traverses and disposes InstancedMesh buffers itself.
   P.hullG.add(mounts);P.disposables.push(spindle);
   return {...cfg,rollers,rollerR:radius,returnRollerWidthM:width,returnRollerInsetM:inset,
-    returnRollerGeometry:rotor,loopPoints};
+    // 2026-09-17: rigid link chords cut ~1.4 mm into the A5's web-riding rollers at the support kinks; the shoes follow the course
+    returnRollerGeometry:rotor,loopPoints,botY,rigidLinkChords:false};
 }

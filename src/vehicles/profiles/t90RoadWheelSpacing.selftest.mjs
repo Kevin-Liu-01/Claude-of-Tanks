@@ -13,10 +13,14 @@ const BURLAK_ROAD_WHEEL_RADIUS = burlakReference.root
 burlakReference.dispose();
 assert.ok(BURLAK_ROAD_WHEEL_RADIUS > 0, 'Burlak publishes its road-wheel radius');
 
+// Ground-datum seat (2026-09-17): every road wheel's foot rests on the band's upper face, and the band
+// stands its shoe soles on hull y = 0 — so the loaded foot is botY + trackTh/2 and the axle sits one
+// tire radius above it. The old per-tank centerY/footY pins (t90 0.480/0.095, t90ms 0.35/0.01 — wheels
+// nine centimetres inside the band —, t90m 0.395/0.085) recorded the mis-seats the law removed.
 const CASES = Object.freeze({
-  t90: Object.freeze({ radius: BURLAK_ROAD_WHEEL_RADIUS, centerY: 0.480, footY: 0.095, minGap: 0.01 }),
-  t90ms: Object.freeze({ radius: 0.34, centerY: 0.35, footY: 0.01, minGap: 0.108 }),
-  t90m: Object.freeze({ radius: 0.31, centerY: 0.395, footY: 0.085, minGap: 0.04 }),
+  t90: Object.freeze({ radius: BURLAK_ROAD_WHEEL_RADIUS, minGap: 0.01 }),
+  t90ms: Object.freeze({ radius: 0.34, minGap: 0.108 }),
+  t90m: Object.freeze({ radius: 0.31, minGap: 0.04 }),
 });
 
 for (const [id, expected] of Object.entries(CASES)) {
@@ -33,10 +37,13 @@ for (const [id, expected] of Object.entries(CASES)) {
     assert.ok(receipt, `${id}: exposes its installed running-gear receipt`);
     assert.ok(Math.abs(receipt.wheelR - expected.radius) <= EPSILON,
       `${id}: road-wheel radius is ${expected.radius} m`);
-    assert.ok(Math.abs(receipt.wheelY - expected.centerY) <= EPSILON,
-      `${id}: road-wheel center preserves its loaded foot`);
-    assert.ok(Math.abs(receipt.wheelY - receipt.wheelR - expected.footY) <= EPSILON,
-      `${id}: loaded tire foot remains at ${expected.footY} m`);
+    const faceY = receipt.botY + receipt.trackTh / 2;
+    assert.ok(Math.abs(receipt.wheelY - (faceY + receipt.wheelR)) <= EPSILON,
+      `${id}: road-wheel center sits one tire radius above the band's upper face`);
+    assert.ok(Math.abs(receipt.wheelY - receipt.wheelR - faceY) <= EPSILON,
+      `${id}: loaded tire foot rests on the band's upper face (${faceY.toFixed(4)} m)`);
+    assert.ok(Math.abs(receipt.trackTh - 0.028) <= EPSILON, `${id}: band is the fleet-standard 28 mm`);
+    assert.ok(faceY > 0.05 && faceY < 0.09, `${id}: band face stands a shoe stack above the y = 0 ground datum`);
 
     const stations = [...receipt.wheelZs].sort((a, b) => a - b);
     for (let index = 1; index < stations.length; index++) {

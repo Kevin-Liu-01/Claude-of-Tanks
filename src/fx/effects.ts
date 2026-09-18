@@ -111,6 +111,8 @@ interface JetScratch {
 interface FxVisual {
   root: THREE.Object3D;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** Wreck visuals report true; a revived/reset visual reports false (wreck r1 reads this). */
+  isDestroyed?(): boolean;
   applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
 }
 
@@ -124,6 +126,8 @@ interface FxEntity {
     pos?: THREE.Vector3;
     yaw?: number;
   };
+  /** Solo/authority entities carry the combat record; a revived one reads destroyed:false. */
+  combat?: { destroyed?: boolean } | null;
 }
 
 interface FxDebugSurface {
@@ -191,6 +195,15 @@ interface FxTimer {
 
 interface SmokeColumn {
   key: string | null;
+  /**
+   * wreck r1 (owner 2026-09-17: fire/smoke belong to the vehicle object, so a
+   * removed corpse takes its column along): the id of the wreck this column
+   * rides. The emitter anchors to the wreck's visual root (a shoved wreck
+   * carries its smoke) and retires the frame the corpse is released, hidden
+   * for a respawn or revived — never on the fixed timer alone.
+   */
+  wreckOf?: string | null;
+  sawWreck?: boolean;
   pos: MutableVec3;
   localPos?: number[];
   anchorSpace?: object;
@@ -354,6 +367,8 @@ export interface FxRuntime {
     pos: THREE.Vector3,
     visual: FxVisual | null,
     cause?: DestructionCause,
+    /** wreck r1: the destroyed entity's id — its smoke column rides and leaves with the corpse. */
+    wreckOf?: string | null,
   ): void;
   dust(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number): void;
   exhaust(pos: THREE.Vector3, intensity: number, sooty?: boolean): void;
@@ -3078,6 +3093,7 @@ function* createFxSteps(
     visual: FxVisual | null,
     birthOffset = 0,
     cause: DestructionCause = 'ammorack',
+    wreckOf: string | null = null,
   ): void {
     const rack = cause === 'ammorack';
     const burn = cause === 'fire';
@@ -3144,7 +3160,9 @@ function* createFxSteps(
     // the hero frame (and the first live second) reads as "smoke column
     // being born", before the stalk/column take over.
     emitDestructionEruptionSkirt(pos, cy, burn, dk, birthOffset);
-    columns.push({ key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
+    // wreck r1: a live kill names its wreck so the column rides the corpse (see syncColumnAnchors);
+    // composed replays and warm-ups pass no id and keep the world-fixed column.
+    columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3 });
     capColumns();
     finalizeDestroyedVisual(visual, rack, birthOffset);
   }
@@ -3336,13 +3354,42 @@ function* createFxSteps(
     return Math.min(tickDt, 8);
   }
 
+  /**
+   * wreck r1: does this wreck column still have a corpse to ride? The corpse is
+   * gone when its entity no longer resolves, has no visual root (released to the
+   * pool), or reads alive again (revived for a respawn, combat.destroyed false or
+   * the visual reset) after it was once seen as a wreck. Killcam replays restage
+   * the victim intact for a moment — the suppression gate skips the check there.
+   */
+  function wreckColumnHasCorpse(col: SmokeColumn, subject: FxEntity | null): boolean {
+    if (!subject || !subject.visual || !subject.visual.root) return false;
+    if (replaySuppressed) return true;
+    const visual = subject.visual;
+    const visualWrecked = typeof visual.isDestroyed === 'function' ? visual.isDestroyed() : null;
+    const combatWrecked = subject.combat ? subject.combat.destroyed !== false : null;
+    const wrecked = visualWrecked === null ? combatWrecked : combatWrecked === null ? visualWrecked : (visualWrecked || combatWrecked);
+    if (wrecked === null) return true;
+    if (wrecked) { col.sawWreck = true; return true; }
+    return !col.sawWreck;
+  }
+
   function syncColumnAnchors(resolveSubject: ((id: string) => FxEntity | null) | null): void {
     if (!columns.length || !resolveSubject) return;
+    let live = 0;
     for (const col of columns) {
-      if (col.key == null) continue;
+      if (col.key == null) { columns[live++] = col; continue; }
+      if (col.wreckOf) {
+        const corpse = resolveSubject(col.wreckOf);
+        if (!wreckColumnHasCorpse(col, corpse)) continue; // the corpse left: the smoke leaves with it
+        col.attachmentResolved = syncSubjectEmitterAnchor(col, corpse, _subjectAnchor);
+        columns[live++] = col;
+        continue;
+      }
       const subject = resolveSubject(col.key);
       col.attachmentResolved = syncSubjectEmitterAnchor(col, subject, _subjectAnchor);
+      columns[live++] = col;
     }
+    columns.length = live;
   }
 
   function updateClockDrivenLights(): void {
@@ -4623,7 +4670,7 @@ function* createFxSteps(
         const ent = decalEntityFor(e.id);
         if (ent) impactDecals.clearVehicle(ent.visual);
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
-        fx.destruction(_v3, null, e.cause || 'shot');
+        fx.destruction(_v3, null, e.cause || 'shot', e.id);
       });
       onFxEvent(bus, 'module:state', (e) => {
         // de-track moment: thrown link fragments, a grinding spark burst and a
@@ -5014,8 +5061,9 @@ function* createFxSteps(
       pos: THREE.Vector3,
       visual: FxVisual | null,
       cause: DestructionCause = 'ammorack',
+      wreckOf: string | null = null,
     ): void {
-      spawnDestruction(pos, visual, 0, cause);
+      spawnDestruction(pos, visual, 0, cause, wreckOf);
     },
 
     /**

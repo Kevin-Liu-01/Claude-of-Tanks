@@ -134,7 +134,7 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   const gear = hullRig.userData.runningGearReceipts.at(-1);
   const arieteGear = hullRig.userData.arieteRunningGearReceipt;
   assert.equal(gear.wheelR, 0.38, `${id}: slightly larger road wheels are installed`);
-  assert.equal(gear.wheelY, 0.53, `${id}: enlarged road wheels remain terrain seated`);
+  assert.ok(Math.abs(gear.wheelY - (gear.botY + gear.trackTh / 2 + gear.wheelR)) < 1e-9, `${id}: enlarged road wheels rest on the band face (ground-datum seat, 2026-09-17)`);
   assert.equal(gear.sprocket.r, 0.25, `${id}: rear wheel uses the requested two-thirds profile`);
   assert.equal(gear.sprocket.y, 0.84, `${id}: rear wheel is raised into the return run`);
   assert(Math.abs(arieteGear.rearSprocketRadiusRatio - (0.25 / 0.37)) < 1e-9,

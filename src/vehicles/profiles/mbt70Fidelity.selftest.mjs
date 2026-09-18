@@ -84,7 +84,8 @@ assert.ok(Math.abs(size.z - spec.dims.overallLengthM) < 0.08,
   `complete length follows the M1A1-derived launcher envelope (${size.z.toFixed(3)})`);
 assert.ok(Math.abs(size.x - spec.dims.widthM) < 0.08,
   `complete width follows the 3.51 m source datum (${size.x.toFixed(3)})`);
-assert.ok(size.y > 3.25 && size.y < 3.36,
+// 2026-09-17 ground datum: the hull sits ~2 cm lower on the 28 mm band (3.232); the station's seat on the turret is unchanged
+assert.ok(size.y > 3.21 && size.y < 3.36,
   `commander station remains seated on the low rounded turret (${size.y.toFixed(3)})`);
 for (const name of ['rig_hull', 'rig_turret', 'rig_gun', 'rig_muzzle']) {
   assert(tank.root.getObjectByName(name), `${name} articulation exists`);
@@ -227,9 +228,13 @@ assert.equal(tank.root.getObjectByName('gearReturnRollerDiscs')?.count, 6,
 const mbt70GearReceipt = tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.[0];
 assert.ok(mbt70GearReceipt.topY >= 1.06 - 1e-6,
   'MBT-70 upper track runs well above the road-wheel crowns');
+// 2026-09-17 track law: the band centreline runs a band below the authored topY (1.029 for 1.06); the rollers
+// support the loop's own flat top run, so the witness compares against that run rather than topY.
+const mbt70TopRunY = mbt70GearReceipt.loopPoints.find(([z]) => Math.abs(z) <= 1e-6 && true)[1];
+assert.ok(mbt70TopRunY >= 1.0 && mbt70TopRunY <= mbt70GearReceipt.topY, `MBT-70 upper track run stays well above the road-wheel crowns and under the authored topY (${mbt70TopRunY.toFixed(3)})`);
 for (const rollerZ of [1.46, 0, -1.46]) {
   assert.ok(mbt70GearReceipt.loopPoints.some(([z, y]) => Math.abs(z - rollerZ) <= 1e-6
-    && Math.abs(y - mbt70GearReceipt.topY) <= 1e-6),
+    && Math.abs(y - mbt70TopRunY) <= 1e-6),
   `MBT-70 upper track is supported by the return roller at z=${rollerZ}`);
 }
 assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.nativeWheelPatterns,
@@ -288,8 +293,10 @@ for (let instance = 0; instance < contactWheels.count; instance++) {
     raisedFrontWheelY = Math.max(raisedFrontWheelY, position.y);
   }
 }
-assert.ok(raisedFrontWheelY >= 0.72,
-  `terrain conformance samples the re-seated front station (${raisedFrontWheelY.toFixed(3)} m local Y)`);
+// 2026-09-17 ground datum: the front station rests on the gear receipt's wheelY (.381); the 0.25 m step lifts it
+const restFrontWheelY = contactHull.userData.runningGearReceipts[0].wheelY;
+assert.ok(raisedFrontWheelY >= restFrontWheelY + 0.20,
+  `terrain conformance samples the re-seated front station (${raisedFrontWheelY.toFixed(3)} m local Y over rest ${restFrontWheelY.toFixed(3)})`);
 contactTank.dispose();
 
 console.log('mbt70Fidelity.selftest: source proportions, procedural ownership, anatomy and ATGM contract pass');

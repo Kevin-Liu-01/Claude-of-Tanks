@@ -1,3 +1,15 @@
+# Type 100 IFV (`type100`) — reference packet (fifth build, 2026-09-17)
+
+**2026-09-17 (owner: "make the type 100 into a new chinese ifv and make its turret smaller and less long"):** the
+vehicle is now the PLA's next-generation tracked support vehicle / heavy IFV — `role: 'ifv'`, public name
+"Type 100 IFV", 30 mm autocannon belt (0.40 s, 220 rounds) with HJ-10 guided missiles (8) and programmable HE on
+a compact unmanned module 3.8 m long, 2.24 m wide and 0.60 m tall (fourth-build turret grammar at 72 % length /
+85 % width, autocannon in a ringed jacket, weapon station, pods, smoke banks and sensors re-seated), hp 2700,
+38 t, 76 km/h, crew stations in the hull; dims 7.05 / 7.05 / 3.66 / 2.40 (silhouette 3.65); camo label
+"Type 100 IFV Digital". The main battle tank the owner asked for is the separate `ztz100_x` ("ZTZ-100"), generated
+from the owner's supplied model (docs/references/tanks/ztz100_x.md). The fourth-build notes below describe the hull,
+which is unchanged.
+
 # Type 100 (`type100`) — reference packet (fourth build, 2026-09-16)
 
 **Exact vehicle modeled:** the PLA's next-generation medium tank ZTZ-100 / "Type 100" as shown in
@@ -72,3 +84,11 @@ the silhouette, muzzle anchor, build receipt `type100-ztz100-r3`); the registry 
 chain (`gen-interior-fills --ids=type100`, `presentation-centering --update --ids=type100`,
 `tank:anatomy:update`, `genIcons --ids=type100`, `tank-sealed-check --update-ledger`, `tank:freeze`,
 `tank:roster -- --write`) and the staged release check in the main worktree.
+
+## Release-gate fallout (2026-09-17 evening, IFV build)
+
+`tank-standard-check` on the landing chain: the 28 mm band's real idler wrap met the prow's lower body and the
+sponson floor (front 324 vox, strict sweep 955). The hull tub now stays 5 cm inboard of the track lane at every
+station (1.15 → 1.06) and the sponson floor sits above the whole visible return run (`FLOOR` 1.02 → 1.26, hidden
+behind the curtains); clip 0/0+0/0, holes 0, mg1 (the pintle machine-gun fitting).
+

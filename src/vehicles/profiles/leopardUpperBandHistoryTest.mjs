@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 
 const url=new URL('./leopardX.ts',import.meta.url),source=readFileSync(url,'utf8');
-const call='  lineUpperReturnBand(P,[-1.94,-.16,1.48,2.30],.01403);\n';
+const call='  lineUpperReturnBand(P,[-1.94,-.16,1.48,2.30],A5_WEB_INSET_M);\n'; // A5_WEB_INSET_M (2026-09-17)
 assert.equal(source.split(call).length-1,1,'Exactly one independently qualified A5 lining call');
 const inverse=source.replace(call,'').replace(/from (['"])([^'"]+)\1/g,(_all,quote,path)=>
  `from ${quote}${path.startsWith('.')?new URL(path,url).href:import.meta.resolve(path)}${quote}`);

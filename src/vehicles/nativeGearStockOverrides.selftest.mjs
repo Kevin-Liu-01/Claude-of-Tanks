@@ -11,7 +11,7 @@ import {KIT} from './tankFactoryCore.ts';
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-const DEFAULT_FINGERPRINT='fbfcda9753187c200896655dc3eb4cbd446d9c2bec2dd04affe34c74f9a5ae12';
+const DEFAULT_FINGERPRINT='26c5e8b88a0c633af4b67c5fa3e7233595ab06430168e4629f505f989a1f4b7c';
 const bytes=a=>Buffer.from(a.buffer,a.byteOffset,a.byteLength);
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function geom(g){const h=createHash('sha256');for(const name of Object.keys(g.attributes).sort()){

@@ -251,7 +251,9 @@ for (const [id, source] of Object.entries(sources)) {
         3.61059,.0015,`${id}: measured paired circular headlamp faces`);
       const sourceShoeBounds=instancedVertexBounds(shoes);
       near(sourceShoeBounds.min.y,0,.003,`${id}: source ground from actual moving shoe vertices`);
-      near(sourceShoeBounds.max.y,1.36478,.010,`${id}: source high return envelope, not a road-wheel drape`);
+      // 2026-09-17: the 28 mm band hugs the idler rim (2 mm), so the shoe envelope over the raised idler sits 11 mm under
+      // the source's thick-track top; the run is still the idler crest, not a road-wheel drape
+      near(sourceShoeBounds.max.y,1.3533,.010,`${id}: high return envelope over the idler crest, not a road-wheel drape`);
       shoes.geometry.computeBoundingBox();
       near(shoes.geometry.boundingBox.max.y-shoes.geometry.boundingBox.min.y,.19449,.002,
         `${id}: source outer pad through inner guide depth, not a generic oversized shoe`);
@@ -351,7 +353,7 @@ for (const [id, source] of Object.entries(sources)) {
       near(ray(barrel,[.0238,0,4.05],[0,1,0])?.y??NaN,1.8626,.004,
         `${id}: source forward collar remains concentric with the bore`);
       const shoeBounds=instancedVertexBounds(shoes);
-      near(shoeBounds.min.z,-3.29343,.010,`${id}: source actual rear shoe envelope, separate from rim radius`);
+      near(shoeBounds.min.z,-3.28325,.010,`${id}: source actual rear shoe envelope, separate from rim radius`);
       near(shoeBounds.max.z,3.81941,.010,`${id}: source actual front shoe envelope, unchanged idler axis`);
       near(shoeBounds.max.y,1.31448,.012,`${id}: source upper return shoe envelope`);
       near(shoeBounds.min.y,0,.003,`${id}: source ground contact from actual transformed shoe vertices`);

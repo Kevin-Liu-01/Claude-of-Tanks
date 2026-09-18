@@ -55,19 +55,22 @@ function checkSourceWheelFaces(all) {
   near(envelope.max.x, 1.5147352, .00001, 'complete source right wheel envelope, including steel');
   // Source Object_6/Object_23 independent outward plate steps. Rays use the
   // open lower wheel half so skirt sheets cannot masquerade as wheel faces.
+  // the steps are measured from the live axle (ground-datum seat, 2026-09-17), read off the tire instances
+  const tires = wheels.find(m => m.isInstancedMesh && m.name === 'gearRoadWheelTires');
+  const axleY = tires ? tires.instanceMatrix.array[13] : .4040425;
   for (const [side, center] of [[-1, -1.3349235], [1, 1.2513905]]) {
     for (const [r, rightX] of [[.06, 1.47367597], [.12, 1.38927376],
       [.20, 1.36334872], [.265, 1.39867330], [.30, 1.51473522]]) {
-      const hit = ray(wheels, [side * 2, .4040425 - r, -1.90045], [-side, 0, 0]);
+      const hit = ray(wheels, [side * 2, axleY - r, -1.90045], [-side, 0, 0]);
       near(hit?.point.x, center + side * (rightX - 1.2513905), .00001,
         'source stepped steel/tire outer face, with outward winding');
       assert.ok(hit?.face.normal.x * side > .99, 'visible plate has outward one-sided winding');
     }
     for (const r of [.285, .30, .315]) assert.equal(
-      ray(wheels, [center, .4040425 + r, -2.02], [0, 0, 1], .24), undefined,
+      ray(wheels, [center, axleY + r, -2.02], [0, 0, 1], .24), undefined,
       'measured central tire groove retains real air above its depressed crown');
     near(ray(wheels, [center, 1, -1.90045], [0, -1, 0])?.point.y,
-      .6837025, .00001, 'groove is backed by the source R279.660 rubber course');
+      axleY + .27966, .00001, 'groove is backed by the source R279.660 rubber course');
   }
 }
 
@@ -79,7 +82,8 @@ function checkMovingGear(root, all, gear) {
     tires.getMatrixAt(i, matrix);
     const center = new THREE.Vector3().setFromMatrixPosition(matrix);
     near(center.x, i % 2 ? 1.2513905 : -1.3349235, 1e-6, 'source asymmetric road-wheel X');
-    near(center.y, .4040425, 1e-6, 'unchanged source road axle Y');
+    const liveAxleY = root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY;
+    near(center.y, liveAxleY, 1e-6, 'source road axle Y follows the ground-datum seat (2026-09-17)');
     near(center.z, zs[Math.floor(i / 2)], 1e-6, 'unchanged source road axle Z');
     neutral.push(matrix.clone());
   }

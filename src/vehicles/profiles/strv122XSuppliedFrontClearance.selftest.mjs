@@ -92,7 +92,9 @@ for(const quality of['high','low']){
   for(const a of band)for(const b of hull){const d=triangleDistance(a.tri,b.tri).distance;
    minimum=Math.min(minimum,d);if(d<1e-9)intersections++;}
   assert.equal(intersections,0,'actual band and permanent skin never intersect');
-  assert.ok(minimum>=.020&&minimum<.025,`bounded actual moving-joint gap20–25mm, got ${minimum}`);
+  // 2026-09-17: the 28 mm band hugs the supplied idler rim, 76 mm under the source's thick-track course, so the joint gap
+  // to the permanent skin opens from the source's 20–25 mm to 37.5 mm; it stays bounded and never intersects
+  assert.ok(minimum>=.034&&minimum<.041,`bounded actual moving-joint gap 34–41 mm, got ${minimum}`);
   ceilingAndRoof(hullMesh);
  }finally{tank.dispose();}
 }

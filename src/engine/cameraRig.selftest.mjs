@@ -66,6 +66,56 @@ const idle = {
   assert.deepEqual(observerCamera.position.toArray(), revealed.toArray(), 'later visible entry does not invoke the covered snap');
 }
 
+// death r1 (owner 2026-09-17: "if you die you should get kicked out of scope
+// mode"): the rig itself leaves SNIPER the frame the player's tank is a wreck,
+// before any presentation flow, and a wreck cannot scope back in.
+{
+  const wreckCamera = new PerspectiveCamera(60, 16 / 9, 0.1, 2000);
+  const wreckRoot = new Object3D();
+  wreckRoot.updateMatrixWorld(true);
+  const wreck = {
+    state: { pos: new Vector3(), yaw: 0.4, turretYaw: 0.1 },
+    input: { aimPoint: new Vector3() },
+    combat: { destroyed: false },
+    visual: {
+      root: wreckRoot,
+      turretTopWorld: out => out.set(0, 2, 0).applyMatrix4(wreckRoot.matrixWorld),
+      gunPivotWorld: out => out.set(0, 1.7, 0.2).applyMatrix4(wreckRoot.matrixWorld),
+    },
+  };
+  const wreckRig = createCameraRig(wreckCamera, {
+    heightField: { getHeightAt: () => 0 }, raycast: () => null, getPlayer: () => wreck,
+  });
+  wreckRig.snapArcade(3, 0.4, -0.1);
+  wreckRig.enterSniper();
+  wreckRig.update(1 / 60, idle);
+  assert.equal(wreckRig.mode, 'SNIPER', 'alive: the scope holds through the update');
+  assert.equal(wreckCamera.userData.scoped, true, 'alive: consumers see the scoped camera');
+  const scopedFov = wreckCamera.fov;
+  wreck.combat.destroyed = true;
+  wreckRig.update(1 / 60, idle);
+  assert.equal(wreckRig.mode, 'ARCADE', 'the frame the tank is a wreck the rig leaves the scope');
+  assert.equal(wreckCamera.userData.scoped, false, 'consumers see the arcade camera the same frame');
+  assert.ok(wreckCamera.fov > scopedFov + 1, 'the zoomed field of view is gone with the scope');
+  wreckRig.enterSniper();
+  assert.equal(wreckRig.mode, 'ARCADE', 'a wreck cannot scope back in');
+  wreckRig.update(1 / 60, { ...idle, shiftPressed: true });
+  wreckRig.update(1 / 60, idle);
+  assert.equal(wreckRig.mode, 'ARCADE', 'the scope key is inert on a wreck');
+  // the external killcam pose does not hide the rule: the guard runs first
+  wreck.combat.destroyed = false;
+  wreckRig.enterSniper();
+  assert.equal(wreckRig.mode, 'SNIPER', 'a repaired/respawned tank scopes again');
+  wreck.combat.destroyed = true;
+  wreckRig.setExternalPose(new Vector3(10, 5, 10), new Vector3(), 42);
+  wreckRig.update(1 / 60, idle);
+  assert.equal(wreckRig.mode, 'ARCADE', 'dying under an external killcam pose still leaves the scope');
+  wreckRig.release();
+  wreckRig.update(1 / 60, idle);
+  assert.equal(wreckRig.mode, 'ARCADE', 'and the released rig resumes in arcade');
+  assert.equal(wreckCamera.userData.scoped, false);
+}
+
 visualRoot.position.set(-1500, 0, -1500);
 visualRoot.updateMatrixWorld(true);
 visualRoot.position.set(40, 0, -400);

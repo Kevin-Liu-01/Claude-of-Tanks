@@ -79,19 +79,19 @@ for (const [id, expected] of Object.entries(CASES)) {
       && structuralHull?.isMesh,
     `${id}: exposes the wheel-bound torsion arms, joint bosses and structural hull`);
     near(receipt.wheelR, expected.wheelR, `${id}: road wheels use the taller T-64 profile`);
-    near(receipt.wheelY, expected.wheelY, `${id}: road-wheel axle clears the lower track run`);
+    near(receipt.wheelY, receipt.botY + receipt.trackTh / 2 + receipt.wheelR, `${id}: road-wheel axle rests on the band face (ground-datum seat, 2026-09-17)`);
     near(tallTrack.roadWheelRadiusM, expected.wheelR,
       `${id}: tall-track receipt records the installed road-wheel radius`);
     near(tallTrack.roadWheelCenterY, expected.wheelY,
       `${id}: tall-track receipt records the raised road-wheel axle`);
     near(tallTrack.frontIdlerLiftM, 0.04,
       `${id}: shared BV-family receipt records the 40 mm front-idler lift`);
-    assert.ok(receipt.wheelY - receipt.wheelR >= 0.205 - EPSILON,
-      `${id}: wheel bottoms stay above the lower track-shoe crest datum`);
+    assert.ok(receipt.wheelY - receipt.wheelR >= receipt.botY + receipt.trackTh / 2 - EPSILON,
+      `${id}: wheel bottoms stay on or above the band's upper face`);
     near(receipt.shoeRadialScale, 0.46,
       `${id}: thin T-64 shoes preserve wheel-to-track clearance`);
     near(receipt.topY, expected.topY, `${id}: upper track run gains 80 mm`);
-    near(receipt.botY, expected.botY, `${id}: loaded lower run stays on its ground datum`);
+    near(receipt.botY + receipt.trackTh / 2, receipt.wheelY - receipt.wheelR, `${id}: loaded lower run carries the tire feet (ground-datum seat, 2026-09-17)`);
     near(receipt.idler.y, expected.idlerY, `${id}: idler follows the lifted course`);
     near(receipt.sprocket.y, expected.sprocketY, `${id}: sprocket follows the lifted course`);
     near(tallTrack.authoredEnvelopeHeightM, expected.authoredEnvelopeHeightM,
@@ -110,8 +110,9 @@ for (const [id, expected] of Object.entries(CASES)) {
       `${id}: lower glacis reaches the lowered belly datum`);
     assert.ok(tallTrack.liftedDirectHullChildren >= 2,
       `${id}: direct hull fittings follow the raised hull body`);
-    assert.deepEqual(uniqueInstanceYs(roadWheels), [expected.wheelY],
-      `${id}: all visible road wheels retain the loaded axle datum`);
+    const roadYs = uniqueInstanceYs(roadWheels);
+    assert.equal(roadYs.length, 1, `${id}: all visible road wheels share one axle height`);
+    assert.ok(Math.abs(roadYs[0] - receipt.wheelY) < 1e-4, `${id}: all visible road wheels sit on the seated axle (${roadYs[0]} vs ${receipt.wheelY})`);
     assert.deepEqual(uniqueInstanceYs(returnRollers), [expected.rollerY],
       `${id}: all visible return rollers follow the raised course`);
     assert.equal(roadWheels.count, 12, `${id}: retains six road wheels per side`);
@@ -148,7 +149,7 @@ for (const [id, expected] of Object.entries(CASES)) {
     }
 
     const bottomPoints = receipt.loopPoints.filter(([, y]) =>
-      Math.abs(y - expected.botY) <= EPSILON);
+      Math.abs(y - receipt.botY) <= EPSILON);
     assert.ok(bottomPoints.length >= 6,
       `${id}: lower course contains a stable loaded contact run`);
     const bottomZs = bottomPoints.map(([z]) => z);

@@ -87,9 +87,9 @@ function sourceFrameSurfaces(tank,quality) {
   for(let i=0;i<wheels.count;i++) {
     wheels.getMatrixAt(i,matrix);const centre=v(0,0,0).applyMatrix4(matrix).applyMatrix4(wheels.matrixWorld);
     near(Math.abs(centre.x),1.382171,.00001,`${quality}: source cast-wheel axial centre`);
-    near(centre.y,.44142,.00001,`${quality}: unchanged source roadwheel height`);
+    near(centre.y,.4513469934463501,.00001,`${quality}: unchanged source roadwheel height`);
   }
-  for(const [y,x]of[[.44142,1.634449],[.50142,1.614967],[.64142,1.509855]])
+  for(const [y,x]of[[.4513469934463501,1.634449],[.50142,1.614967],[.64142,1.509855]])
     near(hit(tank.root,v(3,y,.5464),v(-1,0,0))?.point.x,x,.005,
       `${quality}: source recessed wheel dish and positive hub ${y}`);
 }
@@ -99,7 +99,9 @@ function sourceWrapAndFolds(tank,quality) {
   // Source skin raw inner-return Y10.6700258 at uniform metre scale;
   // actual mechanical rollers are inferred, but their tangency is real.
   for(const z of [-1.92,.04,2.03])for(const x of [1.20,1.53])
-    near(hit(pads,v(x,1.13,z),v(0,1,0),.15)?.point.y,1.15619,.0005,
+    // 2026-09-17: the fleet shoe standard's 22 mm web hangs 2 mm deeper than the study's own web, so the shoe inner
+    // skin meets the unchanged 1.1559 roller crown 4 mm into its rubber instead of 2 mm.
+    near(hit(pads,v(x,1.13,z),v(0,1,0),.15)?.point.y,1.1518012342754347,.0005,
       `${quality}: actual inner return skin over physical roller ${x}/${z}`);
   const rollers=tank.root.getObjectByName('gearReturnRollerTires');
   const matrix=new THREE.Matrix4();

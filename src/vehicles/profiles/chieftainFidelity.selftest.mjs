@@ -45,8 +45,10 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   for (const band of bands) {
     band.geometry.computeBoundingBox();
     const bandBounds = band.geometry.boundingBox;
-    assert(bandBounds.max.z > 3.40,
-      `${id}: animated tread wraps through the forward mudguard station`);
+    // 2026-09-17 end-wrap law: the band wraps the idler at its engagement radius (3.02 + .30 + half the 28 mm
+    // band = 3.334); the former 3.40 reach encoded the old +45 mm wrap allowance.
+    assert(bandBounds.max.z > 3.32,
+      `${id}: animated tread reaches under the forward mudguard`);
     const trackWidth = bandBounds.max.x - bandBounds.min.x;
     const expectedWidth = 0.61;
     assert(Math.abs(trackWidth - expectedWidth) < 1e-6,

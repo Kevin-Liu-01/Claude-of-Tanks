@@ -15,7 +15,7 @@ import {matrix,finiteClearance,continuousShoeClearance,moving} from '../returnRo
 // layout; this test certifies physical construction, never primary history.
 const ORIGINAL={wheelR:.3385,wheelW:.5455,wheelY:.4166,xc:1.343,
  wheelZs:[-2.1577,-1.3711,-.5740,.2150,1.0117,1.8668,2.7725],
- trackW:.550,trackTh:.068,topY:1.085,botY:.072,
+ trackW:.550,trackTh:.068,topY:1.085,
  trackShoeDimensions:{padHeight:.018,grouserHeight:.008,webHeight:.012,
  hornHeight:.036,pinRadius:.012,pinCentreY:0},
  sprocket:{z:-2.9680,y:.8107,r:.3075,trackR:.19},
@@ -30,7 +30,8 @@ const hash=g=>{const h=createHash('sha256');for(const key of Object.keys(g.attri
 function capture(id,build,quality,old){
  let port,cfg,gear;const emissions=[],original=KIT.buildRunningGear;
  KIT.buildRunningGear=(p,input)=>{
-  const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,loopPoints,...retained}=input;
+  const {rollers,rollerR,returnRollerWidthM,returnRollerInsetM,returnRollerGeometry,loopPoints,botY,...retained}=input;
+  assert.ok(Math.abs(botY-KIT.groundSeatBotY(p.spec,input))<1e-9,'botY is the ground-datum seat (2026-09-17)');
   assert.deepEqual(retained,ORIGINAL,'Every pre-existing gear input remains exact');
   if(old)returnRollerGeometry.dispose(); // Inverse control never transfers this unused rotor to KIT.
   cfg=old?retained:input;return gear=original(p,cfg);

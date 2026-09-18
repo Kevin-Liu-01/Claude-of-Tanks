@@ -43,11 +43,12 @@ visual.root.traverse((node) => {
 assert.equal(trackBands.length, 2, 'exactly one linked track band is present per side');
 for (const band of trackBands) {
   const box = bounds(band);
-  assert.ok(box.max.y >= 1.20 && box.max.y <= 1.23 && box.min.y >= 0.01,
+  // 2026-09-17: the band wraps the idler at half its thickness + 2 mm (was a 45 mm allowance), 3 cm lower crown
+  assert.ok(box.max.y >= 1.16 && box.max.y <= 1.19 && box.min.y >= 0.01,
     `${band.name} follows the deliberately lifted Leopard terminal-wheel course`);
   assert.ok(box.max.x - box.min.x >= 0.535,
     `${band.name} uses the widened Leopard tread`);
-  assert.ok(box.max.z - box.min.z >= 6.60 && box.max.z - box.min.z <= 6.76,
+  assert.ok(box.max.z - box.min.z >= 6.50 && box.max.z - box.min.z <= 6.72, // end wraps hug the rims (2026-09-17)
     `${band.name} follows the measured Leopard-family course`);
 }
 const trackPads = visual.root.getObjectByName('gearTrackPads');
@@ -80,9 +81,10 @@ for (const [label, end] of [
   const wrapRadii = [];
   for (const [y, z] of leftShoeCenters) {
     const radius = Math.hypot(y - end.y, z - end.z);
-    if (radius < 0.41) wrapRadii.push(radius);
+    const endR = hullRig.userData.runningGearReceipts?.[0]?.[label]?.r ?? 0.30;
+    if (radius < endR + 0.06) wrapRadii.push(radius); // shoes on the wrap: band at r + 16 mm, shoe centres 26 mm further out (2026-09-17)
   }
-  assert.ok(wrapRadii.length >= 7 && Math.max(...wrapRadii) - Math.min(...wrapRadii) <= 0.035,
+  assert.ok(wrapRadii.length >= 6 && Math.max(...wrapRadii) - Math.min(...wrapRadii) <= 0.035, // 2026-09-17: the tighter 16 mm wrap seats ~6.5 shoes on a half turn
     `linked shoes follow a tight concentric ${label} wrap`);
 }
 
@@ -141,7 +143,7 @@ assert.deepEqual(finish, {
 }, 'Leopard 1A5 side/fender/fuel finish receipt remains complete');
 const gear = hullRig.userData.runningGearReceipts?.[0];
 assert.ok(gear, 'Leopard 1A5 publishes its native running-gear receipt');
-assert.equal(gear.wheelY, 0.37, 'the seven road-wheel centers rise into the suspension bay');
+assert.ok(Math.abs(gear.wheelY - (gear.botY + gear.trackTh / 2 + gear.wheelR)) < 1e-9, 'the seven road-wheel centers rest one radius above the band face (ground-datum seat, 2026-09-17)');
 assert.deepEqual(gear.wheelZs, [2.52, 1.78, 1.04, 0.30, -0.44, -1.18, -1.92],
   'the seven road wheels advance together on the tighter Leopard 1 pitch');
 for (let i = 1; i < gear.wheelZs.length; i++) {
@@ -152,7 +154,7 @@ assert.deepEqual(gear.idler, { z: 3.17, y: 0.79, r: 0.29 },
   'the front idler retains a compact raised station and authored radius');
 assert.deepEqual(gear.sprocket, { z: -2.70, y: 0.84, r: 0.30 },
   'the rear sprocket retains a compact raised station and authored radius');
-assert.ok(gear.idler.y - gear.wheelY >= 0.41 && gear.sprocket.y - gear.wheelY >= 0.46,
+assert.ok(gear.idler.y - gear.wheelY >= 0.38 && gear.sprocket.y - gear.wheelY >= 0.43, // 2026-09-17: the seated axle sits 3 cm higher on the fleet band
   'both terminal drums retain the lifted Leopard trapezoid without over-tall wraps');
 assert.ok(Math.abs(gear.wheelZs.reduce((sum, z) => sum + z, 0) / gear.wheelZs.length - 0.30) < 1e-8,
   'the complete road-wheel row advances 30 cm without changing its cadence');
@@ -162,7 +164,7 @@ assert.equal(finish.trackTopSupportY, 1.14,
   'the wider upper track course remains seated directly below the fenders');
 assert.equal(finish.bodyLiftY, 0,
   'the hull returns to its source datum without moving the running gear');
-const loadedRun = gear.loopPoints.filter(([, y]) => Math.abs(y - finish.trackBotY) < 1e-8);
+const loadedRun = gear.loopPoints.filter(([, y]) => Math.abs(y - gear.botY) < 1e-8); // the built run sits on the ground-datum seat, not the finish receipt's authored botY (2026-09-17)
 assert.ok(loadedRun.length >= 7, 'the loaded track run retains articulated road-wheel stations');
 assert.ok(Math.abs(Math.max(...loadedRun.map(([z]) => z))
   - gear.wheelZs[0]) < 1e-8,

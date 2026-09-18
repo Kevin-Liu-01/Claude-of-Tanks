@@ -95,16 +95,21 @@ export function assertPublishedChieftainFoundationSources(
     assert.equal(receipt.successorHistory[1][quality].count, receipt.successorHistory[0][quality].count,
       'the muzzle mouth seat moves draw vertices without adding or removing any');
     assert.equal(receipt.successor[quality].count,
-      receipt.successorHistory[1][quality].count + receipt.laterTrackWrap.trackDrawVertexDelta,
-      'the tangent track wrap changes exactly the declared number of band draw vertices');
+      receipt.successorHistory[1][quality].count + receipt.laterTrackWrap.trackDrawVertexDelta
+        + receipt.laterGroundDatumSeat.trackDrawVertexDelta,
+      'the tangent track wrap and the ground-datum reseat change exactly the declared number of band draw vertices');
   }
   assert.match(receipt.laterMuzzleSeat.scope, /muzzleBoreShadowFallback/);
   assert.match(receipt.laterTrackWrap.scope, /roadWheelWrap/);
   assert.equal(receipt.laterTrackWrap.trackDrawVertexDelta, -480);
+  // 2026-09-17 fleet reseat: 28 mm band, wheels on the band face, flank/ramp stations (see the record's scope)
+  assert.match(receipt.laterGroundDatumSeat.scope, /groundSeatBotY/);
+  // ground datum + end-wrap law (2026-09-17): the rim-capped end arcs trimmed 1 344 draw vertices at both qualities
+  assert.equal(receipt.laterGroundDatumSeat.trackDrawVertexDelta, 2688);
   return receipt.successor;
 }
 
-/** Non-track draw-vertex multiset the wrap successor claims unchanged (receipt re-derives and compares). */
+/** Non-track draw-vertex multiset the latest successor claims unchanged (receipt re-derives and compares). */
 export function publishedChieftainNonTrackMultiset(quality) {
-  return receipt.laterTrackWrap.nonTrack[quality];
+  return receipt.laterGroundDatumSeat.nonTrack[quality];
 }

@@ -28,12 +28,12 @@ const BASELINES = {
     [203536,'9ee892f180732ebd7c32db69e0d3e720adec5dd780a3f81194df81461f39c955'],
   ],
   t90m_x: [
-    [285316,'cf17afe9d0dae2947b75f492501c8463dfe2276b71c9ff6653d8408ba355ba2f'],
-    [269188,'c09e369343ed08723bfebae7c5db6197fbd5701e345d54c7521d6314e635c039'],
+    [288700,'267205c2c058a43f6e3b0dbf9dc2e5b50684819ac6173adbdb09c33d3745995f'],
+    [272572,'baa4ad4782a7bc4b21d91a7b5d3f5cb5dfcd17a247c3106abac1d1ec915e69e9'],
   ],
   t90sm_x: [
-    [299506,'8459ee347a2f26fd3272d3aff86dd6e7de786db25db5fc9b4baa7c830e334de3'],
-    [283378,'0e955bda7fdbf2fa0f98481a55fdda2e431f73e6b1567a3395b6bf3d9869bd66'],
+    [303370,'ea94807824b81a7e6ac7a0d40341279907bc0e3c0e3477f459f0bd5980849beb'],
+    [287242,'d1d5ac2a188c279821defc2145406c32b98ec070ee5634cf20563fbb66b1061f'],
   ],
 };
 
@@ -41,14 +41,14 @@ const BASELINES = {
 // The original complete hashes above remain the binding-only provenance;
 // gun geometry is now independently pinned by t90AXGun.selftest.mjs.
 const A_NON_GUN_BASELINES=[
-  [274512,'caec7f52d99299b42eb374281eb67977710fce47376922c007b623732fee4ccb'],
-  [258768,'34f933a3dbb7264bed779b13090430d59b6b6604d077a560768de51ffdc92ee0'],
+  [278184,'bfa6962f7e03fd61b45bb32d913a9e727aef6d03d005ad4ba8753d27f74869dc'],
+  [262440,'389020a92cc9284ab95f0d65adf9659897a8a234dfa6003f38ac80fa06e27d3c'],
 ];
 // Independently captured before the V repair, subtracting only the exact
 // two old guard solids (72 vertices), with multiplicity; no spatial mask.
 const V_NON_GUARD_BASELINES=[
-  [230728,'9c2ffc1ee669cddf26ff935d334cfa38ecde2786662ed2b6900673230c7f9633'],
-  [214600,'9e534a11e72363d5e1f8d6205e7412e5ad799ca5589055647fcf9e8ec30c8471'],
+  [233176,'af34269fff612c23dd3740aa559a53b624683fb26cba3b67f00c6c1fc3d317ee'],
+  [217048,'df148cfaa939a5c8436f8ae49bc6e5e49643d6b3e95a8b5bf87081f8b6d6f323'],
 ];
 
 function visible(object) {

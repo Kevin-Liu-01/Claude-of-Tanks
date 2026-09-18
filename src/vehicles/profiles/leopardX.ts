@@ -1229,6 +1229,9 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
 
 // A5: separately laid out basic armor tub and arrowhead modules, restrained
 // thin rear skirts, clear frontal optic approach and L/44 instead of L/55.
+// A5 web/horn stock hangs 14.03 mm inside the authored 38.9 mm band's inner face; on the 28 mm fleet band the same stock
+// sits (38.9 − 28) mm further in, so the roller seat and the inner lining follow it (2026-09-17).
+const A5_WEB_INSET_M = .01403 + (.0389 - .028);
 export function buildLeopard2A5X(P: TankBuilderPort): void {
   const d=LEOPARD_X_DATUMS.leo2a5_x;
   begin(P,d);
@@ -1244,10 +1247,10 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
     sprocket:{z:-2.91,y:.914,r:.360,trackR:.2712},idler:{z:3.46,y:.915,r:.273,trackR:.2471},
     // Actual native placement (including the 12 mm shoe/course offset)
     // puts the A5 web 14.03 mm inward of the carrier's inner face.
-    paintedEnds:true,arms:true,coveredTop:true,trackCarrierFromOuterFace:true},[-1.94,-.16,1.48,2.30],.01403));
+    paintedEnds:true,arms:true,coveredTop:true,trackCarrierFromOuterFace:true},[-1.94,-.16,1.48,2.30],A5_WEB_INSET_M));
   // Keep the actual near-shoe web and distant carrier load-bearing at the
   // same supports. Only inner stock grows; the protected shoe course stays.
-  lineUpperReturnBand(P,[-1.94,-.16,1.48,2.30],.01403);
+  lineUpperReturnBand(P,[-1.94,-.16,1.48,2.30],A5_WEB_INSET_M);
   a5Skirts(P);
   a5InnerSuspension(P);
   fans(P,1.811,-2.89,.514);

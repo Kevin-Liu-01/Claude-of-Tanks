@@ -193,9 +193,11 @@ for (const quality of ['high', 'low']) {
     near(shoes.geometry.boundingBox.getSize(new THREE.Vector3()).y, .06829, .002,
       'source-measured radial shoe web and guide extent');
     const shoeBounds = new THREE.Box3().setFromObject(shoes);
-    near(shoeBounds.min.z, -3.27183, .025, 'source rear wrap extent without oversized pitch radius');
-    near(shoeBounds.max.z, 3.82843, .025, 'source front wrap extent');
-    near(shoeBounds.max.y, 1.16572, .025, 'source return course height');
+    // 2026-09-17: the 28 mm fleet band (was 68 mm) and the fleet grouser height put the shoe envelope 35 mm inside the
+    // source's thick-track silhouette at the drive; the band centreline stays on the measured datum + 0.045.
+    near(shoeBounds.min.z, -3.2372, .025, 'rear wrap extent on the fleet band, centreline on the measured datum');
+    near(shoeBounds.max.z, 3.7937, .025, 'front wrap extent on the fleet band, centreline on the measured datum');
+    near(shoeBounds.max.y, 1.1383791841306674, .025, 'source return course height');
     const hull = tank.root.getObjectByName('hull');
     const turret = tank.root.getObjectByName('turret');
     assert.ok(hull?.isMesh && turret?.isMesh, 'independently authored structural meshes');

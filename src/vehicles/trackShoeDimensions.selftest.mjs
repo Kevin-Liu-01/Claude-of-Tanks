@@ -54,10 +54,10 @@ const DEFAULT_SHOE_HASHES={
 // the fleet .024 band on AMX-30 X / AMX-40 X / Chieftain 5 X (course datums re-seated),
 // and the scheme-painted pressed dish (plate 0.82 r) move every affected digest;
 // values below are repinned from the current build.
-  t90m:'20b47a84f5b82c62a62ebbf88af5962c85bc3db2ed4318e711093225199b43ac',
-  t90a:'002294c452a9456214db91d912b25777e3cd4392782df3c255797d0501eda8f7',
-  m1a2:'b5c8750bd50fff6aba3166abf9542d62eeb67d18a268049d551c88ae372d2831',
-  leo2a5:'3b631a5ff2bd88a442a3102ccea90907f7a489cf1d06610e13db1c46a411efd6',
+  t90m:'f602982bb44e140222edd55eafd56a25e90e97132346d1c65d5030fe059ddcd1',
+  t90a:'94add74f399eeda55428df16065454b6f31380a387955d2963b4cd126281bb80',
+  m1a2:'f3560a314db1253320a3bcba4f30583941afb8173bc631fbcb397ed6ecf56d04',
+  leo2a5:'2eaee5604c73145eff5acd5b874b990151cbc3a4970b62ea39d810066e5eae87',
 };
 const DEFAULT_WHEEL_HASHES={
   t90m:['ee1267357b9821551acdc43bb28b13bb0552b074fd41564b086002ac19713c05','e3b982d7a499de8fded2a44f15abf4b96762345253426f1d686c28f128317972','8f57825275092ceafca41ca5a1cdb5567ed4046e1a3ae446010103066c0e76f3'],
