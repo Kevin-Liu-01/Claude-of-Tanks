@@ -23,8 +23,18 @@ interface AssaultTrenchLine {
   halfLengthM: number;
 }
 
+/** Cross-section of a carved line (metres); a plan without one carves the fortified ASSAULT_TRENCH section. */
+export interface TrenchProfile {
+  floorHalfWidthM: number;
+  wallRunM: number;
+  depthM: number;
+  endRampM: number;
+}
+
 export interface AssaultTrenchPlan {
   lines: readonly AssaultTrenchLine[];
+  /** Field trenches (2026-09-17) carve a shallower section with gentle banks; sector lines leave this unset. */
+  profile?: TrenchProfile;
   /** Communication trench along the axis from the first to the last line. */
   connector: { x0: number; z0: number; x1: number; z1: number } | null;
   /**
@@ -79,6 +89,45 @@ export function planAssaultTrenchLines(alpha: AssaultPoint, bravo: AssaultPoint)
   return { lines, connector: { x0: first.x, z0: first.z, x1: last.x, z1: last.z } };
 }
 
+/**
+ * Field trenches on every map (owner 2026-09-17: "more trenches … on ALL maps, extra in Frontline Assault"):
+ * two short fire trenches per side of the alpha→bravo axis, 30 % and 70 % of the way to the enemy, the same
+ * cross-section as the assault lines. The terrain drops a line where a settlement, a road or an assault sector
+ * line would cross it; the assault variant carries these on top of its three sector lines.
+ */
+export const FIELD_TRENCH = Object.freeze({
+  fractions: [0.30, 0.70] as const,
+  lateralFrac: 0.22,
+  maxLateralM: 150,
+  halfLengthM: 26,
+  minAxisM: 140,
+  // a fire trench, not a fortified sector line: 1.15 m deep over a 4 m floor with 24° banks (2.6 m run), so a tank
+  // that drives through it climbs out at speed instead of crawling up a 42° wall (server/battlePacing on the trenched
+  // maps: 16/120 time-limit results at the fortified section, back under the 12.5 % cap with these banks)
+  profile: Object.freeze({ floorHalfWidthM: 2.0, wallRunM: 2.6, depthM: 1.15, endRampM: 8 }) as TrenchProfile,
+});
+
+export function planFieldTrenchLines(alpha: AssaultPoint, bravo: AssaultPoint): AssaultTrenchPlan {
+  const dx = bravo.x - alpha.x, dz = bravo.z - alpha.z;
+  const axisLength = Math.hypot(dx, dz);
+  if (!(axisLength >= FIELD_TRENCH.minAxisM)) return { lines: [], connector: null };
+  const ax = dx / axisLength, az = dz / axisLength;
+  const lx = -az, lz = ax;
+  const lateral = Math.min(FIELD_TRENCH.maxLateralM, axisLength * FIELD_TRENCH.lateralFrac);
+  const lines: AssaultTrenchLine[] = [];
+  for (const fraction of FIELD_TRENCH.fractions) {
+    for (const side of [-1, 1]) {
+      lines.push({
+        x: alpha.x + ax * axisLength * fraction + lx * lateral * side,
+        z: alpha.z + az * axisLength * fraction + lz * lateral * side,
+        ax, az, lx, lz,
+        halfLengthM: FIELD_TRENCH.halfLengthM,
+      });
+    }
+  }
+  return { lines, connector: null, profile: FIELD_TRENCH.profile };
+}
+
 /** Depth profile across a trench: flat floor, sloped walls, then the surface. */
 export function trenchProfile(acrossM: number, floorHalfWidthM: number, wallRunM: number): number {
   const d = Math.abs(acrossM);
@@ -93,7 +142,7 @@ export function trenchProfile(acrossM: number, floorHalfWidthM: number, wallRunM
  */
 export function assaultTrenchCarveDepth(x: number, z: number, plan: AssaultTrenchPlan): number {
   let depth = 0;
-  const T = ASSAULT_TRENCH;
+  const T = plan.profile ?? ASSAULT_TRENCH;
   for (const line of plan.lines) {
     const rx = x - line.x, rz = z - line.z;
     const along = rx * line.lx + rz * line.lz;      // position along the trench
@@ -111,8 +160,8 @@ export function assaultTrenchCarveDepth(x: number, z: number, plan: AssaultTrenc
       if (t >= 0 && t <= 1) {
         const px = c.x0 + sx * t - x, pz = c.z0 + sz * t - z;
         const across = Math.hypot(px, pz);
-        depth = Math.max(depth, T.connectorDepthM
-          * trenchProfile(across, T.connectorHalfWidthM, T.connectorWallRunM));
+        depth = Math.max(depth, ASSAULT_TRENCH.connectorDepthM
+          * trenchProfile(across, ASSAULT_TRENCH.connectorHalfWidthM, ASSAULT_TRENCH.connectorWallRunM));
       }
     }
   }

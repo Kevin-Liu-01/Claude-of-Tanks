@@ -1,5 +1,5 @@
 import { bindAutumnHorizonGround } from './horizonAutumnGround.ts';
-import { planAssaultTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
+import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
 // procedural PBR ground material. Pure part (createHeightField) is node-runnable.
@@ -176,6 +176,8 @@ interface TerrainSettings {
   redrockCanyon?: boolean;
   /** Runtime-only (assault-trenches world variant): carve the Frontline Assault trench system. */
   assaultTrenches?: boolean;
+  /** Field trenches on every map (2026-09-17); a map opts out with false. */
+  fieldTrenches?: boolean;
 }
 
 interface SplatConfig {
@@ -221,6 +223,8 @@ interface SplatConfig {
 export interface TerrainMapConfig extends HorizonMapConfig {
   /** Runtime-only (assault-trenches world variant): carve the Frontline Assault trench system. */
   assaultTrenches?: boolean;
+  /** Field trenches on every map (2026-09-17); a map opts out with false. */
+  fieldTrenches?: boolean;
   /** Opt-in bot route preference. Omission preserves existing wading semantics. */
   navigationWaterPolicy?: NavigationWaterPolicy;
   terrain?: Partial<TerrainSettings>;
@@ -267,6 +271,8 @@ export interface HeightField {
   _layout: TerrainLayout;
   /** Frontline Assault trench plan carved into this field (assault-trenches variant), else null. */
   assaultTrenchLines?: AssaultTrenchPlan | null;
+  /** Field trenches carved into every standard field (2026-09-17), null when none fit or the map opts out. */
+  fieldTrenchLines?: AssaultTrenchPlan | null;
   _mesaW: ((x: number, z: number) => number) | null;
   _waterWetnessAt?: (x: number, z: number) => number;
   /** Construction-only seed admission; never used for gameplay or seating. */
@@ -719,6 +725,58 @@ function* heightFieldBuildSteps(
     _trenchPlan = lines.length ? { lines, connector: planned.connector, sectors } : null;
     return _trenchPlan;
   };
+  // owner 2026-09-17 ("more trenches … on ALL maps, extra in Frontline Assault"): every field carries short
+  // fire trenches — two per side of the axis at 30 % and 70 % of the way to the enemy — unless the map opts
+  // out (`fieldTrenches: false`). A line is dropped where the settlement, a road (< 26 m at any of five
+  // stations — clear of the graded shoulder as well as the pavement), the map edge or an assault sector line
+  // would cross it. Resolved on the first FINAL height query (roads and pads on): raw authoring queries — road
+  // node grades, pad seats, lake levels, marsh inputs — read the untrenched ground, so the plan never feeds back
+  // into the roads it keeps clear of and a completed-roads variant authors the same raw inputs.
+  const FIELD_TRENCH_ROAD_BERTH_M = 26;
+  let _fieldPlan: AssaultTrenchPlan | null | undefined;
+  const fieldTrenchPlan = (): AssaultTrenchPlan | null => {
+    if (_fieldPlan !== undefined) return _fieldPlan;
+    if (cfg?.fieldTrenches === false) return (_fieldPlan = null);
+    // The marsh bank widths come from the liquid surfaces, which the dry construction pass has not built
+    // yet: a plan drawn during that pass is provisional (bank band 1) and only the plan drawn once the
+    // surfaces exist is cached — the final heights, the props and the receipts all read that one.
+    const provisional = !liquidSurfaces && _MARSHES.length > 0;
+    const { alpha, bravo } = assaultTeamCenters({ x: _SPAWN_PLAYER.x, z: _SPAWN_PLAYER.z },
+      _SPAWN_ENEMIES.map((point) => ({ x: point.x, z: point.z })));
+    const sectors = trenchPlan();
+    // the carve is damped by the settlement and marsh weights heightAt applies; a station under 75 % dry
+    // would leave a shallow ditch instead of a trench, so the line is dropped (same marsh/bank law as heightAt)
+    const dryFactor = (x: number, z: number): number => {
+      let marshW = 0;
+      for (let mi = 0; mi < _MARSHES.length; mi++) {
+        const bankBand = liquidSurfaces ? liquidSurfaces[mi * LIQUID_MARSH_STRIDE + 3] : 1;
+        const md = shorelineDistance(_MARSHES[mi], x, z, bankBand);
+        if (md < 1) marshW = Math.max(marshW, 1 - md);
+        if (liquidSurfaces && md < bankBand) marshW = Math.max(marshW, smoothstep(bankBand, LIQUID_MARSH_CORE, md));
+      }
+      return (1 - villageMask(x, z)) * (1 - marshW);
+    };
+    const lines = planFieldTrenchLines(alpha, bravo).lines.filter((line) => {
+      for (let k = -2; k <= 2; k++) {
+        const s = (k / 2) * line.halfLengthM;
+        const px = line.x + line.lx * s, pz = line.z + line.lz * s;
+        if (Math.max(Math.abs(px), Math.abs(pz)) > 455) return false;
+        if (villageMask(px, pz) >= 0.4) return false;
+        if (gridSample(gRoadDist, px, pz) < FIELD_TRENCH_ROAD_BERTH_M) return false;
+        // wet ground never takes a trench (the carve fades to nothing in marsh and water anyway):
+        // the same wetness law the splat mask and the wakes read, plus a dry berth around every sheet
+        if (waterWetnessAt(px, pz) > 0.02) return false;
+        if (dryFactor(px, pz) < 0.75) return false;
+        if (_LAKES.some((lake) => shorelineDistance(lake, px, pz, 1.25) < 1.25)) return false;
+        if (_MARSHES.some((marsh) => shorelineDistance(marsh, px, pz, 1.25) < 1.25)) return false;
+      }
+      return !sectors || !sectors.lines.some((sector) =>
+        Math.hypot(sector.x - line.x, sector.z - line.z) < sector.halfLengthM + line.halfLengthM + 10);
+    });
+    const plan = lines.length ? { lines, connector: null, profile: FIELD_TRENCH.profile } : null;
+    if (!provisional) _fieldPlan = plan;
+    return plan;
+  };
   const noi = new SimplexNoise({ random: mulberry32((seed ^ 0x9e3779b9) >>> 0) });
 
   // --- base noise: fBm detail + domain-warped ridge, and a smooth variant ---
@@ -1135,6 +1193,14 @@ function* heightFieldBuildSteps(
       const carve = assaultTrenchCarveDepth(x, z, trenches);
       if (carve > 0) h -= carve * (1 - vm) * (1 - marshW);
     }
+    // field trenches (2026-09-17) are dug after the roads and pads exist: only final queries see the carve
+    if (roadsOn && padsOn) {
+      const fieldTrenches = fieldTrenchPlan();
+      if (fieldTrenches) {
+        const carve = assaultTrenchCarveDepth(x, z, fieldTrenches);
+        if (carve > 0) h -= carve * (1 - vm) * (1 - marshW);
+      }
+    }
     return h;
   }
 
@@ -1542,6 +1608,8 @@ function* heightFieldBuildSteps(
     _villageMask: villageMask,
     // Frontline Assault trenches (assault-trenches variant), null on the standard field.
     assaultTrenchLines: trenchPlan(),
+    // Field trenches on every standard field (2026-09-17), also on the assault variant clear of its sector lines.
+    fieldTrenchLines: fieldTrenchPlan(),
     // Keep pavement clear without excluding vegetation along unrelated roads.
     _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,
     _layout: layout,

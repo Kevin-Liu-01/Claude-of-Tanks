@@ -187,7 +187,8 @@ console.log(JSON.stringify({ contours, originalRecords: 27, records: 5, original
   authoringScalarsBefore: 108, authoringScalarsAfter: 100, levelAndBankBytesBefore: 432, levelAndBankBytesAfter: 80 }));
 const receipts = [];
 for (const seed of [1337, 2049, 7719]) {
-  const before = createHeightField(seed, original), field = createHeightField(seed, polders);
+  // 2026-09-17 field trenches: the relief law is compared on untrenched fields (fieldTrenches:false); the carve has its own receipt.
+  const before = createHeightField(seed, original), field = createHeightField(seed, { ...polders, fieldTrenches: false });
   const beforeWater = createHeightField(seed, { ...original, spawns: polders.spawns });
   const roads = inspectRoadsAndPads(field, before, beforeWater);
   const banks = inspectBanks(field);

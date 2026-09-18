@@ -201,7 +201,8 @@ function recordMeshes(props) {
 
 async function wholeWorld(seed, revision) {
   const legacy = revision === 'historical';
-  const config = legacy ? { ...reservoir, terrain: historicalLayout.terrain, spawns: historicalLayout.spawns } : reservoir;
+  // 2026-09-17 field trenches: the historical layout predates the all-map carve, so its field is built untrenched
+  const config = legacy ? { ...reservoir, terrain: historicalLayout.terrain, spawns: historicalLayout.spawns, fieldTrenches: false } : reservoir;
   const propsUrl = new URL('./props.ts', import.meta.url).href;
   const helperUrl = new URL('./reservoirWaterworks.ts', import.meta.url).href;
   globalThis.__waterworksRng = [];

@@ -204,7 +204,8 @@ function assertCurrentCorridorSeam(mapId, config, roads, field) {
   }
 }
 for (const mapId of MAP_IDS) {
-  const config = getMapConfig(mapId), control = originalConfig(config);
+  // 2026-09-17 field trenches: both sides of the terrain comparison are built untrenched; the carve has its own receipt.
+  const config = getMapConfig(mapId), control = { ...originalConfig(config), fieldTrenches: false };
   const source = withoutCompletion(mapId, () => createLayout(control).roads);
   const frozen = JSON.stringify(source), roads = createLayout(config).roads;
   originalNodeCount += source.flat().length;
@@ -223,7 +224,7 @@ for (const mapId of MAP_IDS) {
   if (mapId === 'fjord') assert.throws(() => alignFjordNorthernRoadGrades(mapId, source,
     source.map(road => road.map(() => 0))), /Fjord northern grade ownership changed/,
   'the actual production alignment still rejects incomplete historical termini');
-  const field = withoutCompletion(mapId, () => referenceHeightField(1337, control)), after = createHeightField(1337, config);
+  const field = withoutCompletion(mapId, () => referenceHeightField(1337, control)), after = createHeightField(1337, { ...config, fieldTrenches: false });
   if (after._createRoadPlacementSampler) assert.equal(typeof after._createRoadPlacementSampler, 'function');
   assert.deepEqual(Object.keys(after).filter(key => key !== '_createRoadPlacementSampler'),
     Object.keys(field).filter(key => key !== '_createRoadPlacementSampler'),

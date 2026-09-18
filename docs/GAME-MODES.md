@@ -83,9 +83,11 @@ Assault (`timeout: 'defeat'`).
   with no arranged or campaign nation they still field ONE nation per battle — rotated by
   battle ordinal through the nations that can field the whole lead
   (`rosterState.defaultWaveNations`, owner 2026-09-17: same-nation waves). Ordinary
-  matchmaking rotates too: the previous battle's bots yield their era-band place
-  (`game.recentBotSpecIds`, `matchmaking.rankMatchCandidates`), so consecutive rosters
-  differ whenever the catalog allows.
+  matchmaking rotates too: the bots of the last two battles yield their era-band place
+  (`game.recentBotSpecIds` / `previousBotSpecIds`, `rosterState.rememberBattleBots`,
+  `matchmaking.rankMatchCandidates`), and the seeded roster shuffle's battle ordinal starts
+  from the profile's lifetime match count (`profile.battleOrdinalBase`), so a fresh page load
+  never re-draws the same first battle and consecutive rosters differ whenever the catalog allows.
 - **Team arrangement (2026-09-15)** — the play menu's arrangement panel (allied bots,
   enemy pool, first Horde wave, enemy nation) is saved per mode
   (`cot.game.teams.v1`, `readTeamArrangement`) and folds into the ruleset

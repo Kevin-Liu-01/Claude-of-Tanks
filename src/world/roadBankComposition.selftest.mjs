@@ -52,6 +52,8 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);
+    // 2026-09-17 field trenches: the projected height function also reads the standard-map field plan (null here)
+    const fieldTrenchPlan = fixture.fieldTrenchPlan ?? (() => null);
     const assaultTrenchCarveDepth = fixture.assaultTrenchCarveDepth ?? (() => 0);
     ${stripTypeScriptTypes(helpers)}
     ${stripTypeScriptTypes(constraintBody)}

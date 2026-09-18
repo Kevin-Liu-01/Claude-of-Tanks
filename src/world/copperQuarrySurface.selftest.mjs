@@ -34,7 +34,8 @@ function equalSurface(actual, baseline, x, z, label) {
 
 const receipts = [];
 for (const seed of seeds) {
-  const actual = createHeightField(seed, copper), baseline = createHeightField(seed, legacy);
+  // 2026-09-17 field trenches: the relief law is compared on untrenched fields (fieldTrenches:false); the carve has its own receipt.
+  const actual = createHeightField(seed, { ...copper, fieldTrenches: false }), baseline = createHeightField(seed, { ...legacy, fieldTrenches: false });
   let roadSamples = 0, spawnSamples = 0, fastSamples = 0, changedArea = 0;
   const treadArea = [0, 0];
   for (const road of layout.roads) for (let i = 1; i < road.length; i++) {

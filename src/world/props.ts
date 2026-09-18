@@ -107,7 +107,7 @@ import type { CollisionRecord } from './collision.ts';
 import type { LoosePropBody, LoosePropKickCause } from './loosePropPhysics.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import type { GeometryBuckets, StructureDimensions } from './maps/exteriorDetailKit.ts';
-import { ASSAULT_TRENCH } from '../sim/assaultLines.ts';
+import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -5381,12 +5381,17 @@ ${snowCap ? `
   // an existing destructible (no collider), so a hull can still cross the works. Standard fields
   // carry no trench plan and place nothing.
   function placeTrenchWorks(): void {
-    const plan = heightField.assaultTrenchLines;
-    if (!plan || !plan.lines.length || !SOURCED.sandbags) return;
+    // 2026-09-17: the field trenches every standard map carries (terrain fieldTrenchLines) take the same
+    // dressing as the assault sector lines — parapet, ammunition lip, end drums and the wire belt.
+    // each line's works sit just outside its own bank: the fortified sector section or the field fire-trench section
+    const entries = [
+      ...(heightField.assaultTrenchLines?.lines ?? []).map((line) => ({ line, lip: ASSAULT_TRENCH.floorHalfWidthM + ASSAULT_TRENCH.wallRunM + 0.45 })),
+      ...(heightField.fieldTrenchLines?.lines ?? []).map((line) => ({ line, lip: FIELD_TRENCH.profile.floorHalfWidthM + FIELD_TRENCH.profile.wallRunM + 0.45 })),
+    ];
+    if (!entries.length || !SOURCED.sandbags) return;
     const trng = mulberry32(seed + 7301);
-    const lip = ASSAULT_TRENCH.floorHalfWidthM + ASSAULT_TRENCH.wallRunM + 0.45;
     let placed = 0;
-    for (const line of plan.lines) {
+    for (const { line, lip } of entries) {
       const yaw = Math.atan2(line.lx, line.lz);
       const reach = line.halfLengthM - 6;
       for (let along = -reach; along <= reach; along += 5.2 + trng() * 1.6) {
@@ -5441,8 +5446,8 @@ ${snowCap ? `
     if (axis < 120) return;
     const ax = dx / axis, az = dz / axis;   // attack direction (player → enemy)
     const lx = -az, lz = ax;                // lateral along the front
-    const trenchLines = heightField.assaultTrenchLines?.lines ?? [];
-    const target = richCount(P.fieldWorks, 3) + (trenchLines.length ? 2 : 0);
+    const trenchLines = [...(heightField.assaultTrenchLines?.lines ?? []), ...(heightField.fieldTrenchLines?.lines ?? [])];
+    const target = richCount(P.fieldWorks, 3) + (heightField.assaultTrenchLines?.lines.length ? 2 : 0);
     // the carved fire trenches (assault variant) keep a 16 m berth so no work lands in a trench floor
     const nearTrench = (x: number, z: number): boolean => trenchLines.some((line) => {
       const along = (x - line.x) * line.lx + (z - line.z) * line.lz;

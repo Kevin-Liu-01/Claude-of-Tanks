@@ -105,6 +105,7 @@ import {
   autoCamoIdsForBattle,
   ensureTankVisual,
   pickBattleParticipants,
+  rememberBattleBots,
 } from './rosterState.ts';
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 
@@ -1093,8 +1094,12 @@ export function setupBattle(
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
   game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
     rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead) as SoloEntity[];
-  // matchmaking diversity (owner 2026-09-17): this battle's bots yield their era-band place next time
-  game.recentBotSpecIds = new Set(game.tanks.filter((entity) => entity.specId !== playerSpecId).map((entity) => entity.specId));
+  // matchmaking diversity (owner 2026-09-17): this battle's bots and the previous battle's yield their era-band place
+  {
+    const memory = rememberBattleBots(game.previousBotSpecIds, game.tanks.filter((entity) => entity.specId !== playerSpecId).map((entity) => entity.specId));
+    game.recentBotSpecIds = memory.recent;
+    game.previousBotSpecIds = memory.previous;
+  }
   // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
   // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
   // snowfields/dunes stop being full of factory-green bots (the player's

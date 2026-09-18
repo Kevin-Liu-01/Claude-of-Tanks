@@ -75,6 +75,8 @@ export interface RosterGameState<Entity extends RosterEntity = RosterEntity> {
   battleCount: number;
   /** Spec ids of the bots that fought the previous battle (matchmaking diversity, 2026-09-17). */
   recentBotSpecIds?: ReadonlySet<string> | null;
+  /** The battle before that (matchmaking diversity 2026-09-17: two battles of memory rotate the era band). */
+  previousBotSpecIds?: ReadonlySet<string> | null;
   _engineCtx?: EngineContext;
   _groundSampler?: GroundSampler | null;
   _battleVisualPool?: {
@@ -368,6 +370,16 @@ function textureQualityFor(game: RosterGameState, ent: RosterEntity): NonNullabl
 // Matchmaking and every tier badge consume the same canonical table in
 // vehicles/tier.ts. This prevents a newly added tank from showing one tier in
 // the garage while being matched as another.
+
+/** Matchmaking diversity (owner 2026-09-17): the bots of the last TWO battles yield their era-band place, so a
+ * roster only repeats a vehicle when the same-era catalog is exhausted. Pure. */
+export function rememberBattleBots(
+  previous: ReadonlySet<string> | null | undefined,
+  current: readonly string[],
+): { recent: ReadonlySet<string>; previous: ReadonlySet<string> } {
+  const now = new Set(current);
+  return { recent: new Set([...now, ...(previous ?? [])]), previous: now };
+}
 
 const BATTLE_ROSTER_SEED = 0x51e57;
 

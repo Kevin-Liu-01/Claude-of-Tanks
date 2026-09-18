@@ -123,7 +123,7 @@ import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/garage.css';
 import { createGarage } from './ui/garage.ts';
-import { installBattleRecords } from './game/profile.ts';
+import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';
 import { installCampaignProgress } from './game/campaignProgress.ts';
 import {
   createGarageStage, GARAGE_PODIUM_TOP_Y_M, GARAGE_TRACK_AXIS_YAW_RAD,
@@ -522,6 +522,9 @@ const game: MainGameState = createGameState<
   NonNullable<MainGameState['spotting']>,
   HudMatchModeState
 >();
+// matchmaking diversity (owner 2026-09-17): the seeded roster shuffle advances from the profile's lifetime match count,
+// so a fresh page load never re-draws the same first battle
+game.battleCount = battleOrdinalBase();
 const rosterPresentation = createRosterPresentation({
   getVehicleName: (specId) => getSpec(specId)?.name,
   getTier: tierNumeral,

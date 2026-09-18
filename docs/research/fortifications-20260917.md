@@ -25,10 +25,7 @@ spread around map borders; distant explosions visible everywhere."
   the whole horizon; no map's `FRONTLINE_INTENSITY` sits under 0.4 any more (whiteout, oasis, orchard, alpine,
   mangrove raised).
 
-## Field trenches carved on every standard map (round 13, terrain side — NOT in this landing)
-
-Status at the 2026-09-17 evening landing: designed, receipted and probed on the scratch checkout, parked until the
-map-environment audit baselines can be recaptured; production still carves trenches only in the assault variant.
+## Field trenches carved on every standard map (round 13, terrain side)
 
 `src/sim/assaultLines.ts` `planFieldTrenchLines` / `FIELD_TRENCH`: two short fire trenches (half length 26 m, the
 assault cross-section) per side of the alpha→bravo axis at 30 % and 70 % of the way to the enemy, lateral offset
@@ -44,13 +41,14 @@ every line centre, ≥ 12 m off roads, out of the settlement, inside the field, 
 variant keeps its sectors and its field trenches clear of them). Probe: `.qa-dev/coastal-trench-probe.mjs <map>`
 prints each line's cut profile along and across against the expected carve.
 
-Still to do before round 13 lands: dress the field trenches (`placeTrenchWorks` reads `assaultTrenchLines` only — the parapet
-sandbags, wire belt and end drums must follow the field lines too) and recapture the map-environment audit
-baseline (`npm run qa:maps`) once the round lands.
+Landed (2026-09-17 night): the field lines carve their own fire-trench section (`FIELD_TRENCH.profile`: 1.15 m deep over a
+4 m floor with 24° banks — the fortified 42° sector section left crossing bots crawling and pushed `server/battlePacing`
+to 16/120 time-limit results; the gentle banks bring it back under the cap); `placeTrenchWorks` dresses the field lines
+like the sector lines (parapet sandbags, wire belt, end drums) outside their own bank and keeps the field works out of them; the road berth is 26 m (clear of the graded shoulder) and only FINAL
+height queries (roads and pads on) see the carve, so road grades, pad seats and lake levels are trench-independent —
+the terrain-history receipts compare their laws on `fieldTrenches: false` fields and declare the three source deltas
+(plan, carve, field entry) in their historical projections. The map-environment audit baseline is recaptured with the
+landing (`npm run qa:maps`).
 
 ## Deliberately deferred
 
-- **Carved trenches on every standard map.** The trench plan is a terrain variant (`assault-trenches`) selected for
-  Frontline Assault; carving fire trenches into every map's height field changes every battlefield's terrain and
-  needs the map-environment audit baselines (`npm run qa:maps`) recaptured and reviewed map by map. This slice adds
-  the dug-in *works* everywhere and keeps the carve to the assault variant; the all-map carve is the next step.

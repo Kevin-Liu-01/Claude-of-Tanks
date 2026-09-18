@@ -126,7 +126,8 @@ for(const id of MAP_IDS){
     assert.deepEqual(layout.terrain.landforms.map(stripRelief),oldLayout.terrain.landforms.map(stripRelief),'Old axes/trigonometry never mutated');
   }
   for(const seed of seeds){
-    const a=current.constructObserved(seed,cfg),b=baseline.constructObserved(seed,cfg);
+    // 2026-09-17 field trenches: the relief law is compared on untrenched fields (fieldTrenches:false); the carve has its own receipt.
+    const a=current.constructObserved(seed,{...cfg,fieldTrenches:false}),b=baseline.constructObserved(seed,cfg);
     assert.deepEqual(supportHashes(a.supports),supportHashes(b.supports),`${id}/${seed}: exact road/junction/corridor/lake/pad/liquid targets`);
     const currentValues=[],oldValues=[];let changed=0,maxDelta=0,fastPoints=0;
     for(let z=-480;z<=480;z+=40)for(let x=-480;x<=480;x+=40){

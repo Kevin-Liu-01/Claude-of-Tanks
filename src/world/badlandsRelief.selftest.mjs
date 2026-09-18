@@ -179,7 +179,8 @@ function supportFootprints(field) {
 }
 const receipts = [];
 for (const seed of [1337, 7719]) {
-  const a = current.constructObserved(seed, config), b = previous.constructObserved(seed, original);
+  // 2026-09-17 field trenches: the relief law is compared on untrenched fields (fieldTrenches:false); the carve has its own receipt.
+  const a = current.constructObserved(seed, { ...config, fieldTrenches: false }), b = previous.constructObserved(seed, original);
   const support = bufferReceipt(a.supports), oldSupport = bufferReceipt(b.supports);
   for (const key of Object.keys(support)) {
     assert.equal(support[key].type, oldSupport[key].type); assert.equal(support[key].bytes, oldSupport[key].bytes);
@@ -207,7 +208,7 @@ for (let z = -400; z <= 400; z += 80) for (let x = -400; x <= 400; x += 80) {
   assert.equal(gatedA.field.getHeightAt(x, z), gatedB.field.getHeightAt(x, z));
 }
 for (const id of MAP_IDS) if (id !== 'badlands') {
-  const cfg = originalExitConfig(getMapConfig(id)), a = current.constructObserved(1337, cfg), b = previous.constructObserved(1337, cfg);
+  const cfg = originalExitConfig(getMapConfig(id)), a = current.constructObserved(1337, { ...cfg, fieldTrenches: false }), b = previous.constructObserved(1337, cfg);
   assert.deepEqual(bufferReceipt(a.supports), bufferReceipt(b.supports), `${id}: unchanged support arrays`);
   for (let z = -480; z <= 480; z += 80) for (let x = -480; x <= 480; x += 80) {
     assert.equal(a.field.getHeightAt(x, z), b.field.getHeightAt(x, z), `${id}: exact original height`);

@@ -142,6 +142,13 @@ function clone<T>(value: T): T {
   return value == null ? value : JSON.parse(JSON.stringify(value)) as T;
 }
 
+/** Lifetime matches recorded locally — the base of the seeded battle ordinal, so the roster shuffle keeps
+ * advancing across sessions instead of restarting at the same first draw on every page load
+ * (owner 2026-09-17: "teams arent actually randomly taking tanks"). 0 without a stored profile. */
+export function battleOrdinalBase(): number {
+  return loadProfile().matches;
+}
+
 /** A copy of the player's real local battle record. */
 export function getPlayerRecord(): PlayerRecord {
   return clone(loadProfile());
