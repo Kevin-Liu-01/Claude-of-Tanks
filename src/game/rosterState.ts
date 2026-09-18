@@ -7,7 +7,7 @@
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
 import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
-import { isBotTankId, rankMatchCandidates } from './matchmaking.ts';
+import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
@@ -477,13 +477,9 @@ function randomBattleCandidates(
  * rosters include community vehicles.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
-/** Eras a campaign formation may draw from around the player's: contemporaries only, never WW2 against modern. */
-const FORMATION_ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  ww2: Object.freeze(['ww2']),
-  'cold-war': Object.freeze(['cold-war', 'modern']),
-  modern: Object.freeze(['modern', 'cold-war', 'next-generation']),
-  'next-generation': Object.freeze(['next-generation', 'modern']),
-});
+/** Eras a campaign formation may draw from around the player's: contemporaries only, never WW2 against modern
+ * (the matchmaking module owns the table since diversity r2, 2026-09-18). */
+const FORMATION_ERA_NEIGHBOURS = ERA_NEIGHBOURS;
 
 /**
  * CAMPAIGN (batch 19, 2026-09-14): an operation's formation fills the enemy seats first — vehicles of

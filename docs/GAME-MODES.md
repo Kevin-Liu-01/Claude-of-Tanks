@@ -83,9 +83,12 @@ Assault (`timeout: 'defeat'`).
   with no arranged or campaign nation they still field ONE nation per battle — rotated by
   battle ordinal through the nations that can field the whole lead
   (`rosterState.defaultWaveNations`, owner 2026-09-17: same-nation waves). Ordinary
-  matchmaking rotates too: the bots of the last two battles yield their era-band place
-  (`game.recentBotSpecIds` / `previousBotSpecIds`, `rosterState.rememberBattleBots`,
-  `matchmaking.rankMatchCandidates`), and the seeded roster shuffle's battle ordinal starts
+  matchmaking rotates too: the bots of the last two battles rank behind every fresh vehicle of
+  the player's era AND of its contemporary eras (`matchmaking.ERA_NEIGHBOURS`; the eighteen other
+  next-generation hulls alone cannot fill thirteen seats twice), so a vehicle only repeats once
+  both catalogs are used up and WW2 still never meets modern (`game.recentBotSpecIds` /
+  `previousBotSpecIds`, `rosterState.rememberBattleBots`, `matchmaking.rankMatchCandidates`),
+  and the seeded roster shuffle's battle ordinal starts
   from the profile's lifetime match count (`profile.battleOrdinalBase`), so a fresh page load
   never re-draws the same first battle and consecutive rosters differ whenever the catalog allows.
 - **Team arrangement (2026-09-15)** — the play menu's arrangement panel (allied bots,

@@ -21,6 +21,15 @@ interface MatchCandidate {
   spec?: { era?: string | null } | null;
 }
 
+/** Eras a roster may draw from around the player's: contemporaries only, never WW2 against modern. Campaign
+ * formations (2026-09-14) and ordinary matchmaking (diversity r2, 2026-09-18) share the one table. */
+export const ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  ww2: Object.freeze(['ww2']),
+  'cold-war': Object.freeze(['cold-war', 'modern']),
+  modern: Object.freeze(['modern', 'cold-war', 'next-generation']),
+  'next-generation': Object.freeze(['next-generation', 'modern']),
+});
+
 export const isGarageVisibleTankId = (id: RuntimeValue): id is string =>
   typeof id === 'string' && (DEV_FLEET_ACTIVE || !GARAGE_HIDDEN_TANK_IDS.has(id));
 
@@ -31,13 +40,16 @@ export const isBotTankId = (id: RuntimeValue): id is string =>
 /**
  * Curate a pre-shuffled entity pool for a player match.
  *
- * Same-era vehicles always rank ahead of cross-era fallbacks. Within an era,
- * vehicles that fought the PREVIOUS battle (`recent`) yield their place to the
- * rest of the catalog (matchmaking diversity, owner 2026-09-17: consecutive
- * rosters differ whenever the era catalog allows), and the seeded shuffle
- * remains authoritative inside each band so every production vehicle can
- * eventually reach a bot seat. Team assignment balances the resulting tiers.
- * Development and reference-only records remain barred.
+ * Fresh same-era vehicles rank first, then fresh vehicles of the player's
+ * contemporary eras (`ERA_NEIGHBOURS`), then the vehicles that fought the last
+ * two battles (`recent`) in the same order, and far eras always trail — so a
+ * roster only repeats a vehicle once both catalogs are used up, and WW2 never
+ * meets modern (matchmaking diversity r2, owner 2026-09-17/18: the eighteen other
+ * next-generation hulls alone cannot fill thirteen seats twice, so a
+ * next-generation player used to meet the same eighteen tanks forever). The
+ * seeded shuffle remains authoritative inside each band so every production
+ * vehicle can eventually reach a bot seat. Team assignment balances the
+ * resulting tiers. Development and reference-only records remain barred.
  */
 export function rankMatchCandidates<T extends MatchCandidate>(
   candidates: readonly (T | null | undefined)[] | null | undefined,
@@ -45,18 +57,19 @@ export function rankMatchCandidates<T extends MatchCandidate>(
   recent: ReadonlySet<string> | null = null,
 ): T[] {
   const playerEra = player?.spec?.era ?? null;
+  const neighbours = playerEra ? (ERA_NEIGHBOURS[playerEra] ?? [playerEra]) : null;
+  // 0 = the player's era, 1 = a contemporary era, 2 = any other era
+  const bandOf = (era: string | null | undefined): number =>
+    !playerEra || era === playerEra ? 0 : era && neighbours!.includes(era) ? 1 : 2;
   return (candidates || [])
     .filter((ent): ent is T =>
       !!ent && ent !== player && isBotTankId(ent.specId))
-    .map((ent, shuffleIndex) => ({
-      ent,
-      shuffleIndex,
-      sameEra: !playerEra || (ent.spec && ent.spec.era === playerEra),
-      recent: !!recent && recent.has(ent.specId),
-    }))
-    .sort((a, b) =>
-      (a.sameEra === b.sameEra ? 0 : a.sameEra ? -1 : 1) ||
-      (a.recent === b.recent ? 0 : a.recent ? 1 : -1) ||
-      (a.shuffleIndex - b.shuffleIndex))
+    .map((ent, shuffleIndex) => {
+      const band = bandOf(ent.spec?.era ?? null);
+      const isRecent = !!recent && recent.has(ent.specId);
+      // fresh own era 0 < fresh contemporary 1 < recent own era 2 < recent contemporary 3 < far eras 4/5
+      return { ent, shuffleIndex, rank: band === 2 ? (isRecent ? 5 : 4) : band + (isRecent ? 2 : 0) };
+    })
+    .sort((a, b) => (a.rank - b.rank) || (a.shuffleIndex - b.shuffleIndex))
     .map((row) => row.ent);
 }
