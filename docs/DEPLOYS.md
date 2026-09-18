@@ -65,3 +65,4 @@ quickest proof that the live site is the gate build.
 | 31 | 2026-09-16 19:18 | fdf9158c3 | Type 100 remade (T-90M hull grammar, T-14 turret grammar, IFV prow); Turbo Ball hides consumable slots | main-XeSMiX4A.js | claude-of-tanks-89jab6hjw |
 | 32 | 2026-09-16 20:09 | 15e9a203c | Turbo Ball jump (F) and recoil launch, impact knock and faster rams everywhere | main-Lf4gZaXE.js | claude-of-tanks-4kznbqoor |
 | 33 | 2026-09-17 23:05 | 2b869b9d0 | X-standard tracks and reseated wheels fleet-wide, ZTZ-100 and Type 100 IFV, objective-driven bots, wreck-bound smoke, fortifications on every map | main-DxfDEKBx.js | claude-of-tanks-gdr6mn59w |
+| 34 | 2026-09-18 00:59 | f11b4b6ea | Fire trenches carved into every map, rosters that advance across sessions, the suspension simulation as a receipt | main-Bn_6Nqry.js | claude-of-tanks-1u6b51q72 |
