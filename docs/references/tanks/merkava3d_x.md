@@ -1,5 +1,24 @@
 # Merkava Mk.3D X — independent owner-source reconstruction
 
+## 2026-09-18 vehicle-right cheek correction
+
+Status: **implemented; full requalification pending**.  The owner's current
+front-view inspection supersedes the older interpretation of the supplied
+display tree: the viewer-left / vehicle-right / local `+X` Dor-Dalet turret
+side appeared collapsed inward.  The fielded Mk.3D carries fourth-generation
+modular composite armor around the turret sides; the low naked casting around
+the gunner/sight tunnel is not the complete exterior configuration.
+
+The correction preserves the existing asymmetric casting and all genuine
+openings.  A separately closed three-station modular cheek course now bridges
+the vehicle-right forward shell into the existing side armor, is registered as
+external turret armor, and remains parented to `rig_turret`.  High and low
+procedural builds physically ray-hit the completed `+X` envelope.  This is an
+owner/adjudicated assembled-configuration correction, not a claim that the
+supplied War Thunder-derived display source represented the fielded module in
+its correct assembled position.  Historical source-parity figures below are
+retained as prior evidence and do not certify the changed geometry.
+
 Current rollers: [fitted efficient checkpoint; count evidence and release limits](../../research/merkava-x-return-rollers-checkpoint.md).
 The release figures below are historical and do not qualify that new fit.
 

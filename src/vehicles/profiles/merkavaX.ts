@@ -285,6 +285,37 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   }
 }
 
+function addMerkava3dRightCheekModule(P: TankBuilderPort): void {
+  // The supplied display tree leaves the vehicle-right (+X) Dor-Dalet cheek
+  // course off the forward casting.  The naked shell is intentionally
+  // asymmetric around the sight and gun tunnel, but the fielded Mk.3D wraps
+  // that shell in fourth-generation modular side armor.  Keep the source
+  // casting untouched and add the missing, independently closed module as
+  // real external armor.  World-space stations are converted into the
+  // turret-local frame so the complete course follows turret yaw.
+  const module = sectionSolid([
+    {z:-.05-MK3.z,ring:[
+      [.28,1.92-MK3.y],[1.82,1.90-MK3.y],
+      [1.76,2.30-MK3.y],[.38,2.54-MK3.y],
+    ]},
+    {z:.65-MK3.z,ring:[
+      [.24,1.91-MK3.y],[1.72,1.86-MK3.y],
+      [1.66,2.27-MK3.y],[.34,2.52-MK3.y],
+    ]},
+    {z:1.30-MK3.z,ring:[
+      [.18,1.90-MK3.y],[1.36,1.86-MK3.y],
+      [1.28,2.18-MK3.y],[.28,2.37-MK3.y],
+    ]},
+  ]);
+  P.addExternalArmor('turret', module);
+  P.turretG.userData.merkava3dRightCheekReceipt = Object.freeze({
+    side: '+X',
+    configuration: 'Dor-Dalet modular forward cheek course',
+    stationWorldZ: Object.freeze([-.05,.65,1.30]),
+    outerWorldX: Object.freeze([1.82,1.72,1.36]),
+  });
+}
+
 function merkava3Shell(): THREE.BufferGeometry {
   // Source Mk3D's forward left shoulder drops beside the gunner's berth;
   // the right armor cheek stays high. Preserve that asymmetry in the body.
@@ -329,6 +360,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
   addMerkava3dXFrontReturns(P);
   P.add('turret',merkava3Shell());
   P.add('turret',cylY(1.07,.23,40),0,.09,0);
+  addMerkava3dRightCheekModule(P);
   merkava3TurretDetails(P);
   P.add('gunMount',sectionSolid([
     {z:-.40,ring:[[-.31,-.27],[.40,-.27],[.40,.54],[-.31,.54]]},

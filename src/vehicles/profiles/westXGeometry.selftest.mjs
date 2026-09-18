@@ -104,6 +104,13 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       near(left, 2.121, .035, `${id}: low left-forward gunner shoulder`);
       near(right, 2.433, .02, `${id}: high right-forward cheek`);
       assert.ok(right - left > .20, `${id}: genuine asymmetric forward armor`);
+      const rightCheek=tank.root.getObjectByName('turretExternalArmor');
+      assert.ok(rightCheek?.isMesh,`${id}: fielded Dor-Dalet right cheek is physical external armor`);
+      const rightCheekTop=verticalHit(rightCheek,1.60,.65);
+      assert.ok(rightCheekTop>2.25&&rightCheekTop<2.34,
+        `${id}: vehicle-right modular course restores the collapsed +X envelope (${rightCheekTop})`);
+      assert.equal(tank.root.getObjectByName('rig_turret')?.userData.merkava3dRightCheekReceipt?.side,'+X',
+        `${id}: corrected cheek publishes exact articulated ownership`);
       const deck=tank.root.getObjectByName('hullEquipment'),fittings=tank.root.getObjectByName('hullDetail');
       for(const [x,z,y]of[[-.8,2,1.76797],[-.3,2,1.79161],[-.8,2.4,1.71453],[-.3,2.4,1.71405],[1.1,2,1.6954]])
         near(verticalHit(deck,x,z),y,.003,`${id}: physically raised asymmetric source armor ${x}/${z}`);
