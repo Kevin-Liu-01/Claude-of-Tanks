@@ -30,7 +30,7 @@ const RUSSIAN_FRONTLINE_SPECS = {
       shells: [
         shell('3UBR11 APFSDS-T', 'APFSDS', 30, 265, 245, 88, 1300, { pen2000Mm: 225, reloadS: 0.26, count: 500 }),
         shell('9M133M-2 Kornet-EM', 'HEAT', 152, 1200, 1200, 760, 300,
-          { reloadS: 2.6, count: 8, guided: true, soundProfile: 'konkurs-launch' }),
+          { reloadS: 2.6, count: 8, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 4 }),
         shell('3UOF8 HE-I', 'HE', 30, 14, 14, 100, 960, { reloadS: 0.26, count: 500 }),
       ],
     },

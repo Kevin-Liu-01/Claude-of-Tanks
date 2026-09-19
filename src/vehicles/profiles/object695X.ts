@@ -340,6 +340,7 @@ function buildObject695X(P: TankBuilderPort): void {
     P.hullG.userData.object695Receipt = Object.freeze({
       architecture: 'object695-x-r1', datums: OBJECT695_X_DATUMS, hullStations: HULL_Z.length,
       roadWheelsPerSide: 7, gunLengthM: T.gunLen, launcherTopM: OBJECT695_X_DATUMS.launcherTopM, pivot: [0, T.pivotY, T.pivotZ], trunnion: [0, T.gunY, T.gunZ],
+      launcherTubes: 4, // the right-rear four-tube Kornet-EM launcher (guided-load rule, 2026-09-18)
     });
   }
 }

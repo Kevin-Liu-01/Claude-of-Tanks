@@ -530,7 +530,7 @@ const MODERN2_SPECS: TankSpecRegistry = {
       primaryGuided: true,
       shells: [
         shell('XMGM-51C Shillelagh ATGM', 'HEAT', 152, 800, 800, 750, 208, {
-          guided: true, guidanceTurnRateRadS: 0.72, reloadS: 9.8,
+          guided: true, guidanceTurnRateRadS: 0.72, reloadS: 9.8, launcherTubes: 0,
           count: 13,
           soundProfile: 'shillelagh-launch',
         }),

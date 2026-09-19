@@ -132,7 +132,7 @@ const spec: FleetTankSpec = {
     primaryGuided: true,
     shells: [
       shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 900, 900, 800, 208, {
-        guided: true, guidanceTurnRateRadS: 0.84, reloadS: 8.6, count: 14,
+        guided: true, guidanceTurnRateRadS: 0.84, reloadS: 8.6, count: 14, launcherTubes: 0,
         soundProfile: 'shillelagh-launch',
       }),
     ],
@@ -214,7 +214,7 @@ const ttsSpec: FleetTankSpec = {
     shells: [
       shell('MGM-51E TTS Shillelagh ATGM', 'HEAT', 152, 1050, 1050, 880,
         240.5, {
-          guided: true, guidanceTurnRateRadS: 0.98, reloadS: 7.4, count: 18,
+          guided: true, guidanceTurnRateRadS: 0.98, reloadS: 7.4, count: 18, launcherTubes: 0,
           soundProfile: 'shillelagh-launch',
         }),
       shell('M409A1 TTS HEAT-MP', 'HEAT', 152, 680, 680, 680, 730,

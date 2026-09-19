@@ -64,7 +64,7 @@ const CHINESE_FRONTLINE_SPECS = {
       shells: [
         shell('DTW-30 APFSDS-T', 'APFSDS', 30, 235, 215, 92, 1400, { pen2000Mm: 195, reloadS: 0.40, count: 220 }),
         shell('HJ-10 ATGM', 'HEAT', 170, 1100, 1100, 700, 190,
-          { reloadS: 2.2, count: 8, guided: true, soundProfile: 'spike-launch' }),
+          { reloadS: 2.2, count: 8, guided: true, soundProfile: 'spike-launch', launcherTubes: 8 }),
         shell('DTB-30 ABM', 'HE', 30, 14, 14, 105, 1100, { reloadS: 0.40, count: 220 }),
       ],
     },

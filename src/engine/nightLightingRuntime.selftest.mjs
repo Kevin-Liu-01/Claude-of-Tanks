@@ -137,8 +137,37 @@ assert.deepEqual(limited.lights, lateLights, 'late actor registration never adds
 limited.reset(); limited.appendRoot({ root: lateBuilding });
 assert.equal(limited.emitterCount, 0, 'day/Garage late construction cannot activate night lighting');
 limited.dispose();
-assert.throws(() => createNightLightingRuntime(scene, { spotLights: 3, pointLights: 1 }), /budget/);
-assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLights: 2 }), /budget/);
+assert.throws(() => createNightLightingRuntime(scene, { spotLights: 9, pointLights: 1 }), /budget/);
+assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLights: 5 }), /budget/);
+// 2026-09-18 (owner: "lights seem to only come from one headlight"): a headlight cluster has two pods per side, and
+// with the camera offset to one flank the two nearest lamps were both on that side. One lamp per side of a vehicle:
+// the second slot lights the OTHER headlight before a farther vehicle; the desktop budget (4 spots) then reaches the
+// nearest other vehicle's pair.
+{
+  const cluster = new THREE.Group(); scene.add(cluster); cluster.position.set(0, 1, 0);
+  const pod = (x) => ({ kind: 'headlight', position: [x, .9, 2.6], direction: [0, -.1, 1], intensity: 90, range: 42 });
+  registerNightLightEmitters(cluster, [pod(-.72), pod(-.56), pod(.56), pod(.72)]);
+  const neighbour = new THREE.Group(); scene.add(neighbour); neighbour.position.set(9, 1, 3);
+  registerNightLightEmitters(neighbour, [pod(-.6), pod(.6)]);
+  const two = createNightLightingRuntime(scene, { spotLights: 2, pointLights: 1 });
+  const four = createNightLightingRuntime(scene, { spotLights: 4, pointLights: 2 });
+  try {
+    for (const runtime of [two, four]) {
+      runtime.prepare([{ root: cluster, priority: 1 }, { root: neighbour }], true);
+      runtime.update(new THREE.Vector3(1.4, 2, -4)); // chase camera offset to the right flank
+    }
+    const sides = (runtime) => runtime.lights.filter((light) => light.isSpotLight && light.intensity > 0)
+      .map((light) => ({ side: Math.sign(light.position.x - (light.position.x > 4 ? 9 : 0)), vehicle: light.position.x > 4 ? 'neighbour' : 'cluster' }));
+    const twoSides = sides(two);
+    assert.equal(twoSides.length, 2);
+    assert.deepEqual(twoSides.map((s) => s.vehicle), ['cluster', 'cluster'], 'both spots stay on the nearest vehicle');
+    assert.deepEqual(twoSides.map((s) => s.side).sort(), [-1, 1], 'one lamp per side: left and right headlight both light');
+    const fourSides = sides(four);
+    assert.equal(fourSides.length, 4);
+    assert.deepEqual(fourSides.filter((s) => s.vehicle === 'neighbour').map((s) => s.side).sort(), [-1, 1], 'the desktop budget lights both headlights of the next vehicle too');
+    assert.equal(four.lights.filter((light) => light.isPointLight).length, 2);
+  } finally { two.dispose(); four.dispose(); scene.remove(cluster, neighbour); }
+}
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'glass', position: [0, 0, 0] }]), /kind/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [NaN, 0, 0] }]), /finite/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], direction: [0, 0, 0] }]), /nonzero/);

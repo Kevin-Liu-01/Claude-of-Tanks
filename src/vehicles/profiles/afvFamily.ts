@@ -498,6 +498,9 @@ function addTerminatorStation(P: AfvBuilderPort): void {
     dedicatedTurntable: true,
   });
   P.topY = Math.max(P.topY || 0, 1.35);
+  // guided-load rule (owner 2026-09-18): the spec's Ataka load is at least one round per tube — the profile publishes its
+  // tube census for guidedLauncherTubes.selftest
+  P.turretG.userData.launcherTubes = 4;
 }
 
 function buildBMPT2(P: AfvBuilderPort): void {
@@ -1626,6 +1629,9 @@ function addTerminatorT90MissileRacks(P: AfvBuilderPort): void {
       }
     }
   }
+  // guided-load rule (owner 2026-09-18): the spec's Ataka load is at least one round per tube — the profile publishes its
+  // tube census for guidedLauncherTubes.selftest
+  P.turretG.userData.launcherTubes = 8;
 }
 
 function addTerminatorT90Station(P: AfvBuilderPort): void {

@@ -279,7 +279,7 @@ const SPECS: FleetTankSpec[] = [
         shell('M409A1 HEAT-MP', 'HEAT', 152, 560, 560, 650, 689,
           { reloadS: 9.6, count: 33 }),
         shell('MGM-51C Shillelagh ATGM', 'HEAT', 152, 900, 900, 780, 208, {
-          guided: true,
+          guided: true, launcherTubes: 0,
           guidanceTurnRateRadS: 0.72,
           reloadS: 3.0,
           count: 13,

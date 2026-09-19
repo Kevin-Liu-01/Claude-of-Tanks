@@ -1499,6 +1499,9 @@ function currentSceneWatchdogOptions() {
 }
 const nightLighting = createNightLightingAccess({
   scene,
+  // desktop: both headlights of the player and of the nearest other vehicle plus two building lamps; mobile keeps
+  // the two-spot / one-point budget (owner 2026-09-18: "lights seem to only come from one headlight")
+  getBudget: () => getDeviceTier() === 'mobile' ? { spotLights: 2, pointLights: 1 } : { spotLights: 4, pointLights: 2 },
   getWorldRoot: () => currentWorld()?.group ?? null,
   // The bridge publishes its complete typed registry here, including hidden
   // actors; game.tanks alone is only the currently visible network roster.
