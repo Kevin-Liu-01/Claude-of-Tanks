@@ -118,7 +118,9 @@ const fn = name => file.statements.find(n => ts.isFunctionDeclaration(n) && n.na
 const configuredSource = fn('configureSkyUniforms');
 const hash = text => createHash('sha256').update(text).digest('hex');
 // Frozen before this cache change: every radiance formula and injected shader byte.
-assert.equal(hash(configuredSource), 'd946d85018fc2510f8185322f57aa325a701baccb4b2d9e0e959dd8adb376e07');
+// round 22 (2026-09-18): configureSkyUniforms gained the uNight uniform (night starfield, galactic band
+// and moon added after the dome intensity multiply); the radiance formulas are otherwise unchanged.
+assert.equal(hash(configuredSource), 'b3c75f3057f7fa73097cf53db90a3048f2a3a437ecae4a6fd60fdbea5554b435');
 const keySource = ['horizonColorKey', 'environmentKey', 'withEnvironmentRenderState', 'disposeEnvironmentSky'].map(fn).join('\n');
 let bakeMethod;
 function visit(node) {

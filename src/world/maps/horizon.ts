@@ -30,7 +30,7 @@ import * as THREE from 'three';
 import type { SkyPreset } from '../../engine/sky.ts';
 import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { texSize } from '../../engine/quality.ts';
+import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
 import { shapeRedrockOutland, seatHorizonTerrainSeam, tintRedrockOutlandFloor, type CanyonGround } from '../horizonRedrock.ts';
@@ -1086,6 +1086,8 @@ function subdivideHorizonGeometry(
     if (!next || next.skirt || (source.rows[rowIndex].skirt && style !== 'alpine')) continue;
     // Move two subdivisions from the distant outer shoulder into the near
     // foothill transition. The alpine mesh still uploads exactly 33 rows.
+    // (round 22 kept this row ladder: the restoration receipts pin the ring buffers byte-identical to
+    // 1049e4e; the near-field surface work lives in the fragment shader instead.)
     const divisions = style === 'alpine'
       ? (rowIndex === 1 || rowIndex === source.rows.length - 2 ? 3 : 5)
       : rowIndex === 2 ? 3 : 2;
@@ -1566,6 +1568,38 @@ interface HorizonMaterialContext {
   snow: THREE.Color;
 }
 
+// Round 22 near-field surface (see buildHorizonMaterialSteps): runs after the style's map fragment on
+// every style, before the vertex colour multiply. `horizonMarine` (sea aperture) keeps the water smooth.
+const HORIZON_NEAR_DETAIL_FRAGMENT = /* glsl */`
+        if (uNearDetail > 0.001) {
+          float nearW = (1.0 - smoothstep(140.0, 650.0, vHDist)) * uNearDetail * (1.0 - horizonMarine);
+          if (nearW > 0.002) {
+            vec3 hnN = normalize(vHNrm);
+            vec3 awN = abs(hnN);
+            awN /= (awN.x + awN.y + awN.z);
+            #define HNEAR(s, o) (texture2D(uDetail2, vHPos.xz * (s) + (o)).r * awN.y \
+              + texture2D(uDetail2, vHPos.zy * (s) + (o) + vec2(0.31, 0.17)).r * awN.x \
+              + texture2D(uDetail2, vHPos.xy * (s) + (o) + vec2(0.73, 0.41)).r * awN.z)
+            float nE = HNEAR(0.031, vec2(0.11, 0.83)) - 0.5;
+            float nF = HNEAR(0.090, vec2(0.57, 0.23)) - 0.5;
+            float nG = HNEAR(0.270, vec2(0.19, 0.67)) - 0.5;
+            #undef HNEAR
+            float slopeN = 1.0 - clamp(hnN.y, 0.0, 1.0);
+            // grain: coarse clumps, crown/boulder-sized patches and fine stipple; steeper faces coarser
+            float grain = nE * 0.22 + nF * (0.16 + slopeN * 0.10) + nG * 0.11;
+            diffuseColor.rgb *= 1.0 + grain * nearW;
+            // steep near faces bare a little rock through the tone, broken by the fields
+            float rockN = smoothstep(0.42, 0.70, slopeN + nE * 0.30 + nF * 0.18) * nearW * uNearRock;
+            diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.78, 0.76, 0.74), rockN * 0.6);
+            // per-fragment relight against the map sun so near facets stop reading as flat sheets
+            float ndlN = dot(hnN, uSunDirW);
+            float relN = uNearRel * nearW;
+            diffuseColor.rgb *= 1.0 - relN * 0.85 + relN * 1.6 * max(ndlN, 0.0);
+            diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.90, 0.94, 1.07), max(-ndlN, 0.0) * 0.30 * relN);
+          }
+        }
+`;
+
 // One biome-tint lookup plus the same nine triplanar samples already used by
 // alpine slope shading. The former oblique overlay (two fetches) and partial
 // wall repair (seven more on steep faces) are unnecessary: surface detail
@@ -1697,7 +1731,27 @@ function* buildHorizonMaterialSteps({
       THREE.MathUtils.clamp(snow.g / Math.max(base.g, 1e-3), 1.0, 2.2),
       THREE.MathUtils.clamp(snow.b / Math.max(base.b, 1e-3), 1.0, 2.2));
     const snowFrag = style === 'alpine' && snowline <= 1 ? 0.55 : 0.0;
+    // round 22 (owner 2026-09-18: "horizon stuff and map borders … not visibly decrease in quality and
+    // texture from our regular maps"): the baked fields above work at 50-300 m; within a few hundred
+    // metres of the camera the foothill skirt read as a blurred 5 m-per-texel wall beside a battlefield
+    // textured at centimetres. Three more world-anchored triplanar fields (about 4 m, 1.4 m and 0.5 m
+    // features), a slope-keyed rock bare and a per-fragment sun relight fade in with camera distance and
+    // vanish by 650 m, so the far ranges keep their authored aerial flatness. Desktop only.
+    // The alpine world-surface program is exempt: it already carries per-fragment surface fields and
+    // its resource receipt pins it to exactly three plane fetches with no branch.
+    const nearDetail = getDeviceTier() === 'mobile' || style === 'alpine' ? 0.0 : 1.0;
+    const nearRel = 0.22;
+    const nearRock = style === 'mesa' ? 0.0 : 1.0;
+    // round 22: forest stands and meadow clearings on the visible ranges of the rolling / escarpment styles —
+    // from the battlefield the first ranges (600-900 m) read as one flat green wash with a treeline stroke;
+    // broad stands from the 312 m field opened by the 83 m field, held off steep faces and the crests and
+    // tinted with the map's forest ratio, give them the patchwork real hills carry
+    const standFrag = style === 'rolling' || style === 'escarpment' ? 0.72 : 0.0;
     mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uNearDetail = { value: nearDetail };
+      shader.uniforms.uNearRel = { value: nearRel };
+      shader.uniforms.uNearRock = { value: nearRock };
+      shader.uniforms.uStandFrag = { value: standFrag };
       shader.uniforms.uTreeline = { value: treeline };
       shader.uniforms.uForestTint = { value: forestTint };
       shader.uniforms.uForestFrag = { value: forestFrag };
@@ -1713,9 +1767,9 @@ function* buildHorizonMaterialSteps({
       shader.uniforms.uCapFix = { value: capFix };
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>',
-          '#include <common>\nvarying vec3 vHNrm;\nvarying vec3 vHPos;')
+          '#include <common>\nvarying vec3 vHNrm;\nvarying vec3 vHPos;\nvarying float vHDist;')
         .replace('#include <begin_vertex>',
-          '#include <begin_vertex>\nvHNrm = normal;\nvHPos = position;');
+          '#include <begin_vertex>\nvHNrm = normal;\nvHPos = position;\nvHDist = length( ( modelViewMatrix * vec4( position, 1.0 ) ).xyz );');
       // onBeforeCompile uniforms are NOT auto-declared in the GLSL —
       // declared at global scope ahead of the injected block.
       shader.fragmentShader = 'uniform sampler2D uDetail2;\n'
@@ -1724,7 +1778,8 @@ function* buildHorizonMaterialSteps({
         + 'uniform vec3 uSunDirW;\nuniform float uFragRel;\n'
         + 'uniform float uSlopeSplat;\nuniform float uMaxH;\n'
         + 'uniform float uWallFix;\nuniform float uCapFix;\n'
-        + 'varying vec3 vHNrm;\nvarying vec3 vHPos;\n' +
+        + 'uniform float uNearDetail;\nuniform float uNearRel;\nuniform float uNearRock;\nuniform float uStandFrag;\n'
+        + 'varying vec3 vHNrm;\nvarying vec3 vHPos;\nvarying float vHDist;\n' +
         shader.fragmentShader.replace(
           '#include <map_fragment>', style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT : /* glsl */`#include <map_fragment>
         float horizonMarine = clamp(-vMapUv.y, 0.0, 1.0);
@@ -1767,6 +1822,16 @@ function* buildHorizonMaterialSteps({
           // walls — fade it where the triplanar fix takes over.
           ${style === 'mesa' ? HORIZON_MESA_SURFACE_FRAGMENT + '\n          diffuseColor.rgb *= horizonSurfaceGain;'
             : 'diffuseColor.rgb *= 1.0 + (dA * 0.28 + dB * 0.30) * (1.0 - fixW * 0.8);'}
+          if (uStandFrag > 0.001) {
+            // round 22 stands: see standFrag above — patchwork on the visible rolling ranges
+            vec3 hnS = normalize(vHNrm);
+            float slopeS = 1.0 - clamp(hnS.y, 0.0, 1.0);
+            float hS = clamp(vHPos.y / max(uMaxH, 1.0), 0.0, 1.0);
+            float standS = smoothstep(0.02, 0.16, dB * 1.3 + dA * 0.7 + 0.04);
+            float treeS = 1.0 - smoothstep(max(uTreeline, 0.55) * 0.85, max(uTreeline, 0.55) * 1.05, hS);
+            float standW = standS * treeS * (1.0 - smoothstep(0.45, 0.80, slopeS)) * uStandFrag;
+            diffuseColor.rgb *= mix(vec3(1.0), uForestTint * (0.90 + dA * 0.5), standW);
+          }
           if (uSlopeSplat > 0.001) {
             vec3 hn = normalize(vHNrm);
             float slopeF = 1.0 - clamp(hn.y, 0.0, 1.0);
@@ -1808,15 +1873,15 @@ function* buildHorizonMaterialSteps({
               diffuseColor.rgb * vec3(0.90, 0.94, 1.07), max(-ndl, 0.0) * 0.32 * farAtt);
           }
         }`)
-        .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
+        .replace('#include <color_fragment>', (style === 'alpine' ? '' : HORIZON_NEAR_DETAIL_FRAGMENT) + /* glsl */`#include <color_fragment>
         // Sea is a sky-reflecting continuation of the bay, not a zero-height
         // forest. Reuse the existing two detail samples as very quiet wave
         // breakup, replacing the degenerate altitude-clamped base texture.
         diffuseColor.rgb = mix(diffuseColor.rgb,
           diffuse * vColor.rgb * (1.0 + horizonWaterVariation), horizonMarine);`);
     };
-    mat.customProgramCacheKey = () => style === 'mesa' ? 'horizon-ring-mesa-surface-r2'
-      : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r2-') + style;
+    mat.customProgramCacheKey = () => style === 'mesa' ? 'horizon-ring-mesa-surface-r3'
+      : (style === 'alpine' ? 'horizon-ring-world-surface-r3-' : 'horizon-ring-relief-r3-') + style;
   }
   return mat;
 }

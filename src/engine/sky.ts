@@ -52,6 +52,16 @@ export interface SkyPreset {
   cloudUvM: number | null;
   postExposure: number;
   cloudShadowAmp: number | null;
+  /** Night sky amount 0..1, or null to derive it from skyIntensity (full at .08, none from .30). */
+  nightSky: number | null;
+  /** Galactic band strength multiplier (1 = the night preset's soft band). */
+  galaxy: number;
+  /** Nebula tint drawn along the band (null = none); a galaxy map paints its clouds with this. */
+  nebulaHex: number | null;
+  /** Diameter in degrees of the disc at the night key-light direction (the moon at 0.8; a planet at 3). */
+  planetDeg: number;
+  /** Tint of that disc. */
+  planetHex: number;
 }
 
 interface CloudBakePixels {
@@ -435,7 +445,96 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   // OVERCAST presets (winter) drop to 0.10: a diffuse-lit deck casts no
   // crisp cloud shadows, but gentle fog patchiness still modulates the wash.
   cloudShadowAmp: null,
+  // round 22 (2026-09-18): night sky knobs — the night preset's derived starfield, soft band and moon
+  // by default; a map may force the night sky and ask for a galaxy (band, nebula, a planet disc).
+  nightSky: null,
+  galaxy: 1,
+  nebulaHex: null,
+  planetDeg: 0.8,
+  planetHex: 0xedf2ff,
 });
+
+/** How much of the night sky a dome intensity earns: full at the night preset's .08, none from .30 up. */
+export function nightAmount(skyIntensity: number): number {
+  return THREE.MathUtils.clamp((NIGHT_SKY_FULL_INTENSITY_TOP - skyIntensity) / (NIGHT_SKY_FULL_INTENSITY_TOP - NIGHT_SKY_FULL_INTENSITY), 0, 1);
+}
+/** Dome intensity at and below which the night sky is fully present. */
+const NIGHT_SKY_FULL_INTENSITY = 0.08;
+/** Dome intensity from which no night sky shows (daylight presets run 1.0). */
+const NIGHT_SKY_FULL_INTENSITY_TOP = 0.30;
+// Night sky (round 22, owner 2026-09-18 "skyboxes … should be so good"): the night preset used to dim the
+// Preetham dome to .08 and leave it at that — a featureless dark gradient. The dome now carries a
+// deterministic starfield (hash-seeded star cells on a lat-long grid: a few hundred bright stars over a
+// dim carpet, warm and cool tints), a soft galactic band across a tilted great circle, and a moon disc at
+// the night key-light direction (the atmosphere runtime aims the "sun" as moonlight) with a gibbous
+// terminator, maria mottle and a compact glow. Everything is added AFTER the dome intensity multiply and
+// fades into the horizon haze, so it never brightens the daylight dome (uNight is 0 there).
+const NIGHT_SKY_GLSL = /* glsl */`
+vec3 cotHash3( vec2 c ) {
+	return fract( sin( vec3( dot( c, vec2( 127.1, 311.7 ) ), dot( c, vec2( 269.5, 183.3 ) ), dot( c, vec2( 419.2, 371.9 ) ) ) ) * 43758.5453 );
+}
+float cotValueNoise( vec3 p ) {
+	vec3 i = floor( p ), f = fract( p );
+	f = f * f * ( 3.0 - 2.0 * f );
+	float n = i.x + i.y * 57.0 + i.z * 113.0;
+	float a = fract( sin( n ) * 43758.5453 ), b = fract( sin( n + 1.0 ) * 43758.5453 );
+	float c = fract( sin( n + 57.0 ) * 43758.5453 ), d = fract( sin( n + 58.0 ) * 43758.5453 );
+	float e = fract( sin( n + 113.0 ) * 43758.5453 ), g = fract( sin( n + 114.0 ) * 43758.5453 );
+	float h = fract( sin( n + 170.0 ) * 43758.5453 ), k = fract( sin( n + 171.0 ) * 43758.5453 );
+	return mix( mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y ), mix( mix( e, g, f.x ), mix( h, k, f.x ), f.y ), f.z );
+}
+vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planetR, vec3 planetTint ) {
+	float horizonFade = smoothstep( 0.012, 0.15, dn.y );
+	// galactic band: a great circle tilted off the zenith, denser and faintly luminous along it; a galaxy
+	// preset widens it and paints nebula clouds along it with three octaves of value noise
+	vec3 bandN = normalize( vec3( 0.47, 0.88, -0.10 ) );
+	float bandD = abs( dot( dn, bandN ) );
+	float band = exp( -bandD * bandD * ( 34.0 / max( galaxy, 0.25 ) ) ) * galaxy;
+	float nebulaW = 0.0;
+	if ( dot( nebula, nebula ) > 0.0001 ) {
+		float n1 = cotValueNoise( dn * 6.0 + 3.1 ), n2 = cotValueNoise( dn * 13.0 - 7.7 ), n3 = cotValueNoise( dn * 27.0 + 1.9 );
+		float cloud = n1 * 0.55 + n2 * 0.30 + n3 * 0.15;
+		nebulaW = exp( -bandD * bandD * 12.0 ) * smoothstep( 0.42, 0.78, cloud ) * galaxy;
+	}
+	// star cells on a lat-long grid (about 0.55 deg at the equator)
+	vec2 sc = vec2( atan( dn.z, dn.x ), asin( clamp( dn.y, -1.0, 1.0 ) ) ) * 104.0;
+	vec2 cell = floor( sc );
+	vec2 f = sc - cell;
+	vec3 stars = vec3( 0.0 );
+	for ( int oy = -1; oy <= 1; oy++ ) {
+		for ( int ox = -1; ox <= 1; ox++ ) {
+			vec2 c = cell + vec2( float( ox ), float( oy ) );
+			vec3 h = cotHash3( c );
+			float presence = step( 1.0 - ( 0.11 + band * 0.42 ), h.z );
+			vec2 offs = vec2( float( ox ), float( oy ) ) + h.xy - f;
+			float mag = pow( fract( h.z * 7.31 ), 8.0 );
+			float radius = 0.075 + mag * 0.11;
+			float pointW = presence * exp( -dot( offs, offs ) / ( radius * radius ) );
+			vec3 tint = mix( vec3( 0.78, 0.86, 1.00 ), vec3( 1.00, 0.90, 0.70 ), fract( h.x * 3.7 ) );
+			stars += tint * pointW * ( 0.09 + mag * 1.45 );
+		}
+	}
+	// moon (or a preset's planet): a disc at the night key-light direction, gibbous phase, maria mottle,
+	// compact glow
+	float md = dot( dn, moonDir );
+	float moonR = max( planetR, 0.002 );
+	float moonCos = cos( moonR );
+	float disc = smoothstep( moonCos - 0.00010, moonCos + 0.00005, md );
+	vec3 mx = normalize( cross( moonDir, vec3( 0.0, 1.0, 0.0 ) ) );
+	vec3 my = cross( mx, moonDir );
+	vec2 mo = vec2( dot( dn, mx ), dot( dn, my ) ) / moonR;
+	float mz = sqrt( max( 0.0, 1.0 - dot( mo, mo ) ) );
+	vec3 mn = vec3( mo, mz );
+	vec3 phaseL = normalize( vec3( 0.55, 0.25, 0.80 ) );
+	float lit = clamp( dot( mn, phaseL ), 0.0, 1.0 );
+	float terminator = smoothstep( -0.06, 0.22, dot( mn, phaseL ) );
+	float maria = 0.74 + 0.26 * cotHash3( floor( mo * 3.0 + 7.0 ) ).x;
+	vec3 moonCol = planetTint * ( 0.10 + 1.30 * lit ) * maria * terminator;
+	float glowPow = 900.0 * ( 0.0070 * 0.0070 ) / ( moonR * moonR );
+	float glow = pow( max( md, 0.0 ), max( glowPow, 20.0 ) ) * 0.30 + pow( max( md, 0.0 ), 48.0 ) * 0.040;
+	return ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
+		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
+}`;
 
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
 function configureSkyUniforms(
@@ -448,6 +547,20 @@ function configureSkyUniforms(
   // and does not rerun onBeforeCompile just to refresh a preset's scalar.
   u.uSkyIntensity ??= { value: 1 };
   u.uSkyIntensity.value = preset.skyIntensity;
+  // round 22 (2026-09-18): a dimmed dome is a night dome — the atmosphere runtime's night preset runs
+  // skyIntensity .08 — and the shader adds its starfield, galactic band and moon after that dimming
+  // (inline arithmetic: the environment-cache receipt evaluates this function's source on its own —
+  // full night at .08 and below, none from .30 up, the same law as nightAmount)
+  u.uNight ??= { value: 0 };
+  u.uNight.value = preset.nightSky ?? Math.min(1, Math.max(0, (0.30 - preset.skyIntensity) / 0.22));
+  u.uGalaxy ??= { value: 1 };
+  u.uGalaxy.value = preset.galaxy;
+  u.uNebula ??= { value: new THREE.Color(0, 0, 0) };
+  if (preset.nebulaHex == null) u.uNebula.value.setRGB(0, 0, 0); else u.uNebula.value.setHex(preset.nebulaHex);
+  u.uPlanetR ??= { value: 0.007 };
+  u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
+  u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };
+  u.uPlanetTint.value.setHex(preset.planetHex);
   u.turbidity.value = preset.turbidity;
   u.rayleigh.value = preset.rayleigh;
   // r4 ran a x1.5 Mie response so the sun registered off-azimuth; r5 pulled it
@@ -467,6 +580,11 @@ function configureSkyUniforms(
   if (u.cloudCoverage) u.cloudCoverage.value = 0;
   sky.material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
     shader.uniforms.uSkyIntensity = u.uSkyIntensity;
+    shader.uniforms.uNight = u.uNight;
+    shader.uniforms.uGalaxy = u.uGalaxy;
+    shader.uniforms.uNebula = u.uNebula;
+    shader.uniforms.uPlanetR = u.uPlanetR;
+    shader.uniforms.uPlanetTint = u.uPlanetTint;
     const patched = shader.fragmentShader.replace(
       SKY_FRAG_ANCHOR,
       `vec3 skyCol = texColor * ${SKY_RADIANCE_SCALE.toFixed(4)};
@@ -509,12 +627,14 @@ function configureSkyUniforms(
 	skyCol += vec3( 1.30, 1.02, 0.68 ) * sunGlow * 0.50;
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
-	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity, 1.0 );`,
+	vec3 nightCol = vec3( 0.0 );
+	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), vSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint ) * uNight;
+	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
-    shader.fragmentShader = `uniform float uSkyIntensity;\n${patched}`;
+    shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -817,6 +937,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     uniform float uHazeK; // slant-distance haze rate (1/m)
     uniform vec2 uYFade;  // direction.y band where alpha melts at the horizon
     uniform float uShadeW; // deck-level directional mass shading strength
+    uniform float uEdgeDetail; // round 22: fringe erosion strength (0 = the bake's ramp only)
     varying vec3 vWPos;
     void main() {
       vec3 d = normalize( vWPos - cameraPosition );
@@ -838,6 +959,12 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       vec2 uv2 = vec2( uv.x * 0.31 - uv.y * 0.17, uv.x * 0.17 + uv.y * 0.31 ) + vec2( 0.37, 0.71 );
       float macro = texture2D( uMap, uv2 ).a;
       c.a *= 0.62 + 0.38 * smoothstep( 0.05, 0.72, macro );
+      // round 22 edge detail: the deck's own alpha field at a higher frequency erodes THIN fringes only,
+      // so mass edges keep cauliflower structure at every zoom instead of the bake's blurred ramp while
+      // the opaque cores and their baked sun-side / belly shading stay untouched
+      float det = texture2D( uMap, uv * 5.7 + vec2( 0.29, 0.61 ) ).a;
+      float edgeW = ( 1.0 - smoothstep( 0.12, 0.70, c.a ) ) * uEdgeDetail;
+      c.a *= mix( 1.0, smoothstep( 0.10, 0.60, det ), edgeW );
       // aerial perspective: slant distance pulls cloud bodies toward the
       // horizon haze color; deep in the haze they thin but never fully vanish
       // (hazy silhouettes keep texturing the low sky, WoT-style).
@@ -864,6 +991,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     off: VectorPair,
     name: string,
     shadeW = 0.3,
+    edgeDetail = 0.6,
   ): CloudDeck => {
     const rot = cloudSunRot(sunDir);
     const mat = new THREE.ShaderMaterial({
@@ -881,6 +1009,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
         uHazeK: { value: hazeK },
         uYFade: { value: new THREE.Vector2(...CLOUD_Y_FADE) },
         uShadeW: { value: shadeW },
+        uEdgeDetail: { value: edgeDetail },
       },
       transparent: true,
       depthWrite: false,
@@ -1022,6 +1151,8 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
     // cirrus rides perpendicular to the sun rotation — its -v axis is NOT
     // sunward, so the mass-shading term stays subtle there
     0.10,
+    // the thin veil tears softly; the cumulus deck (default 0.6) erodes harder
+    0.35,
   );
   cloudsFar.renderOrder = -3;
   // NOTE: the cirrus deck rides PERPENDICULAR to the sun-aligned cumulus
