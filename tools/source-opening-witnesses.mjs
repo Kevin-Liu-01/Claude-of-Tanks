@@ -1,3 +1,4 @@
+import {BARAK_OPENING_WITNESSES} from './barak-source-openings.mjs';
 // Local qualification only. Independently measured source stock/air probes;
 // no source geometry is used by the playable model. Warrior witnesses refer
 // to docs/research/warrior-side-ledge-source-study-20260918.md; AFT slot edges
@@ -833,6 +834,7 @@ const WARRIOR_SOURCE_WITNESSES=[
   }
 ];
 export function sourceOpeningWitnesses(id){
+ if(id==='merkava4_barak')return BARAK_OPENING_WITNESSES;
  if(id==='aft10_x')return aftWitnesses();
  if(id==='fv510_milan_x')return WARRIOR_SOURCE_WITNESSES;
  return [];

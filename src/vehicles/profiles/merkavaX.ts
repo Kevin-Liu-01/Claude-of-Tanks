@@ -13,6 +13,9 @@ import { addMerkava3dXFrontReturns } from './merkava3dXFrontReturn.ts';
 import { addMerkava4XEndReturns } from './merkava4XEndReturns.ts';
 import { merkavaXReturnRollers, lineMerkavaXUpperBand } from './merkavaXReturnRollers.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { addBarakBowEquipment } from './merkavaBarakBow.ts';
+import { barakEndStock } from './merkavaBarakEndStock.ts';
+import { addBarakRearGuards } from './merkavaBarakRear.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
@@ -773,17 +776,7 @@ function addBarakHullSignature(P: TankBuilderPort): void {
       if(i<14)hullBar(P,[side*1.857,y,z+.045],[side*1.857,1.61+((i+1)%2)*-.07,z+.335],.009);
     }
   }
-  // The supplied Barak's paired bow cables are silhouette-significant in
-  // both side studies. Keep each run open in plan rather than using a closed
-  // torus that falsely creates a sealed armor hole in the continuity scan.
-  for(const side of[-1,1]){
-    P.addEquipment('hullDetail',box(.12,.10,.12),side*.58,.94,3.50);
-    const cable: [number,number,number][]=[
-      [side*.58,.92,3.54],[side*.62,.66,3.78],[side*.58,.43,3.99],
-      [side*.38,.39,4.05],[side*.24,.65,3.88],[side*.31,.83,3.62],
-    ];
-    for(let i=1;i<cable.length;i++)hullBar(P,cable[i-1],cable[i],.030);
-  }
+  addBarakBowEquipment(P);
 }
 
 function addBarakRearStowage(P: TankBuilderPort): void {
@@ -871,14 +864,12 @@ function addModernMerkavaRearClosure(P: TankBuilderPort, wideTrophySkirts: boole
   }
 }
 
-function addModernMerkavaEndGuards(P: TankBuilderPort, frontZ: number, rearZ: number, height: number): void {
-  // The primary 7.60 m hull skin stays untouched. Substantial source end
-  // guards extend the assembled side silhouette at both corners without
-  // moving the certified axle course or pretending the fittings are hull.
-  for(const side of[-1,1]){
-    P.addEquipment('hullDetail',box(.26,height,frontZ-3.72),side*1.48,.80,(frontZ+3.72)/2);
-    P.addEquipment('hullDetail',box(.30,height,-3.70-rearZ),side*1.45,1.10,(rearZ-3.70)/2);
-  }
+function addBarakEndGuards(P: TankBuilderPort): void {
+  // Keep the existing front guards. The rear source parts are separate thin
+  // folded sheets with real space around them, not tall enclosing blocks.
+  for(const side of[-1,1])
+    P.addEquipment('hullDetail',box(.26,.74,4.03-3.72),side*1.48,.80,(4.03+3.72)/2);
+  addBarakRearGuards(P);
 }
 
 function addTrophyHullEndEquipment(P: TankBuilderPort): void {
@@ -1061,12 +1052,13 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // LOW keeps the family shoe envelope with coarser relief; HIGH and the
     // established Mk.4 X retain their original native shoe construction.
     ...(!P.q && candidate!=='merkava4_x'?{trackShoeBuilder:buildFleetTrackShoe}:{}),
+    ...barakEndStock(Boolean(P.q),barakGear),
     wheelZs,trackW:.548,trackTh:.064,
-    sprocket:trophyGear?{z:3.267,y:.787,r:.359}:barakGear?{z:3.2069,y:.830,r:.353}:{z:3.285,y:.761,r:.336},
-    idler:trophyGear?{z:-3.119,y:.758,r:.355}:barakGear?{z:-2.9871,y:.7946,r:.333}:{z:-3.020,y:.722,r:.314},
+    sprocket:trophyGear?{z:3.267,y:.787,r:.359}:barakGear?{z:3.2069,y:.830,r:.353,trackR:.2575,axleOutsetM:.0183909,toothTipRadiusM:.347}:{z:3.285,y:.761,r:.336},
+    idler:trophyGear?{z:-3.119,y:.758,r:.355}:barakGear?{z:-2.9871,y:.7946,r:.333,trackR:.2929,axleOutsetM:.0157426}:{z:-3.020,y:.722,r:.314},
     // Existing road axles stay fixed; supports sit between their swept wheels.
     // 4.7 mm seat: with the 19 mm heavy pins the rollers still meet the near-shoe stock within 2 mm (2026-09-17)
-    topY:trophyGear?1.125:barakGear?1.145:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
+    topY:trophyGear?1.125:barakGear?1.1325:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);
   merkava4HullDetails(P);
   addMerkavaXShoulderReturns(P, 'merkava4_x');
@@ -1115,7 +1107,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     addTrophySuite(P,MK4,'mk4');
   }
   if(candidate==='merkava4_barak'){
-    addModernMerkavaEndGuards(P,4.03,-4.02,.74);
+    addBarakEndGuards(P);
     addModernMerkavaRearClosure(P,false);
     addBarakHullSignature(P);
     addBarakTurretArmor(P);

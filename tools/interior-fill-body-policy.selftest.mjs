@@ -6,7 +6,7 @@ import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const id = 'bmp3m_dragun125_x';
-const configuredIds = [id, 'merkava4_trophy'];
+const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));

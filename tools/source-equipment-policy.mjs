@@ -1,3 +1,4 @@
+import {canonicalConfigurationPath} from './source-configuration-path.mjs';
 import { Matrix4, Vector3 } from 'three';
 
 /** Source configuration decisions apply only to their hash-verified input.
@@ -10,7 +11,7 @@ export function roofEquipmentVerdict(id, census, configuration, sourceReceipt = 
   if (!configuration) return { passed: census.mg >= 1, required: '>=1', observed: census.mg };
   const required = configuration.roofMachineGuns;
   if (configuration.id !== id || sourceReceipt?.id !== id
-      || configuration.source?.path !== `public/models/community-candidates/${id}_source.glb`
+      || configuration.source?.path !== canonicalConfigurationPath(id)
       || !/^[a-f0-9]{64}$/.test(configuration.source?.sha256 ?? '')
       || sourceReceipt?.verified !== true
       || sourceReceipt?.path !== configuration.source?.path

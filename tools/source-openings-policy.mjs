@@ -1,3 +1,4 @@
+import {barakOpeningCell,validBarakOpeningRaster,validBarakSourceConfiguration} from './barak-source-openings.mjs';
 import {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys,sourceOpeningWitnesses} from './source-opening-witnesses.mjs';
 export {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys} from './source-opening-witnesses.mjs';
 
@@ -6,7 +7,7 @@ export {AFT_SOURCE_SLOTS,requiredOpeningGuardKeys} from './source-opening-witnes
  * retain raw counts and reject missing/malformed evidence. */
 export function sourceOpeningsVerdict({id,scan,sourceReceipt,configuration,samples,guards}) {
   const raw = scan?.holeCells;
-  const registered = ['fv510_milan_x','aft10_x'].includes(id);
+  const registered = ['fv510_milan_x','aft10_x','merkava4_barak'].includes(id);
   const fail = reason => ({passed:false,rawHoleCells:raw,intentionalCells:0,unexpectedCells:raw,reason});
   if (!Number.isInteger(raw) || raw<0 || scan.error) return fail('Missing continuity scan');
   if (!registered) return {passed:raw===0,rawHoleCells:raw,intentionalCells:0,unexpectedCells:raw};
@@ -16,22 +17,35 @@ export function sourceOpeningsVerdict({id,scan,sourceReceipt,configuration,sampl
   if (!Array.isArray(samples) || samples.length!==raw || !Array.isArray(scan.samples)
       || scan.samples.length!==raw || !guards?.length || guards.some(guard=>guard.passed!==true))
     return fail('Incomplete raster or finite stock/air witnesses');
+  if(!validOpeningTarget(id,configuration,scan))
+    return fail('Barak source recipe or exact measured bow raster changed');
   const rasterError = validateRaster(scan, raw);
   if (rasterError) return fail(rasterError);
   const manifestError = validateGuardManifest(id, guards);
   if (manifestError) return fail(manifestError);
+  const measurementError=validateMeasuredGuards(id,guards);
+  if(measurementError)return fail(measurementError);
+  return classifyRaster(id, scan, samples, guards, raw);
+}
+
+function validateMeasuredGuards(id,guards){
   const witnesses=new Map(sourceOpeningWitnesses(id).map(witness=>[witness.key,witness]));
   for(const guard of guards){
     const witness=witnesses.get(guard.key);
     for(const measurement of guard.measurements){
       const measurementError = validateMeasurement(witness, measurement);
-      if (measurementError) return fail(measurementError);
+      if (measurementError) return measurementError;
     }
   }
-  return classifyRaster(id, scan, samples, guards, raw);
+  return null;
+}
+
+function validOpeningTarget(id,configuration,scan){
+  return id!=='merkava4_barak' || (validBarakSourceConfiguration(configuration) && validBarakOpeningRaster(scan));
 }
 
 export function approvedOpeningRegion(id,x,z){
+  if(id==='merkava4_barak')return barakOpeningCell(x,z);
   if(id==='aft10_x')return AFT_SOURCE_SLOTS.some(slot=>Math.abs(x-slot.x)<slot.width/2 && Math.abs(z-slot.z)<slot.length/2);
   // This bounds only where source/native air may be classified. It does not
   // claim that the whole rectangle is empty; complete-source rays still

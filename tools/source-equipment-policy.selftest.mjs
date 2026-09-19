@@ -1,3 +1,4 @@
+import {BARAK_SOURCE_CONFIGURATION} from './barak-source-openings.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {censusEquipment,roofEquipmentVerdict} from './source-equipment-policy.mjs';
@@ -56,3 +57,8 @@ assert.equal(roofEquipmentVerdict('other_x',census,config(0),receipt).passed,fal
 for(const wrong of [{...receipt,path:'wrong.glb'},{...receipt,sha256:'b'.repeat(64)},{...receipt,verified:false}])assert.equal(roofEquipmentVerdict(id,census,config(0),wrong).passed,false,'wrong hash/path cannot reuse authorization');
 stock.geometry.dispose();stock.material.dispose();
 console.log('source-equipment-policy: approved actual equipment, unchanged default, and false-marker negatives pass');
+
+const barak=BARAK_SOURCE_CONFIGURATION,barakReceipt={id:barak.id,...barak.source,verified:true};
+assert.equal(roofEquipmentVerdict(barak.id,{mg:1,invalidWeaponMarkers:0},barak,barakReceipt).passed,true);
+assert.equal(roofEquipmentVerdict(barak.id,{mg:0,invalidWeaponMarkers:0},barak,barakReceipt).passed,false,'Barak retains its actual source roof gun');
+assert.equal(roofEquipmentVerdict(barak.id,{mg:2,invalidWeaponMarkers:0},barak,barakReceipt).passed,false,'Barak does not inherit an extra donor gun');

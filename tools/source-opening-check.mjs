@@ -8,7 +8,7 @@ import {sourceOpeningRayProbe} from './source-opening-rays.mjs';
 /** Native loaded-fill geometry and the complete original source are measured
  * at the real browser raster coordinates, never nominal rounded labels. */
 export async function measureSourceOpenings(id,scan,configuration,sourceReceipt){
- if(!['aft10_x','fv510_milan_x'].includes(id))return sourceOpeningsVerdict({id,scan});
+ if(!['aft10_x','fv510_milan_x','merkava4_barak'].includes(id))return sourceOpeningsVerdict({id,scan});
  if(!sourceReceipt?.verified)return sourceOpeningsVerdict({id,scan,configuration,sourceReceipt});
  const {scene:source,digest}=await loadSource(configuration.source.path);
  if(digest!==configuration.source.sha256)throw new Error('Opening source changed during acquisition');

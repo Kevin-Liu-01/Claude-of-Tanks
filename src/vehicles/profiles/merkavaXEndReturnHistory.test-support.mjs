@@ -16,7 +16,59 @@ const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const count=(source,part)=>source.split(part).length-1;
 const read=file=>fs.readFileSync(new URL(file,import.meta.url),'utf8');
 
+function beforeBarakBowRepair(source){
+  const imported="import { addBarakBowEquipment } from './merkavaBarakBow.ts';\n";
+  if(!source.includes(imported))return source;
+  const replacements=[
+    [imported,''],
+    ["import { addBarakRearGuards } from './merkavaBarakRear.ts';\n",''],
+    ['addBarakEndGuards(P);','addModernMerkavaEndGuards(P,4.03,-4.02,.74);'],
+    [`function addBarakEndGuards(P: TankBuilderPort): void {
+  // Keep the existing front guards. The rear source parts are separate thin
+  // folded sheets with real space around them, not tall enclosing blocks.
+  for(const side of[-1,1])
+    P.addEquipment('hullDetail',box(.26,.74,4.03-3.72),side*1.48,.80,(4.03+3.72)/2);
+  addBarakRearGuards(P);
+}
+`,`function addModernMerkavaEndGuards(P: TankBuilderPort, frontZ: number, rearZ: number, height: number): void {
+  // The primary 7.60 m hull skin stays untouched. Substantial source end
+  // guards extend the assembled side silhouette at both corners without
+  // moving the certified axle course or pretending the fittings are hull.
+  for(const side of[-1,1]){
+    P.addEquipment('hullDetail',box(.26,height,frontZ-3.72),side*1.48,.80,(frontZ+3.72)/2);
+    P.addEquipment('hullDetail',box(.30,height,-3.70-rearZ),side*1.45,1.10,(rearZ-3.70)/2);
+  }
+}
+`],
+    ["import { barakEndStock } from './merkavaBarakEndStock.ts';\n",''],
+    ["    ...barakEndStock(Boolean(P.q),barakGear),\n",''],
+    ['  addBarakBowEquipment(P);',`  // The supplied Barak's paired bow cables are silhouette-significant in
+  // both side studies. Keep each run open in plan rather than using a closed
+  // torus that falsely creates a sealed armor hole in the continuity scan.
+  for(const side of[-1,1]){
+    P.addEquipment('hullDetail',box(.12,.10,.12),side*.58,.94,3.50);
+    const cable: [number,number,number][]=[
+      [side*.58,.92,3.54],[side*.62,.66,3.78],[side*.58,.43,3.99],
+      [side*.38,.39,4.05],[side*.24,.65,3.88],[side*.31,.83,3.62],
+    ];
+    for(let i=1;i<cable.length;i++)hullBar(P,cable[i-1],cable[i],.030);
+  }`],
+    ['barakGear?{z:3.2069,y:.830,r:.353,trackR:.2575,axleOutsetM:.0183909,toothTipRadiusM:.347}', 'barakGear?{z:3.2069,y:.830,r:.353}'],
+    ['barakGear?{z:-2.9871,y:.7946,r:.333,trackR:.2929,axleOutsetM:.0157426}', 'barakGear?{z:-2.9871,y:.7946,r:.333}'],
+    ['barakGear?1.1325:1.105','barakGear?1.145:1.105'],
+  ];
+  // Reverse only the reviewed Barak-specific seam. The unchanged modern
+  // block digest and final authenticated historic profile still check every
+  // byte after this transform; no legacy golden is refreshed.
+  for(const [current,before]of replacements){
+    assert.equal(count(source,current),1,'One exact Barak bow/course repair seam');
+    source=source.replace(current,before);
+  }
+  return source;
+}
+
 function beforeModernIsraeliFleet(source){
+  source=beforeBarakBowRepair(source);
   if(!source.includes("merkava4_trophy: { build: buildMerkava4Trophy }"))return source;
   const removeExact=(part,label)=>{
     assert.equal(count(source,part),1,`One exact ${label}`);

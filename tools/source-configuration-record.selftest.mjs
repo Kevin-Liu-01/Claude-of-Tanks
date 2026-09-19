@@ -1,3 +1,5 @@
+import {BARAK_SOURCE_CONFIGURATION} from './barak-source-openings.mjs';
+import {canonicalConfigurationPath} from './source-configuration-path.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,3 +21,10 @@ try{
  assert.equal(verifyConfigurationSource(id,config,root).verified,false,'missing source fails closed');
 }finally{fs.rmSync(root,{recursive:true,force:true});}
 console.log('source-configuration-record: exact ID/path/hash and missing/changed-source negatives pass');
+
+assert.equal(canonicalConfigurationPath('merkava4_barak'),BARAK_SOURCE_CONFIGURATION.source.path);
+assert.equal(canonicalConfigurationPath('aft10_x'),'public/models/community-candidates/aft10_x_source.glb');
+assert.equal(canonicalConfigurationPath('../escape'),null);
+for(const change of [{source:{...BARAK_SOURCE_CONFIGURATION.source,path:'public/models/community-candidates/merkava4_barak_source.glb'}},{registration:{...BARAK_SOURCE_CONFIGURATION.registration,scale:1}},{originalSha256:'a'.repeat(64)}])
+ assert.equal(verifyConfigurationSource('merkava4_barak',{...BARAK_SOURCE_CONFIGURATION,...change},root).reason,'Malformed source configuration',
+   'invalid recipe fails before any absent-file fallback');

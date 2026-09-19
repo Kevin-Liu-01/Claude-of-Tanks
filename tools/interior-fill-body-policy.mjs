@@ -12,6 +12,10 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // lanes in projection but remain separately mounted exterior stock. Using
   // those hull* fittings as body boundaries filled the real wheel-bay air.
   merkava4_trophy: Object.freeze(['hull', 'turret']),
+  // Barak's folded rear returns and bow towing straps also surround exterior
+  // air. Fill only its authored body shells; retain every fitting in the
+  // source, continuity and physical-stock audits.
+  merkava4_barak: Object.freeze(['hull', 'turret']),
 });
 
 /** Select actual body-shell triangles without changing their positions or order. */
