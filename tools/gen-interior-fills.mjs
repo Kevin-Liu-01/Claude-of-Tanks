@@ -13,6 +13,7 @@
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import * as THREE from 'three';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
@@ -103,6 +104,29 @@ function greedyBoxes(cell, cnx, cny, cnz, comp) {
   return boxes;
 }
 
+// Tracks are moving parts too (2026-09-19, T-90M X): the lane a track band sweeps — between its upper and lower
+// runs, idler to sprocket, one voxel of clearance around it — is never interior air, even where the hull's nose or
+// sponson plates enclose it. The strict track-clip audit has tested the installed fills against the bands since
+// 1cb462309; the T-90M's nose filled 89 voxels of its idler wrap before this rule.
+const _bandPoint = new THREE.Vector3();
+function trackBandBoxes(root, pad) {
+  root.updateMatrixWorld(true);
+  const boxes = [];
+  root.traverse((node) => {
+    if (!node.isMesh || !/^gearTrackBand/.test(node.name || '')) return;
+    boxes.push(new THREE.Box3().setFromObject(node).expandByScalar(pad));
+  });
+  return boxes;
+}
+function insideTrackBand(boxes, grid, x, y, z) {
+  if (!boxes.length) return false;
+  const [ox, oy, oz] = grid.origin;
+  const v = grid.voxel;
+  _bandPoint.set(ox + (x + 0.5) * v, oy + (y + 0.5) * v, oz + (z + 0.5) * v);
+  for (const box of boxes) if (box.containsPoint(_bandPoint)) return true;
+  return false;
+}
+
 function nodeWorldPosition(root, names) {
   root.updateMatrixWorld(true);
   for (const name of names) { const node = root.getObjectByName(name); if (node) { const e = node.matrixWorld.elements; return [e[12], e[13], e[14]]; } }
@@ -119,6 +143,7 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true }); }
   catch (error) { throw new Error(`${id}: build failed; no fill records written`, { cause: error }); }
   const sourceAir=createBarakBayFillPolicy(id,tank.root);
+  const bandBoxes = trackBandBoxes(tank.root, VOXEL * 2); // two voxels of clearance: the audit samples 2 cm cells
   const { tris, meshes } = collectTriangles(tank.root);
   const boundary = interiorFillBoundaryTriangles(id, tris, meshes);
   const grid = voxelise(boundary, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });
@@ -134,13 +159,14 @@ for (const id of ids) {
   }
   // leak voxels with component; moving-part columns skipped
   const proper = turretProperSpans(grid), moving = movingSpans(grid);
-  const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0;
+  const vox = new Uint8Array(shell.length); let leakVox = 0, skipped = 0, bandVox = 0;
   const collectLeaks = (extNow, deepNow, first) => {
     let found = 0;
     for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
       const i = (z * ny + y) * nx + x; if (!(extNow[i] && deepNow[i]) || vox[i] || claimed[i]) continue;
       if (first) leakVox++;
       if(sourceAir?.protects(grid,x,y,z))continue;
+      if (insideTrackBand(bandBoxes, grid, x, y, z)) { if (first) bandVox++; continue; }
       const c = componentAt(grid, x, y, z); if (!c) continue;
       // a pocket closed by the gun or mantlet: filled as turret stock when the turret body itself encloses
       // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
@@ -215,7 +241,7 @@ for (const id of ids) {
   const L = (n) => +(n * VOXEL ** 3 * 1000).toFixed(1);
   // origins at 6 decimals: a 4-decimal origin put every fill face a few microns off the lattice
   out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(6)), t: turretOrigin.map((v) => +v.toFixed(6)), g: gunOrigin.map((v) => +v.toFixed(6)), ...entry };
-  const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
+  const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), trackLaneL: L(bandVox), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
   if(sourceAir){
     const receipt=sourceAir.receipt();row.preservedSourceAirL=L(receipt.cells.length);
     const evidenceDir=opt('source-air-evidence',null);
