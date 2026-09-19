@@ -11,6 +11,9 @@ const expected = {
 const rayDown = (object, x, z) => new THREE.Raycaster(
   new THREE.Vector3(x, 6, z), new THREE.Vector3(0, -1, 0), 0, 8,
 ).intersectObject(object, false)[0]?.point.y;
+const rayUp = (object, x, z) => new THREE.Raycaster(
+  new THREE.Vector3(x, -.5, z), new THREE.Vector3(0, 1, 0), 0, 3,
+).intersectObject(object, false)[0]?.point.y;
 
 for (const quality of ['high', 'low']) for (const [id, contract] of Object.entries(expected)) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, quality });
@@ -73,6 +76,13 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       if (contract.trophy === 'mk4') {
         assert.ok(glacisY > 1.34 && glacisY < 1.40,
           `${id}: Trophy-specific cap descends onto the measured 1.362 m glacis (${glacisY})`);
+        const hull=tank.root.getObjectByName('hull');
+        const keelY=rayUp(hull,.65,3.00);
+        assert.ok(keelY>.40&&keelY<.48,
+          `${id}: measured folded lower keel replaces the former full-width belly slab (${keelY})`);
+        const detail=tank.root.getObjectByName('hullDetail');
+        assert.ok(rayDown(detail,-1.40,-3.88)>.75&&rayDown(detail,1.40,-3.88)>.75,
+          `${id}: both source backmudguard folds close the diagonal rear corners`);
       } else {
         assert.ok(glacisY > 1.34 && glacisY < 1.40,
           `${id}: Barak retains the measured lower base-hull glacis without a false overlay (${glacisY})`);

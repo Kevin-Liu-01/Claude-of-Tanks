@@ -63,7 +63,7 @@ function beforeModernIsraeliFleet(source){
     '5942561d3649509c67ad3db76463b1e2850355a1e4b0cba6c280fc79ec9d1490',
     '  ','Trophy source whip construction');
   removeHashedBlock('type TrophyConfiguration','function merkava4Shell',
-    '55ce6c5e25db6cad684645175108dabcbd326ddcf07284edb379126e761029b2','modern Merkava fittings');
+    'c3ecdd9dfb8a5ba15589c485da2e8c111e8e1544f93e94c6681b7004b5bcc797','modern Merkava fittings');
   replaceExact("function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {",
     'export function buildMerkava4X(P: TankBuilderPort): void {','modern Merkava family entry');
   replaceExact(`  // The Trophy study's canonical ground recipe seats the complete assembly
@@ -109,10 +109,7 @@ function beforeModernIsraeliFleet(source){
 `, 'Barak source weapon exclusions');
   replaceExact(`  P.muzzleZ=2.8755;P.topY=2.75-MK4.y;
   if(candidate==='merkava4_trophy'){
-    // The source lower hull closes at y .375, 44 mm below the clean family
-    // shell. Rebuild that shallow belly plate directly instead of lowering
-    // the whole vehicle and corrupting the measured wheel/track datums.
-    P.add('hull',box(3.58,.044,7.55),0,.397,0);
+    P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
     addModernMerkavaRearClosure(P,true);
     addTrophyGlacisSignature(P);

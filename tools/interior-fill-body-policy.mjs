@@ -5,6 +5,13 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   // slat rails and roof optics sit outside them: combining those separate parts
   // into one vertical span would invent body volume across their real air gaps.
   bmp3m_dragun125_x: Object.freeze(['hull', 'turret']),
+  // The supplied Trophy Mk.4 likewise uses its primary hull/turret shells as
+  // the repair boundary; its bounded authored seams are handled by the fill
+  // generator rather than by treating unrelated exterior fittings as shell.
+  // Its lamps, belly fittings and outboard protection overlap the native shoe
+  // lanes in projection but remain separately mounted exterior stock. Using
+  // those hull* fittings as body boundaries filled the real wheel-bay air.
+  merkava4_trophy: Object.freeze(['hull', 'turret']),
 });
 
 /** Select actual body-shell triangles without changing their positions or order. */

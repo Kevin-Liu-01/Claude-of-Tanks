@@ -6,6 +6,7 @@ import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const id = 'bmp3m_dragun125_x';
+const configuredIds = [id, 'merkava4_trophy'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));
@@ -18,9 +19,13 @@ for (const legacy of ['abrams', 'challenger_3', 'cv90105_tml_x', 'constructor', 
   assert.equal(interiorFillBoundaryTriangles(legacy, triangles, names), triangles,
     'unconfigured families retain their exact historical boundary input');
 }
-for (const missing of ['hull', 'turret']) {
-  assert.throws(() => interiorFillBoundaryTriangles(id,
-    triangles.filter(row => names[row.mesh] !== missing), names), /missing authored fill boundary/);
+for (const configuredId of configuredIds) {
+  assert.deepEqual(interiorFillBoundaryTriangles(configuredId, triangles, names).map(row => row.identity),
+    selected.map(row => row.identity), `${configuredId}: only primary hull/turret and moving gun stock bound fill`);
+  for (const missing of ['hull', 'turret']) {
+    assert.throws(() => interiorFillBoundaryTriangles(configuredId,
+      triangles.filter(row => names[row.mesh] !== missing), names), /missing authored fill boundary/);
+  }
 }
 
 function leaks(tris, meshes, voxel = .025) {
@@ -40,24 +45,27 @@ const broken = collected.tris.filter(t => !(t.az === 1 && t.bz === 1 && t.cz ===
   && Math.abs((t.ax + t.bx + t.cx) / 3) < .5 && Math.abs((t.ay + t.by + t.cy) / 3) < .5));
 // An unrelated turret triangle supplies the required owner; it cannot close the hole.
 const isolated = { ...collected.tris[0], ax: 4, bx: 4, cx: 4, mesh: 1 };
-const brokenSelected = interiorFillBoundaryTriangles(id, [...broken, isolated], ['hull', 'turret']);
-assert.equal(brokenSelected.length, broken.length + 1);
-assert.ok(leaks(brokenSelected, ['hull', 'turret'], .1).count > 0,
-  'a deleted primary plate still produces real deep-interior leakage');
+for (const configuredId of configuredIds) {
+  const brokenSelected = interiorFillBoundaryTriangles(configuredId, [...broken, isolated], ['hull', 'turret']);
+  assert.equal(brokenSelected.length, broken.length + 1);
+  assert.ok(leaks(brokenSelected, ['hull', 'turret'], .1).count > 0,
+    `${configuredId}: a deleted primary plate still produces real deep-interior leakage`);
+}
 cube.geometry.dispose(); cube.material.dispose();
 
 const results = [];
-for (const quality of ['high', 'low']) {
-  const tank = createTank(id, null, { proceduralOnly: true, quality });
+for (const configuredId of configuredIds) for (const quality of ['high', 'low']) {
+  const tank = createTank(configuredId, null, { proceduralOnly: true, quality });
   try {
     const { tris, meshes } = collectTriangles(tank.root);
-    const boundary = interiorFillBoundaryTriangles(id, tris, meshes);
+    const boundary = interiorFillBoundaryTriangles(configuredId, tris, meshes);
     const withFittings = leaks(tris, meshes), primary = leaks(boundary, meshes);
     assert.ok(withFittings.count > 0, 'the former broad family span invents exterior cage/optic pockets');
-    assert.equal(primary.count, 0, 'actual authored primary bodies are closed at generator resolution');
+    if (configuredId === id) assert.equal(primary.count, 0,
+      'BMP actual authored primary bodies are closed at generator resolution');
     const gun = rows => rows.filter(row => /^(gun|mantlet|muzzle)/i.test(meshes[row.mesh]));
     assert.deepEqual(gun(boundary), gun(tris), 'complete physical bore/mount stock remains in the body input');
-    results.push({ quality, exteriorPocketVoxels: withFittings.count, primaryLeakVoxels: primary.count,
+    results.push({ id: configuredId, quality, exteriorPocketVoxels: withFittings.count, primaryLeakVoxels: primary.count,
       originalBodyTriangles: withFittings.bodyTriangles, primaryBodyTriangles: primary.bodyTriangles });
   } finally { tank.dispose(); }
 }

@@ -674,9 +674,22 @@ function addTrophyGlacisSignature(P: TankBuilderPort): void {
   // separates it from Barak's cleaner sensor-led face: guarded lamps, large
   // towing eyes, a central access cover and two visibly seated cable runs.
   P.addEquipment('hullDetail',box(.62,.045,.48),0,1.30,2.61,-.18);
+  // Two independently closed source islands form the compact centre-nose
+  // service covers.  Keep their measured envelopes instead of extending the
+  // whole glacis upward: world Y is converted through the +.010 m hull seat.
+  P.addEquipment('hullDetail',box(.117779,.040207,.080719),-.000300,1.251252,3.086978);
+  P.addEquipment('hullDetail',box(.178496,.034115,.033303),-.000300,1.265974,3.089465);
   for(const side of[-1,1]){
-    P.addEquipment('hullDetail',box(.34,.22,.24),side*1.36,1.24,2.77,-.15,side*.08);
-    P.addEquipment('hullGlass',markVehicleNightLens(box(.19,.10,.026),'headlight'),side*1.36,1.27,2.91,-.15,side*.08);
+    // Complete source front-light bounds, mirrored on the left:
+    // X 1.341265..1.559867, Y 1.214445..1.376492,
+    // Z 2.895739..3.052812. The old generic box was 89 mm too low and
+    // 268 mm too far aft, where it penetrated the native shoe return.
+    const lampX=side*1.450566;
+    P.addEquipment('hullDetail',box(.218602,.162047,.157073),lampX,1.285469,2.974276);
+    // Seat the thin emissive face 4 mm ahead of the measured casing envelope
+    // so unlike materials cannot z-fight while the primitive lamp stays true.
+    P.addEquipment('hullGlass',markVehicleNightLens(box(.16,.09,.004),'headlight'),
+      lampX,1.285469,3.054812);
     for(const x of[side*.73,side*1.02])
       P.addEquipment('hullDetail',torus(.072,.023,18,8),x,.91,3.53,Math.PI/2);
     hullBar(P,[side*.76,1.31,2.15],[side*.94,1.13,2.70],.032);
@@ -882,6 +895,12 @@ function addTrophyHullEndEquipment(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.6548,.0164,.5430),side*.6735,.8716,-3.7692);
     P.addEquipment('hullDetail',box(.6694,.5074,.0385),side*.6747,1.2617,-3.5219);
     P.addEquipment('hullDetail',box(.6694,.1032,.5612),side*.6747,1.4898,-3.7785);
+    // Source backmudguard is a folded sheet, separate from the baskets: an
+    // outboard sloped rear face and a thin forward-running top return. Its
+    // diagonal corner is visible in every quarter view, so do not replace it
+    // with interior fill or a full solid block.
+    P.addEquipment('hullDetail',box(.7878,.446,.018),side*1.4096,.9719,-3.8821,.259);
+    P.addEquipment('hullDetail',box(.7878,.0107,.3443),side*1.4096,1.1906,-3.6467);
   }
 }
 
@@ -912,14 +931,61 @@ function trophyMerkavaGlacisCap(): THREE.BufferGeometry {
   return sectionSolid([
     // The Trophy hull rig is seated +.01 m, so these local ordinates are the
     // certified world sections above minus that authored source datum.
-    {z:1.45,ring:[[-1.70,1.55],[1.70,1.55],[1.70,1.71],[-1.70,1.71]]},
-    {z:2.05,ring:[[-1.70,1.46],[1.70,1.46],[1.70,1.53],[-1.70,1.53]]},
+    {z:1.45,ring:[[-1.70,1.55],[1.70,1.55],[1.70,1.647741],[-1.70,1.647741]]},
+    {z:2.05,ring:[[-1.70,1.46],[1.70,1.46],[1.70,1.567129],[-1.70,1.567129]]},
     {z:2.637701,ring:[[-1.70,1.33],[1.70,1.33],[1.70,1.386783],[-1.70,1.386783]]},
     {z:2.75,ring:[[-1.70,1.29],[1.70,1.29],[1.70,1.352322],[-1.70,1.352322]]},
+    {z:3.22,ring:[[-1.14,1.20],[1.14,1.20],[1.14,1.208094],[-1.14,1.208094]]},
     {z:3.35,ring:[[-1.05,1.15],[1.05,1.15],[1.05,1.168201],[-1.05,1.168201]]},
-    {z:3.72,ring:[[-1.02,.99],[1.02,.99],[1.02,1.04],[-1.02,1.04]]},
+    {z:3.72,ring:[[-1.02,.99],[1.02,.99],[1.02,1.054660],[-1.02,1.054660]]},
     {z:3.80,ring:[[-1.02,.97],[1.02,.97],[1.02,1.00],[-1.02,1.00]]},
   ]);
+}
+
+function trophyMerkavaLowerKeel(): THREE.BufferGeometry {
+  // Source-world plane intersections of the primary hull, converted to the
+  // Trophy hull's +.010 m local seat below. Pairwise lofts retain every
+  // measured station breakpoint; the spans between stations are the bounded
+  // first-party interpolation, not a claim to replay source triangle planes.
+  const seat=.010;
+  const sections=[
+    {z:-2.750650,top:.419,knots:[[0,.402682951],[.325623,.401566020],[1.015139,.412070248]]},
+    {z:0,top:.435,knots:[[0,.389208173],[.165572799,.388640244],[.650707614,.429043277],[1.015138507,.434595085]]},
+    {z:2,top:.455,knots:[[0,.379410650],[.049200059,.379241901],[.887076584,.449021994],[1.015138507,.450972914]]},
+    {z:2.845480,top:.494,knots:[[0,.375268960],[.26595,.397417],[.65018,.429417],[.986999202,.457467798],[1.015138507,.457896477]]},
+    {z:3,top:.543,knots:[[0,.440924829],[.302925052,.440924775],[.658807367,.430157971],[1.005261068,.459011353],[1.015138507,.459161828]]},
+    {z:3.083570,top:.569,knots:[[0,.476433893],[.466755055,.476433811],[1.015111046,.459843940],[1.015138507,.459846176]]},
+  ] as const;
+  const sample=(knots: readonly (readonly [number,number])[],x:number): number=>{
+    for(let i=1;i<knots.length;i++)if(x<=knots[i][0]){
+      const a=knots[i-1],b=knots[i],t=(x-a[0])/(b[0]-a[0]);
+      return a[1]+(b[1]-a[1])*t-seat;
+    }
+    return knots[knots.length-1][1]-seat;
+  };
+  const pieces: THREE.BufferGeometry[]=[];
+  for(let i=1;i<sections.length;i++){
+    const pair=[sections[i-1],sections[i]] as const;
+    const us=[...new Set(pair.flatMap(section=>{
+      const outer=section.knots[section.knots.length-1][0];
+      return section.knots.map(([x])=>+((x/outer).toFixed(9)));
+    }))].sort((a,b)=>a-b);
+    const stations=pair.map(section=>{
+      const outer=section.knots[section.knots.length-1][0];
+      const positive=us.map(u=>[u*outer,sample(section.knots,u*outer)] as [number,number]);
+      return {z:section.z,ring:[
+        [-outer,section.top] as [number,number],
+        ...positive.slice().reverse().map(([x,y])=>[-x,y] as [number,number]),
+        ...positive.slice(1),
+        [outer,section.top] as [number,number],
+      ]};
+    });
+    pieces.push(sectionSolid(stations));
+  }
+  const merged=mergeGeometries(pieces);
+  for(const piece of pieces)piece.dispose();
+  if(!merged)throw new Error('Trophy lower-keel sections did not merge');
+  return merged;
 }
 
 function merkava4Shell(): THREE.BufferGeometry {
@@ -1042,10 +1108,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   if(candidate!=='merkava4_barak')merkava4CoaxMount(P);
   P.muzzleZ=2.8755;P.topY=2.75-MK4.y;
   if(candidate==='merkava4_trophy'){
-    // The source lower hull closes at y .375, 44 mm below the clean family
-    // shell. Rebuild that shallow belly plate directly instead of lowering
-    // the whole vehicle and corrupting the measured wheel/track datums.
-    P.add('hull',box(3.58,.044,7.55),0,.397,0);
+    P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
     addModernMerkavaRearClosure(P,true);
     addTrophyGlacisSignature(P);
