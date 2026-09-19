@@ -10,6 +10,11 @@ type Point = readonly [number, number, number];
 function put(P: TankBuilderPort, slot: string, g: THREE.BufferGeometry, x=0,y=0,z=0, ry=0): void {
   P.addEquipment(slot,g,x,y-Y,z-Z,0,ry);
 }
+function optic(P: TankBuilderPort, g: THREE.BufferGeometry, x:number,y:number,z:number, ry=0): void {
+  // These dark apertures are real sights; keep their stock/material bucket
+  // unchanged while publishing their turret-owned damage-module receipts.
+  P.addModuleVisual('optics','turretDark',g,x,y-Y,z-Z,0,ry);
+}
 function upright(P: TankBuilderPort, radius: number, height: number, x:number,y:number,z:number, slot='turretDetail'): void {
   put(P,slot,KIT.cylY(radius,radius,height,P.q?24:12),x,y,z);
 }
@@ -112,7 +117,7 @@ function hatchRing(P: TankBuilderPort): void {
       {z:.064,ring:[[-.143,0],[.143,0],[.143,.044],[-.143,.044]]},
     ]);
     put(P,'turretDetail',caseGeo,x,2.567,z,angle);
-    put(P,'turretDark',KIT.box(.216,.035,.007),x+Math.sin(angle)*.051,2.687,z+Math.cos(angle)*.051,angle);
+    optic(P,KIT.box(.216,.035,.007),x+Math.sin(angle)*.051,2.687,z+Math.cos(angle)*.051,angle);
   }
   for(const x of[-.7428,-.1517]){
     put(P,'turretDetail',KIT.box(.026,.10,.38),x,2.604,-1.44);
@@ -127,7 +132,7 @@ function sight(P: TankBuilderPort): void {
   upright(P,.195,.145,x,2.7294,z);
   upright(P,.202,.0126,x,2.8082,z);
   put(P,'turretDetail',KIT.box(.162,.202,.100),.5577,2.710,-.65);
-  put(P,'turretDark',KIT.box(.124,.117,.008),.5577,2.721,-.703);
+  optic(P,KIT.box(.124,.117,.008),.5577,2.721,-.703);
   for(const [dx,dz]of[[.18,-.12],[-.18,-.12],[.13,.17],[-.13,.17]])
     put(P,'turretDetail',KIT.box(.047,.030,.065),x+dx,2.607,z+dz);
 }
@@ -138,7 +143,7 @@ function forwardOptic(P: TankBuilderPort): void {
   const ring=(rear:boolean): [number,number][]=>[[-.9143,2.4771-Y],[-.4203,2.4771-Y],
     [-.4290,(rear?2.7275:2.7400)-Y],[-.9061,(rear?2.7275:2.7400)-Y]];
   P.addEquipment('turretDetail',sectionSolid([{z:-.2019-Z,ring:ring(true)},{z:.0943-Z,ring:ring(false)}]));
-  put(P,'turretDark',KIT.box(.345,.130,.009),-.6673,2.612,.101);
+  optic(P,KIT.box(.345,.130,.009),-.6673,2.612,.101);
   for(const x of[-.485,-.850])put(P,'turretDetail',KIT.box(.021,.217,.180),x,2.612,.184);
 }
 
