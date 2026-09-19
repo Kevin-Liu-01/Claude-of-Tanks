@@ -156,6 +156,11 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   leo2a4m_x: anchor('hull', 'right', .655, .54, .22, -1),
   leo2a5_x: anchor('hull', 'left', .758, .484, .22, -1),
   merkava4_x: anchor('hull', 'left', .55132, .48234, .24, 1),
+  // Source-built variants use exposed permanent armor: Trophy’s turret cheek
+  // clears its outer skirts; Barak and Namer retain clear hull-side fields.
+  merkava4_trophy: anchor('turret', 'left', .55, .48, .24, 1),
+  merkava4_barak: anchor('hull', 'left', .55, .48, .24, 1),
+  namer_ifv: anchor('hull', 'left', .52, .60, .24, 1),
   merkava3d_x: anchor('hull', 'left', .56041, .49104, .24, 1),
   k2_x: anchor('hull', 'left', .67977, .51807, .24, 1),
   fv510_milan_x: anchor('hull', 'left', .52, .58, .20, 1),
