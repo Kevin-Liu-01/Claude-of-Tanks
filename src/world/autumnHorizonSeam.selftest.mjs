@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createCanvas } from '@napi-rs/canvas';
-import { buildHorizonRing, sampleHorizonGeometry } from './maps/horizon.ts';
+import { HORIZON_SEGMENTS, buildHorizonRing, sampleHorizonGeometry } from './maps/horizon.ts';
 import { getMapConfig } from './maps/index.ts';
 import { createHeightField } from './terrain.ts';
 import { seatHorizonTerrainSeam } from './horizonRedrock.ts';
@@ -29,7 +29,10 @@ function surface(ring, x, z) {
   throw Error(`Probe outside actual ring: ${x},${z}`);
 }
 
-const N = 287, previousDocument = globalThis.document;
+// Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
+// ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
+// re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
+const N = HORIZON_SEGMENTS, previousDocument = globalThis.document;
 globalThis.document = { createElement(tag) { assert.equal(tag, 'canvas'); return createCanvas(1, 1); } };
 try {
   for (const id of ['autumn', 'saltwind', 'steppe']) {
@@ -37,15 +40,20 @@ try {
     const image = mesh.material.map.image;
     assert.equal(image.width, 512); assert.equal(image.height, 192);
     const pixels = image.getContext('2d').getImageData(0, 0, image.width, image.height).data;
-    let angularDifferences = 0;
+    // Vista pass: the base atlas carries biome tone only (the fragment program owns every surface detail), so
+    // its rows are angularly flat but still vary with altitude
+    let angularDifferences = 0, altitudeDifferences = 0;
     for (let y = 0; y < image.height; y++) for (let x = 1; x < image.width; x++) {
       const a = y * image.width * 4, b = a + x * 4;
       for (let channel = 0; channel < 3; channel++) angularDifferences += pixels[a + channel] !== pixels[b + channel];
-
     }
-    assert.ok(angularDifferences > 10000, 'every rolling map retains original authored angular atlas detail');
-    assert.equal(mesh.geometry.attributes.position.count, 2880, 'same ten rows and seam column');
-    assert.equal(mesh.geometry.index.count, 15498, 'same continuous annular topology');
+    for (let y = 1; y < image.height; y++) for (let channel = 0; channel < 3; channel++) {
+      altitudeDifferences += pixels[y * image.width * 4 + channel] !== pixels[(y - 1) * image.width * 4 + channel];
+    }
+    assert.equal(angularDifferences, 0, 'the vista base atlas is a pure altitude tone: no radially stretched detail');
+    assert.ok(altitudeDifferences > 40, 'the tone still varies with altitude');
+    assert.equal(mesh.geometry.attributes.position.count, (N + 1) * 18, 'eighteen rows and the seam column');
+    assert.equal(mesh.geometry.index.count, 17 * N * 6, 'one continuous annular topology');
     disposeObject3DResources(mesh);
   }
   for (const groundSeed of [1337, 2049, 7719]) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { COPPER_QUARRY, copperQuarryRise, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { acquireTerrainChunkIndex, createHeightField, createLayout } from './terrain.ts';
-import { sampleHorizonGeometry } from './maps/horizon.ts';
+import { sampleHorizonGeometry, HORIZON_SEGMENTS } from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import copper from './maps/copperMesa.ts';
 
@@ -109,9 +109,9 @@ function appendHorizonReceipt(hash, id, ring) {
 // Titan's later finite-cap restoration likewise uses its explicit authoring
 // opt-out here; titanGorgeHorizon.selftest owns current Titan byte/shape guards.
 const currentPolders = [
-  '6b53931225d4ffda70b8593d98fbb03b920eafdf8ca95b0f2fa6b517815d4a5c',
-  '5fe5af61f4e7ee72a73474838fa7c10e17d9ab821883a4817c20ff417de99d97',
-  '806e0773fbb3594a5be0598ae27e04bb0ce52f7226d5e991be3d69d90730e0cb',
+  '9f3181ff1081ae9db1a750f6db1348bb711a254025c33dbec919a72bebd2dd6c' /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */,
+  'f19289db3552c4367d00f45405b5cd2f67dd7d816b53a7affcc3b256da3f81f7',
+  '154ff1d3794bdfefa68019aeffe5476d9651313036a0281e13a58d33068d8360',
 ];
 function assertCurrentPolders(ring, index) {
   // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m.
@@ -125,9 +125,9 @@ function assertCurrentPolders(ring, index) {
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 // Keep the same historical Polders/Titan inputs and already-capped Skybridge.
 const previous = [
-  '3665776e623cfa61879fb07acc919d0a6da584b5ba041ee512763d0a98008bbe',
-  'ac68db75c5d5d694e565bde3f59c7cdaf5b2b246553a51cb388f7fd574cf2245',
-  '7852cbd496545cf2d9f6ef7d8b3a7080c7d9f01e8cdedb76d92da1a9e7bdce55',
+  'e765ee94350841af28999b587d257385f28517d2382ad0fbc5be51ba8a4b3c54' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */,
+  'ce789b6b240a27a0f85068ff327cd306652f87b155508820e3f4de8df4b370f3' /* 2026-09-19 vista pass */,
+  'f5623a9a474f80d95748370d834f96a21c84c85baa01811655573e32ce084a4e',
 ];
 for (const [index, seed] of seeds.entries()) {
   const hash = createHash('sha256');
@@ -159,18 +159,22 @@ for (const [index, seed] of seeds.entries()) {
       }
       continue;
     }
-    assert.equal(ring.rows.length, 10); assert.equal(ring.positions.length, 8610);
-    assert.equal(ring.heights.length, 2870);
-    const p = ring.positions, h = ring.heights, n = 287;
+    // Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
+    // ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
+    // re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
+    const n = HORIZON_SEGMENTS;
+    assert.equal(ring.rows.length, 18); assert.equal(ring.positions.length, n * 18 * 3);
+    assert.equal(ring.heights.length, n * 18);
+    const p = ring.positions, h = ring.heights;
     const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
-    for (let c = 0; c < n; c++) for (let row = 1; row < 10; row++) {
+    for (let c = 0; c < n; c++) for (let row = 1; row < 18; row++) {
       assert.ok(radius(row, c) > radius(row - 1, c) + 1, 'No folded horizon faces');
       // The restored 1049e4e mesa profile keeps its terraced cliff steps (up to
       // about 4:1 between adjacent rows); a genuinely vertical sheet is steeper.
       assert.ok((h[row * n + c] - h[(row - 1) * n + c])
         / (radius(row, c) - radius(row - 1, c)) < 4.5, 'No new vertical skyline sheets');
     }
-    for (const top of [5, 9]) {
+    for (const top of [9, 17]) {
       let capQuads = 0, area = 0;
       for (let c = 0; c < n; c++) {
         const next = (c + 1) % n;
@@ -179,7 +183,7 @@ for (const [index, seed] of seeds.entries()) {
         if (Math.max(...levels) - Math.min(...levels) >= 2) continue;
         // Restored 1049e4e rows: the near table's cap depth follows the closer
         // 585-760 m row spacing (about 58 m), the outer table keeps 90 m.
-        assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 5 ? 40 : 90) - 0.001);
+        assert.ok(radius(top, c) - radius(top - 1, c) >= (top === 9 ? 40 : 90) - 0.001);
         let doubleArea = 0;
         for (let j = 0; j < 4; j++) {
           const a = ids[j] * 3, b = ids[(j + 1) % 4] * 3;
@@ -187,7 +191,7 @@ for (const [index, seed] of seeds.entries()) {
         }
         area += Math.abs(doubleArea) * 0.5; capQuads++;
       }
-      assert.ok(capQuads >= 35 && area > (top === 5 ? 90000 : 150000),
+      assert.ok(capQuads >= 35 && area > (top === 9 ? 40000 : 120000), // vista pass: narrower 431-column quads
         `Both ranges have finite attached cap surfaces (range ${top}: ${capQuads} quads, ${Math.round(area)} m2)`);
     }
   }

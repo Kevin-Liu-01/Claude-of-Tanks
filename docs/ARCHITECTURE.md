@@ -454,9 +454,32 @@ SkyRig = {
 Night sky (round 22, 2026-09-18): the dome shader adds a deterministic starfield, a galactic band and a
 moon after its intensity multiply whenever the preset dims the dome (`nightAmount`), and the preset knobs
 `nightSky` / `galaxy` / `nebulaHex` / `planetDeg` / `planetHex` let a map ask for a galaxy sky. The cloud
-decks erode thin fringes with their own alpha field (`uEdgeDetail`). The horizon ring
-(`world/maps/horizon.ts`) keeps its restored 1049e4e geometry; its fragment programs carry the near-field
-surface grain, rock bare and relight within 650 m of the camera and the rolling / escarpment forest stands.
+decks erode thin fringes with their own alpha field (`uEdgeDetail`).
+
+Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
+be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column
+ring whose row ladder is subdivided on every span (18 rows on the rolling / mesa / escarpment styles, 36 on
+alpine) with ridged relief (spurs and gullies about 260 m and 90 m apart) instead of two smooth octaves,
+seats its buried anchor and first exterior row on the battlefield's own edge height and gradient
+(`seatHorizonSkirtOnGround`; Autumn and Redrock keep their own seams), and stands the first authored ridge
+at 700–720 m so the foothill band behind the rim is a real hillside. The tableland maps bound every cap
+rise at 1.25:1 (`reshapeFiniteTableCaps`, authored-row driven). On the desktop tier the ring's fragment
+program is the layered vista material in `world/horizonVista.ts`: five tileable colour tiles (meadow,
+canopy, rock, scree, snow) sampled triplanar in world space, weights from slope / altitude / three
+world-anchored noise fields, strata beds and seams, a screen-derivative bump normal lit by the map sun plus
+a hemispherical sky term, and per-fragment aerial haze toward the fog tint (the vertex bake is tone-only
+there; mobile keeps the older per-vertex programs). The rows up to the first ridge render with the
+terrain's own splat material (`terrain.ts` `bindAutumnHorizonGround` generalised to every map, columns
+and bands from `mesh.userData.horizonRing`, meadow tint refreshed from the ground albedo mean), with the
+splat mask faded outside the playable square so no road or dirt streak climbs the ring. `buildHorizonForest`
+scatters an instanced forest where the fragment program paints stands (the JS twin of its stand function
+over the shared detail noise): species and crown palettes follow the map's `vegetation.rimMix` /
+`palettes` (pine / spruce / fir / cedar are conifers), the rim band keeps three quarters of the 8000-instance
+budget thinned uniformly around the perimeter, the band trees nearest the edge form a rich shadow-casting
+near class, and the ranges beyond get a two-tier class; the crowns carry the canopy tile's mottle, rim
+darkening and the ring's haze curve per fragment. The forest material joins the cascade through
+`engineCtx.setupShadowMaterial(material, hook)` — the hook must be passed as the extra hook, since the
+cascade setup replaces `onBeforeCompile`.
 
 #### 3.1.4 `post.ts`
 ```js

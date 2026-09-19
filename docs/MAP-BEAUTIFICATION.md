@@ -264,6 +264,33 @@ This is not a bush-shape or full-scene acceptance. The separate tiered bush
 experiment is rejected: it creates repeated cactus/topiary silhouettes and
 remains local. Farm-prop relationships and shoreline planting remain open.
 
+### Vista pass — 2026-09-19
+
+Owner (round 24, with a screenshot of a flat green backdrop under grey low-poly peaks meeting a brown
+battlefield): "no see how these are randomly just low texture and no transition. the stuff around map like
+mountains needs to be so much better, and our fake trees need to look a lot better too and properly connect.
+consider this a triple AAA pass … we want to be a lot better than the august 30th version … like the actual
+world of tanks". Three things changed, all in `world/maps/horizon.ts`, `world/horizonVista.ts`,
+`world/terrain.ts` and `world/vegetation.ts` (see ARCHITECTURE.md §3.1.3):
+
+- **Transition.** The ring's skirt is seated on the battlefield's edge height and gradient, the rows up to the
+  first ridge (700–720 m out) render with the terrain's own splat material and grass tint, the splat mask
+  fades outside the playable square, and the foothill band is subdivided with ridged relief — the rim reads as
+  the same hillside continuing, not a step onto a green wall.
+- **Beyond.** The vista material paints meadow → forest stands → scree → rock strata → snow per fragment from
+  world-anchored tiles and noise, with a bump normal, sun and sky lighting and per-fragment haze; mesa strata
+  are stronger, alpine keeps its snow and peak rock. Every map keeps its authored palette through tint ratios.
+- **Trees.** The ring forest is instanced from the same far-LOD palettes and silhouettes as the in-map trees
+  (sRGB HSL, sphere normals, jittered tiers and lobes, tufts), follows each map's rim species mix, stands
+  where the shader paints stands, casts shadows in its rich near class and hazes per fragment (the earlier
+  per-instance fog tint went magenta on green crowns). The in-map far-LOD crowns got darker, more saturated
+  palettes, 4–5 ragged nine-segment pine tiers and a metre-scale mottle / rim-darkening hook.
+
+Verified with `.qa-dev/horizon-shots.mjs` captures (verdant, frontier, reservoir, alpine, winter: rim, along-rim,
+corner and mid views) against the 1049e4e and 0f45545b9 (Aug 30) references; the horizon receipts
+(`horizonResources`, `horizonMesaSurface`, `horizonAutumnGround`, `autumnHorizonSeam`, `copperQuarrySurface`,
+`titanGorgeHorizon`, `redrockCanyonHorizon`) were re-established at this commit.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

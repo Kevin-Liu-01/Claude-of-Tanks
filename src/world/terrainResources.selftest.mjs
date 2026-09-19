@@ -52,9 +52,13 @@ try {
   // Those revisions retain this owner and its ten textures; shader cache-key
   // revisions are not the resource-lifetime contract.
   assert.ok(group.userData.sourcedTexturesReady instanceof Promise, 'terrain exposes its sourced-texture readiness owner');
-  const materials = new Set(group.children.filter(child => child.isMesh
-    && child.material?.userData.sourcedTexturesReady === group.userData.sourcedTexturesReady).map(child => child.material));
+  // vista pass (2026-09-19): the horizon ring renders its rim bands with the terrain material as a second material
+  // slot on every map, so a mesh may carry a material array; the slot is the same shared material.
+  const materials = new Set(group.children.flatMap(child => (child.isMesh ? [child.material].flat() : []))
+    .filter(material => material?.userData?.sourcedTexturesReady === group.userData.sourcedTexturesReady));
   assert.equal(materials.size, 1, 'actual terrain meshes share one sourced-texture material');
+  assert.ok(group.children.some(child => child.name === 'horizon-ring' && Array.isArray(child.material)
+    && child.material.includes([...materials][0])), 'the horizon ring carries the terrain material for its rim bands');
   const [material] = materials;
   const compile = () => {
     const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader,

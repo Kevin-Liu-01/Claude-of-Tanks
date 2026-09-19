@@ -236,8 +236,10 @@ assert.ok(colors.every((color) => color.g > Math.max(color.r, color.b) * 1.6),
   'living needles retain evergreen chroma under the warm sun key');
 
 const source = await readFile(new URL('./vegetation.ts', import.meta.url), 'utf8');
-assert.equal((source.match(/texture2D\(/g) || []).length, 4,
-  'foliage detail stays within the existing four texture-fetch expressions');
+// vista pass (2026-09-19): the far canopy hook fetches the canopy detail tile twice more (metre-scale clump mottle
+// lC / lD); the near foliage cards keep their four.
+assert.equal((source.match(/texture2D\(/g) || []).length, 6,
+  'foliage detail stays within the six texture-fetch expressions (four near-card, two far-canopy mottle)');
 assert.equal((source.match(/new THREE\.(?:CanvasTexture|DataTexture|Texture)\(/g) || []).length, 6,
   'no extra texture source is introduced by the lighting repair');
 assert.doesNotMatch(source, /diffuseColor\.rgb \+= diffuseColor\.rgb \* rim/,

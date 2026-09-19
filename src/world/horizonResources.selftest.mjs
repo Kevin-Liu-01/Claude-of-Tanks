@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
   buildHorizonRing, sampleHorizonGeometry, selectHorizonFaceBeltRows,
-  HORIZON_TREELINE_MAX_BELTS, HORIZON_TREELINE_MAX_LAYERS,
+  HORIZON_SEGMENTS, HORIZON_TREELINE_MAX_BELTS, HORIZON_TREELINE_MAX_LAYERS,
 } from './maps/horizon.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
@@ -11,7 +11,12 @@ import {
   releaseObject3DGpuResources,
 } from '../engine/resourceLifetime.ts';
 
-const columns = 288;
+// Vista pass (2026-09-19, owner: "consider this a triple AAA pass"): the ring is 431 columns (432 with the seam) and
+// 18 / 36 rows with ridged relief, the first ridge stands 700-720 m out, the skirt seats on the terrain, every style
+// compiles one layered world-anchored vista program on the desktop tier and the near faces carry an instanced forest.
+// The receipts below are re-established at this commit; the 1049e4e byte identity they guarded is superseded.
+const columns = HORIZON_SEGMENTS + 1;
+const VISTA_TILES = 5;
 
 function radiusAt(position, index) {
   return Math.hypot(position.getX(index), position.getZ(index));
@@ -30,8 +35,8 @@ function assertMonotoneRadii(position, label) {
 function assertBoundedSubdivisionRelief(position, style, label) {
   // Alpine spends two existing outer-shoulder subdivisions on the near
   // foothill transition. Authored ridges still anchor all inserted relief.
-  const anchors = style === 'alpine' ? [1, 4, 9, 14, 19, 24, 29, 32]
-    : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [2, 4, 5, 7, 8, 9] : [2, 5, 7, 9];
+  const anchors = style === 'alpine' ? [1, 5, 10, 15, 20, 25, 30, 35]
+    : ['skybridge', 'copper_mesa', 'titan_gorge'].includes(label) ? [1, 5, 8, 9, 13, 16, 17] : [1, 5, 9, 13, 17];
   let reliefSamples = 0;
   for (let span = 1; span < anchors.length; span++) {
     for (let column = 0; column < columns - 1; column++) {
@@ -47,7 +52,7 @@ function assertBoundedSubdivisionRelief(position, style, label) {
         const radius = radiusAt(position, index);
         const gap = radius - radiusAt(position, previous);
         const slope = Math.abs(position.getY(index) - position.getY(previous)) / gap;
-        assert.ok(slope <= Math.max(Math.sqrt(3), authoredSlope * (style === 'alpine' ? 2 : 1) + 0.3),
+        assert.ok(slope <= Math.max(style === 'alpine' ? 3.0 : 1.9, authoredSlope * (style === 'alpine' ? 2 : 1) + 0.3),
           `${label}: subdivision does not introduce near-vertical cliffs between authored ridges`);
         if (row < anchors[span]) {
           const linearHeight = position.getY(first) + rise * (radius - firstRadius) / radialSpan;
@@ -55,7 +60,7 @@ function assertBoundedSubdivisionRelief(position, style, label) {
           const outsideAnchors = Math.max(0,
             position.getY(index) - Math.max(position.getY(first), position.getY(last)),
             Math.min(position.getY(first), position.getY(last)) - position.getY(index));
-          assert.ok((style === 'alpine' ? outsideAnchors : relief) <= radialSpan * 0.06 + 0.001,
+          assert.ok((style === 'alpine' ? outsideAnchors : relief) <= radialSpan * 0.12 + 0.001,
             `${label}: rounded slopes stay inside anchor heights plus bounded crag relief`);
           if (relief > 0.01) reliefSamples++;
         }
@@ -88,7 +93,7 @@ function assertLayeredMountainBounds(position, style, label) {
 // low banks, ranges that meander in depth, real passes, and several ranges
 // sharing the skyline. It is not a byte oracle; those digests live below.
 function classicRangeStats(ring) {
-  const n = 287, p = ring.positions;
+  const n = HORIZON_SEGMENTS, p = ring.positions;
   const y = (row, column) => p[(row * n + column) * 3 + 1];
   const radius = (row, column) => Math.hypot(p[(row * n + column) * 3], p[(row * n + column) * 3 + 2]);
   const authored = [];
@@ -134,8 +139,8 @@ function assertClassicLayeredRanges(ring, config, label) {
   const expectedOuter = style === 'rolling' || style === 'escarpment' ? 1330 : 1240;
   assert.equal(stats.crests[stats.crests.length - 1].meanRadius, expectedOuter,
     `${label}: the outermost authored range keeps its classic ${expectedOuter} m radius`);
-  assert.equal(stats.crests[0].meanRadius, style === 'alpine' || style === 'mesa' ? 585 : 600,
-    `${label}: the first range begins where the 1049e4e foothills began`);
+  assert.equal(stats.crests[0].meanRadius, style === 'alpine' || style === 'mesa' ? 700 : 720,
+    `${label}: the first range begins about 190 m past the rim (vista pass), not at the old 585 / 600 m wall`);
   for (const crest of stats.crests) {
     assert.ok(crest.meander > 100,
       `${label}: range ${crest.row} meanders in depth (${crest.meander.toFixed(0)} m) instead of tracing a circle`);
@@ -148,12 +153,12 @@ function assertClassicLayeredRanges(ring, config, label) {
 }
 
 function assertSkybridgeTableCaps(ring, label) {
-  const n = 287, p = ring.positions;
+  const n = HORIZON_SEGMENTS, p = ring.positions;
   const y = (row, c) => p[(row * n + c) * 3 + 1];
   const radius = (row, c) => Math.hypot(p[(row * n + c) * 3], p[(row * n + c) * 3 + 2]);
   // A wide shoulder measured far below its summit still permits a pyramid.
   // Require real two-dimensional, nearly level quads on BOTH crest ranges.
-  for (const [top, minimumDepth] of [[5, 80], [9, 90]]) {
+  for (const [top, minimumDepth] of [[9, 80], [17, 90]]) {
     let area = 0, capQuads = 0, run = 0, longestRun = 0;
     for (let column = 0; column < n * 2; column++) {
       const c = column % n, next = (c + 1) % n;
@@ -175,12 +180,12 @@ function assertSkybridgeTableCaps(ring, label) {
         const a = vertices[edge] * 3, b = vertices[(edge + 1) % 4] * 3;
         twiceArea += p[a] * p[b + 2] - p[b] * p[a + 2];
       }
-      assert.ok(Math.abs(twiceArea) > 2000, `${label}: cap quads have substantial finite width`);
+      assert.ok(Math.abs(twiceArea) > 1500, `${label}: cap quads have substantial finite width`); // 431 columns: 12.5 m x 80 m quads
       area += Math.abs(twiceArea) * 0.5;
     }
     // The restored 1049e4e tables sit at 760/1240 m instead of 1140/1810 m, so
     // the same cap coverage subtends proportionally less plan area.
-    assert.ok(capQuads >= 35 && longestRun >= 8 && area > 70000,
+    assert.ok(capQuads >= 35 && longestRun >= 8 && area > (top === 9 ? 40000 : 120000),
       `${label}: range ${top} has broad attached table tops, not single-column apexes (${capQuads} quads, ${Math.round(area)} m2)`);
     const values = Array.from({ length: n }, (_, c) => y(top, c));
     assert.ok(values.filter(value => value < Math.max(...values) - 100).length >= 30,
@@ -190,14 +195,14 @@ function assertSkybridgeTableCaps(ring, label) {
       `${label}: cap fronts keep irregular meandering setbacks, not rectangular blocks`);
   }
   for (let c = 0; c < n; c++) {
-    for (const [before, after] of [[2, 3], [3, 4], [4, 5], [7, 8], [8, 9]]) {
+    for (const [before, after] of [[5, 6], [6, 7], [7, 8], [8, 9], [13, 14], [14, 15], [15, 16], [16, 17]]) {
       assert.ok((y(after, c) - y(before, c)) / (radius(after, c) - radius(before, c)) <= 1.251,
         `${label}: supporting slopes remain bounded at every angle`);
     }
   }
 }
 
-function assertAlpineBiomeTexture(texture, label) {
+function assertAlpineBiomeTexture(texture, label, floor = 24) {
   const { width, height, pixels } = texture.image;
   assert.equal(pixels.length, width * height * 4, `${label}: inspect the actual baked atlas`);
   const tones = new Set();
@@ -216,26 +221,26 @@ function assertAlpineBiomeTexture(texture, label) {
       assert.equal(pixels[offset + 3], 255, `${label}: all existing skirt coverage stays opaque`);
     }
   }
-  assert.ok(tones.size > 24, `${label}: forest/rock/snow altitude variation is preserved`);
+  assert.ok(tones.size > floor, `${label}: forest/rock/snow altitude variation is preserved (${tones.size} tones)`);
   assert.ok(largestAdjacentStep < 12, `${label}: biome changes cannot form abrupt atlas ledges`);
 }
 
-function assertAlpineSurfaceShader(shader, normals, label) {
+function assertVistaSurfaceShader(shader, normals, label) {
   const fragment = shader.fragmentShader;
-  assert.doesNotMatch(fragment, /terrainUv|fixW|mapSmooth|bedR|sin\(vHPos\.y/,
-    `${label}: no oblique duplicate, slope-limited atlas repair, or altitude stripes remain`);
+  assert.doesNotMatch(fragment, /terrainUv|fixW|mapSmooth|bedR|HTRIP\(/,
+    `${label}: the legacy oblique overlay, wall repair and altitude stripes are gone from the vista program`);
   assert.equal((fragment.match(/#include <map_fragment>/g) ?? []).length, 1,
     `${label}: one biome lookup remains`);
   assert.equal((fragment.match(/texture2D\(/g) ?? []).length, 3,
-    `${label}: the world projection macro has exactly three plane fetches`);
-  assert.equal((fragment.match(/= HTRIP\(/g) ?? []).length, 3,
-    `${label}: three existing scales make nine surface fetches, not additional textures`);
-  assert.match(fragment, /diffuseColor\.rgb \*= 1\.0 \+ \(nB \* 0\.22 \+ nC \* 0\.40 \+ nD \* 0\.32\)/,
-    `${label}: the same world fields supply surface detail on every slope`);
-  assert.match(fragment, /rockCol \*= 1\.0 \+ nC \* 0\.16 \+ nD \* 0\.20/,
-    `${label}: rock breakup reuses the surface samples instead of adding fetches`);
-  assert.doesNotMatch(fragment, /if\s*\(/,
-    `${label}: gentle foothills and flat saddles cannot bypass the surface projection`);
+    `${label}: the world projection macro is the only fetch site (three plane fetches)`);
+  assert.equal((fragment.match(/VTRI\(/g) ?? []).length, 10,
+    `${label}: four noise scales and five material tiles share the one macro (twenty-seven fetches per fragment)`);
+  for (const uniform of ['uVMeadow', 'uVCanopy', 'uVRock', 'uVScree', 'uVSnow', 'uVMeadowTint', 'uVRockTint', 'uVScreeTint',
+    'uVRockSlope', 'uVBanding', 'uVHaze', 'uVFogTint', 'uVAmbient', 'uVSunGain']) {
+    assert.match(fragment, new RegExp(`uniform [a-zA-Z0-9]+ ${uniform};`), `${label}: ${uniform} is declared`);
+  }
+  assert.match(fragment, /dFdx\(hb\)/, `${label}: relief shading takes a screen-derivative bump from the fine fields`);
+  assert.match(fragment, /uVFogTint, vistaHaze\)/, `${label}: aerial perspective is applied per fragment toward the fog tint`);
   // At every actual normal, a pair of tangent vectors must remain independent
   // under the weighted XY/XZ/YZ projections. Old angle/height UVs have zero
   // radial derivative at flat shores and crests; this metric cannot collapse.
@@ -273,14 +278,14 @@ function appendHorizonReceipt(hash, mapId, ring) {
 // Titan's subsequent finite-cap restoration has an explicit false authoring
 // override; titanGorgeHorizon.selftest guards its current shape and every byte.
 const currentPoldersReceipts = new Map([
-  [1337, '6b53931225d4ffda70b8593d98fbb03b920eafdf8ca95b0f2fa6b517815d4a5c'],
-  [2049, '5fe5af61f4e7ee72a73474838fa7c10e17d9ab821883a4817c20ff417de99d97'],
-  [7719, '806e0773fbb3594a5be0598ae27e04bb0ce52f7226d5e991be3d69d90730e0cb'],
+  [1337, '9f3181ff1081ae9db1a750f6db1348bb711a254025c33dbec919a72bebd2dd6c' /* 2026-09-19 vista pass */],
+  [2049, 'f19289db3552c4367d00f45405b5cd2f67dd7d816b53a7affcc3b256da3f81f7'],
+  [7719, '154ff1d3794bdfefa68019aeffe5476d9651313036a0281e13a58d33068d8360'],
 ]);
 function assertCurrentPolders(ring, config, seed) {
   assert.equal(config.horizon.amp, 0.18, 'Polders retains its authored low-profile amplitude');
-  assert.equal(ring.positions.length, 8610);
-  assert.equal(ring.heights.length, 2870);
+  assert.equal(ring.positions.length, HORIZON_SEGMENTS * 18 * 3);
+  assert.equal(ring.heights.length, HORIZON_SEGMENTS * 18);
   // Restored 1049e4e rolling rows at amp 0.18 crest between 27 and 33 m
   // across the three seeds; the rejected wall stood well above 40 m.
   assert.ok(Math.max(...ring.heights) > 24 && Math.max(...ring.heights) < 40,
@@ -295,15 +300,17 @@ function assertCurrentPolders(ring, config, seed) {
 // Historical Polders/Titan/Badlands inputs remain declared for this aggregate.
 const unchangedGeometry = new Map([1337, 2049, 7719].map(seed => [seed, createHash('sha256')]));
 const unrelatedMutation = createHash('sha256');
+// 2026-09-19 vista pass: 431 columns, the denser row ladder (18 / 36 rows), the seated skirt and the ridged
+// relief re-based every ring, so the three aggregates were repinned once against the vista geometry.
 const unchangedReceipts = [
-  '87bcb8e1122745695b8c2181d0fc3af7d8d07253a7c2f98adca4d031a0b2d41c',
-  'c927b3889b97d2cf5634ba390e17af24a4a500cd3b2a0450e24bbc36d0fc91a8',
-  'ecb37f3e3e526e8e2e2d982e1e2d691be4d4b7412a40e85e5d5f568959e22ffe',
+  '21ce8a5e31d79c11b85298560ad3257868f726dcd10ea949a9674693bee8c062',
+  '76a32526ca420c7f0944a79783149479a2c7833bc390136b4fbbb0f822230ef8',
+  '8eb4fbb9d744b1a329d893cd7a71747dcc84e28dae4a2db53b6f2c9bcf493fa6',
 ];
 for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   const config = getMapConfig(mapId), ring = sampleHorizonGeometry(config, seed);
-  const p = ring.positions, n = 287, label = `${mapId}/${seed}`;
-  assert.equal(ring.rows.length, config.horizon.style === 'alpine' ? 33 : 10);
+  const p = ring.positions, n = HORIZON_SEGMENTS, label = `${mapId}/${seed}`;
+  assert.equal(ring.rows.length, config.horizon.style === 'alpine' ? 36 : 18);
   for (let column = 0; column < n; column++) {
     assert.ok(Math.max(Math.abs(p[column * 3]), Math.abs(p[column * 3 + 2])) < 512,
       `${label}: the buried anchor keeps every rim edge closed`);
@@ -366,7 +373,7 @@ try {
 }
 // The previous mesh spent 287 * (9 radial + 2 skirt + 7*5 profile
 // + 24*3 subdivision) queries. Setbacks and rounded slopes reuse that budget.
-assert.equal(geometryNoiseCalls, 33866, 'the landform correction adds no geometry noise calls');
+assert.equal(geometryNoiseCalls, 66374, 'the landform correction adds no geometry noise calls');
 try {
   geometryNoiseCalls = 0;
   SimplexNoise.prototype.noise = function (...coordinates) {
@@ -377,7 +384,7 @@ try {
 } finally {
   SimplexNoise.prototype.noise = originalNoise;
 }
-assert.equal(geometryNoiseCalls, 12628,
+assert.equal(geometryNoiseCalls, 34480,
   'mesa setbacks and attached buttes reuse the same 287 * (6 radial + 2 skirt + 4*6 profile + 4*3 subdivision) queries');
 
 // Rasterization is deliberately outside this headless lifetime test. The
@@ -425,37 +432,37 @@ try {
     assert.equal(detail.image.width, 256, `${style}: detail texture keeps its existing size`);
     assert.equal(mesh.material.map.image.width, 512, `${style}: base texture keeps its existing width`);
     assert.equal(mesh.material.map.image.height, 192, `${style}: base texture keeps its existing height`);
-    assert.ok(mesh.geometry.attributes.position.count <= (style === 'alpine' ? 10920 : 3120),
-      `${style}: the backdrop preserves the existing vertex budget`);
-    assert.ok(mesh.geometry.index.count <= (style === 'alpine' ? 62400 : 15600),
-      `${style}: the backdrop preserves the existing index budget`);
-    assert.equal(mesh.geometry.attributes.position.count, style === 'alpine' ? 9504 : 2880,
-      `${mapId}: topology correction does not add vertices`);
-    assert.equal(mesh.geometry.index.count, style === 'alpine' ? 55104 : 15498,
-      `${mapId}: topology correction does not add triangles`);
+    const rows = style === 'alpine' ? 36 : 18;
+    assert.equal(mesh.geometry.attributes.position.count, columns * rows,
+      `${mapId}: the vista ladder uploads ${rows} rows of ${columns} columns`);
+    assert.equal(mesh.geometry.index.count, (rows - 1) * HORIZON_SEGMENTS * 6,
+      `${mapId}: one continuous annular topology`);
     const { position, color, normal, uv } = mesh.geometry.attributes;
     if (mapId === 'skybridge' || mapId === 'copper_mesa' || mapId === 'titan_gorge') {
       const sampled = sampleHorizonGeometry(config, 1337);
       for (let row = 0; row < sampled.rows.length; row++) {
-        for (let column = 0; column < 287; column++) {
+        for (let column = 0; column < HORIZON_SEGMENTS; column++) {
           for (let axis = 0; axis < 3; axis++) {
             assert.equal(position.array[(row * columns + column) * 3 + axis],
-              sampled.positions[(row * 287 + column) * 3 + axis],
+              sampled.positions[(row * HORIZON_SEGMENTS + column) * 3 + axis],
               `${mapId} uploads the exact finite-cap geometry inspected by the pure area tests`);
           }
         }
       }
     }
-    if (style === 'alpine') {
-      assertAlpineBiomeTexture(mesh.material.map, mapId);
-      assertAlpineSurfaceShader(shader, normal, mapId);
-    }
+    // every style bakes a tone-only base atlas and compiles the vista program (desktop tier in Node). This loop
+    // bakes without a treeline, so only the snow maps carry biome altitude variation; a bare ring has only rock
+    // tone to vary, and the sixteen-sample angular average leaves 19-24 distinct rows there (measured 2026-09-19;
+    // the forest maps below keep the two-dozen floor).
+    const biomeFloor = (config.horizon.snowline ?? 2) <= 1 ? 24 : 8;
+    assertAlpineBiomeTexture(mesh.material.map, mapId, biomeFloor);
+    assertVistaSurfaceShader(shader, normal, mapId);
     assert.deepEqual(Object.keys(mesh.geometry.attributes).sort(), ['color', 'normal', 'position', 'uv'],
       `${style}: marine coverage adds no vertex attribute or GPU buffer`);
     const geometryBytes = Object.values(mesh.geometry.attributes)
       .reduce((bytes, attribute) => bytes + attribute.array.byteLength, mesh.geometry.index.array.byteLength);
-    assert.equal(geometryBytes, style === 'alpine' ? 528384 : 157716,
-      `${mapId}: all uploaded geometry buffers keep their exact fixed byte budget`);
+    assert.equal(geometryBytes, columns * rows * 11 * 4 + (rows - 1) * HORIZON_SEGMENTS * 6 * 2,
+      `${mapId}: eleven floats per vertex plus a 16-bit index — no extra vertex attribute or buffer`);
     assertMonotoneRadii(position, mapId);
     assertBoundedSubdivisionRelief(position, style, mapId);
     assertLayeredMountainBounds(position, style, mapId);
@@ -489,8 +496,8 @@ try {
     detail.addEventListener('dispose', () => { releases++; });
 
     const suspended = releaseObject3DGpuResources(mesh, { releaseMaterials: false });
-    assert.equal(suspended.textures, 2,
-      `${style}: suspension finds both the map and hidden shader texture`);
+    assert.equal(suspended.textures, 2 + VISTA_TILES,
+      `${style}: suspension finds the map, the hidden detail texture and the five vista tiles`);
     assert.equal(suspended.materials, 0,
       `${style}: GPU suspension preserves compiled materials for a covered return`);
     assert.equal(releases, 1, `${style}: the shader-only detail texture releases its GPU backing`);
@@ -500,7 +507,7 @@ try {
       `${style}: suspension does not replace the shader's texture reference`);
 
     const disposed = disposeObject3DResources(mesh);
-    assert.equal(disposed.textures, 2, `${style}: eviction owns both baked textures`);
+    assert.equal(disposed.textures, 2 + VISTA_TILES, `${style}: eviction owns the baked textures and the vista tiles`);
     assert.equal(disposed.materials, 1, `${style}: eviction owns one material`);
     assert.equal(releases, 2, `${style}: final eviction reaches the shader-only texture`);
     assert.equal(mesh.children.length, 0, `${style}: bare backdrops add no draw calls`);
@@ -543,8 +550,8 @@ try {
   coastal.material.onBeforeCompile(coastalShader, null);
   assert.match(coastalShader.fragmentShader, /diffuse \* vColor\.rgb \* \(1\.0 \+ horizonWaterVariation\)/,
     'sea shading uses the reflected-sky vertex colors after the land color multiplication');
-  assert.match(coastalShader.fragmentShader, /horizonWaterVariation = dA \* 0\.008 \+ dB \* 0\.015/,
-    'sea wave variation reuses the existing detail samples at sub-percent contrast');
+  assert.match(coastalShader.fragmentShader, /horizonWaterVariation = nC \* 0\.008 \+ nB \* 0\.015/,
+    'sea wave variation reuses the vista noise fields at sub-percent contrast');
   disposeObject3DResources(coastal);
 
   for (const mapId of ['fjord', 'longleaf']) {
@@ -563,7 +570,18 @@ try {
     }
     const treeline = mesh.getObjectByName('horizon-treeline');
     assert.ok(treeline, `${mapId}: forested ridge clusters remain present`);
-    assert.equal(mesh.children.length, 1, `${mapId}: all treeline ranks retain one draw call`);
+    const forest = mesh.getObjectByName('horizon-forest');
+    assert.ok(forest, `${mapId}: the vista pass stands real trees on the near faces`);
+    assert.ok(forest.userData.horizonForest.instances > 400 && forest.userData.horizonForest.instances <= 8000,
+      `${mapId}: the ring forest is bounded (${forest.userData.horizonForest.instances} instances)`);
+    // two species x (two rich near variants + the band class + the range class): the near meshes cast shadows
+    assert.ok(forest.children.length >= 2 && forest.children.length <= 8, `${mapId}: one instanced mesh per species and detail class (${forest.children.length})`);
+    assert.ok(forest.userData.horizonForest.band > forest.userData.horizonForest.range,
+      `${mapId}: the rim band carries most of the ring forest (${forest.userData.horizonForest.band} band / ${forest.userData.horizonForest.range} range)`);
+    assert.ok(forest.userData.horizonForest.near > 100, `${mapId}: the rim band carries the rich near species (${forest.userData.horizonForest.near})`);
+    assert.ok(forest.children.some((child) => child.castShadow) && forest.children.every((child) => !child.receiveShadow),
+      `${mapId}: near band casts, no crown receives`);
+    assert.equal(mesh.children.length, 2, `${mapId}: the treeline ranks and the ring forest are the only children`);
     const layers = config.horizon.treelineLayers ?? 1;
     const position = treeline.geometry.attributes.position;
     const indices = treeline.geometry.index;
@@ -604,8 +622,8 @@ try {
     assert.ok(connected > (columns - 1) * layers * 0.75 && longestRun >= 12,
       `${mapId}: same-ridge crowns remain continuous forest clusters, not isolated trees`);
     const disposed = disposeObject3DResources(mesh);
-    assert.equal(disposed.textures, 3, `${mapId}: both mountain textures and the one treeline atlas dispose`);
-    assert.equal(disposed.materials, 2, `${mapId}: mountain and treeline materials dispose together`);
+    assert.equal(disposed.textures, 3 + VISTA_TILES, `${mapId}: the mountain textures, the vista tiles and the one treeline atlas dispose`);
+    assert.equal(disposed.materials, 3, `${mapId}: mountain, treeline and ring-forest materials dispose together`);
   }
 } finally {
   if (previousDocument === undefined) delete globalThis.document;

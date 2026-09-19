@@ -2134,7 +2134,8 @@ function buildOakFarGeometry(
   fvi = 0,
 ): FarTreeGeometryPair {
   const cp = pal.canopy || {};
-  const hue = cp.hue ?? 0.24, sat = cp.sat ?? 0.30, l0 = cp.l0 ?? 0.235, l1 = cp.l1 ?? 0.36;
+  // vista pass (2026-09-19): a touch darker and more saturated, matching the leafy near cards at the LOD edge
+  const hue = cp.hue ?? 0.24, sat = cp.sat ?? 0.37, l0 = cp.l0 ?? 0.205, l1 = cp.l1 ?? 0.31;
   const trunkParts: THREE.BufferGeometry[] = [], canopyParts: THREE.BufferGeometry[] = [];
   // r3: far variant 1 is a taller, narrower crown (matches the near
   // columnar shape) so distant stands mix two silhouettes
@@ -2193,7 +2194,9 @@ function buildPineFarGeometry(
   pal: VegetationPalette = {},
 ): FarTreeGeometryPair {
   const cp = pal.canopy || {};
-  const hue = cp.hue ?? 0.315, sat = cp.sat ?? 0.26, l0 = cp.l0 ?? 0.215, l1 = cp.l1 ?? 0.33;
+  // vista pass (2026-09-19): far crowns sat a stop paler than the leafy near cards; darker, more saturated
+  // needles, 4-5 unequal tiers and six tufts break the lathe-cone read at range
+  const hue = cp.hue ?? 0.315, sat = cp.sat ?? 0.36, l0 = cp.l0 ?? 0.165, l1 = cp.l1 ?? 0.27;
   const trunkParts: THREE.BufferGeometry[] = [], canopyParts: THREE.BufferGeometry[] = [];
   const trunk = new THREE.CylinderGeometry(0.22, 0.40, 2.2, 5, 1); // r6: see oak far trunk
   shapeFarTreeBase(trunk, 1.9);
@@ -2203,27 +2206,27 @@ function buildPineFarGeometry(
   // r7: randomized tier count/placement + deeper jitter — the fixed 3-tier
   // table stamped the same lathe-perfect stacked-cone silhouette on every
   // instance ("dozens of identical stacked cones" critique)
-  const nTier = 3 + ((rng() * 2) | 0);
+  const nTier = 4 + ((rng() * 2) | 0);
   const baseY = 1.2 + rng() * 0.5;
   const topYf = 5.6 + rng() * 0.9;
   for (let ti = 0; ti < nTier; ti++) {
     const tt = ti / (nTier - 1);
     const y = baseY + (topYf - baseY) * tt * (0.9 + rng() * 0.2) - 0.5;
-    const r = ((1 - tt) * 1.35 + 0.45) * (0.8 + rng() * 0.45);
+    const r = ((1 - tt) * 1.35 + 0.45) * (0.72 + rng() * 0.62);
     const h = 1.6 + (1 - tt) * 1.2 + rng() * 0.5;
     // PERF (performance_budget r3): 8x2 closed cone -> 7x1 open cone (40 ->
     // 21 tris). The base cap is never visible from gameplay camera heights
     // and the tier stack hides the lost height ring; jitter keeps the
     // silhouette ragged. See the oak-lobe decimation note above.
-    const cone = new THREE.ConeGeometry(r, h, 7, 1, true);
-    jitterFarShell(cone, rng, 0.36);
+    const cone = new THREE.ConeGeometry(r, h, 9, 1, true);
+    jitterFarShell(cone, rng, 0.50);
     sphereNormals(cone, 0, h * -0.25, 0, 0.75); // radial+up: lit side / sky-filled side
     cone.translate((rng() - 0.5) * 0.55, y + h / 2, (rng() - 0.5) * 0.55);
     canopyParts.push(paintCanopy(cone, hue, sat, l0, l1, 1.2, 6.6, rng, 0.35));
   }
   // r5: a few branch-tuft satellites poking through the tier line so the far
   // pine silhouette is ragged like the near card LOD, not a lathe object
-  for (let b = 0; b < 4; b++) {
+  for (let b = 0; b < 6; b++) {
     const a = rng() * Math.PI * 2, ty = 1.8 + rng() * 3.4;
     const t = (ty - 1.2) / 5.4;
     const rr = (1.0 - t) * 1.5 + 0.35;
@@ -3627,7 +3630,7 @@ function* vegetationBuildSteps(
   // FrontSide culled half of them at any azimuth (closed lobe canopies are
   // unaffected beyond a little overdraw)
   canopyFarMat.side = THREE.DoubleSide;
-  canopyFarMat.envMapIntensity = 1.35;
+  canopyFarMat.envMapIntensity = 1.08; // vista pass (2026-09-19): 1.35 read as pale mint at range
   // r4 terrain_environment: the far-LOD lobes were SMOOTH-SHADED SOLIDS —
   // beyond 260 m every crown read as a "playdough broccoli" blob with a
   // clean round silhouette (the single loudest AAA failure in the critique).
@@ -3682,6 +3685,15 @@ function* vegetationBuildSteps(
         float leaf = lA * 0.6 + lB * 0.4;
         diffuseColor.rgb *= 0.74 + leaf * 0.56; // leaf-clump value breakup
         float ndv = abs(dot(normalize(vNormal), normalize(vViewPosition)));
+        // vista pass (2026-09-19): the 0.9 m clumps mip to their mean past ~150 m, which left every far crown a
+        // smooth lathe cone. Two metre-scale clump fields (about 3 m and 9 m) keep massed foliage readable to the
+        // horizon, and a rim darkening rounds the crown as a volume instead of a flat cut-out.
+        float lC = texture2D(uCanopyDet, vCanW.xz * 0.055 + vec2(0.31, 0.77)).r;
+        float lD = texture2D(uCanopyDet, vec2(vCanW.x * 0.019 + 0.53, vCanW.y * 0.023 + 0.11)).r;
+        float bigLeaf = lC * 0.55 + lD * 0.45;
+        diffuseColor.rgb *= 0.80 + bigLeaf * 0.46;
+        float rim = 1.0 - ndv;
+        diffuseColor.rgb *= 1.0 - rim * rim * 0.30;
         // silhouette erosion: ragged leafy crown edges (interior untouched).
         // aa-r1: erosion now FADES OUT with view distance (full to 380 m,
         // gone by 540 m). The discard raggedness is leaf-scale — beyond
@@ -3695,7 +3707,7 @@ function* vegetationBuildSteps(
       }`);
   };
   engineCtx.setupShadowMaterial(canopyFarMat, farCanopyHook);
-  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v14';
+  canopyFarMat.customProgramCacheKey = () => 'world-tree-canopyfar-v15';
   yield { stage: 'treePrep', fine: true };
 
   // r3 terrain_environment: SILHOUETTE variant tables. Every near/far

@@ -22,7 +22,9 @@ function requireIntegration(source) {
   // Mesa to remain the first textual ternary branch.
   const cacheAssignment = source.match(/mat\.customProgramCacheKey = (\(\) => [^;]+);/);
   assert.ok(cacheAssignment, 'The material declares its custom shader cache identity');
-  const cacheKey = new Function('mapId', 'style', `return (${cacheAssignment[1]})();`);
+  // Vista pass (2026-09-19): the desktop tier compiles one vista program per style; `tiles` is the vista's tile
+  // set (null on the mobile tier, which keeps the legacy identities below).
+  const cacheKey = new Function('mapId', 'style', 'tiles', `return (${cacheAssignment[1]})();`);
   // round 22 (2026-09-18): the mesa / rolling / escarpment programs gained the near-field surface block
   // (grain, rock bare, relight within 650 m of the camera), so those identities moved one revision; the
   // alpine world-surface program is exempt and keeps its identity
@@ -34,13 +36,14 @@ function requireIntegration(source) {
   };
   for (const [style, expected] of Object.entries(styleKeys)) {
     for (const mapId of ['titan_gorge', 'desert', 'winter', 'coastal', 'verdant']) {
-      assert.equal(cacheKey(mapId, style), expected, 'Style cache identities remain exact and carry no map-specific branch');
+      assert.equal(cacheKey(mapId, style, null), expected, 'Style cache identities remain exact and carry no map-specific branch');
+      assert.equal(cacheKey(mapId, style, {}), 'horizon-ring-vista-r1-' + style, 'The vista program carries one identity per style');
     }
   }
   assert.doesNotMatch(source, /VERDANT_HORIZON_FRAGMENT|verdant-classic|horizon-verdant-watershed/,
     'The rejected Verdant-only watershed fragment, alias and cache identity stay retired');
-  assert.match(source, /'#include <map_fragment>', style === 'alpine' \? ALPINE_HORIZON_MAP_FRAGMENT/,
-    'Fragment dispatch is by style: alpine world-surface, then the mesa/generic recipe');
+  assert.match(source, /'#include <map_fragment>', tiles \? HORIZON_VISTA_FRAGMENT : style === 'alpine' \? ALPINE_HORIZON_MAP_FRAGMENT/,
+    'Fragment dispatch: the vista program on the desktop tier, else by style (alpine world-surface, then the mesa/generic recipe)');
 }
 const integration = readFileSync(new URL('./maps/horizon.ts', import.meta.url), 'utf8');
 requireIntegration(integration);
@@ -135,8 +138,8 @@ assert.throws(() => requireIntegration(integration.replace("${style === 'mesa' ?
   '${true ? HORIZON_MESA_SURFACE_FRAGMENT')), { code: 'ERR_ASSERTION' }, 'Unrelated styles cannot inherit the added ALU');
 assert.throws(() => requireIntegration(integration.replace('horizon-ring-mesa-surface-r3', 'horizon-ring-relief-r3-mesa')),
   { code: 'ERR_ASSERTION' }, 'Stale shader cache identity is rejected');
-assert.throws(() => requireIntegration(integration.replace("'#include <map_fragment>', style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT",
-  "'#include <map_fragment>', mapId === 'verdant' ? ALPINE_HORIZON_MAP_FRAGMENT : style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT")),
+assert.throws(() => requireIntegration(integration.replace("'#include <map_fragment>', tiles ? HORIZON_VISTA_FRAGMENT : style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT",
+  "'#include <map_fragment>', mapId === 'verdant' ? ALPINE_HORIZON_MAP_FRAGMENT : tiles ? HORIZON_VISTA_FRAGMENT : style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT")),
 { code: 'ERR_ASSERTION' }, 'A map-specific fragment branch cannot silently return');
 console.log('horizonMesaSurface: existing-input-only recipe, exact non-mesa/cap/sea paths, bounded broken beds, derivative fade, mesa-only integration/cache and negative controls PASS',
   JSON.stringify({ minimum, maximum, altered, nativeVisualAcceptance: 'not measured by this CPU test' }));

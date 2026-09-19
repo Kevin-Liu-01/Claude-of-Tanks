@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
-import { sampleHorizonGeometry } from './maps/horizon.ts';
+import { HORIZON_SEGMENTS, sampleHorizonGeometry } from './maps/horizon.ts';
 
 // Pinned dba1c5ce3 decomposition: every other map is unchanged, and the
 // explicit historical Titan input reproduces its actual original buffers.
@@ -9,21 +9,24 @@ const seeds = [1337, 2049, 7719];
 // Pre-restoration 28d5fd378 executable, excluding restored Verdant.
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 const originalOther28 = [
-  '20866eaa8e206a63b97fc3ff1c5c1210543845af12e69c1959bd9872c74eecd1' /* 2026-09-19: Mars joins the other maps */,
-  '2c89866124afd7de32b390fbaf8cfc3113ba253e7c2ccf1c136b009bed5ba787',
-  '69b1ece20ba10f669d8609f078bb8623a2f68ffcc91226217697d1699b147a75',
+  '7ed2818858c26c876d7190e57dbdcebb20ebfe382de08a5aba0c06864045ce09' /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass */ /* 2026-09-19 vista pass: 431-column, 18/36-row ring with ridged relief and 700 m first ridge */ /* 2026-09-19: Mars joins the other maps */,
+  'e8e47254d288ab503af46c72809d0147d36d262f51622f405cd694b388f7d06d',
+  '98398c21a824d10e54cde885c4e47901968e3881c0bb293331a49f4d9ce533a4',
 ];
 const originalTitan = [
-  '81e1c753bf17ed4b8e69084cfb003ebedc7daeb0f46f4fff53244d90fa79fcdc',
-  'e8f95e127ed9d1e0ef1d5e2ec675d6926ac18965d18c778db7eef96e2e721ca8',
-  '84f66e0b774f36015de95e993cc0fb66f70116b49db0f09b28f37c4b16b69933',
+  '635016c553e64bcd1a1ace7fa905169d68c87af08d89e709ea8755f439917b39',
+  'e40f5365cef99b8ca2cebf3c22410cbcd0d9939edfe6430cc593eeaa4d94a40e',
+  '692c46b486f83d97813c956dd080596335ab9182c8502d7bcd37b3de35948872',
 ];
 const currentTitan = [
-  '9d9ba1f1cf888e642db83c60452fc1a16069aa1a50d4f4826cce54b0320fc4ff',
-  '6ab763008f0f197a1adc33f5c21261de692313d05c32714b8d4a6ec22d193543',
-  '4b740c01587b115c887bc4e7a1902cef0e7e5a1c27c3c5a2ab9341e1f9ad0130',
+  '0cde122cda2d72075ffeac957d371529b6bb90a72ea6756a35719c945d2d5303',
+  '65e39754404e0228c8170bac0c5a84b59fb1e5cb22549d2019336083a9e08eb7',
+  '7d52a7c0fffad6ee980cad4e7efeece70c5de6d29e51ecea1b4c90875afb8452',
 ];
-const n = 287;
+// Vista pass (2026-09-19, owner: 'consider this a triple AAA pass'): the ring ladder is 431 columns and 18 / 36 rows with
+// ridged relief, the first ridge stands 700-720 m out and the skirt seats on the terrain; every geometry receipt below is
+// re-established at this commit (the 1049e4e byte identity it guarded is superseded by that owner direction).
+const n = HORIZON_SEGMENTS;
 const config = getMapConfig('titan_gorge');
 const historicalConfig = { ...config, horizon: { ...config.horizon, finiteTableCaps: false } };
 
@@ -40,7 +43,7 @@ function capSurfaces(ring) {
   // Restored 1049e4e rows sit closer together (row 4 -> 5 spans about 58 m
   // instead of 360 m), so the near table's cap depth and plan area scale down
   // while the outer table keeps its former depth.
-  for (const [top, minimumDepth] of [[5, 40], [9, 90]]) {
+  for (const [top, minimumDepth] of [[9, 40], [17, 90]]) {
     const capLevel = (ring.rows[top].base + ring.rows[top].amp * 0.60) * config.horizon.amp;
     let area = 0, quads = 0, run = 0, longestRun = 0;
     for (let c = 0; c < n * 2; c++) {
@@ -61,7 +64,8 @@ function capSurfaces(ring) {
       }
       area += Math.abs(doubleArea) / 2; quads++;
     }
-    assert.ok(quads >= 35 && longestRun >= 8 && area > (top === 5 ? 90000 : 150000),
+    // vista pass: 431 columns make each cap quad narrower; measured near 45k-129k m2 / outer 147k-614k m2 over three seeds
+    assert.ok(quads >= 35 && longestRun >= 8 && area > (top === 9 ? 40000 : 120000),
       `Titan range${top}: broad upper cap surfaces, not narrow flat apexes or low valley floors (${quads} quads, ${Math.round(area)} m2)`);
     const crest = Array.from({ length: n }, (_, c) => y(top, c));
     // Restored 1049e4e tables: passes drop at least 60 m below the cap level
@@ -81,7 +85,7 @@ function capSurfaces(ring) {
       if (row >= 2) assert.ok((y(row, c) - y(row - 1, c)) / span < 4.5,
         'No return to steep unbounded canyon sheets');
     }
-    for (const [a, b] of [[2, 3], [3, 4], [4, 5], [7, 8], [8, 9]]) {
+    for (const [a, b] of [[5, 6], [6, 7], [7, 8], [8, 9], [13, 14], [14, 15], [15, 16], [16, 17]]) {
       assert.ok((y(b, c) - y(a, c)) / (radius(b, c) - radius(a, c)) <= 1.251,
         'Reused approach/buttress rows bound the rise into the broad cap');
     }
@@ -113,18 +117,20 @@ for (const [index, seed] of seeds.entries()) {
     'Historical opt-out preserves the exact pre-cap Titan fixture, not a reconstructed approximation');
   assert.equal(ring.positions.constructor, Float32Array);
   assert.equal(ring.heights.constructor, Float32Array);
-  assert.equal(ring.positions.length, 8610); assert.equal(ring.heights.length, 2870);
-  assert.deepEqual(ring.rows, historical.rows, 'Same10 source rows and metadata');
+  assert.equal(ring.positions.length, n * 18 * 3); assert.equal(ring.heights.length, n * 18);
+  assert.deepEqual(ring.rows, historical.rows, 'Same 18 source rows and metadata');
   assert.equal(ring.maxHeight, historical.maxHeight, 'Same color/texture height normalization');
-  const alteredHeightRows = new Set([3, 4, 5, 6, 8, 9]);
+  // approach rows, crest, back rows of the near table; approach rows and crest of the outer table
+  const alteredHeightRows = new Set([6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17]);
+  const movedRows = new Set([6, 7, 8, 14, 15, 16]);
   for (let vertex = 0; vertex < ring.heights.length; vertex++) {
     const row = Math.floor(vertex / n);
     assert.equal(ring.heights[vertex], ring.positions[vertex * 3 + 1]);
     if (!alteredHeightRows.has(row)) assert.equal(ring.heights[vertex], historical.heights[vertex],
       'The buried seam, foothills and intervening basin remain exact');
-    if (row !== 4 && row !== 8) for (const axis of [0, 2]) {
+    if (!movedRows.has(row)) for (const axis of [0, 2]) {
       assert.equal(ring.positions[vertex * 3 + axis], historical.positions[vertex * 3 + axis],
-        'Only the two existing cap-front rows may move horizontally');
+        'Only the approach and cap-front rows may move horizontally');
     }
   }
   const caps = capSurfaces(ring);
@@ -133,7 +139,7 @@ for (const [index, seed] of seeds.entries()) {
   assert.equal(appendReceipt(createHash('sha256'), 'titan_gorge', ring).digest('hex'), currentTitan[index],
     'Current cap/buttress geometry stays exact after intentional shape verification');
   const narrowed = { ...ring, positions: ring.positions.slice(), heights: ring.heights.slice() };
-  for (const row of [4, 8]) for (let c = 0; c < n; c++) {
+  for (const row of [8, 16]) for (let c = 0; c < n; c++) {
     narrowed.positions[(row * n + c) * 3 + 1] -= 8;
     narrowed.heights[row * n + c] -= 8;
   }

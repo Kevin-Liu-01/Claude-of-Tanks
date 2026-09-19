@@ -1,4 +1,4 @@
-import { bindAutumnHorizonGround } from './horizonAutumnGround.ts';
+import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
 // src/world/terrain.ts — 1 km simplex heightfield + chunked LOD meshes + splat-blended
@@ -16,7 +16,7 @@ import {
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { applySourcedTerrain, prepareSourcedTerrain, resolveSourcedTerrainPalette, type TerrainPaletteId,
   type TerrainSourcePreparation } from './sourcedTextures.ts';
-import { buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
+import { HORIZON_SEGMENTS, buildHorizonRingSteps, type HorizonMapConfig } from './maps/horizon.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
@@ -2547,6 +2547,11 @@ void splatCompute() {
   vec3 wn = normalize(vWNormal);
   vec2 mUV = (wp.xz + 512.0) * (1.0 / 1024.0);
   vec4 mk = texture2D(uMask, mUV);
+  // vista pass (2026-09-19): the horizon ring's rim bands render with this material past the playable square,
+  // where the clamped mask edge would drag any rim road, shoulder or town wear outward as a radial streak;
+  // fade those channels to open ground there (the landform/marsh channel keeps its edge value)
+  float outsideW = smoothstep(0.0, 36.0, max(abs(wp.x), abs(wp.z)) - 512.0);
+  mk = mix(mk, vec4(0.0, 0.0, mk.b, 0.0), outsideW);
   // r6 terrain_environment: on landform-gated maps (desert) the mask B
   // channel carries the MESA/RIM weight instead of marsh/ice — decode it and
   // zero the marsh weight so none of the wet/ice paths fire on sand.
@@ -3506,6 +3511,8 @@ function* createSplatMaterialSteps(
 ): Generator<void | TerrainSourceCheckpoint, {
   material: THREE.MeshStandardMaterial; textures: THREE.Texture[];
   waterMask: THREE.Texture; waterNormal: THREE.Texture;
+  /** Settles when the sourced textures have replaced the procedural layers in place (or failed to). */
+  sourcedReady?: Promise<void>;
 }, void> {
   const S = splatCfg || {};
   const rockMask = selectTerrainLandformMask(S, landformW);
@@ -3643,7 +3650,7 @@ function* createSplatMaterialSteps(
   return { material: mat, waterMask: mask, waterNormal: wet.normal, textures: [
     grass.albedo, grass.normal, dirt.albedo, dirt.normal,
     rock.albedo, rock.normal, wet.albedo, wet.normal, mask, noiseTex,
-  ] };
+  ], sourcedReady: sourcedTexturesReady.then(() => undefined, () => undefined) };
 }
 
 // ---------------------------------------------------------------------------
@@ -3969,8 +3976,20 @@ function* terrainBuildSteps(
     }
   }
   const { material: mat, textures: splatTextures } = materialStep.value;
-  if (cfg?.id === 'autumn') bindAutumnHorizonGround(
-    horizonStep.value, mat, splatTextures);
+  // Vista pass (2026-09-19): every map renders its rim bands up to the first ridge crest with the terrain
+  // material (Autumn led the way), and the vista's meadow takes the ground albedo's tone — again once the sourced
+  // textures replace the procedural layers in place.
+  {
+    const horizonMesh = horizonStep.value;
+    const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
+    // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
+    if (ringInfo) {
+      bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
+        columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
+      });
+      void materialStep.value.sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0]));
+    }
+  }
   const chunks: TerrainChunk[] = [];
   const terrainIndexPool: TerrainIndexPool = new Map();
   // Alternative LOD geometries are retained in `chunks` even when another

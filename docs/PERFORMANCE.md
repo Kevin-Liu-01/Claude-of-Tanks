@@ -1070,6 +1070,26 @@ sub-20 fps under load put it past the acceptable line. Re-measure on a quiet mac
 the limit (`sim/matchRuleset.ts`, `docs/GAME-MODES.md` "Sides"). The loading screen's reveal budget
 scales with the field for the same reason (`game/battleEntryLifecycle.ts` `revealTimeoutForField`).
 
+## Vista pass — 2026-09-19
+
+The horizon vista pass (round 24: 431-column ring with a subdivided ridged ladder, the layered world-anchored
+vista material, terrain-material rim bands and an 8000-instance ring forest — ARCHITECTURE.md §3.1.3) was
+measured with the same field probe as the sides switch (`.qa-dev/field-perf-probe.mjs`, `m1a2` on `verdant`,
+6 v 7, 15 s live, headless Chromium on ANGLE, `tier=desktop`), the vista worktree against main at cc2b452dc, back
+to back on the M5 Max desktop under a 1-minute load of 35–40 from other sessions:
+
+| Build | Live fps | Gap p50 | p90 | p99 | Perf HUD fps / p50 / p95 | Entry → live |
+| --- | --- | --- | --- | --- | --- | --- |
+| main cc2b452dc | 56.8 | 16.9 ms | 20.2 | 31.0 | 54.9 / 16.7 / 25.2 | 17.4 s |
+| vista pass | 55.0 | 17.3 ms | 21.3 | 33.4 | 52.5 / 16.9 / 25.7 | 18.7 s |
+
+The forest is one draw per species and detail class (eight InstancedMeshes; the four near-class meshes cast into
+the cascade): about 1500 rich crowns (≈180 triangles), 4500 rim-band crowns (≈70) and 2000 range crowns (≈25), some
+0.6 M triangles in total, so the frame gap moves by well under a millisecond at the median and about 2 ms at p99 —
+inside the run-to-run noise of a loaded machine. The tone-only base atlas takes 3,072 recipe samples instead of
+98,304 per map, and the five vista tiles are authored once per page. Mobile keeps the older per-vertex ring programs
+and no ring forest (`maxInstances` 0 below the desktop tier).
+
 ## Reporting a performance result
 
 Record:
