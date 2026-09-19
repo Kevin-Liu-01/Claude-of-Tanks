@@ -73,5 +73,9 @@ for(const [comment,other]of[
 }
 rejectMutation('wheelR:.371,wheelW:.38,wheelY:.446','wheelR:.371,wheelW:.38,wheelY:.447',
   'Unrelated road-axle geometry drift');
+rejectMutation("P.add('turret', module);","P.addExternalArmor('turret', module);",
+  'Permanent repaired cheek cannot be reclassified as depleted ERA');
+rejectMutation('outerWorldX: Object.freeze([1.82,1.72,1.36])',
+  'outerWorldX: Object.freeze([1.82,1.71,1.36])','Approved cheek envelope drift');
 console.log(JSON.stringify({pass:true,owners:present.map(s=>s.id),negativeControls:rejected,historicalSingleSeamFailures,
   scope:'Test-only exact additive seams and immutable helper bytes; no physical result is inverted.'}));

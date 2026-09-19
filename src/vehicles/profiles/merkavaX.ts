@@ -291,7 +291,7 @@ function addMerkava3dRightCheekModule(P: TankBuilderPort): void {
   // asymmetric around the sight and gun tunnel, but the fielded Mk.3D wraps
   // that shell in fourth-generation modular side armor.  Keep the source
   // casting untouched and add the missing, independently closed module as
-  // real external armor.  World-space stations are converted into the
+  // permanent structural armor.  World-space stations are converted into the
   // turret-local frame so the complete course follows turret yaw.
   const module = sectionSolid([
     {z:-.05-MK3.z,ring:[
@@ -307,7 +307,10 @@ function addMerkava3dRightCheekModule(P: TankBuilderPort): void {
       [1.28,2.18-MK3.y],[.28,2.37-MK3.y],
     ]},
   ]);
-  P.addExternalArmor('turret', module);
+  // This is passive Dor-Dalet composite, not one of the three depleted ERA
+  // cassettes authored below. Keep it in the permanent turret hit shell so a
+  // right-side ERA strike cannot erase the repaired silhouette.
+  P.add('turret', module);
   P.turretG.userData.merkava3dRightCheekReceipt = Object.freeze({
     side: '+X',
     configuration: 'Dor-Dalet modular forward cheek course',

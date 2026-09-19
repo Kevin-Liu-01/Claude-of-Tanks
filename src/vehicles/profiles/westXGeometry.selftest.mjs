@@ -104,8 +104,8 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       near(left, 2.121, .035, `${id}: low left-forward gunner shoulder`);
       near(right, 2.433, .02, `${id}: high right-forward cheek`);
       assert.ok(right - left > .20, `${id}: genuine asymmetric forward armor`);
-      const rightCheek=tank.root.getObjectByName('turretExternalArmor');
-      assert.ok(rightCheek?.isMesh,`${id}: fielded Dor-Dalet right cheek is physical external armor`);
+      const rightCheek=tank.root.getObjectByName('turret');
+      assert.ok(rightCheek?.isMesh,`${id}: fielded Dor-Dalet right cheek is permanent structural armor`);
       const rightCheekTop=verticalHit(rightCheek,1.60,.65);
       assert.ok(rightCheekTop>2.25&&rightCheekTop<2.34,
         `${id}: vehicle-right modular course restores the collapsed +X envelope (${rightCheekTop})`);

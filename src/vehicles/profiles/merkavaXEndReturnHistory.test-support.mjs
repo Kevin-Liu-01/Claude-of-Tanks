@@ -16,6 +16,52 @@ const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const count=(source,part)=>source.split(part).length-1;
 const read=file=>fs.readFileSync(new URL(file,import.meta.url),'utf8');
 
+function beforeMerkava3dRightCheekRepair(source){
+  // 2026-09-18: authenticate the complete approved +X Dor-Dalet repair and
+  // recover only that exact additive block before checking the older shared
+  // profile hash. The historical golden stays frozen; geometry, material role,
+  // stations, ownership receipt, or call-site drift cannot be normalized.
+  const repair=`function addMerkava3dRightCheekModule(P: TankBuilderPort): void {
+  // The supplied display tree leaves the vehicle-right (+X) Dor-Dalet cheek
+  // course off the forward casting.  The naked shell is intentionally
+  // asymmetric around the sight and gun tunnel, but the fielded Mk.3D wraps
+  // that shell in fourth-generation modular side armor.  Keep the source
+  // casting untouched and add the missing, independently closed module as
+  // permanent structural armor.  World-space stations are converted into the
+  // turret-local frame so the complete course follows turret yaw.
+  const module = sectionSolid([
+    {z:-.05-MK3.z,ring:[
+      [.28,1.92-MK3.y],[1.82,1.90-MK3.y],
+      [1.76,2.30-MK3.y],[.38,2.54-MK3.y],
+    ]},
+    {z:.65-MK3.z,ring:[
+      [.24,1.91-MK3.y],[1.72,1.86-MK3.y],
+      [1.66,2.27-MK3.y],[.34,2.52-MK3.y],
+    ]},
+    {z:1.30-MK3.z,ring:[
+      [.18,1.90-MK3.y],[1.36,1.86-MK3.y],
+      [1.28,2.18-MK3.y],[.28,2.37-MK3.y],
+    ]},
+  ]);
+  // This is passive Dor-Dalet composite, not one of the three depleted ERA
+  // cassettes authored below. Keep it in the permanent turret hit shell so a
+  // right-side ERA strike cannot erase the repaired silhouette.
+  P.add('turret', module);
+  P.turretG.userData.merkava3dRightCheekReceipt = Object.freeze({
+    side: '+X',
+    configuration: 'Dor-Dalet modular forward cheek course',
+    stationWorldZ: Object.freeze([-.05,.65,1.30]),
+    outerWorldX: Object.freeze([1.82,1.72,1.36]),
+  });
+}
+
+`;
+  const call='  addMerkava3dRightCheekModule(P);\n';
+  assert.equal(count(source,repair),1,'One exact approved permanent Mk3D +X cheek repair');
+  assert.equal(count(source,call),1,'One exact Mk3D +X cheek repair call');
+  return source.replace(repair,'').replace(call,'');
+}
+
 function beforeRollers(source,readHelper){
   const imported="import { merkavaXReturnRollers, lineMerkavaXUpperBand } from './merkavaXReturnRollers.ts';\n";
   if(!source.includes('merkavaXReturnRollers'))return source;
@@ -154,7 +200,8 @@ export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
-  let before=beforeRollers(beforePaintedBasketFloor(beforeMeshBasket(source),readHelper),readHelper);
+  let before=beforeMerkava3dRightCheekRepair(
+    beforeRollers(beforePaintedBasketFloor(beforeMeshBasket(source),readHelper),readHelper));
   const present=[];
   for(const s of MERKAVA_END_RETURN_SEAMS){
     const imported=`import { ${s.symbol} } from './${s.file}';\n`;
