@@ -83,7 +83,7 @@ rejectMutation("const sideX=configuration==='namer'?1.25:configuration==='mk4'?1
 rejectMutation('  addNamerSourceTurret(P);','  addNamerSourceHull(P);',
   'Namer source assembly drift');
 for(const helper of ['namerSourceFrame.ts','namerSourceHull.ts','namerSourceChassis.ts',
-  'namerSourceTurret.ts','namerSourceSupport.ts']) {
+  'namerSourceTurret.ts','namerSourceSupport.ts','namerWheelStock.ts']) {
   assert.throws(()=>authenticate('merkava4_x',{
     readHelper:file=>readHelper(file)+(file===helper?'\n':''),
   }),`Namer helper drift: ${helper}`);
