@@ -38,7 +38,10 @@ export interface HordeRules {
 /**
  * Team arrangement (owner 2026-09-15): the co-op modes let the player arrange both sides — allied
  * bots, the enemy pool (distinct hostile identities in the match), the first Horde wave and the
- * enemy nation. Absent fields keep the mode's defaults; every value is clamped by
+ * enemy nation. Sides (owner 2026-09-18: "a switch that's default set to 7v7 but then switching it
+ * does 14v14 and you can also enter custom numbers of allies and enemies … 1 v 20"): every other mode
+ * arranges its two sides the same way — allied bots and hostiles all on the field at once — under
+ * one field limit. Absent fields keep the mode's defaults; every value is clamped by
  * TEAM_ARRANGEMENT_LIMITS.
  */
 export interface TeamArrangement {
@@ -49,10 +52,40 @@ export interface TeamArrangement {
   readonly enemyNation?: string | null;
 }
 
-export const TEAM_ARRANGEMENT_LIMITS = Object.freeze({
-  allies: Object.freeze([0, 6] as const),
-  enemies: Object.freeze({ endless_horde: Object.freeze([6, 20] as const), frontline_assault: Object.freeze([4, 14] as const) }),
-  waveSize: Object.freeze([2, 12] as const),
+/**
+ * Vehicles one solo field may hold, the player included (owner 2026-09-18: "go up to a number that you
+ * test is the total limit to how many tanks can be in a game before performance is unacceptable" —
+ * measured on the desktop tier 2026-09-18, docs/GAME-MODES.md "Sides").
+ */
+export const BATTLE_FIELD_LIMIT = 42;
+/** The whole-game default split: the player with six allied bots against seven hostiles. */
+export const STANDARD_SIDES = Object.freeze({ allies: 6, enemies: 7 });
+/** The sides switch presets (the player counts on the allied side, so "14 v 14" is thirteen allied bots). */
+export const SIDES_PRESETS = Object.freeze({
+  '7v7': STANDARD_SIDES,
+  '14v14': Object.freeze({ allies: 13, enemies: 14 }),
+});
+export type SidesPreset = keyof typeof SIDES_PRESETS | 'custom';
+type IntRange = readonly [number, number];
+const range = (low: number, high: number): IntRange => Object.freeze([low, high] as const);
+const SYMMETRIC_ALLIES = range(0, BATTLE_FIELD_LIMIT - 2), SYMMETRIC_ENEMIES = range(1, BATTLE_FIELD_LIMIT - 1);
+const COOP_ALLIES = range(0, 6);
+export const TEAM_ARRANGEMENT_LIMITS: {
+  readonly field: number;
+  readonly allies: Readonly<Record<GameModeId, IntRange>>;
+  readonly enemies: Readonly<Record<GameModeId, IntRange>>;
+  readonly waveSize: IntRange;
+} = Object.freeze({
+  field: BATTLE_FIELD_LIMIT,
+  allies: Object.freeze({
+    standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
+    endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES,
+  }),
+  enemies: Object.freeze({
+    standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
+    endless_horde: range(6, 20), frontline_assault: range(4, 14),
+  }),
+  waveSize: range(2, 12),
 });
 
 export interface MatchRuleset {
@@ -157,9 +190,28 @@ export const FLAG_CARRIER_SPEED_SCALE = 0.85;
 /** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared. */
 export const HORDE_WAVE_REPAIR = 0.3;
 
-/** The modes whose sides the player arranges. */
-export function acceptsTeamArrangement(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {
+/** The wave modes: their enemy side is a pool drawn per wave (Horde) or per sector (Frontline). */
+export function isWaveMode(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {
   return mode === 'endless_horde' || mode === 'frontline_assault';
+}
+
+/** Every registered mode arranges its sides (owner 2026-09-18); an unknown id takes none. */
+export function acceptsTeamArrangement(mode: GameModeId): boolean {
+  return Object.prototype.hasOwnProperty.call(BASE_RULESETS, mode);
+}
+
+/** The two sides a symmetric mode fields at once (bots only — the player joins the allied side). */
+export function rulesetSides(ruleset: Pick<MatchRuleset, 'allies' | 'enemies'>): { readonly allies: number; readonly enemies: number } {
+  return { allies: ruleset.allies ?? STANDARD_SIDES.allies, enemies: ruleset.enemies ?? STANDARD_SIDES.enemies };
+}
+
+/** Which switch position an arrangement is: a preset when its sides match one, otherwise custom. */
+export function sidesPresetOf(arrangement: Pick<TeamArrangement, 'allies' | 'enemies'> | null | undefined): SidesPreset {
+  const sides = rulesetSides({ allies: arrangement?.allies ?? null, enemies: arrangement?.enemies ?? null });
+  for (const [id, preset] of Object.entries(SIDES_PRESETS)) {
+    if (preset.allies === sides.allies && preset.enemies === sides.enemies) return id as SidesPreset;
+  }
+  return 'custom';
 }
 
 const clampInt = (value: unknown, range: readonly [number, number]): number | null => {
@@ -171,11 +223,17 @@ const clampInt = (value: unknown, range: readonly [number, number]): number | nu
 /** Clamp an arrangement to the mode's limits; null for modes that take none or an empty input. */
 export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangement | null | undefined): TeamArrangement | null {
   if (!input || !acceptsTeamArrangement(mode)) return null;
-  const allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies);
+  let allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies[mode]);
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
   const waveSize = mode === 'endless_horde' && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
+  // the field limit (player included) holds whatever the two sides ask for: the enemy count is kept — it is
+  // the number the player typed for a "1 v 20" — and the allied bots yield
+  if (!isWaveMode(mode) && (allies != null || enemies != null)) {
+    const sides = rulesetSides({ allies, enemies });
+    if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
+  }
   if (allies == null && enemies == null && waveSize == null && enemyNation == null) return null;
   return Object.freeze({ allies, enemies, waveSize, enemyNation });
 }
@@ -262,9 +320,17 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   else if (ruleset.timeLimitS !== STANDARD.timeLimitS || ruleset.timeout !== 'draw') {
     line(ruleset.timeout === 'defeat' ? 'clockDefeat' : 'clock', { value: `${Math.round(ruleset.timeLimitS / 60)}` });
   }
-  if (ruleset.allies === 0) line('noAllies');
-  else if (ruleset.allies != null) line('allies', { value: String(ruleset.allies) });
-  if (ruleset.enemies != null && acceptsTeamArrangement(ruleset.mode)) line('enemyPool', { value: String(ruleset.enemies) });
+  if (isWaveMode(ruleset.mode)) {
+    if (ruleset.allies === 0) line('noAllies');
+    else if (ruleset.allies != null) line('allies', { value: String(ruleset.allies) });
+    if (ruleset.enemies != null) line('enemyPool', { value: String(ruleset.enemies) });
+  } else if (ruleset.allies != null || ruleset.enemies != null) {
+    // sides (owner 2026-09-18): "14 v 14", "1 v 20" — the player counts on the allied side
+    const sides = rulesetSides(ruleset);
+    if (sides.allies !== STANDARD_SIDES.allies || sides.enemies !== STANDARD_SIDES.enemies) {
+      line('sides', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
+    }
+  }
   if (ruleset.enemyNation) line('enemyNation', { value: ruleset.enemyNation });
   if (ruleset.mode === 'capture_the_flag') line('carrierSpeed', { value: percent(FLAG_CARRIER_SPEED_SCALE) });
   if (ruleset.horde) line('hordeWaves', { value: String(ruleset.horde.waveSize), step: String(ruleset.horde.waveStep) });

@@ -216,7 +216,7 @@ import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
-import { createBattleEntryLifecycle } from './game/battleEntryLifecycle.ts';
+import { createBattleEntryLifecycle, revealTimeoutForField } from './game/battleEntryLifecycle.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
 import { createFxRuntimeAccess } from './fx/fxRuntimeAccess.ts';
 import { releaseObject3DGpuResources } from './engine/resourceLifetime.ts';
@@ -1901,6 +1901,8 @@ const battleRollout = createBattleRolloutRuntime({
 const battleEntryLifecycle = createBattleEntryLifecycle({
   nextFrame,
   wakeFrameLoop: () => frameLoop.restart(),
+  // sides (2026-09-18): a 14 v 14 or 1 v 41 field compiles more programs on its first frame than the 7 v 7 budget allows
+  revealTimeoutMs: () => revealTimeoutForField(game.tanks.length),
   getRevealContext: () => ({
     phase: game.phase,
     garageHidden: !garage.isOpen,

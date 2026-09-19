@@ -71,3 +71,5 @@ quickest proof that the live site is the gate build.
 | 37 | 2026-09-18 12:01 | b08328157 | Track ramps pivot with the outer road wheels instead of sticking to them | main-BfPJm92l.js | claude-of-tanks-anpyk2z2y |
 | 38 | 2026-09-18 20:28 | 271c6b92e | Object 695: a tier X Russian IFV with the fleet's most powerful belt | main-CboA7afe.js | claude-of-tanks-qfx57es2l |
 | 39 | 2026-09-19 00:20 | 9b5220851 | Night headlights on both sides and missile loads that match the tubes | main-DQqX3_vA.js | claude-of-tanks-ro7fpewp0 |
+| 40 | 2026-09-19 01:57 | ce677147e | Sides switch: 7 v 7, 14 v 14 or a custom field for every solo mode | main-BewY3N46.js | claude-of-tanks-efiozvxib |
+| 41 | 2026-09-19 02:30 | 6432c05ef | Night starfield and moon, crisper clouds and textured horizon ranges | main-g7IFqypA.js | claude-of-tanks-qx7dzrpxd |

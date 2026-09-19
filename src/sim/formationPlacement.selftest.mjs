@@ -12,6 +12,7 @@ import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import { tankContactRect } from './tankContactShape.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius } from './matchPlacement.ts';
 import { collisionFootprintContainsPoint } from '../world/collision.ts';
+import { reuseSpawnPad } from './spawnPads.ts';
 
 // f9c88b5d7 added safe placement AFTER this unchanged nominal policy. Explicit
 // test/tool spawns intentionally bypass that resolver, so raw nominal explicit
@@ -29,8 +30,11 @@ assert.equal(createHash('sha256').update(historicalSource).digest('hex'),
   'b3a4341449a74a3bcd9e754846f1d160a8ad9d96a9af3582a60f4ab93c865218',
   'independently published pre-f9 nominal policy, never a refreshed output golden');
 const currentSource = spawnSource(readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8'));
-const compileSpawn = source => new Function('TEAM_ALPHA', 'finite',
-  `${stripTypeScriptTypes(source)}; return spawnFor;`)('alpha', (value, fallback) => Number.isFinite(value) ? value : fallback);
+// sides (2026-09-18): the live policy re-uses a pad through sim/spawnPads.ts once a side outgrows its pads
+// (index >= pads.length); the seven-a-side rosters here never reach that path, so the historical and the
+// current policy stay comparable — the sandbox only has to know the helper.
+const compileSpawn = source => new Function('TEAM_ALPHA', 'finite', 'reuseSpawnPad',
+  `${stripTypeScriptTypes(source)}; return spawnFor;`)('alpha', (value, fallback) => Number.isFinite(value) ? value : fallback, reuseSpawnPad);
 const historicalSpawn = compileSpawn(historicalSource), currentSpawn = compileSpawn(currentSource);
 
 const roster = ['t84', 'jpz_e100', 'm1a2', 'k2', 't95', 'jpz_e100', 'leclerc'];

@@ -53,6 +53,8 @@ import {
 import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import { BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf } from '../sim/matchRuleset.ts';
+import { readSides, writeSides } from '../game/teamArrangement.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import type { PlayMode } from '../net/playMode.ts';
@@ -630,7 +632,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="frontline_assault" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeFront')}</span><small>${t('garage.battle.sectors')}</small></button>` +
-    `</div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
+    // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
+    // enter custom numbers of allies and enemies" — one setting for the symmetric solo modes (game/teamArrangement.ts)
+    `<div class="cot-battle-menu-label">${t('garage.battle.sides')}</div>` +
+    `<div class="cot-battle-sides" role="group" aria-label="${t('garage.battle.sidesAria')}">` +
+    `<button class="cot-sides-choice" type="button" data-sides="7v7" aria-pressed="true">${t('garage.battle.sides7')}</button>` +
+    `<button class="cot-sides-choice" type="button" data-sides="14v14" aria-pressed="false">${t('garage.battle.sides14')}</button>` +
+    `<button class="cot-sides-choice" type="button" data-sides="custom" aria-pressed="false">${t('garage.battle.sidesCustom')}</button>` +
+    `</div><div class="cot-battle-sides-custom" data-sides-custom hidden>` +
+    `<label><span>${t('garage.battle.sidesAllies')}</span><input type="number" inputmode="numeric" step="1" ` +
+    `min="${TEAM_ARRANGEMENT_LIMITS.allies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.allies.standard[1]}" data-sides-field="allies"></label>` +
+    `<label><span>${t('garage.battle.sidesEnemies')}</span><input type="number" inputmode="numeric" step="1" ` +
+    `min="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[1]}" data-sides-field="enemies"></label>` +
+    `<b class="cot-sides-readout" data-sides-readout></b>` +
+    `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
+    `</div></div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
@@ -2763,6 +2779,40 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setBattleGameMode(choice.dataset.gameMode);
     closeBattleMenu({ restoreFocus: true });
   });
+  // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
+  // symmetric modes (game/teamArrangement.ts writeSides, clamped by the ruleset); the menu stays open while the
+  // player types, and the wave modes arrange their allied bots and pool in the play menu instead
+  const sidesChoices = [...battleMenu.querySelectorAll<HTMLButtonElement>('.cot-sides-choice')];
+  const sidesCustom = requiredElement<HTMLElement>(battleMenu, '[data-sides-custom]');
+  const sidesField = (name: string) => requiredElement<HTMLInputElement>(sidesCustom, `input[data-sides-field="${name}"]`);
+  const sidesReadout = requiredElement<HTMLElement>(sidesCustom, '[data-sides-readout]');
+  let sidesCustomOpen = false;
+  function renderSides(): void {
+    const sides = readSides();
+    const preset = sidesPresetOf(sides);
+    const custom = sidesCustomOpen || preset === 'custom';
+    for (const choice of sidesChoices) choice.setAttribute('aria-pressed', String(choice.dataset.sides === (custom ? 'custom' : preset)));
+    sidesCustom.hidden = !custom;
+    sidesField('allies').value = String(sides.allies);
+    sidesField('enemies').value = String(sides.enemies);
+    sidesReadout.textContent = t('garage.battle.sidesReadout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
+  }
+  for (const choice of sidesChoices) choice.addEventListener('click', () => {
+    emit('ui:click', {});
+    const id = choice.dataset.sides;
+    if (id === 'custom') sidesCustomOpen = true;
+    else if (id === '7v7' || id === '14v14') { sidesCustomOpen = false; writeSides(SIDES_PRESETS[id]); }
+    renderSides();
+  });
+  sidesCustom.addEventListener('change', () => {
+    const allies = Number(sidesField('allies').value), enemies = Number(sidesField('enemies').value);
+    writeSides({
+      allies: Number.isFinite(allies) ? allies : STANDARD_SIDES.allies,
+      enemies: Number.isFinite(enemies) ? enemies : STANDARD_SIDES.enemies,
+    });
+    renderSides();
+  });
+  renderSides();
   // batch 19 (2026-09-14): the Garage and the play menu share the remembered rule set — a mode picked
   // in the play menu (or last session) is what BATTLE launches instead of silently reverting to Standard
   try {

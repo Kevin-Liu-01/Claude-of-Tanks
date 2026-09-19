@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createFrameLoopScheduler } from '../engine/frameLoopScheduler.ts';
 import { createNetworkBrowserSessionRuntime } from '../net/networkBrowserSessionRuntime.ts';
-import { createBattleEntryLifecycle } from './battleEntryLifecycle.ts';
+import { createBattleEntryLifecycle, revealTimeoutForField } from './battleEntryLifecycle.ts';
 
 function createIdleEntryFixture() {
   let now = 0, nextHandle = 0, focused = true, hidden = false, wakeCount = 0;
@@ -241,10 +241,41 @@ assert.deepEqual(receipt, {
   primed: true,
   frameSerial: 1,
   waitMs: 16,
+  budgetMs: 1500,
   phase: 'battle',
   loaderVisible: true,
 });
 assert.deepEqual(receipts, [receipt]);
+
+// sides (2026-09-18): the reveal budget grows with the field — 7 v 7 keeps 1.5 s, 14 v 14 waits 3.18 s — and a
+// budget port is read at every reveal so the same lifecycle serves every field size
+assert.equal(revealTimeoutForField(14), 1500); assert.equal(revealTimeoutForField(7), 1500);
+assert.equal(revealTimeoutForField(28), 3180); assert.equal(revealTimeoutForField(42), 4860);
+assert.equal(revealTimeoutForField(Number.NaN), 1500, 'an unknown field takes the default budget');
+{
+  let fieldNow = 0, vehicles = 28, framesUntilPresent = 3;
+  const budgets = [];
+  let sized = null;
+  sized = createBattleEntryLifecycle({
+    now: () => fieldNow,
+    revealTimeoutMs: () => revealTimeoutForField(vehicles),
+    // every frame costs a second; the battle frame presents after `framesUntilPresent` of them
+    nextFrame: async () => { fieldNow += 1000; if (--framesUntilPresent <= 0) sized.noteBattleFrame(); },
+    onReveal: (row) => budgets.push(row.budgetMs),
+  });
+  // 28 vehicles: the first frame lands after 3 s, inside the 3.18 s budget (the fixed 1.5 s would have bounced it)
+  const wide = await sized.primeReveal();
+  assert.equal(wide.budgetMs, 3180, 'the budget port is read at the reveal');
+  assert.equal(wide.waitMs, 3000);
+  vehicles = 14; framesUntilPresent = 1;
+  const slim = await sized.primeReveal();
+  assert.equal(slim.budgetMs, 1500, 'a later 7 v 7 reveal reads the smaller budget');
+  assert.deepEqual(budgets, [3180, 1500]);
+  vehicles = 14; framesUntilPresent = 3;
+  await assert.rejects(sized.primeReveal(), /did not present/, 'the 7 v 7 budget still bounces a 3 s first frame');
+  const bad = createBattleEntryLifecycle({ nextFrame: async () => {}, revealTimeoutMs: () => 0 });
+  await assert.rejects(bad.primeReveal(), /positive and finite/, 'a budget port returning nothing valid is refused at the reveal');
+}
 
 let stalledNow = 0;
 const stalled = createBattleEntryLifecycle({

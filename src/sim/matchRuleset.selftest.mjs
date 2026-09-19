@@ -6,7 +6,7 @@ import {
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
-  acceptsTeamArrangement, hordeWaveSize,
+  acceptsTeamArrangement, hordeWaveSize, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
 } from './matchRuleset.ts';
 
 for (const mode of GAME_MODE_IDS) {
@@ -53,12 +53,21 @@ assert.deepEqual(rulesetLines(horde)[5].values, { value: '5', step: '1' });
 assert.equal(HORDE_WAVE_REPAIR, 0.3);
 
 // team arrangement (owner 2026-09-15): the co-op modes take the player's side arrangement, clamped
-assert.ok(acceptsTeamArrangement('endless_horde') && acceptsTeamArrangement('frontline_assault') && !acceptsTeamArrangement('standard'));
-assert.equal(normalizeTeamArrangement('standard', { allies: 1 }), null, 'only the co-op modes arrange their sides');
+// sides (owner 2026-09-18): every registered mode arranges its two sides under one field limit
+assert.ok(GAME_MODE_IDS.every((mode) => acceptsTeamArrangement(mode)), 'every registered mode arranges its sides');
+assert.ok(isWaveMode('endless_horde') && isWaveMode('frontline_assault') && !isWaveMode('standard') && !isWaveMode('turbo_ball'));
+assert.equal(TEAM_ARRANGEMENT_LIMITS.field, BATTLE_FIELD_LIMIT);
+assert.ok(BATTLE_FIELD_LIMIT >= 28, 'the field limit holds the 14 v 14 preset');
+assert.deepEqual(SIDES_PRESETS['7v7'], STANDARD_SIDES); assert.deepEqual(STANDARD_SIDES, { allies: 6, enemies: 7 });
+assert.deepEqual(SIDES_PRESETS['14v14'], { allies: 13, enemies: 14 }, 'the player counts on the allied side');
+assert.deepEqual(normalizeTeamArrangement('standard', { allies: 1 }), { allies: 1, enemies: null, waveSize: null, enemyNation: null },
+  'Standard arranges its sides (owner 2026-09-18)');
 assert.equal(normalizeTeamArrangement('endless_horde', null), null); assert.equal(normalizeTeamArrangement('endless_horde', {}), null);
 assert.deepEqual(normalizeTeamArrangement('endless_horde', { allies: 9, enemies: 3, waveSize: 40, enemyNation: 'germany' }),
-  { allies: TEAM_ARRANGEMENT_LIMITS.allies[1], enemies: TEAM_ARRANGEMENT_LIMITS.enemies.endless_horde[0], waveSize: TEAM_ARRANGEMENT_LIMITS.waveSize[1], enemyNation: 'germany' },
+  { allies: TEAM_ARRANGEMENT_LIMITS.allies.endless_horde[1], enemies: TEAM_ARRANGEMENT_LIMITS.enemies.endless_horde[0], waveSize: TEAM_ARRANGEMENT_LIMITS.waveSize[1], enemyNation: 'germany' },
   'every field clamps to the published limits');
+assert.equal(TEAM_ARRANGEMENT_LIMITS.allies.endless_horde[1], 6, 'the wave modes keep the co-op allied-bot cap');
+assert.deepEqual([...TEAM_ARRANGEMENT_LIMITS.enemies.frontline_assault], [4, 14]);
 assert.equal(normalizeTeamArrangement('frontline_assault', { waveSize: 8 }), null, 'the wave size is a Horde setting');
 assert.equal(normalizeTeamArrangement('endless_horde', { enemyNation: 'not a nation!' }), null, 'a malformed nation id is dropped');
 const arrangedHorde = matchRulesetFor('endless_horde', null, { allies: 0, enemies: 18, waveSize: 8, enemyNation: 'russia' });
@@ -68,7 +77,27 @@ assert.ok(Object.isFrozen(arrangedHorde) && Object.isFrozen(arrangedHorde.horde)
 assert.deepEqual(rulesetLines(arrangedHorde).map((line) => line.key), ['hp', 'noRespawn', 'noClock', 'noAllies', 'enemyPool', 'enemyNation', 'hordeWaves', 'waveRepair']);
 assert.equal(matchRulesetFor('endless_horde', null, { waveSize: 12, enemies: 6 }).horde.waveSize, 6, 'the first wave never exceeds the pool');
 assert.equal(matchRulesetFor('endless_horde', null, {}), horde, 'an empty arrangement is the base ruleset');
-assert.equal(matchRulesetFor('standard', null, { allies: 0 }), standard, 'Standard ignores arrangements');
+assert.equal(matchRulesetFor('standard', null, { allies: 0 }).allies, 0, 'Standard takes the arrangement (owner 2026-09-18)');
+// sides: presets, custom counts, the field limit and the card line
+const fourteen = matchRulesetFor('standard', null, SIDES_PRESETS['14v14']);
+assert.equal(fourteen.allies, 13); assert.equal(fourteen.enemies, 14);
+assert.deepEqual(rulesetLines(fourteen), [{ key: 'sides', values: { allies: '14', enemies: '14' } }], 'the card reads 14 v 14');
+assert.deepEqual(rulesetLines(matchRulesetFor('standard', null, { allies: 0, enemies: 20 })), [{ key: 'sides', values: { allies: '1', enemies: '20' } }], 'a lone player reads 1 v 20');
+assert.deepEqual(rulesetLines(matchRulesetFor('standard', null, { allies: 6, enemies: 7 })), [], 'an explicit 7 v 7 is the baseline');
+assert.deepEqual(rulesetSides(matchRulesetFor('standard')), { allies: 6, enemies: 7 });
+assert.equal(sidesPresetOf(null), '7v7'); assert.equal(sidesPresetOf({ allies: 13, enemies: 14 }), '14v14'); assert.equal(sidesPresetOf({ allies: 0, enemies: 20 }), 'custom');
+const capped = normalizeTeamArrangement('turbo_ball', { allies: 40, enemies: 41 });
+assert.equal(capped.enemies, BATTLE_FIELD_LIMIT - 1, 'the enemy count is kept up to the field limit');
+assert.equal(capped.allies, 0, 'the allied bots yield to the field limit');
+assert.equal(normalizeTeamArrangement('standard', { enemies: BATTLE_FIELD_LIMIT - 1 }).allies, 0, 'an enemy count alone makes the default allies yield');
+assert.equal(normalizeTeamArrangement('standard', { allies: 40 }).allies, BATTLE_FIELD_LIMIT - 1 - STANDARD_SIDES.enemies, 'allied bots alone yield to the default hostiles');
+assert.equal(normalizeTeamArrangement('standard', { enemies: 99 }).enemies, BATTLE_FIELD_LIMIT - 1); assert.equal(normalizeTeamArrangement('standard', { enemies: 0 }).enemies, 1, 'at least one hostile');
+for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
+  const wide = matchRulesetFor(mode, null, SIDES_PRESETS['14v14']);
+  assert.equal(wide.allies, 13); assert.equal(wide.enemies, 14);
+  assert.ok(rulesetLines(wide).some((line) => line.key === 'sides'), `${mode}: the card shows the sides`);
+}
+assert.equal(matchRulesetFor('endless_horde', null, { allies: 13, enemies: 14 }).allies, 6, 'Horde clamps allied bots to its own cap');
 
 const ctf = matchRulesetFor('capture_the_flag');
 assert.equal(ctf.respawnS, 6); assert.equal(RULESET_SCORE_TARGETS.capture_the_flag, 3);

@@ -451,6 +451,12 @@ SkyRig = {
   applyFog(scene),                       // scene.fog = Fog(horizonColor, 150, 1200)
 }
 ```
+Night sky (round 22, 2026-09-18): the dome shader adds a deterministic starfield, a galactic band and a
+moon after its intensity multiply whenever the preset dims the dome (`nightAmount`), and the preset knobs
+`nightSky` / `galaxy` / `nebulaHex` / `planetDeg` / `planetHex` let a map ask for a galaxy sky. The cloud
+decks erode thin fringes with their own alpha field (`uEdgeDetail`). The horizon ring
+(`world/maps/horizon.ts`) keeps its restored 1049e4e geometry; its fragment programs carry the near-field
+surface grain, rock bare and relight within 650 m of the camera and the rolling / escarpment forest stands.
 
 #### 3.1.4 `post.ts`
 ```js

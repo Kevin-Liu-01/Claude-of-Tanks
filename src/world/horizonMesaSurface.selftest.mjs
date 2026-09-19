@@ -23,11 +23,14 @@ function requireIntegration(source) {
   const cacheAssignment = source.match(/mat\.customProgramCacheKey = (\(\) => [^;]+);/);
   assert.ok(cacheAssignment, 'The material declares its custom shader cache identity');
   const cacheKey = new Function('mapId', 'style', `return (${cacheAssignment[1]})();`);
+  // round 22 (2026-09-18): the mesa / rolling / escarpment programs gained the near-field surface block
+  // (grain, rock bare, relight within 650 m of the camera), so those identities moved one revision; the
+  // alpine world-surface program is exempt and keeps its identity
   const styleKeys = {
-    mesa: 'horizon-ring-mesa-surface-r2',
+    mesa: 'horizon-ring-mesa-surface-r3',
     alpine: 'horizon-ring-world-surface-r3-alpine',
-    rolling: 'horizon-ring-relief-r2-rolling',
-    escarpment: 'horizon-ring-relief-r2-escarpment',
+    rolling: 'horizon-ring-relief-r3-rolling',
+    escarpment: 'horizon-ring-relief-r3-escarpment',
   };
   for (const [style, expected] of Object.entries(styleKeys)) {
     for (const mapId of ['titan_gorge', 'desert', 'winter', 'coastal', 'verdant']) {
@@ -130,7 +133,7 @@ assert.throws(() => requireSourceContract(HORIZON_MESA_SURFACE_FRAGMENT.replace(
   { code: 'ERR_ASSERTION' }, 'Contrast bounds cannot be weakened unnoticed');
 assert.throws(() => requireIntegration(integration.replace("${style === 'mesa' ? HORIZON_MESA_SURFACE_FRAGMENT",
   '${true ? HORIZON_MESA_SURFACE_FRAGMENT')), { code: 'ERR_ASSERTION' }, 'Unrelated styles cannot inherit the added ALU');
-assert.throws(() => requireIntegration(integration.replace('horizon-ring-mesa-surface-r2', 'horizon-ring-relief-r2-mesa')),
+assert.throws(() => requireIntegration(integration.replace('horizon-ring-mesa-surface-r3', 'horizon-ring-relief-r3-mesa')),
   { code: 'ERR_ASSERTION' }, 'Stale shader cache identity is rejected');
 assert.throws(() => requireIntegration(integration.replace("'#include <map_fragment>', style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT",
   "'#include <map_fragment>', mapId === 'verdant' ? ALPINE_HORIZON_MAP_FRAGMENT : style === 'alpine' ? ALPINE_HORIZON_MAP_FRAGMENT")),

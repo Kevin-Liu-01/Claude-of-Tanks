@@ -5,8 +5,9 @@
 // clamping law lives in sim/matchRuleset.ts so the sim, the cards and the wire agree.
 import type { GameModeId } from '../sim/matchModes.ts';
 import {
-  acceptsTeamArrangement, normalizeTeamArrangement, type TeamArrangement,
+  acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement, rulesetSides, type TeamArrangement,
 } from '../sim/matchRuleset.ts';
+import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 
 export const TEAM_ARRANGEMENT_STORAGE_KEY = 'cot.game.teams.v1';
 
@@ -67,6 +68,30 @@ export function readTeamArrangement(mode: GameModeId, storage?: ArrangementStora
   if (!acceptsTeamArrangement(mode)) return null;
   const stored = readAll(storageOf(storage))[mode];
   return normalizeTeamArrangement(mode, stored ?? null);
+}
+
+/** The symmetric modes share one sides setting (owner 2026-09-18: the Garage battle menu's 7v7 / 14v14 /
+ * custom switch); the wave modes arrange allied bots and a pool in the play menu instead. */
+export const SIDES_MODES: readonly GameModeId[] = Object.freeze(GAME_MODE_IDS.filter((mode) => !isWaveMode(mode)));
+
+/** The stored sides of the symmetric modes (Standard's entry speaks for all of them): allied bots and hostiles. */
+export function readSides(storage?: ArrangementStorage | null): { readonly allies: number; readonly enemies: number } {
+  const stored = readTeamArrangement('standard', storage);
+  return rulesetSides({ allies: stored?.allies ?? null, enemies: stored?.enemies ?? null });
+}
+
+/** Store one sides setting on every symmetric mode (each keeps its own enemy nation); null restores 7 v 7. */
+export function writeSides(
+  sides: { readonly allies: number; readonly enemies: number } | null,
+  storage?: ArrangementStorage | null,
+): { readonly allies: number; readonly enemies: number } {
+  for (const mode of SIDES_MODES) {
+    const current = readTeamArrangement(mode, storage);
+    writeTeamArrangement(mode, {
+      allies: sides?.allies ?? null, enemies: sides?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
+    }, storage);
+  }
+  return readSides(storage);
 }
 
 /** Persist (clamped) or clear a mode's arrangement; returns what was stored. */

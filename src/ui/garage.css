@@ -378,6 +378,20 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
   background:rgba(230,139,26,.13);color:#ffd28e;}
 .cot-battle-choice:hover .choice-icon,.cot-battle-choice[aria-checked='true'] .choice-icon{
   color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
+.cot-battle-sides{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;}
+.cot-sides-choice{min-height:34px;border:1px solid transparent;background:rgba(25,32,39,.9);color:#dce6ed;cursor:pointer;
+  font:800 10px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:.06em;}
+.cot-sides-choice:hover,.cot-sides-choice[aria-pressed='true']{border-color:rgba(240,176,74,.62);background:rgba(230,139,26,.13);color:#ffd28e;}
+.cot-battle-sides-custom{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px;padding:6px 8px 8px;background:rgba(25,32,39,.6);}
+.cot-battle-sides-custom[hidden]{display:none;}
+.cot-battle-sides-custom label{display:grid;gap:3px;color:#8292a0;font:800 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.13em;text-transform:uppercase;}
+.cot-battle-sides-custom input{width:100%;box-sizing:border-box;min-height:30px;padding:4px 6px;border:1px solid rgba(146,164,180,.3);
+  background:rgba(7,11,15,.7);color:#f2f6f8;font:700 12px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+.cot-battle-sides-custom .cot-sides-readout{grid-column:1/-1;color:#ffd28e;font:900 11px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.12em;}
+.cot-battle-sides-custom small{grid-column:1/-1;color:#6f818f;font:700 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
+  letter-spacing:.1em;text-transform:uppercase;}
 .cot-battle-menu-label{padding:8px 9px 5px;color:#6f818f;font:900 7px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;letter-spacing:.18em;
   text-transform:uppercase;border-top:1px solid rgba(146,164,180,.14)}
 .cot-garage .stats{position:absolute;right:22px;top:var(--cot-garage-sidebar-top);bottom:var(--cot-garage-sidebar-bottom);

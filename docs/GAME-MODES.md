@@ -105,6 +105,26 @@ Assault (`timeout: 'defeat'`).
   handoff fills Alpha with the allied bots and Bravo with the same-nation pool
   (`privateMatchHandoff.privateMatchRuleset`, the operation's own map) and passes
   the ruleset into the authority.
+- **Sides (2026-09-18)** — owner: "in our battle dropdown have a switch that's default set to 7v7
+  but then switching it does 14v14 and you can also enter custom numbers of allies and enemies so
+  you can do stuff like 1 v 20". The Garage battle menu (`ui/garage.ts`, `garage.battle.sides*`) and
+  the play menu's arrangement panel carry the switch for the symmetric modes (Standard, Capture the
+  Flag, Zone Control, Turbo Ball): `7 v 7` (the default — six allied bots against seven), `14 v 14`
+  (thirteen against fourteen) or custom allied-bot and enemy counts. One setting serves all four
+  modes (`game/teamArrangement.ts` `SIDES_MODES`, `writeSides`; each mode keeps its own enemy
+  nation) and folds into the ruleset like every arrangement (`allies` / `enemies`; the rule card and
+  the pre-battle chips read `rules.line.sides`, the player counted on the allied side).
+  `BATTLE_FIELD_LIMIT` in `sim/matchRuleset.ts` caps the field, the player included: the enemy count
+  typed is kept and the allied bots yield. The limit was set from the desktop-tier field probe on
+  2026-09-18 (`docs/PERFORMANCE.md` "Field size"). The wave modes keep their own panel (allied bots
+  0–6, pool, first wave, nation) and rooms keep `teamSize`. Seating: the authored 7v7 wedge stays the
+  first six allied slots; further allied bots take lateral and forward slots around the player pad —
+  never further back, the southern-spawn maps have no room there — and a side larger than the map's
+  seven enemy pads re-uses them on a compact offset ring (`sim/spawnPads.ts`, shared by the solo sim
+  and the authority); the placement search still resolves obstacles and neighbours. The HUD ears pack
+  their rows past ten vehicles a side, and the loading screen's reveal budget grows with the field
+  (`game/battleEntryLifecycle.ts` `revealTimeoutForField`: 1.5 s for 7 v 7, +120 ms per further
+  vehicle — a 14 v 14 first frame outran the fixed budget and bounced the entry back to the Garage).
 - **Player affordances** — equipment slots at spawn, `ui:consumable` denied with
   reason `RULESET` when the mode has no consumables, rule chips under the
   pre-battle countdown (`hud.setPreBattleRules`), and the rule lines on every
