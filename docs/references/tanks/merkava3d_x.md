@@ -1,5 +1,44 @@
 # Merkava Mk.3D X — independent owner-source reconstruction
 
+## 2026-09-19 owner-marked vehicle-left shoulder correction
+
+Status: **focused HIGH/LOW verification passed; composed regeneration and release pending**.
+The owner selected structural turret faces 94, 95 and 114 on local `-X`,
+with local bounds `[-1.74,.23966,.62418]..[-.34,.62966,1.82418]`.
+The earlier `+X` cheek repair addressed the opposite side and left this defect.
+
+The cause was an inward intermediate bend just 40 mm outboard of the roof.
+Four forward stations now place that bend on the continuous slope between
+its existing roof and outer shoulder endpoints. No faces were deleted or
+covered by a second shell. All X/Z coordinates, roof/ridge heights, outer
+edges, rear stock, and the opposite cheek remain unchanged. The closed,
+outward-wound shell still contains 176 triangles; all 264 welded edges have
+two oppositely directed uses and every triangle has positive area.
+
+Actual filled HIGH and LOW tests cover the marked shoulder at twelve physical
+ray locations, turret yaw, the unchanged right cheek, and a mutation restoring
+the original collapse. The central left witness at X −.9/Z .6 changes from
+Y 2.147419 to 2.226907 m. The right witness remains approximately 2.433 m,
+so the genuine left/right asymmetry remains. This is an owner-directed
+surface correction, not a new claim of exact agreement with the old source
+interpretation.
+
+A frozen original builder and the corrected builder were rendered at the
+owner's exact camera `[-10.88765,10.0531,10.27675]`, target
+`[0,2.55776,0]`, FOV 34, in both detail levels. All four originals were
+inspected; the inward shelf is removed. These are diagnostic captures with
+custom lighting, not a new all-view Gallery certification. Before/after
+selected costs are identical: HIGH 78,286 triangles/51 calls, LOW 71,822/50.
+Native snapshots preserve every other mesh's buffers, materials, world
+transforms and instance data, plus the complete bounds. Only the turret's
+four changed positions and their generated normals/UV/colors differ.
+
+Regression: `src/vehicles/profiles/merkava3dLeftCheek.selftest.mjs`.
+Local originals and hashed receipts:
+`.qa-dev/tank-run/merkava3d-left-cheek/comparison-r1/identity.json`,
+`shell-preservation.json`, and `native-preservation.json`.
+Historical source-parity/release figures below remain historical evidence.
+
 ## 2026-09-18 vehicle-right cheek correction
 
 Status: **implemented; full requalification pending**.  The owner's current
@@ -62,10 +101,11 @@ Structural roof is approximately 2.59 m, source P95 body height 3.016 m
 and highest antenna tip 5.15869 m. Yaw pivot is `(0,1.68034,-.72418)`;
 gun axis is `(0,2.0898,1.4258)` with muzzle Z 4.855985 m.
 
-The front-left turret shoulder is genuinely lower than the right cheek:
-at Z .6 and X ±.9, source upper surfaces are Y 2.121 left and 2.433 right.
-This 31 cm asymmetry is tested through the actual first-party armor, not
-its metadata. Separate sloped armor tiles preserve panel boundaries.
+The original source study recorded a lower front-left shoulder: at Z .6
+and X ±.9, source upper surfaces were Y 2.121 left and 2.433 right.
+The owner-directed 2026-09-19 repair above supersedes the recessed native
+left witness while retaining the asymmetric envelope and separate sloped
+armor-panel boundaries.
 The rear cage's upper and lower side rails rise toward the turret; its
 real thin floor, separate stored track links and open side wings are not
 replaced by a solid box. Chain links and ball weights hang below the cage.

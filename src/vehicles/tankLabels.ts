@@ -60,8 +60,12 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     searchAliases: ['Combat Vehicle 90', 'Stridsfordon 90', 'CV9040', 'Swedish IFV'],
   },
   cv90_mkiv: {
-    displayName: 'CV90 Mk IV', shortName: 'CV90 Mk IV',
-    searchAliases: ['CV90 Mk 4', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
+    displayName: 'CV90 Mk 4', shortName: 'CV90 Mk 4',
+    searchAliases: ['CV90 Mk IV', 'CV90 Mark IV', 'CV90 MkIV', 'CV90 D-series'],
+  },
+  cv90_mkiv_x: {
+    displayName: 'CV90 Mk 4 X', shortName: 'CV90 Mk 4 X',
+    searchAliases: ['CV90 Mk IV X', 'CV90 MkIV X', 'CV90 Mark 4 X'],
   },
   t72m1_jaguar: {
     displayName: 'T-72M1 Jaguar', shortName: 'T-72M1 Jaguar',
@@ -218,6 +222,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   ztz100_x: {
     displayName: 'ZTZ-100', shortName: 'ZTZ-100',
     searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
+  },
+  ztz100_prototype: {
+    displayName: 'ZTZ-100 Prototype', shortName: 'ZTZ-100 Proto',
+    searchAliases: ['ZTZ-100 original', 'ZTZ-100 prototype', 'Type 100 prototype'],
   },
   object695_x: {
     displayName: 'Object 695', shortName: 'Object 695',

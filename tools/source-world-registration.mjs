@@ -1,5 +1,6 @@
 import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
+import { OBJECT695_EPOKHA_FRAME } from './object695-epokha-reference.mjs';
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
@@ -29,13 +30,10 @@ export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
     sha256:'7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1',
     fused:true,turret:[0,1.41,-.55],gun:[0,1.76,.55],
   },
-  // Object 695 (2026-09-17): owner-supplied Armored Warfare export baked by source-x-oracle (0.965, sole on y 0, hull
-  // centred on x 0, the detached ramp leaf parked under the belly dropped whole); 39 unnamed meshes mix hull, module and gear, so the
-  // whole-source comparison carries no articulation.
-  object695_x: {
-    sha256:'012dfef5a8aeb31031e58f786883e94f02210476a08c41c5166d764abf47c9b3',
-    fused:true,turret:[0,2.15,-1.10],gun:[0,2.81,-.45],
-  },
+  // Owner-authorized 2026-09-19 family derivation: original Object hull,
+  // complete source Epokha module at the retained construction ring.
+  // Original files and the source-only replay recipe remain separately pinned.
+  object695_x: OBJECT695_EPOKHA_FRAME,
   strv122_x: {
     sha256:'d1ac97d98dd477d52850aaed8ae98184f9a3fd9b7ef20c5aadcf6c34d8e6d582',
     fused:true,turret:[0,1.705,-.12],gun:[.00787,2.02397,1.24],

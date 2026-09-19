@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
+import { ensureInteriorFills } from '../interiorFills.ts';
+import { createTankState } from '../../sim/movement.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { OBJECT695_X_PROFILES, OBJECT695_X_DATUMS } from './object695X.ts';
 import { TANK_SPECS, MODEL_SOURCE } from '../specs.ts';
@@ -10,22 +12,18 @@ import { vehicleEraForId } from '../taxonomy.ts';
 import { FLEET_GROUP_BY_ID } from '../fleetManifest.ts';
 import { tankLabelRecord } from '../tankLabels.ts';
 
-// Object 695 (owner 2026-09-17): generated from the owner's supplied Armored Warfare reference model through the
-// source-study procedure — the local oracle is measured (docs/references/tanks/object695_x.source-measurements.json),
-// the scalars are transcribed into OBJECT695_X_DATUMS and the tank is an original primitive construction that imports
-// no other profile. The receipt pins the roster identity (a tier X Russian IFV whose 30 mm belt is the fleet's fastest
-// and hardest-hitting — the owner's "machine gun like machine gun that's very powerful"), the measured datums against
-// the record, the part census at the builder port, the running-gear receipt (seven wheels, rear drive, raised front
-// idler, no return rollers), the envelopes and the gun anchor.
+// Owner-directed 2026-09-19 rebuild: retain the independently measured Object
+// chassis, derive the complete corrected Epokha module from Kurganets. The old
+// oracle remains authenticated hull evidence; its obsolete turret is not a gate.
 
 const profileSource = readFileSync(new URL('./object695X.ts', import.meta.url), 'utf8');
-assert.ok(!/bmp|bmpt|bumerang|t14|t-14|armata|type100|ztz|abrams|leopard|puma|bradley/i.test(profileSource.replace(/^\/\/.*$/gm, '')), 'the Object 695 imports and imitates no other profile');
+assert.ok(!/bmp|bmpt|bumerang|t14|t-14|armata|type100|ztz|abrams|leopard|puma|bradley/i.test(profileSource.replace(/^\/\/.*$/gm, '')), 'no unrelated vehicle profile enters the build');
 assert.deepEqual([...profileSource.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]).sort(),
-  ['../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleNightLighting.ts', './kit.ts', './sectionSolid.ts', 'three'], 'only the shared kit, loft and lighting modules');
+  ['../profileBuilderAdapter.ts', '../tankFactoryCore.ts', '../vehicleNightLighting.ts', './epokhaTurret.ts', './kit.ts', './sectionSolid.ts', './sourceStudyGunMount.ts', 'three'], 'only the narrow Epokha module plus shared primitives and rig appearance');
 const record = JSON.parse(readFileSync(new URL('../../../docs/references/tanks/object695_x.source-measurements.json', import.meta.url), 'utf8'));
 const spec = TANK_SPECS.object695_x;
 assert.equal(spec.name, 'Object 695'); assert.equal(spec.nation, 'Russia'); assert.equal(spec.era, 'next-generation');
-assert.equal(spec.role, 'ifv'); assert.equal(spec.gun.caliberMm, 30); assert.equal(tankTier('object695_x'), 10);
+assert.equal(spec.role, 'ifv'); assert.equal(spec.gun.caliberMm, 57); assert.equal(tankTier('object695_x'), 10);
 assert.equal(vehicleEraForId('object695_x'), 'next-generation'); assert.equal(FLEET_GROUP_BY_ID.object695_x, 'modern2');
 assert.equal(tankLabelRecord(spec).shortName, 'Object 695');
 assert.equal(MODEL_SOURCE.object695_x.source, 'procedural', 'the oracle never enters the runtime');
@@ -40,23 +38,66 @@ for (const other of Object.values(TANK_SPECS)) {
 }
 assert.ok(spec.gun.shells.some((round) => round.guided), 'Kornet-EM guided rounds ride beside the belt');
 assert.deepEqual(spec.armor.turretPivot, [...record.turretPivotM], 'module pivot from the measured record');
-assert.deepEqual(spec.armor.gunPivot, [0, +(record.gunAxisM[1] - record.turretPivotM[1]).toFixed(4), +(record.gunAxisM[2] - record.turretPivotM[2]).toFixed(4)], 'trunnion from the measured gun axis');
-assert.ok(Math.abs(spec.armor.gunBarrel.lengthM - (record.muzzleZM - record.gunAxisM[2])) < 1e-6, 'barrel reaches the measured muzzle');
+assert.deepEqual(spec.armor.gunPivot, [-.004, .707, .59], 'corrected Epokha trunnion relative to the retained Object ring');
+assert.equal(spec.armor.gunBarrel.lengthM, 1.537, 'corrected short 57 mm gun');
+assert.deepEqual(spec.gun.shells.map(s => [s.caliberMm, s.launcherTubes ?? 0]), [[57,0],[152,4],[70,8]]);
+assert.ok(spec.gun.shells.slice(1).every(s => s.guided && s.count >= s.launcherTubes));
 assert.equal(spec.dims.hullLengthM, record.dimensionsM.hullExteriorLength);
 assert.equal(spec.dims.overallLengthM, record.dimensionsM.overallLength);
 assert.equal(spec.dims.widthM, record.dimensionsM.widthOverSkirts);
 assert.equal(spec.dims.heightM, record.dimensionsM.hullRoof);
-assert.equal(spec.dims.silhouetteHeightM, record.dimensionsM.launcherTop);
+assert.equal(spec.dims.silhouetteHeightM, OBJECT695_X_DATUMS.launcherTopM);
 // datums transcribed from the record
 assert.deepEqual([...OBJECT695_X_DATUMS.wheelStations], record.roadWheels.stationsZM);
 assert.equal(OBJECT695_X_DATUMS.wheelR, record.roadWheels.radiusM); assert.equal(OBJECT695_X_DATUMS.wheelY, record.roadWheels.axleYM);
 assert.deepEqual({ ...OBJECT695_X_DATUMS.sprocket }, { z: record.sprocket.zM, y: record.sprocket.yM, r: record.sprocket.radiusM });
 assert.deepEqual({ ...OBJECT695_X_DATUMS.idler }, { z: record.idler.zM, y: record.idler.yM, r: record.idler.radiusM });
 assert.deepEqual(record.returnRollers, [], 'no return rollers behind the side modules');
-assert.equal(OBJECT695_X_DATUMS.muzzleZ, record.muzzleZM);
-assert.equal(OBJECT695_X_DATUMS.mastTopM, record.dimensionsM.highestFitting);
+assert.equal(OBJECT695_X_DATUMS.muzzleZ, 1.027);
+assert.equal(OBJECT695_X_DATUMS.mastTopM, 4.11415);
 assert.equal(record.localOracleSha256.length, 64, 'the quarantined oracle is hash-pinned');
 
+function checkEpokha(tank) {
+  const hull = tank.root.getObjectByName('rig_hull');
+  const hit = (frame, start, direction, far = 2) => {
+    const ray = new T.Raycaster(frame.localToWorld(new T.Vector3(...start)),
+      new T.Vector3(...direction).transformDirection(frame.matrixWorld), 0, far);
+    return ray.intersectObject(tank.root, true).find(h => {
+      for (let n = h.object; n; n = n.parent) if (!n.visible || n.userData.shadowOnly) return false;
+      const m = Array.isArray(h.object.material) ? h.object.material[h.face.materialIndex] : h.object.material;
+      return m.visible !== false && m.colorWrite !== false;
+    });
+  };
+  // Independent source stations translated only by the retained hull's ring.
+  for (const [x,z,y,r] of [[-.019845,-2.66298,3.85,.0409],[-.638995,-2.84023,3.98,.0186],
+    [-.783995,-1.23913,3.85,.01605],[-.292545,-1.22183,3.61,.0865]]) {
+    const h = hit(hull,[x+.15,y-.06,z+.17],[-1,0,0]);
+    assert.ok(h && Math.abs(hull.worldToLocal(h.point.clone()).x-x-r)<.0017, 'all four actual source-shaped mast faces');
+  }
+  for (const x of [-1.474,-1.281,1.281,1.474]) {
+    const h = hit(hull,[x,2.809,-.45],[0,0,-1]);
+    assert.ok(h && Math.abs(hull.worldToLocal(h.point.clone()).z+.528)<.001, 'four distinct Kornet terminal faces');
+  }
+  for (const [y,xs] of [[3.291,[.526,.628,.732]],[3.463,[.479,.580,.686,.789,.893]]]) for (const x of xs) {
+    const h = hit(hull,[x,y-.06,-3.4],[0,0,1]);
+    assert.ok(h && Math.abs(hull.worldToLocal(h.point.clone()).z+3.0775)<.001, 'eight distinct Bulat terminals');
+  }
+  const recoil = tank.root.getObjectByName('rig_recoil');
+  const openBore = () => {
+    const h = hit(recoil,[0,0,1.57],[0,0,-1]);
+    assert.ok(h && Math.abs(recoil.worldToLocal(h.point.clone()).z-1.337)<.001, 'physical recessed 57 mm bore, no flat painted cap');
+  };
+  openBore();
+  const cap = new T.Mesh(new T.CircleGeometry(.0395,24),new T.MeshBasicMaterial());
+  cap.position.z=1.537;recoil.add(cap);tank.root.updateMatrixWorld(true);
+  try { assert.throws(openBore,assert.AssertionError,'a flush cap must fail'); }
+  finally {recoil.remove(cap);cap.geometry.dispose();cap.material.dispose();tank.root.updateMatrixWorld(true);}
+  // The real coaxial receiver follows gun pitch rather than the recoiling tube.
+  assert.ok(tank.root.getObjectByName('gunMountDark'), 'actual offset coaxial stock is installed on the pitching cradle');
+}
+
+await ensureInteriorFills(['object695_x']);
+const costs = [];
 const parts = [];
 registerProfiledBuilders({ object695_x: (P) => OBJECT695_X_PROFILES.object695_x.build(new Proxy(P, {
   get(target, key) {
@@ -103,20 +144,29 @@ for (const quality of ['high', 'low']) {
     assert.ok(sternBoxAft <= -3.55 && sternBoxAft >= -3.575, `stern boxes end at the source's stern silhouette (${sternBoxAft.toFixed(3)})`);
     assert.equal(count('driver-hatch'), 1); assert.equal(count('lamp-box'), 2); assert.equal(count('tow-eye'), 4); assert.equal(count('intake-drum'), 1);
     assert.equal(count('smoke-tube'), 10); assert.equal(count('deck-louvre'), 1); assert.equal(count('nose-lip'), 1);
-    // module
-    assert.equal(count('turret-rear-block'), 1); assert.equal(count('turret-front-block'), 1); assert.equal(count('turret-belt'), 1);
-    const rear = one('turret-rear-block');
-    assert.ok(Math.abs(rear.max[0] - 1.05) < 1e-6 && Math.abs(rear.max[1] - 0.90) < 1e-6, 'measured rear block width and crown');
-    assert.equal(count('pod-upper'), 2); assert.equal(count('pod-lower'), 2); assert.equal(count('bustle-box'), 2);
-    assert.ok(Math.abs(Math.max(...parts.filter((p) => p.part === 'pod-upper').map((p) => p.max[0])) - 1.50) < 1e-6, 'pods out to the measured 1.50');
-    assert.equal(count('launcher-box'), 1); assert.equal(count('launcher-tube'), 4, 'four-tube launcher'); assert.equal(count('launcher-mouth'), 4);
-    assert.ok(Math.abs(one('launcher-box').max[1] + record.turretPivotM[1] - record.dimensionsM.launcherTop) < 1e-6, 'launcher top at the measured 3.49');
-    assert.equal(count('mast'), 4, 'four whip masts');
-    assert.ok(Math.abs(Math.max(...parts.filter((p) => p.part === 'mast').map((p) => p.max[1])) + record.turretPivotM[1] - record.dimensionsM.highestFitting) < 0.01, 'tallest mast at the measured 4.03');
-    assert.equal(count('gunner-sight'), 1); assert.equal(count('commander-sight'), 1); assert.equal(count('periscope-column'), 1);
-    assert.equal(count('roof-hatch'), 2); assert.equal(count('flash-hider'), 1); assert.equal(count('gun-sleeve'), 1);
-    // the fleet machine-gun fitting is the module's coaxial gun (KIT.fittings census mg >= 1)
-    assert.ok(tank.root.getObjectByName('object695CoaxialMachineGun'), 'the module carries the pintle machine gun fitting as its coaxial gun');
+    checkEpokha(tank);
+    const optics=tank.root.userData.combatGeometryParts.filter(p=>p.module==='optics'&&p.parent==='turretG');
+    assert.equal(optics.length,3,'all three actual Epokha glass faces publish turret-owned optics');
+    const state=createTankState(spec,new T.Vector3(),0), cradle=tank.root.getObjectByName('gunMount');
+    const gun=tank.root.getObjectByName('rig_gun'), recoil=tank.root.getObjectByName('rig_recoil');
+    assert.equal(cradle.parent,gun,'actual cradle pitches without recoiling');
+    for(const pitch of [-spec.gunDepressionDeg,0,spec.gunElevationDeg]) {
+      state.gunPitch=pitch*Math.PI/180;tank.syncFromState(state,1);tank.root.updateMatrixWorld(true);
+      const fixed=cradle.getWorldPosition(new T.Vector3()), before=recoil.position.z;
+      tank.recoilKick(0,1);tank.syncFromState(state,.12);tank.root.updateMatrixWorld(true);
+      assert.ok(recoil.position.z<before-.02,'real cannon tube recoils at every legal pitch');
+      assert.ok(cradle.getWorldPosition(new T.Vector3()).distanceTo(fixed)<1e-7,'receiving cradle stays seated during recoil');
+      tank.syncFromState(state,1);assert.ok(Math.abs(recoil.position.z-before)<1e-6);
+    }
+    state.gunPitch=0;tank.syncFromState(state,1);tank.root.updateMatrixWorld(true);
+    let triangles=0,meshes=0;
+    tank.root.traverseVisible(o=>{
+      if(!o.isMesh||o.userData.shadowOnly)return;
+      const mats=Array.isArray(o.material)?o.material:[o.material];
+      if(mats.every(m=>m.visible===false||m.colorWrite===false))return;
+      meshes++;triangles+=Math.min(o.geometry.index?.count??o.geometry.attributes.position.count,o.geometry.drawRange.count)/3*(o.isInstancedMesh?o.count:1);
+    });
+    costs.push({quality,triangles,meshes});
     // running gear receipt
     const hull = tank.root.getObjectByName('rig_hull');
     const gear = hull.userData.runningGearReceipts.at(-1);
@@ -128,20 +178,22 @@ for (const quality of ['high', 'low']) {
     assert.equal(tires.count, 14, 'seven road wheels a side');
     // rig and gun anchor
     const rig = hull.userData.object695Receipt;
-    assert.equal(rig.architecture, 'object695-x-r1'); assert.equal(rig.roadWheelsPerSide, 7);
+    assert.equal(rig.architecture, 'object695-x-epokha-r2'); assert.equal(rig.roadWheelsPerSide, 7);
     assert.deepEqual(rig.pivot, [...record.turretPivotM]);
     const turretNode = tank.root.getObjectByName('rig_turret'), gunNode = tank.root.getObjectByName('rig_gun');
     assert.ok(turretNode && gunNode, 'module and gun frames exist');
     const muzzle = new T.Vector3(0, 0, rig.gunLengthM);
     gunNode.localToWorld(muzzle);
     hull.worldToLocal(muzzle);
-    assert.ok(Math.abs(muzzle.z - record.muzzleZM) < 0.01 && Math.abs(muzzle.y - record.gunAxisM[1]) < 0.01, `muzzle at the measured (${record.gunAxisM[1]}, ${record.muzzleZM}); got (${muzzle.y.toFixed(3)}, ${muzzle.z.toFixed(3)})`);
+    assert.ok(Math.abs(muzzle.z - OBJECT695_X_DATUMS.muzzleZ) < .001 &&
+      Math.abs(muzzle.y - OBJECT695_X_DATUMS.trunnion[1]) < .001, 'actual short gun matches the registered firing frame');
+
     // envelope: nothing wider than the side modules, nothing ahead of the nose, the masts define the height
     const bounds = new T.Box3().setFromObject(tank.root);
     assert.ok(bounds.max.x <= 2.01 && bounds.min.x >= -2.01, 'width over the side modules');
     assert.ok(bounds.max.z <= record.hullM.noseZ + 0.05, 'nothing ahead of the nose');
-    assert.ok(Math.abs(bounds.max.y - record.dimensionsM.highestFitting) < 0.03, `tallest point ${bounds.max.y.toFixed(3)} at the measured ${record.dimensionsM.highestFitting}`);
+    assert.ok(Math.abs(bounds.max.y - OBJECT695_X_DATUMS.mastTopM) < 0.03, `tallest point ${bounds.max.y.toFixed(3)} at the measured ${OBJECT695_X_DATUMS.mastTopM}`);
     console.log(JSON.stringify({ id: 'object695_x', quality, parts: parts.length, width: +(bounds.max.x - bounds.min.x).toFixed(3), height: +bounds.max.y.toFixed(3), length: +(bounds.max.z - bounds.min.z).toFixed(3) }));
   } finally { tank.dispose(); }
 }
-console.log('object695X: PASS');
+console.log('object695X: PASS',JSON.stringify(costs));

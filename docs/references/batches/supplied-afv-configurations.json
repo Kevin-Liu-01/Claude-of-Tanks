@@ -6,6 +6,20 @@
     "target": "Correctly assembled supplied vehicles, with their actual equipment and genuine exterior openings. No invented roof machine guns."
   },
   "configurations": {
+    "object695_x": {
+      "id": "object695_x",
+      "source": {
+        "path": "public/models/community-candidates/object695_x_source.glb",
+        "sha256": "012dfef5a8aeb31031e58f786883e94f02210476a08c41c5166d764abf47c9b3"
+      },
+      "roofMachineGuns": 0,
+      "ownerDecision": {
+        "date": "2026-09-19",
+        "target": "Replace the Object 695 turret with the corrected Kurganets Epokha geometry, retaining its actual equipment.",
+        "assembly": "docs/references/source-assemblies/20260919/object695_x.json",
+        "equipment": "57 mm cannon, coaxial machine gun, four Kornet tubes and eight Bulat tubes; no separate roof machine gun."
+      }
+    },
     "kurganets25_x": {
       "source": {
         "path": "public/models/community-candidates/kurganets25_x_source.glb",

@@ -23,14 +23,21 @@ const published = [];
 for (const { id, shell } of guided) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {
-    let census = null;
+    let census = null, weaponCensus = null;
     tank.root.traverse((node) => {
       const value = node.userData?.launcherTubes;
       if (Number.isInteger(value)) census = census == null ? value : census + value;
       for (const receipt of Object.values(node.userData ?? {})) {
+        if (receipt?.launcherTubesByWeapon && Object.hasOwn(receipt.launcherTubesByWeapon, shell.name)) {
+          const count = receipt.launcherTubesByWeapon[shell.name];
+          assert.ok(Number.isInteger(count) && count > 0, `${id}/${shell.name}: exact weapon census is positive`);
+          assert.equal(weaponCensus, null, `${id}/${shell.name}: one authoritative per-weapon census`);
+          weaponCensus = count;
+        }
         if (receipt && typeof receipt === 'object' && Number.isInteger(receipt.launcherTubes) && census == null) census = receipt.launcherTubes;
       }
     });
+    census = weaponCensus ?? census;
     if (census != null) {
       assert.equal(shell.launcherTubes, census, `${id}: the spec's ${shell.launcherTubes} launcher tubes match the ${census} the profile publishes`);
       published.push(`${id}:${census}`);
@@ -38,6 +45,8 @@ for (const { id, shell } of guided) {
   } finally { tank.dispose?.(); }
 }
 assert.ok(published.length >= 6, `the rack-launcher vehicles publish their tube census (${published.join(' ')})`);
+assert.ok(published.includes('object695_x:4') && published.includes('object695_x:8'),
+  'the corrected Object 695 publishes both physical racks independently');
 const bmpt = getSpec('bmpt_t90').gun.shells.find((shell) => shell.guided);
 assert.equal(bmpt.launcherTubes, 8); assert.ok(bmpt.count >= 8, 'the BMPT T-90 carries at least its eight tubes of Ataka');
 console.log(`guidedLauncherTubes.selftest: ${guided.length} guided rounds declare tubes, loads never below one per tube; published censuses ${published.join(' ')}`);

@@ -93,6 +93,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'sig_k2', 'sig_k1a1', 'sig_k2b',
   'sig_merkava1b', 'sig_merkava2b', 'sig_merkava3c', 'sig_merkava3d',
   'sig_merkava4b',
+  'sig_merkava2d', 'sig_merkava3d_x', 'sig_merkava4', 'sig_merkava4_x', 'sig_merkava4_trophy', 'sig_merkava4_barak', 'sig_namer_ifv',
   'sig_t84', 'sig_ua_challenger2', 'sig_ua_t64bv', 'sig_ua_t80bv',
   'sig_ua_t80u_kursk', 'sig_ua_t84_oplot_m', 'sig_ua_m1a1', 'sig_leo2a6_ua',
 ] as const);
@@ -190,6 +191,13 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_merkava3c: 'Merkava 3C Desert Digital',
   sig_merkava3d: 'Merkava 3D Sinai Caunter',
   sig_merkava4b: 'Merkava 4B Sinai Hex',
+  sig_merkava2d: 'Merkava 2D Sinai Field',
+  sig_merkava3d_x: 'Merkava 3D Sinai Bands',
+  sig_merkava4: 'Merkava 4 Desert Field',
+  sig_merkava4_x: 'Merkava 4 Sinai Digital',
+  sig_merkava4_trophy: 'Merkava 4M Trophy Sinai Bands',
+  sig_merkava4_barak: 'Merkava 4M Barak Sinai Digital',
+  sig_namer_ifv: 'Namer Sinai Field',
   sig_t84: 'T-84 Oplot',
   sig_ua_challenger2: 'UA Challenger 2',
   sig_ua_t64bv: 'T-64BV Donbas',
@@ -425,6 +433,21 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'caunter', base: '#b49a7d', weather: '#c2a98a', patches: ['#68757d', '#5c5442'], camoScale: 0.46 }),
   preset('sig_merkava4b', 'merkava4b', signatureTags('il', 'desert', 'geometric'),
     { scheme: 'hexfield', base: '#827f6a', weather: '#918d77', patches: ['#5f6254', '#aaa287'], camoScale: 0.38 }),
+  // Authored fleet camouflage; the solid national delivery coat remains Factory.
+  preset('sig_merkava2d', 'merkava2d', signatureTags('il', 'desert', 'organic'),
+    { scheme: 'desert', base: '#858574', weather: '#aaa48a', patches: ['#5d6557', '#c0b597', '#6d604a'], camoScale: 0.52 }),
+  preset('sig_merkava3d_x', 'merkava3d_x', signatureTags('il', 'desert', 'stripes'),
+    { scheme: 'stripes', base: '#898b75', weather: '#a3a58c', patches: ['#555f52', '#b7ad8d'], camoScale: 0.5 }),
+  preset('sig_merkava4', 'merkava4', signatureTags('il', 'desert', 'organic'),
+    { scheme: 'desert', base: '#9c967c', weather: '#b3ac8e', patches: ['#686c58', '#c3b99b', '#7c6b54'], camoScale: 0.52 }),
+  preset('sig_merkava4_x', 'merkava4_x', signatureTags('il', 'desert', 'digital'),
+    { scheme: 'digital', base: '#878a74', weather: '#a0a28b', patches: ['#596354', '#b9b093', '#766d56'], camoScale: 0.43 }),
+  preset('sig_merkava4_trophy', 'merkava4_trophy', signatureTags('il', 'desert', 'stripes'),
+    { scheme: 'stripes', base: '#7e826e', weather: '#a0a38b', patches: ['#505b4d', '#b4aa8c'], camoScale: 0.48 }),
+  preset('sig_merkava4_barak', 'merkava4_barak', signatureTags('il', 'desert', 'digital'),
+    { scheme: 'digital', base: '#777f6b', weather: '#929b83', patches: ['#4d5b4e', '#b1ac8f', '#8b8065'], camoScale: 0.4 }),
+  preset('sig_namer_ifv', 'namer_ifv', signatureTags('il', 'desert', 'organic'),
+    { scheme: 'desert', base: '#858a74', weather: '#a0a48a', patches: ['#586350', '#bcb399', '#74674f'], camoScale: 0.5 }),
   preset('sig_t84', 't84', signatureTags('ua', 'woodland', 'organic'),
     { scheme: 'nato', base: '#3a4832', weather: '#44523c', patches: ['#272d22', '#71684a'], camoScale: 0.5 }),
   preset('sig_ua_challenger2', 'ua_challenger2', signatureTags('ua', 'woodland', 'digital'),
@@ -589,8 +612,9 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   'pt91m', 't72m1_jaguar', 'pt91_twardy', 'pl01_105', 'bwp1', 'upior',
   // South Korea — BMP-3 ROK itself owns the national Factory reference.
   'k2', 'k1a1', 'k2b',
-  // Israel — Merkava Mk 2D itself owns the national Factory reference.
+  // Israel — distinct authored defaults alongside the shared Factory coat.
   'merkava1b', 'merkava2b', 'merkava3c', 'merkava3d', 'merkava4b',
+  'merkava2d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
   // Ukraine — the UA M2A3 Bradley owns the national Factory reference.
   't84', 'ua_challenger2', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
   'ua_t84_oplot_m', 'ua_m1a1', 'leo2a6_ua',
@@ -620,6 +644,7 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m47_patton: 'summer',
   m48: 'summer',
   m2a2_bradley: 'summer',
+  ztz100_prototype: 'sig_ztz100_x',
 });
 
 /** Initial presentation choice; an explicit player selection always wins. */

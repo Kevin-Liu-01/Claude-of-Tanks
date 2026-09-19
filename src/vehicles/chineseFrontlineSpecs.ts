@@ -133,6 +133,43 @@ const CHINESE_FRONTLINE_SPECS = {
       marking: 'number', number: '100', trackWidthM: 0.515, camoScale: 0.34,
     },
   },
+  // Preserve the original first-party shape as a separate Tier IX prototype.
+  // The service model remains ztz100_x; reduced HP, penetration and reload
+  // establish progression without changing the historical geometry.
+  ztz100_prototype: {
+    id: 'ztz100_prototype', name: 'ZTZ-100 Prototype', nation: 'China', era: 'next-generation', role: 'mbt',
+    hp: 2250,
+    enginePowerHp: 1200, weightTons: 42, topSpeedKmh: 72, reverseSpeedKmh: 30,
+    hullTraverseDegS: 48,
+    terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 50, gunPitchDegS: 40, gunElevationDeg: 15, gunDepressionDeg: 8,
+    gun: {
+      caliberMm: 105, reloadS: 5.6, baseAccuracy: 0.24, aimTimeS: 1.5,
+      bloom: { move: 0.045, hullRot: 0.065, turret: 0.045, afterShot: 1.8 },
+      shells: [
+        shell('DTW-105 APFSDS', 'APFSDS', 105, 650, 590, 430, 1600, { pen2000Mm: 520 }),
+        shell('DTP-105 HEAT-MP', 'HEAT', 105, 470, 470, 420, 1150),
+        shell('DTB-105 HE', 'HE', 105, 42, 42, 500, 760),
+      ],
+    },
+    dims: { hullLengthM: 6.94, overallLengthM: 8.98, widthM: 3.70, heightM: 2.31, silhouetteHeightM: 3.04 },
+    armor: modernArmor({
+      hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
+      turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.35, 1.10],
+      barrelLenM: 4.625, barrelRadM: 0.072,
+      glacis: [90, 540, 740], lower: [70, 340, 460], side: [55, 240, 360],
+      skirt: [35, 110, 240], rear: 40, roof: 38,
+      tw: 1.20, tFrontZ: 1.68, tRearZ: -2.05, tH: 0.90,
+      cheek: [150, 620, 840], tSide: [85, 300, 400], tRear: 55, tRoof: 40,
+      mantlet: [170, 560, 740], loader: false, bustleAmmo: true,
+    }),
+    visual: {
+      scheme: 'digital', base: '#5b6a4d', weather: '#66714f',
+      patches: ['#8f9a72', '#3b4830', '#7d8378'],
+      marking: 'number', number: '100', trackWidthM: 0.515, camoScale: 0.34,
+    },
+  },
 } satisfies Readonly<Record<string, FleetTankSpec>>;
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);

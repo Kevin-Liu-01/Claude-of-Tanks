@@ -269,7 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '41dedfed6128db89b58214ac522e26b9f15148ab0a2d1c0d383114edfff5d1ac', // Combined main AI-lab skins and fleet Ares NATO Woodland; prior recipes preserved.
+  '819bf810321f4580f7ea7748f31c48a91c14613b0f07404478a2fa2c5d2c63f5', // September 19 Israeli defaults added; all previous recipes preserved.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

@@ -292,6 +292,39 @@ function beforeMerkava3dRightCheekRepair(source){
   return source.replace(repair,'').replace(call,'');
 }
 
+function beforeMerkava3dLeftCheekRepair(source){
+  if(!source.includes('const leftBend ='))return source;
+  const start='function merkava3Shell(): THREE.BufferGeometry {\n';
+  const end='export function buildMerkava3DX(P: TankBuilderPort): void {';
+  assert.equal(count(source,start),1,'One Mk3D shell owner');
+  assert.equal(count(source,end),1,'One Mk3D builder boundary');
+  assert.equal(count(source,'leftBend'),2,'Only the approved left bend declaration and use');
+  const begin=source.indexOf(start),finish=source.indexOf(end,begin);
+  const current=source.slice(begin,finish);
+  // Sep19 owner-selected faces94/95/114: four intermediate -X bend heights
+  // changed, with every roof/outer endpoint retained. Authenticate that entire
+  // reviewed function before reversing only its exact source patch for history.
+  assert.equal(hash(current),'16c329aa97627b790004883361d5351a851afb008ada6491d36bb870079e2c93',
+    'Complete reviewed Sep19 left shoulder shell');
+  const before=current.replace(`  // The owner-marked -X panels must form a continuous shoulder, not a
+  // recessed shelf below the roof. Keep every roof/outer-edge station and
+  // the asymmetric envelope; straighten only the intermediate forward bend.
+`,`  // Source Mk3D's forward left shoulder drops beside the gunner's berth;
+  // the right armor cheek stays high. Preserve that asymmetry in the body.
+`).replace(`  ].map(([z,left,right,low,roofL,roofR,highL,highR,ridge,drop,edgeL,edgeR])=>{
+    const leftBend = z >= -.10 && z <= 1.60
+      ? highL + (edgeL-highL) * .04 / (left-.08-roofL)
+      : drop;
+    return {z:z-MK3.z,ring:[
+`,`  ].map(([z,left,right,low,roofL,roofR,highL,highR,ridge,drop,edgeL,edgeR])=>({
+    z:z-MK3.z,ring:[
+`).replace('[-roofL-.04,leftBend-MK3.y]','[-roofL-.04,drop-MK3.y]')
+    .replace('    ]};\n  }));\n','    ],\n  })));\n');
+  assert.equal(hash(before),'e3c5027af1a27e0d3c11223bab54747813e1c0a4998b9dec4b37543973692acc',
+    'Exact pre-Sep19 shell bytes restored only for historical authentication');
+  return source.slice(0,begin)+before+source.slice(finish);
+}
+
 function beforeRollers(source,readHelper){
   const imported="import { merkavaXReturnRollers, lineMerkavaXUpperBand } from './merkavaXReturnRollers.ts';\n";
   if(!source.includes('merkavaXReturnRollers'))return source;
@@ -431,6 +464,7 @@ export function authenticateMerkavaEndReturnHistory(requiredId, {
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
   source=beforeModernIsraeliFleet(source,readHelper);
+  source=beforeMerkava3dLeftCheekRepair(source);
   let before=beforeMerkava3dRightCheekRepair(
     beforeRollers(beforePaintedBasketFloor(beforeMeshBasket(source),readHelper),readHelper));
   const present=[];

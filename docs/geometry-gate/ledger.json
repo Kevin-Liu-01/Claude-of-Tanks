@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-19T17:04:15.049Z",
+ "generatedAt": "2026-09-19T19:53:52.458Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 79,
- "total": 181,
+ "passed": 81,
+ "total": 182,
  "rows": [
   {
    "id": "challenger1",
@@ -192,16 +192,6 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "merkava3d_x",
-   "geoMin": 0,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": false,
-   "components": {
-    "oracleAvailability": 0
-   }
   },
   {
    "id": "object279",
@@ -1842,7 +1832,7 @@
    }
   },
   {
-   "id": "sabra_mk2_x",
+   "id": "merkava3d_x",
    "geoMin": 92.7,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
@@ -1855,14 +1845,14 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "object695_x",
-   "geoMin": 92.8,
+   "id": "sabra_mk2_x",
+   "geoMin": 92.7,
    "requiredMinimum": 92,
    "qualityBar": "exemplar",
    "gatePassed": true,
    "components": {
-    "wholeCurves": 92.8,
-    "dims": 96.7,
+    "wholeCurves": 92.7,
+    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -2134,6 +2124,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "object695_x",
+   "geoMin": 94.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.7,
+    "dims": 98.4,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "aft10_x",
    "geoMin": 94.7,
    "requiredMinimum": 92,
@@ -2364,6 +2367,28 @@
     "sourceId": "leo2_revolution",
     "glbSha256": "ce63f41864d158627df7a89f0fc22e7f71ae753ded72e350206230bf2f417ff7",
     "geometrySha256": "305ff0250dea38d45a53738d775686727300440890467023e5fb7e8e94711f38"
+   }
+  },
+  {
+   "id": "ztz100_prototype",
+   "geoMin": 99.6,
+   "requiredMinimum": 99,
+   "qualityBar": "preservation",
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 99.6,
+    "stations": 100,
+    "turretCurves": 99.6,
+    "wholeCurves": 99.6,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "preservation",
+   "preservationBaseline": {
+    "sourceCommit": "31d08f67378cd2bc5b883de3e0eba10513784612",
+    "sourceId": "ztz100_x",
+    "glbSha256": "ffbc0a0709328f693597054cfe048fcc0d7e289f720d9c777ffaf585722e86b6",
+    "geometrySha256": "50d6b799d51ab196f9991dba5ba390daae3849fc2de72205f027583cd1dd0f7a"
    }
   }
  ]

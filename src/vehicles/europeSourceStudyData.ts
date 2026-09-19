@@ -13,7 +13,7 @@ export const EUROPE_SOURCE_STUDIES = [
     groundTranslationY:.004199999850244136,sourceFile:'kf41_lynx_prototype_armored_warfare.glb',
   },
   {
-    id:'cv90_mkiv_x',name:'CV90 Mk IV X',donor:'cv90_mkiv',nation:'Sweden',role:'ifv',tier:10,
+    id:'cv90_mkiv_x',name:'CV90 Mk 4 X',donor:'cv90_mkiv',nation:'Sweden',role:'ifv',tier:10,
     dimensions:{hullLengthM:6.6220,overallLengthM:6.83241,widthM:3.30470,heightM:2.8202,
       silhouetteHullLengthM:6.6220,silhouetteOverallLengthM:6.83241,silhouetteWidthM:3.30470,silhouetteHeightM:2.7022714773},
     turret:[-.035,1.55,-.60],gun:[.172,1.844,.70],muzzleZ:3.60581,trackWidthM:.55,

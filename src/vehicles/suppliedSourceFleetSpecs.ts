@@ -10,7 +10,7 @@ import { vehicleEraForId } from './taxonomy.ts';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from './suppliedSourceStudyIndex.ts';
 
 const entries = [
-  ['kurganets25_x', 'spz_puma', 'Kurganets-25', 'Russia', 'ifv'],
+  ['kurganets25_x', 'spz_puma_s1', 'Kurganets-25', 'Russia', 'ifv'],
   ...ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(({ id, donor, name, nation, role }) =>
     [id, donor, name, nation, role] as const),
 ] as const;
@@ -106,6 +106,7 @@ function applySourceArmament(spec: FleetTankSpec): void {
   if (['griffin50_x', 'kf41_lynx_x'].includes(spec.id)) {
     spec.gun.shells = spec.gun.shells.filter(round => !round.guided);
   }
+  if (spec.id === 'bmp3m_dragun125_x') applyDragunAssaultBalance(spec);
   applyGuidedShellLabels(spec);
 }
 
@@ -166,13 +167,44 @@ function applyAutocannonCaliber(spec: FleetTankSpec): void {
   }
 }
 
+function applyDragunAssaultBalance(spec: FleetTankSpec): void {
+  // Tier-X light assault gun: trade MBT survivability and moving accuracy
+  // for a responsive chassis and a useful stop-and-fire 125 mm cycle.
+  // These are deliberate game values, not historical protection claims.
+  Object.assign(spec, {
+    hp: 1850, enginePowerHp: 816, weightTons: 28,
+    topSpeedKmh: 72, reverseSpeedKmh: 30, hullTraverseDegS: 52,
+    terrainResistance: { hard: .66, medium: .78, soft: 1.30 },
+    pivotStyle: 'neutral', turretTraverseDegS: 44, gunPitchDegS: 30,
+    gunElevationDeg: 18, gunDepressionDeg: 8,
+  });
+  Object.assign(spec.gun, {
+    reloadS: 5.4, baseAccuracy: .31, aimTimeS: 1.65,
+    bloom: { move: .11, hullRot: .10, turret: .065, afterShot: 2.8 },
+  });
+  delete spec.gun.autoloader; // continuous single-round feed, no burst magazine
+  const load = [24, 10, 6];
+  spec.gun.shells.forEach((round, index) => {
+    round.name = `125 mm ${round.type}`;
+    round.reloadS = 5.4;
+    round.count = load[index];
+  });
+  // Preserve the registered plate geometry and manned layout. Author only
+  // thin armor ratings; the chassis donor must not decide this variant's tier.
+  const ratings: Readonly<Record<string, readonly [number, number, number]>> = {
+    upper_glacis: [45,75,100], lower_front: [30,40,55], hull_side: [25,30,40],
+    hull_roof: [18,18,18], turret_cheek: [50,85,115], mantlet: [70,100,130],
+    turret_side: [30,40,55], turret_rear: [25,25,25], turret_roof: [20,20,20],
+  };
+  for (const plate of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
+    const key = Object.keys(ratings).find(name => plate.name === name || plate.name.startsWith(`${name}_`));
+    if (key) [plate.physicalMm, plate.keMm, plate.ceMm] = ratings[key];
+  }
+  delete spec.balancePeerOf;
+}
+
 /** Preserve source weapon labels after peer and caliber adaptation. */
 function applyGuidedShellLabels(spec: FleetTankSpec): void {
-  if (spec.id === 'bmp3m_dragun125_x') {
-    for (const round of spec.gun.shells) {
-      round.name = round.guided ? '152 mm guided missile' : `${round.caliberMm} mm ${round.type}`;
-    }
-  }
   if (spec.id !== 'fv510_milan_x' && spec.id !== 'cv90_mkiv_x') return;
   const isMilan = spec.id === 'fv510_milan_x';
   for (const round of spec.gun.shells) {
@@ -194,7 +226,10 @@ for (const [id, donorId, name, nation, role] of entries) {
   delete spec.roster;
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
-  const donorDimensions = { ...spec.dims };
+  // The tier-X peer owns combat tuning, not the already fitted source armor frame.
+  const structure = registries.tankSpecs[id === 'kurganets25_x' ? 'spz_puma' : donorId];
+  spec.armor = structuredClone(structure.armor);
+  const donorDimensions = { ...structure.dims };
   Object.assign(spec.dims, dimensions[id]);
   fitArmorToDims(spec.armor, donorDimensions, spec.dims);
   applySourceFrame(spec, id);
@@ -233,8 +268,9 @@ export function synchronizeSuppliedSourceCombatMetadata(): void {
     const target = registries.tankSpecs[id], donor = registries.tankSpecs[donorId];
     for (const field of fields) Object.assign(target, { [field]: structuredClone(donor[field]) });
     target.balancePeerOf = donorId;
-    target.armor = structuredClone(donor.armor);
-    fitArmorToDims(target.armor, donor.dims, target.dims);
+    const structure = registries.tankSpecs[id === 'kurganets25_x' ? 'spz_puma' : donorId];
+    target.armor = structuredClone(structure.armor);
+    fitArmorToDims(target.armor, structure.dims, target.dims);
     applySourceFrame(target, id);
     applySourceArmament(target);
   }

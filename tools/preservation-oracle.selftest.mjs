@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets,
+import { REVOLUTION_PROTO_BASELINE, ZTZ100_PROTOTYPE_BASELINE, validatedPreservationOracle, preservationDimensionTargets,
   verifyPreservationBytes } from './preservation-oracle.ts';
 import { requiredMinimumForQualityBar } from './geometry-gate-policy.mjs';
 import { T90_X_REFERENCE_OVERRIDES } from './t90-x-reference-overrides.ts';
@@ -14,7 +14,7 @@ import { ARES_APC_X_REFERENCE_OVERRIDES } from './ares-apc-x-reference-overrides
 
 const page = fs.readFileSync(new URL('./procedural-fidelity.html', import.meta.url), 'utf8');
 const registryText = page.match(/const LOCAL_REFERENCE_OVERRIDES = (\{[\s\S]*?\n\});/)[1];
-const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE,
+const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE, ZTZ100_PROTOTYPE_BASELINE,
   T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ABRAMS_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES });
 const modernIsraeliSources = Object.fromEntries(
@@ -60,3 +60,31 @@ assert.match(page, /if \(!preservation && !sourceWorldCertificate\) \{\s*referen
 assert.match(page, /preservationDimensionTargets\(source, id, preservation \? referenceDimensions : \{\}, specDimensions\)/,
   'actual baseline mask measurements feed the preservation dimension branch');
 console.log('preservation-oracle.selftest: immutable 99-point historical baseline isolated from 92-point source fidelity');
+
+const ztz = registry.ztz100_prototype;
+assert.equal(requiredMinimumForQualityBar(ztz.qualityBar), 99);
+assert.equal(validatedPreservationOracle(ztz, 'ztz100_prototype'), ZTZ100_PROTOTYPE_BASELINE);
+assert.equal(ZTZ100_PROTOTYPE_BASELINE.sourceCommit, '31d08f67378cd2bc5b883de3e0eba10513784612');
+assert.equal(ZTZ100_PROTOTYPE_BASELINE.sourceId, 'ztz100_x');
+assert.equal(ZTZ100_PROTOTYPE_BASELINE.glbSha256, 'ffbc0a0709328f693597054cfe048fcc0d7e289f720d9c777ffaf585722e86b6');
+assert.equal(ztz.glb.path, '/models/community-candidates/ztz100_prototype_preservation.glb');
+for (const id of ['ztz100_x', 'type100', 'toString', '__proto__', 'unregistered']) {
+  assert.throws(() => validatedPreservationOracle(ztz, id), /invalid or unpinned/, 'exact prototype ID only');
+}
+for (const key of Object.keys(ZTZ100_PROTOTYPE_BASELINE)) {
+  assert.throws(() => validatedPreservationOracle({ ...ztz, preservation: {
+    ...ZTZ100_PROTOTYPE_BASELINE, [key]: 'candidate-replacement',
+  } }, 'ztz100_prototype'), /invalid or unpinned/, `immutable ${key}`);
+}
+assert.throws(() => validatedPreservationOracle({ ...ztz, preservation: REVOLUTION_PROTO_BASELINE }, 'ztz100_prototype'), /invalid or unpinned/);
+assert.throws(() => validatedPreservationOracle({ ...preserved, preservation: ZTZ100_PROTOTYPE_BASELINE }, 'leo2_revolution_proto'), /invalid or unpinned/);
+assert.equal(preservationDimensionTargets(ztz, 'ztz100_prototype', measured, published), measured);
+assert.equal(validatedPreservationOracle(registry.ztz100_x, 'ztz100_x'), null, 'service source path remains source fidelity');
+assert.equal(requiredMinimumForQualityBar(registry.ztz100_x.qualityBar), 92);
+await assert.rejects(verifyPreservationBytes(new ArrayBuffer(8), ZTZ100_PROTOTYPE_BASELINE), /hash mismatch/);
+const ztzOracle = new URL('../public/models/community-candidates/ztz100_prototype_preservation.glb', import.meta.url);
+if (fs.existsSync(ztzOracle)) {
+  const bytes = fs.readFileSync(ztzOracle);
+  await verifyPreservationBytes(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), ZTZ100_PROTOTYPE_BASELINE);
+}
+console.log('preservation-oracle.selftest: separate authenticated ZTZ prototype99 / service92 and cross-baseline negatives PASS');

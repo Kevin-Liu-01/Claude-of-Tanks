@@ -196,12 +196,13 @@ const missileVelocityByVehicle = new Map([
   ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5],
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
-  ['kurganets25_x', 117], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
+  ['kurganets25_x', 240], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
   ['object695_x', 300], // 2026-09-17: Object 695 Kornet-EM
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([
-  ['kurganets25_x/Bulat guided missile', 117],
+  ['kurganets25_x/Bulat guided missile', 240],
+  ['object695_x/Bulat guided missile', 300], // owner-directed complete Epokha module
 ]);
 for (const id of SAVED_TANK_IDS) {
   for (const round of TANK_SPECS[id].gun.shells) {

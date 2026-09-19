@@ -1,0 +1,616 @@
+{
+  "schemaVersion": 1,
+  "id": "object695_x",
+  "scope": "Owner-authorized family derivation: retained Object hull and running gear, complete corrected source Epokha turret. Local QA only.",
+  "source": {
+    "path": "public/models/community-candidates/object695_x_source.glb",
+    "sha256": "012dfef5a8aeb31031e58f786883e94f02210476a08c41c5166d764abf47c9b3",
+    "scale": 0.965,
+    "translation": [
+      0.0052,
+      0.0135,
+      0
+    ]
+  },
+  "donor": {
+    "path": "public/models/community-candidates/kurganets25_x_source.glb",
+    "sha256": "a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0",
+    "translation": [
+      0.0054349899291992,
+      0.0139,
+      0
+    ],
+    "turret": [
+      0,
+      2.21,
+      -1.27
+    ],
+    "gun": [
+      -0.004,
+      2.917,
+      -0.68
+    ]
+  },
+  "rawParentSha256": "0af5ccde32d66d5f56cbf7b543e000f64fa28e18cc0eb560d92ed7b05e7f7fd2",
+  "output": {
+    "path": "public/models/community-candidates/object695_x_epokha_20260919.glb",
+    "sha256": "20598454a5f7e8ced5212bcd416c36287626b970af125dde6dc80eeb5d0c0cfd"
+  },
+  "registration": {
+    "axes": [
+      "x",
+      "y",
+      "z"
+    ],
+    "scale": 0.965,
+    "translation": [
+      0.0052,
+      0.0135,
+      0
+    ],
+    "retainedForNonselectedStock": true,
+    "sourceTurret": [
+      0,
+      2.21,
+      -1.27
+    ],
+    "retainedTurret": [
+      0,
+      2.15,
+      -1.1
+    ],
+    "moduleShift": [
+      0,
+      -0.06000000000000005,
+      0.16999999999999993
+    ]
+  },
+  "operations": [
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_2",
+        "nodeIndex": 1,
+        "meshIndex": 0,
+        "triangles": 990,
+        "originalBounds": {
+          "min": [
+            -1.0285370349884033,
+            2.6432697772979736,
+            -3.0079338550567627
+          ],
+          "max": [
+            1.0240180492401123,
+            2.876992702484131,
+            -0.07529895007610321
+          ],
+          "size": [
+            2.0525550842285156,
+            0.23372292518615723,
+            2.9326349049806595
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -1.0657950639724731,
+            2.7390501499176025,
+            -3.117029905319214
+          ],
+          "max": [
+            1.0612050294876099,
+            2.981250047683716,
+            -0.07802999764680862
+          ],
+          "size": [
+            2.127000093460083,
+            0.24219989776611328,
+            3.0389999076724052
+          ]
+        },
+        "originalTriangleSha256": "78108a66fac448caef884af8de6ad1501c7510765a56a66bfba47104ac06502f",
+        "donorTriangleSha256": "40e19148e43bcf5bd9d353396733ad968170ba59eb2ec54667b9859b584ca634",
+        "maxCorrespondenceResidualM": 1.5909576411843318e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_4",
+        "nodeIndex": 3,
+        "meshIndex": 2,
+        "triangles": 597,
+        "originalBounds": {
+          "min": [
+            -0.22244350612163544,
+            2.5944888591766357,
+            -1.4443155527114868
+          ],
+          "max": [
+            0.3411165177822113,
+            3.0200541019439697,
+            -1.0168204307556152
+          ],
+          "size": [
+            0.5635600239038467,
+            0.425565242767334,
+            0.4274951219558716
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -0.23046500980854034,
+            2.688499927520752,
+            -1.4967000484466553
+          ],
+          "max": [
+            0.353534996509552,
+            3.129500150680542,
+            -1.0536999702453613
+          ],
+          "size": [
+            0.5840000063180923,
+            0.44100022315979004,
+            0.44300007820129395
+          ]
+        },
+        "originalTriangleSha256": "c344ae14490b081c70e18d9df3f913a0674ca4f918122a04aa9c8ba922f8a7fd",
+        "donorTriangleSha256": "bdd21dc13bbd0192006f984628f4bd62764508d062241ef5b31b23fd1500ec6f",
+        "maxCorrespondenceResidualM": 1.5909576411843318e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_19",
+        "nodeIndex": 18,
+        "meshIndex": 17,
+        "triangles": 19,
+        "originalBounds": {
+          "min": [
+            -0.7085429430007935,
+            2.6658506393432617,
+            -2.1904823780059814
+          ],
+          "max": [
+            0.7239030599594116,
+            3.349553346633911,
+            -0.5775814652442932
+          ],
+          "size": [
+            1.432446002960205,
+            0.6837027072906494,
+            1.6129009127616882
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -0.7341949939727783,
+            2.7624499797821045,
+            -2.269929885864258
+          ],
+          "max": [
+            0.7502049803733826,
+            3.470950126647949,
+            -0.5985299944877625
+          ],
+          "size": [
+            1.4843999743461609,
+            0.7085001468658447,
+            1.6713998913764954
+          ]
+        },
+        "originalTriangleSha256": "739daa5528536b66c93814b7e7e6f38423aec24051abc56eb862009f20ee909e",
+        "donorTriangleSha256": "83a455d09d3164e442045d83a1fbe4835796d7f4ea80e4658afd84f65c0e1815",
+        "maxCorrespondenceResidualM": 1.555194852898012e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_25",
+        "nodeIndex": 24,
+        "meshIndex": 23,
+        "triangles": 248,
+        "originalBounds": {
+          "min": [
+            -0.6699429750442505,
+            2.686598300933838,
+            -2.260155439376831
+          ],
+          "max": [
+            0.6998745203018188,
+            3.34482479095459,
+            -0.6279544830322266
+          ],
+          "size": [
+            1.3698174953460693,
+            0.658226490020752,
+            1.6322009563446045
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -0.694195032119751,
+            2.783950090408325,
+            -2.342129945755005
+          ],
+          "max": [
+            0.7253049612045288,
+            3.466050148010254,
+            -0.6507300138473511
+          ],
+          "size": [
+            1.4194999933242798,
+            0.6821000576019287,
+            1.6913999319076538
+          ]
+        },
+        "originalTriangleSha256": "d7a829ee93bf42ffacb9e345bd41312833a2250950a8b039506631f1e30d91b5",
+        "donorTriangleSha256": "2322c86af9e18c5bcfb6a15e761832ef8faf034542394a10440e4385fd6878b3",
+        "maxCorrespondenceResidualM": 1.5790367102752612e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_27",
+        "nodeIndex": 26,
+        "meshIndex": 25,
+        "triangles": 28,
+        "originalBounds": {
+          "min": [
+            -0.9690929055213928,
+            2.7416999340057373,
+            -2.9665355682373047
+          ],
+          "max": [
+            0.9622581005096436,
+            2.9631190299987793,
+            -0.12711945176124573
+          ],
+          "size": [
+            1.9313510060310364,
+            0.221419095993042,
+            2.839416116476059
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -1.004194974899292,
+            2.841050148010254,
+            -3.074130058288574
+          ],
+          "max": [
+            0.9972050189971924,
+            3.070500135421753,
+            -0.13173000514507294
+          ],
+          "size": [
+            2.0013999938964844,
+            0.22944998741149902,
+            2.9424000531435013
+          ]
+        },
+        "originalTriangleSha256": "ffb713de34f60a8eaf07e616efe530d2e853501db92e68f9ebfd3941cd78a4fd",
+        "donorTriangleSha256": "c67da2db40c96195c58951b9354c4edfd36290d3fb625d73e4ab25e72fd951c8",
+        "maxCorrespondenceResidualM": 1.4121437086345168e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_29",
+        "nodeIndex": 28,
+        "meshIndex": 27,
+        "triangles": 18378,
+        "originalBounds": {
+          "min": [
+            -1.5421099662780762,
+            2.0780692100524902,
+            -2.8459105491638184
+          ],
+          "max": [
+            1.5366259813308716,
+            4.028141498565674,
+            -0.06777194887399673
+          ],
+          "size": [
+            3.0787359476089478,
+            1.9500722885131836,
+            2.7781386002898216
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -1.5979950428009033,
+            2.1533501148223877,
+            -2.949130058288574
+          ],
+          "max": [
+            1.5924049615859985,
+            4.174149990081787,
+            -0.07022999972105026
+          ],
+          "size": [
+            3.190400004386902,
+            2.0207998752593994,
+            2.878900058567524
+          ]
+        },
+        "originalTriangleSha256": "e47964fca836d5b02a6dd52ddb999776bac97d4476fc9980468afae1e7f56b7b",
+        "donorTriangleSha256": "6a0eeacf70198d729b0aa0dcdef4f1adb540c2834ef94538c06dd2ad389fe372",
+        "maxCorrespondenceResidualM": 2.843627924242753e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_30",
+        "nodeIndex": 29,
+        "meshIndex": 28,
+        "triangles": 4284,
+        "originalBounds": {
+          "min": [
+            -1.5421099662780762,
+            2.4804742336273193,
+            -1.9077374935150146
+          ],
+          "max": [
+            1.522537112236023,
+            2.876027822494507,
+            -0.6892319321632385
+          ],
+          "size": [
+            3.064647078514099,
+            0.3955535888671875,
+            1.2185055613517761
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -1.5979950428009033,
+            2.570349931716919,
+            -1.976930022239685
+          ],
+          "max": [
+            1.5778050422668457,
+            2.980250120162964,
+            -0.7142300009727478
+          ],
+          "size": [
+            3.175800085067749,
+            0.4099001884460449,
+            1.2627000212669373
+          ]
+        },
+        "originalTriangleSha256": "77b7ba8aad0a979a4389526d112126b1507c49867fad8f320065f249671990dc",
+        "donorTriangleSha256": "77b7620e4a0f7e1d7cdd8be4a1ff6cb0df56de6c56bec902d7202c432c55c238",
+        "maxCorrespondenceResidualM": 1.5909576411843318e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_31",
+        "nodeIndex": 30,
+        "meshIndex": 29,
+        "triangles": 6966,
+        "originalBounds": {
+          "min": [
+            -1.4988973140716553,
+            2.55877423286438,
+            -3.1854746341705322
+          ],
+          "max": [
+            1.4939537048339844,
+            3.5035479068756104,
+            0.8270532488822937
+          ],
+          "size": [
+            2.9928510189056396,
+            0.9447736740112305,
+            4.012527883052826
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            -1.5532150268554688,
+            2.6514899730682373,
+            -3.3010098934173584
+          ],
+          "max": [
+            1.5481849908828735,
+            3.6305301189422607,
+            0.8570500016212463
+          ],
+          "size": [
+            3.1014000177383423,
+            0.9790401458740234,
+            4.158059895038605
+          ]
+        },
+        "originalTriangleSha256": "c38fbd2a6f003396dd363ebf785424828d66a6fb0c403c9181a2d7a4c289fe84",
+        "donorTriangleSha256": "4e0375643bb92b10ab5db904d2d45c72344af5cb9aa0515d109164b775003430",
+        "maxCorrespondenceResidualM": 1.5909576411843318e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    },
+    {
+      "kind": "restore-source-module-scale-and-reseat",
+      "selector": {
+        "name": "Object_32",
+        "nodeIndex": 31,
+        "meshIndex": 30,
+        "triangles": 4995,
+        "originalBounds": {
+          "min": [
+            0.3951950967311859,
+            2.9159207344055176,
+            -3.12158203125
+          ],
+          "max": [
+            0.9332790970802307,
+            3.4305553436279297,
+            -2.2984368801116943
+          ],
+          "size": [
+            0.5380840003490448,
+            0.5146346092224121,
+            0.8231451511383057
+          ]
+        },
+        "donorBounds": {
+          "min": [
+            0.4095749855041504,
+            3.021589994430542,
+            -3.234800100326538
+          ],
+          "max": [
+            0.9671750068664551,
+            3.5548901557922363,
+            -2.3817999362945557
+          ],
+          "size": [
+            0.5576000213623047,
+            0.5333001613616943,
+            0.8530001640319824
+          ]
+        },
+        "originalTriangleSha256": "7f695e69bebc85ee253d74d49e766d7da84cbc04f7241c4e19c0ce3fa0741f2c",
+        "donorTriangleSha256": "6241d223e9385fa4f9cffd6edc3a1f3dcd1262d77dc4cbc95a0af1a11302605a",
+        "maxCorrespondenceResidualM": 1.5909576411843318e-7
+      },
+      "transform": {
+        "scale": 1.0362694300518136,
+        "translation": [
+          0.00004638889292976969,
+          -0.060089637305699536,
+          0.16999999999999993
+        ]
+      },
+      "receiverEvidence": "Retained Object construction ring [0,2.15,-1.10]; Kurg construction ring [0,2.21,-1.27] inferred from source receiving stock (not a supplied animation pivot). Uniform normalization inversion, followed by this ring-to-ring translation only."
+    }
+  ],
+  "preservation": {
+    "binarySha256": "320774edab9e2b75e604ba23861e08d5a2aff6a2fca0743b2f0e870009c31809",
+    "nonselectedAndDefinitionsSha256": "f298cc88e8f6461507dfc27c88adced23b58f6616d3a83d6f11eadcdf7b127cb"
+  },
+  "sourceOnlyDatums": {
+    "gun": [
+      -0.004,
+      2.8569999999999998,
+      -0.5100000000000001
+    ],
+    "muzzleZ": 1.0270500016212463,
+    "originalBounds": {
+      "min": [
+        -1.9926587343215942,
+        0.00008650031668366864,
+        -3.6017658710479736
+      ],
+      "max": [
+        1.9925692081451416,
+        4.028141498565674,
+        3.624443292617798
+      ],
+      "size": [
+        3.985227942466736,
+        4.02805499824899,
+        7.2262091636657715
+      ]
+    },
+    "derivedBounds": {
+      "min": [
+        -1.9926587343215942,
+        0.00008650031668366864,
+        -3.6017658710479736
+      ],
+      "max": [
+        1.9925692081451416,
+        4.114150257581009,
+        3.624443292617798
+      ],
+      "size": [
+        3.985227942466736,
+        4.114063757264326,
+        7.2262091636657715
+      ]
+    }
+  },
+  "limits": [
+    "No procedural model or image is an input.",
+    "The old dropped ramp and all nonselected hull stock remain exactly as in the original Object reference.",
+    "This is an authorized family-derived target, not a claim about a distinct historical Object 695 configuration."
+  ]
+}

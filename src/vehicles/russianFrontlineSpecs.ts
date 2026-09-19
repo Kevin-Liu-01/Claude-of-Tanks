@@ -11,8 +11,8 @@ const RUSSIAN_FRONTLINE_SPECS = {
   // fielded under the factory index): Russia's next-generation tracked IFV, generated from the owner's supplied
   // Armored Warfare reference model (a local comparison oracle only, see
   // docs/references/tanks/object695_x.source-measurements.json). Seven paired road wheels, full-length side armour
-  // modules, an unmanned module with the 30 mm autocannon on the centreline — the owner's "machine gun like machine gun
-  // that's very powerful": the fastest, hardest-hitting belt in the fleet — twin Kornet-EM launchers and three masts.
+  // modules, a corrected Epokha module with the 57 mm autocannon — the owner's "machine gun like machine gun
+  // that's very powerful": the fastest, hardest-hitting belt in the fleet — four Kornet-EM tubes, eight Bulat tubes and four distinct masts.
   // First-party procedural build (profiles/object695X.ts).
   object695_x: {
     id: 'object695_x', name: 'Object 695', nation: 'Russia', era: 'next-generation', role: 'ifv',
@@ -23,26 +23,27 @@ const RUSSIAN_FRONTLINE_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 72, gunPitchDegS: 56, gunElevationDeg: 60, gunDepressionDeg: 8,
     gun: {
-      caliberMm: 30, reloadS: 0.26, baseAccuracy: 0.22, aimTimeS: 0.9,
+      caliberMm: 57, reloadS: 0.26, baseAccuracy: 0.22, aimTimeS: 0.9,
       muzzleBoreSegments: 14,
       soundProfile: '2a42',
       bloom: { move: 0.034, hullRot: 0.048, turret: 0.032, afterShot: 1.10 },
       shells: [
-        shell('3UBR11 APFSDS-T', 'APFSDS', 30, 265, 245, 88, 1300, { pen2000Mm: 225, reloadS: 0.26, count: 500 }),
+        shell('57 mm APFSDS-T', 'APFSDS', 57, 265, 245, 88, 1300, { pen2000Mm: 225, reloadS: 0.26, count: 500 }),
         shell('9M133M-2 Kornet-EM', 'HEAT', 152, 1200, 1200, 760, 300,
           { reloadS: 2.6, count: 8, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 4 }),
-        shell('3UOF8 HE-I', 'HE', 30, 14, 14, 100, 960, { reloadS: 0.26, count: 500 }),
+        shell('Bulat guided missile', 'HE', 70, 14, 14, 100, 300,
+          { reloadS: 2.6, count: 8, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 8 }),
       ],
     },
-    dims: { hullLengthM: 7.08, overallLengthM: 7.23, widthM: 3.985, heightM: 2.19, silhouetteHeightM: 3.49 },
+    dims: { hullLengthM: 7.08, overallLengthM: 7.23, widthM: 3.985, heightM: 2.19, silhouetteHeightM: 3.5525 },
     armor: (() => {
       const a = modernArmor({
         hl: 3.54, hw: 1.99, inW: 1.15, floor: 0.56, trkTop: 1.00, roofY: 2.13,
-        turretPivot: [0, 2.15, -1.10], gunPivot: [0, 0.66, 0.65],
-        barrelLenM: 3.65, barrelRadM: 0.032,
+        turretPivot: [0, 2.15, -1.10], gunPivot: [-.004, .707, .59],
+        barrelLenM: 1.537, barrelRadM: .0395,
         glacis: [60, 260, 380], lower: [50, 200, 260], side: [45, 140, 200],
         skirt: [80, 300, 520], rear: 35, roof: 40,
-        tw: 1.05, tFrontZ: 0.85, tRearZ: -1.57, tH: 0.90,
+        tw: 1.13, tFrontZ: 1.07, tRearZ: -1.69, tH: .86,
         cheek: [90, 240, 320], tSide: [60, 150, 220], tRear: 40, tRoof: 36,
         mantlet: [100, 250, 330], loader: false,
       });

@@ -101,9 +101,9 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
     // bounding box and author-declared dimensions happen to match the source.
     if (id === 'merkava3d_x') {
       const left = verticalHit(armor, -.9, .6), right = verticalHit(armor, .9, .6);
-      near(left, 2.121, .035, `${id}: low left-forward gunner shoulder`);
+      near(left, 2.226907, .001, `${id}: continuous repaired left-forward gunner shoulder`);
       near(right, 2.433, .02, `${id}: high right-forward cheek`);
-      assert.ok(right - left > .20, `${id}: genuine asymmetric forward armor`);
+      assert.ok(right - left > .18, `${id}: genuine asymmetric forward armor`);
       const rightCheek=tank.root.getObjectByName('turret');
       assert.ok(rightCheek?.isMesh,`${id}: fielded Dor-Dalet right cheek is permanent structural armor`);
       const rightCheekTop=verticalHit(rightCheek,1.60,.65);

@@ -23,7 +23,6 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
 } as const);
 
 export const NATIVE_FAMILY_ORDER = Object.freeze({
-  britishAfv: Object.freeze(['fv510', 'fv510_milan', 'ares_apc_x']),
   abramsSourceX: Object.freeze(['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x']),
   abrams: Object.freeze([
     'm1a1', 'm1a1ha', 'm1a1_aim', 'm1a2', 'm1a2_tusk',
@@ -61,12 +60,12 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1', 'leo2a6_ua',
   ]),
   china: Object.freeze([
-    'type59', 'ztz85_iii', 'type99a', 'type96b_x', 'aft10_x', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type100', 'ztz100_x',
+    'type59', 'ztz85_iii', 'type99a', 'type96b_x', 'aft10_x', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type100', 'ztz100_x', 'ztz100_prototype',
   ]),
   sweden: Object.freeze([
     'strv81', 'udes03', 'strv103a', 'strv103', 'cv90', 'cv90105_tml_x', 'strv122', 'cv90_mkiv', 'cv90_mkiv_x',
   ]),
-  suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'fv510_milan_x', 'ajax_x']),
+  suppliedBritish: Object.freeze(['fv510', 'fv510_milan', 'fv510_milan_x', 'ajax_x', 'ares_apc_x']),
   suppliedRussian: Object.freeze(['bmp3', 'bmp3m_dragun125_x', 'kurganets25_x']),
   poland: Object.freeze([
     't72m1_jaguar', 'pt91_twardy', 'pl01',

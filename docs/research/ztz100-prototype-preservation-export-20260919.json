@@ -1,0 +1,28 @@
+{
+  "comparisonPurpose": "preservation",
+  "sourceCommit": "31d08f67378cd2bc5b883de3e0eba10513784612",
+  "sourceId": "ztz100_x",
+  "geometrySha256": "50d6b799d51ab196f9991dba5ba390daae3849fc2de72205f027583cd1dd0f7a",
+  "meshInstances": 436,
+  "glbSha256": "ffbc0a0709328f693597054cfe048fcc0d7e289f720d9c777ffaf585722e86b6",
+  "buildOptions": {
+    "camoSeed": 4242,
+    "quality": "high",
+    "proceduralOnly": true,
+    "materialMode": "geometry-only"
+  },
+  "bounds": {
+    "min": [
+      -1.8669999837875366,
+      1.8626451388226162e-09,
+      -4.074999809265137
+    ],
+    "max": [
+      1.8669999837875366,
+      3.041222513914108,
+      5.1949999809265135
+    ]
+  },
+  "notice": "Historical first-party geometry preservation only; not real-world source fidelity.",
+  "scope": "Independent historical HIGH geometry-only build; generated lazy fills not preloaded. Historical/current candidate triangle assertion passed via existing exporter; no final visual or release claim."
+}

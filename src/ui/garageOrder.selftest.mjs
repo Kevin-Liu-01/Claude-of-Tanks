@@ -90,21 +90,14 @@ assert.deepEqual(
 );
 
 const usTopRun = [
-  { id: 'm1a2_x', nation: 'USA', name: 'M1A2 Abrams' },
-  { id: 'm1a3', nation: 'USA', name: 'M1A3 Abrams' },
-  { id: 'm1a2_tusk_x', nation: 'USA', name: 'M1A2 Abrams TUSK' },
-  { id: 'm551a1_tts', nation: 'USA', name: 'M551A1 TTS' },
-  { id: 'm3a3_bradley', nation: 'USA', name: 'M3A3 Bradley CFV' },
-  { id: 'm1a2_sepv3_x', nation: 'USA', name: 'M1A2 Abrams SEPv3' },
-];
-const topRunTierOf = () => 10;
-const sortedUsTopRun = usTopRun.sort((a, b) => (
-  compareCountryThenTierThenName(a, b, rank, topRunTierOf)
-));
+  'm1a2_x', 'm3a3_bradley', 'm1a2_sepv2_x', 'm1a3', 'griffin50_x',
+  'm1a2_tusk_x', 'm551a1_tts', 'm1a2_sepv3_x',
+].map(id => ({ id, nation: 'USA', name: id }));
 assert.deepEqual(
-  sortedUsTopRun.slice(0, 5).map((card) => card.id),
-  GARAGE_LEADING_VEHICLE_IDS_BY_NATION.USA,
-  'the U.S. left edge leads with M1A3, M1A2 TUSK, M1A2 SEPv3, M551A1 TTS, then Bradley (owner 2026-09-15)',
+  usTopRun.sort((a, b) => compareCountryThenTierThenName(a, b, rank, () => 10))
+    .slice(0, 7).map(card => card.id),
+  ['m1a3', 'm1a2_sepv3_x', 'm1a2_sepv2_x', 'm1a2_tusk_x', 'm551a1_tts', 'm3a3_bradley', 'griffin50_x'],
+  'the American showcase follows the owner’s September 19 order',
 );
 
 const nationalShowcaseCases = [
@@ -114,23 +107,23 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'Sweden', filler: 'cv90',
-    expected: ['strv122_x', 'strv103', 'cv90_mkiv'],
+    expected: ['strv122_x', 'cv90_mkiv_x', 'strv103', 'strv122', 'cv90_mkiv'],
   },
   {
     nation: 'Germany', filler: 'leo2a6',
     // owner 2026-09-16: Panther, 2A7V, Revolution, 2A6M, 2A6, 2A5M, 2A5, KF51 EVO, KF51-U, Puma S1, MBT-70, then the rest
     expected: [
       'kf51_x', 'leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a6_x', 'leo2a4m_x', 'leo2a5_x',
-      'kf51', 'kf51b', 'spz_puma_s1', 'mbt70', 'leo2a7v',
+      'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1', 'mbt70', 'leo2a7v',
     ],
   },
   {
     nation: 'China', filler: 'type99a',
-    expected: ['ztz100_x', 'type100', 'vt4a1', 'ztz99a2', 'ztz99a2_prototype'],
+    expected: ['vt4a1', 'ztz100_x', 'type96b_x', 'aft10_x', 'type100', 'ztz99a2'],
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
-    expected: ['t90m_x', 't90sm_x', 't90a_vladimir_x', 't90a_x', 't14_x', 'object695_x'],
+    expected: ['t90m_x', 't90sm_x', 't14_x', 'kurganets25_x', 'bmp3m_dragun125_x', 't90a_vladimir_x', 't90a_x', 'object695_x'],
   },
   {
     nation: 'USSR/Russia', filler: 't90a_burlak',

@@ -38,16 +38,17 @@ interface GarageCountrySelectionMemory<Spec extends GarageOrderSpec> {
   remember(specId: string): boolean;
 }
 
-// Owner-directed leading runs at the left edge of each national fleet. These
-// are the previous right-edge showcases in reverse, matching the Garage's new
-// high-to-low presentation while preserving the intended hero progression.
+// Owner-directed leading runs within each nation's descending tier order.
+// Updated 2026-09-19; stable IDs preserve saved selections when names change.
 export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   USA: Object.freeze([
     'm1a3',
-    'm1a2_tusk_x',
     'm1a2_sepv3_x',
+    'm1a2_sepv2_x',
+    'm1a2_tusk_x',
     'm551a1_tts',
     'm3a3_bradley',
+    'griffin50_x',
   ]),
   Japan: Object.freeze([
     'type10_x',
@@ -57,21 +58,24 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   ]),
   Sweden: Object.freeze([
     'strv122_x',
+    'cv90_mkiv_x',
     'strv103',
+    'strv122',
     'cv90_mkiv',
   ]),
   Germany: Object.freeze([
     // owner 2026-09-16: "german tank order should be kf51 panther, leopard 2a7v, leopard 2 revolution,
     // leopard 2a6m, leopard 2a6, leopard 2a5m, leopard 2a5, kf51 evo, kf51-U, puma s1, mbt 70, and so on"
     'kf51_x', 'leo2a7v_x', 'leo2_revolution', 'leo2a6m_x', 'leo2a6_x', 'leo2a4m_x', 'leo2a5_x',
-    'kf51', 'kf51b', 'spz_puma_s1', 'mbt70', 'leo2a7v',
+    'kf41_lynx_x', 'kf51', 'kf51b', 'spz_puma_s1', 'mbt70', 'leo2a7v',
   ]),
   China: Object.freeze([
-    'ztz100_x',
-    'type100',
     'vt4a1',
+    'ztz100_x',
+    'type96b_x',
+    'aft10_x',
+    'type100',
     'ztz99a2',
-    'ztz99a2_prototype',
   ]),
   // 2026-09-15 owner roster pass ("our x tanks are better models, i like featuring them
   // more"): the X studies lead their tier in every nation that has them; the four T-90 X
@@ -79,9 +83,11 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
   Russia: Object.freeze([
     't90m_x',
     't90sm_x',
+    't14_x',
+    'kurganets25_x',
+    'bmp3m_dragun125_x',
     't90a_vladimir_x',
     't90a_x',
-    't14_x',
     'object695_x',
   ]),
   'USSR/Russia': Object.freeze([

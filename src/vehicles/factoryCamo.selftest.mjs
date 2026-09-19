@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import './tankFactory.ts';
-import { ALL_TANK_IDS, getSpec } from './specs.ts';
+import { ALL_TANK_IDS, SAVED_TANK_IDS, DEVELOPMENT_TANK_IDS, PRODUCTION_TANK_IDS, getSpec } from './specs.ts';
 import {
   CAMO_CATALOG_PATTERN_IDS,
   FACTORY_CAMO_PATTERN_BY_NATION,
@@ -59,8 +59,18 @@ for (const id of ALL_TANK_IDS) {
 
 assert.ok(standardized >= 120, 'nearly the whole playable fleet must have a national Factory owner');
 
+// The owner also requested a default for the saved Mk4. Keep that one explicit
+// development-only owner separate from the release roster; arbitrary stale
+// Signature IDs still fail the original release-membership requirement.
+assert.deepEqual(SIGNATURE_CAMO_TANK_IDS.filter(id => !ALL_TANK_IDS.includes(id)), ['merkava4'],
+  'The saved Mk4 is the only explicitly approved non-release Signature owner');
+assert.ok(SAVED_TANK_IDS.includes('merkava4') && DEVELOPMENT_TANK_IDS.includes('merkava4'),
+  'Mk4 Signature names a registered, selectable development model');
+assert.equal(PRODUCTION_TANK_IDS.includes('merkava4'), false,
+  'Adding saved Mk4 paint must not restore it to the production fleet');
 for (const id of SIGNATURE_CAMO_TANK_IDS) {
-  assert.ok(ALL_TANK_IDS.includes(id), `${id} Signature entry must name a playable tank`);
+  if (id !== 'merkava4')
+    assert.ok(ALL_TANK_IDS.includes(id), `${id} Signature entry must name a release tank`);
   assert.equal(hasSignatureCamo(id), true);
   const signaturePatternId = signatureCamoPatternId(id);
   assert.ok(signaturePatternId, `${id} must own a named reusable Signature finish`);
@@ -76,6 +86,19 @@ for (const id of SIGNATURE_CAMO_TANK_IDS) {
     `${id} Signature must be a real patterned finish, not renamed solid paint`);
   assert.ok((signature.patches || []).length >= 2,
     `${id} Signature must retain a multi-tone pattern palette`);
+}
+
+const requestedIsraeliDefaults = [
+  'merkava2d', 'merkava3d_x', 'merkava4', 'merkava4_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv',
+];
+for (const id of requestedIsraeliDefaults) {
+  assert.ok(SIGNATURE_CAMO_TANK_IDS.includes(id), `${id} must retain its requested Signature entry`);
+  assert.equal(defaultCamoPatternId(id), `sig_${id}`, `${id} owns its distinct requested default`);
+  assert.equal(getCamoSelection(id), `sig_${id}`, `${id} initially presents its default when unset`);
+  assert.equal(PRODUCTION_TANK_IDS.includes(id), id !== 'merkava4',
+    `${id} paint defaults must retain the explicit production/development distinction`);
+  assert.equal(resolveCamoVisual(getSpec(id), 'factory').scheme, 'solid',
+    `${id} still offers the national delivery coat as explicit Factory paint`);
 }
 
 const russianDigitalSignatures = [
@@ -157,6 +180,7 @@ globalThis.localStorage = {
   getItem: (key) => {
     if (key === 'cot.camo.abramsx') return 'factory';
     if (key === 'cot.camo.m551_sheridan') return 'signature';
+    if (requestedIsraeliDefaults.some(id => key === `cot.camo.${id}`)) return 'factory';
     return null;
   },
   setItem: () => {},
@@ -166,6 +190,10 @@ try {
     'an explicit player Factory selection must override the Signature default');
   assert.equal(getCamoSelection('m551_sheridan'), 'sig_m551_sheridan',
     'the legacy tank-relative Signature id migrates to its named reusable preset');
+  for (const id of requestedIsraeliDefaults) {
+    assert.equal(getCamoSelection(id), 'factory',
+      `${id} explicit player Factory selection overrides the requested new default`);
+  }
 } finally {
   if (previousLocalStorage === undefined) delete globalThis.localStorage;
   else globalThis.localStorage = previousLocalStorage;

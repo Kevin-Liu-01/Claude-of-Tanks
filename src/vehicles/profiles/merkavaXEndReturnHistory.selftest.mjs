@@ -77,6 +77,17 @@ rejectMutation("P.add('turret', module);","P.addExternalArmor('turret', module);
   'Permanent repaired cheek cannot be reclassified as depleted ERA');
 rejectMutation('outerWorldX: Object.freeze([1.82,1.72,1.36])',
   'outerWorldX: Object.freeze([1.82,1.71,1.36])','Approved cheek envelope drift');
+for(const [from,to,label]of[
+  ['z >= -.10 && z <= 1.60','z >= -.90 && z <= 1.60','Left repair extends into aft stock'],
+  ['z >= -.10 && z <= 1.60','z >= -.10 && z <= 1.85','Left repair extends beyond forward endpoint'],
+  ['(edgeL-highL) * .04 / (left-.08-roofL)','(edgeL-highL) * .05 / (left-.08-roofL)','Left repair interpolation drift'],
+  ['[-roofL-.04,leftBend-MK3.y]','[-roofL-.04,drop-MK3.y]','Old collapsed shoulder cannot replace current surface'],
+  ['[.60,1.35,1.56,1.80,.30,.90,2.53,2.433','[.60,1.35,1.56,1.80,.30,.90,2.54,2.433','Retained left roof endpoint drift'],
+  ['[.60,1.35,1.56,1.80,.30,.90,2.53,2.433','[.60,1.35,1.56,1.80,.30,.90,2.53,2.443','Unrelated right roof endpoint drift'],
+  ['[1.60,.72,.80,1.82,.24,.60,2.26,2.30,2.34,2.08,1.91,2.06]',
+   '[1.60,.72,.80,1.82,.24,.60,2.26,2.30,2.34,2.08,1.92,2.06]','Retained outer shoulder drift'],
+  ['const leftBend =','const leftBend =\n    const leftBend =','Duplicate left repair declaration'],
+])rejectMutation(from,to,label);
 rejectMutation("const sideX=configuration==='namer'?1.25:configuration==='mk4'?1.78:1.55;",
   "const sideX=configuration==='namer'?1.25:configuration==='mk4'?1.77:1.55;",
   'Modern Trophy configuration drift');

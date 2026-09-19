@@ -1,4 +1,27 @@
-# Object 695 (`object695_x`) — reference packet (2026-09-17, renamed 2026-09-18)
+# Object 695 (`object695_x`) — reference packet
+
+## Current turret and qualification (2026-09-19)
+
+The owner requested the corrected Kurganets Epokha turret on this retained hull.
+The current build has a 57 mm cannon, four Kornet tubes, eight Bulat tubes and
+four roof masts, through the shared `epokhaTurret.ts` builder. Its ring remains
+`(0,2.15,-1.10)`; the trunnion is `(-.004,2.857,-.51)` and barrel length is
+1.537 m. The existing primary firing cycle and Kornet tuning remain; Bulat
+replaces the former cannon HE channel. There is no separate roof machine gun.
+
+The comparison target now combines the original source hull with nine complete
+corrected source turret owners, through the independently replayable
+[source recipe](../source-assemblies/20260919/object695_x.json). Neither source
+GLB enters the playable runtime. The earlier measurement JSON and account below
+remain historical records; their 30 mm turret and old gun datum are superseded.
+
+Fresh automated geometry measures 94.7/92 and all fourteen new-turret views
+pass scoped visual review. Whole-vehicle visual qualification remains open for
+the retained hull's rear louvers, ramp door and simplified bow/deck detail.
+The retained chassis also has documented LOW geometry-budget debt. See the
+[current construction, balance and review record](../../research/object695-epokha-dragun-balance-20260919.md).
+
+## Original build history (2026-09-17–18)
 
 **Naming.** This is the session's Kurganets-25 IFV build, fielded under the vehicle's factory index "Object 695" (owner
 2026-09-18: "make the tanks you made into separate tanks with a unique name and id and have the other one in codex be the

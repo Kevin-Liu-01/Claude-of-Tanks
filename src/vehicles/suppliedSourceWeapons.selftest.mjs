@@ -9,7 +9,7 @@ import { createCombatState, selectShell, startReload } from '../sim/damage.ts';
 const spec = TANK_SPECS.k21_x;
 const cannon = TANK_SPECS.cv90;
 const missilePeer = TANK_SPECS.type89.gun.shells.find(round => round.guided);
-const donorSnapshots = new Map(['cv90', 'type89', 'spz_puma'].map(id => [id, JSON.stringify(TANK_SPECS[id])]));
+const donorSnapshots = new Map(['cv90', 'type89', 'spz_puma', 'spz_puma_s1'].map(id => [id, JSON.stringify(TANK_SPECS[id])]));
 const gunBefore = structuredClone(spec.gun);
 const suppliedGunsBefore = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, structuredClone(TANK_SPECS[id].gun)]));
 const armorBefore = new Map(SUPPLIED_SOURCE_IDS.map(id => [id, structuredClone(TANK_SPECS[id].armor)]));
@@ -39,7 +39,7 @@ function checkLoadout() {
 
 function checkSourceConfigurations() {
   const configurations = {
-    kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], fv510_milan_x: [30, [1]],
+    object695_x: [57, [4, 8]], kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], fv510_milan_x: [30, [1]],
     griffin50_x: [50, []], ajax_x: [40, []], aft10_x: [170, [8]],
     bmp3m_dragun125_x: [125, []], k21_x: [40, [2]], type96b_x: [125, []],
     kf41_lynx_x: [35, []], cv90_mkiv_x: [50, [2]], cv90105_tml_x: [105, []], sabra_mk2_x: [120, []],
@@ -58,10 +58,25 @@ function checkSourceConfigurations() {
   }
 }
 
+function checkObject695Loadout() {
+  const vehicle=TANK_SPECS.object695_x, state=createCombatState(vehicle);
+  assert.deepEqual(state.ammo,[500,8,8], 'retained strong cannon/Kornet reserve plus all eight actual Bulat tubes');
+  assert.equal(new Set(state.reloadChannels).size,3, 'each Epokha weapon owns its reload channel');
+  for (const slot of [1,2]) {
+    const others=state.reloadChannels.filter((_,i)=>i!==slot).map(c=>({...c}));
+    assert.equal(selectShell(state,slot,vehicle),true); startReload(state,vehicle);
+    assert.equal(state.reload.totalS,2.6);
+    assert.deepEqual(state.reloadChannels.filter((_,i)=>i!==slot),others);
+    state.ammo[slot]=0;assert.equal(selectShell(state,slot,vehicle),false);
+  }
+  assert.equal(selectShell(state,0,vehicle),true,'the primary cannon remains usable after both launchers deplete');
+}
+
 function checkKurganetsLoadout() {
   const kurganets = TANK_SPECS.kurganets25_x;
   const [primary, kornet, bulat] = kurganets.gun.shells;
-  const peer = TANK_SPECS.spz_puma.gun;
+  assert.equal(kurganets.balancePeerOf,'spz_puma_s1','tier-X gameplay peer does not replace the source turret/frame');
+  const peer = TANK_SPECS.spz_puma_s1.gun;
   assert.deepEqual(primary, { ...peer.shells[0], name: '57 mm APFSDS', caliberMm: 57 },
     'the short 57 mm main gun preserves declared primary gameplay tuning');
   assert.deepEqual(kornet, { ...peer.shells[1], name: 'Kornet guided missile', count: 4, launcherTubes: 4 },
@@ -71,7 +86,7 @@ function checkKurganetsLoadout() {
     soundProfile: peer.shells[1].soundProfile }, 'Bulat uses documented HE effect and guided-motion tuning');
   assert.equal(guidedMissileSlot(kurganets), 1, 'special action selects the first actual launcher');
   const state = createCombatState(kurganets);
-  assert.deepEqual(state.ammo, [200, 4, 8], 'source-visible launcher counts do not invent hidden reserves');
+  assert.deepEqual(state.ammo, [peer.shells[0].count, 4, 8], 'source-visible launcher counts do not invent hidden reserves');
   assert.equal(new Set(state.reloadChannels).size, 3, 'cannon, Kornet and Bulat cycles are distinct');
   for (const slot of [1, 2]) {
     const untouched = state.ammo.filter((_, i) => i !== slot);
@@ -88,6 +103,7 @@ function checkKurganetsLoadout() {
   assert.equal(selectShell(state, 0, kurganets), true, '57 mm cannon remains selectable after both launchers exhaust');
 }
 checkLoadout();
+checkObject695Loadout();
 checkSourceConfigurations();
 checkKurganetsLoadout();
 const combat = createCombatState(spec);
@@ -113,4 +129,4 @@ try {
 } finally {
   for (const [id, armor] of armorBefore) TANK_SPECS[id].armor = armor;
 }
-console.log('suppliedSourceWeapons: all13 caliber/launcher census; K21 and both Kurganets launchers, source frames, independent inventory/reload and damage module pass');
+console.log('suppliedSourceWeapons: all13 supplied + Object695 caliber/launcher census; K21 and both Kurganets launchers, source frames, independent inventory/reload and damage module pass');

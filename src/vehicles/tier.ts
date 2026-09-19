@@ -29,7 +29,7 @@ export const TANK_TIER = Object.freeze({
   m1a2_sepv2_x: 10, m1a2_sepv3_x: 10, ua_m1a1_x: 9,
   // 2026-09-15 owner: the four T-90 X studies are tier X and lead the Russian garage
   t90a_x: 10, t90a_vladimir_x: 10, t90m_x: 10, t90sm_x: 10, t14_x: 10,
-  kurganets25_x: 9,
+  kurganets25_x: 10,
   fv510_milan_x: 9, griffin50_x: 10, ajax_x: 9, aft10_x: 10,
   bmp3m_dragun125_x: 10, k21_x: 9, type96b_x: 10,
   kf41_lynx_x: 10, cv90_mkiv_x: 10, cv90105_tml_x: 9, sabra_mk2_x: 9,
@@ -66,7 +66,7 @@ export const TANK_TIER = Object.freeze({
   t44: 7, t54: 7, type59: 7, t80: 8, t80b: 9, t80bv: 9,
   amx30: 7, amx30b2: 8, m48: 8, m60a2: 9, vickers_mk1: 7, t84: 9,
   ua_t64bv: 8, ua_t80bv: 9, ua_t80u_kursk: 9, ua_t84_oplot_m: 10, ua_m1a1: 9,
-  ztz85_iii: 8, ztz99a2_prototype: 10, ztz99a2: 10, vt4a1: 10, type100: 10, ztz100_x: 10,
+  ztz85_iii: 8, ztz99a2_prototype: 10, ztz99a2: 10, vt4a1: 10, type100: 10, ztz100_x: 10, ztz100_prototype: 9,
   // Dedicated Swedish siege-TD progression: prototype -> A -> B.
   strv81: 7, udes03: 8, strv103a: 9, cv90: 9, strv122: 10, cv90_mkiv: 10,
   t72m1_jaguar: 8, pt91_twardy: 9, pl01: 10, pl01_105: 10,

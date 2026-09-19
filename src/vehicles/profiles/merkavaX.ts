@@ -340,8 +340,9 @@ function addMerkava3dRightCheekModule(P: TankBuilderPort): void {
 }
 
 function merkava3Shell(): THREE.BufferGeometry {
-  // Source Mk3D's forward left shoulder drops beside the gunner's berth;
-  // the right armor cheek stays high. Preserve that asymmetry in the body.
+  // The owner-marked -X panels must form a continuous shoulder, not a
+  // recessed shelf below the roof. Keep every roof/outer-edge station and
+  // the asymmetric envelope; straighten only the intermediate forward bend.
   return sectionSolid([
     // world z, left/right envelope, keel, left/right roof half-width,
     // left/right roof height, ridge, left drop, left/right shoulder height.
@@ -354,14 +355,17 @@ function merkava3Shell(): THREE.BufferGeometry {
     [1.10,1.20,1.32,1.80,.30,.86,2.42,2.35,2.46,2.13,1.92,2.11],
     [1.60,.72,.80,1.82,.24,.60,2.26,2.30,2.34,2.08,1.91,2.06],
     [1.85,.31,.41,1.86,.21,.25,2.19,2.19,2.21,2.12,1.99,1.99],
-  ].map(([z,left,right,low,roofL,roofR,highL,highR,ridge,drop,edgeL,edgeR])=>({
-    z:z-MK3.z,ring:[
+  ].map(([z,left,right,low,roofL,roofR,highL,highR,ridge,drop,edgeL,edgeR])=>{
+    const leftBend = z >= -.10 && z <= 1.60
+      ? highL + (edgeL-highL) * .04 / (left-.08-roofL)
+      : drop;
+    return {z:z-MK3.z,ring:[
       [-left+.04,low-MK3.y],[right-.04,low-MK3.y],[right,low+.04-MK3.y],
       [right-.08,edgeR-MK3.y],[roofR,highR-MK3.y],[0,ridge-MK3.y],
-      [-roofL,highL-MK3.y],[-roofL-.04,drop-MK3.y],
+      [-roofL,highL-MK3.y],[-roofL-.04,leftBend-MK3.y],
       [-left+.08,edgeL-MK3.y],[-left,low+.04-MK3.y],
-    ],
-  })));
+    ]};
+  }));
 }
 
 export function buildMerkava3DX(P: TankBuilderPort): void {

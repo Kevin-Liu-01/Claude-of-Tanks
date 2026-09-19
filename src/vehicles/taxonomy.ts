@@ -90,7 +90,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'kurganets25_x', 'griffin50_x', 'kf41_lynx_x', 'cv90_mkiv_x', 'bmp3m_dragun125_x',
     'kf51_x', 't14_x',
     'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'm1a3', 'abramsx',
-    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv', 'type100', 'ztz100_x',
+    'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv', 'type100', 'ztz100_x', 'ztz100_prototype',
     'object695_x',
   ]),
 });

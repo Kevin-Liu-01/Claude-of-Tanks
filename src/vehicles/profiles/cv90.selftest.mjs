@@ -44,7 +44,7 @@ const expected = Object.freeze({
     rearTrackDepartureZ: -2.45,
   }),
   cv90_mkiv: Object.freeze({
-    name: 'CV90 Mk IV', tier: 10, caliber: 50, weight: 40,
+    name: 'CV90 Mk 4', tier: 10, caliber: 50, weight: 40,
     dims: Object.freeze({ hullLengthM: 6.282, overallLengthM: 7.596, widthM: 3.636, heightM: 3.528 }),
     hullReceiptKey: 'cv90MkivIndependentHullReceipt',
     turretReceiptKey: 'cv90MkivIndependentTurretReceipt',

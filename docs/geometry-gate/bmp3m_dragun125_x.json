@@ -1024,11 +1024,11 @@
   },
   {
    "yaw": 0,
-   "pitch": -6,
+   "pitch": -8,
    "islandCount": 1,
    "regions": [
     {
-     "area": 185900,
+     "area": 184953,
      "minX": 130,
      "minY": 278,
      "maxX": 953,
@@ -1038,15 +1038,15 @@
   },
   {
    "yaw": 0,
-   "pitch": 60,
+   "pitch": 18,
    "islandCount": 1,
    "regions": [
     {
-     "area": 193727,
+     "area": 191565,
      "minX": 130,
      "minY": 278,
      "maxX": 953,
-     "maxY": 934
+     "maxY": 745
     }
    ]
   }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
 import { createTank, ensureTankBuilders, isTankBuilderReady } from './fleetFactory.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { MERKAVA_MODERN_IDS } from './merkavaModernSpecs.ts';
@@ -144,9 +145,33 @@ const barakVisual = createTank('merkava4_barak', null,
   { proceduralOnly: true, geometryReceipt: true, quality: 'low' });
 assert.equal(barakVisual.root.getObjectByName('rig_turret')?.userData?.trophySuiteReceipt?.configuration,
   'barak', 'Barak keeps Trophy protection');
-assert.equal(barakVisual.root.getObjectByName('rig_turret')?.userData?.barakSensorReceipt?.ironVisionCameraClusters,
-  4, 'Barak dispatches to its sensor-aware exact build');
-barakVisual.dispose();
+// The source-measured roof replaced the draft four-camera IronVision marker
+// before published 1cb462309. Keep this dispatch check on the actual current
+// hatch/sight/aerial contract; detailed source-face tests remain separate.
+function assertBarakSensorDispatch(visual) {
+  const turret = visual.root.getObjectByName('rig_turret');
+  assert.deepEqual(turret?.userData.barakSensorReceipt,
+    { crewHatchPeriscopes: 5, cylindricalSight: true, rearWhips: 2, owner: 'rig_turret' },
+    'Barak dispatches to its source-measured sensor build');
+  const whips = turret.getObjectByName('barakRearWhips');
+  assert.ok(whips?.isInstancedMesh && whips.count === 2
+    && whips.geometry.getAttribute('position')?.count > 0,
+  'Barak dispatch emits the actual aerial pair, not only a receipt');
+  assert.equal(whips.parent, turret, 'Barak aerials belong to the turret yaw rig');
+  visual.root.updateMatrixWorld(true);
+  assert.ok(new THREE.Box3().setFromObject(whips).max.y > 5.60,
+    'actual aerial stock reaches the registered source height');
+}
+try {
+  assertBarakSensorDispatch(barakVisual);
+  const whips = barakVisual.root.getObjectByName('barakRearWhips');
+  const count = whips.count;
+  try {
+    whips.count = 0;
+    assert.throws(() => assertBarakSensorDispatch(barakVisual), /actual aerial pair/,
+      'metadata-only sensor dispatch cannot pass with empty physical instances');
+  } finally { whips.count = count; }
+} finally { barakVisual.dispose(); }
 const namerVisual = createTank('namer_ifv', null,
   { proceduralOnly: true, geometryReceipt: true, quality: 'low' });
 assert.deepEqual({ ...namerVisual.root.getObjectByName('rig_hull')?.userData?.namerLayoutReceipt },
