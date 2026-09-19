@@ -522,9 +522,18 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
       put('turretDark',cylZ(.034,.016,14),side*(x+.090+(side<0?-.055:0)),y+.044,z+.184,-.22,side*.46);
     }
     for(const z of[-2.22,-.95,.55])put('turretDetail',torus(.035,.011,10,6),side*.89,2.415,z,Math.PI/2);
-    if(candidate==='merkava4_trophy')
-      put('turretDetail',box(.29,.24,.59),side*1.06,2.45,.285,0,0,side*.08);
+    if(candidate==='merkava4_trophy'){
+      // The source carries six separate launcher cradles on a thin layered
+      // cheek shelf. A solid support envelope buried the already-authored
+      // inclined tubes and made the bank read as one rectangular block.
+      put('turretDetail',box(.40,.052,.64),side*1.06,2.315,.285,0,0,side*.08);
+      for(const [x,y,z]of[[1.114,2.415,.037],[1.041,2.418,.176],[.969,2.421,.319],
+        [1.134,2.369,.219],[1.062,2.372,.354],[.988,2.375,.499]])
+        put('turretDetail',box(.105,.048,.19),side*(x+(side<0?-.055:0)),y-.070,z-.025,-.16,side*.46);
+    }
   }
+  if(candidate==='merkava4_trophy')
+    P.turretG.userData.trophySmokeBankReceipt=Object.freeze({tubes:12,cradles:12,solidEnvelope:false});
   if(candidate==='merkava4_trophy'){
     type WhipStation=readonly [number,number,number,number];
     const taperedWhip=(stations: readonly WhipStation[])=>{
@@ -895,6 +904,33 @@ function addTrophyHullEndEquipment(P: TankBuilderPort): void {
   }
 }
 
+function addTrophyRearFaceDetails(P: TankBuilderPort): void {
+  // The source rear is not a single featureless closure. Its recessed centre
+  // door is a separate 0.651 × 0.902 m plate, flanked by service housings;
+  // compact round lamps and two bent lower fittings remain individually
+  // readable in the rear and rear-quarter views. The structural closure stays
+  // intact behind this shallow, first-party detail stack.
+  P.addEquipment('hullDark',box(.72,.96,.030),0,.9275,-4.000);
+  P.addEquipment('hullDetail',box(.6506,.9016,.018),0,.9275,-4.025);
+  P.addEquipment('hullDark',box(.050,.78,.020),0,.9275,-4.038);
+  P.addEquipment('hullDetail',box(.6547,.1464,.040),0,1.4807,-4.010);
+  for(const side of[-1,1]){
+    P.addEquipment('hullDetail',box(.55,.50,.035),side*.70,1.12,-4.010);
+    P.addEquipment('hullDark',box(.030,.46,.018),side*.405,1.10,-4.035);
+    // Independently closed primary-hull lamp islands: source envelopes are
+    // about 195 mm in diameter at x -1.690/+1.699 m.
+    const lampX=side<0?-1.6902:1.6992;
+    const lampY=(side<0?1.3563:1.4266)-.010;
+    P.addEquipment('hullDark',cylZ(.0975,.038,16),lampX,lampY,-4.018);
+    P.addEquipment('hullDetail',cylZ(.064,.020,16),lampX,lampY,-4.041);
+    const x=side*.23;
+    hullBar(P,[x-side*.040,.515,-4.018],[x-side*.042,.440,-4.045],.012);
+    hullBar(P,[x-side*.042,.440,-4.045],[x+side*.035,.426,-4.045],.012);
+    hullBar(P,[x+side*.035,.426,-4.045],[x+side*.038,.485,-4.020],.012);
+  }
+  P.hullG.userData.trophyRearFaceReceipt=Object.freeze({door:true,sideHousings:2,lamps:2,bentFittings:2});
+}
+
 function modernMerkavaGlacisCap(topDrop = 0, steepShoulder = true): THREE.BufferGeometry {
   // Both modern source families keep more shoulder height through the forward
   // engine deck than the clean Mk.4 study. This closed cap follows four
@@ -1103,6 +1139,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
     addModernMerkavaRearClosure(P,true);
+    addTrophyRearFaceDetails(P);
     addTrophyGlacisSignature(P);
     addTrophySuite(P,MK4,'mk4');
   }

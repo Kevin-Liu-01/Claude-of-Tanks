@@ -107,15 +107,25 @@ function beforeModernIsraeliFleet(source){
     'cb49f53b427ddd34f7ff5e4fead34be703d042293a2acd250ebb6a121fb5de0a','Barak roof');
   replaceExact("function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {\n  if(candidate==='merkava4_barak'){\n    merkava4BarakRoof(P);\n    return;\n  }\n",
     'function merkava4Roof(P: TankBuilderPort): void {\n','configuration-specific roof seam');
-  removeExact(`    if(candidate==='merkava4_trophy')
-      put('turretDetail',box(.29,.24,.59),side*1.06,2.45,.285,0,0,side*.08);
+  removeExact(`    if(candidate==='merkava4_trophy'){
+      // The source carries six separate launcher cradles on a thin layered
+      // cheek shelf. A solid support envelope buried the already-authored
+      // inclined tubes and made the bank read as one rectangular block.
+      put('turretDetail',box(.40,.052,.64),side*1.06,2.315,.285,0,0,side*.08);
+      for(const [x,y,z]of[[1.114,2.415,.037],[1.041,2.418,.176],[.969,2.421,.319],
+        [1.134,2.369,.219],[1.062,2.372,.354],[.988,2.375,.499]])
+        put('turretDetail',box(.105,.048,.19),side*(x+(side<0?-.055:0)),y-.070,z-.025,-.16,side*.46);
+    }
 `,'Trophy smoke-support stocks');
+  removeExact(`  if(candidate==='merkava4_trophy')
+    P.turretG.userData.trophySmokeBankReceipt=Object.freeze({tubes:12,cradles:12,solidEnvelope:false});
+`,'Trophy smoke-support receipt');
   replaceHashedBlock("  if(candidate==='merkava4_trophy'){\n    type WhipStation",
     'for(const [x,z,base,tip] of [',
     '5942561d3649509c67ad3db76463b1e2850355a1e4b0cba6c280fc79ec9d1490',
     '  ','Trophy source whip construction');
   removeHashedBlock('type TrophyConfiguration','function merkava4Shell',
-    'c3ecdd9dfb8a5ba15589c485da2e8c111e8e1544f93e94c6681b7004b5bcc797','modern Merkava fittings');
+    'd5867e23490cd946170b89804c60e9ca331e7f7c5d8d79e8730814401f223ccb','modern Merkava fittings');
   replaceExact("function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {",
     'export function buildMerkava4X(P: TankBuilderPort): void {','modern Merkava family entry');
   replaceExact(`  // The Trophy study's canonical ground recipe seats the complete assembly
@@ -164,6 +174,7 @@ function beforeModernIsraeliFleet(source){
     P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
     addModernMerkavaRearClosure(P,true);
+    addTrophyRearFaceDetails(P);
     addTrophyGlacisSignature(P);
     addTrophySuite(P,MK4,'mk4');
   }

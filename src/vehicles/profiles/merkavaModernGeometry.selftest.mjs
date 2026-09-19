@@ -74,6 +74,12 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
         `${id}: rendered local gun pivot composes to the certified world trunnion`);
       const glacisY = rayDown(tank.root.getObjectByName('hull'), 0, 2.75);
       if (contract.trophy === 'mk4') {
+        assert.deepEqual(turretRig.userData.trophySmokeBankReceipt,
+          { tubes: 12, cradles: 12, solidEnvelope: false },
+          `${id}: two exposed six-tube smoke banks retain separate cradles`);
+        assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.trophyRearFaceReceipt,
+          { door: true, sideHousings: 2, lamps: 2, bentFittings: 2 },
+          `${id}: rear face keeps the separate door, housings, lamps and lower fittings`);
         assert.ok(glacisY > 1.34 && glacisY < 1.40,
           `${id}: Trophy-specific cap descends onto the measured 1.362 m glacis (${glacisY})`);
         const hull=tank.root.getObjectByName('hull');
