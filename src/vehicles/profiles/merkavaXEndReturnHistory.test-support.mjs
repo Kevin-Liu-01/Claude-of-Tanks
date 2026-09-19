@@ -33,6 +33,14 @@ function beforeModernIsraeliFleet(source){
     assert.equal(hash(block),sha256,`${label}: complete reviewed block`);
     source=source.slice(0,startAt)+source.slice(endAt);
   };
+  const replaceHashedBlock=(start,end,sha256,before,label)=>{
+    const startAt=source.indexOf(start),endAt=source.indexOf(end,startAt);
+    assert.ok(startAt>=0&&endAt>startAt,`${label}: exact bounded block exists`);
+    const block=source.slice(startAt,endAt);
+    assert.equal(hash(block),sha256,`${label}: complete reviewed block`);
+    source=source.slice(0,startAt)+before+source.slice(endAt);
+  };
+  removeExact("import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';\n",'LOW track-shoe helper import');
   removeExact("const NAMER: Frame = { y: 2.10, z: -1.15, ground: 0, center: 0 };\n",'Namer frame datum');
   removeExact(`function hullBar(P: TankBuilderPort, a: [number,number,number], b: [number,number,number], width = .025, slot = 'hullDark'): void {
   const start=new THREE.Vector3(...a),end=new THREE.Vector3(...b),delta=end.clone().sub(start);
@@ -47,26 +55,75 @@ function beforeModernIsraeliFleet(source){
     'cb49f53b427ddd34f7ff5e4fead34be703d042293a2acd250ebb6a121fb5de0a','Barak roof');
   replaceExact("function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {\n  if(candidate==='merkava4_barak'){\n    merkava4BarakRoof(P);\n    return;\n  }\n",
     'function merkava4Roof(P: TankBuilderPort): void {\n','configuration-specific roof seam');
+  removeExact(`    if(candidate==='merkava4_trophy')
+      put('turretDetail',box(.29,.24,.59),side*1.06,2.45,.285,0,0,side*.08);
+`,'Trophy smoke-support stocks');
+  replaceHashedBlock("  if(candidate==='merkava4_trophy'){\n    type WhipStation",
+    'for(const [x,z,base,tip] of [',
+    '5942561d3649509c67ad3db76463b1e2850355a1e4b0cba6c280fc79ec9d1490',
+    '  ','Trophy source whip construction');
   removeHashedBlock('type TrophyConfiguration','function merkava4Shell',
-    '4000a525b94a45888001e23f62f557f4b042625d411d852ad033df19cefb646d','modern Merkava fittings');
+    '0f1d8f6bf593711916fdda1b4ea5a36f7a7bf60b6245902f7eba52be33988fe9','modern Merkava fittings');
   replaceExact("function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {",
     'export function buildMerkava4X(P: TankBuilderPort): void {','modern Merkava family entry');
-  removeExact("  if(candidate!=='merkava4_x')P.add('hull',modernMerkavaGlacisCap(candidate==='merkava4_barak'?.06:0));\n",
+  replaceExact(`  // The Trophy study's canonical ground recipe seats the complete assembly
+  // 10 mm above the clean family datum; retain that measured registration.
+  const sourceY=candidate==='merkava4_trophy'?.01:0;
+  P.hullG.position.set(0,sourceY,0);P.turretG.position.set(0,MK4.y+sourceY,MK4.z);
+`, `  P.hullG.position.set(0,0,0);P.turretG.position.set(0,MK4.y,MK4.z);
+`, 'Trophy source seating');
+  removeExact("  if(candidate==='merkava4_trophy')P.add('hull',modernMerkavaGlacisCap());\n",
     'modern glacis extension call');
+  replaceExact(`  const trophyGear=candidate==='merkava4_trophy';
+  const barakGear=candidate==='merkava4_barak';
+  const wheelZs=trophyGear?[-2.334,-1.566,-.494,.444,1.408,2.189]
+    :barakGear?[-2.0557,-1.2559,-.2015,.7238,1.5850,2.3770]:[...MERKAVA4_X_DATUMS.wheelStations];
+  const wheelR=trophyGear?.364:barakGear?.332:.3467;
+  const wheelY=trophyGear?.398:barakGear?.3788:.387;
+  P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR,wheelW:.34,wheelY,xc:1.444,
+    // LOW keeps the family shoe envelope with coarser relief; HIGH and the
+    // established Mk.4 X retain their original native shoe construction.
+    ...(!P.q && candidate!=='merkava4_x'?{trackShoeBuilder:buildFleetTrackShoe}:{}),
+    wheelZs,trackW:.548,trackTh:.064,
+    sprocket:trophyGear?{z:3.267,y:.787,r:.359}:barakGear?{z:3.2069,y:.830,r:.353}:{z:3.285,y:.761,r:.336},
+    idler:trophyGear?{z:-3.119,y:.758,r:.355}:barakGear?{z:-2.9871,y:.7946,r:.333}:{z:-3.020,y:.722,r:.314},
+    // Existing road axles stay fixed; supports sit between their swept wheels.
+    // 4.7 mm seat: with the 19 mm heavy pins the rollers still meet the near-shoe stock within 2 mm (2026-09-17)
+    topY:trophyGear?1.125:barakGear?1.145:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
+`, `  P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR:.3467,wheelW:.34,wheelY:.387,xc:1.444,
+    wheelZs:[...MERKAVA4_X_DATUMS.wheelStations],trackW:.548,trackTh:.064,
+    sprocket:{z:3.285,y:.761,r:.336},idler:{z:-3.020,y:.722,r:.314},
+    // Existing road axles stay fixed; supports sit between their swept wheels.
+    // 4.7 mm seat: with the 19 mm heavy pins the rollers still meet the near-shoe stock within 2 mm (2026-09-17)
+    topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
+`, 'source-specific modern running gear');
   replaceExact('  merkava4Roof(P,candidate);\n','  merkava4Roof(P);\n','configuration-specific roof call');
+  replaceExact(`  if(candidate!=='merkava4_barak'){
+    const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.10,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false});
+    coax.position.set(.0221,.26418,-.3127);P.gunG.add(coax);
+  }
+  if(candidate!=='merkava4_barak')merkava4CoaxMount(P);
+`, `  const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.10,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false});
+  coax.position.set(.0221,.26418,-.3127);P.gunG.add(coax);
+  merkava4CoaxMount(P);
+`, 'Barak source weapon exclusions');
   replaceExact(`  P.muzzleZ=2.8755;P.topY=2.75-MK4.y;
   if(candidate==='merkava4_trophy'){
+    // The source lower hull closes at y .375, 44 mm below the clean family
+    // shell. Rebuild that shallow belly plate directly instead of lowering
+    // the whole vehicle and corrupting the measured wheel/track datums.
+    P.add('hull',box(3.58,.044,7.55),0,.397,0);
+    addTrophyHullEndEquipment(P);
     addModernMerkavaRearClosure(P,true);
     addTrophyGlacisSignature(P);
     addTrophySuite(P,MK4,'mk4');
-    // The Trophy study is intentionally lower and heavier than the baseline
-    // Mk.4 while preserving its dense roof furniture and four antenna whips.
-    applyMerkavaVerticalStudyScale(P,.95);
   }
   if(candidate==='merkava4_barak'){
+    addModernMerkavaEndGuards(P,4.03,-4.02,.74);
     addModernMerkavaRearClosure(P,false);
     addBarakHullSignature(P);
     addBarakTurretArmor(P);
+    addBarakRearMissionModule(P);
     addTrophySuite(P,MK4,'barak');
     addBarakSensorSuite(P);
     addBarakRearStowage(P);
@@ -74,8 +131,6 @@ function beforeModernIsraeliFleet(source){
     // turret unchanged while pulling the Mk.4 running-gear/hull course into
     // Barak's visibly tighter side envelope.
     P.hullG.scale.x=.972;
-    P.gunG.scale.z=.97;
-    P.muzzleZ*=.97;
   }
   P.hullG.userData.xRebuild={candidate,independent:candidate==='merkava4_x',familyRecipe:'merkava4-first-party',datumVersion:1,sourceLocalOnly:true};
 }`,
@@ -90,7 +145,7 @@ export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Fami
 
 `,'\n\n','modern Merkava exported wrappers');
   removeHashedBlock('function namerSuperstructure','export const MERKAVA_X_PROFILES',
-    '918591899f0b174cab361a25a78c3a4cdb054d024f36115c8c99028597df0ffd','Namer implementation');
+    'b0c2bec65ec8b7ec07c9ed15aa50a6636ade6a36a526065d7e7905b0ecea641f','Namer implementation');
   removeExact("  merkava4_trophy: { build: buildMerkava4Trophy },\n  merkava4_barak: { build: buildMerkava4Barak },\n  namer_ifv: { build: buildNamerIfv },\n",
     'modern Israeli profile registrations');
   return source;

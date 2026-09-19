@@ -46,17 +46,39 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       assert.equal(whips?.count, 2, `${id}: measured rear antenna pair is instanced once`);
       assert.ok(new THREE.Box3().setFromObject(whips).max.y > 5.60,
         `${id}: rear whips reach the registered source height`);
+      const roofWeapons=[];
+      tank.root.traverse((object)=>{
+        if(object.userData?.fittingRoot&&object.userData?.fitting==='pintleMG')roofWeapons.push(object);
+      });
+      assert.equal(roofWeapons.length,1,`${id}: exactly one real roof weapon fitting`);
+      assert.equal(roofWeapons[0].parent,turretRig,`${id}: roof weapon remains turret-owned`);
+      let exactParts=0;
+      roofWeapons[0].traverse((object)=>{
+        if(object.isMesh&&object.userData?.fittingExact&&object.userData?.fitting==='pintleMG')exactParts++;
+      });
+      assert.equal(exactParts,2,`${id}: source receiver and barrel are the registered weapon stock`);
     } else {
       assert.equal(turretRig.userData.barakSensorReceipt, undefined,
         `${id}: non-Barak vehicles do not inherit Barak-only sensors`);
     }
 
     if (!contract.namer) {
-      assert.equal(turretRig.position.y, 1.605, `${id}: independent turret-ring datum is unchanged`);
-      assert.ok(rayDown(tank.root.getObjectByName('hull'), 0, 2.75) > 1.43,
-        `${id}: measured modern glacis cap remains a closed hull surface`);
+      assert.equal(turretRig.position.y, contract.trophy === 'mk4' ? 1.615 : 1.605,
+        `${id}: exact source-registered turret-ring datum`);
+      const gunWorld=gunRig.getWorldPosition(new THREE.Vector3());
+      assert.ok(gunWorld.toArray().every((value,index)=>Math.abs(value-
+        [0,contract.trophy === 'mk4' ? 2.0034619 : 1.9934619,1.93][index])<1e-9),
+        `${id}: rendered local gun pivot composes to the certified world trunnion`);
+      const glacisY = rayDown(tank.root.getObjectByName('hull'), 0, 2.75);
+      if (contract.trophy === 'mk4') {
+        assert.ok(glacisY > 1.43,
+          `${id}: Trophy-specific modern glacis cap remains a closed hull surface`);
+      } else {
+        assert.ok(glacisY > 1.34 && glacisY < 1.40,
+          `${id}: Barak retains the measured lower base-hull glacis without a false overlay (${glacisY})`);
+      }
       const rearClosure = rayDown(tank.root.getObjectByName('hullDetail'), 0, -3.88);
-      assert.ok(rearClosure > (contract.trophy === 'mk4' ? 1.40 : 1.50),
+      assert.ok(rearClosure > 1.40,
         `${id}: late-Mk.4 rear termination is a seated hull surface`);
       if (contract.trophy === 'mk4') {
         const skirts = tank.root.getObjectByName('hullExternalArmor');

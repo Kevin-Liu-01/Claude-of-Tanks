@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-09-19",
+  "method": {
+    "sourceIntegrity": "Read-only indexed-vertex calipers on hash-pinned canonical GLBs with identity transforms; source files were not modified.",
+    "fixedRuler": "Paired identical substantial-body masks in a source-only fixed camera, plus unfiltered physical W/H/L envelopes.",
+    "primaryHullLabelCaveat": "The labelled-mesh span is a naming-based caliper over connected source stock, not a claim that the source contains one bare monolithic hull.",
+    "gameplayHeight": "Broad primary armored roof facets, excluding aerials and separate weapon/support stock.",
+    "acceptance": "Every source/candidate dimension comparison remains within 3%; whole silhouette floor is 92 with no waiver."
+  },
+  "vehicles": [
+    {
+      "id": "merkava4_trophy",
+      "rawSha256": "645a9df8bb4dc6a31b94be61b4d2f04a72c0cc9f5c2852e607a878e5f3adc25a",
+      "canonicalSha256": "a155cb6fb3ed46ef77e01f11fbd1d6cc8f5b8e747d09494f98f93579e396f684",
+      "excludedSourceComponents": [],
+      "source": {
+        "primaryHullLabelledSpanM": 7.600000381,
+        "fixedRuler": { "heightM": 4.184297455, "hullLengthM": 8.087769578, "overallLengthM": 8.874080509, "widthM": 4.343431810 },
+        "physicalEnvelope": { "widthM": 4.352445126, "heightM": 4.661717402, "overallLengthM": 8.875467300 },
+        "gameplayStructuralRoofHeightM": 2.578753233
+      },
+      "retiredDraftTargets": { "hullLengthM": 7.98, "overallLengthM": 8.97, "widthM": 4.35, "heightM": 4.53 },
+      "candidateBeforeSourceRepair": { "heightM": 4.390236, "hullLengthM": 7.689934, "overallLengthM": 8.789833, "widthM": 4.362153, "physicalWidthM": 4.361000, "physicalHeightM": 4.670583, "physicalOverallLengthM": 8.785952 },
+      "candidateFinal": { "heightM": 4.193658299, "hullLengthM": 8.087769578, "overallLengthM": 8.864719664, "widthM": 4.362153499, "physicalWidthM": 4.361000061, "physicalHeightM": 4.672673850, "physicalOverallLengthM": 8.865052413 },
+      "gate": { "whole": 92.0, "dimensions": 100, "floaters": 100 }
+    },
+    {
+      "id": "merkava4_barak",
+      "rawSha256": "81cc2cf027af4475c5890089067dd9b1f77d9fbd306939e24f973ad68e099aa5",
+      "canonicalSha256": "0549b50430cd8df0ebf9d095b617e64e8c6274747bea1dd99e4dec0e987b8f4d",
+      "excludedSourceComponents": [{ "name": "Object_13", "reason": "Established detached sub-ground artifact spanning source y=-1.1811..0.0042." }],
+      "source": {
+        "primaryHullLabelledSpanM": 7.600000858,
+        "fixedRuler": { "heightM": 2.989320501, "hullLengthM": 8.046021536, "overallLengthM": 8.828273630, "widthM": 3.706384921 },
+        "physicalEnvelope": { "widthM": 3.719722152, "heightM": 5.665005604, "overallLengthM": 8.829653263 },
+        "gameplayStructuralRoofHeightM": 2.600360870
+      },
+      "retiredDraftTargets": { "hullLengthM": 8.10, "overallLengthM": 8.86, "widthM": 3.90, "heightM": 2.82 },
+      "candidateBeforeSourceRepair": { "heightM": 2.952070402, "hullLengthM": 7.850459, "overallLengthM": 8.781711, "widthM": 3.725010, "physicalWidthM": 3.722760, "physicalHeightM": 5.669820, "physicalOverallLengthM": 8.785952 },
+      "candidateFinal": { "heightM": 2.952070402, "hullLengthM": 8.046021536, "overallLengthM": 8.818961105, "widthM": 3.725009970, "physicalWidthM": 3.722759926, "physicalHeightM": 5.669820298, "physicalOverallLengthM": 8.825952242 },
+      "gate": { "whole": 92.3, "dimensions": 98.0, "floaters": 100 }
+    },
+    {
+      "id": "namer_ifv",
+      "rawSha256": "5b0680e74233959eb939b9ba9866c019b41a31466ab0490fd42627d9f4e118b1",
+      "canonicalSha256": "72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870",
+      "excludedSourceComponents": [],
+      "source": {
+        "primaryHullLabelledSpanM": 7.319994926,
+        "fixedRuler": { "heightM": 3.180356135, "hullLengthM": 7.323499983, "overallLengthM": 7.481334035, "widthM": 3.582832966 },
+        "physicalEnvelope": { "widthM": 3.580119610, "heightM": 3.212008012, "overallLengthM": 7.482503176 },
+        "gameplayStructuralRoofHeightM": 2.699992418
+      },
+      "retiredDraftTargets": { "hullLengthM": 7.48, "overallLengthM": 7.48, "widthM": 3.58, "heightM": 3.15 },
+      "candidateBeforeSourceRepair": { "heightM": 3.188247838, "hullLengthM": 7.236691255, "overallLengthM": 7.481334035, "widthM": 3.614399776, "physicalWidthM": 3.615699995, "physicalHeightM": 3.231921627, "physicalOverallLengthM": 7.481039963 },
+      "candidateFinal": { "heightM": 3.188247838, "hullLengthM": 7.236691255, "overallLengthM": 7.481334035, "widthM": 3.614399776, "physicalWidthM": 3.615699995, "physicalHeightM": 3.231921627, "physicalOverallLengthM": 7.481039963 },
+      "gate": { "whole": 93.6, "dimensions": 98.5, "floaters": 100 }
+    }
+  ]
+}

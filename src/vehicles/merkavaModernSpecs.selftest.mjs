@@ -27,6 +27,18 @@ for (const id of expectedIds) {
 
 const trophy = TANK_SPECS.merkava4_trophy;
 const barak = TANK_SPECS.merkava4_barak;
+assert.deepEqual(trophy.dims,
+  { hullLengthM: 7.6, overallLengthM: 8.875467, widthM: 4.352445, heightM: 2.578753 },
+  'Trophy gameplay height stays on the broad armored roof, not its aerial tips');
+assert.deepEqual([trophy.armor.turretPivot, trophy.armor.gunPivot],
+  [[0, 1.615, -.3906], [0, .3884619, 2.3206]],
+  'Trophy visual and gameplay articulation share the source-seated 10 mm lift');
+assert.ok(trophy.armor.gunPivot.map((value,index)=>value+trophy.armor.turretPivot[index])
+  .every((value,index)=>Math.abs(value-[0,2.0034619,1.93][index])<1e-9),
+  'Trophy local armor pivot composes to the rendered world trunnion');
+assert.deepEqual(barak.dims,
+  { hullLengthM: 7.600001, overallLengthM: 8.829653, widthM: 3.719722, heightM: 2.600361 },
+  'Barak gameplay height stays on the broad armored roof, not its tall aerial');
 for (const spec of [trophy, barak]) {
   assert.deepEqual(
     [spec.enginePowerHp, spec.weightTons, spec.topSpeedKmh],
@@ -53,6 +65,9 @@ assert.ok(barak.gun.bloom.move < trophy.gun.bloom.move, 'Barak has better moving
 assert.ok(barak.hullTraverseDegS > trophy.hullTraverseDegS, 'Barak turns more responsively');
 
 const namer = TANK_SPECS.namer_ifv;
+assert.deepEqual(namer.dims,
+  { hullLengthM: 7.319995, overallLengthM: 7.482503, widthM: 3.58012, heightM: 2.699992 },
+  'Namer gameplay height uses its broad unmanned-station roof facet');
 assert.equal(tankTier('namer_ifv'), 9);
 assert.equal(namer.role, 'ifv');
 assert.equal(namer.balanceCohort, 'heavy-survivability',

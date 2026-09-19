@@ -77,16 +77,20 @@ function mk4Variant(
     ],
   };
   spec.dims = barak ? {
-    hullLengthM: 8.10,
-    overallLengthM: 8.86,
-    widthM: 3.90,
-    heightM: 2.82,
+    hullLengthM: 7.600001,
+    overallLengthM: 8.829653,
+    widthM: 3.719722,
+    heightM: 2.600361,
   } : {
-    hullLengthM: 7.98,
-    overallLengthM: 8.97,
-    widthM: 4.35,
-    heightM: 4.53,
+    hullLengthM: 7.600000,
+    overallLengthM: 8.875467,
+    widthM: 4.352445,
+    heightM: 2.578753,
   };
+  if (!barak) {
+    spec.armor.turretPivot = [0, 1.615, -.3906];
+    spec.armor.gunPivot = [0, .3884619, 2.3206];
+  }
   spec.visual = { ...SINAI_GRAY, number };
   return spec;
 }
@@ -131,10 +135,10 @@ function namerSpec(): FleetTankSpec {
     ],
   };
   spec.dims = {
-    hullLengthM: 7.48,
-    overallLengthM: 7.48,
-    widthM: 3.58,
-    heightM: 3.15,
+    hullLengthM: 7.319995,
+    overallLengthM: 7.482503,
+    widthM: 3.580120,
+    heightM: 2.699992,
   };
   spec.armor.turretPivot = [0, 2.10, -1.15];
   spec.armor.gunPivot = [0.05, 0.28, 1.02];

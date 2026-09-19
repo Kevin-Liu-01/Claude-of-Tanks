@@ -9,17 +9,18 @@
 - Implementation status: **COMPLETE IN WORKTREE** — independent closed troop
   hull, compact five-station unmanned turret, 30 mm weapon, APS/sensors, remote
   roof station, exact combat record and fleet integration are present.
-- Qualification status: **IN PROGRESS** — registered geometry, standard,
-  turret-parent, final neutral-board, focused tests, winding audit and actual
-  Gallery interaction pass; generated-artifact and composed-release receipts remain.
+- Qualification status: **IN PROGRESS** — focused geometry/spec/history checks
+  pass. Fresh integrated geometry, winding, Gallery, independent visual review,
+  generated-artifact and composed-release receipts remain.
 - Publication status / exact authority: owner authorized ordinary commits and
   pushes to `origin/main`; publication waits for a green release tail and the
   parallel fleet round.
 - Worktree / branch / baseline commit: detached worktree;
   `12b5dc936b7cfcb78c79fd1f54c3b33c6c971a61`.
 - Candidate commit plus dirty-diff or geometry fingerprint: current worktree;
-  `docs/geometry-gate/namer_ifv.json` records 90.0 minimum geometry, 95
-  dimension and 100 floater scores.
+  the latest nine-view evaluator records 94.62 aggregate and 93.56 minimum.
+  The committed geometry receipt predates the final carrier fit and is not
+  cited as current qualification evidence.
 - Current next action: finish queued winding, Gallery, generated-artifact and
   composed-release checks, then integrate latest `origin/main`.
 - Blocking choices / known failures: none. The official APC caveat remains;
@@ -93,11 +94,14 @@
   gameplay configuration by explicit balance decision, not removed from the oracle.
 - Registration entry: `tools/west-x-reference-overrides.ts` plus the canonical
   hash/pivot certificate in `tools/source-world-registration.mjs`.
-- Quality bar: `fleet`, requiring 90 aggregate and every valid registered whole
+- Quality bar: `fleet`, requiring 92 aggregate and every valid registered whole
   view/track component; the independent native critic remains separately required.
-- Published dimensions versus source versus native measurements: target
-  7.48 m hull/overall length, 3.58 m width and 3.15 m height; the registered
-  native result is within 1.46% on every dimension and scores 95.
+- Hash-pinned source measurements: 7.319995 m primary hull skin and full
+  7.482503 × 3.580120 × 3.212008 m physical equipment envelope. The fixed
+  source-only ruler reads 7.323500 m substantial-body length, 3.582833 m width
+  and 3.180356 m p95 height. Gameplay height is the independently measured
+  2.699992 m broad unmanned-station roof. Earlier candidate-fit 7.20/3.15 m
+  rows are retired.
 - Unresolved target/gate conflicts: none for the selected demonstrator study;
   exact service adoption is intentionally not asserted.
 
@@ -140,13 +144,13 @@
 | Gate | Status | Revision / input hash | Exact command and artifact | Worst result / residual |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | Raw `5b0680e7…118b1`; oracle `72afdec0…4870` | `node tools/source-world-registration.selftest.mjs` | Proper `[-z,+y,+x]`, scale `0.949231`; fused whole-source evidence. |
-| Every registered silhouette / raw aggregate | PASS 90.0 | Current worktree | `node tools/tank-standard-check.mjs --ids=namer_ifv --gate`; `docs/geometry-gate/namer_ifv.json` | Floor 90.0 / required 90. |
-| Geometry components / dimension score / 3% check | PASS | Current worktree | Same receipt | Dimensions 95; floaters 100; maximum dimension residual 1.46%. |
-| Independent 14-view critic / actual Gallery | PASS | Current worktree | Final neutral fidelity board; agent-browser live Gallery selection/articulation | Fidelity 93.1, every view ≥90; critic PASS; correct Tier-IX model, coherent 180° turret yaw and 60° gun elevation. |
-| Winding, closure and intentional negative space | PASS | Current worktree | `node tools/winding-audit.mjs --ids=merkava3d_x,merkava4_trophy,merkava4_barak,namer_ifv --check`; standard continuity capture | 2 rear-left pixels (0.00%), no HARD winding/yaw result; continuity holes 0. |
-| Physical seats and yaw/pitch/recoil ownership | PASS | Current worktree | `node tools/turret-parent-audit.mjs --ids=namer_ifv` | Stranded/abutting/dangling 0/0/0. |
-| High/low gear motion / strict band+shoe / duplicates | PASS | Current worktree | `node tools/tank-standard-check.mjs --ids=namer_ifv --gate` | Exact clip 0/0 + sweep 0/0. |
-| Actual return rollers / track thickness / chassis-side closure | PASS | Current worktree | Focused geometry self-test + standard | Four rollers/side; 0.064 m stock; closed troop volume and ramp. |
+| Every registered silhouette / raw aggregate | PENDING REGEN | Current worktree | Root-owned integrated `tank-standard-check --gate` | Nine-view evaluator 94.62 aggregate / 93.56 minimum; broader receipt awaits regeneration. |
+| Geometry components / dimension score / 3% check | PASS LOCALLY; INTEGRATED REGEN QUEUED | Current worktree | `node tools/geometry-gate.mjs --ids=merkava4_trophy,merkava4_barak,namer_ifv --check` | Source-only fixed ruler: 93.6 whole, 98.5 dimensions, 100 floaters. |
+| Independent 14-view critic / actual Gallery | NOT RUN ON FINAL | Current worktree | Final canonical-14 and live Gallery review | Nine-view evaluator results are not represented as an independent 14-view critic. |
+| Winding, closure and intentional negative space | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Integrated winding and continuity capture | Earlier 2-pixel (0.00%) result predates final generated closure. |
+| Physical seats and yaw/pitch/recoil ownership | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Integrated turret-parent audit | Earlier stranded/abutting/dangling result was 0/0/0. |
+| High/low gear motion / strict band+shoe / duplicates | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Integrated tank-standard gate | Earlier exact clip/sweep result was 0/0 + 0/0. |
+| Actual return rollers / track thickness / chassis-side closure | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Focused geometry self-test + integrated standard | Four rollers/side and 0.064 m stock are unchanged; final closure receipt pending. |
 | Stored and instance-expanded triangles / build/draw/memory budgets | NOT RUN | | | |
 | Cold/warm/rapid tank-switch latency and frame gaps | NOT RUN | | | |
 | Primitive reuse / high-low reduction / accessory material roles | PASS | Current worktree | Code/self-test review | Shared native chassis/gear; repeated side modules and whips avoid copied source payloads. |
@@ -167,9 +171,9 @@
   ran.
 - 2026-09-18 implementation: registered the private fused oracle and replaced
   the early blank helmet with a compact five-station turret, visible APS,
-  asymmetric optics, 30 mm mantlet and independent remote station. Final
-  neutral fidelity is 93.1, registered geometry minimum is 90.0, tracks and
-  continuity are clean, and a fresh independent critic returned PASS.
+  asymmetric optics, 30 mm mantlet and independent remote station. Latest
+  nine-view evaluator result is 94.62 aggregate / 93.56 minimum. Independent
+  canonical-14 and actual Gallery review remain final integrated steps.
 
 ## Publication receipt (only if requested)
 

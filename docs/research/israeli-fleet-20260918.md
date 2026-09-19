@@ -139,10 +139,10 @@ remaining IN PROGRESS rows will be updated only from final integrated receipts.
 | Gate | `merkava4_barak` | `merkava4_trophy` | `namer_ifv` | Residual |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | PASS | PASS | Proper uniform registrations; ignored SHA-pinned geometry-only oracles; fused whole-source scoring. |
-| Registered silhouette and geometry floors | PASS 90.4 | PASS 90.3 | PASS 90.0 | Dimension scores 100 / 100 / 95; floaters 100 for all. |
-| Independent 14-view/native Gallery review | PASS 92.0 | PASS 92.1 | PASS 93.1 | Every neutral-board view ≥90; fresh critic PASS; exact Gallery selection and full-range articulation verified. |
-| Closure, physical seating, articulation and gear motion | PASS | PASS | PASS | Continuity holes 0; turret-parent stranded/abutting/dangling 0; exact tracks 0/0 + 0/0. |
-| Return rollers, track thickness and chassis closure | PASS | PASS | PASS | Four bilateral return rollers, 0.064 m track stock, seated hull/rear surfaces. |
+| Registered silhouette and geometry floors | PASS LOCAL; REGEN QUEUED | PASS LOCAL; REGEN QUEUED | PASS LOCAL; REGEN QUEUED | Source-only fixed gate: Barak 92.3 whole/98 dimensions, Trophy 92.0/100, Namer 93.6/98.5; all floaters 100. Integrated receipts remain root-owned. |
+| Independent 14-view/native Gallery review | NOT RUN ON FINAL | NOT RUN ON FINAL | NOT RUN ON FINAL | Earlier nine-view boards are automated evaluator evidence, not an independent canonical-14 critic or actual final Gallery review. |
+| Closure, physical seating, articulation and gear motion | PRE-CLOSURE PASS; REFRESH QUEUED | PRE-CLOSURE PASS; REFRESH QUEUED | PRE-CLOSURE PASS; REFRESH QUEUED | Earlier continuity/ownership/track results predate final integrated regeneration and will be refreshed there. |
+| Return rollers, track thickness and chassis closure | PRE-CLOSURE PASS; REFRESH QUEUED | PRE-CLOSURE PASS; REFRESH QUEUED | PRE-CLOSURE PASS; REFRESH QUEUED | Four bilateral return rollers and 0.064 m stock are unchanged; integrated closure receipts pending. |
 | High/low cost and tank-switch performance | IN PROGRESS | IN PROGRESS | IN PROGRESS | Census and actual browser switching pending. |
 | ERA/APS, armor, modules and crew | PASS | PASS | PASS | APS remains distinct equipment; Namer has 3 hull crew, 8 dismounts, unmanned turret, no missile rack. |
 | Anatomy, assets, complete tests, builds and attribution | IN PROGRESS | IN PROGRESS | IN PROGRESS | Targeted generation and composed release tail wait for latest main. |

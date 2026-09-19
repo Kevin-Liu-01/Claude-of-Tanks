@@ -9,18 +9,18 @@
 - Implementation status: **COMPLETE IN WORKTREE** — exact procedural profile,
   combat record, lazy/eager registration, Tier-X catalog position, solid
   Sinai-gray finish, anatomy metadata and focused self-tests are present.
-- Qualification status: **IN PROGRESS** — the registered geometry gate,
-  standard check, turret-parent audit, final neutral-board review and focused
-  tests, winding audit and actual Gallery interaction pass; generated-artifact
-  and composed-release receipts remain.
+- Qualification status: **IN PROGRESS** — focused geometry/spec/history checks
+  pass. Fresh integrated geometry, winding, Gallery, independent visual review,
+  generated-artifact and composed-release receipts remain.
 - Publication status / exact authority: owner explicitly authorized ordinary
   commits and pushes to `origin/main`; publication is held until the complete
   release tail is green and the parallel fleet round lands first.
 - Worktree / branch / baseline commit: detached worktree;
   `12b5dc936b7cfcb78c79fd1f54c3b33c6c971a61`.
 - Candidate commit plus dirty-diff or geometry fingerprint: current worktree;
-  geometry receipt `docs/geometry-gate/merkava4_trophy.json` records 90.3
-  minimum geometry, 100 dimension and 100 floater scores.
+  the latest nine-view evaluator records 93.38 aggregate and 92.10 minimum.
+  The committed geometry receipt predates the final body fit and is not cited
+  as current qualification evidence.
 - Current next action: finish queued winding, Gallery, generated-artifact and
   composed-release checks, then integrate the latest `origin/main`.
 - Blocking choices / known failures: none. “Trophy” remains the explicit game
@@ -89,11 +89,14 @@
 - Registration entry: `tools/west-x-reference-overrides.ts` plus the canonical
   hash/pivot certificate in `tools/source-world-registration.mjs`; fused whole
   views and honest track masks only.
-- Quality bar: `fleet`, requiring 90 aggregate and every valid registered whole
+- Quality bar: `fleet`, requiring 92 aggregate and every valid registered whole
   view/track component; the independent native critic remains separately required.
-- Published dimensions versus source versus native measurements: target
-  7.98 m hull / 8.97 m overall / 4.35 m width / 4.53 m height; the registered
-  receipt scores the resulting native envelope at 100.
+- Hash-pinned source measurements: 7.600000 m primary hull skin and full
+  8.875467 × 4.352445 × 4.661717 m physical equipment envelope. The fixed
+  source-only ruler reads 8.087770 m substantial-body length, 4.343432 m width
+  and 4.184297 m p95 height. Gameplay height is the independently measured
+  2.578753 m broad armored roof, never the aerial tips. Earlier candidate-fit
+  7.69/8.79/4.39 m rows are retired.
 - Unresolved target/gate conflicts: none. The authored fit is intentionally an
   older, busier Trophy-equipped Mk.4 and does not borrow Barak-only equipment.
 
@@ -135,13 +138,13 @@
 | Gate | Status | Revision / input hash | Exact command and artifact | Worst result / residual |
 | --- | --- | --- | --- | --- |
 | Source/conversion/frame integrity | PASS | Raw `645a9df8…dc25a`; oracle `a155cb6f…f684` | `node tools/source-world-registration.selftest.mjs` | Proper `[-z,+y,+x]`, scale `1.015337`; fused ownership only. |
-| Every registered silhouette / raw aggregate | PASS 90.3 | Current worktree | `node tools/tank-standard-check.mjs --ids=merkava4_trophy --gate`; `docs/geometry-gate/merkava4_trophy.json` | Floor 90.3 / required 90. |
-| Geometry components / dimension score / 3% check | PASS | Current worktree | Same receipt | Dimensions 100; floaters 100. |
-| Independent 14-view critic / actual Gallery | PASS | Current worktree | Final neutral fidelity board; agent-browser live Gallery selection | Fidelity 92.1, every view ≥90; critic PASS; correct Tier-X Gallery model loads. |
-| Winding, closure and intentional negative space | PASS | Current worktree | `node tools/winding-audit.mjs --ids=merkava3d_x,merkava4_trophy,merkava4_barak,namer_ifv --check`; standard continuity capture | 0 deficit pixels; no HARD winding/yaw result; continuity holes 0. |
-| Physical seats and yaw/pitch/recoil ownership | PASS | Current worktree | `node tools/turret-parent-audit.mjs --ids=merkava4_trophy` | Stranded/abutting/dangling 0/0/0. |
-| High/low gear motion / strict band+shoe / duplicates | PASS | Current worktree | `node tools/tank-standard-check.mjs --ids=merkava4_trophy --gate` | Exact clip 0/0 + sweep 0/0. |
-| Actual return rollers / track thickness / chassis-side closure | PASS | Current worktree | Focused geometry self-test + standard | Four rollers/side; 0.064 m stock; continuity holes 0. |
+| Every registered silhouette / raw aggregate | PENDING REGEN | Current worktree | Root-owned integrated `tank-standard-check --gate` | Nine-view evaluator 93.38 aggregate / 92.10 minimum; broader receipt awaits regeneration. |
+| Geometry components / dimension score / 3% check | PASS LOCALLY; INTEGRATED REGEN QUEUED | Current worktree | `node tools/geometry-gate.mjs --ids=merkava4_trophy,merkava4_barak,namer_ifv --check` | Source-only fixed ruler: 92.0 whole, 100 dimensions, 100 floaters. |
+| Independent 14-view critic / actual Gallery | NOT RUN ON FINAL | Current worktree | Final canonical-14 and live Gallery review | Nine-view evaluator results are not represented as an independent 14-view critic. |
+| Winding, closure and intentional negative space | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Integrated winding and continuity capture | Earlier 0-deficit result predates final end-equipment/aerial closure. |
+| Physical seats and yaw/pitch/recoil ownership | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Integrated turret-parent audit | Earlier stranded/abutting/dangling result was 0/0/0. |
+| High/low gear motion / strict band+shoe / duplicates | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Integrated tank-standard gate | Earlier exact clip/sweep result was 0/0 + 0/0. |
+| Actual return rollers / track thickness / chassis-side closure | PRE-CLOSURE PASS; REFRESH QUEUED | Current worktree | Focused geometry self-test + integrated standard | Four rollers/side and 0.064 m stock are unchanged; final closure receipt pending. |
 | Stored and instance-expanded triangles / build/draw/memory budgets | NOT RUN | | | |
 | Cold/warm/rapid tank-switch latency and frame gaps | NOT RUN | | | |
 | Primitive reuse / high-low reduction / accessory material roles | PASS | Current worktree | Code/self-test review | Native shared gear and procedural primitives; distinct APS, glass, rubber, track and weapon roles. |
@@ -160,9 +163,9 @@
   official Trophy boundary, target gameplay and unknowns. No source
   registration, candidate authoring or qualification ran.
 - 2026-09-18 implementation: registered the private hash-pinned oracle and
-  authored a source-measured first-party procedural Trophy variant. Final
-  neutral fidelity is 92.1, registered geometry minimum is 90.3, exact tracks
-  and continuity are clean, and a fresh independent critic returned PASS.
+  authored a source-measured first-party procedural Trophy variant. Latest
+  nine-view evaluator result is 93.38 aggregate / 92.10 minimum. Independent
+  canonical-14 and actual Gallery review remain final integrated steps.
 
 ## Publication receipt (only if requested)
 
