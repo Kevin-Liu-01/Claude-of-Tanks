@@ -338,6 +338,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/westXGeometry.selftest.mjs',
     'src/vehicles/merkavaModernSpecs.selftest.mjs',
     'src/vehicles/profiles/merkavaModernGeometry.selftest.mjs',
+    'src/vehicles/profiles/merkavaModernOptics.selftest.mjs',
     'src/vehicles/profiles/namerSourceAssembly.selftest.mjs',
     'src/vehicles/profiles/namerWheelStock.selftest.mjs',
     'src/vehicles/profiles/merkavaBarakSourceStock.selftest.mjs',
