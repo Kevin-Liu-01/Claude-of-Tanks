@@ -334,6 +334,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t90VXFrontGuards.selftest.mjs',
     'src/vehicles/profiles/sourceMachineGun.selftest.mjs',
     'src/vehicles/profiles/westXGeometry.selftest.mjs',
+    'src/vehicles/merkavaModernSpecs.selftest.mjs',
     'src/vehicles/profiles/merkavaModernGeometry.selftest.mjs',
     'src/vehicles/profiles/merkava4XRearHull.selftest.mjs',
     'src/vehicles/profiles/merkava4XEndReturns.selftest.mjs',

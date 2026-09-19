@@ -17,7 +17,10 @@ const registryText = page.match(/const LOCAL_REFERENCE_OVERRIDES = (\{[\s\S]*?\n
 const registry = vm.runInNewContext(`(${registryText})`, { REVOLUTION_PROTO_BASELINE,
   T90_X_REFERENCE_OVERRIDES, LEOPARD_X_REFERENCE_OVERRIDES, WEST_X_REFERENCE_OVERRIDES, SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ABRAMS_X_REFERENCE_OVERRIDES, SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ARES_APC_X_REFERENCE_OVERRIDES });
-for (const [id, source] of Object.entries({...ABRAMS_X_REFERENCE_OVERRIDES, ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ...ARES_APC_X_REFERENCE_OVERRIDES})) {
+const modernIsraeliSources = Object.fromEntries(
+  ['merkava4_trophy', 'merkava4_barak', 'namer_ifv'].map(id => [id, WEST_X_REFERENCE_OVERRIDES[id]]),
+);
+for (const [id, source] of Object.entries({...ABRAMS_X_REFERENCE_OVERRIDES, ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES, ...ARES_APC_X_REFERENCE_OVERRIDES, ...modernIsraeliSources})) {
   assert.equal(registry[id], source, 'actual fixed source registration survives the VM fixture');
   assert.equal(requiredMinimumForQualityBar(source.qualityBar), 92);
   assert.equal(validatedPreservationOracle(source, id), null, 'new source builds cannot use a preservation exemption');
