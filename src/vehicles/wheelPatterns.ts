@@ -94,7 +94,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, WheelPatternId]> = Object.fr
   [/(?:strv103|udes03)/, 'scalloped-six'],
   [/(?:m2a2_bradley|m3a3_bradley|ua_m2a3_bradley|spz_puma|marder1a3|fv510|bwp1|upior|bmp3|cv90|kurganets25)/, 'armored-hub-six'],
   // 2026-09-17: the ZTZ-100 next-generation hull runs armoured-hub wheels (its profile builds them; the review must agree)
-  [/(?:t14|ztz100)/, 'armored-hub-six'],
+  [/(?:t14|ztz100|object695)/, 'armored-hub-six'],
   [/(?:t62|t64|t72|t80|t84|t90|pt91|ztz85|type99|ztz99|vt4|bmpt|ua_t)/, 'pressed-six'],
 ]);
 

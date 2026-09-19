@@ -28,6 +28,7 @@ import './classicFleetSpecs.ts';
 import './ukraine.ts';
 import './china.ts';
 import './chineseFrontlineSpecs.ts';
+import './russianFrontlineSpecs.ts';
 import './sweden.ts';
 import './poland.ts';
 import './korea.ts';

@@ -33,10 +33,12 @@ const EXPECTED = Object.freeze({
   k21_x:             { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: [500, 'jyu-mat-launch'] },
   ajax_x:            { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
   cv90_mkiv_x:       { hp: 2825, speed: 74, reverse: 42, traverse: 52, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
+  // 2026-09-17 owner: the Object 695 carries the fleet's fastest, hardest-hitting belt ("a machine gun that's very powerful")
+  object695_x:      { hp: 2650, speed: 80, reverse: 34, traverse: 56, damage: 88, pen: [265, 245, 225], reload: 0.26, sound: '2a42', missile: [760, 'konkurs-launch'] },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 27, 'complete selectable IFV fleet');
+assert.equal(ifvIds.length, 28, 'complete selectable IFV fleet');
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

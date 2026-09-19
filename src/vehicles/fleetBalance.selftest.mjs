@@ -197,6 +197,7 @@ const missileVelocityByVehicle = new Map([
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
   ['kurganets25_x', 117], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
+  ['object695_x', 300], // 2026-09-17: Object 695 Kornet-EM
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([

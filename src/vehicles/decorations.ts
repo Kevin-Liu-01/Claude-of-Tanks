@@ -2507,7 +2507,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
   // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
   // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.
-  if (spec.id === 'type100' || spec.id === 'ztz100_x') return [];
+  if (spec.id === 'type100' || spec.id === 'ztz100_x' || spec.id === 'object695_x') return [];
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.

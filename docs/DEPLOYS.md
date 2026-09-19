@@ -69,3 +69,4 @@ quickest proof that the live site is the gate build.
 | 35 | 2026-09-18 01:39 | 10f340faa | Matchmaking rotates through the contemporary eras: fresh vehicles before any repeat | main-DpR4Bmsy.js | claude-of-tanks-7jqqc23zk |
 | 36 | 2026-09-18 02:30 | c7901d34d | Horde and Frontline waves defend with one nation: the formation is the enemy side | main-DKcoaDiE.js | claude-of-tanks-3ssaic8lw |
 | 37 | 2026-09-18 12:01 | b08328157 | Track ramps pivot with the outer road wheels instead of sticking to them | main-BfPJm92l.js | claude-of-tanks-anpyk2z2y |
+| 38 | 2026-09-18 20:28 | 271c6b92e | Object 695: a tier X Russian IFV with the fleet's most powerful belt | main-CboA7afe.js | claude-of-tanks-qfx57es2l |

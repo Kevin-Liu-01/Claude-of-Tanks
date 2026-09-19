@@ -7,6 +7,13 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     // The supplied-source batch requires 92 in every view; prior 90-floor receipts remain historical.
     fixedMount:true,componentMasks:false,geometryComponentMasks:false,
   }},
+  object695_x: {source:'glb',qualityBar:'exemplar',glb:{
+    path:'/models/community-candidates/object695_x_source.glb',
+    // Thirty-nine unnamed Armored Warfare meshes (hull, module, gear mixed; the parked ramp leaf dropped whole by the
+    // recipe); whole-source comparison only. 2026-09-17: five authoring passes reached 95.2 aggregate with every one of
+    // the nine views over 92 (worst 92.6), so the exemplar bar gates it.
+    fixedMount:true,componentMasks:false,geometryComponentMasks:false,
+  }},
   strv122_x: {source:'glb',qualityBar:'exemplar',glb:{
     path:'/models/community-candidates/strv122_x_source.glb',
     // All18 original fused chunks retained. Mixed material owners cannot

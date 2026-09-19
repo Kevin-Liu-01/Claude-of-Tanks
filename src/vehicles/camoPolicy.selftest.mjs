@@ -269,7 +269,8 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  'a8fe318ec10a74d0e4c3f58edbf3a0bdc8587d9d6e67c408fd1f6e4269d36925', // 2026-09-15: signature/service labels follow the renamed source hulls (2A4M CAN, 2A4 OTCO, 2A3, KF51-U, T-90AM, XK2, M1A1 SA Ukraine); Type 100 preset
+  '71805b771c0eeb3bfacc4df8c03b1eaad4a477177839f443e9a639aff42a3371', // 2026-09-18: Object 695 signature paint sig_object695_x "Object 695 Digital" joins the Russian digital woodland presets (the session's Kurganets-25 build under its own id)
+  // previous 2026-09-15 pin a8fe318e…36925 (signature/service labels follow the renamed source hulls) is retired by that addition
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

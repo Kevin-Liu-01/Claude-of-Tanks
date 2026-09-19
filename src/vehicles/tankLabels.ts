@@ -215,6 +215,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'ZTZ-100', shortName: 'ZTZ-100',
     searchAliases: ['Type 100', 'Type 100 main battle tank', 'PLA next-generation tank', '100式坦克'],
   },
+  object695_x: {
+    displayName: 'Object 695', shortName: 'Object 695',
+    searchAliases: ['Object 695 IFV', 'Kurganets', 'Kurganets-25 variant', 'Epokha', 'B-11', 'Объект 695'],
+  },
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
   m1a2_sepv3: { displayName: 'M1A1 Abrams FEP' },
   m1a3: {

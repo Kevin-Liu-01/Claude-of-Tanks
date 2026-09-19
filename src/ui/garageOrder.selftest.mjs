@@ -130,7 +130,7 @@ const nationalShowcaseCases = [
   },
   {
     nation: 'Russia', filler: 't90m_proryv',
-    expected: ['t90m_x', 't90sm_x', 't90a_vladimir_x', 't90a_x', 't14_x'],
+    expected: ['t90m_x', 't90sm_x', 't90a_vladimir_x', 't90a_x', 't14_x', 'object695_x'],
   },
   {
     nation: 'USSR/Russia', filler: 't90a_burlak',

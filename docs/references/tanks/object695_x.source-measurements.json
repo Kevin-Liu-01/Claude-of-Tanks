@@ -1,0 +1,463 @@
+{
+  "id": "object695_x",
+  "measured": "2026-09-17",
+  "purpose": "Owner-authorized local comparison only; no mesh payload",
+  "source": {
+    "title": "Kurganets-25 (Armored Warfare)",
+    "author": "unknown community upload (Sketchfab export)",
+    "license": "owner-supplied reference; local comparison only",
+    "supplied": "owner Downloads/kurganets-25_armored_warfare.glb, 47 627 960 bytes, 39 unnamed material meshes, 255 561 triangles"
+  },
+  "sourceSha256": "0af5ccde32d66d5f56cbf7b543e000f64fa28e18cc0eb560d92ed7b05e7f7fd2",
+  "localOracleSha256": "012dfef5a8aeb31031e58f786883e94f02210476a08c41c5166d764abf47c9b3",
+  "normalization": {
+    "axes": "glTF node matrices already give +Y up; the turret sits behind centre and the engine louvres forward-right, so +z is forward; recipe axes x,y,z",
+    "uniformScale": 0.965,
+    "translationM": [
+      0.0052,
+      0.0135,
+      0
+    ],
+    "omitIslandsBelowY": -0.05,
+    "why": "0.965 puts the 7.46 m structural hull at the published 7.2 m and the 2.43 m hull roof at 2.35 m; the translation seats the lowest track vertex (raw y -0.014) on y = 0 and centres the hull (raw x mid -0.0054) on x = 0; the file parks a detached hatch leaf and its fittings under the hull centre (0.9 m under the track sole and up to y 0.53 between the tracks), so detached islands under the seated sole plane and islands wholly inside the belly box x ±1.15 / y < 0.58 / z ±0.5 are dropped (100 welded islands, 3 134 triangles)",
+    "method": "Welded-vertex island census, axis-aligned first-hit depth maps at 1 cm, numeric 0.1 m elevation grids of the canonical oracle (.qa-dev/ztz100-source-study.mjs --omit-below, .qa-dev/kurganets-heightmap.mjs) and normal-shaded orthographic renders (.qa-dev/ztz100-shaded.mjs); scalars only",
+    "omitIslandsInside": {
+      "min": [
+        -1.15,
+        -1.0,
+        -0.5
+      ],
+      "max": [
+        1.15,
+        0.58,
+        0.5
+      ]
+    }
+  },
+  "dimensionsM": {
+    "widthOverSkirts": 3.985,
+    "skirtPlaneX": 1.99,
+    "hullFlankX": 1.66,
+    "hullExteriorLength": 7.08,
+    "overallLength": 7.23,
+    "hullRoof": 2.19,
+    "sternRoofPanel": 2.32,
+    "turretRoof": 3.05,
+    "launcherTop": 3.49,
+    "highestFitting": 4.03
+  },
+  "hullM": {
+    "sternPlateZ": -3.46,
+    "sternBoxesZ": -3.6,
+    "noseZ": 3.62,
+    "noseY": 1.7,
+    "bellyY": 0.56,
+    "roofPlane": "rear roof 2.19 to z -2.30, 1.5 degrees down to 2.13 at z 0, then the 7 degree deck to 1.72 at z 3.30 and the nose edge 1.66 at z 3.60",
+    "lowerBow": "belly (y 0.56, z 2.40) up through (0.70, 2.78), (0.80, 3.01), (1.00, 3.18), (1.30, 3.40), (1.50, 3.55) to the nose edge (1.62, 3.60)",
+    "lowerStern": "vertical plate; the belly meets it through (0.56, -3.32) to (0.90, -3.46)",
+    "skirtModules": {
+      "x": [
+        1.66,
+        1.99
+      ],
+      "y": [
+        0.8,
+        1.95
+      ],
+      "z": [
+        -3.05,
+        2.85
+      ],
+      "rearChamferTo": [
+        1.58,
+        -3.46
+      ],
+      "prow": "forward wedge: hem z 2.90, apex z 3.40 at y 1.30, back to z 2.85 by y 1.75",
+      "panels": 7
+    },
+    "rampDoor": {
+      "x": [
+        -0.42,
+        0.42
+      ],
+      "y": [
+        0.98,
+        1.98
+      ]
+    },
+    "sternBoxes": {
+      "x": [
+        1.05,
+        1.5
+      ],
+      "y": [
+        1.05,
+        1.95
+      ],
+      "z": [
+        -3.6,
+        -3.46
+      ]
+    },
+    "intakeDrum": {
+      "x": 1.25,
+      "z": 0.45,
+      "radius": 0.22,
+      "topY": 2.2
+    },
+    "driverHatch": {
+      "x": [
+        -1.55,
+        -1.25
+      ],
+      "z": [
+        2.15,
+        2.65
+      ],
+      "topY": 2.0
+    },
+    "bowLampBoxes": {
+      "x": 1.2,
+      "z": [
+        3.3,
+        3.5
+      ],
+      "topY": 1.88
+    },
+    "rearRoofFittings": {
+      "centreHatch": {
+        "x": [
+          -0.15,
+          0.15
+        ],
+        "z": [
+          -3.52,
+          -3.28
+        ],
+        "topY": 2.32
+      },
+      "posts": {
+        "x": [
+          -0.7,
+          0.7
+        ],
+        "topY": 2.33
+      }
+    },
+    "rearRightBox": {
+      "x": [
+        0.4,
+        0.88
+      ],
+      "y": [
+        2.19,
+        2.34
+      ],
+      "z": [
+        -3.4,
+        -2.5
+      ]
+    },
+    "rearLeftRack": {
+      "lid": {
+        "x": [
+          -0.75,
+          -0.35
+        ],
+        "y": [
+          2.83,
+          2.87
+        ],
+        "z": [
+          -3.05,
+          -2.65
+        ]
+      },
+      "openFrame": true,
+      "mastTop": 3.1
+    },
+    "ringFittings": {
+      "x": [
+        -0.85,
+        1.2
+      ],
+      "y": [
+        2.13,
+        2.31
+      ],
+      "z": [
+        -0.03,
+        0.13
+      ]
+    }
+  },
+  "turretPivotM": [
+    0,
+    2.15,
+    -1.1
+  ],
+  "gunAxisM": [
+    0,
+    2.81,
+    -0.45
+  ],
+  "muzzleZM": 3.2,
+  "barrelRadiusM": 0.032,
+  "turretM": {
+    "ringCollar": {
+      "x": 1.35,
+      "y": [
+        2.13,
+        2.19
+      ],
+      "z": [
+        -2.2,
+        0.6
+      ],
+      "frontCorners": {
+        "y": 2.3
+      }
+    },
+    "rearBlock": {
+      "x": 1.05,
+      "y": [
+        2.45,
+        2.96
+      ],
+      "crownY": 3.05,
+      "crownX": 0.4,
+      "z": [
+        -2.67,
+        -1.0
+      ]
+    },
+    "lowerBelt": {
+      "y": [
+        2.15,
+        2.45
+      ],
+      "rearZ": -2.3,
+      "halfWidth": [
+        0.8,
+        1.05
+      ]
+    },
+    "frontBlock": {
+      "x": 1.02,
+      "y": [
+        2.15,
+        2.62
+      ],
+      "z": [
+        -1.0,
+        -0.25
+      ],
+      "frontFace": "centre z -0.25, sides -0.45"
+    },
+    "sidePods": {
+      "upper": {
+        "x": [
+          1.05,
+          1.5
+        ],
+        "y": [
+          2.65,
+          2.88
+        ],
+        "z": [
+          -1.9,
+          -0.7
+        ]
+      },
+      "lower": {
+        "x": [
+          1.05,
+          1.5
+        ],
+        "y": [
+          2.45,
+          2.65
+        ],
+        "z": [
+          -1.37,
+          -0.39
+        ]
+      }
+    },
+    "rearCornerBoxes": {
+      "x": [
+        0.7,
+        1.05
+      ],
+      "y": [
+        2.45,
+        2.85
+      ],
+      "z": [
+        -2.85,
+        -2.62
+      ]
+    },
+    "gunHousingLeft": {
+      "x": [
+        -0.72,
+        -0.28
+      ],
+      "y": [
+        2.62,
+        2.8
+      ],
+      "z": [
+        -0.62,
+        -0.18
+      ]
+    },
+    "gunnerSight": {
+      "x": [
+        0.45,
+        0.95
+      ],
+      "y": [
+        2.62,
+        2.9
+      ],
+      "z": [
+        -0.95,
+        -0.65
+      ]
+    },
+    "commanderSight": {
+      "x": [
+        -0.75,
+        -0.35
+      ],
+      "y": [
+        2.87,
+        3.2
+      ],
+      "z": [
+        -1.25,
+        -0.65
+      ]
+    },
+    "periscope": {
+      "x": -0.3,
+      "z": -1.15,
+      "topY": 3.48
+    },
+    "launcher": {
+      "pedestal": {
+        "x": [
+          0.7,
+          0.9
+        ],
+        "y": [
+          2.96,
+          3.16
+        ],
+        "z": [
+          -2.5,
+          -2.3
+        ]
+      },
+      "box": {
+        "x": [
+          0.48,
+          0.96
+        ],
+        "y": [
+          3.15,
+          3.49
+        ],
+        "z": [
+          -3.1,
+          -2.66
+        ]
+      },
+      "tubesTo": -2.26,
+      "tubes": 4
+    },
+    "masts": [
+      {
+        "x": -0.74,
+        "z": -1.2,
+        "topY": 4.03
+      },
+      {
+        "x": -0.6,
+        "z": -2.74,
+        "topY": 3.95
+      },
+      {
+        "x": 0.0,
+        "z": -2.57,
+        "topY": 3.75
+      },
+      {
+        "x": 0.05,
+        "z": -2.2,
+        "topY": 3.36
+      }
+    ],
+    "smokeLaunchers": {
+      "x": 1.3,
+      "y": [
+        2.2,
+        2.4
+      ],
+      "z": [
+        -0.6,
+        -0.1
+      ],
+      "tubesPerSide": 5
+    }
+  },
+  "roadWheels": {
+    "stationsZM": [
+      -2.32,
+      -1.63,
+      -0.94,
+      -0.24,
+      0.45,
+      1.14,
+      1.84
+    ],
+    "radiusM": 0.275,
+    "axleYM": 0.3485,
+    "axialX": [
+      1.223,
+      1.49
+    ],
+    "paired": true
+  },
+  "sprocket": {
+    "zM": -3.186,
+    "yM": 0.913,
+    "radiusM": 0.235,
+    "axialX": [
+      1.236,
+      1.492
+    ]
+  },
+  "idler": {
+    "zM": 2.76,
+    "yM": 0.87,
+    "radiusM": 0.336,
+    "axialX": [
+      1.183,
+      1.552
+    ]
+  },
+  "returnRollers": [],
+  "track": {
+    "centreX": 1.357,
+    "widthM": 0.37,
+    "topRunY": 1.15
+  },
+  "notes": [
+    "Seven paired road wheels a side, drive at the rear, a large raised idler at the front; the return run hides behind the full-length side armour modules and shows no rollers.",
+    "Unmanned module: rear block with a crowned roof, lower front block carrying the 30 mm gun on the centreline, side pods, a right-rear four-tube launcher on a pedestal, three whip masts.",
+    "The supplied file models the rear ramp open (a detached leaf under the belly); the build carries a closed ramp door.",
+    "All values are the game frame after the recipe: metres, +Y up, +Z forward, ground y = 0, structural hull centred on x = 0 with the stern plate at z -3.46."
+  ]
+}
