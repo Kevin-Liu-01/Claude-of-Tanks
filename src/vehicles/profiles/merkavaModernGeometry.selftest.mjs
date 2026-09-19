@@ -116,13 +116,23 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       const hull = tank.root.getObjectByName('hull');
       assert.ok(rayDown(hull, 0, 2.75) > 1.40,
         `${id}: measured modern glacis cap remains a closed hull surface`);
-      for (const [z, floor] of [[-3.4, 1.32], [-2.2, 1.38], [-.4, 1.40], [1.1, 1.42]]) {
+      for (const [z, floor] of [[-2.0, 1.38], [-.4, 1.40], [1.1, 1.42]]) {
         const roof = rayDown(hull, 0, z);
         assert.ok(Number.isFinite(roof) && roof > floor + .10,
           `${id}: closed troop-compartment volume at z=${z} (${roof})`);
       }
-      const ramp = tank.root.getObjectByName('hullDetail');
-      assert.ok(rayDown(ramp, 0, -3.60) > 1.7, `${id}: rear troop ramp is a physical seated surface`);
+      // Complete supplied-source Object1/38 shows a real exterior lane
+      // between two closed wings, ending at the forward access door.
+      // The earlier blanket closed-stern assertion encoded the wrong shape.
+      for (const z of [-3.4, -2.5]) {
+        assert.equal(rayDown(hull, 0, z), undefined, `${id}: source rear lane remains exterior air`);
+        for (const x of [-.7, .7]) assert.ok(rayDown(hull, x, z) > 1.90,
+          `${id}: actual closed shoulders remain beside the lane`);
+      }
+      const door = new THREE.Raycaster(new THREE.Vector3(0, 1, -4.2),
+        new THREE.Vector3(0, 0, 1), 0, 3).intersectObject(hull, false)[0];
+      assert.ok(door && Math.abs(door.point.z + 2.19345) < .004,
+        `${id}: source-positioned access door terminates the lane`);
       assert.equal(tank.root.getObjectByName('missile'), undefined, `${id}: 30 mm demonstrator has no invented ATGM`);
     }
 
@@ -136,4 +146,4 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
   }
 }
 
-console.log('merkavaModernGeometry: three modern Israeli vehicles preserve native gear, articulated ownership, configuration-specific sensors and closed troop geometry in both LODs');
+console.log('merkavaModernGeometry: three modern Israeli vehicles preserve native gear, articulated ownership, configuration-specific sensors and source-correct closed body/access geometry in both LODs');

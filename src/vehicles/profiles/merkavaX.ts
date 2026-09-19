@@ -17,6 +17,10 @@ import { addBarakBowEquipment } from './merkavaBarakBow.ts';
 import { barakEndStock } from './merkavaBarakEndStock.ts';
 import { addBarakRearGuards } from './merkavaBarakRear.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
+import { addNamerSourceHull } from './namerSourceHull.ts';
+import { addNamerSourceChassis } from './namerSourceChassis.ts';
+import { addNamerSourceTurret } from './namerSourceTurret.ts';
+import { addNamerSourceSupport } from './namerSourceSupport.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
 const cylY = (radius: number, height: number, segments: number): THREE.BufferGeometry =>
@@ -1207,119 +1211,10 @@ export function buildMerkava4X(P: TankBuilderPort): void { buildMerkava4Family(P
 export function buildMerkava4Trophy(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_trophy'); }
 export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_barak'); }
 
-function namerSuperstructure(): THREE.BufferGeometry {
-  // The troop compartment grows out of the Mk.4 chassis as one closed volume.
-  // Its rear ramp remains a surface detail; the structural rear wall behind it
-  // prevents a fake hollow box when the ramp is viewed obliquely.
-  const rows=[
-    [-3.63,1.69,1.30,1.90,1.56],[-3.25,1.78,1.34,1.92,1.62],
-    [-2.20,1.82,1.38,1.92,1.67],[-.40,1.83,1.40,1.84,1.69],
-    [1.12,1.79,1.42,1.90,1.68],[1.82,1.52,1.43,1.82,1.43],
-  ];
-  return sectionSolid(rows.map(([z,half,floor,roof,roofHalf])=>{
-    const shoulder=Math.min(.12,(roof-floor)*.28);
-    return {z,ring:[
-      [-half+.05,floor],[half-.05,floor],[half,floor+shoulder],[half-.03,roof-shoulder],
-      [roofHalf,roof],[-roofHalf,roof],[-half+.03,roof-shoulder],[-half,floor+shoulder],
-    ]};
-  }));
-}
-
-function addNamerDetails(P: TankBuilderPort): void {
-  P.addEquipment('hullDetail',box(2.82,.055,.18),0,1.91,-3.66,-.05);
-  P.addEquipment('hullDetail',box(2.56,.54,.055),0,1.62,-3.71);
-  for(const x of[-1.08,-.54,0,.54,1.08])P.addEquipment('hullDark',box(.035,.52,.018),x,1.68,-3.742);
-  for(const side of[-1,1]){
-    P.addEquipment('hullDetail',box(.28,.16,.22),side*1.43,1.57,1.05);
-    P.addEquipment('hullGlass',markVehicleNightLens(box(.17,.08,.012),'headlight'),side*1.43,1.59,1.172);
-    for(const z of[-2.55,-1.75,-.95])P.addEquipment('hullDetail',torus(.055,.015,14,8),side*1.70,1.88,z,Math.PI/2);
-  }
-  for(const [x,z,y]of[[-.72,-2.55,2.12],[.72,-2.55,2.12],[-.55,.82,1.70],[.55,.82,1.70]]){
-    P.addEquipment('hullDetail',cylY(.11,.05,18),x,y,z);
-    P.addEquipment('hullDark',box(.14,.055,.018),x,y+.04,z+.10);
-  }
-  // Ten independently seated side modules are the Namer's dominant hull
-  // cadence. The gaps keep the troop carrier visually separate from a smooth
-  // late-Merkava skirt and remain cheap repeated procedural primitives.
-  for(const side of[-1,1])
-    P.addExternalArmor('hull',box(.035,.64,6.42),side*1.82,1.10,-.08);
-  for(const side of[-1,1])for(let i=0;i<10;i++){
-    const z=-3.23+i*.67;
-    P.addExternalArmor('hull',box(.06,.84,.61),side*1.86,1.086,z);
-    P.addEquipment('hullDark',box(.012,.74,.026),side*1.897,1.086,z+.315);
-  }
-}
-
-function addNamerWeaponSupport(P: TankBuilderPort): void {
-  const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0)=>
-    topPart(P,NAMER,slot,g,x,y,z,rx,ry,rz);
-  // The source's semantic support/weapon2/weapon3 cluster is a separate high
-  // remote station at z -2.68..-1.56 and y 2.34..3.21. Build its ring, open
-  // A-frame and paired slim receivers instead of the former solid gantry.
-  put('turretDetail',cylY(.31,.11,18),0,2.66,-2.17);
-  put('turretDark',cylY(.24,.06,18),0,2.745,-2.17);
-  put('turretDetail',box(.62,.08,1.117),0,3.132,-2.044,.097);
-  cageBar(P,NAMER,[-.27,2.70,-2.45],[-.19,3.00,-2.15],.055);
-  cageBar(P,NAMER,[.27,2.70,-2.45],[.19,3.00,-2.15],.055);
-  cageBar(P,NAMER,[-.19,3.00,-2.15],[.19,3.00,-2.15],.055);
-  for(const side of[-1,1]){
-    put('turretDark',box(.15,.17,.70),side*.18,3.08,-2.12);
-    put('turretDetail',box(.19,.055,.16),side*.18,3.17,-2.38);
-    put('turretDark',cylZ(.026,.78,10),side*.18,3.10,-1.74);
-  }
-}
-
-function namerTurretShell(): THREE.BufferGeometry {
-  // Five measured longitudinal stations produce the compact unmanned turret:
-  // a narrow rear, broad APS shoulders and a tapered gun face. The former
-  // three-station helmet hid all of those changes behind one blank surface.
-  return sectionSolid([
-    {z:-2.75-NAMER.z,ring:[[-.76,-.07],[.76,-.07],[.86,.17],[.58,.42],[-.58,.42],[-.86,.17]]},
-    {z:-2.30-NAMER.z,ring:[[-1.17,-.08],[1.17,-.08],[1.31,.18],[.86,.54],[-.86,.54],[-1.31,.18]]},
-    {z:-1.38-NAMER.z,ring:[[-1.36,-.08],[1.36,-.08],[1.43,.18],[.82,.60],[-.82,.60],[-1.43,.18]]},
-    {z:-.48-NAMER.z,ring:[[-1.30,-.07],[1.30,-.07],[1.38,.16],[.66,.52],[-.66,.52],[-1.38,.16]]},
-    {z:.28-NAMER.z,ring:[[-.72,-.04],[.72,-.04],[.82,.14],[.36,.35],[-.36,.35],[-.82,.14]]},
-  ]);
-}
-
-function addNamerTurretModules(P: TankBuilderPort): void {
-  // APS/radar armor is broken into distinct canted modules around the turret
-  // perimeter. Dark faceplates and visible seams recover the source's visual
-  // hierarchy while every module remains turret-owned and articulated.
-  for(const side of[-1,1]){
-    for(const [z,w,y]of[[-1.93,1.10,2.41],[-.65,1.08,2.37]] as const){
-      topPart(P,NAMER,'turretDetail',box(.14,.30,w),side*1.18,y,z,0,0,side*.13);
-      topPart(P,NAMER,'turretDark',box(.014,.21,w-.10),side*1.255,y+.015,z,0,0,side*.13);
-      for(const dz of[-(w-.16)/2,(w-.16)/2])
-        topPart(P,NAMER,'turretDetail',box(.032,.25,.032),side*1.266,y+.015,z+dz,0,0,side*.13);
-    }
-    topPart(P,NAMER,'turretDetail',box(.30,.26,.72),side*1.18,2.63,-1.39);
-    for(let row=0;row<2;row++)for(let i=0;i<3;i++)
-      topPart(P,NAMER,'turretDark',cylZ(.031,.19,10),side*1.18+(i-1)*.073,2.60+row*.073,-1.01,0,side*.10);
-  }
-  topPart(P,NAMER,'turretDetail',box(.30,.30,.34),-.80,2.72,-.70);
-  topPart(P,NAMER,'turretGlass',box(.16,.07,.014),-.80,2.75,-.522);
-  topPart(P,NAMER,'turretDetail',box(.45,.27,.48),.76,2.51,-.16);
-  topPart(P,NAMER,'turretDark',box(.31,.13,.018),.76,2.54,.09);
-  topPart(P,NAMER,'turretGlass',box(.14,.055,.010),.76,2.545,.101);
-  // Low paired smoke banks and roof periscopes restore the busy asymmetric
-  // fighting-module read visible in the source without inflating the turret
-  // into an MBT cupola.
-  for(const side of[-1,1])for(let i=0;i<3;i++)
-    topPart(P,NAMER,'turretDark',cylZ(.036,.31,12),side*(.79+i*.10),2.37,.18-i*.055,-.18,side*.38);
-  for(const [x,z,ry]of[[-.38,-.12,0],[.02,-.05,0],[.38,-.18,0],[-.26,-1.74,Math.PI]] as const){
-    topPart(P,NAMER,'turretDetail',box(.22,.11,.17),x,2.64,z,0,ry);
-    topPart(P,NAMER,'turretDark',box(.13,.052,.012),x,2.66,z+(ry===0?.091:-.091),0,ry);
-  }
-  P.turretG.userData.trophySuiteReceipt=Object.freeze({configuration:'namer',radarFaces:4,launchers:2,owner:'rig_turret'});
-}
-
 export function buildNamerIfv(P: TankBuilderPort): void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(0,NAMER.y,NAMER.z);
   P.gunG.position.set(.05,.28,1.02);
-  P.add('hull',merkava4Hull());
-  P.add('hull',modernMerkavaGlacisCap());
-  P.add('hull',namerSuperstructure());
+  addNamerSourceHull(P);
   // Source axle centres are reconstructed in world metres then divided by
   // the final .976 chassis length scale. This aligns every wheel gap rather
   // than shortening an already forward-biased Mk.4 pattern uniformly.
@@ -1332,16 +1227,8 @@ export function buildNamerIfv(P: TankBuilderPort): void {
     sprocket:{z:3.007,y:.831,r:.335},idler:{z:-2.978,y:.708,r:.332},topY:1.125,botY:.0956,
     paintedEnds:true,arms:true,coveredTop:true},namerRollers,.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,namerRollers,.0038);
-  merkava4HullDetails(P,'namer_ifv');
-  addMerkavaXShoulderReturns(P,'merkava4_x');
-  addMerkava4XEndReturns(P);
-  addNamerDetails(P);
-  P.add('turret',namerTurretShell());
-  P.add('turret',cylY(.88,.12,24),0,-.02,-.85);
-  // A low rectangular equipment plinth replaces the old tank-like round
-  // cupola. The real Namer station is unmanned; this keeps the roof clearly
-  // distinct from both Mk.4 variants even at garage distance.
-  P.add('turret',box(.72,.10,.58),0,.55,-.30);
+  addNamerSourceChassis(P);
+  addNamerSourceTurret(P);
   P.add('gunMount',sectionSolid([
     {z:-.24,ring:[[-.28,-.20],[.28,-.20],[.28,.21],[-.28,.21]]},
     {z:.18,ring:[[-.22,-.16],[.22,-.16],[.22,.17],[-.22,.17]]},
@@ -1350,8 +1237,7 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   P.add('gun',cylZ(.037,2.31,18),0,0,1.155);
   P.add('gun',cylZ(.069,.22,18),0,0,2.40);
   P.add('gunDark',box(.16,.07,.18),0,.015,.54);
-  addNamerTurretModules(P);
-  addNamerWeaponSupport(P);
+  addNamerSourceSupport(P);
   const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false});
   auxiliary.position.set(.46,2.76-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
   P.muzzleZ=2.51;P.topY=1.12;

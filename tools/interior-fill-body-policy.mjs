@@ -1,6 +1,10 @@
 // Authored body boundaries for fill generation only. Visible fittings remain in
 // the native tank and in every source/continuity/physical-stock check.
 const PRIMARY_BODY_BUCKETS = Object.freeze({
+  // Namer's closed rear roof channel lies beneath a separate raised cover
+  // and paired bodies. Those fittings do not make the intervening air part
+  // of the turret shell; its closed access-door recess is exterior too.
+  namer_ifv: Object.freeze(['hull', 'turret']),
   // Both primary meshes are closed authored shells. Lamp cages, deck brackets,
   // slat rails and roof optics sit outside them: combining those separate parts
   // into one vertical span would invent body volume across their real air gaps.
