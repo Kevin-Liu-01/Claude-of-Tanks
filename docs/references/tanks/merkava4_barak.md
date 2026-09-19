@@ -1,11 +1,36 @@
 # Merkava Mk.4 Barak (`merkava4_barak`) — run packet
 
-## Current status
+## Current integrated status — 2026-09-19
+
+Integration `575614227` passes the unchanged source geometry floor with an
+unrounded minimum of 92.37309929016543, dimensions 96.30893042575286 and
+floaters 100. The source-shaped bow straps, folded rear guards and finite wheel/track stock
+pass the fresh combined physical standard. All 79 raw opening cells are
+measured source/native air, protected by 14 stock/air controls; no unexpected
+openings remain. The source itself overlaps its lower rear rails with its
+track by 31–34 mm. A documented hidden receiving relief clears the real moving
+stock while retaining the upper returns and visible rear form. The 264-phase
+fixture includes a failing control with the original overlapping tip restored.
+See [the source study](../../research/barak-bow-opening-source-study-20260919.md).
+
+Full fleet generation passed at `87e8e9526`, including the regenerated assets.
+The subsequent independent fourteen-view review is **HOLD**: a closed rear
+mission volume obscures the source basket, chains and stowage; rear hull and
+roof equipment relationships also need correction. Its lowest score is 8.0,
+below the existing 9/10 bar. See [the actual visual review](../../research/israeli-final-r2-independent-visual-review-20260919.md).
+The measured running-gear repairs above remain valid at that checkpoint.
+Fresh component geometry, paired Garage views and complete release
+verification remain required before publication.
+The private integrated receipt is
+`.qa-dev/tank-run/final-corrections/qualification-r3/physical-integrated-preflight-r1/receipt.json`.
+Earlier values and pending checks below belong to the historical implementation.
+
+## Earlier implementation checkpoint
 
 - Updated: 2026-09-18.
 - Owner request / latest superseding instruction: add an independent Barak
   study from the supplied GLB; retain a solid Sinai-gray finish and the
-  owner-provided Tier-X gameplay envelope.
+  authored Tier-X gameplay envelope.
 - ID and display name: `merkava4_barak` — Merkava Mk.4 Barak.
 - Implementation status: **COMPLETE IN WORKTREE** — independent procedural
   crown, armor, sensors, rear stowage and cable/antenna treatment plus exact
@@ -72,8 +97,10 @@
   Iron View: [official IDF configuration source](https://www.idf.il/en/mini-sites/technology-and-innovation/meet-the-merkava-mk-4-barak/).
 - Naming decision: display “Merkava Mk.4 Barak.” The source's “Mk.4M Barak” is
   retained as source metadata, not silently promoted to the canonical name.
-- Owner decisions with dates: 2026-09-18 — exact ID, Tier X, solid Sinai-gray
-  palette and Trophy-baseline gameplay with improved handling.
+- Authored interpretation, 2026-09-18: exact ID, Tier X, solid Sinai-gray
+  palette and Trophy-baseline gameplay with improved handling. These implement
+  the owner's fleet addition and rebalance request; they are not exact values
+  supplied by the owner.
 - Conversion: `tools/source-x-oracle.mjs --prepare` on the raw hash-pinned GLB;
   the bake preserves source world triangles and creates a private geometry-only
   comparison oracle.

@@ -15,7 +15,7 @@ hash while adding or removing `/cn`.
 
 ## Current support
 
-The checked-in catalogs contain the same 2,677 keys. Coverage includes the boot
+The checked-in catalogs contain the same 3,040 keys. Coverage includes the boot
 flow, Garage, Settings, equipment, loading screens, battle HUD, killcam and
 results, private/LAN room controls, Tank Gallery, Scene Studio, and the public
 documentation surfaces. Route-specific titles, descriptions, Open Graph data,

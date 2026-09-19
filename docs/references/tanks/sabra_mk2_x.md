@@ -250,3 +250,16 @@ Postgeneration preservation check: the Sabra fill and per-ID marking files are b
 Existing receiving stock now follows gun pitch without following barrel recoil. The actual tube and muzzle retain their recoil owner; no source dimensions, neutral primitives or pivots changed. Neutral HIGH/LOW visible world triangles, transformed normals, UVs, colors and materials match the prior model exactly. Filled native legal-pitch/recoil/return checks pass; TML optical faces additionally retain full-scene recess depth, unlimited former visibility through near/far LOD changes and exactly-once disposal.
 
 Current profile SHA-256: `9c8ad551962a09530f1d813f9102f9982165f41b6356f38455fb14835221dd86`. Details and the genuine KF41 pre-fix failure are preserved in [the ownership repair report](../../research/europe-gun-ownership-repair-20260918.md). The parent owns affected anatomy/fill regeneration and final integration evidence. Earlier static-shape evidence is preserved; no composed release pass or waiver of existing source/roof-MG policy conflicts is claimed here.
+
+
+## Combined Israeli balance integration — 2026-09-19
+
+Sabra remains Tier IX and uses the explicitly configured Merkava 3D gun balance
+peer. The requested Israeli retuning therefore changes its reload to 6.2 s,
+accuracy to 0.29 and aim time to 1.7 s. Its M322 gameplay penetration curve is
+830/755/680 mm, with 560 damage; M325 is 620/620 mm and 500 damage, and M339 is
+45/45 mm and 600 damage. These are gameplay values, not measured real-world
+performance. No extra weapon was added. The integrated fleet ammunition and
+balance checks pass. The separate 26-pair HIGH/LOW native preservation audit
+keeps its geometry/materials/rig exactly equal to the accepted visual review;
+the full release gate remains pending.

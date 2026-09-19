@@ -16,7 +16,7 @@ stack, authoring tools, test rigs, and public presentation.
 | --- | --- |
 | Playable fleet | 188 production-visible and 225 keyed local-development first-party procedural vehicles |
 | Runtime vehicle provenance | 0 playable vehicles sourced from GLB geometry |
-| Battlefields | 30 authored and destructible maps |
+| Battlefields | 31 authored and destructible maps |
 | Simulation | Fixed 60 Hz movement and combat rules |
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
 | Modes | Standard Battle, Capture the Flag, Zone Control, Turbo Ball, Endless Horde, Frontline Assault (campaign ladder); one ruleset per mode; solo, private, LAN, and ranked deployment |

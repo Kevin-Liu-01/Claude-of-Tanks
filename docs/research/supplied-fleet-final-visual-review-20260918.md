@@ -42,6 +42,52 @@ The shared-core chain retains its 26-build neutral-equivalence receipt plus the 
 
 After full anatomy regeneration, the older twelve selected fill/marking/material/source files remain exact. The changed Kurg profile, anatomy, fill and markings match its fresh canonical and Garage capture identities. Shared generated asset-framing records are not claimed byte-identical: ordinary runtime centering uses gear/contact, and canonical comparisons retain the certified source frame. Kurg’s corrected bow passes all sixteen final images at 9/10; its prior 8.7 failure remains preserved.
 
+## Additive roster integration — 2026-09-19
+
+The comparison from checkpoint `547457932` to combined candidate `98c53a671`
+retains all thirteen models' native appearance. The 52-build replay compares
+26 HIGH/LOW pairs and finds identical visible buffers, instance counts,
+materials/textures and rig data with fills loaded. All 208 original image
+hashes still match. Selected anatomy, fill, marking, source-frame and
+presentation records also match; Object 695 and other additions account for
+the changed shared-file hashes. No additional image inspection is claimed.
+
+The receipt is
+`.qa-dev/tank-run/post-merge-root13-preservation/selected-visual-preservation-bridge.json`,
+SHA-256 `1a163ca23b47f7f9b581b4ad54faa1f99b6dcea79adc950bbcb20a86ee96ff14`.
+Its before/after acquisition inventory covers 2,842 runtime/tool files with
+zero drift during the comparison. Later Israeli/Ares geometry commits remain
+outside this receipt's exact candidate identity until separately bridged.
+
+Sabra intentionally follows the Merkava 3D gun's Tier-IX gameplay tuning,
+within the requested Israeli fleet rebalance: reload 5.9 → 6.2 s, accuracy
+0.28 → 0.29, aim time 1.6 → 1.7 s, and the explicit shell balance changes
+listed in the receipt. Those thirteen gameplay fields changed; the comparison
+does not describe all gameplay as unchanged. Sabra's native visual result
+remains exact.
+
+The subsequent bounded merge bridge from `46f2a3a4d` to `c61db17e3` preserves
+85 selected input files, all 226 accepted root-thirteen/Ares image hashes and
+19 recorded source hashes. Selected generated records and source frames match.
+Five inherited launcher-count metadata additions are isolated; source-specific
+corrections to those declarations are recorded separately in `dd4cb5e6f`. The upstream
+BMPT load/reload rebalance falls outside these fourteen models.
+
+The night runtime remains lazy and inactive in the recorded daytime Garage
+path: day preparation returns before import, Garage entry resets it, and frame
+updates require prepared night battle presentation. Focused access/runtime
+checks pass. This preserves the scope of the existing day images and makes no
+new night-image or performance claim. The exact receipt is
+`.qa-dev/tank-run/merge-c61-selected-visual/integration-bridge.json`, SHA-256
+`5638d56e5da8ab4712a8758fb79557e27000e80fb6c9e29e0b68e1302807f51d`.
+That follow-up changes exactly four metadata fields against the merged
+227-record registry: AFT 0 → 8, CV90 Mk.IV 4 → 2, Kurganets Kornet 2 → 4,
+and its previously undeclared Bulat count → 8. Ammunition quantities, reloads,
+other tuning and geometry remain equal. Five focused contract tests pass;
+the receipt is under
+`.qa-dev/tank-run/final-corrections/integration/guided-tubes/summary.json`.
+Final Israeli integration and full regeneration still require their final bridge.
+
 ## Receipt and limits
 
 The regenerable private aggregate is [final-13-visual-closure.json](../../.qa-dev/tank-run/final-corrections/visual-closure-final13/final-13-visual-closure.json), SHA-256 `8d91b4ecc8065492bc02352407ac8d6770034d1bb9e69b69d3a4c65749c9cb92`. It lists every image, independent record, capture identity and bridge. The [ready marker](../../.qa-dev/tank-run/final-corrections/qualification/visual-review-ready.json) is SHA-256 `4696aaf8e13271bd8fd8fc253a141c7278a753c4321fa26bfdd2a182e6968aef`. The earlier twelve-vehicle HOLD map is unchanged (`4758337859b932384cce83559e75f39a6d3f5fbb8f05f8cf9d0e07774df3d871`). Ignored QA files are local evidence, not shipped assets; the linked research records preserve the findings.

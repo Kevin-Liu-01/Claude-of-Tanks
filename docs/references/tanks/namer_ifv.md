@@ -1,10 +1,32 @@
 # Namer IFV (`namer_ifv`) — run packet
 
-## Current status
+## Current integrated status — 2026-09-19
+
+Integration `575614227` passes the unchanged source geometry floor with an
+unrounded minimum of 93.56384512847441, dimensions 98.51724137931025 and
+floaters 100. The fresh combined physical standard passes with no front/rear/sweep band or
+shoe collisions, no unexpected openings and the retained source weapon
+configuration. This record covers the supplied weaponized IFV, not every Namer
+configuration.
+
+Full fleet generation passed at `87e8e9526`, including the regenerated assets.
+The subsequent independent fourteen-view review is **HOLD**: the covered
+cylindrical launcher stock, deep rear recess, glacis and roof equipment
+relationships differ materially from the source. Its scores are 7.8–8.4,
+below the existing 9/10 bar. See [the actual visual review](../../research/namer-final-canonical-independent-review-20260919.md).
+These component repairs, fresh paired Garage views and complete release
+verification remain required before publication. The source geometry is
+being studied without inventing another gameplay weapon configuration.
+The private integrated receipt is
+`.qa-dev/tank-run/final-corrections/qualification-r3/physical-integrated-preflight-r1/receipt.json`.
+Earlier values and pending checks below belong to the historical implementation.
+
+## Earlier implementation checkpoint
 
 - Updated: 2026-09-18.
 - Owner request / latest superseding instruction: build the source-depicted
-  weaponized Namer as a Tier-IX 30 mm support IFV without an ATGM.
+  weaponized Namer. The authored gameplay interpretation is a Tier-IX
+  30 mm support IFV without an ATGM.
 - ID and display name: `namer_ifv` — Namer IFV.
 - Implementation status: **COMPLETE IN WORKTREE** — independent closed troop
   hull, compact five-station unmanned turret, 30 mm weapon, APS/sensors, remote
@@ -75,8 +97,10 @@
   the baseline Namer APC with a .50-inch, 7.62 mm, or grenade-launcher RCWS,
   60 mm mortar, 1,200 hp powerpack, and Merkava Mk.3-like running gear:
   [Israel Defense Directory 2018–19](https://www.sibat.mod.gov.il/Industries/directory/Documents/Sibatdir-dfs-en-2018-19.pdf). That baseline does not prove this packet's 30 mm turret.
-- Owner decisions with dates: 2026-09-18 — exact ID, Tier IX, solid Sinai-gray
-  palette, 30 mm autocannon and no ATGM.
+- Authored interpretation, 2026-09-18: exact ID, Tier IX, solid Sinai-gray
+  palette, 30 mm autocannon and no playable ATGM channel. The owner authorized
+  adding the supplied vehicle and rebalancing the Israeli fleet; these exact
+  balance values were implementation choices, not a quoted owner decision.
 - Conversion: `tools/source-x-oracle.mjs --prepare` on the raw hash-pinned GLB;
   the bake preserves every source mesh and creates a private geometry-only oracle.
 - Canonical oracle: ignored

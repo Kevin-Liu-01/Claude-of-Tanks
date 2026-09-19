@@ -6,7 +6,34 @@ GLB inventory, intended gameplay interpretation, registered comparison frames
 and current worktree evidence; only Kevin B. Liu-authored procedural geometry
 is eligible to ship.
 
-## Current status
+## Current integrated status — 2026-09-19
+
+Integration `575614227` contains the source-measured Trophy and Barak physical
+repairs. The fresh combined standard passes for all three: no band/shoe
+collisions or unexpected openings, with their source weapon counts retained.
+Unrounded geometry minima are Trophy 92.52297815721163, Barak
+92.37309929016543 and Namer 93.56384512847441 against the unchanged 92 floor.
+Barak's 79 measured opening cells and its hidden rear-track receiving relief
+are documented in the [source study](barak-bow-opening-source-study-20260919.md).
+
+The passing private receipt is
+`.qa-dev/tank-run/final-corrections/qualification-r3/physical-integrated-preflight-r1/receipt.json`;
+runtime drift is empty. The earlier failing `5d36e7cf9` standard remains in
+`qualification-r3/cap-integrated-preflight/`. Neither it nor earlier rounded
+scores are rewritten as passing results.
+
+Full fleet generation passed at `87e8e9526`, with all thirty selected asset
+files generated and presentation alignment passing. The actual final
+fourteen-view independent inspections nevertheless hold all three models for
+source component corrections: [Trophy and Barak](israeli-final-r2-independent-visual-review-20260919.md),
+and [Namer](namer-final-canonical-independent-review-20260919.md). The numerical
+gates do not substitute for these visual checks. The attempted Garage pairs
+also exposed a capture timing problem during the normal idle camera return;
+those failed pairs are preserved and will be replaced using a passive wait
+for the settled camera, with unchanged comparison tolerances. Complete
+release verification and publication remain pending.
+
+## Earlier implementation checkpoint
 
 - Updated: 2026-09-18.
 - IDs: `merkava4_barak`, `merkava4_trophy`, `namer_ifv`.
@@ -84,13 +111,14 @@ Target interpretations:
 
 ## Planned catalog and gameplay envelope
 
-All numbers in this section are owner-provided gameplay balance targets. They
+All numbers in this section are authored gameplay balance targets for the
+owner-requested roster rebalance. They
 are not claims about classified or real armor, penetration, damage, accuracy,
 or rate of fire.
 
 | ID | Tier | Visual policy | Planned balance envelope and rationale |
 | --- | ---: | --- | --- |
-| `merkava4_trophy` | X | Solid Sinai gray, base `#6f7566` with lighter role `#7b8172`; accessory, cloth, glass, rubber, and weapon-metal roles stay distinct | 2,800–2,900 HP; 1,500 hp / 65 t; 64 km/h forward, 25 km/h reverse; about 40°/s traverse; 6.0 s reload; 0.26 accuracy; 1.45–1.55 s aim. Owner supplied an M338 gameplay penetration triplet of 900/820/740 in the repository's near/mid/far or equivalent penetration ordering. Tier X reflects a current protected MBT baseline. |
+| `merkava4_trophy` | X | Solid Sinai gray, base `#6f7566` with lighter role `#7b8172`; accessory, cloth, glass, rubber, and weapon-metal roles stay distinct | 2,800–2,900 HP; 1,500 hp / 65 t; 64 km/h forward, 25 km/h reverse; about 40°/s traverse; 6.0 s reload; 0.26 accuracy; 1.45–1.55 s aim. The authored M338 gameplay penetration triplet is 900/820/740 in the repository's near/mid/far or equivalent penetration ordering. Tier X reflects a current protected MBT baseline. |
 | `merkava4_barak` | X | Same solid Sinai-gray policy | Same engine, mass, speed, HP, passive-armor intent, reload, and shell balance as `merkava4_trophy`; 0.24–0.25 accuracy, 1.3–1.4 s aim, and 10–15% lower movement/turret dispersion. Its advantage is sensor/fire-control handling rather than invented armor or ammunition escalation. |
 | `namer_ifv` | IX | Same solid Sinai-gray policy | 2,550–2,700 HP; 1,200 hp / 62–64 t; 54 km/h forward, 18–20 km/h reverse; 32–35°/s hull and about 60°/s turret traverse. Planned 30 mm cycle 0.35 s, 180/164/148 gameplay penetration, about 70 damage, 400 rounds, and 75–90 HE damage; no ATGM. Tier IX and the modest autocannon keep it a protected support IFV rather than a Tier-X MBT substitute. |
 
@@ -133,8 +161,9 @@ flattened Barak file or treat one Merkava source as proof for another variant.
 
 ## Batch evidence matrix
 
-Current frozen geometry and neutral boards produce the following evidence. The
-remaining IN PROGRESS rows will be updated only from final integrated receipts.
+The following matrix preserves the earlier side-worktree checkpoint. The
+current integrated status above supersedes it; these rows are not final
+qualification receipts.
 
 | Gate | `merkava4_barak` | `merkava4_trophy` | `namer_ifv` | Residual |
 | --- | --- | --- | --- | --- |

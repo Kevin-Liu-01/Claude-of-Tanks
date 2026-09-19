@@ -6,6 +6,55 @@ export const VEHICLE_MARKING_SEAT_SCHEMA_VERSION = 1;
 import type { VehicleMarkingSeatRecord } from '../vehicleMarkingSeatRegistry.ts';
 
 export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRecord>> = Object.freeze({
+  "merkava3d_x": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.967,
+          1.0779322,
+          1.0077491
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "merkava3d_x",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.967,
+          1.0779322,
+          1.4473158
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "merkava3d_x",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
   "merkava4_x": {
     "schemaVersion": 1,
     "seats": [
@@ -55,7 +104,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "merkava3d_x": {
+  "namer_ifv": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -63,31 +112,107 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          -1.967,
-          1.0779322,
-          1.0077491
+          -1.700484,
+          1.603373,
+          0.085
         ],
         "quaternion": [
-          0,
-          -0.7071068,
-          0,
-          0.7071068
+          -0.3557872,
+          -0.6110773,
+          -0.3557872,
+          0.6110773
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "merkava3d_x",
+        "anchorProfile": "namer_ifv",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0018764
       },
       {
         "kind": "designation",
         "parent": "hull",
         "size": 0.24,
         "pos": [
-          -1.967,
-          1.0779322,
-          1.4473158
+          -1.7005447,
+          1.6033726,
+          0.89625
+        ],
+        "quaternion": [
+          -0.3557431,
+          -0.611103,
+          -0.3557431,
+          0.611103
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "namer_ifv",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0018768
+      }
+    ]
+  },
+  "merkava4_trophy": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.6320609,
+          0.4572042,
+          0.4316438
+        ],
+        "quaternion": [
+          -0.3036181,
+          -0.6224918,
+          -0.3162183,
+          0.6483255
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "merkava4_trophy",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0004487
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.24,
+        "pos": [
+          -1.7076693,
+          0.24752,
+          0.7381409
+        ],
+        "quaternion": [
+          0,
+          -0.6544084,
+          0,
+          0.7561413
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "merkava4_trophy",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0
+      }
+    ]
+  },
+  "merkava4_barak": {
+    "schemaVersion": 1,
+    "seats": [
+      {
+        "kind": "insignia",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.8794,
+          0.9995264,
+          0.38
         ],
         "quaternion": [
           0,
@@ -96,11 +221,33 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "merkava3d_x",
+        "anchorProfile": "merkava4_barak",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.000168
+      },
+      {
+        "kind": "designation",
+        "parent": "hull",
+        "size": 0.24,
+        "pos": [
+          -1.8794,
+          0.9995264,
+          1.216
+        ],
+        "quaternion": [
+          0,
+          -0.7071068,
+          0,
+          0.7071068
+        ],
+        "surfaceMesh": "hull",
+        "anchorProfile": "merkava4_barak",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.000168
       }
     ]
   }

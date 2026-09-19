@@ -1,5 +1,6 @@
 {
   "generatedAt": "2026-09-19",
+  "candidateStatus": "Source calipers and historical source-repair checkpoints are preserved. integratedPhysicalCandidate records the actual 575614227 standard PASS; final rendered and composed-release qualification remains pending.",
   "method": {
     "sourceIntegrity": "Read-only indexed-vertex calipers on hash-pinned canonical GLBs with identity transforms; source files were not modified.",
     "fixedRuler": "Paired identical substantial-body masks in a source-only fixed camera, plus unfiltered physical W/H/L envelopes.",
@@ -15,30 +16,159 @@
       "excludedSourceComponents": [],
       "source": {
         "primaryHullLabelledSpanM": 7.600000381,
-        "fixedRuler": { "heightM": 4.184297455, "hullLengthM": 8.087769578, "overallLengthM": 8.874080509, "widthM": 4.343431810 },
-        "physicalEnvelope": { "widthM": 4.352445126, "heightM": 4.661717402, "overallLengthM": 8.875467300 },
+        "fixedRuler": {
+          "heightM": 4.184297455,
+          "hullLengthM": 8.087769578,
+          "overallLengthM": 8.874080509,
+          "widthM": 4.34343181
+        },
+        "physicalEnvelope": {
+          "widthM": 4.352445126,
+          "heightM": 4.661717402,
+          "overallLengthM": 8.8754673
+        },
         "gameplayStructuralRoofHeightM": 2.578753233
       },
-      "retiredDraftTargets": { "hullLengthM": 7.98, "overallLengthM": 8.97, "widthM": 4.35, "heightM": 4.53 },
-      "candidateBeforeSourceRepair": { "heightM": 4.390236, "hullLengthM": 7.689934, "overallLengthM": 8.789833, "widthM": 4.362153, "physicalWidthM": 4.361000, "physicalHeightM": 4.670583, "physicalOverallLengthM": 8.785952 },
-      "candidateFinal": { "heightM": 4.193658299, "hullLengthM": 8.087769578, "overallLengthM": 8.864719664, "widthM": 4.362153499, "physicalWidthM": 4.361000061, "physicalHeightM": 4.672673850, "physicalOverallLengthM": 8.865052413 },
-      "gate": { "whole": 92.0, "dimensions": 100, "floaters": 100 }
+      "retiredDraftTargets": {
+        "hullLengthM": 7.98,
+        "overallLengthM": 8.97,
+        "widthM": 4.35,
+        "heightM": 4.53
+      },
+      "candidateBeforeSourceRepair": {
+        "heightM": 4.390236,
+        "hullLengthM": 7.689934,
+        "overallLengthM": 8.789833,
+        "widthM": 4.362153,
+        "physicalWidthM": 4.361,
+        "physicalHeightM": 4.670583,
+        "physicalOverallLengthM": 8.785952
+      },
+      "candidateSourceRepairCheckpoint": {
+        "heightM": 4.193658299,
+        "hullLengthM": 8.087769578,
+        "overallLengthM": 8.864719664,
+        "widthM": 4.362153499,
+        "physicalWidthM": 4.361000061,
+        "physicalHeightM": 4.67267385,
+        "physicalOverallLengthM": 8.865052413
+      },
+      "sourceRepairCheckpointGate": {
+        "whole": 92.0,
+        "dimensions": 100,
+        "floaters": 100
+      },
+      "integratedPhysicalCandidate": {
+        "head": "5756142270903e1eaa6e86849b68a4c7acd823f4",
+        "profileSha256": "039e55b5d10065eb17224f5c0b07e8553a30a9eeda69916b0bb32b01970a7df6",
+        "fillGroupSha256": "f70c4204cfc092c1d7edaa5fd6ae98af15fe54f99dccd4dee28702e1e7d49d4e",
+        "dimensions": {
+          "heightM": 4.193658299446106,
+          "hullLengthM": 8.087769577503204,
+          "overallLengthM": 8.864719664230943,
+          "widthM": 4.362153498977423,
+          "physicalWidthM": 4.361000061035156,
+          "physicalHeightM": 4.672673850023158,
+          "physicalOverallLengthM": 8.865052412579548
+        },
+        "rawGateMinimum": 92.52297815721163,
+        "rawComponents": {
+          "wholeCurves": 92.52297815721163,
+          "dims": 100,
+          "floaters": 100
+        },
+        "requiredMinimum": 92,
+        "geometryGatePassed": true,
+        "physicalStandardPassed": true,
+        "receipt": {
+          "path": ".qa-dev/tank-run/final-corrections/qualification-r3/physical-integrated-preflight-r1/receipt.json",
+          "sha256": "1d39c32c66d61e5dd9c3f3a31d2e0997db549af9dc90a8161d3862f9b64dff03"
+        },
+        "scope": "Machine source/physical checks; not independent visual or composed release acceptance."
+      }
     },
     {
       "id": "merkava4_barak",
       "rawSha256": "81cc2cf027af4475c5890089067dd9b1f77d9fbd306939e24f973ad68e099aa5",
       "canonicalSha256": "0549b50430cd8df0ebf9d095b617e64e8c6274747bea1dd99e4dec0e987b8f4d",
-      "excludedSourceComponents": [{ "name": "Object_13", "reason": "Established detached sub-ground artifact spanning source y=-1.1811..0.0042." }],
+      "excludedSourceComponents": [
+        {
+          "name": "Object_13",
+          "reason": "Established detached sub-ground artifact spanning source y=-1.1811..0.0042."
+        }
+      ],
       "source": {
         "primaryHullLabelledSpanM": 7.600000858,
-        "fixedRuler": { "heightM": 2.989320501, "hullLengthM": 8.046021536, "overallLengthM": 8.828273630, "widthM": 3.706384921 },
-        "physicalEnvelope": { "widthM": 3.719722152, "heightM": 5.665005604, "overallLengthM": 8.829653263 },
-        "gameplayStructuralRoofHeightM": 2.600360870
+        "fixedRuler": {
+          "heightM": 2.989320501,
+          "hullLengthM": 8.046021536,
+          "overallLengthM": 8.82827363,
+          "widthM": 3.706384921
+        },
+        "physicalEnvelope": {
+          "widthM": 3.719722152,
+          "heightM": 5.665005604,
+          "overallLengthM": 8.829653263
+        },
+        "gameplayStructuralRoofHeightM": 2.60036087
       },
-      "retiredDraftTargets": { "hullLengthM": 8.10, "overallLengthM": 8.86, "widthM": 3.90, "heightM": 2.82 },
-      "candidateBeforeSourceRepair": { "heightM": 2.952070402, "hullLengthM": 7.850459, "overallLengthM": 8.781711, "widthM": 3.725010, "physicalWidthM": 3.722760, "physicalHeightM": 5.669820, "physicalOverallLengthM": 8.785952 },
-      "candidateFinal": { "heightM": 2.952070402, "hullLengthM": 8.046021536, "overallLengthM": 8.818961105, "widthM": 3.725009970, "physicalWidthM": 3.722759926, "physicalHeightM": 5.669820298, "physicalOverallLengthM": 8.825952242 },
-      "gate": { "whole": 92.3, "dimensions": 98.0, "floaters": 100 }
+      "retiredDraftTargets": {
+        "hullLengthM": 8.1,
+        "overallLengthM": 8.86,
+        "widthM": 3.9,
+        "heightM": 2.82
+      },
+      "candidateBeforeSourceRepair": {
+        "heightM": 2.952070402,
+        "hullLengthM": 7.850459,
+        "overallLengthM": 8.781711,
+        "widthM": 3.72501,
+        "physicalWidthM": 3.72276,
+        "physicalHeightM": 5.66982,
+        "physicalOverallLengthM": 8.785952
+      },
+      "candidateSourceRepairCheckpoint": {
+        "heightM": 2.952070402,
+        "hullLengthM": 8.046021536,
+        "overallLengthM": 8.818961105,
+        "widthM": 3.72500997,
+        "physicalWidthM": 3.722759926,
+        "physicalHeightM": 5.669820298,
+        "physicalOverallLengthM": 8.825952242
+      },
+      "sourceRepairCheckpointGate": {
+        "whole": 92.3,
+        "dimensions": 98.0,
+        "floaters": 100
+      },
+      "integratedPhysicalCandidate": {
+        "head": "5756142270903e1eaa6e86849b68a4c7acd823f4",
+        "profileSha256": "039e55b5d10065eb17224f5c0b07e8553a30a9eeda69916b0bb32b01970a7df6",
+        "fillGroupSha256": "f70c4204cfc092c1d7edaa5fd6ae98af15fe54f99dccd4dee28702e1e7d49d4e",
+        "dimensions": {
+          "heightM": 2.9520704015158117,
+          "hullLengthM": 8.143803047714755,
+          "overallLengthM": 8.902773829177022,
+          "widthM": 3.725009970366955,
+          "physicalWidthM": 3.722759925842285,
+          "physicalHeightM": 5.6682914627246355,
+          "physicalOverallLengthM": 8.90723247391988
+        },
+        "rawGateMinimum": 92.37309929016543,
+        "rawComponents": {
+          "wholeCurves": 92.37309929016543,
+          "dims": 96.30893042575286,
+          "floaters": 100
+        },
+        "requiredMinimum": 92,
+        "geometryGatePassed": true,
+        "physicalStandardPassed": true,
+        "receipt": {
+          "path": ".qa-dev/tank-run/final-corrections/qualification-r3/physical-integrated-preflight-r1/receipt.json",
+          "sha256": "1d39c32c66d61e5dd9c3f3a31d2e0997db549af9dc90a8161d3862f9b64dff03"
+        },
+        "scope": "Machine source/physical checks; not independent visual or composed release acceptance."
+      }
     },
     {
       "id": "namer_ifv",
@@ -47,14 +177,76 @@
       "excludedSourceComponents": [],
       "source": {
         "primaryHullLabelledSpanM": 7.319994926,
-        "fixedRuler": { "heightM": 3.180356135, "hullLengthM": 7.323499983, "overallLengthM": 7.481334035, "widthM": 3.582832966 },
-        "physicalEnvelope": { "widthM": 3.580119610, "heightM": 3.212008012, "overallLengthM": 7.482503176 },
+        "fixedRuler": {
+          "heightM": 3.180356135,
+          "hullLengthM": 7.323499983,
+          "overallLengthM": 7.481334035,
+          "widthM": 3.582832966
+        },
+        "physicalEnvelope": {
+          "widthM": 3.58011961,
+          "heightM": 3.212008012,
+          "overallLengthM": 7.482503176
+        },
         "gameplayStructuralRoofHeightM": 2.699992418
       },
-      "retiredDraftTargets": { "hullLengthM": 7.48, "overallLengthM": 7.48, "widthM": 3.58, "heightM": 3.15 },
-      "candidateBeforeSourceRepair": { "heightM": 3.188247838, "hullLengthM": 7.236691255, "overallLengthM": 7.481334035, "widthM": 3.614399776, "physicalWidthM": 3.615699995, "physicalHeightM": 3.231921627, "physicalOverallLengthM": 7.481039963 },
-      "candidateFinal": { "heightM": 3.188247838, "hullLengthM": 7.236691255, "overallLengthM": 7.481334035, "widthM": 3.614399776, "physicalWidthM": 3.615699995, "physicalHeightM": 3.231921627, "physicalOverallLengthM": 7.481039963 },
-      "gate": { "whole": 93.6, "dimensions": 98.5, "floaters": 100 }
+      "retiredDraftTargets": {
+        "hullLengthM": 7.48,
+        "overallLengthM": 7.48,
+        "widthM": 3.58,
+        "heightM": 3.15
+      },
+      "candidateBeforeSourceRepair": {
+        "heightM": 3.188247838,
+        "hullLengthM": 7.236691255,
+        "overallLengthM": 7.481334035,
+        "widthM": 3.614399776,
+        "physicalWidthM": 3.615699995,
+        "physicalHeightM": 3.231921627,
+        "physicalOverallLengthM": 7.481039963
+      },
+      "candidateSourceRepairCheckpoint": {
+        "heightM": 3.188247838,
+        "hullLengthM": 7.236691255,
+        "overallLengthM": 7.481334035,
+        "widthM": 3.614399776,
+        "physicalWidthM": 3.615699995,
+        "physicalHeightM": 3.231921627,
+        "physicalOverallLengthM": 7.481039963
+      },
+      "sourceRepairCheckpointGate": {
+        "whole": 93.6,
+        "dimensions": 98.5,
+        "floaters": 100
+      },
+      "integratedPhysicalCandidate": {
+        "head": "5756142270903e1eaa6e86849b68a4c7acd823f4",
+        "profileSha256": "039e55b5d10065eb17224f5c0b07e8553a30a9eeda69916b0bb32b01970a7df6",
+        "fillGroupSha256": "f70c4204cfc092c1d7edaa5fd6ae98af15fe54f99dccd4dee28702e1e7d49d4e",
+        "dimensions": {
+          "heightM": 3.1882478375360375,
+          "hullLengthM": 7.236691255001352,
+          "overallLengthM": 7.4813340346142665,
+          "widthM": 3.614399776216597,
+          "physicalWidthM": 3.615699994564056,
+          "physicalHeightM": 3.23192162740267,
+          "physicalOverallLengthM": 7.481039962768555
+        },
+        "rawGateMinimum": 93.56384512847441,
+        "rawComponents": {
+          "wholeCurves": 93.56384512847441,
+          "dims": 98.51724137931025,
+          "floaters": 100
+        },
+        "requiredMinimum": 92,
+        "geometryGatePassed": true,
+        "physicalStandardPassed": true,
+        "receipt": {
+          "path": ".qa-dev/tank-run/final-corrections/qualification-r3/physical-integrated-preflight-r1/receipt.json",
+          "sha256": "1d39c32c66d61e5dd9c3f3a31d2e0997db549af9dc90a8161d3862f9b64dff03"
+        },
+        "scope": "Machine source/physical checks; not independent visual or composed release acceptance."
+      }
     }
   ]
 }

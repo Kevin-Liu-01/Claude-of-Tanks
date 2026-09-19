@@ -37,15 +37,42 @@ the queue correction; those separate results do not replace the failed release.
 The failed run and its unchanged-input receipt remain under
 `.qa-dev/tank-run/final-corrections/qualification/`.
 
-The branch now includes `31d08f673`: permanent Merkava cheek ownership and
-exact historical-test authentication, following queue fix `209af0754`.
-Fresh complete anatomy generation and a complete release rerun are underway
-in `qualification-r2/`. All thirteen selected vehicles already pass the
-separate HIGH/LOW strict track checks and geometry budgets: 26 native builds,
-zero band/shoe intersections in the front, rear and sweep zones, and each LOW
-model below 75% of its HIGH triangle count. These are geometry-cost checks,
-not a frame-rate certificate. Builds and actual UI selection checks remain
-required before publication.
+The second composed run included `31d08f673` and queue fix `209af0754`.
+Complete anatomy regeneration/checks, all selected machine geometry stages,
+the private build and all 367 preliminary test files passed. The core run
+completed 550 passing files before integration stopped it at 552/671:
+`garageArchitecture` had a real timing-budget failure (177.8 ms versus 100 ms),
+and `battlePacing` was interrupted by the stop request. The post suite and
+final tail did not run. This is not a release pass. The complete log and
+explicit interruption record remain in `qualification-r2/`.
+
+The candidate now includes main `8c9f6b8ae`, retaining Object 695 separately
+from Kurganets-25, and the Israeli/Ares implementation checkpoints. Its registry
+contains 188 production vehicles, 225 keyed records, 227 saved records and 198
+battle-selectable IDs. The original thirteen's independent visual evidence
+has an exact native preservation bridge through `98c53a671`; later selected
+changes will receive a final bridge. Ares's LOW correction and fresh independent
+visual review pass. The Israeli vehicles' exemplar geometry/visual corrections
+remain open. All three focused combined roster checks passed: 30 selectable
+IFVs, 30 guided channels and 671 authored ammunition channels. Full combined
+qualification and publication remain pending; no old failed result has been
+converted into a pass.
+
+The later main merge `c61db17e3` also retains the upstream night-headlight fix
+and launcher-tube inventory contract. Commit `dd4cb5e6f` gives each source
+configuration its real launcher declaration: Kurganets has four Kornet and
+eight Bulat tubes, AFT-10 eight, CV90 Mk.IV and K21 two each, and Warrior one.
+Existing ammunition loads already stock every real tube. The five focused
+launcher/source-weapon/AFV-balance/fleet-balance/ammunition-flow checks pass,
+with all protected historical channel guards unchanged. The original thirteen plus Ares retain
+85 selected input files, 226 accepted image hashes and 19 source hashes across
+that exact merge. Daytime Garage evidence does not certify the changed night
+lighting behavior.
+
+The selected thirteen already passed separate HIGH/LOW strict track checks
+and geometry budgets: 26 native builds, zero band/shoe intersections in the
+front, rear and sweep zones, and each LOW model below 75% of its HIGH triangle
+count. These are geometry-cost checks, not a frame-rate certificate.
 
 The owner requested Kurganets-25 and ODZTZ-20, then eleven more supplied
 vehicle sources, using the tank-generation procedure and committing/pushing

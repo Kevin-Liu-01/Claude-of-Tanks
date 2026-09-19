@@ -1,6 +1,31 @@
 # Merkava Mk.4 Trophy (`merkava4_trophy`) — run packet
 
-## Current status
+## Current integrated status — 2026-09-19
+
+Integration `575614227` passes the unchanged registered geometry floor at an
+unrounded minimum of 92.52297815721163, dimensions 100 and floaters 100.
+The fresh combined physical standard also passes: no front/rear/sweep band or
+shoe collisions, no unexpected openings, and the source equipment count is
+retained. The repaired narrow lower hull, folded returns and seated lamps
+replace the earlier wheel-bay interference. The primary-body fill is generated
+from the actual hull/turret boundary; separate exterior fittings remain in all
+physical and source checks.
+
+Full fleet generation passed at `87e8e9526`, including the regenerated assets.
+The subsequent independent fourteen-view review is **HOLD**: the rear door,
+side housings and lamps read as a broad slab, and a solid support buries the
+authored smoke tubes. Its lowest score is 8.3, below the existing 9/10 bar.
+See [the actual visual review](../../research/israeli-final-r2-independent-visual-review-20260919.md).
+These component repairs, fresh paired Garage views and complete release
+verification remain required before publication. Numerical passes above do
+not certify the missing visual relationships.
+The current private receipt is
+`qualification-r3/physical-integrated-preflight-r1/receipt.json` under
+`.qa-dev/tank-run/final-corrections/`. The failed `5d36e7cf9` run remains in
+`qualification-r3/cap-integrated-preflight/`; it is not converted into a pass.
+Earlier rounded scores and local checkpoints below are historical.
+
+## Earlier implementation checkpoint
 
 - Updated: 2026-09-18.
 - Owner request / latest superseding instruction: build a distinct
@@ -69,8 +94,10 @@
 - Naming decision: “Merkava Mk.4 Trophy” is a clear game/catalog label, not a
   claim that it is the formal IDF model designation. A dated visual fit must
   still be chosen.
-- Owner decisions with dates: 2026-09-18 — exact ID, Tier X, solid Sinai-gray
-  palette and the owner-provided protected-MBT balance envelope.
+- Authored interpretation, 2026-09-18: exact ID, Tier X, solid Sinai-gray
+  palette and the protected-MBT balance envelope. These implement the owner's
+  fleet addition and rebalance request; the exact values were not supplied
+  by the owner.
 - Conversion: `tools/source-x-oracle.mjs --prepare` on the raw hash-pinned GLB;
   the bake preserves every source mesh and strips only materials/non-position
   attributes for a private, geometry-only comparison oracle.
@@ -129,11 +156,11 @@
   targeted asset generation remains in the final integrated tree.
 - Gameplay balance intent: 2,800–2,900 HP; 1,500 hp / 65 t; 64/25 km/h;
   approximately 40°/s traverse; 6.0 s reload; 0.26 accuracy; 1.45–1.55 s aim.
-  The owner supplied an M338 gameplay penetration triplet of 900/820/740 in
+  The authored M338 gameplay penetration triplet is 900/820/740 in
   the repository's near/mid/far or equivalent penetration ordering. These are
   game targets, not real performance, armor or ammunition claims.
 
-## Evidence matrix
+## Earlier side-worktree evidence matrix
 
 | Gate | Status | Revision / input hash | Exact command and artifact | Worst result / residual |
 | --- | --- | --- | --- | --- |
