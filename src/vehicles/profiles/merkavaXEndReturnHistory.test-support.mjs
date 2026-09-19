@@ -103,6 +103,14 @@ function beforeModernIsraeliFleet(source){
 }
 
 `,'Barak bow-cable helper');
+  replaceExact("function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'|'namer_ifv'): void {",
+    'function merkava4HullDetails(P: TankBuilderPort): void {','configuration-specific hull details seam');
+  replaceExact(`    // Trophy owns open source-measured aft receivers here; the generic closed
+    // Mk.4 case would sit inside each opening and erase its 526 mm air path.
+    if(candidate!=='merkava4_trophy')
+      P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
+`, `    P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
+`, 'Trophy open receiver exclusion');
   removeHashedBlock('function merkava4BarakRoof','function merkava4Roof',
     'cb49f53b427ddd34f7ff5e4fead34be703d042293a2acd250ebb6a121fb5de0a','Barak roof');
   replaceExact("function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {\n  if(candidate==='merkava4_barak'){\n    merkava4BarakRoof(P);\n    return;\n  }\n",
@@ -125,7 +133,9 @@ function beforeModernIsraeliFleet(source){
     '5942561d3649509c67ad3db76463b1e2850355a1e4b0cba6c280fc79ec9d1490',
     '  ','Trophy source whip construction');
   removeHashedBlock('type TrophyConfiguration','function merkava4Shell',
-    'd5867e23490cd946170b89804c60e9ca331e7f7c5d8d79e8730814401f223ccb','modern Merkava fittings');
+    'd1a45a4125a1098d16084e9873e40a702edd7853caed7edee6d3fdbe1d156776','modern Merkava fittings');
+  removeHashedBlock('function trophyMerkava4Hull','function buildMerkava4Family',
+    '11c4462511aa008efd833806f2c7bb9349c323d14f486b68cb35614b09d858c4','Trophy rear-portal hull');
   replaceExact("function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {",
     'export function buildMerkava4X(P: TankBuilderPort): void {','modern Merkava family entry');
   replaceExact(`  // The Trophy study's canonical ground recipe seats the complete assembly
@@ -134,6 +144,8 @@ function beforeModernIsraeliFleet(source){
   P.hullG.position.set(0,sourceY,0);P.turretG.position.set(0,MK4.y+sourceY,MK4.z);
 `, `  P.hullG.position.set(0,0,0);P.turretG.position.set(0,MK4.y,MK4.z);
 `, 'Trophy source seating');
+  replaceExact("  P.add('hull',candidate==='merkava4_trophy'?trophyMerkava4Hull():merkava4Hull());\n",
+    "  P.add('hull',merkava4Hull());\n",'Trophy rear-portal hull call');
   removeExact("  if(candidate==='merkava4_trophy')P.add('hull',trophyMerkavaGlacisCap());\n",
     'modern glacis extension call');
   replaceExact(`  const trophyGear=candidate==='merkava4_trophy';
@@ -160,6 +172,7 @@ function beforeModernIsraeliFleet(source){
     topY:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
 `, 'source-specific modern running gear');
   replaceExact('  merkava4Roof(P,candidate);\n','  merkava4Roof(P);\n','configuration-specific roof call');
+  replaceExact('  merkava4HullDetails(P,candidate);\n','  merkava4HullDetails(P);\n','configuration-specific hull details call');
   replaceExact(`  if(candidate!=='merkava4_barak'){
     const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.10,seed:445,tone:'two-tone',ammo:false,shield:false,ring:false});
     coax.position.set(.0221,.26418,-.3127);P.gunG.add(coax);
@@ -173,7 +186,7 @@ function beforeModernIsraeliFleet(source){
   if(candidate==='merkava4_trophy'){
     P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
-    addModernMerkavaRearClosure(P,true);
+    addTrophyWideSkirts(P);
     addTrophyRearFaceDetails(P);
     addTrophyGlacisSignature(P);
     addTrophySuite(P,MK4,'mk4');
@@ -205,7 +218,7 @@ export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Fami
 
 `,'\n\n','modern Merkava exported wrappers');
   removeHashedBlock('function namerSuperstructure','export const MERKAVA_X_PROFILES',
-    'b0c2bec65ec8b7ec07c9ed15aa50a6636ade6a36a526065d7e7905b0ecea641f','Namer implementation');
+    'aa8f2ed6c3bbd5f286c45b07e4084b126f9a0a9410ef90fd53199aab15bce63b','Namer implementation');
   removeExact("  merkava4_trophy: { build: buildMerkava4Trophy },\n  merkava4_barak: { build: buildMerkava4Barak },\n  namer_ifv: { build: buildNamerIfv },\n",
     'modern Israeli profile registrations');
   return source;

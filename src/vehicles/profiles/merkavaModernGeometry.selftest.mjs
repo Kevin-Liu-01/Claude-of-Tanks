@@ -78,8 +78,9 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
           { tubes: 12, cradles: 12, solidEnvelope: false },
           `${id}: two exposed six-tube smoke banks retain separate cradles`);
         assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.trophyRearFaceReceipt,
-          { door: true, sideHousings: 2, lamps: 2, bentFittings: 2 },
-          `${id}: rear face keeps the separate door, housings, lamps and lower fittings`);
+          { door: true, sideHousings: 2, lamps: 2, bentFittings: 2,
+            doorRecessM: 1.23, upperReceiverDepthM: .526, fullWidthClosure: false },
+          `${id}: rear portal keeps the deep door, open receivers, lamps and lower fittings`);
         assert.ok(glacisY > 1.34 && glacisY < 1.40,
           `${id}: Trophy-specific cap descends onto the measured 1.362 m glacis (${glacisY})`);
         const hull=tank.root.getObjectByName('hull');
@@ -94,8 +95,8 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
           `${id}: Barak retains the measured lower base-hull glacis without a false overlay (${glacisY})`);
       }
       const rearClosure = rayDown(tank.root.getObjectByName('hullDetail'), 0, -3.88);
-      assert.ok(rearClosure > 1.40,
-        `${id}: late-Mk.4 rear termination is a seated hull surface`);
+      if (contract.trophy !== 'mk4') assert.ok(rearClosure > 1.40,
+        `${id}: Barak rear termination is a seated hull surface`);
       if (contract.trophy === 'mk4') {
         const skirts = tank.root.getObjectByName('hullExternalArmor');
         const skirtWidth = new THREE.Box3().setFromObject(skirts).getSize(new THREE.Vector3()).x;

@@ -390,7 +390,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
   P.hullG.userData.xRebuild={candidate:'merkava3d_x',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-function merkava4HullDetails(P: TankBuilderPort): void {
+function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'|'namer_ifv'): void {
   for(const side of[-1,1]){
     for(let i=0;i<8;i++){
       const z=-2.98+i*.75,hem=.65+(i%2)*.018;
@@ -412,7 +412,10 @@ function merkava4HullDetails(P: TankBuilderPort): void {
     })));
     P.addMudguard('merkava4-x-front-flap','hullRubber',box(.57,.235,.045),side*1.44,.928,3.76,-.13);
     P.addMudguard('merkava4-x-rear-flap','hullRubber',box(.58,.45,.043),side*1.45,.92,-3.56,.09);
-    P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
+    // Trophy owns open source-measured aft receivers here; the generic closed
+    // Mk.4 case would sit inside each opening and erase its 526 mm air path.
+    if(candidate!=='merkava4_trophy')
+      P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
     for(const z of[-3.49,3.50])P.addEquipment('hullDetail',torus(.065,.019,12,6),side*.67,.79,z);
     // Measured paired glacis tow lugs, with transverse pins and open eyes.
     for(const x of[.930,1.010])P.addEquipment('hullDetail',box(.033,.065,.105),side*x,1.1875,3.3065);
@@ -859,6 +862,10 @@ function addModernMerkavaRearClosure(P: TankBuilderPort, wideTrophySkirts: boole
   // drag the closure away from the chassis.
   P.addEquipment('hullDetail',box(3.20,.48,.18),0,1.22,rearZ);
   if(!wideTrophySkirts)return;
+  addTrophyWideSkirts(P);
+}
+
+function addTrophyWideSkirts(P: TankBuilderPort): void {
   for(const side of[-1,1]){
     // This supplied Mk.4 study carries a continuous outboard protection run
     // beneath the Trophy pedestals. Keep it a thin, seated external plate—not
@@ -894,7 +901,13 @@ function addTrophyHullEndEquipment(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.6548,.5683,.0193),side*.6735,1.1689,-4.0437);
     P.addEquipment('hullDetail',box(.6548,.0164,.5430),side*.6735,.8716,-3.7692);
     P.addEquipment('hullDetail',box(.6694,.5074,.0385),side*.6747,1.2617,-3.5219);
-    P.addEquipment('hullDetail',box(.6694,.1032,.5612),side*.6747,1.4898,-3.7785);
+    // The source receiver is open from above: vertical rays through its centre
+    // first meet the y .88 floor. Preserve only the measured aft/front lips
+    // and narrow edge rails, rather than filling their combined AABB as a lid.
+    P.addEquipment('hullDetail',box(.6694,.012,.030),side*.6747,1.4589,-4.0437);
+    P.addEquipment('hullDetail',box(.6694,.027,.040),side*.6747,1.5137,-3.5219);
+    for(const edge of[-1,1])
+      P.addEquipment('hullDetail',box(.035,.030,.522),side*.6747+edge*.317,1.500,-3.7828);
     // Source backmudguard is a folded sheet, separate from the baskets: an
     // outboard sloped rear face and a thin forward-running top return. Its
     // diagonal corner is visible in every quarter view, so do not replace it
@@ -905,18 +918,14 @@ function addTrophyHullEndEquipment(P: TankBuilderPort): void {
 }
 
 function addTrophyRearFaceDetails(P: TankBuilderPort): void {
-  // The source rear is not a single featureless closure. Its recessed centre
-  // door is a separate 0.651 × 0.902 m plate, flanked by service housings;
-  // compact round lamps and two bent lower fittings remain individually
-  // readable in the rear and rear-quarter views. The structural closure stays
-  // intact behind this shallow, first-party detail stack.
-  P.addEquipment('hullDark',box(.72,.96,.030),0,.9275,-4.000);
-  P.addEquipment('hullDetail',box(.6506,.9016,.018),0,.9275,-4.025);
-  P.addEquipment('hullDark',box(.050,.78,.020),0,.9275,-4.038);
-  P.addEquipment('hullDetail',box(.6547,.1464,.040),0,1.4807,-4.010);
+  // The source door is genuinely deep inside the two aft receivers: its first
+  // face is z -2.8201 while the basket faces end at z -4.0533. Preserve that
+  // 1.23 m opening instead of embossing a door onto a full-width rear slab.
+  P.addEquipment('hullDark',box(.72,.96,.016),0,.9275,-2.753);
+  P.addEquipment('hullDetail',box(.6506,.9016,.018),0,.9275,-2.8105);
+  P.addEquipment('hullDark',box(.050,.78,.020),0,.9275,-2.822);
+  P.addEquipment('hullDetail',box(.6547,.1464,.2811),0,1.4907,-2.8824);
   for(const side of[-1,1]){
-    P.addEquipment('hullDetail',box(.55,.50,.035),side*.70,1.12,-4.010);
-    P.addEquipment('hullDark',box(.030,.46,.018),side*.405,1.10,-4.035);
     // Independently closed primary-hull lamp islands: source envelopes are
     // about 195 mm in diameter at x -1.690/+1.699 m.
     const lampX=side<0?-1.6902:1.6992;
@@ -924,11 +933,14 @@ function addTrophyRearFaceDetails(P: TankBuilderPort): void {
     P.addEquipment('hullDark',cylZ(.0975,.038,16),lampX,lampY,-4.018);
     P.addEquipment('hullDetail',cylZ(.064,.020,16),lampX,lampY,-4.041);
     const x=side*.23;
-    hullBar(P,[x-side*.040,.515,-4.018],[x-side*.042,.440,-4.045],.012);
-    hullBar(P,[x-side*.042,.440,-4.045],[x+side*.035,.426,-4.045],.012);
-    hullBar(P,[x+side*.035,.426,-4.045],[x+side*.038,.485,-4.020],.012);
+    hullBar(P,[x-side*.040,.515,-2.812],[x-side*.042,.440,-2.790],.012);
+    hullBar(P,[x-side*.042,.440,-2.790],[x+side*.035,.426,-2.774],.012);
+    hullBar(P,[x+side*.035,.426,-2.774],[x+side*.038,.485,-2.806],.012);
   }
-  P.hullG.userData.trophyRearFaceReceipt=Object.freeze({door:true,sideHousings:2,lamps:2,bentFittings:2});
+  P.hullG.userData.trophyRearFaceReceipt=Object.freeze({
+    door:true,sideHousings:2,lamps:2,bentFittings:2,
+    doorRecessM:1.23,upperReceiverDepthM:.526,fullWidthClosure:false,
+  });
 }
 
 function modernMerkavaGlacisCap(topDrop = 0, steepShoulder = true): THREE.BufferGeometry {
@@ -1070,13 +1082,44 @@ function merkava4Hull(): THREE.BufferGeometry {
   return merged;
 }
 
+function trophyMerkava4Hull(): THREE.BufferGeometry {
+  // The Trophy reference has a true rear portal. Its two basket receivers end
+  // at z -4.05, their inner walls sit near z -3.52, and the centre door is all
+  // the way forward at z -2.82. Build the hull around that void: outer shoulder
+  // rails reach the rear fold, receiver backing starts at z -3.475, and the
+  // ordinary closed hull resumes behind the door at z -2.75.
+  const outerWing=(side:-1|1): THREE.BufferGeometry=>sectionSolid([
+    [-3.800,.73,.993577,1.77],[-3.474993,.500,1.545,1.77],[-2.73,.419,1.609,1.77],
+  ].map(([z,floor,roof,half])=>{
+    const ring: [number,number][]=side>0
+      ?[[.97,floor],[.985,roof-.19],[half,roof-.06],[half-.025,roof],[.97,roof]]
+      :[[-.97,floor],[-.97,roof],[-half+.025,roof],[-half,roof-.06],[-.985,roof-.19]];
+    return {z,ring};
+  }));
+  const receiverWing=(side:-1|1): THREE.BufferGeometry=>sectionSolid([
+    {z:-3.474993,floor:.500,roof:1.545},{z:-2.73,floor:.419,roof:1.609},
+  ].map(({z,floor,roof})=>({z,ring:side>0
+    ?[[.34,floor],[1.02,floor],[1.02,roof],[.34,roof]]
+    :[[-.34,floor],[-.34,roof],[-1.02,roof],[-1.02,floor]]} as SolidSection)));
+  const pieces=[sectionSolid([
+    bodyStation(-2.75,1.77,1.609,.419,MK4,.97),
+    bodyStation(-2.00,1.77,1.604,.419,MK4,.97),bodyStation(1.963,1.77,1.604,.419,MK4,.97),
+    bodyStation(2.80,1.77,1.347,.48,MK4,.97,.03),bodyStation(3.15,1.04,1.284,.59,MK4,.97,.03),
+    bodyStation(3.31,1.04,1.255,.64,MK4,.97,.03),bodyStation(3.80,1.025,1.034,.96,MK4,.96,.02),
+  ]),outerWing(-1),outerWing(1),receiverWing(-1),receiverWing(1),...merkava4RearFoldSolids()];
+  const merged=mergeGeometries(pieces);
+  for(const piece of pieces)piece.dispose();
+  if(!merged)throw new Error('Trophy rear-portal hull primitives did not merge');
+  return merged;
+}
+
 function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {
   // The Trophy study's canonical ground recipe seats the complete assembly
   // 10 mm above the clean family datum; retain that measured registration.
   const sourceY=candidate==='merkava4_trophy'?.01:0;
   P.hullG.position.set(0,sourceY,0);P.turretG.position.set(0,MK4.y+sourceY,MK4.z);
   P.gunG.position.set(0,1.9934619-MK4.y,1.93-MK4.z);
-  P.add('hull',merkava4Hull());
+  P.add('hull',candidate==='merkava4_trophy'?trophyMerkava4Hull():merkava4Hull());
   if(candidate==='merkava4_trophy')P.add('hull',trophyMerkavaGlacisCap());
   const trophyGear=candidate==='merkava4_trophy';
   const barakGear=candidate==='merkava4_barak';
@@ -1096,7 +1139,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // 4.7 mm seat: with the 19 mm heavy pins the rollers still meet the near-shoe stock within 2 mm (2026-09-17)
     topY:trophyGear?1.125:barakGear?1.1325:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);
-  merkava4HullDetails(P);
+  merkava4HullDetails(P,candidate);
   addMerkavaXShoulderReturns(P, 'merkava4_x');
   addMerkava4XEndReturns(P);
   P.add('turret',merkava4Shell());
@@ -1138,7 +1181,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   if(candidate==='merkava4_trophy'){
     P.add('hull',trophyMerkavaLowerKeel());
     addTrophyHullEndEquipment(P);
-    addModernMerkavaRearClosure(P,true);
+    addTrophyWideSkirts(P);
     addTrophyRearFaceDetails(P);
     addTrophyGlacisSignature(P);
     addTrophySuite(P,MK4,'mk4');
@@ -1289,7 +1332,7 @@ export function buildNamerIfv(P: TankBuilderPort): void {
     sprocket:{z:3.007,y:.831,r:.335},idler:{z:-2.978,y:.708,r:.332},topY:1.125,botY:.0956,
     paintedEnds:true,arms:true,coveredTop:true},namerRollers,.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,namerRollers,.0038);
-  merkava4HullDetails(P);
+  merkava4HullDetails(P,'namer_ifv');
   addMerkavaXShoulderReturns(P,'merkava4_x');
   addMerkava4XEndReturns(P);
   addNamerDetails(P);
