@@ -4,6 +4,7 @@ export async function runSelftestCpuPool(name, files, options) {
   const { concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles = [], refreshMs, maxLeaseBatchMs,
     now, log, logError, onTiming, failFast = false, gate = { lookup: () => null, record: () => {} } } = options;
   let held = false, acquiredAt = 0, refresher, next = 0, failure;
+  let interruptionSeen = false;
   const failures = [];
   const keys = new Map();
   const active = new Map();
@@ -11,7 +12,7 @@ export async function runSelftestCpuPool(name, files, options) {
   // child (a spawn error is infrastructure, not a receipt verdict) or when a child died to a
   // signal (a requested interruption must still end the suite); otherwise every file runs
   const interrupted = (result) => result.error || result.status === null || result.status >= 128;
-  const halted = () => failure && (failFast || interrupted(failure.result));
+  const halted = () => interruptionSeen || (failFast && Boolean(failure));
   const release = () => {
     clearInterval(refresher);
     if (!held) return;
@@ -29,6 +30,9 @@ export async function runSelftestCpuPool(name, files, options) {
     const { file, index, result, runMs, queueMs } = row;
     onTiming({ file, runMs, queueMs, status: result.status ?? null, error: result.error });
     if (result.error || result.status !== 0) {
+      // Reporting keeps the earliest failure; interruption must remain sticky
+      // even when that earlier row was an ordinary test failure.
+      interruptionSeen ||= Boolean(interrupted(result));
       failures.push(row);
       if (!failure || index < failure.index) failure = row;
     } else gate.record(file, keys.get(file), result.status);

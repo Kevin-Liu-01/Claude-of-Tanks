@@ -251,6 +251,55 @@ for (const concurrency of [2, 3, 4, 5, 6, 7, 8]) for (const signal of ['SIGINT',
   assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
 }
 
+// An earlier ordinary failure keeps its reporting priority, but cannot mask a
+// later requested interruption. Use the real child-signal adapter with fake
+// children so this never sends a signal to the test runner or another process.
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  const signals = new EventEmitter(), children = new Map(), kills = [];
+  const state = fixture(3);
+  const files = ['ordinary-failure', 'peer-a', 'peer-b', 'later-child', 'never'];
+  state.options.runFile = file => runSelftestFile(file, {
+    signals, spawnProcess() {
+      const child = new EventEmitter();
+      child.kill = value => kills.push([file, value]);
+      state.active.add(file); state.starts.push(file); children.set(file, child);
+      child.once('close', () => state.active.delete(file));
+      return child;
+    },
+  });
+  let completed = false;
+  const pending = runSelftestSuite('interruption-after-failure', files, state.options)
+    .then(status => { completed = true; return status; });
+  await tick();
+  assert.deepEqual(state.starts, files.slice(0, 3));
+  children.get('ordinary-failure').emit('close', 7);
+  await tick();
+  assert.deepEqual(state.starts, files.slice(0, 4), 'ordinary failure still admits the next file');
+  signals.emit(signal);
+  assert.deepEqual(kills, files.slice(1, 4).map(file => [file, signal]));
+  children.get('later-child').emit('close', 0);
+  await tick();
+  assert.deepEqual(state.starts, files.slice(0, 4), 'later interruption stops admission despite earlier failure');
+  assert.equal(completed, false, 'interruption drains already started peers');
+  assert.equal(state.held, true, 'draining peers retain their lease');
+  children.get('peer-a').emit('close', 0);
+  await tick();
+  assert.equal(completed, false);
+  assert.equal(state.held, true);
+  children.get('peer-b').emit('close', 0);
+  assert.equal(await pending, 7, 'earliest ordinary failure retains deterministic reporting status');
+  assert.deepEqual(state.starts, files.slice(0, 4));
+  assert.equal(state.held, false);
+  assert.equal(state.active.size, 0);
+  assert.equal(state.acquisitions, 1, 'interrupted pool does not rejoin the queue');
+  assert.deepEqual(state.errors, files.slice(0, 4).map(file => `[selftests] FAIL ${file}`));
+  assert.equal(state.timings.find(row => row.file === 'later-child').status, signal === 'SIGINT' ? 130 : 143);
+  assert.equal(signals.listenerCount('SIGINT') + signals.listenerCount('SIGTERM'), 0);
+  const refreshes = state.refreshes;
+  await new Promise(resolve => setTimeout(resolve, 15));
+  assert.equal(state.refreshes, refreshes, 'interrupted pool clears its lease heartbeat');
+}
+
 // Real fresh Node processes must overlap to satisfy this rendezvous. This is
 // a concurrency/independence proof, not a timing speedup or performance gate.
 for (const concurrency of [2, 3, 4, 5, 6, 7, 8]) {
