@@ -23,6 +23,7 @@ import { addNamerSourceHull } from './namerSourceHull.ts';
 import { addNamerSourceChassis } from './namerSourceChassis.ts';
 import { addNamerSourceTurret } from './namerSourceTurret.ts';
 import { addNamerSourceSupport } from './namerSourceSupport.ts';
+import { namerWheelStock } from './namerWheelStock.ts';
 
 const { box, cylZ, cylX, torus } = KIT;
 const cylY = (radius: number, height: number, segments: number): THREE.BufferGeometry =>
@@ -1133,6 +1134,7 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   const namerWheels=[-2.226,-1.491,-.464,.434,1.359,2.105];
   const namerRollers=[-1.6645,-.733,.27,2.017];
   P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR:.341,wheelW:.34,wheelY:.372,xc:1.444,
+    ...namerWheelStock(P),
     // The same native course, instance palette and guide envelope at LOW.
     ...(!P.q?{trackShoeBuilder:buildFleetTrackShoe}:{}),
     wheelZs:namerWheels,trackW:.548,trackTh:.064,

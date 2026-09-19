@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "vehicleId": "namer_ifv",
+  "source": {
+    "path": "public/models/community-candidates/namer_ifv_x_source.glb",
+    "sha256": "72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870",
+    "selector": {
+      "node": 60,
+      "name": "wheel18_namer-ifv-wheels_2_0",
+      "triangles": 408
+    },
+    "registration": "Existing canonical world axes and scale, unchanged"
+  },
+  "measuredAxialStockM": {
+    "hubFaceX": 1.5223767757415771,
+    "webFaceX": 1.376764678741068,
+    "rimFaceX": 1.4909571409225466,
+    "hubRadius": 0.06222,
+    "hubShoulderRadius": 0.08799,
+    "webInnerRadius": 0.11511,
+    "webOuterRadius": 0.2961,
+    "outerTireRadius": 0.340706,
+    "outwardTireBackX": 1.350851,
+    "outwardTireFrontX": 1.490957,
+    "inwardTireFrontX": 1.312882,
+    "sourceAxleWorldY": 0.37214577570557594
+  },
+  "retainedNative": {
+    "worldAxleAbsX": 1.3718,
+    "loadedWorldAxleY": 0.416944,
+    "wheelRadiusHullM": 0.341,
+    "wheelWidthHullM": 0.34,
+    "worldScale": [
+      0.95,
+      1.012,
+      0.976
+    ],
+    "wheelStationsHullZ": [
+      -2.226,
+      -1.491,
+      -0.464,
+      0.434,
+      1.359,
+      2.105
+    ],
+    "inboardAxleTipHullM": -0.2516
+  },
+  "measuredDifferenceM": {
+    "sourceHubToWeb": 0.145612096,
+    "beforeHubToBroadInnerFace": 0.012919992,
+    "afterHubToWeb": 0.145611997
+  },
+  "authoredBoundary": [
+    "Only the road-wheel metal/rubber layers change, using the native suspension-bound instance hooks.",
+    "Axle stations, existing loaded height, radial contact, shoes, belt, end wheels, rollers and suspension are retained.",
+    "The inboard tire contact extent and shaft tip are retained; the hidden inboard section is not claimed source-exact.",
+    "The inherited Y/Z hull scaling remains, so sloped hub cone samples differ by about3.1mm at radial offset80mm; planar hub/web/rim witnesses remain within1mm including source left/right asymmetry.",
+    "No source triangles, topology, or runtime source loader is added."
+  ],
+  "evidence": {
+    "sourceRays": ".qa-dev/namer-wheel-relief/source-face-rays.json",
+    "nativeBefore": ".qa-dev/namer-wheel-relief/native-before.json",
+    "nativeAfter": ".qa-dev/namer-wheel-relief/native-after-r1.json",
+    "actualFaceRays": ".qa-dev/namer-wheel-relief/native-rays-r1.json",
+    "preservation": ".qa-dev/namer-wheel-relief/preservation-r1.json",
+    "test": "src/vehicles/profiles/namerWheelStock.selftest.mjs"
+  },
+  "validation": {
+    "focused": "108 complete-scene first hits and12air guards per quality; finite rim/tire receiving stock; missing/moved/covering-cap negatives pass",
+    "unchangedStock": "31HIGH/30LOW non-road-wheel meshes exact; four Merkava-family siblings exact in both qualities",
+    "roughField": "Original6-second test, unchanged3mm cut/30mm daylight/30mm travel limits; bothqualities cut0/daylight0/travel[-220,11]mm",
+    "sourceGeometry": {
+      "minimum": 95.39768227913302,
+      "required": 92,
+      "dimensions": 100,
+      "floaters": 100
+    },
+    "loadedCost": {
+      "HIGH": {
+        "triangles": 74328,
+        "objects": 42
+      },
+      "LOW": {
+        "triangles": 42796,
+        "objects": 41
+      },
+      "lowFraction": 0.5757722527176837
+    },
+    "strictTracks": "HIGH/LOW front/rear/sweep band0 and shoe0",
+    "standard": "Continuity0, realMG1",
+    "regressions": "198-vehicle wheel quality, track patterns, suspension patterns, Namer assembly, modern-family geometry, typecheck pass",
+    "criticalPilot": "Independent reviewer actually inspected four visual-r2 originals,9/10each; final integrated14+Garage remains pending",
+    "metrics": "New helper0violations; three inherited merkavaX.ts violations unchanged",
+    "history": "Parent integration owns narrowly authenticated new helper/import/spread reversal; immutable historical golden unchanged"
+  }
+}
