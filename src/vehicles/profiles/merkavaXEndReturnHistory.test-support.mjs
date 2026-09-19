@@ -63,7 +63,7 @@ function beforeModernIsraeliFleet(source){
     '5942561d3649509c67ad3db76463b1e2850355a1e4b0cba6c280fc79ec9d1490',
     '  ','Trophy source whip construction');
   removeHashedBlock('type TrophyConfiguration','function merkava4Shell',
-    '0f1d8f6bf593711916fdda1b4ea5a36f7a7bf60b6245902f7eba52be33988fe9','modern Merkava fittings');
+    '55ce6c5e25db6cad684645175108dabcbd326ddcf07284edb379126e761029b2','modern Merkava fittings');
   replaceExact("function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {",
     'export function buildMerkava4X(P: TankBuilderPort): void {','modern Merkava family entry');
   replaceExact(`  // The Trophy study's canonical ground recipe seats the complete assembly
@@ -72,7 +72,7 @@ function beforeModernIsraeliFleet(source){
   P.hullG.position.set(0,sourceY,0);P.turretG.position.set(0,MK4.y+sourceY,MK4.z);
 `, `  P.hullG.position.set(0,0,0);P.turretG.position.set(0,MK4.y,MK4.z);
 `, 'Trophy source seating');
-  removeExact("  if(candidate==='merkava4_trophy')P.add('hull',modernMerkavaGlacisCap());\n",
+  removeExact("  if(candidate==='merkava4_trophy')P.add('hull',trophyMerkavaGlacisCap());\n",
     'modern glacis extension call');
   replaceExact(`  const trophyGear=candidate==='merkava4_trophy';
   const barakGear=candidate==='merkava4_barak';

@@ -904,6 +904,24 @@ function modernMerkavaGlacisCap(topDrop = 0, steepShoulder = true): THREE.Buffer
   ]);
 }
 
+function trophyMerkavaGlacisCap(): THREE.BufferGeometry {
+  // Trophy source sections keep the high engine-deck shoulder, then descend
+  // onto the shared hull rather than carrying a second flat roof to the bow.
+  // Exact source rays: y 1.396783 at z 2.637701, 1.362322 at z 2.75 and
+  // 1.178201 at z 3.35.  The old generic cap was 136–168 mm too high there.
+  return sectionSolid([
+    // The Trophy hull rig is seated +.01 m, so these local ordinates are the
+    // certified world sections above minus that authored source datum.
+    {z:1.45,ring:[[-1.70,1.55],[1.70,1.55],[1.70,1.71],[-1.70,1.71]]},
+    {z:2.05,ring:[[-1.70,1.46],[1.70,1.46],[1.70,1.53],[-1.70,1.53]]},
+    {z:2.637701,ring:[[-1.70,1.33],[1.70,1.33],[1.70,1.386783],[-1.70,1.386783]]},
+    {z:2.75,ring:[[-1.70,1.29],[1.70,1.29],[1.70,1.352322],[-1.70,1.352322]]},
+    {z:3.35,ring:[[-1.05,1.15],[1.05,1.15],[1.05,1.168201],[-1.05,1.168201]]},
+    {z:3.72,ring:[[-1.02,.99],[1.02,.99],[1.02,1.04],[-1.02,1.04]]},
+    {z:3.80,ring:[[-1.02,.97],[1.02,.97],[1.02,1.00],[-1.02,1.00]]},
+  ]);
+}
+
 function merkava4Shell(): THREE.BufferGeometry {
   // Measured transverse shoulder sections replace the coarse triangular
   // applique slabs: the rim steepens outward and rolls down toward the bow.
@@ -966,7 +984,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   P.hullG.position.set(0,sourceY,0);P.turretG.position.set(0,MK4.y+sourceY,MK4.z);
   P.gunG.position.set(0,1.9934619-MK4.y,1.93-MK4.z);
   P.add('hull',merkava4Hull());
-  if(candidate==='merkava4_trophy')P.add('hull',modernMerkavaGlacisCap());
+  if(candidate==='merkava4_trophy')P.add('hull',trophyMerkavaGlacisCap());
   const trophyGear=candidate==='merkava4_trophy';
   const barakGear=candidate==='merkava4_barak';
   const wheelZs=trophyGear?[-2.334,-1.566,-.494,.444,1.408,2.189]

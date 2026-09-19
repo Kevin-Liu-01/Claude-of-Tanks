@@ -166,6 +166,19 @@
   authored a source-measured first-party procedural Trophy variant. Latest
   nine-view evaluator result is 93.38 aggregate / 92.10 minimum. Independent
   canonical-14 and actual Gallery review remain final integrated steps.
+- 2026-09-19 final source repair: a frozen weakest-view probe traced the
+  sub-threshold left silhouette to the generic forward glacis receiver and
+  omitted paired Trophy launcher shields—not to the already source-correct
+  aerials. The Trophy-only cap now follows measured world heights 1.396783 m
+  at z 2.637701, 1.362322 m at z 2.75 and 1.178201 m at z 3.35; paired
+  launcher stock spans x ±1.304..1.483, y 2.341..2.801 and
+  z -1.936..-1.436, but a bounding-box reconstruction failed the front-left
+  view and was discarded pending real topology evidence. The exact targeted fill command is
+  `node tools/gen-interior-fills.mjs --ids=merkava4_trophy --min-fine=0`:
+  713 boxes / 8,556 triangles, 6,592 L filled and 0 L residual. The supported
+  fine pass is scoped to this source-exact repair; generator defaults and all
+  other vehicle records remain unchanged. The unchanged exact gate then passed
+  at raw 92.07526392588484, with dimensions and floaters both 100.
 
 ## Publication receipt (only if requested)
 

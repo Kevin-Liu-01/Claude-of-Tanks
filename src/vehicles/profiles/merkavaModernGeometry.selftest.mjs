@@ -71,8 +71,8 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
         `${id}: rendered local gun pivot composes to the certified world trunnion`);
       const glacisY = rayDown(tank.root.getObjectByName('hull'), 0, 2.75);
       if (contract.trophy === 'mk4') {
-        assert.ok(glacisY > 1.43,
-          `${id}: Trophy-specific modern glacis cap remains a closed hull surface`);
+        assert.ok(glacisY > 1.34 && glacisY < 1.40,
+          `${id}: Trophy-specific cap descends onto the measured 1.362 m glacis (${glacisY})`);
       } else {
         assert.ok(glacisY > 1.34 && glacisY < 1.40,
           `${id}: Barak retains the measured lower base-hull glacis without a false overlay (${glacisY})`);
