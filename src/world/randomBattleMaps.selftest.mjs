@@ -6,18 +6,21 @@ import {
 } from './maps/index.ts';
 
 assert.ok(Object.isFrozen(MAP_IDS), 'the canonical battlefield registry is immutable');
-assert.strictEqual(RANDOM_BATTLE_MAP_IDS, MAP_IDS,
-  'Random Battle aliases the complete canonical battlefield registry');
+// 2026-09-19: Mars (Olympus Basin) is reached through Mars mode, never by the random draw
+assert.ok(Object.isFrozen(RANDOM_BATTLE_MAP_IDS), 'the random-battle roster is immutable');
+assert.deepEqual([...RANDOM_BATTLE_MAP_IDS], MAP_IDS.filter((id) => id !== 'mars'),
+  'Random Battle draws every canonical battlefield except Mars');
+assert.ok(MAP_IDS.includes('mars') && !RANDOM_BATTLE_MAP_IDS.includes('mars'), 'Mars stays registered but out of the draw');
 
-const bucketCenters = MAP_IDS.map((_, index) => (index + 0.5) / MAP_IDS.length);
+const bucketCenters = RANDOM_BATTLE_MAP_IDS.map((_, index) => (index + 0.5) / RANDOM_BATTLE_MAP_IDS.length);
 assert.deepEqual(
   bucketCenters.map((sample) => resolveMapId('random', () => sample)),
-  MAP_IDS,
-  'every registered battlefield owns an equal reachable Random Battle bucket',
+  [...RANDOM_BATTLE_MAP_IDS],
+  'every random-battle battlefield owns an equal reachable Random Battle bucket',
 );
 assert.equal(resolveMapId('random', () => 0), MAP_IDS[0],
   'the lower RNG boundary selects the first battlefield');
-assert.equal(resolveMapId('random', () => 1), MAP_IDS.at(-1),
+assert.equal(resolveMapId('random', () => 1), RANDOM_BATTLE_MAP_IDS.at(-1),
   'the inclusive upper test boundary safely selects the final battlefield');
 assert.equal(resolveMapId('random', () => Number.NaN), MAP_IDS[0],
   'invalid RNG input fails closed to a real battlefield');

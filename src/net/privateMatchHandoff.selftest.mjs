@@ -14,7 +14,7 @@ import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtc
 import { createEnvelope, MESSAGE_TYPES } from './protocol.ts';
 import { captureWorldSnapshot } from './snapshot.ts';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.ts';
-import { MAP_IDS } from '../world/maps/index.ts';
+import { MAP_IDS, RANDOM_BATTLE_MAP_IDS } from '../world/maps/index.ts';
 
 await import('../vehicles/tankFactory.ts');
 const { PRODUCTION_TANK_IDS } = await import('../vehicles/specs.ts');
@@ -470,10 +470,13 @@ const privateRandomCoverage = new Set();
 for (let matchSeed = 0; matchSeed < 4096; matchSeed++) {
   privateRandomCoverage.add(resolvePrivateMatchMap({ ...lobbyState, matchSeed }));
 }
+// Mars mode (2026-09-18): the galaxy-sky basin is reachable by choice and through its mode, never by the
+// random draw — the rotation list is the catalog minus that one map
+assert.deepEqual([...RANDOM_BATTLE_MAP_IDS].sort(), MAP_IDS.filter((id) => id !== 'mars').sort(), 'the random rotation is the catalog without Mars');
 assert.deepEqual(
   [...privateRandomCoverage].sort(),
-  [...MAP_IDS].sort(),
-  'private/LAN Random Battle seeds can select every registered battlefield',
+  [...RANDOM_BATTLE_MAP_IDS].sort(),
+  'private/LAN Random Battle seeds can select every rotation battlefield',
 );
 const filled = buildPrivateMatchPlayers({
   ...lobbyState,

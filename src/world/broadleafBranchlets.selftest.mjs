@@ -331,7 +331,7 @@ function mapTones() {
       result.push([id + '-' + speciesId, palette.texTone ?? null]);
     }
   }
-  assert.equal(affected.length, 24, 'actual broadleaf map scope');
+  assert.equal(affected.length, 25, 'actual broadleaf map scope'); // 2026-09-19: Mars lists oak (count 0)
   return { affected, tones: result };
 }
 const priorDocument = globalThis.document, priorWindow = globalThis.window;

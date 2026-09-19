@@ -24,7 +24,7 @@ export const PRODUCT_STATS: Readonly<ProductStats> = Object.freeze({
   developmentOnlyVehicles: 37,
   referenceVehicleRecords: 2,
   battlePlayableVehicles: 198,
-  battlefields: 30,
+  battlefields: 31,
 });
 
 export const PRODUCT_STAT_TOKENS: Readonly<Record<string, number>> = Object.freeze({

@@ -9,11 +9,13 @@ export const MAP_IDS = Object.freeze([
   'ruinspires', 'blackglass', 'titan_gorge', 'skybridge',
   'polders', 'copper_mesa', 'airfield', 'oasis', 'whiteout',
   'orchard', 'longleaf', 'mangrove', 'saltwind', 'reservoir',
+  // Mars mode (owner 2026-09-18): the galaxy-sky basin plays through its own mode, not the random rotation
+  'mars',
 ] as const);
 
 export type MapId = (typeof MAP_IDS)[number];
 
-export const RANDOM_BATTLE_MAP_IDS = MAP_IDS;
+export const RANDOM_BATTLE_MAP_IDS = Object.freeze(MAP_IDS.filter((id) => id !== 'mars'));
 
 const MAP_NAMES = Object.freeze({
   verdant: 'Verdant Fields',
@@ -46,6 +48,7 @@ const MAP_NAMES = Object.freeze({
   mangrove: 'Mangrove Reach',
   saltwind: 'Saltwind Narrows',
   reservoir: 'Highland Reservoir',
+  mars: 'Olympus Basin',
 } satisfies Record<MapId, string>);
 
 // The sealed motor-pool Garage uses Verdant's authored neutral light until a

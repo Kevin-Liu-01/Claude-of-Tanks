@@ -106,6 +106,7 @@ const ORIGINAL = {
   mangrove: '9bcef3866a3c254b53208d69e8ba9a0db0665f07053dce6ba832fc35e7d8153c',
   saltwind: '4630bb971fabf8fa1f355247994de5dc388e0ebf61c6e4668f7b1062032eee43',
   reservoir: 'ce8e361f5beb374d60e58d96bdec2611f2249b18f55877142f34e2919ece69ca',
+  mars: '0a3814c2ad165409f488cb8d8883e7005b874b21a6b4cd03a18db42b130a1fdb', // 2026-09-19 Olympus Basin (no water: dry-mask digest)
 };
 const hash = data => createHash('sha256').update(data).digest('hex');
 const bytes = texture => texture.image.data;

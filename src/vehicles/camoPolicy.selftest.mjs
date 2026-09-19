@@ -269,7 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '5d24eaa73e7478e39a41746b159c889b7ea25b1b0430d9af0f5d434ace657a75', // Object 695 digital + Ares NATO woodland; existing recipes preserved.
+  '41dedfed6128db89b58214ac522e26b9f15148ab0a2d1c0d383114edfff5d1ac', // Combined main AI-lab skins and fleet Ares NATO Woodland; prior recipes preserved.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

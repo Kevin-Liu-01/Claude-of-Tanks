@@ -6,6 +6,7 @@
 import type { GameModeId } from '../sim/matchModes.ts';
 import {
   acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement, rulesetSides, type TeamArrangement,
+  MARS_DEFAULT_RULES, isMarsCachesId, isMarsGravityId, type MarsCachesId, type MarsGravityId,
 } from '../sim/matchRuleset.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
 
@@ -89,6 +90,8 @@ export function writeSides(
     const current = readTeamArrangement(mode, storage);
     writeTeamArrangement(mode, {
       allies: sides?.allies ?? null, enemies: sides?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
+      // the Mars settings ride on the mars arrangement; a sides change must not drop them
+      marsGravity: current?.marsGravity ?? null, marsCaches: current?.marsCaches ?? null,
     }, storage);
   }
   return readSides(storage);
@@ -105,4 +108,35 @@ export function writeTeamArrangement(
   if (next) all[mode] = next; else delete all[mode];
   try { target.setItem(TEAM_ARRANGEMENT_STORAGE_KEY, JSON.stringify(all)); } catch { /* storage full or blocked: the in-memory game keeps playing */ }
   return next;
+}
+
+/** Mars mode settings (owner 2026-09-18 "boosts and settings"): the gravity world and the boost-cache cadence. */
+export interface MarsSettings {
+  readonly gravity: MarsGravityId;
+  readonly caches: MarsCachesId;
+}
+
+/** The player's Mars settings (stored on the mars arrangement), the mode defaults when none are stored. */
+export function readMarsSettings(storage?: ArrangementStorage | null): MarsSettings {
+  const stored = readTeamArrangement('mars', storage);
+  return Object.freeze({
+    gravity: stored?.marsGravity ?? MARS_DEFAULT_RULES.gravity,
+    caches: stored?.marsCaches ?? MARS_DEFAULT_RULES.caches,
+  });
+}
+
+/** Store Mars settings (unknown ids keep the current choice; null clears both); returns what applies now. */
+export function writeMarsSettings(
+  settings: { readonly gravity?: unknown; readonly caches?: unknown } | null,
+  storage?: ArrangementStorage | null,
+): MarsSettings {
+  const current = readTeamArrangement('mars', storage);
+  const gravityInput = settings?.gravity, cachesInput = settings?.caches;
+  const marsGravity = isMarsGravityId(gravityInput) ? gravityInput : settings === null ? null : current?.marsGravity ?? null;
+  const marsCaches = isMarsCachesId(cachesInput) ? cachesInput : settings === null ? null : current?.marsCaches ?? null;
+  writeTeamArrangement('mars', {
+    allies: current?.allies ?? null, enemies: current?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
+    marsGravity, marsCaches,
+  }, storage);
+  return readMarsSettings(storage);
 }

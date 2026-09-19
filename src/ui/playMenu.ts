@@ -44,7 +44,7 @@ import {
   type GameModeId,
 } from '../sim/matchModes.ts';
 import { isCoopGameMode } from '../net/lobby.ts';
-import { matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
+import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
 import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../net/lobby.ts';
 
 const STYLE_ID = 'cot-play-menu-style';
@@ -700,6 +700,8 @@ export function createPlayMenu({
         <label data-arrange-field="enemiesCount" hidden><span>${t('playMenu.arrange.enemiesField')}</span><input type="number" inputmode="numeric" step="1" data-arrange="enemiesCount"></label>
         <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
         <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
+        <label data-arrange-field="marsGravity" hidden><span>${t('playMenu.arrange.marsGravity')}</span><select data-arrange="marsGravity"></select></label>
+        <label data-arrange-field="marsCaches" hidden><span>${t('playMenu.arrange.marsCaches')}</span><select data-arrange="marsCaches"></select></label>
         <button class="action alt" type="button" data-arrange-reset>${t('playMenu.arrange.reset')}</button>
       </div>
       <small class="arrange-cap" data-arrange-cap hidden>${t('playMenu.arrange.fieldCap', { max: String(BATTLE_FIELD_LIMIT) })}</small>
@@ -1017,6 +1019,16 @@ export function createPlayMenu({
     fillOptions(arrangeSelect('enemyNation'),
       [['', t('playMenu.arrange.mixed')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
       arranged?.enemyNation ?? '');
+    // Mars settings (owner 2026-09-18): the gravity world and boost-cache cadence, mars only
+    const mars = mode === 'mars';
+    arrangeField('marsGravity').hidden = !mars;
+    arrangeField('marsCaches').hidden = !mars;
+    if (mars) {
+      fillOptions(arrangeSelect('marsGravity'), MARS_GRAVITY_IDS.map((id): [string, string] => [id, t(`mars.gravity.${id}`)]),
+        arranged?.marsGravity ?? defaults.mars?.gravity ?? 'mars');
+      fillOptions(arrangeSelect('marsCaches'), MARS_CACHE_IDS.map((id): [string, string] => [id, t(`mars.caches.${id}`)]),
+        arranged?.marsCaches ?? defaults.mars?.caches ?? 'standard');
+    }
     const locked = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
     for (const control of arrangeSection.querySelectorAll<HTMLSelectElement | HTMLInputElement>('select, input')) control.disabled = locked;
     for (const button of sidesButtons) button.disabled = locked;
@@ -1036,6 +1048,8 @@ export function createPlayMenu({
       allies: number('allies'), enemies: number('enemies'),
       waveSize: Number.isFinite(waveSize) ? waveSize : null,
       enemyNation: arrangeSelect('enemyNation').value || null,
+      marsGravity: mode === 'mars' ? arrangeSelect('marsGravity').value as TeamArrangement['marsGravity'] : null,
+      marsCaches: mode === 'mars' ? arrangeSelect('marsCaches').value as TeamArrangement['marsCaches'] : null,
     });
   }
   function applyArrangement(arrangement: TeamArrangement | null): void {

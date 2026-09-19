@@ -178,6 +178,8 @@ export function resolvePrivateMatchMap(lobbyState: RuntimeValue): string {
   // a campaign operation always fights on its own battlefield
   const operation = normalizeGameMode(lobby.gameMode) === 'frontline_assault' ? campaignOperationById(lobby.campaignOperationId) : null;
   if (operation) return operation.mapId;
+  // Mars mode (2026-09-18) always plays Olympus Basin
+  if (normalizeGameMode(lobby.gameMode) === 'mars') return 'mars';
   return resolveMapId(lobby.mapId, seededUnit(lobby.matchSeed));
 }
 

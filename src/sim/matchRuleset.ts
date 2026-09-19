@@ -44,12 +44,52 @@ export interface HordeRules {
  * one field limit. Absent fields keep the mode's defaults; every value is clamped by
  * TEAM_ARRANGEMENT_LIMITS.
  */
+/**
+ * Mars mode settings (owner 2026-09-18: "give it a bunch of boosts and settings"): the gravity world the basin
+ * plays under and how often a boost cache drops. Stored per player on the mars arrangement
+ * (game/teamArrangement.ts readMarsSettings) and carried by rooms through the lobby arrangement.
+ */
+export const MARS_GRAVITY_OPTIONS = Object.freeze({
+  mars: Object.freeze({ gravityScale: 0.38, jumpMps: 6.5, recoilLaunchScale: 3 }),
+  moon: Object.freeze({ gravityScale: 0.17, jumpMps: 8.5, recoilLaunchScale: 4.5 }),
+  earth: Object.freeze({ gravityScale: 1, jumpMps: 4, recoilLaunchScale: 1.5 }),
+});
+export type MarsGravityId = keyof typeof MARS_GRAVITY_OPTIONS;
+export const MARS_GRAVITY_IDS: readonly MarsGravityId[] = Object.freeze(Object.keys(MARS_GRAVITY_OPTIONS) as MarsGravityId[]);
+export const MARS_CACHE_OPTIONS = Object.freeze({
+  off: Object.freeze({ cacheFirstS: 0, cacheIntervalS: 0 }),
+  standard: Object.freeze({ cacheFirstS: 12, cacheIntervalS: 22 }),
+  frequent: Object.freeze({ cacheFirstS: 8, cacheIntervalS: 11 }),
+});
+export type MarsCachesId = keyof typeof MARS_CACHE_OPTIONS;
+export const MARS_CACHE_IDS: readonly MarsCachesId[] = Object.freeze(Object.keys(MARS_CACHE_OPTIONS) as MarsCachesId[]);
+export function isMarsGravityId(value: unknown): value is MarsGravityId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(MARS_GRAVITY_OPTIONS, value);
+}
+export function isMarsCachesId(value: unknown): value is MarsCachesId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(MARS_CACHE_OPTIONS, value);
+}
+export interface MarsRules {
+  readonly gravity: MarsGravityId;
+  readonly caches: MarsCachesId;
+  /** Seconds into the match the first boost cache drops, then the cadence; 0 means no caches. */
+  readonly cacheFirstS: number;
+  readonly cacheIntervalS: number;
+}
+export function marsRulesFor(gravity: MarsGravityId, caches: MarsCachesId): MarsRules {
+  return Object.freeze({ gravity, caches, ...MARS_CACHE_OPTIONS[caches] });
+}
+export const MARS_DEFAULT_RULES: MarsRules = marsRulesFor('mars', 'standard');
+
 export interface TeamArrangement {
   readonly allies?: number | null;
   readonly enemies?: number | null;
   readonly waveSize?: number | null;
   /** Enemy nation id (game/teamArrangement.ts ENEMY_NATION_OPTIONS) or null for a mixed force. */
   readonly enemyNation?: string | null;
+  /** Mars mode only: the gravity world and boost-cache cadence (MARS_GRAVITY_OPTIONS / MARS_CACHE_OPTIONS). */
+  readonly marsGravity?: MarsGravityId | null;
+  readonly marsCaches?: MarsCachesId | null;
 }
 
 /**
@@ -79,11 +119,11 @@ export const TEAM_ARRANGEMENT_LIMITS: {
   field: BATTLE_FIELD_LIMIT,
   allies: Object.freeze({
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
-    endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES,
+    endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
-    endless_horde: range(6, 20), frontline_assault: range(4, 14),
+    endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
   }),
   waveSize: range(2, 12),
 });
@@ -114,6 +154,8 @@ export interface MatchRuleset {
   /** Multiplies the hull's firing recoil into a real launch opposite the muzzle (owner: "aim behind you and launch
    * yourself and use it as a speed boost"); 1 keeps the ordinary hull kick. */
   readonly recoilLaunchScale: number;
+  /** Mars mode settings (gravity world, boost-cache cadence); only the mars ruleset carries them. */
+  readonly mars?: MarsRules;
   /** Multiplies the shove a shell impact gives the hull it hits (owner: "shells should have more physics effects
    * that knock you"); 1 is the whole-game baseline. */
   readonly shellKnockScale: number;
@@ -179,11 +221,18 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     allies: 3, enemies: 10,
     assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, difficultyHp: 0, holdS: 20 }),
   }),
+  // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher
+  // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns and a
+  // twelve-minute clock; the boost caches are the mode controller's.
+  mars: Object.freeze({
+    ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
+    reloadScale: 0.9, jumpMps: 6.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
+  }),
 });
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
 export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.freeze({
-  capture_the_flag: 3, zone_control: 750, turbo_ball: 5,
+  capture_the_flag: 3, zone_control: 750, turbo_ball: 5, mars: 750,
 });
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
@@ -228,14 +277,19 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const waveSize = mode === 'endless_horde' && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
+  const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
+  const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
   // the field limit (player included) holds whatever the two sides ask for: the enemy count is kept — it is
   // the number the player typed for a "1 v 20" — and the allied bots yield
   if (!isWaveMode(mode) && (allies != null || enemies != null)) {
     const sides = rulesetSides({ allies, enemies });
     if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
   }
-  if (allies == null && enemies == null && waveSize == null && enemyNation == null) return null;
-  return Object.freeze({ allies, enemies, waveSize, enemyNation });
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null && marsGravity == null && marsCaches == null) return null;
+  return Object.freeze({
+    allies, enemies, waveSize, enemyNation,
+    ...(marsGravity ? { marsGravity } : {}), ...(marsCaches ? { marsCaches } : {}),
+  });
 }
 
 export function matchRulesetFor(
@@ -270,6 +324,16 @@ export function matchRulesetFor(
       horde: ruleset.horde && arranged.waveSize != null
         ? Object.freeze({ ...ruleset.horde, waveSize: Math.min(arranged.waveSize, arranged.enemies ?? ruleset.enemies ?? arranged.waveSize) })
         : ruleset.horde,
+    };
+  }
+  if (mode === 'mars' && arranged && (arranged.marsGravity || arranged.marsCaches)) {
+    // Mars settings: the gravity world rewrites the physics trio, the cache choice its cadence
+    const gravity = arranged.marsGravity ?? ruleset.mars?.gravity ?? MARS_DEFAULT_RULES.gravity;
+    const caches = arranged.marsCaches ?? ruleset.mars?.caches ?? MARS_DEFAULT_RULES.caches;
+    const world = MARS_GRAVITY_OPTIONS[gravity];
+    ruleset = {
+      ...ruleset, gravityScale: world.gravityScale, jumpMps: world.jumpMps, recoilLaunchScale: world.recoilLaunchScale,
+      mars: marsRulesFor(gravity, caches),
     };
   }
   return ruleset === base ? base : Object.freeze(ruleset);
@@ -313,6 +377,10 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (!ruleset.criticalDamage) line('noCriticalDamage');
   if (ruleset.jumpMps != null) line('jump', { value: String(ruleset.jumpMps) });
   if (ruleset.recoilLaunchScale !== 1) line('recoilLaunch', { value: `×${Math.round(ruleset.recoilLaunchScale * 10) / 10}` });
+  if (ruleset.mars) {
+    if (ruleset.mars.cacheIntervalS > 0) line('marsCaches', { value: String(ruleset.mars.cacheIntervalS) });
+    else line('marsCachesOff');
+  }
   if (ruleset.shellKnockScale !== 0.3) line('shellKnock', { value: `×${Math.round(ruleset.shellKnockScale * 10) / 10}` });
   if (ruleset.respawnS != null) line('respawn', { value: String(ruleset.respawnS) });
   else if (ruleset.mode !== 'standard') line('noRespawn');

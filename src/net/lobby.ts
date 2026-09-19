@@ -216,6 +216,8 @@ function readArrangementField(value: RuntimeValue): TeamArrangement | null {
   return {
     allies: pick('allies') as number | null, enemies: pick('enemies') as number | null,
     waveSize: pick('waveSize') as number | null, enemyNation: pick('enemyNation') as string | null,
+    // Mars settings ride the same wire; normalizeTeamArrangement keeps them for the mars mode only
+    marsGravity: pick('marsGravity') as TeamArrangement['marsGravity'], marsCaches: pick('marsCaches') as TeamArrangement['marsCaches'],
   };
 }
 

@@ -20,7 +20,11 @@ const oldMap = old('src/world/maps/badlands.ts'), oldTerrain = old('src/world/te
 assert.equal(sha(oldMap), 'eae9a03e75913e7c1b6ba87fae136115e5a568675d4998923da47492cd7ddada');
 assert.equal(sha(oldTerrain), 'cecde431b664736c5fd68f57f593ce9499e9bf792816a66376a454a031376e6d');
 const registry = read('src/world/maps/index.ts');
-assert.equal(registry, old('src/world/maps/index.ts'));
+// 2026-09-19: Mars (Olympus Basin) registers after this baseline; authenticate its exact registration lines,
+// then project them away for the byte receipt (a new map never joins the historical relief loop below).
+const marsRegistration = ["// Mars mode (owner 2026-09-18): the galaxy-sky basin with its research station.\nimport mars from './mars.ts';\n", '  mars,\n'];
+for (const line of marsRegistration) assert.equal(registry.split(line).length, 2, 'index.ts: one exact Mars registration line');
+assert.equal(marsRegistration.reduce((source, line) => source.replace(line, ''), registry), old('src/world/maps/index.ts'));
 const mapFiles = [...registry.matchAll(/import \w+ from '\.\/(\w+\.ts)';/g)].map(match => match[1]);
 assert.equal(mapFiles.length, MAP_IDS.length);
 // 2026-09-11 restored the 1049e4e Alpine horizon bands (treeline 0.64 -> 0.80,
@@ -57,7 +61,7 @@ function historicalLightingSource(source, file) {
   assert.equal(source.match(pattern)?.length, 2, `${file}: one exact 2026-09-13 lighting line`);
   return source.replace(pattern, '$1' + historical);
 }
-for (const file of mapFiles) if (file !== 'badlands.ts') {
+for (const file of mapFiles) if (file !== 'badlands.ts' && file !== 'mars.ts') {
   const id = file === 'alpine.ts' ? 'alpine' : file === 'reservoir.ts' ? 'reservoir' : '';
   assert.equal(historicalAuthoredExitSource(historicalAlpineHorizonSource(
     historicalMapPassDressingSource(historicalLightingSource(read('src/world/maps/' + file), file), file, assert), file), old('src/world/maps/' + file), id),

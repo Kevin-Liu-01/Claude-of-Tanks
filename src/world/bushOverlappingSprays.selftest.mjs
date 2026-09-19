@@ -215,7 +215,8 @@ function nonBush() {
     try { identical(a, b); } finally { a.dispose(); b.dispose(); }
   }
 }
-assert.equal(MAP_IDS.length, 30);
+// Mars mode (2026-09-18): Olympus Basin joins the catalog (31 maps)
+assert.equal(MAP_IDS.length, 31);
 for (const id of MAP_IDS) {
   const v = { species: ['pine', 'oak'], bushSpecies: 'oak', palettes: {}, ...getMapConfig(id).vegetation };
   assert.ok(v.species.every(s => TREE_SPECIES.includes(s)));

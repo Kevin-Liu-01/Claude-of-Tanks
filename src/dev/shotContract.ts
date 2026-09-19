@@ -19,6 +19,7 @@ export const SHOT_VIEWS = [
   'battlefield_mangrove',
   'battlefield_saltwind',
   'battlefield_reservoir',
+  'battlefield_mars',
   'killcam_collision', 'killcam_xray',
 ] as const;
 

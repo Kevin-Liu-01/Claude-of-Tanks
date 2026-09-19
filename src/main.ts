@@ -1171,6 +1171,9 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       midnight: t('camoPattern.midnight'),
       claude: t('camoPattern.claude'),
       spark: t('camoPattern.spark'),
+      openai: t('camoPattern.openai'),
+      xai: t('camoPattern.xai'),
+      gemini: t('camoPattern.gemini'),
       ducky: t('camoPattern.ducky'),
       suits: t('camoPattern.suits'),
       flames: t('camoPattern.flames'),
@@ -2550,7 +2553,8 @@ async function beginSoloBattle({
   // batch 19: a ladder operation always fights on its own map, whatever the Garage has selected
   const operation = campaignOperationById(pendingCampaignOperationId);
   return soloBattleEntry.beginSelected({
-    specId, mapId: operation?.mapId ?? mapId, randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
+    // Mars mode (2026-09-18) always fights over Olympus Basin, whatever the Garage has selected
+    specId, mapId: operation?.mapId ?? (gameMode === 'mars' ? 'mars' : mapId), randomRoster, gameMode, campaignOperationId: pendingCampaignOperationId,
   });
 }
 

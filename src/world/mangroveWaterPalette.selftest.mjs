@@ -170,6 +170,8 @@ function verifyHistoricalConfigs(resolve) {
     'current Foundry palette remains the published ironworks selection');
   const unchangedMaps = [];
   for (const id of MAP_IDS) {
+    // Mars mode (2026-09-18): Olympus Basin postdates the other29 golden — the catalog receipts guard it
+    if (id === 'mars') continue;
     const historical = historicalAlpineHorizonInput(historicalCropPaletteInput(historicalAutumnPaletteInput(historicalFoundryPaletteInput(historicalPaletteConfig(originalExitConfig(historicalMapPassDressingInput(resolve(id), assert)))))));
     if (id !== 'mangrove') unchangedMaps.push([id, stringify(paletteReceiptInput(historical))]);
   }

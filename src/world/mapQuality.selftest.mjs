@@ -108,7 +108,8 @@ function assertAuthoredMacroTerrain(config, hf) {
     { code: 'ERR_ASSERTION' }, 'the other29 maps keep the original five-landform requirement');
 }
 
-assert.equal(MAP_IDS.length, 30, 'the battlefield roster contains thirty maps');
+// Mars mode (2026-09-18): Olympus Basin joins the catalog
+assert.equal(MAP_IDS.length, 31, 'the battlefield roster contains thirty-one maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
 assert.deepEqual(MAP_IDS.slice(8, 16), EXPANSION, 'the eight-map expansion stays registered');
 assert.deepEqual(MAP_IDS.slice(16, 20), EXTREME, 'the extreme-environment expansion stays registered');

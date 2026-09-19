@@ -1735,7 +1735,7 @@ export function createAuthoritativeMatch({
   }
 
   function isFastRouteMode(): boolean {
-    return normalizedGameMode === 'turbo_ball' || normalizedGameMode === 'endless_horde';
+    return normalizedGameMode === 'turbo_ball' || normalizedGameMode === 'endless_horde' || normalizedGameMode === 'mars';
   }
 
   function refreshModeBotRoutes(): void {

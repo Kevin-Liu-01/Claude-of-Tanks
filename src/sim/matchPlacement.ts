@@ -220,7 +220,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     }
     throw new Error('No safe three-zone layout within the bounded map search');
   }
-  const zones = mode === 'zone_control' ? placeZones() : [];
+  const zones = mode === 'zone_control' || mode === 'mars' ? placeZones() : [];
 
   function resolveSpawn(point: PlacementSpawn, key: string, radius: number | undefined,
     explicit: boolean, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null {

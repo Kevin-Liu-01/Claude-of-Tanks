@@ -530,8 +530,9 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	float terminator = smoothstep( -0.06, 0.22, dot( mn, phaseL ) );
 	float maria = 0.74 + 0.26 * cotHash3( floor( mo * 3.0 + 7.0 ) ).x;
 	vec3 moonCol = planetTint * ( 0.10 + 1.30 * lit ) * maria * terminator;
-	float glowPow = 900.0 * ( 0.0070 * 0.0070 ) / ( moonR * moonR );
-	float glow = pow( max( md, 0.0 ), max( glowPow, 20.0 ) ) * 0.30 + pow( max( md, 0.0 ), 48.0 ) * 0.040;
+	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
+	float glowPow = max( 900.0 * 0.0070 / moonR, 160.0 );
+	float glow = pow( max( md, 0.0 ), glowPow ) * 0.24 + pow( max( md, 0.0 ), 48.0 ) * 0.030;
 	return ( stars * 0.90 + band * vec3( 0.16, 0.19, 0.28 ) * 0.18 + nebula * nebulaW * 0.55 ) * horizonFade
 		+ moonCol * disc * 1.7 + planetTint * glow * horizonFade;
 }`;
