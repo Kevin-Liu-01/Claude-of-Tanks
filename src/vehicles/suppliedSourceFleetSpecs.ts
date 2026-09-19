@@ -92,6 +92,7 @@ function applySourceArmament(spec: FleetTankSpec): void {
     missile.name = 'HJ-10 guided missile';
     missile.caliberMm = 170;
     missile.count = 8;
+    missile.launcherTubes = 8;
     spec.gun.shells = [missile];
     spec.gun.primaryGuided = true;
     spec.gun.fixedLaunchCanisters = true;
@@ -117,10 +118,10 @@ function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   const guided = spec.gun.shells.find(round => round.guided);
   const highExplosive = spec.gun.shells.find(round => round.type === 'HE' && !round.guided);
   if (!guided || !highExplosive) throw new Error('Kurganets requires both declared missile and HE balance channels');
-  const kornet = { ...structuredClone(guided), name: 'Kornet guided missile', count: 4 };
+  const kornet = { ...structuredClone(guided), name: 'Kornet guided missile', count: 4, launcherTubes: 4 };
   const bulat = {
     ...structuredClone(highExplosive), name: 'Bulat guided missile', caliberMm: 70,
-    guided: true, count: 8, velocityMps: guided.velocityMps,
+    guided: true, count: 8, launcherTubes: 8, velocityMps: guided.velocityMps,
     reloadS: guided.reloadS, soundProfile: guided.soundProfile,
   };
   spec.gun.shells = [spec.gun.shells[0], kornet, bulat];
@@ -136,6 +137,7 @@ function applyK21Launcher(spec: FleetTankSpec): void {
   const missile = structuredClone(peerMissile);
   missile.name = 'Guided missile';
   missile.count = 2;
+  missile.launcherTubes = 2;
   spec.gun.shells = [spec.gun.shells[0], spec.gun.shells[1], missile];
   // The cohort audit independently verifies its five primary-gun/mobility
   // metrics. They remain identical to CV90; the auxiliary slot must not add
@@ -171,12 +173,13 @@ function applyGuidedShellLabels(spec: FleetTankSpec): void {
       round.name = round.guided ? '152 mm guided missile' : `${round.caliberMm} mm ${round.type}`;
     }
   }
-  if (spec.id === 'fv510_milan_x' || spec.id === 'cv90_mkiv_x') {
-    for (const round of spec.gun.shells) {
-      if (!round.guided) continue;
-      round.name = spec.id === 'fv510_milan_x' ? 'MILAN guided missile' : 'Guided missile';
-      if (spec.id === 'fv510_milan_x') round.caliberMm = 115;
-    }
+  if (spec.id !== 'fv510_milan_x' && spec.id !== 'cv90_mkiv_x') return;
+  const isMilan = spec.id === 'fv510_milan_x';
+  for (const round of spec.gun.shells) {
+    if (!round.guided) continue;
+    round.name = isMilan ? 'MILAN guided missile' : 'Guided missile';
+    round.launcherTubes = isMilan ? 1 : 2;
+    if (isMilan) round.caliberMm = 115;
   }
 }
 

@@ -24,8 +24,8 @@ function checkLoadout() {
   assert.equal(guidedMissileSlot(spec), 2, 'the actual auxiliary launcher is selectable');
   assert.equal(specialActionKind(spec), 'guided_missile', 'the launcher is exposed by the battle special action');
   const missile = spec.gun.shells[2];
-  assert.deepEqual(missile, { ...missilePeer, name: 'Guided missile', count: 2 },
-    'only the generic label and two ready rounds differ from the declared gameplay peer');
+  assert.deepEqual(missile, { ...missilePeer, name: 'Guided missile', count: 2, launcherTubes: 2 },
+    'the label, two ready rounds and two source launchers retain the declared gameplay peer');
   assert.notStrictEqual(missile, missilePeer, 'a per-vehicle loadout cannot mutate the peer');
   assert.notEqual(spec.gun.primaryGuided, true, 'the 40 mm cannon remains primary');
   assert.equal(spec.balancePeerOf, 'cv90', 'the unchanged primary-performance cohort keeps its existing peer hint');
@@ -39,15 +39,19 @@ function checkLoadout() {
 
 function checkSourceConfigurations() {
   const configurations = {
-    kurganets25_x: [57, 2], ztz100_x: [105, 0], fv510_milan_x: [30, 1],
-    griffin50_x: [50, 0], ajax_x: [40, 0], aft10_x: [170, 1],
-    bmp3m_dragun125_x: [125, 0], k21_x: [40, 1], type96b_x: [125, 0],
-    kf41_lynx_x: [35, 0], cv90_mkiv_x: [50, 1], cv90105_tml_x: [105, 0], sabra_mk2_x: [120, 0],
+    kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], fv510_milan_x: [30, [1]],
+    griffin50_x: [50, []], ajax_x: [40, []], aft10_x: [170, [8]],
+    bmp3m_dragun125_x: [125, []], k21_x: [40, [2]], type96b_x: [125, []],
+    kf41_lynx_x: [35, []], cv90_mkiv_x: [50, [2]], cv90105_tml_x: [105, []], sabra_mk2_x: [120, []],
   };
-  for (const [id, [caliber, guidedCount]] of Object.entries(configurations)) {
+  for (const [id, [caliber, launcherTubes]] of Object.entries(configurations)) {
     const gun = TANK_SPECS[id].gun;
     assert.equal(gun.caliberMm, caliber, `${id}: the supplied weapon configuration owns the caliber`);
-    assert.equal(gun.shells.filter(round => round.guided).length, guidedCount, `${id}: actual launcher-channel census`);
+    const guided = gun.shells.filter(round => round.guided);
+    assert.deepEqual(guided.map(round => round.launcherTubes), launcherTubes,
+      `${id}: each guided channel declares its source-authored launchers, never its balance peer's`);
+    for (const round of guided) assert.ok(round.count >= round.launcherTubes,
+      `${id}/${round.name}: authored inventory stocks every actual tube`);
     for (const round of gun.shells.filter(round => !round.guided)) {
       assert.equal(round.caliberMm, caliber, `${id}: every main-cannon round has the source caliber`);
     }
@@ -60,10 +64,10 @@ function checkKurganetsLoadout() {
   const peer = TANK_SPECS.spz_puma.gun;
   assert.deepEqual(primary, { ...peer.shells[0], name: '57 mm APFSDS', caliberMm: 57 },
     'the short 57 mm main gun preserves declared primary gameplay tuning');
-  assert.deepEqual(kornet, { ...peer.shells[1], name: 'Kornet guided missile', count: 4 },
+  assert.deepEqual(kornet, { ...peer.shells[1], name: 'Kornet guided missile', count: 4, launcherTubes: 4 },
     'four source-visible Kornet tubes retain the declared guided balance channel');
   assert.deepEqual(bulat, { ...peer.shells[2], name: 'Bulat guided missile', caliberMm: 70, guided: true,
-    count: 8, velocityMps: peer.shells[1].velocityMps, reloadS: peer.shells[1].reloadS,
+    count: 8, launcherTubes: 8, velocityMps: peer.shells[1].velocityMps, reloadS: peer.shells[1].reloadS,
     soundProfile: peer.shells[1].soundProfile }, 'Bulat uses documented HE effect and guided-motion tuning');
   assert.equal(guidedMissileSlot(kurganets), 1, 'special action selects the first actual launcher');
   const state = createCombatState(kurganets);
