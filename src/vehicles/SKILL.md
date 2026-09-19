@@ -145,6 +145,12 @@ in the 80s is not evidence of high fidelity. Treat AbramsX, Challenger 2, and
 Leclerc as the minimum visual-complexity and geometric-coherence exemplars.
 Fused reference topology may disable dishonest component masks, but it never
 waives whole-silhouette, track-profile, attachment, or multi-view inspection.
+Before fleet-wide generation, check each added ID's explicit surface anchor in
+`vehicleMarkings.ts`, actual solved insignia/designation visibility in HIGH and
+LOW, core module ownership (including optics), and internal-layout confidence
+category. A generated marking record with `seats: []` is still missing visible
+markings; a generator's record count alone does not qualify that vehicle.
+
 For every added or changed playable tank, run this required sequence:
 
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and
