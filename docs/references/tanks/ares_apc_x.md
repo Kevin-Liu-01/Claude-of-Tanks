@@ -55,7 +55,7 @@ and balances the platform through mobility, hit points and fast belt-fed fire.
 ## Quality contract
 
 The target is the 92/100 exemplar fidelity bar. HIGH and LOW retain identical 3.910 × 3.240 × 7.212 m envelopes;
-HIGH uses 19,138 triangles and LOW uses 15,068; LOW reduces radial segments, the linked ready-use belt, and secondary suspension detail while retaining all defining silhouette and equipment.
+HIGH uses 19,138 profile triangles and LOW uses 12,226 (63.9%); the native Gallery render census is 75,962 versus 56,602 triangles (74.5%). LOW reduces radial segments, the linked ready-use belt, shallow appliqué fasteners, and secondary suspension detail while retaining the exact envelope, defining silhouette, equipment, and material roles.
 The final whole-vehicle fidelity pass scores 95.5, with every cardinal/diagonal view at 93.7 or better and the
 previous rear-view weakness corrected to 94.8. Geometry, visual-critic and release receipts are recorded by the
 generated gate artifacts.

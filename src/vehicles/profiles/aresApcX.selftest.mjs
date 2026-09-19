@@ -86,6 +86,8 @@ for (const geometryQuality of ['high', 'low']) {
   }
 }
 assert.ok(receipts[1].triangles < receipts[0].triangles, 'LOW is materially cheaper than HIGH');
+assert.ok(receipts[1].triangles <= receipts[0].triangles * 0.75,
+  'LOW stays at or below 75% of HIGH profile triangles');
 assert.deepEqual(receipts[1].size, receipts[0].size, 'LOW preserves the complete silhouette envelope');
 console.log(JSON.stringify({ id: ID, receipts }));
 console.log('aresApcX: PASS');

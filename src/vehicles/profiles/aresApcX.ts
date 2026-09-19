@@ -82,17 +82,23 @@ function hullBody(P: TankBuilderPort): void {
   P.addHatch('hull', part(box(1.25, 1.43, 0.12), 'rear-troop-ramp'), -0.05, 1.345, -2.655);
   P.add('hullDark', part(box(1.13, 0.018, 0.025), 'ramp-upper-seam'), -0.05, 2.04, -2.724);
   for (const side of [-1, 1]) {
-    P.add('hullDark', part(cylX(0.035, 0.16, 12), 'ramp-hinge'), side * 0.47, 0.69, -2.73);
+    P.add('hullDark', part(cylX(0.035, 0.16, P.q ? 12 : 8), 'ramp-hinge'), side * 0.47, 0.69, -2.73);
     P.add('hullDetail', part(box(0.055, 0.22, 0.035), 'ramp-lock'), side * 0.48, 1.54, -2.73);
   }
 }
 
 function runningGear(P: TankBuilderPort): void {
   const D = ARES_APC_X_DATUMS;
-  const wheelFace = KIT.mergeAll([
-    torus(0.232, 0.018, P.q ? 22 : 14, 8).rotateZ(Math.PI / 2).translate(0.173, 0, 0),
-    torus(0.118, 0.013, P.q ? 20 : 12, 8).rotateZ(Math.PI / 2).translate(0.176, 0, 0),
-    cylX(0.068, 0.04, P.q ? 20 : 12).translate(0.177, 0, 0),
+  const wheelFace = KIT.mergeAll(P.q ? [
+    torus(0.232, 0.018, 22, 8).rotateZ(Math.PI / 2).translate(0.173, 0, 0),
+    torus(0.118, 0.013, 20, 8).rotateZ(Math.PI / 2).translate(0.176, 0, 0),
+    cylX(0.068, 0.04, 20).translate(0.177, 0, 0),
+  ] : [
+    // LOW retains the pressed outer rim and central hub in the same wheel
+    // material, while dropping the nested cosmetic ring that is sub-pixel at
+    // its intended distance.
+    torus(0.232, 0.018, 8, 4).rotateZ(Math.PI / 2).translate(0.173, 0, 0),
+    cylX(0.068, 0.04, 8).translate(0.177, 0, 0),
   ]);
   P.gear = KIT.buildRunningGear(P, {
     style: 'rubber', wheelR: D.wheelR, wheelW: 0.354, wheelY: D.wheelY,
@@ -122,7 +128,7 @@ function sideArmor(P: TankBuilderPort): void {
       return { z, ring };
     });
     P.addExternalArmor('hull', part(sectionSolid(armorSections), 'continuous-side-applique'));
-    for (const z of [-1.72, -0.88, -0.04, 0.80, 1.64, 2.48]) {
+    for (const z of P.q ? [-1.72, -0.88, -0.04, 0.80, 1.64, 2.48] : []) {
       const top = Math.min(2.27, hullRoof(z) + 0.01);
       P.add('hullDetail', part(box(0.014, top - 1.21, 0.018), 'applique-shallow-seam'),
         side * 1.943, (top + 1.21) / 2, z);
@@ -144,12 +150,12 @@ function frontGuard(P: TankBuilderPort): void {
     P.add('hullDark', part(box(0.045, 0.37, 0.045), 'front-guard-post'), side * 0.88, 1.19, 3.41, -0.22);
   }
   for (const y of [1.05, 1.27, 1.45]) {
-    P.add('hullDark', part(cylX(0.024, 3.91, 10), 'front-guard-rail'), 0, y, 3.41 - (y - 1.05) * 0.36);
+    P.add('hullDark', part(cylX(0.024, 3.91, P.q ? 10 : 6), 'front-guard-rail'), 0, y, 3.41 - (y - 1.05) * 0.36);
   }
   for (const side of [-1, 1]) {
-    P.add('hullDark', part(torus(0.075, 0.022, 14), 'tow-eye'), side * 0.92, 0.92, 3.584, Math.PI / 2);
+    P.add('hullDark', part(torus(0.075, 0.022, P.q ? 14 : 8), 'tow-eye'), side * 0.92, 0.92, 3.584, Math.PI / 2);
     P.add('hullDetail', part(box(0.21, 0.12, 0.10), 'headlamp-housing'), side * 1.31, 1.38, 3.29, -0.28);
-    P.add('hullGlass', part(markVehicleNightLens(cylZ(0.055, 0.015, 14), 'headlight'), 'headlamp-lens'),
+    P.add('hullGlass', part(markVehicleNightLens(cylZ(0.055, 0.015, P.q ? 14 : 8), 'headlight'), 'headlamp-lens'),
       side * 1.31, 1.39, 3.35, -0.28);
   }
 }
@@ -172,7 +178,7 @@ function roofHatches(P: TankBuilderPort): void {
       { height: 0.055, inset: 0.96 },
     ]), 'beveled-roof-hatch'), x, y - 0.035, z, 0, 0, rz);
     P.add('hullDark', part(box(w * 0.70, 0.018, 0.028), 'hatch-hinge'), x, y + 0.035, z - d * 0.48, 0, 0, rz);
-    P.add('hullDark', part(torus(0.065, 0.012, 12), 'hatch-handle'), x + w * 0.25, y + 0.045, z + d * 0.18, Math.PI / 2);
+    P.add('hullDark', part(torus(0.065, 0.012, P.q ? 12 : 8), 'hatch-handle'), x + w * 0.25, y + 0.045, z + d * 0.18, Math.PI / 2);
   }
   for (const x of [-0.78, 0.82]) {
     P.add('hullGlass', part(box(0.22, 0.07, 0.025), 'driver-periscope'), x, 1.94, 2.16, -0.16);
@@ -190,7 +196,7 @@ function smokeLaunchers(P: TankBuilderPort): void {
     P.addEquipment('hull', part(box(0.34, 0.20, 0.25), 'smoke-bank-base'), x, 2.18, z, 0.10, 0, side * 0.14);
     for (let index = 0; index < 4; index++) {
       const row = Math.floor(index / 2), column = index % 2;
-      P.add('hullDark', part(blindTube(0.038, 0.025, 0.25, 0.055, P.q ? 16 : 10), 'smoke-tube'),
+      P.add('hullDark', part(blindTube(0.038, 0.025, 0.25, 0.055, P.q ? 16 : 6), 'smoke-tube'),
         x + side * (column - 0.5) * 0.095, 2.28 + row * 0.09, z + (column - 0.5) * 0.10,
         -0.30, side * 0.36, 0);
     }
@@ -214,11 +220,11 @@ function exactL111A1(P: TankBuilderPort): void {
   // bucket. Besides preserving the real articulation hierarchy, those two
   // authored solids are the inputs for the bounded moving shadow proxy.
   P.add('gunMount', part(box(0.22, 0.20, 0.70), 'l111a1-receiver'), 0, -0.01, -0.11);
-  P.add('gunMount', part(cylX(0.055, 0.54, P.q ? 18 : 12), 'l111a1-trunnion'),
+  P.add('gunMount', part(cylX(0.055, 0.54, P.q ? 18 : 8), 'l111a1-trunnion'),
     0, -0.07, 0.04);
-  P.add('gun', part(blindTube(0.030, 0.016, 0.94, 0.035, P.q ? 64 : 12), 'l111a1-barrel'),
+  P.add('gun', part(blindTube(0.030, 0.016, 0.94, 0.035, P.q ? 64 : 8), 'l111a1-barrel'),
     0, 0.01, 0.77);
-  P.add('gunDark', part(cylZ(0.052, 0.20, P.q ? 18 : 12), 'l111a1-jacket'),
+  P.add('gunDark', part(cylZ(0.052, 0.20, P.q ? 18 : 8), 'l111a1-jacket'),
     0, 0.01, 0.38);
   P.add('gunMount', part(box(0.539, 0.396, 0.221), 'l111a1-ammo-box'),
     0.43, -0.07, 0.02);
@@ -227,10 +233,10 @@ function exactL111A1(P: TankBuilderPort): void {
   // The Ares carries an exposed ready-use disintegrating-link belt between
   // the side box and receiver. Keep each cartridge physically round and
   // merge the complete belt into the single articulated mount draw.
-  const beltRounds = P.q ? 22 : 11;
+  const beltRounds = P.q ? 22 : 7;
   for (let index = 0; index < beltRounds; index++) {
     const t = index / (beltRounds - 1);
-    P.add('gunMountDark', part(cylZ(0.009, 0.11, P.q ? 8 : 6), 'l111a1-ready-round'),
+    P.add('gunMountDark', part(cylZ(0.009, 0.11, P.q ? 8 : 5), 'l111a1-ready-round'),
       0.055 + 0.42 * t, 0.128 + 0.008 * Math.sin(t * Math.PI), 0.19 + 0.035 * t,
       0, 0.10, 0);
   }
@@ -256,17 +262,17 @@ function remoteWeaponStation(P: TankBuilderPort): void {
   // Closed deck plinth bridges the bearing across the adjacent hatch seam.
   // It belongs to the hull and overlaps both the roof skin and yaw bearing,
   // leaving no player-visible slit into the vehicle.
-  P.add('hull', part(cylY(0.34, 0.38, 0.08, P.q ? 48 : 14), 'rws-deck-plinth'),
+  P.add('hull', part(cylY(0.34, 0.38, 0.08, P.q ? 48 : 10), 'rws-deck-plinth'),
     T[0], 2.285, T[2]);
   // These three closed pieces are the station's armored yaw structure, not
   // detachable roof dressing. Keeping them on the turret owner gives combat
   // anatomy a real remote-station collision shell.
-  P.add('turret', part(cylY(0.24, 0.29, 0.10, P.q ? 48 : 14), 'rws-bearing'), 0, 0.05, 0);
-  P.add('turretDark', part(torus(0.245, 0.020, P.q ? 22 : 14), 'rws-slew-ring'), 0, 0.11, 0);
+  P.add('turret', part(cylY(0.24, 0.29, 0.10, P.q ? 48 : 10), 'rws-bearing'), 0, 0.05, 0);
+  P.add('turretDark', part(torus(0.245, 0.020, P.q ? 22 : 10), 'rws-slew-ring'), 0, 0.11, 0);
   P.add('turret', part(box(0.56, 0.34, 0.52), 'rws-pedestal'), 0, 0.32, -0.03);
   for (const side of [-1, 1]) {
     P.add('turretDark', part(box(0.055, 0.72, 0.16), 'rws-cradle-arm'), side * 0.40, 0.57, -0.06, 0, 0, side * 0.05);
-    P.add('turretDark', part(cylX(0.05, 0.08, 14), 'rws-cradle-cap'), side * 0.40, 0.82, -0.10);
+    P.add('turretDark', part(cylX(0.05, 0.08, P.q ? 14 : 8), 'rws-cradle-cap'), side * 0.40, 0.82, -0.10);
   }
   P.add('turret', part(box(0.28, 0.38, 0.42), 'rws-service-box'), 0.31, 0.55, -0.22);
   P.addModuleVisual('optics', 'turretGlass', part(box(0.16, 0.12, 0.016), 'rws-fixed-optic'), -0.02, 0.64, 0.411);
