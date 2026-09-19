@@ -245,7 +245,11 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   }
   {
     const tank = spec(registry, 'bmpt_t90');
-    Object.assign(tank.gun.shells[1], { dmg: 500, reloadS: 3, count: 6 });
+    // owner 2026-09-18: the missile load is never below one round per launcher tube — the T-90 BMPT carries two quad
+    // Ataka racks (eight tubes, guidedLauncherTubes.selftest). Eight rounds at the old 3.0 s cadence pushed the reviewed
+    // Puma S1 duel to 0.167 (band 0.2–0.8); inside the IFV launcher band (2–3 s, afvBalance.selftest) 2.9 s sits at 0.5
+    // with even damage traded (.qa-dev/bmpt-balance-tune.mjs sweep, 2026-09-18).
+    Object.assign(tank.gun.shells[1], { dmg: 500, reloadS: 2.9, count: 8 });
   }
   {
     const tank = spec(registry, 'fv510_milan');

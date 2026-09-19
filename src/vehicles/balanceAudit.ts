@@ -33,7 +33,7 @@ export const FLEET_BALANCE_REVISION = Object.freeze({
   spz_puma: 'balance the Tier VIII cannon and protection package against its peers',
   bmp3_rok: 'restore a complete Tier VIII cannon, missile and protection package',
   spz_puma_s1: 'remove the Tier X autocannon ceiling while retaining anti-armor utility',
-  bmpt_t90: 'normalize guided-weapon cadence against other Tier X IFVs',
+  bmpt_t90: 'normalize guided-weapon cadence against other Tier X IFVs (load stays eight: one Ataka per tube, owner 2026-09-18)',
   leo2a5_a5nl: 'trim the enhanced Leopard package to the Strv 122 peer envelope',
   leo2a6: 'exchange excess stationary protection for its intended mobile Tier IX identity',
   leo2a4m: 'replace a Tier VIII penetration holdover and realize Tier IX protection',

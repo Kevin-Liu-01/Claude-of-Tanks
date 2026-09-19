@@ -618,7 +618,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
       turretConstruction: 'cv90-mkiv-integrated-steep-arrow-mission-module-v6',
       gunAssembly: 'massive-faceted-50mm-trunnion-shroud-v1',
       remoteMachineGunTower: 'k2b-style-complete-open-yoke-rws',
-      spikeLauncherTubes: 2, apsRadarFaces: 4,
+      spikeLauncherTubes: 2, launcherTubes: 2, apsRadarFaces: 4,
       planarRoofCrown: true, monotonicArmorInset: true, concaveSurfaceCount: 0,
       integratedRearBustle: true, structuralChevronCoursesPerSide: 2,
       frontArmorShell: 'single-extreme-slope-arrow-shell',

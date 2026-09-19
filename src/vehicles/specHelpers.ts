@@ -65,6 +65,10 @@ export interface ShellSpec extends Record<string, RuntimeValue> {
   count?: number;
   tracer: string;
   guided?: boolean;
+  /** Guided rounds: launcher tubes modelled on the vehicle (0 = fired through the gun). Owner 2026-09-18: the minimum
+   * missile load is one round per tube ("the BMPT T-90 should have minimum 8 since it has 8 tubes") — pinned by
+   * guidedLauncherTubes.selftest against the profiles' published tube censuses. */
+  launcherTubes?: number;
 }
 
 export interface ArmorEnvelope {

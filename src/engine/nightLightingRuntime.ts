@@ -174,8 +174,22 @@ function updateEmitter(
   }
 }
 
+/** Which side of its vehicle a lamp sits on (authored anchor-local x): −1 left, +1 right, 0 centreline. */
+function lampSide(source: EmitterState): number {
+  const x = source.emitter.position[0];
+  return x > 0.12 ? 1 : x < -0.12 ? -1 : 0;
+}
+
 function assignedEarlier<T extends THREE.SpotLight | THREE.PointLight>(slots: LightSlot<T>[], index: number, source: EmitterState): boolean {
-  for (let earlier = 0; earlier < index; earlier++) if (slots[earlier].source === source) return true;
+  for (let earlier = 0; earlier < index; earlier++) {
+    const taken = slots[earlier].source;
+    if (!taken) continue;
+    if (taken === source) return true;
+    // owner 2026-09-18 ("lights seem to only come from one headlight"): with two scene spot lights and a chase
+    // camera offset to one flank, the two nearest lamps were both pods of the SAME headlight cluster. One lamp per
+    // side of a vehicle: the next slot goes to the vehicle's other headlight before a farther vehicle's lamp.
+    if (taken.anchor === source.anchor && taken.emitter.kind === source.emitter.kind && lampSide(taken) === lampSide(source)) return true;
+  }
   return false;
 }
 
@@ -281,7 +295,8 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
   if (!Number.isInteger(budget.spotLights) || !Number.isInteger(budget.pointLights)) {
     throw new RangeError('Night light budgets must be integers');
   }
-  requireBounded(budget.spotLights, 2, 'spot budget'); requireBounded(budget.pointLights, 1, 'point budget');
+  // desktop lights both headlights of the player and of the nearest other vehicle (2026-09-18); mobile keeps 2 + 1
+  requireBounded(budget.spotLights, 8, 'spot budget'); requireBounded(budget.pointLights, 4, 'point budget');
   const group = new THREE.Group(); group.name = 'night-light-pool';
   const spots = createSpots(group, budget.spotLights), points = createPoints(group, budget.pointLights);
   const lights = Object.freeze([...spots.map(slot => slot.light), ...points.map(slot => slot.light)]);

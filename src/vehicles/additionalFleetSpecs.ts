@@ -615,7 +615,7 @@ for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d
         reloadS: 0.78,
       })),
       shell('MILAN 2', 'HEAT', 115, 800, 800, 480, 130, {
-        pen2000Mm: 800, reloadS: 2.4, count: 6, guided: true,
+        pen2000Mm: 800, reloadS: 2.4, count: 6, guided: true, launcherTubes: 1,
         soundProfile: 'milan-launch',
       }),
     ],

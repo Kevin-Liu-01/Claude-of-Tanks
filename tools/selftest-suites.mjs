@@ -158,6 +158,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/object695X.selftest.mjs',
     'src/vehicles/trackGlitchSimulation.selftest.mjs',
     'src/vehicles/trackEndRamp.selftest.mjs',
+    'src/vehicles/guidedLauncherTubes.selftest.mjs',
     'src/vehicles/profiles/leopardRevolutionTurretCenter.selftest.mjs',
     'src/vehicles/profiles/leopardRevolutionGeometry.selftest.mjs',
     'src/vehicles/profiles/leopardReturnRollers.selftest.mjs',
