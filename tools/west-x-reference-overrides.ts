@@ -23,21 +23,18 @@ export const WEST_X_REFERENCE_OVERRIDES = {
   // the complete Trophy-equipped print while avoiding invented masks.
   merkava4_trophy: {
     ...fusedOracle('merkava4_trophy_x'),
-    qualityBar: 'fleet',
     glb: { ...fusedOracle('merkava4_trophy_x').glb, componentMasks: false },
   },
   // The Armored Warfare Barak print is flattened by material into Object_2…35.
   // Its source-only bake omits only the documented detached sub-ground artifact.
   merkava4_barak: {
     ...fusedOracle('merkava4_barak_x'),
-    qualityBar: 'fleet',
     glb: { ...fusedOracle('merkava4_barak_x').glb, componentMasks: false },
   },
   // The Namer source has a real turret subtree but its axle meshes fuse left
   // and right running gear, so whole-source comparison is the honest oracle.
   namer_ifv: {
     ...fusedOracle('namer_ifv_x'),
-    qualityBar: 'fleet',
     glb: { ...fusedOracle('namer_ifv_x').glb, componentMasks: false },
   },
   // Object_19 mixes gun with suspension and Object_22 mixes turret/skirts.
