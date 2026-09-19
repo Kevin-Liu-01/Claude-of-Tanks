@@ -41,6 +41,14 @@ for(const id of ['ariete_c1_x','challenger1_x','chieftain5_x','strv122_x']) {
   assert.equal(usesSourceDimensionFrame(id,certified),true,'now source-authored with complete fused owner certificates');
   assert.equal(usesSourceDimensionFrame(id,{...certified,passed:false}),false);
 }
+for (const id of ['ares_apc_x', 'merkava4_trophy', 'merkava4_barak', 'namer_ifv']) {
+  assert.equal(usesSourceDimensionFrame(id, certified), true,
+    `${id}: compare the supplied configuration with its fixed source ruler and complete equipment envelope`);
+  assert.equal(usesSourceDimensionFrame(id, { ...certified, passed: false }), false,
+    `${id}: failed source registration cannot authorize source dimensions`);
+  assert.equal(usesSourceDimensionFrame(id, { ...certified, mode: 'legacy' }), false,
+    `${id}: legacy alignment cannot authorize source dimensions`);
+}
 for(const id of ['t72b3','leo2a5_x','leo2_revolution_proto'])assert.equal(usesSourceDimensionFrame(id,certified),false,'existing fleet keeps its established policy');
 assert.equal(usesSourceDimensionFrame('t72b3_x',{...certified,passed:false}),false);
 console.log('source-dimension-frame: fixed source ruler, identical paired definitions, physical oversize guard and legacy isolation pass');
