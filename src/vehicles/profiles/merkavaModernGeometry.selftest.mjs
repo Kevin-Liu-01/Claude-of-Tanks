@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { verifyBarakBayNativeStock } from '../../../tools/barak-rear-bay-fill-policy.mjs';
 
 const expected = {
   merkava4_trophy: { trophy: 'mk4', barak: false, namer: false },
@@ -43,7 +44,7 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
 
     if (contract.barak) {
       assert.deepEqual(turretRig.userData.barakSensorReceipt,
-        { panoramicHead: true, ironVisionCameraClusters: 4, owner: 'rig_turret' },
+        { crewHatchPeriscopes: 5, cylindricalSight: true, rearWhips: 2, owner: 'rig_turret' },
         `${id}: Barak awareness kit is physical and turret-owned`);
       const whips = turretRig.getObjectByName('barakRearWhips');
       assert.equal(whips?.count, 2, `${id}: measured rear antenna pair is instanced once`);
@@ -95,8 +96,10 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
           `${id}: Barak retains the measured lower base-hull glacis without a false overlay (${glacisY})`);
       }
       const rearClosure = rayDown(tank.root.getObjectByName('hullDetail'), 0, -3.88);
-      if (contract.trophy !== 'mk4') assert.ok(rearClosure > 1.40,
-        `${id}: Barak rear termination is a seated hull surface`);
+      if(contract.barak){
+        assert.equal(rearClosure,undefined,`${id}: source entrance is not bridged by the former flush slab`);
+        assert.equal(verifyBarakBayNativeStock(tank.root).length,15,`${id}: real floor, roof, sidewalls and recessed back remain physical`);
+      }
       if (contract.trophy === 'mk4') {
         const skirts = tank.root.getObjectByName('hullExternalArmor');
         const skirtWidth = new THREE.Box3().setFromObject(skirts).getSize(new THREE.Vector3()).x;

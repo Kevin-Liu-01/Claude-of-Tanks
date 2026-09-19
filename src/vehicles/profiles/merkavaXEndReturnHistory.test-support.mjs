@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import {beforeBarakRearEquipment} from './merkavaBarakRearHistory.test-support.mjs';
 
 export const MERKAVA_END_RETURN_BEFORE_SHA256 =
   'a7cb2366ce25ac6c6e3ff9c9d78ad7bf4c8fa2a6b0f6211ef9d92e6391d127f6';
@@ -68,6 +69,7 @@ function beforeBarakBowRepair(source){
 }
 
 function beforeModernIsraeliFleet(source,readHelper){
+  source=beforeBarakRearEquipment(source);
   source=beforeBarakBowRepair(source);
   if(!source.includes("merkava4_trophy: { build: buildMerkava4Trophy }"))return source;
   const removeExact=(part,label)=>{

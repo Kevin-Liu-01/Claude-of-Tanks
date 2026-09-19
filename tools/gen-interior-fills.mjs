@@ -21,6 +21,7 @@ import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-v
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
+import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -117,6 +118,7 @@ for (const id of ids) {
   let tank;
   try { tank = createTank(id, null, { proceduralOnly: true }); }
   catch (error) { throw new Error(`${id}: build failed; no fill records written`, { cause: error }); }
+  const sourceAir=createBarakBayFillPolicy(id,tank.root);
   const { tris, meshes } = collectTriangles(tank.root);
   const boundary = interiorFillBoundaryTriangles(id, tris, meshes);
   const grid = voxelise(boundary, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });
@@ -138,6 +140,7 @@ for (const id of ids) {
     for (let z = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
       const i = (z * ny + y) * nx + x; if (!(extNow[i] && deepNow[i]) || vox[i] || claimed[i]) continue;
       if (first) leakVox++;
+      if(sourceAir?.protects(grid,x,y,z))continue;
       const c = componentAt(grid, x, y, z); if (!c) continue;
       // a pocket closed by the gun or mantlet: filled as turret stock when the turret body itself encloses
       // it, as GUN-frame stock (component 3, rides with elevation) when the moving group encloses it,
@@ -213,6 +216,12 @@ for (const id of ids) {
   // origins at 6 decimals: a 4-decimal origin put every fill face a few microns off the lattice
   out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(6)), t: turretOrigin.map((v) => +v.toFixed(6)), g: gunOrigin.map((v) => +v.toFixed(6)), ...entry };
   const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
+  if(sourceAir){
+    const receipt=sourceAir.receipt();row.preservedSourceAirL=L(receipt.cells.length);
+    const evidenceDir=opt('source-air-evidence',null);
+    if(evidenceDir){mkdirSync(resolve(evidenceDir),{recursive:true});writeFileSync(resolve(evidenceDir,`${id}.json`),JSON.stringify({...receipt,grid:{origin,voxel:VOXEL},raw:row},null,2)+'\n');}
+    console.log(`${id}: retained ${row.preservedSourceAirL} L of measured source air; raw residual remains separately reported`);
+  }
   stats.push(row);
   console.log(`${id}: leak ${row.leakL} L → filled ${row.filledL} L in ${row.boxes} boxes (${row.tris} tris), residual ${row.residualL} L, gun-frame under moving parts ${row.skippedL} L (${row.ms} ms)`);
   tank.dispose?.();

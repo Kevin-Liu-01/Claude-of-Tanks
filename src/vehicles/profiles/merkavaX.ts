@@ -16,6 +16,8 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addBarakBowEquipment } from './merkavaBarakBow.ts';
 import { barakEndStock } from './merkavaBarakEndStock.ts';
 import { addBarakRearGuards } from './merkavaBarakRear.ts';
+import { barakHullBody, addBarakRearCases } from './merkavaBarakRearBody.ts';
+import { addBarakMeasuredRoofStock, addBarakCrewRoof, addBarakBasket, addBarakWhips } from './merkavaBarakTurret.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { addNamerSourceHull } from './namerSourceHull.ts';
 import { addNamerSourceChassis } from './namerSourceChassis.ts';
@@ -416,9 +418,8 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     })));
     P.addMudguard('merkava4-x-front-flap','hullRubber',box(.57,.235,.045),side*1.44,.928,3.76,-.13);
     P.addMudguard('merkava4-x-rear-flap','hullRubber',box(.58,.45,.043),side*1.45,.92,-3.56,.09);
-    // Trophy owns open source-measured aft receivers here; the generic closed
-    // Mk.4 case would sit inside each opening and erase its 526 mm air path.
-    if(candidate!=='merkava4_trophy')
+    // The modern source rear openings replace the generic closed Mk.4 case.
+    if(candidate!=='merkava4_trophy'&&candidate!=='merkava4_barak')
       P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
     for(const z of[-3.49,3.50])P.addEquipment('hullDetail',torus(.065,.019,12,6),side*.67,.79,z);
     // Measured paired glacis tow lugs, with transverse pins and open eyes.
@@ -477,30 +478,7 @@ function merkava4GunnerStation(P: TankBuilderPort): void {
 }
 
 function merkava4BarakRoof(P: TankBuilderPort): void {
-  const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0)=>topPart(P,MK4,slot,g,x,y,z,rx,ry,rz);
-  // Barak does not read as the older Mk.4 roof with another optic glued on.
-  // Keep the crew openings low, close the rear bustle with equipment cases,
-  // and leave the tall silhouette to the two measured rear aerials.
-  P.addCupola('turret',cylY(.36,.11,10),-.58,2.545-MK4.y,.04-MK4.z);
-  put('turretDetail',cylY(.31,.045,10),-.58,2.615,.04);
-  for(let i=0;i<8;i++){
-    const a=i*Math.PI/4,x=-.58+Math.cos(a)*.315,z=.04+Math.sin(a)*.315;
-    put('turretGlass',box(.115,.052,.018),x,2.604,z,0,-a);
-  }
-  put('turretDetail',sectionSolid([
-    {z:-1.64-MK4.z,ring:[[-.82,2.35-MK4.y],[.92,2.35-MK4.y],[.84,2.51-MK4.y],[-.72,2.51-MK4.y]]},
-    {z:-.73-MK4.z,ring:[[-.90,2.35-MK4.y],[.98,2.35-MK4.y],[.88,2.55-MK4.y],[-.78,2.55-MK4.y]]},
-  ]),0,0,0);
-  for(const side of[-1,1]){
-    handrail(P,MK4,side*1.18,-2.06,-.88,2.38);
-    // Six-tube banks remain tucked below the new sensor crown rather than
-    // becoming the dominant high furniture of the older roof package.
-    for(let row=0;row<2;row++)for(let i=0;i<3;i++)
-      put('turretDark',cylZ(.036,.34,12),side*(1.05+i*.09),2.34+row*.08,.26-i*.07,-.20,side*.46);
-  }
-  put('turretDetail',box(.58,.14,.74),-.98,2.47,-1.58);
-  put('turretDark',box(.46,.09,.025),-.98,2.51,-1.19);
-  put('turretGlass',box(.34,.065,.012),-.98,2.515,-1.174);
+  addBarakCrewRoof(P);
 }
 
 function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {
@@ -719,41 +697,14 @@ function addTrophyGlacisSignature(P: TankBuilderPort): void {
 function addBarakSensorSuite(P: TankBuilderPort): void {
   const put=(slot:string,g:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0)=>
     topPart(P,MK4,slot,g,x,y,z,rx,ry,rz);
-  // Barak retains Mk.4 mobility/firepower and is distinguished by its closed-
-  // hatch awareness and target-processing hardware.  The panoramic head and
-  // four camera clusters are physically seated on the roof/perimeter.
-  put('turretDetail',cylY(.27,.20,8),.50,2.72,-.47);
-  for(let i=0;i<4;i++){
-    const a=i*Math.PI/2;
-    put('turretGlass',box(.22,.075,.014),.50+Math.sin(a)*.255,2.74,-.47+Math.cos(a)*.255,0,a);
-  }
-  put('turretDetail',box(.38,.08,.38),.50,2.60,-.47);
-  // Low transverse IronVision brow: a strong horizontal read, unlike the
-  // older Trophy vehicle's tall outboard radar pylons and cupola forest.
-  put('turretDetail',box(1.36,.15,.25),.04,2.57,.39);
-  for(const x of[-.48,-.16,.16,.48])
-    put('turretGlass',box(.20,.068,.014),x,2.585,.522);
-  for(const [x,z,ry]of[[0,1.05,0],[0,-2.58,Math.PI],[1.43,-.72,Math.PI/2],[-1.43,-.72,-Math.PI/2]] as const){
-    put('turretDetail',box(.27,.17,.19),x,2.53,z,0,ry);
-    put('turretGlass',box(.17,.085,.012),x,2.55,z+(Math.abs(ry)<.1?.101:0),0,ry);
-  }
-  // Source Object_26 resolves into two independent rear whip assemblies at
-  // x ±1.03, z -3.63, each seated at y 2.60 and reaching y 5.66.  Instance
-  // the identical authored whip primitive: it remains turret-owned while the
-  // parent audit correctly evaluates the casting rather than antenna extents.
-  const whips=new THREE.InstancedMesh(cylY(.012,3.06,8),P.mats.dark,2);
-  whips.name='barakRearWhips';
-  for(const [index,side]of[-1,1].entries()){
-    // The source aerial feet rise from the near-upright rear equipment wall;
-    // diagonal braces here produced a false high triangular tail in profile.
+  // Existing receiving collars/braces remain seated; the independently
+  // measured Object26 helper owns the tapered aerials and their actual rake.
+  for(const side of[-1,1]){
     cageBar(P,MK4,[side*1.025,1.98,-3.57],[side*1.025,2.60,-3.63],.050);
     put('turretDetail',cylY(.052,.13,12),side*1.025,2.64,-3.63);
-    const pose=new THREE.Object3D();
-    pose.position.set(side*1.025,4.13-MK4.y,-3.63-MK4.z);
-    pose.updateMatrix();whips.setMatrixAt(index,pose.matrix);
   }
-  whips.instanceMatrix.needsUpdate=true;P.turretG.add(whips);
-  P.turretG.userData.barakSensorReceipt=Object.freeze({panoramicHead:true,ironVisionCameraClusters:4,owner:'rig_turret'});
+  addBarakWhips(P);
+  P.turretG.userData.barakSensorReceipt=Object.freeze({crewHatchPeriscopes:5,cylindricalSight:true,rearWhips:2,owner:'rig_turret'});
 }
 
 function addBarakTurretArmor(P: TankBuilderPort): void {
@@ -767,12 +718,7 @@ function addBarakTurretArmor(P: TankBuilderPort): void {
         2.46-i*.015,2.18-i*.04,2.42-i*.03,2.12-i*.06);
     }
   }
-  topPart(P,MK4,'turretDetail',box(3.18,.18,.32),0,2.51,-1.46);
-  for(const x of[-1.28,-.85,-.42,0,.42,.85,1.28])
-    topPart(P,MK4,'turretDark',box(.22,.075,.018),x,2.55,-1.291);
-  topPart(P,MK4,'turretDetail',box(1.76,.10,.50),.06,2.39,-2.05);
-  for(const x of[-.62,-.31,0,.31,.62])
-    topPart(P,MK4,'turretDark',box(.018,.11,.46),x+.06,2.39,-2.05);
+
 }
 
 function addBarakHullSignature(P: TankBuilderPort): void {
@@ -796,48 +742,12 @@ function addBarakHullSignature(P: TankBuilderPort): void {
 }
 
 function addBarakRearStowage(P: TankBuilderPort): void {
-  // Flattened source Object_27 is a many-island rear equipment pack occupying
-  // x -1.42..1.48, y 1.67..2.01, z -3.57..-1.88 after registration. Rebuild
-  // that occupied envelope as separate seated cases and a slim carrier so the
-  // basket keeps honest gaps instead of becoming a copied/filled source slab.
-  for(const x of[-1.34,1.34])topPart(P,MK4,'turretOpenLattice',box(.055,.055,1.50),x,1.72,-2.72);
-  for(const z of[-3.38,-2.72,-2.06])topPart(P,MK4,'turretOpenLattice',box(2.68,.055,.055),0,1.72,z);
-  // The source carrier terminates as a near-upright equipment wall at
-  // z -3.60, y 1.68..2.03. Closing that measured case face removes the
-  // triangular tail produced by the draft's short floating cases.
-  topPart(P,MK4,'turretDetail',box(2.68,.34,.18),0,1.855,-3.50);
-  for(const [x,w,d,z]of[[-1.08,.40,1.12,-2.77],[-.55,.46,1.24,-2.69],[0,.40,1.08,-2.80],[.53,.44,1.18,-2.66],[1.07,.39,1.10,-2.75]] as const){
-    topPart(P,MK4,'turretDetail',box(w,.22,d),x,1.88,z);
-    topPart(P,MK4,'turretDark',box(w-.08,.018,d-.12),x,2.00,z);
-  }
+  addBarakBasket(P);
 }
 
 function addBarakRearMissionModule(P: TankBuilderPort): void {
-  // Barak's source upper body does not end at the clean Mk.4 basket line. Its
-  // broad rear mission/electronics volume runs from z -3.60 to the crew roof,
-  // climbing from a low service wall into the IronVision crown. Reconstruct
-  // that measured silhouette as a closed, faceted body beneath the separate
-  // stowage cases, leaving the whip aerials and sensor faces fully authored.
-  const stations=[
-    [-3.60,.95,1.68,2.45,.82],[-3.34,1.06,1.68,2.59,.92],
-    [-2.76,1.22,1.70,2.52,1.08],[-2.16,1.46,1.72,2.56,1.25],
-    [-1.56,1.60,1.73,2.62,1.36],[-.96,1.62,1.66,2.72,1.38],
-  ] as const;
-  P.add('turret',sectionSolid(stations.map(([z,half,floor,roof,roofHalf])=>({
-    z:z-MK4.z,
-    ring:[[-half,floor-MK4.y],[half,floor-MK4.y],[half,roof-.10-MK4.y],
-      [roofHalf,roof-MK4.y],[-roofHalf,roof-MK4.y],[-half,roof-.10-MK4.y]],
-  }))));
-  for(const side of[-1,1]){
-    const plate=(z:number,top:number): SolidSection=>{
-      const ring: [number,number][]=[
-        [1.3007,2.4288-MK4.y],[1.4447,2.4288-MK4.y],
-        [1.4447,top-MK4.y],[1.3007,top-MK4.y],
-      ];
-      return {z:z-MK4.z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
-    };
-    P.add('turret',sectionSolid([plate(-1.7401,2.66),plate(-1.1635,2.8892)]));
-  }
+  // The source rear is a closed roof terminating ahead of an open cage.
+  addBarakMeasuredRoofStock(P);
   // Object_22 is one connected roof-weapon assembly in the source: a seated
   // square foot, an angled support, a narrow upright and the long receiver.
   // Emitting only the receiver left a detached island at turret yaw 90.
@@ -1073,13 +983,15 @@ function merkava4RearHullStations(): SolidSection[] {
   });
 }
 
-function merkava4Hull(): THREE.BufferGeometry {
-  const pieces=[sectionSolid([
+function merkava4Hull(barak = false): THREE.BufferGeometry {
+  const sections: SolidSection[]=[
     ...merkava4RearHullStations(),
     bodyStation(-2.00,1.77,1.604,.419,MK4,.97),bodyStation(1.963,1.77,1.604,.419,MK4,.97),
     bodyStation(2.80,1.77,1.347,.48,MK4,.97,.03),bodyStation(3.15,1.04,1.284,.59,MK4,.97,.03),
     bodyStation(3.31,1.04,1.255,.64,MK4,.97,.03),bodyStation(3.80,1.025,1.034,.96,MK4,.96,.02),
-  ]),...merkava4RearFoldSolids()];
+  ];
+  const body=barak?barakHullBody(sections):sectionSolid(sections);
+  const pieces=[body,...merkava4RearFoldSolids()];
   const merged=mergeGeometries(pieces);
   for(const piece of pieces)piece.dispose();
   if(!merged)throw new Error('Merkava 4 rear hull primitives did not merge');
@@ -1123,7 +1035,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   const sourceY=candidate==='merkava4_trophy'?.01:0;
   P.hullG.position.set(0,sourceY,0);P.turretG.position.set(0,MK4.y+sourceY,MK4.z);
   P.gunG.position.set(0,1.9934619-MK4.y,1.93-MK4.z);
-  P.add('hull',candidate==='merkava4_trophy'?trophyMerkava4Hull():merkava4Hull());
+  P.add('hull',candidate==='merkava4_trophy'?trophyMerkava4Hull():merkava4Hull(candidate==='merkava4_barak'));
   if(candidate==='merkava4_trophy')P.add('hull',trophyMerkavaGlacisCap());
   const trophyGear=candidate==='merkava4_trophy';
   const barakGear=candidate==='merkava4_barak';
@@ -1192,7 +1104,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   }
   if(candidate==='merkava4_barak'){
     addBarakEndGuards(P);
-    addModernMerkavaRearClosure(P,false);
+    addBarakRearCases(P);
     addBarakHullSignature(P);
     addBarakTurretArmor(P);
     addBarakRearMissionModule(P);
