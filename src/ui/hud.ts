@@ -1340,6 +1340,15 @@ body.cot-debug-hud .cot-net{display:none!important;}
    red strike itself to stay legible; the side accent bar desaturates so
    living rows pop against the dead ones. */
 .cot-er.dead{opacity:.45;}
+/* sides (2026-09-18): past ten rows a side packs its ear — smaller rows, no gaps, and a viewport cap
+   so a 1 v 41 roster never runs under the bottom instruments */
+.cot-ear.dense{gap:0;max-height:calc(var(--cot-viewport-height,100vh) - 210px);overflow:hidden;}
+.cot-ear.dense .hd{padding:3px 8px;}
+.cot-ear.dense .cot-er{padding:1px 8px 2px 6px;font-size:9.5px;}
+.cot-ear.dense.r .cot-er{padding:1px 6px 2px 8px;}
+.cot-ear.dense .cot-er .ic{width:22px;height:11px;}
+.cot-ear.dense .cot-er .n .nick{font-size:9px;}
+.cot-ear.dense .cot-er .n .veh{font-size:7.5px;}
 .cot-er.dead .n .nick,.cot-er.dead .n .veh .vn{
   text-decoration:line-through;text-decoration-color:rgba(240,90,90,.85);}
 .cot-ear.l .cot-er.dead{border-left-color:rgba(126,232,126,.3);}
@@ -2836,6 +2845,9 @@ export function initHud(bus: EventBus): HudRuntime {
       tallyTank(tank, ally, dead);
       updateEarRow(tank, ally, dead);
     }
+    // sides (owner 2026-09-18): a 14 v 14 or 1 v 20 roster packs its ear so the panel stays inside the viewport
+    earL.classList.toggle('dense', teamTally.allyTotal > 10);
+    earR.classList.toggle('dense', teamTally.enemyTotal > 10);
     return teamTally;
   }
 

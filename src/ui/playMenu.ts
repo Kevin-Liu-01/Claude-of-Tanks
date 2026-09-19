@@ -2,8 +2,11 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
-import { ENEMY_NATION_OPTIONS, readTeamArrangement, writeTeamArrangement } from '../game/teamArrangement.ts';
-import { TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, normalizeTeamArrangement, type TeamArrangement } from '../sim/matchRuleset.ts';
+import { ENEMY_NATION_OPTIONS, SIDES_MODES, readTeamArrangement, writeSides, writeTeamArrangement } from '../game/teamArrangement.ts';
+import {
+  BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement,
+  rulesetSides, sidesPresetOf, type TeamArrangement,
+} from '../sim/matchRuleset.ts';
 /**
  * Battle-mode picker and private/LAN lobby presentation.
  *
@@ -197,6 +200,13 @@ const CSS = `
 .cot-play .arrange-fields select:disabled{opacity:.55}.cot-play .arrange-fields label[hidden]{display:none}
 .cot-play .arrange-fields .action{padding:7px 10px;font-size:9px}
 body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='compact'] .cot-play .arrange-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cot-play .arrange-sides{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}.cot-play .arrange-sides[hidden]{display:none}
+.cot-play .arrange-sides-label{font:700 8px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase;color:#9fb0bb;margin-right:4px}
+.cot-play .arrange-sides button{font:800 11px ${FONT_STACK};color:#dce6ed;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 10px;cursor:pointer}
+.cot-play .arrange-sides button[aria-pressed='true']{border-color:rgba(240,176,74,.7);background:rgba(230,139,26,.16);color:#ffd28e}.cot-play .arrange-sides button:disabled{opacity:.55;cursor:default}
+.cot-play .arrange-readout{margin-left:auto;font:900 12px ${FONT_COND};letter-spacing:.12em;color:#f0d9b0}
+.cot-play .arrange-fields input[type='number']{font:700 12px ${FONT_STACK};color:#f2f6f8;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 8px;width:100%;box-sizing:border-box}
+.cot-play .arrange-fields input:disabled{opacity:.55}.cot-play .arrange-cap{display:block;margin-top:6px;color:#8a9aa6;font-size:9px}.cot-play .arrange-cap[hidden]{display:none}
 .cot-play .operation-picker{display:grid;gap:4px;margin-top:8px}.cot-play .operation-picker[hidden]{display:none}
 .cot-play .operation-picker select{font:700 12px ${FONT_STACK};color:#f2f6f8;background:#141c22;border:1px solid #3a4852;border-radius:6px;padding:6px 8px;max-width:100%}
 .cot-play .operation-picker select:disabled{opacity:.55}
@@ -676,13 +686,23 @@ export function createPlayMenu({
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
     <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
       <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note>${t('playMenu.arrange.sub')}</span></div>
+      <div class="arrange-sides" data-arrange-sides role="group" aria-label="${t('playMenu.arrange.sides')}" hidden>
+        <span class="arrange-sides-label">${t('playMenu.arrange.sides')}</span>
+        <button type="button" data-sides="7v7" aria-pressed="true">${t('playMenu.arrange.sides7')}</button>
+        <button type="button" data-sides="14v14" aria-pressed="false">${t('playMenu.arrange.sides14')}</button>
+        <button type="button" data-sides="custom" aria-pressed="false">${t('playMenu.arrange.sidesCustom')}</button>
+        <b class="arrange-readout" data-sides-readout></b>
+      </div>
       <div class="arrange-fields">
-        <label><span>${t('playMenu.arrange.allies')}</span><select data-arrange="allies"></select></label>
-        <label><span>${t('playMenu.arrange.enemies')}</span><select data-arrange="enemies"></select></label>
+        <label data-arrange-field="allies"><span>${t('playMenu.arrange.allies')}</span><select data-arrange="allies"></select></label>
+        <label data-arrange-field="enemies"><span>${t('playMenu.arrange.enemies')}</span><select data-arrange="enemies"></select></label>
+        <label data-arrange-field="alliesCount" hidden><span>${t('playMenu.arrange.allies')}</span><input type="number" inputmode="numeric" step="1" data-arrange="alliesCount"></label>
+        <label data-arrange-field="enemiesCount" hidden><span>${t('playMenu.arrange.enemiesField')}</span><input type="number" inputmode="numeric" step="1" data-arrange="enemiesCount"></label>
         <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
         <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
         <button class="action alt" type="button" data-arrange-reset>${t('playMenu.arrange.reset')}</button>
       </div>
+      <small class="arrange-cap" data-arrange-cap hidden>${t('playMenu.arrange.fieldCap', { max: String(BATTLE_FIELD_LIMIT) })}</small>
     </section>
     <section class="campaign" data-campaign>${campaignMarkup()}</section>
     <section class="room"><div class="setup">
@@ -949,15 +969,45 @@ export function createPlayMenu({
     const lines = card?.querySelector<HTMLElement>('[data-rule-lines]');
     if (lines) lines.textContent = ruleLineCopy(mode, currentArrangement(mode));
   }
+  // ---- sides (owner 2026-09-18): 7v7 / 14v14 / custom for the symmetric modes ---------------------------
+  const sidesGroup = arrangeSection.querySelector<HTMLElement>('[data-arrange-sides]')!;
+  const sidesButtons = [...sidesGroup.querySelectorAll<HTMLButtonElement>('button[data-sides]')];
+  const sidesReadout = sidesGroup.querySelector<HTMLElement>('[data-sides-readout]')!;
+  const capNote = arrangeSection.querySelector<HTMLElement>('[data-arrange-cap]')!;
+  const arrangeField = (name: string): HTMLElement => arrangeSection.querySelector<HTMLElement>(`[data-arrange-field="${name}"]`)!;
+  const arrangeInput = (name: string): HTMLInputElement => arrangeSection.querySelector<HTMLInputElement>(`input[data-arrange="${name}"]`)!;
+  let sidesCustomOpen = false;
   function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
-    if (!acceptsTeamArrangement(mode)) { arrangeSection.hidden = true; return; }
+    // a room keeps its own team size for the symmetric modes (net/lobby.ts teamSize); the wave modes arrange here
+    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode))) { arrangeSection.hidden = true; return; }
     arrangeSection.hidden = false;
+    const wave = isWaveMode(mode);
     const defaults = matchRulesetFor(mode);
     const arranged = currentArrangement(mode);
-    fillOptions(arrangeSelect('allies'), range(TEAM_ARRANGEMENT_LIMITS.allies[0], TEAM_ARRANGEMENT_LIMITS.allies[1]),
-      String(arranged?.allies ?? defaults.allies ?? 0));
-    fillOptions(arrangeSelect('enemies'), range(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0], TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]),
-      String(arranged?.enemies ?? defaults.enemies ?? TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]));
+    sidesGroup.hidden = wave;
+    capNote.hidden = wave;
+    arrangeField('allies').hidden = !wave;
+    arrangeField('enemies').hidden = !wave;
+    if (wave) {
+      fillOptions(arrangeSelect('allies'), range(TEAM_ARRANGEMENT_LIMITS.allies[mode][0], TEAM_ARRANGEMENT_LIMITS.allies[mode][1]),
+        String(arranged?.allies ?? defaults.allies ?? 0));
+      fillOptions(arrangeSelect('enemies'), range(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0], TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]),
+        String(arranged?.enemies ?? defaults.enemies ?? TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]));
+      arrangeField('alliesCount').hidden = true;
+      arrangeField('enemiesCount').hidden = true;
+    } else {
+      const sides = rulesetSides({ allies: arranged?.allies ?? null, enemies: arranged?.enemies ?? null });
+      const preset = sidesPresetOf(sides);
+      const custom = sidesCustomOpen || preset === 'custom';
+      for (const button of sidesButtons) button.setAttribute('aria-pressed', String(button.dataset.sides === (custom ? 'custom' : preset)));
+      arrangeField('alliesCount').hidden = !custom;
+      arrangeField('enemiesCount').hidden = !custom;
+      const allies = arrangeInput('alliesCount'), enemies = arrangeInput('enemiesCount');
+      allies.min = String(TEAM_ARRANGEMENT_LIMITS.allies[mode][0]); allies.max = String(TEAM_ARRANGEMENT_LIMITS.allies[mode][1]);
+      enemies.min = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][0]); enemies.max = String(TEAM_ARRANGEMENT_LIMITS.enemies[mode][1]);
+      allies.value = String(sides.allies); enemies.value = String(sides.enemies);
+      sidesReadout.textContent = t('playMenu.arrange.readout', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
+    }
     const waveLabel = arrangeSection.querySelector<HTMLElement>('[data-arrange-wave]')!;
     waveLabel.hidden = mode !== 'endless_horde';
     if (mode === 'endless_horde') {
@@ -968,17 +1018,23 @@ export function createPlayMenu({
       [['', t('playMenu.arrange.mixed')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
       arranged?.enemyNation ?? '');
     const locked = fromLobby && (role !== 'host' || state?.phase !== 'waiting');
-    for (const select of arrangeSection.querySelectorAll<HTMLSelectElement>('select')) select.disabled = locked;
+    for (const control of arrangeSection.querySelectorAll<HTMLSelectElement | HTMLInputElement>('select, input')) control.disabled = locked;
+    for (const button of sidesButtons) button.disabled = locked;
     arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.disabled = locked;
     const note = arrangeSection.querySelector<HTMLElement>('[data-arrange-note]');
     if (note) note.textContent = t(fromLobby ? (role === 'host' ? 'playMenu.arrange.subHost' : 'playMenu.arrange.subGuest') : 'playMenu.arrange.sub');
     refreshRuleLines(mode);
   }
   function readArrangementPanel(mode: GameModeId): TeamArrangement | null {
-    const number = (name: string): number | null => { const v = Number(arrangeSelect(name).value); return Number.isFinite(v) ? v : null; };
+    const wave = isWaveMode(mode);
+    const number = (name: string): number | null => {
+      const v = Number((wave ? arrangeSelect(name) : arrangeInput(`${name}Count`)).value);
+      return Number.isFinite(v) ? v : null;
+    };
+    const waveSize = mode === 'endless_horde' ? Number(arrangeSelect('waveSize').value) : NaN;
     return normalizeTeamArrangement(mode, {
       allies: number('allies'), enemies: number('enemies'),
-      waveSize: mode === 'endless_horde' ? number('waveSize') : null,
+      waveSize: Number.isFinite(waveSize) ? waveSize : null,
       enemyNation: arrangeSelect('enemyNation').value || null,
     });
   }
@@ -986,11 +1042,28 @@ export function createPlayMenu({
     const mode = selectedGameMode;
     if (!acceptsTeamArrangement(mode)) return;
     writeTeamArrangement(mode, arrangement);
+    if (!isWaveMode(mode)) {
+      // the symmetric modes share one sides setting (game/teamArrangement.ts writeSides), each keeping its nation
+      writeSides(arrangement && (arrangement.allies != null || arrangement.enemies != null)
+        ? rulesetSides({ allies: arrangement.allies ?? null, enemies: arrangement.enemies ?? null }) : null);
+      for (const other of SIDES_MODES) if (other !== mode) refreshRuleLines(other);
+    }
     if (state && role === 'host' && state.phase === 'waiting') command({ type: 'set_arrangement', arrangement });
     renderArrangement(mode, !!state);
   }
   arrangeSection.addEventListener('change', () => applyArrangement(readArrangementPanel(selectedGameMode)));
-  arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.addEventListener('click', () => applyArrangement(null));
+  arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.addEventListener('click', () => {
+    sidesCustomOpen = false;
+    applyArrangement(null);
+  });
+  for (const button of sidesButtons) button.addEventListener('click', () => {
+    const id = button.dataset.sides;
+    if (id === 'custom') { sidesCustomOpen = true; renderArrangement(selectedGameMode, !!state); return; }
+    if (id !== '7v7' && id !== '14v14') return;
+    sidesCustomOpen = false;
+    const current = currentArrangement(selectedGameMode);
+    applyArrangement(normalizeTeamArrangement(selectedGameMode, { ...SIDES_PRESETS[id], enemyNation: current?.enemyNation ?? null }));
+  });
 
   function showSelectedGameMode(
     next: RuntimeValue = selectedGameMode,

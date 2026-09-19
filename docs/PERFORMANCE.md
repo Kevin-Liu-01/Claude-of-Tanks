@@ -1043,6 +1043,33 @@ residency remained flat at 282 geometries and 103 textures. Final static merging
 removed 441 display draws and released 354 source geometries without changing
 the 374,952 submitted workshop triangles.
 
+## Field size — 2026-09-18
+
+The sides switch (owner: "a switch that's default set to 7v7 but then switching it does 14v14 and
+you can also enter custom numbers of allies and enemies … go up to a number that you test is the
+total limit to how many tanks can be in a game before performance is unacceptable") needed a field
+ceiling. A scratch probe (`.qa-dev/field-perf-probe.mjs`, never staged: a private-cache vite server
+over the round-21 worktree, headless Chromium on the hardware ANGLE path, `tier=desktop`, a stored
+sides arrangement, a real Standard entry with `t90m_x` on `verdant`, then 15 s of driving and
+firing) recorded the dev flight recorder's live frame gaps for four field sizes on the M5 Max
+desktop. Two other release gates were running (1-minute load 37 → 143 across the runs), so the
+absolute numbers are pessimistic; the per-vehicle slope is the signal.
+
+| Field (player included) | Entry → live | Live fps | Gap p50 | p90 | p99 | Draw calls | Sim share |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 14 (7 v 7) | 26.5 s | 37.5 | 25.3 ms | 33.5 | 48.0 | 561 | 98 % |
+| 28 (14 v 14) | 38.9 s | 27.9 | 31.2 ms | 42.5 | 67.7 | 722 | 101 % |
+| 42 (21 v 21) | 44.3 s | 23.5 | 39.4 ms | 53.5 | 70.7 | 1151 | 98 % |
+| 56 (28 v 28) | 57.2 s | 19.0 | 49.7 ms | 68.3 | 82.9 | 1129 | 82 % |
+
+The frame gap grows about 0.6 ms per vehicle under that load (the simulation — bot AI, spotting,
+contacts — owns the frame at every size; draw calls double from 14 to 42 vehicles), and the entry
+grows about 0.7 s per vehicle. `BATTLE_FIELD_LIMIT` is 42: the 14 v 14 preset keeps a wide margin,
+a custom field may reach 1 v 41 or 20 v 21, and the 56-vehicle field's fifty-second entry and
+sub-20 fps under load put it past the acceptable line. Re-measure on a quiet machine before raising
+the limit (`sim/matchRuleset.ts`, `docs/GAME-MODES.md` "Sides"). The loading screen's reveal budget
+scales with the field for the same reason (`game/battleEntryLifecycle.ts` `revealTimeoutForField`).
+
 ## Reporting a performance result
 
 Record:

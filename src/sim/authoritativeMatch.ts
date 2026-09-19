@@ -12,6 +12,7 @@ import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
 import { getSpec } from '../vehicles/specs.ts';
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { reuseSpawnPad } from './spawnPads.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
 import { createHeightField, createLayout } from '../world/terrain.ts';
 import type { HeightField, TerrainLayout } from '../world/terrain.ts';
@@ -463,10 +464,14 @@ function spawnFor(
       yaw: finite(base.yaw, 0),
     };
   }
-  const base = layout.spawns.enemies[index % layout.spawns.enemies.length]!;
+  const pads = layout.spawns.enemies;
+  const base = pads[index % pads.length]!;
   // World layout already authors every enemy pad toward the opposing spawn.
   // Adding PI here made browser-hosted/dedicated Bravo tanks deploy backwards.
-  return { x: base.x, z: base.z, yaw: finite(base.yaw, Math.PI) };
+  // A side larger than the pads re-uses them on the compact offset ring (sides 2026-09-18,
+  // sim/spawnPads.ts) instead of stacking every eighth vehicle on pad 0 again.
+  const point = reuseSpawnPad({ x: base.x, z: base.z, yaw: finite(base.yaw, Math.PI) }, Math.floor(index / pads.length));
+  return { x: point.x, z: point.z, yaw: point.yaw };
 }
 
 function botOpeningGoal(

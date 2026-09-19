@@ -21,6 +21,13 @@ assert.deepEqual(again, first, 'planning is deterministic until a battle starts'
 assert.equal(first[0], 'm1a2', 'player remains the first participant');
 assert.equal(first.length, 14, 'random battle plan covers the full 7v7 roster');
 assert.equal(new Set(first).size, first.length, 'planned participant ids are unique');
+// sides (owner 2026-09-18): a 14 v 14 plan asks for 27 non-player seats and takes every one the catalog can fill
+{
+  const wide = planBattleParticipantIds(game, 'm1a2', true, [], 27, null);
+  assert.equal(wide.length, Math.min(28, game.allTanks.length), 'a wider field takes every seat the catalog can fill');
+  assert.equal(new Set(wide).size, wide.length, 'a wider field never repeats a vehicle');
+  assert.equal(wide[0], 'm1a2');
+}
 // batch 19 (2026-09-14): a campaign operation's formation fills the enemy seats first — same-era vehicles of
 // the named nations lead the plan (at most ten, leaving seats for the allies); no formation keeps the standard plan
 {

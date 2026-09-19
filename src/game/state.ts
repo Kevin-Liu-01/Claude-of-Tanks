@@ -34,8 +34,9 @@ import type {
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
-  applyRulesetToCombat, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetLoadout,
+  applyRulesetToCombat, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetLoadout,
   type MatchRuleset, type TeamArrangement } from '../sim/matchRuleset.ts';
+import { allySpawnPoint, reuseSpawnPad } from '../sim/spawnPads.ts';
 import { campaignEnemyNations, campaignRulesetInput } from './campaignOperations.ts';
 import { enemyNationSpecNations, readTeamArrangement } from './teamArrangement.ts';
 import type { SpecialActionSpec, SpecialActionState } from '../sim/specialActionPolicy.ts';
@@ -470,14 +471,8 @@ const COMBAT_SEED = 6000;
 const FIRE_TICK_S = 0.5;
 // The battle clock is the ruleset's (sim/matchRuleset.ts timeLimitS: 15:00 for Standard, none for
 // Horde, 12:00 lost-on-expiry for a campaign sortie); the HUD counts the same value down.
-const ALLY_SPAWN_SLOTS = Object.freeze([
-  Object.freeze({ lat: 26, back: 0 }),
-  Object.freeze({ lat: -26, back: 0 }),
-  Object.freeze({ lat: 52, back: 8 }),
-  Object.freeze({ lat: -52, back: 8 }),
-  Object.freeze({ lat: 20, back: 30 }),
-  Object.freeze({ lat: -20, back: 30 }),
-]);
+// Allied bots seat around the player pad and a side larger than the map's enemy pads re-uses them on a
+// compact ring: sim/spawnPads.ts (sides, owner 2026-09-18) — the authored 7v7 wedge stays the first six slots.
 
 // module-scope scratch — no per-frame allocation
 const _muzzle = new THREE.Vector3();
@@ -664,8 +659,10 @@ export function battleRosterPlan(
 ): { nations: readonly string[]; slots: number | null; formationLead: number | null } {
   const nations = battleEnemyNations(ruleset, campaignOperationId);
   // team arrangement (2026-09-15): the co-op modes size their own field — allied bots plus the enemy pool
+  // sides (2026-09-18): the symmetric modes field both sides at once and the tier-balanced split seats
+  // them; only the wave modes keep exactly `enemies` seats for the named nation
   if (randomBattle && ruleset.allies != null && ruleset.enemies != null) {
-    return { nations, slots: ruleset.allies + ruleset.enemies, formationLead: ruleset.enemies };
+    return { nations, slots: ruleset.allies + ruleset.enemies, formationLead: isWaveMode(ruleset.mode) ? ruleset.enemies : null };
   }
   return { nations, slots: null, formationLead: null };
 }
@@ -779,20 +776,24 @@ interface OpeningLane {
 function selectAllySpawn(context: BattleSpawnContext): SpawnPoint {
   const { world } = context;
   const playerSpawn = world.spawnPoints.player;
-  const slot = ALLY_SPAWN_SLOTS[context.allyIndex++ % ALLY_SPAWN_SLOTS.length];
-  const x = playerSpawn.pos[0] + context.playerPerpendicularX * slot.lat -
-    context.playerForwardX * slot.back;
-  const z = playerSpawn.pos[2] + context.playerPerpendicularZ * slot.lat -
-    context.playerForwardZ * slot.back;
+  // the authored wedge for the first six, lateral and forward slots past them (sim/spawnPads.ts)
+  const point = allySpawnPoint({ x: playerSpawn.pos[0], z: playerSpawn.pos[2], yaw: playerSpawn.yaw }, context.allyIndex++);
   return {
-    pos: [x, world.heightField.getHeightAt(x, z), z],
+    pos: [point.x, world.heightField.getHeightAt(point.x, point.z), point.z],
     yaw: playerSpawn.yaw,
   };
 }
 
 function selectEnemySpawn(context: BattleSpawnContext): SpawnPoint {
   const { enemies } = context.world.spawnPoints;
-  return enemies[context.enemyIndex++ % enemies.length];
+  const index = context.enemyIndex++;
+  const pad = enemies[index % enemies.length];
+  const reuse = Math.floor(index / enemies.length);
+  if (reuse === 0) return pad;
+  // sides (2026-09-18): a side larger than the map's pads re-uses them on the compact offset ring instead of
+  // asking the placement search to scatter every extra vehicle around pad 0
+  const point = reuseSpawnPad({ x: pad.pos[0], z: pad.pos[2], yaw: pad.yaw }, reuse);
+  return { pos: [point.x, context.world.heightField.getHeightAt(point.x, point.z), point.z], yaw: pad.yaw };
 }
 
 function selectEntitySpawn(
