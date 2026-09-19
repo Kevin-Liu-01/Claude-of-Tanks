@@ -4,6 +4,21 @@ import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSour
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
 export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
+  // Israeli modern-family owner studies (2026-09-18): proper-rotation,
+  // uniform-only source-x-oracle bakes.  The source meshes are fused for
+  // scoring because their ownership is flattened or crosses both sides.
+  merkava4_trophy: {
+    sha256:'a155cb6fb3ed46ef77e01f11fbd1d6cc8f5b8e747d09494f98f93579e396f684',
+    fused:true,turret:[0,1.605,-.3906],gun:[0,1.9934619,1.93],
+  },
+  merkava4_barak: {
+    sha256:'0549b50430cd8df0ebf9d095b617e64e8c6274747bea1dd99e4dec0e987b8f4d',
+    fused:true,turret:[0,1.605,-.3906],gun:[0,1.9934619,1.93],
+  },
+  namer_ifv: {
+    sha256:'72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870',
+    fused:true,turret:[0,2.10,-1.15],gun:[.05,2.38,-.13],
+  },
   // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
   // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
   ztz100_x: {

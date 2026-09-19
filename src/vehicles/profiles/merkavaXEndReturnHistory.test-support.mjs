@@ -16,6 +16,79 @@ const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const count=(source,part)=>source.split(part).length-1;
 const read=file=>fs.readFileSync(new URL(file,import.meta.url),'utf8');
 
+function beforeModernIsraeliFleet(source){
+  if(!source.includes("merkava4_trophy: { build: buildMerkava4Trophy }"))return source;
+  const removeExact=(part,label)=>{
+    assert.equal(count(source,part),1,`One exact ${label}`);
+    source=source.replace(part,'');
+  };
+  const replaceExact=(current,before,label)=>{
+    assert.equal(count(source,current),1,`One exact ${label}`);
+    source=source.replace(current,before);
+  };
+  const removeHashedBlock=(start,end,sha256,label)=>{
+    const startAt=source.indexOf(start),endAt=source.indexOf(end,startAt);
+    assert.ok(startAt>=0&&endAt>startAt,`${label}: exact bounded block exists`);
+    const block=source.slice(startAt,endAt);
+    assert.equal(hash(block),sha256,`${label}: complete reviewed block`);
+    source=source.slice(0,startAt)+source.slice(endAt);
+  };
+  removeExact("const NAMER: Frame = { y: 2.10, z: -1.15, ground: 0, center: 0 };\n",'Namer frame datum');
+  removeExact(`function hullBar(P: TankBuilderPort, a: [number,number,number], b: [number,number,number], width = .025, slot = 'hullDark'): void {
+  const start=new THREE.Vector3(...a),end=new THREE.Vector3(...b),delta=end.clone().sub(start);
+  const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.clone().normalize());
+  const g=box(width,delta.length(),width).applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(rotation));
+  const mid=start.add(end).multiplyScalar(.5);
+  P.addEquipment(slot,g,mid.x,mid.y,mid.z);
+}
+
+`,'Barak bow-cable helper');
+  removeHashedBlock('function merkava4BarakRoof','function merkava4Roof',
+    'cb49f53b427ddd34f7ff5e4fead34be703d042293a2acd250ebb6a121fb5de0a','Barak roof');
+  replaceExact("function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {\n  if(candidate==='merkava4_barak'){\n    merkava4BarakRoof(P);\n    return;\n  }\n",
+    'function merkava4Roof(P: TankBuilderPort): void {\n','configuration-specific roof seam');
+  removeHashedBlock('type TrophyConfiguration','function merkava4Shell',
+    '3f4a897801a0f32dcc0838c1643404c2f702245fd8ecf2500efd51bf5d4feae5','modern Merkava fittings');
+  replaceExact("function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {",
+    'export function buildMerkava4X(P: TankBuilderPort): void {','modern Merkava family entry');
+  removeExact("  if(candidate!=='merkava4_x')P.add('hull',modernMerkavaGlacisCap(candidate==='merkava4_barak'?.06:0));\n",
+    'modern glacis extension call');
+  replaceExact('  merkava4Roof(P,candidate);\n','  merkava4Roof(P);\n','configuration-specific roof call');
+  replaceExact(`  P.muzzleZ=2.8755;P.topY=2.75-MK4.y;
+  if(candidate==='merkava4_trophy'){
+    addModernMerkavaRearClosure(P,true);
+    addTrophySuite(P,MK4,'mk4');
+    applyMerkavaVerticalStudyScale(P,.95);
+  }
+  if(candidate==='merkava4_barak'){
+    addModernMerkavaRearClosure(P,false);
+    addBarakHullSignature(P);
+    addBarakTurretArmor(P);
+    addTrophySuite(P,MK4,'barak');
+    addBarakSensorSuite(P);
+    addBarakRearStowage(P);
+    P.gunG.scale.z=.97;
+    P.muzzleZ*=.97;
+  }
+  P.hullG.userData.xRebuild={candidate,independent:candidate==='merkava4_x',familyRecipe:'merkava4-first-party',datumVersion:1,sourceLocalOnly:true};
+}`,
+  `  P.muzzleZ=2.8755;P.topY=2.75-MK4.y;
+  P.hullG.userData.xRebuild={candidate:'merkava4_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+}`,'modern Merkava configuration tail');
+  replaceExact(`
+
+export function buildMerkava4X(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_x'); }
+export function buildMerkava4Trophy(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_trophy'); }
+export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_barak'); }
+
+`,'\n\n','modern Merkava exported wrappers');
+  removeHashedBlock('function namerSuperstructure','export const MERKAVA_X_PROFILES',
+    'b43c3787f8208e1fc3edba0abcbe56aa700022e95aaf680f9301be0062696f16','Namer implementation');
+  removeExact("  merkava4_trophy: { build: buildMerkava4Trophy },\n  merkava4_barak: { build: buildMerkava4Barak },\n  namer_ifv: { build: buildNamerIfv },\n",
+    'modern Israeli profile registrations');
+  return source;
+}
+
 function beforeMerkava3dRightCheekRepair(source){
   // 2026-09-18: authenticate the complete approved +X Dor-Dalet repair and
   // recover only that exact additive block before checking the older shared
@@ -200,6 +273,7 @@ export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
+  source=beforeModernIsraeliFleet(source);
   let before=beforeMerkava3dRightCheekRepair(
     beforeRollers(beforePaintedBasketFloor(beforeMeshBasket(source),readHelper),readHelper));
   const present=[];

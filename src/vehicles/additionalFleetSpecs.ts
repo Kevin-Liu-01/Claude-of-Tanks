@@ -329,14 +329,14 @@ const SPECS: FleetTankSpec[] = [
       }),
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   make('merkava4', 'merkava3d', 'Merkava Mk.3D', 'Israel',
-    { hp: 2700, enginePowerHp: 1200, weightTons: 65,
+    { hp: 2500, enginePowerHp: 1200, weightTons: 65,
       topSpeedKmh: 60, reverseSpeedKmh: 20, hullTraverseDegS: 38,
       turretTraverseDegS: 38, gunPitchDegS: 30, gunDepressionDeg: 8,
       terrainResistance: { hard: 0.75, medium: 0.85, soft: 1.50 },
       gun: merkavaGun({
-        reloadS: 5.9, accuracy: 0.28, aimTimeS: 1.6,
-        kinetic: [891, 810, 730, 560, 1710], heat: [650, 520],
-        heDamage: 630, moduleDmg: 130,
+        reloadS: 6.2, accuracy: 0.29, aimTimeS: 1.7,
+        kinetic: [830, 755, 680, 560, 1710], heat: [620, 500],
+        heDamage: 600, moduleDmg: 125,
         bloom: { move: 0.055, hullRot: 0.075, turret: 0.05, afterShot: 2.10 },
       }),
       armor: merkavaArmor({
@@ -348,14 +348,14 @@ const SPECS: FleetTankSpec[] = [
   // early/non-Trophy 4B fit and uses its own dormant bespoke profile rather
   // than inheriting the Mk.4M/Windbreaker furniture.
   make('merkava4', 'merkava4b', 'Merkava Mk.4B', 'Israel',
-    { hp: 2800, enginePowerHp: 1500, weightTons: 65,
+    { hp: 2550, enginePowerHp: 1500, weightTons: 65,
       topSpeedKmh: 64, reverseSpeedKmh: 25, hullTraverseDegS: 40,
       turretTraverseDegS: 40, gunPitchDegS: 32, gunDepressionDeg: 8,
       terrainResistance: { hard: 0.68, medium: 0.78, soft: 1.40 },
       gun: merkavaGun({
-        reloadS: 5.6, accuracy: 0.27, aimTimeS: 1.5,
-        kinetic: [916, 833, 750, 550, 1730], heat: [680, 510],
-        heDamage: 620, moduleDmg: 130,
+        reloadS: 6.5, accuracy: 0.31, aimTimeS: 1.9,
+        kinetic: [794, 722, 650, 520, 1710], heat: [600, 480],
+        heDamage: 590, moduleDmg: 125,
         bloom: { move: 0.05, hullRot: 0.07, turret: 0.045, afterShot: 2.00 },
       }),
       armor: merkavaArmor({

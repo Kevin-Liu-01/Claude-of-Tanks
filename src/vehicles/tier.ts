@@ -21,7 +21,9 @@ export const TANK_TIER = Object.freeze({
   t90a_burlak_x: 10,
   t90ms_x: 10,
   leo2a7v_x: 10, leo2a6m_x: 10, leo2a4m_x: 10, leo2a5_x: 10, // owner 2026-09-15 (evening): 2A5M and 2A5 studies tier X
-  merkava4_x: 9, merkava3d_x: 10, k2_x: 9, kf51_x: 10,
+  merkava4_x: 9, merkava3d_x: 9,
+  merkava4_trophy: 10, merkava4_barak: 10, namer_ifv: 9,
+  k2_x: 9, kf51_x: 10,
   m1a2_x: 10, m1a2_tusk_x: 10,
   m1a2_sepv2_x: 10, m1a2_sepv3_x: 10, ua_m1a1_x: 9,
   // 2026-09-15 owner: the four T-90 X studies are tier X and lead the Russian garage
@@ -52,7 +54,7 @@ export const TANK_TIER = Object.freeze({
   leo2_revolution_proto: 9, leo2_revolution: 10, leo2a5: 9, leo2a5_a5nl: 10, leo2a7v: 10,
   m1a1ha: 9, m1a2_sepv2: 10, m1a2_sepv3: 10, m60a1: 8, pt91m: 8,
   merkava1b: 7, merkava2b: 8, merkava2d: 8,
-  merkava3b: 8, merkava3c: 9, merkava3d: 10, merkava4: 9, merkava4b: 10,
+  merkava3b: 8, merkava3c: 9, merkava3d: 9, merkava4: 9, merkava4b: 9,
   t62mv1: 7, t64bv1: 8, t72b_1987: 8, t72b3m: 9,
   t72bu: 8, t90sm: 9, type90: 9, t90a_vladimir: 9,
   t90: 10, t90ms: 10, t90a_burlak: 10,

@@ -117,6 +117,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://www.idf.il/en/mini-sites/training-and-preparation/the-merkava-celebrates-35-years-of-service-in-the-idf/',
     kind: 'operator',
   }),
+  sibatNamer: Object.freeze({
+    title: 'Israel Defense Directory 2018–19 — Namer APC',
+    url: 'https://www.sibat.mod.gov.il/Industries/directory/Documents/Sibatdir-dfs-en-2018-19.pdf',
+    kind: 'operator-industry',
+  }),
   bundeswehrPuma: Object.freeze({
     title: 'Bundeswehr — Puma crew and unmanned turret',
     url: 'https://www.bundeswehr.de/de/organisation/heer/aktuelles/schuetzenpanzer-puma-technischer-quantensprung-5037928',
@@ -378,6 +383,17 @@ const LAYOUTS = Object.freeze({
     missileRack: { placement: 'turret', form: 'gunLaunchedHypersonicRounds' },
   }) },
   ifvFrontTwoMan: { confidence: 'platform-inferred', sources: ['roeBmp2', 'bundeswehrMarder', 'britishWarrior', 'jgsdfType89'], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
+  namerIfv: { confidence: 'demonstrator-inferred', sources: ['sibatNamer'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'],
+    ['commander', 'hull', 'midLeft'],
+  ), systems: systems({
+    engine: { placement: 'front', form: 'frontDieselPowerpack' },
+    transmission: { placement: 'front', form: 'integratedFinalDrive' },
+    optics: { placement: 'turretPerimeter', form: 'unmannedTurretSightSuite' },
+    ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' },
+    feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
+    missileRack: null,
+  }) },
   bmp1: { confidence: 'platform-inferred', sources: ['roeBmp2'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['commander', 'hull', 'midLeft'], ['gunner', 'turret', 'frontCenter'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'clipFeed' }, missileRack: { placement: 'hull', form: 'gunLaunchedRounds' } }) },
@@ -440,7 +456,10 @@ const IDS_BY_LAYOUT = Object.freeze({
   leopard: ['strv122_x', 'leo2a6_x', 'leo1a5', 'leopard2_proto', 'leo2a4', 'leo2a4_otco', 'leo2a4m', 'leo2a5', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2_revolution_proto', 'leo2_revolution', 'leo2a7v', 'strv122', 'leo2a6_ua', 'leo2a7v_x', 'leo2a6m_x', 'leo2a4m_x', 'leo2a5_x'],
   abrams: ['m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_legacy', 'm1a1ha', 'm1a2_sepv2', 'm1a2_sepv3', 'ua_m1a1',
     'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'],
-  merkava: ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b', 'merkava4_x', 'merkava3d_x'],
+  merkava: [
+    'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b',
+    'merkava4_x', 'merkava3d_x', 'merkava4_trophy', 'merkava4_barak',
+  ],
   sovietManual: ['t62mv1_x', 't62mv1'],
   sovietAz: ['type96b_x', 't90ms_x', 't90a_burlak_x', 't90_x', 't72bu_x', 't72b3m_x', 't72b3_x', 't72b_1987_x', 't72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'],
   sovietMz: ['t80u_x', 't64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
@@ -454,6 +473,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   m1a3: ['m1a3'],
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
   ifvFrontTwoMan: ['ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
+  namerIfv: ['namer_ifv'],
   bmp1: ['bwp1'],
   puma: ['spz_puma', 'spz_puma_s1', 'type89_light_tiger', 'cv90_mkiv'],
   bmp3: ['bmp3', 'bmp3_rok'],

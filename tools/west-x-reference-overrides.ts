@@ -18,6 +18,28 @@ export const WEST_X_REFERENCE_OVERRIDES = {
   // Mk3D's nominal bone_turret includes internal hull geometry, and its
   // flat ex_armor material meshes mix owners. No false disjoint masks.
   merkava3d_x: fusedOracle('merkava3d_x'),
+  // The supplied Mark IV hierarchy is semantic, but each wheel axle and some
+  // side equipment are fused across both sides.  The source-only bake keeps
+  // the complete Trophy-equipped print while avoiding invented masks.
+  merkava4_trophy: {
+    ...fusedOracle('merkava4_trophy_x'),
+    qualityBar: 'fleet',
+    glb: { ...fusedOracle('merkava4_trophy_x').glb, componentMasks: false },
+  },
+  // The Armored Warfare Barak print is flattened by material into Object_2…35.
+  // Its source-only bake omits only the documented detached sub-ground artifact.
+  merkava4_barak: {
+    ...fusedOracle('merkava4_barak_x'),
+    qualityBar: 'fleet',
+    glb: { ...fusedOracle('merkava4_barak_x').glb, componentMasks: false },
+  },
+  // The Namer source has a real turret subtree but its axle meshes fuse left
+  // and right running gear, so whole-source comparison is the honest oracle.
+  namer_ifv: {
+    ...fusedOracle('namer_ifv_x'),
+    qualityBar: 'fleet',
+    glb: { ...fusedOracle('namer_ifv_x').glb, componentMasks: false },
+  },
   // Object_19 mixes gun with suspension and Object_22 mixes turret/skirts.
   k2_x: fusedOracle('k2_x'),
   kf51_x: {

@@ -77,5 +77,10 @@ rejectMutation("P.add('turret', module);","P.addExternalArmor('turret', module);
   'Permanent repaired cheek cannot be reclassified as depleted ERA');
 rejectMutation('outerWorldX: Object.freeze([1.82,1.72,1.36])',
   'outerWorldX: Object.freeze([1.82,1.71,1.36])','Approved cheek envelope drift');
+rejectMutation("const sideX=configuration==='namer'?1.25:configuration==='mk4'?1.78:1.55;",
+  "const sideX=configuration==='namer'?1.25:configuration==='mk4'?1.77:1.55;",
+  'Modern Trophy configuration drift');
+rejectMutation("{z:-2.75-NAMER.z,ring:[[-.76,-.07],[.76,-.07]",
+  "{z:-2.75-NAMER.z,ring:[[-.75,-.07],[.76,-.07]",'Namer turret station drift');
 console.log(JSON.stringify({pass:true,owners:present.map(s=>s.id),negativeControls:rejected,historicalSingleSeamFailures,
   scope:'Test-only exact additive seams and immutable helper bytes; no physical result is inverted.'}));

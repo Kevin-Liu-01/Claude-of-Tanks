@@ -40,6 +40,7 @@ import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
 import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
+import './merkavaModernSpecs.ts';
 
 import {
   SAVED_TANK_IDS,

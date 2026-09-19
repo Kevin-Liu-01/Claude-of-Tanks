@@ -73,6 +73,9 @@ export interface FleetTankSpec extends Record<string, RuntimeValue> {
   /** A separately modeled but combat-equivalent row must not give its donor
    * a second vote in peer medians. The audit verifies equality, not this hint. */
   balancePeerOf?: string;
+  /** Optional audit-only cohort for platforms whose role is mechanically
+   * shared but whose intended balance envelope is categorically different. */
+  balanceCohort?: string;
   hp: number;
   enginePowerHp: number;
   weightTons: number;

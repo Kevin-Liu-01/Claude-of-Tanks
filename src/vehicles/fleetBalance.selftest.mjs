@@ -332,8 +332,8 @@ for (const [
 const merkavaProgression = [
   ['merkava2b', 8, 2200, 1000, 18, 32, 6.9, 525, 794, 650, 500, 650],
   ['merkava3c', 9, 2450, 1200, 20, 36, 6.2, 540, 830, 680, 540, 700],
-  ['merkava3d', 10, 2700, 1200, 20, 38, 5.9, 560, 891, 730, 600, 780],
-  ['merkava4b', 10, 2800, 1500, 25, 40, 5.6, 550, 916, 750, 650, 850],
+  ['merkava3d', 9, 2500, 1200, 20, 38, 6.2, 560, 830, 680, 600, 780],
+  ['merkava4b', 9, 2550, 1500, 25, 40, 6.5, 520, 794, 650, 650, 850],
 ];
 let previousMerkavaDpm = 0;
 for (const [
@@ -356,7 +356,8 @@ for (const [
   assert.equal(spec.armor.turretPlates.find((plate) => plate.name === 'turret_wedge_R').keMm,
     turretKe, `${id}: generation-specific turret protection`);
   const dpm = primary.dmg * 60 / reload;
-  assert.ok(dpm > previousMerkavaDpm, `${id}: firepower progresses by generation`);
+  assert.ok(dpm >= previousMerkavaDpm * .88,
+    `${id}: same-tier reorganization keeps firepower inside the family progression band`);
   previousMerkavaDpm = dpm;
 
   const local = createCombatState(spec);

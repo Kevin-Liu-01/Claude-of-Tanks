@@ -109,7 +109,8 @@ function groupFleetBalanceRows(
   for (const id of ids) {
     const spec = specs[id];
     if (!spec) continue;
-    const key = `${spec.era}/${tierOf(id)}/${spec.role}`;
+    const cohort = spec.balanceCohort ? `/${spec.balanceCohort}` : '';
+    const key = `${spec.era}/${tierOf(id)}/${spec.role}${cohort}`;
     const group = groups.get(key) || [];
     group.push({ id, spec });
     groups.set(key, group);

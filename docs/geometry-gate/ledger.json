@@ -1,8 +1,8 @@
 {
  "generatedAt": "2026-09-19T03:43:07.056Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 76,
- "total": 177,
+ "passed": 78,
+ "total": 180,
  "rows": [
   {
    "id": "leo2_revolution_proto",
@@ -388,19 +388,6 @@
    "components": {
     "wholeCurves": 93.3,
     "dims": 100,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
-   "id": "merkava3d_x",
-   "geoMin": 93.3,
-   "requiredMinimum": 92,
-   "qualityBar": "exemplar",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 93.3,
-    "dims": 99.3,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -961,6 +948,19 @@
    }
   },
   {
+   "id": "merkava4_barak",
+   "geoMin": 90.4,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.4,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t90a",
    "geoMin": 90.4,
    "gatePassed": true,
@@ -985,6 +985,19 @@
     "dims": 96.2,
     "floaters": 100
    }
+  },
+  {
+   "id": "merkava4_trophy",
+   "geoMin": 90.3,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.3,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "kv2",
@@ -1069,6 +1082,19 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "namer_ifv",
+   "geoMin": 90,
+   "requiredMinimum": 90,
+   "qualityBar": "fleet",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90,
+    "dims": 95,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
   },
   {
    "id": "t90sm",
@@ -2092,6 +2118,16 @@
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "merkava3d_x",
+   "geoMin": 0,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": false,
+   "components": {
+    "oracleAvailability": 0
+   }
   },
   {
    "id": "object279",
