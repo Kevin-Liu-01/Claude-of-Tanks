@@ -103,9 +103,9 @@ const fragmentBefore = {
 // Driftwood is unchanged from published1db.
 // Frozen rowboats and the nine Winter-family controls above are unchanged.
 const otherHashes = {
-  1337: '1b9ad42c147adc417740701d7c4fd20b09cd0614c11d3523a1d31d5c50af41ba',
-  2049: '105ad16521f022055e588fafc46404881fb9d20c7ea2c36e28832c06ebfd9fcd',
-  7719: '1b3742e177bcd069cc8d82721f23a33d1cba80f5336a7367de924d53cf7b68ff',
+  1337: '611a9ee80509a0c830c57cb4e7db70d29aa8f28eb7a00a8fbfabeb888de99f34' /* 2026-09-19: Mars joins the non-Winter kits */,
+  2049: '26019c5c71042ffe70a186c4ebabb2d7bac49d7d96cdee98faa5d57aa36d43ae',
+  7719: '2855ef5c91ee995cb1b5c11b3187d4dc35aff603462f3e9f067194ccbd163bde',
 };
 
 function build(mapId, seed, historical = true) {
@@ -465,7 +465,7 @@ for (const seed of [1337, 2049, 7719]) {
     }
   }
   assert.equal(others.digest('hex'), otherHashes[seed],
-    'all 27 non-Winter kits match the reconciled coal/buoy/reed baseline with unchanged RNG');
+    'all 28 non-Winter kits match the reconciled coal/buoy/reed baseline with unchanged RNG');
 }
 console.log(`winterLakeGeometry.selftest: ${berms} byte-identical berms, ${wedges} plates; zero V25 count/storage/RNG increase. Earlier geometry savings retained: ${reducedBytes} premerge bytes, ${finalAttributeBytesSaved} final nonindexed bytes across9map/seed cases`);
 

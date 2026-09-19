@@ -1193,6 +1193,8 @@ const PAL = {
   urbanSteel: [0x596065, 0x8b9293, 0x242a2e],
   desert: [0xa18a67, 0xc0ad83, 0x655845],
   nordic: [0x4b382c, 0x8b765e, 0x242b2c],
+  // Mars bases (round 23, 2026-09-18): white composite panels, bright roof shells, dark seams
+  orbital: [0xd4d9de, 0xeef1f3, 0x4c545b],
 } as const satisfies Record<string, Palette>;
 
 function colored<T extends THREE.BufferGeometry>(
@@ -1663,6 +1665,108 @@ function makeCornerOffice(rng: Rng): THREE.BufferGeometry {
   return mergeConnectedStructure('corneroffice', out);
 }
 
+// ---------------------------------------------------------------------------
+// Mars bases (owner 2026-09-18: "add mars map mode ... make it have space bases"): six destructible
+// station pieces in the same grounded-part idiom as the field huts — a domed habitat with its airlock, a
+// cylindrical module on landing legs with a roof panel, a comms mast with its dish, a tilted solar array, a
+// pair of cradled fuel spheres and a lit landing pad. Accent orange marks doors and warning bands.
+const MARS_ACCENT = 0xd8712a, MARS_GLASS = 0x86b9d8, MARS_CELL = 0x1f2f4a;
+
+function makeHabDome(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.orbital, r = 6.4;
+  colored(out, cylinder(r + 0.5, r + 0.7, 0.7, 24).translate(0, 0.35, 0), p[2], rng, 0.04);
+  const dome = new THREE.SphereGeometry(r, 20, 9, 0, Math.PI * 2, 0, Math.PI * 0.5);
+  colored(out, dome.translate(0, 0.62, 0), p[1], rng, 0.05);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const rib = box(0.18, 0.18, r * 1.02); rib.rotateX(Math.PI / 2);
+    // a curved seam approximated by a short tangent bar at the dome's shoulder
+    const bar = box(0.22, 0.22, 2.6).translate(0, r * 0.62 + 0.62, r * 0.74).rotateY(a);
+    colored(out, bar, p[2], rng, 0.03);
+    rib.dispose();
+  }
+  // airlock tunnel with an orange door at the front
+  colored(out, box(2.6, 2.6, 3.2).translate(0, 1.3, r + 0.9), p[0], rng, 0.05);
+  colored(out, markWorldAperture(box(1.5, 1.9, 0.12), [0, 0, 1]).translate(0, 1.2, r + 2.56), MARS_ACCENT, rng, 0.02);
+  for (const side of [-1, 1]) colored(out, markWorldAperture(box(0.10, 1.1, 1.4), [side, 0, 0])
+    .translate(side * (r * 0.72), 3.6, 0), MARS_GLASS, rng, 0.02);
+  colored(out, cylinder(0.12, 0.16, 2.4, 8).translate(0, r + 0.62 + 1.1, 0), p[2], rng, 0.02);
+  return mergeConnectedStructure('habdome', out);
+}
+
+function makeHabModule(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.orbital, r = 2.3, len = 9.0;
+  for (const x of [-1.5, 1.5]) for (const z of [-3.2, 3.2]) {
+    colored(out, box(0.5, 1.1, 0.5).translate(x, 0.55, z), p[2], rng, 0.03);
+  }
+  const body = cylinder(r, r, len, 16); body.rotateX(Math.PI / 2);
+  colored(out, body.translate(0, r + 0.6, 0), p[0], rng, 0.05);
+  for (const z of [-len / 2 - 0.15, len / 2 + 0.15]) {
+    const cap = cylinder(r + 0.12, r + 0.12, 0.3, 16); cap.rotateX(Math.PI / 2);
+    colored(out, cap.translate(0, r + 0.6, z), p[2], rng, 0.03);
+  }
+  colored(out, markWorldAperture(box(1.3, 1.7, 0.14), [0, 0, 1]).translate(0, r + 0.2, len / 2 + 0.36), MARS_ACCENT, rng, 0.02);
+  for (const side of [-1, 1]) for (const z of [-2.4, 0, 2.4]) {
+    colored(out, markWorldAperture(box(0.10, 0.7, 0.9), [side, 0, 0]).translate(side * (r + 0.02), r + 1.2, z), MARS_GLASS, rng, 0.02);
+  }
+  colored(out, box(0.32, 0.7, 0.32).translate(0, 2 * r + 0.6 + 0.35, 0), p[2], rng, 0.03);
+  colored(out, slab(5.6, 0.12, 3.0).translate(0, 2 * r + 0.6 + 0.76, 0), MARS_CELL, rng, 0.03);
+  return mergeConnectedStructure('habmodule', out);
+}
+
+function makeCommsMast(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.orbital, h = 14.0;
+  colored(out, box(3.2, 1.1, 3.2).translate(0, 0.55, 0), p[2], rng, 0.03);
+  colored(out, cylinder(0.32, 0.46, h, 10).translate(0, 1.1 + h / 2, 0), p[0], rng, 0.04);
+  for (const y of [5.0, 9.0, 13.0]) colored(out, box(2.8, 0.14, 0.14).translate(0, y, 0), p[2], rng, 0.03);
+  colored(out, box(0.28, 0.28, 1.4).translate(0, 10.6, 0.9), p[2], rng, 0.03);
+  const dish = cylinder(1.9, 0.5, 0.55, 14); dish.rotateX(Math.PI / 2);
+  colored(out, dish.translate(0, 10.6, 1.85), p[1], rng, 0.04);
+  colored(out, cylinder(0.12, 0.12, 0.8, 8).translate(0, 1.1 + h + 0.4, 0), MARS_ACCENT, rng, 0.02);
+  return mergeConnectedStructure('commsmast', out);
+}
+
+function makeSolarArray(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.orbital;
+  for (const z of [-3.1, 0, 3.1]) {
+    for (const x of [-3.6, 0, 3.6]) colored(out, box(0.22, 2.2, 0.22).translate(x, 1.1, z), p[2], rng, 0.03);
+    const panel = slab(9.2, 0.10, 2.5); panel.rotateX(-0.42);
+    colored(out, panel.translate(0, 2.62, z), MARS_CELL, rng, 0.03);
+    colored(out, box(9.2, 0.12, 0.16).translate(0, 2.2, z), p[0], rng, 0.03);
+  }
+  colored(out, box(0.6, 0.8, 0.6).translate(4.6, 0.4, 3.1), p[0], rng, 0.03);
+  return mergeConnectedStructure('solararray', out);
+}
+
+function makeFuelTanks(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.orbital, r = 2.1;
+  for (const z of [-2.7, 2.7]) {
+    colored(out, box(3.0, 0.8, 3.0).translate(0, 0.4, z), p[2], rng, 0.03);
+    colored(out, new THREE.SphereGeometry(r, 18, 12).translate(0, r + 0.3, z), p[1], rng, 0.04);
+    colored(out, box(3.2, 0.24, 0.24).translate(0, r + 0.3, z), MARS_ACCENT, rng, 0.02);
+    colored(out, cylinder(0.16, 0.16, 0.9, 8).translate(0, 2 * r + 0.3 + 0.4, z), p[2], rng, 0.03);
+  }
+  colored(out, box(0.26, 0.26, 3.4).translate(0, r + 0.3, 0), p[2], rng, 0.03);
+  colored(out, box(1.2, 1.1, 0.9).translate(2.6, 0.55, 0), p[0], rng, 0.03);
+  return mergeConnectedStructure('fueltanks', out);
+}
+
+function makeLandingPad(rng: Rng): THREE.BufferGeometry {
+  const out: THREE.BufferGeometry[] = [], p = PAL.orbital, r = 9.0;
+  colored(out, cylinder(r, r + 0.4, 0.5, 8).translate(0, 0.25, 0), p[2], rng, 0.03);
+  colored(out, cylinder(3.2, 3.2, 0.08, 20).translate(0, 0.53, 0), MARS_ACCENT, rng, 0.02);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    colored(out, box(0.4, 0.3, 0.4).translate(Math.cos(a) * (r - 0.7), 0.64, Math.sin(a) * (r - 0.7)), p[1], rng, 0.02);
+  }
+  // pad control kiosk with its beacon mast on the apron edge
+  colored(out, box(2.6, 2.4, 3.2).translate(r - 2.4, 1.7, 0), p[0], rng, 0.04);
+  colored(out, markWorldAperture(box(0.10, 0.8, 2.0), [-1, 0, 0]).translate(r - 3.72, 2.1, 0), MARS_GLASS, rng, 0.02);
+  colored(out, cylinder(0.12, 0.15, 3.6, 8).translate(r - 2.4, 2.9 + 1.8, -1.0), p[2], rng, 0.03);
+  colored(out, cylinder(0.2, 0.2, 0.3, 8).translate(r - 2.4, 2.9 + 3.6 + 0.15, -1.0), MARS_ACCENT, rng, 0.02);
+  return mergeConnectedStructure('landingpad', out);
+}
+
 function lightMeta(
   id: string,
   family: string,
@@ -1711,6 +1815,13 @@ export const DESTRUCTIBLE_BUILDING_TYPES: Record<string, DestructibleBuildingTyp
   servicegarage: lightMeta('servicegarage', 'urban-industrial', 5.23, 6.3, 6.2, PAL.urbanSteel, makeServiceGarage, 'metal'),
   relaystation: lightMeta('relaystation', 'urban-industrial', 3.38, 3.68, 12.9, PAL.urbanSteel, makeRelayStation, 'metal'),
   corneroffice: lightMeta('corneroffice', 'urban', 4.48, 4.73, 7.5, PAL.urbanSteel, makeCornerOffice, 'metal'),
+  // Mars bases (round 23, 2026-09-18) — footprints follow the visible geometry (propPlacement receipt)
+  habdome: lightMeta('habdome', 'orbital', 7.0, 8.0, 9.4, PAL.orbital, makeHabDome, 'metal'),
+  habmodule: lightMeta('habmodule', 'orbital', 2.75, 4.8, 6.05, PAL.orbital, makeHabModule, 'metal'),
+  commsmast: lightMeta('commsmast', 'orbital', 1.8, 1.8, 15.9, PAL.orbital, makeCommsMast, 'metal'),
+  solararray: lightMeta('solararray', 'orbital', 4.7, 4.2, 3.2, PAL.orbital, makeSolarArray, 'metal'),
+  fueltanks: lightMeta('fueltanks', 'orbital', 2.6, 4.75, 5.4, PAL.orbital, makeFuelTanks, 'metal'),
+  landingpad: lightMeta('landingpad', 'orbital', 9.3, 9.3, 6.9, PAL.orbital, makeLandingPad, 'metal'),
 };
 
 export const STRUCTURE_CATALOG = [

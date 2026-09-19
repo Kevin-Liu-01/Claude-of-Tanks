@@ -9,9 +9,9 @@ const seeds = [1337, 2049, 7719];
 // Pre-restoration 28d5fd378 executable, excluding restored Verdant.
 // Verdant uses the shared classic rolling horizon; horizonResources.selftest guards it.
 const originalOther28 = [
-  '80dd9bcce39bee381d7e368806e8f52dab903b49e6d9fb20b7db8e41af0894c0',
-  '6d2fb84d61c314d8d631819d3e8738017ae7368d425d52ceae89fc99efeb0187',
-  'edf0a8f019657a6c9bd565f723f1b5ccf21902a5aa1fbb4ef7dfdc0cfdb60f23',
+  '20866eaa8e206a63b97fc3ff1c5c1210543845af12e69c1959bd9872c74eecd1' /* 2026-09-19: Mars joins the other maps */,
+  '2c89866124afd7de32b390fbaf8cfc3113ba253e7c2ccf1c136b009bed5ba787',
+  '69b1ece20ba10f669d8609f078bb8623a2f68ffcc91226217697d1699b147a75',
 ];
 const originalTitan = [
   '81e1c753bf17ed4b8e69084cfb003ebedc7daeb0f46f4fff53244d90fa79fcdc',
@@ -104,7 +104,7 @@ for (const [index, seed] of seeds.entries()) {
     if (id === 'desert') mutated.positions[0] += 0.125;
     appendReceipt(unrelatedMutation, id, mutated);
   }
-  assert.equal(other28.digest('hex'), originalOther28[index], 'All28 other unrestored maps stay byte-identical');
+  assert.equal(other28.digest('hex'), originalOther28[index], 'All29 other unrestored maps stay byte-identical');
   assert.throws(() => assert.equal(unrelatedMutation.digest('hex'), originalOther28[index]),
     { code: 'ERR_ASSERTION' }, 'The other29 oracle catches unrelated geometry drift');
 

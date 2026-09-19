@@ -33,6 +33,7 @@ export const MAP_THUMBS = Object.freeze({
   mangrove: '/maps/thumbs/mangrove.webp',
   saltwind: '/maps/thumbs/saltwind.webp',
   reservoir: '/maps/thumbs/reservoir.webp',
+  mars: '/maps/thumbs/mars.webp',
 });
 
 export const MAP_HEROES = Object.freeze({
@@ -66,6 +67,7 @@ export const MAP_HEROES = Object.freeze({
   mangrove: '/maps/mangrove.webp',
   saltwind: '/maps/saltwind.webp',
   reservoir: '/maps/reservoir.webp',
+  mars: '/maps/mars.webp',
 });
 
 export type MapThumbnailId = keyof typeof MAP_THUMBS;

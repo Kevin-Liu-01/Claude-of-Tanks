@@ -2865,7 +2865,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null): string {
     if (waiting) return t('hud.timer.nextWave');
     if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(RULESET_SCORE_TARGETS.capture_the_flag) });
-    if (modeId === 'zone_control') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.zone_control) });
+    if (modeId === 'zone_control' || modeId === 'mars') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.zone_control) });
     if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(RULESET_SCORE_TARGETS.turbo_ball) });
     if (modeId === 'frontline_assault') return t('hud.timer.takeLine');
     return limitS == null ? t('hud.timer.survive') : t('hud.team.time');
@@ -2878,7 +2878,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeState.id === 'capture_the_flag') {
       return t('hud.modeStatus.flags', { own: String(ownScore), target: String(modeState.target || 3) });
     }
-    if (modeState.id === 'zone_control') {
+    if (modeState.id === 'zone_control' || modeState.id === 'mars') {
       return t('hud.modeStatus.control', { own: String(ownScore), target: String(modeState.target || RULESET_SCORE_TARGETS.zone_control) });
     }
     if (modeState.id === 'turbo_ball') {
@@ -2902,6 +2902,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function modeStatusIconName(modeId: string): string {
     if (modeId === 'capture_the_flag') return 'modeFlag';
+    if (modeId === 'mars') return 'modeMars';
     if (modeId === 'zone_control' || modeId === 'frontline_assault') return 'modeZones';
     if (modeId === 'turbo_ball') return 'modeTurbo';
     return 'modeHorde';

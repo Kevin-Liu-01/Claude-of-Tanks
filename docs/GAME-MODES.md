@@ -22,6 +22,7 @@ rule the battle does not keep.
 | Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage, F jumps 9 m/s, ×12 recoil launch, ×2.5 impact knock | 3 s | First team to 5 goals, or the 10:00 clock (score) |
 | Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
+| Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, jump 6.5 m/s (F), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +
@@ -47,6 +48,35 @@ defenders arrives as fresh identities (rested first, that sector's wrecks last) 
 `floor((d − 1) / 2)` defenders and `(d − 1) × 6 %` hull. A level score when the clock
 expires is a draw under Standard rules and a defeat for the attackers in Frontline
 Assault (`timeout: 'defeat'`).
+
+## Mars mode (2026-09-18)
+
+Owner: "add mars map mode (called mars mode), make it have space bases and make it look like a
+proper galaxy map, give it a bunch of boosts and settings". Mars mode (`mars` in `GAME_MODE_IDS`)
+always fights over Olympus Basin (`src/world/maps/mars.ts`: rust regolith on Redrock's sand
+palette, red mesas, a research station of domes, modules, comms masts, solar arrays, fuel spheres
+and a landing pad from `structureKit.ts`, and a `sky` preset that forces the night dome's starfield
+with a wide galactic band, magenta nebula clouds and a 3.4° planet). The map is reachable by
+choice and through the mode but never by the random draw (`RANDOM_BATTLE_MAP_IDS`). The ruleset
+is Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump on F, +25 % speed, +20 % hull, −10 %
+damage, faster reloads, a ×3 recoil launch and a ×0.9 impact knock — on the Zone Control
+objective (the controller maps `mars` onto the zone code paths: `placeZones`, zone markers, the
+750-point target, 6 s respawns) with a twelve-minute clock. Boost caches: from 12 s a repair or
+ammunition cache drops every 22 s (`MARS_CACHE_FIRST_S` / `MARS_CACHE_INTERVAL_S`) and any human on
+either side may take it. The sides switch applies (Mars is a symmetric mode); rooms play it like
+any wire mode with the map forced to `mars` (`resolvePrivateMatchMap`).
+
+**Settings (2026-09-19).** The Garage battle menu shows a *Mars settings* row while Mars is the
+selected rule (the play menu's arrangement panel carries the same two selects): the **gravity
+world** — Mars 0.38 g / 6.5 m/s jump / ×3 recoil launch, Moon 0.17 g / 8.5 m/s / ×4.5, Earth
+1 g / 4 m/s / ×1.5 (`MARS_GRAVITY_OPTIONS`) — and the **boost caches** — off, every 22 s from 12 s
+(standard) or every 11 s from 8 s (`MARS_CACHE_OPTIONS`). Both ride the mars entry of the team
+arrangement store (`game/teamArrangement.ts` `readMarsSettings` / `writeMarsSettings`, keys
+`marsGravity` / `marsCaches`), so a hosted room carries them over the lobby arrangement wire and
+the authority resolves the same `matchRulesetFor('mars', …)`; `normalizeTeamArrangement` keeps
+them for the mars mode only and drops unknown ids. The ruleset's `mars` record
+(`gravity`, `caches`, `cacheFirstS`, `cacheIntervalS`) drives the controller's cache drops and
+the rule-card lines (`rules.line.marsCaches` / `marsCachesOff`).
 
 ## Where the ruleset is applied
 

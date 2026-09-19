@@ -9,7 +9,7 @@ import { MAP_ART_VIEWS, preflightMapArt, requireNative4kPng, requireRequestedVie
   requireNativeCapture, requireMinimapCapture } from './map-art-guards.mjs';
 
 assert.deepEqual(Object.keys(MAP_ART_VIEWS), MAP_IDS);
-assert.equal(MAP_IDS.length, 30);
+assert.equal(MAP_IDS.length, 31); // 2026-09-19: Mars (Olympus Basin) joins the catalog
 assert.throws(() => requireRequestedViews(['battlefield'], ['typo']), /requested screenshot/);
 assert.throws(() => requireRequestedViews(['battlefield'], ['battlefield', 'battlefield']), /requested screenshot/);
 assert.deepEqual(requireRequestedViews(['one', 'two'], ['two', 'one']), ['two', 'one']);
@@ -52,4 +52,4 @@ try {
   writeFileSync(last, Buffer.from('not a PNG'));
   assert.throws(() => requireNative4kPng(last), /invalid PNG/);
 } finally { rmSync(fixture, { recursive: true, force: true }); }
-console.log('map-art-guards.selftest: all30 views, native4K, strict minimaps, and no partial writes on preflight failure passed');
+console.log('map-art-guards.selftest: all31 views, native4K, strict minimaps, and no partial writes on preflight failure passed');

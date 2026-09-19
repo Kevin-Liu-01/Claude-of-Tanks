@@ -95,6 +95,7 @@ export const MAP_AMBIENT_BIOMES = Object.freeze({
   polders: 'wetland', copper_mesa: 'industrial', airfield: 'field', oasis: 'desert',
   whiteout: 'polar', orchard: 'forest', longleaf: 'forest', mangrove: 'wetland',
   saltwind: 'coastal', reservoir: 'forest',
+  mars: 'desert',
 } satisfies Record<MapId, AmbientBiome>);
 
 export function resolveAmbientProfile(mapId: string | null | undefined): AmbientProfile {

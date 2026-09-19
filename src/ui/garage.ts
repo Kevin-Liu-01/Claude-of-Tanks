@@ -53,8 +53,10 @@ import {
 import { t, formatNumber, formatDate, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
-import { BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf } from '../sim/matchRuleset.ts';
-import { readSides, writeSides } from '../game/teamArrangement.ts';
+import {
+  BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+} from '../sim/matchRuleset.ts';
+import { readMarsSettings, readSides, writeMarsSettings, writeSides } from '../game/teamArrangement.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import type { PlayMode } from '../net/playMode.ts';
@@ -632,6 +634,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="frontline_assault" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeFront')}</span><small>${t('garage.battle.sectors')}</small></button>` +
+    `<button class="cot-battle-choice" type="button" role="menuitemradio" data-game-mode="mars" aria-checked="false">` +
+    `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
+    `<span class="choice-name">${t('garage.battle.modeMars')}</span><small>${t('garage.battle.galaxy')}</small></button>` +
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
     // enter custom numbers of allies and enemies" — one setting for the symmetric solo modes (game/teamArrangement.ts)
     `<div class="cot-battle-menu-label">${t('garage.battle.sides')}</div>` +
@@ -646,7 +651,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `min="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[1]}" data-sides-field="enemies"></label>` +
     `<b class="cot-sides-readout" data-sides-readout></b>` +
     `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
-    `</div></div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
+    `</div>` +
+    // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
+    // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
+    `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
+    `<div class="cot-battle-mars" role="group" aria-label="${t('garage.battle.marsAria')}" data-mars-settings hidden>` +
+    `<label><span>${t('garage.battle.marsGravity')}</span><select data-mars-field="gravity">` +
+    MARS_GRAVITY_IDS.map((id) => `<option value="${id}">${t(`mars.gravity.${id}`)}</option>`).join('') + `</select></label>` +
+    `<label><span>${t('garage.battle.marsCaches')}</span><select data-mars-field="caches">` +
+    MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label>` +
+    `<small>${t('garage.battle.marsNote')}</small></div>` +
+    `</div><div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
@@ -2691,6 +2706,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     turbo_ball: { short: 'TURBO', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
     endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
     frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
+    mars: { short: 'MARS', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     battleMenu.classList.remove('open');
@@ -2724,6 +2740,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     for (const choice of battleRuleChoices) choice.setAttribute('aria-checked', 'false');
   }
+  let renderMarsSettings: () => void = () => {};
   function setBattleGameMode(nextMode: RuntimeValue): void {
     const id = normalizeGameMode(nextMode);
     const meta = battleRuleMeta[id];
@@ -2739,6 +2756,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     for (const choice of battleRuleChoices) {
       choice.setAttribute('aria-checked', String(choice.dataset.gameMode === id));
     }
+    renderMarsSettings();
   }
 
   battleBtn.addEventListener('click', battle);
@@ -2813,6 +2831,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     renderSides();
   });
   renderSides();
+  // Mars settings: two selects on the mars arrangement (game/teamArrangement.ts), visible while Mars is the rule
+  const marsLabel = requiredElement<HTMLElement>(battleMenu, '[data-mars-label]');
+  const marsSettings = requiredElement<HTMLElement>(battleMenu, '[data-mars-settings]');
+  const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
+  renderMarsSettings = () => {
+    const shown = battleGameMode === 'mars';
+    marsLabel.hidden = !shown;
+    marsSettings.hidden = !shown;
+    const settings = readMarsSettings();
+    marsField('gravity').value = settings.gravity;
+    marsField('caches').value = settings.caches;
+  };
+  marsSettings.addEventListener('change', () => {
+    emit('ui:click', {});
+    writeMarsSettings({ gravity: marsField('gravity').value, caches: marsField('caches').value });
+    renderMarsSettings();
+  });
+  renderMarsSettings();
   // batch 19 (2026-09-14): the Garage and the play menu share the remembered rule set — a mode picked
   // in the play menu (or last session) is what BATTLE launches instead of silently reverting to Standard
   try {

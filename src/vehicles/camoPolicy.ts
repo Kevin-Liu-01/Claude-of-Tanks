@@ -57,6 +57,9 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'berlin', 'oakleaf',
   'hexfield', 'midnight',
   'claude', 'spark',
+  // skins r1 (2026-09-19, owner ask): the AI-lab set — original colourways and
+  // motifs only, no third-party marks; grouped with the house schemes.
+  'openai', 'xai', 'gemini',
   'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
   'stars', 'daisy', 'circuit', 'racing', 'paintball',
   'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
@@ -114,6 +117,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
   hexfield: 'Hex Mesh', midnight: 'Night Ops',
   claude: 'Claude', spark: 'Claude Spark',
+  openai: 'OpenAI Mono', xai: 'xAI Carbon', gemini: 'Gemini Prism',
   ducky: 'Rubber Ducky', suits: 'High Roller', flames: 'Hot Rod',
   leopardprint: 'Leopard Print', bolt: 'Thunderbolt', stars: 'Starfall',
   daisy: 'Flower Power', circuit: 'Circuit Board', racing: 'Racing Team',
@@ -504,6 +508,9 @@ const CAMO_PATTERN_TAGS: Readonly<Partial<Record<CamoPatternId, readonly CamoTag
   midnight: ['night', 'special'],
   claude: ['geometric', 'special'],
   spark: ['geometric', 'special'],
+  openai: ['geometric', 'special'],
+  xai: ['stripes', 'special'],
+  gemini: ['geometric', 'special'],
   ducky: ['organic', 'special'],
   suits: ['geometric', 'special'],
   flames: ['stripes', 'special'],

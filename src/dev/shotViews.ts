@@ -643,6 +643,7 @@ export function createShotViews({
   battlefield_mangrove() { mapEstablishingShot(); },
   battlefield_saltwind() { mapEstablishingShot(); },
   battlefield_reservoir() { mapEstablishingShot(); },
+  battlefield_mars() { mapEstablishingShot(); },
   // The projectile recipe below is shared so the firing and x-ray captures
   // resolve the exact same seeded shot. Only the staged playback beat differs.
   killcam_firing() {

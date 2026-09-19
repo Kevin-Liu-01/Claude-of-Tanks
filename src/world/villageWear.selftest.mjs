@@ -130,7 +130,8 @@ function checkScope(resolve) {
   assert.equal(foundry.terrain.villageWear, 'activity-patches', 'Foundry drops the broad village apron');
   assert.equal(foundry.splat.townWear, 1.6, 'Foundry authored soil keeps its bounded material strength');
   assert.deepEqual(foundry.terrain.workedGround, foundryPatches, 'the three accepted Foundry footprints remain exact');
-  assert.equal(hash(stringify(MAP_IDS.map(id => historicalAutumnPaletteInput(originalConfig(originalExitConfig(resolve(id))))))), FROZEN.configs,
+  // Mars mode (2026-09-18): Olympus Basin postdates the frozen parent inputs — the catalog receipts guard it
+  assert.equal(hash(stringify(MAP_IDS.filter(id => id !== 'mars').map(id => historicalAutumnPaletteInput(originalConfig(originalExitConfig(resolve(id))))))), FROZEN.configs,
     'only the two visual terrain properties differ from the exact parent inputs');
 }
 
@@ -267,7 +268,8 @@ function checkPilot(id, seed) {
 function checkOtherMaps(tier) {
   const results = [];
   for (const id of MAP_IDS) {
-    if (pilots.includes(id)) continue;
+    // Mars mode (2026-09-18): Olympus Basin postdates the all28 parent receipt
+    if (pilots.includes(id) || id === 'mars') continue;
     const built = bake(historicalBadlandsInput(historicalFoundryServiceInput(originalExitConfig(getMapConfig(id)))), 1337, historicalRoadHeightField);
     assert.equal(built.size, tier === 'desktop' ? 512 : 256, 'actual tier-scaled raster, not a relabeled desktop bake');
     results.push([id, hash(built.pixels)]); built.texture.dispose();

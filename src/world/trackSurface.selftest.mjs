@@ -41,6 +41,7 @@ for (const [before, after] of [
 const selected = {
   desert: 2, badlands: 2, copper_mesa: 2, oasis: 2,
   winter: 3, alpine: 3, whiteout: 3, coastal: 2, saltwind: 2,
+  mars: 2, // 2026-09-19: Olympus Basin reads the badlands sand set
 };
 for (const id of MAP_IDS) {
   const cfg = getMapConfig(id);

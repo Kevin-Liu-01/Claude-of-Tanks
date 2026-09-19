@@ -29,7 +29,7 @@ const selected=new Map([['frontier','frontier'],['alpine','alpine']]);
 const seeds=[1337,7719],receipts=[];
 assert.equal(readFileSync(new URL('./maps/titanGorge.ts',import.meta.url),'utf8'),oldSource('src/world/maps/titanGorge.ts'),
   'Held Titan authoring is byte-exact baseline; its heights also pass the 28-map legacy loop below');
-assert.equal(MAP_IDS.length-selected.size,28,'Exactly two playable-relief pilots');
+assert.equal(MAP_IDS.length-selected.size,29,'Exactly two playable-relief pilots'); // 2026-09-19: Mars joins the legacy loop
 const stripRelief=form=>{const {relief,_relief,...old}=form;return old;};
 const supportHashes=s=>Object.fromEntries(Object.entries(s).map(([k,v])=>[k,v?hash(v):null]));
 

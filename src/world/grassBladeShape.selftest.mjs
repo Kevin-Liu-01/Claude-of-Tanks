@@ -126,7 +126,8 @@ globalThis.document = { createElement(tag) { assert.equal(tag, 'canvas'); return
 const rows = [];
 try {
   if (values.out) mkdirSync(values.out, { recursive: true });
-  assert.equal(MAP_IDS.length, 30);
+  // Mars mode (2026-09-18): Olympus Basin joins the catalog (31 maps)
+  assert.equal(MAP_IDS.length, 31);
   for (const [w, h] of [[.92, .74], [1.14, .58]]) for (const n of [1, 2]) {
     const a = original.buildGrassTuftGeometry(w, h, n, n === 1 ? 1.5 : 1.12);
     const b = current.buildGrassTuftGeometry(w, h, n, n === 1 ? 1.5 : 1.12);

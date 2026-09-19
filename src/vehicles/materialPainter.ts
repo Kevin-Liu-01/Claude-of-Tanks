@@ -1815,11 +1815,210 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       // ===================== END CAMO PATTERN SECTION =================
         }
       };
+      const paintOpenaiScheme = (): void => {
+        if (scheme === 'openai' && patches.length) {
+      // ===================== CAMO PATTERN SECTION =====================
+      // OPENAI MONO (skins r1, owner ask "add openai and xai and gemini
+      // skins"): an ORIGINAL monochrome print — no third-party mark. Chains of
+      // hollow rings from hero to sprinkle scale in porcelain on graphite, one
+      // teal link per cluster, soft lighter washes for depth.
+      // patches = [porcelain, teal]. Style-only, no biome bonus.
+      const ink = patches[0];
+      const teal = patches[1] || patches[0];
+      for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {
+        const x = rng() * S, y = rng() * S;
+        const r = S * wk * (0.15 + rng() * 0.08);
+        ctx.filter = `blur(${Math.max(2, S * 0.004).toFixed(1)}px)`;
+        fillWrapped(ctx, S, blobPath2D(rng, x, y, r, 8, 0.3), rgb(mix(ink, base, 0.86), 0.5));
+        ctx.filter = 'none';
+      }
+      const ring = (x: number, y: number, r: number, w: number, col: Rgb, a: number): void => {
+        const p = new Path2D();
+        p.arc(x, y, r, 0, Math.PI * 2);
+        strokeWrapped(ctx, S, p, rgb(col, a), w);
+      };
+      // the hero: three interlocked rings on a small triangle, one teal
+      const hx = S * (0.3 + rng() * 0.4), hy = S * (0.3 + rng() * 0.4);
+      const hr = S * wk * (0.13 + rng() * 0.03), hw = hr * 0.24;
+      const ha = rng() * Math.PI * 2;
+      for (let k = 0; k < 3; k++) {
+        const a = ha + (k / 3) * Math.PI * 2;
+        ring(hx + Math.cos(a) * hr * 0.58, hy + Math.sin(a) * hr * 0.58, hr, hw, k === 2 ? teal : ink, 0.94);
+      }
+      const cell = S / 2;
+      for (let gy = 0; gy < 2; gy++) {   // mediums: a linked pair per quadrant
+        for (let gx = 0; gx < 2; gx++) {
+          const x = (gx + 0.5 + (rng() - 0.5) * 0.6) * cell;
+          const y = (gy + 0.5 + (rng() - 0.5) * 0.6) * cell;
+          const r = cell * (0.16 + rng() * 0.06), w = r * 0.26;
+          const a = rng() * Math.PI * 2;
+          ring(x, y, r, w, ink, 0.9);
+          ring(x + Math.cos(a) * r * 1.1, y + Math.sin(a) * r * 1.1, r * 0.8, w * 0.9,
+            (gx + gy) % 2 ? teal : ink, 0.88);
+        }
+      }
+      for (let i = 0; i < Math.round(9 * nK); i++) {  // sprinkle rings and dots
+        const r = S * (0.012 + rng() * 0.02);
+        const col = rng() < 0.3 ? teal : ink;
+        if (rng() < 0.35) {
+          const p = new Path2D();
+          p.arc(rng() * S, rng() * S, r * 0.45, 0, Math.PI * 2);
+          fillWrapped(ctx, S, p, rgb(col, 0.7));
+        } else {
+          ring(rng() * S, rng() * S, r, r * 0.3, col, 0.66);
+        }
+      }
+      // ===================== END CAMO PATTERN SECTION =================
+        }
+      };
+      const paintXaiScheme = (): void => {
+        if (scheme === 'xai' && patches.length) {
+      // ===================== CAMO PATTERN SECTION =====================
+      // XAI CARBON (skins r1): an ORIGINAL print — no third-party mark.
+      // Tapered meteor streaks all flying on one diagonal heading, bone white
+      // over cool-grey shadow trails on carbon, plus hairline trails and dust.
+      // patches = [bone, cool grey]. Style-only, no biome bonus.
+      const bone = patches[0];
+      const cool = patches[1] || patches[0];
+      const dir = -0.62 + (rng() - 0.5) * 0.2;  // ~ -35 deg, shared heading
+      const streak = (x: number, y: number, len: number, w: number, col: Rgb, a: number, rot = dir): void => {
+        const c = Math.cos(rot), s = Math.sin(rot);
+        const pt = (u: number, v: number): [number, number] => [x + c * u - s * v, y + s * u + c * v];
+        const tail = pt(-len * 0.5, 0);
+        const p = new Path2D();
+        p.moveTo(tail[0], tail[1]);
+        let q = pt(len * 0.15, -w * 0.55), e = pt(len * 0.5 - w * 0.5, -w * 0.5);
+        p.quadraticCurveTo(q[0], q[1], e[0], e[1]);
+        q = pt(len * 0.5 + w * 0.3, 0); e = pt(len * 0.5 - w * 0.5, w * 0.5);
+        p.quadraticCurveTo(q[0], q[1], e[0], e[1]);
+        q = pt(len * 0.15, w * 0.55);
+        p.quadraticCurveTo(q[0], q[1], tail[0], tail[1]);
+        p.closePath();
+        fillWrapped(ctx, S, p, rgb(col, a));
+      };
+      for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {  // long faint shadow trails
+        streak(rng() * S, rng() * S, S * wk * (0.5 + rng() * 0.3), S * wk * 0.07, mix(cool, base, 0.55), 0.55);
+      }
+      streak(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+        S * wk * (0.6 + rng() * 0.15), S * wk * 0.075, bone, 0.95);  // the hero
+      const cell = S / 2;
+      for (let gy = 0; gy < 2; gy++) {
+        for (let gx = 0; gx < 2; gx++) {
+          const x = (gx + 0.5 + (rng() - 0.5) * 0.6) * cell;
+          const y = (gy + 0.5 + (rng() - 0.5) * 0.6) * cell;
+          streak(x, y, cell * (0.55 + rng() * 0.2), cell * 0.075,
+            (gx + gy) % 2 ? cool : bone, 0.9, dir + (rng() - 0.5) * 0.12);
+        }
+      }
+      for (let i = 0; i < Math.round(8 * nK); i++) {  // sprinkle streaks
+        streak(rng() * S, rng() * S, S * (0.06 + rng() * 0.07), S * 0.012,
+          rng() < 0.35 ? cool : bone, 0.7, dir + (rng() - 0.5) * 0.2);
+      }
+      for (let i = 0; i < Math.round(14 * nK); i++) {  // dust
+        const p = new Path2D();
+        p.arc(rng() * S, rng() * S, S * (0.003 + rng() * 0.005), 0, Math.PI * 2);
+        fillWrapped(ctx, S, p, rgb(bone, 0.5 + rng() * 0.4));
+      }
+      for (let i = 0; i < Math.round(3 * nK); i++) {  // hairline trails
+        const x = rng() * S, y = rng() * S, len = S * (0.25 + rng() * 0.3);
+        const p = new Path2D();
+        p.moveTo(x - Math.cos(dir) * len * 0.5, y - Math.sin(dir) * len * 0.5);
+        p.lineTo(x + Math.cos(dir) * len * 0.5, y + Math.sin(dir) * len * 0.5);
+        strokeWrapped(ctx, S, p, rgb(bone, 0.35), Math.max(1, S * 0.003));
+      }
+      // ===================== END CAMO PATTERN SECTION =================
+        }
+      };
+      const paintGeminiScheme = (): void => {
+        if (scheme === 'gemini' && patches.length) {
+      // ===================== CAMO PATTERN SECTION =====================
+      // GEMINI PRISM (skins r1): an ORIGINAL print — no third-party mark. The
+      // twins' constellation (two star chains joined by two rungs, a white
+      // Castor and a warm Pollux at the heads) over blue -> violet -> pink
+      // prism washes on indigo, with four-point twinkles and star dust.
+      // patches = [blue, violet, pink, starlight]. Style-only, no biome bonus.
+      const blue = patches[0];
+      const violet = patches[1] || patches[0];
+      const pink = patches[2] || violet;
+      const star = patches[3] || hexToRgb('#eef0ff');
+      const washes: Rgb[] = [blue, violet, pink];
+      for (let i = 0; i < Math.max(3, Math.round(4 * nK)); i++) {
+        const x = rng() * S, y = rng() * S;
+        const r = S * wk * (0.17 + rng() * 0.1);
+        ctx.filter = `blur(${Math.max(3, S * 0.008).toFixed(1)}px)`;
+        fillWrapped(ctx, S, blobPath2D(rng, x, y, r, 8, 0.3), rgb(mix(washes[i % 3], base, 0.35), 0.55));
+        ctx.filter = 'none';
+      }
+      const dot = (x: number, y: number, r: number, col: Rgb, a: number): void => {
+        const p = new Path2D();
+        p.arc(x, y, r, 0, Math.PI * 2);
+        fillWrapped(ctx, S, p, rgb(col, a));
+      };
+      const twinkle = (x: number, y: number, s: number, col: Rgb, a: number): void => {
+        const p = new Path2D();
+        const k = s * 0.18;
+        p.moveTo(x, y - s); p.quadraticCurveTo(x + k, y - k, x + s, y);
+        p.quadraticCurveTo(x + k, y + k, x, y + s); p.quadraticCurveTo(x - k, y + k, x - s, y);
+        p.quadraticCurveTo(x - k, y - k, x, y - s); p.closePath();
+        fillWrapped(ctx, S, p, rgb(col, a));
+      };
+      const CHAIN_A: Array<[number, number]> = [[0.15, 0.10], [0.30, 0.24], [0.42, 0.42], [0.50, 0.62], [0.58, 0.84]];
+      const CHAIN_B: Array<[number, number]> = [[0.36, 0.02], [0.49, 0.17], [0.63, 0.35], [0.73, 0.56], [0.84, 0.80]];
+      const twins = (cx: number, cy: number, size: number, rot: number, a: number): void => {
+        const c = Math.cos(rot), s = Math.sin(rot);
+        const at = (n: [number, number]): [number, number] => {
+          const u = (n[0] - 0.5) * size, v = (n[1] - 0.45) * size;
+          return [cx + c * u - s * v, cy + s * u + c * v];
+        };
+        const lines = new Path2D();
+        for (const chain of [CHAIN_A, CHAIN_B]) {
+          const p0 = at(chain[0]);
+          lines.moveTo(p0[0], p0[1]);
+          for (let i = 1; i < chain.length; i++) { const p = at(chain[i]); lines.lineTo(p[0], p[1]); }
+        }
+        for (const i of [1, 3]) {
+          const p = at(CHAIN_A[i]), q = at(CHAIN_B[i]);
+          lines.moveTo(p[0], p[1]); lines.lineTo(q[0], q[1]);
+        }
+        strokeWrapped(ctx, S, lines, rgb(star, a * 0.55), Math.max(1, size * 0.012));
+        for (const chain of [CHAIN_A, CHAIN_B]) {
+          for (let i = 0; i < chain.length; i++) {
+            const p = at(chain[i]);
+            const head = i === 0;
+            const col = head && chain === CHAIN_B ? pink : star;
+            if (head) dot(p[0], p[1], size * 0.07, mix(col, base, 0.5), a * 0.5);  // glow
+            dot(p[0], p[1], size * (head ? 0.038 : 0.02), col, a);
+          }
+        }
+      };
+      twins(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+        S * wk * (0.62 + rng() * 0.1), (rng() - 0.5) * 0.6, 0.95);  // the hero
+      const cell = S / 2;
+      for (let gy = 0; gy < 2; gy++) {
+        for (let gx = 0; gx < 2; gx++) {
+          const x = (gx + 0.5 + (rng() - 0.5) * 0.6) * cell;
+          const y = (gy + 0.5 + (rng() - 0.5) * 0.6) * cell;
+          if ((gx + gy) % 2) twins(x, y, cell * (0.5 + rng() * 0.12), rng() * Math.PI * 2, 0.8);
+          else twinkle(x, y, cell * (0.12 + rng() * 0.05), rng() < 0.5 ? star : pink, 0.9);
+        }
+      }
+      for (let i = 0; i < Math.round(8 * nK); i++) {  // sprinkle twinkles
+        twinkle(rng() * S, rng() * S, S * (0.018 + rng() * 0.02), [star, pink, blue][i % 3], 0.75);
+      }
+      for (let i = 0; i < Math.round(16 * nK); i++) {  // star dust
+        dot(rng() * S, rng() * S, S * (0.002 + rng() * 0.004), star, 0.45 + rng() * 0.4);
+      }
+      // ===================== END CAMO PATTERN SECTION =================
+        }
+      };
       paintTigerStripeScheme();
       paintChipSixScheme();
       paintBrushScheme();
       paintClaudeScheme();
       paintSparkScheme();
+      paintOpenaiScheme();
+      paintXaiScheme();
+      paintGeminiScheme();
     };
     paintIdentitySchemes();
 

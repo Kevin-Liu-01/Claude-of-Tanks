@@ -191,6 +191,8 @@ const GEOMETRY_GOLDENS = {
   mangrove: '4ec02e0d658d3200ab167cb16ca25f4d8f2c4f7dd24d0f4adef1fab2586be9d2',
   saltwind: 'ddf8d6cdf0ec6196bfad3e2b6fa60915ed872d5ea54540851b24e72be440b5f6',
   reservoir: '40c628b2578a24456afd9fe3fa9c5f676905ad8cb2c06bc77f71f8f3f8f7ef1f',
+  // 2026-09-19: Mars (Olympus Basin) — first reviewed authored geometry golden.
+  mars: 'd40c02657abe7adca44775e9a80051efec7c75af2a49391e1ea056a9a6b21b12',
 };
 
 function drainWithCount(generator) {
@@ -382,7 +384,8 @@ function testCurrentAuthoredChunks(hf, config, historicalField) {
 async function testAllMapBytes() {
   const { createHeightField } = await import('./terrain.ts');
   const { getMapConfig, MAP_IDS } = await import('./maps/index.ts');
-  assert.equal(MAP_IDS.length, 30);
+  // Mars mode (2026-09-18): Olympus Basin joins the catalog
+  assert.equal(MAP_IDS.length, 31);
   assert.deepEqual(Object.keys(GEOMETRY_GOLDENS), [...MAP_IDS]);
   for (const mapId of MAP_IDS) {
     const config = historicalPlayableReliefInput(historicalBadlandsInput(originalExitConfig(getMapConfig(mapId))));
@@ -423,7 +426,7 @@ async function testAllMapBytes() {
     const current = getMapConfig(mapId);
     testCurrentAuthoredChunks(createHeightField(1337, current), current, hf);
   }
-  console.log('terrainStreaming.selftest: 30 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
+  console.log('terrainStreaming.selftest: 31 maps × 4 chunks, all LOD bytes/bounds/skirts/seams and direct-far parity passed');
 }
 
 if (process.argv.includes('--oasis-shoreline-only')) {

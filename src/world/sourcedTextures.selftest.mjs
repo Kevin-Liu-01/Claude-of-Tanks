@@ -183,6 +183,7 @@ const newMapPalettes = {
   mangrove: ['monsoon', 'delta'],
   saltwind: ['coastal', 'coastal'],
   reservoir: ['frontier', 'frontier'],
+  mars: ['badlands', 'badlands'], // 2026-09-19: Olympus Basin — rust regolith and dust-toned station huts
 };
 assert.deepEqual(Object.keys(newMapPalettes), MAP_IDS.slice(20),
   'every new battlefield explicitly inherits its intended sourced palettes');

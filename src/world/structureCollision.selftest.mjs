@@ -125,8 +125,9 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
 }
 
 // 2026-09-17: 111 → 113 with the fortification destructibles (barbedwire, bunker)
-assert.equal(new Set(families).size, 113,
-  'all 113 heavyweight, site, small-building, blocking-item and sourced families are audited');
+// 2026-09-19: 113 → 119 with the Mars station's six orbital destructibles
+assert.equal(new Set(families).size, 119,
+  'all 119 heavyweight, site, small-building, blocking-item and sourced families are audited');
 assert.ok(concaveFamilies >= 60,
   'open, stepped and recessed structures/items retain compound contact footprints across both variants');
 assert.ok(maximumParts <= 64, 'compound shell bands stay bounded for runtime narrow-phase work');

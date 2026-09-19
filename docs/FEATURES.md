@@ -214,13 +214,14 @@ The game includes:
 28. Mangrove Reach
 29. Saltwind Narrows
 30. Highland Reservoir
+31. Olympus Basin — Mars mode's rust-red impact basin under a galaxy sky, its research station scattered across the floor (2026-09-18)
 
 Each battlefield combines a generated height field, material program, authored
 landmarks, roads, structures, foliage, concealment volumes, collision,
 destructibles, sky, lighting, fog, and minimap. Browser-hosted and dedicated
 matches use matching collision descriptions.
 
-All thirty maps use the same modern world-quality vocabulary: 28 procedural
+All thirty-one maps use the same modern world-quality vocabulary: 28 procedural
 structure families, independently destructible huts and camps, persistent
 debris, vehicle wreck families and detached remnants, topple interactions,
 connected utility networks, loose physical props, terrain attachment, and

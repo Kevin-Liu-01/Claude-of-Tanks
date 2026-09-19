@@ -831,7 +831,7 @@ export function createMatchModeWorldPresentation(
     // zone letters / sector numbers and statuses, spawn marks per mode
     const marks = objectiveMarkers(state);
     if (state.id === 'capture_the_flag') updateFlags(state, timeS);
-    else if (state.id === 'zone_control') updateZones(state, marks);
+    else if (state.id === 'zone_control' || state.id === 'mars') updateZones(state, marks);
     else if (state.id === 'frontline_assault') {
       updateZones(state, marks);
       updateLineWorks(state);

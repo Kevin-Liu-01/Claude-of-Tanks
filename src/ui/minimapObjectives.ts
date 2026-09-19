@@ -179,7 +179,7 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   const out: ObjectiveMarker[] = [];
   spawnMarkers(state, perspective, out);
   if (state.id === 'capture_the_flag') flagMarkers(state, perspective, out);
-  else if (state.id === 'zone_control') zoneMarkers(state, perspective, out);
+  else if (state.id === 'zone_control' || state.id === 'mars') zoneMarkers(state, perspective, out);
   else if (state.id === 'frontline_assault') sectorMarkers(state, perspective, out);
   else if (state.id === 'turbo_ball') turboMarkers(state, perspective, out);
   pickupMarkers(state, out);

@@ -213,6 +213,13 @@
       "obstacles": 6003,
       "colliders": 5798,
       "concealers": 6528
+    },
+    "mars": {
+      "bytes": 501381,
+      "sha256": "15c872b545f84b8f2189e435e6db4b71946850c3d196386c83153cd7bfb7b80d",
+      "obstacles": 848,
+      "colliders": 700,
+      "concealers": 0
     }
   }
 }

@@ -9,7 +9,7 @@ import {
   canScheduleAmbientCue, resolveAmbientProfile,
 } from './ambientPolicy.ts';
 
-assert.equal(MAP_IDS.length, 30, 'the ambient map table covers the complete thirty-map roster');
+assert.equal(MAP_IDS.length, 31, 'the ambient map table covers the complete thirty-one-map roster'); // 2026-09-19: Mars
 assert.deepEqual(Object.keys(MAP_AMBIENT_BIOMES).sort(), [...MAP_IDS].sort(),
   'every registered map chooses a biome explicitly');
 assert.equal(new Set(Object.values(MAP_AMBIENT_BIOMES)).size, 8,

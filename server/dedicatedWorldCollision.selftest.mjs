@@ -79,6 +79,9 @@ const roadCompletionCensus = {
   saltwind: [3347, 3156, 3582],
   // Refreshed forked roads, assembly hardstand and grounded waterworks.
   reservoir: [6095, 5890, 6620],
+  // 2026-09-19 Mars (Olympus Basin): first native capture of the new orbital-station
+  // map; captured after the rim-road removal, so its removal count is zero.
+  mars: [848, 700, 0],
 };
 // Native rim-road repair removes only rooted trees inside the 9 m road margin.
 // Frozen 89784835d comparison proves every other movement/shell/concealment
@@ -113,7 +116,8 @@ const rimRoadRemovals = {
   longleaf: 84,
   mangrove: 41,
   saltwind: 74,
-  reservoir: 92
+  reservoir: 92,
+  mars: 0
 };
 const expected = Object.fromEntries(Object.entries(roadCompletionCensus).map(([id, counts]) =>
   [id, counts.map(count => count - rimRoadRemovals[id])]));
@@ -139,7 +143,9 @@ for (const [mapId, counts] of Object.entries(expected)) {
     `${mapId} dedicated shell collision preserves narrow hedgehog beam shapes`);
   const treeObstacles = mapWorld.getObstacles().filter((record) => record.treeIdx != null);
   const treeColliders = mapWorld.getColliders().filter((record) => record.treeIdx != null);
-  assert.ok(treeObstacles.length > 0, `${mapId} captures reachable trees as movement obstacles`);
+  // 2026-09-19: Mars (Olympus Basin) fields no vegetation by design (its species counts are zero), so
+  // the reachable-tree census is empty there; every other map still captures its trees.
+  if (mapId !== 'mars') assert.ok(treeObstacles.length > 0, `${mapId} captures reachable trees as movement obstacles`);
   assert.equal(treeColliders.length, treeObstacles.length,
     `${mapId} movement and shell tree censuses agree`);
   assert.ok(treeObstacles.every((record) => record.crushable && record.kind === 'tree'),

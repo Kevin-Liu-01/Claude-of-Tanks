@@ -11,7 +11,9 @@ import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 
 const panes = new Set(['fieldhut', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse',
-  'guardpost', 'quonsethut', 'checkpointhut', 'securityoffice', 'servicegarage', 'corneroffice']);
+  'guardpost', 'quonsethut', 'checkpointhut', 'securityoffice', 'servicegarage', 'corneroffice',
+  // 2026-09-19 Mars station: the habitat dome and module carry glass panes and door lights, the landing pad a kiosk window
+  'habdome', 'habmodule', 'landingpad']);
 function assertExposedAperture(geometry, id) {
   const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); mesh.updateMatrixWorld(true);
   const mask = geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE), position = geometry.getAttribute('position');
@@ -62,9 +64,9 @@ for (const [id, type] of Object.entries(DESTRUCTIBLE_BUILDING_TYPES)) for (const
   }
   totalCalls += calls; hash.update(JSON.stringify([state, calls]));
 }
-assert.equal(hash.digest('hex'), '1bfadc1f96968aa3e15305e9f25371242f53e0dcd8c05203c842814e9d4bcff5',
-  'all 20 intact/debris families × 3 seeds retain exact original positions, normals, UVs, colors, RNG and topology');
-assert.deepEqual({ vertices, indices, totalCalls }, { vertices: 101664, indices: 0, totalCalls: 65451 });
+assert.equal(hash.digest('hex'), '38ea3ea23fe6a579840c3e17dbb0e387fac5e3d68ff7581614d4c5021a2d7a20' /* 2026-09-19: six orbital families (Mars station) join the 20 */,
+  'all 26 intact/debris families × 3 seeds retain exact original positions, normals, UVs, colors, RNG and topology');
+assert.deepEqual({ vertices, indices, totalCalls }, { vertices: 139428, indices: 0, totalCalls: 87495 } /* 2026-09-19: +6 orbital families */);
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 assert.match(propsSource, /rec\.state = 1;\s*setWorldNightFixtureActive\(pool\.imI, rec\.slot, false\)/,
   'all authored destruction routes switch off the original instance at the state transition');

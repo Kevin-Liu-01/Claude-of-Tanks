@@ -13,7 +13,9 @@ import type { MatchPlacement } from './matchPlacement.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
-  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize } from './matchRuleset.ts';
+  FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize,
+  MARS_DEFAULT_RULES,
+} from './matchRuleset.ts';
 
 export const GAME_MODE_IDS = Object.freeze([
   'standard',
@@ -22,6 +24,7 @@ export const GAME_MODE_IDS = Object.freeze([
   'turbo_ball',
   'endless_horde',
   'frontline_assault',
+  'mars',
 ] as const);
 
 export type GameModeId = typeof GAME_MODE_IDS[number];
@@ -70,6 +73,13 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
       description: 'Break the enemy line: take three trench sectors in turn against escalating counter-attacks, then hold the last one.',
       respawns: false,
     }),
+    // Mars mode (owner 2026-09-18: "add mars map mode (called mars mode) ... give it a bunch of boosts and
+    // settings"): Olympus Basin's zone objective under its own physics, with boost caches for the humans.
+    mars: Object.freeze({
+      id: 'mars', label: 'Mars Mode', shortLabel: 'MARS', icon: 'modeMars',
+      description: 'Olympus Basin under a galaxy sky: 0.38 g, long jumps, respawns and boost caches. Hold the station sectors — first team to 750 points wins.',
+      respawns: true,
+    }),
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);
@@ -88,6 +98,7 @@ const BALL_LINEAR_DRAG = 0.992;
 const BALL_GRAVITY_MPS2 = 9.81;
 const HORDE_INTERMISSION_S = 6;
 const PICKUP_RADIUS_M = 7;
+// Mars mode boost caches: the first drop and the interval between drops (seconds).
 
 interface Vec3Like { x: number; y: number; z: number }
 interface ObjectivePoint { x: number; z: number }
@@ -314,6 +325,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     throw new TypeError('match mode controller requires entities and a revive hook');
   }
   const id = normalizeGameMode(mode);
+  // Mars mode plays the zone-control objective (three station sectors) on its own physics
+  const objective = id === 'mars' ? 'zone_control' : id;
   const definition = GAME_MODE_DEFINITIONS[id];
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === id ? rulesetOption : matchRulesetFor(id);
   const baseSpeed = ruleset.speedMultiplier;
@@ -394,7 +407,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       carrierId: null,
       returnAtS: null,
     })) : [];
-  const zones: ZoneState[] = id === 'zone_control'
+  const zones: ZoneState[] = objective === 'zone_control'
     ? [-105, 0, 105].map((offset, index) => {
       const x = placement?.zones[index]?.x ?? midX + lateralX * offset;
       const z = placement?.zones[index]?.z ?? midZ + lateralZ * offset;
@@ -557,8 +570,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const spawnPickup = (): void => {
-    if (!state.horde) return;
-    const healChance = state.horde.healChance;
+    if (!state.horde && id !== 'mars') return;
+    const healChance = state.horde?.healChance ?? 0.5;
     const kind: PickupState['kind'] = rng() < healChance ? 'heal' : 'ammo';
     const along = (rng() * 2 - 1) * Math.min(145, axisLength * 0.28);
     const lateral = (rng() * 2 - 1) * 135;
@@ -992,6 +1005,24 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
   };
 
+  // Mars mode (owner 2026-09-18 "give it a bunch of boosts"): a repair or ammunition cache drops from
+  // the ruleset's cacheFirstS every cacheIntervalS (the Mars settings; 0 turns the drops off), and any human on
+  // either side may take it
+  const marsRules = ruleset.mars ?? MARS_DEFAULT_RULES;
+  let nextMarsCacheAtS = marsRules.cacheFirstS;
+  const stepMarsCaches = (timeS: number): void => {
+    if (marsRules.cacheIntervalS > 0 && timeS >= nextMarsCacheAtS) {
+      spawnPickup();
+      nextMarsCacheAtS = timeS + marsRules.cacheIntervalS;
+    }
+    for (const pickup of pickups) {
+      if (!pickup.active) continue;
+      for (const entity of entities) {
+        if (collectPickup(pickup, entity)) break;
+      }
+    }
+  };
+
   const stepHorde = (timeS: number): MatchModeResult | null => {
     const humansAlive = teams.alpha.some((entity) => entity.modeActive !== false &&
       !entity.combat.destroyed && !entity.bot);
@@ -1063,7 +1094,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const botObjective = (entity: Entity): { x: number; z: number; radiusM: number } | null => {
     const point = botTarget(entity);
     if (!point) return null;
-    const radiusM = id === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
+    const radiusM = objective === 'zone_control' || id === 'frontline_assault' ? ZONE_RADIUS_M
       : id === 'capture_the_flag' ? 20 : id === 'turbo_ball' ? 15 : 25;
     return { x: point.x, z: point.z, radiusM };
   };
@@ -1071,7 +1102,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     if (entity.modeActive === false || entity.combat.destroyed) return null;
     const team = teamOf(entity);
     if (id === 'capture_the_flag') return flagBotTarget(entity, team);
-    if (id === 'zone_control') return zoneBotTarget(entity, team);
+    if (objective === 'zone_control') return zoneBotTarget(entity, team);
     if (id === 'turbo_ball' && ball) return { x: ball.x, z: ball.z };
     if (id === 'endless_horde') return hordeBotTarget(entity, team);
     if (id === 'frontline_assault') return assaultBotTarget(entity, team);
@@ -1089,7 +1120,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       placementTimeS = timeS;
       handleDeathsAndRespawns(timeS);
       if (id === 'capture_the_flag') return stepFlags(timeS);
-      if (id === 'zone_control') return stepZones(dt);
+      if (id === 'mars') stepMarsCaches(timeS);
+      if (objective === 'zone_control') return stepZones(dt);
       if (id === 'turbo_ball') return stepBall(dt, timeS);
       if (id === 'endless_horde') return stepHorde(timeS);
       if (id === 'frontline_assault') return stepAssault(dt, timeS);

@@ -42,7 +42,11 @@ export function collisionCaptureOptions(args) {
  */
 export function readCollisionCaptureEntries(selectedMapIds, directory = collisionManifestDirectory) {
   const index = readCollisionManifestIndex(JSON.parse(readFileSync(new URL('index.json', directory), 'utf8')));
-  if (Object.keys(index.maps).length !== MAP_IDS.length || MAP_IDS.some((id) => !index.maps[id])) {
+  // A partial capture starts from the complete canonical index; the one exception is a map that is
+  // being captured for the first time (Mars mode, 2026-09-18: Olympus Basin joined the catalog), whose
+  // shard the capture itself supplies before the index is rewritten.
+  const missing = MAP_IDS.filter((id) => !index.maps[id]);
+  if (Object.keys(index.maps).some((id) => !MAP_IDS.includes(id)) || missing.some((id) => !selectedMapIds.includes(id))) {
     throw new Error('partial collision capture requires the complete canonical map index');
   }
   assertUnchangedCollisionShards(index.maps, selectedMapIds, directory);

@@ -319,6 +319,7 @@ for (const mapId of MAP_IDS) for (const seed of [1337, 2049, 7719]) {
   if (mapId !== 'badlands') assertClassicLayeredRanges(ring, config, label);
   if (mapId === 'skybridge') assertSkybridgeTableCaps(ring, label);
   else if (mapId === 'copper_mesa') { /* independently covered by copperQuarrySurface.selftest */ }
+  else if (mapId === 'mars') { /* Mars mode (2026-09-18): the galaxy basin postdates the restoration aggregate; the shared gates above apply */ }
   else {
     const historicalRing = mapId === 'polders' ? sampleHorizonGeometry({ ...config,
       horizon: { ...config.horizon, amp: 0.50 } }, seed)

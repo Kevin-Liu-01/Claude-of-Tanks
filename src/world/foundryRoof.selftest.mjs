@@ -59,7 +59,7 @@ function assertMaterial(material, baseline, gain) {
 const baseline = new THREE.MeshStandardMaterial({ map: roof.albedo, normalMap: roof.normal,
   roughnessMap: roof.surface, aoMap: roof.surface, roughness: 1, metalness: 0 });
 try {
-  assert.equal(MAP_IDS.length, 30);
+  assert.equal(MAP_IDS.length, 31); // 2026-09-19: Mars (Olympus Basin) joins the catalog
   for (const id of MAP_IDS) {
     const before = materialCount;
     const material = makeRoofMaterial(roof, id);

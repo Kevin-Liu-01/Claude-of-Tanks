@@ -43,7 +43,7 @@ The Tank Gallery at https://cot.kevinliu.studio/gallery exposes the production f
 
 ## Battlefields and world systems
 
-The thirty current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, Skybridge Chasm, Tidegate Polders, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Whiteout Station, Orchard Valley, Longleaf Crossing, Mangrove Reach, Saltwind Narrows, and Highland Reservoir.
+The thirty-one current battlefields are Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, Cinder Junction, Frontier Basin, Nordhavn Fjord, Jade River Delta, Redrock Divide, Monsoon Ridge, Glacier Pass, Obsidian Caldera, Ironworks, Ruinspires, Blackglass District, Titan Gorge, Skybridge Chasm, Tidegate Polders, Copper Mesa Mine, Kestrel Airfield, Sunscar Oasis, Whiteout Station, Orchard Valley, Longleaf Crossing, Mangrove Reach, Saltwind Narrows, and Highland Reservoir and Olympus Basin.
 
 Map configurations provide terrain and simulation descriptors without requiring the renderer. World presentation adds roads, structures, foliage, fog, sky, lighting, cover, collision, minimaps, destructibles, movable and crushable props, toppling objects, wrecks, detached remnants, utility networks, craters, and persistent destruction where the current mode supports it.
 

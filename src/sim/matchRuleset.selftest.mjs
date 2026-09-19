@@ -7,6 +7,7 @@ import {
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
   acceptsTeamArrangement, hordeWaveSize, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
+  MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS,
 } from './matchRuleset.ts';
 
 for (const mode of GAME_MODE_IDS) {
@@ -163,5 +164,31 @@ assert.deepEqual(rulesetLoadout(standard, ['a', 'b', 'c']), ['a', 'b', 'c']);
 assert.deepEqual(rulesetLoadout({ ...standard, equipmentSlots: 1 }, ['a', 'b', 'c']), ['a']);
 assert.deepEqual(rulesetLoadout(standard, null), []);
 assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde, 6), 2); assert.equal(rulesetAllyCap(assault, 6), 3);
+
+// Mars settings (owner 2026-09-18 "boosts and settings"): the gravity world and the boost-cache cadence ride the
+// mars arrangement; other modes drop them, unknown ids drop, a gravity-only choice keeps the default caches
+{
+  const mars = matchRulesetFor('mars');
+  assert.deepEqual(mars.mars, { gravity: 'mars', caches: 'standard', cacheFirstS: 12, cacheIntervalS: 22 }, 'the Mars base ruleset carries its settings');
+  assert.equal(mars.mars, MARS_DEFAULT_RULES);
+  assert.deepEqual(MARS_GRAVITY_IDS, ['mars', 'moon', 'earth']);
+  assert.deepEqual(MARS_CACHE_IDS, ['off', 'standard', 'frequent']);
+  assert.equal(normalizeTeamArrangement('standard', { marsGravity: 'moon', marsCaches: 'off' }), null, 'Mars settings belong to the mars mode only');
+  assert.deepEqual(normalizeTeamArrangement('mars', { marsGravity: 'moon', marsCaches: 'bogus' }),
+    { allies: null, enemies: null, waveSize: null, enemyNation: null, marsGravity: 'moon' }, 'unknown Mars ids drop');
+  assert.deepEqual(normalizeTeamArrangement('mars', { allies: 3 }), { allies: 3, enemies: null, waveSize: null, enemyNation: null }, 'a sides-only mars arrangement carries no Mars keys');
+  const moon = matchRulesetFor('mars', null, { marsGravity: 'moon', marsCaches: 'off' });
+  assert.equal(moon.gravityScale, 0.17); assert.equal(moon.jumpMps, 8.5); assert.equal(moon.recoilLaunchScale, 4.5);
+  assert.deepEqual(moon.mars, { gravity: 'moon', caches: 'off', cacheFirstS: 0, cacheIntervalS: 0 });
+  assert.ok(Object.isFrozen(moon) && Object.isFrozen(moon.mars));
+  const moonKeys = rulesetLines(moon).map((line) => line.key);
+  assert.ok(moonKeys.includes('marsCachesOff') && !moonKeys.includes('marsCaches'), 'no caches reads as its own line');
+  assert.deepEqual(rulesetLines(mars).find((line) => line.key === 'marsCaches')?.values, { value: '22' });
+  const earth = matchRulesetFor('mars', null, { marsGravity: 'earth' });
+  assert.equal(earth.gravityScale, 1); assert.equal(earth.jumpMps, 4);
+  assert.equal(earth.mars.caches, 'standard', 'a gravity-only arrangement keeps the default caches');
+  assert.equal(matchRulesetFor('mars', null, { allies: 3 }).mars, MARS_DEFAULT_RULES, 'a sides-only arrangement keeps the base Mars rules');
+  assert.equal(matchRulesetFor('standard', null, { marsGravity: 'moon' }).gravityScale, 1, 'Standard ignores Mars settings');
+}
 
 console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps and ammo/reload helpers verified');

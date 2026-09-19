@@ -3,6 +3,7 @@ import { TANK_SPECS, ALL_TANK_IDS } from '../vehicles/specs.ts';
 import {
   ENEMY_NATION_OPTIONS, SIDES_MODES, TEAM_ARRANGEMENT_STORAGE_KEY, enemyNationSpecNations, isEnemyNationId,
   readSides, readTeamArrangement, writeSides, writeTeamArrangement,
+  readMarsSettings, writeMarsSettings,
 } from './teamArrangement.ts';
 import { BATTLE_FIELD_LIMIT } from '../sim/matchRuleset.ts';
 import { CAMPAIGN_ENEMY_NATIONS } from './campaignOperations.ts';
@@ -34,7 +35,7 @@ assert.deepEqual(Object.keys(JSON.parse(memory.get(TEAM_ARRANGEMENT_STORAGE_KEY)
 // sides (owner 2026-09-18): Standard arranges its sides too, and one sides setting serves every symmetric mode
 assert.deepEqual(writeTeamArrangement('standard', { allies: 0 }, storage), { allies: 0, enemies: null, waveSize: null, enemyNation: null },
   'Standard arranges its sides');
-assert.deepEqual([...SIDES_MODES], ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball']);
+assert.deepEqual([...SIDES_MODES], ['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'mars'], 'Mars mode (2026-09-18) is a symmetric mode: the sides switch applies');
 writeTeamArrangement('turbo_ball', { enemyNation: 'japan' }, storage);
 assert.deepEqual(writeSides({ allies: 13, enemies: 14 }, storage), { allies: 13, enemies: 14 });
 for (const mode of SIDES_MODES) assert.equal(readTeamArrangement(mode, storage).allies, 13, `${mode}: shares the sides setting`);
@@ -46,6 +47,20 @@ assert.equal(readTeamArrangement('standard', storage), null);
 assert.deepEqual(readTeamArrangement('turbo_ball', storage), { allies: null, enemies: null, waveSize: null, enemyNation: 'japan' });
 assert.deepEqual(writeSides({ allies: 0, enemies: 99 }, storage), { allies: 0, enemies: BATTLE_FIELD_LIMIT - 1 }, 'the sides clamp like the ruleset');
 assert.deepEqual(readSides(null), { allies: 6, enemies: 7 }, 'no storage reads as 7 v 7');
+// Mars settings (owner 2026-09-18): stored on the mars arrangement, kept across a sides change, never on other modes
+assert.deepEqual(readMarsSettings(storage), { gravity: 'mars', caches: 'standard' }, 'Mars settings default to the mode rules');
+assert.deepEqual(writeMarsSettings({ gravity: 'moon', caches: 'frequent' }, storage), { gravity: 'moon', caches: 'frequent' });
+assert.deepEqual(readTeamArrangement('mars', storage),
+  { allies: 0, enemies: BATTLE_FIELD_LIMIT - 1, waveSize: null, enemyNation: null, marsGravity: 'moon', marsCaches: 'frequent' });
+writeSides({ allies: 13, enemies: 14 }, storage);
+assert.deepEqual(readMarsSettings(storage), { gravity: 'moon', caches: 'frequent' }, 'a sides change keeps the Mars settings');
+assert.deepEqual(writeMarsSettings({ gravity: 'bogus' }, storage), { gravity: 'moon', caches: 'frequent' }, 'unknown ids keep the current choice');
+assert.deepEqual(writeMarsSettings({ caches: 'off' }, storage), { gravity: 'moon', caches: 'off' }, 'one field at a time');
+assert.equal(readTeamArrangement('standard', storage)?.marsGravity, undefined, 'the other symmetric modes never carry Mars settings');
+assert.deepEqual(writeMarsSettings(null, storage), { gravity: 'mars', caches: 'standard' }, 'null clears both');
+assert.deepEqual(readTeamArrangement('mars', storage), { allies: 13, enemies: 14, waveSize: null, enemyNation: null }, 'clearing the settings keeps the sides');
+assert.deepEqual(readMarsSettings(null), { gravity: 'mars', caches: 'standard' }, 'no storage reads as the mode rules');
+writeSides(null, storage);
 memory.set(TEAM_ARRANGEMENT_STORAGE_KEY, '{bad json');
 assert.equal(readTeamArrangement('frontline_assault', storage), null, 'a corrupt store reads as defaults');
 assert.equal(readTeamArrangement('endless_horde', null), null, 'no storage at all reads as defaults');

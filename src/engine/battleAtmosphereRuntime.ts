@@ -12,7 +12,7 @@ export const BATTLE_WEATHER_BIOMES = Object.freeze({
   ruinspires: 'arid', blackglass: 'temperate', titan_gorge: 'arid', skybridge: 'arid',
   polders: 'coastal', copper_mesa: 'arid', airfield: 'temperate', oasis: 'arid',
   whiteout: 'cold', orchard: 'temperate', longleaf: 'temperate', mangrove: 'tropical',
-  saltwind: 'coastal', reservoir: 'temperate',
+  saltwind: 'coastal', reservoir: 'temperate', mars: 'arid',
 } satisfies Record<MapId, BattleWeatherBiome>);
 
 export interface BattleAtmosphereRuntimeOptions {

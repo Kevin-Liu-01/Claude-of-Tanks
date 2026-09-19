@@ -47,4 +47,5 @@ export const parentRoutes = {
   foundry: 'foundry', ruinspires: 'ruinspires', blackglass: 'blackglass', titan_gorge: 'titan_gorge', skybridge: 'skybridge',
   polders: 'coastal', copper_mesa: 'foundry', airfield: 'railyard', oasis: 'desert', whiteout: 'winter',
   orchard: 'orchard', longleaf: 'frontier', mangrove: 'delta', saltwind: 'coastal', reservoir: 'frontier',
+  mars: 'badlands', // 2026-09-19 Olympus Basin: the station's huts wear the badlands dust tints
 };

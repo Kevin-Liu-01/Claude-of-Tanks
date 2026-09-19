@@ -96,7 +96,7 @@ for (const id of MAP_IDS) {
     assert.deepEqual(after, oldProfile, `${id}: no other-map profile change`); unchangedStampMaps++;
   }
 }
-assert.equal(unchangedStampMaps, 29);
+assert.equal(unchangedStampMaps, 30); // 2026-09-19: Mars joins the unchanged-stamp maps
 const skyConfig = getMapConfig('skybridge');
 const oldSky = oldCreateHeightField(1337, skyConfig), newSky = createHeightField(1337, skyConfig);
 assert.deepEqual(newSky._layout, oldSky._layout, 'profile does not change road/layout/station ownership');

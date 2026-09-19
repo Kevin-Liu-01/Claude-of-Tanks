@@ -17,10 +17,11 @@ function seeded(seed = 0x51a7c7) {
 }
 
 const ids = STRUCTURE_CATALOG.map(({ id }) => id);
-assert.equal(ids.length, 35, 'thirty-five new building types are registered');
+// Mars bases (round 23, 2026-09-18): six station pieces join the destructible registry
+assert.equal(ids.length, 41, 'forty-one building types are registered');
 assert.equal(new Set(ids).size, ids.length, 'new building ids are unique');
 assert.equal(Object.keys(STRUCTURE_BUILDERS).length, 15, 'fifteen heavyweight merged buildings');
-assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 20,
+assert.equal(Object.keys(DESTRUCTIBLE_BUILDING_TYPES).length, 26,
   'twenty light buildings have destruction states');
 
 const HIGH_RISE_IDS = [

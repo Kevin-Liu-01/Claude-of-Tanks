@@ -60,6 +60,8 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   mangrove: [through, through, through, join(0, 2), join(0, 2)],
   saltwind: [through, through, through, join(0, 2), join(0, 2)],
   reservoir: [['boundary', { junction: 4 }], join(0, 4), join(0, 1), join(0, 1), through],
+  // Mars (round 23): the default two-road grid, both routes leaving the basin
+  mars: [through, through],
 };
 
 /** Segment intersection, including touching and collinear overlap. The

@@ -51,6 +51,8 @@ import longleaf from './longleaf.ts';
 import mangrove from './mangrove.ts';
 import saltwind from './saltwind.ts';
 import reservoir from './reservoir.ts';
+// Mars mode (owner 2026-09-18): the galaxy-sky basin with its research station.
+import mars from './mars.ts';
 
 const CONFIGS = {
   verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
@@ -58,6 +60,7 @@ const CONFIGS = {
   ruinspires, blackglass, titan_gorge: titanGorge, skybridge,
   polders, copper_mesa: copperMesa, airfield, oasis, whiteout,
   orchard, longleaf, mangrove, saltwind, reservoir,
+  mars,
 } satisfies Record<MapId, object>;
 
 export type BattlefieldMapConfig = (typeof CONFIGS)[MapId];

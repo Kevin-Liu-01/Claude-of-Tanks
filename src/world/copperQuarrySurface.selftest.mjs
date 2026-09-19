@@ -134,6 +134,8 @@ for (const [index, seed] of seeds.entries()) {
   const unrelatedMutation = createHash('sha256');
   for (const id of MAP_IDS) {
     if (id === 'verdant') continue;
+    // Mars mode (2026-09-18): Olympus Basin postdates the other28 baseline; horizonResources gates its ring
+    if (id === 'mars') continue;
     const config = getMapConfig(id), ring = sampleHorizonGeometry(config, seed);
     if (id !== 'copper_mesa') {
       const historicalRing = id === 'polders' ? sampleHorizonGeometry({ ...config,

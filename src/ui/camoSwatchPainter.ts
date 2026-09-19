@@ -525,6 +525,87 @@ function paintSparkScheme(ctx: SwatchPaintContext): void {
     spark(W * 0.88, H * 0.66, H * 0.4, terra, 0.8);
 }
 
+function paintOpenaiScheme(ctx: SwatchPaintContext): void {
+  const { c, patches, W, H } = ctx;
+    // skins r1: porcelain ring chain with one teal link on graphite (an
+    // original motif, no third-party mark) — hero pair, medium, sprinkle.
+    const ink = patches[0], teal = patches[1] || patches[0];
+    const ring = (x: number, y: number, r: number, w: number, col: SwatchRgb, a: number): void => {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+      c.lineWidth = w; c.strokeStyle = swRgb(col, a); c.stroke();
+    };
+    ring(W * 0.24, H * 0.5, H * 0.34, H * 0.085, ink, 0.95);
+    ring(W * 0.40, H * 0.5, H * 0.34, H * 0.085, teal, 0.92);
+    ring(W * 0.66, H * 0.44, H * 0.22, H * 0.06, ink, 0.9);
+    ring(W * 0.86, H * 0.62, H * 0.15, H * 0.045, ink, 0.85);
+    c.fillStyle = swRgb(ink, 0.8);
+    c.beginPath(); c.arc(W * 0.78, H * 0.28, H * 0.05, 0, Math.PI * 2); c.fill();
+}
+
+function paintXaiScheme(ctx: SwatchPaintContext): void {
+  const { c, patches, W, H } = ctx;
+    // skins r1: bone meteor streaks on one heading over carbon, with dust.
+    const bone = patches[0], cool = patches[1] || patches[0];
+    const streak = (x: number, y: number, len: number, w: number, col: SwatchRgb, a: number): void => {
+      c.save(); c.translate(x, y); c.rotate(-0.55);
+      c.fillStyle = swRgb(col, a);
+      c.beginPath();
+      c.moveTo(-len * 0.5, 0);
+      c.quadraticCurveTo(len * 0.15, -w * 0.55, len * 0.5 - w * 0.5, -w * 0.5);
+      c.quadraticCurveTo(len * 0.5 + w * 0.3, 0, len * 0.5 - w * 0.5, w * 0.5);
+      c.quadraticCurveTo(len * 0.15, w * 0.55, -len * 0.5, 0);
+      c.closePath(); c.fill(); c.restore();
+    };
+    streak(W * 0.32, H * 0.56, W * 0.42, H * 0.2, cool, 0.6);
+    streak(W * 0.30, H * 0.48, W * 0.4, H * 0.18, bone, 0.95);
+    streak(W * 0.68, H * 0.36, W * 0.2, H * 0.1, bone, 0.9);
+    streak(W * 0.84, H * 0.68, W * 0.13, H * 0.07, cool, 0.9);
+    c.fillStyle = swRgb(bone, 0.8);
+    for (const [x, y] of [[0.58, 0.74], [0.76, 0.2], [0.92, 0.42], [0.12, 0.2]]) {
+      c.beginPath(); c.arc(W * x, H * y, H * 0.03, 0, Math.PI * 2); c.fill();
+    }
+}
+
+function paintGeminiScheme(ctx: SwatchPaintContext): void {
+  const { c, rng, patches, W, H } = ctx;
+    // skins r1: prism washes, the twins' constellation and twinkles.
+    const blue = patches[0], violet = patches[1] || patches[0], pink = patches[2] || violet;
+    const star: SwatchRgb = patches[3] || [238, 240, 255];
+    const washes: SwatchRgb[] = [blue, violet, pink];
+    for (let i = 0; i < 3; i++) {
+      swBlob(c, rng, W * (0.2 + i * 0.3), H * (0.3 + rng() * 0.4), H * 0.55);
+      c.fillStyle = swRgb(washes[i], 0.45); c.fill();
+    }
+    const A: Array<[number, number]> = [[0.15, 0.10], [0.30, 0.24], [0.42, 0.42], [0.50, 0.62], [0.58, 0.84]];
+    const B: Array<[number, number]> = [[0.36, 0.02], [0.49, 0.17], [0.63, 0.35], [0.73, 0.56], [0.84, 0.80]];
+    const at = (n: [number, number]): [number, number] => [W * 0.08 + n[0] * W * 0.34, H * 0.08 + n[1] * H * 0.84];
+    c.strokeStyle = swRgb(star, 0.6); c.lineWidth = 1;
+    c.beginPath();
+    for (const chain of [A, B]) {
+      const p0 = at(chain[0]); c.moveTo(p0[0], p0[1]);
+      for (let i = 1; i < chain.length; i++) { const p = at(chain[i]); c.lineTo(p[0], p[1]); }
+    }
+    for (const i of [1, 3]) { const p = at(A[i]), q = at(B[i]); c.moveTo(p[0], p[1]); c.lineTo(q[0], q[1]); }
+    c.stroke();
+    for (const chain of [A, B]) {
+      for (let i = 0; i < chain.length; i++) {
+        const p = at(chain[i]); const head = i === 0;
+        c.fillStyle = swRgb(head && chain === B ? pink : star, 0.95);
+        c.beginPath(); c.arc(p[0], p[1], head ? H * 0.06 : H * 0.032, 0, Math.PI * 2); c.fill();
+      }
+    }
+    const twinkle = (x: number, y: number, s: number, col: SwatchRgb, a: number): void => {
+      const k = s * 0.18;
+      c.fillStyle = swRgb(col, a); c.beginPath();
+      c.moveTo(x, y - s); c.quadraticCurveTo(x + k, y - k, x + s, y);
+      c.quadraticCurveTo(x + k, y + k, x, y + s); c.quadraticCurveTo(x - k, y + k, x - s, y);
+      c.quadraticCurveTo(x - k, y - k, x, y - s); c.closePath(); c.fill();
+    };
+    twinkle(W * 0.70, H * 0.42, H * 0.3, star, 0.95);
+    twinkle(W * 0.88, H * 0.7, H * 0.18, pink, 0.9);
+    twinkle(W * 0.6, H * 0.82, H * 0.12, blue, 0.9);
+}
+
 function paintDuckyScheme(ctx: SwatchPaintContext): void {
   const { c, patches, W, H } = ctx;
     // camo r6 fun set: each card sells its motif with 1-3 signature marks.
@@ -857,6 +938,9 @@ const SWATCH_SCHEME_HANDLERS: Readonly<Record<string, SwatchSchemeHandler>> = {
   "hexfield": { paint: paintHexfieldScheme, requiresPatches: true },
   "claude": { paint: paintClaudeScheme, requiresPatches: true },
   "spark": { paint: paintSparkScheme, requiresPatches: true },
+  "openai": { paint: paintOpenaiScheme, requiresPatches: true },
+  "xai": { paint: paintXaiScheme, requiresPatches: true },
+  "gemini": { paint: paintGeminiScheme, requiresPatches: true },
   "ducky": { paint: paintDuckyScheme, requiresPatches: true },
   "suits": { paint: paintSuitsScheme, requiresPatches: true },
   "flames": { paint: paintFlamesScheme, requiresPatches: true },

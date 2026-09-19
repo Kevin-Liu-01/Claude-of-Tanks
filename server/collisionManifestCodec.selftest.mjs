@@ -189,6 +189,8 @@ const previousShardBytes = {
   polders: 953559, copper_mesa: 727167, airfield: 786018, oasis: 685786,
   whiteout: 541698, orchard: 1135684, longleaf: 1218490, mangrove: 1055765,
   saltwind: 873926, reservoir: 1282807,
+  // 2026-09-19: Mars (Olympus Basin) joins at its first captured size.
+  mars: 501381,
 };
 assert.deepEqual(Object.keys(previousShardBytes), MAP_IDS, 'storage budget covers every canonical map');
 let rawBytes = 0, encodedBytes = 0, publishedBytes = 0;

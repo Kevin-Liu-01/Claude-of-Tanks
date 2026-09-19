@@ -269,7 +269,8 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '71805b771c0eeb3bfacc4df8c03b1eaad4a477177839f443e9a639aff42a3371', // 2026-09-18: Object 695 signature paint sig_object695_x "Object 695 Digital" joins the Russian digital woodland presets (the session's Kurganets-25 build under its own id)
+  'b1fb49ac7501580846deacf867ca9ab43f97f74951a5887cd43038ad01a037e8', // 2026-09-19: skins r1 — the AI-lab set openai / xai / gemini (original ring-chain, meteor-streak and twins-constellation prints; no third-party marks) joins the house schemes
+  // previous 2026-09-18 pin 71805b77…3371 (Object 695 signature paint) is retired by that addition
   // previous 2026-09-15 pin a8fe318e…36925 (signature/service labels follow the renamed source hulls) is retired by that addition
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
