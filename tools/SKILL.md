@@ -86,6 +86,12 @@ settled sample.
 Tank work must run `npm run tank:anatomy:update` before asset/release checks;
 the update refreshes the receipt map and only the three fleet technical views,
 preserving unrelated garage/top/side/markings assets.
+Garage quality substitutions must retain the live production engine context,
+including shadow-material setup and release ownership. A null-context factory
+build can leave lights and shadow maps enabled while omitting cascaded-shadow
+shader registration. Record actual material registration as well as camera,
+quality, fill and light state; distinguish this substitution from normal
+settings selection.
 Reference-backed new tanks and ground-up rebuilds must register the exemplar
 quality bar in `procedural-fidelity.html`: every whole silhouette view and the
 aggregate score must reach 92, not merely the legacy 90 fleet floor. Keep that
@@ -96,11 +102,13 @@ are unavailable on a fused source mesh.
 `gen-interior-fills.mjs` applies the explicit body-boundary recipes in
 `interior-fill-body-policy.mjs` before voxelization. A separately mounted cage,
 light or roof fitting must not bridge exterior air into a body span. The BMP
-recipe uses its closed primary hull/turret shells and retains every gun/bore
-input; other vehicles keep their existing inputs. This affects generation only,
-not source, continuity, seating or watertight checks. After a recipe change,
-regenerate the scoped fill record and rerun the unchanged filled native stock,
-real-opening and weapon-bore fixtures. Never hand-edit a generated fill record.
+and modern Trophy/Barak recipes use their primary hull/turret shells and retain every
+gun/bore input; other vehicles keep their existing inputs. This affects
+generation only, not source, continuity, seating or watertight checks. Native
+shell seams still require repair: regenerate the scoped fill record and verify
+filled closure, stock, real openings, weapon bores and strict band/shoe seating.
+A regression test must allow a repaired seam to disappear. Never hand-edit a
+generated fill record.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

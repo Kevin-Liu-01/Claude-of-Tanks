@@ -105,6 +105,13 @@ and `wheelFaceLayers` for source-measured detail that must move with suspension.
 Painted faces use the camouflage-aware `wheelPaint` role, while tires/insets
 remain neutral. Run the three focused pattern checks plus
 `wheelQuality.selftest.mjs` after any wheel or running-gear change.
+Read actual assembled wheel centers: the ground-seating law can override an
+authored `wheelY`. Source-backed track courses must fit finite wheel stock,
+including the central drum, tread rings and tooth crowns at their actual axial
+positions. A smaller `trackR` can clear the hull while burying the band inside
+a solid rim. Use source-sized shoe components, preserve circular hinge pins,
+and verify loaded contact and end-wheel engagement in both HIGH and LOW through
+motion before accepting a course change.
 
 Physical camouflage suits use `addVehicleGhillieSuit(P)` from
 `ghillieSuit.ts`. Add a vehicle-specific registry entry with fitted top, side,
