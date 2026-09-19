@@ -102,8 +102,8 @@ are unavailable on a fused source mesh.
 `gen-interior-fills.mjs` applies the explicit body-boundary recipes in
 `interior-fill-body-policy.mjs` before voxelization. A separately mounted cage,
 light or roof fitting must not bridge exterior air into a body span. The BMP
-and modern Trophy/Barak recipes use their primary hull/turret shells and retain every
-gun/bore input; other vehicles keep their existing inputs. This affects
+and modern Trophy/Barak/Namer recipes use their primary hull/turret shells
+and retain every gun/bore input; other vehicles keep their existing inputs. This affects
 generation only, not source, continuity, seating or watertight checks. Native
 shell seams still require repair: regenerate the scoped fill record and verify
 filled closure, stock, real openings, weapon bores and strict band/shoe seating.

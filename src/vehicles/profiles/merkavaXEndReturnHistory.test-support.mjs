@@ -67,7 +67,7 @@ function beforeBarakBowRepair(source){
   return source;
 }
 
-function beforeModernIsraeliFleet(source){
+function beforeModernIsraeliFleet(source,readHelper){
   source=beforeBarakBowRepair(source);
   if(!source.includes("merkava4_trophy: { build: buildMerkava4Trophy }"))return source;
   const removeExact=(part,label)=>{
@@ -92,6 +92,22 @@ function beforeModernIsraeliFleet(source){
     assert.equal(hash(block),sha256,`${label}: complete reviewed block`);
     source=source.slice(0,startAt)+before+source.slice(endAt);
   };
+  // Authenticate the reviewed source reconstruction without rebasing the
+  // immutable legacy Mk.3/Mk.4 profile or accepting arbitrary helper changes.
+  assert.equal(hash(readHelper('namerSourceFrame.ts')),'d7496d30f54ed84a3565468d86d8f8734a923fe7d44a0c8ca26c6b1c3567ff70',
+    'Complete reviewed Namer helper namerSourceFrame.ts');
+  assert.equal(hash(readHelper('namerSourceHull.ts')),'ce8d8b0dc7e2db717c26e47bc5be1bbf04cdd7596b881b3f265e759747713a64',
+    'Complete reviewed Namer helper namerSourceHull.ts');
+  assert.equal(hash(readHelper('namerSourceChassis.ts')),'238586a4ce2997c22991ae52dec723c7029db8c40f7915ef8b162388adfcdb1e',
+    'Complete reviewed Namer helper namerSourceChassis.ts');
+  assert.equal(hash(readHelper('namerSourceTurret.ts')),'1aa310a6f48fe217e026660c9b575b6c788ff5ad281e6830faf2f079df4238f6',
+    'Complete reviewed Namer helper namerSourceTurret.ts');
+  assert.equal(hash(readHelper('namerSourceSupport.ts')),'6e2a3f535bda6ad35496089e1fe69d2287bb1ea97c7082c5f59ed0bb4d2d39af',
+    'Complete reviewed Namer helper namerSourceSupport.ts');
+  removeExact("import { addNamerSourceHull } from './namerSourceHull.ts';\n",'Namer source helper import');
+  removeExact("import { addNamerSourceChassis } from './namerSourceChassis.ts';\n",'Namer source helper import');
+  removeExact("import { addNamerSourceTurret } from './namerSourceTurret.ts';\n",'Namer source helper import');
+  removeExact("import { addNamerSourceSupport } from './namerSourceSupport.ts';\n",'Namer source helper import');
   removeExact("import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';\n",'LOW track-shoe helper import');
   removeExact("const NAMER: Frame = { y: 2.10, z: -1.15, ground: 0, center: 0 };\n",'Namer frame datum');
   removeExact(`function hullBar(P: TankBuilderPort, a: [number,number,number], b: [number,number,number], width = .025, slot = 'hullDark'): void {
@@ -217,8 +233,8 @@ export function buildMerkava4Trophy(P: TankBuilderPort): void { buildMerkava4Fam
 export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_barak'); }
 
 `,'\n\n','modern Merkava exported wrappers');
-  removeHashedBlock('function namerSuperstructure','export const MERKAVA_X_PROFILES',
-    'aa8f2ed6c3bbd5f286c45b07e4084b126f9a0a9410ef90fd53199aab15bce63b','Namer implementation');
+  removeHashedBlock('export function buildNamerIfv','export const MERKAVA_X_PROFILES',
+    'add8e6315ea78095a2ec38f0bc6dbde5dba86e4f070ee146656433e0eff20732','Namer implementation');
   removeExact("  merkava4_trophy: { build: buildMerkava4Trophy },\n  merkava4_barak: { build: buildMerkava4Barak },\n  namer_ifv: { build: buildNamerIfv },\n",
     'modern Israeli profile registrations');
   return source;
@@ -408,7 +424,7 @@ export function authenticateMerkavaEndReturnHistory(requiredId, {
   source=read('merkavaX.ts'), readHelper=read,
 }={}) {
   assert.ok(MERKAVA_END_RETURN_SEAMS.some(s=>s.id===requiredId),'Known physical test owner');
-  source=beforeModernIsraeliFleet(source);
+  source=beforeModernIsraeliFleet(source,readHelper);
   let before=beforeMerkava3dRightCheekRepair(
     beforeRollers(beforePaintedBasketFloor(beforeMeshBasket(source),readHelper),readHelper));
   const present=[];

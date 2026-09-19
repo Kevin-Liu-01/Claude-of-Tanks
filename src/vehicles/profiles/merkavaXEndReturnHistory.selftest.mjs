@@ -80,7 +80,14 @@ rejectMutation('outerWorldX: Object.freeze([1.82,1.72,1.36])',
 rejectMutation("const sideX=configuration==='namer'?1.25:configuration==='mk4'?1.78:1.55;",
   "const sideX=configuration==='namer'?1.25:configuration==='mk4'?1.77:1.55;",
   'Modern Trophy configuration drift');
-rejectMutation("{z:-2.75-NAMER.z,ring:[[-.76,-.07],[.76,-.07]",
-  "{z:-2.75-NAMER.z,ring:[[-.75,-.07],[.76,-.07]",'Namer turret station drift');
+rejectMutation('  addNamerSourceTurret(P);','  addNamerSourceHull(P);',
+  'Namer source assembly drift');
+for(const helper of ['namerSourceFrame.ts','namerSourceHull.ts','namerSourceChassis.ts',
+  'namerSourceTurret.ts','namerSourceSupport.ts']) {
+  assert.throws(()=>authenticate('merkava4_x',{
+    readHelper:file=>readHelper(file)+(file===helper?'\n':''),
+  }),`Namer helper drift: ${helper}`);
+  rejected++;
+}
 console.log(JSON.stringify({pass:true,owners:present.map(s=>s.id),negativeControls:rejected,historicalSingleSeamFailures,
   scope:'Test-only exact additive seams and immutable helper bytes; no physical result is inverted.'}));
