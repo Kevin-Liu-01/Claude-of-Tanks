@@ -93,6 +93,22 @@ function reapStaleLock(lockDir, staleMs) {
   }
 }
 
+// Distinguish acquisitions launched by concurrent workers in one process.
+// Keep the PID last for legacy ticket liveness checks and use exclusive creation.
+let nextTicketSequence = 0;
+function reserveTicket(queueDir) {
+  for (;;) {
+    const sequence = String(nextTicketSequence++).padStart(12, '0');
+    const name = `${String(Date.now()).padStart(15, '0')}-${sequence}-${process.pid}.t`;
+    try {
+      writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' });
+      return name;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+  }
+}
+
 export function createCaptureLock({
   lockDir = DEFAULT_LOCK_DIR,
   queueDir = DEFAULT_QUEUE_DIR,
@@ -103,8 +119,7 @@ export function createCaptureLock({
 
   async function acquire(timeoutMs = 10 * 60 * 1000) {
     mkdirSync(queueDir, { recursive: true });
-    const ownTicket = `${String(Date.now()).padStart(15, '0')}-${process.pid}.t`;
-    writeFileSync(join(queueDir, ownTicket), String(process.pid));
+    const ownTicket = reserveTicket(queueDir);
     const startedAt = Date.now();
     try {
       for (;;) {
