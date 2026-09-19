@@ -16,7 +16,8 @@ import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLo
 // ticket lock shared with the other capture harnesses (BUILD-STANDARD §F).
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
 await acquireLock(30 * 60 * 1000);
@@ -31,10 +32,13 @@ if (!TANK_ID) { console.error('usage: node tools/visual-evaluator.mjs --id=<id> 
 const VIEWS = argOf('views');
 const OUT = resolve(`shots/visual-eval-${TANK_ID}`);
 mkdirSync(OUT, { recursive: true });
+const cacheDir = mkdtempSync(join(tmpdir(), 'cot-visual-eval-vite-'));
 
 const t0 = Date.now();
 const server = await createServer({
   root: process.cwd(),
+  cacheDir,
+  optimizeDeps: { noDiscovery: true },
   logLevel: 'error',
   server: { port: 7455 + Math.floor(Math.random() * 40), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
 });
@@ -100,6 +104,7 @@ try {
 } finally {
   await browser.close();
   await server.close();
+  rmSync(cacheDir, { recursive: true, force: true });
   releaseLock();
 }
 process.exit(exitCode);

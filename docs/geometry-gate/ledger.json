@@ -1,8 +1,8 @@
 {
  "generatedAt": "2026-09-19T03:43:07.056Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 78,
- "total": 180,
+ "passed": 79,
+ "total": 181,
  "rows": [
   {
    "id": "leo2_revolution_proto",
@@ -259,6 +259,19 @@
    "components": {
     "wholeCurves": 94.4,
     "dims": 95,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "ares_apc_x",
+   "geoMin": 94.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.3,
+    "dims": 98.4,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

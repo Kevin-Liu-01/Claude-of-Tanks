@@ -23,6 +23,7 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
 } as const);
 
 export const NATIVE_FAMILY_ORDER = Object.freeze({
+  britishAfv: Object.freeze(['fv510', 'fv510_milan', 'ares_apc_x']),
   abramsSourceX: Object.freeze(['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x']),
   abrams: Object.freeze([
     'm1a1', 'm1a1ha', 'm1a1_aim', 'm1a2', 'm1a2_tusk',
@@ -47,7 +48,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x',
   ]),
   israel: Object.freeze([
-    'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava3d_x',
+    'merkava1b', 'merkava2b', 'merkava2d', 'sabra_mk2_x', 'merkava3c', 'merkava3d', 'merkava3d_x',
     'merkava4', 'merkava4_x', 'merkava4b', 'namer_ifv', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([

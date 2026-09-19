@@ -155,7 +155,7 @@ assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   'five source configurations carry six guided channels, including both Epokha launchers');
 assert.equal(guidedRounds.length, 30, 'the complete guided-ammunition fleet is covered');
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
-// separately from the 69 second-wave and 21 conventional Abrams X channels.
+// separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
 assert.equal(SECOND_WAVE_X_IDS.length, 23);
 assert.equal(SECOND_WAVE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 69);
@@ -165,15 +165,22 @@ const addedXIds = new Set([...SECOND_WAVE_X_IDS, ...ABRAMS_SOURCE_X_IDS]);
 assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct identities');
 // Later additions are exercised in the fleet loop above but are counted
 // separately from the immutable established channel census.
-const laterIds = new Set(['type100', 'ztz100_x', 'object695_x', ...SUPPLIED_SOURCE_IDS]);
-assert.equal(TANK_SPECS.type100.gun.shells.length, 3);
+const laterChannelCounts = {
+  type100: 3, ztz100_x: 3, object695_x: 3,
+  merkava4_trophy: 3, merkava4_barak: 3, namer_ifv: 2, ares_apc_x: 3,
+};
+const laterIds = new Set([...Object.keys(laterChannelCounts), ...SUPPLIED_SOURCE_IDS]);
+for (const [id, count] of Object.entries(laterChannelCounts)) {
+  assert.equal(TANK_SPECS[id].gun.shells.length, count,
+    `${id}: its explicit added loadout does not alter the established census`);
+}
 assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) && !laterIds.has(spec.id))
   .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
   'the pre-existing ammunition-channel census remains intact');
 assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
 assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
   'nine three-channel, two two-channel and one guided-primary loadout');
-assert.equal(authoredShellChannels, 660 /* preserved 628 + 32 supplied-source channels */,
+assert.equal(authoredShellChannels, 671 /* preserved 628 + 32 supplied-source + 8 Israeli + 3 Ares channels */,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

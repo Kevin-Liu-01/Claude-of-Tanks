@@ -45,6 +45,7 @@ import { LEOPARD_X_REFERENCE_OVERRIDES } from '/tools/leopard-x-reference-overri
 import { WEST_X_REFERENCE_OVERRIDES } from '/tools/west-x-reference-overrides.ts';
 import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-reference-overrides.ts';
 import { ABRAMS_X_REFERENCE_OVERRIDES } from '/tools/abrams-x-reference-overrides.ts';
+import { ARES_APC_X_REFERENCE_OVERRIDES } from '/tools/ares-apc-x-reference-overrides.ts';
 import { SOURCE_WORLD_FRAMES, validateSourceWorldFrame, hashLocalOracle } from '/tools/source-world-registration.mjs';
 import { measureSlabBounds } from '/tools/section-slab-bounds.mjs';
 
@@ -67,6 +68,7 @@ import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-refe
 
 const LOCAL_REFERENCE_OVERRIDES = {
   ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
+  ...ARES_APC_X_REFERENCE_OVERRIDES,
   ...SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ...ABRAMS_X_REFERENCE_OVERRIDES,
   ...T90_X_REFERENCE_OVERRIDES,

@@ -1,0 +1,78 @@
+{
+  "schema": "cot-source-study-scalars-v1",
+  "id": "ares_apc_x",
+  "rawSource": {
+    "filename": "ares_apc.glb",
+    "sha256": "6898ae8fd7a65f3b5012657635bcca5ac6c8a82a14ebdb1b8ed2ffbc5015983e",
+    "bytes": 3183008,
+    "author": "42manako",
+    "license": "CC-BY-NC-4.0",
+    "sourceUrl": "https://sketchfab.com/3d-models/ares-apc-7e208e5b566c4313aa74ae7635927768",
+    "triangles": 9533,
+    "meshNodes": 63
+  },
+  "canonicalOracle": {
+    "sha256": "f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1",
+    "axes": ["-z", "y", "x"],
+    "scale": 1,
+    "translation": [0.00945018, 0.00130025, 0.00259995],
+    "bounds": {
+      "min": [-1.95495, 0, -3.606],
+      "max": [1.95495, 3.2387, 3.606],
+      "size": [3.9099, 3.2387, 7.212]
+    },
+    "fusedComparison": true
+  },
+  "runningGear": {
+    "roadWheelStationsZ": [-1.3674, -0.7256, -0.0753, 0.5901, 1.2225, 1.8513, 2.4879],
+    "roadWheelRadius": 0.3053,
+    "roadWheelY": 0.3754,
+    "trackLaneX": 1.2694,
+    "trackWidth": 0.5391,
+    "trackBoundsY": [0, 1.1071],
+    "trackBoundsZ": [-2.6158, 3.3298],
+    "rearEndWheel": { "z": -2.2596, "y": 0.7243, "radius": 0.3053, "role": "idler" },
+    "frontEndWheel": { "z": 3.0285, "y": 0.7952, "radius": 0.3054, "role": "sprocket" }
+  },
+  "hull": {
+    "bounds": { "min": [-1.9426, 0.4295, -3.606], "max": [1.9532, 2.5453, 3.606] },
+    "structuralHalfWidth": 1.525,
+    "appliqueOuterX": 1.935,
+    "appliqueY": [1.13, 2.272],
+    "appliqueZ": [-2.562, 3.462],
+    "rearShoulderPods": {
+      "rearZ": -3.606,
+      "rearOuterX": 1.95,
+      "rearOuterBottomY": 1.0988,
+      "rearTopY": 2.2606,
+      "forwardZ": -2.4,
+      "forwardOuterBottomY": 1.27,
+      "forwardInnerBottomY": 0.62
+    },
+    "rearRamp": { "x": [-0.6764, 0.5758], "y": [0.6262, 2.0673], "z": [-2.6549, -2.5099] },
+    "aftRoofHatch": { "center": [0.326, 2.3, -1.83], "width": 0.833, "depth": 0.966 },
+    "smokeBankCentersXZ": [[-1.02, 0.484], [-0.738, 1.105], [1.342, 1.012], [1.41, 1.212]],
+    "roofProfile": [[-2.4, 2.27], [0.5, 2.27], [1, 2.06], [2, 2.01], [2.4, 1.85], [2.7, 1.715], [3, 1.579], [3.25, 1.465], [3.5, 1.35]],
+    "floorProfile": [[-2.4, 0.43], [2.7, 0.47], [3, 0.635], [3.25, 0.912], [3.5, 1.189]]
+  },
+  "remoteWeaponStation": {
+    "turretPivot": [-0.3835, 2.2502, 0.5027],
+    "trunnion": [-0.4265, 3.078, 0.397],
+    "muzzleZ": 1.6374,
+    "weapon": "L111A1 12.7 mm",
+    "mountBoundsRelativeToTurretPivot": { "min": [-0.456, 0.2, -0.529], "max": [0.456, 0.955, 0.4] },
+    "sensorBoundsRelativeToTurretPivot": { "min": [-0.217, 0.418, -0.456], "max": [0.177, 0.894, 0.521] },
+    "ammoBoxSize": [0.539, 0.396, 0.221],
+    "receiverRearOfTrunnion": 0.46,
+    "equipment": ["ammo box", "feed bridge", "optical sensor cluster"]
+  },
+  "identityCensus": {
+    "roofHatches": 4,
+    "smokeBanks": 4,
+    "smokeTubes": 16,
+    "roadWheelsPerSide": 7,
+    "rearTroopRamp": true,
+    "openFrontGuard": true,
+    "interiorAndSeatsInSource": true
+  }
+}

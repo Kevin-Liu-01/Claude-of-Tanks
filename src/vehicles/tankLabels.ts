@@ -187,6 +187,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'Type 89 Light Tiger', shortName: 'Light Tiger',
     searchAliases: ['Type 89 Light Tiger IFV', 'Type 89 LT', 'JGSDF Light Tiger'],
   },
+  ares_apc_x: {
+    displayName: 'Ares APC', shortName: 'Ares',
+    searchAliases: ['ARES APC', 'Ajax Ares', 'Ajax-family APC', 'British Ares'],
+  },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],

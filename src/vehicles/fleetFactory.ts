@@ -35,6 +35,7 @@ import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
 import './modern3Specs.ts';
 import './additionalFleetSpecs.ts';
+import './aresApcXSpecs.ts';
 import './classicFleetSpecs.ts';
 import './franceSpecs.ts';
 import './ukraine.ts';
@@ -122,6 +123,7 @@ function registerProfiles(profiles: VehicleProfileRecord): void {
 }
 
 const GROUP_LOADERS = Object.freeze({
+  aresApcX: () => import('./profiles/aresApcX.ts').then((mod) => registerProfiles(mod.ARES_APC_X_PROFILES)),
   leopardA6X: () => import('./profiles/leopardA6X.ts').then((mod) => registerProfiles(mod.LEOPARD_A6_X_PROFILES)),
   k1a1X: () => import('./profiles/k1a1X.ts').then((mod) => registerProfiles(mod.K1A1_X_PROFILES)),
   amx30X: () => import('./profiles/amx30X.ts').then((mod) => registerProfiles(mod.AMX30_X_PROFILES)),

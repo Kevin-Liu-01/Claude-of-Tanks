@@ -24,6 +24,7 @@ import './combatVariantSpecs.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './additionalFleetSpecs.ts';
+import './aresApcXSpecs.ts';
 import './classicFleetSpecs.ts';
 import './ukraine.ts';
 import './china.ts';

@@ -19,6 +19,10 @@ export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
     sha256:'72afdec001c1013a7a847a176adf12f0d00d1863f29874797448fdb66d174870',
     fused:true,turret:[0,2.10,-1.15],gun:[.05,2.38,-.13],
   },
+  ares_apc_x: {
+    sha256:'f43fce5b07bcd04f6089aa23338ed3c4114ff75866eec0ce98e1800171891ff1',
+    fused:true,turret:[-.3835,2.2502,.5027],gun:[-.4265,3.078,.397],
+  },
   // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
   // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
   ztz100_x: {

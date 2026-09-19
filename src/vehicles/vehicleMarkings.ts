@@ -290,6 +290,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m1a2_legacy: anchor('turret', 'right', 0.44, 0.43, 0.27, -1),
   abramsx: anchor('turret', 'left', 0.38, 0.42, 0.26, 1),
   fv510: anchor('hull', 'right', 0.44, 0.66, 0.24, -1),
+  ares_apc_x: anchor('hull', 'right', 0.46, 0.68, 0.22, -1),
   // Separate left-flank seat clears the MILAN's outer modular armor course;
   // the base Warrior keeps its right-side troop-hull designation.
   fv510_milan: anchor('hull', 'left', 0.38, 0.62, 0.22, 1),

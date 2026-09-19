@@ -14,7 +14,7 @@ const newIds=new Set(SECOND_WAVE_X_IDS);
 // its original 151 records.
 const laterAbramsIds=new Set(['m1a2_x','m1a2_tusk_x',
   'm1a2_sepv2_x','m1a2_sepv3_x','ua_m1a1_x']);
-const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','object695_x',...SUPPLIED_SOURCE_IDS]);
+const laterIds=new Set([...laterAbramsIds,'type100','ztz100_x','object695_x','ares_apc_x','merkava4_trophy','merkava4_barak','namer_ifv',...SUPPLIED_SOURCE_IDS]);
 for(const id of SUPPLIED_SOURCE_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: new supplied-source anchor is present`);
 for(const id of laterAbramsIds)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: later Abrams anchor remains present`);
 const oldAnchors=Object.fromEntries(Object.entries(VEHICLE_MARKING_ANCHORS)

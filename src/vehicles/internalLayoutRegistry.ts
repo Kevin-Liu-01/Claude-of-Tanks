@@ -137,6 +137,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://www.army.mod.uk/learn-and-explore/equipment/combat-vehicles/warrior/',
     kind: 'operator',
   }),
+  britishAjax: Object.freeze({
+    title: 'General Dynamics UK — AJAX variants',
+    url: 'https://generaldynamics.uk.com/wp-content/uploads/2021/09/Ajax-Variants-Super-Diary.pdf',
+    kind: 'manufacturer',
+  }),
   kndsLeclerc: Object.freeze({
     title: 'KNDS — Leclerc XLR',
     url: 'https://knds.com/en/products/systems/leclerc-xlr',
@@ -394,6 +399,9 @@ const LAYOUTS = Object.freeze({
     feedSystem: { placement: 'turret', form: 'dualBeltFeed' },
     missileRack: null,
   }) },
+  aresRemoteApc: { confidence: 'documented', sources: ['britishAjax'], crew: crew(
+    ['driver', 'hull', 'frontRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'remoteWeaponAmmoBox' }, feedSystem: { placement: 'turret', form: 'beltFeed' } }) },
   bmp1: { confidence: 'platform-inferred', sources: ['roeBmp2'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['commander', 'hull', 'midLeft'], ['gunner', 'turret', 'frontCenter'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'clipFeed' }, missileRack: { placement: 'hull', form: 'gunLaunchedRounds' } }) },
@@ -474,6 +482,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
   ifvFrontTwoMan: ['ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
   namerIfv: ['namer_ifv'],
+  aresRemoteApc: ['ares_apc_x'],
   bmp1: ['bwp1'],
   puma: ['spz_puma', 'spz_puma_s1', 'type89_light_tiger', 'cv90_mkiv'],
   bmp3: ['bmp3', 'bmp3_rok'],

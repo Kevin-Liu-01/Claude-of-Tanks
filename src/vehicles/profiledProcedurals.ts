@@ -73,6 +73,7 @@ import {T90MS_X_PROFILES} from './profiles/t90msX.ts';
 import { LECLERC_X_PROFILES } from './profiles/leclercX.ts';
 import { LECLERC_CLASSIC_X_PROFILES } from './profiles/leclercClassicX.ts';
 import { CHIEFTAIN10_X_PROFILES } from './profiles/chieftain10X.ts';
+import { ARES_APC_X_PROFILES } from './profiles/aresApcX.ts';
 import {
   createProfileBuilders,
   type VehicleProfileRecord,
@@ -119,6 +120,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   cv90105_tml_x: { build: buildCv90105TmlX },
   sabra_mk2_x: { build: buildSabraMk2X },
 
+  ...ARES_APC_X_PROFILES,
   ...CHIEFTAIN5_X_PROFILES,
   ...T90_AW_X_PROFILES,
   ...T90_BURLAK_X_PROFILES,

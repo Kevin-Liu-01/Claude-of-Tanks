@@ -269,8 +269,7 @@ const catalogContract = {
 };
 assert.equal(
   createHash('sha256').update(JSON.stringify(catalogContract)).digest('hex'),
-  '71805b771c0eeb3bfacc4df8c03b1eaad4a477177839f443e9a639aff42a3371', // 2026-09-18: Object 695 signature paint sig_object695_x "Object 695 Digital" joins the Russian digital woodland presets (the session's Kurganets-25 build under its own id)
-  // previous 2026-09-15 pin a8fe318e…36925 (signature/service labels follow the renamed source hulls) is retired by that addition
+  '5d24eaa73e7478e39a41746b159c889b7ea25b1b0430d9af0f5d434ace657a75', // Object 695 digital + Ares NATO woodland; existing recipes preserved.
   'camouflage ids, labels, palettes and national/era routing change only through an intentional contract update',
 );
 

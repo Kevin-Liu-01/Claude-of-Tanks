@@ -13,6 +13,7 @@ export const VEHICLE_MARKING_SEAT_GROUP_LOADERS: Readonly<Record<string, () => P
   "ajaxX": () => import('./vehicleMarkingSeatGroups/ajaxX.generated.ts'),
   "amx30X": () => import('./vehicleMarkingSeatGroups/amx30X.generated.ts'),
   "amx40X": () => import('./vehicleMarkingSeatGroups/amx40X.generated.ts'),
+  "aresApcX": () => import('./vehicleMarkingSeatGroups/aresApcX.generated.ts'),
   "arieteX": () => import('./vehicleMarkingSeatGroups/arieteX.generated.ts'),
   "bmp3mDragun125X": () => import('./vehicleMarkingSeatGroups/bmp3mDragun125X.generated.ts'),
   "casemate": () => import('./vehicleMarkingSeatGroups/casemate.generated.ts'),

@@ -81,7 +81,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'sig_bmpt_t90', 'sig_t90', 'sig_t90sm', 'sig_t90ms',
   'sig_t90a_burlak', 'sig_t90m', 'sig_t90m_proryv',
   'sig_t90a', 'sig_t90a_vladimir',
-  'sig_challenger2e', 'sig_challenger_3x',
+  'sig_challenger2e', 'sig_challenger_3x', 'sig_ares_apc_x',
   'sig_amx56', 'sig_leclerc', 'sig_ariete_c2',
   'sig_type10b', 'sig_type90', 'sig_type90a',
   'sig_type59', 'sig_ztz85_iii', 'sig_type99a', 'sig_ztz99a2_prototype', 'sig_ztz99a2', 'sig_type100', 'sig_ztz100_x', 'sig_object695_x',
@@ -157,6 +157,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_t90a_vladimir: 'T-90A Vladimir Digital',
   sig_challenger2e: 'Challenger 2E',
   sig_challenger_3x: 'Challenger 3',
+  sig_ares_apc_x: 'Ares NATO Woodland',
   sig_amx56: 'Leclerc S1', // the legacy hull is the S1 since 2026-09-16
   sig_leclerc: 'Leclerc S2',
   sig_ariete_c2: 'Ariete C2',
@@ -360,6 +361,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'stripes', base: '#4b513d', weather: '#5c6049', patches: ['#22251f', '#615642'], camoScale: 0.48 }),
   preset('sig_challenger_3x', 'challenger_3x', signatureTags('uk', 'woodland', 'digital'),
     { scheme: 'digital', base: '#384436', weather: '#59624c', patches: ['#171d1a', '#69705a', '#2a322b'], camoScale: 0.4 }),
+  preset('sig_ares_apc_x', 'ares_apc_x', signatureTags('uk', 'woodland', 'organic'),
+    { scheme: 'nato', base: '#48523d', weather: '#5b644b', patches: ['#242a23', '#66533d'], camoScale: 0.46, patchK: 1.32 }),
   preset('sig_amx56', 'amx56', signatureTags('fr', 'woodland', 'organic'),
     { scheme: 'nato', base: '#35483a', weather: '#405544', patches: ['#1e2521', '#5f4b37'], camoScale: 0.45 }),
   preset('sig_leclerc', 'leclerc', signatureTags('fr', 'woodland', 'organic'),
@@ -564,7 +567,7 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   'bmpt_t90', 't90', 't90sm', 't90ms', 't90a_burlak', 't90m', 't90m_proryv',
   't90a', 't90a_vladimir',
   // United Kingdom
-  'challenger2e', 'challenger_3x',
+  'challenger2e', 'challenger_3x', 'ares_apc_x',
   // France
   'amx56', 'leclerc',
   // Italy

@@ -13,6 +13,7 @@ export const COMBAT_ANATOMY_GROUP_LOADERS: Readonly<Record<string, () => Promise
   "ajaxX": () => import('./combatAnatomyGroups/ajaxX.generated.ts'),
   "amx30X": () => import('./combatAnatomyGroups/amx30X.generated.ts'),
   "amx40X": () => import('./combatAnatomyGroups/amx40X.generated.ts'),
+  "aresApcX": () => import('./combatAnatomyGroups/aresApcX.generated.ts'),
   "arieteX": () => import('./combatAnatomyGroups/arieteX.generated.ts'),
   "bmp3mDragun125X": () => import('./combatAnatomyGroups/bmp3mDragun125X.generated.ts'),
   "casemate": () => import('./combatAnatomyGroups/casemate.generated.ts'),
