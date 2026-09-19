@@ -17,7 +17,9 @@
      (trackShoeGeometries), i.e. +0.085 m beyond the band outer face
      (~0.13 m off the centerline at the default trackTh 0.09). Every zone
      now reports BOTH columns:
-       overlapVox/hits   — band test, semantics UNCHANGED (legacy parsers);
+       overlapVox/hits   — conservative band candidates; legacy semantics unchanged.
+                           Strict exact mode may certify complete closed-solid
+                           separation; rawOverlapVox and the proof stay visible;
        shoeVox/shoeHits  — hull-candidate surface voxels whose centers fall
                            INSIDE a live shoe instance's oriented solid
                            (per-instance OBB of the shoe geometry, composed
@@ -59,11 +61,15 @@
 <script type="module">
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { isTrackShoeMesh } from './track-clip-classification.mjs';
+import { createTrackClipTank, trackClipQuality } from './track-clip-options.mjs';
+import { provesClosedMeshSeparation } from './track-band-separation.mjs';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') || 'audit';
+const quality = trackClipQuality(params.get('quality') ?? undefined);
 // Strict mode is the authored-running-gear law.  Historical containment
 // scans allowed any one-sided, lane-local mesh to bypass the hull test; that
 // let a decorative mudflap/guard/fill plate masquerade as track geometry.
@@ -82,7 +88,8 @@ if (mode === 'list') {
 } else {
   const id = params.get('id') || 'm1a2';
   const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
-  const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  await ensureInteriorFills([id]);
+  const tank = createTrackClipTank(createTank, id, engineCtx, quality);
   tank.root.updateMatrixWorld(true);
 
   const V = 0.02; // voxel edge (m)
@@ -106,7 +113,7 @@ if (mode === 'list') {
     }
   });
 
-  const out = { id, bands: bands.length, zones: [], anomaly: null, mode: 'bands' };
+  const out = { id, quality, bands: bands.length, zones: [], anomaly: null, mode: 'bands' };
   // HAND-ROLLED FALLBACK (containment-law gap fix): builds without the two
   // factory band meshes previously passed VACUOUSLY ("found 0"). When bands
   // are absent, collect track-family bucket meshes (tankFactory tags them
@@ -205,7 +212,9 @@ if (mode === 'list') {
     // hidden shoes are not a visible surface)
     const _im4 = new THREE.Matrix4(), _wm4 = new THREE.Matrix4(), _ic = new THREE.Vector3();
 
+    const separationProofs = new Map();
     for (const zone of zones) {
+      const separatedCandidates = [];
       // band voxels (both sides), dilated 1 voxel
       const bandSet = new Set();
       for (const bm of trackSet) sampleMesh(bm, zone.z0, zone.z1, bandSet, null);
@@ -240,6 +249,20 @@ if (mode === 'list') {
           hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
         }
         if (ov > 0) {
+          // A 2 cm cell can contain two physically separated surfaces. Only
+          // strict exact mode refines this conservative voxel result, and only
+          // after complete closed-component separation/noncontainment proof.
+          // Unsupported topology or an ambiguous test retains the raw failure.
+          if (strict && !dilate && out.mode === 'bands') {
+            if (!separationProofs.has(m.uuid)) {
+              separationProofs.set(m.uuid, provesClosedMeshSeparation(m, trackSet));
+            }
+            const proof = separationProofs.get(m.uuid);
+            if (proof.separated) {
+              separatedCandidates.push({mesh:m.name || '(unnamed)',rawOverlapVox:ov,proof});
+              continue;
+            }
+          }
           // per-mesh key (leopard r4 law: unnamed merged buckets collided on
           // one display name and the totals UNDERCOUNTED — uuid keys, name
           // kept for display)
@@ -253,6 +276,8 @@ if (mode === 'list') {
       const total = [...hits.values()].reduce((s, h) => s + h.vox, 0);
       out.zones.push({
         name: zone.name, overlapVox: total,
+        rawOverlapVox: total + separatedCandidates.reduce((sum,row)=>sum+row.rawOverlapVox,0),
+        separatedCandidates,
         hits: [...hits.values()].sort((x, y) => y.vox - x.vox).slice(0, 6)
           .map((h) => ({ mesh: h.name, vox: h.vox, box: h.box })),
       });
@@ -465,6 +490,7 @@ if (mode === 'list') {
       out.shoe = { mode: out.mode !== 'bands' ? 'hand-rolled-surface(=band)' : 'band-only(=band)', ims: 0, instances: 0 };
       for (const z of out.zones) { z.shoeVox = z.overlapVox; z.shoeHits = z.hits; }
     }
+    out.interiorFillRecordLoaded = hasInteriorFills(id);
     window.__CLIP_RESULT = out; window.__CLIP_READY = true;
   }
 }

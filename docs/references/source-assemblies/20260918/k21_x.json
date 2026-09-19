@@ -1,0 +1,294 @@
+{
+  "schemaVersion": 1,
+  "id": "k21_x",
+  "scope": "Local comparison reference only; no source geometry is used by gameplay.",
+  "authorization": {
+    "ownerDecision": "docs/research/supplied-source-target-decisions-20260918.md",
+    "independentReviewStatus": "accepted-static-assembly",
+    "independentReview": {
+      "path": "docs/research/bmp-k21-source-assembly-independent-review-20260918.md",
+      "sha256": "2294425647b00dcb4fdd68e773b7e7012ca2de16d8f1b72237e0a8d31fe5cdb9",
+      "scope": "Static source assembly only; not procedural qualification or hinge-motion clearance."
+    }
+  },
+  "source": {
+    "path": "public/models/community-candidates/k21_x_source.glb",
+    "sha256": "ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8",
+    "rawFile": "k21_armored_warfare.glb",
+    "rawSha256": "bacb27e883dfddb929d8de820bbebb31dec4d161ba2b25ac0afdc539b35883a1"
+  },
+  "output": {
+    "path": "public/models/community-candidates/k21_x_assembled_20260918.glb",
+    "sha256": "e2103e87628337778107ba4beec0fb5f6ad9e29136eab65ba27aa7f8bfdd956b"
+  },
+  "registration": {
+    "axes": [
+      "x",
+      "y",
+      "z"
+    ],
+    "scale": 1,
+    "translation": [
+      -0.000015,
+      -0.0138,
+      0
+    ],
+    "retained": true,
+    "originalFrame": {
+      "sha256": "ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8",
+      "fused": true,
+      "turret": [
+        0,
+        1.96,
+        -0.55
+      ],
+      "gun": [
+        0,
+        2.3362,
+        0.3
+      ]
+    }
+  },
+  "operations": [
+    {
+      "kind": "rigid-node-transform",
+      "selector": {
+        "nodeIndex": 6,
+        "nodeName": "Object_7",
+        "meshIndex": 5,
+        "originalMatrix": null,
+        "meshDefinitionSha256": "19280f72ea0f711c28b2d8e99342c48165a03135eda418fc9828aaf0b4f9cd4b",
+        "triangles": 652,
+        "bounds": {
+          "min": [
+            -0.03363500162959099,
+            -0.45890000462532043,
+            -0.09269999712705612
+          ],
+          "max": [
+            0.7029649615287781,
+            0.43130001425743103,
+            0.10249999910593033
+          ]
+        },
+        "connectedComponents": 15
+      },
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2462999764829874,
+        1.3396999835968018,
+        -3.6843499925744254,
+        1
+      ]
+    }
+  ],
+  "evidence": {
+    "preparationManifest": {
+      "path": ".qa-dev/tank-run/source-assembly-eastern/k21_x-assembled-r1.manifest.json",
+      "sha256": "6a45ba30a0d85ccd2d970ca53574f82a6f18ff4e8301298f3fb1213f0ae5c77b"
+    },
+    "physicalBasis": [
+      {
+        "path": ".qa-dev/tank-run/source-assembly-eastern/source-receiver-fit.json",
+        "sha256": "aada5e91ed5fdab78a08e031f64eea7cbe242961f3fd85c9e6134bac9ecad364",
+        "method": "Source-only matched perimeter corners. Mean rigid translation; source-baked orientation and unit scale retained. Candidate never loaded.",
+        "pairs": [
+          {
+            "from": {
+              "study": "components.json",
+              "componentRoot": 349,
+              "index": 71,
+              "point": [
+                0.058764997869729996,
+                0.24329999089241028,
+                0.0003000000142492354
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 2,
+              "point": [
+                -0.18753500282764435,
+                1.5828999280929565,
+                -3.6835999488830566
+              ]
+            },
+            "residual": [
+              -2.421438694000244e-8,
+              -0.00010004639625549316,
+              0.0004500436771195382
+            ],
+            "distance": 0.00046102992669166596
+          },
+          {
+            "from": {
+              "study": "components.json",
+              "componentRoot": 349,
+              "index": 93,
+              "point": [
+                0.6224649548530579,
+                0.24329999089241028,
+                0.0003000000142492354
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 3,
+              "point": [
+                0.3761650025844574,
+                1.5828999280929565,
+                -3.6835999488830566
+              ]
+            },
+            "residual": [
+              2.421438694000244e-8,
+              -0.00010004639625549316,
+              0.0004500436771195382
+            ],
+            "distance": 0.00046102992669166596
+          },
+          {
+            "from": {
+              "study": "components.json",
+              "componentRoot": 349,
+              "index": 75,
+              "point": [
+                0.058764997869729996,
+                -0.262800008058548,
+                0.07540000230073929
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 6,
+              "point": [
+                -0.18753500282764435,
+                1.0770000219345093,
+                -3.6094000339508057
+              ]
+            },
+            "residual": [
+              -2.421438694000244e-8,
+              0.00010004639625549316,
+              -0.0004500436771195382
+            ],
+            "distance": 0.00046102992669166596
+          },
+          {
+            "from": {
+              "study": "components.json",
+              "componentRoot": 349,
+              "index": 95,
+              "point": [
+                0.6224649548530579,
+                -0.262800008058548,
+                0.07540000230073929
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 7,
+              "point": [
+                0.3761650025844574,
+                1.0770000219345093,
+                -3.6094000339508057
+              ]
+            },
+            "residual": [
+              2.421438694000244e-8,
+              0.00010004639625549316,
+              -0.0004500436771195382
+            ],
+            "distance": 0.00046102992669166596
+          }
+        ],
+        "rmsM": 0.00046102992669166596,
+        "maximumM": 0.00046102992669166596,
+        "role": "Rear access door and all source-attached hardware, matched to existing rear aperture corners."
+      }
+    ],
+    "beforeAfter": {
+      "status": "Source-only validation passed and all six originals visually inspected by target author; independent review pending.",
+      "images": [
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/k21_x/before/rear.png",
+          "sha256": "ee284d3e435ad66cbedd6a3daeb7d19b849cb483cbb930224d71d3f4a790ee4e",
+          "stage": "before",
+          "view": "rear"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/k21_x/after/rear.png",
+          "sha256": "72780084c512b6bfb3909460099bd36473df588a9f37c2aec88fcbcc2c50939b",
+          "stage": "after",
+          "view": "rear"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/k21_x/before/rear-quarter.png",
+          "sha256": "c62b5ccf702b8b7a072a05ff01de097679566e08837d8b507865f319564044ca",
+          "stage": "before",
+          "view": "rear-quarter"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/k21_x/after/rear-quarter.png",
+          "sha256": "e3f2aaee8353a1294ef2f040967425f6d4842a87ac9fadbc4cdd3fa4218de280",
+          "stage": "after",
+          "view": "rear-quarter"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/k21_x/before/door-close.png",
+          "sha256": "f619211d0e0dec7e1ffd29e72690dec749db57160deb00c6e97e71dec2b1a251",
+          "stage": "before",
+          "view": "door-close"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/k21_x/after/door-close.png",
+          "sha256": "ac4e3084774d739b25df2175c3f8d9be3a534e395054d6fc13d41dbdc1fdc538",
+          "stage": "after",
+          "view": "door-close"
+        }
+      ],
+      "authorReview": "All six source originals viewed. The originally low loose door now overlays its matching rounded rear opening. Both hinge arms meet the existing receiver pivots; the circular fitting, handle and left latch remain on the translated door. The door retains its source thickness and visible stand-off edge. Rear and quarter views show the rest of the supplied vehicle unchanged.",
+      "validation": {
+        "path": ".qa-dev/tank-run/source-assembly-eastern/assembled-native-validation.json",
+        "sha256": "f8d800b3b1951928c4c9005d0cc2f8774cc7cac4955f3f63a758f9d9bdd61752"
+      },
+      "cameraRecord": {
+        "path": ".qa-dev/tank-run/source-assembly-eastern/render-views.json",
+        "sha256": "4c4f880fd8357578bc6677ba29971bf605f4735cf00aec4790e997112e4e5b42"
+      },
+      "limits": [
+        "Static closed-pose source reconstruction, not proof of hinge animation or manufacturer dimensions.",
+        "Author review is not independent procedural qualification."
+      ]
+    },
+    "sourceOnly": true,
+    "candidateGeometryUsed": false,
+    "preservation": {
+      "nonselectedJsonSha256": "6ad64b4866d8e490ecda82294326c7e09e66784b6cb66122a8454b75c520a4c7",
+      "binaryChunks": [
+        {
+          "type": 5130562,
+          "bytes": 7416324,
+          "sha256": "7d89af0bb07fde9a53aef4871b17466a1334b4bf6832d86ffc015cbfd8389520"
+        }
+      ],
+      "allBinaryChunksByteExact": true,
+      "onlySelectedNodeMatricesChange": true
+    }
+  }
+}

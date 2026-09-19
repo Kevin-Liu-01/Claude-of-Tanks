@@ -2220,6 +2220,22 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
+	#ifdef COT_WHEEL_PAINT_READABILITY
+	{
+		// Painted wheel bowls need their received-light differences: flooring
+		// every face to the same output erased the modeled hub/web recess.
+		// Add a bounded, paint-scaled bounce instead, using the lighting BEFORE
+		// that bounce to detect shade. The shared wheel-paint albedo floor and
+		// camouflage repainting remain independent of this lighting response.
+		float wheelLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
+		vec3 wheelReceived = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+		float wheelIrrad = dot( wheelReceived, vec3( 0.2126, 0.7152, 0.0722 ) ) / wheelLuma;
+		float wheelShade = 1.0 - smoothstep( 0.10, 0.65, wheelIrrad );
+		float wheelFacing = saturate( dot( normal, geometryViewDir ) );
+		float wheelBounce = 0.20 * ( 0.40 + 0.60 * wheelFacing ) * wheelShade;
+		reflectedLight.indirectDiffuse += material.diffuseColor * wheelBounce * uVehicleReadabilityScale;
+	}
+	#else
 	{
 		float vehFacing = saturate( dot( normal, geometryViewDir ) );
 		float vehFill = max( ${VEHICLE_AMBIENT_FLOOR.toFixed(3)},
@@ -2312,7 +2328,8 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 			reflectedLight.indirectDiffuse += vehTint * ( vehFloorL - vehOutL );
 		}
 		// <<< gameplay_feel r4
-	}`,
+	}
+	#endif`,
   );
 }
 
@@ -2359,7 +2376,7 @@ export function createTankMaterials(
   const setup = <T extends THREE.Material>(material: T): T => {
     if (shadowHookSupported && shadowSetup) shadowSetup(material, vehicleAmbientFloorHook);
     else material.onBeforeCompile = vehicleAmbientFloorHook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    material.customProgramCacheKey = () => 'veh-ambient-floor-v3';
     return material;
   };
   const aniso = engineCtx?.anisotropy || 8;
@@ -2436,6 +2453,7 @@ export function createTankMaterials(
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
     envMapIntensity: 0.25,
   })));
+  wheels.defines = { ...wheels.defines, COT_WHEEL_PAINT_READABILITY: 1 };
   // Recessed rows of an interleaved (Schachtellaufwerk) wheel stack: same
   // scheme paint pushed into shadow so the layers separate visually (r5).
   const wheelsRecessed = track(setup(new THREE.MeshStandardMaterial({
@@ -2444,6 +2462,7 @@ export function createTankMaterials(
     normalMap: normalTex, normalScale: new THREE.Vector2(0.4, 0.4),
     envMapIntensity: 0.2,
   })));
+  wheelsRecessed.defines = { ...wheelsRecessed.defines, COT_WHEEL_PAINT_READABILITY: 1 };
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
   const rubber = track(setup(new THREE.MeshStandardMaterial({

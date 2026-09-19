@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-18T07:34:21.648Z",
+ "generatedAt": "2026-09-19T03:43:07.056Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 63,
- "total": 164,
+ "passed": 75,
+ "total": 176,
  "rows": [
   {
    "id": "recon_tank",
@@ -1606,19 +1606,6 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
-   "id": "ztz100_x",
-   "geoMin": 91.6,
-   "requiredMinimum": 90,
-   "qualityBar": "fleet",
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 91.6,
-    "dims": 99.5,
-    "floaters": 100
-   },
-   "comparisonPurpose": "source-fidelity"
-  },
-  {
    "id": "t90ms_x",
    "geoMin": 91.9,
    "requiredMinimum": 90,
@@ -1722,6 +1709,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "fv510_milan_x",
+   "geoMin": 92.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.3,
+    "dims": 98.5,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t62mv1_x",
    "geoMin": 92.4,
    "requiredMinimum": 92,
@@ -1767,6 +1767,19 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "ztz100_x",
+   "geoMin": 92.4,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.4,
+    "dims": 99.5,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t84",
    "geoMin": 92.5,
    "gatePassed": true,
@@ -1788,6 +1801,19 @@
    "components": {
     "wholeCurves": 92.5,
     "dims": 97,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "sabra_mk2_x",
+   "geoMin": 92.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.7,
+    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -1873,6 +1899,19 @@
     "turretCurves": 94.4,
     "wholeCurves": 93.2,
     "dims": 94.9,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "bmp3m_dragun125_x",
+   "geoMin": 93.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 93.3,
+    "dims": 100,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"
@@ -2033,6 +2072,71 @@
    "comparisonPurpose": "source-fidelity"
   },
   {
+   "id": "kurganets25_x",
+   "geoMin": 94.6,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.6,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "cv90_mkiv_x",
+   "geoMin": 94.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.7,
+    "dims": 98.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "aft10_x",
+   "geoMin": 94.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.7,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "k21_x",
+   "geoMin": 94.8,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.8,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "griffin50_x",
+   "geoMin": 94.8,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 94.8,
+    "dims": 97.3,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
    "id": "t14_x",
    "geoMin": 94.9,
    "requiredMinimum": 92,
@@ -2053,6 +2157,32 @@
    "gatePassed": true,
    "components": {
     "wholeCurves": 95,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "ajax_x",
+   "geoMin": 95.1,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95.1,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "cv90105_tml_x",
+   "geoMin": 95.3,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95.3,
     "dims": 100,
     "floaters": 100
    },
@@ -2082,6 +2212,32 @@
     "stations": 99.6,
     "turretCurves": 97.5,
     "wholeCurves": 95.7,
+    "dims": 100,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "type96b_x",
+   "geoMin": 95.7,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95.7,
+    "dims": 98.2,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "kf41_lynx_x",
+   "geoMin": 95.9,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 95.9,
     "dims": 100,
     "floaters": 100
    },

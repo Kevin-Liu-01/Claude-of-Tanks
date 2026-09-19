@@ -49,7 +49,7 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'm26_pershing', 'm45_patton',
   ]),
   [VEHICLE_ERAS.COLD_WAR]: Object.freeze([
-    'amx30_x', 'amx40_x', 't62mv1_x',
+    'amx30_x', 'amx40_x', 't62mv1_x', 'fv510_milan_x',
     'challenger1_x',
     't72bu_x',
     'chieftain5_x',
@@ -81,8 +81,11 @@ const ERA_VEHICLE_IDS: Readonly<Record<VehicleEra, readonly string[]>> = Object.
     'pt91_twardy', 'k2b', 'bmp3_rok', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk',
     'ua_t84_oplot_m', 'ua_m1a1', 'ua_m2a3_bradley', 'bmpt_terminator2',
     'm3a3_bradley', 'bmpt_t90', 'm1128', 'm1296', 'cv90',
+    'ajax_x', 'aft10_x', 'k21_x', 'type96b_x', 'cv90105_tml_x', 'sabra_mk2_x',
   ]),
   [VEHICLE_ERAS.NEXT_GENERATION]: Object.freeze([
+    // Source-specific prototypes join the existing next-generation families.
+    'kurganets25_x', 'griffin50_x', 'kf41_lynx_x', 'cv90_mkiv_x', 'bmp3m_dragun125_x',
     'kf51_x', 't14_x',
     'challenger_3', 'challenger_3x', 'type10b', 'ariete_c2', 't14', 'kf51', 'kf51b', 'm1a3', 'abramsx',
     'pl01', 'pl01_105', 'upior', 'm551a1_tts', 'type89_light_tiger', 'cv90_mkiv', 'type100', 'ztz100_x',

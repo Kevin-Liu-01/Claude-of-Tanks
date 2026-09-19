@@ -1,0 +1,19 @@
+# Europe receiving-stock ownership repair — 2026-09-18
+
+The five source-built profiles now separate their existing pitching receiver stock from the recoiling tube. No primitive, coordinate, pivot, source reference or gate threshold changed. KF41 moves its receiver/shroud and attached fasteners/handle; CV90 MkIV moves its tapered cradle; TML moves the asymmetric receiving housing, folded boot and both optical receivers; Sabra moves its armored mantlet; AFT moves only its two actual launcher support crossbeams.
+
+The shared profile helper written by the British/US owner reuses the original barrel material on these receiving meshes. TML’s two actual dark optical faces move to the pitching owner with their former unlimited visibility; their temporary detail-LOD wrapper is emptied and removed. No material is cloned or changed globally.
+
+**Neutral preservation passes all ten HIGH/LOW comparisons.** Expanded visible world triangles, transformed normals, UVs, vertex colors and stable material/shader descriptors match the frozen pre-edit models exactly. Total visible triangle counts are unchanged. Object counts increase by one for KF41/CV90/Sabra/AFT and two for TML, reflecting the real ownership split. These direct native totals include all instantiated visible stock and are not the selected-geometry budget census.
+
+The new `src/vehicles/profiles/europeGunOwnership.selftest.mjs` covers loaded interior records, source cradle bounds, complete-scene exposed-stock rays, both yaw samples and every published pitch endpoint, turret/barrel seating, actual receiver-vs-tube recoil and recovery, eight stationary AFT launch anchors, TML full-scene lens first hits during firing, near/far LOD updates without stale references or duplicate stock, and exactly-once geometry disposal. The existing Europe detail test now expects the actual non-recoil TML lens owner and passes.
+
+Four models pass every new HIGH/LOW mechanical check. **KF41 currently fails actual tube recoil:** its unchanged exposed tube spans z3.55–4.03149 (481.49mm), below the core’s inherited 500mm `recoilHasTube` cutoff. Previously the incorrectly recoiling long shroud falsely satisfied that heuristic. Root owns the narrow real-short-tube correction. No dummy geometry, source elongation or weakened assertion was introduced.
+
+Evidence: `.qa-dev/tank-run/gun-ownership/europe-neutral-{before,after,comparison}.json`, `europe-native-other-with-optics.log`, `europe-detail.log`, and `europe-repair-checkpoint.json`. The latter pins profile/helper/test identities. `europe-native.log` retains the genuine KF41 failure. No final official14 or generated fill/anatomy write has been performed after these ownership changes; parent-owned regeneration and final validation remain pending.
+
+## Final mechanical checkpoint
+
+Root repaired the short-barrel inference after the recorded failure. The legacy 500mm path is unchanged. A shorter tube now needs successful native physical-bore validation and actual stock spanning at least the largest of its recess depth, outside diameter and presentation recoil strokes; no model-ID exemption or extra geometry was added. Root’s recoil suite passed the KF41 HIGH/LOW rapid 77mm stroke/recovery as well as AFT and the prior hidden-stub/fixed-hull controls.
+
+The full new five-model test now **passes all ten loaded HIGH/LOW cases**, comprising 60 legal yaw/pitch poses, 24 TML complete-scene optical first-hit checks during recoil, ten TML near/far update cycles and 96 AFT launch-anchor comparisons. Original cradle bounds and barrel material identity are retained; all migrated geometry disposes exactly once. The initial KF41 failure remains in its original log. Final source/helper/test/core hashes are in `.qa-dev/tank-run/gun-ownership/europe-repair-freeze.json`. Parent regeneration and final integration evidence remain pending; no source/policy failure is waived.

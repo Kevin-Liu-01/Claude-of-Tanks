@@ -26,10 +26,17 @@ const EXPECTED = Object.freeze({
   bmpt_t90:           { hp: 2950, speed: 60, reverse: 18, traverse: 32, damage: 50, pen: [122, 110, 98], reload: 0.28, sound: 'twin-2a42', missile: [500, 'ataka-launch'] },
   // 2026-09-17 owner: the Type 100 becomes a Chinese IFV (30 mm belt, HJ-10 guided HEAT)
   type100:            { hp: 2700, speed: 76, reverse: 32, traverse: 54, damage: 92, pen: [235, 215, 195], reload: 0.40, sound: 'mk30-2', missile: [700, 'spike-launch'] },
+  kurganets25_x:      { hp: 2000, speed: 70, reverse: 30, traverse: 46, damage: 64, pen: [165, 150, 135], reload: 0.40, sound: 'mk30-2', missile: [520, 'spike-launch'] },
+  fv510_milan_x:      { hp: 1750, speed: 68, reverse: 20, traverse: 43, damage: 88, pen: [120, 108, 96], reload: 0.60, sound: 'rarden-l21a1', missile: [520, 'milan-launch'] },
+  griffin50_x:        { hp: 2000, speed: 70, reverse: 30, traverse: 46, damage: 145, pen: [290, 266, 242], reload: 0.56, sound: 'xm913-50', missile: null },
+  kf41_lynx_x:        { hp: 2000, speed: 70, reverse: 30, traverse: 46, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: null },
+  k21_x:             { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: [500, 'jyu-mat-launch'] },
+  ajax_x:            { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
+  cv90_mkiv_x:       { hp: 2825, speed: 74, reverse: 42, traverse: 52, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
 });
 
 const ifvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id]?.role === 'ifv');
-assert.equal(ifvIds.length, 20, 'complete selectable IFV fleet');
+assert.equal(ifvIds.length, 27, 'complete selectable IFV fleet');
 assert.deepEqual([...ifvIds].sort(), Object.keys(EXPECTED).sort(),
   'the explicit stat table covers exactly the selectable IFVs');
 

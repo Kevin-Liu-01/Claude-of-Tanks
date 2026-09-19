@@ -1,0 +1,762 @@
+{
+  "schemaVersion": 1,
+  "id": "griffin50_x",
+  "scope": "Local comparison reference only; no source geometry is used by gameplay.",
+  "authorization": {
+    "ownerDecision": "docs/research/supplied-source-target-decisions-20260918.md",
+    "independentReviewStatus": "accepted-static-assembly",
+    "independentReview": {
+      "path": "docs/research/british-source-assembly-independent-review-20260918.md",
+      "sha256": "1bf2c4160c3ee82123b4511269d921d581a28ec7d2a2e34bf32f81b969b18aad",
+      "scope": "Static source assembly only; not procedural qualification or hinge-motion clearance."
+    }
+  },
+  "source": {
+    "path": "public/models/community-candidates/griffin50_x_source.glb",
+    "sha256": "62f6e270698d7b218184ada575289da3cc1b362da4d96a8314d6e1277d618d34",
+    "rawFile": "griffin_50mm_armored_warfare.glb",
+    "rawSha256": "ab4daa4ba8eed3eff25c77c35bd7082a2de7d188bd0c87e6fc73c57e7076bfca"
+  },
+  "output": {
+    "path": "public/models/community-candidates/griffin50_x_assembled_20260918.glb",
+    "sha256": "1aef6401c01b5d9a6adfc65838c94d350f4aa39afa039709241c426371ca2003"
+  },
+  "registration": {
+    "axes": [
+      "x",
+      "y",
+      "z"
+    ],
+    "scale": 1,
+    "translation": [
+      0,
+      0.029,
+      0
+    ],
+    "retained": true,
+    "originalFrame": {
+      "sha256": "62f6e270698d7b218184ada575289da3cc1b362da4d96a8314d6e1277d618d34",
+      "fused": true,
+      "turret": [
+        0,
+        2.07,
+        -0.36
+      ],
+      "gun": [
+        0,
+        2.6,
+        0.74
+      ]
+    }
+  },
+  "operations": [
+    {
+      "kind": "translate-components",
+      "selectors": [
+        {
+          "mesh": "Object_25",
+          "componentIndex": 0,
+          "weldedPoints": 133,
+          "triangles": 244,
+          "min": [
+            0.5866000056266785,
+            0.19290000200271606,
+            -0.04399999976158142
+          ],
+          "max": [
+            0.7868000268936157,
+            0.39250001311302185,
+            0.010700000450015068
+          ],
+          "center": [
+            0.6867000162601471,
+            0.29270000755786896,
+            -0.016649999655783176
+          ],
+          "positionTriangleSha256": "355a3c2c165db887c52b7a7df8997de118d3a1696d8389f3762957ae63f879f4"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 1,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.03709999844431877,
+            0.5127000212669373,
+            -0.07660000026226044
+          ],
+          "max": [
+            0.15929999947547913,
+            0.5564000010490417,
+            0.0003000000142492354
+          ],
+          "center": [
+            0.06110000051558018,
+            0.5345500111579895,
+            -0.0381500001240056
+          ],
+          "positionTriangleSha256": "fad6c1a7e56b170b90b3bc25adb6b41ca6aaf67defcd1a232a84cccfaaf358b9"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 2,
+          "weldedPoints": 224,
+          "triangles": 394,
+          "min": [
+            0.01850000023841858,
+            -0.6575000286102295,
+            -0.029400000348687172
+          ],
+          "max": [
+            1.3549000024795532,
+            0.7177000045776367,
+            0.12839999794960022
+          ],
+          "center": [
+            0.6867000013589859,
+            0.030099987983703613,
+            0.049499998800456524
+          ],
+          "positionTriangleSha256": "21ce8665d64a84d1191e71ed7aa490c8740205d92300cc706ba84ec9543de4eb"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 3,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.03709999844431877,
+            -0.49529996514320374,
+            0.003700000001117587
+          ],
+          "max": [
+            0.15929999947547913,
+            -0.45159998536109924,
+            0.08060000091791153
+          ],
+          "center": [
+            0.06110000051558018,
+            -0.4734499752521515,
+            0.04215000045951456
+          ],
+          "positionTriangleSha256": "f41b0aebd0864449b8efc293e203fa455f92d956842e208f42f3ede514c79f53"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 4,
+          "weldedPoints": 10,
+          "triangles": 10,
+          "min": [
+            1.268399953842163,
+            0.041099999099969864,
+            -0.028599999845027924
+          ],
+          "max": [
+            1.2914999723434448,
+            0.06859999895095825,
+            0.030700000002980232
+          ],
+          "center": [
+            1.279949963092804,
+            0.05484999902546406,
+            0.0010500000789761543
+          ],
+          "positionTriangleSha256": "354849d0626a8b9f5cd9d0a98934ee8f1883a8e280a6b93ce48c25309f3d76b0"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 5,
+          "weldedPoints": 46,
+          "triangles": 88,
+          "min": [
+            1.2611000537872314,
+            0.03280000016093254,
+            -0.06889999657869339
+          ],
+          "max": [
+            1.2964999675750732,
+            0.33090001344680786,
+            -0.020500000566244125
+          ],
+          "center": [
+            1.2788000106811523,
+            0.1818500068038702,
+            -0.04469999857246876
+          ],
+          "positionTriangleSha256": "ec77c94c1544045c12e1b57fa35916e3ee5db15358ee9437490941f5cda117f0"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 6,
+          "weldedPoints": 10,
+          "triangles": 10,
+          "min": [
+            1.267199993133545,
+            0.04699999839067459,
+            0.0494999997317791
+          ],
+          "max": [
+            1.2903000116348267,
+            0.07540000230073929,
+            0.10819999873638153
+          ],
+          "center": [
+            1.2787500023841858,
+            0.06120000034570694,
+            0.07884999923408031
+          ],
+          "positionTriangleSha256": "287a0dd1beb64c0800e0242730e44d0ff5e94dc1312b9e97c848705a385d13cc"
+        },
+        {
+          "mesh": "Object_25",
+          "componentIndex": 7,
+          "weldedPoints": 46,
+          "triangles": 88,
+          "min": [
+            1.2623000144958496,
+            0.04490000009536743,
+            0.07699999958276749
+          ],
+          "max": [
+            1.297700047492981,
+            0.34320002794265747,
+            0.121799997985363
+          ],
+          "center": [
+            1.2800000309944153,
+            0.19405001401901245,
+            0.09939999878406525
+          ],
+          "positionTriangleSha256": "1a048bdb1a12a6f21acac0071174b917a69e442f384cab3b4458185654c06305"
+        },
+        {
+          "mesh": "Object_5",
+          "componentIndex": 0,
+          "weldedPoints": 4,
+          "triangles": 2,
+          "min": [
+            0.4650999903678894,
+            0.4360000193119049,
+            0.028300000354647636
+          ],
+          "max": [
+            0.90829998254776,
+            0.6074000000953674,
+            0.041999999433755875
+          ],
+          "center": [
+            0.6866999864578247,
+            0.5217000097036362,
+            0.035149999894201756
+          ],
+          "positionTriangleSha256": "866b1254ca546253fa78b342ec7343d9e75497799910b5cc5ce9c6e038dcafe8"
+        },
+        {
+          "mesh": "Object_5",
+          "componentIndex": 1,
+          "weldedPoints": 4,
+          "triangles": 2,
+          "min": [
+            0.4489000141620636,
+            0.4270000159740448,
+            -0.0071000000461936
+          ],
+          "max": [
+            0.9244999885559082,
+            0.6108999848365784,
+            0.007699999958276749
+          ],
+          "center": [
+            0.6867000013589859,
+            0.5189500004053116,
+            0.0002999999560415745
+          ],
+          "positionTriangleSha256": "8213ffafcafe8d1d09a3e90a438742f7ff53bd3a6015fa1005c19c04934a10ea"
+        }
+      ],
+      "translation": [
+        -0.5964815621274728,
+        1.305143093732878,
+        -2.3034231065654867
+      ]
+    }
+  ],
+  "evidence": {
+    "preparationManifest": {
+      "path": ".qa-dev/tank-run/source-assembly-20260918/griffin50_x_assembled_proposed.manifest.json",
+      "sha256": "851f07d33b94d142f3d4132f3e7075ac49f23669524bd442072ff7bca2564d68"
+    },
+    "physicalBasis": [
+      {
+        "type": "source-hinge-axes-and-two-axial-mating-gaps",
+        "receiverFitPath": ".qa-dev/tank-run/source-assembly-20260918/receiver-fit.json",
+        "receiverFitSha256": "3b329519f7535ca7fbebf256e633200e05bb6f1e4f3c58486c268e9d6505aada",
+        "details": {
+          "fits": {
+            "1": {
+              "top": {
+                "pointIndices": [
+                  0,
+                  3,
+                  4,
+                  6,
+                  7,
+                  8
+                ],
+                "center": [
+                  0.00001288452254736075,
+                  0.5535030819659026,
+                  -0.039627727045152404
+                ],
+                "normal": [
+                  0.0006328584252504177,
+                  0.9969673641624094,
+                  -0.07781821306912463
+                ],
+                "radiusM": 0.03709297575571501,
+                "maxPlaneResidualM": 0.000030268002345201252,
+                "maxRadiusResidualM": 0.000019906583791431953
+              },
+              "bottom": {
+                "pointIndices": [
+                  9,
+                  10,
+                  11,
+                  12,
+                  13,
+                  14
+                ],
+                "center": [
+                  -0.00001594077142800035,
+                  0.515582588950271,
+                  -0.03670212475774648
+                ],
+                "normal": [
+                  0.00035352030665391766,
+                  -0.9969851247459287,
+                  0.07759211337976374
+                ],
+                "radiusM": 0.037068435513371835,
+                "maxPlaneResidualM": 0.00003147246195527389,
+                "maxRadiusResidualM": 0.00004156932696300353
+              }
+            },
+            "3": {
+              "top": {
+                "pointIndices": [
+                  0,
+                  3,
+                  4,
+                  6,
+                  7,
+                  8
+                ],
+                "center": [
+                  0.000011287469507809816,
+                  -0.45440118405647684,
+                  0.040670480329347676
+                ],
+                "normal": [
+                  0.000937847327407906,
+                  -0.9969347532849331,
+                  0.07823182303321138
+                ],
+                "radiusM": 0.037091897718345805,
+                "maxPlaneResidualM": 0.00003370255060771278,
+                "maxRadiusResidualM": 0.000019384652115136958
+              },
+              "bottom": {
+                "pointIndices": [
+                  9,
+                  10,
+                  11,
+                  12,
+                  13,
+                  14
+                ],
+                "center": [
+                  -0.000012774577915763974,
+                  -0.49237605422793007,
+                  0.043599115904962606
+                ],
+                "normal": [
+                  0.00018820921270511445,
+                  0.996906345339168,
+                  -0.07859836639393705
+                ],
+                "radiusM": 0.03707190886628946,
+                "maxPlaneResidualM": 0.00003088225012762096,
+                "maxRadiusResidualM": 0.00004256206463534862
+              }
+            },
+            "260": {
+              "top": {
+                "pointIndices": [
+                  0,
+                  1,
+                  6,
+                  7,
+                  8,
+                  9
+                ],
+                "center": [
+                  -0.5959863517396599,
+                  1.8206454310454911,
+                  -2.3403486614882274
+                ],
+                "normal": [
+                  0.0011545344907604648,
+                  -0.9969762763336915,
+                  0.07769795028130635
+                ],
+                "radiusM": 0.0363863788948809,
+                "maxPlaneResidualM": 0.0003109252284573009,
+                "maxRadiusResidualM": 0.0007210943695941802
+              }
+            },
+            "261": {
+              "bottom": {
+                "pointIndices": [
+                  1,
+                  2,
+                  3,
+                  6,
+                  7,
+                  13
+                ],
+                "center": [
+                  -0.5966374646541157,
+                  0.8507873974954755,
+                  -2.262486888702727
+                ],
+                "normal": [
+                  0.000587117934093968,
+                  -0.9969147412827191,
+                  0.07848983313614954
+                ],
+                "radiusM": 0.03710495586429717,
+                "maxPlaneResidualM": 0.00012797755873499407,
+                "maxRadiusResidualM": 0.0006693444586569758
+              }
+            },
+            "262": {
+              "top": {
+                "pointIndices": [
+                  0,
+                  3,
+                  4,
+                  7,
+                  8,
+                  13
+                ],
+                "center": [
+                  -0.5965038188776695,
+                  0.8127427330694771,
+                  -2.259832209364925
+                ],
+                "normal": [
+                  -0.0027293719472388004,
+                  0.9973502385637929,
+                  -0.0726983642561473
+                ],
+                "radiusM": 0.03663444447525469,
+                "maxPlaneResidualM": 0.0002590378712585661,
+                "maxRadiusResidualM": 0.0005133951942413034
+              }
+            },
+            "263": {
+              "bottom": {
+                "pointIndices": [
+                  1,
+                  2,
+                  3,
+                  6,
+                  7,
+                  10
+                ],
+                "center": [
+                  -0.5968031565957351,
+                  1.8587052459528353,
+                  -2.343084922274657
+                ],
+                "normal": [
+                  0.0019116777238157346,
+                  -0.9970433184521746,
+                  0.07681774936924199
+                ],
+                "radiusM": 0.03728255536463725,
+                "maxPlaneResidualM": 0.00036981317418980156,
+                "maxRadiusResidualM": 0.0006209556565922314
+              }
+            }
+          },
+          "translation": [
+            -0.5964815621274728,
+            1.305143093732878,
+            -2.3034231065654867
+          ],
+          "upperReceiverMidpoint": [
+            -0.5963947541676975,
+            1.839675338499163,
+            -2.341716791881442
+          ],
+          "lowerReceiverMidpoint": [
+            -0.5965706417658926,
+            0.8317650652824763,
+            -2.2611595490338257
+          ],
+          "upperMovingMidpoint": [
+            -0.0000015281244403198002,
+            0.5345428354580868,
+            -0.038164925901449445
+          ],
+          "lowerMovingMidpoint": [
+            -7.435542039770787e-7,
+            -0.4733886191422034,
+            0.04213479811715514
+          ],
+          "upperResidualM": 0.00015650691151301442,
+          "lowerResidualM": 0.0001565069115130771,
+          "rotationApplied": false
+        }
+      }
+    ],
+    "beforeAfter": [
+      {
+        "id": "griffin50_x",
+        "state": "before",
+        "source": "public/models/community-candidates/griffin50_x_source.glb",
+        "view": "rear",
+        "camera": [
+          0,
+          18,
+          1.7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 9,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/before/rear.png",
+        "sha256": "b7e3a05495dfc3f5ed6846488fe8498d5bbfaf555b0db42ae9960c975caa792e"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "before",
+        "source": "public/models/community-candidates/griffin50_x_source.glb",
+        "view": "rear-quarter",
+        "camera": [
+          10,
+          13,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 11.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/before/rear-quarter.png",
+        "sha256": "3fc2664705422836e8fe7b34fd37b626d9353e96a3709d234c27f0212c81b46f"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "before",
+        "source": "public/models/community-candidates/griffin50_x_source.glb",
+        "view": "door-close",
+        "camera": [
+          0,
+          12,
+          1.35
+        ],
+        "target": [
+          0,
+          2.24,
+          1.35
+        ],
+        "orthoScale": 2.7,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/before/door-close.png",
+        "sha256": "ae319ea03983a27c115ac367bb586a8bd218bfe5a310fb738101ca3af9d04ad7"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "before",
+        "source": "public/models/community-candidates/griffin50_x_source.glb",
+        "view": "door-oblique",
+        "camera": [
+          -4,
+          12,
+          3
+        ],
+        "target": [
+          0,
+          2.24,
+          1.35
+        ],
+        "orthoScale": 3.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/before/door-oblique.png",
+        "sha256": "0fac2f75b01dfc807381b0048ac32375e0250b032cd1ca1cc97f983f15d02a72"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/griffin50_x_assembled_proposed.glb",
+        "view": "rear",
+        "camera": [
+          0,
+          18,
+          1.7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 9,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/after/rear.png",
+        "sha256": "faa664c38d21fc2c120d553d4dd66baf2360e7e1fa4afd07ef72ec082b26f3cf"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/griffin50_x_assembled_proposed.glb",
+        "view": "rear-quarter",
+        "camera": [
+          10,
+          13,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 11.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/after/rear-quarter.png",
+        "sha256": "c65500e396724c363076b217b7ea6c52b53016655e7cc9c840131980f2026b60"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/griffin50_x_assembled_proposed.glb",
+        "view": "door-close",
+        "camera": [
+          0,
+          12,
+          1.35
+        ],
+        "target": [
+          0,
+          2.24,
+          1.35
+        ],
+        "orthoScale": 2.7,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/after/door-close.png",
+        "sha256": "df1c9ad13d60cf8ee19d5c26e6cac283596fd71b535e9a51c6543a077c5a1628"
+      },
+      {
+        "id": "griffin50_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/griffin50_x_assembled_proposed.glb",
+        "view": "door-oblique",
+        "camera": [
+          -4,
+          12,
+          3
+        ],
+        "target": [
+          0,
+          2.24,
+          1.35
+        ],
+        "orthoScale": 3.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/griffin50_x/after/door-oblique.png",
+        "sha256": "0b53281fd936574a4d3cac7210c8e0e6587526e7b485f05cc4772933106cc613"
+      }
+    ],
+    "sourceOnly": true,
+    "candidateGeometryUsed": false,
+    "assemblyOwnership": [
+      {
+        "mesh": "Object_25",
+        "component": 0,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 1,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 2,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 3,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 4,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 5,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 6,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_25",
+        "component": 7,
+        "reason": "Reseat the complete displaced source rear access-door assembly on its original fixed hinge receiver; retain all valid mounted components and every source triangle."
+      },
+      {
+        "mesh": "Object_5",
+        "component": 0,
+        "reason": "The two source view-port surfaces occupy the displaced door’s upper opening and move with its rigid assembly."
+      },
+      {
+        "mesh": "Object_5",
+        "component": 1,
+        "reason": "The two source view-port surfaces occupy the displaced door’s upper opening and move with its rigid assembly."
+      }
+    ],
+    "validation": {
+      "path": ".qa-dev/tank-run/source-assembly-20260918/validation.json",
+      "details": {
+        "unchangedTriangles": 144538,
+        "movedTriangles": 902,
+        "removedTriangles": 0,
+        "maxMovementRoundingM": 1.1910439656759308e-7,
+        "wholeUntouchedMeshes": 23,
+        "triangleAttributeChecksPassed": true
+      }
+    },
+    "additional": [
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/validation.json",
+        "sha256": "ccad6e12bf02cc985a526be12d759e5fbef0e8d73511c19e067fb570600fcc7c"
+      },
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/joint-validation.json",
+        "sha256": "228cda4bf6b53ba762ca8c15edb2784668e6fae07548af5bba3d6d9eccbb9d19"
+      },
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/replay-proof.json",
+        "sha256": "16356791c7d55cae19a25f894f7470dfbe139ac4d06d16f58e12e1c8de670cf8"
+      },
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/kurg-step-proof.json",
+        "sha256": "142606572d0b25f3902dac173552112f1e5ecae42e141c465ef56de429a6f340"
+      }
+    ]
+  }
+}

@@ -1,7 +1,8 @@
 # Tank-generation tool and ownership map
 
-Verified against the repository at `099edfa49603bc473548f6986c8598267a24a4db`
-(2026-09-07). This is a practical route map, not a claim that every historical
+Initial inventory: `099edfa49603bc473548f6986c8598267a24a4db`
+(2026-09-07); approved-source, opening and track-proof routes updated
+2026-09-18. This is a practical route map, not a claim that every historical
 tool supports every new ID. Read the current implementation before invoking
 an unfamiliar command: several tools start a browser even with `--help`.
 The [build standard](../BUILD-STANDARD.md) and
@@ -125,17 +126,36 @@ masks. Declare that limitation; do not invent node ownership to improve a
 score. Whole silhouettes, source proportions, running gear, actual native
 articulation and independent visual review still apply.
 
-Two current capability gaps matter:
+The registered evaluator now shares certified source-world cameras for these
+X vehicles. Its receipt must report `certified-source-world`, the exact canonical
+hash, `sharedCamera=true`, a loaded interior-fill record and passing rig parity.
+A legacy comparison remains self-registered and does not establish that coverage.
+
+One legacy diagnostic remains incomplete:
 
 - `source-world-registration-local.mjs` does not import the second-wave
   override table while iterating the expanded certificate registry. It is not
   a ready all-X audit. Use the registered fidelity/geometry path, or repair
   and test the diagnostic separately before claiming its coverage.
-- `visual-evaluator-page.html` still has a separate legacy critic registration
-  table, not the X source-world integration. A successful fidelity registration
-  does **not** automatically enable faithful 14-view evaluator comparisons.
-  Check source path, canonical hash, rig and camera equivalence for the exact
-  ID. Missing coverage needs a tested tooling change, not a substituted donor.
+
+Owner-approved assembled targets are replayed by
+[source-assembly-replay.mjs](../../tools/source-assembly-replay.mjs), using
+[dated recipes](../references/source-assemblies/README.md). Keep original and
+derived bytes distinct. Assemblies require source-only receiver measurements,
+exact input/output hashes and independent review; they never alter playable
+geometry or waive the 92 minimum-view floor.
+
+The source-configuration record in
+[supplied-afv-configurations.json](../references/batches/supplied-afv-configurations.json)
+pins approved equipment and openings to exact original sources.
+[source-configuration-record.mjs](../../tools/source-configuration-record.mjs)
+verifies those bytes; [source-equipment-policy.mjs](../../tools/source-equipment-policy.mjs)
+checks visible weapon stock. [source-opening-check.mjs](../../tools/source-opening-check.mjs)
+measures each raw continuity cell and the complete finite stock/air witnesses
+against both source and filled native model. Its
+[ray collector](../../tools/source-opening-rays.mjs) respects hidden stock,
+material groups and draw ranges. Keep the raw raster count: only measured,
+approved openings are intentional; unexpected holes still fail.
 
 ## 5. Queue-safe execution
 
@@ -180,7 +200,12 @@ The workorder converts camera-frame columns into absolute authoring coordinates;
 do not author from unconverted gate JSON `at` values. Geometry writes
 `docs/geometry-gate/<id>.json` and merges the ledger. Fidelity writes reports
 under `.qa-dev/reports` and optional boards under `shots/procedural-fidelity`.
-Track reports include both band and visible shoe sweeps. Read result contents:
+Track reports include both band and visible shoe sweeps. In strict exact mode,
+[track-band-separation.mjs](../../tools/track-band-separation.mjs) can refine a
+coarse band-cell overlap only after proving complete closed-mesh separation,
+including both containment directions. Reports retain raw overlaps and the
+proof. Open, malformed, intersecting or uncertain stock keeps the failure;
+animated shoe checks are unchanged. Read result contents:
 not every diagnostic's zero exit code means every measured category passed.
 
 Once exact-ID evaluator registration has been verified, use

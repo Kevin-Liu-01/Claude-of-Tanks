@@ -4,6 +4,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { getSpec } from '/src/vehicles/specs.ts';
 import { createTankState } from '/src/sim/movement.ts';
 
@@ -16,6 +17,12 @@ const MODES = Object.freeze({
     proceduralOnly: true,
     quality: 'high',
     geometryQuality: 'high',
+    viewDistanceM: 10,
+  },
+  'gallery-low': {
+    proceduralOnly: true,
+    quality: 'low',
+    geometryQuality: 'low',
     viewDistanceM: 10,
   },
   garage: {
@@ -194,6 +201,7 @@ try {
   const definition = MODES[mode];
   if (!definition) throw new Error(`unknown audit mode: ${mode}`);
   const { viewDistanceM, ...options } = definition;
+  await ensureInteriorFills([id]);
   const visual = createTank(id, null, { camoSeed: 4242, ...options });
   if (Number.isFinite(viewDistanceM)) {
     const state = createTankState(getSpec(id), new THREE.Vector3(), 0);
@@ -212,6 +220,7 @@ try {
   window.__GEOMETRY_AUDIT = {
     id,
     mode,
+    interiorFillRecordLoaded: hasInteriorFills(id),
     textureQuality: visual.root.userData.textureQuality,
     geometryQuality: visual.root.userData.geometryQuality,
     staticBatchSavedDraws: visual.root.userData.staticBatchSavedDraws || 0,

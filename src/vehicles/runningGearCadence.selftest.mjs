@@ -17,6 +17,16 @@ visual.root.traverse((object) => {
   if (!pads && object.name === 'gearTrackPads') pads = object;
 });
 assert.ok(pads?.instanceMatrix, 'test tank exposes articulated track instances');
+const simplified = visual.root.getObjectByName('gearTrackPadsSimplified');
+for (const shoe of [pads, simplified]) {
+  assert.ok(shoe?.instanceColor, 'both native shoe levels retain their authored palette');
+  assert.ok(!shoe.material.vertexColors || shoe.geometry.hasAttribute('color'),
+    'a missing vertex-color attribute must not multiply the visible shoe albedo by black');
+  assert.equal(shoe.material.color.getHex(), 0xffffff,
+    'the native instance palette is not multiplied by a second absolute dark shade');
+}
+assert.equal(pads.instanceColor, simplified.instanceColor,
+  'near and far shoes share a single static palette buffer');
 
 for (let i = 0; i < 90; i++) visual.syncFromState(state, 1 / 60, 20);
 const settledVersion = pads.instanceMatrix.version;

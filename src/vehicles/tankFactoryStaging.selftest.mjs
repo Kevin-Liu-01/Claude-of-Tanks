@@ -1,8 +1,9 @@
 // Exact geometry/material/order goldens captured from the pre-staging core.
 // This does not certify native pixels or wall-time improvements. Original
 // fingerprints stay immutable. The exact 2963f43c2 shadow-submission call is
-// disabled only for a historical receipt; current sync/staged outputs retain
-// their full shadow batches and are compared without normalization.
+// disabled only for a historical receipt. That copied receipt also reconstructs
+// the two authenticated old shoe-material fields; current sync/staged outputs
+// retain their actual materials and full shadow batches without normalization.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -183,8 +184,58 @@ function receipt(visual) {
     detailGroups: visual.root.userData.battleDetailGroupCount, detailCount: visual.root.userData.battleDetailObjectCount,
   };
 }
+// An isolated replay of approved main 29c9ecefd reproduced all six goldens.
+// Its only differences from current receipts are each canonical shoe's RGB
+// (the old second dark multiplier) and vertexColors (the old missing attribute).
+// Preserve those original digests without modifying a live material or pose.
+const TRACK_HISTORY_IDS = new Set(['m1a1', 'strv103', 'merkava1b']);
+const TRACK_SHOE_NAMES = ['gearTrackPads', 'gearTrackPadsSimplified'];
+const HISTORICAL_TRACK_RGB = [0.02955683443236377, 0.030713443727452196, 0.028426039499072558];
+function historicalTrackMaterialReceipt(id, visual) {
+  assert.ok(TRACK_HISTORY_IDS.has(id), 'historical shoe projection requires a verified fixture ID');
+  const shoes = [];
+  visual.root.traverse(mesh => {
+    if (!mesh.isMesh) return;
+    if (TRACK_SHOE_NAMES.includes(mesh.name)) shoes.push(mesh);
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (material.userData.appearanceColorSource === 'instance-palette') {
+        assert.ok(TRACK_SHOE_NAMES.includes(mesh.name), 'only canonical shoes may use the instance palette');
+      }
+    }
+  });
+  assert.deepEqual(shoes.map(mesh => mesh.name).sort(), [...TRACK_SHOE_NAMES].sort(),
+    'both canonical shoe meshes must appear exactly once');
+  const material = shoes[0].material;
+  assert.ok(!Array.isArray(material), 'canonical shoes use one material');
+  assert.equal(material.name, 'cot:track-pad');
+  assert.equal(material.userData.appearanceRole, 'trackPad');
+  assert.equal(material.userData.appearanceColorSource, 'instance-palette');
+  assert.deepEqual(material.color.toArray(), [1, 1, 1], 'actual shoe base must remain exactly white');
+  assert.equal(material.vertexColors, false, 'actual shoes must not request missing vertex colors');
+  for (const mesh of shoes) {
+    assert.equal(mesh.material, material, 'near and far shoes share the actual material');
+    assert.equal(mesh.isInstancedMesh, true);
+    assert.ok(mesh.count > 0 && mesh.instanceColor?.count >= mesh.count);
+    assert.equal(mesh.geometry.getAttribute('color'), undefined, 'shoe stock has no vertex-color multiplier');
+  }
+  visual.root.traverse(mesh => {
+    if (!mesh.isMesh) return;
+    if ((Array.isArray(mesh.material) ? mesh.material : [mesh.material]).includes(material)) {
+      assert.ok(TRACK_SHOE_NAMES.includes(mesh.name), 'only canonical shoes may share the projected material');
+    }
+  });
+  const copied = receipt(visual);
+  const actualHash = digest(JSON.stringify(copied));
+  for (const row of copied.rows.filter(row => TRACK_SHOE_NAMES.includes(row.name))) {
+    row.material[0].color = [...HISTORICAL_TRACK_RGB];
+    row.material[0].vertexColors = true;
+  }
+  assert.equal(digest(JSON.stringify(receipt(visual))), actualHash,
+    'historical material projection must leave the complete actual receipt unchanged');
+  return copied;
+}
 function historicalShadowReceipt(id, options, synchronous) {
-  if (!options.batchStatic) return receipt(synchronous);
+  if (!options.batchStatic) return historicalTrackMaterialReceipt(id, synchronous);
   let historical;
   globalThis.__factoryStagingHistoricalShadow = true;
   try {
@@ -193,11 +244,51 @@ function historicalShadowReceipt(id, options, synchronous) {
       'historical comparison alone retains the original proxy submissions');
     assert.ok(synchronous.root.getObjectByName('articulatedShadowBatch')?.isBatchedMesh,
       'current comparison must retain the actual published shadow batch');
-    return receipt(historical);
+    return historicalTrackMaterialReceipt(id, historical);
   } finally {
     globalThis.__factoryStagingHistoricalShadow = false;
     historical?.dispose();
   }
+}
+function verifyHistoricalTrackProjectionGuards(visual, approvedHash) {
+  const actualHash = digest(JSON.stringify(receipt(visual)));
+  const shoe = visual.root.getObjectByName('gearTrackPads');
+  const material = shoe.material, color = material.color.clone();
+  assert.throws(() => historicalTrackMaterialReceipt('unverified-id', visual), /verified fixture ID/);
+  try {
+    material.color.setHex(0x30312f);
+    assert.throws(() => historicalTrackMaterialReceipt('m1a1', visual), /actual shoe base must remain exactly white/);
+  } finally { material.color.copy(color); }
+  try {
+    material.vertexColors = true;
+    assert.throws(() => historicalTrackMaterialReceipt('m1a1', visual), /must not request missing vertex colors/);
+  } finally { material.vertexColors = false; }
+  const unrelated = new THREE.Mesh(shoe.geometry, material);
+  unrelated.name = 'unrelated-material-user';
+  visual.root.add(unrelated);
+  try {
+    assert.throws(() => historicalTrackMaterialReceipt('m1a1', visual), /only canonical shoes/);
+  } finally { visual.root.remove(unrelated); }
+  const position = shoe.geometry.getAttribute('position'), x = position.getX(0);
+  try {
+    position.setX(0, x + .001);
+    assert.notEqual(digest(JSON.stringify(historicalTrackMaterialReceipt('m1a1', visual))), approvedHash,
+      'an unrelated geometry change cannot disappear through material projection');
+  } finally { position.setX(0, x); }
+  const instanceX = shoe.instanceMatrix.array[12];
+  try {
+    shoe.instanceMatrix.array[12] = instanceX + .001;
+    assert.notEqual(digest(JSON.stringify(historicalTrackMaterialReceipt('m1a1', visual))), approvedHash,
+      'a changed shoe seat remains covered by the immutable golden');
+  } finally { shoe.instanceMatrix.array[12] = instanceX; }
+  const armor = visual.root.getObjectByName('hull').material, armorColor = armor.color.clone();
+  try {
+    armor.color.setRGB(.17, .23, .29);
+    assert.notEqual(digest(JSON.stringify(historicalTrackMaterialReceipt('m1a1', visual))), approvedHash,
+      'unrelated material fields remain covered by the immutable golden');
+  } finally { armor.color.copy(armorColor); }
+  assert.equal(digest(JSON.stringify(receipt(visual))), actualHash,
+    'all rejected controls leave the actual candidate unchanged');
 }
 let checks = 0;
 let goldenIndex = 0;
@@ -244,8 +335,9 @@ for (const [id, options] of [
     });
     const golden = goldenReceipts[goldenIndex++];
     equal({ id, options }, { id: golden.id, options: golden.options }, "fixture order matches independent original receipt");
+    if (goldenIndex === 1) verifyHistoricalTrackProjectionGuards(synchronous, golden.sha256);
     equal(digest(JSON.stringify(historicalShadowReceipt(id, options, synchronous))), golden.sha256,
-      `${id}: original geometry/material/order retained across the explicit shadow-submission change`);
+      `${id}: original geometry/material/order retained across the explicit shadow and shoe-material changes`);
     equal(receipt(staged), receipt(synchronous), `${id}: stepped output preserves exact original geometry/material/order/pose`);
     check(Number.isFinite(staged.root.userData.decorBuildMs), 'decoration active time is retained');
     check(staged.root.userData.decorYieldMs >= 0, 'decoration wait is separately retained');

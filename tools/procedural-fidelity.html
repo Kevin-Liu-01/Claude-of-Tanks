@@ -35,6 +35,7 @@ import k1PhotoReceipt from '/docs/references/tanks/k1a1-x-photo-receipt.json';
 import { fitBoardCamera } from '/tools/board-camera.mjs';
 import { usesSourceDimensionFrame, sourceDimensionCamera, sourceDimensionRows } from '/tools/source-dimension-frame.mjs';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
 import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
@@ -62,7 +63,10 @@ if (!spec) failFidelity(`Unknown tank id: ${id}`);
 // Private/local oracle only. The asset remains quarantined and is never
 // registered by the public build; the generated procedural code stays an
 // original primitive construction rather than embedding source mesh data.
+import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-reference-overrides.mjs';
+
 const LOCAL_REFERENCE_OVERRIDES = {
+  ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   ...SECOND_WAVE_X_REFERENCE_OVERRIDES,
   ...ABRAMS_X_REFERENCE_OVERRIDES,
   ...T90_X_REFERENCE_OVERRIDES,
@@ -724,6 +728,7 @@ const scene = new THREE.Scene();
 const maskMaterial = new THREE.MeshBasicMaterial({ color:0xffffff, side:THREE.DoubleSide });
 scene.overrideMaterial = maskMaterial;
 const engineCtx = { setupShadowMaterial:(m) => m, anisotropy:1, renderer };
+await ensureInteriorFills([id]);
 
 const reference = source?.source === 'glb'
   ? await loadReferenceGlb(source, id, spec)
@@ -1349,6 +1354,7 @@ for (const [name,value] of Object.entries(scores)) {
 }
 
 window.__FIDELITY_REPORT={
+  interiorFillRecordLoaded: hasInteriorFills(id),
   id,name:spec.name,sourcePath:source.glb.path,
   comparisonPurpose:photoSupplement ? 'source-body-and-photo-arrangement' : preservation ? 'preservation' : 'source-fidelity',
   ...(comparisonScope ? {comparisonScope} : {}),

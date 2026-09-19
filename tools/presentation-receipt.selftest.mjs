@@ -174,6 +174,29 @@ for(const line of expected.split('\n').filter(line=>line.startsWith(`  ${selecte
   assert.throws(()=>updateSelected(expected+'\n'+line));
 }
 assert.equal(JSON.stringify(measuredRows),nativeSnapshot,'generation transform never edits input measurements');
+// First-time registrations add a complete pair without rewriting any existing
+// tank. Partial receipts, hidden duplicate rows and invalid measurements fail.
+const newId = 'new_tank';
+const newRow = { xM:.02345, zM:-.12345, currentAnchor:{xM:0,zM:0},
+  projection:{centerYM:1.7,topHalfM:5.2,sideHalfM:2.6} };
+const newSource = '// preserved\n'
+  + 'export const TANK_PRESENTATION_ANCHORS: Anchors = Object.freeze({\n'
+  + '  old_tank: Object.freeze({ xM: 0, zM: 0 }),\n});\n'
+  + 'export const TANK_PRESENTATION_PROJECTIONS: Projections = Object.freeze({\n'
+  + '  old_tank: Object.freeze({ centerYM: 1, topHalfM: 2, sideHalfM: 1 }),\n});\n';
+const addNew = (s=newSource, r=newRow, a={}, p={}) =>
+  updateSelectedPresentationSource(s,[newId],{[newId]:r},a,p);
+const added = addNew();
+assert.equal(added.split('\n').filter(line=>!line.startsWith(`  ${newId}:`)).join('\n'),newSource);
+assert.match(added,/new_tank: Object\.freeze\(\{ xM: 0\.0234, zM: -0\.1235 \}\)/);
+assert.match(added,/new_tank: Object\.freeze\(\{ centerYM: 1\.7, topHalfM: 5\.2, sideHalfM: 2\.6 \}\)/);
+assert.throws(()=>addNew(added),/unexpected existing source row/);
+assert.throws(()=>addNew(newSource,newRow,{[newId]:newRow.currentAnchor}),/incomplete/);
+assert.throws(()=>addNew(newSource,newRow,{}, {[newId]:newRow.projection}),/incomplete/);
+assert.throws(()=>addNew(newSource.replace('TANK_PRESENTATION_PROJECTIONS','WRONG')),/require one/);
+assert.throws(()=>addNew(newSource+newSource),/require one/);
+assert.throws(()=>addNew(newSource,{...newRow,currentAnchor:null}),/invalid native/);
+assert.throws(()=>addNew(newSource,{...newRow,projection:{...newRow.projection,topHalfM:NaN}}),/invalid native/);
 assert.match(centering,/updateSelectedPresentationSource\(originalSource, ids, rows/);
 assert.match(centering,/readFileSync\(outputPath, 'utf8'\) !== originalSource/);
 for(const args of [['--update','--ids='],['--update','--ids']]){

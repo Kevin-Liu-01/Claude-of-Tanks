@@ -80,6 +80,56 @@ function shapeHash(root){
   assert.notEqual(shapeHash(mesh),legacy,'physical vertex bytes remain guarded');
   geometry.dispose();mesh.material.dispose();
 }
+// The shoe-shader repair removes the old second dark multiplier. All fourteen
+// historical builds below recover their existing complete digest by restoring
+// only this one material tint; geometry, ownership and instance bytes remain
+// covered. Actual surface/ballistics tests always use the restored white base.
+const TRACK_TINT_IDS=new Set(['k1a1_x','amx30_x','leclerc_x','leclerc_classic_x',
+  'type10_x','type90_x','amx40_x']);
+const SHOE_NAMES=['gearTrackPads','gearTrackPadsSimplified'];
+function trackPaletteMaterial(id,root){
+  assert.ok(TRACK_TINT_IDS.has(id),'historical track tint requires an independently verified tank');
+  const shoes=[];
+  root.traverse(mesh=>{
+    if(!mesh.isMesh)return;
+    if(SHOE_NAMES.includes(mesh.name))shoes.push(mesh);
+    for(const material of Array.isArray(mesh.material)?mesh.material:[mesh.material]){
+      if(material.userData.appearanceColorSource==='instance-palette')
+        assert.ok(SHOE_NAMES.includes(mesh.name),'only canonical shoes may use the instance-palette material');
+    }
+  });
+  assert.deepEqual(shoes.map(mesh=>mesh.name).sort(),[...SHOE_NAMES].sort(),
+    'both canonical shoe meshes appear exactly once');
+  const material=shoes[0].material;
+  assert.ok(!Array.isArray(material),'canonical shoes use one material');
+  assert.equal(material.name,'cot:track-pad');
+  assert.equal(material.userData.appearanceRole,'trackPad');
+  assert.equal(material.userData.appearanceColorSource,'instance-palette');
+  assert.deepEqual(material.color.toArray(),[1,1,1],'actual shoe base must remain exactly white');
+  assert.equal(material.vertexColors,false,'missing vertex colors must not blacken instance-colored shoes');
+  for(const mesh of shoes){
+    assert.equal(mesh.material,material,'near and far shoes share their actual material');
+    assert.equal(mesh.isInstancedMesh,true);
+    assert.ok(mesh.count>0&&mesh.instanceColor?.count>=mesh.count,'every shoe has an instance palette entry');
+    assert.equal(mesh.geometry.getAttribute('color'),undefined,'shoe stock has no vertex-color multiplier');
+  }
+  root.traverse(mesh=>{
+    if(!mesh.isMesh)return;
+    if((Array.isArray(mesh.material)?mesh.material:[mesh.material]).includes(material))
+      assert.ok(shoes.includes(mesh),'only canonical shoes may share the historical tint material');
+  });
+  return material;
+}
+function withHistoricalTrackTint(id,root,compare){
+  const material=trackPaletteMaterial(id,root),actual=shapeHash(root),color=material.color.clone();
+  try{
+    material.color.setHex(0x30312f);
+    return compare(shapeHash(root));
+  }finally{
+    material.color.copy(color);
+    assert.equal(shapeHash(root),actual,'historical comparison restores the complete actual candidate fingerprint');
+  }
+}
 function plateHits(armor,point,side,reach=.05){
   const from=point.clone().add(new THREE.Vector3(side*reach,0,0));
   const to=point.clone().add(new THREE.Vector3(-side*.01,0,0));
@@ -266,6 +316,24 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
     const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
     try{
       tank.root.updateMatrixWorld(true);
+      const shoeMaterial=trackPaletteMaterial(id,tank.root);
+      if(id==='k1a1_x'&&quality==='high'){
+        const actual=shapeHash(tank.root),color=shoeMaterial.color.clone();
+        try{
+          shoeMaterial.color.setHex(0x30312f);
+          assert.throws(()=>withHistoricalTrackTint(id,tank.root,()=>assert.fail('must reject before comparison')),
+            /actual shoe base must remain exactly white/,'an unexpected tint cannot be waived by the historical inverse');
+        }finally{shoeMaterial.color.copy(color);}
+        const unrelated=new THREE.Mesh(tank.root.getObjectByName('gearTrackPads').geometry,shoeMaterial);
+        unrelated.name='unrelated-shared-material';tank.root.add(unrelated);
+        try{
+          assert.throws(()=>withHistoricalTrackTint(id,tank.root,()=>assert.fail('must reject unrelated material users')),
+            /only canonical shoes/);
+        }finally{tank.root.remove(unrelated);}
+        const failure=new Error('comparison rejected');
+        assert.throws(()=>withHistoricalTrackTint(id,tank.root,()=>{throw failure;}),error=>error===failure);
+        assert.equal(shapeHash(tank.root),actual,'negative and throwing comparisons leave the actual tank unchanged');
+      }
       const paintedId=['leclerc_x','amx40_x','type10_x'].includes(id);
       const repairedGear=['amx30_x','leclerc_x','leclerc_classic_x'].includes(id);
       if(paintedId||repairedGear){
@@ -276,10 +344,11 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
           :id==='type10_x'?withHistoricalType10Supports(finish):finish();
         try{
           original.root.updateMatrixWorld(true);
-          assert.equal(shapeHash(original.root),BEFORE[`${id}/${quality}`],
-            `${id}/${quality}: original full native fingerprint after only exact declared finish/primitive inverses`);
+          withHistoricalTrackTint(id,original.root,hash=>assert.equal(hash,BEFORE[`${id}/${quality}`],
+            `${id}/${quality}: original full native fingerprint after only exact declared finish/primitive/tint inverses`));
         }finally{original.dispose();}
-        assert.notEqual(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'real repaired model must not masquerade as its historical baseline');
+        withHistoricalTrackTint(id,tank.root,hash=>assert.notEqual(hash,BEFORE[`${id}/${quality}`],
+          'real repaired geometry must still differ after only the historical tint is restored'));
         if(paintedId){
         const painted=tank.root.getObjectByName('hullPaintedDetail');
         // This legacy fingerprint uses geometry-only receipt materials. The
@@ -288,7 +357,8 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
         assert.equal(painted?.userData.combatHitboxRole,'nonArmor');
         assert.equal(painted?.userData.materialOnlyPaintSourceBucket,'hullDetail');
         }
-      }else assert.equal(shapeHash(tank.root),BEFORE[`${id}/${quality}`],'complete native geometry/material/instance/owner fingerprint unchanged');
+      }else withHistoricalTrackTint(id,tank.root,hash=>assert.equal(hash,BEFORE[`${id}/${quality}`],
+        'complete native geometry/material/instance/owner fingerprint unchanged except verified track base tint'));
       // All surface, air, seam and projectile checks below still use the
       // actual painted model, never the historical comparison construction.
       const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.userData.shadowOnly&&!m.userData.vehicleMarking)meshes.push(m);});

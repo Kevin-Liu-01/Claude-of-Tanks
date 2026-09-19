@@ -36,6 +36,7 @@ import './germany.ts';
 import './afvFamily.ts';
 import './sheridan.ts';
 import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
+import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
 
@@ -49,6 +50,7 @@ import { applyNativeFamilyOrderToCatalogs } from './fleetOrder.ts';
 registerCombatAnatomyCalibrations(COMBAT_ANATOMY_CALIBRATIONS);
 applyFleetBalancePass(TANK_SPECS);
 synchronizeSourceXCombatMetadata();
+synchronizeSuppliedSourceCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 finalizeFirstPartyRoster();

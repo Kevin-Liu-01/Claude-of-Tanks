@@ -20,6 +20,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
+import { sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
 import { createCanvas, Path2D as NapiPath2D, ImageData as NapiImageData, Image as NapiImage } from '@napi-rs/canvas';
 
 // Builders paint their canvas textures (ghillie nets, markings, kit fabrics)
@@ -52,6 +53,7 @@ const ledgerPath = opt('ledger', '');
 const ledger = ledgerPath ? JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')) : null;
 import { collectTriangles } from './tank-surface-collect.mjs';
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
+const { ensureInteriorFills, hasInteriorFills } = await import('../src/vehicles/interiorFills.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'abramsx').split(',').filter(Boolean);
 if (writeImages) mkdirSync(outDir, { recursive: true });
@@ -198,6 +200,7 @@ if (flag('self-test')) {
 }
 const report = []; let failures = 0;
 for (const id of ids) {
+  await ensureInteriorFills([id]);
   const started = performance.now();
   let tank;
   // shipped materials by default (side/alphaTest/transparent decide what the player sees through); --receipt uses the lightweight receipt build
@@ -242,19 +245,26 @@ for (const id of ids) {
   let ledgerVerdict = '';
   if (ledger) {
     const row = ledger.tanks?.[id];
-    if (!row) ledgerVerdict = 'no ledger row';
-    else if (row.sealed && !sealed) { ledgerVerdict = `REGRESSION: ledger sealed, now ${holeViews} open views`; failures++; }
-    else if (holePx > row.openPx + Math.max(12, row.openPx * 0.1)) { ledgerVerdict = `REGRESSION: open px ${holePx} > ledger ${row.openPx}`; failures++; }
-    else ledgerVerdict = row.sealed ? 'ledger: sealed, holds' : `ledger: ${row.openPx} px allowed, holds`;
-    if (flag('update-ledger')) ledger.tanks[id] = { sealed, openPx: holePx, openViews: holeViews, insideOutPx: invertedPx, seeThroughPx: throughPx, tris: tris.length };
+    const verdict = sealedLedgerVerdict(row, { sealed, holeViews, holePx });
+    ledgerVerdict = verdict.message;
+    if (!verdict.pass) failures++;
   } else if (!sealed) failures++;
-  report.push({ id, tris: tris.length, radiusM: +sphere.radius.toFixed(2), sealed, holeViews, invertedViews, throughViews, holePx, invertedPx, throughPx, topMeshes, views: views.filter((v) => v.clusters.length) });
+  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), sealed, holeViews, invertedViews, throughViews, holePx, invertedPx, throughPx, topMeshes, views: views.filter((v) => v.clusters.length) });
   console.log(`${id}: ${sealed ? 'SEALED' : 'OPEN'} — ${tris.length} tris, open px ${holePx} in ${holeViews}/${views.length} views, inside-out px ${invertedPx} in ${invertedViews} views, see-through px ${throughPx} in ${throughViews} views${topMeshes.length ? ' — ' + topMeshes.join(', ') : ''}${ledgerVerdict ? ' — ' + ledgerVerdict : ''} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
   if (worst && (worst.holePx || worst.throughPx)) console.log(`   worst view ${worst.name}: ${worst.clusters.slice(0, 4).map((c) => `${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`).join(' | ')}`);
   if (flag('clusters')) for (const v of views) for (const c of v.clusters) console.log(`   ${v.name}: ${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`);
   tank.dispose?.();
 }
-if (ledger && flag('update-ledger')) { ledger.generatedAt = new Date().toISOString(); writeFileSync(resolve(ledgerPath), JSON.stringify(ledger, null, 1) + '\n'); console.log(`ledger updated: ${ledgerPath}`); }
+if (ledger && flag('update-ledger')) {
+  try {
+    const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids);
+    writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
+    console.log(`ledger updated: ${ledgerPath}`);
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
 const jsonPath = opt('json', '');
 if (jsonPath) { mkdirSync(resolve(jsonPath, '..'), { recursive: true }); writeFileSync(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), res: RES, minArea: MIN_AREA, views: VIEWS.map((v) => v.name), report }, null, 1)); }
 if (flag('gate') && failures) { console.log(`sealed check: ${failures} tank(s) open`); process.exit(1); }

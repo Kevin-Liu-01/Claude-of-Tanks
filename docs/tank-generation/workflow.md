@@ -143,6 +143,24 @@ Carry lenses, housings, rails, ammo boxes and barrels with the same assembly.
 Check gun pitch, turret yaw, barrel/receiver alignment and muzzle direction.
 Do not hide a bad primary shape under boxes, camo or shadow.
 
+Separate the pitching cradle from the recoiling barrel before detail review.
+Use real visible source support stock in `gunMount`/`addGunExtra`, with only
+the actual recoiling tube assembly in `gun`. A child of the gun rig may still
+be incorrectly riding its recoil subgroup. Verify fixed housings, sights and
+offset coax equipment through full recoil at both legal pitch limits; a dummy
+mount mesh does not satisfy this contract. When moving existing stock between
+buckets, preserve its neutral world geometry, UV/color data, material, near/far
+visibility and disposal behavior. Static source geometry alone cannot establish
+ambiguous internal recoil boundaries.
+
+Reparenting can also remove a real part from the simplified shadow inputs.
+Check the actual authored shadow stock after moving a cradle, optic or coax;
+preserve legacy defaults and opt in only measured permanent support. Inspect
+enabled shadows in the native Garage separately from the canonical comparison
+renderer, which may not cast shadows. Report simplified-shadow cost against
+the actual detailed casting submissions it replaces; sparse convex-construction
+inputs are a different quantity and are not an FPS measurement.
+
 Separate permanent turret armor from removable ERA. After every ERA cell is
 spent, the shaped backing still exists. Define live/spent/reset tests and
 preserve real optical openings. Check physical markings and camouflage roles
@@ -174,6 +192,36 @@ asset and release evidence. A failed experiment is valuable history, not a
 reason to tune the source to it. Never call a screenshot pass from filenames,
 attachment counts, or a renderer finishing without errors.
 
+Capture identities must include each loaded generated fill/marking record,
+not only its loader module. A loader hash does not identify the geometry it
+loads. If a capture omitted a record hash, retain that limitation and corroborate
+it with an independently timestamped before/after source identity; do not claim
+the original manifest recorded evidence it lacks.
+
+An unresolved source target does not explain every failure on that vehicle.
+Inspect the complete geometry receipt, including articulated floater regions;
+trace each failed region to its actual stock and source receiving surface.
+If `tank-standard-check --gate` exits at source comparison, a separate run
+without `--gate` can expose track, continuity and fitting defects. Label that
+run diagnostic, preserve the failed source gate, and repair independently
+supported omissions before asking the owner to adjudicate a target conflict.
+Do not stretch a hull, invent a bracket or fill a real vent to improve a score.
+
+A supplied export can intersect its own running gear. Measure the actual source
+and native stock before changing an axle or a visible hull surface. A bounded
+hidden receiving relief may resolve a proven mechanical collision while keeping
+the measured exterior, tub and gear datums intact; record the source departure,
+its dimensions and finite remaining stock. Check actual animated shoes across
+phases and both qualities, then repeat with regenerated interior fills loaded.
+A deliberate intrusion must fail the same check. Source-real exterior openings
+remain governed by the owner's explicit target decision.
+
+When overall length matches but the filtered body-length check fails, locate the
+first and last qualifying source/candidate columns. Missing lamp hoods, guards
+or other sparse end fittings can cause the mismatch. Reconstruct the actual
+measured fitting and its receiver; do not lengthen an already-correct broad
+hull or change the mask threshold to manufacture agreement.
+
 ## 7. Integrate the real selectable model
 
 Use exact canonical IDs, names, tiers, nation/order policy, spec registration,
@@ -195,6 +243,10 @@ assets plus the required complete-fleet technical cards. Check generated
 receipts through their existing typed registry/loaders. Preserve unrelated
 cosmetic assets and original records. Verify actual Gallery selection, naming,
 decoded images, centering, materials, procedural model source and requests.
+Observe packaged thumbnail readiness separately from main-model readiness;
+lazy loading and portrait framing may finish later. Preserve the original
+selection timing and add a distinct settled-image check instead of silently
+including image waits in the model-ready stopwatch.
 
 Run the composed release gate, full tests, typecheck, builds and attribution
 checks listed in [quality gates](quality-gates.md). When a composed run stops

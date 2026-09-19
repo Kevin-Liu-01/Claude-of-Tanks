@@ -196,17 +196,22 @@ const missileVelocityByVehicle = new Map([
   ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5],
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
+  ['kurganets25_x', 117], ['fv510_milan_x', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
 ]);
 const guided = [];
+const additionalMissileVelocityByWeapon = new Map([
+  ['kurganets25_x/Bulat guided missile', 117],
+]);
 for (const id of SAVED_TANK_IDS) {
   for (const round of TANK_SPECS[id].gun.shells) {
     if (round.guided === true) guided.push({ id, round });
   }
 }
-assert.equal(guided.length, missileVelocityByVehicle.size,
-  'every saved guided weapon has one explicit vehicle-owned speed');
+assert.equal(guided.length, missileVelocityByVehicle.size + additionalMissileVelocityByWeapon.size,
+  'every saved guided weapon has an explicit vehicle- or additional-channel-owned speed');
 for (const { id, round } of guided) {
-  assert.equal(round.velocityMps, missileVelocityByVehicle.get(id),
+  const expected = additionalMissileVelocityByWeapon.get(`${id}/${round.name}`) ?? missileVelocityByVehicle.get(id);
+  assert.equal(round.velocityMps, expected,
     `${id}: missile speed is authored individually`);
   assert.equal(Object.hasOwn(round, 'authoredVelocityMps'), false,
     `${id}: no hidden global multiplier metadata`);

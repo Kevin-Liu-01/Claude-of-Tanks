@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { sourceAfterInteriorFillValidation } from './native-interior-fill-policy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const vehicleRoot = path.join(root, 'src', 'vehicles');
@@ -40,6 +41,9 @@ for (const file of files) {
   }
   if (!/\.(?:[cm]?js|[cm]?ts)$/.test(file)) continue;
   const source = fs.readFileSync(file, 'utf8');
+  let payloadSource = source;
+  try { payloadSource = sourceAfterInteriorFillValidation(rel, source); }
+  catch (error) { failures.push(`${rel}: ${error.message}`); }
   if (/\bALLOW_LOCAL_RECOVERED_MODELS\b/.test(source)) {
     failures.push(`${rel}: local recovered-model runtime switch is forbidden`);
   }
@@ -50,10 +54,10 @@ for (const file of files) {
   // the two common payload forms as well: runtime base64 decoding and giant
   // encoded string literals. Playable geometry must remain readable authored
   // construction code built from our primitives, not an opaque vertex blob.
-  if (/\batob\s*\(|Buffer\.from\s*\([^,]+,\s*['"]base64['"]/.test(source)) {
+  if (/\batob\s*\(|Buffer\.from\s*\([^,]+,\s*['"]base64['"]/.test(payloadSource)) {
     failures.push(`${rel}: decodes an opaque/base64 geometry payload`);
   }
-  if (/[`'"][A-Za-z0-9+/]{4096,}={0,2}[`'"]/.test(source)) {
+  if (/[`'"][A-Za-z0-9+/]{4096,}={0,2}[`'"]/.test(payloadSource)) {
     failures.push(`${rel}: contains a giant encoded payload literal`);
   }
   // Likewise, a multi-thousand-value literal typed array is source mesh data

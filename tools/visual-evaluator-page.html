@@ -29,8 +29,13 @@
 // Driver: tools/visual-evaluator.mjs.
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
+import { SECOND_WAVE_X_REFERENCE_OVERRIDES } from '/tools/second-wave-x-reference-overrides.ts';
+import { SUPPLIED_SOURCE_REFERENCE_OVERRIDES } from '/tools/supplied-source-reference-overrides.mjs';
+import { SOURCE_WORLD_FRAMES } from '/tools/source-world-registration.mjs';
+import { comparisonCameras } from '/tools/source-comparison-cameras.mjs';
 
 const out = document.getElementById('out');
 const say = (t) => { out.textContent = t; };
@@ -55,6 +60,8 @@ const SKEW_MIN = 0.15;            // min |skew| for a meaningful flip read
 // CRITIC_REFERENCE_OVERRIDES (graduates have no MODEL_SOURCE; the recovered
 // GLBs stay measurement oracles). Page-local injection; never ships.
 const CRITIC_REFERENCE_OVERRIDES = {
+  ztz100_x: SECOND_WAVE_X_REFERENCE_OVERRIDES.ztz100_x,
+  ...SUPPLIED_SOURCE_REFERENCE_OVERRIDES,
   // ariete (misc quarantine oracle — mirrors procedural-fidelity.html verbatim)
   ariete: { source:'glb', glb:{ path:'/models/tanks/community/ariete-dustymojito.glb',
     turretNode:'^Turret$', autoPivot:true } },
@@ -338,6 +345,7 @@ if (SELFTEST) {
   // comparison oracle through the tool-only loader instead of waiting for a
   // production createTank side effect that can never occur.
   reference = await loadReferenceGlb(MODEL_SOURCE[id], id, spec);
+  await ensureInteriorFills([id]);
   procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
   scene.add(reference.root, procedural.root);
   if (!reference.root.userData.__glbSwapped) throw new Error(`${id} reference GLB did not load`);
@@ -498,23 +506,33 @@ function swapToMask(root) {
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     const proxy = /shadow/i.test(o.name || '') ||
       mats.some((m) => m && (m.colorWrite === false || (m.transparent && (m.opacity ?? 1) < 0.05)));
-    saved.push({ o, material: o.material, visible: o.visible });
+    saved.push({ o, material: o.material, visible: o.visible, instanceColor: o.instanceColor });
     if (proxy) o.visible = false;
-    else o.material = Array.isArray(o.material) ? o.material.map(() => maskMat) : maskMat;
+    else {
+      o.material = Array.isArray(o.material) ? o.material.map(() => maskMat) : maskMat;
+      // Instanced color multiplies even a white MeshBasicMaterial. Clear it
+      // only for the silhouette pass, as the fidelity harness already does;
+      // otherwise dark shoes write depth but disappear below the mask cutoff.
+      if (o.isInstancedMesh) o.instanceColor = null;
+    }
   });
-  return () => { for (const s of saved) { s.o.material = s.material; s.o.visible = s.visible; } };
+  return () => { for (const s of saved) {
+    s.o.material = s.material; s.o.visible = s.visible;
+    if (s.o.isInstancedMesh) s.o.instanceColor = s.instanceColor;
+  } };
 }
 
 function renderMaskField(model, other, camera) {
   const restore = swapToMask(model.root);
-  model.root.visible = true;
-  other.root.visible = false;
-  renderer.setSize(MASK_S, MASK_S, false);
-  renderer.setClearColor(0x000000, 1);
-  renderer.setRenderTarget(null);
-  renderer.clear(true, true, true);
-  renderer.render(scene, camera);
-  restore();
+  try {
+    model.root.visible = true;
+    other.root.visible = false;
+    renderer.setSize(MASK_S, MASK_S, false);
+    renderer.setClearColor(0x000000, 1);
+    renderer.setRenderTarget(null);
+    renderer.clear(true, true, true);
+    renderer.render(scene, camera);
+  } finally { restore(); }
   maskCtx.drawImage(renderer.domElement, 0, 0);
   const img = maskCtx.getImageData(0, 0, MASK_S, MASK_S).data;
   const f = new Uint8Array(MASK_S * MASK_S);
@@ -570,6 +588,38 @@ function renderShaded(model, other, camera) {
   renderer.render(scene, camera);
   shotCtx.drawImage(renderer.domElement, 0, 0);
   return shotCtx.getImageData(0, 0, SHOT_S, SHOT_S);
+}
+
+function verifyInstancedMask() {
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const mesh = new THREE.InstancedMesh(geometry, material, 1);
+  mesh.setMatrixAt(0, new THREE.Matrix4());
+  mesh.setColorAt(0, new THREE.Color(0x040302));
+  const palette = mesh.instanceColor;
+  const paletteBefore = Array.from(palette.array);
+  const fixture = { root: new THREE.Group() };
+  fixture.root.add(mesh);
+  const camera = new THREE.OrthographicCamera(-1.25, 1.25, 1.25, -1.25, .1, 10);
+  camera.position.set(0, 0, 3); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+  const visibility = [reference.root.visible, procedural.root.visible];
+  reference.root.visible = procedural.root.visible = false;
+  scene.add(fixture.root);
+  try {
+    const mask = renderMaskField(fixture, reference, camera);
+    const center = mask[(MASK_S / 2) * MASK_S + MASK_S / 2];
+    if (center !== 255) throw new Error(`Instanced mask must be opaque white, got ${center}`);
+    if (mesh.instanceColor !== palette || paletteBefore.some((v, i) => v !== palette.array[i])) {
+      throw new Error('Mask changed the rendered instance palette');
+    }
+    const shaded = renderShaded(fixture, reference, camera);
+    const red = shaded.data[((SHOT_S / 2) * SHOT_S + SHOT_S / 2) * 4];
+    if (red < 1 || red > 12) throw new Error(`Palette was not restored for shading: ${red}`);
+    return { whiteMask: center, shadedRed: red, paletteRestored: true };
+  } finally {
+    scene.remove(fixture.root); geometry.dispose(); material.dispose(); mesh.dispose();
+    reference.root.visible = visibility[0]; procedural.root.visible = visibility[1];
+  }
 }
 
 // ------------------------------------------------------- marching squares --
@@ -1188,8 +1238,9 @@ const refBox = visibleBox(reference.root);
 const procBox = visibleBox(procedural.root);
 const badBox = (b) => !isFinite(b.min.x) || !isFinite(b.max.x) || b.getSize(new THREE.Vector3()).length() < 0.5;
 if (badBox(refBox) || badBox(procBox)) throw new Error('degenerate bounding box — model failed to build');
-// ref and proc builds keep independent world origins (recovered-GLB pivots
-// vs procedural conventions); comparisons are self-registered, this is data
+// Certified metre sources retain their measured world origin. Both panels
+// share a source-only camera: candidate bounds must never shift the ruler.
+const sourceFrame = SELFTEST ? null : SOURCE_WORLD_FRAMES[id];
 const frameOffset = procBox.getCenter(new THREE.Vector3()).sub(refBox.getCenter(new THREE.Vector3()));
 
 // ------------------------------------------------------------- view table --
@@ -1219,8 +1270,12 @@ const report = {
   },
   views: {}, rigParity: { views: {}, verdict: 'OK' },
   frameOffsetM: { x: R3(frameOffset.x), y: R3(frameOffset.y), z: R3(frameOffset.z) },
+  registration: sourceFrame
+    ? { mode: 'certified-source-world', sha256: sourceFrame.sha256, sharedCamera: true }
+    : { mode: 'legacy-per-model-camera', sharedCamera: false },
   digest: [],
 };
+if (SELFTEST) report.instancedMaskSelftest = verifyInstancedMask();
 const overlays = {};
 const digestParity = [], digestFindings = [], digestSummaries = [];
 
@@ -1230,16 +1285,23 @@ const colorFor = (d) => BUCKETS.find(([lim]) => Math.abs(d) <= lim)[1];
 for (const def of viewDefs) {
   say(`analyzing ${def.name}…`);
   await sleep(0);
-  let camRef = def.mk(refBox);
-  let camProc = def.mk(procBox);
+  const cameras = comparisonCameras(def.mk, refBox, procBox, !!sourceFrame);
+  let camRef = cameras.reference;
+  let camProc = cameras.candidate;
   let fieldRef = renderMaskField(reference, procedural, camRef);
   let fieldProc = renderMaskField(procedural, reference, camProc);
   const reframed = { ref: false, proc: false };
   if (def.kind === 'ortho') {
     const tightRef = reframeTight(camRef, fieldRef);
     if (tightRef) { camRef = tightRef; fieldRef = renderMaskField(reference, procedural, camRef); reframed.ref = true; }
-    const tightProc = reframeTight(camProc, fieldProc);
-    if (tightProc) { camProc = tightProc; fieldProc = renderMaskField(procedural, reference, camProc); reframed.proc = true; }
+    if (sourceFrame) {
+      camProc = camRef;
+      fieldProc = renderMaskField(procedural, reference, camProc);
+      reframed.proc = reframed.ref;
+    } else {
+      const tightProc = reframeTight(camProc, fieldProc);
+      if (tightProc) { camProc = tightProc; fieldProc = renderMaskField(procedural, reference, camProc); reframed.proc = true; }
+    }
   }
   let AR, AP;
   try {
@@ -1558,7 +1620,8 @@ if (report.rigParity.verdict === 'OK') {
   digestParity.unshift(`RIG PARITY VERDICT: ${report.rigParity.verdict}`);
 }
 if (frameOffset.length() > 0.25) {
-  digestParity.push(`note: proc build sits Δ(${R3(frameOffset.x)}, ${R3(frameOffset.y)}, ${R3(frameOffset.z)})m from ref in world frame — comparison is self-registered (per-model rig); world coords in findings are PROC-frame`);
+  const mode = sourceFrame ? 'both panels use the certified source-world camera' : 'comparison is self-registered (per-model rig)';
+  digestParity.push(`note: proc bounds center sits Δ(${R3(frameOffset.x)}, ${R3(frameOffset.y)}, ${R3(frameOffset.z)})m from ref — ${mode}`);
 }
 report.digest = [
   ...digestParity,
@@ -1566,6 +1629,7 @@ report.digest = [
   ...digestSummaries,
 ];
 
+report.interiorFillRecordLoaded = !SELFTEST && hasInteriorFills(id);
 window.__EVAL_RESULT = report;
 window.__EVAL_OVERLAYS = overlays;
 window.__EVAL_READY = true;

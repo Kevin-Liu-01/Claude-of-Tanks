@@ -87,6 +87,10 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
     displayName: 'K2 Black Panther', shortName: 'K2',
     searchAliases: ['K2 Main Battle Tank', 'K2 MBT'],
   },
+  kurganets25_x: {
+    displayName: 'Kurganets-25', shortName: 'Kurganets-25',
+    searchAliases: ['Kurganets 25', 'Object 693', 'Russian tracked IFV'],
+  },
   k2b: {
     displayName: 'K2B', shortName: 'K2B',
     searchAliases: ['K2B Black Panther', 'Korean stealth K2'],

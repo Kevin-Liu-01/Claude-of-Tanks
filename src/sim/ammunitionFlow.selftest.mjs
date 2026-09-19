@@ -3,6 +3,7 @@ import '../vehicles/tankFactory.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { SECOND_WAVE_X_IDS } from '../vehicles/sourceXSecondWaveSpecs.ts';
 import { ABRAMS_SOURCE_X_IDS } from '../vehicles/abramsSourceXSpecs.ts';
+import { SUPPLIED_SOURCE_IDS } from '../vehicles/suppliedSourceFleetSpecs.ts';
 import {
   firstAvailableAmmunitionSlot,
   hasAmmunition,
@@ -144,8 +145,15 @@ for (const spec of Object.values(TANK_SPECS)) {
     }
   }
 }
-// 2026-09-17: 22 → 23 with the Type 100 IFV's HJ-10 auxiliary missile (the Type 100 became a Chinese IFV)
-assert.equal(guidedRounds.length, 23, 'the complete guided-ammunition fleet is covered');
+// Keep the established 23 guided channels separate from the six source
+// additions; every channel still runs through the authoritative launch below.
+const suppliedIds = new Set(SUPPLIED_SOURCE_IDS);
+assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id)).length, 23,
+  'the established guided-ammunition fleet remains covered');
+assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
+  .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'fv510_milan_x', 'k21_x', 'kurganets25_x', 'kurganets25_x'],
+  'five source configurations carry six guided channels, including both Epokha launchers');
+assert.equal(guidedRounds.length, 29, 'the complete guided-ammunition fleet is covered');
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 21 conventional Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -155,14 +163,17 @@ assert.equal(ABRAMS_SOURCE_X_IDS.length, 5); // owner 2026-09-15 retired the M1A
 assert.equal(ABRAMS_SOURCE_X_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 15);
 const addedXIds = new Set([...SECOND_WAVE_X_IDS, ...ABRAMS_SOURCE_X_IDS]);
 assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct identities');
-// Later non-X additions are exercised in the fleet loop above but are not part of the
-// pre-existing census (2026-09-15: the Chinese Type 100 and its three channels).
-const laterIds = new Set(['type100', 'ztz100_x']);
+// Later additions are exercised in the fleet loop above but are counted
+// separately from the immutable established channel census.
+const laterIds = new Set(['type100', 'ztz100_x', ...SUPPLIED_SOURCE_IDS]);
 assert.equal(TANK_SPECS.type100.gun.shells.length, 3);
 assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) && !laterIds.has(spec.id))
   .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
   'the pre-existing ammunition-channel census remains intact');
-assert.equal(authoredShellChannels, 625 /* 535 + 69 + 15 + 3 (Type 100 IFV) + 3 (ZTZ-100, 2026-09-17) */,
+assert.equal(SUPPLIED_SOURCE_IDS.length, 12, 'the supplied batch adds twelve distinct loadouts');
+assert.equal(SUPPLIED_SOURCE_IDS.reduce((n, id) => n + TANK_SPECS[id].gun.shells.length, 0), 32,
+  'nine three-channel, two two-channel and one guided-primary loadout');
+assert.equal(authoredShellChannels, 657 /* preserved 625 + 32 supplied-source channels */,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);
@@ -204,6 +215,7 @@ for (const { spec, round, slot } of guidedRounds) {
     guidedGunner.combat.ammo[fallbackSlot] = 0;
   }
   const before = guidedGunner.combat.ammo[slot];
+  const inventoriesBefore = [...guidedGunner.combat.ammo];
   if (fallbackSlot >= 0) {
     guidedMatch.step({
       dt: SIM_DT,
@@ -235,6 +247,9 @@ for (const { spec, round, slot } of guidedRounds) {
       ['guided-target', input(0)],
     ]),
   });
+  assert.deepEqual(guidedGunner.combat.ammo,
+    inventoriesBefore.map((count, index) => count - (index === slot ? 1 : 0)),
+    `${spec.id} slot ${slot + 1}: authoritative launch consumes only this weapon's inventory`);
   const guidedSnapshot = guidedMatch.snapshot({
     tick: guidedAuthorityLaunches + 1,
     serverTimeMs: (guidedAuthorityLaunches + 1) * 17,

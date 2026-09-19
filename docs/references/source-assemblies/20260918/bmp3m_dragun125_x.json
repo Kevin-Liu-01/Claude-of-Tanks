@@ -1,0 +1,518 @@
+{
+  "schemaVersion": 1,
+  "id": "bmp3m_dragun125_x",
+  "scope": "Local comparison reference only; no source geometry is used by gameplay.",
+  "authorization": {
+    "ownerDecision": "docs/research/supplied-source-target-decisions-20260918.md",
+    "independentReviewStatus": "accepted-static-assembly",
+    "independentReview": {
+      "path": "docs/research/bmp-k21-source-assembly-independent-review-20260918.md",
+      "sha256": "2294425647b00dcb4fdd68e773b7e7012ca2de16d8f1b72237e0a8d31fe5cdb9",
+      "scope": "Static source assembly only; not procedural qualification or hinge-motion clearance."
+    }
+  },
+  "source": {
+    "path": "public/models/community-candidates/bmp3m_dragun125_x_source.glb",
+    "sha256": "4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16",
+    "rawFile": "bmp-3m_dragun_125_armored_warfare.glb",
+    "rawSha256": "1c5d3241266a698550f281e715b0b96d9b1360fef07aa8ccb1cd70044fc0aae3"
+  },
+  "output": {
+    "path": "public/models/community-candidates/bmp3m_dragun125_x_assembled_20260918.glb",
+    "sha256": "d79a8383dd79d8dfefc98ae47b9b12d6c60bac55df3eb1671266fef6029fc8e8"
+  },
+  "registration": {
+    "axes": [
+      "x",
+      "y",
+      "z"
+    ],
+    "scale": 1,
+    "translation": [
+      -0.00237,
+      0,
+      0
+    ],
+    "retained": true,
+    "originalFrame": {
+      "sha256": "4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16",
+      "fused": true,
+      "turret": [
+        0,
+        2,
+        -1.2
+      ],
+      "gun": [
+        0,
+        2.2585,
+        0.43
+      ]
+    }
+  },
+  "operations": [
+    {
+      "kind": "rigid-node-transform",
+      "selector": {
+        "nodeIndex": 10,
+        "nodeName": "Object_11",
+        "meshIndex": 9,
+        "originalMatrix": null,
+        "meshDefinitionSha256": "6275075f1ca65f1892e5d887cea4355e77be8da185b0d740320724a79b0e7163",
+        "triangles": 828,
+        "bounds": {
+          "min": [
+            0.017230000346899033,
+            -0.435699999332428,
+            -0.06710000336170197
+          ],
+          "max": [
+            0.7998300194740295,
+            0.5342000126838684,
+            0.1370999962091446
+          ]
+        },
+        "connectedComponents": 21
+      },
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.47097500196347636,
+        1.1820333277185757,
+        -3.2602916439063847,
+        1
+      ]
+    }
+  ],
+  "evidence": {
+    "preparationManifest": {
+      "path": ".qa-dev/tank-run/source-assembly-eastern/bmp3m_dragun125_x-assembled-r1.manifest.json",
+      "sha256": "63ccbcd955bfc2c43ec6c57ad49eb97af18a8672bc970569ca0f06045b7691e5"
+    },
+    "physicalBasis": [
+      {
+        "path": ".qa-dev/tank-run/source-assembly-eastern/source-receiver-fit.json",
+        "sha256": "aada5e91ed5fdab78a08e031f64eea7cbe242961f3fd85c9e6134bac9ecad364",
+        "method": "Source-only matched perimeter corners. Mean rigid translation; source-baked orientation and unit scale retained. Candidate never loaded.",
+        "pairs": [
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 1,
+              "point": [
+                0.1347299963235855,
+                -0.435699999332428,
+                0.08169999718666077
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 11,
+              "point": [
+                -0.33636999130249023,
+                0.7461000084877014,
+                -3.1777000427246094
+              ]
+            },
+            "residual": [
+              -0.00012498566259938615,
+              -0.00023331989844632695,
+              0.0008916039951145649
+            ],
+            "distance": 0.000930063048922311
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 2,
+              "point": [
+                0.687529981136322,
+                -0.435699999332428,
+                0.08169999718666077
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 6,
+              "point": [
+                0.2166299968957901,
+                0.7461000084877014,
+                -3.1777000427246094
+              ]
+            },
+            "residual": [
+              0.00007501772294443709,
+              -0.00023331989844632695,
+              0.0008916039951145649
+            ],
+            "distance": 0.0009246748173660974
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 3,
+              "point": [
+                0.13822999596595764,
+                0.5271000266075134,
+                -0.029200000688433647
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 12,
+              "point": [
+                -0.3326700031757355,
+                1.7089999914169312,
+                -3.289099931716919
+              ]
+            },
+            "residual": [
+              0.00007500282178324325,
+              -0.00013336290915799687,
+              0.00039171287789940834
+            ],
+            "distance": 0.0004205354533529484
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 5,
+              "point": [
+                0.6865299940109253,
+                0.5271000266075134,
+                -0.02930000051856041
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 8,
+              "point": [
+                0.21552999317646027,
+                1.7089999914169312,
+                -3.289099931716919
+              ]
+            },
+            "residual": [
+              -0.000024998870988668376,
+              -0.00013336290915799687,
+              0.0004917127080261707
+            ],
+            "distance": 0.0005100901845009592
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 8,
+              "point": [
+                0.7918300032615662,
+                0.4390999972820282,
+                -0.019099999219179153
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 15,
+              "point": [
+                0.32082998752593994,
+                1.6210999488830566,
+                -3.2792999744415283
+              ]
+            },
+            "residual": [
+              -0.000025013772149862223,
+              -0.000033376117547279094,
+              0.00009166868403553963
+            ],
+            "distance": 0.000100711477263034
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 9,
+              "point": [
+                0.7919300198554993,
+                -0.3479999899864197,
+                0.07159999758005142
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 14,
+              "point": [
+                0.32082998752593994,
+                0.8339999914169312,
+                -3.189500093460083
+              ]
+            },
+            "residual": [
+              -0.0001250303660829677,
+              -0.0000333463152248914,
+              -0.0008084471337497234
+            ],
+            "distance": 0.0008187376486091633
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 11,
+              "point": [
+                0.034529998898506165,
+                0.43880000710487366,
+                -0.019099999219179153
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 21,
+              "point": [
+                -0.43647000193595886,
+                1.6210999488830566,
+                -3.2792999744415283
+              ]
+            },
+            "residual": [
+              -0.000024998870988668376,
+              0.0002666140596072619,
+              0.00009166868403553963
+            ],
+            "distance": 0.0002830391279731131
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 15,
+              "point": [
+                0.03443000093102455,
+                -0.3481000065803528,
+                0.07159999758005142
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 17,
+              "point": [
+                -0.43647000193595886,
+                0.8339999914169312,
+                -3.189500093460083
+              ]
+            },
+            "residual": [
+              0.00007499909649294478,
+              0.00006667027870821407,
+              -0.0008084471337497234
+            ],
+            "distance": 0.0008146511883044991
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 10,
+              "point": [
+                0.7061300277709961,
+                -0.4284000098705292,
+                0.08079999685287476
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 13,
+              "point": [
+                0.23512999713420868,
+                0.7534000277519226,
+                -3.1796998977661133
+              ]
+            },
+            "residual": [
+              -0.00002502867331105607,
+              -0.00023329009612393925,
+              -0.0002082507126033306
+            ],
+            "distance": 0.00031371812624874485
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 12,
+              "point": [
+                0.11973000317811966,
+                0.5196999907493591,
+                -0.0284000001847744
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 20,
+              "point": [
+                -0.35126999020576477,
+                1.7021000385284424,
+                -3.289099931716919
+              ]
+            },
+            "residual": [
+              -0.000024991420408071452,
+              0.0003667200605075305,
+              -0.00040828762575984
+            ],
+            "distance": 0.0005493696016538109
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 14,
+              "point": [
+                0.11623000353574753,
+                -0.42820000648498535,
+                0.08079999685287476
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 18,
+              "point": [
+                -0.354669988155365,
+                0.7538999915122986,
+                -3.1796998977661133
+              ]
+            },
+            "residual": [
+              0.00007501027236384017,
+              0.00006667027870821407,
+              -0.0002082507126033306
+            ],
+            "distance": 0.00023117055678205094
+          },
+          {
+            "from": {
+              "study": "contours.json",
+              "collection": "door",
+              "index": 7,
+              "point": [
+                0.7051299810409546,
+                0.5198000073432922,
+                -0.0284000001847744
+              ]
+            },
+            "to": {
+              "study": "contours.json",
+              "collection": "receiver",
+              "index": 16,
+              "point": [
+                0.23422999680042267,
+                1.7021000385284424,
+                -3.289099931716919
+              ]
+            },
+            "residual": [
+              0.00007501772294443709,
+              0.000266703466574425,
+              -0.00040828762575984
+            ],
+            "distance": 0.0004934138052255844
+          }
+        ],
+        "rmsM": 0.0005971074535928301,
+        "maximumM": 0.000930063048922311,
+        "role": "Rear access door and all source-attached hardware, matched to existing rear aperture corners."
+      }
+    ],
+    "beforeAfter": {
+      "status": "Source-only validation passed and all six originals visually inspected by target author; independent review pending.",
+      "images": [
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/bmp3m_dragun125_x/before/rear.png",
+          "sha256": "f00d90564c241b3b1a6dc4e759682906c4ba65595f171576004b233b3521db27",
+          "stage": "before",
+          "view": "rear"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/bmp3m_dragun125_x/after/rear.png",
+          "sha256": "754640214a378b8ddf3d9922eb261f1e83d07fd7c512b04b847872c4b4b84a27",
+          "stage": "after",
+          "view": "rear"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/bmp3m_dragun125_x/before/rear-quarter.png",
+          "sha256": "cdab3156926d7e92005dcd7a7f72f44a9c9bd24f75f8b6d8d79ec09accd208c8",
+          "stage": "before",
+          "view": "rear-quarter"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/bmp3m_dragun125_x/after/rear-quarter.png",
+          "sha256": "c196cff4b76b140196ed61d3f5e212da3cd0508210b8064f535f2241b140542d",
+          "stage": "after",
+          "view": "rear-quarter"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/bmp3m_dragun125_x/before/door-close.png",
+          "sha256": "3da73ac96cb6662c3844156d28a1bc6985edc728e44faef4e0296828c0af29e3",
+          "stage": "before",
+          "view": "door-close"
+        },
+        {
+          "path": ".qa-dev/tank-run/source-assembly-eastern/review/bmp3m_dragun125_x/after/door-close.png",
+          "sha256": "af57441a155244f578cb5e2d6fc4d138be34d9219acf59312e7aed043972221d",
+          "stage": "after",
+          "view": "door-close"
+        }
+      ],
+      "authorReview": "All six source originals viewed. The formerly origin-local door closes the matching chamfered rear aperture. Both source door-side hinge leaves meet the original fixed rear hinge leaves; the circular port and latch stay on the door. Rear and quarter views show no remaining low loose door and no change to roof, track, body or gun stock. The plate is nearly flush with the rear frame, consistent with the matched source contours.",
+      "validation": {
+        "path": ".qa-dev/tank-run/source-assembly-eastern/assembled-native-validation.json",
+        "sha256": "f8d800b3b1951928c4c9005d0cc2f8774cc7cac4955f3f63a758f9d9bdd61752"
+      },
+      "cameraRecord": {
+        "path": ".qa-dev/tank-run/source-assembly-eastern/render-views.json",
+        "sha256": "4c4f880fd8357578bc6677ba29971bf605f4735cf00aec4790e997112e4e5b42"
+      },
+      "limits": [
+        "Static closed-pose source reconstruction, not proof of hinge animation or manufacturer dimensions.",
+        "Author review is not independent procedural qualification."
+      ]
+    },
+    "sourceOnly": true,
+    "candidateGeometryUsed": false,
+    "preservation": {
+      "nonselectedJsonSha256": "17c8c62c377d895b8fba6433a22200196475777be8343b217c1f8dc4b8da019e",
+      "binaryChunks": [
+        {
+          "type": 5130562,
+          "bytes": 3094956,
+          "sha256": "30d2868f1792f640ccbc50e0de2ee6ccf01d239c9a838ad67f8a7cf4a8c14ea1"
+        }
+      ],
+      "allBinaryChunksByteExact": true,
+      "onlySelectedNodeMatricesChange": true
+    }
+  }
+}

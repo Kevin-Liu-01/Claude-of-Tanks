@@ -128,7 +128,7 @@ const FAMILY_RULES: ReadonlyArray<readonly [RegExp, TrackPatternId]> = Object.fr
   [/(?:tiger1|panther_g|jpz_e100|sturmtiger)/, 'interleaved-cleat'],
   [/(?:m4a3e8|t34_85|kv2|isu152|isu122s)/, 'early-cast-steel'],
   [/(?:udes03|strv103a|strv103)(?:$|_)/, 'hydropneumatic-dead-track'],
-  [/(?:bmp2|bmp3|bwp1|upior|bmpt)/, 'eastern-ifv'],
+  [/(?:bmp2|bmp3|bwp1|upior|bmpt|kurganets25)/, 'eastern-ifv'],
   [/(?:m2a2_bradley|m3a3_bradley|m2a3_bradley|spz_puma|marder1a3|cv90)/, 'compact-ifv'],
   [/(?:chieftain|challenger|centurion|vickers|fv510)/, 'british-rubber-pad'],
   [/(?:amx|leclerc|carro45t|ariete)/, 'franco-italian-modular'],

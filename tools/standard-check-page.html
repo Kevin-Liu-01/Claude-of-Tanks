@@ -8,13 +8,14 @@
                     layer never pollute the measurement):
                     - census: counts KIT.fittings marker roots
                       (userData.fittingRoot / userData.fitting) — mg = pintleMG
-                      or openYokeRws instances (>=1 required by §B3), dressing
+                      or openYokeRws instances with actual rendered stock; dressing
                       = every other fitting instance. Hand-authored decoration
                       carries no markers and censuses ZERO by design.
                     - contiguity: top-down orthographic render of body skin
                       and ordinary fittings on a magenta key, downsampled to ~6 cm
                       cells; uncovered cells NOT connected to the frame border
-                      are enclosed sky = §B2 holes (0 target). FrontSide
+                      are raw enclosed sky cells. Approved source openings are
+                      classified separately; unexpected holes must be zero. FrontSide
                       materials mean reversed-winding slabs read as holes —
                       the winding audit is built in. Explicitly separated
                       open-lattice equipment is excluded from this scan only:
@@ -33,8 +34,10 @@
 <script type="module">
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { FITTINGS } from '/src/vehicles/profiles/kit.ts';
 import { isOpenLatticeMesh } from './standard-continuity-policy.mjs';
+import { censusEquipment } from './source-equipment-policy.mjs';
 
 const params = new URLSearchParams(location.search);
 const CELL_M = 0.06;   // §B2 scan grid (~6 cm)
@@ -99,6 +102,67 @@ function renderedAABB(root) {
   return bb;
 }
 
+function downsampleCoverage(buf, gridW, gridH, pw) {
+  // covered = not the magenta key (unlit black meshes still separate cleanly)
+  const covered = new Uint8Array(gridW * gridH);
+  let coveredCells = 0;
+  for (let gy = 0; gy < gridH; gy++) {
+    for (let gx = 0; gx < gridW; gx++) {
+      let hit = 0;
+      for (let sy = 0; sy < SUB && !hit; sy++) {
+        for (let sx = 0; sx < SUB && !hit; sx++) {
+          const px = gx * SUB + sx, py = gy * SUB + sy;
+          const k = (py * pw + px) * 4;
+          if (Math.abs(buf[k] - 255) + buf[k + 1] + Math.abs(buf[k + 2] - 255) > 60) hit = 1;
+        }
+      }
+      covered[gy * gridW + gx] = hit;
+      coveredCells += hit;
+    }
+  }
+  return { covered, coveredCells };
+}
+
+function exteriorCoverage(covered, gridW, gridH) {
+  // flood fill outside-background from the border; leftover uncovered = holes
+  const outside = new Uint8Array(gridW * gridH);
+  const stack = [];
+  const push = (gx, gy) => {
+    if (gx < 0 || gy < 0 || gx >= gridW || gy >= gridH) return;
+    const i = gy * gridW + gx;
+    if (covered[i] || outside[i]) return;
+    outside[i] = 1;
+    stack.push(gx, gy);
+  };
+  for (let gx = 0; gx < gridW; gx++) { push(gx, 0); push(gx, gridH - 1); }
+  for (let gy = 0; gy < gridH; gy++) { push(0, gy); push(gridW - 1, gy); }
+  while (stack.length) {
+    const gy = stack.pop(), gx = stack.pop();
+    push(gx + 1, gy); push(gx - 1, gy); push(gx, gy + 1); push(gx, gy - 1);
+  }
+  return outside;
+}
+
+function enclosedVoidCluster(i, covered, outside, seen, samples, gridW, gridH, x0, x1, z0, z1) {
+  let cells = 0, sx = 0, sy = 0;
+  const st = [i];
+  seen[i] = 1;
+  while (st.length) {
+    const j = st.pop();
+    const gx = j % gridW, gy = (j / gridW) | 0;
+    cells++; sx += gx; sy += gy;
+    samples.push({ gx, gy, x:x0+(gx+.5)*(x1-x0)/gridW, z:z1-(gy+.5)*(z1-z0)/gridH });
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = gx + dx, ny = gy + dy;
+      if (nx < 0 || ny < 0 || nx >= gridW || ny >= gridH) continue;
+      const n = ny * gridW + nx;
+      if (covered[n] || outside[n] || seen[n]) continue;
+      seen[n] = 1; st.push(n);
+    }
+  }
+  return { cells, sx, sy };
+}
+
 // Top-down coverage raster + enclosed-void (hole) count on the ~6 cm grid.
 function topDownScan(root) {
   const bb = renderedAABB(root);
@@ -137,100 +201,42 @@ function topDownScan(root) {
   scene.remove(root);
   for (const o of hidden) o.visible = true;
 
-  // covered = not the magenta key (unlit black meshes still separate cleanly)
-  const covered = new Uint8Array(gridW * gridH);
-  let coveredCells = 0;
-  for (let gy = 0; gy < gridH; gy++) {
-    for (let gx = 0; gx < gridW; gx++) {
-      let hit = 0;
-      for (let sy = 0; sy < SUB && !hit; sy++) {
-        for (let sx = 0; sx < SUB && !hit; sx++) {
-          const px = gx * SUB + sx, py = gy * SUB + sy;
-          const k = (py * pw + px) * 4;
-          if (Math.abs(buf[k] - 255) + buf[k + 1] + Math.abs(buf[k + 2] - 255) > 60) hit = 1;
-        }
-      }
-      covered[gy * gridW + gx] = hit;
-      coveredCells += hit;
-    }
-  }
-  // flood fill outside-background from the border; leftover uncovered = holes
-  const outside = new Uint8Array(gridW * gridH);
-  const stack = [];
-  const push = (gx, gy) => {
-    if (gx < 0 || gy < 0 || gx >= gridW || gy >= gridH) return;
-    const i = gy * gridW + gx;
-    if (covered[i] || outside[i]) return;
-    outside[i] = 1;
-    stack.push(gx, gy);
-  };
-  for (let gx = 0; gx < gridW; gx++) { push(gx, 0); push(gx, gridH - 1); }
-  for (let gy = 0; gy < gridH; gy++) { push(0, gy); push(gridW - 1, gy); }
-  while (stack.length) {
-    const gy = stack.pop(), gx = stack.pop();
-    push(gx + 1, gy); push(gx - 1, gy); push(gx, gy + 1); push(gx, gy - 1);
-  }
+  const { covered, coveredCells } = downsampleCoverage(buf, gridW, gridH, pw);
+  const outside = exteriorCoverage(covered, gridW, gridH);
   // cluster the enclosed voids for actionable coordinates (top 3 by size)
   const seen = new Uint8Array(gridW * gridH);
   const clusters = [];
   let holeCells = 0;
+  const samples = [];
   for (let i = 0; i < gridW * gridH; i++) {
     if (covered[i] || outside[i] || seen[i]) continue;
-    let cells = 0, sx = 0, sy = 0;
-    const st = [i];
-    seen[i] = 1;
-    while (st.length) {
-      const j = st.pop();
-      const gx = j % gridW, gy = (j / gridW) | 0;
-      cells++; sx += gx; sy += gy;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const nx = gx + dx, ny = gy + dy;
-        if (nx < 0 || ny < 0 || nx >= gridW || ny >= gridH) continue;
-        const n = ny * gridW + nx;
-        if (covered[n] || outside[n] || seen[n]) continue;
-        seen[n] = 1; st.push(n);
-      }
-    }
+    const { cells, sx, sy } = enclosedVoidCluster(i, covered, outside, seen, samples, gridW, gridH, x0, x1, z0, z1);
     holeCells += cells;
     clusters.push({
       cells,
       // grid -> world: +x is screen right; camera up = world -z, and
       // readRenderTargetPixels row 0 is the screen BOTTOM = world +z side,
       // so gy counts DOWN from z1.
-      x: +(x0 + ((sx / cells) + 0.5) * CELL_M).toFixed(2),
-      z: +(z1 - ((sy / cells) + 0.5) * CELL_M).toFixed(2),
+      x: +(x0 + ((sx / cells) + 0.5) * (x1-x0)/gridW).toFixed(2),
+      z: +(z1 - ((sy / cells) + 0.5) * (z1-z0)/gridH).toFixed(2),
     });
   }
   clusters.sort((a, b) => b.cells - a.cells);
-  return { holeCells, clusters: clusters.slice(0, 3), coveredCells, gridW, gridH, cellM: CELL_M };
-}
-
-// §B3 census: KIT.fittings marker roots + per-mesh marker integrity.
-function censusFittings(root) {
-  let mg = 0, dressing = 0, markedMeshes = 0;
-  const byType = {};
-  root.traverse((o) => {
-    if (o.userData && o.userData.fittingRoot) {
-      const t = o.userData.fitting || '?';
-      byType[t] = (byType[t] || 0) + 1;
-      if (t === 'pintleMG' || t === 'openYokeRws') mg++; else dressing++;
-    }
-    if ((o.isMesh || o.isInstancedMesh) && o.userData && o.userData.fitting) markedMeshes++;
-  });
-  return { mg, dressing, markedMeshes, byType };
+  return { holeCells, samples, bounds:{x0,x1,z0,z1}, clusters: clusters.slice(0, 3), coveredCells, gridW, gridH, cellM: CELL_M };
 }
 
 // --------------------------------------------------------------------------
 // mode: per-tank standard scan
 // --------------------------------------------------------------------------
 async function runTank(id) {
+  await ensureInteriorFills([id]);
   const t0 = performance.now();
   const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
   tank.root.updateMatrixWorld(true);
   pinLODs(tank.root);
-  const census = censusFittings(tank.root);
+  const census = censusEquipment(tank.root);
   const holes = topDownScan(tank.root);
-  window.__STANDARD = { id, census, holes, ms: Math.round(performance.now() - t0) };
+  window.__STANDARD = { id, census, holes, interiorFillRecordLoaded: hasInteriorFills(id), ms: Math.round(performance.now() - t0) };
   window.__STANDARD_READY = true;
 }
 

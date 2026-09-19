@@ -30,8 +30,8 @@ const near = (a, b, eps, label) => assert.ok(
   `${label}: expected ${b} ±${eps}, got ${a}`,
 );
 
-function rig(id) {
-  const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+function rig(id, options = {}) {
+  const visual = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, ...options });
   const state = createTankState(getSpec(id), new THREE.Vector3(0, 0, 0), 0);
   const recoilG = visual.root.getObjectByName('rig_recoil');
   const turretG = visual.root.getObjectByName('rig_turret');
@@ -170,6 +170,50 @@ for (const id of TWIN_PLANT) {
   }
   near(recoilG.rotation.z, 0, 1e-12, `${id}: cradle roll returns to zero`);
 }
+// Eight fixed missile canisters use separate launch origins, without the
+// barrel stroke of a cannon. The measured cradle remains the pitch pivot.
+const FIXED_LAUNCHERS = ['aft10_x'];
+for (const id of FIXED_LAUNCHERS) {
+  const { visual, state, recoilG } = rig(id);
+  const gunG = visual.root.getObjectByName('rig_gun');
+  const generatedBores = [];
+  visual.root.traverse(object => {
+    if (object.userData.cannonBore || object.userData.cannonBoreFallbackPart) generatedBores.push(object);
+  });
+  assert.equal(generatedBores.length, 0, `${id}: authored square missile covers receive no round cannon-bore overlay`);
+  const tip = new THREE.Vector3();
+  const local = new THREE.Vector3();
+  const launchAxes = [-1.035, -.505, .505, 1.035]
+    .flatMap(x => [[x, 2.775], [x, 3.25]]);
+  const before = launchAxes.map((axis, index) => {
+    visual.gunMuzzleWorld(tip, index);
+    near(tip.x, axis[0], 1e-6, `${id}: source canister ${index} x`);
+    near(tip.y, axis[1], 1e-6, `${id}: source canister ${index} y`);
+    near(tip.z, -.405, .01, `${id}: source canister ${index} mouth`);
+    return tip.clone();
+  });
+  assert.equal(new Set(before.map(p => p.toArray().join(','))).size, 8);
+  for (let shot = 0; shot < 10; shot++) {
+    assert.equal(visual.recoilKick(0, 1), shot % 8, `${id}: eight-tube firing order`);
+    visual.syncFromState(state, .12);
+    for (let index = 0; index < 8; index++) {
+      visual.gunMuzzleWorld(tip, index);
+      near(tip.distanceTo(before[index]), 0, 1e-8, `${id}: launch leaves canister ${index} seated`);
+    }
+    near(recoilG.position.z, 0, 1e-12, `${id}: missile cradle has no cannon stroke`);
+  }
+  state.turretYaw = .6;
+  state.gunPitch = .2;
+  visual.syncFromState(state, 1);
+  for (const [index, axis] of launchAxes.entries()) {
+    visual.gunMuzzleWorld(tip, index);
+    local.copy(tip);
+    gunG.worldToLocal(local);
+    near(local.x, axis[0], 1e-6, `${id}: yaw preserves ${index} lateral seat`);
+    near(local.y, axis[1] - 2.8, 1e-6, `${id}: pitch uses source cradle ${index}`);
+    near(local.z, 1.245, .01, `${id}: articulated canister mouth ${index}`);
+  }
+}
 // Roster guard: every id that authors `gun.muzzles` must be exercised above.
 // Scans the whole spec table (the tankFactory import above has already run
 // the roster registration side effect, so this is the full 140+ id census,
@@ -182,7 +226,7 @@ for (const id of TWIN_PLANT) {
   assert.ok(seen.length >= 2,
     `roster guard is vacuous — found ${seen.length} twin-plant ids in a ${Object.keys(TANK_SPECS).length}-id table`);
   for (const id of seen) {
-    assert.ok(TWIN_PLANT.includes(id),
+    assert.ok([...TWIN_PLANT, ...FIXED_LAUNCHERS].includes(id),
       `twin-plant id ${id} authors gun.muzzles but is not covered by the alternation test`);
   }
 }
@@ -223,4 +267,23 @@ for (const id of TWIN_PLANT) {
   near(recoilG.position.z, 0, 1e-9, 'm2a2: belt stroke recuperated inside the cycle');
 }
 
-console.log('recoilRig.selftest: cannon throw, belt shudder, twin-plant alternation and casemate law pass');
+// KF41's real tube is shorter than the legacy length heuristic after its
+// stationary shroud is correctly assigned to the pitching cradle. Its native
+// physical bore supplies stronger evidence than the hidden ISU stub above.
+for (const quality of ['high', 'low']) {
+  const { visual, state, recoilG } = rig('kf41_lynx_x', { quality });
+  const tube = recoilG.getObjectByName('gun');
+  tube.geometry.computeBoundingBox();
+  const span = tube.geometry.boundingBox.max.z - tube.geometry.boundingBox.min.z;
+  assert.ok(span > 0 && span < .5, `${quality}: actual KF41 tube exercises the short-stock path (${span})`);
+  assert.ok(visual.root.userData.physicalMuzzleBoreVerification.minimumDepthM >= .10,
+    `${quality}: real recessed bore, not a decorative marker or hidden stub`);
+  visual.recoilKick(0, .36);
+  visual.syncFromState(state, .06);
+  near(recoilG.position.z, -.077, 1e-6, `${quality}: measured 35 mm tube recoils`);
+  visual.syncFromState(state, .22);
+  near(recoilG.position.z, 0, 1e-9, `${quality}: short tube returns to battery`);
+  visual.dispose();
+}
+
+console.log('recoilRig.selftest: cannon throw, verified short tubes, belt shudder, twin-plant alternation and casemate law pass');

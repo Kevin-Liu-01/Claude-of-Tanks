@@ -28,7 +28,12 @@ const additions = [
   '\t\tvehFill *= uVehicleReadabilityScale;\n',
   '\t\tvehFloorL *= uVehicleReadabilityScale;\n',
 ];
-let daylight = before.fragmentShader;
+// The opt-in wheel branch replaces only painted wheel lighting. Removing its
+// conditional wrapper must recover the historically frozen ordinary shader.
+const wheelBranch = /\t#ifdef COT_WHEEL_PAINT_READABILITY\n[\s\S]*?\t#else\n/;
+assert.ok(wheelBranch.test(before.fragmentShader));
+let daylight = before.fragmentShader.replace(wheelBranch, '')
+  .replace('// <<< gameplay_feel r4\n\t}\n\t#endif', '// <<< gameplay_feel r4\n\t}');
 for (const addition of additions) {
   assert.equal(daylight.split(addition).length, 2, 'each required uniform application appears exactly once');
   daylight = daylight.replace(addition, '');
@@ -108,10 +113,23 @@ const vehicles = [];
 const bound = [];
 const roles = new Set();
 const materials = new Set();
+let csmCallbacks = 0;
+const csmContext = {
+  setupShadowMaterial(entry, hook) {
+    entry.defines = { ...entry.defines, USE_CSM: 1 };
+    entry.onBeforeCompile = shader => {
+      csmCallbacks++;
+      shader.uniforms.csmTestWitness = { value: 1 };
+      hook?.(shader);
+    };
+  },
+  releaseShadowMaterial() {},
+};
 try {
   for (const [id, scale] of [['m1a1', 1], ['merkava4b', .12]]) {
     setVehicleReadabilityScale(scale);
-    const visual = createTank(id, null, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
+    const visual = createTank(id, id === 'merkava4b' ? csmContext : null,
+      { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
     vehicles.push(visual);
     visual.root.traverse(object => {
       if (!object.isMesh) return;
@@ -126,12 +144,25 @@ try {
         assert.equal(uniform.value, scale, `${id}: materials created at night inherit the current scale`);
         assert.ok(shader.fragmentShader.includes('vehFill *= uVehicleReadabilityScale;'));
         assert.ok(shader.fragmentShader.includes('vehFloorL *= uVehicleReadabilityScale;'));
+        const wheelPaint = entry.userData.appearanceRole === 'wheelPaint';
+        if (entry.defines?.COT_WHEEL_PAINT_READABILITY) {
+          assert.ok(wheelPaint, `${id}/${object.name}: fixed-role clones retain ordinary gear shading`);
+        }
+        if (object.name.startsWith('gearRoadWheelDiscs')) {
+          assert.equal(entry.defines.COT_WHEEL_PAINT_READABILITY, 1,
+            `${id}/${object.name}: canonical painted road-wheel stock selects additive readability`);
+        }
+        if (id === 'merkava4b' && (entry.defines?.COT_WHEEL_PAINT_READABILITY || object.name === 'hull')) {
+          assert.equal(entry.defines.USE_CSM, 1, `${object.name}: wheel role must preserve shadow defines`);
+          assert.equal(shader.uniforms.csmTestWitness.value, 1, 'readability chains through shadow callback');
+        }
         roles.add(entry.userData.appearanceRole);
         bound.push({ material: entry, version: entry.version, key: entry.customProgramCacheKey(), shader });
       }
     });
   }
   assert.ok(bound.length >= 12, 'real vehicle material sets, not a single fake hook');
+  assert.ok(csmCallbacks >= 6, 'shadow-hook material path exercised as well as direct tooling path');
   for (const role of ['armorPaint', 'tireRubber', 'wheelPaint', 'trackPad']) {
     assert.ok(roles.has(role), `${role}: real material callback covered`);
   }

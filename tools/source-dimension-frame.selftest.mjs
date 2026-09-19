@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {sourceDimensionCamera,sourceDimensionRows,usesSourceDimensionFrame} from './source-dimension-frame.mjs';
+import { SUPPLIED_SOURCE_COMPARISON_IDS } from './supplied-source-reference-overrides.mjs';
 const ref=new THREE.Box3(new THREE.Vector3(-2,0,-4),new THREE.Vector3(2,4,6));
 const sourceSnapshot=ref.toArray?.()??[ref.min.toArray(),ref.max.toArray()];
 const record=cam=>[...cam.projectionMatrix.elements,...cam.matrixWorld.elements];
@@ -23,6 +24,11 @@ assert.ok(sourceDimensionRows(dims,dims,ref,short).find(r=>r.name==='physicalHei
 assert.throws(()=>sourceDimensionRows({...dims,widthM:NaN},dims,ref,ref));
 assert.throws(()=>sourceDimensionCamera(new THREE.Box3(),new THREE.Vector3(1,0,0)));
 const certified={passed:true,mode:'canonical-source-world'};
+for (const id of SUPPLIED_SOURCE_COMPARISON_IDS) {
+  assert.equal(usesSourceDimensionFrame(id, certified), true, `${id}: same source-only ruler`);
+  assert.equal(usesSourceDimensionFrame(id, {...certified, passed: false}), false,
+    `${id}: an invalid source certificate cannot bypass dimensions`);
+}
 assert.equal(usesSourceDimensionFrame('t72b3_x',certified),true);
 assert.equal(usesSourceDimensionFrame('m1a2_sepv2_x',certified),true,
   'direct supplied SEP v2 comparison uses its certified source ruler, not the unrelated published roof height');

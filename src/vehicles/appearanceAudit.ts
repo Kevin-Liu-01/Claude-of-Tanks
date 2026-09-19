@@ -5,7 +5,7 @@
 // steel must stay neutral. Keeping this policy on explicit roles prevents a
 // color cleanup from deleting or repainting armor, skirts or mudguards.
 
-import type { Material, Object3D } from 'three';
+import { Color, type InstancedBufferAttribute, type Material, type Object3D } from 'three';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { liftLinearRgbToWheelFloor } from './wheelPaintFloor.ts';
 
@@ -62,6 +62,7 @@ const GEAR_MATERIAL_ROLES = new Set([
 
 type RenderObject = Object3D & {
   isInstancedMesh?: boolean;
+  instanceColor?: InstancedBufferAttribute | null;
   isMesh?: boolean;
   material?: Material | Material[];
 };
@@ -81,6 +82,14 @@ function roleOf(object: Object3D, material: Material): string {
   if (typeof objectRole === 'string') return objectRole;
   const materialRole = dataValue(material, 'appearanceRole');
   return typeof materialRole === 'string' ? materialRole : '';
+}
+
+function instanceTrackPalette(object: Object3D, material: Material): InstancedBufferAttribute | null {
+  const render = object as RenderObject;
+  return render.isInstancedMesh
+    && dataValue(material, 'appearanceRole') === 'trackPad'
+    && dataValue(material, 'appearanceColorSource') === 'instance-palette'
+    ? render.instanceColor ?? null : null;
 }
 
 function colorOf(material: Material): ColorPort | null {
@@ -109,13 +118,38 @@ export function tagVehicleMaterial<T extends Material | null | undefined>(
  * explicit rubber/track roles are changed here. */
 export function normalizeTankAppearance(root: Object3D | null | undefined): number {
   const normalized = new Set<Material>();
+  const normalizedPalettes = new Set<InstancedBufferAttribute>();
+  const instanceTint = new Color();
+  const instanceHsl = { h: 0, s: 0, l: 0 };
   root?.traverse((object) => {
     for (const material of materialsOf(object)) {
-      if (normalized.has(material)) continue;
       const role = roleOf(object, material);
       const color = FIXED_ROLE_COLOR[role];
       const materialColor = colorOf(material);
       if (!materialColor) continue;
+      const palette = instanceTrackPalette(object, material);
+      if (palette) {
+        // Track shoes already carry their neutral steel shade per instance.
+        // A second dark base tint multiplies it to almost black in the shader.
+        materialColor.setHex(0xffffff);
+        normalized.add(material);
+        if (normalizedPalettes.has(palette)) continue;
+        let changed = false;
+        for (let i = 0; i < palette.count; i++) {
+          instanceTint.fromBufferAttribute(palette, i).getHSL(instanceHsl);
+          if (!Number.isFinite(instanceTint.r) || !Number.isFinite(instanceTint.g)
+              || !Number.isFinite(instanceTint.b)
+              || instanceHsl.s > .14) {
+            instanceTint.setHex(VEHICLE_APPEARANCE_PALETTE.trackPad);
+            palette.setXYZ(i, instanceTint.r, instanceTint.g, instanceTint.b);
+            changed = true;
+          }
+        }
+        if (changed) palette.needsUpdate = true;
+        normalizedPalettes.add(palette);
+        continue;
+      }
+      if (normalized.has(material)) continue;
       if (color != null) {
         materialColor.setHex(color);
         normalized.add(material);
@@ -214,6 +248,18 @@ function auditAppearanceObject(
     seen.add(key);
     const materialRole = dataValue(material, 'appearanceRole');
     appendRunningGearColorIssue(issues, object, role, color);
+    const palette = instanceTrackPalette(object, material);
+    if (palette) {
+      const shade = new Color(), hsl = {h:0,s:0,l:0};
+      for(let i=0;i<palette.count;i++) {
+        shade.fromBufferAttribute(palette,i).getHSL(hsl);
+        if(hsl.s <= .14) continue;
+        appendRunningGearColorIssue(issues,object,'trackPad',{
+          hex:`#${shade.getHexString()}`,saturation:hsl.s,lightness:hsl.l,
+        });
+        break;
+      }
+    }
     appendTrackGuardMaterialIssue(issues, object, materialRole, color);
     appendArmorMaterialIssue(issues, object, materialRole, color);
   }

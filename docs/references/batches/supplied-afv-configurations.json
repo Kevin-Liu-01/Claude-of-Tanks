@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-18",
+    "record": "docs/research/supplied-source-target-decisions-20260918.md",
+    "target": "Correctly assembled supplied vehicles, with their actual equipment and genuine exterior openings. No invented roof machine guns."
+  },
+  "configurations": {
+    "kurganets25_x": {
+      "source": {
+        "path": "public/models/community-candidates/kurganets25_x_source.glb",
+        "sha256": "a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0"
+      },
+      "roofMachineGuns": 0,
+      "id": "kurganets25_x"
+    },
+    "fv510_milan_x": {
+      "source": {
+        "path": "public/models/community-candidates/fv510_milan_x_source.glb",
+        "sha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04"
+      },
+      "roofMachineGuns": 0,
+      "id": "fv510_milan_x"
+    },
+    "aft10_x": {
+      "source": {
+        "path": "public/models/community-candidates/aft10_x_source.glb",
+        "sha256": "95212acdcac7ef46744dde58888f675fa65284dfd4b008b2f7fda717b4e18d79"
+      },
+      "roofMachineGuns": 0,
+      "id": "aft10_x"
+    },
+    "type96b_x": {
+      "source": {
+        "path": "public/models/community-candidates/type96b_x_source.glb",
+        "sha256": "ac66370796b83d2d63755390ffdbcaa503d9dbc15726630205c4e44a2765b1ed"
+      },
+      "roofMachineGuns": 0,
+      "id": "type96b_x"
+    },
+    "kf41_lynx_x": {
+      "source": {
+        "path": "public/models/community-candidates/kf41_lynx_x_source.glb",
+        "sha256": "999a4238c86319612a94b5b1204b477304c46b4e8ea9899097f4a9a7a3377b9f"
+      },
+      "roofMachineGuns": 0,
+      "id": "kf41_lynx_x"
+    },
+    "k21_x": {
+      "source": {
+        "path": "public/models/community-candidates/k21_x_source.glb",
+        "sha256": "ea6a537c8dcbaa5a617e37dc429aaed5364f99ebfc06f9a1811b980e53af55d8"
+      },
+      "roofMachineGuns": 0,
+      "id": "k21_x"
+    },
+    "cv90_mkiv_x": {
+      "source": {
+        "path": "public/models/community-candidates/cv90_mkiv_x_source.glb",
+        "sha256": "29160cf92e8e2221cf8b441626f871104dafde6b3ef5a80d3ec91d1fe3c8649a"
+      },
+      "roofMachineGuns": 0,
+      "id": "cv90_mkiv_x"
+    },
+    "cv90105_tml_x": {
+      "source": {
+        "path": "public/models/community-candidates/cv90105_tml_x_source.glb",
+        "sha256": "6e5770019f47d2c3de157e4eee77257e0f7ad1680b18b0655a1197362070efcc"
+      },
+      "roofMachineGuns": 0,
+      "id": "cv90105_tml_x"
+    },
+    "ztz100_x": {
+      "source": {
+        "path": "public/models/community-candidates/ztz100_x_source.glb",
+        "sha256": "7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1"
+      },
+      "roofMachineGuns": 1,
+      "id": "ztz100_x"
+    },
+    "ajax_x": {
+      "source": {
+        "path": "public/models/community-candidates/ajax_x_source.glb",
+        "sha256": "506a31e984730c4ab6a398a4f1305a2fe6220960699842d8ed62ec0b4a2658f0"
+      },
+      "roofMachineGuns": 1,
+      "id": "ajax_x"
+    },
+    "griffin50_x": {
+      "source": {
+        "path": "public/models/community-candidates/griffin50_x_source.glb",
+        "sha256": "62f6e270698d7b218184ada575289da3cc1b362da4d96a8314d6e1277d618d34"
+      },
+      "roofMachineGuns": 1,
+      "id": "griffin50_x"
+    },
+    "bmp3m_dragun125_x": {
+      "source": {
+        "path": "public/models/community-candidates/bmp3m_dragun125_x_source.glb",
+        "sha256": "4fd69d170bf494b8a795bf5d6618e94db10c7cdb562b9f37210bc613f402af16"
+      },
+      "roofMachineGuns": 1,
+      "id": "bmp3m_dragun125_x"
+    },
+    "sabra_mk2_x": {
+      "source": {
+        "path": "public/models/community-candidates/sabra_mk2_x_source.glb",
+        "sha256": "5ea261fb70f728d3547159a6a6cf1519af2403e05e57c02d87d394ec9f573a2b"
+      },
+      "roofMachineGuns": 1,
+      "id": "sabra_mk2_x"
+    }
+  }
+}

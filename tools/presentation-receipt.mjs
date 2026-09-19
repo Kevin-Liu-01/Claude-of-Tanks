@@ -35,6 +35,24 @@ function presentationSourceLine(id, fields, values) {
   return `  ${id}: Object.freeze({ ${fields.map(field => `${field}: ${presentationNumberSource(values[field])}`).join(', ')} }),`;
 }
 
+function insertPresentationSourceLine(source, exportName, id, line) {
+  const lines = source.split('\n');
+  const starts = lines.flatMap((value, index) => value.startsWith(`export const ${exportName}:`)
+    && value.endsWith(' = Object.freeze({') ? [index] : []);
+  if (starts.length !== 1) throw new Error(`${id}: require one ${exportName} declaration`);
+  const start = starts[0], end = lines.indexOf('});', start + 1);
+  if (end < 0) throw new Error(`${id}: missing ${exportName} closing boundary`);
+  let insertion = end;
+  for (let index = start + 1; index < end; index++) {
+    const existing = /^  ([a-z0-9_]+): Object\.freeze\(/.exec(lines[index]);
+    if (!existing) throw new Error(`${id}: invalid ${exportName} row`);
+    if (existing[1] === id) throw new Error(`${id}: unexpected existing source row`);
+    if (insertion === end && existing[1] > id) insertion = index;
+  }
+  lines.splice(insertion, 0, line);
+  return lines.join('\n');
+}
+
 /** Regenerate selected native-measured anchors and their paired projections.
  * Unlike saved-image sync, this intentionally invalidates selected images:
  * regenerate them, then run the unchanged native/exported centering checks.
@@ -50,6 +68,22 @@ export function updateSelectedPresentationSource(source, ids, rows, anchors, pro
   for (const id of ids) {
     const row = rows[id];
     if (row?.error) throw new Error(`${id}: native measurement failed`);
+    const hasAnchor = Object.hasOwn(anchors, id), hasProjection = Object.hasOwn(projections, id);
+    if (hasAnchor !== hasProjection) throw new Error(`${id}: incomplete existing presentation receipt`);
+    if (!hasAnchor) {
+      // A new registered tank has a measured fallback anchor but no published
+      // pair yet. Insert both native records atomically; never repair a broken
+      // half-pair or overwrite source rows missing from the imported maps.
+      if (source.split('\n').some(value => value.startsWith(`  ${id}:`))) {
+        throw new Error(`${id}: unexpected existing source row`);
+      }
+      presentationSourceLine(id, ['xM', 'zM'], row?.currentAnchor);
+      result = insertPresentationSourceLine(result, 'TANK_PRESENTATION_ANCHORS', id,
+        presentationSourceLine(id, ['xM', 'zM'], row));
+      result = insertPresentationSourceLine(result, 'TANK_PRESENTATION_PROJECTIONS', id,
+        presentationSourceLine(id, ['centerYM', 'topHalfM', 'sideHalfM'], row?.projection));
+      continue;
+    }
     const currentErrors = presentationReceiptErrors(id, row?.currentAnchor, projections[id], anchors[id], projections[id]);
     if (currentErrors.length) throw new Error(currentErrors.join('\n'));
     for (const [fields, previous, measured] of [

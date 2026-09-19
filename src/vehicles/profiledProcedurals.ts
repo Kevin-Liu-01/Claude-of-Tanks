@@ -1,3 +1,14 @@
+import { buildFv510MilanX } from './profiles/fv510MilanX.ts';
+import { buildGriffin50X } from './profiles/griffin50X.ts';
+import { buildAjaxX } from './profiles/ajaxX.ts';
+import { buildAft10X } from './profiles/aft10X.ts';
+import { buildBmp3mDragun125X } from './profiles/bmp3mDragun125X.ts';
+import { buildK21X } from './profiles/k21X.ts';
+import { buildType96bX } from './profiles/type96bX.ts';
+import { buildKf41LynxX } from './profiles/kf41LynxSourceX.ts';
+import { buildCv90MkivX } from './profiles/cv90MkivSourceX.ts';
+import { buildCv90105TmlX } from './profiles/cv90105TmlSourceX.ts';
+import { buildSabraMk2X } from './profiles/sabraMk2SourceX.ts';
 // Eager assembly point for release tools and headless fleet audits. Browser
 // boot demand-loads the same family maps through fleetFactory.ts.
 import { buildProfile, buildDonorVariant } from './profiles/kit.ts';
@@ -37,6 +48,7 @@ import { MERKAVA_X_PROFILES } from './profiles/merkavaX.ts';
 import { K2_X_PROFILES } from './profiles/k2X.ts';
 import { KF51_X_PROFILES } from './profiles/kf51X.ts';
 import { T14_X_PROFILES } from './profiles/t14X.ts';
+import { KURGANETS_X_PROFILES } from './profiles/kurganetsX.ts';
 import { LEOPARD_A6_X_PROFILES } from './profiles/leopardA6X.ts';
 import { K1A1_X_PROFILES } from './profiles/k1a1X.ts';
 import { AMX30_X_PROFILES } from './profiles/amx30X.ts';
@@ -94,6 +106,18 @@ const RUSSIA_PROFILES: VehicleProfileRecord = {
 };
 
 export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
+  fv510_milan_x: { build: buildFv510MilanX },
+  griffin50_x: { build: buildGriffin50X },
+  ajax_x: { build: buildAjaxX },
+  aft10_x: { build: buildAft10X },
+  bmp3m_dragun125_x: { build: buildBmp3mDragun125X },
+  k21_x: { build: buildK21X },
+  type96b_x: { build: buildType96bX },
+  kf41_lynx_x: { build: buildKf41LynxX },
+  cv90_mkiv_x: { build: buildCv90MkivX },
+  cv90105_tml_x: { build: buildCv90105TmlX },
+  sabra_mk2_x: { build: buildSabraMk2X },
+
   ...CHIEFTAIN5_X_PROFILES,
   ...T90_AW_X_PROFILES,
   ...T90_BURLAK_X_PROFILES,
@@ -149,6 +173,7 @@ export const PROCEDURAL_PROFILES: VehicleProfileRecord = {
   ...K2_X_PROFILES,
   ...KF51_X_PROFILES,
   ...T14_X_PROFILES,
+  ...KURGANETS_X_PROFILES,
 };
 
 export const PROFILED_BUILDERS = createProfileBuilders(PROCEDURAL_PROFILES, {

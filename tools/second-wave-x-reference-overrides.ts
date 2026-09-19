@@ -1,12 +1,10 @@
 // Local QA only. Every mesh listed here is an original complete source node.
 // No source vertices, images, materials or model loading enter playable code.
 export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
-  ztz100_x: {source:'glb',qualityBar:'fleet',glb:{
+  ztz100_x: {source:'glb',qualityBar:'exemplar',glb:{
     path:'/models/community-candidates/ztz100_x_source.glb',
     // Fifty unnamed Sketchfab material meshes (hull, turret, gun, gear mixed); whole-source comparison only.
-    // 2026-09-17: eight authoring passes reached 93.4 aggregate with eight of nine views over the exemplar 92; the
-    // concept model's bar-cage and twin-tube fittings keep one side view at 91.9, so the fleet floor (90) gates it
-    // like the KF51 X while the exemplar pass stays a follow-up.
+    // The supplied-source batch requires 92 in every view; prior 90-floor receipts remain historical.
     fixedMount:true,componentMasks:false,geometryComponentMasks:false,
   }},
   strv122_x: {source:'glb',qualityBar:'exemplar',glb:{

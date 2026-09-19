@@ -7,6 +7,8 @@
 // derives technical diagrams from the same armor/module data used in combat.
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
+import { physicalMuzzleRimSample } from '/tools/muzzle-seat-policy.mjs';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.ts';
 import {
   TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, geometryFingerprint, metadataFingerprint,
@@ -872,6 +874,97 @@ function inspectOne(id, renderFiles, requestedViews = null) {
   }
 }
 
+function boreCaptureCamera(root, muzzle, spec, fallback, primaryRim, primaryDisc) {
+  const facePart = primaryRim || primaryDisc || (visibleInTree(fallback, root) ? fallback : muzzle);
+  const face = facePart.getWorldPosition(new THREE.Vector3());
+  const direction = muzzle.getWorldDirection(new THREE.Vector3()).normalize();
+  let radius = Math.max(0.014, (spec.armor.gunBarrel.radiusM || 0.04) * 0.92);
+  if (primaryRim?.geometry) {
+    primaryRim.geometry.computeBoundingSphere();
+    const scale = primaryRim.getWorldScale(new THREE.Vector3());
+    const measured = primaryRim.geometry.boundingSphere?.radius
+      // The mouth lives in the local XY plane. Several family builders
+      // stretch only the cannon's longitudinal Z axis; folding that into
+      // the radial scale overestimates the aperture and samples empty air.
+      * Math.max(Math.abs(scale.x), Math.abs(scale.y));
+    if (Number.isFinite(measured) && measured > 0.004) radius = measured;
+  }
+  const distance = Math.max(0.18, radius * 8);
+  const fov = 22;
+  const cam = new THREE.PerspectiveCamera(fov, 1, 0.002, distance * 8);
+  cam.position.copy(face).addScaledVector(direction, distance);
+  cam.up.set(0, 1, 0);
+  cam.lookAt(face);
+  cam.updateMatrixWorld(true);
+  return { direction, radius, distance, fov, cam };
+}
+
+function boreCenterHits(root, cam, direction, distance) {
+  const ray = new THREE.Raycaster(cam.position, direction.clone().negate(), 0, distance * 4);
+  const centerHits = ray.intersectObject(root, true).filter((hit) => {
+    for (let node = hit.object; node; node = node.parent) {
+      if (!node.visible) return false;
+      if (node === root) break;
+    }
+    const materials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
+    return !materials.length || materials.some((material) => !material || material.colorWrite !== false);
+  }).slice(0, 6).map((hit) => {
+    let bore = /muzzleBoreShadow/i.test(hit.object.name || '');
+    for (let node = hit.object; node && !bore; node = node.parent) {
+      bore = !!(node.userData && node.userData.cannonBore);
+    }
+    return {
+      distance: Number(hit.distance.toFixed(4)),
+      name: hit.object.name || hit.object.type,
+      path: (() => {
+        const names = [];
+        for (let node = hit.object; node; node = node.parent) {
+          names.push(node.name || node.type);
+          if (node === root) break;
+        }
+        return names.reverse();
+      })(),
+      fallback: !!(hit.object.userData && hit.object.userData.cannonBoreFallbackPart),
+      bore,
+    };
+  });
+  return centerHits;
+}
+
+function boreRingSampleResult(hit, muzzle, fallback, pattern, allowPhysicalRim) {
+  const local = hit ? muzzle.worldToLocal(hit.point.clone()) : null;
+  let gunOwned = false;
+  for (let part=hit?.object; part; part=part.parent) {
+    if (part===muzzle.parent) { gunOwned=true; break; }
+  }
+  const physicalWitness = local ? { radiusM:Math.hypot(local.x,local.y),zM:local.z,gunOwned } : null;
+  return {
+    pass: !!hit && (pattern.test(hit.object.name || '') || (allowPhysicalRim
+      && physicalMuzzleRimSample(fallback?.userData.muzzleSeatReceipt,physicalWitness))),
+    physicalWitness: allowPhysicalRim ? physicalWitness : null,
+    name: hit?.object.name || null,
+    distance: hit ? Number(hit.distance.toFixed(4)) : null,
+  };
+}
+
+function boreLuminance(canvas, radius, distance, fov) {
+  const pixelsPerM = 256 / (2 * distance * Math.tan((fov / 2) * Math.PI / 180));
+  const radiusPx = Math.max(4, radius * pixelsPerM);
+  const data = canvas.getContext('2d').getImageData(0, 0, 256, 256).data;
+  let inner = 0, innerN = 0, surround = 0, surroundN = 0;
+  for (let y = 0; y < 256; y++) {
+    for (let x = 0; x < 256; x++) {
+      const d = Math.hypot(x - 127.5, y - 127.5) / radiusPx;
+      if (d > 1.65) continue;
+      const i = (y * 256 + x) * 4;
+      const luma = data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722;
+      if (d <= 0.38) { inner += luma; innerN++; }
+      else if (d >= 1.15) { surround += luma; surroundN++; }
+    }
+  }
+  return { innerLuma: innerN ? inner / innerN : 255, surroundLuma: surroundN ? surround / surroundN : 0, radiusPx };
+}
+
 function boreShotOne(id) {
   const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
   const root = visual.root;
@@ -889,61 +982,17 @@ function boreShotOne(id) {
     const fallback = fallbackMouths[0] || null;
     const primaryRim = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Rim$/i);
     const primaryDisc = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Disc$/i);
-    const facePart = primaryRim || primaryDisc || (visibleInTree(fallback, root) ? fallback : muzzle);
-    const face = facePart.getWorldPosition(new THREE.Vector3());
-    const direction = muzzle.getWorldDirection(new THREE.Vector3()).normalize();
-    let radius = Math.max(0.014, (spec.armor.gunBarrel.radiusM || 0.04) * 0.92);
-    if (primaryRim?.geometry) {
-      primaryRim.geometry.computeBoundingSphere();
-      const scale = primaryRim.getWorldScale(new THREE.Vector3());
-      const measured = primaryRim.geometry.boundingSphere?.radius
-        // The mouth lives in the local XY plane. Several family builders
-        // stretch only the cannon's longitudinal Z axis; folding that into
-        // the radial scale overestimates the aperture and samples empty air.
-        * Math.max(Math.abs(scale.x), Math.abs(scale.y));
-      if (Number.isFinite(measured) && measured > 0.004) radius = measured;
-    }
-    const distance = Math.max(0.18, radius * 8);
-    const fov = 22;
-    const cam = new THREE.PerspectiveCamera(fov, 1, 0.002, distance * 8);
-    cam.position.copy(face).addScaledVector(direction, distance);
-    cam.up.set(0, 1, 0);
-    cam.lookAt(face);
-    cam.updateMatrixWorld(true);
-    const ray = new THREE.Raycaster(cam.position, direction.clone().negate(), 0, distance * 4);
-    const centerHits = ray.intersectObject(root, true).filter((hit) => {
-      for (let node = hit.object; node; node = node.parent) {
-        if (!node.visible) return false;
-        if (node === root) break;
-      }
-      const materials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
-      return !materials.length || materials.some((material) => !material || material.colorWrite !== false);
-    }).slice(0, 6).map((hit) => {
-      let bore = /muzzleBoreShadow/i.test(hit.object.name || '');
-      for (let node = hit.object; node && !bore; node = node.parent) {
-        bore = !!(node.userData && node.userData.cannonBore);
-      }
-      return {
-        distance: Number(hit.distance.toFixed(4)),
-        name: hit.object.name || hit.object.type,
-        path: (() => {
-          const names = [];
-          for (let node = hit.object; node; node = node.parent) {
-            names.push(node.name || node.type);
-            if (node === root) break;
-          }
-          return names.reverse();
-        })(),
-        fallback: !!(hit.object.userData && hit.object.userData.cannonBoreFallbackPart),
-        bore,
-      };
-    });
+    const { direction, radius, distance, fov, cam } = boreCaptureCamera(root, muzzle, spec, fallback, primaryRim, primaryDisc);
+    const centerHits = boreCenterHits(root, cam, direction, distance);
     const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0).normalize();
     const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1).normalize();
-    const sampleBoreRing = (normalizedRadius, count, pattern) => {
+    const sampleBoreRing = (normalizedRadius, count, pattern, allowPhysicalRim = false, phaseOverride = null) => {
       const samples = [];
       for (let i = 0; i < count; i++) {
-        const angle = i * Math.PI * 2 / count;
+        // Physical rings have coplanar radial seams; keep rays off those
+        // seams without reducing sample count or the full angular coverage.
+        const angle = i * Math.PI * 2 / count
+          + (phaseOverride ?? (fallback?.userData.muzzleSeatReceipt?.revision === 'physical-recess-r1' ? .173 : 0));
         const origin = cam.position.clone()
           .addScaledVector(right, Math.cos(angle) * radius * normalizedRadius)
           .addScaledVector(up, Math.sin(angle) * radius * normalizedRadius);
@@ -954,17 +1003,29 @@ function boreShotOne(id) {
             ? candidate.object.material : [candidate.object.material];
           return !materials.length || materials.some((material) => !material || material.colorWrite !== false);
         });
-        samples.push({
-          pass: !!hit && pattern.test(hit.object.name || ''),
-          name: hit?.object.name || null,
-          distance: hit ? Number(hit.distance.toFixed(4)) : null,
-        });
+        samples.push(boreRingSampleResult(hit, muzzle, fallback, pattern, allowPhysicalRim));
       }
       return samples;
     };
-    const innerSamples = sampleBoreRing(0.30, 8, /muzzleBoreShadow(?:Fallback)?Disc$/i);
+    const physicalReceipt = fallback?.userData.muzzleSeatReceipt?.revision === 'physical-recess-r1'
+      ? fallback.userData.muzzleSeatReceipt : null;
+    // An autocannon inside a wide brake may have a bore narrower than 30%
+    // of that brake. Sample the verified aperture, not the surrounding metal.
+    const innerSampleRadius = physicalReceipt
+      ? .6 * physicalReceipt.physicalInnerRadiusM / physicalReceipt.outerRadiusM : .30;
+    const discPattern = /muzzleBoreShadow(?:Fallback)?Disc$/i;
+    // CircleGeometry terminal discs have the same exact radial-edge rounding
+    // issue as physical recesses. Keep raw cardinal evidence, and require the
+    // off-seam ring plus BOTH seam flanks at the unchanged aperture radius.
+    // A finite hole or foreground obstruction still fails any affected ray.
+    const cardinalInnerSamples = sampleBoreRing(innerSampleRadius, 8, discPattern, false, 0);
+    const innerSamples = [
+      ...sampleBoreRing(innerSampleRadius, 8, discPattern, false, .173),
+      ...sampleBoreRing(innerSampleRadius, 8, discPattern, false, -.0001),
+      ...sampleBoreRing(innerSampleRadius, 8, discPattern, false, .0001),
+    ];
     const rimSamples = sampleBoreRing(0.83, 16,
-      /muzzleBoreShadow(?:Fallback)?(?:Rim|Annulus)$/i);
+      /muzzleBoreShadow(?:Fallback)?(?:Rim|Annulus)$/i, true);
     const rimWorld = primaryRim?.getWorldPosition(new THREE.Vector3()) || null;
     const discWorld = primaryDisc?.getWorldPosition(new THREE.Vector3()) || null;
     let concentricOffsetM = null;
@@ -979,24 +1040,11 @@ function boreShotOne(id) {
     const canvas = capture(cam, 256, 256);
     renderer.setClearColor(oldColor, oldAlpha);
 
-    const pixelsPerM = 256 / (2 * distance * Math.tan((fov / 2) * Math.PI / 180));
-    const radiusPx = Math.max(4, radius * pixelsPerM);
-    const data = canvas.getContext('2d').getImageData(0, 0, 256, 256).data;
-    let inner = 0, innerN = 0, surround = 0, surroundN = 0;
-    for (let y = 0; y < 256; y++) {
-      for (let x = 0; x < 256; x++) {
-        const d = Math.hypot(x - 127.5, y - 127.5) / radiusPx;
-        if (d > 1.65) continue;
-        const i = (y * 256 + x) * 4;
-        const luma = data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722;
-        if (d <= 0.38) { inner += luma; innerN++; }
-        else if (d >= 1.15) { surround += luma; surroundN++; }
-      }
-    }
+    const { innerLuma, surroundLuma, radiusPx } = boreLuminance(canvas, radius, distance, fov);
     return {
       image: canvas.toDataURL('image/png'),
-      innerLuma: innerN ? inner / innerN : 255,
-      surroundLuma: surroundN ? surround / surroundN : 0,
+      innerLuma,
+      surroundLuma,
       radiusPx,
       muzzleBore: muzzleBoreCensus(root),
       boreDebug: {
@@ -1008,10 +1056,16 @@ function boreShotOne(id) {
         muzzleSeatReceipts: fallbackMouths.map((mouth) => ({
           name: mouth.name,
           ...(mouth.userData.muzzleSeatReceipt || {}),
+          // Independent assembled-position witness, not the authored declaration.
+          physicalDiscDepthM: (() => {
+            const disc = mouth.children.find(part => /FallbackDisc/.test(part.name));
+            return disc ? -muzzle.worldToLocal(disc.getWorldPosition(new THREE.Vector3())).z : null;
+          })(),
         })),
         primaryRimWorld: rimWorld?.toArray() ?? null,
         primaryDiscWorld: discWorld?.toArray() ?? null,
         concentricOffsetM,
+        cardinalInnerSamples,
         innerSamples,
         rimSamples,
         centerHits,
@@ -1027,7 +1081,8 @@ function idsOrFleet(ids) {
   return ids && ids.length ? ids : DEVELOPMENT_TANK_IDS;
 }
 
-window.__WARM = (ids) => {
+window.__WARM = async (ids) => {
+  await ensureInteriorFills(idsOrFleet(ids));
   for (const id of idsOrFleet(ids)) {
     const visual = createTank(id, null, {
       camoSeed: 4100, quality: 'high', staticPreview: true,

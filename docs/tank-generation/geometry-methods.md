@@ -291,3 +291,41 @@ contact tests do not replace raw per-view scores or independent shaded review.
 Do not claim visual exactness from a passing outline average, technical diagram,
 attachment count, or one attractive hero shot. Preserve the worst remaining form
 defect and the next bounded action in the handoff.
+
+
+## 12. Measure the receiver before moving a fitting
+
+A fitting can have the correct source height while the authored receiving hull
+is wrong. Measure the complete source's first-hit surfaces beneath and around
+it before translating either part. A roof unit spanning a shallow top and a
+steep shoulder may need a bounded closed well, while an adjacent unit needs a
+higher supporting surface. Lowering the entire roof or raising the fitting
+would solve one ray and break the other. Preserve the absolute source datums,
+close the well with actual floor/wall stock, and test the exposed floor, rim,
+cap and surrounding receiver separately with generated fills loaded.
+
+Likewise, sparse ray samples cannot distinguish a continuous cover from an
+open protective cage. Confirm connected source parts and cross-sections before
+changing a whole assembly's height. Discrete ribs, curved guard strips and lamp
+bodies need independent construction; a broad plate can produce a false
+first hit over a real gap. Retain source air between members and prove finite
+contact at their actual receivers, in both qualities.
+
+When an approved source repair changes a shadow-support witness, preserve the
+original failed fixture and compare old/new native stock against the source.
+Update only the authenticated datum; retain tolerances, inset limits, legacy
+hashes and draw/triangle budgets. A retired implementation-string assertion
+should call the actual shared policy and retain its positive and negative
+behavioral controls. Neither maintenance step is a new visual qualification.
+
+
+### Generated interiors must preserve exterior fitting air
+
+After a body or fitting repair, rerun source-first-hit and real-air checks on
+both cold and freshly filled native builds. A coarse body-span voxelizer can
+mistake a separated lamp cage, bracket or roof fitting for a hull boundary and
+fill the air between that stock and the actual shell. A cold-model pass does
+not qualify that generated result. Diagnose the actual hit mesh and preserve
+the rejected fill as evidence. Correct the authoring classification or derive
+interior occupancy from the real receiving body; keep the source witnesses,
+clearance thresholds, visible equipment and source configuration fixed.

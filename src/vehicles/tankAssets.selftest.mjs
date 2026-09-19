@@ -134,6 +134,9 @@ assert.equal(expectedMuzzleBoreCount(getSpec('t72b3m')), 1,
 assert.equal(expectedMuzzleBoreCount(getSpec('bmpt_terminator2')), 2,
   'twin autocannon profiles require one bore/rim pair per barrel');
 
+assert.equal(expectedMuzzleBoreCount(getSpec('aft10_x')), 0,
+  'sealed missile canisters retain firing tips without decorative cannon bores');
+
 const displayNames = new Set();
 const HULL_ONLY_SHADOW_IDS = new Set(['udes03', 'strv103', 'strv103a', 'jpz_e100', 'sturmtiger', 't95']);
 // This independently authored fixed casemate has a separate moving cannon.
@@ -256,8 +259,19 @@ function verifyAuthoredShadowCasters(id, tank) {
     assert(triangles <= 120,
       `${id}/${caster.name}: bounded shadow triangle budget (${triangles})`);
   }
-  assert(sourceTriangles > proxyTriangles * 8,
-    `${id}: authored sources remain materially richer than the bounded shadow set`);
+  // Selected convex-hull support is deliberately sparse on efficient authored
+  // shells. Its richness is provenance, not the rendering work being replaced.
+  // Retain that count and compare the unchanged 8x savings requirement with
+  // actual pre-suppression near-LOD caster submissions, including instances.
+  assert(sourceTriangles >= proxyTriangles,
+    `${id}: convex proxy cannot invent complexity beyond its authored support`);
+  const replaced = tank.root.userData.shadowReplacementReceipt;
+  assert.equal(replaced?.lod, 'near', `${id}: real pre-replacement near caster receipt`);
+  assert.equal(replaced.cameraLayerMask, 1, `${id}: default vehicle camera layer`);
+  assert(replaced.triangles > proxyTriangles * 8,
+    `${id}: near-detail shadow work must shrink by more than eightfold`);
+  assert(replaced.draws >= casters.length,
+    `${id}: proxies cannot increase near-detail caster draw count`);
   assert(proxyTriangles <= 320,
     `${id}: authored shadow budget (${proxyTriangles} triangles)`);
   if (FIXED_CASEMATE_GUN_SHADOW_IDS.has(id)) {

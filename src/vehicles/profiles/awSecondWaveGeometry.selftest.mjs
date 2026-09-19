@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';import * as THREE from 'three';
-import {readFileSync} from 'node:fs';import {runInNewContext} from 'node:vm';
+import {readFileSync} from 'node:fs';
+import {censusEquipment,roofEquipmentVerdict} from '../../../tools/source-equipment-policy.mjs';
 import {createTank} from '../tankFactory.ts';import {getSpec} from '../specs.ts';
 import {measureTurretBarrelCircularity} from '../turretBarrelCircularity.ts';
 import {createTankState} from '../../sim/movement.ts';
@@ -22,15 +23,29 @@ const near=(a,b,t,label)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<=t,`${labe
 // without starting a renderer. Passing this source-construction test must not
 // turn the genuinely unarmed historical T90 carrier into a production pass.
 // The owner's added complete NSVT is tested separately from that source stock.
-const standardPage=readFileSync(new URL('../../../tools/standard-check-page.html',import.meta.url),'utf8');
-const censusSource=standardPage.match(/function censusFittings\(root\) \{[\s\S]*?\n\}/)?.[0];
-assert.ok(censusSource,'actual standard fitting census remains available');
-const censusFittings=runInNewContext(`(${censusSource})`);
-const standardTool=readFileSync(new URL('../../../tools/tank-standard-check.mjs',import.meta.url),'utf8');
-const decorRules=[...standardTool.matchAll(/^\s+decorOk = (st\.[^;\n]+);/gm)].map(m=>m[1]);
-assert.equal(decorRules.length,2,'both standard scan paths enforce the MG minimum');
-assert.ok(decorRules.every(rule=>rule==='st.census.mg >= 1'),'no source-unarmed standard waiver');
-const standardWeaponPass=runInNewContext(`(st)=>(${decorRules[0]})`);
+const {configurations}=JSON.parse(readFileSync(new URL('../../../docs/references/batches/supplied-afv-configurations.json',import.meta.url),'utf8'));
+for(const id of Object.keys(SOURCES)) {
+  assert.equal(configurations[id],undefined,`${id}: historical AW family has no approved roof-equipment exception`);
+  assert.equal(roofEquipmentVerdict(id,{mg:0,invalidWeaponMarkers:0},configurations[id]).passed,false,`${id}: MG0 remains rejected`);
+  assert.equal(roofEquipmentVerdict(id,{mg:1,invalidWeaponMarkers:0},configurations[id]).passed,true,`${id}: physical MG satisfies unchanged >=1 rule`);
+  assert.equal(roofEquipmentVerdict(id,{mg:1,invalidWeaponMarkers:1},configurations[id]).passed,false,`${id}: real MG cannot hide another nonphysical marker`);
+}
+const standardWeaponPass=({census},id='t90_x')=>roofEquipmentVerdict(id,census,configurations[id]).passed;
+// Exercise the live physical census as well as the verdict, rather than
+// extracting a stale implementation string from the browser entrypoint.
+{
+  const root=new THREE.Group(),marker=new THREE.Group();
+  marker.userData={fittingRoot:true,fitting:'pintleMG'};root.add(marker);
+  const reject=label=>{const census=censusEquipment(root);assert.equal(census.mg,0,label);assert.equal(census.invalidWeaponMarkers,1,label);assert.equal(standardWeaponPass({census}),false,label);};
+  reject('empty marker is not a roof weapon');
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,.1),new THREE.MeshBasicMaterial());marker.add(mesh);
+  assert.equal(standardWeaponPass({census:censusEquipment(root)}),true,'actual visible nondegenerate stock is countable');
+  mesh.visible=false;reject('hidden weapon stock cannot pass');mesh.visible=true;
+  mesh.material.transparent=true;mesh.material.opacity=0;reject('zero-opacity stock cannot pass');mesh.material.transparent=false;mesh.material.opacity=1;
+  mesh.geometry.setDrawRange(0,0);reject('undrawn stock cannot pass');mesh.geometry.setDrawRange(0,Infinity);
+  mesh.scale.setScalar(0);reject('collapsed stock cannot pass');
+  mesh.geometry.dispose();mesh.material.dispose();
+}
 function visible(root){const out=[];root.traverseVisible(o=>{if(o.isMesh&&!o.userData.shadowOnly&&(Array.isArray(o.material)?o.material:[o.material]).some(m=>m.visible&&m.colorWrite!==false&&!m.transparent))out.push(o);});return out;}
 function frame(t,id,s){
   for(const[name,p]of [['rig_turret',s.yaw],['rig_gun',s.gun]]){
@@ -104,7 +119,7 @@ function reactive(t,s){
   }
 }
 function roofWeapon(t,id){
-  const mg=t.root.getObjectByName('sourceMachineGun_turretDark'),census=censusFittings(t.root);
+  const mg=t.root.getObjectByName('sourceMachineGun_turretDark'),census=censusEquipment(t.root);
   if(id==='t90_x'){
     assert.equal(mg,undefined,'source-empty T90 channel is not a fabricated named weapon');
     const added=t.root.getObjectByName('t90XMountedNsvt');
@@ -120,7 +135,7 @@ function roofWeapon(t,id){
   assert.ok(mg?.isMesh,`${id}: complete source weapon remains a real mesh`);
   assert.equal(mg.parent.parent,t.root.getObjectByName('rig_turret'));
   assert.equal(census.mg,1,`${id}: actual complete source weapon earns one census entry`);
-  assert.equal(standardWeaponPass({census}),true,`${id}: true weapon satisfies unchanged standard MG rule`);
+  assert.equal(standardWeaponPass({census},id),true,`${id}: true weapon satisfies unchanged standard MG rule`);
   return mg;
 }
 function emptyT90Mount(t){
@@ -137,7 +152,7 @@ function historicalEmptyT90Mount(t){
   // Complete-source held-outs from t90_x.remaining-roof-heldouts.json:
   // retain the interrupted lower web, flanking rim and real axial opening.
   // Only the named owner-added NSVT is detached; every source mesh remains.
-  const census=censusFittings(t.root);
+  const census=censusEquipment(t.root);
   assert.equal(census.mg,0,'retained unarmed source mount has no false recognized MG');
   assert.equal(standardWeaponPass({census}),false,'actual full-standard MG0 rejection remains required');
   const meshes=visible(t.root);

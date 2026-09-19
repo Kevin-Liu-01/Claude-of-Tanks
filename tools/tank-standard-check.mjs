@@ -1,6 +1,9 @@
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { strictTrackClipPassed } from './track-clip-result.mjs';
 import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
+import { roofEquipmentVerdict } from './source-equipment-policy.mjs';
+import { verifyConfigurationSource } from './source-configuration-record.mjs';
+import { measureSourceOpenings } from './source-opening-check.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
@@ -10,20 +13,28 @@ import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 //   B4. track containment (tools/track-clip-audit.mjs --exact)
 //   B2. CONTIGUITY (v2): top-down ~6 cm scan on the procedural build via
 //       tools/standard-check-page.html — enclosed sky cells inside the plan
-//       silhouette are holes; 0 required. FrontSide render truth doubles as
+//       silhouette remain raw holes. Every approved exterior opening must
+//       match complete-source air and finite stock witnesses; unexpected
+//       holes remain zero. FrontSide render truth doubles as
 //       the winding audit.
 //   B3. DECORATION census (v2): KIT.fittings marker roots on the procedural
-//       build — pintleMG/openYokeRws instances (mg >= 1 required) + other fitting
+//       build — real rendered pintleMG/openYokeRws stock + other fitting
 //       dressing. Hand-authored decoration carries no markers and censuses
 //       ZERO: migrate the profile to KIT.fittings (kit.js) or carry a packet
-//       justification for a real hand-authored weapon (never an absent MG).
+//       justification for a real hand-authored weapon. Owner-approved source
+//       configurations pin exact counts by original hash; others need mg>=1.
 // Usage:
 //   node tools/tank-standard-check.mjs --ids=a,b [--gate] [--no-render]
 //   node tools/tank-standard-check.mjs --fixture     # KIT.fittings self-test
 // Own vite 74xx-77xx; cot-shots FIFO lock held around the render phase only
 // (the fresh geometry phase is wrapped here; track-clip manages its own turn).
 import { execFileSync } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+const { configurations } = JSON.parse(readFileSync(new URL('../docs/references/batches/supplied-afv-configurations.json', import.meta.url), 'utf8'));
+const sourceReceipts = new Map();
+const openingReports = new Map();
 
 const idArg = process.argv.find((a) => a.startsWith('--ids='));
 const wantFixture = process.argv.includes('--fixture');
@@ -32,6 +43,8 @@ if (!idArg && !wantFixture) {
   process.exit(1);
 }
 const ids = idArg ? idArg.slice(6).split(',') : [];
+if (ids.some(id=>!/^[a-z0-9_]+$/.test(id)) || new Set(ids).size!==ids.length) throw new Error('Expected unique tank IDs');
+const reportRoot=path.resolve(process.argv.find(arg=>arg.startsWith('--out='))?.slice(6) || '.qa-dev/reports/tank-standard');
 const forceGate = process.argv.includes('--gate');
 const noRender = process.argv.includes('--no-render');
 
@@ -56,7 +69,8 @@ if (forceGate && ids.length) {
 const clip = new Map();
 if (ids.length) {
   try {
-    const out = execFileSync('node', ['tools/track-clip-audit.mjs', '--exact', '--strict', `--ids=${ids.join(',')}`],
+    const out = execFileSync('node', ['tools/track-clip-audit.mjs', '--exact', '--strict', `--ids=${ids.join(',')}`,
+      `--out-dir=${path.join(reportRoot, 'tracks')}`],
       { encoding: 'utf8' });
     for (const line of out.split('\n')) {
       const m = line.match(/\[track-clip\] (\S+)\s+front\s+(\S+) rear\s+(\S+)/);
@@ -107,6 +121,25 @@ if ((ids.length && !noRender) || wantFixture) {
       fixture = await page.evaluate('window.__FIXTURE');
     }
     });
+    for (const id of ids) {
+      const configuration = configurations[id];
+      const sourceReceipt = configuration ? verifyConfigurationSource(id, configuration) : null;
+      sourceReceipts.set(id, sourceReceipt);
+      const result = standard.get(id);
+      if (!result || result.error || !result.holes) continue;
+      try {
+        openingReports.set(id, await measureSourceOpenings(id, result.holes, configuration, sourceReceipt));
+      } catch (error) {
+        openingReports.set(id, { passed:false, reason:String(error.message || error) });
+      }
+      mkdirSync(reportRoot,{recursive:true});
+      writeFileSync(path.join(reportRoot,`${id}.json`),JSON.stringify({
+        id,recordedAt:new Date().toISOString(),standard:result,
+        sourceReceipt,configuration:configuration??null,
+        equipment:roofEquipmentVerdict(id,result.census,configuration,sourceReceipt),
+        continuity:openingReports.get(id),
+      },null,2)+'\n');
+    }
   } finally {
     clearInterval(lockRefresher);
     releaseLock();
@@ -171,13 +204,17 @@ for (const id of ids) {
     } else if (st.holes.error) {
       contigStr = 'ERR'; contigOk = false;
       console.error(`[standard-check] ${id} hole scan: ${st.holes.error}`);
-      decorOk = st.census.mg >= 1;
+      decorOk = roofEquipmentVerdict(id, st.census, configurations[id], sourceReceipts.get(id)).passed;
       decorStr = `mg${st.census.mg}+${st.census.dressing}d${decorOk ? ' ✓' : ' ✗'}`;
     } else {
       const holes = st.holes.holeCells;
-      contigOk = holes === 0;
-      contigStr = `${holes}${contigOk ? ' ✓' : ' ✗'}`;
-      decorOk = st.census.mg >= 1;
+      const opening = openingReports.get(id);
+      contigOk = opening?.passed === true;
+      contigStr = opening?.intentionalCells
+        ? `${opening.unexpectedCells} unexpected/${holes} raw${contigOk ? ' ✓' : ' ✗'}`
+        : `${holes}${contigOk ? ' ✓' : ' ✗'}`;
+      if (opening?.reason) console.error(`[standard-check] ${id}: ${opening.reason}`);
+      decorOk = roofEquipmentVerdict(id, st.census, configurations[id], sourceReceipts.get(id)).passed;
       decorStr = `mg${st.census.mg}+${st.census.dressing}d${decorOk ? ' ✓' : ' ✗'}`;
       if (!contigOk && st.holes.clusters?.length) {
         console.error(`[standard-check] ${id} holes at ` +
@@ -192,11 +229,11 @@ for (const id of ids) {
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + holes=0 + mg>=1'}).`);
+    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 + verified equipment configuration'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +
-      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. An absent MG is not a census exception.');
+      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. Source-specific counts require the approved original hash; other vehicles retain mg>=1.');
   }
 }
 process.exit(fails || fixtureFailed ? 2 : 0);

@@ -11,6 +11,25 @@ studies. Missing historical tools are not available proof. See the handbook's
 [chronology](tank-generation/README.md#authority-and-chronology) and
 [quality gates](tank-generation/quality-gates.md) before applying an old recipe.
 
+### Supplied-fleet target decision, 2026-09-18
+
+For the thirteen IDs in
+[`supplied-afv-configurations.json`](references/batches/supplied-afv-configurations.json),
+the owner approved correctly assembled supplied models, their actual weapon
+configurations, and genuine openings. The hash-pinned configuration record
+therefore supersedes the historical mandatory roof-MG rule for these IDs only.
+Count visible, nondegenerate weapon stock; an empty marker does not qualify.
+Other vehicles retain their existing equipment requirements.
+
+Warrior standoff gaps and AFT-10 rear ventilation slots can qualify as
+intentional air only after complete-source and native rays agree at every
+reported opening and the registered finite stock/air witnesses pass. Retain
+the raw scan and require zero unexpected holes. A bounding region alone is
+not an exemption, and missing source stock must be reconstructed. The decision
+does not lower the 92-point floor or change comparison cameras/registration.
+Source export assembly repairs require replayable, independently reviewed
+source-only evidence; preserve the originals and failed original receipts.
+
 Every tank ships when it meets ALL of this. Builders self-check every round;
 critics carry these as standing checks; the orchestrator lands nothing that
 regresses them. This file supersedes scattered per-packet law restatements —

@@ -24,6 +24,8 @@ import {
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
+import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
+import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
 import {
   markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
@@ -916,6 +918,13 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   readonly recoilG: THREE.Group;
   readonly disposables: DisposableVehicleResource[];
   gear: RunningGearUnit | null;
+  /** Opt in only when the profile builds a real annulus, inner wall and recessed backstop. */
+  physicalMuzzleBore?: PhysicalMuzzleBore;
+  /** Measured permanent armor that extends the profile's primary shell. */
+  additionalShadowSources?: {
+    hull?: readonly ('hullExternalArmor' | 'hullHatch' | 'hullCupola')[];
+    turret?: readonly ('turretExternalArmor' | 'turretHatch' | 'turretCupola')[];
+  };
   muzzleZ: number;
   topY: number;
   fixedMount: boolean;
@@ -1000,6 +1009,11 @@ function isolatedGearMaterial<M extends THREE.Material>(
   clone.onBeforeCompile = material.onBeforeCompile;
   clone.customProgramCacheKey = material.customProgramCacheKey;
   clone.userData = { ...(material.userData || {}), appearanceRole: wanted, isolatedFrom: material.name };
+  // A fixed rubber/steel role cloned from wheel paint uses the ordinary gear
+  // lighting path. Material.clone() also clones shader defines.
+  if ('defines' in clone && clone.defines) {
+    delete (clone.defines as Record<string, unknown>).COT_WHEEL_PAINT_READABILITY;
+  }
   disposables.push(clone);
   return clone;
 }
@@ -1781,6 +1795,7 @@ function installProceduralShadowProxies(
   gunG: THREE.Group,
   recoilG: THREE.Group,
   disposables: DisposableVehicleResource[],
+  additionalSources?: TankBuilderPort['additionalShadowSources'],
 ): THREE.Mesh[] {
   const sources: THREE.Mesh[] = [];
   for (const group of [hullG, turretG, recoilG]) {
@@ -1793,13 +1808,18 @@ function installProceduralShadowProxies(
     names.map((name) => owner.getObjectByName(name)).filter((item): item is THREE.Object3D => !!item);
   const hullGeo = authoredShadowHull(hullG, find(hullG,
     ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber',
-      'hullFixedPaintedBodywork']), PROC_SHADOW_BODY_INSET_M);
-  const turretGeo = authoredShadowHull(turretG, find(turretG, ['turret']), PROC_SHADOW_BODY_INSET_M);
+      'hullFixedPaintedBodywork', ...(additionalSources?.hull ?? [])]), PROC_SHADOW_BODY_INSET_M);
+  const turretGeo = authoredShadowHull(turretG, find(turretG,
+    ['turret', ...(additionalSources?.turret ?? [])]), PROC_SHADOW_BODY_INSET_M);
   // Mantlet + barrel share gun pitch. Merge their authored support points in
   // gunG coordinates; recoil travel is deliberately omitted from the shadow
   // proxy to preserve the three-draw budget during the short firing kick.
   const gunGeo = authoredShadowHull(gunG, [
     ...find(gunG, ['gunMount']),
+    // Source-study receivers moved from gunDark to the stationary pitching
+    // mount. Preserve exactly that stock's historical shadow participation;
+    // unrelated legacy dark detail keeps its existing caster behavior.
+    ...find(gunG, ['gunMountDark']).filter(mesh => mesh.userData.preserveRecoilShadowSource),
     ...find(recoilG, ['gun', 'gunDark']),
   ], PROC_SHADOW_GUN_INSET_M);
 
@@ -4152,6 +4172,15 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     const layerMesh = mkInst(geometry, material, roadEntries,
       layer.appearanceRole || 'wheelDish', layer.name || 'gearRoadWheelDetail');
+    // Profiles may add layers after the gear's first rest-pose update. Seed
+    // their actual seats before construction-time raycasts/culling cache bounds;
+    // identity instances would leave a tiny stale sphere at the hull origin.
+    for (let i = 0; i < roadEntries.length; i++) {
+      const entry = roadEntries[i];
+      _m.makeTranslation(entry.x, entry.y + (entry.suspensionSource?.off || 0), entry.z);
+      layerMesh.setMatrixAt(i, _m);
+    }
+    layerMesh.instanceMatrix.needsUpdate = true;
     layerMesh.userData.dynamicWheelFace = true;
     return layerMesh;
   };
@@ -4845,7 +4874,10 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   const padMat=(mats.trackLink || mats.dark).clone();
   const buildRunningGearReceiptStage10 = (): void => {
     padMat.color=new THREE.Color(0xffffff);
-    padMat.vertexColors = true;
+    // Shoes use instanceColor, which Three enables independently. Neither
+    // shoe geometry has a vertex-color attribute; enabling vertexColors would
+    // multiply the palette by the missing attribute's black default.
+    padMat.vertexColors = false;
     padMat.roughness=0.97;
     padMat.metalness=0.08;
     // cfg.gearFloor opt-in (merkava r12 order 2): Material.clone() drops
@@ -4853,7 +4885,8 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     // and rendered ambient-black in skirt shade. Re-attach on request.
     padMat.onBeforeCompile = vehicleAmbientFloorHook;
     padMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad' };
+    padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad',
+      appearanceColorSource: 'instance-palette' };
     padMat.name = 'cot:track-pad';
     disposables.push(padMat);
   };
@@ -5602,7 +5635,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       // the live outer road wheel of this side at the relay's station (interleaved layers share the travel)
       let wheel: WheelEntry | null = null;
       for (const w of ws) if (Math.abs(w.z - relay.wheelZ) < 1e-6 && (!wheel || Math.abs(w.y - relay.wheelRestY) < Math.abs(wheel.y - relay.wheelRestY))) wheel = w;
-      const voff = wheel ? (wheel.voff || 0) : 0;
+      // A shared authored course may use the opposite side's station list.
+      // Without an actual wheel at this relay's station, preserve that side's
+      // existing influence/contact result instead of falsely resetting it.
+      if (!wheel) continue;
+      const voff = wheel.voff || 0;
       // every duplicate of a course point translates by the centreline's move, so the cross-section keeps its stock
       // (the loaded-run fit moves cells the same way; the shoes sample the translated centreline)
       const write = (index: number, z: number, y: number): void => {
@@ -11327,8 +11364,11 @@ function* createTankOwnedSteps(
       decalMeshes.push(mesh);
     }
 
+    if (geometryReceipt) {
+      root.userData.shadowReplacementReceipt = measureNearShadowCasterWork([hullG, turretG]);
+    }
     proceduralShadowSources = installProceduralShadowProxies(
-      spec, hullG, turretG, gunG, recoilG, disposables);
+      spec, hullG, turretG, gunG, recoilG, disposables, P.additionalShadowSources);
   };
   const createTankMarkingsStage5 = (): void => {
     createTankMarkingsStage2();
@@ -11419,6 +11459,12 @@ function* createTankOwnedSteps(
     createTankReceiptStage3();
   };
   createTankReceiptStage9();
+  const physicalBore = P.physicalMuzzleBore;
+  if (physicalBore && authoredMuzzles.length) {
+    throw new Error('Physical muzzle-bore declarations currently require one centered barrel');
+  }
+  const physicalBoreEvidence = physicalBore
+    ? verifyPhysicalMuzzleBore(recoilG, P.muzzleZ, physicalBore) : null;
   const nominalMuzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
   const authoredBoreSegments = Number(spec.gun.muzzleBoreSegments);
@@ -11543,14 +11589,15 @@ function* createTankOwnedSteps(
         };
         const primarySurfaceRoot = independentBarrel || gunG;
         const createTankAssemblyStage42 = (): void => {
-          scanCapRoot(primarySurfaceRoot, 2, 1);
+          if (!physicalBore) scanCapRoot(primarySurfaceRoot, 2, 1);
         };
         createTankAssemblyStage42();
         const createTankAssemblyStage43 = (): void => {
-          if (!capSelection.profile) scanCapRoot(hullG, 0.12, 0.12);
+          if (!physicalBore && !capSelection.profile) scanCapRoot(hullG, 0.12, 0.12);
         };
         createTankAssemblyStage43();
         const createTankAssemblyStage44 = (): void => {
+          if (physicalBore) return;
           let edgeRadius = Infinity;
           let edge: { surface: VehicleMesh; axisLocal: THREE.Vector3; profile: AxisGeometryCapProfile } | null = null;
           const scanEdgeRoot = (surfaceRoot: THREE.Object3D) => {
@@ -11590,6 +11637,19 @@ function* createTankOwnedSteps(
         };
         createTankAssemblyStage45();
 
+        // Fixed missile canisters still need independent seated firing
+        // anchors. Their authored launch covers are not cannon mouths: a
+        // generated annulus would put eight invented round bores over them.
+        if (spec.gun.fixedLaunchCanisters) {
+          if (!def) throw new Error('Fixed launch canisters require explicit launch axes');
+          const tip = new THREE.Object3D();
+          tip.name = `rig_muzzle_tip_${mi}`;
+          tip.position.set(boreX, boreY, boreBaseZ + capOffset);
+          boreParent.add(tip);
+          muzzleTips.push(tip);
+          return;
+        }
+
         // Size every visible mouth from the actual terminal surface. The former
         // fleet-wide radius inherited the donor's main-gun armor value; that made
         // BMPT's 30 mm mouths 4.3x wider than their 22 mm terminal tubes. A hidden
@@ -11612,20 +11672,24 @@ function* createTankOwnedSteps(
           && authoredOuterR <= 0.65
           ? authoredOuterR
           : null;
-        const supportOuterR = capOuterR || validAuthoredOuterR || nominalMuzzleOuterR;
-        const supportSource = capOuterR ? capSelection.supportSource || 'terminal-cap'
+        const supportOuterR = physicalBore?.outerRadiusM || capOuterR || validAuthoredOuterR || nominalMuzzleOuterR;
+        const supportSource = physicalBore ? 'authored-physical-bore' : capOuterR ? capSelection.supportSource || 'terminal-cap'
           : validAuthoredOuterR ? 'authored-rim'
             : 'nominal-spec';
         const capFitOuterR = capOuterR ? capOuterR * 0.94 : Infinity;
-        const muzzleOuterR = Math.max(0.006, Math.min(
+        const muzzleOuterR = physicalBore?.outerRadiusM ?? Math.max(0.006, Math.min(
           capFitOuterR,
           validAuthoredOuterR || nominalMuzzleOuterR,
         ));
-        const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
+        const muzzleInnerR = physicalBore?.innerRadiusM ?? Math.max(muzzleOuterR * 0.46,
           Math.min(muzzleOuterR * 0.72, caliberRadius));
-        const muzzleRimR = Math.max(0.001, muzzleOuterR * 0.12);
+        const muzzleRimR = physicalBore
+          ? Math.min(muzzleOuterR * .12, (muzzleOuterR-muzzleInnerR) * .4)
+          : Math.max(0.001, muzzleOuterR * 0.12);
         const boreAnnulusGeo = new THREE.RingGeometry(
-          muzzleInnerR * 1.04, muzzleOuterR * 0.985, boreSegments);
+          physicalBore ? muzzleInnerR + (muzzleOuterR-muzzleInnerR)*.05 : muzzleInnerR * 1.04,
+          physicalBore ? muzzleOuterR - (muzzleOuterR-muzzleInnerR)*.05 : muzzleOuterR * .985,
+          boreSegments);
         // Slightly overlap the annulus: a hairline gap between separate meshes can
         // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
         const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
@@ -11641,9 +11705,9 @@ function* createTankOwnedSteps(
         // already reach the marker keep the lip 0.9 mm proud, so no vehicle
         // grows past its authored/official envelope. The annulus and disc sit
         // a fraction of a millimetre behind the lip front, depth-safe.
-        const seatedFaceParentZ = capSelection.faceParentZ
+        const seatedFaceParentZ = physicalBore ? boreBaseZ : (capSelection.faceParentZ
           ?? authoredFaceParentZ
-          ?? boreBaseZ;
+          ?? boreBaseZ);
         const markerGapM = Math.min(0.06, Math.max(0, -seatedFaceParentZ));
         // Three seats. A tube already at the marker keeps its lip mostly
         // inside itself, 0.9 mm proud, with the mouth on that face. A tube
@@ -11670,6 +11734,9 @@ function* createTankOwnedSteps(
           annulusForwardM = markerGapM - 0.0004;
           discForwardM = markerGapM - 0.0008;
         }
+        // A verified physical tube retains its actual depth. The black finish
+        // sits 0.5 mm ahead of its real backstop, avoiding coplanar flicker.
+        if (physicalBore) discForwardM = -physicalBore.depthM + .0005;
         const lipFrontM = lipAdvanceM + lipRimR;
         const boreRimGeo = new THREE.TorusGeometry(
           muzzleOuterR - lipRimR, lipRimR, 5, boreSegments);
@@ -11705,7 +11772,16 @@ function* createTankOwnedSteps(
         createTankReceiptStage16();
         const createTankReceiptStage17 = (): void => {
           fallbackBore.userData.muzzleSeatReceipt = Object.freeze({
-            revision: 'terminal-surface-fit-r2',
+            revision: physicalBore ? 'physical-recess-r1' : 'terminal-surface-fit-r2',
+            ...(physicalBore && physicalBoreEvidence ? {
+              physicalBoreDepthM: physicalBore.depthM,
+              measuredMinimumDepthM: physicalBoreEvidence.minimumDepthM,
+              measuredMaximumRimOffsetM: physicalBoreEvidence.maximumRimOffsetM,
+              measuredOuterRadiusM: physicalBoreEvidence.measuredOuterRadiusM,
+              physicalInnerRadiusM: physicalBore.innerRadiusM,
+              physicalRimProjectionM: physicalBore.rimProjectionM ?? 0,
+              measuredProjectionM: physicalBoreEvidence.measuredProjectionM,
+            } : {}),
             supportSource,
             supportOuterRadiusM: supportOuterR,
             outerRadiusM: muzzleOuterR,
@@ -11728,7 +11804,7 @@ function* createTankOwnedSteps(
         };
         createTankAssemblyStage50();
 
-        const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
+        const boreRim = new THREE.Mesh(boreRimGeo, physicalBore ? mats.barrel : mats.dark);
         const createTankAssemblyStage51 = (): void => {
           boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
         };
@@ -11756,7 +11832,7 @@ function* createTankOwnedSteps(
           boreThroat.receiveShadow = true;
           fallbackBore.add(boreThroat);
         }
-        const boreAnnulus = new THREE.Mesh(boreAnnulusGeo, mats.dark);
+        const boreAnnulus = new THREE.Mesh(boreAnnulusGeo, physicalBore ? mats.barrel : mats.dark);
         const createTankAssemblyStage53 = (): void => {
           boreAnnulus.name = `muzzleBoreShadowFallbackAnnulus${suffix}`;
         };
@@ -12023,16 +12099,20 @@ function* createTankOwnedSteps(
   // invisible from the normal chase orbit even though it was scale-plausible.
   const RAPID_BACK = 0.045, RAPID_HOLD = 0.055, RAPID_RETURN = 0.18;
   const RAPID_AMP = Math.min(0.085, Math.max(0.055, REC_CAL * 0.0022));
-  // §5.362 tube census: only a REAL tube (>= 0.5 m of merged gun-bucket
-  // geometry riding rig_recoil) may slide. Casemates print their cannon into
+  // §5.362 tube census: only a real tube riding rig_recoil may slide.
+  // Use the original length heuristic or verified short-tube stock below.
+  // Casemates print their cannon into
   // the certified hull buckets (gate silhouette law — see casemate.ts
   // isuCommon: the virtual rig carries only small hidden ball-mount collars),
   // so their recoilG is empty or a stub; sliding a stub walks a loose collar
   // along a static tube. Their recoil budget is re-routed into the hull rock
   // below (the S-tank read: rigid mount, the chassis takes the stroke).
-  // Threshold calibration (fleet census §5.362): every real tube measures
-  // >= 0.755 m (m2a2_bradley's short 25 mm Bushmaster is the fleet minimum);
-  // the only stubs are the ISU hidden collars at 0.26 m and true empties.
+  // Original threshold calibration (§5.362): real tubes measured >= 0.755 m,
+  // while ISU hidden collars measured 0.26 m. Source-authored short tubes may
+  // be shorter once their stationary shrouds leave the recoil bucket. Accept
+  // those only with measured physical bore stock and enough axial stock for
+  // its recess, diameter and complete presentation stroke. Unverified legacy
+  // collars still use the original half-metre threshold.
   let recoilTubeSpan = 0;
   const createTankReceiptStage6 = (): void => {
     recoilG.traverse((o) => {
@@ -12048,7 +12128,10 @@ function* createTankOwnedSteps(
     createTankReceiptStage6();
   };
   createTankReceiptStage12();
-  const recoilHasTube = recoilTubeSpan >= 0.5;
+  const verifiedShortTube = !!(physicalBore && physicalBoreEvidence
+    && recoilTubeSpan >= Math.max(physicalBore.depthM, physicalBore.outerRadiusM * 2,
+      REC_AMP, RAPID_AMP));
+  const recoilHasTube = recoilTubeSpan >= 0.5 || verifiedShortTube;
   // Capture original materials lazily when destruction starts so decoration
   // added after the base build participates in the continuous burn treatment.
   const originalMats: OriginalMaterialRecord[] = [];
@@ -12761,6 +12844,12 @@ function* createTankOwnedSteps(
       recoilRapid = recoilScale < 1;
       recoilPendingScale = recoilScale;
       recoilPending = true;
+      if (spec.gun.fixedLaunchCanisters) {
+        // An indexed missile launch leaves its tube and cradle seated.
+        recoilScale = 0;
+        recoilRapid = false;
+        recoilPending = false;
+      }
       recoilYawAmp = 0;
       recoilRollAmp = 0;
       recoilBarrelIndex = -1;
@@ -12771,6 +12860,7 @@ function* createTankOwnedSteps(
         : (muzzleAltCursor++ % n);
       const def = spec.gun.muzzles?.[idx] || {};
       recoilBarrelIndex = idx;
+      if (spec.gun.fixedLaunchCanisters) return idx;
       const side = Math.sign(def.x || 0);
       // asymmetric moment toward the firing barrel: the muzzle line sweeps
       // toward that side (~0.69 deg rapid) and the cradle visibly dips onto
@@ -13146,6 +13236,11 @@ function* createTankOwnedSteps(
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
     applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
+    if (physicalBore) {
+      // Final stock includes generated gun fills and fixed pitch-owned parts.
+      // Neither may re-cap the recoil-owned aperture that was verified earlier.
+      root.userData.physicalMuzzleBoreVerification = verifyPhysicalMuzzleBore(gunG, P.muzzleZ, physicalBore);
+    }
 
     // Family builders historically retinted shared/clone track materials after
     // construction. Reassert only explicit working-gear roles after every

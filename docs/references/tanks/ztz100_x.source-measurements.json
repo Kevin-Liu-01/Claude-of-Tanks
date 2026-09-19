@@ -14,63 +14,655 @@
   "normalization": {
     "axes": "glTF node matrices already give +Y up with the gun toward +z; recipe axes x,y,z",
     "uniformScale": 0.92,
-    "translationM": [0, 0.00644, -0.12098],
-    "why": "0.92 puts the skirt width at 3.70 m (raw 4.02 m over the front skirt planes); the translation seats the lowest track vertex on y = 0 and centres the structural hull (raw stern plate z -3.731 … nose z 3.994) on z = 0",
+    "translationM": [
+      0,
+      0.00644,
+      -0.12098
+    ],
+    "why": "0.92 puts the skirt width at 3.70 m (raw 4.02 m over the front skirt planes); the translation seats the lowest track vertex on y = 0 and centres the structural hull (raw stern plate z -3.731 \u2026 nose z 3.994) on z = 0",
     "method": "Welded-vertex island census, axis-aligned first-hit depth maps at 1 cm and normal-shaded orthographic renders (.qa-dev/ztz100-source-study.mjs, .qa-dev/ztz100-shaded.mjs); scalars only"
   },
   "dimensionsM": {
-    "widthOverSkirts": 3.70,
-    "skirtPlaneX": { "rearHalf": 1.765, "frontHalf": 1.849, "sponsonBoxes": 1.849 },
+    "widthOverSkirts": 3.7,
+    "skirtPlaneX": {
+      "rearHalf": 1.765,
+      "frontHalf": 1.849,
+      "sponsonBoxes": 1.849
+    },
     "hullExteriorLength": 6.94,
     "hullWithSternCage": 7.36,
     "overallLength": 8.98,
     "hullRoof": 1.41,
-    "engineDeck": 1.50,
+    "engineDeck": 1.5,
     "turretRoof": 2.31,
     "highestFitting": 3.04
   },
   "hullM": {
     "sternPlateZ": -3.38,
-    "sternCageZ": -3.80,
-    "sternCageY": [1.10, 1.30],
+    "sternCageZ": -3.8,
+    "sternCageY": [
+      1.1,
+      1.3
+    ],
     "noseZ": 3.56,
-    "noseY": 1.20,
-    "upperGlacis": "one plane from the roof edge (z 1.00, y 1.46 at the shoulders, 1.39 on the centreline) to the nose (z 3.56, y 1.20); tiled appliqué field",
+    "noseY": 1.2,
+    "upperGlacis": "one plane from the roof edge (z 1.00, y 1.46 at the shoulders, 1.39 on the centreline) to the nose (z 3.56, y 1.20); tiled appliqu\u00e9 field",
     "lowerBow": "nose down to (y 0.90, z 3.42), (y 0.70, z 2.91), (y 0.50, z 2.74), (y 0.30, z 2.41)",
     "skirtHemY": 0.45,
-    "fenderLineY": 1.30,
-    "roofPlanY": { "forward": 1.41, "deck": 1.50 },
-    "sponsonBoxes": { "x": [1.592, 1.849], "y": [1.03, 1.385], "z": [1.448, 2.358] }
+    "fenderLineY": 1.3,
+    "roofPlanY": {
+      "forward": 1.41,
+      "deck": 1.5
+    },
+    "sponsonBoxes": {
+      "x": [
+        1.592,
+        1.849
+      ],
+      "y": [
+        1.03,
+        1.385
+      ],
+      "z": [
+        1.448,
+        2.358
+      ]
+    }
   },
-  "turretPivotM": [0, 1.41, -0.55],
-  "gunAxisM": [0, 1.76, 0.55],
+  "turretPivotM": [
+    0,
+    1.41,
+    -0.55
+  ],
+  "gunAxisM": [
+    0,
+    1.76,
+    0.55
+  ],
   "muzzleZM": 5.175,
   "muzzleBrakeRadiusM": 0.154,
   "barrelRadiusM": 0.072,
   "turretM": {
-    "core": { "x": 1.20, "y": [1.43, 2.29], "z": [-1.02, 1.13] },
-    "bustle": { "x": 0.91, "y": [1.46, 2.31], "z": [-2.60, -1.01] },
-    "planHalfWidthAtY1.9": { "z-1.5..-0.5": 1.509, "z-2.9..-2.3": 1.256, "z-0.3": 1.367, "z0.1": 1.114, "z0.5": 0.963, "z0.7..1.1": 0.60 },
-    "roofY": 2.30,
+    "core": {
+      "x": 1.2,
+      "y": [
+        1.43,
+        2.29
+      ],
+      "z": [
+        -1.02,
+        1.13
+      ]
+    },
+    "bustle": {
+      "x": 0.91,
+      "y": [
+        1.46,
+        2.31
+      ],
+      "z": [
+        -2.6,
+        -1.01
+      ]
+    },
+    "planHalfWidthAtY1.9": {
+      "z-1.5..-0.5": 1.509,
+      "z-2.9..-2.3": 1.256,
+      "z-0.3": 1.367,
+      "z0.1": 1.114,
+      "z0.5": 0.963,
+      "z0.7..1.1": 0.6
+    },
+    "roofY": 2.3,
     "housingFrontZ": 1.13,
-    "sensorTowers": { "x": 1.25, "y": [1.91, 2.54], "z": [-0.96, -0.61] },
-    "launcherBank": { "x": [0.437, 0.582], "y": [1.737, 1.949], "z": [0.181, 1.341] },
-    "weaponStation": { "x": [-0.29, 0.29], "baseY": 2.30, "topY": 3.03, "z": [-1.06, -0.45], "barrels": { "x": [-0.49, -0.37], "y": [2.78, 3.03], "z": [-1.48, -0.09] } },
-    "sternRack": { "x": 0.959, "y": [1.78, 2.15], "z": [-3.21, -2.96] }
+    "sensorTowers": {
+      "x": 1.25,
+      "y": [
+        1.91,
+        2.54
+      ],
+      "z": [
+        -0.96,
+        -0.61
+      ]
+    },
+    "launcherBank": {
+      "x": [
+        0.437,
+        0.582
+      ],
+      "y": [
+        1.737,
+        1.949
+      ],
+      "z": [
+        0.181,
+        1.341
+      ]
+    },
+    "weaponStation": {
+      "x": [
+        -0.29,
+        0.29
+      ],
+      "baseY": 2.3,
+      "topY": 3.03,
+      "z": [
+        -1.06,
+        -0.45
+      ],
+      "barrels": {
+        "x": [
+          -0.49,
+          -0.37
+        ],
+        "y": [
+          2.78,
+          3.03
+        ],
+        "z": [
+          -1.48,
+          -0.09
+        ]
+      }
+    },
+    "sternRack": {
+      "x": 0.959,
+      "y": [
+        1.78,
+        2.15
+      ],
+      "z": [
+        -3.21,
+        -2.96
+      ]
+    }
   },
   "roadWheels": {
-    "stationsZM": [-2.3375, -1.6015, -0.8655, -0.1295, 0.6065, 1.4345, 2.1705],
+    "stationsZM": [
+      -2.3375,
+      -1.6015,
+      -0.8655,
+      -0.1295,
+      0.6065,
+      1.4345,
+      2.1705
+    ],
     "radiusM": 0.3135,
     "axleYM": 0.374,
-    "axialX": [1.067, 1.433]
+    "axialX": [
+      1.067,
+      1.433
+    ],
+    "rightStationsZM": [
+      -2.24736,
+      -1.51136,
+      -0.77536,
+      -0.03936,
+      0.69664,
+      1.52464,
+      2.26064
+    ],
+    "stationNote": "2026-09-18 direct component census confirms stationsZM is the left side; right side is staggered forward 90.18 mm. Canonical registration unchanged.",
+    "outerCastingStudy20260918": {
+      "sourceObjects": [
+        "Object_7",
+        "Object_17"
+      ],
+      "referenceAxleXM": 1.25009,
+      "nativeAxleXM": 1.2485,
+      "hubFaceXM": 1.4114096,
+      "hubShoulderXM": 1.3725047,
+      "webFaceXM": 1.2888842,
+      "flatWebRadiiM": [
+        0.1,
+        0.14
+      ],
+      "hubFasteners": {
+        "count": 12,
+        "ringRadiusM": 0.08173,
+        "centerXM": 1.3761443,
+        "depthM": 0.01007,
+        "radiusM": 0.00784
+      },
+      "webFasteners": {
+        "count": 8,
+        "ringRadiusM": 0.11145,
+        "washerCenterXM": 1.2927683,
+        "headCenterXM": 1.3008437,
+        "washerRadiusM": 0.01394,
+        "headRadiusM": 0.00884,
+        "depthM": 0.0085
+      },
+      "method": "Connected source-part scalar bounds and independent radial rays, with unchanged canonical registration. No source mesh topology is used by the runtime."
+    }
   },
-  "sprocket": { "zM": -2.961, "yM": 0.658, "radiusM": 0.311, "bodyRadiusM": 0.2325, "axialX": [0.993, 1.505] },
-  "idler": { "zM": 2.9915, "yM": 0.7395, "radiusM": 0.2035, "axialX": [1.089, 1.410] },
-  "returnRollers": [ { "zM": -0.933, "yM": 0.8775, "radiusM": 0.1195 }, { "zM": 0.648, "yM": 0.9045, "radiusM": 0.1195 } ],
-  "track": { "centreX": 1.2485, "widthM": 0.515, "shoePitchM": 0.177, "shoeRadialM": 0.142, "topRunShoeCentreY": 0.99 },
+  "sprocket": {
+    "zM": -2.961,
+    "yM": 0.658,
+    "radiusM": 0.311,
+    "bodyRadiusM": 0.2325,
+    "axialX": [
+      0.993,
+      1.505
+    ]
+  },
+  "idler": {
+    "zM": 2.9915,
+    "yM": 0.7395,
+    "radiusM": 0.2035,
+    "axialX": [
+      1.089,
+      1.41
+    ]
+  },
+  "returnRollers": [
+    {
+      "zM": -0.933,
+      "yM": 0.8775,
+      "radiusM": 0.1195
+    },
+    {
+      "zM": 0.648,
+      "yM": 0.9045,
+      "radiusM": 0.1195
+    }
+  ],
+  "track": {
+    "centreX": 1.2485,
+    "widthM": 0.515,
+    "shoePitchM": 0.177,
+    "shoeRadialM": 0.142,
+    "topRunShoeCentreY": 0.99
+  },
   "notes": [
     "Seven road wheels a side, drive at the rear, small idler at the front, two return rollers.",
     "Two cylindrical sensor/launcher towers on the turret front roof corners, a tall weapon station at the rear centre, a missile bank on the right cheek, a slat cage across the stern.",
     "All values are the game frame after the recipe: metres, +Y up, +Z forward, ground y = 0, structural hull centred on z = 0."
-  ]
+  ],
+  "continuationDetailStudy20260918": {
+    "status": "draft; not a release receipt",
+    "sourceRegistration": "unchanged",
+    "roof": {
+      "sourceObject": "Object_34",
+      "baseYM": 2.291876,
+      "panelTopYM": 2.310276,
+      "panels": 2,
+      "note": "Sparse vertical rays show shallow chamfered panels across the rear plateau; no circular hatch/periscope rings or standing roof rails at the formerly authored seats."
+    },
+    "sternVents": {
+      "sourceObjects": [
+        "Object_24",
+        "Object_32"
+      ],
+      "banks": 2,
+      "bankWidthM": 0.8288,
+      "heightBoundsM": [
+        1.023809,
+        1.457892
+      ],
+      "rearBoundsZM": [
+        -3.585794,
+        -3.535472
+      ],
+      "receivingPlateZM": -3.5326416,
+      "bladePitchM": 0.033229,
+      "bladeCountPerBank": 11
+    },
+    "rwsAuxiliaryCylinders": {
+      "sourceObjects": [
+        "Object_18",
+        "Object_19"
+      ],
+      "centerXM": -0.4293,
+      "centerZM": -0.78715,
+      "centerYM": [
+        2.83643,
+        2.96523
+      ],
+      "radiusM": 0.05965,
+      "lengthM": 1.38594
+    },
+    "rwsOpticFace": {
+      "sourceObjects": [
+        "Object_10",
+        "Object_26",
+        "Object_46",
+        "Object_47"
+      ],
+      "largeLensCenterM": [
+        -0.0527,
+        2.6651,
+        -0.4139
+      ],
+      "largeLensRadiusM": 0.0394,
+      "rightLensRadiiM": [
+        0.02865,
+        0.01815,
+        0.00715,
+        0.00715
+      ],
+      "rightFaceZM": -0.4335
+    }
+  },
+  "boundedPanoramicSmokeStudy20260918": {
+    "status": "Source-supported r9 correction passes all nine fixed views; final refreshed-fill and independent shaded review remain required. Not a release receipt.",
+    "canonicalSourceSha256": "7eeb985247a5a44bf4dcf6b573ac66d9fef1b0ce6ea42666d01bb1e85c8758f1",
+    "method": "Connected source component scalar bounds, cylindrical-axis/radius fits and whole-scene first-hit rays. The runtime uses independently authored sections, lathes and stock primitives; no source topology or textures.",
+    "panoramic": {
+      "sourceObjects": [
+        "Object_21",
+        "Object_34",
+        "Object_46",
+        "Object_49"
+      ],
+      "headBoundsM": {
+        "x": [
+          -0.71557,
+          -0.46667
+        ],
+        "y": [
+          2.18049,
+          2.41033
+        ],
+        "bodyZ": [
+          -0.193343,
+          0.03226
+        ]
+      },
+      "saddleBoundsM": {
+        "x": [
+          -0.755531,
+          -0.426713
+        ],
+        "y": [
+          2.122557,
+          2.385438
+        ],
+        "z": [
+          -0.167165,
+          0.007217
+        ]
+      },
+      "pivotCentersM": [
+        [
+          -0.759264,
+          2.298612,
+          -0.079974
+        ],
+        [
+          -0.422981,
+          2.298612,
+          -0.079974
+        ]
+      ],
+      "pivotRadiusM": 0.07554,
+      "pivotWidthM": 0.01456,
+      "receiverRows_X_Y_faceZ_glassRadiusM": [
+        [
+          -0.643832,
+          2.337307,
+          0.078823,
+          0.039432
+        ],
+        [
+          -0.538442,
+          2.335103,
+          0.059228,
+          0.028631
+        ],
+        [
+          -0.552112,
+          2.268077,
+          0.059228,
+          0.018158
+        ],
+        [
+          -0.514366,
+          2.288279,
+          0.059985,
+          0.007155
+        ],
+        [
+          -0.514366,
+          2.251419,
+          0.059985,
+          0.007155
+        ]
+      ],
+      "verification": "All five receiver centres hit actual glass first in emitted HIGH and LOW scenes. The U-shaped saddle and head share finite contact; the source-supported lower assembly replaces the old high generic drum."
+    },
+    "smoke": {
+      "sourceObjects": [
+        "Object_19",
+        "Object_28"
+      ],
+      "receivingBodyObject": "Object_14",
+      "mouthMagnitudeXM": [
+        1.14714,
+        1.23454,
+        1.32194,
+        1.40934
+      ],
+      "mouthYM": 2.135509,
+      "mouthZM": -0.473386,
+      "axisUnitYZ": [
+        0.74048,
+        0.67208
+      ],
+      "stockLengthM": 0.2713,
+      "stockRadiusM": 0.03929,
+      "collarRadiusM": 0.0427,
+      "mouthRimRadiusM": 0.038645,
+      "opaqueCapRadiusM": 0.03114,
+      "receivingFloorSamples_Z_Y_M": [
+        [
+          -0.65,
+          1.90481
+        ],
+        [
+          -0.6,
+          1.91559
+        ],
+        [
+          -0.55,
+          1.97524
+        ],
+        [
+          -0.5,
+          2.03488
+        ],
+        [
+          -0.475,
+          2.05827
+        ],
+        [
+          -0.45,
+          2.04072
+        ],
+        [
+          -0.425,
+          2.04072
+        ]
+      ],
+      "verification": "Native HIGH/LOW rays hit the actual mouth stock/cap at every centre and four offset points per mouth. Narrow receiving relief follows the measured source floor so the innermost lower quadrant is not buried. Mouth datums stay fixed."
+    },
+    "evidenceRoot": ".qa-dev/tank-run/british-us-source",
+    "evidence": [
+      "ztz-optic-smoke-axes.json",
+      "ztz-panoramic-seat-study.json",
+      "ztz-smoke-seat-surface.json",
+      "ztz-r7-seat-comparison.json",
+      "ztz-detail-r7-audit.json",
+      "ztz-detail-r7-fidelity.json",
+      "ztz-detail-r7-selected-geometry.json",
+      "ztz-side-envelope-study.json",
+      "ztz-centre-cover-study.json",
+      "ztz-centre-cover-receiver-study.json",
+      "ztz-centre-cover-width.json",
+      "ztz-detail-r9-fidelity.json",
+      "ztz-detail-r9-freeze.json"
+    ],
+    "centerRoofCorrection": {
+      "sourceObjects": [
+        "Object_14",
+        "Object_20"
+      ],
+      "widthM": 0.6072,
+      "coverThicknessYM": 0.030698,
+      "coverTopPlane": "y=2.189644-(z-0.20)*0.147377",
+      "sourceCoverZM": [
+        0.105123,
+        0.893044
+      ],
+      "coverPlanChamferM": 0.05,
+      "receivingRoofSamples_Z_Y_M": [
+        [
+          0.11,
+          2.172221
+        ],
+        [
+          0.2,
+          2.158957
+        ],
+        [
+          0.35,
+          2.13685
+        ],
+        [
+          0.5,
+          2.114743
+        ],
+        [
+          0.65,
+          2.092636
+        ],
+        [
+          0.8,
+          2.070529
+        ],
+        [
+          0.88,
+          2.058738
+        ]
+      ],
+      "sideRayHalfWidthM": 0.3036,
+      "construction": "Independent narrow closed receiving loft overlaps the existing structural roof; chamfered plan cover seats on the measured receiving plane. Source ray samples constrain the visible upper surface, width and slope."
+    },
+    "unsupportedRearMasts": {
+      "removed": [
+        "generic antenna pots",
+        "generic antenna stubs",
+        "generic met mast",
+        "generic met mast head"
+      ],
+      "sourceRoofSlices_Z_maxY_M": [
+        [
+          -2.525,
+          2.291876
+        ],
+        [
+          -1.825,
+          2.310276
+        ],
+        [
+          -1.8,
+          2.310276
+        ],
+        [
+          -1.775,
+          2.310276
+        ]
+      ],
+      "method": "Complete projected source triangle envelope across all X, corroborated by the connected-component census: no source component above y=2.34 overlaps the full rear-mast span."
+    },
+    "r9ProfileSha256": "e15952c631737ae7a3383894ec8384c26f6bc100b259f36982f858dd226f1b52",
+    "r9Fidelity": {
+      "aggregate": 93.63,
+      "minimum": 92.67,
+      "threshold": 92,
+      "right": 93.09,
+      "loadedOlderInteriorFills": true
+    }
+  },
+  "bustleRackStudy20260918": {
+    "source": "canonical source; unchanged rigid registration",
+    "component": "Object_20 connected 400-vertex screen; two 26-vertex receiving floor assemblies",
+    "sourceBoundsM": {
+      "min": [
+        -0.95865,
+        1.77954,
+        -3.211413
+      ],
+      "max": [
+        0.95865,
+        2.152668,
+        -2.962205
+      ]
+    },
+    "bayRangesXM": [
+      [
+        -0.95803,
+        -0.2882
+      ],
+      [
+        -0.22282,
+        0.22271
+      ],
+      [
+        0.2882,
+        0.95803
+      ]
+    ],
+    "horizontalBars": {
+      "rowsPerBay": 7,
+      "firstCenterYM": 1.785399,
+      "pitchYM": 0.060235,
+      "firstCenterZM": -3.195231,
+      "pitchZM": 0.036141,
+      "heightM": 0.01012,
+      "depthM": 0.03236
+    },
+    "posts": {
+      "perBay": 3,
+      "heightM": 0.42149,
+      "widthM": 0.01012,
+      "depthM": 0.02774,
+      "inclinationRad": 0.54042
+    },
+    "attachmentEvidence": {
+      "part": "two Object_20 floor trays",
+      "rearZM": -3.186757,
+      "forwardZM": -2.231394,
+      "floorYM": [
+        1.730899,
+        1.785174
+      ],
+      "receivingOwner": "turret side bins"
+    },
+    "wallEvidence": "Object_34 rear wall mostly Z -2.60171; no independent dense blade bank in source geometry at former five-bar native field",
+    "construction": "Replace previous vertical hull rack, remove unsupported wall louvre plate, author closed sparse bars/trays under turretOpenLatticeDark; preserve source air",
+    "privateEvidence": [
+      "ztz-bustle-rays.json",
+      "ztz-bustle-grid-study.json",
+      "ztz-screen-members.json",
+      "ztz-screen-support-study.json",
+      "ztz-bustle-body-planes.json",
+      "ztz-rack-native.json"
+    ],
+    "profileSha256": "48419bbc65ccee456ac7f6ad904957b77f4c835df4dab7d1d049f8b0c7c4b26e",
+    "status": "r10 loaded native, rack first hits/open cells, fidelity, strict standard, HIGH/LOW track clips and typecheck PASS; all14 author viewed; independent follow-up pending",
+    "loadedSelectedGeometry": {
+      "highTriangles": 99536,
+      "lowTriangles": 69754,
+      "highObjects": 49,
+      "lowObjects": 48,
+      "lowHighRatio": 0.7007916733644108
+    },
+    "fidelity": {
+      "aggregate": 93.52,
+      "minimumView": 92.39,
+      "requiredAllViewMinimum": 92
+    }
+  }
 }

@@ -32,6 +32,8 @@ export interface FleetGunSpec extends Record<string, RuntimeValue> {
   autoloader?: AutoloaderSpec;
   /** Visual-only radial tessellation for unusually small cannon mouths. */
   muzzleBoreSegments?: number;
+  /** Missile canister mouths select a launch origin without a cannon stroke. */
+  fixedLaunchCanisters?: boolean;
   caliberMm: number;
   reloadS: number;
   baseAccuracy: number;

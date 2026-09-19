@@ -60,6 +60,7 @@ interface TankAssetSpec {
   };
   gun?: {
     caliberMm?: number | null;
+    fixedLaunchCanisters?: boolean;
     muzzles?: readonly AssetMuzzleSpec[];
     shells?: readonly AssetShellSpec[];
   };
@@ -127,8 +128,10 @@ export function requiredTankAssetFiles(id: string): Record<TankAssetView, string
 
 /** Number of independently visible muzzle bore/rim pairs required by a
  * vehicle's declared gun plant. Most tanks have one; twin autocannon profiles
- * publish one local muzzle axis per barrel. */
+ * publish one local muzzle axis per barrel. Sealed missile canisters retain
+ * firing axes but have no cannon bore. */
 export function expectedMuzzleBoreCount(spec: TankAssetSpec): number {
+  if (spec?.gun?.fixedLaunchCanisters === true) return 0;
   const muzzles = spec?.gun?.muzzles;
   return Array.isArray(muzzles) && muzzles.length ? muzzles.length : 1;
 }

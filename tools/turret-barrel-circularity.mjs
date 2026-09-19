@@ -13,6 +13,11 @@ let measuredCount = 0;
 let skippedCount = 0;
 
 for (const id of ids) {
+  if (getSpec(id)?.gun?.fixedLaunchCanisters === true) {
+    skippedCount += 1;
+    console.log(`[barrel-circularity] N/A ${id}: sealed launch canisters have no cannon barrel`);
+    continue;
+  }
   const visual = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -40,7 +45,7 @@ for (const id of ids) {
 }
 
 console.log(`[barrel-circularity] audited ${ids.length} first-party vehicles: `
-  + `${measuredCount} measured turret barrels, ${skippedCount} fixed-mount skips`);
+  + `${measuredCount} measured turret barrels, ${skippedCount} fixed-mount or non-cannon exclusions`);
 if (failures.length) {
   console.error(`[barrel-circularity] FAIL (${failures.length})`);
   for (const { id, result } of failures) {

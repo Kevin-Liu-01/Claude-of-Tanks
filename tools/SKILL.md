@@ -93,6 +93,15 @@ floor quality-bar-aware through geometry packets and `tank-standard-check`;
 never replace it with a favorable average or waive it because component masks
 are unavailable on a fused source mesh.
 
+`gen-interior-fills.mjs` applies the explicit body-boundary recipes in
+`interior-fill-body-policy.mjs` before voxelization. A separately mounted cage,
+light or roof fitting must not bridge exterior air into a body span. The BMP
+recipe uses its closed primary hull/turret shells and retains every gun/bore
+input; other vehicles keep their existing inputs. This affects generation only,
+not source, continuity, seating or watertight checks. After a recipe change,
+regenerate the scoped fill record and rerun the unchanged filled native stock,
+real-opening and weapon-bore fixtures. Never hand-edit a generated fill record.
+
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Collision-fixture codec changes use the maintained, headless

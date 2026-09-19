@@ -5,10 +5,11 @@ import { FLEET_GROUP_IDS } from '../src/vehicles/fleetManifest.ts';
 import { TANK_PORTRAIT_FRAME_POLICY as policy } from '../src/ui/portraitFraming.ts';
 
 // Before this change only KF51 opted into the side-on direction. These are the
-// only two newly changed IDs; every original or other X keeps its exact camera.
+// only two changed existing IDs. The new Lynx has its own verified tall-fitting
+// portrait direction; every other original or X keeps its exact camera.
 const changed = new Set(['t72b3_x', 'strv122_x']);
 for (const id of [...Object.values(FLEET_GROUP_IDS).flat(), 'unknown-id']) {
-  const expected = changed.has(id) || id === 'kf51_x' ? -0.76 : -0.56;
+  const expected = id === 'kf41_lynx_x' ? -0.86 : changed.has(id) || id === 'kf51_x' ? -0.76 : -0.56;
   assert.equal(portraitSideRatio(id), expected, `${id}: exact portrait-only azimuth`);
 }
 // 2026-09-12 fleet visual standard batch: the audit's full-height envelope is
@@ -26,4 +27,4 @@ assert.match(angle, /normalizeAnglePortrait\(angleSource, BASE \/ 2\)/);
 assert.match(angle, /if \(!portraitAudit\.passes\)/, 'actual raster framing gate remains mandatory');
 assert.doesNotMatch(angle, /\.visible\s*=|\.scale\.set|\.geometry\s*=|\.rotation\./, 'no geometry hiding, scaling or pose change to pass the portrait gate');
 assert.equal((html.match(/portraitSideRatio\(id\)/g) || []).length, 1, 'azimuth applies only to angle portrait, not orthographic/technical captures');
-console.log('portrait-camera: exact two-ID azimuth correction, all other directions and alpha/core/baseline/pixel limits preserved');
+console.log('portrait-camera: scoped azimuths, unchanged original directions and alpha/core/baseline/pixel limits preserved');

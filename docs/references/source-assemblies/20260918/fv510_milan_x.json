@@ -1,0 +1,1552 @@
+{
+  "schemaVersion": 1,
+  "id": "fv510_milan_x",
+  "scope": "Local comparison reference only; no source geometry is used by gameplay.",
+  "authorization": {
+    "ownerDecision": "docs/research/supplied-source-target-decisions-20260918.md",
+    "independentReviewStatus": "accepted-static-assembly",
+    "independentReview": {
+      "path": "docs/research/british-source-assembly-independent-review-20260918.md",
+      "sha256": "1bf2c4160c3ee82123b4511269d921d581a28ec7d2a2e34bf32f81b969b18aad",
+      "scope": "Static source assembly only; not procedural qualification or hinge-motion clearance."
+    },
+    "limits": [
+      "Four Object_36 parts are seated-state counterparts with matching topology and XY but differing axial stations, not exact rigid duplicates. Original variant bytes remain in the original source."
+    ]
+  },
+  "source": {
+    "path": "public/models/community-candidates/fv510_milan_x_source.glb",
+    "sha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04",
+    "rawFile": "fv510_warrior_milan_war_thunder.glb",
+    "rawSha256": "5bb512734139e4beaeaa3775bdc68913431a555a2d1d46f395a47a8fa0a5ea45"
+  },
+  "output": {
+    "path": "public/models/community-candidates/fv510_milan_x_assembled_20260918.glb",
+    "sha256": "f9eeb72db9039d2355912ecb85471be2d5559493400eff3d6d211ad9fc366045"
+  },
+  "registration": {
+    "axes": [
+      "x",
+      "y",
+      "z"
+    ],
+    "scale": 1,
+    "translation": [
+      0,
+      0.005,
+      0
+    ],
+    "retained": true,
+    "originalFrame": {
+      "sha256": "e568badc436980b9f2b718db9786120fcc7527b7fe6465c3efa66889fa208c04",
+      "fused": true,
+      "turret": [
+        0.175,
+        1.965,
+        -0.42
+      ],
+      "gun": [
+        0.114,
+        2.23,
+        0.7
+      ]
+    }
+  },
+  "operations": [
+    {
+      "kind": "remove-components",
+      "selectors": [
+        {
+          "mesh": "Object_25",
+          "componentIndex": 1,
+          "weldedPoints": 4,
+          "triangles": 2,
+          "min": [
+            0.8269000053405762,
+            0.32190001010894775,
+            0.002099999925121665
+          ],
+          "max": [
+            1.00409996509552,
+            0.40149998664855957,
+            0.002099999925121665
+          ],
+          "center": [
+            0.9154999852180481,
+            0.36169999837875366,
+            0.002099999925121665
+          ],
+          "positionTriangleSha256": "4120706753963d480e93ec9ce9e85e7a7a1004ccb9bd5225d616afb0a9201526"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 8,
+          "weldedPoints": 36,
+          "triangles": 58,
+          "min": [
+            0.6930999755859375,
+            -0.09119999408721924,
+            -0.012900000438094139
+          ],
+          "max": [
+            1.030400037765503,
+            0.08579999953508377,
+            0.041600000113248825
+          ],
+          "center": [
+            0.8617500066757202,
+            -0.0026999972760677338,
+            0.014349999837577343
+          ],
+          "positionTriangleSha256": "73e8b96664fb65252a99eb8a5231754d3408c49225f6681add7da2d120ba2f83"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 9,
+          "weldedPoints": 8,
+          "triangles": 10,
+          "min": [
+            0.304500013589859,
+            -0.5659999847412109,
+            0.09610000252723694
+          ],
+          "max": [
+            0.4507000148296356,
+            -0.4684000015258789,
+            0.1573999971151352
+          ],
+          "center": [
+            0.3776000142097473,
+            -0.5171999931335449,
+            0.12674999982118607
+          ],
+          "positionTriangleSha256": "fca7f3a69b0ff26d526246cc388fce21da3178a82b30c8bdbcbed63d47e548bd"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 10,
+          "weldedPoints": 48,
+          "triangles": 84,
+          "min": [
+            1.0734000205993652,
+            -0.35899999737739563,
+            -0.00430000014603138
+          ],
+          "max": [
+            1.0880000591278076,
+            -0.28450000286102295,
+            0.04270000010728836
+          ],
+          "center": [
+            1.0807000398635864,
+            -0.3217500001192093,
+            0.01919999998062849
+          ],
+          "positionTriangleSha256": "c3889b08ed225ccd2d1f06028c51c4af7ed1df5b9bcf55cf2607e67673693b0c"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 11,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.031599998474121094,
+            -0.3912000060081482,
+            -0.03550000116229057
+          ],
+          "max": [
+            0.23479999601840973,
+            -0.3255999982357025,
+            0.039000000804662704
+          ],
+          "center": [
+            0.10159999877214432,
+            -0.35840000212192535,
+            0.0017499998211860657
+          ],
+          "positionTriangleSha256": "d8c1ac53d85c0d37f639b8ccd55045888f7e6175ec29681729e8a239d4286b32"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 12,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.031599998474121094,
+            0.387800008058548,
+            -0.03550000116229057
+          ],
+          "max": [
+            0.23479999601840973,
+            0.4537000060081482,
+            0.039000000804662704
+          ],
+          "center": [
+            0.10159999877214432,
+            0.4207500070333481,
+            0.0017499998211860657
+          ],
+          "positionTriangleSha256": "41303f9754fb03645a9d3b9f766d1567a4913dbc2f668e7abcecd3e8c164f124"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 13,
+          "weldedPoints": 16,
+          "triangles": 16,
+          "min": [
+            0.44279998540878296,
+            -0.40420001745224,
+            0.00989999994635582
+          ],
+          "max": [
+            0.5022000074386597,
+            -0.3449000120162964,
+            0.04270000010728836
+          ],
+          "center": [
+            0.4724999964237213,
+            -0.3745500147342682,
+            0.02630000002682209
+          ],
+          "positionTriangleSha256": "9aaf95e70c1c69e08f6dcd4ff29396e26238f4def643b92fa7bdbe163c972e1c"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 14,
+          "weldedPoints": 36,
+          "triangles": 58,
+          "min": [
+            0.6930999755859375,
+            -0.09119999408721924,
+            0.10899999737739563
+          ],
+          "max": [
+            1.030400037765503,
+            0.08579999953508377,
+            0.16349999606609344
+          ],
+          "center": [
+            0.8617500066757202,
+            -0.0026999972760677338,
+            0.13624999672174454
+          ],
+          "positionTriangleSha256": "991299c88c22d7f01657761da5837bbf6d322810dea5abf423364db30a3460b2"
+        },
+        {
+          "mesh": "Object_26",
+          "componentIndex": 15,
+          "weldedPoints": 172,
+          "triangles": 338,
+          "min": [
+            0.07840000092983246,
+            -0.6564000248908997,
+            -0.003700000001117587
+          ],
+          "max": [
+            1.2081999778747559,
+            0.6664000153541565,
+            0.09910000115633011
+          ],
+          "center": [
+            0.6432999894022942,
+            0.004999995231628418,
+            0.04770000057760626
+          ],
+          "positionTriangleSha256": "20b1247fc8d8d58946bbec843e30d188efc011ccc51e17c83a7a49cf1e54d4db"
+        },
+        {
+          "mesh": "Object_36",
+          "componentIndex": 6,
+          "weldedPoints": 48,
+          "triangles": 70,
+          "min": [
+            0.24120000004768372,
+            -0.6075000166893005,
+            -0.01510000042617321
+          ],
+          "max": [
+            0.7046999931335449,
+            -0.14400000870227814,
+            0.009999999776482582
+          ],
+          "center": [
+            0.4729499965906143,
+            -0.37575001269578934,
+            -0.002550000324845314
+          ],
+          "positionTriangleSha256": "d93b84bfd0be3a711ba5b8b601e0165bd9d6ee4214d361aa665b8875c14684c2"
+        },
+        {
+          "mesh": "Object_36",
+          "componentIndex": 5,
+          "weldedPoints": 48,
+          "triangles": 92,
+          "min": [
+            0.2410999983549118,
+            -0.6075000166893005,
+            -0.15070000290870667
+          ],
+          "max": [
+            0.7046999931335449,
+            -0.14380000531673431,
+            -0.1256999969482422
+          ],
+          "center": [
+            0.47289999574422836,
+            -0.3756500110030174,
+            -0.13819999992847443
+          ],
+          "positionTriangleSha256": "3f6aecf6461a885a8aafc28b463860f806b6716eb6170a3e482575ad147a6997"
+        },
+        {
+          "mesh": "Object_36",
+          "componentIndex": 7,
+          "weldedPoints": 24,
+          "triangles": 46,
+          "min": [
+            0.4447000026702881,
+            -0.6304000020027161,
+            -0.16449999809265137
+          ],
+          "max": [
+            0.5002999901771545,
+            -0.11939999461174011,
+            0.023000000044703484
+          ],
+          "center": [
+            0.4724999964237213,
+            -0.3748999983072281,
+            -0.07074999902397394
+          ],
+          "positionTriangleSha256": "a50caba3ac017ceeb99aae255e024d3c1ce5f3efdd6e27bbe8c9a7703d498dab"
+        },
+        {
+          "mesh": "Object_36",
+          "componentIndex": 8,
+          "weldedPoints": 40,
+          "triangles": 80,
+          "min": [
+            0.4260999858379364,
+            -0.41110000014305115,
+            -0.17059999704360962
+          ],
+          "max": [
+            0.5194000005722046,
+            -0.32249999046325684,
+            -0.16429999470710754
+          ],
+          "center": [
+            0.4727499932050705,
+            -0.366799995303154,
+            -0.16744999587535858
+          ],
+          "positionTriangleSha256": "bc321d0326c91692fc30be478003a148a88aca8382bb9f57e0181e85f698c478"
+        },
+        {
+          "mesh": "Object_36",
+          "componentIndex": 9,
+          "weldedPoints": 40,
+          "triangles": 40,
+          "min": [
+            0.3319000005722046,
+            -0.5152000188827515,
+            -0.12600000202655792
+          ],
+          "max": [
+            0.6132000088691711,
+            -0.2339000105857849,
+            -0.014999999664723873
+          ],
+          "center": [
+            0.47255000472068787,
+            -0.3745500147342682,
+            -0.0705000008456409
+          ],
+          "positionTriangleSha256": "d1f9d4b87c7c10278c80d2d9b5cef34b6567c8b69a4d4d5eae61da402693a224"
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "preparationManifest": {
+      "path": ".qa-dev/tank-run/source-assembly-20260918/fv510_milan_x_assembled_proposed.manifest.json",
+      "sha256": "d65ae71e3a15e4200ec0aa7db261811ed9fe231c4e2f2727db28bac600d97b7a"
+    },
+    "physicalBasis": [
+      {
+        "selected": {
+          "mesh": "Object_25",
+          "componentIndex": 1,
+          "weldedPoints": 4,
+          "triangles": 2,
+          "min": [
+            0.8269000053405762,
+            0.32190001010894775,
+            0.002099999925121665
+          ],
+          "max": [
+            1.00409996509552,
+            0.40149998664855957,
+            0.002099999925121665
+          ],
+          "center": [
+            0.9154999852180481,
+            0.36169999837875366,
+            0.002099999925121665
+          ],
+          "positionTriangleSha256": "4120706753963d480e93ec9ce9e85e7a7a1004ccb9bd5225d616afb0a9201526"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_25",
+          "componentIndex": 0,
+          "weldedPoints": 4,
+          "triangles": 2,
+          "min": [
+            0.18307000398635864,
+            1.486609935760498,
+            -2.7979300022125244
+          ],
+          "max": [
+            0.3602699935436249,
+            1.5662100315093994,
+            -2.7979300022125244
+          ],
+          "center": [
+            0.27166999876499176,
+            1.5264099836349487,
+            -2.7979300022125244
+          ],
+          "positionTriangleSha256": "21fd3c3f47dc29fe61d3809f99ada6187b9654724aefc890efe8075bcaea5102"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438299864530563,
+          1.164709985256195,
+          -2.800030002137646
+        ],
+        "maxVertexResidualM": 6.143906154658885e-8,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 8,
+          "weldedPoints": 36,
+          "triangles": 58,
+          "min": [
+            0.6930999755859375,
+            -0.09119999408721924,
+            -0.012900000438094139
+          ],
+          "max": [
+            1.030400037765503,
+            0.08579999953508377,
+            0.041600000113248825
+          ],
+          "center": [
+            0.8617500066757202,
+            -0.0026999972760677338,
+            0.014349999837577343
+          ],
+          "positionTriangleSha256": "73e8b96664fb65252a99eb8a5231754d3408c49225f6681add7da2d120ba2f83"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 0,
+          "weldedPoints": 36,
+          "triangles": 58,
+          "min": [
+            0.04927000030875206,
+            1.0735100507736206,
+            -2.812930107116699
+          ],
+          "max": [
+            0.386570006608963,
+            1.2505099773406982,
+            -2.758430004119873
+          ],
+          "center": [
+            0.21792000345885754,
+            1.1620100140571594,
+            -2.785680055618286
+          ],
+          "positionTriangleSha256": "f9127a8faea439be7d0c370cfb3fd498fb0c19d83d494f2904a4d14dc8f0024d"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438300032168627,
+          1.1647100113332272,
+          -2.8000300554558635
+        ],
+        "maxVertexResidualM": 9.649088707504547e-8,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 9,
+          "weldedPoints": 8,
+          "triangles": 10,
+          "min": [
+            0.304500013589859,
+            -0.5659999847412109,
+            0.09610000252723694
+          ],
+          "max": [
+            0.4507000148296356,
+            -0.4684000015258789,
+            0.1573999971151352
+          ],
+          "center": [
+            0.3776000142097473,
+            -0.5171999931335449,
+            0.12674999982118607
+          ],
+          "positionTriangleSha256": "fca7f3a69b0ff26d526246cc388fce21da3178a82b30c8bdbcbed63d47e548bd"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 1,
+          "weldedPoints": 8,
+          "triangles": 10,
+          "min": [
+            -0.3393299877643585,
+            0.5987100005149841,
+            -2.703929901123047
+          ],
+          "max": [
+            -0.1931300014257431,
+            0.6963099837303162,
+            -2.642630100250244
+          ],
+          "center": [
+            -0.2662299945950508,
+            0.6475099921226501,
+            -2.6732800006866455
+          ],
+          "positionTriangleSha256": "01ce7b8bf72537b60e4972bc8d81130935bc879c56ca3b46cd8decaf69511444"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438300088047981,
+          1.164709985256195,
+          -2.8000300005078316
+        ],
+        "maxVertexResidualM": 9.714368589524402e-8,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 10,
+          "weldedPoints": 48,
+          "triangles": 84,
+          "min": [
+            1.0734000205993652,
+            -0.35899999737739563,
+            -0.00430000014603138
+          ],
+          "max": [
+            1.0880000591278076,
+            -0.28450000286102295,
+            0.04270000010728836
+          ],
+          "center": [
+            1.0807000398635864,
+            -0.3217500001192093,
+            0.01919999998062849
+          ],
+          "positionTriangleSha256": "c3889b08ed225ccd2d1f06028c51c4af7ed1df5b9bcf55cf2607e67673693b0c"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 2,
+          "weldedPoints": 48,
+          "triangles": 84,
+          "min": [
+            0.4295699894428253,
+            0.8057100176811218,
+            -2.8043301105499268
+          ],
+          "max": [
+            0.4441699981689453,
+            0.8802099823951721,
+            -2.7573299407958984
+          ],
+          "center": [
+            0.4368699938058853,
+            0.842960000038147,
+            -2.7808300256729126
+          ],
+          "positionTriangleSha256": "17bd3c3db5467d9d7bdbea8fab7775220cd5f10ac91d0aab234873ed87667335"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438300460577011,
+          1.1647100001573563,
+          -2.800030025653541
+        ],
+        "maxVertexResidualM": 1.3081316776641073e-7,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 11,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.031599998474121094,
+            -0.3912000060081482,
+            -0.03550000116229057
+          ],
+          "max": [
+            0.23479999601840973,
+            -0.3255999982357025,
+            0.039000000804662704
+          ],
+          "center": [
+            0.10159999877214432,
+            -0.35840000212192535,
+            0.0017499998211860657
+          ],
+          "positionTriangleSha256": "d8c1ac53d85c0d37f639b8ccd55045888f7e6175ec29681729e8a239d4286b32"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 3,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.6754299998283386,
+            0.7735099792480469,
+            -2.8355300426483154
+          ],
+          "max": [
+            -0.4090299904346466,
+            0.8391100168228149,
+            -2.7610299587249756
+          ],
+          "center": [
+            -0.5422299951314926,
+            0.8063099980354309,
+            -2.7982800006866455
+          ],
+          "positionTriangleSha256": "41e93c806af797ff706e7325e082620735e84737634e14ae90ea3dbb6951573d"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438299939036369,
+          1.1647100001573563,
+          -2.8000300005078316
+        ],
+        "maxVertexResidualM": 1.1382346981327174e-7,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 12,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.031599998474121094,
+            0.387800008058548,
+            -0.03550000116229057
+          ],
+          "max": [
+            0.23479999601840973,
+            0.4537000060081482,
+            0.039000000804662704
+          ],
+          "center": [
+            0.10159999877214432,
+            0.4207500070333481,
+            0.0017499998211860657
+          ],
+          "positionTriangleSha256": "41303f9754fb03645a9d3b9f766d1567a4913dbc2f668e7abcecd3e8c164f124"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 4,
+          "weldedPoints": 18,
+          "triangles": 32,
+          "min": [
+            -0.6754299998283386,
+            1.5525100231170654,
+            -2.8355300426483154
+          ],
+          "max": [
+            -0.4090299904346466,
+            1.6184099912643433,
+            -2.7610299587249756
+          ],
+          "center": [
+            -0.5422299951314926,
+            1.5854600071907043,
+            -2.7982800006866455
+          ],
+          "positionTriangleSha256": "36cc1627fc7c820982355307ea690114a408b2613c1161c6fc885c6d7f2a4ca4"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438299939036369,
+          1.1647100001573563,
+          -2.8000300005078316
+        ],
+        "maxVertexResidualM": 1.1382346981327174e-7,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 13,
+          "weldedPoints": 16,
+          "triangles": 16,
+          "min": [
+            0.44279998540878296,
+            -0.40420001745224,
+            0.00989999994635582
+          ],
+          "max": [
+            0.5022000074386597,
+            -0.3449000120162964,
+            0.04270000010728836
+          ],
+          "center": [
+            0.4724999964237213,
+            -0.3745500147342682,
+            0.02630000002682209
+          ],
+          "positionTriangleSha256": "9aaf95e70c1c69e08f6dcd4ff29396e26238f4def643b92fa7bdbe163c972e1c"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 5,
+          "weldedPoints": 16,
+          "triangles": 16,
+          "min": [
+            -0.20103000104427338,
+            0.7605099678039551,
+            -2.7901298999786377
+          ],
+          "max": [
+            -0.14162999391555786,
+            0.8198099732398987,
+            -2.7573299407958984
+          ],
+          "center": [
+            -0.17132999747991562,
+            0.7901599705219269,
+            -2.773729920387268
+          ],
+          "positionTriangleSha256": "016a8283d5e50b37e280f81dbdd3aeb1f507823dafb0eae37ca88f554de22c01"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438299939036369,
+          1.164709985256195,
+          -2.80002992041409
+        ],
+        "maxVertexResidualM": 3.6925501379368844e-8,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 14,
+          "weldedPoints": 36,
+          "triangles": 58,
+          "min": [
+            0.6930999755859375,
+            -0.09119999408721924,
+            0.10899999737739563
+          ],
+          "max": [
+            1.030400037765503,
+            0.08579999953508377,
+            0.16349999606609344
+          ],
+          "center": [
+            0.8617500066757202,
+            -0.0026999972760677338,
+            0.13624999672174454
+          ],
+          "positionTriangleSha256": "991299c88c22d7f01657761da5837bbf6d322810dea5abf423364db30a3460b2"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 6,
+          "weldedPoints": 36,
+          "triangles": 58,
+          "min": [
+            0.04927000030875206,
+            1.0735100507736206,
+            -2.6910300254821777
+          ],
+          "max": [
+            0.386570006608963,
+            1.2505099773406982,
+            -2.6365299224853516
+          ],
+          "center": [
+            0.21792000345885754,
+            1.1620100140571594,
+            -2.6637799739837646
+          ],
+          "positionTriangleSha256": "dde5553dd7323360efd634d73945af5dc5e42bfac8ad667f2c105ac65dc61676"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438300032168627,
+          1.1647100113332272,
+          -2.800029970705509
+        ],
+        "maxVertexResidualM": 1.1282464653929925e-7,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_26",
+          "componentIndex": 15,
+          "weldedPoints": 172,
+          "triangles": 338,
+          "min": [
+            0.07840000092983246,
+            -0.6564000248908997,
+            -0.003700000001117587
+          ],
+          "max": [
+            1.2081999778747559,
+            0.6664000153541565,
+            0.09910000115633011
+          ],
+          "center": [
+            0.6432999894022942,
+            0.004999995231628418,
+            0.04770000057760626
+          ],
+          "positionTriangleSha256": "20b1247fc8d8d58946bbec843e30d188efc011ccc51e17c83a7a49cf1e54d4db"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_26",
+          "componentIndex": 7,
+          "weldedPoints": 172,
+          "triangles": 338,
+          "min": [
+            -0.5654299855232239,
+            0.5083100199699402,
+            -2.803730010986328
+          ],
+          "max": [
+            0.5643699765205383,
+            1.8311100006103516,
+            -2.700930118560791
+          ],
+          "center": [
+            -0.0005300045013427734,
+            1.1697100102901459,
+            -2.7523300647735596
+          ],
+          "positionTriangleSha256": "8955d530dccfbb28a5e723dd57e1e78a4d4908e878173c070b6346bcfd5d080b"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438299939036369,
+          1.1647100150585175,
+          -2.800030065351166
+        ],
+        "maxVertexResidualM": 2.1116112454328155e-7,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_36",
+          "componentIndex": 6,
+          "weldedPoints": 48,
+          "triangles": 70,
+          "min": [
+            0.24120000004768372,
+            -0.6075000166893005,
+            -0.01510000042617321
+          ],
+          "max": [
+            0.7046999931335449,
+            -0.14400000870227814,
+            0.009999999776482582
+          ],
+          "center": [
+            0.4729499965906143,
+            -0.37575001269578934,
+            -0.002550000324845314
+          ],
+          "positionTriangleSha256": "d93b84bfd0be3a711ba5b8b601e0165bd9d6ee4214d361aa665b8875c14684c2"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_36",
+          "componentIndex": 1,
+          "weldedPoints": 48,
+          "triangles": 70,
+          "min": [
+            -0.4026300013065338,
+            0.5572099685668945,
+            -2.8151299953460693
+          ],
+          "max": [
+            0.06086999922990799,
+            1.0207099914550781,
+            -2.790030002593994
+          ],
+          "center": [
+            -0.1708800010383129,
+            0.7889599800109863,
+            -2.8025799989700317
+          ],
+          "positionTriangleSha256": "2b434ef2c425b890f1fc60b133517c5d49427539ac2094b606fa09d5ea1304ab"
+        },
+        "type": "exact-oriented-triangle-translation-bijection",
+        "translation": [
+          -0.6438299976289272,
+          1.1647099927067757,
+          -2.8000299986451864
+        ],
+        "maxVertexResidualM": 1.1736512156937357e-7,
+        "toleranceM": 0.000003,
+        "orientedTrianglesMatch": true,
+        "reason": "Origin-local export copy of source rear door assembly already seated on supplied vehicle."
+      },
+      {
+        "selected": {
+          "mesh": "Object_36",
+          "componentIndex": 5,
+          "weldedPoints": 48,
+          "triangles": 92,
+          "min": [
+            0.2410999983549118,
+            -0.6075000166893005,
+            -0.15070000290870667
+          ],
+          "max": [
+            0.7046999931335449,
+            -0.14380000531673431,
+            -0.1256999969482422
+          ],
+          "center": [
+            0.47289999574422836,
+            -0.3756500110030174,
+            -0.13819999992847443
+          ],
+          "positionTriangleSha256": "3f6aecf6461a885a8aafc28b463860f806b6716eb6170a3e482575ad147a6997"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_36",
+          "componentIndex": 0,
+          "weldedPoints": 48,
+          "triangles": 92,
+          "min": [
+            -0.40272998809814453,
+            0.5572099685668945,
+            -2.9393301010131836
+          ],
+          "max": [
+            0.06086999922990799,
+            1.0209100246429443,
+            -2.914330005645752
+          ],
+          "center": [
+            -0.17092999443411827,
+            0.7890599966049194,
+            -2.9268300533294678
+          ],
+          "positionTriangleSha256": "964c93c840c7f0d38e6658ca0cdaefdbe4153cd6b51f0ca73a1d9b35e63d8aae"
+        },
+        "type": "same-door-hardware-axial-export-variant",
+        "originComponent": 5,
+        "seatedComponent": 0,
+        "originSha256": "3f6aecf6461a885a8aafc28b463860f806b6716eb6170a3e482575ad147a6997",
+        "seatedSha256": "964c93c840c7f0d38e6658ca0cdaefdbe4153cd6b51f0ca73a1d9b35e63d8aae",
+        "vertices": 48,
+        "triangles": 92,
+        "bijection": true,
+        "orientedTriangleCorrespondence": true,
+        "maxXYResidualM": 4.486083993171519e-8,
+        "zDeformationClustersM": [
+          0.0114,
+          0.0115
+        ],
+        "sourcePointMap": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "baseTranslation": [
+          -0.64383,
+          1.16471,
+          -2.80003
+        ],
+        "proofStatus": "source-correspondence-proven-independent-physical-role-review-required",
+        "reason": "Same five-piece circular rear-door assembly attached to the exactly duplicated door; the origin version extends its cover11.4mm and connector end stations follow it. Preserve the mounted source version. Raw export has no animation metadata."
+      },
+      {
+        "selected": {
+          "mesh": "Object_36",
+          "componentIndex": 7,
+          "weldedPoints": 24,
+          "triangles": 46,
+          "min": [
+            0.4447000026702881,
+            -0.6304000020027161,
+            -0.16449999809265137
+          ],
+          "max": [
+            0.5002999901771545,
+            -0.11939999461174011,
+            0.023000000044703484
+          ],
+          "center": [
+            0.4724999964237213,
+            -0.3748999983072281,
+            -0.07074999902397394
+          ],
+          "positionTriangleSha256": "a50caba3ac017ceeb99aae255e024d3c1ce5f3efdd6e27bbe8c9a7703d498dab"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_36",
+          "componentIndex": 2,
+          "weldedPoints": 24,
+          "triangles": 46,
+          "min": [
+            -0.19912999868392944,
+            0.534309983253479,
+            -2.953130006790161
+          ],
+          "max": [
+            -0.1435299962759018,
+            1.0453100204467773,
+            -2.7770299911499023
+          ],
+          "center": [
+            -0.17132999747991562,
+            0.7898100018501282,
+            -2.8650799989700317
+          ],
+          "positionTriangleSha256": "ba04bef9827f0193d622952953aecf8612c4408815adcd817e2952f376468734"
+        },
+        "type": "same-door-hardware-axial-export-variant",
+        "originComponent": 7,
+        "seatedComponent": 2,
+        "originSha256": "a50caba3ac017ceeb99aae255e024d3c1ce5f3efdd6e27bbe8c9a7703d498dab",
+        "seatedSha256": "ba04bef9827f0193d622952953aecf8612c4408815adcd817e2952f376468734",
+        "vertices": 24,
+        "triangles": 46,
+        "bijection": true,
+        "orientedTriangleCorrespondence": true,
+        "maxXYResidualM": 6.689786902214223e-8,
+        "zDeformationClustersM": [
+          0,
+          0.0114
+        ],
+        "sourcePointMap": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "baseTranslation": [
+          -0.64383,
+          1.16471,
+          -2.80003
+        ],
+        "proofStatus": "source-correspondence-proven-independent-physical-role-review-required",
+        "reason": "Same five-piece circular rear-door assembly attached to the exactly duplicated door; the origin version extends its cover11.4mm and connector end stations follow it. Preserve the mounted source version. Raw export has no animation metadata."
+      },
+      {
+        "selected": {
+          "mesh": "Object_36",
+          "componentIndex": 8,
+          "weldedPoints": 40,
+          "triangles": 80,
+          "min": [
+            0.4260999858379364,
+            -0.41110000014305115,
+            -0.17059999704360962
+          ],
+          "max": [
+            0.5194000005722046,
+            -0.32249999046325684,
+            -0.16429999470710754
+          ],
+          "center": [
+            0.4727499932050705,
+            -0.366799995303154,
+            -0.16744999587535858
+          ],
+          "positionTriangleSha256": "bc321d0326c91692fc30be478003a148a88aca8382bb9f57e0181e85f698c478"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_36",
+          "componentIndex": 3,
+          "weldedPoints": 40,
+          "triangles": 80,
+          "min": [
+            -0.21773000061511993,
+            0.7536100149154663,
+            -2.9592299461364746
+          ],
+          "max": [
+            -0.12443000078201294,
+            0.8422099947929382,
+            -2.952929973602295
+          ],
+          "center": [
+            -0.17108000069856644,
+            0.7979100048542023,
+            -2.9560799598693848
+          ],
+          "positionTriangleSha256": "f5c071f7d7ebb22e24299fd93cc76dcbcaac8f6cb2b40c15f201922cc6c532be"
+        },
+        "type": "same-door-hardware-axial-export-variant",
+        "originComponent": 8,
+        "seatedComponent": 3,
+        "originSha256": "bc321d0326c91692fc30be478003a148a88aca8382bb9f57e0181e85f698c478",
+        "seatedSha256": "f5c071f7d7ebb22e24299fd93cc76dcbcaac8f6cb2b40c15f201922cc6c532be",
+        "vertices": 40,
+        "triangles": 80,
+        "bijection": true,
+        "orientedTriangleCorrespondence": true,
+        "maxXYResidualM": 2.370595930667463e-8,
+        "zDeformationClustersM": [
+          0.0114,
+          0.0115
+        ],
+        "sourcePointMap": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        "baseTranslation": [
+          -0.64383,
+          1.16471,
+          -2.80003
+        ],
+        "proofStatus": "source-correspondence-proven-independent-physical-role-review-required",
+        "reason": "Same five-piece circular rear-door assembly attached to the exactly duplicated door; the origin version extends its cover11.4mm and connector end stations follow it. Preserve the mounted source version. Raw export has no animation metadata."
+      },
+      {
+        "selected": {
+          "mesh": "Object_36",
+          "componentIndex": 9,
+          "weldedPoints": 40,
+          "triangles": 40,
+          "min": [
+            0.3319000005722046,
+            -0.5152000188827515,
+            -0.12600000202655792
+          ],
+          "max": [
+            0.6132000088691711,
+            -0.2339000105857849,
+            -0.014999999664723873
+          ],
+          "center": [
+            0.47255000472068787,
+            -0.3745500147342682,
+            -0.0705000008456409
+          ],
+          "positionTriangleSha256": "d1f9d4b87c7c10278c80d2d9b5cef34b6567c8b69a4d4d5eae61da402693a224"
+        },
+        "retainedCounterpart": {
+          "mesh": "Object_36",
+          "componentIndex": 4,
+          "weldedPoints": 40,
+          "triangles": 40,
+          "min": [
+            -0.31193000078201294,
+            0.6495099663734436,
+            -2.9146299362182617
+          ],
+          "max": [
+            -0.030629999935626984,
+            0.9308099746704102,
+            -2.815030097961426
+          ],
+          "center": [
+            -0.17128000035881996,
+            0.7901599705219269,
+            -2.8648300170898438
+          ],
+          "positionTriangleSha256": "234986124748730a9e55e9366ea320e1e89bf3317f2b43f9d24e016bc7d6101a"
+        },
+        "type": "same-door-hardware-axial-export-variant",
+        "originComponent": 9,
+        "seatedComponent": 4,
+        "originSha256": "d1f9d4b87c7c10278c80d2d9b5cef34b6567c8b69a4d4d5eae61da402693a224",
+        "seatedSha256": "234986124748730a9e55e9366ea320e1e89bf3317f2b43f9d24e016bc7d6101a",
+        "vertices": 40,
+        "triangles": 40,
+        "bijection": true,
+        "orientedTriangleCorrespondence": true,
+        "maxXYResidualM": 4.486083993171519e-8,
+        "zDeformationClustersM": [
+          0,
+          0.0114,
+          0.0115
+        ],
+        "sourcePointMap": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        "baseTranslation": [
+          -0.64383,
+          1.16471,
+          -2.80003
+        ],
+        "proofStatus": "source-correspondence-proven-independent-physical-role-review-required",
+        "reason": "Same five-piece circular rear-door assembly attached to the exactly duplicated door; the origin version extends its cover11.4mm and connector end stations follow it. Preserve the mounted source version. Raw export has no animation metadata."
+      }
+    ],
+    "beforeAfter": [
+      {
+        "id": "fv510_milan_x",
+        "state": "before",
+        "source": "public/models/community-candidates/fv510_milan_x_source.glb",
+        "view": "rear",
+        "camera": [
+          0,
+          18,
+          1.7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 9,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/before/rear.png",
+        "sha256": "345b297a59365f557d081940e770b11adf9e28ec20a0bf2aca1ce7b70f2a2586"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "before",
+        "source": "public/models/community-candidates/fv510_milan_x_source.glb",
+        "view": "rear-quarter",
+        "camera": [
+          10,
+          13,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 11.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/before/rear-quarter.png",
+        "sha256": "b4f789f60b0d796e42bda18e060f9c228aa882f7808d7261e2cf86ea1d0f10bc"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "before",
+        "source": "public/models/community-candidates/fv510_milan_x_source.glb",
+        "view": "door-close",
+        "camera": [
+          0,
+          12,
+          1.35
+        ],
+        "target": [
+          0,
+          2.8,
+          1.35
+        ],
+        "orthoScale": 2.7,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/before/door-close.png",
+        "sha256": "e727756968c23b39313f238ec24e6a80cb819069d21c15b24c34e7a34f144e79"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "before",
+        "source": "public/models/community-candidates/fv510_milan_x_source.glb",
+        "view": "door-oblique",
+        "camera": [
+          -4,
+          12,
+          3
+        ],
+        "target": [
+          0,
+          2.8,
+          1.35
+        ],
+        "orthoScale": 3.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/before/door-oblique.png",
+        "sha256": "ad7223e966596c9283e9c8ec6cc1f6cd01a3c657ac4d69df29d61442179b7cf1"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/fv510_milan_x_assembled_proposed.glb",
+        "view": "rear",
+        "camera": [
+          0,
+          18,
+          1.7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 9,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/after/rear.png",
+        "sha256": "19f7300a571cd865a428acd7ec2fc2ed940e2a64f06bdc288c2df66256c049bc"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/fv510_milan_x_assembled_proposed.glb",
+        "view": "rear-quarter",
+        "camera": [
+          10,
+          13,
+          7
+        ],
+        "target": [
+          0,
+          0,
+          1.7
+        ],
+        "orthoScale": 11.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/after/rear-quarter.png",
+        "sha256": "5aa15944a986cfb6d0966cb689d39581bcb9fed1501be4ca1900d8dcd6346a21"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/fv510_milan_x_assembled_proposed.glb",
+        "view": "door-close",
+        "camera": [
+          0,
+          12,
+          1.35
+        ],
+        "target": [
+          0,
+          2.8,
+          1.35
+        ],
+        "orthoScale": 2.7,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/after/door-close.png",
+        "sha256": "cd0fb73e895be68992c7cfab010afa219bf3596bc898dc45246cfd88db0be2d9"
+      },
+      {
+        "id": "fv510_milan_x",
+        "state": "after",
+        "source": ".qa-dev/tank-run/source-assembly-20260918/fv510_milan_x_assembled_proposed.glb",
+        "view": "door-oblique",
+        "camera": [
+          -4,
+          12,
+          3
+        ],
+        "target": [
+          0,
+          2.8,
+          1.35
+        ],
+        "orthoScale": 3.5,
+        "file": ".qa-dev/tank-run/source-assembly-20260918/review/fv510_milan_x/after/door-oblique.png",
+        "sha256": "3a092f3f09348d6f337c72b26f2445ffbf109c9c55a4dc7508ffaf30bd317d3b"
+      }
+    ],
+    "sourceOnly": true,
+    "candidateGeometryUsed": false,
+    "validation": {
+      "path": ".qa-dev/tank-run/source-assembly-20260918/validation.json",
+      "details": {
+        "unchangedTriangles": 73372,
+        "movedTriangles": 0,
+        "removedTriangles": 958,
+        "maxMovementRoundingM": 0,
+        "wholeUntouchedMeshes": 32,
+        "triangleAttributeChecksPassed": true
+      }
+    },
+    "additional": [
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/validation.json",
+        "sha256": "ccad6e12bf02cc985a526be12d759e5fbef0e8d73511c19e067fb570600fcc7c"
+      },
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/joint-validation.json",
+        "sha256": "228cda4bf6b53ba762ca8c15edb2784668e6fae07548af5bba3d6d9eccbb9d19"
+      },
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/replay-proof.json",
+        "sha256": "16356791c7d55cae19a25f894f7470dfbe139ac4d06d16f58e12e1c8de670cf8"
+      },
+      {
+        "path": ".qa-dev/tank-run/source-assembly-20260918/kurg-step-proof.json",
+        "sha256": "142606572d0b25f3902dac173552112f1e5ecae42e141c465ef56de429a6f340"
+      }
+    ]
+  }
+}

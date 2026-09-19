@@ -12,16 +12,20 @@
 // own shells, so silhouettes never move; behind a real gap they read as the dark interior wall the eye expects.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { collectTriangles } from './tank-surface-collect.mjs';
 import { readdirSync, unlinkSync } from 'node:fs';
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
+import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
+import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
+if (flag('stats')) console.log('[interior-fills] Statistics only: no generated files will be written.');
 const VOXEL = Number(opt('voxel', '0.025'));
 const CELL = Math.max(1, Math.round(Number(opt('cell', '2'))));
 // fine-pass boxes below this many voxels are slivers along sloped plates: dropped (they stay as residual)
@@ -30,7 +34,8 @@ const MOVING = /^(gun|gunMount|mantlet)/i;
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // --all covers the whole registered fleet (fleetManifest), not the 27 legacy specs ids (2026-09-14 fix:
 // 80 tanks had never received fills because --all read ALL_TANK_IDS).
-const ids = flag('all') ? Object.keys(FLEET_GROUP_BY_ID).sort() : opt('ids', 'abramsx').split(',').filter(Boolean);
+const requestedIds = flag('all') ? Object.keys(FLEET_GROUP_BY_ID) : opt('ids', 'abramsx').split(',').filter(Boolean);
+const ids = interiorFillSelection(FLEET_GROUP_BY_ID, requestedIds);
 // chase-to-zero (owner 2026-09-14): repeat the fill until the residual stops shrinking — boxes create new
 // enclosures between themselves and sloped plates, which the next round closes.
 const ROUNDS = Math.max(1, Number(opt('rounds', '4')));
@@ -106,9 +111,15 @@ function nodeWorldPosition(root, names) {
 const out = {}; const stats = [];
 for (const id of ids) {
   const t0 = performance.now();
-  let tank; try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); continue; }
+  // Output is written only after every requested model has been measured.
+  // Continuing after a failed build would preserve a stale selected record
+  // and publish successful siblings as though the entire request succeeded.
+  let tank;
+  try { tank = createTank(id, null, { proceduralOnly: true }); }
+  catch (error) { throw new Error(`${id}: build failed; no fill records written`, { cause: error }); }
   const { tris, meshes } = collectTriangles(tank.root);
-  const grid = voxelise(tris, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });
+  const boundary = interiorFillBoundaryTriangles(id, tris, meshes);
+  const grid = voxelise(boundary, meshes, { voxel: VOXEL, exclude: DEFAULT_EXCLUDE });
   const ext = floodExterior(grid); const deep = deepInterior(grid);
   const { shell, nx, ny, nz, origin } = grid;
   // Fills to zero (2026-09-15): the residual test must see the fills exactly as the watertight check
@@ -221,11 +232,16 @@ if (!flag('stats')) {
       '// turret frame / gun frame): buried solids that make the body watertight. Regenerate after any playable geometry change.',
       "import type { InteriorFillRecord } from '../interiorFills.ts';", '',
       'export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({'];
-    for (const [id, record] of byGroup.get(group).sort((a, b) => a[0].localeCompare(b[0]))) {
-      const parts = [`v: ${record.v}`, `o: [${record.o.join(', ')}]`, `t: [${record.t.join(', ')}]`, `g: [${record.g.join(', ')}]`];
-      if (record.hull) parts.push(`hull: ${JSON.stringify(encode(record.hull))}`);
-      if (record.turret) parts.push(`turret: ${JSON.stringify(encode(record.turret))}`);
-      if (record.gun) parts.push(`gun: ${JSON.stringify(encode(record.gun))}`);
+    const groupFile = resolve(groupDir, `${group}.generated.ts`);
+    const existing = !flag('all') && existsSync(groupFile)
+      ? (await import(pathToFileURL(groupFile).href)).INTERIOR_FILLS : {};
+    const records = mergeInteriorFillGroup(existing, Object.fromEntries(byGroup.get(group)), FLEET_GROUP_BY_ID, group);
+    for (const [id, record] of Object.entries(records).sort((a, b) => a[0].localeCompare(b[0]))) {
+      const parts = [`v: ${record.v}`, `o: [${record.o.join(', ')}]`, `t: [${record.t.join(', ')}]`];
+      if (record.g) parts.push(`g: [${record.g.join(', ')}]`);
+      if (record.hull) parts.push(`hull: ${JSON.stringify(typeof record.hull === 'string' ? record.hull : encode(record.hull))}`);
+      if (record.turret) parts.push(`turret: ${JSON.stringify(typeof record.turret === 'string' ? record.turret : encode(record.turret))}`);
+      if (record.gun) parts.push(`gun: ${JSON.stringify(typeof record.gun === 'string' ? record.gun : encode(record.gun))}`);
       lines.push(`  ${JSON.stringify(id)}: { ${parts.join(', ')} },`);
     }
     lines.push('});', '');
@@ -233,17 +249,21 @@ if (!flag('stats')) {
     writeFileSync(resolve(groupDir, `${group}.generated.ts`), text);
   }
   if (flag('all')) for (const name of readdirSync(groupDir)) { if (name.endsWith('.generated.ts') && !groupNames.includes(name.replace(/\.generated\.ts$/, ''))) unlinkSync(resolve(groupDir, name)); }
-  if (flag('all')) {
+  // A newly generated family must become loadable even on a scoped --ids run.
+  // Retain registered existing families and include the just-written modules.
+  {
+    const loadableGroups = [...new Set(Object.values(FLEET_GROUP_BY_ID))].sort()
+      .filter(group => existsSync(resolve(groupDir, `${group}.generated.ts`)));
     const loader = ['// Generated by tools/gen-interior-fills.mjs. Do not hand-edit.',
       '// Explicit imports let Vite emit one immutable interior-fill chunk per visual family.', '',
       "import type { InteriorFillRecord } from './interiorFills.ts';", '',
       'type InteriorFillGroupModule = { INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> };', '',
       'export const INTERIOR_FILL_GROUP_LOADERS: Readonly<Record<string, () => Promise<InteriorFillGroupModule>>> = Object.freeze({',
-      ...groupNames.map((group) => `  ${JSON.stringify(group)}: () => import('./interiorFillGroups/${group}.generated.ts'),`),
+      ...loadableGroups.map((group) => `  ${JSON.stringify(group)}: () => import('./interiorFillGroups/${group}.generated.ts'),`),
       '});', ''].join('\n');
     writeFileSync(loaderPath, loader);
   }
-  console.log(`wrote ${groupNames.length} group module(s) to ${groupDir} (${(bytes / 1024).toFixed(0)} kB)${flag('all') ? ' and the loader map' : ''}`);
+  console.log(`wrote ${groupNames.length} group module(s) to ${groupDir} (${(bytes / 1024).toFixed(0)} kB) and the loader map`);
 }
 const totalTris = stats.reduce((s, r) => s + r.tris, 0);
 console.log(`fills: ${stats.length} tanks, ${stats.reduce((s, r) => s + r.boxes, 0)} boxes, ${totalTris} tris, residual ${stats.reduce((s, r) => s + r.residualL, 0).toFixed(0)} L of ${stats.reduce((s, r) => s + r.leakL, 0).toFixed(0)} L`);

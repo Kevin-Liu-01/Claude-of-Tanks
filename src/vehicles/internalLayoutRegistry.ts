@@ -187,6 +187,51 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://roe.ru/production/land-forces/boevye-bronirovannye-mashiny/boevaya-mashina-podderzhki-tankov-bmpt/',
     kind: 'manufacturer',
   }),
+  suppliedWarriorMilanStudy: Object.freeze({
+    title: 'Owner-supplied Warrior MILAN exterior study and configuration packet',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/fv510_milan_x.md',
+    kind: 'owner-supplied-source-study',
+  }),
+  suppliedK21Study: Object.freeze({
+    title: 'Owner-supplied K21 exterior study and twin launcher configuration',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/k21_x.md',
+    kind: 'owner-supplied-source-study',
+  }),
+  suppliedCv90MkivStudy: Object.freeze({
+    title: 'Owner-supplied CV90 Mk.IV exterior study and launcher configuration',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/cv90_mkiv_x.md',
+    kind: 'owner-supplied-source-study',
+  }),
+  awCv90105TmlStudy: Object.freeze({
+    title: 'Armored Warfare — CV90105 TML hull, manual gun and four-person crew',
+    url: 'https://armoredwarfare.com/en/news/general/development-cv90105-tml',
+    kind: 'source-model-publisher',
+  }),
+  awKurganetsStudy: Object.freeze({
+    title: 'Armored Warfare — Kurganets-25 source-model configuration',
+    url: 'https://armoredwarfare.com/en/news/general/development-kurganets-25',
+    kind: 'source-model-publisher',
+  }),
+  gdGriffin2018Interview: Object.freeze({
+    title: 'General Dynamics Mike Peck — Griffin III demonstrator interview, AUSA 2018',
+    url: 'https://defaeroreport.com/2018/10/09/gds-peck-on-current-and-future-combat-vehicles/',
+    kind: 'manufacturer-interview',
+  }),
+  awGriffin50Study: Object.freeze({
+    title: 'Armored Warfare — Griffin 50mm source-model configuration',
+    url: 'https://armoredwarfare.com/en/news/general/development-griffin-50mm',
+    kind: 'source-model-publisher',
+  }),
+  awAft10Study: Object.freeze({
+    title: 'Armored Warfare — AFT-10 source-model configuration',
+    url: 'https://armoredwarfare.com/en/news/general/development-aft-10',
+    kind: 'source-model-publisher',
+  }),
+  awDragun125Study: Object.freeze({
+    title: 'Armored Warfare — Dragun BM 125 source-model configuration',
+    url: 'https://armoredwarfare.com/en/news/general/development-bmp-3m-dragun',
+    kind: 'source-model-publisher',
+  }),
 } satisfies Record<string, InternalLayoutSource>);
 
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
@@ -233,6 +278,21 @@ const IFV_TWO_MAN_TURRET = crew(
   ['gunner', 'turret', 'frontRight'],
   ['commander', 'turret', 'rearRight'],
 );
+
+// The supplied exterior fixes launcher presence, not classified storage or
+// feeding mechanisms. Hidden positions remain platform-level inference.
+function suppliedTurretLauncherLayout(sources: readonly InternalLayoutSourceId[]): InternalLayoutDefinition {
+  return {
+    confidence: 'platform-inferred', sources, crew: IFV_TWO_MAN_TURRET,
+    systems: systems({
+      engine: { placement: 'front', form: 'frontDieselPowerpack' },
+      transmission: { placement: 'front', form: 'integratedFinalDrive' },
+      ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' },
+      feedSystem: { placement: 'turret', form: 'inferredCannonFeed' },
+      missileRack: { placement: 'turret', form: 'launcherReadyRounds' },
+    }),
+  };
+}
 
 const LAYOUTS = Object.freeze({
   tigerI: { confidence: 'documented', sources: ['tigerManual'], crew: crew(
@@ -333,6 +393,37 @@ const LAYOUTS = Object.freeze({
   bmptThree: { confidence: 'platform-inferred', sources: ['roeBmpt'], crew: IFV_TWO_MAN_TURRET, systems: systems({ ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
   fictionalAuto: { confidence: 'owner-directed', sources: [], crew: THREE_MAN_AUTO, systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   fictionalIfv: { confidence: 'owner-directed', sources: [], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
+  // Supplied exterior studies do not establish hidden crew/module dimensions.
+  // These sources establish broad configurations, not exact station positions,
+  // storage envelopes or partitions. See supplied-layout-source-audit-20260918.md.
+  // Kurganets' automatic feed is inferred; the source does not establish dual belts.
+  suppliedWarriorMilan: suppliedTurretLauncherLayout(['britishWarrior', 'suppliedWarriorMilanStudy']),
+  suppliedK21: suppliedTurretLauncherLayout(['suppliedK21Study']),
+  suppliedCv90Mkiv: suppliedTurretLauncherLayout(['suppliedCv90MkivStudy']),
+  suppliedCv90105Tml: { confidence: 'platform-inferred', sources: ['awCv90105TmlStudy'],
+    crew: [ { role: 'driver', frame: 'hull', station: 'frontLeft' }, ...FOUR_MAN_TURRET.slice(1) ],
+    systems: systems({
+      engine: { placement: 'front', form: 'frontDieselPowerpack' },
+      transmission: { placement: 'front', form: 'integratedFinalDrive' },
+      ammoRack: { placement: 'mixed', form: 'hullAndTurretReadyRacks' },
+    }) },
+  suppliedUnmannedIfv: { confidence: 'platform-inferred', sources: ['awKurganetsStudy'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'inferredAutomaticFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
+  // The 2018 Griffin III has two crew, unlike Kurganets. The existing gunner
+  // damage role represents the combined weapon operator/commander. Hull seats
+  // are inferred; neither source supplies an interior station drawing.
+  suppliedGriffin50: { confidence: 'platform-inferred', sources: ['gdGriffin2018Interview', 'awGriffin50Study'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'inferredAutomaticFeed' } }) },
+  suppliedMissileCarrier: { confidence: 'platform-inferred', sources: ['awAft10Study'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'sealedMissileCanisters' }, missileRack: { placement: 'turret', form: 'eightCanisterLauncher' } }) },
+  // BM 125 is manned; the other Dragun turret variants are unmanned. Automatic
+  // loading is supported, but a hull carousel and its isolation are not documented.
+  // Hull storage/loader placement remains inferred and uses generic visual forms.
+  suppliedFrontAutoloader: { confidence: 'platform-inferred', sources: ['awDragun125Study'], crew: THREE_MAN_AUTO,
+    systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'hull', form: 'hullBins' }, autoloader: { placement: 'hull', form: 'inferredAutomaticLoader' } }) },
 } satisfies Record<string, InternalLayoutDefinition>);
 
 const IDS_BY_LAYOUT = Object.freeze({
@@ -342,7 +433,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   casemateFour: ['jpz_e100_x', 'jpz_e100', 't95'],
   casemateFive: ['sturmtiger', 'isu152', 'isu122s'],
   pershingFive: ['m26_pershing', 'm45_patton', 'm46_patton', 'm47_patton'],
-  westernManualHullAmmo: ['chieftain5_x', 'amx40_x', 'chieftain_mk10_x', 'k1a1_x', 'amx30_x', 'strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
+  westernManualHullAmmo: ['sabra_mk2_x', 'chieftain5_x', 'amx40_x', 'chieftain_mk10_x', 'k1a1_x', 'amx30_x', 'strv81', 'chieftain5', 'chieftain_mk10', 'k1a1', 'stb1', 'type74', 'amx40', 'type59', 'ztz85_iii', 'm60a1', 'amx30', 'amx30b2', 'm48', 'vickers_mk1', 'centurion3', 'centurion5', 'm60a3'],
   starship: ['m60a2'],
   arieteManual: ['ariete_c1_x', 'ariete', 'ariete_c1', 'ariete_c2'],
   westernTwoPart: ['challenger1_x', 'challenger1', 'fv4034', 'challenger2', 'challenger2e', 'ua_challenger2', 'challenger_3', 'challenger_3x'],
@@ -351,7 +442,7 @@ const IDS_BY_LAYOUT = Object.freeze({
     'm1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'],
   merkava: ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b', 'merkava4_x', 'merkava3d_x'],
   sovietManual: ['t62mv1_x', 't62mv1'],
-  sovietAz: ['t90ms_x', 't90a_burlak_x', 't90_x', 't72bu_x', 't72b3m_x', 't72b3_x', 't72b_1987_x', 't72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'],
+  sovietAz: ['type96b_x', 't90ms_x', 't90a_burlak_x', 't90_x', 't72bu_x', 't72b3m_x', 't72b3_x', 't72b_1987_x', 't72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'],
   sovietMz: ['t80u_x', 't64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
   bustleAuto: ['type90_x', 'type10_x', 'leclerc_x', 'leclerc_classic_x', 'k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56', 'vt4a1', 'k2_x', 'type100', 'ztz100_x'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],
@@ -362,7 +453,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   abramsX: ['abramsx'],
   m1a3: ['m1a3'],
   bradley: ['m2a2_bradley', 'ua_m2a3_bradley', 'm3a3_bradley'],
-  ifvFrontTwoMan: ['bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
+  ifvFrontTwoMan: ['ajax_x', 'kf41_lynx_x', 'bmp2', 'type89', 'fv510', 'fv510_milan', 'marder1a3', 'cv90'],
   bmp1: ['bwp1'],
   puma: ['spz_puma', 'spz_puma_s1', 'type89_light_tiger', 'cv90_mkiv'],
   bmp3: ['bmp3', 'bmp3_rok'],
@@ -370,6 +461,14 @@ const IDS_BY_LAYOUT = Object.freeze({
   bmptThree: ['bmpt_terminator2'],
   fictionalAuto: ['carro45t', 'pl01', 'pl01_105'],
   fictionalIfv: ['upior'],
+  suppliedWarriorMilan: ['fv510_milan_x'],
+  suppliedK21: ['k21_x'],
+  suppliedCv90Mkiv: ['cv90_mkiv_x'],
+  suppliedCv90105Tml: ['cv90105_tml_x'],
+  suppliedUnmannedIfv: ['kurganets25_x'],
+  suppliedGriffin50: ['griffin50_x'],
+  suppliedMissileCarrier: ['aft10_x'],
+  suppliedFrontAutoloader: ['bmp3m_dragun125_x'],
 } satisfies Record<keyof typeof LAYOUTS, readonly string[]>);
 
 const entries: Record<string, InternalLayoutRecord> = {};

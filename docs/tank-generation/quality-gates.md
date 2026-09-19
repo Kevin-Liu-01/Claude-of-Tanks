@@ -92,7 +92,28 @@ source-real evidence and seek a reviewed checker/target decision. “Source has
 251 holes too” did not turn T-72B3M's 268-hole result into a pass. Never add a
 broad hidden belly slab to appease the census.
 
+Once the owner approves a specific source-real target, encode that decision
+against its exact original source hash and retain the raw failures separately
+from their disposition. The supplied-fleet Warrior/AFT-10 policy requires a
+complete-source/native ray pair for every raw cell, physical raster coordinates,
+and the complete registered manifest of finite stock and air guards. Every
+unexpected opening still fails. This reviewed classification does not waive
+silhouette, physical attachment, material, or performance checks, and does not
+apply to unregistered vehicles. See the dated decision in
+[BUILD-STANDARD](../BUILD-STANDARD.md#supplied-fleet-target-decision-2026-09-18).
+
 ## Physical and gameplay adversarial checks
+
+The track audit's 2 cm voxel overlap is conservative. In strict exact mode a
+reported overlap may be classified as separated only with a complete generic
+closed-solid proof: valid oriented manifold components, no candidate triangle
+intersecting any conservatively expanded band-triangle box, and a vertex
+outside the opposing component's bounds in both directions for every component
+pair. The latter rejects either solid containing the other. Keep raw counts
+and proof metadata; unsupported or ambiguous geometry retains the failure.
+Do not shrink a correctly measured part merely to change voxel rounding.
+Touching, intrusion, containment and malformed-stock negatives are mandatory
+for this refinement. The moving-shoe check remains independent.
 
 - Rotate equipment and turret through non-neutral poses. Check front/rear
   contact at the local roof height, not a global peak datum.
@@ -117,13 +138,13 @@ reach a desired score. They inspect each image, mark missing views NOT RUN,
 report the weakest view and identify exact failed features. Do not award a
 9+ score because the model looks more detailed than an earlier poor draft.
 
-The repository currently has a separate legacy visual-evaluator registration
-table and no committed `tmp-tank-critic.mjs` at the handbook baseline. Verify
-coverage for each X ID before promising an official 14-view comparison.
-Missing registration/capture support requires a tested tooling change or an
-honest blocked certification; diagnostic crops can guide fixes but are not
-retroactively official evidence. The numeric visual evaluator itself is not
-the independent critic.
+The evaluator supports registered X sources through certified source-world
+cameras; unregistered entries retain the legacy comparison path. Require the
+exact source hash, shared source camera, loaded fill record and passing rig
+receipt for each official 14-view comparison. Missing registration or capture
+support requires a tested tooling change or an honest blocked certification;
+diagnostic crops are not retroactively official evidence. The numeric
+visual evaluator itself is not the independent critic.
 
 ## Evidence record and invalidation
 

@@ -11,6 +11,7 @@ import puppeteer from 'puppeteer';
 import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
 import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.ts';
+import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const outArg = process.argv.find((arg) => arg.startsWith('--out='));
@@ -74,6 +75,11 @@ try {
     // One tank at a time keeps the WebGL working set bounded across the full
     // roster and makes the exact failing id available even if a renderer
     // allocation fails. Each helper disposes its visual before the next id.
+    const interiorFillLoaded = await page.evaluate(async (tankId) => {
+      const fills = await import('/src/vehicles/interiorFills.ts');
+      await fills.ensureInteriorFills([tankId]);
+      return fills.hasInteriorFills(tankId);
+    }, id);
     await page.evaluate((tankId) => window.__WARM([tankId]), id);
     const shot = await page.evaluate((tankId) => window.__BORE_SHOTS([tankId])[tankId], id);
     if (!shot || shot.error) {
@@ -96,6 +102,12 @@ try {
     if (shot.muzzleBore.rims !== expectedBores || shot.muzzleBore.discs !== expectedBores) {
       failures.push(`${id}: expected ${expectedBores} visible rim/disc pair(s), found ${JSON.stringify(shot.muzzleBore)}`);
     }
+    if (expectedBores === 0) {
+      const pass = shot.muzzleBore.tagged === 0 && shot.muzzleBore.rims === 0 && shot.muzzleBore.discs === 0;
+      report.tanks[id] = { pass, applicable: false, reason: 'Sealed launch canisters have no cannon bore',
+        proof: `${id}.png`, interiorFillLoaded, muzzleBore: shot.muzzleBore };
+      continue;
+    }
     const firstHit = shot.boreDebug && shot.boreDebug.centerHits && shot.boreDebug.centerHits[0];
     const firstHitIsBore = !!(firstHit && firstHit.bore);
     const readsRecessed = shot.innerLuma < 80 && contrast > 15;
@@ -112,7 +124,8 @@ try {
     const seatSupportMeasured = seatReceipts.every((receipt) =>
       receipt.supportSource === 'terminal-cap'
       || receipt.supportSource === 'terminal-edge'
-      || receipt.supportSource === 'authored-rim');
+      || receipt.supportSource === 'authored-rim'
+      || receipt.supportSource === 'authored-physical-bore');
     const seatRadialFit = seatReceipts.every((receipt) =>
       Number.isFinite(receipt.supportOuterRadiusM)
       && Number.isFinite(receipt.outerRadiusM)
@@ -126,20 +139,7 @@ try {
     // back, so the player looked down a hollow throat.
     const counterboreDepthM = Number.isFinite(shot.boreDebug.capOffsetM) ? -shot.boreDebug.capOffsetM : 0;
     const counterboreOk = counterboreDepthM <= 0.05;
-    const seatAxialFit = seatReceipts.every((receipt) =>
-      Number.isFinite(receipt.lipAdvanceM)
-      && Number.isFinite(receipt.annulusForwardM)
-      && Number.isFinite(receipt.discForwardM)
-      // terminal-surface-fit-r2: the lip front sits at most 1 mm proud of the
-      // tube edge, with the annulus and disc a fraction of a millimetre ahead
-      // of the seat, so no vehicle length grows past its authored tube.
-      && receipt.revision === 'terminal-surface-fit-r2'
-      && Number.isFinite(receipt.lipFrontM) && Number.isFinite(receipt.markerGapM)
-      && receipt.lipFrontM > 0
-      && receipt.lipFrontM <= receipt.markerGapM + 0.001
-      && receipt.annulusForwardM > receipt.discForwardM
-      && receipt.annulusForwardM <= receipt.lipFrontM
-      && receipt.discForwardM >= 0.0002);
+    const seatAxialFit = seatReceipts.every(muzzleSeatAxialFit);
     const pass = shot.muzzleBore.tagged === expectedBores
       && shot.muzzleBore.rims === expectedBores
       && shot.muzzleBore.discs === expectedBores
@@ -155,6 +155,7 @@ try {
     report.tanks[id] = {
       pass,
       proof: `${id}.png`,
+      interiorFillLoaded,
       innerLuma: Number(shot.innerLuma.toFixed(2)),
       surroundLuma: Number(shot.surroundLuma.toFixed(2)),
       contrast: Number(contrast.toFixed(2)),

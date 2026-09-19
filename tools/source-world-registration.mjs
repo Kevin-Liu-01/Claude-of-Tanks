@@ -1,7 +1,9 @@
+import { withAssembledSourceFrames } from './supplied-source-assemblies.mjs';
+import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from '../src/vehicles/suppliedSourceStudyIndex.ts';
 // QA-only certificates for independently normalized local comparison files.
 // Coordinates are source measurements, not candidate-fit outputs. The hashes
 // identify the canonical local oracles, not licenses or redistributable assets.
-export const SOURCE_WORLD_FRAMES = Object.freeze({
+export const SOURCE_WORLD_FRAMES = Object.freeze(withAssembledSourceFrames({
   // ZTZ-100 (2026-09-17): owner-supplied Sketchfab '[OD]ZTZ-20 Test-3' baked by source-x-oracle (0.92, hull-centred, ground y 0);
   // fifty unnamed material meshes mix hull, turret and gun, so the whole-source comparison carries no articulation.
   ztz100_x: {
@@ -130,7 +132,14 @@ export const SOURCE_WORLD_FRAMES = Object.freeze({
     sha256:'82735650f85c1b8144ee9b87cb95d0ec230f0e627f34694ffa9116dd17dd2722',
     turret:[0,1.4596,.5185], gun:[0,1.85491175,1.3478],
   },
-});
+  ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, {
+    sha256: study.oracleSha256, fused: true, turret: [...study.turret], gun: [...study.gun],
+  }])),
+  kurganets25_x: {
+    sha256:'a2b4074765a9f1765c35e3838bd775cfcc2657cb6bb6e7530dc71930f95630d0',
+    fused:true, turret:[0,2.21,-1.27], gun:[-.004,2.917,-.68],
+  },
+}));
 
 const IDENTITY = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 const finiteVector = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite);

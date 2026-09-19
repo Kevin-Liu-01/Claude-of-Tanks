@@ -1,0 +1,35 @@
+# Physical bore and interior-fill policy — independent read-only review
+
+Review of the root-owned initial contract, before freeze. Source snapshots and SHA256 manifest are in `.qa-dev/tank-run/independent-regional-review/bore-contract-r1/`. This is source inspection, not an executed physical/native qualification. No profile, shared runtime, gate, source or camera was edited. Corrected profiles await fresh official14.
+
+## Blocking findings
+
+1. **P1 — asserted support radius is not measured.** `physicalMuzzleBore.ts` samples the annulus only at `(outer + inner)/2`. Its existing positive fixture has actual RingGeometry(.05,.08,24); increasing declared outer to .10 keeps the ray radius at .075, within that actual stock. This should still satisfy the source algorithm although the new factory lip would extend to .10, 25% beyond actual .08 stock. Factory records supportOuterRadiusM from the same declaration and radialRatio=1, so the new probe cannot expose it. Required: oversized-declaration negative plus actual radial boundary/terminal-stock verification, preserving legacy gates.
+2. **P1 — no inner-wall proof.** The positive selftest constructs only a flat ring and recessed disc, with no wall connecting them. All nine axial rays still pass. Add actual inward-facing wall verification at multiple depths and angular stations, and missing-wall/wrong-winding negatives. This is a missing proof, not a claim current ZTZ/European wall constructors lack walls.
+3. **P1 — verification precedes final gun fills.** Factory verification near11224 precedes applyInteriorFills near12966, which may add gun-owned stock after the opening is verified. Preserve raw pre-furniture measurements, then validate the final assembled opening with loaded fills or prove relevant fills cannot intersect it. A native probe on a build with absent fill data is insufficient to close this risk.
+
+## Additional bounded issues
+
+- `physicalMuzzleBore.ts` filters materials at whole-mesh level. A multi-material mesh with one visible material admits hits on another invisible/colorWrite=false material. Filter each intersection using face.materialIndex; add mixed-material fixture. Current reviewed gun buckets appear single-material, so this is a contract blind spot rather than a demonstrated current tank failure.
+- Factory universal torus has inner extent .76*outer while declaration accepts inner almost equal to outer. Such an accepted wide bore would be narrowed by the added furniture; annulus inner1.04*inner can also exceed .985*outer. Fit physical furniture to declared verified wall thickness, or validate the supported range without changing legacy defaults.
+- Build-time rays are nine full recoil-subtree scans; no per-frame work was introduced. Added construction cost is unmeasured. Restrict to correct finite terminal stock only with geometry evidence; do not cache across mutable profile/fill changes without a valid key.
+
+## Positive scope and limitations
+
+The interior-fill policy parses TypeScript AST and canonical little-endian Uint16 sextets without evaluating generated modules. It requires exactly the type import plus frozen literal record, rejects executable property expressions, duplicate IDs/properties, arbitrary vertices/indices fields, non-finite frame values, malformed base64 and inverted spans. Exception is path-bounded; generic encoded-payload checks still see non-generated profiles and all reader text except the exact reviewed decoder. No arbitrary source triangle payload exception was introduced.
+
+This proves a box-only data format, not generation provenance, actual interior containment, or measured geometric correctness. Those remain generator/geometry evidence obligations. Minor hardening: reject `__proto__` as a vehicle ID (object-literal special semantics); the current allowed-ID grammar admits it although Object.entries would not register it as a normal record. Bounds independently permit origin64 plus grid64, so comments should not imply all final world positions are bounded to64.
+
+The extracted legacy muzzle-seat branch retains its prior finite/relative-depth conditions. The physical branch independently measures final disc position relative to rig_muzzle and rejects unsupported revision/supportSource, but currently relies on the insufficient early support evidence above. Existing native tool samples HIGH only; no LOW physical conclusion follows. Source presentation, full14 and release qualification remain separate.
+
+## Updated contract review
+
+Root subsequently added terminal vertex-radius comparison with oversized-declaration negative, inward radial wall rays at three depths with no-wall/wrong-winding negatives, and post-fill revalidation through gunG. These address the three specific initial counterexamples in source inspection; I have not rerun the root-owned tests or native captures. Mixed invisible-material meshes are conservatively excluded. Torus thickness is now bounded by wall width. Remaining general-range issue: the annulus still uses inner×1.04 and outer×.985, reversing its radial interval for accepted inner/outer>.947. Physical annulus dimensions should follow the verified wall width too, preserving legacy defaults. Construction cost remains unmeasured. Final dynamic recoil/elevation and LOW evidence still separate.
+
+Root reports physical annulus now uses inner+.05wall / outer-.05wall, retaining legacy dimensions. That construction direction resolves the noted reversed-annulus interval; final source/native proof is still pending.
+
+## Final projection-policy source review
+
+Read actual updated files after root's physical-probe r3 report. The physical annulus uses inner+0.05wall / outer-0.05wall; rim and annulus use barrel paint, with legacy expressions/material unchanged. Optional rimProjectionM is finite and bounded to0.1m; actual transformed vertex extent must agree within1.5mm. Aperture verification begins beyond the measured frontmost stock. Native rim samples accept gun-owned visible metal only outside the verified inner radius, inside the measured outer envelope and within the measured projection. Synthetic positive lip and negative inside-aperture/overlong/outside-envelope/non-gun/nonfinite cases are present. The physical-only off-seam sampling preserves count and angular coverage; two ±0.0001rad flank rings now retain evidence around the eight original seam stations. Legacy sample phase and seating remain unchanged.
+
+No new blocker found for the reviewed current single-material native gun buckets. This remains finite sampled evidence, not an exhaustive mesh-solid proof. Terminal-radius/extents still read all position vertices, including unused vertices if a future geometry contains them, and mixed invisible-material geometry is conservatively excluded from build-time proof; those contract limits are retained. Root reports native r3 passed all11 including legacy controls; the reviewer has read code/tests but has not independently executed those jobs or rescored the fresh rendered bore images. Construction cost and LOW/moving gun evidence remain separately scoped.

@@ -46,6 +46,7 @@ import './germany.ts';
 import './afvFamily.ts';
 import './sheridan.ts';
 import { synchronizeSourceXCombatMetadata } from './sourceXFleetSpecs.ts';
+import { synchronizeSuppliedSourceCombatMetadata } from './suppliedSourceFleetSpecs.ts';
 import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.ts';
 import { ABRAMS_SOURCE_X_IDS, synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
 
@@ -84,6 +85,7 @@ export interface CreateTankOptions {
 
 applyFleetBalancePass(TANK_SPECS);
 synchronizeSourceXCombatMetadata();
+synchronizeSuppliedSourceCombatMetadata();
 synchronizeSecondWaveXCombatMetadata();
 synchronizeAbramsSourceXCombatMetadata();
 finalizeFirstPartyRoster();
@@ -147,6 +149,19 @@ const GROUP_LOADERS = Object.freeze({
   k2X: () => import('./profiles/k2X.ts').then((mod) => registerProfiles(mod.K2_X_PROFILES)),
   kf51X: () => import('./profiles/kf51X.ts').then((mod) => registerProfiles(mod.KF51_X_PROFILES)),
   t14X: () => import('./profiles/t14X.ts').then((mod) => registerProfiles(mod.T14_X_PROFILES)),
+  kurganetsX: () => import('./profiles/kurganetsX.ts')
+    .then((mod) => registerProfiles(mod.KURGANETS_X_PROFILES)),
+  fv510MilanX: () => import('./profiles/fv510MilanX.ts').then(mod => registerProfiles({ fv510_milan_x: { build: mod.buildFv510MilanX } })),
+  griffin50X: () => import('./profiles/griffin50X.ts').then(mod => registerProfiles({ griffin50_x: { build: mod.buildGriffin50X } })),
+  ajaxX: () => import('./profiles/ajaxX.ts').then(mod => registerProfiles({ ajax_x: { build: mod.buildAjaxX } })),
+  aft10X: () => import('./profiles/aft10X.ts').then(mod => registerProfiles({ aft10_x: { build: mod.buildAft10X } })),
+  bmp3mDragun125X: () => import('./profiles/bmp3mDragun125X.ts').then(mod => registerProfiles({ bmp3m_dragun125_x: { build: mod.buildBmp3mDragun125X } })),
+  k21X: () => import('./profiles/k21X.ts').then(mod => registerProfiles({ k21_x: { build: mod.buildK21X } })),
+  type96bX: () => import('./profiles/type96bX.ts').then(mod => registerProfiles({ type96b_x: { build: mod.buildType96bX } })),
+  kf41LynxSourceX: () => import('./profiles/kf41LynxSourceX.ts').then(mod => registerProfiles({ kf41_lynx_x: { build: mod.buildKf41LynxX } })),
+  cv90MkivSourceX: () => import('./profiles/cv90MkivSourceX.ts').then(mod => registerProfiles({ cv90_mkiv_x: { build: mod.buildCv90MkivX } })),
+  cv90105TmlSourceX: () => import('./profiles/cv90105TmlSourceX.ts').then(mod => registerProfiles({ cv90105_tml_x: { build: mod.buildCv90105TmlX } })),
+  sabraMk2SourceX: () => import('./profiles/sabraMk2SourceX.ts').then(mod => registerProfiles({ sabra_mk2_x: { build: mod.buildSabraMk2X } })),
   modern2: () => Promise.all([
     import('./modern2.ts'),
     import('./profiles/china.ts'),
