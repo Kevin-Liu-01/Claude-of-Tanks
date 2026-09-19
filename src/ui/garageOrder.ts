@@ -82,6 +82,7 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     't90a_vladimir_x',
     't90a_x',
     't14_x',
+    'object695_x',
   ]),
   'USSR/Russia': Object.freeze([
     't90ms_x',

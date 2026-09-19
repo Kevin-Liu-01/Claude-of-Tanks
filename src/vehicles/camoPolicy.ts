@@ -84,7 +84,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'sig_challenger2e', 'sig_challenger_3x',
   'sig_amx56', 'sig_leclerc', 'sig_ariete_c2',
   'sig_type10b', 'sig_type90', 'sig_type90a',
-  'sig_type59', 'sig_ztz85_iii', 'sig_type99a', 'sig_ztz99a2_prototype', 'sig_ztz99a2', 'sig_type100', 'sig_ztz100_x',
+  'sig_type59', 'sig_ztz85_iii', 'sig_type99a', 'sig_ztz99a2_prototype', 'sig_ztz99a2', 'sig_type100', 'sig_ztz100_x', 'sig_object695_x',
   'sig_pt91m', 'sig_t72m1_jaguar', 'sig_pt91_twardy', 'sig_pl01_105',
   'sig_bwp1', 'sig_upior',
   'sig_k2', 'sig_k1a1', 'sig_k2b',
@@ -170,6 +170,7 @@ export const CAMO_PATTERN_LABEL: Readonly<Record<CamoPatternId, string>> = Objec
   sig_ztz99a2: 'ZTZ-99A2',
   sig_type100: 'Type 100 IFV Digital',
   sig_ztz100_x: 'ZTZ-100 Digital',
+  sig_object695_x: 'Object 695 Digital',
   sig_pt91m: 'PT-91M Pendekar',
   sig_t72m1_jaguar: 'T-72M1 Jaguar',
   sig_pt91_twardy: 'PT-91A Twardy',
@@ -387,6 +388,8 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'digital', base: '#59654a', weather: '#65704f', patches: ['#8a9370', '#3a452f', '#7f8477'], camoScale: 0.34, digitalCellK: 1.0 }),
   preset('sig_ztz100_x', 'ztz100_x', signatureTags('cn', 'woodland', 'digital'),
     { scheme: 'digital', base: '#5b6a4d', weather: '#66714f', patches: ['#8f9a72', '#3b4830', '#7d8378'], camoScale: 0.34, digitalCellK: 1.0 }),
+  preset('sig_object695_x', 'object695_x', signatureTags('ru', 'woodland', 'digital'),
+    { scheme: 'digital', base: '#4f5a44', weather: '#5c6647', patches: ['#7d8664', '#33402c', '#6f7570'], camoScale: 0.34, digitalCellK: 1.0 }),
   preset('sig_pt91m', 'pt91m', signatureTags('pl', 'woodland', 'stripes'),
     { scheme: 'stripes', base: '#394b3c', weather: '#53604a', patches: ['#202820', '#4a3b30', '#70634a'], camoScale: 0.42 }),
   preset('sig_t72m1_jaguar', 't72m1_jaguar', signatureTags('pl', 'woodland', 'organic'),
@@ -570,6 +573,8 @@ export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   'type10b', 'type90', 'type90a',
   // China — the full current lineup has intentionally distinct service paint.
   'type59', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'type100', 'ztz100_x',
+  // Russia — the Object 695 owns its own digital service paint.
+  'object695_x',
   // Poland — PL-01 itself owns the national Factory reference.
   'pt91m', 't72m1_jaguar', 'pt91_twardy', 'pl01_105', 'bwp1', 'upior',
   // South Korea — BMP-3 ROK itself owns the national Factory reference.

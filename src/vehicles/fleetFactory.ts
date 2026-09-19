@@ -29,6 +29,7 @@ import './combatVariantSpecs.ts';
 import './modern1Specs.generated.ts';
 import './modern2Specs.generated.ts';
 import './chineseFrontlineSpecs.ts';
+import './russianFrontlineSpecs.ts';
 import './kf51Specs.ts';
 import './abramsConceptSpecs.ts';
 import './challengerSpecs.ts';
@@ -151,10 +152,11 @@ const GROUP_LOADERS = Object.freeze({
     import('./modern2.ts'),
     import('./profiles/china.ts'),
     import('./profiles/chineseFrontline.ts'),
+    import('./profiles/object695X.ts'),
   ])
-    .then(([canonical, profiles, frontline]) => {
+    .then(([canonical, profiles, frontline, object695]) => {
       registerCanonicalBuilders('modern2', canonical.MODERN2_BUILDERS);
-      registerProfiles({ ...profiles.CHINA_PROFILES, ...frontline.CHINESE_FRONTLINE_PROFILES });
+      registerProfiles({ ...profiles.CHINA_PROFILES, ...frontline.CHINESE_FRONTLINE_PROFILES, ...object695.OBJECT695_X_PROFILES });
     }),
   franceCore: () => import('./france.ts')
     .then((mod) => registerCanonicalBuilders('france', mod.FRANCE_BUILDERS)),

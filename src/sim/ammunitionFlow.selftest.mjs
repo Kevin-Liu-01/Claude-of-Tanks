@@ -145,7 +145,8 @@ for (const spec of Object.values(TANK_SPECS)) {
   }
 }
 // 2026-09-17: 22 → 23 with the Type 100 IFV's HJ-10 auxiliary missile (the Type 100 became a Chinese IFV)
-assert.equal(guidedRounds.length, 23, 'the complete guided-ammunition fleet is covered');
+// 2026-09-17: 23 → 24 with the Object 695's Kornet-EM
+assert.equal(guidedRounds.length, 24, 'the complete guided-ammunition fleet is covered');
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 21 conventional Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.
@@ -157,12 +158,12 @@ const addedXIds = new Set([...SECOND_WAVE_X_IDS, ...ABRAMS_SOURCE_X_IDS]);
 assert.equal(addedXIds.size, 28, 'the two additive X batches have distinct identities');
 // Later non-X additions are exercised in the fleet loop above but are not part of the
 // pre-existing census (2026-09-15: the Chinese Type 100 and its three channels).
-const laterIds = new Set(['type100', 'ztz100_x']);
+const laterIds = new Set(['type100', 'ztz100_x', 'object695_x']);
 assert.equal(TANK_SPECS.type100.gun.shells.length, 3);
 assert.equal(Object.values(TANK_SPECS).filter(spec => !addedXIds.has(spec.id) && !laterIds.has(spec.id))
   .reduce((n, spec) => n + spec.gun.shells.length, 0), 535,
   'the pre-existing ammunition-channel census remains intact');
-assert.equal(authoredShellChannels, 625 /* 535 + 69 + 15 + 3 (Type 100 IFV) + 3 (ZTZ-100, 2026-09-17) */,
+assert.equal(authoredShellChannels, 628 /* 535 + 69 + 15 + 3 (Type 100 IFV) + 3 (ZTZ-100) + 3 (Object 695, 2026-09-17) */,
   'every authored ammunition channel in the saved fleet is covered');
 assert.ok(multiChannelLoadouts > 100,
   `the playable multi-channel fleet is covered (${multiChannelLoadouts})`);

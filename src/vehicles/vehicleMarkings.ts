@@ -266,6 +266,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   vt4a1: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   type100: anchor('hull', 'left', 0.30, 0.55, 0.26, 1),
   ztz100_x: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
+  object695_x: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
   ztz85_iii: anchor('turret', 'right', 0.44, 0.47, 0.23, -1),
   ztz99a2: anchor('turret', 'left', 0.34, 0.45, 0.25, 1),
   ztz99a2_prototype: anchor('turret', 'left', 0.34, 0.45, 0.25, 1),

@@ -38,7 +38,7 @@ export const TANK_TIER = Object.freeze({
   t72b3: 8, fv4034: 8, challenger2: 9, challenger2e: 10, ua_challenger2: 10,
   challenger_3: 10, challenger_3x: 10, leo2a6: 9,
   leo2a4: 8, t80u: 8, leclerc: 9, leclerc_xlr: 9, amx56: 9, // owner 2026-09-16: the legacy Leclerc SXXI / S1 hulls drop to IX
-  type99a: 9, leo1a5: 7, t14: 10,
+  type99a: 9, leo1a5: 7, t14: 10, object695_x: 10,
   chieftain_mk10: 8, k2: 9, k2b: 10, type10: 10, m2a2_bradley: 8, bmp2: 7,
   carro45t: 8, ariete: 8, ariete_c1: 9, ariete_c2: 10,
   k1a1: 8, type89: 7, type89_light_tiger: 10, spz_puma: 9, spz_puma_s1: 10, amx40: 9,

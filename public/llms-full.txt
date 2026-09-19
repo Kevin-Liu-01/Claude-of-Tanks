@@ -10,9 +10,9 @@ The name is "Claude of Tanks." The creator and copyright holder is Kevin B. Liu.
 
 ## Current public-build facts
 
-- Production-visible fleet: 171 first-party procedural vehicles.
-- Playable saved fleet with the keyed local-development projection: 208 first-party procedural vehicles.
-- Saved vehicle records: 210, including two non-playable reference placeholders.
+- Production-visible fleet: 172 first-party procedural vehicles.
+- Playable saved fleet with the keyed local-development projection: 209 first-party procedural vehicles.
+- Saved vehicle records: 211, including two non-playable reference placeholders.
 - Authored battlefields: 30.
 - Simulation rate: fixed 60 Hz.
 - Standard battle format: teams of up to seven vehicles, presented as 7v7 where the selected mode supports it.

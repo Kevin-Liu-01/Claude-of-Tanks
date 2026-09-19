@@ -166,7 +166,82 @@ async function canonicalScene(scene, recipe) {
     output.add(mesh);
   });
   if (!output.children.length) throw new Error('Source selection is empty.');
-  return { output, omitted };
+  const detached = omitDetachedIslandsBelow(output, recipe);
+  return { output, omitted, detached };
+}
+
+/** A reviewed recipe may drop DETACHED source parts: welded islands whose lowest vertex sits under the seated sole
+ * plane (`omitIslandsBelowY`, canonical metres) or whose whole bounds lie inside a declared box
+ * (`omitIslandsInside: {min:[x,y,z], max:[x,y,z]}`, canonical metres — a hatch leaf parked under the belly) are
+ * removed whole; anything welded to geometry outside stays. Reported, never silent. */
+function omitDetachedIslandsBelow(output, recipe) {
+  const limit = recipe.omitIslandsBelowY;
+  const inside = recipe.omitIslandsInside;
+  if (limit === undefined && inside === undefined) return null;
+  if (limit !== undefined && !Number.isFinite(limit)) throw new Error('omitIslandsBelowY needs a finite plane.');
+  if (inside !== undefined && !(Array.isArray(inside.min) && Array.isArray(inside.max) && inside.min.length === 3 && inside.max.length === 3
+    && [...inside.min, ...inside.max].every(Number.isFinite))) throw new Error('omitIslandsInside needs finite min/max corners.');
+  if (!recipe.selectionReason?.trim()) throw new Error('Dropping detached islands needs an explicit physical reason.');
+  const meshes = output.children.filter(child => child.isMesh);
+  const key = new Map(); const weld = []; const vertexMesh = [];
+  const quantum = 1e-4;
+  for (const [meshIndex, mesh] of meshes.entries()) {
+    const position = mesh.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      const k = `${Math.round(position.getX(i) / quantum)},${Math.round(position.getY(i) / quantum)},${Math.round(position.getZ(i) / quantum)}`;
+      let id = key.get(k); if (id === undefined) { id = key.size; key.set(k, id); }
+      weld.push(id); vertexMesh.push(meshIndex);
+    }
+  }
+  const parent = Array.from({ length: key.size }, (_, i) => i);
+  const find = i => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent[a] = b; };
+  let base = 0; const triangles = [];
+  for (const [meshIndex, mesh] of meshes.entries()) {
+    const geometry = mesh.geometry, index = geometry.index, count = index ? index.count : geometry.attributes.position.count;
+    for (let i = 0; i < count; i += 3) {
+      const a = base + (index ? index.getX(i) : i), b = base + (index ? index.getX(i + 1) : i + 1), c = base + (index ? index.getX(i + 2) : i + 2);
+      union(weld[a], weld[b]); union(weld[b], weld[c]); triangles.push([meshIndex, a, b, c]);
+    }
+    base += geometry.attributes.position.count;
+  }
+  const bounds = new Map(); const ys = [];
+  for (const mesh of meshes) {
+    const position = mesh.geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      ys.push(position.getY(i));
+      const root = find(weld[ys.length - 1]);
+      const p = [position.getX(i), position.getY(i), position.getZ(i)];
+      const b = bounds.get(root) ?? { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
+      for (let k = 0; k < 3; k++) { if (p[k] < b.min[k]) b.min[k] = p[k]; if (p[k] > b.max[k]) b.max[k] = p[k]; }
+      bounds.set(root, b);
+    }
+  }
+  const dropIslands = new Set([...bounds.entries()].filter(([, b]) =>
+    (limit !== undefined && b.min[1] < limit)
+    || (inside !== undefined && [0, 1, 2].every(k => b.min[k] >= inside.min[k] && b.max[k] <= inside.max[k]))).map(([root]) => root));
+  if (!dropIslands.size) return { plane: limit ?? null, box: inside ?? null, islands: 0, triangles: 0 };
+  let droppedTriangles = 0;
+  const bases = []; { let b = 0; for (const mesh of meshes) { bases.push(b); b += mesh.geometry.attributes.position.count; } }
+  for (const [meshIndex, mesh] of meshes.entries()) {
+    const kept = [];
+    for (const [tm, a, b, c] of triangles) {
+      if (tm !== meshIndex) continue;
+      if (dropIslands.has(find(weld[a]))) { droppedTriangles++; continue; }
+      kept.push(a, b, c);
+    }
+    const geometry = new THREE.BufferGeometry();
+    const flat = new Float32Array(kept.length * 3);
+    // rebuild from the mesh's own vertex array (indices above are global; subtract this mesh's original base)
+    const meshBase = bases[meshIndex];
+    const source = mesh.geometry.attributes.position;
+    for (const [n, v] of kept.entries()) { const local = v - meshBase; flat[n * 3] = source.getX(local); flat[n * 3 + 1] = source.getY(local); flat[n * 3 + 2] = source.getZ(local); }
+    geometry.setAttribute('position', new THREE.BufferAttribute(flat, 3));
+    geometry.computeVertexNormals();
+    mesh.geometry.dispose(); mesh.geometry = geometry;
+  }
+  for (const mesh of [...meshes]) if (!mesh.geometry.attributes.position.count) output.remove(mesh);
+  return { plane: limit ?? null, box: inside ?? null, islands: dropIslands.size, triangles: droppedTriangles };
 }
 
 async function main() {
@@ -186,12 +261,12 @@ async function main() {
     if (!args['--recipe']) throw new Error('Preparation requires a reviewed source-only recipe.');
     const recipe = JSON.parse(fs.readFileSync(args['--recipe'], 'utf8'));
     if (recipe.sourceSha256 !== digest) throw new Error('Raw source hash differs from the approved recipe.');
-    const { output, omitted } = await canonicalScene(scene, recipe);
+    const { output, omitted, detached } = await canonicalScene(scene, recipe);
     const target = ignoredTarget(`public/models/community-candidates/${recipe.id}_source.glb`);
     const bytes = Buffer.from(await new GLTFExporter().parseAsync(output, { binary: true }));
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, bytes);
-    Object.assign(report, { recipe, omittedMeshes: omitted, canonicalBounds: bounds(output), target, canonicalSha256: sha256(bytes) });
+    Object.assign(report, { recipe, omittedMeshes: omitted, omittedDetachedIslands: detached, canonicalBounds: bounds(output), target, canonicalSha256: sha256(bytes) });
   }
   if (args['--report']) {
     const target = ignoredTarget(args['--report']);

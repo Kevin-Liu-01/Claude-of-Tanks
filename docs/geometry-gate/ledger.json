@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-18T07:34:21.648Z",
+ "generatedAt": "2026-09-19T01:31:41.621Z",
  "gate": "every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity",
- "passed": 63,
- "total": 164,
+ "passed": 64,
+ "total": 165,
  "rows": [
   {
    "id": "recon_tank",
@@ -1788,6 +1788,19 @@
    "components": {
     "wholeCurves": 92.5,
     "dims": 97,
+    "floaters": 100
+   },
+   "comparisonPurpose": "source-fidelity"
+  },
+  {
+   "id": "object695_x",
+   "geoMin": 92.8,
+   "requiredMinimum": 92,
+   "qualityBar": "exemplar",
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.8,
+    "dims": 96.7,
     "floaters": 100
    },
    "comparisonPurpose": "source-fidelity"

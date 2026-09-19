@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "rosterCount": 208,
+  "rosterCount": 209,
   "provenance": "first-party-procedural-only",
   "camoSeed": 4242,
   "assetCamoSeed": 4100,
@@ -857,6 +857,13 @@
       "assetGeometryHash": "e21b5574",
       "meshes": 35,
       "vertices": 42766
+    },
+    "object695_x": {
+      "freezeHash": "6fb8e11e",
+      "instanceFreezeHash": "1437192e",
+      "assetGeometryHash": "1437192e",
+      "meshes": 45,
+      "vertices": 87191
     },
     "panther_g": {
       "freezeHash": "4b43c6ba",

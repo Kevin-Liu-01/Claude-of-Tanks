@@ -31,7 +31,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
   k2X: Object.freeze(['k2_x']),
   kf51X: Object.freeze(['kf51_x']),
   t14X: Object.freeze(['t14_x']),
-  modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100_x']),
+  modern2: Object.freeze(['mbt70', 't14', 'ztz85_iii', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 'vt4a1', 'type59', 'type100', 'ztz100_x', 'object695_x']),
   franceCore: Object.freeze(['amx40']),
   modern3Core: Object.freeze(['k2', 'k1a1', 'type10', 'm2a2_bradley', 'bmp2', 'type89']),
   // These visual profiles used to be imported by every garage boot even when

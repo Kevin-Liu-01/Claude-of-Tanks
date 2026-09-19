@@ -1229,6 +1229,7 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
       sig_ztz99a2: t('camoPattern.sig_ztz99a2'),
       sig_type100: t('camoPattern.sig_type100'),
       sig_ztz100_x: t('camoPattern.sig_ztz100_x'),
+      sig_object695_x: t('camoPattern.sig_object695_x'),
       sig_pt91m: t('camoPattern.sig_pt91m'),
       sig_t72m1_jaguar: t('camoPattern.sig_t72m1_jaguar'),
       sig_pt91_twardy: t('camoPattern.sig_pt91_twardy'),
