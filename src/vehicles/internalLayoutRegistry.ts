@@ -247,7 +247,7 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
 type InternalLayoutSourceId = keyof typeof INTERNAL_LAYOUT_SOURCES;
 
 interface InternalLayoutDefinition {
-  readonly confidence: string;
+  readonly confidence: 'documented' | 'platform-inferred' | 'published-demonstrator' | 'owner-directed';
   readonly sources: readonly InternalLayoutSourceId[];
   readonly crew: readonly InternalCrewStation[];
   readonly systems: InternalSystems;
@@ -388,7 +388,7 @@ const LAYOUTS = Object.freeze({
     missileRack: { placement: 'turret', form: 'gunLaunchedHypersonicRounds' },
   }) },
   ifvFrontTwoMan: { confidence: 'platform-inferred', sources: ['roeBmp2', 'bundeswehrMarder', 'britishWarrior', 'jgsdfType89'], crew: IFV_TWO_MAN_TURRET, systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'mixed', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'dualBeltFeed' } }) },
-  namerIfv: { confidence: 'demonstrator-inferred', sources: ['sibatNamer'], crew: crew(
+  namerIfv: { confidence: 'platform-inferred', sources: ['sibatNamer'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'],
     ['commander', 'hull', 'midLeft'],
   ), systems: systems({
