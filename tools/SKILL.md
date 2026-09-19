@@ -109,6 +109,12 @@ shell seams still require repair: regenerate the scoped fill record and verify
 filled closure, stock, real openings, weapon bores and strict band/shoe seating.
 A regression test must allow a repaired seam to disappear. Never hand-edit a
 generated fill record.
+A source-real rear bay that spans two body skins needs a finite source-air
+recipe, not a broad fill exclusion. Barak's recipe authenticates the source
+hash and registration and verifies fifteen actual native wall/floor/roof
+first hits before preserving its measured air. Retain raw residuals, test
+missing/moved stock and wrong-source negatives, and keep all geometry in the
+source and physical audits.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
