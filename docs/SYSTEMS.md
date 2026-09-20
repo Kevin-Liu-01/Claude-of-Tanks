@@ -389,8 +389,12 @@ every camera pose from the unchanged canonical hero frame. Since 2026-09-19
 the dolly follows the distance scrolled (`game/wheelNotches.ts`: a mouse click
 is one notch, a trackpad scroll or ctrl+wheel pinch glides proportionally with
 fractional notches) and Safari's `gesturestart`/`gesturechange` pinch maps one
-notch per 1.25x of scale; `ui/touchControls.ts` cancels ctrl+wheel app-wide so
-a trackpad pinch never zooms the page over the Garage panels.
+notch per 1.25x of scale. The browser pinch-zoom kill (Safari gesture events,
+ctrl+wheel everywhere) is `ui/pinchZoomGuard.ts`, installed at boot in
+`main.ts` right after the responsive layout: it used to live only inside the
+touch controls, which a desktop never constructs, so a desktop trackpad pinch
+zoomed the browser and every visual-viewport-pinned surface folded into the
+zoomed corner (2026-09-20). Keyboard zoom stays available.
 
 `garageReturnRuntime.ts` owns the opposite transition through three operations:
 immediate covered entry, player-facing leave, and Battle Again. It clears

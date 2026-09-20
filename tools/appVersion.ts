@@ -59,8 +59,11 @@ export function resolveAppVersion(root: string, env: BuildEnvironment = process.
     .map((key) => normalizedRevision(env[key]))
     .find(Boolean) || '';
   const revision = envRevision || normalizedRevision(gitOutput(root, ['rev-parse', 'HEAD']));
+  // The lockfile is rewritten by the deploy clone's own install step before the bundle is stamped, so a
+  // production build read ".dirty" on a tree whose sources were exact (deploys 42-45); the lockfile does not
+  // change what ships and is left out of the dirtiness test (2026-09-20).
   const dirty = !envRevision && Boolean(gitOutput(root, [
-    'status', '--porcelain', '--untracked-files=normal',
+    'status', '--porcelain', '--untracked-files=normal', '--', '.', ':(exclude)package-lock.json',
   ]));
   return formatAppVersion(packageJson.version || '', revision, dirty);
 }

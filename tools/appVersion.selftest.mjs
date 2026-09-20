@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   APP_VERSION_TOKEN,
@@ -34,5 +36,24 @@ assert.ok(localVersion.startsWith(`v${packageVersion}`),
   'local build version follows the package semantic version');
 assert.match(localVersion, /(?:\+|\.)g[0-9a-f]{9}(?:\.dirty)?$/,
   'local build version follows the checked-out Git revision');
+
+// a rewritten lockfile alone does not make a build dirty; any other tracked change does (2026-09-20)
+{
+  const dir = mkdtempSync(join(tmpdir(), 'cot-appversion-'));
+  const git = (...args) => execFileSync('git', args, { cwd: dir, stdio: 'pipe', encoding: 'utf8' });
+  git('init', '-q');
+  git('config', 'user.email', 'receipt@example.invalid'); git('config', 'user.name', 'receipt');
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ version: '1.2.3' }));
+  writeFileSync(join(dir, 'package-lock.json'), '{"lockfileVersion":3}\n');
+  writeFileSync(join(dir, 'index.js'), 'export const a = 1;\n');
+  git('add', '-A'); git('commit', '-q', '-m', 'fixture');
+  const clean = resolveAppVersion(dir, {});
+  assert.ok(!clean.endsWith('.dirty'), `a committed tree is clean (${clean})`);
+  writeFileSync(join(dir, 'package-lock.json'), '{"lockfileVersion":3,"rewritten":true}\n');
+  assert.equal(resolveAppVersion(dir, {}), clean, 'a rewritten lockfile alone does not dirty the build stamp');
+  writeFileSync(join(dir, 'index.js'), 'export const a = 2;\n');
+  assert.equal(resolveAppVersion(dir, {}), `${clean}.dirty`, 'a source change still dirties the stamp');
+  rmSync(dir, { recursive: true, force: true });
+}
 
 console.log('appVersion.selftest: semantic package version and per-revision boot identity passed');

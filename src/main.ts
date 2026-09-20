@@ -204,6 +204,7 @@ import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
+import { installPinchZoomGuard } from './ui/pinchZoomGuard.ts';
 import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides, type BattleVisual,
@@ -307,6 +308,9 @@ const boot = createBootScreen({ mode: STUDIO_BOOT_INTENT ? 'studio' : 'garage' }
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
+// Browser pinch-zoom is never a page zoom here (2026-09-20): every surface is pinned to the visual viewport,
+// so a zoomed browser folded the UI into a corner; the guard used to exist only inside the touch controls.
+installPinchZoomGuard();
 // Apply static i18n attributes to the boot screen so the credits button,
 // gate prompt, and retry button respect the active locale from first paint.
 bindStaticI18nAuto();

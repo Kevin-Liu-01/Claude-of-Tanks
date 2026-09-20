@@ -3,6 +3,7 @@
 // vector used by keyboard, mouse, and gamepad controls.
 
 import { FONT_STACK, FONT_COND } from './fonts.ts';
+import { installPinchZoomGuard } from './pinchZoomGuard.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import {
@@ -438,29 +439,20 @@ export function createTouchControls({
   // BROWSER PINCH-ZOOM KILL (owner: "sometimes i can zoom into the screen
   // doing pinch to zoom — don't allow this"). Defense in depth around the
   // index.html viewport meta (maximum-scale=1 covers spec-compliant mobile
-  // browsers): iOS Safari ignores user-scalable, but its pinch runs through
-  // the non-standard gesture* events — cancelling those kills page zoom
-  // without touching one-finger scrolling anywhere. The touchmove guard is
-  // scoped to gameplay surfaces so menus/garage DOM keeps every native
-  // scroll it has; ctrl+wheel never scrolls anything, so it is blocked app-wide.
+  // browsers). The gesture* and ctrl+wheel kills live in ui/pinchZoomGuard.ts
+  // and are installed at boot for every device (2026-09-20: this module was
+  // their only owner, and a desktop never constructs it); the call here is an
+  // idempotent no-op. The two-finger touchmove guard stays scoped to gameplay
+  // surfaces so menus/garage DOM keeps every native scroll it has.
+  installPinchZoomGuard();
   function onGameplaySurface(t: EventTarget | null): boolean {
     if (battle && layout) return true; // live touch battle: the frame is HUD
     if (!(t instanceof Element)) return false;
     return !!(t.closest('#app') || t.closest('.cot-touch') ||
       t.closest('.cot-touch-aim') || t.closest('.cot-hud'));
   }
-  const killGesture = (event: Event): void => event.preventDefault();
-  for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
-    document.addEventListener(type, killGesture, { passive: false });
-  }
   document.addEventListener('touchmove', (e) => {
     if (e.touches.length >= 2 && onGameplaySurface(e.target)) e.preventDefault();
-  }, { passive: false });
-  // 2026-09-19: the ctrl+wheel (trackpad pinch) guard covers the whole app — a pinch over the Garage panels
-  // used to zoom the page while the same pinch over the canvas dollied the tank; the showroom and the sight
-  // read the pinch themselves (wheelNotches.ts).
-  window.addEventListener('wheel', (e) => {
-    if (e.ctrlKey) e.preventDefault();
   }, { passive: false });
 
   function updateJoy(e: PointerEvent): void {
