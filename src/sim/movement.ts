@@ -31,6 +31,7 @@ type Vec3Tuple = readonly [number, number, number];
 type HeightSampler = (x: number, z: number) => number;
 
 export interface MovementGunSpec {
+  launcherMuzzles?: readonly { x: number; y: number; z: number }[];
   aimTimeS: number;
   baseAccuracy: number;
   caliberMm: number;
@@ -325,6 +326,7 @@ export type MovementCollisionResolver = (
 ) => boolean;
 
 export interface MovementShellSpec {
+  guided?: boolean;
   reloadS?: number;
 }
 
@@ -2651,6 +2653,10 @@ export function shotRecoilScale(
   shellSpec: MovementShellSpec | null = null,
 ): number {
   const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
+  if (spec.gun.launcherMuzzles?.length) {
+    if (shellSpec?.guided) return 0;
+    if (cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S) return IFV_AUTOCANNON_RECOIL_SCALE;
+  }
   return spec.role === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S
     ? IFV_AUTOCANNON_RECOIL_SCALE : 1;
 }

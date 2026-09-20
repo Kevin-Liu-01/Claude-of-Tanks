@@ -1,3 +1,4 @@
+import {firstPartyConcept,conceptEquipmentVerdict} from './first-party-concept-policy.mjs';
 import {canonicalConfigurationPath} from './source-configuration-path.mjs';
 import { Matrix4, Vector3 } from 'three';
 
@@ -7,6 +8,10 @@ export function roofEquipmentVerdict(id, census, configuration, sourceReceipt = 
   if (!census || !Number.isInteger(census.mg) || census.mg < 0
       || !Number.isInteger(census.invalidWeaponMarkers) || census.invalidWeaponMarkers !== 0) {
     return { passed: false, reason: 'Missing census or nonphysical roof-weapon marker' };
+  }
+  if (firstPartyConcept(id)) {
+    if (configuration) return {passed:false,reason:'Retired source equipment configuration cannot authorize a concept'};
+    return conceptEquipmentVerdict(id,census);
   }
   if (!configuration) return { passed: census.mg >= 1, required: '>=1', observed: census.mg };
   const required = configuration.roofMachineGuns;

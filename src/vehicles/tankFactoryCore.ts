@@ -45,6 +45,7 @@ import { disposeOwnedFittingGeometry } from './ownedFittingGeometry.ts';
 import { presentationAnchorFor } from './presentationAnchors.generated.ts';
 import {
   SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord, vehicleMarkingSeats,
+  vehicleMarkingIncludesPermanentHullArmor,
 } from './vehicleMarkings.ts';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
@@ -140,6 +141,17 @@ interface FactoryConfiguration {
 
 interface FactoryGunSpec extends FleetGunSpec {
   muzzles?: Array<{ x?: number; y?: number; z?: number }>;
+}
+
+/** Missile mouths follow elevation but never cannon recuperation. */
+function createLauncherTips(parent: THREE.Group, muzzles: FactoryGunSpec['launcherMuzzles']): THREE.Object3D[] {
+  return (muzzles ?? []).map((position, index) => {
+    const tip = new THREE.Object3D();
+    tip.name = `rig_launcher_tip_${index}`;
+    tip.position.set(position.x, position.y, position.z);
+    parent.add(tip);
+    return tip;
+  });
 }
 
 interface FactoryVisualSpec extends FleetVisualSpec {
@@ -1112,11 +1124,11 @@ interface TankVisual {
     presentationState?: RuntimeValue,
     detailVisible?: boolean,
   ): void;
-  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number): THREE.Vector3;
+  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): THREE.Vector3;
   gunDirWorld(out: THREE.Vector3): THREE.Vector3;
   gunPivotWorld(out: THREE.Vector3): THREE.Vector3;
   turretTopWorld(out: THREE.Vector3): THREE.Vector3;
-  recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number): number | null;
+  recoilKick(ageS?: number, impulseScale?: number, muzzleIndex?: number, guided?: boolean): number | null;
   setGroundSampler(sampler?: RuntimeValue): void;
   hitFlinch(nx: number, nz: number, magnitude: number, stateYaw?: number): void;
   applyEquipmentDamage(event: EquipmentDamageEvent): boolean;
@@ -9419,11 +9431,15 @@ function markingObjectVisibleInTree(object: THREE.Object3D, root: THREE.Object3D
   return false;
 }
 
-function markingArmorMeshes(owner: THREE.Object3D, ownerName: VehicleOwner): VehicleMesh[] {
+function markingArmorMeshes(
+  owner: THREE.Object3D, ownerName: VehicleOwner, permanentHullArmor = false,
+): VehicleMesh[] {
   const names = MARKING_ARMOR_MESH_NAMES[ownerName];
   const meshes: VehicleMesh[] = [];
   owner.traverse((object) => {
-    if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || !names.has(object.name)
+    const eligible = names.has(object.name)
+      || (permanentHullArmor && ownerName === 'hull' && object.name === 'hullExternalArmor');
+    if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || !eligible
         || object.userData.materialOnlyPaintMigration === true
         || !markingObjectVisibleInTree(object, owner)) return;
     if (!object.geometry?.attributes?.position) return;
@@ -9827,7 +9843,7 @@ function finalizeVehicleMarkingSeats(
 ): void {
   const owners: Record<VehicleOwner, THREE.Group> = { hull: hullG, turret: turretG };
   const surfaces: Record<VehicleOwner, VehicleMesh[]> = {
-    hull: markingArmorMeshes(hullG, 'hull'),
+    hull: markingArmorMeshes(hullG, 'hull', vehicleMarkingIncludesPermanentHullArmor(spec.id)),
     turret: markingArmorMeshes(turretG, 'turret'),
   };
   const occluders = markingOccluderMeshes(root);
@@ -10353,6 +10369,8 @@ function* createTankOwnedSteps(
   };
   createTankAssemblyStage22();
   const authoredMuzzles = Array.isArray(spec.gun?.muzzles) ? spec.gun.muzzles : [];
+  const launcherTips = createLauncherTips(gunG, spec.gun.launcherMuzzles);
+  let launcherCursor = 0;
   const barrelGs = authoredMuzzles.length > 1
     ? authoredMuzzles.map((_, index) => {
       const group = new THREE.Group();
@@ -12805,7 +12823,11 @@ function* createTankOwnedSteps(
      *   single-bore: the legacy center anchor, byte-identical behavior.
      * @returns {THREE.Vector3} world-space muzzle tip
      */
-    gunMuzzleWorld(out, muzzleIndex) {
+    gunMuzzleWorld(out, muzzleIndex, guided = false) {
+      if (guided && launcherTips.length) {
+        const index = muzzleIndex ?? 0;
+        return launcherTips[((index % launcherTips.length) + launcherTips.length) % launcherTips.length].getWorldPosition(out);
+      }
       if (muzzleIndex != null && muzzleTips.length) {
         const n = muzzleTips.length;
         return muzzleTips[((muzzleIndex % n) + n) % n].getWorldPosition(out);
@@ -12838,7 +12860,12 @@ function* createTankOwnedSteps(
      *   only — flash composers spawn at gunMuzzleWorld(out, index)), else
      *   null.
      */
-    recoilKick(ageS = 0, impulseScale = 1, muzzleIndex) {
+    recoilKick(ageS = 0, impulseScale = 1, muzzleIndex, guided = false) {
+      if (guided && launcherTips.length) {
+        // Do not cancel a backup cannon stroke that is already in flight.
+        const index = muzzleIndex ?? launcherCursor++;
+        return ((index % launcherTips.length) + launcherTips.length) % launcherTips.length;
+      }
       recoilT = Math.max(0, ageS);
       recoilScale = Math.max(0, Math.min(1, impulseScale));
       recoilRapid = recoilScale < 1;

@@ -1,0 +1,64 @@
+// Two explicit owner-authored designs. This is not a fallback for failed sources.
+export const CONCEPT_DESIGN_PATH = 'docs/references/concepts/missile-turrets-20260919.json';
+export const FIRST_PARTY_CONCEPTS = Object.freeze({
+  ztz100_prototype: Object.freeze({
+    id:'ztz100_prototype', test:'src/vehicles/profiles/ztz100Prototype.selftest.mjs',
+    ring:[0,1.41,-.55], gunLocal:[0,.64,.80], barrelLengthM:1.45, barrelRadiusM:.045,
+    pitchDeg:[-6,20], cells:8, backupCaliberMm:35, roofMachineGuns:0,
+    hullLengthM:6.94, hullWidthM:3.70, widthM:3.734, overallLengthM:7.70, tallestM:2.74,
+    silhouette:'Broad low armored turret with eight large canisters and a short backup cannon',
+  }),
+  object695_x: Object.freeze({
+    id:'object695_x', test:'src/vehicles/profiles/object695X.selftest.mjs',
+    ring:[0,2.15,-1.10], gunLocal:[0,.88,.20], barrelLengthM:1.35, barrelRadiusM:.04,
+    pitchDeg:[-8,35], cells:12, backupCaliberMm:30, roofMachineGuns:0,
+    hullLengthM:7.08, hullWidthM:3.985, widthM:3.985, overallLengthM:7.23, tallestM:3.90,
+    silhouette:'Tall narrow pedestal with two separated six-cell pods and a short backup cannon',
+  }),
+});
+export function firstPartyConcept(id) {
+  return Object.hasOwn(FIRST_PARTY_CONCEPTS,id) ? FIRST_PARTY_CONCEPTS[id] : null;
+}
+export function validateSelectedIds(ids, knownIds) {
+  if (!Array.isArray(ids) || !ids.length || new Set(ids).size!==ids.length
+      || ids.some(id=>typeof id!=='string'||!knownIds.includes(id))) {
+    throw new Error('Expected unique known playable tank IDs');
+  }
+  return ids;
+}
+export function partitionConceptIds(ids) {
+  return {concepts:ids.filter(firstPartyConcept), comparisons:ids.filter(id=>!firstPartyConcept(id))};
+}
+export function assertNoConceptReferences(registry) {
+  for (const id of Object.keys(FIRST_PARTY_CONCEPTS)) {
+    if (registry[id]?.source==='glb') throw new Error(`${id}: retired comparison cannot qualify the new concept`);
+  }
+}
+export function conceptEquipmentVerdict(id,census) {
+  const design=firstPartyConcept(id);
+  if (!design) throw new Error(`${id}: no first-party concept equipment authority`);
+  const valid=Number.isInteger(census?.mg)&&census.mg>=0&&census.invalidWeaponMarkers===0;
+  return {passed:valid&&census.mg===design.roofMachineGuns,
+    required:design.roofMachineGuns,observed:census?.mg,authority:CONCEPT_DESIGN_PATH};
+}
+function conceptDimensionsPassed(row,design) {
+  const min=row?.bounds?.min,max=row?.bounds?.max;
+  if(row?.passed!==true || row.fillLoaded!==true || !Array.isArray(min) || !Array.isArray(max)
+      || min.length!==3 || max.length!==3 || ![...min,...max].every(Number.isFinite))return false;
+  if(min.some((value,axis)=>value>=max[axis]))return false;
+  const errors=[Math.abs(max[0]-min[0]-design.widthM)/design.widthM,
+    Math.abs(max[2]-min[2]-design.overallLengthM)/design.overallLengthM,
+    Math.abs(max[1]-design.tallestM)/design.tallestM];
+  return errors.every(error=>error<=.03);
+}
+export function conceptReceiptPassed(id,report,startedAt,designHash) {
+  const design=firstPartyConcept(id);
+  return Boolean(design && report?.id===id && report.comparisonPurpose==='owner-authored-concept'
+    && report.comparisonApplicable===false && report.score===null && report.passed===true
+    && report.designSha256===designHash && Date.parse(report.startedAt)>=startedAt
+    && report.test?.path===design.test && report.test.exitCode===0
+    && report.inputSha256Before===report.inputSha256After
+    && /^[a-f0-9]{64}$/.test(report.inputSha256Before??'')
+    && report.dimensions?.length===2 && ['high','low'].every(quality=>
+      report.dimensions.some(row=>row.quality===quality&&conceptDimensionsPassed(row,design))));
+}

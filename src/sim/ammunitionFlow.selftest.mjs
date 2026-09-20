@@ -89,7 +89,7 @@ for (const spec of Object.values(TANK_SPECS)) {
       `${spec.id} slot ${slot + 1}: combat inventory uses the resolved capacity`);
     const reloadChannel = fresh.reloadChannels[slot];
     assert.ok(reloadChannel, `${spec.id} slot ${slot + 1}: reload channel exists`);
-    if (round.guided === true && spec.gun.primaryGuided !== true) {
+    if (round.guided === true && (spec.gun.primaryGuided !== true || spec.gun.launcherMuzzles?.length)) {
       assert.notEqual(reloadChannel, fresh.gunReload,
         `${spec.id} slot ${slot + 1}: external guided launcher has an isolated cycle`);
     } else {
@@ -134,7 +134,11 @@ for (const spec of Object.values(TANK_SPECS)) {
     const round = spec.gun.shells[slot];
     if (!round.guided) continue;
     guidedRounds.push({ spec, round, slot });
-    if (spec.gun.primaryGuided) {
+    if (spec.gun.launcherMuzzles?.length) {
+      const expected = spec.id === 'ztz100_prototype' ? [8.2, 9] : [5.8, 6.6];
+      assert.equal(round.reloadS, expected[slot], `${spec.id}: independently authored missile-primary reload`);
+      assert.equal(round.launcherTubes, spec.gun.launcherMuzzles.length);
+    } else if (spec.gun.primaryGuided) {
       assert.equal(round.reloadS, spec.gun.reloadS,
         `${spec.id} slot ${slot + 1}: primary missile follows the main-gun reload`);
       assert.ok(round.reloadS >= 6 && round.reloadS <= 10,
@@ -145,18 +149,18 @@ for (const spec of Object.values(TANK_SPECS)) {
     }
   }
 }
-// Preserve the established 24 channels separately from source additions and
-// Object 695's newly restored Bulat rack. Every channel launches below.
+// Legacy guided channels and source-based additions retain their contracts;
+// the two owner-authored concepts add four explicitly checked missile modes.
 const suppliedIds = new Set(SUPPLIED_SOURCE_IDS);
-const objectBulat = guidedRounds.filter(({spec, round}) => spec.id === 'object695_x' && round.name === 'Bulat guided missile');
-assert.equal(objectBulat.length, 1, 'the corrected Object turret adds one Bulat ammunition channel');
-assert.equal(objectBulat[0].round.launcherTubes, 8, 'Bulat uses its separate eight-tube rack');
-assert.equal(guidedRounds.filter(entry => !suppliedIds.has(entry.spec.id) && entry !== objectBulat[0]).length, 24,
-  'the established guided-ammunition fleet remains covered');
+const conceptIds = new Set(['ztz100_prototype', 'object695_x']);
+const concepts = guidedRounds.filter(({spec}) => conceptIds.has(spec.id));
+assert.equal(concepts.length, 4);
+assert.equal(guidedRounds.filter(({spec}) => !suppliedIds.has(spec.id) && !conceptIds.has(spec.id)).length, 23,
+  'the unchanged established guided-ammunition fleet remains covered');
 assert.deepEqual(guidedRounds.filter(({spec}) => suppliedIds.has(spec.id))
   .map(({spec}) => spec.id).sort(), ['aft10_x', 'cv90_mkiv_x', 'fv510_milan_x', 'k21_x', 'kurganets25_x', 'kurganets25_x'],
   'five source configurations carry six guided channels, including both Epokha launchers');
-assert.equal(guidedRounds.length, 31, 'the complete guided-ammunition fleet is covered');
+assert.equal(guidedRounds.length, 33, 'the complete guided-ammunition fleet is covered');
 // Preserve the existing 535 channels, including MBT-70's mixed gun/launcher,
 // separately from the 69 second-wave and 15 retained Abrams X channels.
 // Every new variant is exercised in the fleet loop above, not just its donor.

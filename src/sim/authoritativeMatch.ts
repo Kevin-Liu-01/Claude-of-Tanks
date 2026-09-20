@@ -60,6 +60,7 @@ import {
 import type {
   CombatState,
   DamageShell,
+  DamageShellSpec,
   HitEvent,
 } from './damage.ts';
 import { createSpottingSystem } from './spotting.ts';
@@ -529,7 +530,7 @@ function botOpeningGoal(
   };
 }
 
-function gunWorldPose(entity: AuthoritativeEntity): { muzzle: Vector3; direction: Vector3 } {
+function gunWorldPose(entity: AuthoritativeEntity, shellSpec?: DamageShellSpec): { muzzle: Vector3; direction: Vector3 } {
   const state = entity.state;
   const armor = entity.spec.armor || {};
   const turretPivot = armor.turretPivot || [0, entity.spec.dims.heightM * 0.7, 0];
@@ -549,6 +550,15 @@ function gunWorldPose(entity: AuthoritativeEntity): { muzzle: Vector3; direction
   _muzzle.set(gunPivot[0], gunPivot[1], gunPivot[2])
     .applyMatrix4(_turretMatrix)
     .addScaledVector(_gunDir, barrelM);
+  const launchers = shellSpec?.guided ? entity.spec.gun.launcherMuzzles : undefined;
+  if (launchers?.length) {
+    const index = (entity.combat.launcherCursor ?? 0) % launchers.length;
+    const tip = launchers[index]!;
+    // Rotate the authored tip with the same -X elevation used by rig_gun.
+    _muzzle.set(gunPivot[0] + tip.x,
+      gunPivot[1] + tip.y * cosPitch + tip.z * sinPitch,
+      gunPivot[2] - tip.y * sinPitch + tip.z * cosPitch).applyMatrix4(_turretMatrix);
+  }
   return { muzzle: _muzzle, direction: _gunDir };
 }
 
@@ -1396,6 +1406,8 @@ export function createAuthoritativeMatch({
       shellSlot: firedSlot,
       shellType: shellSpec.type,
       shellName: shellSpec.name,
+      muzzleIndex: shellSpec.guided && entity.spec.gun.launcherMuzzles?.length
+        ? ((entity.combat.launcherCursor ?? 1) - 1) % entity.spec.gun.launcherMuzzles.length : -1,
       weaponSound: shellSpec.soundProfile || entity.spec.gun.soundProfile || null,
       caliberMm: shellSpec.caliberMm,
       velocityMps: shellSpec.velocityMps,
@@ -1412,13 +1424,16 @@ export function createAuthoritativeMatch({
     const shellSpec = selectedShellForFire(entity);
     if (!shellSpec || !botShotIsClear(entity, shellSpec)) return;
     const combat = entity.combat;
-    const gun = gunWorldPose(entity);
+    const gun = gunWorldPose(entity, shellSpec);
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
     const firedSlot = combat.shellSlot;
     if (!consumeAmmunition(combat, firedSlot)) return;
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);
+    if (shellSpec.guided && entity.spec.gun.launcherMuzzles?.length) {
+      combat.launcherCursor = (combat.launcherCursor ?? 0) + 1;
+    }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
     shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;
     refillUnlimitedAmmunition(ruleset, combat, firedSlot);

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "ownerDecision": {
+    "date": "2026-09-19",
+    "request": "different than counterparts...both more missile oriented...complete redesigns to turrets",
+    "scope": "Original first-party missile-turret concepts replace the previous historical/source turret targets. Preserve each existing hull and running gear."
+  },
+  "comparisonPurpose": "owner-authored-concept",
+  "comparisonApplicable": false,
+  "sourceScore": null,
+  "designs": {
+    "ztz100_prototype": {
+      "id": "ztz100_prototype",
+      "test": "src/vehicles/profiles/ztz100Prototype.selftest.mjs",
+      "ring": [
+        0,
+        1.41,
+        -0.55
+      ],
+      "gunLocal": [
+        0,
+        0.64,
+        0.8
+      ],
+      "barrelLengthM": 1.45,
+      "barrelRadiusM": 0.045,
+      "pitchDeg": [
+        -6,
+        20
+      ],
+      "cells": 8,
+      "backupCaliberMm": 35,
+      "roofMachineGuns": 0,
+      "hullLengthM": 6.94,
+      "widthM": 3.734,
+      "tallestM": 2.74,
+      "silhouette": "Broad low armored turret with eight large canisters and a short backup cannon",
+      "hullWidthM": 3.7,
+      "overallLengthM": 7.7
+    },
+    "object695_x": {
+      "id": "object695_x",
+      "test": "src/vehicles/profiles/object695X.selftest.mjs",
+      "ring": [
+        0,
+        2.15,
+        -1.1
+      ],
+      "gunLocal": [
+        0,
+        0.88,
+        0.2
+      ],
+      "barrelLengthM": 1.35,
+      "barrelRadiusM": 0.04,
+      "pitchDeg": [
+        -8,
+        35
+      ],
+      "cells": 12,
+      "backupCaliberMm": 30,
+      "roofMachineGuns": 0,
+      "hullLengthM": 7.08,
+      "widthM": 3.985,
+      "tallestM": 3.9,
+      "silhouette": "Tall narrow pedestal with two separated six-cell pods and a short backup cannon",
+      "hullWidthM": 3.985,
+      "overallLengthM": 7.23
+    }
+  },
+  "dimensionToleranceFraction": 0.03,
+  "requiredProof": [
+    "Actual HIGH/LOW complete profile fixtures, hull/gear preservation, finite stock and seat rays, legal yaw/pitch/recoil and mutation negatives",
+    "Declared datums and current geometry envelope, generated fills loaded",
+    "Unchanged strict bands/shoes0, unexpected continuity0, physical equipment census, sealed hull, bore/barrel, module/anatomy, assets/centering, tests and build",
+    "Independent actual14 native views against this design contract; no obsolete source comparison"
+  ],
+  "retired": {
+    "ztz100_prototype": {
+      "record": "docs/research/ztz100-prototype-preservation-export-20260919.json",
+      "glbSha256": "ffbc0a0709328f693597054cfe048fcc0d7e289f720d9c777ffaf585722e86b6"
+    },
+    "object695_x": {
+      "record": "docs/references/source-assemblies/20260919/object695_x.json",
+      "glbSha256": "20598454a5f7e8ced5212bcd416c36287626b970af125dde6dc80eeb5d0c0cfd"
+    }
+  },
+  "status": "Design contract only; no implementation or qualification result.",
+  "envelopeDefinition": "Hull recipe dimensions are retained separately from the complete neutral exterior envelope. Prototype measured unchanged hull fittings span3.734m and7.70m; highest new canister is2.74m. These approved design dimensions are not source-fidelity targets.",
+  "clearanceRevision": {
+    "id": "object695_x",
+    "approvedBy": "owner-delegated root implementation decision 2026-09-19",
+    "barrelLengthM": {
+      "proposed": 1.5,
+      "final": 1.35
+    },
+    "reason": "Actual legal rearward yaw/depression contact with retained rear rack; shorter backup preserves pivot, pitch range and hull. Pod tails shorten independently without moving12 mouth axes."
+  }
+}

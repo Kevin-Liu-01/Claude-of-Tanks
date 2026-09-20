@@ -1,6 +1,10 @@
+import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
+import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 /** Declarative release composition, tested without launching browser children. */
 export function tankReleaseSteps(ids, gate, node = process.execPath) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
+  const selectedIds=validateSelectedIds(ids.split(','),Object.keys(FLEET_GROUP_BY_ID));
+  const {comparisons}=partitionConceptIds(selectedIds);
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.
   // Only children that already queue their own phases bypass this wrapper.
@@ -14,7 +18,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     // Sealed hull (2026-09-13): no view may look into the tank through a culled
     // or missing face; each id is held to docs/geometry-gate/sealed.json.
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
-    ...(gate ? [gpu('procedural-fidelity',selected,'--check','--board','--neutral-board')] : []),
+    ...(gate && comparisons.length ? [gpu('procedural-fidelity',`--ids=${comparisons.join(',')}`,'--check','--board','--neutral-board')] : []),
     cpu('gen-combat-anatomy','--check'),
     gpu('presentation-centering','--check',selected),
     gpu('module-visual-align-probe',selected,'--gate'),

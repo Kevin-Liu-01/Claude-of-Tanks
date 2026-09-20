@@ -1,15 +1,30 @@
 # Object 695 (`object695_x`) — reference packet
 
-## Current turret and qualification (2026-09-19)
+## Current owner-authored missile concept (2026-09-19)
+
+The latest owner request supersedes the source-based turret below. Object 695
+now retains its chassis under an original raised twelve-cell launcher with a
+30 mm backup cannon. The two six-cell pods share a pitching cradle and cycle
+independently of the cannon feed. Three hull crew operate the unmanned module.
+Its distinct handling and missile-primary loadout are game design, not claims
+about a historical vehicle.
+
+The [design contract](../concepts/missile-turrets-20260919.json) owns the new
+silhouette, physical tube count, datums and native validation. Source comparison
+is explicitly not applicable to this original turret. Historical scores below
+certify only their archived geometry; they do not certify the redesign.
+Kurganets-25 retains its source-based Epokha turret and equipment.
+
+## Superseded Epokha turret and qualification (earlier 2026-09-19)
 
 The owner requested the corrected Kurganets Epokha turret on this retained hull.
-The current build has a 57 mm cannon, four Kornet tubes, eight Bulat tubes and
+That earlier build had a 57 mm cannon, four Kornet tubes, eight Bulat tubes and
 four roof masts, through the shared `epokhaTurret.ts` builder. Its ring remains
 `(0,2.15,-1.10)`; the trunnion is `(-.004,2.857,-.51)` and barrel length is
 1.537 m. The existing primary firing cycle and Kornet tuning remain; Bulat
 replaces the former cannon HE channel. There is no separate roof machine gun.
 
-The comparison target now combines the original source hull with nine complete
+That historical comparison target combined the original source hull with nine complete
 corrected source turret owners, through the independently replayable
 [source recipe](../source-assemblies/20260919/object695_x.json). Neither source
 GLB enters the playable runtime. The earlier measurement JSON and account below
@@ -19,7 +34,7 @@ Fresh automated geometry measures 94.7/92 and all fourteen new-turret views
 pass scoped visual review. Whole-vehicle visual qualification remains open for
 the retained hull's rear louvers, ramp door and simplified bow/deck detail.
 The retained chassis also has documented LOW geometry-budget debt. See the
-[current construction, balance and review record](../../research/object695-epokha-dragun-balance-20260919.md).
+[historical construction, balance and review record](../../research/object695-epokha-dragun-balance-20260919.md).
 
 ## Original build history (2026-09-17–18)
 

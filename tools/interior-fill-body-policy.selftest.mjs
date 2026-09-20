@@ -15,7 +15,7 @@ assert.deepEqual(selected.map(row => row.identity), names.filter(name =>
   !['hullDetail', 'hullDark', 'turretDetail'].includes(name)));
 assert.ok(selected.every(row => triangles.includes(row)), 'retain original triangle references and order');
 assert.equal(triangles.length, names.length, 'selection never mutates input');
-for (const legacy of ['abrams', 'challenger_3', 'cv90105_tml_x', 'constructor', '__proto__']) {
+for (const legacy of ['abrams', 'challenger_3', 'cv90105_tml_x', 'object695_x_extra', 'constructor', '__proto__']) {
   assert.equal(interiorFillBoundaryTriangles(legacy, triangles, names), triangles,
     'unconfigured families retain their exact historical boundary input');
 }
@@ -26,6 +26,20 @@ for (const configuredId of configuredIds) {
     assert.throws(() => interiorFillBoundaryTriangles(configuredId,
       triangles.filter(row => names[row.mesh] !== missing), names), /missing authored fill boundary/);
   }
+}
+
+const launcherId = 'object695_x';
+const launcherBuckets = new Set(['gunMount', 'gunMountDark']);
+const launcherSelected = interiorFillBoundaryTriangles(launcherId, triangles, names);
+const launcherExpected = triangles.filter(row => !launcherBuckets.has(names[row.mesh]));
+assert.deepEqual(launcherSelected, launcherExpected,
+  'only the two actual exterior launcher buckets leave the generation boundary');
+assert.ok(launcherSelected.every((row, index) => row === launcherExpected[index]), 'launcher selection keeps original triangle identity and order');
+assert.equal(triangles.length, names.length, 'launcher selection never mutates input');
+for (const missing of launcherBuckets) {
+  assert.throws(() => interiorFillBoundaryTriangles(launcherId,
+    triangles.filter(row => names[row.mesh] !== missing), names), /missing authored fill boundary/,
+  'missing real launcher stock must not silently broaden the policy');
 }
 
 function leaks(tris, meshes, voxel = .025) {
@@ -51,6 +65,13 @@ for (const configuredId of configuredIds) {
   assert.ok(leaks(brokenSelected, ['hull', 'turret'], .1).count > 0,
     `${configuredId}: a deleted primary plate still produces real deep-interior leakage`);
 }
+const brokenLauncher = [...broken, { ...isolated, mesh: 1 }, { ...isolated, mesh: 2 }];
+const launcherNames = ['hull', 'gunMount', 'gunMountDark'];
+const brokenLauncherSelected = interiorFillBoundaryTriangles(launcherId, brokenLauncher, launcherNames);
+assert.deepEqual(brokenLauncherSelected, broken,
+  'a deleted primary plate remains in scope even beside independent launcher fittings');
+assert.ok(leaks(brokenLauncherSelected, launcherNames, .1).count > 0,
+  'the launcher policy cannot hide real body-shell leakage');
 cube.geometry.dispose(); cube.material.dispose();
 
 const results = [];
@@ -67,6 +88,27 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
     assert.deepEqual(gun(boundary), gun(tris), 'complete physical bore/mount stock remains in the body input');
     results.push({ id: configuredId, quality, exteriorPocketVoxels: withFittings.count, primaryLeakVoxels: primary.count,
       originalBodyTriangles: withFittings.bodyTriangles, primaryBodyTriangles: primary.bodyTriangles });
+  } finally { tank.dispose(); }
+}
+for (const quality of ['high', 'low']) {
+  const tank = createTank(launcherId, null, { proceduralOnly: true, quality, geometryReceipt: true });
+  try {
+    const { tris, meshes } = collectTriangles(tank.root);
+    const boundary = interiorFillBoundaryTriangles(launcherId, tris, meshes);
+    const expected = tris.filter(row => !launcherBuckets.has(meshes[row.mesh]));
+    assert.equal(boundary.length, expected.length);
+    assert.ok(boundary.every((row, index) => row === expected[index]),
+      'actual hull, turret, cannon, bore and every other owner remain exact');
+    for (const bucket of launcherBuckets) assert.ok(tris.some(row => meshes[row.mesh] === bucket));
+    for (const bucket of ['hull', 'turret', 'gun', 'gunDark']) {
+      assert.ok(boundary.some(row => meshes[row.mesh] === bucket), `${bucket}: real body/bore boundary retained`);
+    }
+    const withFittings = leaks(tris, meshes), body = leaks(boundary, meshes);
+    assert.ok(withFittings.count > body.count,
+      'separate closed canisters must not create one fill volume across their exterior air');
+    results.push({ id: launcherId, quality, exteriorPocketVoxels: withFittings.count,
+      primaryLeakVoxels: body.count, originalBodyTriangles: withFittings.bodyTriangles,
+      primaryBodyTriangles: body.bodyTriangles });
   } finally { tank.dispose(); }
 }
 console.log('interior-fill-body-policy PASS', JSON.stringify(results));

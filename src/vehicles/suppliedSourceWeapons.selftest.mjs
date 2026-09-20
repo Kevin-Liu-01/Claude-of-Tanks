@@ -39,7 +39,7 @@ function checkLoadout() {
 
 function checkSourceConfigurations() {
   const configurations = {
-    object695_x: [57, [4, 8]], kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], fv510_milan_x: [30, [1]],
+    kurganets25_x: [57, [4, 8]], ztz100_x: [105, []], fv510_milan_x: [30, [1]],
     griffin50_x: [50, []], ajax_x: [40, []], aft10_x: [170, [8]],
     bmp3m_dragun125_x: [125, []], k21_x: [40, [2]], type96b_x: [125, []],
     kf41_lynx_x: [35, []], cv90_mkiv_x: [50, [2]], cv90105_tml_x: [105, []], sabra_mk2_x: [120, []],
@@ -59,17 +59,18 @@ function checkSourceConfigurations() {
 }
 
 function checkObject695Loadout() {
-  const vehicle=TANK_SPECS.object695_x, state=createCombatState(vehicle);
-  assert.deepEqual(state.ammo,[500,8,8], 'retained strong cannon/Kornet reserve plus all eight actual Bulat tubes');
-  assert.equal(new Set(state.reloadChannels).size,3, 'each Epokha weapon owns its reload channel');
-  for (const slot of [1,2]) {
-    const others=state.reloadChannels.filter((_,i)=>i!==slot).map(c=>({...c}));
-    assert.equal(selectShell(state,slot,vehicle),true); startReload(state,vehicle);
-    assert.equal(state.reload.totalS,2.6);
-    assert.deepEqual(state.reloadChannels.filter((_,i)=>i!==slot),others);
-    state.ammo[slot]=0;assert.equal(selectShell(state,slot,vehicle),false);
+  const vehicle = TANK_SPECS.object695_x, state = createCombatState(vehicle);
+  assert.deepEqual(state.ammo, [12, 12, 240], 'missile-primary concept carries twelve rounds per type and a backup belt');
+  assert.strictEqual(state.reloadChannels[0], state.reloadChannels[1], 'missile types share the actual launcher cycle');
+  assert.notStrictEqual(state.reloadChannels[0], state.reloadChannels[2], 'backup cannon has its own feed');
+  for (const slot of [0, 1]) {
+    selectShell(state, slot, vehicle); startReload(state, vehicle);
+    assert.equal(state.reload.totalS, [5.8, 6.6][slot]);
+    assert.equal(state.reloadChannels[2].t, 0, 'launcher cycle does not consume cannon feed');
+    state.ammo[slot] = 0;
+    assert.equal(selectShell(state, slot, vehicle), false);
   }
-  assert.equal(selectShell(state,0,vehicle),true,'the primary cannon remains usable after both launchers deplete');
+  assert.equal(selectShell(state, 2, vehicle), true, 'backup cannon remains selectable after missiles deplete');
 }
 
 function checkKurganetsLoadout() {
@@ -129,4 +130,4 @@ try {
 } finally {
   for (const [id, armor] of armorBefore) TANK_SPECS[id].armor = armor;
 }
-console.log('suppliedSourceWeapons: all13 supplied + Object695 caliber/launcher census; K21 and both Kurganets launchers, source frames, independent inventory/reload and damage module pass');
+console.log('suppliedSourceWeapons: all13 supplied configurations + original Object695 missile concept; K21 and both Kurganets launchers, source frames, independent inventory/reload and damage module pass');

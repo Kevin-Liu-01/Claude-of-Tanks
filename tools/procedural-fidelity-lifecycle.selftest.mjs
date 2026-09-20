@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { validateSelectedIds, partitionConceptIds, CONCEPT_DESIGN_PATH } from './first-party-concept-policy.mjs';
 
 // Execute the actual entrypoint with injected resource APIs, never a browser,
 // listener, cache directory or generated report on the real filesystem.
 const source = fs.readFileSync(new URL('./procedural-fidelity.mjs', import.meta.url), 'utf8');
 const imports = source.match(/^import .+;$/gm);
-assert.equal(imports.length, 5, 'keep every entrypoint dependency explicitly injected');
+assert.equal(imports.length, 7, 'keep every entrypoint dependency explicitly injected');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer', 'process', 'console',
+  'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'CONCEPT_DESIGN_PATH',
   source.replace(/^import .+;\n/gm, ''));
 
-async function scenario(failAt = null, cleanupFailures = [], gatePassed = true) {
+async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, ids = ['fixture_x']) {
   const events = [], logs = [], writes = [];
   const primary = new Error(`injected ${failAt}`);
   const cleanup = new Map(cleanupFailures.map(stage => [stage, new Error(`injected ${stage}`)]));
@@ -84,10 +86,14 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true) 
     step('browser:launch');
     return browser;
   } };
-  const process = { cwd:() => '/fixture', argv:['node', 'procedural-fidelity.mjs', '--ids=fixture_x', '--check'] };
+  const process = { cwd:() => '/fixture', argv:['node', 'procedural-fidelity.mjs', `--ids=${ids.join(',')}`, '--check'] };
   const console = { log:(...args) => logs.push(args), error:(...args) => logs.push(args) };
   let failure;
-  try { await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console); }
+  try {
+    await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console,
+      { fixture_x:'fixture', ztz100_prototype:'modern2', object695_x:'modern2' },
+      validateSelectedIds, partitionConceptIds, CONCEPT_DESIGN_PATH);
+  }
   catch (error) { failure = error; }
   return { events, logs, writes, primary, cleanup, failure, process };
 }
@@ -141,4 +147,28 @@ for (const gatePassed of [true, false]) {
   assert.equal(result.process.exitCode, gatePassed ? undefined : 1);
 }
 
-console.log('procedural-fidelity-lifecycle: 18 browser-free startup, cleanup, primary-error and scoring cases pass');
+for (const ids of [['ztz100_prototype', 'object695_x'], ['fixture_x', 'ztz100_prototype']]) {
+  const result = await scenario(null, [], true, ids);
+  assert.equal(result.failure, undefined);
+  const report = JSON.parse(result.writes[0].content);
+  const comparisons = ids.includes('fixture_x') ? 1 : 0;
+  assert.equal(report.summary.references, comparisons);
+  assert.equal(report.summary.passed, comparisons, 'N/A concepts never become passing source comparisons');
+  assert.equal(report.summary.notApplicable, ids.length - comparisons);
+  assert.equal(report.summary.failed, 0);
+  for (const row of report.rows.filter(row => row.comparisonApplicable === false)) {
+    assert.equal(row.score, null);
+    assert.equal(row.gatePassed, null, 'comparison routing does not certify physical design');
+    assert.equal(row.designPath, CONCEPT_DESIGN_PATH);
+  }
+  assert.equal(result.events.includes('browser:launch'), comparisons > 0);
+  assert.deepEqual(result.events.filter(event => event.endsWith(':close')), comparisons ? allCleanup : []);
+}
+for (const ids of [['unknown_tank'], ['fixture_x', 'fixture_x']]) {
+  const result = await scenario(null, [], true, ids);
+  assert.match(result.failure?.message ?? '', /unique known playable tank IDs/);
+  assert.deepEqual(result.events, [], 'invalid selection never acquires resources');
+  assert.equal(result.writes.length, 0, 'invalid selection never publishes a report');
+}
+
+console.log('procedural-fidelity-lifecycle: startup, cleanup, primary-error, scoring and explicit concept routing pass');

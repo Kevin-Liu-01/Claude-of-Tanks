@@ -34,6 +34,8 @@ export interface FleetGunSpec extends Record<string, RuntimeValue> {
   muzzleBoreSegments?: number;
   /** Missile canister mouths select a launch origin without a cannon stroke. */
   fixedLaunchCanisters?: boolean;
+  /** Separate, non-recoiling missile mouths in the pitching gun frame. */
+  launcherMuzzles?: Array<{ x: number; y: number; z: number }>;
   caliberMm: number;
   reloadS: number;
   baseAccuracy: number;

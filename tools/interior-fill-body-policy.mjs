@@ -22,18 +22,28 @@ const PRIMARY_BODY_BUCKETS = Object.freeze({
   merkava4_barak: Object.freeze(['hull', 'turret']),
 });
 
+// Object's twelve closed canisters and their separate pitch frame are exterior
+// equipment, not a single hollow gun casing. Combining their vertical spans
+// invented boxes in the intended gaps beside/between the cylindrical cells.
+// This selection affects generation only; every mesh remains in native audits.
+const EXTERNAL_LAUNCHER_BUCKETS = Object.freeze({
+  object695_x: Object.freeze(['gunMount', 'gunMountDark']),
+});
+
 /** Select actual body-shell triangles without changing their positions or order. */
 export function interiorFillBoundaryTriangles(id, triangles, meshes) {
   const primary = Object.hasOwn(PRIMARY_BODY_BUCKETS, id) ? PRIMARY_BODY_BUCKETS[id] : undefined;
-  if (!primary) return triangles;
+  const external = Object.hasOwn(EXTERNAL_LAUNCHER_BUCKETS, id) ? EXTERNAL_LAUNCHER_BUCKETS[id] : undefined;
+  if (!primary && !external) return triangles;
   const present = new Set(triangles.map(triangle => meshes[triangle.mesh]));
-  for (const bucket of primary) {
+  for (const bucket of [...(primary ?? []), ...(external ?? [])]) {
     if (!present.has(bucket)) throw new Error(`${id}: missing authored fill boundary ${bucket}`);
   }
   return triangles.filter(triangle => {
     const name = meshes[triangle.mesh];
-    // Keep the complete gun/mount/bore shell, including its dark interior and
-    // physical backstop. Restrict only the opted-in hull and turret families.
-    return !/^(hull|turret)/i.test(name) || primary.includes(name);
+    if (external?.includes(name)) return false;
+    // Primary-body policies retain the complete gun/mount/bore input. The
+    // separate launcher policy keeps the recoiling cannon and its backstop.
+    return !primary || !/^(hull|turret)/i.test(name) || primary.includes(name);
   });
 }

@@ -2,50 +2,50 @@
 // local measurement oracles only; no runtime model or source payload participates in these tanks.
 
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
-import { shell, modernArmor, crewBox as cbox } from './specHelpers.ts';
+import { shell, modernArmor, moduleBox, crewBox as cbox } from './specHelpers.ts';
 import { bindFleetRegistries, registerFleetSpecs } from './fleetSpecRegistry.ts';
 import type { FleetTankSpec } from './specContracts.ts';
 
 const RUSSIAN_FRONTLINE_SPECS = {
-  // Object 695 (owner 2026-09-17; named 2026-09-18 — the Codex-built `kurganets25_x` is the Kurganets-25, this build is
-  // fielded under the factory index): Russia's next-generation tracked IFV, generated from the owner's supplied
-  // Armored Warfare reference model (a local comparison oracle only, see
-  // docs/references/tanks/object695_x.source-measurements.json). Seven paired road wheels, full-length side armour
-  // modules, a corrected Epokha module with the 57 mm autocannon — the owner's "machine gun like machine gun
-  // that's very powerful": the fastest, hardest-hitting belt in the fleet — four Kornet-EM tubes, eight Bulat tubes and four distinct masts.
-  // First-party procedural build (profiles/object695X.ts).
+  // Owner-authored missile hunter (2026-09-19): retained Object chassis with
+  // a raised twelve-cell launcher and a 30 mm backup cannon. This concept
+  // deliberately differs from the source-based Kurganets-25 Epokha module.
   object695_x: {
     id: 'object695_x', name: 'Object 695', nation: 'Russia', era: 'next-generation', role: 'ifv',
-    hp: 2650,
-    enginePowerHp: 800, weightTons: 25, topSpeedKmh: 80, reverseSpeedKmh: 34,
-    hullTraverseDegS: 56,
+    // Missile-primary output is not an autocannon-belt peer; explicit concept budgets are regression-tested.
+    balanceCohort: 'missile-carrier',
+    hp: 2150,
+    enginePowerHp: 800, weightTons: 25, topSpeedKmh: 84, reverseSpeedKmh: 36,
+    hullTraverseDegS: 60,
     terrainResistance: { hard: 0.62, medium: 0.72, soft: 1.20 },
     pivotStyle: 'neutral',
-    turretTraverseDegS: 72, gunPitchDegS: 56, gunElevationDeg: 60, gunDepressionDeg: 8,
+    turretTraverseDegS: 84, gunPitchDegS: 60, gunElevationDeg: 35, gunDepressionDeg: 8,
     gun: {
-      caliberMm: 57, reloadS: 0.26, baseAccuracy: 0.22, aimTimeS: 0.9,
-      muzzleBoreSegments: 14,
-      soundProfile: '2a42',
-      bloom: { move: 0.034, hullRot: 0.048, turret: 0.032, afterShot: 1.10 },
+      caliberMm: 30, reloadS: 5.8, baseAccuracy: 0.26, aimTimeS: 1.1,
+      muzzleBoreSegments: 14, primaryGuided: true,
+      soundProfile: 'konkurs-launch',
+      launcherMuzzles: [-1, 1].flatMap(side => [-.285, 0, .285].flatMap(dx => [.25, .55].map(y => ({ x: side * 1.10 + dx, y, z: .82 })))),
+      bloom: { move: 0.040, hullRot: 0.055, turret: 0.032, afterShot: 1.10 },
       shells: [
-        shell('57 mm APFSDS-T', 'APFSDS', 57, 265, 245, 88, 1300, { pen2000Mm: 225, reloadS: 0.26, count: 500 }),
-        shell('9M133M-2 Kornet-EM', 'HEAT', 152, 1200, 1200, 760, 300,
-          { reloadS: 2.6, count: 8, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 4 }),
-        shell('Bulat guided missile', 'HE', 70, 14, 14, 100, 300,
-          { reloadS: 2.6, count: 8, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 8 }),
+        shell('9M-695 Tandem', 'HEAT', 152, 1050, 1050, 560, 340,
+          { pen2000Mm: 1050, reloadS: 5.8, count: 12, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 12 }),
+        shell('9M-695 Blast', 'HE', 152, 60, 60, 700, 340,
+          { reloadS: 6.6, count: 12, guided: true, soundProfile: 'konkurs-launch', launcherTubes: 12 }),
+        shell('30 mm APFSDS-T', 'APFSDS', 30, 135, 120, 34, 1120,
+          { pen2000Mm: 105, reloadS: 0.22, count: 240, soundProfile: '2a42' }),
       ],
     },
-    dims: { hullLengthM: 7.08, overallLengthM: 7.23, widthM: 3.985, heightM: 2.19, silhouetteHeightM: 3.5525 },
+    dims: { hullLengthM: 7.08, overallLengthM: 7.23, widthM: 3.985, heightM: 2.47, silhouetteHeightM: 3.90 },
     armor: (() => {
       const a = modernArmor({
         hl: 3.54, hw: 1.99, inW: 1.15, floor: 0.56, trkTop: 1.00, roofY: 2.13,
-        turretPivot: [0, 2.15, -1.10], gunPivot: [-.004, .707, .59],
-        barrelLenM: 1.537, barrelRadM: .0395,
+        turretPivot: [0, 2.15, -1.10], gunPivot: [0, .88, .20],
+        barrelLenM: 1.35, barrelRadM: .04,
         glacis: [60, 260, 380], lower: [50, 200, 260], side: [45, 140, 200],
         skirt: [80, 300, 520], rear: 35, roof: 40,
-        tw: 1.13, tFrontZ: 1.07, tRearZ: -1.69, tH: .86,
-        cheek: [90, 240, 320], tSide: [60, 150, 220], tRear: 40, tRoof: 36,
-        mantlet: [100, 250, 330], loader: false,
+        tw: .88, tFrontZ: .85, tRearZ: -.85, tH: .32,
+        cheek: [55, 140, 190], tSide: [40, 95, 140], tRear: 30, tRoof: 28,
+        mantlet: [60, 150, 210], loader: false,
       });
       // Unmanned module: the driver sits front-left beside the engine, the two operators under the module ring.
       a.crew = [
@@ -53,6 +53,11 @@ const RUSSIAN_FRONTLINE_SPECS = {
         cbox('gunner', [0.15, 0.75, -0.90], [0.95, 1.95, 0.20]),
         cbox('commander', [-0.95, 0.75, -0.90], [-0.15, 1.95, 0.20]),
       ];
+      // The crew-operated radio belongs in the hull equipment space, aft of
+      // the operators and above the fuel cells. A generic turret radio gets
+      // compressed into the shallow unmanned base by anatomy calibration.
+      a.modules = a.modules.map(module => module.module === 'radio'
+        ? moduleBox('radio', [-.95, 1.55, -1.60], [-.55, 1.86, -1.22]) : module);
       return a;
     })(),
     visual: {

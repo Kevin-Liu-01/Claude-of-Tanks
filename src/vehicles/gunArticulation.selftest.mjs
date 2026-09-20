@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
+import { verifyGunCradleSeats } from './gunCradleSeats.test-support.mjs';
 
 const DEG = Math.PI / 180;
 const MAX_SEAT_GAP_M = 0.125;
@@ -99,6 +100,7 @@ for (const id of ALL_TANK_IDS) {
         census: renderCensus(root),
         barrelGap: boxGap(mountBox, barrelBox),
         turretGap: boxGap(mountBox, turretBox),
+        cradleSeats: verifyGunCradleSeats(root),
       });
     }
 
@@ -113,7 +115,7 @@ for (const id of ALL_TANK_IDS) {
     for (const sample of samples) {
       assert.ok(sample.barrelGap <= MAX_BARREL_SEAT_GAP_M,
         `${id}: moving housing remains attached to barrel at ${sample.pitchDeg}° (gap ${sample.barrelGap})`);
-      assert.ok(sample.turretGap <= MAX_SEAT_GAP_M,
+      assert.ok(sample.cradleSeats || sample.turretGap <= MAX_SEAT_GAP_M,
         `${id}: moving housing remains seated in turret at ${sample.pitchDeg}° (gap ${sample.turretGap})`);
       assert.deepEqual(sample.census, samples[1].census,
         `${id}: pitch changes only transforms—not meshes, triangles, or geometry resources`);

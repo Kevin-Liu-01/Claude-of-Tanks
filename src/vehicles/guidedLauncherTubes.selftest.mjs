@@ -45,8 +45,8 @@ for (const { id, shell } of guided) {
   } finally { tank.dispose?.(); }
 }
 assert.ok(published.length >= 6, `the rack-launcher vehicles publish their tube census (${published.join(' ')})`);
-assert.ok(published.includes('object695_x:4') && published.includes('object695_x:8'),
-  'the corrected Object 695 publishes both physical racks independently');
+assert.ok(published.filter(value => value === 'object695_x:12').length === 2 && published.filter(value => value === 'ztz100_prototype:8').length === 2,
+  'both concept ammunition types name their shared physical launcher census');
 const bmpt = getSpec('bmpt_t90').gun.shells.find((shell) => shell.guided);
 assert.equal(bmpt.launcherTubes, 8); assert.ok(bmpt.count >= 8, 'the BMPT T-90 carries at least its eight tubes of Ataka');
 console.log(`guidedLauncherTubes.selftest: ${guided.length} guided rounds declare tubes, loads never below one per tube; published censuses ${published.join(' ')}`);

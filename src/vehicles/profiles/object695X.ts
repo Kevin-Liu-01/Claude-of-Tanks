@@ -1,15 +1,13 @@
 // Object 695 retains its independently authored chassis and running gear.
-// Owner-directed 2026-09-19 turret rebuild reuses the corrected first-party
-// Kurganets Epokha module: 57 mm cannon, four Kornet and eight Bulat tubes.
-// The old source study remains the hull reference; its former turret recipe
-// and long 30 mm barrel are superseded, not new historical measurements.
+// Owner-directed 2026-09-19 missile-hunter concept: raised skeletal cradle,
+// two six-cell launch pods and a short 30 mm backup cannon. This is original
+// concept geometry; the old source study remains historical hull evidence.
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
-import { buildEpokhaTurret } from './epokhaTurret.ts';
-import { preserveSourceStudyGunMountAppearance } from './sourceStudyGunMount.ts';
+import { buildObject695MissileTurret } from './object695MissileTurret.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -23,8 +21,8 @@ function part(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometr
 
 // ---------------------------------------------------------------------------------------------- measured frame
 export const OBJECT695_X_DATUMS = Object.freeze({
-  widthM: 3.985, hullLengthM: 7.08, overallLengthM: 7.23, roofHeightM: 2.19, turretRoofM: 3.01, launcherTopM: 3.5525, mastTopM: 4.11415,
-  turretPivot: [0, 2.15, -1.10] as const, trunnion: [-.004, 2.857, -.51] as const, muzzleZ: 1.027,
+  widthM: 3.985, hullLengthM: 7.08, overallLengthM: 7.23, roofHeightM: 2.19, turretRoofM: 2.47, launcherTopM: 3.719, mastTopM: 3.90,
+  turretPivot: [0, 2.15, -1.10] as const, trunnion: [0, 3.03, -.90] as const, muzzleZ: .45,
   wheelStations: [-2.32, -1.63, -0.94, -0.24, 0.45, 1.14, 1.84] as const,
   wheelR: 0.275, wheelY: 0.3485, trackW: 0.37, trackX: 1.357,
   sprocket: { z: -3.186, y: 0.913, r: 0.235 } as const,
@@ -225,8 +223,8 @@ function runningGear(P: TankBuilderPort): void {
 }
 
 // ----------------------------------------------------------------------------------------------------- module
-// The hull receiving collar remains unchanged. The new ring closes its
-// 5 mm lap to the shared module without changing the hull or suspension.
+// Keep every fixed hull receiver unchanged. The new concept owns only stock
+// above that receiving surface and its independent pitch/recoil frames.
 function turret(P: TankBuilderPort): void {
   P.turretG.position.set(...OBJECT695_X_DATUMS.turretPivot);
   // ring guard on the hull roof (measured x ±1.35, y 2.13–2.19, z −2.20..0) and the ring itself
@@ -234,9 +232,7 @@ function turret(P: TankBuilderPort): void {
   for (const s of [-1, 1]) P.add('hullDark', part(box(0.35, 0.14, 0.45), 'ring-collar-corner'), s * 1.35, 2.23, 0.40);
   P.addEquipment('hull', part(box(0.20, 0.18, 0.16), 'ring-fitting'), -0.85, 2.13 + 0.09, 0.05);
   P.addEquipment('hull', part(box(0.20, 0.18, 0.16), 'ring-fitting'), 1.20, 2.13 + 0.09, 0.05);
-  P.add('turret', cylY(1.01, 1.01, .055, P.q ? 36 : 20), 0, .0225, 0);
-  buildEpokhaTurret(P);
-  preserveSourceStudyGunMountAppearance(P);
+  buildObject695MissileTurret(P);
 }
 
 function buildObject695X(P: TankBuilderPort): void {
@@ -252,9 +248,10 @@ function buildObject695X(P: TankBuilderPort): void {
   }
   if (P.geometryReceipt) {
     P.hullG.userData.object695Receipt = Object.freeze({
-      architecture: 'object695-x-epokha-r2', datums: OBJECT695_X_DATUMS, hullStations: HULL_Z.length,
-      roadWheelsPerSide: 7, gunLengthM: 1.537, launcherTopM: OBJECT695_X_DATUMS.launcherTopM, pivot: [...OBJECT695_X_DATUMS.turretPivot], trunnion: [-.004, .707, .59],
-      launcherTubesByWeapon: { '9M133M-2 Kornet-EM': 4, 'Bulat guided missile': 8 }, turretRecipe: 'source-measured-epokha',
+      architecture: 'object695-missile-hunter-concept', datums: OBJECT695_X_DATUMS, hullStations: HULL_Z.length,
+      roadWheelsPerSide: 7, gunLengthM: 1.35, launcherTopM: OBJECT695_X_DATUMS.launcherTopM, pivot: [...OBJECT695_X_DATUMS.turretPivot], trunnion: [0, .88, .20],
+      launcherTubesByWeapon: { '9M-695 Tandem': 12, '9M-695 Blast': 12 }, physicalLauncherTubes: 12,
+      turretRecipe: 'first-party-missile-hunter-concept',
     });
   }
 }

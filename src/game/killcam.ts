@@ -171,8 +171,8 @@ interface KillcamVisual {
   resetEra?(): void;
   stripEra?(plate: string): void;
   gunDirWorld?(out: THREE.Vector3): THREE.Vector3;
-  gunMuzzleWorld?(out: THREE.Vector3): THREE.Vector3;
-  recoilKick?(amount?: number, scale?: number, muzzleIndex?: number): void;
+  gunMuzzleWorld?(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): THREE.Vector3;
+  recoilKick?(amount?: number, scale?: number, muzzleIndex?: number, guided?: boolean): void;
   hitFlinch?(normalX: number, normalZ: number, scale: number, yaw: number): void;
   turretTopWorld(out: THREE.Vector3): void;
   gunPivotWorld(out: THREE.Vector3): void;
@@ -2631,7 +2631,8 @@ export function createKillCam(deps: KillcamDeps) {
     actualDirection: THREE.Vector3,
   ): void {
     if (visual.gunMuzzleWorld) {
-      pb.replayMuzzle = visual.gunMuzzleWorld(new THREE.Vector3()).clone();
+      const guided = pb.snap.attackerEnt?.spec.gun.shells?.some(shell => shell.name === pb.snap.ev.shellName && shell.guided) === true;
+      pb.replayMuzzle = visual.gunMuzzleWorld(new THREE.Vector3(), pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined, guided).clone();
     }
     if (shotDirection && visual.gunDirWorld) {
       visual.gunDirWorld(actualDirection);
@@ -2937,6 +2938,7 @@ export function createKillCam(deps: KillcamDeps) {
         0,
         pb.snap.recoilScale || 1,
         pb.snap.muzzleIndex >= 0 ? pb.snap.muzzleIndex : undefined,
+        attacker.spec.gun.shells?.some(shell => shell.name === pb.snap.ev.shellName && shell.guided) === true,
       );
     }
     const caliberMm = pb.snap.caliberMm || pb.snap.ev.caliberMm || 100;

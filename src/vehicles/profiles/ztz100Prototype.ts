@@ -1,33 +1,13 @@
-// Historical ZTZ-100 Prototype restoration. Geometry target: 547457932^ (introduced in 2b869b9d0).
-// Only the exported API/profile key are renamed; historical authored stock and part tags are retained.
-// The comments below describe the original authoring study, not current-source qualification.
-// Owner 2026-09-19: restore the previous model separately as tier 9 ztz100_prototype.
-// ZTZ-100 (`ztz100_x`, owner 2026-09-17: "add a new ztz100 tank … use the glb model and our best most up to date
-// tank generation procedures based off of models"; "the ztz 100 should NOT be based off of the type 100 at all. it
-// needs to be completely separate following completely inspired generation").
-//
-// This module is generated from the owner's supplied reference model and nothing else. The Sketchfab
-// "[OD]ZTZ-20 Test-3" is a LOCAL comparison oracle (docs/references/tanks/ztz100_x.source-measurements.json,
-// quarantined GLB hash-pinned in tools/source-world-registration.mjs); the study script measured its welded
-// islands, axis-aligned depth maps and shaded elevations, and every number below is one of those scalars in the
-// game frame (uniform 0.92, structural hull centred on z = 0, ground y = 0). No source vertex, island or topology
-// participates, no other profile is imported or imitated: the hull, skirts, deck, stern, turret, towers, weapon
-// station, missile bank and gun are original primitive constructions laid out on the measured planes, and the
-// procedural-fidelity gate rasterises the build against the oracle from nine cameras.
-//
-// Measured layout (see the record): hull 6.94 m stern plate to nose with a 0.70 m slat screen behind it, 3.70 m
-// over the skirt planes (aft band 1.765, forward band 1.849, lower band 1.707, hem 0.45), roof 1.41 forward /
-// 1.50 over the engine, a 4.6° glacis from z 0.95 to the nose line (y 1.20, z 3.56) over a stepped lower bow;
-// seven 0.3135 m road wheels at axle 0.374, 0.311 m drive aft, 0.2035 m idler forward, two 0.1195 m return
-// rollers, a 0.515 m track; turret pivot (0, 1.41, −0.55), flanks ±1.50 to y 2.09, roof shelf 2.14, plateau 2.31,
-// bustle ±0.91 to z −2.60, housing to z 1.13, trunnion (0, 1.76, 0.55), muzzle z 5.175 behind a multi-baffle
-// brake; cylindrical sensor/launcher towers at ±1.25 / z −0.79 rising to 2.54, weapon station at z −0.75 rising to
-// 3.03 with a twin-tube cannon, missile bank on the right cheek (x 0.44–0.58, z 0.18–1.34), panoramic sight left.
+// Owner-directed 2026-09-19 missile-carrier concept, distinct from service ZTZ-100.
+// The historical first-party hull and complete running gear remain unchanged.
+// The broad shouldered 2x2 banks, angular low body and short backup cannon are
+// original concept stock; no historical turret/source-fidelity claim applies.
 import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
-import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.ts';
+import { KIT, orientedSlab } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
+import { lathedWheelSection } from './lathedWheelStock.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
@@ -41,8 +21,8 @@ function part(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometr
 
 // ---------------------------------------------------------------------------------------------- measured frame
 export const ZTZ100_PROTOTYPE_DATUMS = Object.freeze({
-  widthM: 3.70, hullLengthM: 6.94, overallLengthM: 8.98, roofHeightM: 1.41, turretRoofM: 2.31, overallHeightM: 3.04,
-  turretPivot: [0, 1.41, -0.55] as const, trunnion: [0, 1.76, 0.55] as const, muzzleZ: 5.175,
+  widthM: 3.734, hullLengthM: 6.94, overallLengthM: 7.70, roofHeightM: 1.41, turretRoofM: 1.90, overallHeightM: 2.74,
+  turretPivot: [0, 1.41, -0.55] as const, trunnion: [0, 2.05, .25] as const, muzzleZ: 1.70,
   wheelStations: [-2.3375, -1.6015, -0.8655, -0.1295, 0.6065, 1.4345, 2.1705] as const,
   wheelR: 0.3135, wheelY: 0.374, trackW: 0.515, trackX: 1.2485,
   sprocket: { z: -2.961, y: 0.658, r: 0.311 } as const,
@@ -273,166 +253,127 @@ function runningGear(P: TankBuilderPort): void {
 }
 
 // ----------------------------------------------------------------------------------------------------- turret
-// Turret frame: pivot at hull (0, 1.41, −0.55); local z = hull z + 0.55, local y = hull y − 1.41.
-const T = { roof: 0.90, shelf: 0.73, sideTop: 0.68, gunY: 0.35, gunZ: 1.10, gunLen: 4.625, housingZ: 1.68, pivotY: 1.41, pivotZ: -0.55 } as const;
+// Owner-directed missile-carrier concept. Dimensions are design decisions,
+// not measurements of the superseded historical MBT turret.
+const T = { roof: .49, gunY: .64, gunZ: .80, gunLen: 1.45, pivotY: 1.41, pivotZ: -.55 } as const;
+export const ZTZ100_PROTOTYPE_LAUNCHER = Object.freeze({
+  columns: [-1.28, -.88, .88, 1.28] as const, rows: [.02, .42] as const,
+  rear: -1.12, mouth: 1.00, outerRadius: .175, innerRadius: .145,
+  gunPivot: [0, T.gunY, T.gunZ] as const, backupLength: T.gunLen,
+  backupOuterRadius: .045, backupInnerRadius: .0175, backupDepth: .09,
+});
 
-interface TurretStation { z: number; wl: number; wpod: number; shelf: number; wt: number; podY: number; sideTop: number; shelfY: number; roof: number }
-/** Fourteen-point section (measured flank and roof tables): a narrower lower body to the pod line (hull 1.90), the
- * wide upper cheek pods to the side top (2.09), the roof shelf (2.14) and the chamfer to the plateau (2.31). */
-function turretSection(s: TurretStation): SolidSection {
-  const ring: SectionPoint[] = [
-    [-s.wl + 0.08, 0.02], [s.wl - 0.08, 0.02], [s.wl, 0.10], [s.wl, s.podY], [s.wpod, s.podY + 0.01], [s.wpod, s.sideTop],
-    [s.shelf, s.shelfY], [s.wt, s.roof], [-s.wt, s.roof], [-s.shelf, s.shelfY], [-s.wpod, s.sideTop], [-s.wpod, s.podY + 0.01],
-    [-s.wl, s.podY], [-s.wl, 0.10],
-  ];
-  return { z: s.z, ring };
-}
-const st = (z: number, wl: number, wpod: number, shelf: number, wt: number, roof: number = T.roof, sideTop: number = T.sideTop, shelfY: number = T.shelf, podY = 0.49): TurretStation => {
-  const top = roof, side = Math.min(sideTop, top - 0.04), shelfHeight = Math.min(shelfY, top - 0.02), pod = Math.min(podY, side - 0.03);
-  const podW = Math.max(wpod, wl + 0.01), shelfW = Math.min(shelf, podW - 0.02), topW = Math.min(wt, shelfW - 0.02);
-  return { z, wl, wpod: podW, shelf: shelfW, wt: topW, podY: pod, sideTop: side, shelfY: shelfHeight, roof: top };
-};
-const TURRET_Z: readonly TurretStation[] = [
-  st(-2.05, 0.88, 0.89, 0.82, 0.58, 0.88, 0.66, 0.72),        // bustle rear face (hull −2.60)
-  st(-1.50, 0.91, 0.92, 0.84, 0.62, 0.90, 0.68, 0.74),        // bustle (hull −2.05)
-  st(-1.44, 0.91, 1.50, 1.15, 0.76),                          // pods begin over the narrow body (hull −1.99)
-  st(-0.80, 0.98, 1.50, 1.15, 0.76),                          // hull −1.35
-  st(-0.72, 1.47, 1.50, 1.15, 0.76),                          // the body widens under the pods (hull −1.27)
-  st(-0.15, 1.47, 1.50, 1.15, 0.76),                          // hull −0.70
-  st(0.20, 1.10, 1.37, 1.05, 0.70, 0.82),                     // cheeks: body 1.10, pods 1.37 (hull −0.35)
-  st(0.45, 1.10, 1.18, 0.90, 0.60, 0.80),                     // hull −0.10
-  st(0.70, 1.11, 1.12, 0.80, 0.46, 0.70, 0.60, 0.66),         // hull 0.15
-  st(1.00, 0.96, 0.97, 0.66, 0.34, 0.64, 0.52, 0.60),         // wedge over the housing (hull 0.45; measured roof 2.05)
-  st(1.30, 0.66, 0.67, 0.48, 0.30, 0.54, 0.44, 0.50),         // hull 0.75 (measured 1.94)
-  st(T.housingZ, 0.58, 0.59, 0.44, 0.28, 0.52, 0.42, 0.48),   // housing front (hull 1.13)
-];
-
-/** Cylindrical sensor / launcher tower on a front roof corner (measured x ±1.25, y 1.91–2.54, z −0.96..−0.61). */
-function tower(P: TankBuilderPort, s: number): void {
-  const x = s * 1.25, z = -0.235, base = T.shelf - 0.02;
-  P.addEquipment('turret', part(box(0.39, 0.10, 0.39), 'tower-plate'), x, base + 0.05, z);
-  for (const dx of [-0.14, 0.14]) for (const dz of [-0.14, 0.14]) P.add('turretDark', part(cylY(0.012, 0.012, 0.012, 6), 'tower-plate-bolt'), x + dx, base + 0.106, z + dz);
-  P.add('turretDark', part(cylY(0.07, 0.09, 0.14, 16), 'tower-column'), x, base + 0.17, z);
-  // measured drum: a horizontal 0.17 m cylinder 0.35 m long at hull y 2.35–2.52 with its 0.18 × 0.19 × 0.20 sensor box
-  P.addEquipment('turret', part(cylZ(0.085, 0.35, 20), 'tower-drum'), x, base + 0.325, z);
-  for (const dz of [-0.16, 0.16]) P.add('turretDark', part(torus(0.086, 0.007, 8, 20), 'tower-drum-ring'), x, base + 0.325, z + dz);
-  for (let i = 0; i < 6; i++) {
-    const a = i * Math.PI / 3;
-    P.add('turretDark', part(cylZ(0.022, 0.02, 10), 'tower-mouth'), x + Math.sin(a) * 0.052, base + 0.325 + Math.cos(a) * 0.052, z + 0.185);
-  }
-  P.addEquipment('turret', part(box(0.18, 0.19, 0.20), 'tower-sensor'), x, base + 0.335, z - 0.30);
-  P.addModuleVisual('optics', 'turretGlass', part(box(0.12, 0.10, 0.012), 'tower-sensor-glass'), x, base + 0.35, z - 0.195);
-  P.add('turretDark', part(box(0.06, 0.12, 0.06), 'tower-neck'), x, base + 0.27, z);
+function bodySection(z: number, width: number, top: number): SolidSection {
+  return { z, ring: [[-width + .08, .015], [width - .08, .015], [width, .055],
+    [width - .08, top], [-width + .08, top], [-width, .055]] };
 }
 
-/** Weapon station at the rear centre: base ring, fork, cannon body with twin tubes, sight plate, forward barrel. */
-function weaponStation(P: TankBuilderPort): void {
-  const z = -0.20;
-  P.add('turretDark', part(cylY(0.26, 0.28, 0.06, 24), 'rws-ring'), 0, T.roof + 0.03, z);
-  P.add('turret', part(cylY(0.22, 0.24, 0.10, 20), 'rws-base'), 0, T.roof + 0.11, z);
+/** The lateral deck stays below the bank's complete +20 degree rear sweep. */
+function armoredBody(P: TankBuilderPort): void {
+  P.add('turretDark', part(cylY(1.15, 1.20, .07, P.q ? 48 : 24), 'concept-ring'), 0, -.015, .10);
+  P.add('turret', part(sectionSolid([
+    bodySection(-1.62, 1.08, .08), bodySection(-1.20, 1.49, .08),
+    bodySection(.75, 1.49, .08), bodySection(1.42, .64, .08),
+  ]), 'concept-armored-platter'));
+  const spine = (z: number, w: number, roof: number): SolidSection => ({ z, ring: [
+    [-w, .07], [w, .07], [w, roof - .14], [w - .15, roof],
+    [-w + .15, roof], [-w, roof - .14],
+  ] });
+  P.add('turret', part(sectionSolid([
+    spine(-1.58, .58, .44), spine(-1.12, .60, T.roof),
+    spine(.34, .60, T.roof), spine(.76, .43, .42),
+  ]), 'concept-central-spine'));
   for (const s of [-1, 1]) {
-    P.addEquipment('turret', part(orientedSlab(
-      [s * 0.15, 0, -0.31], [s * 0.29, 0, -0.31], [s * 0.29, 0, 0.30], [s * 0.15, 0, 0.30],
-      [s * 0.15, 0.56, -0.36], [s * 0.29, 0.56, -0.36], [s * 0.29, 0.56, 0.24], [s * 0.15, 0.56, 0.24]), 'rws-fork'), 0, T.roof + 0.10, z);
-    P.add('turretDark', part(cylX(0.03, 0.02, 12), 'rws-fork-bolt'), s * 0.30, T.roof + 0.56, z - 0.02);
+    P.add('turret', part(box(.15, .48, .42), 'pitch-pedestal'), s * .515, .37, T.gunZ);
+    P.add('turret', part(cylX(.18, .20, P.q ? 28 : 14), 'pitch-bearing'), s * .515, T.gunY, T.gunZ);
+    P.add('turretDark', part(cylX(.095, .018, P.q ? 20 : 10), 'pitch-bearing-cap'), s * .625, T.gunY, T.gunZ);
   }
-  // the gun itself is the fleet pintle machine-gun fitting (KIT.fittings census: mg >= 1) in the forked cradle
-  // scale/seat chosen so the fitting tops out at the measured silhouette (3.04 m world): the dims gate reads it
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 1.15, tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, barrelBridge: true, seed: 100317 });
-  weapon.name = 'ztz100RemoteMachineGun';
-  weapon.position.set(0, T.roof + 0.41, z - 0.02);
-  P.turretG.add(weapon);
-  P.add('turretDark', part(box(0.30, 0.20, 0.36), 'rws-breech'), 0, T.roof + 0.57, z - 0.72);
-  for (const y of [0.47, 0.60]) P.add('turretDark', part(cylZ(0.06, 1.39, 12), 'rws-tube'), -0.43, T.roof + y, z - 0.23);
-  P.add('turretDark', part(box(0.14, 0.26, 0.10), 'rws-tube-bracket'), -0.43, T.roof + 0.53, z - 0.66);
-  // measured sight plate x 0.08–0.58, hull z −1.37..−0.88; cross bar at hull z −1.0
-  P.addEquipment('turret', part(box(0.50, 0.08, 0.49), 'rws-sight-plate'), 0.33, T.roof + 0.63, z - 0.575);
-  P.addModuleVisual('optics', 'turretGlass', part(box(0.30, 0.05, 0.012), 'rws-sight-glass'), 0.33, T.roof + 0.64, z - 0.325);
-  P.add('turretDark', part(box(0.87, 0.10, 0.10), 'rws-cross-bar'), 0.09, T.roof + 0.60, z - 0.25);
-  P.add('turretDark', part(box(0.25, 0.23, 0.28), 'rws-sight'), 0, T.roof + 0.24, z + 0.14);
-  P.addModuleVisual('optics', 'turretGlass', part(box(0.16, 0.12, 0.012), 'rws-sight-front-glass'), 0, T.roof + 0.26, z + 0.285);
+}
+
+/** A closed thick-walled tube with real air, joined to its closed rear plate. */
+function missileCell(P: TankBuilderPort, x: number, y: number): void {
+  const D = ZTZ100_PROTOTYPE_LAUNCHER, n = P.q ? 28 : 14;
+  const tube = lathedWheelSection([[D.rear, D.innerRadius], [D.rear, D.outerRadius],
+    [D.mouth, D.outerRadius], [D.mouth, D.innerRadius]], n).rotateY(-Math.PI / 2);
+  P.addModuleVisual('missileRack', 'gunMount', part(tube, 'missile-canister'), x, y, 0);
+  P.addEquipment('gunMountDark', part(cylZ(D.outerRadius, .05, n), 'missile-backplate'), x, y, D.rear + .02);
+  for (const z of [-.72, .54]) {
+    const band = lathedWheelSection([[z - .04, .173], [z - .04, .196],
+      [z + .04, .196], [z + .04, .173]], n).rotateY(-Math.PI / 2);
+    P.addEquipment('gunMount', part(band, 'canister-saddle'), x, y, 0);
+  }
+}
+
+/** Thin faceted shoulders frame each 2x2 bank; none caps a terminal mouth. */
+function bankHousing(P: TankBuilderPort, side: number): void {
+  const x = side * 1.08;
+  for (const edge of [-1, 1]) {
+    const wall = (z: number, bottom: number): SolidSection => ({ z,
+      ring: [[-.0225, bottom], [.0225, bottom], [.0225, .655], [-.0225, .655]] });
+    P.addEquipment('gunMount', part(sectionSolid([
+      wall(-1.10, -.155), wall(-.92, -.215), wall(.97, -.215),
+    ]), 'bank-side-armor'), x + edge * .445, 0, 0);
+  }
+  P.addEquipment('gunMount', part(sectionSolid([
+    { z: -1.10, ring: [[-.445, .63], [.445, .63], [.37, .69], [-.37, .69]] },
+    { z: .97, ring: [[-.445, .63], [.445, .63], [.37, .69], [-.37, .69]] },
+  ]), 'bank-armored-roof'), x, 0, 0);
+  P.addEquipment('gunMount', part(box(.93, .04, 1.91), 'bank-lower-tray'), x, -.195, .015);
+  // The inner fork is beside the bores; the low transverse webs meet saddles.
+  P.addEquipment('gunMount', part(box(.07, .25, .30), 'bank-inner-fork'), side * .655, -.075, 0);
+  for (const z of [-.72, .54]) {
+    P.addEquipment('gunMount', part(box(.91, .04, .08), 'bank-saddle-web'), x, -.16, z);
+    P.addEquipment('gunMount', part(box(.91, .035, .08), 'bank-between-row-web'), x, .22, z);
+  }
+  P.addEquipment('gunMount', part(cylX(.13, .14, P.q ? 24 : 12), 'bank-pitch-journal'), side * .64, 0, 0);
+}
+
+function backupCannon(P: TankBuilderPort): void {
+  const D = ZTZ100_PROTOTYPE_LAUNCHER, n = P.q ? 32 : 16;
+  P.addEquipment('gunMount', part(box(.34, .29, .43), 'backup-mantlet'), 0, 0, -.04);
+  P.addEquipment('gunMount', part(cylZ(.092, .28, n), 'backup-slide-bearing'), 0, 0, .30);
+  P.add('gun', part(cylZ(.062, .80, n), 'backup-receiver'), 0, 0, .45);
+  P.add('gun', part(new THREE.CylinderGeometry(.045, .045, .68, n, 1, true).rotateX(Math.PI / 2), 'backup-barrel'), 0, 0, 1.11);
+  const throat = new THREE.CylinderGeometry(D.backupInnerRadius, D.backupInnerRadius, D.backupDepth, n, 1, true).rotateX(Math.PI / 2);
+  const index = throat.index!;
+  for (let i = 0; i < index.count; i += 3) {
+    const b = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, b);
+  }
+  throat.computeVertexNormals();
+  P.add('gunDark', part(throat, 'backup-inner-wall'), 0, 0, T.gunLen - D.backupDepth / 2);
+  P.add('gun', part(new THREE.RingGeometry(D.backupInnerRadius, D.backupOuterRadius, n), 'backup-mouth'), 0, 0, T.gunLen);
+  P.add('gunDark', part(new THREE.CircleGeometry(D.backupInnerRadius, n), 'backup-backstop'), 0, 0, T.gunLen - D.backupDepth);
+  P.muzzleZ = T.gunLen;
+  P.physicalMuzzleBore = { outerRadiusM: D.backupOuterRadius, innerRadiusM: D.backupInnerRadius, depthM: D.backupDepth };
+}
+
+function sensorsAndHatches(P: TankBuilderPort): void {
+  const n = P.q ? 24 : 12;
+  P.addEquipment('turret', part(cylY(.18, .21, .10, n), 'sensor-bearing'), .23, T.roof + .04, -.10);
+  P.addEquipment('turret', part(box(.31, .31, .32), 'sensor-head'), .23, T.roof + .24, -.10);
+  P.addModuleVisual('optics', 'turretGlass', part(box(.21, .14, .015), 'sensor-front-window'), .23, T.roof + .27, .065);
+  P.addEquipment('turret', part(box(.35, .04, .38), 'sensor-sunshade'), .23, T.roof + .405, -.08);
+  // Offset moving sight sees down the bore direction beside the backup tube.
+  P.addEquipment('gunMount', part(box(.24, .08, .17), 'gunner-sight-foot'), -.18, .11, .10);
+  P.addEquipment('gunMount', part(box(.08, .14, .17), 'gunner-sight-stem'), -.27, .17, .10);
+  P.addEquipment('gunMount', part(box(.28, .16, .26), 'gunner-sight-body'), -.27, .27, .10);
+  P.addModuleVisual('optics', 'gunMountGlass', part(box(.18, .08, .015), 'gunner-sight-window'), -.27, .285, .235);
+  P.addHatch('turret', part(box(.67, .055, .64), 'service-hatch'), 0, T.roof + .0175, -.91);
+  for (const x of [-.23, .23]) P.addEquipment('turret', part(cylX(.045, .15, 10), 'service-hatch-hinge'), x, T.roof + .04, -1.21);
+  P.addEquipment('turretDark', part(box(.23, .025, .045), 'service-hatch-handle'), 0, T.roof + .06, -.64);
+  P.addEquipment('turret', part(cylY(.035, .05, .09, 10), 'antenna-base'), 0, T.roof + .015, -1.39);
+  P.addEquipment('turretDark', part(cylY(.010, .010, .43, 8), 'antenna-stub'), 0, T.roof + .26, -1.39);
 }
 
 function turret(P: TankBuilderPort): void {
-  P.add('turretDark', part(cylY(1.18, 1.24, 0.06, 32), 'ring'), 0, -0.03, 0.10);
-  P.add('turret', part(sectionSolid(TURRET_Z.map(turretSection)), 'turret-body'));
-  for (const s of [-1, 1]) {
-    for (const z of [-1.20, -0.55]) P.add('turretDark', part(box(0.006, T.sideTop - 0.16, 0.02), 'flank-seam'), s * 1.503, 0.42, z);
-    P.add('turretDark', part(box(0.02, 0.006, 1.34), 'roof-seam'), s * 0.76, T.roof + 0.003, -0.77);
+  armoredBody(P);
+  for (const side of [-1, 1]) bankHousing(P, side);
+  for (const x of ZTZ100_PROTOTYPE_LAUNCHER.columns) {
+    for (const y of ZTZ100_PROTOTYPE_LAUNCHER.rows) missileCell(P, x, y);
   }
-  // gun housing, moving mantlet and collar, 105 mm tube with the multi-baffle brake
-  P.add('turret', part(orientedSlab(
-    [-0.58, 0.08, T.housingZ - 0.40], [0.58, 0.08, T.housingZ - 0.40], [0.54, 0.08, T.housingZ + 0.02], [-0.54, 0.08, T.housingZ + 0.02],
-    [-0.40, 0.58, T.housingZ - 0.40], [0.40, 0.58, T.housingZ - 0.40], [0.36, 0.54, T.housingZ + 0.02], [-0.36, 0.54, T.housingZ + 0.02],
-  ), 'gun-housing'));
-  const mantletRing: SectionPoint[] = [[-0.40, -0.22], [0.40, -0.22], [0.30, 0.22], [-0.30, 0.22]];
-  P.addGunExtra(part(sectionSolid([{ z: -0.28, ring: mantletRing }, { z: 0.82, ring: mantletRing.map(([x, y]) => [x * 0.9, y * 0.9] as SectionPoint) }]), 'mantlet'), 0, 0, 0);
-  P.addGunExtraDark(part(cylZ(0.14, 0.14, 24), 'trunnion-collar'), 0, 0, 0.88);
-  // the reference tube leaves the housing in a thick 0.26 m sleeve to hull z 2.3
-  P.addGunExtra(part(cylZ(0.13, 1.10, 24), 'root-sleeve'), 0, 0, 1.50);
-  KIT.buildGun(P, { len: T.gunLen, r: 0.072, brake: true, sleeve: true, evac: 0.50, evacR: 1.5, collar: true, baseR: 0.14 });
-  muzzleBore(P, { len: T.gunLen, r: 0.072, seg: 20 });
-  P.muzzleZ = T.gunLen;
-  P.addGunExtraDark(part(cylZ(0.15, 0.36, 24), 'brake-body'), 0, 0, T.gunLen - 0.20);
-  for (let i = 0; i < 6; i++) P.addGunExtraDark(part(cylZ(0.154, 0.024, 24), 'brake-baffle'), 0, 0, T.gunLen - 0.36 + i * 0.056);
-  P.addGunExtraDark(part(cylZ(0.092, 0.03, 24), 'mrs-collar'), 0, 0, T.gunLen - 0.62);
-  // gunner's sight: a recessed window in the right cheek facet (the reference carries no boxed sight there)
-  P.add('turretDark', part(box(0.26, 0.18, 0.02), 'gunner-sight-frame'), 0.80, 0.42, 1.06, 0, 0.55, 0);
-  P.addModuleVisual('optics', 'turretGlass', part(box(0.20, 0.12, 0.012).rotateY(0.55), 'gunner-sight-glass'), 0.81, 0.42, 1.07);
-  // right-cheek missile bank (measured x 0.437–0.582, y 1.737–1.949, z 0.181–1.341 hull) and its rail
-  P.addEquipment('turret', part(box(0.145, 0.21, 1.16), 'missile-bank'), 0.51, 0.435, 1.31);
-  P.add('turretDark', part(cylZ(0.055, 0.03, 16), 'missile-mouth'), 0.51, 0.435, 1.905);
-  P.add('turretDark', part(box(0.064, 0.06, 0.97), 'missile-rail'), 0.51, 0.57, 1.65);
-  for (const z of [0.85, 1.75]) P.add('turretDark', part(box(0.16, 0.05, 0.06), 'missile-bracket'), 0.51, 0.32, z);
-  // left panoramic sight
-  P.add('turretDetail', part(cylY(0.19, 0.24, 0.05, 28), 'panoramic-bearing'), -0.58, T.roof + 0.025, 0.45);
-  P.add('turret', part(cylY(0.17, 0.17, 0.16, 28), 'panoramic-drum'), -0.58, T.roof + 0.13, 0.45);
-  P.addEquipment('turret', part(box(0.30, 0.24, 0.30), 'panoramic-head'), -0.58, T.roof + 0.33, 0.45);
-  P.addModuleVisual('optics', 'turretGlass', part(box(0.20, 0.14, 0.012), 'panoramic-glass'), -0.58, T.roof + 0.35, 0.606);
-  P.add('turretDetail', part(cylY(0.05, 0.05, 0.02, 20), 'panoramic-cap'), -0.58, T.roof + 0.46, 0.45);
-  tower(P, -1);
-  tower(P, 1);
-  weaponStation(P);
-  for (const s of [-1, 1]) {
-    P.addCupola('turret', part(cylY(0.26, 0.28, 0.05, 28), 'roof-hatch'), s * 0.42, T.roof + 0.025, -1.05);
-    P.add('turretDark', part(torus(0.27, 0.012, 28), 'roof-hatch-ring'), s * 0.42, T.roof + 0.05, -1.05, Math.PI / 2, 0, 0);
-    P.add('turretDark', part(box(0.12, 0.03, 0.03), 'roof-hatch-handle'), s * 0.42, T.roof + 0.06, -0.80);
-    for (let i = 0; i < 4; i++) {
-      const a = -0.6 + i * 0.4;
-      KIT.periscope(P, 'turretDetail', s * 0.42 + Math.sin(a) * 0.36, T.roof + 0.02, -1.05 + Math.cos(a) * 0.36, a);
-    }
-    // smoke discharger banks on the cheeks, stowage boxes on the bustle flanks, rails, lifting eyes, corner receivers
-    P.add('turretDark', part(box(0.08, 0.06, 0.40), 'smoke-base'), s * 1.06, T.shelf + 0.03, 0.22, 0, s * 0.5, 0);
-    for (let i = 0; i < 4; i++) {
-      const dz = -0.14 + i * 0.093;
-      P.add('turretDark', part(cylZ(0.034, 0.28, 12).rotateX(-0.55).translate(0, 0.11, dz), 'smoke-tube'), s * 1.06, T.shelf + 0.05, 0.22, 0, s * 0.5, 0);
-      P.add('turretDark', part(cylZ(0.038, 0.012, 12).rotateX(-0.55).translate(0, 0.185, dz + 0.12), 'smoke-cap'), s * 1.06, T.shelf + 0.05, 0.22, 0, s * 0.5, 0);
-    }
-    P.addEquipment('turret', part(box(0.12, 0.30, 0.44), 'stowage-box'), s * 0.97, 0.36, -1.75);
-    for (const dy of [-0.10, 0.10]) P.add('turretDark', part(cylX(0.012, 0.018, 8), 'stowage-bolt'), s * 1.035, 0.36 + dy, -1.75);
-    P.add('turretDark', part(cylZ(0.012, 1.10, 8), 'roof-rail'), s * 0.62, T.roof + 0.10, -1.30);
-    for (const z of [-1.80, -1.30, -0.80]) P.add('turretDark', part(box(0.024, 0.10, 0.024), 'roof-rail-post'), s * 0.62, T.roof + 0.05, z);
-    KIT.liftEye(P, 'turretDetail', s * 0.66, T.roof + 0.02, 0.10);
-    KIT.liftEye(P, 'turretDetail', s * 0.50, T.roof + 0.02, -1.95);
-    P.addEquipment('turret', part(box(0.12, 0.12, 0.10), 'corner-receiver'), s * 1.02, T.shelf + 0.06, -1.62, 0, s * 0.4, 0);
-    P.addModuleVisual('optics', 'turretGlass', part(box(0.05, 0.05, 0.01).rotateY(s * 0.4), 'corner-receiver-glass'), s * 1.02 + s * 0.02, T.shelf + 0.06, -1.57);
-  }
-  louvreField(P, 'turret', 'bustle-grille', [0, 0.40, -2.06], 1.40, 0.36, 5, 'aft');
-  // side bins: the reference's pod bodies run on behind the shoulder to hull z −3.19 (measured x 0.91–1.51, y 1.64–2.14)
-  for (const s of [-1, 1]) {
-    P.addEquipment('turret', part(box(0.60, 0.50, 1.20), 'bustle-basket'), s * 1.21, 0.48, -2.04);
-    for (let i = 0; i < 4; i++) P.add('turretDark', part(box(0.012, 0.012, 1.18), 'bustle-basket-slat'), s * 1.516, 0.30 + i * 0.12, -2.04);
-    for (const dz of [-0.45, 0, 0.45]) P.add('turretDark', part(box(0.62, 0.02, 0.02), 'bustle-basket-slat'), s * 1.21, 0.735, -2.04 + dz);
-  }
-  P.add('turretDark', part(cylY(0.08, 0.09, 0.06, 16), 'gps-dome'), 0.30, T.roof + 0.03, -1.60);
-  P.add('turretDark', part(cylY(0.012, 0.012, 0.50, 8), 'met-mast'), -0.95, T.shelf + 0.25, -1.25);
-  P.add('turretDark', part(cylY(0.03, 0.03, 0.04, 12), 'met-mast-head'), -0.95, T.shelf + 0.52, -1.25);
-  // the reference carries no whips: stub antennas on pots keep the measured 3.04 m silhouette
-  for (const [x, z, h] of [[-0.50, -1.98, 0.32], [0.50, -1.98, 0.28]] as const) {
-    P.add('turretDark', part(cylY(0.038, 0.05, 0.09, 10), 'antenna-pot'), x, T.roof + 0.045, z);
-    P.add('turretDark', part(cylY(0.010, 0.012, h, 8), 'antenna-stub'), x, T.roof + 0.09 + h / 2, z);
-  }
-  P.topY = Math.max(P.topY || 0, T.roof + 0.73);
+  backupCannon(P);
+  sensorsAndHatches(P);
+  P.topY = 1.33;
 }
 
 function buildZtz100Prototype(P: TankBuilderPort): void {
@@ -446,12 +387,12 @@ function buildZtz100Prototype(P: TankBuilderPort): void {
   for (const s of [-1, 1]) {
     P.decal('hull', 'star', null, 0.22, [s * (H.skirtFwd + 0.012), 1.06, 0.60], s * -Math.PI / 2);
     P.decal('hull', 'number', P.spec.visual.number || '100', 0.26, [s * (H.skirtAft + 0.012), 1.06, -1.30], s * -Math.PI / 2);
-    P.decal('turret', 'star', null, 0.18, [s * 1.512, 0.40, -0.90], s * -Math.PI / 2);
   }
   if (P.geometryReceipt) {
     P.hullG.userData.ztz100Receipt = Object.freeze({
-      architecture: 'ztz100-x-r2', datums: ZTZ100_PROTOTYPE_DATUMS, hullStations: HULL_Z.length, turretStations: TURRET_Z.length,
-      roadWheelsPerSide: 7, gunLengthM: T.gunLen, rwsTopM: T.roof + 0.73, pivot: [0, T.pivotY, T.pivotZ], trunnion: [0, T.gunY, T.gunZ],
+      architecture: 'ztz100-prototype-missile-concept', datums: ZTZ100_PROTOTYPE_DATUMS, hullStations: HULL_Z.length,
+      launcherTubesByWeapon: { 'HJ-P9 Tandem': 8, 'HJ-P9 Blast': 8 }, physicalLauncherTubes: 8,
+      roadWheelsPerSide: 7, gunLengthM: T.gunLen, launcherTopM: 2.74, pivot: [0, T.pivotY, T.pivotZ], trunnion: [0, T.gunY, T.gunZ],
     });
   }
 }

@@ -37,6 +37,11 @@ type InternalCrewTuple = readonly [
 ];
 
 export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
+  ownerMissileConcepts: Object.freeze({
+    title: 'Owner-authored ZTZ-100 Prototype and Object 695 missile turret designs, 2026-09-19',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/missile-turrets-20260919.json',
+    kind: 'owner-authored-concept',
+  }),
   bundeswehrLeopard: Object.freeze({
     title: 'Bundeswehr — Leopard 2 anatomy and equipment',
     url: 'https://www.bundeswehr.de/de/meldungen/64-tonnen-kampfkraft-leopard-2-bundeswehr-5569556',
@@ -431,6 +436,12 @@ const LAYOUTS = Object.freeze({
       transmission: { placement: 'front', form: 'integratedFinalDrive' },
       ammoRack: { placement: 'mixed', form: 'hullAndTurretReadyRacks' },
     }) },
+  conceptMissilePrototype: { confidence: 'owner-directed', sources: ['ownerMissileConcepts'], crew: crew(
+    ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ ammoRack: { placement: 'hull', form: 'protectedReadyBins' }, feedSystem: { placement: 'turret', form: 'cannonBeltFeed' }, missileRack: { placement: 'turret', form: 'eightCanisterLauncher' } }) },
+  conceptMissileHunter: { confidence: 'owner-directed', sources: ['ownerMissileConcepts'], crew: crew(
+    ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
+  ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'hull', form: 'cannonBeltBoxes' }, feedSystem: { placement: 'turret', form: 'cannonBeltFeed' }, missileRack: { placement: 'turret', form: 'twelveCanisterLauncher' } }) },
   suppliedUnmannedIfv: { confidence: 'platform-inferred', sources: ['awKurganetsStudy'], crew: crew(
     ['driver', 'hull', 'frontLeft'], ['gunner', 'hull', 'midRight'], ['commander', 'hull', 'midLeft'],
   ), systems: systems({ engine: { placement: 'front', form: 'frontDieselPowerpack' }, transmission: { placement: 'front', form: 'integratedFinalDrive' }, ammoRack: { placement: 'turret', form: 'ifvAmmoBoxes' }, feedSystem: { placement: 'turret', form: 'inferredAutomaticFeed' }, missileRack: { placement: 'turret', form: 'launcherReadyRounds' } }) },
@@ -471,7 +482,7 @@ const IDS_BY_LAYOUT = Object.freeze({
   sovietManual: ['t62mv1_x', 't62mv1'],
   sovietAz: ['type96b_x', 't90ms_x', 't90a_burlak_x', 't90_x', 't72bu_x', 't72b3m_x', 't72b3_x', 't72b_1987_x', 't72b3m', 't72bu', 'pt91m', 't90', 't90a', 't90a_vladimir', 't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv', 'type99a', 'ztz99a2_prototype', 'ztz99a2', 't72m1_jaguar', 'pt91_twardy', 't90a_x', 't90a_vladimir_x', 't90m_x', 't90sm_x'],
   sovietMz: ['t80u_x', 't64bv1', 't80', 't80b', 't80bv', 't80u', 't84', 'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m'],
-  bustleAuto: ['type90_x', 'type10_x', 'leclerc_x', 'leclerc_classic_x', 'k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56', 'vt4a1', 'k2_x', 'type100', 'ztz100_x', 'ztz100_prototype'],
+  bustleAuto: ['type90_x', 'type10_x', 'leclerc_x', 'leclerc_classic_x', 'k2', 'k2b', 'type90', 'type90a', 'type10', 'type10b', 'leclerc', 'leclerc_xlr', 'amx56', 'vt4a1', 'k2_x', 'type100', 'ztz100_x'],
   fixedAuto: ['udes03', 'strv103a', 'strv103'],
   mbt70: ['mbt70'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],
@@ -494,7 +505,9 @@ const IDS_BY_LAYOUT = Object.freeze({
   suppliedK21: ['k21_x'],
   suppliedCv90Mkiv: ['cv90_mkiv_x'],
   suppliedCv90105Tml: ['cv90105_tml_x'],
-  suppliedUnmannedIfv: ['kurganets25_x', 'object695_x'],
+  suppliedUnmannedIfv: ['kurganets25_x'],
+  conceptMissilePrototype: ['ztz100_prototype'],
+  conceptMissileHunter: ['object695_x'],
   suppliedGriffin50: ['griffin50_x'],
   suppliedMissileCarrier: ['aft10_x'],
   suppliedFrontAutoloader: ['bmp3m_dragun125_x'],

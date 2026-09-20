@@ -163,11 +163,11 @@ interface SoloVisual {
   syncFromState(state: TankState): void;
   resetDestroyed?(): void;
   dispose(): void;
-  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number): void;
+  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): void;
   gunDirWorld(out: THREE.Vector3): void;
   gunPivotWorld(out: THREE.Vector3): void;
   turretTopWorld(out: THREE.Vector3): void;
-  recoilKick(amount?: number, scale?: number, muzzleIndex?: number): void;
+  recoilKick(amount?: number, scale?: number, muzzleIndex?: number, guided?: boolean): void;
   setDestroyed(options: { pop: boolean }): void;
 }
 
@@ -1749,17 +1749,22 @@ function readyShellForFire(
   return null;
 }
 
-function prepareMuzzleDirection(entity: SoloEntity): number | null {
-  const muzzles = entity.spec.gun.muzzles;
+function prepareMuzzleDirection(entity: SoloEntity, shell: DamageShellSpec): number | null {
+  const visual = entity.visual;
+  if (!visual) return null;
+  const launchers = shell.guided && entity.spec.gun.launcherMuzzles?.length
+    ? entity.spec.gun.launcherMuzzles : null;
+  const muzzles = launchers ?? entity.spec.gun.muzzles;
   let muzzleIndex = -1;
-  if (Array.isArray(muzzles) && muzzles.length > 1) {
+  if (launchers) {
+    muzzleIndex = (entity.combat.launcherCursor ?? 0) % launchers.length;
+    entity.combat.launcherCursor = (muzzleIndex + 1) % launchers.length;
+  } else if (Array.isArray(muzzles) && muzzles.length > 1) {
     muzzleIndex = (entity.combat.muzzleCursor || 0) % muzzles.length;
     entity.combat.muzzleCursor = muzzleIndex + 1;
   }
-  const visual = entity.visual;
-  if (!visual) return null;
   const selectedMuzzle = muzzleIndex >= 0 ? muzzleIndex : undefined;
-  visual.gunMuzzleWorld(_muzzle, selectedMuzzle);
+  visual.gunMuzzleWorld(_muzzle, selectedMuzzle, shell.guided === true);
   visual.gunDirWorld(_dir);
   return muzzleIndex;
 }
@@ -1776,6 +1781,7 @@ function applyShotFeedback(
     0,
     recoilScale,
     muzzleIndex >= 0 ? muzzleIndex : undefined,
+    shell.guided === true,
   );
   if (!entity.isPlayer || !rig) return;
   const caliberScale = Math.max(0, Math.min(1, (shell.caliberMm - 30) / 122));
@@ -1842,7 +1848,7 @@ function tryFire(
 ): void {
   const shellSpec = readyShellForFire(entity, bus);
   if (!shellSpec) return;
-  const muzzleIndex = prepareMuzzleDirection(entity);
+  const muzzleIndex = prepareMuzzleDirection(entity, shellSpec);
   if (muzzleIndex == null) return;
   let dispersion = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
   if (mainWeaponModuleState(entity.combat) === 'yellow') dispersion *= 2;

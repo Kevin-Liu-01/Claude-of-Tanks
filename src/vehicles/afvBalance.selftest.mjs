@@ -33,8 +33,8 @@ const EXPECTED = Object.freeze({
   k21_x:             { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: [500, 'jyu-mat-launch'] },
   ajax_x:            { hp: 2425, speed: 70, reverse: 40, traverse: 49, damage: 115, pen: [210, 192, 174], reload: 0.44, sound: 'bofors-40', missile: null },
   cv90_mkiv_x:       { hp: 2825, speed: 74, reverse: 42, traverse: 52, damage: 120, pen: [240, 220, 200], reload: 0.46, sound: 'kde-35', missile: [720, 'jyu-mat-launch'] },
-  // 2026-09-17 owner: the Object 695 carries the fleet's fastest, hardest-hitting belt ("a machine gun that's very powerful")
-  object695_x:      { hp: 2650, speed: 80, reverse: 34, traverse: 56, damage: 88, pen: [265, 245, 225], reload: 0.26, sound: '2a42', missile: [760, 'konkurs-launch'] },
+  // 2026-09-19 owner: missile-primary Object concept trades protection for handling.
+  object695_x:      { hp: 2150, speed: 84, reverse: 36, traverse: 60, damage: 560, pen: [1050, 1050, 1050], reload: 5.8, sound: 'konkurs-launch', missile: [560, 'konkurs-launch'] },
   namer_ifv:           { hp: 2650, speed: 54, reverse: 20, traverse: 34, damage: 70, pen: [180, 164, 148], reload: 0.35, sound: 'mk30-2', missile: null },
   ares_apc_x:          { hp: 1800, speed: 70, reverse: 30, traverse: 45, damage: 24, pen: [34, 24, 17], reload: 0.14, sound: 'heavy-machine-gun', missile: null },
 });
@@ -79,7 +79,7 @@ for (const id of ifvIds) {
     assert.ok(guided, `${id}: guided weapon exists`);
     assert.equal(guided.dmg, expected.missile[0], `${id}: guided damage`);
     assert.equal(guided.soundProfile, expected.missile[1], `${id}: launcher report`);
-    assert.ok(guided.reloadS >= 2 && guided.reloadS <= 3,
+    assert.ok(id === 'object695_x' ? guided.reloadS === 5.8 : guided.reloadS >= 2 && guided.reloadS <= 3,
       `${id}: guided launcher cycles independently in 2-3 seconds`);
     missileDamage.add(guided.dmg);
   } else {

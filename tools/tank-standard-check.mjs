@@ -1,3 +1,6 @@
+import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
+import {createHash} from 'node:crypto';
+import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceiptPassed,CONCEPT_DESIGN_PATH} from './first-party-concept-policy.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { strictTrackClipPassed } from './track-clip-result.mjs';
 import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
@@ -35,6 +38,7 @@ import path from 'node:path';
 const { configurations } = JSON.parse(readFileSync(new URL('../docs/references/batches/supplied-afv-configurations.json', import.meta.url), 'utf8'));
 const sourceReceipts = new Map();
 const openingReports = new Map();
+const conceptReports = new Map();
 
 const idArg = process.argv.find((a) => a.startsWith('--ids='));
 const wantFixture = process.argv.includes('--fixture');
@@ -44,6 +48,7 @@ if (!idArg && !wantFixture) {
 }
 const ids = idArg ? idArg.slice(6).split(',') : [];
 if (ids.some(id=>!/^[a-z0-9_]+$/.test(id)) || new Set(ids).size!==ids.length) throw new Error('Expected unique tank IDs');
+if (ids.length) validateSelectedIds(ids,Object.keys(FLEET_GROUP_BY_ID));
 const reportRoot=path.resolve(process.argv.find(arg=>arg.startsWith('--out='))?.slice(6) || '.qa-dev/reports/tank-standard');
 const forceGate = process.argv.includes('--gate');
 const noRender = process.argv.includes('--no-render');
@@ -63,6 +68,20 @@ if (forceGate && ids.length) {
   // hard release failure rather than treating it as a procedural-only ID.
   freshGateStartedAt = Date.now();
   await runCapturedCommand(process.execPath, ['tools/geometry-gate.mjs', `--ids=${ids.join(',')}`, '--check']);
+}
+
+// Fresh native design proof replaces ONLY obsolete comparison assertions.
+const conceptStartedAt=Date.now();
+const conceptIds=partitionConceptIds(ids).concepts;
+const conceptDesignHash=createHash('sha256').update(readFileSync(CONCEPT_DESIGN_PATH)).digest('hex');
+if(conceptIds.length) {
+  const out=path.join(reportRoot,'concepts');
+  await runCapturedCommand(process.execPath,['tools/first-party-concept-check.mjs',`--ids=${conceptIds.join(',')}`,`--out=${out}`]);
+  for(const id of conceptIds) {
+    const report=JSON.parse(readFileSync(path.join(out,`${id}.json`),'utf8'));
+    if(!conceptReceiptPassed(id,report,conceptStartedAt,conceptDesignHash))throw new Error(`${id}: missing/stale concept proof`);
+    conceptReports.set(id,report);
+  }
 }
 
 // --- phase 1: containment (one batched run; manages its own lock) -----------
@@ -136,6 +155,7 @@ if ((ids.length && !noRender) || wantFixture) {
       writeFileSync(path.join(reportRoot,`${id}.json`),JSON.stringify({
         id,recordedAt:new Date().toISOString(),standard:result,
         sourceReceipt,configuration:configuration??null,
+        concept:conceptReports.get(id)??null,
         equipment:roofEquipmentVerdict(id,result.census,configuration,sourceReceipt),
         continuity:openingReports.get(id),
       },null,2)+'\n');
@@ -174,7 +194,8 @@ for (const id of ids) {
   let gateRequired = 90;
   let gateApplicable = false;
   let exactGatePassed = false;
-  try {
+  const concept=firstPartyConcept(id);
+  if(!concept)try {
     const p = `docs/geometry-gate/${id}.json`;
     const j = JSON.parse(readFileSync(p, 'utf8'));
     const packetMtime = statSync(p).mtimeMs;
@@ -191,9 +212,10 @@ for (const id of ids) {
   const cl = clip.get(id);
   const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
   const clipOk = strictTrackClipPassed(cl);
-  const gateOk = forceGate
-    ? gateApplicable && exactGatePassed
-    : !gateApplicable || exactGatePassed;
+  const gateOk = concept
+    ? conceptReceiptPassed(id,conceptReports.get(id),conceptStartedAt,conceptDesignHash)
+    : forceGate ? gateApplicable && exactGatePassed : !gateApplicable || exactGatePassed;
+  if(concept){row='concept: comparison N/A';gateRequired='N/A';}
 
   const st = standard.get(id);
   let contigStr = 'SKIP', decorStr = 'SKIP', contigOk = true, decorOk = true;

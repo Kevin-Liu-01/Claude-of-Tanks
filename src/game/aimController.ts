@@ -31,6 +31,7 @@ interface AimCombat {
   reload: { t: number; totalS: number; kind?: string };
   magazine?: { rounds?: number; capacity?: number } | null;
   shellSlot: number;
+  launcherCursor?: number;
   ammo?: number[];
 }
 
@@ -38,7 +39,7 @@ interface AimSpec {
   hydropneumaticAim?: HydropneumaticAim;
   dims: { heightM: number };
   armor: ArmorModel & { boundingRadiusM: number };
-  gun: { baseAccuracy: number; shells: DamageShellSpec[] };
+  gun: { baseAccuracy: number; shells: DamageShellSpec[]; launcherMuzzles?: readonly { x: number; y: number; z: number }[] };
 }
 
 interface ArmorTraceHit {
@@ -55,7 +56,7 @@ interface AimArmorInfo {
 }
 
 interface AimVisual {
-  gunMuzzleWorld(out: THREE.Vector3): void;
+  gunMuzzleWorld(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): void;
   gunDirWorld(out: THREE.Vector3): void;
 }
 
@@ -268,7 +269,9 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     if (!player.visual) {
       throw new Error('gun-center ray requires an active tank visual');
     }
-    player.visual.gunMuzzleWorld(outOrigin);
+    const shell = player.spec.gun.shells[player.combat?.shellSlot ?? 0];
+    const guided = shell?.guided === true && !!player.spec.gun.launcherMuzzles?.length;
+    player.visual.gunMuzzleWorld(outOrigin, guided ? player.combat?.launcherCursor ?? 0 : undefined, guided);
     player.visual.gunDirWorld(outDir);
     const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
     outTarget.copy(outOrigin).addScaledVector(outDir, rangeM);

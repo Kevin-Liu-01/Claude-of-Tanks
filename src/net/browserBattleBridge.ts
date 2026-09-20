@@ -57,8 +57,8 @@ interface TankVisual {
   setVisible(visible: boolean): void;
   syncFromState(state: BridgeTankState, dt: number): void;
   dispose(): void;
-  recoilKick?(dt: number, scale: number): number | null;
-  gunMuzzleWorld?(target: Vector3, muzzleIndex: number): Vector3;
+  recoilKick?(dt: number, scale: number, muzzleIndex?: number, guided?: boolean): number | null;
+  gunMuzzleWorld?(target: Vector3, muzzleIndex: number, guided?: boolean): Vector3;
   gunDirWorld?(target: Vector3): Vector3;
   stripEra?(plateName: string): void;
   resetEra?(): void;
@@ -387,6 +387,13 @@ export function createBrowserBattleBridge<
   > | null = null;
   const destructionCause = new Map<string, string>();
   const shotPrediction = new LocalShotPrediction();
+  let lastLauncherShellId = -1;
+  function resetShotPresentation(): void {
+    shotPrediction.reset();
+    const own = entities.get(id);
+    if (own) own.combat.launcherCursor = 0;
+    lastLauncherShellId = -1;
+  }
   const ammoSelection = new LocalAmmoSelectionIntent();
   function resetAmmoSelection(): void {
     ammoSelection.reset();
@@ -919,7 +926,28 @@ export function createBrowserBattleBridge<
     game.shells = liveShells;
   }
 
+  function authoritativeLauncherIndex(shooter: BridgeEntity, event: BridgeEvent): number | null {
+    const count = shooter.spec.gun.launcherMuzzles?.length ?? 0;
+    const round = shooter.spec.gun.shells.find(shell => shell.name === event.shellName);
+    const index = event.muzzleIndex;
+    return count > 0 && round?.guided === true && typeof index === 'number'
+      && Number.isInteger(index) && index >= 0 && index < count ? index : null;
+  }
+
+  function rememberLauncherAuthority(event: BridgeEvent): void {
+    if (event.type !== 'shell_fired' || event.shooterId !== id) return;
+    const own = entities.get(id);
+    if (!own || own.combat.destroyed) return;
+    const index = authoritativeLauncherIndex(own, event);
+    const shellId = event.shellId;
+    if (index === null || typeof shellId !== 'number' || !Number.isSafeInteger(shellId)
+        || shellId <= lastLauncherShellId) return;
+    lastLauncherShellId = shellId;
+    own.combat.launcherCursor = (index + 1) % own.spec.gun.launcherMuzzles!.length;
+  }
+
   function emitShellFired(event: BridgeEvent): void {
+    rememberLauncherAuthority(event);
     const shooter = entities.get(String(event.shooterId || ''));
     const predicted = event.shooterId === id
       ? shotPrediction.confirm(event.fireIntentSeq, event.shellSlot) : null;
@@ -930,10 +958,11 @@ export function createBrowserBattleBridge<
       const shells = shooter.spec?.gun?.shells || [];
       shellSpec = shells.find((shell) => shell.name === event.shellName)
         || shells.find((shell) => shell.type === event.shellType) || null;
-      muzzleIndex = predicted ? predicted.muzzleIndex
-        : shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec));
+      const authoritativeIndex = authoritativeLauncherIndex(shooter, event);
+      muzzleIndex = predicted ? authoritativeIndex ?? predicted.muzzleIndex
+        : shooter.visual.recoilKick(0, recoilScale(shooter.spec, shellSpec), authoritativeIndex ?? undefined, shellSpec?.guided === true);
       if (muzzleIndex != null && shooter.visual.gunMuzzleWorld) {
-        shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex);
+        shooter.visual.gunMuzzleWorld(_muzzleTip, muzzleIndex, shellSpec?.guided === true);
         muzzlePos = [_muzzleTip.x, _muzzleTip.y, _muzzleTip.z];
       }
     }
@@ -964,7 +993,7 @@ export function createBrowserBattleBridge<
     if (spectator || !own || !raw) return;
     if (immediate.tick <= shotPrediction.authorityTick) return;
     const alive = raw.hp > 0 && !(raw.flags & SNAPSHOT_FLAGS.DESTROYED);
-    if (shotLifeAlive !== null && alive !== shotLifeAlive) shotPrediction.reset();
+    if (shotLifeAlive !== null && alive !== shotLifeAlive) resetShotPresentation();
     shotLifeAlive = alive;
     const shell = own.spec.gun.shells[raw.shellSlot];
     shotPrediction.observe({ tick: immediate.tick, alive,
@@ -987,8 +1016,9 @@ export function createBrowserBattleBridge<
     const prediction = shotPrediction.predict(context.fireIntentSeq, slot,
       context.nowMs, context.authorityReceivedAtMs);
     if (!prediction) return false;
-    prediction.muzzleIndex = own.visual.recoilKick?.(0, recoilScale(own.spec, shell)) ?? -1;
-    own.visual.gunMuzzleWorld(_muzzleTip, prediction.muzzleIndex);
+    const launcherIndex = shell.guided && own.spec.gun.launcherMuzzles?.length ? own.combat.launcherCursor ?? 0 : undefined;
+    prediction.muzzleIndex = own.visual.recoilKick?.(0, recoilScale(own.spec, shell), launcherIndex, shell.guided === true) ?? -1;
+    own.visual.gunMuzzleWorld(_muzzleTip, prediction.muzzleIndex, shell.guided === true);
     own.visual.gunDirWorld(_predictedShotDirection);
     bus.emit('weapon:predicted', {
       fireIntentSeq: prediction.intentSeq, shooterId: id, isPlayer: true,
@@ -1205,13 +1235,14 @@ export function createBrowserBattleBridge<
         (round === presentationRound && snapshot.tick < backgroundSnapshotTick)) return;
     if (round > presentationRound) {
       destructionCause.clear();
-      shotPrediction.reset();
+      resetShotPresentation();
       resetAmmoSelection();
       shotLifeAlive = null;
       backgroundAliveThroughTime.clear();
       presentationRound = round;
     }
     backgroundSnapshotTick = snapshot.tick;
+    for (const event of events) rememberLauncherAuthority(event as BridgeEvent);
     // Preserve only lifecycle metadata, never emit an effect or touch a visual.
     // A live sample ends the preceding life, so late destruction events cannot
     // attach an old ammo-rack pop to a repaired/respawned tank.
@@ -1307,7 +1338,7 @@ export function createBrowserBattleBridge<
     if (round < presentationRound) return false;
     if (round > presentationRound) {
       destructionCause.clear();
-      shotPrediction.reset();
+      resetShotPresentation();
       resetAmmoSelection();
       shotLifeAlive = null;
       backgroundAliveThroughTime.clear();
@@ -1322,7 +1353,9 @@ export function createBrowserBattleBridge<
     updateShells(snapshot.shells);
     // True shell registration must precede any zero-flight/late impact in the
     // normal queue. Fresh life/weapon state is already reconciled above.
+    for (const event of reliableEvents) rememberLauncherAuthority(event as BridgeEvent);
     if (localShots) {
+      for (const event of localShots.events) rememberLauncherAuthority(event as BridgeEvent);
       if (localShots.input) predictLocalShot(localShots.input, localShots.context);
       playLocalConfirmedShots(localShots.events);
     }
@@ -1496,7 +1529,7 @@ export function createBrowserBattleBridge<
     visibleRoster.length = 0;
     liveShells.length = 0;
     shellById.clear();
-    shotPrediction.reset();
+    resetShotPresentation();
     resetAmmoSelection();
     destructionCause.clear();
     backgroundAliveThroughTime.clear();

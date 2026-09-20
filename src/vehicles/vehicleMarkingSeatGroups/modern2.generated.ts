@@ -492,11 +492,11 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       {
         "kind": "insignia",
         "parent": "turret",
-        "size": 0.26,
+        "size": 0.24,
         "pos": [
-          -1.476,
-          0.3361,
-          -0.3625
+          -0.606,
+          0.2726,
+          -1.0728
         ],
         "quaternion": [
           0,
@@ -509,22 +509,22 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0
+        "maximumSurfaceErrorM": 0.0008696
       },
       {
         "kind": "designation",
         "parent": "turret",
-        "size": 0.26,
+        "size": 0.24,
         "pos": [
-          -1.2626946,
-          0.3361,
-          0.0543589
+          -0.606,
+          0.2726,
+          -0.7384
         ],
         "quaternion": [
           0,
-          -0.3698186,
+          -0.7071068,
           0,
-          0.929104
+          0.7071068
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ztz100_prototype",
@@ -682,47 +682,47 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "insignia",
-        "parent": "turret",
+        "parent": "hull",
         "size": 0.26,
         "pos": [
-          -1.1036436,
-          0.5588408,
-          -0.8619152
+          -1.996,
+          1.4076,
+          0.75
         ],
         "quaternion": [
-          -0.0939261,
-          -0.6957785,
-          -0.0952638,
-          0.7056876
+          0,
+          -0.7071068,
+          0,
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hullExternalArmor",
         "anchorProfile": "object695_x",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0016095
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
-        "parent": "turret",
+        "parent": "hull",
         "size": 0.26,
         "pos": [
-          -0.8422095,
-          0.168,
-          -0.5618415
+          -1.996,
+          1.4076,
+          1.52825
         ],
         "quaternion": [
           0,
-          0.8870108,
+          -0.7071068,
           0,
-          -0.4617486
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hullExternalArmor",
         "anchorProfile": "object695_x",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.001342
+        "maximumSurfaceErrorM": 0
       }
     ]
   }

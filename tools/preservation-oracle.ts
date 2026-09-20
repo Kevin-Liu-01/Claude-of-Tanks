@@ -8,7 +8,8 @@ export const REVOLUTION_PROTO_BASELINE = Object.freeze({
   geometrySha256: '305ff0250dea38d45a53738d775686727300440890467023e5fb7e8e94711f38',
 });
 
-// Owner 2026-09-19 requested the pre-547457932 ZTZ-100 as a separate model.
+// Retired historical record: the later owner missile-concept request supersedes this turret target.
+// Owner 2026-09-19 initially requested the pre-547457932 ZTZ-100 as a separate model.
 // Exported by export-first-party-preservation.mjs from a clean detached 31d08
 // checkout, not from the restored prototype candidate or the newer source GLB.
 export const ZTZ100_PROTOTYPE_BASELINE = Object.freeze({
@@ -26,7 +27,6 @@ interface PreservationBaseline {
 }
 const PRESERVATION_BASELINES: Readonly<Record<string, PreservationBaseline>> = Object.freeze({
   leo2_revolution_proto: REVOLUTION_PROTO_BASELINE,
-  ztz100_prototype: ZTZ100_PROTOTYPE_BASELINE,
 });
 
 export interface PreservationSource {

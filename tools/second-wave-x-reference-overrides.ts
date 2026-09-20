@@ -7,13 +7,6 @@ export const SECOND_WAVE_X_REFERENCE_OVERRIDES = {
     // The supplied-source batch requires 92 in every view; prior 90-floor receipts remain historical.
     fixedMount:true,componentMasks:false,geometryComponentMasks:false,
   }},
-  object695_x: {source:'glb',qualityBar:'exemplar',glb:{
-    path:'/models/community-candidates/object695_x_epokha_20260919.glb',
-    // Original Object hull/gear plus nine complete Epokha source owners.
-    // The source-only recipe restores their source scale and seats them at
-    // the retained ring. Whole views retain the existing exemplar floor92.
-    fixedMount:true,componentMasks:false,geometryComponentMasks:false,
-  }},
   strv122_x: {source:'glb',qualityBar:'exemplar',glb:{
     path:'/models/community-candidates/strv122_x_source.glb',
     // All18 original fused chunks retained. Mixed material owners cannot

@@ -712,3 +712,89 @@ const fullCachedRoster = Object.freeze(Array.from({ length: 14 }, (_, index) => 
 }
 
 console.log('browserBattleBridge.selftest: hidden authority-pose reveal and roster scheduling passed');
+
+// A speculative launcher flash cannot consume an authoritative tube. The
+// server may reject a shot, or confirm a different index after late events.
+{
+  const hybridGame = { tanks: [], tankById: new Map(), player: null, shells: [],
+    spotting: null, timeS: 0, preBattleS: 0, result: null, resultReason: null };
+  const feedback = [], kicks = [];
+  let implicitCursor = 0;
+  const hybrid = createBrowserBattleBridge({ engineCtx: { scene }, game: hybridGame,
+    bus: { emit(type, payload) { feedback.push({ type, payload }); } }, viewerId: 'guest',
+    prepareVisualTextures: async () => {},
+    createTankVisual() { return {
+      root: { position: new Vector3() }, setVisible() {}, syncFromState() {}, dispose() {},
+      recoilKick(age, scale, index, guided) {
+        kicks.push({ index, guided });
+        return guided ? index ?? implicitCursor++ : 0;
+      },
+      gunMuzzleWorld(out, index) { return out.set(20 + index, 3, -8); },
+      gunDirWorld(out) { return out.set(0, 0, 1); },
+    }; },
+  });
+  const own = { ...entity('guest', 'alpha', 0, 0), ammo0: 10, ammo1: 10, ammo2: 10 };
+  const frame = { tick: 0, serverTimeMs: 0, entities: [own], shells: [],
+    meta: { phase: 'playing', roomRound: 0 }, immediateAuthority: { tick: 0, serverTimeMs: 0,
+      ackInputSeq: null, entity: own, predictionState: mobility } };
+  hybrid.apply(frame);
+  const original = hybridGame.player.spec;
+  hybridGame.player.spec = { ...original, gun: { ...original.gun,
+    launcherMuzzles: Array.from({ length: 8 }, (_, index) => ({ x: index, y: 0, z: 0 })),
+    shells: original.gun.shells.map((shell, slot) => ({ ...shell, guided: slot < 2,
+      name: slot < 2 ? `rack-${slot}` : 'backup' })),
+  } };
+  const step = (intent = null, events = []) => {
+    frame.tick++; frame.immediateAuthority.tick = frame.tick;
+    frame.serverTimeMs = frame.immediateAuthority.serverTimeMs = frame.tick * 50;
+    hybrid.apply(frame, 0, [], { input: intent === null ? null : { fire: true, shellSlot: own.shellSlot },
+      context: { supported: true, fireIntentSeq: intent, nowMs: frame.serverTimeMs,
+        authorityReceivedAtMs: frame.serverTimeMs }, events });
+  };
+  const fired = (shellId, index, intent, slot = 0) => ({ type: 'shell_fired', shooterId: 'guest',
+    shellId, shellSlot: slot, shellName: slot === 2 ? 'backup' : `rack-${slot}`,
+    shellType: 'HEAT', muzzleIndex: index, fireIntentSeq: intent,
+    x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 1 });
+  const lastPrediction = () => feedback.findLast(event => event.type === 'weapon:predicted').payload;
+  step(1); assert.equal(lastPrediction().muzzleIndex, 0);
+  assert.equal(hybridGame.player.combat.launcherCursor ?? 0, 0, 'speculation leaves aim cursor unchanged');
+  own.reloadS = 1; step(); own.reloadS = 0; step(2);
+  assert.equal(lastPrediction().muzzleIndex, 0, 'rejected speculation does not advance the rack');
+  const kickCount = kicks.length;
+  step(null, [fired(100, 3, 2)]);
+  const confirmed = feedback.findLast(event => event.type === 'shell:fired').payload;
+  assert.equal(hybridGame.player.combat.launcherCursor, 4, 'accepted index is published for aim');
+  assert.equal(confirmed.muzzleIndex, 3, 'authority overrides a mismatched predicted mouth');
+  assert.deepEqual(confirmed.muzzlePos, [23, 3, -8]);
+  assert.equal(kicks.length, kickCount, 'confirmation does not replay predicted recoil');
+  step();
+  assert.equal(hybridGame.player.combat.launcherCursor, 4,
+    'later ordinary snapshot preserves accepted cursor without another launch event');
+  own.ammo0--; step(3);
+  assert.equal(lastPrediction().muzzleIndex, 4, 'next prediction follows the authoritative cursor');
+  step(null, [fired(101, -1, null, 2)]);
+  own.ammo0--; step(4);
+  assert.equal(lastPrediction().muzzleIndex, 4, 'backup cannon leaves the launcher cursor unchanged');
+  step(null, [fired(102, 7, 4)]);
+  own.ammo0--; step(5);
+  assert.equal(lastPrediction().muzzleIndex, 0, 'last tube wraps');
+  step(null, [fired(100, 3, null)]);
+  own.ammo0--; step(6);
+  assert.equal(lastPrediction().muzzleIndex, 0, 'late older shell cannot roll the rack backwards');
+  step(null, [fired(103, 5, 6)]);
+  frame.meta.roomRound = 1; own.ammo0 = 10; step(7);
+  assert.equal(hybridGame.player.combat.launcherCursor, 0, 'round resets aim cursor');
+  assert.equal(lastPrediction().muzzleIndex, 0, 'new round starts at the first physical cell');
+  const beforeHidden = feedback.length;
+  hybrid.retainBackgroundState(frame, [fired(200, 6, null)]);
+  assert.equal(hybridGame.player.combat.launcherCursor, 7, 'hidden accepted launch updates aim cursor');
+  assert.equal(feedback.length, beforeHidden, 'hidden accepted launch updates only cursor metadata');
+  own.ammo0--; step(8);
+  assert.equal(lastPrediction().muzzleIndex, 7, 'resume uses the hidden authoritative launch');
+  own.hp = 0; step(); own.hp = 2000; own.ammo0 = 10; step(9);
+  assert.equal(hybridGame.player.combat.launcherCursor, 0, 'life resets aim cursor');
+  assert.equal(lastPrediction().muzzleIndex, 0, 'new life resets launcher presentation independently');
+  assert.equal(implicitCursor, 0, 'network prediction never consumes the visual-only cursor');
+  hybrid.dispose();
+}
+console.log('browserBattleBridge: rejected/mismatched launcher predictions reconcile without duplicate recoil; wrap, cannon and round isolation PASS');

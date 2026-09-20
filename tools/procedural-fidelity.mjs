@@ -8,6 +8,8 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
+import {validateSelectedIds,partitionConceptIds,CONCEPT_DESIGN_PATH} from './first-party-concept-policy.mjs';
 
 const ROOT = process.cwd();
 const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
@@ -19,6 +21,8 @@ const option = (name, fallback = null) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const requested = option('ids')?.split(',').map((id) => id.trim()).filter(Boolean) || null;
+if(requested)validateSelectedIds(requested,Object.keys(FLEET_GROUP_BY_ID));
+const requestedPartition=requested?partitionConceptIds(requested):null;
 const shotCount = Math.max(0, Number(option('shots', '0')) || 0);
 const BOARD = args.includes('--board'); // per-id shaded + articulation boards
 const NEUTRAL_BOARD = args.includes('--neutral-board'); // equal clay shading, no camouflage
@@ -29,7 +33,9 @@ const PASS = 90;
 const VIEW_FLOOR = 90;
 const EXEMPLAR_PASS = 92;
 const PRESERVATION_PASS = 99;
-const rows = [];
+const rows = (requestedPartition?.concepts??[]).map(id=>({id,name:id,score:null,scores:{},
+  comparisonPurpose:'owner-authored-concept',comparisonApplicable:false,designPath:CONCEPT_DESIGN_PATH,
+  gatePassed:null,fallback:'first-party concept; physical qualification is tank-standard-check --gate'}));
 const browserErrors = [];
 const metric = (value) => Number.isFinite(value) ? value.toFixed(0) : 'NA';
 // Worktrees may share node_modules. A private optimizer cache prevents one
@@ -41,6 +47,7 @@ let page = null;
 let acquisitionFailed = false;
 
 try {
+  if(!requestedPartition || requestedPartition.comparisons.length) {
   cacheDir = fs.mkdtempSync(path.join(tmpdir(), 'cot-fidelity-vite-'));
   server = await createServer({
     root: ROOT,
@@ -65,10 +72,10 @@ try {
   });
 
   const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
-  await page.goto(urlFor(requested?.[0] || 'm1a2'), { waitUntil:'domcontentloaded', timeout:90000 });
+  await page.goto(`${urlFor(requestedPartition?.comparisons[0] || 'm1a2')}&registry=1`, { waitUntil:'domcontentloaded', timeout:90000 });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)', { timeout:90000 });
   const discovered = await page.evaluate('window.__REFERENCE_IDS');
-  const ids = requested || discovered;
+  const ids = requestedPartition?.comparisons || discovered;
 
   for (let index=0; index<ids.length; index++) {
     const id = ids[index];
@@ -151,12 +158,13 @@ try {
     fs.mkdirSync(boardDir,{recursive:true});
     await page.setViewport({ width:2520, height:1200, deviceScaleFactor:1 });
     for (const row of rows) {
-      if (row.error) continue;
+      if (row.error || row.comparisonApplicable===false) continue;
       await page.goto(`${urlFor(row.id)}&board=1${NEUTRAL_BOARD ? '&neutralBoard=1' : ''}`, { waitUntil:'domcontentloaded', timeout:120000 });
       await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:120000, polling:60 });
       await page.screenshot({ path:path.join(boardDir,`${row.id}${NEUTRAL_BOARD ? '-neutral' : ''}.png`), fullPage:true });
       console.log(`[board] ${row.id}`);
     }
+  }
   }
 } catch (error) {
   acquisitionFailed = true;
@@ -188,6 +196,7 @@ const median = scores.length ? scores[Math.floor(scores.length/2)] : 0;
 const summary = {
   discovered:rows.length,
   references:scoredRows.length,
+  notApplicable:rows.filter(row=>row.comparisonApplicable===false).length,
   unavailable:rows.filter((row)=>row.unavailable).length,
   passed:scoredRows.filter((row)=>row.gatePassed).length,
   failed:scoredRows.filter((row)=>!row.gatePassed).length,
@@ -224,10 +233,11 @@ const md=[
   'Component cells are N/A when a source GLB is fused and therefore cannot expose an independent hull/turret mask. '+
     'Its whole silhouette and lower running-gear profile remain scored.','',
   'Historical first-party preservation compares against a hash-pinned original commit. It makes no real-world source-fidelity claim.','',
+  'Explicit owner-authored concepts have no source score and are not counted as passing references. Their physical design gate and full release checks remain mandatory.','',
 ].join('\n');
 fs.writeFileSync(path.join(REPORT_DIR,'procedural-fidelity.md'),md);
 
 console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} available references pass `+
-  `their ${PASS}+ fleet, ${EXEMPLAR_PASS}+ exemplar or ${PRESERVATION_PASS}+ preservation floor; ${summary.unavailable} unavailable; `+
+  `their ${PASS}+ fleet, ${EXEMPLAR_PASS}+ exemplar or ${PRESERVATION_PASS}+ preservation floor; ${summary.unavailable} unavailable; ${summary.notApplicable} explicit concept N/A; `+
   `median ${summary.median.toFixed(1)}; worst ${summary.worst}; best ${summary.best}`);
 if (CHECK && (summary.failed || summary.unavailable)) process.exitCode=1;

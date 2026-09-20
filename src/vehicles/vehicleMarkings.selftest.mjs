@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   SURFACE_MARKING_STYLE, VEHICLE_MARKING_ANCHORS, vehicleMarkingAnchor,
-  vehicleMarkingRecord, vehicleMarkingSeats,
+  vehicleMarkingRecord, vehicleMarkingSeats, vehicleMarkingIncludesPermanentHullArmor,
 } from './vehicleMarkings.ts';
 
 const nations = ['USA', 'Germany', 'USSR', 'Russia', 'UK', 'France', 'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden', 'Ukraine'];
@@ -56,7 +56,10 @@ function markingSupportHit(mark, owner) {
       if (current === owner) break;
     }
     if (visible && object.isMesh && !object.isInstancedMesh
-        && armorNames[mark.userData.surfaceOwner].has(object.name)) {
+        && (armorNames[mark.userData.surfaceOwner].has(object.name)
+          || (mark.userData.surfaceOwner === 'hull'
+            && vehicleMarkingIncludesPermanentHullArmor(mark.userData.markingAnchorProfile)
+            && object.name === 'hullExternalArmor'))) {
       candidates.push(object);
     }
   });

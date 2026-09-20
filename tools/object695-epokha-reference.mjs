@@ -38,3 +38,12 @@ export const OBJECT695_EPOKHA_FRAME = Object.freeze({
   turret: [...OBJECT695_EPOKHA.retainedTurret],
   gun: OBJECT695_EPOKHA.donor.gun.map((value, axis) => value + object695ModuleShift()[axis]),
 });
+
+// Immutable former comparison contract. The later original missile concept
+// supersedes this active target; source-only replay remains independently testable.
+export const RETIRED_OBJECT695_EPOKHA_REFERENCE = Object.freeze({
+  source:'glb',qualityBar:'exemplar',glb:{
+    path:'/models/community-candidates/object695_x_epokha_20260919.glb',
+    fixedMount:true,componentMasks:false,geometryComponentMasks:false,
+  },
+});

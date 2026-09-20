@@ -38,7 +38,8 @@ import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.ts';
 import { loadReferenceGlb } from '/tools/reference-glb-loader.ts';
-import { REVOLUTION_PROTO_BASELINE, ZTZ100_PROTOTYPE_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
+import { assertNoConceptReferences } from '/tools/first-party-concept-policy.mjs';
+import { REVOLUTION_PROTO_BASELINE, validatedPreservationOracle, preservationDimensionTargets } from '/tools/preservation-oracle.ts';
 import { requiredMinimumForQualityBar, evaluateFidelityGate, evaluateGeometryGate } from '/tools/geometry-gate-policy.mjs';
 import { T90_X_REFERENCE_OVERRIDES } from '/tools/t90-x-reference-overrides.ts';
 import { LEOPARD_X_REFERENCE_OVERRIDES } from '/tools/leopard-x-reference-overrides.ts';
@@ -281,11 +282,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   leo2_revolution_proto: { source:'glb', qualityBar:'preservation', comparisonPurpose:'preservation',
     preservation:REVOLUTION_PROTO_BASELINE, glb:{
       path:'/models/community-candidates/leo2_revolution_proto_preservation.glb',
-      turretNode:'^preserved_turret$', gunNode:'^preserved_gun$', autoPivot:true } },
-  // Owner-authorized historical ZTZ-100 restoration; never the service model's source oracle.
-  ztz100_prototype: { source:'glb', qualityBar:'preservation', comparisonPurpose:'preservation',
-    preservation:ZTZ100_PROTOTYPE_BASELINE, glb:{
-      path:'/models/community-candidates/ztz100_prototype_preservation.glb',
       turretNode:'^preserved_turret$', gunNode:'^preserved_gun$', autoPivot:true } },
   m1a1_aim: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a1_aim.glb', turretNode:'^Turret$', autoPivot:false, paintUntextured:true } },
   m26_pershing: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m26_pershing.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
@@ -684,6 +680,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // existed in committed history. Verification = freeze hash (tmp-hashgeo
   // f01e1e00) ONLY; never gate kv2.
 };
+assertNoConceptReferences(LOCAL_REFERENCE_OVERRIDES);
+assertNoConceptReferences(MODEL_SOURCE);
+window.__PLAYABLE_IDS = ALL_TANK_IDS;
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
 // Certified local oracles already share a measured metre frame. Applying a
 // second width fit in ordinary fidelity let a 4 mm paint decal rescale the

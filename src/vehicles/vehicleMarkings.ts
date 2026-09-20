@@ -282,9 +282,13 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   type99a: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   vt4a1: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
   type100: anchor('hull', 'left', 0.30, 0.55, 0.26, 1),
-  ztz100_prototype: anchor('turret', 'left', 0.45, 0.50, 0.26, 1),
+  // The missile banks leave the aft spine visible; the former mid-turret
+  // number was hidden below their sides in ordinary quarter views.
+  ztz100_prototype: anchor('turret', 'left', 0.18, 0.32, 0.24, 1),
   ztz100_x: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
-  object695_x: anchor('hull', 'left', 0.30, 0.52, 0.26, 1),
+  // The shallow rotating base cannot carry a flush readable emblem. Use
+  // the permanent forward hull modules, clear of their seams and fittings.
+  object695_x: anchor('hull', 'left', 0.60, 0.52, 0.26, 1),
   ztz85_iii: anchor('turret', 'right', 0.44, 0.47, 0.23, -1),
   ztz99a2: anchor('turret', 'left', 0.34, 0.45, 0.25, 1),
   ztz99a2_prototype: anchor('turret', 'left', 0.34, 0.45, 0.25, 1),
@@ -357,6 +361,14 @@ export function vehicleMarkingAnchor(
 ): VehicleMarkingAnchor | null {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
   return VEHICLE_MARKING_ANCHORS[id as string] || null;
+}
+
+/** Object's continuous closed side modules are permanent armor, not ERA. */
+export function vehicleMarkingIncludesPermanentHullArmor(
+  specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
+): boolean {
+  const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
+  return id === 'object695_x';
 }
 
 /**

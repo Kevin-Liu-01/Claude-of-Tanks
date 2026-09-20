@@ -56,3 +56,15 @@ assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[1]==='build
 const plain=tankReleaseStages('m1a2',false,'node-test');
 assert.deepEqual(plain.map(stage=>stage.steps.length),[2,10],'without a reference the scoring stage has no fidelity step');
 console.log('tank-release-plan: strict fidelity plus geometry, complete scope, CPU phases, nonnested capture locks and staged concurrency pass');
+
+const concept=tankReleaseSteps('ztz100_prototype,object695_x',true,'node-test');
+assert.equal(concept.some(s=>s.args[0]==='tools/procedural-fidelity.mjs'),false,'obsolete comparisons are not run');
+assert.equal(concept.length,12,'every other mandatory release step remains');
+for(const step of concept.filter(s=>s.args[0]?.startsWith('tools/')&&s.args.some(a=>a.startsWith('--ids=')))) {
+  assert.ok(step.args.includes('--ids=ztz100_prototype,object695_x'),'all physical checks retain both concepts');
+}
+for(const name of ['tank-standard-check','tank-sealed-check'])assert.ok(concept.find(s=>s.args[0]===`tools/${name}.mjs`).args.includes('--gate'));
+const mixed=tankReleaseSteps('ztz100_x,ztz100_prototype,object695_x',true,'node-test');
+assert.deepEqual(mixed.find(s=>s.args[0]==='tools/procedural-fidelity.mjs').args,
+ ['tools/procedural-fidelity.mjs','--ids=ztz100_x','--check','--board','--neutral-board']);
+assert.throws(()=>tankReleaseSteps('unknown_x',true),/known playable/,'unknown IDs cannot obtain N/A qualification');

@@ -170,3 +170,47 @@ idleController.update(frame);
 assert.equal(frame.ammoSelectionPending, false, 'an absent player clears stale presentation state');
 
 console.log('aimController.selftest: shared camera/bore aim owner passed');
+
+// The selected rack mouth, not the center cannon, owns the obstruction and
+// armor-query origin. An unconfirmed HUD ammo request must not change it.
+{
+  const calls = [];
+  const hybrid = { ...player, input: { shellSlot: 0 }, _networkShellSlot: 0,
+    combat: { ...player.combat, shellSlot: 0, launcherCursor: 1, ammo: [4, 4, 40] },
+    spec: { ...player.spec, gun: { shells: [{ guided: true }, { guided: true }, { guided: false }],
+      launcherMuzzles: [{ x: -1, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }] } },
+    visual: { gunMuzzleWorld(out, index, guided) {
+      calls.push({ index, guided }); out.set(guided ? (index === 0 ? -1 : 1) : 0, 2, 0);
+    }, gunDirWorld(out) { out.set(0, 0, 1); } },
+  };
+  const rays = [];
+  const aim = createAimController({ getGame: () => ({ player: hybrid, tanks: [hybrid] }),
+    getRig: () => rig, targetVisible: () => true, computeDispersion: () => .2,
+    getShellCards: () => [{}, {}, {}], now: () => now,
+    worldRaycast(origin, dir, maxDist) {
+      rays.push({ origin: origin.toArray(), maxDist });
+      return origin.x === 1 ? { point: origin.clone().addScaledVector(dir, 5), normal: null,
+        dist: 5, kind: 'wall' } : null;
+    },
+  });
+  aim.update(frame);
+  assert.equal(frame.blockedDistM, 5, 'right missile tube is obstructed despite clear central cannon');
+  assert.deepEqual(frame.gunMarker.toArray(), [1, 2, 5], 'world marker uses the same tube');
+  assert(rays.every(ray => ray.origin[0] === 1), 'obstruction and armor selection share actual mouth');
+  assert.equal(hybrid.combat.launcherCursor, 1, 'aim never consumes the next tube');
+  hybrid.combat.launcherCursor = 0;
+  aim.update(frame);
+  assert.equal(frame.blockedDistM, null, 'left missile tube remains clear');
+  hybrid.combat.shellSlot = hybrid._networkShellSlot = 2;
+  hybrid.input.shellSlot = 0;
+  aim.update(frame);
+  assert.equal(frame.ammoSelectionPending, true);
+  assert.equal(frame.blockedDistM, null);
+  assert.deepEqual(calls.at(-1), { index: undefined, guided: false },
+    'pending missile request retains authoritative cannon origin');
+  hybrid.combat.shellSlot = hybrid._networkShellSlot = 0;
+  hybrid.combat.launcherCursor = 1;
+  aim.update(frame);
+  assert.equal(frame.blockedDistM, 5, 'accepted missile selection restores physical rack origin');
+}
+console.log('aimController: indexed missile obstruction, armor origin, cannon and pending-selection isolation PASS');

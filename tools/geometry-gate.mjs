@@ -1,3 +1,4 @@
+import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // tools/geometry-gate.mjs — THE authoritative geometric gate.
 //
 // For each tank with a local reference, extracts identical measured curves
@@ -27,34 +28,7 @@ const OUT = path.join(ROOT, 'docs', 'geometry-gate');
 fs.mkdirSync(OUT, { recursive: true });
 
 const rows = [];
-await withIsolatedCaptureBrowser({
-  root: ROOT,
-  logLevel: 'error',
-  server: { port: 7400 + Math.floor(Math.random() * 200), strictPort: false, hmr: false, watch: null },
-}, {
-  headless: 'new',
-  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-}, async ({ server, browser }) => {
-const page = await browser.newPage();
-// Startup import/runtime failures must remain visible instead of appearing
-// only as an unexplained registry timeout during an authored-fleet audit.
-page.on('pageerror', error => console.error(`[geo browser] ${String(error)}`));
-page.on('console', message => {
-  if (message.type() === 'error' && !message.text().includes('favicon'))
-    console.error(`[geo console] ${message.text()}`);
-});
-page.setDefaultTimeout(150000);
-const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
-const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a2&registry=1`;
-
-  // Discover eligible IDs without loading an optional local comparison file.
-  // Worktrees intentionally omit quarantined GLBs, so registry discovery must
-  // not depend on any one source asset being present.
-  await page.goto(registryUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)');
-  const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
-  const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
-  const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
+function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars) {
   const publicRoot = path.resolve(ROOT, 'public');
   const localAssetPath = (assetPath) => {
     if (typeof assetPath !== 'string' || !assetPath.startsWith('/')) return null;
@@ -86,6 +60,39 @@ const registryUrl = `http://localhost:${server.config.server.port}/tools/procedu
   } else if (available.size < registered.size) {
     console.log(`[geo] skipped ${registered.size - available.size} optional comparison oracles unavailable in this worktree`);
   }
+  return ids;
+}
+
+await withIsolatedCaptureBrowser({
+  root: ROOT,
+  logLevel: 'error',
+  server: { port: 7400 + Math.floor(Math.random() * 200), strictPort: false, hmr: false, watch: null },
+}, {
+  headless: 'new',
+  args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+}, async ({ server, browser }) => {
+const page = await browser.newPage();
+// Startup import/runtime failures must remain visible instead of appearing
+// only as an unexplained registry timeout during an authored-fleet audit.
+page.on('pageerror', error => console.error(`[geo browser] ${String(error)}`));
+page.on('console', message => {
+  if (message.type() === 'error' && !message.text().includes('favicon'))
+    console.error(`[geo console] ${message.text()}`);
+});
+page.setDefaultTimeout(150000);
+const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
+const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a2&registry=1`;
+
+  // Discover eligible IDs without loading an optional local comparison file.
+  // Worktrees intentionally omit quarantined GLBs, so registry discovery must
+  // not depend on any one source asset being present.
+  await page.goto(registryUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)');
+  const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
+  if(requested)validateSelectedIds(requested,await page.evaluate('window.__PLAYABLE_IDS'));
+  const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
+  const referenceQualityBars = await page.evaluate('window.__REFERENCE_QUALITY_BARS');
+  const ids = selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars);
   for (const id of ids) {
     try {
       let rawSourceComparison=null;

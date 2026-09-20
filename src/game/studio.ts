@@ -1403,10 +1403,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const shellSpec = actor.spec.gun.shells[slot];
     let muzzleIndex = null;
     if (params.recoil !== false && actor.visual.recoilKick) {
-      muzzleIndex = actor.visual.recoilKick(0);
+      muzzleIndex = actor.visual.recoilKick(0, 1, undefined, shellSpec.guided === true);
       actor.visual.syncFromState(actor.state, 0);
     }
-    actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
+    actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined, shellSpec.guided === true);
     actor.visual.gunDirWorld(_v3);
     const shellId = -(uidSeq * 100000 + shells.length + 1);
     fxBus.emit('shell:fired', {
@@ -1567,17 +1567,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function fireFiringMoment({ actor, params }: StudioEffectExecution): boolean {
     if (!actor) return false;
+    const shellSpec = actor.spec.gun.shells[Math.max(0, Math.min(actor.spec.gun.shells.length - 1, (params.slot ?? 0) | 0))];
     const muzzleIndex = actor.visual.recoilKick?.(
-      params.ageS != null ? params.ageS : 0.05,
+      params.ageS != null ? params.ageS : 0.05, 1, undefined, shellSpec.guided === true,
     ) ?? null;
     actor.visual.syncFromState(actor.state, 0);
-    actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined);
+    actor.visual.gunMuzzleWorld(_v2, muzzleIndex != null ? muzzleIndex : undefined, shellSpec.guided === true);
     actor.visual.gunDirWorld(_v3);
     fx.composeFiringMoment({
       muzzlePos: _v2.clone(),
       dir: _v3.clone(),
-      caliberMm: params.caliberMm || actor.spec.gun.caliberMm,
-      tracerType: params.shellType || actor.spec.gun.shells[0].type,
+      caliberMm: params.caliberMm || shellSpec.caliberMm,
+      tracerType: params.shellType || shellSpec.type,
       ageS: params.ageS != null ? params.ageS : 0.05,
     });
     return true;

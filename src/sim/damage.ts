@@ -84,6 +84,7 @@ export interface DamageGunSpec {
   reloadS: number;
   /** Guided ammunition is chambered and fired through this main gun/launcher. */
   primaryGuided?: boolean;
+  launcherMuzzles?: readonly { x: number; y: number; z: number }[];
   shells?: DamageShellSpec[];
   autoloader?: {
     magazineSize: number;
@@ -114,6 +115,8 @@ interface ReloadState {
 }
 
 export interface CombatState {
+  /** Cycles a separate missile rack without advancing the cannon channel. */
+  launcherCursor?: number;
   hp: number;
   maxHp: number;
   destroyed: boolean;
@@ -479,10 +482,13 @@ export function createCombatState(spec: DamageTankSpec): CombatState {
     : 0;
   const ammunition = createAmmunitionState(spec.gun.shells || []);
   const gunReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
+  const launcherReload: ReloadState = { t: 0, totalS: spec.gun.reloadS, kind: 'ready' };
   const reloadChannels = (spec.gun.shells || []).map((round) =>
-    round.guided === true && spec.gun.primaryGuided !== true
-      ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
-      : gunReload);
+    round.guided === true && spec.gun.launcherMuzzles?.length
+      ? launcherReload
+      : round.guided === true && spec.gun.primaryGuided !== true
+        ? { t: 0, totalS: round.reloadS || spec.gun.reloadS, kind: 'ready' as ReloadKind }
+        : gunReload);
   return {
     hp: spec.hp,
     maxHp: spec.hp,
